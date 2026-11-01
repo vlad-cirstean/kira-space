@@ -131,6 +131,14 @@ type CloseArgs struct {
 	TerminalID string `json:"terminalId"`
 }
 
+// beginAgent consumes args.AgentLaunchToken and returns the env it holds.
+func (b *BoundService) beginAgent(args OpenArgs) ([]string, error) {
+	if b.Scripts == nil {
+		return nil, ipcerr.Contract("agent launch tokens are not available")
+	}
+	return b.Scripts.BeginAgent(args.AgentLaunchToken, args.Command)
+}
+
 // Open validates args, spawns a new session and returns its resolved shell path. terminalId is
 // client-supplied (the tab id) so the renderer subscribes to ChannelTerminal before this call
 // returns — no output can race the subscription. The cwd check below is not a trust boundary and
@@ -169,14 +177,10 @@ func (b *BoundService) Open(args OpenArgs) (OpenResult, error) {
 	}
 
 	if args.AgentLaunchToken != "" {
-		if b.Scripts == nil {
-			return OpenResult{}, ipcerr.Contract("agent launch tokens are not available")
-		}
-		agentEnv, err := b.Scripts.BeginAgent(args.AgentLaunchToken, args.Command)
-		if err != nil {
+		var err error
+		if scriptEnv, err = b.beginAgent(args); err != nil {
 			return OpenResult{}, err
 		}
-		scriptEnv = agentEnv
 	}
 
 	command, env := args.Command, scriptEnv
