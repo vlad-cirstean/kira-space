@@ -10,7 +10,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | P448 | Agent harness seams for a second real provider | Done |
 | P449 | OpenCode provider; pick the agent per interactive session | Todo |
 | P450 | Config-as-files foundation: store, layout, validation, DB sync, interpolation, AGENTS.md | Done |
-| P451 | Workflows folder AGENTS.md | Todo |
+| P451 | Workflows folder AGENTS.md | Done |
 | P452 | One shared agent context, rendered per provider | Todo |
 | P453 | Agent settings: common plus per provider, MCP credentials from the keychain | Todo |
 | P454 | Import and Export of agent config per provider | Todo |
@@ -101,6 +101,8 @@ Result: `internal/configfs` (Folder, atomic Save with baseHash, debounced watch,
 - `AGENTS.md` in the workflows folder lists all available options and how to update them, enough for an AI agent to author workflows.
 - Generated or checked against the workflow schema (P450 convention) so it cannot drift from the validator.
 - Test: flow test asserts every schema option appears in the file.
+
+Result: no JSON Schema for workflows (Q1 no). `adeflow/options.go` is one option table; `Parse` and the writer derive key sets and enums from it, so the validator cannot accept a key `AGENTS.md` lacks. `adeflow.DocModel` adds per-agent settings from `providers.StageCatalog` and 17 rule docs; `TestRuleDocsEnforced` binds each rule to the validator. A new cross-field check without a rule doc is not caught mechanically. `configfs.DocModel.LocalOverrides` makes the `.local.yaml` line opt-in. `TaskBoard.Start` writes the file, non-fatal. Editor bar only gets "About these files" (Q2). Flow test `TestWorkflowsAgentsDoc`; `ade-v2-workflows` UI spec 42 passed.
 
 ### P452 One shared agent context, rendered per provider
 
