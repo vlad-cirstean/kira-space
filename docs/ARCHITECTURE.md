@@ -1879,7 +1879,7 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 - Wails emits `ApplicationOpenedWithFile` once per file, cold start included. `openedfiles.Coalescer` batches adds (300 ms after the last) into one new window. `Resolve` follows symlinks, then maps a path inside an imported repo (longest root wins) to `{repoId, relPath}`, else keeps the absolute path. The window pulls its targets once through `OpenedFilesService.Pending(windowKey)`; `Forget` runs on window close.
 - A path outside every repo opens a `local-file` tab in the general workspace, read through `OpenedFilesService.Read`, which accepts only an absolute, clean path with a supported extension. `RepoFileView` and `LocalFileView` share `useReadonlyFileViewer`.
 - The File types settings pane writes LaunchServices through `filehandlers.Registry` (`NSWorkspace setDefaultApplicationAtURL:toOpenContentType:`; macOS cgo build only, `Unsupported` elsewhere and in `-tags server`). Status re-reads live state on every call; nothing is applied on launch. The previous handler is stored per extension in `file_handler_previous` before the first switch; switching off restores it, and a gone app leaves the extension on Kira Space and reports it as `unrestored`.
-- Kira Space has 29 bound services.
+- Kira Space has 32 bound services.
 - Not supported: Linux and Windows (no package; the single-instance lock drops a second process's argv), folders dropped on the Dock icon, editing or live reload of an opened file, a table view for data files, auto-importing an un-imported repo that contains the opened file.
 
 ### Git graph in the native workspace (C10)

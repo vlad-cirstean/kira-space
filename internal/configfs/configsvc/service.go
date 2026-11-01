@@ -61,16 +61,16 @@ func (s *Service) Reveal(args FileArgs) error {
 func (s *Service) resolve(args FileArgs) (string, error) {
 	dir, ok := s.folders[args.Folder]
 	if !ok {
-		return "", ipcerr.BadRequest("unknown config folder")
+		return "", ipcerr.Contract("unknown config folder")
 	}
 	f := args.File
 	if f == "" || f != filepath.Base(f) || strings.HasPrefix(f, ".") || strings.ContainsAny(f, `/\`) {
-		return "", ipcerr.BadRequest("invalid config file name")
+		return "", ipcerr.Contract("invalid config file name")
 	}
 	p := filepath.Join(dir, f)
 	info, err := os.Lstat(p)
 	if err != nil || !info.Mode().IsRegular() {
-		return "", ipcerr.NotFound("config file does not exist")
+		return "", ipcerr.Contract("config file does not exist")
 	}
 	return p, nil
 }
