@@ -1879,7 +1879,7 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 - Wails emits `ApplicationOpenedWithFile` once per file, cold start included. `openedfiles.Coalescer` batches adds (300 ms after the last) into one new window. `Resolve` follows symlinks, then maps a path inside an imported repo (longest root wins) to `{repoId, relPath}`, else keeps the absolute path. The window pulls its targets once through `OpenedFilesService.Pending(windowKey)`; `Forget` runs on window close.
 - A path outside every repo opens a `local-file` tab in the general workspace, read through `OpenedFilesService.Read`, which accepts only an absolute, clean path with a supported extension. `RepoFileView` and `LocalFileView` share `useReadonlyFileViewer`.
 - The File types settings pane writes LaunchServices through `filehandlers.Registry` (`NSWorkspace setDefaultApplicationAtURL:toOpenContentType:`; macOS cgo build only, `Unsupported` elsewhere and in `-tags server`). Status re-reads live state on every call; nothing is applied on launch. The previous handler is stored per extension in `file_handler_previous` before the first switch; switching off restores it, and a gone app leaves the extension on Kira Space and reports it as `unrestored`.
-- Kira Space has 28 bound services.
+- Kira Space has 29 bound services.
 - Not supported: Linux and Windows (no package; the single-instance lock drops a second process's argv), folders dropped on the Dock icon, editing or live reload of an opened file, a table view for data files, auto-importing an un-imported repo that contains the opened file.
 
 ### Git graph in the native workspace (C10)
@@ -2257,7 +2257,7 @@ and `docs/HISTORY.md (v2.0)`.
 ### Workflows
 
 - Workflows are YAML files in <home>/workflows, parsed by adeflow.Reader; no workflow is seeded (D2).
-- The workflows folder is watched with fsnotify; a broken edit keeps the last valid version and reports the line plus a message. The writer keeps key order and comments.
+- The workflows folder is a `configfs.Folder` (P450, see Config files): watched, debounced 200 ms; a broken edit keeps the last valid version and reports the line plus a message. Saves are atomic with a baseHash check. `ade_workflow_last_valid` rows follow file deletion. The writer keeps key order and comments.
 - A workflow has a flat list `steps` of kind agent|script|review|manual (P293); `kind` is required and each kind allows only its own keys.
 - Allowed keys: agent: runs_on before results max_returns timeout prompt allowed_tools smart_script params sandbox settings; script: command runs_on before results max_returns timeout; review: review runs_on before results max_returns timeout sandbox settings; manual: session and, with it, prompt and settings.
 - A top-level `stages` key fails with the error "stages" is no longer supported: list every step under "steps".
@@ -3112,6 +3112,30 @@ Agent-written evidence the user reviews in a dedicated window. Part 1 is storage
 - **Chart view state.** `chart {hidden, selected, zoom}` is optional on `ViewState` and omitted for other views. Bounds are checked in `proof/viewstate.go`.
 - **Chart screenshot.** Inline SVG clones with the DOM; the capture filter drops `.kira-proof-chart-tooltip`. Measured in headless WebKit: 1000 scatter points 5.7-6.3 s, one line series of 1000 points with symbols 6.8 s, 20 series of 1000 points 3.5-4.1 s. 2000 scatter points took 10.6-12.6 s, so the bar and scatter cap is 1000.
 - **Screenshot.** `modern-screenshot` (`screenshot.ts`) clones the step element to a canvas; `restoreScrollPosition` makes the clone match the live scroll. `includeStyleProperties` must list painted properties only; without it a clone of a 160-row grid takes minutes in WebKit. Capture waits for every `[data-step-key]` to report `data-ready`. Default action copies a PNG to the clipboard; the dropdown saves via `ProofService.SavePng`. All tabs stack in order.
+
+## Config files (P450)
+
+Config lives as plain files in app-home folders; `internal/configfs` is the one foundation every module uses. Terse facts, decisions in `docs/v0.2.26/plans/P450.md`.
+
+- Layout: a config folder is a direct child of an app home, `<home>/<module>/`. Workflows stay `<home>/workflows/`. A module's folder lives in the home of the app whose DB holds its state; a process projects files only into its own DB.
+- A definition shared by both apps has one folder, `~/.kira-space/agent/`. Both apps read, write and watch it. The resolver lands with the first user (P452).
+- Reserved names: `AGENTS.md` (generated) and hidden files. The store never reads either as config. Folder mode 0755, file mode 0644; files never hold a secret value.
+- Per-machine values: `<name>.local.yaml` beside `<name>.yaml`, merged over it key by key. Code lands with the first module that has one (P461).
+- Formats: structured config is YAML (`.yaml`), prose is Markdown (`.md`). No JSON config files. Anchors, aliases and merge keys are refused with a line. Collections are one item per file, `<id>.yaml`, stem is the id. Singletons are one fixed file name. Cap 1 MiB, refused on read and write.
+- Validation: JSON Schema draft 2020-12 per kind, `github.com/santhosh-tekuri/jsonschema/v6`. `google/jsonschema-go` declined: its error names no instance location, so no file line. Pipeline: `yaml.Node` parse, node-to-JSON walk, schema validate, error mapped back to line and column, decode into the Go type (unknown fields refused), module `Rule`s. `Rule.Doc` is mandatory and renders into `AGENTS.md`.
+- A `Problem` message never echoes the offending value. Messages are English catalog keys `backend.core.config.*`.
+- Workflows keep their hand-written `adeflow.Parse` and run on `configfs.Folder` without a schema.
+- DB sync, one mechanism: files to DB only. Each module keeps a projection (last valid parsed JSON per file) in its own SQLite table through `configfs.Projection`. The projection exists so last good survives restart, state rows keep a local key, and hot paths read rows. Workflows' projection is `ade_workflow_last_valid`; rows follow file deletion.
+- App writes never touch the projection. A UI edit writes the file (atomic, `baseHash` check), then the same load path projects it. Load: `Folder.List` at start, then on every debounced (200 ms) watch event. Unchanged JSON is skipped. Invalid file: no DB change, a `Problem` with the last good value, one Warn per new hash (file name and line, never content). File gone: `Forget`.
+- State references config only by id (file stem). A rename is a delete plus a create. Each module states whether a delete cascades or orphans its state.
+- Migration of legacy rows (P459 to P462): one-shot, export each row to `<id>.yaml`, then set a marker setting row; never export again once set. Legacy secret values are never exported: they move into the secret store and the file gets a reference.
+- Config versus state: workflow files are config; `ade_workflow_last_valid` is a derived projection; task workflow snapshots are state; `AGENTS.md` is derived. The `settings` table stays in SQLite this chapter.
+- References: `${NAME}` reads an env var, `${secret:name}` an app secret, `$${` is a literal `${`. Anything else inside `${...}` is a load-time `Problem`. Only schema fields marked `x-kira-ref` are interpolated; `x-kira-secret` requires the whole value to be one secret reference. Shell command fields are never marked.
+- Load keeps references verbatim in the decoded value and the projection. `Resolver.Resolve` runs at use: it returns the text plus `[]Used{Name, Value, Placeholder}` for secrets, for the caller's masker. A missing env var or secret fails naming the reference, never an empty string. Env source is injected.
+- Secret seam: `configfs.SecretSource` (`Secret(ctx, namespace, name)`, errors wrap `ErrSecretMissing`). The namespace is the owning module's, never written in a file. P450 wires no production source; P453 adapts the secret store.
+- `AGENTS.md` is generated per folder: `DocFromSchema` builds the options list from the schema, rule docs are listed, the intro is a per-module template with prose only. `Folder.WriteDocs` writes it at app start when bytes differ.
+- UI: plain file edit in the user's editor is the default; a module may add small edit actions through `Folder.Save`. `packages/workbench/src/config/ConfigFileBar.vue` shows path, status (valid or "Line N: message"), Open, Reveal and Copy path; the app passes its bound calls in.
+- `configsvc.Service` (`internal/configfs/configsvc`) is the bound Open/Reveal surface. It takes a registered folder name plus a visible file in it; no renderer path reaches the OS. Kira Space registers `workflows`. The OS seam is `shell.NewDeferredFileOpener` (Wails `Browser.OpenFile`, `Env.OpenFileManager`).
 
 ## CLI credentials: never touched
 

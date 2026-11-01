@@ -9,7 +9,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | P447 | Shared keychain secret layer; Runs secret params stored encrypted | Done |
 | P448 | Agent harness seams for a second real provider | Done |
 | P449 | OpenCode provider; pick the agent per interactive session | Todo |
-| P450 | Config-as-files foundation: store, layout, validation, DB sync, interpolation, AGENTS.md | Todo |
+| P450 | Config-as-files foundation: store, layout, validation, DB sync, interpolation, AGENTS.md | Done |
 | P451 | Workflows folder AGENTS.md | Todo |
 | P452 | One shared agent context, rendered per provider | Todo |
 | P453 | Agent settings: common plus per provider, MCP credentials from the keychain | Todo |
@@ -92,6 +92,8 @@ Result: Done. Cipher hoisted to repo-root `internal/secrets`; i18n keys moved to
 - `AGENTS.md` convention: per config folder, explains how each file is configured and updated so an AI agent can configure everything. Plan decides generation (template per module versus generated from the schema) so docs cannot drift from the validator.
 - Minimal UI contract for modules: view, open the file, plan decides plain file edit or a small edit action.
 - Test: flow test (edit file, DB follows, invalid edit rejected and state kept, external edit picked up, secret reference resolved at runtime and absent from DB and logs). UI spec: validation error shown.
+
+Result: `internal/configfs` (Folder, atomic Save with baseHash, debounced watch, yaml.Node parse with line Locator, JSON Schema 2020-12 via santhosh-tekuri/jsonschema/v6, `${NAME}`/`${secret:name}` refs and Resolver, generated AGENTS.md) plus `configsvc` Open/Reveal bound as `ConfigFilesService`. Workflows run on `configfs.Folder`; `ade_workflow_last_valid` follows deletion; no migration. Shared `ConfigFileBar` in the workflow editor. Flow tests `adeflow` and `configflow`; `ade-v2-workflows` UI spec 42 passed. Not covered until P451 to P453: schema, refs, resolver and AGENTS.md have no production caller (configflow drives them through a test kind); real-table secret-absent-from-DB check lands in P453. `WriteDocs` not called at start (no DocModel before P451). Agent folder `~/.kira-space/agent` resolver lands with P452.
 
 ### P451 Workflows folder AGENTS.md
 
