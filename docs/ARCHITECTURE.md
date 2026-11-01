@@ -392,10 +392,13 @@ whatever sandbox a session happens to be in),
 - The envelope bumped from kira:v1: to kira:v2: because the cipher changed (AES-256-GCM under the app's own key versus Chromium's AES-128-CBC under safeStorage); reusing v1 would hand a v1 value to a v2 decrypt and fail confusingly.
 - The pre-P25 plaintext passthrough was dropped: Decrypt of a non-enveloped value returns an E_SECRET_STORE error naming the problem instead of returning it verbatim; upgradeLegacySecrets was deleted because it only upgraded pre-P25 rows.
 - AES-GCM's authentication tag makes a tampered or truncated ciphertext fail to authenticate rather than decrypt to garbage; the user-facing decrypt-failure message ('may have been written on a different machine or after a keychain reset — re-enter it to fix this connection') stays verbatim.
-- Encrypt/Decrypt take a secrets.Scope ("connection", "variable", or "variable-history", one per ciphertext column) used as AES-GCM additional authenticated data, so a ciphertext sealed for one column refuses to authenticate in another (P29).
+- Encrypt/Decrypt take a secrets.Scope ("connection", "connection-uri", "variable", "variable-history", "mask-key" or "script-param", one per ciphertext column) used as AES-GCM additional authenticated data, so a ciphertext sealed for one column refuses to authenticate in another (P29).
 - The AAD scope is bound to kind, not to a row, because duplication paths (ConnectionsRepo.InsertDuplicateWithSecret, VariablesRepo.DuplicateEnvironment) copy raw ciphertext into a new row of the same kind without using the cipher, which row-scoped AAD would break.
 - VariablesRepo.recordHistory re-encrypts a live variable's value under ScopeVariableHistory using the plaintext it already holds, rather than raw-copying ciphertext, because a raw copy would put a live-variable ciphertext in a history row (cross-kind movement the AAD refuses).
 - The envelope bumped from kira:v2: to kira:v3: with no migration and no dual-read path (app has not shipped); every kira:v2: and kira:v1: value is refused on first read and the user re-enters it once.
+- P447: internal/secrets lives at repo root, shared by Studio and Space. Both apps use one keychain item ('Kira Studio Secrets'), so one authorization prompt and one key. Space needs `KIRA_INSECURE_SECRETS=1` on Linux, like Studio.
+- secrets.Store seals values in table secret_values(scope, owner, name, value, updated_ms), PK (scope, owner, name), in both apps' DB. Callers pass their own Execer so a seal joins their tx. Only secrets.Store reads or writes the table.
+- secrets.Masker (stdlib strings.Replacer, longest first) replaces a value, each line of a multi-line value and its JSON-escaped form with the mask. It over-masks rather than under-masks. A nil Masker masks nothing.
 - The whole connection URI is ciphertext (P181): connections.uri holds a kira:v3: envelope under scope "connection-uri"; query secrets (password, sslpassword, tlsCertificateKeyFilePassword, proxyPassword) stay inside the blob with no separate slot.
 - SecretsRepo owns both ciphertext columns (Get, GetURI); ConnectionsRepo never selects uri, so summaries, List results, connections:list-changed events and IPC fixtures carry uri: null, and connectionSummarySchema types it z.null().
 - In URI mode the URI is the single source of truth: Create/Update fold the draft password into the URI's userinfo unless the URI has its own, seal the result and clear the password column; Update with uri: null means unchanged.
@@ -508,7 +511,8 @@ script_runs(id, script_id, script_name, color, kind, trigger_kind, state, termin
                                                        -- outcome_json is a runoutcome.Outcome.
                                                        -- trigger_kind terminal|manual|ade|scheduled.
                                                        -- model..tools_json describe a smart run (a
-                                                       -- secret param is stored masked); task_*,
+                                                       -- secret param is stored masked; saved secrets live
+                                                       -- in secret_values, scope script-param); task_*,
                                                        -- branch_* name the ADE context (Space only).
 script_run_logs(run_id, seq, stream, text)              -- P242 Part 2; smart-run log lines, stream
                                                        -- stdout|stderr|event
@@ -516,6 +520,8 @@ custom_script_collections(id, name, sort_order, created_at, updated_at)
                                                        -- P219; one row per script collection, name
                                                        -- trimmed, 64 runes max, order is sort_order
                                                        -- (user drag order), name. Empty ones may exist.
+secret_values(scope, owner, name, value, updated_ms)     -- P447; sealed kira:v3 values, PK (scope, owner, name),
+                                                       -- both apps. script-param rows: owner = custom_scripts.id.
 ui_layout(key, value)                                   -- panel visibility (app-wide), panel sizes per module (modes.<mode>.*)
 windows(key, order, bounds_json)                        -- one row per workbench (P8)
 tabs(id, connection_id, path, kind, state_json, order, active, window_key, workspace_id)
@@ -662,6 +668,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 | `settings`, `ui_layout` | nothing | closed key set; every writer is a hand-listed leaf |
 | `connections`, `connection_ddl`, `connection_tree_filters`, `saved_queries`, `connection_mask_rules` | user action | user action; all cascade on connection delete |
 | `custom_scripts`, `custom_script_collections` | user action | user action; one row per script or collection, created and deleted one at a time; deleting a collection deletes its scripts |
+| `secret_values` | save of a secret script param | user clear, param removal, script or collection delete (same tx); one row per saved value |
 | `api_collections`, `api_items`, `api_environments`, `api_variables` | user action / import | user action; import capped at 64 MiB upstream |
 | `tabs` | open tabs | rewritten per window per save; cascades on window close |
 | `windows` | live windows | one row per live window (+1 for session restore) |
@@ -835,12 +842,15 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - A smart run's final report must go through finish_step; a run without it fails with the shared "no report" text.
 - Smart script params are text, select or multiselect (a text param may be secret); names are lowercase and must not use the reserved ADE built-ins task, jira, repo, branch, base, worktree; {name} in the prompt is substituted before launch.
 - A secret param value reaches a smart run through env only: never in the prompt, stored script_runs.prompt or params_json (stored as the mask), and a smart script whose prompt names a secret param is refused.
+- P447: a secret text param can have a saved value, sealed in secret_values (scope script-param, owner custom_scripts.id, name = param name). The script record holds names only (savedSecrets). Create/Update take secretValues: string saves, null clears, absent keeps; the value is write-only, never returned. A secret param has no default. Remove, rename or un-secret a param, or delete the script or collection, prunes the row in the same tx. Both apps; no script duplicate or export exists, and any later path must never copy plaintext (a copy starts with no saved values). Without a keychain, saving returns E_SECRET_STORE.
+- A saved value fills a secret param only when none was typed (typed wins), stays env-only, and is used by resume and restore. An unreadable saved value counts as absent and sets Preview.SecretIssue.
+- Output masking (Masker over all secret values of the run): log lines before truncation, outcome Reason, LastError, OutputTail and Summary, and the terminal tail. Not masked: the live terminal tab and the Space phone terminal ring (mobileterm), lines cut at linewriter.MaxLine, agent writes through Space task tools, and anything the process writes elsewhere. ADE workflow smart steps keep the old rule (values from step params only; no saved fill, no masking).
 - script_run_logs holds the run log (stdout|stderr|event), read by ScriptRuns.ReadLog; script_runs gains model, session_id, prompt, params_json, tools_json.
 - A recurring script is a script with a schedule {cron, timezone, enabled, confirm, timeoutSec, taskId, branchId} stored in schedule_json on the script row (empty when not recurring).
 - Schedule cron uses 5 fields, no @ tags, an IANA zone, and is parsed by adhocore/gronx v1.20.4 in internal/scriptruns/scheduler.go.
 - One scheduler loop per app sleeps on the injected clock to the next fire across all enabled schedules; a fire later than 60 s (app closed, sleep) is dropped silently, never replayed.
 - Any trigger (cron, Run now, manual) that finds the script's previous run running or waiting records a skipped run with the reason.
-- A confirm script records a waiting run and raises a popup; the run starts only on ConfirmAccept, ConfirmDecline ends it cancelled, and a waiting run never expires. A script with a secret param always confirms because secrets are never stored.
+- A confirm script records a waiting run and raises a popup; the run starts only on ConfirmAccept, ConfirmDecline ends it cancelled, and a waiting run never expires. A schedule with confirm off is refused only when a required secret param has no saved value.
 - Scheduled normal scripts run headless (terminal session without a tab, output to the run log) with timeoutSec; a Space ADE-bound run holds the board claim and fails with the task reason when the task is missing or archived.
 - Scheduling adds run states waiting and skipped and outcome source schedule; the confirm popup (ScheduleConfirmHost) is prompt kind schedule routed by the central prompt router; Space posts a notification for a failed scheduled run.
 - A schedule is set only inside the script editor's Schedule tab (create menus have no recurring entry); a scheduled row's menu has Run now and "Edit schedule…", which opens the editor on that tab.
@@ -3326,6 +3336,7 @@ repo's CI runs.
 Kept only while genuinely open — delete an item the moment it's resolved, never mark it done in
 place. `CLAUDE.md` states the process rule; this is the list itself.
 
+- **Saved script secrets show in a live terminal (P447).** A terminal-run script prints into its live tab and the Space phone terminal ring unmasked; only the run tail and log are masked. A process that echoes its secret shows it there.
 - **Interactive exec plugins are unsupported (P439).** A kubeconfig credential plugin that prompts on a terminal fails with the `plugin` reason. Non-interactive plugins work.
 - **Studio Discover remounts still grow the renderer heap (P433).** Switching away from and back to a Kibana Discover tab adds about 0.6 MB per round after round 2 (5 rounds: 31.4, 32.3, 32.8, 33.9, 34.1 MB), and a second open/close cycle adds 1.9 MB. Close-all ends 18.5 MB over baseline, mostly first-load module code plus Monaco and KQL source strings. The Monaco `addCommand`, grammar re-registration and `usePersistedState` leaks are fixed; the rest is unattributed (V8 JIT code is the main suspect). Probe: `heap` project in Studio, `docs/DEV_ENVIRONMENT.md` "Perf probes". Find the retainer with a heap snapshot diff across rounds 3 and 5, then delete this item.
 - **Kibana search uses an internal route (P424).** `POST /internal/search/es` is not a public API; a Kibana upgrade can change its body or headers. The conformance suite runs against 9.5.3 and the 8.19 floor via `KIRA_COMPAT_IMAGE_KIBANA`.

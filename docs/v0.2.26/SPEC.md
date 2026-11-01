@@ -6,7 +6,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 
 | Phase | Title | Status |
 |---|---|---|
-| P447 | Shared keychain secret layer; Runs secret params stored encrypted | Todo |
+| P447 | Shared keychain secret layer; Runs secret params stored encrypted | Done |
 | P448 | Agent harness seams for a second real provider | Todo |
 | P449 | OpenCode provider; pick the agent per interactive session | Todo |
 | P450 | Config-as-files foundation: store, layout, validation, DB sync, interpolation, AGENTS.md | Todo |
@@ -33,6 +33,8 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 - Keychain unavailable: clear error, fall back to asking per run.
 - This layer is the one P453 reuses for agent credentials: shared keychain, one namespace per owner (script, agent config). Reveal only through the existing gated pattern, nothing new. The plan shapes the layer for that second consumer, without adding unused API.
 - Test: backend flow in both apps (save, run, assert the env got the value, record, log, op log and preview hold only the mask, DB column holds ciphertext). UI spec on the same scenario (write-only field, run dialog, masked output). `secrets.spec.ts` stays green. Real `claude` "Smart scripts" row.
+
+Result: Done. Cipher hoisted to repo-root `internal/secrets`; i18n keys moved to `backend.core.secrets.*`; scope strings and envelope unchanged. Both apps share one keychain item. New `secrets.Store` (sealed `secret_values`, migrations 0052 Studio, 0062 Space) and `secrets.Masker`; scope `script-param`. Saved value is write-only (`secretValues` on Create/Update: string saves, null clears, absent keeps); record holds names only. Prune on param remove, rename, un-secret, script and collection delete. Typed value wins over saved; env-only; resume and restore use it. Schedule without confirm refused only when a required secret has no saved value. Storage off: E_SECRET_STORE on save, runs ask. Masking in log sink, outcome fields and terminal tail. Not masked, in ARCHITECTURE Known open items: live terminal tab, Space phone terminal ring. ADE workflow smart steps out of scope. No reveal added. Tests: flow `TestSecretParam*` both apps, UI `automations-secrets` both apps; full Go flows, UI automations specs both apps, `secrets.spec.ts` and real `claude` Smart scripts rows green. Open: `.github/workflows/{pr,cache-warm}.yml` still use the old secrets path; apply `docs/pending-changes/.github__workflows__secrets-path.patch`. finish_step summary masking not covered end to end (fake agent summary is fixed text).
 
 ### P448 Agent harness seams for a second real provider
 

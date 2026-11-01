@@ -177,7 +177,7 @@ SPEC.md §3; the app is arm64-only, so a universal binary has nothing to be univ
 
 **Keychain consequence of ad-hoc signing.** Credentials are encrypted under an AES-256-GCM key held in
 a macOS Keychain generic-password item (`internal/secrets/keyring_darwin.go`, service
-"Kira Studio Secrets"). Keychain ACLs are keyed to a stable code-signing identity, which is
+"Kira Studio Secrets", shared by Studio and Space). Keychain ACLs are keyed to a stable code-signing identity, which is
 exactly what ad-hoc signing defers, so the first launch after installing a new build may show one
 "Kira Studio wants to use your confidential information stored in…" prompt; **Always Allow** answers it
 permanently for that build. Expected, and the honest cost of deferring signing — not worth working

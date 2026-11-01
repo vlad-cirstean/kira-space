@@ -191,7 +191,7 @@ See `docs/ARCHITECTURE.md`'s Storage section for the cipher, the key and the env
 - **There is no Linux keychain backend at all** (no `gnome-keyring`/`kwallet` probing) — set
   `KIRA_INSECURE_SECRETS=1` before launching the app (`bun run dev:studio`, the Go binary directly, or
   `t.Setenv("KIRA_INSECURE_SECRETS", "1")` in a Go test) on any Linux box to opt into the dev-only
-  fallback. `apps/kira-studio/tests/e2e-real/`'s fixture sets it for every real-backend test.
+  fallback. `apps/kira-studio/tests/e2e-real/`'s fixture sets it for every real-backend test. Kira Space needs it on Linux too (P447: saved script secrets); its flow harness sets it.
 - Without it, Linux secret storage is **unavailable** — a password-bearing save fails visibly
   rather than silently falling back to plaintext. Deliberate, not a bug to work around.
 - **On macOS the app ignores the variable outright** — it uses the real Keychain, so leaving it set
