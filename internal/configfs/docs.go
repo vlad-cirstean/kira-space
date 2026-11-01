@@ -22,6 +22,8 @@ type DocModel struct {
 	Options []DocOption
 	Rules   []string
 	Refs    bool // some field takes references
+	// LocalOverrides: the module reads <name>.local.yaml beside each file.
+	LocalOverrides bool
 }
 
 // DocOption is one schema field.
@@ -189,8 +191,10 @@ func RenderAgentsMD(m DocModel) []byte {
 	b.WriteString("## How changes apply\n\n" +
 		"- Kira watches this folder. Edit a file in any editor; the change applies within a second.\n" +
 		"- An invalid file is not applied. Kira keeps the last good version and shows the error with its line.\n" +
-		"- Kira saves whole files. A save built on text that changed meanwhile is refused as a conflict.\n" +
-		"- Keep per-machine values in `<name>.local.yaml` beside `<name>.yaml`, out of sync and git.\n")
+		"- Kira saves whole files. A save built on text that changed meanwhile is refused as a conflict.\n")
+	if m.LocalOverrides {
+		b.WriteString("- Keep per-machine values in `<name>.local.yaml` beside `<name>.yaml`, out of sync and git.\n")
+	}
 	return b.Bytes()
 }
 

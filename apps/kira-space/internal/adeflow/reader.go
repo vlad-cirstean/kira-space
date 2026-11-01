@@ -23,7 +23,7 @@ type Store interface {
 func Dir(home string) string { return filepath.Join(home, "workflows") }
 
 // Reader lists and resolves workflows over a configfs.Folder. Only the writer methods (writer.go)
-// create the directory or write a workflow file.
+// create the directory or write a workflow file, and WriteDocs.
 type Reader struct {
 	Dir   string
 	Store Store
@@ -106,3 +106,6 @@ func (r *Reader) Get(id string) (adewire.Workflow, bool) {
 	}
 	return adewire.Workflow{}, false
 }
+
+// WriteDocs writes the folder's AGENTS.md, creating the folder when missing.
+func (r *Reader) WriteDocs() error { return r.folder().WriteDocs(DocModel()) }
