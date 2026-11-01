@@ -44,58 +44,74 @@ func DocFromSchema(schemaJSON []byte, rules []string) (DocModel, error) {
 	if err := json.Unmarshal(schemaJSON, &root); err != nil {
 		return DocModel{}, fmt.Errorf("configfs: schema: %w", err)
 	}
-	m := DocModel{Rules: rules}
-	rc := &refChecker{root: root}
-	var walk func(s map[string]any, path string, required bool)
-	walk = func(s map[string]any, path string, required bool) {
-		s = rc.resolve(s)
-		if path != "" {
-			o := DocOption{Path: path, Required: required, Type: typeOf(s), Description: str(s["description"])}
-			if d, ok := s["default"]; ok {
-				b, _ := json.Marshal(d)
-				o.Default = string(b)
-			}
-			if e, ok := s["enum"].([]any); ok {
-				for _, v := range e {
-					b, _ := json.Marshal(v)
-					o.Enum = append(o.Enum, string(b))
-				}
-			}
-			o.Range = rangeOf(s)
-			o.Ref, _ = s["x-kira-ref"].(bool)
-			o.Secret, _ = s["x-kira-secret"].(bool)
-			if o.Ref || o.Secret {
-				m.Refs = true
-			}
-			m.Options = append(m.Options, o)
+	w := &schemaWalker{rc: &refChecker{root: root}, m: DocModel{Rules: rules}}
+	w.walk(root, "", false)
+	return w.m, nil
+}
+
+type schemaWalker struct {
+	rc *refChecker
+	m  DocModel
+}
+
+func (w *schemaWalker) walk(s map[string]any, path string, required bool) {
+	s = w.rc.resolve(s)
+	if path != "" {
+		o := optionOf(s, path, required)
+		if o.Ref || o.Secret {
+			w.m.Refs = true
 		}
-		if props, ok := s["properties"].(map[string]any); ok {
-			req := map[string]bool{}
-			if r, ok := s["required"].([]any); ok {
-				for _, v := range r {
-					req[str(v)] = true
-				}
-			}
-			names := make([]string, 0, len(props))
-			for n := range props {
-				names = append(names, n)
-			}
-			sort.Strings(names)
-			for _, n := range names {
-				if sub, ok := props[n].(map[string]any); ok {
-					walk(sub, join(path, n), req[n])
-				}
-			}
-		}
-		if ap, ok := s["additionalProperties"].(map[string]any); ok {
-			walk(ap, join(path, "*"), false)
-		}
-		if items, ok := s["items"].(map[string]any); ok {
-			walk(items, path+"[]", false)
+		w.m.Options = append(w.m.Options, o)
+	}
+	if props, ok := s["properties"].(map[string]any); ok {
+		w.walkProps(props, requiredSet(s), path)
+	}
+	if ap, ok := s["additionalProperties"].(map[string]any); ok {
+		w.walk(ap, join(path, "*"), false)
+	}
+	if items, ok := s["items"].(map[string]any); ok {
+		w.walk(items, path+"[]", false)
+	}
+}
+
+func (w *schemaWalker) walkProps(props map[string]any, req map[string]bool, path string) {
+	names := make([]string, 0, len(props))
+	for n := range props {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	for _, n := range names {
+		if sub, ok := props[n].(map[string]any); ok {
+			w.walk(sub, join(path, n), req[n])
 		}
 	}
-	walk(root, "", false)
-	return m, nil
+}
+
+func requiredSet(s map[string]any) map[string]bool {
+	req := map[string]bool{}
+	if r, ok := s["required"].([]any); ok {
+		for _, v := range r {
+			req[str(v)] = true
+		}
+	}
+	return req
+}
+
+func optionOf(s map[string]any, path string, required bool) DocOption {
+	o := DocOption{Path: path, Required: required, Type: typeOf(s), Description: str(s["description"]), Range: rangeOf(s)}
+	if d, ok := s["default"]; ok {
+		b, _ := json.Marshal(d)
+		o.Default = string(b)
+	}
+	if e, ok := s["enum"].([]any); ok {
+		for _, v := range e {
+			b, _ := json.Marshal(v)
+			o.Enum = append(o.Enum, string(b))
+		}
+	}
+	o.Ref, _ = s["x-kira-ref"].(bool)
+	o.Secret, _ = s["x-kira-secret"].(bool)
+	return o
 }
 
 func join(path, name string) string {

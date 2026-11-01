@@ -73,7 +73,11 @@ func TestWorkflowFilesSync(t *testing.T) {
 	}
 
 	bad := strings.Replace(good, "kind: manual", "kind: bogus", 1)
-	badLine := 1 + strings.Count(bad[:strings.Index(bad, "kind: bogus")], "\n")
+	badAt := strings.Index(bad, "kind: bogus")
+	if badAt < 0 {
+		t.Fatal("kind: manual not found in fixture")
+	}
+	badLine := 1 + strings.Count(bad[:badAt], "\n")
 	mark = app.Events.Mark()
 	if err := os.WriteFile(path, []byte(bad), 0o644); err != nil {
 		t.Fatal(err)
