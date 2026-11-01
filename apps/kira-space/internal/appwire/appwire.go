@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adeflow"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentnotify"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentusage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
@@ -42,6 +43,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/appupdate"
+	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/agentsvc"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
@@ -69,7 +71,9 @@ type Options struct {
 	// Emitter is the window event sink (a deferred Wails emitter in production).
 	Emitter appevent.Emitter
 	Browser bridge.Browser
-	Dialogs bridge.Dialogs
+	// FileOpener opens or reveals a config file; main passes the Wails adapter.
+	FileOpener configsvc.FileOpener
+	Dialogs    bridge.Dialogs
 	// Locator resolves git.gitPath; main passes the platform locator.
 	Locator         gitclient.Locator
 	KeepAwakeDriver keepawake.Driver
@@ -181,6 +185,7 @@ type Wired struct {
 	MemoryImport    *bridge.MemoryImportService
 	MemoryDistill   *bridge.MemoryDistillService
 	WindowsSvc      *bridge.WindowsService
+	ConfigFiles     *bridge.ConfigFilesService
 	PromptsSvc      *bridge.PromptsService
 	LlmPromptsSvc   *bridge.LlmPromptsService
 	Update          *bridge.UpdateService
@@ -384,6 +389,8 @@ func Build(opts Options) *Wired {
 	}
 	bridge.KeepAwakeRecompute(w.KeepAwake)
 
+	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"workflows": adeflow.Dir(config.KiraSpaceHome())})}
+
 	// OpenNewWindow is assigned by BindShell once the shell exists.
 	w.WindowsSvc = &bridge.WindowsService{Service: &windowsvc.Service{Windows: deps.Repos.Windows}}
 
@@ -492,7 +499,7 @@ func (w *Wired) reopenWindow() {
 // StartMobile starts the phone server when settings enable it; call after the shell is up.
 func (w *Wired) StartMobile() { bridge.StartMobileIfEnabled(w.Mobile) }
 
-// Bound returns the 31 bound services in registration order.
+// Bound returns the 32 bound services in registration order.
 func (w *Wired) Bound() []application.Service {
 	return []application.Service{
 		application.NewService(w.GitCredential),
@@ -504,7 +511,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.MemoryImport), application.NewService(w.MemoryDistill), application.NewService(w.WindowsSvc), application.NewService(w.Update),
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),
 		application.NewService(w.PromptsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc),
-		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture),
+		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles),
 	}
 }
 

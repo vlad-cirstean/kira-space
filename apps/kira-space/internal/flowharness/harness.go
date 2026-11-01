@@ -172,12 +172,13 @@ type App struct {
 	// where the fake agent records its calls.
 	Root, Home, SpaceHome, MemoryHome, Work, BinDir, FakeDir string
 
-	W         *appwire.Wired
-	Events    *Events
-	Browser   *Browser
-	Dialogs   *Dialogs
-	WindowMgr *WindowManager
-	KeepAwake *KeepAwakeDriver
+	W          *appwire.Wired
+	Events     *Events
+	Browser    *Browser
+	FileOpener *FileOpener
+	Dialogs    *Dialogs
+	WindowMgr  *WindowManager
+	KeepAwake  *KeepAwakeDriver
 	// Clipboard and Shortcuts fake the capture hotkey's two OS seams.
 	Clipboard *Clipboard
 	Shortcuts *Shortcuts
@@ -218,7 +219,7 @@ func New(t *testing.T, opts ...Opt) *App {
 		Home: filepath.Join(root, "home"), SpaceHome: filepath.Join(root, "space"),
 		MemoryHome: filepath.Join(root, "memory"), Work: filepath.Join(root, "work"),
 		BinDir: filepath.Join(root, "bin"), FakeDir: filepath.Join(root, "fake"),
-		Events: newEvents(), Browser: &Browser{}, Dialogs: &Dialogs{}, WindowMgr: newWindowManager(),
+		Events: newEvents(), Browser: &Browser{}, FileOpener: &FileOpener{}, Dialogs: &Dialogs{}, WindowMgr: newWindowManager(),
 		KeepAwake: &KeepAwakeDriver{}, Clipboard: &Clipboard{}, Shortcuts: newShortcuts(),
 	}
 	for _, d := range []string{a.Home, a.Work, a.BinDir, a.FakeDir} {
@@ -370,7 +371,7 @@ func (a *App) build() {
 	a.W = appwire.Build(appwire.Options{
 		Providers: registry, IssueTracker: tracker,
 		GitHosts: githostproviders.New(ghOptions, append([]githost.Provider{azure.New(az)}, a.opts.gitHosts...)...), TrackerGrace: a.opts.trackerGrace, RebaseTimeout: a.opts.rebaseTimeout, BranchRequestWait: a.opts.branchWait, SmartTimeout: a.opts.smartTimeout, Sandbox: a.opts.sandbox, ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, EmbedSpec: a.opts.embedSpec, MobilePoll: a.opts.mobilePoll, ChangeRequestSync: a.opts.crSync,
-		Repos: r, DB: db, Emitter: a.Events, Browser: a.Browser, Dialogs: a.Dialogs,
+		Repos: r, DB: db, Emitter: a.Events, Browser: a.Browser, FileOpener: a.FileOpener, Dialogs: a.Dialogs,
 		Locator: gitclient.NewHostLocator(), KeepAwakeDriver: a.KeepAwake, FileHandlers: a.opts.fileHandlers,
 		MobileAssets: fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>phone</title>")}},
 		MobileIsLAN:  func(ip netip.Addr) bool { return ip.IsLoopback() },

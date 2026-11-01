@@ -4,6 +4,7 @@ import * as AgentService from '@bindings/agentservice.js';
 import * as AgentUsageService from '@bindings/agentusageservice.js';
 import * as CaptureService from '@bindings/captureservice.js';
 import * as CodeWorkspaceService from '@bindings/codeworkspaceservice.js';
+import * as ConfigFilesService from '@bindings/configfilesservice.js';
 import * as CustomScriptsService from '@bindings/customscriptsservice.js';
 import * as FileHandlersService from '@bindings/filehandlersservice.js';
 import * as FilesService from '@bindings/filesservice.js';
@@ -453,6 +454,10 @@ const spaceControl = {
     unwrap(AdeTaskService.CaptureTask(args)).then((r) => trust<V2.Task>(r)),
   adeTaskSetQueuedAfter: (args: V2.SetQueuedAfterArgs): Promise<void> =>
     unwrap(AdeTaskService.SetQueuedAfter(args)),
+  configFilesOpen: (args: { folder: string; file: string }): Promise<void> =>
+    unwrap(ConfigFilesService.Open(args)),
+  configFilesReveal: (args: { folder: string; file: string }): Promise<void> =>
+    unwrap(ConfigFilesService.Reveal(args)),
   adeTaskWorkflows: (): Promise<V2.WorkflowsResult> =>
     unwrap(AdeTaskService.Workflows()).then((r) => trust<V2.WorkflowsResult>(r)),
   adeTaskRepos: (): Promise<V2.ReposResult> =>

@@ -99,9 +99,10 @@ func main() {
 	}
 	rawEmitter, attachEmitter := shell.NewDeferredEmitter()
 	browserOpener, attachBrowser := shell.NewDeferredBrowser()
+	fileOpener, attachFileOpener := shell.NewDeferredFileOpener()
 	rawDialogs, attachDialogs := shell.NewDeferredDialogs()
 	wired := appwire.Build(appwire.Options{
-		Repos: repositories, DB: db, Cipher: secrets.New(), Emitter: rawEmitter, Browser: browserOpener,
+		Repos: repositories, DB: db, Cipher: secrets.New(), Emitter: rawEmitter, Browser: browserOpener, FileOpener: fileOpener,
 		Dialogs: appshell.NewDialogs(rawDialogs), Locator: platformLocator(),
 		KeepAwakeDriver: keepawake.NewPlatformDriver(), MobileAssets: mobileAssetsFS,
 		FileHandlers: filehandlers.NewRegistry(),
@@ -139,6 +140,7 @@ func main() {
 	attachEmitter(app)
 	wired.StartMobile()
 	attachBrowser(app)
+	attachFileOpener(app)
 	quitter.Attach(app)
 
 	// The sheet a folder-picker dialog attaches to is the window that asked — Current()

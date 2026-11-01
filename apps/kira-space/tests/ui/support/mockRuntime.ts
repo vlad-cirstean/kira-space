@@ -100,6 +100,8 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
 
   // P116 G5/G6: the two new bound methods window-chrome parity adds.
   windowsOpenNew: 'WindowsService.OpenNew',
+  configFilesOpen: 'ConfigFilesService.Open',
+  configFilesReveal: 'ConfigFilesService.Reveal',
   customScriptsList: 'CustomScriptsService.List',
   customScriptsCreate: 'CustomScriptsService.Create',
   customScriptsUpdate: 'CustomScriptsService.Update',

@@ -178,6 +178,35 @@ func NewDeferredBrowser() (b *browserOpener, attach func(*application.App)) {
 	return bo, func(app *application.App) { bo.app.Store(app) }
 }
 
+// fileOpener opens a local file in the default app or reveals it in the file manager over the real
+// Wails managers. app is nil until attach runs — see NewDeferredFileOpener.
+type fileOpener struct {
+	app atomic.Pointer[application.App]
+}
+
+func (f *fileOpener) OpenFile(path string) error {
+	app := f.app.Load()
+	if app == nil {
+		return errors.New("no application")
+	}
+	return app.Browser.OpenFile(path)
+}
+
+func (f *fileOpener) RevealFile(path string) error {
+	app := f.app.Load()
+	if app == nil {
+		return errors.New("no application")
+	}
+	return app.Env.OpenFileManager(path, true)
+}
+
+// NewDeferredFileOpener is NewDeferredBrowser's counterpart for configsvc.Service. attach must be
+// called with the real *App immediately after New returns.
+func NewDeferredFileOpener() (f *fileOpener, attach func(*application.App)) {
+	fo := &fileOpener{}
+	return fo, func(app *application.App) { fo.app.Store(app) }
+}
+
 // AttachReopen is src/main/index.ts:141-145's `activate` handler: on macOS, closing the last
 // window leaves the app running, and clicking the Dock icon brings a window back.
 // Wails' own default reopen handler (events_common_darwin.go) only re-shows a hidden-but-extant

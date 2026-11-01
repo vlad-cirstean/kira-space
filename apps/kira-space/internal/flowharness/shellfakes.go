@@ -28,6 +28,41 @@ func (b *Browser) Opened() []string {
 	return append([]string(nil), b.URLs...)
 }
 
+// FileOpener records the config files opened and revealed.
+type FileOpener struct {
+	mu       sync.Mutex
+	opened   []string
+	revealed []string
+}
+
+func (f *FileOpener) OpenFile(path string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.opened = append(f.opened, path)
+	return nil
+}
+
+func (f *FileOpener) RevealFile(path string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.revealed = append(f.revealed, path)
+	return nil
+}
+
+// OpenedFiles returns a copy of the recorded OpenFile paths.
+func (f *FileOpener) OpenedFiles() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.opened...)
+}
+
+// RevealedFiles returns a copy of the recorded RevealFile paths.
+func (f *FileOpener) RevealedFiles() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.revealed...)
+}
+
 // Dialogs answers the native pickers from queues; an empty queue answers like a cancel.
 type Dialogs struct {
 	mu          sync.Mutex

@@ -50,6 +50,8 @@ export const IPC = {
   tabPrev: 'kira:menu:tabPrev',
   tabClose: 'kira:menu:tabClose',
   windowsOpenNew: 'kira:windows:openNew',
+  configFilesOpen: 'kira:configfiles:open',
+  configFilesReveal: 'kira:configfiles:reveal',
   // P128 §2.2/§2.6: this app now persists a per-window module mode too, same channels as Kira
   // Studio's own ipcChannels.ts.
   windowsEnsure: 'kira:windows:ensure',
