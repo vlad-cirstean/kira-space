@@ -84,6 +84,7 @@ test('the header + adds a two-line script, sent with its newline', async ({ rela
         color: 'none',
         collectionId: null,
       },
+      secretValues: null,
     });
 });
 

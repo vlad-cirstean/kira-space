@@ -86,6 +86,8 @@ export const scriptRunEnvVarSchema = /*#__PURE__*/ z.object({
   value: z.string(),
   secret: z.boolean(),
   fromVar: z.string(),
+  // A secret whose value comes from the script's saved value.
+  saved: z.boolean(),
 });
 export type ScriptRunEnvVar = z.infer<typeof scriptRunEnvVarSchema>;
 
@@ -124,6 +126,8 @@ export const scriptRunPreviewSchema = /*#__PURE__*/ z.object({
   kind: z.enum(['script', 'smart']),
   missing: z.array(z.string()),
   blocker: z.string(),
+  // Why a saved secret value could not be read, so the run asks for it; '' when none.
+  secretIssue: z.string(),
   dir: scriptDirSchema,
   body: z.string(),
   prompt: z.array(scriptRunPartSchema),

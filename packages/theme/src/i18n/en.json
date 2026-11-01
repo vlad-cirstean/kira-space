@@ -155,6 +155,15 @@
       "scriptHint": {
         "description": "Parameters reach the command as {variable}."
       },
+      "secretValue": {
+        "saved": {
+          "placeholder": "Saved, type to replace",
+          "status": "Value saved"
+        },
+        "storageOff": {
+          "description": "The keychain is unavailable, so a secret can’t be saved. Each run asks for it."
+        }
+      },
       "smartHint": {
         "description": "Use {token} in the prompt. A secret reaches the run as {variable} only, never in the prompt."
       },
@@ -278,6 +287,9 @@
       "review": {
         "label": "Review and run"
       },
+      "secretSaved": {
+        "placeholder": "Saved, type to use another value"
+      },
       "state": {
         "done": {
           "status": "Succeeded"
@@ -318,7 +330,7 @@
         "hint": "A popup asks before each run."
       },
       "askLocked": {
-        "hint": "Needs your answer each time. This script has a secret parameter, and a schedule never stores one."
+        "hint": "Needs your answer each time. A required secret parameter has no saved value."
       },
       "cronExample": {
         "example": "0 9 * * 1-5"

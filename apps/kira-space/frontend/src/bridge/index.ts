@@ -72,6 +72,7 @@ import type {
   ScriptDir,
   ScriptMcpServer,
   ScriptsSnapshot,
+  SecretValues,
 } from '@shared/domain/scripts';
 import { CHANNEL } from '@shared/protocol/events';
 import { scriptsSnapshotOf } from '@workbench/automations/createCustomScriptsStore';
@@ -110,10 +111,21 @@ import { memoryControl } from './memoryControl';
 const spaceControl = {
   customScriptsList: (): Promise<ScriptsSnapshot> =>
     unwrap(CustomScriptsService.List()).then((r) => scriptsSnapshotOf(r)),
-  customScriptsCreate: (fields: CustomScriptFields): Promise<CustomScript> =>
-    unwrap(CustomScriptsService.Create({ fields })).then((r) => trust<CustomScript>(r)),
-  customScriptsUpdate: (id: string, fields: CustomScriptFields): Promise<CustomScript> =>
-    unwrap(CustomScriptsService.Update({ id, fields })).then((r) => trust<CustomScript>(r)),
+  customScriptsCreate: (
+    fields: CustomScriptFields,
+    secretValues: SecretValues | null,
+  ): Promise<CustomScript> =>
+    unwrap(CustomScriptsService.Create({ fields, secretValues })).then((r) =>
+      trust<CustomScript>(r),
+    ),
+  customScriptsUpdate: (
+    id: string,
+    fields: CustomScriptFields,
+    secretValues: SecretValues | null,
+  ): Promise<CustomScript> =>
+    unwrap(CustomScriptsService.Update({ id, fields, secretValues })).then((r) =>
+      trust<CustomScript>(r),
+    ),
   customScriptsDelete: (id: string): Promise<void> => unwrap(CustomScriptsService.Delete({ id })),
   customScriptsCreateCollection: (name: string): Promise<ScriptCollection> =>
     unwrap(CustomScriptsService.CreateCollection({ name })).then((r) => trust<ScriptCollection>(r)),

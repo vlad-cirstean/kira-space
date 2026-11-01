@@ -169,7 +169,12 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
           <AlertDescription>{{ t('automations.script.gone.error') }}</AlertDescription>
         </Alert>
         <template v-else>
-          <ParamsForm v-if="script.params.length > 0" v-model="values" :params="script.params" />
+          <ParamsForm
+            v-if="script.params.length > 0"
+            v-model="values"
+            :params="script.params"
+            :saved="script.savedSecrets"
+          />
 
           <Field v-if="isSmart && pv" data-testid="run-prompt">
             <FieldLabel>{{ t('common.prompt.label') }}</FieldLabel>

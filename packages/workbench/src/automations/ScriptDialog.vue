@@ -8,6 +8,7 @@ import type {
   ScriptKind,
   ScriptParam,
   ScriptSchedule,
+  SecretValues,
   SmartSettings,
 } from '@shared/domain/scripts';
 import { useQuery } from '@tanstack/vue-query';
@@ -176,8 +177,26 @@ const errors = computed(() => ({
 }));
 const firstBadTab = computed(() => TAB_IDS.find((id) => tabErrorCount(all.value, id) > 0));
 
+// Write-only draft, component-local so it dies with the dialog; entries follow live secret params.
+const secretDraft = ref<SecretValues>({});
+const secretValues = computed<SecretValues>(() => {
+  const live = new Set(
+    params.value.filter((p) => p.secret && p.type === 'text').map((p) => p.name),
+  );
+  return Object.fromEntries(Object.entries(secretDraft.value).filter(([n]) => live.has(n)));
+});
+const savedSecrets = computed(() => props.script?.savedSecrets ?? []);
+// Saved names once this edit lands: kept saved ones plus newly typed, minus cleared.
+const willBeSaved = computed(() => {
+  const draft = secretValues.value;
+  const kept = savedSecrets.value.filter((n) => draft[n] !== null);
+  return [...new Set([...kept, ...Object.keys(draft).filter((n) => typeof draft[n] === 'string')])];
+});
+const storageOff = computed(() => !props.scripts.secretStorage().available);
+
 const snapshot = (): string =>
   JSON.stringify([
+    secretValues.value,
     name.value,
     command.value,
     params.value,
@@ -205,8 +224,9 @@ async function chooseWorkingDir(): Promise<void> {
 }
 
 const persist = useAsyncAction(async (fields: CustomScriptFields) => {
-  if (props.script) await props.scripts.update(props.script.id, fields);
-  else await props.scripts.create(fields);
+  const values = Object.keys(secretValues.value).length > 0 ? secretValues.value : null;
+  if (props.script) await props.scripts.update(props.script.id, fields, values);
+  else await props.scripts.create(fields, values);
 });
 const saving = persist.pending;
 
@@ -349,6 +369,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void save());
               :kind="kind"
               :params="params"
               :ade="!!ade"
+              :saved="willBeSaved"
               :error="errors.body"
               :error-id="form.errorId('body')"
             />
@@ -459,7 +480,14 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void save());
             force-mount
             class="flex flex-col gap-3 data-[state=inactive]:hidden"
           >
-            <ParamsEditor v-model="params" :kind="kind" :errors="errors.params" />
+            <ParamsEditor
+              v-model="params"
+              v-model:secret-values="secretDraft"
+              :kind="kind"
+              :errors="errors.params"
+              :saved-secrets="savedSecrets"
+              :storage-off="storageOff"
+            />
           </TabsContent>
 
           <TabsContent
@@ -478,6 +506,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void save());
               :script-id="script?.id ?? null"
               :kind="kind"
               :params="params"
+              :saved-secrets="willBeSaved"
             />
             <FieldError v-if="errors.cron" data-testid="script-dialog-cron-error">{{
               errors.cron

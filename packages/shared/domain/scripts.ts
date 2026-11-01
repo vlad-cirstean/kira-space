@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { paletteColorSchema } from './color';
+import { secretStorageStatusSchema } from './secrets';
 
 // P85 §9.2: zod schemas mirroring internal/scripts — mask.ts's own
 // Fields/full split (maskRuleFieldsSchema/maskRuleSchema).
@@ -107,8 +108,15 @@ export const customScriptSchema = /*#__PURE__*/ customScriptFieldsSchema.extend(
   sortOrder: z.number(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  // Secret params that have a saved value; never the value itself.
+  savedSecrets: z.array(z.string()),
 });
 export type CustomScript = z.infer<typeof customScriptSchema>;
+
+// Saved secret values by param name, as Create/Update take them: a string saves, null clears, an
+// absent name keeps. Write-only: no read ever returns a value.
+export const secretValuesSchema = /*#__PURE__*/ z.record(z.string(), z.string().nullable());
+export type SecretValues = z.infer<typeof secretValuesSchema>;
 
 // scriptCollectionSchema mirrors scripts.Collection — one custom_script_collections row.
 export const scriptCollectionSchema = /*#__PURE__*/ z.object({
@@ -125,6 +133,8 @@ export type ScriptCollection = z.infer<typeof scriptCollectionSchema>;
 export const scriptsSnapshotSchema = /*#__PURE__*/ z.object({
   collections: z.array(scriptCollectionSchema),
   scripts: z.array(customScriptSchema),
+  // Fixed for the process; off means a secret param's value cannot be saved.
+  secretStorage: secretStorageStatusSchema,
 });
 export type ScriptsSnapshot = z.infer<typeof scriptsSnapshotSchema>;
 

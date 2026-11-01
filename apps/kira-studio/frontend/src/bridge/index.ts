@@ -97,6 +97,7 @@ import type {
   ScriptDir,
   ScriptMcpServer,
   ScriptsSnapshot,
+  SecretValues,
 } from '@shared/domain/scripts';
 import type { SecretStorageStatus } from '@shared/domain/secrets';
 import type { ObjectMeta, RelationColumns, TreeNode } from '@shared/domain/tree';
@@ -497,10 +498,21 @@ const studioControl = {
   // state/customScripts.ts, the one store that wraps these.
   customScriptsList: (): Promise<ScriptsSnapshot> =>
     unwrap(CustomScriptsService.List()).then((r) => scriptsSnapshotOf(r)),
-  customScriptsCreate: (fields: CustomScriptFields): Promise<CustomScript> =>
-    unwrap(CustomScriptsService.Create({ fields })).then((r) => trust<CustomScript>(r)),
-  customScriptsUpdate: (id: string, fields: CustomScriptFields): Promise<CustomScript> =>
-    unwrap(CustomScriptsService.Update({ id, fields })).then((r) => trust<CustomScript>(r)),
+  customScriptsCreate: (
+    fields: CustomScriptFields,
+    secretValues: SecretValues | null,
+  ): Promise<CustomScript> =>
+    unwrap(CustomScriptsService.Create({ fields, secretValues })).then((r) =>
+      trust<CustomScript>(r),
+    ),
+  customScriptsUpdate: (
+    id: string,
+    fields: CustomScriptFields,
+    secretValues: SecretValues | null,
+  ): Promise<CustomScript> =>
+    unwrap(CustomScriptsService.Update({ id, fields, secretValues })).then((r) =>
+      trust<CustomScript>(r),
+    ),
   customScriptsDelete: (id: string): Promise<void> => unwrap(CustomScriptsService.Delete({ id })),
   customScriptsCreateCollection: (name: string): Promise<ScriptCollection> =>
     unwrap(CustomScriptsService.CreateCollection({ name })).then((r) => trust<ScriptCollection>(r)),

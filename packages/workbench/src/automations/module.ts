@@ -15,7 +15,9 @@ import type {
   ScriptCollection,
   ScriptDir,
   ScriptMcpServer,
+  SecretValues,
 } from '@shared/domain/scripts';
+import type { SecretStorageStatus } from '@shared/domain/secrets';
 import type { ScriptRunTabState } from '@shared/domain/tabs';
 import { type ComputedRef, computed, type InjectionKey, inject } from 'vue';
 import type { TerminalLaunch } from '../state/createTerminalTabs';
@@ -29,8 +31,14 @@ import type { TerminalHostDeps } from '../terminal/terminalHost';
 /** Each app's script store (createCustomScriptsStore.ts), as the panel and its dialog see it. */
 export interface ScriptsSeam {
   records(): readonly CustomScript[];
-  create(fields: CustomScriptFields): Promise<unknown>;
-  update(id: string, fields: CustomScriptFields): Promise<unknown>;
+  /** `secretValues` is write-only: a string saves, null clears, an absent name keeps. */
+  create(fields: CustomScriptFields, secretValues?: SecretValues | null): Promise<unknown>;
+  update(
+    id: string,
+    fields: CustomScriptFields,
+    secretValues?: SecretValues | null,
+  ): Promise<unknown>;
+  secretStorage(): SecretStorageStatus;
   remove(id: string): Promise<void>;
   collections(): readonly ScriptCollection[];
   createCollection(name: string): Promise<ScriptCollection>;

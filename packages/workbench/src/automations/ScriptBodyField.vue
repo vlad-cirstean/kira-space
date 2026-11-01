@@ -17,6 +17,7 @@ const props = defineProps<{
   kind: ScriptKind;
   params: readonly ScriptParam[];
   ade: boolean;
+  saved?: readonly string[];
   error?: string;
   errorId?: string;
 }>();
@@ -25,7 +26,12 @@ const body = defineModel<string>({ required: true });
 const saveChord = formatShortcut('view.run');
 
 const isSmart = computed(() => props.kind === 'smart');
-const src = computed(() => ({ kind: props.kind, params: props.params, ade: props.ade }));
+const src = computed(() => ({
+  kind: props.kind,
+  params: props.params,
+  ade: props.ade,
+  saved: props.saved,
+}));
 const candidates = computed(() => scriptCandidates(src.value));
 const highlights = computed(() => scriptHighlights(src.value));
 const hover = computed(() => scriptHover(src.value));

@@ -10,6 +10,8 @@ export interface ScriptVarSource {
   params: readonly ScriptParam[];
   /** Kira Space: built-in task variables exist only there. */
   ade: boolean;
+  /** Secret params with a saved value. */
+  saved?: readonly string[];
 }
 
 const PARAM_ENV_PREFIX = 'KIRA_PARAM_';
@@ -170,9 +172,12 @@ function promptVarsUsed(prompt: string, params: readonly ScriptParam[], ade: boo
   return names;
 }
 
-function usesValue(name: string, params: readonly ScriptParam[]): string {
+function usesValue(name: string, src: ScriptVarSource): string {
+  const { params } = src;
   const p = params.find((x) => x.name === name);
   if (!p) return t('automations.script.fromTask.status');
+  if (p.secret && src.saved?.includes(name))
+    return t('automations.params.secretValue.saved.status');
   return p.default.length > 0 && !p.secret
     ? p.default.join(', ')
     : t('automations.script.askedAtRun.status');
@@ -187,7 +192,7 @@ export function usesParts(src: ScriptVarSource, body: string): TextPart[] {
   const parts: TextPart[] = [`${t('automations.script.uses.label')} `];
   names.forEach((n, i) => {
     if (i > 0) parts.push(', ');
-    parts.push({ name: n, value: usesValue(n, src.params) });
+    parts.push({ name: n, value: usesValue(n, src) });
   });
   return parts;
 }

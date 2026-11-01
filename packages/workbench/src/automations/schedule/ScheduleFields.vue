@@ -38,6 +38,8 @@ const props = defineProps<{
   scriptId: string | null;
   kind: ScriptKind;
   params: readonly ScriptParam[];
+  /** Secret params that will have a saved value once the script is saved. */
+  savedSecrets: readonly string[];
 }>();
 const schedule = defineModel<ScriptSchedule>({ required: true });
 // False while the cron or zone is refused, so the editor can hold Save.
@@ -83,8 +85,10 @@ const values = computed({
   set: (v: Record<string, string[]>) => patch({ params: v }),
 });
 
-// "Run without asking" cannot hold a secret: a schedule never stores one.
-const askLocked = computed(() => secrets.value.length > 0);
+// "Run without asking" needs every required secret saved: a schedule never holds one itself.
+const askLocked = computed(() =>
+  secrets.value.some((p) => p.required && !props.savedSecrets.includes(p.name)),
+);
 watch(
   askLocked,
   (locked) => {
