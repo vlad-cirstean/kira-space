@@ -1,4 +1,4 @@
-package adeflow
+package configfs
 
 import (
 	"fmt"
@@ -13,20 +13,25 @@ import (
 
 const watchDebounce = 200 * time.Millisecond
 
-// Watch calls onChange (debounced 200ms, one call per burst) when a *.yaml file in dir is created,
-// written, renamed or removed. Hidden files (the writer's temp files) are ignored. A missing dir is
+// Watch calls onChange when a file of the folder changes; see WatchDir.
+func (f *Folder[T]) Watch(onChange func()) (stop func(), err error) {
+	return WatchDir(f.Dir, f.Ext, onChange)
+}
+
+// WatchDir calls onChange (debounced 200ms, one call per burst) when a *<ext> file in dir is created,
+// written, renamed or removed. Hidden files (temp files) and AGENTS.md are ignored. A missing dir is
 // fine: its parent is watched until the dir appears, then onChange fires once for it. stop ends the
 // watch and returns after any in-flight onChange finishes.
-func Watch(dir string, onChange func()) (stop func(), err error) {
+func WatchDir(dir, ext string, onChange func()) (stop func(), err error) {
 	dir = filepath.Clean(dir)
 	parent := filepath.Dir(dir)
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, fmt.Errorf("adeflow: watcher: %w", err)
+		return nil, fmt.Errorf("configfs: watcher: %w", err)
 	}
 	if err := w.Add(parent); err != nil {
 		w.Close()
-		return nil, fmt.Errorf("adeflow: watch %s: %w", parent, err)
+		return nil, fmt.Errorf("configfs: watch %s: %w", parent, err)
 	}
 	// Add after the parent: a dir created in between is caught by the parent's event.
 	_ = w.Add(dir)
@@ -41,7 +46,7 @@ func Watch(dir string, onChange func()) (stop func(), err error) {
 				if !ok {
 					return
 				}
-				if relevantEvent(dir, ev) {
+				if relevantEvent(dir, ext, ev) {
 					if filepath.Clean(ev.Name) == dir && ev.Has(fsnotify.Create) {
 						_ = w.Add(dir)
 					}
@@ -51,7 +56,7 @@ func Watch(dir string, onChange func()) (stop func(), err error) {
 				if !ok {
 					return
 				}
-				slog.Warn("ade workflows: watch", "scope", "ade", "err", err)
+				slog.Warn("config watch", "scope", "config", "dir", dir, "err", err)
 			}
 		}
 	}()
@@ -62,14 +67,14 @@ func Watch(dir string, onChange func()) (stop func(), err error) {
 	}, nil
 }
 
-// relevantEvent reports whether ev touches dir itself or a visible *.yaml file in it.
-func relevantEvent(dir string, ev fsnotify.Event) bool {
+// relevantEvent reports whether ev touches dir itself or a visible *<ext> file in it.
+func relevantEvent(dir, ext string, ev fsnotify.Event) bool {
 	name := filepath.Clean(ev.Name)
 	if name == dir {
 		return true
 	}
 	base := filepath.Base(name)
-	return filepath.Dir(name) == dir && strings.HasSuffix(base, ".yaml") && !strings.HasPrefix(base, ".")
+	return filepath.Dir(name) == dir && strings.HasSuffix(base, ext) && !strings.HasPrefix(base, ".") && base != DocsFile
 }
 
 // debouncer coalesces bursts into one fn call after watchDebounce and drops calls once stopped.

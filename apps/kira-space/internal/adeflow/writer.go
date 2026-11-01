@@ -2,9 +2,6 @@ package adeflow
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,22 +14,23 @@ import (
 	"go.yaml.in/yaml/v3"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
 )
 
 // ErrInvalid marks a caller mistake: a bad file name, an invalid workflow, a YAML syntax error in
 // the file being edited. The ade engine maps it to E_BAD_REQUEST.
-var ErrInvalid = errors.New("adeflow: invalid")
+var ErrInvalid = configfs.ErrInvalid
 
 // ErrConflict marks a save built on a file text that has since changed. The ade engine maps it to
 // E_CONFLICT.
-var ErrConflict = errors.New("adeflow: conflict")
+var ErrConflict = configfs.ErrConflict
 
 func invalidf(format string, args ...any) error {
 	return fmt.Errorf("%w: %s", ErrInvalid, fmt.Sprintf(format, args...))
 }
 
-const maxYamlBytes = 1 << 20
+const maxYamlBytes = configfs.MaxFileBytes
 
 var fileNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*\.yaml$`)
 
@@ -65,16 +63,15 @@ func (r *Reader) ReadYaml(file string) (adewire.WorkflowYaml, error) {
 		}
 		return adewire.WorkflowYaml{}, fmt.Errorf("adeflow: read %s: %w", file, err)
 	}
-	return adewire.WorkflowYaml{FileName: file, Path: p, Yaml: string(src), Hash: textHash(src)}, nil
+	return adewire.WorkflowYaml{FileName: file, Path: p, Yaml: string(src), Hash: configfs.TextHash(src)}, nil
 }
 
 // SaveYaml writes src as the file's content, valid or not: the user's text is never refused, and
 // the last valid version stays in use while the file is broken.
 //
-// baseHash, when set, must match the file's current text (see textHash), else ErrConflict.
+// baseHash, when set, must match the file's current text (see configfs.TextHash), else ErrConflict.
 func (r *Reader) SaveYaml(file, baseHash, src string) (adewire.WorkflowEntry, error) {
-	p, err := r.path(file)
-	if err != nil {
+	if _, err := r.path(file); err != nil {
 		return adewire.WorkflowEntry{}, err
 	}
 	if len(src) > maxYamlBytes {
@@ -82,25 +79,17 @@ func (r *Reader) SaveYaml(file, baseHash, src string) (adewire.WorkflowEntry, er
 	}
 	r.wmu.Lock()
 	defer r.wmu.Unlock()
-	if baseHash != "" {
-		cur, err := os.ReadFile(p)
-		if err != nil && !os.IsNotExist(err) {
-			return adewire.WorkflowEntry{}, fmt.Errorf("adeflow: read %s: %w", file, err)
-		}
-		if textHash(cur) != baseHash {
-			return adewire.WorkflowEntry{}, fmt.Errorf("%w: the workflow changed since it was loaded", ErrConflict)
-		}
-	}
-	if err := writeAtomic(r.Dir, file, []byte(src)); err != nil {
+	e, err := r.folder().Save(file, baseHash, []byte(src))
+	if err != nil {
 		return adewire.WorkflowEntry{}, err
 	}
-	return r.entry(file, p)
+	return toEntry(e), nil
 }
 
 // Save rewrites the file from the structured workflow, keeping comments, key order and the user's
 // scalar styles wherever the content is unchanged. wf.ID must equal the file name stem.
 //
-// baseHash, when set, must match the file's current text (see textHash), else ErrConflict.
+// baseHash, when set, must match the file's current text (see configfs.TextHash), else ErrConflict.
 func (r *Reader) Save(file, baseHash string, wf adewire.Workflow) (adewire.WorkflowEntry, error) {
 	p, err := r.path(file)
 	if err != nil {
@@ -113,8 +102,8 @@ func (r *Reader) Save(file, baseHash string, wf adewire.Workflow) (adewire.Workf
 	defer r.wmu.Unlock()
 	var doc yaml.Node
 	src, err := os.ReadFile(p)
-	if baseHash != "" && textHash(src) != baseHash {
-		return adewire.WorkflowEntry{}, fmt.Errorf("%w: the workflow changed since it was loaded", ErrConflict)
+	if baseHash != "" && configfs.TextHash(src) != baseHash {
+		return adewire.WorkflowEntry{}, fmt.Errorf("%w: the file changed since it was loaded", ErrConflict)
 	}
 	switch {
 	case err == nil:
@@ -128,7 +117,7 @@ func (r *Reader) Save(file, baseHash string, wf adewire.Workflow) (adewire.Workf
 	if err != nil {
 		return adewire.WorkflowEntry{}, err
 	}
-	if err := writeAtomic(r.Dir, file, out); err != nil {
+	if err := configfs.WriteAtomic(filepath.Join(r.Dir, file), out, 0o644); err != nil {
 		return adewire.WorkflowEntry{}, err
 	}
 	return r.entry(file, p)
@@ -164,7 +153,7 @@ func (r *Reader) Import(srcPath string) (adewire.WorkflowEntry, error) {
 	if _, err := os.Lstat(p); err == nil {
 		return adewire.WorkflowEntry{}, invalidf("%s already exists in the workflows folder", file)
 	}
-	if err := writeAtomic(r.Dir, file, src); err != nil {
+	if err := configfs.WriteAtomic(filepath.Join(r.Dir, file), src, 0o644); err != nil {
 		return adewire.WorkflowEntry{}, err
 	}
 	return r.entry(file, p)
@@ -195,28 +184,18 @@ func (r *Reader) New(name string) (adewire.WorkflowEntry, error) {
 		return adewire.WorkflowEntry{}, err
 	}
 	file := id + ".yaml"
-	if err := writeAtomic(r.Dir, file, out); err != nil {
+	if err := configfs.WriteAtomic(filepath.Join(r.Dir, file), out, 0o644); err != nil {
 		return adewire.WorkflowEntry{}, err
 	}
 	return r.entry(file, filepath.Join(r.Dir, file))
 }
 
-// textHash identifies a workflow file's text; "" for no file.
-func textHash(src []byte) string {
-	if len(src) == 0 {
-		return ""
-	}
-	sum := sha256.Sum256(src)
-	return hex.EncodeToString(sum[:])
-}
-
 func (r *Reader) entry(file, path string) (adewire.WorkflowEntry, error) {
-	for _, e := range r.List(nil).Workflows {
-		if e.FileName == file {
-			return e, nil
-		}
+	e, ok := r.folder().Get(file)
+	if !ok {
+		return adewire.WorkflowEntry{}, fmt.Errorf("adeflow: %s vanished after write", path)
 	}
-	return adewire.WorkflowEntry{}, fmt.Errorf("adeflow: %s vanished after write", path)
+	return toEntry(e), nil
 }
 
 var slugStrip = regexp.MustCompile(`[^a-z0-9]+`)
@@ -240,43 +219,6 @@ func yamlErrLineOf(err error) int {
 		return n
 	}
 	return 0
-}
-
-// writeAtomic writes data to dir/file through a hidden temp file in the same dir and a rename. The
-// dir is created on first write (never seeded); the reader and the watcher ignore the temp file.
-func writeAtomic(dir, file string, data []byte) error {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("adeflow: create %s: %w", dir, err)
-	}
-	tmp, err := os.CreateTemp(dir, "."+file+".tmp-*")
-	if err != nil {
-		return fmt.Errorf("adeflow: temp file: %w", err)
-	}
-	name := tmp.Name()
-	fail := func(err error) error {
-		tmp.Close()
-		os.Remove(name)
-		return fmt.Errorf("adeflow: write %s: %w", file, err)
-	}
-	if _, err := tmp.Write(data); err != nil {
-		return fail(err)
-	}
-	if err := tmp.Sync(); err != nil {
-		return fail(err)
-	}
-	if err := tmp.Close(); err != nil {
-		os.Remove(name)
-		return fmt.Errorf("adeflow: write %s: %w", file, err)
-	}
-	if err := os.Chmod(name, 0o644); err != nil {
-		os.Remove(name)
-		return fmt.Errorf("adeflow: write %s: %w", file, err)
-	}
-	if err := os.Rename(name, filepath.Join(dir, file)); err != nil {
-		os.Remove(name)
-		return fmt.Errorf("adeflow: write %s: %w", file, err)
-	}
-	return nil
 }
 
 // encodeWorkflow applies wf onto doc (zero value = new document), encodes it and re-parses the

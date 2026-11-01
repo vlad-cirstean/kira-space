@@ -896,6 +896,14 @@ func (r *AdeTaskRepo) RecordLastValid(file, workflowJSON string, now int64) erro
 	return nil
 }
 
+// ForgetLastValid drops the last valid workflow row of a file that no longer exists.
+func (r *AdeTaskRepo) ForgetLastValid(file string) error {
+	if _, err := r.DB.Exec(`DELETE FROM ade_workflow_last_valid WHERE file_name = ?`, file); err != nil {
+		return fmt.Errorf("repos: forget ade workflow last valid %s: %w", file, err)
+	}
+	return nil
+}
+
 // SetBranchName records the created branch name; ErrBranchNameTaken when a live branch of the repo
 // already holds it, ErrBranchMissing when the branch is gone.
 func (r *AdeTaskRepo) SetBranchName(id, name string) error {

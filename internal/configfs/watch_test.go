@@ -1,4 +1,4 @@
-package adeflow
+package configfs
 
 import (
 	"os"
@@ -29,7 +29,7 @@ func expectQuiet(t *testing.T, ch <-chan struct{}) {
 func startWatch(t *testing.T, dir string) <-chan struct{} {
 	t.Helper()
 	ch := make(chan struct{}, 16)
-	stop, err := Watch(dir, func() { ch <- struct{}{} })
+	stop, err := WatchDir(dir, ".yaml", func() { ch <- struct{}{} })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,13 +81,10 @@ func TestWatch_dirCreatedLater(t *testing.T) {
 	waitFire(t, ch)
 }
 
-func TestWatch_writerTempRenameFiresOnce(t *testing.T) {
-	r := newReader(t)
-	if err := os.MkdirAll(r.Dir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	ch := startWatch(t, r.Dir)
-	if _, err := r.New("Flow"); err != nil {
+func TestWatch_atomicWriteFiresOnce(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "workflows")
+	ch := startWatch(t, dir)
+	if err := WriteAtomic(filepath.Join(dir, "flow.yaml"), []byte("a: 1\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	waitFire(t, ch)

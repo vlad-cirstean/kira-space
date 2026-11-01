@@ -589,6 +589,71 @@
           "body": "The update took too long and was stopped."
         }
       },
+      "config": {
+        "additional": {
+          "body": "{field} is not a known option."
+        },
+        "alias": {
+          "body": "YAML anchors, aliases and merge keys are not allowed."
+        },
+        "enum": {
+          "body": "{field} must be one of {allowed}."
+        },
+        "invalid": {
+          "body": "{field} has an invalid value."
+        },
+        "keys": {
+          "body": "Keys must be text."
+        },
+        "max": {
+          "body": "{field} must be at most {limit}."
+        },
+        "maxItems": {
+          "body": "{field} can have at most {limit} items."
+        },
+        "maxLength": {
+          "body": "{field} can have at most {limit} characters."
+        },
+        "min": {
+          "body": "{field} must be at least {limit}."
+        },
+        "minItems": {
+          "body": "{field} needs at least {limit} items."
+        },
+        "minLength": {
+          "body": "{field} needs at least {limit} characters."
+        },
+        "pattern": {
+          "body": "{field} has an invalid format."
+        },
+        "refInvalid": {
+          "body": "Invalid reference at column {column}. Use {syntax}."
+        },
+        "refSecretLiteral": {
+          "body": "{field} must be exactly one secret reference such as {syntax}, never the secret itself."
+        },
+        "required": {
+          "body": "{field} is required."
+        },
+        "root": {
+          "label": "The file"
+        },
+        "syntax": {
+          "body": "Invalid YAML syntax: {detail}."
+        },
+        "textEncoding": {
+          "body": "The file must be plain text with valid encoding."
+        },
+        "textTooLarge": {
+          "body": "The file is larger than {limit} bytes."
+        },
+        "type": {
+          "body": "{field} must be of type {want}."
+        },
+        "unreadable": {
+          "body": "Can’t read the file ({detail})."
+        }
+      },
       "docker": {
         "edit": {
           "aliasesUnsupported": {
@@ -1336,9 +1401,6 @@
         },
         "workflowIdMismatch": {
           "body": "The ID must equal the file name without its extension."
-        },
-        "workflowUnreadable": {
-          "body": "Can’t read the file ({detail})."
         },
         "workingChanged": {
           "body": "The file changed while you reviewed it. Refresh the diff."
@@ -2452,6 +2514,30 @@
     },
     "comment": {
       "label": "Comment"
+    },
+    "config": {
+      "about": {
+        "label": "About these files"
+      },
+      "fileError": {
+        "error": "✕ {text}"
+      },
+      "lineError": {
+        "error": "✕ Line {line}: {text}"
+      },
+      "open": {
+        "failed": {
+          "error": "The config file did not open: {text}"
+        }
+      },
+      "reveal": {
+        "failed": {
+          "error": "The config file did not show in the file manager: {text}"
+        }
+      },
+      "valid": {
+        "status": "✓ Valid"
+      }
     },
     "confirm": {
       "irreversible": {

@@ -22,10 +22,10 @@ var ErrWorkflowChanged = errors.New("ade: workflow changed")
 
 func wfErr(err error) error {
 	if errors.Is(err, adeflow.ErrConflict) {
-		return fmt.Errorf("%w: %s", ErrWorkflowChanged, strings.TrimPrefix(err.Error(), "adeflow: conflict: "))
+		return fmt.Errorf("%w: %s", ErrWorkflowChanged, strings.TrimPrefix(err.Error(), "configfs: conflict: "))
 	}
 	if errors.Is(err, adeflow.ErrInvalid) {
-		return fmt.Errorf("%w: %s", ErrInvalidInput, strings.TrimPrefix(err.Error(), "adeflow: invalid: "))
+		return fmt.Errorf("%w: %s", ErrInvalidInput, strings.TrimPrefix(err.Error(), "configfs: invalid: "))
 	}
 	return err
 }
@@ -134,7 +134,7 @@ func (b *TaskBoard) NewWorkflow(_ context.Context, args adewire.NewWorkflowArgs)
 func (b *TaskBoard) Start() {
 	b.startOnce.Do(func() {
 		if b.deps.Workflows != nil {
-			stop, err := adeflow.Watch(b.deps.Workflows.Dir, b.workflowsFileChanged)
+			stop, err := b.deps.Workflows.Watch(b.workflowsFileChanged)
 			if err != nil {
 				slog.Warn("ade workflows: watch", "scope", "ade", "err", err)
 			} else {
