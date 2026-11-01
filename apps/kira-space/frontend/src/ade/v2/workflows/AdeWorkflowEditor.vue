@@ -3,14 +3,15 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
+import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
 import { defineAsyncComponent } from 'vue';
-import AdeTip from '../AdeTip.vue';
+import { control } from '../../../bridge/control';
 import { useWorkflowYaml } from '../queries';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
 import type { WorkflowEntry } from '../wire';
 import AdeWorkflowYaml from './AdeWorkflowYaml.vue';
 
-// One workflow: mode toggle, file path, Copy YAML, then the Graph or YAML pane. The graph editor (Vue Flow)
+// One workflow: mode toggle, the config file bar (path, status, Open, Reveal), Copy YAML, then the Graph or YAML pane. The graph editor (Vue Flow)
 // loads on first use so the board bundle does not carry it.
 const AdeWorkflowGraph = defineAsyncComponent(() => import('./AdeWorkflowGraph.vue'));
 const modeItems = [
@@ -44,15 +45,12 @@ async function setMode(v: unknown): Promise<void> {
         data-testid="ade-wf-mode"
         @update:model-value="setMode"
       />
-      <AdeTip :text="entry.path">
-        <span
-          class="min-w-0 flex-1 truncate font-data text-kira-sm text-subtle"
-          data-testid="ade-wf-path"
-          >{{
-            entry.path
-          }}</span
-        >
-      </AdeTip>
+      <ConfigFileBar
+        :path="entry.path"
+        :error="entry.error"
+        :open="() => control.configFilesOpen({ folder: 'workflows', file: entry.fileName })"
+        :reveal="() => control.configFilesReveal({ folder: 'workflows', file: entry.fileName })"
+      />
       <Button
         variant="dialog"
         size="kira-lg"
