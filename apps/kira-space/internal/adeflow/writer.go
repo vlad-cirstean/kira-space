@@ -257,12 +257,6 @@ const (
 	kInt
 )
 
-var (
-	topOrder    = []string{"id", "name", "steps"}
-	resultOrder = []string{"id", "ok", "description", "next"}
-	stepOrder   = []string{"id", "name", "kind", "status", "skip", "session", "runs_on", "before", "results", "max_returns", "timeout", "command", "smart_script", "params", "review", "sandbox", "settings", "prompt", "allowed_tools"}
-)
-
 func find(m *yaml.Node, key string) (int, *yaml.Node) {
 	for i := 0; i+1 < len(m.Content); i += 2 {
 		if m.Content[i].Value == key {
