@@ -782,6 +782,11 @@
           "body": "Tasks exist only in Kira Space."
         }
       },
+      "scripts": {
+        "secretStoreOff": {
+          "body": "Secret storage is unavailable, so {name} can’t be saved. Leave it empty; each run asks for it."
+        }
+      },
       "secrets": {
         "darwinUnavailable": {
           "body": "The macOS keychain is unavailable, so passwords can’t be saved. Everything else about this connection can be."

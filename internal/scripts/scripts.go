@@ -13,6 +13,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/palette"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
 // A script's folder: the app's automations folder, a picked folder, or (legacy rows only) $HOME.
@@ -66,6 +67,8 @@ type CustomScript struct {
 	UseAdeDir bool `json:"useAdeDir"`
 	// Schedule is nil for a script that is not recurring.
 	Schedule *Schedule `json:"schedule"`
+	// SavedSecrets names the secret params with a saved value; never the value.
+	SavedSecrets []string `json:"savedSecrets"`
 }
 
 // Collection mirrors packages/shared/domain/scripts.ts's scriptCollectionSchema: one
@@ -82,6 +85,8 @@ type Collection struct {
 type Snapshot struct {
 	Collections []Collection   `json:"collections"`
 	Scripts     []CustomScript `json:"scripts"`
+	// SecretStorage is fixed for the process; the editor disables saving a value when off.
+	SecretStorage secrets.Status `json:"secretStorage"`
 }
 
 // CustomScriptFields is what Create/Update accept (customScriptFieldsSchema).

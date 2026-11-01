@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
 // Script kinds.
@@ -57,7 +58,7 @@ var DefaultTools = []string{"Read", "Grep", "Glob"}
 var BuiltinVars = []string{"task", "jira", "repo", "branch", "base", "worktree"}
 
 // SecretMask is what a run records in place of a secret value.
-const SecretMask = "••••"
+const SecretMask = secrets.Mask
 
 var (
 	paramNameRE = regexp.MustCompile(`^[a-z][a-z0-9_]{0,31}$`)
@@ -75,6 +76,7 @@ type Param struct {
 	// Required means the run dialog needs a value.
 	Required bool `json:"required"`
 	// Secret (text only) reaches the run through env only: never the prompt, never a stored run.
+	// A saved value lives sealed in secret_values; the record holds names only.
 	Secret bool `json:"secret"`
 }
 

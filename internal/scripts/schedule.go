@@ -143,19 +143,25 @@ func validScheduleParams(s *Schedule, params []Param) error {
 	for name := range s.Params {
 		for _, p := range params {
 			if p.Name == name && p.Secret {
-				return invalid("scripts: schedule param %q is secret: secrets are never stored", name)
+				return invalid("scripts: schedule param %q is secret: save its value in the Parameters tab", name)
 			}
 		}
 	}
 	if _, _, err := ParamValues(params, s.Params); err != nil {
 		return invalid("scripts: schedule params: %v", err)
 	}
-	if s.Confirm {
+	return nil
+}
+
+// checkScheduleSecrets refuses a schedule that runs without asking while a required secret param has
+// no saved value. saved holds the names saved once the pending write lands.
+func checkScheduleSecrets(s *Schedule, params []Param, saved map[string]bool) error {
+	if s == nil || s.Confirm {
 		return nil
 	}
 	for _, p := range params {
-		if p.Secret {
-			return invalid("scripts: a recurring script with a secret param must ask before each run: secrets are never stored")
+		if p.Secret && p.Required && !saved[p.Name] {
+			return invalid("scripts: a recurring script that runs without asking needs a saved value for secret param %s", p.Name)
 		}
 	}
 	return nil

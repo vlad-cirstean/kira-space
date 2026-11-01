@@ -98,10 +98,21 @@ func encodeExtras(f CustomScriptFields) (extras, error) {
 // List orders by sort_order, name for a stable, deterministic tiebreak.
 func (r *Repo) List() ([]CustomScript, error) {
 	rows, err := r.DB.Query(`SELECT ` + selectColumns + ` FROM custom_scripts ORDER BY sort_order ASC, name ASC`)
-	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (CustomScript, bool, error) {
+	list, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (CustomScript, bool, error) {
 		rec, err := scanRow(rows)
 		return rec, true, err
 	})
+	if err != nil {
+		return nil, err
+	}
+	saved, err := r.savedNames()
+	if err != nil {
+		return nil, err
+	}
+	for i := range list {
+		list[i].SavedSecrets = saved.of(list[i].ID)
+	}
+	return list, nil
 }
 
 // Get reads one row by id, (nil, nil) when not found.
@@ -116,15 +127,27 @@ func (r *Repo) Get(id string) (*CustomScript, error) {
 	if err != nil {
 		return nil, fmt.Errorf("scripts: get %s: %w", id, err)
 	}
+	if rec == nil {
+		return nil, nil
+	}
+	saved, err := r.savedNames()
+	if err != nil {
+		return nil, fmt.Errorf("scripts: get %s: %w", id, err)
+	}
+	rec.SavedSecrets = saved.of(id)
 	return rec, nil
 }
 
 // Create inserts a new row, sort_order set to one past the current max — sqlitex.NextSortOrder's
 // own append-at-the-end convention. fields is validated (and its name/command trimmed in place)
 // before the insert.
-func (r *Repo) Create(fields CustomScriptFields) (CustomScript, error) {
+func (r *Repo) Create(fields CustomScriptFields, secretValues map[string]*string) (CustomScript, error) {
 	if err := fields.Validate(r.models()); err != nil {
 		return CustomScript{}, fmt.Errorf("scripts: %w", err)
+	}
+	plan, err := r.planSecrets(fields, secretValues, nil)
+	if err != nil {
+		return CustomScript{}, err
 	}
 	if fields.DirMode == DirModeHome {
 		return CustomScript{}, errHomeRetired
@@ -158,7 +181,12 @@ func (r *Repo) Create(fields CustomScriptFields) (CustomScript, error) {
 		UseAdeDir:    fields.UseAdeDir,
 		Schedule:     fields.Schedule,
 	}
-	if _, err := r.DB.Exec(
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return CustomScript{}, fmt.Errorf("scripts: insert: begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.Exec(
 		`INSERT INTO custom_scripts (id, name, command, working_dir, dir_mode, color, collection_id, sort_order, created_at, updated_at, kind, params_json, smart_json, use_ade_dir, schedule_json)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		rec.ID, rec.Name, rec.Command, rec.WorkingDir, rec.DirMode, rec.Color, rec.CollectionID, rec.SortOrder, rec.CreatedAt, rec.UpdatedAt,
@@ -166,15 +194,30 @@ func (r *Repo) Create(fields CustomScriptFields) (CustomScript, error) {
 	); err != nil {
 		return CustomScript{}, fmt.Errorf("scripts: insert: %w", err)
 	}
+	if err := r.applySecrets(tx, rec.ID, plan); err != nil {
+		return CustomScript{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return CustomScript{}, fmt.Errorf("scripts: insert: commit: %w", err)
+	}
+	rec.SavedSecrets = plan.savedNames(fields.Params)
 	return rec, nil
 }
 
 // Update writes fields onto id — name/command/workingDir/color/collection only; id, sort_order and
 // created_at are untouched. Returns a wrapped sql.ErrNoRows for an unknown id
 // (ConnectionsRepo.SetMcpEnabled's own recorded fix, applied here from the start).
-func (r *Repo) Update(id string, fields CustomScriptFields) (CustomScript, error) {
+func (r *Repo) Update(id string, fields CustomScriptFields, secretValues map[string]*string) (CustomScript, error) {
 	if err := fields.Validate(r.models()); err != nil {
 		return CustomScript{}, fmt.Errorf("scripts: %w", err)
+	}
+	saved, err := r.savedNames()
+	if err != nil {
+		return CustomScript{}, fmt.Errorf("scripts: update %s: %w", id, err)
+	}
+	plan, err := r.planSecrets(fields, secretValues, saved.of(id))
+	if err != nil {
+		return CustomScript{}, err
 	}
 	if err := r.requireCollection(fields.CollectionID); err != nil {
 		return CustomScript{}, err
@@ -193,7 +236,12 @@ func (r *Repo) Update(id string, fields CustomScriptFields) (CustomScript, error
 		return CustomScript{}, err
 	}
 	now := kiratime.NowISO()
-	res, err := r.DB.Exec(
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return CustomScript{}, fmt.Errorf("scripts: update %s: begin: %w", id, err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.Exec(
 		`UPDATE custom_scripts SET name = ?, command = ?, working_dir = ?, dir_mode = ?, color = ?, collection_id = ?, updated_at = ?,
 		 kind = ?, params_json = ?, smart_json = ?, use_ade_dir = ?, schedule_json = ? WHERE id = ?`,
 		fields.Name, fields.Command, fields.WorkingDir, fields.DirMode, fields.Color, fields.CollectionID, now,
@@ -209,6 +257,12 @@ func (r *Repo) Update(id string, fields CustomScriptFields) (CustomScript, error
 	if n == 0 {
 		return CustomScript{}, fmt.Errorf("scripts: update %s: %w", id, sql.ErrNoRows)
 	}
+	if err := r.applySecrets(tx, id, plan); err != nil {
+		return CustomScript{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return CustomScript{}, fmt.Errorf("scripts: update %s: commit: %w", id, err)
+	}
 	rec, err := r.Get(id)
 	if err != nil {
 		return CustomScript{}, err
@@ -222,16 +276,23 @@ func (r *Repo) Update(id string, fields CustomScriptFields) (CustomScript, error
 // Delete deletes one row by id. Returns a wrapped sql.ErrNoRows for an unknown id, the same rule
 // Update above follows.
 func (r *Repo) Delete(id string) error {
-	res, err := r.DB.Exec(`DELETE FROM custom_scripts WHERE id = ?`, id)
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return fmt.Errorf("scripts: delete %s: begin: %w", id, err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.Exec(`DELETE FROM custom_scripts WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("scripts: delete %s: %w", id, err)
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("scripts: delete %s: rows affected: %w", id, err)
+	if err := requireRow(res, "delete", id); err != nil {
+		return err
 	}
-	if n == 0 {
-		return fmt.Errorf("scripts: delete %s: %w", id, sql.ErrNoRows)
+	if err := r.pruneSecrets(tx, id); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("scripts: delete %s: commit: %w", id, err)
 	}
 	return nil
 }
@@ -408,11 +469,36 @@ func (r *Repo) RenameCollection(id, name string) error {
 // DeleteCollection removes a collection; the foreign key cascades to its commands. Returns a
 // wrapped sql.ErrNoRows for an unknown id.
 func (r *Repo) DeleteCollection(id string) error {
-	res, err := r.DB.Exec(`DELETE FROM custom_script_collections WHERE id = ?`, id)
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return fmt.Errorf("scripts: delete collection %s: begin: %w", id, err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	rows, err := tx.Query(`SELECT id FROM custom_scripts WHERE collection_id = ?`, id)
+	ids, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (string, bool, error) {
+		var sid string
+		err := rows.Scan(&sid)
+		return sid, true, err
+	})
+	if err != nil {
+		return fmt.Errorf("scripts: delete collection %s: list scripts: %w", id, err)
+	}
+	res, err := tx.Exec(`DELETE FROM custom_script_collections WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("scripts: delete collection %s: %w", id, err)
 	}
-	return requireRow(res, "delete collection", id)
+	if err := requireRow(res, "delete collection", id); err != nil {
+		return err
+	}
+	for _, sid := range ids {
+		if err := r.pruneSecrets(tx, sid); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("scripts: delete collection %s: commit: %w", id, err)
+	}
+	return nil
 }
 
 func requireRow(res sql.Result, op, id string) error {
