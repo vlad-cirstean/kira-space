@@ -458,6 +458,43 @@ test('Copy YAML confirms the copy', async ({ relaunch }) => {
   await expect(copy).toHaveText('Copied');
 });
 
+test('the config file bar shows a valid file, Open and Reveal name the folder and file', async ({
+  relaunch,
+}) => {
+  const fx = adeFixture<WorkflowsFx>('workflows');
+  const { window: page, control } = await openWorkflows(relaunch);
+  await expect(page.locator(t('config-file-status'))).toContainText('✓ Valid');
+  await page.locator(t('config-file-open')).click();
+  await page.locator(t('config-file-reveal')).click();
+  const file = (fx.workflows[0] as { fileName: string }).fileName;
+  await expect.poll(() => calls(control, IPC.configFilesOpen)).toHaveLength(1);
+  await expect.poll(() => calls(control, IPC.configFilesReveal)).toHaveLength(1);
+  expect(calls(control, IPC.configFilesOpen)[0]?.args).toEqual({ folder: 'workflows', file });
+  expect(calls(control, IPC.configFilesReveal)[0]?.args).toEqual({ folder: 'workflows', file });
+});
+
+test('a broken workflow file shows its error with the line in the config file bar', async ({
+  relaunch,
+}) => {
+  const fx = adeFixture<WorkflowsFx>('workflows');
+  const first = fx.workflows[0];
+  const { window: page } = await openWorkflows(relaunch, [
+    {
+      channel: IPC.adeTaskWorkflows,
+      response: {
+        ...fx,
+        workflows: [
+          { ...first, error: { line: 7, message: 'kind must be agent, script, review or manual' } },
+          ...fx.workflows.slice(1),
+        ],
+      },
+    },
+  ]);
+  await expect(page.locator(t('config-file-status'))).toContainText(
+    '✕ Line 7: kind must be agent, script, review or manual',
+  );
+});
+
 test('Import sends the typed path and opens YAML mode', async ({ relaunch }) => {
   const { window: page, control } = await openWorkflows(relaunch);
   await page.locator(t('ade-wf-import')).click();
