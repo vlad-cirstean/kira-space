@@ -58,8 +58,8 @@ func (s AdeSession) Validate() error {
 	if s.Mode == AdeSessionModeHeadless && s.RunID == "" {
 		return fmt.Errorf("model: ade session %q: a headless session needs a runId", s.ID)
 	}
-	if s.AgentSessionID == "" {
-		return fmt.Errorf("model: ade session %q: agentSessionId is required", s.ID)
+	if s.Mode == AdeSessionModeHeadless && s.AgentSessionID == "" {
+		return fmt.Errorf("model: ade session %q: a headless session needs an agentSessionId", s.ID)
 	}
 	if s.Cwd == "" {
 		return fmt.Errorf("model: ade session %q: cwd is required", s.ID)

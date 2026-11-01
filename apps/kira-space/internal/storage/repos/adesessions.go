@@ -202,6 +202,9 @@ func (r *AdeSessionsRepo) SetAgentSessionID(id, agentSessionID string) error {
 // ProviderOfAgentSession is the provider id recorded with the newest row of an agent session, ""
 // when no row has it.
 func (r *AdeSessionsRepo) ProviderOfAgentSession(agentSessionID string) (string, error) {
+	if agentSessionID == "" {
+		return "", nil
+	}
 	var id string
 	err := r.DB.QueryRow(`SELECT provider FROM ade_sessions WHERE agent_session_id = ?
 		ORDER BY started_at DESC LIMIT 1`, agentSessionID).Scan(&id)

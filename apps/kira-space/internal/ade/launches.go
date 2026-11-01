@@ -166,6 +166,16 @@ func (b *TaskBoard) takeOverLocked(ctx context.Context, tr *Tracker, rec *model.
 	if err != nil {
 		return adewire.Launch{}, err
 	}
+	if rec.AgentSessionID == "" {
+		id, err := tr.learnSessionID(rec.ID)
+		if err != nil {
+			return adewire.Launch{}, err
+		}
+		if id == "" {
+			return adewire.Launch{}, errSessionIDUnknown()
+		}
+		rec.AgentSessionID = id
+	}
 
 	pa := PrepareArgs{TaskID: rec.TaskID, BranchID: rec.BranchID, StepID: rec.StepID, Cwd: cwd}
 	if rec.StepID != "" {
@@ -292,6 +302,9 @@ func (b *TaskBoard) RestartSession(ctx context.Context, args adewire.RestartSess
 func (b *TaskBoard) ensureNotOpen(tr *Tracker, rec *model.AdeSession) error {
 	if rec.Mode == model.AdeSessionModeTUI && rec.State == model.AdeSessionStateRunning {
 		return invalid("the session is already open")
+	}
+	if rec.AgentSessionID == "" {
+		return nil // no id yet, so nothing else can share the conversation
 	}
 	open, err := b.runningTUI(func(s model.AdeSession) bool { return s.AgentSessionID == rec.AgentSessionID })
 	if err != nil {

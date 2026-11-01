@@ -1292,6 +1292,9 @@
         "scriptTooLarge": {
           "body": "The script is too large."
         },
+        "sessionIdUnknown": {
+          "body": "The agent hasn’t reported its session ID yet. Retry once it has started."
+        },
         "sessionNotFound": {
           "body": "That session no longer exists."
         },

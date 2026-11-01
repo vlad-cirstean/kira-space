@@ -21,6 +21,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/terminal"
+	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
 // defaultGrace/defaultPendingTTL are TrackerDeps' own zero-value defaults, applied by NewTracker.
@@ -363,7 +364,70 @@ func (t *Tracker) resumeTarget(args PrepareArgs) (recordID, agentSessionID, cwd 
 		return "", "", "", nil, ErrResumeCwdNotDir
 	}
 	cwd = existing.Cwd
+	if agentSessionID == "" {
+		if agentSessionID, err = t.learnSessionID(existing.ID); err != nil {
+			return "", "", "", nil, err
+		}
+		if agentSessionID == "" {
+			return "", "", "", nil, errSessionIDUnknown()
+		}
+	}
 	return recordID, agentSessionID, cwd, agent, nil
+}
+
+// errSessionIDUnknown refuses a resume of a session whose agent has not reported its id.
+func errSessionIDUnknown() error {
+	return invalid("%s", i18n.T("backend.space.ade.sessionIdUnknown.body", nil))
+}
+
+// locateTimeout bounds one FindSession call.
+const locateTimeout = 10 * time.Second
+
+// learnSessionID returns the stored agent session id of recordID. When it is empty and the
+// record's provider assigns ids after launch, it asks the provider for the id and stores a valid
+// answer; "" means still unknown.
+func (t *Tracker) learnSessionID(recordID string) (string, error) {
+	rec, err := t.deps.Store.Get(recordID)
+	if err != nil {
+		return "", fmt.Errorf("ade: learn session id: %w", err)
+	}
+	if rec == nil {
+		return "", ErrSessionNotFound
+	}
+	if rec.AgentSessionID != "" {
+		return rec.AgentSessionID, nil
+	}
+	agent, err := t.deps.Agent.For(rec.Provider)
+	if err != nil {
+		return "", err
+	}
+	loc, ok := agent.(harness.SessionLocator)
+	if !ok {
+		return "", nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), locateTimeout)
+	defer cancel()
+	id, err := loc.FindSession(ctx, harness.SessionQuery{Cwd: rec.Cwd, Since: time.UnixMilli(rec.StartedAt)})
+	if err != nil {
+		slog.Warn("ade: find agent session", "scope", "ade", "recordId", recordID, "err", err)
+		return "", nil
+	}
+	if !harness.ValidSessionID(id) {
+		return "", nil
+	}
+	if err := t.deps.Store.SetAgentSessionID(recordID, id); err != nil {
+		return "", fmt.Errorf("ade: learn session id: %w", err)
+	}
+	return id, nil
+}
+
+// learnStopped runs learnSessionID for records that just stopped, best effort.
+func (t *Tracker) learnStopped(recordIDs ...string) {
+	for _, id := range recordIDs {
+		if _, err := t.learnSessionID(id); err != nil {
+			slog.Warn("ade: learn session id", "scope", "ade", "recordId", id, "err", err)
+		}
+	}
 }
 
 // expirePending releases an intent that never composed within PendingTTL, so an abandoned launch's
@@ -626,6 +690,7 @@ func (t *Tracker) Stop(recordID string) error {
 	t.mu.Lock()
 	t.forgetLocked(recordID, t.deps.Now())
 	t.mu.Unlock()
+	t.learnStopped(recordID)
 	t.recordSessionEnd(recordID, oplog.TriggerUser, oplog.StatusOK, "")
 	if t.deps.OnChange != nil {
 		t.deps.OnChange()
@@ -681,6 +746,7 @@ func (t *Tracker) Reconcile() {
 		}
 		stopped = append(stopped, recordID)
 	}
+	t.learnStopped(stopped...)
 	for _, recordID := range stopped {
 		t.recordSessionEnd(recordID, oplog.TriggerAuto, oplog.StatusOK, "")
 	}
@@ -712,8 +778,8 @@ func (t *Tracker) HandleEvent(ev harness.AgentEvent) {
 	t.lastActive[recordID] = nowMs
 
 	sessionChanged := false
-	// The id lands in a later shell command line; only a real UUID is trusted.
-	if _, perr := uuid.Parse(ev.SessionID); ev.Event == harness.EventSessionStart && perr == nil && t.agentSessionID[recordID] != ev.SessionID {
+	// The id lands in a later shell command line; only a plain token is trusted.
+	if ev.Event == harness.EventSessionStart && harness.ValidSessionID(ev.SessionID) && t.agentSessionID[recordID] != ev.SessionID {
 		t.agentSessionID[recordID] = ev.SessionID
 		sessionChanged = true
 	}
