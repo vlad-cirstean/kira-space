@@ -26,13 +26,13 @@ type Status struct {
 func reason(s string) *string { return &s }
 
 func darwinUnavailableReason() string {
-	return i18n.T("backend.studio.secrets.darwinUnavailable.body", nil)
+	return i18n.T("backend.core.secrets.darwinUnavailable.body", nil)
 }
 
 func linuxUnavailableReason() string {
-	return i18n.T("backend.studio.secrets.linuxUnavailable.body", map[string]string{"variable": "KIRA_INSECURE_SECRETS"})
+	return i18n.T("backend.core.secrets.linuxUnavailable.body", map[string]string{"variable": "KIRA_INSECURE_SECRETS"})
 }
 
 func otherPlatformReason() string {
-	return i18n.T("backend.studio.secrets.otherPlatformUnavailable.body", nil)
+	return i18n.T("backend.core.secrets.otherPlatformUnavailable.body", nil)
 }

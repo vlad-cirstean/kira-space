@@ -105,7 +105,7 @@ func (c *Cipher) Encrypt(scope Scope, plain string) (string, error) {
 	}
 	nonce := make([]byte, c.aead.NonceSize())
 	if _, err := rand.Read(nonce); err != nil {
-		return "", ipcerr.T(ipcerr.CodeSecretStore, "backend.studio.secrets.nonceFailed.error", map[string]string{"detail": err.Error()})
+		return "", ipcerr.T(ipcerr.CodeSecretStore, "backend.core.secrets.nonceFailed.error", map[string]string{"detail": err.Error()})
 	}
 	sealed := c.aead.Seal(nonce, nonce, []byte(plain), scope.aad())
 	return envelopePrefix + base64.StdEncoding.EncodeToString(sealed), nil
@@ -119,7 +119,7 @@ func (c *Cipher) Decrypt(scope Scope, stored string) (string, error) {
 	if !strings.HasPrefix(stored, envelopePrefix) {
 		// P52 §6.4 retires the pre-P25 plaintext passthrough: a non-enveloped value is an error
 		// naming the problem, never returned verbatim.
-		return "", ipcerr.T(ipcerr.CodeSecretStore, "backend.studio.secrets.unknownEnvelope.body", nil)
+		return "", ipcerr.T(ipcerr.CodeSecretStore, "backend.core.secrets.unknownEnvelope.body", nil)
 	}
 	if !c.status.Available {
 		return "", ipcerr.SecretStore(*c.status.Reason)
@@ -142,7 +142,7 @@ func (c *Cipher) Decrypt(scope Scope, stored string) (string, error) {
 }
 
 func decryptFailure(err error) error {
-	return ipcerr.T(ipcerr.CodeSecretStore, "backend.studio.secrets.decryptFailed.error", map[string]string{"detail": err.Error()})
+	return ipcerr.T(ipcerr.CodeSecretStore, "backend.core.secrets.decryptFailed.error", map[string]string{"detail": err.Error()})
 }
 
 // probe is New's whole platform switch, with the OS key source injected so every branch is

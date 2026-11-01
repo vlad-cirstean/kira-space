@@ -322,7 +322,7 @@ historical prose.
   it's the real source for the exact pinned version.
 - **No package under either app's `internal/` needs a C compiler on Linux any more** (v1.9 P97
   removed `internal/codeparse`, this repo's one unconditionally-cgo package). Every remaining cgo
-  call either app makes (a handful of darwin-only files in Kira Studio's own `internal/secrets`,
+  call either app makes (a handful of darwin-only files in repo-root `internal/secrets`, Kira Studio's own
   `internal/localauth`, repo-root `internal/metrics` (P116 H4: shared between both apps' own
   metrics tickers), and Kira Space's own `internal/gitclient`'s FSEvents watcher) is behind a
   `darwin && cgo` build tag with a real, working `!darwin || !cgo` companion, invisible to a Linux

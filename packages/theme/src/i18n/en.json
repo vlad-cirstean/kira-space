@@ -782,6 +782,26 @@
           "body": "Tasks exist only in Kira Space."
         }
       },
+      "secrets": {
+        "darwinUnavailable": {
+          "body": "The macOS keychain is unavailable, so passwords can’t be saved. Everything else about this connection can be."
+        },
+        "decryptFailed": {
+          "error": "The stored credential couldn’t be decrypted ({detail}). It may have been written on a different machine or after a keychain reset. Enter it again to fix this connection."
+        },
+        "linuxUnavailable": {
+          "body": "No system keychain is available in this build. Set {variable}=1 for local development, or run on macOS."
+        },
+        "nonceFailed": {
+          "error": "Couldn’t generate a nonce: {detail}"
+        },
+        "otherPlatformUnavailable": {
+          "body": "Credential storage is only supported on macOS in this build."
+        },
+        "unknownEnvelope": {
+          "body": "The stored credential isn’t in this app’s envelope format. Values saved by an earlier version of Kira Studio can’t be read and must be entered again."
+        }
+      },
       "seed": {
         "body": "Core seed placeholder."
       },
@@ -2051,26 +2071,6 @@
         },
         "notFound": {
           "body": "This saved query no longer exists."
-        }
-      },
-      "secrets": {
-        "darwinUnavailable": {
-          "body": "The macOS keychain is unavailable, so passwords can’t be saved. Everything else about this connection can be."
-        },
-        "decryptFailed": {
-          "error": "The stored credential couldn’t be decrypted ({detail}). It may have been written on a different machine or after a keychain reset. Enter it again to fix this connection."
-        },
-        "linuxUnavailable": {
-          "body": "No system keychain is available in this build. Set {variable}=1 for local development, or run on macOS."
-        },
-        "nonceFailed": {
-          "error": "Couldn’t generate a nonce: {detail}"
-        },
-        "otherPlatformUnavailable": {
-          "body": "Credential storage is only supported on macOS in this build."
-        },
-        "unknownEnvelope": {
-          "body": "The stored credential isn’t in this app’s envelope format. Values saved by an earlier version of Kira Studio can’t be read and must be entered again."
         }
       },
       "seed": {

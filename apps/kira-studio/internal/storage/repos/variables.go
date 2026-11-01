@@ -12,8 +12,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/postman"
-	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
 // variableHistoryLimit mirrors historyLimit (filter_history.go) — the same bound, applied to a
