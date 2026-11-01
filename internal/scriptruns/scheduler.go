@@ -276,7 +276,11 @@ func unstartable(rec *scripts.CustomScript, p *planned) string {
 		missing = append(missing, name)
 	}
 	if len(missing) > 0 {
-		return "no value for " + strings.Join(missing, ", ")
+		why := "no value for " + strings.Join(missing, ", ")
+		if p.preview.SecretIssue != "" {
+			why += ". " + p.preview.SecretIssue
+		}
+		return why
 	}
 	return ""
 }

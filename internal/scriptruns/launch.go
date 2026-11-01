@@ -7,6 +7,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
 // LaunchTTL is how long a normal script's launch token stays valid; a var so a flow test can shorten it.
@@ -22,6 +23,7 @@ type launch struct {
 	created  time.Time
 	trigger  Trigger
 	ade      *RunADE
+	mask     *secrets.Masker
 }
 
 func (s *Service) startTerminal(p *planned) (Started, error) {
@@ -49,7 +51,7 @@ func (s *Service) startTerminal(p *planned) (Started, error) {
 	}
 	s.launches[token] = launch{
 		scriptID: p.script.ID, dir: p.dir, command: p.script.Command, env: p.envList, params: p.params, created: now,
-		trigger: runTrigger(p), ade: p.preview.ADE,
+		trigger: runTrigger(p), ade: p.preview.ADE, mask: p.mask,
 	}
 	return Started{Terminal: &TerminalStart{Token: token, Cwd: p.dir.Path}}, nil
 }

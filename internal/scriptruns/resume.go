@@ -3,6 +3,7 @@ package scriptruns
 import (
 	"errors"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/internal/harness"
@@ -12,8 +13,8 @@ import (
 )
 
 // Resume continues the Claude session of a smart run a restart ended, as a new run. The script is
-// planned again from its current definition; secret values are never stored, so a script with a
-// secret param cannot resume.
+// planned again from its current definition. A secret param takes the script's saved value, which
+// may differ from the value typed for the original run; without one the run cannot resume.
 func (s *Service) Resume(id string) (Started, error) { return s.resume(id, "", false) }
 
 // resume is Resume; checkHash also refuses a run whose plan differs from the hash the user saw.
@@ -45,7 +46,7 @@ func (s *Service) resume(id, hash string, checkHash bool) (Started, error) {
 	if checkHash && p.preview.Hash != hash {
 		return Started{}, ipcerr.T(ipcerr.CodeConflict, "backend.core.scriptRun.changedSincePreview.body", nil)
 	}
-	names = append(names, p.preview.Missing...)
+	names = uniqueNames(names, p.preview.Missing)
 	if len(names) > 0 {
 		return Started{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.core.scriptRun.resumeMissing.body", map[string]string{"names": strings.Join(names, ", ")})
 	}
@@ -81,8 +82,8 @@ func (s *Service) resume(id, hash string, checkHash bool) (Started, error) {
 	return started, err
 }
 
-// resumeArgs rebuilds a run's args from its stored params, and names the secret params whose
-// values the row never held.
+// resumeArgs rebuilds a run's args from its stored params. A secret param is left out when the
+// script has a saved value (plan fills it); it is named when the run had a value and none is saved.
 func resumeArgs(run Run, rec scripts.CustomScript) (RunArgs, []string) {
 	args := RunArgs{ScriptID: run.ScriptID, TaskID: run.TaskID, BranchID: run.BranchID, Params: map[string][]string{}}
 	var secrets []string
@@ -95,6 +96,7 @@ func resumeArgs(run Run, rec scripts.CustomScript) (RunArgs, []string) {
 		}
 		switch {
 		case def == nil:
+		case def.Secret && slices.Contains(rec.SavedSecrets, rp.Name):
 		case def.Secret || rp.Value == scripts.SecretMask:
 			secrets = append(secrets, rp.Name)
 		case rp.Value == "":
@@ -105,6 +107,19 @@ func resumeArgs(run Run, rec scripts.CustomScript) (RunArgs, []string) {
 		}
 	}
 	return args, secrets
+}
+
+// uniqueNames joins name lists, keeping first occurrences.
+func uniqueNames(lists ...[]string) []string {
+	var out []string
+	for _, l := range lists {
+		for _, n := range l {
+			if !slices.Contains(out, n) {
+				out = append(out, n)
+			}
+		}
+	}
+	return out
 }
 
 // ResumeCommand is the terminal command that continues a smart run's saved conversation.

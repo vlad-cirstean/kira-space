@@ -18,6 +18,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/termtext"
 )
@@ -73,7 +74,7 @@ type Service struct {
 	bgWait    sync.WaitGroup
 
 	tailMu sync.Mutex
-	tails  map[string]*termtext.Tail
+	tails  map[string]*termTail
 
 	// restore is the offer to run again what the last quit or crash ended; it lives for one app session.
 	restore restoreOffer
@@ -116,12 +117,13 @@ func (s *Service) Begin(scriptID, terminalID, token string) (terminal.ScriptLaun
 	var env []string
 	var params []RunParam
 	var ade *RunADE
+	var mask *secrets.Masker
 	if token != "" {
 		l, ok := s.takeLaunch(token, scriptID)
 		if !ok {
 			return terminal.ScriptLaunch{}, ipcerr.T(ipcerr.CodeConflict, "backend.core.scriptRun.expired.body", nil)
 		}
-		dir, command, env, params, trigger, ade = l.dir, l.command, l.env, l.params, l.trigger, l.ade
+		dir, command, env, params, trigger, ade, mask = l.dir, l.command, l.env, l.params, l.trigger, l.ade, l.mask
 	}
 	now := s.now()
 	run := Run{
@@ -144,9 +146,9 @@ func (s *Service) Begin(scriptID, terminalID, token string) (terminal.ScriptLaun
 	s.emit(run)
 	s.tailMu.Lock()
 	if s.tails == nil {
-		s.tails = map[string]*termtext.Tail{}
+		s.tails = map[string]*termTail{}
 	}
-	s.tails[terminalID] = termtext.NewTail(termTailBytes)
+	s.tails[terminalID] = &termTail{tail: termtext.NewTail(termTailBytes), mask: mask}
 	s.tailMu.Unlock()
 	return terminal.ScriptLaunch{RunID: run.ID, Cwd: dir.Path, Command: command, Env: env}, nil
 }
@@ -201,8 +203,9 @@ func (s *Service) Exited(terminalID string, code int, cause terminal.CloseCause)
 		p.End = runoutcome.EndQuit
 	}
 	o := runoutcome.ForProcess(p)
-	if tail := s.takeTail(terminalID); tail != nil && o.Status == runoutcome.StatusFailed {
-		o = o.WithOutputTail(tail.Lines(termTailLines))
+	if tt := s.takeTail(terminalID); tt != nil && o.Status == runoutcome.StatusFailed {
+		o = o.WithOutputTail(tt.tail.Lines(termTailLines))
+		o = maskOutcome(o, tt.mask)
 	}
 	run, err := s.Runs.FinishByTerminal(terminalID, o, s.now())
 	s.finish(run, err)
@@ -214,11 +217,17 @@ func (s *Service) Output(terminalID string, b []byte) {
 	t := s.tails[terminalID]
 	s.tailMu.Unlock()
 	if t != nil {
-		t.Write(b)
+		t.tail.Write(b)
 	}
 }
 
-func (s *Service) takeTail(terminalID string) *termtext.Tail {
+// termTail is a terminal run's output ring plus the mask its tail passes through on a failure.
+type termTail struct {
+	tail *termtext.Tail
+	mask *secrets.Masker
+}
+
+func (s *Service) takeTail(terminalID string) *termTail {
 	s.tailMu.Lock()
 	defer s.tailMu.Unlock()
 	t := s.tails[terminalID]

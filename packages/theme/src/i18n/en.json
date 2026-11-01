@@ -755,7 +755,7 @@
           "body": "The prompt is longer than {max} characters."
         },
         "restoreNeedsInput": {
-          "body": "Needs values for: {names}. Kira never stores secrets, so start it yourself."
+          "body": "Needs values for: {names}. Save the secret values in the script, or start it yourself."
         },
         "restoreNotOffered": {
           "body": "That run isn’t on the restore list."
@@ -764,13 +764,16 @@
           "body": "Only a smart run with a saved conversation can continue in a terminal."
         },
         "resumeMissing": {
-          "body": "Resume needs values for: {names}. Run it again instead."
+          "body": "Resume needs values for: {names}. Save the secret values in the script, or run it again."
         },
         "resumeNotResumable": {
           "body": "Only a run Kira {app} interrupted can resume."
         },
         "runNotFound": {
           "body": "This run no longer exists."
+        },
+        "savedSecretUnreadable": {
+          "body": "The saved value of {names} can’t be read ({detail}). Type it, or save it again."
         },
         "smartCap": {
           "body": "{max} smart scripts are running. Wait for one to finish."

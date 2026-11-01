@@ -167,7 +167,7 @@ func (s *Service) launchSmart(p *planned, run Run, existing bool) (Started, erro
 	spec = s.applySandbox(spec, sbx, agent)
 	go func() {
 		defer s.smartWait.Done()
-		sink := newLogSink(s, runID)
+		sink := newLogSink(s, runID, p.mask)
 		s.noticeSandbox(sink, sbx)
 		var res *harness.Result
 		var stopWatch func()
@@ -189,7 +189,7 @@ func (s *Service) launchSmart(p *planned, run Run, existing bool) (Started, erro
 		})
 		out = sbx.outcome(out)
 		cancel()
-		done, ferr := s.Runs.FinishByRun(runID, out, s.now())
+		done, ferr := s.Runs.FinishByRun(runID, maskOutcome(out, p.mask), s.now())
 		if p.release != nil {
 			p.release()
 		}

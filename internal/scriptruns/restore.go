@@ -206,7 +206,7 @@ func (s *Service) restoreItem(run Run) (RestoreItem, error) {
 	if run.Kind == KindSmart {
 		item.Command = excerpt(scripts.PlainText(pv.Prompt), commandPreviewRunes)
 	}
-	names := append(append([]string{}, secrets...), pv.Missing...)
+	names := uniqueNames(secrets, pv.Missing)
 	switch {
 	case len(names) > 0:
 		item.Status = RestoreNeedsInput

@@ -118,7 +118,7 @@ func (s *Service) startHeadless(p *planned, run Run, existing bool) (Started, er
 		if out.Status == runoutcome.StatusFailed {
 			out = out.WithOutputTail(sink.outputTail())
 		}
-		done, ferr := s.Runs.FinishByRun(run.ID, out, s.now())
+		done, ferr := s.Runs.FinishByRun(run.ID, maskOutcome(out, p.mask), s.now())
 		if p.release != nil {
 			p.release()
 		}
@@ -134,7 +134,7 @@ func (s *Service) startHeadless(p *planned, run Run, existing bool) (Started, er
 func (s *Service) runHeadless(ctx context.Context, br *bgRun, p *planned, runID string, timeout time.Duration, timeoutText string) (runoutcome.Outcome, *logSink) {
 	runCtx, stopTimer := context.WithTimeout(ctx, timeout)
 	defer stopTimer()
-	sink := newLogSink(s, runID)
+	sink := newLogSink(s, runID, p.mask)
 	shell, login := loginshell.ResolveShell(s.getenv, loginshell.IsExecutableFile)
 	argv := loginshell.BuildArgv(shell, login, p.script.Command)
 	cmd := exec.CommandContext(runCtx, argv[0], argv[1:]...)
