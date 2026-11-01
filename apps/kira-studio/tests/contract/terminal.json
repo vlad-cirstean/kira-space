@@ -33,6 +33,7 @@
     "message": "Claude Code CLI not found. Install it, then retry. Looked in: claude (on PATH), <home>/.claude/local/claude, <home>/.local/bin/claude, claude (in <bin>/stub-shell login shell)."
   },
   "args:TerminalService.Open": {
+    "agentLaunchToken": "",
     "cols": 80,
     "command": "",
     "cwd": "<home>",
