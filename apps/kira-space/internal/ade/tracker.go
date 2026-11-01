@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"slices"
 	"sync"
 	"time"
 
@@ -86,7 +87,8 @@ type pendingIntent struct {
 	RecordID                          string
 	AgentSessionID                    string
 	Cwd                               string
-	Command                           string // the exact base command Prepare returned; Compose refuses a mismatch
+	Env                               []string // the launch's own env; Compose returns it ahead of the hooks'
+	Command                           string   // the exact base command Prepare returned; Compose refuses a mismatch
 	Message                           string
 	Resume                            bool
 	CreatedAt                         time.Time
@@ -292,15 +294,16 @@ func (t *Tracker) Prepare(args PrepareArgs) (PrepareResult, error) {
 		return PrepareResult{}, err
 	}
 	agentBin := cmpNonEmpty(t.deps.AgentBin, agent.Command())
-	command := agent.InteractiveCommand(harness.InteractiveSpec{
+	launch := agent.InteractiveCommand(harness.InteractiveSpec{
 		Bin: agentBin, SessionID: agentSessionID, Resume: args.Resume != "" || args.Resumes != "",
 		AddDirs: args.AddDirs, MCPConfig: args.MCPConfig, AllowedTools: args.AllowedTools,
 		Stage: stageValues(args.Settings, agent),
 	})
+	command, agentSessionID := launch.Command, launch.SessionID
 
 	terminalID := uuid.NewString()
 	intent := pendingIntent{
-		RecordID: recordID, AgentSessionID: agentSessionID, Cwd: cwd, Command: command, Message: args.Message,
+		RecordID: recordID, AgentSessionID: agentSessionID, Env: launch.Env, Cwd: cwd, Command: command, Message: args.Message,
 		Resume: args.Resume != "", CreatedAt: now,
 		TaskID: args.TaskID, BranchID: args.BranchID, StepID: args.StepID, Resumes: args.Resumes, Purpose: args.Purpose,
 		Provider: agent.ID(), Op: args.Op,
@@ -433,9 +436,11 @@ func (t *Tracker) Compose(terminalID, cwd, command string) (_ string, _ []string
 
 	// Build the final command first: Open rejects an over-long one after this returns, which would
 	// leave a persisted row for a conversation that never ran.
-	composed, env := command, []string(nil)
+	composed, env := command, slices.Clone(intent.Env)
 	if hooks := t.hooksFn(); hooks != nil {
-		composed, env = hooks(intent.Provider, terminalID, cwd, command)
+		var hookEnv []string
+		composed, hookEnv = hooks(intent.Provider, terminalID, cwd, command)
+		env = append(env, hookEnv...)
 	}
 	if intent.Message != "" {
 		// The command can end in a variadic flag (--add-dir a b), which would swallow the prompt.

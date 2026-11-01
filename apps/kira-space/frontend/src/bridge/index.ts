@@ -63,6 +63,7 @@ import type {
   ScriptRunRestoreChoice,
   ScriptRunRestoreResult,
   ScriptRunRestoreState,
+  ScriptRunResumeLaunch,
   ScriptRunStarted,
 } from '@shared/domain/scriptRuns';
 import type {
@@ -169,8 +170,8 @@ const spaceControl = {
   scriptRunsRestore: (items: ScriptRunRestoreChoice[]): Promise<ScriptRunRestoreResult> =>
     unwrap(ScriptRunsService.Restore({ items })).then((r) => trust<ScriptRunRestoreResult>(r)),
   scriptRunsRestoreDismiss: (): Promise<void> => unwrap(ScriptRunsService.RestoreDismiss()),
-  scriptRunsResumeCommand: (runId: string): Promise<string> =>
-    unwrap(ScriptRunsService.ResumeCommand({ runId })),
+  scriptRunsResumeCommand: (runId: string): Promise<ScriptRunResumeLaunch> =>
+    unwrap(ScriptRunsService.ResumeCommand({ runId })).then((r) => trust<ScriptRunResumeLaunch>(r)),
   scriptRunsReadLog: (id: string, afterSeq: number): Promise<ScriptRunLogPage> =>
     unwrap(ScriptRunsService.ReadLog({ id, afterSeq })).then((r) => {
       const page = trust<Partial<ScriptRunLogPage>>(r);

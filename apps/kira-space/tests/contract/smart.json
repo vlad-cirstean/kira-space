@@ -260,7 +260,10 @@
     ],
     "truncated": false
   },
-  "ScriptRunsService.ResumeCommand": "claude --resume 'sess-1'",
+  "ScriptRunsService.ResumeCommand": {
+    "command": "claude --resume 'sess-1'",
+    "token": ""
+  },
   "args:ScriptRunsService.Start": {
     "branchId": "",
     "hash": "<masked>",

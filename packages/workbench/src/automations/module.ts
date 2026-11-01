@@ -7,6 +7,7 @@ import type {
   ScriptRunRestoreChoice,
   ScriptRunRestoreResult,
   ScriptRunRestoreState,
+  ScriptRunResumeLaunch,
   ScriptRunStarted,
 } from '@shared/domain/scriptRuns';
 import type {
@@ -66,8 +67,8 @@ export interface ScriptRunsSeam {
   start(args: ScriptRunArgs, hash: string): Promise<ScriptRunStarted>;
   /** Continues the Claude session of a smart run a restart ended, as a new run. */
   resume(id: string): Promise<ScriptRunStarted>;
-  /** The terminal command that continues a smart run's conversation. */
-  resumeCommand(runId: string): Promise<string>;
+  /** The terminal launch that continues a smart run's conversation. */
+  resumeCommand(runId: string): Promise<ScriptRunResumeLaunch>;
   /** The runs the last quit or crash ended, each planned against its script as it is now. */
   restoreState(): Promise<ScriptRunRestoreState>;
   /** Starts the confirmed runs; one outcome each, a failed run stays on the list. */

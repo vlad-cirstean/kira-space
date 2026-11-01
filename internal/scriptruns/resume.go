@@ -122,20 +122,34 @@ func uniqueNames(lists ...[]string) []string {
 	return out
 }
 
-// ResumeCommand is the terminal command that continues a smart run's saved conversation.
-func (s *Service) ResumeCommand(id string) (string, error) {
+// ResumeLaunch is how to continue a smart run's saved conversation in a terminal. Token is "" when
+// the launch needs no env; else it is the single-use token the terminal open sends back.
+type ResumeLaunch struct {
+	Command string `json:"command"`
+	Token   string `json:"token"`
+}
+
+// ResumeCommand is the terminal launch that continues a smart run's saved conversation.
+func (s *Service) ResumeCommand(id string) (ResumeLaunch, error) {
 	run, err := s.Runs.Get(id)
 	if err != nil {
-		return "", err
+		return ResumeLaunch{}, err
 	}
 	if run.Kind != KindSmart || run.SessionID == "" {
-		return "", ipcerr.T(ipcerr.CodeBadRequest, "backend.core.scriptRun.resumeCommandNone.body", nil)
+		return ResumeLaunch{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.core.scriptRun.resumeCommandNone.body", nil)
 	}
 	prov, err := s.Agent.For(run.Provider)
 	if err != nil {
-		return "", providerGone(err)
+		return ResumeLaunch{}, providerGone(err)
 	}
-	return prov.InteractiveCommand(harness.InteractiveSpec{SessionID: run.SessionID, Resume: true}), nil
+	l := prov.InteractiveCommand(harness.InteractiveSpec{SessionID: run.SessionID, Resume: true})
+	out := ResumeLaunch{Command: l.Command}
+	if len(l.Env) > 0 {
+		if out.Token, err = s.newAgentLaunch(l.Command, l.Env); err != nil {
+			return ResumeLaunch{}, err
+		}
+	}
+	return out, nil
 }
 
 // providerGone maps an unregistered stored provider to its user-facing error.

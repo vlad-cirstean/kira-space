@@ -111,12 +111,12 @@ func TestSmartScriptFailedSpace(t *testing.T) {
 	}
 	app.Contract(t, "smart", "CustomScriptsService.Create#failed", rec)
 	app.Contract(t, "smart", "ScriptRunsService.Get#failed", run, flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "costUsd"))
-	cmd, err := app.W.ScriptRuns.ResumeCommand(scriptruns.ResumeCommandArgs{RunID: started.RunID})
+	launch, err := app.W.ScriptRuns.ResumeCommand(scriptruns.ResumeCommandArgs{RunID: started.RunID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := "claude --resume '" + run.SessionID + "'"; cmd != want {
-		t.Fatalf("ResumeCommand = %q, want %q", cmd, want)
+	if want := "claude --resume '" + run.SessionID + "'"; launch.Command != want {
+		t.Fatalf("ResumeCommand = %q, want %q", launch.Command, want)
 	}
-	app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", strings.Replace(cmd, run.SessionID, "sess-1", 1))
+	app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: strings.Replace(launch.Command, run.SessionID, "sess-1", 1), Token: launch.Token})
 }

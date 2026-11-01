@@ -3,6 +3,7 @@ package terminal
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/harness"
@@ -53,6 +54,9 @@ type ScriptLauncher interface {
 	// is the single-use token of a confirmed run dialog. An error is the caller's: a blocked
 	// folder, an unknown script or a token that expired.
 	Begin(scriptID, terminalID, launchToken string) (ScriptLaunch, error)
+	// BeginAgent consumes the single-use token of an agent launch whose env the host holds and
+	// returns that env. An error is the caller's: a token that expired or names another command.
+	BeginAgent(token, command string) ([]string, error)
 	// Failed records that the run's session did not spawn.
 	Failed(runID string, err error)
 	// Exited records how the run's session ended.
@@ -164,6 +168,17 @@ func (b *BoundService) Open(args OpenArgs) (OpenResult, error) {
 		}
 	}
 
+	if args.AgentLaunchToken != "" {
+		if b.Scripts == nil {
+			return OpenResult{}, ipcerr.Contract("agent launch tokens are not available")
+		}
+		agentEnv, err := b.Scripts.BeginAgent(args.AgentLaunchToken, args.Command)
+		if err != nil {
+			return OpenResult{}, err
+		}
+		scriptEnv = agentEnv
+	}
+
 	command, env := args.Command, scriptEnv
 	composedAgent := agent && b.ComposeAgent != nil
 	if composedAgent {
@@ -177,7 +192,7 @@ func (b *BoundService) Open(args OpenArgs) (OpenResult, error) {
 			b.abortAgent(args.TerminalID)
 			return OpenResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.core.terminal.commandTooLong.body", nil)
 		}
-		command, env = composed, composedEnv
+		command, env = composed, append(slices.Clone(scriptEnv), composedEnv...)
 	}
 
 	tap, onExit := b.outputTaps(agent, scriptRun != "", args.TerminalID)

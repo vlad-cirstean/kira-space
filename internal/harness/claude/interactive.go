@@ -9,7 +9,7 @@ import (
 
 // InteractiveCommand picks the session id up front (`--session-id`) so no round trip learns it;
 // a resume uses `--resume`. Each extra word is single-quoted, in a fixed order.
-func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) string {
+func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch {
 	bin := s.Bin
 	if bin == "" {
 		bin = p.Command()
@@ -38,7 +38,7 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) string {
 			word(t)
 		}
 	}
-	return b.String()
+	return harness.Launch{Command: b.String(), SessionID: s.SessionID}
 }
 
 // WithPrompt ends flag parsing with `--` so a trailing variadic flag (--add-dir a b) cannot take

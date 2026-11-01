@@ -83,6 +83,7 @@ export interface CoreBindings {
       launchKind: string;
       scriptId: string;
       scriptLaunchToken: string;
+      agentLaunchToken: string;
     }): Promise<unknown>;
     Write(a: { terminalId: string; data: string }): Promise<void>;
     Resize(a: { terminalId: string; cols: number; rows: number }): Promise<void>;
@@ -296,7 +297,8 @@ export function createCoreControl<S, L, T, P, M>(b: CoreBindings): CoreControl<S
           command: command ?? '',
           launchKind: launchKind ?? 'shell',
           scriptId: scriptId ?? '',
-          scriptLaunchToken: launchToken ?? '',
+          scriptLaunchToken: launchKind === 'agent' ? '' : (launchToken ?? ''),
+          agentLaunchToken: launchKind === 'agent' ? (launchToken ?? '') : '',
         }),
       ).then((r) => trust<{ shell: string }>(r)),
     terminalWrite: (terminalId: string, data: string): Promise<void> =>

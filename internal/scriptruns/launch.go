@@ -78,3 +78,44 @@ func runTrigger(p *planned) Trigger {
 	}
 	return TriggerManual
 }
+
+// agentLaunch is the env of a Continue in terminal launch, waiting for its terminal tab to open.
+type agentLaunch struct {
+	command string
+	env     []string
+	created time.Time
+}
+
+// newAgentLaunch stores env under a single-use token valid for LaunchTTL, for exactly command.
+func (s *Service) newAgentLaunch(command string, env []string) (string, error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", ipcerr.InternalErr(err)
+	}
+	token := base64.RawURLEncoding.EncodeToString(raw)
+	now := time.UnixMilli(s.now())
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.agentLaunches == nil {
+		s.agentLaunches = map[string]agentLaunch{}
+	}
+	for t, l := range s.agentLaunches {
+		if now.Sub(l.created) > LaunchTTL {
+			delete(s.agentLaunches, t)
+		}
+	}
+	s.agentLaunches[token] = agentLaunch{command: command, env: env, created: now}
+	return token, nil
+}
+
+// takeAgentLaunch consumes a token: it works once, for the command it was made for, within LaunchTTL.
+func (s *Service) takeAgentLaunch(token, command string) ([]string, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	l, ok := s.agentLaunches[token]
+	delete(s.agentLaunches, token)
+	if !ok || l.command != command || time.UnixMilli(s.now()).Sub(l.created) > LaunchTTL {
+		return nil, false
+	}
+	return l.env, true
+}

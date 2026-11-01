@@ -293,14 +293,14 @@ func TestSmartScript(t *testing.T) {
 		failed := run()
 		app.Contract(t, "smart", "CustomScriptsService.Create#failed", rec)
 		app.Contract(t, "smart", "ScriptRunsService.Get#failed", failed, flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "costUsd"))
-		cmd, err := app.W.ScriptRuns.ResumeCommand(scriptruns.ResumeCommandArgs{RunID: failed.ID})
+		launch, err := app.W.ScriptRuns.ResumeCommand(scriptruns.ResumeCommandArgs{RunID: failed.ID})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if want := "claude --resume '" + failed.SessionID + "'"; cmd != want {
-			t.Fatalf("ResumeCommand = %q, want %q", cmd, want)
+		if want := "claude --resume '" + failed.SessionID + "'"; launch.Command != want {
+			t.Fatalf("ResumeCommand = %q, want %q", launch.Command, want)
 		}
-		app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", strings.Replace(cmd, failed.SessionID, "sess-1", 1))
+		app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: strings.Replace(launch.Command, failed.SessionID, "sess-1", 1), Token: launch.Token})
 		if o := failed.Outcome; o.Status != "failed" || o.Reason != "summary-failed" || !o.Reported || o.Source != "agent" {
 			t.Errorf("failed = %+v", o)
 		}

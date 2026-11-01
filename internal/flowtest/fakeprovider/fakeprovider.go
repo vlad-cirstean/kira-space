@@ -133,12 +133,12 @@ func (p *Provider) RunHeadless(_ context.Context, s harness.HeadlessSpec, h harn
 
 func (p *Provider) ResumeLost(string) bool { return false }
 
-func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) string {
+func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch {
 	flag := "--session"
 	if s.Resume {
 		flag = "--resume"
 	}
-	return fakeagent.Persona + " " + flag + " " + s.SessionID
+	return harness.Launch{Command: fakeagent.Persona + " " + flag + " " + s.SessionID, SessionID: s.SessionID}
 }
 
 func (p *Provider) WithPrompt(command, prompt string) string {

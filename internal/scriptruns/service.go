@@ -60,18 +60,19 @@ type Service struct {
 	ScheduleTimeout time.Duration
 
 	// startMu serializes Start so the running-run check and the insert of a smart run are one step.
-	startMu   sync.Mutex
-	mu        sync.Mutex
-	closed    bool
-	life      context.Context
-	endLife   context.CancelFunc
-	smart     map[string]*bgRun
-	bg        map[string]*bgRun
-	finishes  map[string]agentmcp.Finish
-	launches  map[string]launch
-	server    *agentmcp.Server
-	smartWait sync.WaitGroup
-	bgWait    sync.WaitGroup
+	startMu       sync.Mutex
+	mu            sync.Mutex
+	closed        bool
+	life          context.Context
+	endLife       context.CancelFunc
+	smart         map[string]*bgRun
+	bg            map[string]*bgRun
+	finishes      map[string]agentmcp.Finish
+	launches      map[string]launch
+	agentLaunches map[string]agentLaunch
+	server        *agentmcp.Server
+	smartWait     sync.WaitGroup
+	bgWait        sync.WaitGroup
 
 	tailMu sync.Mutex
 	tails  map[string]*termTail
@@ -100,6 +101,15 @@ func (s *Service) emit(r Run) {
 	if s.Emit != nil {
 		s.Emit(r)
 	}
+}
+
+// BeginAgent consumes the token ResumeCommand made and returns the env its agent launch needs.
+func (s *Service) BeginAgent(token, command string) ([]string, error) {
+	env, ok := s.takeAgentLaunch(token, command)
+	if !ok {
+		return nil, ipcerr.T(ipcerr.CodeConflict, "backend.core.scriptRun.expired.body", nil)
+	}
+	return env, nil
 }
 
 // Begin loads the script, prepares its folder and records a running run. A blocked folder records
