@@ -53,6 +53,7 @@ import (
 )
 
 type options struct {
+	noSecretStore   bool
 	smartTimeout    time.Duration
 	sandbox         agentsandbox.Enforcer
 	scheduleTimeout time.Duration
@@ -73,6 +74,9 @@ type options struct {
 	crSync          gitsession.CRSyncConfig
 	wayland         bool
 }
+
+// WithoutSecretStore boots without KIRA_INSECURE_SECRETS, so the cipher is unavailable on Linux.
+func WithoutSecretStore() Opt { return func(o *options) { o.noSecretStore = true } }
 
 // Opt tweaks New.
 type Opt func(*options)
@@ -233,6 +237,11 @@ func New(t *testing.T, opts ...Opt) *App {
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(a.Home, ".gitconfig"))
 	t.Setenv("PATH", a.BinDir+string(os.PathListSeparator)+a.pathTail(o))
 	t.Setenv("TZ", "UTC")
+	if a.opts.noSecretStore {
+		t.Setenv("KIRA_INSECURE_SECRETS", "")
+	} else {
+		t.Setenv("KIRA_INSECURE_SECRETS", "1")
+	}
 	t.Setenv(fakeagent.EnvDir, a.FakeDir)
 	t.Setenv(fakeagent.EnvScenario, a.scenario.Encode())
 	if o.seed != nil {

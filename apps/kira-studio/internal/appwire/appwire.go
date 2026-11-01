@@ -153,6 +153,7 @@ func Build(opts Options) (*Wired, error) {
 		registry = providers.New()
 	}
 	repositories.CustomScripts.Agents = registry
+	repositories.CustomScripts.Secrets = secrets.NewStore(repositories.CustomScripts.DB, opts.Cipher)
 	agents := harness.Selector{Registry: registry, ID: func() (string, error) {
 		s, err := repositories.Settings.GetAll()
 		return s.Agent.Provider, err

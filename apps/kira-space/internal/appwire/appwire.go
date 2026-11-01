@@ -51,6 +51,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/metrics"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/windowsvc"
@@ -61,6 +62,8 @@ import (
 // in the harness.
 type Options struct {
 	Repos *repos.Repos
+	// Cipher seals saved secret values; nil builds one from the keychain.
+	Cipher *secrets.Cipher
 	// DB is closed last by Teardown, after Repos.
 	DB io.Closer
 	// Emitter is the window event sink (a deferred Wails emitter in production).
@@ -213,6 +216,10 @@ func Build(opts Options) *Wired {
 	w.Agents = agentSelector(registry, repositories.Settings)
 	w.AgentSvc = &bridge.AgentService{Service: &agentsvc.Service{Agents: w.Agents}}
 	repositories.CustomScripts.Agents = registry
+	if opts.Cipher == nil {
+		opts.Cipher = secrets.New()
+	}
+	repositories.CustomScripts.Secrets = secrets.NewStore(repositories.CustomScripts.DB, opts.Cipher)
 	repositories.Settings.Agents = registry
 
 	credentialRelay := gitcred.New()

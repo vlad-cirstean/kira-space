@@ -52,6 +52,7 @@ const EnvComplete = flowtest.EnvComplete
 func Complete(t testing.TB) { flowtest.Complete(t) }
 
 type options struct {
+	noSecretStore   bool
 	smartTimeout    time.Duration
 	scheduleTimeout time.Duration
 	clock           scriptruns.Clock
@@ -59,6 +60,9 @@ type options struct {
 	dockerExtra     []docker.Option
 	kubeExtra       []kubernetes.Option
 }
+
+// WithoutSecretStore boots without KIRA_INSECURE_SECRETS, so the cipher is unavailable on Linux.
+func WithoutSecretStore() Opt { return func(o *options) { o.noSecretStore = true } }
 
 // Opt tweaks New.
 type Opt func(*options)
@@ -140,7 +144,11 @@ func New(t *testing.T, opts ...Opt) *App {
 	t.Setenv(fakeagent.EnvScenario, fakeagent.Scenario{}.Encode())
 	t.Setenv("TZ", "UTC")
 	// Linux has no keychain; a no-op on macOS, where the real Keychain-backed cipher is used.
-	t.Setenv("KIRA_INSECURE_SECRETS", "1")
+	if a.opts.noSecretStore {
+		t.Setenv("KIRA_INSECURE_SECRETS", "")
+	} else {
+		t.Setenv("KIRA_INSECURE_SECRETS", "1")
+	}
 	useDockerHost(t)
 	a.build()
 	t.Cleanup(a.stop)
@@ -187,7 +195,7 @@ func (a *App) build() {
 		a.t.Fatalf("repos.New: %v", err)
 	}
 	cipher := secrets.New()
-	if !cipher.Status().Available {
+	if !a.opts.noSecretStore && !cipher.Status().Available {
 		a.t.Fatalf("cipher unavailable: %+v", cipher.Status())
 	}
 	w, err := appwire.Build(appwire.Options{

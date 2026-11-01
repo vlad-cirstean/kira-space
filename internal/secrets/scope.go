@@ -18,11 +18,14 @@ const (
 	// ScopeConnectionURI seals the whole connection URI (P181) — connections.uri, read and written
 	// only by repos.SecretsRepo.
 	ScopeConnectionURI Scope = "connection-uri"
+	// ScopeScriptParam seals a Runs secret param's saved value (P447) — secret_values rows owned by
+	// a custom script, read and written only through Store.
+	ScopeScriptParam Scope = "script-param"
 )
 
 func (s Scope) valid() bool {
 	switch s {
-	case ScopeConnection, ScopeVariable, ScopeVariableHistory, ScopeMaskKey, ScopeConnectionURI:
+	case ScopeConnection, ScopeVariable, ScopeVariableHistory, ScopeMaskKey, ScopeConnectionURI, ScopeScriptParam:
 		return true
 	}
 	return false

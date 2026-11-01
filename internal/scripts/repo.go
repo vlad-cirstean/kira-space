@@ -10,6 +10,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -24,6 +25,8 @@ type Repo struct {
 	DB *sql.DB
 	// Agents supplies the model aliases a smart script may name; nil means the built-in providers.
 	Agents *harness.Registry
+	// Secrets holds saved secret param values; set by each appwire.
+	Secrets *secrets.Store
 }
 
 func (r *Repo) models() harness.Catalog {

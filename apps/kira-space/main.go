@@ -22,6 +22,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/keepawake"
 	"github.com/kirathecat/kira-studio/internal/logging"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/startupfail"
 	"github.com/kirathecat/kira-studio/internal/terminal"
@@ -100,7 +101,7 @@ func main() {
 	browserOpener, attachBrowser := shell.NewDeferredBrowser()
 	rawDialogs, attachDialogs := shell.NewDeferredDialogs()
 	wired := appwire.Build(appwire.Options{
-		Repos: repositories, DB: db, Emitter: rawEmitter, Browser: browserOpener,
+		Repos: repositories, DB: db, Cipher: secrets.New(), Emitter: rawEmitter, Browser: browserOpener,
 		Dialogs: appshell.NewDialogs(rawDialogs), Locator: platformLocator(),
 		KeepAwakeDriver: keepawake.NewPlatformDriver(), MobileAssets: mobileAssetsFS,
 		FileHandlers: filehandlers.NewRegistry(),
