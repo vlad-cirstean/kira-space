@@ -1,4 +1,4 @@
-// Package appwire is Kira Space's composition root: it builds the 31 bound services, the git router
+// Package appwire is Kira Space's composition root: it builds the 32 bound services, the git router
 // and socket, the ADE tracker and board, and their teardown. main and the flow-test harness
 // (internal/flowharness) both call Build, so a test cannot wire differently from production. It
 // sits above internal/bridge in the layering, like internal/appshell.

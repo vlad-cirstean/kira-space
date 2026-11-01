@@ -41,7 +41,7 @@ var mobileAssets embed.FS
 
 // Startup order: the argv shims (askpass, memory-mcp, memory-embed) -> config.EnsureLayout ->
 // logging.Init/Sweep -> storage.Open (migrates) -> repos.New -> appwire.Build (terminal registry,
-// ADE tracker with the Claude Code hooks, task board, keep-awake, the 31 bound services) ->
+// ADE tracker with the Claude Code hooks, task board, keep-awake, the 32 bound services) ->
 // application.New (the bound services plus the git stream registration) -> the menu -> the
 // startup window list, opened -> app.Run(). No adapters, connections, HTTP/gRPC or DB MCP:
 // not this app's module.
