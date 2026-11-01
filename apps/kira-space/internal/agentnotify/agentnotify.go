@@ -103,10 +103,6 @@ const (
 	maxTrackedRuns = 4096
 )
 
-// wakeTools mirrors workbench agentActivity.ts WAKE_TOOLS: a session that armed one waits on a
-// wake-up, so its Stop is not "finished".
-var wakeTools = map[string]bool{"Monitor": true, "ScheduleWakeup": true}
-
 // Notifier is safe for concurrent use.
 type Notifier struct {
 	d Deps
@@ -152,47 +148,36 @@ func (n *Notifier) HandleEvent(ev harness.AgentEvent) {
 	n.mu.Lock()
 	armed := n.wake[ev.TerminalID]
 	switch ev.Event {
-	case "PreToolUse":
-		if wakeTools[ev.ToolName] {
+	case harness.EventToolStart:
+		if ev.Wakes {
 			n.wake[ev.TerminalID] = true
 		}
 		n.mu.Unlock()
 		return
-	case "UserPromptSubmit", "SessionStart":
+	case harness.EventPrompt, harness.EventSessionStart:
 		delete(n.wake, ev.TerminalID)
 		n.mu.Unlock()
 		return
-	case "SessionEnd":
+	case harness.EventSessionEnd:
 		delete(n.wake, ev.TerminalID)
 		n.mu.Unlock()
 		return
-	case "Stop":
+	case harness.EventTurnEnd:
 		delete(n.wake, ev.TerminalID)
 	}
 	n.mu.Unlock()
 
 	switch ev.Event {
-	case "Stop":
+	case harness.EventTurnEnd:
 		if armed {
 			return
 		}
 		n.notifyTerminal(KindFinished, ev, ev.LastAssistantMessage)
-	case "Notification":
-		if needsInput(ev) {
+	case harness.EventNotification:
+		if ev.NeedsInput {
 			n.notifyTerminal(KindNeedsInput, ev, ev.Message)
 		}
 	}
-}
-
-// needsInput: a permission or elicitation prompt, or an untyped message from an older CLI.
-func needsInput(ev harness.AgentEvent) bool {
-	switch ev.NotificationType {
-	case "permission_prompt", "elicitation_dialog":
-		return true
-	case "":
-		return ev.Message != ""
-	}
-	return false
 }
 
 func (n *Notifier) notifyTerminal(kind Kind, ev harness.AgentEvent, message string) {

@@ -40,6 +40,32 @@ type hookRequest struct {
 	LastAssistantMessage string `json:"last_assistant_message"`
 }
 
+// eventKinds maps Claude's hook_event_name to the neutral kind; a name not listed is dropped.
+var eventKinds = map[string]harness.EventKind{
+	"SessionStart":     harness.EventSessionStart,
+	"SessionEnd":       harness.EventSessionEnd,
+	"UserPromptSubmit": harness.EventPrompt,
+	"PreToolUse":       harness.EventToolStart,
+	"PostToolUse":      harness.EventToolEnd,
+	"Notification":     harness.EventNotification,
+	"Stop":             harness.EventTurnEnd,
+}
+
+// wakeTools are the tools that arm a wake-up: a session that armed one waits, so its Stop is not
+// "finished". Mirrors workbench agentActivity.ts WAKE_TOOLS.
+var wakeTools = map[string]bool{"Monitor": true, "ScheduleWakeup": true}
+
+// needsInput: a permission or elicitation prompt, or an untyped message from an older CLI.
+func needsInput(req hookRequest) bool {
+	switch req.NotificationType {
+	case "permission_prompt", "elicitation_dialog":
+		return true
+	case "":
+		return req.Message != ""
+	}
+	return false
+}
+
 func (s *Server) mux() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/hook", s.handleHook)
@@ -80,10 +106,11 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if s.onEvent != nil {
+	kind, known := eventKinds[req.HookEventName]
+	if s.onEvent != nil && known {
 		s.onEvent(harness.AgentEvent{
 			TerminalID:           terminalID,
-			Event:                req.HookEventName,
+			Event:                kind,
 			SessionID:            req.SessionID,
 			Cwd:                  req.Cwd,
 			ToolName:             req.ToolName,
@@ -93,6 +120,8 @@ func (s *Server) handleHook(w http.ResponseWriter, r *http.Request) {
 			Source:               req.Source,
 			Reason:               req.Reason,
 			LastAssistantMessage: truncateMessage(req.LastAssistantMessage),
+			Wakes:                kind == harness.EventToolStart && wakeTools[req.ToolName],
+			NeedsInput:           kind == harness.EventNotification && needsInput(req),
 		})
 	}
 	w.WriteHeader(http.StatusOK)

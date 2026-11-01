@@ -708,11 +708,11 @@ func (t *Tracker) HandleEvent(ev harness.AgentEvent) {
 
 	sessionChanged := false
 	// The id lands in a later shell command line; only a real UUID is trusted.
-	if _, perr := uuid.Parse(ev.SessionID); ev.Event == "SessionStart" && perr == nil && t.agentSessionID[recordID] != ev.SessionID {
+	if _, perr := uuid.Parse(ev.SessionID); ev.Event == harness.EventSessionStart && perr == nil && t.agentSessionID[recordID] != ev.SessionID {
 		t.agentSessionID[recordID] = ev.SessionID
 		sessionChanged = true
 	}
-	flushNow := ev.Event == "Stop" || ev.Event == "SessionEnd"
+	flushNow := ev.Event == harness.EventTurnEnd || ev.Event == harness.EventSessionEnd
 	t.mu.Unlock()
 
 	if sessionChanged {

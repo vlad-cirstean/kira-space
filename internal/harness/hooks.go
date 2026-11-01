@@ -39,21 +39,39 @@ type HookStatus struct {
 	SettingsPath string
 }
 
+// EventKind is a session event's neutral kind. The values are the wire strings the bridge and the
+// frontend read.
+type EventKind string
+
+const (
+	EventSessionStart EventKind = "SessionStart"
+	EventSessionEnd   EventKind = "SessionEnd"
+	EventPrompt       EventKind = "UserPromptSubmit"
+	EventToolStart    EventKind = "PreToolUse"
+	EventToolEnd      EventKind = "PostToolUse"
+	EventNotification EventKind = "Notification"
+	EventTurnEnd      EventKind = "Stop"
+)
+
 // AgentEvent is one session event. TerminalID comes from the launch, the rest from the agent's
 // payload; only the fields below are kept.
 type AgentEvent struct {
-	TerminalID       string `json:"terminalId"`
-	Event            string `json:"event"`
-	SessionID        string `json:"sessionId"`
-	Cwd              string `json:"cwd"`
-	ToolName         string `json:"toolName"`
-	ToolUseID        string `json:"toolUseId"`
-	NotificationType string `json:"notificationType"`
-	Message          string `json:"message"`
-	Source           string `json:"source"`
-	Reason           string `json:"reason"`
+	TerminalID       string    `json:"terminalId"`
+	Event            EventKind `json:"event"`
+	SessionID        string    `json:"sessionId"`
+	Cwd              string    `json:"cwd"`
+	ToolName         string    `json:"toolName"`
+	ToolUseID        string    `json:"toolUseId"`
+	NotificationType string    `json:"notificationType"`
+	Message          string    `json:"message"`
+	Source           string    `json:"source"`
+	Reason           string    `json:"reason"`
 	// LastAssistantMessage is Stop's reply text, bounded like Message.
 	LastAssistantMessage string `json:"lastAssistantMessage"`
+	// Wakes: a tool start that arms a self-wake, so the turn end that follows is not "finished".
+	Wakes bool `json:"-"`
+	// NeedsInput: a notification that asks the user to act.
+	NeedsInput bool `json:"-"`
 }
 
 // Hooks runs one listener per registered provider that is a HookHost and routes a launch to its
