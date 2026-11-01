@@ -471,6 +471,12 @@ test('the config file bar shows a valid file, Open and Reveal name the folder an
   await expect.poll(() => calls(control, IPC.configFilesReveal)).toHaveLength(1);
   expect(calls(control, IPC.configFilesOpen)[0]?.args).toEqual({ folder: 'workflows', file });
   expect(calls(control, IPC.configFilesReveal)[0]?.args).toEqual({ folder: 'workflows', file });
+  await page.locator(t('config-file-about')).click();
+  await expect.poll(() => calls(control, IPC.configFilesOpen)).toHaveLength(2);
+  expect(calls(control, IPC.configFilesOpen)[1]?.args).toEqual({
+    folder: 'workflows',
+    file: 'AGENTS.md',
+  });
 });
 
 test('a broken workflow file shows its error with the line in the config file bar', async ({

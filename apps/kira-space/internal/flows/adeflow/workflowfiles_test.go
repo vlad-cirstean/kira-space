@@ -119,7 +119,7 @@ func TestWorkflowSaveWritesAtomicallyOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, e := range entries {
-		if e.Name() != "saved.yaml" {
+		if e.Name() != "saved.yaml" && e.Name() != "AGENTS.md" {
 			t.Errorf("unexpected file %s beside the saved workflow", e.Name())
 		}
 	}
