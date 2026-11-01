@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -18,6 +19,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/appsettings"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeprovider"
+	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/memory/importer"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
@@ -368,4 +370,191 @@ func sessionByID(t *testing.T, app *flowharness.App, id string) adewire.Session 
 		}
 	}
 	return adewire.Session{}
+}
+
+// task creates a task on repoID under the workflow in yaml.
+func task(t *testing.T, app *flowharness.App, repoID, flowID, yaml string) adewire.Task {
+	t.Helper()
+	if entry, err := app.W.AdeTask.SaveWorkflowYaml(ctx, adewire.SaveWorkflowYamlArgs{FileName: flowID + ".yaml", Yaml: yaml}); err != nil || entry.Error != nil {
+		t.Fatalf("SaveWorkflowYaml %s: %v %+v", flowID, err, entry.Error)
+	}
+	tk, err := app.W.AdeTask.CreateTask(ctx, adewire.CreateTaskArgs{Title: "Task " + flowID, CodeRepoIDs: []string{repoID}, WorkflowID: flowID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tk
+}
+
+// personaArgs is the newest args record of the generic persona.
+func personaArgs(t *testing.T, app *flowharness.App) string {
+	t.Helper()
+	files, _ := filepath.Glob(filepath.Join(app.FakeDir, fakeagent.Persona+"-*.args"))
+	var best string
+	var bestN int
+	for _, f := range files {
+		var n int
+		if _, err := fmt.Sscanf(filepath.Base(f), fakeagent.Persona+"-%d.args", &n); err == nil && n >= bestN {
+			best, bestN = f, n
+		}
+	}
+	if best == "" {
+		return ""
+	}
+	b, _ := os.ReadFile(best)
+	return string(b)
+}
+
+// TestLeanProviderSeams: a provider with only the roles a minimal agent needs. Launch env reaches
+// the agent process (and a Continue in terminal sends it through a single-use token), the session
+// id the agent assigns itself is learned after launch and gates resume until known, and a missing
+// optional role falls back or refuses per caller.
+func TestLeanProviderSeams(t *testing.T) {
+	lean := fakeprovider.NewLean()
+	full := fakeprovider.New(map[string]json.RawMessage{})
+	app := flowharness.New(t, flowharness.WithProvider(full, lean), flowharness.WithTrackerGrace(time.Second))
+	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
+	repoRec, err := app.W.CodeWorkspace.ImportRepo(ctx, bridge.CodeWorkspaceImportArgs{Path: repo.Dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	app.WindowMgr.OpenWindow(shell.WindowRecord{Key: window})
+	setProvider(t, app, fakeprovider.LeanID)
+
+	// Env-carried config: the command line has none, the agent process has it.
+	manual := task(t, app, repoRec.ID, "manual", "id: manual\nname: Manual\nsteps:\n  - id: work\n    name: Work\n    kind: manual\n    status: In progress\n    session: true\n")
+	step, err := app.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: manual.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if step.Command != fakeagent.Persona+" lean" || strings.Contains(step.Command, "lean-config") {
+		t.Fatalf("interactive command = %q, want the bare lean launch", step.Command)
+	}
+	if s := sessionByID(t, app, step.SessionID); s.AgentSessionID != "" {
+		t.Fatalf("session id before launch = %q, want none", s.AgentSessionID)
+	}
+	open := func(id, command, token string) error {
+		_, err := app.W.Terminal.Open(terminal.OpenArgs{
+			TerminalID: id, Cwd: step.Cwd, Cols: 100, Rows: 30, WindowKey: window,
+			Command: command, LaunchKind: terminal.LaunchKindAgent, AgentLaunchToken: token,
+		})
+		return err
+	}
+	if err := open(step.TerminalID, step.Command, ""); err != nil {
+		t.Fatal(err)
+	}
+	sessions := filepath.Join(app.FakeDir, fakeagent.LeanSessions)
+	var line []byte
+	testx.WaitUntil(t, waitFor, func() bool {
+		line, _ = os.ReadFile(sessions)
+		return len(line) > 0 && strings.Contains(personaArgs(t, app), fakeprovider.LeanEnv)
+	})
+	var learned fakeagent.LeanSession
+	if err := json.Unmarshal(line, &learned); err != nil {
+		t.Fatal(err)
+	}
+
+	// Late session id: unknown at stop, resume refused; known once the agent has reported it.
+	if err := os.Remove(sessions); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.W.Terminal.Close(terminal.CloseArgs{TerminalID: step.TerminalID}); err != nil {
+		t.Fatal(err)
+	}
+	testx.WaitUntil(t, waitFor, func() bool { return sessionByID(t, app, step.SessionID).State == "stopped" })
+	if s := sessionByID(t, app, step.SessionID); s.AgentSessionID != "" {
+		t.Fatalf("session id after stop = %q, want none while the agent has not reported", s.AgentSessionID)
+	}
+	_, err = app.W.AdeTask.TakeOver(ctx, adewire.TakeOverArgs{SessionID: step.SessionID})
+	if err == nil || !strings.Contains(err.Error(), i18n.T("backend.space.ade.sessionIdUnknown.body", nil)) {
+		t.Fatalf("take over with no id = %v, want the idUnknown refusal", err)
+	}
+	if err := os.WriteFile(sessions, line, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	launch, err := app.W.AdeTask.TakeOver(ctx, adewire.TakeOverArgs{SessionID: step.SessionID})
+	if err != nil {
+		t.Fatalf("take over with the id reported: %v", err)
+	}
+	if want := fakeagent.Persona + " lean --resume " + learned.ID; launch.Command != want {
+		t.Fatalf("take over command = %q, want %q", launch.Command, want)
+	}
+	if s := sessionByID(t, app, step.SessionID); s.AgentSessionID != learned.ID {
+		t.Fatalf("stored session id = %q, want %q", s.AgentSessionID, learned.ID)
+	}
+
+	// Continue in terminal sends the env through a single-use token.
+	rec, err := app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
+		Name: "ask", Kind: scripts.KindSmart, Command: "Say hi", Color: "blue", Smart: &scripts.Smart{Model: "fast"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	setProvider(t, app, fakeprovider.ID)
+	args := scriptruns.RunArgs{ScriptID: rec.ID}
+	pv, err := app.W.ScriptRuns.Preview(args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	started, err := app.W.ScriptRuns.Start(scriptruns.StartArgs{RunArgs: args, Hash: pv.Hash})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var smart scriptruns.Run
+	testx.WaitUntil(t, waitFor, func() bool {
+		smart, _ = app.W.ScriptRuns.Get(scriptruns.IDArgs{ID: started.RunID})
+		return smart.State == "done"
+	})
+	if _, err := app.DB().Exec(`UPDATE script_runs SET provider = ? WHERE id = ?`, fakeprovider.LeanID, smart.ID); err != nil {
+		t.Fatal(err)
+	}
+	resume, err := app.W.ScriptRuns.ResumeCommand(scriptruns.ResumeCommandArgs{RunID: smart.ID})
+	if err != nil || resume.Token == "" || resume.Command != fakeagent.Persona+" lean --resume "+smart.SessionID || strings.Contains(resume.Command, "lean-config") {
+		t.Fatalf("ResumeCommand = %+v, %v, want a tokened command with no env in it", resume, err)
+	}
+	if err := open("continue-1", resume.Command, resume.Token); err != nil {
+		t.Fatal(err)
+	}
+	testx.WaitUntil(t, waitFor, func() bool {
+		a := personaArgs(t, app)
+		return strings.Contains(a, "--resume\n"+smart.SessionID) && strings.Contains(a, fakeprovider.LeanEnv)
+	})
+	err = open("continue-2", resume.Command, resume.Token)
+	var ie *ipcerr.Error
+	if !errors.As(err, &ie) || ie.Code != string(ipcerr.CodeConflict) || ie.Message != i18n.T("backend.core.scriptRun.expired.body", nil) {
+		t.Fatalf("second open with the token = %v, want the expired conflict", err)
+	}
+
+	// Missing optional roles. Structured: memory falls back to claude.
+	setProvider(t, app, fakeprovider.LeanID)
+	app.Scenario(fakeagent.Scenario{Prompts: []fakeagent.PromptRule{
+		{System: extractSystem, Emit: claudeAnswer(t, extractOut())},
+		{System: mergeSystem, Emit: claudeAnswer(t, mergeOut())},
+	}})
+	if got := distill(t, app, "lean-d1"); !reflect.DeepEqual(got, mergedLines) {
+		t.Fatalf("lines = %+v, want claude's", got)
+	}
+	if claudeCalls(t, app) == 0 {
+		t.Fatal("a distill with the lean provider active made no claude call")
+	}
+	// Headless: a smart script is blocked, an ADE step run fails with the same refusal.
+	refusal := (&harness.MissingRole{Agent: lean.Label(), Role: "smart scripts"}).Error()
+	if pv, err := app.W.ScriptRuns.Preview(args); err != nil || pv.Blocker != refusal {
+		t.Fatalf("smart Preview blocker = %q, %v, want %q", pv.Blocker, err, refusal)
+	}
+	flow := "id: flow\nname: Flow\nsteps:\n" +
+		"  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 1m\n    prompt: work on {branch} in {repo}\n"
+	auto := task(t, app, repoRec.ID, "flow", flow)
+	br := branchOf(t, app, auto.ID, repoRec.ID)
+	if _, err := app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: auto.ID, BranchNames: map[string]string{br.ID: "feat/lean"}}); err != nil {
+		t.Fatal(err)
+	}
+	var run adewire.Run
+	testx.WaitUntil(t, waitFor, func() bool {
+		run = latestRun(t, app, auto.ID, "one")
+		return run.State == "failed"
+	})
+	want := (&harness.MissingRole{Agent: lean.Label(), Role: "headless runs"}).Error()
+	if run.Outcome == nil || !strings.Contains(run.Outcome.Summary+run.Note, want) {
+		t.Fatalf("run = %+v, want a failure naming %q", run, want)
+	}
 }

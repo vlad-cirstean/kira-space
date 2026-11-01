@@ -31,10 +31,18 @@ type HeadlessCall struct {
 	Stage                            harness.StageValues
 }
 
+// base is the Claude provider seen through the roles the fake delegates: it hides Claude's hook and
+// usage roles, which the fake does not play.
+type base interface {
+	harness.Provider
+	Fail(kind error) error
+	ScrubEnv(environ []string) []string
+}
+
 // Provider is the fake. Answers maps a substring of a structured call's system prompt to the output
 // it returns; the first match answers.
 type Provider struct {
-	harness.Provider
+	base
 	Answers map[string]json.RawMessage
 
 	mu         sync.Mutex
@@ -45,7 +53,7 @@ type Provider struct {
 
 // New returns a fake whose structured calls are answered from answers.
 func New(answers map[string]json.RawMessage) *Provider {
-	return &Provider{Provider: claude.New(), Answers: answers}
+	return &Provider{base: claude.New(), Answers: answers}
 }
 
 // Structured returns the structured requests so far, in order.
@@ -74,7 +82,7 @@ func (p *Provider) MCPConfig(servers []harness.MCPServer) ([]byte, error) {
 	p.mu.Lock()
 	p.renders++
 	p.mu.Unlock()
-	return p.Provider.MCPConfig(servers)
+	return p.base.MCPConfig(servers)
 }
 
 func (p *Provider) ID() string            { return ID }

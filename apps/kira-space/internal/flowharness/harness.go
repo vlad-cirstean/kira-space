@@ -70,7 +70,7 @@ type options struct {
 	mobilePoll      time.Duration
 	seed            func(*App)
 	embedSpec       *embed.Spec
-	provider        harness.Provider
+	providers       []harness.Provider
 	crSync          gitsession.CRSyncConfig
 	wayland         bool
 }
@@ -141,8 +141,8 @@ func WithRebaseTimeout(d time.Duration) Opt { return func(o *options) { o.rebase
 // WithEmbedSpec replaces the semantic-search model, so a test serves its files from a fake host.
 func WithEmbedSpec(s embed.Spec) Opt { return func(o *options) { o.embedSpec = &s } }
 
-// WithProvider registers a test-only agent provider next to claude.
-func WithProvider(p harness.Provider) Opt { return func(o *options) { o.provider = p } }
+// WithProvider registers test-only agent providers next to claude, in order.
+func WithProvider(ps ...harness.Provider) Opt { return func(o *options) { o.providers = ps } }
 
 // WithSeed runs seed on the isolated homes before the first boot. Startup work that runs in the
 // background (sweeps) would race a seed written after New.
@@ -356,8 +356,8 @@ func (a *App) build() {
 		ghOptions.Locator = noGhLocator{}
 	}
 	var registry *harness.Registry
-	if a.opts.provider != nil {
-		registry = providers.New(a.opts.provider)
+	if len(a.opts.providers) > 0 {
+		registry = providers.New(a.opts.providers...)
 	}
 	az := azure.Options{Locator: noAzLocator{}}
 	if a.opts.azure != nil {
@@ -412,7 +412,7 @@ func (a *App) Restart() {
 }
 
 // Unregister drops the test provider from the next boot (Restart), as an uninstalled provider is.
-func (a *App) Unregister() { a.opts.provider = nil }
+func (a *App) Unregister() { a.opts.providers = nil }
 
 // DB is the live database, for tests that plant or inspect rows no bound call reaches.
 func (a *App) DB() *sql.DB { return a.db.DB }

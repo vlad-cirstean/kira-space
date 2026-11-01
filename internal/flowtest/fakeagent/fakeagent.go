@@ -141,6 +141,23 @@ type GhRule struct {
 // run (internal/flowtest/fakeprovider): it records its argv and idles until stdin closes.
 const Persona = "kira-fake-agent"
 
+// LeanArg is the persona's first argument when a lean provider starts it: the persona then assigns
+// the session its own id, as an agent that takes none up front does.
+const LeanArg = "lean"
+
+// LeanSessions is the file in the fake dir holding one LeanSession JSON per line.
+const LeanSessions = "sessions.jsonl"
+
+// EnvPersonaConfig is a variable the persona records in its args file when set.
+const EnvPersonaConfig = "KIRA_FAKE_CONFIG"
+
+// LeanSession is one session a lean persona assigned itself; StartedAt is Unix milliseconds.
+type LeanSession struct {
+	ID        string `json:"id"`
+	Cwd       string `json:"cwd"`
+	StartedAt int64  `json:"startedAt"`
+}
+
 // Run plays the named tool ("claude", "gh", "fake-mcp" or Persona) for one invocation and returns its exit code.
 func Run(name string, args []string) int {
 	var scen Scenario
@@ -412,7 +429,14 @@ func startHeadless(scen Scenario, dir, stem string, args []string) (code int, do
 // the PTY to .prompt, then idles until stdin closes.
 func runPersona(dir string, args []string) int {
 	stem := filepath.Join(dir, fmt.Sprintf("%s-%d", Persona, nextCount(dir, Persona)))
-	writeFile(stem+".args", []byte(strings.Join(args, "\n")))
+	record := strings.Join(args, "\n")
+	if v := os.Getenv(EnvPersonaConfig); v != "" {
+		record += "\n" + EnvPersonaConfig + "=" + v
+	}
+	writeFile(stem+".args", []byte(record))
+	if len(args) > 0 && args[0] == LeanArg && !slices.Contains(args, "--resume") {
+		recordLeanSession(dir)
+	}
 	f, err := os.OpenFile(stem+".prompt", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "fakeagent:", err)
@@ -421,6 +445,20 @@ func runPersona(dir string, args []string) int {
 	defer f.Close()
 	_, _ = io.Copy(f, os.Stdin)
 	return 0
+}
+
+// recordLeanSession appends the session a lean provider's agent assigned itself to
+// <dir>/sessions.jsonl, the shape a real agent's session list has: id, folder, start time.
+func recordLeanSession(dir string) {
+	cwd, _ := os.Getwd()
+	now := time.Now()
+	line, _ := json.Marshal(LeanSession{ID: fmt.Sprintf("lean-%d", now.UnixNano()), Cwd: cwd, StartedAt: now.UnixMilli()})
+	f, err := os.OpenFile(filepath.Join(dir, LeanSessions), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_, _ = f.Write(append(line, '\n'))
 }
 
 // recordTUIInput keeps what the app types into an interactive TUI session, whose stdin is a PTY.
