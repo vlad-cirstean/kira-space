@@ -7,7 +7,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | Phase | Title | Status |
 |---|---|---|
 | P447 | Shared keychain secret layer; Runs secret params stored encrypted | Done |
-| P448 | Agent harness seams for a second real provider | Todo |
+| P448 | Agent harness seams for a second real provider | Done |
 | P449 | OpenCode provider; pick the agent per interactive session | Todo |
 | P450 | Config-as-files foundation: store, layout, validation, DB sync, interpolation, AGENTS.md | Todo |
 | P451 | Workflows folder AGENTS.md | Todo |
@@ -49,6 +49,15 @@ Result: Done. Cipher hoisted to repo-root `internal/secrets`; i18n keys moved to
 - Fix each gap in `internal/harness` and its callers (`ade`, `internal/scriptruns`, `internal/terminal/bound.go`, `internal/agentnotify`, `apps/kira-space/internal/agentusage`). Claude behaviour unchanged.
 - No transcript parsing exists outside `internal/harness/claude` (`stream.go` for headless stream-json); the plan confirms and keeps it there.
 - Test: `flows/harnessflow` `TestSecondProviderRegistered` grows one case per seam (env-carried config, late session id, a missing optional role); `fakeprovider` exercises them. Existing flows unchanged. Real `claude`: `bun run test:claude`.
+
+**Result** (Done). Plan: `plans/P448.md`. Commits: optional `Structured`/`Headless` roles; neutral `EventKind`; `Launch{Command, Env, SessionID}` plus agent launch token; late session id; `fakeprovider.Lean` flow test; docs.
+- Optional roles: `Provider` drops `Structured`/`Headless`; `StructuredOf`, `HeadlessOf`, `MissingRole` (matches `ErrUnsupported`). Memory falls back to claude. Smart scripts: `Preview.Blocker`. ADE runs: `superviseAgent` fails the run before the sandbox.
+- Hook kinds: `harness.EventKind` (wire strings unchanged), Go-only `Wakes`/`NeedsInput` set by the Claude hooks package; `agentnotify` and `Tracker.HandleEvent` read them. Unknown Claude event names dropped.
+- `InteractiveCommand` returns `Launch`. Tracker keeps `Env` on the intent. Continue in terminal: `ResumeCommand` returns `{command, token}`; `OpenArgs.AgentLaunchToken`, `ScriptLauncher.BeginAgent`. Wire change in both apps (contracts, bindings, UI mock updated). Frontend forwards `launchToken` as `agentLaunchToken` for agent tabs.
+- Late id: `SessionLocator`, `ValidSessionID`; `ade_sessions` accepts `''` for TUI rows; learned at stop and at resume; refusal key is `backend.space.ade.sessionIdUnknown.body` (plan said `backend.ade.session...`; existing `backend.space.ade` namespace wins).
+- Left out by decision: headless late id (P449), frontend still reads Claude names, step `allowed_tools` and rebase built-ins stay Claude-only (Known open item). `agentusage` needed no change. `MCPHost.WriteUserMCPConfig` was already gone. No `AgentService.Info#fake-lean` contract: no UI consumer.
+- Test fixes found en route: `fakeprovider.Provider` now embeds a narrow `base` (the embedded `harness.Provider` lost `ScrubEnv`/`Fail`); Studio terminal-open contract gained `agentLaunchToken`; `TestMemoryMcpThroughClaude` prompt names the `id` argument (haiku sent `fact_id`, failed twice before the edit, passed after); gocognit split in `terminal.Open`.
+- Verified: `go vet`, `golangci-lint` (root and `lint:claude`), biome, typecheck (pre-commit), `go test` of `./internal/... ./apps/*/internal/...` (one run, one contract drift fixed, `termflow` rerun green), `TestLeanProviderSeams` and `TestSecondProviderRegistered`, UI: Studio `automations-smart`, `terminal-claude-missing`, `automations-module`, Space `automations-smart`, `agent-provider`. Real `claude`: `bun run test:claude` Space and Studio green after the prompt fix.
 
 ### P449 OpenCode provider; pick the agent per interactive session
 
