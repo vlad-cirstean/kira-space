@@ -2067,16 +2067,37 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 
 The agent CLI sits behind one interface, so a second provider needs no caller change.
 
-- `internal/harness` holds the neutral contract. `Provider` is one value with these roles: `Locator`
-  (find the CLI), `Structured` (one isolated JSON call, memory), `Headless` (a streamed run with an MCP
-  report, ADE steps and smart scripts), `Interactive` (the PTY command, resume, first prompt), `Sandboxed`
-  (what the OS sandbox opens and denies) and `MCPHost` (MCP config, tool names, user servers, installing
-  Kira's servers). Names (`Label`, `ProductLabel`, `HeadlessLabel`, `Command`), `Models` (aliases and a
-  default) and `ModelLabel` are plain methods.
-- Optional roles are found by type assertion, so a provider compiles without stubs: `HookHost` (hook
-  events for interactive sessions; `harness.Hooks` starts every host and composes launches by provider id)
-  and `UsageReporter` (feeds `agentusage`). A provider without them has no activity icons, no
-  finished/needs-input notes and no usage item.
+- `internal/harness` holds the neutral contract. `Provider` is one value with these required roles:
+  `Locator` (find the CLI), `Interactive` (the PTY launch, resume, first prompt), `Sandboxed` (what the OS
+  sandbox opens and denies) and `MCPHost` (MCP config, tool names, user servers, installing Kira's
+  servers). Names (`Label`, `ProductLabel`, `HeadlessLabel`, `Command`), `Models` (aliases and a default)
+  and `ModelLabel` are plain methods.
+- Optional roles are found by type assertion, so a provider compiles without stubs: `Structured` (one
+  isolated JSON call, memory; `harness.StructuredOf`), `Headless` (a streamed run with an MCP report, ADE
+  steps and smart scripts; `harness.HeadlessOf`), `HookHost` (hook events for interactive sessions;
+  `harness.Hooks` starts every host and composes launches by provider id), `UsageReporter` (feeds
+  `agentusage`) and `SessionLocator` (finds the id of a session the agent assigned itself). A provider
+  without hooks has no activity icons and no finished/needs-input notes; without usage, no usage item.
+- A missing optional role is handled per caller. Memory (`memory.AgentRunner`) falls back to the default
+  provider: background work with no per-run provider choice. Smart scripts refuse: `plan` sets
+  `Preview.Blocker` to the `harness.MissingRole` text (`backend.core.agent.missingRole.body`), which covers
+  Start, schedule and resume. ADE steps, smart steps, rebase and review rounds refuse in `superviseAgent`:
+  the run fails with the same text before the sandbox starts. `MissingRole` matches
+  `harness.ErrUnsupported`.
+- `Interactive.InteractiveCommand` returns a `harness.Launch{Command, Env, SessionID}`. `Env` is for a CLI
+  that takes config through the environment; it never crosses the bridge. `Tracker.Prepare` keeps it on the
+  pending intent and `Compose` returns it ahead of the hooks env. Continue in terminal has no `Compose`:
+  `scriptruns.ResumeCommand` returns `{command, token}`, the token is `""` when `Env` is empty, else a
+  single-use `LaunchTTL` token the terminal open sends back as `agentLaunchToken`;
+  `ScriptLauncher.BeginAgent` checks it against the command and returns the env, a stale or mismatched
+  token is the `backend.core.scriptRun.expired.body` conflict. `SessionID` is `""` when the agent assigns it
+  after launch.
+- Hook events carry a neutral `harness.EventKind` (`SessionStart`, `SessionEnd`, `UserPromptSubmit`,
+  `PreToolUse`, `PostToolUse`, `Notification`, `Stop`); the values equal the wire strings, so the bridge
+  and frontend see no change. The provider maps its own names (Claude: table in `claude/hooks/http.go`,
+  unknown names dropped) and sets the Go-only flags `Wakes` (tool start that arms a self-wake) and
+  `NeedsInput` (notification asks the user). `agentnotify` and `Tracker.HandleEvent` read only kinds and
+  flags. The frontend still reads Claude's `WAKE_TOOLS` and `notification_type` rules itself.
 - `internal/harness/claude` is the only provider. `internal/harness/providers.New` is the single
   registration point (Claude first, then any extra). Everything Claude-specific lives under it: argv,
   stream-json parsing, MCP config shape, sandbox profile needs, hooks (`hooks`), the CLI installer
@@ -2108,6 +2129,10 @@ The agent CLI sits behind one interface, so a second provider needs no caller ch
 - Claude declares `auto_compact_window` (100000 to 1000000 tokens, CLI 2.1.316) and maps it to `--autocompact <n>` in `Script` and `InteractiveCommand`, ahead of `--setting-sources`/`--add-dir`. Per process, so tools the agent runs do not inherit it. An old CLI without the flag fails the launch loudly. Measured with `claude -p --debug-file` (effective window = setting minus 20000): the flag alone gives 280000 for 300000. An exported `CLAUDE_CODE_AUTO_COMPACT_WINDOW=150000` wins over `--autocompact 300000` (130000). Kira does not strip the variable; see Known open items.
 - Add a provider: implement `harness.Provider` and any optional roles in `internal/harness/<id>`, add it to
   `providers.New`, and keep its CLI strings and error texts inside its package. No caller changes.
+- Test: `flows/harnessflow` `TestLeanProviderSeams` registers `fakeprovider.Lean` (id `fake-lean`: no
+  structured, headless, hooks or usage; launches carry env; the `kira-fake-agent` persona assigns its own
+  session id into `sessions.jsonl`, which `FindSession` reads) and drives env delivery, Continue in terminal
+  token reuse, the late id and each missing-role path.
 - Test: `flows/harnessflow` `TestSecondProviderRegistered` registers `internal/flowtest/fakeprovider`
   (id `fake`, models `fast`/`deep`, no hooks, no usage; interactive sessions run the `kira-fake-agent`
   persona) and drives distill, a smart script, an ADE headless step, an interactive session, resume after
@@ -2352,6 +2377,7 @@ and `docs/HISTORY.md (v2.0)`.
 ### Interactive sessions
 
 - A single ade.Tracker instance is shared by terminal.BoundService.ComposeAgent (Compose), terminal.Registry.OnChange (Reconcile), harness.Hooks OnEvent (HandleEvent) and the board (Send, Get).
+- The agent session id is learned, not always chosen: a provider that is a `harness.SessionLocator` may launch with `Launch.SessionID == ""`. The row then stores `''` (only headless rows require an id). A `SessionStart` event with a valid id (`harness.ValidSessionID`) fills it. At stop (`Stop`, `Reconcile`) and at resume (`resumeTarget`, `takeOverLocked`) the tracker asks `FindSession{Cwd, Since: StartedAt}`; still unknown at resume, Take over and Resume refuse with `backend.space.ade.sessionIdUnknown.body`.
 - Tracker.Prepare records a pending launch intent with a 2 min TTL; the renderer opens the terminal through the ordinary TerminalService.Open; ComposeAgent then consumes the intent, inserts the ade_sessions row as running and appends hooks env, --settings and the initial prompt.
 - Reconcile stops a session record only when its terminal is gone and a 30s grace window has passed.
 - The user message follows ' -- ' in argv so it cannot parse as a flag.
@@ -3337,6 +3363,7 @@ Kept only while genuinely open — delete an item the moment it's resolved, neve
 place. `CLAUDE.md` states the process rule; this is the list itself.
 
 - **Saved script secrets show in a live terminal (P447).** A terminal-run script prints into its live tab and the Space phone terminal ring unmasked; only the run tail and log are masked. A process that echoes its secret shows it there.
+- **Step `allowed_tools` and rebase built-ins are Claude-only (P448).** A workflow step's `allowed_tools` (validated against Claude patterns such as `Bash(git *)`) and `rebaseBuiltins` pass straight to the provider, not through `MCPHost.ToolArgs`. P449 decides the mapping.
 - **Interactive exec plugins are unsupported (P439).** A kubeconfig credential plugin that prompts on a terminal fails with the `plugin` reason. Non-interactive plugins work.
 - **Studio Discover remounts still grow the renderer heap (P433).** Switching away from and back to a Kibana Discover tab adds about 0.6 MB per round after round 2 (5 rounds: 31.4, 32.3, 32.8, 33.9, 34.1 MB), and a second open/close cycle adds 1.9 MB. Close-all ends 18.5 MB over baseline, mostly first-load module code plus Monaco and KQL source strings. The Monaco `addCommand`, grammar re-registration and `usePersistedState` leaks are fixed; the rest is unattributed (V8 JIT code is the main suspect). Probe: `heap` project in Studio, `docs/DEV_ENVIRONMENT.md` "Perf probes". Find the retainer with a heap snapshot diff across rounds 3 and 5, then delete this item.
 - **Kibana search uses an internal route (P424).** `POST /internal/search/es` is not a public API; a Kibana upgrade can change its body or headers. The conformance suite runs against 9.5.3 and the 8.19 floor via `KIRA_COMPAT_IMAGE_KIBANA`.
