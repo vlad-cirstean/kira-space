@@ -9,6 +9,7 @@
     "kind": "script",
     "name": "list",
     "params": [],
+    "savedSecrets": [],
     "schedule": null,
     "smart": null,
     "sortOrder": 0,

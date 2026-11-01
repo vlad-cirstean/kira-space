@@ -136,13 +136,13 @@ func TestScheduleValidation(t *testing.T) {
 		{"bad zone", "unknown timezone", func(f *scripts.CustomScriptFields) { f.Schedule.Timezone = "Nope/Zone" }},
 		{"timeout low", "between 1m and 24h", func(f *scripts.CustomScriptFields) { f.Schedule.Timeout = "10s" }},
 		{"timeout high", "between 1m and 24h", func(f *scripts.CustomScriptFields) { f.Schedule.Timeout = "25h" }},
-		{"secret without asking", "must ask before each run", func(f *scripts.CustomScriptFields) {
-			f.Params = []scripts.Param{{Name: "token", Type: scripts.ParamText, Secret: true}}
+		{"required secret without a saved value", "needs a saved value for secret param token", func(f *scripts.CustomScriptFields) {
+			f.Params = []scripts.Param{{Name: "token", Type: scripts.ParamText, Secret: true, Required: true}}
 			f.Schedule.Confirm = false
 		}},
 		{"task variable without task", "without a task cannot use {branch}", func(f *scripts.CustomScriptFields) { f.Command = "echo {branch}" }},
 		{"unknown param", "schedule params", func(f *scripts.CustomScriptFields) { f.Schedule.Params = map[string][]string{"ghost": {"x"}} }},
-		{"stored secret", "secrets are never stored", func(f *scripts.CustomScriptFields) {
+		{"stored secret", "save its value in the Parameters tab", func(f *scripts.CustomScriptFields) {
 			f.Params = []scripts.Param{{Name: "token", Type: scripts.ParamText, Secret: true}}
 			f.Schedule.Confirm = true
 			f.Schedule.Params = map[string][]string{"token": {"x"}}

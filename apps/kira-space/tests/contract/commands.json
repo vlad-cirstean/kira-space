@@ -20,6 +20,7 @@
         "kind": "script",
         "name": "keep",
         "params": [],
+        "savedSecrets": [],
         "schedule": null,
         "smart": null,
         "sortOrder": 0,
@@ -37,6 +38,7 @@
         "kind": "script",
         "name": "drop",
         "params": [],
+        "savedSecrets": [],
         "schedule": null,
         "smart": null,
         "sortOrder": 1,
@@ -44,6 +46,12 @@
         "useAdeDir": false,
         "workingDir": ""
       }
-    ]
+    ],
+    "secretStorage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    }
   }
 }

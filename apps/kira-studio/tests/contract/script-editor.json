@@ -20,6 +20,7 @@
         "type": "text"
       }
     ],
+    "savedSecrets": [],
     "schedule": {
       "branchId": "",
       "confirm": true,
@@ -68,6 +69,7 @@
         "type": "text"
       }
     ],
+    "savedSecrets": [],
     "schedule": {
       "branchId": "",
       "confirm": true,
@@ -118,6 +120,7 @@
       {
         "fromVar": "topic",
         "name": "KIRA_PARAM_TOPIC",
+        "saved": false,
         "secret": false,
         "value": "auth"
       }
@@ -144,6 +147,7 @@
         "var": "topic"
       }
     ],
+    "secretIssue": "",
     "suffix": "When finished, call finish_step with status \"done\" and a one-line summary. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
     "timeout": "15m",
     "tools": [
@@ -192,7 +196,8 @@
       },
       "useAdeDir": false,
       "workingDir": ""
-    }
+    },
+    "secretValues": null
   },
   "args:CustomScriptsService.Update#schedule-off": {
     "fields": {
@@ -235,6 +240,7 @@
       "useAdeDir": false,
       "workingDir": ""
     },
-    "id": "<id:2>"
+    "id": "<id:2>",
+    "secretValues": null
   }
 }

@@ -93,5 +93,5 @@
     },
     "trigger": "manual"
   },
-  "ScriptRunsService.Resume#missing": "{\"code\":\"E_BAD_REQUEST\",\"message\":\"Resume needs values for: token. Run it again instead.\"}"
+  "ScriptRunsService.Resume#missing": "{\"code\":\"E_BAD_REQUEST\",\"message\":\"Resume needs values for: token. Save the secret values in the script, or run it again.\"}"
 }

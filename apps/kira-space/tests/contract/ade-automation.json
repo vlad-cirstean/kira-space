@@ -30,6 +30,7 @@
     "kind": "smart",
     "name": "audit",
     "params": [],
+    "savedSecrets": [],
     "schedule": null,
     "smart": {
       "bashPatterns": [],
@@ -183,36 +184,42 @@
       {
         "fromVar": "task",
         "name": "KIRA_TASK",
+        "saved": false,
         "secret": false,
         "value": "Fix login"
       },
       {
         "fromVar": "jira",
         "name": "KIRA_JIRA",
+        "saved": false,
         "secret": false,
         "value": ""
       },
       {
         "fromVar": "repo",
         "name": "KIRA_REPO",
+        "saved": false,
         "secret": false,
         "value": "api"
       },
       {
         "fromVar": "branch",
         "name": "KIRA_BRANCH",
+        "saved": false,
         "secret": false,
         "value": "feat/api-login"
       },
       {
         "fromVar": "base",
         "name": "KIRA_BASE",
+        "saved": false,
         "secret": false,
         "value": "main"
       },
       {
         "fromVar": "worktree",
         "name": "KIRA_WORKTREE",
+        "saved": false,
         "secret": false,
         "value": "<home>/wt/api/api-login"
       }
@@ -269,6 +276,7 @@
         "var": "task"
       }
     ],
+    "secretIssue": "",
     "suffix": "Kira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every repo you need; the user approves it. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.\n\nWhen finished, call finish_step with status \"done\" and a one-line summary. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
     "timeout": "15m",
     "tools": [

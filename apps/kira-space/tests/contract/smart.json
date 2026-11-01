@@ -18,6 +18,7 @@
         "type": "text"
       }
     ],
+    "savedSecrets": [],
     "schedule": null,
     "smart": {
       "bashPatterns": [],
@@ -54,6 +55,7 @@
     "kind": "smart",
     "name": "ask",
     "params": [],
+    "savedSecrets": [],
     "schedule": null,
     "smart": {
       "bashPatterns": [],
@@ -200,6 +202,7 @@
       {
         "fromVar": "topic",
         "name": "KIRA_PARAM_TOPIC",
+        "saved": false,
         "secret": false,
         "value": "cats"
       }
@@ -228,6 +231,7 @@
         "var": "topic"
       }
     ],
+    "secretIssue": "",
     "suffix": "When finished, call finish_step with status \"done\" and a one-line summary. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
     "timeout": "15m",
     "tools": [
