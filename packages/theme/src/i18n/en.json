@@ -550,6 +550,9 @@
         "missing": {
           "body": "{product} CLI not found. Install it, then retry. Looked in: {probed}."
         },
+        "missingRole": {
+          "body": "{agent} can’t run {role}."
+        },
         "providerGone": {
           "body": "The agent that ran this conversation is no longer available."
         }

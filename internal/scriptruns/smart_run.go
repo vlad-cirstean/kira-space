@@ -156,7 +156,7 @@ func (s *Service) launchSmart(p *planned, run Run, existing bool) (Started, erro
 		timeout, timeoutText = s.SmartTimeout, s.SmartTimeout.String()
 	}
 	agent := p.agent
-	env := agent.ScrubEnv(loginshell.ScrubGitEnv(os.Environ()))
+	env := p.headless.ScrubEnv(loginshell.ScrubGitEnv(os.Environ()))
 	env = append(env, "GIT_TERMINAL_PROMPT=0")
 	env = append(env, p.envList...)
 	spec := harness.HeadlessSpec{
@@ -171,7 +171,7 @@ func (s *Service) launchSmart(p *planned, run Run, existing bool) (Started, erro
 		s.noticeSandbox(sink, sbx)
 		var res *harness.Result
 		var stopWatch func()
-		exit, runErr := agent.RunHeadless(ctx, spec, harness.Handler{
+		exit, runErr := p.headless.RunHeadless(ctx, spec, harness.Handler{
 			OnLine:   func(l harness.Line) { sink.add(l.Stream, l.Text) },
 			OnResult: func(r harness.Result) { res = &r },
 			OnStart:  func(pid int) { stopWatch = s.watchSandbox(sbx, runID, sink, pid) },
@@ -185,7 +185,7 @@ func (s *Service) launchSmart(p *planned, run Run, existing bool) (Started, erro
 		sbx.cleanup()
 		out := decide(decision{
 			finish: s.takeFinishPtr(runID), res: res, exit: exit, runErr: runErr, end: sr.endedBy(),
-			agent: runoutcome.AgentOf(agent), timeout: timeoutText, budget: p.smart.MaxBudgetUSD, app: s.App, lastErr: sink.lastStderr(), resumeLost: p.resume != "" && agent.ResumeLost(sink.lastStderr()),
+			agent: runoutcome.AgentOf(agent), timeout: timeoutText, budget: p.smart.MaxBudgetUSD, app: s.App, lastErr: sink.lastStderr(), resumeLost: p.resume != "" && p.headless.ResumeLost(sink.lastStderr()),
 		})
 		out = sbx.outcome(out)
 		cancel()

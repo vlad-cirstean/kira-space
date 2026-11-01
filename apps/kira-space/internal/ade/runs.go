@@ -765,6 +765,11 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		}
 		complete(end)
 	}
+	headless, ok := harness.HeadlessOf(l.agent)
+	if !ok {
+		fail(&harness.MissingRole{Agent: l.agent.Label(), Role: "headless runs"})
+		return
+	}
 	if l.smart != nil {
 		if err := l.smart.checkMCP(ctx, l.agent, b.deps.ScriptsHome); err != nil {
 			fail(err)
@@ -813,7 +818,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	if !harness.ReportsUsage(agent) {
 		onLimits = nil
 	}
-	exit, runErr := agent.RunHeadless(ctx, spec, harness.Handler{
+	exit, runErr := headless.RunHeadless(ctx, spec, harness.Handler{
 		OnLine:       func(l harness.Line) { sink.add(l.Stream, l.Text) },
 		OnRateLimits: onLimits,
 		OnResult:     func(r harness.Result) { res = &r },
@@ -831,7 +836,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	if b.ctx.Err() != nil {
 		return // app quit: rows stay running (R18)
 	}
-	b.endAgentRun(ctx, run, l, runEnd{exit: exit, err: runErr, res: res, sink: sink, sbx: sbx, complete: complete})
+	b.endAgentRun(ctx, run, l, runEnd{exit: exit, err: runErr, res: res, sink: sink, sbx: sbx, complete: complete, headless: headless})
 }
 
 // runEnd is what a headless agent run left behind.
@@ -842,6 +847,7 @@ type runEnd struct {
 	sink     *logSink
 	sbx      *sandboxRun
 	complete func(outcome)
+	headless harness.Headless
 }
 
 // endAgentRun maps how an agent process ended to the run's outcome and completes the run.
@@ -874,7 +880,7 @@ func (b *TaskBoard) endAgentRun(ctx context.Context, run model.AdeRun, l agentLa
 		b.completeRebase(run, sessionID, report, end)
 		return
 	}
-	resumeLost := l.resume != "" && agent.ResumeLost(sink.lastStderr())
+	resumeLost := l.resume != "" && e.headless.ResumeLost(sink.lastStderr())
 	an := runoutcome.AgentOf(agent)
 	if l.smart != nil {
 		b.completeRun(run, sessionID, sbx.sandboxOutcome(b.smartOutcome(an, run.ID, exit, runErr, res, l.smart, def.Results, sink.lastStderr(), resumeLost)))

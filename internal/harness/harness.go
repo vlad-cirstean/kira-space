@@ -10,12 +10,15 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+
+	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
 // DefaultProvider is the provider used when none is configured or the configured one is unknown.
 const DefaultProvider = "claude"
 
-// Provider is one agent harness. ID is the agent.provider setting value.
+// Provider is one agent harness. ID is the agent.provider setting value. Structured and Headless
+// are optional roles: reach them through StructuredOf and HeadlessOf.
 type Provider interface {
 	ID() string
 	// Label is the display name in Go-rendered text ("Claude").
@@ -33,8 +36,6 @@ type Provider interface {
 	// StageSettings are the per-stage settings the provider takes; empty means none.
 	StageSettings() []StageSetting
 	Locator
-	Structured
-	Headless
 	Interactive
 	Sandboxed
 	MCPHost
@@ -161,7 +162,31 @@ var (
 	ErrOutdated    = errors.New("harness: outdated")
 	ErrRateLimited = errors.New("harness: rate limited")
 	ErrUsageLimit  = errors.New("harness: usage limit")
+	// ErrUnsupported: the provider does not implement an optional role.
+	ErrUnsupported = errors.New("harness: unsupported")
 )
+
+// MissingRole is the refusal for a role the provider does not implement.
+type MissingRole struct{ Agent, Role string }
+
+func (e *MissingRole) Error() string {
+	return i18n.T("backend.core.agent.missingRole.body", map[string]string{"agent": e.Agent, "role": e.Role})
+}
+
+// Is matches ErrUnsupported.
+func (e *MissingRole) Is(target error) bool { return target == ErrUnsupported }
+
+// StructuredOf is p's Structured role, if it has one.
+func StructuredOf(p Provider) (Structured, bool) {
+	s, ok := p.(Structured)
+	return s, ok
+}
+
+// HeadlessOf is p's Headless role, if it has one.
+func HeadlessOf(p Provider) (Headless, bool) {
+	h, ok := p.(Headless)
+	return h, ok
+}
 
 // Error is a provider's user-facing error: Msg is shown, Kind matches errors.Is.
 type Error struct {

@@ -41,6 +41,19 @@ func NewAgentRunner(sel harness.Selector, models ModelSource) *AgentRunner {
 	return &AgentRunner{sel: sel, models: models}
 }
 
+// structured resolves the active provider's Structured role. A provider without it falls back to
+// the default provider: memory is background work with no per-run provider choice.
+func (r *AgentRunner) structured() (harness.Provider, harness.Structured) {
+	p := r.sel.Active()
+	if st, ok := harness.StructuredOf(p); ok {
+		return p, st
+	}
+	slog.Warn("memory: provider has no structured role, using default", "scope", "memory", "provider", p.ID())
+	p, _ = r.sel.Registry.Get(harness.DefaultProvider)
+	st, _ := harness.StructuredOf(p)
+	return p, st
+}
+
 // model resolves per call, so a settings change applies to the next call in a running process.
 func (r *AgentRunner) model(p harness.Provider) string {
 	cat := p.Models()
@@ -69,11 +82,17 @@ func (r *AgentRunner) Run(ctx context.Context, c Call) (json.RawMessage, error) 
 
 // RunResult is Run plus the cost and turn count the agent reports.
 func (r *AgentRunner) RunResult(ctx context.Context, c Call) (Result, error) {
-	p := r.sel.Active()
-	return p.RunStructured(ctx, r.model(p), c)
+	p, st := r.structured()
+	return st.RunStructured(ctx, r.model(p), c)
 }
 
-func (r *AgentRunner) Fail(kind error) error { return r.sel.Active().Fail(kind) }
+func (r *AgentRunner) Fail(kind error) error {
+	_, st := r.structured()
+	return st.Fail(kind)
+}
 
-// Available reports whether the active provider's CLI can be found.
-func (r *AgentRunner) Available() error { return r.sel.Active().Available() }
+// Available reports whether the CLI of the provider that serves structured calls can be found.
+func (r *AgentRunner) Available() error {
+	p, _ := r.structured()
+	return p.Available()
+}

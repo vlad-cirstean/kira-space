@@ -119,6 +119,8 @@ type planned struct {
 	// agent is the provider a smart run runs under, pinned at plan time; provider is its id.
 	agent    harness.Provider
 	provider string
+	// headless is agent's Headless role, nil when it has none (the preview then carries a blocker).
+	headless harness.Headless
 	// timeout and timeoutText bound a headless normal run.
 	timeout     time.Duration
 	timeoutText string
@@ -210,6 +212,11 @@ func (s *Service) plan(ctx context.Context, args RunArgs, o planOpts) (*planned,
 		return nil, providerGone(err)
 	}
 	p.agent, p.provider = agent, agent.ID()
+	if h, ok := harness.HeadlessOf(agent); ok {
+		p.headless = h
+	} else if pv.Blocker == "" {
+		pv.Blocker = (&harness.MissingRole{Agent: agent.Label(), Role: "smart scripts"}).Error()
+	}
 	extraTools := []harness.MCPTool{agentmcp.FinishStep}
 	if args.TaskID != "" {
 		pv.Suffix = agentmcp.SpaceNote(s.llmPrompts()) + "\n\n" + pv.Suffix
