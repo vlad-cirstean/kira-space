@@ -50,6 +50,7 @@ async function setMode(v: unknown): Promise<void> {
         :error="entry.error"
         :open="() => control.configFilesOpen({ folder: 'workflows', file: entry.fileName })"
         :reveal="() => control.configFilesReveal({ folder: 'workflows', file: entry.fileName })"
+        :about="() => control.configFilesOpen({ folder: 'workflows', file: 'AGENTS.md' })"
       />
       <Button
         variant="dialog"

@@ -134,6 +134,9 @@ func (b *TaskBoard) NewWorkflow(_ context.Context, args adewire.NewWorkflowArgs)
 func (b *TaskBoard) Start() {
 	b.startOnce.Do(func() {
 		if b.deps.Workflows != nil {
+			if err := b.deps.Workflows.WriteDocs(); err != nil {
+				slog.Warn("ade workflows: write AGENTS.md", "scope", "ade", "err", err)
+			}
 			stop, err := b.deps.Workflows.Watch(b.workflowsFileChanged)
 			if err != nil {
 				slog.Warn("ade workflows: watch", "scope", "ade", "err", err)
