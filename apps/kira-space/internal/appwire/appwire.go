@@ -40,6 +40,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/openedfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentctx"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/appevent"
@@ -204,6 +205,9 @@ type Wired struct {
 	// AgentContext is the shared agent context every launch gets.
 	AgentContext    *agentctx.Store
 	AgentContextSvc *bridge.AgentContextService
+	// AgentSettings is the shared agent settings every launch gets; AgentSecrets holds the values it references.
+	AgentSettings *agentcfg.Store
+	AgentSecrets  *agentcfg.SecretStore
 
 	reopen           func()
 	appFocused       atomic.Pointer[func() bool]
@@ -211,6 +215,7 @@ type Wired struct {
 	detachOpLog      func()
 	detachGitCred    func()
 	stopAgentContext func()
+	stopAgentConfig  func()
 	detachMobile     func()
 	beforeFlushOnce  func()
 	teardownOnce     func()
@@ -321,17 +326,7 @@ func Build(opts Options) *Wired {
 		KeepsOnResume: func() []string { return keepsContextOnResume(registry) },
 	})
 	w.AgentContext.View() // follows the file into the DB projection
-	if err := w.AgentContext.WriteDocs(); err != nil {
-		slog.Warn("agent context: write docs", "scope", "startup", "err", err)
-	}
-	stopContextWatch, err := w.AgentContext.Watch(func() {
-		w.AgentContext.View()
-		bridge.AgentContextChanged(events)
-	})
-	if err != nil {
-		slog.Warn("agent context: watch", "scope", "startup", "err", err)
-		stopContextWatch = func() {}
-	}
+	stopContextWatch := w.wireAgentSettings(registry, repositories, deps.Home, opts.Cipher, events)
 	w.stopAgentContext = stopContextWatch
 	w.AgentContextSvc = &bridge.AgentContextService{Service: &agentctx.Service{Store: w.AgentContext}}
 	adeTracker, agentHooks := wireTracker(repositories, terminalRegistry, emitter, events, opts.TrackerGrace, w.AgentNotify, w.AgentUsage, w.Agents, w.AgentContext.ContextFile)
@@ -554,6 +549,7 @@ func (w *Wired) teardown(db io.Closer) {
 	// swaps a bundle the user quit away from. After hand-off this is a no-op.
 	w.UpdateInstall.Cancel()
 	w.stopAgentContext()
+	w.closeAgentSettings()
 	w.OpenedFiles.Close()
 	w.detachMetrics()
 	w.detachOpLog()
@@ -602,4 +598,57 @@ func keepsContextOnResume(r *harness.Registry) []string {
 		}
 	}
 	return out
+}
+
+// wireAgentSettings opens the shared credential store, builds the settings store, writes the agent
+// folder's AGENTS.md and watches the folder. It returns the watcher's stop. A failure leaves the
+// settings off with a warning: launches start without them, never without Kira's own wiring.
+func (w *Wired) wireAgentSettings(registry *harness.Registry, repositories *repos.Repos, home string, cipher *secrets.Cipher, events *bridge.Events) func() {
+	sec, err := agentcfg.OpenSecrets(filepath.Join(home, "agent-secrets.db"), cipher)
+	if err != nil {
+		slog.Warn("agent settings: open secrets", "scope", "startup", "err", err)
+	} else {
+		w.AgentSecrets = sec
+	}
+	store, err := agentcfg.New(agentcfg.Options{
+		Dir: filepath.Join(home, "agent"), Providers: registry, Secrets: w.AgentSecrets, App: "Space",
+		Projection: configfs.TableProjection{DB: repositories.CustomScripts.DB, Folder: agentctx.Folder},
+	})
+	if err != nil {
+		slog.Warn("agent settings: build", "scope", "startup", "err", err)
+		return w.watchAgentContext(events)
+	}
+	w.AgentSettings = store
+	store.View() // follows the file into the DB projection
+	if err := store.WriteDocs(w.AgentContext.DocModel()); err != nil {
+		slog.Warn("agent settings: write docs", "scope", "startup", "err", err)
+	}
+	stopSettings, err := store.Watch(func() { store.View() })
+	if err != nil {
+		slog.Warn("agent settings: watch", "scope", "startup", "err", err)
+		stopSettings = func() {}
+	}
+	w.stopAgentConfig = stopSettings
+	return w.watchAgentContext(events)
+}
+
+func (w *Wired) watchAgentContext(events *bridge.Events) func() {
+	stop, err := w.AgentContext.Watch(func() {
+		w.AgentContext.View()
+		bridge.AgentContextChanged(events)
+	})
+	if err != nil {
+		slog.Warn("agent context: watch", "scope", "startup", "err", err)
+		return func() {}
+	}
+	return stop
+}
+
+func (w *Wired) closeAgentSettings() {
+	if w.stopAgentConfig != nil {
+		w.stopAgentConfig()
+	}
+	if w.AgentSecrets != nil {
+		_ = w.AgentSecrets.Close()
+	}
 }

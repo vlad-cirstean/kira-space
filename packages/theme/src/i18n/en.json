@@ -573,6 +573,29 @@
           "body": "The agent context changed. Refresh and retry."
         }
       },
+      "agentSettings": {
+        "hookMatcher": {
+          "body": "Hook {hook} has a matcher, which only tool_start and tool_end hooks take."
+        },
+        "kiraEnv": {
+          "body": "Variable {name} starts with {prefix}, which Kira keeps for its own launch variables."
+        },
+        "kiraServer": {
+          "body": "MCP server {server} starts with kira, which Kira keeps for its own servers."
+        },
+        "serverBoth": {
+          "body": "MCP server {server} has both a command and a url. Use one."
+        },
+        "serverField": {
+          "body": "MCP server {server}: {field} goes with a {transport} server only."
+        },
+        "serverNone": {
+          "body": "MCP server {server} needs a command or a url."
+        },
+        "skipHook": {
+          "body": "The skip list names {hook}, which is not a common hook."
+        }
+      },
       "appUpdate": {
         "canceled": {
           "body": "The update was cancelled."

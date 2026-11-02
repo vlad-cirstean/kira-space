@@ -21,9 +21,6 @@ import (
 // SecretOwner is the owner of every agent credential: one shared definition.
 const SecretOwner = "agent"
 
-// secretNamespace is the resolver namespace of agent settings, fixed here and never written in a file.
-const secretNamespace = "agent"
-
 // SecretStore is the open shared credential store: sealed values in agent-secrets.db.
 type SecretStore struct {
 	Store *secrets.Store

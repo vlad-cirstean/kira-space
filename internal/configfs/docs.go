@@ -28,6 +28,10 @@ type DocModel struct {
 	Singleton bool
 	// MaxBytes is the file size cap; 0 means MaxFileBytes.
 	MaxBytes int
+	// Sections document each file of a folder that holds several kinds: a `## <Pattern>` block with
+	// the section's Intro, Files, Options, Rules and References. When set, the parent's own Pattern,
+	// Format, Options and Rules are not rendered.
+	Sections []DocModel
 }
 
 // DocOption is one schema field.
@@ -157,11 +161,11 @@ func rangeOf(s map[string]any) string {
 	return strings.Join(parts, ", ")
 }
 
-func writeOptions(b *bytes.Buffer, opts []DocOption) {
+func writeOptions(b *bytes.Buffer, opts []DocOption, h string) {
 	if len(opts) == 0 {
 		return
 	}
-	b.WriteString("## Options\n\n")
+	b.WriteString(h + " Options\n\n")
 	for _, o := range opts {
 		fmt.Fprintf(b, "- `%s`: %s", o.Path, o.Type)
 		if o.Required {
@@ -190,23 +194,46 @@ func writeOptions(b *bytes.Buffer, opts []DocOption) {
 	b.WriteString("\n")
 }
 
-func writeRules(b *bytes.Buffer, rules []string) {
+func writeRules(b *bytes.Buffer, rules []string, h string) {
 	if len(rules) == 0 {
 		return
 	}
-	b.WriteString("## Rules\n\n")
+	b.WriteString(h + " Rules\n\n")
 	for _, r := range rules {
 		fmt.Fprintf(b, "- %s\n", r)
 	}
 	b.WriteString("\n")
 }
 
-func writeRefsSection(b *bytes.Buffer) {
-	b.WriteString("## References\n\n" +
+func writeRefsSection(b *bytes.Buffer, h string) {
+	b.WriteString(h + " References\n\n" +
 		"- `${NAME}` reads the environment variable NAME.\n" +
 		"- `${secret:name}` reads the app secret `name`. A file holds the reference, never the secret value.\n" +
 		"- `$${` is a literal `${`.\n" +
 		"- Only fields marked \"takes references\" or \"one secret reference\" are resolved. A missing variable or secret fails the use, never an empty value.\n\n")
+}
+
+// writeFileDoc renders one file's facts, options, rules and references under heading level h.
+func writeFileDoc(b *bytes.Buffer, m DocModel, h string, hidden bool) {
+	limit := m.MaxBytes
+	if limit == 0 {
+		limit = MaxFileBytes
+	}
+	fmt.Fprintf(b, "%s Files\n\n- Name: `%s`, %s, at most %s.\n", h, m.Pattern, m.Format, sizeText(limit))
+	if m.Singleton {
+		b.WriteString("- A single file.\n")
+	} else {
+		b.WriteString("- One item per file. The file name without its extension is the item id.\n")
+	}
+	if hidden {
+		b.WriteString("- Hidden files and this file are never read as config.\n")
+	}
+	b.WriteString("\n")
+	writeOptions(b, m.Options, h)
+	writeRules(b, m.Rules, h)
+	if m.Refs {
+		writeRefsSection(b, h)
+	}
 }
 
 // RenderAgentsMD renders the model as the folder's AGENTS.md.
@@ -216,21 +243,18 @@ func RenderAgentsMD(m DocModel) []byte {
 	if m.Intro != "" {
 		fmt.Fprintf(&b, "%s\n\n", strings.TrimSpace(m.Intro))
 	}
-	limit := m.MaxBytes
-	if limit == 0 {
-		limit = MaxFileBytes
+	if len(m.Sections) == 0 {
+		writeFileDoc(&b, m, "##", true)
 	}
-	fmt.Fprintf(&b, "## Files\n\n- Name: `%s`, %s, at most %s.\n", m.Pattern, m.Format, sizeText(limit))
-	if m.Singleton {
-		b.WriteString("- A single file.\n")
-	} else {
-		b.WriteString("- One item per file. The file name without its extension is the item id.\n")
+	for _, sec := range m.Sections {
+		fmt.Fprintf(&b, "## %s\n\n", sec.Pattern)
+		if sec.Intro != "" {
+			fmt.Fprintf(&b, "%s\n\n", strings.TrimSpace(sec.Intro))
+		}
+		writeFileDoc(&b, sec, "###", false)
 	}
-	b.WriteString("- Hidden files and this file are never read as config.\n\n")
-	writeOptions(&b, m.Options)
-	writeRules(&b, m.Rules)
-	if m.Refs {
-		writeRefsSection(&b)
+	if len(m.Sections) > 0 {
+		b.WriteString("## Files in this folder\n\n- Hidden files and this file are never read as config.\n\n")
 	}
 	b.WriteString("## How changes apply\n\n" +
 		"- Kira watches this folder. Edit a file in any editor; the change applies within a second.\n" +

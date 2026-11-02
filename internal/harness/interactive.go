@@ -8,6 +8,8 @@ type Launch struct {
 	Env []string
 	// SessionID is the id the agent runs under, "" when only known after launch.
 	SessionID string
+	// ConfigFile is the Kira-written provider config file a hook listener extends in place; "" = none.
+	ConfigFile string
 }
 
 // Interactive builds the launch of a TUI session.
@@ -34,4 +36,6 @@ type InteractiveSpec struct {
 	// ContextFile is the absolute path of the app's agent context (Markdown) for this launch; ""
 	// = none. Only the provider decides how its CLI gets it.
 	ContextFile string
+	// App is the app's agent settings rendered for this launch; nil = none. Only the provider maps it.
+	App *AppConfig
 }

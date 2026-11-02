@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "env": {
+      "type": "object",
+      "description": "Environment variables every agent process gets.",
+      "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+      "additionalProperties": { "type": "string", "maxLength": 8192, "x-kira-ref": true }
+    },
+    "permissions": {
+      "type": "object",
+      "description": "Tool permissions in Kira's tool vocabulary (Claude's tool names), applied to every provider.",
+      "additionalProperties": false,
+      "properties": {
+        "allow": {
+          "type": "array",
+          "maxItems": 200,
+          "items": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "description": "Tools that run without a prompt."
+        },
+        "deny": {
+          "type": "array",
+          "maxItems": 200,
+          "items": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "description": "Tools that never run. A deny beats every allow."
+        }
+      }
+    },
+    "mcp_servers": {
+      "type": "object",
+      "description": "MCP servers defined once, rendered in each provider's own format.",
+      "propertyNames": { "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048,
+            "x-kira-ref": true,
+            "description": "HTTP server URL."
+          },
+          "headers": {
+            "type": "object",
+            "description": "HTTP server headers.",
+            "additionalProperties": { "type": "string", "maxLength": 8192, "x-kira-ref": true }
+          },
+          "command": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048,
+            "x-kira-ref": true,
+            "description": "Stdio server command."
+          },
+          "args": {
+            "type": "array",
+            "maxItems": 100,
+            "items": { "type": "string", "maxLength": 2048, "x-kira-ref": true },
+            "description": "Stdio server arguments."
+          },
+          "env": {
+            "type": "object",
+            "description": "Stdio server environment.",
+            "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+            "additionalProperties": { "type": "string", "maxLength": 8192, "x-kira-ref": true }
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "False keeps the definition and skips the server."
+          }
+        }
+      }
+    },
+    "hooks": {
+      "type": "object",
+      "description": "User hooks for every provider that has hook commands. Kira's own hooks always run and are never listed here.",
+      "propertyNames": { "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["event", "command"],
+        "properties": {
+          "event": {
+            "enum": [
+              "session_start",
+              "session_end",
+              "prompt",
+              "tool_start",
+              "tool_end",
+              "notification",
+              "turn_end"
+            ]
+          },
+          "matcher": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Tool name pattern, for tool_start and tool_end."
+          },
+          "command": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8192,
+            "description": "Shell command. Not a reference field: the shell expands $NAME, so put a secret in env and read it there."
+          },
+          "timeout": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 600,
+            "description": "Seconds, default 60."
+          }
+        }
+      }
+    }
+  }
+}

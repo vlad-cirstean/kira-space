@@ -61,6 +61,9 @@ type HeadlessSpec struct {
 	// ContextFile is the absolute path of the app's agent context (Markdown) for this launch; ""
 	// = none. Only the provider decides how its CLI gets it.
 	ContextFile string
+	// App is the app's agent settings rendered for this run; nil = none. Never set on an isolated
+	// run: its tool and MCP policy is explicit.
+	App *AppConfig
 }
 
 // ConfigScope is which of the user's agent config layers a run loads.

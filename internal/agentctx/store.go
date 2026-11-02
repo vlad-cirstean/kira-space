@@ -131,10 +131,11 @@ func (s *Store) Save(text, baseHash string) (View, error) {
 // Watch calls onChange (debounced) when the folder's Markdown files change.
 func (s *Store) Watch(onChange func()) (stop func(), err error) { return s.folder.Watch(onChange) }
 
-// WriteDocs writes the folder's AGENTS.md.
-func (s *Store) WriteDocs() error {
-	return s.folder.WriteDocs(configfs.DocModel{
+// DocModel is the AGENTS.md section of the context file; the folder's owner renders it with the
+// sections of the other files in the folder.
+func (s *Store) DocModel() configfs.DocModel {
+	return configfs.DocModel{
 		App: s.o.App, Title: "Kira agent folder", Intro: agentsIntro,
 		Pattern: File, Format: "Markdown", Singleton: true, MaxBytes: MaxBytes,
-	})
+	}
 }
