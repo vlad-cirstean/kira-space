@@ -36,6 +36,7 @@
       "maxBudgetUsd": 1,
       "mcp": [],
       "model": "sonnet",
+      "noCostCap": false,
       "timeout": "15m",
       "tools": [
         "Read",
@@ -85,6 +86,7 @@
       "maxBudgetUsd": 1,
       "mcp": [],
       "model": "sonnet",
+      "noCostCap": false,
       "timeout": "15m",
       "tools": [
         "Read",
@@ -191,6 +193,7 @@
         "maxBudgetUsd": 0,
         "mcp": null,
         "model": "",
+        "noCostCap": false,
         "timeout": "",
         "tools": null
       },
@@ -234,6 +237,7 @@
         "maxBudgetUsd": 0,
         "mcp": null,
         "model": "",
+        "noCostCap": false,
         "timeout": "",
         "tools": null
       },
