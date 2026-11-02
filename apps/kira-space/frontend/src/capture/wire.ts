@@ -1,7 +1,6 @@
 // Wire types of CaptureService (apps/kira-space/internal/bridge/capture.go) and shell.HotkeyState.
 
 type CaptureKind = 'changeRequest' | 'issue' | 'text' | 'empty';
-export type CaptureAction = 'openChangeRequest' | 'openIssue' | 'later';
 
 export interface CaptureItem {
   id: string;
@@ -10,16 +9,14 @@ export interface CaptureItem {
   truncated: boolean;
   /** "PR #7 owner/repo" or "Jira PROJ-12"; '' for text and empty. */
   label: string;
-  /** Ordered; the first is preselected. */
-  actions: CaptureAction[];
-  /** Prefill for the Later task title. */
+  /** Prefill for the task title. */
   title: string;
 }
 
 export interface CaptureResult {
-  action: CaptureAction;
-  key?: string;
-  taskId?: string;
+  taskId: string;
+  /** What the added task lacks ('' when complete); the popup stays open to show it. */
+  notice: string;
 }
 
 type HotkeyStateKind = 'off' | 'active' | 'requested' | 'failed';

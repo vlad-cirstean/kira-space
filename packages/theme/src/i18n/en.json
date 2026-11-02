@@ -1626,6 +1626,9 @@
         }
       },
       "capture": {
+        "noBranch": {
+          "body": "The task “{title}” was added without its branch. Reason: {error}."
+        },
         "partial": {
           "body": "The task “{title}” was added, but its details were not saved: {error}."
         }
@@ -10114,27 +10117,14 @@
       }
     },
     "capture": {
-      "action": {
-        "later": {
-          "label": "Save for later"
-        },
-        "openChangeRequest": {
-          "label": "Open PR view"
-        },
-        "openIssue": {
-          "label": "Open issue view"
-        }
-      },
-      "actions": {
-        "label": "Actions"
-      },
       "empty": {
         "body": "The clipboard has no text."
       },
-      "hint": {
-        "confirm": {
-          "label": "Confirm"
-        }
+      "fetching": {
+        "body": "Fetching the branch."
+      },
+      "review": {
+        "body": "Its branch is fetched and added to the task for review."
       },
       "title": {
         "label": "Task title"

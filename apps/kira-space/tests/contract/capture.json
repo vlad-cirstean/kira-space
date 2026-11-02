@@ -1,6 +1,10 @@
 {
   "CaptureService.Confirm#later": {
-    "action": "later",
+    "notice": "",
+    "taskId": "<masked>"
+  },
+  "CaptureService.Confirm#noBranch": {
+    "notice": "The task “Review the API change” was added without its branch. Reason: No repo in your workspace has a remote for github.com/acme/api. Add the repo first.",
     "taskId": "<masked>"
   },
   "CaptureService.Status#active": {
@@ -21,10 +25,6 @@
     "state": "requested"
   },
   "CaptureService.WindowItem#changeRequest": {
-    "actions": [
-      "openChangeRequest",
-      "later"
-    ],
     "id": "<masked>",
     "kind": "changeRequest",
     "label": "PR #7 acme/api",
@@ -33,7 +33,6 @@
     "truncated": false
   },
   "CaptureService.WindowItem#empty": {
-    "actions": [],
     "id": "<masked>",
     "kind": "empty",
     "label": "",
@@ -42,10 +41,6 @@
     "truncated": false
   },
   "CaptureService.WindowItem#issue": {
-    "actions": [
-      "openIssue",
-      "later"
-    ],
     "id": "<masked>",
     "kind": "issue",
     "label": "Jira PROJ-12",
@@ -54,9 +49,6 @@
     "truncated": false
   },
   "CaptureService.WindowItem#text": {
-    "actions": [
-      "later"
-    ],
     "id": "<masked>",
     "kind": "text",
     "label": "",
@@ -65,16 +57,12 @@
     "truncated": false
   },
   "args:CaptureService.Confirm": {
-    "action": "openChangeRequest",
+    "day": "2026-03-02",
     "itemId": "<masked>",
     "title": "https://github.com/acme/api/pull/7",
     "windowKey": "<masked>"
   },
   "event:kira:capture:item": {
-    "actions": [
-      "openChangeRequest",
-      "later"
-    ],
     "id": "<masked>",
     "kind": "changeRequest",
     "label": "PR #7 acme/api",

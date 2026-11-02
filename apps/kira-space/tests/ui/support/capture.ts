@@ -33,7 +33,6 @@ export interface Item {
   text: string;
   truncated: boolean;
   label: string;
-  actions: string[];
   title: string;
 }
 
@@ -47,6 +46,10 @@ export const emptyItem = contract<Item>('capture', 'CaptureService.WindowItem#em
 export const laterResult = contract<Record<string, unknown>>(
   'capture',
   'CaptureService.Confirm#later',
+);
+export const noBranchResult = contract<Record<string, unknown>>(
+  'capture',
+  'CaptureService.Confirm#noBranch',
 );
 export const failedStatus = contract<Record<string, unknown>>(
   'capture',

@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import { tryOnScopeDispose } from '@vueuse/core';
 import { control } from '../bridge/control';
-import type { CaptureAction } from './wire';
 
 export const captureItemKey = (windowKey: string) => ['capture', 'item', windowKey] as const;
 const captureStatusKey = ['capture', 'status'] as const;
@@ -20,11 +19,12 @@ export function useCaptureStatus() {
 export interface ConfirmVars {
   windowKey: string;
   itemId: string;
-  action: CaptureAction;
   title: string;
+  /** Plan day (YYYY-MM-DD) the task lands on; null lands in Later. */
+  day: string | null;
 }
 
-/** Runs the chosen action; a rejection (including a failed Later patch) keeps the popup open. */
+/** Adds the task; a rejection keeps the popup open, and so does a notice in the result. */
 export function useConfirmCapture() {
   return useMutation({ mutationFn: (vars: ConfirmVars) => control.captureConfirm(vars) });
 }

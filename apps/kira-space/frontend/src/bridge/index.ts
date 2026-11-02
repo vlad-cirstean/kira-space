@@ -248,8 +248,8 @@ const spaceControl = {
   captureConfirm: (args: {
     windowKey: string;
     itemId: string;
-    action: string;
     title: string;
+    day: string | null;
   }): Promise<CaptureResult> =>
     unwrap(CaptureService.Confirm(args)).then((r) => trust<CaptureResult>(r)),
   captureDismiss: (windowKey: string): Promise<void> =>
