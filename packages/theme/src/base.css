@@ -188,4 +188,85 @@ html.kira-resizing-y * {
   .kira-prose img {
     @apply max-w-full;
   }
+
+  /* P460: the host view reading size (issue and pull request bodies). Opt-in on top of .kira-prose, so
+     notes and file views keep their tighter rhythm. */
+  .kira-prose-host {
+    @apply leading-relaxed text-kira-md;
+  }
+  .kira-prose-host > :first-child {
+    @apply mt-0;
+  }
+  .kira-prose-host p {
+    @apply mb-3;
+  }
+  .kira-prose-host :is(h1, h2, h3, h4, h5, h6) {
+    @apply mt-5 mb-2;
+  }
+  .kira-prose-host :is(ul, ol) {
+    @apply mb-3 pl-5;
+  }
+  .kira-prose-host li {
+    @apply my-1;
+  }
+  .kira-prose-host li > p {
+    @apply mb-1;
+  }
+  .kira-prose-host li :is(ul, ol) {
+    @apply mb-0;
+  }
+  .kira-prose-host pre {
+    @apply mb-3 p-3 leading-normal;
+  }
+  .kira-prose-host :not(pre) > code {
+    @apply break-words;
+  }
+  .kira-prose-host blockquote {
+    @apply mb-3 py-1;
+  }
+  .kira-prose-host .kira-prose-scroll {
+    @apply mb-3 overflow-x-auto;
+  }
+  .kira-prose-host .kira-prose-scroll table {
+    @apply mb-0;
+  }
+  .kira-prose-host th {
+    @apply bg-field font-medium;
+  }
+  .kira-prose-host :is(th, td) {
+    @apply align-top;
+  }
+  .kira-prose-host .kira-prose-media {
+    @apply max-w-full truncate align-middle;
+  }
+  .kira-prose-host .markdown-alert {
+    @apply mb-3 rounded-kira-sm border-l-4 border-info bg-field px-3 py-2;
+  }
+  .kira-prose-host .markdown-alert > :last-child {
+    @apply mb-0;
+  }
+  .kira-prose-host .markdown-alert-title {
+    @apply mb-1 flex items-center gap-1 font-medium text-info;
+  }
+  .kira-prose-host .markdown-alert-title svg {
+    @apply size-3 fill-current;
+  }
+  .kira-prose-host .markdown-alert-tip {
+    @apply border-ok;
+  }
+  .kira-prose-host .markdown-alert-tip .markdown-alert-title {
+    @apply text-ok;
+  }
+  .kira-prose-host .markdown-alert-warning {
+    @apply border-warn;
+  }
+  .kira-prose-host .markdown-alert-warning .markdown-alert-title {
+    @apply text-warn;
+  }
+  .kira-prose-host .markdown-alert-caution {
+    @apply border-error;
+  }
+  .kira-prose-host .markdown-alert-caution .markdown-alert-title {
+    @apply text-error;
+  }
 }

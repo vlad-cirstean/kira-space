@@ -5,13 +5,16 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
-import { formatRelative } from '@workbench/behaviour/format';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import { computed } from 'vue';
+import { initials, statusVariant } from './issueFormat';
 import { useOpenHostView } from './queries';
+import RelativeTime from './RelativeTime.vue';
 import type { IssueDetail } from './wire';
 
-defineProps<{ detail: IssueDetail; stacked: boolean }>();
+const props = defineProps<{ detail: IssueDetail; stacked: boolean }>();
 const open = useOpenHostView();
+const tone = computed(() => statusVariant(props.detail.statusCategory));
 
 function openView(urlOrKey: string): void {
   fireAndForget(open.mutateAsync(urlOrKey), 'hostView.issue');
@@ -26,7 +29,9 @@ function openView(urlOrKey: string): void {
   >
     <KeyValueList class="items-baseline gap-y-2">
       <dt>{{ t('common.field.status.label') }}</dt>
-      <dd data-testid="issue-side-status">{{ detail.status }}</dd>
+      <dd>
+        <Badge :variant="tone" data-testid="issue-side-status">{{ detail.status }}</Badge>
+      </dd>
       <template v-if="detail.type">
         <dt>{{ t('common.field.type.label') }}</dt>
         <dd data-testid="issue-side-type">{{ detail.type }}</dd>
@@ -40,20 +45,34 @@ function openView(urlOrKey: string): void {
         <dd data-testid="issue-side-resolution">{{ detail.resolution }}</dd>
       </template>
       <dt>{{ t('space.hostView.issue.field.assignee.label') }}</dt>
-      <dd data-testid="issue-side-assignee">{{
-        detail.assignee?.name || t('space.hostView.issue.assignee.none.empty')
-      }}</dd>
+      <dd class="flex items-center gap-1.5" data-testid="issue-side-assignee">
+        <span
+          v-if="detail.assignee"
+          class="grid size-5 shrink-0 place-items-center rounded-full bg-field text-kira-sm"
+          aria-hidden="true"
+          >{{
+            initials(detail.assignee.name)
+          }}</span
+        >{{ detail.assignee?.name || t('space.hostView.issue.assignee.none.empty') }}
+      </dd>
       <dt>{{ t('space.hostView.issue.field.reporter.label') }}</dt>
-      <dd data-testid="issue-side-reporter">{{
-        detail.reporter?.name || t('space.hostView.issue.reporter.none.empty')
-      }}</dd>
+      <dd class="flex items-center gap-1.5" data-testid="issue-side-reporter">
+        <span
+          v-if="detail.reporter"
+          class="grid size-5 shrink-0 place-items-center rounded-full bg-field text-kira-sm"
+          aria-hidden="true"
+          >{{
+            initials(detail.reporter.name)
+          }}</span
+        >{{ detail.reporter?.name || t('space.hostView.issue.reporter.none.empty') }}
+      </dd>
       <template v-if="detail.createdAt">
         <dt>{{ t('common.created.label') }}</dt>
-        <dd data-testid="issue-side-created">{{ formatRelative(detail.createdAt) }}</dd>
+        <dd data-testid="issue-side-created"><RelativeTime :at="detail.createdAt" /></dd>
       </template>
       <template v-if="detail.updatedAt">
         <dt>{{ t('space.hostView.issue.date.updated.label') }}</dt>
-        <dd data-testid="issue-side-updated">{{ formatRelative(detail.updatedAt) }}</dd>
+        <dd data-testid="issue-side-updated"><RelativeTime :at="detail.updatedAt" /></dd>
       </template>
       <template v-if="detail.dueDate">
         <dt>{{ t('space.hostView.issue.date.due.label') }}</dt>

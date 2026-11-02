@@ -26,7 +26,7 @@ useEventListener(root, 'click', (e: MouseEvent) => {
   <div
     v-if="source.trim()"
     ref="root"
-    class="kira-prose"
+    class="kira-prose kira-prose-host"
     data-testid="host-view-markdown"
     v-html="html"
   />

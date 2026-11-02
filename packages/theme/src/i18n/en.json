@@ -10316,12 +10316,23 @@
             "empty": "Unassigned"
           }
         },
+        "attachments": {
+          "heading": {
+            "title": "Attachments"
+          },
+          "truncated": {
+            "hint": "More attachments exist. Open on {label} for the rest."
+          }
+        },
         "comments": {
           "edited": {
             "status": "Revised"
           },
           "omitted": {
             "hint": "Comments are too large to load here. Open on {label} to read them."
+          },
+          "open": {
+            "tooltip": "Open comment on {label}"
           },
           "truncated": {
             "hint": "Older comments are not shown. Open on {label} for the rest."
@@ -10393,6 +10404,25 @@
         },
         "heading": {
           "title": "Applied labels"
+        }
+      },
+      "markdown": {
+        "alert": {
+          "caution": {
+            "title": "Caution"
+          },
+          "important": {
+            "title": "Important"
+          },
+          "note": {
+            "title": "Note"
+          },
+          "tip": {
+            "title": "Tip"
+          },
+          "warning": {
+            "title": "Warning"
+          }
         }
       },
       "mergeable": {

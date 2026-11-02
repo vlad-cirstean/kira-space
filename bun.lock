@@ -29,6 +29,7 @@
         "clsx": "2.1.1",
         "echarts": "6.1.0",
         "markdown-it": "15.0.3",
+        "markdown-it-github-alerts": "1.0.1",
         "monaco-editor": "0.57.0",
         "pinia": "4.1.0",
         "reka-ui": "2.11.0",
@@ -1519,6 +1520,8 @@
     "markdown-extensions": ["markdown-extensions@2.0.0", "", {}, "sha512-o5vL7aDWatOTX8LzaS1WMoaoxIiLRQJuIKKe2wAw6IeULDHaqbiqiggmx+pKvZDb1Sj+pE46Sn1T7lCqfFtg1Q=="],
 
     "markdown-it": ["markdown-it@15.0.3", "", { "dependencies": { "argparse": "^3.0.3", "entities": "^8.1.0", "linkify-it": "^6.1.0", "mdurl": "^2.1.0", "punycode.js": "^2.3.1", "uc.micro": "^3.0.0" }, "bin": { "markdown-it": "bin/markdown-it.mjs" } }, "sha512-+Az7Ojz3iRGu8KYMvJ6xVhvrxP3eE+vEtJX75Ow88XBpcQNV/0lGX5ZynIIBftREo4DC2jsveAMDaeltmm8QvQ=="],
+
+    "markdown-it-github-alerts": ["markdown-it-github-alerts@1.0.1", "", { "peerDependencies": { "markdown-it": ">= 13.0.0" } }, "sha512-NNATF4QdoGI07hyCitoB2YqJ1YcNVCKT89ut2VtfFY9rkeFCXe/V2lOonKQLpJiq5DjiZZepf97BJx5xOjFIAw=="],
 
     "markdown-table": ["markdown-table@3.0.4", "", {}, "sha512-wiYz4+JrLyb/DqW2hkFJxP7Vd7JuTDm77fvbM8VfEQdmSMqcImWeeRbHwZjBjIFki/VaMK2BhFi7oUUZeM5bqw=="],
 
