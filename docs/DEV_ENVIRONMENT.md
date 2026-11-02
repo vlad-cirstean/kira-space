@@ -468,7 +468,7 @@ temp `KIRA_SPACE_HOME`, `WAILS_SERVER_HOST=127.0.0.1`. Run `bun run build:space-
 
 - `apps/kira-space/internal/issuetracker/jira/testdata/*.json` are hand-written from acli's documented output. Running a downloaded `acli` binary was refused in the sandbox, so no real output was captured.
 - Refresh by hand against a real site: `acli jira workitem view KEY --json --fields '*all,-comment,-attachment,-worklog,-description'`, then redact. Keep both Development field forms (string and object).
-- P428 adds `issue-detail.json`, `issue-detail-plain.json` and `comment-list.json`. Refresh with `acli jira workitem view KEY --json --fields <jira.DetailFields>` and `acli jira workitem comment list --key KEY --json --limit 50 --order -created`, then redact.
+- P428 adds `issue-detail.json`, `issue-detail-plain.json` and `comment-list.json`. Refresh with `acli jira workitem view KEY --json --fields <jira.DetailFields>` (includes `attachment`; real attachment ids and URLs redacted) and `acli jira workitem comment list --key KEY --json --limit 50 --order -created`, then redact.
 - P429: no `comment create` fixture exists. `fakeacli` records the call and reads the `--body-file` ADF. Check by hand: `acli jira workitem comment create --key KEY --body-file body.json` with an ADF document.
 - Flow tests use `flowharness/fakeacli`; no test needs `acli` installed.
 
