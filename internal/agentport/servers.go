@@ -47,7 +47,7 @@ func (im *importer) addServer(name string, s nativeServer) {
 		return text
 	}
 	vals := func(field string, l loc, m map[string]string) omap {
-		var o omap
+		o := make(omap, 0, len(m))
 		for _, k := range sortedKeys(m) {
 			o = append(o, kv{k, val(l, field+"."+k, k, m[k], k)})
 		}

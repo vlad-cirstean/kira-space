@@ -212,7 +212,7 @@ func (im *importer) add(id, kind string, ops []op, slots []SecretSlot, pend []pe
 	if it.Secrets == nil {
 		it.Secrets = []SecretSlot{}
 	}
-	var texts []string
+	texts := make([]string, 0, len(ops))
 	for _, o := range ops {
 		texts = append(texts, snippet(o.path, o.value, o.append))
 	}
@@ -322,8 +322,7 @@ func (im *importer) importContext(t target, display string, src *Source) {
 
 func readProblem(path string, err error, limit int64) string {
 	name := baseName(path)
-	switch {
-	case errors.Is(err, errTooLarge):
+	if errors.Is(err, errTooLarge) {
 		return i18n.T("backend.core.agentPort.tooLarge.body", map[string]string{"file": name, "limit": fmt.Sprint(limit >> 20)})
 	}
 	return i18n.T("backend.core.agentPort.unreadable.body", map[string]string{"file": name})
