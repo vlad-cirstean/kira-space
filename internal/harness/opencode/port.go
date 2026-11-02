@@ -97,8 +97,10 @@ func PermissionDoc(allow, deny []string) (doc map[string]json.RawMessage, notes 
 	return doc, notes, nil
 }
 
-// MergePermission appends add's rules after existing's, same key. A pattern the user already has keeps
-// its action when add would only widen it (allow over deny).
+// MergePermission merges add's rules into existing's, same key, without moving or widening any rule
+// of the user's (the last match wins). Kira allows go just before the user's first deny, so a user
+// deny still beats them and a user ask or allow before it does not; Kira denies go last. A pattern
+// the user already denies keeps that deny against an allow. Same-pattern non-deny entries yield to Kira's.
 func MergePermission(existing, add json.RawMessage) (json.RawMessage, error) {
 	var cur, extra ruleSet
 	if err := json.Unmarshal(existing, &cur); err != nil {
@@ -107,10 +109,29 @@ func MergePermission(existing, add json.RawMessage) (json.RawMessage, error) {
 	if err := json.Unmarshal(add, &extra); err != nil {
 		return nil, err
 	}
+	var allows, others []ruleEntry
 	for _, e := range extra.entries {
-		if i := slices.IndexFunc(cur.entries, func(c ruleEntry) bool { return c.pattern == e.pattern }); i >= 0 && cur.entries[i].action == "deny" && e.action == "allow" {
+		if e.action != "allow" {
+			others = append(others, e)
 			continue
 		}
+		if slices.ContainsFunc(cur.entries, func(c ruleEntry) bool { return c.pattern == e.pattern && c.action == "deny" }) {
+			continue
+		}
+		allows = append(allows, e)
+	}
+	taken := func(pattern string) func(ruleEntry) bool {
+		return func(c ruleEntry) bool { return c.pattern == pattern }
+	}
+	for _, e := range allows {
+		cur.entries = slices.DeleteFunc(cur.entries, taken(e.pattern))
+	}
+	at := slices.IndexFunc(cur.entries, func(c ruleEntry) bool { return c.action == "deny" })
+	if at < 0 {
+		at = len(cur.entries)
+	}
+	cur.entries = slices.Insert(cur.entries, at, allows...)
+	for _, e := range others {
 		cur.add(e.pattern, e.action)
 	}
 	return json.Marshal(cur)
