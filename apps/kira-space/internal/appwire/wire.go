@@ -256,6 +256,7 @@ func wireAdeTask(
 		CustomScripts: runs.Scripts, ScriptsHome: runs.Home,
 		ScriptRunsOf: func(taskID string, limit int) ([]scriptruns.Run, error) { return runs.List(limit, taskID) },
 		AgentDir:     filepath.Join(config.KiraSpaceHome(), "ade", "runs"),
+		TasksDir:     filepath.Join(config.KiraSpaceHome(), "ade", "tasks"),
 		HeadlessSettingSources: func() string {
 			settings, err := repositories.Settings.GetAll()
 			if err != nil {
