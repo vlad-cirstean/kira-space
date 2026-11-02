@@ -123,7 +123,7 @@ function copyLink(): void {
           />
         </section>
       </main>
-      <IssueSidebar :detail="detail" :provider="target.provider" :stacked="stacked" />
+      <IssueSidebar :detail="detail" :stacked="stacked" />
     </div>
   </HostViewFrame>
 </template>

@@ -172,15 +172,6 @@ export interface IssueComment {
   pending?: boolean;
 }
 
-export interface IssueChangeRequest {
-  title: string;
-  url: string;
-  ref: string;
-  state: string;
-  repo: string;
-  provider: string;
-}
-
 export interface IssueDetail {
   ref: { provider: string; key: string; url: string; site: string };
   title: string;
@@ -203,8 +194,6 @@ export interface IssueDetail {
   commentsTruncated?: boolean;
   commentsOmitted?: boolean;
   summary: { known: boolean; count: number; state: string; providers: string[] };
-  changeRequests: IssueChangeRequest[];
-  changeRequestsReason?: string;
 }
 
 export interface HostViewIssue {

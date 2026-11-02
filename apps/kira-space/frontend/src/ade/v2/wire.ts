@@ -459,15 +459,6 @@ export interface ArtifactGap {
   repo: string;
   /** Why a tracker source is partial; '' for the others. */
   reason?: string;
-  /** Change requests the tracker reports beyond the ones found (changeRequestsMissing). */
-  count?: number;
-}
-interface IssueChangeRequest {
-  title: string;
-  url: string;
-  ref: string;
-  state: string;
-  repo: string;
 }
 /** The issue tracker's view of a task's linked issue. */
 export interface TaskIssue {
@@ -479,11 +470,8 @@ export interface TaskIssue {
   status: string;
   statusCategory: 'new' | 'indeterminate' | 'done' | '';
   summary: { known: boolean; count: number; state: string; providers: string[] };
-  changeRequests: IssueChangeRequest[];
   /** Why the issue could not be read; '' when it was. noTracker: no tracker recognises the link. */
   reason: string;
-  /** Set when only the pull request lookup failed. */
-  changeRequestsReason: string;
 }
 export interface ArtifactsResult {
   artifacts: Artifact[];

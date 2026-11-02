@@ -4,16 +4,14 @@ import { Skeleton } from '@theme/components/ui/skeleton';
 import { t } from '@theme/i18n';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { computed } from 'vue';
-import { control } from '../../../bridge/control';
 import { useOpenHostView } from '../../../hostview/queries';
 import AdeChip from '../AdeChip.vue';
 import { gapText } from '../artifacts/gapText';
-import { artifactStatusLabel, artifactStatusTone } from '../artifacts/status';
 import type { Tone } from '../board/actions';
 import { useTaskIssue } from '../queries';
 import type { ArtifactGap } from '../wire';
 
-// The linked issue as its tracker reports it: title, status and the pull requests that name its key.
+// The linked issue as its tracker reports it: title, status and Jira's PR count.
 // The tracker CLI owns the credentials; a failure reads as a line of text, never an error toast.
 const props = defineProps<{ taskId: string; link: string }>();
 const query = useTaskIssue(
@@ -32,13 +30,7 @@ const gap = computed<ArtifactGap | null>(() => {
   const i = issue.value;
   if (!i || i.reason === 'noTracker') return null;
   const source = i.provider;
-  if (i.reason) return { source, repo: '', reason: i.reason };
-  if (i.changeRequestsReason) {
-    const r = i.changeRequestsReason;
-    return { source, repo: '', reason: `changeRequests${r.charAt(0).toUpperCase()}${r.slice(1)}` };
-  }
-  const missing = i.summary.known ? i.summary.count - i.changeRequests.length : 0;
-  return missing > 0 ? { source, repo: '', reason: 'changeRequestsMissing', count: missing } : null;
+  return i.reason ? { source, repo: '', reason: i.reason } : null;
 });
 
 const openView = useOpenHostView();
@@ -47,11 +39,6 @@ function viewIssue(): void {
   // link is `<key> <url>`; the view takes the link when there is one, else the key.
   const [key = '', url = ''] = props.link.trim().split(/\s+/);
   fireAndForget(openView.mutateAsync(url || key), 'ade.taskIssue');
-}
-
-function open(e: MouseEvent, url: string): void {
-  e.preventDefault();
-  fireAndForget(control.openExternal(url), 'ade.taskIssue');
 }
 </script>
 
@@ -86,35 +73,17 @@ function open(e: MouseEvent, url: string): void {
           />
         </div>
         <template v-if="!issue.reason">
-          <div class="text-kira-sm text-subtle" data-testid="ade-task-issue-prs">
+          <div
+            v-if="issue.summary.known"
+            class="text-kira-sm text-subtle"
+            data-testid="ade-task-issue-prs"
+          >
             {{
-              issue.summary.known || issue.changeRequests.length > 0
-                ? t('space.ade.taskTab.issueLine.prs.label', {
-                    count: Math.max(issue.summary.count, issue.changeRequests.length),
-                  })
+              issue.summary.count > 0
+                ? t('space.ade.taskTab.issueLine.prs.label', { count: issue.summary.count })
                 : t('space.ade.taskTab.issueLine.prsNone.label')
             }}
           </div>
-          <ul
-            v-if="issue.changeRequests.length > 0"
-            class="m-0 flex list-none flex-col gap-0.5 p-0"
-          >
-            <li
-              v-for="cr in issue.changeRequests"
-              :key="cr.url"
-              class="flex min-w-0 items-center gap-2 text-kira-md"
-              data-testid="ade-task-issue-pr"
-            >
-              <a :href="cr.url" class="min-w-0 truncate text-info" @click="open($event, cr.url)">{{
-                cr.title
-              }}</a>
-              <span class="shrink-0 text-kira-sm text-subtle">{{ cr.repo }} {{ cr.ref }}</span>
-              <AdeChip
-                :label="artifactStatusLabel(cr.state)"
-                :tone="artifactStatusTone(cr.state)"
-              />
-            </li>
-          </ul>
         </template>
         <div v-if="gap" class="text-kira-sm text-tone-amber" data-testid="ade-task-issue-gap">{{
           gapText(gap)

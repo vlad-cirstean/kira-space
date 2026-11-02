@@ -7861,18 +7861,6 @@
         },
         "gap": {
           "body": "Couldn’t read {source} for {repo}. The list may be incomplete.",
-          "changeRequestsFailed": {
-            "body": "Couldn’t search the code host for pull requests of {source}. The list may be incomplete."
-          },
-          "changeRequestsMissing": {
-            "body": "{source} counts {count} more pull request than found here. Links made only in commit messages aren’t found. | {source} counts {count} more pull requests than found here. Links made only in commit messages aren’t found."
-          },
-          "changeRequestsUnauthenticated": {
-            "body": "Searching for pull requests needs a sign-in to the code host. Sign in from settings, under CLI tools."
-          },
-          "changeRequestsUnavailable": {
-            "body": "Searching for pull requests needs the code host command line tool. Set it up in settings, under CLI tools."
-          },
           "notFound": {
             "body": "{source} has no such issue, or you don’t have access to it."
           },

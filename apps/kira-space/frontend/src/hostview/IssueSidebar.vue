@@ -7,43 +7,14 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { formatRelative } from '@workbench/behaviour/format';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
-import { computed } from 'vue';
-import { gapText } from '../ade/v2/artifacts/gapText';
-import type { ArtifactGap } from '../ade/v2/wire';
 import { useOpenHostView } from './queries';
-import type { IssueChangeRequest, IssueDetail } from './wire';
+import type { IssueDetail } from './wire';
 
-const props = defineProps<{ detail: IssueDetail; provider: string; stacked: boolean }>();
+defineProps<{ detail: IssueDetail; stacked: boolean }>();
 const open = useOpenHostView();
 
 function openView(urlOrKey: string): void {
   fireAndForget(open.mutateAsync(urlOrKey), 'hostView.issue');
-}
-
-// Same derivation as the task tab's issue line: a lookup failure, else the tracker's count above the
-// rows found.
-const gap = computed<ArtifactGap | null>(() => {
-  const d = props.detail;
-  const source = props.provider;
-  if (d.changeRequestsReason) {
-    const r = d.changeRequestsReason;
-    return { source, repo: '', reason: `changeRequests${r.charAt(0).toUpperCase()}${r.slice(1)}` };
-  }
-  const missing = d.summary.known ? d.summary.count - d.changeRequests.length : 0;
-  return missing > 0 ? { source, repo: '', reason: 'changeRequestsMissing', count: missing } : null;
-});
-
-function stateVariant(cr: IssueChangeRequest) {
-  switch (cr.state) {
-    case 'merged':
-      return 'info' as const;
-    case 'closed':
-      return 'error' as const;
-    case 'draft':
-      return 'chip' as const;
-    default:
-      return 'ok' as const;
-  }
 }
 </script>
 
@@ -135,31 +106,16 @@ function stateVariant(cr: IssueChangeRequest) {
       </div>
     </section>
 
-    <section class="flex flex-col gap-1.5" data-testid="issue-side-pull-requests">
+    <section
+      v-if="detail.summary.known"
+      class="flex flex-col gap-1.5"
+      data-testid="issue-side-pull-requests"
+    >
       <SectionHeading :label="t('space.hostView.issue.pullRequests.heading.title')" />
-      <FieldDescription v-if="detail.changeRequests.length === 0 && !gap">{{
-        t('space.ade.taskTab.issueLine.prsNone.label')
-      }}</FieldDescription>
-      <div
-        v-for="cr in detail.changeRequests"
-        :key="cr.url"
-        class="flex items-center gap-2 text-kira-sm"
-        data-testid="issue-side-pull-request"
-      >
-        <Button
-          size="inline"
-          variant="link"
-          class="min-w-0 flex-1 justify-start truncate"
-          :title="cr.title"
-          data-testid="issue-side-pull-request-open"
-          @click="openView(cr.url)"
-        >
-          {{ cr.ref }} {{ cr.title }}
-        </Button>
-        <Badge :variant="stateVariant(cr)" class="shrink-0">{{ cr.state }}</Badge>
-      </div>
-      <FieldDescription v-if="gap" data-testid="issue-side-pull-requests-gap">{{
-        gapText(gap)
+      <FieldDescription data-testid="issue-side-pull-requests-count">{{
+        detail.summary.count > 0
+          ? t('space.ade.taskTab.issueLine.prs.label', { count: detail.summary.count })
+          : t('space.ade.taskTab.issueLine.prsNone.label')
       }}</FieldDescription>
     </section>
   </aside>
