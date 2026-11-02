@@ -1,4 +1,5 @@
 import * as AdeTaskService from '@bindings/adetaskservice.js';
+import * as AgentContextService from '@bindings/agentcontextservice.js';
 import * as AgentNotifyService from '@bindings/agentnotifyservice.js';
 import * as AgentService from '@bindings/agentservice.js';
 import * as AgentUsageService from '@bindings/agentusageservice.js';
@@ -81,6 +82,7 @@ import { scriptsSnapshotOf } from '@workbench/automations/createCustomScriptsSto
 import { createCoreControl } from '@workbench/bridge/createCoreControl';
 import { createOpenExternal } from '@workbench/bridge/openExternal';
 import { on, trust, unwrap, windowKey } from '@workbench/bridge/rpc';
+import type { AgentContextSaveArgs, AgentContextView } from '../ade/v2/context/types';
 import type * as V2 from '../ade/v2/wire';
 import type { CaptureItem, CaptureResult, HotkeyState } from '../capture/wire';
 import { CHANNEL_CAPTURE_ITEM, CHANNEL_CAPTURE_STATUS } from '../capture/wire';
@@ -458,6 +460,11 @@ const spaceControl = {
     unwrap(ConfigFilesService.Open(args)),
   configFilesReveal: (args: { folder: string; file: string }): Promise<void> =>
     unwrap(ConfigFilesService.Reveal(args)),
+  agentContextGet: (): Promise<AgentContextView> =>
+    unwrap(AgentContextService.Get()).then((r) => trust<AgentContextView>(r)),
+  agentContextSave: (args: AgentContextSaveArgs): Promise<AgentContextView> =>
+    unwrap(AgentContextService.Save(args)).then((r) => trust<AgentContextView>(r)),
+  onAgentContextChanged: (cb: () => void): (() => void) => on(CHANNEL.agentContextChanged, cb),
   adeTaskWorkflows: (): Promise<V2.WorkflowsResult> =>
     unwrap(AdeTaskService.Workflows()).then((r) => trust<V2.WorkflowsResult>(r)),
   adeTaskRepos: (): Promise<V2.ReposResult> =>

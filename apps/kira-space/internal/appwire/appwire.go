@@ -1,4 +1,4 @@
-// Package appwire is Kira Space's composition root: it builds the 32 bound services, the git router
+// Package appwire is Kira Space's composition root: it builds the 33 bound services, the git router
 // and socket, the ADE tracker and board, and their teardown. main and the flow-test harness
 // (internal/flowharness) both call Build, so a test cannot wire differently from production. It
 // sits above internal/bridge in the layering, like internal/appshell.
@@ -202,16 +202,18 @@ type Wired struct {
 	Agents   harness.Selector
 	AgentSvc *bridge.AgentService
 	// AgentContext is the shared agent context every launch gets.
-	AgentContext *agentctx.Store
+	AgentContext    *agentctx.Store
+	AgentContextSvc *bridge.AgentContextService
 
-	reopen          func()
-	appFocused      atomic.Pointer[func() bool]
-	detachMetrics   func()
-	detachOpLog     func()
-	detachGitCred   func()
-	detachMobile    func()
-	beforeFlushOnce func()
-	teardownOnce    func()
+	reopen           func()
+	appFocused       atomic.Pointer[func() bool]
+	detachMetrics    func()
+	detachOpLog      func()
+	detachGitCred    func()
+	stopAgentContext func()
+	detachMobile     func()
+	beforeFlushOnce  func()
+	teardownOnce     func()
 }
 
 // Build wires every service.
@@ -316,11 +318,22 @@ func Build(opts Options) *Wired {
 	w.AgentContext = agentctx.New(agentctx.Options{
 		Dir: filepath.Join(deps.Home, "agent"), SnapshotDir: filepath.Join(deps.Home, "agent-context"),
 		Projection: configfs.TableProjection{DB: repositories.CustomScripts.DB, Folder: agentctx.Folder}, App: "Space",
+		KeepsOnResume: func() []string { return keepsContextOnResume(registry) },
 	})
 	w.AgentContext.View() // follows the file into the DB projection
 	if err := w.AgentContext.WriteDocs(); err != nil {
 		slog.Warn("agent context: write docs", "scope", "startup", "err", err)
 	}
+	stopContextWatch, err := w.AgentContext.Watch(func() {
+		w.AgentContext.View()
+		bridge.AgentContextChanged(events)
+	})
+	if err != nil {
+		slog.Warn("agent context: watch", "scope", "startup", "err", err)
+		stopContextWatch = func() {}
+	}
+	w.stopAgentContext = stopContextWatch
+	w.AgentContextSvc = &bridge.AgentContextService{Service: &agentctx.Service{Store: w.AgentContext}}
 	adeTracker, agentHooks := wireTracker(repositories, terminalRegistry, emitter, events, opts.TrackerGrace, w.AgentNotify, w.AgentUsage, w.Agents, w.AgentContext.ContextFile)
 	w.Tracker, w.AgentHooks = adeTracker, agentHooks
 
@@ -511,7 +524,7 @@ func (w *Wired) reopenWindow() {
 // StartMobile starts the phone server when settings enable it; call after the shell is up.
 func (w *Wired) StartMobile() { bridge.StartMobileIfEnabled(w.Mobile) }
 
-// Bound returns the 32 bound services in registration order.
+// Bound returns the 33 bound services in registration order.
 func (w *Wired) Bound() []application.Service {
 	return []application.Service{
 		application.NewService(w.GitCredential),
@@ -523,7 +536,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.MemoryImport), application.NewService(w.MemoryDistill), application.NewService(w.WindowsSvc), application.NewService(w.Update),
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),
 		application.NewService(w.PromptsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc),
-		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles),
+		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc),
 	}
 }
 
@@ -540,6 +553,7 @@ func (w *Wired) teardown(db io.Closer) {
 	// P119: a Cmd+Q mid-download aborts the install rather than leaving an orphan that later
 	// swaps a bundle the user quit away from. After hand-off this is a no-op.
 	w.UpdateInstall.Cancel()
+	w.stopAgentContext()
 	w.OpenedFiles.Close()
 	w.detachMetrics()
 	w.detachOpLog()
@@ -576,4 +590,16 @@ func (w *Wired) teardown(db io.Closer) {
 	if err := db.Close(); err != nil {
 		slog.Warn("close db", "scope", "shutdown", "err", err)
 	}
+}
+
+// keepsContextOnResume lists the product labels of the providers whose resumed conversation keeps
+// its recorded agent context.
+func keepsContextOnResume(r *harness.Registry) []string {
+	var out []string
+	for _, id := range r.IDs() {
+		if p, ok := r.Get(id); ok && harness.KeepsContextOnResume(p) {
+			out = append(out, p.ProductLabel())
+		}
+	}
+	return out
 }

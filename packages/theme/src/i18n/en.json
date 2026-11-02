@@ -557,6 +557,11 @@
           "body": "The agent that ran this conversation is no longer available."
         }
       },
+      "agentContext": {
+        "changed": {
+          "body": "The agent context changed. Refresh and retry."
+        }
+      },
       "appUpdate": {
         "canceled": {
           "body": "The update was cancelled."

@@ -50,6 +50,9 @@ export const IPC = {
   tabPrev: 'kira:menu:tabPrev',
   tabClose: 'kira:menu:tabClose',
   windowsOpenNew: 'kira:windows:openNew',
+  agentContextGet: 'kira:agentcontext:get',
+  agentContextSave: 'kira:agentcontext:save',
+  agentContextChanged: 'kira:agentContext:changed',
   configFilesOpen: 'kira:configfiles:open',
   configFilesReveal: 'kira:configfiles:reveal',
   // P128 §2.2/§2.6: this app now persists a per-window module mode too, same channels as Kira
