@@ -22,10 +22,12 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
  */
 import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { FieldError } from '@theme/components/ui/field';
 import { type MessageKey, t } from '@theme/i18n';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
-import { computed, ref } from 'vue';
+import { formatShortcut } from '@workbench/shortcuts/keys';
+import { computed } from 'vue';
 import { ACTION_ICONS } from '../../icons/index.ts';
 import { markOnToggle, reviewAttention } from '../../lib/reviewAttention.ts';
 import type { FileListMode } from '../../state/detail.ts';
@@ -52,6 +54,17 @@ const props = defineProps<{
   filter: string;
   /** Uncommitted changes under the committed list; `null` hides the section. */
   working: ReviewWorkingSection | null;
+  /** The file last opened, committed or uncommitted. */
+  cursor: { section: 'committed' | 'working'; path: string } | null;
+  /** Some listed file still needs a review. */
+  canStep: boolean;
+  /** Show the Alt+F8 chords on the step buttons. */
+  reviewShortcuts: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: 'step', dir: 'next' | 'previous'): void;
+  (e: 'openedWorking', path: string): void;
 }>();
 
 const diffModeOptions: readonly DiffModeOption[] = [
@@ -95,11 +108,17 @@ const workingChangedCount = computed(
       (f) => reviewAttention(props.working?.reviewStates.get(f.path)) === 'changed',
     ).length,
 );
-const workingSelected = ref(-1);
+const workingSelected = computed(() =>
+  props.cursor?.section === 'working'
+    ? workingFiles.value.findIndex((f) => f.path === props.cursor?.path)
+    : -1,
+);
 
 function onOpenWorkingIndex(index: number, pinned: boolean): void {
   const file = workingFiles.value[index];
-  if (file) props.working?.onOpen(file.path, pinned);
+  if (!file) return;
+  emit('openedWorking', file.path);
+  props.working?.onOpen(file.path, pinned);
 }
 
 const selectedIndex = computed(() => {
@@ -170,6 +189,22 @@ function onToggleWorkingReviewed(path: string): void {
             <span class="sr-only">{{ item.label }}</span>
           </template>
         </SecondaryTabs>
+        <TooltipIconButton
+          icon="arrow-up"
+          :label="t('git.review.files.prevUnreviewed.tooltip')"
+          :kbd="reviewShortcuts ? formatShortcut('review.previousUnreviewed') : undefined"
+          :disabled="!canStep"
+          data-testid="review-prev-unreviewed"
+          @click="emit('step', 'previous')"
+        />
+        <TooltipIconButton
+          icon="arrow-down"
+          :label="t('git.review.files.nextUnreviewed.tooltip')"
+          :kbd="reviewShortcuts ? formatShortcut('review.nextUnreviewed') : undefined"
+          :disabled="!canStep"
+          data-testid="review-next-unreviewed"
+          @click="emit('step', 'next')"
+        />
         <span v-if="deltaStatusText" class="ml-auto text-muted-foreground text-graph-sm">{{
           deltaStatusText
         }}</span>
@@ -264,7 +299,6 @@ function onToggleWorkingReviewed(path: string): void {
           :store="store"
           :actions="actions"
           :review-states="working?.reviewStates"
-          @select-file="(i) => (workingSelected = i)"
           @open-file="onOpenWorkingIndex"
           @toggle-reviewed="onToggleWorkingReviewed"
           @toggle-reviewed-folder="

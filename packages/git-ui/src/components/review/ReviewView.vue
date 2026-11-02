@@ -23,6 +23,7 @@ import { adjacentInOrder, orderedFilePaths } from '../../lib/fileTreeModel.ts';
 import { markOnToggle, reviewAttention } from '../../lib/reviewAttention.ts';
 import { createReviewFilesActions } from '../../lib/reviewFilesActions.ts';
 import { useReviewAnnouncements } from '../../lib/useReviewAnnouncements.ts';
+import { useReviewStepping } from '../../lib/useReviewStepping.ts';
 import type { MountOptions } from '../../main.ts';
 import { retryBootstrap as sharedRetryBootstrap } from '../../state/bootstrap.ts';
 import type { FileListMode } from '../../state/detail.ts';
@@ -50,6 +51,7 @@ const props = defineProps<{
   target?: ReviewTarget | null;
   lockTarget?: boolean;
   onReviewApi?: MountOptions['onReviewApi'];
+  reviewShortcuts?: boolean;
   repoHead?: RepoHead;
   workingChanges?: ReviewWorkingSection | null;
 }>();
@@ -126,10 +128,7 @@ function retryCompare(): void {
 }
 
 async function bootstrap(): Promise<void> {
-  // A retry re-enters here after an earlier run already subscribed and constructed
-  // states — unsubscribe and dispose that run's own before replacing them, so a failed run never
-  // leaves a `review.target`/`ui.action` handler firing twice, or a state object leaking
-  // its own subscription forever.
+  // A retry re-enters here: dispose the earlier run's handlers and states first.
   unsubscribeTarget?.();
   unsubscribeUiAction?.();
   review.value?.dispose();
@@ -298,11 +297,7 @@ function onUiAction(action: UiActionKind): void {
   }
 }
 
-// ---------------------------------------------------------------------------------------
-// The Files pane's own target: kept in step with the review session's resolved (branch, base)
-// rather than owned by ReviewSessionState itself (the file list's own request lifecycle stays
-// here).
-// ---------------------------------------------------------------------------------------
+// The Files pane's target follows the session's resolved (branch, base).
 watch(
   () => {
     const r = review.value;
@@ -322,11 +317,7 @@ watch(
   },
 );
 
-// ---------------------------------------------------------------------------------------
-// The Comments pane's own target — repoId + branch only, no base: the session key
-// review.comment.* is keyed on has none. setPane/setBase already reset the pane to 'commits', so
-// this never needs its own reset logic beyond ReviewCommentsState.setTarget's own.
-// ---------------------------------------------------------------------------------------
+// The Comments pane's target is repoId + branch only: its session key has no base.
 watch(
   () => {
     const r = review.value;
@@ -349,14 +340,22 @@ watch(
   },
 );
 
+const { cursor, canStep, step } = useReviewStepping({
+  reviewFiles,
+  committedOrder: () => orderedPaths.value,
+  working: () => props.workingChanges,
+  filter: () => filter.value,
+  listMode: () => listMode.value,
+  shortcuts: () => props.reviewShortcuts === true && review.value?.phase.value === 'listing',
+  announce,
+});
+
 function onSelectComment(path: string, origin: ReviewComment['origin']): void {
   if (origin === 'working' && props.workingChanges) props.workingChanges.onOpen(path, false);
   else reviewFiles.value?.selectFile(path);
 }
 
-// P75 §1.2: the Commits pane's own row-action bundle — a plain computed (not the raw
-// `review.rowActions` ref) so the template can narrow it once, the same seam `filesActions`
-// below already uses for its own `DetailActions | undefined`.
+// A plain computed so the template narrows the row-action bundle once.
 const rowActions = computed<DetailActions | undefined>(() => review.value?.rowActions.value);
 
 const filesActions = createReviewFilesActions(bridge, () => repoId.value, announce);
@@ -370,10 +369,7 @@ onMounted(() => {
       review.value?.checkNow();
     },
   });
-  // Mirrors `App.vue`'s own first-paint mark (the review-view perf metric measures from this, not
-  // merely from `kira:page-parsed`). Unlike the graph panel there is no lane-layout
-  // worker to wait a frame for, so this can mark right after mount rather than waiting on a
-  // `CommitGrid.vue`-equivalent chunk-applied event.
+  // The review-view perf metric measures from this first-paint mark.
   requestAnimationFrame(() => {
     performance.mark('kira:first-paint');
     performance.measure('kira:first-paint', undefined, 'kira:first-paint');
@@ -412,12 +408,7 @@ const orderedPaths = computed(() =>
   ),
 );
 
-// The write half of durable persistence — one watch() over the same fields the
-// snapshot lists (listMode/filter live here; branch/resolution/pane/diffMode are read fresh
-// inside persistSession itself). A getter-source watch over an array literal fires on every
-// tracked-dependency change regardless of the array's own contents, which is exactly right here:
-// scheduleSessionSave's own debounce is what keeps several fields changing in the same tick
-// (setTarget resetting pane while also changing branch) down to one save, not this watch's job.
+// Saves the session when any snapshot field changes; scheduleSessionSave coalesces same-tick changes.
 watch(
   () => [
     review.value?.branch.value,
@@ -581,6 +572,11 @@ useReviewAnnouncements(review, announce);
           :list-mode="listMode"
           :filter="filter"
           :working="workingChanges ?? null"
+          :cursor="cursor"
+          :can-step="canStep"
+          :review-shortcuts="reviewShortcuts === true"
+          @step="step"
+          @opened-working="(path) => (cursor = { section: 'working', path })"
         />
 
         <ReviewCommentsPane

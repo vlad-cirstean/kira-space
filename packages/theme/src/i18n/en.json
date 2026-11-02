@@ -5467,6 +5467,9 @@
       }
     },
     "review": {
+      "allReviewed": {
+        "announce": "Every file is reviewed"
+      },
       "ask": {
         "body": "Nothing was detected for {branch}. Choose a base above. Kira doesn’t guess."
       },
@@ -5616,6 +5619,12 @@
         },
         "neverReviewed": {
           "status": "Never reviewed, showing the full range diff"
+        },
+        "nextUnreviewed": {
+          "tooltip": "Next file to review"
+        },
+        "prevUnreviewed": {
+          "tooltip": "Previous file to review"
         },
         "sinceReview": {
           "label": "Since review"
