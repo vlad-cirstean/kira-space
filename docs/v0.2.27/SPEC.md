@@ -6,7 +6,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 
 | Phase | Title | Status |
 |---|---|---|
-| P459 | Task details: drop Notes, generic labels, remove Jira PR search | Todo |
+| P459 | Task details: drop Notes, generic labels, remove Jira PR search | Done |
 | P460 | Jira issue view: fast open, readable render, images | Todo |
 | P461 | Task "+" new terminal or agent works; remove list-row terminal button | Todo |
 | P462 | Global capture dialog: keyboard only, PR-derived branches | Todo |
@@ -28,6 +28,8 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 - Replace the `gh` and Azure labels with a generic word (PR). Replace the Jira label with a generic word (Issue). Plan lists every UI string, i18n key and tooltip carrying a vendor name where the concept is generic.
 - Jira-to-source-control PR search shows unrelated public repos. Check whether the Jira ticket itself exposes PR links (dev-status or remote links). If yes, use only those. If no, remove the search for now, UI and backend wiring that nothing else uses.
 - Test: UI spec (labels, Notes gone). Backend flow only if backend changes.
+
+**Result.** Notes row gone from Task tab; Notes tab unchanged, no data change. Task tab and archived panel label rows "Issue" and "PR" (`space.ade.taskTab.pr.label`); placeholders and destination names stay vendor-specific. Ticket exposes no PR links without credentials (acli gives the Development count only), so key search removed: `ade.KeyChangeRequests`, `githost.ChangeRequestSearch` (GitHub, Azure, fake host), `ByHeadContaining`, `changeRequests` on `TaskIssue`, `IssueDetail`, `ArtifactGap.count`. Task tab and issue view show Jira's PR count. Tests: flow `TestTaskIssueTracker` asserts a title-matching foreign PR no longer lists; `TestIssueView` count only; contracts regenerated; new UI spec for labels and Notes; full `test:flows:space` and `test:ui:space` pass (987 passed; 2 load timeouts passed on lone rerun); visual specs `ade-sandbox`, `ade-sessions-menu` unchanged. Open item added to ARCHITECTURE.md: Jira PR rows not listed.
 
 ### P460 Jira issue view: fast open, readable render, images
 
