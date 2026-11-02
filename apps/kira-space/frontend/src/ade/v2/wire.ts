@@ -982,6 +982,8 @@ export interface ShelveTaskArgs {
 }
 export interface CaptureTaskArgs {
   title: string;
+  /** Plan day (YYYY-MM-DD) the task lands on; null lands in Later. */
+  day: string | null;
 }
 export interface FileNameArgs {
   fileName: string;

@@ -649,7 +649,7 @@ func (s *AdeTaskService) ShelveTask(ctx context.Context, args adewire.ShelveTask
 	return adeTaskError(s.Engine.ShelveTask(ctx, args))
 }
 
-// CaptureTask adds a title-only task at the top of Later.
+// CaptureTask adds a title-only task at the top of Later, or of args.Day.
 func (s *AdeTaskService) CaptureTask(ctx context.Context, args adewire.CaptureTaskArgs) (adewire.Task, error) {
 	ctx = adeUserCtx(ctx)
 	if strings.TrimSpace(args.Title) == "" {
@@ -657,6 +657,11 @@ func (s *AdeTaskService) CaptureTask(ctx context.Context, args adewire.CaptureTa
 	}
 	if err := validateAdeName(args.Title, "title"); err != nil {
 		return adewire.Task{}, err
+	}
+	if args.Day != nil {
+		if err := validateAdeISODate(*args.Day); err != nil {
+			return adewire.Task{}, err
+		}
 	}
 	t, err := s.Engine.CaptureTask(ctx, args)
 	return t, adeTaskError(err)

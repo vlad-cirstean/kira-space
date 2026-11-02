@@ -24,7 +24,7 @@ async function onEnter(): Promise<void> {
   const value = text.value.trim();
   if (!value || add.isPending.value) return;
   try {
-    await add.mutateAsync({ title: value });
+    await add.mutateAsync({ title: value, day: null });
     text.value = '';
     note.value = t('space.ade.later.added.announce');
   } catch (err) {

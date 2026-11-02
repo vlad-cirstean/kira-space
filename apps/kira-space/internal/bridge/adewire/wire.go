@@ -920,9 +920,11 @@ type ShelveTaskArgs struct {
 	BeforeID string `json:"beforeId"`
 }
 
-// CaptureTaskArgs adds a title-only task at the top of Later.
+// CaptureTaskArgs adds a title-only task at the top of Later, or of Day.
 type CaptureTaskArgs struct {
 	Title string `json:"title"`
+	// Day is the plan day (YYYY-MM-DD) the task lands on, at its top; nil lands at the top of Later.
+	Day *string `json:"day"`
 }
 
 type FileNameArgs struct {
