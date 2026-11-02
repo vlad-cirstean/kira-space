@@ -68,7 +68,7 @@ function onUpdate(v: unknown): void {
                 <CodiconIcon v-if="item.icon" :name="item.icon" :size="13" />
                 <span>{{ item.label }}</span>
                 <template v-if="item.count !== undefined">
-                  <Badge v-if="countBadge" variant="count">{{ item.count }}</Badge>
+                  <Badge v-if="countBadge" variant="count" class="px-1">{{ item.count }}</Badge>
                   <span v-else class="text-kira-sm text-muted-foreground">{{ item.count }}</span>
                 </template>
               </slot>
@@ -88,7 +88,7 @@ function onUpdate(v: unknown): void {
           <CodiconIcon v-if="item.icon" :name="item.icon" :size="13" />
           <span>{{ item.label }}</span>
           <template v-if="item.count !== undefined">
-            <Badge v-if="countBadge" variant="count">{{ item.count }}</Badge>
+            <Badge v-if="countBadge" variant="count" class="px-1">{{ item.count }}</Badge>
             <span v-else class="text-kira-sm text-muted-foreground">{{ item.count }}</span>
           </template>
         </slot>
