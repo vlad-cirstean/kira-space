@@ -549,15 +549,9 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 	if def.Kind == adewire.KindReview {
 		return b.enterReview(ctx, tc, def, run, sb)
 	}
-	rec := &model.CodeRepo{}
-	if sb.ID != taskTarget {
-		var err error
-		if rec, err = b.deps.CodeRepos.Get(sb.CodeRepoID); err != nil {
-			return run, err
-		}
-		if rec == nil {
-			return run, invalid("code repo %s not found", sb.CodeRepoID)
-		}
+	rec, err := b.stepRepo(sb)
+	if err != nil {
+		return run, err
 	}
 	if err := b.deps.Logs.Reset(repos.AdeLogRun, run.ID, run.TaskID); err != nil {
 		return run, err
@@ -579,7 +573,6 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 	vars := b.runVarsFor(tc, sb, path)
 
 	var smart *smartStep
-	var err error
 	runPath := path
 	if def.Kind == adewire.KindAgent && def.SmartScript != "" {
 		if smart, err = b.planSmartStep(tc, sb, path, def); err != nil {
@@ -659,6 +652,21 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 		}()
 	}
 	return updated, nil
+}
+
+// stepRepo is the code repo a step on sb runs in; empty for the task folder target.
+func (b *TaskBoard) stepRepo(sb model.AdeTaskBranch) (*model.CodeRepo, error) {
+	if sb.ID == taskTarget {
+		return &model.CodeRepo{}, nil
+	}
+	rec, err := b.deps.CodeRepos.Get(sb.CodeRepoID)
+	if err != nil {
+		return nil, err
+	}
+	if rec == nil {
+		return nil, invalid("code repo %s not found", sb.CodeRepoID)
+	}
+	return rec, nil
 }
 
 func parseStepTimeout(s string) time.Duration {

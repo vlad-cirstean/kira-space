@@ -123,7 +123,7 @@ export interface ProgressInput {
 }
 
 /** The target of a step on a task with no branch: a run with no branch, in the task folder. */
-export const TASK_TARGET = '';
+const TASK_TARGET = '';
 
 /** Branches a step runs on: `once` is the first mine branch (D12), `each repo` every mine branch,
  *  `only <nick>` the mine branches in that repo. An unmatched `only` has no targets. A task with no

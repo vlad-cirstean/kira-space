@@ -206,12 +206,3 @@ func normalizeOrgURL(raw string) (string, bool) {
 	}
 	return "", false
 }
-
-// orgName is the organization of a canonical organization URL.
-func orgName(orgURL string) string {
-	name, err := url.PathUnescape(strings.TrimPrefix(orgURL, "https://"+Host+"/"))
-	if err != nil {
-		return ""
-	}
-	return name
-}

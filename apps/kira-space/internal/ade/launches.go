@@ -615,7 +615,7 @@ func (b *TaskBoard) LaunchStep(ctx context.Context, args adewire.LaunchStepArgs)
 	lines, cwd, extra, err := b.launchDirs(ctx, tc)
 	folder := ""
 	if errors.Is(err, errNoRepo) { // a task with no repo yet: the session works in the task folder
-		lines, extra, err = nil, nil, nil
+		lines, extra = nil, nil
 		if cwd, err = b.taskDir(tc.task.ID); err != nil {
 			return adewire.Launch{}, err
 		}
