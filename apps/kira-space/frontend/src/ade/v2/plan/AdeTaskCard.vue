@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
@@ -202,20 +201,16 @@ const boxClass = computed(() => {
             >
           </AdeTip>
           <DropdownMenu v-if="baseChoices.length > 1">
-            <AdeTip :text="t('space.ade.plan.card.changeBase.tooltip')">
-              <DropdownMenuTrigger as-child>
-                <Button
-                  variant="toolbar"
-                  size="kira-icon"
-                  class="size-4.5 shrink-0"
-                  :aria-label="t('space.ade.rebase.changeBase.label')"
-                  data-testid="ade-card-change-base"
-                  @click.stop
-                >
-                  <CodiconIcon name="git-branch" :size="13" />
-                </Button>
-              </DropdownMenuTrigger>
-            </AdeTip>
+            <DropdownMenuTrigger as-child>
+              <TooltipIconButton
+                icon="git-branch"
+                :label="t('space.ade.plan.card.changeBase.tooltip')"
+                :aria-label="t('space.ade.rebase.changeBase.label')"
+                class="size-4.5 shrink-0"
+                data-testid="ade-card-change-base"
+                @click.stop
+              />
+            </DropdownMenuTrigger>
             <DropdownMenuContent align="end" data-testid="ade-card-change-base-menu">
               <DropdownMenuItem
                 v-for="c in baseChoices"
