@@ -8,7 +8,7 @@ import { computed, ref } from 'vue';
 import { useMobileTerminalsStore } from '../../../state/mobileTerminals';
 import { useTerminalsStore } from '../../../state/terminals';
 import { useFocusSession } from '../queries';
-import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import type { SessionView } from './sessionView';
 
 // An interactive session: the terminal when this window holds it, else a Show button that raises
@@ -19,7 +19,7 @@ const terminals = useTerminalsStore();
 const phones = useMobileTerminalsStore();
 const terminal = useAutomationsModule();
 const focus = useFocusSession();
-const ui = useAdeBoardUiStore();
+const tabs = useAdePanelTabsStore();
 const missing = ref(false);
 
 const held = computed(() => terminals.terminalSession(props.view.session.terminalId) !== undefined);
@@ -41,7 +41,7 @@ async function show(): Promise<void> {
     .mutateAsync({ sessionId: props.view.session.id, taskId: props.view.session.taskId })
     .catch(() => false);
   if (!shown) missing.value = true;
-  else ui.sessionId = props.view.session.id;
+  else tabs.selectSession(props.view.session.taskId, props.view.session.id);
 }
 </script>
 

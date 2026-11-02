@@ -2,19 +2,17 @@ import { usePersistedState } from '@workbench/behaviour/persisted';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import type { OpenSessionEvent } from '../wire';
+import { useAdePanelTabsStore } from './adePanelTabs';
 
 // Board view state: which page is open and what the panel shows. Workflows and the Add
 // popover keep their own state in `adeWorkflowsUi` and `adeAddUi`. The three Plan toggles persist
-// per window profile; selection and the last refresh summaries are in memory only.
+// per window profile; selection and the last refresh summaries are in memory only. Panel tabs
+// and the picked session live in `adePanelTabs`.
 export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
+  const tabs = useAdePanelTabsStore();
   const view = ref<'plan' | 'later' | 'needs' | 'context' | 'settings' | 'workflows'>('plan');
   const selectedTaskId = ref<string | null>(null);
   const selectedBranchId = ref<string | null>(null);
-  /** Active tab of the task panel and of the branch panel; Sessions is reachable from anywhere. */
-  const taskTab = ref('task');
-  const branchTab = ref('details');
-  /** Session selected in the Sessions tab (`null` = first listed). */
-  const sessionId = ref<string | null>(null);
   /** An explicit open asked the Sessions tab to show this session, even if stopped. */
   const revealSessionId = ref<string | null>(null);
   /** Days of history shown beyond the settings window after a Go to; in memory only. */
@@ -56,9 +54,9 @@ export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
     view.value = 'plan';
     if (e.branchId) selectBranch(e.taskId, e.branchId);
     else select(e.taskId);
-    if (e.branchId) branchTab.value = 'sessions';
-    else taskTab.value = 'sessions';
-    sessionId.value = e.sessionId;
+    if (e.branchId) tabs.setBranchTab(e.branchId, 'sessions');
+    else tabs.setTaskTab(e.taskId, 'sessions');
+    tabs.selectSession(e.taskId, e.sessionId);
     revealSessionId.value = e.sessionId;
   }
 
@@ -66,7 +64,7 @@ export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
   function openSessions(taskId: string): void {
     if (view.value !== 'later') view.value = 'plan';
     select(taskId);
-    taskTab.value = 'sessions';
+    tabs.setTaskTab(taskId, 'sessions');
   }
 
   function toggleRepo(codeRepoId: string): void {
@@ -79,9 +77,6 @@ export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
     view,
     selectedTaskId,
     selectedBranchId,
-    taskTab,
-    branchTab,
-    sessionId,
     revealSessionId,
     historyReach,
     runTaskId,

@@ -6,6 +6,7 @@ import { reactive } from 'vue';
 import { useLaunchOpener } from '../dialog/useLaunchOpener';
 import { useCloseSession, useRestartSession } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import type { SessionView } from './sessionView';
 
@@ -24,6 +25,7 @@ export function useSessionMenu(): {
   busy: Set<string>;
 } {
   const ui = useAdeBoardUiStore();
+  const tabs = useAdePanelTabsStore();
   const contextMenu = useContextMenuStore();
   const launchOpener = useLaunchOpener();
   const restartM = useRestartSession();
@@ -39,7 +41,7 @@ export function useSessionMenu(): {
     try {
       const launch = await restartM.mutateAsync({ sessionId: id });
       if (launch.terminalId) await launchOpener.open(launch);
-      if (launch.sessionId) ui.sessionId = launch.sessionId;
+      if (launch.sessionId) tabs.selectSession(taskId, launch.sessionId);
     } catch (err) {
       ui.actionError[taskId] = errorText(err);
     } finally {

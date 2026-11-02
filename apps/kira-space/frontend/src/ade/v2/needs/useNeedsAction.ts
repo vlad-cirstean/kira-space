@@ -6,6 +6,7 @@ import { useReviewCode } from '../review/useReviewCode';
 import { useOpenSession } from '../sessions/useOpenSession';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
+import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
 
 const errMessage = (err: unknown): string => errorText(err);
@@ -13,6 +14,7 @@ const errMessage = (err: unknown): string => errorText(err);
 /** The one action behind a needs-you item: the Needs you row button and the `!` circle share it. */
 export function useNeedsAction() {
   const ui = useAdeBoardUiStore();
+  const tabs = useAdePanelTabsStore();
   const dialogs = useAdeDialogsStore();
   const takeOver = useAdeTakeOverStore();
   const openSession = useOpenSession();
@@ -27,7 +29,7 @@ export function useNeedsAction() {
       if (n.kind === 'rebase') {
         ui.view = 'plan';
         ui.selectBranch(n.taskId, n.branchId);
-        ui.branchTab = 'details';
+        tabs.setBranchTab(n.branchId, 'details');
       } else if (n.action === 'Take over') await takeOver.request(n.sessionId);
       else if (n.action === 'Retry') {
         await Promise.all(n.runIds.map((runId) => retry.mutateAsync({ runId })));
@@ -41,7 +43,7 @@ export function useNeedsAction() {
       } else if (n.action === 'See error') {
         ui.view = 'plan';
         ui.selectBranch(n.taskId, n.branchId);
-        ui.branchTab = 'details';
+        tabs.setBranchTab(n.branchId, 'details');
         ui.focusSetup = true;
       } else dialogs.merge(n.branchId, n.target);
     } catch (err) {

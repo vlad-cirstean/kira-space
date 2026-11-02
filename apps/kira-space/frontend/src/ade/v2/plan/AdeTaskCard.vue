@@ -25,6 +25,7 @@ import { useReviewCode } from '../review/useReviewCode';
 import AdeTaskActionButton from '../run/AdeTaskActionButton.vue';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
+import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import AdeActionCell from './AdeActionCell.vue';
 import AdeAttention from './AdeAttention.vue';
@@ -37,6 +38,7 @@ const props = defineProps<{ card: CardModel }>();
 const emit = defineEmits<{ select: []; forcePush: [row: BranchRowModel] }>();
 
 const ui = useAdeBoardUiStore();
+const tabs = useAdePanelTabsStore();
 const dialogs = useAdeDialogsStore();
 const takeOver = useAdeTakeOverStore();
 const { model } = usePlanModel();
@@ -63,10 +65,11 @@ function act(row: BranchRowModel, a: BranchAction): void {
   else if (a.kind === 'forcePush') emit('forcePush', row);
   else if (a.kind === 'seeError') {
     ui.selectBranch(row.branch.taskId, row.id);
+    tabs.setBranchTab(row.id, 'details');
     ui.focusSetup = true;
   } else if (a.kind === 'seeLog') {
     ui.selectBranch(row.branch.taskId, row.id);
-    ui.branchTab = 'details';
+    tabs.setBranchTab(row.id, 'details');
     ui.focusRebaseLog = true;
   } else if (a.kind === 'takeOver') {
     delete ui.actionError[row.branch.taskId];

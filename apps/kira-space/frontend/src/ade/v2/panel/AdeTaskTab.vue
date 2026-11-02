@@ -23,6 +23,7 @@ import { useAddTaskRepo, useUpdateTask } from '../queries';
 import { useAdeAddUiStore } from '../state/adeAddUi';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeBranchRequestStore } from '../state/adeBranchRequest';
+import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import type { TaskPatch } from '../wire';
 import AdeEstimateField from './AdeEstimateField.vue';
 import AdeLinkRow from './AdeLinkRow.vue';
@@ -37,6 +38,7 @@ const props = defineProps<{ card: CardModel }>();
 const { liveNow } = usePlanModel();
 
 const ui = useAdeBoardUiStore();
+const tabs = useAdePanelTabsStore();
 const addUi = useAdeAddUiStore();
 const requestStore = useAdeBranchRequestStore();
 const update = useUpdateTask();
@@ -179,7 +181,7 @@ const chipClass = (t: 'muted' | 'stale' | 'unknown'): string =>
             type="button"
             class="line-clamp-2 w-full text-left text-kira-md hover:underline"
             data-testid="ade-task-handover-row"
-            @click="ui.taskTab = 'notes'"
+            @click="tabs.setTaskTab(task.id, 'notes')"
             >{{
               handoverSnippet
             }}</button

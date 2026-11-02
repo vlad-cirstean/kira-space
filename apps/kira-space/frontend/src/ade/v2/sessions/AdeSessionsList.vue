@@ -4,7 +4,7 @@ import { Command, CommandGroup, CommandInput, CommandList } from '@theme/compone
 import { t } from '@theme/i18n';
 import { matchesQuery } from '@workbench/behaviour/match';
 import { computed, ref, useTemplateRef } from 'vue';
-import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import AdeSessionsRow from './AdeSessionsRow.vue';
 import type { SessionView } from './sessionView';
@@ -25,7 +25,7 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ done: [] }>();
 
-const ui = useAdeBoardUiStore();
+const tabs = useAdePanelTabsStore();
 const takeOver = useAdeTakeOverStore();
 const search = ref('');
 const root = useTemplateRef<{ $el: HTMLElement }>('root');
@@ -49,7 +49,7 @@ const grouped = computed(() => !!props.running?.length && !!props.stopped.length
 function primary(v: SessionView): void {
   const s = v.session;
   emit('done');
-  if (s.state === 'running') ui.sessionId = s.id;
+  if (s.state === 'running') tabs.selectSession(s.taskId, s.id);
   else if (props.archived) void takeOver.resumeArchived(s.taskId, s.id);
   else takeOver.request(s.id);
 }

@@ -4,6 +4,7 @@ import { t } from '@theme/i18n';
 import { computed, ref, watch } from 'vue';
 import { useArchivedTask } from '../readQueries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import AdeHeadlessPane from './AdeHeadlessPane.vue';
 import AdeSessionActions from './AdeSessionActions.vue';
 import AdeSessionStrip from './AdeSessionStrip.vue';
@@ -19,6 +20,7 @@ import { useSessionViews } from './useSessionViews';
 const props = defineProps<{ taskId: string; branchId?: string; archived?: boolean }>();
 
 const ui = useAdeBoardUiStore();
+const tabs = useAdePanelTabsStore();
 const archivedTask = useArchivedTask(() => (props.archived ? props.taskId : null));
 const { sessions, view } = useSessionViews(() => archivedTask.data.value);
 
@@ -41,7 +43,8 @@ const stopped = computed(() =>
     .map(view),
 );
 const current = computed(
-  () => running.value.find((v) => v.session.id === ui.sessionId) ?? running.value[0],
+  () =>
+    running.value.find((v) => v.session.id === tabs.sessionOf(props.taskId)) ?? running.value[0],
 );
 const menuOpen = ref(false);
 const revealed = ref<string | null>(null);
@@ -79,7 +82,7 @@ watch(menuOpen, (open) => {
         v-if="running.length"
         :views="running"
         :selected-id="current?.session.id ?? null"
-        @select="(id) => (ui.sessionId = id)"
+        @select="(id) => tabs.selectSession(props.taskId, id)"
       />
       <AdeSessionsMenu
         v-model:open="menuOpen"

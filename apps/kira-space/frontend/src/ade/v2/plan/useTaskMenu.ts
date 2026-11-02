@@ -82,9 +82,7 @@ export function useTaskMenu(card: MaybeRefOrGetter<CardModel>) {
             sessionId: cmd.session.id,
           });
         case 'showSessions':
-          ui.select(taskId);
-          ui.taskTab = 'sessions';
-          return;
+          return ui.openSessions(taskId);
         case 'automation':
           return automation.start(cmd.scriptId, taskId);
         case 'plan': {
