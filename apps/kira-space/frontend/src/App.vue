@@ -29,6 +29,7 @@ import AdeReviewWindow from './ade/v2/review/AdeReviewWindow.vue';
 import AdeHandoverPrompt from './ade/v2/stage/AdeHandoverPrompt.vue';
 import { useAdeContextUiStore } from './ade/v2/state/adeContextUi';
 import { useAdeReviewWindowStore } from './ade/v2/state/adeReviewWindow';
+import { useAdeSettingsUiStore } from './ade/v2/state/adeSettingsUi';
 import { useAdeWorkflowsUiStore } from './ade/v2/state/adeWorkflowsUi';
 import { control } from './bridge/control';
 import CaptureWindow from './capture/CaptureWindow.vue';
@@ -118,10 +119,14 @@ onUnmounted(() => {
   for (const off of unsubscribe) off();
 });
 
-// Leaving Agents unmounts the workflow and context editors: confirm before dropping unsaved edits.
+// Leaving Agents unmounts the workflow, context and settings editors: confirm before dropping unsaved edits.
 async function beforeModeChange(mode: SpaceMode): Promise<boolean> {
   if (modeStore.active === 'ade' && mode !== 'ade') {
-    return (await useAdeWorkflowsUiStore().leave()) && (await useAdeContextUiStore().leave());
+    return (
+      (await useAdeWorkflowsUiStore().leave()) &&
+      (await useAdeContextUiStore().leave()) &&
+      (await useAdeSettingsUiStore().leave())
+    );
   }
   return true;
 }

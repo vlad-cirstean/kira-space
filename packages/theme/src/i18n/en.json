@@ -9163,6 +9163,61 @@
           "label": "Restart session"
         }
       },
+      "settings": {
+        "applies": {
+          "hint": "Agents started after you save get these settings. That covers new sessions and headless steps. Running sessions keep theirs."
+        },
+        "discardConfirm": {
+          "body": "Your unsaved changes to the agent settings are lost."
+        },
+        "field": {
+          "aria": "Agent settings file"
+        },
+        "none": {
+          "hint": "No settings yet. Save creates {path}."
+        },
+        "overSize": {
+          "error": "Over the limit of {max} bytes. Agents do not use these settings."
+        },
+        "result": {
+          "empty": {
+            "hint": "No settings apply to this provider."
+          },
+          "hint": "What each provider gets at launch. References stay as written.",
+          "kira": {
+            "label": "Kira adds at launch"
+          },
+          "tabs": {
+            "aria": "Provider"
+          },
+          "title": "Result"
+        },
+        "secrets": {
+          "deleteConfirm": {
+            "body": "Settings that reference this secret fail to launch until you set it again.",
+            "title": "Delete {name}?"
+          },
+          "dialog": {
+            "hint": "The value is sent once and never shown again.",
+            "title": "Set {name}"
+          },
+          "hint": "Write {ref} in the file. Values stay sealed on this computer.",
+          "none": {
+            "hint": "No secrets yet. Reference one in the file to see it here."
+          },
+          "set": {
+            "label": "Set value",
+            "status": "Set"
+          },
+          "storageOff": {
+            "hint": "Secret storage is not available."
+          },
+          "title": "Secrets",
+          "unused": {
+            "status": "Not referenced"
+          }
+        }
+      },
       "setup": {
         "retry": {
           "label": "Retry setup"

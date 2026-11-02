@@ -17,9 +17,11 @@ import AdeBranchRequestDialog from '../request/AdeBranchRequestDialog.vue';
 import { useReviewCode } from '../review/useReviewCode';
 import AdeRunDialog from '../run/AdeRunDialog.vue';
 import AdeTakeOverDialog from '../sessions/AdeTakeOverDialog.vue';
+import AdeSettingsPage from '../settings/AdeSettingsPage.vue';
 import AdeStageDialog from '../stage/AdeStageDialog.vue';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeContextUiStore } from '../state/adeContextUi';
+import { useAdeSettingsUiStore } from '../state/adeSettingsUi';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
 import AdeWorkflowsPage from '../workflows/AdeWorkflowsPage.vue';
 import AdeCaptureBox from './AdeCaptureBox.vue';
@@ -28,11 +30,13 @@ import AdeCaptureBox from './AdeCaptureBox.vue';
 const ui = useAdeBoardUiStore();
 const wfUi = useAdeWorkflowsUiStore();
 const ctxUi = useAdeContextUiStore();
+const setUi = useAdeSettingsUiStore();
 
 async function onView(view: unknown): Promise<void> {
   if (view === ui.view) return;
   if (ui.view === 'workflows' && !(await wfUi.leave())) return;
   if (ui.view === 'context' && !(await ctxUi.leave())) return;
+  if (ui.view === 'settings' && !(await setUi.leave())) return;
   ui.view = view as typeof ui.view;
 }
 const { model } = usePlanModel();
@@ -143,6 +147,13 @@ onScopeDispose(() => offReviewCode?.());
           {{ t('space.ade.context.tab.label') }}
         </TabsTrigger>
         <TabsTrigger
+          value="settings"
+          :class="tabChipVariants({ active: ui.view === 'settings', size: 'wide' })"
+          data-testid="ade-tab-settings"
+        >
+          {{ t('common.module.settings.label') }}
+        </TabsTrigger>
+        <TabsTrigger
           value="workflows"
           :class="tabChipVariants({ active: ui.view === 'workflows', size: 'wide' })"
           data-testid="ade-tab-workflows"
@@ -158,6 +169,7 @@ onScopeDispose(() => offReviewCode?.());
       </template>
       <AdeNeedsPage v-else-if="ui.view === 'needs'" />
       <AdeContextPage v-else-if="ui.view === 'context'" />
+      <AdeSettingsPage v-else-if="ui.view === 'settings'" />
       <AdeWorkflowsPage v-else-if="ui.view === 'workflows'" />
       <template v-else>
         <AdePlanView />
