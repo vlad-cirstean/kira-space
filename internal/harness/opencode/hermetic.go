@@ -1,11 +1,13 @@
 package opencode
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/kirathecat/kira-studio/internal/loginshell"
 )
@@ -78,6 +80,27 @@ func ownLayers(env []string) []string {
 	return own
 }
 
+var (
+	profileXDGMu  sync.Mutex
+	profileXDGKey string
+	profileXDG    string
+	profileXDGSet bool
+)
+
+// profileConfigHome is XDG_CONFIG_HOME as the login shell exports it: a GUI-launched app lacks a
+// profile-only value. Probed once per process env value; "" when unset or no login shell.
+func profileConfigHome() string {
+	key := os.Getenv("XDG_CONFIG_HOME")
+	profileXDGMu.Lock()
+	defer profileXDGMu.Unlock()
+	if profileXDGSet && profileXDGKey == key {
+		return profileXDG
+	}
+	vals, _ := loginshell.ProbeEnv(context.Background(), []string{"XDG_CONFIG_HOME"})
+	profileXDGKey, profileXDG, profileXDGSet = key, vals["XDG_CONFIG_HOME"], true
+	return profileXDG
+}
+
 // redirectConfigHome makes a config home under dir that links every entry of the real one except
 // OpenCode's own, so git and other tools keep their config while user MCP servers, the global
 // AGENTS.md and other OpenCode config drop out. Login lives in the data dir and stays.
@@ -87,6 +110,9 @@ func redirectConfigHome(dir string, environ []string) (string, error) {
 		if v, ok := strings.CutPrefix(kv, "XDG_CONFIG_HOME="); ok {
 			real = v
 		}
+	}
+	if real == "" {
+		real = profileConfigHome()
 	}
 	if real == "" {
 		home, err := os.UserHomeDir()

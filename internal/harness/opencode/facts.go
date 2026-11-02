@@ -119,8 +119,9 @@ const maxConfigContent = 64 << 10
 //     node_modules in the config dir. Export must tolerate a "$schema" insert between preview and
 //     apply.
 //   - Q-P454-OC7: with a stub provider the global AGENTS.md in the user config dir reached the model
-//     request, with and without `instructions` in opencode.json. Setting OPENCODE_CONFIG_DIR appears to
-//     replace the global dir, so a launch that sets it does not load the global AGENTS.md (P455).
+//     request, with and without `instructions` in opencode.json. OPENCODE_CONFIG_DIR adds a config
+//     layer: user opencode.json still loads, but the global AGENTS.md is read from
+//     OPENCODE_CONFIG_DIR instead of the user config dir (P455).
 //   - Q-P454-OC8: an npm plugin name is accepted; import takes file:// plugins only.
 
 // Hermetic launches (P455, orchestrator probes H-OC1..5 on 1.19.5, stub model, throwaway HOME):
