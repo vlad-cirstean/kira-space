@@ -49,6 +49,7 @@ func runOpenCode(scen Scenario, dir string, args []string) int {
 	writeFile(stem+".cwd", []byte(cwd))
 	recordOpenCodeEnv(stem)
 	recordOpenCodeContext(stem)
+	recordAppEnv(stem)
 	if cfg := os.Getenv("OPENCODE_CONFIG"); cfg != "" {
 		if raw, err := os.ReadFile(cfg); err == nil {
 			writeFile(stem+".config", raw)
@@ -89,13 +90,17 @@ func recordOpenCodeEnv(stem string) {
 }
 
 // recordOpenCodeContext keeps the bytes of the file named by `instructions` in
-// OPENCODE_CONFIG_CONTENT as <stem>.context. The fake plays the CLI, so it may read it.
+// OPENCODE_CONFIG_CONTENT as <stem>.context and its `mcp` block as <stem>.appmcp. The fake plays the CLI, so it may read it.
 func recordOpenCodeContext(stem string) {
 	var doc struct {
-		Instructions []string `json:"instructions"`
+		Instructions []string        `json:"instructions"`
+		MCP          json.RawMessage `json:"mcp"`
 	}
 	if json.Unmarshal([]byte(os.Getenv("OPENCODE_CONFIG_CONTENT")), &doc) != nil {
 		return
+	}
+	if len(doc.MCP) > 0 {
+		writeFile(stem+".appmcp", doc.MCP)
 	}
 	for _, path := range doc.Instructions {
 		if raw, err := os.ReadFile(path); err == nil {

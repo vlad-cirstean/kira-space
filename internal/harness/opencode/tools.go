@@ -1,7 +1,9 @@
 package opencode
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -48,6 +50,32 @@ func (r ruleSet) MarshalJSON() ([]byte, error) {
 	}
 	b.WriteByte('}')
 	return []byte(b.String()), nil
+}
+
+// UnmarshalJSON reads a plain action string as a lone "*" and an object in its written order.
+func (r *ruleSet) UnmarshalJSON(b []byte) error {
+	var action string
+	if json.Unmarshal(b, &action) == nil {
+		r.entries = []ruleEntry{{"*", action}}
+		return nil
+	}
+	dec := json.NewDecoder(bytes.NewReader(b))
+	if t, err := dec.Token(); err != nil || t != json.Delim('{') {
+		return fmt.Errorf("opencode: permission rule is neither a string nor an object")
+	}
+	r.entries = nil
+	for dec.More() {
+		k, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		var v string
+		if err := dec.Decode(&v); err != nil {
+			return err
+		}
+		r.entries = append(r.entries, ruleEntry{k.(string), v})
+	}
+	return nil
 }
 
 func unsupported(entry string) error {

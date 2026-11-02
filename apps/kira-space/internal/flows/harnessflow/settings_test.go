@@ -163,8 +163,8 @@ func TestAgentSettingsReachEveryLaunch(t *testing.T) {
 
 	// Nothing saved yet: no file, storage available, each provider listed without files.
 	v, err := svc.Get()
-	if err != nil || v.Exists || !v.Storage.Available || len(v.Providers) != 2 {
-		t.Fatalf("Get = %+v, %v, want no file, storage and two providers", v, err)
+	if err != nil || v.Exists || !v.Storage.Available || len(v.Providers) != 3 {
+		t.Fatalf("Get = %+v, %v, want no file, storage and three providers", v, err)
 	}
 
 	// Save and set the secret through the bound service.
@@ -373,4 +373,151 @@ func TestAgentSettingsReachEveryLaunch(t *testing.T) {
 	if _, err := os.Stat(left); err == nil {
 		t.Fatal("a leftover app file survived a restart")
 	}
+}
+
+const openCodeSettingsYAML = `env:
+  P453_MARK: ${secret:gh-token}
+permissions:
+  allow: [Read, "WebFetch(domain:example.com)"]
+  deny: ["Bash(rm:*)"]
+mcp_servers:
+  gh:
+    url: http://127.0.0.1:9/mcp
+    headers:
+      Authorization: Bearer ${secret:gh-token}
+hooks:
+  mark:
+    event: session_start
+    command: echo mark
+opencode:
+  model: anthropic/claude-sonnet-4-5
+`
+
+// contentDoc is the OPENCODE_CONFIG_CONTENT document of a recorded launch, without Kira's own
+// `instructions`, as a map.
+func contentDoc(t *testing.T, content string) map[string]json.RawMessage {
+	t.Helper()
+	var doc map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(content), &doc); err != nil {
+		t.Fatalf("OPENCODE_CONFIG_CONTENT = %q: %v", content, err)
+	}
+	delete(doc, "instructions")
+	return doc
+}
+
+// TestAgentSettingsOpenCode: the settings reach OpenCode through OPENCODE_CONFIG_CONTENT only, on a TUI
+// launch and a headless step, with the resolved secret in the environment and no file. Claude and
+// the fake provider are covered by TestAgentSettingsReachEveryLaunch. Frontend half:
+// ade-agent-settings.spec.ts.
+func TestAgentSettingsOpenCode(t *testing.T) {
+	secret := "p453-" + strings.ReplaceAll(uuid.NewString(), "-", "")
+	t.Setenv(fakeagent.EnvRecordEnv, "P453_MARK")
+	app := flowharness.New(t, flowharness.WithOpenCode(), flowharness.WithTrackerGrace(time.Second))
+	app.Scenario(fakeagent.Scenario{OpenCode: map[string][]fakeagent.Action{"*": {{Name: "done"}}}})
+	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
+	repoRec, err := app.W.CodeWorkspace.ImportRepo(ctx, bridge.CodeWorkspaceImportArgs{Path: repo.Dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	app.WindowMgr.OpenWindow(shell.WindowRecord{Key: window})
+	svc := app.W.AgentSettingsSvc
+	saveSettings(t, app, openCodeSettingsYAML)
+	if _, err := svc.SetSecret(agentcfg.SetSecretArgs{Name: "gh-token", Value: secret}); err != nil {
+		t.Fatalf("SetSecret: %v", err)
+	}
+
+	// The view shows the content document with the reference verbatim and the notes of what is not applied.
+	v, err := svc.Get()
+	if err != nil || v.Problem != nil {
+		t.Fatalf("Get = %+v, %v", v, err)
+	}
+	var view agentcfg.ProviderView
+	for _, p := range v.Providers {
+		if p.ID == "opencode" {
+			view = p
+		}
+	}
+	if len(view.Files) != 1 || view.Files[0].Name != "opencode config" || !strings.Contains(view.Files[0].Text, "Bearer ${secret:gh-token}") {
+		t.Fatalf("opencode view files = %+v, want one config with the reference verbatim", view.Files)
+	}
+	notes := strings.Join(view.Notes, "\n")
+	for _, want := range []string{"WebFetch(domain:example.com)", "hook mark", "OPENCODE_CONFIG_CONTENT"} {
+		if !strings.Contains(notes, want) {
+			t.Fatalf("opencode notes = %q, want %q", notes, want)
+		}
+	}
+	if b, _ := json.Marshal(v); strings.Contains(string(b), secret) {
+		t.Fatal("the view holds the secret value")
+	}
+
+	// TUI: the content document has the resolved header, model, deny and allow rules; no file holds it.
+	tk := task(t, app, repoRec.ID, "ocset", ocWorkflow("ocset", ""))
+	br, err := app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: branchOf(t, app, tk.ID, repoRec.ID).ID, Name: "feat/api-ocset"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	launch, err := app.W.AdeTask.StartAdHoc(ctx, adewire.StartAdHocArgs{BranchID: br.ID, Provider: "opencode"})
+	if err != nil {
+		t.Fatalf("StartAdHoc opencode: %v", err)
+	}
+	if strings.Contains(launch.Command, secret) {
+		t.Fatalf("command holds the secret: %q", launch.Command)
+	}
+	openTUI(t, app, launch)
+	env := envLines(t, waitFake(t, app, "opencode-1.env"))
+	content := env["OPENCODE_CONFIG_CONTENT"]
+	if !strings.Contains(content, `"Authorization":"Bearer `+secret+`"`) {
+		t.Fatalf("OPENCODE_CONFIG_CONTENT = %s, want the resolved header", content)
+	}
+	if mcp := waitFake(t, app, "opencode-1.appmcp"); !strings.Contains(mcp, `"gh"`) || !strings.Contains(mcp, secret) {
+		t.Fatalf("recorded mcp block = %q, want server gh with the secret", mcp)
+	}
+	for _, want := range []string{`"model":"anthropic/claude-sonnet-4-5"`, `"rm*":"deny"`, `"read":"allow"`} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("OPENCODE_CONFIG_CONTENT = %s, want %s", content, want)
+		}
+	}
+	if strings.Contains(content, "WebFetch") || strings.Contains(content, "webfetch") {
+		t.Fatalf("OPENCODE_CONFIG_CONTENT = %s, want the untranslatable allow entry left out", content)
+	}
+	if got := waitFake(t, app, "opencode-1.appenv"); strings.TrimSpace(got) != "P453_MARK="+secret {
+		t.Fatalf(".appenv = %q, want the resolved value", got)
+	}
+	got := contentDoc(t, content)
+	want := contentDoc(t, strings.ReplaceAll(view.Files[0].Text, "${secret:gh-token}", secret))
+	gb, _ := json.Marshal(got)
+	wb, _ := json.Marshal(want)
+	if string(gb) != string(wb) {
+		t.Fatalf("launch document = %s, view with the secret = %s, want equal", gb, wb)
+	}
+	if left := appFiles(t, app.SpaceHome); len(left) != 0 {
+		t.Fatalf("opencode launch wrote app files %v, want none", left)
+	}
+	_ = filepath.WalkDir(app.Root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || strings.HasPrefix(p, app.FakeDir) || strings.HasPrefix(p, app.Work) {
+			return nil
+		}
+		if b, _ := os.ReadFile(p); strings.Contains(string(b), secret) {
+			t.Errorf("%s holds the secret", p)
+		}
+		return nil
+	})
+
+	// Headless: the step gets the same servers and model, the deny rule, and the env.
+	flow := task(t, app, repoRec.ID, "ochead", ocAgentFlow("ochead", ""))
+	headBr := branchOf(t, app, flow.ID, repoRec.ID)
+	if _, err := app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: flow.ID, BranchNames: map[string]string{headBr.ID: "feat/api-ochead"}}); err != nil {
+		t.Fatal(err)
+	}
+	henv := envLines(t, waitFake(t, app, "opencode-2.env"))
+	hcontent := henv["OPENCODE_CONFIG_CONTENT"]
+	for _, want := range []string{`"Authorization":"Bearer ` + secret + `"`, `"model":"anthropic/claude-sonnet-4-5"`, `"rm*":"deny"`} {
+		if !strings.Contains(hcontent, want) {
+			t.Fatalf("headless OPENCODE_CONFIG_CONTENT = %s, want %s", hcontent, want)
+		}
+	}
+	if got := waitFake(t, app, "opencode-2.appenv"); strings.TrimSpace(got) != "P453_MARK="+secret {
+		t.Fatalf("headless .appenv = %q, want the resolved value", got)
+	}
+	testx.WaitUntil(t, waitFor, func() bool { return latestRun(t, app, flow.ID, "one").State == "done" })
 }

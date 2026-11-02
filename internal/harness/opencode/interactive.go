@@ -2,6 +2,7 @@ package opencode
 
 import (
 	"encoding/json"
+	"log/slog"
 	"path/filepath"
 	"strings"
 
@@ -12,7 +13,7 @@ import (
 // InteractiveCommand starts the TUI; a resume names the stored session with -s. The model is never
 // passed: the TUI uses the user's own default. The MCP grant rides OPENCODE_CONFIG and extra
 // directories and allowed tools ride OPENCODE_PERMISSION, the agent context rides
-// OPENCODE_CONFIG_CONTENT as `instructions`, and the hook plugin rides OPENCODE_CONFIG_DIR (hooks
+// OPENCODE_CONFIG_CONTENT as `instructions` next to the app's settings document, and the hook plugin rides OPENCODE_CONFIG_DIR (hooks
 // Compose). OpenCode assigns a new session's id itself (FindSession).
 func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch {
 	bin := s.Bin
@@ -33,10 +34,15 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 	if perm := interactivePermission(s); perm != "" {
 		l.Env = append(l.Env, "OPENCODE_PERMISSION="+perm)
 	}
-	if s.ContextFile != "" {
-		if b, err := json.Marshal(map[string]any{instructionsKey: []string{s.ContextFile}}); err == nil {
-			l.Env = append(l.Env, "OPENCODE_CONFIG_CONTENT="+string(b))
-		}
+	if s.App != nil {
+		l.Env = append(l.Env, s.App.Env...)
+	}
+	content, err := interactiveContent(s)
+	if err != nil {
+		slog.Warn("opencode: app settings not applied", "scope", "opencode", "err", err)
+	}
+	if content != "" {
+		l.Env = append(l.Env, "OPENCODE_CONFIG_CONTENT="+content)
 	}
 	return l
 }

@@ -84,3 +84,17 @@ const instructionsKey = "instructions"
 
 // Resume re-reads the instructions file: an edit before `run -s <id>` reaches the model (Q-OC4,
 // verified), so the provider does not implement harness.ContextKeeper.
+
+// App settings ride OPENCODE_CONFIG_CONTENT next to `instructions`. Verified on 1.19.5 (P453
+// probes): `model` is kept and `plugin` merges across OPENCODE_CONFIG_DIR/opencode.json and the
+// content (Q-OC5); `mcp` merges across the OPENCODE_CONFIG file and the content (Q-OC6);
+// `permission` merges across OPENCODE_PERMISSION and the content (Q-OC8); a local server's
+// `environment` reaches its process (Q-OC9).
+//
+// The content text is substituted (Q-OC7: {env:HOME} expands), so a value holding one of
+// substitutionMarks is refused, not passed on.
+var substitutionMarks = []string{"{env:", "{file:"}
+
+// maxConfigContent caps the OPENCODE_CONFIG_CONTENT document the app settings render: Linux
+// MAX_ARG_STRLEN is 128 KiB per environment string.
+const maxConfigContent = 64 << 10

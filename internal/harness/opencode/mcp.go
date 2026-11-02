@@ -15,6 +15,10 @@ func (*Provider) MCPToolName(t harness.MCPTool) string {
 // MCPConfig is the config document of the servers (V6, verified): remote servers carry url and
 // headers, local ones a command array and environment.
 func (*Provider) MCPConfig(servers []harness.MCPServer) ([]byte, error) {
+	return json.Marshal(map[string]any{"mcp": mcpEntries(servers)})
+}
+
+func mcpEntries(servers []harness.MCPServer) map[string]any {
 	m := make(map[string]any, len(servers))
 	for _, s := range servers {
 		if s.URL != "" {
@@ -31,5 +35,5 @@ func (*Provider) MCPConfig(servers []harness.MCPServer) ([]byte, error) {
 		}
 		m[s.Name] = entry
 	}
-	return json.Marshal(map[string]any{"mcp": m})
+	return m
 }

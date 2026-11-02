@@ -603,6 +603,23 @@
         "noStore": {
           "body": "Credential storage is not available in this app."
         },
+        "opencode": {
+          "allowNotApplied": {
+            "body": "OpenCode can’t take the allow entry {entry}. It is not applied."
+          },
+          "envCarried": {
+            "body": "OpenCode receives this through {name}. No file is written."
+          },
+          "hookNotApplied": {
+            "body": "OpenCode doesn’t run hook {hook}. It is not applied."
+          },
+          "refSyntax": {
+            "body": "A value holds {marks}, which OpenCode would substitute. Remove it."
+          },
+          "tooLarge": {
+            "body": "The OpenCode settings are over 64 kilobytes. Remove some."
+          }
+        },
         "secretName": {
           "body": "A secret name is 1 to 64 characters of a-z, 0-9, dot, dash and underscore, and starts with a letter or digit."
         },

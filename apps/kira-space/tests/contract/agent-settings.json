@@ -47,6 +47,31 @@
         ],
         "files": [
           {
+            "name": "opencode config",
+            "text": "{\"mcp\":{\"gh\":{\"enabled\":true,\"headers\":{\"Authorization\":\"Bearer ${secret:gh-token}\"},\"type\":\"remote\",\"url\":\"http://127.0.0.1:9/mcp\"}}}"
+          }
+        ],
+        "id": "opencode",
+        "kira": [
+          "Kira hooks on every agent event, for session state and notifications.",
+          "MCP server kira-ade, for the agent board tools."
+        ],
+        "label": "OpenCode",
+        "notes": [
+          "OpenCode doesn’t run hook mark. It is not applied.",
+          "OpenCode receives this through OPENCODE_CONFIG_CONTENT. No file is written.",
+          "Headless steps use the same files without permission_mode, allow and status_line."
+        ]
+      },
+      {
+        "env": [
+          {
+            "name": "P453_MARK",
+            "value": "${secret:gh-token}"
+          }
+        ],
+        "files": [
+          {
             "name": "config.json",
             "text": "{\n  \"Env\": {\n    \"P453_MARK\": \"${secret:gh-token}\"\n  },\n  \"MCP\": [\n    {\n      \"Name\": \"gh\",\n      \"URL\": \"http://127.0.0.1:9/mcp\",\n      \"Headers\": {\n        \"Authorization\": \"Bearer ${secret:gh-token}\"\n      },\n      \"Command\": \"\",\n      \"Args\": null,\n      \"Env\": null\n    }\n  ],\n  \"Allow\": null,\n  \"Deny\": null,\n  \"Hooks\": [\n    {\n      \"Name\": \"mark\",\n      \"Matcher\": \"\",\n      \"Command\": \"echo mark\",\n      \"Event\": \"SessionStart\",\n      \"TimeoutSec\": 60\n    }\n  ],\n  \"Section\": null\n}"
           }

@@ -160,6 +160,11 @@ func (p *Provider) runEnv(ctx context.Context, s harness.HeadlessSpec) (env []st
 	if s.ContextFile != "" {
 		doc[instructionsKey] = []string{s.ContextFile}
 	}
+	if s.App != nil {
+		if err := withAppConfig(doc, s.App); err != nil {
+			return nil, "", err
+		}
+	}
 	content, err := json.Marshal(doc)
 	if err != nil {
 		return nil, "", err
@@ -253,6 +258,9 @@ func (r *runState) stdout(line string) {
 func (p *Provider) RunHeadless(ctx context.Context, spec harness.HeadlessSpec, h harness.Handler) (harness.Exit, error) {
 	if spec.Timeout <= 0 {
 		return harness.Exit{}, errors.New("opencode: HeadlessSpec.Timeout must be positive")
+	}
+	if spec.Isolated && spec.App != nil {
+		return harness.Exit{}, errors.New("opencode: an isolated run takes no app settings")
 	}
 	if spec.MaxBudgetUSD > 0 {
 		return harness.Exit{}, refuse("OpenCode can't cap a run's cost.")
