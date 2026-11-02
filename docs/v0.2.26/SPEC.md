@@ -16,7 +16,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | P454 | Import and Export of agent config per provider | Done |
 | P455 | Hermetic agent launches per provider | Done |
 | P456 | Docs, site and README for agents and secrets | Done |
-| P457 | Code review (2 rounds) | Todo |
+| P457 | Code review (2 rounds) | Done |
 | P458 | Close chapter v0.2.26 | Todo |
 
 ## Rows
@@ -189,6 +189,8 @@ For P457 review / orchestrator:
 ### P457 Code review (2 rounds)
 
 One row, two rounds. Each round: one Opus review over the full diff since `main`, findings file under `plans/`, then one Sonnet fixer. Then close, then PR, as in v0.2.25.
+
+Result: 2 review rounds over base e415f1e6e. Round 1: 14 findings (6 Medium, 8 Low), all fixed. Round 2: 5 findings (2 Medium, 3 Low), 4 fixed; R2-4 (`OPENCODE_CONFIG` single-file collision) documented as a Known open item in ARCHITECTURE. Findings files removed. Close-phase UI runs: Studio `ui` and `ui-clipboard` 711 passed; Space `ui` 988 of 989 passed; the one timeout (`ade-v2-dialogs` Merge from the fix menu) passed on a lone rerun. No screenshot diffs committed.
 
 ### P458 Close chapter v0.2.26
 
