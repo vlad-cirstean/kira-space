@@ -2425,7 +2425,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - Agent tools (P199) are implemented in ade/agenttools.go as agentmcp.SpaceTools on *ade.TaskBoard; the loopback MCP server issues scoped grants (run, task, Space) with one bearer token per launch.
 - Every task grant except rebase runs and review rounds carries the Space tools: task_info, declare_repos, request_branches, branch_status. Releasing a grant (run end, session stop, app close) cancels its in-flight calls.
 - declare_repos accepts registered repos only and is additive.
-- request_branches takes `repos`, 1 to 20, and waits for the user (see Branch requests). Kira Space names a new branch kira/<10-char nanoid> (claimBranchName generated mode, up to 5 tries on a taken name), never an agent-chosen name; a named row with a worktree returns `existing`. Worktree and prepare script go through ensureWorktree/startSetup. Outcomes per repo: created, existing, denied, timeout, failed.
+- request_branches takes `repos`, 1 to 20, task or registered, and waits for the user (see Branch requests). Kira Space names a new branch kira/<10-char nanoid> (claimBranchName generated mode, up to 5 tries on a taken name), never an agent-chosen name, and puts its worktree in `<home>/wt/<repo>/<10-char nanoid>` (`idPath`, `newBranchName.idFolder`); other start paths keep `freePath`; a named row with a worktree returns `existing`. Worktree and prepare script go through ensureWorktree/startSetup. Outcomes per repo: created, existing, denied, timeout, failed.
 - Run on an agent step leaves an unnamed branch to the agent: the run starts at the repo root, and its sandbox may write the per-repo worktree folders. A script or review step derives `feat/<slug>` from the task title.
 - Agent tools act only on the token's task; repo refs resolve by nickname, then name, then id; errors return as actionable ToolError text.
 - Branches and repos added by an agent carry origin = 'agent' and show an agent chip.
@@ -2741,7 +2741,7 @@ Stage = workflow step. A handover is text one stage leaves for the next. Table `
 
 An agent asks the user to approve branches and worktrees. `request_branches` blocks until the user answers; `ade/branchrequest.go` holds the engine.
 
-- Phase 1 validates under the task lock: repos resolve, the task is writable, each repo is failed, `existing` (branch and worktree exist) or an item for the user. Items are kind `branch` (unnamed, base shown) or `worktree` (named, no checkout). No item means the call answers at once and raises no prompt.
+- Phase 1 validates under the task lock: repos resolve against registered repos (one not on the task gets `addRow`), the task is writable, each repo is failed, `existing` (branch and worktree exist) or an item for the user. Items are kind `branch` (unnamed, base shown) or `worktree` (named, no checkout). No item means the call answers at once and raises no prompt.
 - Phase 2 waits with the lock released, so board writes continue. One request per task: a second call gets "already waits". One resolver wins; end conditions:
 
 | End | Result |
@@ -2752,7 +2752,7 @@ An agent asks the user to approve branches and worktrees. `request_branches` blo
 | Caller gone (grant released, session stop) | request abandoned, nothing created |
 | Archive, app close | abandoned |
 
-- Phase 3 re-locks, reloads the task and creates the approved branches (`createBranch`, origin `agent`, `startSetup`), since the task may have changed during the wait.
+- Phase 3 re-locks, reloads the task and creates the approved branches (`createBranch`, origin `agent`, `startSetup`), since the task may have changed during the wait. An `addRow` repo gets its task row (origin `agent`) here, so it shows in Branches; deny, timeout and abandon add nothing. Existing worktrees stay where they are.
 - Prompt: routed kind `branch-request` (ref = request id), opened and closed under the broker mutex so a fast answer cannot close it before it opens. While a run waits its note reads "waiting for branch approval". `Task.branchRequestId` shows the open request on the board.
 - The CLI cuts an MCP call at 60 s. Every `claude` launch sets `MCP_TOOL_TIMEOUT` to 35 minutes (headless env in `harness/claude/headless.go`, TUI env in `hooks.Server.Env`). `TestAdeBranchRequest` holds a request 65 s to guard it.
 - Desktop only: the answer comes from the dialog (`AdeBranchRequestDialog`, store `adeBranchRequest`), the routed prompt or the Task tab row. Escape hides the dialog and never answers. Mobile has no approval surface.

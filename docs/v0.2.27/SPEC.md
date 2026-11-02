@@ -15,7 +15,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P465 | Review window: re-review on edits, visual indicators, next/prev unreviewed | Done |
 | P466 | ADE panel tabs: grey circle count badges | Done |
 | P467 | Start a workflow without a repo | Done |
-| P468 | Agent branch and worktree requests: nanoid worktree name, branch in task | Todo |
+| P468 | Agent branch and worktree requests: nanoid worktree name, branch in task | Done |
 | P469 | Stage move: advance button with close-session prompt | Todo |
 | P470 | Code review (1 round) | Todo |
 | P471 | Close chapter v0.2.27 | Todo |
@@ -102,6 +102,8 @@ Result: Task folder `<home>/ade/tasks/<taskId>` (`Deps.TasksDir`, `taskDir`) hos
 - An agent requesting a branch and worktree: name the worktree folder with a nanoid, keep the requested branch name as is.
 - Add the branch to the task's Branches section.
 - Test: backend flow (names, task branches) and UI spec.
+
+Result: Worktrees made by `request_branches` go to `<home>/wt/<repo>/<10-char nanoid>` (`newBranchName.idFolder`, `idPath`, `worktreeDir` in `ade/setup.go`; `shortid`). Other start paths keep `freePath`; existing worktrees stay. `request_branches` resolves refs against registered repos; an off-task repo gets `addRow`, and approval adds its row (origin `agent`) before the branch is created, so it shows in Branches. Deny, timeout and cancel add nothing. Scope override (orchestrator): agent-chosen names are out. No `names` arg, no `BranchAsk`, no named-row conflict message; branch names stay `kira/<nanoid>` per ARCHITECTURE.md (P406). Skipped with it: plan subtests 3, 6, 7, the UI "named request" test, dialog `branchNamed` keys, wire comments. Prompt text: tool and `repos` arg updated; `headless.tool.request_branches` budget 271 to 328. i18n: `naming.hint` copy only. Tests: flow `TestBranchRequest` (nanoid folder assert, unregistered refusal, off-task add on approval, deny adds no row; contract key `AdeTaskBoard.Board.addedBranch`), UI `ade-v2-branch-request` (added row shows in Branches), real-claude folder assertion. Plan subtest 8 (existing worktree stays) not added; the `ensureWorktree` early return is unchanged. The UI shows no agent chip for origin, so the spec checks the row name only. Ran: go build, vet, `-race` ade, agentmcp, llmprompts, adeflow `TestBranchRequest|TestRepolessWorkflow`; hooks typecheck and lint; UI `ade-v2-branch-request`, `ade-v2-task-branches`, `ade-v2-norepo`, `copy-coverage` (51 passed); real claude `TestAdeBranchRequest` passed.
 
 ### P469 Stage move: advance button with close-session prompt
 
