@@ -86,6 +86,8 @@ export const scriptRunEnvVarSchema = /*#__PURE__*/ z.object({
   value: z.string(),
   secret: z.boolean(),
   fromVar: z.string(),
+  // A secret whose value comes from the script's saved value.
+  saved: z.boolean(),
 });
 export type ScriptRunEnvVar = z.infer<typeof scriptRunEnvVarSchema>;
 
@@ -124,6 +126,8 @@ export const scriptRunPreviewSchema = /*#__PURE__*/ z.object({
   kind: z.enum(['script', 'smart']),
   missing: z.array(z.string()),
   blocker: z.string(),
+  // Why a saved secret value could not be read, so the run asks for it; '' when none.
+  secretIssue: z.string(),
   dir: scriptDirSchema,
   body: z.string(),
   prompt: z.array(scriptRunPartSchema),
@@ -162,6 +166,14 @@ export const scriptRunStartedSchema = /*#__PURE__*/ z.object({
   terminal: z.object({ token: z.string(), cwd: z.string() }).nullable(),
 });
 export type ScriptRunStarted = z.infer<typeof scriptRunStartedSchema>;
+
+// Mirrors scriptruns.ResumeLaunch: the command that continues a run's conversation, and the
+// single-use token of the env it needs ('' when none).
+export const scriptRunResumeLaunchSchema = /*#__PURE__*/ z.object({
+  command: z.string(),
+  token: z.string(),
+});
+export type ScriptRunResumeLaunch = z.infer<typeof scriptRunResumeLaunchSchema>;
 
 // Mirrors scriptruns.RestoreItem: a run a quit or crash ended, planned against its script as it is now.
 export const scriptRunRestoreStatusSchema = /*#__PURE__*/ z.enum([

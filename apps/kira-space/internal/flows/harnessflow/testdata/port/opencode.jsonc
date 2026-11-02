@@ -1,0 +1,29 @@
+{
+  // user comment
+  "model": "anthropic/claude-sonnet-4-5",
+  "mcp": {
+    "local1": {
+      "type": "local",
+      "command": ["npx", "-y", "server"],
+      "environment": {
+        "TOKEN": "@OCTOKEN@",
+        "HOME_REF": "{env:HOME}",
+        "ORG_REF": "{env:P457_UNSET_ORG}"
+      }
+    },
+    "remote1": {
+      "type": "remote",
+      "url": "https://oc.example.com/mcp",
+      "headers": { "Authorization": "Bearer @OCHDR@" },
+      "enabled": false
+    }
+  },
+  "permission": {
+    "edit": "deny",
+    "bash": { "git push*": "deny", "git status": "allow" },
+    "webfetch": "ask"
+  },
+  "plugin": ["file:///opt/plugins/a.js", "opencode-foo"],
+  "provider": { "anthropic": { "options": { "apiKey": "@OCKEY@" } } },
+  "instructions": ["/x/rules.md"]
+}

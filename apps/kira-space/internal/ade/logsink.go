@@ -8,6 +8,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
 // logFlushInterval batches log writes and pushes (gitprepare's batch cadence is 100 ms; this
@@ -27,6 +28,9 @@ type logSink struct {
 	b                *TaskBoard
 	kind, id, taskID string
 
+	// mask hides the secret values of the app's agent settings in stored lines; nil masks nothing.
+	mask *secrets.Masker
+
 	flushMu sync.Mutex // keeps stored seq order equal to push order
 	mu      sync.Mutex
 	pending []repos.AdeLogChunk
@@ -38,8 +42,16 @@ func (b *TaskBoard) newLogSink(kind, id, taskID string) *logSink {
 	return &logSink{b: b, kind: kind, id: id, taskID: taskID}
 }
 
+// setMask sets the mask lines pass through, before the run starts.
+func (s *logSink) setMask(m *secrets.Masker) {
+	s.mu.Lock()
+	s.mask = m
+	s.mu.Unlock()
+}
+
 func (s *logSink) add(stream, text string) {
 	s.mu.Lock()
+	text = s.mask.Mask(text)
 	s.pending = append(s.pending, repos.AdeLogChunk{At: s.b.deps.Now().UnixMilli(), Stream: stream, Text: text})
 	if stream == logStderr && strings.TrimSpace(text) != "" {
 		s.lastErr = text

@@ -220,6 +220,7 @@ test('a multiline script is saved as written with Cmd/Ctrl+Enter; the panel row 
         color: 'none',
         collectionId: null,
       },
+      secretValues: null,
     });
   await expect(dialog(page)).toHaveCount(0);
 });
@@ -324,6 +325,7 @@ test('the dialog adds a script into a collection chosen from a select', async ({
         color: 'none',
         collectionId: 'c-be',
       },
+      secretValues: null,
     });
 });
 
@@ -578,6 +580,7 @@ test('Add stays disabled until name and script are filled; it sends the trimmed 
         color: 'green',
         collectionId: null,
       },
+      secretValues: null,
     });
 });
 
@@ -660,6 +663,7 @@ test('Edit… opens the dialog filled in; Save sends every edited field in one u
         color: 'blue',
         collectionId: null,
       },
+      secretValues: null,
     });
 });
 

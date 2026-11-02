@@ -22,10 +22,10 @@ var ErrWorkflowChanged = errors.New("ade: workflow changed")
 
 func wfErr(err error) error {
 	if errors.Is(err, adeflow.ErrConflict) {
-		return fmt.Errorf("%w: %s", ErrWorkflowChanged, strings.TrimPrefix(err.Error(), "adeflow: conflict: "))
+		return fmt.Errorf("%w: %s", ErrWorkflowChanged, strings.TrimPrefix(err.Error(), "configfs: conflict: "))
 	}
 	if errors.Is(err, adeflow.ErrInvalid) {
-		return fmt.Errorf("%w: %s", ErrInvalidInput, strings.TrimPrefix(err.Error(), "adeflow: invalid: "))
+		return fmt.Errorf("%w: %s", ErrInvalidInput, strings.TrimPrefix(err.Error(), "configfs: invalid: "))
 	}
 	return err
 }
@@ -85,12 +85,23 @@ func (b *TaskBoard) WorkflowYaml(_ context.Context, file string) (adewire.Workfl
 
 // ValidateWorkflowYaml parses text without touching disk.
 func (b *TaskBoard) ValidateWorkflowYaml(_ context.Context, src string) adewire.WorkflowValidation {
-	return adeflow.ValidateYaml(src)
+	v := adeflow.ValidateYaml(src)
+	if step, param := b.workflowSecretParam(v.Workflow); param != "" {
+		return adewire.WorkflowValidation{Error: &adewire.WorkflowError{Line: 1, Message: secretParamMsg(step, param)}}
+	}
+	return v
+}
+
+func secretParamMsg(step, param string) string {
+	return fmt.Sprintf("step %q: %s is a secret param, save its value in the script, not in the workflow file", step, param)
 }
 
 // SaveWorkflow rewrites a file from the structured workflow. Running tasks keep the snapshot
 // they started with; an edit applies to new work only.
 func (b *TaskBoard) SaveWorkflow(_ context.Context, args adewire.SaveWorkflowArgs) (adewire.WorkflowEntry, error) {
+	if step, param := b.workflowSecretParam(&args.Workflow); param != "" {
+		return adewire.WorkflowEntry{}, invalid("%s", secretParamMsg(step, param))
+	}
 	e, err := b.deps.Workflows.Save(args.FileName, args.BaseHash, args.Workflow)
 	if err != nil {
 		return adewire.WorkflowEntry{}, wfErr(err)
@@ -134,7 +145,10 @@ func (b *TaskBoard) NewWorkflow(_ context.Context, args adewire.NewWorkflowArgs)
 func (b *TaskBoard) Start() {
 	b.startOnce.Do(func() {
 		if b.deps.Workflows != nil {
-			stop, err := adeflow.Watch(b.deps.Workflows.Dir, b.workflowsFileChanged)
+			if err := b.deps.Workflows.WriteDocs(); err != nil {
+				slog.Warn("ade workflows: write AGENTS.md", "scope", "ade", "err", err)
+			}
+			stop, err := b.deps.Workflows.Watch(b.workflowsFileChanged)
 			if err != nil {
 				slog.Warn("ade workflows: watch", "scope", "ade", "err", err)
 			} else {

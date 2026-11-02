@@ -25,8 +25,9 @@ func (b *TaskBoard) launchReviewAgent(ctx context.Context, tc *taskCtx, tr *Trac
 		stepID = step.ID
 	}
 	var settings map[string]map[string]string
+	provider := stepAgentOf(tc, reviewStepID)
 	if step != nil {
-		settings = step.Settings
+		settings, provider = step.Settings, step.Agent
 	}
 	row, err := b.deps.Sessions.ReviewAgent(tc.task.ID)
 	if err != nil {
@@ -66,7 +67,7 @@ func (b *TaskBoard) launchReviewAgent(ctx context.Context, tc *taskCtx, tr *Trac
 		}
 	}
 	l, err := b.prepareWithGrant(ctx, tr, tc, PrepareArgs{
-		TaskID: tc.task.ID, Cwd: cwd, Message: message, AddDirs: extra, Purpose: model.AdeSessionPurposeReview, Settings: settings,
+		TaskID: tc.task.ID, Cwd: cwd, Message: message, AddDirs: extra, Purpose: model.AdeSessionPurposeReview, Settings: settings, Provider: provider,
 	}, opReviewAgent, "", stepID)
 	if err != nil {
 		return adewire.Launch{}, false, "", err

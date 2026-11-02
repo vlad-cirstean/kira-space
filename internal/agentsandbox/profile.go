@@ -68,7 +68,10 @@ func Profile(p Policy, rt Runtime) string {
 	}
 	allowRead = append(allowRead, sub(p.Scratch), sub(p.Cache))
 	if p.ConfigDir != "" {
-		allowRead = append(allowRead, rx("^"+regexp.QuoteMeta(p.ConfigDir)+"/"+regexp.QuoteMeta(p.RunID)+`-([0-9]+|user)\.mcp\.json$`))
+		allowRead = append(allowRead, rx("^"+regexp.QuoteMeta(p.ConfigDir)+"/"+regexp.QuoteMeta(p.RunID)+`-([0-9]+\.mcp|app\.[a-z]+)\.json$`))
+	}
+	if p.ContextDir != "" {
+		allowRead = append(allowRead, sub(p.ContextDir))
 	}
 	b.rule("allow", "file-read-data", dedupe(allowRead)...)
 

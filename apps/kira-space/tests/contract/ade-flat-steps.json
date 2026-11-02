@@ -100,6 +100,7 @@
       "name": "Flow",
       "steps": [
         {
+          "agent": "",
           "allowedTools": [],
           "before": "",
           "command": "",
@@ -126,6 +127,7 @@
           "timeout": ""
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "",
@@ -167,6 +169,7 @@
           "timeout": "1m"
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "",
@@ -218,6 +221,7 @@
           "timeout": "1m"
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "exit 0",
@@ -428,6 +432,7 @@
       "name": "Flow",
       "steps": [
         {
+          "agent": "",
           "allowedTools": [],
           "before": "",
           "command": "",
@@ -454,6 +459,7 @@
           "timeout": ""
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "",
@@ -495,6 +501,7 @@
           "timeout": "1m"
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "",
@@ -546,6 +553,7 @@
           "timeout": "1m"
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "exit 0",
@@ -618,6 +626,7 @@
       "name": "Flow",
       "steps": [
         {
+          "agent": "",
           "allowedTools": [],
           "before": "",
           "command": "",
@@ -644,6 +653,7 @@
           "timeout": ""
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "",
@@ -685,6 +695,7 @@
           "timeout": "1m"
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "",
@@ -736,6 +747,7 @@
           "timeout": "1m"
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "exit 0",
@@ -888,6 +900,7 @@
       "name": "Flow",
       "steps": [
         {
+          "agent": "",
           "allowedTools": [],
           "before": "",
           "command": "",
@@ -914,6 +927,7 @@
           "timeout": ""
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "",
@@ -955,6 +969,7 @@
           "timeout": "1m"
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "",
@@ -1006,6 +1021,7 @@
           "timeout": "1m"
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "exit 0",
@@ -1252,6 +1268,7 @@
       "name": "Flow",
       "steps": [
         {
+          "agent": "",
           "allowedTools": [],
           "before": "",
           "command": "",
@@ -1278,6 +1295,7 @@
           "timeout": ""
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "",
@@ -1319,6 +1337,7 @@
           "timeout": "1m"
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "",
@@ -1370,6 +1389,7 @@
           "timeout": "1m"
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "exit 0",
@@ -1423,6 +1443,7 @@
       "name": "Flow",
       "steps": [
         {
+          "agent": "",
           "allowedTools": [],
           "before": "",
           "command": "",
@@ -1449,6 +1470,7 @@
           "timeout": ""
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "",
@@ -1490,6 +1512,7 @@
           "timeout": "1m"
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "",
@@ -1541,6 +1564,7 @@
           "timeout": "1m"
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "exit 0",

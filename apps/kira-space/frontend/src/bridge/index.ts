@@ -1,9 +1,13 @@
 import * as AdeTaskService from '@bindings/adetaskservice.js';
+import * as AgentContextService from '@bindings/agentcontextservice.js';
 import * as AgentNotifyService from '@bindings/agentnotifyservice.js';
+import * as AgentPortService from '@bindings/agentportservice.js';
 import * as AgentService from '@bindings/agentservice.js';
+import * as AgentSettingsService from '@bindings/agentsettingsservice.js';
 import * as AgentUsageService from '@bindings/agentusageservice.js';
 import * as CaptureService from '@bindings/captureservice.js';
 import * as CodeWorkspaceService from '@bindings/codeworkspaceservice.js';
+import * as ConfigFilesService from '@bindings/configfilesservice.js';
 import * as CustomScriptsService from '@bindings/customscriptsservice.js';
 import * as FileHandlersService from '@bindings/filehandlersservice.js';
 import * as FilesService from '@bindings/filesservice.js';
@@ -63,6 +67,7 @@ import type {
   ScriptRunRestoreChoice,
   ScriptRunRestoreResult,
   ScriptRunRestoreState,
+  ScriptRunResumeLaunch,
   ScriptRunStarted,
 } from '@shared/domain/scriptRuns';
 import type {
@@ -70,14 +75,29 @@ import type {
   CustomScriptFields,
   ScriptCollection,
   ScriptDir,
-  ScriptMcpServer,
+  ScriptMcpServerList,
   ScriptsSnapshot,
+  SecretValues,
 } from '@shared/domain/scripts';
 import { CHANNEL } from '@shared/protocol/events';
 import { scriptsSnapshotOf } from '@workbench/automations/createCustomScriptsStore';
 import { createCoreControl } from '@workbench/bridge/createCoreControl';
 import { createOpenExternal } from '@workbench/bridge/openExternal';
 import { on, trust, unwrap, windowKey } from '@workbench/bridge/rpc';
+import type { AgentContextSaveArgs, AgentContextView } from '../ade/v2/context/types';
+import type {
+  ExportApplyArgs,
+  ExportPreview,
+  ImportApplyArgs,
+  ImportPreview,
+  PortProvider,
+  PortResult,
+} from '../ade/v2/port/types';
+import type {
+  AgentSetSecretArgs,
+  AgentSettingsSaveArgs,
+  AgentSettingsView,
+} from '../ade/v2/settings/types';
 import type * as V2 from '../ade/v2/wire';
 import type { CaptureItem, CaptureResult, HotkeyState } from '../capture/wire';
 import { CHANNEL_CAPTURE_ITEM, CHANNEL_CAPTURE_STATUS } from '../capture/wire';
@@ -110,10 +130,21 @@ import { memoryControl } from './memoryControl';
 const spaceControl = {
   customScriptsList: (): Promise<ScriptsSnapshot> =>
     unwrap(CustomScriptsService.List()).then((r) => scriptsSnapshotOf(r)),
-  customScriptsCreate: (fields: CustomScriptFields): Promise<CustomScript> =>
-    unwrap(CustomScriptsService.Create({ fields })).then((r) => trust<CustomScript>(r)),
-  customScriptsUpdate: (id: string, fields: CustomScriptFields): Promise<CustomScript> =>
-    unwrap(CustomScriptsService.Update({ id, fields })).then((r) => trust<CustomScript>(r)),
+  customScriptsCreate: (
+    fields: CustomScriptFields,
+    secretValues: SecretValues | null,
+  ): Promise<CustomScript> =>
+    unwrap(CustomScriptsService.Create({ fields, secretValues })).then((r) =>
+      trust<CustomScript>(r),
+    ),
+  customScriptsUpdate: (
+    id: string,
+    fields: CustomScriptFields,
+    secretValues: SecretValues | null,
+  ): Promise<CustomScript> =>
+    unwrap(CustomScriptsService.Update({ id, fields, secretValues })).then((r) =>
+      trust<CustomScript>(r),
+    ),
   customScriptsDelete: (id: string): Promise<void> => unwrap(CustomScriptsService.Delete({ id })),
   customScriptsCreateCollection: (name: string): Promise<ScriptCollection> =>
     unwrap(CustomScriptsService.CreateCollection({ name })).then((r) => trust<ScriptCollection>(r)),
@@ -157,8 +188,8 @@ const spaceControl = {
   scriptRunsRestore: (items: ScriptRunRestoreChoice[]): Promise<ScriptRunRestoreResult> =>
     unwrap(ScriptRunsService.Restore({ items })).then((r) => trust<ScriptRunRestoreResult>(r)),
   scriptRunsRestoreDismiss: (): Promise<void> => unwrap(ScriptRunsService.RestoreDismiss()),
-  scriptRunsResumeCommand: (runId: string): Promise<string> =>
-    unwrap(ScriptRunsService.ResumeCommand({ runId })),
+  scriptRunsResumeCommand: (runId: string): Promise<ScriptRunResumeLaunch> =>
+    unwrap(ScriptRunsService.ResumeCommand({ runId })).then((r) => trust<ScriptRunResumeLaunch>(r)),
   scriptRunsReadLog: (id: string, afterSeq: number): Promise<ScriptRunLogPage> =>
     unwrap(ScriptRunsService.ReadLog({ id, afterSeq })).then((r) => {
       const page = trust<Partial<ScriptRunLogPage>>(r);
@@ -197,8 +228,10 @@ const spaceControl = {
     ),
   scriptRunsConfirmDecline: (runId: string): Promise<void> =>
     unwrap(ScriptRunsService.ConfirmDecline({ id: runId })),
-  scriptRunsMcpServers: (): Promise<ScriptMcpServer[]> =>
-    unwrap(ScriptRunsService.McpServers()).then((r) => trust<ScriptMcpServer[]>(r ?? [])),
+  scriptRunsMcpServers: (): Promise<ScriptMcpServerList> =>
+    unwrap(ScriptRunsService.McpServers()).then((r) =>
+      trust<ScriptMcpServerList>(r ?? { source: 'agent', servers: [] }),
+    ),
 
   // P120: openExternal (LinkService) moved off createCoreControl.ts's now-deleted shared `link` binding —
   // Kira Studio never had a real use for it, so this app's own LinkService.OpenExternal call
@@ -440,6 +473,36 @@ const spaceControl = {
     unwrap(AdeTaskService.CaptureTask(args)).then((r) => trust<V2.Task>(r)),
   adeTaskSetQueuedAfter: (args: V2.SetQueuedAfterArgs): Promise<void> =>
     unwrap(AdeTaskService.SetQueuedAfter(args)),
+  configFilesOpen: (args: { folder: string; file: string }): Promise<void> =>
+    unwrap(ConfigFilesService.Open(args)),
+  configFilesReveal: (args: { folder: string; file: string }): Promise<void> =>
+    unwrap(ConfigFilesService.Reveal(args)),
+  agentContextGet: (): Promise<AgentContextView> =>
+    unwrap(AgentContextService.Get()).then((r) => trust<AgentContextView>(r)),
+  agentContextSave: (args: AgentContextSaveArgs): Promise<AgentContextView> =>
+    unwrap(AgentContextService.Save(args)).then((r) => trust<AgentContextView>(r)),
+  onAgentContextChanged: (cb: () => void): (() => void) => on(CHANNEL.agentContextChanged, cb),
+  agentSettingsGet: (): Promise<AgentSettingsView> =>
+    unwrap(AgentSettingsService.Get()).then((r) => trust<AgentSettingsView>(r)),
+  agentSettingsSave: (args: AgentSettingsSaveArgs): Promise<AgentSettingsView> =>
+    unwrap(AgentSettingsService.Save(args)).then((r) => trust<AgentSettingsView>(r)),
+  agentSettingsSetSecret: (args: AgentSetSecretArgs): Promise<AgentSettingsView> =>
+    unwrap(AgentSettingsService.SetSecret(args)).then((r) => trust<AgentSettingsView>(r)),
+  agentSettingsDeleteSecret: (name: string): Promise<AgentSettingsView> =>
+    unwrap(AgentSettingsService.DeleteSecret({ name })).then((r) => trust<AgentSettingsView>(r)),
+  agentPortList: (): Promise<PortProvider[]> =>
+    unwrap(AgentPortService.List()).then((r) => trust<PortProvider[]>(r ?? [])),
+  agentPortImportPreview: (args: { provider: string }): Promise<ImportPreview> =>
+    unwrap(AgentPortService.ImportPreview(args)).then((r) => trust<ImportPreview>(r)),
+  agentPortImportApply: (args: ImportApplyArgs): Promise<PortResult> =>
+    unwrap(AgentPortService.ImportApply(args)).then((r) => trust<PortResult>(r)),
+  agentPortExportPreview: (args: { provider: string }): Promise<ExportPreview> =>
+    unwrap(AgentPortService.ExportPreview(args)).then((r) => trust<ExportPreview>(r)),
+  agentPortExportApply: (args: ExportApplyArgs): Promise<PortResult> =>
+    unwrap(AgentPortService.ExportApply(args)).then((r) => trust<PortResult>(r)),
+  agentPortCancel: (args: { token: string }): Promise<void> =>
+    unwrap(AgentPortService.Cancel(args)).then(() => undefined),
+  onAgentSettingsChanged: (cb: () => void): (() => void) => on(CHANNEL.agentSettingsChanged, cb),
   adeTaskWorkflows: (): Promise<V2.WorkflowsResult> =>
     unwrap(AdeTaskService.Workflows()).then((r) => trust<V2.WorkflowsResult>(r)),
   adeTaskRepos: (): Promise<V2.ReposResult> =>
@@ -526,7 +589,7 @@ const spaceControl = {
     unwrap(AdeTaskService.LaunchStep(args)).then((r) => trust<V2.Launch>(r)),
   adeTaskStartBranch: (args: V2.StartBranchArgs): Promise<V2.Launch> =>
     unwrap(AdeTaskService.StartBranch(args)).then((r) => trust<V2.Launch>(r)),
-  adeTaskStartAdHoc: (args: V2.BranchArgs): Promise<V2.Launch> =>
+  adeTaskStartAdHoc: (args: V2.StartAdHocArgs): Promise<V2.Launch> =>
     unwrap(AdeTaskService.StartAdHoc(args)).then((r) => trust<V2.Launch>(r)),
   adeTaskRebasePreview: (args: V2.OntoArgs): Promise<V2.RebasePreview> =>
     unwrap(AdeTaskService.RebasePreview(args)).then((r) => trust<V2.RebasePreview>(r)),

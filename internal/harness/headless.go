@@ -22,7 +22,8 @@ type HeadlessSpec struct {
 	Bin string
 	Dir string
 	// Prompt goes to stdin: variadic flags would swallow a positional prompt, and stdin keeps it off argv.
-	Prompt    string
+	Prompt string
+	// SessionID is the proposed id; a SessionLocator provider reports its own through OnSessionID.
 	SessionID string
 	// Resume, when set, continues that session instead of starting SessionID; the id stays the same.
 	Resume string
@@ -57,6 +58,15 @@ type HeadlessSpec struct {
 	// Stage is the step's values for this provider; nil = defaults.
 	Stage   StageValues
 	Timeout time.Duration
+	// ContextFile is the absolute path of the app's agent context (Markdown) for this launch; ""
+	// = none. Only the provider decides how its CLI gets it.
+	ContextFile string
+	// App is the app's agent settings rendered for this run; nil = none. Never set on an isolated
+	// run: its tool and MCP policy is explicit.
+	App *AppConfig
+	// Hermetic loads none of the user's own agent config; Isolated runs load none already, Hermetic
+	// still sets the provider's hermetic env. Only the provider maps it.
+	Hermetic bool
 }
 
 // ConfigScope is which of the user's agent config layers a run loads.
@@ -108,6 +118,9 @@ type Handler struct {
 	OnRateLimits func(RateLimits)
 	// OnResult receives the run's closing result.
 	OnResult func(Result)
+	// OnSessionID receives the id the agent assigned the conversation, once. Only a SessionLocator
+	// provider calls it; Claude runs under the proposed id.
+	OnSessionID func(id string)
 }
 
 // Exit is how the process ended.

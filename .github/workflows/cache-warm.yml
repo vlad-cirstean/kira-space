@@ -29,14 +29,14 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
         with:
           go-cache: macos
       - run: bun run build:studio
       - run: bun run build:space
       - name: Cache golangci-lint binary (same key as pr.yml)
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@v6
         with:
           path: ~/go/bin/golangci-lint
           key: golangci-lint-${{ runner.os }}-${{ hashFiles('scripts/install-golangci-lint.sh', 'go.mod') }}
@@ -45,7 +45,7 @@ jobs:
       - name: Compile the darwin test packages (nothing runs)
         run: |
           go test -run '^$' -exec true \
-            ./apps/kira-studio/internal/secrets/... \
+            ./internal/secrets/... \
             ./internal/metrics/... \
             ./apps/kira-studio/internal/localauth/... \
             ./apps/kira-space/internal/gitclient \
@@ -57,13 +57,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
         with:
           go-cache: checks
           gtk: "true"
       - name: Cache tsbuildinfo (same key as pr.yml)
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@v6
         with:
           path: node_modules/.cache/tsbuildinfo
           key: tsbuildinfo-${{ hashFiles('bun.lock') }}-${{ github.sha }}
@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
         with:
           go-cache: go-rest
@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
       - name: Placeholder frontend/dist (as in pr.yml)
         run: |
           mkdir -p apps/kira-space/frontend/dist apps/kira-space/frontend/dist-mobile apps/kira-studio/frontend/dist
@@ -107,7 +107,7 @@ jobs:
       - run: sh scripts/go-test-split.sh containers -run '^$' -exec true
       - name: Look up the Testcontainers image cache
         id: docker-cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/restore@v6
         with:
           path: ~/docker-images.tar
           key: docker-${{ runner.os }}-${{ hashFiles('apps/kira-studio/internal/adapters/testsupport/*.go') }}
@@ -120,7 +120,7 @@ jobs:
           docker save $(docker images --filter dangling=false --format '{{.Repository}}:{{.Tag}}') -o ~/docker-images.tar
           du -h ~/docker-images.tar
       - if: steps.docker-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/save@v6
         with:
           path: ~/docker-images.tar
           key: docker-${{ runner.os }}-${{ hashFiles('apps/kira-studio/internal/adapters/testsupport/*.go') }}
@@ -132,18 +132,18 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
         with:
           bindings: "false"
       - id: webkit
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-webkit-${{ hashFiles('bun.lock') }}
           lookup-only: true
       - id: both
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-webkit-chromium-${{ hashFiles('bun.lock') }}
@@ -151,14 +151,14 @@ jobs:
       - if: steps.webkit.outputs.cache-hit != 'true' || steps.both.outputs.cache-hit != 'true'
         run: bunx playwright install webkit
       - if: steps.webkit.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/save@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-webkit-${{ hashFiles('bun.lock') }}
       - if: steps.both.outputs.cache-hit != 'true'
         run: bunx playwright install chromium
       - if: steps.both.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/save@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-webkit-chromium-${{ hashFiles('bun.lock') }}

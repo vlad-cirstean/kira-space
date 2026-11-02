@@ -16,11 +16,13 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitprepare"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -573,11 +575,11 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 	if def.Kind == adewire.KindAgent {
 		sessionID = b.newID()
 		patch.SessionID = &sessionID
-		agentSessionID := cmpNonEmpty(spec.ResumeID, b.newID())
-		agent, err = b.agentForResume(spec.ResumeID)
+		agent, err = b.agentForStep(spec.ResumeID, def.Agent)
 		if err != nil {
 			return run, err
 		}
+		agentSessionID := b.proposeAgentID(agent, spec.ResumeID)
 		switch {
 		case spec.ResumeID != "":
 			prompt = composeResumePrompt(b.prompts(), spec.Prompt, def.Results)
@@ -674,6 +676,9 @@ func agentEnd(agent runoutcome.Agent, exit harness.Exit, runErr error, timeout s
 	return p
 }
 
+// hermetic is the agent.hermetic setting for one launch; on without a reader.
+func (b *TaskBoard) hermetic() bool { return b.deps.Hermetic == nil || b.deps.Hermetic() }
+
 func (b *TaskBoard) configScope() harness.ConfigScope {
 	if b.deps.HeadlessSettingSources != nil && b.deps.HeadlessSettingSources() == "user" {
 		return harness.ConfigUser
@@ -695,6 +700,18 @@ func allowedTools(p harness.MCPHost, step []string, space bool) []string {
 	return out
 }
 
+// proposeAgentID is the conversation id a headless row starts with: the resumed one, a fresh one for
+// an agent that takes the id Kira proposes, "" for one that assigns its own (OnSessionID fills it).
+func (b *TaskBoard) proposeAgentID(agent harness.Provider, resume string) string {
+	if resume != "" {
+		return resume
+	}
+	if _, ok := agent.(harness.SessionLocator); ok {
+		return ""
+	}
+	return b.newID()
+}
+
 // agentLaunch is what superviseAgent runs: a prompt, or a smart script's step (smart != nil).
 type agentLaunch struct {
 	def               stepDef
@@ -711,6 +728,10 @@ type agentLaunch struct {
 	review *agentmcp.ReviewGrant
 	// agent is the provider the conversation runs under.
 	agent harness.Provider
+	// contextFile is the agent context path of this run, "" for none; set by superviseAgent.
+	contextFile string
+	// onSessionID, when set, also receives the id a self-assigning agent reports.
+	onSessionID func(id string)
 }
 
 // agentFor is the provider a launch runs under: the one that ran the conversation it continues
@@ -720,6 +741,15 @@ func (b *TaskBoard) agentFor(id string) (harness.Provider, error) {
 		return b.deps.Agent.Active(), nil
 	}
 	return b.deps.Agent.For(id)
+}
+
+// agentForStep is the provider of a headless launch: the one of the conversation it continues, else
+// the step's agent, else the active one.
+func (b *TaskBoard) agentForStep(resumeID, stepAgent string) (harness.Provider, error) {
+	if resumeID == "" && stepAgent != "" {
+		return b.agentFor(stepAgent)
+	}
+	return b.agentForResume(resumeID)
 }
 
 // agentForResume is agentFor over the provider recorded with the session a resume continues.
@@ -765,8 +795,20 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		}
 		complete(end)
 	}
+	headless, ok := harness.HeadlessOf(l.agent)
+	if !ok {
+		fail(&harness.MissingRole{Agent: l.agent.Label(), Role: "headless runs"})
+		return
+	}
 	if l.smart != nil {
-		if err := l.smart.checkMCP(ctx, l.agent, b.deps.ScriptsHome); err != nil {
+		if err := l.smart.checkMCP(ctx, b.deps.Servers, l.agent, b.deps.ScriptsHome); err != nil {
+			fail(err)
+			return
+		}
+	}
+	if b.deps.ContextFile != nil {
+		var err error
+		if l.contextFile, err = b.deps.ContextFile(); err != nil {
 			fail(err)
 			return
 		}
@@ -786,13 +828,33 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		fail(err)
 		return
 	}
+	prep, err := b.headlessApp(ctx, l, run.ID)
+	if err != nil {
+		release()
+		fail(err)
+		return
+	}
+	defer prep.Release()
+	ticked, err := b.wireTicked(ctx, l, run.ID)
+	if err != nil {
+		release()
+		fail(err)
+		return
+	}
+	defer ticked.Release()
+	masked := append(slices.Clone(prep.Secrets), ticked.Secrets...)
+	if l.smart != nil {
+		masked = append(masked, l.smart.secrets...)
+	}
+	sink.setMask(secrets.NewMasker(masked...))
 	agent := l.agent
 	spec := harness.HeadlessSpec{
 		Bin: b.deps.AgentBin, Dir: l.path, Prompt: l.prompt, SessionID: b.sessionAgentID(sessionID),
 		Resume: l.resume, MCPConfigs: []string{cfg}, Config: b.configScope(), AllowedTools: roundTools(agent, allowedTools(agent, def.AllowedTools, space), round), DisallowedTools: def.DisallowedTools,
-		Timeout: l.timeout, Stage: stageValues(def.Settings, agent),
+		Timeout: l.timeout, Stage: stageValues(def.Settings, agent), ContextFile: l.contextFile, App: prep.App,
+		Hermetic: b.hermetic() && len(ticked.UserMCP) == 0,
 	}
-	spec.Env = gitprepare.BuildEnv(os.Environ(), gitprepare.Vars{WorktreePath: l.path})
+	spec.Env = gitprepare.BuildEnv(withAppEnv(os.Environ(), prep.App), gitprepare.Vars{WorktreePath: l.path})
 	if rebase {
 		spec.Env = append(spec.Env, "GIT_EDITOR=true")
 	}
@@ -800,10 +862,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		spec.Isolated, spec.Tools, spec.AddDirs = true, rebaseBuiltins, l.git.Worktrees
 	}
 	if l.smart != nil {
-		spec = l.smart.spec(agent, spec, space)
-		if names := l.smart.mcpNames(); len(names) > 0 {
-			spec.UserMCP, spec.GrantMCP = names, []string{agentmcp.ServerName}
-		}
+		spec = withTicked(l.smart.spec(agent, spec, space), ticked)
 	}
 	spec = b.applySandbox(spec, sbx, l)
 	b.noticeSandbox(sink, sbx)
@@ -813,7 +872,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	if !harness.ReportsUsage(agent) {
 		onLimits = nil
 	}
-	exit, runErr := agent.RunHeadless(ctx, spec, harness.Handler{
+	exit, runErr := headless.RunHeadless(ctx, spec, harness.Handler{
 		OnLine:       func(l harness.Line) { sink.add(l.Stream, l.Text) },
 		OnRateLimits: onLimits,
 		OnResult:     func(r harness.Result) { res = &r },
@@ -822,6 +881,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 				stopWatch = b.watchSandbox(run, sbx, sink, pid)
 			}
 		},
+		OnSessionID: func(id string) { b.learnAgentSessionID(sessionID, id, l.onSessionID) },
 	})
 	if stopWatch != nil {
 		stopWatch()
@@ -831,7 +891,52 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	if b.ctx.Err() != nil {
 		return // app quit: rows stay running (R18)
 	}
-	b.endAgentRun(ctx, run, l, runEnd{exit: exit, err: runErr, res: res, sink: sink, sbx: sbx, complete: complete})
+	b.endAgentRun(ctx, run, l, runEnd{exit: exit, err: runErr, res: res, sink: sink, sbx: sbx, complete: complete, headless: headless})
+}
+
+// withTicked adds the ticked servers' wiring to a smart step's spec.
+func withTicked(spec harness.HeadlessSpec, ticked agentcfg.Ticked) harness.HeadlessSpec {
+	if len(ticked.UserMCP) > 0 {
+		spec.UserMCP, spec.GrantMCP = ticked.UserMCP, []string{agentmcp.ServerName}
+	}
+	if ticked.MCPConfig != "" {
+		spec.MCPConfigs = append(spec.MCPConfigs, ticked.MCPConfig)
+	}
+	return spec
+}
+
+// wireTicked wires the servers a smart step ticked; none for any other run.
+func (b *TaskBoard) wireTicked(ctx context.Context, l agentLaunch, runID string) (agentcfg.Ticked, error) {
+	if l.smart == nil {
+		return agentcfg.Ticked{Release: func() {}}, nil
+	}
+	return b.deps.Servers.Wire(ctx, agentcfg.Launch{Provider: l.agent, Kind: harness.LaunchHeadless, Dir: b.deps.AgentDir, Stem: runID}, l.smart.mcpNames())
+}
+
+// headlessApp prepares the app's agent settings for a run; an isolated run (rebase, smart step) takes
+// none, its tools and MCP servers are explicit.
+func (b *TaskBoard) headlessApp(ctx context.Context, l agentLaunch, runID string) (agentcfg.Prepared, error) {
+	if l.git != nil || l.smart != nil {
+		return agentcfg.Prepared{Release: func() {}}, nil
+	}
+	return b.prepareApp(ctx, agentcfg.Launch{Provider: l.agent, Kind: harness.LaunchHeadless, Dir: b.deps.AgentDir, Stem: runID})
+}
+
+// prepareApp prepares the app's agent settings for one launch; none without a preparer.
+func (b *TaskBoard) prepareApp(ctx context.Context, l agentcfg.Launch) (agentcfg.Prepared, error) {
+	if b.deps.AgentConfig == nil {
+		return agentcfg.Prepared{Release: func() {}}, nil
+	}
+	return b.deps.AgentConfig(ctx, l)
+}
+
+// withAppEnv puts the app settings' env after the process environment, so it overrides it and the
+// variables Kira adds afterwards override it.
+func withAppEnv(environ []string, app *harness.AppConfig) []string {
+	if app == nil {
+		return environ
+	}
+	return append(slices.Clone(environ), app.Env...)
 }
 
 // runEnd is what a headless agent run left behind.
@@ -842,6 +947,7 @@ type runEnd struct {
 	sink     *logSink
 	sbx      *sandboxRun
 	complete func(outcome)
+	headless harness.Headless
 }
 
 // endAgentRun maps how an agent process ended to the run's outcome and completes the run.
@@ -874,7 +980,7 @@ func (b *TaskBoard) endAgentRun(ctx context.Context, run model.AdeRun, l agentLa
 		b.completeRebase(run, sessionID, report, end)
 		return
 	}
-	resumeLost := l.resume != "" && agent.ResumeLost(sink.lastStderr())
+	resumeLost := l.resume != "" && e.headless.ResumeLost(sink.lastStderr())
 	an := runoutcome.AgentOf(agent)
 	if l.smart != nil {
 		b.completeRun(run, sessionID, sbx.sandboxOutcome(b.smartOutcome(an, run.ID, exit, runErr, res, l.smart, def.Results, sink.lastStderr(), resumeLost)))
@@ -892,7 +998,20 @@ func roundTools(p harness.MCPHost, tools []string, round bool) []string {
 	return tools
 }
 
-// sessionAgentID reads the agent session id stored with the ade_sessions row.
+// learnAgentSessionID stores the id a self-assigning agent reported for the headless row.
+func (b *TaskBoard) learnAgentSessionID(sessionID, id string, also func(string)) {
+	if err := b.deps.Sessions.SetAgentSessionID(sessionID, id); err != nil {
+		slog.Warn("ade: store agent session id", "scope", "ade", "session", sessionID, "err", err)
+		return
+	}
+	b.notifySessions()
+	if also != nil {
+		also(id)
+	}
+}
+
+// sessionAgentID reads the agent session id stored with the ade_sessions row; "" for an agent that
+// assigns its own.
 func (b *TaskBoard) sessionAgentID(sessionID string) string {
 	rec, err := b.deps.Sessions.Get(sessionID)
 	if err != nil || rec == nil {

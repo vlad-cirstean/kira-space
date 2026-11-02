@@ -7,6 +7,7 @@ import type {
   ScriptRunRestoreChoice,
   ScriptRunRestoreResult,
   ScriptRunRestoreState,
+  ScriptRunResumeLaunch,
   ScriptRunStarted,
 } from '@shared/domain/scriptRuns';
 import type {
@@ -14,8 +15,10 @@ import type {
   CustomScriptFields,
   ScriptCollection,
   ScriptDir,
-  ScriptMcpServer,
+  ScriptMcpServerList,
+  SecretValues,
 } from '@shared/domain/scripts';
+import type { SecretStorageStatus } from '@shared/domain/secrets';
 import type { ScriptRunTabState } from '@shared/domain/tabs';
 import { type ComputedRef, computed, type InjectionKey, inject } from 'vue';
 import type { TerminalLaunch } from '../state/createTerminalTabs';
@@ -29,8 +32,14 @@ import type { TerminalHostDeps } from '../terminal/terminalHost';
 /** Each app's script store (createCustomScriptsStore.ts), as the panel and its dialog see it. */
 export interface ScriptsSeam {
   records(): readonly CustomScript[];
-  create(fields: CustomScriptFields): Promise<unknown>;
-  update(id: string, fields: CustomScriptFields): Promise<unknown>;
+  /** `secretValues` is write-only: a string saves, null clears, an absent name keeps. */
+  create(fields: CustomScriptFields, secretValues?: SecretValues | null): Promise<unknown>;
+  update(
+    id: string,
+    fields: CustomScriptFields,
+    secretValues?: SecretValues | null,
+  ): Promise<unknown>;
+  secretStorage(): SecretStorageStatus;
   remove(id: string): Promise<void>;
   collections(): readonly ScriptCollection[];
   createCollection(name: string): Promise<ScriptCollection>;
@@ -58,8 +67,8 @@ export interface ScriptRunsSeam {
   start(args: ScriptRunArgs, hash: string): Promise<ScriptRunStarted>;
   /** Continues the Claude session of a smart run a restart ended, as a new run. */
   resume(id: string): Promise<ScriptRunStarted>;
-  /** The terminal command that continues a smart run's conversation. */
-  resumeCommand(runId: string): Promise<string>;
+  /** The terminal launch that continues a smart run's conversation. */
+  resumeCommand(runId: string): Promise<ScriptRunResumeLaunch>;
   /** The runs the last quit or crash ended, each planned against its script as it is now. */
   restoreState(): Promise<ScriptRunRestoreState>;
   /** Starts the confirmed runs; one outcome each, a failed run stays on the list. */
@@ -84,8 +93,8 @@ export interface ScriptRunsSeam {
     secrets: Record<string, string[]>,
   ): Promise<ScriptRunStarted>;
   confirmDecline(runId: string): Promise<void>;
-  /** MCP servers claude reports. */
-  mcpServers(): Promise<ScriptMcpServer[]>;
+  /** The MCP servers a smart run can tick and where the list came from. */
+  mcpServers(): Promise<ScriptMcpServerList>;
 }
 
 export interface AutomationsModuleContext {

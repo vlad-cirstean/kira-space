@@ -47,6 +47,8 @@ type Policy struct {
 	Cache string
 	// ConfigDir holds the run's --mcp-config files; only those files are readable, not the folder.
 	ConfigDir string
+	// ContextDir is the folder holding the run's agent context file; readable, never an --add-dir.
+	ContextDir string
 	// Ports are the loopback ports the run reaches: the kira-ade MCP server, the allowlist proxy.
 	Ports []int
 	// Branch maps a worktree to the branch it may advance.
@@ -76,10 +78,12 @@ type Input struct {
 	Network     bool
 	Scratch     string
 	Cache       string
-	// ConfigDir is the folder the run's MCP config files are written to: <run>-<n>.mcp.json and <run>-user.mcp.json.
+	// ConfigDir is the folder the run's MCP config files are written to: <run>-<n>.mcp.json and the app settings files <run>-app.<role>.json.
 	ConfigDir string
-	Ports     []int
-	Branch    map[string]string
+	// ContextDir is the folder of the run's agent context file ("" = none).
+	ContextDir string
+	Ports      []int
+	Branch     map[string]string
 }
 
 // Denial is one blocked operation.
@@ -158,6 +162,9 @@ func ResolvePolicy(in Input, rt Runtime) (Policy, []string, error) {
 	p.Read = appendUnique(p.Read, readExtra...)
 	if in.ConfigDir != "" {
 		p.ConfigDir = realPath(filepath.Clean(in.ConfigDir))
+	}
+	if in.ContextDir != "" {
+		p.ContextDir = realPath(filepath.Clean(in.ContextDir))
 	}
 	p.Allow = allowExtra
 	if err := ensureDirs(in, &p); err != nil {

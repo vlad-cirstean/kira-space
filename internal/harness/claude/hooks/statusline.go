@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -85,10 +84,9 @@ func (s *Server) handleStatusLine(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// composeStatusLine writes this terminal's settings file (hooks plus the statusline wrapper) and
-// returns its single-quoted path and the extra env carrying the user's own statusline command.
-func (s *Server) composeStatusLine(terminalID, cwd string) (string, []string, error) {
-	user := userStatusLine(cwd)
+// wrapStatusLine is the settings statusLine Kira installs: the usage-feed wrapper around the app's own
+// statusline user, nil for none. The extra env carries the user's command for the wrapper to run.
+func (s *Server) wrapStatusLine(user *statusLineEntry) (*statusLineEntry, []string) {
 	entry := &statusLineEntry{Type: "command", Command: s.quotedShim + " statusline"}
 	var extra []string
 	if user != nil {
@@ -97,53 +95,30 @@ func (s *Server) composeStatusLine(terminalID, cwd string) (string, []string, er
 			extra = []string{"KIRA_USER_STATUSLINE=" + user.Command}
 		}
 	}
+	return entry, extra
+}
+
+// composeStatusLine writes this terminal's settings file (hooks plus the statusline wrapper, no user
+// statusline: that comes only from the app's settings) and returns its single-quoted path.
+func (s *Server) composeStatusLine(terminalID string) (string, error) {
+	entry, _ := s.wrapStatusLine(nil)
 	doc, err := buildHooksDocument(s.quotedShim, entry)
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 	sum := sha256.Sum256([]byte(terminalID))
 	path := filepath.Join(s.ln.Dir, "settings-"+hex.EncodeToString(sum[:])[:12]+".json")
 	if err := renameio.WriteFile(path, doc, 0o600); err != nil {
-		return "", nil, fmt.Errorf("claude hooks: write settings: %w", err)
+		return "", fmt.Errorf("claude hooks: write settings: %w", err)
 	}
-	quoted, err := shellSingleQuote(path)
-	if err != nil {
-		return "", nil, err
-	}
-	return quoted, extra, nil
+	return shellSingleQuote(path)
 }
 
-// userStatusLine returns the statusline the CLI would use without Kira, read-only, by its
-// precedence: project local, project, user. A file that is missing or unparseable is skipped.
-func userStatusLine(cwd string) *statusLineEntry {
-	var paths []string
-	if cwd != "" {
-		paths = append(paths,
-			filepath.Join(cwd, ".claude", "settings.local.json"), filepath.Join(cwd, ".claude", "settings.json"))
+// userStatusLine is the app-supplied statusLine of a settings document, nil unless it is a command.
+func userStatusLine(raw json.RawMessage) *statusLineEntry {
+	var e statusLineEntry
+	if json.Unmarshal(raw, &e) != nil || e.Type != "command" || e.Command == "" {
+		return nil
 	}
-	dir := os.Getenv("CLAUDE_CONFIG_DIR")
-	if dir == "" {
-		if home, err := os.UserHomeDir(); err == nil {
-			dir = filepath.Join(home, ".claude")
-		}
-	}
-	if dir != "" {
-		paths = append(paths, filepath.Join(dir, "settings.json"))
-	}
-	for _, p := range paths {
-		raw, err := os.ReadFile(p)
-		if err != nil {
-			continue
-		}
-		var doc struct {
-			StatusLine *statusLineEntry `json:"statusLine"`
-		}
-		if json.Unmarshal(raw, &doc) != nil || doc.StatusLine == nil {
-			continue
-		}
-		if doc.StatusLine.Type == "command" && doc.StatusLine.Command != "" {
-			return doc.StatusLine
-		}
-	}
-	return nil
+	return &e
 }

@@ -5,6 +5,7 @@ import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
+import { useAgentList } from '@workbench/agent/agentInfo';
 import { computed, ref, watch } from 'vue';
 import { formatTools, parseTools } from '../../board/workflowForm';
 import { useBoard } from '../../queries';
@@ -18,6 +19,7 @@ const props = defineProps<{ step: WorkflowStep }>();
 const emit = defineEmits<{ patch: [p: Partial<WorkflowStep>] }>();
 const draft = useAdeWorkflowDraftStore();
 const board = useBoard();
+const { list: agents } = useAgentList();
 const statuses = computed(() => board.data.value?.statuses ?? []);
 const wfUi = useAdeWorkflowsUiStore();
 // A step with no status uses the default of its kind; a deleted status falls back to it too.
@@ -42,6 +44,12 @@ const missingLabel = computed(() =>
     id: props.step.status,
     status: defaultName.value || t('space.ade.workflows.stepInspector.statusDefaultKeep.label'),
   }),
+);
+const hasSession = computed(
+  () =>
+    props.step.kind === 'agent' ||
+    props.step.kind === 'review' ||
+    (props.step.kind === 'manual' && props.step.session),
 );
 const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
 
@@ -132,10 +140,21 @@ function onTools(v: string | number): void {
     :step-id="step.id"
     @patch="(sandbox) => emit('patch', { sandbox })"
   />
+  <div v-if="hasSession" class="flex items-center gap-2 text-kira-sm text-muted-foreground">
+    <Label :for="id('agent')">{{ t('memory.common.origin.agent.label') }}</Label>
+    <NativeSelect
+      :id="id('agent')"
+      variant="bordered"
+      :model-value="step.agent"
+      data-testid="ade-wf-step-agent"
+      @update:model-value="(v) => emit('patch', { agent: String(v) })"
+    >
+      <option value="">{{ t('space.ade.workflows.stepInspector.agentDefault.label') }}</option>
+      <option v-for="e in agents" :key="e.id" :value="e.id">{{ e.productLabel }}</option>
+    </NativeSelect>
+  </div>
   <AdeStepSettings
-    v-if="
-      step.kind === 'agent' || step.kind === 'review' || (step.kind === 'manual' && step.session)
-    "
+    v-if="hasSession"
     :settings="step.settings"
     :step-id="step.id"
     @patch="(settings) => emit('patch', { settings })"

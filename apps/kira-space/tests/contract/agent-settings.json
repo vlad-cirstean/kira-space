@@ -1,0 +1,104 @@
+{
+  "view": {
+    "editable": true,
+    "exists": true,
+    "file": "settings.yaml",
+    "folder": "agent",
+    "hash": "09bc32833f8ae4b5055e57bcd2393ac1c00f453fed06904bd8f83e2fa017598a",
+    "lastGood": false,
+    "maxBytes": 262144,
+    "path": "<space>/agent/settings.yaml",
+    "problem": null,
+    "providers": [
+      {
+        "env": [
+          {
+            "name": "P453_MARK",
+            "value": "${secret:gh-token}"
+          }
+        ],
+        "files": [
+          {
+            "name": "mcp.json",
+            "text": "{\"mcpServers\":{\"gh\":{\"headers\":{\"Authorization\":\"Bearer ${secret:gh-token}\"},\"type\":\"http\",\"url\":\"http://127.0.0.1:9/mcp\"}}}"
+          },
+          {
+            "name": "settings.json",
+            "text": "{\n  \"hooks\": {\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"type\": \"command\",\n            \"command\": \"echo mark\",\n            \"timeout\": 60\n          }\n        ]\n      }\n    ]\n  },\n  \"statusLine\": {\n    \"type\": \"command\",\n    \"command\": \"echo user-status\"\n  }\n}"
+          }
+        ],
+        "id": "claude",
+        "kira": [
+          "Kira hooks on every agent event, for session state and notifications.",
+          "MCP server kira-ade, for the agent board tools.",
+          "A status line wrapper that reads usage limits, when usage limits are on."
+        ],
+        "label": "Claude",
+        "notes": [
+          "Headless steps use the same files without permission_mode, allow and status_line."
+        ]
+      },
+      {
+        "env": [
+          {
+            "name": "P453_MARK",
+            "value": "${secret:gh-token}"
+          }
+        ],
+        "files": [
+          {
+            "name": "opencode mcp.json",
+            "text": "{\"mcp\":{\"gh\":{\"enabled\":true,\"headers\":{\"Authorization\":\"Bearer ${secret:gh-token}\"},\"type\":\"remote\",\"url\":\"http://127.0.0.1:9/mcp\"}}}"
+          }
+        ],
+        "id": "opencode",
+        "kira": [
+          "Kira hooks on every agent event, for session state and notifications.",
+          "MCP server kira-ade, for the agent board tools."
+        ],
+        "label": "OpenCode",
+        "notes": [
+          "OpenCode doesn’t run hook mark. It is not applied.",
+          "OpenCode receives the servers through a private file named by OPENCODE_CONFIG, removed when the launch ends.",
+          "Headless steps use the same files without permission_mode, allow and status_line."
+        ]
+      },
+      {
+        "env": [
+          {
+            "name": "P453_MARK",
+            "value": "${secret:gh-token}"
+          }
+        ],
+        "files": [
+          {
+            "name": "config.json",
+            "text": "{\n  \"Env\": {\n    \"P453_MARK\": \"${secret:gh-token}\"\n  },\n  \"MCP\": [\n    {\n      \"Name\": \"gh\",\n      \"URL\": \"http://127.0.0.1:9/mcp\",\n      \"Headers\": {\n        \"Authorization\": \"Bearer ${secret:gh-token}\"\n      },\n      \"Command\": \"\",\n      \"Args\": null,\n      \"Env\": null\n    }\n  ],\n  \"Allow\": null,\n  \"Deny\": null,\n  \"Hooks\": [\n    {\n      \"Name\": \"mark\",\n      \"Matcher\": \"\",\n      \"Command\": \"echo mark\",\n      \"Event\": \"SessionStart\",\n      \"TimeoutSec\": 60\n    }\n  ],\n  \"Section\": null\n}"
+          }
+        ],
+        "id": "fake",
+        "kira": [
+          "Kira hooks"
+        ],
+        "label": "Fake agent",
+        "notes": [
+          "Headless steps use the same files without permission_mode, allow and status_line."
+        ]
+      }
+    ],
+    "secrets": [
+      {
+        "name": "gh-token",
+        "referenced": true,
+        "set": true
+      }
+    ],
+    "storage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    },
+    "text": "env:\n  P453_MARK: ${secret:gh-token}\nmcp_servers:\n  gh:\n    url: http://127.0.0.1:9/mcp\n    headers:\n      Authorization: Bearer ${secret:gh-token}\nhooks:\n  mark:\n    event: session_start\n    command: echo mark\nclaude:\n  status_line:\n    command: echo user-status\n  skip_hooks: []\n"
+  }
+}

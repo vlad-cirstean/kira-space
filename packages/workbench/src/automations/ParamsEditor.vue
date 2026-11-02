@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import type { ScriptKind, ScriptParam, ScriptParamType } from '@shared/domain/scripts';
+import type {
+  ScriptKind,
+  ScriptParam,
+  ScriptParamType,
+  SecretValues,
+} from '@shared/domain/scripts';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { Checkbox } from '@theme/components/ui/checkbox';
@@ -15,7 +21,14 @@ import { useId } from 'vue';
 import { paramEnvName } from './scriptVars';
 
 const params = defineModel<ScriptParam[]>({ required: true });
-defineProps<{ kind: ScriptKind; errors?: readonly (readonly string[])[] }>();
+// Write-only draft: name -> new value, or null to clear the saved one. Never read back.
+const secretValues = defineModel<SecretValues>('secretValues', { default: () => ({}) });
+const props = defineProps<{
+  kind: ScriptKind;
+  errors?: readonly (readonly string[])[];
+  savedSecrets?: readonly string[];
+  storageOff?: boolean;
+}>();
 const idBase = useId();
 // A literal env var name, not copy; a catalog message can't hold `<>`.
 const PARAM_VAR = '$KIRA_PARAM_<NAME>';
@@ -56,6 +69,24 @@ function setType(i: number, type: ScriptParamType): void {
     default: [],
     secret: false,
   });
+}
+
+function isSaved(p: ScriptParam): boolean {
+  return (
+    p.name !== '' &&
+    (props.savedSecrets ?? []).includes(p.name) &&
+    secretValues.value[p.name] !== null
+  );
+}
+
+function setSecret(name: string, value: string): void {
+  if (name === '') return;
+  const { [name]: _, ...rest } = secretValues.value;
+  secretValues.value = value === '' ? rest : { ...rest, [name]: value };
+}
+
+function clearSecret(name: string): void {
+  secretValues.value = { ...secretValues.value, [name]: null };
 }
 
 function addOption(i: number): void {
@@ -157,12 +188,50 @@ function toggleDefault(i: number, option: string, on: boolean): void {
         m
       }}</FieldError>
       <Input
-        v-if="p.type === 'text'"
+        v-if="p.type === 'text' && !p.secret"
         :model-value="p.default[0] ?? ''"
         :placeholder="t('common.state.default.option')"
         :data-testid="`param-default-${i}`"
         @update:model-value="(v) => patch(i, { default: String(v) === '' ? [] : [String(v)] })"
       />
+      <div
+        v-else-if="p.type === 'text'"
+        class="flex flex-col gap-1"
+        :data-testid="`param-secret-field-${i}`"
+      >
+        <div class="flex items-center gap-1.5">
+          <Input
+            type="password"
+            autocomplete="new-password"
+            :model-value="p.name ? (secretValues[p.name] ?? '') : ''"
+            :disabled="storageOff || !p.name"
+            :placeholder="
+              isSaved(p)
+                ? t('automations.params.secretValue.saved.placeholder')
+                : t('common.field.value.label')
+            "
+            class="min-w-0 flex-1 font-data"
+            :data-testid="`param-secret-value-${i}`"
+            @update:model-value="(v) => setSecret(p.name, String(v))"
+          />
+          <Badge v-if="isSaved(p)" :data-testid="`param-secret-saved-${i}`">{{
+            t('automations.params.secretValue.saved.status')
+          }}</Badge>
+          <Button
+            v-if="isSaved(p)"
+            variant="dialog"
+            size="kira-lg"
+            :data-testid="`param-secret-clear-${i}`"
+            @click="clearSecret(p.name)"
+            >{{
+              t('common.action.clear.label')
+            }}</Button
+          >
+        </div>
+        <FieldDescription v-if="storageOff" :data-testid="`param-secret-off-${i}`">{{
+          t('automations.params.secretValue.storageOff.description')
+        }}</FieldDescription>
+      </div>
       <div v-else class="flex flex-col gap-1" :data-testid="`param-options-${i}`">
         <div v-for="(o, k) in p.options" :key="k" class="flex items-center gap-1">
           <Checkbox
@@ -224,7 +293,9 @@ function toggleDefault(i: number, option: string, on: boolean): void {
             class="size-3.5"
             :model-value="p.secret"
             :data-testid="`param-secret-${i}`"
-            @update:model-value="(v) => patch(i, { secret: v === true })"
+            @update:model-value="
+              (v) => patch(i, v === true ? { secret: true, default: [] } : { secret: false })
+            "
           >
             <CodiconIcon name="check" :size="12" />
           </Checkbox>

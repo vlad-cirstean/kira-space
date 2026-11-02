@@ -9,6 +9,7 @@
     "kind": "script",
     "name": "job",
     "params": [],
+    "savedSecrets": [],
     "schedule": null,
     "smart": null,
     "sortOrder": 1,

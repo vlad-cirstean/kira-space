@@ -3,6 +3,7 @@ import { watch } from 'vue';
 import { control } from '../bridge/control';
 import { reposKey } from '../repo/state/reposQueries';
 import type { useAgentSessionsStore } from './state';
+import { agentContextKey } from './v2/context/queries';
 import { installMobileLaunch } from './v2/dialog/mobileLaunch';
 import { adeTurns } from './v2/dialog/turnWatch';
 import {
@@ -13,6 +14,7 @@ import {
   workflowYamlKey,
 } from './v2/queries';
 import { installAdeReadSignals } from './v2/readSignals';
+import { agentSettingsKey } from './v2/settings/queries';
 import { useAdeBoardUiStore } from './v2/state/adeBoardUi';
 
 const reviewAgentPrefix = ['adetask', 'reviewAgent'] as const;
@@ -49,6 +51,12 @@ export function installAdeSignals(
   });
   control.onAdeTaskSessions(() => {
     void queryClient.invalidateQueries({ queryKey: reviewAgentPrefix });
+  });
+  control.onAgentContextChanged(() => {
+    void queryClient.invalidateQueries({ queryKey: agentContextKey });
+  });
+  control.onAgentSettingsChanged(() => {
+    void queryClient.invalidateQueries({ queryKey: agentSettingsKey });
   });
   // A review step moves with the board, its runs and its own pushes.
   const refreshReviewStep = (): void => {

@@ -1,6 +1,10 @@
 package scripts
 
-import "github.com/kirathecat/kira-studio/internal/ipcerr"
+import (
+	"errors"
+
+	"github.com/kirathecat/kira-studio/internal/ipcerr"
+)
 
 // Service holds every method body once. Each app's bridge.CustomScriptsService is a wrapper struct
 // with forwarding methods, so Wails builds binding names from the app's own package. Every mutation broadcasts the full snapshot
@@ -15,6 +19,10 @@ type Service struct {
 }
 
 func fail(err error) error {
+	var ie *ipcerr.Error
+	if errors.As(err, &ie) {
+		return ie
+	}
 	if IsCallerError(err) {
 		return ipcerr.BadRequest(err.Error())
 	}
@@ -30,7 +38,7 @@ func (s *Service) snapshot() (Snapshot, error) {
 	if err != nil {
 		return Snapshot{}, err
 	}
-	return Snapshot{Collections: collections, Scripts: scripts}, nil
+	return Snapshot{Collections: collections, Scripts: scripts, SecretStorage: s.Repo.secretStatus()}, nil
 }
 
 func (s *Service) List() (Snapshot, error) {
@@ -50,10 +58,12 @@ func (s *Service) broadcast() {
 
 type CreateArgs struct {
 	Fields CustomScriptFields `json:"fields"`
+	// SecretValues saves a secret param's value by name; absent saves nothing.
+	SecretValues map[string]*string `json:"secretValues"`
 }
 
 func (s *Service) Create(args CreateArgs) (CustomScript, error) {
-	rec, err := s.Repo.Create(args.Fields)
+	rec, err := s.Repo.Create(args.Fields, args.SecretValues)
 	if err != nil {
 		return CustomScript{}, fail(err)
 	}
@@ -64,13 +74,15 @@ func (s *Service) Create(args CreateArgs) (CustomScript, error) {
 type UpdateArgs struct {
 	ID     string             `json:"id"`
 	Fields CustomScriptFields `json:"fields"`
+	// SecretValues: a string saves, null clears, an absent name keeps the saved value.
+	SecretValues map[string]*string `json:"secretValues"`
 }
 
 func (s *Service) Update(args UpdateArgs) (CustomScript, error) {
 	if args.ID == "" {
 		return CustomScript{}, ipcerr.Required("id")
 	}
-	rec, err := s.Repo.Update(args.ID, args.Fields)
+	rec, err := s.Repo.Update(args.ID, args.Fields, args.SecretValues)
 	if err != nil {
 		return CustomScript{}, fail(err)
 	}

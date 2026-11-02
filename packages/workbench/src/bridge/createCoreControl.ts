@@ -1,4 +1,9 @@
-import { type AgentInfo, agentInfoSchema } from '@shared/domain/agent';
+import {
+  type AgentEntry,
+  type AgentInfo,
+  agentEntrySchema,
+  agentInfoSchema,
+} from '@shared/domain/agent';
 import type { LayoutPatch } from '@shared/domain/layout';
 import {
   type LlmPromptChange,
@@ -83,6 +88,7 @@ export interface CoreBindings {
       launchKind: string;
       scriptId: string;
       scriptLaunchToken: string;
+      agentLaunchToken: string;
     }): Promise<unknown>;
     Write(a: { terminalId: string; data: string }): Promise<void>;
     Resize(a: { terminalId: string; cols: number; rows: number }): Promise<void>;
@@ -94,6 +100,7 @@ export interface CoreBindings {
   agent: {
     Info(): Promise<unknown>;
     InfoFor(id: string): Promise<unknown>;
+    List(): Promise<unknown>;
   };
   windows: {
     OpenNew(): Promise<void>;
@@ -214,6 +221,7 @@ export interface CoreControl<S, L, T, P, M> {
   // state/mode.ts's setMode schedules.
   agentInfo: () => Promise<AgentInfo>;
   agentInfoFor: (id: string) => Promise<AgentInfo>;
+  agentList: () => Promise<AgentEntry[]>;
   windowsEnsure: () => Promise<M>;
   windowsSetMode: (mode: M) => Promise<void>;
 
@@ -296,7 +304,8 @@ export function createCoreControl<S, L, T, P, M>(b: CoreBindings): CoreControl<S
           command: command ?? '',
           launchKind: launchKind ?? 'shell',
           scriptId: scriptId ?? '',
-          scriptLaunchToken: launchToken ?? '',
+          scriptLaunchToken: launchKind === 'agent' ? '' : (launchToken ?? ''),
+          agentLaunchToken: launchKind === 'agent' ? (launchToken ?? '') : '',
         }),
       ).then((r) => trust<{ shell: string }>(r)),
     terminalWrite: (terminalId: string, data: string): Promise<void> =>
@@ -324,6 +333,8 @@ export function createCoreControl<S, L, T, P, M>(b: CoreBindings): CoreControl<S
       unwrap(b.agent.Info()).then((r) => agentInfoSchema.parse(r)),
     agentInfoFor: (id: string): Promise<AgentInfo> =>
       unwrap(b.agent.InfoFor(id)).then((r) => agentInfoSchema.parse(r)),
+    agentList: (): Promise<AgentEntry[]> =>
+      unwrap(b.agent.List()).then((r) => agentEntrySchema.array().parse(r)),
     windowsEnsure: (): Promise<M> =>
       unwrap(b.windows.Ensure({ windowKey })).then((r) =>
         trust<M>(trust<{ mode: string }>(r).mode),

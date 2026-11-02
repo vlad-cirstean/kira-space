@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { paletteColorSchema } from './color';
+import { secretStorageStatusSchema } from './secrets';
 
 // P85 §9.2: zod schemas mirroring internal/scripts — mask.ts's own
 // Fields/full split (maskRuleFieldsSchema/maskRuleSchema).
@@ -25,7 +26,7 @@ export const BUILTIN_TOOLS = [
 export const DEFAULT_TOOLS: readonly string[] = ['Read', 'Grep', 'Glob'];
 // Variables a workflow run has; reserved as param names.
 export const BUILTIN_VARS = ['task', 'jira', 'repo', 'branch', 'base', 'worktree'] as const;
-export const DEFAULT_SMART = { maxBudgetUsd: 1, timeout: '15m' } as const;
+export const DEFAULT_SMART = { maxBudgetUsd: 1, noCostCap: false, timeout: '15m' } as const;
 
 export const scriptParamTypeSchema = /*#__PURE__*/ z.enum(['text', 'select', 'multiselect']);
 export type ScriptParamType = z.infer<typeof scriptParamTypeSchema>;
@@ -53,6 +54,8 @@ export type McpChoice = z.infer<typeof mcpChoiceSchema>;
 export const smartSettingsSchema = /*#__PURE__*/ z.object({
   model: z.string(),
   maxBudgetUsd: z.number(),
+  // No cost cap: maxBudgetUsd is 0. Needed to run on a provider that cannot cap cost.
+  noCostCap: z.boolean(),
   timeout: z.string(),
   tools: z.array(z.string()),
   bashPatterns: z.array(z.string()),
@@ -107,8 +110,15 @@ export const customScriptSchema = /*#__PURE__*/ customScriptFieldsSchema.extend(
   sortOrder: z.number(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  // Secret params that have a saved value; never the value itself.
+  savedSecrets: z.array(z.string()),
 });
 export type CustomScript = z.infer<typeof customScriptSchema>;
+
+// Saved secret values by param name, as Create/Update take them: a string saves, null clears, an
+// absent name keeps. Write-only: no read ever returns a value.
+export const secretValuesSchema = /*#__PURE__*/ z.record(z.string(), z.string().nullable());
+export type SecretValues = z.infer<typeof secretValuesSchema>;
 
 // scriptCollectionSchema mirrors scripts.Collection — one custom_script_collections row.
 export const scriptCollectionSchema = /*#__PURE__*/ z.object({
@@ -125,6 +135,8 @@ export type ScriptCollection = z.infer<typeof scriptCollectionSchema>;
 export const scriptsSnapshotSchema = /*#__PURE__*/ z.object({
   collections: z.array(scriptCollectionSchema),
   scripts: z.array(customScriptSchema),
+  // Fixed for the process; off means a secret param's value cannot be saved.
+  secretStorage: secretStorageStatusSchema,
 });
 export type ScriptsSnapshot = z.infer<typeof scriptsSnapshotSchema>;
 
@@ -146,6 +158,15 @@ export const scriptMcpServerSchema = /*#__PURE__*/ z.object({
   name: z.string(),
   transport: z.string(),
   target: z.string(),
-  status: z.enum(['connected', 'failed', 'needsAuth', 'pending', 'unknown']),
+  // '' for a server from Kira's agent settings: Kira never health-checks it.
+  status: z.enum(['', 'connected', 'failed', 'needsAuth', 'pending', 'unknown']),
 });
 export type ScriptMcpServer = z.infer<typeof scriptMcpServerSchema>;
+
+// scriptMcpServerListSchema is the picker's list and its source: Kira's agent settings (app) when
+// hermetic, else the agent CLI's own list (agent).
+export const scriptMcpServerListSchema = /*#__PURE__*/ z.object({
+  source: z.enum(['app', 'agent']),
+  servers: z.array(scriptMcpServerSchema),
+});
+export type ScriptMcpServerList = z.infer<typeof scriptMcpServerListSchema>;

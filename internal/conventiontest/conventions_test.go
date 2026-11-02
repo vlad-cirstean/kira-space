@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -20,6 +21,9 @@ import (
 var permanentExemptions = map[string]string{
 	"G4 apps/kira-space/internal/gitsession/incremental.go": "writes temp files into a per-call os.MkdirTemp dir that is deleted before return; nothing else reads them",
 	"G5 internal/harness/claude/sandbox.go":                 "names ~/.claude.json as a sandbox write path; Kira never opens it",
+	"G5 internal/harness/opencode/hooks/server.go":          "writes Kira's own opencode.json into its private temp dir; never the user's",
+	"G5 internal/harness/opencode/headless.go":              "reads only Kira's own generated MCP config files, to merge them into one",
+	"G5 internal/harness/opencode/sandbox.go":               "names OpenCode's config and data dirs as sandbox paths; Kira never opens them",
 }
 
 // testToolingPackages hold throwaway test fixtures; G4 skips any file under a directory with one
@@ -98,7 +102,10 @@ func scan(t *testing.T, root, rel string) []finding {
 	dir := filepath.ToSlash(filepath.Dir(rel))
 	inHostAdapters := strings.HasPrefix(dir, "apps/kira-space/internal/githost") || strings.HasPrefix(dir, "apps/kira-space/internal/issuetracker")
 	inDocker := dir == "internal/docker"
-	inClaude := dir == "internal/harness/claude" || strings.HasPrefix(dir, "internal/harness/claude/")
+	inClaudeOnly := dir == "internal/harness/claude" || strings.HasPrefix(dir, "internal/harness/claude/")
+	inOpenCode := dir == "internal/harness/opencode" || strings.HasPrefix(dir, "internal/harness/opencode/")
+	inClaude := inClaudeOnly || inOpenCode
+	inAgentPort := dir == "internal/agentport"
 	isCodes := filepath.ToSlash(rel) == "internal/ipcerr/codes.go"
 	var out []finding
 	add := func(rule string, pos token.Pos, msg string) {
@@ -130,7 +137,21 @@ func scan(t *testing.T, root, rel string) []finding {
 					add("G5", x.Pos(), "literal \"config.json\" (docker config can hold auths)"+g5Rule)
 				}
 			}
-			if x.Kind == token.STRING && inClaude {
+			if x.Kind == token.STRING && inOpenCode {
+				if v, err := strconv.Unquote(x.Value); err == nil {
+					if why := openCodeCredential(v); why != "" {
+						add("G5", x.Pos(), why+g5Rule)
+					}
+				}
+			}
+			if x.Kind == token.STRING && inAgentPort {
+				if v, err := strconv.Unquote(x.Value); err == nil {
+					if why := agentPortCredential(v); why != "" {
+						add("G5", x.Pos(), why+g5Rule)
+					}
+				}
+			}
+			if x.Kind == token.STRING && inClaudeOnly {
 				if v, err := strconv.Unquote(x.Value); err == nil {
 					switch {
 					case strings.Contains(v, ".claude.json"):
@@ -151,7 +172,10 @@ func scan(t *testing.T, root, rel string) []finding {
 			if inHostAdapters && hasAdjacent(x, `"auth"`, `"token"`) {
 				add("G5", x.Pos(), "gh auth token argv"+g5Rule)
 			}
-			if inClaude && hasAdjacent(x, `"mcp"`, `"get"`) {
+			if inAgentPort && (hasAdjacent(x, `"mcp"`, `"get"`) || startsWith(x, `"auth"`, `"providers"`)) {
+				add("G5", x.Pos(), "credential CLI argv (claude mcp get, opencode auth/providers)"+g5Rule)
+			}
+			if inClaudeOnly && hasAdjacent(x, `"mcp"`, `"get"`) {
 				add("G5", x.Pos(), "claude mcp get argv (prints stored headers and env)"+g5Rule)
 			}
 		case *ast.FuncDecl:
@@ -165,8 +189,14 @@ func scan(t *testing.T, root, rel string) []finding {
 					add("G5", x.Pos(), why+g5Rule)
 				}
 			}
+			if inAgentPort && (isHeaderWrite(x) || runsApiKeyHelper(x)) {
+				add("G5", x.Pos(), "request header injection or an apiKeyHelper run"+g5Rule)
+			}
 			if inClaude && isHeaderWrite(x) {
 				add("G5", x.Pos(), "request header injection"+g5Rule)
+			}
+			if inOpenCode && isOSFileRead(x) {
+				add("G5", x.Pos(), "os file read in the OpenCode provider (config and data dirs hold credentials)"+g5Rule)
 			}
 			if inHostAdapters {
 				if why := credentialCall(x); why != "" {
@@ -193,6 +223,70 @@ func credentialLiteral(v string) string {
 		return "auth header literal"
 	}
 	return ""
+}
+
+// openCodeCredential names why a string literal in the OpenCode provider touches its credentials,
+// or "".
+func openCodeCredential(v string) string {
+	for _, bad := range []string{"auth.json", "opencode.json", ".local/share/opencode", "OPENCODE_AUTH_CONTENT"} {
+		if strings.Contains(v, bad) {
+			return "literal " + strconv.Quote(bad)
+		}
+	}
+	if v == "auth" || v == "providers" {
+		return "argv " + strconv.Quote(v) + " (opencode auth/providers manage credentials)"
+	}
+	return ""
+}
+
+// agentPortCredential names why a string literal in internal/agentport reaches a credential store of a
+// driven CLI, or "". The package opens only the user config files its Import and Export map.
+func agentPortCredential(v string) string {
+	for _, bad := range []string{".credentials.json", "auth.json", ".local/share/opencode", "OPENCODE_AUTH_CONTENT"} {
+		if strings.Contains(v, bad) {
+			return "literal " + strconv.Quote(bad)
+		}
+	}
+	return ""
+}
+
+// startsWith reports a composite literal whose first element is one of the given literals, such as an
+// `auth ...` argv.
+func startsWith(c *ast.CompositeLit, first ...string) bool {
+	if len(c.Elts) == 0 {
+		return false
+	}
+	a, ok := c.Elts[0].(*ast.BasicLit)
+	return ok && slices.Contains(first, a.Value)
+}
+
+// runsApiKeyHelper reports a process spawn that names apiKeyHelper in its arguments.
+func runsApiKeyHelper(x *ast.CallExpr) bool {
+	sel, ok := x.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	switch sel.Sel.Name {
+	case "Command", "CommandContext", "Run", "RunIO":
+	default:
+		return false
+	}
+	for _, a := range x.Args {
+		if lit, ok := a.(*ast.BasicLit); ok && lit.Kind == token.STRING && strings.Contains(lit.Value, "apiKeyHelper") {
+			return true
+		}
+	}
+	return false
+}
+
+// isOSFileRead reports os.ReadFile, os.Open or os.OpenFile.
+func isOSFileRead(x *ast.CallExpr) bool {
+	sel, ok := x.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	pkg, ok := sel.X.(*ast.Ident)
+	return ok && pkg.Name == "os" && (sel.Sel.Name == "ReadFile" || sel.Sel.Name == "Open" || sel.Sel.Name == "OpenFile")
 }
 
 // hasAdjacent reports adjacent elements first, second, such as the `gh auth token` argv.

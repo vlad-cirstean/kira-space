@@ -51,6 +51,7 @@ import type {
   SetTaskStepArgs,
   SetTaskWorkflowArgs,
   ShelveTaskArgs,
+  StartAdHocArgs,
   StartBranchArgs,
   StartRunArgs,
   StepArgs,
@@ -395,7 +396,7 @@ export function useStartBranch() {
 }
 
 export function useStartAdHoc() {
-  return useMutation({ mutationFn: (args: BranchArgs) => control.adeTaskStartAdHoc(args) });
+  return useMutation({ mutationFn: (args: StartAdHocArgs) => control.adeTaskStartAdHoc(args) });
 }
 
 export function useSend() {

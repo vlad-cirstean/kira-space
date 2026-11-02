@@ -1,0 +1,19 @@
+{
+  "oauthAccount": { "emailAddress": "user@example.com", "token": "@OAUTH@" },
+  "userID": "u-1",
+  "projects": { "/srv/x": { "mcpServers": { "proj": { "command": "proj-server" } } } },
+  "mcpServers": {
+    "gh": {
+      "type": "http",
+      "url": "https://api.example.com/mcp",
+      "headers": { "Authorization": "Bearer @GH@" }
+    },
+    "notes": {
+      "command": "/usr/bin/notes",
+      "args": ["${HOME}/notes"],
+      "env": { "API_KEY": "@NOTES@" }
+    },
+    "old": { "type": "sse", "url": "https://example.com/sse" },
+    "kira-db": { "type": "http", "url": "http://127.0.0.1:1/mcp" }
+  }
+}

@@ -17,6 +17,7 @@ export interface EditorDraft {
   dirMode: ScriptDirMode;
   workingDir: string;
   maxBudgetUsd: number;
+  noCostCap: boolean;
   params: readonly ScriptParam[];
   schedule: ScriptSchedule | null;
   scheduleOk: boolean;
@@ -74,7 +75,8 @@ export function editorErrors(d: EditorDraft, shown: Shown): EditorErrors {
     );
   if (shown.folder && d.dirMode === 'fixed' && d.workingDir.trim() === '')
     out.folder = t('automations.error.folderRequired.error');
-  if (d.kind === 'smart' && !(d.maxBudgetUsd > 0)) out.budget = t('automations.error.budget.error');
+  if (d.kind === 'smart' && !d.noCostCap && !(d.maxBudgetUsd > 0))
+    out.budget = t('automations.error.budget.error');
   if (d.schedule) {
     if (d.schedule.cron.trim() === '') out.cron = t('automations.error.repeatRequired.error');
     else out.scheduleInvalid = !d.scheduleOk;

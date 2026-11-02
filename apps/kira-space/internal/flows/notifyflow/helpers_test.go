@@ -116,7 +116,7 @@ func openAgent(t *testing.T, app *flowharness.App, id, cwd string) {
 // running claude does. curl returns after the listener answered, so the event is handled on return.
 func hook(t *testing.T, app *flowharness.App, terminalID, payload string) {
 	t.Helper()
-	_, env := app.W.AgentHooks.Compose("claude", terminalID, "", "claude")
+	_, env, _ := app.W.AgentHooks.Compose("claude", terminalID, "", "claude", "")
 	st := app.W.AgentHooks.Status("claude")
 	if !st.Running || len(env) == 0 {
 		t.Fatalf("hooks not running: %+v", st)

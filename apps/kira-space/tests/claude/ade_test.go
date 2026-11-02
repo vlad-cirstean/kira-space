@@ -278,7 +278,7 @@ func TestAdeAdHocSession(t *testing.T) {
 	if err != nil || br.Worktree == "" {
 		t.Fatalf("SetTaskBranch = %+v, %v", br, err)
 	}
-	launch, err := f.W.AdeTask.StartAdHoc(ctx, adewire.BranchArgs{BranchID: br.ID})
+	launch, err := f.W.AdeTask.StartAdHoc(ctx, adewire.StartAdHocArgs{BranchID: br.ID})
 	if err != nil {
 		t.Fatal(err)
 	}

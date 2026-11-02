@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "description": "OpenCode's own settings. Environment and MCP servers are common, not here.",
+  "additionalProperties": false,
+  "properties": {
+    "model": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._:-]+$",
+      "maxLength": 200,
+      "description": "Model for sessions that name none, as provider/model, such as anthropic/claude-sonnet-4-5."
+    },
+    "plugins": {
+      "type": "array",
+      "maxItems": 50,
+      "items": { "type": "string", "pattern": "^file:///[^\\s]+$", "maxLength": 2000 },
+      "description": "Plugins OpenCode loads, as file:// URLs with an absolute path."
+    },
+    "skip_hooks": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$" },
+      "description": "Common hook names OpenCode leaves out. OpenCode applies no common hook yet."
+    }
+  }
+}

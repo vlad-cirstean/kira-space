@@ -1,13 +1,20 @@
 <script setup lang="ts">
-import type { SmartSettings } from '@shared/domain/scripts';
+import { DEFAULT_SMART, type SmartSettings } from '@shared/domain/scripts';
+import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
+import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { useAgentInfo } from '@workbench/agent/agentInfo';
 
 const smart = defineModel<SmartSettings>({ required: true });
 const { info } = useAgentInfo();
+
+function onNoCostCap(on: boolean): void {
+  smart.value.noCostCap = on;
+  if (!on && !(smart.value.maxBudgetUsd > 0)) smart.value.maxBudgetUsd = DEFAULT_SMART.maxBudgetUsd;
+}
 </script>
 
 <template>
@@ -32,8 +39,18 @@ const { info } = useAgentInfo();
         type="number"
         min="0.01"
         step="0.1"
+        :disabled="smart.noCostCap"
         data-testid="smart-budget"
       />
+    </Field>
+    <Field orientation="horizontal" class="w-auto shrink-0 items-center pb-2">
+      <Checkbox
+        id="smart-no-cost-cap"
+        :model-value="smart.noCostCap"
+        data-testid="smart-no-cost-cap"
+        @update:model-value="(v) => onNoCostCap(v === true)"
+      />
+      <Label for="smart-no-cost-cap">{{ t('automations.smart.noCostCap.label') }}</Label>
     </Field>
     <Field class="w-28">
       <FieldLabel for="smart-timeout">{{ t('common.field.timeout.label') }}</FieldLabel>

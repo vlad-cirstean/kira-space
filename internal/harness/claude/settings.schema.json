@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "description": "Claude Code's own settings. Environment and MCP servers are common, not here.",
+  "additionalProperties": false,
+  "properties": {
+    "model": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:/\\[\\]-]{1,100}$",
+      "description": "Model for sessions and steps that name none: an alias such as sonnet or a full model id."
+    },
+    "permission_mode": {
+      "enum": ["acceptEdits", "auto", "bypassPermissions", "manual", "dontAsk", "plan"],
+      "description": "Starting permission mode of terminal sessions. Headless steps ignore it."
+    },
+    "status_line": {
+      "type": "object",
+      "description": "Your own status line command for terminal sessions. Kira wraps it when usage limits are on. Not a reference field.",
+      "additionalProperties": false,
+      "required": ["command"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1, "maxLength": 8192 },
+        "padding": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "refresh_interval": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600,
+          "description": "Seconds."
+        }
+      }
+    },
+    "hooks": {
+      "type": "object",
+      "description": "Claude-only hooks, by name, in Claude's own event names.",
+      "propertyNames": { "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["event", "command"],
+        "properties": {
+          "event": {
+            "enum": [
+              "PreToolUse",
+              "PostToolUse",
+              "PostToolUseFailure",
+              "PostToolBatch",
+              "Notification",
+              "UserPromptSubmit",
+              "UserPromptExpansion",
+              "SessionStart",
+              "SessionEnd",
+              "Stop",
+              "StopFailure",
+              "SubagentStart",
+              "SubagentStop",
+              "PreCompact",
+              "PostCompact",
+              "PreModelSwitch",
+              "PostModelSwitch",
+              "PermissionRequest",
+              "PermissionDenied",
+              "Setup",
+              "TeammateIdle",
+              "TaskCreated",
+              "TaskCompleted",
+              "Elicitation",
+              "ElicitationResult",
+              "ConfigChange",
+              "WorktreeCreate",
+              "WorktreeRemove",
+              "InstructionsLoaded",
+              "CwdChanged",
+              "FileChanged",
+              "DirectoryAdded",
+              "MessageDisplay"
+            ]
+          },
+          "matcher": { "type": "string", "maxLength": 500 },
+          "command": { "type": "string", "minLength": 1, "maxLength": 8192 },
+          "timeout": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 600,
+            "description": "Seconds, default 60."
+          }
+        }
+      }
+    },
+    "skip_hooks": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$" },
+      "description": "Common hook names Claude leaves out."
+    }
+  }
+}

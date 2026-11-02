@@ -60,6 +60,7 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
     smart: {
       model: 'sonnet',
       maxBudgetUsd: 1,
+      noCostCap: false,
       timeout: '15m',
       tools: ['Read', 'Grep', 'Glob'],
       bashPatterns: [],
@@ -170,7 +171,12 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
         { channel: IPC.customScriptsList, response: { collections: [], scripts: [] } },
         {
           channel: IPC.scriptRunsMcpServers,
-          response: [{ name: 'fake', transport: 'stdio', target: 'fake-mcp', status: 'connected' }],
+          response: {
+            source: 'agent',
+            servers: [
+              { name: 'fake', transport: 'stdio', target: 'fake-mcp', status: 'connected' },
+            ],
+          },
         },
         { channel: IPC.customScriptsCreate, response: SMART },
       ],
@@ -241,12 +247,63 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
           smart: {
             model: 'sonnet',
             maxBudgetUsd: 1,
+            noCostCap: false,
             timeout: '15m',
             tools: ['Read', 'Grep', 'Glob'],
             mcp: [{ server: 'fake', allTools: false, tools: ['echo'] }],
           },
         },
       });
+  });
+
+  test('New smart script: the no cost cap switch disables the budget and saves noCostCap', async ({
+    relaunch,
+  }) => {
+    const { window: page, control } = await relaunch({
+      control: [
+        { channel: IPC.customScriptsList, response: { collections: [], scripts: [] } },
+        { channel: IPC.customScriptsCreate, response: SMART },
+      ],
+    });
+    await openPanel(page);
+    await page.locator('[data-testid="automations-add"]').click();
+    await page.locator('[data-testid="menu-item-new-smart-script"]').click();
+    const dialog = page.locator('[data-testid="script-dialog"]');
+    const sw = dialog.locator('[data-testid="smart-no-cost-cap"]');
+    await expect(sw).toHaveAttribute('aria-checked', 'false');
+    await expect(dialog.locator('[data-testid="smart-budget"]')).toBeEnabled();
+    await sw.click();
+    await expect(sw).toHaveAttribute('aria-checked', 'true');
+    await expect(dialog.locator('[data-testid="smart-budget"]')).toBeDisabled();
+    await dialog.locator('[data-testid="script-dialog-name"]').fill('Ask Claude');
+    await dialog.locator('[data-testid="script-dialog-command"]').fill('Look around');
+    await dialog.locator('[data-testid="script-dialog-save"]').click();
+    await expect
+      .poll(() => control.log().find((e) => e.channel === IPC.customScriptsCreate)?.args)
+      .toMatchObject({ fields: { smart: { noCostCap: true } } });
+  });
+
+  test('contract: hermetic launches list the app agent settings servers, no status', async ({
+    relaunch,
+  }) => {
+    const { window: page } = await relaunch({
+      control: [
+        { channel: IPC.customScriptsList, response: { collections: [], scripts: [] } },
+        {
+          channel: IPC.scriptRunsMcpServers,
+          response: contract('automations-mcp-app', 'ScriptRunsService.McpServers'),
+        },
+      ],
+    });
+    await openPanel(page);
+    await page.locator('[data-testid="automations-add"]').click();
+    await page.locator('[data-testid="menu-item-new-smart-script"]').click();
+    const dialog = page.locator('[data-testid="script-dialog"]');
+    await expect(dialog.locator('[data-testid="smart-mcp-switch-app-srv"]')).toBeVisible();
+    await expect(dialog.locator('[data-testid="smart-mcp-status"]')).toHaveCount(0);
+    await expect(dialog.locator('[data-testid="smart-mcp"]')).toContainText(
+      'Servers from Kira’s own agent settings',
+    );
   });
 
   test('the smart model select lists the active provider models', async ({ relaunch }) => {
@@ -449,7 +506,10 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
     await view.locator('[data-testid="run-continue"]').click();
     await expect
       .poll(() => control.log().find((e) => e.channel === IPC.terminalOpen)?.args)
-      .toMatchObject({ command: "claude --resume 'sess-1'", launchKind: 'agent' });
+      .toMatchObject({
+        command: contract<{ command: string }>('smart', 'ScriptRunsService.ResumeCommand').command,
+        launchKind: 'agent',
+      });
   });
 
   test('a normal script with params starts through a launch token', async ({ relaunch }) => {

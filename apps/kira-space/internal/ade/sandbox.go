@@ -61,6 +61,9 @@ func (b *TaskBoard) sandboxInput(run model.AdeRun, l agentLaunch, sd adewire.Ste
 		ConfigDir: b.deps.AgentDir,
 		Ports:     []int{b.agent.Port()}, RunDir: l.path,
 	}
+	if l.contextFile != "" {
+		in.ContextDir = filepath.Dir(l.contextFile)
+	}
 	if run.Purpose == model.AdeRunPurposeRebase {
 		spec, err := specOf(run)
 		if err != nil {

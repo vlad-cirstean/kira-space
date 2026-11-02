@@ -1,4 +1,4 @@
-// Package appwire is Kira Space's composition root: it builds the 31 bound services, the git router
+// Package appwire is Kira Space's composition root: it builds the 34 bound services, the git router
 // and socket, the ADE tracker and board, and their teardown. main and the flow-test harness
 // (internal/flowharness) both call Build, so a test cannot wire differently from production. It
 // sits above internal/bridge in the layering, like internal/appshell.
@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adeflow"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentnotify"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentusage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
@@ -39,9 +40,14 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/openedfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
+	"github.com/kirathecat/kira-studio/internal/agentctx"
+	"github.com/kirathecat/kira-studio/internal/agentport"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/appupdate"
+	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/agentsvc"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
@@ -51,6 +57,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/metrics"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/windowsvc"
@@ -61,12 +68,16 @@ import (
 // in the harness.
 type Options struct {
 	Repos *repos.Repos
+	// Cipher seals saved secret values; nil builds one from the keychain.
+	Cipher *secrets.Cipher
 	// DB is closed last by Teardown, after Repos.
 	DB io.Closer
 	// Emitter is the window event sink (a deferred Wails emitter in production).
 	Emitter appevent.Emitter
 	Browser bridge.Browser
-	Dialogs bridge.Dialogs
+	// FileOpener opens or reveals a config file; main passes the Wails adapter.
+	FileOpener configsvc.FileOpener
+	Dialogs    bridge.Dialogs
 	// Locator resolves git.gitPath; main passes the platform locator.
 	Locator         gitclient.Locator
 	KeepAwakeDriver keepawake.Driver
@@ -178,6 +189,7 @@ type Wired struct {
 	MemoryImport    *bridge.MemoryImportService
 	MemoryDistill   *bridge.MemoryDistillService
 	WindowsSvc      *bridge.WindowsService
+	ConfigFiles     *bridge.ConfigFilesService
 	PromptsSvc      *bridge.PromptsService
 	LlmPromptsSvc   *bridge.LlmPromptsService
 	Update          *bridge.UpdateService
@@ -191,15 +203,27 @@ type Wired struct {
 	// Agents resolves the active agent provider per call.
 	Agents   harness.Selector
 	AgentSvc *bridge.AgentService
+	// AgentContext is the shared agent context every launch gets.
+	AgentContext     *agentctx.Store
+	AgentContextSvc  *bridge.AgentContextService
+	AgentSettingsSvc *bridge.AgentSettingsService
+	// AgentPort imports and exports a provider's native user-level agent config.
+	AgentPort    *agentport.Service
+	AgentPortSvc *bridge.AgentPortService
+	// AgentSettings is the shared agent settings every launch gets; AgentSecrets holds the values it references.
+	AgentSettings *agentcfg.Store
+	AgentSecrets  *agentcfg.SecretStore
 
-	reopen          func()
-	appFocused      atomic.Pointer[func() bool]
-	detachMetrics   func()
-	detachOpLog     func()
-	detachGitCred   func()
-	detachMobile    func()
-	beforeFlushOnce func()
-	teardownOnce    func()
+	reopen           func()
+	appFocused       atomic.Pointer[func() bool]
+	detachMetrics    func()
+	detachOpLog      func()
+	detachGitCred    func()
+	stopAgentContext func()
+	stopAgentConfig  func()
+	detachMobile     func()
+	beforeFlushOnce  func()
+	teardownOnce     func()
 }
 
 // Build wires every service.
@@ -213,6 +237,10 @@ func Build(opts Options) *Wired {
 	w.Agents = agentSelector(registry, repositories.Settings)
 	w.AgentSvc = &bridge.AgentService{Service: &agentsvc.Service{Agents: w.Agents}}
 	repositories.CustomScripts.Agents = registry
+	if opts.Cipher == nil {
+		opts.Cipher = secrets.New()
+	}
+	repositories.CustomScripts.Secrets = secrets.NewStore(repositories.CustomScripts.DB, opts.Cipher)
 	repositories.Settings.Agents = registry
 
 	credentialRelay := gitcred.New()
@@ -297,7 +325,19 @@ func Build(opts Options) *Wired {
 		OnChange: func() { bridge.AgentUsageChanged(emitter, w.AgentUsage.Get()) },
 	})
 	w.AgentUsageSvc = &bridge.AgentUsageService{U: w.AgentUsage}
-	adeTracker, agentHooks := wireTracker(repositories, terminalRegistry, emitter, events, opts.TrackerGrace, w.AgentNotify, w.AgentUsage, w.Agents)
+	w.AgentContext = agentctx.New(agentctx.Options{
+		Dir: filepath.Join(deps.Home, "agent"), SnapshotDir: filepath.Join(deps.Home, "agent-context"),
+		Projection: configfs.TableProjection{DB: repositories.CustomScripts.DB, Folder: agentctx.Folder}, App: "Space",
+		KeepsOnResume: func() []string { return keepsContextOnResume(registry) },
+	})
+	w.AgentContext.View() // follows the file into the DB projection
+	stopContextWatch := w.wireAgentSettings(registry, repositories, deps.Home, opts.Cipher, events)
+	w.stopAgentContext = stopContextWatch
+	w.AgentContextSvc = &bridge.AgentContextService{Service: &agentctx.Service{Store: w.AgentContext}}
+	w.AgentSettingsSvc = &bridge.AgentSettingsService{Service: &agentcfg.Service{Store: w.AgentSettings}}
+	w.AgentPort = agentport.New(agentport.Options{Settings: w.AgentSettings, Context: w.AgentContext, Secrets: w.AgentSecrets, Providers: registry})
+	w.AgentPortSvc = &bridge.AgentPortService{Svc: w.AgentPort}
+	adeTracker, agentHooks := wireTracker(repositories, terminalRegistry, emitter, events, opts.TrackerGrace, w.AgentNotify, w.AgentUsage, w.Agents, w.AgentContext.ContextFile)
 	w.Tracker, w.AgentHooks = adeTracker, agentHooks
 
 	// P128 §2.1: the bound terminal methods live once in internal/terminal.BoundService; this
@@ -305,6 +345,10 @@ func Build(opts Options) *Wired {
 	// agent launch through adeTracker.Compose.
 	termBroker := wireTermBroker(adeTracker, terminalRegistry, emitter)
 	w.TermBroker = termBroker
+	hermetic := func() bool {
+		settings, err := repositories.Settings.GetAll()
+		return err != nil || settings.Agent.Hermetic
+	}
 	runs := &scriptruns.Service{
 		Runs: repositories.ScriptRuns, Scripts: repositories.CustomScripts, Registry: terminalRegistry, Home: deps.Home, App: "Space",
 		Emit: func(r scriptruns.Run) {
@@ -313,7 +357,9 @@ func Build(opts Options) *Wired {
 		},
 		EmitLog:      func(p scriptruns.LogPush) { emitter.Emit(bridge.ChannelScriptRunLog, p) },
 		SmartTimeout: opts.SmartTimeout, ScheduleTimeout: opts.ScheduleTimeout, Prompts: w.Prompts, LlmPrompts: promptStore,
-		Agent: w.Agents,
+		Agent: w.Agents, ContextFile: w.AgentContext.ContextFile, AgentConfig: w.agentConfig(),
+		Hermetic: hermetic,
+		Servers:  agentcfg.ServerSource{Store: w.AgentSettings, Hermetic: hermetic},
 	}
 	if opts.Clock != nil {
 		runs.Now = opts.Clock.Now
@@ -376,6 +422,8 @@ func Build(opts Options) *Wired {
 		bridge.KeepAwakeRecompute(w.KeepAwake)
 	}
 	bridge.KeepAwakeRecompute(w.KeepAwake)
+
+	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"workflows": adeflow.Dir(config.KiraSpaceHome()), agentctx.Folder: filepath.Join(deps.Home, "agent")})}
 
 	// OpenNewWindow is assigned by BindShell once the shell exists.
 	w.WindowsSvc = &bridge.WindowsService{Service: &windowsvc.Service{Windows: deps.Repos.Windows}}
@@ -485,7 +533,7 @@ func (w *Wired) reopenWindow() {
 // StartMobile starts the phone server when settings enable it; call after the shell is up.
 func (w *Wired) StartMobile() { bridge.StartMobileIfEnabled(w.Mobile) }
 
-// Bound returns the 31 bound services in registration order.
+// Bound returns the 34 bound services in registration order.
 func (w *Wired) Bound() []application.Service {
 	return []application.Service{
 		application.NewService(w.GitCredential),
@@ -497,7 +545,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.MemoryImport), application.NewService(w.MemoryDistill), application.NewService(w.WindowsSvc), application.NewService(w.Update),
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),
 		application.NewService(w.PromptsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc),
-		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture),
+		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc),
 	}
 }
 
@@ -514,6 +562,7 @@ func (w *Wired) teardown(db io.Closer) {
 	// P119: a Cmd+Q mid-download aborts the install rather than leaving an orphan that later
 	// swaps a bundle the user quit away from. After hand-off this is a no-op.
 	w.UpdateInstall.Cancel()
+	w.stopAgentContext()
 	w.OpenedFiles.Close()
 	w.detachMetrics()
 	w.detachOpLog()
@@ -528,6 +577,7 @@ func (w *Wired) teardown(db io.Closer) {
 	w.runs.Close()
 	shutdownTracker(w.Tracker, w.AgentHooks)
 	w.AdeBoard.Close()
+	w.closeAgentSettings()
 	w.detachGitCred()
 	// Before DB close: ends open streams and aborts parked pairing requests.
 	bridge.StopMobile(w.Mobile)
@@ -549,5 +599,94 @@ func (w *Wired) teardown(db io.Closer) {
 	}
 	if err := db.Close(); err != nil {
 		slog.Warn("close db", "scope", "shutdown", "err", err)
+	}
+}
+
+// keepsContextOnResume lists the product labels of the providers whose resumed conversation keeps
+// its recorded agent context.
+func keepsContextOnResume(r *harness.Registry) []string {
+	var out []string
+	for _, id := range r.IDs() {
+		if p, ok := r.Get(id); ok && harness.KeepsContextOnResume(p) {
+			out = append(out, p.ProductLabel())
+		}
+	}
+	return out
+}
+
+// wireAgentSettings opens the shared credential store, builds the settings store, writes the agent
+// folder's AGENTS.md and watches the folder. It returns the watcher's stop. A failure leaves the
+// settings off with a warning: launches start without them, never without Kira's own wiring.
+func (w *Wired) wireAgentSettings(registry *harness.Registry, repositories *repos.Repos, home string, cipher *secrets.Cipher, events *bridge.Events) func() {
+	sec, err := agentcfg.OpenSecrets(filepath.Join(home, "agent-secrets.db"), cipher)
+	if err != nil {
+		slog.Warn("agent settings: open secrets", "scope", "startup", "err", err)
+	} else {
+		w.AgentSecrets = sec
+	}
+	store, err := agentcfg.New(agentcfg.Options{
+		Dir: filepath.Join(home, "agent"), Providers: registry, Secrets: w.AgentSecrets, App: "Space",
+		Projection: configfs.TableProjection{DB: repositories.CustomScripts.DB, Folder: agentctx.Folder},
+		Hermetic: func() bool {
+			settings, err := repositories.Settings.GetAll()
+			return err != nil || settings.Agent.Hermetic
+		},
+	})
+	if err != nil {
+		slog.Warn("agent settings: build", "scope", "startup", "err", err)
+		return w.watchAgentContext(events)
+	}
+	w.AgentSettings = store
+	if err := store.Sweep(filepath.Join(home, "ade", "runs"), filepath.Join(home, "automations-mcp")); err != nil {
+		slog.Warn("agent settings: sweep", "scope", "startup", "err", err)
+	}
+	store.View() // follows the file into the DB projection
+	if err := store.WriteDocs(w.AgentContext.DocModel()); err != nil {
+		slog.Warn("agent settings: write docs", "scope", "startup", "err", err)
+	}
+	stopSettings, err := store.Watch(func() {
+		store.View()
+		bridge.AgentSettingsChanged(events)
+	})
+	if err != nil {
+		slog.Warn("agent settings: watch", "scope", "startup", "err", err)
+		stopSettings = func() {}
+	}
+	w.stopAgentConfig = stopSettings
+	return w.watchAgentContext(events)
+}
+
+func (w *Wired) watchAgentContext(events *bridge.Events) func() {
+	stop, err := w.AgentContext.Watch(func() {
+		w.AgentContext.View()
+		bridge.AgentContextChanged(events)
+	})
+	if err != nil {
+		slog.Warn("agent context: watch", "scope", "startup", "err", err)
+		return func() {}
+	}
+	return stop
+}
+
+// agentConfig is the launch-time preparer of the agent settings; nil when the store did not build.
+func (w *Wired) agentConfig() agentcfg.PrepareFunc {
+	if w.AgentSettings == nil {
+		return nil
+	}
+	return w.AgentSettings.Prepare
+}
+
+func (w *Wired) closeAgentSettings() {
+	if w.AgentPort != nil {
+		_ = w.AgentPort.Close()
+	}
+	if w.stopAgentConfig != nil {
+		w.stopAgentConfig()
+	}
+	if w.AgentSettings != nil {
+		_ = w.AgentSettings.Close()
+	}
+	if w.AgentSecrets != nil {
+		_ = w.AgentSecrets.Close()
 	}
 }

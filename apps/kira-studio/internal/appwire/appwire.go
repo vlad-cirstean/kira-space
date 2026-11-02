@@ -17,7 +17,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskrules"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/proof"
-	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/appevent"
@@ -31,6 +30,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/logging"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -153,6 +153,7 @@ func Build(opts Options) (*Wired, error) {
 		registry = providers.New()
 	}
 	repositories.CustomScripts.Agents = registry
+	repositories.CustomScripts.Secrets = secrets.NewStore(repositories.CustomScripts.DB, opts.Cipher)
 	agents := harness.Selector{Registry: registry, ID: func() (string, error) {
 		s, err := repositories.Settings.GetAll()
 		return s.Agent.Provider, err
@@ -226,7 +227,7 @@ func Build(opts Options) (*Wired, error) {
 	}
 	embedded := wireEmbeddedServices(deps, installer, opts.KeepAwakeDriver, connectionsSvc, oplogWiring, metricsTicker, promptRouter, agents, proofSvc, opts)
 	lifecycle := wireLifecycle(windows, embedded.events, embedded.eventsDetach, metricsTicker, oplogWiring, connectionsSvc,
-		embedded.dbMcpSvc, embedded.keepAwakeSvc, embedded.terminalSvc, embedded.dockerSvc, embedded.kubeSvc, updateInstaller, embedded.runs, embedded.sched, repositories, db)
+		embedded.dbMcpSvc, embedded.keepAwakeSvc, embedded.terminalSvc, embedded.dockerSvc, embedded.kubeSvc, updateInstaller, embedded.runs, embedded.closeAgent, embedded.sched, repositories, db)
 	embedded.sched.Start()
 
 	live := func() shell.QuitStatus {

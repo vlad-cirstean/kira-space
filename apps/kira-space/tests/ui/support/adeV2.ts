@@ -146,6 +146,8 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskAddTaskRepo, response: adeFixture('branch') },
     { channel: IPC.adeTaskWorkflowYaml, response: adeFixture('workflow-yaml') },
     { channel: IPC.adeTaskValidateWorkflowYaml, response: adeFixture('workflow-validation') },
+    { channel: IPC.configFilesOpen },
+    { channel: IPC.configFilesReveal },
     { channel: IPC.adeTaskSaveWorkflow, response: firstWorkflow() },
     { channel: IPC.adeTaskSaveWorkflowYaml, response: firstWorkflow() },
     { channel: IPC.adeTaskImportWorkflow, response: firstWorkflow() },
@@ -324,7 +326,15 @@ function script(id: string, name: string, kind: 'script' | 'smart', command: str
     params: [],
     smart:
       kind === 'smart'
-        ? { model: 'sonnet', maxBudgetUsd: 1, timeout: '15m', tools: [], bashPatterns: [], mcp: [] }
+        ? {
+            model: 'sonnet',
+            maxBudgetUsd: 1,
+            noCostCap: false,
+            timeout: '15m',
+            tools: [],
+            bashPatterns: [],
+            mcp: [],
+          }
         : null,
     workingDir: '',
     dirMode: 'kira',

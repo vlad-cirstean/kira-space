@@ -9,7 +9,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"sync"
 
@@ -29,12 +31,29 @@ type StructuredCall struct{ Model, System string }
 type HeadlessCall struct {
 	Model, Prompt, SessionID, Resume string
 	Stage                            harness.StageValues
+	// Context is the bytes of the agent context file the run was given; nil when none.
+	Context []byte
+	// App is the bytes of the app settings file the run was given and AppEnv its env; nil when none.
+	App    []byte
+	AppEnv []string
+	// Hermetic is the spec's flag; Isolated its isolation; MCPConfigs the config files it named.
+	Hermetic, Isolated bool
+	MCPConfigs         []string
+	UserMCP            []string
+}
+
+// base is the Claude provider seen through the roles the fake delegates: it hides Claude's hook and
+// usage roles, which the fake does not play.
+type base interface {
+	harness.Provider
+	Fail(kind error) error
+	ScrubEnv(environ []string) []string
 }
 
 // Provider is the fake. Answers maps a substring of a structured call's system prompt to the output
 // it returns; the first match answers.
 type Provider struct {
-	harness.Provider
+	base
 	Answers map[string]json.RawMessage
 
 	mu         sync.Mutex
@@ -45,7 +64,7 @@ type Provider struct {
 
 // New returns a fake whose structured calls are answered from answers.
 func New(answers map[string]json.RawMessage) *Provider {
-	return &Provider{Provider: claude.New(), Answers: answers}
+	return &Provider{base: claude.New(), Answers: answers}
 }
 
 // Structured returns the structured requests so far, in order.
@@ -74,7 +93,7 @@ func (p *Provider) MCPConfig(servers []harness.MCPServer) ([]byte, error) {
 	p.mu.Lock()
 	p.renders++
 	p.mu.Unlock()
-	return p.Provider.MCPConfig(servers)
+	return p.base.MCPConfig(servers)
 }
 
 func (p *Provider) ID() string            { return ID }
@@ -115,8 +134,18 @@ func (p *Provider) RunStructured(_ context.Context, model string, c harness.Stru
 
 // RunHeadless records the spec, prints one line and ends the step through its MCP grant.
 func (p *Provider) RunHeadless(_ context.Context, s harness.HeadlessSpec, h harness.Handler) (harness.Exit, error) {
+	var ctxBytes []byte
+	if s.ContextFile != "" {
+		ctxBytes, _ = os.ReadFile(s.ContextFile)
+	}
+	call := HeadlessCall{Model: s.Model, Prompt: s.Prompt, SessionID: s.SessionID, Resume: s.Resume, Stage: s.Stage, Context: ctxBytes,
+		Hermetic: s.Hermetic, Isolated: s.Isolated, MCPConfigs: s.MCPConfigs, UserMCP: s.UserMCP}
+	if s.App != nil {
+		call.App, _ = os.ReadFile(s.App.Files["config"])
+		call.AppEnv = s.App.Env
+	}
 	p.mu.Lock()
-	p.headless = append(p.headless, HeadlessCall{Model: s.Model, Prompt: s.Prompt, SessionID: s.SessionID, Resume: s.Resume, Stage: s.Stage})
+	p.headless = append(p.headless, call)
 	p.mu.Unlock()
 	if h.OnLine != nil {
 		h.OnLine(harness.Line{Stream: harness.StreamStdout, Text: "fake agent at work"})
@@ -133,12 +162,57 @@ func (p *Provider) RunHeadless(_ context.Context, s harness.HeadlessSpec, h harn
 
 func (p *Provider) ResumeLost(string) bool { return false }
 
-func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) string {
+func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch {
 	flag := "--session"
 	if s.Resume {
 		flag = "--resume"
 	}
-	return fakeagent.Persona + " " + flag + " " + s.SessionID
+	cmd := fakeagent.Persona + " " + flag + " " + s.SessionID
+	if s.ContextFile != "" {
+		cmd += " " + fakeagent.PersonaContextFlag + " " + s.ContextFile
+	}
+	if s.Hermetic {
+		cmd += " --hermetic"
+	}
+	launch := harness.Launch{SessionID: s.SessionID}
+	if s.App != nil {
+		launch.Env = s.App.Env
+		if f := s.App.Files["config"]; f != "" {
+			cmd += " " + fakeagent.PersonaAppConfigFlag + " " + f
+		}
+	}
+	launch.Command = cmd
+	return launch
+}
+
+// SettingsSchema: the fake's section holds a model only.
+func (p *Provider) SettingsSchema() []byte {
+	return []byte(`{"type":"object","additionalProperties":false,"properties":{"model":{"type":"string","maxLength":100},"skip_hooks":{"type":"array","items":{"type":"string"}}}}`)
+}
+
+// KiraAdds is one line: the fake adds nothing else.
+func (p *Provider) KiraAdds() []string { return []string{"Kira hooks"} }
+
+// RenderSettings writes the whole AgentSettings as one JSON file, so a test sees exactly what a
+// provider receives.
+func (p *Provider) RenderSettings(s harness.AgentSettings, _ harness.LaunchKind) (harness.NativeConfig, error) {
+	if len(s.Env) == 0 && len(s.MCP) == 0 && len(s.Allow) == 0 && len(s.Deny) == 0 && len(s.Hooks) == 0 && len(s.Section) == 0 {
+		return harness.NativeConfig{}, nil
+	}
+	b, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return harness.NativeConfig{}, err
+	}
+	out := harness.NativeConfig{Files: []harness.NativeFile{{Role: "config", Name: "config.json", Data: b}}}
+	keys := make([]string, 0, len(s.Env))
+	for k := range s.Env {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		out.Env = append(out.Env, k+"="+s.Env[k])
+	}
+	return out, nil
 }
 
 func (p *Provider) WithPrompt(command, prompt string) string {

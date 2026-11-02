@@ -120,7 +120,7 @@ export function registerRestoreScenarios(env: Env, options: Options): void {
     await page.locator('[data-testid="restore-unavailable-toggle"]').click();
     const blocked = row(page, named('secret').runId);
     await expect(blocked).toHaveAttribute('data-state', 'unavailable');
-    await expect(blocked).toContainText('Kira never stores secrets');
+    await expect(blocked).toContainText('Save the secret values in the script');
     expect(calls(control, IPC.scriptRunsRestore)).toHaveLength(0);
   });
 

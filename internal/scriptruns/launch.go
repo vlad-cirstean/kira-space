@@ -7,6 +7,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
 // LaunchTTL is how long a normal script's launch token stays valid; a var so a flow test can shorten it.
@@ -22,6 +23,7 @@ type launch struct {
 	created  time.Time
 	trigger  Trigger
 	ade      *RunADE
+	mask     *secrets.Masker
 }
 
 func (s *Service) startTerminal(p *planned) (Started, error) {
@@ -49,7 +51,7 @@ func (s *Service) startTerminal(p *planned) (Started, error) {
 	}
 	s.launches[token] = launch{
 		scriptID: p.script.ID, dir: p.dir, command: p.script.Command, env: p.envList, params: p.params, created: now,
-		trigger: runTrigger(p), ade: p.preview.ADE,
+		trigger: runTrigger(p), ade: p.preview.ADE, mask: p.mask,
 	}
 	return Started{Terminal: &TerminalStart{Token: token, Cwd: p.dir.Path}}, nil
 }
@@ -75,4 +77,97 @@ func runTrigger(p *planned) Trigger {
 		return TriggerADE
 	}
 	return TriggerManual
+}
+
+// agentLaunch is the env of a Continue in terminal launch, waiting for its terminal tab to open.
+// release removes the launch's per-run settings files.
+type agentLaunch struct {
+	command string
+	env     []string
+	created time.Time
+	release func()
+}
+
+// newAgentLaunch stores env under a single-use token valid for LaunchTTL, for exactly command.
+// release runs when the launch's terminal exits, or when the token expires unused.
+func (s *Service) newAgentLaunch(command string, env []string, release func()) (string, error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", ipcerr.InternalErr(err)
+	}
+	token := base64.RawURLEncoding.EncodeToString(raw)
+	now := time.UnixMilli(s.now())
+	var expired []func()
+	s.mu.Lock()
+	if s.agentLaunches == nil {
+		s.agentLaunches = map[string]agentLaunch{}
+	}
+	for t, l := range s.agentLaunches {
+		if now.Sub(l.created) > LaunchTTL {
+			delete(s.agentLaunches, t)
+			expired = append(expired, l.release)
+		}
+	}
+	s.agentLaunches[token] = agentLaunch{command: command, env: env, created: now, release: release}
+	s.mu.Unlock()
+	for _, r := range expired {
+		r()
+	}
+	return token, nil
+}
+
+// takeAgentLaunch consumes a token: it works once, for the command it was made for, within LaunchTTL.
+// A token that fails the check releases its files.
+func (s *Service) takeAgentLaunch(token, command string) (agentLaunch, bool) {
+	s.mu.Lock()
+	l, ok := s.agentLaunches[token]
+	delete(s.agentLaunches, token)
+	s.mu.Unlock()
+	if !ok || l.command != command || time.UnixMilli(s.now()).Sub(l.created) > LaunchTTL {
+		if ok {
+			l.release()
+		}
+		return agentLaunch{}, false
+	}
+	return l, true
+}
+
+// bindAgentRelease runs release when terminalID exits.
+func (s *Service) bindAgentRelease(terminalID string, release func()) {
+	s.mu.Lock()
+	if s.agentTerms == nil {
+		s.agentTerms = map[string]func(){}
+	}
+	s.agentTerms[terminalID] = release
+	s.mu.Unlock()
+}
+
+// releaseAgent removes the settings files of an agent terminal; false when terminalID is not one.
+func (s *Service) releaseAgent(terminalID string) bool {
+	s.mu.Lock()
+	release, ok := s.agentTerms[terminalID]
+	delete(s.agentTerms, terminalID)
+	s.mu.Unlock()
+	if ok {
+		release()
+	}
+	return ok
+}
+
+// releaseAllAgents removes the files of every launch not released yet (the app is quitting).
+func (s *Service) releaseAllAgents() {
+	s.mu.Lock()
+	all := make([]func(), 0, len(s.agentLaunches)+len(s.agentTerms))
+	for t, l := range s.agentLaunches {
+		all = append(all, l.release)
+		delete(s.agentLaunches, t)
+	}
+	for t, r := range s.agentTerms {
+		all = append(all, r)
+		delete(s.agentTerms, t)
+	}
+	s.mu.Unlock()
+	for _, r := range all {
+		r()
+	}
 }

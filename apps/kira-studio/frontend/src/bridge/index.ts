@@ -88,6 +88,7 @@ import type {
   ScriptRunRestoreChoice,
   ScriptRunRestoreResult,
   ScriptRunRestoreState,
+  ScriptRunResumeLaunch,
   ScriptRunStarted,
 } from '@shared/domain/scriptRuns';
 import type {
@@ -95,8 +96,9 @@ import type {
   CustomScriptFields,
   ScriptCollection,
   ScriptDir,
-  ScriptMcpServer,
+  ScriptMcpServerList,
   ScriptsSnapshot,
+  SecretValues,
 } from '@shared/domain/scripts';
 import type { SecretStorageStatus } from '@shared/domain/secrets';
 import type { ObjectMeta, RelationColumns, TreeNode } from '@shared/domain/tree';
@@ -497,10 +499,21 @@ const studioControl = {
   // state/customScripts.ts, the one store that wraps these.
   customScriptsList: (): Promise<ScriptsSnapshot> =>
     unwrap(CustomScriptsService.List()).then((r) => scriptsSnapshotOf(r)),
-  customScriptsCreate: (fields: CustomScriptFields): Promise<CustomScript> =>
-    unwrap(CustomScriptsService.Create({ fields })).then((r) => trust<CustomScript>(r)),
-  customScriptsUpdate: (id: string, fields: CustomScriptFields): Promise<CustomScript> =>
-    unwrap(CustomScriptsService.Update({ id, fields })).then((r) => trust<CustomScript>(r)),
+  customScriptsCreate: (
+    fields: CustomScriptFields,
+    secretValues: SecretValues | null,
+  ): Promise<CustomScript> =>
+    unwrap(CustomScriptsService.Create({ fields, secretValues })).then((r) =>
+      trust<CustomScript>(r),
+    ),
+  customScriptsUpdate: (
+    id: string,
+    fields: CustomScriptFields,
+    secretValues: SecretValues | null,
+  ): Promise<CustomScript> =>
+    unwrap(CustomScriptsService.Update({ id, fields, secretValues })).then((r) =>
+      trust<CustomScript>(r),
+    ),
   customScriptsDelete: (id: string): Promise<void> => unwrap(CustomScriptsService.Delete({ id })),
   customScriptsCreateCollection: (name: string): Promise<ScriptCollection> =>
     unwrap(CustomScriptsService.CreateCollection({ name })).then((r) => trust<ScriptCollection>(r)),
@@ -544,8 +557,8 @@ const studioControl = {
   scriptRunsRestore: (items: ScriptRunRestoreChoice[]): Promise<ScriptRunRestoreResult> =>
     unwrap(ScriptRunsService.Restore({ items })).then((r) => trust<ScriptRunRestoreResult>(r)),
   scriptRunsRestoreDismiss: (): Promise<void> => unwrap(ScriptRunsService.RestoreDismiss()),
-  scriptRunsResumeCommand: (runId: string): Promise<string> =>
-    unwrap(ScriptRunsService.ResumeCommand({ runId })),
+  scriptRunsResumeCommand: (runId: string): Promise<ScriptRunResumeLaunch> =>
+    unwrap(ScriptRunsService.ResumeCommand({ runId })).then((r) => trust<ScriptRunResumeLaunch>(r)),
   scriptRunsReadLog: (id: string, afterSeq: number): Promise<ScriptRunLogPage> =>
     unwrap(ScriptRunsService.ReadLog({ id, afterSeq })).then((r) => {
       const page = trust<Partial<ScriptRunLogPage>>(r);
@@ -584,8 +597,10 @@ const studioControl = {
     ),
   scriptRunsConfirmDecline: (runId: string): Promise<void> =>
     unwrap(ScriptRunsService.ConfirmDecline({ id: runId })),
-  scriptRunsMcpServers: (): Promise<ScriptMcpServer[]> =>
-    unwrap(ScriptRunsService.McpServers()).then((r) => trust<ScriptMcpServer[]>(r ?? [])),
+  scriptRunsMcpServers: (): Promise<ScriptMcpServerList> =>
+    unwrap(ScriptRunsService.McpServers()).then((r) =>
+      trust<ScriptMcpServerList>(r ?? { source: 'agent', servers: [] }),
+    ),
 };
 
 // One exported object, composed from the methods shared with Kira Space

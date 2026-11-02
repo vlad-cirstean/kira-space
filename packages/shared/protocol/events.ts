@@ -104,6 +104,9 @@ export const CHANNEL = {
   // Payload types live in apps/kira-space/frontend/src/ade/v2/wire.ts.
   adeTaskBoard: 'kira:adetask:board',
   adeTaskWorkflows: 'kira:adetask:workflows',
+  // The shared agent context file changed or was saved; empty payload, refetch (Kira Space only).
+  agentContextChanged: 'kira:agentContext:changed',
+  agentSettingsChanged: 'kira:agentSettings:changed',
   adeTaskRepos: 'kira:adetask:repos',
   adeTaskRuns: 'kira:adetask:runs',
   adeTaskLog: 'kira:adetask:log',

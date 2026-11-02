@@ -12,6 +12,7 @@ export function defaultSmart(model: string): SmartSettings {
   return {
     model,
     maxBudgetUsd: DEFAULT_SMART.maxBudgetUsd,
+    noCostCap: DEFAULT_SMART.noCostCap,
     timeout: DEFAULT_SMART.timeout,
     tools: [...DEFAULT_TOOLS],
     bashPatterns: [],

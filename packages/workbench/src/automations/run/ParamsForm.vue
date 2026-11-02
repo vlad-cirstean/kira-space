@@ -10,8 +10,16 @@ import { t } from '@theme/i18n';
 import { useId } from 'vue';
 
 const values = defineModel<Record<string, string[]>>({ required: true });
-defineProps<{ params: readonly ScriptParam[] }>();
+const props = defineProps<{
+  params: readonly ScriptParam[];
+  /** Secret params with a saved value: left blank, the saved one is used. */
+  saved?: readonly string[];
+}>();
 const idBase = useId();
+
+function isSaved(p: ScriptParam): boolean {
+  return p.secret && (props.saved ?? []).includes(p.name);
+}
 
 function set(name: string, next: string[]): void {
   values.value = { ...values.value, [name]: next };
@@ -35,7 +43,7 @@ function toggle(p: ScriptParam, option: string, on: boolean): void {
     <Field v-for="p in params" :key="p.name" :data-testid="`run-param-${p.name}`">
       <FieldLabel :for="`${idBase}-${p.name}`">
         <span class="font-data">{{ p.name }}</span
-        ><span v-if="p.required" class="text-error">
+        ><span v-if="p.required && !isSaved(p)" class="text-error">
           *<span class="sr-only"> {{ t('common.required.label') }}</span></span
         >
       </FieldLabel>
@@ -45,6 +53,7 @@ function toggle(p: ScriptParam, option: string, on: boolean): void {
         :type="p.secret ? 'password' : 'text'"
         :model-value="values[p.name]?.[0] ?? ''"
         :autocomplete="p.secret ? 'off' : undefined"
+        :placeholder="isSaved(p) ? t('automations.run.secretSaved.placeholder') : undefined"
         :data-testid="`run-param-input-${p.name}`"
         @update:model-value="(v) => set(p.name, String(v) === '' ? [] : [String(v)])"
       />

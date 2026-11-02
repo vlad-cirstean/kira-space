@@ -134,7 +134,7 @@ export const APPS: readonly AppContent[] = [
       {
         icon: 'robot',
         title: 'Agents',
-        body: 'Task planner with workflows, agent runs and interactive Claude Code sessions.',
+        body: 'Task planner with workflows, agent runs and Claude Code or OpenCode sessions.',
       },
       {
         icon: 'lightbulb',

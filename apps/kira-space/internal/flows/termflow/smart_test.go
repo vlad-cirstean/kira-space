@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -18,8 +19,12 @@ import (
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
+// settingsPath is the per-launch app settings file in a Continue in terminal command.
+var settingsPath = regexp.MustCompile(`'--settings' '[^']*'`)
+
 func TestSmartScriptSpace(t *testing.T) {
 	app := flowharness.New(t)
+	app.SetHermetic(t, false) // ticks a server of the CLI's own config
 	app.Scenario(fakeagent.Scenario{Claude: map[string][]fakeagent.Action{"*": {{
 		Name: "done", MCP: []fakeagent.MCPCall{{Server: "fake", Tool: "echo", Args: map[string]any{"text": "hi"}}},
 	}}}})
@@ -28,8 +33,9 @@ func TestSmartScriptSpace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	servers, err := app.W.ScriptRuns.McpServers()
-	if err != nil || len(servers) != 1 || servers[0].Name != "fake" || servers[0].Target != "fake-mcp" || servers[0].Status != "connected" {
+	list, err := app.W.ScriptRuns.McpServers()
+	servers := list.Servers
+	if err != nil || list.Source != "agent" || len(servers) != 1 || servers[0].Name != "fake" || servers[0].Target != "fake-mcp" || servers[0].Status != "connected" {
 		t.Fatalf("McpServers = %+v, %v", servers, err)
 	}
 
@@ -111,12 +117,12 @@ func TestSmartScriptFailedSpace(t *testing.T) {
 	}
 	app.Contract(t, "smart", "CustomScriptsService.Create#failed", rec)
 	app.Contract(t, "smart", "ScriptRunsService.Get#failed", run, flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "costUsd"))
-	cmd, err := app.W.ScriptRuns.ResumeCommand(scriptruns.ResumeCommandArgs{RunID: started.RunID})
+	launch, err := app.W.ScriptRuns.ResumeCommand(scriptruns.ResumeCommandArgs{RunID: started.RunID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := "claude --resume '" + run.SessionID + "'"; cmd != want {
-		t.Fatalf("ResumeCommand = %q, want %q", cmd, want)
+	if want := "claude --resume '" + run.SessionID + "' '--setting-sources' 'project,local'"; !strings.HasPrefix(launch.Command, want+" '--settings' '") {
+		t.Fatalf("ResumeCommand = %q, want %q", launch.Command, want)
 	}
-	app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", strings.Replace(cmd, run.SessionID, "sess-1", 1))
+	app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: settingsPath.ReplaceAllString(strings.Replace(launch.Command, run.SessionID, "sess-1", 1), "'--settings' '<settings>'"), Token: launch.Token}, flowharness.Mask("token"))
 }

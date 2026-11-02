@@ -1,0 +1,6 @@
+# kept by the import
+mcp_servers:
+  gh:
+    url: https://other.example.com/mcp
+claude:
+  model: sonnet

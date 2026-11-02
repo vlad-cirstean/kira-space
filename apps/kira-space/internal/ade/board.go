@@ -25,6 +25,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/harness"
@@ -86,6 +87,10 @@ type TaskBoardDeps struct {
 	// Agent resolves the provider of a new run. AgentBin overrides its CLI (a test points it at a fake).
 	Agent    harness.Selector
 	AgentBin string
+	// ContextFile returns the path of the agent context for a run, "" for none; nil = none.
+	ContextFile func() (string, error)
+	// AgentConfig prepares the app's agent settings for a launch; nil = none.
+	AgentConfig agentcfg.PrepareFunc
 	// Tracker records and launches interactive (TUI) task sessions.
 	Tracker *Tracker
 	// CloseTerminal closes a running terminal by id (Archive).
@@ -102,6 +107,10 @@ type TaskBoardDeps struct {
 	ScriptRunsOf  func(taskID string, limit int) ([]scriptruns.Run, error)
 	// HeadlessSettingSources returns the ade.headlessSettingSources setting, read fresh per run.
 	HeadlessSettingSources func() string
+	// Servers is where a smart step's ticked MCP servers come from; the zero value reads the CLI.
+	Servers agentcfg.ServerSource
+	// Hermetic returns the agent.hermetic setting, read fresh per launch; nil = on.
+	Hermetic func() bool
 	// Sandbox confines headless agents (P287); nil = no sandbox. RunSandbox stores each run's
 	// policy and denials.
 	Sandbox    agentsandbox.Enforcer

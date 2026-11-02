@@ -1,10 +1,16 @@
 package scriptruns
 
 import (
+	"context"
 	"errors"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 
+	"github.com/google/uuid"
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
@@ -12,8 +18,8 @@ import (
 )
 
 // Resume continues the Claude session of a smart run a restart ended, as a new run. The script is
-// planned again from its current definition; secret values are never stored, so a script with a
-// secret param cannot resume.
+// planned again from its current definition. A secret param takes the script's saved value, which
+// may differ from the value typed for the original run; without one the run cannot resume.
 func (s *Service) Resume(id string) (Started, error) { return s.resume(id, "", false) }
 
 // resume is Resume; checkHash also refuses a run whose plan differs from the hash the user saw.
@@ -45,7 +51,7 @@ func (s *Service) resume(id, hash string, checkHash bool) (Started, error) {
 	if checkHash && p.preview.Hash != hash {
 		return Started{}, ipcerr.T(ipcerr.CodeConflict, "backend.core.scriptRun.changedSincePreview.body", nil)
 	}
-	names = append(names, p.preview.Missing...)
+	names = uniqueNames(names, p.preview.Missing)
 	if len(names) > 0 {
 		return Started{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.core.scriptRun.resumeMissing.body", map[string]string{"names": strings.Join(names, ", ")})
 	}
@@ -81,8 +87,8 @@ func (s *Service) resume(id, hash string, checkHash bool) (Started, error) {
 	return started, err
 }
 
-// resumeArgs rebuilds a run's args from its stored params, and names the secret params whose
-// values the row never held.
+// resumeArgs rebuilds a run's args from its stored params. A secret param is left out when the
+// script has a saved value (plan fills it); it is named when the run had a value and none is saved.
 func resumeArgs(run Run, rec scripts.CustomScript) (RunArgs, []string) {
 	args := RunArgs{ScriptID: run.ScriptID, TaskID: run.TaskID, BranchID: run.BranchID, Params: map[string][]string{}}
 	var secrets []string
@@ -95,6 +101,7 @@ func resumeArgs(run Run, rec scripts.CustomScript) (RunArgs, []string) {
 		}
 		switch {
 		case def == nil:
+		case def.Secret && slices.Contains(rec.SavedSecrets, rp.Name):
 		case def.Secret || rp.Value == scripts.SecretMask:
 			secrets = append(secrets, rp.Name)
 		case rp.Value == "":
@@ -107,20 +114,84 @@ func resumeArgs(run Run, rec scripts.CustomScript) (RunArgs, []string) {
 	return args, secrets
 }
 
-// ResumeCommand is the terminal command that continues a smart run's saved conversation.
-func (s *Service) ResumeCommand(id string) (string, error) {
+// uniqueNames joins name lists, keeping first occurrences.
+func uniqueNames(lists ...[]string) []string {
+	var out []string
+	for _, l := range lists {
+		for _, n := range l {
+			if !slices.Contains(out, n) {
+				out = append(out, n)
+			}
+		}
+	}
+	return out
+}
+
+// ResumeLaunch is how to continue a smart run's saved conversation in a terminal. Token is "" when
+// the launch needs no env; else it is the single-use token the terminal open sends back.
+type ResumeLaunch struct {
+	Command string `json:"command"`
+	Token   string `json:"token"`
+}
+
+// ResumeCommand is the terminal launch that continues a smart run's saved conversation.
+func (s *Service) ResumeCommand(id string) (ResumeLaunch, error) {
 	run, err := s.Runs.Get(id)
 	if err != nil {
-		return "", err
+		return ResumeLaunch{}, err
 	}
-	if run.Kind != KindSmart || run.SessionID == "" {
-		return "", ipcerr.T(ipcerr.CodeBadRequest, "backend.core.scriptRun.resumeCommandNone.body", nil)
+	if run.Kind != KindSmart {
+		return ResumeLaunch{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.core.scriptRun.resumeCommandNone.body", nil)
+	}
+	if run.SessionID == "" {
+		return ResumeLaunch{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.core.scriptRun.sessionIdUnknown.body", nil)
 	}
 	prov, err := s.Agent.For(run.Provider)
 	if err != nil {
-		return "", providerGone(err)
+		return ResumeLaunch{}, providerGone(err)
 	}
-	return prov.InteractiveCommand(harness.InteractiveSpec{SessionID: run.SessionID, Resume: true}), nil
+	contextFile, err := s.contextFile()
+	if err != nil {
+		return ResumeLaunch{}, ipcerr.InternalErr(err)
+	}
+	stem := "tui-" + uuid.NewString()
+	prep, err := s.prepareApp(prov, stem)
+	if err != nil {
+		return ResumeLaunch{}, ipcerr.BadRequest(err.Error())
+	}
+	spec := harness.InteractiveSpec{SessionID: run.SessionID, Resume: true, ContextFile: contextFile, App: prep.App, Hermetic: s.hermetic()}
+	release := prep.Release
+	if spec.Hermetic {
+		var releaseIso func()
+		spec.IsolationDir, releaseIso, err = harness.PrepareIsolation(prov, filepath.Join(s.Home, "automations-mcp"), stem, os.Environ())
+		if err != nil {
+			prep.Release()
+			return ResumeLaunch{}, ipcerr.InternalErr(err)
+		}
+		release = func() { prep.Release(); releaseIso() }
+	}
+	l := prov.InteractiveCommand(spec)
+	out := ResumeLaunch{Command: l.Command}
+	if len(l.Env) > 0 || prep.App != nil || spec.IsolationDir != "" {
+		if out.Token, err = s.newAgentLaunch(l.Command, l.Env, release); err != nil {
+			release()
+			return ResumeLaunch{}, err
+		}
+	} else {
+		release()
+	}
+	return out, nil
+}
+
+// prepareApp prepares the app's agent settings for a Continue in terminal launch; none without a preparer.
+// A failure names the reference that did not resolve, never a value.
+func (s *Service) prepareApp(prov harness.Provider, stem string) (agentcfg.Prepared, error) {
+	if s.AgentConfig == nil {
+		return agentcfg.Prepared{Release: func() {}}, nil
+	}
+	return s.AgentConfig(context.Background(), agentcfg.Launch{
+		Provider: prov, Kind: harness.LaunchInteractive, Dir: filepath.Join(s.Home, "automations-mcp"), Stem: stem,
+	})
 }
 
 // providerGone maps an unregistered stored provider to its user-facing error.
@@ -137,4 +208,12 @@ func (s *Service) agentFor(id string) (harness.Provider, error) {
 		return s.Agent.Active(), nil
 	}
 	return s.Agent.For(id)
+}
+
+// contextFile is the agent context path of a launch, "" for none.
+func (s *Service) contextFile() (string, error) {
+	if s.ContextFile == nil {
+		return "", nil
+	}
+	return s.ContextFile()
 }

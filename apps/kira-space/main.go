@@ -22,6 +22,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/keepawake"
 	"github.com/kirathecat/kira-studio/internal/logging"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/startupfail"
 	"github.com/kirathecat/kira-studio/internal/terminal"
@@ -40,7 +41,7 @@ var mobileAssets embed.FS
 
 // Startup order: the argv shims (askpass, memory-mcp, memory-embed) -> config.EnsureLayout ->
 // logging.Init/Sweep -> storage.Open (migrates) -> repos.New -> appwire.Build (terminal registry,
-// ADE tracker with the Claude Code hooks, task board, keep-awake, the 31 bound services) ->
+// ADE tracker with the Claude Code hooks, task board, keep-awake, the 34 bound services) ->
 // application.New (the bound services plus the git stream registration) -> the menu -> the
 // startup window list, opened -> app.Run(). No adapters, connections, HTTP/gRPC or DB MCP:
 // not this app's module.
@@ -98,9 +99,10 @@ func main() {
 	}
 	rawEmitter, attachEmitter := shell.NewDeferredEmitter()
 	browserOpener, attachBrowser := shell.NewDeferredBrowser()
+	fileOpener, attachFileOpener := shell.NewDeferredFileOpener()
 	rawDialogs, attachDialogs := shell.NewDeferredDialogs()
 	wired := appwire.Build(appwire.Options{
-		Repos: repositories, DB: db, Emitter: rawEmitter, Browser: browserOpener,
+		Repos: repositories, DB: db, Cipher: secrets.New(), Emitter: rawEmitter, Browser: browserOpener, FileOpener: fileOpener,
 		Dialogs: appshell.NewDialogs(rawDialogs), Locator: platformLocator(),
 		KeepAwakeDriver: keepawake.NewPlatformDriver(), MobileAssets: mobileAssetsFS,
 		FileHandlers: filehandlers.NewRegistry(),
@@ -138,6 +140,7 @@ func main() {
 	attachEmitter(app)
 	wired.StartMobile()
 	attachBrowser(app)
+	attachFileOpener(app)
 	quitter.Attach(app)
 
 	// The sheet a folder-picker dialog attaches to is the window that asked — Current()

@@ -331,6 +331,32 @@ test('the step inspector toggles to a smart script and saves smart_script with p
   expect(args.workflow.steps.filter((x) => x.smartScript === 'Review diff')).toHaveLength(1);
 });
 
+test('the step inspector hides secret params and names them', async ({ relaunch }) => {
+  const param = (name: string, secret: boolean) => ({
+    name,
+    type: 'text',
+    required: true,
+    secret,
+    default: '',
+    options: [],
+  });
+  const withParams = {
+    channel: IPC.customScriptsList,
+    response: {
+      collections: [],
+      scripts: [{ ...SMART, params: [param('level', false), param('token', true)] }],
+    },
+  } as unknown as ControlSnapshot;
+  const { window: page } = await openPlan(relaunch, [withParams]);
+  await page.locator(t('ade-tab-workflows')).click();
+  await page.locator(t('ade-workflows')).waitFor();
+  await page.locator(`${t('ade-wf-node')}[data-step-id="plan"]`).click();
+  const step = page.locator(t('ade-wf-step'));
+  await step.locator(t('ade-wf-step-mode-smart')).click();
+  await expect(step.locator(t('ade-wf-step-secret-params'))).toContainText('token');
+  await expect(step.locator('input[type="password"]')).toHaveCount(0);
+});
+
 test('the automation submenu shows a disabled hint without scripts', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [
     { channel: IPC.customScriptsList, response: { collections: [], scripts: [] } },

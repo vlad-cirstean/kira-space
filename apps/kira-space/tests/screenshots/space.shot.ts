@@ -168,6 +168,7 @@ test('space git graph', async ({ relaunch, consoleErrors }) => {
   const control: ControlSnapshot[] = [
     { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
     { channel: IPC.adeTaskRepos, response: { repos: [], folders: [] } },
+    { channel: IPC.adeTaskSessions, response: { sessions: [] } },
     {
       channel: IPC.codeWorkspaceRepoHeads,
       args: { ids: [REPO.id] },
@@ -310,6 +311,7 @@ test('space memory', async ({ relaunch, consoleErrors }) => {
       { channel: IPC.memoryRecent, response: MEMORIES },
       { channel: IPC.memoryProjects, response: [PROJECT] },
       { channel: IPC.adeTaskRepos, response: { repos: [], folders: [] } },
+      { channel: IPC.adeTaskSessions, response: { sessions: [] } },
       { channel: IPC.memoryImportJobs, response: [] },
       { channel: IPC.memoryContext, response: { memory: MEMORIES[0], groups: [] } },
       { channel: IPC.memoryHistory, response: { memories: [MEMORIES[0]], events: [] } },

@@ -22,7 +22,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
         timeout-minutes: 10
         with:
@@ -31,7 +31,7 @@ jobs:
         run: bun run build:studio
       - run: bun run build:space
       - name: Cache golangci-lint binary (keyed on the install script, which pins the version, and go.mod, which pins the toolchain it's built against)
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@v6
         with:
           path: ~/go/bin/golangci-lint
           key: golangci-lint-${{ runner.os }}-${{ hashFiles('scripts/install-golangci-lint.sh', 'go.mod') }}
@@ -41,7 +41,7 @@ jobs:
       - name: Go unit tests, darwin-relevant packages only (secrets, metrics, localauth, gitclient, datagrip have darwin&&cgo files; the Linux jobs run every other package)
         run: |
           go test \
-            ./apps/kira-studio/internal/secrets/... \
+            ./internal/secrets/... \
             ./internal/metrics/... \
             ./apps/kira-studio/internal/localauth/... \
             ./apps/kira-space/internal/gitclient \
@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
         timeout-minutes: 10
         with:
@@ -62,7 +62,7 @@ jobs:
           gtk: "true"
       - run: bun run lint
       - name: Cache tsbuildinfo (tsc and vue-tsc incremental mode key on file content hashes, so a fresh checkout reuses entries)
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@v6
         with:
           path: node_modules/.cache/tsbuildinfo
           key: tsbuildinfo-${{ hashFiles('bun.lock') }}-${{ github.sha }}
@@ -85,11 +85,11 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4]
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
         timeout-minutes: 10
       - name: Cache Playwright browsers (keyed on the lockfile, which pins the @playwright/test version)
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-webkit-${{ hashFiles('bun.lock') }}
@@ -98,7 +98,7 @@ jobs:
         timeout-minutes: 7
       - run: bun run build:test:studio
       - run: bunx playwright test --config=apps/kira-studio/playwright.config.ts --project=ui --shard=${{ matrix.shard }}/4
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report-ui-${{ matrix.shard }}
@@ -114,13 +114,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
         timeout-minutes: 10
         with:
           visual-fonts: "true"
       - name: Cache Playwright browsers (keyed on the lockfile, which pins the @playwright/test version)
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-webkit-chromium-${{ hashFiles('bun.lock') }}
@@ -136,7 +136,7 @@ jobs:
         run: bunx playwright test --config=apps/kira-studio/playwright.config.ts --project=visual
       - name: Wall-clock budget tests (alone, no other browser contending for the CPU)
         run: bunx playwright test --config=apps/kira-studio/playwright.config.ts --project=ui-timing --no-deps
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report-extra
@@ -145,13 +145,76 @@ jobs:
             apps/kira-studio/test-results/
           retention-days: 7
 
+  # Kira Space Playwright `ui` project in 4 shards (P443: ~4570 s of test time, about 5 min per
+  # shard on 4 cores). Same shape as the Studio `ui` job above.
+  space-ui:
+    name: space-ui (Linux, shard ${{ matrix.shard }}/4)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        timeout-minutes: 10
+      - name: Cache Playwright browsers (keyed on the lockfile, which pins the @playwright/test version)
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-webkit-${{ hashFiles('bun.lock') }}
+      - name: Install WebKit with its system libraries
+        run: sh scripts/retry.sh 2 180 sh scripts/playwright-install.sh webkit
+        timeout-minutes: 7
+      - run: bun run build:test:space
+      - run: bunx playwright test --config=apps/kira-space/playwright.config.ts --project=ui --shard=${{ matrix.shard }}/4
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report-space-ui-${{ matrix.shard }}
+          path: |
+            test-results/
+            apps/kira-space/test-results/
+          retention-days: 7
+
+  # Kira Space visual regression (webkit). Studio's `visual` runs in `ui-extra` above, so Space's runs here.
+  space-visual:
+    name: space-visual (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        timeout-minutes: 10
+        with:
+          visual-fonts: "true"
+      - name: Cache Playwright browsers (keyed on the lockfile, which pins the @playwright/test version)
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-webkit-${{ hashFiles('bun.lock') }}
+      - name: Install WebKit with its system libraries
+        run: sh scripts/retry.sh 2 180 sh scripts/playwright-install.sh webkit
+        timeout-minutes: 7
+      - run: bun run build:test:space
+      - run: bunx playwright test --config=apps/kira-space/playwright.config.ts --project=visual
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report-space-visual
+          path: |
+            test-results/
+            apps/kira-space/test-results/
+          retention-days: 7
+
   # Go packages that start no container, plus every package the container split does not name.
   go:
     name: go (Linux)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
         timeout-minutes: 10
         with:
@@ -175,14 +238,14 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
       - name: Placeholder frontend/dist (go list ./... in scripts/go-test-split.sh enumerates every package in the module, including the two root mains — their `//go:embed` directives fail the whole listing if the directories don't exist at all, even though nothing here imports or tests those packages)
         run: |
           mkdir -p apps/kira-space/frontend/dist apps/kira-space/frontend/dist-mobile apps/kira-studio/frontend/dist
           touch apps/kira-space/frontend/dist/.keep apps/kira-space/frontend/dist-mobile/.keep apps/kira-studio/frontend/dist/.keep
       - name: Restore cached Testcontainers images (keyed on the pinned image tags, so an unchanged adapter-test image set skips re-pulling)
         id: docker-cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/restore@v6
         with:
           path: ~/docker-images.tar
           key: docker-${{ runner.os }}-${{ hashFiles('apps/kira-studio/internal/adapters/testsupport/*.go') }}
@@ -225,7 +288,7 @@ jobs:
           docker save $(docker images --filter dangling=false --format '{{.Repository}}:{{.Tag}}') -o ~/docker-images.tar
       - name: Cache pulled Testcontainers images
         if: always() && steps.docker-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/save@v6
         with:
           path: ~/docker-images.tar
           key: docker-${{ runner.os }}-${{ hashFiles('apps/kira-studio/internal/adapters/testsupport/*.go') }}

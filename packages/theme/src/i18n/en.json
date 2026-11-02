@@ -155,6 +155,15 @@
       "scriptHint": {
         "description": "Parameters reach the command as {variable}."
       },
+      "secretValue": {
+        "saved": {
+          "placeholder": "Saved, type to replace",
+          "status": "Value saved"
+        },
+        "storageOff": {
+          "description": "The keychain is unavailable, so a secret can’t be saved. Each run asks for it."
+        }
+      },
       "smartHint": {
         "description": "Use {token} in the prompt. A secret reaches the run as {variable} only, never in the prompt."
       },
@@ -207,6 +216,9 @@
       },
       "limits": {
         "label": "Model {model}, budget {budget}, timeout {timeout}"
+      },
+      "limitsNoCap": {
+        "label": "Model {model}, no cost cap, timeout {timeout}"
       },
       "mcpServers": {
         "label": "MCP servers: {servers}"
@@ -278,6 +290,9 @@
       "review": {
         "label": "Review and run"
       },
+      "secretSaved": {
+        "placeholder": "Saved, type to use another value"
+      },
       "state": {
         "done": {
           "status": "Succeeded"
@@ -318,7 +333,7 @@
         "hint": "A popup asks before each run."
       },
       "askLocked": {
-        "hint": "Needs your answer each time. This script has a secret parameter, and a schedule never stores one."
+        "hint": "Needs your answer each time. A required secret parameter has no saved value."
       },
       "cronExample": {
         "example": "0 9 * * 1-5"
@@ -491,6 +506,9 @@
       "mcpHint": {
         "hint": "Servers {agent} reports for your user config. A run that uses one loads your {agent} settings."
       },
+      "mcpHintApp": {
+        "hint": "Servers from Kira’s own agent settings, not your CLI config."
+      },
       "mcpNone": {
         "emptyHint": "No MCP servers."
       },
@@ -511,6 +529,9 @@
       },
       "model": {
         "label": "Model"
+      },
+      "noCostCap": {
+        "label": "No cost cap"
       },
       "remove": {
         "tooltip": "Remove {name}"
@@ -538,8 +559,215 @@
         "missing": {
           "body": "{product} CLI not found. Install it, then retry. Looked in: {probed}."
         },
+        "missingRole": {
+          "body": "{agent} can’t run {role}."
+        },
+        "modelUnknown": {
+          "body": "{agent} has no model named {model}. Choose another model in the script."
+        },
+        "noCostCap": {
+          "body": "{agent} can’t cap a run’s cost. Turn off the cost cap in the script to run it with {agent}."
+        },
+        "opencode": {
+          "manualInstall": {
+            "body": "OpenCode can’t add MCP servers from here. Copy the snippet into the mcp block of your OpenCode config."
+          }
+        },
         "providerGone": {
           "body": "The agent that ran this conversation is no longer available."
+        }
+      },
+      "agentContext": {
+        "changed": {
+          "body": "The agent context changed. Refresh and retry."
+        }
+      },
+      "agentPort": {
+        "badItem": {
+          "body": "The selection holds an item that can’t be applied. Preview again."
+        },
+        "expired": {
+          "body": "The preview expired. Preview again."
+        },
+        "export": {
+          "collision": {
+            "body": "Secrets {a} and {b} both export as {name}. Rename one."
+          },
+          "envNoExpansion": {
+            "body": "Claude doesn’t expand variables in its env settings. Set {name} in your shell instead."
+          },
+          "noContext": {
+            "body": "The context is empty. {file} is left as it is."
+          },
+          "noForm": {
+            "body": "{agent} has no form for this value. It is not exported."
+          },
+          "opencodeEnv": {
+            "body": "OpenCode has no config env. Set {names} in your shell."
+          },
+          "opencodeEnvUnset": {
+            "body": "{names} is not set in your login shell. OpenCode sends an unset variable as empty, such as a header without its token."
+          },
+          "opencodeHooks": {
+            "body": "OpenCode runs no hook commands. Hooks are not exported."
+          },
+          "permissionShape": {
+            "body": "The existing permission value has a shape Kira can’t merge. It is left as it is."
+          },
+          "plaintext": {
+            "body": "This value holds a credential. Move it to a secret first."
+          }
+        },
+        "fixContext": {
+          "body": "The context file has a problem. Fix it first."
+        },
+        "fixSettings": {
+          "body": "The settings file has a problem. Fix it first."
+        },
+        "note": {
+          "atImports": {
+            "body": "Kira passes the context as written. Import lines are not expanded."
+          },
+          "envUnset": {
+            "body": "{name} is not set in your login shell (used by {fields}). OpenCode reads it as empty. Kira fails agent launches until it is set."
+          },
+          "permissionOrder": {
+            "body": "OpenCode permission {key} mixes allow and deny. Its order no longer applies. Deny wins."
+          }
+        },
+        "notJSON": {
+          "body": "{file} is not valid JSON. It was not read."
+        },
+        "skip": {
+          "badName": {
+            "body": "The name is not valid in Kira settings."
+          },
+          "badValue": {
+            "body": "The value is not valid in Kira settings."
+          },
+          "contextTooLarge": {
+            "body": "The context is over 32 kB. Kira does not take it."
+          },
+          "hookEvent": {
+            "body": "Kira has no hook for the event {event}."
+          },
+          "hookType": {
+            "body": "Only command hooks import. Hook type of {event} skipped."
+          },
+          "kiraName": {
+            "body": "Names starting with {prefix} are Kira’s own."
+          },
+          "noSetting": {
+            "body": "Kira has no setting for this."
+          },
+          "notText": {
+            "body": "The value is not text."
+          },
+          "npmPlugin": {
+            "body": "Only file:// plugins import."
+          },
+          "permissionRule": {
+            "body": "Kira has no form for this permission rule."
+          },
+          "refForm": {
+            "body": "This reference form has no Kira equivalent."
+          },
+          "serverAuth": {
+            "body": "The server signs in through the agent. Kira can’t hold that."
+          },
+          "transport": {
+            "body": "{transport} servers are not supported."
+          }
+        },
+        "stale": {
+          "body": "A file changed since the preview. Preview again."
+        },
+        "tooLarge": {
+          "body": "{file} is over {limit} MB. It was not read."
+        },
+        "unknownProvider": {
+          "body": "{provider} has no import or export."
+        },
+        "unreadable": {
+          "body": "{file} can’t be read."
+        }
+      },
+      "agentSettings": {
+        "changed": {
+          "body": "The settings file changed since you loaded it."
+        },
+        "headlessNote": {
+          "body": "Headless steps use the same files without permission_mode, allow and status_line."
+        },
+        "hookMatcher": {
+          "body": "Hook {hook} has a matcher, which only tool_start and tool_end hooks take."
+        },
+        "kiraAdds": {
+          "hooks": {
+            "body": "Kira hooks on every agent event, for session state and notifications."
+          },
+          "mcp": {
+            "body": "MCP server kira-ade, for the agent board tools."
+          },
+          "statusLine": {
+            "body": "A status line wrapper that reads usage limits, when usage limits are on."
+          }
+        },
+        "kiraEnv": {
+          "body": "Variable {name} starts with {prefix}, which Kira keeps for its own launch variables."
+        },
+        "kiraServer": {
+          "body": "MCP server {server} starts with kira, which Kira keeps for its own servers."
+        },
+        "noStore": {
+          "body": "Credential storage is not available in this app."
+        },
+        "opencode": {
+          "allowNotApplied": {
+            "body": "OpenCode can’t take the allow entry {entry}. It is not applied."
+          },
+          "allowShadowed": {
+            "body": "A deny rule in your OpenCode config covers the allow entry {entry}. It has no effect."
+          },
+          "envCarried": {
+            "body": "OpenCode receives this through {name}. No file is written."
+          },
+          "fileCarried": {
+            "body": "OpenCode receives the servers through a private file named by {name}, removed when the launch ends."
+          },
+          "hookNotApplied": {
+            "body": "OpenCode doesn’t run hook {hook}. It is not applied."
+          },
+          "refSyntax": {
+            "body": "A value holds {marks}, which OpenCode would substitute. Remove it."
+          },
+          "tooLarge": {
+            "body": "The OpenCode settings are over 64 kilobytes. Remove some."
+          }
+        },
+        "secretName": {
+          "body": "A secret name is 1 to 64 characters of a-z, 0-9, dot, dash and underscore, and starts with a letter or digit."
+        },
+        "secretUnset": {
+          "body": "Secret {name} is not set. Launches fail until you set it."
+        },
+        "secretValue": {
+          "body": "A secret value is 1 byte to 64 kilobytes and holds no null character."
+        },
+        "serverBoth": {
+          "body": "MCP server {server} has both a command and a url. Use one."
+        },
+        "serverField": {
+          "body": "MCP server {server}: {field} goes with a {transport} server only."
+        },
+        "serverNone": {
+          "body": "MCP server {server} needs a command or a url."
+        },
+        "skipHook": {
+          "body": "The skip list names {hook}, which is not a common hook."
+        },
+        "unavailable": {
+          "body": "Agent settings did not start. See the app log."
         }
       },
       "appUpdate": {
@@ -572,6 +800,71 @@
         },
         "timedOut": {
           "body": "The update took too long and was stopped."
+        }
+      },
+      "config": {
+        "additional": {
+          "body": "{field} is not a known option."
+        },
+        "alias": {
+          "body": "YAML anchors, aliases and merge keys are not allowed."
+        },
+        "enum": {
+          "body": "{field} must be one of {allowed}."
+        },
+        "invalid": {
+          "body": "{field} has an invalid value."
+        },
+        "keys": {
+          "body": "Keys must be text."
+        },
+        "max": {
+          "body": "{field} must be at most {limit}."
+        },
+        "maxItems": {
+          "body": "{field} can have at most {limit} items."
+        },
+        "maxLength": {
+          "body": "{field} can have at most {limit} characters."
+        },
+        "min": {
+          "body": "{field} must be at least {limit}."
+        },
+        "minItems": {
+          "body": "{field} needs at least {limit} items."
+        },
+        "minLength": {
+          "body": "{field} needs at least {limit} characters."
+        },
+        "pattern": {
+          "body": "{field} has an invalid format."
+        },
+        "refInvalid": {
+          "body": "Invalid reference at column {column}. Use {syntax}."
+        },
+        "refSecretLiteral": {
+          "body": "{field} must be exactly one secret reference such as {syntax}, never the secret itself."
+        },
+        "required": {
+          "body": "{field} is required."
+        },
+        "root": {
+          "label": "The file"
+        },
+        "syntax": {
+          "body": "Invalid YAML syntax: {detail}."
+        },
+        "textEncoding": {
+          "body": "The file must be plain text with valid encoding."
+        },
+        "textTooLarge": {
+          "body": "The file is larger than {limit} bytes."
+        },
+        "type": {
+          "body": "{field} must be of type {want}."
+        },
+        "unreadable": {
+          "body": "Can’t read the file ({detail})."
         }
       },
       "docker": {
@@ -755,7 +1048,7 @@
           "body": "The prompt is longer than {max} characters."
         },
         "restoreNeedsInput": {
-          "body": "Needs values for: {names}. Kira never stores secrets, so start it yourself."
+          "body": "Needs values for: {names}. Save the secret values in the script, or start it yourself."
         },
         "restoreNotOffered": {
           "body": "That run isn’t on the restore list."
@@ -764,13 +1057,19 @@
           "body": "Only a smart run with a saved conversation can continue in a terminal."
         },
         "resumeMissing": {
-          "body": "Resume needs values for: {names}. Run it again instead."
+          "body": "Resume needs values for: {names}. Save the secret values in the script, or run it again."
         },
         "resumeNotResumable": {
           "body": "Only a run Kira {app} interrupted can resume."
         },
         "runNotFound": {
           "body": "This run no longer exists."
+        },
+        "savedSecretUnreadable": {
+          "body": "The saved value of {names} can’t be read ({detail}). Type it, or save it again."
+        },
+        "sessionIdUnknown": {
+          "body": "This run hasn’t reported its conversation ID."
         },
         "smartCap": {
           "body": "{max} smart scripts are running. Wait for one to finish."
@@ -780,6 +1079,31 @@
         },
         "tasksSpaceOnly": {
           "body": "Tasks exist only in Kira Space."
+        }
+      },
+      "scripts": {
+        "secretStoreOff": {
+          "body": "Secret storage is unavailable, so {name} can’t be saved. Leave it empty; each run asks for it."
+        }
+      },
+      "secrets": {
+        "darwinUnavailable": {
+          "body": "The macOS keychain is unavailable, so passwords can’t be saved. Everything else about this connection can be."
+        },
+        "decryptFailed": {
+          "error": "The stored credential couldn’t be decrypted ({detail}). It may have been written on a different machine or after a keychain reset. Enter it again to fix this connection."
+        },
+        "linuxUnavailable": {
+          "body": "No system keychain is available in this build. Set {variable}=1 for local development, or run on macOS."
+        },
+        "nonceFailed": {
+          "error": "Couldn’t generate a nonce: {detail}"
+        },
+        "otherPlatformUnavailable": {
+          "body": "Credential storage is only supported on macOS in this build."
+        },
+        "unknownEnvelope": {
+          "body": "The stored credential isn’t in this app’s envelope format. Values saved by an earlier version of Kira Studio can’t be read and must be entered again."
         }
       },
       "seed": {
@@ -1249,6 +1573,9 @@
         "scriptTooLarge": {
           "body": "The script is too large."
         },
+        "sessionIdUnknown": {
+          "body": "The agent hasn’t reported its session ID yet. Retry once it has started."
+        },
         "sessionNotFound": {
           "body": "That session no longer exists."
         },
@@ -1290,9 +1617,6 @@
         },
         "workflowIdMismatch": {
           "body": "The ID must equal the file name without its extension."
-        },
-        "workflowUnreadable": {
-          "body": "Can’t read the file ({detail})."
         },
         "workingChanged": {
           "body": "The file changed while you reviewed it. Refresh the diff."
@@ -2053,26 +2377,6 @@
           "body": "This saved query no longer exists."
         }
       },
-      "secrets": {
-        "darwinUnavailable": {
-          "body": "The macOS keychain is unavailable, so passwords can’t be saved. Everything else about this connection can be."
-        },
-        "decryptFailed": {
-          "error": "The stored credential couldn’t be decrypted ({detail}). It may have been written on a different machine or after a keychain reset. Enter it again to fix this connection."
-        },
-        "linuxUnavailable": {
-          "body": "No system keychain is available in this build. Set {variable}=1 for local development, or run on macOS."
-        },
-        "nonceFailed": {
-          "error": "Couldn’t generate a nonce: {detail}"
-        },
-        "otherPlatformUnavailable": {
-          "body": "Credential storage is only supported on macOS in this build."
-        },
-        "unknownEnvelope": {
-          "body": "The stored credential isn’t in this app’s envelope format. Values saved by an earlier version of Kira Studio can’t be read and must be entered again."
-        }
-      },
       "seed": {
         "body": "Studio seed placeholder."
       },
@@ -2426,6 +2730,30 @@
     },
     "comment": {
       "label": "Comment"
+    },
+    "config": {
+      "about": {
+        "label": "About these files"
+      },
+      "fileError": {
+        "error": "✕ {text}"
+      },
+      "lineError": {
+        "error": "✕ Line {line}: {text}"
+      },
+      "open": {
+        "failed": {
+          "error": "The config file did not open: {text}"
+        }
+      },
+      "reveal": {
+        "failed": {
+          "error": "The config file did not show in the file manager: {text}"
+        }
+      },
+      "valid": {
+        "status": "✓ Valid"
+      }
     },
     "confirm": {
       "irreversible": {
@@ -8052,6 +8380,38 @@
           "label": "Uncommitted"
         }
       },
+      "context": {
+        "applies": {
+          "hint": "Agents started after you save get the new text. That covers new sessions, headless steps and smart scripts. Running sessions keep theirs."
+        },
+        "discardConfirm": {
+          "body": "Your unsaved changes to the agent context are lost."
+        },
+        "field": {
+          "aria": "Agent context"
+        },
+        "lastGood": {
+          "hint": "The file has an error. Agents get the last good version."
+        },
+        "none": {
+          "hint": "No context yet. Save creates {path}."
+        },
+        "overSize": {
+          "error": "Over the limit of {max} bytes. Agents do not use this text."
+        },
+        "readOnly": {
+          "hint": "This file is too large or not valid text. Open it in an editor to change it."
+        },
+        "resume": {
+          "hint": "A resumed {label} conversation keeps the context it started with until it compacts."
+        },
+        "size": {
+          "status": "{used} of {max} bytes"
+        },
+        "tab": {
+          "label": "Context"
+        }
+      },
       "dayOffConfirm": {
         "body": "{day} is now a day off. This moves {count} task planned for it to {to}. | {day} is now a day off. This moves {count} tasks planned for it to {to}.",
         "title": "Move tasks?"
@@ -8540,6 +8900,100 @@
           }
         }
       },
+      "port": {
+        "append": {
+          "status": "Append"
+        },
+        "backups": {
+          "label": "Backups"
+        },
+        "cliMissing": {
+          "hint": "The agent’s CLI was not found. MCP servers can’t be registered."
+        },
+        "current": {
+          "label": "Currently in Kira"
+        },
+        "env": {
+          "copy": {
+            "label": "Copy export lines"
+          },
+          "hint": "Set these where the agent starts. Values come from Kira’s secret store and are never written to a file.",
+          "title": "Environment variables"
+        },
+        "exportApply": {
+          "label": "Export"
+        },
+        "exportButton": {
+          "label": "Export to {agent}"
+        },
+        "exportDialog": {
+          "hint": "Writes Kira’s settings and context into the agent’s user-level config. A backup of each changed file is kept beside it.",
+          "title": "Export {agent} config"
+        },
+        "file": {
+          "new": {
+            "status": "New file"
+          },
+          "unchanged": {
+            "status": "No change"
+          }
+        },
+        "importApply": {
+          "label": "Import {count} item | Import {count} items"
+        },
+        "importButton": {
+          "label": "Import from {agent}"
+        },
+        "importDialog": {
+          "hint": "Reads the agent’s user-level config files. Nothing is written until you import. The agent’s own files stay unchanged.",
+          "title": "Import {agent} config"
+        },
+        "items": {
+          "aria": "Items to import",
+          "emptyHint": "Nothing to import."
+        },
+        "missing": {
+          "status": "Missing"
+        },
+        "mode": {
+          "aria": "How to add the context"
+        },
+        "replace": {
+          "status": "Replace"
+        },
+        "retry": {
+          "label": "Preview again"
+        },
+        "savedSecrets": {
+          "label": "Secrets saved"
+        },
+        "secret": {
+          "label": "Secret {name}"
+        },
+        "servers": {
+          "title": "MCP servers"
+        },
+        "skipped": {
+          "title": "Not exported"
+        },
+        "sources": {
+          "aria": "Source files"
+        },
+        "state": {
+          "conflict": {
+            "status": "Differs"
+          },
+          "new": {
+            "status": "To add"
+          },
+          "same": {
+            "status": "Same"
+          }
+        },
+        "written": {
+          "label": "Written"
+        }
+      },
       "progress": {
         "barTipRun": {
           "label": "{nick} {state}"
@@ -8943,6 +9397,61 @@
         },
         "restart": {
           "label": "Restart session"
+        }
+      },
+      "settings": {
+        "applies": {
+          "hint": "Agents started after you save get these settings. That covers new sessions and headless steps. Running sessions keep theirs."
+        },
+        "discardConfirm": {
+          "body": "Your unsaved changes to the agent settings are lost."
+        },
+        "field": {
+          "aria": "Agent settings file"
+        },
+        "none": {
+          "hint": "No settings yet. Save creates {path}."
+        },
+        "overSize": {
+          "error": "Over the limit of {max} bytes. Agents do not use these settings."
+        },
+        "result": {
+          "empty": {
+            "hint": "No settings apply to this provider."
+          },
+          "hint": "What each provider gets at launch. References stay as written.",
+          "kira": {
+            "label": "Kira adds at launch"
+          },
+          "tabs": {
+            "aria": "Provider"
+          },
+          "title": "Result"
+        },
+        "secrets": {
+          "deleteConfirm": {
+            "body": "Settings that reference this secret fail to launch until you set it again.",
+            "title": "Delete {name}?"
+          },
+          "dialog": {
+            "hint": "The value is sent once and never shown again.",
+            "title": "Set {name}"
+          },
+          "hint": "Write {ref} in the file. Values stay sealed on this computer.",
+          "none": {
+            "hint": "No secrets yet. Reference one in the file to see it here."
+          },
+          "set": {
+            "label": "Set value",
+            "status": "Set"
+          },
+          "storageOff": {
+            "hint": "Secret storage is not available."
+          },
+          "title": "Secrets",
+          "unused": {
+            "status": "Not referenced"
+          }
         }
       },
       "setup": {
@@ -9474,6 +9983,9 @@
           }
         },
         "stepInspector": {
+          "agentDefault": {
+            "label": "Default provider"
+          },
           "command": {
             "example": "./scripts/release.sh",
             "hint": "Runs in each branch’s worktree. A non-zero exit fails the step. {tokens} are shell-quoted when needed."
@@ -9528,6 +10040,9 @@
           },
           "scriptNote": {
             "hint": "Exit code 0 ends with done, any other with failed."
+          },
+          "secretParams": {
+            "hint": "Secret params use the value saved in the script: {names}."
           },
           "session": {
             "label": "Open an interactive {product} session"
@@ -10313,6 +10828,10 @@
         }
       },
       "agent": {
+        "hermetic": {
+          "description": "Agents Kira starts skip your own agent config, including settings, hooks, plugins, skills, MCP servers and instructions. Kira’s agent settings and context apply instead, and project files still load. Kira can’t isolate managed settings and policy, or variables your shell profile exports. A sign-in kept in your own agent config, such as an API key helper or provider environment variables, needs this off, or the same environment in Kira’s agent settings.",
+          "label": "Hermetic agent launches"
+        },
         "keepAwake": {
           "description": "Prevents idle sleep, and system sleep on mains power, while a {product} terminal tab or a background agent is running. Independent of the title bar’s own keep-awake button. Either one is enough to keep the machine awake.",
           "label": "Keep this Mac awake while a {product} session is running"
@@ -10332,6 +10851,12 @@
         },
         "notifyRunEnded": {
           "label": "When a background ADE run ends"
+        },
+        "provider": {
+          "description": "Runs new sessions and background steps. Sessions already started keep their agent.",
+          "notFound": {
+            "label": "{agent} (not found)"
+          }
         },
         "usage": {
           "description": "Shows the 5-hour and weekly limits that {product} sessions started from Kira Space report. {product} hands the numbers to a status-line hook on this Mac. Nothing is sent anywhere, and no login or token is read. Applies to sessions started after you change it. Available on {agent} subscription plans only.",

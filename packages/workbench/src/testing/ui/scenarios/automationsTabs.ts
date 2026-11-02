@@ -54,6 +54,7 @@ export function registerTabScenarios(env: Env, options: Options): void {
     smart: {
       model: 'sonnet',
       maxBudgetUsd: 1,
+      noCostCap: false,
       timeout: '15m',
       tools: ['Read'],
       bashPatterns: [],

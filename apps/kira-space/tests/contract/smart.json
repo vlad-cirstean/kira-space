@@ -18,6 +18,7 @@
         "type": "text"
       }
     ],
+    "savedSecrets": [],
     "schedule": null,
     "smart": {
       "bashPatterns": [],
@@ -32,6 +33,7 @@
         }
       ],
       "model": "sonnet",
+      "noCostCap": false,
       "timeout": "15m",
       "tools": [
         "Read",
@@ -54,12 +56,14 @@
     "kind": "smart",
     "name": "ask",
     "params": [],
+    "savedSecrets": [],
     "schedule": null,
     "smart": {
       "bashPatterns": [],
       "maxBudgetUsd": 1,
       "mcp": [],
       "model": "sonnet",
+      "noCostCap": false,
       "timeout": "15m",
       "tools": [
         "Read",
@@ -200,6 +204,7 @@
       {
         "fromVar": "topic",
         "name": "KIRA_PARAM_TOPIC",
+        "saved": false,
         "secret": false,
         "value": "cats"
       }
@@ -228,6 +233,7 @@
         "var": "topic"
       }
     ],
+    "secretIssue": "",
     "suffix": "When finished, call finish_step with status \"done\" and a one-line summary. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
     "timeout": "15m",
     "tools": [
@@ -256,7 +262,10 @@
     ],
     "truncated": false
   },
-  "ScriptRunsService.ResumeCommand": "claude --resume 'sess-1'",
+  "ScriptRunsService.ResumeCommand": {
+    "command": "claude --resume 'sess-1' '--setting-sources' 'project,local' '--settings' '<settings>'",
+    "token": "<masked>"
+  },
   "args:ScriptRunsService.Start": {
     "branchId": "",
     "hash": "<masked>",

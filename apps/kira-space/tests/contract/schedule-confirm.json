@@ -9,6 +9,7 @@
     "kind": "script",
     "name": "tick",
     "params": [],
+    "savedSecrets": [],
     "schedule": {
       "branchId": "",
       "confirm": true,
@@ -135,6 +136,7 @@
       "tasks": []
     },
     "prompt": [],
+    "secretIssue": "",
     "suffix": "",
     "timeout": "",
     "tools": []

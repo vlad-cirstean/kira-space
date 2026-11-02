@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 )
@@ -116,19 +116,19 @@ type ResumeCommandArgs struct {
 	RunID string `json:"runId"`
 }
 
-// ResumeCommand is the shell command that continues a smart run's conversation in the agent's TUI.
-func (b *Bound) ResumeCommand(args ResumeCommandArgs) (string, error) {
+// ResumeCommand is the launch that continues a smart run's conversation in the agent's TUI.
+func (b *Bound) ResumeCommand(args ResumeCommandArgs) (ResumeLaunch, error) {
 	if args.RunID == "" {
-		return "", ipcerr.Required("runId")
+		return ResumeLaunch{}, ipcerr.Required("runId")
 	}
-	cmd, err := b.Svc.ResumeCommand(args.RunID)
+	l, err := b.Svc.ResumeCommand(args.RunID)
 	if IsCallerError(err) {
-		return "", ipcerr.T(ipcerr.CodeNotFound, "backend.core.scriptRun.runNotFound.body", nil)
+		return ResumeLaunch{}, ipcerr.T(ipcerr.CodeNotFound, "backend.core.scriptRun.runNotFound.body", nil)
 	}
 	if err != nil {
-		return "", ipcerr.Wrap(err)
+		return ResumeLaunch{}, ipcerr.Wrap(err)
 	}
-	return cmd, nil
+	return l, nil
 }
 
 type ReadLogArgs struct {
@@ -144,8 +144,8 @@ func (b *Bound) ReadLog(args ReadLogArgs) (LogPage, error) {
 	return ipcerr.InternalResult(b.Svc.Runs.ReadLog(args.ID, args.AfterSeq))
 }
 
-// McpServers lists the MCP servers the agent's CLI reports.
-func (b *Bound) McpServers() ([]harness.UserServer, error) {
+// McpServers lists the MCP servers a smart run can tick and where the list came from.
+func (b *Bound) McpServers() (agentcfg.ServerList, error) {
 	return ipcerr.InternalResult(b.Svc.McpServers(context.Background()))
 }
 

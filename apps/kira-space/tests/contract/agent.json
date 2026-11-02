@@ -42,5 +42,93 @@
     ],
     "productLabel": "Fake agent",
     "usage": false
-  }
+  },
+  "AgentService.List": [
+    {
+      "available": true,
+      "command": "claude",
+      "defaultModel": "sonnet",
+      "headlessLabel": "claude -p",
+      "hooks": true,
+      "id": "claude",
+      "label": "Claude",
+      "models": [
+        {
+          "id": "haiku",
+          "label": "Haiku"
+        },
+        {
+          "id": "sonnet",
+          "label": "Sonnet"
+        },
+        {
+          "id": "opus",
+          "label": "Opus"
+        }
+      ],
+      "productLabel": "Claude Code",
+      "usage": true
+    },
+    {
+      "available": true,
+      "command": "opencode",
+      "defaultModel": "default",
+      "headlessLabel": "opencode run",
+      "hooks": true,
+      "id": "opencode",
+      "label": "OpenCode",
+      "models": [
+        {
+          "id": "default",
+          "label": "OpenCode default model"
+        }
+      ],
+      "productLabel": "OpenCode",
+      "usage": false
+    }
+  ],
+  "AgentService.List#no-opencode": [
+    {
+      "available": true,
+      "command": "claude",
+      "defaultModel": "sonnet",
+      "headlessLabel": "claude -p",
+      "hooks": true,
+      "id": "claude",
+      "label": "Claude",
+      "models": [
+        {
+          "id": "haiku",
+          "label": "Haiku"
+        },
+        {
+          "id": "sonnet",
+          "label": "Sonnet"
+        },
+        {
+          "id": "opus",
+          "label": "Opus"
+        }
+      ],
+      "productLabel": "Claude Code",
+      "usage": true
+    },
+    {
+      "available": false,
+      "command": "opencode",
+      "defaultModel": "default",
+      "headlessLabel": "opencode run",
+      "hooks": true,
+      "id": "opencode",
+      "label": "OpenCode",
+      "models": [
+        {
+          "id": "default",
+          "label": "OpenCode default model"
+        }
+      ],
+      "productLabel": "OpenCode",
+      "usage": false
+    }
+  ]
 }

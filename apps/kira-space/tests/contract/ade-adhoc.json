@@ -6,7 +6,8 @@
     "terminalId": "<masked>"
   },
   "args:AdeTaskService.StartAdHoc": {
-    "branchId": "<id:1>"
+    "branchId": "<id:1>",
+    "provider": ""
   },
   "error:AdeTaskService.StartAdHoc#not-created": "{\"code\":\"E_BAD_REQUEST\",\"message\":\"the branch is not created yet\"}",
   "error:AdeTaskService.StartAdHoc#open": "{\"code\":\"E_BAD_REQUEST\",\"message\":\"a session is already open on feat/api-adhoc\"}"

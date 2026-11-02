@@ -89,7 +89,7 @@
             "value": "••••"
           }
         ],
-        "reason": "Needs values for: token. Kira never stores secrets, so start it yourself.",
+        "reason": "Needs values for: token. Save the secret values in the script, or start it yourself.",
         "resume": false,
         "runId": "<id:6>",
         "scriptId": "<id:5>",

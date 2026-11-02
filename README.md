@@ -8,7 +8,7 @@ Wails (Go) and Vue 3, and you switch between its **Studio** (database), **Api**,
 **Docker** modes with one button.
 
 This repository also contains a sibling app, **Kira Space** — a native git client and code
-workspace with coding agents (ADE), a memory store, a terminal and a phone view on your home
+workspace with coding agents (Claude Code or OpenCode, ADE), a memory store, a terminal and a phone view on your home
 network. This README covers Kira Studio; see
 [`apps/kira-space/README.md`](apps/kira-space/README.md) for Kira Space.
 
@@ -51,7 +51,7 @@ Memory: every fact shows its origin and scope.
 - Builds are **ad-hoc signed, not notarized**. Because each new build counts as a different app to
   the Keychain, the first launch after an update may ask to use "confidential information stored
   in…" — choose **Always Allow** once for that build.
-- Saved credentials are encrypted at rest in the macOS Keychain.
+- Saved credentials, secret script parameters and agent secrets are encrypted at rest, with the key held in the macOS Keychain.
 
 ## Install
 
@@ -151,6 +151,10 @@ and keeps a run history with status, exit code and result. A **smart script** is
 Claude Code instead of a shell command: it takes typed parameters (text, select, multi-select, secret),
 a model, a budget and timeout, and a tick list of the tools and MCP servers it may use. A script can also
 **recur** on a cron schedule; a due run asks for confirmation by default and never replays a missed run.
+A secret parameter can keep a saved value that never leaves the keychain layer, which lets a schedule run
+without asking. Smart scripts use the agent context and agent settings shared with Kira Space
+(`~/.kira-space/agent/`) and always launch hermetically, so your own Claude Code config is not loaded. MCP
+servers come from those agent settings.
 
 ### Docker
 

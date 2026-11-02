@@ -150,7 +150,7 @@ func storeThroughClaude(t *testing.T, app *realApp, cfg string) {
 	out, _ := app.claudeP(t, repo, nil,
 		"Call store_memory once with exactly this argument: {\"items\":[{\"fact\":\"The billing-api service listens on port 8080 in production.\","+
 			"\"reason\":\"Stated in the deployment manifest.\",\"origin\":\"agent\",\"scope\":\"project\"}]} and no project argument. "+
-			"Then call memory_context with the fact id from the result. Reply with the word done.",
+			"Then call memory_context with its id argument set to the fact id from the result. Reply with the word done.",
 		"--strict-mcp-config", "--mcp-config", cfg, "--allowedTools", tools, "--session-id", sessionID,
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)

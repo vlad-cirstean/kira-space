@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/harness"
@@ -18,6 +19,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/termtext"
 )
@@ -45,6 +47,15 @@ type Service struct {
 	EmitLog func(LogPush)
 	// Agent resolves the provider of a new run.
 	Agent harness.Selector
+	// ContextFile returns the path of the agent context for a launch, "" for none; nil = none.
+	ContextFile func() (string, error)
+	// AgentConfig prepares the app's agent settings for a Continue in terminal launch; nil = none.
+	AgentConfig agentcfg.PrepareFunc
+	// Servers is where a smart run's ticked MCP servers come from (hermetic: the app's agent
+	// settings, else the agent CLI's own list); the zero value reads the CLI.
+	Servers agentcfg.ServerSource
+	// Hermetic reports the agent.hermetic setting, read fresh per launch; nil = on.
+	Hermetic func() bool
 	// Getenv reads the user's environment to resolve their login shell; nil means os.Getenv.
 	Getenv func(string) string
 	// SmartTimeout, when positive, replaces every smart run's own timeout (a flow test).
@@ -59,27 +70,32 @@ type Service struct {
 	ScheduleTimeout time.Duration
 
 	// startMu serializes Start so the running-run check and the insert of a smart run are one step.
-	startMu   sync.Mutex
-	mu        sync.Mutex
-	closed    bool
-	life      context.Context
-	endLife   context.CancelFunc
-	smart     map[string]*bgRun
-	bg        map[string]*bgRun
-	finishes  map[string]agentmcp.Finish
-	launches  map[string]launch
-	server    *agentmcp.Server
-	smartWait sync.WaitGroup
-	bgWait    sync.WaitGroup
+	startMu       sync.Mutex
+	mu            sync.Mutex
+	closed        bool
+	life          context.Context
+	endLife       context.CancelFunc
+	smart         map[string]*bgRun
+	bg            map[string]*bgRun
+	finishes      map[string]agentmcp.Finish
+	launches      map[string]launch
+	agentLaunches map[string]agentLaunch
+	agentTerms    map[string]func() // terminal id -> release of its agent settings files
+	server        *agentmcp.Server
+	smartWait     sync.WaitGroup
+	bgWait        sync.WaitGroup
 
 	tailMu sync.Mutex
-	tails  map[string]*termtext.Tail
+	tails  map[string]*termTail
 
 	// restore is the offer to run again what the last quit or crash ended; it lives for one app session.
 	restore restoreOffer
 }
 
 var _ terminal.ScriptLauncher = (*Service)(nil)
+
+// hermetic is the agent.hermetic setting for one launch; on without a reader.
+func (s *Service) hermetic() bool { return s.Hermetic == nil || s.Hermetic() }
 
 func (s *Service) llmPrompts() llmprompts.Source {
 	if s.LlmPrompts == nil {
@@ -101,6 +117,17 @@ func (s *Service) emit(r Run) {
 	}
 }
 
+// BeginAgent consumes the token ResumeCommand made, binds the launch's settings files to the terminal
+// (removed when it exits) and returns the env its agent launch needs.
+func (s *Service) BeginAgent(token, command, terminalID string) ([]string, error) {
+	l, ok := s.takeAgentLaunch(token, command)
+	if !ok {
+		return nil, ipcerr.T(ipcerr.CodeConflict, "backend.core.scriptRun.expired.body", nil)
+	}
+	s.bindAgentRelease(terminalID, l.release)
+	return l.env, nil
+}
+
 // Begin loads the script, prepares its folder and records a running run. A blocked folder records
 // a failed run too, so the attempt shows in the runs list. A launch token, from Start, carries the
 // folder, command and env the user saw in the run dialog.
@@ -116,12 +143,13 @@ func (s *Service) Begin(scriptID, terminalID, token string) (terminal.ScriptLaun
 	var env []string
 	var params []RunParam
 	var ade *RunADE
+	var mask *secrets.Masker
 	if token != "" {
 		l, ok := s.takeLaunch(token, scriptID)
 		if !ok {
 			return terminal.ScriptLaunch{}, ipcerr.T(ipcerr.CodeConflict, "backend.core.scriptRun.expired.body", nil)
 		}
-		dir, command, env, params, trigger, ade = l.dir, l.command, l.env, l.params, l.trigger, l.ade
+		dir, command, env, params, trigger, ade, mask = l.dir, l.command, l.env, l.params, l.trigger, l.ade, l.mask
 	}
 	now := s.now()
 	run := Run{
@@ -144,9 +172,9 @@ func (s *Service) Begin(scriptID, terminalID, token string) (terminal.ScriptLaun
 	s.emit(run)
 	s.tailMu.Lock()
 	if s.tails == nil {
-		s.tails = map[string]*termtext.Tail{}
+		s.tails = map[string]*termTail{}
 	}
-	s.tails[terminalID] = termtext.NewTail(termTailBytes)
+	s.tails[terminalID] = &termTail{tail: termtext.NewTail(termTailBytes), mask: mask}
 	s.tailMu.Unlock()
 	return terminal.ScriptLaunch{RunID: run.ID, Cwd: dir.Path, Command: command, Env: env}, nil
 }
@@ -191,6 +219,9 @@ func (s *Service) Failed(runID string, err error) {
 
 // Exited records how the run's session ended. A second call for the same session is a no-op.
 func (s *Service) Exited(terminalID string, code int, cause terminal.CloseCause) {
+	if s.releaseAgent(terminalID) {
+		return // a Continue in terminal session: no run row follows it
+	}
 	p := runoutcome.Process{Kind: runoutcome.KindScript, ExitCode: code, App: s.App}
 	switch cause {
 	case terminal.CauseUser:
@@ -201,8 +232,9 @@ func (s *Service) Exited(terminalID string, code int, cause terminal.CloseCause)
 		p.End = runoutcome.EndQuit
 	}
 	o := runoutcome.ForProcess(p)
-	if tail := s.takeTail(terminalID); tail != nil && o.Status == runoutcome.StatusFailed {
-		o = o.WithOutputTail(tail.Lines(termTailLines))
+	if tt := s.takeTail(terminalID); tt != nil && o.Status == runoutcome.StatusFailed {
+		o = o.WithOutputTail(tt.tail.Lines(termTailLines))
+		o = maskOutcome(o, tt.mask)
 	}
 	run, err := s.Runs.FinishByTerminal(terminalID, o, s.now())
 	s.finish(run, err)
@@ -214,11 +246,17 @@ func (s *Service) Output(terminalID string, b []byte) {
 	t := s.tails[terminalID]
 	s.tailMu.Unlock()
 	if t != nil {
-		t.Write(b)
+		t.tail.Write(b)
 	}
 }
 
-func (s *Service) takeTail(terminalID string) *termtext.Tail {
+// termTail is a terminal run's output ring plus the mask its tail passes through on a failure.
+type termTail struct {
+	tail *termtext.Tail
+	mask *secrets.Masker
+}
+
+func (s *Service) takeTail(terminalID string) *termTail {
 	s.tailMu.Lock()
 	defer s.tailMu.Unlock()
 	t := s.tails[terminalID]

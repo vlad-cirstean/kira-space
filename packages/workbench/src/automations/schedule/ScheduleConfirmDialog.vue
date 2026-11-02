@@ -179,7 +179,12 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
             </CodeBlock>
             <CodeBlock class="text-muted-foreground">{{ pv.suffix }}</CodeBlock>
           </Field>
-          <ParamsForm v-if="secretParams.length > 0" v-model="secrets" :params="secretParams" />
+          <ParamsForm
+            v-if="secretParams.length > 0"
+            v-model="secrets"
+            :params="secretParams"
+            :saved="script.savedSecrets"
+          />
           <QueryState :query="preview" variant="inline" :is-empty="() => false">
             <template #loading />
             <template #error="{ message }">

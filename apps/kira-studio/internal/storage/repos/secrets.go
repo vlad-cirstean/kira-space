@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/secrets"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
 // Cipher is implemented by internal/secrets — the kira:v3: AES-256-GCM envelope. Note

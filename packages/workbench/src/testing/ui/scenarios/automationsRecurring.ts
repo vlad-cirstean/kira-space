@@ -227,7 +227,9 @@ export function registerRecurringScenarios(
     expect(control.log().filter((e) => e.channel === IPC.customScriptsUpdate)).toHaveLength(0);
   });
 
-  test('Run without asking is locked while the script has a secret param', async ({ relaunch }) => {
+  test('Run without asking is locked while a required secret param has no saved value', async ({
+    relaunch,
+  }) => {
     const secret = {
       name: 'token',
       type: 'text',
@@ -251,7 +253,7 @@ export function registerRecurringScenarios(
     const quiet = dialog(page).locator('[data-testid="schedule-quiet"]');
     await expect(quiet).toBeDisabled();
     await expect(dialog(page).locator('[data-testid="schedule-quiet-why"]')).toContainText(
-      'a schedule never stores one',
+      'no saved value',
     );
   });
 

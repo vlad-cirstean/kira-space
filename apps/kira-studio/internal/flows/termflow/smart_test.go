@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -27,6 +28,9 @@ import (
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
+
+// settingsPath is the per-launch app settings file in a Continue in terminal command.
+var settingsPath = regexp.MustCompile(`'--settings' '[^']*'`)
 
 func newSmart(t *testing.T, app *flowharness.App, prompt string, mod func(*scripts.CustomScriptFields)) scripts.CustomScript {
 	t.Helper()
@@ -293,14 +297,14 @@ func TestSmartScript(t *testing.T) {
 		failed := run()
 		app.Contract(t, "smart", "CustomScriptsService.Create#failed", rec)
 		app.Contract(t, "smart", "ScriptRunsService.Get#failed", failed, flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "costUsd"))
-		cmd, err := app.W.ScriptRuns.ResumeCommand(scriptruns.ResumeCommandArgs{RunID: failed.ID})
+		launch, err := app.W.ScriptRuns.ResumeCommand(scriptruns.ResumeCommandArgs{RunID: failed.ID})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if want := "claude --resume '" + failed.SessionID + "'"; cmd != want {
-			t.Fatalf("ResumeCommand = %q, want %q", cmd, want)
+		if want := "claude --resume '" + failed.SessionID + "' '--setting-sources' 'project,local'"; !strings.HasPrefix(launch.Command, want+" '--settings' '") {
+			t.Fatalf("ResumeCommand = %q, want %q", launch.Command, want)
 		}
-		app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", strings.Replace(cmd, failed.SessionID, "sess-1", 1))
+		app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: settingsPath.ReplaceAllString(strings.Replace(launch.Command, failed.SessionID, "sess-1", 1), "'--settings' '<settings>'"), Token: launch.Token}, flowharness.Mask("token"))
 		if o := failed.Outcome; o.Status != "failed" || o.Reason != "summary-failed" || !o.Reported || o.Source != "agent" {
 			t.Errorf("failed = %+v", o)
 		}
@@ -584,6 +588,7 @@ func TestSmartScript(t *testing.T) {
 		restore := claude.SetMCPListTTL(0)
 		t.Cleanup(restore)
 		app := flowharness.New(t)
+		app.SetHermetic(t, false) // ticks servers of the CLI's own config
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
 			t.Fatal(err)
@@ -599,8 +604,9 @@ func TestSmartScript(t *testing.T) {
 		fake := fmt.Sprintf(`"fake":{"command":%q,"args":["--secret-arg"],"env":{"TOKEN":"SENTINEL-ENV"}}`, fakeMCP)
 		writeClaudeConfig(`{` + fake + fmt.Sprintf(`,"remote":{"type":"http","url":"http://%s/mcp","headers":{"Authorization":"Bearer SENTINEL-HDR"}},"other":{"command":%q}}`, closed, fakeMCP))
 
-		servers, err := app.W.ScriptRuns.McpServers()
-		if err != nil || len(servers) != 3 {
+		list, err := app.W.ScriptRuns.McpServers()
+		servers := list.Servers
+		if err != nil || list.Source != "agent" || len(servers) != 3 {
 			t.Fatalf("McpServers = %+v, %v", servers, err)
 		}
 		byName := map[string]harness.UserServer{}

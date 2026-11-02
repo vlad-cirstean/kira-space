@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/netip"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -46,6 +47,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/claude"
+	"github.com/kirathecat/kira-studio/internal/harness/opencode"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
 	"github.com/kirathecat/kira-studio/internal/memory/embed"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
@@ -53,6 +55,7 @@ import (
 )
 
 type options struct {
+	noSecretStore   bool
 	smartTimeout    time.Duration
 	sandbox         agentsandbox.Enforcer
 	scheduleTimeout time.Duration
@@ -62,6 +65,7 @@ type options struct {
 	azure           *azure.Options
 	gitHosts        []githost.Provider
 	noClaude        bool
+	openCode        bool
 	fileHandlers    filehandlers.Registry
 	trackerGrace    time.Duration
 	rebaseTimeout   time.Duration
@@ -69,10 +73,13 @@ type options struct {
 	mobilePoll      time.Duration
 	seed            func(*App)
 	embedSpec       *embed.Spec
-	provider        harness.Provider
+	providers       []harness.Provider
 	crSync          gitsession.CRSyncConfig
 	wayland         bool
 }
+
+// WithoutSecretStore boots without KIRA_INSECURE_SECRETS, so the cipher is unavailable on Linux.
+func WithoutSecretStore() Opt { return func(o *options) { o.noSecretStore = true } }
 
 // Opt tweaks New.
 type Opt func(*options)
@@ -106,6 +113,10 @@ func WithChangeRequestSync(c gitsession.CRSyncConfig) Opt { return func(o *optio
 // trigger), whatever the process environment says.
 func WithWayland() Opt { return func(o *options) { o.wayland = true } }
 
+// WithOpenCode puts the fake opencode on PATH; without it opencode is off PATH and its system
+// installs are ignored, so AgentService.List reports it as not found.
+func WithOpenCode() Opt { return func(o *options) { o.openCode = true } }
+
 // WithoutClaude leaves claude off PATH entirely, system installs included.
 func WithoutClaude() Opt { return func(o *options) { o.noClaude = true } }
 
@@ -137,8 +148,8 @@ func WithRebaseTimeout(d time.Duration) Opt { return func(o *options) { o.rebase
 // WithEmbedSpec replaces the semantic-search model, so a test serves its files from a fake host.
 func WithEmbedSpec(s embed.Spec) Opt { return func(o *options) { o.embedSpec = &s } }
 
-// WithProvider registers a test-only agent provider next to claude.
-func WithProvider(p harness.Provider) Opt { return func(o *options) { o.provider = p } }
+// WithProvider registers test-only agent providers next to claude, in order.
+func WithProvider(ps ...harness.Provider) Opt { return func(o *options) { o.providers = ps } }
 
 // WithSeed runs seed on the isolated homes before the first boot. Startup work that runs in the
 // background (sweeps) would race a seed written after New.
@@ -168,12 +179,13 @@ type App struct {
 	// where the fake agent records its calls.
 	Root, Home, SpaceHome, MemoryHome, Work, BinDir, FakeDir string
 
-	W         *appwire.Wired
-	Events    *Events
-	Browser   *Browser
-	Dialogs   *Dialogs
-	WindowMgr *WindowManager
-	KeepAwake *KeepAwakeDriver
+	W          *appwire.Wired
+	Events     *Events
+	Browser    *Browser
+	FileOpener *FileOpener
+	Dialogs    *Dialogs
+	WindowMgr  *WindowManager
+	KeepAwake  *KeepAwakeDriver
 	// Clipboard and Shortcuts fake the capture hotkey's two OS seams.
 	Clipboard *Clipboard
 	Shortcuts *Shortcuts
@@ -209,12 +221,15 @@ func New(t *testing.T, opts ...Opt) *App {
 	if o.noClaude {
 		t.Cleanup(claude.SetSystemPaths())
 	}
+	if !o.openCode {
+		t.Cleanup(opencode.SetSystemPaths())
+	}
 	a := &App{
 		t: t, Root: root,
 		Home: filepath.Join(root, "home"), SpaceHome: filepath.Join(root, "space"),
 		MemoryHome: filepath.Join(root, "memory"), Work: filepath.Join(root, "work"),
 		BinDir: filepath.Join(root, "bin"), FakeDir: filepath.Join(root, "fake"),
-		Events: newEvents(), Browser: &Browser{}, Dialogs: &Dialogs{}, WindowMgr: newWindowManager(),
+		Events: newEvents(), Browser: &Browser{}, FileOpener: &FileOpener{}, Dialogs: &Dialogs{}, WindowMgr: newWindowManager(),
 		KeepAwake: &KeepAwakeDriver{}, Clipboard: &Clipboard{}, Shortcuts: newShortcuts(),
 	}
 	for _, d := range []string{a.Home, a.Work, a.BinDir, a.FakeDir} {
@@ -229,10 +244,16 @@ func New(t *testing.T, opts ...Opt) *App {
 	t.Setenv("KIRA_SPACE_HOME", a.SpaceHome)
 	t.Setenv("KIRA_MEMORY_HOME", a.MemoryHome)
 	t.Setenv("HOME", a.Home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(a.Home, ".config"))
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(a.Home, ".gitconfig"))
 	t.Setenv("PATH", a.BinDir+string(os.PathListSeparator)+a.pathTail(o))
 	t.Setenv("TZ", "UTC")
+	if a.opts.noSecretStore {
+		t.Setenv("KIRA_INSECURE_SECRETS", "")
+	} else {
+		t.Setenv("KIRA_INSECURE_SECRETS", "1")
+	}
 	t.Setenv(fakeagent.EnvDir, a.FakeDir)
 	t.Setenv(fakeagent.EnvScenario, a.scenario.Encode())
 	if o.seed != nil {
@@ -270,6 +291,9 @@ func (a *App) writeBin(o options) {
 	if !o.noClaude {
 		tools = append(tools, "claude")
 	}
+	if o.openCode {
+		tools = append(tools, "opencode")
+	}
 	if !o.noGh {
 		tools = append(tools, "gh")
 	}
@@ -284,8 +308,10 @@ func (a *App) writeBin(o options) {
 // every inherited executable except gh and claude.
 func (a *App) pathTail(o options) string {
 	inherited := os.Getenv("PATH")
-	if !o.noGh && !o.noClaude {
-		return inherited
+	if _, err := exec.LookPath("opencode"); err != nil || o.openCode {
+		if !o.noGh && !o.noClaude {
+			return inherited
+		}
 	}
 	clean := filepath.Join(a.Root, "pathbin")
 	if err := os.MkdirAll(clean, 0o755); err != nil {
@@ -298,7 +324,7 @@ func (a *App) pathTail(o options) string {
 		}
 		for _, e := range entries {
 			name := e.Name()
-			if name == "gh" || name == "claude" || e.IsDir() {
+			if name == "gh" || name == "claude" || name == "opencode" || e.IsDir() {
 				continue
 			}
 			target := filepath.Join(dir, name)
@@ -347,8 +373,8 @@ func (a *App) build() {
 		ghOptions.Locator = noGhLocator{}
 	}
 	var registry *harness.Registry
-	if a.opts.provider != nil {
-		registry = providers.New(a.opts.provider)
+	if len(a.opts.providers) > 0 {
+		registry = providers.New(a.opts.providers...)
 	}
 	az := azure.Options{Locator: noAzLocator{}}
 	if a.opts.azure != nil {
@@ -361,7 +387,7 @@ func (a *App) build() {
 	a.W = appwire.Build(appwire.Options{
 		Providers: registry, IssueTracker: tracker,
 		GitHosts: githostproviders.New(ghOptions, append([]githost.Provider{azure.New(az)}, a.opts.gitHosts...)...), TrackerGrace: a.opts.trackerGrace, RebaseTimeout: a.opts.rebaseTimeout, BranchRequestWait: a.opts.branchWait, SmartTimeout: a.opts.smartTimeout, Sandbox: a.opts.sandbox, ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, EmbedSpec: a.opts.embedSpec, MobilePoll: a.opts.mobilePoll, ChangeRequestSync: a.opts.crSync,
-		Repos: r, DB: db, Emitter: a.Events, Browser: a.Browser, Dialogs: a.Dialogs,
+		Repos: r, DB: db, Emitter: a.Events, Browser: a.Browser, FileOpener: a.FileOpener, Dialogs: a.Dialogs,
 		Locator: gitclient.NewHostLocator(), KeepAwakeDriver: a.KeepAwake, FileHandlers: a.opts.fileHandlers,
 		MobileAssets: fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>phone</title>")}},
 		MobileIsLAN:  func(ip netip.Addr) bool { return ip.IsLoopback() },
@@ -403,7 +429,7 @@ func (a *App) Restart() {
 }
 
 // Unregister drops the test provider from the next boot (Restart), as an uninstalled provider is.
-func (a *App) Unregister() { a.opts.provider = nil }
+func (a *App) Unregister() { a.opts.providers = nil }
 
 // DB is the live database, for tests that plant or inspect rows no bound call reaches.
 func (a *App) DB() *sql.DB { return a.db.DB }

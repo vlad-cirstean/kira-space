@@ -36,23 +36,6 @@ var (
 	maxStepTimeout   = 24 * time.Hour
 )
 
-// stepKeys are the keys beyond id, name, kind, status and skip that each step kind allows.
-var stepKeys = map[string][]string{
-	adewire.KindAgent:  {"runs_on", "before", "results", "max_returns", "timeout", "prompt", "allowed_tools", "smart_script", "params", "sandbox", "settings"},
-	adewire.KindScript: {"command", "runs_on", "before", "results", "max_returns", "timeout"},
-	adewire.KindReview: {"review", "runs_on", "before", "results", "max_returns", "timeout", "sandbox", "settings"},
-	adewire.KindManual: {"session", "prompt", "settings"},
-}
-
-var allStepKeys = func() []string {
-	all := []string{"id", "name", "kind", "status", "skip"}
-	for _, keys := range stepKeys {
-		all = append(all, keys...)
-	}
-	slices.Sort(all)
-	return slices.Compact(all)
-}()
-
 // stagesRemoved is the error for a file in the pre-P293 format.
 const stagesRemoved = `"stages" is no longer supported: list every step under "steps" (see the Agents docs)`
 
@@ -177,7 +160,7 @@ func (v *validator) workflow(root *yaml.Node) adewire.Workflow {
 			}
 		}
 	}
-	m := v.fields(root, "", "id", "name", "kira_space_mcp", "steps")
+	m := v.fields(root, "", topKeys...)
 	if v.err != nil {
 		return wf
 	}
@@ -228,7 +211,7 @@ func (v *validator) workflow(root *yaml.Node) adewire.Workflow {
 // step reads one step. It returns the step and its declared result nodes (nil when it declares none).
 func (v *validator) step(sn *yaml.Node, sp string, earlier, candidates map[string]bool) (adewire.WorkflowStep, *resultNodes) {
 	step := adewire.WorkflowStep{Results: []adewire.StepResult{}, AllowedTools: make([]string, 0), Params: map[string][]string{}, Sandbox: adewire.DefaultSandbox(), Settings: map[string]map[string]string{}}
-	sm := v.fields(sn, sp, allStepKeys...)
+	sm := v.fields(sn, sp, stepOrder...)
 	if v.err != nil {
 		return step, nil
 	}
@@ -273,6 +256,7 @@ func (v *validator) step(sn *yaml.Node, sp string, earlier, candidates map[strin
 	if n, has := sm["sandbox"]; has && v.err == nil {
 		step.Sandbox = v.sandbox(n, sp)
 	}
+	step.Agent = v.agent(sm, sp)
 	if n, has := sm["settings"]; has && v.err == nil {
 		step.Settings = v.settings(n, sp)
 	}
@@ -295,10 +279,10 @@ func (v *validator) stepHead(step *adewire.WorkflowStep, sm map[string]*yaml.Nod
 	}
 	allowed, known := stepKeys[step.Kind]
 	if !known {
-		v.fail(sm["kind"], sp, "kind must be agent, script, review or manual")
+		v.fail(sm["kind"], sp, "kind must be %s", oneOf(kinds))
 		return false
 	}
-	for _, k := range []string{"runs_on", "before", "results", "max_returns", "timeout", "prompt", "allowed_tools", "smart_script", "params", "sandbox", "settings", "review", "command", "session"} {
+	for _, k := range bodyKeys {
 		if n, has := sm[k]; has && !slices.Contains(allowed, k) {
 			v.fail(n, sp, "%s is not allowed on %s steps", k, step.Kind)
 			return false
@@ -318,6 +302,13 @@ func (v *validator) manualStep(step *adewire.WorkflowStep, sm map[string]*yaml.N
 	} else if n, has := sm["prompt"]; has {
 		v.fail(n, sp, "prompt is not allowed on %s steps without a session", step.Kind)
 	}
+	if n, has := sm["agent"]; has && v.err == nil {
+		if step.Session {
+			step.Agent = v.agent(sm, sp)
+		} else {
+			v.fail(n, sp, "agent is not allowed on %s steps without a session", step.Kind)
+		}
+	}
 	if n, has := sm["settings"]; has && v.err == nil {
 		if step.Session {
 			step.Settings = v.settings(n, sp)
@@ -325,6 +316,18 @@ func (v *validator) manualStep(step *adewire.WorkflowStep, sm map[string]*yaml.N
 			v.fail(n, sp, "settings is not allowed on %s steps without a session", step.Kind)
 		}
 	}
+}
+
+// agent reads a step's agent id; absent, it is "" and the Agent setting applies.
+func (v *validator) agent(sm map[string]*yaml.Node, sp string) string {
+	if _, has := sm["agent"]; !has {
+		return ""
+	}
+	id := v.str(sm, sp, "agent", true)
+	if v.err == nil && !slices.Contains(agentValues, id) {
+		v.fail(sm["agent"], sp, "agent must be %s", oneOf(agentValues))
+	}
+	return id
 }
 
 // legacyStatuses maps the names files used before statuses became ids to the ids the app first shipped;
@@ -381,11 +384,11 @@ func (v *validator) maxReturns(sm map[string]*yaml.Node, sp string, step *adewir
 // before reads a step's approval gate; the default is auto.
 func (v *validator) before(sm map[string]*yaml.Node, sp string) string {
 	if _, has := sm["before"]; !has {
-		return "auto"
+		return beforeValues[0]
 	}
 	b := v.str(sm, sp, "before", true)
-	if v.err == nil && b != "auto" && b != "approval" {
-		v.fail(sm["before"], sp, "before must be auto or approval")
+	if v.err == nil && !slices.Contains(beforeValues, b) {
+		v.fail(sm["before"], sp, "before must be %s", oneOf(beforeValues))
 	}
 	return b
 }
@@ -426,14 +429,14 @@ func (v *validator) sandbox(n *yaml.Node, sp string) adewire.StepSandbox {
 		v.fail(n, sp, "sandbox must be a mapping")
 		return sb
 	}
-	m := v.fields(n, sp, "access", "read", "allow", "network")
+	m := v.fields(n, sp, sandboxKeys...)
 	if v.err != nil {
 		return sb
 	}
 	if _, has := m["access"]; has {
 		sb.Access = v.str(m, sp, "access", true)
-		if v.err == nil && sb.Access != adewire.SandboxWrite && sb.Access != adewire.SandboxRead && sb.Access != adewire.SandboxOff {
-			v.fail(m["access"], sp, "access must be write, read or off")
+		if v.err == nil && !slices.Contains(accessValues, sb.Access) {
+			v.fail(m["access"], sp, "access must be %s", oneOf(accessValues))
 		}
 	}
 	sb.Read = v.sandboxPaths(m, sp, "read")
@@ -605,15 +608,15 @@ func (v *validator) reviewConfig(n *yaml.Node, sp string, candidates map[string]
 		v.fail(n, sp, "review must be a mapping")
 		return nil
 	}
-	m := v.fields(n, sp, "send_to", "implementer")
+	m := v.fields(n, sp, reviewKeys...)
 	if v.err != nil {
 		return nil
 	}
 	cfg := &adewire.ReviewStepConfig{SendTo: adewire.ReviewSendImplementer}
 	if _, has := m["send_to"]; has {
 		cfg.SendTo = v.str(m, sp, "send_to", true)
-		if v.err == nil && cfg.SendTo != adewire.ReviewSendImplementer && cfg.SendTo != adewire.ReviewSendNew {
-			v.fail(m["send_to"], sp, "send_to must be implementer or new")
+		if v.err == nil && !slices.Contains(sendToValues, cfg.SendTo) {
+			v.fail(m["send_to"], sp, "send_to must be %s", oneOf(sendToValues))
 		}
 	}
 	if _, has := m["implementer"]; has {
@@ -752,7 +755,7 @@ func (v *validator) results(n *yaml.Node, sp string) *resultNodes {
 	seen := make(map[string]bool)
 	for i, item := range n.Content {
 		rp := fmt.Sprintf("%sresult %d: ", sp, i+1)
-		m := v.fields(item, rp, "id", "ok", "description", "next")
+		m := v.fields(item, rp, resultKeys...)
 		if v.err != nil {
 			return rn
 		}

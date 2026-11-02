@@ -100,6 +100,20 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
 
   // P116 G5/G6: the two new bound methods window-chrome parity adds.
   windowsOpenNew: 'WindowsService.OpenNew',
+  agentContextGet: 'AgentContextService.Get',
+  agentContextSave: 'AgentContextService.Save',
+  agentSettingsGet: 'AgentSettingsService.Get',
+  agentSettingsSave: 'AgentSettingsService.Save',
+  agentSettingsSetSecret: 'AgentSettingsService.SetSecret',
+  agentSettingsDeleteSecret: 'AgentSettingsService.DeleteSecret',
+  agentPortList: 'AgentPortService.List',
+  agentPortImportPreview: 'AgentPortService.ImportPreview',
+  agentPortImportApply: 'AgentPortService.ImportApply',
+  agentPortExportPreview: 'AgentPortService.ExportPreview',
+  agentPortExportApply: 'AgentPortService.ExportApply',
+  agentPortCancel: 'AgentPortService.Cancel',
+  configFilesOpen: 'ConfigFilesService.Open',
+  configFilesReveal: 'ConfigFilesService.Reveal',
   customScriptsList: 'CustomScriptsService.List',
   customScriptsCreate: 'CustomScriptsService.Create',
   customScriptsUpdate: 'CustomScriptsService.Update',
@@ -124,6 +138,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   promptsSendTest: 'PromptsService.SendTest',
   agentInfo: 'AgentService.Info',
   agentInfoFor: 'AgentService.InfoFor',
+  agentList: 'AgentService.List',
   llmPromptsList: 'LlmPromptsService.List',
   llmPromptsSave: 'LlmPromptsService.Save',
   llmPromptsPreview: 'LlmPromptsService.Preview',
@@ -319,6 +334,8 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   // The active agent provider's names: the claude provider, as the Go flow test writes it.
   [IPC.agentInfo]: JSON.stringify(contract('agent', 'AgentService.Info')),
   [IPC.agentInfoFor]: JSON.stringify(contract('agent', 'AgentService.Info')),
+  // Only claude is installed unless a spec says otherwise.
+  [IPC.agentList]: JSON.stringify(contract('agent', 'AgentService.List#no-opencode')),
   // The prompt editor's calls; a spec answers List/Save from tests/contract/llm-prompts.json.
   [IPC.llmPromptsList]: '{"prompts":[],"storeError":"","revision":0}',
   [IPC.llmPromptsSave]: '{"prompts":[],"storeError":"","revision":0}',

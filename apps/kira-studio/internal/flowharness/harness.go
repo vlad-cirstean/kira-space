@@ -29,13 +29,13 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/localauth"
-	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/flowtest"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -52,6 +52,7 @@ const EnvComplete = flowtest.EnvComplete
 func Complete(t testing.TB) { flowtest.Complete(t) }
 
 type options struct {
+	noSecretStore   bool
 	smartTimeout    time.Duration
 	scheduleTimeout time.Duration
 	clock           scriptruns.Clock
@@ -59,6 +60,9 @@ type options struct {
 	dockerExtra     []docker.Option
 	kubeExtra       []kubernetes.Option
 }
+
+// WithoutSecretStore boots without KIRA_INSECURE_SECRETS, so the cipher is unavailable on Linux.
+func WithoutSecretStore() Opt { return func(o *options) { o.noSecretStore = true } }
 
 // Opt tweaks New.
 type Opt func(*options)
@@ -98,6 +102,8 @@ type App struct {
 	// KIRA_HOME. BinDir is the PATH-first directory holding the fake claude and fake-mcp, FakeDir
 	// where the fake agent records its calls.
 	Home, KiraHome, BinDir, FakeDir string
+	// SpaceHome is KIRA_SPACE_HOME: its agent/ folder is the shared agent context Studio reads.
+	SpaceHome string
 
 	W            *appwire.Wired
 	Events       *Events
@@ -122,7 +128,7 @@ func New(t *testing.T, opts ...Opt) *App {
 	root := t.TempDir()
 	a := &App{
 		t: t, Home: filepath.Join(root, "home"), KiraHome: filepath.Join(root, "kira"),
-		BinDir: filepath.Join(root, "bin"), FakeDir: filepath.Join(root, "fake"),
+		BinDir: filepath.Join(root, "bin"), FakeDir: filepath.Join(root, "fake"), SpaceHome: filepath.Join(root, "space"),
 		Events: flowtest.NewEvents(), Dialogs: &Dialogs{}, Browser: &Browser{}, KeepAwake: &KeepAwakeDriver{},
 		McpInstaller: &McpInstaller{}, OSAuth: &OSAuth{}, Focus: &WindowFocus{}, ProofWindows: &ProofShell{},
 	}
@@ -134,13 +140,18 @@ func New(t *testing.T, opts ...Opt) *App {
 	}
 	a.writeBin()
 	t.Setenv("KIRA_HOME", a.KiraHome)
+	t.Setenv("KIRA_SPACE_HOME", a.SpaceHome)
 	t.Setenv("HOME", a.Home)
 	t.Setenv("PATH", a.BinDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv(fakeagent.EnvDir, a.FakeDir)
 	t.Setenv(fakeagent.EnvScenario, fakeagent.Scenario{}.Encode())
 	t.Setenv("TZ", "UTC")
 	// Linux has no keychain; a no-op on macOS, where the real Keychain-backed cipher is used.
-	t.Setenv("KIRA_INSECURE_SECRETS", "1")
+	if a.opts.noSecretStore {
+		t.Setenv("KIRA_INSECURE_SECRETS", "")
+	} else {
+		t.Setenv("KIRA_INSECURE_SECRETS", "1")
+	}
 	useDockerHost(t)
 	a.build()
 	t.Cleanup(a.stop)
@@ -187,7 +198,7 @@ func (a *App) build() {
 		a.t.Fatalf("repos.New: %v", err)
 	}
 	cipher := secrets.New()
-	if !cipher.Status().Available {
+	if !a.opts.noSecretStore && !cipher.Status().Available {
 		a.t.Fatalf("cipher unavailable: %+v", cipher.Status())
 	}
 	w, err := appwire.Build(appwire.Options{

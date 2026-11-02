@@ -18,7 +18,7 @@ func Main(m *testing.M) int {
 		return code
 	}
 	switch name := filepath.Base(os.Args[0]); name {
-	case "claude", "gh", "fake-mcp", fakeagent.Persona:
+	case "claude", "opencode", "gh", "fake-mcp", fakeagent.Persona:
 		return fakeagent.Run(name, os.Args[1:])
 	}
 	code := testx.RunWithTempHomes(m)

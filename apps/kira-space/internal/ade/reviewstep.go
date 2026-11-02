@@ -503,6 +503,9 @@ func (b *TaskBoard) SendReview(ctx context.Context, args adewire.SendReviewArgs)
 		}
 		target := cands[pick]
 		agentSessionID := b.agentIDOfSession(target.run.SessionID)
+		if agentSessionID == "" {
+			return invalid("%s", i18n.T("backend.space.ade.sessionIdUnknown.body", nil))
+		}
 		if busy, err := b.agentBusy(agentSessionID); err != nil {
 			return err
 		} else if busy {
@@ -633,11 +636,12 @@ func (b *TaskBoard) startRound(ctx context.Context, tc *taskCtx, run model.AdeRu
 	}()
 	now := b.deps.Now().UnixMilli()
 	launch := run.Launch
-	sessionID, agentSessionID := b.newID(), cmpNonEmpty(launch.ResumeID, b.newID())
-	agent, err := b.agentForResume(launch.ResumeID)
+	sessionID := b.newID()
+	agent, err := b.agentForStep(launch.ResumeID, stepAgentOf(tc, run.StepID))
 	if err != nil {
 		return run, err
 	}
+	agentSessionID := b.proposeAgentID(agent, launch.ResumeID)
 	if err := b.deps.Sessions.InsertHeadless(model.AdeSession{
 		ID: sessionID, Mode: model.AdeSessionModeHeadless, TaskID: tc.task.ID, BranchID: sb.ID,
 		StepID: run.StepID, RunID: run.ID, Resumes: launch.ResumeID, AgentSessionID: agentSessionID, Cwd: path, Provider: agent.ID(),
@@ -653,9 +657,17 @@ func (b *TaskBoard) startRound(ctx context.Context, tc *taskCtx, run model.AdeRu
 			b.finishRunOp(sessionID, outcome{state: model.AdeRunFailed, note: "The review round did not start."})
 		}
 	}()
+	var learned func(string)
 	if spec.Route == adewire.ReviewSendNew {
-		if err := b.deps.Tasks.SetReviewDedicated(spec.ReviewRunID, agentSessionID); err != nil {
-			return run, err
+		dedicate := func(id string) {
+			if err := b.deps.Tasks.SetReviewDedicated(spec.ReviewRunID, id); err != nil {
+				slog.Warn("ade: store review conversation", "scope", "ade", "run", spec.ReviewRunID, "err", err)
+			}
+		}
+		if agentSessionID != "" {
+			dedicate(agentSessionID)
+		} else {
+			learned = dedicate
 		}
 	}
 	running, note := model.AdeRunRunning, launch.Note
@@ -680,7 +692,7 @@ func (b *TaskBoard) startRound(ctx context.Context, tc *taskCtx, run model.AdeRu
 		defer endRun()
 		b.superviseAgent(runCtx, updated, agentLaunch{
 			def: def, agent: agent, sessionID: sessionID, resume: launch.ResumeID, path: path, worktree: path, prompt: prompt,
-			timeout: parseStepTimeout(def.Timeout), review: &agentmcp.ReviewGrant{CommentIDs: spec.CommentIDs},
+			timeout: parseStepTimeout(def.Timeout), review: &agentmcp.ReviewGrant{CommentIDs: spec.CommentIDs}, onSessionID: learned,
 		})
 	}()
 	return updated, nil

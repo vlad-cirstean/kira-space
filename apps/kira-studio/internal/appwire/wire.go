@@ -2,6 +2,7 @@ package appwire
 
 import (
 	"log/slog"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -28,18 +29,22 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/preconnect"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/proof"
-	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/tree"
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
+	"github.com/kirathecat/kira-studio/internal/agentctx"
 	"github.com/kirathecat/kira-studio/internal/appupdate"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/keepawake"
+	"github.com/kirathecat/kira-studio/internal/kirapaths"
 	"github.com/kirathecat/kira-studio/internal/metrics"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/windowsvc"
@@ -132,6 +137,7 @@ type embeddedWired struct {
 	terminalSvc  *bridge.TerminalService
 	scriptRuns   *bridge.ScriptRunsService
 	runs         *scriptruns.Service
+	closeAgent   func()
 	sched        *scriptruns.Scheduler
 	dockerSvc    *bridge.DockerService
 	kubeSvc      *bridge.KubernetesService
@@ -172,12 +178,26 @@ func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, kee
 	// service plus ChannelTerminal's push channel. P128 §2.1: the bound methods live once in
 	// internal/terminal.BoundService; this app's own TerminalService only embeds it.
 	registry := terminal.NewRegistry()
+	// Studio only reads the agent context; Kira Space hosts the folder and its editor.
+	agentContext := agentctx.New(agentctx.Options{
+		Dir: kirapaths.SharedAgentDir(), SnapshotDir: filepath.Join(deps.Home, "agent-context"),
+		Projection: configfs.TableProjection{DB: deps.Repos.CustomScripts.DB, Folder: agentctx.Folder}, App: "Studio",
+	})
+	agentContext.View() // follows the file into the DB projection
+	agentStore, agentSettings, closeAgent := openAgentSettings(agents.Registry, deps, opts)
+	hermetic := func() bool {
+		settings, err := deps.Repos.Settings.GetAll()
+		return err != nil || settings.Agent.Hermetic
+	}
 	runs := &scriptruns.Service{
+		ContextFile: agentContext.ContextFile, AgentConfig: agentStore,
 		Runs: deps.Repos.ScriptRuns, Scripts: deps.Repos.CustomScripts, Registry: registry, Home: deps.Home, App: "Studio",
 		Emit:         func(r scriptruns.Run) { deps.Events.Emit(bridge.ChannelScriptRunsChanged, r) },
 		EmitLog:      func(p scriptruns.LogPush) { deps.Events.Emit(bridge.ChannelScriptRunLog, p) },
 		SmartTimeout: opts.SmartTimeout, ScheduleTimeout: opts.ScheduleTimeout,
 		Prompts: promptRouter, LlmPrompts: deps.Prompts, Agent: agents,
+		Hermetic: hermetic,
+		Servers:  agentcfg.ServerSource{Store: agentSettings, Hermetic: hermetic},
 	}
 	if opts.Clock != nil {
 		runs.Now = opts.Clock.Now
@@ -194,7 +214,7 @@ func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, kee
 	return embeddedWired{
 		dbMcpSvc: dbMcpSvc, keepAwakeSvc: keepAwakeSvc,
 		windowsSvc: windowsSvc, terminalSvc: terminalSvc, dockerSvc: dockerSvc, kubeSvc: kubeSvc,
-		scriptRuns: &bridge.ScriptRunsService{Bound: &scriptruns.Bound{Svc: runs}}, runs: runs,
+		scriptRuns: &bridge.ScriptRunsService{Bound: &scriptruns.Bound{Svc: runs}}, runs: runs, closeAgent: closeAgent,
 		sched:  &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock},
 		events: events, eventsDetach: eventsDetach,
 	}
@@ -215,7 +235,7 @@ type lifecycleWired struct {
 // close-flush coordinator -> beforeFlush/teardown (today's OnShutdown, minus the ticker Stop,
 // which moves to beforeFlush, run before the flush wait rather than after it — index.ts:156)
 // -> the quitter built over both.
-func wireLifecycle(windows *shell.WindowRegistry, events *bridge.Events, eventsDetach func(), metricsTicker *metrics.Ticker, oplogWiring *oplog.Wiring, connectionsSvc *connections.Service, dbMcpSvc *bridge.DbMcpService, keepAwakeSvc *bridge.KeepAwakeService, terminalSvc *bridge.TerminalService, dockerSvc *bridge.DockerService, kubeSvc *bridge.KubernetesService, updateInstaller *appupdate.Installer, runs *scriptruns.Service, sched *scriptruns.Scheduler, repositories *repos.Repos, db *storage.DB) lifecycleWired {
+func wireLifecycle(windows *shell.WindowRegistry, events *bridge.Events, eventsDetach func(), metricsTicker *metrics.Ticker, oplogWiring *oplog.Wiring, connectionsSvc *connections.Service, dbMcpSvc *bridge.DbMcpService, keepAwakeSvc *bridge.KeepAwakeService, terminalSvc *bridge.TerminalService, dockerSvc *bridge.DockerService, kubeSvc *bridge.KubernetesService, updateInstaller *appupdate.Installer, runs *scriptruns.Service, closeAgent func(), sched *scriptruns.Scheduler, repositories *repos.Repos, db *storage.DB) lifecycleWired {
 	// windows holds every currently open window's shell.Attach cleanup, keyed by that window's own
 	// identity (replacing the single detachWindow/mainWindow pair that only ever worked because at
 	// most one window could exist at a time). beforeFlush detaches every one of them, not just the
@@ -253,6 +273,7 @@ func wireLifecycle(windows *shell.WindowRegistry, events *bridge.Events, eventsD
 		kubernetes.ServiceOf(kubeSvc.BoundService).Shutdown()
 		sched.Close()
 		runs.Close()
+		closeAgent()
 		if err := repositories.Close(); err != nil {
 			slog.Warn("close repos", "scope", "shutdown", "err", err)
 		}
@@ -313,4 +334,43 @@ func dockerOptions(opts Options, restore docker.RestoreStore) []docker.Option {
 		out = append(out, docker.WithHubAPI(opts.DockerHubAPI))
 	}
 	return append(out, opts.DockerExtra...)
+}
+
+// openAgentSettings opens the shared credential store and the settings store Space edits. A
+// failure leaves launches without settings, never without Kira's own wiring. The returned func
+// removes this app's run files and closes the credential store.
+func openAgentSettings(registry *harness.Registry, deps appcore.Deps, opts Options) (agentcfg.PrepareFunc, *agentcfg.Store, func()) {
+	sec, err := agentcfg.OpenSecrets(kirapaths.SharedAgentSecrets(), opts.Cipher)
+	if err != nil {
+		slog.Warn("agent settings: open secrets", "scope", "startup", "err", err)
+	}
+	store, err := agentcfg.New(agentcfg.Options{
+		Dir: kirapaths.SharedAgentDir(), Providers: registry, Secrets: sec, App: "Studio",
+		Projection: configfs.TableProjection{DB: deps.Repos.CustomScripts.DB, Folder: agentctx.Folder},
+		Hermetic: func() bool {
+			settings, err := deps.Repos.Settings.GetAll()
+			return err != nil || settings.Agent.Hermetic
+		},
+	})
+	if err != nil {
+		slog.Warn("agent settings: build", "scope", "startup", "err", err)
+		return nil, nil, func() { closeSecrets(sec) }
+	}
+	if err := store.Sweep(filepath.Join(deps.Home, "automations-mcp")); err != nil {
+		slog.Warn("agent settings: sweep", "scope", "startup", "err", err)
+	}
+	store.View() // follows the file into the DB projection
+	return store.Prepare, store, func() {
+		_ = store.Close()
+		closeSecrets(sec)
+	}
+}
+
+func closeSecrets(sec *agentcfg.SecretStore) {
+	if sec == nil {
+		return
+	}
+	if err := sec.Close(); err != nil {
+		slog.Warn("close agent secrets", "scope", "shutdown", "err", err)
+	}
 }

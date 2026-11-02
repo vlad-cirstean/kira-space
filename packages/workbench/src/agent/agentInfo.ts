@@ -1,4 +1,4 @@
-import type { AgentInfo } from '@shared/domain/agent';
+import type { AgentEntry, AgentInfo } from '@shared/domain/agent';
 import { useQuery } from '@tanstack/vue-query';
 import { setMessageDefaults, t } from '@theme/i18n';
 import { queryClient } from '@workbench/state/queryClient';
@@ -11,6 +11,7 @@ import { computed, type InjectionKey, inject, type MaybeRefOrGetter, toValue, wa
 export interface AgentControl {
   agentInfo(): Promise<AgentInfo>;
   agentInfoFor(id: string): Promise<AgentInfo>;
+  agentList(): Promise<AgentEntry[]>;
 }
 
 export const agentControlKey: InjectionKey<AgentControl> = Symbol('agentControl');
@@ -22,6 +23,7 @@ export function useAgentControl(): AgentControl {
 }
 
 const INFO_KEY = ['agent', 'info'];
+const LIST_KEY = ['agent', 'list'];
 
 /** Shown until the bound call answers: a neutral name, no models. */
 export function pendingAgent(): AgentInfo {
@@ -59,6 +61,13 @@ export function useAgentInfo(control: AgentControl = useAgentControl()) {
   const query = useQuery({ queryKey: INFO_KEY, queryFn: () => control.agentInfo() }, queryClient);
   const info = computed(() => query.data.value ?? pendingAgent());
   return { info, query };
+}
+
+/** Every registered provider with its CLI's availability, in registration order. */
+export function useAgentList(control: AgentControl = useAgentControl()) {
+  const query = useQuery({ queryKey: LIST_KEY, queryFn: () => control.agentList() }, queryClient);
+  const list = computed(() => query.data.value ?? []);
+  return { list, query };
 }
 
 /** The provider a stored conversation ran under ("" is the default provider). */

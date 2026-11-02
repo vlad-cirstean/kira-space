@@ -7375,3 +7375,43 @@ Two review rounds over the full diff since `main`: round 1 found 9, round 2 foun
 ### v0.2.25 P446 (Done)
 Chapter folded by hand into this file; `docs/v0.2.25/` removed.
 <!-- /chapter v0.2.25 -->
+<!-- chapter v0.2.26 -->
+## v0.2.26
+Source: docs/v0.2.26/ at d6ea91d1c. 12 phases.
+
+### v0.2.26 P447 (Done)
+Cipher hoisted to repo-root `internal/secrets`; scope strings and envelope unchanged, both apps share one keychain item. New `secrets.Store` (sealed `secret_values`, migrations 0052 Studio, 0062 Space) and `secrets.Masker`. A Runs secret param keeps a write-only saved value (typed value wins, env-only); resume, restore and schedules use it. Pruned on param, script and collection delete. Masking in log sink, outcome fields and terminal tail. Not masked: live terminal tab, Space phone terminal ring (Known open items).
+
+### v0.2.26 P448 (Done)
+Harness seams for a second provider: optional `Structured`/`Headless` roles, neutral `EventKind`, `Launch{Command, Env, SessionID}` with agent launch token, late session id. `fakeprovider.Lean` flow test.
+
+### v0.2.26 P449 (Done)
+OpenCode provider (probed against 1.19.5): shared `harness.ResolveCLI`, headless runs with late session id (`Handler.OnSessionID`, `CostCapper`), plugin hooks, per-step `agent` key, `AgentService.List`, agent pickers per interactive session. Fake persona, flows, UI spec.
+
+### v0.2.26 P450 (Done)
+Config-as-files foundation `internal/configfs`: folder store with atomic save and base hash, debounced watch, line-located YAML errors, JSON Schema validation, `${NAME}` and `${secret:name}` refs with a resolver, generated `AGENTS.md`. `configsvc` bound as `ConfigFilesService`. Workflows run on it; shared `ConfigFileBar` in the workflow editor.
+
+### v0.2.26 P451 (Done)
+Workflows folder `AGENTS.md`. `adeflow/options.go` is the one option table; parser, writer and doc derive from it. 17 rule docs, `TestRuleDocsEnforced` binds each to the validator. Written at `TaskBoard.Start`, non-fatal. Editor bar gets "About these files".
+
+### v0.2.26 P452 (Done)
+One shared agent context (`internal/agentctx`, 32 KiB cap, snapshots, last-good) rendered per provider: Claude `--append-system-prompt-file`, OpenCode `instructions` in `OPENCODE_CONFIG_CONTENT`. Every launch site carries it. `AgentContextService` and Agents Context tab.
+
+### v0.2.26 P453 (Done)
+Agent settings, common plus per provider, in `settings.yaml` per app. MCP credentials in shared `agent-secrets.db` (scope `agent-credential`), write-only in the UI. Claude renders `--mcp-config`, `--settings`, env; OpenCode one inline config document. Agents > Settings page, `AgentSettingsService`. Open at the time: isolated runs and OpenCode hooks (closed by P455).
+
+### v0.2.26 P454 (Done)
+Import and Export of agent config per provider (`internal/agentport`, `AgentPortService`): Claude `settings.json`, `CLAUDE.md`, MCP servers; OpenCode `opencode.json[c]`, `AGENTS.md`. Single-use previews with content hash, credentials moved to `${secret:...}` slots, comment-preserving edits, `.kira-backup-<UTC>` files, masked diffs. Claude MCP export through `claude mcp`.
+
+### v0.2.26 P455 (Done)
+Hermetic agent launches, setting `agent.hermetic` (default true; Studio always on). Harness `Isolator` seam, every launch site sets it. Claude: `--setting-sources project,local`, MCP and memory env switches, `claudeMdExcludes` against ancestor `CLAUDE.md`. OpenCode: `XDG_CONFIG_HOME` redirect, `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1`. Hermetic runs tick MCP servers from the app's `settings.yaml`.
+
+### v0.2.26 P456 (Done)
+Docs, site and README for agents and secrets: `space/agents.mdx`, `shared/runs.md`, `reference/settings.md`, both READMEs, ARCHITECTURE and DEV_ENVIRONMENT. `space-agents-board` screenshots and two site baselines re-captured. `site:check` green.
+
+### v0.2.26 P457 (Done)
+Two review rounds over the full diff since `main`: round 1 found 14 (6 Medium, 8 Low), round 2 found 5 (2 Medium, 3 Low); 18 fixed. R2-4 (`OPENCODE_CONFIG` single-file collision) stays a Known open item in ARCHITECTURE. Close-phase UI runs: Studio 711 passed, Space 988 of 989 with one load timeout that passed on rerun.
+
+### v0.2.26 P458 (Done)
+Chapter folded by hand into this file; `docs/v0.2.26/` removed. Manual step before merge: apply `docs/pending-changes/.github__workflows__secrets-path.patch`, else the darwin CI job tests a deleted path. Smart scripts always run isolated and get no app settings. Studio and Space host the shared context differently. No screenshots for the new Context, Settings and Agent panes.
+<!-- /chapter v0.2.26 -->

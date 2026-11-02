@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"slices"
 	"sync"
 	"time"
 
@@ -19,7 +20,9 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/terminal"
+	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
 // defaultGrace/defaultPendingTTL are TrackerDeps' own zero-value defaults, applied by NewTracker.
@@ -78,6 +81,8 @@ type TrackerDeps struct {
 	// a test could prepend (every /etc/profile.d/*.sh script re-prepends its own bin dir), which
 	// would make a hermetic fake-CLI test impossible without this seam. Production never sets it.
 	AgentBin string
+	// ContextFile returns the path of the agent context for a launch, "" for none; nil = none.
+	ContextFile func() (string, error)
 }
 
 // pendingIntent is one PrepareLaunch call's own record, keyed by the terminalId Prepare mints —
@@ -86,7 +91,8 @@ type pendingIntent struct {
 	RecordID                          string
 	AgentSessionID                    string
 	Cwd                               string
-	Command                           string // the exact base command Prepare returned; Compose refuses a mismatch
+	Env                               []string // the launch's own env; Compose returns it ahead of the hooks'
+	Command                           string   // the exact base command Prepare returned; Compose refuses a mismatch
 	Message                           string
 	Resume                            bool
 	CreatedAt                         time.Time
@@ -94,6 +100,8 @@ type pendingIntent struct {
 	Purpose                           string
 	// Provider is the id of the provider that composed Command; its listener hooks the launch.
 	Provider string
+	// ConfigFile is the Kira-written provider config file the listener extends in place; "" = none.
+	ConfigFile string
 	// Op is the session op Prepare was given; Compose ends it ok, an expired intent ends it as an error.
 	Op *oplog.Op
 }
@@ -120,6 +128,12 @@ type PrepareArgs struct {
 	Settings map[string]map[string]string
 	// Op is the op-log entry for this launch; nil records nothing.
 	Op *oplog.Op
+	// App is the app's agent settings rendered for this launch; nil = none.
+	App *harness.AppConfig
+	// Hermetic and IsolationDir are the launch's hermetic mode and the Kira-owned dir a provider's
+	// Isolator prepared for it (harness.PrepareIsolation); "" = none.
+	Hermetic     bool
+	IsolationDir string
 }
 
 // PrepareResult is Prepare's own return shape. SessionID is the agent session id (stable across
@@ -164,7 +178,7 @@ type Tracker struct {
 	// fresh marks records Compose inserted (not resumed), so Abort deletes rather than stops them.
 	fresh map[string]bool
 
-	hooks func(provider, terminalID, cwd, command string) (string, []string)
+	hooks func(provider, terminalID, cwd, command, configFile string) (string, []string, error)
 
 	// graceTimers are Compose's pending Reconcile timers, stopped by Close; graceWG waits for a
 	// callback already running.
@@ -213,13 +227,13 @@ func (t *Tracker) SetStoppedHandler(fn func(recordID string)) {
 // SetHooks installs the launch-composition callback (harness.Hooks.Compose) — called
 // once in main.go before any window exists, so Compose never races an unset hooks func with a
 // real launch.
-func (t *Tracker) SetHooks(fn func(provider, terminalID, cwd, command string) (string, []string)) {
+func (t *Tracker) SetHooks(fn func(provider, terminalID, cwd, command, configFile string) (string, []string, error)) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.hooks = fn
 }
 
-func (t *Tracker) hooksFn() func(string, string, string, string) (string, []string) {
+func (t *Tracker) hooksFn() func(string, string, string, string, string) (string, []string, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return t.hooks
@@ -292,15 +306,24 @@ func (t *Tracker) Prepare(args PrepareArgs) (PrepareResult, error) {
 		return PrepareResult{}, err
 	}
 	agentBin := cmpNonEmpty(t.deps.AgentBin, agent.Command())
-	command := agent.InteractiveCommand(harness.InteractiveSpec{
+	var contextFile string
+	if t.deps.ContextFile != nil {
+		var err error
+		if contextFile, err = t.deps.ContextFile(); err != nil {
+			return PrepareResult{}, ipcerr.InternalErr(err)
+		}
+	}
+	launch := agent.InteractiveCommand(harness.InteractiveSpec{
 		Bin: agentBin, SessionID: agentSessionID, Resume: args.Resume != "" || args.Resumes != "",
 		AddDirs: args.AddDirs, MCPConfig: args.MCPConfig, AllowedTools: args.AllowedTools,
-		Stage: stageValues(args.Settings, agent),
+		Stage: stageValues(args.Settings, agent), ContextFile: contextFile, App: args.App,
+		Hermetic: args.Hermetic, IsolationDir: args.IsolationDir,
 	})
+	command, agentSessionID := launch.Command, launch.SessionID
 
 	terminalID := uuid.NewString()
 	intent := pendingIntent{
-		RecordID: recordID, AgentSessionID: agentSessionID, Cwd: cwd, Command: command, Message: args.Message,
+		RecordID: recordID, AgentSessionID: agentSessionID, Env: launch.Env, ConfigFile: launch.ConfigFile, Cwd: cwd, Command: command, Message: args.Message,
 		Resume: args.Resume != "", CreatedAt: now,
 		TaskID: args.TaskID, BranchID: args.BranchID, StepID: args.StepID, Resumes: args.Resumes, Purpose: args.Purpose,
 		Provider: agent.ID(), Op: args.Op,
@@ -360,7 +383,74 @@ func (t *Tracker) resumeTarget(args PrepareArgs) (recordID, agentSessionID, cwd 
 		return "", "", "", nil, ErrResumeCwdNotDir
 	}
 	cwd = existing.Cwd
+	if agentSessionID == "" {
+		if agentSessionID, err = t.learnSessionID(existing.ID); err != nil {
+			return "", "", "", nil, err
+		}
+		if agentSessionID == "" {
+			return "", "", "", nil, errSessionIDUnknown()
+		}
+	}
 	return recordID, agentSessionID, cwd, agent, nil
+}
+
+// errSessionIDUnknown refuses a resume of a session whose agent has not reported its id.
+func errSessionIDUnknown() error {
+	return invalid("%s", i18n.T("backend.space.ade.sessionIdUnknown.body", nil))
+}
+
+// locateTimeout bounds one FindSession call.
+const locateTimeout = 10 * time.Second
+
+// learnSessionID returns the stored agent session id of recordID. When it is empty and the
+// record's provider assigns ids after launch, it asks the provider for the id and stores a valid
+// answer; "" means still unknown.
+func (t *Tracker) learnSessionID(recordID string) (string, error) {
+	rec, err := t.deps.Store.Get(recordID)
+	if err != nil {
+		return "", fmt.Errorf("ade: learn session id: %w", err)
+	}
+	if rec == nil {
+		return "", ErrSessionNotFound
+	}
+	if rec.AgentSessionID != "" {
+		return rec.AgentSessionID, nil
+	}
+	agent, err := t.deps.Agent.For(rec.Provider)
+	if err != nil {
+		return "", err
+	}
+	loc, ok := agent.(harness.SessionLocator)
+	if !ok {
+		return "", nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), locateTimeout)
+	defer cancel()
+	taken, err := t.deps.Store.AgentSessionIDsExcept(recordID)
+	if err != nil {
+		return "", fmt.Errorf("ade: learn session id: %w", err)
+	}
+	id, err := loc.FindSession(ctx, harness.SessionQuery{Cwd: rec.Cwd, Since: time.UnixMilli(rec.StartedAt), Exclude: taken})
+	if err != nil {
+		slog.Warn("ade: find agent session", "scope", "ade", "recordId", recordID, "err", err)
+		return "", nil
+	}
+	if !harness.ValidSessionID(id) {
+		return "", nil
+	}
+	if err := t.deps.Store.SetAgentSessionID(recordID, id); err != nil {
+		return "", fmt.Errorf("ade: learn session id: %w", err)
+	}
+	return id, nil
+}
+
+// learnStopped runs learnSessionID for records that just stopped, best effort.
+func (t *Tracker) learnStopped(recordIDs ...string) {
+	for _, id := range recordIDs {
+		if _, err := t.learnSessionID(id); err != nil {
+			slog.Warn("ade: learn session id", "scope", "ade", "recordId", id, "err", err)
+		}
+	}
 }
 
 // expirePending releases an intent that never composed within PendingTTL, so an abandoned launch's
@@ -416,8 +506,7 @@ func (t *Tracker) Compose(terminalID, cwd, command string) (_ string, _ []string
 		if hooks == nil {
 			return command, nil, nil
 		}
-		composed, env := hooks(t.deps.Agent.Active().ID(), terminalID, cwd, command)
-		return composed, env, nil
+		return hooks(t.deps.Agent.Active().ID(), terminalID, cwd, command, "")
 	}
 
 	defer func() {
@@ -433,9 +522,14 @@ func (t *Tracker) Compose(terminalID, cwd, command string) (_ string, _ []string
 
 	// Build the final command first: Open rejects an over-long one after this returns, which would
 	// leave a persisted row for a conversation that never ran.
-	composed, env := command, []string(nil)
+	composed, env := command, slices.Clone(intent.Env)
 	if hooks := t.hooksFn(); hooks != nil {
-		composed, env = hooks(intent.Provider, terminalID, cwd, command)
+		var hookEnv []string
+		var err error
+		if composed, hookEnv, err = hooks(intent.Provider, terminalID, cwd, command, intent.ConfigFile); err != nil {
+			return "", nil, err
+		}
+		env = append(env, hookEnv...)
 	}
 	if intent.Message != "" {
 		// The command can end in a variadic flag (--add-dir a b), which would swallow the prompt.
@@ -621,6 +715,7 @@ func (t *Tracker) Stop(recordID string) error {
 	t.mu.Lock()
 	t.forgetLocked(recordID, t.deps.Now())
 	t.mu.Unlock()
+	t.learnStopped(recordID)
 	t.recordSessionEnd(recordID, oplog.TriggerUser, oplog.StatusOK, "")
 	if t.deps.OnChange != nil {
 		t.deps.OnChange()
@@ -676,6 +771,7 @@ func (t *Tracker) Reconcile() {
 		}
 		stopped = append(stopped, recordID)
 	}
+	t.learnStopped(stopped...)
 	for _, recordID := range stopped {
 		t.recordSessionEnd(recordID, oplog.TriggerAuto, oplog.StatusOK, "")
 	}
@@ -707,12 +803,12 @@ func (t *Tracker) HandleEvent(ev harness.AgentEvent) {
 	t.lastActive[recordID] = nowMs
 
 	sessionChanged := false
-	// The id lands in a later shell command line; only a real UUID is trusted.
-	if _, perr := uuid.Parse(ev.SessionID); ev.Event == "SessionStart" && perr == nil && t.agentSessionID[recordID] != ev.SessionID {
+	// The id lands in a later shell command line; only a plain token is trusted.
+	if ev.Event == harness.EventSessionStart && harness.ValidSessionID(ev.SessionID) && t.agentSessionID[recordID] != ev.SessionID {
 		t.agentSessionID[recordID] = ev.SessionID
 		sessionChanged = true
 	}
-	flushNow := ev.Event == "Stop" || ev.Event == "SessionEnd"
+	flushNow := ev.Event == harness.EventTurnEnd || ev.Event == harness.EventSessionEnd
 	t.mu.Unlock()
 
 	if sessionChanged {

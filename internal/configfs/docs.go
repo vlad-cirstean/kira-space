@@ -1,0 +1,287 @@
+package configfs
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+)
+
+// DocModel is the neutral source of a folder's AGENTS.md. App, Title, Intro and the file facts come
+// from the module; Options and Rules come from the schema and the rule list, so the reference part
+// cannot drift from the validator.
+type DocModel struct {
+	App     string // "Space" or "Studio"
+	Title   string
+	Intro   string // module prose: purpose and workflow, no option facts
+	Pattern string // file name pattern, e.g. "<id>.yaml"
+	Format  string // "YAML" or "Markdown"
+	Options []DocOption
+	Rules   []string
+	Refs    bool // some field takes references
+	// LocalOverrides: the module reads <name>.local.yaml beside each file.
+	LocalOverrides bool
+	// Singleton: the folder holds one file, not one item per file.
+	Singleton bool
+	// MaxBytes is the file size cap; 0 means MaxFileBytes.
+	MaxBytes int
+	// Sections document each file of a folder that holds several kinds: a `## <Pattern>` block with
+	// the section's Intro, Files, Options, Rules and References. When set, the parent's own Pattern,
+	// Format, Options and Rules are not rendered.
+	Sections []DocModel
+}
+
+// DocOption is one schema field.
+type DocOption struct {
+	Path        string // dotted; [] for array items, * for any key
+	Type        string
+	Required    bool
+	Default     string
+	Enum        []string
+	Range       string
+	Description string
+	Ref, Secret bool
+}
+
+// DocFromSchema builds the options list from a JSON Schema (every property path) and the rule docs.
+func DocFromSchema(schemaJSON []byte, rules []string) (DocModel, error) {
+	var root map[string]any
+	if err := json.Unmarshal(schemaJSON, &root); err != nil {
+		return DocModel{}, fmt.Errorf("configfs: schema: %w", err)
+	}
+	w := &schemaWalker{rc: &refChecker{root: root}, m: DocModel{Rules: rules}}
+	w.walk(root, "", false)
+	return w.m, nil
+}
+
+type schemaWalker struct {
+	rc *refChecker
+	m  DocModel
+}
+
+func (w *schemaWalker) walk(s map[string]any, path string, required bool) {
+	s = w.rc.resolve(s)
+	if path != "" {
+		o := optionOf(s, path, required)
+		if o.Ref || o.Secret {
+			w.m.Refs = true
+		}
+		w.m.Options = append(w.m.Options, o)
+	}
+	if props, ok := s["properties"].(map[string]any); ok {
+		w.walkProps(props, requiredSet(s), path)
+	}
+	if ap, ok := s["additionalProperties"].(map[string]any); ok {
+		w.walk(ap, join(path, "*"), false)
+	}
+	if items, ok := s["items"].(map[string]any); ok {
+		w.walk(items, path+"[]", false)
+	}
+}
+
+func (w *schemaWalker) walkProps(props map[string]any, req map[string]bool, path string) {
+	names := make([]string, 0, len(props))
+	for n := range props {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	for _, n := range names {
+		if sub, ok := props[n].(map[string]any); ok {
+			w.walk(sub, join(path, n), req[n])
+		}
+	}
+}
+
+func requiredSet(s map[string]any) map[string]bool {
+	req := map[string]bool{}
+	if r, ok := s["required"].([]any); ok {
+		for _, v := range r {
+			req[str(v)] = true
+		}
+	}
+	return req
+}
+
+func optionOf(s map[string]any, path string, required bool) DocOption {
+	o := DocOption{Path: path, Required: required, Type: typeOf(s), Description: str(s["description"]), Range: rangeOf(s)}
+	if d, ok := s["default"]; ok {
+		b, _ := json.Marshal(d)
+		o.Default = string(b)
+	}
+	if e, ok := s["enum"].([]any); ok {
+		for _, v := range e {
+			b, _ := json.Marshal(v)
+			o.Enum = append(o.Enum, string(b))
+		}
+	}
+	o.Ref, _ = s["x-kira-ref"].(bool)
+	o.Secret, _ = s["x-kira-secret"].(bool)
+	return o
+}
+
+func join(path, name string) string {
+	if path == "" {
+		return name
+	}
+	return path + "." + name
+}
+
+func str(v any) string { s, _ := v.(string); return s }
+
+func typeOf(s map[string]any) string {
+	switch t := s["type"].(type) {
+	case string:
+		return t
+	case []any:
+		parts := make([]string, len(t))
+		for i, v := range t {
+			parts[i] = str(v)
+		}
+		return strings.Join(parts, " or ")
+	}
+	if _, ok := s["enum"]; ok {
+		return "enum"
+	}
+	return ""
+}
+
+func rangeOf(s map[string]any) string {
+	var parts []string
+	for _, k := range []string{"minimum", "maximum", "minLength", "maxLength", "minItems", "maxItems"} {
+		if v, ok := s[k]; ok {
+			parts = append(parts, fmt.Sprintf("%s %v", k, v))
+		}
+	}
+	if p, ok := s["pattern"].(string); ok {
+		parts = append(parts, "pattern `"+p+"`")
+	}
+	return strings.Join(parts, ", ")
+}
+
+func writeOptions(b *bytes.Buffer, opts []DocOption, h string) {
+	if len(opts) == 0 {
+		return
+	}
+	b.WriteString(h + " Options\n\n")
+	for _, o := range opts {
+		fmt.Fprintf(b, "- `%s`: %s", o.Path, o.Type)
+		if o.Required {
+			b.WriteString(", required")
+		}
+		if o.Default != "" {
+			fmt.Fprintf(b, ", default `%s`", o.Default)
+		}
+		if len(o.Enum) > 0 {
+			fmt.Fprintf(b, ", one of %s", strings.Join(o.Enum, ", "))
+		}
+		if o.Range != "" {
+			fmt.Fprintf(b, ", %s", o.Range)
+		}
+		if o.Ref {
+			b.WriteString(", takes references")
+		}
+		if o.Secret {
+			b.WriteString(", one secret reference")
+		}
+		if o.Description != "" {
+			fmt.Fprintf(b, ". %s", o.Description)
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
+}
+
+func writeRules(b *bytes.Buffer, rules []string, h string) {
+	if len(rules) == 0 {
+		return
+	}
+	b.WriteString(h + " Rules\n\n")
+	for _, r := range rules {
+		fmt.Fprintf(b, "- %s\n", r)
+	}
+	b.WriteString("\n")
+}
+
+func writeRefsSection(b *bytes.Buffer, h string) {
+	b.WriteString(h + " References\n\n" +
+		"- `${NAME}` reads the environment variable NAME.\n" +
+		"- `${secret:name}` reads the app secret `name`. A file holds the reference, never the secret value.\n" +
+		"- `$${` is a literal `${`.\n" +
+		"- Only fields marked \"takes references\" or \"one secret reference\" are resolved. A missing variable or secret fails the use, never an empty value.\n\n")
+}
+
+// writeFileDoc renders one file's facts, options, rules and references under heading level h.
+func writeFileDoc(b *bytes.Buffer, m DocModel, h string, hidden bool) {
+	limit := m.MaxBytes
+	if limit == 0 {
+		limit = MaxFileBytes
+	}
+	fmt.Fprintf(b, "%s Files\n\n- Name: `%s`, %s, at most %s.\n", h, m.Pattern, m.Format, sizeText(limit))
+	if m.Singleton {
+		b.WriteString("- A single file.\n")
+	} else {
+		b.WriteString("- One item per file. The file name without its extension is the item id.\n")
+	}
+	if hidden {
+		b.WriteString("- Hidden files and this file are never read as config.\n")
+	}
+	b.WriteString("\n")
+	writeOptions(b, m.Options, h)
+	writeRules(b, m.Rules, h)
+	if m.Refs {
+		writeRefsSection(b, h)
+	}
+}
+
+// RenderAgentsMD renders the model as the folder's AGENTS.md.
+func RenderAgentsMD(m DocModel) []byte {
+	var b bytes.Buffer
+	fmt.Fprintf(&b, "<!-- Generated by Kira %s. Edits here are overwritten at start. -->\n\n# %s\n\n", m.App, m.Title)
+	if m.Intro != "" {
+		fmt.Fprintf(&b, "%s\n\n", strings.TrimSpace(m.Intro))
+	}
+	if len(m.Sections) == 0 {
+		writeFileDoc(&b, m, "##", true)
+	}
+	for _, sec := range m.Sections {
+		fmt.Fprintf(&b, "## %s\n\n", sec.Pattern)
+		if sec.Intro != "" {
+			fmt.Fprintf(&b, "%s\n\n", strings.TrimSpace(sec.Intro))
+		}
+		writeFileDoc(&b, sec, "###", false)
+	}
+	if len(m.Sections) > 0 {
+		b.WriteString("## Files in this folder\n\n- Hidden files and this file are never read as config.\n\n")
+	}
+	b.WriteString("## How changes apply\n\n" +
+		"- Kira watches this folder. Edit a file in any editor; the change applies within a second.\n" +
+		"- An invalid file is not applied. Kira keeps the last good version and shows the error with its line.\n" +
+		"- Kira saves whole files. A save built on text that changed meanwhile is refused as a conflict.\n")
+	if m.LocalOverrides {
+		b.WriteString("- Keep per-machine values in `<name>.local.yaml` beside `<name>.yaml`, out of sync and git.\n")
+	}
+	return b.Bytes()
+}
+
+// WriteDocs writes AGENTS.md into the folder when its bytes differ, creating the folder if missing.
+func (f *Folder[T]) WriteDocs(m DocModel) error {
+	path := filepath.Join(f.Dir, DocsFile)
+	out := RenderAgentsMD(m)
+	if cur, err := os.ReadFile(path); err == nil && bytes.Equal(cur, out) {
+		return nil
+	}
+	return WriteAtomic(path, out, 0o644)
+}
+
+func sizeText(n int) string {
+	switch {
+	case n >= 1<<20 && n%(1<<20) == 0:
+		return fmt.Sprintf("%d MiB", n>>20)
+	case n >= 1<<10 && n%(1<<10) == 0:
+		return fmt.Sprintf("%d KiB", n>>10)
+	}
+	return fmt.Sprintf("%d bytes", n)
+}

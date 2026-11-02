@@ -1,0 +1,62 @@
+{
+  "ScriptRunsService.McpServers": {
+    "servers": [
+      {
+        "name": "app-srv",
+        "status": "",
+        "target": "127.0.0.1:9",
+        "transport": "http"
+      }
+    ],
+    "source": "app"
+  },
+  "ScriptRunsService.Preview#blocked": {
+    "ade": null,
+    "allowedTools": [
+      "Read",
+      "Grep",
+      "Glob",
+      "mcp__user-srv__echo",
+      "mcp__kira-ade__finish_step"
+    ],
+    "blocker": "MCP server user-srv is no longer in your Kira agent settings config",
+    "body": "Reply ok.",
+    "command": "",
+    "dir": {
+      "base": "<space>",
+      "blocker": "",
+      "branch": "",
+      "mode": "kira",
+      "path": "<space>/automations/<id:1>",
+      "pending": false
+    },
+    "env": [],
+    "hash": "<masked>",
+    "kind": "smart",
+    "maxBudgetUsd": 1,
+    "mcpServers": [
+      "user-srv"
+    ],
+    "missing": [],
+    "model": "sonnet",
+    "needs": {
+      "branches": [],
+      "tasks": []
+    },
+    "prompt": [
+      {
+        "text": "Reply ok.",
+        "value": "",
+        "var": ""
+      }
+    ],
+    "secretIssue": "",
+    "suffix": "When finished, call finish_step with status \"done\" and a one-line summary. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
+    "timeout": "15m",
+    "tools": [
+      "Read",
+      "Grep",
+      "Glob"
+    ]
+  }
+}

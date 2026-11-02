@@ -204,6 +204,11 @@ func (s *memStore) RecordLastValid(f, js string, _ int64) error {
 	return nil
 }
 
+func (s *memStore) ForgetLastValid(f string) error {
+	delete(s.m, f)
+	return nil
+}
+
 func TestReader_lastValidSurvivesBreakage(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "workflows")
 	store := &memStore{m: map[string]string{}}

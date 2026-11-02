@@ -5,15 +5,18 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"sync"
 
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
 // How a background (smart or headless) run was ended from outside, set before its context is cancelled.
@@ -123,7 +126,12 @@ func (s *Service) launchSmart(p *planned, run Run, existing bool) (Started, erro
 	s.mu.Lock()
 	srv := s.mcpServer()
 	s.mu.Unlock()
-	sbx, err := s.prepareSandbox(ctx, p, runID, srv.Port())
+	contextFile, err := s.contextFile()
+	if err != nil {
+		abandon()
+		return Started{}, ipcerr.InternalErr(err)
+	}
+	sbx, err := s.prepareSandbox(ctx, p, runID, srv.Port(), contextFile)
 	if err != nil {
 		abandon()
 		return Started{}, ipcerr.InternalErr(err)
@@ -142,7 +150,16 @@ func (s *Service) launchSmart(p *planned, run Run, existing bool) (Started, erro
 		abandon()
 		return Started{}, ipcerr.InternalErr(err)
 	}
+	ticked, err := s.Servers.Wire(ctx, agentcfg.Launch{Provider: p.agent, Kind: harness.LaunchHeadless, Dir: s.mcpDir(), Stem: runID}, p.mcp)
+	if err != nil {
+		releaseGrant()
+		releaseTarget()
+		sbx.cleanup()
+		abandon()
+		return Started{}, ipcerr.BadRequest(err.Error())
+	}
 	if err := s.begin(run, existing); err != nil {
+		ticked.Release()
 		releaseGrant()
 		releaseTarget()
 		sbx.cleanup()
@@ -156,40 +173,55 @@ func (s *Service) launchSmart(p *planned, run Run, existing bool) (Started, erro
 		timeout, timeoutText = s.SmartTimeout, s.SmartTimeout.String()
 	}
 	agent := p.agent
-	env := agent.ScrubEnv(loginshell.ScrubGitEnv(os.Environ()))
+	env := p.headless.ScrubEnv(loginshell.ScrubGitEnv(os.Environ()))
 	env = append(env, "GIT_TERMINAL_PROMPT=0")
 	env = append(env, p.envList...)
 	spec := harness.HeadlessSpec{
 		Dir: p.dir.Path, Prompt: p.sent, SessionID: sessionID, Resume: p.resume, MCPConfigs: []string{cfg},
 		Model: p.smart.Model, MaxBudgetUSD: p.smart.MaxBudgetUSD, Tools: pv.Tools, AllowedTools: pv.Allowed,
-		Isolated: true, UserMCP: p.mcp, GrantMCP: []string{agentmcp.ServerName}, Timeout: timeout, Env: env,
+		Isolated: true, UserMCP: ticked.UserMCP, GrantMCP: []string{agentmcp.ServerName}, Timeout: timeout, Env: env,
+		ContextFile: contextFile, Hermetic: s.hermetic() && len(ticked.UserMCP) == 0,
 	}
+	if ticked.MCPConfig != "" {
+		spec.MCPConfigs = append(spec.MCPConfigs, ticked.MCPConfig)
+	}
+	mask := secrets.NewMasker(append(slices.Clone(p.secretVals), ticked.Secrets...)...)
 	spec = s.applySandbox(spec, sbx, agent)
 	go func() {
 		defer s.smartWait.Done()
-		sink := newLogSink(s, runID)
+		sink := newLogSink(s, runID, mask)
 		s.noticeSandbox(sink, sbx)
 		var res *harness.Result
 		var stopWatch func()
-		exit, runErr := agent.RunHeadless(ctx, spec, harness.Handler{
+		exit, runErr := p.headless.RunHeadless(ctx, spec, harness.Handler{
 			OnLine:   func(l harness.Line) { sink.add(l.Stream, l.Text) },
 			OnResult: func(r harness.Result) { res = &r },
 			OnStart:  func(pid int) { stopWatch = s.watchSandbox(sbx, runID, sink, pid) },
+			OnSessionID: func(id string) {
+				if err := s.Runs.SetSessionID(runID, id); err != nil {
+					slog.Warn("scriptruns: store session id", "scope", "scriptruns", "run", runID, "err", err)
+					return
+				}
+				if r, err := s.Runs.Get(runID); err == nil {
+					s.emit(r)
+				}
+			},
 		})
 		if stopWatch != nil {
 			stopWatch()
 		}
 		sink.flush()
+		ticked.Release()
 		releaseGrant()
 		releaseTarget()
 		sbx.cleanup()
 		out := decide(decision{
 			finish: s.takeFinishPtr(runID), res: res, exit: exit, runErr: runErr, end: sr.endedBy(),
-			agent: runoutcome.AgentOf(agent), timeout: timeoutText, budget: p.smart.MaxBudgetUSD, app: s.App, lastErr: sink.lastStderr(), resumeLost: p.resume != "" && agent.ResumeLost(sink.lastStderr()),
+			agent: runoutcome.AgentOf(agent), timeout: timeoutText, budget: p.smart.MaxBudgetUSD, app: s.App, lastErr: sink.lastStderr(), resumeLost: p.resume != "" && p.headless.ResumeLost(sink.lastStderr()),
 		})
 		out = sbx.outcome(out)
 		cancel()
-		done, ferr := s.Runs.FinishByRun(runID, out, s.now())
+		done, ferr := s.Runs.FinishByRun(runID, maskOutcome(out, mask), s.now())
 		if p.release != nil {
 			p.release()
 		}
@@ -250,6 +282,7 @@ func (s *Service) Close() {
 	}
 	srv := s.server
 	s.mu.Unlock()
+	s.releaseAllAgents()
 	for _, r := range runs {
 		r.stop(endQuit)
 	}

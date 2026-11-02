@@ -61,6 +61,7 @@ func TestSmartScriptRun(t *testing.T) {
 
 	t.Run("user MCP server loads through claude", func(t *testing.T) {
 		app := newRealApp(t)
+		app.SetHermetic(t, false) // hermetic runs tick the app's own servers instead
 		if err := os.Remove(filepath.Join(app.BinDir, "claude")); err != nil {
 			t.Fatal(err)
 		}
@@ -69,10 +70,11 @@ func TestSmartScriptRun(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(app.Home, ".claude.json"), []byte(cfg), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		servers, err := app.W.ScriptRuns.McpServers()
+		list, err := app.W.ScriptRuns.McpServers()
 		if err != nil {
 			t.Fatalf("McpServers: %v", err)
 		}
+		servers := list.Servers
 		listed := ""
 		for _, s := range servers {
 			if s.Name == "fake" {
@@ -114,6 +116,38 @@ func TestSmartScriptRun(t *testing.T) {
 			return nil
 		})
 		t.Logf("PASS user MCP server: cost %.4f USD", *o.CostUSD)
+	})
+
+	t.Run("app MCP server loads through claude", func(t *testing.T) {
+		app := newRealApp(t)
+		if err := os.Remove(filepath.Join(app.BinDir, "claude")); err != nil {
+			t.Fatal(err)
+		}
+		fakeMCP := filepath.Join(app.BinDir, "fake-mcp")
+		dir := filepath.Join(app.SpaceHome, "agent")
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		yaml := fmt.Sprintf("mcp_servers:\n  fake:\n    command: %q\n", fakeMCP)
+		if err := os.WriteFile(filepath.Join(dir, "settings.yaml"), []byte(yaml), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		// A user-config server of the same kind must stay out of a hermetic run.
+		cfg := fmt.Sprintf(`{"mcpServers":{"other":{"command":%q}}}`, fakeMCP)
+		if err := os.WriteFile(filepath.Join(app.Home, ".claude.json"), []byte(cfg), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		list, err := app.W.ScriptRuns.McpServers()
+		if err != nil || list.Source != "app" || len(list.Servers) != 1 || list.Servers[0].Name != "fake" {
+			t.Fatalf("McpServers = %+v, %v, want the app's fake", list, err)
+		}
+		run := smartRun(t, app, "Call the tool mcp__fake__echo with text zeta-7421. Then finish, with the text the tool returned as the summary.",
+			[]string{"Read"}, scripts.MCPChoice{Server: "fake", Tools: []string{"echo"}})
+		o := run.Outcome
+		if run.State != "done" || o == nil || !o.Reported || o.CostUSD == nil || !strings.Contains(o.Summary, "zeta-7421") {
+			t.Fatalf("run = %s, outcome = %+v, want done, reported, echoing zeta-7421", run.State, o)
+		}
+		t.Logf("PASS app MCP server: cost %.4f USD", *o.CostUSD)
 	})
 
 	t.Run("a tool outside the allowlist does not run", func(t *testing.T) {

@@ -28,9 +28,12 @@ type OpenArgs struct {
 	// ScriptLaunchToken, only with ScriptID, is the single-use token a confirmed run dialog got
 	// from scriptRuns.Start: it carries the run's folder and environment.
 	ScriptLaunchToken string `json:"scriptLaunchToken"`
+	// AgentLaunchToken, only with launchKind agent, is the single-use token of a launch whose env
+	// the host holds (Continue in terminal); Command must be the command the token was made for.
+	AgentLaunchToken string `json:"agentLaunchToken"`
 }
 
-// MaxLaunchTokenBytes bounds ScriptLaunchToken.
+// MaxLaunchTokenBytes bounds ScriptLaunchToken and AgentLaunchToken.
 const MaxLaunchTokenBytes = 64
 
 // ValidateOpen is both apps' own TerminalService.Open — identical up to whatever each app's own
@@ -53,6 +56,9 @@ func ValidateOpen(args OpenArgs) error {
 	}
 	if args.ScriptLaunchToken != "" && (args.ScriptID == "" || len(args.ScriptLaunchToken) > MaxLaunchTokenBytes) {
 		return ipcerr.Contract("scriptLaunchToken needs scriptId and at most 64 characters")
+	}
+	if args.AgentLaunchToken != "" && (args.LaunchKind != LaunchKindAgent || len(args.AgentLaunchToken) > MaxLaunchTokenBytes) {
+		return ipcerr.Contract("agentLaunchToken needs launchKind agent and at most 64 characters")
 	}
 	if args.ScriptID != "" {
 		if args.LaunchKind != LaunchKindScript {

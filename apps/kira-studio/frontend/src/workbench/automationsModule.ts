@@ -85,8 +85,11 @@ export function createAutomationsModule(): AutomationsModuleContext {
     },
     scripts: {
       records: () => customScriptsStore.records,
-      create: (fields) => customScriptsStore.createCustomScript(fields),
-      update: (id, fields) => customScriptsStore.updateCustomScript(id, fields),
+      create: (fields, secretValues) =>
+        customScriptsStore.createCustomScript(fields, secretValues ?? null),
+      update: (id, fields, secretValues) =>
+        customScriptsStore.updateCustomScript(id, fields, secretValues ?? null),
+      secretStorage: () => customScriptsStore.secretStorage,
       remove: (id) => customScriptsStore.removeCustomScript(id),
       collections: () => customScriptsStore.collections,
       createCollection: (name) => customScriptsStore.createCollection(name),

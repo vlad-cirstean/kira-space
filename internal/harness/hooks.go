@@ -32,6 +32,14 @@ type HookListener interface {
 	Close() error
 }
 
+// ConfigMerger is a HookListener that can extend a provider config file Kira already wrote for the
+// launch (the app's agent settings) instead of adding a second settings source.
+type ConfigMerger interface {
+	// ComposeInto adds Kira's hooks to configFile in place and returns command unchanged with the
+	// env the launch needs. A failure fails the launch: Kira's hooks are always on.
+	ComposeInto(terminalID, cwd, command, configFile string) (string, []string, error)
+}
+
 // HookStatus is a listener's state.
 type HookStatus struct {
 	Running bool
@@ -39,21 +47,39 @@ type HookStatus struct {
 	SettingsPath string
 }
 
+// EventKind is a session event's neutral kind. The values are the wire strings the bridge and the
+// frontend read.
+type EventKind string
+
+const (
+	EventSessionStart EventKind = "SessionStart"
+	EventSessionEnd   EventKind = "SessionEnd"
+	EventPrompt       EventKind = "UserPromptSubmit"
+	EventToolStart    EventKind = "PreToolUse"
+	EventToolEnd      EventKind = "PostToolUse"
+	EventNotification EventKind = "Notification"
+	EventTurnEnd      EventKind = "Stop"
+)
+
 // AgentEvent is one session event. TerminalID comes from the launch, the rest from the agent's
 // payload; only the fields below are kept.
 type AgentEvent struct {
-	TerminalID       string `json:"terminalId"`
-	Event            string `json:"event"`
-	SessionID        string `json:"sessionId"`
-	Cwd              string `json:"cwd"`
-	ToolName         string `json:"toolName"`
-	ToolUseID        string `json:"toolUseId"`
-	NotificationType string `json:"notificationType"`
-	Message          string `json:"message"`
-	Source           string `json:"source"`
-	Reason           string `json:"reason"`
+	TerminalID       string    `json:"terminalId"`
+	Event            EventKind `json:"event"`
+	SessionID        string    `json:"sessionId"`
+	Cwd              string    `json:"cwd"`
+	ToolName         string    `json:"toolName"`
+	ToolUseID        string    `json:"toolUseId"`
+	NotificationType string    `json:"notificationType"`
+	Message          string    `json:"message"`
+	Source           string    `json:"source"`
+	Reason           string    `json:"reason"`
 	// LastAssistantMessage is Stop's reply text, bounded like Message.
 	LastAssistantMessage string `json:"lastAssistantMessage"`
+	// Wakes: a tool start that arms a self-wake, so the turn end that follows is not "finished".
+	Wakes bool `json:"-"`
+	// NeedsInput: a notification that asks the user to act.
+	NeedsInput bool `json:"-"`
 }
 
 // Hooks runs one listener per registered provider that is a HookHost and routes a launch to its
@@ -111,15 +137,21 @@ func (h *Hooks) Stop() error {
 	return errors.Join(errs...)
 }
 
-// Compose returns command unchanged with a nil env for a provider without a running listener.
-func (h *Hooks) Compose(provider, terminalID, cwd, command string) (string, []string) {
+// Compose returns command unchanged with a nil env for a provider without a running listener. With
+// a configFile and a listener that is a ConfigMerger, Kira's hooks go into that file; otherwise the
+// listener adds its own settings flag.
+func (h *Hooks) Compose(provider, terminalID, cwd, command, configFile string) (string, []string, error) {
 	h.mu.Lock()
 	l := h.listeners[provider]
 	h.mu.Unlock()
 	if l == nil {
-		return command, nil
+		return command, nil, nil
 	}
-	return l.Compose(terminalID, cwd, command)
+	if m, ok := l.(ConfigMerger); ok && configFile != "" {
+		return m.ComposeInto(terminalID, cwd, command, configFile)
+	}
+	composed, env := l.Compose(terminalID, cwd, command)
+	return composed, env, nil
 }
 
 // Status is the provider's listener state; the zero value while it is stopped or has no hooks.

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ScriptRunPreview } from '@shared/domain/scriptRuns';
 import { Card } from '@theme/components/ui/card';
+import { FieldError } from '@theme/components/ui/field';
 import VarText from '@theme/components/VarText.vue';
 import { type MessageKey, t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
@@ -26,7 +27,12 @@ const folderParams = computed(() => {
   return d.mode === 'worktree' ? undefined : { mode: t(MODE_LABEL[d.mode]) };
 });
 function envParts(e: ScriptRunPreview['env'][number]): TextPart[] {
-  return [`${e.name}=`, ...(e.secret ? ['••••'] : [{ name: e.fromVar, value: e.value }])];
+  return [
+    `${e.name}=`,
+    ...(e.secret
+      ? [e.saved ? `•••• (${t('automations.params.secretValue.saved.status')})` : '••••']
+      : [{ name: e.fromVar, value: e.value }]),
+  ];
 }
 </script>
 
@@ -45,11 +51,16 @@ function envParts(e: ScriptRunPreview['env'][number]): TextPart[] {
     <template v-if="preview.kind === 'smart'">
       <div class="text-muted-foreground" data-testid="run-limits">
         {{
-          t('automations.run.limits.label', {
-            model: preview.model,
-            budget: formatCurrency(preview.maxBudgetUsd),
-            timeout: preview.timeout,
-          })
+          preview.maxBudgetUsd > 0
+            ? t('automations.run.limits.label', {
+                model: preview.model,
+                budget: formatCurrency(preview.maxBudgetUsd),
+                timeout: preview.timeout,
+              })
+            : t('automations.run.limitsNoCap.label', {
+                model: preview.model,
+                timeout: preview.timeout,
+              })
         }}
       </div>
       <div class="font-data" data-testid="run-tools">--tools {{ preview.tools.join(',') }}</div>
@@ -68,6 +79,9 @@ function envParts(e: ScriptRunPreview['env'][number]): TextPart[] {
         ><VarText :parts="envParts(e)" /></div
       >
     </div>
+    <FieldError v-if="preview.secretIssue" data-testid="run-secret-issue">{{
+      preview.secretIssue
+    }}</FieldError>
     <div v-if="preview.kind === 'smart'" class="text-muted-foreground" data-testid="run-isolated">
       {{ t('automations.run.isolated.body') }}
     </div>

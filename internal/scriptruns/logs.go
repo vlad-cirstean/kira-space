@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/termtext"
 )
 
@@ -26,6 +27,7 @@ type LogPush struct {
 type logSink struct {
 	svc   *Service
 	runID string
+	mask  *secrets.Masker
 
 	flushMu sync.Mutex // keeps stored seq order equal to push order
 	mu      sync.Mutex
@@ -36,9 +38,12 @@ type logSink struct {
 	tail    []string
 }
 
-func newLogSink(svc *Service, runID string) *logSink { return &logSink{svc: svc, runID: runID} }
+func newLogSink(svc *Service, runID string, mask *secrets.Masker) *logSink {
+	return &logSink{svc: svc, runID: runID, mask: mask}
+}
 
 func (l *logSink) add(stream, text string) {
+	text = l.mask.Mask(text)
 	if len(text) > maxLogLineBytes {
 		text = strings.ToValidUTF8(text[:maxLogLineBytes], "") + "…"
 	}

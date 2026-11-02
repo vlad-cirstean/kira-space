@@ -3,7 +3,9 @@ import type {
   CustomScriptFields,
   ScriptCollection,
   ScriptsSnapshot,
+  SecretValues,
 } from '@shared/domain/scripts';
+import type { SecretStorageStatus } from '@shared/domain/secrets';
 import { defineStore } from 'pinia';
 import { reactive, toRefs } from 'vue';
 import { hydrateThenSubscribe } from '../state/hydrateThenSubscribe';
@@ -13,8 +15,15 @@ import { hydrateThenSubscribe } from '../state/hydrateThenSubscribe';
 // window shows up in every other.
 export interface CustomScriptsControl {
   customScriptsList(): Promise<ScriptsSnapshot>;
-  customScriptsCreate(fields: CustomScriptFields): Promise<CustomScript>;
-  customScriptsUpdate(id: string, fields: CustomScriptFields): Promise<CustomScript>;
+  customScriptsCreate(
+    fields: CustomScriptFields,
+    secretValues: SecretValues | null,
+  ): Promise<CustomScript>;
+  customScriptsUpdate(
+    id: string,
+    fields: CustomScriptFields,
+    secretValues: SecretValues | null,
+  ): Promise<CustomScript>;
   customScriptsDelete(id: string): Promise<void>;
   customScriptsCreateCollection(name: string): Promise<ScriptCollection>;
   customScriptsRenameCollection(id: string, name: string): Promise<void>;
@@ -30,10 +39,21 @@ export interface CustomScriptsControl {
   onCustomScriptsChanged(cb: (snapshot: ScriptsSnapshot) => void): () => void;
 }
 
-/** A Go nil slice crosses the bridge as null; coerce both arrays so the store always holds arrays. */
+const STORAGE_OFF: SecretStorageStatus = {
+  available: false,
+  backend: 'unavailable',
+  insecureFallback: false,
+  reason: null,
+};
+
+/** A Go nil slice crosses the bridge as null; coerce the arrays so the store always holds arrays. */
 export function scriptsSnapshotOf(raw: unknown): ScriptsSnapshot {
   const r = (raw ?? {}) as Partial<ScriptsSnapshot>;
-  return { collections: r.collections ?? [], scripts: r.scripts ?? [] };
+  return {
+    collections: r.collections ?? [],
+    scripts: (r.scripts ?? []).map((s) => ({ ...s, savedSecrets: s.savedSecrets ?? [] })),
+    secretStorage: r.secretStorage ?? STORAGE_OFF,
+  };
 }
 
 /** Puts the listed items in `ids` order at the positions the listed items already hold. */
@@ -50,6 +70,7 @@ export function createCustomScriptsStore(control: CustomScriptsControl) {
     const state = reactive({
       collections: [] as ScriptCollection[],
       records: [] as CustomScript[],
+      secretStorage: STORAGE_OFF,
     });
 
     let unsubscribe: (() => void) | null = null;
@@ -63,16 +84,24 @@ export function createCustomScriptsStore(control: CustomScriptsControl) {
         apply: (snapshot) => {
           state.collections = snapshot.collections;
           state.records = snapshot.scripts;
+          state.secretStorage = snapshot.secretStorage;
         },
       });
     }
 
-    async function createCustomScript(fields: CustomScriptFields): Promise<void> {
-      await control.customScriptsCreate(fields);
+    async function createCustomScript(
+      fields: CustomScriptFields,
+      secretValues: SecretValues | null = null,
+    ): Promise<void> {
+      await control.customScriptsCreate(fields, secretValues);
     }
 
-    async function updateCustomScript(id: string, fields: CustomScriptFields): Promise<void> {
-      await control.customScriptsUpdate(id, fields);
+    async function updateCustomScript(
+      id: string,
+      fields: CustomScriptFields,
+      secretValues: SecretValues | null = null,
+    ): Promise<void> {
+      await control.customScriptsUpdate(id, fields, secretValues);
     }
 
     async function removeCustomScript(id: string): Promise<void> {
@@ -103,6 +132,7 @@ export function createCustomScriptsStore(control: CustomScriptsControl) {
       const snapshot = await control.customScriptsList();
       state.collections = snapshot.collections;
       state.records = snapshot.scripts;
+      state.secretStorage = snapshot.secretStorage;
     }
 
     async function reorderScripts(collectionId: string | null, ids: string[]): Promise<void> {

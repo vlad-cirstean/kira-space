@@ -5,7 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"maps"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +17,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -41,6 +44,8 @@ type EnvVar struct {
 	Value   string `json:"value"`
 	Secret  bool   `json:"secret"`
 	FromVar string `json:"fromVar"`
+	// Saved says a secret's value comes from the script's saved value, not the dialog.
+	Saved bool `json:"saved"`
 }
 
 // Preview is what a run would do, exactly as Start does it.
@@ -49,8 +54,10 @@ type Preview struct {
 	// Missing lists required params without a value.
 	Missing []string `json:"missing"`
 	// Blocker, when set, says why Run is disabled.
-	Blocker string      `json:"blocker"`
-	Dir     scripts.Dir `json:"dir"`
+	Blocker string `json:"blocker"`
+	// SecretIssue says a saved secret value could not be read, so the run asks for it.
+	SecretIssue string      `json:"secretIssue"`
+	Dir         scripts.Dir `json:"dir"`
 	// Body is the saved prompt template; a one-off edit starts from it.
 	Body string `json:"body"`
 	// Prompt is the body being used, resolved, as parts.
@@ -94,6 +101,9 @@ type planned struct {
 	dir     scripts.Dir
 	params  []RunParam
 	envList []string
+	// mask hides every secret value the run gets; nil when it has none.
+	mask       *secrets.Masker
+	secretVals []string
 	// sent is the full prompt text a smart run sends: the resolved body, then the suffix.
 	sent    string
 	smart   scripts.Smart
@@ -110,6 +120,8 @@ type planned struct {
 	// agent is the provider a smart run runs under, pinned at plan time; provider is its id.
 	agent    harness.Provider
 	provider string
+	// headless is agent's Headless role, nil when it has none (the preview then carries a blocker).
+	headless harness.Headless
 	// timeout and timeoutText bound a headless normal run.
 	timeout     time.Duration
 	timeoutText string
@@ -142,7 +154,11 @@ func (s *Service) plan(ctx context.Context, args RunArgs, o planOpts) (*planned,
 	if rec == nil {
 		return nil, ipcerr.T(ipcerr.CodeNotFound, "automations.script.gone.error", nil)
 	}
-	vals, missing, err := scripts.ParamValues(rec.Params, args.Params)
+	given, saved, issue, err := s.fillSaved(*rec, args.Params)
+	if err != nil {
+		return nil, err
+	}
+	vals, missing, err := scripts.ParamValues(rec.Params, given)
 	if err != nil {
 		return nil, ipcerr.BadRequest(err.Error())
 	}
@@ -152,18 +168,22 @@ func (s *Service) plan(ctx context.Context, args RunArgs, o planOpts) (*planned,
 		Allowed: []string{}, Prompt: []scripts.Part{}, Needs: Needs{Tasks: []TaskChoice{}, Branches: []BranchChoice{}},
 	}
 	pv.Blocker = p.dir.Blocker
+	pv.SecretIssue = issue
 	rendered := map[string]string{}
+	var secretVals []string
 	for _, v := range vals {
-		pv.Env = append(pv.Env, EnvVar{Name: scripts.EnvName(v.Name), Value: ifNot(v.Secret, v.Env), Secret: v.Secret, FromVar: v.Name})
+		pv.Env = append(pv.Env, EnvVar{Name: scripts.EnvName(v.Name), Value: ifNot(v.Secret, v.Env), Secret: v.Secret, FromVar: v.Name, Saved: v.Secret && saved[v.Name]})
 		p.envList = append(p.envList, scripts.EnvName(v.Name)+"="+v.Env)
 		shown := v.Env
 		if v.Secret {
 			shown = scripts.SecretMask
+			secretVals = append(secretVals, v.Env)
 		} else {
 			rendered[v.Name] = v.Rendered
 		}
 		p.params = append(p.params, RunParam{Name: v.Name, Value: shown})
 	}
+	p.mask, p.secretVals = secrets.NewMasker(secretVals...), secretVals
 	if rec.Kind != scripts.KindSmart {
 		pv.Command = rec.Command
 		if err := s.planADE(args, p, &pv, rec.Command, rendered); err != nil {
@@ -193,6 +213,11 @@ func (s *Service) plan(ctx context.Context, args RunArgs, o planOpts) (*planned,
 		return nil, providerGone(err)
 	}
 	p.agent, p.provider = agent, agent.ID()
+	if h, ok := harness.HeadlessOf(agent); ok {
+		p.headless = h
+	} else if pv.Blocker == "" {
+		pv.Blocker = (&harness.MissingRole{Agent: agent.Label(), Role: "smart scripts"}).Error()
+	}
 	extraTools := []harness.MCPTool{agentmcp.FinishStep}
 	if args.TaskID != "" {
 		pv.Suffix = agentmcp.SpaceNote(s.llmPrompts()) + "\n\n" + pv.Suffix
@@ -206,11 +231,64 @@ func (s *Service) plan(ctx context.Context, args RunArgs, o planOpts) (*planned,
 	}
 	p.mcp = pv.MCP
 	if pv.Blocker == "" {
+		pv.Blocker = agentBlocker(agent, smart.Model, smart.MaxBudgetUSD)
+	}
+	if pv.Blocker == "" {
 		pv.Blocker = s.smartBlocker(ctx, agent, pv.MCP, o.informational)
 	}
 	p.preview = finishPreview(pv, p)
 	return p, nil
 }
+
+// agentBlocker is why agent cannot run a script with model and a cost cap: a cap it cannot enforce,
+// or a model outside its catalog (the registry holds every provider's aliases, so a script may name
+// one this agent lacks).
+func agentBlocker(agent harness.Provider, model string, budgetUSD float64) string {
+	switch {
+	case budgetUSD > 0 && !harness.CapsCost(agent):
+		return i18n.T("backend.core.agent.noCostCap.body", map[string]string{"agent": agent.Label()})
+	case model != "" && !agent.Models().Valid(model):
+		return i18n.T("backend.core.agent.modelUnknown.body", map[string]string{"agent": agent.Label(), "model": model})
+	}
+	return ""
+}
+
+// fillSaved adds the saved value of each secret param the dialog gave none for; a typed value wins.
+// saved names the params filled this way. issue says a saved value could not be read, which counts
+// as absent.
+func (s *Service) fillSaved(rec scripts.CustomScript, typed map[string][]string) (given map[string][]string, saved map[string]bool, issue string, err error) {
+	given, saved = typed, map[string]bool{}
+	var want []string
+	for _, p := range rec.Params {
+		if p.Secret && slices.Contains(rec.SavedSecrets, p.Name) && !hasValue(typed[p.Name]) {
+			want = append(want, p.Name)
+		}
+	}
+	if len(want) == 0 {
+		return given, saved, "", nil
+	}
+	vals, unreadable, err := s.Scripts.SecretValues(rec.ID)
+	if err != nil {
+		return nil, nil, "", ipcerr.InternalErr(err)
+	}
+	given = make(map[string][]string, len(typed)+len(want))
+	maps.Copy(given, typed)
+	var bad []string
+	var detail string
+	for _, n := range want {
+		if v, ok := vals[n]; ok {
+			given[n], saved[n] = []string{v}, true
+		} else if e, ok := unreadable[n]; ok {
+			bad, detail = append(bad, n), e.Error()
+		}
+	}
+	if len(bad) > 0 {
+		issue = i18n.T("backend.core.scriptRun.savedSecretUnreadable.body", map[string]string{"names": strings.Join(bad, ", "), "detail": detail})
+	}
+	return given, saved, issue, nil
+}
+
+func hasValue(vs []string) bool { return len(vs) > 0 && vs[0] != "" }
 
 func ifNot(secret bool, v string) string {
 	if secret {
@@ -264,23 +342,14 @@ func (s *Service) smartBlocker(ctx context.Context, agent harness.Provider, mcp 
 	if len(mcp) == 0 {
 		return ""
 	}
-	have, known, err := agent.UserMCPPresence(ctx, s.Home, mcp, !informational)
+	missing, known, err := s.Servers.Missing(ctx, agent, s.Home, mcp, !informational)
 	if err != nil {
 		return err.Error()
 	}
-	if !known {
+	if !known || missing == "" {
 		return ""
 	}
-	for _, name := range mcp {
-		found := false
-		for _, h := range have {
-			found = found || h.Name == name
-		}
-		if !found {
-			return harness.ErrServerGone{Name: name, Agent: agent.Label()}.Error()
-		}
-	}
-	return ""
+	return s.Servers.Gone(agent, missing).Error()
 }
 
 func finishPreview(pv Preview, p *planned) Preview {

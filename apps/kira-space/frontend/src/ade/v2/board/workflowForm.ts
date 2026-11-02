@@ -54,6 +54,7 @@ function kindDefaults(kind: StepKind): Omit<WorkflowStep, 'id' | 'name'> {
     params: {},
     review: null,
     sandbox: defaultSandbox(),
+    agent: '',
     settings: {},
   };
   if (kind === 'manual') return base;

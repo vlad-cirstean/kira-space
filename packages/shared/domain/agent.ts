@@ -72,3 +72,7 @@ export const agentInfoSchema = /*#__PURE__*/ z.object({
   usage: z.boolean(),
 });
 export type AgentInfo = z.infer<typeof agentInfoSchema>;
+
+// agentsvc.Entry: one registered provider and whether its CLI is installed.
+export const agentEntrySchema = /*#__PURE__*/ agentInfoSchema.extend({ available: z.boolean() });
+export type AgentEntry = z.infer<typeof agentEntrySchema>;

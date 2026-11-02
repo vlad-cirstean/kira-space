@@ -11,6 +11,7 @@ package hooks
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -130,21 +131,69 @@ func (s *Server) Status() harness.HookStatus {
 // as Kira Space's request_branches, holds its call open for up to 30 minutes.
 const MCPToolTimeoutEnv = "MCP_TOOL_TIMEOUT=2100000"
 
-// Compose returns command with " --settings '<hooks.json>'" appended and the three hook env vars a
-// launch's shell needs (Env). With the statusline option on, the settings file is per terminal
-// (cwd locates the project's own statusline setting). The env carries KIRA_AGENT_HOOK_TOKEN in
-// plain text: never return it from a bound method. Which launches get hooks at all (an agent
-// launch, never a plain shell or script) is the host's call, made before this is reached.
-func (s *Server) Compose(terminalID, cwd, command string) (string, []string) {
+// Compose returns command with " --settings '<hooks.json>'" appended and the hook env vars a
+// launch's shell needs (Env). With the statusline option on, the settings file is per terminal. The
+// env carries KIRA_AGENT_HOOK_TOKEN in plain text: never return it from a bound method. Which
+// launches get hooks at all (an agent launch, never a plain shell or script) is the host's call, made
+// before this is reached.
+func (s *Server) Compose(terminalID, _, command string) (string, []string) {
 	env := s.Env(terminalID)
 	if s.statusLine != nil && s.statusLine() {
-		quoted, extra, err := s.composeStatusLine(terminalID, cwd)
+		quoted, err := s.composeStatusLine(terminalID)
 		if err == nil {
-			return command + " --settings " + quoted, append(env, extra...)
+			return command + " --settings " + quoted, env
 		}
 		slog.Warn("agent hooks: statusline settings", "scope", "ade", "err", err)
 	}
 	return command + " --settings " + s.quotedHooksPath, env
+}
+
+// ComposeInto adds Kira's hooks to the settings file Kira wrote for this launch (the app's agent
+// settings), in place: Kira's entry comes first in every event's array and the user's entries follow.
+// With the statusline option on, the file's own statusLine becomes the user statusline the wrapper
+// runs. It returns command unchanged: the file is already a --settings flag. A read or write error
+// fails the launch, since Kira's hooks are always on.
+func (s *Server) ComposeInto(terminalID, _, command, configFile string) (string, []string, error) {
+	raw, err := os.ReadFile(configFile)
+	if err != nil {
+		return "", nil, fmt.Errorf("claude hooks: read settings: %w", err)
+	}
+	var doc map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return "", nil, fmt.Errorf("claude hooks: decode settings: %w", err)
+	}
+	userHooks := map[string][]json.RawMessage{}
+	if h, ok := doc["hooks"]; ok {
+		if err := json.Unmarshal(h, &userHooks); err != nil {
+			return "", nil, fmt.Errorf("claude hooks: decode settings hooks: %w", err)
+		}
+	}
+	kira, err := json.Marshal(hookMatcherEntry{Hooks: []hookCommand{{Type: "command", Command: s.quotedShim, Timeout: hookCommandTimeoutSeconds}}})
+	if err != nil {
+		return "", nil, fmt.Errorf("claude hooks: encode hook: %w", err)
+	}
+	for _, event := range hookEvents {
+		userHooks[event] = append([]json.RawMessage{kira}, userHooks[event]...)
+	}
+	if doc["hooks"], err = json.Marshal(userHooks); err != nil {
+		return "", nil, fmt.Errorf("claude hooks: encode hooks: %w", err)
+	}
+	env := s.Env(terminalID)
+	if s.statusLine != nil && s.statusLine() {
+		entry, extra := s.wrapStatusLine(userStatusLine(doc["statusLine"]))
+		if doc["statusLine"], err = json.Marshal(entry); err != nil {
+			return "", nil, fmt.Errorf("claude hooks: encode statusline: %w", err)
+		}
+		env = append(env, extra...)
+	}
+	out, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return "", nil, fmt.Errorf("claude hooks: encode settings: %w", err)
+	}
+	if err := renameio.WriteFile(configFile, out, 0o600); err != nil {
+		return "", nil, fmt.Errorf("claude hooks: write settings: %w", err)
+	}
+	return command, env, nil
 }
 
 // SettingsPath is the generated hooks.json's own absolute path — internal/bridge/terminal.go's

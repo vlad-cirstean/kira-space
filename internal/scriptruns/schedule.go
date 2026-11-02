@@ -15,8 +15,8 @@ import (
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
-// scheduleArgs is the run a script's schedule describes. secrets fill secret params only; a
-// schedule never stores one.
+// scheduleArgs is the run a script's schedule describes. secrets are typed in the confirm popup and
+// fill secret params only; a schedule holds none, plan fills the rest from the saved values.
 func scheduleArgs(rec scripts.CustomScript, secrets map[string][]string) RunArgs {
 	params := map[string][]string{}
 	for k, v := range rec.Schedule.Params {

@@ -30,6 +30,7 @@
       ]
     },
     "prompt": [],
+    "secretIssue": "",
     "suffix": "",
     "timeout": "",
     "tools": []
@@ -61,6 +62,7 @@
       "useAdeDir": false,
       "workingDir": ""
     },
-    "id": "<id:1>"
+    "id": "<id:1>",
+    "secretValues": null
   }
 }

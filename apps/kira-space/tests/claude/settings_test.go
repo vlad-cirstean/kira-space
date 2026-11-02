@@ -43,6 +43,7 @@ func settingsSnapshot(t *testing.T, files []string) map[string]string {
 // no Kira launch, hook injection or restart may rewrite the user's own settings files.
 func TestRealClaudeSettingsUntouched(t *testing.T) {
 	f := newAdeFixture(t, nil)
+	saveAgentSettings(t, f) // the agent settings file is present throughout
 	files := []string{
 		filepath.Join(f.Home, ".claude", "settings.json"),
 		filepath.Join(f.repo.Dir, ".claude", "settings.json"),

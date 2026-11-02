@@ -6,14 +6,16 @@
 // Every call writes its argv (last, atomically: it marks the call as fully recorded), cwd and stdin
 // under KIRA_FAKE_DIR as <repo>-<n>.args/.cwd/.prompt
 // (claude, where <repo> is the worktree's parent directory name) or gh-<n>.args. A claude call also
-// keeps its KIRA_* environment (one Go-quoted entry per line) as <repo>-<n>.env and a copy of each
+// keeps the agent context file it was given as <repo>-<n>.context, its KIRA_* environment (one Go-quoted entry per line) as <repo>-<n>.env and a copy of each
 // --mcp-config file as
 // <repo>-<n>.mcp<i>. Run as "fake-mcp" it is a stdio MCP server with tools echo and ping. A
 // scripted Action.MCP
 // call also keeps its result as mcp-<tool>-<n>.json.
 //
 // `claude mcp list` prints the servers of the user's own claude config ($CLAUDE_CONFIG_DIR or $HOME
-// .claude.json) in the real CLI's format and keeps its argv as mcp-list-<n>.args. A headless call with
+// .claude.json) in the real CLI's format and keeps its argv as mcp-list-<n>.args. `claude mcp add-json`
+// and `claude mcp remove` edit that file's mcpServers (argv mcp-add-json-<n>.args, mcp-remove-<n>.args).
+// A headless call with
 // --setting-sources user and no --strict-mcp-config also finds tools on those servers, limited to the
 // allowedMcpServers of --settings (kept as <repo>-<n>.settings). Reading that file is the CLI's job.
 package fakeagent
@@ -50,6 +52,8 @@ type Scenario struct {
 	// Claude maps a repo name (the worktree's parent directory, "*" as fallback) to one Action per
 	// attempt; the last Action repeats.
 	Claude map[string][]Action `json:"claude,omitempty"`
+	// OpenCode is Claude's counterpart for the fake opencode's `run` calls, keyed the same way.
+	OpenCode map[string][]Action `json:"opencode,omitempty"`
 	// Prompts answer headless calls by their --system-prompt before any Claude action runs; the
 	// first rule that matches answers (the call still counts as an attempt for Claude).
 	Prompts []PromptRule `json:"prompts,omitempty"`
@@ -141,7 +145,34 @@ type GhRule struct {
 // run (internal/flowtest/fakeprovider): it records its argv and idles until stdin closes.
 const Persona = "kira-fake-agent"
 
-// Run plays the named tool ("claude", "gh", "fake-mcp" or Persona) for one invocation and returns its exit code.
+// PersonaContextFlag carries the agent context path on the persona's command line.
+const PersonaContextFlag = "--context"
+
+// LeanArg is the persona's first argument when a lean provider starts it: the persona then assigns
+// the session its own id, as an agent that takes none up front does.
+const LeanArg = "lean"
+
+// LeanSessions is the file in the fake dir holding one LeanSession JSON per line.
+const LeanSessions = "sessions.jsonl"
+
+// PersonaAppConfigFlag carries the path of the app's agent settings file on the persona's command line.
+const PersonaAppConfigFlag = "--app-config"
+
+// EnvRecordEnv lists, comma separated, the environment variables a call keeps as NAME=value lines in
+// <stem>.appenv: the agent settings env a test follows through a launch.
+const EnvRecordEnv = "KIRA_FAKE_RECORD_ENV"
+
+// EnvPersonaConfig is a variable the persona records in its args file when set.
+const EnvPersonaConfig = "KIRA_FAKE_CONFIG"
+
+// LeanSession is one session a lean persona assigned itself; StartedAt is Unix milliseconds.
+type LeanSession struct {
+	ID        string `json:"id"`
+	Cwd       string `json:"cwd"`
+	StartedAt int64  `json:"startedAt"`
+}
+
+// Run plays the named tool ("claude", "opencode", "gh", "fake-mcp" or Persona) for one invocation and returns its exit code.
 func Run(name string, args []string) int {
 	var scen Scenario
 	raw := []byte(os.Getenv(EnvScenario))
@@ -155,6 +186,8 @@ func Run(name string, args []string) int {
 		return runClaude(scen, dir, args)
 	case "gh":
 		return runGh(scen, dir, args)
+	case OpenCode:
+		return runOpenCode(scen, dir, args)
 	case "fake-mcp":
 		return runFakeMCP()
 	case Persona:
@@ -213,8 +246,13 @@ func runGh(scen Scenario, dir string, args []string) int {
 }
 
 func runClaude(scen Scenario, dir string, args []string) int {
-	if len(args) >= 2 && args[0] == "mcp" && args[1] == "list" {
-		return runMCPList(dir, args)
+	if len(args) >= 2 && args[0] == "mcp" {
+		switch args[1] {
+		case "list":
+			return runMCPList(dir, args)
+		case "add-json", "remove":
+			return runMCPEdit(dir, args)
+		}
 	}
 	cwd, _ := os.Getwd()
 	repo := filepath.Base(filepath.Dir(cwd))
@@ -258,8 +296,10 @@ func pickAction(scen Scenario, dir, repo, cwd string, args []string) pickedActio
 		}
 	}
 	if settings := argAfter(args, "--settings"); settings != "" {
-		writeFile(stem+".settings", []byte(settings))
+		writeFile(stem+".settings", settingsBytes(settings))
 	}
+	recordAppEnv(stem)
+	recordContext(stem, args, "--append-system-prompt-file")
 	writeFile(stem+".args", []byte(strings.Join(args, "\n"))) // marker: the call is fully recorded
 	return pickedAction{Action: action, stem: stem}
 }
@@ -412,7 +452,19 @@ func startHeadless(scen Scenario, dir, stem string, args []string) (code int, do
 // the PTY to .prompt, then idles until stdin closes.
 func runPersona(dir string, args []string) int {
 	stem := filepath.Join(dir, fmt.Sprintf("%s-%d", Persona, nextCount(dir, Persona)))
-	writeFile(stem+".args", []byte(strings.Join(args, "\n")))
+	record := strings.Join(args, "\n")
+	if v := os.Getenv(EnvPersonaConfig); v != "" {
+		record += "\n" + EnvPersonaConfig + "=" + v
+	}
+	recordContext(stem, args, PersonaContextFlag)
+	recordAppEnv(stem)
+	if raw, err := os.ReadFile(argAfter(args, PersonaAppConfigFlag)); err == nil {
+		writeFile(stem+".appconfig", raw)
+	}
+	writeFile(stem+".args", []byte(record))
+	if len(args) > 0 && args[0] == LeanArg && !slices.Contains(args, "--resume") {
+		recordLeanSession(dir)
+	}
 	f, err := os.OpenFile(stem+".prompt", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "fakeagent:", err)
@@ -421,6 +473,53 @@ func runPersona(dir string, args []string) int {
 	defer f.Close()
 	_, _ = io.Copy(f, os.Stdin)
 	return 0
+}
+
+// settingsBytes is what --settings holds: the file's bytes when the value names a file, else the value
+// itself (inline JSON).
+func settingsBytes(arg string) []byte {
+	if !strings.HasPrefix(arg, "{") {
+		if raw, err := os.ReadFile(arg); err == nil {
+			return raw
+		}
+	}
+	return []byte(arg)
+}
+
+// recordAppEnv keeps the variables named by EnvRecordEnv that the call has, as <stem>.appenv.
+func recordAppEnv(stem string) {
+	var lines []string
+	for _, name := range strings.Split(os.Getenv(EnvRecordEnv), ",") {
+		if v, ok := os.LookupEnv(name); ok && name != "" {
+			lines = append(lines, name+"="+v)
+		}
+	}
+	if len(lines) > 0 {
+		writeFile(stem+".appenv", []byte(strings.Join(lines, "\n")))
+	}
+}
+
+// recordContext keeps the bytes of the agent context file named by flag as <stem>.context.
+func recordContext(stem string, args []string, flag string) {
+	if path := argAfter(args, flag); path != "" {
+		if raw, err := os.ReadFile(path); err == nil {
+			writeFile(stem+".context", raw)
+		}
+	}
+}
+
+// recordLeanSession appends the session a lean provider's agent assigned itself to
+// <dir>/sessions.jsonl, the shape a real agent's session list has: id, folder, start time.
+func recordLeanSession(dir string) {
+	cwd, _ := os.Getwd()
+	now := time.Now()
+	line, _ := json.Marshal(LeanSession{ID: fmt.Sprintf("lean-%d", now.UnixNano()), Cwd: cwd, StartedAt: now.UnixMilli()})
+	f, err := os.OpenFile(filepath.Join(dir, LeanSessions), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_, _ = f.Write(append(line, '\n'))
 }
 
 // recordTUIInput keeps what the app types into an interactive TUI session, whose stdin is a PTY.
@@ -440,12 +539,18 @@ func emitJSON(v any) {
 	fmt.Println(string(raw))
 }
 
-// argsAfter returns the value after every occurrence of flag.
+// argsAfter returns the values after every occurrence of flag, up to the next flag (--mcp-config takes several).
 func argsAfter(args []string, flag string) []string {
 	var out []string
 	for i, a := range args {
-		if a == flag && i+1 < len(args) {
-			out = append(out, args[i+1])
+		if a != flag {
+			continue
+		}
+		for _, v := range args[i+1:] {
+			if strings.HasPrefix(v, "-") {
+				break
+			}
+			out = append(out, v)
 		}
 	}
 	return out
@@ -543,6 +648,60 @@ func allowedServers(argv []string) (allowed map[string]bool, limited bool) {
 // loadsUserSettings reports whether the call makes claude load the user's own servers.
 func loadsUserSettings(argv []string) bool {
 	return slices.Contains(strings.Split(argAfter(argv, "--setting-sources"), ","), "user") && !slices.Contains(argv, "--strict-mcp-config")
+}
+
+// runMCPEdit plays `claude mcp add-json -s user <name> <json>` and `claude mcp remove -s user <name>`
+// against the user config file: add-json refuses an existing name and remove an absent one, both with
+// exit 1 and the real CLI's message. Every other key of the file is kept. Argv is kept as
+// mcp-add-json-<n>.args or mcp-remove-<n>.args, n counting both verbs in call order.
+func runMCPEdit(dir string, args []string) int {
+	verb := args[1]
+	n := nextCount(dir, "mcp-edit")
+	writeFile(filepath.Join(dir, fmt.Sprintf("mcp-%s-%d.args", verb, n)), []byte(strings.Join(args, "\n")))
+	var pos []string
+	for i := 2; i < len(args); i++ {
+		if args[i] == "-s" || args[i] == "--scope" {
+			i++
+			continue
+		}
+		pos = append(pos, args[i])
+	}
+	if len(pos) == 0 {
+		fmt.Fprintln(os.Stderr, "error: missing server name")
+		return 1
+	}
+	name := pos[0]
+	doc := map[string]json.RawMessage{}
+	if raw, err := os.ReadFile(userConfigPath()); err == nil {
+		_ = json.Unmarshal(raw, &doc)
+	}
+	servers := map[string]json.RawMessage{}
+	if raw := doc["mcpServers"]; raw != nil {
+		_ = json.Unmarshal(raw, &servers)
+	}
+	_, exists := servers[name]
+	switch verb {
+	case "add-json":
+		if len(pos) < 2 || !json.Valid([]byte(pos[1])) {
+			fmt.Fprintln(os.Stderr, "error: invalid JSON")
+			return 1
+		}
+		if exists {
+			fmt.Fprintf(os.Stderr, "MCP server %s already exists in user config\n", name)
+			return 1
+		}
+		servers[name] = json.RawMessage(pos[1])
+	default:
+		if !exists {
+			fmt.Fprintf(os.Stderr, "No MCP server named %q in user scope\n", name)
+			return 1
+		}
+		delete(servers, name)
+	}
+	doc["mcpServers"], _ = json.Marshal(servers)
+	out, _ := json.MarshalIndent(doc, "", "  ")
+	writeFile(userConfigPath(), out)
+	return 0
 }
 
 // runMCPList plays `claude mcp list`.

@@ -202,6 +202,9 @@ func (r *AdeSessionsRepo) SetAgentSessionID(id, agentSessionID string) error {
 // ProviderOfAgentSession is the provider id recorded with the newest row of an agent session, ""
 // when no row has it.
 func (r *AdeSessionsRepo) ProviderOfAgentSession(agentSessionID string) (string, error) {
+	if agentSessionID == "" {
+		return "", nil
+	}
 	var id string
 	err := r.DB.QueryRow(`SELECT provider FROM ade_sessions WHERE agent_session_id = ?
 		ORDER BY started_at DESC LIMIT 1`, agentSessionID).Scan(&id)
@@ -209,6 +212,24 @@ func (r *AdeSessionsRepo) ProviderOfAgentSession(agentSessionID string) (string,
 		return "", fmt.Errorf("repos: provider of agent session %s: %w", agentSessionID, err)
 	}
 	return id, nil
+}
+
+// AgentSessionIDsExcept lists the non-empty agent session ids of every row but id.
+func (r *AdeSessionsRepo) AgentSessionIDsExcept(id string) ([]string, error) {
+	rows, err := r.DB.Query(`SELECT agent_session_id FROM ade_sessions WHERE agent_session_id != '' AND id != ?`, id)
+	if err != nil {
+		return nil, fmt.Errorf("repos: list agent session ids: %w", err)
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var s string
+		if err := rows.Scan(&s); err != nil {
+			return nil, fmt.Errorf("repos: scan agent session id: %w", err)
+		}
+		ids = append(ids, s)
+	}
+	return ids, rows.Err()
 }
 
 // SetLastActive bumps last_active_at alone — every hook event Tracker.HandleEvent sees for a

@@ -1,0 +1,427 @@
+{
+  "opencode": {
+    "items": [
+      {
+        "current": "",
+        "id": "mcp/local1",
+        "kind": "mcp",
+        "modes": [],
+        "reason": "",
+        "secrets": [
+          {
+            "field": "mcp_servers.local1.env.TOKEN",
+            "name": "local1-token",
+            "reuse": false
+          }
+        ],
+        "source": "~/xdg/opencode/opencode.jsonc",
+        "state": "new",
+        "text": "mcp_servers:\n  local1:\n    command: npx\n    args:\n      - -y\n      - server\n    env:\n      HOME_REF: ${HOME}\n      ORG_REF: ${P457_UNSET_ORG}\n      TOKEN: ${secret:local1-token}"
+      },
+      {
+        "current": "",
+        "id": "mcp/remote1",
+        "kind": "mcp",
+        "modes": [],
+        "reason": "",
+        "secrets": [
+          {
+            "field": "mcp_servers.remote1.headers.Authorization",
+            "name": "remote1-authorization",
+            "reuse": false
+          }
+        ],
+        "source": "~/xdg/opencode/opencode.jsonc",
+        "state": "new",
+        "text": "mcp_servers:\n  remote1:\n    url: https://oc.example.com/mcp\n    headers:\n      Authorization: Bearer ${secret:remote1-authorization}\n    enabled: false"
+      },
+      {
+        "current": "",
+        "id": "allow/Bash(git status)",
+        "kind": "allow",
+        "modes": [],
+        "reason": "",
+        "secrets": [],
+        "source": "~/xdg/opencode/opencode.jsonc",
+        "state": "new",
+        "text": "permissions:\n  allow:\n    - Bash(git status)"
+      },
+      {
+        "current": "",
+        "id": "deny/Bash(git push:*)",
+        "kind": "deny",
+        "modes": [],
+        "reason": "",
+        "secrets": [],
+        "source": "~/xdg/opencode/opencode.jsonc",
+        "state": "new",
+        "text": "permissions:\n  deny:\n    - Bash(git push:*)"
+      },
+      {
+        "current": "",
+        "id": "deny/Edit",
+        "kind": "deny",
+        "modes": [],
+        "reason": "",
+        "secrets": [],
+        "source": "~/xdg/opencode/opencode.jsonc",
+        "state": "new",
+        "text": "permissions:\n  deny:\n    - Edit"
+      },
+      {
+        "current": "",
+        "id": "skip/permission.webfetch.*",
+        "kind": "other",
+        "modes": [],
+        "reason": "Kira has no form for this permission rule.",
+        "secrets": [],
+        "source": "~/xdg/opencode/opencode.jsonc",
+        "state": "skipped",
+        "text": ""
+      },
+      {
+        "current": "",
+        "id": "opencode/model",
+        "kind": "model",
+        "modes": [],
+        "reason": "",
+        "secrets": [],
+        "source": "~/xdg/opencode/opencode.jsonc",
+        "state": "new",
+        "text": "opencode:\n  model: anthropic/claude-sonnet-4-5"
+      },
+      {
+        "current": "",
+        "id": "opencode/plugin/file:///opt/plugins/a.js",
+        "kind": "plugin",
+        "modes": [],
+        "reason": "",
+        "secrets": [],
+        "source": "~/xdg/opencode/opencode.jsonc",
+        "state": "new",
+        "text": "opencode:\n  plugins:\n    - file:///opt/plugins/a.js"
+      },
+      {
+        "current": "",
+        "id": "opencode/plugin/opencode-foo",
+        "kind": "plugin",
+        "modes": [],
+        "reason": "Only file:// plugins import.",
+        "secrets": [],
+        "source": "~/xdg/opencode/opencode.jsonc",
+        "state": "skipped",
+        "text": ""
+      },
+      {
+        "current": "",
+        "id": "skip/provider",
+        "kind": "other",
+        "modes": [],
+        "reason": "Kira has no setting for this.",
+        "secrets": [],
+        "source": "~/xdg/opencode/opencode.jsonc",
+        "state": "skipped",
+        "text": ""
+      },
+      {
+        "current": "",
+        "id": "skip/instructions",
+        "kind": "other",
+        "modes": [],
+        "reason": "Kira has no setting for this.",
+        "secrets": [],
+        "source": "~/xdg/opencode/opencode.jsonc",
+        "state": "skipped",
+        "text": ""
+      },
+      {
+        "current": "",
+        "id": "context",
+        "kind": "context",
+        "modes": [],
+        "reason": "",
+        "secrets": [],
+        "source": "~/xdg/opencode/AGENTS.md",
+        "state": "new",
+        "text": "Prefer small PRs."
+      }
+    ],
+    "notes": [
+      "OpenCode permission bash mixes allow and deny. Its order no longer applies. Deny wins.",
+      "P457_UNSET_ORG is not set in your login shell (used by mcp_servers.local1.env.ORG_REF). OpenCode reads it as empty. Kira fails agent launches until it is set."
+    ],
+    "provider": "opencode",
+    "sources": [
+      {
+        "exists": true,
+        "path": "~/xdg/opencode/opencode.jsonc",
+        "problem": "",
+        "role": "config"
+      },
+      {
+        "exists": true,
+        "path": "~/xdg/opencode/AGENTS.md",
+        "problem": "",
+        "role": "context"
+      }
+    ],
+    "token": "<masked>"
+  },
+  "preview": {
+    "items": [
+      {
+        "current": "",
+        "id": "env/JIRA_TOKEN",
+        "kind": "env",
+        "modes": [],
+        "reason": "",
+        "secrets": [
+          {
+            "field": "env.JIRA_TOKEN",
+            "name": "env-jira_token",
+            "reuse": false
+          }
+        ],
+        "source": "~/.claude/settings.json",
+        "state": "new",
+        "text": "env:\n  JIRA_TOKEN: ${secret:env-jira_token}"
+      },
+      {
+        "current": "",
+        "id": "env/NODE_ENV",
+        "kind": "env",
+        "modes": [],
+        "reason": "",
+        "secrets": [],
+        "source": "~/.claude/settings.json",
+        "state": "new",
+        "text": "env:\n  NODE_ENV: production"
+      },
+      {
+        "current": "",
+        "id": "allow/Bash(git status)",
+        "kind": "allow",
+        "modes": [],
+        "reason": "",
+        "secrets": [],
+        "source": "~/.claude/settings.json",
+        "state": "new",
+        "text": "permissions:\n  allow:\n    - Bash(git status)"
+      },
+      {
+        "current": "",
+        "id": "allow/Read",
+        "kind": "allow",
+        "modes": [],
+        "reason": "",
+        "secrets": [],
+        "source": "~/.claude/settings.json",
+        "state": "new",
+        "text": "permissions:\n  allow:\n    - Read"
+      },
+      {
+        "current": "",
+        "id": "deny/Bash(rm:*)",
+        "kind": "deny",
+        "modes": [],
+        "reason": "",
+        "secrets": [],
+        "source": "~/.claude/settings.json",
+        "state": "new",
+        "text": "permissions:\n  deny:\n    - Bash(rm:*)"
+      },
+      {
+        "current": "",
+        "id": "skip/permissions.ask",
+        "kind": "other",
+        "modes": [],
+        "reason": "Kira has no setting for this.",
+        "secrets": [],
+        "source": "~/.claude/settings.json",
+        "state": "skipped",
+        "text": ""
+      },
+      {
+        "current": "",
+        "id": "skip/permissions.additionalDirectories",
+        "kind": "other",
+        "modes": [],
+        "reason": "Kira has no setting for this.",
+        "secrets": [],
+        "source": "~/.claude/settings.json",
+        "state": "skipped",
+        "text": ""
+      },
+      {
+        "current": "",
+        "id": "claude/permission_mode",
+        "kind": "permission_mode",
+        "modes": [],
+        "reason": "",
+        "secrets": [],
+        "source": "~/.claude/settings.json",
+        "state": "new",
+        "text": "claude:\n  permission_mode: plan"
+      },
+      {
+        "current": "claude:\n  model: sonnet",
+        "id": "claude/model",
+        "kind": "model",
+        "modes": [],
+        "reason": "",
+        "secrets": [],
+        "source": "~/.claude/settings.json",
+        "state": "conflict",
+        "text": "claude:\n  model: opus"
+      },
+      {
+        "current": "",
+        "id": "claude/status_line",
+        "kind": "status_line",
+        "modes": [],
+        "reason": "",
+        "secrets": [],
+        "source": "~/.claude/settings.json",
+        "state": "new",
+        "text": "claude:\n  status_line:\n    command: echo line\n    padding: 1"
+      },
+      {
+        "current": "",
+        "id": "hook/posttooluse-1",
+        "kind": "hook",
+        "modes": [],
+        "reason": "",
+        "secrets": [],
+        "source": "~/.claude/settings.json",
+        "state": "new",
+        "text": "hooks:\n  posttooluse-1:\n    event: tool_end\n    matcher: Edit\n    command: echo edited\n    timeout: 10"
+      },
+      {
+        "current": "",
+        "id": "claude.hook/sessionstart-1",
+        "kind": "native_hook",
+        "modes": [],
+        "reason": "",
+        "secrets": [],
+        "source": "~/.claude/settings.json",
+        "state": "new",
+        "text": "claude:\n  hooks:\n    sessionstart-1:\n      event: SessionStart\n      matcher: startup\n      command: echo started"
+      },
+      {
+        "current": "",
+        "id": "hook-skip/Stop/prompt",
+        "kind": "hook",
+        "modes": [],
+        "reason": "Only command hooks import. Hook type of Stop skipped.",
+        "secrets": [],
+        "source": "~/.claude/settings.json",
+        "state": "skipped",
+        "text": ""
+      },
+      {
+        "current": "",
+        "id": "skip/theme",
+        "kind": "other",
+        "modes": [],
+        "reason": "Kira has no setting for this.",
+        "secrets": [],
+        "source": "~/.claude/settings.json",
+        "state": "skipped",
+        "text": ""
+      },
+      {
+        "current": "Be brief.",
+        "id": "context",
+        "kind": "context",
+        "modes": [
+          "replace",
+          "append"
+        ],
+        "reason": "",
+        "secrets": [],
+        "source": "~/.claude/CLAUDE.md",
+        "state": "conflict",
+        "text": "Use tabs."
+      },
+      {
+        "current": "mcp_servers:\n  gh:\n    url: https://other.example.com/mcp",
+        "id": "mcp/gh",
+        "kind": "mcp",
+        "modes": [],
+        "reason": "",
+        "secrets": [
+          {
+            "field": "mcp_servers.gh.headers.Authorization",
+            "name": "gh-authorization",
+            "reuse": false
+          }
+        ],
+        "source": "~/.claude.json",
+        "state": "conflict",
+        "text": "mcp_servers:\n  gh:\n    url: https://api.example.com/mcp\n    headers:\n      Authorization: Bearer ${secret:gh-authorization}"
+      },
+      {
+        "current": "",
+        "id": "mcp/kira-db",
+        "kind": "mcp",
+        "modes": [],
+        "reason": "Names starting with kira are Kira’s own.",
+        "secrets": [],
+        "source": "~/.claude.json",
+        "state": "skipped",
+        "text": ""
+      },
+      {
+        "current": "",
+        "id": "mcp/notes",
+        "kind": "mcp",
+        "modes": [],
+        "reason": "",
+        "secrets": [
+          {
+            "field": "mcp_servers.notes.env.API_KEY",
+            "name": "notes-api_key",
+            "reuse": false
+          }
+        ],
+        "source": "~/.claude.json",
+        "state": "new",
+        "text": "mcp_servers:\n  notes:\n    command: /usr/bin/notes\n    args:\n      - ${HOME}/notes\n    env:\n      API_KEY: ${secret:notes-api_key}"
+      },
+      {
+        "current": "",
+        "id": "mcp/old",
+        "kind": "mcp",
+        "modes": [],
+        "reason": "SSE servers are not supported.",
+        "secrets": [],
+        "source": "~/.claude.json",
+        "state": "skipped",
+        "text": ""
+      }
+    ],
+    "notes": [],
+    "provider": "claude",
+    "sources": [
+      {
+        "exists": true,
+        "path": "~/.claude/settings.json",
+        "problem": "",
+        "role": "settings"
+      },
+      {
+        "exists": true,
+        "path": "~/.claude/CLAUDE.md",
+        "problem": "",
+        "role": "context"
+      },
+      {
+        "exists": true,
+        "path": "~/.claude.json",
+        "problem": "",
+        "role": "mcp"
+      }
+    ],
+    "token": "<masked>"
+  }
+}

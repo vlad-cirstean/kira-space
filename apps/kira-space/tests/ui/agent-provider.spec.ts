@@ -1,7 +1,8 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { openPlan } from './support/adeV2';
+import { adeFixture, openAdvanced, openPlan, openWorkflows, saved } from './support/adeV2';
 import { contract } from './support/contract';
+import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
 
@@ -50,4 +51,94 @@ test('headless session badges carry the provider label', async ({ relaunch }) =>
   const badges = await page.locator('[data-testid="ade-session-badge"]').allTextContents();
   expect(badges).toContain(fake.headlessLabel);
   expect(badges).not.toContain('claude -p');
+});
+
+// OpenCode next to claude: the picker in Settings, the plus menu and the step editor.
+// Backend half: harnessflow TestOpenCodeProvider, which writes the list.
+
+const both = contract<{ id: string }[]>('agent', 'AgentService.List');
+const claudeOnly = contract<{ id: string }[]>('agent', 'AgentService.List#no-opencode');
+const bothList = [{ channel: IPC.agentList, response: both }];
+const t = (id: string) => `[data-testid="${id}"]`;
+
+test('the Agent pane lists every provider, disables a missing one and saves the pick', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await relaunch({ control: bothList });
+  await openSettings(page, 'Agent');
+  const select = page.locator(t('settings-agent-provider'));
+  await expect(select).toHaveValue('claude');
+  const options = await select
+    .locator('option')
+    .evaluateAll((els) => els.map((e) => (e as HTMLOptionElement).value));
+  expect(options).toEqual(both.map((e) => e.id));
+  await select.selectOption('opencode');
+  await page.locator(t('settings-save')).click();
+  await expect
+    .poll(() => control.log().find((e) => e.channel === IPC.settingsSet)?.args)
+    .toEqual({ patch: { agent: { provider: 'opencode' } } });
+});
+
+test('the hermetic switch is on by default, saves off and resets', async ({ relaunch }) => {
+  const { window: page, control } = await relaunch({ control: bothList });
+  await openSettings(page, 'Agent');
+  const sw = page.locator(t('settings-agent-hermetic'));
+  await expect(sw).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByText('Agents Kira starts skip your own agent config')).toBeVisible();
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'false');
+  await page.locator(t('settings-reset-agent-hermetic')).click();
+  await expect(sw).toHaveAttribute('aria-checked', 'true');
+  await sw.click();
+  await page.locator(t('settings-save')).click();
+  await expect
+    .poll(() => control.log().find((e) => e.channel === IPC.settingsSet)?.args)
+    .toEqual({ patch: { agent: { hermetic: false } } });
+});
+
+test('a provider whose CLI is missing is disabled and says so', async ({ relaunch }) => {
+  const { window: page } = await relaunch({
+    control: [{ channel: IPC.agentList, response: claudeOnly }],
+  });
+  await openSettings(page, 'Agent');
+  const missing = page.locator(`${t('settings-agent-provider')} option[value="opencode"]`);
+  await expect(missing).toBeDisabled();
+  await expect(missing).toHaveText('OpenCode (not found)');
+});
+
+test('the plus menu offers each installed agent and sends the provider', async ({ relaunch }) => {
+  const launch = {
+    ...contract<Record<string, unknown>>('ade-adhoc', 'AdeTaskService.StartAdHoc'),
+    ...adeFixture<Record<string, unknown>>('launch'),
+  };
+  const { window: page, control } = await openPlan(relaunch, [
+    ...bothList,
+    { channel: IPC.adeTaskStartAdHoc, response: launch },
+  ]);
+  await page
+    .locator(`[data-testid="ade-card"][data-task-id="T_cart"] ${t('ade-task-launch')}`)
+    .click();
+  await expect(page.locator(t('ade-task-launch-agent-claude-b_cart'))).toBeVisible();
+  await page.locator(t('ade-task-launch-agent-opencode-b_cart')).focus();
+  await page.keyboard.press('Enter');
+  await expect.poll(() => calls(control, IPC.adeTaskStartAdHoc)).toHaveLength(1);
+  expect(calls(control, IPC.adeTaskStartAdHoc)[0]?.args).toEqual({
+    branchId: 'b_cart',
+    provider: 'opencode',
+  });
+});
+
+test('the step editor sets the step agent and saves it', async ({ relaunch }) => {
+  const { window: page, control } = await openWorkflows(relaunch, bothList);
+  await page.locator(`${t('ade-wf-node')}[data-step-id="plan"]`).click();
+  await openAdvanced(page);
+  const select = page.locator(t('ade-wf-step-agent'));
+  await expect(select).toHaveValue('');
+  await select.selectOption('opencode');
+  const out = await saved<{ workflow: { steps: { id: string; agent: string }[] } }>(
+    page,
+    control,
+    1,
+  );
+  expect(out.workflow.steps.find((x) => x.id === 'plan')?.agent).toBe('opencode');
 });

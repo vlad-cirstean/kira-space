@@ -44,8 +44,11 @@ and Vue 3. Its modules are Agents, Runs, Memory and Git.
 
 ## Agents, memory, terminal and phone
 
-- **Agents** — a task planner with workflows, runs and interactive Claude Code sessions. Hooks ride
-  each session's own `--settings` file, so your Claude Code settings files are never touched.
+- **Agents** — a task planner with workflows, runs and interactive agent sessions. Claude Code or
+  OpenCode, picked per launch, per step or in Settings. One shared context and settings file for every
+  agent (`~/.kira-space/agent/`), secrets sealed in the keychain layer. Import and export of each agent's
+  user config. Hermetic launches on by default: agents skip your user config. Kira writes your agent
+  config only on Export.
   A task picks its base branch (the repo's main, any branch, or another planner branch to stack on); a
   headless run rebases it when the base changes. **Review code** opens the per-branch review in one step
   (Cmd/Ctrl+Shift+R). A workflow step declares its results and routes each to the next step, an earlier
@@ -58,7 +61,8 @@ and Vue 3. Its modules are Agents, Runs, Memory and Git.
 - **Runs** — scripts grouped in collections, each run in its own folder with a status and result,
   plus terminals. A smart script is a prompt run by headless Claude Code with typed parameters and a tool
   allowlist; run it on a task or branch from Agents (in the task worktree if you choose), as a workflow
-  step, or on a cron schedule that asks you to confirm each due run.
+  step, or on a cron schedule that asks you to confirm each due run. Secret params keep saved values.
+  Smart scripts run on Claude Code.
 - **Phone view** — Settings > Mobile access serves the Agents board to a phone. It uses plain HTTP and
   is meant for a trusted home network only: you pair by QR code and approve the code on the desktop,
   device tokens expire after 30 days, and traffic is not encrypted.
@@ -136,8 +140,8 @@ Two limits worth knowing up front:
 - macOS 26 or later, Apple Silicon (`arm64`).
 - [Git](https://git-scm.com) 2.38 or newer on `PATH`. The native Git module needs nothing beyond
   that.
-- Optional: an authenticated `claude` CLI for Agents
-  and Memory.
+- Optional: an authenticated `claude` CLI for Agents and Memory, or `opencode` for Agents. Memory calls
+  always use `claude`.
 - Optional: the [GitHub CLI](https://cli.github.com) (`gh`), already
   logged in, for GitHub PR links — without it the PR indicator simply stays blank and nothing
   else changes.

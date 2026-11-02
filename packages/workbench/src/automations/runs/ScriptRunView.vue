@@ -47,7 +47,7 @@ const canContinue = computed(
 async function continueInTerminal(): Promise<void> {
   const r = run.value;
   if (!r) return;
-  const command = await ctx.runs.resumeCommand(r.id);
+  const { command, token } = await ctx.runs.resumeCommand(r.id);
   ctx.openTerminalTab({
     cwd: r.cwd,
     launch: {
@@ -55,6 +55,7 @@ async function continueInTerminal(): Promise<void> {
       label: runAgent.value.productLabel,
       color: 'none',
       kind: 'agent',
+      launchToken: token,
     },
   });
 }

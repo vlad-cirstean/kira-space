@@ -116,9 +116,10 @@ func wireTrackers(repositories *repos.Repos, hosts *githost.Registry, opLog *opl
 func wireTracker(
 	repositories *repos.Repos, registry *terminal.Registry, emitter appevent.Emitter, events *bridge.Events,
 	grace time.Duration, notifier *agentnotify.Notifier, usage *agentusage.Service, agents harness.Selector,
+	contextFile func() (string, error),
 ) (*ade.Tracker, *harness.Hooks) {
 	tracker := ade.NewTracker(ade.TrackerDeps{
-		Agent: agents, Store: repositories.AdeSessions, LiveAgents: registry.AgentSessions,
+		Agent: agents, ContextFile: contextFile, Store: repositories.AdeSessions, LiveAgents: registry.AgentSessions,
 		WriteTerminal: registry.Write, Now: time.Now, Grace: grace,
 		OnChange: func() { bridge.AdeTaskSessionsChanged(events) },
 	})
@@ -208,7 +209,9 @@ func wireAdeTask(
 	}
 	gitPath := adeGitPathSetting(repositories)
 	board := ade.NewTaskBoard(ade.TaskBoardDeps{
-		Agent:   agents,
+		Agent:       agents,
+		ContextFile: runs.ContextFile,
+		AgentConfig: runs.AgentConfig, Servers: runs.Servers,
 		Ops:     git.opLog,
 		Prompts: runs.LlmPrompts, PromptSink: promptSink,
 		Tasks: repositories.AdeTasks, Statuses: repositories.AdeStatuses, RepoConfig: repositories.AdeRepoConfig,
@@ -261,6 +264,10 @@ func wireAdeTask(
 				return ""
 			}
 			return settings.Ade.HeadlessSettingSources
+		},
+		Hermetic: func() bool {
+			settings, err := repositories.Settings.GetAll()
+			return err != nil || settings.Agent.Hermetic
 		},
 		AutofetchMinutes:  adeAutofetchMinutes(repositories),
 		HomeDir:           userHome,

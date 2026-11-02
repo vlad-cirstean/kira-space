@@ -191,7 +191,7 @@ See `docs/ARCHITECTURE.md`'s Storage section for the cipher, the key and the env
 - **There is no Linux keychain backend at all** (no `gnome-keyring`/`kwallet` probing) — set
   `KIRA_INSECURE_SECRETS=1` before launching the app (`bun run dev:studio`, the Go binary directly, or
   `t.Setenv("KIRA_INSECURE_SECRETS", "1")` in a Go test) on any Linux box to opt into the dev-only
-  fallback. `apps/kira-studio/tests/e2e-real/`'s fixture sets it for every real-backend test.
+  fallback. `apps/kira-studio/tests/e2e-real/`'s fixture sets it for every real-backend test. Kira Space needs it on Linux too (P447: saved script secrets); its flow harness sets it.
 - Without it, Linux secret storage is **unavailable** — a password-bearing save fails visibly
   rather than silently falling back to plaintext. Deliberate, not a bug to work around.
 - **On macOS the app ignores the variable outright** — it uses the real Keychain, so leaving it set
@@ -322,7 +322,7 @@ historical prose.
   it's the real source for the exact pinned version.
 - **No package under either app's `internal/` needs a C compiler on Linux any more** (v1.9 P97
   removed `internal/codeparse`, this repo's one unconditionally-cgo package). Every remaining cgo
-  call either app makes (a handful of darwin-only files in Kira Studio's own `internal/secrets`,
+  call either app makes (a handful of darwin-only files in repo-root `internal/secrets`, Kira Studio's own
   `internal/localauth`, repo-root `internal/metrics` (P116 H4: shared between both apps' own
   metrics tickers), and Kira Space's own `internal/gitclient`'s FSEvents watcher) is behind a
   `darwin && cgo` build tag with a real, working `!darwin || !cgo` companion, invisible to a Linux
@@ -522,7 +522,9 @@ Opt-in tests that run the real `claude` CLI and spend tokens. Never in CI, pre-c
   skips, not fails, when `claude` is missing or `claude -p` cannot run under the temp `HOME`.
 - Rule: after changing code in an area below, run that row before calling the change done. Append `-count=1`: `go test` caches a passing run and prints the old spend.
 - Resume rows (P279, CLI 2.1.296): a held `hold.sh` Bash call, app restart, Resume. Prompts say the call is safe to rerun and to inspect nothing first; haiku otherwise runs `ps`/`ls`, gets denied (no approval surface) and stops as blocked. The CLI's "interrupted" `tool_result` is not in the run log; the check is the shared Claude session id. Hand probe recipe: temp `HOME` with an onboarding-done `.claude.json`, parent `CLAUDE_CODE_SESSION_ID`, `CLAUDE_CODE_REMOTE_SESSION_ID`, `CLAUDECODE` unset, SIGKILL the child's process group mid tool call, then `claude -p --resume <id>`.
-- P444 (CLI 2.1.316): `TestSmartScriptRun/user_MCP_server_loads_through_claude` runs real `claude mcp list` plus one haiku run, a few cents.
+- Agent config import and export (P454): `internal/agentport/**` or `internal/harness/claude/mcpinstall/**` changed: `bun run test:claude:space -count=1 -run 'TestAgentPortClaude|TestRealClaudeSettingsUntouched'`, plus Studio `TestDbMcpInstallRegisters` (shared `register`). No model call; real `claude mcp add-json`, `mcp list` and a temp `HOME`.
+- P444 (CLI 2.1.316): `TestSmartScriptRun/user_MCP_server_loads_through_claude` (hermetic off) runs real `claude mcp list` plus one haiku run, a few cents. Studio `app_MCP_server_loads_through_claude` is the hermetic case.
+- Hermetic launches (P455): `internal/harness/**`, `internal/agentcfg/servers.go`, `apps/*/internal/ade/launches.go`, `internal/scriptruns/**`: `bun run test:claude:space -run 'TestHermeticSession|TestAgentSettingsClaude|TestRealClaudeSettingsUntouched|TestSmartScriptRun|TestTerminalAgentHooks' -count=1` and `bun run test:claude:studio -run TestSmartScriptRun -count=1`. `TestHermeticSession` runs two haiku steps (hermetic, control with hermetic off), a few cents.
 - Spend, measured on 2026-10-09 (CLI 2.1.295, haiku): `claude -p` results of the Space suite 0.014 USD, TUI sessions (about 4 at 1 to 2 haiku prompts) an estimated 0.02 USD, Studio suite under 0.01 USD, memory gate smoke a few cents, import smoke 0.14 USD (P211), memory docs test 0.01 USD (P276). Space suite about 75 s, Studio about 12 s. The Space run prints its measured `claude -p` spend. P279 (CLI 2.1.296): resume rows 0.0067 USD per run of the three (about 55 s), whole Space ADE and smart set 0.020 USD (about 156 s). P296: `comment` subtest of the memory docs test 0.006 USD (about 16 s), prompt-registry row of the Space suite 0.083 USD (about 427 s). P297 (CLI 2.1.302): `TestMemoryDistill` 0.03 USD (about 21 s), `TestMemoryDistillBridge` 0.03 USD (about 13 s), `TestMemoryMcpFollowsDocs` 0.022 USD (about 85 s), prompt-registry row 0.082 USD (about 444 s); `TestMemoryGate` now also checks rule kind (about 32 s). Eval subset round `round-p297-01` 1.50 USD (ledger `spend-p297.jsonl`, needs `KIRA_EVAL_PHASE_CAP_USD` above the run cap plus 2); a shallow clone must first `git fetch --depth=1 origin <corpus commit>`.
 - `scripts/docshistory` (docs chapter fold, P299): needs the logged-in `claude` CLI, builds `kira-space` itself
   (or `--binary`), gives each unit temp `KIRA_MEMORY_HOME`/`KIRA_SPACE_HOME` and never touches your memory DB.
@@ -534,8 +536,8 @@ Opt-in tests that run the real `claude` CLI and spend tokens. Never in CI, pre-c
 
 | Changed area (paths) | Command |
 |---|---|
-| Hook injection, shim, listener: `internal/harness/claude/hooks/**`, `apps/kira-space/internal/ade/tracker.go`, `internal/terminal/bound.go` | `bun run test:claude:space -run 'TestTerminalAgentHooks\|TestHookPayloadContract\|TestShimInertForPlainClaude'` |
-| Claude config isolation: anything that composes a `claude` argv or env (`internal/harness/claude/**`), `apps/kira-space/internal/appwire/wire.go` | `bun run test:claude:space -run TestRealClaudeSettingsUntouched` |
+| Hook injection, shim, listener: `internal/harness/claude/hooks/**`, `internal/harness/settings.go`, `apps/kira-space/internal/ade/tracker.go`, `internal/terminal/bound.go` | `bun run test:claude:space -run 'TestTerminalAgentHooks\|TestHookPayloadContract\|TestShimInertForPlainClaude'` |
+| Claude config isolation and agent settings: anything that composes a `claude` argv or env (`internal/harness/claude/**`), `internal/agentcfg/**`, `apps/kira-space/internal/appwire/wire.go` | `bun run test:claude:space -run 'TestHermeticSession\|TestAgentSettingsClaude\|TestRealClaudeSettingsUntouched' -count=1` (about 100 s, under a cent of `claude -p`) |
 | ADE runs and sessions: `apps/kira-space/internal/{ade,adeflow}/**, internal/agentmcp/**, internal/mcpcall/**, internal/harness/claude/headless.go` | `bun run test:claude:space -run 'TestAdeHeadlessRun\|TestAdeStepResults\|TestAdeManualSession\|TestAdeAdHocSession\|TestAdeRebaseRun\|TestAdeResumeRun\|TestAdeResumeLost\|TestAdeReviewStep\|TestAdeReviewLost\|TestAdeSandbox\|TestAdeSandboxReadOnly\|TestAdeBranchRequest\|TestAdeReportArtifacts'` (`TestAdeBranchRequest` holds the request 65 s, about 90 s, 0.009 USD: the CLI cuts an MCP call at 60 s unless `MCP_TOOL_TIMEOUT` is set, which Kira does for every launch) |
 | Agent sandbox: `internal/agentsandbox/**`, `apps/kira-space/internal/ade/sandbox.go` | `bun run test:claude:space -run 'TestAdeSandbox\|TestAdeSandboxReadOnly' -count=1`. Linux checks the second layer (flags, note, `enforced 0`); the macOS half is in the Mac checklist below. |
 | Smart scripts: `internal/{agentmcp,mcpcall,scriptruns,scripts}/**` (incl. `scheduler.go`, `confirm.go`), `internal/harness/claude/headless.go`, `apps/kira-space/internal/ade/automation.go` | `bun run test:claude:space -run 'TestSmartScriptRun\|TestSmartScriptResume'` and `bun run test:claude:studio -run TestSmartScriptRun` |
@@ -545,6 +547,7 @@ Opt-in tests that run the real `claude` CLI and spend tokens. Never in CI, pre-c
 | Memory ingest eval (P285): `internal/llmprompts` memory.import.* prompts, `internal/memory/importer/{chunk,extract,finalize}*.go` quality | `bun run eval:memory` with `KIRA_EVAL_MODE=run KIRA_EVAL_ROUND=<name>` (see ARCHITECTURE "Memory ingest eval"). Opt-in, never in hooks or CI. Costs about 4 to 5 USD per tuning run (8 to 10 min), judge included; P285 spent 57.9 USD in all; Part 2 spent 28.5 USD (ledger `spend-p2.jsonl`). Part 3 spent about 5.4 USD on the eval (ledger `spend-p3.jsonl`). P289 spent about 8.9 USD on the 5-source subset (ledger `spend-p289.jsonl`; `KIRA_EVAL_ONLY=plan-p257,spec-chunk-go,doc-arch-prompts,cmt-runner-go,json-ade-errors`, about 1.5 USD per round); run the test binary from `apps/kira-space/tests/claude` (`go test -c`) to keep a tree edit from changing a round midway. `KIRA_EVAL_MODE=footprint` with `KIRA_EVAL_ROUNDS=<r1,r2>` re-renders stored facts of past rounds and costs nothing. P291 (retrieval and telegraph eval) spent 14.04 USD of 20 (ledger `P291-runs/spend-p291.jsonl`, set `KIRA_EVAL_RUNS_DIR=P291-runs KIRA_EVAL_LEDGER=spend-p291.jsonl`); modes `questions`, `keys`, `telegraph`, `score` (with `KIRA_EVAL_STYLE=tele`) are paid, `retrieval` and `compare` are free and need `KIRA_ORT_LIB` (`sh scripts/fetch-onnxruntime.sh linux-x64`). Not a pass/fail row: it scores quality. |
 | DB MCP: `apps/kira-studio/internal/dbmcp/**`, `apps/kira-studio/internal/kubernetes/**`, `apps/kira-studio/internal/bridge/dbmcp.go`, `apps/kira-studio/internal/proof/**`, `apps/kira-studio/internal/bridge/proof.go` | `bun run test:claude:studio` (`TestKubeMcpThroughClaude` covers the kube tools, P440) |
 | Prompt registry, store, templates: `internal/llmprompts/**` (after a default rewrite run the whole row; regenerate goldens with `go test ./internal/llmprompts -run TestGolden -update` and contracts with `KIRA_CONTRACT=write`) | memory gate, memory MCP, memory import, ADE, smart scripts and DB MCP rows above: `test:claude:space -run 'TestMemoryGate\|TestMemoryMcpThroughClaude\|TestMemoryMcpFollowsDocs\|TestMemoryInstallRegisters\|TestMemoryImport\|TestMemoryIngest\|TestMemoryDistill\|TestMemoryDistillBridge\|TestMemoryDistillTrivia\|TestAdeHeadlessRun\|TestAdeStepResults\|TestAdeManualSession\|TestAdeAdHocSession\|TestAdeRebaseRun\|TestAdeResumeRun\|TestAdeResumeLost\|TestAdeSandbox\|TestSmartScriptRun\|TestSmartScriptResume'` and `bun run test:claude:studio` |
+| Agent context: `internal/agentctx/**`, `ContextFile` in `internal/harness/claude/{interactive,headless}.go`, `apps/kira-space/internal/ade/{tracker,runs}.go`, `internal/scriptruns/{smart_run,resume}.go` | `bun run test:claude:space -run TestAgentContextHeadless -count=1` (one haiku smart run, about 10 s, a cent) |
 | Any other `internal/harness/**` change | `bun run test:claude` |
 | Claude CLI upgrade | `bun run test:claude` |
 
@@ -558,6 +561,60 @@ Sandbox notes:
 - Studio's harness fakes the `claude` MCP installer. `TestDbMcpInstallRegisters` forwards the arguments the
   fake records to the real `mcpinstall` installer.
 - `~/.claude.json` is not compared in the settings test: the CLI rewrites it on every run (P233 A13).
+
+## OpenCode (P449, P452 to P456)
+
+Flow tests run a fake `opencode` (`fakeagent` persona, `flowharness.WithOpenCode()`); no real OpenCode test exists, since no model key is available here. The facts in `internal/harness/opencode/facts.go` come from the installed CLI (1.19.5) through the no-model probes below.
+
+- Install, in a scratch dir outside the repo: `npm init -y && npm i --ignore-scripts opencode-ai`. It installs the launcher plus a platform package such as `opencode-linux-x64`. Run `node_modules/opencode-linux-x64/bin/opencode` directly; the launcher refuses without postinstall under `--ignore-scripts`. The orchestrating session keeps a copy at `<scratchpad>/oc/node_modules/opencode-linux-x64/bin/opencode` (1.19.5) between phases. Set `OC=<that path>`.
+- The Claude Code auto-mode classifier blocks a subagent told to install an external package, and a probe that runs a model prompt. Run the install and the stub provider recipe from the orchestrating session or have the user approve.
+- Probe hygiene: `export HOME=$(mktemp -d)`; use a temp cwd with `git init -q`; never point `HOME` at a real home. `debug config` and `run` rewrite the user `opencode.json` (insert `$schema`) and create `package.json`, `package-lock.json` and `node_modules` in a config folder (Q-P454-OC6). A config folder whose `opencode.json` lists a `plugin` makes the first `debug config` run an npm install there. It took over 60 s in one run (P-456-1, observed once).
+- No model key needed: `--help`, `--version`, `session list --format json` (expect `[]`), `debug config`, `debug paths`, `debug agent build`, `debug skill` (lists skills, H-OC3), `mcp list`, `mcp add --help`, and `strings <bin> | grep -oE 'OPENCODE_[A-Z_]+'` for env names. `find $HOME/.local/share/opencode -maxdepth 2` shows the data folder (`log/`, `snapshot/`, `repos/`, `opencode.db`); auth lives there (H-OC5). `OPENCODE_CONFIG=c.json opencode debug config` shows how a config merges and masks header values. `OPENCODE_PERMISSION='{...}' opencode debug config` shows the permission merge.
+- `run` reads the prompt from stdin when it is not a terminal: always pipe it (`echo hi | opencode run --format json`). A positional message with no stdin hangs.
+- Config layering (verified on 1.19.5):
+  - `OPENCODE_CONFIG`, `OPENCODE_CONFIG_CONTENT` and `OPENCODE_PERMISSION` layer over user config. They never hide it.
+  - `OPENCODE_CONFIG_DIR` adds a config folder. The user `opencode.json` still loads (P-456-1: user `model` and `mcp` plus the folder's `mcp` all appear in `debug config`). With it set, the global `AGENTS.md` did not reach a stub request (Q-P454-OC7).
+  - The `OPENCODE_CONFIG_CONTENT` text is substituted: `{env:HOME}` expands (Q-OC7).
+- Hermetic redirect recipe, the shell form of `opencode.Isolate`:
+
+  ```sh
+  ISO=$(mktemp -d)/xdg; mkdir -p "$ISO"
+  for e in "$HOME/.config"/* "$HOME/.config"/.[!.]*; do
+    [ -e "$e" ] && [ "$(basename "$e")" != opencode ] && ln -s "$e" "$ISO/"
+  done
+  env XDG_CONFIG_HOME="$ISO" OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1 "$OC" debug config
+  ```
+
+  Expect no user `model`, `mcp` or `plugin`, and the project `opencode.json` `mcp` kept (H-OC1). The data folder and login stay unchanged. Opt-in check: `KIRA_OPENCODE_BIN=$OC go test ./internal/harness/opencode -run TestHermeticDebugConfig -count=1` (hermetic probes H-OC1 to H-OC5, orchestrator-run, results in `facts.go`).
+- `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT` facts (H-OC4, stub model). Markers: C `~/.claude/CLAUDE.md`, G global `AGENTS.md`, P project `AGENTS.md`, K Kira `instructions` file.
+  - Baseline: G, P, K arrive; C does not (a global `AGENTS.md` wins over `~/.claude/CLAUDE.md`).
+  - Redirect alone: C, P, K (C fills in once G is gone).
+  - Redirect plus `_PROMPT=1`: P, K. This is the hermetic set.
+  - `_PROMPT=1` alone: G, P, K.
+  - Project `CLAUDE.md` only, redirect plus `_PROMPT=1`: K only. The name also drops a project `CLAUDE.md`.
+  - `OPENCODE_DISABLE_CLAUDE_CODE=1` drops project `.claude/` too, so Kira uses it only for runs without project config. `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1` drops user and project `.claude/skills`. `OPENCODE_DISABLE_EXTERNAL_SKILLS=1` also drops `~/.agents/skills` (H-OC3).
+- Stub provider recipe (what reaches the model, no key). Used for Q-OC4, Q-P454-OC7 and H-OC4. Save as `stub.py`:
+
+  ```python
+  import http.server, json, sys
+  LOG = sys.argv[1]
+  class H(http.server.BaseHTTPRequestHandler):
+      def do_POST(s):
+          b = s.rfile.read(int(s.headers['content-length']))
+          open(LOG, 'ab').write(b + b'\n====\n')
+          s.send_response(200); s.send_header('content-type', 'text/event-stream'); s.end_headers()
+          for d in [{"id": "1", "object": "chat.completion.chunk", "model": "m",
+                     "choices": [{"index": 0, "delta": {"role": "assistant", "content": "ok"}}]},
+                    {"id": "1", "object": "chat.completion.chunk", "model": "m",
+                     "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}]:
+              s.wfile.write(b'data: ' + json.dumps(d).encode() + b'\n\n')
+          s.wfile.write(b'data: [DONE]\n\n')
+      def log_message(*a): pass
+  http.server.HTTPServer(('127.0.0.1', 8787), H).serve_forever()
+  ```
+
+  Run `python3 -I stub.py stub.log &`. In the project `opencode.json` (not the user one: a hermetic probe redirects that away) put `{"provider":{"stub":{"npm":"@ai-sdk/openai-compatible","options":{"baseURL":"http://127.0.0.1:8787/v1","apiKey":"x"},"models":{"m":{}}}}}`. Then `echo hi | $OC run -m stub/m --format json` and grep `stub.log` for markers. The stub answers every POST the same, title requests included. Kill it after. Orchestrator runs saw it work offline on the local stub; the first run fetches provider and plugin packages through npm, which can be slow. Whether it works with no network at all is unconfirmed.
+- Need a model key (still unverified, see Known open items): the `run --format json` tool and cost events (`step_start`, `text`, `step_finish` verified), the error for `-s <unknown id>`, plugin event names (`/tmp/kp.js` writing each event to a file, loaded through `OPENCODE_CONFIG_DIR` (a dir whose `opencode.json` lists the plugin; verified to load)), the MCP tool permission key, and whether a TUI session appears in `session list` before its first prompt.
 
 ## Mac checklist (user-run)
 
@@ -1010,11 +1067,14 @@ Every name read or set in Go. "Set by" says who supplies it; "you" means set it 
 | `KIRA_COMPAT_IMAGE_<KIND>` | Overrides the adapter compat container image per kind | you |
 | `KIRA_FAKE_SCEN`, `KIRA_FAKE_DIR`, `KIRA_DOC` | Fake agent: scenario JSON or path, call-log dir, doc basename | flow tests |
 | `KIRA_FAKE_CLAUDE` | Re-executes the ADE test binary as a fake `claude` | `ade` tests |
+| `KIRA_FAKE_CONFIG`, `KIRA_FAKE_RECORD_ENV` | Fake agent: persona config, env record | flow tests |
+| `KIRA_OPENCODE_BIN` | Opt-in OpenCode probe test binary | you |
+| `KIRA_SECRET_<NAME>` | Env reference Claude export writes for `${secret:name}`; set it where the agent starts | you |
 | `KIRA_MEMORY_EVAL`, `KIRA_EVAL_MODE`, `KIRA_EVAL_ROUND`, `KIRA_EVAL_SET`, `KIRA_EVAL_ONLY`, `KIRA_EVAL_ROUNDS`, `KIRA_EVAL_PROMPTS`, `KIRA_EVAL_BUDGET`, `KIRA_EVAL_PARALLEL`, `KIRA_EVAL_CAP_USD`, `KIRA_EVAL_PHASE_CAP_USD`, `KIRA_EVAL_LEDGER`, `KIRA_EVAL_RUNS_DIR`, `KIRA_EVAL_MODEL_HOME`, `KIRA_EVAL_RECIPES`, `KIRA_EVAL_STYLES`, `KIRA_EVAL_STYLE`, `KIRA_EVAL_VARIANTS`, `KIRA_EVAL_EMBED_WORKER` | Memory ingest eval; `KIRA_MEMORY_EVAL=1` opts in (costs real money); `KIRA_EVAL_LEDGER` names the spend file per part (default `spend.jsonl`); `KIRA_EVAL_RUNS_DIR` picks the runs dir under `apps/kira-space/tests/claude/testdata/memory-eval` (P291: `P291-runs`); `KIRA_EVAL_EMBED_WORKER=1` is internal (the test binary re-executed as the embedding worker) | `bun run eval:memory`, you |
 | `KIRA_TEST_MEMORY_MCP` | Real `claude` tests: run the binary as the memory MCP server | `apps/kira-space/tests/claude` |
 | `KIRA_GIT_DIFFERENTIAL`, `KIRA_GIT_PERF` | `1` runs the git search differential test, the git perf probe | you |
 | `KIRA_DATAGRIP_REAL_PROJECT` | Path of a real DataGrip project for the opt-in import test | you |
-| `KIRA_EMBED_SMOKE_WORKER`, `KIRA_EMBED_FAKE_WORKER`, `KIRA_ASKPASS_HELPER_PROCESS`, `KIRA_TEST_MARKER` | Re-exec markers inside the owning package's tests; never set by hand | the tests themselves |
+| `KIRA_EMBED_SMOKE_WORKER`, `KIRA_EMBED_FAKE_WORKER`, `KIRA_ASKPASS_HELPER_PROCESS`, `KIRA_TEST_MARKER`, `KIRA_PROBE_HOST`, `KIRA_PROBE_UNSET` | Re-exec markers inside the owning package's tests; never set by hand | the tests themselves |
 
 ## Comment sweep (P320)
 

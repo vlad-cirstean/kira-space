@@ -17,7 +17,7 @@ export interface TerminalLaunch {
   kind: TerminalLaunchKind;
   /** Set for a stored script: Go then runs the stored command in its resolved folder. */
   scriptId?: string;
-  /** Single-use token of a parametrised script's launch (ScriptRuns Start). */
+  /** Single-use token of a parametrised script's launch (ScriptRuns Start), or of an agent launch's env (ScriptRuns ResumeCommand). */
   launchToken?: string;
   /** The ADE task and branch a script runs for; with `scriptId`, the tab's run key. */
   taskId?: string;
