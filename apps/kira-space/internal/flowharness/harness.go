@@ -244,6 +244,7 @@ func New(t *testing.T, opts ...Opt) *App {
 	t.Setenv("KIRA_SPACE_HOME", a.SpaceHome)
 	t.Setenv("KIRA_MEMORY_HOME", a.MemoryHome)
 	t.Setenv("HOME", a.Home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(a.Home, ".config"))
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(a.Home, ".gitconfig"))
 	t.Setenv("PATH", a.BinDir+string(os.PathListSeparator)+a.pathTail(o))
