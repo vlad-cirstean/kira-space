@@ -260,6 +260,18 @@ func (s *Service) ExportPreview(ctx context.Context, args ExportPreviewArgs) (Ex
 		out.Servers = append(out.Servers, sv.row)
 	}
 	out.EnvNames = sortedKeys(ex.envNames)
+	if args.Provider == providerOpenCode && len(out.EnvNames) > 0 {
+		got := s.env(ctx, out.EnvNames...)
+		var unset []string
+		for _, n := range out.EnvNames {
+			if _, ok := got[n]; !ok {
+				unset = append(unset, n)
+			}
+		}
+		if len(unset) > 0 {
+			ex.notes = append(ex.notes, i18n.T("backend.core.agentPort.export.opencodeEnvUnset.body", map[string]string{"names": strings.Join(unset, ", ")}))
+		}
+	}
 	out.Skipped, out.Notes = ex.skipped, ex.notes
 	if out.Skipped == nil {
 		out.Skipped = []Skipped{}

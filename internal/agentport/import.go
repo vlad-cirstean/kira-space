@@ -56,6 +56,9 @@ type importer struct {
 	unreadable map[string]bool
 	reserved   map[string]string
 	refIn      func(string) (string, bool)
+	// envRefs maps each variable an imported value names to the settings fields that use it; nil
+	// when the provider needs no probe.
+	envRefs    map[string][]string
 	hookNames  map[string]bool
 	claudeEnum []string
 
@@ -187,6 +190,14 @@ func (im *importer) value(l loc, name, raw, base, field string) (text string, sl
 	}
 	if _, p := configfs.Refs(txt); p != nil {
 		return "", nil, nil, i18n.T("backend.core.agentPort.skip.refForm.body", nil)
+	}
+	if im.envRefs != nil {
+		refs, _ := configfs.Refs(txt)
+		for _, r := range refs {
+			if r.Kind == configfs.RefEnv && !slices.Contains(im.envRefs[r.Name], field) {
+				im.envRefs[r.Name] = append(im.envRefs[r.Name], field)
+			}
+		}
 	}
 	parts := classify(l, name, txt)
 	if !hasSecret(parts) {
@@ -380,13 +391,30 @@ func (s *Service) ImportPreview(ctx context.Context, args ImportPreviewArgs) (Im
 	default:
 		im, sess, err = s.newImporter(openCodeRefIn)
 		if err == nil {
+			im.envRefs = map[string][]string{}
 			s.importOpenCode(im, files)
+			s.noteUnsetEnv(ctx, im)
 		}
 	}
 	if err != nil {
 		return ImportPreview{}, err
 	}
 	return s.finishImport(args.Provider, im, sess), nil
+}
+
+// noteUnsetEnv adds a note for each variable the imported values name that the login shell lacks:
+// OpenCode reads it as empty, but Kira fails every agent launch that resolves it.
+func (s *Service) noteUnsetEnv(ctx context.Context, im *importer) {
+	if len(im.envRefs) == 0 {
+		return
+	}
+	names := sortedKeys(im.envRefs)
+	got := s.env(ctx, names...)
+	for _, n := range names {
+		if _, ok := got[n]; !ok {
+			im.notes = append(im.notes, i18n.T("backend.core.agentPort.note.envUnset.body", map[string]string{"name": n, "fields": strings.Join(im.envRefs[n], ", ")}))
+		}
+	}
 }
 
 // has reports whether the provider is registered.
@@ -451,6 +479,9 @@ func (s *Service) ImportApply(_ context.Context, args ImportApplyArgs) (PortResu
 		if !ok || it.State == StateSkipped || it.State == StateSame {
 			return PortResult{}, ipcerr.BadRequest(i18n.T("backend.core.agentPort.badItem.body", nil))
 		}
+		if len(it.Modes) > 0 && !slices.Contains(it.Modes, sel.Mode) {
+			return PortResult{}, ipcerr.BadRequest(i18n.T("backend.core.agentPort.badItem.body", nil))
+		}
 		if it.Kind == "context" {
 			ctxItem, ctxMode = it, sel.Mode
 			continue
@@ -474,6 +505,10 @@ func (s *Service) ImportApply(_ context.Context, args ImportApplyArgs) (PortResu
 			return PortResult{}, err
 		}
 		if _, err := s.o.Settings.Save(string(text), sv.Hash); err != nil {
+			// Names sealed here are new (putSecrets refuses an existing one), so no other file refers to them.
+			for _, n := range res.Secrets {
+				_ = s.o.Secrets.Delete(n)
+			}
 			return PortResult{}, saveError(err)
 		}
 		res.Written = append(res.Written, sv.Path)
@@ -525,8 +560,19 @@ func (s *Service) editSettings(text []byte, chosen []*Item) ([]byte, error) {
 	return out, nil
 }
 
-// putSecrets seals the chosen items' new credentials, each name once.
-func (s *Service) putSecrets(chosen []*Item, res *PortResult) error {
+// putSecrets seals the chosen items' new credentials, each name once. A name saved since the preview
+// is a conflict, never overwritten; on any error it removes what it sealed.
+func (s *Service) putSecrets(chosen []*Item, res *PortResult) (err error) {
+	defer func() {
+		if err != nil {
+			for _, n := range res.Secrets {
+				_ = s.o.Secrets.Delete(n)
+			}
+			res.Secrets = []string{}
+		}
+	}()
+	var have map[string]string
+	var unreadable map[string]error
 	done := map[string]bool{}
 	for _, it := range chosen {
 		reuse := map[string]bool{}
@@ -539,6 +585,21 @@ func (s *Service) putSecrets(chosen []*Item, res *PortResult) error {
 			}
 			if s.o.Secrets == nil {
 				return ipcerr.SecretStore(i18n.T("backend.core.agentSettings.noStore.body", nil))
+			}
+			if have == nil {
+				if have, unreadable, err = s.o.Secrets.Store.Open(secrets.ScopeAgentCredential, agentcfg.SecretOwner); err != nil {
+					return ipcerr.Wrap(err)
+				}
+			}
+			if _, bad := unreadable[p.name]; bad {
+				return stale()
+			}
+			if v, taken := have[p.name]; taken {
+				if v != p.value {
+					return stale()
+				}
+				done[p.name] = true
+				continue
 			}
 			if err := s.o.Secrets.Put(p.name, p.value); err != nil {
 				return ipcerr.Wrap(err)

@@ -13,6 +13,9 @@ import (
 // backupStamp is the UTC time suffix of a backup name.
 const backupStamp = "20060102T150405Z"
 
+// maxBackupNames bounds the -N suffixes tried for one second.
+const maxBackupNames = 1000
+
 // resolveTarget follows a symlink (a dotfile manager's) to the file that gets written; the link stays.
 func resolveTarget(path string) (string, error) {
 	real, err := filepath.EvalSymlinks(path)
@@ -23,13 +26,37 @@ func resolveTarget(path string) (string, error) {
 }
 
 // backup copies path to <path>.kira-backup-<UTC time> beside it, keeping the mode (the copy holds the
-// same credentials as the original). It returns the backup's path.
+// same credentials as the original). It never replaces a backup: a name taken in the same second gets
+// a -N suffix. It returns the backup's path.
 func backup(path string, data []byte, mode os.FileMode, now time.Time) (string, error) {
-	dst := path + ".kira-backup-" + now.UTC().Format(backupStamp)
-	if err := renameio.WriteFile(dst, data, mode.Perm()|0o600); err != nil {
-		return "", fmt.Errorf("agentport: back up %s: %w", filepath.Base(path), err)
+	stem := path + ".kira-backup-" + now.UTC().Format(backupStamp)
+	perm := mode.Perm() | 0o600
+	for i := 0; i < maxBackupNames; i++ {
+		dst := stem
+		if i > 0 {
+			dst = fmt.Sprintf("%s-%d", stem, i)
+		}
+		f, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
+		if errors.Is(err, os.ErrExist) {
+			continue
+		}
+		if err == nil {
+			if _, err = f.Write(data); err == nil {
+				err = f.Chmod(perm)
+			}
+			if cerr := f.Close(); err == nil {
+				err = cerr
+			}
+			if err != nil {
+				_ = os.Remove(dst)
+			}
+		}
+		if err != nil {
+			return "", fmt.Errorf("agentport: back up %s: %w", filepath.Base(path), err)
+		}
+		return dst, nil
 	}
-	return dst, nil
+	return "", fmt.Errorf("agentport: back up %s: too many backups in one second", filepath.Base(path))
 }
 
 // writeFile writes data atomically, creating parent directories 0700; an existing file keeps its mode.

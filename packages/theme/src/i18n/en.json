@@ -605,6 +605,9 @@
           "opencodeEnv": {
             "body": "OpenCode has no config env. Set {names} in your shell."
           },
+          "opencodeEnvUnset": {
+            "body": "{names} is not set in your login shell. OpenCode sends an unset variable as empty, such as a header without its token."
+          },
           "opencodeHooks": {
             "body": "OpenCode runs no hook commands. Hooks are not exported."
           },
@@ -624,6 +627,9 @@
         "note": {
           "atImports": {
             "body": "Kira passes the context as written. Import lines are not expanded."
+          },
+          "envUnset": {
+            "body": "{name} is not set in your login shell (used by {fields}). OpenCode reads it as empty. Kira fails agent launches until it is set."
           },
           "permissionOrder": {
             "body": "OpenCode permission {key} mixes allow and deny. Its order no longer applies. Deny wins."

@@ -452,6 +452,9 @@ func TestAgentPortOpenCode(t *testing.T) {
 	if r := portItem(t, prev.Items, "mcp/remote1"); len(r.Secrets) != 1 || !strings.Contains(r.Text, "enabled: false") {
 		t.Errorf("mcp/remote1 = %+v, want a slot and enabled false", r)
 	}
+	if notes := strings.Join(prev.Notes, "\n"); !strings.Contains(notes, "P457_UNSET_ORG is not set") || strings.Contains(notes, "HOME is not set") {
+		t.Errorf("import notes = %q, want one for the unset P457_UNSET_ORG only", notes)
+	}
 	app.Contract(t, "agent-port-import", "opencode", prev, flowtest.Mask("token"))
 	if _, err := svc.ImportApply(ctx, selectAll(prev)); err != nil {
 		t.Fatalf("ImportApply: %v", err)
@@ -498,6 +501,9 @@ opencode:
 	}
 	if strings.Contains(cf.Before, lit["OCTOKEN"]) || strings.Contains(cf.Before, lit["OCKEY"]) || !strings.Contains(cf.Before, "••••") {
 		t.Errorf("config before = %s, want the credentials masked", cf.Before)
+	}
+	if notes := strings.Join(ep.Notes, "\n"); !strings.Contains(notes, "KIRA_SECRET_OC_TOKEN is not set") {
+		t.Errorf("export notes = %q, want the unset secret variable named", notes)
 	}
 	app.Contract(t, "agent-port-export", "opencode", ep, flowtest.Mask("token"))
 	res, err := svc.ExportApply(ctx, agentport.ExportApplyArgs{Token: ep.Token, Files: []string{"config", "context"}})

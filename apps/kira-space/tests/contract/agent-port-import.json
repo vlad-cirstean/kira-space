@@ -16,7 +16,7 @@
         ],
         "source": "~/xdg/opencode/opencode.jsonc",
         "state": "new",
-        "text": "mcp_servers:\n  local1:\n    command: npx\n    args:\n      - -y\n      - server\n    env:\n      HOME_REF: ${HOME}\n      TOKEN: ${secret:local1-token}"
+        "text": "mcp_servers:\n  local1:\n    command: npx\n    args:\n      - -y\n      - server\n    env:\n      HOME_REF: ${HOME}\n      ORG_REF: ${P457_UNSET_ORG}\n      TOKEN: ${secret:local1-token}"
       },
       {
         "current": "",
@@ -147,7 +147,8 @@
       }
     ],
     "notes": [
-      "OpenCode permission bash mixes allow and deny. Its order no longer applies. Deny wins."
+      "OpenCode permission bash mixes allow and deny. Its order no longer applies. Deny wins.",
+      "P457_UNSET_ORG is not set in your login shell (used by mcp_servers.local1.env.ORG_REF). OpenCode reads it as empty. Kira fails agent launches until it is set."
     ],
     "provider": "opencode",
     "sources": [

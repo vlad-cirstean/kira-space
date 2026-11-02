@@ -6,8 +6,8 @@
     ],
     "files": [
       {
-        "after": "{\n  // user comment\n  \"model\": \"anthropic/claude-opus-4-1\",\n  \"mcp\": {\n    \"local1\": {\n      \"type\": \"local\",\n      \"command\": [\"npx\", \"-y\", \"server\"],\n      \"environment\": { \"TOKEN\": \"••••\", \"HOME_REF\": \"{env:HOME}\" }\n    },\n    \"remote1\": {\n      \"type\": \"remote\",\n      \"url\": \"https://oc.example.com/mcp\",\n      \"headers\": { \"Authorization\": \"••••\" },\n      \"enabled\": false\n    },\"fresh\":{\"enabled\":true,\"headers\":{\"Authorization\":\"Bearer {env:KIRA_SECRET_OC_TOKEN}\"},\"type\":\"remote\",\"url\":\"https://fresh.example.com/mcp\"}\n  },\n  \"permission\": {\n    \"edit\": \"deny\",\n    \"bash\": {\"git push*\":\"deny\",\"git status\":\"allow\",\"rm*\":\"deny\"},\n    \"webfetch\": \"ask\"\n  },\n  \"plugin\": [\"file:///opt/plugins/a.js\", \"opencode-foo\"],\n  \"provider\": { \"anthropic\": { \"options\": { \"apiKey\": \"••••\" } } },\n  \"instructions\": [\"/x/rules.md\"]\n}\n",
-        "before": "{\n  // user comment\n  \"model\": \"anthropic/claude-sonnet-4-5\",\n  \"mcp\": {\n    \"local1\": {\n      \"type\": \"local\",\n      \"command\": [\"npx\", \"-y\", \"server\"],\n      \"environment\": { \"TOKEN\": \"••••\", \"HOME_REF\": \"{env:HOME}\" }\n    },\n    \"remote1\": {\n      \"type\": \"remote\",\n      \"url\": \"https://oc.example.com/mcp\",\n      \"headers\": { \"Authorization\": \"••••\" },\n      \"enabled\": false\n    }\n  },\n  \"permission\": {\n    \"edit\": \"deny\",\n    \"bash\": { \"git push*\": \"deny\", \"git status\": \"allow\" },\n    \"webfetch\": \"ask\"\n  },\n  \"plugin\": [\"file:///opt/plugins/a.js\", \"opencode-foo\"],\n  \"provider\": { \"anthropic\": { \"options\": { \"apiKey\": \"••••\" } } },\n  \"instructions\": [\"/x/rules.md\"]\n}\n",
+        "after": "{\n  // user comment\n  \"model\": \"anthropic/claude-opus-4-1\",\n  \"mcp\": {\n    \"local1\": {\n      \"type\": \"local\",\n      \"command\": [\"npx\", \"-y\", \"server\"],\n      \"environment\": {\n        \"TOKEN\": \"••••\",\n        \"HOME_REF\": \"{env:HOME}\",\n        \"ORG_REF\": \"{env:P457_UNSET_ORG}\"\n      }\n    },\n    \"remote1\": {\n      \"type\": \"remote\",\n      \"url\": \"https://oc.example.com/mcp\",\n      \"headers\": { \"Authorization\": \"••••\" },\n      \"enabled\": false\n    },\"fresh\":{\"enabled\":true,\"headers\":{\"Authorization\":\"Bearer {env:KIRA_SECRET_OC_TOKEN}\"},\"type\":\"remote\",\"url\":\"https://fresh.example.com/mcp\"}\n  },\n  \"permission\": {\n    \"edit\": \"deny\",\n    \"bash\": {\"git push*\":\"deny\",\"git status\":\"allow\",\"rm*\":\"deny\"},\n    \"webfetch\": \"ask\"\n  },\n  \"plugin\": [\"file:///opt/plugins/a.js\", \"opencode-foo\"],\n  \"provider\": { \"anthropic\": { \"options\": { \"apiKey\": \"••••\" } } },\n  \"instructions\": [\"/x/rules.md\"]\n}\n",
+        "before": "{\n  // user comment\n  \"model\": \"anthropic/claude-sonnet-4-5\",\n  \"mcp\": {\n    \"local1\": {\n      \"type\": \"local\",\n      \"command\": [\"npx\", \"-y\", \"server\"],\n      \"environment\": {\n        \"TOKEN\": \"••••\",\n        \"HOME_REF\": \"{env:HOME}\",\n        \"ORG_REF\": \"{env:P457_UNSET_ORG}\"\n      }\n    },\n    \"remote1\": {\n      \"type\": \"remote\",\n      \"url\": \"https://oc.example.com/mcp\",\n      \"headers\": { \"Authorization\": \"••••\" },\n      \"enabled\": false\n    }\n  },\n  \"permission\": {\n    \"edit\": \"deny\",\n    \"bash\": { \"git push*\": \"deny\", \"git status\": \"allow\" },\n    \"webfetch\": \"ask\"\n  },\n  \"plugin\": [\"file:///opt/plugins/a.js\", \"opencode-foo\"],\n  \"provider\": { \"anthropic\": { \"options\": { \"apiKey\": \"••••\" } } },\n  \"instructions\": [\"/x/rules.md\"]\n}\n",
         "changed": true,
         "exists": true,
         "language": "json",
@@ -24,7 +24,9 @@
         "role": "context"
       }
     ],
-    "notes": [],
+    "notes": [
+      "KIRA_SECRET_OC_TOKEN is not set in your login shell. OpenCode sends an unset variable as empty, such as a header without its token."
+    ],
     "provider": "opencode",
     "servers": [],
     "skipped": [],
