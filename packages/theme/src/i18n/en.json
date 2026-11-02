@@ -573,6 +573,110 @@
           "body": "The agent context changed. Refresh and retry."
         }
       },
+      "agentPort": {
+        "badItem": {
+          "body": "The selection holds an item that can’t be applied. Preview again."
+        },
+        "expired": {
+          "body": "The preview expired. Preview again."
+        },
+        "export": {
+          "collision": {
+            "body": "Secrets {a} and {b} both export as {name}. Rename one."
+          },
+          "envNoExpansion": {
+            "body": "Claude doesn’t expand variables in its env settings. Set {name} in your shell instead."
+          },
+          "noContext": {
+            "body": "The context is empty. {file} is left as it is."
+          },
+          "noForm": {
+            "body": "{agent} has no form for this value. It is not exported."
+          },
+          "opencodeEnv": {
+            "body": "OpenCode has no config env. Set {names} in your shell."
+          },
+          "opencodeHooks": {
+            "body": "OpenCode runs no hook commands. Hooks are not exported."
+          },
+          "permissionShape": {
+            "body": "The existing permission value has a shape Kira can’t merge. It is left as it is."
+          },
+          "plaintext": {
+            "body": "This value holds a credential. Move it to a secret first."
+          }
+        },
+        "fixContext": {
+          "body": "The context file has a problem. Fix it first."
+        },
+        "fixSettings": {
+          "body": "The settings file has a problem. Fix it first."
+        },
+        "note": {
+          "atImports": {
+            "body": "Kira passes the context as written. Import lines are not expanded."
+          },
+          "permissionOrder": {
+            "body": "OpenCode permission {key} mixes allow and deny. Its order no longer applies. Deny wins."
+          }
+        },
+        "notJSON": {
+          "body": "{file} is not valid JSON. It was not read."
+        },
+        "skip": {
+          "badName": {
+            "body": "The name is not valid in Kira settings."
+          },
+          "badValue": {
+            "body": "The value is not valid in Kira settings."
+          },
+          "contextTooLarge": {
+            "body": "The context is over 32 kB. Kira does not take it."
+          },
+          "hookEvent": {
+            "body": "Kira has no hook for the event {event}."
+          },
+          "hookType": {
+            "body": "Only command hooks import. Hook type of {event} skipped."
+          },
+          "kiraName": {
+            "body": "Names starting with {prefix} are Kira’s own."
+          },
+          "noSetting": {
+            "body": "Kira has no setting for this."
+          },
+          "notText": {
+            "body": "The value is not text."
+          },
+          "npmPlugin": {
+            "body": "Only file:// plugins import."
+          },
+          "permissionRule": {
+            "body": "Kira has no form for this permission rule."
+          },
+          "refForm": {
+            "body": "This reference form has no Kira equivalent."
+          },
+          "serverAuth": {
+            "body": "The server signs in through the agent. Kira can’t hold that."
+          },
+          "transport": {
+            "body": "{transport} servers are not supported."
+          }
+        },
+        "stale": {
+          "body": "A file changed since the preview. Preview again."
+        },
+        "tooLarge": {
+          "body": "{file} is over {limit} MB. It was not read."
+        },
+        "unknownProvider": {
+          "body": "{provider} has no import or export."
+        },
+        "unreadable": {
+          "body": "{file} can’t be read."
+        }
+      },
       "agentSettings": {
         "changed": {
           "body": "The settings file changed since you loaded it."
@@ -8773,6 +8877,100 @@
           "spanTip": {
             "tooltip": "Continues from {day}; click to open"
           }
+        }
+      },
+      "port": {
+        "append": {
+          "status": "Append"
+        },
+        "backups": {
+          "label": "Backups"
+        },
+        "cliMissing": {
+          "hint": "The agent’s CLI was not found. MCP servers can’t be registered."
+        },
+        "current": {
+          "label": "Currently in Kira"
+        },
+        "env": {
+          "copy": {
+            "label": "Copy export lines"
+          },
+          "hint": "Set these where the agent starts. Values come from Kira’s secret store and are never written to a file.",
+          "title": "Environment variables"
+        },
+        "exportApply": {
+          "label": "Export"
+        },
+        "exportButton": {
+          "label": "Export to {agent}"
+        },
+        "exportDialog": {
+          "hint": "Writes Kira’s settings and context into the agent’s user-level config. A backup of each changed file is kept beside it.",
+          "title": "Export {agent} config"
+        },
+        "file": {
+          "new": {
+            "status": "New file"
+          },
+          "unchanged": {
+            "status": "No change"
+          }
+        },
+        "importApply": {
+          "label": "Import {count} item | Import {count} items"
+        },
+        "importButton": {
+          "label": "Import from {agent}"
+        },
+        "importDialog": {
+          "hint": "Reads the agent’s user-level config files. Nothing is written until you import. The agent’s own files stay unchanged.",
+          "title": "Import {agent} config"
+        },
+        "items": {
+          "aria": "Items to import",
+          "emptyHint": "Nothing to import."
+        },
+        "missing": {
+          "status": "Missing"
+        },
+        "mode": {
+          "aria": "How to add the context"
+        },
+        "replace": {
+          "status": "Replace"
+        },
+        "retry": {
+          "label": "Preview again"
+        },
+        "savedSecrets": {
+          "label": "Secrets saved"
+        },
+        "secret": {
+          "label": "Secret {name}"
+        },
+        "servers": {
+          "title": "MCP servers"
+        },
+        "skipped": {
+          "title": "Not exported"
+        },
+        "sources": {
+          "aria": "Source files"
+        },
+        "state": {
+          "conflict": {
+            "status": "Differs"
+          },
+          "new": {
+            "status": "To add"
+          },
+          "same": {
+            "status": "Same"
+          }
+        },
+        "written": {
+          "label": "Written"
         }
       },
       "progress": {

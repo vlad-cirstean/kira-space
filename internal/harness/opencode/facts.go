@@ -98,3 +98,22 @@ var substitutionMarks = []string{"{env:", "{file:"}
 // maxConfigContent caps the OPENCODE_CONFIG_CONTENT document the app settings render: Linux
 // MAX_ARG_STRLEN is 128 KiB per environment string.
 const maxConfigContent = 64 << 10
+
+// User-level config (P454, probed on 1.19.5 by the orchestrator; internal/agentport holds the file
+// names, G5 keeps them out of this package):
+//   - Q-P454-OC1: in the user config dir opencode.json, opencode.jsonc and config.json all load; with
+//     opencode.json and opencode.jsonc both present, opencode.jsonc wins. Export edits the winning
+//     file, import reads it.
+//   - Q-P454-OC2: JSONC (a comment, a trailing comma) is accepted.
+//   - Q-P454-OC3: {env:X} is substituted in the user config (an mcp url); an unset variable becomes the
+//     empty string, no error.
+//   - Q-P454-OC4: {env:X} works in a local server's `environment` value and reaches its process.
+//   - Q-P454-OC5: `permission` keeps edit, bash pattern maps and webfetch, in order.
+//   - Q-P454-OC6: a run or `debug config` REWRITES the user's opencode.json: it inserts "$schema" as
+//     the first key, keeps the rest minified, and creates package.json, package-lock.json and
+//     node_modules in the config dir. Export must tolerate a "$schema" insert between preview and
+//     apply.
+//   - Q-P454-OC7: with a stub provider the global AGENTS.md in the user config dir reached the model
+//     request, with and without `instructions` in opencode.json. Setting OPENCODE_CONFIG_DIR appears to
+//     replace the global dir, so a launch that sets it does not load the global AGENTS.md (P455).
+//   - Q-P454-OC8: an npm plugin name is accepted; import takes file:// plugins only.

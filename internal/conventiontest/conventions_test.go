@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -20,6 +21,7 @@ import (
 var permanentExemptions = map[string]string{
 	"G4 apps/kira-space/internal/gitsession/incremental.go": "writes temp files into a per-call os.MkdirTemp dir that is deleted before return; nothing else reads them",
 	"G5 internal/harness/claude/sandbox.go":                 "names ~/.claude.json as a sandbox write path; Kira never opens it",
+	"G5 internal/harness/opencode/hooks/server.go":          "writes Kira's own opencode.json into its private temp dir; never the user's",
 	"G5 internal/harness/opencode/headless.go":              "reads only Kira's own generated MCP config files, to merge them into one",
 	"G5 internal/harness/opencode/sandbox.go":               "names OpenCode's config and data dirs as sandbox paths; Kira never opens them",
 }
@@ -103,6 +105,7 @@ func scan(t *testing.T, root, rel string) []finding {
 	inClaudeOnly := dir == "internal/harness/claude" || strings.HasPrefix(dir, "internal/harness/claude/")
 	inOpenCode := dir == "internal/harness/opencode" || strings.HasPrefix(dir, "internal/harness/opencode/")
 	inClaude := inClaudeOnly || inOpenCode
+	inAgentPort := dir == "internal/agentport"
 	isCodes := filepath.ToSlash(rel) == "internal/ipcerr/codes.go"
 	var out []finding
 	add := func(rule string, pos token.Pos, msg string) {
@@ -141,6 +144,13 @@ func scan(t *testing.T, root, rel string) []finding {
 					}
 				}
 			}
+			if x.Kind == token.STRING && inAgentPort {
+				if v, err := strconv.Unquote(x.Value); err == nil {
+					if why := agentPortCredential(v); why != "" {
+						add("G5", x.Pos(), why+g5Rule)
+					}
+				}
+			}
 			if x.Kind == token.STRING && inClaudeOnly {
 				if v, err := strconv.Unquote(x.Value); err == nil {
 					switch {
@@ -162,6 +172,9 @@ func scan(t *testing.T, root, rel string) []finding {
 			if inHostAdapters && hasAdjacent(x, `"auth"`, `"token"`) {
 				add("G5", x.Pos(), "gh auth token argv"+g5Rule)
 			}
+			if inAgentPort && (hasAdjacent(x, `"mcp"`, `"get"`) || startsWith(x, `"auth"`, `"providers"`)) {
+				add("G5", x.Pos(), "credential CLI argv (claude mcp get, opencode auth/providers)"+g5Rule)
+			}
 			if inClaudeOnly && hasAdjacent(x, `"mcp"`, `"get"`) {
 				add("G5", x.Pos(), "claude mcp get argv (prints stored headers and env)"+g5Rule)
 			}
@@ -175,6 +188,9 @@ func scan(t *testing.T, root, rel string) []finding {
 				if why := dockerCredential(x); why != "" {
 					add("G5", x.Pos(), why+g5Rule)
 				}
+			}
+			if inAgentPort && (isHeaderWrite(x) || runsApiKeyHelper(x)) {
+				add("G5", x.Pos(), "request header injection or an apiKeyHelper run"+g5Rule)
 			}
 			if inClaude && isHeaderWrite(x) {
 				add("G5", x.Pos(), "request header injection"+g5Rule)
@@ -221,6 +237,46 @@ func openCodeCredential(v string) string {
 		return "argv " + strconv.Quote(v) + " (opencode auth/providers manage credentials)"
 	}
 	return ""
+}
+
+// agentPortCredential names why a string literal in internal/agentport reaches a credential store of a
+// driven CLI, or "". The package opens only the user config files its Import and Export map.
+func agentPortCredential(v string) string {
+	for _, bad := range []string{".credentials.json", "auth.json", ".local/share/opencode", "OPENCODE_AUTH_CONTENT"} {
+		if strings.Contains(v, bad) {
+			return "literal " + strconv.Quote(bad)
+		}
+	}
+	return ""
+}
+
+// startsWith reports a composite literal whose first element is one of the given literals, such as an
+// `auth ...` argv.
+func startsWith(c *ast.CompositeLit, first ...string) bool {
+	if len(c.Elts) == 0 {
+		return false
+	}
+	a, ok := c.Elts[0].(*ast.BasicLit)
+	return ok && slices.Contains(first, a.Value)
+}
+
+// runsApiKeyHelper reports a process spawn that names apiKeyHelper in its arguments.
+func runsApiKeyHelper(x *ast.CallExpr) bool {
+	sel, ok := x.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	switch sel.Sel.Name {
+	case "Command", "CommandContext", "Run", "RunIO":
+	default:
+		return false
+	}
+	for _, a := range x.Args {
+		if lit, ok := a.(*ast.BasicLit); ok && lit.Kind == token.STRING && strings.Contains(lit.Value, "apiKeyHelper") {
+			return true
+		}
+	}
+	return false
 }
 
 // isOSFileRead reports os.ReadFile, os.Open or os.OpenFile.

@@ -2,6 +2,7 @@ package harness
 
 import (
 	"context"
+	"encoding/json"
 )
 
 // MCPHost renders MCP wiring in the provider's formats and lists the user's own MCP servers.
@@ -87,6 +88,12 @@ type MCPInstaller interface {
 	// Command and StdioCommand render the copy-paste text of the install, never executed.
 	Command(name, url, helperPath string) string
 	StdioCommand(name, command string, args []string) string
+}
+
+// JSONInstaller is an MCPInstaller that registers a server from the CLI's own JSON document,
+// replacing a registration of the same name. extraEnv is added to the CLI's environment.
+type JSONInstaller interface {
+	InstallJSON(ctx context.Context, name string, server json.RawMessage, extraEnv []string) InstallResult
 }
 
 // InstallStatus is the pane's pre-click read; Install re-resolves everything itself.

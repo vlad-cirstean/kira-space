@@ -31,6 +31,8 @@ type Deps struct {
 	LookPath func(string) (string, error)
 	Stat     func(string) (os.FileInfo, error)
 	Run      func(ctx context.Context, path string, args []string) error
+	// RunEnv is Run with the environment a spawn gets, used when InstallJSON names one.
+	RunEnv func(ctx context.Context, path string, args, env []string) error
 	// Candidates are the absolute paths probed after PATH.
 	Candidates func() []string
 }
@@ -42,13 +44,14 @@ type Installer struct {
 	lookPath func(string) (string, error)
 	stat     func(string) (os.FileInfo, error)
 	run      func(ctx context.Context, path string, args []string) error
+	runEnv   func(ctx context.Context, path string, args, env []string) error
 	cands    func() []string
 }
 
 // New constructs an Installer over d, substituting the real OS implementation for any zero-value
 // field.
 func New(d Deps) *Installer {
-	i := &Installer{lookPath: d.LookPath, stat: d.Stat, run: d.Run, cands: d.Candidates}
+	i := &Installer{lookPath: d.LookPath, stat: d.Stat, run: d.Run, runEnv: d.RunEnv, cands: d.Candidates}
 	if i.lookPath == nil {
 		i.lookPath = realLookPath
 	}
@@ -57,6 +60,12 @@ func New(d Deps) *Installer {
 	}
 	if i.run == nil {
 		i.run = toolexec.Run
+	}
+	if i.runEnv == nil {
+		i.runEnv = func(ctx context.Context, path string, args, env []string) error {
+			_, err := toolexec.RunIO(ctx, path, args, "", env, nil)
+			return err
+		}
 	}
 	if i.cands == nil {
 		i.cands = func() []string { return nil }
@@ -146,7 +155,7 @@ func (i *Installer) Install(ctx context.Context, name, url, helperPath string) h
 	// splits into more than one word there, so no Authorization header is ever sent and every call
 	// gets a 401 with no hint why. Single-quoting here is the fix; EnsureHeaderHelperScript already
 	// quotes the token path the same way for the same reason, one level down.
-	return i.register(ctx, name, serverJSON{Type: "http", URL: url, HeadersHelper: loginshell.Quote(helperPath)})
+	return i.register(ctx, name, serverJSON{Type: "http", URL: url, HeadersHelper: loginshell.Quote(helperPath)}, nil)
 }
 
 // stdioServerJSON is add-json's shape for a stdio server: a command and its argv.
@@ -168,11 +177,18 @@ func (i *Installer) InstallStdio(ctx context.Context, name, command string, args
 	if !filepath.IsAbs(command) {
 		return harness.InstallResult{Outcome: harness.OutcomeInstallFailed, Detail: "internal error: server command path is not absolute"}
 	}
-	return i.register(ctx, name, stdioServerJSON{Type: "stdio", Command: command, Args: args})
+	return i.register(ctx, name, stdioServerJSON{Type: "stdio", Command: command, Args: args}, nil)
+}
+
+// InstallJSON registers a server from its own add-json document, replacing any registration of name.
+// extraEnv is added to the process environment of both spawns (CLAUDE_CONFIG_DIR, so the CLI edits the
+// file a caller backed up). A caller never puts a secret value in server: references only.
+func (i *Installer) InstallJSON(ctx context.Context, name string, server json.RawMessage, extraEnv []string) harness.InstallResult {
+	return i.register(ctx, name, server, extraEnv)
 }
 
 // register is the shared remove-then-add-json path.
-func (i *Installer) register(ctx context.Context, name string, server any) harness.InstallResult {
+func (i *Installer) register(ctx context.Context, name string, server any, extraEnv []string) harness.InstallResult {
 	claudePath, probed, found := i.locateClaude()
 	if !found {
 		return harness.InstallResult{Outcome: harness.OutcomeNotFound, Probed: probed}
@@ -181,8 +197,14 @@ func (i *Installer) register(ctx context.Context, name string, server any) harne
 	spawnCtx, cancel := context.WithTimeout(ctx, spawnTimeout)
 	defer cancel()
 
+	run := i.run
+	if len(extraEnv) > 0 {
+		run = func(ctx context.Context, path string, args []string) error {
+			return i.runEnv(ctx, path, args, append(os.Environ(), extraEnv...))
+		}
+	}
 	removeArgs := []string{"mcp", "remove", "--scope", "user", name}
-	if err := i.run(spawnCtx, claudePath, removeArgs); err != nil && !isNotRegisteredError(err) {
+	if err := run(spawnCtx, claudePath, removeArgs); err != nil && !isNotRegisteredError(err) {
 		return harness.InstallResult{Outcome: harness.OutcomeInstallFailed, Detail: detailFor(spawnCtx, err), Probed: probed}
 	}
 
@@ -191,7 +213,7 @@ func (i *Installer) register(ctx context.Context, name string, server any) harne
 		return harness.InstallResult{Outcome: harness.OutcomeInstallFailed, Detail: err.Error(), Probed: probed}
 	}
 	addArgs := []string{"mcp", "add-json", "--scope", "user", name, string(payload)}
-	if err := i.run(spawnCtx, claudePath, addArgs); err != nil {
+	if err := run(spawnCtx, claudePath, addArgs); err != nil {
 		return harness.InstallResult{Outcome: harness.OutcomeInstallFailed, Detail: detailFor(spawnCtx, err), Probed: probed}
 	}
 	return harness.InstallResult{Outcome: harness.OutcomeInstalled, Probed: probed}

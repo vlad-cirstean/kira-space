@@ -197,3 +197,36 @@ func (s *Store) WriteDocs(context configfs.DocModel) error {
 	m := configfs.DocModel{App: s.o.App, Title: context.Title, Intro: agentsIntro, Sections: []configfs.DocModel{context, s.docModel}}
 	return s.folder.WriteDocs(m)
 }
+
+// Check decodes text as settings.yaml without saving it: nil when it is valid.
+func (s *Store) Check(text []byte) *configfs.Problem {
+	_, p := s.folder.Decode(File, text)
+	return p
+}
+
+// ForProvider is the settings in effect as one provider's input, references verbatim, as the
+// settings view renders them; ok is false when there are no settings.
+func (s *Store) ForProvider(provider string) (as harness.AgentSettings, ok bool, err error) {
+	set, ok := s.Settings()
+	if !ok {
+		return as, false, nil
+	}
+	as, err = set.agentSettings(provider, func(t string) (string, error) { return t, nil })
+	return as, true, err
+}
+
+// NeutralEvent is the settings.yaml hook event name of a provider event kind.
+func NeutralEvent(kind harness.EventKind) (string, bool) {
+	for name, k := range hookEvents {
+		if k == kind {
+			return name, true
+		}
+	}
+	return "", false
+}
+
+// HookEventKind is the provider event kind of a settings.yaml hook event name.
+func HookEventKind(neutral string) (harness.EventKind, bool) {
+	k, ok := hookEvents[neutral]
+	return k, ok
+}

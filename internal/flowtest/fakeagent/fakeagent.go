@@ -13,7 +13,9 @@
 // call also keeps its result as mcp-<tool>-<n>.json.
 //
 // `claude mcp list` prints the servers of the user's own claude config ($CLAUDE_CONFIG_DIR or $HOME
-// .claude.json) in the real CLI's format and keeps its argv as mcp-list-<n>.args. A headless call with
+// .claude.json) in the real CLI's format and keeps its argv as mcp-list-<n>.args. `claude mcp add-json`
+// and `claude mcp remove` edit that file's mcpServers (argv mcp-add-json-<n>.args, mcp-remove-<n>.args).
+// A headless call with
 // --setting-sources user and no --strict-mcp-config also finds tools on those servers, limited to the
 // allowedMcpServers of --settings (kept as <repo>-<n>.settings). Reading that file is the CLI's job.
 package fakeagent
@@ -244,8 +246,13 @@ func runGh(scen Scenario, dir string, args []string) int {
 }
 
 func runClaude(scen Scenario, dir string, args []string) int {
-	if len(args) >= 2 && args[0] == "mcp" && args[1] == "list" {
-		return runMCPList(dir, args)
+	if len(args) >= 2 && args[0] == "mcp" {
+		switch args[1] {
+		case "list":
+			return runMCPList(dir, args)
+		case "add-json", "remove":
+			return runMCPEdit(dir, args)
+		}
 	}
 	cwd, _ := os.Getwd()
 	repo := filepath.Base(filepath.Dir(cwd))
@@ -641,6 +648,60 @@ func allowedServers(argv []string) (allowed map[string]bool, limited bool) {
 // loadsUserSettings reports whether the call makes claude load the user's own servers.
 func loadsUserSettings(argv []string) bool {
 	return slices.Contains(strings.Split(argAfter(argv, "--setting-sources"), ","), "user") && !slices.Contains(argv, "--strict-mcp-config")
+}
+
+// runMCPEdit plays `claude mcp add-json -s user <name> <json>` and `claude mcp remove -s user <name>`
+// against the user config file: add-json refuses an existing name and remove an absent one, both with
+// exit 1 and the real CLI's message. Every other key of the file is kept. Argv is kept as
+// mcp-add-json-<n>.args or mcp-remove-<n>.args.
+func runMCPEdit(dir string, args []string) int {
+	verb := args[1]
+	n := nextCount(dir, "mcp-"+verb)
+	writeFile(filepath.Join(dir, fmt.Sprintf("mcp-%s-%d.args", verb, n)), []byte(strings.Join(args, "\n")))
+	var pos []string
+	for i := 2; i < len(args); i++ {
+		if args[i] == "-s" || args[i] == "--scope" {
+			i++
+			continue
+		}
+		pos = append(pos, args[i])
+	}
+	if len(pos) == 0 {
+		fmt.Fprintln(os.Stderr, "error: missing server name")
+		return 1
+	}
+	name := pos[0]
+	doc := map[string]json.RawMessage{}
+	if raw, err := os.ReadFile(userConfigPath()); err == nil {
+		_ = json.Unmarshal(raw, &doc)
+	}
+	servers := map[string]json.RawMessage{}
+	if raw := doc["mcpServers"]; raw != nil {
+		_ = json.Unmarshal(raw, &servers)
+	}
+	_, exists := servers[name]
+	switch verb {
+	case "add-json":
+		if len(pos) < 2 || !json.Valid([]byte(pos[1])) {
+			fmt.Fprintln(os.Stderr, "error: invalid JSON")
+			return 1
+		}
+		if exists {
+			fmt.Fprintf(os.Stderr, "MCP server %s already exists in user config\n", name)
+			return 1
+		}
+		servers[name] = json.RawMessage(pos[1])
+	default:
+		if !exists {
+			fmt.Fprintf(os.Stderr, "No MCP server named %q in user scope\n", name)
+			return 1
+		}
+		delete(servers, name)
+	}
+	doc["mcpServers"], _ = json.Marshal(servers)
+	out, _ := json.MarshalIndent(doc, "", "  ")
+	writeFile(userConfigPath(), out)
+	return 0
 }
 
 // runMCPList plays `claude mcp list`.
