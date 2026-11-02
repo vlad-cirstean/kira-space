@@ -148,7 +148,7 @@ func TestOpenCodeProvider(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StartAdHoc opencode: %v", err)
 	}
-	if launch.Command != "opencode" {
+	if !strings.HasPrefix(launch.Command, "/usr/bin/env ") || !strings.HasSuffix(launch.Command, " opencode") {
 		t.Fatalf("command = %q, want opencode", launch.Command)
 	}
 	openTUI(t, app, launch)
@@ -190,7 +190,7 @@ func TestOpenCodeProvider(t *testing.T) {
 	}
 	testx.WaitUntil(t, waitFor, func() bool { return sessionByID(t, app, launch.SessionID).State == "stopped" })
 	back, err := app.W.AdeTask.TakeOver(ctx, adewire.TakeOverArgs{SessionID: launch.SessionID})
-	if err != nil || back.Command != "opencode -s '"+ocSession+"'" {
+	if err != nil || !strings.HasSuffix(back.Command, " opencode -s '"+ocSession+"'") {
 		t.Fatalf("TakeOver = %+v, %v, want opencode -s %s", back, err, ocSession)
 	}
 
@@ -211,7 +211,7 @@ func TestOpenCodeProvider(t *testing.T) {
 	// (c) As the default, opencode launches steps; a step's own agent wins.
 	setProvider(t, app, "opencode")
 	step, err := app.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: task(t, app, repoRec.ID, "dflt", ocWorkflow("dflt", "")).ID})
-	if err != nil || step.Command != "opencode" {
+	if err != nil || !strings.HasSuffix(step.Command, " opencode") {
 		t.Fatalf("LaunchStep on the default = %+v, %v, want opencode", step, err)
 	}
 	step, err = app.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: task(t, app, repoRec.ID, "pick", ocWorkflow("pick", "claude")).ID})

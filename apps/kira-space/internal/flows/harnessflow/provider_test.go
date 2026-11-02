@@ -264,11 +264,11 @@ func TestSecondProviderRegistered(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := fakeagent.Persona + " --resume " + headless.AgentSessionID; launch.Command != want {
+	if want := fakeagent.Persona + " --resume " + headless.AgentSessionID + " --hermetic"; launch.Command != want {
 		t.Fatalf("take over command = %q, want %q", launch.Command, want)
 	}
 	resume, err := app.W.ScriptRuns.ResumeCommand(scriptruns.ResumeCommandArgs{RunID: smart.ID})
-	if err != nil || resume.Command != fakeagent.Persona+" --resume "+smart.SessionID || resume.Token != "" {
+	if err != nil || resume.Command != fakeagent.Persona+" --resume "+smart.SessionID+" --hermetic" || resume.Token != "" {
 		t.Fatalf("ResumeCommand = %+v, %v, want the fake's", resume, err)
 	}
 	// A resumed smart run keeps its provider: the grant config is rendered by the fake, not the active claude.
