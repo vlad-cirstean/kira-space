@@ -51,3 +51,18 @@ test('each branch reopens on the tab it was left on', async ({ relaunch }) => {
   await page.locator(t('ade-panel-back')).click();
   await expect(page.locator(t('ade-task-tab'))).toBeVisible();
 });
+
+test('tab counts show in a grey circle badge', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch);
+  const badge = (id: string) => page.locator(`${t(id)} [data-slot="badge"][data-variant="count"]`);
+  await page.locator(head('T_bill')).click();
+  const sessions = badge('ade-panel-tab-sessions');
+  await expect(sessions).toHaveText('4');
+  const box = await sessions.boundingBox();
+  expect(Math.abs((box?.width ?? 0) - (box?.height ?? 1))).toBeLessThanOrEqual(1);
+
+  await page.locator(t('ade-tab-needs')).click();
+  await page.locator(t('ade-needs-all')).click();
+  await expect(badge('ade-all-running')).toHaveText('13');
+  await expect(badge('ade-all-stopped')).toHaveText('7');
+});
