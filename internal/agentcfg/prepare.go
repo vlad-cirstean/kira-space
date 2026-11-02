@@ -102,7 +102,7 @@ func (s *Store) resolver(ctx context.Context, set Settings) (func(string) (strin
 	}
 	res := &configfs.Resolver{Env: env, Namespace: secretNamespace}
 	if s.o.Secrets != nil {
-		res.Secrets = s.o.Secrets.Source()
+		res.Secrets = s.o.Secrets.Snapshot()
 	}
 	values := new([]string)
 	return func(text string) (string, error) {

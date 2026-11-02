@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/kirathecat/kira-studio/internal/agentcfg/migrations"
 	"github.com/kirathecat/kira-studio/internal/configfs"
@@ -74,16 +75,23 @@ func (s *SecretStore) Names() ([]string, error) {
 	return m[SecretOwner], nil
 }
 
-// Source resolves ${secret:name} from the store. Reading is per call: a value set in the other app is
-// seen at the next launch.
-func (s *SecretStore) Source() configfs.SecretSource {
+// Snapshot resolves ${secret:name} from the store for one launch: the first reference opens and decrypts
+// every agent secret once and later references read that copy, so n references cost one query, not n.
+// A value set in the other app is seen by the next launch's Snapshot.
+func (s *SecretStore) Snapshot() configfs.SecretSource {
+	var (
+		once       sync.Once
+		vals       map[string]string
+		unreadable map[string]error
+		err        error
+	)
 	return configfs.SecretSourceFunc(func(_ context.Context, _, name string) (string, error) {
-		vals, unreadable, err := s.Store.Open(secrets.ScopeAgentCredential, SecretOwner)
+		once.Do(func() { vals, unreadable, err = s.Store.Open(secrets.ScopeAgentCredential, SecretOwner) })
 		if err != nil {
 			return "", err
 		}
-		if _, bad := unreadable[name]; bad {
-			return "", fmt.Errorf("the saved value cannot be read, set it again: %w", unreadable[name])
+		if bad, ok := unreadable[name]; ok {
+			return "", fmt.Errorf("the saved value cannot be read, set it again: %w", bad)
 		}
 		v, ok := vals[name]
 		if !ok {
