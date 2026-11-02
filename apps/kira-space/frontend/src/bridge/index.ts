@@ -1,6 +1,7 @@
 import * as AdeTaskService from '@bindings/adetaskservice.js';
 import * as AgentContextService from '@bindings/agentcontextservice.js';
 import * as AgentNotifyService from '@bindings/agentnotifyservice.js';
+import * as AgentPortService from '@bindings/agentportservice.js';
 import * as AgentService from '@bindings/agentservice.js';
 import * as AgentSettingsService from '@bindings/agentsettingsservice.js';
 import * as AgentUsageService from '@bindings/agentusageservice.js';
@@ -84,6 +85,14 @@ import { createCoreControl } from '@workbench/bridge/createCoreControl';
 import { createOpenExternal } from '@workbench/bridge/openExternal';
 import { on, trust, unwrap, windowKey } from '@workbench/bridge/rpc';
 import type { AgentContextSaveArgs, AgentContextView } from '../ade/v2/context/types';
+import type {
+  ExportApplyArgs,
+  ExportPreview,
+  ImportApplyArgs,
+  ImportPreview,
+  PortProvider,
+  PortResult,
+} from '../ade/v2/port/types';
 import type {
   AgentSetSecretArgs,
   AgentSettingsSaveArgs,
@@ -479,6 +488,18 @@ const spaceControl = {
     unwrap(AgentSettingsService.SetSecret(args)).then((r) => trust<AgentSettingsView>(r)),
   agentSettingsDeleteSecret: (name: string): Promise<AgentSettingsView> =>
     unwrap(AgentSettingsService.DeleteSecret({ name })).then((r) => trust<AgentSettingsView>(r)),
+  agentPortList: (): Promise<PortProvider[]> =>
+    unwrap(AgentPortService.List()).then((r) => trust<PortProvider[]>(r ?? [])),
+  agentPortImportPreview: (args: { provider: string }): Promise<ImportPreview> =>
+    unwrap(AgentPortService.ImportPreview(args)).then((r) => trust<ImportPreview>(r)),
+  agentPortImportApply: (args: ImportApplyArgs): Promise<PortResult> =>
+    unwrap(AgentPortService.ImportApply(args)).then((r) => trust<PortResult>(r)),
+  agentPortExportPreview: (args: { provider: string }): Promise<ExportPreview> =>
+    unwrap(AgentPortService.ExportPreview(args)).then((r) => trust<ExportPreview>(r)),
+  agentPortExportApply: (args: ExportApplyArgs): Promise<PortResult> =>
+    unwrap(AgentPortService.ExportApply(args)).then((r) => trust<PortResult>(r)),
+  agentPortCancel: (args: { token: string }): Promise<void> =>
+    unwrap(AgentPortService.Cancel(args)).then(() => undefined),
   onAgentSettingsChanged: (cb: () => void): (() => void) => on(CHANNEL.agentSettingsChanged, cb),
   adeTaskWorkflows: (): Promise<V2.WorkflowsResult> =>
     unwrap(AdeTaskService.Workflows()).then((r) => trust<V2.WorkflowsResult>(r)),

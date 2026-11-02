@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { computed, ref, watch } from 'vue';
+import AdePortExportDialog from '../port/AdePortExportDialog.vue';
+import AdePortImportDialog from '../port/AdePortImportDialog.vue';
+import { usePortProviders } from '../port/queries';
 import type { AgentProviderView } from './types';
 
 // What each provider receives, as the launch would write it: references stay as written, so no
@@ -21,6 +25,20 @@ watch(
   },
   { immediate: true },
 );
+
+// Import and Export read and write the provider's own user-level files, so they show only for a
+// provider the app can port.
+const ports = usePortProviders();
+const port = computed(() => ports.data.value?.find((p) => p.id === current.value?.id));
+const dialog = ref<'import' | 'export' | null>(null);
+const importOpen = computed({
+  get: () => dialog.value === 'import',
+  set: (v) => (dialog.value = v ? 'import' : null),
+});
+const exportOpen = computed({
+  get: () => dialog.value === 'export',
+  set: (v) => (dialog.value = v ? 'export' : null),
+});
 </script>
 
 <template>
@@ -34,6 +52,24 @@ watch(
       :aria-label="t('space.ade.settings.result.tabs.aria')"
     />
     <div v-if="current" class="flex min-w-0 flex-col gap-3" data-testid="ade-settings-provider">
+      <div v-if="port" class="flex items-center gap-3" data-testid="ade-settings-port">
+        <Button
+          variant="link"
+          size="inline"
+          data-testid="ade-port-import"
+          @click="dialog = 'import'"
+        >
+          {{ t('space.ade.port.importButton.label', { agent: port.label }) }}
+        </Button>
+        <Button
+          variant="link"
+          size="inline"
+          data-testid="ade-port-export"
+          @click="dialog = 'export'"
+        >
+          {{ t('space.ade.port.exportButton.label', { agent: port.label }) }}
+        </Button>
+      </div>
       <section
         v-for="f in current.files"
         :key="f.name"
@@ -78,5 +114,9 @@ watch(
         </ul>
       </section>
     </div>
+    <template v-if="port">
+      <AdePortImportDialog v-model:open="importOpen" :provider="port" />
+      <AdePortExportDialog v-model:open="exportOpen" :provider="port" />
+    </template>
   </div>
 </template>
