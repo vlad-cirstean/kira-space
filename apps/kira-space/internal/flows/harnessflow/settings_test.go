@@ -219,7 +219,7 @@ func TestAgentSettingsReachEveryLaunch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	adhoc, err := app.W.AdeTask.StartAdHoc(ctx, adewire.BranchArgs{BranchID: br.ID})
+	adhoc, err := app.W.AdeTask.StartAdHoc(ctx, adewire.StartAdHocArgs{BranchID: br.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +264,7 @@ func TestAgentSettingsReachEveryLaunch(t *testing.T) {
 	testx.WaitUntil(t, waitFor, func() bool { return len(appFiles(t, app.SpaceHome)) == 0 })
 
 	// A smart script is isolated: no app file, no app env.
-	smart := smartRun(t, app, "ask")
+	smart := smartRun(t, app, "ask", "sonnet")
 	stem = rec.nextStem()
 	noMCPWith(t, stem, `"gh"`)
 	if _, err := os.Stat(stem + ".appenv"); err == nil {
@@ -316,7 +316,7 @@ func TestAgentSettingsReachEveryLaunch(t *testing.T) {
 		t.Fatalf("secrets after delete = %+v, want gh-token referenced and not set", v.Secrets)
 	}
 	before := len(appFiles(t, app.SpaceHome)) // the fake provider's session is still open
-	if _, err := app.W.AdeTask.StartAdHoc(ctx, adewire.BranchArgs{BranchID: br.ID}); err == nil || !strings.Contains(err.Error(), "gh-token") {
+	if _, err := app.W.AdeTask.StartAdHoc(ctx, adewire.StartAdHocArgs{BranchID: br.ID}); err == nil || !strings.Contains(err.Error(), "gh-token") {
 		t.Fatalf("StartAdHoc with a missing secret = %v, want an error naming gh-token", err)
 	}
 	if got := appFiles(t, app.SpaceHome); len(got) != before {
