@@ -837,7 +837,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - A script row click selects, double-click or Enter opens Edit; the play button, menu Run and Run now are the only starts.
 - A smart script (custom_scripts.kind = smart) runs as headless Claude via claude -p through internal/agentmcp (moved from Space's adeagent), sharing the launch, stream-json parser and finish_step loopback server with the ADE run engine.
 - Smart script defaults are model sonnet, 1 USD budget (--max-budget-usd) and 15 min timeout; bounds in internal/scripts/smart.go are 20 params, 20000-char prompt, budget 0.05-25 USD, timeout 1 min-2 h.
-- Smart runs are Isolated: --setting-sources '' loads no Claude settings file, --strict-mcp-config allows only the report server, and --permission-prompts none denies instead of asking. Exception (`HeadlessSpec.UserMCP`, P444): a script that ticks a user MCP server runs with --setting-sources user and no --strict-mcp-config; --settings `{"disableAllHooks":true,"allowedMcpServers":[...],"enableAllProjectMcpServers":false,"enabledMcpjsonServers":[]}` limits the loaded servers to the report server plus the ticked ones, never loads project `.mcp.json` servers, and claude loads the ticked ones from its own config. The presence check (`smartBlocker`, ADE `checkMCP`) lists servers from the app home, like the picker, so a name only a folder's `.mcp.json` defines does not count. A cached list answers while it has every ticked name; a miss re-lists unless the list is under 30 s old. A failed listing reuses the last good one; the picker shows its statuses as `unknown`. The shared list flight runs detached from the first caller; each caller waits under its own context. A ticked server grants all its tools (`mcp__<server>`) or named tools.
+- Smart runs are Isolated: --setting-sources '' loads no Claude settings file, --strict-mcp-config allows only the report server, and --permission-prompts none denies instead of asking. Exception, only with `agent.hermetic` off (`HeadlessSpec.UserMCP`, P444): a script that ticks a user MCP server runs with --setting-sources user and no --strict-mcp-config; --settings `{"disableAllHooks":true,"allowedMcpServers":[...],"enableAllProjectMcpServers":false,"enabledMcpjsonServers":[]}` limits the loaded servers to the report server plus the ticked ones, never loads project `.mcp.json` servers, and claude loads the ticked ones from its own config. The presence check (`smartBlocker`, ADE `checkMCP`) lists servers from the app home, like the picker, so a name only a folder's `.mcp.json` defines does not count. A cached list answers while it has every ticked name; a miss re-lists unless the list is under 30 s old. A failed listing reuses the last good one; the picker shows its statuses as `unknown`. The shared list flight runs detached from the first caller; each caller waits under its own context. A ticked server grants all its tools (`mcp__<server>`) or named tools. With hermetic on (default) the picker and presence check list the app's `settings.yaml` servers instead; see "Hermetic launches (P455)".
 - A smart script's --tools and --allowedTools come from its tool allowlist (built-ins Read, Grep, Glob, Edit, Write, NotebookEdit, Bash; default Read, Grep, Glob).
 - A smart run's final report must go through finish_step; a run without it fails with the shared "no report" text.
 - Smart script params are text, select or multiselect (a text param may be secret); names are lowercase and must not use the reserved ADE built-ins task, jira, repo, branch, base, worktree; {name} in the prompt is substituted before launch.
@@ -2094,7 +2094,7 @@ The agent CLI sits behind one interface, so a second provider needs no caller ch
 - Claude maps `RenderSettings` to `--mcp-config` (app file joins the grant's), `--settings` (hooks, permissions,
   `model`, `statusLine`) and env. A headless render drops `defaultMode`, `allow` and `statusLine`: an unattended run
   must not enter plan mode or widen its tools, and `claude -p` never runs a status line; `deny` still applies.
-  `disableAllHooks` stays only on isolated runs that tick a user CLI server (P444), which take no app settings.
+  `disableAllHooks` stays only on isolated runs that tick a user CLI server with hermetic off (P444); hermetic runs tick app servers and take app settings.
   Details in "Agent settings (P453)".
 - A missing optional role is handled per caller. Memory (`memory.AgentRunner`) falls back to the default
   provider: background work with no per-run provider choice. Smart scripts refuse: `plan` sets
@@ -3267,7 +3267,7 @@ Kira drives gh, az and acli but never touches their credentials. It runs the CLI
 - gh: runner passes os.Environ through plus hygiene vars; never reads GH_TOKEN or GITHUB_TOKEN. `gh auth status --hostname` is parsed for the account name only.
 - az: env passthrough. `az account show --query user.name` only.
 - acli: env passthrough. `jira auth status` parsed for site and account only. Comment body goes through a 0600 temp file.
-- claude: the MCP picker runs `claude mcp list` and keeps name, transport, host or command name and health status only. A run that ticks a user server lets claude load it (`--setting-sources user`, `--settings` with `allowedMcpServers` and `disableAllHooks`). Kira never runs `claude mcp get`, which prints stored headers and env. Outside the user-initiated exception below Kira never opens `~/.claude.json`.
+- claude: the MCP picker runs `claude mcp list` and keeps name, transport, host or command name and health status only. With hermetic off, a run that ticks a user server lets claude load it (`--setting-sources user`, `--settings` with `allowedMcpServers` and `disableAllHooks`). Kira never runs `claude mcp get`, which prints stored headers and env. Outside the user-initiated exception below Kira never opens `~/.claude.json`.
 - opencode: the MCP picker runs `opencode mcp list` and keeps name, transport, host or command name and status only. Kira never opens OpenCode's `auth.json`, never runs `opencode auth` or `providers`, and never sets `OPENCODE_AUTH_CONTENT`. Session ids come from `opencode session list --format json`, not from its database. Outside the exception below Kira never opens `opencode.json`.
 - Exception, user-initiated (P454): only the package `internal/agentport` opens `~/.claude/settings.json`, `~/.claude.json`, and OpenCode's `opencode.json`, and only on an Import or Export click. It decodes mapped keys only (`~/.claude.json` only `mcpServers`; never `oauthAccount`, `apiKeyHelper`, OpenCode `provider` or any other key's value), a literal credential goes straight into the sealed store and never into a log, preview field, error or file of Kira's, and it never runs `claude mcp get`, `opencode auth` or `providers`. Claude MCP export goes through `claude mcp remove` and `add-json -s user`, not a file write. Launch paths still never open those files (`TestRealClaudeSettingsUntouched`).
 - Setup steps are copy-only commands the user runs in their own terminal.
@@ -3506,6 +3506,28 @@ repo's CI runs.
 - Jekyll was declined for the docs site because its Ruby toolchain sits beside Bun and Go and it has no component model.
 - VitePress was declined because its docs-centric default theme fights a landing page and the Vue SFC docs model is not needed for one page.
 
+## Hermetic launches (P455)
+
+`agent.hermetic` (default true, per app kira.db; Space switch in Settings, Agent; Studio always on) makes a Kira
+agent launch skip the user's CLI config. Config the run needs comes from Kira: app `settings.yaml`, the grant's MCP
+config, project files.
+
+- Seam: `InteractiveSpec.Hermetic` and `IsolationDir`, `HeadlessSpec.Hermetic`. A provider implements `harness.Isolator`
+  to take a per-launch dir; `harness.PrepareIsolation` makes `<stem>-iso` (`IsolationGlob`) under the agent dir and
+  returns its release. The release rides the caller's release chain (ADE `bindTUI`, scriptruns, headless end), not
+  `Store.Track`; `Sweep` removes leftover `*-iso` dirs at start. Refused with `UserMCP`.
+- Claude: `--setting-sources project,local`, env `ENABLE_CLAUDEAI_MCP_SERVERS=false` and
+  `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`. Local-scope MCP stays (Q4). Isolated (headless) runs keep `''`;
+  `ade.headlessSettingSources: user` gives `''` under hermetic. Facts C1 to C8 in `claude/hermetic.go`.
+- OpenCode: `XDG_CONFIG_HOME=<iso>/xdg`, a dir linking every `~/.config` entry except `opencode`, plus
+  `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1`. Words go on `/usr/bin/env` after the login profile, with `-u` for layer vars
+  the launch does not set. Probes H-OC1 to H-OC5 on 1.19.5 in `opencode/facts.go`; `TestHermeticDebugConfig`.
+- Ticked MCP servers: `agentcfg.ServerSource{Store, Hermetic}`. Hermetic: servers come from `settings.yaml`
+  (`<Stem>-app.mcp.json`, secrets resolved and masked), `McpServers()` returns `source: "app"` with no status, a name
+  missing from the app settings blocks the run. Off: the CLI list (`source: "agent"`, P444).
+- Tests: `claudeflow` `TestHermeticClaude`, `harnessflow` `TestHermeticOpenCode`, Studio `TestHermeticStudio`;
+  real `TestHermeticSession`.
+
 ## Known open items
 
 Kept only while genuinely open — delete an item the moment it's resolved, never mark it done in
@@ -3514,10 +3536,17 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
 - **Agent context rests on a hidden Claude flag (P452).** `--append-system-prompt-file` is absent from `claude --help`. A CLI that drops it fails the launch loudly. `TestAgentContextHeadless` catches it. Studio has no context editor; edit the file in an editor.
 
 - **Agent settings secrets show in a live terminal (P453).** Only headless step output is masked. A TUI that echoes its env or a hook that prints a secret shows it in the tab and the Space phone terminal ring, as for script secrets below.
-- **An isolated run that ticks a user MCP server keeps `disableAllHooks` (P453).** Smart scripts and ADE smart steps take no app settings, so P444's user-source load still turns hooks off for them. P455 drops that source.
 - **Project statuslines are not chained (P453).** A project `.claude/settings*.json` statusline never ran under Kira (flag settings outrank it); the user statusline comes only from `claude.status_line`. Import brings the user's.
 
-- **Exported hooks run twice until hermetic launches (P454, P455).** Kira sessions still load the user's config, so a hook exported into it also runs from `settings.yaml`.
+- **Exported hooks run twice with hermetic off (P454, P455).** Hermetic launches skip the user's config, so an exported hook runs once. With `agent.hermetic` off the user's config still loads and the hook also runs from `settings.yaml`.
+- **Managed config cannot be isolated (P455).** An admin-managed policy config still loads under hermetic launches, for both providers; the CLIs read it by design.
+- **Sign-in kept in user config breaks under hermetic (P455).** Claude or OpenCode credentials held in a user config file, not the CLI's own store, are not seen by a hermetic launch. Workaround: sign in through the environment (a key the shell exports) or turn `agent.hermetic` off. Kira adds no passthrough keys.
+- **Shell profile exports override hermetic env (P455).** A login profile that exports `CLAUDE_CONFIG_DIR`, `ENABLE_CLAUDEAI_MCP_SERVERS`, or an OpenCode layer variable Kira sets (`OPENCODE_CONFIG_DIR` included) wins over Kira's value on Claude. OpenCode words ride `/usr/bin/env` after the profile, so they win except `OPENCODE_CONFIG_DIR`, which the hook plugin sets later.
+- **Studio has no hermetic switch (P455).** Studio is always hermetic. Space edits `agent.hermetic` in Settings, Agent.
+- **OpenCode TUI preferences do not apply under hermetic (P455).** `~/.config/opencode` is not linked, so theme and keybinds there are lost. Turn hermetic off to keep them.
+- **OpenCode still loads `~/.opencode` under hermetic (P455, H-OC2).** The XDG redirect does not move it; probe on 1.19.5 showed `$HOME/.opencode/opencode.json` loads. Kira does not read or move it.
+- **OpenCode user skills leak under hermetic (P455, H-OC3).** No env drops `~/.claude/skills` and `~/.agents/skills` while keeping project skills; Kira keeps project skills (Q6).
+- **Hermetic OpenCode does not load project `CLAUDE.md` (P455, H-OC4).** `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1` is required with the redirect and also drops it. Project `AGENTS.md` loads.
 - **OpenCode applies no common hook (P453).** Plugin hooks have no user-command form; the settings view shows each common hook as not applied.
 - **Saved script secrets show in a live terminal (P447).** A terminal-run script prints into its live tab and the Space phone terminal ring unmasked; only the run tail and log are masked. A process that echoes its secret shows it there.
 - **OpenCode facts without a model key are unverified (P449).** `facts.go` marks each with its probe id: the lost-session error text (U5), the MCP tool permission key `<server>_<tool>` (U7), plugin event names and `fetch` over a unix socket (U12), install paths (U15), the model API host list for network-off runs (U16), and the tool and cost event shapes of `run --format json` (`step_start`, `text` with `part.text` and `step_finish` with `part.reason` are verified). A wrong guess degrades quietly: a lost session reads as a plain failure, a MCP grant may not match, activity icons may stay idle. Run the probes in `docs/DEV_ENVIRONMENT.md` with a key, then fix `facts.go` and delete this item.
@@ -3542,7 +3571,7 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
 - **Azure threads beyond the newest 200 are not read (P427).**
 - **Comments carry no attachments (P429).** Kira never touches a CLI's credentials, and none of gh, az, acli uploads a comment attachment. Add files on the host.
 - **Comment posting is checked against documentation only (P429).** The acli `--body-file` ADF input is not seen live; the Azure reply assumes the first comment id is 1.
-- **A smart run that ticks a user MCP server loads the user's Claude settings (P444).** Claude loads user MCP servers only with the `user` setting source, so the user's permission allow rules, env and plugins apply; hooks are off and only ticked servers plus `kira-ade` load. `allowManagedPermissionRulesOnly` in `--settings` does not drop the user rules (CLI 2.1.316). The picker cannot show tool names or descriptions, because Kira no longer connects to user servers; it lists what `claude mcp list` reports and health-checks every server on each call (cached 30 s). Delete once a run gets ticked servers without the user settings file.
+- **With hermetic off, a smart run that ticks a user MCP server loads the user's Claude settings (P444).** Claude loads user MCP servers only with the `user` setting source, so the user's permission allow rules, env and plugins apply; hooks are off and only ticked servers plus `kira-ade` load. `allowManagedPermissionRulesOnly` in `--settings` does not drop the user rules (CLI 2.1.316). The picker cannot show tool names or descriptions, because Kira no longer connects to user servers; it lists what `claude mcp list` reports and health-checks every server on each call (cached 30 s). Hermetic runs avoid it (P455). Delete if the hermetic switch goes away.
 - **An agent's own shell `git` in a non-isolated run is not an app op (P415).** It is the agent's process; only the app's own spawns reach the op log.
 - **Jira pull requests missing from commit-only links (P417).** acli cannot list the Development field's pull requests. Rows come from code host search by issue key in the title or head branch. A pull request Jira links only through a commit message is not found; the task shows Jira's count against the rows found as a gap. Delete once acli exposes the rows.
 - **Mission Control Space switch (P396) unconfirmed on macOS.** Three-finger swipe up moves focus to another Space; code finds no app caller, trace added. Check: set log level `debug`, two Spaces each with a Kira window, swipe up/down 5 times; send log lines within 2 s of each jump (`window raise`, `prompt raise`, `app event`, `window event`) plus macOS version. Delete once the fix lands.
