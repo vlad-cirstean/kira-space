@@ -13,7 +13,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | P451 | Workflows folder AGENTS.md | Done |
 | P452 | One shared agent context, rendered per provider | Done |
 | P453 | Agent settings: common plus per provider, MCP credentials from the keychain | Done |
-| P454 | Import and Export of agent config per provider | Todo |
+| P454 | Import and Export of agent config per provider | Done |
 | P455 | Hermetic agent launches per provider | Todo |
 | P456 | Docs, site and README for agents and secrets | Todo |
 | P457 | Code review (2 rounds) | Todo |
@@ -152,6 +152,8 @@ Result: shared `agent-secrets.db` (scope `agent-credential`), `agentcfg` Store, 
 - Hooks (P453) import and export too: user-level files only, hook commands exported as written, env references only for secrets. Same rule as MCP.
 - Today the app never writes the user's agent config (`TestRealClaudeSettingsUntouched`, statusline read-only). Export is the one user-initiated exception; that test keeps passing for every launch path.
 - Test: flow test per provider on a temp `HOME`: import fixture files, assert app state and secrets; export, assert files and backup. UI spec: preview, selection, confirm.
+
+Result: new package `internal/agentport` (bound as `AgentPortService`, 35 bound services; G5 scope added) with Import and Export for Claude (`settings.json`, `CLAUDE.md`, `~/.claude.json` `mcpServers`) and OpenCode (`opencode.json[c]`, `AGENTS.md`). Preview sessions (in memory, single use, 10 min, content hash at apply), item states and per-item selection, credential classifier to `${secret:...}` slots sealed at apply, settings.yaml node edits that keep comments, hujson patches that keep JSONC comments, `.kira-backup-<UTC>` beside each overwritten file, diff with masked credentials, `${KIRA_SECRET_X}` and `{env:X}` refs with env-name list. Claude MCP export through `claude mcp remove` and `add-json -s user` (`harness.JSONInstaller`). UI: Import and Export links under each provider in Agents > Settings, two dialogs. Flows `TestAgentPortClaude` and `TestAgentPortOpenCode`, UI `ade-agent-port.spec.ts`, contracts `agent-port-import.json` and `agent-port-export.json`, real claude `TestAgentPortClaude`. Q1 decision recorded in ARCHITECTURE "CLI credentials: never touched". Deviations from the plan: OpenCode file-name constants live in `agentport` (G5 forbids the literal in the opencode package); `KiraPermissions` returns a fourth value; `InstallJSON` takes extra env; `agentcfg` gained `Check`, `ForProvider`, `NeutralEvent`, `HookEventKind`; the bridge lists its methods one by one; a pre-existing G5 hit in `opencode/hooks/server.go` is a permanent exemption. Open: exported hooks run twice until P455.
 
 ### P455 Hermetic agent launches per provider
 
