@@ -8,7 +8,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 |---|---|---|
 | P459 | Task details: drop Notes, generic labels, remove Jira PR search | Done |
 | P460 | Jira issue view: fast open, readable render, images | Todo |
-| P461 | Task "+" new terminal or agent works; remove list-row terminal button | Todo |
+| P461 | Task "+" new terminal or agent works; remove list-row terminal button | Done |
 | P462 | Global capture dialog: keyboard only, PR-derived branches | Todo |
 | P463 | Persist task tabs across task switches | Todo |
 | P464 | Review window: default tab, PR line comment, send clears, resizable panels | Todo |
@@ -43,6 +43,8 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 - "+" in a task (new terminal or agent) does nothing. Root-cause and fix; both options work.
 - Remove the new-terminal button from the task row in the task list.
 - Test: UI spec (press "+", terminal and agent appear); backend flow if the cause is backend.
+
+Result: Cause frontend. A Tooltip root between DropdownMenu and its trigger stole the menu's Popper anchor (reka shares one PopperRoot context), so the menu stayed at translate(0,-200%), off-screen. Plus now `TooltipIconButton` inside `DropdownMenuTrigger as-child` (same fix on card change-base menu). Card-head plus removed; plus stays on Sessions tab bar. Specs `ade-v2-task-launch`, `agent-provider`, `ade-v2-base-rebase` click by mouse and assert in-viewport. Full `test:ui:space`: 988 passed, 1 failed (spec helper, fixed, targeted rerun of 4 related specs 58 passed). Rule added to `docs/ARCHITECTURE.md`.
 
 ### P462 Global capture dialog: keyboard only, PR-derived branches
 
