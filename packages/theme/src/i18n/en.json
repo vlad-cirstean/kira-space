@@ -217,6 +217,9 @@
       "limits": {
         "label": "Model {model}, budget {budget}, timeout {timeout}"
       },
+      "limitsNoCap": {
+        "label": "Model {model}, no cost cap, timeout {timeout}"
+      },
       "mcpServers": {
         "label": "MCP servers: {servers}"
       },
@@ -527,6 +530,9 @@
       "model": {
         "label": "Model"
       },
+      "noCostCap": {
+        "label": "No cost cap"
+      },
       "remove": {
         "tooltip": "Remove {name}"
       },
@@ -560,7 +566,7 @@
           "body": "{agent} has no model named {model}. Choose another model in the script."
         },
         "noCostCap": {
-          "body": "{agent} can’t cap a run’s cost. Remove the budget from the script."
+          "body": "{agent} can’t cap a run’s cost. Turn off the cost cap in the script to run it with {agent}."
         },
         "opencode": {
           "manualInstall": {

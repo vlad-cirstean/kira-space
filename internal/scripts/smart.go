@@ -90,8 +90,11 @@ type MCPChoice struct {
 
 // Smart is the headless Claude setup of a smart script.
 type Smart struct {
-	Model        string      `json:"model"`
-	MaxBudgetUSD float64     `json:"maxBudgetUsd"`
+	Model        string  `json:"model"`
+	MaxBudgetUSD float64 `json:"maxBudgetUsd"`
+	// NoCostCap runs with no cost cap and stores MaxBudgetUSD 0, since a stored 0 otherwise means
+	// the default. A provider that cannot cap cost (OpenCode) runs only such a script.
+	NoCostCap    bool        `json:"noCostCap"`
 	Timeout      string      `json:"timeout"`
 	Tools        []string    `json:"tools"`
 	BashPatterns []string    `json:"bashPatterns"`
@@ -255,10 +258,12 @@ func validSmart(s *Smart, models harness.Catalog) (*Smart, error) {
 	if !models.Valid(out.Model) {
 		return nil, invalid("scripts: model must be %s", orList(models.Aliases))
 	}
-	if out.MaxBudgetUSD == 0 {
+	switch {
+	case out.NoCostCap:
+		out.MaxBudgetUSD = 0
+	case out.MaxBudgetUSD == 0:
 		out.MaxBudgetUSD = DefaultBudgetUSD
-	}
-	if out.MaxBudgetUSD < MinBudgetUSD || out.MaxBudgetUSD > MaxBudgetUSD {
+	case out.MaxBudgetUSD < MinBudgetUSD || out.MaxBudgetUSD > MaxBudgetUSD:
 		return nil, invalid("scripts: budget must be between %.2f and %.0f USD", MinBudgetUSD, MaxBudgetUSD)
 	}
 	out.Timeout = strings.TrimSpace(out.Timeout)

@@ -25,6 +25,7 @@
       "maxBudgetUsd": 1,
       "mcp": [],
       "model": "sonnet",
+      "noCostCap": false,
       "timeout": "15m",
       "tools": [
         "Read",
@@ -54,6 +55,7 @@
       "maxBudgetUsd": 1,
       "mcp": [],
       "model": "sonnet",
+      "noCostCap": false,
       "timeout": "15m",
       "tools": [
         "Read",

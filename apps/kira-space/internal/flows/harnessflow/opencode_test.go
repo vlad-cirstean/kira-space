@@ -232,6 +232,20 @@ func TestOpenCodeProvider(t *testing.T) {
 	if want := i18n.T("backend.core.agent.noCostCap.body", map[string]string{"agent": opencode.New().Label()}); err != nil || pv.Blocker != want {
 		t.Fatalf("Preview blocker = %q, %v, want %q", pv.Blocker, err, want)
 	}
+	// A script with no cost cap passes the cost cap check; Claude keeps enforcing a set cap.
+	uncapped, err := app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
+		Name: "ask-free", Kind: scripts.KindSmart, Command: "Say hi", Color: "blue", Smart: &scripts.Smart{Model: "default", NoCostCap: true},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if uncapped.Smart == nil || uncapped.Smart.MaxBudgetUSD != 0 || !uncapped.Smart.NoCostCap {
+		t.Fatalf("saved smart = %+v, want NoCostCap with no budget", uncapped.Smart)
+	}
+	pv, err = app.W.ScriptRuns.Preview(scriptruns.RunArgs{ScriptID: uncapped.ID})
+	if err != nil || pv.Blocker != "" {
+		t.Fatalf("Preview of a no-cap script on opencode = %q, %v, want no blocker", pv.Blocker, err)
+	}
 	setProvider(t, app, "claude")
 
 	// (g) A tool OpenCode has no name for fails the run, naming it.

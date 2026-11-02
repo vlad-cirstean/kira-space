@@ -155,6 +155,7 @@ const draft = computed(() => ({
   dirMode: dirMode.value,
   workingDir: workingDir.value,
   maxBudgetUsd: smart.value.maxBudgetUsd,
+  noCostCap: smart.value.noCostCap,
   params: params.value,
   schedule: schedule.value,
   scheduleOk: scheduleOk.value,

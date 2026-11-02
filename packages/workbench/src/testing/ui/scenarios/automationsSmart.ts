@@ -60,6 +60,7 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
     smart: {
       model: 'sonnet',
       maxBudgetUsd: 1,
+      noCostCap: false,
       timeout: '15m',
       tools: ['Read', 'Grep', 'Glob'],
       bashPatterns: [],
@@ -246,12 +247,40 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
           smart: {
             model: 'sonnet',
             maxBudgetUsd: 1,
+            noCostCap: false,
             timeout: '15m',
             tools: ['Read', 'Grep', 'Glob'],
             mcp: [{ server: 'fake', allTools: false, tools: ['echo'] }],
           },
         },
       });
+  });
+
+  test('New smart script: the no cost cap switch disables the budget and saves noCostCap', async ({
+    relaunch,
+  }) => {
+    const { window: page, control } = await relaunch({
+      control: [
+        { channel: IPC.customScriptsList, response: { collections: [], scripts: [] } },
+        { channel: IPC.customScriptsCreate, response: SMART },
+      ],
+    });
+    await openPanel(page);
+    await page.locator('[data-testid="automations-add"]').click();
+    await page.locator('[data-testid="menu-item-new-smart-script"]').click();
+    const dialog = page.locator('[data-testid="script-dialog"]');
+    const sw = dialog.locator('[data-testid="smart-no-cost-cap"]');
+    await expect(sw).toHaveAttribute('aria-checked', 'false');
+    await expect(dialog.locator('[data-testid="smart-budget"]')).toBeEnabled();
+    await sw.click();
+    await expect(sw).toHaveAttribute('aria-checked', 'true');
+    await expect(dialog.locator('[data-testid="smart-budget"]')).toBeDisabled();
+    await dialog.locator('[data-testid="script-dialog-name"]').fill('Ask Claude');
+    await dialog.locator('[data-testid="script-dialog-command"]').fill('Look around');
+    await dialog.locator('[data-testid="script-dialog-save"]').click();
+    await expect
+      .poll(() => control.log().find((e) => e.channel === IPC.customScriptsCreate)?.args)
+      .toMatchObject({ fields: { smart: { noCostCap: true } } });
   });
 
   test('contract: hermetic launches list the app agent settings servers, no status', async ({

@@ -25,6 +25,7 @@ const SMART = {
   smart: {
     model: 'sonnet',
     maxBudgetUsd: 1,
+    noCostCap: false,
     timeout: '15m',
     tools: ['Read'],
     bashPatterns: [],

@@ -26,7 +26,7 @@ export const BUILTIN_TOOLS = [
 export const DEFAULT_TOOLS: readonly string[] = ['Read', 'Grep', 'Glob'];
 // Variables a workflow run has; reserved as param names.
 export const BUILTIN_VARS = ['task', 'jira', 'repo', 'branch', 'base', 'worktree'] as const;
-export const DEFAULT_SMART = { maxBudgetUsd: 1, timeout: '15m' } as const;
+export const DEFAULT_SMART = { maxBudgetUsd: 1, noCostCap: false, timeout: '15m' } as const;
 
 export const scriptParamTypeSchema = /*#__PURE__*/ z.enum(['text', 'select', 'multiselect']);
 export type ScriptParamType = z.infer<typeof scriptParamTypeSchema>;
@@ -54,6 +54,8 @@ export type McpChoice = z.infer<typeof mcpChoiceSchema>;
 export const smartSettingsSchema = /*#__PURE__*/ z.object({
   model: z.string(),
   maxBudgetUsd: z.number(),
+  // No cost cap: maxBudgetUsd is 0. Needed to run on a provider that cannot cap cost.
+  noCostCap: z.boolean(),
   timeout: z.string(),
   tools: z.array(z.string()),
   bashPatterns: z.array(z.string()),

@@ -326,7 +326,15 @@ function script(id: string, name: string, kind: 'script' | 'smart', command: str
     params: [],
     smart:
       kind === 'smart'
-        ? { model: 'sonnet', maxBudgetUsd: 1, timeout: '15m', tools: [], bashPatterns: [], mcp: [] }
+        ? {
+            model: 'sonnet',
+            maxBudgetUsd: 1,
+            noCostCap: false,
+            timeout: '15m',
+            tools: [],
+            bashPatterns: [],
+            mcp: [],
+          }
         : null,
     workingDir: '',
     dirMode: 'kira',

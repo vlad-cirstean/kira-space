@@ -51,11 +51,16 @@ function envParts(e: ScriptRunPreview['env'][number]): TextPart[] {
     <template v-if="preview.kind === 'smart'">
       <div class="text-muted-foreground" data-testid="run-limits">
         {{
-          t('automations.run.limits.label', {
-            model: preview.model,
-            budget: formatCurrency(preview.maxBudgetUsd),
-            timeout: preview.timeout,
-          })
+          preview.maxBudgetUsd > 0
+            ? t('automations.run.limits.label', {
+                model: preview.model,
+                budget: formatCurrency(preview.maxBudgetUsd),
+                timeout: preview.timeout,
+              })
+            : t('automations.run.limitsNoCap.label', {
+                model: preview.model,
+                timeout: preview.timeout,
+              })
         }}
       </div>
       <div class="font-data" data-testid="run-tools">--tools {{ preview.tools.join(',') }}</div>

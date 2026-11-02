@@ -2082,7 +2082,7 @@ The agent CLI sits behind one interface, so a second provider needs no caller ch
   `Isolator` (P455, `harness.PrepareIsolation`) and `ConfigMerger`. `JSONInstaller` is optional on the
   `MCPInstaller` a provider returns, not on the provider (`internal/agentport/claude_export.go`). A provider without hooks has no
   activity icons and no finished/needs-input notes; without usage, no usage item; a smart script or a
-  step with a budget on a provider without a cost cap is refused (`agentBlocker`, `backend.core.agent.noCostCap.body`).
+  step with a cost cap on a provider without one is refused (`agentBlocker`, `backend.core.agent.noCostCap.body`); a script with `Smart.NoCostCap` runs there.
 - `SettingsHost` (P453, optional) takes the app's agent settings: `SettingsSchema` (the provider's section of
   `settings.yaml`, self-contained JSON Schema), `RenderSettings(AgentSettings, LaunchKind) (NativeConfig, error)`
   and `KiraAdds`. `AgentSettings` is resolved env, enabled MCP servers, `Allow`/`Deny`, user hooks minus the
@@ -2204,8 +2204,8 @@ The agent CLI sits behind one interface, so a second provider needs no caller ch
 - `ContextFile` (P452): neutral field on `InteractiveSpec` and `HeadlessSpec`, path of the agent context snapshot. Only the provider maps it. Claude: `--append-system-prompt-file '<path>'` in both builders, flag name in one constant (`appendSystemPromptFileFlag`). The flag is hidden from `claude --help` but present in CLI 2.1.316 (named in the `--bare` help, strings in the binary). Rejected: `--append-system-prompt` (text in argv, visible in `ps`, size-limited), a generated `CLAUDE.md` plus `--add-dir` (also loads the dir's other files).
 - OpenCode `ContextFile` (P452, verified on 1.19.5, Q-OC1 to Q-OC4): `instructions` in `OPENCODE_CONFIG_CONTENT`; the file's text reaches the model. OpenCode re-reads it on `run -s`, so it does not implement `ContextKeeper`: a resumed OpenCode session sees an edit. Observed on a stub provider with a throwaway HOME: `~/.config/opencode/AGENTS.md` and `~/.claude/CLAUDE.md` did not reach the request; the config dir's `AGENTS.md` did (P455 data).
 - `ContextKeeper` (P452): optional role, `KeepsContextOnResume() bool`. Only Claude returns true: `--system-prompt-snapshot` is on by default, so a resumed conversation keeps its recorded prompt until it compacts. Feeds the editor's resume note.
-- Smart scripts never run on a provider without a cost cap: every smart script has a budget (0.05 to 25 USD),
-  and OpenCode has no cap.
+- A smart script has a budget (0.05 to 25 USD) or `Smart.NoCostCap` (budget stored as 0; a bool, since a stored 0
+  otherwise means the default). OpenCode has no cap, so it runs only `NoCostCap` scripts; Claude enforces a set budget.
 - `Isolator` and the `Hermetic` spec fields: see "Hermetic launches (P455)".
 - Add a provider: implement `harness.Provider` and any optional roles in `internal/harness/<id>`, add it to
   `providers.New`, and keep its CLI strings and error texts inside its package. No caller changes.
@@ -3565,7 +3565,6 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
 - **`finish_step` summary masking is not covered end to end (P447).** The fake agent's summary is fixed text; only the unit path checks it. Delete once a flow drives a secret through a summary.
 - **Saved script secrets show in a live terminal (P447).** A terminal-run script prints into its live tab and the Space phone terminal ring unmasked; only the run tail and log are masked. A process that echoes its secret shows it there.
 - **OpenCode facts without a model key are unverified (P449).** `facts.go` marks each with its probe id: the lost-session error text (U5), the MCP tool permission key `<server>_<tool>` (U7), plugin event names and `fetch` over a unix socket (U12), install paths (U15), the model API host list for network-off runs (U16), and the tool and cost event shapes of `run --format json` (`step_start`, `text` with `part.text` and `step_finish` with `part.reason` are verified). A wrong guess degrades quietly: a lost session reads as a plain failure, a MCP grant may not match, activity icons may stay idle. Run the probes in `docs/DEV_ENVIRONMENT.md` with a key, then fix `facts.go` and delete this item.
-- **OpenCode has no cost cap (P449).** Every smart script has a budget (0.05 to 25 USD), so smart scripts and smart steps never run on OpenCode. The refusal says to remove the budget, which validation forbids. Plain agent steps run. Keep until a cost cap or a budget-free script exists.
 - **OpenCode network-off runs reach only the listed model hosts (P449).** The list is a guess; a model on another host fails under the sandbox.
 - **OpenCode extra directories ride permission only (P449).** `AddDirs` become `external_directory` allow patterns, not a CLI flag; the OS sandbox profile is the real boundary.
 - **Studio has no agent picker (P449).** Only Space chooses the provider per launch and per step; Studio runs the provider its Agent setting names.
