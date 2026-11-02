@@ -23,12 +23,13 @@ type Provider struct {
 }
 
 var (
-	_ githost.Provider              = (*Provider)(nil)
-	_ githost.ChangeRequestSync     = (*Provider)(nil)
-	_ githost.ChangeRequestReviews  = (*Provider)(nil)
-	_ githost.BranchLinks           = (*Provider)(nil)
-	_ githost.ChangeRequestComments = (*Provider)(nil)
-	_ githost.CLISetup              = (*Provider)(nil)
+	_ githost.Provider                  = (*Provider)(nil)
+	_ githost.ChangeRequestSync         = (*Provider)(nil)
+	_ githost.ChangeRequestReviews      = (*Provider)(nil)
+	_ githost.BranchLinks               = (*Provider)(nil)
+	_ githost.ChangeRequestComments     = (*Provider)(nil)
+	_ githost.ChangeRequestLineComments = (*Provider)(nil)
+	_ githost.CLISetup                  = (*Provider)(nil)
 )
 
 // New builds the Azure Repos provider over the `az` CLI.

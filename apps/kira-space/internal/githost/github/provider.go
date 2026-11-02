@@ -31,9 +31,10 @@ var (
 	_ githost.Provider          = (*Provider)(nil)
 	_ githost.ChangeRequestSync = (*Provider)(nil)
 
-	_ githost.ChangeRequestReviews = (*Provider)(nil)
-	_ githost.BranchLinks          = (*Provider)(nil)
-	_ githost.CLISetup             = (*Provider)(nil)
+	_ githost.ChangeRequestReviews      = (*Provider)(nil)
+	_ githost.ChangeRequestLineComments = (*Provider)(nil)
+	_ githost.BranchLinks               = (*Provider)(nil)
+	_ githost.CLISetup                  = (*Provider)(nil)
 )
 
 // New builds the GitHub provider over the `gh` CLI.
@@ -186,6 +187,10 @@ func (p *Provider) SubmitReview(ctx context.Context, r githost.Repo, number int,
 
 func (p *Provider) Comment(ctx context.Context, r githost.Repo, number int, body string) githost.Status {
 	return toStatus(p.client.CommentOnPull(ctx, Repo(r), number, body))
+}
+
+func (p *Provider) CommentOnLines(ctx context.Context, r githost.Repo, number int, c githost.LineComment) githost.Status {
+	return toStatus(p.client.CommentOnLines(ctx, Repo(r), number, c.Path, c.Start, c.End, c.CommitSHA, c.Body))
 }
 
 func (p *Provider) Setup() clisetup.Setup {

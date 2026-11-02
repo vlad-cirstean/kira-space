@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -34,14 +35,22 @@ var reviewEvents = map[string]string{
 	"requestChanges": "REQUEST_CHANGES",
 }
 
-type field struct{ key, value string }
+// field is one request field. typed sends a JSON integer (`-F`); otherwise a string (`-f`).
+type field struct {
+	key, value string
+	typed      bool
+}
 
-// writeArgv builds a POST `gh api` argv. Every field travels via `-f`, never `-F`: `-F` reads an
-// `@`-prefixed value from a local file, and a body often starts with an @mention.
+// writeArgv builds a POST `gh api` argv. Fields travel via `-f`. `-F` only for integers Kira
+// formats itself: `-F` reads an `@`-prefixed value from a local file, so user text never uses it.
 func writeArgv(host, path string, fields []field) []string {
 	args := methodArgv(host, "POST", path)
 	for _, f := range fields {
-		args = append(args, "-f", f.key+"="+f.value)
+		flag := "-f"
+		if f.typed {
+			flag = "-F"
+		}
+		args = append(args, flag, f.key+"="+f.value)
 	}
 	return args
 }
@@ -72,9 +81,9 @@ func (c *Client) SubmitReview(ctx context.Context, repo Repo, number int, event,
 	if !ok {
 		return Status{Kind: KindForbidden, Host: repo.Host, Reason: "unknown review event " + event}
 	}
-	fields := []field{{"event", ghEvent}, {"commit_id", commitID}}
+	fields := []field{{key: "event", value: ghEvent}, {key: "commit_id", value: commitID}}
 	if body != "" {
-		fields = append(fields, field{"body", body})
+		fields = append(fields, field{key: "body", value: body})
 	}
 	path := fmt.Sprintf("repos/%s/pulls/%d/reviews", repo.Path(), number)
 	return c.callWithin(ctx, repo, writeArgv(repo.Host, path, fields), nil, writeTimeout, true)
@@ -83,5 +92,22 @@ func (c *Client) SubmitReview(ctx context.Context, repo Repo, number int, event,
 // CommentOnPull posts a conversation comment: `repos/{owner}/{repo}/issues/{n}/comments`.
 func (c *Client) CommentOnPull(ctx context.Context, repo Repo, number int, body string) Status {
 	path := fmt.Sprintf("repos/%s/issues/%d/comments", repo.Path(), number)
-	return c.callWithin(ctx, repo, writeArgv(repo.Host, path, []field{{"body", body}}), nil, writeTimeout, true)
+	return c.callWithin(ctx, repo, writeArgv(repo.Host, path, []field{{key: "body", value: body}}), nil, writeTimeout, true)
+}
+
+// CommentOnLines posts a review comment on lines of one file at commit, right side:
+// `repos/{owner}/{repo}/pulls/{n}/comments`. line and start_line must be JSON integers.
+func (c *Client) CommentOnLines(ctx context.Context, repo Repo, number int, path string, start, end int, commitID, body string) Status {
+	fields := []field{
+		{key: "body", value: body}, {key: "commit_id", value: commitID},
+		{key: "path", value: path}, {key: "side", value: "RIGHT"},
+		{key: "line", value: strconv.Itoa(end), typed: true},
+	}
+	if start < end {
+		fields = append(fields,
+			field{key: "start_line", value: strconv.Itoa(start), typed: true},
+			field{key: "start_side", value: "RIGHT"})
+	}
+	api := fmt.Sprintf("repos/%s/pulls/%d/comments", repo.Path(), number)
+	return c.callWithin(ctx, repo, writeArgv(repo.Host, api, fields), nil, writeTimeout, true)
 }

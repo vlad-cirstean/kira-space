@@ -1231,6 +1231,11 @@ export type ChangeRequestPostResult =
   | { readonly kind: 'disabled' }
   | { readonly kind: 'unavailable'; readonly status: HostStatus };
 
+/** changeRequest.lineComment's result. `headMoved`: the host head is not `headSha`; nothing posted. */
+export type ChangeRequestLineCommentResult =
+  | ChangeRequestPostResult
+  | { readonly kind: 'headMoved'; readonly headSha: string };
+
 export type RepoOpenResult =
   | { readonly kind: 'ok'; readonly repo: RepoSummary }
   | { readonly kind: 'notARepository'; readonly path: string }
@@ -2151,6 +2156,20 @@ export type Contract = {
     'changeRequest.comment': {
       params: { repoId: string; number: number; body: string };
       result: ChangeRequestPostResult;
+    };
+    /** Posts a comment on lines of a file at the change request's head (right side). `headSha` is
+     *  the commit the line numbers refer to; the server refuses with `headMoved` when the host
+     *  head differs. Go-served. */
+    'changeRequest.lineComment': {
+      params: {
+        repoId: string;
+        number: number;
+        path: string;
+        range: LineRange;
+        headSha: string;
+        body: string;
+      };
+      result: ChangeRequestLineCommentResult;
     };
     /** The provider a repository's change-request calls go to under its `kiraSpace.gitHost.provider`
      *  setting; `host: null` when the setting is `off` or no provider matches the origin remote. */

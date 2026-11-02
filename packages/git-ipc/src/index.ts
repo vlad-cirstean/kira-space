@@ -10,6 +10,7 @@ export type {
   BaseResolutionReason,
   BranchChangeRequest,
   ChangeRequestIndex,
+  ChangeRequestLineCommentResult,
   ChangeRequestLookup,
   ChangeRequestPostResult,
   ChangeRequestRecord,

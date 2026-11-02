@@ -195,7 +195,9 @@ package gitrpc
 // P413: 55 -> 56, additive. New request review.comment.edit (replace a comment's body and kind).
 // P418: 56 -> 57, additive. ReviewComment gains origin (commit | working); CommentAnchor gains
 // uncommitted (a comment written on uncommitted worktree content).
-const ContractVersion = 57
+// P464: 57 -> 58, additive. New request changeRequest.lineComment (comment on lines of a file at a
+// change request's head).
+const ContractVersion = 58
 
 // Protocol is the handshake envelope's own version (SPEC §3.3's "protocol":1), distinct from
 // ContractVersion — it never changes unless the hello/ready exchange itself is redesigned.

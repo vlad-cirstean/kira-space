@@ -102,6 +102,7 @@ type Az struct {
 	repos      map[string]*repoState
 	votes      map[int][]string
 	threads    map[int][]string
+	contexts   map[int][]ThreadContext
 	replies    map[int][]Reply
 	calls      []string
 	violations []string
@@ -111,7 +112,7 @@ type Az struct {
 func New() *Az {
 	return &Az{
 		installed: true, extension: true, loggedIn: true, account: "me@acme.test",
-		repos: map[string]*repoState{}, votes: map[int][]string{}, threads: map[int][]string{},
+		repos: map[string]*repoState{}, votes: map[int][]string{}, threads: map[int][]string{}, contexts: map[int][]ThreadContext{},
 		replies: map[int][]Reply{},
 	}
 }
@@ -186,6 +187,21 @@ func (a *Az) Threads(id int) []string {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return slices.Clone(a.threads[id])
+}
+
+// ThreadContext is the file anchor of one new thread: FilePath as sent, the right-side start and
+// end lines, and the end offset. Empty for a thread posted without a threadContext.
+type ThreadContext struct {
+	FilePath       string
+	StartLine, End int
+	EndOffset      int
+}
+
+// ThreadContexts returns the threadContext of each new thread on pull request id, in order.
+func (a *Az) ThreadContexts(id int) []ThreadContext {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return slices.Clone(a.contexts[id])
 }
 
 // Replies returns the comments posted into existing threads of pull request id, in order.
@@ -616,6 +632,16 @@ func (a *Az) invoke(args []string) ([]byte, error) {
 			Comments []struct {
 				Content string `json:"content"`
 			} `json:"comments"`
+			ThreadContext *struct {
+				FilePath       string `json:"filePath"`
+				RightFileStart struct {
+					Line int `json:"line"`
+				} `json:"rightFileStart"`
+				RightFileEnd struct {
+					Line   int `json:"line"`
+					Offset int `json:"offset"`
+				} `json:"rightFileEnd"`
+			} `json:"threadContext"`
 		}
 		if json.Unmarshal(body, &thread) != nil || len(thread.Comments) == 0 {
 			return nil, fail("ERROR: fakeaz: bad thread body")
@@ -624,6 +650,11 @@ func (a *Az) invoke(args []string) ([]byte, error) {
 			return nil, fail(prMissing)
 		}
 		a.threads[id] = append(a.threads[id], thread.Comments[0].Content)
+		tc := ThreadContext{}
+		if x := thread.ThreadContext; x != nil {
+			tc = ThreadContext{FilePath: x.FilePath, StartLine: x.RightFileStart.Line, End: x.RightFileEnd.Line, EndOffset: x.RightFileEnd.Offset}
+		}
+		a.contexts[id] = append(a.contexts[id], tc)
 		return []byte(`{"id":1,"status":"active","continuation_token":null}`), nil
 	}
 	return nil, a.unsupported(args)

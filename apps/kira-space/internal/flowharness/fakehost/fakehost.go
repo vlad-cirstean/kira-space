@@ -40,16 +40,18 @@ type Forge struct {
 	comments map[int][]string
 	details  map[int]githost.ChangeRequestDetail
 	posted   map[int][]PostedComment
+	lines    map[int][]githost.LineComment
 }
 
 var (
 	_ githost.Provider          = (*Forge)(nil)
 	_ githost.ChangeRequestSync = (*Forge)(nil)
 
-	_ githost.ChangeRequestReviews  = (*Forge)(nil)
-	_ githost.ChangeRequestDetails  = (*Forge)(nil)
-	_ githost.ChangeRequestComments = (*Forge)(nil)
-	_ githost.CLISetup              = (*Forge)(nil)
+	_ githost.ChangeRequestReviews      = (*Forge)(nil)
+	_ githost.ChangeRequestDetails      = (*Forge)(nil)
+	_ githost.ChangeRequestComments     = (*Forge)(nil)
+	_ githost.ChangeRequestLineComments = (*Forge)(nil)
+	_ githost.CLISetup                  = (*Forge)(nil)
 )
 
 // New returns an empty fake host.
@@ -57,6 +59,7 @@ func New() *Forge {
 	return &Forge{
 		account: "forger", authors: map[int]string{}, reviews: map[int][]githost.Review{}, comments: map[int][]string{},
 		details: map[int]githost.ChangeRequestDetail{}, posted: map[int][]PostedComment{},
+		lines: map[int][]githost.LineComment{},
 	}
 }
 
@@ -354,6 +357,28 @@ func (f *Forge) Comments(number int) []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return slices.Clone(f.comments[number])
+}
+
+// LineComments returns the line comments posted on merge request number, in order.
+func (f *Forge) LineComments(number int) []githost.LineComment {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.lines[number])
+}
+
+// CommentOnLines records a line comment.
+func (f *Forge) CommentOnLines(_ context.Context, _ githost.Repo, number int, c githost.LineComment) githost.Status {
+	f.record("CommentOnLines:" + strconv.Itoa(number))
+	if st, limited := f.rateLimit(); limited {
+		return st
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.find(number); !ok {
+		return f.goneStatus()
+	}
+	f.lines[number] = append(f.lines[number], c)
+	return githost.Status{Kind: githost.KindOK, Host: Host}
 }
 
 func (f *Forge) goneStatus() githost.Status {

@@ -1,11 +1,14 @@
 package gitsession
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"strings"
+	"unicode/utf16"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitreview"
 )
 
 // ChangeRequestReviewState is changeRequest.reviewState's result. Kind is "ok" | "disabled" |
@@ -142,7 +145,11 @@ func (e *RepoEntry) post(ctx context.Context, fn func(githost.ChangeRequestRevie
 	if status, armed := e.host.breakerStatus(); armed {
 		return ChangeRequestPost{Kind: "unavailable", Status: &status}
 	}
-	status := fn(rv, repo)
+	return e.postResult(ctx, fn(rv, repo))
+}
+
+// postResult maps a host write's status: success syncs the board, a rate limit arms the breaker.
+func (e *RepoEntry) postResult(ctx context.Context, status githost.Status) ChangeRequestPost {
 	if status.OK() {
 		// Non-waiting: board badges pick up the new review decision within the sync gates.
 		e.SyncChangeRequests(ctx, nil, false)
@@ -152,4 +159,67 @@ func (e *RepoEntry) post(ctx context.Context, fn func(githost.ChangeRequestRevie
 		e.host.armBreaker(status)
 	}
 	return ChangeRequestPost{Kind: "unavailable", Status: &status}
+}
+
+// ChangeRequestLinePost is a line comment post's result: ChangeRequestPost's kinds plus
+// "headMoved" (the host head is not headSha; HeadSha then holds the host head).
+type ChangeRequestLinePost struct {
+	Kind    string
+	Status  *githost.Status
+	HeadSha string
+}
+
+// CommentOnChangeRequestLines posts a comment on lines of path at the change request's head. The
+// host head is read fresh and must equal headSha, the commit the caller's line numbers refer to.
+func (e *RepoEntry) CommentOnChangeRequestLines(ctx context.Context, number int, headSha, path string, r gitreview.LineRange, body string) (ChangeRequestLinePost, error) {
+	_, rv, repo, ok := e.reviewHost(ctx)
+	if !ok {
+		return ChangeRequestLinePost{Kind: "disabled"}, nil
+	}
+	lc, ok := rv.(githost.ChangeRequestLineComments)
+	if !ok {
+		return ChangeRequestLinePost{Kind: "disabled"}, nil
+	}
+	if status, armed := e.host.breakerStatus(); armed {
+		return ChangeRequestLinePost{Kind: "unavailable", Status: &status}, nil
+	}
+	t, status := rv.ReviewTarget(ctx, repo, number)
+	if !status.OK() {
+		if status.RateLimited {
+			e.host.armBreaker(status)
+		}
+		return ChangeRequestLinePost{Kind: "unavailable", Status: &status}, nil
+	}
+	if t.HeadSha != headSha {
+		return ChangeRequestLinePost{Kind: "headMoved", HeadSha: t.HeadSha}, nil
+	}
+	kind, content, lineCount, _, err := e.readSnapshotSource(ctx, headSha, path)
+	if err != nil {
+		return ChangeRequestLinePost{}, err
+	}
+	if kind != gitreview.ContentText {
+		return ChangeRequestLinePost{}, ErrCommentNotText
+	}
+	if r.End > lineCount {
+		return ChangeRequestLinePost{}, ErrCommentRangeOutOfFile
+	}
+	post := e.postResult(ctx, lc.CommentOnLines(ctx, repo, number, githost.LineComment{
+		Path: path, Start: r.Start, End: r.End, EndColumn: endColumn(content, r.End), CommitSHA: headSha, Body: body,
+	}))
+	return ChangeRequestLinePost{Kind: post.Kind, Status: post.Status}, nil
+}
+
+// endColumn is the 1-based UTF-16 column after the last character of 1-based line n of content.
+func endColumn(content []byte, n int) int {
+	line := content
+	for i := 1; i < n; i++ {
+		_, rest, found := bytes.Cut(line, []byte("\n"))
+		if !found {
+			break
+		}
+		line = rest
+	}
+	line, _, _ = bytes.Cut(line, []byte("\n"))
+	line = bytes.TrimSuffix(line, []byte("\r"))
+	return len(utf16.Encode([]rune(string(line)))) + 1
 }

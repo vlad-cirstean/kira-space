@@ -1,6 +1,7 @@
 package githostflow_test
 
 import (
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness/fakeaz"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/azure"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitreview"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitrpc"
 )
 
@@ -255,6 +257,16 @@ func TestAzureRepos(t *testing.T) {
 		t.Fatalf("comment = %+v, threads %v", commented, r.az.Threads(12))
 	}
 	r.app.Contract(t, azScenario, "git:changeRequest.comment", commented)
+
+	// A line comment is a thread anchored to the file's right side; the head it names must be the host's.
+	r.az.SetPR(azKey, 12, func(p *fakeaz.PR) { p.Head = r.tip })
+	lined := call[gitrpc.ChangeRequestLineCommentResult](t, r.gs, "changeRequest.lineComment", gitrpc.ChangeRequestLineCommentParams{
+		RepoID: r.gitID, Number: 12, Path: "base.txt", Range: gitreview.LineRange{Start: 1, End: 1}, HeadSha: r.tip, Body: "rename?",
+	})
+	wantCtx := []fakeaz.ThreadContext{{FilePath: "/base.txt", StartLine: 1, End: 1, EndOffset: len("base") + 1}}
+	if lined.Kind != "ok" || !reflect.DeepEqual(r.az.ThreadContexts(12)[4:], wantCtx) || r.az.Threads(12)[4] != "rename?" {
+		t.Fatalf("lineComment = %+v, contexts %+v, threads %v", lined, r.az.ThreadContexts(12), r.az.Threads(12))
+	}
 
 	// 5. The composed URL opens; the API form and a look-alike host are refused.
 	open := func(u string) error {
