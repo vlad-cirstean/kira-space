@@ -7,5 +7,28 @@
   },
   "args:AdeTaskService.ForwardReviewComments": {
     "branchId": "<id:1>"
+  },
+  "git:review.comment.list#forwarded": {
+    "at": "<masked>",
+    "comments": [
+      {
+        "anchor": "exact",
+        "anchorSha": "<masked>",
+        "body": "already handled",
+        "createdAt": 0,
+        "id": 3,
+        "kind": "change",
+        "origin": "commit",
+        "path": "r.txt",
+        "range": {
+          "end": 2,
+          "start": 2
+        },
+        "repliedAt": null,
+        "reply": "",
+        "sentAt": null,
+        "state": "addressed"
+      }
+    ]
   }
 }

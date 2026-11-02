@@ -615,7 +615,7 @@ const openComment = (id: number, state: 'open' | 'addressed' = 'open') => ({
 
 async function openForward(
   relaunch: Parameters<Parameters<typeof reviewTest>[2]>[0]['relaunch'],
-  comments: readonly unknown[],
+  comments: readonly unknown[] | { readonly __sequence: readonly unknown[] },
   extra: readonly ControlSnapshot[] = [],
 ): Promise<{ page: Page; control: { log(): { channel: string; args?: unknown }[] } }> {
   const { window: page, control } = await relaunch({
@@ -625,7 +625,9 @@ async function openForward(
       ...GIT,
       extraResults: {
         ...GIT.extraResults,
-        'review.comment.list': { at: 'a'.repeat(40), comments },
+        'review.comment.list': Array.isArray(comments)
+          ? { at: 'a'.repeat(40), comments }
+          : comments,
       },
     },
   });
@@ -664,9 +666,19 @@ reviewTest('contract: forward review comments', async ({ relaunch }) => {
     'ade-review-forward',
     'AdeTaskService.ForwardReviewComments',
   );
+  const addressed = openComment(3, 'addressed');
+  const forwardedList = contract<{ at: string; comments: readonly unknown[] }>(
+    'ade-review-forward',
+    'git:review.comment.list#forwarded',
+  );
   const { page, control } = await openForward(
     relaunch,
-    [openComment(1), openComment(2), openComment(3, 'addressed')],
+    {
+      __sequence: [
+        { at: 'a'.repeat(40), comments: [openComment(1), openComment(2), addressed] },
+        { at: 'a'.repeat(40), comments: forwardedList.comments },
+      ],
+    },
     [{ channel: IPC.adeTaskForwardReviewComments, response: result }],
   );
   const button = page.locator(t('ade-review-forward'));
@@ -678,6 +690,7 @@ reviewTest('contract: forward review comments', async ({ relaunch }) => {
   await expect.poll(forwarded).toHaveLength(1);
   expect(Object.keys(args)).toEqual(Object.keys(forwarded()[0]?.args as object));
   expect(forwarded()[0]?.args).toEqual({ branchId: target.branchId });
+  await expect(button).toHaveText('Send review comments · 0');
 });
 
 // Contract ade-review-forward, backend half: adeflow TestReviewForwardComments.

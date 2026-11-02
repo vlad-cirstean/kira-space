@@ -9,6 +9,7 @@ import { useAgentInfo } from '@workbench/agent/agentInfo';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { errorText } from '@workbench/bridge/codedError';
 import { computed, ref } from 'vue';
+import { notifyReviewRepaint } from '../../../repo/git/transport';
 import { useTerminalsStore } from '../../../state/terminals';
 import { useAgentSessionsStore } from '../../state';
 import AdeTip from '../AdeTip.vue';
@@ -84,6 +85,11 @@ async function forward(): Promise<void> {
   error.value = '';
   try {
     await forwardM.mutateAsync({ branchId: props.target.branchId });
+    notifyReviewRepaint({
+      kind: 'comments',
+      repoId: props.target.gitRepoId,
+      branch: props.target.branch,
+    });
   } catch (err) {
     error.value = errorText(err);
   } finally {
