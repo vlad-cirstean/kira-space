@@ -14,6 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/internal/agentctx"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/harness/opencode"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
@@ -162,8 +163,14 @@ func TestOpenCodeProvider(t *testing.T) {
 			t.Fatalf("OPENCODE_CONFIG file lacks %s:\n%s", want, cfg)
 		}
 	}
-	if env["OPENCODE_CONFIG"] == "" || !strings.Contains(env["OPENCODE_CONFIG_CONTENT"], "plugin.js") {
-		t.Fatalf("launch env = %v, want OPENCODE_CONFIG and the plugin in OPENCODE_CONFIG_CONTENT", env)
+	if env["OPENCODE_CONFIG"] == "" || env["OPENCODE_CONFIG_DIR"] == "" {
+		t.Fatalf("launch env = %v, want OPENCODE_CONFIG and OPENCODE_CONFIG_DIR (hooks)", env)
+	}
+	if hooksCfg, err := os.ReadFile(filepath.Join(env["OPENCODE_CONFIG_DIR"], "opencode.json")); err != nil || !strings.Contains(string(hooksCfg), "plugin.js") {
+		t.Fatalf("config dir opencode.json = %q, %v, want the plugin", hooksCfg, err)
+	}
+	if content := env["OPENCODE_CONFIG_CONTENT"]; strings.Contains(content, "plugin") {
+		t.Fatalf("OPENCODE_CONFIG_CONTENT = %s, want context only, no plugin", content)
 	}
 
 	// (e) The plugin's events reach the listener: a bad token is refused, session.created fills the id.
@@ -290,4 +297,56 @@ func TestOpenCodeHeadless(t *testing.T) {
 		t.Fatal(err)
 	}
 	testx.WaitUntil(t, waitFor, func() bool { run = latestRun(t, app, tk.ID, "one"); return run.Attempt == 3 && run.State == "done" })
+}
+
+// TestAgentContextOpenCode: the agent context reaches OpenCode as `instructions` in
+// OPENCODE_CONFIG_CONTENT, on an interactive launch and a headless step, while the hook plugin
+// rides OPENCODE_CONFIG_DIR. Claude and the fake provider are covered by
+// TestAgentContextReachesEveryLaunch.
+func TestAgentContextOpenCode(t *testing.T) {
+	const marker = "OPENCODE-CONTEXT-MARKER\n"
+	app := flowharness.New(t, flowharness.WithOpenCode(), flowharness.WithTrackerGrace(time.Second))
+	app.Scenario(fakeagent.Scenario{OpenCode: map[string][]fakeagent.Action{"*": {{Name: "done"}}}})
+	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
+	repoRec, err := app.W.CodeWorkspace.ImportRepo(ctx, bridge.CodeWorkspaceImportArgs{Path: repo.Dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	app.WindowMgr.OpenWindow(shell.WindowRecord{Key: window})
+	cur, err := app.W.AgentContextSvc.Get()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.W.AgentContextSvc.Save(agentctx.SaveArgs{Text: marker, BaseHash: cur.Hash}); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	tk := task(t, app, repoRec.ID, "ctx", ocWorkflow("ctx", ""))
+	br, err := app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: branchOf(t, app, tk.ID, repoRec.ID).ID, Name: "feat/api-ctx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	launch, err := app.W.AdeTask.StartAdHoc(ctx, adewire.StartAdHocArgs{BranchID: br.ID, Provider: "opencode"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	openTUI(t, app, launch)
+	env := envLines(t, waitFake(t, app, "opencode-1.env"))
+	if got := waitFake(t, app, "opencode-1.context"); got != marker {
+		t.Fatalf("interactive context = %q, want %q", got, marker)
+	}
+	if env["OPENCODE_CONFIG_DIR"] == "" || strings.Contains(env["OPENCODE_CONFIG_CONTENT"], "plugin") {
+		t.Fatalf("interactive env = %v, want hooks on OPENCODE_CONFIG_DIR and context-only OPENCODE_CONFIG_CONTENT", env)
+	}
+
+	hk := task(t, app, repoRec.ID, "ctxrun", ocAgentFlow("ctxrun", ""))
+	if _, err := app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: hk.ID, BranchNames: map[string]string{branchOf(t, app, hk.ID, repoRec.ID).ID: "feat/api-ctxrun"}}); err != nil {
+		t.Fatal(err)
+	}
+	if got := waitFake(t, app, "opencode-2.context"); got != marker {
+		t.Fatalf("headless context = %q, want %q", got, marker)
+	}
+	if content := envLines(t, waitFake(t, app, "opencode-2.env"))["OPENCODE_CONFIG_CONTENT"]; !strings.Contains(content, `"instructions"`) || !strings.Contains(content, `"permission"`) {
+		t.Fatalf("headless OPENCODE_CONFIG_CONTENT = %s, want instructions beside permission", content)
+	}
 }

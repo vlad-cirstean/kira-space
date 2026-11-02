@@ -11,8 +11,9 @@ import (
 
 // InteractiveCommand starts the TUI; a resume names the stored session with -s. The model is never
 // passed: the TUI uses the user's own default. The MCP grant rides OPENCODE_CONFIG and extra
-// directories and allowed tools ride OPENCODE_PERMISSION, so OPENCODE_CONFIG_CONTENT stays free for
-// the hook plugin. OpenCode assigns a new session's id itself (FindSession).
+// directories and allowed tools ride OPENCODE_PERMISSION, the agent context rides
+// OPENCODE_CONFIG_CONTENT as `instructions`, and the hook plugin rides OPENCODE_CONFIG_DIR (hooks
+// Compose). OpenCode assigns a new session's id itself (FindSession).
 func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch {
 	bin := s.Bin
 	if bin == "" {
@@ -31,6 +32,11 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 	}
 	if perm := interactivePermission(s); perm != "" {
 		l.Env = append(l.Env, "OPENCODE_PERMISSION="+perm)
+	}
+	if s.ContextFile != "" {
+		if b, err := json.Marshal(map[string]any{instructionsKey: []string{s.ContextFile}}); err == nil {
+			l.Env = append(l.Env, "OPENCODE_CONFIG_CONTENT="+string(b))
+		}
 	}
 	return l
 }

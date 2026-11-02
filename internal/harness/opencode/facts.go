@@ -72,3 +72,15 @@ func mcpToolKey(server, tool string) string {
 	}
 	return server + "_" + tool
 }
+
+// instructionsKey: `"instructions":["/abs/file.md"]` in OPENCODE_CONFIG_CONTENT is accepted, and
+// the file's text reaches the model request (Q-OC1, Q-OC4, verified on 1.19.5). It layers with
+// OPENCODE_CONFIG (mcp) and OPENCODE_CONFIG_DIR (plugin) (Q-OC3, verified).
+const instructionsKey = "instructions"
+
+// Hooks load through OPENCODE_CONFIG_DIR/opencode.json (Q-OC2, verified). Observed, not relied on
+// (Q-OC4, stub provider, throwaway HOME): ~/.config/opencode/AGENTS.md and ~/.claude/CLAUDE.md did
+// not reach the request; the config dir's AGENTS.md did.
+
+// Resume re-reads the instructions file: an edit before `run -s <id>` reaches the model (Q-OC4,
+// verified), so the provider does not implement harness.ContextKeeper.

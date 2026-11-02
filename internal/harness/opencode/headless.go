@@ -157,6 +157,9 @@ func (p *Provider) runEnv(ctx context.Context, s harness.HeadlessSpec) (env []st
 	if err != nil {
 		return nil, "", err
 	}
+	if s.ContextFile != "" {
+		doc[instructionsKey] = []string{s.ContextFile}
+	}
 	content, err := json.Marshal(doc)
 	if err != nil {
 		return nil, "", err

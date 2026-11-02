@@ -55,13 +55,14 @@ type hookRequest struct {
 // Server owns a 0700 temp directory holding the plugin and the 0600 socket, and the http.Server
 // serving POST /hook over it. Wakes is never set: OpenCode has no self-wake tool.
 type Server struct {
+	dir        string
 	pluginPath string
 	onEvent    func(harness.AgentEvent)
 	ln         *localsock.Listener
 	http       *http.Server
 }
 
-// New writes the plugin, binds the socket and starts serving.
+// New writes the plugin and the config dir's opencode.json loading it, binds the socket and starts serving.
 func New(opts harness.HookOptions) (*Server, error) {
 	ln, err := localsock.Listen(localsock.Options{DirPrefix: "kira-agent-", TokenBytes: 32})
 	if err != nil {
@@ -72,7 +73,12 @@ func New(opts harness.HookOptions) (*Server, error) {
 		_ = ln.Close()
 		return nil, fmt.Errorf("opencode hooks: write plugin: %w", err)
 	}
-	s := &Server{pluginPath: pluginPath, onEvent: opts.OnEvent, ln: ln}
+	cfg, _ := json.Marshal(map[string]any{"plugin": []string{"file://" + pluginPath}})
+	if err := renameio.WriteFile(filepath.Join(ln.Dir, "opencode.json"), cfg, 0o600); err != nil {
+		_ = ln.Close()
+		return nil, fmt.Errorf("opencode hooks: write config: %w", err)
+	}
+	s := &Server{dir: ln.Dir, pluginPath: pluginPath, onEvent: opts.OnEvent, ln: ln}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/hook", s.handleHook)
 	s.http = &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 120 * time.Second}
@@ -86,15 +92,14 @@ func (s *Server) Status() harness.HookStatus {
 }
 
 // Compose returns command unchanged and the env that loads the plugin and points it at this
-// server. OPENCODE_CONFIG_CONTENT belongs to hooks alone on interactive launches. The env carries
-// the token: never return it from a bound method.
+// server through OPENCODE_CONFIG_DIR (Q-OC2, verified); OPENCODE_CONFIG_CONTENT carries the agent
+// context. The env carries the token: never return it from a bound method.
 func (s *Server) Compose(terminalID, _, command string) (string, []string) {
-	content, _ := json.Marshal(map[string]any{"plugin": []string{"file://" + s.pluginPath}})
 	return command, []string{
 		"KIRA_TERMINAL_ID=" + terminalID,
 		"KIRA_AGENT_HOOK_SOCKET=" + s.ln.SockPath,
 		"KIRA_AGENT_HOOK_TOKEN=" + s.ln.Token,
-		"OPENCODE_CONFIG_CONTENT=" + string(content),
+		"OPENCODE_CONFIG_DIR=" + s.dir,
 	}
 }
 
