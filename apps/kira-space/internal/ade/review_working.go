@@ -2,7 +2,13 @@ package ade
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"io/fs"
 	"log/slog"
+	"os"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
@@ -211,4 +217,33 @@ func (b *TaskBoard) ReviewWorkingCommentAdd(ctx context.Context, args adewire.Re
 // warnPromote logs a promotion failure where it must not block the caller.
 func warnPromote(branchID string, err error) {
 	slog.Warn("ade: promote uncommitted review", "scope", "ade", "branch", branchID, "err", err)
+}
+
+// ReviewWorkingStamp digests a stat of the listed worktree files: no git process, no content read.
+// It lets a review window notice an edit no agent hook announced.
+func (b *TaskBoard) ReviewWorkingStamp(ctx context.Context, branchID string, paths []string) (string, error) {
+	_, _, worktree, err := b.reviewWorktree(ctx, branchID)
+	if err != nil {
+		return "", err
+	}
+	if worktree == "" {
+		return "", nil
+	}
+	h := sha256.New()
+	for _, p := range paths {
+		abs, err := codeworkspace.ValidateRelPath(worktree, p)
+		if err != nil {
+			return "", invalid("bad path: %v", err)
+		}
+		fi, err := os.Lstat(abs)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			fmt.Fprintf(h, "%s\x00absent\n", p)
+		case err != nil:
+			return "", err
+		default:
+			fmt.Fprintf(h, "%s\x00%d\x00%d\x00%d\n", p, fi.Size(), fi.ModTime().UnixNano(), fi.Mode())
+		}
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }

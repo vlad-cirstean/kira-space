@@ -1102,6 +1102,18 @@ type ReviewWorkingDiffArgs struct {
 	Path     string `json:"path"`
 }
 
+// ReviewWorkingStampArgs names the worktree files whose stat stamp is wanted.
+type ReviewWorkingStampArgs struct {
+	BranchID string   `json:"branchId"`
+	Paths    []string `json:"paths"`
+}
+
+// ReviewWorkingStamp digests the size, mtime and mode of the listed worktree files; it changes
+// when any of them is edited, created or removed. "" when the branch has no worktree.
+type ReviewWorkingStamp struct {
+	Stamp string `json:"stamp"`
+}
+
 // ReviewAgentState is the task's review agent row; HostWindowKey is ” unless it runs.
 type ReviewAgentState struct {
 	Session       *Session `json:"session"`

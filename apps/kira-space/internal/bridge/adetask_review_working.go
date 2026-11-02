@@ -16,6 +16,7 @@ import (
 const (
 	adeMaxWorkingMarkPaths  = 1000
 	adeMaxWorkingMarkRanges = 256
+	adeMaxStampPaths        = 5000
 )
 
 func validateWorkingRange(r gitreview.LineRange) error {
@@ -75,6 +76,22 @@ func (s *AdeTaskService) ReviewWorkingMark(ctx context.Context, args adewire.Rev
 	}
 	r, err := s.Engine.ReviewWorkingMark(ctx, args)
 	return r, adeTaskError(err)
+}
+
+// ReviewWorkingStamp digests a stat of the listed worktree files, for change polling.
+func (s *AdeTaskService) ReviewWorkingStamp(ctx context.Context, args adewire.ReviewWorkingStampArgs) (adewire.ReviewWorkingStamp, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeItemID(args.BranchID, "branchId"); err != nil {
+		return adewire.ReviewWorkingStamp{}, err
+	}
+	if len(args.Paths) > adeMaxStampPaths {
+		return adewire.ReviewWorkingStamp{}, adeTaskInvalid("too many paths")
+	}
+	if slices.Contains(args.Paths, "") {
+		return adewire.ReviewWorkingStamp{}, adeTaskInvalid("path is required")
+	}
+	stamp, err := s.Engine.ReviewWorkingStamp(ctx, args.BranchID, args.Paths)
+	return adewire.ReviewWorkingStamp{Stamp: stamp}, adeTaskError(err)
 }
 
 // ReviewWorkingComments lists the branch's uncommitted-origin review comments.
