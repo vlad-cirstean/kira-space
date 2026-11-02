@@ -969,7 +969,7 @@ func (s *AdeTaskService) StepDone(ctx context.Context, args adewire.StepDoneArgs
 	if err := validateAdeHandoverNotes(args.Notes); err != nil {
 		return adewire.Task{}, err
 	}
-	t, err := s.Engine.StepDone(ctx, args.TaskID, args.Notes)
+	t, err := s.Engine.StepDone(ctx, args.TaskID, args.Notes, args.CloseSessions)
 	return t, adeTaskError(err)
 }
 
@@ -1065,7 +1065,7 @@ func (s *AdeTaskService) SetTaskStep(ctx context.Context, args adewire.SetTaskSt
 	if err := validateAdeHandoverNotes(args.Notes); err != nil {
 		return adewire.Task{}, err
 	}
-	t, err := s.Engine.SetTaskStep(ctx, args.TaskID, args.StepID, args.FromStepID, args.Notes)
+	t, err := s.Engine.SetTaskStep(ctx, args.TaskID, args.StepID, args.FromStepID, args.Notes, args.CloseSessions)
 	return t, adeTaskError(err)
 }
 

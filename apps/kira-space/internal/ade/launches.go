@@ -196,6 +196,9 @@ func (b *TaskBoard) takeOverLocked(ctx context.Context, tr *Tracker, rec *model.
 	return b.prepareWithGrant(ctx, tr, tc, pa, kind, runID, rec.StepID)
 }
 
+// errSessionGone is the refusal for a session whose terminal already closed.
+var errSessionGone = invalid("the session is not running")
+
 // closeTUILocked stops and closes a running interactive session. Stop runs before the close so
 // the exit's Reconcile finds nothing to do. taskMu is held by the caller.
 func (b *TaskBoard) closeTUILocked(tr *Tracker, rec *model.AdeSession) error {
@@ -204,11 +207,11 @@ func (b *TaskBoard) closeTUILocked(tr *Tracker, rec *model.AdeSession) error {
 	}
 	terminalID, ok := tr.TerminalOf(rec.ID)
 	if !ok {
-		return invalid("the session is not running")
+		return errSessionGone
 	}
 	if err := tr.Stop(rec.ID); err != nil {
 		if errors.Is(err, ErrSessionNotRunning) {
-			return invalid("the session is not running")
+			return errSessionGone
 		}
 		return err
 	}

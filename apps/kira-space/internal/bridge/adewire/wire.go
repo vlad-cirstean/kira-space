@@ -552,6 +552,8 @@ type UpdateHandoverArgs struct {
 type StepDoneArgs struct {
 	TaskID string  `json:"taskId"`
 	Notes  *string `json:"notes,omitempty"`
+	// CloseSessions closes the stage sessions of the move first.
+	CloseSessions bool `json:"closeSessions,omitempty"`
 }
 
 // TaskStatusDef is one status of the user's set: a label. Color is one of the 16 status colours.
@@ -1182,6 +1184,8 @@ type SetTaskStepArgs struct {
 	FromStepID string `json:"fromStepId,omitempty"`
 	// Notes, when set, replace the stage's draft handover; empty drops it. Nil keeps the draft.
 	Notes *string `json:"notes,omitempty"`
+	// CloseSessions closes the stage sessions of the move first.
+	CloseSessions bool `json:"closeSessions,omitempty"`
 }
 
 type SendArgs struct {

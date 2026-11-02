@@ -1454,7 +1454,8 @@ func (b *TaskBoard) restartHeadless(ctx context.Context, rec *model.AdeSession) 
 }
 
 // StepDone ends the current manual step: the task enters the next step, or finishes after the last.
-func (b *TaskBoard) StepDone(_ context.Context, taskID string, notes *string) (adewire.Task, error) {
+// closeSessions closes the stage sessions of the move first.
+func (b *TaskBoard) StepDone(_ context.Context, taskID string, notes *string, closeSessions bool) (adewire.Task, error) {
 	if err := checkNotes(notes); err != nil {
 		return adewire.Task{}, err
 	}
@@ -1487,6 +1488,11 @@ func (b *TaskBoard) StepDone(_ context.Context, taskID string, notes *string) (a
 	if i, more := nextStep(*tc.wf, cur); more {
 		next = tc.wf.Steps[i].ID
 	}
+	if closeSessions {
+		if err := b.closeStageSessionsLocked(taskID, plan[cur].Def.ID, next); err != nil {
+			return adewire.Task{}, err
+		}
+	}
 	if err := b.deps.Tasks.SetEntryStep(taskID, next, nil, b.handoffFor(tc, plan[cur].Def.ID, next, notes)); err != nil {
 		return adewire.Task{}, err
 	}
@@ -1502,7 +1508,8 @@ func (b *TaskBoard) StepDone(_ context.Context, taskID string, notes *string) (a
 
 // SetTaskStep moves the task to any non-skipped step of its workflow, or to "done". The target and every
 // later step run fresh: their earlier runs stay as history. Refused while a run of the task is live.
-func (b *TaskBoard) SetTaskStep(_ context.Context, taskID, stepID, fromStepID string, notes *string) (adewire.Task, error) {
+// closeSessions closes the stage sessions of the move first.
+func (b *TaskBoard) SetTaskStep(_ context.Context, taskID, stepID, fromStepID string, notes *string, closeSessions bool) (adewire.Task, error) {
 	if err := checkNotes(notes); err != nil {
 		return adewire.Task{}, err
 	}
@@ -1540,6 +1547,11 @@ func (b *TaskBoard) SetTaskStep(_ context.Context, taskID, stepID, fromStepID st
 		}
 		if tc.wf.Steps[target].Skip {
 			return adewire.Task{}, invalid("step %q is skipped in workflow %q", stepID, tc.wf.Name)
+		}
+	}
+	if closeSessions {
+		if err := b.closeStageSessionsLocked(taskID, from, stepID); err != nil {
+			return adewire.Task{}, err
 		}
 	}
 	if err := b.snapshotWorkflow(&tc.task); err != nil {
