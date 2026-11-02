@@ -332,6 +332,9 @@ function sessionMessage(ctx: DialogCtx, spec: DialogSpec): string {
   if (jira) lines.push(jira);
   const own = branches.filter((b) => b.kind === 'mine' && b.name !== '');
   for (const b of branches) lines.push(repoLine(ctx, b));
+  // The server adds the task folder's path to this line.
+  if (!branches.length)
+    lines.push('- No repo yet. Pick repos and branches with the Kira Space tools.');
   if (t?.notes) lines.push(`- Notes: ${t.notes}`);
   if (step?.prompt) {
     lines.push(
