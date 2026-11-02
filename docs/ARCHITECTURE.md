@@ -2412,7 +2412,14 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - A fix run's resume spec is kept on its run row until launch, so a run held behind a setup resumes the same Claude session after a restart.
 - If no report arrives (crash, timeout), the step takes its failed result, else the run stops.
 - walkPath follows the routes; nextAction and chainRerun use that path; the run outcome stores result and route.
-- A once step runs in the first mine branch's worktree (D12), and there is no concurrency cap (D8).
+- A once step runs in the first mine branch's worktree (D12), or the task folder when the task has no mine branch (P467), and there is no concurrency cap (D8).
+- Repo-less tasks (P467): a task with no mine branch starts and runs steps.
+  - Task folder `<home>/ade/tasks/<taskId>` (`TaskBoard.taskDir`, `Deps.TasksDir`): created on first use, removed by ArchiveTask (best effort). A run or manual session with no branch works there.
+  - Task target `""`: `stepTargets` returns it for an agent or script step when `mine` is empty. A run on it has `BranchID ""`. A review step (error "the review step needs a branch to review") and an `only <nick>` step get a target error and no Run.
+  - Pin: a step that has a `""` run in the current pass keeps target `""` after repos appear, so its run stays on the step. `plan()` applies it; frontend `progress.ts` mirrors it.
+  - Sandbox is fixed at start: a folder run cannot write worktrees it requests mid-run. `request_branches` and `declare_repos` still work; the next stage runs on those branches.
+  - `advanceLocked` calls `prepareWorktrees` before starting a step, so branches the previous stage requested get worktrees.
+  - A manual session step with no repo launches with cwd the task folder (`taskLaunchDirs`); the review agent still refuses ("the task has no repo"). Prompts `ade.step.prompt` and `ade.manual.message` carry a "No repo yet" line with the folder.
 - Restart recovery (D7): Recover() runs before Start(); running runs become stuck with note 'interrupted by restart', running setups fail, task sessions stop, and stale *.mcp.json files are removed.
 - After restart, pending runs keep their launch spec and launch when their gate opens; nothing auto-resumes, and a restart-stuck agent run offers Resume.
 - Agent tools (P199) are implemented in ade/agenttools.go as agentmcp.SpaceTools on *ade.TaskBoard; the loopback MCP server issues scoped grants (run, task, Space) with one bearer token per launch.
@@ -2766,6 +2773,7 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 
 - ADE Go tests cover internal/ade (board, integration, deploy, run engine, steps, tracker), adeflow, agentmcp and bridge/adewire; run them with go test -race, together with gitsession.
 - The P199 protocol is covered by agentmcp TestGrantScopes (go-sdk client) and agenttools_test.go.
+- Repo-less workflow (P467): flows/adeflow `TestRepolessWorkflow` (contract `ade-norepo`) and tests/ui/ade-v2-norepo.spec.ts.
 - ADE frontend tests: tests/unit/ade-v2-* cover board parity with the mockup's logic, dialog, drop plan, progress and timeline; ade-notes-markdown is also covered; 33 tests/ui/ade-v2-*.spec.ts run on the mock runtime (ade-v2-task-launch covers the task plus menu; contract `ade-adhoc`, flow `TestAdHocSession`, real `claude` `TestAdeAdHocSession`).
 - There is one ADE visual spec, tests/visual/ade-workflow-graph.spec.ts (P247).
 - The live smoke test (server build, real claude -p) covers runs, send-back, restart recovery, Spec/Start/Take over sessions, and merge, rebase and archive dialogs.

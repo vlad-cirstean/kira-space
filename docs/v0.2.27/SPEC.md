@@ -14,7 +14,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P464 | Review window: default tab, PR line comment, send clears, resizable panels | Done |
 | P465 | Review window: re-review on edits, visual indicators, next/prev unreviewed | Todo |
 | P466 | ADE panel tabs: grey circle count badges | Done |
-| P467 | Start a workflow without a repo | Todo |
+| P467 | Start a workflow without a repo | Done |
 | P468 | Agent branch and worktree requests: nanoid worktree name, branch in task | Todo |
 | P469 | Stage move: advance button with close-session prompt | Todo |
 | P470 | Code review (1 round) | Todo |
@@ -92,6 +92,8 @@ Result: `SecondaryTabs` gets opt-in `countBadge` (`Badge variant="count"`, `px-1
 
 - Allow starting a workflow with no repo selected. The first stage decides repos and branches. Remove the repo-required guard on the start path; downstream stages that need a repo handle its absence.
 - Test: backend flow (start without repo) and UI spec.
+
+Result: Task folder `<home>/ade/tasks/<taskId>` (`Deps.TasksDir`, `taskDir`) hosts runs and manual sessions with no branch; archive removes it. `stepTargets` returns target `""` for a task with no mine branch; review and `only` steps refuse. A step with a `""` run keeps that target after repos appear (`plan()` pin, mirrored in `progress.ts`). `queueRun`, `startRun`, `sandboxInput`, `prepareSandbox` skip branch and repo lookups for `""`. `advanceLocked` now runs `prepareWorktrees` so branches the first stage requested get worktrees. `LaunchStep` falls back to the task folder (`errNoRepo`). Prompts `ade.step.prompt` and `ade.manual.message` gain a no-repo line (goldens). Frontend: Run dialog hint, "Task folder" run label and needs scope, "Needs a repository" status, no Run on zero targets. No bridge or bindings change. Ran: go build, vet, `-race` ade package, llmprompts, adeflow package (non-race, 288 s; `-race` hit the 10 min default timeout, not a failure), `TestRepolessWorkflow -race`; typecheck space-web, space-tests, space-unit; lint; unit `ade-v2-progress`, `ade-v2-board-parity`, `ade-v2-dialog`; UI `ade-v2-norepo` (new), `ade-v2-run`, `ade-v2-task-launch`, `ade-v2-needs`, `ade-v2-launch`, `copy-coverage`; real claude `TestAdeHeadlessRun|TestAdeManualSession`. Gap: the TS manual-session preview (`compose.ts`) omits the folder path from the no-repo line; unedited messages send empty, so the server text rules.
 
 ### P468 Agent branch and worktree requests: nanoid worktree name, branch in task
 
