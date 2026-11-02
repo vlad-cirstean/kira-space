@@ -55,3 +55,9 @@ func EnsureLayoutAt(home string) error {
 	}
 	return nil
 }
+
+// SharedAgentDir is the agent folder both apps read (~/.kira-space/agent): Kira Space hosts and
+// edits it, Kira Studio only reads it.
+func SharedAgentDir() string {
+	return filepath.Join(Home("KIRA_SPACE_HOME", ".kira-space"), "agent")
+}
