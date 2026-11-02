@@ -188,6 +188,17 @@ func HeadlessOf(p Provider) (Headless, bool) {
 	return h, ok
 }
 
+// CostCapper is a provider that may lack a cost cap. A provider without it caps cost.
+type CostCapper interface {
+	CapsCost() bool
+}
+
+// CapsCost reports whether p can enforce HeadlessSpec.MaxBudgetUSD.
+func CapsCost(p Provider) bool {
+	c, ok := p.(CostCapper)
+	return !ok || c.CapsCost()
+}
+
 // Error is a provider's user-facing error: Msg is shown, Kind matches errors.Is.
 type Error struct {
 	Kind error

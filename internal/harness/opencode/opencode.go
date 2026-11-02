@@ -19,7 +19,10 @@ const defaultModel = "default"
 // Catalog is the single "default" alias.
 var Catalog = harness.Catalog{Aliases: []string{defaultModel}, Default: defaultModel}
 
-var _ harness.Provider = (*Provider)(nil)
+var (
+	_ harness.Provider = (*Provider)(nil)
+	_ harness.Headless = (*Provider)(nil)
+)
 
 // Provider implements harness.Provider for OpenCode.
 type Provider struct {

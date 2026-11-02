@@ -181,6 +181,15 @@ func (s *Service) launchSmart(p *planned, run Run, existing bool) (Started, erro
 			OnLine:   func(l harness.Line) { sink.add(l.Stream, l.Text) },
 			OnResult: func(r harness.Result) { res = &r },
 			OnStart:  func(pid int) { stopWatch = s.watchSandbox(sbx, runID, sink, pid) },
+			OnSessionID: func(id string) {
+				if err := s.Runs.SetSessionID(runID, id); err != nil {
+					slog.Warn("scriptruns: store session id", "scope", "scriptruns", "run", runID, "err", err)
+					return
+				}
+				if r, err := s.Runs.Get(runID); err == nil {
+					s.emit(r)
+				}
+			},
 		})
 		if stopWatch != nil {
 			stopWatch()

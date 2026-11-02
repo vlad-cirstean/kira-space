@@ -230,10 +230,28 @@ func (s *Service) plan(ctx context.Context, args RunArgs, o planOpts) (*planned,
 	}
 	p.mcp = pv.MCP
 	if pv.Blocker == "" {
+		pv.Blocker = agentBlocker(agent, smart.Model, smart.MaxBudgetUSD)
+	}
+	if pv.Blocker == "" {
 		pv.Blocker = s.smartBlocker(ctx, agent, pv.MCP, o.informational)
 	}
 	p.preview = finishPreview(pv, p)
 	return p, nil
+}
+
+// agentBlocker is why agent cannot run a script with model and a cost cap: a cap it cannot enforce,
+// or a model outside its catalog (the registry holds every provider's aliases, so a script may name
+// one this agent lacks).
+func agentBlocker(agent harness.Provider, model string, budgetUSD float64) string {
+	label := map[string]string{"agent": agent.Label()}
+	switch {
+	case budgetUSD > 0 && !harness.CapsCost(agent):
+		return i18n.T("backend.core.agent.noCostCap.body", label)
+	case model != "" && !agent.Models().Valid(model):
+		label["model"] = model
+		return i18n.T("backend.core.agent.modelUnknown.body", label)
+	}
+	return ""
 }
 
 // fillSaved adds the saved value of each secret param the dialog gave none for; a typed value wins.

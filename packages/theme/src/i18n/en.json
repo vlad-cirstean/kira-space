@@ -553,6 +553,12 @@
         "missingRole": {
           "body": "{agent} can’t run {role}."
         },
+        "modelUnknown": {
+          "body": "{agent} has no model named {model}. Choose another model in the script."
+        },
+        "noCostCap": {
+          "body": "{agent} can’t cap a run’s cost. Remove the budget from the script."
+        },
         "opencode": {
           "manualInstall": {
             "body": "OpenCode can’t add MCP servers from here. Copy the snippet into the mcp block of your OpenCode config."
@@ -864,6 +870,9 @@
         },
         "savedSecretUnreadable": {
           "body": "The saved value of {names} can’t be read ({detail}). Type it, or save it again."
+        },
+        "sessionIdUnknown": {
+          "body": "This run hasn’t reported its conversation ID."
         },
         "smartCap": {
           "body": "{max} smart scripts are running. Wait for one to finish."

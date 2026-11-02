@@ -207,6 +207,14 @@ func (r *Repo) RestoreResume(id, sessionID string) error {
 	return nil
 }
 
+// SetSessionID stores the conversation id an agent assigned a running run.
+func (r *Repo) SetSessionID(id, sessionID string) error {
+	if _, err := r.DB.Exec(`UPDATE script_runs SET session_id = ? WHERE id = ?`, sessionID, id); err != nil {
+		return fmt.Errorf("scriptruns: set session id %s: %w", id, err)
+	}
+	return nil
+}
+
 // Active returns the newest running or waiting run of a script other than exceptID, (nil, nil)
 // when none.
 func (r *Repo) Active(scriptID, exceptID string) (*Run, error) {

@@ -20,6 +20,7 @@ import (
 var permanentExemptions = map[string]string{
 	"G4 apps/kira-space/internal/gitsession/incremental.go": "writes temp files into a per-call os.MkdirTemp dir that is deleted before return; nothing else reads them",
 	"G5 internal/harness/claude/sandbox.go":                 "names ~/.claude.json as a sandbox write path; Kira never opens it",
+	"G5 internal/harness/opencode/headless.go":              "reads only Kira's own generated MCP config files, to merge them into one",
 	"G5 internal/harness/opencode/sandbox.go":               "names OpenCode's config and data dirs as sandbox paths; Kira never opens them",
 }
 

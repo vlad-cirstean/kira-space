@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/linewriter"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
@@ -33,7 +34,7 @@ func (s *Service) newRun(p *planned, existing *Run) Run {
 	}
 	if p.script.Kind == scripts.KindSmart {
 		pv := p.preview
-		run.Model, run.SessionID, run.Prompt = pv.Model, firstNonEmpty(p.resume, uuid.NewString()), p.sent
+		run.Model, run.SessionID, run.Prompt = pv.Model, proposedSessionID(p), p.sent
 		run.ResumedFrom = p.resumedFrom
 		run.Provider = p.provider
 		run.Tools = RunTools{Tools: pv.Tools, AllowedTools: pv.Allowed, McpServers: pv.MCP}
@@ -44,6 +45,18 @@ func (s *Service) newRun(p *planned, existing *Run) Run {
 		run.TaskID, run.TaskTitle, run.BranchID, run.BranchLabel = a.TaskID, a.TaskTitle, a.BranchID, a.BranchLabel
 	}
 	return run
+}
+
+// proposedSessionID is the conversation id a smart run starts with: the resumed one, a fresh one,
+// or "" for an agent that assigns its own (the run learns it through Handler.OnSessionID).
+func proposedSessionID(p *planned) string {
+	if p.resume != "" {
+		return p.resume
+	}
+	if _, ok := p.agent.(harness.SessionLocator); ok {
+		return ""
+	}
+	return uuid.NewString()
 }
 
 // begin stores the run as running: a new row, or the waiting row turned running. A waiting row

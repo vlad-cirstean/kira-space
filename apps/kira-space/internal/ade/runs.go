@@ -573,11 +573,11 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 	if def.Kind == adewire.KindAgent {
 		sessionID = b.newID()
 		patch.SessionID = &sessionID
-		agentSessionID := cmpNonEmpty(spec.ResumeID, b.newID())
 		agent, err = b.agentForResume(spec.ResumeID)
 		if err != nil {
 			return run, err
 		}
+		agentSessionID := b.proposeAgentID(agent, spec.ResumeID)
 		switch {
 		case spec.ResumeID != "":
 			prompt = composeResumePrompt(b.prompts(), spec.Prompt, def.Results)
@@ -695,6 +695,18 @@ func allowedTools(p harness.MCPHost, step []string, space bool) []string {
 	return out
 }
 
+// proposeAgentID is the conversation id a headless row starts with: the resumed one, a fresh one for
+// an agent that takes the id Kira proposes, "" for one that assigns its own (OnSessionID fills it).
+func (b *TaskBoard) proposeAgentID(agent harness.Provider, resume string) string {
+	if resume != "" {
+		return resume
+	}
+	if _, ok := agent.(harness.SessionLocator); ok {
+		return ""
+	}
+	return b.newID()
+}
+
 // agentLaunch is what superviseAgent runs: a prompt, or a smart script's step (smart != nil).
 type agentLaunch struct {
 	def               stepDef
@@ -713,6 +725,8 @@ type agentLaunch struct {
 	agent harness.Provider
 	// contextFile is the agent context path of this run, "" for none; set by superviseAgent.
 	contextFile string
+	// onSessionID, when set, also receives the id a self-assigning agent reports.
+	onSessionID func(id string)
 }
 
 // agentFor is the provider a launch runs under: the one that ran the conversation it continues
@@ -836,6 +850,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 				stopWatch = b.watchSandbox(run, sbx, sink, pid)
 			}
 		},
+		OnSessionID: func(id string) { b.learnAgentSessionID(sessionID, id, l.onSessionID) },
 	})
 	if stopWatch != nil {
 		stopWatch()
@@ -907,7 +922,20 @@ func roundTools(p harness.MCPHost, tools []string, round bool) []string {
 	return tools
 }
 
-// sessionAgentID reads the agent session id stored with the ade_sessions row.
+// learnAgentSessionID stores the id a self-assigning agent reported for the headless row.
+func (b *TaskBoard) learnAgentSessionID(sessionID, id string, also func(string)) {
+	if err := b.deps.Sessions.SetAgentSessionID(sessionID, id); err != nil {
+		slog.Warn("ade: store agent session id", "scope", "ade", "session", sessionID, "err", err)
+		return
+	}
+	b.notifySessions()
+	if also != nil {
+		also(id)
+	}
+}
+
+// sessionAgentID reads the agent session id stored with the ade_sessions row; "" for an agent that
+// assigns its own.
 func (b *TaskBoard) sessionAgentID(sessionID string) string {
 	rec, err := b.deps.Sessions.Get(sessionID)
 	if err != nil || rec == nil {

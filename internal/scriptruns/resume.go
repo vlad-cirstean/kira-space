@@ -135,8 +135,11 @@ func (s *Service) ResumeCommand(id string) (ResumeLaunch, error) {
 	if err != nil {
 		return ResumeLaunch{}, err
 	}
-	if run.Kind != KindSmart || run.SessionID == "" {
+	if run.Kind != KindSmart {
 		return ResumeLaunch{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.core.scriptRun.resumeCommandNone.body", nil)
+	}
+	if run.SessionID == "" {
+		return ResumeLaunch{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.core.scriptRun.sessionIdUnknown.body", nil)
 	}
 	prov, err := s.Agent.For(run.Provider)
 	if err != nil {
