@@ -11,7 +11,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P461 | Task "+" new terminal or agent works; remove list-row terminal button | Done |
 | P462 | Global capture dialog: keyboard only, PR-derived branches | Done |
 | P463 | Persist task tabs across task switches | Done |
-| P464 | Review window: default tab, PR line comment, send clears, resizable panels | Todo |
+| P464 | Review window: default tab, PR line comment, send clears, resizable panels | Done |
 | P465 | Review window: re-review on edits, visual indicators, next/prev unreviewed | Todo |
 | P466 | ADE panel tabs: grey circle count badges | Done |
 | P467 | Start a workflow without a repo | Todo |
@@ -71,6 +71,8 @@ Result: Cause frontend. Task tab, branch tab and picked session were single glob
 - "Send review comments" clears the sent comments.
 - Code diff and agent panels resize freely. Agent panel today stops at a max width. Remove or raise the cap; keep sane minimums.
 - Test: backend flow (PR line comment, send clears) and UI spec on the same scenario.
+
+Result: Compose thread opens on Question, Change second (`ReviewThread`). Send clears: `gitreview.RemoveComments` replaces `MarkSent` in `ForwardReviewComments`; panel fires a comments repaint so open diff tabs drop glyphs; workflow review Send unchanged. PR line comment: contract 57 to 58, new `changeRequest.lineComment` (`githost.ChangeRequestLineComments`, GitHub `-F` only for `line`/`start_line`, Azure `threadContext`, `fakehost`/`fakeaz` record it, `gitsession.CommentOnChangeRequestLines` with `headMoved` check against the fresh host head). Frontend: third compose tab "{short} comment" on committed window-branch tabs (`useHostLineComment`, `reviewSource.postToChangeRequest`), blocked hint, posted state; i18n `git.review.comments.host.*`. Panes: `AdeReviewWindow` bounds from row width (right first, centre min 320), no fixed max. Also fixed pre-existing `typecheck:space-unit` error in `bridge/index.ts` (`hostViewIssue` `fresh` default). Ran: `go test` githost, gitrpc, gitsession, gitreview, ade, githostflow (`-count=2`), adeflow `TestReviewForwardComments|TestReviewStep`; contracts `ade-review-actions` and `ade-review-forward` regenerated; UI `ade-v2-review`, `ade-v2-review-working`, `repo-review-interaction`, `git-host-azure`, `copy-coverage`; visual `ade-review-diff` unchanged. Hooks green. No full suite.
 
 ### P465 Review window: re-review on edits, visual indicators, next/prev unreviewed
 
