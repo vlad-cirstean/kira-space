@@ -161,7 +161,7 @@ func TestAgentContextReachesEveryLaunch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	adhoc, err := app.W.AdeTask.StartAdHoc(ctx, adewire.BranchArgs{BranchID: br.ID})
+	adhoc, err := app.W.AdeTask.StartAdHoc(ctx, adewire.StartAdHocArgs{BranchID: br.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
