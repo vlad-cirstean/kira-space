@@ -562,15 +562,58 @@ Sandbox notes:
   fake records to the real `mcpinstall` installer.
 - `~/.claude.json` is not compared in the settings test: the CLI rewrites it on every run (P233 A13).
 
-## OpenCode (P449)
+## OpenCode (P449, P452 to P456)
 
 Flow tests run a fake `opencode` (`fakeagent` persona, `flowharness.WithOpenCode()`); no real OpenCode test exists, since no model key is available here. The facts in `internal/harness/opencode/facts.go` come from the installed CLI (1.19.5) through the no-model probes below.
 
-- Hermetic probes (P455, 1.19.5, orchestrator-run): H-OC1 to H-OC5, results in `internal/harness/opencode/facts.go`. Re-run with `KIRA_OPENCODE_BIN=<bin> go test ./internal/harness/opencode -run TestHermeticDebugConfig -count=1`.
-- Dev install, in a scratch dir outside the repo: `npm init -y && npm i --ignore-scripts opencode-ai`. It installs the launcher plus a platform package such as `opencode-linux-x64`. Run `node_modules/opencode-linux-x64/bin/opencode` directly; the launcher refuses without postinstall under `--ignore-scripts`. Always set `HOME=$(mktemp -d)` so user config is never read or written, and run from a scratch dir with `git init -q`.
-- The Claude Code auto-mode classifier blocks a subagent told to install an external package, and a probe that runs a model prompt. Run the install from the orchestrating session or have the user approve.
-- No model key needed: `--help`, `--version`, `session list --format json` (expect `[]`), `debug config`, `debug paths`, `debug agent build`, `mcp list`, `mcp add --help`, and `strings <bin> | grep -oE 'OPENCODE_[A-Z_]+'` for env names. `OPENCODE_CONFIG=c.json opencode debug config` shows how a config merges and masks header values. `OPENCODE_PERMISSION='{...}' opencode debug config` shows the permission merge.
+- Install, in a scratch dir outside the repo: `npm init -y && npm i --ignore-scripts opencode-ai`. It installs the launcher plus a platform package such as `opencode-linux-x64`. Run `node_modules/opencode-linux-x64/bin/opencode` directly; the launcher refuses without postinstall under `--ignore-scripts`. The orchestrating session keeps a copy at `<scratchpad>/oc/node_modules/opencode-linux-x64/bin/opencode` (1.19.5) between phases. Set `OC=<that path>`.
+- The Claude Code auto-mode classifier blocks a subagent told to install an external package, and a probe that runs a model prompt. Run the install and the stub provider recipe from the orchestrating session or have the user approve.
+- Probe hygiene: `export HOME=$(mktemp -d)`; use a temp cwd with `git init -q`; never point `HOME` at a real home. `debug config` and `run` rewrite the user `opencode.json` (insert `$schema`) and create `package.json`, `package-lock.json` and `node_modules` in a config folder (Q-P454-OC6). A config folder whose `opencode.json` lists a `plugin` makes the first `debug config` run an npm install there. It took over 60 s in one run (P-456-1, observed once).
+- No model key needed: `--help`, `--version`, `session list --format json` (expect `[]`), `debug config`, `debug paths`, `debug agent build`, `debug skill` (lists skills, H-OC3), `mcp list`, `mcp add --help`, and `strings <bin> | grep -oE 'OPENCODE_[A-Z_]+'` for env names. `find $HOME/.local/share/opencode -maxdepth 2` shows the data folder (`log/`, `snapshot/`, `repos/`, `opencode.db`); auth lives there (H-OC5). `OPENCODE_CONFIG=c.json opencode debug config` shows how a config merges and masks header values. `OPENCODE_PERMISSION='{...}' opencode debug config` shows the permission merge.
 - `run` reads the prompt from stdin when it is not a terminal: always pipe it (`echo hi | opencode run --format json`). A positional message with no stdin hangs.
+- Config layering (verified on 1.19.5):
+  - `OPENCODE_CONFIG`, `OPENCODE_CONFIG_CONTENT` and `OPENCODE_PERMISSION` layer over user config. They never hide it.
+  - `OPENCODE_CONFIG_DIR` adds a config folder. The user `opencode.json` still loads (P-456-1: user `model` and `mcp` plus the folder's `mcp` all appear in `debug config`). With it set, the global `AGENTS.md` did not reach a stub request (Q-P454-OC7).
+  - The `OPENCODE_CONFIG_CONTENT` text is substituted: `{env:HOME}` expands (Q-OC7).
+- Hermetic redirect recipe, the shell form of `opencode.Isolate`:
+
+  ```sh
+  ISO=$(mktemp -d)/xdg; mkdir -p "$ISO"
+  for e in "$HOME/.config"/* "$HOME/.config"/.[!.]*; do
+    [ -e "$e" ] && [ "$(basename "$e")" != opencode ] && ln -s "$e" "$ISO/"
+  done
+  env XDG_CONFIG_HOME="$ISO" OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1 "$OC" debug config
+  ```
+
+  Expect no user `model`, `mcp` or `plugin`, and the project `opencode.json` `mcp` kept (H-OC1). The data folder and login stay unchanged. Opt-in check: `KIRA_OPENCODE_BIN=$OC go test ./internal/harness/opencode -run TestHermeticDebugConfig -count=1` (hermetic probes H-OC1 to H-OC5, orchestrator-run, results in `facts.go`).
+- `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT` facts (H-OC4, stub model). Markers: C `~/.claude/CLAUDE.md`, G global `AGENTS.md`, P project `AGENTS.md`, K Kira `instructions` file.
+  - Baseline: G, P, K arrive; C does not (a global `AGENTS.md` wins over `~/.claude/CLAUDE.md`).
+  - Redirect alone: C, P, K (C fills in once G is gone).
+  - Redirect plus `_PROMPT=1`: P, K. This is the hermetic set.
+  - `_PROMPT=1` alone: G, P, K.
+  - Project `CLAUDE.md` only, redirect plus `_PROMPT=1`: K only. The name also drops a project `CLAUDE.md`.
+  - `OPENCODE_DISABLE_CLAUDE_CODE=1` drops project `.claude/` too, so Kira uses it only for runs without project config. `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1` drops user and project `.claude/skills`. `OPENCODE_DISABLE_EXTERNAL_SKILLS=1` also drops `~/.agents/skills` (H-OC3).
+- Stub provider recipe (what reaches the model, no key). Used for Q-OC4, Q-P454-OC7 and H-OC4. Save as `stub.py`:
+
+  ```python
+  import http.server, json, sys
+  LOG = sys.argv[1]
+  class H(http.server.BaseHTTPRequestHandler):
+      def do_POST(s):
+          b = s.rfile.read(int(s.headers['content-length']))
+          open(LOG, 'ab').write(b + b'\n====\n')
+          s.send_response(200); s.send_header('content-type', 'text/event-stream'); s.end_headers()
+          for d in [{"id": "1", "object": "chat.completion.chunk", "model": "m",
+                     "choices": [{"index": 0, "delta": {"role": "assistant", "content": "ok"}}]},
+                    {"id": "1", "object": "chat.completion.chunk", "model": "m",
+                     "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}]:
+              s.wfile.write(b'data: ' + json.dumps(d).encode() + b'\n\n')
+          s.wfile.write(b'data: [DONE]\n\n')
+      def log_message(*a): pass
+  http.server.HTTPServer(('127.0.0.1', 8787), H).serve_forever()
+  ```
+
+  Run `python3 -I stub.py stub.log &`. In the project `opencode.json` (not the user one: a hermetic probe redirects that away) put `{"provider":{"stub":{"npm":"@ai-sdk/openai-compatible","options":{"baseURL":"http://127.0.0.1:8787/v1","apiKey":"x"},"models":{"m":{}}}}}`. Then `echo hi | $OC run -m stub/m --format json` and grep `stub.log` for markers. The stub answers every POST the same, title requests included. Kill it after. Orchestrator runs saw it work offline on the local stub; the first run fetches provider and plugin packages through npm, which can be slow. Whether it works with no network at all is unconfirmed.
 - Need a model key (still unverified, see Known open items): the `run --format json` tool and cost events (`step_start`, `text`, `step_finish` verified), the error for `-s <unknown id>`, plugin event names (`/tmp/kp.js` writing each event to a file, loaded through `OPENCODE_CONFIG_DIR` (a dir whose `opencode.json` lists the plugin; verified to load)), the MCP tool permission key, and whether a TUI session appears in `session list` before its first prompt.
 
 ## Mac checklist (user-run)
@@ -1024,11 +1067,14 @@ Every name read or set in Go. "Set by" says who supplies it; "you" means set it 
 | `KIRA_COMPAT_IMAGE_<KIND>` | Overrides the adapter compat container image per kind | you |
 | `KIRA_FAKE_SCEN`, `KIRA_FAKE_DIR`, `KIRA_DOC` | Fake agent: scenario JSON or path, call-log dir, doc basename | flow tests |
 | `KIRA_FAKE_CLAUDE` | Re-executes the ADE test binary as a fake `claude` | `ade` tests |
+| `KIRA_FAKE_CONFIG`, `KIRA_FAKE_RECORD_ENV` | Fake agent: persona config, env record | flow tests |
+| `KIRA_OPENCODE_BIN` | Opt-in OpenCode probe test binary | you |
+| `KIRA_SECRET_<NAME>` | Env reference Claude export writes for `${secret:name}`; set it where the agent starts | you |
 | `KIRA_MEMORY_EVAL`, `KIRA_EVAL_MODE`, `KIRA_EVAL_ROUND`, `KIRA_EVAL_SET`, `KIRA_EVAL_ONLY`, `KIRA_EVAL_ROUNDS`, `KIRA_EVAL_PROMPTS`, `KIRA_EVAL_BUDGET`, `KIRA_EVAL_PARALLEL`, `KIRA_EVAL_CAP_USD`, `KIRA_EVAL_PHASE_CAP_USD`, `KIRA_EVAL_LEDGER`, `KIRA_EVAL_RUNS_DIR`, `KIRA_EVAL_MODEL_HOME`, `KIRA_EVAL_RECIPES`, `KIRA_EVAL_STYLES`, `KIRA_EVAL_STYLE`, `KIRA_EVAL_VARIANTS`, `KIRA_EVAL_EMBED_WORKER` | Memory ingest eval; `KIRA_MEMORY_EVAL=1` opts in (costs real money); `KIRA_EVAL_LEDGER` names the spend file per part (default `spend.jsonl`); `KIRA_EVAL_RUNS_DIR` picks the runs dir under `apps/kira-space/tests/claude/testdata/memory-eval` (P291: `P291-runs`); `KIRA_EVAL_EMBED_WORKER=1` is internal (the test binary re-executed as the embedding worker) | `bun run eval:memory`, you |
 | `KIRA_TEST_MEMORY_MCP` | Real `claude` tests: run the binary as the memory MCP server | `apps/kira-space/tests/claude` |
 | `KIRA_GIT_DIFFERENTIAL`, `KIRA_GIT_PERF` | `1` runs the git search differential test, the git perf probe | you |
 | `KIRA_DATAGRIP_REAL_PROJECT` | Path of a real DataGrip project for the opt-in import test | you |
-| `KIRA_EMBED_SMOKE_WORKER`, `KIRA_EMBED_FAKE_WORKER`, `KIRA_ASKPASS_HELPER_PROCESS`, `KIRA_TEST_MARKER` | Re-exec markers inside the owning package's tests; never set by hand | the tests themselves |
+| `KIRA_EMBED_SMOKE_WORKER`, `KIRA_EMBED_FAKE_WORKER`, `KIRA_ASKPASS_HELPER_PROCESS`, `KIRA_TEST_MARKER`, `KIRA_PROBE_HOST`, `KIRA_PROBE_UNSET` | Re-exec markers inside the owning package's tests; never set by hand | the tests themselves |
 
 ## Comment sweep (P320)
 
