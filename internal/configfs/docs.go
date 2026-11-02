@@ -24,6 +24,10 @@ type DocModel struct {
 	Refs    bool // some field takes references
 	// LocalOverrides: the module reads <name>.local.yaml beside each file.
 	LocalOverrides bool
+	// Singleton: the folder holds one file, not one item per file.
+	Singleton bool
+	// MaxBytes is the file size cap; 0 means MaxFileBytes.
+	MaxBytes int
 }
 
 // DocOption is one schema field.
@@ -160,7 +164,17 @@ func RenderAgentsMD(m DocModel) []byte {
 	if m.Intro != "" {
 		fmt.Fprintf(&b, "%s\n\n", strings.TrimSpace(m.Intro))
 	}
-	fmt.Fprintf(&b, "## Files\n\n- Name: `%s`, %s, at most 1 MiB.\n- One item per file. The file name without its extension is the item id.\n- Hidden files and this file are never read as config.\n\n", m.Pattern, m.Format)
+	limit := m.MaxBytes
+	if limit == 0 {
+		limit = MaxFileBytes
+	}
+	fmt.Fprintf(&b, "## Files\n\n- Name: `%s`, %s, at most %s.\n", m.Pattern, m.Format, sizeText(limit))
+	if m.Singleton {
+		b.WriteString("- A single file.\n")
+	} else {
+		b.WriteString("- One item per file. The file name without its extension is the item id.\n")
+	}
+	b.WriteString("- Hidden files and this file are never read as config.\n\n")
 	if len(m.Options) > 0 {
 		b.WriteString("## Options\n\n")
 		for _, o := range m.Options {
@@ -222,4 +236,14 @@ func (f *Folder[T]) WriteDocs(m DocModel) error {
 		return nil
 	}
 	return WriteAtomic(path, out, 0o644)
+}
+
+func sizeText(n int) string {
+	switch {
+	case n >= 1<<20 && n%(1<<20) == 0:
+		return fmt.Sprintf("%d MiB", n>>20)
+	case n >= 1<<10 && n%(1<<10) == 0:
+		return fmt.Sprintf("%d KiB", n>>10)
+	}
+	return fmt.Sprintf("%d bytes", n)
 }
