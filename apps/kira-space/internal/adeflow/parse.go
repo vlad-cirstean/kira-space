@@ -256,6 +256,7 @@ func (v *validator) step(sn *yaml.Node, sp string, earlier, candidates map[strin
 	if n, has := sm["sandbox"]; has && v.err == nil {
 		step.Sandbox = v.sandbox(n, sp)
 	}
+	step.Agent = v.agent(sm, sp)
 	if n, has := sm["settings"]; has && v.err == nil {
 		step.Settings = v.settings(n, sp)
 	}
@@ -301,6 +302,13 @@ func (v *validator) manualStep(step *adewire.WorkflowStep, sm map[string]*yaml.N
 	} else if n, has := sm["prompt"]; has {
 		v.fail(n, sp, "prompt is not allowed on %s steps without a session", step.Kind)
 	}
+	if n, has := sm["agent"]; has && v.err == nil {
+		if step.Session {
+			step.Agent = v.agent(sm, sp)
+		} else {
+			v.fail(n, sp, "agent is not allowed on %s steps without a session", step.Kind)
+		}
+	}
 	if n, has := sm["settings"]; has && v.err == nil {
 		if step.Session {
 			step.Settings = v.settings(n, sp)
@@ -308,6 +316,18 @@ func (v *validator) manualStep(step *adewire.WorkflowStep, sm map[string]*yaml.N
 			v.fail(n, sp, "settings is not allowed on %s steps without a session", step.Kind)
 		}
 	}
+}
+
+// agent reads a step's agent id; absent, it is "" and the Agent setting applies.
+func (v *validator) agent(sm map[string]*yaml.Node, sp string) string {
+	if _, has := sm["agent"]; !has {
+		return ""
+	}
+	id := v.str(sm, sp, "agent", true)
+	if v.err == nil && !slices.Contains(agentValues, id) {
+		v.fail(sm["agent"], sp, "agent must be %s", oneOf(agentValues))
+	}
+	return id
 }
 
 // legacyStatuses maps the names files used before statuses became ids to the ids the app first shipped;

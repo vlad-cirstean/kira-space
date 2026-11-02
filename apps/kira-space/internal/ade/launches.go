@@ -598,7 +598,7 @@ func (b *TaskBoard) LaunchStep(ctx context.Context, args adewire.LaunchStepArgs)
 	if message == "" {
 		message = composeManualMessage(b.prompts(), step, taskTitle(tc.task, tc.branches), tc.task.JiraKey, tc.task.JiraURL, tc.task.Notes, lines, b.handoverFor(tc, step.ID))
 	}
-	pa := PrepareArgs{TaskID: tc.task.ID, StepID: step.ID, Cwd: cwd, Message: message, Settings: step.Settings}
+	pa := PrepareArgs{TaskID: tc.task.ID, StepID: step.ID, Cwd: cwd, Message: message, Settings: step.Settings, Provider: step.Agent}
 	if len(extra) > 0 {
 		pa.AddDirs = extra
 	}
@@ -651,7 +651,7 @@ func (b *TaskBoard) launchDirs(ctx context.Context, tc *taskCtx) (lines []repoLi
 
 // StartBranch opens an interactive session on one branch's worktree (R16).
 func (b *TaskBoard) StartBranch(ctx context.Context, args adewire.StartBranchArgs) (adewire.Launch, error) {
-	return b.startBranch(ctx, args.BranchID, opStart, func(tc *taskCtx, sb model.AdeTaskBranch, path string) string {
+	return b.startBranch(ctx, args.BranchID, opStart, func(tc *taskCtx) string { return stepAgentOf(tc, b.currentStepID(tc)) }, func(tc *taskCtx, sb model.AdeTaskBranch, path string) string {
 		if args.Message != "" {
 			return args.Message
 		}
@@ -661,12 +661,13 @@ func (b *TaskBoard) StartBranch(ctx context.Context, args adewire.StartBranchArg
 }
 
 // StartAdHoc opens an agent session on the branch's worktree with no first message.
-func (b *TaskBoard) StartAdHoc(ctx context.Context, args adewire.BranchArgs) (adewire.Launch, error) {
-	return b.startBranch(ctx, args.BranchID, opAdHoc, func(*taskCtx, model.AdeTaskBranch, string) string { return "" })
+func (b *TaskBoard) StartAdHoc(ctx context.Context, args adewire.StartAdHocArgs) (adewire.Launch, error) {
+	return b.startBranch(ctx, args.BranchID, opAdHoc, func(*taskCtx) string { return args.Provider }, func(*taskCtx, model.AdeTaskBranch, string) string { return "" })
 }
 
-// startBranch holds every Start rule; message supplies the first prompt once the worktree is ready.
-func (b *TaskBoard) startBranch(ctx context.Context, branchID, kind string, message func(tc *taskCtx, sb model.AdeTaskBranch, path string) string) (adewire.Launch, error) {
+// startBranch holds every Start rule; provider names the agent of the new conversation ("" is the
+// Agent setting) and message supplies the first prompt once the worktree is ready.
+func (b *TaskBoard) startBranch(ctx context.Context, branchID, kind string, provider func(tc *taskCtx) string, message func(tc *taskCtx, sb model.AdeTaskBranch, path string) string) (adewire.Launch, error) {
 	tr, err := b.tracker()
 	if err != nil {
 		return adewire.Launch{}, err
@@ -710,7 +711,7 @@ func (b *TaskBoard) startBranch(ctx context.Context, branchID, kind string, mess
 	if err := b.checkNoBackgroundRun(sb); err != nil {
 		return adewire.Launch{}, err
 	}
-	return b.prepareWithGrant(ctx, tr, tc, PrepareArgs{TaskID: tc.task.ID, BranchID: sb.ID, Cwd: path, Message: message(tc, sb, path)}, kind, "", "")
+	return b.prepareWithGrant(ctx, tr, tc, PrepareArgs{TaskID: tc.task.ID, BranchID: sb.ID, Cwd: path, Message: message(tc, sb, path), Provider: provider(tc)}, kind, "", "")
 }
 
 // checkNoBackgroundRun refuses a session on a worktree a run or a rebase is working in.

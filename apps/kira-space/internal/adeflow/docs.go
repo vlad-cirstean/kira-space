@@ -24,7 +24,7 @@ var rules = []rule{
 	{"unique-step", "Step ids are unique."},
 	{"kind-keys", "A step takes only the keys of its kind (see each option)."},
 	{"agent-body", "An agent step has either `prompt` (with optional `allowed_tools`) or `smart_script` (with optional `params`), never both."},
-	{"manual-session", "A manual step takes `prompt` and `settings` only with `session: true`."},
+	{"manual-session", "A manual step takes `prompt`, `settings` and `agent` only with `session: true`."},
 	{"script-results", "A script step declares no `results`, or exactly `done` (ok: true) then `failed` (ok: false)."},
 	{"unique-result", "Result ids are unique in a step. `needs_input` is reserved."},
 	{"routes", "`next` is `next`, `end`, `stop` or a step id. `stop` is only for a result with `ok: false`."},

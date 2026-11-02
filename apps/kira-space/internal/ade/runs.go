@@ -573,7 +573,7 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 	if def.Kind == adewire.KindAgent {
 		sessionID = b.newID()
 		patch.SessionID = &sessionID
-		agent, err = b.agentForResume(spec.ResumeID)
+		agent, err = b.agentForStep(spec.ResumeID, def.Agent)
 		if err != nil {
 			return run, err
 		}
@@ -736,6 +736,15 @@ func (b *TaskBoard) agentFor(id string) (harness.Provider, error) {
 		return b.deps.Agent.Active(), nil
 	}
 	return b.deps.Agent.For(id)
+}
+
+// agentForStep is the provider of a headless launch: the one of the conversation it continues, else
+// the step's agent, else the active one.
+func (b *TaskBoard) agentForStep(resumeID, stepAgent string) (harness.Provider, error) {
+	if resumeID == "" && stepAgent != "" {
+		return b.agentFor(stepAgent)
+	}
+	return b.agentForResume(resumeID)
 }
 
 // agentForResume is agentFor over the provider recorded with the session a resume continues.

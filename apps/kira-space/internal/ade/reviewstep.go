@@ -637,7 +637,7 @@ func (b *TaskBoard) startRound(ctx context.Context, tc *taskCtx, run model.AdeRu
 	now := b.deps.Now().UnixMilli()
 	launch := run.Launch
 	sessionID := b.newID()
-	agent, err := b.agentForResume(launch.ResumeID)
+	agent, err := b.agentForStep(launch.ResumeID, stepAgentOf(tc, run.StepID))
 	if err != nil {
 		return run, err
 	}

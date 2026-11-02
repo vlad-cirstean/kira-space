@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
+	"github.com/kirathecat/kira-studio/internal/harness/providers"
 )
 
 // Shared enums: the validator checks against them, the option table and AGENTS.md print them.
@@ -14,6 +15,8 @@ var (
 	beforeValues = []string{"auto", "approval"}
 	accessValues = []string{adewire.SandboxWrite, adewire.SandboxRead, adewire.SandboxOff}
 	sendToValues = []string{adewire.ReviewSendImplementer, adewire.ReviewSendNew}
+	// agentValues are the registered agent ids; the set is static, so parsing needs no registry.
+	agentValues = providers.New().IDs()
 )
 
 // option is one workflow key at one nesting level. The table below is the single list of workflow
@@ -70,6 +73,7 @@ var options = []option{
 	{Path: "steps[].sandbox.read", Type: "list of text", Range: fmt.Sprintf("at most %d paths", maxSandboxPaths), Doc: "Extra paths the step may read."},
 	{Path: "steps[].sandbox.allow", Type: "list of text", Range: fmt.Sprintf("at most %d paths", maxSandboxPaths), Doc: "Extra paths the step may write."},
 	{Path: "steps[].sandbox.network", Type: "boolean", Default: "true", Doc: "Allow network access."},
+	{Path: "steps[].agent", Type: "text", Kinds: withSession, Enum: agentValues, Default: "the Agent setting", Doc: "Agent that runs the step's new conversations. Resumes keep the agent that started them. Manual steps: only with `session: true`."},
 	{Path: "steps[].settings", Type: "mapping", Kinds: withSession, Doc: "Agent settings for the step, by agent id then setting key. Manual steps: only with `session: true`."},
 	{Path: "steps[].prompt", Type: "text", Kinds: []adewire.StepKind{adewire.KindAgent, adewire.KindManual}, RequiredOn: agentOnly, Doc: "What the agent does. On an agent step, required unless `smart_script` is set."},
 	{Path: "steps[].allowed_tools", Type: "list of text", Kinds: agentOnly, Doc: "Tools the agent may use without asking, such as `Bash(git *)` or `mcp__server__tool`. Not with `smart_script`."},

@@ -454,9 +454,10 @@ func applyStep(m *yaml.Node, s adewire.WorkflowStep) {
 			dropKeys(m, "prompt")
 		}
 		if s.Session {
+			applyAgent(m, s.Agent)
 			applySettings(m, s.Settings)
 		} else {
-			dropKeys(m, "settings")
+			dropKeys(m, "agent", "settings")
 		}
 		return
 	}
@@ -469,10 +470,12 @@ func applyStep(m *yaml.Node, s adewire.WorkflowStep) {
 		setScalar(m, "command", kBlock, s.Command, true, stepOrder)
 	case adewire.KindReview:
 		applySandbox(m, s.Sandbox)
+		applyAgent(m, s.Agent)
 		applySettings(m, s.Settings)
 		applyReview(m, defaultReview(s.Review))
 	default:
 		applySandbox(m, s.Sandbox)
+		applyAgent(m, s.Agent)
 		applySettings(m, s.Settings)
 		if s.SmartScript == "" {
 			dropKeys(m, "smart_script", "params")
@@ -524,6 +527,15 @@ func applySandbox(m *yaml.Node, sb adewire.StepSandbox) {
 	if sb.Network {
 		dropKeys(sn, "network")
 	}
+}
+
+// applyAgent writes a step's agent id, or removes the key when it is "".
+func applyAgent(m *yaml.Node, agent string) {
+	if agent == "" {
+		dropKeys(m, "agent")
+		return
+	}
+	setScalar(m, "agent", kText, agent, true, stepOrder)
 }
 
 // applySettings writes a step's settings block, or removes it when no catalog setting is set so a

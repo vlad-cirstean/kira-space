@@ -17,6 +17,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/internal/appsettings"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/shell"
@@ -1163,10 +1164,13 @@ func (s *AdeTaskService) StartBranch(ctx context.Context, args adewire.StartBran
 	return l, adeTaskError(err)
 }
 
-func (s *AdeTaskService) StartAdHoc(ctx context.Context, args adewire.BranchArgs) (adewire.Launch, error) {
+func (s *AdeTaskService) StartAdHoc(ctx context.Context, args adewire.StartAdHocArgs) (adewire.Launch, error) {
 	ctx = adeUserCtx(ctx)
 	if err := validateAdeItemID(args.BranchID, "branchId"); err != nil {
 		return adewire.Launch{}, err
+	}
+	if args.Provider != "" && !appsettings.ValidProviderID(args.Provider) {
+		return adewire.Launch{}, adeTaskInvalid("provider is not a valid agent id")
 	}
 	l, err := s.Engine.StartAdHoc(ctx, args)
 	return l, adeTaskError(err)

@@ -45,6 +45,25 @@ func (s *Service) InfoFor(id string) (Info, error) {
 	return describe(p), nil
 }
 
+// Entry is one registered provider with whether its CLI is installed.
+type Entry struct {
+	Info
+	Available bool `json:"available"`
+}
+
+// List describes every registered provider in registration order. Available is the quick probe
+// without the login-shell fallback.
+func (s *Service) List() ([]Entry, error) {
+	reg := s.Agents.Registry
+	ids := reg.IDs()
+	out := make([]Entry, 0, len(ids))
+	for _, id := range ids {
+		p, _ := reg.Get(id)
+		out = append(out, Entry{Info: describe(p), Available: p.Available() == nil})
+	}
+	return out, nil
+}
+
 func describe(p harness.Provider) Info {
 	cat := p.Models()
 	models := make([]ModelOption, 0, len(cat.Aliases))

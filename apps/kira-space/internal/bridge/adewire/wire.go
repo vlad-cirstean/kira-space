@@ -126,6 +126,8 @@ type WorkflowStep struct {
 	Sandbox StepSandbox `json:"sandbox"`
 	// Settings are the stage settings per agent provider id, key to value; empty means every provider's defaults.
 	Settings map[string]map[string]string `json:"settings"`
+	// Agent is the provider id whose agent runs the step's new conversations; "" uses the Agent setting.
+	Agent string `json:"agent"`
 }
 
 // StageSettingSpec is one setting the editor offers, from the provider catalog.
@@ -896,6 +898,13 @@ type RefreshArgs struct {
 
 type BranchArgs struct {
 	BranchID string `json:"branchId"`
+}
+
+// StartAdHocArgs opens an agent session on a branch; Provider "" uses the Agent setting, else it is a
+// registered provider id.
+type StartAdHocArgs struct {
+	BranchID string `json:"branchId"`
+	Provider string `json:"provider"`
 }
 
 // Shelf names are the targets of ShelveTask.

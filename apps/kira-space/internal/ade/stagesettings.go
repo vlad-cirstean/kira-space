@@ -42,6 +42,19 @@ func stepSettingsOf(tc *taskCtx, stepID string) map[string]map[string]string {
 	return nil
 }
 
+// stepAgentOf is the agent id of a step of the task's workflow; "" means the Agent setting.
+func stepAgentOf(tc *taskCtx, stepID string) string {
+	if tc.wf == nil {
+		return ""
+	}
+	for _, s := range tc.wf.Steps {
+		if s.ID == stepID {
+			return s.Agent
+		}
+	}
+	return ""
+}
+
 // stageCatalog lists every stage setting the registered providers take, with its copy rendered.
 func stageCatalog() []adewire.StageSettingSpec {
 	out := []adewire.StageSettingSpec{}
