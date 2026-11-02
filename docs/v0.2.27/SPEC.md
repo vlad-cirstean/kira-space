@@ -10,7 +10,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P460 | Jira issue view: fast open, readable render, images | Done |
 | P461 | Task "+" new terminal or agent works; remove list-row terminal button | Done |
 | P462 | Global capture dialog: keyboard only, PR-derived branches | Todo |
-| P463 | Persist task tabs across task switches | Todo |
+| P463 | Persist task tabs across task switches | Done |
 | P464 | Review window: default tab, PR line comment, send clears, resizable panels | Todo |
 | P465 | Review window: re-review on edits, visual indicators, next/prev unreviewed | Todo |
 | P466 | ADE panel tabs: grey circle count badges | Todo |
@@ -59,6 +59,8 @@ Result: Cause frontend. A Tooltip root between DropdownMenu and its trigger stol
 - Switching tasks loses the tab: leave a task on Session, open another on Notes, return, first shows Notes. Keep the last active tab per task for the app session. Plan decides whether it survives restart.
 - Pinia store, one concern. No refetch from the switch alone.
 - Test: UI spec.
+
+Result: Cause frontend. Task tab, branch tab and picked session were single global refs in `adeBoardUi`. New store `adePanelTabs` keeps them per task (tab, picked session) and per branch (tab); in memory for the app session, no restart persistence. `AdePanel` prunes entries of tasks and branches that leave the board. Readers and writers moved; `showSessions` goes through `openSessions`; See error/See log/Needs set the branch Details tab explicitly. No refetch added. New spec `ade-v2-panel-tabs` (task and branch switches, flat board and sessions call counts). Per coordinator rule no full suite: targeted `ade-v2-panel-tabs`, `ade-v2-panel`, `ade-v2-sessions`, `ade-v2-handover` 64 passed. Partial full run (about 580 of 991) showed no failures before stop.
 
 ### P464 Review window: default tab, PR line comment, send clears, resizable panels
 

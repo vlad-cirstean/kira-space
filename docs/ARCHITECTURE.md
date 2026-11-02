@@ -2634,7 +2634,7 @@ role (`harness.UsageReporter`): only a provider that reports it feeds the servic
 ### Frontend
 
 - Pure logic of the ADE frontend lives in frontend/src/ade/v2/board/ (status, actions, needs-you rank, timeline, drop plan, fix menu); components use <script setup>.
-- ADE Pinia stores each have one concern: adeBoardUi (selection, tabs), adeDialogs (dialog flow and pending keys such as merge:<branch>:<target>), adeTakeOver, adeTerminals.
+- ADE Pinia stores each have one concern: adeBoardUi (selection, view), adePanelTabs (last tab per task and branch, picked session per task; in memory, pruned against the board), adeDialogs (dialog flow and pending keys such as merge:<branch>:<target>), adeTakeOver, adeTerminals.
 - ADE server state goes through TanStack Query (queries.ts), invalidated by the push channels.
 - Task plus menu (P410, `sessions/AdeTaskLaunchMenu.vue`) on the Sessions tab bar only (not the task list card): per worktree a Terminal (Git module tab via `openRepoTerminalTab`) or an ad hoc agent session (`StartAdHoc`). Disabled items show their reason inline.
 - The repository list is one Pinia store (state/coderepos.ts) fed by the boot-time kira:adetask:repos subscription (initCodeRepos, called from main.ts), so every module in every window sees every change.
