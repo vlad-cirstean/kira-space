@@ -80,6 +80,7 @@ func classify(l loc, name, value string) []part {
 		if nameIsSecret(name) || valueIsSecret(value) {
 			return split(value)
 		}
+		return urlValue(value)
 	case locHeader:
 		if !safeHeaders[strings.ToLower(name)] {
 			return split(value)
@@ -120,10 +121,19 @@ func argParts(prev, v string) []part {
 	if valueIsSecret(v) {
 		return []part{{text: v, secret: true}}
 	}
+	return urlValue(v)
+}
+
+// urlValue classifies a value that is a URL (a connection string in an env var or an argument).
+func urlValue(v string) []part {
+	if strings.Contains(v, "://") {
+		return urlParts(v)
+	}
 	return []part{{text: v}}
 }
 
-// urlParts seals userinfo and the value of a credential-named query parameter.
+// urlParts seals userinfo, a credential-looking path segment, and the value of a query parameter
+// named like a credential, named key, or holding a credential-looking value.
 func urlParts(u string) []part {
 	var out []part
 	rest := u
@@ -140,7 +150,18 @@ func urlParts(u string) []part {
 		}
 	}
 	base, query, hasQuery := strings.Cut(rest, "?")
-	out = append(out, part{text: base})
+	segs := strings.Split(base, "/")
+	for i, seg := range segs {
+		if i > 0 {
+			out = append(out, part{text: "/"})
+		}
+		// The first segment is the host when a scheme came first.
+		if i > 0 && valueIsSecret(seg) {
+			out = append(out, part{text: seg, secret: true})
+			continue
+		}
+		out = append(out, part{text: seg})
+	}
 	if hasQuery {
 		out = append(out, part{text: "?"})
 		for i, kv := range strings.Split(query, "&") {
@@ -148,7 +169,7 @@ func urlParts(u string) []part {
 				out = append(out, part{text: "&"})
 			}
 			k, v, ok := strings.Cut(kv, "=")
-			if ok && v != "" && nameIsSecret(k) {
+			if ok && v != "" && (nameIsSecret(k) || strings.EqualFold(k, "key") || valueIsSecret(v)) {
 				out = append(out, part{text: k + "="}, part{text: v, secret: true})
 				continue
 			}
