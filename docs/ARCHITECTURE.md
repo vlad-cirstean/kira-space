@@ -1583,7 +1583,7 @@ packaged app does not), where the identical application code runs unchanged over
 
 - Kira Studio's Go side lives in apps/kira-studio/; Wired.Bound() registers 30 bound services under apps/kira-studio/internal/bridge/, with main.go building application.New options from appwire.Build.
 - Kira Studio's Bound() binds no git-related service; GitClientsService moved to Kira Space as of P100 and was deleted there in P243 Part 2 with the Connected editors pane.
-- Kira Space's Bound() binds a separate set of 23 services, counted by grepping 'NewService(w\.' in apps/kira-space/internal/appwire/appwire.go.
+- Kira Space's Bound() binds a separate set of 34 services, counted by the application.NewService entries in Bound() in apps/kira-space/internal/appwire/appwire.go (P452 AgentContextService, P453 AgentSettingsService).
 - TerminalService and WindowsService are per-app embeddings of one shared Go type each: internal/windowsvc.Service (Ensure/SetMode/OpenNew) and internal/terminal.BoundService (Open/Write/Resize/Close/DefaultCwd), living once at repo root (P128).
 - Each app's bridge Windows/Terminal service is a one-line struct embedding the shared type, so Wails' FQN, derived from the embedding type's package, reads WindowsService.Ensure / TerminalService.Open without a binding-name shim.
 - Kira Space's WindowsService gained Ensure/SetMode in P128 §2.2; it previously bound only OpenNew.
