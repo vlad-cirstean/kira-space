@@ -40,6 +40,19 @@ func (b *TaskBoard) ResolveHostLink(ctx context.Context, args adewire.HostLinkAr
 
 // AddHostLink re-resolves the link, fetches its branch and attaches it like AddExistingBranch.
 func (b *TaskBoard) AddHostLink(ctx context.Context, args adewire.HostLinkArgs) (adewire.AddExistingBranchResult, error) {
+	return b.addHostLink(ctx, args, false)
+}
+
+// AddReviewLink attaches the head branch of a pasted change request to a task as a review branch;
+// capture uses it.
+func (b *TaskBoard) AddReviewLink(ctx context.Context, args adewire.HostLinkArgs) (adewire.AddExistingBranchResult, error) {
+	if args.TaskID == "" {
+		return adewire.AddExistingBranchResult{}, invalid("taskId is required")
+	}
+	return b.addHostLink(ctx, args, true)
+}
+
+func (b *TaskBoard) addHostLink(ctx context.Context, args adewire.HostLinkArgs, review bool) (adewire.AddExistingBranchResult, error) {
 	plan, err := b.resolveHostLink(ctx, args.URL)
 	if err != nil {
 		return adewire.AddExistingBranchResult{}, err
@@ -58,7 +71,7 @@ func (b *TaskBoard) AddHostLink(ctx context.Context, args adewire.HostLinkArgs) 
 	t := plan.target
 	var sb model.AdeTaskBranch
 	res, err := b.attachExistingBranch(ctx, adewire.AddExistingBranchArgs{CodeRepoID: t.CodeRepoID, Name: t.Branch, TaskID: args.TaskID}, &sb,
-		newTaskFields{Title: plan.title, HostURL: plan.hostURL, ForceReview: t.Fork})
+		newTaskFields{Title: plan.title, HostURL: plan.hostURL, ForceReview: t.Fork || review})
 	if err != nil {
 		return res, err
 	}
