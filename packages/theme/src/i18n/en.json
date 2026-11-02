@@ -10380,6 +10380,9 @@
             "empty": "No reporter"
           }
         },
+        "stale": {
+          "hint": "Saved copy from {when}. Updating."
+        },
         "view": {
           "tooltip": "View issue"
         }

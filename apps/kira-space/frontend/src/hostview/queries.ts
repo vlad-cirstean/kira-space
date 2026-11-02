@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import { t } from '@theme/i18n';
 import { optimisticUpdate } from '@workbench/behaviour/optimistic';
 import type { MaybeRefOrGetter } from 'vue';
-import { toValue } from 'vue';
+import { toValue, watch } from 'vue';
 import { control } from '../bridge/control';
 import type { HostViewChangeRequest, HostViewIssue, HostViewPosted } from './wire';
 
@@ -22,12 +22,33 @@ export function useChangeRequestDetail(url: MaybeRefOrGetter<string>) {
   }));
 }
 
-/** One issue's detail, by key or link. A tracker failure is data, like a host failure above. */
+/**
+ * One issue's detail, by key or link. A tracker failure is data, like a host failure above. The host
+ * answers a saved copy first (marked stale) when it has one, so the first read is instant; a stale
+ * answer starts one fresh read at once. refresh() asks for a fresh read.
+ */
 export function useIssueDetail(ref: MaybeRefOrGetter<string>) {
-  return useQuery(() => ({
+  let nextFresh = false;
+  const query = useQuery(() => ({
     queryKey: issueKey(toValue(ref)),
-    queryFn: () => control.hostViewIssue({ ref: toValue(ref) }),
+    queryFn: () => {
+      const fresh = nextFresh;
+      nextFresh = false;
+      return control.hostViewIssue({ ref: toValue(ref), fresh });
+    },
   }));
+  function refresh(): void {
+    nextFresh = true;
+    void query.refetch();
+  }
+  watch(
+    () => query.data.value?.detail?.stale,
+    (stale) => {
+      if (stale) refresh();
+    },
+    { immediate: true },
+  );
+  return { query, refresh };
 }
 
 /** Opens (or focuses) the view window for a change request URL or an issue key or link. */

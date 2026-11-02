@@ -172,6 +172,16 @@ export interface IssueComment {
   pending?: boolean;
 }
 
+export interface IssueAttachment {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  createdAt: number;
+  author?: IssuePerson;
+  url: string;
+}
+
 export interface IssueDetail {
   ref: { provider: string; key: string; url: string; site: string };
   title: string;
@@ -193,7 +203,13 @@ export interface IssueDetail {
   commentsTotal: number;
   commentsTruncated?: boolean;
   commentsOmitted?: boolean;
+  attachments: IssueAttachment[];
+  attachmentsTruncated?: boolean;
   summary: { known: boolean; count: number; state: string; providers: string[] };
+  /** Unix ms of the tracker's answer. */
+  fetchedAt: number;
+  /** A saved copy past its fresh window; a revalidating read follows. */
+  stale?: boolean;
 }
 
 export interface HostViewIssue {

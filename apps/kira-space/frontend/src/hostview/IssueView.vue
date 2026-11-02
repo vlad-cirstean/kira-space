@@ -2,6 +2,7 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Badge } from '@theme/components/ui/badge';
+import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { useElementSize } from '@vueuse/core';
 import { useCopy } from '@workbench/behaviour/clipboard';
@@ -19,12 +20,13 @@ import { issueKey, useIssueDetail } from './queries';
 import type { IssueTarget } from './wire';
 
 // One issue: description and comments (left), fields and pull requests (right), stacked when narrow.
-// Refresh is the only refetch trigger; a tracker failure shows its reason with Retry.
+// Refresh is the only refetch trigger besides a stale saved copy; a tracker failure shows its reason
+// with Retry.
 const WIDE_PX = 900;
 const props = defineProps<{ target: IssueTarget }>();
 const { copy } = useCopy();
 const refText = computed(() => props.target.url || props.target.key);
-const query = useIssueDetail(refText);
+const { query, refresh } = useIssueDetail(refText);
 const queryKey = computed(() => issueKey(refText.value));
 const result = computed(() => query.data.value);
 const compose = computed(() => result.value?.compose);
@@ -52,9 +54,6 @@ const body = useTemplateRef('body');
 const { width } = useElementSize(body);
 const stacked = computed(() => width.value < WIDE_PX);
 
-function refresh(): void {
-  void query.refetch();
-}
 function openOnTracker(): void {
   if (url.value) fireAndForget(control.openExternal(url.value), 'hostView.issue');
 }
@@ -106,6 +105,9 @@ function copyLink(): void {
                 })
           }}</span>
         </div>
+        <FieldDescription v-if="detail.stale" class="mb-3" data-testid="issue-stale">{{
+          t('space.hostView.issue.stale.hint', { when: formatRelative(detail.fetchedAt) })
+        }}</FieldDescription>
         <MarkdownBody :source="detail.description" />
         <IssueComments
           :comments="detail.comments"
