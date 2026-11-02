@@ -168,13 +168,15 @@ type StepVars struct {
 
 // ManualVars fills the manual step message. StepPrompt arrives substituted; Notes arrive capped.
 type ManualVars struct {
-	StepName   string         `json:"stepName"`
-	Title      string         `json:"title"`
-	JiraKey    string         `json:"jiraKey"`
-	JiraURL    string         `json:"jiraURL"`
-	Notes      string         `json:"notes"`
-	Repos      []RepoLineVars `json:"repos"`
-	StepPrompt string         `json:"stepPrompt"`
+	StepName string         `json:"stepName"`
+	Title    string         `json:"title"`
+	JiraKey  string         `json:"jiraKey"`
+	JiraURL  string         `json:"jiraURL"`
+	Notes    string         `json:"notes"`
+	Repos    []RepoLineVars `json:"repos"`
+	// Folder is the task folder, shown while the task has no repo.
+	Folder     string `json:"folder"`
+	StepPrompt string `json:"stepPrompt"`
 	// Handover is what the previous stage left, HandoverFrom its stage name; both capped.
 	Handover     string `json:"handover"`
 	HandoverFrom string `json:"handoverFrom"`
@@ -1061,7 +1063,7 @@ var AdeStepPrompt = define(Entry{
 	RequiredFragments: []ID{"headless.finishStep.suffix"},
 	Default: `{{if .Message}}{{.Message}}{{else}}Task: {{.Title}}
 {{if .JiraKey}}{{template "ade.jiraLine" .}}
-{{end}}- Repo: {{.Repo}} · Branch: {{.Branch}} · Worktree: {{.Worktree}}
+{{end}}{{if .Repo}}- Repo: {{.Repo}} · Branch: {{.Branch}} · Worktree: {{.Worktree}}{{else}}- No repo yet. Folder: {{.Worktree}}. Pick repos and branches with the Kira Space tools.{{end}}
 Step {{.StepNumber}}/{{.StepCount}}: {{.StepName}}{{if .StepPrompt}}
 {{.StepPrompt}}{{end}}{{end}}{{if .Extra}}
 
@@ -1093,7 +1095,8 @@ var AdeManualMessage = define(Entry{
 	UsedByKey:  "llmPrompts.entry.adeManualMessage.usedBy.body",
 	Default: `{{.StepName}}: {{.Title}}{{if .JiraKey}}
 {{template "ade.jiraLine" .}}{{end}}{{range .Repos}}
-{{template "ade.repoLine" .}}{{end}}{{if .Notes}}
+{{template "ade.repoLine" .}}{{end}}{{if not .Repos}}
+- No repo yet. Folder: {{.Folder}}. Pick repos and branches with the Kira Space tools.{{end}}{{if .Notes}}
 - Notes: {{.Notes}}{{end}}{{if .StepPrompt}}
 {{.StepPrompt}}{{end}}{{if .Handover}}
 {{template "ade.handoverBlock" .}}{{end}}
