@@ -2134,8 +2134,8 @@ The agent CLI sits behind one interface, so a second provider needs no caller ch
     (P453); app `mcp_servers` ride a 0600 per-run file the grant joins in place (`OPENCODE_CONFIG`). Hermetic adds `XDG_CONFIG_HOME` and `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1` as `/usr/bin/env`
     words (see "Hermetic launches (P455)").
     OpenCode assigns the session id itself, so `FindSession` runs `opencode session list --format json`
-    in the worktree and takes the newest session created after the launch. Kira never opens OpenCode's
-    database or config.
+    in the worktree and takes the one session created after the launch that no other record owns. Several
+    candidates yield no id (unknown), never a guess. Kira never opens OpenCode's database or config.
   - Headless: `opencode run --format json`, prompt on stdin, `--dir`, `-s` to resume, `--pure` unless the
     run loads project config. A run without user config (isolated without user MCP, `ConfigNone`, or
     hermetic) redirects `XDG_CONFIG_HOME` to a directory of symlinks that omits `opencode` and unsets the

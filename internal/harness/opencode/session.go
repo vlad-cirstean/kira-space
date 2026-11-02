@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -15,7 +16,8 @@ import (
 
 const sessionListTimeout = 10 * time.Second
 
-// FindSession returns the newest session the CLI lists for q.Cwd created at or after q.Since. The
+// FindSession returns the one session the CLI lists for q.Cwd created at or after q.Since and not
+// in q.Exclude; "" when none or several match. The
 // CLI lists only the project of the process cwd, so it runs there. Kira never opens the CLI's
 // database.
 func (p *Provider) FindSession(ctx context.Context, q harness.SessionQuery) (string, error) {
@@ -48,18 +50,19 @@ func parseSessionList(out []byte, q harness.SessionQuery) (id string, ok bool) {
 	if json.Unmarshal(out, &items) != nil {
 		return "", false
 	}
-	var newest int64 = -1
+	var found []string
 	for _, it := range items {
 		if !strings.HasPrefix(it.ID, sessionIDPrefix) || !harness.ValidSessionID(it.ID) || !sameDir(it.Directory, q.Cwd) {
 			continue
 		}
 		ms, ok := createdMillis(it.Created)
-		if !ok || ms < q.Since.UnixMilli() {
+		if !ok || ms < q.Since.UnixMilli() || slices.Contains(q.Exclude, it.ID) {
 			continue
 		}
-		if ms > newest {
-			newest, id = ms, it.ID
-		}
+		found = append(found, it.ID)
+	}
+	if len(found) == 1 {
+		id = found[0]
 	}
 	return id, true
 }

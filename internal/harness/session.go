@@ -8,8 +8,9 @@ import (
 // SessionLocator is a provider whose interactive session id is assigned by the agent after launch.
 // A provider without it takes the id Kira proposes in InteractiveSpec.
 type SessionLocator interface {
-	// FindSession returns the id of the newest session in q.Cwd started at or after q.Since, ""
-	// when none exists yet.
+	// FindSession returns the id of the one session in q.Cwd started at or after q.Since that is
+	// not in q.Exclude. "" when none exists yet or when more than one candidate remains: a guess
+	// could bind another session's id.
 	FindSession(ctx context.Context, q SessionQuery) (string, error)
 }
 
@@ -17,6 +18,8 @@ type SessionLocator interface {
 type SessionQuery struct {
 	Cwd   string
 	Since time.Time
+	// Exclude lists ids already owned by other records.
+	Exclude []string
 }
 
 // ValidSessionID reports whether id is safe to put in a later shell command: 1 to 128 characters

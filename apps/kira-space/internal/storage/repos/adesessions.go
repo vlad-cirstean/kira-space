@@ -214,6 +214,24 @@ func (r *AdeSessionsRepo) ProviderOfAgentSession(agentSessionID string) (string,
 	return id, nil
 }
 
+// AgentSessionIDsExcept lists the non-empty agent session ids of every row but id.
+func (r *AdeSessionsRepo) AgentSessionIDsExcept(id string) ([]string, error) {
+	rows, err := r.DB.Query(`SELECT agent_session_id FROM ade_sessions WHERE agent_session_id != '' AND id != ?`, id)
+	if err != nil {
+		return nil, fmt.Errorf("repos: list agent session ids: %w", err)
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var s string
+		if err := rows.Scan(&s); err != nil {
+			return nil, fmt.Errorf("repos: scan agent session id: %w", err)
+		}
+		ids = append(ids, s)
+	}
+	return ids, rows.Err()
+}
+
 // SetLastActive bumps last_active_at alone — every hook event Tracker.HandleEvent sees for a
 // running session touches this, without needing a full row re-read first.
 func (r *AdeSessionsRepo) SetLastActive(id string, lastActiveAt int64) error {

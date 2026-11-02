@@ -426,7 +426,11 @@ func (t *Tracker) learnSessionID(recordID string) (string, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), locateTimeout)
 	defer cancel()
-	id, err := loc.FindSession(ctx, harness.SessionQuery{Cwd: rec.Cwd, Since: time.UnixMilli(rec.StartedAt)})
+	taken, err := t.deps.Store.AgentSessionIDsExcept(recordID)
+	if err != nil {
+		return "", fmt.Errorf("ade: learn session id: %w", err)
+	}
+	id, err := loc.FindSession(ctx, harness.SessionQuery{Cwd: rec.Cwd, Since: time.UnixMilli(rec.StartedAt), Exclude: taken})
 	if err != nil {
 		slog.Warn("ade: find agent session", "scope", "ade", "recordId", recordID, "err", err)
 		return "", nil

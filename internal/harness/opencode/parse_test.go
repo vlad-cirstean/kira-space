@@ -24,22 +24,33 @@ func TestParseSessionList(t *testing.T) {
 		out    []byte
 		want   string
 		wantOK bool
+		skip   []string
 	}{
-		{"newest in the folder", list(
-			map[string]any{"id": "ses_old", "directory": dir, "created": 1500},
+		{"one candidate in the folder", list(
+			map[string]any{"id": "ses_old", "directory": dir, "created": 900},
 			map[string]any{"id": "ses_new", "directory": dir, "created": 2500},
 			map[string]any{"id": "ses_other", "directory": "/elsewhere", "created": 9000},
-		), "ses_new", true},
-		{"older than the launch is skipped", list(map[string]any{"id": "ses_a", "directory": dir, "created": 900}), "", true},
-		{"rfc3339 created", list(map[string]any{"id": "ses_a", "directory": dir, "created": "1970-01-01T00:00:03Z"}), "ses_a", true},
+		), "ses_new", true, nil},
+		{"two candidates are ambiguous", list(
+			map[string]any{"id": "ses_a", "directory": dir, "created": 1500},
+			map[string]any{"id": "ses_b", "directory": dir, "created": 2500},
+		), "", true, nil},
+		{"excluded id leaves one", list(
+			map[string]any{"id": "ses_a", "directory": dir, "created": 1500},
+			map[string]any{"id": "ses_b", "directory": dir, "created": 2500},
+		), "ses_b", true, []string{"ses_a"}},
+		{"older than the launch is skipped", list(map[string]any{"id": "ses_a", "directory": dir, "created": 900}), "", true, nil},
+		{"rfc3339 created", list(map[string]any{"id": "ses_a", "directory": dir, "created": "1970-01-01T00:00:03Z"}), "ses_a", true, nil},
 		{"foreign id prefix and unsafe id", list(
 			map[string]any{"id": "x_a", "directory": dir, "created": 2000},
 			map[string]any{"id": "ses_a b", "directory": dir, "created": 2000},
-		), "", true},
-		{"not an array", []byte(`{"error":"x"}`), "", false},
+		), "", true, nil},
+		{"not an array", []byte(`{"error":"x"}`), "", false, nil},
 	}
 	for _, c := range cases {
-		got, ok := parseSessionList(c.out, q)
+		qc := q
+		qc.Exclude = c.skip
+		got, ok := parseSessionList(c.out, qc)
 		if got != c.want || ok != c.wantOK {
 			t.Errorf("%s: got %q, %v want %q, %v", c.name, got, ok, c.want, c.wantOK)
 		}

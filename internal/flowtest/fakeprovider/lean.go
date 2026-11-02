@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/harness"
@@ -83,7 +84,7 @@ func (*Lean) FindSession(_ context.Context, q harness.SessionQuery) (string, err
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		var s fakeagent.LeanSession
-		if json.Unmarshal(sc.Bytes(), &s) != nil || s.Cwd != q.Cwd || s.StartedAt < q.Since.UnixMilli() {
+		if json.Unmarshal(sc.Bytes(), &s) != nil || s.Cwd != q.Cwd || s.StartedAt < q.Since.UnixMilli() || slices.Contains(q.Exclude, s.ID) {
 			continue
 		}
 		if s.StartedAt >= newest {
