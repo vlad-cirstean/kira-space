@@ -80,8 +80,9 @@ duplicated here; this file only points at them.
   fix, rerun only the failing specs and the specs that share its code. A timeout under load gets a
   lone rerun of that spec first. Rerun the full suite a second time only when a fix touched shared
   code (a package, a fixture, a config) that targeted reruns cannot cover; say so in the Result.
-- **Every chapter ends the same way, unasked:** last implementation phase, then 1 code review round
-  (unless the spec row says more), then the close phase, then the PR. The user need not restate it.
+- **Every chapter ends the same way, unasked:** last implementation phase, then the one full suite
+  run with its fixes committed, then 1 code review round (unless the spec row says more), then the
+  close phase, then the PR. The user need not restate it.
 - **The loop per phase:** check for a plan, spawn an Opus subagent to write one if missing, spawn
   a Sonnet subagent (or several, only if genuinely parallelizable) to implement the whole phase, and
   wait for it before moving on. One phase at a time, in order — never parallelize or batch phases.
