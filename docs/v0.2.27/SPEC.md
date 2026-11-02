@@ -1,107 +1,99 @@
 # v0.2.27
 
-Branch `chapter/v0.2.27`. First `P` is 459 (highest in v0.2.26 is P458). Draft: opens after v0.2.26 merges.
+Branch `chapter/v0.2.27`. First `P` is 459 (highest in v0.2.26 is P458).
 
-Source: user request. Phases run top to bottom, two phases in parallel where file ownership allows (worktree per stream). Scope is closed: any further phases go to v0.2.28. Ends with two code review rounds, then close, then PR.
+Source: user request. Phases run top to bottom, one at a time. Scope is closed: further phases go to v0.2.29. Ends with one code review round, then close, then PR. The earlier v0.2.27 draft is now `docs/v0.2.28/`.
 
 | Phase | Title | Status |
 |---|---|---|
-| P459 | Runs config as files in the app folder | Todo |
-| P460 | API config as files in the app folder | Todo |
-| P461 | Git repos config as files in the app folder | Todo |
-| P462 | Connections config as files in the app folder | Todo |
-| P463 | Git on bound services: connection lifecycle, events, read methods | Todo |
-| P464 | Git on bound services: write operations | Todo |
-| P465 | Git on bound services: review, change requests, ADE and repo consumers | Todo |
-| P466 | Git graph data plane; remove the git stream protocol | Todo |
-| P467 | Frontend RAM measurement, both apps | Todo |
-| P468 | Frontend RAM: implement the proven wins | Todo |
-| P469 | Code review (2 rounds) | Todo |
-| P470 | Close chapter v0.2.27 | Todo |
+| P459 | Task details: drop Notes, generic labels, remove Jira PR search | Todo |
+| P460 | Jira issue view: fast open, readable render, images | Todo |
+| P461 | Task "+" new terminal or agent works; remove list-row terminal button | Todo |
+| P462 | Global capture dialog: keyboard only, PR-derived branches | Todo |
+| P463 | Persist task tabs across task switches | Todo |
+| P464 | Review window: default tab, PR line comment, send clears, resizable panels | Todo |
+| P465 | Review window: re-review on edits, visual indicators, next/prev unreviewed | Todo |
+| P466 | ADE panel tabs: grey circle count badges | Todo |
+| P467 | Start a workflow without a repo | Todo |
+| P468 | Agent branch and worktree requests: nanoid worktree name, branch in task | Todo |
+| P469 | Stage move: advance button with close-session prompt | Todo |
+| P470 | Code review (1 round) | Todo |
+| P471 | Close chapter v0.2.27 | Todo |
 
 ## Rows
 
-### P459 Runs config as files in the app folder
+### P459 Task details: drop Notes, generic labels, remove Jira PR search
 
-- Applies the P450 file-config foundation (v0.2.26) to Runs. Data config moves to plain files in a Runs folder in the app folder, with an `AGENTS.md` listing every option and how to update it. Runtime and derived state (run records, history, progress) stays in SQLite.
-- Plan decides per field: state or config, file format (yml, json or text), file-to-DB sync direction, watch and external edits, validation errors shown to the user, bad-edit handling, migration of existing rows, conflict with the Studio/Space DB split.
-- Secret params keep P447's keychain layer; files hold references only.
-- UI becomes minimal: view, open and edit the file; the plan picks plain file edit or a small edit action.
-- Test: backend flow (edit file, DB follows, bad edit surfaces an error and leaves state intact) and UI spec on the same scenario.
+- Task details (main view): drop the Notes section; it takes too much space. Plan decides whether notes stay reachable elsewhere (tab) or data stays untouched. No data loss.
+- Replace the `gh` and Azure labels with a generic word (PR). Replace the Jira label with a generic word (Issue). Plan lists every UI string, i18n key and tooltip carrying a vendor name where the concept is generic.
+- Jira-to-source-control PR search shows unrelated public repos. Check whether the Jira ticket itself exposes PR links (dev-status or remote links). If yes, use only those. If no, remove the search for now, UI and backend wiring that nothing else uses.
+- Test: UI spec (labels, Notes gone). Backend flow only if backend changes.
 
-### P460 API config as files in the app folder
+### P460 Jira issue view: fast open, readable render, images
 
-- Same treatment for API config (requests, variables, environments): files plus `AGENTS.md`, per the P450 foundation. Secret variables are keychain references; Studio's `apivars` two-stage substitution stays the interpolation rule.
-- Plan decides per field what stays in SQLite, formats, sync, watching, validation, bad edits, migration, Studio/Space split.
-- Minimal UI as in P459.
-- Test: as P459.
+- Opening a Jira ticket is slower than the browser. Measure where the time goes (fetch fan-out, sequential calls, CLI spawn, render), fix the cause. Show cached or partial data first when the plan finds it safe.
+- Rendering is ugly and hard to read. Restyle: typography, spacing, headings, lists, code, tables, panels, links, mentions, status chips.
+- Render images and attachments inline. No credential access: the existing CLI path stays the only fetch route (CLAUDE.md credential rule). Plan finds how to fetch image bytes without touching tokens, or states the requirement no route meets.
+- Test: Go flow for the fetch path; UI spec for render incl. an image.
 
-### P461 Git repos config as files in the app folder
+### P461 Task "+" new terminal or agent works; remove list-row terminal button
 
-- Per-repo options (prepare worktree and the other repo settings, today behind `guardRepoSettingsSet` and `repoSettings.changed`) become files plus `AGENTS.md`, per the P450 foundation. Runtime state (heads, fetch state, holds) stays in SQLite.
-- Runs before the git IPC phases (P463 to P466) so repo settings are not touched twice. The guard and the `repoSettings.changed` event keep their behaviour; the plan decides how a file edit passes the guard.
-- Plan decides per field what stays in SQLite, formats, sync, watching, validation, bad edits, migration, Studio/Space split.
-- Minimal UI as in P459.
-- Test: as P459, plus the guard still refuses what it refuses today.
+- "+" in a task (new terminal or agent) does nothing. Root-cause and fix; both options work.
+- Remove the new-terminal button from the task row in the task list.
+- Test: UI spec (press "+", terminal and agent appear); backend flow if the cause is backend.
 
-### P462 Connections config as files in the app folder
+### P462 Global capture dialog: keyboard only, PR-derived branches
 
-- Everything configurable on a connection is file config plus `AGENTS.md`, per the P450 foundation: name, MCP settings, through to the colors of the filters in the left panel. Secrets (passwords, tokens) are keychain references, never plaintext in files.
-- Runtime state (connection status, caches, last-used) stays in SQLite.
-- Plan decides per field what stays in SQLite, formats, sync, watching, validation, bad edits, migration, Studio/Space split.
-- Minimal UI as in P459; filter colors move from the UI editor to the file.
-- Test: as P459, plus a color edit in the file shows in the left panel.
+- Remove the checkboxes. Keyboard only: Enter adds to Later, a modifier plus Enter adds to Today (plan picks the modifier, shows it in the dialog). Remove the open option.
+- When the input is a PR, resolve repo and head branch from the PR, fetch them, and add them as branches on the new task for review.
+- Test: backend flow (PR input yields repo and branch on the task) and UI spec (shortcuts, no checkboxes) on the same scenario.
 
-### P463 Git on bound services: connection lifecycle, events, read methods
+### P463 Persist task tabs across task switches
 
-- Today git has its own IPC: `packages/git-ipc` (`rpc.ts`, `transport.ts`, `streamChannel.ts`, `validate.ts` with `CONTRACT_VERSION` 56, `blobFrame.ts`) over one Wails stream per window, served by `apps/kira-space/internal/bridge/gitstream.go` `ServeGitStream` through `internal/rpcstream` into `gitrpc.Router.ForConn` (57 methods in `apps/kira-space/internal/gitrpc/handlers.go`, events, one `graph.stream`).
-- Every other module calls a bound service in `internal/bridge` through generated Wails bindings, gets `kira:<module>:<event>` pushes, and holds state in TanStack Query or Pinia (ARCHITECTURE "Process model", "UI architecture").
-- Goal for P463 to P466: git follows that convention. Behaviour unchanged: same results, errors, events, credential prompts, op log records, guards (`guardRepoSettingsSet`).
-- P463 adds the bound git service (name by plan) and moves the per-window `gitsession.Conn` behind it: created on a window's first call, released on window close. Holds, walks, credential routing to `gitcred.Relay` with the window key, auto-fetch off, writes detached on disconnect: all as today.
-- Events (`repo.changed`, status, refs, `autoFetch.changed`, `repoSettings.changed`, op progress) become window-addressed app events.
-- `packages/git-ui` `BridgeClient` keeps its typed `request`/`on`/`stream` surface. A binding-backed path replaces the stream method by method, so `state/` modules barely change. The plan decides adapter versus direct calls and lists what moves to TanStack Query.
-- P463 moves the read-only methods; the plan lists the exact set from `handlers.go` (app, repo, status, refs, detail, file, blame, search, settings and host reads). Both transports coexist until P466.
-- Surface ownership, in migration order: P463 bridge service, connection lifecycle, events, reads. P464 write handlers (`ops.go`, `stash.go`, `stack.go`, `worktree.go`, `remote.go`, `reset.go`) and their git-ui callers. P465 `review.go`, `changerequests.go`, `comments.go` and every consumer outside `packages/git-ui`. P466 `graph.go`, `incremental.go` and the deletions. Each phase touches the shared service and `BridgeClient`, so they run in order, not as parallel streams.
-- Test: Go flow tests (`flows/gitflow`, `flows/repoflow`) call the bound service as other modules' flows do. UI tier: migrated methods answer from `/wails/runtime` fixtures (`CHANNEL_TO_FQN`) instead of the fake stream socket; existing git UI specs pass with unchanged assertions. Contract fixtures regenerated.
+- Switching tasks loses the tab: leave a task on Session, open another on Notes, return, first shows Notes. Keep the last active tab per task for the app session. Plan decides whether it survives restart.
+- Pinia store, one concern. No refetch from the switch alone.
+- Test: UI spec.
 
-### P464 Git on bound services: write operations
+### P464 Review window: default tab, PR line comment, send clears, resizable panels
 
-- Move every write method: preflight, branch, commit writes, stash and global stash, undo, remote (fetch, push, pull through the credential relay), worktree, stack, working-tree writes, op cancel.
-- Long ops keep progress events and cancel. The plan picks the cancel path (binding call cancellation or an explicit cancel method) and proves an in-flight write still finishes after window close.
-- Test: `flows/gitflow` write flows through the bound service, incl. credential prompt routing (`TestCredentialRoutes`) and cancel. Affected git UI specs unchanged in assertions.
+- Comments panel opens on the first tab (the agent-question tab, "q") by default.
+- Add a dedicated option in that panel to write a comment on the PR at that line (host review comment). Reuses the P465-free existing change-request comment path; plan confirms the path per host.
+- "Send review comments" clears the sent comments.
+- Code diff and agent panels resize freely. Agent panel today stops at a max width. Remove or raise the cap; keep sane minimums.
+- Test: backend flow (PR line comment, send clears) and UI spec on the same scenario.
 
-### P465 Git on bound services: review, change requests, ADE and repo consumers
+### P465 Review window: re-review on edits, visual indicators, next/prev unreviewed
 
-- Move `review.*`, `changeRequest.*`, comments and `gitHost.*`.
-- Move every caller outside `packages/git-ui`: review windows (`apps/kira-space/frontend/src/repo/git/reviewSession.ts`), `views/repo/*` (blame line, review threads and decorations), `repo/*` (`RepoList.vue`, `RepoWorktreeRow.vue`, `state/repoHeads.ts`, `state/worktrees.ts`), `state/repoOpenHold.ts`, and ADE (`ade/v2/wire.ts`, `ade/v2/review/*`).
-- Test: `flows/reviewflow`, `flows/githostflow`; ADE review and repo list UI specs unchanged in assertions.
+- Agent edits after a file was reviewed: new files show, edits to already reviewed files do not, or the left-panel checkbox stays stale. Fix: a reviewed file whose content changed since review returns to unreviewed. Plan picks the change key (blob hash or diff hash).
+- Clear visual indicators of which file needs attention: unreviewed, changed since review, reviewed.
+- Left panel gets previous and next unreviewed file buttons.
+- Test: backend flow (review, edit, file unreviewed again) and UI spec on the same scenario.
 
-### P466 Git graph data plane; remove the git stream protocol
+### P466 ADE panel tabs: grey circle count badges
 
-- `graph.stream` sends FlatBuffers `PackedCommitChunk` frames (`KIG1`, up to 32 MiB, credit flow control). The graph bulk payload keeps the FlatBuffers path, as a bulk-only data plane in the style of Studio's engine data plane. Everything else leaves the custom git stream protocol. Measure first and after with the git graph perf probe (`GRAPH_N`) on a large repo; no regression in time to first rows, scroll, or peak memory.
-- Delete the custom git stream protocol for everything except the graph bulk payload: `ServeGitStream` request/response handling, the `packages/git-ipc` `rpc.ts`, `validate.ts`, `gitrpc.ContractVersion` and `CONTRACT_VERSION` with their tests, the UI tier's fake git stream. Delete `internal/rpcstream`, `transport.ts` and `streamChannel.ts` only if nothing still uses them after the graph data plane lands. Keep `gitwire.fbs`, the codec and `blobFrame.ts` as the data plane needs.
-- Update ARCHITECTURE "Git module" (Transport, Frontend packages) and `docs/DEV_ENVIRONMENT.md` git sections.
-- Test: full git flow and UI suites once (shared code); perf probe before and after, numbers in the plan.
+- ADE panel tabs showing a number show it in a grey circle. Distinctive, not distracting. Tailwind; one shared badge component.
+- Test: UI spec.
 
-### P467 Frontend RAM measurement, both apps
+### P467 Start a workflow without a repo
 
-- Real measurement is justified here. Build on P433 (v0.2.24): its findings (`docs/v0.2.24/plans/P433-measurements.md`, read from git once folded), the heap probe (`tests/perf`, `--project=heap`, `packages/workbench/src/testing/ui/heapProbe.ts`) and the RSS sampler (`perfProbe.ts`).
-- Per app, mode and view: JS heap with retained size by constructor (CDP heap snapshots, Chromium), process RSS (`ps`), idle after start, after opening N tabs, after closing them all (leaks). Measure on Linux only. If the Linux footprint is lower, no Mac check; no Mac-run step in this chapter.
-- Suspects to measure: Monaco instances and models, SlickGrid grids and row caches, TanStack Query retention (`gcTime`), Pinia stores holding large data, kept-alive or mounted-but-hidden panes, xterm instances and scrollback, large lists, images, the whole-catalog i18n bundle (`packages/theme/src/i18n/en.json`), git graph store, ADE board, memory module, Docker and Kubernetes logs.
-- Findings file `plans/P467-ram-findings.md`, committed before P468 starts: per candidate the measured cost, the fix, the expected saving, a rank, and a stated saving threshold for "proven". A candidate with no real cost says so.
-- Probe additions stay report-only. No app code changes in this phase.
+- Allow starting a workflow with no repo selected. The first stage decides repos and branches. Remove the repo-required guard on the start path; downstream stages that need a repo handle its absence.
+- Test: backend flow (start without repo) and UI spec.
 
-### P468 Frontend RAM: implement the proven wins
+### P468 Agent branch and worktree requests: nanoid worktree name, branch in task
 
-- Implement only findings above the P467 threshold. Each fix is re-measured with the same probe; before and after numbers go in the plan and `docs/PERF.md`.
-- The planner may split this row into `P468 Part 1`, `Part 2`, … by finding group.
-- Behaviour unchanged: switching tabs never loses state or refetches only because of UI interaction (P433 rule).
-- Test: heap and RSS probes rerun; affected UI specs. A new spec only where a fix changes when state is released and restored (e.g. an editor disposed while hidden, restored on return).
+- An agent requesting a branch and worktree: name the worktree folder with a nanoid, keep the requested branch name as is.
+- Add the branch to the task's Branches section.
+- Test: backend flow (names, task branches) and UI spec.
 
-### P469 Code review (2 rounds)
+### P469 Stage move: advance button with close-session prompt
 
-One row, two rounds. Each round: one Opus review over the full diff since `main`, findings file under `plans/`, then one Sonnet fixer. Then close, then PR, as in v0.2.25.
+- After a stage change the Finish button shows while the open session belongs to the previous stage. Replace with a clear move-on button. If a previous-stage session is open, ask whether to close it, then advance.
+- Test: UI spec; backend flow if the stage logic changes.
 
-### P470 Close chapter v0.2.27
+### P470 Code review (1 round)
+
+One Opus review over the full diff since `main`, findings file under `plans/`, then one Sonnet fixer. Then close, then PR.
+
+### P471 Close chapter v0.2.27
 
 Hand-written close per CLAUDE.md "Closing a chapter". Push, open PR to `main`.
