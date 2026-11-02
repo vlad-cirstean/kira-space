@@ -76,6 +76,9 @@ const DIVERGENCE: Record<string, { mockup: string; ours: string; why: string }> 
   b_deps: { mockup: 'CI failing', ours: 'Clean', why: 'D9: no CI badge' },
 };
 
+/** P469: the mockup's "Done ›" step action reads "Next stage ›"; asserted below, never skipped. */
+const ACTION_DIVERGENCE = { mockup: 'done ›', ours: 'next stage ›' };
+
 /** P401: 7-day window; the mockup's 14-day bands after day 6 fold into its Later band. */
 const WINDOW_DIVERGENCE = { windowDays: 7, why: 'P401: 7-day window; later days fold into Later' };
 
@@ -250,10 +253,10 @@ describe('per task', () => {
       const box = boxOf(t.id);
       const { cell } = cellOf(t.id);
       expect([t.id, lc(cell?.tag.label)]).toEqual([t.id, lc(box.cells[0].tag)]);
-      expect([t.id, lcAll(cell?.action ? [cell.action.label] : [])]).toEqual([
-        t.id,
-        lcAll(box.cells[0].btns.map((b: MockupComponent) => b.label)),
-      ]);
+      const expected = lcAll(box.cells[0].btns.map((b: MockupComponent) => b.label)).map((l) =>
+        l === ACTION_DIVERGENCE.mockup ? ACTION_DIVERGENCE.ours : l,
+      );
+      expect([t.id, lcAll(cell?.action ? [cell.action.label] : [])]).toEqual([t.id, expected]);
     }
   });
 
