@@ -97,17 +97,18 @@ func PermissionDoc(allow, deny []string) (doc map[string]json.RawMessage, notes 
 	return doc, notes, nil
 }
 
-// MergePermission merges add's rules into existing's, same key, without moving or widening any rule
-// of the user's (the last match wins). Kira allows go just before the user's first deny, so a user
-// deny still beats them and a user ask or allow before it does not; Kira denies go last. A pattern
-// the user already denies keeps that deny against an allow. Same-pattern non-deny entries yield to Kira's.
-func MergePermission(existing, add json.RawMessage) (json.RawMessage, error) {
+// MergePermission merges add's rules into existing's, same key (the last match wins). Kira allows go
+// right after the user's `*` entry (first when none) and before every other user rule, so a user ask
+// or deny keeps winning and only the catch-all yields; Kira denies go last. shadowed names each Kira
+// allow a user deny of the same or a covering pattern makes dead. Same-pattern non-deny user entries
+// yield to Kira's.
+func MergePermission(existing, add json.RawMessage) (merged json.RawMessage, shadowed []string, err error) {
 	var cur, extra ruleSet
 	if err := json.Unmarshal(existing, &cur); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := json.Unmarshal(add, &extra); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var allows, others []ruleEntry
 	for _, e := range extra.entries {
@@ -115,26 +116,35 @@ func MergePermission(existing, add json.RawMessage) (json.RawMessage, error) {
 			others = append(others, e)
 			continue
 		}
-		if slices.ContainsFunc(cur.entries, func(c ruleEntry) bool { return c.pattern == e.pattern && c.action == "deny" }) {
+		if slices.ContainsFunc(cur.entries, func(c ruleEntry) bool { return c.action == "deny" && denyCovers(c.pattern, e.pattern) }) {
+			shadowed = append(shadowed, e.pattern)
 			continue
 		}
 		allows = append(allows, e)
 	}
-	taken := func(pattern string) func(ruleEntry) bool {
-		return func(c ruleEntry) bool { return c.pattern == pattern }
-	}
 	for _, e := range allows {
-		cur.entries = slices.DeleteFunc(cur.entries, taken(e.pattern))
+		cur.entries = slices.DeleteFunc(cur.entries, func(c ruleEntry) bool { return c.pattern == e.pattern })
 	}
-	at := slices.IndexFunc(cur.entries, func(c ruleEntry) bool { return c.action == "deny" })
-	if at < 0 {
-		at = len(cur.entries)
+	at := 0
+	if i := slices.IndexFunc(cur.entries, func(c ruleEntry) bool { return c.pattern == "*" }); i >= 0 {
+		at = i + 1
 	}
 	cur.entries = slices.Insert(cur.entries, at, allows...)
 	for _, e := range others {
 		cur.add(e.pattern, e.action)
 	}
-	return json.Marshal(cur)
+	merged, err = json.Marshal(cur)
+	return merged, shadowed, err
+}
+
+// denyCovers reports whether a deny on pattern deny also matches everything allow matches. The
+// catch-all `*` never shadows: Kira's allows sit after it.
+func denyCovers(deny, allow string) bool {
+	if deny == allow {
+		return true
+	}
+	prefix, ok := strings.CutSuffix(deny, "*")
+	return ok && deny != "*" && strings.HasPrefix(allow, prefix)
 }
 
 // kiraTools is the inverse of builtinTools for the keys with a unique Kira name.

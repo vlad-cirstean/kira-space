@@ -144,7 +144,10 @@ func (ex *exporter) openCodePermission(p *patcher, existing json.RawMessage, as 
 	for _, key := range sortedKeys(doc) {
 		merged := doc[key]
 		if old, ok := cur[key]; ok {
-			m, err := opencode.MergePermission(old, doc[key])
+			m, shadowed, err := opencode.MergePermission(old, doc[key])
+			for _, pat := range shadowed {
+				ex.notes = append(ex.notes, i18n.T("backend.core.agentSettings.opencode.allowShadowed.body", map[string]string{"entry": key + "." + pat}))
+			}
 			if err != nil {
 				ex.skip("permission."+key, i18n.T("backend.core.agentPort.export.permissionShape.body", nil))
 				continue

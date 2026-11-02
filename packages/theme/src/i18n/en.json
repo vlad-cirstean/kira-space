@@ -726,6 +726,9 @@
           "allowNotApplied": {
             "body": "OpenCode can’t take the allow entry {entry}. It is not applied."
           },
+          "allowShadowed": {
+            "body": "A deny rule in your OpenCode config covers the allow entry {entry}. It has no effect."
+          },
           "envCarried": {
             "body": "OpenCode receives this through {name}. No file is written."
           },
