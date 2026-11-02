@@ -276,10 +276,11 @@ func TestIssueComments(t *testing.T) {
 	acli := fakeacli.New(ivSite)
 	acli.SetIssue("PROJ-12", fakeacli.IssueJSON("PROJ-12", "Export report as CSV", "In Progress", "indeterminate", 0))
 	acli.SetIssueDetail("PROJ-12", ivTestdata(t, "issue-detail.json"))
-	clock := fakeclock.New(time.Now())
+	clock := fakeclock.New(time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC))
 	app := flowharness.New(t, flowharness.WithGitHost(fakehost.New()), flowharness.WithoutGh(), flowharness.WithClock(clock),
 		flowharness.WithIssueTracker(jira.Options{Locator: acli, Runner: acli, Clock: clock}))
 	key := hcOpen(t, app, ivLink)
+	ivPrefetched(t, acli, 1)
 
 	// 1. Compose: no replies.
 	got := ivIssue(t, app, ivLink)

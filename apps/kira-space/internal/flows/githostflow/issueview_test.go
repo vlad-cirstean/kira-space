@@ -37,11 +37,24 @@ func ivTestdata(t *testing.T, name string) string {
 
 func ivIssue(t *testing.T, app *flowharness.App, ref string) bridge.HostViewIssue {
 	t.Helper()
-	got, err := app.W.HostView.Issue(ctx, bridge.HostViewIssueArgs{Ref: ref})
+	got, err := app.W.HostView.Issue(ctx, bridge.HostViewIssueArgs{Ref: ref, Fresh: true})
 	if err != nil {
 		t.Fatalf("Issue(%s) = %v", ref, err)
 	}
 	return got
+}
+
+// ivPrefetched waits until the window open's background read has reached acli, so later steps do not
+// race it.
+func ivPrefetched(t *testing.T, acli *fakeacli.Acli, want int) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for acli.Count("detail:PROJ-12") < want {
+		if time.Now().After(deadline) {
+			t.Fatalf("detail reads = %d, want %d", acli.Count("detail:PROJ-12"), want)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 }
 
 func ivBadRequest(t *testing.T, err error, label string) {
@@ -57,8 +70,10 @@ const ivDescription = "## Goal\n\n" +
 	"- Columns\n  - date\n  - total\n- Header row\n\n" +
 	"```sh\necho `date`\nkira export --csv\n```\n\n" +
 	"| Field | Type |\n| --- | --- |\n| a\\|b | text |\n\n" +
-	"@Dana Dev please check [https://example.com/design](https://example.com/design)\n\n" +
-	"\\[attachment: mockup.png\\]"
+	"[@Dana Dev](#kira-mention) please check [https://example.com/design](https://example.com/design)\n\n" +
+	"Review state: [IN REVIEW](#kira-status-blue)\n\n" +
+	"> [!NOTE]\n> Export runs nightly.\n\n" +
+	"![mockup.png](https://acme.atlassian.net/rest/api/3/attachment/content/10100)"
 
 // The issue view over the in-process fake acli: open or focus the window, read the detail (comments
 // inline, from the comment list, or omitted), and report every tracker failure as data. Backend half of
@@ -68,7 +83,7 @@ func TestIssueView(t *testing.T) {
 	acli := fakeacli.New(ivSite)
 	acli.SetIssue("PROJ-12", fakeacli.IssueJSON("PROJ-12", "Export report as CSV", "In Progress", "indeterminate", 2))
 	acli.SetIssueDetail("PROJ-12", ivTestdata(t, "issue-detail.json"))
-	clock := fakeclock.New(time.Now())
+	clock := fakeclock.New(time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC))
 	app := flowharness.New(t, flowharness.WithGitHost(forge), flowharness.WithoutGh(), flowharness.WithClock(clock),
 		flowharness.WithIssueTracker(jira.Options{Locator: acli, Runner: acli, Clock: clock}))
 	wm := app.WindowMgr
@@ -79,6 +94,7 @@ func TestIssueView(t *testing.T) {
 		t.Fatalf("Open = %+v, %v; titles %v", opened, err, wm.Titles)
 	}
 	wm.Known[opened.Key] = true
+	ivPrefetched(t, acli, 1)
 	again, err := app.W.HostView.Open(ctx, bridge.HostViewOpenArgs{URL: "PROJ-12"})
 	if err != nil || again.Opened || again.Key != opened.Key || !slices.Equal(wm.Focused, []string{opened.Key}) {
 		t.Fatalf("Open(key) = %+v, %v; focused %v", again, err, wm.Focused)
@@ -110,6 +126,10 @@ func TestIssueView(t *testing.T) {
 	}
 	if !d.Summary.Known || d.Summary.Count != 2 {
 		t.Fatalf("summary = %+v", d.Summary)
+	}
+	if len(d.Attachments) != 2 || d.Attachments[0].Filename != "spec.pdf" || d.Attachments[1].ID != "10100" ||
+		!strings.HasPrefix(d.Attachments[1].URL, "https://") || d.Stale || d.FetchedAt != clock.Now().UnixMilli() {
+		t.Fatalf("attachments = %+v stale %v fetchedAt %d", d.Attachments, d.Stale, d.FetchedAt)
 	}
 	app.Contract(t, ivScenario, "HostViewService.Issue#ok", got)
 

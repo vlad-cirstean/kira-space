@@ -5,6 +5,32 @@
       "replyKinds": []
     },
     "detail": {
+      "attachments": [
+        {
+          "author": {
+            "id": "acc-1",
+            "name": "Dana Dev"
+          },
+          "createdAt": 1704261600000,
+          "filename": "spec.pdf",
+          "id": "10101",
+          "mimeType": "application/pdf",
+          "size": 1250000,
+          "url": "https://acme.atlassian.net/rest/api/3/attachment/content/10101"
+        },
+        {
+          "author": {
+            "id": "acc-rep",
+            "name": "Rita Reporter"
+          },
+          "createdAt": 1704171600000,
+          "filename": "mockup.png",
+          "id": "10100",
+          "mimeType": "image/png",
+          "size": 48213,
+          "url": "https://acme.atlassian.net/rest/api/3/attachment/content/10100"
+        }
+      ],
       "comments": [
         {
           "author": {
@@ -35,8 +61,9 @@
         "API"
       ],
       "createdAt": 1704164645000,
-      "description": "## Goal\n\nUsers export the **monthly report** as CSV. See [the spec](https://example.com/spec) and run `kira export`. \\<script\\>alert(1)\\</script\\>\n\n- Columns\n  - date\n  - total\n- Header row\n\n```sh\necho `date`\nkira export --csv\n```\n\n| Field | Type |\n| --- | --- |\n| a\\|b | text |\n\n@Dana Dev please check [https://example.com/design](https://example.com/design)\n\n\\[attachment: mockup.png\\]",
+      "description": "## Goal\n\nUsers export the **monthly report** as CSV. See [the spec](https://example.com/spec) and run `kira export`. \\<script\\>alert(1)\\</script\\>\n\n- Columns\n  - date\n  - total\n- Header row\n\n```sh\necho `date`\nkira export --csv\n```\n\n| Field | Type |\n| --- | --- |\n| a\\|b | text |\n\n[@Dana Dev](#kira-mention) please check [https://example.com/design](https://example.com/design)\n\nReview state: [IN REVIEW](#kira-status-blue)\n\n> [!NOTE]\n> Export runs nightly.\n\n![mockup.png](https://acme.atlassian.net/rest/api/3/attachment/content/10100)",
       "dueDate": "2024-03-01",
+      "fetchedAt": 1767323045000,
       "labels": [
         "backend",
         "export"
@@ -78,6 +105,32 @@
       "replyKinds": []
     },
     "detail": {
+      "attachments": [
+        {
+          "author": {
+            "id": "acc-1",
+            "name": "Dana Dev"
+          },
+          "createdAt": 1704261600000,
+          "filename": "spec.pdf",
+          "id": "10101",
+          "mimeType": "application/pdf",
+          "size": 1250000,
+          "url": "https://acme.atlassian.net/rest/api/3/attachment/content/10101"
+        },
+        {
+          "author": {
+            "id": "acc-rep",
+            "name": "Rita Reporter"
+          },
+          "createdAt": 1704171600000,
+          "filename": "mockup.png",
+          "id": "10100",
+          "mimeType": "image/png",
+          "size": 48213,
+          "url": "https://acme.atlassian.net/rest/api/3/attachment/content/10100"
+        }
+      ],
       "comments": [],
       "commentsOmitted": true,
       "commentsTotal": 0,
@@ -86,8 +139,9 @@
         "API"
       ],
       "createdAt": 1704164645000,
-      "description": "## Goal\n\nUsers export the **monthly report** as CSV. See [the spec](https://example.com/spec) and run `kira export`. \\<script\\>alert(1)\\</script\\>\n\n- Columns\n  - date\n  - total\n- Header row\n\n```sh\necho `date`\nkira export --csv\n```\n\n| Field | Type |\n| --- | --- |\n| a\\|b | text |\n\n@Dana Dev please check [https://example.com/design](https://example.com/design)\n\n\\[attachment: mockup.png\\]",
+      "description": "## Goal\n\nUsers export the **monthly report** as CSV. See [the spec](https://example.com/spec) and run `kira export`. \\<script\\>alert(1)\\</script\\>\n\n- Columns\n  - date\n  - total\n- Header row\n\n```sh\necho `date`\nkira export --csv\n```\n\n| Field | Type |\n| --- | --- |\n| a\\|b | text |\n\n[@Dana Dev](#kira-mention) please check [https://example.com/design](https://example.com/design)\n\nReview state: [IN REVIEW](#kira-status-blue)\n\n> [!NOTE]\n> Export runs nightly.\n\n![mockup.png](https://acme.atlassian.net/rest/api/3/attachment/content/10100)",
       "dueDate": "2024-03-01",
+      "fetchedAt": 1767323045000,
       "labels": [
         "backend",
         "export"
@@ -133,6 +187,32 @@
       "replyKinds": []
     },
     "detail": {
+      "attachments": [
+        {
+          "author": {
+            "id": "acc-1",
+            "name": "Dana Dev"
+          },
+          "createdAt": 1704261600000,
+          "filename": "spec.pdf",
+          "id": "10101",
+          "mimeType": "application/pdf",
+          "size": 1250000,
+          "url": "https://acme.atlassian.net/rest/api/3/attachment/content/10101"
+        },
+        {
+          "author": {
+            "id": "acc-rep",
+            "name": "Rita Reporter"
+          },
+          "createdAt": 1704171600000,
+          "filename": "mockup.png",
+          "id": "10100",
+          "mimeType": "image/png",
+          "size": 48213,
+          "url": "https://acme.atlassian.net/rest/api/3/attachment/content/10100"
+        }
+      ],
       "comments": [
         {
           "author": {
@@ -175,8 +255,9 @@
         "API"
       ],
       "createdAt": 1704164645000,
-      "description": "## Goal\n\nUsers export the **monthly report** as CSV. See [the spec](https://example.com/spec) and run `kira export`. \\<script\\>alert(1)\\</script\\>\n\n- Columns\n  - date\n  - total\n- Header row\n\n```sh\necho `date`\nkira export --csv\n```\n\n| Field | Type |\n| --- | --- |\n| a\\|b | text |\n\n@Dana Dev please check [https://example.com/design](https://example.com/design)\n\n\\[attachment: mockup.png\\]",
+      "description": "## Goal\n\nUsers export the **monthly report** as CSV. See [the spec](https://example.com/spec) and run `kira export`. \\<script\\>alert(1)\\</script\\>\n\n- Columns\n  - date\n  - total\n- Header row\n\n```sh\necho `date`\nkira export --csv\n```\n\n| Field | Type |\n| --- | --- |\n| a\\|b | text |\n\n[@Dana Dev](#kira-mention) please check [https://example.com/design](https://example.com/design)\n\nReview state: [IN REVIEW](#kira-status-blue)\n\n> [!NOTE]\n> Export runs nightly.\n\n![mockup.png](https://acme.atlassian.net/rest/api/3/attachment/content/10100)",
       "dueDate": "2024-03-01",
+      "fetchedAt": 1767323045000,
       "labels": [
         "backend",
         "export"
@@ -228,6 +309,7 @@
     "url": "https://acme.atlassian.net/browse/PROJ-12"
   },
   "args:HostViewService.Issue": {
+    "fresh": false,
     "ref": "https://acme.atlassian.net/browse/PROJ-12"
   }
 }
