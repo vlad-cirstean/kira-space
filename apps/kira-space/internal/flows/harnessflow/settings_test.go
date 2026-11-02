@@ -487,7 +487,7 @@ func TestAgentSettingsOpenCode(t *testing.T) {
 	want := contentDoc(t, strings.ReplaceAll(view.Files[0].Text, "${secret:gh-token}", secret))
 	gb, _ := json.Marshal(got)
 	wb, _ := json.Marshal(want)
-	if string(gb) != string(wb) {
+	if !bytes.Equal(gb, wb) {
 		t.Fatalf("launch document = %s, view with the secret = %s, want equal", gb, wb)
 	}
 	if left := appFiles(t, app.SpaceHome); len(left) != 0 {
