@@ -36,6 +36,10 @@ type HeadlessCall struct {
 	// App is the bytes of the app settings file the run was given and AppEnv its env; nil when none.
 	App    []byte
 	AppEnv []string
+	// Hermetic is the spec's flag; Isolated its isolation; MCPConfigs the config files it named.
+	Hermetic, Isolated bool
+	MCPConfigs         []string
+	UserMCP            []string
 }
 
 // base is the Claude provider seen through the roles the fake delegates: it hides Claude's hook and
@@ -134,7 +138,8 @@ func (p *Provider) RunHeadless(_ context.Context, s harness.HeadlessSpec, h harn
 	if s.ContextFile != "" {
 		ctxBytes, _ = os.ReadFile(s.ContextFile)
 	}
-	call := HeadlessCall{Model: s.Model, Prompt: s.Prompt, SessionID: s.SessionID, Resume: s.Resume, Stage: s.Stage, Context: ctxBytes}
+	call := HeadlessCall{Model: s.Model, Prompt: s.Prompt, SessionID: s.SessionID, Resume: s.Resume, Stage: s.Stage, Context: ctxBytes,
+		Hermetic: s.Hermetic, Isolated: s.Isolated, MCPConfigs: s.MCPConfigs, UserMCP: s.UserMCP}
 	if s.App != nil {
 		call.App, _ = os.ReadFile(s.App.Files["config"])
 		call.AppEnv = s.App.Env
@@ -165,6 +170,9 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 	cmd := fakeagent.Persona + " " + flag + " " + s.SessionID
 	if s.ContextFile != "" {
 		cmd += " " + fakeagent.PersonaContextFlag + " " + s.ContextFile
+	}
+	if s.Hermetic {
+		cmd += " --hermetic"
 	}
 	launch := harness.Launch{SessionID: s.SessionID}
 	if s.App != nil {

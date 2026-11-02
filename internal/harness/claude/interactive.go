@@ -24,6 +24,10 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 	for _, w := range stageArgs(s.Stage, func(w string) string { return w }) {
 		word(w)
 	}
+	if s.Hermetic {
+		word("--setting-sources")
+		word(hermeticSources)
+	}
 	if s.ContextFile != "" {
 		word(appendSystemPromptFileFlag)
 		word(s.ContextFile)
@@ -53,8 +57,11 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 		}
 	}
 	launch := harness.Launch{SessionID: s.SessionID}
+	if s.Hermetic {
+		launch.Env = append(launch.Env, hermeticEnv...)
+	}
 	if s.App != nil {
-		launch.Env = s.App.Env
+		launch.Env = append(launch.Env, s.App.Env...)
 		if f := s.App.Files["settings"]; f != "" {
 			word("--settings")
 			word(f)

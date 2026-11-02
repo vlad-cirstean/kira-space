@@ -53,8 +53,14 @@ func settingSources(s harness.HeadlessSpec) string {
 	}
 	switch s.Config {
 	case harness.ConfigUser:
+		if s.Hermetic {
+			return ""
+		}
 		return "user"
 	case harness.ConfigAll:
+		if s.Hermetic {
+			return hermeticSources
+		}
 		return "user,project,local"
 	}
 	return ""
@@ -176,6 +182,9 @@ func (p *Provider) RunHeadless(ctx context.Context, spec harness.HeadlessSpec, h
 	if spec.Isolated && spec.App != nil {
 		return harness.Exit{}, errors.New("claude: an isolated run takes no app settings")
 	}
+	if spec.Hermetic && len(spec.UserMCP) > 0 {
+		return harness.Exit{}, errors.New("claude: a hermetic run loads no user MCP servers")
+	}
 	if _, err := p.Locate(ctx, spec.Bin); err != nil {
 		var ie *ipcerr.Error
 		if errors.As(err, &ie) {
@@ -195,6 +204,9 @@ func (p *Provider) RunHeadless(ctx context.Context, spec harness.HeadlessSpec, h
 		cmd.Env = os.Environ()
 	}
 	cmd.Env = append(slices.Clone(cmd.Env), hooks.MCPToolTimeoutEnv)
+	if spec.Hermetic {
+		cmd.Env = append(cmd.Env, hermeticEnv...)
+	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	cmd.Stdin = strings.NewReader(spec.Prompt)
 	stopEscalate := procgroup.GracefulCancel(cmd, gracefulStopDelay, killGroup)

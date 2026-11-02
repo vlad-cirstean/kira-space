@@ -64,6 +64,9 @@ type HeadlessSpec struct {
 	// App is the app's agent settings rendered for this run; nil = none. Never set on an isolated
 	// run: its tool and MCP policy is explicit.
 	App *AppConfig
+	// Hermetic loads none of the user's own agent config; Isolated runs load none already, Hermetic
+	// still sets the provider's hermetic env. Only the provider maps it.
+	Hermetic bool
 }
 
 // ConfigScope is which of the user's agent config layers a run loads.

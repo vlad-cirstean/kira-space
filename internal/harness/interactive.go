@@ -38,4 +38,8 @@ type InteractiveSpec struct {
 	ContextFile string
 	// App is the app's agent settings rendered for this launch; nil = none. Only the provider maps it.
 	App *AppConfig
+	// Hermetic loads none of the user's own agent config; only the provider maps it.
+	Hermetic bool
+	// IsolationDir is a Kira-owned 0700 dir an Isolator prepared for this launch; "" none.
+	IsolationDir string
 }

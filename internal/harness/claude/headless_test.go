@@ -63,3 +63,33 @@ func TestScriptAppSettings(t *testing.T) {
 		t.Fatalf("got  %s\nwant %s", got, want)
 	}
 }
+
+func TestScriptHermetic(t *testing.T) {
+	base := harness.HeadlessSpec{Bin: "claude", SessionID: "s-1", Hermetic: true}
+	for name, tc := range map[string]struct {
+		cfg      harness.ConfigScope
+		isolated bool
+		want     string
+	}{
+		"all":      {harness.ConfigAll, false, "--setting-sources 'project,local'"},
+		"user":     {harness.ConfigUser, false, "--setting-sources ''"},
+		"isolated": {harness.ConfigAll, true, "--setting-sources '' --strict-mcp-config --permission-prompts none"},
+	} {
+		s := base
+		s.Config, s.Isolated = tc.cfg, tc.isolated
+		want := "exec claude -p --output-format stream-json --verbose --session-id 's-1' " + tc.want
+		if got := Script(s); got != want {
+			t.Fatalf("%s:\n got %s\nwant %s", name, got, want)
+		}
+	}
+}
+
+func TestInteractiveHermetic(t *testing.T) {
+	l := (&Provider{}).InteractiveCommand(harness.InteractiveSpec{Bin: "claude", SessionID: "s-1", Hermetic: true})
+	if want := "claude --session-id 's-1' '--setting-sources' 'project,local'"; l.Command != want {
+		t.Fatalf("got %s want %s", l.Command, want)
+	}
+	if len(l.Env) != len(hermeticEnv) {
+		t.Fatalf("env %v", l.Env)
+	}
+}
