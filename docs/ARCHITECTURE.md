@@ -3517,8 +3517,10 @@ config, project files.
   returns its release. The release rides the caller's release chain (ADE `bindTUI`, scriptruns, headless end), not
   `Store.Track`; `Sweep` removes leftover `*-iso` dirs at start. Refused with `UserMCP`.
 - Claude: `--setting-sources project,local`, env `ENABLE_CLAUDEAI_MCP_SERVERS=false` and
-  `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`. Local-scope MCP stays (Q4). Isolated (headless) runs keep `''`;
-  `ade.headlessSettingSources: user` gives `''` under hermetic. Facts C1 to C8 in `claude/hermetic.go`.
+  `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`, and an inline `--settings` with `claudeMdExcludes` for `~/.claude/CLAUDE.md`:
+  a repo under `$HOME` loads that file as its ancestor's project memory even without the user source (C9, found by
+  `TestHermeticSession`). Local-scope MCP stays (Q4). Isolated (headless) runs keep `''`;
+  `ade.headlessSettingSources: user` gives `''` under hermetic. Facts C1 to C9 in `claude/hermetic.go`.
 - OpenCode: `XDG_CONFIG_HOME=<iso>/xdg`, a dir linking every `~/.config` entry except `opencode`, plus
   `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1`. Words go on `/usr/bin/env` after the login profile, with `-u` for layer vars
   the launch does not set. Probes H-OC1 to H-OC5 on 1.19.5 in `opencode/facts.go`; `TestHermeticDebugConfig`.

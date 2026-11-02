@@ -31,7 +31,12 @@ func TestClaudeSettingsUntouched(t *testing.T) {
 	}
 	hooksFile := func(t *testing.T, argv []string) {
 		t.Helper()
-		settings := flagValues(argv, "--settings")
+		var settings []string
+		for _, v := range flagValues(argv, "--settings") {
+			if !strings.HasPrefix(v, "{") { // the hermetic claudeMdExcludes document is inline
+				settings = append(settings, v)
+			}
+		}
 		if len(settings) != 1 || !filepath.IsAbs(settings[0]) || strings.HasPrefix(settings[0], app.Home) {
 			t.Fatalf("agent launch --settings = %q, want one absolute path outside the user's home", settings)
 		}

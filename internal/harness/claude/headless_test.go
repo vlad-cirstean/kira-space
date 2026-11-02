@@ -64,7 +64,11 @@ func TestScriptAppSettings(t *testing.T) {
 	}
 }
 
+// excludeHome is the --settings word a hermetic launch adds under HOME=/h.
+const excludeHome = `--settings '{"claudeMdExcludes":["/h/.claude/CLAUDE.md"]}'`
+
 func TestScriptHermetic(t *testing.T) {
+	t.Setenv("HOME", "/h")
 	base := harness.HeadlessSpec{Bin: "claude", SessionID: "s-1", Hermetic: true}
 	for name, tc := range map[string]struct {
 		cfg      harness.ConfigScope
@@ -77,7 +81,7 @@ func TestScriptHermetic(t *testing.T) {
 	} {
 		s := base
 		s.Config, s.Isolated = tc.cfg, tc.isolated
-		want := "exec claude -p --output-format stream-json --verbose --session-id 's-1' " + tc.want
+		want := "exec claude -p --output-format stream-json --verbose --session-id 's-1' " + tc.want + " " + excludeHome
 		if got := Script(s); got != want {
 			t.Fatalf("%s:\n got %s\nwant %s", name, got, want)
 		}
@@ -85,8 +89,9 @@ func TestScriptHermetic(t *testing.T) {
 }
 
 func TestInteractiveHermetic(t *testing.T) {
+	t.Setenv("HOME", "/h")
 	l := (&Provider{}).InteractiveCommand(harness.InteractiveSpec{Bin: "claude", SessionID: "s-1", Hermetic: true})
-	if want := "claude --session-id 's-1' '--setting-sources' 'project,local'"; l.Command != want {
+	if want := "claude --session-id 's-1' '--setting-sources' 'project,local' '--settings' '{\"claudeMdExcludes\":[\"/h/.claude/CLAUDE.md\"]}'"; l.Command != want {
 		t.Fatalf("got %s want %s", l.Command, want)
 	}
 	if len(l.Env) != len(hermeticEnv) {

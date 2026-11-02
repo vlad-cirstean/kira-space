@@ -297,10 +297,10 @@ func TestSmartScript(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if want := "claude --resume '" + failed.SessionID + "' '--setting-sources' 'project,local'"; launch.Command != want {
+		if want := "claude --resume '" + failed.SessionID + "' '--setting-sources' 'project,local'"; !strings.HasPrefix(launch.Command, want+" '--settings' ") || !strings.Contains(launch.Command, "claudeMdExcludes") {
 			t.Fatalf("ResumeCommand = %q, want %q", launch.Command, want)
 		}
-		app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: strings.Replace(launch.Command, failed.SessionID, "sess-1", 1), Token: launch.Token}, flowharness.Mask("token"))
+		app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: strings.ReplaceAll(strings.Replace(launch.Command, failed.SessionID, "sess-1", 1), app.Home, "/home/user"), Token: launch.Token}, flowharness.Mask("token"))
 		if o := failed.Outcome; o.Status != "failed" || o.Reason != "summary-failed" || !o.Reported || o.Source != "agent" {
 			t.Errorf("failed = %+v", o)
 		}

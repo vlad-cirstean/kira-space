@@ -103,7 +103,7 @@ func TestHermeticSession(t *testing.T) {
 					t.Fatalf("MCP servers = %v, want proj-probe and kira-ade, not user-probe", servers)
 				}
 				if seen || hookRan == nil {
-					t.Fatalf("user config leaked: marker seen %v, hook ran %v", seen, hookRan == nil)
+					t.Fatalf("user config leaked: marker seen %v, hook ran %v; servers %v; result %q; log:\n%s", seen, hookRan == nil, servers, result, tail(log, 2500))
 				}
 				if !strings.Contains(result+log, projMark) {
 					t.Fatalf("project marker %s missing from the reply; log:\n%s", projMark, tail(log, 1500))

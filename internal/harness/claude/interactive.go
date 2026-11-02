@@ -68,6 +68,12 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 			launch.ConfigFile = f
 		}
 	}
+	if s.Hermetic {
+		if hs := hermeticSettings(); hs != "" {
+			word("--settings")
+			word(hs)
+		}
+	}
 	launch.Command = b.String()
 	return launch
 }

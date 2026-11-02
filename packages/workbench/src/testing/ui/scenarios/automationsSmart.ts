@@ -478,7 +478,7 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
     await expect
       .poll(() => control.log().find((e) => e.channel === IPC.terminalOpen)?.args)
       .toMatchObject({
-        command: "claude --resume 'sess-1' '--setting-sources' 'project,local'",
+        command: contract<{ command: string }>('smart', 'ScriptRunsService.ResumeCommand').command,
         launchKind: 'agent',
       });
   });
