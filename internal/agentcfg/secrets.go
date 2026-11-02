@@ -7,7 +7,6 @@ package agentcfg
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,6 +16,9 @@ import (
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
+
+// secretNamespace is the resolver namespace of agent settings, fixed here and never written in a file.
+const secretNamespace = "agent"
 
 // SecretOwner is the owner of every agent credential: one shared definition.
 const SecretOwner = "agent"
@@ -81,7 +83,7 @@ func (s *SecretStore) Source() configfs.SecretSource {
 			return "", err
 		}
 		if _, bad := unreadable[name]; bad {
-			return "", errors.New("the saved value cannot be read; set it again")
+			return "", fmt.Errorf("the saved value cannot be read, set it again: %w", unreadable[name])
 		}
 		v, ok := vals[name]
 		if !ok {

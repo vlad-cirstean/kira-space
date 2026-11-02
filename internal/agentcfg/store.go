@@ -51,6 +51,15 @@ type Store struct {
 	docModel  configfs.DocModel
 	providers []string // provider ids with a settings section, registration order
 	saveMu    sync.Mutex
+
+	runMu sync.Mutex
+	runs  map[*runFiles]struct{}
+
+	envMu     sync.Mutex
+	probed    map[string]string // login-shell values by name
+	tried     map[string]bool   // names a probe already asked for
+	probeWarn sync.Once
+	warned    sync.Map // provider id: warned that it takes no settings
 }
 
 // FileView is the editor's state of the file.
@@ -75,7 +84,7 @@ type ViewProblem struct {
 
 // New builds a Store with the schema assembled from the registered providers; it creates nothing on disk.
 func New(o Options) (*Store, error) {
-	s := &Store{o: o}
+	s := &Store{o: o, runs: map[*runFiles]struct{}{}, probed: map[string]string{}, tried: map[string]bool{}}
 	schema, err := s.assembleSchema()
 	if err != nil {
 		return nil, err

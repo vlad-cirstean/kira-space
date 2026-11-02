@@ -16,11 +16,13 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitprepare"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -823,13 +825,21 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		fail(err)
 		return
 	}
+	prep, err := b.headlessApp(ctx, l, run.ID)
+	if err != nil {
+		release()
+		fail(err)
+		return
+	}
+	defer prep.Release()
+	sink.setMask(secrets.NewMasker(prep.Secrets...))
 	agent := l.agent
 	spec := harness.HeadlessSpec{
 		Bin: b.deps.AgentBin, Dir: l.path, Prompt: l.prompt, SessionID: b.sessionAgentID(sessionID),
 		Resume: l.resume, MCPConfigs: []string{cfg}, Config: b.configScope(), AllowedTools: roundTools(agent, allowedTools(agent, def.AllowedTools, space), round), DisallowedTools: def.DisallowedTools,
-		Timeout: l.timeout, Stage: stageValues(def.Settings, agent), ContextFile: l.contextFile,
+		Timeout: l.timeout, Stage: stageValues(def.Settings, agent), ContextFile: l.contextFile, App: prep.App,
 	}
-	spec.Env = gitprepare.BuildEnv(os.Environ(), gitprepare.Vars{WorktreePath: l.path})
+	spec.Env = gitprepare.BuildEnv(withAppEnv(os.Environ(), prep.App), gitprepare.Vars{WorktreePath: l.path})
 	if rebase {
 		spec.Env = append(spec.Env, "GIT_EDITOR=true")
 	}
@@ -870,6 +880,32 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		return // app quit: rows stay running (R18)
 	}
 	b.endAgentRun(ctx, run, l, runEnd{exit: exit, err: runErr, res: res, sink: sink, sbx: sbx, complete: complete, headless: headless})
+}
+
+// headlessApp prepares the app's agent settings for a run; an isolated run (rebase, smart step) takes
+// none, its tools and MCP servers are explicit.
+func (b *TaskBoard) headlessApp(ctx context.Context, l agentLaunch, runID string) (agentcfg.Prepared, error) {
+	if l.git != nil || l.smart != nil {
+		return agentcfg.Prepared{Release: func() {}}, nil
+	}
+	return b.prepareApp(ctx, agentcfg.Launch{Provider: l.agent, Kind: harness.LaunchHeadless, Dir: b.deps.AgentDir, Stem: runID})
+}
+
+// prepareApp prepares the app's agent settings for one launch; none without a preparer.
+func (b *TaskBoard) prepareApp(ctx context.Context, l agentcfg.Launch) (agentcfg.Prepared, error) {
+	if b.deps.AgentConfig == nil {
+		return agentcfg.Prepared{Release: func() {}}, nil
+	}
+	return b.deps.AgentConfig(ctx, l)
+}
+
+// withAppEnv puts the app settings' env after the process environment, so it overrides it and the
+// variables Kira adds afterwards override it.
+func withAppEnv(environ []string, app *harness.AppConfig) []string {
+	if app == nil {
+		return environ
+	}
+	return append(slices.Clone(environ), app.Env...)
 }
 
 // runEnd is what a headless agent run left behind.

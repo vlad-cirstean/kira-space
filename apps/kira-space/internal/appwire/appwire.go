@@ -345,7 +345,7 @@ func Build(opts Options) *Wired {
 		},
 		EmitLog:      func(p scriptruns.LogPush) { emitter.Emit(bridge.ChannelScriptRunLog, p) },
 		SmartTimeout: opts.SmartTimeout, ScheduleTimeout: opts.ScheduleTimeout, Prompts: w.Prompts, LlmPrompts: promptStore,
-		Agent: w.Agents, ContextFile: w.AgentContext.ContextFile,
+		Agent: w.Agents, ContextFile: w.AgentContext.ContextFile, AgentConfig: w.agentConfig(),
 	}
 	if opts.Clock != nil {
 		runs.Now = opts.Clock.Now
@@ -549,7 +549,6 @@ func (w *Wired) teardown(db io.Closer) {
 	// swaps a bundle the user quit away from. After hand-off this is a no-op.
 	w.UpdateInstall.Cancel()
 	w.stopAgentContext()
-	w.closeAgentSettings()
 	w.OpenedFiles.Close()
 	w.detachMetrics()
 	w.detachOpLog()
@@ -564,6 +563,7 @@ func (w *Wired) teardown(db io.Closer) {
 	w.runs.Close()
 	shutdownTracker(w.Tracker, w.AgentHooks)
 	w.AdeBoard.Close()
+	w.closeAgentSettings()
 	w.detachGitCred()
 	// Before DB close: ends open streams and aborts parked pairing requests.
 	bridge.StopMobile(w.Mobile)
@@ -619,6 +619,9 @@ func (w *Wired) wireAgentSettings(registry *harness.Registry, repositories *repo
 		return w.watchAgentContext(events)
 	}
 	w.AgentSettings = store
+	if err := store.Sweep(filepath.Join(home, "ade", "runs"), filepath.Join(home, "automations-mcp")); err != nil {
+		slog.Warn("agent settings: sweep", "scope", "startup", "err", err)
+	}
 	store.View() // follows the file into the DB projection
 	if err := store.WriteDocs(w.AgentContext.DocModel()); err != nil {
 		slog.Warn("agent settings: write docs", "scope", "startup", "err", err)
@@ -644,9 +647,20 @@ func (w *Wired) watchAgentContext(events *bridge.Events) func() {
 	return stop
 }
 
+// agentConfig is the launch-time preparer of the agent settings; nil when the store did not build.
+func (w *Wired) agentConfig() agentcfg.PrepareFunc {
+	if w.AgentSettings == nil {
+		return nil
+	}
+	return w.AgentSettings.Prepare
+}
+
 func (w *Wired) closeAgentSettings() {
 	if w.stopAgentConfig != nil {
 		w.stopAgentConfig()
+	}
+	if w.AgentSettings != nil {
+		_ = w.AgentSettings.Close()
 	}
 	if w.AgentSecrets != nil {
 		_ = w.AgentSecrets.Close()

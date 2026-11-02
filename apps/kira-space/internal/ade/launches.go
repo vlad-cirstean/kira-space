@@ -11,6 +11,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/harness"
 )
@@ -433,13 +434,20 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 	}
 	ids = append(ids, agentmcp.SpaceToolIDs...)
 	pa.MCPConfig, pa.AllowedTools = cfg, harness.ToolNames(agent, ids...)
-	res, err := tr.Prepare(pa)
+	prep, err := b.prepareApp(ctx, agentcfg.Launch{Provider: agent, Kind: harness.LaunchInteractive, Dir: b.deps.AgentDir, Stem: "tui-" + b.newID()})
 	if err != nil {
 		release()
 		return adewire.Launch{}, err
 	}
+	pa.App = prep.App
+	res, err := tr.Prepare(pa)
+	if err != nil {
+		release()
+		prep.Release()
+		return adewire.Launch{}, err
+	}
 	pa.Op.SetCommand(res.Command)
-	b.bindTUI(res.RecordID, runID, release)
+	b.bindTUI(res.RecordID, runID, func() { release(); prep.Release() })
 	return launchOf(res), nil
 }
 

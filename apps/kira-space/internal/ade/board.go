@@ -25,6 +25,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/harness"
@@ -88,6 +89,8 @@ type TaskBoardDeps struct {
 	AgentBin string
 	// ContextFile returns the path of the agent context for a run, "" for none; nil = none.
 	ContextFile func() (string, error)
+	// AgentConfig prepares the app's agent settings for a launch; nil = none.
+	AgentConfig agentcfg.PrepareFunc
 	// Tracker records and launches interactive (TUI) task sessions.
 	Tracker *Tracker
 	// CloseTerminal closes a running terminal by id (Archive).

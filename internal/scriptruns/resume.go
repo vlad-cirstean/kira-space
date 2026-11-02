@@ -1,11 +1,15 @@
 package scriptruns
 
 import (
+	"context"
 	"errors"
 	"log/slog"
+	"path/filepath"
 	"slices"
 	"strings"
 
+	"github.com/google/uuid"
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
@@ -149,14 +153,30 @@ func (s *Service) ResumeCommand(id string) (ResumeLaunch, error) {
 	if err != nil {
 		return ResumeLaunch{}, ipcerr.InternalErr(err)
 	}
-	l := prov.InteractiveCommand(harness.InteractiveSpec{SessionID: run.SessionID, Resume: true, ContextFile: contextFile})
+	prep, err := s.prepareApp(prov)
+	if err != nil {
+		return ResumeLaunch{}, ipcerr.BadRequest(err.Error())
+	}
+	l := prov.InteractiveCommand(harness.InteractiveSpec{SessionID: run.SessionID, Resume: true, ContextFile: contextFile, App: prep.App})
 	out := ResumeLaunch{Command: l.Command}
-	if len(l.Env) > 0 {
-		if out.Token, err = s.newAgentLaunch(l.Command, l.Env); err != nil {
+	if len(l.Env) > 0 || prep.App != nil {
+		if out.Token, err = s.newAgentLaunch(l.Command, l.Env, prep.Release); err != nil {
+			prep.Release()
 			return ResumeLaunch{}, err
 		}
 	}
 	return out, nil
+}
+
+// prepareApp prepares the app's agent settings for a Continue in terminal launch; none without a preparer.
+// A failure names the reference that did not resolve, never a value.
+func (s *Service) prepareApp(prov harness.Provider) (agentcfg.Prepared, error) {
+	if s.AgentConfig == nil {
+		return agentcfg.Prepared{Release: func() {}}, nil
+	}
+	return s.AgentConfig(context.Background(), agentcfg.Launch{
+		Provider: prov, Kind: harness.LaunchInteractive, Dir: filepath.Join(s.Home, "automations-mcp"), Stem: "tui-" + uuid.NewString(),
+	})
 }
 
 // providerGone maps an unregistered stored provider to its user-facing error.

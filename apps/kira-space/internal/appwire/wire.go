@@ -211,6 +211,7 @@ func wireAdeTask(
 	board := ade.NewTaskBoard(ade.TaskBoardDeps{
 		Agent:       agents,
 		ContextFile: runs.ContextFile,
+		AgentConfig: runs.AgentConfig,
 		Ops:         git.opLog,
 		Prompts:     runs.LlmPrompts, PromptSink: promptSink,
 		Tasks: repositories.AdeTasks, Statuses: repositories.AdeStatuses, RepoConfig: repositories.AdeRepoConfig,

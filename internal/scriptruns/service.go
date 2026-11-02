@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/harness"
@@ -48,6 +49,8 @@ type Service struct {
 	Agent harness.Selector
 	// ContextFile returns the path of the agent context for a launch, "" for none; nil = none.
 	ContextFile func() (string, error)
+	// AgentConfig prepares the app's agent settings for a Continue in terminal launch; nil = none.
+	AgentConfig agentcfg.PrepareFunc
 	// Getenv reads the user's environment to resolve their login shell; nil means os.Getenv.
 	Getenv func(string) string
 	// SmartTimeout, when positive, replaces every smart run's own timeout (a flow test).
@@ -72,6 +75,7 @@ type Service struct {
 	finishes      map[string]agentmcp.Finish
 	launches      map[string]launch
 	agentLaunches map[string]agentLaunch
+	agentTerms    map[string]func() // terminal id -> release of its agent settings files
 	server        *agentmcp.Server
 	smartWait     sync.WaitGroup
 	bgWait        sync.WaitGroup
@@ -105,13 +109,15 @@ func (s *Service) emit(r Run) {
 	}
 }
 
-// BeginAgent consumes the token ResumeCommand made and returns the env its agent launch needs.
-func (s *Service) BeginAgent(token, command string) ([]string, error) {
-	env, ok := s.takeAgentLaunch(token, command)
+// BeginAgent consumes the token ResumeCommand made, binds the launch's settings files to the terminal
+// (removed when it exits) and returns the env its agent launch needs.
+func (s *Service) BeginAgent(token, command, terminalID string) ([]string, error) {
+	l, ok := s.takeAgentLaunch(token, command)
 	if !ok {
 		return nil, ipcerr.T(ipcerr.CodeConflict, "backend.core.scriptRun.expired.body", nil)
 	}
-	return env, nil
+	s.bindAgentRelease(terminalID, l.release)
+	return l.env, nil
 }
 
 // Begin loads the script, prepares its folder and records a running run. A blocked folder records
@@ -205,6 +211,9 @@ func (s *Service) Failed(runID string, err error) {
 
 // Exited records how the run's session ended. A second call for the same session is a no-op.
 func (s *Service) Exited(terminalID string, code int, cause terminal.CloseCause) {
+	if s.releaseAgent(terminalID) {
+		return // a Continue in terminal session: no run row follows it
+	}
 	p := runoutcome.Process{Kind: runoutcome.KindScript, ExitCode: code, App: s.App}
 	switch cause {
 	case terminal.CauseUser:

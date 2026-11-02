@@ -265,6 +265,7 @@ func (s *Service) Close() {
 	}
 	srv := s.server
 	s.mu.Unlock()
+	s.releaseAllAgents()
 	for _, r := range runs {
 		r.stop(endQuit)
 	}

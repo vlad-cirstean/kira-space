@@ -55,8 +55,9 @@ type ScriptLauncher interface {
 	// folder, an unknown script or a token that expired.
 	Begin(scriptID, terminalID, launchToken string) (ScriptLaunch, error)
 	// BeginAgent consumes the single-use token of an agent launch whose env the host holds and
-	// returns that env. An error is the caller's: a token that expired or names another command.
-	BeginAgent(token, command string) ([]string, error)
+	// returns that env. The launch's per-run files go when terminalID exits. An error is the caller's:
+	// a token that expired or names another command.
+	BeginAgent(token, command, terminalID string) ([]string, error)
 	// Failed records that the run's session did not spawn.
 	Failed(runID string, err error)
 	// Exited records how the run's session ended.
@@ -136,7 +137,7 @@ func (b *BoundService) beginAgent(args OpenArgs) ([]string, error) {
 	if b.Scripts == nil {
 		return nil, ipcerr.Contract("agent launch tokens are not available")
 	}
-	return b.Scripts.BeginAgent(args.AgentLaunchToken, args.Command)
+	return b.Scripts.BeginAgent(args.AgentLaunchToken, args.Command, args.TerminalID)
 }
 
 // Open validates args, spawns a new session and returns its resolved shell path. terminalId is
@@ -188,23 +189,21 @@ func (b *BoundService) Open(args OpenArgs) (OpenResult, error) {
 	if composedAgent {
 		composed, composedEnv, err := b.ComposeAgent(args.TerminalID, args.Cwd, command)
 		if err != nil {
+			b.releaseAgentLaunch(args, scriptRun)
 			return OpenResult{}, ipcerr.BadRequest(err.Error())
 		}
 		// ValidateOpen already checked args.Command alone; composing can grow it (the `--settings`
 		// flag, a quoted prompt), so the same bound is rechecked here with the same message.
 		if len(composed) > MaxCommandBytes {
 			b.abortAgent(args.TerminalID)
+			b.releaseAgentLaunch(args, scriptRun)
 			return OpenResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.core.terminal.commandTooLong.body", nil)
 		}
 		command, env = composed, append(slices.Clone(scriptEnv), composedEnv...)
 	}
 
 	tap, onExit := b.outputTaps(agent, scriptRun != "", args.TerminalID)
-	var onEnd func(int, CloseCause)
-	if scriptRun != "" {
-		id := args.TerminalID
-		onEnd = func(code int, cause CloseCause) { b.Scripts.Exited(id, code, cause) }
-	}
+	onEnd := b.exitHook(args, scriptRun)
 	sess, err := b.svc().OpenWithCoalescedOutput(OpenParams{
 		ID:        args.TerminalID,
 		WindowKey: args.WindowKey,
@@ -217,6 +216,7 @@ func (b *BoundService) Open(args OpenArgs) (OpenResult, error) {
 		OnEnd:     onEnd,
 	}, args.WindowKey, args.TerminalID, tap, onExit)
 	if err != nil {
+		b.releaseAgentLaunch(args, scriptRun)
 		if composedAgent {
 			b.abortAgent(args.TerminalID)
 		}
@@ -236,6 +236,23 @@ func (b *BoundService) Open(args OpenArgs) (OpenResult, error) {
 		b.Arbiter.Opened(args.TerminalID, args.Cols, args.Rows)
 	}
 	return OpenResult{Shell: sess.Shell()}, nil
+}
+
+// exitHook reports a script or Continue in terminal session's end to the launcher; nil for others.
+func (b *BoundService) exitHook(args OpenArgs, scriptRun string) func(int, CloseCause) {
+	if scriptRun == "" && args.AgentLaunchToken == "" {
+		return nil
+	}
+	id := args.TerminalID
+	return func(code int, cause CloseCause) { b.Scripts.Exited(id, code, cause) }
+}
+
+// releaseAgentLaunch removes the per-run files of a Continue in terminal launch whose session never
+// started: no exit will come for it.
+func (b *BoundService) releaseAgentLaunch(args OpenArgs, scriptRun string) {
+	if args.AgentLaunchToken != "" && scriptRun == "" {
+		b.Scripts.Exited(args.TerminalID, 0, CauseUser)
+	}
 }
 
 // outputTaps builds the reader-goroutine tap and exit hook for an agent session (arbiter) and a script
