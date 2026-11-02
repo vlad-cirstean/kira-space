@@ -25,11 +25,11 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+    - uses: oven-sh/setup-bun@v2
       if: inputs.bun == 'true'
       with:
         bun-version: 1.4.4
-    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+    - uses: actions/setup-go@v7
       with:
         go-version-file: go.mod
         cache: false
@@ -41,14 +41,14 @@ runs:
     - name: Cache Go modules (keyed on go.sum)
       id: gomod
       if: inputs.cache-save == 'true'
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      uses: actions/cache@v6
       with:
         path: ${{ env.GOMODCACHE_DIR }}
         key: gomod-${{ runner.os }}-${{ hashFiles('go.sum') }}
     - name: Restore Go modules (keyed on go.sum)
       id: gomod-restore
       if: inputs.cache-save != 'true'
-      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      uses: actions/cache/restore@v6
       with:
         path: ${{ env.GOMODCACHE_DIR }}
         key: gomod-${{ runner.os }}-${{ hashFiles('go.sum') }}
@@ -59,7 +59,7 @@ runs:
       run: sh scripts/retry.sh 3 120 go mod download
     - name: Cache Go build and test results (saved per commit, restored from the newest entry; setup-go's go.sum-keyed entry is never refreshed and goes stale)
       if: inputs.go-cache != '' && inputs.cache-save == 'true'
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      uses: actions/cache@v6
       with:
         path: ${{ env.GOCACHE_DIR }}
         key: gobuild-${{ runner.os }}-${{ inputs.go-cache }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
@@ -68,7 +68,7 @@ runs:
           gobuild-${{ runner.os }}-${{ inputs.go-cache }}-
     - name: Restore Go build and test results (saved per commit, restored from the newest entry; setup-go's go.sum-keyed entry is never refreshed and goes stale)
       if: inputs.go-cache != '' && inputs.cache-save != 'true'
-      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      uses: actions/cache/restore@v6
       with:
         path: ${{ env.GOCACHE_DIR }}
         key: gobuild-${{ runner.os }}-${{ inputs.go-cache }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
@@ -77,13 +77,13 @@ runs:
           gobuild-${{ runner.os }}-${{ inputs.go-cache }}-
     - name: Cache bun install (keyed on the lockfile, so an unchanged dependency set skips re-download)
       if: inputs.bun == 'true' && inputs.cache-save == 'true'
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      uses: actions/cache@v6
       with:
         path: ~/.bun/install/cache
         key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
     - name: Restore bun install (keyed on the lockfile, so an unchanged dependency set skips re-download)
       if: inputs.bun == 'true' && inputs.cache-save != 'true'
-      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      uses: actions/cache/restore@v6
       with:
         path: ~/.bun/install/cache
         key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
@@ -93,19 +93,19 @@ runs:
       run: bun install --frozen-lockfile
     - name: Cache wails3 CLI (go.mod-keyed, OS-specific binary)
       if: inputs.bindings == 'true' && inputs.cache-save == 'true'
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      uses: actions/cache@v6
       with:
         path: ~/go/bin/wails3
         key: wails3-${{ runner.os }}-${{ hashFiles('go.mod') }}
     - name: Restore wails3 CLI (go.mod-keyed, OS-specific binary)
       if: inputs.bindings == 'true' && inputs.cache-save != 'true'
-      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      uses: actions/cache/restore@v6
       with:
         path: ~/go/bin/wails3
         key: wails3-${{ runner.os }}-${{ hashFiles('go.mod') }}
     - name: Cache generated Wails bindings (platform-independent output, shared across OSes)
       if: inputs.bindings == 'true' && inputs.cache-save == 'true'
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      uses: actions/cache@v6
       with:
         path: |
           apps/kira-studio/frontend/bindings
@@ -113,7 +113,7 @@ runs:
         key: wails-bindings-${{ hashFiles('go.mod') }}
     - name: Restore generated Wails bindings (platform-independent output, shared across OSes)
       if: inputs.bindings == 'true' && inputs.cache-save != 'true'
-      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      uses: actions/cache/restore@v6
       with:
         path: |
           apps/kira-studio/frontend/bindings

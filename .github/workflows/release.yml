@@ -78,7 +78,7 @@ jobs:
       studio-sha256: ${{ steps.sums.outputs.studio }}
       space-sha256: ${{ steps.sums.outputs.space }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.tag.outputs.sha }}
 
@@ -147,7 +147,7 @@ jobs:
           echo "studio=$(shasum -a 256 kira-studio-macos-arm64.dmg | awk '{print $1}')" >> "$GITHUB_OUTPUT"
           echo "space=$(shasum -a 256 kira-space-macos-arm64.dmg | awk '{print $1}')" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      - uses: actions/upload-artifact@v7
         with:
           name: release-dmgs
           path: |
@@ -164,7 +164,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.tag.outputs.sha }}
       - uses: ./.github/actions/setup
@@ -187,7 +187,7 @@ jobs:
       matrix:
         extreme: [min, max]
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.tag.outputs.sha }}
       - uses: ./.github/actions/setup
