@@ -1,0 +1,83 @@
+{
+  "opencode": {
+    "cliMissing": false,
+    "envNames": [
+      "KIRA_SECRET_OC_TOKEN"
+    ],
+    "files": [
+      {
+        "after": "{\n  // user comment\n  \"model\": \"anthropic/claude-opus-4-1\",\n  \"mcp\": {\n    \"local1\": {\n      \"type\": \"local\",\n      \"command\": [\"npx\", \"-y\", \"server\"],\n      \"environment\": { \"TOKEN\": \"••••\", \"HOME_REF\": \"{env:HOME}\" }\n    },\n    \"remote1\": {\n      \"type\": \"remote\",\n      \"url\": \"https://oc.example.com/mcp\",\n      \"headers\": { \"Authorization\": \"••••\" },\n      \"enabled\": false\n    },\"fresh\":{\"enabled\":true,\"headers\":{\"Authorization\":\"Bearer {env:KIRA_SECRET_OC_TOKEN}\"},\"type\":\"remote\",\"url\":\"https://fresh.example.com/mcp\"}\n  },\n  \"permission\": {\n    \"edit\": \"deny\",\n    \"bash\": {\"git push*\":\"deny\",\"git status\":\"allow\",\"rm*\":\"deny\"},\n    \"webfetch\": \"ask\"\n  },\n  \"plugin\": [\"file:///opt/plugins/a.js\", \"opencode-foo\"],\n  \"provider\": { \"anthropic\": { \"options\": { \"apiKey\": \"••••\" } } },\n  \"instructions\": [\"/x/rules.md\"]\n}\n",
+        "before": "{\n  // user comment\n  \"model\": \"anthropic/claude-sonnet-4-5\",\n  \"mcp\": {\n    \"local1\": {\n      \"type\": \"local\",\n      \"command\": [\"npx\", \"-y\", \"server\"],\n      \"environment\": { \"TOKEN\": \"••••\", \"HOME_REF\": \"{env:HOME}\" }\n    },\n    \"remote1\": {\n      \"type\": \"remote\",\n      \"url\": \"https://oc.example.com/mcp\",\n      \"headers\": { \"Authorization\": \"••••\" },\n      \"enabled\": false\n    }\n  },\n  \"permission\": {\n    \"edit\": \"deny\",\n    \"bash\": { \"git push*\": \"deny\", \"git status\": \"allow\" },\n    \"webfetch\": \"ask\"\n  },\n  \"plugin\": [\"file:///opt/plugins/a.js\", \"opencode-foo\"],\n  \"provider\": { \"anthropic\": { \"options\": { \"apiKey\": \"••••\" } } },\n  \"instructions\": [\"/x/rules.md\"]\n}\n",
+        "changed": true,
+        "exists": true,
+        "language": "json",
+        "path": "~/xdg/opencode/opencode.jsonc",
+        "role": "config"
+      },
+      {
+        "after": "Prefer small PRs.\n",
+        "before": "Prefer small PRs.\n",
+        "changed": false,
+        "exists": true,
+        "language": "markdown",
+        "path": "~/xdg/opencode/AGENTS.md",
+        "role": "context"
+      }
+    ],
+    "notes": [],
+    "provider": "opencode",
+    "servers": [],
+    "skipped": [],
+    "token": "<masked>"
+  },
+  "preview": {
+    "cliMissing": false,
+    "envNames": [
+      "HOME",
+      "KIRA_SECRET_GH_TOKEN"
+    ],
+    "files": [
+      {
+        "after": "{\n  \"env\": {\n    \"JIRA_TOKEN\": \"••••\",\n    \"NODE_ENV\": \"production\",\"PLAIN\":\"x\"\n  },\n  \"permissions\": {\n    \"allow\": [\"Bash(git status)\", \"Read\",\"Bash(ls)\"],\n    \"deny\": [\"Bash(rm:*)\"],\n    \"ask\": [\"Bash(curl:*)\"],\n    \"additionalDirectories\": [\"/srv/shared\"],\n    \"defaultMode\": \"plan\"\n  },\n  \"model\": \"sonnet\",\n  \"hooks\": {\n    \"PostToolUse\": [\n      {\n        \"matcher\": \"Edit\",\n        \"hooks\": [{ \"type\": \"command\", \"command\": \"echo edited\", \"timeout\": 10 }]\n      },{\"matcher\":\"Edit\",\"hooks\":[{\"type\":\"command\",\"command\":\"echo marked\",\"timeout\":60}]}\n    ],\n    \"SessionStart\": [\n      { \"matcher\": \"startup\", \"hooks\": [{ \"type\": \"command\", \"command\": \"echo started\" }] }\n    ],\n    \"Stop\": [{ \"hooks\": [{ \"type\": \"prompt\", \"command\": \"summarize\" }] }]\n  },\n  \"statusLine\": { \"type\": \"command\", \"command\": \"echo line\", \"padding\": 1 },\n  \"apiKeyHelper\": \"••••\",\n  \"theme\": \"dark\"\n}\n",
+        "before": "{\n  \"env\": {\n    \"JIRA_TOKEN\": \"••••\",\n    \"NODE_ENV\": \"production\"\n  },\n  \"permissions\": {\n    \"allow\": [\"Bash(git status)\", \"Read\"],\n    \"deny\": [\"Bash(rm:*)\"],\n    \"ask\": [\"Bash(curl:*)\"],\n    \"additionalDirectories\": [\"/srv/shared\"],\n    \"defaultMode\": \"plan\"\n  },\n  \"model\": \"opus\",\n  \"hooks\": {\n    \"PostToolUse\": [\n      {\n        \"matcher\": \"Edit\",\n        \"hooks\": [{ \"type\": \"command\", \"command\": \"echo edited\", \"timeout\": 10 }]\n      }\n    ],\n    \"SessionStart\": [\n      { \"matcher\": \"startup\", \"hooks\": [{ \"type\": \"command\", \"command\": \"echo started\" }] }\n    ],\n    \"Stop\": [{ \"hooks\": [{ \"type\": \"prompt\", \"command\": \"summarize\" }] }]\n  },\n  \"statusLine\": { \"type\": \"command\", \"command\": \"echo line\", \"padding\": 1 },\n  \"apiKeyHelper\": \"••••\",\n  \"theme\": \"dark\"\n}\n",
+        "changed": true,
+        "exists": true,
+        "language": "json",
+        "path": "~/dotfiles/settings.json",
+        "role": "settings"
+      },
+      {
+        "after": "Be brief.\n\nUse tabs.\n",
+        "before": "Use tabs.\n",
+        "changed": true,
+        "exists": true,
+        "language": "markdown",
+        "path": "~/.claude/CLAUDE.md",
+        "role": "context"
+      }
+    ],
+    "notes": [],
+    "provider": "claude",
+    "servers": [
+      {
+        "action": "replace",
+        "name": "gh",
+        "target": "api.example.com",
+        "transport": "http"
+      },
+      {
+        "action": "add",
+        "name": "tool",
+        "target": "tool",
+        "transport": "stdio"
+      }
+    ],
+    "skipped": [
+      {
+        "reason": "Claude doesn’t expand variables in its env settings. Set P454_E in your shell instead.",
+        "what": "env.P454_E"
+      }
+    ],
+    "token": "<masked>"
+  }
+}

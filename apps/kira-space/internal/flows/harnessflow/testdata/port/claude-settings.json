@@ -1,0 +1,29 @@
+{
+  "env": {
+    "JIRA_TOKEN": "@JIRA@",
+    "NODE_ENV": "production"
+  },
+  "permissions": {
+    "allow": ["Bash(git status)", "Read"],
+    "deny": ["Bash(rm:*)"],
+    "ask": ["Bash(curl:*)"],
+    "additionalDirectories": ["/srv/shared"],
+    "defaultMode": "plan"
+  },
+  "model": "opus",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [{ "type": "command", "command": "echo edited", "timeout": 10 }]
+      }
+    ],
+    "SessionStart": [
+      { "matcher": "startup", "hooks": [{ "type": "command", "command": "echo started" }] }
+    ],
+    "Stop": [{ "hooks": [{ "type": "prompt", "command": "summarize" }] }]
+  },
+  "statusLine": { "type": "command", "command": "echo line", "padding": 1 },
+  "apiKeyHelper": "echo @APIKEY@",
+  "theme": "dark"
+}

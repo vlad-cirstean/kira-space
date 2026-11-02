@@ -653,10 +653,10 @@ func loadsUserSettings(argv []string) bool {
 // runMCPEdit plays `claude mcp add-json -s user <name> <json>` and `claude mcp remove -s user <name>`
 // against the user config file: add-json refuses an existing name and remove an absent one, both with
 // exit 1 and the real CLI's message. Every other key of the file is kept. Argv is kept as
-// mcp-add-json-<n>.args or mcp-remove-<n>.args.
+// mcp-add-json-<n>.args or mcp-remove-<n>.args, n counting both verbs in call order.
 func runMCPEdit(dir string, args []string) int {
 	verb := args[1]
-	n := nextCount(dir, "mcp-"+verb)
+	n := nextCount(dir, "mcp-edit")
 	writeFile(filepath.Join(dir, fmt.Sprintf("mcp-%s-%d.args", verb, n)), []byte(strings.Join(args, "\n")))
 	var pos []string
 	for i := 2; i < len(args); i++ {
