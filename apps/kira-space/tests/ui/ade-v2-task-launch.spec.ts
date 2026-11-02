@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { adeBoard, adeFixture, archivedTaskFx, openPlan, openTask } from './support/adeV2';
+import { adeBoard, adeFixture, archivedTaskFx, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -14,7 +14,7 @@ const bar = (): string => `${t('ade-session-bar-row')} ${t('ade-task-launch')}`;
 
 /** Opens the task panel's Sessions tab and returns its plus. */
 async function plusOf(page: Page, id: string): Promise<Locator> {
-  await openTask(page, id);
+  await page.locator(`${card(id)} ${t('ade-card-head')}`).click();
   await page.locator(t('ade-panel-tab-sessions')).click();
   return page.locator(bar());
 }
