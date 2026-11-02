@@ -7,7 +7,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | Phase | Title | Status |
 |---|---|---|
 | P459 | Task details: drop Notes, generic labels, remove Jira PR search | Done |
-| P460 | Jira issue view: fast open, readable render, images | Todo |
+| P460 | Jira issue view: fast open, readable render, images | Done |
 | P461 | Task "+" new terminal or agent works; remove list-row terminal button | Done |
 | P462 | Global capture dialog: keyboard only, PR-derived branches | Todo |
 | P463 | Persist task tabs across task switches | Todo |
@@ -37,6 +37,8 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 - Rendering is ugly and hard to read. Restyle: typography, spacing, headings, lists, code, tables, panels, links, mentions, status chips.
 - Render images and attachments inline. No credential access: the existing CLI path stays the only fetch route (CLAUDE.md credential rule). Plan finds how to fetch image bytes without touching tokens, or states the requirement no route meets.
 - Test: Go flow for the fetch path; UI spec for render incl. an image.
+
+**Result.** Open cost was `Issue` plus `workitem view` plus a comment-list call, all fresh, in two serial stages. Now one `workitem view` per read (`Issue` only on a site's first read), comment overflow runs in parallel, and a saved copy serves under 30 s as is, under 10 min with `Stale` (window revalidates once), else one coalesced read. Window open starts a background prefetch; posting a comment drops the copy. Render: callouts (`markdown-it-github-alerts`, MIT), mention and status chips, scrolling tables, 760 px column, relative times with tooltip. Images show only as links and tiles that open in the browser: acli has no download command, the attachment content URL needs credentials Kira never touches, and the CSP allows only `img-src 'self' data:`. Open item added to ARCHITECTURE.md. Tests: Go flows `TestIssueView*`, new `TestIssueViewFetch` (spawn counts), `jira` unit tests for cache rules and parallel overflow; UI specs `issue-view`, `host-view`, new `issue-view-fetch`; contracts regenerated. Ran only P460's specs plus targeted reruns (32 UI passed; flows and jira tests pass); full suites deferred to chapter end per coordinator. A partial full UI run showed one failure, `ade-v2-branch-request` "Deny", which passed on rerun (load). No real-site check was possible.
 
 ### P461 Task "+" new terminal or agent works; remove list-row terminal button
 
