@@ -170,7 +170,12 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
         { channel: IPC.customScriptsList, response: { collections: [], scripts: [] } },
         {
           channel: IPC.scriptRunsMcpServers,
-          response: [{ name: 'fake', transport: 'stdio', target: 'fake-mcp', status: 'connected' }],
+          response: {
+            source: 'agent',
+            servers: [
+              { name: 'fake', transport: 'stdio', target: 'fake-mcp', status: 'connected' },
+            ],
+          },
         },
         { channel: IPC.customScriptsCreate, response: SMART },
       ],

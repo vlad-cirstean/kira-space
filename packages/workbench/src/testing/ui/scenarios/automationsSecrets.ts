@@ -84,7 +84,7 @@ export function registerSecretScenarios(env: Env): void {
   const base = (saved: string[], storage = ON): ControlSnapshot[] => [
     { channel: IPC.scriptRunsResolveDir, response: DIR },
     { channel: IPC.scriptRunsNextFires, response: [1_900_000_000_000] },
-    { channel: IPC.scriptRunsMcpServers, response: [] },
+    { channel: IPC.scriptRunsMcpServers, response: { source: 'agent', servers: [] } },
     {
       channel: IPC.customScriptsList,
       response: { collections: [], scripts: [script(saved)], secretStorage: storage },

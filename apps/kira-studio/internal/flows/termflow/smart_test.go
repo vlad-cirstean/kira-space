@@ -297,10 +297,10 @@ func TestSmartScript(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if want := "claude --resume '" + failed.SessionID + "'"; launch.Command != want {
+		if want := "claude --resume '" + failed.SessionID + "' '--setting-sources' 'project,local'"; launch.Command != want {
 			t.Fatalf("ResumeCommand = %q, want %q", launch.Command, want)
 		}
-		app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: strings.Replace(launch.Command, failed.SessionID, "sess-1", 1), Token: launch.Token})
+		app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: strings.Replace(launch.Command, failed.SessionID, "sess-1", 1), Token: launch.Token}, flowharness.Mask("token"))
 		if o := failed.Outcome; o.Status != "failed" || o.Reason != "summary-failed" || !o.Reported || o.Source != "agent" {
 			t.Errorf("failed = %+v", o)
 		}
@@ -584,6 +584,7 @@ func TestSmartScript(t *testing.T) {
 		restore := claude.SetMCPListTTL(0)
 		t.Cleanup(restore)
 		app := flowharness.New(t)
+		app.SetHermetic(t, false) // ticks servers of the CLI's own config
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
 			t.Fatal(err)
@@ -599,8 +600,9 @@ func TestSmartScript(t *testing.T) {
 		fake := fmt.Sprintf(`"fake":{"command":%q,"args":["--secret-arg"],"env":{"TOKEN":"SENTINEL-ENV"}}`, fakeMCP)
 		writeClaudeConfig(`{` + fake + fmt.Sprintf(`,"remote":{"type":"http","url":"http://%s/mcp","headers":{"Authorization":"Bearer SENTINEL-HDR"}},"other":{"command":%q}}`, closed, fakeMCP))
 
-		servers, err := app.W.ScriptRuns.McpServers()
-		if err != nil || len(servers) != 3 {
+		list, err := app.W.ScriptRuns.McpServers()
+		servers := list.Servers
+		if err != nil || list.Source != "agent" || len(servers) != 3 {
 			t.Fatalf("McpServers = %+v, %v", servers, err)
 		}
 		byName := map[string]harness.UserServer{}

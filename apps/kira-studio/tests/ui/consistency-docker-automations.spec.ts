@@ -118,7 +118,7 @@ const AUTOMATIONS_COMMON: ControlSnapshot[] = [
     },
   },
   { channel: IPC.scriptRunsNextFires, response: [] },
-  { channel: IPC.scriptRunsMcpServers, response: [] },
+  { channel: IPC.scriptRunsMcpServers, response: { source: 'agent', servers: [] } },
 ];
 
 test('automations front door is a module start with one new-script action', async ({

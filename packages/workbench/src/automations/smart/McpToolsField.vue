@@ -75,8 +75,12 @@ const enabled = computed(() => smart.value.mcp.map((c) => c.server));
 <template>
   <FieldSet data-testid="smart-mcp">
     <FieldLegend>{{ t('automations.smart.mcp.label') }}</FieldLegend>
-    <FieldDescription>{{ t('automations.smart.mcpHint.hint') }}</FieldDescription>
-    <QueryState :query="servers" variant="inline">
+    <FieldDescription>{{
+      servers.data.value?.source === 'app'
+        ? t('automations.smart.mcpHintApp.hint')
+        : t('automations.smart.mcpHint.hint')
+    }}</FieldDescription>
+    <QueryState :query="servers" variant="inline" :is-empty="(d) => d.servers.length === 0">
       <template #loading />
       <template #empty>
         <span class="text-kira-sm text-muted-foreground" data-testid="smart-mcp-none">{{
@@ -90,7 +94,7 @@ const enabled = computed(() => smart.value.mcp.map((c) => c.server));
       </template>
       <template #default="{ data }">
         <div
-          v-for="s in data"
+          v-for="s in data.servers"
           :key="s.name"
           class="flex flex-col gap-1"
           data-testid="smart-mcp-server"
@@ -107,9 +111,14 @@ const enabled = computed(() => smart.value.mcp.map((c) => c.server));
             <span class="truncate font-data text-kira-sm text-muted-foreground"
               >{{ s.transport }} {{ s.target }}</span
             >
-            <span class="text-kira-sm text-muted-foreground" data-testid="smart-mcp-status">{{
-              statusText(s.status)
-            }}</span>
+            <span
+              v-if="s.status !== ''"
+              class="text-kira-sm text-muted-foreground"
+              data-testid="smart-mcp-status"
+              >{{
+                statusText(s.status)
+              }}</span
+            >
           </div>
           <McpServerTools
             v-if="enabled.includes(s.name)"

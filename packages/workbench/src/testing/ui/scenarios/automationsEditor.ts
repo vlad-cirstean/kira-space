@@ -42,7 +42,7 @@ export function registerEditorScenarios(env: Env, extra?: (ctx: Ctx) => void): v
   const COMMON: ControlSnapshot[] = [
     { channel: IPC.scriptRunsResolveDir, response: DIR },
     { channel: IPC.scriptRunsNextFires, response: FIRES },
-    { channel: IPC.scriptRunsMcpServers, response: [] },
+    { channel: IPC.scriptRunsMcpServers, response: { source: 'agent', servers: [] } },
   ];
 
   const dialog = (page: Page) => page.locator('[data-testid="script-dialog"]');

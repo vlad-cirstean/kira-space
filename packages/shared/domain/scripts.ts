@@ -156,6 +156,15 @@ export const scriptMcpServerSchema = /*#__PURE__*/ z.object({
   name: z.string(),
   transport: z.string(),
   target: z.string(),
-  status: z.enum(['connected', 'failed', 'needsAuth', 'pending', 'unknown']),
+  // '' for a server from Kira's agent settings: Kira never health-checks it.
+  status: z.enum(['', 'connected', 'failed', 'needsAuth', 'pending', 'unknown']),
 });
 export type ScriptMcpServer = z.infer<typeof scriptMcpServerSchema>;
+
+// scriptMcpServerListSchema is the picker's list and its source: Kira's agent settings (app) when
+// hermetic, else the agent CLI's own list (agent).
+export const scriptMcpServerListSchema = /*#__PURE__*/ z.object({
+  source: z.enum(['app', 'agent']),
+  servers: z.array(scriptMcpServerSchema),
+});
+export type ScriptMcpServerList = z.infer<typeof scriptMcpServerListSchema>;

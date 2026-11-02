@@ -96,7 +96,7 @@ import type {
   CustomScriptFields,
   ScriptCollection,
   ScriptDir,
-  ScriptMcpServer,
+  ScriptMcpServerList,
   ScriptsSnapshot,
   SecretValues,
 } from '@shared/domain/scripts';
@@ -597,8 +597,10 @@ const studioControl = {
     ),
   scriptRunsConfirmDecline: (runId: string): Promise<void> =>
     unwrap(ScriptRunsService.ConfirmDecline({ id: runId })),
-  scriptRunsMcpServers: (): Promise<ScriptMcpServer[]> =>
-    unwrap(ScriptRunsService.McpServers()).then((r) => trust<ScriptMcpServer[]>(r ?? [])),
+  scriptRunsMcpServers: (): Promise<ScriptMcpServerList> =>
+    unwrap(ScriptRunsService.McpServers()).then((r) =>
+      trust<ScriptMcpServerList>(r ?? { source: 'agent', servers: [] }),
+    ),
 };
 
 // One exported object, composed from the methods shared with Kira Space

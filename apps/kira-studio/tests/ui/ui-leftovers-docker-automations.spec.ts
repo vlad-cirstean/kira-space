@@ -161,7 +161,7 @@ const SCRIPT_CONTROL: ControlSnapshot[] = [
     },
   },
   { channel: IPC.scriptRunsNextFires, response: [1_900_000_000_000] },
-  { channel: IPC.scriptRunsMcpServers, response: [] },
+  { channel: IPC.scriptRunsMcpServers, response: { source: 'agent', servers: [] } },
 ];
 
 async function openNewScript(page: Page): Promise<void> {

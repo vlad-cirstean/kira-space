@@ -20,6 +20,7 @@ import (
 
 func TestSmartScriptSpace(t *testing.T) {
 	app := flowharness.New(t)
+	app.SetHermetic(t, false) // ticks a server of the CLI's own config
 	app.Scenario(fakeagent.Scenario{Claude: map[string][]fakeagent.Action{"*": {{
 		Name: "done", MCP: []fakeagent.MCPCall{{Server: "fake", Tool: "echo", Args: map[string]any{"text": "hi"}}},
 	}}}})
@@ -28,8 +29,9 @@ func TestSmartScriptSpace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	servers, err := app.W.ScriptRuns.McpServers()
-	if err != nil || len(servers) != 1 || servers[0].Name != "fake" || servers[0].Target != "fake-mcp" || servers[0].Status != "connected" {
+	list, err := app.W.ScriptRuns.McpServers()
+	servers := list.Servers
+	if err != nil || list.Source != "agent" || len(servers) != 1 || servers[0].Name != "fake" || servers[0].Target != "fake-mcp" || servers[0].Status != "connected" {
 		t.Fatalf("McpServers = %+v, %v", servers, err)
 	}
 
@@ -115,8 +117,8 @@ func TestSmartScriptFailedSpace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := "claude --resume '" + run.SessionID + "'"; launch.Command != want {
+	if want := "claude --resume '" + run.SessionID + "' '--setting-sources' 'project,local'"; launch.Command != want {
 		t.Fatalf("ResumeCommand = %q, want %q", launch.Command, want)
 	}
-	app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: strings.Replace(launch.Command, run.SessionID, "sess-1", 1), Token: launch.Token})
+	app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: strings.Replace(launch.Command, run.SessionID, "sess-1", 1), Token: launch.Token}, flowharness.Mask("token"))
 }

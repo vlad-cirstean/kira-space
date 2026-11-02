@@ -261,8 +261,8 @@
     "truncated": false
   },
   "ScriptRunsService.ResumeCommand": {
-    "command": "claude --resume 'sess-1'",
-    "token": ""
+    "command": "claude --resume 'sess-1' '--setting-sources' 'project,local'",
+    "token": "<masked>"
   },
   "args:ScriptRunsService.Start": {
     "branchId": "",

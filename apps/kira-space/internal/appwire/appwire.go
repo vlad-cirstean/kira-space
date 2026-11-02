@@ -345,6 +345,10 @@ func Build(opts Options) *Wired {
 	// agent launch through adeTracker.Compose.
 	termBroker := wireTermBroker(adeTracker, terminalRegistry, emitter)
 	w.TermBroker = termBroker
+	hermetic := func() bool {
+		settings, err := repositories.Settings.GetAll()
+		return err != nil || settings.Agent.Hermetic
+	}
 	runs := &scriptruns.Service{
 		Runs: repositories.ScriptRuns, Scripts: repositories.CustomScripts, Registry: terminalRegistry, Home: deps.Home, App: "Space",
 		Emit: func(r scriptruns.Run) {
@@ -354,10 +358,8 @@ func Build(opts Options) *Wired {
 		EmitLog:      func(p scriptruns.LogPush) { emitter.Emit(bridge.ChannelScriptRunLog, p) },
 		SmartTimeout: opts.SmartTimeout, ScheduleTimeout: opts.ScheduleTimeout, Prompts: w.Prompts, LlmPrompts: promptStore,
 		Agent: w.Agents, ContextFile: w.AgentContext.ContextFile, AgentConfig: w.agentConfig(),
-		Hermetic: func() bool {
-			settings, err := repositories.Settings.GetAll()
-			return err != nil || settings.Agent.Hermetic
-		},
+		Hermetic: hermetic,
+		Servers:  agentcfg.ServerSource{Store: w.AgentSettings, Hermetic: hermetic},
 	}
 	if opts.Clock != nil {
 		runs.Now = opts.Clock.Now

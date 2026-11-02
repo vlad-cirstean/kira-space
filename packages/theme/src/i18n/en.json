@@ -503,6 +503,9 @@
       "mcpHint": {
         "hint": "Servers {agent} reports for your user config. A run that uses one loads your {agent} settings."
       },
+      "mcpHintApp": {
+        "hint": "Servers from Kira’s own agent settings, not your CLI config."
+      },
       "mcpNone": {
         "emptyHint": "No MCP servers."
       },

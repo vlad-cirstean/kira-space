@@ -68,24 +68,11 @@ func (s *Store) Prepare(ctx context.Context, l Launch) (Prepared, error) {
 		}
 		return none, nil
 	}
-	env, err := s.envLookup(ctx, set)
+	resolve, values, err := s.resolver(ctx, set)
 	if err != nil {
 		return none, err
 	}
-	res := &configfs.Resolver{Env: env, Namespace: secretNamespace}
-	if s.o.Secrets != nil {
-		res.Secrets = s.o.Secrets.Source()
-	}
-	var values []string
-	as, err := set.agentSettings(l.Provider.ID(), func(text string) (string, error) {
-		v, used, err := res.Resolve(ctx, text)
-		for _, u := range used {
-			if !slices.Contains(values, u.Value) {
-				values = append(values, u.Value)
-			}
-		}
-		return v, err
-	})
+	as, err := set.agentSettings(l.Provider.ID(), resolve)
 	if err != nil {
 		return none, fmt.Errorf("agent settings: %w", err)
 	}
@@ -101,7 +88,30 @@ func (s *Store) Prepare(ctx context.Context, l Launch) (Prepared, error) {
 		return none, err
 	}
 	s.track(files, true)
-	return Prepared{App: app, Secrets: values, Release: func() { files.remove(); s.track(files, false) }}, nil
+	return Prepared{App: app, Secrets: *values, Release: func() { files.remove(); s.track(files, false) }}, nil
+}
+
+// resolver resolves the references of one launch (env, secrets) and collects the secret values it
+// used, for a Masker. Read the collected values after every resolve call.
+func (s *Store) resolver(ctx context.Context, set Settings) (func(string) (string, error), *[]string, error) {
+	env, err := s.envLookup(ctx, set)
+	if err != nil {
+		return nil, nil, err
+	}
+	res := &configfs.Resolver{Env: env, Namespace: secretNamespace}
+	if s.o.Secrets != nil {
+		res.Secrets = s.o.Secrets.Source()
+	}
+	values := new([]string)
+	return func(text string) (string, error) {
+		v, used, err := res.Resolve(ctx, text)
+		for _, u := range used {
+			if !slices.Contains(*values, u.Value) {
+				*values = append(*values, u.Value)
+			}
+		}
+		return v, err
+	}, values, nil
 }
 
 // writeFiles writes each non-inline file of cfg into the launch dir; on an error it removes what it wrote.

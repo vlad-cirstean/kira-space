@@ -526,6 +526,7 @@ func TestAutomationStep(t *testing.T) {
 
 	t.Run("user mcp server", func(t *testing.T) {
 		f := newRunFixture(t, []fakeagent.Action{{Name: "done", MCP: []fakeagent.MCPCall{{Server: "fake", Tool: "echo", Args: map[string]any{"text": "hi"}}}}}, lintStep("    params:\n      level: high\n"))
+		f.app.SetHermetic(t, false) // ticks a server of the CLI's own config
 		cfg := fmt.Sprintf(`{"mcpServers":{"fake":{"command":%q,"env":{"TOKEN":"SENTINEL-ENV"}}}}`, filepath.Join(f.app.BinDir, "fake-mcp"))
 		if err := os.WriteFile(filepath.Join(f.app.Home, ".claude.json"), []byte(cfg), 0o644); err != nil {
 			t.Fatal(err)
@@ -557,6 +558,7 @@ func TestAutomationStep(t *testing.T) {
 
 	t.Run("user mcp server removed fails the step", func(t *testing.T) {
 		f := newRunFixture(t, []fakeagent.Action{{Name: "done"}}, lintStep("    params:\n      level: high\n"))
+		f.app.SetHermetic(t, false)
 		cfg := fmt.Sprintf(`{"mcpServers":{"other":{"command":%q}}}`, filepath.Join(f.app.BinDir, "fake-mcp"))
 		if err := os.WriteFile(filepath.Join(f.app.Home, ".claude.json"), []byte(cfg), 0o644); err != nil {
 			t.Fatal(err)

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 )
@@ -144,8 +144,8 @@ func (b *Bound) ReadLog(args ReadLogArgs) (LogPage, error) {
 	return ipcerr.InternalResult(b.Svc.Runs.ReadLog(args.ID, args.AfterSeq))
 }
 
-// McpServers lists the MCP servers the agent's CLI reports.
-func (b *Bound) McpServers() ([]harness.UserServer, error) {
+// McpServers lists the MCP servers a smart run can tick and where the list came from.
+func (b *Bound) McpServers() (agentcfg.ServerList, error) {
 	return ipcerr.InternalResult(b.Svc.McpServers(context.Background()))
 }
 

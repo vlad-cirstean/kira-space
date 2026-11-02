@@ -15,7 +15,7 @@ import type {
   CustomScriptFields,
   ScriptCollection,
   ScriptDir,
-  ScriptMcpServer,
+  ScriptMcpServerList,
   SecretValues,
 } from '@shared/domain/scripts';
 import type { SecretStorageStatus } from '@shared/domain/secrets';
@@ -93,8 +93,8 @@ export interface ScriptRunsSeam {
     secrets: Record<string, string[]>,
   ): Promise<ScriptRunStarted>;
   confirmDecline(runId: string): Promise<void>;
-  /** MCP servers claude reports. */
-  mcpServers(): Promise<ScriptMcpServer[]>;
+  /** The MCP servers a smart run can tick and where the list came from. */
+  mcpServers(): Promise<ScriptMcpServerList>;
 }
 
 export interface AutomationsModuleContext {

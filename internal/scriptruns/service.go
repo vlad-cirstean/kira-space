@@ -51,6 +51,9 @@ type Service struct {
 	ContextFile func() (string, error)
 	// AgentConfig prepares the app's agent settings for a Continue in terminal launch; nil = none.
 	AgentConfig agentcfg.PrepareFunc
+	// Servers is where a smart run's ticked MCP servers come from (hermetic: the app's agent
+	// settings, else the agent CLI's own list); the zero value reads the CLI.
+	Servers agentcfg.ServerSource
 	// Hermetic reports the agent.hermetic setting, read fresh per launch; nil = on.
 	Hermetic func() bool
 	// Getenv reads the user's environment to resolve their login shell; nil means os.Getenv.

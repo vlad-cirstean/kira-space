@@ -3,12 +3,12 @@ package ade
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
@@ -95,21 +95,21 @@ func (s *smartStep) mcpNames() []string {
 	return names
 }
 
-// checkMCP fails with harness.ErrServerGone when a ticked user server is missing from the agent's
-// list for the scripts home (the picker's folder, never a project's `.mcp.json`), so a removed server stops the step instead of running it without its tools.
-func (s *smartStep) checkMCP(ctx context.Context, agent harness.Provider, home string) error {
+// checkMCP fails with harness.ErrServerGone when a ticked server is missing from its source: the
+// app's agent settings when hermetic, else the agent's list for the scripts home (the picker's
+// folder, never a project's `.mcp.json`). A removed server stops the step instead of running it
+// without its tools.
+func (s *smartStep) checkMCP(ctx context.Context, src agentcfg.ServerSource, agent harness.Provider, home string) error {
 	names := s.mcpNames()
 	if len(names) == 0 {
 		return nil
 	}
-	have, _, err := agent.UserMCPPresence(ctx, home, names, true)
+	missing, _, err := src.Missing(ctx, agent, home, names, true)
 	if err != nil {
 		return err
 	}
-	for _, name := range names {
-		if !slices.ContainsFunc(have, func(u harness.UserServer) bool { return u.Name == name }) {
-			return harness.ErrServerGone{Name: name, Agent: agent.Label()}
-		}
+	if missing != "" {
+		return src.Gone(agent, missing)
 	}
 	return nil
 }

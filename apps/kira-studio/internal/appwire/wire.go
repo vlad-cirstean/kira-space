@@ -184,7 +184,11 @@ func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, kee
 		Projection: configfs.TableProjection{DB: deps.Repos.CustomScripts.DB, Folder: agentctx.Folder}, App: "Studio",
 	})
 	agentContext.View() // follows the file into the DB projection
-	agentStore, closeAgent := openAgentSettings(agents.Registry, deps, opts)
+	agentStore, agentSettings, closeAgent := openAgentSettings(agents.Registry, deps, opts)
+	hermetic := func() bool {
+		settings, err := deps.Repos.Settings.GetAll()
+		return err != nil || settings.Agent.Hermetic
+	}
 	runs := &scriptruns.Service{
 		ContextFile: agentContext.ContextFile, AgentConfig: agentStore,
 		Runs: deps.Repos.ScriptRuns, Scripts: deps.Repos.CustomScripts, Registry: registry, Home: deps.Home, App: "Studio",
@@ -192,10 +196,8 @@ func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, kee
 		EmitLog:      func(p scriptruns.LogPush) { deps.Events.Emit(bridge.ChannelScriptRunLog, p) },
 		SmartTimeout: opts.SmartTimeout, ScheduleTimeout: opts.ScheduleTimeout,
 		Prompts: promptRouter, LlmPrompts: deps.Prompts, Agent: agents,
-		Hermetic: func() bool {
-			settings, err := deps.Repos.Settings.GetAll()
-			return err != nil || settings.Agent.Hermetic
-		},
+		Hermetic: hermetic,
+		Servers:  agentcfg.ServerSource{Store: agentSettings, Hermetic: hermetic},
 	}
 	if opts.Clock != nil {
 		runs.Now = opts.Clock.Now
@@ -337,7 +339,7 @@ func dockerOptions(opts Options, restore docker.RestoreStore) []docker.Option {
 // openAgentSettings opens the shared credential store and the settings store Space edits. A
 // failure leaves launches without settings, never without Kira's own wiring. The returned func
 // removes this app's run files and closes the credential store.
-func openAgentSettings(registry *harness.Registry, deps appcore.Deps, opts Options) (agentcfg.PrepareFunc, func()) {
+func openAgentSettings(registry *harness.Registry, deps appcore.Deps, opts Options) (agentcfg.PrepareFunc, *agentcfg.Store, func()) {
 	sec, err := agentcfg.OpenSecrets(kirapaths.SharedAgentSecrets(), opts.Cipher)
 	if err != nil {
 		slog.Warn("agent settings: open secrets", "scope", "startup", "err", err)
@@ -348,13 +350,13 @@ func openAgentSettings(registry *harness.Registry, deps appcore.Deps, opts Optio
 	})
 	if err != nil {
 		slog.Warn("agent settings: build", "scope", "startup", "err", err)
-		return nil, func() { closeSecrets(sec) }
+		return nil, nil, func() { closeSecrets(sec) }
 	}
 	if err := store.Sweep(filepath.Join(deps.Home, "automations-mcp")); err != nil {
 		slog.Warn("agent settings: sweep", "scope", "startup", "err", err)
 	}
 	store.View() // follows the file into the DB projection
-	return store.Prepare, func() {
+	return store.Prepare, store, func() {
 		_ = store.Close()
 		closeSecrets(sec)
 	}

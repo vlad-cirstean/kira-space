@@ -102,7 +102,8 @@ type planned struct {
 	params  []RunParam
 	envList []string
 	// mask hides every secret value the run gets; nil when it has none.
-	mask *secrets.Masker
+	mask       *secrets.Masker
+	secretVals []string
 	// sent is the full prompt text a smart run sends: the resolved body, then the suffix.
 	sent    string
 	smart   scripts.Smart
@@ -182,7 +183,7 @@ func (s *Service) plan(ctx context.Context, args RunArgs, o planOpts) (*planned,
 		}
 		p.params = append(p.params, RunParam{Name: v.Name, Value: shown})
 	}
-	p.mask = secrets.NewMasker(secretVals...)
+	p.mask, p.secretVals = secrets.NewMasker(secretVals...), secretVals
 	if rec.Kind != scripts.KindSmart {
 		pv.Command = rec.Command
 		if err := s.planADE(args, p, &pv, rec.Command, rendered); err != nil {
@@ -341,23 +342,14 @@ func (s *Service) smartBlocker(ctx context.Context, agent harness.Provider, mcp 
 	if len(mcp) == 0 {
 		return ""
 	}
-	have, known, err := agent.UserMCPPresence(ctx, s.Home, mcp, !informational)
+	missing, known, err := s.Servers.Missing(ctx, agent, s.Home, mcp, !informational)
 	if err != nil {
 		return err.Error()
 	}
-	if !known {
+	if !known || missing == "" {
 		return ""
 	}
-	for _, name := range mcp {
-		found := false
-		for _, h := range have {
-			found = found || h.Name == name
-		}
-		if !found {
-			return harness.ErrServerGone{Name: name, Agent: agent.Label()}.Error()
-		}
-	}
-	return ""
+	return s.Servers.Gone(agent, missing).Error()
 }
 
 func finishPreview(pv Preview, p *planned) Preview {

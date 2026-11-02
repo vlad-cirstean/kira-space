@@ -801,7 +801,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		return
 	}
 	if l.smart != nil {
-		if err := l.smart.checkMCP(ctx, l.agent, b.deps.ScriptsHome); err != nil {
+		if err := l.smart.checkMCP(ctx, b.deps.Servers, l.agent, b.deps.ScriptsHome); err != nil {
 			fail(err)
 			return
 		}
@@ -835,13 +835,23 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		return
 	}
 	defer prep.Release()
-	sink.setMask(secrets.NewMasker(prep.Secrets...))
+	ticked := agentcfg.Ticked{Release: func() {}}
+	if l.smart != nil {
+		ticked, err = b.deps.Servers.Wire(ctx, agentcfg.Launch{Provider: l.agent, Kind: harness.LaunchHeadless, Dir: b.deps.AgentDir, Stem: run.ID}, l.smart.mcpNames())
+		if err != nil {
+			release()
+			fail(err)
+			return
+		}
+	}
+	defer ticked.Release()
+	sink.setMask(secrets.NewMasker(append(slices.Clone(prep.Secrets), ticked.Secrets...)...))
 	agent := l.agent
 	spec := harness.HeadlessSpec{
 		Bin: b.deps.AgentBin, Dir: l.path, Prompt: l.prompt, SessionID: b.sessionAgentID(sessionID),
 		Resume: l.resume, MCPConfigs: []string{cfg}, Config: b.configScope(), AllowedTools: roundTools(agent, allowedTools(agent, def.AllowedTools, space), round), DisallowedTools: def.DisallowedTools,
 		Timeout: l.timeout, Stage: stageValues(def.Settings, agent), ContextFile: l.contextFile, App: prep.App,
-		Hermetic: b.hermetic(),
+		Hermetic: b.hermetic() && len(ticked.UserMCP) == 0,
 	}
 	spec.Env = gitprepare.BuildEnv(withAppEnv(os.Environ(), prep.App), gitprepare.Vars{WorktreePath: l.path})
 	if rebase {
@@ -852,8 +862,11 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	}
 	if l.smart != nil {
 		spec = l.smart.spec(agent, spec, space)
-		if names := l.smart.mcpNames(); len(names) > 0 {
-			spec.UserMCP, spec.GrantMCP = names, []string{agentmcp.ServerName}
+		if len(ticked.UserMCP) > 0 {
+			spec.UserMCP, spec.GrantMCP = ticked.UserMCP, []string{agentmcp.ServerName}
+		}
+		if ticked.MCPConfig != "" {
+			spec.MCPConfigs = append(spec.MCPConfigs, ticked.MCPConfig)
 		}
 	}
 	spec = b.applySandbox(spec, sbx, l)
