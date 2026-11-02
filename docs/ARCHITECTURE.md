@@ -2243,6 +2243,10 @@ and `docs/HISTORY.md (v2.0)`.
 - Frontend: `hostview/CommentComposer.vue` (Markdown source in a textarea, Edit and Preview tabs). TanStack mutation with optimistic pending comment, rollback on error, invalidate on settle. Draft in session storage per window, kind and thread. HostViewWindow cancels window-level dragover and drop so a stray drop never navigates the webview.
 - Tests: `flows/githostflow/comments_test.go` (contract `host-view-comments`), `tests/ui/host-view-comments.spec.ts`.
 
+### Tab counts (P466)
+
+ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBadge`. Labels carry no number; the count goes in the item's `count`.
+
 ### Clipboard capture (P430)
 
 - Global hotkey (default `CmdOrCtrl+Shift+K`, user-set in Settings > Capture, on by default) opens a small popup showing the clipboard text with actions that fit it. Wails `App.GlobalShortcut` registers the chord; `App.Clipboard.Text` reads it. No new library. No Accessibility permission, no selection reading.

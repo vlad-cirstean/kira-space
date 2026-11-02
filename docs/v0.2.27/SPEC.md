@@ -13,7 +13,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P463 | Persist task tabs across task switches | Done |
 | P464 | Review window: default tab, PR line comment, send clears, resizable panels | Todo |
 | P465 | Review window: re-review on edits, visual indicators, next/prev unreviewed | Todo |
-| P466 | ADE panel tabs: grey circle count badges | Todo |
+| P466 | ADE panel tabs: grey circle count badges | Done |
 | P467 | Start a workflow without a repo | Todo |
 | P468 | Agent branch and worktree requests: nanoid worktree name, branch in task | Todo |
 | P469 | Stage move: advance button with close-session prompt | Todo |
@@ -83,6 +83,8 @@ Result: Cause frontend. Task tab, branch tab and picked session were single glob
 
 - ADE panel tabs showing a number show it in a grey circle. Distinctive, not distracting. Tailwind; one shared badge component.
 - Test: UI spec.
+
+Result: `SecondaryTabs` gets opt-in `countBadge` (`Badge variant="count"`, `px-1` so one digit is a circle). Task, branch, archived Sessions tabs and the All sessions Running/Stopped filter pass `count`; labels lose `{count}` (`space.common.sessions.label` added, `space.ade.panel.sessionsTab` and `space.ade.sessionList.trigger` removed). Sessions menu trigger uses the same Badge. U101 exemptions added for `SecondaryTabs.vue` and `AdeSessionsMenu.vue`. Also fixed a pre-existing `hostViewIssue` typecheck error (`fresh` default). Ran: typecheck space-web, space-tests, web:studio, lint; UI specs `ade-v2-panel-tabs` (new test), `ade-v2-needs`, `ade-v2-sessions-menu`, `ade-v2-archived`, `ui-leftovers`, `copy-coverage` pass. Visual `ade-sessions-menu`, `ade-sandbox` pass; `ade-plan-branches` diffs on an icon glyph only (sandbox font, no tab row), baseline untouched.
 
 ### P467 Start a workflow without a repo
 
