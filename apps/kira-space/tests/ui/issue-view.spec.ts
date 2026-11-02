@@ -53,22 +53,14 @@ test('issue renders header, description, comments and sidebar', async ({ relaunc
   await expect(page.locator(t('issue-side-label'))).toHaveText(['backend', 'export']);
   await expect(page.locator(t('issue-side-component'))).toHaveText(['Reports', 'API']);
   await expect(page.locator(t('issue-side-parent'))).toContainText('PROJ-1 Reporting epic');
-  const prs = page.locator(t('issue-side-pull-request'));
-  await expect(prs).toHaveCount(1);
-  await expect(prs).toContainText('#12 PROJ-12 export csv');
-  await expect(page.locator(t('issue-side-pull-requests-gap'))).toBeVisible();
+  await expect(page.locator(t('issue-side-pull-requests-count'))).toHaveText('2 pull requests');
 });
 
-test('the PR row and the parent open their own views', async ({ relaunch }) => {
+test('the parent opens its own view', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({ control: issueControl(issueOk, [OPEN]) });
-  await page.locator(t('issue-side-pull-request-open')).click();
-  await expect.poll(() => calls(control, IPC.hostViewOpen)).toHaveLength(1);
-  expect(calls(control, IPC.hostViewOpen)[0]?.args).toEqual({
-    url: 'https://forge.test/acme/api/-/merge_requests/12',
-  });
   await page.locator(t('issue-side-parent-open')).click();
-  await expect.poll(() => calls(control, IPC.hostViewOpen)).toHaveLength(2);
-  expect(calls(control, IPC.hostViewOpen)[1]?.args).toEqual({ url: 'PROJ-1' });
+  await expect.poll(() => calls(control, IPC.hostViewOpen)).toHaveLength(1);
+  expect(calls(control, IPC.hostViewOpen)[0]?.args).toEqual({ url: 'PROJ-1' });
 });
 
 test('Open on Jira and Copy link use the browse URL', async ({ relaunch }) => {

@@ -29,9 +29,7 @@ const NO_TRACKER_ISSUE = {
   status: '',
   statusCategory: '',
   summary: { known: false, count: 0, state: '', providers: [] },
-  changeRequests: [],
   reason: 'noTracker',
-  changeRequestsReason: '',
 };
 
 const REBASE_PREVIEW = {
