@@ -1,6 +1,13 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { adeFixture, openAdvanced, openPlan, openWorkflows, saved } from './support/adeV2';
+import {
+  adeFixture,
+  openAdvanced,
+  openPlan,
+  openTask,
+  openWorkflows,
+  saved,
+} from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -115,12 +122,11 @@ test('the plus menu offers each installed agent and sends the provider', async (
     ...bothList,
     { channel: IPC.adeTaskStartAdHoc, response: launch },
   ]);
-  await page
-    .locator(`[data-testid="ade-card"][data-task-id="T_cart"] ${t('ade-task-launch')}`)
-    .click();
-  await expect(page.locator(t('ade-task-launch-agent-claude-b_cart'))).toBeVisible();
-  await page.locator(t('ade-task-launch-agent-opencode-b_cart')).focus();
-  await page.keyboard.press('Enter');
+  await openTask(page, 'T_cart');
+  await page.locator(t('ade-panel-tab-sessions')).click();
+  await page.locator(`${t('ade-session-bar-row')} ${t('ade-task-launch')}`).click();
+  await expect(page.locator(t('ade-task-launch-agent-claude-b_cart'))).toBeInViewport();
+  await page.locator(t('ade-task-launch-agent-opencode-b_cart')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStartAdHoc)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskStartAdHoc)[0]?.args).toEqual({
     branchId: 'b_cart',
