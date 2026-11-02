@@ -137,7 +137,7 @@ func TestProfileAllowsMCPConfigs(t *testing.T) {
 	for _, m := range regexp.MustCompile(`\(regex #"([^"]+)"\)`).FindAllStringSubmatch(allowRead, -1) {
 		res = append(res, regexp.MustCompile(m[1]))
 	}
-	for _, name := range []string{"run-1-7.mcp.json", "run-1-app.mcp.json", "run-1-app.settings.json"} {
+	for _, name := range []string{"run-1-7.mcp.json", "run-1-app.mcp.json", "run-1-app.settings.json", "run-1-app.merged.json"} {
 		path := p.ConfigDir + "/" + name
 		ok := false
 		for _, re := range res {

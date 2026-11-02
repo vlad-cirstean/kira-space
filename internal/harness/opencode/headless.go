@@ -112,11 +112,15 @@ func mergeMCP(dst string, paths []string) error {
 	return renameio.WriteFile(dst, out, 0o600)
 }
 
-// mergedMCPPath is where a headless run merges its configs: beside the last one, named so the
-// settings store's Sweep removes it after a crash.
+// mergedMCPPath is where a headless run merges its configs: beside the last one, named
+// `<run>-app.merged.json` so the sandbox read allow and the settings store's Sweep both match it.
 func mergedMCPPath(paths []string) string {
 	last := paths[len(paths)-1]
-	return strings.TrimSuffix(last, filepath.Ext(last)) + ".merged.json"
+	base := filepath.Base(last)
+	if i := strings.LastIndex(base, "-"); i > 0 {
+		base = base[:i]
+	}
+	return filepath.Join(filepath.Dir(last), base+"-app.merged.json")
 }
 
 // runEnv is the child environment of a run and the paths to remove after it.
