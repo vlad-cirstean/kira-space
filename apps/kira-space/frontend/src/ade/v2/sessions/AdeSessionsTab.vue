@@ -90,7 +90,7 @@ watch(menuOpen, (open) => {
       />
       <AdeSessionActions v-if="current" :view="current" />
       <span class="ml-auto flex shrink-0 items-center">
-        <AdeTaskLaunchMenu :task-id="taskId" :branch-id="branchId" size="bar" />
+        <AdeTaskLaunchMenu :task-id="taskId" :branch-id="branchId" />
       </span>
     </div>
     <template v-if="current">
