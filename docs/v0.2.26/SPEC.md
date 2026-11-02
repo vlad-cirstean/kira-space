@@ -17,7 +17,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | P455 | Hermetic agent launches per provider | Done |
 | P456 | Docs, site and README for agents and secrets | Done |
 | P457 | Code review (2 rounds) | Done |
-| P458 | Close chapter v0.2.26 | Todo |
+| P458 | Close chapter v0.2.26 | Done |
 
 ## Rows
 
@@ -195,3 +195,5 @@ Result: 2 review rounds over base e415f1e6e. Round 1: 14 findings (6 Medium, 8 L
 ### P458 Close chapter v0.2.26
 
 Hand-written close per CLAUDE.md "Closing a chapter". Push, open PR to `main`.
+
+Result: chapter folded by hand into `docs/HISTORY.md`; `docs/v0.2.26/` removed; links to `plans/P449.md` and `plans/P450.md` repointed. Manual step before merge: apply `docs/pending-changes/.github__workflows__secrets-path.patch`, else the darwin CI job tests the deleted `apps/kira-studio/internal/secrets` path. Smart scripts always run isolated and get no app settings. Studio and Space host the shared agent context differently. Screenshots for the new Context, Settings and Agent panes skipped (a new shot flow is code).
