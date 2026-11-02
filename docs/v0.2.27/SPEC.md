@@ -12,7 +12,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P462 | Global capture dialog: keyboard only, PR-derived branches | Done |
 | P463 | Persist task tabs across task switches | Done |
 | P464 | Review window: default tab, PR line comment, send clears, resizable panels | Done |
-| P465 | Review window: re-review on edits, visual indicators, next/prev unreviewed | Todo |
+| P465 | Review window: re-review on edits, visual indicators, next/prev unreviewed | Done |
 | P466 | ADE panel tabs: grey circle count badges | Done |
 | P467 | Start a workflow without a repo | Done |
 | P468 | Agent branch and worktree requests: nanoid worktree name, branch in task | Todo |
@@ -80,6 +80,8 @@ Result: Compose thread opens on Question, Change second (`ReviewThread`). Send c
 - Clear visual indicators of which file needs attention: unreviewed, changed since review, reviewed.
 - Left panel gets previous and next unreviewed file buttons.
 - Test: backend flow (review, edit, file unreviewed again) and UI spec on the same scenario.
+
+Result: Change key already existed server-side (`changedSinceReview`: blob oid committed, content sha256 uncommitted); the UI ignored it. New `reviewAttention` (git-ui) maps a status to unreviewed, partial, reviewed or changed; FileTree, folder tri-state, counts, toggles and `ReviewView` toggle action use it, so a changed file shows unreviewed and one click (or its folder's) re-marks it. Rows carry `data-review-state`; changed shows warn border, name and dot, reviewed is checked and muted; headers add a changed count. Prev/next unreviewed buttons plus Alt+F8 / Shift+Alt+F8 (`review.nextUnreviewed`, `review.previousUnreviewed`, `useReviewStepping`, bound only with `MountOptions.reviewShortcuts`, set by the review window). Live refresh: new `AdeTaskService.ReviewWorkingStamp` (stat digest of listed paths, cap 5000) polled by `useReviewWorkingStamp` at `TIMING.reviewStamp`. Test support: `respond` on `ControlMockHandle`. Existing specs `ade-v2-review` (folder mark) and `ade-v2-review-working` (count) updated: their changed fixture file now counts unreviewed. `ReviewView` and `FileTree` stayed under the N10 600-line cap by moving the stepping into a lib and trimming comments. Contract `ade-review-rereview`; flow `TestReviewRereviewOnEdit`; UI spec `ade-v2-review-rereview`. Ran: `TestReviewRereviewOnEdit|TestReviewWorking`, go test ade and bridge, `bun test packages/git-ui` and shortcuts, typecheck, lint, knip; UI `ade-v2-review-rereview`, `ade-v2-review-working`, `ade-v2-review`, `repo-review-interaction`, `copy-coverage` pass; visual `ade-review-diff`, `ade-review-step`, `git-module` unchanged. Too many stamp paths returns E_CONTRACT (bridge check), a bad path E_BAD_REQUEST. No full suite.
 
 ### P466 ADE panel tabs: grey circle count badges
 
