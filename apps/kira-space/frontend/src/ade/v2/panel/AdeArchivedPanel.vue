@@ -174,7 +174,7 @@ async function onRestore(): Promise<void> {
         >
           <KeyValueList class="items-center">
             <template v-if="a.task.jira">
-              <dt>{{ t('common.product.jira.label') }}</dt>
+              <dt>{{ t('space.ade.taskTab.issue.label') }}</dt>
               <dd class="min-h-row">
                 <a
                   :href="a.task.jira.url"
@@ -188,7 +188,7 @@ async function onRestore(): Promise<void> {
               </dd>
             </template>
             <template v-if="a.task.hostLink">
-              <dt>{{ hostLabels.labels.value }}</dt>
+              <dt>{{ t('space.ade.taskTab.pr.label') }}</dt>
               <dd class="flex min-h-row items-center gap-2">
                 <AdeChip :label="hostLabels.chipOf(a.task.hostLink)" tone="grey" />
                 <a

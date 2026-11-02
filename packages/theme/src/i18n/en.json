@@ -9724,6 +9724,9 @@
         },
         "notMerging": {
           "hint": "Stays on the plan; never merged."
+        },
+        "pr": {
+          "label": "PR"
         }
       },
       "tui": {
