@@ -243,13 +243,11 @@ func (s *Service) plan(ctx context.Context, args RunArgs, o planOpts) (*planned,
 // or a model outside its catalog (the registry holds every provider's aliases, so a script may name
 // one this agent lacks).
 func agentBlocker(agent harness.Provider, model string, budgetUSD float64) string {
-	label := map[string]string{"agent": agent.Label()}
 	switch {
 	case budgetUSD > 0 && !harness.CapsCost(agent):
-		return i18n.T("backend.core.agent.noCostCap.body", label)
+		return i18n.T("backend.core.agent.noCostCap.body", map[string]string{"agent": agent.Label()})
 	case model != "" && !agent.Models().Valid(model):
-		label["model"] = model
-		return i18n.T("backend.core.agent.modelUnknown.body", label)
+		return i18n.T("backend.core.agent.modelUnknown.body", map[string]string{"agent": agent.Label(), "model": model})
 	}
 	return ""
 }
