@@ -142,7 +142,11 @@ func (s *Service) ResumeCommand(id string) (ResumeLaunch, error) {
 	if err != nil {
 		return ResumeLaunch{}, providerGone(err)
 	}
-	l := prov.InteractiveCommand(harness.InteractiveSpec{SessionID: run.SessionID, Resume: true})
+	contextFile, err := s.contextFile()
+	if err != nil {
+		return ResumeLaunch{}, ipcerr.InternalErr(err)
+	}
+	l := prov.InteractiveCommand(harness.InteractiveSpec{SessionID: run.SessionID, Resume: true, ContextFile: contextFile})
 	out := ResumeLaunch{Command: l.Command}
 	if len(l.Env) > 0 {
 		if out.Token, err = s.newAgentLaunch(l.Command, l.Env); err != nil {
@@ -166,4 +170,12 @@ func (s *Service) agentFor(id string) (harness.Provider, error) {
 		return s.Agent.Active(), nil
 	}
 	return s.Agent.For(id)
+}
+
+// contextFile is the agent context path of a launch, "" for none.
+func (s *Service) contextFile() (string, error) {
+	if s.ContextFile == nil {
+		return "", nil
+	}
+	return s.ContextFile()
 }

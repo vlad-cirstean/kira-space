@@ -46,6 +46,8 @@ type Service struct {
 	EmitLog func(LogPush)
 	// Agent resolves the provider of a new run.
 	Agent harness.Selector
+	// ContextFile returns the path of the agent context for a launch, "" for none; nil = none.
+	ContextFile func() (string, error)
 	// Getenv reads the user's environment to resolve their login shell; nil means os.Getenv.
 	Getenv func(string) string
 	// SmartTimeout, when positive, replaces every smart run's own timeout (a flow test).

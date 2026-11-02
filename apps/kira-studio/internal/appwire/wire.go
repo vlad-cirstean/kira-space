@@ -2,6 +2,7 @@ package appwire
 
 import (
 	"log/slog"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -32,10 +33,13 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/tree"
+	"github.com/kirathecat/kira-studio/internal/agentctx"
 	"github.com/kirathecat/kira-studio/internal/appupdate"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/keepawake"
+	"github.com/kirathecat/kira-studio/internal/kirapaths"
 	"github.com/kirathecat/kira-studio/internal/metrics"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
@@ -172,8 +176,15 @@ func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, kee
 	// service plus ChannelTerminal's push channel. P128 §2.1: the bound methods live once in
 	// internal/terminal.BoundService; this app's own TerminalService only embeds it.
 	registry := terminal.NewRegistry()
+	// Studio only reads the agent context; Kira Space hosts the folder and its editor.
+	agentContext := agentctx.New(agentctx.Options{
+		Dir: kirapaths.SharedAgentDir(), SnapshotDir: filepath.Join(deps.Home, "agent-context"),
+		Projection: configfs.TableProjection{DB: deps.Repos.CustomScripts.DB, Folder: agentctx.Folder}, App: "Studio",
+	})
+	agentContext.View() // follows the file into the DB projection
 	runs := &scriptruns.Service{
-		Runs: deps.Repos.ScriptRuns, Scripts: deps.Repos.CustomScripts, Registry: registry, Home: deps.Home, App: "Studio",
+		ContextFile: agentContext.ContextFile,
+		Runs:        deps.Repos.ScriptRuns, Scripts: deps.Repos.CustomScripts, Registry: registry, Home: deps.Home, App: "Studio",
 		Emit:         func(r scriptruns.Run) { deps.Events.Emit(bridge.ChannelScriptRunsChanged, r) },
 		EmitLog:      func(p scriptruns.LogPush) { deps.Events.Emit(bridge.ChannelScriptRunLog, p) },
 		SmartTimeout: opts.SmartTimeout, ScheduleTimeout: opts.ScheduleTimeout,

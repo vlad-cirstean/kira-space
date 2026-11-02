@@ -711,6 +711,8 @@ type agentLaunch struct {
 	review *agentmcp.ReviewGrant
 	// agent is the provider the conversation runs under.
 	agent harness.Provider
+	// contextFile is the agent context path of this run, "" for none; set by superviseAgent.
+	contextFile string
 }
 
 // agentFor is the provider a launch runs under: the one that ran the conversation it continues
@@ -776,6 +778,13 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 			return
 		}
 	}
+	if b.deps.ContextFile != nil {
+		var err error
+		if l.contextFile, err = b.deps.ContextFile(); err != nil {
+			fail(err)
+			return
+		}
+	}
 	sbx, err := b.prepareSandbox(ctx, run, l)
 	if err != nil {
 		fail(err)
@@ -795,7 +804,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	spec := harness.HeadlessSpec{
 		Bin: b.deps.AgentBin, Dir: l.path, Prompt: l.prompt, SessionID: b.sessionAgentID(sessionID),
 		Resume: l.resume, MCPConfigs: []string{cfg}, Config: b.configScope(), AllowedTools: roundTools(agent, allowedTools(agent, def.AllowedTools, space), round), DisallowedTools: def.DisallowedTools,
-		Timeout: l.timeout, Stage: stageValues(def.Settings, agent),
+		Timeout: l.timeout, Stage: stageValues(def.Settings, agent), ContextFile: l.contextFile,
 	}
 	spec.Env = gitprepare.BuildEnv(os.Environ(), gitprepare.Vars{WorktreePath: l.path})
 	if rebase {

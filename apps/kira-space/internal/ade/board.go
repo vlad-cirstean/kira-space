@@ -86,6 +86,8 @@ type TaskBoardDeps struct {
 	// Agent resolves the provider of a new run. AgentBin overrides its CLI (a test points it at a fake).
 	Agent    harness.Selector
 	AgentBin string
+	// ContextFile returns the path of the agent context for a run, "" for none; nil = none.
+	ContextFile func() (string, error)
 	// Tracker records and launches interactive (TUI) task sessions.
 	Tracker *Tracker
 	// CloseTerminal closes a running terminal by id (Archive).

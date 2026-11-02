@@ -102,6 +102,8 @@ type App struct {
 	// KIRA_HOME. BinDir is the PATH-first directory holding the fake claude and fake-mcp, FakeDir
 	// where the fake agent records its calls.
 	Home, KiraHome, BinDir, FakeDir string
+	// SpaceHome is KIRA_SPACE_HOME: its agent/ folder is the shared agent context Studio reads.
+	SpaceHome string
 
 	W            *appwire.Wired
 	Events       *Events
@@ -126,7 +128,7 @@ func New(t *testing.T, opts ...Opt) *App {
 	root := t.TempDir()
 	a := &App{
 		t: t, Home: filepath.Join(root, "home"), KiraHome: filepath.Join(root, "kira"),
-		BinDir: filepath.Join(root, "bin"), FakeDir: filepath.Join(root, "fake"),
+		BinDir: filepath.Join(root, "bin"), FakeDir: filepath.Join(root, "fake"), SpaceHome: filepath.Join(root, "space"),
 		Events: flowtest.NewEvents(), Dialogs: &Dialogs{}, Browser: &Browser{}, KeepAwake: &KeepAwakeDriver{},
 		McpInstaller: &McpInstaller{}, OSAuth: &OSAuth{}, Focus: &WindowFocus{}, ProofWindows: &ProofShell{},
 	}
@@ -138,6 +140,7 @@ func New(t *testing.T, opts ...Opt) *App {
 	}
 	a.writeBin()
 	t.Setenv("KIRA_HOME", a.KiraHome)
+	t.Setenv("KIRA_SPACE_HOME", a.SpaceHome)
 	t.Setenv("HOME", a.Home)
 	t.Setenv("PATH", a.BinDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv(fakeagent.EnvDir, a.FakeDir)

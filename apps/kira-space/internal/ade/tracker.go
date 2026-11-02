@@ -20,6 +20,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -80,6 +81,8 @@ type TrackerDeps struct {
 	// a test could prepend (every /etc/profile.d/*.sh script re-prepends its own bin dir), which
 	// would make a hermetic fake-CLI test impossible without this seam. Production never sets it.
 	AgentBin string
+	// ContextFile returns the path of the agent context for a launch, "" for none; nil = none.
+	ContextFile func() (string, error)
 }
 
 // pendingIntent is one PrepareLaunch call's own record, keyed by the terminalId Prepare mints —
@@ -295,10 +298,17 @@ func (t *Tracker) Prepare(args PrepareArgs) (PrepareResult, error) {
 		return PrepareResult{}, err
 	}
 	agentBin := cmpNonEmpty(t.deps.AgentBin, agent.Command())
+	var contextFile string
+	if t.deps.ContextFile != nil {
+		var err error
+		if contextFile, err = t.deps.ContextFile(); err != nil {
+			return PrepareResult{}, ipcerr.InternalErr(err)
+		}
+	}
 	launch := agent.InteractiveCommand(harness.InteractiveSpec{
 		Bin: agentBin, SessionID: agentSessionID, Resume: args.Resume != "" || args.Resumes != "",
 		AddDirs: args.AddDirs, MCPConfig: args.MCPConfig, AllowedTools: args.AllowedTools,
-		Stage: stageValues(args.Settings, agent),
+		Stage: stageValues(args.Settings, agent), ContextFile: contextFile,
 	})
 	command, agentSessionID := launch.Command, launch.SessionID
 

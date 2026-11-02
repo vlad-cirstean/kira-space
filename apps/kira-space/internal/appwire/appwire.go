@@ -40,9 +40,11 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/openedfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/agentctx"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/appupdate"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/agentsvc"
@@ -199,6 +201,8 @@ type Wired struct {
 	// Agents resolves the active agent provider per call.
 	Agents   harness.Selector
 	AgentSvc *bridge.AgentService
+	// AgentContext is the shared agent context every launch gets.
+	AgentContext *agentctx.Store
 
 	reopen          func()
 	appFocused      atomic.Pointer[func() bool]
@@ -309,7 +313,15 @@ func Build(opts Options) *Wired {
 		OnChange: func() { bridge.AgentUsageChanged(emitter, w.AgentUsage.Get()) },
 	})
 	w.AgentUsageSvc = &bridge.AgentUsageService{U: w.AgentUsage}
-	adeTracker, agentHooks := wireTracker(repositories, terminalRegistry, emitter, events, opts.TrackerGrace, w.AgentNotify, w.AgentUsage, w.Agents)
+	w.AgentContext = agentctx.New(agentctx.Options{
+		Dir: filepath.Join(deps.Home, "agent"), SnapshotDir: filepath.Join(deps.Home, "agent-context"),
+		Projection: configfs.TableProjection{DB: repositories.CustomScripts.DB, Folder: agentctx.Folder}, App: "Space",
+	})
+	w.AgentContext.View() // follows the file into the DB projection
+	if err := w.AgentContext.WriteDocs(); err != nil {
+		slog.Warn("agent context: write docs", "scope", "startup", "err", err)
+	}
+	adeTracker, agentHooks := wireTracker(repositories, terminalRegistry, emitter, events, opts.TrackerGrace, w.AgentNotify, w.AgentUsage, w.Agents, w.AgentContext.ContextFile)
 	w.Tracker, w.AgentHooks = adeTracker, agentHooks
 
 	// P128 §2.1: the bound terminal methods live once in internal/terminal.BoundService; this
@@ -325,7 +337,7 @@ func Build(opts Options) *Wired {
 		},
 		EmitLog:      func(p scriptruns.LogPush) { emitter.Emit(bridge.ChannelScriptRunLog, p) },
 		SmartTimeout: opts.SmartTimeout, ScheduleTimeout: opts.ScheduleTimeout, Prompts: w.Prompts, LlmPrompts: promptStore,
-		Agent: w.Agents,
+		Agent: w.Agents, ContextFile: w.AgentContext.ContextFile,
 	}
 	if opts.Clock != nil {
 		runs.Now = opts.Clock.Now
@@ -389,7 +401,7 @@ func Build(opts Options) *Wired {
 	}
 	bridge.KeepAwakeRecompute(w.KeepAwake)
 
-	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"workflows": adeflow.Dir(config.KiraSpaceHome())})}
+	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"workflows": adeflow.Dir(config.KiraSpaceHome()), agentctx.Folder: filepath.Join(deps.Home, "agent")})}
 
 	// OpenNewWindow is assigned by BindShell once the shell exists.
 	w.WindowsSvc = &bridge.WindowsService{Service: &windowsvc.Service{Windows: deps.Repos.Windows}}

@@ -29,7 +29,7 @@ type smartSandbox struct {
 }
 
 // prepareSandbox returns nil when the run is not confined.
-func (s *Service) prepareSandbox(ctx context.Context, p *planned, runID string, port int) (*smartSandbox, error) {
+func (s *Service) prepareSandbox(ctx context.Context, p *planned, runID string, port int, contextFile string) (*smartSandbox, error) {
 	if s.Sandbox == nil || p.dir.Mode != scripts.DirModeWorktree {
 		return nil, nil
 	}
@@ -37,6 +37,9 @@ func (s *Service) prepareSandbox(ctx context.Context, p *planned, runID string, 
 		RunID: runID, Access: agentsandbox.AccessWrite, Worktrees: []string{p.dir.Path}, Network: true,
 		Scratch: filepath.Join(s.Home, "sandbox", runID), Cache: filepath.Join(s.Home, "sandbox-cache"),
 		ConfigDir: filepath.Join(s.Home, "automations-mcp"), Ports: []int{port},
+	}
+	if contextFile != "" {
+		in.ContextDir = filepath.Dir(contextFile)
 	}
 	agent := p.agent
 	rt := agentsandbox.DiscoverRuntime(ctx, agent, "")

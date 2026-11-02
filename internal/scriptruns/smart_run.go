@@ -123,7 +123,12 @@ func (s *Service) launchSmart(p *planned, run Run, existing bool) (Started, erro
 	s.mu.Lock()
 	srv := s.mcpServer()
 	s.mu.Unlock()
-	sbx, err := s.prepareSandbox(ctx, p, runID, srv.Port())
+	contextFile, err := s.contextFile()
+	if err != nil {
+		abandon()
+		return Started{}, ipcerr.InternalErr(err)
+	}
+	sbx, err := s.prepareSandbox(ctx, p, runID, srv.Port(), contextFile)
 	if err != nil {
 		abandon()
 		return Started{}, ipcerr.InternalErr(err)
@@ -163,6 +168,7 @@ func (s *Service) launchSmart(p *planned, run Run, existing bool) (Started, erro
 		Dir: p.dir.Path, Prompt: p.sent, SessionID: sessionID, Resume: p.resume, MCPConfigs: []string{cfg},
 		Model: p.smart.Model, MaxBudgetUSD: p.smart.MaxBudgetUSD, Tools: pv.Tools, AllowedTools: pv.Allowed,
 		Isolated: true, UserMCP: p.mcp, GrantMCP: []string{agentmcp.ServerName}, Timeout: timeout, Env: env,
+		ContextFile: contextFile,
 	}
 	spec = s.applySandbox(spec, sbx, agent)
 	go func() {
