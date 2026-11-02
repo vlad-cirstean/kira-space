@@ -610,12 +610,20 @@ func (b *TaskBoard) LaunchStep(ctx context.Context, args adewire.LaunchStepArgs)
 		return adewire.Launch{}, err
 	}
 	lines, cwd, extra, err := b.launchDirs(ctx, tc)
+	folder := ""
+	if errors.Is(err, errNoRepo) { // a task with no repo yet: the session works in the task folder
+		lines, extra, err = nil, nil, nil
+		if cwd, err = b.taskDir(tc.task.ID); err != nil {
+			return adewire.Launch{}, err
+		}
+		folder = cwd
+	}
 	if err != nil {
 		return adewire.Launch{}, err
 	}
 	message := args.Message
 	if message == "" {
-		message = composeManualMessage(b.prompts(), step, taskTitle(tc.task, tc.branches), tc.task.JiraKey, tc.task.JiraURL, tc.task.Notes, lines, b.handoverFor(tc, step.ID))
+		message = composeManualMessage(b.prompts(), step, taskTitle(tc.task, tc.branches), tc.task.JiraKey, tc.task.JiraURL, tc.task.Notes, lines, folder, b.handoverFor(tc, step.ID))
 	}
 	pa := PrepareArgs{TaskID: tc.task.ID, StepID: step.ID, Cwd: cwd, Message: message, Settings: step.Settings, Provider: step.Agent}
 	if len(extra) > 0 {
@@ -623,6 +631,9 @@ func (b *TaskBoard) LaunchStep(ctx context.Context, args adewire.LaunchStepArgs)
 	}
 	return b.prepareWithGrant(ctx, tr, tc, pa, opManual, "", step.ID)
 }
+
+// errNoRepo says launchDirs found no repo on the task.
+var errNoRepo = invalid("the task has no repo")
 
 // launchDirs gathers the repos of a task-level session: the first writable branch's worktree is the
 // cwd (else the first repo root), every other worktree and read-only repo root joins via --add-dir.
@@ -654,7 +665,7 @@ func (b *TaskBoard) launchDirs(ctx context.Context, tc *taskCtx) (lines []repoLi
 		dirs = append(dirs, rec.Root)
 	}
 	if len(dirs) == 0 {
-		return nil, "", nil, invalid("the task has no repo")
+		return nil, "", nil, errNoRepo
 	}
 	if firstOwn < 0 {
 		firstOwn = 0

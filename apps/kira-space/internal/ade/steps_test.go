@@ -86,13 +86,26 @@ func TestStepTargets(t *testing.T) {
 		"only unresolved":    {"only db", nil, true},
 		"empty runsOn = all": {"", []string{"b1", "b2", "b3"}, false},
 	} {
-		got, err := stepTargets(tc.runsOn, mine)
+		got, err := stepTargets(tc.runsOn, false, mine)
 		if (err != nil) != tc.fails || !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("%s: got %v, %v", name, got, err)
 		}
 	}
-	if _, err := stepTargets("once", nil); err == nil {
-		t.Error("a task without a mine branch has no target")
+	for name, tc := range map[string]struct {
+		runsOn string
+		review bool
+		want   []string
+		fails  bool
+	}{
+		"once":        {"once", false, []string{taskTarget}, false},
+		"each repo":   {"", false, []string{taskTarget}, false},
+		"only":        {"only api", false, nil, true},
+		"review step": {"", true, nil, true},
+	} {
+		got, err := stepTargets(tc.runsOn, tc.review, nil)
+		if (err != nil) != tc.fails || !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("no branch, %s: got %v, %v", name, got, err)
+		}
 	}
 }
 

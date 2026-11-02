@@ -140,7 +140,7 @@ func (b *TaskBoard) branchContext(tc *taskCtx, sb model.AdeTaskBranch, c *script
 // adeVars are the built-in variables of a run on sb: the base is the branch's own, else the repo's main branch.
 func (b *TaskBoard) adeVars(tc *taskCtx, sb model.AdeTaskBranch, path string) map[string]string {
 	base := sb.Base
-	if base == "" {
+	if base == "" && sb.CodeRepoID != "" {
 		base = b.mainShortName(b.ctx, sb.CodeRepoID)
 	}
 	return map[string]string{

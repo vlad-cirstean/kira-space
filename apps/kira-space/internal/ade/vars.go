@@ -100,10 +100,10 @@ func repoLineVars(repos []repoLine) []llmprompts.RepoLineVars {
 
 // composeManualMessage is the first message of a manual step's interactive session (SPEC2 section 5).
 // The step prompt sees every writable repo, joined with ", ".
-func composeManualMessage(src llmprompts.Source, step adewire.WorkflowStep, title, jiraKey, jiraURL, notes string, repos []repoLine, in handoverText) string {
+func composeManualMessage(src llmprompts.Source, step adewire.WorkflowStep, title, jiraKey, jiraURL, notes string, repos []repoLine, folder string, in handoverText) string {
 	v := llmprompts.ManualVars{
 		StepName: step.Name, Title: title, JiraKey: jiraKey, JiraURL: jiraURL,
-		Notes: capNotes(notes), Repos: repoLineVars(repos), Handover: capNotes(in.Body), HandoverFrom: in.From,
+		Notes: capNotes(notes), Repos: repoLineVars(repos), Folder: folder, Handover: capNotes(in.Body), HandoverFrom: in.From,
 	}
 	if step.Prompt != "" {
 		v.StepPrompt = substitute(step.Prompt, repoVars(title, jiraKey, repos), false)

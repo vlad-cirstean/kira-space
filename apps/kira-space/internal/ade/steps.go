@@ -78,11 +78,22 @@ func nextStep(wf adewire.Workflow, from int) (int, bool) {
 // mineBranch is a task's mine branch with its repo's display name (nickname, else name).
 type mineBranch struct{ ID, Nick string }
 
+// taskTarget is the target of a step on a task with no branch: a run with no branch, working in the
+// task folder.
+const taskTarget = ""
+
 // stepTargets resolves a step's branches in task order: once = the first, each repo = all, only
-// <nick> = those in that repo.
-func stepTargets(runsOn string, mine []mineBranch) ([]string, error) {
+// <nick> = those in that repo. A task with no mine branch runs a step on taskTarget, except a review
+// step and an `only` step, which need a branch.
+func stepTargets(runsOn string, review bool, mine []mineBranch) ([]string, error) {
 	if len(mine) == 0 {
-		return nil, fmt.Errorf("the task has no branch of its own to run on")
+		if review {
+			return nil, fmt.Errorf("the review step needs a branch to review")
+		}
+		if nick, ok := strings.CutPrefix(runsOn, "only "); ok {
+			return nil, fmt.Errorf("the step runs only on %q, which has no branch in this task", nick)
+		}
+		return []string{taskTarget}, nil
 	}
 	if nick, ok := strings.CutPrefix(runsOn, "only "); ok {
 		var out []string
