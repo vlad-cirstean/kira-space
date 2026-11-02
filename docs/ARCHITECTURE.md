@@ -1875,11 +1875,12 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 
 ### External file opens and default app (P332)
 
+- `~/.kira-space/agent-secrets.db` (P453, 0600, both apps open it) holds the sealed agent credentials: table `secret_values`, scope `agent-credential`, owner `agent`, its own migration. Values never enter `kira.db`, logs or the op log.
 - Kira Space is a Viewer for code and data files. `apps/kira-space/internal/filetypes` is the one extension vocabulary (41 code, 14 data); the generated `CFBundleDocumentTypes` (role Viewer, `LSHandlerRank` Alternate), `LSItemContentTypes` and `UTImportedTypeDeclarations` blocks in both plists come from it (`tools/gendoctypes`, markers `kira:doctypes:begin/end`, `--check` is verify-packaging S13). Excluded: html, txt, rtf, extensionless names, sqlite/db, ipynb, parquet, xlsx. `ts` resolves to MPEG-2 video on macOS; the registry reports a non-text type unavailable.
 - Wails emits `ApplicationOpenedWithFile` once per file, cold start included. `openedfiles.Coalescer` batches adds (300 ms after the last) into one new window. `Resolve` follows symlinks, then maps a path inside an imported repo (longest root wins) to `{repoId, relPath}`, else keeps the absolute path. The window pulls its targets once through `OpenedFilesService.Pending(windowKey)`; `Forget` runs on window close.
 - A path outside every repo opens a `local-file` tab in the general workspace, read through `OpenedFilesService.Read`, which accepts only an absolute, clean path with a supported extension. `RepoFileView` and `LocalFileView` share `useReadonlyFileViewer`.
 - The File types settings pane writes LaunchServices through `filehandlers.Registry` (`NSWorkspace setDefaultApplicationAtURL:toOpenContentType:`; macOS cgo build only, `Unsupported` elsewhere and in `-tags server`). Status re-reads live state on every call; nothing is applied on launch. The previous handler is stored per extension in `file_handler_previous` before the first switch; switching off restores it, and a gone app leaves the extension on Kira Space and reports it as `unrestored`.
-- Kira Space has 33 bound services (P452 adds `AgentContextService`).
+- Kira Space has 34 bound services (P452 adds `AgentContextService`, P453 `AgentSettingsService`).
 - Not supported: Linux and Windows (no package; the single-instance lock drops a second process's argv), folders dropped on the Dock icon, editing or live reload of an opened file, a table view for data files, auto-importing an un-imported repo that contains the opened file.
 
 ### Git graph in the native workspace (C10)
@@ -2080,6 +2081,21 @@ The agent CLI sits behind one interface, so a second provider needs no caller ch
   (`CapsCost()`; `harness.CapsCost(p)` is false for a provider without it). A provider without hooks has no
   activity icons and no finished/needs-input notes; without usage, no usage item; a smart script or a
   step with a budget on a provider without a cost cap is refused (`agentBlocker`, `backend.core.agent.noCostCap.body`).
+- `SettingsHost` (P453, optional) takes the app's agent settings: `SettingsSchema` (the provider's section of
+  `settings.yaml`, self-contained JSON Schema), `RenderSettings(AgentSettings, LaunchKind) (NativeConfig, error)`
+  and `KiraAdds`. `AgentSettings` is resolved env, enabled MCP servers, `Allow`/`Deny`, user hooks minus the
+  provider's `skip_hooks`, and the provider's raw section. `NativeConfig` is files (role, name, bytes, `Inline`
+  for a provider that takes bytes through env), env and not-applied notes; it writes nothing. `AppConfig` is the
+  same after Kira wrote the files (0600): `Files` by role, `Inline`, `Env`. It reaches `InteractiveSpec.App` and
+  `HeadlessSpec.App`; `Launch.ConfigFile` is the settings file the launch uses.
+- `ConfigMerger` (P453, optional on a hook host) folds Kira's hooks into that file: `harness.Hooks.Compose(provider,
+  terminalID, cwd, command, configFile)` returns the command, the hook env and an error. Claude's `ComposeInto`
+  prepends Kira's entry to every event and wraps `statusLine`; a read or write error fails the launch.
+- Claude maps `RenderSettings` to `--mcp-config` (app file joins the grant's), `--settings` (hooks, permissions,
+  `model`, `statusLine`) and env. A headless render drops `defaultMode`, `allow` and `statusLine`: an unattended run
+  must not enter plan mode or widen its tools, and `claude -p` never runs a status line; `deny` still applies.
+  `disableAllHooks` stays only on isolated runs that tick a user CLI server (P444), which take no app settings.
+  Details in "Agent settings (P453)".
 - A missing optional role is handled per caller. Memory (`memory.AgentRunner`) falls back to the default
   provider: background work with no per-run provider choice. Smart scripts refuse: `plan` sets
   `Preview.Blocker` to the `harness.MissingRole` text (`backend.core.agent.missingRole.body`), which covers
@@ -2460,6 +2476,7 @@ and `docs/HISTORY.md (v2.0)`.
 - ResolvePolicy expands ~/, canonicalizes paths with EvalSymlinks because Seatbelt matches real paths, and probes each worktree's git layout (ProbeGit: linked or main).
 - Profile renders SBPL text with golden files in testdata/*.sb (regenerate with -update); paths enter the profile as escaped string literals, never regex.
 - `Input.ContextDir` (P452) adds a `(subpath ...)` read allow for the agent context snapshot dir. Never an `--add-dir`.
+- The config-file read allow (P453) is `<ConfigDir>/<run>-<n>.mcp.json` or `<run>-app.<role>.json`: the grant's MCP file and the app settings files of a headless run.
 - The engine side of the sandbox is in ade.sandbox.go (prepareSandbox, watchSandbox, sandboxOutcome).
 - The sandbox profile starts with (allow default) then denies and re-allows; the last matching rule wins.
 - Profile reads are restricted through file-read-data, never file-read-metadata, because realpath of ancestors must work.
@@ -2576,8 +2593,8 @@ role (`harness.UsageReporter`): only a provider that reports it feeds the servic
 
 - claude -p never invokes a statusLine (checked on claude 2.1.295), so headless runs feed usage limits through their output instead, via agentmcp.Handler.OnRateLimits chained from ade/runs.go.
 - For usage readings, the newest reading wins per window; the tooltip shows the source and its age.
-- hooks.Server.Compose(terminalID, cwd, command) writes <server dir>/settings-<12 hex>.json (0600; hooks plus a statusLine pointing at the shim in statusline mode) and passes it to --settings.
-- Claude Code replaces the user's own statusline for the session, so the shim runs the user's statusline command and prints its output; lookup is read-only: project .claude/settings.local.json, .claude/settings.json, then $CLAUDE_CONFIG_DIR or ~/.claude settings.json, passed as KIRA_USER_STATUSLINE. The user's files are never written.
+- hooks.Server.Compose(provider, terminalID, cwd, command, configFile) writes <server dir>/settings-<12 hex>.json (0600; hooks plus a statusLine pointing at the shim in statusline mode) and passes it to --settings. With an app settings file (P453) `ComposeInto` merges into that file instead.
+- Claude Code replaces the user's own statusline for the session, so the shim runs the user's statusline command and prints its output. The command comes from `claude.status_line` in the agent settings only (P453), passed as KIRA_USER_STATUSLINE. No Claude settings file is read or written.
 - The shim forwards a payload containing rate_limits at most once per 30 s per terminal, in the background, to POST /statusline (same token and terminal checks as /hook, 64 KiB cap).
 - The /statusline listener decodes rate_limits only; nothing else of the payload is kept.
 - Usage states are ok, waiting (nothing yet: Usage: –, hint "Start a Claude Code session to see usage") and off.
@@ -3211,6 +3228,22 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - Save checks `baseHash` against the file in `Store.Save` itself: `Folder.Save` skips the check for an empty hash, so a create over a concurrent create needs it.
 - Structured calls (memory distill, import) get no context. Their prompts are app prompts; user text stays out of `internal/llmprompts`.
 
+### Agent settings (P453)
+
+- File `~/.kira-space/agent/settings.yaml`, cap 256 KiB (`agentcfg.MaxBytes`). One schema assembled at start: common keys `env`, `permissions` (`allow`, `deny`), `mcp_servers` (stdio `command`, `args`, `env`; http `url`, `headers`; `enabled`), `hooks` (name to `event`, `matcher`, `command`, `timeout`) plus one section per `SettingsHost` provider under its id (`claude`: `model`, `permission_mode`, `status_line`, `hooks`, `skip_hooks`). Extra keys are refused with a line.
+- Rules (`agentcfg/rules.go`): a server has a command or a url, never both; transport fields match the transport; names starting `kira` and env starting `KIRA_` are reserved; `matcher` only on `tool_start` and `tool_end`; `skip_hooks` names a common hook.
+- Hooks: Kira's own hooks always run and never appear in the file. User hooks run in addition; a provider's `skip_hooks` drops a common hook for that provider.
+- References: only `x-kira-ref` fields (`env` values, server `url`, `command`, `args`, `headers`, `env`) take `${NAME}` and `${secret:name}`. The Claude section has no ref field, so no secret reaches `settings.json`. Env comes from one login-shell probe (`loginshell.ProbeEnv`, `-l -i -c`, 5 s, only the names asked for), then the process env. A missing env var or secret fails the launch naming the reference.
+- Secrets: `~/.kira-space/agent-secrets.db`, one file both apps open (`kirapaths.SharedAgentSecrets`, `agentcfg.OpenSecrets`, `sqlitex.OpenImmediate`, own migration). Table `secret_values`, scope `agent-credential`, owner `agent`, sealed by the shared cipher. Set from Agents > Settings; write-only, no call returns a value. Storage off: `E_SECRET_STORE` on save.
+- Which launches get settings: every Space TUI (`prepareWithGrant`), Continue in terminal in both apps (`ResumeCommand`), and non-isolated ADE agent steps and review rounds (headless). Not isolated runs (smart scripts in both apps, ADE smart steps, rebase runs): their tool and MCP policy is explicit. Not structured calls (memory).
+- Preparation (`Store.Prepare`): last good settings, resolve, `RenderSettings`, write each file as `<dir>/<stem>-app.<role>.json` (0600, dir 0700) in the ADE agent dir (`ade/runs`) or `automations-mcp`. `Prepared.Release` removes them: TUI with the grant release at record stop or intent expiry; headless after the run; Continue in terminal with the token (`BeginAgent` binds it to the terminal, `Exited` releases, token expiry and `Service.Close` sweep the rest); `Store.Close` at quit; `Store.Sweep` at start for a crash.
+- Masking: the ADE log sink masks resolved secret values in headless step output (`••••`). A live terminal stays unmasked.
+- Sandbox: the profile allows reading `<ConfigDir>/<run>-app.<role>.json` (regex `-([0-9]+\.mcp|app\.[a-z]+)\.json$`); the dead `user` alternative is gone.
+- Statusline: a user status line comes only from `claude.status_line`. Kira wraps it when usage limits are on (`KIRA_USER_STATUSLINE`); with no app settings the wrapper stands alone. `userStatusLine` no longer reads any Claude settings file.
+- Service (`agentcfg.Service`, bound in Space as `AgentSettingsService`): `Get`, `Save(text, baseHash)`, `SetSecret`, `DeleteSecret`. `View` carries the file state, `storage`, `secrets` (name, set, referenced) and per provider the resulting config rendered with references verbatim, notes (unset secrets, the headless line) and what Kira adds. Event `kira:agentSettings:changed`. Studio has no binding, watch or docs: it opens the same store and reads the file at launch.
+- Config versus state: `settings.yaml` is config; `config_last_valid` (`agent`, `settings.yaml`) is a per-app projection with references verbatim; secret values are state, sealed; run files are derived and removed at exit; `AGENTS.md` is derived and written by Space (`Store.WriteDocs` with the context model as a second section).
+- Space hosts the editor and Studio reads, as for the context (the spec names Studio as owner). Tests: flow `TestAgentSettingsReachEveryLaunch` (Space) and `TestAgentSettingsStudio`, UI `ade-agent-settings.spec.ts`, real claude `TestAgentSettingsClaude`.
+
 ## CLI credentials: never touched
 
 Kira drives gh, az and acli but never touches their credentials. It runs the CLI and reads its output (JSON or text). No token commands, no reads of CLI config or credential files, no auth headers on Kira's own HTTP.
@@ -3463,6 +3496,10 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
 
 - **Agent context rests on a hidden Claude flag (P452).** `--append-system-prompt-file` is absent from `claude --help`. A CLI that drops it fails the launch loudly. `TestAgentContextHeadless` catches it. Studio has no context editor; edit the file in an editor.
 
+- **Agent settings secrets show in a live terminal (P453).** Only headless step output is masked. A TUI that echoes its env or a hook that prints a secret shows it in the tab and the Space phone terminal ring, as for script secrets below.
+- **An isolated run that ticks a user MCP server keeps `disableAllHooks` (P453).** Smart scripts and ADE smart steps take no app settings, so P444's user-source load still turns hooks off for them. P455 drops that source.
+- **Project statuslines are no longer chained (P453).** A project `.claude/settings*.json` statusline never ran under Kira (flag settings outrank it); the user statusline now comes only from `claude.status_line`. P454 imports the user's.
+- **OpenCode receives no agent settings yet (P453).** Step 9 waits for the OpenCode provider (P449); its hooks will show as not applied in the settings view.
 - **Saved script secrets show in a live terminal (P447).** A terminal-run script prints into its live tab and the Space phone terminal ring unmasked; only the run tail and log are masked. A process that echoes its secret shows it there.
 - **OpenCode facts without a model key are unverified (P449).** `facts.go` marks each with its probe id: the lost-session error text (U5), the MCP tool permission key `<server>_<tool>` (U7), plugin event names and `fetch` over a unix socket (U12), install paths (U15), the model API host list for network-off runs (U16), and the tool and cost event shapes of `run --format json` (`step_start`, `text` with `part.text` and `step_finish` with `part.reason` are verified). A wrong guess degrades quietly: a lost session reads as a plain failure, a MCP grant may not match, activity icons may stay idle. Run the probes in `docs/DEV_ENVIRONMENT.md` with a key, then fix `facts.go` and delete this item.
 - **OpenCode has no cost cap (P449).** A smart script or step with a budget is refused on OpenCode. The run reports cost when its events carry one; the shape is unverified.

@@ -27,6 +27,7 @@ var wrappers = map[string]bool{
 	"apps/kira-space/internal/mobileweb/respond.go":  true,
 	"apps/kira-space/internal/ade/stagesettings.go":  true,
 	"apps/kira-space/internal/adeflow/docs.go":       true,
+	"internal/agentcfg/rules.go":                     true,
 }
 
 func repoRoot(t *testing.T) string {
