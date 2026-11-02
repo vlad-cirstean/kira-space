@@ -17,17 +17,6 @@ type Ref struct {
 	Site     string `json:"site"` // host of a pasted URL; '' for a bare key
 }
 
-// ChangeRequest is a pull or merge request associated with an issue. It reaches the wire inside
-// IssueDetail, hence the json tags.
-type ChangeRequest struct {
-	Title    string `json:"title"`
-	URL      string `json:"url"`
-	Ref      string `json:"ref"`      // display ref, e.g. #12
-	State    string `json:"state"`    // lower-cased code-host state: open | draft | merged | closed
-	Repo     string `json:"repo"`     // owner/name
-	Provider string `json:"provider"` // code-host provider id
-}
-
 // ChangeRequestSummary is the tracker's own count of associated change requests.
 type ChangeRequestSummary struct {
 	Known     bool     `json:"known"` // the tracker reported a summary at all
@@ -43,10 +32,6 @@ type Issue struct {
 	Status         string // workflow status name
 	StatusCategory string // new | indeterminate | done | ''
 	Summary        ChangeRequestSummary
-	ChangeRequests []ChangeRequest
-	// ChangeRequestsReason is the Reason word of a failed change request lookup; the rest of the issue
-	// is still valid. '' when the lookup succeeded or was not needed.
-	ChangeRequestsReason string
 }
 
 // Status kinds, the same words as githost.Status.

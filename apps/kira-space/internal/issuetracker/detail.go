@@ -43,29 +43,27 @@ type IssueLink struct {
 
 // IssueDetail is everything the issue view shows.
 type IssueDetail struct {
-	Ref                  Ref                  `json:"ref"` // URL filled from the signed-in site
-	Title                string               `json:"title"`
-	Status               string               `json:"status"`
-	StatusCategory       string               `json:"statusCategory"` // new | indeterminate | done | ''
-	Type                 string               `json:"type,omitempty"`
-	Priority             string               `json:"priority,omitempty"`
-	Resolution           string               `json:"resolution,omitempty"`
-	Assignee             *Person              `json:"assignee,omitempty"`
-	Reporter             *Person              `json:"reporter,omitempty"`
-	Labels               []string             `json:"labels"`
-	Components           []string             `json:"components"`
-	CreatedAt            int64                `json:"createdAt"`
-	UpdatedAt            int64                `json:"updatedAt"`
-	DueDate              string               `json:"dueDate,omitempty"` // YYYY-MM-DD as Jira stores it
-	Parent               *IssueLink           `json:"parent,omitempty"`
-	Description          string               `json:"description"` // Markdown
-	Comments             []Comment            `json:"comments"`    // oldest first
-	CommentsTotal        int                  `json:"commentsTotal"`
-	CommentsTruncated    bool                 `json:"commentsTruncated,omitempty"` // older ones not shown
-	CommentsOmitted      bool                 `json:"commentsOmitted,omitempty"`   // none could be read
-	Summary              ChangeRequestSummary `json:"summary"`
-	ChangeRequests       []ChangeRequest      `json:"changeRequests"`
-	ChangeRequestsReason string               `json:"changeRequestsReason,omitempty"`
+	Ref               Ref                  `json:"ref"` // URL filled from the signed-in site
+	Title             string               `json:"title"`
+	Status            string               `json:"status"`
+	StatusCategory    string               `json:"statusCategory"` // new | indeterminate | done | ''
+	Type              string               `json:"type,omitempty"`
+	Priority          string               `json:"priority,omitempty"`
+	Resolution        string               `json:"resolution,omitempty"`
+	Assignee          *Person              `json:"assignee,omitempty"`
+	Reporter          *Person              `json:"reporter,omitempty"`
+	Labels            []string             `json:"labels"`
+	Components        []string             `json:"components"`
+	CreatedAt         int64                `json:"createdAt"`
+	UpdatedAt         int64                `json:"updatedAt"`
+	DueDate           string               `json:"dueDate,omitempty"` // YYYY-MM-DD as Jira stores it
+	Parent            *IssueLink           `json:"parent,omitempty"`
+	Description       string               `json:"description"` // Markdown
+	Comments          []Comment            `json:"comments"`    // oldest first
+	CommentsTotal     int                  `json:"commentsTotal"`
+	CommentsTruncated bool                 `json:"commentsTruncated,omitempty"` // older ones not shown
+	CommentsOmitted   bool                 `json:"commentsOmitted,omitempty"`   // none could be read
+	Summary           ChangeRequestSummary `json:"summary"`
 }
 
 // Normalize makes d safe to send: empty slices for nil, https-only comment URLs, comments oldest first
@@ -76,9 +74,6 @@ func (d *IssueDetail) Normalize() {
 	}
 	if d.Components == nil {
 		d.Components = []string{}
-	}
-	if d.ChangeRequests == nil {
-		d.ChangeRequests = []ChangeRequest{}
 	}
 	if d.Summary.Providers == nil {
 		d.Summary.Providers = []string{}

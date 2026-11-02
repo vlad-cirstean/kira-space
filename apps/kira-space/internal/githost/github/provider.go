@@ -14,6 +14,9 @@ import (
 // ProviderID is the setting value and registry key of this provider.
 const ProviderID = "github"
 
+// primaryHost is the host gh signs in to by default.
+const primaryHost = "github.com"
+
 // Options are the `gh` seams; a nil field takes the real one.
 type Options struct {
 	Locator Locator
@@ -30,7 +33,6 @@ var (
 
 	_ githost.ChangeRequestReviews = (*Provider)(nil)
 	_ githost.BranchLinks          = (*Provider)(nil)
-	_ githost.ChangeRequestSearch  = (*Provider)(nil)
 	_ githost.CLISetup             = (*Provider)(nil)
 )
 
@@ -184,11 +186,6 @@ func (p *Provider) SubmitReview(ctx context.Context, r githost.Repo, number int,
 
 func (p *Provider) Comment(ctx context.Context, r githost.Repo, number int, body string) githost.Status {
 	return toStatus(p.client.CommentOnPull(ctx, Repo(r), number, body))
-}
-
-func (p *Provider) SearchChangeRequests(ctx context.Context, text string, limit int) ([]githost.ChangeRequest, githost.Status) {
-	prs, s := p.client.SearchPulls(ctx, text, limit)
-	return toChangeRequests(prs), toStatus(s)
 }
 
 func (p *Provider) Setup() clisetup.Setup {

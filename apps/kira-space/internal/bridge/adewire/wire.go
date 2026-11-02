@@ -1282,28 +1282,23 @@ type ArtifactGap struct {
 	Source string `json:"source"` // host | git | a tracker id
 	Repo   string `json:"repo"`   // '' when not repo-bound
 	// Reason names why a tracker source is partial: unavailable | unauthenticated | notFound | otherSite |
-	// timeout | failed | changeRequestsMissing | changeRequests<Reason>. '' for the other sources.
+	// timeout | failed. '' for the other sources.
 	Reason string `json:"reason,omitempty"`
-	// Count is how many change requests the tracker reports beyond the ones found (changeRequestsMissing).
-	Count int `json:"count,omitempty"`
 }
 
 // TaskIssue is the issue tracker's view of a task's linked issue.
 type TaskIssue struct {
-	Provider       string               `json:"provider"`
-	Label          string               `json:"label"` // provider display name, e.g. Jira
-	Key            string               `json:"key"`
-	URL            string               `json:"url"`
-	Title          string               `json:"title"`
-	Status         string               `json:"status"`
-	StatusCategory string               `json:"statusCategory"` // new | indeterminate | done | ''
-	Summary        IssueSummary         `json:"summary"`
-	ChangeRequests []IssueChangeRequest `json:"changeRequests"`
+	Provider       string       `json:"provider"`
+	Label          string       `json:"label"` // provider display name, e.g. Jira
+	Key            string       `json:"key"`
+	URL            string       `json:"url"`
+	Title          string       `json:"title"`
+	Status         string       `json:"status"`
+	StatusCategory string       `json:"statusCategory"` // new | indeterminate | done | ''
+	Summary        IssueSummary `json:"summary"`
 	// Reason is why the issue could not be read ('' when it was): a tracker reason word, or noTracker when
 	// no registered tracker recognises the task's link.
 	Reason string `json:"reason"`
-	// ChangeRequestsReason is set when the pull request lookup failed but the issue itself was read.
-	ChangeRequestsReason string `json:"changeRequestsReason"`
 }
 
 // IssueSummary is the tracker's own count of change requests linked to the issue.
@@ -1312,15 +1307,6 @@ type IssueSummary struct {
 	Count     int      `json:"count"`
 	State     string   `json:"state"`
 	Providers []string `json:"providers"`
-}
-
-// IssueChangeRequest is a pull or merge request associated with the issue.
-type IssueChangeRequest struct {
-	Title string `json:"title"`
-	URL   string `json:"url"`
-	Ref   string `json:"ref"`
-	State string `json:"state"`
-	Repo  string `json:"repo"`
 }
 
 type ArtifactsResult struct {

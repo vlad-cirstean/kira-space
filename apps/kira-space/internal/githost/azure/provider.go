@@ -27,7 +27,6 @@ var (
 	_ githost.ChangeRequestSync     = (*Provider)(nil)
 	_ githost.ChangeRequestReviews  = (*Provider)(nil)
 	_ githost.BranchLinks           = (*Provider)(nil)
-	_ githost.ChangeRequestSearch   = (*Provider)(nil)
 	_ githost.ChangeRequestComments = (*Provider)(nil)
 	_ githost.CLISetup              = (*Provider)(nil)
 )

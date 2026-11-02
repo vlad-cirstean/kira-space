@@ -34,7 +34,7 @@ type detailResult struct {
 	err error
 }
 
-// detail reads ref fresh: it drops the cached Issue first, so the PR rows are fresh too. Concurrent
+// detail reads ref fresh: it drops the cached Issue first. Concurrent
 // callers share one read; the caller's context bounds it.
 func (c *client) detail(ctx context.Context, ref issuetracker.Ref) (issuetracker.IssueDetail, error) {
 	st, err := c.ready(ctx, ref)
@@ -89,11 +89,8 @@ func (c *client) readDetail(ctx context.Context, st issuetracker.Status, ref iss
 	if d.Ref.Site == "" {
 		d.Ref.Site = st.Site
 	}
-	switch {
-	case issErr != nil:
-		d.ChangeRequestsReason = issuetracker.Reason(issErr)
-	default:
-		d.Summary, d.ChangeRequests, d.ChangeRequestsReason = iss.Summary, iss.ChangeRequests, iss.ChangeRequestsReason
+	if issErr == nil {
+		d.Summary = iss.Summary
 	}
 	d.Normalize()
 	return d, nil

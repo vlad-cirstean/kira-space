@@ -251,7 +251,7 @@ func Build(opts Options) *Wired {
 		hosts = githostproviders.New(github.Options{}, azure.New(azure.Options{}))
 	}
 	git := wireGit(repositories, opts.Locator, hosts, opts.ChangeRequestSync)
-	git.trackers = wireTrackers(repositories, git.registry.Hosts.Registry, git.opLog, opts.IssueTracker)
+	git.trackers = wireTrackers(git.opLog, opts.IssueTracker)
 	w.Git, w.CredentialRelay = git, credentialRelay
 
 	// The tap feeds every window-wide event to the phone event hub, which drops what is not allowlisted.

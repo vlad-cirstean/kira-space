@@ -47,7 +47,6 @@ var (
 	_ githost.ChangeRequestSync = (*Forge)(nil)
 
 	_ githost.ChangeRequestReviews  = (*Forge)(nil)
-	_ githost.ChangeRequestSearch   = (*Forge)(nil)
 	_ githost.ChangeRequestDetails  = (*Forge)(nil)
 	_ githost.ChangeRequestComments = (*Forge)(nil)
 	_ githost.CLISetup              = (*Forge)(nil)
@@ -415,20 +414,6 @@ func (f *Forge) Comment(_ context.Context, _ githost.Repo, number int, body stri
 	}
 	f.comments[number] = append(f.comments[number], body)
 	return githost.Status{Kind: githost.KindOK, Host: Host}
-}
-
-// SearchChangeRequests returns the merge requests whose title contains text, as a host search does. It
-// honours SetOffline and the rate limit like the listing calls.
-func (f *Forge) SearchChangeRequests(_ context.Context, text string, limit int) ([]githost.ChangeRequest, githost.Status) {
-	f.record("Search:" + text)
-	if st, limited := f.rateLimit(); limited {
-		return nil, st
-	}
-	out, st := f.match(func(cr githost.ChangeRequest) bool { return strings.Contains(cr.Title, text) })
-	if len(out) > limit {
-		out = out[:limit]
-	}
-	return out, st
 }
 
 var detailLinkPattern = regexp.MustCompile(`^https://forge\.test/([\w.-]+)/([\w.-]+)/-/merge_requests/(\d+)/?(?:[?#].*)?$`)

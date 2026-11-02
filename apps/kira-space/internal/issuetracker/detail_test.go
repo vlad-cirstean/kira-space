@@ -39,7 +39,7 @@ func TestNormalize(t *testing.T) {
 		if d.Comments[0].URL != "" || d.Comments[1].URL != "" || d.Comments[2].URL != "https://x" {
 			t.Fatalf("urls: %+v", d.Comments)
 		}
-		if d.Labels == nil || d.Components == nil || d.ChangeRequests == nil {
+		if d.Labels == nil || d.Components == nil {
 			t.Fatal("nil slices")
 		}
 	})

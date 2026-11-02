@@ -63,16 +63,16 @@ func fixtureView(t *testing.T, file string) func([]string) ([]byte, error) {
 	return func([]string) ([]byte, error) { return b, nil }
 }
 
-func newTestProvider(r Runner, crs func(context.Context, string) ([]issuetracker.ChangeRequest, error)) (*Provider, *testClock) {
+func newTestProvider(r Runner) (*Provider, *testClock) {
 	clk := &testClock{t: time.Unix(1_700_000_000, 0)}
-	return New(Options{Locator: fixedLocator{}, Runner: r, Clock: clk, ChangeRequests: crs}), clk
+	return New(Options{Locator: fixedLocator{}, Runner: r, Clock: clk}), clk
 }
 
 var ref = issuetracker.Ref{Provider: ProviderID, Key: "KIRA-12"}
 
 func TestIssueCoalescesConcurrentCallers(t *testing.T) {
 	r := &scriptRunner{gate: make(chan struct{}), view: fixtureView(t, "issue-string-dev.json")}
-	p, _ := newTestProvider(r, nil)
+	p, _ := newTestProvider(r)
 	var wg sync.WaitGroup
 	for range 8 {
 		wg.Add(1)
@@ -93,7 +93,7 @@ func TestIssueCoalescesConcurrentCallers(t *testing.T) {
 
 func TestIssueDetachedFetchFillsCache(t *testing.T) {
 	r := &scriptRunner{gate: make(chan struct{}), view: fixtureView(t, "issue-string-dev.json")}
-	p, _ := newTestProvider(r, nil)
+	p, _ := newTestProvider(r)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
 	defer cancel()
 	_, err := p.Issue(ctx, ref)
@@ -126,7 +126,7 @@ func TestIssueErrorTTL(t *testing.T) {
 		calls.Add(1)
 		return nil, &toolexec.ExecError{ExitCode: 1, Stderr: "issue does not exist or you do not have permission"}
 	}}
-	p, clk := newTestProvider(r, nil)
+	p, clk := newTestProvider(r)
 	for range 2 {
 		if _, err := p.Issue(context.Background(), ref); !errors.Is(err, issuetracker.ErrNotFound) {
 			t.Fatalf("err %v, want ErrNotFound", err)
@@ -152,7 +152,7 @@ func TestIssueDevFieldLearnedOnce(t *testing.T) {
 		mu.Unlock()
 		return b(a)
 	}}
-	p, clk := newTestProvider(r, nil)
+	p, clk := newTestProvider(r)
 	if _, err := p.Issue(context.Background(), ref); err != nil {
 		t.Fatal(err)
 	}
@@ -177,20 +177,9 @@ func TestIssueOversizeFirstReadFallsBack(t *testing.T) {
 		}
 		return b(a)
 	}}
-	p, _ := newTestProvider(r, nil)
+	p, _ := newTestProvider(r)
 	iss, err := p.Issue(context.Background(), issuetracker.Ref{Provider: ProviderID, Key: "KIRA-14"})
 	if err != nil || iss.Title != "No development info" || iss.Summary.Known {
-		t.Fatalf("%+v %v", iss, err)
-	}
-}
-
-func TestIssueChangeRequestLookupFailureKeepsIssue(t *testing.T) {
-	r := &scriptRunner{view: fixtureView(t, "issue-string-dev.json")}
-	p, _ := newTestProvider(r, func(context.Context, string) ([]issuetracker.ChangeRequest, error) {
-		return nil, errors.New("boom")
-	})
-	iss, err := p.Issue(context.Background(), ref)
-	if err != nil || iss.Title == "" || iss.ChangeRequestsReason != issuetracker.ReasonFailed || iss.ChangeRequests != nil {
 		t.Fatalf("%+v %v", iss, err)
 	}
 }

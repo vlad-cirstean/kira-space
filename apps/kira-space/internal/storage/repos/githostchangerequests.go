@@ -112,25 +112,6 @@ func (r *GitHostChangeRequestsRepo) ChangeRequestsForBranch(repoKey, headOwner, 
 	return out, nil
 }
 
-// ByHeadContaining returns up to limit rows of every synced repository whose head branch contains text
-// (case-sensitive), newest first.
-func (r *GitHostChangeRequestsRepo) ByHeadContaining(text string, limit int) ([]model.GitHostChangeRequestHit, error) {
-	rows, err := r.DB.Query(`SELECT repo_key, `+gitHostCRColumns+` FROM git_host_change_requests
-		WHERE instr(head_ref, ?) > 0 ORDER BY updated_at DESC, number DESC LIMIT ?`, text, limit)
-	out, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.GitHostChangeRequestHit, bool, error) {
-		var h model.GitHostChangeRequestHit
-		var draft int
-		err := rows.Scan(&h.RepoKey, &h.Number, &h.NodeID, &h.HeadRef, &h.HeadOwner, &h.HeadSha, &h.BaseRef, &h.State, &draft,
-			&h.Title, &h.URL, &h.ReviewDecision, &h.ChecksState, &h.UpdatedAt, &h.SyncedAt)
-		h.Draft = draft != 0
-		return h, true, err
-	})
-	if err != nil {
-		return nil, fmt.Errorf("repos: list change requests by head %q: %w", text, err)
-	}
-	return out, nil
-}
-
 // OpenChangeRequests returns every open row of the repository, any head owner.
 func (r *GitHostChangeRequestsRepo) OpenChangeRequests(repoKey string) ([]model.GitHostChangeRequest, error) {
 	rows, err := r.DB.Query(`SELECT `+gitHostCRColumns+` FROM git_host_change_requests

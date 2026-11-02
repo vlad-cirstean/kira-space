@@ -2,29 +2,20 @@ package ade
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"regexp"
-	"strings"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
-// issuetracker.go surfaces a task's linked issue (P417): an issue artifact, the pull requests that name
-// its key, and the issue line of the task tab. The tracker CLI owns the credentials; this file only asks.
+// issuetracker.go surfaces a task's linked issue (P417): an issue artifact and the issue line of the task tab.
+// The tracker CLI owns the credentials; this file only asks.
 
 const (
 	// taskIssueTimeout bounds TaskIssue; the artifact sources keep their own, shorter budget.
 	taskIssueTimeout = 10 * time.Second
-	// keySearchLimit bounds one code host search and one index read for an issue key.
-	keySearchLimit = 50
-
-	gapChangeRequestsMissing = "changeRequestsMissing"
-	reasonNoTracker          = "noTracker"
+	reasonNoTracker  = "noTracker"
 )
 
 // trackerRef is the issue the task links, parsed by p: the pasted URL first, else the bare key.
@@ -74,27 +65,7 @@ func (s trackerSource) Artifacts(ctx context.Context, sc ArtifactScope) ([]adewi
 		Kind: model.AdeArtifactIssue, Title: title, URL: iss.Ref.URL, Ref: iss.Ref.Key, Status: iss.Status,
 		Source: id, CreatedAt: sc.Task.CreatedAt,
 	}}
-	for _, cr := range iss.ChangeRequests {
-		out = append(out, adewire.Artifact{
-			Kind: model.AdeArtifactChangeRequest, Title: cr.Title, URL: cr.URL, Ref: cr.Ref, Status: cr.State, Repo: cr.Repo,
-			Source: id,
-		})
-	}
-	var gaps []adewire.ArtifactGap
-	switch {
-	case iss.ChangeRequestsReason != "":
-		gaps = append(gaps, adewire.ArtifactGap{Source: id, Reason: changeRequestsReason(iss.ChangeRequestsReason)})
-	case iss.Summary.Known && iss.Summary.Count > len(iss.ChangeRequests):
-		gaps = append(gaps, adewire.ArtifactGap{
-			Source: id, Reason: gapChangeRequestsMissing, Count: iss.Summary.Count - len(iss.ChangeRequests),
-		})
-	}
-	return out, gaps, nil
-}
-
-// changeRequestsReason names a failed pull request lookup: changeRequestsFailed, changeRequestsUnavailable...
-func changeRequestsReason(reason string) string {
-	return "changeRequests" + strings.ToUpper(reason[:1]) + reason[1:]
+	return out, nil, nil
 }
 
 // TaskIssue reads the issue the task links. A tracker failure comes back as Reason, not as an error;
@@ -113,7 +84,7 @@ func (b *TaskBoard) TaskIssue(ctx context.Context, taskID string) (adewire.TaskI
 		iss, err := p.Issue(ictx, ref)
 		cancel()
 		out := adewire.TaskIssue{
-			Provider: p.ID(), Label: p.Terms().Label, Key: ref.Key, URL: task.JiraURL, ChangeRequests: []adewire.IssueChangeRequest{},
+			Provider: p.ID(), Label: p.Terms().Label, Key: ref.Key, URL: task.JiraURL,
 			Summary: adewire.IssueSummary{Providers: []string{}},
 		}
 		if err != nil {
@@ -122,145 +93,10 @@ func (b *TaskBoard) TaskIssue(ctx context.Context, taskID string) (adewire.TaskI
 		}
 		out.Key, out.URL, out.Title = iss.Ref.Key, iss.Ref.URL, iss.Title
 		out.Status, out.StatusCategory = iss.Status, iss.StatusCategory
-		out.ChangeRequestsReason = iss.ChangeRequestsReason
 		out.Summary = adewire.IssueSummary{
 			Known: iss.Summary.Known, Count: iss.Summary.Count, State: iss.Summary.State, Providers: append([]string{}, iss.Summary.Providers...),
 		}
-		for _, cr := range iss.ChangeRequests {
-			out.ChangeRequests = append(out.ChangeRequests, adewire.IssueChangeRequest{
-				Title: cr.Title, URL: cr.URL, Ref: cr.Ref, State: cr.State, Repo: cr.Repo,
-			})
-		}
 		return out, nil
 	}
-	return adewire.TaskIssue{Reason: reasonNoTracker, ChangeRequests: []adewire.IssueChangeRequest{}, Summary: adewire.IssueSummary{Providers: []string{}}}, nil
-}
-
-// HeadIndex is the persisted change request index, searched by head branch.
-type HeadIndex interface {
-	ByHeadContaining(text string, limit int) ([]model.GitHostChangeRequestHit, error)
-}
-
-// KeyChangeRequests finds the pull requests that carry an issue key: in the title through each code host's
-// search, and in the head branch through the sync index of every imported repository. Jira's GitHub app
-// links pull requests by the same rule (key in branch, title or commit); commit-only links are not found.
-// Rows found are returned even beside an error, so a failed host leaves the index matches in place.
-func KeyChangeRequests(hosts *githost.Registry, index HeadIndex) func(ctx context.Context, key string) ([]issuetracker.ChangeRequest, error) {
-	return func(ctx context.Context, key string) ([]issuetracker.ChangeRequest, error) {
-		c := &keyCollector{in: keyBoundary(key), seen: map[string]bool{}}
-		failed := c.fromHosts(ctx, hosts, key)
-		if err := c.fromIndex(index, key); err != nil && failed == nil {
-			failed = err
-		}
-		return c.out, failed
-	}
-}
-
-// keyCollector gathers the change requests that carry an issue key, once per URL.
-type keyCollector struct {
-	in   *regexp.Regexp
-	seen map[string]bool
-	out  []issuetracker.ChangeRequest
-}
-
-func (c *keyCollector) add(provider string, cr githost.ChangeRequest, repoKeyTail string) {
-	if cr.URL == "" || c.seen[cr.URL] {
-		return
-	}
-	c.seen[cr.URL] = true
-	c.out = append(c.out, issuetracker.ChangeRequest{
-		Title: cr.Title, URL: cr.URL, Ref: fmt.Sprintf("#%d", cr.Number), State: cr.State,
-		Repo: changeRequestRepo(cr.URL, repoKeyTail), Provider: provider,
-	})
-}
-
-// fromHosts adds the title matches of every searchable host and returns the first host failure.
-func (c *keyCollector) fromHosts(ctx context.Context, hosts *githost.Registry, key string) error {
-	var failed error
-	for _, p := range hosts.All() {
-		s, ok := p.(githost.ChangeRequestSearch)
-		if !ok {
-			continue
-		}
-		crs, st := s.SearchChangeRequests(ctx, key, keySearchLimit)
-		if st.Kind == githost.KindNotFound {
-			continue // a host whose CLI is not installed is a host the user does not use; Settings shows it
-		}
-		if !st.OK() {
-			if failed == nil {
-				failed = searchError(st)
-			}
-			continue
-		}
-		for _, cr := range crs {
-			if c.in.MatchString(cr.Title) {
-				c.add(p.ID(), cr, "")
-			}
-		}
-	}
-	return failed
-}
-
-// fromIndex adds the head branch matches of the persisted index.
-func (c *keyCollector) fromIndex(index HeadIndex, key string) error {
-	if index == nil {
-		return nil
-	}
-	hits, err := index.ByHeadContaining(key, keySearchLimit)
-	for _, h := range hits {
-		if !c.in.MatchString(h.HeadRef) {
-			continue
-		}
-		provider, _, _ := strings.Cut(h.RepoKey, "|")
-		c.add(provider, githost.ChangeRequest{Number: h.Number, Title: h.Title, URL: h.URL, State: indexState(h)}, repoKeyTail(h.RepoKey))
-	}
-	return err
-}
-
-// keyBoundary matches key as a whole token: PROJ-1 must not match PROJ-12 or XPROJ-1.
-func keyBoundary(key string) *regexp.Regexp {
-	return regexp.MustCompile(`(^|[^A-Za-z0-9])` + regexp.QuoteMeta(key) + `([^0-9]|$)`)
-}
-
-func searchError(st githost.Status) error {
-	if st.Kind == githost.KindUnauthenticated {
-		return fmt.Errorf("%w: %s", issuetracker.ErrUnauthenticated, st.Reason)
-	}
-	return errors.New(st.Reason)
-}
-
-func indexState(h model.GitHostChangeRequestHit) string {
-	if h.Draft && h.State == "open" {
-		return "draft"
-	}
-	return h.State
-}
-
-// repoKeyTail is the owner/name part of a change request index key (provider|host|owner/name).
-func repoKeyTail(repoKey string) string {
-	parts := strings.SplitN(repoKey, "|", 3)
-	if len(parts) == 3 {
-		return parts[2]
-	}
-	return ""
-}
-
-// changeRequestRepo is owner/name read from a change request URL (.../owner/name/pull/1 or
-// .../owner/name/-/merge_requests/1), else the fallback.
-func changeRequestRepo(rawURL, fallback string) string {
-	rest := rawURL
-	if i := strings.Index(rest, "://"); i >= 0 {
-		rest = rest[i+3:]
-	}
-	if i := strings.Index(rest, "/"); i >= 0 {
-		rest = rest[i+1:]
-	} else {
-		return fallback
-	}
-	for _, marker := range []string{"/-/", "/pull/", "/merge_requests/"} {
-		if i := strings.Index(rest, marker); i > 0 {
-			return rest[:i]
-		}
-	}
-	return fallback
+	return adewire.TaskIssue{Reason: reasonNoTracker, Summary: adewire.IssueSummary{Providers: []string{}}}, nil
 }

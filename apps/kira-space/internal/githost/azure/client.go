@@ -39,11 +39,10 @@ const (
 	prBaseFields = `id:pullRequestId,title:title,status:status,draft:isDraft,src:sourceRefName,dst:targetRefName,` +
 		`head:lastMergeSourceCommit.commitId,created:creationDate,closed:closedDate,author:createdBy.uniqueName,` +
 		`forkRepo:forkSource.repository.name,forkProject:forkSource.repository.project.name`
-	prFields      = prBaseFields + `,reviewers:reviewers[].{vote:vote,required:isRequired}`
-	prListQuery   = `[].{` + prFields + `}`
-	prShowQuery   = `{` + prFields + `}`
-	prSearchQuery = `[].{` + prFields + `,repo:repository.name}`
-	policyQuery   = `[].{status:status,type:configuration.type.displayName}`
+	prFields    = prBaseFields + `,reviewers:reviewers[].{vote:vote,required:isRequired}`
+	prListQuery = `[].{` + prFields + `}`
+	prShowQuery = `{` + prFields + `}`
+	policyQuery = `[].{status:status,type:configuration.type.displayName}`
 )
 
 // Client is the az-facing surface of the provider.

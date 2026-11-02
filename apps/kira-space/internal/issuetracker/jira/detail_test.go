@@ -131,7 +131,7 @@ var detailRef = issuetracker.Ref{Provider: ProviderID, Key: "PROJ-12"}
 func TestDetailTooLargeFallsBackToCommentList(t *testing.T) {
 	r := newDetailRunner(t)
 	r.full = func() ([]byte, error) { return nil, toolexec.ErrOutputTooLarge }
-	p, _ := newTestProvider(r, nil)
+	p, _ := newTestProvider(r)
 	d, err := p.IssueDetail(context.Background(), detailRef)
 	if err != nil || len(d.Comments) != 2 || d.Comments[1].ID != "10009" || d.CommentsOmitted || r.lists.Load() != 1 {
 		t.Fatalf("%+v %v", d.Comments, err)
@@ -150,7 +150,7 @@ func TestDetailCommentListFailureOmitsComments(t *testing.T) {
 			r := newDetailRunner(t)
 			r.full = func() ([]byte, error) { return nil, toolexec.ErrOutputTooLarge }
 			r.list = func() ([]byte, error) { return nil, fail }
-			p, _ := newTestProvider(r, nil)
+			p, _ := newTestProvider(r)
 			d, err := p.IssueDetail(context.Background(), detailRef)
 			if err != nil || !d.CommentsOmitted || d.Title == "" {
 				t.Fatalf("%+v %v", d, err)
@@ -163,7 +163,7 @@ func TestDetailSecondTooLargeFails(t *testing.T) {
 	r := newDetailRunner(t)
 	r.full = func() ([]byte, error) { return nil, toolexec.ErrOutputTooLarge }
 	r.noComments = r.full
-	p, _ := newTestProvider(r, nil)
+	p, _ := newTestProvider(r)
 	if _, err := p.IssueDetail(context.Background(), detailRef); !errors.Is(err, toolexec.ErrOutputTooLarge) {
 		t.Fatalf("err %v", err)
 	}
@@ -178,16 +178,16 @@ func TestDetailIssueFailureKeepsDetail(t *testing.T) {
 		}
 		return base(a)
 	}
-	p, _ := newTestProvider(r, nil)
+	p, _ := newTestProvider(r)
 	d, err := p.IssueDetail(context.Background(), detailRef)
-	if err != nil || d.Title == "" || d.ChangeRequestsReason != issuetracker.ReasonFailed || d.Summary.Known || len(d.ChangeRequests) != 0 {
+	if err != nil || d.Title == "" || d.Summary.Known {
 		t.Fatalf("%+v %v", d, err)
 	}
 }
 
 func TestDetailReadyErrorsPassThrough(t *testing.T) {
 	r := newDetailRunner(t)
-	p, _ := newTestProvider(r, nil)
+	p, _ := newTestProvider(r)
 	other := detailRef
 	other.Site = "other.atlassian.net"
 	if _, err := p.IssueDetail(context.Background(), other); !errors.Is(err, issuetracker.ErrOtherSite) {
@@ -203,7 +203,7 @@ func TestDetailReadyErrorsPassThrough(t *testing.T) {
 
 func TestDetailDropsCachedIssue(t *testing.T) {
 	r := newDetailRunner(t)
-	p, _ := newTestProvider(r, nil)
+	p, _ := newTestProvider(r)
 	if _, err := p.Issue(context.Background(), issuetracker.Ref{Provider: ProviderID, Key: "PROJ-12"}); err != nil {
 		t.Fatal(err)
 	}
