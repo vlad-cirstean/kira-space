@@ -91,6 +91,7 @@ whatever sandbox a session happens to be in),
 - Row state class is selected ? 'bg-select' : sticky ? 'bg-bg hover:bg-hover' : 'hover:bg-hover'; sticky is a prop so a row in a sticky layer paints its own background, and selected beats hover by ternary order, not CSS specificity.
 - In git-ui dialogs, pair every control that is not natively input-like with an explicit useId()-driven for/id, because biome's noLabelWithoutControl can't see through a wrapped component's inheritAttrs: false to the native element.
 - Pass prioritize-position on a point-anchored DropdownMenu so reka's Popper flips before it shifts, since shift alone can clamp overflow to zero against a 0×0 anchor and starve flip of a signal.
+- Never put a Tooltip between a DropdownMenu or Popover root and its trigger: reka shares one unscoped PopperRoot context, so the trigger anchors the Tooltip and the menu stays at translate(0,-200%), off-screen. Put `TooltipIconButton` inside `DropdownMenuTrigger as-child`, or anchor explicitly (RefsPopover).
 - AttributeTooltip.vue (moved from workbench to theme) is one hoisted instance per list/grid container, mounted as a sibling, never a child, of any container SlickGrid's init() can empty, and reads a data-kira-tip attribute on descendants.
 - TooltipProvider wraps both packages/git-ui mount roots via MountRoot.vue in main.ts's mount().
 - packages/git-ui is fully on shadcn-vue (P131), with no Kui* import left in the package.
@@ -2633,7 +2634,7 @@ role (`harness.UsageReporter`): only a provider that reports it feeds the servic
 - Pure logic of the ADE frontend lives in frontend/src/ade/v2/board/ (status, actions, needs-you rank, timeline, drop plan, fix menu); components use <script setup>.
 - ADE Pinia stores each have one concern: adeBoardUi (selection, tabs), adeDialogs (dialog flow and pending keys such as merge:<branch>:<target>), adeTakeOver, adeTerminals.
 - ADE server state goes through TanStack Query (queries.ts), invalidated by the push channels.
-- Task plus menu (P410, `sessions/AdeTaskLaunchMenu.vue`) on the card head and the Sessions tab bar: per worktree a Terminal (Git module tab via `openRepoTerminalTab`) or an ad hoc agent session (`StartAdHoc`). Disabled items show their reason inline.
+- Task plus menu (P410, `sessions/AdeTaskLaunchMenu.vue`) on the Sessions tab bar only (not the task list card): per worktree a Terminal (Git module tab via `openRepoTerminalTab`) or an ad hoc agent session (`StartAdHoc`). Disabled items show their reason inline.
 - The repository list is one Pinia store (state/coderepos.ts) fed by the boot-time kira:adetask:repos subscription (initCodeRepos, called from main.ts), so every module in every window sees every change.
 - All repository configuration lives in one Git-module dialog, repo/ReposDialog.vue (P205), with a Repositories tab (import, list, per-repo form, remove) and a Scan folders tab (add, watch, hide all, remove). Agents has no Repos tab.
 - The per-repo form in ReposDialog sets nickname, prepare script and timeout, integration branches, environments and worktreeBasePath (via UpdateRepo).
