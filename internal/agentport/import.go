@@ -571,44 +571,58 @@ func (s *Service) putSecrets(chosen []*Item, res *PortResult) (err error) {
 			res.Secrets = []string{}
 		}
 	}()
-	var have map[string]string
-	var unreadable map[string]error
-	done := map[string]bool{}
+	st := &secretState{done: map[string]bool{}}
 	for _, it := range chosen {
 		reuse := map[string]bool{}
 		for _, sl := range it.Secrets {
 			reuse[sl.Name] = sl.Reuse
 		}
 		for _, p := range it.pending {
-			if done[p.name] || reuse[p.name] {
+			if st.done[p.name] || reuse[p.name] {
 				continue
 			}
-			if s.o.Secrets == nil {
-				return ipcerr.SecretStore(i18n.T("backend.core.agentSettings.noStore.body", nil))
+			if err := s.putSecret(st, p, res); err != nil {
+				return err
 			}
-			if have == nil {
-				if have, unreadable, err = s.o.Secrets.Store.Open(secrets.ScopeAgentCredential, agentcfg.SecretOwner); err != nil {
-					return ipcerr.Wrap(err)
-				}
-			}
-			if _, bad := unreadable[p.name]; bad {
-				return stale()
-			}
-			if v, taken := have[p.name]; taken {
-				if v != p.value {
-					return stale()
-				}
-				done[p.name] = true
-				continue
-			}
-			if err := s.o.Secrets.Put(p.name, p.value); err != nil {
-				return ipcerr.Wrap(err)
-			}
-			done[p.name] = true
-			res.Secrets = append(res.Secrets, p.name)
 		}
 	}
 	slices.Sort(res.Secrets)
+	return nil
+}
+
+// secretState caches the store read across one putSecrets call.
+type secretState struct {
+	have       map[string]string
+	unreadable map[string]error
+	done       map[string]bool
+}
+
+func (s *Service) putSecret(st *secretState, p pendingSecret, res *PortResult) error {
+	if s.o.Secrets == nil {
+		return ipcerr.SecretStore(i18n.T("backend.core.agentSettings.noStore.body", nil))
+	}
+	if st.have == nil {
+		have, unreadable, err := s.o.Secrets.Store.Open(secrets.ScopeAgentCredential, agentcfg.SecretOwner)
+		if err != nil {
+			return ipcerr.Wrap(err)
+		}
+		st.have, st.unreadable = have, unreadable
+	}
+	if _, bad := st.unreadable[p.name]; bad {
+		return stale()
+	}
+	if v, taken := st.have[p.name]; taken {
+		if v != p.value {
+			return stale()
+		}
+		st.done[p.name] = true
+		return nil
+	}
+	if err := s.o.Secrets.Put(p.name, p.value); err != nil {
+		return ipcerr.Wrap(err)
+	}
+	st.done[p.name] = true
+	res.Secrets = append(res.Secrets, p.name)
 	return nil
 }
 
