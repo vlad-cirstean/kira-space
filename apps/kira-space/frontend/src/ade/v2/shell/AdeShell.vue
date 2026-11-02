@@ -6,6 +6,7 @@ import { computed, onMounted, onScopeDispose } from 'vue';
 import { control } from '../../../bridge/control';
 import AdeAbortRebaseDialog from '../AdeAbortRebaseDialog.vue';
 import AdeAddPopover from '../AdeAddPopover.vue';
+import AdeContextPage from '../context/AdeContextPage.vue';
 import AdeAgentDialog from '../dialog/AdeAgentDialog.vue';
 import AdeLaterPage from '../later/AdeLaterPage.vue';
 import AdeNeedsPage from '../needs/AdeNeedsPage.vue';
@@ -18,6 +19,7 @@ import AdeRunDialog from '../run/AdeRunDialog.vue';
 import AdeTakeOverDialog from '../sessions/AdeTakeOverDialog.vue';
 import AdeStageDialog from '../stage/AdeStageDialog.vue';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useAdeContextUiStore } from '../state/adeContextUi';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
 import AdeWorkflowsPage from '../workflows/AdeWorkflowsPage.vue';
 import AdeCaptureBox from './AdeCaptureBox.vue';
@@ -25,9 +27,12 @@ import AdeCaptureBox from './AdeCaptureBox.vue';
 // Top bar (tabs, capture box, Add) over the active tab; the Plan opens the panel beside it.
 const ui = useAdeBoardUiStore();
 const wfUi = useAdeWorkflowsUiStore();
+const ctxUi = useAdeContextUiStore();
 
 async function onView(view: unknown): Promise<void> {
-  if (view === ui.view || (ui.view === 'workflows' && !(await wfUi.leave()))) return;
+  if (view === ui.view) return;
+  if (ui.view === 'workflows' && !(await wfUi.leave())) return;
+  if (ui.view === 'context' && !(await ctxUi.leave())) return;
   ui.view = view as typeof ui.view;
 }
 const { model } = usePlanModel();
@@ -131,6 +136,13 @@ onScopeDispose(() => offReviewCode?.());
       </div>
       <TabsList class="justify-self-end">
         <TabsTrigger
+          value="context"
+          :class="tabChipVariants({ active: ui.view === 'context', size: 'wide' })"
+          data-testid="ade-tab-context"
+        >
+          {{ t('space.ade.context.tab.label') }}
+        </TabsTrigger>
+        <TabsTrigger
           value="workflows"
           :class="tabChipVariants({ active: ui.view === 'workflows', size: 'wide' })"
           data-testid="ade-tab-workflows"
@@ -145,6 +157,7 @@ onScopeDispose(() => offReviewCode?.());
         <AdePanel v-if="shelfSelected" />
       </template>
       <AdeNeedsPage v-else-if="ui.view === 'needs'" />
+      <AdeContextPage v-else-if="ui.view === 'context'" />
       <AdeWorkflowsPage v-else-if="ui.view === 'workflows'" />
       <template v-else>
         <AdePlanView />

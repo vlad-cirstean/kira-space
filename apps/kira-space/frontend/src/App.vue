@@ -27,6 +27,7 @@ import { getCurrentInstance, markRaw, onMounted, onUnmounted, provide } from 'vu
 import AdeBranchRequestPrompt from './ade/v2/request/AdeBranchRequestPrompt.vue';
 import AdeReviewWindow from './ade/v2/review/AdeReviewWindow.vue';
 import AdeHandoverPrompt from './ade/v2/stage/AdeHandoverPrompt.vue';
+import { useAdeContextUiStore } from './ade/v2/state/adeContextUi';
 import { useAdeReviewWindowStore } from './ade/v2/state/adeReviewWindow';
 import { useAdeWorkflowsUiStore } from './ade/v2/state/adeWorkflowsUi';
 import { control } from './bridge/control';
@@ -117,9 +118,11 @@ onUnmounted(() => {
   for (const off of unsubscribe) off();
 });
 
-// Leaving Agents unmounts the workflow editor: confirm before dropping its unsaved edits.
+// Leaving Agents unmounts the workflow and context editors: confirm before dropping unsaved edits.
 async function beforeModeChange(mode: SpaceMode): Promise<boolean> {
-  if (modeStore.active === 'ade' && mode !== 'ade') return useAdeWorkflowsUiStore().leave();
+  if (modeStore.active === 'ade' && mode !== 'ade') {
+    return (await useAdeWorkflowsUiStore().leave()) && (await useAdeContextUiStore().leave());
+  }
   return true;
 }
 

@@ -8169,6 +8169,38 @@
           "label": "Uncommitted"
         }
       },
+      "context": {
+        "applies": {
+          "hint": "Agents started after you save get the new text. That covers new sessions, headless steps and smart scripts. Running sessions keep theirs."
+        },
+        "discardConfirm": {
+          "body": "Your unsaved changes to the agent context are lost."
+        },
+        "field": {
+          "aria": "Agent context"
+        },
+        "lastGood": {
+          "hint": "The file has an error. Agents get the last good version."
+        },
+        "none": {
+          "hint": "No context yet. Save creates {path}."
+        },
+        "overSize": {
+          "error": "Over the limit of {max} bytes. Agents do not use this text."
+        },
+        "readOnly": {
+          "hint": "This file is too large or not valid text. Open it in an editor to change it."
+        },
+        "resume": {
+          "hint": "A resumed {label} conversation keeps the context it started with until it compacts."
+        },
+        "size": {
+          "status": "{used} of {max} bytes"
+        },
+        "tab": {
+          "label": "Context"
+        }
+      },
       "dayOffConfirm": {
         "body": "{day} is now a day off. This moves {count} task planned for it to {to}. | {day} is now a day off. This moves {count} tasks planned for it to {to}.",
         "title": "Move tasks?"
