@@ -17,6 +17,7 @@ import (
 const branchHold = 65 * time.Second
 
 var kiraBranch = regexp.MustCompile(`^kira/[0-9a-hjkmnp-tv-z]{10}$`)
+var nanoFolder = regexp.MustCompile(`^[0-9a-hjkmnp-tv-z]{10}$`)
 
 // TestAdeBranchRequest runs a headless step on a task with no branch. The agent must ask for one through
 // request_branches, wait for the approval, then work in the returned worktree.
@@ -91,8 +92,8 @@ func TestAdeBranchRequest(t *testing.T) {
 			br = x
 		}
 	}
-	if !kiraBranch.MatchString(br.Name) || br.Worktree == "" {
-		t.Fatalf("branch = %+v, want a kira/ nanoid with a worktree", br)
+	if !kiraBranch.MatchString(br.Name) || !nanoFolder.MatchString(filepath.Base(br.Worktree)) {
+		t.Fatalf("branch = %+v, want a kira/ nanoid in a nanoid worktree folder", br)
 	}
 	if _, err := os.Stat(filepath.Join(br.Worktree, "hello.txt")); err != nil {
 		t.Fatalf("hello.txt missing from the worktree: %v\nlog:\n%s", err, tail(log, 2500))

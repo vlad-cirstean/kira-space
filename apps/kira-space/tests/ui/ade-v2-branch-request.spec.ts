@@ -17,7 +17,13 @@ interface RequestFx {
   taskTitle: string;
   source: string;
   stepName: string;
-  items: { codeRepoId: string; repo: string; kind: string; branch: string; base: string }[];
+  items: {
+    codeRepoId: string;
+    repo: string;
+    kind: string;
+    branch: string;
+    base: string;
+  }[];
   createdAt: number;
   expiresAt: number;
 }
@@ -84,7 +90,9 @@ test('Deny sends DenyBranchRequest', async ({ relaunch }) => {
   const { page, control } = await openRouted(relaunch);
   await page.locator(t('ade-branch-request-deny')).click();
   await expect.poll(() => calls(control, IPC.adeTaskDenyBranchRequest)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskDenyBranchRequest)[0]?.args).toEqual({ id: 'br_1' });
+  expect(calls(control, IPC.adeTaskDenyBranchRequest)[0]?.args).toEqual({
+    id: 'br_1',
+  });
   expect(calls(control, IPC.adeTaskApproveBranchRequest)).toHaveLength(0);
 });
 
@@ -130,10 +138,42 @@ test('a request that is already answered closes the dialog quietly', async ({ re
   const { window: page } = await openPlan(relaunch, [
     {
       channel: IPC.adeTaskBranchRequest,
-      error: { code: 'E_NOT_FOUND', message: 'This branch request was already answered.' },
+      error: {
+        code: 'E_NOT_FOUND',
+        message: 'This branch request was already answered.',
+      },
     },
     { channel: IPC.promptsList, response: [entry] },
   ]);
   await emitPrompts(page, [entry]);
   await expect(page.locator(t('ade-branch-request-dialog'))).toBeHidden();
+});
+
+test('a repo added by an approved request shows in the task Branches', async ({ relaunch }) => {
+  const added = contract<{ id: string; setup: Record<string, unknown> | null }>(
+    'ade-branch-request',
+    'AdeTaskBoard.Board.addedBranch',
+  );
+  const { window: page } = await openPlan(relaunch, [
+    {
+      channel: IPC.adeTaskBoard,
+      response: adeBoard((b) => {
+        const task = b.tasks.find((x) => x.id === 'T_alerts');
+        if (!task) throw new Error('T_alerts missing');
+        (task.branchIds as string[]).push('b_agent_mobile');
+        b.branches.push({
+          ...added,
+          id: 'b_agent_mobile',
+          taskId: 'T_alerts',
+          codeRepoId: 'repo-mobile',
+          name: 'kira/k3m9x2q7ab',
+          base: 'main',
+        });
+      }),
+    },
+  ]);
+  await openTask(page, 'T_alerts');
+  await expect(
+    page.locator(`${t('ade-task-branch')}[data-branch-id="b_agent_mobile"]`),
+  ).toContainText('kira/k3m9x2q7ab');
 });
