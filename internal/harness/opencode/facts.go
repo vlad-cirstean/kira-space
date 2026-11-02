@@ -14,10 +14,6 @@ const interactiveNeedsPermission = false
 // capsCost: no cost cap flag or config exists (U17, UNVERIFIED).
 const capsCost = false
 
-// mcpAddArgv: `mcp add` takes --url/--env/--header but no non-interactive stdio form was seen
-// (U11, partly verified); install stays manual.
-var mcpAddArgv []string
-
 // resumeLostMarkers are lowercase substrings of the error text of `-s <unknown id>` (U5,
 // UNVERIFIED: the probe hung on stdin).
 var resumeLostMarkers = []string{"session not found", "session does not exist", "no session found"}

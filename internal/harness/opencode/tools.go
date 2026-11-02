@@ -132,6 +132,37 @@ func editPattern(arg string) string {
 // wins), every other built-in denied when Isolated, and nothing left to ask. users are the user's
 // own MCP servers; with Isolated and UserMCP, those not named stay disabled.
 func permissionDoc(s harness.HeadlessSpec, users []harness.UserServer) (map[string]any, error) {
+	perm, err := baseRules(s)
+	if err != nil {
+		return nil, err
+	}
+	tools, err := disabledBuiltins(s)
+	if err != nil {
+		return nil, err
+	}
+	if s.Isolated {
+		isolate(perm, tools)
+	}
+	// Nothing may prompt: a headless run has nobody to answer.
+	perm["doom_loop"] = &ruleSet{entries: []ruleEntry{{"*", "deny"}}}
+	dirs := &ruleSet{entries: []ruleEntry{{"*", "deny"}}}
+	for _, d := range s.AddDirs {
+		dirs.add(strings.TrimRight(d, "/")+"/**", "allow")
+	}
+	perm["external_directory"] = dirs
+
+	doc := map[string]any{"permission": perm}
+	if len(tools) > 0 {
+		doc["tools"] = tools
+	}
+	if off := disabledUserMCP(s, users); len(off) > 0 {
+		doc["mcp"] = off
+	}
+	return doc, nil
+}
+
+// baseRules merges the allow and deny rules of s; deny wins.
+func baseRules(s harness.HeadlessSpec) (map[string]*ruleSet, error) {
 	perm := map[string]*ruleSet{}
 	merge := func(rules map[string]*ruleSet) {
 		for k, r := range rules {
@@ -155,62 +186,60 @@ func permissionDoc(s harness.HeadlessSpec, users []harness.UserServer) (map[stri
 	}
 	merge(allow)
 	merge(deny)
+	return perm, nil
+}
 
+// disabledBuiltins turns off every built-in outside s.Tools; nil Tools leaves all on.
+func disabledBuiltins(s harness.HeadlessSpec) (map[string]bool, error) {
 	tools := map[string]bool{}
-	if s.Tools != nil {
-		keep := map[string]bool{}
-		for _, t := range s.Tools {
-			ids, ok := toolIDs(t)
-			if !ok {
-				return nil, unsupported(t)
-			}
-			for _, id := range ids {
-				keep[id] = true
-			}
+	if s.Tools == nil {
+		return tools, nil
+	}
+	keep := map[string]bool{}
+	for _, t := range s.Tools {
+		ids, ok := toolIDs(t)
+		if !ok {
+			return nil, unsupported(t)
 		}
-		for _, id := range builtinIDs {
-			if !keep[id] {
-				tools[id] = false
-			}
+		for _, id := range ids {
+			keep[id] = true
 		}
 	}
-	if s.Isolated {
-		for _, id := range builtinIDs {
-			if perm[id] == nil && !hasOff(tools, id) {
-				perm[id] = &ruleSet{entries: []ruleEntry{{"*", "deny"}}}
-			}
-		}
-		// A pattern-only allow list leaves every other command at the default, which allows.
-		for _, r := range perm {
-			if !r.hasStar() && r.hasAction("allow") {
-				r.entries = append([]ruleEntry{{"*", "deny"}}, r.entries...)
-			}
+	for _, id := range builtinIDs {
+		if !keep[id] {
+			tools[id] = false
 		}
 	}
-	// Nothing may prompt: a headless run has nobody to answer.
-	perm["doom_loop"] = &ruleSet{entries: []ruleEntry{{"*", "deny"}}}
-	dirs := &ruleSet{entries: []ruleEntry{{"*", "deny"}}}
-	for _, d := range s.AddDirs {
-		dirs.add(strings.TrimRight(d, "/")+"/**", "allow")
-	}
-	perm["external_directory"] = dirs
+	return tools, nil
+}
 
-	doc := map[string]any{"permission": perm}
-	if len(tools) > 0 {
-		doc["tools"] = tools
-	}
-	if s.Isolated && len(s.UserMCP) > 0 {
-		off := map[string]any{}
-		for _, u := range users {
-			if !slices.Contains(s.UserMCP, u.Name) && !slices.Contains(s.GrantMCP, u.Name) {
-				off[u.Name] = map[string]any{"enabled": false}
-			}
-		}
-		if len(off) > 0 {
-			doc["mcp"] = off
+// isolate denies every built-in perm and tools leave unset, and closes pattern-only allow lists.
+func isolate(perm map[string]*ruleSet, tools map[string]bool) {
+	for _, id := range builtinIDs {
+		if perm[id] == nil && !hasOff(tools, id) {
+			perm[id] = &ruleSet{entries: []ruleEntry{{"*", "deny"}}}
 		}
 	}
-	return doc, nil
+	// A pattern-only allow list leaves every other command at the default, which allows.
+	for _, r := range perm {
+		if !r.hasStar() && r.hasAction("allow") {
+			r.entries = append([]ruleEntry{{"*", "deny"}}, r.entries...)
+		}
+	}
+}
+
+// disabledUserMCP disables the user's MCP servers an isolated run neither names nor is granted.
+func disabledUserMCP(s harness.HeadlessSpec, users []harness.UserServer) map[string]any {
+	if !s.Isolated || len(s.UserMCP) == 0 {
+		return nil
+	}
+	off := map[string]any{}
+	for _, u := range users {
+		if !slices.Contains(s.UserMCP, u.Name) && !slices.Contains(s.GrantMCP, u.Name) {
+			off[u.Name] = map[string]any{"enabled": false}
+		}
+	}
+	return off
 }
 
 func hasOff(tools map[string]bool, id string) bool {

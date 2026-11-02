@@ -68,10 +68,10 @@ func saveContext(t *testing.T, app *flowharness.App, text string) {
 	}
 }
 
-func smartRun(t *testing.T, app *flowharness.App, name string) scriptruns.Run {
+func smartRun(t *testing.T, app *flowharness.App, name, model string) scriptruns.Run {
 	t.Helper()
 	rec, err := app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
-		Name: name, Kind: scripts.KindSmart, Command: "Say hi", Color: "blue", Smart: &scripts.Smart{Model: "fast"},
+		Name: name, Kind: scripts.KindSmart, Command: "Say hi", Color: "blue", Smart: &scripts.Smart{Model: model},
 	}})
 	if err != nil {
 		t.Fatal(err)
@@ -126,7 +126,7 @@ func TestAgentContextReachesEveryLaunch(t *testing.T) {
 	if err := os.WriteFile(hold, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	smartRun(t, app, "plain")
+	smartRun(t, app, "plain", "sonnet")
 	if args, ctx := rec.next(); strings.Contains(args, contextFlag) || ctx != "" {
 		t.Fatalf("a launch with no context got %q, %q", args, ctx)
 	}
@@ -208,7 +208,7 @@ func TestAgentContextReachesEveryLaunch(t *testing.T) {
 	if real, err := filepath.EvalSymlinks(filepath.Dir(snap)); err != nil || !strings.Contains(d.Profile, real) {
 		t.Fatalf("sandbox profile lacks the context dir %s:\n%s", filepath.Dir(snap), d.Profile)
 	}
-	smart := smartRun(t, app, "ask")
+	smart := smartRun(t, app, "ask", "sonnet")
 	if args, ctxText := rec.next(); !strings.Contains(args, contextFlag) || ctxText != marker2 {
 		t.Fatalf("smart script got %q, %q, want the marker", args, ctxText)
 	}
@@ -230,7 +230,7 @@ func TestAgentContextReachesEveryLaunch(t *testing.T) {
 	if args, ctxText := rec.next(); !strings.Contains(args, fakeagent.PersonaContextFlag) || ctxText != marker2 {
 		t.Fatalf("fake interactive got %q, %q, want the marker", args, ctxText)
 	}
-	smartRun(t, app, "ask-fake")
+	smartRun(t, app, "ask-fake", "fast")
 	if h := fake.Headless(); len(h) == 0 || string(h[len(h)-1].Context) != marker2 {
 		t.Fatalf("fake headless calls = %+v, want the marker", h)
 	}
