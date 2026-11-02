@@ -524,6 +524,42 @@ func TestAutomationStep(t *testing.T) {
 		}
 	})
 
+	secretScript := func(f *runFixture, value string) {
+		t.Helper()
+		v := value
+		_, err := f.app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{
+			Fields: scripts.CustomScriptFields{
+				Name: "deploy", Kind: scripts.KindSmart, Command: "Deploy", Color: "blue", UseAdeDir: true,
+				Params: []scripts.Param{{Name: "token", Type: scripts.ParamText, Required: true, Secret: true}},
+				Smart:  &scripts.Smart{Model: "opus", MaxBudgetUSD: 0.5, Timeout: "5m", Tools: []string{"Read"}},
+			},
+			SecretValues: map[string]*string{"token": &v},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Run("saved secret param", func(t *testing.T) {
+		f := newRunFixture(t, []fakeagent.Action{{Name: "done"}}, smartStepYAML("deploy", ""))
+		secretScript(f, "p457-saved-value")
+		if r := runOnly(t, f, "feat/api-secret"); r.State != "done" {
+			t.Fatalf("run = %+v", r)
+		}
+		if got := fakeFile(t, f.app, "api-1.env"); !strings.Contains(got, "KIRA_PARAM_TOKEN=p457-saved-value") {
+			t.Errorf("env = %q, want the saved secret value", got)
+		}
+	})
+
+	t.Run("secret param in the workflow file is refused", func(t *testing.T) {
+		f := newRunFixture(t, []fakeagent.Action{{Name: "done"}}, smartStepYAML("deploy", "    params:\n      token: plaintext\n"))
+		secretScript(f, "p457-saved-value")
+		r := runOnly(t, f, "feat/api-plain")
+		if r.State != "failed" || !strings.Contains(r.Note, "is a secret param") {
+			t.Fatalf("run = %+v, want failed naming the secret param", r)
+		}
+	})
+
 	t.Run("user mcp server", func(t *testing.T) {
 		f := newRunFixture(t, []fakeagent.Action{{Name: "done", MCP: []fakeagent.MCPCall{{Server: "fake", Tool: "echo", Args: map[string]any{"text": "hi"}}}}}, lintStep("    params:\n      level: high\n"))
 		f.app.SetHermetic(t, false) // ticks a server of the CLI's own config

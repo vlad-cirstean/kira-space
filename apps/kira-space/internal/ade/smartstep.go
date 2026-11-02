@@ -3,6 +3,8 @@ package ade
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -23,6 +25,8 @@ type smartStep struct {
 	env     []string
 	dir     string
 	timeout time.Duration
+	// secrets are the values of the script's secret params, for the step's log mask.
+	secrets []string
 }
 
 // planSmartStep resolves def's smart script for a run on sb. It has no side effect apart from
@@ -52,7 +56,11 @@ func (b *TaskBoard) planSmartStep(tc *taskCtx, sb model.AdeTaskBranch, path stri
 		return fail("%d scripts have that name", len(found))
 	}
 	script := found[0]
-	vals, missing, err := scripts.ParamValues(script.Params, def.Params)
+	given, err := b.secretParams(script, def.Params)
+	if err != nil {
+		return fail("%s", err)
+	}
+	vals, missing, err := scripts.ParamValues(script.Params, given)
 	if err != nil {
 		return fail("%s", err)
 	}
@@ -64,13 +72,16 @@ func (b *TaskBoard) planSmartStep(tc *taskCtx, sb model.AdeTaskBranch, path stri
 	for _, name := range scripts.BuiltinVars {
 		env = append(env, scripts.BuiltinEnv(name)+"="+rendered[name])
 	}
+	var secretVals []string
 	for _, v := range vals {
 		env = append(env, scripts.EnvName(v.Name)+"="+v.Env)
-		if !v.Secret {
+		if v.Secret {
+			secretVals = append(secretVals, v.Env)
+		} else {
 			rendered[v.Name] = v.Rendered
 		}
 	}
-	step := &smartStep{script: script, env: env, dir: path, timeout: script.Smart.TimeoutDuration()}
+	step := &smartStep{script: script, env: env, dir: path, timeout: script.Smart.TimeoutDuration(), secrets: secretVals}
 	if def.Timeout != "" {
 		step.timeout = parseStepTimeout(def.Timeout)
 	}
@@ -84,6 +95,41 @@ func (b *TaskBoard) planSmartStep(tc *taskCtx, sb model.AdeTaskBranch, path stri
 	body := scripts.PlainText(scripts.Compose(script.Command, rendered))
 	step.prompt = body + "\n\n" + agentmcp.SpaceNote(b.prompts()) + "\n\n" + agentmcp.FinishInstruction(b.prompts(), resultSpecs(def.Results))
 	return step, nil
+}
+
+// secretParams is the step's param values with each saved secret param filled from the script's sealed
+// value, as a run does. A workflow file never carries a secret value: a `params` entry for a secret
+// param is refused, since the file is plain text.
+func (b *TaskBoard) secretParams(script scripts.CustomScript, given map[string][]string) (map[string][]string, error) {
+	out := make(map[string][]string, len(given))
+	maps.Copy(out, given)
+	var want []string
+	for _, p := range script.Params {
+		if !p.Secret {
+			continue
+		}
+		if _, ok := given[p.Name]; ok {
+			return nil, fmt.Errorf("%s is a secret param: save its value in the script, not in the workflow file", p.Name)
+		}
+		if slices.Contains(script.SavedSecrets, p.Name) {
+			want = append(want, p.Name)
+		}
+	}
+	if len(want) == 0 {
+		return out, nil
+	}
+	vals, unreadable, err := b.deps.CustomScripts.SecretValues(script.ID)
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range want {
+		if v, ok := vals[n]; ok {
+			out[n] = []string{v}
+		} else if e, bad := unreadable[n]; bad {
+			return nil, fmt.Errorf("the saved value of %s cannot be read, set it again in the script: %w", n, e)
+		}
+	}
+	return out, nil
 }
 
 // mcpNames are the user MCP servers the script ticked.

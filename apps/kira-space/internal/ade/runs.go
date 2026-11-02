@@ -842,7 +842,11 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		return
 	}
 	defer ticked.Release()
-	sink.setMask(secrets.NewMasker(append(slices.Clone(prep.Secrets), ticked.Secrets...)...))
+	masked := append(slices.Clone(prep.Secrets), ticked.Secrets...)
+	if l.smart != nil {
+		masked = append(masked, l.smart.secrets...)
+	}
+	sink.setMask(secrets.NewMasker(masked...))
 	agent := l.agent
 	spec := harness.HeadlessSpec{
 		Bin: b.deps.AgentBin, Dir: l.path, Prompt: l.prompt, SessionID: b.sessionAgentID(sessionID),
