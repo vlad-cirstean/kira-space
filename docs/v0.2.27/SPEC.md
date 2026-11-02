@@ -9,7 +9,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P459 | Task details: drop Notes, generic labels, remove Jira PR search | Done |
 | P460 | Jira issue view: fast open, readable render, images | Done |
 | P461 | Task "+" new terminal or agent works; remove list-row terminal button | Done |
-| P462 | Global capture dialog: keyboard only, PR-derived branches | Todo |
+| P462 | Global capture dialog: keyboard only, PR-derived branches | Done |
 | P463 | Persist task tabs across task switches | Done |
 | P464 | Review window: default tab, PR line comment, send clears, resizable panels | Todo |
 | P465 | Review window: re-review on edits, visual indicators, next/prev unreviewed | Todo |
@@ -53,6 +53,8 @@ Result: Cause frontend. A Tooltip root between DropdownMenu and its trigger stol
 - Remove the checkboxes. Keyboard only: Enter adds to Later, a modifier plus Enter adds to Today (plan picks the modifier, shows it in the dialog). Remove the open option.
 - When the input is a PR, resolve repo and head branch from the PR, fetch them, and add them as branches on the new task for review.
 - Test: backend flow (PR input yields repo and branch on the task) and UI spec (shortcuts, no checkboxes) on the same scenario.
+
+Result: radios and the open actions are gone. Enter adds to Later, CmdOrCtrl+Enter (`form.submit`) to Today; hints show both. `CaptureTask` takes an optional plan day. A pasted PR is fetched and its head branch attached to the new task as a review branch (`TaskBoard.AddReviewLink`). Partial outcomes (repo not imported, PR not found) return a `notice` and keep the task. Tests: captureflow, `adeflow` `TestCaptureChangeRequestForReview`, `tests/ui/capture.spec.ts`. The add popover Jira label is now the generic Issue key (P459 handoff).
 
 ### P463 Persist task tabs across task switches
 
