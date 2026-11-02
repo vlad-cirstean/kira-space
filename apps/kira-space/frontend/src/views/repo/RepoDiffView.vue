@@ -11,6 +11,7 @@ import { TIMING } from '@workbench/behaviour/timing';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
+import { useHostLineComment } from '../../ade/v2/review/useHostLineComment';
 import { useReviewWorkingDiff } from '../../ade/v2/review/useReviewWorking';
 import { useAdeReviewWindowStore } from '../../ade/v2/state/adeReviewWindow';
 import { gitRepoIdFor } from '../../repo/git/hostHandlers';
@@ -75,6 +76,15 @@ const windowTarget = useAdeReviewWindowStore().target;
 const workingTarget =
   workingBranchId !== undefined && windowTarget?.branchId === workingBranchId ? windowTarget : null;
 const repoIdForNav = repoIdOfTab(props.tab);
+// A committed tab of the window's own branch can post a line comment to the branch's change request.
+const tabReview = props.tab.state.review;
+const hostComment =
+  windowTarget !== null &&
+  tabReview !== null &&
+  tabReview.branch === windowTarget.branch &&
+  repoIdForNav === windowTarget.codeRepoId
+    ? useHostLineComment(() => windowTarget, tabReview.branchTip)
+    : undefined;
 
 function hasAdjacentFile(dir: 'next' | 'previous'): boolean {
   if (!isReview || !repoIdForNav) return false;
@@ -194,6 +204,7 @@ async function mount(): Promise<void> {
         path: props.tab.path,
         leftRev: left,
         review,
+        hostComment,
       }),
     );
   } else if (workingTarget !== null) {

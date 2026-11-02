@@ -14,7 +14,9 @@ import type {
   ReviewCommentState,
   Transport,
 } from '@kira/git-ipc';
+import { t } from '@theme/i18n';
 import { logError } from '@workbench/bridge/log';
+import type { HostCommentTarget } from '../../ade/v2/review/useHostLineComment';
 import { invalidateReviewWorking } from '../../ade/v2/review/useReviewWorking';
 import type { ReviewWindowTarget } from '../../ade/v2/wire';
 import { control } from '../../bridge/control';
@@ -37,6 +39,10 @@ export interface ReviewSource {
   editComment(id: number, body: string, kind: ReviewCommentKind): Promise<void>;
   setCommentState(id: number, state: ReviewCommentState): Promise<void>;
   removeComment(id: number): Promise<void>;
+  /** The change request a compose may post a line comment to; absent on a source that cannot. */
+  hostComment?(): HostCommentTarget | null;
+  /** Posts a line comment to the change request at the tab's commit. Kira keeps no copy. */
+  postToChangeRequest?(range: LineRange, body: string): Promise<{ number: number; short: string }>;
   /** Fires `onDiff` when a mark of this source's file lands, `onComments` after a comment change. */
   subscribe(onDiff: () => void, onComments: () => void): () => void;
   dispose(): void;
@@ -55,6 +61,8 @@ export interface CommittedReviewDeps {
     readonly branchTip: string;
     readonly leftLabel: string;
   };
+  /** Set for a tab of the review window's own branch: the change request line comments go to. */
+  readonly hostComment?: () => HostCommentTarget | null;
 }
 
 // `review.fileDiff` needs `base`, which a diff tab carries only as `leftRev`; re-resolving here,
@@ -142,8 +150,37 @@ function subscribeRepaint(
 }
 
 export function committedReviewSource(deps: CommittedReviewDeps): ReviewSource {
-  const { transport, gitRepoId, path, review } = deps;
+  const { transport, gitRepoId, path, review, hostComment } = deps;
   const { branch } = review;
+  const host: Pick<ReviewSource, 'hostComment' | 'postToChangeRequest'> = hostComment
+    ? {
+        hostComment,
+        async postToChangeRequest(range, body) {
+          const target = hostComment();
+          if (!target) throw new Error(t('space.ade.review.actions.errorDisabled.body'));
+          const res = await transport.request('changeRequest.lineComment', {
+            repoId: gitRepoId,
+            number: target.number,
+            path,
+            range,
+            headSha: review.branchTip,
+            body,
+          });
+          switch (res.kind) {
+            case 'ok':
+              return { number: target.number, short: target.short };
+            case 'disabled':
+              throw new Error(t('space.ade.review.actions.errorDisabled.body'));
+            case 'unavailable':
+              throw new Error(res.status.reason);
+            case 'headMoved':
+              throw new Error(
+                t('git.review.comments.host.headMoved.error', { short: target.short }),
+              );
+          }
+        },
+      }
+    : {};
   return {
     branch,
     async loadDiff() {
@@ -188,6 +225,7 @@ export function committedReviewSource(deps: CommittedReviewDeps): ReviewSource {
       });
     },
     ...idMutations(() => transport, gitRepoId, branch),
+    ...host,
     subscribe: (onDiff, onComments) =>
       subscribeRepaint(gitRepoId, branch, path, 'commit', onDiff, onComments),
     dispose() {

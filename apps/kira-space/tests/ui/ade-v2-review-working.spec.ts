@@ -167,6 +167,8 @@ reviewTest(
     await line.hover();
     await modified.locator('.kira-review-ln-add').click();
     const thread = page.locator(t('review-thread'));
+    await expect(thread.getByTestId('review-thread-kind-question')).toBeVisible();
+    await expect(thread.getByTestId('review-thread-kind-host')).toHaveCount(0);
     await thread.getByTestId('review-thread-input').fill((addArgs as { body: string }).body);
     await thread.getByTestId('review-thread-send').click();
     await expect

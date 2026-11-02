@@ -770,6 +770,43 @@ reviewTest(
   },
 );
 
+reviewTest('the agent pane widens past the old cap', async ({ relaunch }) => {
+  const { page } = await openForward(relaunch, []);
+  await page.setViewportSize({ width: 2000, height: 900 });
+  const right = page.locator(t('ade-review-right'));
+  const centre = page.locator(t('ade-review-centre'));
+  const handle = page.locator(t('ade-panel-resize-handle')).nth(1);
+  const box = await handle.boundingBox();
+  if (!box) throw new Error('no handle');
+  const x = box.x + box.width / 2;
+  const y = box.y + 200;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x - 500, y, { steps: 10 });
+  await page.mouse.up();
+  await expect.poll(async () => (await right.boundingBox())?.width ?? 0).toBeGreaterThan(720);
+  const stored = await page.evaluate(() => localStorage.getItem('kira.ade.review.rightWidth'));
+  expect(Number(stored)).toBeGreaterThan(720);
+  expect((await centre.boundingBox())?.width ?? 0).toBeGreaterThanOrEqual(320);
+});
+
+reviewTest(
+  'a stored width wider than the window leaves the centre its minimum',
+  async ({ relaunch }) => {
+    const { page } = await openForward(relaunch, []);
+    await page.evaluate(() => localStorage.setItem('kira.ade.review.rightWidth', '5000'));
+    await page.reload();
+    await page.locator(t('ade-review-window')).waitFor();
+    const centre = page.locator(t('ade-review-centre'));
+    await expect
+      .poll(async () => (await centre.boundingBox())?.width ?? 0)
+      .toBeGreaterThanOrEqual(320);
+    expect(await page.evaluate(() => localStorage.getItem('kira.ade.review.rightWidth'))).toBe(
+      '5000',
+    );
+  },
+);
+
 reviewTest('arrow keys on a pane handle resize and store the left width', async ({ relaunch }) => {
   const page = await openReview(relaunch);
   const left = page.locator(t('ade-review-left'));
@@ -873,6 +910,86 @@ reviewTest('contract: a change request comment posts to the conversation', async
   expect(await gitStreamParams(page, 'changeRequest.comment')).toEqual([
     { repoId: target.gitRepoId, number: 7, body: '@alice thanks' },
   ]);
+});
+
+const LINE_ARGS = contract<Record<string, unknown>>(ACTIONS, 'args:changeRequest.lineComment');
+
+async function openHostCompose(
+  relaunch: Parameters<Parameters<typeof reviewTest>[2]>[0]['relaunch'],
+  extraResults: Record<string, unknown>,
+  hostReady = true,
+) {
+  const { page, modified } = await openHunkDiff(relaunch, { comments: [], extraResults });
+  await expect(renderedLine(modified, 'CHANGED 100')).toHaveCount(1, { timeout: 15_000 });
+  if (hostReady) await expect(page.locator(t('ade-review-head'))).toBeVisible();
+  else {
+    await expect
+      .poll(async () => (await gitStreamRequests(page)).includes('changeRequest.reviewState'))
+      .toBe(true);
+  }
+  return { page, thread: await openComposeFromGutter(page, modified) };
+}
+
+// Contract ade-review-actions, backend half: githostflow TestChangeRequestReviewActions.
+reviewTest('contract: a PR comment posts on its line', async ({ relaunch }) => {
+  const { page, thread } = await openHostCompose(relaunch, {
+    ...actionsGit(),
+    'changeRequest.lineComment': contract(ACTIONS, 'git:changeRequest.lineComment'),
+  });
+  await thread.getByTestId('review-thread-kind-host').click();
+  await expect(thread.getByTestId('review-thread-host-hint')).toHaveText(
+    'Posts to MR #7. Kira keeps no copy.',
+  );
+  await thread.getByTestId('review-thread-input').fill('tighten this');
+  await thread.getByTestId('review-thread-send').click();
+  await expect(thread.getByTestId('review-thread-posted')).toHaveText('Posted to MR #7');
+  const posts = await gitStreamParams(page, 'changeRequest.lineComment');
+  expect(posts).toHaveLength(1);
+  expect(Object.keys(LINE_ARGS).sort()).toEqual(Object.keys(posts[0] as object).sort());
+  expect(posts[0]).toEqual({
+    repoId: target.gitRepoId,
+    number: 7,
+    path: 'src/pending.ts',
+    range: { start: 100, end: 100 },
+    headSha: actionsHead,
+    body: 'tighten this',
+  });
+  expect(await gitStreamParams(page, 'review.comment.add')).toHaveLength(0);
+});
+
+reviewTest('contract: a moved PR head refuses the post', async ({ relaunch }) => {
+  const { thread } = await openHostCompose(relaunch, {
+    ...actionsGit(),
+    'changeRequest.lineComment': contract(ACTIONS, 'git:changeRequest.lineComment#headMoved'),
+  });
+  await thread.getByTestId('review-thread-kind-host').click();
+  await thread.getByTestId('review-thread-input').fill('tighten this');
+  await thread.getByTestId('review-thread-send').click();
+  await expect(thread.getByTestId('review-thread-error')).toContainText(
+    'The MR head is not the commit shown here',
+  );
+  await expect(thread.getByTestId('review-thread-posted')).toHaveCount(0);
+});
+
+reviewTest('a stale head blocks the PR comment before any post', async ({ relaunch }) => {
+  const { page, thread } = await openHostCompose(relaunch, actionsGit(false, '#stale'));
+  await thread.getByTestId('review-thread-kind-host').click();
+  await thread.getByTestId('review-thread-input').fill('tighten this');
+  await expect(thread.getByTestId('review-thread-host-hint')).toContainText(
+    'The MR head is not the commit shown here',
+  );
+  await expect(thread.getByTestId('review-thread-send')).toBeDisabled();
+  expect(await gitStreamParams(page, 'changeRequest.lineComment')).toHaveLength(0);
+});
+
+reviewTest('no change request hides the PR comment tab', async ({ relaunch }) => {
+  const { thread } = await openHostCompose(
+    relaunch,
+    { 'changeRequest.reviewState': { kind: 'none' } },
+    false,
+  );
+  await expect(thread.getByTestId('review-thread-kind-question')).toBeVisible();
+  await expect(thread.getByTestId('review-thread-kind-host')).toHaveCount(0);
 });
 
 reviewTest(
@@ -1159,12 +1276,11 @@ reviewTest('compose opens on Question', async ({ relaunch }) => {
   const { page, modified } = await openHunkDiff(relaunch, { comments: [] });
   await expect(renderedLine(modified, 'CHANGED 100')).toHaveCount(1, { timeout: 15_000 });
   const thread = await openComposeFromGutter(page, modified);
-  const kinds = thread.getByTestId('review-thread-kind').getByRole('tab');
+  const kinds = thread
+    .getByTestId('review-thread-kind')
+    .locator('[data-testid^="review-thread-kind-"]');
   await expect(kinds.first()).toHaveAttribute('data-testid', 'review-thread-kind-question');
-  await expect(thread.getByTestId('review-thread-kind-question')).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
+  await expect(kinds.first()).toHaveAttribute('data-state', 'on');
 });
 
 reviewTest('keystrokes in the composer stay in the composer', async ({ relaunch }) => {

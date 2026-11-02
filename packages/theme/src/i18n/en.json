@@ -5529,9 +5529,24 @@
         "empty": {
           "emptyHint": "No comments yet. Open a file from the file list and use the + in the diff gutter."
         },
+        "host": {
+          "headMoved": {
+            "error": "The {short} head is not the commit shown here. Push or pull the branch, then post again."
+          },
+          "hint": "Posts to {short} #{number}. Kira keeps no copy.",
+          "posted": {
+            "status": "Posted to {short} #{number}"
+          },
+          "send": {
+            "label": "Post to {short}"
+          }
+        },
         "kind": {
           "change": {
             "label": "Change"
+          },
+          "host": {
+            "label": "{short} comment"
           }
         },
         "line": {
