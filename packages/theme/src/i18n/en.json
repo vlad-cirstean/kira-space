@@ -553,6 +553,11 @@
         "missingRole": {
           "body": "{agent} can’t run {role}."
         },
+        "opencode": {
+          "manualInstall": {
+            "body": "OpenCode can’t add MCP servers from here. Copy the snippet into the mcp block of your OpenCode config."
+          }
+        },
         "providerGone": {
           "body": "The agent that ran this conversation is no longer available."
         }

@@ -30,6 +30,7 @@ export const PROPER_NOUNS: readonly string[] = [
   'Apache',
   'Claude Code',
   'Claude',
+  'OpenCode',
   'Git',
   'GitHub',
   'Azure',

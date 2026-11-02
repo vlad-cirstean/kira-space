@@ -6,11 +6,12 @@ import (
 
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/claude"
+	"github.com/kirathecat/kira-studio/internal/harness/opencode"
 )
 
-// New builds the registry: Claude first, then extra (a test or a later provider).
+// New builds the registry: Claude, OpenCode, then extra (a test or a later provider).
 func New(extra ...harness.Provider) *harness.Registry {
-	return harness.NewRegistry(append([]harness.Provider{claude.New()}, extra...)...)
+	return harness.NewRegistry(append([]harness.Provider{claude.New(), opencode.New()}, extra...)...)
 }
 
 // StageSet is one provider's stage settings.
