@@ -16,7 +16,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P466 | ADE panel tabs: grey circle count badges | Done |
 | P467 | Start a workflow without a repo | Done |
 | P468 | Agent branch and worktree requests: nanoid worktree name, branch in task | Done |
-| P469 | Stage move: advance button with close-session prompt | Todo |
+| P469 | Stage move: advance button with close-session prompt | Done |
 | P470 | Code review (1 round) | Todo |
 | P471 | Close chapter v0.2.27 | Todo |
 
@@ -109,6 +109,8 @@ Result: Worktrees made by `request_branches` go to `<home>/wt/<repo>/<10-char na
 
 - After a stage change the Finish button shows while the open session belongs to the previous stage. Replace with a clear move-on button. If a previous-stage session is open, ask whether to close it, then advance.
 - Test: UI spec; backend flow if the stage logic changes.
+
+Result: Action kind `done` becomes `advance` ("Next stage ›"); last stage keeps `Finish`. `talking` now counts only the current step's sessions and branch sessions, which fixes Finish showing for the previous stage's session. `closeSessions` on `StepDoneArgs`/`SetTaskStepArgs`; `ade/stagesessions.go` closes the leaving stage's terminal sessions (and the review agent when leaving review) before the move; `errSessionGone` sentinel. Stage dialog gains a Close/Keep open RadioGroup (default Close; mobile unchanged). i18n: `taskAction.advance`, `stageDialog.sessions`; `done`/`doneLast` removed. Bindings regenerated. Parity unit test asserts the "Done ›" to "Next stage ›" divergence. Ran: go build, vet, `-race` ade package and mobileweb, adeflow `TestStageMoveSessions|TestStageHandover|TestCloseSession|TestFlatSteps|TestBranching|TestRunLifecycle`; typecheck space-web and space-tests; lint; unit `ade-v2-board-parity`; UI `ade-v2-stage-move` (new), `ade-v2-handover`, `ade-v2-artifacts`, `ade-v2-norepo`, `copy-coverage`. Full suites at chapter end.
 
 ### P470 Code review (1 round)
 
