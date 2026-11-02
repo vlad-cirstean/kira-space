@@ -49,5 +49,9 @@ func (c *client) postComment(ctx context.Context, ref issuetracker.Ref, body str
 		return classify(err, wctx, "workitem comment create")
 	}
 	c.forget(cacheKey(ref))
+	if ref.Site == "" {
+		ref.Site = st.Site
+	}
+	c.forgetDetail(cacheKey(ref))
 	return nil
 }

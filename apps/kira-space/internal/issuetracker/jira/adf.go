@@ -37,13 +37,16 @@ func (n adfNode) attr(k string) string {
 	return ""
 }
 
+// mediaURL resolves an attachment file name to its content URL; "" when unknown. Nil resolves nothing.
+type mediaURL func(name string) string
+
 // adfMarkdown converts an ADF document to Markdown; unreadable input gives "".
-func adfMarkdown(raw json.RawMessage) string {
+func adfMarkdown(raw json.RawMessage, m mediaURL) string {
 	var doc adfNode
 	if len(raw) == 0 || json.Unmarshal(raw, &doc) != nil {
 		return ""
 	}
-	return strings.TrimSpace(strings.Join(adfBlocks(doc.Content, 0), "\n\n"))
+	return strings.TrimSpace(strings.Join(adfBlocks(doc.Content, 0, m), "\n\n"))
 }
 
 var inlineTypes = map[string]bool{
@@ -52,7 +55,7 @@ var inlineTypes = map[string]bool{
 }
 
 // adfBlocks renders sibling nodes, joining a run of inline nodes into one paragraph.
-func adfBlocks(nodes []adfNode, depth int) []string {
+func adfBlocks(nodes []adfNode, depth int, m mediaURL) []string {
 	if depth > adfMaxDepth {
 		return nil
 	}
@@ -62,7 +65,7 @@ func adfBlocks(nodes []adfNode, depth int) []string {
 		if len(run) == 0 {
 			return
 		}
-		if s := adfInline(run, depth); strings.TrimSpace(s) != "" {
+		if s := adfInline(run, depth, m); strings.TrimSpace(s) != "" {
 			out = append(out, s)
 		}
 		run = nil
@@ -73,7 +76,7 @@ func adfBlocks(nodes []adfNode, depth int) []string {
 			continue
 		}
 		flush()
-		if s := adfBlock(n, depth+1); strings.TrimSpace(s) != "" {
+		if s := adfBlock(n, depth+1, m); strings.TrimSpace(s) != "" {
 			out = append(out, s)
 		}
 	}
@@ -81,35 +84,37 @@ func adfBlocks(nodes []adfNode, depth int) []string {
 	return out
 }
 
-func adfBlock(n adfNode, depth int) string {
+func adfBlock(n adfNode, depth int, m mediaURL) string {
 	if depth > adfMaxDepth {
 		return ""
 	}
 	switch n.Type {
 	case "paragraph":
-		return adfInline(n.Content, depth)
+		return adfInline(n.Content, depth, m)
 	case "heading":
 		lvl, _ := strconv.Atoi(n.attr("level"))
 		lvl = min(max(lvl, 1), 6)
-		return strings.Repeat("#", lvl) + " " + oneLine(adfInline(n.Content, depth))
+		return strings.Repeat("#", lvl) + " " + oneLine(adfInline(n.Content, depth, m))
 	case "bulletList":
-		return adfList(n, depth, false)
+		return adfList(n, depth, false, m)
 	case "orderedList":
-		return adfList(n, depth, true)
+		return adfList(n, depth, true, m)
 	case "taskList", "decisionList":
-		return adfList(n, depth, false)
+		return adfList(n, depth, false, m)
 	case "codeBlock":
 		return adfCodeBlock(n)
-	case "blockquote", "panel":
-		return adfQuote(strings.Join(adfBlocks(n.Content, depth), "\n\n"))
+	case "blockquote":
+		return adfQuote(strings.Join(adfBlocks(n.Content, depth, m), "\n\n"))
+	case "panel":
+		return adfQuote("[!" + panelKind(n.attr("panelType")) + "]\n" + strings.Join(adfBlocks(n.Content, depth, m), "\n\n"))
 	case "rule":
 		return "---"
 	case "table":
-		return adfTable(n, depth)
+		return adfTable(n, depth, m)
 	case "mediaSingle", "mediaGroup":
 		var parts []string
 		for _, c := range n.Content {
-			if s := adfInlineNode(c, depth); s != "" {
+			if s := adfInlineNode(c, depth, m); s != "" {
 				parts = append(parts, s)
 			}
 		}
@@ -117,23 +122,23 @@ func adfBlock(n adfNode, depth int) string {
 	case "blockCard", "embedCard":
 		return adfCard(n)
 	case "expand", "nestedExpand":
-		blocks := adfBlocks(n.Content, depth)
+		blocks := adfBlocks(n.Content, depth, m)
 		if t := n.attr("title"); t != "" {
 			blocks = append([]string{wrapMark(escapeText(oneLine(t)), "**")}, blocks...)
 		}
 		return strings.Join(blocks, "\n\n")
 	case "bodiedExtension":
-		return strings.Join(adfBlocks(n.Content, depth), "\n\n")
+		return strings.Join(adfBlocks(n.Content, depth, m), "\n\n")
 	case "extension", "inlineExtension":
 		return ""
 	}
 	if len(n.Content) > 0 {
-		return strings.Join(adfBlocks(n.Content, depth), "\n\n")
+		return strings.Join(adfBlocks(n.Content, depth, m), "\n\n")
 	}
 	return escapeText(n.Text)
 }
 
-func adfList(n adfNode, depth int, ordered bool) string {
+func adfList(n adfNode, depth int, ordered bool, m mediaURL) string {
 	start := 1
 	if ordered {
 		if v, err := strconv.Atoi(n.attr("order")); err == nil {
@@ -155,7 +160,7 @@ func adfList(n adfNode, depth int, ordered bool) string {
 				marker = `- \[x\] `
 			}
 		}
-		body := strings.Join(adfBlocks(it.Content, depth), "\n")
+		body := strings.Join(adfBlocks(it.Content, depth, m), "\n")
 		items = append(items, prefixLines(body, marker, strings.Repeat(" ", visibleWidth(marker))))
 	}
 	return strings.Join(items, "\n")
@@ -220,7 +225,7 @@ func longestRun(s string, c rune) int {
 	return best
 }
 
-func adfTable(n adfNode, depth int) string {
+func adfTable(n adfNode, depth int, m mediaURL) string {
 	var rows [][]string
 	cols := 0
 	for _, r := range n.Content {
@@ -229,7 +234,7 @@ func adfTable(n adfNode, depth int) string {
 		}
 		var cells []string
 		for _, c := range r.Content {
-			cell := strings.Join(adfBlocks(c.Content, depth), " ")
+			cell := strings.Join(adfBlocks(c.Content, depth, m), " ")
 			cell = oneLine(cell)
 			cells = append(cells, escapePipes(cell))
 		}
@@ -296,15 +301,15 @@ func linkDest(u string) string {
 	return sb.String()
 }
 
-func adfInline(nodes []adfNode, depth int) string {
+func adfInline(nodes []adfNode, depth int, m mediaURL) string {
 	var sb strings.Builder
 	for _, n := range nodes {
-		sb.WriteString(adfInlineNode(n, depth))
+		sb.WriteString(adfInlineNode(n, depth, m))
 	}
 	return sb.String()
 }
 
-func adfInlineNode(n adfNode, depth int) string {
+func adfInlineNode(n adfNode, depth int, m mediaURL) string {
 	if depth > adfMaxDepth {
 		return ""
 	}
@@ -318,7 +323,7 @@ func adfInlineNode(n adfNode, depth int) string {
 		if name == "" {
 			name = "user"
 		}
-		return escapeText("@" + name)
+		return "[" + escapeText("@"+oneLine(name)) + "](#kira-mention)"
 	case "emoji":
 		t := n.attr("text")
 		if t == "" {
@@ -334,7 +339,7 @@ func adfInlineNode(n adfNode, depth int) string {
 		}
 		return time.UnixMilli(ms).UTC().Format("2006-01-02")
 	case "status":
-		return escapeText("[" + n.attr("text") + "]")
+		return "[" + escapeText(oneLine(n.attr("text"))) + "](#kira-status-" + statusColor(n.attr("color")) + ")"
 	case "media", "mediaInline":
 		name := n.attr("alt")
 		if name == "" {
@@ -343,12 +348,21 @@ func adfInlineNode(n adfNode, depth int) string {
 		if name == "" {
 			name = "file"
 		}
-		return escapeText("[attachment: " + oneLine(name) + "]")
+		name = oneLine(name)
+		dest := "#kira-attachment"
+		if u := n.attr("url"); n.attr("type") == "external" && isHTTP(u) {
+			dest = linkDest(u)
+		} else if m != nil {
+			if u := m(name); u != "" {
+				dest = linkDest(u)
+			}
+		}
+		return "![" + escapeText(name) + "](" + dest + ")"
 	case "inlineExtension", "extension":
 		return ""
 	}
 	if len(n.Content) > 0 {
-		return adfInline(n.Content, depth+1)
+		return adfInline(n.Content, depth+1, m)
 	}
 	return escapeText(n.Text)
 }
@@ -470,4 +484,28 @@ func escapePipes(s string) string {
 		sb.WriteRune(r)
 	}
 	return sb.String()
+}
+
+// panelKind maps an ADF panel type to the GitHub alert kind the Markdown renderer draws.
+func panelKind(t string) string {
+	switch t {
+	case "note":
+		return "IMPORTANT"
+	case "success":
+		return "TIP"
+	case "warning":
+		return "WARNING"
+	case "error":
+		return "CAUTION"
+	}
+	return "NOTE"
+}
+
+// statusColor limits an ADF status color to the set the renderer styles.
+func statusColor(c string) string {
+	switch c = strings.ToLower(c); c {
+	case "neutral", "purple", "blue", "red", "yellow", "green":
+		return c
+	}
+	return "neutral"
 }

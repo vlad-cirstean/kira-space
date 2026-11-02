@@ -38,6 +38,11 @@ type devInfo struct {
 	noDevTo time.Time // no Development field until then
 }
 
+type detailEntry struct {
+	d  issuetracker.IssueDetail
+	at time.Time
+}
+
 type client struct {
 	disc   *discovery
 	runner Runner
@@ -47,11 +52,13 @@ type client struct {
 	mu    sync.Mutex
 	cache map[string]resultEntry
 	dev   map[string]devInfo
-	sf    singleflight.Group
+	// details holds the last issue view per key, see detail.
+	details map[string]detailEntry
+	sf      singleflight.Group
 }
 
 func newClient(d *discovery, r Runner, c Clock) *client {
-	return &client{disc: d, runner: r, clock: c, bound: fetchBound, cache: map[string]resultEntry{}, dev: map[string]devInfo{}}
+	return &client{disc: d, runner: r, clock: c, bound: fetchBound, cache: map[string]resultEntry{}, dev: map[string]devInfo{}, details: map[string]detailEntry{}}
 }
 
 type fetched struct {

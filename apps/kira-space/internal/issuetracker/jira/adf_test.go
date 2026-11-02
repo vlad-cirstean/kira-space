@@ -26,6 +26,14 @@ func doc(blocks ...string) string {
 	return `{"type":"doc","version":1,"content":[` + strings.Join(blocks, ",") + `]}`
 }
 
+// testMedia resolves a.png only.
+func testMedia(name string) string {
+	if name == "a.png" {
+		return "https://x.test/a b.png"
+	}
+	return ""
+}
+
 func TestAdfMarkdown(t *testing.T) {
 	cases := []struct{ name, in, want string }{
 		{"escapes markup and html", doc(para(text("<script>x</script> *a* _b_ `c`"))), `\<script\>x\</script\> \*a\* \_b\_ \` + "`c\\`"},
@@ -50,18 +58,24 @@ func TestAdfMarkdown(t *testing.T) {
 		{"code fence holds backticks", bt(doc(`{"type":"codeBlock","attrs":{"language":"go"},"content":[{"type":"text","text":"a ~~~ b"}]}`)), "````go\na ``` b\n````"},
 		{"code fence bad language", doc(`{"type":"codeBlock","attrs":{"language":"x y"},"content":[{"type":"text","text":"a"}]}`), "```\na\n```"},
 		{"blockquote", doc(`{"type":"blockquote","content":[` + para(text("a")) + `,` + para(text("b")) + `]}`), "> a\n>\n> b"},
-		{"panel", doc(`{"type":"panel","attrs":{"panelType":"info"},"content":[` + para(text("a")) + `]}`), "> a"},
+		{"panel", doc(`{"type":"panel","attrs":{"panelType":"info"},"content":[` + para(text("a")) + `]}`), "> [!NOTE]\n> a"},
+		{"panel warning", doc(`{"type":"panel","attrs":{"panelType":"warning"},"content":[` + para(text("a")) + `]}`), "> [!WARNING]\n> a"},
+		{"panel unknown kind", doc(`{"type":"panel","attrs":{"panelType":"custom"},"content":[` + para(text("a")) + `]}`), "> [!NOTE]\n> a"},
 		{"rule", doc(`{"type":"rule"}`), `---`},
 		{"table with pipe", doc(`{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableHeader","content":[` + para(text("h")) + `]}]},{"type":"tableRow","content":[{"type":"tableCell","content":[` + para(text("a"), `{"type":"hardBreak"}`, text("b|c")) + `]}]}]}`), "| h |\n| --- |\n| a b\\|c |"},
-		{"mention", doc(para(`{"type":"mention","attrs":{"text":"@Dana *D*"}}`)), `@Dana \*D\*`},
+		{"mention", doc(para(`{"type":"mention","attrs":{"text":"@Dana *D*"}}`)), `[@Dana \*D\*](#kira-mention)`},
 		{"emoji", doc(para(`{"type":"emoji","attrs":{"shortName":":smile:","text":"😄"}}`, `{"type":"emoji","attrs":{"shortName":":x:"}}`)), `😄:x:`},
 		{"inline card", doc(para(`{"type":"inlineCard","attrs":{"url":"https://x.test/p"}}`)), `[https://x.test/p](https://x.test/p)`},
 		{"card with bad scheme", doc(para(`{"type":"inlineCard","attrs":{"url":"javascript:1"}}`)), ``},
 		{"block card", doc(`{"type":"blockCard","attrs":{"url":"https://x.test/p"}}`), `[https://x.test/p](https://x.test/p)`},
-		{"media", doc(`{"type":"mediaSingle","content":[{"type":"media","attrs":{"alt":"a.png"}}]}`), `\[attachment: a.png\]`},
-		{"media file name and default", doc(`{"type":"mediaGroup","content":[{"type":"media","attrs":{"__fileName":"f.txt"}},{"type":"media","attrs":{}}]}`), `\[attachment: f.txt\] \[attachment: file\]`},
+		{"media resolved", doc(`{"type":"mediaSingle","content":[{"type":"media","attrs":{"alt":"a.png"}}]}`), `![a.png](https://x.test/a%20b.png)`},
+		{"media unresolved", doc(`{"type":"mediaSingle","content":[{"type":"media","attrs":{"alt":"b.png"}}]}`), `![b.png](#kira-attachment)`},
+		{"media external", doc(`{"type":"mediaSingle","content":[{"type":"media","attrs":{"type":"external","url":"https://x.test/e.png","alt":"e"}}]}`), `![e](https://x.test/e.png)`},
+		{"media file name and default", doc(`{"type":"mediaGroup","content":[{"type":"media","attrs":{"__fileName":"f.txt"}},{"type":"media","attrs":{}}]}`), `![f.txt](#kira-attachment) ![file](#kira-attachment)`},
 		{"date", doc(para(`{"type":"date","attrs":{"timestamp":"1704153600000"}}`)), `2024-01-02`},
-		{"status", doc(para(`{"type":"status","attrs":{"text":"DONE"}}`)), `\[DONE\]`},
+		{"status", doc(para(`{"type":"status","attrs":{"text":"DONE"}}`)), `[DONE](#kira-status-neutral)`},
+		{"status green", doc(para(`{"type":"status","attrs":{"text":"DONE","color":"Green"}}`)), `[DONE](#kira-status-green)`},
+		{"status odd color", doc(para(`{"type":"status","attrs":{"text":"X","color":"pink)"}}`)), `[X](#kira-status-neutral)`},
 		{"expand", doc(`{"type":"expand","attrs":{"title":"More"},"content":[` + para(text("a")) + `]}`), "**More**\n\na"},
 		{"bodied extension", doc(`{"type":"bodiedExtension","content":[` + para(text("a")) + `]}`), `a`},
 		{"extension dropped", doc(`{"type":"extension","attrs":{}}`, para(text("a"))), `a`},
@@ -71,7 +85,7 @@ func TestAdfMarkdown(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := adfMarkdown(json.RawMessage(c.in)); got != c.want {
+			if got := adfMarkdown(json.RawMessage(c.in), testMedia); got != c.want {
 				t.Errorf("got  %q\nwant %q", got, c.want)
 			}
 		})
@@ -83,14 +97,14 @@ func TestAdfDepthCap(t *testing.T) {
 	for range adfMaxDepth + 10 {
 		in = `{"type":"blockquote","content":[` + in + `]}`
 	}
-	if got := adfMarkdown(json.RawMessage(doc(in))); strings.Contains(got, "deep") {
+	if got := adfMarkdown(json.RawMessage(doc(in)), nil); strings.Contains(got, "deep") {
 		t.Fatal("content past the depth cap survived")
 	}
 	shallow := para(text("ok"))
 	for range 5 {
 		shallow = `{"type":"blockquote","content":[` + shallow + `]}`
 	}
-	if got := adfMarkdown(json.RawMessage(doc(shallow))); !strings.Contains(got, "ok") {
+	if got := adfMarkdown(json.RawMessage(doc(shallow)), nil); !strings.Contains(got, "ok") {
 		t.Fatalf("shallow nesting lost: %q", got)
 	}
 }

@@ -44,8 +44,10 @@ func (a *Acli) SetLoggedIn(v bool) { a.mu.Lock(); a.loggedIn = v; a.mu.Unlock() 
 // SetIssue serves raw as the JSON of workitem view KEY.
 func (a *Acli) SetIssue(key, raw string) { a.mu.Lock(); a.issues[key] = raw; a.mu.Unlock() }
 
-// SetIssueDetail serves raw as the JSON of workitem view KEY when --fields is jira.DetailFields or
-// jira.DetailFieldsNoComments. The call records "detail:<KEY>". Another --fields keeps the SetIssue path.
+// SetIssueDetail serves raw as the JSON of workitem view KEY when --fields starts with
+// jira.DetailFieldsNoComments (comments only when it holds ",comment"). A trailing customfield_ id
+// copies that field from the SetIssue JSON into the served detail. The call records "detail:<KEY>".
+// Another --fields keeps the SetIssue path.
 func (a *Acli) SetIssueDetail(key, raw string) { a.mu.Lock(); a.details[key] = raw; a.mu.Unlock() }
 
 // SetTooLarge makes a detail view of KEY that asks for comments overflow acli's output cap.
@@ -178,7 +180,12 @@ func (a *Acli) view(ctx context.Context, args []string, gate chan struct{}) ([]b
 			fields = args[i+1]
 		}
 	}
-	isDetail := fields == jira.DetailFields || fields == jira.DetailFieldsNoComments
+	isDetail := strings.HasPrefix(fields, jira.DetailFieldsNoComments)
+	withComments := strings.Contains(fields, ",comment")
+	devField := ""
+	if i := strings.LastIndex(fields, ","); i >= 0 && strings.HasPrefix(fields[i+1:], "customfield_") {
+		devField = fields[i+1:]
+	}
 	a.mu.Lock()
 	detail, hasDetail := a.details[key]
 	large := a.tooLarge[key]
@@ -194,10 +201,13 @@ func (a *Acli) view(ctx context.Context, args []string, gate chan struct{}) ([]b
 		return nil, err
 	}
 	if isDetail && hasDetail {
-		if large && fields == jira.DetailFields {
+		if large && withComments {
 			return nil, toolexec.ErrOutputTooLarge
 		}
-		if fields == jira.DetailFieldsNoComments {
+		if devField != "" && ok {
+			detail = copyField(detail, raw, devField)
+		}
+		if !withComments {
 			return dropComments(detail), nil
 		}
 		return []byte(detail), nil
@@ -242,6 +252,22 @@ func IssueJSON(key, title, status, category string, prs int) string {
 		panic(err)
 	}
 	return string(b)
+}
+
+// copyField sets fields.<name> of dst to its value in src; dst unchanged when src lacks it.
+func copyField(dst, src, name string) string {
+	var s, d, sf, df map[string]json.RawMessage
+	if json.Unmarshal([]byte(src), &s) != nil || json.Unmarshal(s["fields"], &sf) != nil || sf[name] == nil ||
+		json.Unmarshal([]byte(dst), &d) != nil || json.Unmarshal(d["fields"], &df) != nil {
+		return dst
+	}
+	df[name] = sf[name]
+	d["fields"], _ = json.Marshal(df)
+	out, err := json.Marshal(d)
+	if err != nil {
+		return dst
+	}
+	return string(out)
 }
 
 // dropComments removes fields.comment, as acli does when it is not asked for.

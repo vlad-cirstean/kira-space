@@ -129,6 +129,20 @@
           ]
         },
         {
+          "type": "paragraph",
+          "content": [
+            { "type": "text", "text": "Review state: " },
+            { "type": "status", "attrs": { "text": "IN REVIEW", "color": "blue" } }
+          ]
+        },
+        {
+          "type": "panel",
+          "attrs": { "panelType": "info" },
+          "content": [
+            { "type": "paragraph", "content": [{ "type": "text", "text": "Export runs nightly." }] }
+          ]
+        },
+        {
           "type": "mediaSingle",
           "content": [
             {
@@ -139,6 +153,26 @@
         }
       ]
     },
+    "attachment": [
+      {
+        "id": "10100",
+        "filename": "mockup.png",
+        "mimeType": "image/png",
+        "size": 48213,
+        "created": "2024-01-02T05:00:00.000+0000",
+        "author": { "accountId": "acc-rep", "displayName": "Rita Reporter" },
+        "content": "https://acme.atlassian.net/rest/api/3/attachment/content/10100"
+      },
+      {
+        "id": "10101",
+        "filename": "spec.pdf",
+        "mimeType": "application/pdf",
+        "size": 1250000,
+        "created": "2024-01-03T06:00:00.000+0000",
+        "author": { "accountId": "acc-1", "displayName": "Dana Dev" },
+        "content": "https://acme.atlassian.net/rest/api/3/attachment/content/10101"
+      }
+    ],
     "comment": {
       "total": 5,
       "comments": [

@@ -7,6 +7,6 @@ issue-string-dev.json   hand-written; Development field in its string form, 3 pu
 issue-object-dev.json   hand-written; Development field as an object holding cachedValue.summary
 issue-no-dev.json       hand-written; no Development field
 issue-short-dev.json    hand-written; string form whose json part is missing
-issue-detail.json       hand-written; DetailFields view: ADF description and 3 comments (one string body), total 5
+issue-detail.json       hand-written; DetailFields view: ADF description (mention, status, info panel, media) and 3 comments (one string body), total 5, 2 attachments
 issue-detail-plain.json hand-written; string description, no comment field, RFC 3339 times
 comment-list.json       hand-written; `comment list` array form, newest first
