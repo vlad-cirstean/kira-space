@@ -258,4 +258,7 @@ func TestScopeStringsAndEnvelopePrefixAreFrozen(t *testing.T) {
 	if ScopeScriptParam != "script-param" {
 		t.Errorf("ScopeScriptParam = %q, want %q", ScopeScriptParam, "script-param")
 	}
+	if ScopeAgentCredential != "agent-credential" {
+		t.Errorf("ScopeAgentCredential = %q, want %q", ScopeAgentCredential, "agent-credential")
+	}
 }

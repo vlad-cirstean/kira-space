@@ -21,11 +21,14 @@ const (
 	// ScopeScriptParam seals a Runs secret param's saved value (P447) — secret_values rows owned by
 	// a custom script, read and written only through Store.
 	ScopeScriptParam Scope = "script-param"
+	// ScopeAgentCredential seals a credential an agent setting references (P453) — secret_values
+	// rows of the shared agent-secrets.db, owner "agent", read and written only through Store.
+	ScopeAgentCredential Scope = "agent-credential"
 )
 
 func (s Scope) valid() bool {
 	switch s {
-	case ScopeConnection, ScopeVariable, ScopeVariableHistory, ScopeMaskKey, ScopeConnectionURI, ScopeScriptParam:
+	case ScopeConnection, ScopeVariable, ScopeVariableHistory, ScopeMaskKey, ScopeConnectionURI, ScopeScriptParam, ScopeAgentCredential:
 		return true
 	}
 	return false

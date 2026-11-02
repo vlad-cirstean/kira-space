@@ -61,3 +61,9 @@ func EnsureLayoutAt(home string) error {
 func SharedAgentDir() string {
 	return filepath.Join(Home("KIRA_SPACE_HOME", ".kira-space"), "agent")
 }
+
+// SharedAgentSecrets is the sealed credential store both apps open (~/.kira-space/agent-secrets.db),
+// a sibling of the agent folder, never inside it.
+func SharedAgentSecrets() string {
+	return filepath.Join(Home("KIRA_SPACE_HOME", ".kira-space"), "agent-secrets.db")
+}
