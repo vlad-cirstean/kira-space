@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/harness/opencode/hooks"
 )
 
 // ID is the agent.provider value of this provider.
@@ -20,8 +21,11 @@ const defaultModel = "default"
 var Catalog = harness.Catalog{Aliases: []string{defaultModel}, Default: defaultModel}
 
 var (
-	_ harness.Provider = (*Provider)(nil)
-	_ harness.Headless = (*Provider)(nil)
+	_ harness.Provider       = (*Provider)(nil)
+	_ harness.Headless       = (*Provider)(nil)
+	_ harness.HookHost       = (*Provider)(nil)
+	_ harness.SessionLocator = (*Provider)(nil)
+	_ harness.CostCapper     = (*Provider)(nil)
 )
 
 // Provider implements harness.Provider for OpenCode.
@@ -60,3 +64,12 @@ func (*Provider) StageSettings() []harness.StageSetting { return nil }
 
 // CapsCost: OpenCode has no cost cap flag or config (U17).
 func (*Provider) CapsCost() bool { return capsCost }
+
+// StartHooks serves the listener the Kira plugin of a launched session reports into.
+func (*Provider) StartHooks(o harness.HookOptions) (harness.HookListener, error) {
+	srv, err := hooks.New(o)
+	if err != nil {
+		return nil, err
+	}
+	return srv, nil
+}
