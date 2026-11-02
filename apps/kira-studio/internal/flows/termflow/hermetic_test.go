@@ -31,7 +31,7 @@ func TestHermeticStudio(t *testing.T) {
 	if err != nil || list.Source != "app" || len(list.Servers) != 1 || list.Servers[0].Name != "app-srv" {
 		t.Fatalf("McpServers = %+v, %v, want the shared settings' app-srv", list, err)
 	}
-	app.Contract(t, "smart-mcp-app", "ScriptRunsService.McpServers", list)
+	app.Contract(t, "automations-mcp-app", "ScriptRunsService.McpServers", list)
 
 	rec := newSmart(t, app, "use the tool", func(f *scripts.CustomScriptFields) {
 		f.Smart = &scripts.Smart{MCP: []scripts.MCPChoice{{Server: "app-srv", Tools: []string{"echo"}}}}

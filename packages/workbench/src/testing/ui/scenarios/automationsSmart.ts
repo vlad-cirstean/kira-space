@@ -254,6 +254,29 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
       });
   });
 
+  test('contract: hermetic launches list the app agent settings servers, no status', async ({
+    relaunch,
+  }) => {
+    const { window: page } = await relaunch({
+      control: [
+        { channel: IPC.customScriptsList, response: { collections: [], scripts: [] } },
+        {
+          channel: IPC.scriptRunsMcpServers,
+          response: contract('automations-mcp-app', 'ScriptRunsService.McpServers'),
+        },
+      ],
+    });
+    await openPanel(page);
+    await page.locator('[data-testid="automations-add"]').click();
+    await page.locator('[data-testid="menu-item-new-smart-script"]').click();
+    const dialog = page.locator('[data-testid="script-dialog"]');
+    await expect(dialog.locator('[data-testid="smart-mcp-switch-app-srv"]')).toBeVisible();
+    await expect(dialog.locator('[data-testid="smart-mcp-status"]')).toHaveCount(0);
+    await expect(dialog.locator('[data-testid="smart-mcp"]')).toContainText(
+      'Servers from Kira’s own agent settings',
+    );
+  });
+
   test('the smart model select lists the active provider models', async ({ relaunch }) => {
     const provider = {
       id: 'fake',
@@ -454,7 +477,10 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
     await view.locator('[data-testid="run-continue"]').click();
     await expect
       .poll(() => control.log().find((e) => e.channel === IPC.terminalOpen)?.args)
-      .toMatchObject({ command: "claude --resume 'sess-1'", launchKind: 'agent' });
+      .toMatchObject({
+        command: "claude --resume 'sess-1' '--setting-sources' 'project,local'",
+        launchKind: 'agent',
+      });
   });
 
   test('a normal script with params starts through a launch token', async ({ relaunch }) => {
