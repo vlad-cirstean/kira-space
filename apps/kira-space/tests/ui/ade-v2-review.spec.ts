@@ -303,7 +303,7 @@ reviewTest('a folder checkbox marks every file under it', async ({ relaunch }) =
       extraResults: {
         ...GIT.extraResults,
         'review.markMany': {
-          __sequence: [result(true, ['src/pending.ts']), result(false, all)],
+          __sequence: [result(true, ['src/moved.ts', 'src/pending.ts']), result(false, all)],
         },
       },
     },
@@ -327,7 +327,8 @@ reviewTest('a folder checkbox marks every file under it', async ({ relaunch }) =
     reviewed: boolean;
   }[];
   expect(params.map((p) => [p.paths, p.reviewed])).toEqual([
-    [['src/pending.ts'], true],
+    // The edited-since-review file is unreviewed, so a folder click marks it again.
+    [['src/moved.ts', 'src/pending.ts'], true],
     [['src/done.ts', 'src/moved.ts', 'src/pending.ts'], false],
   ]);
 });

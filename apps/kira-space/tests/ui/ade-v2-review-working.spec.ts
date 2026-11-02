@@ -102,7 +102,7 @@ reviewTest('committed and uncommitted files sit in separate sections', async ({ 
   await page.locator(t('ade-review-window')).waitFor();
   const committed = page.locator(t('review-committed-header'));
   await expect(committed).toContainText('Committed');
-  await expect(committed).toContainText('2 of 3 reviewed');
+  await expect(committed).toContainText('1 of 3 reviewed');
   const header = page.locator(t('review-working-header'));
   await expect(header).toContainText('Uncommitted');
   await expect(header).toContainText(`0 of ${working.files.length} reviewed`);

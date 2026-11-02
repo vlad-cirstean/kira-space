@@ -43,6 +43,9 @@ export interface ControlMockHandle {
    *  next hold on that channel instead of being lost, so a spec's own action-then-release ordering
    *  never has to race the network round trip itself. */
   release(channel: string): void;
+  /** From now on answers every call on `channel` with `response`, whatever its snapshots say; a spec
+   *  uses it to change what a polled channel returns mid-test. */
+  respond(channel: string, response: unknown): void;
 }
 
 interface CallRequestBody {
@@ -201,6 +204,7 @@ export async function installControlMocks(
     byKey.set(channel, grouped);
   }
   const cursors = new Map<string, number>();
+  const responders = new Map<string, unknown>();
 
   // P108 Part 12 F4: a rendezvous per channel, order-independent — whichever of "a hold arrived"
   // or "release() was called" happens second resolves the wait; the other case banks its own
@@ -304,6 +308,15 @@ export async function installControlMocks(
     }
     log.push({ channel, args: callArgs });
 
+    if (responders.has(channel)) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(responders.get(channel) ?? null),
+      });
+      return;
+    }
+
     const grouped = byKey.get(channel);
     const list = byChannel.get(channel) ?? [];
     // A channel called with the same args every time (connectionsList, connectionsStates) has
@@ -338,7 +351,11 @@ export async function installControlMocks(
     await route.fulfill({ status: 200, contentType: 'application/json', body: responseBody });
   });
 
-  return { log: () => log, release };
+  return {
+    log: () => log,
+    release,
+    respond: (channel, response) => void responders.set(channel, response),
+  };
 }
 
 /**

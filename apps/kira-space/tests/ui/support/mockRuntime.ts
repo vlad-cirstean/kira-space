@@ -244,6 +244,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskReviewWorking: 'AdeTaskService.ReviewWorking',
   adeTaskReviewWorkingDiff: 'AdeTaskService.ReviewWorkingDiff',
   adeTaskReviewWorkingFile: 'AdeTaskService.ReviewWorkingFile',
+  adeTaskReviewWorkingStamp: 'AdeTaskService.ReviewWorkingStamp',
   adeTaskReviewWorkingMark: 'AdeTaskService.ReviewWorkingMark',
   adeTaskReviewWorkingComments: 'AdeTaskService.ReviewWorkingComments',
   adeTaskReviewWorkingCommentAdd: 'AdeTaskService.ReviewWorkingCommentAdd',
@@ -420,6 +421,7 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
     promoted: [],
   }),
   [IPC.adeTaskReviewWorkingComments]: JSON.stringify({ comments: [] }),
+  [IPC.adeTaskReviewWorkingStamp]: JSON.stringify({ stamp: '' }),
   // P286: the review window asks for its branch's review step; none by default.
   [IPC.adeTaskReviewStep]: JSON.stringify({
     run: null,
