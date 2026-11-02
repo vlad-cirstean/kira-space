@@ -1,0 +1,158 @@
+{
+  "AdeTaskService.Sessions#stage-open": {
+    "sessions": [
+      {
+        "activity": "",
+        "agentSessionId": "<masked>",
+        "branchId": "<masked>",
+        "cwd": "<masked>",
+        "cwdMissing": false,
+        "id": "<masked>",
+        "lastActiveAt": 0,
+        "mode": "tui",
+        "provider": "claude",
+        "purpose": "",
+        "resumes": "",
+        "runId": "<masked>",
+        "startedAt": 0,
+        "state": "running",
+        "stepId": "build",
+        "taskId": "<masked>",
+        "terminalId": "<masked>"
+      },
+      {
+        "activity": "",
+        "agentSessionId": "<masked>",
+        "branchId": "<masked>",
+        "cwd": "<masked>",
+        "cwdMissing": false,
+        "id": "<masked>",
+        "lastActiveAt": 0,
+        "mode": "tui",
+        "provider": "claude",
+        "purpose": "",
+        "resumes": "",
+        "runId": "<masked>",
+        "startedAt": 0,
+        "state": "running",
+        "stepId": "spec",
+        "taskId": "<masked>",
+        "terminalId": "<masked>"
+      }
+    ]
+  },
+  "AdeTaskService.StepDone#closed": {
+    "branchIds": [
+      "<id:1>"
+    ],
+    "branchRequestId": "",
+    "color": 0,
+    "createdAt": 0,
+    "entryStepId": "ship",
+    "est": "",
+    "handoverDrafts": [],
+    "handoverIn": null,
+    "hostLink": null,
+    "hostUrl": "",
+    "id": "<masked>",
+    "jira": null,
+    "kind": "task",
+    "notes": "",
+    "owner": "",
+    "runs": [],
+    "since": {},
+    "statusBy": "auto",
+    "statusId": "in-progress",
+    "statusStep": "ship",
+    "title": "Fix login",
+    "workflow": {
+      "id": "<masked>",
+      "name": "Flow",
+      "steps": [
+        {
+          "agent": "",
+          "allowedTools": [],
+          "before": "",
+          "command": "",
+          "id": "<masked>",
+          "kind": "manual",
+          "maxReturns": 0,
+          "name": "spec",
+          "params": {},
+          "prompt": "",
+          "results": [],
+          "review": null,
+          "runsOn": "",
+          "sandbox": {
+            "access": "write",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": true,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": ""
+        },
+        {
+          "agent": "",
+          "allowedTools": [],
+          "before": "",
+          "command": "",
+          "id": "<masked>",
+          "kind": "manual",
+          "maxReturns": 0,
+          "name": "build",
+          "params": {},
+          "prompt": "",
+          "results": [],
+          "review": null,
+          "runsOn": "",
+          "sandbox": {
+            "access": "write",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": true,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": ""
+        },
+        {
+          "agent": "",
+          "allowedTools": [],
+          "before": "",
+          "command": "",
+          "id": "<masked>",
+          "kind": "manual",
+          "maxReturns": 0,
+          "name": "ship",
+          "params": {},
+          "prompt": "",
+          "results": [],
+          "review": null,
+          "runsOn": "",
+          "sandbox": {
+            "access": "write",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": false,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": ""
+        }
+      ]
+    },
+    "workflowId": "flow",
+    "workflowOutdated": false
+  }
+}
