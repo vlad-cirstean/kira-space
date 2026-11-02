@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -38,28 +39,33 @@ type scope struct{ user, project bool }
 
 func scopeOf(s harness.HeadlessSpec) scope {
 	if s.Isolated {
-		return scope{user: len(s.UserMCP) > 0}
+		return scope{user: len(s.UserMCP) > 0 && !s.Hermetic}
 	}
-	return scope{user: s.Config != harness.ConfigNone, project: s.Config == harness.ConfigAll}
+	return scope{user: s.Config != harness.ConfigNone && !s.Hermetic, project: s.Config == harness.ConfigAll}
 }
 
 // Script is the shell text that execs opencode; run under the user's login shell it sees the same
 // PATH as the TUI launch. The prompt goes on stdin: a positional message waits on stdin when it is
 // not a terminal (probe P-2). Tokens live in the config file, never on argv.
-func Script(s harness.HeadlessSpec) string {
+func Script(s harness.HeadlessSpec) string { return script(s, envWords{}) }
+
+// script is Script with extra env words that run after the login profile.
+func script(s harness.HeadlessSpec, ew envWords) string {
 	bin := s.Bin
 	if bin == "" {
 		bin = "opencode"
 	}
 	words := []string{"exec"}
-	if sb := s.Sandbox; sb != nil {
+	sb := s.Sandbox
+	if sb != nil {
+		ew.unset = append(slices.Clone(sb.Unset), ew.unset...)
+		ew.set = append(slices.Clone(sb.Env), ew.set...)
+	}
+	if sb != nil || !ew.empty() {
 		words = append(words, "/usr/bin/env")
-		for _, name := range sb.Unset {
-			words = append(words, "-u", loginshell.Quote(name))
-		}
-		for _, kv := range sb.Env {
-			words = append(words, loginshell.Quote(kv))
-		}
+		words = append(words, ew.quoted()...)
+	}
+	if sb != nil {
 		sbin := sb.Bin
 		if sbin == "" {
 			sbin = harness.DefaultSandboxBin
@@ -106,72 +112,33 @@ func mergeMCP(dir string, paths []string) (string, error) {
 	return path, renameio.WriteFile(path, out, 0o600)
 }
 
-// redirectConfigHome makes a config home under dir that links every entry of the real one except
-// OpenCode's own, so git and other tools keep their config while user MCP servers, the global
-// AGENTS.md and other OpenCode config drop out. Login lives in the data dir and stays.
-func redirectConfigHome(dir string, environ []string) (string, error) {
-	real := ""
-	for _, kv := range environ {
-		if v, ok := strings.CutPrefix(kv, "XDG_CONFIG_HOME="); ok {
-			real = v
-		}
-	}
-	if real == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		real = filepath.Join(home, ".config")
-	}
-	target := filepath.Join(dir, "xdg")
-	if err := os.MkdirAll(target, 0o700); err != nil {
-		return "", err
-	}
-	entries, err := os.ReadDir(real)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return target, nil
-		}
-		return "", err
-	}
-	for _, e := range entries {
-		if e.Name() == "opencode" {
-			continue
-		}
-		if err := os.Symlink(filepath.Join(real, e.Name()), filepath.Join(target, e.Name())); err != nil {
-			return "", err
-		}
-	}
-	return target, nil
-}
-
 // runEnv is the child environment of a run and the scratch dir to remove after it.
-func (p *Provider) runEnv(ctx context.Context, s harness.HeadlessSpec) (env []string, scratch string, err error) {
+func (p *Provider) runEnv(ctx context.Context, s harness.HeadlessSpec) (env []string, ew envWords, scratch string, err error) {
 	var users []harness.UserServer
 	if s.Isolated && len(s.UserMCP) > 0 {
 		if users, err = p.UserMCPServers(ctx, s.Dir); err != nil {
-			return nil, "", err
+			return nil, ew, "", err
 		}
 	}
 	doc, err := permissionDoc(s, users)
 	if err != nil {
-		return nil, "", err
+		return nil, ew, "", err
 	}
 	if s.ContextFile != "" {
 		doc[instructionsKey] = []string{s.ContextFile}
 	}
 	if s.App != nil {
 		if err := withAppConfig(doc, s.App); err != nil {
-			return nil, "", err
+			return nil, ew, "", err
 		}
 	}
 	content, err := json.Marshal(doc)
 	if err != nil {
-		return nil, "", err
+		return nil, ew, "", err
 	}
 	scratch, err = os.MkdirTemp("", "kira-opencode-")
 	if err != nil {
-		return nil, "", err
+		return nil, ew, "", err
 	}
 	defer func() {
 		if err != nil {
@@ -188,9 +155,17 @@ func (p *Provider) runEnv(ctx context.Context, s harness.HeadlessSpec) (env []st
 		env = dropEnv(env, layerEnv)
 		cfgHome, err := redirectConfigHome(scratch, base)
 		if err != nil {
-			return nil, scratch, err
+			return nil, ew, scratch, err
 		}
-		env = append(env, "XDG_CONFIG_HOME="+cfgHome)
+		ew.set = append(ew.set, "XDG_CONFIG_HOME="+cfgHome)
+		own := []string{"OPENCODE_CONFIG_CONTENT"}
+		if len(s.MCPConfigs) > 0 {
+			own = append(own, "OPENCODE_CONFIG")
+		}
+		ew.unset = unsetLayers(own)
+		if s.Hermetic && sc.project {
+			ew.set = append(ew.set, hermeticEnv...)
+		}
 	}
 	if !sc.project {
 		env = append(env, "OPENCODE_DISABLE_PROJECT_CONFIG=1", "OPENCODE_DISABLE_CLAUDE_CODE=1")
@@ -202,12 +177,12 @@ func (p *Provider) runEnv(ctx context.Context, s harness.HeadlessSpec) (env []st
 	default:
 		path, err := mergeMCP(scratch, s.MCPConfigs)
 		if err != nil {
-			return nil, scratch, err
+			return nil, ew, scratch, err
 		}
 		env = append(env, "OPENCODE_CONFIG="+path)
 	}
 	env = append(env, "OPENCODE_CONFIG_CONTENT="+string(content))
-	return env, scratch, nil
+	return env, ew, scratch, nil
 }
 
 // runState folds the stdout events into the run's session id and closing result.
@@ -262,6 +237,9 @@ func (p *Provider) RunHeadless(ctx context.Context, spec harness.HeadlessSpec, h
 	if spec.Isolated && spec.App != nil {
 		return harness.Exit{}, errors.New("opencode: an isolated run takes no app settings")
 	}
+	if spec.Hermetic && len(spec.UserMCP) > 0 {
+		return harness.Exit{}, errors.New("opencode: a hermetic run loads no user MCP servers")
+	}
 	if spec.MaxBudgetUSD > 0 {
 		return harness.Exit{}, refuse("OpenCode can't cap a run's cost.")
 	}
@@ -275,7 +253,7 @@ func (p *Provider) RunHeadless(ctx context.Context, spec harness.HeadlessSpec, h
 		}
 		return harness.Exit{}, err
 	}
-	env, scratch, err := p.runEnv(ctx, spec)
+	env, ew, scratch, err := p.runEnv(ctx, spec)
 	if scratch != "" {
 		defer func() { _ = os.RemoveAll(scratch) }()
 	}
@@ -286,7 +264,7 @@ func (p *Provider) RunHeadless(ctx context.Context, spec harness.HeadlessSpec, h
 	defer cancel()
 
 	shell, login := loginshell.ResolveShell(os.Getenv, loginshell.IsExecutableFile)
-	argv := loginshell.BuildArgv(shell, login, Script(spec))
+	argv := loginshell.BuildArgv(shell, login, script(spec, ew))
 	cmd := exec.CommandContext(runCtx, argv[0], argv[1:]...)
 	cmd.Dir = spec.Dir
 	cmd.Env = env

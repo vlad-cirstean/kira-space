@@ -48,6 +48,7 @@ func runOpenCode(scen Scenario, dir string, args []string) int {
 	stem := filepath.Join(dir, fmt.Sprintf("%s-%d", OpenCode, n))
 	writeFile(stem+".cwd", []byte(cwd))
 	recordOpenCodeEnv(stem)
+	recordOpenCodeHermetic(stem)
 	recordOpenCodeContext(stem)
 	recordAppEnv(stem)
 	if cfg := os.Getenv("OPENCODE_CONFIG"); cfg != "" {
@@ -87,6 +88,31 @@ func recordOpenCodeEnv(stem string) {
 	}
 	sort.Strings(lines)
 	writeFile(stem+".env", []byte(strings.Join(lines, "\n")))
+}
+
+// recordOpenCodeHermetic keeps what a hermetic launch is judged by as <stem>.hermetic: the config
+// home, the entry names in it and the OPENCODE_DISABLE_* variables, one line each.
+func recordOpenCodeHermetic(stem string) {
+	var lines []string
+	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
+		lines = append(lines, "XDG_CONFIG_HOME="+xdg)
+		var names []string
+		if entries, err := os.ReadDir(xdg); err == nil {
+			for _, e := range entries {
+				names = append(names, e.Name())
+			}
+		}
+		lines = append(lines, "entries="+strings.Join(names, ","))
+	}
+	var disable []string
+	for _, kv := range os.Environ() {
+		if strings.HasPrefix(kv, "OPENCODE_DISABLE_") {
+			disable = append(disable, kv)
+		}
+	}
+	sort.Strings(disable)
+	lines = append(lines, disable...)
+	writeFile(stem+".hermetic", []byte(strings.Join(lines, "\n")))
 }
 
 // recordOpenCodeContext keeps the bytes of the file named by `instructions` in

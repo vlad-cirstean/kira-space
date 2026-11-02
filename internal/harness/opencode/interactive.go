@@ -20,14 +20,12 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 	if bin == "" {
 		bin = p.Command()
 	}
-	var b strings.Builder
-	b.WriteString(bin)
 	l := harness.Launch{}
+	resume := ""
 	if s.Resume {
-		b.WriteString(" -s " + loginshell.Quote(s.SessionID))
+		resume = " -s " + loginshell.Quote(s.SessionID)
 		l.SessionID = s.SessionID
 	}
-	l.Command = b.String()
 	if s.MCPConfig != "" {
 		l.Env = append(l.Env, "OPENCODE_CONFIG="+s.MCPConfig)
 	}
@@ -44,6 +42,13 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 	if content != "" {
 		l.Env = append(l.Env, "OPENCODE_CONFIG_CONTENT="+content)
 	}
+	if s.Hermetic {
+		// The words run after the login profile, so a profile export cannot bring user config back.
+		words := hermeticWords(isolatedConfigHome(s.IsolationDir), ownLayers(l.Env)).quoted()
+		l.Command = "/usr/bin/env " + strings.Join(words, " ") + " " + bin + resume
+		return l
+	}
+	l.Command = bin + resume
 	return l
 }
 

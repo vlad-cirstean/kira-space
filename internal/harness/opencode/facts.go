@@ -28,6 +28,10 @@ var sessionEnv = []string{
 // layerEnv are the config layers a run that loads no user config must not inherit (verified names).
 var layerEnv = []string{"OPENCODE_CONFIG", "OPENCODE_CONFIG_DIR", "OPENCODE_CONFIG_CONTENT", "OPENCODE_PERMISSION"}
 
+// hookConfigDirEnv is the layer the hook plugin rides (Compose adds it after the command is built),
+// so a hermetic launch never unsets it.
+const hookConfigDirEnv = "OPENCODE_CONFIG_DIR"
+
 // quietEnv is the environment of a run with the network off (U14, OPENCODE_DISABLE_AUTOUPDATE verified).
 var quietEnv = []string{"OPENCODE_DISABLE_AUTOUPDATE=1", "OPENCODE_DISABLE_LSP_DOWNLOAD=1"}
 
@@ -117,3 +121,26 @@ const maxConfigContent = 64 << 10
 //     request, with and without `instructions` in opencode.json. Setting OPENCODE_CONFIG_DIR appears to
 //     replace the global dir, so a launch that sets it does not load the global AGENTS.md (P455).
 //   - Q-P454-OC8: an npm plugin name is accepted; import takes file:// plugins only.
+
+// Hermetic launches (P455, orchestrator probes H-OC1..5 on 1.19.5, stub model, throwaway HOME):
+//   - H-OC1: with XDG_CONFIG_HOME at a dir linking every ~/.config entry except `opencode`, `debug
+//     config` drops the user's `model`, `mcp` and `plugin`; a project opencode.json `mcp` stays.
+//     Without the redirect all of them load.
+//   - H-OC2: ~/.opencode/opencode.json STILL loads under the redirect (its `mcp` is present). Only a
+//     HOME redirect would drop it, and that moves git, ssh and tool config too: not done, a Known
+//     open item.
+//   - H-OC3: skills under the redirect: ~/.claude/skills, ~/.agents/skills, project .claude/skills and
+//     project .opencode/skill load; ~/.config/opencode/skill drops. OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1
+//     drops ~/.claude/skills and project .claude/skills; OPENCODE_DISABLE_EXTERNAL_SKILLS=1 also drops
+//     ~/.agents/skills. No name drops only the user ones, so none is set (project skills kept) and the
+//     user-skill leak is a Known open item.
+//   - H-OC4: instructions. Baseline: global AGENTS.md, project AGENTS.md and Kira's file arrive;
+//     ~/.claude/CLAUDE.md does not (AGENTS.md wins). Redirect alone: ~/.claude/CLAUDE.md arrives once
+//     the global AGENTS.md is gone. Redirect plus OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1: only project
+//     AGENTS.md and Kira's file arrive. The same name also drops a project CLAUDE.md, so a hermetic
+//     launch does not load project CLAUDE.md (project AGENTS.md loads).
+//   - H-OC5: the data dir holds log/, snapshot/, repos/ and opencode.db only (auth and sessions); the
+//     redirect leaves it alone, login survives.
+//
+// hermeticEnv is the OPENCODE_DISABLE_* set of a hermetic launch that keeps project config.
+var hermeticEnv = []string{"OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1"}
