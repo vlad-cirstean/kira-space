@@ -106,6 +106,8 @@ U47 apps/kira-studio/frontend/src/views/shared/fields/FieldRowsTable.vue # 2D ar
 U62 apps/kira-studio/frontend/src/views/shared/fields/FieldRowsTable.vue # moves focus between sibling inputs and sets the caret
 # B (apps/kira-space, W/memory)
 U101 apps/kira-space/frontend/src/ade/v2/shell/AdeShell.vue # count badge marks sessions needing attention, not a tab count
+U101 apps/kira-space/frontend/src/ade/v2/sessions/AdeSessionsMenu.vue # ADE tab count badge (P466)
+U101 packages/theme/src/components/SecondaryTabs.vue # countBadge opt-in renders the ADE tab count badge (P466)
 U101 apps/kira-space/frontend/mobile/TabBar.vue # count badge marks items needing attention, not a tab count
 U91 apps/kira-space/frontend/src/workbench/OperationsPanel.vue # tooltip shows the repo root, not the truncated name
 U91 packages/workbench/src/memory/import/ImportJobDetail.vue # tooltip lists the import roots, not the title text

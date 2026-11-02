@@ -51,7 +51,7 @@ const tabs = computed(() => [
   { value: 'task', label: t('common.task.label') },
   { value: 'notes', label: t('space.common.notes.label') },
   { value: 'artifacts', label: t('space.ade.artifacts.title.title') },
-  { value: 'sessions', label: t('space.ade.panel.sessionsTab.label', { count: count.value }) },
+  { value: 'sessions', label: t('space.common.sessions.label'), count: count.value },
 ]);
 
 function titleOf(a: ArchivedTask): string {

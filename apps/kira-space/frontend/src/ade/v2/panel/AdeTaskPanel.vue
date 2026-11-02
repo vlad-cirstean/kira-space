@@ -139,7 +139,7 @@ async function saveNotes(taskId: string, value: string): Promise<void> {
       { value: 'task', label: t('common.task.label') },
       { value: 'notes', label: t('space.common.notes.label') },
       { value: 'artifacts', label: t('space.ade.artifacts.title.title') },
-      { value: 'sessions', label: t('space.ade.panel.sessionsTab.label', { count: sessionCount }) },
+      { value: 'sessions', label: t('space.common.sessions.label'), count: sessionCount },
     ]"
   >
     <template #actions>

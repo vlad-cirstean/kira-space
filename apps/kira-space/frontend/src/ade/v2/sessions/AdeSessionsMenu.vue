@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
-import { rowMeta } from '@theme/lib/rowVariants';
 import { computed } from 'vue';
 import AdeActivityIcon from '../AdeActivityIcon.vue';
 import AdeSessionsList from './AdeSessionsList.vue';
@@ -38,8 +38,8 @@ const attention = computed(() =>
         <span v-if="attention" class="inline-flex" data-testid="ade-sessions-menu-attention"
           ><AdeActivityIcon kind="input" bare /></span
         >
-        {{ t('space.ade.sessionList.trigger.label') }}
-        <span :class="rowMeta" data-testid="ade-sessions-menu-count">{{ count }}</span>
+        {{ t('space.common.sessions.label') }}
+        <Badge variant="count" data-testid="ade-sessions-menu-count">{{ count }}</Badge>
         <CodiconIcon name="chevron-down" :size="12" />
       </Button>
     </PopoverTrigger>

@@ -27,12 +27,14 @@ const stopped = computed(() => sessions.value.length - running.value);
 const filterItems = computed(() => [
   {
     value: 'running',
-    label: t('space.ade.allSessions.running.label', { count: running.value }),
+    label: t('common.state.running.status'),
+    count: running.value,
     testid: 'ade-all-running',
   },
   {
     value: 'stopped',
-    label: t('space.ade.allSessions.stopped.label', { count: stopped.value }),
+    label: t('space.ade.activity.stopped.status'),
+    count: stopped.value,
     testid: 'ade-all-stopped',
   },
 ]);
@@ -103,6 +105,7 @@ const summary = computed(() => {
         size="kira-lg"
         :model-value="filter"
         :items="filterItems"
+        count-badge
         @update:model-value="(v) => (filter = v as 'running' | 'stopped')"
       />
       <div class="flex gap-3">

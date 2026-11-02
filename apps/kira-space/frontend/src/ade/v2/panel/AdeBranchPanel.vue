@@ -242,7 +242,7 @@ function deployNote(d: Deployment): string {
     v-model="tab"
     :tabs="[
       { value: 'details', label: t('common.details.title') },
-      { value: 'sessions', label: t('space.ade.panel.sessionsTab.label', { count: sessionCount }) },
+      { value: 'sessions', label: t('space.common.sessions.label'), count: sessionCount },
     ]"
   >
     <template #header>

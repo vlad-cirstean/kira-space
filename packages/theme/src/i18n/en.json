@@ -8738,9 +8738,6 @@
         },
         "resize": {
           "label": "Resize panel"
-        },
-        "sessionsTab": {
-          "label": "Sessions {count}"
         }
       },
       "panelFacts": {
@@ -9371,9 +9368,6 @@
         },
         "stopped": {
           "label": "Finished or stopped"
-        },
-        "trigger": {
-          "label": "Sessions"
         },
         "waitingId": {
           "status": "Waiting for session ID"
@@ -10189,6 +10183,9 @@
       },
       "reply": {
         "label": "Reply"
+      },
+      "sessions": {
+        "label": "Sessions"
       },
       "showLog": {
         "label": "Show log"
