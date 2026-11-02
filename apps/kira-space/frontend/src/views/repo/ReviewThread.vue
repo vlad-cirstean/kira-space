@@ -46,17 +46,17 @@ const mode = ref<'view' | 'compose' | 'edit'>(props.mode);
 const anchorLabel = computed(() => anchorParts(current.value, props.branch));
 
 const draft = ref('');
-const kind = ref<ReviewCommentKind>('change');
+const kind = ref<ReviewCommentKind>('question');
 const KIND_ITEMS = computed(() => [
-  {
-    value: 'change',
-    label: t('git.review.comments.kind.change.label'),
-    testid: 'review-thread-kind-change',
-  },
   {
     value: 'question',
     label: t('space.ade.needs.kind.question.label'),
     testid: 'review-thread-kind-question',
+  },
+  {
+    value: 'change',
+    label: t('git.review.comments.kind.change.label'),
+    testid: 'review-thread-kind-change',
   },
 ]);
 const nextState = computed<ReviewCommentState>(() =>

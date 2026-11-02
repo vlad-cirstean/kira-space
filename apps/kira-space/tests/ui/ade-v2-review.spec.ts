@@ -1142,6 +1142,18 @@ reviewTest(
   },
 );
 
+reviewTest('compose opens on Question', async ({ relaunch }) => {
+  const { page, modified } = await openHunkDiff(relaunch, { comments: [] });
+  await expect(renderedLine(modified, 'CHANGED 100')).toHaveCount(1, { timeout: 15_000 });
+  const thread = await openComposeFromGutter(page, modified);
+  const kinds = thread.getByTestId('review-thread-kind').getByRole('tab');
+  await expect(kinds.first()).toHaveAttribute('data-testid', 'review-thread-kind-question');
+  await expect(thread.getByTestId('review-thread-kind-question')).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+});
+
 reviewTest('keystrokes in the composer stay in the composer', async ({ relaunch }) => {
   const { page, modified } = await openHunkDiff(relaunch, {
     comments: [],
@@ -1179,7 +1191,7 @@ reviewTest('keystrokes in the composer stay in the composer', async ({ relaunch 
     path: 'src/pending.ts',
     range: { start: 100, end: 100 },
     body: 'typed',
-    kind: 'change',
+    kind: 'question',
   });
 });
 
