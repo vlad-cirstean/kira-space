@@ -198,6 +198,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   promptsSendTest: 'PromptsService.SendTest',
   agentInfo: 'AgentService.Info',
   agentInfoFor: 'AgentService.InfoFor',
+  agentList: 'AgentService.List',
   llmPromptsList: 'LlmPromptsService.List',
   llmPromptsSave: 'LlmPromptsService.Save',
   llmPromptsPreview: 'LlmPromptsService.Preview',
@@ -359,6 +360,7 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   // The active agent provider's names: the claude provider, as the Go flow test writes it.
   [IPC.agentInfo]: JSON.stringify(contract('agent', 'AgentService.Info')),
   [IPC.agentInfoFor]: JSON.stringify(contract('agent', 'AgentService.Info')),
+  [IPC.agentList]: '[]',
   [IPC.llmPromptsList]: '{"prompts":[],"storeError":"","revision":0}',
   [IPC.llmPromptsSave]: '{"prompts":[],"storeError":"","revision":0}',
   [IPC.llmPromptsPreview]: '{"errors":[],"parts":[]}',

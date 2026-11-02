@@ -45,7 +45,7 @@ test('Agent session starts with no message and opens in the branch panel', async
   await choose(page, 'ade-task-launch-agent-b_cart');
   await expect.poll(() => calls(control, IPC.adeTaskStartAdHoc)).toHaveLength(1);
   const sent = calls(control, IPC.adeTaskStartAdHoc)[0]?.args as Record<string, unknown>;
-  expect(sent).toEqual({ branchId: 'b_cart' });
+  expect(sent).toEqual({ branchId: 'b_cart', provider: '' });
   expect(Object.keys(sent)).toEqual(
     Object.keys(contract<Record<string, unknown>>('ade-adhoc', 'args:AdeTaskService.StartAdHoc')),
   );
@@ -87,7 +87,10 @@ test('several worktrees: grouped items, one per branch, and a busy one says why'
   );
   await choose(page, 'ade-task-launch-agent-b_authui');
   await expect.poll(() => calls(control, IPC.adeTaskStartAdHoc)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskStartAdHoc)[0]?.args).toEqual({ branchId: 'b_authui' });
+  expect(calls(control, IPC.adeTaskStartAdHoc)[0]?.args).toEqual({
+    branchId: 'b_authui',
+    provider: '',
+  });
 });
 
 test('setup states disable only the agent item', async ({ relaunch }) => {

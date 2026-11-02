@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/netip"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -46,6 +47,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/claude"
+	"github.com/kirathecat/kira-studio/internal/harness/opencode"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
 	"github.com/kirathecat/kira-studio/internal/memory/embed"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
@@ -63,6 +65,7 @@ type options struct {
 	azure           *azure.Options
 	gitHosts        []githost.Provider
 	noClaude        bool
+	openCode        bool
 	fileHandlers    filehandlers.Registry
 	trackerGrace    time.Duration
 	rebaseTimeout   time.Duration
@@ -109,6 +112,10 @@ func WithChangeRequestSync(c gitsession.CRSyncConfig) Opt { return func(o *optio
 // WithWayland makes the capture hotkey binding report a Wayland session (the portal decides the
 // trigger), whatever the process environment says.
 func WithWayland() Opt { return func(o *options) { o.wayland = true } }
+
+// WithOpenCode puts the fake opencode on PATH; without it opencode is off PATH and its system
+// installs are ignored, so AgentService.List reports it as not found.
+func WithOpenCode() Opt { return func(o *options) { o.openCode = true } }
 
 // WithoutClaude leaves claude off PATH entirely, system installs included.
 func WithoutClaude() Opt { return func(o *options) { o.noClaude = true } }
@@ -214,6 +221,9 @@ func New(t *testing.T, opts ...Opt) *App {
 	if o.noClaude {
 		t.Cleanup(claude.SetSystemPaths())
 	}
+	if !o.openCode {
+		t.Cleanup(opencode.SetSystemPaths())
+	}
 	a := &App{
 		t: t, Root: root,
 		Home: filepath.Join(root, "home"), SpaceHome: filepath.Join(root, "space"),
@@ -280,6 +290,9 @@ func (a *App) writeBin(o options) {
 	if !o.noClaude {
 		tools = append(tools, "claude")
 	}
+	if o.openCode {
+		tools = append(tools, "opencode")
+	}
 	if !o.noGh {
 		tools = append(tools, "gh")
 	}
@@ -294,8 +307,10 @@ func (a *App) writeBin(o options) {
 // every inherited executable except gh and claude.
 func (a *App) pathTail(o options) string {
 	inherited := os.Getenv("PATH")
-	if !o.noGh && !o.noClaude {
-		return inherited
+	if _, err := exec.LookPath("opencode"); err != nil || o.openCode {
+		if !o.noGh && !o.noClaude {
+			return inherited
+		}
 	}
 	clean := filepath.Join(a.Root, "pathbin")
 	if err := os.MkdirAll(clean, 0o755); err != nil {
@@ -308,7 +323,7 @@ func (a *App) pathTail(o options) string {
 		}
 		for _, e := range entries {
 			name := e.Name()
-			if name == "gh" || name == "claude" || e.IsDir() {
+			if name == "gh" || name == "claude" || name == "opencode" || e.IsDir() {
 				continue
 			}
 			target := filepath.Join(dir, name)

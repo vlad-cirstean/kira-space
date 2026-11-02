@@ -89,6 +89,7 @@ export const IPC = {
   llmPromptsChanged: 'kira:llmPrompts:changed',
   agentInfo: 'kira:agent:info',
   agentInfoFor: 'kira:agent:infoFor',
+  agentList: 'kira:agent:list',
   llmPromptsList: 'kira:llmPrompts:list',
   llmPromptsSave: 'kira:llmPrompts:save',
   llmPromptsPreview: 'kira:llmPrompts:preview',

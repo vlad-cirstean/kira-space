@@ -138,6 +138,7 @@
         "name": "Flow",
         "steps": [
           {
+            "agent": "",
             "allowedTools": [],
             "before": "auto",
             "command": "",
@@ -323,6 +324,7 @@
         "name": "Flow",
         "steps": [
           {
+            "agent": "",
             "allowedTools": [],
             "before": "auto",
             "command": "",

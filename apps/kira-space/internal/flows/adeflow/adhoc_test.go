@@ -26,7 +26,7 @@ func TestAdHocSession(t *testing.T) {
 	row := branchOf(t, board(t, app), task.ID, rec.ID)
 
 	// An unnamed branch has nothing to open a session on.
-	args := adewire.BranchArgs{BranchID: row.ID}
+	args := adewire.StartAdHocArgs{BranchID: row.ID}
 	app.Contract(t, "ade-adhoc", "args:AdeTaskService.StartAdHoc", args)
 	_, err := app.W.AdeTask.StartAdHoc(ctx, args)
 	if errCode(err) != "E_BAD_REQUEST" {
@@ -38,7 +38,7 @@ func TestAdHocSession(t *testing.T) {
 	if err != nil || br.Worktree == "" {
 		t.Fatalf("SetTaskBranch = %+v, %v", br, err)
 	}
-	args = adewire.BranchArgs{BranchID: br.ID}
+	args = adewire.StartAdHocArgs{BranchID: br.ID}
 	launch, err := app.W.AdeTask.StartAdHoc(ctx, args)
 	if err != nil {
 		t.Fatal(err)

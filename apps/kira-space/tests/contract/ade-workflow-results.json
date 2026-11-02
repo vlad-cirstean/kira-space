@@ -10,6 +10,7 @@
       "name": "Flow",
       "steps": [
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "",
@@ -51,6 +52,7 @@
           "timeout": "1m"
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "",
@@ -102,6 +104,7 @@
       "name": "Flow",
       "steps": [
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "",
@@ -143,6 +146,7 @@
           "timeout": "1m"
         },
         {
+          "agent": "",
           "allowedTools": [],
           "before": "auto",
           "command": "",

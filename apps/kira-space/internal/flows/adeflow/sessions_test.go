@@ -314,7 +314,7 @@ func TestCloseSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	launch, err := app.W.AdeTask.StartAdHoc(ctx, adewire.BranchArgs{BranchID: br.ID})
+	launch, err := app.W.AdeTask.StartAdHoc(ctx, adewire.StartAdHocArgs{BranchID: br.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -383,7 +383,7 @@ func TestRunningSessionsList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	launch, err := app.W.AdeTask.StartAdHoc(ctx, adewire.BranchArgs{BranchID: br.ID})
+	launch, err := app.W.AdeTask.StartAdHoc(ctx, adewire.StartAdHocArgs{BranchID: br.ID})
 	if err != nil {
 		t.Fatal(err)
 	}

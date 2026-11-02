@@ -50,6 +50,8 @@ type Scenario struct {
 	// Claude maps a repo name (the worktree's parent directory, "*" as fallback) to one Action per
 	// attempt; the last Action repeats.
 	Claude map[string][]Action `json:"claude,omitempty"`
+	// OpenCode is Claude's counterpart for the fake opencode's `run` calls, keyed the same way.
+	OpenCode map[string][]Action `json:"opencode,omitempty"`
 	// Prompts answer headless calls by their --system-prompt before any Claude action runs; the
 	// first rule that matches answers (the call still counts as an attempt for Claude).
 	Prompts []PromptRule `json:"prompts,omitempty"`
@@ -161,7 +163,7 @@ type LeanSession struct {
 	StartedAt int64  `json:"startedAt"`
 }
 
-// Run plays the named tool ("claude", "gh", "fake-mcp" or Persona) for one invocation and returns its exit code.
+// Run plays the named tool ("claude", "opencode", "gh", "fake-mcp" or Persona) for one invocation and returns its exit code.
 func Run(name string, args []string) int {
 	var scen Scenario
 	raw := []byte(os.Getenv(EnvScenario))
@@ -175,6 +177,8 @@ func Run(name string, args []string) int {
 		return runClaude(scen, dir, args)
 	case "gh":
 		return runGh(scen, dir, args)
+	case OpenCode:
+		return runOpenCode(scen, dir, args)
 	case "fake-mcp":
 		return runFakeMCP()
 	case Persona:
