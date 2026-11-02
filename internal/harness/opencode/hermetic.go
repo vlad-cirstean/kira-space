@@ -88,17 +88,24 @@ var (
 )
 
 // profileConfigHome is XDG_CONFIG_HOME as the login shell exports it: a GUI-launched app lacks a
-// profile-only value. Probed once per process env value; "" when unset or no login shell.
+// profile-only value. Probed once per process env value, no lock held while probing; a failed probe is not cached. "" when unset or no login shell.
 func profileConfigHome() string {
 	key := os.Getenv("XDG_CONFIG_HOME")
 	profileXDGMu.Lock()
-	defer profileXDGMu.Unlock()
 	if profileXDGSet && profileXDGKey == key {
-		return profileXDG
+		v := profileXDG
+		profileXDGMu.Unlock()
+		return v
 	}
-	vals, _ := loginshell.ProbeEnv(context.Background(), []string{"XDG_CONFIG_HOME"})
-	profileXDGKey, profileXDG, profileXDGSet = key, vals["XDG_CONFIG_HOME"], true
-	return profileXDG
+	profileXDGMu.Unlock()
+	vals, err := loginshell.ProbeEnv(context.Background(), []string{"XDG_CONFIG_HOME"})
+	v := vals["XDG_CONFIG_HOME"]
+	if err == nil {
+		profileXDGMu.Lock()
+		profileXDGKey, profileXDG, profileXDGSet = key, v, true
+		profileXDGMu.Unlock()
+	}
+	return v
 }
 
 // redirectConfigHome makes a config home under dir that links every entry of the real one except
