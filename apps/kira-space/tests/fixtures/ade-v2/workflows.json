@@ -32,6 +32,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           },
           {
@@ -73,6 +74,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           },
           {
@@ -114,6 +116,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           },
           {
@@ -155,6 +158,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           },
           {
@@ -196,6 +200,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           },
           {
@@ -237,6 +242,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           },
           {
@@ -263,6 +269,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           },
           {
@@ -304,6 +311,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           }
         ]
@@ -343,6 +351,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           },
           {
@@ -384,6 +393,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           },
           {
@@ -425,6 +435,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           },
           {
@@ -466,6 +477,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           },
           {
@@ -507,6 +519,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           },
           {
@@ -548,6 +561,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           }
         ]
@@ -602,6 +616,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           },
           {
@@ -643,6 +658,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           },
           {
@@ -684,6 +700,7 @@
               "allow": [],
               "network": true
             },
+            "agent": "",
             "settings": {}
           }
         ]

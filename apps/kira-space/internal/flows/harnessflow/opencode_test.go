@@ -16,8 +16,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/harness/opencode"
-	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
+	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -233,7 +233,10 @@ func TestOpenCodeProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	var bad adewire.Run
-	testx.WaitUntil(t, waitFor, func() bool { bad = latestRun(t, app, badTask.ID, "one"); return bad.State == "failed" || bad.State == "stuck" })
+	testx.WaitUntil(t, waitFor, func() bool {
+		bad = latestRun(t, app, badTask.ID, "one")
+		return bad.State == "failed" || bad.State == "stuck"
+	})
 	if bad.Outcome == nil || !strings.Contains(bad.Outcome.Summary+bad.Outcome.Reason+bad.Note, "NotATool") {
 		t.Fatalf("run = %+v, want a failure naming NotATool", bad)
 	}

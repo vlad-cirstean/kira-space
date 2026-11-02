@@ -560,6 +560,16 @@ Sandbox notes:
   fake records to the real `mcpinstall` installer.
 - `~/.claude.json` is not compared in the settings test: the CLI rewrites it on every run (P233 A13).
 
+## OpenCode (P449)
+
+Flow tests run a fake `opencode` (`fakeagent` persona, `flowharness.WithOpenCode()`); no real OpenCode test exists, since no model key is available here. The facts in `internal/harness/opencode/facts.go` come from the installed CLI (1.19.5) through the no-model probes below.
+
+- Dev install, in a scratch dir outside the repo: `npm init -y && npm i --ignore-scripts opencode-ai`. It installs the launcher plus a platform package such as `opencode-linux-x64`. Run `node_modules/opencode-linux-x64/bin/opencode` directly; the launcher refuses without postinstall under `--ignore-scripts`. Always set `HOME=$(mktemp -d)` so user config is never read or written, and run from a scratch dir with `git init -q`.
+- The Claude Code auto-mode classifier blocks a subagent told to install an external package, and a probe that runs a model prompt. Run the install from the orchestrating session or have the user approve.
+- No model key needed: `--help`, `--version`, `session list --format json` (expect `[]`), `debug config`, `debug paths`, `debug agent build`, `mcp list`, `mcp add --help`, and `strings <bin> | grep -oE 'OPENCODE_[A-Z_]+'` for env names. `OPENCODE_CONFIG=c.json opencode debug config` shows how a config merges and masks header values. `OPENCODE_PERMISSION='{...}' opencode debug config` shows the permission merge.
+- `run` reads the prompt from stdin when it is not a terminal: always pipe it (`echo hi | opencode run --format json`). A positional message with no stdin hangs.
+- Need a model key (still unverified, see Known open items): the `run --format json` text, tool and cost events, the error for `-s <unknown id>`, plugin event names (`/tmp/kp.js` writing each event to a file, loaded through `OPENCODE_CONFIG_CONTENT='{"plugin":["file:///tmp/kp.js"]}'`), the MCP tool permission key, and whether a TUI session appears in `session list` before its first prompt.
+
 ## Mac checklist (user-run)
 
 The sandbox (P287) enforces on macOS only. The sandbox session cannot run Seatbelt, so these steps wait for a Mac.

@@ -8,7 +8,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 |---|---|---|
 | P447 | Shared keychain secret layer; Runs secret params stored encrypted | Done |
 | P448 | Agent harness seams for a second real provider | Done |
-| P449 | OpenCode provider; pick the agent per interactive session | Todo |
+| P449 | OpenCode provider; pick the agent per interactive session | Done |
 | P450 | Config-as-files foundation: store, layout, validation, DB sync, interpolation, AGENTS.md | Done |
 | P451 | Workflows folder AGENTS.md | Done |
 | P452 | One shared agent context, rendered per provider | Todo |
@@ -75,6 +75,15 @@ Result: Done. Cipher hoisted to repo-root `internal/secrets`; i18n keys moved to
 - Resume and Take over of an existing conversation keep its stored provider. No cross-provider resume.
 - The Settings Agent pane gets the default-provider picker (today none exists). The workflow step editor gets the per-step override.
 - Test: flow test in `adeflow`/`harnessflow` with a fake `opencode` persona (extend `internal/flowtest/fakeagent`): launch with each provider, resume keeps the provider. UI spec: extend `agent-provider.spec.ts` with the "+" picker, default setting and step override. No real OpenCode model tests (no key available). OpenCode is covered by fake-CLI flow tests plus no-model probes against the installed CLI (`--help`, `debug config`, `debug paths`, `debug agent`), documented in `docs/DEV_ENVIRONMENT.md`.
+
+**Result** (Done). Plan: `plans/P449.md` (probe results against opencode 1.19.5 at its end). Commits: shared `harness.ResolveCLI`; OpenCode provider core; headless runs with late session id (`Handler.OnSessionID`, `CostCapper`); plugin hooks; per-step `agent` key and `AgentService.List`; agent pickers; fake persona, flows and UI spec; docs.
+- Provider `internal/harness/opencode`: Locator, Interactive, Sandboxed, MCPHost, Headless, HookHost, SessionLocator, CostCapper (none). No Structured, no UsageReporter. `facts.go` holds every CLI fact marked verified or UNVERIFIED. G5 now covers the package.
+- Headless late id: `OnSessionID` from the first stream event, else `FindSession` after the run. A headless `ade_sessions` row may hold `''`; resume, restart and review refuse an empty id. Smart runs store the id from the same callback.
+- Agent choice: `StartAdHoc{branchId, provider}`, step key `agent` (agent, review, manual with session), resolved by `stepAgentOf` and `agentForStep`. Resumes keep the stored provider. `AgentService.List` (both apps), `useAgentList`. Space only: Settings Agent pane, plus menu (one entry per installed provider from two up), step editor. Table in ARCHITECTURE.
+- Deviations from the plan, all probe-driven or lib-driven: `MCPToolName` keeps Kira's `mcp__server__tool` vocabulary and `permissionDoc` translates, so no caller maps tools (closes the P448 Known open item); headless runs that load no user config also set `OPENCODE_DISABLE_CLAUDE_CODE=1` and `OPENCODE_DISABLE_PROJECT_CONFIG=1`, interactive launches leave both alone; `--pure` unless a run loads project config; prompt always on stdin (U4); install is a manual snippet (U11 partly disproved: no non-interactive `mcp add` for local servers); built-in ids lack `list` and `todoread` and gain `skill` (U8). The picker uses `NativeSelect`, the repo's shadcn-vue select. Phone web gets `agentList` as an empty stub. Studio mock answers `[]`.
+- Unverified without a model key (Known open items): U5 lost-session text, U7 MCP tool key, U12 plugin event names, U15 install paths, U16 API hosts, text/tool/cost event shapes.
+- Found and fixed en route: `adewire` fixture `workflows.json` lacked `agent`; `apps/kira-space/tests/claude` called `StartAdHoc` with the old args and its `go.sum` missed `jsonschema` (P450 leftover, `go mod tidy`); i18n sort order and catalog rules C3/C6/C10 caught by the hook.
+- Verified: build, vet, biome, typecheck; `go test ./internal/...` and `./apps/kira-space/internal/... ./apps/kira-studio/internal/...` green (one run; the first app run found the fixture drift); `TestOpenCodeProvider`, `TestOpenCodeNotFound`, `TestOpenCodeHeadless`, `TestStepAgentKey`, `TestSecondProviderRegistered`, `TestLeanProviderSeams`, `TestRuleDocsEnforced`, `TestWorkflowsAgentsDoc`, `parse_test.go`; UI Space `agent-provider`, `ade-v2-workflows`, `ade-v2-task-launch`, `ade-v2-stage-settings`, `settings-agent*` (70 passed), Studio `automations-smart` (11 passed). Real `claude`: `bun run test:claude` Space (0.126 USD of `claude -p`) and Studio green; `TestMemoryMcpFollowsDocs/list` failed once (haiku sent no `store_memory` call, memory prompts untouched) and passed on a lone rerun.
 
 ### P450 Config-as-files foundation: store, layout, validation, DB sync, interpolation, AGENTS.md
 

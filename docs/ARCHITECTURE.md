@@ -1344,7 +1344,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - New timestamp columns are INTEGER unix ms named *_at; older TEXT ISO columns stay as legacy, and N7 refuses new ones.
 - Migrations are named NNNN_<phase>_<slug>.sql.
 - Files a person or another program reads must be written with renameio.WriteFile; exempt are test tooling and temp snapshots (G4).
-- G5: no CLI credential access under githost/, issuetracker/, internal/docker and internal/harness/claude (see CLI credentials: never touched).
+- G5: no CLI credential access under githost/, issuetracker/, internal/docker, internal/harness/claude and internal/harness/opencode (see CLI credentials: never touched).
 - File naming: .vue files PascalCase; .ts files camelCase with role suffixes .worker, .check; colocated tests are <module>.spec.ts, never .test.ts (N1, N2).
 - Name helper folders lib/, never util, utils or helpers (N3).
 - Stores live in state/ and workbench composables in behaviour/; a Pinia id is the export name without use/create and Store, camelCase (N4).
@@ -2076,8 +2076,10 @@ The agent CLI sits behind one interface, so a second provider needs no caller ch
   isolated JSON call, memory; `harness.StructuredOf`), `Headless` (a streamed run with an MCP report, ADE
   steps and smart scripts; `harness.HeadlessOf`), `HookHost` (hook events for interactive sessions;
   `harness.Hooks` starts every host and composes launches by provider id), `UsageReporter` (feeds
-  `agentusage`) and `SessionLocator` (finds the id of a session the agent assigned itself). A provider
-  without hooks has no activity icons and no finished/needs-input notes; without usage, no usage item.
+  `agentusage`), `SessionLocator` (finds the id of a session the agent assigned itself) and `CostCapper`
+  (`CapsCost()`; `harness.CapsCost(p)` is false for a provider without it). A provider without hooks has no
+  activity icons and no finished/needs-input notes; without usage, no usage item; a smart script or a
+  step with a budget on a provider without a cost cap is refused (`agentBlocker`, `backend.core.agent.noCostCap.body`).
 - A missing optional role is handled per caller. Memory (`memory.AgentRunner`) falls back to the default
   provider: background work with no per-run provider choice. Smart scripts refuse: `plan` sets
   `Preview.Blocker` to the `harness.MissingRole` text (`backend.core.agent.missingRole.body`), which covers
@@ -2098,17 +2100,65 @@ The agent CLI sits behind one interface, so a second provider needs no caller ch
   unknown names dropped) and sets the Go-only flags `Wakes` (tool start that arms a self-wake) and
   `NeedsInput` (notification asks the user). `agentnotify` and `Tracker.HandleEvent` read only kinds and
   flags. The frontend still reads Claude's `WAKE_TOOLS` and `notification_type` rules itself.
-- `internal/harness/claude` is the only provider. `internal/harness/providers.New` is the single
-  registration point (Claude first, then any extra). Everything Claude-specific lives under it: argv,
-  stream-json parsing, MCP config shape, sandbox profile needs, hooks (`hooks`), the CLI installer
-  (`mcpinstall`) and error texts.
+- Two providers ship: `internal/harness/claude` and `internal/harness/opencode`. `providers.New` is the
+  single registration point (claude, opencode, then any extra). Everything provider-specific lives under
+  its package: argv, stream parsing, MCP config shape, sandbox profile needs, hooks, installer and error
+  texts. `harness.ResolveCLI` (`internal/harness/locate.go`) is the shared locator both use: PATH, the
+  login shell, then the provider's candidate paths; each provider adds its own names and candidates.
+- OpenCode (CLI 1.19.5, P449) implements Locator, Interactive, Sandboxed, MCPHost, Headless, HookHost,
+  SessionLocator and CostCapper (no cost cap). It has no Structured role (memory falls back to the default
+  provider) and no UsageReporter. Facts about the CLI live in `opencode/facts.go`, each marked verified or
+  UNVERIFIED with its probe id; Known open items lists the unverified ones.
+  - Interactive: `opencode [-s <id>]`. The MCP grant rides `OPENCODE_CONFIG`, extra directories ride
+    `OPENCODE_PERMISSION`, and the hook plugin rides `OPENCODE_CONFIG_CONTENT`. The model is never passed.
+    OpenCode assigns the session id itself, so `FindSession` runs `opencode session list --format json`
+    in the worktree and takes the newest session created after the launch. Kira never opens OpenCode's
+    database or config.
+  - Headless: `opencode run --format json`, prompt on stdin, `--dir`, `-s` to resume, `--pure` unless the
+    run loads project config. A run that loads no user config redirects `XDG_CONFIG_HOME` to a directory of
+    symlinks that omits `opencode`, and sets `OPENCODE_DISABLE_CLAUDE_CODE=1` and
+    `OPENCODE_DISABLE_PROJECT_CONFIG=1`. `OPENCODE_CONFIG` carries the MCP grant (several configs merge into
+    one temp file); `OPENCODE_CONFIG_CONTENT` carries the permission document.
+  - Tool names stay in Kira's vocabulary (Claude names, `mcp__server__tool`) all the way to the provider.
+    `permissionDoc` translates them to OpenCode permission keys (`srv_tool`, `srv_*`) and fails the run
+    naming any entry it cannot translate, so a step's `allowed_tools` and `rebaseBuiltins` need no mapping
+    at the caller. Pattern maps keep insertion order: OpenCode takes the last match.
+  - Hooks: a Kira plugin (`opencode/hooks/plugin.js`, loaded by a `file://` plugin spec) posts to a
+    unix-socket HTTP server guarded by a per-process token; plugin event names map to neutral
+    `EventKind`s in `hookEvents`. No wake events.
+  - `docs/DEV_ENVIRONMENT.md` lists the dev install and the probes that need no model key.
 - `harness.Selector` resolves `Active()` from the `agent.provider` setting per use; an unset, unreadable or
   unregistered id falls back to `claude` with a warning, never an error. `For(id)` serves a stored
   conversation and returns `ErrProviderGone` for an unregistered id, mapped to the
   `backend.core.agent.providerGone.body` conflict. Settings validation accepts any well-formed id, so a
-  provider can be removed without bricking the setting. There is no UI to pick the provider.
-- Run binding: `ade_sessions` and `script_runs` store `provider`. New work uses `Active()`; resume,
-  take over and Continue in terminal use the stored provider, even after the setting changes.
+  provider can be removed without bricking the setting.
+- Run binding: `ade_sessions` and `script_runs` store `provider`. New work uses the provider its caller
+  names (table below) or `Active()`; resume, take over and Continue in terminal use the stored provider,
+  even after the setting changes.
+- Which agent starts a new conversation, in order: the launch's own pick (the plus menu's
+  `StartAdHoc{provider}`), then the workflow step's `agent` key, then the Agent setting. Resumes never
+  choose: they keep the provider that started the conversation.
+
+  | Entry | Provider |
+  |---|---|
+  | "+" menu (`StartAdHoc`) | `provider` argument, else the Agent setting |
+  | `LaunchStep`, `StartBranch` (ADE Start) | the step's `agent`, else the Agent setting |
+  | Headless step run, review round | the step's `agent`, else the Agent setting (`agentForStep`) |
+  | Review agent's new conversation | the review step's `agent`, else the Agent setting |
+  | Take over, resume, restart, Continue in terminal | the stored provider |
+- Workflow step key `agent` (agent, review and manual steps with `session: true`; `""` removes it): a
+  registered provider id, validated by the parser from `providers.New().IDs()`. The editor shows it in the
+  step's Advanced section.
+- `agentsvc.Service.List()` returns `Entry{AgentInfo, available}` for every registered provider, in
+  registration order; `available` comes from `Locator.Available()` with no login shell. The frontend reads
+  it through `useAgentList()` (key `['agent','list']`, under the `['agent']` prefix a settings save
+  invalidates). Space shows a provider `Select` in Settings, Agent (a missing provider is disabled), one
+  plus-menu entry per installed provider when there are two or more, and an Agent select in the step
+  editor. Studio has no picker.
+- A provider that assigns its own session id headless too reports it through `Handler.OnSessionID`: the id
+  comes from the first stream event, else `FindSession` after the run. A headless `ade_sessions` row may
+  hold `''` until then; resume paths refuse an empty id (`backend.space.ade.sessionIdUnknown.body`,
+  `backend.core.scriptRun.sessionIdUnknown.body`). A smart run stores the id from the same callback.
 - Models: `memory.models` maps provider id to alias; smart scripts store an alias in their own `model`
   field, validated against the union of registered catalogs.
 - UI derivation: the bound `AgentService` (`internal/harness/agentsvc`, both apps) answers `Info()` for the
@@ -2131,7 +2181,11 @@ The agent CLI sits behind one interface, so a second provider needs no caller ch
 - `ContextKeeper` (P452): optional role, `KeepsContextOnResume() bool`. Claude returns true: `--system-prompt-snapshot` is on by default, so a resumed conversation keeps its recorded prompt until it compacts. Feeds the editor's resume note.
 - Add a provider: implement `harness.Provider` and any optional roles in `internal/harness/<id>`, add it to
   `providers.New`, and keep its CLI strings and error texts inside its package. No caller changes.
-- Test: `flows/harnessflow` `TestLeanProviderSeams` registers `fakeprovider.Lean` (id `fake-lean`: no
+- Test: `flows/harnessflow` `TestOpenCodeProvider` and `TestOpenCodeHeadless` drive OpenCode against the
+  `opencode` persona of `internal/flowtest/fakeagent` (`WithOpenCode()` puts it on PATH): list, per-launch
+  pick, plugin events, take over, the cost-cap and tool refusals, the late id, `-s` resume and a lost
+  conversation. `internal/harness/opencode/parse_test.go` covers the parsers and `permissionDoc`.
+  `flows/harnessflow` `TestLeanProviderSeams` registers `fakeprovider.Lean` (id `fake-lean`: no
   structured, headless, hooks or usage; launches carry env; the `kira-fake-agent` persona assigns its own
   session id into `sessions.jsonl`, which `FindSession` reads) and drives env delivery, Continue in terminal
   token reuse, the late id and each missing-role path.
@@ -3162,9 +3216,10 @@ Kira drives gh, az and acli but never touches their credentials. It runs the CLI
 - az: env passthrough. `az account show --query user.name` only.
 - acli: env passthrough. `jira auth status` parsed for site and account only. Comment body goes through a 0600 temp file.
 - claude: the MCP picker runs `claude mcp list` and keeps name, transport, host or command name and health status only. A run that ticks a user server lets claude load it (`--setting-sources user`, `--settings` with `allowedMcpServers` and `disableAllHooks`). Kira never opens `~/.claude.json` and never runs `claude mcp get`, which prints stored headers and env.
+- opencode: the MCP picker runs `opencode mcp list` and keeps name, transport, host or command name and status only. Kira never opens OpenCode's `auth.json` or `opencode.json`, never runs `opencode auth` or `providers`, and never sets `OPENCODE_AUTH_CONTENT`. Session ids come from `opencode session list --format json`, not from its database.
 - Setup steps are copy-only commands the user runs in their own terminal.
 - Consequence: comments carry no attachments (no driven CLI uploads one; Azure would need a bearer token).
-- Guard G5 (internal/conventiontest) fails on token commands, credential env names, CLI config paths, auth headers, net/http and os.Getenv under githost/ and issuetracker/, `LoadX509KeyPair`, `X509KeyPair`, `AppendCertsFromPEM` and `config.json` literals under internal/docker, and under internal/harness/claude a `.claude.json` literal, a `json:"headers"` struct tag, a `claude mcp get` argv, `Header.Set`/`Header.Add` calls and `RoundTrip` methods. `sandbox.go` is exempt: it names `~/.claude.json` as a sandbox write path and never opens it.
+- Guard G5 (internal/conventiontest) fails on token commands, credential env names, CLI config paths, auth headers, net/http and os.Getenv under githost/ and issuetracker/, `LoadX509KeyPair`, `X509KeyPair`, `AppendCertsFromPEM` and `config.json` literals under internal/docker, and under internal/harness/claude a `.claude.json` literal, a `json:"headers"` struct tag, a `claude mcp get` argv, `Header.Set`/`Header.Add` calls and `RoundTrip` methods. `sandbox.go` is exempt: it names `~/.claude.json` as a sandbox write path and never opens it. Under internal/harness/opencode the guard fails on the literals `auth.json`, `opencode.json`, `.local/share/opencode`, `OPENCODE_AUTH_CONTENT`, an `auth` or `providers` argv, `Header.Set`/`Header.Add` and `RoundTrip` methods, and on `os.ReadFile`. `sandbox.go` only names directories; `headless.go` is exempt from the `os.ReadFile` check because it reads only the MCP configs Kira wrote itself.
 - Non-secret reads are allowed: docker context `meta.json` (name, host, SkipTLSVerify) and stat of PEM paths. Never a CLI config file that can hold credentials (`~/.docker/config.json`): ask the CLI (`docker context show`). Key material is opened only by the owning library (`go-connections/tlsconfig`).
 
 ## Renderer security surface
@@ -3406,7 +3461,12 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
 - **Agent context rests on a hidden Claude flag (P452).** `--append-system-prompt-file` is absent from `claude --help`. A CLI that drops it fails the launch loudly. `TestAgentContextHeadless` catches it. Studio has no context editor; edit the file in an editor.
 
 - **Saved script secrets show in a live terminal (P447).** A terminal-run script prints into its live tab and the Space phone terminal ring unmasked; only the run tail and log are masked. A process that echoes its secret shows it there.
-- **Step `allowed_tools` and rebase built-ins are Claude-only (P448).** A workflow step's `allowed_tools` (validated against Claude patterns such as `Bash(git *)`) and `rebaseBuiltins` pass straight to the provider, not through `MCPHost.ToolArgs`. P449 decides the mapping.
+- **OpenCode facts without a model key are unverified (P449).** `facts.go` marks each with its probe id: the lost-session error text (U5), the MCP tool permission key `<server>_<tool>` (U7), plugin event names and `fetch` over a unix socket (U12), install paths (U15), the model API host list for network-off runs (U16), and the text, tool and cost event shapes of `run --format json`. A wrong guess degrades quietly: a lost session reads as a plain failure, a MCP grant may not match, activity icons may stay idle. Run the probes in `docs/DEV_ENVIRONMENT.md` with a key, then fix `facts.go` and delete this item.
+- **OpenCode has no cost cap (P449).** A smart script or step with a budget is refused on OpenCode. The run reports cost when its events carry one; the shape is unverified.
+- **OpenCode network-off runs reach only the listed model hosts (P449).** The list is a guess; a model on another host fails under the sandbox.
+- **OpenCode extra directories ride permission only (P449).** `AddDirs` become `external_directory` allow patterns, not a CLI flag; the OS sandbox profile is the real boundary.
+- **Studio has no agent picker (P449).** Only Space chooses the provider per launch and per step; Studio runs the provider its Agent setting names.
+- **The OpenCode MCP install command is a snippet (P449).** `opencode mcp add` has no non-interactive local form, so Kira shows a config snippet with a placeholder token the user pastes into `opencode.json` themselves.
 - **Interactive exec plugins are unsupported (P439).** A kubeconfig credential plugin that prompts on a terminal fails with the `plugin` reason. Non-interactive plugins work.
 - **Studio Discover remounts still grow the renderer heap (P433).** Switching away from and back to a Kibana Discover tab adds about 0.6 MB per round after round 2 (5 rounds: 31.4, 32.3, 32.8, 33.9, 34.1 MB), and a second open/close cycle adds 1.9 MB. Close-all ends 18.5 MB over baseline, mostly first-load module code plus Monaco and KQL source strings. The Monaco `addCommand`, grammar re-registration and `usePersistedState` leaks are fixed; the rest is unattributed (V8 JIT code is the main suspect). Probe: `heap` project in Studio, `docs/DEV_ENVIRONMENT.md` "Perf probes". Find the retainer with a heap snapshot diff across rounds 3 and 5, then delete this item.
 - **Kibana search uses an internal route (P424).** `POST /internal/search/es` is not a public API; a Kibana upgrade can change its body or headers. The conformance suite runs against 9.5.3 and the 8.19 floor via `KIRA_COMPAT_IMAGE_KIBANA`.
