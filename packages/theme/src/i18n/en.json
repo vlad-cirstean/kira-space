@@ -723,6 +723,9 @@
           "envCarried": {
             "body": "OpenCode receives this through {name}. No file is written."
           },
+          "fileCarried": {
+            "body": "OpenCode receives the servers through a private file named by {name}, removed when the launch ends."
+          },
           "hookNotApplied": {
             "body": "OpenCode doesn’t run hook {hook}. It is not applied."
           },

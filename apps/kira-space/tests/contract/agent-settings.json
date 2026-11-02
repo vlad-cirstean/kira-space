@@ -47,7 +47,7 @@
         ],
         "files": [
           {
-            "name": "opencode config",
+            "name": "opencode mcp.json",
             "text": "{\"mcp\":{\"gh\":{\"enabled\":true,\"headers\":{\"Authorization\":\"Bearer ${secret:gh-token}\"},\"type\":\"remote\",\"url\":\"http://127.0.0.1:9/mcp\"}}}"
           }
         ],
@@ -59,7 +59,7 @@
         "label": "OpenCode",
         "notes": [
           "OpenCode doesn’t run hook mark. It is not applied.",
-          "OpenCode receives this through OPENCODE_CONFIG_CONTENT. No file is written.",
+          "OpenCode receives the servers through a private file named by OPENCODE_CONFIG, removed when the launch ends.",
           "Headless steps use the same files without permission_mode, allow and status_line."
         ]
       },

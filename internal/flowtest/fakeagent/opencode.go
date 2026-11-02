@@ -116,17 +116,13 @@ func recordOpenCodeHermetic(stem string) {
 }
 
 // recordOpenCodeContext keeps the bytes of the file named by `instructions` in
-// OPENCODE_CONFIG_CONTENT as <stem>.context and its `mcp` block as <stem>.appmcp. The fake plays the CLI, so it may read it.
+// OPENCODE_CONFIG_CONTENT as <stem>.context. The fake plays the CLI, so it may read it.
 func recordOpenCodeContext(stem string) {
 	var doc struct {
-		Instructions []string        `json:"instructions"`
-		MCP          json.RawMessage `json:"mcp"`
+		Instructions []string `json:"instructions"`
 	}
 	if json.Unmarshal([]byte(os.Getenv("OPENCODE_CONFIG_CONTENT")), &doc) != nil {
 		return
-	}
-	if len(doc.MCP) > 0 {
-		writeFile(stem+".appmcp", doc.MCP)
 	}
 	for _, path := range doc.Instructions {
 		if raw, err := os.ReadFile(path); err == nil {

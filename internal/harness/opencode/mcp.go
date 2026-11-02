@@ -13,9 +13,17 @@ func (*Provider) MCPToolName(t harness.MCPTool) string {
 }
 
 // MCPConfig is the config document of the servers (V6, verified): remote servers carry url and
-// headers, local ones a command array and environment.
+// headers, local ones a command array and environment. A resolved value holding a substitution mark
+// is refused: OpenCode would expand it in the file too.
 func (*Provider) MCPConfig(servers []harness.MCPServer) ([]byte, error) {
-	return json.Marshal(map[string]any{"mcp": mcpEntries(servers)})
+	b, err := json.Marshal(map[string]any{"mcp": mcpEntries(servers)})
+	if err != nil {
+		return nil, err
+	}
+	if err := checkMarks(b); err != nil {
+		return nil, err
+	}
+	return b, nil
 }
 
 func mcpEntries(servers []harness.MCPServer) map[string]any {

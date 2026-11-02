@@ -11,7 +11,7 @@ Hooks:
 
 MCP servers:
 
-- Define a server once. Kira writes it in each provider's format: a `--mcp-config` file for Claude.
+- Define a server once. Kira writes it in each provider's format: a `--mcp-config` file for Claude, a per-run file named by `OPENCODE_CONFIG` for OpenCode.
 - `enabled: false` keeps the definition and skips the server.
 
 Secrets and variables:
@@ -21,6 +21,6 @@ Secrets and variables:
 - Hook commands and status line commands take no references: the shell expands `$NAME`. Put the secret in `env` and read `$NAME` in the command.
 - A reference resolves only at launch, into a per-run file readable by you alone or into the agent's environment. Kira removes the file when the agent exits.
 
-Which launches use these settings: every terminal session in Kira Space, Continue in terminal (both apps) and Kira Space's headless agent steps and review rounds. Smart scripts, smart steps and rebase runs use none: their tools and MCP servers are chosen explicitly.
+Which launches use these settings: every terminal session in Kira Space, Continue in terminal (both apps) and Kira Space's headless agent steps and review rounds. Rebase runs use none. Smart scripts and smart steps use only the `mcp_servers` they tick: their tools and servers are chosen explicitly.
 
 A save applies to agents started after it. A running session keeps its settings.

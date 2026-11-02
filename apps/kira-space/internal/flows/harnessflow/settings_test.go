@@ -405,8 +405,9 @@ func contentDoc(t *testing.T, content string) map[string]json.RawMessage {
 	return doc
 }
 
-// TestAgentSettingsOpenCode: the settings reach OpenCode through OPENCODE_CONFIG_CONTENT only, on a TUI
-// launch and a headless step, with the resolved secret in the environment and no file. Claude and
+// TestAgentSettingsOpenCode: the non-secret settings reach OpenCode through OPENCODE_CONFIG_CONTENT and
+// the MCP servers, with their resolved secret, through a private OPENCODE_CONFIG file that goes with the
+// launch, on a TUI launch and a headless step. No environment variable holds the secret. Claude and
 // the fake provider are covered by TestAgentSettingsReachEveryLaunch. Frontend half:
 // ade-agent-settings.spec.ts.
 func TestAgentSettingsOpenCode(t *testing.T) {
@@ -426,7 +427,7 @@ func TestAgentSettingsOpenCode(t *testing.T) {
 		t.Fatalf("SetSecret: %v", err)
 	}
 
-	// The view shows the content document with the reference verbatim and the notes of what is not applied.
+	// The view shows the content document and the mcp file with the reference verbatim and the notes of what is not applied.
 	v, err := svc.Get()
 	if err != nil || v.Problem != nil {
 		t.Fatalf("Get = %+v, %v", v, err)
@@ -437,11 +438,12 @@ func TestAgentSettingsOpenCode(t *testing.T) {
 			view = p
 		}
 	}
-	if len(view.Files) != 1 || view.Files[0].Name != "opencode config" || !strings.Contains(view.Files[0].Text, "Bearer ${secret:gh-token}") {
-		t.Fatalf("opencode view files = %+v, want one config with the reference verbatim", view.Files)
+	if len(view.Files) != 2 || view.Files[0].Name != "opencode config" || view.Files[1].Name != "opencode mcp.json" ||
+		strings.Contains(view.Files[0].Text, "Bearer") || !strings.Contains(view.Files[1].Text, "Bearer ${secret:gh-token}") {
+		t.Fatalf("opencode view files = %+v, want a config without servers and an mcp file with the reference verbatim", view.Files)
 	}
 	notes := strings.Join(view.Notes, "\n")
-	for _, want := range []string{"WebFetch(domain:example.com)", "hook mark", "OPENCODE_CONFIG_CONTENT"} {
+	for _, want := range []string{"WebFetch(domain:example.com)", "hook mark", "OPENCODE_CONFIG_CONTENT", "OPENCODE_CONFIG,"} {
 		if !strings.Contains(notes, want) {
 			t.Fatalf("opencode notes = %q, want %q", notes, want)
 		}
@@ -450,7 +452,7 @@ func TestAgentSettingsOpenCode(t *testing.T) {
 		t.Fatal("the view holds the secret value")
 	}
 
-	// TUI: the content document has the resolved header, model, deny and allow rules; no file holds it.
+	// TUI: the content document has the model, deny and allow rules and no secret; the config file has the resolved header.
 	tk := task(t, app, repoRec.ID, "ocset", ocWorkflow("ocset", ""))
 	br, err := app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: branchOf(t, app, tk.ID, repoRec.ID).ID, Name: "feat/api-ocset"})
 	if err != nil {
@@ -466,11 +468,13 @@ func TestAgentSettingsOpenCode(t *testing.T) {
 	openTUI(t, app, launch)
 	env := envLines(t, waitFake(t, app, "opencode-1.env"))
 	content := env["OPENCODE_CONFIG_CONTENT"]
-	if !strings.Contains(content, `"Authorization":"Bearer `+secret+`"`) {
-		t.Fatalf("OPENCODE_CONFIG_CONTENT = %s, want the resolved header", content)
+	for name, v := range env {
+		if strings.Contains(v, secret) && name != "P453_MARK" {
+			t.Fatalf("%s holds the secret: the servers belong in the OPENCODE_CONFIG file", name)
+		}
 	}
-	if mcp := waitFake(t, app, "opencode-1.appmcp"); !strings.Contains(mcp, `"gh"`) || !strings.Contains(mcp, secret) {
-		t.Fatalf("recorded mcp block = %q, want server gh with the secret", mcp)
+	if cfg := waitFake(t, app, "opencode-1.config"); !strings.Contains(cfg, `"gh"`) || !strings.Contains(cfg, `"Authorization":"Bearer `+secret+`"`) {
+		t.Fatalf("recorded OPENCODE_CONFIG file = %q, want server gh with the resolved header", cfg)
 	}
 	for _, want := range []string{`"model":"anthropic/claude-sonnet-4-5"`, `"rm*":"deny"`, `"read":"allow"`} {
 		if !strings.Contains(content, want) {
@@ -484,15 +488,24 @@ func TestAgentSettingsOpenCode(t *testing.T) {
 		t.Fatalf(".appenv = %q, want the resolved value", got)
 	}
 	got := contentDoc(t, content)
-	want := contentDoc(t, strings.ReplaceAll(view.Files[0].Text, "${secret:gh-token}", secret))
+	want := contentDoc(t, view.Files[0].Text)
 	gb, _ := json.Marshal(got)
 	wb, _ := json.Marshal(want)
 	if !bytes.Equal(gb, wb) {
-		t.Fatalf("launch document = %s, view with the secret = %s, want equal", gb, wb)
+		t.Fatalf("launch document = %s, view = %s, want equal", gb, wb)
 	}
-	if left := appFiles(t, app.SpaceHome); len(left) != 0 {
-		t.Fatalf("opencode launch wrote app files %v, want none", left)
+	// The private file lives while the launch does (0600) and goes with it; nothing else on disk ever holds the secret.
+	files := appFiles(t, app.SpaceHome)
+	if len(files) != 1 {
+		t.Fatalf("app files = %v, want the one mcp file", files)
 	}
+	if fi, err := os.Stat(files[0]); err != nil || fi.Mode().Perm() != 0o600 {
+		t.Fatalf("app file mode = %v, %v, want 0600", fi, err)
+	}
+	if err := app.W.Terminal.Close(terminal.CloseArgs{TerminalID: launch.TerminalID}); err != nil {
+		t.Fatal(err)
+	}
+	testx.WaitUntil(t, waitFor, func() bool { return len(appFiles(t, app.SpaceHome)) == 0 })
 	_ = filepath.WalkDir(app.Root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || strings.HasPrefix(p, app.FakeDir) || strings.HasPrefix(p, app.Work) {
 			return nil
@@ -511,10 +524,18 @@ func TestAgentSettingsOpenCode(t *testing.T) {
 	}
 	henv := envLines(t, waitFake(t, app, "opencode-2.env"))
 	hcontent := henv["OPENCODE_CONFIG_CONTENT"]
-	for _, want := range []string{`"Authorization":"Bearer ` + secret + `"`, `"model":"anthropic/claude-sonnet-4-5"`, `"rm*":"deny"`} {
+	for _, want := range []string{`"model":"anthropic/claude-sonnet-4-5"`, `"rm*":"deny"`} {
 		if !strings.Contains(hcontent, want) {
 			t.Fatalf("headless OPENCODE_CONFIG_CONTENT = %s, want %s", hcontent, want)
 		}
+	}
+	for name, v := range henv {
+		if strings.Contains(v, secret) && name != "P453_MARK" {
+			t.Fatalf("headless %s holds the secret", name)
+		}
+	}
+	if cfg := waitFake(t, app, "opencode-2.config"); !strings.Contains(cfg, `"Authorization":"Bearer `+secret+`"`) {
+		t.Fatalf("headless OPENCODE_CONFIG file = %q, want the resolved header beside the grant", cfg)
 	}
 	if got := waitFake(t, app, "opencode-2.appenv"); strings.TrimSpace(got) != "P453_MARK="+secret {
 		t.Fatalf("headless .appenv = %q, want the resolved value", got)

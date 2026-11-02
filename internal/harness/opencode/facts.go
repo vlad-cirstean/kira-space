@@ -89,7 +89,8 @@ const instructionsKey = "instructions"
 // Resume re-reads the instructions file: an edit before `run -s <id>` reaches the model (Q-OC4,
 // verified), so the provider does not implement harness.ContextKeeper.
 
-// App settings ride OPENCODE_CONFIG_CONTENT next to `instructions`. Verified on 1.19.5 (P453
+// App settings ride OPENCODE_CONFIG_CONTENT next to `instructions`, except `mcp`, whose credentials
+// go to a 0600 OPENCODE_CONFIG file instead of the environment. Verified on 1.19.5 (P453
 // probes): `model` is kept and `plugin` merges across OPENCODE_CONFIG_DIR/opencode.json and the
 // content (Q-OC5); `mcp` merges across the OPENCODE_CONFIG file and the content (Q-OC6);
 // `permission` merges across OPENCODE_PERMISSION and the content (Q-OC8); a local server's

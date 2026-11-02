@@ -1,6 +1,7 @@
 package opencode
 
 import (
+	"cmp"
 	"encoding/json"
 	"log/slog"
 	"path/filepath"
@@ -26,8 +27,8 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 		resume = " -s " + loginshell.Quote(s.SessionID)
 		l.SessionID = s.SessionID
 	}
-	if s.MCPConfig != "" {
-		l.Env = append(l.Env, "OPENCODE_CONFIG="+s.MCPConfig)
+	if cfg := interactiveConfig(s); cfg != "" {
+		l.Env = append(l.Env, "OPENCODE_CONFIG="+cfg)
 	}
 	if perm := interactivePermission(s); perm != "" {
 		l.Env = append(l.Env, "OPENCODE_PERMISSION="+perm)
@@ -50,6 +51,21 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 	}
 	l.Command = bin + resume
 	return l
+}
+
+// interactiveConfig is the OPENCODE_CONFIG path: the grant file, or the app's mcp file when there is
+// one. With both, the grant joins the app file in place (the launch's own 0600 file, removed with it)
+// since OPENCODE_CONFIG names one file. A merge that fails leaves the grant alone.
+func interactiveConfig(s harness.InteractiveSpec) string {
+	app := appMCPFile(s.App)
+	if app == "" || s.MCPConfig == "" {
+		return cmp.Or(s.MCPConfig, app)
+	}
+	if err := mergeMCP(app, []string{app, s.MCPConfig}); err != nil {
+		slog.Warn("opencode: app MCP servers not applied", "scope", "opencode", "err", err)
+		return s.MCPConfig
+	}
+	return app
 }
 
 // interactivePermission is the OPENCODE_PERMISSION document, "" when the launch needs none.

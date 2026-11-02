@@ -88,61 +88,69 @@ func script(s harness.HeadlessSpec, ew envWords) string {
 	return strings.Join(words, " ")
 }
 
-// mergeMCP writes the mcp entries of every config in paths into one file under dir.
-func mergeMCP(dir string, paths []string) (string, error) {
+// mergeMCP writes the mcp entries of every config in paths to dst (0600); a later file wins a name.
+// dst may be one of paths: the write is atomic.
+func mergeMCP(dst string, paths []string) error {
 	merged := map[string]json.RawMessage{}
 	for _, p := range paths {
 		b, err := os.ReadFile(p)
 		if err != nil {
-			return "", err
+			return err
 		}
 		var doc struct {
 			MCP map[string]json.RawMessage `json:"mcp"`
 		}
 		if err := json.Unmarshal(b, &doc); err != nil {
-			return "", err
+			return err
 		}
 		maps.Copy(merged, doc.MCP)
 	}
 	out, err := json.Marshal(map[string]any{"mcp": merged})
 	if err != nil {
-		return "", err
+		return err
 	}
-	path := filepath.Join(dir, "kira-agent-config.json")
-	return path, renameio.WriteFile(path, out, 0o600)
+	return renameio.WriteFile(dst, out, 0o600)
 }
 
-// runEnv is the child environment of a run and the scratch dir to remove after it.
-func (p *Provider) runEnv(ctx context.Context, s harness.HeadlessSpec) (env []string, ew envWords, scratch string, err error) {
+// mergedMCPPath is where a headless run merges its configs: beside the last one, named so the
+// settings store's Sweep removes it after a crash.
+func mergedMCPPath(paths []string) string {
+	last := paths[len(paths)-1]
+	return strings.TrimSuffix(last, filepath.Ext(last)) + ".merged.json"
+}
+
+// runEnv is the child environment of a run and the paths to remove after it.
+func (p *Provider) runEnv(ctx context.Context, s harness.HeadlessSpec) (env []string, ew envWords, remove []string, err error) {
 	var users []harness.UserServer
 	if s.Isolated && len(s.UserMCP) > 0 {
 		if users, err = p.UserMCPServers(ctx, s.Dir); err != nil {
-			return nil, ew, "", err
+			return nil, ew, nil, err
 		}
 	}
 	doc, err := permissionDoc(s, users)
 	if err != nil {
-		return nil, ew, "", err
+		return nil, ew, nil, err
 	}
 	if s.ContextFile != "" {
 		doc[instructionsKey] = []string{s.ContextFile}
 	}
 	if s.App != nil {
 		if err := withAppConfig(doc, s.App); err != nil {
-			return nil, ew, "", err
+			return nil, ew, nil, err
 		}
 	}
 	content, err := json.Marshal(doc)
 	if err != nil {
-		return nil, ew, "", err
+		return nil, ew, nil, err
 	}
-	scratch, err = os.MkdirTemp("", "kira-opencode-")
+	scratch, err := os.MkdirTemp("", "kira-opencode-")
 	if err != nil {
-		return nil, ew, "", err
+		return nil, ew, nil, err
 	}
+	remove = []string{scratch}
 	defer func() {
 		if err != nil {
-			_ = os.RemoveAll(scratch)
+			removeAll(remove)
 		}
 	}()
 	base := s.Env
@@ -151,15 +159,19 @@ func (p *Provider) runEnv(ctx context.Context, s harness.HeadlessSpec) (env []st
 	}
 	sc := scopeOf(s)
 	env = p.ScrubEnv(base)
+	configs := slices.Clone(s.MCPConfigs)
+	if f := appMCPFile(s.App); f != "" {
+		configs = append(configs, f)
+	}
 	if !sc.user {
 		env = dropEnv(env, layerEnv)
 		cfgHome, err := redirectConfigHome(scratch, base)
 		if err != nil {
-			return nil, ew, scratch, err
+			return nil, ew, remove, err
 		}
 		ew.set = append(ew.set, "XDG_CONFIG_HOME="+cfgHome)
 		own := []string{"OPENCODE_CONFIG_CONTENT"}
-		if len(s.MCPConfigs) > 0 {
+		if len(configs) > 0 {
 			own = append(own, "OPENCODE_CONFIG")
 		}
 		ew.unset = unsetLayers(own)
@@ -170,19 +182,26 @@ func (p *Provider) runEnv(ctx context.Context, s harness.HeadlessSpec) (env []st
 	if !sc.project {
 		env = append(env, "OPENCODE_DISABLE_PROJECT_CONFIG=1", "OPENCODE_DISABLE_CLAUDE_CODE=1")
 	}
-	switch len(s.MCPConfigs) {
+	switch len(configs) {
 	case 0:
 	case 1:
-		env = append(env, "OPENCODE_CONFIG="+s.MCPConfigs[0])
+		env = append(env, "OPENCODE_CONFIG="+configs[0])
 	default:
-		path, err := mergeMCP(scratch, s.MCPConfigs)
-		if err != nil {
-			return nil, ew, scratch, err
+		path := mergedMCPPath(configs)
+		remove = append(remove, path)
+		if err := mergeMCP(path, configs); err != nil {
+			return nil, ew, remove, err
 		}
 		env = append(env, "OPENCODE_CONFIG="+path)
 	}
 	env = append(env, "OPENCODE_CONFIG_CONTENT="+string(content))
-	return env, ew, scratch, nil
+	return env, ew, remove, nil
+}
+
+func removeAll(paths []string) {
+	for _, p := range paths {
+		_ = os.RemoveAll(p)
+	}
 }
 
 // runState folds the stdout events into the run's session id and closing result.
@@ -253,10 +272,8 @@ func (p *Provider) RunHeadless(ctx context.Context, spec harness.HeadlessSpec, h
 		}
 		return harness.Exit{}, err
 	}
-	env, ew, scratch, err := p.runEnv(ctx, spec)
-	if scratch != "" {
-		defer func() { _ = os.RemoveAll(scratch) }()
-	}
+	env, ew, remove, err := p.runEnv(ctx, spec)
+	defer func() { removeAll(remove) }()
 	if err != nil {
 		return harness.Exit{}, err
 	}
