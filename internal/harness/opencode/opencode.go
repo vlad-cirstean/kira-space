@@ -1,6 +1,6 @@
 // Package opencode is the OpenCode provider: the only package that knows the opencode CLI's flags,
 // output formats, config documents and tool names. Every fact not yet confirmed on the real binary
-// lives in facts.go, marked with its probe id (docs/v0.2.26/plans/P449.md).
+// lives in facts.go, marked with its probe id (P449).
 package opencode
 
 import (

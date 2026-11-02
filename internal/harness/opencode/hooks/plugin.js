@@ -1,6 +1,6 @@
 // Kira agent hook plugin for OpenCode. Reports session activity to Kira over a unix socket.
 // Every handler swallows its errors and never waits on Kira: a hook must not slow or break the agent.
-// Event names are assumptions pending a model-backed probe (docs/v0.2.26/plans/P449.md, U12).
+// Event names are assumptions pending a model-backed probe (P449, U12).
 export const KiraHooks = async () => {
   const sock = process.env.KIRA_AGENT_HOOK_SOCKET;
   const token = process.env.KIRA_AGENT_HOOK_TOKEN;

@@ -3205,7 +3205,7 @@ Agent-written evidence the user reviews in a dedicated window. Part 1 is storage
 
 ## Config files (P450)
 
-Config lives as plain files in app-home folders; `internal/configfs` is the one foundation every module uses. Terse facts, decisions in `docs/v0.2.26/plans/P450.md`.
+Config lives as plain files in app-home folders; `internal/configfs` is the one foundation every module uses. Terse facts, decisions in `docs/HISTORY.md` (v0.2.26 P450).
 
 - Layout: a config folder is a direct child of an app home, `<home>/<module>/`. Workflows stay `<home>/workflows/`. A module's folder lives in the home of the app whose DB holds its state; a process projects files only into its own DB.
 - A definition shared by both apps has one folder, `~/.kira-space/agent/`. Both apps read, write and watch it. `agentctx` is the first user (P452); `kirapaths.SharedAgentDir()` is the resolver.
