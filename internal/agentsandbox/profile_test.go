@@ -137,7 +137,7 @@ func TestProfileAllowsMCPConfigs(t *testing.T) {
 	for _, m := range regexp.MustCompile(`\(regex #"([^"]+)"\)`).FindAllStringSubmatch(allowRead, -1) {
 		res = append(res, regexp.MustCompile(m[1]))
 	}
-	for _, name := range []string{"run-1-7.mcp.json", "run-1-user.mcp.json"} {
+	for _, name := range []string{"run-1-7.mcp.json", "run-1-app.mcp.json", "run-1-app.settings.json"} {
 		path := p.ConfigDir + "/" + name
 		ok := false
 		for _, re := range res {
@@ -147,7 +147,7 @@ func TestProfileAllowsMCPConfigs(t *testing.T) {
 			t.Errorf("no read allow for %s", path)
 		}
 	}
-	for _, name := range []string{"run-2-7.mcp.json", "run-1-7.mcp.json.bak", "run-1-x.mcp.json"} {
+	for _, name := range []string{"run-2-7.mcp.json", "run-1-7.mcp.json.bak", "run-1-x.mcp.json", "run-1-user.mcp.json", "run-2-app.mcp.json", "run-1-app.mcp.json.bak"} {
 		for _, re := range res {
 			if re.MatchString(p.ConfigDir + "/" + name) {
 				t.Errorf("read allow too wide: %s", name)

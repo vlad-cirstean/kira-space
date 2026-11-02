@@ -83,6 +83,25 @@ func userMCPSettings(s harness.HeadlessSpec) string {
 	return string(b)
 }
 
+// sandboxWords is the env and sandbox-exec wrapper put in front of the agent; none without a sandbox.
+func sandboxWords(sb *harness.SandboxExec) []string {
+	if sb == nil {
+		return nil
+	}
+	words := []string{"/usr/bin/env"}
+	for _, name := range sb.Unset {
+		words = append(words, "-u", loginshell.Quote(name))
+	}
+	for _, kv := range sb.Env {
+		words = append(words, loginshell.Quote(kv))
+	}
+	sbin := sb.Bin
+	if sbin == "" {
+		sbin = harness.DefaultSandboxBin
+	}
+	return append(words, loginshell.Quote(sbin), "-f", loginshell.Quote(sb.Profile))
+}
+
 // Script is the shell text that execs claude; run under the user's login shell it sees the same
 // PATH as the TUI launch. The bearer token lives in the MCP config file, never on argv.
 func Script(s harness.HeadlessSpec) string {
@@ -94,25 +113,14 @@ func Script(s harness.HeadlessSpec) string {
 	if s.Resume != "" {
 		session = []string{"--resume", loginshell.Quote(s.Resume)}
 	}
-	words := []string{"exec"}
-	if sb := s.Sandbox; sb != nil {
-		words = append(words, "/usr/bin/env")
-		for _, name := range sb.Unset {
-			words = append(words, "-u", loginshell.Quote(name))
-		}
-		for _, kv := range sb.Env {
-			words = append(words, loginshell.Quote(kv))
-		}
-		sbin := sb.Bin
-		if sbin == "" {
-			sbin = harness.DefaultSandboxBin
-		}
-		words = append(words, loginshell.Quote(sbin), "-f", loginshell.Quote(sb.Profile))
-	}
+	words := append([]string{"exec"}, sandboxWords(s.Sandbox)...)
 	words = append(words, bin, "-p", "--output-format", "stream-json", "--verbose")
 	words = append(words, session...)
 	for _, p := range s.MCPConfigs {
 		words = append(words, "--mcp-config", loginshell.Quote(p))
+	}
+	if s.App != nil && s.App.Files["mcp"] != "" {
+		words = append(words, "--mcp-config", loginshell.Quote(s.App.Files["mcp"]))
 	}
 	if s.Model != "" {
 		words = append(words, "--model", loginshell.Quote(s.Model))
@@ -125,6 +133,9 @@ func Script(s harness.HeadlessSpec) string {
 		words = append(words, appendSystemPromptFileFlag, loginshell.Quote(s.ContextFile))
 	}
 	words = append(words, "--setting-sources", loginshell.Quote(settingSources(s)))
+	if s.App != nil && s.App.Files["settings"] != "" {
+		words = append(words, "--settings", loginshell.Quote(s.App.Files["settings"]))
+	}
 	if s.Isolated {
 		if len(s.UserMCP) > 0 {
 			words = append(words, "--settings", loginshell.Quote(userMCPSettings(s)))
@@ -161,6 +172,9 @@ func Script(s harness.HeadlessSpec) string {
 func (p *Provider) RunHeadless(ctx context.Context, spec harness.HeadlessSpec, h harness.Handler) (harness.Exit, error) {
 	if spec.Timeout <= 0 {
 		return harness.Exit{}, errors.New("claude: HeadlessSpec.Timeout must be positive")
+	}
+	if spec.Isolated && spec.App != nil {
+		return harness.Exit{}, errors.New("claude: an isolated run takes no app settings")
 	}
 	if _, err := p.Locate(ctx, spec.Bin); err != nil {
 		var ie *ipcerr.Error

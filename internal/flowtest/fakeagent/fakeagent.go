@@ -153,6 +153,13 @@ const LeanArg = "lean"
 // LeanSessions is the file in the fake dir holding one LeanSession JSON per line.
 const LeanSessions = "sessions.jsonl"
 
+// PersonaAppConfigFlag carries the path of the app's agent settings file on the persona's command line.
+const PersonaAppConfigFlag = "--app-config"
+
+// EnvRecordEnv lists, comma separated, the environment variables a call keeps as NAME=value lines in
+// <stem>.appenv: the agent settings env a test follows through a launch.
+const EnvRecordEnv = "KIRA_FAKE_RECORD_ENV"
+
 // EnvPersonaConfig is a variable the persona records in its args file when set.
 const EnvPersonaConfig = "KIRA_FAKE_CONFIG"
 
@@ -282,8 +289,9 @@ func pickAction(scen Scenario, dir, repo, cwd string, args []string) pickedActio
 		}
 	}
 	if settings := argAfter(args, "--settings"); settings != "" {
-		writeFile(stem+".settings", []byte(settings))
+		writeFile(stem+".settings", settingsBytes(settings))
 	}
+	recordAppEnv(stem)
 	recordContext(stem, args, "--append-system-prompt-file")
 	writeFile(stem+".args", []byte(strings.Join(args, "\n"))) // marker: the call is fully recorded
 	return pickedAction{Action: action, stem: stem}
@@ -442,6 +450,10 @@ func runPersona(dir string, args []string) int {
 		record += "\n" + EnvPersonaConfig + "=" + v
 	}
 	recordContext(stem, args, PersonaContextFlag)
+	recordAppEnv(stem)
+	if raw, err := os.ReadFile(argAfter(args, PersonaAppConfigFlag)); err == nil {
+		writeFile(stem+".appconfig", raw)
+	}
 	writeFile(stem+".args", []byte(record))
 	if len(args) > 0 && args[0] == LeanArg && !slices.Contains(args, "--resume") {
 		recordLeanSession(dir)
@@ -454,6 +466,30 @@ func runPersona(dir string, args []string) int {
 	defer f.Close()
 	_, _ = io.Copy(f, os.Stdin)
 	return 0
+}
+
+// settingsBytes is what --settings holds: the file's bytes when the value names a file, else the value
+// itself (inline JSON).
+func settingsBytes(arg string) []byte {
+	if !strings.HasPrefix(arg, "{") {
+		if raw, err := os.ReadFile(arg); err == nil {
+			return raw
+		}
+	}
+	return []byte(arg)
+}
+
+// recordAppEnv keeps the variables named by EnvRecordEnv that the call has, as <stem>.appenv.
+func recordAppEnv(stem string) {
+	var lines []string
+	for _, name := range strings.Split(os.Getenv(EnvRecordEnv), ",") {
+		if v, ok := os.LookupEnv(name); ok && name != "" {
+			lines = append(lines, name+"="+v)
+		}
+	}
+	if len(lines) > 0 {
+		writeFile(stem+".appenv", []byte(strings.Join(lines, "\n")))
+	}
 }
 
 // recordContext keeps the bytes of the agent context file named by flag as <stem>.context.

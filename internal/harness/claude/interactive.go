@@ -34,15 +34,35 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 			word(d)
 		}
 	}
-	if s.MCPConfig != "" {
+	appMCP := ""
+	if s.App != nil {
+		appMCP = s.App.Files["mcp"]
+	}
+	if s.MCPConfig != "" || appMCP != "" {
 		word("--mcp-config")
-		word(s.MCPConfig)
+		for _, f := range []string{s.MCPConfig, appMCP} {
+			if f != "" {
+				word(f)
+			}
+		}
+	}
+	if s.MCPConfig != "" {
 		word("--allowedTools")
 		for _, t := range s.AllowedTools {
 			word(t)
 		}
 	}
-	return harness.Launch{Command: b.String(), SessionID: s.SessionID}
+	launch := harness.Launch{SessionID: s.SessionID}
+	if s.App != nil {
+		launch.Env = s.App.Env
+		if f := s.App.Files["settings"]; f != "" {
+			word("--settings")
+			word(f)
+			launch.ConfigFile = f
+		}
+	}
+	launch.Command = b.String()
+	return launch
 }
 
 // WithPrompt ends flag parsing with `--` so a trailing variadic flag (--add-dir a b) cannot take

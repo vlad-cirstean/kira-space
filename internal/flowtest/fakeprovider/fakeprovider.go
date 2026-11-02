@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"sync"
 
@@ -32,6 +33,9 @@ type HeadlessCall struct {
 	Stage                            harness.StageValues
 	// Context is the bytes of the agent context file the run was given; nil when none.
 	Context []byte
+	// App is the bytes of the app settings file the run was given and AppEnv its env; nil when none.
+	App    []byte
+	AppEnv []string
 }
 
 // base is the Claude provider seen through the roles the fake delegates: it hides Claude's hook and
@@ -130,8 +134,13 @@ func (p *Provider) RunHeadless(_ context.Context, s harness.HeadlessSpec, h harn
 	if s.ContextFile != "" {
 		ctxBytes, _ = os.ReadFile(s.ContextFile)
 	}
+	call := HeadlessCall{Model: s.Model, Prompt: s.Prompt, SessionID: s.SessionID, Resume: s.Resume, Stage: s.Stage, Context: ctxBytes}
+	if s.App != nil {
+		call.App, _ = os.ReadFile(s.App.Files["config"])
+		call.AppEnv = s.App.Env
+	}
 	p.mu.Lock()
-	p.headless = append(p.headless, HeadlessCall{Model: s.Model, Prompt: s.Prompt, SessionID: s.SessionID, Resume: s.Resume, Stage: s.Stage, Context: ctxBytes})
+	p.headless = append(p.headless, call)
 	p.mu.Unlock()
 	if h.OnLine != nil {
 		h.OnLine(harness.Line{Stream: harness.StreamStdout, Text: "fake agent at work"})
@@ -157,7 +166,39 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 	if s.ContextFile != "" {
 		cmd += " " + fakeagent.PersonaContextFlag + " " + s.ContextFile
 	}
-	return harness.Launch{Command: cmd, SessionID: s.SessionID}
+	launch := harness.Launch{SessionID: s.SessionID}
+	if s.App != nil {
+		launch.Env = s.App.Env
+		if f := s.App.Files["config"]; f != "" {
+			cmd += " " + fakeagent.PersonaAppConfigFlag + " " + f
+		}
+	}
+	launch.Command = cmd
+	return launch
+}
+
+// SettingsSchema: the fake's section holds a model only.
+func (p *Provider) SettingsSchema() []byte {
+	return []byte(`{"type":"object","additionalProperties":false,"properties":{"model":{"type":"string","maxLength":100},"skip_hooks":{"type":"array","items":{"type":"string"}}}}`)
+}
+
+// RenderSettings writes the whole AgentSettings as one JSON file, so a test sees exactly what a
+// provider receives.
+func (p *Provider) RenderSettings(s harness.AgentSettings, _ harness.LaunchKind) (harness.NativeConfig, error) {
+	b, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return harness.NativeConfig{}, err
+	}
+	out := harness.NativeConfig{Files: []harness.NativeFile{{Role: "config", Name: "config.json", Data: b}}}
+	keys := make([]string, 0, len(s.Env))
+	for k := range s.Env {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		out.Env = append(out.Env, k+"="+s.Env[k])
+	}
+	return out, nil
 }
 
 func (p *Provider) WithPrompt(command, prompt string) string {

@@ -54,3 +54,12 @@ func TestScriptIsolatedUserMCP(t *testing.T) {
 		t.Fatalf("isolated:\n got %s\nwant %s", got, want)
 	}
 }
+
+func TestScriptAppSettings(t *testing.T) {
+	s := harness.HeadlessSpec{Bin: "claude", SessionID: "s-1", MCPConfigs: []string{"/c/run.mcp.json"}, Config: harness.ConfigAll,
+		App: &harness.AppConfig{Files: map[string]string{"mcp": "/c/run-app.mcp.json", "settings": "/c/run-app.settings.json"}}}
+	want := "exec claude -p --output-format stream-json --verbose --session-id 's-1' --mcp-config '/c/run.mcp.json' --mcp-config '/c/run-app.mcp.json' --setting-sources 'user,project,local' --settings '/c/run-app.settings.json'"
+	if got := Script(s); got != want {
+		t.Fatalf("got  %s\nwant %s", got, want)
+	}
+}

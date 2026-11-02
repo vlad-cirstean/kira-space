@@ -78,7 +78,7 @@ type Input struct {
 	Network     bool
 	Scratch     string
 	Cache       string
-	// ConfigDir is the folder the run's MCP config files are written to: <run>-<n>.mcp.json and <run>-user.mcp.json.
+	// ConfigDir is the folder the run's MCP config files are written to: <run>-<n>.mcp.json and the app settings files <run>-app.<role>.json.
 	ConfigDir string
 	// ContextDir is the folder of the run's agent context file ("" = none).
 	ContextDir string

@@ -40,7 +40,7 @@
   (subpath "/Users/ada/src/app/.git/worktrees/feat2")
   (subpath "/Users/ada/Library/Application Support/Kira/agent/sandbox/run-1")
   (subpath "/Users/ada/Library/Application Support/Kira/agent/sandbox-cache")
-  (regex #"^/Users/ada/Library/Application Support/Kira/agent/run-1-([0-9]+|user)\.mcp\.json$"))
+  (regex #"^/Users/ada/Library/Application Support/Kira/agent/run-1-([0-9]+\.mcp|app\.[a-z]+)\.json$"))
 
 ;; writes
 (deny file-write*)

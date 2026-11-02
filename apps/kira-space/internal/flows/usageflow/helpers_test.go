@@ -26,7 +26,7 @@ var settingsArg = regexp.MustCompile(`--settings '([^']+)'`)
 // the env the shell would see.
 func launch(t *testing.T, app *flowharness.App, terminalID, cwd string) (doc map[string]any, settingsPath string, env []string) {
 	t.Helper()
-	command, env := app.W.AgentHooks.Compose("claude", terminalID, cwd, "claude")
+	command, env, _ := app.W.AgentHooks.Compose("claude", terminalID, cwd, "claude", "")
 	m := settingsArg.FindStringSubmatch(command)
 	if m == nil || len(env) == 0 {
 		t.Fatalf("no --settings or env in %q", command)

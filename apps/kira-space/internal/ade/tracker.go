@@ -100,6 +100,8 @@ type pendingIntent struct {
 	Purpose                           string
 	// Provider is the id of the provider that composed Command; its listener hooks the launch.
 	Provider string
+	// ConfigFile is the Kira-written provider config file the listener extends in place; "" = none.
+	ConfigFile string
 	// Op is the session op Prepare was given; Compose ends it ok, an expired intent ends it as an error.
 	Op *oplog.Op
 }
@@ -126,6 +128,8 @@ type PrepareArgs struct {
 	Settings map[string]map[string]string
 	// Op is the op-log entry for this launch; nil records nothing.
 	Op *oplog.Op
+	// App is the app's agent settings rendered for this launch; nil = none.
+	App *harness.AppConfig
 }
 
 // PrepareResult is Prepare's own return shape. SessionID is the agent session id (stable across
@@ -170,7 +174,7 @@ type Tracker struct {
 	// fresh marks records Compose inserted (not resumed), so Abort deletes rather than stops them.
 	fresh map[string]bool
 
-	hooks func(provider, terminalID, cwd, command string) (string, []string)
+	hooks func(provider, terminalID, cwd, command, configFile string) (string, []string, error)
 
 	// graceTimers are Compose's pending Reconcile timers, stopped by Close; graceWG waits for a
 	// callback already running.
@@ -219,13 +223,13 @@ func (t *Tracker) SetStoppedHandler(fn func(recordID string)) {
 // SetHooks installs the launch-composition callback (harness.Hooks.Compose) — called
 // once in main.go before any window exists, so Compose never races an unset hooks func with a
 // real launch.
-func (t *Tracker) SetHooks(fn func(provider, terminalID, cwd, command string) (string, []string)) {
+func (t *Tracker) SetHooks(fn func(provider, terminalID, cwd, command, configFile string) (string, []string, error)) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.hooks = fn
 }
 
-func (t *Tracker) hooksFn() func(string, string, string, string) (string, []string) {
+func (t *Tracker) hooksFn() func(string, string, string, string, string) (string, []string, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return t.hooks
@@ -308,13 +312,13 @@ func (t *Tracker) Prepare(args PrepareArgs) (PrepareResult, error) {
 	launch := agent.InteractiveCommand(harness.InteractiveSpec{
 		Bin: agentBin, SessionID: agentSessionID, Resume: args.Resume != "" || args.Resumes != "",
 		AddDirs: args.AddDirs, MCPConfig: args.MCPConfig, AllowedTools: args.AllowedTools,
-		Stage: stageValues(args.Settings, agent), ContextFile: contextFile,
+		Stage: stageValues(args.Settings, agent), ContextFile: contextFile, App: args.App,
 	})
 	command, agentSessionID := launch.Command, launch.SessionID
 
 	terminalID := uuid.NewString()
 	intent := pendingIntent{
-		RecordID: recordID, AgentSessionID: agentSessionID, Env: launch.Env, Cwd: cwd, Command: command, Message: args.Message,
+		RecordID: recordID, AgentSessionID: agentSessionID, Env: launch.Env, ConfigFile: launch.ConfigFile, Cwd: cwd, Command: command, Message: args.Message,
 		Resume: args.Resume != "", CreatedAt: now,
 		TaskID: args.TaskID, BranchID: args.BranchID, StepID: args.StepID, Resumes: args.Resumes, Purpose: args.Purpose,
 		Provider: agent.ID(), Op: args.Op,
@@ -493,8 +497,7 @@ func (t *Tracker) Compose(terminalID, cwd, command string) (_ string, _ []string
 		if hooks == nil {
 			return command, nil, nil
 		}
-		composed, env := hooks(t.deps.Agent.Active().ID(), terminalID, cwd, command)
-		return composed, env, nil
+		return hooks(t.deps.Agent.Active().ID(), terminalID, cwd, command, "")
 	}
 
 	defer func() {
@@ -513,7 +516,10 @@ func (t *Tracker) Compose(terminalID, cwd, command string) (_ string, _ []string
 	composed, env := command, slices.Clone(intent.Env)
 	if hooks := t.hooksFn(); hooks != nil {
 		var hookEnv []string
-		composed, hookEnv = hooks(intent.Provider, terminalID, cwd, command)
+		var err error
+		if composed, hookEnv, err = hooks(intent.Provider, terminalID, cwd, command, intent.ConfigFile); err != nil {
+			return "", nil, err
+		}
 		env = append(env, hookEnv...)
 	}
 	if intent.Message != "" {

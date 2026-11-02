@@ -1,6 +1,8 @@
 package usageflow_test
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,35 +42,43 @@ func TestStatusLineFeed(t *testing.T) {
 
 var usageMask = flowharness.Mask("resetsAt", "updatedAt")
 
-func TestUserStatusLinePreserved(t *testing.T) {
+func TestUserStatusLineFromAppSettings(t *testing.T) {
 	app := newApp(t)
+	// A statusline in the user's own Claude settings is never read: only the app's settings supply one.
 	userFile := filepath.Join(app.Home, ".claude", "settings.json")
 	userBody := `{"statusLine":{"type":"command","command":"printf USER","padding":2}}`
 	writeFile(t, userFile, userBody)
-	proj := filepath.Join(app.Work, "proj")
-	localFile := filepath.Join(proj, ".claude", "settings.local.json")
-	localBody := `{"statusLine":{"type":"command","command":"printf PROJECT"}}`
-	writeFile(t, localFile, localBody)
-
 	doc, _, env := launch(t, app, "tab-user", "")
-	if got := runStatusLine(t, doc, env, payload(1, in(time.Hour), 2, in(time.Hour))); got != "USER" {
-		t.Fatalf("wrapper output = %q, want the user's own statusline", got)
-	}
-	sl, _ := doc["statusLine"].(map[string]any)
-	if sl["padding"] != float64(2) {
-		t.Fatalf("statusLine = %v, want the user's padding kept", sl)
+	if got := runStatusLine(t, doc, env, payload(1, in(time.Hour), 2, in(time.Hour))); got != "" {
+		t.Fatalf("wrapper output = %q, want no user statusline", got)
 	}
 
-	doc, _, env = launch(t, app, "tab-proj", proj)
-	if got := runStatusLine(t, doc, env, payload(1, in(time.Hour), 2, in(time.Hour))); got != "PROJECT" {
-		t.Fatalf("wrapper output = %q, want the project-local statusline to win", got)
+	cfg := filepath.Join(app.Work, "app-settings.json")
+	writeFile(t, cfg, `{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"echo mine"}]}]},"statusLine":{"type":"command","command":"printf APP","padding":2}}`)
+	command, env, err := app.W.AgentHooks.Compose("claude", "tab-app", "", "claude", cfg)
+	if err != nil || command != "claude" {
+		t.Fatalf("Compose into app settings = %q, %v, want the command unchanged", command, err)
 	}
-
-	for path, want := range map[string]string{userFile: userBody, localFile: localBody} {
-		got, err := os.ReadFile(path)
-		if err != nil || string(got) != want {
-			t.Fatalf("%s = %q (%v), want it untouched", path, got, err)
-		}
+	raw, err := os.ReadFile(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc = map[string]any{}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if got := runStatusLine(t, doc, env, payload(1, in(time.Hour), 2, in(time.Hour))); got != "APP" {
+		t.Fatalf("wrapper output = %q, want the app settings' statusline", got)
+	}
+	if sl, _ := doc["statusLine"].(map[string]any); sl["padding"] != float64(2) {
+		t.Fatalf("statusLine = %v, want the padding kept", sl)
+	}
+	start := doc["hooks"].(map[string]any)["SessionStart"].([]any)
+	if len(start) != 2 || !strings.Contains(string(raw), `"command": "echo mine"`) || strings.Contains(fmt.Sprint(start[0]), "echo mine") {
+		t.Fatalf("SessionStart = %v, want Kira's entry first, then the user's", start)
+	}
+	if got, err := os.ReadFile(userFile); err != nil || string(got) != userBody {
+		t.Fatalf("%s = %q (%v), want it untouched", userFile, got, err)
 	}
 }
 
@@ -88,7 +98,7 @@ func TestStatusLineThrottle(t *testing.T) {
 func TestUsageOffNoInjection(t *testing.T) {
 	app := newApp(t)
 	setUsage(t, app, false)
-	command, env := app.W.AgentHooks.Compose("claude", "tab-1", "", "claude")
+	command, env, _ := app.W.AgentHooks.Compose("claude", "tab-1", "", "claude", "")
 	if len(env) == 0 || !strings.Contains(command, app.W.AgentHooks.Status("claude").SettingsPath) {
 		t.Fatalf("command = %q, want the plain hooks file", command)
 	}
