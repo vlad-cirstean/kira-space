@@ -1,6 +1,7 @@
 package harnessflow_test
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -236,7 +237,7 @@ func TestAgentSettingsReachEveryLaunch(t *testing.T) {
 		t.Fatalf(".appenv = %q, want the resolved value", env)
 	}
 	settings, _ := os.ReadFile(stem + ".settings")
-	if i, j := strings.Index(string(settings), "echo mark"), strings.Index(string(settings), "kira"); !strings.Contains(string(settings), "echo mark") || j < 0 || j > i {
+	if i, j := bytes.Index(settings, []byte("echo mark")), bytes.Index(settings, []byte("kira")); i < 0 || j < 0 || j > i {
 		t.Fatalf("--settings = %s, want the user hook after Kira's entry", settings)
 	}
 	if !strings.Contains(string(settings), "statusLine") {
