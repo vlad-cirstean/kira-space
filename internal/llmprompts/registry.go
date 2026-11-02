@@ -913,11 +913,11 @@ var _ = arg(HeadlessToolDeclareRepos.id, "repos", spaceApp, NextCall,
 // HeadlessToolRequestBranches describes the request_branches tool.
 var HeadlessToolRequestBranches = define(Entry{
 	ID: "headless.tool.request_branches", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "request_branches",
-	Default: `Ask the user to approve branches and worktrees for task repos, all in one call; waits for the answer. Kira Space names each new branch. Per repo: created, existing, denied, failed or timeout. A new worktree may still be preparing: call branch_status before editing there.`,
+	Default: `Ask the user to approve branches and worktrees for repos, all in one call; waits for the answer. Kira Space names each branch and folder. Approval adds a registered repo missing from the task. Per repo: created, existing, denied, failed or timeout. A new worktree may still be preparing: call branch_status before editing there.`,
 }, NoVars{})
 
 var (
-	_ = arg(HeadlessToolRequestBranches.id, "repos", spaceApp, NextCall, `Task repos, 1 to {{.Max}}: nickname, name or code repo id. Add others first with declare_repos.`, MaxVars{Max: 20})
+	_ = arg(HeadlessToolRequestBranches.id, "repos", spaceApp, NextCall, `Repos, 1 to {{.Max}}: nickname, name or code repo id, from task_info.`, MaxVars{Max: 20})
 )
 
 // HeadlessToolBranchStatus describes the branch_status tool.

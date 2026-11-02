@@ -188,6 +188,7 @@ type requestSlot struct {
 	nick       string
 	result     *agentmcp.RequestedBranch
 	item       *adewire.BranchRequestItem
+	addRow     bool // the repo is registered but not on the task: approval adds it
 }
 
 func noBranchInfo(nick, branch, next string) agentmcp.BranchInfo {
@@ -205,7 +206,7 @@ func waitText(d time.Duration) string {
 	return fmt.Sprintf("%d seconds", int(d/time.Second))
 }
 
-// RequestBranches implements agentmcp.SpaceTools. Repos whose branch and worktree exist answer at once.
+// RequestBranches implements agentmcp.SpaceTools. Task or registered repos whose branch and worktree exist answer at once.
 // The rest go to the user in one prompt and the call waits for the answer, unlocked. ctx ends when the
 // caller is gone, which abandons the request.
 func (b *TaskBoard) RequestBranches(ctx context.Context, call agentmcp.SpaceCall, refs []string) (agentmcp.RequestBranchesResult, error) {
@@ -260,14 +261,13 @@ func (b *TaskBoard) planBranchRequest(ctx context.Context, call agentmcp.SpaceCa
 	if err := b.spaceWritable(tc); err != nil {
 		return nil, nil, err
 	}
-	_, cfgs, err := b.registeredCandidates()
+	cands, cfgs, err := b.registeredCandidates()
 	if err != nil {
 		return nil, nil, err
 	}
-	cands := b.taskCandidates(tc, cfgs)
 	var ids []string
 	for _, ref := range refs {
-		id, err := resolveRepoRef(ref, cands, "task")
+		id, err := resolveRepoRef(ref, cands, "registered")
 		if err != nil {
 			return nil, nil, err
 		}
@@ -278,7 +278,7 @@ func (b *TaskBoard) planBranchRequest(ctx context.Context, call agentmcp.SpaceCa
 	var slots []requestSlot
 	var items []adewire.BranchRequestItem
 	for _, id := range ids {
-		slot, err := b.planRepo(ctx, tc, id)
+		slot, err := b.planRepo(ctx, tc, id, cfgs)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -302,15 +302,26 @@ func (b *TaskBoard) planBranchRequest(ctx context.Context, call agentmcp.SpaceCa
 }
 
 // planRepo decides one repo: failed, already existing, or an item for the user.
-func (b *TaskBoard) planRepo(ctx context.Context, tc *taskCtx, codeRepoID string) (requestSlot, error) {
+func (b *TaskBoard) planRepo(ctx context.Context, tc *taskCtx, codeRepoID string, cfgs []model.AdeRepoConfig) (requestSlot, error) {
 	var sb model.AdeTaskBranch
+	found := false
 	for _, br := range tc.branches {
 		if br.CodeRepoID == codeRepoID {
-			sb = br
+			sb, found = br, true
 		}
 	}
 	nick := tc.nick[codeRepoID]
 	slot := requestSlot{codeRepoID: codeRepoID, nick: nick}
+	if !found {
+		for _, c := range cfgs {
+			if c.CodeRepoID == codeRepoID {
+				slot.nick = cmpNonEmpty(c.Nickname, c.Name)
+			}
+		}
+		nick = slot.nick
+		sb = model.AdeTaskBranch{TaskID: tc.task.ID, CodeRepoID: codeRepoID, Kind: model.AdeBranchKindMine}
+		slot.addRow = true
+	}
 	if sb.Kind != model.AdeBranchKindMine {
 		slot.result = failedBranch(nick, sb.Name, fmt.Sprintf("The branch of %s on this task is not yours to create.", nick))
 		return slot, nil
@@ -465,9 +476,24 @@ func (b *TaskBoard) createApproved(ctx context.Context, tc *taskCtx, s *requestS
 			sb, found = br, true
 		}
 	}
+	if !found && s.addRow {
+		sb, err := b.deps.Tasks.AddBranch(model.AdeTaskBranch{
+			ID: b.newID(), TaskID: tc.task.ID, CodeRepoID: s.codeRepoID, Kind: model.AdeBranchKindMine,
+			AddedAt: b.deps.Now().UnixMilli(), Origin: model.AdeBranchOriginAgent,
+		})
+		if err != nil {
+			slog.Warn("ade: add requested repo", "scope", "ade", "repo", s.codeRepoID, "err", err)
+			return failedBranch(s.nick, "", "Kira Space could not add this repo to the task.")
+		}
+		return b.createFor(ctx, s, sb)
+	}
 	if !found {
 		return failedBranch(s.nick, "", fmt.Sprintf("Repo %s is no longer on this task.", s.nick))
 	}
+	return b.createFor(ctx, s, sb)
+}
+
+func (b *TaskBoard) createFor(ctx context.Context, s *requestSlot, sb model.AdeTaskBranch) *agentmcp.RequestedBranch {
 	rb, err := b.createBranch(ctx, sb, s.nick)
 	if err != nil {
 		var te agentmcp.ToolError

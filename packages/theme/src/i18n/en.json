@@ -8379,7 +8379,7 @@
           }
         },
         "naming": {
-          "hint": "Kira Space names new branches kira/ plus a random ID. The agent then works in the worktrees."
+          "hint": "Kira Space names new branches kira/ plus a random ID, and each worktree folder a random ID. Approving adds a repository the task does not have yet."
         },
         "source": {
           "automation": {
