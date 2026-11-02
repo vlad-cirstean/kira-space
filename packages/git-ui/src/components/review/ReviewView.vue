@@ -364,6 +364,7 @@ onMounted(() => {
   props.onReviewApi?.({
     selectFile: (path) => reviewFiles.value?.selectFile(path),
     adjacentFile: (path, dir) => adjacentInOrder(orderedPaths.value, path, dir),
+    committedPaths: () => (reviewFiles.value?.files.value ?? []).map((e) => e.change.path),
     refresh: () => {
       reviewFiles.value?.reload();
       review.value?.checkNow();

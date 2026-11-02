@@ -620,6 +620,8 @@ const spaceControl = {
     unwrap(AdeTaskService.ReviewWorkingFile(args)).then((r) =>
       trust<V2.ReviewWorkingFileReview>(r),
     ),
+  adeTaskReviewWorkingStamp: (args: V2.ReviewWorkingStampArgs): Promise<V2.ReviewWorkingStamp> =>
+    unwrap(AdeTaskService.ReviewWorkingStamp(args)).then((r) => trust<V2.ReviewWorkingStamp>(r)),
   adeTaskReviewWorkingMark: (args: V2.ReviewWorkingMarkArgs): Promise<V2.ReviewWorkingMarkResult> =>
     unwrap(AdeTaskService.ReviewWorkingMark(args)).then((r) =>
       trust<V2.ReviewWorkingMarkResult>(r),

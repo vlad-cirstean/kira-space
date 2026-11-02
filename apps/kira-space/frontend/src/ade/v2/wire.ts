@@ -756,6 +756,13 @@ export interface ReviewWorkingMarkArgs {
     string
   > /* hash the user saw by path; E_CONFLICT, nothing marked, when any changed */;
 }
+export interface ReviewWorkingStampArgs {
+  branchId: string;
+  paths: string[];
+}
+export interface ReviewWorkingStamp {
+  stamp: string /* digest of size, mtime and mode of the listed worktree files; '' without a worktree */;
+}
 export interface ReviewWorkingMarkResult {
   files: { path: string; review: ReviewFileStatus }[];
 }

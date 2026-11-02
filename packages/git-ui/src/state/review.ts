@@ -516,6 +516,8 @@ export interface ReviewApi {
   /** The path after/before `path` in the list as shown (tree order or flat, filter applied), or
    *  null at either end or when `path` is not listed. */
   adjacentFile(path: string, dir: 'next' | 'previous'): string | null;
+  /** Every committed list path, unfiltered; reactive. */
+  committedPaths(): readonly string[];
   /** Re-reads the file list and re-checks the base: for a host that may have missed a ref event. */
   refresh(): void;
 }
