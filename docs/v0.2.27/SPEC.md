@@ -57,7 +57,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 ### P464 Review window: default tab, PR line comment, send clears, resizable panels
 
 - Comments panel opens on the first tab (the agent-question tab, "q") by default.
-- Add a dedicated option in that panel to write a comment on the PR at that line (host review comment). Reuses the P465-free existing change-request comment path; plan confirms the path per host.
+- Add a dedicated option in that panel to write a comment on the PR at that line (host review comment). Plan finds the existing change-request comment path and confirms it per host.
 - "Send review comments" clears the sent comments.
 - Code diff and agent panels resize freely. Agent panel today stops at a max width. Remove or raise the cap; keep sane minimums.
 - Test: backend flow (PR line comment, send clears) and UI spec on the same scenario.
