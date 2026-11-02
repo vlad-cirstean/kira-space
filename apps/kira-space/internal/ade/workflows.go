@@ -85,12 +85,23 @@ func (b *TaskBoard) WorkflowYaml(_ context.Context, file string) (adewire.Workfl
 
 // ValidateWorkflowYaml parses text without touching disk.
 func (b *TaskBoard) ValidateWorkflowYaml(_ context.Context, src string) adewire.WorkflowValidation {
-	return adeflow.ValidateYaml(src)
+	v := adeflow.ValidateYaml(src)
+	if step, param := b.workflowSecretParam(v.Workflow); param != "" {
+		return adewire.WorkflowValidation{Error: &adewire.WorkflowError{Line: 1, Message: secretParamMsg(step, param)}}
+	}
+	return v
+}
+
+func secretParamMsg(step, param string) string {
+	return fmt.Sprintf("step %q: %s is a secret param, save its value in the script, not in the workflow file", step, param)
 }
 
 // SaveWorkflow rewrites a file from the structured workflow. Running tasks keep the snapshot
 // they started with; an edit applies to new work only.
 func (b *TaskBoard) SaveWorkflow(_ context.Context, args adewire.SaveWorkflowArgs) (adewire.WorkflowEntry, error) {
+	if step, param := b.workflowSecretParam(&args.Workflow); param != "" {
+		return adewire.WorkflowEntry{}, invalid("%s", secretParamMsg(step, param))
+	}
 	e, err := b.deps.Workflows.Save(args.FileName, args.BaseHash, args.Workflow)
 	if err != nil {
 		return adewire.WorkflowEntry{}, wfErr(err)

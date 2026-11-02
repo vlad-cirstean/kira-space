@@ -10041,6 +10041,9 @@
           "scriptNote": {
             "hint": "Exit code 0 ends with done, any other with failed."
           },
+          "secretParams": {
+            "hint": "Secret params use the value saved in the script: {names}."
+          },
           "session": {
             "label": "Open an interactive {product} session"
           },

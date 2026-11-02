@@ -21,6 +21,10 @@ const smart = computed(() => props.step.smartScript !== '');
 const script = computed(
   () => smartScripts.value.find((r) => r.name === props.step.smartScript) ?? null,
 );
+const plainParams = computed(() => script.value?.params.filter((p) => !p.secret) ?? []);
+const secretNames = computed(() =>
+  (script.value?.params.filter((p) => p.secret) ?? []).map((p) => p.name).join(', '),
+);
 const modeItems = computed(() => [
   { value: 'prompt', label: t('common.prompt.label'), testid: 'ade-wf-step-mode-prompt' },
   { value: 'smart', label: t('common.smartScript.label'), testid: 'ade-wf-step-mode-smart' },
@@ -72,11 +76,18 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
       {{ t('space.ade.workflows.stepInspector.scriptMissing.error') }}
     </span>
     <ParamsForm
-      v-if="script && script.params.length > 0"
+      v-if="plainParams.length > 0"
       :model-value="step.params"
-      :params="script.params"
+      :params="plainParams"
       @update:model-value="(v) => emit('patch', { params: v })"
     />
+    <span
+      v-if="secretNames"
+      class="text-kira-sm text-muted-foreground"
+      data-testid="ade-wf-step-secret-params"
+    >
+      {{ t('space.ade.workflows.stepInspector.secretParams.hint', { names: secretNames }) }}
+    </span>
     <Card
       v-if="script"
       class="font-data text-kira-sm whitespace-pre-wrap"

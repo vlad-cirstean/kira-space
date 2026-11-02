@@ -103,12 +103,17 @@ func (b *TaskBoard) planSmartStep(tc *taskCtx, sb model.AdeTaskBranch, path stri
 func (b *TaskBoard) secretParams(script scripts.CustomScript, given map[string][]string) (map[string][]string, error) {
 	out := make(map[string][]string, len(given))
 	maps.Copy(out, given)
+	for _, p := range script.Params {
+		if p.Secret && len(given[p.Name]) == 0 {
+			delete(out, p.Name)
+		}
+	}
 	var want []string
 	for _, p := range script.Params {
 		if !p.Secret {
 			continue
 		}
-		if _, ok := given[p.Name]; ok {
+		if len(given[p.Name]) > 0 {
 			return nil, fmt.Errorf("%s is a secret param: save its value in the script, not in the workflow file", p.Name)
 		}
 		if slices.Contains(script.SavedSecrets, p.Name) {
@@ -192,4 +197,34 @@ func (b *TaskBoard) smartOutcome(an runoutcome.Agent, runID string, exit harness
 	out.out.Outcome = agentmcp.ApplyResult(out.out.Outcome, res)
 	out.note = out.out.Reason
 	return out
+}
+
+// workflowSecretParam names the first secret param a smart step of wf carries a value for, or "". A
+// workflow file is plain text, so Save and validation refuse it before a run does.
+func (b *TaskBoard) workflowSecretParam(wf *adewire.Workflow) (step, param string) {
+	if wf == nil || b.deps.CustomScripts == nil {
+		return "", ""
+	}
+	var all []scripts.CustomScript
+	listed := false
+	for _, st := range wf.Steps {
+		if st.SmartScript == "" || len(st.Params) == 0 {
+			continue
+		}
+		if !listed {
+			all, _ = b.deps.CustomScripts.List()
+			listed = true
+		}
+		for _, sc := range all {
+			if sc.Kind != scripts.KindSmart || sc.Name != st.SmartScript {
+				continue
+			}
+			for _, p := range sc.Params {
+				if p.Secret && len(st.Params[p.Name]) > 0 {
+					return st.Name, p.Name
+				}
+			}
+		}
+	}
+	return "", ""
 }
