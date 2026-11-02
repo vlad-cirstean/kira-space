@@ -113,6 +113,8 @@ Result: no JSON Schema for workflows (Q1 no). `adeflow/options.go` is one option
 - User-authored text stays out of `internal/llmprompts`, per that package's rule. App prompts keep their role.
 - Test: flow test sets the context, launches each provider interactive and headless (fake personas record argv, env and files), asserts the rendered context arrived. UI spec: edit, save, reload, same text.
 
+Result (steps 1-8, step 9 OpenCode after P449): `configfs.TableProjection` and migrations 0053/0063; `internal/agentctx` Store (cap 32 KiB, snapshots, last-good); neutral `ContextFile` on both launch specs, Claude maps `--append-system-prompt-file`; `ContextKeeper`; all four launch sites plus sandbox `ContextDir`; `AgentContextService` and the Agents Context tab; flow tests (Space and Studio), UI spec, `TestAgentContextHeadless`. Status stays Todo until step 9.
+
 ### P453 Agent settings: common plus per provider, MCP credentials from the keychain
 
 - Agent settings are one definition shared by both apps; Kira Studio owns it, Kira Space consumes it. Keychain secrets are shared. Stored as files in the agent folder per the P450 foundation (yml, json or text per thing; plan decides). Env vars and secrets interpolate at runtime; files hold references only.
