@@ -835,14 +835,11 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		return
 	}
 	defer prep.Release()
-	ticked := agentcfg.Ticked{Release: func() {}}
-	if l.smart != nil {
-		ticked, err = b.deps.Servers.Wire(ctx, agentcfg.Launch{Provider: l.agent, Kind: harness.LaunchHeadless, Dir: b.deps.AgentDir, Stem: run.ID}, l.smart.mcpNames())
-		if err != nil {
-			release()
-			fail(err)
-			return
-		}
+	ticked, err := b.wireTicked(ctx, l, run.ID)
+	if err != nil {
+		release()
+		fail(err)
+		return
 	}
 	defer ticked.Release()
 	sink.setMask(secrets.NewMasker(append(slices.Clone(prep.Secrets), ticked.Secrets...)...))
@@ -861,13 +858,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		spec.Isolated, spec.Tools, spec.AddDirs = true, rebaseBuiltins, l.git.Worktrees
 	}
 	if l.smart != nil {
-		spec = l.smart.spec(agent, spec, space)
-		if len(ticked.UserMCP) > 0 {
-			spec.UserMCP, spec.GrantMCP = ticked.UserMCP, []string{agentmcp.ServerName}
-		}
-		if ticked.MCPConfig != "" {
-			spec.MCPConfigs = append(spec.MCPConfigs, ticked.MCPConfig)
-		}
+		spec = withTicked(l.smart.spec(agent, spec, space), ticked)
 	}
 	spec = b.applySandbox(spec, sbx, l)
 	b.noticeSandbox(sink, sbx)
@@ -897,6 +888,25 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		return // app quit: rows stay running (R18)
 	}
 	b.endAgentRun(ctx, run, l, runEnd{exit: exit, err: runErr, res: res, sink: sink, sbx: sbx, complete: complete, headless: headless})
+}
+
+// withTicked adds the ticked servers' wiring to a smart step's spec.
+func withTicked(spec harness.HeadlessSpec, ticked agentcfg.Ticked) harness.HeadlessSpec {
+	if len(ticked.UserMCP) > 0 {
+		spec.UserMCP, spec.GrantMCP = ticked.UserMCP, []string{agentmcp.ServerName}
+	}
+	if ticked.MCPConfig != "" {
+		spec.MCPConfigs = append(spec.MCPConfigs, ticked.MCPConfig)
+	}
+	return spec
+}
+
+// wireTicked wires the servers a smart step ticked; none for any other run.
+func (b *TaskBoard) wireTicked(ctx context.Context, l agentLaunch, runID string) (agentcfg.Ticked, error) {
+	if l.smart == nil {
+		return agentcfg.Ticked{Release: func() {}}, nil
+	}
+	return b.deps.Servers.Wire(ctx, agentcfg.Launch{Provider: l.agent, Kind: harness.LaunchHeadless, Dir: b.deps.AgentDir, Stem: runID}, l.smart.mcpNames())
 }
 
 // headlessApp prepares the app's agent settings for a run; an isolated run (rebase, smart step) takes

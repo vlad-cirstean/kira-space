@@ -25,7 +25,7 @@ func (e envWords) empty() bool { return len(e.set) == 0 && len(e.unset) == 0 }
 
 // quoted renders the words: `-u NAME` pairs first, then the assignments.
 func (e envWords) quoted() []string {
-	var out []string
+	out := make([]string, 0, 2*len(e.unset)+len(e.set))
 	for _, n := range e.unset {
 		out = append(out, "-u", loginshell.Quote(n))
 	}
