@@ -53,6 +53,11 @@ export const IPC = {
   agentContextGet: 'kira:agentcontext:get',
   agentContextSave: 'kira:agentcontext:save',
   agentContextChanged: 'kira:agentContext:changed',
+  agentSettingsGet: 'kira:agentsettings:get',
+  agentSettingsSave: 'kira:agentsettings:save',
+  agentSettingsSetSecret: 'kira:agentsettings:setsecret',
+  agentSettingsDeleteSecret: 'kira:agentsettings:deletesecret',
+  agentSettingsChanged: 'kira:agentSettings:changed',
   configFilesOpen: 'kira:configfiles:open',
   configFilesReveal: 'kira:configfiles:reveal',
   // P128 §2.2/§2.6: this app now persists a per-window module mode too, same channels as Kira

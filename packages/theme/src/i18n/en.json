@@ -574,14 +574,43 @@
         }
       },
       "agentSettings": {
+        "changed": {
+          "body": "The settings file changed since you loaded it."
+        },
+        "headlessNote": {
+          "body": "Headless steps use the same files without permission_mode, allow and status_line."
+        },
         "hookMatcher": {
           "body": "Hook {hook} has a matcher, which only tool_start and tool_end hooks take."
+        },
+        "kiraAdds": {
+          "hooks": {
+            "body": "Kira hooks on every agent event, for session state and notifications."
+          },
+          "mcp": {
+            "body": "MCP server kira-ade, for the agent board tools."
+          },
+          "statusLine": {
+            "body": "A status line wrapper that reads usage limits, when usage limits are on."
+          }
         },
         "kiraEnv": {
           "body": "Variable {name} starts with {prefix}, which Kira keeps for its own launch variables."
         },
         "kiraServer": {
           "body": "MCP server {server} starts with kira, which Kira keeps for its own servers."
+        },
+        "noStore": {
+          "body": "Credential storage is not available in this app."
+        },
+        "secretName": {
+          "body": "A secret name is 1 to 64 characters of a-z, 0-9, dot, dash and underscore, and starts with a letter or digit."
+        },
+        "secretUnset": {
+          "body": "Secret {name} is not set. Launches fail until you set it."
+        },
+        "secretValue": {
+          "body": "A secret value is 1 byte to 64 kilobytes and holds no null character."
         },
         "serverBoth": {
           "body": "MCP server {server} has both a command and a url. Use one."
@@ -594,6 +623,9 @@
         },
         "skipHook": {
           "body": "The skip list names {hook}, which is not a common hook."
+        },
+        "unavailable": {
+          "body": "Agent settings did not start. See the app log."
         }
       },
       "appUpdate": {

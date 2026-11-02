@@ -14,6 +14,7 @@ import {
   workflowYamlKey,
 } from './v2/queries';
 import { installAdeReadSignals } from './v2/readSignals';
+import { agentSettingsKey } from './v2/settings/queries';
 import { useAdeBoardUiStore } from './v2/state/adeBoardUi';
 
 const reviewAgentPrefix = ['adetask', 'reviewAgent'] as const;
@@ -53,6 +54,9 @@ export function installAdeSignals(
   });
   control.onAgentContextChanged(() => {
     void queryClient.invalidateQueries({ queryKey: agentContextKey });
+  });
+  control.onAgentSettingsChanged(() => {
+    void queryClient.invalidateQueries({ queryKey: agentSettingsKey });
   });
   // A review step moves with the board, its runs and its own pushes.
   const refreshReviewStep = (): void => {

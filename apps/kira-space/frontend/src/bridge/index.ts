@@ -2,6 +2,7 @@ import * as AdeTaskService from '@bindings/adetaskservice.js';
 import * as AgentContextService from '@bindings/agentcontextservice.js';
 import * as AgentNotifyService from '@bindings/agentnotifyservice.js';
 import * as AgentService from '@bindings/agentservice.js';
+import * as AgentSettingsService from '@bindings/agentsettingsservice.js';
 import * as AgentUsageService from '@bindings/agentusageservice.js';
 import * as CaptureService from '@bindings/captureservice.js';
 import * as CodeWorkspaceService from '@bindings/codeworkspaceservice.js';
@@ -83,6 +84,11 @@ import { createCoreControl } from '@workbench/bridge/createCoreControl';
 import { createOpenExternal } from '@workbench/bridge/openExternal';
 import { on, trust, unwrap, windowKey } from '@workbench/bridge/rpc';
 import type { AgentContextSaveArgs, AgentContextView } from '../ade/v2/context/types';
+import type {
+  AgentSetSecretArgs,
+  AgentSettingsSaveArgs,
+  AgentSettingsView,
+} from '../ade/v2/settings/types';
 import type * as V2 from '../ade/v2/wire';
 import type { CaptureItem, CaptureResult, HotkeyState } from '../capture/wire';
 import { CHANNEL_CAPTURE_ITEM, CHANNEL_CAPTURE_STATUS } from '../capture/wire';
@@ -465,6 +471,15 @@ const spaceControl = {
   agentContextSave: (args: AgentContextSaveArgs): Promise<AgentContextView> =>
     unwrap(AgentContextService.Save(args)).then((r) => trust<AgentContextView>(r)),
   onAgentContextChanged: (cb: () => void): (() => void) => on(CHANNEL.agentContextChanged, cb),
+  agentSettingsGet: (): Promise<AgentSettingsView> =>
+    unwrap(AgentSettingsService.Get()).then((r) => trust<AgentSettingsView>(r)),
+  agentSettingsSave: (args: AgentSettingsSaveArgs): Promise<AgentSettingsView> =>
+    unwrap(AgentSettingsService.Save(args)).then((r) => trust<AgentSettingsView>(r)),
+  agentSettingsSetSecret: (args: AgentSetSecretArgs): Promise<AgentSettingsView> =>
+    unwrap(AgentSettingsService.SetSecret(args)).then((r) => trust<AgentSettingsView>(r)),
+  agentSettingsDeleteSecret: (name: string): Promise<AgentSettingsView> =>
+    unwrap(AgentSettingsService.DeleteSecret({ name })).then((r) => trust<AgentSettingsView>(r)),
+  onAgentSettingsChanged: (cb: () => void): (() => void) => on(CHANNEL.agentSettingsChanged, cb),
   adeTaskWorkflows: (): Promise<V2.WorkflowsResult> =>
     unwrap(AdeTaskService.Workflows()).then((r) => trust<V2.WorkflowsResult>(r)),
   adeTaskRepos: (): Promise<V2.ReposResult> =>

@@ -106,6 +106,7 @@ export const CHANNEL = {
   adeTaskWorkflows: 'kira:adetask:workflows',
   // The shared agent context file changed or was saved; empty payload, refetch (Kira Space only).
   agentContextChanged: 'kira:agentContext:changed',
+  agentSettingsChanged: 'kira:agentSettings:changed',
   adeTaskRepos: 'kira:adetask:repos',
   adeTaskRuns: 'kira:adetask:runs',
   adeTaskLog: 'kira:adetask:log',

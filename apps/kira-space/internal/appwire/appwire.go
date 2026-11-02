@@ -1,4 +1,4 @@
-// Package appwire is Kira Space's composition root: it builds the 33 bound services, the git router
+// Package appwire is Kira Space's composition root: it builds the 34 bound services, the git router
 // and socket, the ADE tracker and board, and their teardown. main and the flow-test harness
 // (internal/flowharness) both call Build, so a test cannot wire differently from production. It
 // sits above internal/bridge in the layering, like internal/appshell.
@@ -203,8 +203,9 @@ type Wired struct {
 	Agents   harness.Selector
 	AgentSvc *bridge.AgentService
 	// AgentContext is the shared agent context every launch gets.
-	AgentContext    *agentctx.Store
-	AgentContextSvc *bridge.AgentContextService
+	AgentContext     *agentctx.Store
+	AgentContextSvc  *bridge.AgentContextService
+	AgentSettingsSvc *bridge.AgentSettingsService
 	// AgentSettings is the shared agent settings every launch gets; AgentSecrets holds the values it references.
 	AgentSettings *agentcfg.Store
 	AgentSecrets  *agentcfg.SecretStore
@@ -329,6 +330,7 @@ func Build(opts Options) *Wired {
 	stopContextWatch := w.wireAgentSettings(registry, repositories, deps.Home, opts.Cipher, events)
 	w.stopAgentContext = stopContextWatch
 	w.AgentContextSvc = &bridge.AgentContextService{Service: &agentctx.Service{Store: w.AgentContext}}
+	w.AgentSettingsSvc = &bridge.AgentSettingsService{Service: &agentcfg.Service{Store: w.AgentSettings}}
 	adeTracker, agentHooks := wireTracker(repositories, terminalRegistry, emitter, events, opts.TrackerGrace, w.AgentNotify, w.AgentUsage, w.Agents, w.AgentContext.ContextFile)
 	w.Tracker, w.AgentHooks = adeTracker, agentHooks
 
@@ -519,7 +521,7 @@ func (w *Wired) reopenWindow() {
 // StartMobile starts the phone server when settings enable it; call after the shell is up.
 func (w *Wired) StartMobile() { bridge.StartMobileIfEnabled(w.Mobile) }
 
-// Bound returns the 33 bound services in registration order.
+// Bound returns the 34 bound services in registration order.
 func (w *Wired) Bound() []application.Service {
 	return []application.Service{
 		application.NewService(w.GitCredential),
@@ -531,7 +533,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.MemoryImport), application.NewService(w.MemoryDistill), application.NewService(w.WindowsSvc), application.NewService(w.Update),
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),
 		application.NewService(w.PromptsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc),
-		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc),
+		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc),
 	}
 }
 
@@ -626,7 +628,10 @@ func (w *Wired) wireAgentSettings(registry *harness.Registry, repositories *repo
 	if err := store.WriteDocs(w.AgentContext.DocModel()); err != nil {
 		slog.Warn("agent settings: write docs", "scope", "startup", "err", err)
 	}
-	stopSettings, err := store.Watch(func() { store.View() })
+	stopSettings, err := store.Watch(func() {
+		store.View()
+		bridge.AgentSettingsChanged(events)
+	})
 	if err != nil {
 		slog.Warn("agent settings: watch", "scope", "startup", "err", err)
 		stopSettings = func() {}

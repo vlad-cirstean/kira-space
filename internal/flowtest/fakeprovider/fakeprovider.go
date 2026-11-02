@@ -182,6 +182,9 @@ func (p *Provider) SettingsSchema() []byte {
 	return []byte(`{"type":"object","additionalProperties":false,"properties":{"model":{"type":"string","maxLength":100},"skip_hooks":{"type":"array","items":{"type":"string"}}}}`)
 }
 
+// KiraAdds is one line: the fake adds nothing else.
+func (p *Provider) KiraAdds() []string { return []string{"Kira hooks"} }
+
 // RenderSettings writes the whole AgentSettings as one JSON file, so a test sees exactly what a
 // provider receives.
 func (p *Provider) RenderSettings(s harness.AgentSettings, _ harness.LaunchKind) (harness.NativeConfig, error) {

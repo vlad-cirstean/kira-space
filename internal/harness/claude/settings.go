@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
 //go:embed settings.schema.json
@@ -143,4 +144,13 @@ func buildSettings(s harness.AgentSettings, sec section, kind harness.LaunchKind
 		add(harness.EventKind(h.Event), h.Matcher, h.Command, h.Timeout)
 	}
 	return doc
+}
+
+// KiraAdds lists Kira's own additions to a Claude launch.
+func (p *Provider) KiraAdds() []string {
+	return []string{
+		i18n.T("backend.core.agentSettings.kiraAdds.hooks.body", nil),
+		i18n.T("backend.core.agentSettings.kiraAdds.mcp.body", nil),
+		i18n.T("backend.core.agentSettings.kiraAdds.statusLine.body", nil),
+	}
 }

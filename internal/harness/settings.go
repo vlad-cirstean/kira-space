@@ -9,6 +9,8 @@ type SettingsHost interface {
 	SettingsSchema() []byte
 	// RenderSettings renders s natively for one launch kind. It writes nothing.
 	RenderSettings(s AgentSettings, kind LaunchKind) (NativeConfig, error)
+	// KiraAdds lists, as display text, what Kira adds to every launch besides the settings.
+	KiraAdds() []string
 }
 
 // LaunchKind is what a launch is for.
