@@ -37,7 +37,8 @@ test('GitHub detail renders header, markdown, checks, people and conversation', 
   await expect(body.locator('script')).toHaveCount(0);
   await expect(body).toContainText('alert(1)');
   await expect(body.locator('img')).toHaveCount(0);
-  const image = body.locator('a', { hasText: '[image: diagram]' });
+  const image = body.locator('[data-kira-image]');
+  await expect(image).toHaveText('diagram');
   await expect(image).toHaveAttribute('href', 'https://example.com/d.png');
   await image.click();
   await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(1);
