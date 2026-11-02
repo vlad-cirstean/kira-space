@@ -15,7 +15,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | P453 | Agent settings: common plus per provider, MCP credentials from the keychain | Done |
 | P454 | Import and Export of agent config per provider | Done |
 | P455 | Hermetic agent launches per provider | Done |
-| P456 | Docs, site and README for agents and secrets | Todo |
+| P456 | Docs, site and README for agents and secrets | Done |
 | P457 | Code review (2 rounds) | Todo |
 | P458 | Close chapter v0.2.26 | Todo |
 
@@ -174,6 +174,17 @@ Result: setting `agent.hermetic` (default true, per-app kira.db, `AgentPane` Swi
 - Site docs: `site/src/content/docs/docs/space/agents.mdx` (providers, picker, context, settings, config files and AGENTS.md, Import and Export, hermetic mode), `shared/runs.md` (stored secret params), `reference/settings.md`. Both READMEs.
 - `docs/ARCHITECTURE.md` "Agent harness" and "Known open items"; `docs/DEV_ENVIRONMENT.md` OpenCode install and no-model probes.
 - Screenshots re-captured where a changed surface appears (`bun run screenshots`). `bun run site:check` passes.
+
+Result: site pages `space/agents.mdx` (new sections Agent providers, Agent context, Agent settings, Import and export, Hermetic launches, Config files; Workflows, Sandbox, Runs, Sessions, Notifications edited), `shared/runs.md` (Secret parameters, hermetic MCP list, schedules, Studio note), `reference/settings.md` (CLI tools, File types, Capture, Agent, Studio line, data home). Root and Space READMEs, `content.ts` Agents card. ARCHITECTURE Agent harness edited; Known open items: 2 added (darwin CI path, `finish_step` masking), 1 rewritten (cost cap), 1 reworded (theme and keybinds), 1 appended (OpenCode resume), stray blank line removed, none deleted. DEV_ENVIRONMENT OpenCode section restructured (probe hygiene, layering, hermetic recipe, `_PROMPT` facts, stub recipe), 5 env rows. Screenshots: `space-agents-board` (framed and detail) re-captured, two runs byte-identical. Baselines: `space-desktop-linux`, `space-phone-linux` refreshed. Checks: `check-docs` 0 violations, `site:check` green (144 passed), `lint` green. No catalog key, Go or Vue change. Deviations: root and Space READMEs landed in the landing-copy commit; MDX braces in labels (`{agent}`) written as provider names because MDX parses them. Not run: OpenCode binary (facts from plans and `facts.go`).
+For P457 review / orchestrator:
+- `bun run screenshots` exits 1 at base too: `space git graph` and `space memory` fail on a 422 console error (`E_FIXTURE_MISS`, a channel with no fixture in the shot flow). Fixture code, not touched. Studio shots (`studio-api`, `studio-data-grid`, `studio-sql-console`) re-render differently in this container with no chapter UI change (likely font rendering); not committed.
+- S2: smart scripts can never run on OpenCode (budget minimum 0.05 versus no cost cap; refusal copy `backend.core.agent.noCostCap.body` cannot be followed). Code or copy decision.
+- S3: generated `agent/AGENTS.md` intro (`internal/agentcfg/agents_intro.md`) says MCP servers render as a `--mcp-config` file and omits OpenCode's inline document.
+- S4: `opencode/facts.go` Q-P454-OC7 comment says `OPENCODE_CONFIG_DIR` "appears to replace the global dir"; P-456-1 shows the user `opencode.json` still loads. Comment fix.
+- S6: no screenshot of the Agents Context, Settings or Agent pane; a new shot flow is code, skipped.
+- S8: user must apply `docs/pending-changes/.github__workflows__secrets-path.patch` before the chapter PR, else the darwin job tests the deleted `apps/kira-studio/internal/secrets` path.
+- S9: `KIRA_*` table pre-chapter gaps (`KIRA_EVAL_CONTROL`, `KIRA_EVAL_COSTLOG`, `KIRA_EVAL_DISTRACTORS`, `KIRA_EVAL_PAIR_ROUND`, `KIRA_FLOW_DOCKER_RESTART`, `KIRA_TEST_PROMPTS`, two `KIRA_COMPAT_IMAGE_*` spellings).
+- Unverified: stub recipe with no network; Mac-only keychain and sandbox behaviour under OpenCode; model-key OpenCode facts (U5, U7, U12, U15, U16).
 
 ### P457 Code review (2 rounds)
 
