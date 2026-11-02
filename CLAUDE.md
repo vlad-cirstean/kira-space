@@ -76,8 +76,8 @@ duplicated here; this file only points at them.
   result must be correct or commits stay granular.
 - **One full run of an expensive suite per chapter, not per phase.** Implementers run fast checks
   (typecheck, lint, build) and only their own new or changed specs per phase. After the last
-  implementation phase, before the code review, run the full end-to-end/UI/Go suites once. After a
-  fix, rerun only the failing specs and the specs that share its code. A timeout under load gets a
+  implementation phase, before the code review, run the full end-to-end/UI/Go suites once. The run
+  isn't done until every failure is fixed, committed and passing on rerun. After a fix, rerun only the failing specs and the specs that share its code. A timeout under load gets a
   lone rerun of that spec first. Rerun the full suite a second time only when a fix touched shared
   code (a package, a fixture, a config) that targeted reruns cannot cover; say so in the Result.
 - **Every chapter ends the same way, unasked:** last implementation phase, then the one full suite
