@@ -5,16 +5,6 @@
       "replyKinds": []
     },
     "detail": {
-      "changeRequests": [
-        {
-          "provider": "forge",
-          "ref": "#12",
-          "repo": "acme/api",
-          "state": "open",
-          "title": "PROJ-12 export csv",
-          "url": "https://forge.test/acme/api/-/merge_requests/12"
-        }
-      ],
       "comments": [
         {
           "author": {
@@ -88,16 +78,6 @@
       "replyKinds": []
     },
     "detail": {
-      "changeRequests": [
-        {
-          "provider": "forge",
-          "ref": "#12",
-          "repo": "acme/api",
-          "state": "open",
-          "title": "PROJ-12 export csv",
-          "url": "https://forge.test/acme/api/-/merge_requests/12"
-        }
-      ],
       "comments": [],
       "commentsOmitted": true,
       "commentsTotal": 0,
@@ -153,16 +133,6 @@
       "replyKinds": []
     },
     "detail": {
-      "changeRequests": [
-        {
-          "provider": "forge",
-          "ref": "#12",
-          "repo": "acme/api",
-          "state": "open",
-          "title": "PROJ-12 export csv",
-          "url": "https://forge.test/acme/api/-/merge_requests/12"
-        }
-      ],
       "comments": [
         {
           "author": {

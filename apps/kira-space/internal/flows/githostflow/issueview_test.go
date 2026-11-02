@@ -13,7 +13,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness/fakeacli"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness/fakehost"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker/jira"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeclock"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
@@ -66,10 +65,6 @@ const ivDescription = "## Goal\n\n" +
 // issue-view.spec.ts.
 func TestIssueView(t *testing.T) {
 	forge := fakehost.New()
-	forge.AddChangeRequest(githost.ChangeRequest{
-		Number: 12, Title: "PROJ-12 export csv", State: "open", HeadRef: "feat/export", HeadOwner: "acme",
-		URL: "https://forge.test/acme/api/-/merge_requests/12", UpdatedAt: 1_700_000_300_000,
-	})
 	acli := fakeacli.New(ivSite)
 	acli.SetIssue("PROJ-12", fakeacli.IssueJSON("PROJ-12", "Export report as CSV", "In Progress", "indeterminate", 2))
 	acli.SetIssueDetail("PROJ-12", ivTestdata(t, "issue-detail.json"))
@@ -97,7 +92,7 @@ func TestIssueView(t *testing.T) {
 	}
 	app.Contract(t, ivScenario, "HostViewService.WindowTarget#issue", target)
 
-	// 4. The detail: fields, the ADF description as Markdown, three comments of five, the PR row.
+	// 4. The detail: fields, the ADF description as Markdown, three comments of five, the PR count.
 	app.Contract(t, ivScenario, "args:HostViewService.Issue", bridge.HostViewIssueArgs{Ref: target.URL})
 	got := ivIssue(t, app, target.URL)
 	d := got.Detail
@@ -113,9 +108,8 @@ func TestIssueView(t *testing.T) {
 	if len(d.Comments) != 3 || d.Comments[0].ID != "10001" || d.Comments[2].ID != "10003" || d.CommentsTotal != 5 || !d.CommentsTruncated {
 		t.Fatalf("comments = %+v total %d truncated %v", d.Comments, d.CommentsTotal, d.CommentsTruncated)
 	}
-	if len(d.ChangeRequests) != 1 || d.ChangeRequests[0].Ref != "#12" || d.ChangeRequests[0].Provider != "forge" ||
-		!d.Summary.Known || d.Summary.Count != 2 || d.ChangeRequestsReason != "" {
-		t.Fatalf("PRs = %+v summary %+v reason %q", d.ChangeRequests, d.Summary, d.ChangeRequestsReason)
+	if !d.Summary.Known || d.Summary.Count != 2 {
+		t.Fatalf("summary = %+v", d.Summary)
 	}
 	app.Contract(t, ivScenario, "HostViewService.Issue#ok", got)
 

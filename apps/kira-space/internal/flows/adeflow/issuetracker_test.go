@@ -66,9 +66,8 @@ func TestTaskIssueTracker(t *testing.T) {
 	app := f.app
 	gitOut(t, f.repo.Dir, "remote", "set-url", "origin", "https://forge.test/acme/api.git")
 
-	// The task's own PR (branch carries the key, title does not), a PR whose title carries the key in
-	// another repo, a PR whose title names a longer key, and two indexed PRs: the task's own and one in a
-	// third repo whose head branch carries the key.
+	// The task's own PR (branch carries the key, title does not), a PR in another repo whose title
+	// carries the key (not the task's: it must not show), and a PR whose title names a longer key.
 	forge.AddChangeRequest(githost.ChangeRequest{Number: 7, Title: "Fix login", State: "open", HeadRef: itBranch, HeadOwner: "acme", BaseRef: "main", URL: itPR7})
 	forge.AddChangeRequest(githost.ChangeRequest{Number: 20, Title: "KIRA-12 groundwork", State: "merged", URL: "https://forge.test/acme/lib/-/merge_requests/20"})
 	forge.AddChangeRequest(githost.ChangeRequest{Number: 30, Title: "KIRA-123 unrelated", State: "open", URL: "https://forge.test/acme/lib/-/merge_requests/30"})
@@ -77,17 +76,11 @@ func TestTaskIssueTracker(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := app.W.Repos.GitHostChangeRequests.UpsertChangeRequests("forge|forge.test|acme/web", []model.GitHostChangeRequest{
-		{Number: 8, HeadRef: "KIRA-12-other", HeadOwner: "acme", State: "draft", Draft: true, Title: "Other approach", URL: "https://forge.test/acme/web/-/merge_requests/8", UpdatedAt: 2},
-		{Number: 9, HeadRef: "KIRA-123-nope", HeadOwner: "acme", State: "open", Title: "Not ours", URL: "https://forge.test/acme/web/-/merge_requests/9", UpdatedAt: 1},
-	}); err != nil {
-		t.Fatal(err)
-	}
 	setLink(t, app, f.taskID, "KIRA-12", "https://"+itSite+"/browse/KIRA-12")
 	f.start(t, itBranch)
 	waitRun(t, app, f.taskID, "one", "done")
 
-	// 1. Issue row, PRs found by title and by head branch, the task's own PR once and from the host.
+	// 1. Issue row; the only PR is the task's own, from the host. A title match elsewhere does not show.
 	res := artifactsOf(t, app, f.taskID)
 	issue, ok := findArtifact(res, "issue", "Add the thing")
 	if !ok || issue.Source != "jira" || issue.Status != "In Review" || issue.Ref != "KIRA-12" || issue.URL != "https://"+itSite+"/browse/KIRA-12" {
@@ -102,14 +95,14 @@ func TestTaskIssueTracker(t *testing.T) {
 			prs[a.URL] = a
 		}
 	}
-	if len(prs) != 3 || prs[itPR7].Source != "host" ||
-		prs["https://forge.test/acme/lib/-/merge_requests/20"].Source != "jira" || prs["https://forge.test/acme/lib/-/merge_requests/20"].Status != "merged" ||
-		prs["https://forge.test/acme/lib/-/merge_requests/20"].Repo != "acme/lib" ||
-		prs["https://forge.test/acme/web/-/merge_requests/8"].Status != "draft" {
-		t.Fatalf("PRs = %+v", prs)
+	if len(prs) != 1 || prs[itPR7].Source != "host" {
+		t.Fatalf("PRs = %+v, want only the task's own", prs)
 	}
-	if g, ok := gapOf(res, "jira"); !ok || g.Reason != "changeRequestsMissing" || g.Count != 1 {
-		t.Fatalf("gaps = %+v, want 3 found of 4 reported", res.Gaps)
+	if _, ok := prs["https://forge.test/acme/lib/-/merge_requests/20"]; ok {
+		t.Fatalf("title match outside the task listed: %+v", prs)
+	}
+	if g, ok := gapOf(res, "jira"); ok {
+		t.Fatalf("jira gap = %+v, want none", g)
 	}
 	app.Contract(t, "ade-issue-tracker", "AdeTaskService.Artifacts", res, artMask)
 
@@ -118,7 +111,7 @@ func TestTaskIssueTracker(t *testing.T) {
 	app.Contract(t, "ade-issue-tracker", "args:IssueTrackerService.TaskIssue", args)
 	ti := issueOf(t, app, f.taskID)
 	if ti.Reason != "" || ti.Title != "Add the thing" || ti.Status != "In Review" || ti.StatusCategory != "indeterminate" ||
-		ti.Label != "Jira" || !ti.Summary.Known || ti.Summary.Count != 4 || len(ti.ChangeRequests) != 3 {
+		ti.Label != "Jira" || !ti.Summary.Known || ti.Summary.Count != 4 {
 		t.Fatalf("TaskIssue = %+v", ti)
 	}
 	app.Contract(t, "ade-issue-tracker", "IssueTrackerService.TaskIssue", ti)
@@ -131,16 +124,12 @@ func TestTaskIssueTracker(t *testing.T) {
 		t.Fatalf("acli views = %d (was %d), want one cached read", acli.Count("view:"), views)
 	}
 
-	// 4. The finishing reply tells the agent why the list is partial.
+	// 4. The finishing reply lists no jira gap.
 	_, list := mcpReply(t, app, "mcp-finish_step-1.json")
-	var seen bool
 	for _, g := range list.Gaps {
-		if g.Source == "jira" && g.Reason == "changeRequestsMissing" && g.Count == 1 {
-			seen = true
+		if g.Source == "jira" {
+			t.Fatalf("finish_step gaps = %+v, want no jira gap", list.Gaps)
 		}
-	}
-	if !seen {
-		t.Fatalf("finish_step gaps = %+v, want the jira gap with reason and count", list.Gaps)
 	}
 
 	// 5. A slow acli leaves the static row and a timeout gap inside the 5 s budget; the detached fetch
@@ -213,30 +202,12 @@ func TestTaskIssueTracker(t *testing.T) {
 	acli.SetInstalled(true)
 	tools()
 
-	// 7. A failing PR lookup keeps the title and status and names the gap.
-	acli.SetIssue("KIRA-80", fakeacli.IssueJSON("KIRA-80", "Eighty", "Done", "done", 2))
-	lookup := createTask(t, app, "Lookup", "flow")
-	setLink(t, app, lookup.ID, "KIRA-80", "")
-	forge.SetOffline(true)
-	res = artifactsOf(t, app, lookup.ID)
-	if a, ok := findArtifact(res, "issue", "Eighty"); !ok || a.Status != "Done" {
-		t.Fatalf("issue row = %+v in %+v", a, res.Artifacts)
-	}
-	if g, ok := gapOf(res, "jira"); !ok || g.Reason != "changeRequestsUnauthenticated" {
-		t.Fatalf("gaps = %+v, want a failed PR lookup", res.Gaps)
-	}
-	if ti := issueOf(t, app, lookup.ID); ti.Title != "Eighty" || ti.ChangeRequestsReason != "unauthenticated" || ti.Reason != "" {
-		t.Fatalf("TaskIssue = %+v", ti)
-	}
-	app.Contract(t, "ade-issue-tracker", "AdeTaskService.Artifacts#lookup-failed", res, artMask)
-	forge.SetOffline(false)
-
-	// 8. A task without a link has no tracker.
+	// 7. A task without a link has no tracker.
 	if ti := issueOf(t, app, createTask(t, app, "Plain", "flow").ID); ti.Reason != "noTracker" {
 		t.Fatalf("TaskIssue without a link = %+v", ti)
 	}
 
-	// 9. Every acli call is a background row of the op log; the failed sign-in probe of step 6 shows as an error.
+	// 8. Every acli call is a background row of the op log; the failed sign-in probe of step 6 shows as an error.
 	rows, err := app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 200})
 	if err != nil {
 		t.Fatal(err)
