@@ -52,6 +52,8 @@ const close = (): void => {
   ui.runTaskId = null;
 };
 const step = computed(() => card.value?.progress.step ?? null);
+// No mine branch: the step runs in the task folder and can pick repos itself.
+const noRepo = computed(() => !card.value?.rows.some((r) => r.branch.kind === 'mine'));
 // The workflow's definition of the step being run: its prompt and smart script params.
 const def = computed(
   () => card.value?.workflow?.steps.find((x) => x.id === step.value?.id) ?? null,
@@ -74,6 +76,7 @@ const stepPreview = useAdePromptPreview('ade.step.prompt', () =>
         },
         stepNumber: numbering.value.n,
         stepCount: numbering.value.of,
+        noRepo: noRepo.value,
       })
     : null,
 );
@@ -189,6 +192,9 @@ const send = sending.run;
         </DialogTitle>
       </DialogHeader>
       <DialogBody class="flex flex-col gap-3 text-kira-md">
+        <FieldDescription v-if="noRepo" data-testid="ade-run-no-repo">{{
+          t('space.ade.runDialog.noRepo.hint')
+        }}</FieldDescription>
         <div v-if="named.length" class="flex flex-col gap-1.5" data-testid="ade-run-branches">
           <div v-for="r in named" :key="r.id" class="flex items-center gap-3">
             <AdeRepoTag :code-repo-id="r.branch.codeRepoId" :label="r.repo" />

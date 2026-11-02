@@ -9300,6 +9300,9 @@
         "handover": {
           "label": "Handover from {stage}"
         },
+        "noRepo": {
+          "hint": "No repository on this task yet. The step runs in the task folder and can choose repositories and branches."
+        },
         "smartMissing": {
           "error": "This smart script was not found."
         },
@@ -9602,6 +9605,9 @@
         "needsApproval": {
           "status": "Needs approval"
         },
+        "needsRepo": {
+          "status": "Needs a repository"
+        },
         "output": {
           "label": "Output"
         },
@@ -9613,6 +9619,9 @@
         },
         "skipThis": {
           "label": "Skip this step"
+        },
+        "taskFolder": {
+          "label": "Task folder"
         }
       },
       "stepMover": {

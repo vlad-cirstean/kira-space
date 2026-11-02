@@ -122,10 +122,22 @@ export interface ProgressInput {
   repoNick: (codeRepoId: string) => string;
 }
 
+/** The target of a step on a task with no branch: a run with no branch, in the task folder. */
+export const TASK_TARGET = '';
+
 /** Branches a step runs on: `once` is the first mine branch (D12), `each repo` every mine branch,
- *  `only <nick>` the mine branches in that repo. An unmatched `only` has no targets. */
-function stepTargets(i: ProgressInput, runsOn: RunsOn | ''): string[] {
+ *  `only <nick>` the mine branches in that repo. An unmatched `only` has no targets. A task with no
+ *  mine branch runs on `TASK_TARGET`, except a review or `only` step, which has none; `pinned` (the
+ *  step already ran without a branch in this pass) keeps `TASK_TARGET`. Mirrors Go `stepTargets`. */
+function stepTargets(
+  i: ProgressInput,
+  runsOn: RunsOn | '',
+  kind: StepKind,
+  pinned: boolean,
+): string[] {
+  if (pinned) return [TASK_TARGET];
   const mine = i.task.branchIds.filter((id) => i.branch(id)?.kind === 'mine');
+  if (!mine.length) return kind === 'review' || runsOn.startsWith('only ') ? [] : [TASK_TARGET];
   if (runsOn === 'once') return mine.slice(0, 1);
   if (runsOn.startsWith('only ')) {
     const nick = runsOn.slice(5);
@@ -265,7 +277,7 @@ function buildSteps(i: ProgressInput, workflow: Workflow): StepProgress[] {
     const runs =
       s.kind === 'manual'
         ? []
-        : stepTargets(i, s.runsOn).map(
+        : stepTargets(i, s.runsOn, s.kind, latestRun(i.task, s.id, TASK_TARGET) !== null).map(
             (branchId): StepRun => latestRun(i.task, s.id, branchId) ?? emptyRun(branchId),
           );
     const state = aggregate(runs.map((r) => r.state));
@@ -348,7 +360,10 @@ export function buildTaskProgress(i: ProgressInput): TaskProgress {
     finished || !step
       ? t('common.done.status')
       : step.name + (step.kind === 'manual' ? '' : ` ${doneSteps}/${auto.length}`);
-  const nick = (id: string): string => i.repoNick(i.branch(id)?.codeRepoId ?? '');
+  const nick = (id: string): string =>
+    id === TASK_TARGET
+      ? t('space.ade.stepBlock.taskFolder.label')
+      : i.repoNick(i.branch(id)?.codeRepoId ?? '');
   return {
     hasWorkflow: true,
     finished,

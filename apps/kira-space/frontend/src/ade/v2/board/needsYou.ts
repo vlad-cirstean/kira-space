@@ -356,8 +356,14 @@ export function buildNeedsYou(i: NeedsYouInput): NeedsYou {
   const branches = new Map(i.board.branches.map((b) => [b.id, b]));
   const c: Ctx = {
     i,
-    nick: (id) => i.repoNick(branches.get(id)?.codeRepoId ?? ''),
-    nameOf: (id) => branches.get(id)?.name || t('common.newBranch.label'),
+    nick: (id) =>
+      id
+        ? i.repoNick(branches.get(id)?.codeRepoId ?? '')
+        : t('space.ade.stepBlock.taskFolder.label'),
+    nameOf: (id) =>
+      id
+        ? branches.get(id)?.name || t('common.newBranch.label')
+        : t('space.ade.stepBlock.taskFolder.label'),
     age: (at) => (at ? Math.max(0, i.nowMs - at) : null),
     sessionsById: new Map(i.sessions.map((s) => [s.id, s])),
   };

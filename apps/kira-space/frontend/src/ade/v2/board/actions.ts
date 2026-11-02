@@ -100,7 +100,7 @@ function manualAction(i: TaskCellInput): TaskAction {
 
 function automaticAction(p: TaskProgress): TaskAction | null {
   const s = p.step;
-  if (!s) return null;
+  if (!s?.runs.length) return null; // no target: the step needs a repository
   const session = s.runs.find((r) => r.sessionId !== '')?.sessionId;
   if ((s.state === 'stuck' || s.state === 'failed') && s.kind === 'agent' && session) {
     return {
