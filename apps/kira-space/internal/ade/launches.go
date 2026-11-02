@@ -434,20 +434,31 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 	}
 	ids = append(ids, agentmcp.SpaceToolIDs...)
 	pa.MCPConfig, pa.AllowedTools = cfg, harness.ToolNames(agent, ids...)
-	prep, err := b.prepareApp(ctx, agentcfg.Launch{Provider: agent, Kind: harness.LaunchInteractive, Dir: b.deps.AgentDir, Stem: "tui-" + b.newID()})
+	stem := "tui-" + b.newID()
+	prep, err := b.prepareApp(ctx, agentcfg.Launch{Provider: agent, Kind: harness.LaunchInteractive, Dir: b.deps.AgentDir, Stem: stem})
 	if err != nil {
 		release()
 		return adewire.Launch{}, err
 	}
 	pa.App = prep.App
+	pa.Hermetic = b.hermetic()
+	releaseIso := func() {}
+	if pa.Hermetic {
+		if pa.IsolationDir, releaseIso, err = harness.PrepareIsolation(agent, b.deps.AgentDir, stem, os.Environ()); err != nil {
+			release()
+			prep.Release()
+			return adewire.Launch{}, fmt.Errorf("hermetic launch: %w", err)
+		}
+	}
 	res, err := tr.Prepare(pa)
 	if err != nil {
 		release()
 		prep.Release()
+		releaseIso()
 		return adewire.Launch{}, err
 	}
 	pa.Op.SetCommand(res.Command)
-	b.bindTUI(res.RecordID, runID, func() { release(); prep.Release() })
+	b.bindTUI(res.RecordID, runID, func() { release(); prep.Release(); releaseIso() })
 	return launchOf(res), nil
 }
 

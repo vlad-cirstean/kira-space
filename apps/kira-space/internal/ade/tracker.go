@@ -130,6 +130,10 @@ type PrepareArgs struct {
 	Op *oplog.Op
 	// App is the app's agent settings rendered for this launch; nil = none.
 	App *harness.AppConfig
+	// Hermetic and IsolationDir are the launch's hermetic mode and the Kira-owned dir a provider's
+	// Isolator prepared for it (harness.PrepareIsolation); "" = none.
+	Hermetic     bool
+	IsolationDir string
 }
 
 // PrepareResult is Prepare's own return shape. SessionID is the agent session id (stable across
@@ -313,6 +317,7 @@ func (t *Tracker) Prepare(args PrepareArgs) (PrepareResult, error) {
 		Bin: agentBin, SessionID: agentSessionID, Resume: args.Resume != "" || args.Resumes != "",
 		AddDirs: args.AddDirs, MCPConfig: args.MCPConfig, AllowedTools: args.AllowedTools,
 		Stage: stageValues(args.Settings, agent), ContextFile: contextFile, App: args.App,
+		Hermetic: args.Hermetic, IsolationDir: args.IsolationDir,
 	})
 	command, agentSessionID := launch.Command, launch.SessionID
 

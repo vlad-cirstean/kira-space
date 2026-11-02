@@ -1,6 +1,7 @@
 package harness
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 )
@@ -20,6 +21,9 @@ func PrepareIsolation(p Provider, parent, stem string, environ []string) (dir st
 	iso, ok := p.(Isolator)
 	if !ok {
 		return "", func() {}, nil
+	}
+	if parent == "" {
+		return "", func() {}, errors.New("harness: no folder for the isolation dir")
 	}
 	dir = filepath.Join(parent, stem+"-iso")
 	release = func() { _ = os.RemoveAll(dir) }

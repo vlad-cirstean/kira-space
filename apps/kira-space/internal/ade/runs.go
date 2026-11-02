@@ -676,6 +676,9 @@ func agentEnd(agent runoutcome.Agent, exit harness.Exit, runErr error, timeout s
 	return p
 }
 
+// hermetic is the agent.hermetic setting for one launch; on without a reader.
+func (b *TaskBoard) hermetic() bool { return b.deps.Hermetic == nil || b.deps.Hermetic() }
+
 func (b *TaskBoard) configScope() harness.ConfigScope {
 	if b.deps.HeadlessSettingSources != nil && b.deps.HeadlessSettingSources() == "user" {
 		return harness.ConfigUser
@@ -838,6 +841,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		Bin: b.deps.AgentBin, Dir: l.path, Prompt: l.prompt, SessionID: b.sessionAgentID(sessionID),
 		Resume: l.resume, MCPConfigs: []string{cfg}, Config: b.configScope(), AllowedTools: roundTools(agent, allowedTools(agent, def.AllowedTools, space), round), DisallowedTools: def.DisallowedTools,
 		Timeout: l.timeout, Stage: stageValues(def.Settings, agent), ContextFile: l.contextFile, App: prep.App,
+		Hermetic: b.hermetic(),
 	}
 	spec.Env = gitprepare.BuildEnv(withAppEnv(os.Environ(), prep.App), gitprepare.Vars{WorktreePath: l.path})
 	if rebase {

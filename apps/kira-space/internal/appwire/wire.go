@@ -265,6 +265,10 @@ func wireAdeTask(
 			}
 			return settings.Ade.HeadlessSettingSources
 		},
+		Hermetic: func() bool {
+			settings, err := repositories.Settings.GetAll()
+			return err != nil || settings.Agent.Hermetic
+		},
 		AutofetchMinutes:  adeAutofetchMinutes(repositories),
 		HomeDir:           userHome,
 		RebaseTimeout:     rebaseTimeout,

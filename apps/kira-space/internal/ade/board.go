@@ -107,6 +107,8 @@ type TaskBoardDeps struct {
 	ScriptRunsOf  func(taskID string, limit int) ([]scriptruns.Run, error)
 	// HeadlessSettingSources returns the ade.headlessSettingSources setting, read fresh per run.
 	HeadlessSettingSources func() string
+	// Hermetic returns the agent.hermetic setting, read fresh per launch; nil = on.
+	Hermetic func() bool
 	// Sandbox confines headless agents (P287); nil = no sandbox. RunSandbox stores each run's
 	// policy and denials.
 	Sandbox    agentsandbox.Enforcer

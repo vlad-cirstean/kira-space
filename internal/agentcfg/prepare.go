@@ -150,10 +150,20 @@ func (s *Store) Close() error {
 	return nil
 }
 
-// Sweep removes leftover run files in dirs (a crash skipped Release). Call it at start, before any launch.
+// Sweep removes leftover run files and hermetic isolation dirs in dirs (a crash skipped Release).
+// Call it at start, before any launch.
 func (s *Store) Sweep(dirs ...string) error {
 	var errs []error
 	for _, d := range dirs {
+		isos, err := filepath.Glob(filepath.Join(d, harness.IsolationGlob))
+		if err != nil {
+			errs = append(errs, err)
+		}
+		for _, m := range isos {
+			if err := os.RemoveAll(m); err != nil {
+				errs = append(errs, err)
+			}
+		}
 		matches, err := filepath.Glob(filepath.Join(d, "*-app.*.json"))
 		if err != nil {
 			errs = append(errs, err)

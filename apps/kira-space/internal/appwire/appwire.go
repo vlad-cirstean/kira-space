@@ -354,6 +354,10 @@ func Build(opts Options) *Wired {
 		EmitLog:      func(p scriptruns.LogPush) { emitter.Emit(bridge.ChannelScriptRunLog, p) },
 		SmartTimeout: opts.SmartTimeout, ScheduleTimeout: opts.ScheduleTimeout, Prompts: w.Prompts, LlmPrompts: promptStore,
 		Agent: w.Agents, ContextFile: w.AgentContext.ContextFile, AgentConfig: w.agentConfig(),
+		Hermetic: func() bool {
+			settings, err := repositories.Settings.GetAll()
+			return err != nil || settings.Agent.Hermetic
+		},
 	}
 	if opts.Clock != nil {
 		runs.Now = opts.Clock.Now

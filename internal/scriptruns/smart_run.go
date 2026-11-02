@@ -168,7 +168,7 @@ func (s *Service) launchSmart(p *planned, run Run, existing bool) (Started, erro
 		Dir: p.dir.Path, Prompt: p.sent, SessionID: sessionID, Resume: p.resume, MCPConfigs: []string{cfg},
 		Model: p.smart.Model, MaxBudgetUSD: p.smart.MaxBudgetUSD, Tools: pv.Tools, AllowedTools: pv.Allowed,
 		Isolated: true, UserMCP: p.mcp, GrantMCP: []string{agentmcp.ServerName}, Timeout: timeout, Env: env,
-		ContextFile: contextFile,
+		ContextFile: contextFile, Hermetic: s.hermetic(),
 	}
 	spec = s.applySandbox(spec, sbx, agent)
 	go func() {

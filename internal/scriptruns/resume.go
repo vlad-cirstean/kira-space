@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -153,29 +154,43 @@ func (s *Service) ResumeCommand(id string) (ResumeLaunch, error) {
 	if err != nil {
 		return ResumeLaunch{}, ipcerr.InternalErr(err)
 	}
-	prep, err := s.prepareApp(prov)
+	stem := "tui-" + uuid.NewString()
+	prep, err := s.prepareApp(prov, stem)
 	if err != nil {
 		return ResumeLaunch{}, ipcerr.BadRequest(err.Error())
 	}
-	l := prov.InteractiveCommand(harness.InteractiveSpec{SessionID: run.SessionID, Resume: true, ContextFile: contextFile, App: prep.App})
-	out := ResumeLaunch{Command: l.Command}
-	if len(l.Env) > 0 || prep.App != nil {
-		if out.Token, err = s.newAgentLaunch(l.Command, l.Env, prep.Release); err != nil {
+	spec := harness.InteractiveSpec{SessionID: run.SessionID, Resume: true, ContextFile: contextFile, App: prep.App, Hermetic: s.hermetic()}
+	release := prep.Release
+	if spec.Hermetic {
+		var releaseIso func()
+		spec.IsolationDir, releaseIso, err = harness.PrepareIsolation(prov, filepath.Join(s.Home, "automations-mcp"), stem, os.Environ())
+		if err != nil {
 			prep.Release()
+			return ResumeLaunch{}, ipcerr.InternalErr(err)
+		}
+		release = func() { prep.Release(); releaseIso() }
+	}
+	l := prov.InteractiveCommand(spec)
+	out := ResumeLaunch{Command: l.Command}
+	if len(l.Env) > 0 || prep.App != nil || spec.IsolationDir != "" {
+		if out.Token, err = s.newAgentLaunch(l.Command, l.Env, release); err != nil {
+			release()
 			return ResumeLaunch{}, err
 		}
+	} else {
+		release()
 	}
 	return out, nil
 }
 
 // prepareApp prepares the app's agent settings for a Continue in terminal launch; none without a preparer.
 // A failure names the reference that did not resolve, never a value.
-func (s *Service) prepareApp(prov harness.Provider) (agentcfg.Prepared, error) {
+func (s *Service) prepareApp(prov harness.Provider, stem string) (agentcfg.Prepared, error) {
 	if s.AgentConfig == nil {
 		return agentcfg.Prepared{Release: func() {}}, nil
 	}
 	return s.AgentConfig(context.Background(), agentcfg.Launch{
-		Provider: prov, Kind: harness.LaunchInteractive, Dir: filepath.Join(s.Home, "automations-mcp"), Stem: "tui-" + uuid.NewString(),
+		Provider: prov, Kind: harness.LaunchInteractive, Dir: filepath.Join(s.Home, "automations-mcp"), Stem: stem,
 	})
 }
 

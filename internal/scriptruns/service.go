@@ -51,6 +51,8 @@ type Service struct {
 	ContextFile func() (string, error)
 	// AgentConfig prepares the app's agent settings for a Continue in terminal launch; nil = none.
 	AgentConfig agentcfg.PrepareFunc
+	// Hermetic reports the agent.hermetic setting, read fresh per launch; nil = on.
+	Hermetic func() bool
 	// Getenv reads the user's environment to resolve their login shell; nil means os.Getenv.
 	Getenv func(string) string
 	// SmartTimeout, when positive, replaces every smart run's own timeout (a flow test).
@@ -88,6 +90,9 @@ type Service struct {
 }
 
 var _ terminal.ScriptLauncher = (*Service)(nil)
+
+// hermetic is the agent.hermetic setting for one launch; on without a reader.
+func (s *Service) hermetic() bool { return s.Hermetic == nil || s.Hermetic() }
 
 func (s *Service) llmPrompts() llmprompts.Source {
 	if s.LlmPrompts == nil {

@@ -192,6 +192,10 @@ func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, kee
 		EmitLog:      func(p scriptruns.LogPush) { deps.Events.Emit(bridge.ChannelScriptRunLog, p) },
 		SmartTimeout: opts.SmartTimeout, ScheduleTimeout: opts.ScheduleTimeout,
 		Prompts: promptRouter, LlmPrompts: deps.Prompts, Agent: agents,
+		Hermetic: func() bool {
+			settings, err := deps.Repos.Settings.GetAll()
+			return err != nil || settings.Agent.Hermetic
+		},
 	}
 	if opts.Clock != nil {
 		runs.Now = opts.Clock.Now
