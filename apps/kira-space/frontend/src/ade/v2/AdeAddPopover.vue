@@ -179,7 +179,7 @@ async function pick(value: string): Promise<void> {
           data-testid="ade-nw-title"
         />
         <Label for="ade-nw-jira" class="text-muted-foreground">{{
-          t('common.product.jira.label')
+          t('space.ade.taskTab.issue.label')
         }}</Label>
         <Input
           id="ade-nw-jira"
