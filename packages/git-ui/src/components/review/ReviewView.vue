@@ -20,6 +20,7 @@ import { errorText } from '@workbench/bridge/codedError';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import { BridgeClient } from '../../bridge/client.ts';
 import { adjacentInOrder, orderedFilePaths } from '../../lib/fileTreeModel.ts';
+import { markOnToggle, reviewAttention } from '../../lib/reviewAttention.ts';
 import { createReviewFilesActions } from '../../lib/reviewFilesActions.ts';
 import { useReviewAnnouncements } from '../../lib/useReviewAnnouncements.ts';
 import type { MountOptions } from '../../main.ts';
@@ -274,8 +275,7 @@ function onUiAction(action: UiActionKind): void {
         return;
       }
       const entry = rf.files.value.find((e) => e.change.path === path);
-      const isReviewed = entry ? entry.review.kind !== 'none' : false;
-      void rf.mark(path, !isReviewed);
+      void rf.mark(path, markOnToggle(reviewAttention(entry?.review)));
       return;
     }
     // G13 D19: the palette's own route to the Comments pane's copy-for-AI action.

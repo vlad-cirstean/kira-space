@@ -27,6 +27,7 @@ import { type MessageKey, t } from '@theme/i18n';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { computed, ref } from 'vue';
 import { ACTION_ICONS } from '../../icons/index.ts';
+import { markOnToggle, reviewAttention } from '../../lib/reviewAttention.ts';
 import type { FileListMode } from '../../state/detail.ts';
 import type { DetailActions } from '../../state/detailActions.ts';
 import type { ReviewWorkingSection } from '../../state/review.ts';
@@ -74,14 +75,25 @@ const reviewStatesMap = computed<ReadonlyMap<string, ReviewFileStatus>>(() => {
 });
 
 const reviewedCount = computed(
-  () => props.reviewFiles.files.value.filter((e) => e.review.kind === 'full').length,
+  () =>
+    props.reviewFiles.files.value.filter((e) => reviewAttention(e.review) === 'reviewed').length,
+);
+const changedCount = computed(
+  () => props.reviewFiles.files.value.filter((e) => reviewAttention(e.review) === 'changed').length,
 );
 
 const workingFiles = computed(() => props.working?.files ?? []);
 const workingReviewedCount = computed(
   () =>
-    workingFiles.value.filter((f) => props.working?.reviewStates.get(f.path)?.kind === 'full')
-      .length,
+    workingFiles.value.filter(
+      (f) => reviewAttention(props.working?.reviewStates.get(f.path)) === 'reviewed',
+    ).length,
+);
+const workingChangedCount = computed(
+  () =>
+    workingFiles.value.filter(
+      (f) => reviewAttention(props.working?.reviewStates.get(f.path)) === 'changed',
+    ).length,
 );
 const workingSelected = ref(-1);
 
@@ -121,8 +133,7 @@ function onOpenFileIndex(index: number, pinned: boolean): void {
 
 function onToggleReviewed(path: string): void {
   const entry = props.reviewFiles.files.value.find((e) => e.change.path === path);
-  const isReviewed = entry ? entry.review.kind !== 'none' : false;
-  void props.reviewFiles.mark(path, !isReviewed);
+  void props.reviewFiles.mark(path, markOnToggle(reviewAttention(entry?.review)));
 }
 
 function onToggleReviewedFolder(paths: string[], reviewed: boolean): void {
@@ -130,8 +141,10 @@ function onToggleReviewedFolder(paths: string[], reviewed: boolean): void {
 }
 
 function onToggleWorkingReviewed(path: string): void {
-  const isReviewed = (props.working?.reviewStates.get(path)?.kind ?? 'none') !== 'none';
-  props.working?.onToggleReviewed(path, !isReviewed);
+  props.working?.onToggleReviewed(
+    path,
+    markOnToggle(reviewAttention(props.working.reviewStates.get(path))),
+  );
 }
 </script>
 
@@ -177,6 +190,14 @@ function onToggleWorkingReviewed(path: string): void {
       >
         <CodiconIcon name="git-commit" :size="13" />
         <span>{{ t('git.review.committed.title') }}</span>
+        <span
+          v-if="changedCount > 0"
+          class="text-warn font-normal"
+          data-testid="review-committed-changed-count"
+          >{{
+            t('git.review.changedCount.label', { count: changedCount })
+          }}</span
+        >
         <span class="ml-auto text-muted-foreground font-normal">{{
           t('git.review.reviewedCount.label', {
             reviewed: reviewedCount,
@@ -212,6 +233,14 @@ function onToggleWorkingReviewed(path: string): void {
         >
           <CodiconIcon name="edit" :size="13" class="text-warn" />
           <span>{{ t('space.ade.changes.uncommitted.label') }}</span>
+          <span
+            v-if="workingChangedCount > 0"
+            class="text-warn font-normal"
+            data-testid="review-working-changed-count"
+            >{{
+              t('git.review.changedCount.label', { count: workingChangedCount })
+            }}</span
+          >
           <span class="ml-auto text-muted-foreground font-normal">{{
             t('git.review.reviewedCount.label', {
               reviewed: workingReviewedCount,

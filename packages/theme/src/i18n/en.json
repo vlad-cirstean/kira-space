@@ -5498,6 +5498,9 @@
           "label": "Suggested"
         }
       },
+      "changedCount": {
+        "label": "{count} changed since review"
+      },
       "changedSince": {
         "hint": "Changed since you reviewed it."
       },
@@ -5632,6 +5635,9 @@
       },
       "loading": {
         "loading": "Loading review…"
+      },
+      "markAgain": {
+        "tooltip": "Changed since your review. Mark reviewed again"
       },
       "noBranch": {
         "emptyHint": "Choose a branch to compare its commits against a base you set or one Kira detects."

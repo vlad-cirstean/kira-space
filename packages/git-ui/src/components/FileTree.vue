@@ -47,6 +47,13 @@ import {
 } from '../lib/fileTreeModel.ts';
 import { buildFolderReview, folderToggle } from '../lib/folderReview.ts';
 import { sectionsToMenuItems } from '../lib/menuModel.ts';
+import {
+  checkboxState,
+  nameTone,
+  type ReviewAttention,
+  reviewAttention,
+  toggleTitleKey,
+} from '../lib/reviewAttention.ts';
 import { buildFileRowMenu } from '../lib/rowMenuModel.ts';
 import type { FileListMode } from '../state/detail.ts';
 import type { DetailActions } from '../state/detailActions.ts';
@@ -403,21 +410,12 @@ function dirOf(path: string): string {
   return slash === -1 ? '' : path.slice(0, slash);
 }
 
-// G11 D16: the reviewed checkbox/badge — every accessor is a no-op-shaped lookup when
-// reviewStates is absent, but the template only ever calls these behind `v-if="reviewStates"`.
-function reviewStatusFor(path: string): ReviewFileStatus | undefined {
-  return props.reviewStates?.get(path);
+// Review accessors: the template calls them only behind `v-if="reviewStates"`.
+function reviewAttentionFor(path: string): ReviewAttention {
+  return reviewAttention(props.reviewStates?.get(path));
 }
-function reviewToggleTitle(path: string): string {
-  const kind = reviewStatusFor(path)?.kind ?? 'none';
-  return kind === 'none' ? t('common.markReviewed.tooltip') : t('common.markUnreviewed.tooltip');
-}
-function reviewCheckboxState(path: string): boolean | 'indeterminate' {
-  const kind = reviewStatusFor(path)?.kind;
-  if (kind === 'full') return true;
-  if (kind === 'partial') return 'indeterminate';
-  return false;
-}
+const reviewToggleTitle = (path: string): string => t(toggleTitleKey(reviewAttentionFor(path)));
+const reviewCheckboxState = (path: string) => checkboxState(reviewAttentionFor(path));
 
 const folderReview = computed(() => buildFolderReview(tree.value, props.reviewStates));
 
@@ -473,6 +471,9 @@ function onToggleFolder(path: string): void {
         :key="rowKey(row)"
         data-testid="file-tree-row"
         :class="rowClass(row)"
+        :data-review-state="
+          reviewStates && row.kind === 'file' ? reviewAttentionFor(row.node.change.path) : undefined
+        "
         :role="listMode === 'tree' ? 'treeitem' : 'option'"
         :aria-level="listMode === 'tree' ? row.depth + 1 : undefined"
         :aria-expanded="listMode === 'tree' && row.kind === 'directory' ? row.expanded : undefined"
@@ -524,6 +525,7 @@ function onToggleFolder(path: string): void {
           <Checkbox
             v-if="reviewStates"
             class="shrink-0"
+            :class="{ 'border-warn': reviewAttentionFor(row.node.change.path) === 'changed' }"
             :model-value="reviewCheckboxState(row.node.change.path)"
             :aria-label="reviewToggleTitle(row.node.change.path)"
             :data-kira-tip="reviewToggleTitle(row.node.change.path)"
@@ -543,7 +545,11 @@ function onToggleFolder(path: string): void {
               :style="fileIconStyle(row.node.path)"
             ></span>
           </span>
-          <span class="overflow-hidden text-ellipsis" :data-kira-tip="fileTitle(row.node.change)">
+          <span
+            class="overflow-hidden text-ellipsis"
+            :class="reviewStates && nameTone(reviewAttentionFor(row.node.change.path))"
+            :data-kira-tip="fileTitle(row.node.change)"
+          >
             <template v-if="renameDisplay(row.node.change)">
               {{ renameDisplay(row.node.change)?.from }}
               <CodiconIcon name="arrow-small-right" :size="13" />
@@ -570,7 +576,7 @@ function onToggleFolder(path: string): void {
             >
           </span>
           <StatusDot
-            v-if="reviewStates && reviewStatusFor(row.node.change.path)?.changedSinceReview"
+            v-if="reviewStates && reviewAttentionFor(row.node.change.path) === 'changed'"
             tone="warn"
             :data-kira-tip="t('git.review.changedSince.hint')"
             aria-hidden="true"
