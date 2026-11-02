@@ -2109,8 +2109,10 @@ The agent CLI sits behind one interface, so a second provider needs no caller ch
   SessionLocator and CostCapper (no cost cap). It has no Structured role (memory falls back to the default
   provider) and no UsageReporter. Facts about the CLI live in `opencode/facts.go`, each marked verified or
   UNVERIFIED with its probe id; Known open items lists the unverified ones.
-  - Interactive: `opencode [-s <id>]`. The MCP grant rides `OPENCODE_CONFIG`, extra directories ride
-    `OPENCODE_PERMISSION`, and the hook plugin rides `OPENCODE_CONFIG_CONTENT`. The model is never passed.
+  - Interactive: `opencode [-s <id>]`. One owner per config layer: the MCP grant rides `OPENCODE_CONFIG`,
+    extra directories ride `OPENCODE_PERMISSION`, the agent context rides `OPENCODE_CONFIG_CONTENT`
+    (`{"instructions":["<ContextFile>"]}`), and the hook plugin rides `OPENCODE_CONFIG_DIR` (hooks dir
+    with an `opencode.json` loading `plugin.js`). The model is never passed.
     OpenCode assigns the session id itself, so `FindSession` runs `opencode session list --format json`
     in the worktree and takes the newest session created after the launch. Kira never opens OpenCode's
     database or config.
@@ -2118,7 +2120,7 @@ The agent CLI sits behind one interface, so a second provider needs no caller ch
     run loads project config. A run that loads no user config redirects `XDG_CONFIG_HOME` to a directory of
     symlinks that omits `opencode`, and sets `OPENCODE_DISABLE_CLAUDE_CODE=1` and
     `OPENCODE_DISABLE_PROJECT_CONFIG=1`. `OPENCODE_CONFIG` carries the MCP grant (several configs merge into
-    one temp file); `OPENCODE_CONFIG_CONTENT` carries the permission document.
+    one temp file); `OPENCODE_CONFIG_CONTENT` carries the permission document plus `instructions` when the run has a `ContextFile`.
   - Tool names stay in Kira's vocabulary (Claude names, `mcp__server__tool`) all the way to the provider.
     `permissionDoc` translates them to OpenCode permission keys (`srv_tool`, `srv_*`) and fails the run
     naming any entry it cannot translate, so a step's `allowed_tools` and `rebaseBuiltins` need no mapping
@@ -2178,7 +2180,8 @@ The agent CLI sits behind one interface, so a second provider needs no caller ch
 - Stage settings (P431): `Provider.StageSettings()` declares per-workflow-stage settings (`harness.StageSetting`: key, kind `int`, min, max, i18n label and hint keys). The step's validated values reach the provider as `HeadlessSpec.Stage` and `InteractiveSpec.Stage` (`harness.StageValues`); only the provider maps them onto its CLI. `providers.StageCatalog()` is static, like `ConfigDirs`, and feeds YAML validation and the editor.
 - Claude declares `auto_compact_window` (100000 to 1000000 tokens, CLI 2.1.316) and maps it to `--autocompact <n>` in `Script` and `InteractiveCommand`, ahead of `--setting-sources`/`--add-dir`. Per process, so tools the agent runs do not inherit it. An old CLI without the flag fails the launch loudly. Measured with `claude -p --debug-file` (effective window = setting minus 20000): the flag alone gives 280000 for 300000. An exported `CLAUDE_CODE_AUTO_COMPACT_WINDOW=150000` wins over `--autocompact 300000` (130000). Kira does not strip the variable; see Known open items.
 - `ContextFile` (P452): neutral field on `InteractiveSpec` and `HeadlessSpec`, path of the agent context snapshot. Only the provider maps it. Claude: `--append-system-prompt-file '<path>'` in both builders, flag name in one constant (`appendSystemPromptFileFlag`). The flag is hidden from `claude --help` but present in CLI 2.1.316 (named in the `--bare` help, strings in the binary). Rejected: `--append-system-prompt` (text in argv, visible in `ps`, size-limited), a generated `CLAUDE.md` plus `--add-dir` (also loads the dir's other files).
-- `ContextKeeper` (P452): optional role, `KeepsContextOnResume() bool`. Claude returns true: `--system-prompt-snapshot` is on by default, so a resumed conversation keeps its recorded prompt until it compacts. Feeds the editor's resume note.
+- OpenCode `ContextFile` (P452, verified on 1.19.5, Q-OC1 to Q-OC4): `instructions` in `OPENCODE_CONFIG_CONTENT`; the file's text reaches the model. OpenCode re-reads it on `run -s`, so it does not implement `ContextKeeper`: a resumed OpenCode session sees an edit. Observed on a stub provider with a throwaway HOME: `~/.config/opencode/AGENTS.md` and `~/.claude/CLAUDE.md` did not reach the request; the config dir's `AGENTS.md` did (P455 data).
+- `ContextKeeper` (P452): optional role, `KeepsContextOnResume() bool`. Only Claude returns true: `--system-prompt-snapshot` is on by default, so a resumed conversation keeps its recorded prompt until it compacts. Feeds the editor's resume note.
 - Add a provider: implement `harness.Provider` and any optional roles in `internal/harness/<id>`, add it to
   `providers.New`, and keep its CLI strings and error texts inside its package. No caller changes.
 - Test: `flows/harnessflow` `TestOpenCodeProvider` and `TestOpenCodeHeadless` drive OpenCode against the
@@ -3461,7 +3464,7 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
 - **Agent context rests on a hidden Claude flag (P452).** `--append-system-prompt-file` is absent from `claude --help`. A CLI that drops it fails the launch loudly. `TestAgentContextHeadless` catches it. Studio has no context editor; edit the file in an editor.
 
 - **Saved script secrets show in a live terminal (P447).** A terminal-run script prints into its live tab and the Space phone terminal ring unmasked; only the run tail and log are masked. A process that echoes its secret shows it there.
-- **OpenCode facts without a model key are unverified (P449).** `facts.go` marks each with its probe id: the lost-session error text (U5), the MCP tool permission key `<server>_<tool>` (U7), plugin event names and `fetch` over a unix socket (U12), install paths (U15), the model API host list for network-off runs (U16), and the text, tool and cost event shapes of `run --format json`. A wrong guess degrades quietly: a lost session reads as a plain failure, a MCP grant may not match, activity icons may stay idle. Run the probes in `docs/DEV_ENVIRONMENT.md` with a key, then fix `facts.go` and delete this item.
+- **OpenCode facts without a model key are unverified (P449).** `facts.go` marks each with its probe id: the lost-session error text (U5), the MCP tool permission key `<server>_<tool>` (U7), plugin event names and `fetch` over a unix socket (U12), install paths (U15), the model API host list for network-off runs (U16), and the tool and cost event shapes of `run --format json` (`step_start`, `text` with `part.text` and `step_finish` with `part.reason` are verified). A wrong guess degrades quietly: a lost session reads as a plain failure, a MCP grant may not match, activity icons may stay idle. Run the probes in `docs/DEV_ENVIRONMENT.md` with a key, then fix `facts.go` and delete this item.
 - **OpenCode has no cost cap (P449).** A smart script or step with a budget is refused on OpenCode. The run reports cost when its events carry one; the shape is unverified.
 - **OpenCode network-off runs reach only the listed model hosts (P449).** The list is a guess; a model on another host fails under the sandbox.
 - **OpenCode extra directories ride permission only (P449).** `AddDirs` become `external_directory` allow patterns, not a CLI flag; the OS sandbox profile is the real boundary.

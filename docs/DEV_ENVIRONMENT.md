@@ -568,7 +568,7 @@ Flow tests run a fake `opencode` (`fakeagent` persona, `flowharness.WithOpenCode
 - The Claude Code auto-mode classifier blocks a subagent told to install an external package, and a probe that runs a model prompt. Run the install from the orchestrating session or have the user approve.
 - No model key needed: `--help`, `--version`, `session list --format json` (expect `[]`), `debug config`, `debug paths`, `debug agent build`, `mcp list`, `mcp add --help`, and `strings <bin> | grep -oE 'OPENCODE_[A-Z_]+'` for env names. `OPENCODE_CONFIG=c.json opencode debug config` shows how a config merges and masks header values. `OPENCODE_PERMISSION='{...}' opencode debug config` shows the permission merge.
 - `run` reads the prompt from stdin when it is not a terminal: always pipe it (`echo hi | opencode run --format json`). A positional message with no stdin hangs.
-- Need a model key (still unverified, see Known open items): the `run --format json` text, tool and cost events, the error for `-s <unknown id>`, plugin event names (`/tmp/kp.js` writing each event to a file, loaded through `OPENCODE_CONFIG_CONTENT='{"plugin":["file:///tmp/kp.js"]}'`), the MCP tool permission key, and whether a TUI session appears in `session list` before its first prompt.
+- Need a model key (still unverified, see Known open items): the `run --format json` tool and cost events (`step_start`, `text`, `step_finish` verified), the error for `-s <unknown id>`, plugin event names (`/tmp/kp.js` writing each event to a file, loaded through `OPENCODE_CONFIG_DIR` (a dir whose `opencode.json` lists the plugin; verified to load)), the MCP tool permission key, and whether a TUI session appears in `session list` before its first prompt.
 
 ## Mac checklist (user-run)
 

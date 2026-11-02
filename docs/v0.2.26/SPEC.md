@@ -11,7 +11,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | P449 | OpenCode provider; pick the agent per interactive session | Done |
 | P450 | Config-as-files foundation: store, layout, validation, DB sync, interpolation, AGENTS.md | Done |
 | P451 | Workflows folder AGENTS.md | Done |
-| P452 | One shared agent context, rendered per provider | Todo |
+| P452 | One shared agent context, rendered per provider | Done |
 | P453 | Agent settings: common plus per provider, MCP credentials from the keychain | Todo |
 | P454 | Import and Export of agent config per provider | Todo |
 | P455 | Hermetic agent launches per provider | Todo |
@@ -122,7 +122,7 @@ Result: no JSON Schema for workflows (Q1 no). `adeflow/options.go` is one option
 - User-authored text stays out of `internal/llmprompts`, per that package's rule. App prompts keep their role.
 - Test: flow test sets the context, launches each provider interactive and headless (fake personas record argv, env and files), asserts the rendered context arrived. UI spec: edit, save, reload, same text.
 
-Result (steps 1-8, step 9 OpenCode after P449): `configfs.TableProjection` and migrations 0053/0063; `internal/agentctx` Store (cap 32 KiB, snapshots, last-good); neutral `ContextFile` on both launch specs, Claude maps `--append-system-prompt-file`; `ContextKeeper`; all four launch sites plus sandbox `ContextDir`; `AgentContextService` and the Agents Context tab; flow tests (Space and Studio), UI spec, `TestAgentContextHeadless`. Status stays Todo until step 9.
+Result: `configfs.TableProjection` and migrations 0053/0063; `internal/agentctx` Store (cap 32 KiB, snapshots, last-good); neutral `ContextFile` on both launch specs, Claude maps `--append-system-prompt-file`; `ContextKeeper`; all four launch sites plus sandbox `ContextDir`; `AgentContextService` and the Agents Context tab; flow tests (Space and Studio), UI spec, `TestAgentContextHeadless`. Step 9 (OpenCode, probes Q-OC1 to Q-OC4 on 1.19.5): `instructions` in `OPENCODE_CONFIG_CONTENT` (headless merges into the permission document; interactive carries it alone), hooks moved to `OPENCODE_CONFIG_DIR/opencode.json`; fake persona records the file, `TestAgentContextOpenCode`. OpenCode re-reads the file on resume, so only Claude implements `ContextKeeper`. Global `~/.config/opencode/AGENTS.md` and `~/.claude/CLAUDE.md` did not reach the request (P455 data).
 
 ### P453 Agent settings: common plus per provider, MCP credentials from the keychain
 
