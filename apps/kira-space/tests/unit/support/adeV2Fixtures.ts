@@ -137,6 +137,7 @@ export function mkStep(over: Partial<WorkflowStep> & Pick<WorkflowStep, 'id'>): 
     params: {},
     review: null,
     sandbox: defaultSandbox(),
+    agent: '',
     settings: {},
     ...over,
   };

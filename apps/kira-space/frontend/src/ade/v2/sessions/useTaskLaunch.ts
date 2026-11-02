@@ -35,11 +35,12 @@ export function useTaskLaunch(
     });
   }
 
-  async function startAgent(target: LaunchTarget): Promise<void> {
+  /** `provider` "" runs the Agent setting's provider. */
+  async function startAgent(target: LaunchTarget, provider = ''): Promise<void> {
     const id = toValue(taskId);
     delete ui.actionError[id];
     try {
-      const launch = await start.mutateAsync({ branchId: target.branchId });
+      const launch = await start.mutateAsync({ branchId: target.branchId, provider });
       await opener.open(launch);
       ui.openSession({ taskId: id, branchId: target.branchId, sessionId: launch.sessionId });
     } catch (err) {

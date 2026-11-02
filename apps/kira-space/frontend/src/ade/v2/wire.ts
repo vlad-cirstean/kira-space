@@ -103,6 +103,8 @@ export interface WorkflowStep {
   review: ReviewStepConfig | null;
   /** Agent policy; the default (write, network on) when the step has no block. */
   sandbox: StepSandbox;
+  /** Agent provider id that runs the step's new conversations; '' = the Agent setting. */
+  agent: string;
   /** Per provider id, setting key to value; `{}` = provider defaults. */
   settings: Record<string, Record<string, string>>;
 }
@@ -1107,6 +1109,11 @@ export interface LaunchStepArgs {
   taskId: string;
   message: string;
   fromStepId?: string;
+}
+export interface StartAdHocArgs {
+  branchId: string;
+  /** Provider id; '' = the Agent setting. */
+  provider: string;
 }
 export interface StartBranchArgs {
   branchId: string;

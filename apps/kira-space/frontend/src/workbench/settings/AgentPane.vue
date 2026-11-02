@@ -3,9 +3,10 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Field, FieldDescription } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
+import { NativeSelect } from '@theme/components/ui/native-select';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
-import { useAgentInfo } from '@workbench/agent/agentInfo';
+import { useAgentInfo, useAgentList } from '@workbench/agent/agentInfo';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { computed, useId } from 'vue';
 import { control } from '../../bridge/control';
@@ -17,6 +18,8 @@ import type { SettingsPaneProps } from './types';
 const props = defineProps<SettingsPaneProps>();
 const switchId = useId();
 const { info } = useAgentInfo();
+const { list } = useAgentList();
+const providerId = useId();
 
 type NotifyLeaf = Exclude<
   keyof Settings['agent'],
@@ -59,6 +62,10 @@ const shownNotifyLeaves = computed(() =>
   ),
 );
 
+function setProvider(id: string): void {
+  props.draft.agent.provider = id;
+}
+
 function setNotify(leaf: NotifyLeaf, on: boolean): void {
   props.draft.agent[leaf] = on;
 }
@@ -78,6 +85,44 @@ function setKeepAwake(on: boolean): void {
 
 <template>
   <div class="contents" v-show="active">
+    <Field>
+      <div class="flex items-center justify-between gap-1">
+        <Label :for="providerId">{{ t('memory.common.origin.agent.label') }}</Label>
+        <TooltipIconButton
+          icon="discard"
+          :label="t('common.action.resetToDefault.label')"
+          data-testid="settings-reset-agent-provider"
+          :disabled-trigger="isAtDefault('agent', 'provider')"
+          :disabled="isAtDefault('agent', 'provider')"
+          @click="resetLeaf('agent', 'provider')"
+        />
+      </div>
+      <NativeSelect
+        :id="providerId"
+        variant="bordered"
+        size="kira-lg"
+        data-testid="settings-agent-provider"
+        :model-value="draft.agent.provider"
+        @update:model-value="(v) => setProvider(String(v))"
+      >
+        <option
+          v-for="e in list"
+          :key="e.id"
+          :value="e.id"
+          :disabled="!e.available && e.id !== draft.agent.provider"
+        >
+          {{
+            e.available
+              ? e.productLabel
+              : t('space.settings.agent.provider.notFound.label', { agent: e.productLabel })
+          }}
+        </option>
+      </NativeSelect>
+      <FieldDescription>
+        {{ t('space.settings.agent.provider.description') }}
+      </FieldDescription>
+    </Field>
+
     <Field>
       <div class="flex items-center justify-between gap-1">
         <Label :for="switchId">{{ t('space.settings.agent.keepAwake.label') }}</Label>

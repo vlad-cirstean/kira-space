@@ -33,7 +33,11 @@ app.use(VueQueryPlugin, { queryClient });
 app.provide(adeReaderKey, httpAdeReader);
 // The phone has no setting to read a stored conversation's provider from: both reads name the active one.
 const agentInfo = () => getJson('/api/agent/info').then((r) => agentInfoSchema.parse(r));
-app.provide(agentControlKey, { agentInfo, agentInfoFor: agentInfo });
+app.provide(agentControlKey, {
+  agentInfo,
+  agentInfoFor: agentInfo,
+  agentList: () => Promise.resolve([]),
+});
 setUnauthorizedHandler((code) => useAuthStore(pinia).onUnauthorized(code));
 app.use(router);
 app.mount('#app');

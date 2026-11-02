@@ -9637,6 +9637,9 @@
           }
         },
         "stepInspector": {
+          "agentDefault": {
+            "label": "Default provider"
+          },
           "command": {
             "example": "./scripts/release.sh",
             "hint": "Runs in each branch’s worktree. A non-zero exit fails the step. {tokens} are shell-quoted when needed."
@@ -10495,6 +10498,12 @@
         },
         "notifyRunEnded": {
           "label": "When a background ADE run ends"
+        },
+        "provider": {
+          "description": "Runs new sessions and background steps. Sessions already started keep their agent.",
+          "notFound": {
+            "label": "{agent} (not found)"
+          }
         },
         "usage": {
           "description": "Shows the 5-hour and weekly limits that {product} sessions started from Kira Space report. {product} hands the numbers to a status-line hook on this Mac. Nothing is sent anywhere, and no login or token is read. Applies to sessions started after you change it. Available on {agent} subscription plans only.",
