@@ -1,6 +1,6 @@
 ---
 title: Agents
-description: Plan tasks, run Claude Code on them, and review the result in Kira Space.
+description: Plan tasks, run Claude Code or OpenCode on them, and review the result in Kira Space.
 sources:
   - apps/kira-space/README.md
   - docs/ARCHITECTURE.md
@@ -9,6 +9,14 @@ sources:
   - apps/kira-space/internal/adeflow/testdata
   - apps/kira-space/frontend/src/ade
   - internal/agentmcp
+  - internal/harness/opencode
+  - internal/harness/claude/hermetic.go
+  - internal/harness/providers
+  - internal/agentctx
+  - internal/agentcfg
+  - internal/agentport
+  - internal/configfs
+  - apps/kira-space/frontend/src/workbench/settings/AgentPane.vue
   - packages/theme/src/i18n/en.json
 sidebar:
   order: 3
@@ -18,7 +26,30 @@ import DocShot from '../../../../components/DocShot.astro';
 
 <DocShot id="space-agents-board" />
 
-Agents needs an authenticated `claude` CLI. Hooks ride each session's own `--settings` file. Your Claude Code settings files are never touched.
+Agents needs an authenticated `claude` or `opencode` CLI. Kira finds it on your `PATH`, through your login shell, or in common install folders. Kira never writes your agent config, except when you click **Export**.
+
+## Agent providers
+
+Kira runs two agents: Claude Code and OpenCode. Pick the default in Settings, in the section named after the current agent. The **Agent** select runs new sessions and background steps. An agent whose CLI is missing shows `(not found)` and can't be picked.
+
+- Per launch: the task launch menu (**New terminal or agent session**) lists one **{agent} session** entry per installed agent. It does so when two or more are installed.
+- Per step: the `agent` key, or **Agent** in the step's **Advanced** section. **Default provider** uses the setting.
+- Order: the launch menu pick, then the step's `agent`, then the setting.
+
+A conversation keeps its agent. Resume, Take over, Restart and Continue in terminal reuse it, even after the setting changes. No conversation moves between agents. If the agent is gone, Kira says that the agent that ran this conversation is no longer available.
+
+| Feature | Claude Code | OpenCode |
+|---|---|---|
+| Interactive sessions, Take over, review rounds | Yes | Yes |
+| Headless workflow steps | Yes | Yes |
+| Smart scripts and smart steps | Yes | No: OpenCode can't cap cost |
+| Memory calls | Yes | Run on Claude Code |
+| Usage limits in the status bar | Yes | No |
+| Activity and notifications | Hooks | A Kira plugin, no waiting-on-monitor state |
+
+Every smart script has a budget, so OpenCode refuses each one. A plain agent step runs.
+
+OpenCode learns its session ID after launch. Resume waits until the agent reports it. Kira passes no `-m` to an OpenCode session: set `opencode.model` in [agent settings](#agent-settings). Kira's own MCP servers install into OpenCode by a snippet that you paste into its config.
 
 ## Tasks and branches
 
@@ -58,10 +89,12 @@ A workflow lists its steps under `steps`, in order. Every step has an `id`, a `n
 
 A step has one of four kinds:
 
-- `agent`: Claude Code runs a `prompt` headless.
+- `agent`: the agent runs a `prompt` headless.
 - `script`: one shell `command` runs in each branch worktree. Exit code 0 ends with `done`, any other with `failed`.
 - `review`: the run waits for you. See [Review steps](#review-steps).
-- `manual`: your own work. `session: true` opens an interactive Claude Code session, with an optional `prompt` as its first message.
+- `manual`: your own work. `session: true` opens an interactive agent session, with an optional `prompt` as its first message.
+
+`agent` names the agent for an agent step, a review step or a manual step with `session: true`. Leave it out to use the setting.
 
 An agent, script or review step runs `once`, for `each repo`, or `only <repo>`. It starts automatically or waits for your approval (`before: approval`). A step with `skip: true` is passed over; at least one step must stay unskipped.
 
@@ -106,7 +139,7 @@ A run that ends with no report takes the step's `failed` result.
 
 The Workflows page edits a workflow as a graph or as YAML. Save with `Cmd+S`. Nothing saves automatically. Leaving with unsaved edits asks first.
 
-Edit on the canvas. `+ Add step` under the graph adds a step of a kind you pick. The `⋯` menu on a step, or a right click, has Add step after, Move up, Move down, Make start, Skip and Remove. Move is off when it would turn a forward route into a return. Select a step to edit it in the inspector. The inspector shows the kind switch and the name, then three sections: what the step does, where and when it runs, and how it ends. **Advanced** holds the timeout, allowed tools, task status, skip and sandbox. The status list is your set, with an **Edit statuses** link to the Workflows page. A step with no status of its own uses the default for its kind. Changing the kind clears the prompt, command or session prompt, after a confirmation.
+Edit on the canvas. `+ Add step` under the graph adds a step of a kind you pick. The `⋯` menu on a step, or a right click, has Add step after, Move up, Move down, Make start, Skip and Remove. Move is off when it would turn a forward route into a return. Select a step to edit it in the inspector. The inspector shows the kind switch and the name, then three sections: what the step does, where and when it runs, and how it ends. **Advanced** holds the timeout, allowed tools, task status, skip, sandbox and agent. The status list is your set, with an **Edit statuses** link to the Workflows page. A step with no status of its own uses the default for its kind. Changing the kind clears the prompt, command or session prompt, after a confirmation.
 
 A task follows the live file until its first run, session or move. After that it keeps a snapshot, and an updated file applies to new work only.
 
@@ -133,7 +166,7 @@ A step with a `review` block waits for you instead of running an agent. Put it a
       next: stop
 ```
 
-`send_to` is `implementer` or `new`. `implementer` resumes the Claude session of an earlier agent step. `new` starts a review agent that keeps its own session across rounds. The optional `implementer` key names that step. Empty means the nearest earlier agent step. A review step takes no `prompt`, `allowed_tools` or smart script. `timeout` stays required.
+`send_to` is `implementer` or `new`. `implementer` resumes the session of an earlier agent step, with its agent. `new` starts a review agent that keeps its own session across rounds. The optional `implementer` key names that step. Empty means the nearest earlier agent step. A review step takes no `prompt`, `allowed_tools` or smart script. `timeout` stays required.
 
 The run enters the `review` state and the board shows **Waiting for review** and a **Review** item in Needs you. Open **Review code**, comment on the diff, then pick **Send to agent** in the **Workflow review** tab. The tab also holds the route and the finish buttons.
 
@@ -152,7 +185,7 @@ sandbox:
   access: write        # write | read | off
   read: [~/notes]      # extra read-only folders
   allow: [~/go]        # extra read-write paths
-  network: true        # false: Claude API only
+  network: true        # false: the agent's model API only
 ```
 
 - `write`: writes the worktree and the scratch folder. Reads the worktree, tools and the `read` list. A home file outside them fails.
@@ -162,7 +195,7 @@ sandbox:
 
 Git inside the sandbox can stage, commit, amend and rebase in place. It cannot create branches, worktrees or tags, change config or hooks, write other branches, or delete objects. Use `request_branches` for a branch. Use `fetch_remote` and `push_branch` for the network; both run in the app. `push_branch` pushes the task branch only, never a protected branch, and a read step cannot push.
 
-The SSH agent is blocked. With `network: false` only the Claude API is reachable. Sandboxed agents read the macOS keychain, so Claude signs in as usual.
+The SSH agent is blocked. With `network: false` only the agent's model API is reachable. With OpenCode, `network: false` reaches only a fixed list of model hosts. Sandboxed agents read the macOS keychain, so Claude Code signs in as usual. OpenCode reads its sign-in from its own data folder.
 
 The run line shows a lock badge: `Write worktree`, `Read only`, `No sandbox`, or `N blocked` after denials. Click it for the policy, the first 50 blocked actions and the profile. A run that fails after a block says `Sandbox blocked <op> <path>.` Take over opens an unsandboxed session.
 
@@ -170,7 +203,7 @@ Linux and Windows write the profile but do not enforce it. The badge says `Not e
 
 ## Runs
 
-A headless run starts `claude -p` in the branch worktree. The agent reports through the `finish_step` tool. A run that ends without calling it fails with `no report: Claude ended without calling finish_step`.
+A headless run starts `claude -p` or `opencode run` in the branch worktree. The agent reports through the `finish_step` tool. A run that ends without calling it fails with `no report: <agent> ended without calling finish_step`.
 
 A run that came back shows `↩ n/N`: returns used of the limit. A step with no limit shows `↩ n`. The chip turns red when the limit stops the run.
 
@@ -184,13 +217,132 @@ Branches and repositories an agent adds carry an `agent` chip.
 
 ## Interactive sessions
 
-Start Claude Code in a branch worktree from the board. **Take over** turns a headless run into an interactive session. A taken-over run can still call `finish_step`.
+Start an agent session in a branch worktree from the board. **Take over** turns a headless run into an interactive session. A taken-over run can still call `finish_step`.
 
 A branch holds one session at a time.
 
-Hover a session tab for its state and last activity. Right-click it to copy the Claude session ID, or to **Restart** an interactive session: Kira closes its terminal and resumes the same conversation.
+Hover a session tab for its state and last activity. Right-click it to copy the agent's session ID, or to **Restart** an interactive session: Kira closes its terminal and resumes the same conversation.
 
 Finished and stopped sessions sit behind the **Finished or stopped** dropdown at the right of the session tabs. Each keeps **Take over**; a background run's label opens its log. An archived task lists them inline.
+
+## Agent context
+
+The **Context** tab in Agents edits one Markdown file that every agent gets as extra system prompt: `~/.kira-space/agent/context.md`.
+
+- Both apps use it: sessions, Take over, resume, headless steps, smart scripts and Continue in terminal. Memory calls do not.
+- Up to 32 KiB. Empty or missing means no context. A broken file gives agents the last good text.
+- A save applies to agents started after it. A running session keeps its text.
+- A resumed Claude Code conversation keeps the context it started with until it compacts. OpenCode reads the new text on resume.
+- Kira Studio has no editor. It reads the same file.
+
+## Agent settings
+
+The **Settings** tab in Agents edits `~/.kira-space/agent/settings.yaml`. One file serves every agent. Kira renders it in each agent's own format. The file is up to 256 KiB, and an unknown key is refused with its line.
+
+Common keys:
+
+- `env`: variables every launch gets.
+- `permissions`: `allow` and `deny` lists, in Claude Code tool names. `deny` beats `allow`.
+- `mcp_servers`: a server per name. A stdio server has `command`, `args` and `env`. An http server has `url` and `headers`. `enabled` defaults to true. A server has a command or a url, never both. Names that start with `kira` are reserved.
+- `hooks`: a hook per name, with `event`, `command`, `timeout` (1 to 600 seconds, default 60) and `matcher` for tool events. Events are `session_start`, `session_end`, `prompt`, `tool_start`, `tool_end`, `notification` and `turn_end`.
+
+Each agent has its own section:
+
+- `claude`: `model`, `permission_mode` (terminal sessions only), `status_line`, `hooks` with Claude Code event names, and `skip_hooks`.
+- `opencode`: `model` as `provider/model`, `plugins` as `file:///` URLs, and `skip_hooks`.
+
+```yaml
+env:
+  GITHUB_TOKEN: ${secret:gh-token}
+permissions:
+  deny: ["Bash(rm -rf:*)"]
+mcp_servers:
+  tracker:
+    url: https://mcp.example.com/mcp
+    headers:
+      Authorization: Bearer ${secret:tracker-token}
+hooks:
+  lint:
+    event: tool_end
+    matcher: Edit
+    command: ./scripts/lint-changed.sh
+claude:
+  model: sonnet
+opencode:
+  model: anthropic/claude-sonnet-4-5
+```
+
+References:
+
+- `${NAME}` reads your login shell environment, then the app's. `${secret:name}` reads a stored secret. `$${` writes a literal `${`.
+- They work in `env` values and in MCP `command`, `args`, `url`, `headers` and `env`. Hook and status line commands take none. Put the secret in `env` and read it as `$NAME`.
+- A missing variable or secret fails the launch and names it.
+- OpenCode refuses a value that holds `{env:` or `{file:`.
+
+The **Secrets** section lists the secrets the file references. **Set value** stores a value sealed on this computer, shared with Kira Studio. Kira never shows it again. Deleting a secret warns that settings which reference it fail to launch until you set it again.
+
+**Result** shows per agent the exact config it receives, with references as written, plus what Kira adds at launch. For OpenCode that is one JSON document in `OPENCODE_CONFIG_CONTENT`. No file is written.
+
+- Kira's own hooks always run. Yours run in addition. `skip_hooks` drops a common hook for one agent. OpenCode applies no common hook yet.
+- Settings apply to every terminal session, Continue in terminal, headless agent steps and review rounds. Smart scripts, smart steps and rebase runs choose their tools themselves.
+- Resolved values live in a per-run file or the environment, removed when the agent exits. Headless step logs mask them. A live terminal shows what the agent prints.
+
+## Import and export
+
+Under each agent in the **Settings** tab, **Import from {agent}** reads that agent's user-level config. **Export to {agent}** writes Kira's settings and context into it.
+
+- Claude Code files: `~/.claude/settings.json`, `~/.claude/CLAUDE.md` and the `mcpServers` of `~/.claude.json`.
+- OpenCode files: `opencode.json`, `opencode.jsonc` or `config.json`, and `AGENTS.md`, in `$XDG_CONFIG_HOME/opencode` or else `~/.config/opencode`. `opencode.jsonc` wins over `opencode.json`.
+- Project files are never read. A file over 4 MB is not read.
+
+Import shows a preview first. Each item is **To add**, **Same** or **Differs**. A differing item is unchecked by default. Skipped keys are listed by name. The context file imports as **Replace** or **Append**. A literal credential becomes `${secret:<server>-<field>}` and a sealed secret on apply. Login keys such as `apiKeyHelper` are never listed.
+
+Export merges by key and keeps other keys and JSONC comments. The dialog shows a diff with masked credentials, then asks to confirm. Kira keeps a backup named `<file>.kira-backup-<UTC time>` beside each changed file.
+
+- A secret exports as a reference. Claude Code gets `${KIRA_SECRET_<NAME>}`. OpenCode gets `{env:NAME}`.
+- The **Environment variables** list names each variable. **Copy export lines** copies lines without values. Set them where the agent starts.
+- Claude Code servers go through `claude mcp remove` and `claude mcp add-json -s user`.
+- Hooks export to Claude Code only.
+- A preview lives 10 minutes and applies once. A file that changed since the preview aborts the export, and nothing is written.
+
+:::caution
+Export writes your user-level agent config. Kira keeps a backup beside each changed file.
+:::
+
+## Hermetic launches
+
+**Hermetic agent launches** is on by default. Agents that Kira starts skip your own user-level agent config. Kira's agent settings and context apply instead. Project files still load.
+
+It covers every launch: interactive, Take over, resume, workflow steps, headless runs and smart scripts.
+
+Claude Code drops:
+
+- User settings, hooks and permissions.
+- MCP servers, skills, commands, agents and plugins.
+- Your `~/.claude/CLAUDE.md`, claude.ai connectors and auto memory.
+
+Claude Code keeps the project `CLAUDE.md`, `.claude/`, `.mcp.json`, local-scope servers and your login.
+
+OpenCode drops your user `opencode.json`, the global `AGENTS.md` and `~/.claude/CLAUDE.md`. It keeps the project `opencode.json`, the project `AGENTS.md` and your login.
+
+- The project `CLAUDE.md` does not load under OpenCode. The project `AGENTS.md` does.
+- `~/.opencode` and user skills in `~/.claude/skills` and `~/.agents/skills` still load.
+- Theme and keybinds in `~/.config/opencode` do not apply.
+
+Kira can't isolate managed settings and policy, or variables that your shell profile exports. A sign-in kept in your user config, such as an API key helper or provider environment variables, needs the same variables in agent settings. Or turn this switch off.
+
+For smart scripts, the MCP list shows the servers in agent settings. A ticked server missing there blocks the run. With the switch off, the CLI's own list and your user settings load. See [Smart scripts](../../shared/runs/#smart-scripts).
+
+Kira Studio has no switch. Its launches are always hermetic.
+
+## Config files
+
+Workflows and agent config are plain files in `~/.kira-space`, in the `workflows` and `agent` folders.
+
+- Each folder has a generated `AGENTS.md` that lists every option, so an AI agent can edit the files. Kira rewrites it at start. Edits to it are lost.
+- The file bar on the Workflows, Context and Settings pages shows the path and status, with Open, Reveal, Copy path and **About these files**.
+- Edit with any editor. Kira watches the folder. A broken edit keeps the last good version and names the line.
+- Files hold secret references, never values.
 
 ## Review code
 
@@ -204,6 +356,6 @@ The right pane has two tabs when the branch has a review step: **Workflow review
 
 A desktop notification fires when a session finishes, a session needs input, or a background run ends. Click it to open that session or task.
 
-Configure each kind in `Settings > Claude Code`. The same pane has **Keep this Mac awake while a Claude Code session is running**.
+Configure each kind in Settings, in the agent's section (**Claude Code** or **OpenCode**). The same pane has the keep-awake switch.
 
-The status bar shows Claude Code's five-hour and weekly usage for sessions that Kira starts. Turn it off in `Settings > Claude Code`.
+The status bar shows Claude Code's five-hour and weekly usage for sessions that Kira starts. OpenCode reports none. Turn it off in the same section.
