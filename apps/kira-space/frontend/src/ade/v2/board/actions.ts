@@ -17,7 +17,7 @@ export type Tone = 'amber' | 'red' | 'green' | 'blue' | 'purple' | 'grey';
 type TaskActionKind =
   | 'archive'
   | 'session'
-  | 'done'
+  | 'advance'
   | 'finish'
   | 'takeOver'
   | 'approve'
@@ -54,25 +54,22 @@ export interface TaskCellInput {
 
 export const archiveTip = (): string => t('space.ade.board.taskAction.archive.hint');
 
-function doneAction(p: TaskProgress): TaskAction {
+function advanceAction(p: TaskProgress): TaskAction {
   const rest = p.segments.slice(p.stepIndex + 1).filter((s) => s.state !== 'skipped');
-  const last = p.stepIndex >= 0 && rest.length === 0;
   const step = p.step?.name ?? '';
-  if (last) {
+  const next = rest[0]?.name;
+  if (p.stepIndex >= 0 && !next) {
     return {
       kind: 'finish',
       label: t('space.ade.board.taskAction.finish.label'),
-      tip: t('space.ade.board.taskAction.finish.tooltip'),
+      tip: t('space.ade.board.taskAction.finish.tooltip', { step }),
       tone: 'green',
     };
   }
-  const next = rest[0]?.name;
   return {
-    kind: 'done',
-    label: t('space.ade.board.taskAction.done.label'),
-    tip: next
-      ? t('space.ade.board.taskAction.done.tooltip', { step, next })
-      : t('space.ade.board.taskAction.doneLast.tooltip', { step }),
+    kind: 'advance',
+    label: t('space.ade.board.taskAction.advance.label'),
+    tip: t('space.ade.board.taskAction.advance.tooltip', { step, next: next ?? '' }),
     tone: 'green',
   };
 }
@@ -80,11 +77,13 @@ function doneAction(p: TaskProgress): TaskAction {
 function manualAction(i: TaskCellInput): TaskAction {
   const { progress: p, sessions } = i;
   const step = p.step;
-  // The review agent is the step's session only on the review step.
+  // The review agent is the step's session only on the review step; another step's session is not
+  // this step's, so it never hides the Start action.
   const talking = sessions.some(
     (s) =>
       s.mode === 'tui' &&
       s.state === 'running' &&
+      (s.stepId === '' || s.stepId === step?.id) &&
       (s.purpose !== 'review' || step?.id === 'review'),
   );
   if (step?.session && !talking) {
@@ -95,7 +94,7 @@ function manualAction(i: TaskCellInput): TaskAction {
       tone: 'agent',
     };
   }
-  return doneAction(p);
+  return advanceAction(p);
 }
 
 function automaticAction(p: TaskProgress): TaskAction | null {

@@ -500,6 +500,8 @@ export interface UpdateHandoverArgs {
 export interface StepDoneArgs {
   taskId: string;
   notes?: string | null;
+  /** Closes the stage sessions of the move first. */
+  closeSessions?: boolean;
 }
 /** The 16 status colours (`--color-status-*`). */
 export type StatusColor =
@@ -1125,6 +1127,8 @@ export interface SetTaskStepArgs {
   stepId: string;
   fromStepId?: string;
   notes?: string | null;
+  /** Closes the stage sessions of the move first. */
+  closeSessions?: boolean;
 }
 export interface SendArgs {
   sessionId: string;

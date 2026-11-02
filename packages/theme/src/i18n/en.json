@@ -8189,22 +8189,19 @@
           }
         },
         "taskAction": {
+          "advance": {
+            "label": "Next stage ›",
+            "tooltip": "{step} is done; move to {next}"
+          },
           "approve": {
             "tooltip": "Run “{step}”"
           },
           "archive": {
             "hint": "Stops its agents, deletes its worktrees and hides it. Branches, notes and links are kept; it stays in history."
           },
-          "done": {
-            "label": "Done ›",
-            "tooltip": "{step} is done; move to {next}"
-          },
-          "doneLast": {
-            "tooltip": "{step} is done"
-          },
           "finish": {
             "label": "Finish",
-            "tooltip": "Finish the workflow"
+            "tooltip": "{step} is done; finish the workflow"
           },
           "retryFailed": {
             "tooltip": "{step} failed; see its output on the task tab"
@@ -9488,6 +9485,16 @@
           "hint": "The next stage’s agent and sessions read these. Leave empty to pass nothing on.",
           "label": "Handover notes",
           "placeholder": "What the next stage needs to know"
+        },
+        "sessions": {
+          "close": {
+            "label": "Close {count} session | Close all {count} sessions"
+          },
+          "hint": "Closing keeps the history. A closed session can be taken over again.",
+          "keep": {
+            "label": "Keep open"
+          },
+          "label": "{count} session still open | {count} sessions still open"
         },
         "target": {
           "label": "Move to"
