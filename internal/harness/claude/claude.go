@@ -31,6 +31,15 @@ func (*Provider) ID() string { return ID }
 
 func (*Provider) Label() string { return "Claude" }
 
+// appendSystemPromptFileFlag is a hidden claude flag (absent from `claude --help`, named in the
+// `--bare` help). A CLI that drops it fails the launch with "unknown option", never silently;
+// tests/claude TestAgentContextHeadless guards it.
+const appendSystemPromptFileFlag = "--append-system-prompt-file"
+
+// KeepsContextOnResume: --system-prompt-snapshot is on by default, so a resumed conversation keeps
+// its recorded prompt until it compacts.
+func (*Provider) KeepsContextOnResume() bool { return true }
+
 func (*Provider) Command() string { return "claude" }
 
 func (*Provider) ProductLabel() string { return "Claude Code" }

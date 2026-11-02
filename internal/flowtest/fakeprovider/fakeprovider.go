@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -29,6 +30,8 @@ type StructuredCall struct{ Model, System string }
 type HeadlessCall struct {
 	Model, Prompt, SessionID, Resume string
 	Stage                            harness.StageValues
+	// Context is the bytes of the agent context file the run was given; nil when none.
+	Context []byte
 }
 
 // base is the Claude provider seen through the roles the fake delegates: it hides Claude's hook and
@@ -123,8 +126,12 @@ func (p *Provider) RunStructured(_ context.Context, model string, c harness.Stru
 
 // RunHeadless records the spec, prints one line and ends the step through its MCP grant.
 func (p *Provider) RunHeadless(_ context.Context, s harness.HeadlessSpec, h harness.Handler) (harness.Exit, error) {
+	var ctxBytes []byte
+	if s.ContextFile != "" {
+		ctxBytes, _ = os.ReadFile(s.ContextFile)
+	}
 	p.mu.Lock()
-	p.headless = append(p.headless, HeadlessCall{Model: s.Model, Prompt: s.Prompt, SessionID: s.SessionID, Resume: s.Resume, Stage: s.Stage})
+	p.headless = append(p.headless, HeadlessCall{Model: s.Model, Prompt: s.Prompt, SessionID: s.SessionID, Resume: s.Resume, Stage: s.Stage, Context: ctxBytes})
 	p.mu.Unlock()
 	if h.OnLine != nil {
 		h.OnLine(harness.Line{Stream: harness.StreamStdout, Text: "fake agent at work"})
@@ -146,7 +153,11 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 	if s.Resume {
 		flag = "--resume"
 	}
-	return harness.Launch{Command: fakeagent.Persona + " " + flag + " " + s.SessionID, SessionID: s.SessionID}
+	cmd := fakeagent.Persona + " " + flag + " " + s.SessionID
+	if s.ContextFile != "" {
+		cmd += " " + fakeagent.PersonaContextFlag + " " + s.ContextFile
+	}
+	return harness.Launch{Command: cmd, SessionID: s.SessionID}
 }
 
 func (p *Provider) WithPrompt(command, prompt string) string {

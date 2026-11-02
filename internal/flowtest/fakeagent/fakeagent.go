@@ -6,7 +6,7 @@
 // Every call writes its argv (last, atomically: it marks the call as fully recorded), cwd and stdin
 // under KIRA_FAKE_DIR as <repo>-<n>.args/.cwd/.prompt
 // (claude, where <repo> is the worktree's parent directory name) or gh-<n>.args. A claude call also
-// keeps its KIRA_* environment (one Go-quoted entry per line) as <repo>-<n>.env and a copy of each
+// keeps the agent context file it was given as <repo>-<n>.context, its KIRA_* environment (one Go-quoted entry per line) as <repo>-<n>.env and a copy of each
 // --mcp-config file as
 // <repo>-<n>.mcp<i>. Run as "fake-mcp" it is a stdio MCP server with tools echo and ping. A
 // scripted Action.MCP
@@ -140,6 +140,9 @@ type GhRule struct {
 // Persona is the name of the generic agent CLI that interactive sessions of a test-only provider
 // run (internal/flowtest/fakeprovider): it records its argv and idles until stdin closes.
 const Persona = "kira-fake-agent"
+
+// PersonaContextFlag carries the agent context path on the persona's command line.
+const PersonaContextFlag = "--context"
 
 // LeanArg is the persona's first argument when a lean provider starts it: the persona then assigns
 // the session its own id, as an agent that takes none up front does.
@@ -277,6 +280,7 @@ func pickAction(scen Scenario, dir, repo, cwd string, args []string) pickedActio
 	if settings := argAfter(args, "--settings"); settings != "" {
 		writeFile(stem+".settings", []byte(settings))
 	}
+	recordContext(stem, args, "--append-system-prompt-file")
 	writeFile(stem+".args", []byte(strings.Join(args, "\n"))) // marker: the call is fully recorded
 	return pickedAction{Action: action, stem: stem}
 }
@@ -433,6 +437,7 @@ func runPersona(dir string, args []string) int {
 	if v := os.Getenv(EnvPersonaConfig); v != "" {
 		record += "\n" + EnvPersonaConfig + "=" + v
 	}
+	recordContext(stem, args, PersonaContextFlag)
 	writeFile(stem+".args", []byte(record))
 	if len(args) > 0 && args[0] == LeanArg && !slices.Contains(args, "--resume") {
 		recordLeanSession(dir)
@@ -445,6 +450,15 @@ func runPersona(dir string, args []string) int {
 	defer f.Close()
 	_, _ = io.Copy(f, os.Stdin)
 	return 0
+}
+
+// recordContext keeps the bytes of the agent context file named by flag as <stem>.context.
+func recordContext(stem string, args []string, flag string) {
+	if path := argAfter(args, flag); path != "" {
+		if raw, err := os.ReadFile(path); err == nil {
+			writeFile(stem+".context", raw)
+		}
+	}
 }
 
 // recordLeanSession appends the session a lean provider's agent assigned itself to

@@ -57,6 +57,9 @@ type HeadlessSpec struct {
 	// Stage is the step's values for this provider; nil = defaults.
 	Stage   StageValues
 	Timeout time.Duration
+	// ContextFile is the absolute path of the app's agent context (Markdown) for this launch; ""
+	// = none. Only the provider decides how its CLI gets it.
+	ContextFile string
 }
 
 // ConfigScope is which of the user's agent config layers a run loads.

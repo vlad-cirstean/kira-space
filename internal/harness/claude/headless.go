@@ -121,6 +121,9 @@ func Script(s harness.HeadlessSpec) string {
 		words = append(words, "--max-budget-usd", strconv.FormatFloat(s.MaxBudgetUSD, 'f', -1, 64))
 	}
 	words = append(words, stageArgs(s.Stage, loginshell.Quote)...)
+	if s.ContextFile != "" {
+		words = append(words, appendSystemPromptFileFlag, loginshell.Quote(s.ContextFile))
+	}
 	words = append(words, "--setting-sources", loginshell.Quote(settingSources(s)))
 	if s.Isolated {
 		if len(s.UserMCP) > 0 {

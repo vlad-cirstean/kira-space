@@ -26,6 +26,11 @@ func TestScriptStageSettings(t *testing.T) {
 	if got := Script(s); got != want {
 		t.Fatalf("got  %s\nwant %s", got, want)
 	}
+	s.ContextFile = "/h/ctx/AGENTS.md"
+	want = "exec claude -p --output-format stream-json --verbose --session-id 's-1' --autocompact '200000' --append-system-prompt-file '/h/ctx/AGENTS.md' --setting-sources 'user' --add-dir '/d' --allowedTools 'Write'"
+	if got := Script(s); got != want {
+		t.Fatalf("context:\n got %s\nwant %s", got, want)
+	}
 }
 
 func TestScriptSandboxWrap(t *testing.T) {

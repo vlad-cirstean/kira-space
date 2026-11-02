@@ -31,4 +31,7 @@ type InteractiveSpec struct {
 	AllowedTools []string
 	// Stage is the step's values for this provider; nil = defaults.
 	Stage StageValues
+	// ContextFile is the absolute path of the app's agent context (Markdown) for this launch; ""
+	// = none. Only the provider decides how its CLI gets it.
+	ContextFile string
 }
