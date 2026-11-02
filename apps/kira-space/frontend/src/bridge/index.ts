@@ -266,7 +266,9 @@ const spaceControl = {
   hostViewChangeRequest: (args: { url: string }): Promise<HostViewChangeRequest> =>
     unwrap(HostViewService.ChangeRequest(args)).then((r) => trust<HostViewChangeRequest>(r)),
   hostViewIssue: (args: { ref: string; fresh?: boolean }): Promise<HostViewIssue> =>
-    unwrap(HostViewService.Issue(args)).then((r) => trust<HostViewIssue>(r)),
+    unwrap(HostViewService.Issue({ ref: args.ref, fresh: args.fresh ?? false })).then((r) =>
+      trust<HostViewIssue>(r),
+    ),
   hostViewPostComment: (args: {
     windowKey: string;
     body: string;
