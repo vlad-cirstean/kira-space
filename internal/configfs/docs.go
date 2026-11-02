@@ -157,6 +157,58 @@ func rangeOf(s map[string]any) string {
 	return strings.Join(parts, ", ")
 }
 
+func writeOptions(b *bytes.Buffer, opts []DocOption) {
+	if len(opts) == 0 {
+		return
+	}
+	b.WriteString("## Options\n\n")
+	for _, o := range opts {
+		fmt.Fprintf(b, "- `%s`: %s", o.Path, o.Type)
+		if o.Required {
+			b.WriteString(", required")
+		}
+		if o.Default != "" {
+			fmt.Fprintf(b, ", default `%s`", o.Default)
+		}
+		if len(o.Enum) > 0 {
+			fmt.Fprintf(b, ", one of %s", strings.Join(o.Enum, ", "))
+		}
+		if o.Range != "" {
+			fmt.Fprintf(b, ", %s", o.Range)
+		}
+		if o.Ref {
+			b.WriteString(", takes references")
+		}
+		if o.Secret {
+			b.WriteString(", one secret reference")
+		}
+		if o.Description != "" {
+			fmt.Fprintf(b, ". %s", o.Description)
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
+}
+
+func writeRules(b *bytes.Buffer, rules []string) {
+	if len(rules) == 0 {
+		return
+	}
+	b.WriteString("## Rules\n\n")
+	for _, r := range rules {
+		fmt.Fprintf(b, "- %s\n", r)
+	}
+	b.WriteString("\n")
+}
+
+func writeRefsSection(b *bytes.Buffer) {
+	b.WriteString("## References\n\n" +
+		"- `${NAME}` reads the environment variable NAME.\n" +
+		"- `${secret:name}` reads the app secret `name`. A file holds the reference, never the secret value.\n" +
+		"- `$${` is a literal `${`.\n" +
+		"- Only fields marked \"takes references\" or \"one secret reference\" are resolved. A missing variable or secret fails the use, never an empty value.\n\n")
+}
+
 // RenderAgentsMD renders the model as the folder's AGENTS.md.
 func RenderAgentsMD(m DocModel) []byte {
 	var b bytes.Buffer
@@ -175,48 +227,10 @@ func RenderAgentsMD(m DocModel) []byte {
 		b.WriteString("- One item per file. The file name without its extension is the item id.\n")
 	}
 	b.WriteString("- Hidden files and this file are never read as config.\n\n")
-	if len(m.Options) > 0 {
-		b.WriteString("## Options\n\n")
-		for _, o := range m.Options {
-			fmt.Fprintf(&b, "- `%s`: %s", o.Path, o.Type)
-			if o.Required {
-				b.WriteString(", required")
-			}
-			if o.Default != "" {
-				fmt.Fprintf(&b, ", default `%s`", o.Default)
-			}
-			if len(o.Enum) > 0 {
-				fmt.Fprintf(&b, ", one of %s", strings.Join(o.Enum, ", "))
-			}
-			if o.Range != "" {
-				fmt.Fprintf(&b, ", %s", o.Range)
-			}
-			if o.Ref {
-				b.WriteString(", takes references")
-			}
-			if o.Secret {
-				b.WriteString(", one secret reference")
-			}
-			if o.Description != "" {
-				fmt.Fprintf(&b, ". %s", o.Description)
-			}
-			b.WriteString("\n")
-		}
-		b.WriteString("\n")
-	}
-	if len(m.Rules) > 0 {
-		b.WriteString("## Rules\n\n")
-		for _, r := range m.Rules {
-			fmt.Fprintf(&b, "- %s\n", r)
-		}
-		b.WriteString("\n")
-	}
+	writeOptions(&b, m.Options)
+	writeRules(&b, m.Rules)
 	if m.Refs {
-		b.WriteString("## References\n\n" +
-			"- `${NAME}` reads the environment variable NAME.\n" +
-			"- `${secret:name}` reads the app secret `name`. A file holds the reference, never the secret value.\n" +
-			"- `$${` is a literal `${`.\n" +
-			"- Only fields marked \"takes references\" or \"one secret reference\" are resolved. A missing variable or secret fails the use, never an empty value.\n\n")
+		writeRefsSection(&b)
 	}
 	b.WriteString("## How changes apply\n\n" +
 		"- Kira watches this folder. Edit a file in any editor; the change applies within a second.\n" +
