@@ -42,6 +42,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentctx"
+	"github.com/kirathecat/kira-studio/internal/agentport"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/appupdate"
@@ -206,6 +207,9 @@ type Wired struct {
 	AgentContext     *agentctx.Store
 	AgentContextSvc  *bridge.AgentContextService
 	AgentSettingsSvc *bridge.AgentSettingsService
+	// AgentPort imports and exports a provider's native user-level agent config.
+	AgentPort    *agentport.Service
+	AgentPortSvc *bridge.AgentPortService
 	// AgentSettings is the shared agent settings every launch gets; AgentSecrets holds the values it references.
 	AgentSettings *agentcfg.Store
 	AgentSecrets  *agentcfg.SecretStore
@@ -331,6 +335,8 @@ func Build(opts Options) *Wired {
 	w.stopAgentContext = stopContextWatch
 	w.AgentContextSvc = &bridge.AgentContextService{Service: &agentctx.Service{Store: w.AgentContext}}
 	w.AgentSettingsSvc = &bridge.AgentSettingsService{Service: &agentcfg.Service{Store: w.AgentSettings}}
+	w.AgentPort = agentport.New(agentport.Options{Settings: w.AgentSettings, Context: w.AgentContext, Secrets: w.AgentSecrets, Providers: registry})
+	w.AgentPortSvc = &bridge.AgentPortService{Svc: w.AgentPort}
 	adeTracker, agentHooks := wireTracker(repositories, terminalRegistry, emitter, events, opts.TrackerGrace, w.AgentNotify, w.AgentUsage, w.Agents, w.AgentContext.ContextFile)
 	w.Tracker, w.AgentHooks = adeTracker, agentHooks
 
@@ -533,7 +539,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.MemoryImport), application.NewService(w.MemoryDistill), application.NewService(w.WindowsSvc), application.NewService(w.Update),
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),
 		application.NewService(w.PromptsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc),
-		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc),
+		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc),
 	}
 }
 
@@ -661,6 +667,9 @@ func (w *Wired) agentConfig() agentcfg.PrepareFunc {
 }
 
 func (w *Wired) closeAgentSettings() {
+	if w.AgentPort != nil {
+		_ = w.AgentPort.Close()
+	}
 	if w.stopAgentConfig != nil {
 		w.stopAgentConfig()
 	}
