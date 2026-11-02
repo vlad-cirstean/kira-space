@@ -532,12 +532,18 @@ func emitJSON(v any) {
 	fmt.Println(string(raw))
 }
 
-// argsAfter returns the value after every occurrence of flag.
+// argsAfter returns the values after every occurrence of flag, up to the next flag (--mcp-config takes several).
 func argsAfter(args []string, flag string) []string {
 	var out []string
 	for i, a := range args {
-		if a == flag && i+1 < len(args) {
-			out = append(out, args[i+1])
+		if a != flag {
+			continue
+		}
+		for _, v := range args[i+1:] {
+			if strings.HasPrefix(v, "-") {
+				break
+			}
+			out = append(out, v)
 		}
 	}
 	return out

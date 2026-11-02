@@ -39,6 +39,15 @@ func newRecorder(t *testing.T, app *flowharness.App) *recorder {
 // next waits for a call not seen yet and returns its argv and the context file bytes it recorded.
 func (r *recorder) next() (args, context string) {
 	r.t.Helper()
+	stem := r.nextStem()
+	a, _ := os.ReadFile(stem + ".args")
+	c, _ := os.ReadFile(stem + ".context")
+	return string(a), string(c)
+}
+
+// nextStem waits for a call not seen yet and returns the path prefix of the files it recorded.
+func (r *recorder) nextStem() string {
+	r.t.Helper()
 	var stem string
 	testx.WaitUntil(r.t, waitFor, func() bool {
 		files, _ := filepath.Glob(filepath.Join(r.app.FakeDir, "*.args"))
@@ -52,9 +61,7 @@ func (r *recorder) next() (args, context string) {
 		}
 		return false
 	})
-	a, _ := os.ReadFile(stem + ".args")
-	c, _ := os.ReadFile(stem + ".context")
-	return string(a), string(c)
+	return stem
 }
 
 func saveContext(t *testing.T, app *flowharness.App, text string) {

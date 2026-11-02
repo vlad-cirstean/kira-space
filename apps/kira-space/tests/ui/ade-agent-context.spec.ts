@@ -53,6 +53,21 @@ test('Save sends the text with the loaded hash', async ({ relaunch }) => {
   await expect(page.locator(t('ade-context-save'))).toBeDisabled();
 });
 
+test('a reload after a save shows the saved text', async ({ relaunch }) => {
+  const saved = view({ text: 'Use spaces.\n', hash: 'h2' });
+  const { window: page } = await openContext(relaunch, {}, [
+    { channel: IPC.agentContextSave, response: saved },
+    // The second answer to Get is what the file holds after the save.
+    { channel: IPC.agentContextGet, response: saved },
+  ]);
+  await page.locator(t('ade-context-text')).fill('Use spaces.\n');
+  await page.locator(t('ade-context-save')).click();
+  await expect(page.locator(t('ade-context-save'))).toBeDisabled();
+  await page.reload();
+  await page.locator(t('ade-tab-context')).click();
+  await expect(page.locator(t('ade-context-text'))).toHaveValue('Use spaces.\n');
+});
+
 test('a broken file shows its line and the last-good note', async ({ relaunch }) => {
   const { window: page } = await openContext(relaunch, {
     problem: { line: 2, message: 'not valid UTF-8' },
