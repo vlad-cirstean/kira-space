@@ -2077,8 +2077,10 @@ The agent CLI sits behind one interface, so a second provider needs no caller ch
   isolated JSON call, memory; `harness.StructuredOf`), `Headless` (a streamed run with an MCP report, ADE
   steps and smart scripts; `harness.HeadlessOf`), `HookHost` (hook events for interactive sessions;
   `harness.Hooks` starts every host and composes launches by provider id), `UsageReporter` (feeds
-  `agentusage`), `SessionLocator` (finds the id of a session the agent assigned itself) and `CostCapper`
-  (`CapsCost()`; `harness.CapsCost(p)` is false for a provider without it). A provider without hooks has no
+  `agentusage`), `SessionLocator` (finds the id of a session the agent assigned itself), `CostCapper`
+  (`CapsCost()`; `harness.CapsCost(p)` is false for a provider without it), `ContextKeeper` (P452),
+  `Isolator` (P455, `harness.PrepareIsolation`) and `ConfigMerger`. `JSONInstaller` is optional on the
+  `MCPInstaller` a provider returns, not on the provider (`internal/agentport/claude_export.go`). A provider without hooks has no
   activity icons and no finished/needs-input notes; without usage, no usage item; a smart script or a
   step with a budget on a provider without a cost cap is refused (`agentBlocker`, `backend.core.agent.noCostCap.body`).
 - `SettingsHost` (P453, optional) takes the app's agent settings: `SettingsSchema` (the provider's section of
@@ -2128,14 +2130,18 @@ The agent CLI sits behind one interface, so a second provider needs no caller ch
   - Interactive: `opencode [-s <id>]`. One owner per config layer: the MCP grant rides `OPENCODE_CONFIG`,
     extra directories ride `OPENCODE_PERMISSION`, the agent context rides `OPENCODE_CONFIG_CONTENT`
     (`{"instructions":["<ContextFile>"]}`), and the hook plugin rides `OPENCODE_CONFIG_DIR` (hooks dir
-    with an `opencode.json` loading `plugin.js`). The model is never passed.
+    with an `opencode.json` loading `plugin.js`). No `-m`; `opencode.model` rides `OPENCODE_CONFIG_CONTENT`
+    (P453). Hermetic adds `XDG_CONFIG_HOME` and `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1` as `/usr/bin/env`
+    words (see "Hermetic launches (P455)").
     OpenCode assigns the session id itself, so `FindSession` runs `opencode session list --format json`
     in the worktree and takes the newest session created after the launch. Kira never opens OpenCode's
     database or config.
   - Headless: `opencode run --format json`, prompt on stdin, `--dir`, `-s` to resume, `--pure` unless the
-    run loads project config. A run that loads no user config redirects `XDG_CONFIG_HOME` to a directory of
-    symlinks that omits `opencode`, and sets `OPENCODE_DISABLE_CLAUDE_CODE=1` and
-    `OPENCODE_DISABLE_PROJECT_CONFIG=1`. `OPENCODE_CONFIG` carries the MCP grant (several configs merge into
+    run loads project config. A run without user config (isolated without user MCP, `ConfigNone`, or
+    hermetic) redirects `XDG_CONFIG_HOME` to a directory of symlinks that omits `opencode` and unsets the
+    layer variables it does not set (`runEnv`, `scopeOf` in `headless.go`). A run without project config adds
+    `--pure`, `OPENCODE_DISABLE_PROJECT_CONFIG=1` and `OPENCODE_DISABLE_CLAUDE_CODE=1`. A hermetic run with
+    project config adds `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1`. `OPENCODE_CONFIG` carries the MCP grant (several configs merge into
     one temp file); `OPENCODE_CONFIG_CONTENT` carries the permission document plus `instructions` when the run has a `ContextFile`.
   - Tool names stay in Kira's vocabulary (Claude names, `mcp__server__tool`) all the way to the provider.
     `permissionDoc` translates them to OpenCode permission keys (`srv_tool`, `srv_*`) and fails the run
@@ -2190,20 +2196,25 @@ The agent CLI sits behind one interface, so a second provider needs no caller ch
   Provider labels are plain Go strings, not catalog keys.
 - Outcome and sandbox texts name the provider (`runoutcome.Agent`, `agentsandbox.Namer`).
 - Still Claude-specific by nature: `internal/flowtest/fakeagent` keeps its `claude` persona (the Claude
-  CLI double); real-claude tests (`apps/*/tests/claude`) test the Claude provider; the built-in tool
-  vocabulary of scripts and the `--allowedTools` argv use Claude's tool names, which a new provider maps in
-  `MCPHost.ToolArgs`; the `--color-agent` CSS token keeps Claude's colour value.
+  CLI double) beside `opencode`; real-claude tests (`apps/*/tests/claude`) test the Claude provider; the built-in tool
+  vocabulary of scripts and the `--allowedTools` argv use Claude's tool names, which a provider translates
+  itself (OpenCode: `permissionDoc`, P449); the `--color-agent` CSS token keeps Claude's colour value.
 - Stage settings (P431): `Provider.StageSettings()` declares per-workflow-stage settings (`harness.StageSetting`: key, kind `int`, min, max, i18n label and hint keys). The step's validated values reach the provider as `HeadlessSpec.Stage` and `InteractiveSpec.Stage` (`harness.StageValues`); only the provider maps them onto its CLI. `providers.StageCatalog()` is static, like `ConfigDirs`, and feeds YAML validation and the editor.
 - Claude declares `auto_compact_window` (100000 to 1000000 tokens, CLI 2.1.316) and maps it to `--autocompact <n>` in `Script` and `InteractiveCommand`, ahead of `--setting-sources`/`--add-dir`. Per process, so tools the agent runs do not inherit it. An old CLI without the flag fails the launch loudly. Measured with `claude -p --debug-file` (effective window = setting minus 20000): the flag alone gives 280000 for 300000. An exported `CLAUDE_CODE_AUTO_COMPACT_WINDOW=150000` wins over `--autocompact 300000` (130000). Kira does not strip the variable; see Known open items.
 - `ContextFile` (P452): neutral field on `InteractiveSpec` and `HeadlessSpec`, path of the agent context snapshot. Only the provider maps it. Claude: `--append-system-prompt-file '<path>'` in both builders, flag name in one constant (`appendSystemPromptFileFlag`). The flag is hidden from `claude --help` but present in CLI 2.1.316 (named in the `--bare` help, strings in the binary). Rejected: `--append-system-prompt` (text in argv, visible in `ps`, size-limited), a generated `CLAUDE.md` plus `--add-dir` (also loads the dir's other files).
 - OpenCode `ContextFile` (P452, verified on 1.19.5, Q-OC1 to Q-OC4): `instructions` in `OPENCODE_CONFIG_CONTENT`; the file's text reaches the model. OpenCode re-reads it on `run -s`, so it does not implement `ContextKeeper`: a resumed OpenCode session sees an edit. Observed on a stub provider with a throwaway HOME: `~/.config/opencode/AGENTS.md` and `~/.claude/CLAUDE.md` did not reach the request; the config dir's `AGENTS.md` did (P455 data).
 - `ContextKeeper` (P452): optional role, `KeepsContextOnResume() bool`. Only Claude returns true: `--system-prompt-snapshot` is on by default, so a resumed conversation keeps its recorded prompt until it compacts. Feeds the editor's resume note.
+- Smart scripts never run on a provider without a cost cap: every smart script has a budget (0.05 to 25 USD),
+  and OpenCode has no cap.
+- `Isolator` and the `Hermetic` spec fields: see "Hermetic launches (P455)".
 - Add a provider: implement `harness.Provider` and any optional roles in `internal/harness/<id>`, add it to
   `providers.New`, and keep its CLI strings and error texts inside its package. No caller changes.
 - Test: `flows/harnessflow` `TestOpenCodeProvider` and `TestOpenCodeHeadless` drive OpenCode against the
   `opencode` persona of `internal/flowtest/fakeagent` (`WithOpenCode()` puts it on PATH): list, per-launch
   pick, plugin events, take over, the cost-cap and tool refusals, the late id, `-s` resume and a lost
-  conversation. `internal/harness/opencode/parse_test.go` covers the parsers and `permissionDoc`.
+  conversation. `TestHermeticOpenCode`, `TestAgentContextOpenCode`, `TestAgentSettingsOpenCode` and
+  `TestAgentPortOpenCode` cover hermetic launches, context, settings and import/export.
+  `internal/harness/opencode/parse_test.go` covers the parsers and `permissionDoc`.
   `flows/harnessflow` `TestLeanProviderSeams` registers `fakeprovider.Lean` (id `fake-lean`: no
   structured, headless, hooks or usage; launches carry env; the `kira-fake-agent` persona assigns its own
   session id into `sessions.jsonl`, which `FindSession` reads) and drives env delivery, Continue in terminal
@@ -3537,7 +3548,6 @@ Kept only while genuinely open — delete an item the moment it's resolved, neve
 place. `CLAUDE.md` states the process rule; this is the list itself.
 
 - **Agent context rests on a hidden Claude flag (P452).** `--append-system-prompt-file` is absent from `claude --help`. A CLI that drops it fails the launch loudly. `TestAgentContextHeadless` catches it. Studio has no context editor; edit the file in an editor.
-
 - **Agent settings secrets show in a live terminal (P453).** Only headless step output is masked. A TUI that echoes its env or a hook that prints a secret shows it in the tab and the Space phone terminal ring, as for script secrets below.
 - **Project statuslines are not chained (P453).** A project `.claude/settings*.json` statusline never ran under Kira (flag settings outrank it); the user statusline comes only from `claude.status_line`. Import brings the user's.
 
@@ -3546,14 +3556,16 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
 - **Sign-in kept in user config breaks under hermetic (P455).** Claude or OpenCode credentials held in a user config file, not the CLI's own store, are not seen by a hermetic launch. Workaround: sign in through the environment (a key the shell exports) or turn `agent.hermetic` off. Kira adds no passthrough keys.
 - **Shell profile exports override hermetic env (P455).** A login profile that exports `CLAUDE_CONFIG_DIR`, `ENABLE_CLAUDEAI_MCP_SERVERS`, or an OpenCode layer variable Kira sets (`OPENCODE_CONFIG_DIR` included) wins over Kira's value on Claude. OpenCode words ride `/usr/bin/env` after the profile, so they win except `OPENCODE_CONFIG_DIR`, which the hook plugin sets later.
 - **Studio has no hermetic switch (P455).** Studio is always hermetic. Space edits `agent.hermetic` in Settings, Agent.
-- **OpenCode TUI preferences do not apply under hermetic (P455).** `~/.config/opencode` is not linked, so theme and keybinds there are lost. Turn hermetic off to keep them.
+- **OpenCode theme and keybinds do not apply under hermetic (P455).** `~/.config/opencode` is not linked, so theme and keybinds there are lost. Turn hermetic off to keep them.
 - **OpenCode still loads `~/.opencode` under hermetic (P455, H-OC2).** The XDG redirect does not move it; probe on 1.19.5 showed `$HOME/.opencode/opencode.json` loads. Kira does not read or move it.
 - **OpenCode user skills leak under hermetic (P455, H-OC3).** No env drops `~/.claude/skills` and `~/.agents/skills` while keeping project skills; Kira keeps project skills (Q6).
 - **Hermetic OpenCode does not load project `CLAUDE.md` (P455, H-OC4).** `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1` is required with the redirect and also drops it. Project `AGENTS.md` loads.
 - **OpenCode applies no common hook (P453).** Plugin hooks have no user-command form; the settings view shows each common hook as not applied.
+- **Darwin CI tests a deleted path until the pending patch lands (P447).** `pr.yml` and `cache-warm.yml` still list `./apps/kira-studio/internal/secrets/...`. The fix is `docs/pending-changes/.github__workflows__secrets-path.patch`. Delete once applied.
+- **`finish_step` summary masking is not covered end to end (P447).** The fake agent's summary is fixed text; only the unit path checks it. Delete once a flow drives a secret through a summary.
 - **Saved script secrets show in a live terminal (P447).** A terminal-run script prints into its live tab and the Space phone terminal ring unmasked; only the run tail and log are masked. A process that echoes its secret shows it there.
 - **OpenCode facts without a model key are unverified (P449).** `facts.go` marks each with its probe id: the lost-session error text (U5), the MCP tool permission key `<server>_<tool>` (U7), plugin event names and `fetch` over a unix socket (U12), install paths (U15), the model API host list for network-off runs (U16), and the tool and cost event shapes of `run --format json` (`step_start`, `text` with `part.text` and `step_finish` with `part.reason` are verified). A wrong guess degrades quietly: a lost session reads as a plain failure, a MCP grant may not match, activity icons may stay idle. Run the probes in `docs/DEV_ENVIRONMENT.md` with a key, then fix `facts.go` and delete this item.
-- **OpenCode has no cost cap (P449).** A smart script or step with a budget is refused on OpenCode. The run reports cost when its events carry one; the shape is unverified.
+- **OpenCode has no cost cap (P449).** Every smart script has a budget (0.05 to 25 USD), so smart scripts and smart steps never run on OpenCode. The refusal says to remove the budget, which validation forbids. Plain agent steps run. Keep until a cost cap or a budget-free script exists.
 - **OpenCode network-off runs reach only the listed model hosts (P449).** The list is a guess; a model on another host fails under the sandbox.
 - **OpenCode extra directories ride permission only (P449).** `AddDirs` become `external_directory` allow patterns, not a CLI flag; the OS sandbox profile is the real boundary.
 - **Studio has no agent picker (P449).** Only Space chooses the provider per launch and per step; Studio runs the provider its Agent setting names.
@@ -3606,7 +3618,7 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
 - **A written memory doc holds no per-fact keywords (P285 Part 3).** Importing it into another store indexes its facts with the doc-level keywords only; the store regenerates per-fact keywords only for facts the gate sees.
 - **Memory ingest compression target not met (P285, P291).** `round-p3-01`: `C_fact` 0.434, `C_store` 0.661, `C_doc` 0.734, `R_ess` 0.885. Golden essential facts alone are 0.47 of source chars. The telegraph style cuts fact chars 7% and `C_store` 4.5% on identical facts; run on the pipeline it raised recall and stored 18% more facts (XT, commit `a487cbc18`, `C_store` 0.753), so it is not adopted. Residual token loss of the style: 14 of 209 facts fail the preservation check.
 
-- **No detached runner for agent runs and PTYs (P279).** Quit or crash stops every agent and PTY. The memory ingest runner is separate and does detach (P274). Resume restores the Claude conversation; the turn in flight is lost and its tool effects may be half-applied. The `kira-db` MCP stops with Studio. Resume needs the saved transcript under `~/.claude`; without it the run fails with "could not resume".
+- **No detached runner for agent runs and PTYs (P279).** Quit or crash stops every agent and PTY. The memory ingest runner is separate and does detach (P274). Resume restores the Claude conversation; the turn in flight is lost and its tool effects may be half-applied. The `kira-db` MCP stops with Studio. Resume needs the saved transcript under `~/.claude`; without it the run fails with "could not resume". OpenCode resumes from its own session store.
 
 - **Studio Settings footer shows `~/.kira-studio/kira.sqlite`; the real file is `kira.db`.** Label in `apps/kira-studio/frontend/src/workbench/SettingsDialog.vue`. The docs say `kira.db`.
 - **Quit discards staged grid edits and dirty edit buffers (P267).** Tab close and dialogs guard unsaved edits; app quit does not. Accepted by the user (P266 decision).
