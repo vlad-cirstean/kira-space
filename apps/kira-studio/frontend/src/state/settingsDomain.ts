@@ -159,7 +159,7 @@ const settingsSchema = /*#__PURE__*/ z.object({
     previewResponses: false,
     focusOnApproval: true,
   }),
-  agent: agentSettingsSchema.default({ provider: DEFAULT_AGENT_PROVIDER }),
+  agent: agentSettingsSchema.default({ provider: DEFAULT_AGENT_PROVIDER, hermetic: true }),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -210,5 +210,6 @@ export const defaultSettings: Settings = {
   },
   agent: {
     provider: DEFAULT_AGENT_PROVIDER,
+    hermetic: true,
   },
 };

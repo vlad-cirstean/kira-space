@@ -23,7 +23,7 @@ const providerId = useId();
 
 type NotifyLeaf = Exclude<
   keyof Settings['agent'],
-  'provider' | 'keepAwakeWithAgents' | 'usageEnabled'
+  'provider' | 'hermetic' | 'keepAwakeWithAgents' | 'usageEnabled'
 >;
 
 // P238: master first; the rest are disabled while it is off.
@@ -64,6 +64,10 @@ const shownNotifyLeaves = computed(() =>
 
 function setProvider(id: string): void {
   props.draft.agent.provider = id;
+}
+
+function setHermetic(on: boolean): void {
+  props.draft.agent.hermetic = on;
 }
 
 function setNotify(leaf: NotifyLeaf, on: boolean): void {
@@ -120,6 +124,29 @@ function setKeepAwake(on: boolean): void {
       </NativeSelect>
       <FieldDescription>
         {{ t('space.settings.agent.provider.description') }}
+      </FieldDescription>
+    </Field>
+
+    <Field>
+      <div class="flex items-center justify-between gap-1">
+        <Label :for="`${switchId}-hermetic`">{{ t('space.settings.agent.hermetic.label') }}</Label>
+        <TooltipIconButton
+          icon="discard"
+          :label="t('common.action.resetToDefault.label')"
+          data-testid="settings-reset-agent-hermetic"
+          :disabled-trigger="isAtDefault('agent', 'hermetic')"
+          :disabled="isAtDefault('agent', 'hermetic')"
+          @click="resetLeaf('agent', 'hermetic')"
+        />
+      </div>
+      <Switch
+        :id="`${switchId}-hermetic`"
+        :model-value="draft.agent.hermetic"
+        data-testid="settings-agent-hermetic"
+        @update:model-value="(v) => setHermetic(v === true)"
+      />
+      <FieldDescription>
+        {{ t('space.settings.agent.hermetic.description') }}
       </FieldDescription>
     </Field>
 

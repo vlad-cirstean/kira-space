@@ -10804,6 +10804,10 @@
         }
       },
       "agent": {
+        "hermetic": {
+          "description": "Agents Kira starts skip your own agent config, including settings, hooks, plugins, skills, MCP servers and instructions. Kira’s agent settings and context apply instead, and project files still load. Kira can’t isolate managed settings and policy, or variables your shell profile exports. A sign-in kept in your own agent config, such as an API key helper or provider environment variables, needs this off, or the same environment in Kira’s agent settings.",
+          "label": "Hermetic agent launches"
+        },
         "keepAwake": {
           "description": "Prevents idle sleep, and system sleep on mains power, while a {product} terminal tab or a background agent is running. Independent of the title bar’s own keep-awake button. Either one is enough to keep the machine awake.",
           "label": "Keep this Mac awake while a {product} session is running"

@@ -57,5 +57,7 @@ export type LogLevel = z.infer<typeof logLevelSchema>;
 export const DEFAULT_AGENT_PROVIDER = 'claude';
 export const agentSettingsSchema = /*#__PURE__*/ z.object({
   provider: z.string().default(DEFAULT_AGENT_PROVIDER),
+  // P455: agents the app starts skip the user's own agent config.
+  hermetic: z.boolean().default(true),
 });
 export type AgentSettings = z.infer<typeof agentSettingsSchema>;

@@ -12,17 +12,20 @@ import (
 // Agent is the agent.* section both apps share. Provider is the id of the harness every new agent
 // run, launch and structured call uses. Registration is not checked on write: an unknown id falls
 // back to the default provider when it is resolved, so a removed provider's stored id still boots.
+// Hermetic: agents the app starts load none of the user's own agent config (default on).
 type Agent struct {
 	Provider string `json:"provider"`
+	Hermetic bool   `json:"hermetic"`
 }
 
 // AgentPatch mirrors Agent's own `.partial()` shape.
 type AgentPatch struct {
 	Provider *string `json:"provider,omitempty"`
+	Hermetic *bool   `json:"hermetic,omitempty"`
 }
 
 // DefaultAgent mirrors settings.ts's agent defaults.
-func DefaultAgent() Agent { return Agent{Provider: harness.DefaultProvider} }
+func DefaultAgent() Agent { return Agent{Provider: harness.DefaultProvider, Hermetic: true} }
 
 var providerIDRE = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
 
@@ -41,6 +44,7 @@ func ValidateAgent(a *AgentPatch) error {
 func ReadAgent(stored map[string]json.RawMessage) Agent {
 	result := DefaultAgent()
 	LeafValid(stored, "agent.provider", &result.Provider, ValidProviderID)
+	LeafValid(stored, "agent.hermetic", &result.Hermetic, AlwaysValid[bool])
 	return result
 }
 
@@ -49,5 +53,8 @@ func UpsertAgent(tx *sql.Tx, a *AgentPatch) error {
 	if a == nil {
 		return nil
 	}
-	return UpsertOptional(tx, "agent.provider", a.Provider)
+	if err := UpsertOptional(tx, "agent.provider", a.Provider); err != nil {
+		return err
+	}
+	return UpsertOptional(tx, "agent.hermetic", a.Hermetic)
 }
