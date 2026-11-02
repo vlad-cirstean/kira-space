@@ -32,7 +32,7 @@ Agents needs an authenticated `claude` or `opencode` CLI. Kira finds it on your 
 
 Kira runs two agents: Claude Code and OpenCode. Pick the default in Settings, in the section named after the current agent. The **Agent** select runs new sessions and background steps. An agent whose CLI is missing shows `(not found)` and can't be picked.
 
-- Per launch: the task launch menu (**New terminal or agent session**) lists one **{agent} session** entry per installed agent. It does so when two or more are installed.
+- Per launch: the task launch menu (**New terminal or agent session**) lists one entry per installed agent, such as **Claude Code session** or **OpenCode session**. It does so when two or more are installed.
 - Per step: the `agent` key, or **Agent** in the step's **Advanced** section. **Default provider** uses the setting.
 - Order: the launch menu pick, then the step's `agent`, then the setting.
 
@@ -289,7 +289,7 @@ The **Secrets** section lists the secrets the file references. **Set value** sto
 
 ## Import and export
 
-Under each agent in the **Settings** tab, **Import from {agent}** reads that agent's user-level config. **Export to {agent}** writes Kira's settings and context into it.
+Under each agent in the **Settings** tab, **Import from Claude Code** or **Import from OpenCode** reads that agent's user-level config. **Export to Claude Code** or **Export to OpenCode** writes Kira's settings and context into it.
 
 - Claude Code files: `~/.claude/settings.json`, `~/.claude/CLAUDE.md` and the `mcpServers` of `~/.claude.json`.
 - OpenCode files: `opencode.json`, `opencode.jsonc` or `config.json`, and `AGENTS.md`, in `$XDG_CONFIG_HOME/opencode` or else `~/.config/opencode`. `opencode.jsonc` wins over `opencode.json`.
