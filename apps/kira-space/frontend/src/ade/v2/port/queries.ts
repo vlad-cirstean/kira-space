@@ -4,7 +4,7 @@ import { agentContextKey } from '../context/queries';
 import { agentSettingsKey } from '../settings/queries';
 import type { ExportApplyArgs, ImportApplyArgs } from './types';
 
-export const agentPortKey = ['agentPort'] as const;
+const agentPortKey = ['agentPort'] as const;
 
 export function usePortProviders() {
   return useQuery({ queryKey: agentPortKey, queryFn: () => control.agentPortList() });

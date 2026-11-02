@@ -1,5 +1,5 @@
 // Mirrors internal/agentport wire types.
-export interface PortFile {
+interface PortFile {
   role: string;
   path: string;
   exists: boolean;
@@ -9,7 +9,7 @@ export interface PortProvider {
   label: string;
   files: PortFile[] | null;
 }
-export interface SecretSlot {
+interface SecretSlot {
   name: string;
   field: string;
   reuse: boolean;
@@ -25,7 +25,7 @@ export interface PortItem {
   current: string;
   secrets: SecretSlot[] | null;
 }
-export interface PortSource {
+interface PortSource {
   role: string;
   path: string;
   exists: boolean;
@@ -38,7 +38,7 @@ export interface ImportPreview {
   items: PortItem[] | null;
   notes: string[] | null;
 }
-export interface ImportSelection {
+interface ImportSelection {
   id: string;
   mode: string;
 }
@@ -46,7 +46,7 @@ export interface ImportApplyArgs {
   token: string;
   items: ImportSelection[] | null;
 }
-export interface ExportFile {
+interface ExportFile {
   role: string;
   path: string;
   exists: boolean;
@@ -55,13 +55,13 @@ export interface ExportFile {
   after: string;
   language: string;
 }
-export interface ExportServer {
+interface ExportServer {
   name: string;
   action: string;
   transport: string;
   target: string;
 }
-export interface PortSkipped {
+interface PortSkipped {
   what: string;
   reason: string;
 }
@@ -80,7 +80,7 @@ export interface ExportApplyArgs {
   files: string[] | null;
   servers: boolean;
 }
-export interface ServerResult {
+interface ServerResult {
   name: string;
   outcome: string;
   detail: string;
