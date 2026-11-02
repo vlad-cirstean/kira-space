@@ -24,6 +24,7 @@ test('Enter in the capture box adds a task to Later and confirms it', async ({ r
   await expect(input).toHaveValue('');
   expect(control.log().find((e) => e.channel === IPC.adeTaskCaptureTask)?.args).toEqual({
     title: 'Rate limit exports',
+    day: null,
   });
 });
 
