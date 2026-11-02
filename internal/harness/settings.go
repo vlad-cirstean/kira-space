@@ -35,6 +35,9 @@ type AgentSettings struct {
 	Hooks []Hook
 	// Section is the provider's own section, references resolved the same way as the rest.
 	Section json.RawMessage
+	// Hermetic is set when the launch skips the user's own agent config; the provider adds what the
+	// settings file alone can carry.
+	Hermetic bool `json:"-"`
 }
 
 // Hook is one user hook command. Kira's own hooks are never in this list.

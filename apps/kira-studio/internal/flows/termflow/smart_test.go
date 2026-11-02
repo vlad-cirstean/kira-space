@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -27,6 +28,9 @@ import (
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
+
+// settingsPath is the per-launch app settings file in a Continue in terminal command.
+var settingsPath = regexp.MustCompile(`'--settings' '[^']*'`)
 
 func newSmart(t *testing.T, app *flowharness.App, prompt string, mod func(*scripts.CustomScriptFields)) scripts.CustomScript {
 	t.Helper()
@@ -297,10 +301,10 @@ func TestSmartScript(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if want := "claude --resume '" + failed.SessionID + "' '--setting-sources' 'project,local'"; !strings.HasPrefix(launch.Command, want+" '--settings' ") || !strings.Contains(launch.Command, "claudeMdExcludes") {
+		if want := "claude --resume '" + failed.SessionID + "' '--setting-sources' 'project,local'"; !strings.HasPrefix(launch.Command, want+" '--settings' '") {
 			t.Fatalf("ResumeCommand = %q, want %q", launch.Command, want)
 		}
-		app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: strings.ReplaceAll(strings.Replace(launch.Command, failed.SessionID, "sess-1", 1), app.Home, "/home/user"), Token: launch.Token}, flowharness.Mask("token"))
+		app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: settingsPath.ReplaceAllString(strings.Replace(launch.Command, failed.SessionID, "sess-1", 1), "'--settings' '<settings>'"), Token: launch.Token}, flowharness.Mask("token"))
 		if o := failed.Outcome; o.Status != "failed" || o.Reason != "summary-failed" || !o.Reported || o.Source != "agent" {
 			t.Errorf("failed = %+v", o)
 		}

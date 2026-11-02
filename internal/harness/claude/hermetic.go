@@ -1,7 +1,6 @@
 package claude
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 )
@@ -22,7 +21,9 @@ import (
 //     A sign-in kept in user settings (apiKeyHelper, provider env) drops with the user source.
 //   - C8: --settings and managed settings load whatever --setting-sources says.
 //   - C9 (TestHermeticSession): a repo under $HOME loads ~/.claude/CLAUDE.md as its ancestor's
-//     project memory even without the user source; `claudeMdExcludes` in --settings drops it.
+//     project memory even without the user source; `claudeMdExcludes` in the settings file drops it. claude
+//     honours only the last --settings flag, so it rides the app settings file (agentcfg writes one
+//     whenever hermetic is on).
 
 // hermeticEnv is what a hermetic launch sets next to --setting-sources (C5, C6).
 var hermeticEnv = []string{"ENABLE_CLAUDEAI_MCP_SERVERS=false", "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1"}
@@ -30,16 +31,12 @@ var hermeticEnv = []string{"ENABLE_CLAUDEAI_MCP_SERVERS=false", "CLAUDE_CODE_DIS
 // hermeticSources is the --setting-sources value of a hermetic launch that loads repo config.
 const hermeticSources = "project,local"
 
-// hermeticSettings is the --settings value that drops ~/.claude/CLAUDE.md when it loads as an
-// ancestor's project memory (C9); "" when the home folder is unknown.
-func hermeticSettings() string {
+// homeClaudeMd lists the user's CLAUDE.md for claudeMdExcludes (C9); empty when the home folder is
+// unknown. It goes in the one --settings file: claude honours only the last --settings flag.
+func homeClaudeMd() []string {
 	home, err := os.UserHomeDir()
 	if err != nil || home == "" {
-		return ""
+		return nil
 	}
-	raw, err := json.Marshal(map[string][]string{"claudeMdExcludes": {filepath.Join(home, ".claude", "CLAUDE.md")}})
-	if err != nil {
-		return ""
-	}
-	return string(raw)
+	return []string{filepath.Join(home, ".claude", "CLAUDE.md")}
 }

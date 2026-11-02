@@ -58,7 +58,7 @@ func TestHermeticStudio(t *testing.T) {
 	}
 
 	resume, err := app.W.ScriptRuns.ResumeCommand(scriptruns.ResumeCommandArgs{RunID: id})
-	if want := "claude --resume '" + run.SessionID + "' '--setting-sources' 'project,local'"; err != nil || !strings.HasPrefix(resume.Command, want) || !strings.Contains(resume.Command, "claudeMdExcludes") || !strings.Contains(resume.Command, "'--mcp-config' ") {
+	if want := "claude --resume '" + run.SessionID + "' '--setting-sources' 'project,local'"; err != nil || !strings.HasPrefix(resume.Command, want) || !strings.Contains(resume.Command, "'--settings' ") || !strings.Contains(resume.Command, "'--mcp-config' ") {
 		t.Fatalf("ResumeCommand = %q, %v, want %q then the app MCP file", resume.Command, err, want)
 	}
 

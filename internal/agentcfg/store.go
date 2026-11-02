@@ -42,6 +42,8 @@ type Options struct {
 	// Env reads ${NAME} references; nil means the login shell, then the process environment.
 	Env func(string) (string, bool)
 	App string // "Space" or "Studio", AGENTS.md header
+	// Hermetic reports agent.hermetic, read per launch; nil means off.
+	Hermetic func() bool
 }
 
 // Store reads and writes the settings file and prepares it for launches.

@@ -42,6 +42,8 @@ type settingsDoc struct {
 	Permissions *permissionsDoc             `json:"permissions,omitempty"`
 	Hooks       map[string][]hookMatcherDoc `json:"hooks,omitempty"`
 	StatusLine  *statusLineDoc              `json:"statusLine,omitempty"`
+	// ClaudeMdExcludes drops ~/.claude/CLAUDE.md under a hermetic launch (C9).
+	ClaudeMdExcludes []string `json:"claudeMdExcludes,omitempty"`
 }
 
 type permissionsDoc struct {
@@ -89,7 +91,7 @@ func (p *Provider) RenderSettings(s harness.AgentSettings, kind harness.LaunchKi
 		out.Files = append(out.Files, harness.NativeFile{Role: "mcp", Name: "mcp.json", Data: b})
 	}
 	doc := buildSettings(s, sec, kind)
-	if doc.Model != "" || doc.Permissions != nil || len(doc.Hooks) > 0 || doc.StatusLine != nil {
+	if doc.Model != "" || doc.Permissions != nil || len(doc.Hooks) > 0 || doc.StatusLine != nil || len(doc.ClaudeMdExcludes) > 0 {
 		b, err := json.MarshalIndent(doc, "", "  ")
 		if err != nil {
 			return out, fmt.Errorf("claude: encode settings: %w", err)
@@ -109,6 +111,9 @@ func (p *Provider) RenderSettings(s harness.AgentSettings, kind harness.LaunchKi
 
 func buildSettings(s harness.AgentSettings, sec section, kind harness.LaunchKind) settingsDoc {
 	doc := settingsDoc{Model: sec.Model}
+	if s.Hermetic {
+		doc.ClaudeMdExcludes = homeClaudeMd()
+	}
 	perm := permissionsDoc{Deny: s.Deny}
 	if kind == harness.LaunchInteractive {
 		perm.Allow = s.Allow

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -17,6 +18,9 @@ import (
 	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
+
+// settingsPath is the per-launch app settings file in a Continue in terminal command.
+var settingsPath = regexp.MustCompile(`'--settings' '[^']*'`)
 
 func TestSmartScriptSpace(t *testing.T) {
 	app := flowharness.New(t)
@@ -117,8 +121,8 @@ func TestSmartScriptFailedSpace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := "claude --resume '" + run.SessionID + "' '--setting-sources' 'project,local'"; !strings.HasPrefix(launch.Command, want+" '--settings' ") || !strings.Contains(launch.Command, "claudeMdExcludes") {
+	if want := "claude --resume '" + run.SessionID + "' '--setting-sources' 'project,local'"; !strings.HasPrefix(launch.Command, want+" '--settings' '") {
 		t.Fatalf("ResumeCommand = %q, want %q", launch.Command, want)
 	}
-	app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: strings.ReplaceAll(strings.Replace(launch.Command, run.SessionID, "sess-1", 1), app.Home, "/home/user"), Token: launch.Token}, flowharness.Mask("token"))
+	app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: settingsPath.ReplaceAllString(strings.Replace(launch.Command, run.SessionID, "sess-1", 1), "'--settings' '<settings>'"), Token: launch.Token}, flowharness.Mask("token"))
 }

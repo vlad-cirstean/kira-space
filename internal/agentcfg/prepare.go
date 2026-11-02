@@ -57,8 +57,9 @@ func (r *runFiles) remove() {
 // resolve or write error is returned: a launch never starts with a secret silently missing.
 func (s *Store) Prepare(ctx context.Context, l Launch) (Prepared, error) {
 	none := Prepared{Release: func() {}}
+	hermetic := s.o.Hermetic != nil && s.o.Hermetic()
 	set, ok := s.Settings()
-	if !ok {
+	if !ok && !hermetic {
 		return none, nil
 	}
 	host, ok := harness.SettingsHostOf(l.Provider)
@@ -76,6 +77,7 @@ func (s *Store) Prepare(ctx context.Context, l Launch) (Prepared, error) {
 	if err != nil {
 		return none, fmt.Errorf("agent settings: %w", err)
 	}
+	as.Hermetic = hermetic
 	cfg, err := host.RenderSettings(as, l.Kind)
 	if err != nil {
 		return none, fmt.Errorf("agent settings: %w", err)

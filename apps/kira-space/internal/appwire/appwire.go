@@ -627,6 +627,10 @@ func (w *Wired) wireAgentSettings(registry *harness.Registry, repositories *repo
 	store, err := agentcfg.New(agentcfg.Options{
 		Dir: filepath.Join(home, "agent"), Providers: registry, Secrets: w.AgentSecrets, App: "Space",
 		Projection: configfs.TableProjection{DB: repositories.CustomScripts.DB, Folder: agentctx.Folder},
+		Hermetic: func() bool {
+			settings, err := repositories.Settings.GetAll()
+			return err != nil || settings.Agent.Hermetic
+		},
 	})
 	if err != nil {
 		slog.Warn("agent settings: build", "scope", "startup", "err", err)

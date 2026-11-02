@@ -347,6 +347,10 @@ func openAgentSettings(registry *harness.Registry, deps appcore.Deps, opts Optio
 	store, err := agentcfg.New(agentcfg.Options{
 		Dir: kirapaths.SharedAgentDir(), Providers: registry, Secrets: sec, App: "Studio",
 		Projection: configfs.TableProjection{DB: deps.Repos.CustomScripts.DB, Folder: agentctx.Folder},
+		Hermetic: func() bool {
+			settings, err := deps.Repos.Settings.GetAll()
+			return err != nil || settings.Agent.Hermetic
+		},
 	})
 	if err != nil {
 		slog.Warn("agent settings: build", "scope", "startup", "err", err)

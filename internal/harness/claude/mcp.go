@@ -21,7 +21,15 @@ func (*Provider) MCPConfig(servers []harness.MCPServer) ([]byte, error) {
 			m[s.Name] = map[string]any{"type": "http", "url": s.URL, "headers": s.Headers}
 			continue
 		}
-		m[s.Name] = map[string]any{"command": s.Command, "args": s.Args, "env": s.Env}
+		// claude rejects null args and env, so each is left out when empty.
+		doc := map[string]any{"command": s.Command}
+		if len(s.Args) > 0 {
+			doc["args"] = s.Args
+		}
+		if len(s.Env) > 0 {
+			doc["env"] = s.Env
+		}
+		m[s.Name] = doc
 	}
 	return json.Marshal(map[string]any{"mcpServers": m})
 }

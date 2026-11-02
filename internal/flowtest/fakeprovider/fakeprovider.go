@@ -196,6 +196,9 @@ func (p *Provider) KiraAdds() []string { return []string{"Kira hooks"} }
 // RenderSettings writes the whole AgentSettings as one JSON file, so a test sees exactly what a
 // provider receives.
 func (p *Provider) RenderSettings(s harness.AgentSettings, _ harness.LaunchKind) (harness.NativeConfig, error) {
+	if len(s.Env) == 0 && len(s.MCP) == 0 && len(s.Allow) == 0 && len(s.Deny) == 0 && len(s.Hooks) == 0 && len(s.Section) == 0 {
+		return harness.NativeConfig{}, nil
+	}
 	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return harness.NativeConfig{}, err

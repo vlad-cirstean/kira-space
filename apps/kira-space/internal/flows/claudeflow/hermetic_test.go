@@ -64,6 +64,14 @@ func TestHermeticClaude(t *testing.T) {
 				t.Fatal("TUI launch passed --strict-mcp-config, want local-scope MCP kept")
 			}
 		}
+		files := flagValues(argv, "--settings")
+		if len(files) != 1 {
+			t.Fatalf("--settings = %q, want the one settings file", files)
+		}
+		doc, err := os.ReadFile(files[0])
+		if want := filepath.Join(app.Home, ".claude", "CLAUDE.md"); err != nil || !strings.Contains(string(doc), `"claudeMdExcludes"`) || !strings.Contains(string(doc), want) {
+			t.Fatalf("settings file = %s, %v, want claudeMdExcludes with %s", doc, err, want)
+		}
 		var env string
 		testx.WaitUntil(t, waitFor, func() bool {
 			files, _ := filepath.Glob(filepath.Join(app.FakeDir, "*.appenv"))
@@ -85,6 +93,7 @@ func TestHermeticClaude(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	var lastRun string
 	run := func(t *testing.T) []string {
 		t.Helper()
 		args := scriptruns.RunArgs{ScriptID: script.ID}
@@ -97,6 +106,7 @@ func TestHermeticClaude(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			lastRun = started.RunID
 			testx.WaitUntil(t, waitFor, func() bool {
 				r, _ := app.W.ScriptRuns.Get(scriptruns.IDArgs{ID: started.RunID})
 				return r.State == "done"
@@ -135,6 +145,15 @@ func TestHermeticClaude(t *testing.T) {
 		}
 		if !held {
 			t.Fatalf("no recorded mcp file holds the resolved header (files %v)", stems)
+		}
+		page, err := app.W.ScriptRuns.ReadLog(scriptruns.ReadLogArgs{ID: lastRun})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, c := range page.Chunks {
+			if strings.Contains(c.Text, secret) {
+				t.Fatalf("run log holds the ticked server secret: %q", c.Text)
+			}
 		}
 		testx.WaitUntil(t, waitFor, func() bool {
 			var left []string

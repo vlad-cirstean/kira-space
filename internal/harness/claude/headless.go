@@ -171,11 +171,6 @@ func Script(s harness.HeadlessSpec) string {
 			words = append(words, loginshell.Quote(t))
 		}
 	}
-	if s.Hermetic {
-		if hs := hermeticSettings(); hs != "" {
-			words = append(words, "--settings", loginshell.Quote(hs))
-		}
-	}
 	return strings.Join(words, " ")
 }
 

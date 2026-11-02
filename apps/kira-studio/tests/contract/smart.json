@@ -247,7 +247,7 @@
     "truncated": false
   },
   "ScriptRunsService.ResumeCommand": {
-    "command": "claude --resume 'sess-1' '--setting-sources' 'project,local' '--settings' '{\"claudeMdExcludes\":[\"/home/user/.claude/CLAUDE.md\"]}'",
+    "command": "claude --resume 'sess-1' '--setting-sources' 'project,local' '--settings' '<settings>'",
     "token": "<masked>"
   },
   "args:ScriptRunsService.Start": {
