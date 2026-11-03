@@ -69,7 +69,8 @@ export class StackState {
       onChanged: () => this.#repo.fireAndForget(() => this.reload()),
     });
     this.#unsubscribeProgress = bridge.on('stack.progress', (event) => {
-      if (this.#repo.repoId !== event.repoId) return;
+      // Bound replies and events travel apart, so an event can land after the reply.
+      if (this.#repo.repoId !== event.repoId || !this.restacking.value) return;
       this.progress.value = [...this.progress.value, event];
     });
   }

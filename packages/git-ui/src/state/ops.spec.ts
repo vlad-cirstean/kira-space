@@ -165,7 +165,7 @@ describe('OpsState — rejected requests are announced, not thrown', () => {
       }
     };
     ops.setRepoId(REPO);
-    return { ops };
+    return { ops, transport };
   }
 
   test('a stash-carry pull whose remote.run rejects says the changes are stashed', async () => {
@@ -190,6 +190,27 @@ describe('OpsState — rejected requests are announced, not thrown', () => {
     await sleep();
     await ops.runFetch('origin');
     expect(ops.announcement.value).toContain('Couldn’t fetch.');
+  });
+
+  test('progress arriving after the remote op settles is ignored', async () => {
+    const { ops, transport } = setUp(() => ({
+      ok: true,
+      error: undefined,
+      updates: [],
+      head: { kind: 'branch', name: 'main' },
+      inProgress: null,
+    }));
+    await sleep();
+    await ops.runFetch('origin');
+    transport.emit('remote.progress', {
+      repoId: REPO,
+      phase: 'receiving',
+      percent: 50,
+      done: 1,
+      total: 2,
+      remote: true,
+    });
+    expect(ops.remoteProgress.value).toBeUndefined();
   });
 });
 
