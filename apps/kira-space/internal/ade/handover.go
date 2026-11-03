@@ -141,11 +141,14 @@ func (b *TaskBoard) recordRunHandoverLocked(run model.AdeRun) {
 	}
 	h := b.handoffFor(tc, run.StepID, to, nil)
 	if summaries := b.runSummaries(tc, plan[idx]); summaries != "" {
-		body := summaries
+		body, author := summaries, run.SessionID
 		if draft != nil && strings.TrimSpace(draft.Body) != "" {
 			body = draft.Body + "\n\n" + summaries
+			if draft.SessionID != "" {
+				author = draft.SessionID // the draft's text leads the body
+			}
 		}
-		h.Notes, h.Source, h.SessionID = &body, model.AdeHandoverSourceRun, run.SessionID
+		h.Notes, h.Source, h.SessionID = &body, model.AdeHandoverSourceRun, author
 	} else if draft == nil {
 		return
 	}
