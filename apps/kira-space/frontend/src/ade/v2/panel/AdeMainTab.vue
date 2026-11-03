@@ -6,23 +6,17 @@ import { Label } from '@theme/components/ui/label';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
-import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { computed, ref } from 'vue';
-import { useOpenHostView } from '../../../hostview/queries';
 import AdeChip from '../AdeChip.vue';
 import { statusWhy, taskPatch } from '../board/panelFacts';
-import { useHostLabels } from '../hostLabels';
 import type { CardModel } from '../plan/usePlanModel';
 import { useUpdateTask } from '../queries';
 import { useAdeBranchRequestStore } from '../state/adeBranchRequest';
 import type { TaskPatch } from '../wire';
 import AdeEstimateField from './AdeEstimateField.vue';
-import AdeLinkRow from './AdeLinkRow.vue';
 import AdeMainBranches from './AdeMainBranches.vue';
 import AdeStatusPicker from './AdeStatusPicker.vue';
-import AdeTaskIssueLine from './AdeTaskIssueLine.vue';
 import AdeWorkflowBlock from './AdeWorkflowBlock.vue';
-import { useLinkFields } from './useLinkFields';
 
 // Main tab: the editable fields, the workflow, then the branches.
 const props = defineProps<{ card: CardModel }>();
@@ -48,16 +42,6 @@ async function write(patch: Partial<TaskPatch>): Promise<boolean> {
 
 // ---- status
 const why = computed(() => statusWhy(task.value, props.card.blocked, props.card.progress));
-
-// ---- links
-const jira = computed(() => task.value.jira);
-const links = useLinkFields(
-  () => task.value.hostLink,
-  async (patch) => ((await write(patch)) ? null : fieldError.value),
-);
-const hostLink = computed(() => task.value.hostLink);
-const hostLabels = useHostLabels();
-const openView = useOpenHostView();
 
 // ---- estimate
 async function saveEst(value: string): Promise<void> {
@@ -88,41 +72,6 @@ const spanDays = computed(() => props.card.entry.span);
         />
         <span class="text-kira-sm text-subtle" data-testid="ade-task-status-why">{{ why }}</span>
       </dd>
-      <AdeLinkRow
-        id="ade-task-jira"
-        :label="t('space.ade.taskTab.issue.label')"
-        chip=""
-        :text="jira?.key ?? ''"
-        :url="jira?.url ?? ''"
-        :placeholder="t('space.ade.taskTab.jiraPlaceholder.placeholder')"
-        :error="links.jiraError.value"
-        @save="links.saveJira"
-        @clear="links.clearJira"
-      />
-      <template v-if="jira">
-        <dt />
-        <dd class="min-w-0"
-          ><AdeTaskIssueLine :task-id="task.id" :link="`${jira.key} ${jira.url}`" /></dd
-        >
-      </template>
-      <AdeLinkRow
-        id="ade-task-host"
-        :label="t('space.ade.taskTab.pr.label')"
-        :chip="hostLabels.chipOf(hostLink)"
-        :text="hostLink?.ref ?? ''"
-        :url="hostLink ? task.hostUrl : ''"
-        :placeholder="
-          t('space.ade.taskTab.linkPlaceholder.placeholder', {
-            labels: hostLabels.labels.value,
-            shorts: hostLabels.shorts.value,
-          })
-        "
-        :error="links.hostError.value"
-        :viewable="hostLink?.kind === 'changeRequest' && !!task.hostUrl"
-        @view="fireAndForget(openView.mutateAsync(task.hostUrl), 'hostView.open')"
-        @save="links.saveHost"
-        @clear="links.clearHost"
-      />
       <dt>{{ t('space.ade.estimate.field.label') }}</dt>
       <dd
         ><AdeEstimateField :est="task.est" :days="spanDays" :error="estError" @save="saveEst" /></dd

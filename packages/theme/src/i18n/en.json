@@ -3030,6 +3030,9 @@
     "later": {
       "label": "Later"
     },
+    "main": {
+      "label": "Main"
+    },
     "mainWorktree": {
       "tooltip": "Main worktree"
     },
@@ -7976,9 +7979,6 @@
         }
       },
       "artifacts": {
-        "add": {
-          "label": "Add artifact"
-        },
         "empty": {
           "body": "No artifacts yet. Branches, pull requests and deployments show up as the task produces them."
         },
@@ -8014,12 +8014,6 @@
             "label": "Web link"
           }
         },
-        "ref": {
-          "label": "Reference"
-        },
-        "remove": {
-          "tooltip": "Remove artifact"
-        },
         "stageDone": {
           "label": "Produced by this task"
         },
@@ -8033,9 +8027,6 @@
         },
         "title": {
           "title": "Artifacts"
-        },
-        "url": {
-          "label": "Web address"
         }
       },
       "automation": {
@@ -8069,9 +8060,6 @@
         },
         "excludedStacked": {
           "hint": "Stacked on this branch."
-        },
-        "main": {
-          "label": "Main"
         },
         "planner": {
           "label": "Planner branches"
@@ -8532,6 +8520,47 @@
         "body": "{day} is now a day off. This moves {count} task planned for it to {to}. | {day} is now a day off. This moves {count} tasks planned for it to {to}.",
         "title": "Move tasks?"
       },
+      "details": {
+        "empty": {
+          "body": "No links yet."
+        },
+        "link": {
+          "aria": "Link title"
+        },
+        "links": {
+          "title": "Links"
+        },
+        "paste": {
+          "aria": "Add a link",
+          "notLink": {
+            "error": "That is not a link or a Jira key."
+          },
+          "placeholder": "Paste a link or Jira key"
+        },
+        "related": {
+          "title": "Related"
+        },
+        "timeline": {
+          "artifact": {
+            "label": "Added {title}"
+          },
+          "branch": {
+            "label": "Added branch {name}"
+          },
+          "created": {
+            "label": "Task created"
+          },
+          "draft": {
+            "label": "Draft handover from {from}"
+          },
+          "handover": {
+            "label": "Handover from {from} to {to}"
+          },
+          "header": {
+            "label": "Timeline ({count})"
+          }
+        }
+      },
       "estimate": {
         "clear": {
           "tooltip": "Clear estimate"
@@ -8646,14 +8675,8 @@
         "copy": {
           "tooltip": "Copy {label} link"
         },
-        "field": {
-          "label": "{label} link"
-        },
         "notJira": {
           "error": "Not a Jira key or link."
-        },
-        "remove": {
-          "tooltip": "Remove {label} link"
         },
         "view": {
           "tooltip": "View {label} in Kira"
@@ -9874,12 +9897,6 @@
           "prsNone": {
             "label": "No pull requests"
           }
-        },
-        "jiraPlaceholder": {
-          "placeholder": "Paste Jira link or key"
-        },
-        "linkPlaceholder": {
-          "placeholder": "Paste {labels} issue or {shorts} link"
         },
         "notMerging": {
           "hint": "Stays on the plan; never merged."

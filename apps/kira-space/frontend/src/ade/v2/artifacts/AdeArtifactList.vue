@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { type MessageKey, t } from '@theme/i18n';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
@@ -7,26 +6,17 @@ import QueryState from '@workbench/components/QueryState.vue';
 import { computed } from 'vue';
 import { control } from '../../../bridge/control';
 import AdeChip from '../AdeChip.vue';
-import { useRemoveArtifact, useTaskArtifacts } from '../queries';
+import { useTaskArtifacts } from '../queries';
 import type { Artifact } from '../wire';
-import AdeArtifactAdd from './AdeArtifactAdd.vue';
 import { gapText } from './gapText';
-import { artifactStatusLabel, artifactStatusTone } from './status';
+import { artifactKindLabel, artifactStatusLabel, artifactStatusTone } from './status';
 
 // Everything a task produced or points at: detected rows (links, branches, change requests,
-// deployments) mirror git and the host; stored rows (agent or user reports) can be removed.
-const props = defineProps<{ taskId: string; readonly?: boolean; compact?: boolean }>();
+// deployments) mirror git and the host; stored rows are agent or user reports. Read-only: the
+// Details tab owns adding, renaming and removing.
+const props = defineProps<{ taskId: string; compact?: boolean }>();
 const query = useTaskArtifacts(() => props.taskId);
-const remove = useRemoveArtifact();
 
-const KIND_LABEL = {
-  changeRequest: 'common.gitHost.changeRequest.label',
-  issue: 'space.ade.taskTab.issue.label',
-  branch: 'common.field.branch.label',
-  deployment: 'space.ade.artifacts.kind.deployment.label',
-  doc: 'space.ade.artifacts.kind.doc.label',
-  link: 'space.ade.artifacts.kind.link.label',
-} as const;
 const SOURCE_LABEL: Record<string, MessageKey> = {
   task: 'common.task.label',
   host: 'common.gitHost.label',
@@ -50,12 +40,9 @@ function openLink(e: MouseEvent, url: string): void {
 
 <template>
   <div class="flex flex-col gap-2" data-testid="ade-artifacts">
-    <div v-if="!compact" class="flex items-center gap-2">
-      <div class="text-kira-sm text-muted-foreground">{{
-        t('space.ade.artifacts.title.title')
-      }}</div>
-      <AdeArtifactAdd v-if="!readonly" :task-id="taskId" class="ml-auto" />
-    </div>
+    <div v-if="!compact" class="text-kira-sm text-muted-foreground">{{
+      t('space.ade.artifacts.title.title')
+    }}</div>
     <QueryState :query="query">
       <Alert
         v-for="g in gaps"
@@ -79,7 +66,7 @@ function openLink(e: MouseEvent, url: string): void {
           class="flex min-w-0 items-center gap-2 text-kira-md"
           data-testid="ade-artifact-row"
         >
-          <AdeChip :label="t(KIND_LABEL[a.kind])" tone="grey" wide />
+          <AdeChip :label="artifactKindLabel(a.kind)" tone="grey" wide />
           <a
             v-if="a.url"
             :href="a.url"
@@ -116,14 +103,6 @@ function openLink(e: MouseEvent, url: string): void {
               sourceLabel(a)
             }}</span
           >
-          <TooltipIconButton
-            v-if="a.id && !readonly"
-            icon="close"
-            :label="t('space.ade.artifacts.remove.tooltip')"
-            class="shrink-0"
-            data-testid="ade-artifact-remove"
-            @click="remove.mutate({ taskId, id: a.id })"
-          />
         </li>
       </ul>
     </QueryState>

@@ -7,17 +7,14 @@ import { Input } from '@theme/components/ui/input';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useInlineEdit } from '@workbench/behaviour/inlineEdit';
-import { errorText } from '@workbench/bridge/codedError';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import AdeTip from '../AdeTip.vue';
-import AdeArtifactList from '../artifacts/AdeArtifactList.vue';
 import AdeAutomationsBlock from '../automation/AdeAutomationsBlock.vue';
 import { dayLabel, LATER } from '../board/calendar';
 import { taskFacts, taskPatch } from '../board/panelFacts';
 import { taskReviewTip } from '../board/reviewCode';
-import AdeHandoverList from '../notes/AdeHandoverList.vue';
-import AdeNotesEditor from '../notes/AdeNotesEditor.vue';
+import AdeDetailsTab from '../details/AdeDetailsTab.vue';
 import type { CardModel, PlanModel } from '../plan/usePlanModel';
 import { useTaskMenu } from '../plan/useTaskMenu';
 import { useUpdateTask } from '../queries';
@@ -30,7 +27,7 @@ import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import AdeMainTab from './AdeMainTab.vue';
 import AdePanelFrame from './AdePanelFrame.vue';
 
-// Task mode: header facts, the Task, Notes, Artifacts and Sessions tabs.
+// Task mode: header facts, then the Main, Details and Sessions tabs.
 const props = defineProps<{ card: CardModel; model: PlanModel }>();
 
 const ui = useAdeBoardUiStore();
@@ -55,7 +52,6 @@ const reviewTip = computed(() => taskReviewTip(choices.value));
 const reviewDisabled = computed(
   () => reviewCode.pending.value || choices.value.every((c) => c.disabled),
 );
-const notesError = ref('');
 
 const titleEdit = useInlineEdit({
   source: () => props.card.task.title,
@@ -96,24 +92,14 @@ const facts = computed(() => {
     steps: p.totalSteps,
   });
 });
-
-async function saveNotes(taskId: string, value: string): Promise<void> {
-  notesError.value = '';
-  try {
-    await update.mutateAsync({ taskId, patch: taskPatch({ notes: value }) });
-  } catch (err) {
-    notesError.value = errorText(err);
-  }
-}
 </script>
 
 <template>
   <AdePanelFrame
     v-model="tab"
     :tabs="[
-      { value: 'main', label: t('common.task.label') },
-      { value: 'notes', label: t('space.common.notes.label') },
-      { value: 'artifacts', label: t('space.ade.artifacts.title.title') },
+      { value: 'main', label: t('common.main.label') },
+      { value: 'details', label: t('common.details.title') },
       { value: 'sessions', label: t('space.common.sessions.label'), count: sessionCount },
     ]"
   >
@@ -192,23 +178,6 @@ async function saveNotes(taskId: string, value: string): Promise<void> {
     </template>
     <AdeMainTab v-if="tab === 'main'" :card="card" />
     <AdeSessionsTab v-else-if="tab === 'sessions'" :task-id="card.task.id" />
-    <div
-      v-else-if="tab === 'artifacts'"
-      class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3"
-      data-testid="ade-artifacts-tab"
-    >
-      <AdeArtifactList :task-id="card.task.id" />
-    </div>
-    <div
-      v-else
-      class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3"
-      data-testid="ade-notes-tab"
-    >
-      <AdeNotesEditor :notes="card.task.notes" :item-id="card.task.id" @save="saveNotes" />
-      <Alert v-if="notesError" variant="error" data-testid="ade-notes-error"
-        ><AlertDescription>{{ notesError }}</AlertDescription></Alert
-      >
-      <AdeHandoverList :task-id="card.task.id" />
-    </div>
+    <AdeDetailsTab v-else :task="card.task" :branches="card.rows.map((r) => r.branch)" />
   </AdePanelFrame>
 </template>

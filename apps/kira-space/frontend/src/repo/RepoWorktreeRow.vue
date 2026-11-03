@@ -58,7 +58,7 @@ const rowClass = computed(() => [
     <Tooltip v-if="wt.isMain">
       <TooltipTrigger as-child>
         <span class="worktree-badge shrink-0 text-kira-sm text-subtle">{{
-          t('space.ade.basePicker.main.label')
+          t('common.main.label')
         }}</span>
       </TooltipTrigger>
       <TooltipContent>{{ t('common.mainWorktree.tooltip') }}</TooltipContent>
