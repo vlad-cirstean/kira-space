@@ -50,6 +50,8 @@ const BOUND_GIT_WIRE: Readonly<Record<string, string>> = Object.fromEntries(
     StackCancelRestack: 'stack.cancelRestack',
     ReviewResolveBase: 'review.resolveBase',
     ReviewFiles: 'review.files',
+    ReviewRemovedList: 'review.removed.list',
+    ReviewRemovedDismiss: 'review.removed.dismiss',
     ReviewFileDiff: 'review.fileDiff',
     ReviewSnapshot: 'review.snapshot',
     ReviewMark: 'review.mark',

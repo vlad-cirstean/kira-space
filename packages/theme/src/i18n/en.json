@@ -9311,6 +9311,39 @@
             "label": "{count} uncommitted | {count} uncommitted"
           }
         },
+        "removed": {
+          "dismiss": {
+            "aria": "Dismiss removed lines in {path}",
+            "tooltip": "Dismiss for good"
+          },
+          "dismissFailed": {
+            "body": "Couldn’t dismiss this entry. Retry."
+          },
+          "header": {
+            "label": "Removed since review · {count}"
+          },
+          "line": {
+            "label": "Line {line}"
+          },
+          "lines": {
+            "label": "Lines {start}–{end}"
+          },
+          "notStored": {
+            "hint": "The file content is not stored."
+          },
+          "reviewed": {
+            "label": "Reviewed"
+          },
+          "section": {
+            "aria": "Reviewed lines removed since review"
+          },
+          "truncated": {
+            "hint": "The rest of this block is not shown."
+          },
+          "wholeFile": {
+            "label": "Whole file"
+          }
+        },
         "window": {
           "diffs": {
             "aria": "Diffs"

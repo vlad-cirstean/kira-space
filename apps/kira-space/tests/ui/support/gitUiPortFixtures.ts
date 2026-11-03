@@ -450,6 +450,8 @@ export const REVIEW_RESULTS = {
   },
   'review.mark': {},
   'review.markMany': { results: [] },
+  'review.removed.list': { entries: [] },
+  'review.removed.dismiss': { dismissed: 0 },
   'commit.detail': COMMIT_DETAIL,
 };
 
