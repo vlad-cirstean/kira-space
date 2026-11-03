@@ -3061,6 +3061,7 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 - Frontend: apps/kira-studio/frontend/src/kubernetes/ (app-local, no second consumer). Mode `kubernetes` has no tab strip. Server state is on TanStack Query under ['kubernetes', clusterId, ...]; lists refetch every 10 s while the document is visible. UI state is one Pinia store; the last cluster, kind and namespace per cluster persist in localStorage (kira.kubernetes.selection).
 - Flow tests run against `flowharness.KubeFake`, an in-process HTTPS API server (client-go sends no credentials over plain HTTP). It serves discovery, Table lists, objects, events, logs and an exec-plugin cluster. No real cluster is used anywhere.
 - P440: `Service.SetMcp` stores per-cluster MCP modes and description (migration 0051, above Studio's reserved 0050). `ListCapped` and `ReadLogs` (one non-follow request, 256 KiB cap) feed the MCP tools. See "Kubernetes tools (P440)" under Database MCP server.
+- P484: every cluster call records one op, kind `kubernetes`, through `kubernetes.Recorder` (`bridge.KubeRecorder` over `Host.RunOp`; `Service.record` is the one seam). UI and MCP calls share it; MCP rows get source `mcp` from the context. The command comes from `commands.go`, also the approval dialog text. Not recorded: refetches of loaded data (`background: true`, set by `queries.ts` when the query already holds data), `SetMcp`, kubeconfig-only `Clusters`, and failures before the call starts (unknown cluster). A log stream's row runs until the stream ends; panel Cancel ends the stream like `LogsClose`. A `Status` probe that finds the cluster unavailable still returns a value, and its row is an error. The running row carries no command; it arrives with op:end.
 
 ## Database MCP server (v1.7)
 
@@ -3086,11 +3087,11 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 
 ### Kubernetes tools (P440)
 
-- Six more tools register when `Config.Kube` and `Config.Ops` are set: kube_list_clusters, kube_list_namespaces, kube_list_kinds, kube_list_resources, kube_describe, kube_pod_logs. All read-only.
+- Six more tools register when `Config.Kube` is set: kube_list_clusters, kube_list_namespaces, kube_list_kinds, kube_list_resources, kube_describe, kube_pod_logs. All read-only.
 - Each cluster has four modes, `deny|prompt|allow`, default prompt: discover (namespaces, kinds), list, describe, logs. Stored on `kube_clusters` (migration 0051).
 - No exposure switch. A cluster with all four modes deny is hidden and answers `no cluster %q exposed to MCP`.
 - Prompt mode uses the shared ApprovalBroker (`KindDbMcp`) with `ApprovalRequest.Cluster`. The dialog shows a kubectl-equivalent statement. It is display and op command only, never run. The cluster is re-resolved after approval.
-- Calls log as op kind `kubernetes` (connectionless), source MCP.
+- Calls log as op kind `kubernetes` (connectionless), source MCP, through the same `kubernetes.Service` seam as the UI (P484).
 - Settings: cluster tree menu "MCP access" and Settings, Database MCP pane list.
 
 ### Permissions and statement classification (M2)

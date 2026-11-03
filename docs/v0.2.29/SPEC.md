@@ -6,7 +6,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 
 | Phase | Title | Status |
 |---|---|---|
-| P484 | Kubernetes: ops panel tracks every action | Todo |
+| P484 | Kubernetes: ops panel tracks every action | Done |
 | P485 | Kubernetes: reorder clusters | Todo |
 | P486 | Kubernetes: resource browser redesign, tabbed pods | Todo |
 | P487 | Kubernetes: drive the kubectl CLI instead of the native client | Todo |
@@ -24,6 +24,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 
 - Kubernetes module records all its actions in the ops panel, as other modules do. Plan lists every mutating and long-running action (apply, delete, scale, restart, exec, port-forward, logs) and the op log shape.
 - Test: backend flow and UI spec on the same scenario.
+- Result: `kubernetes.Service` records every cluster call (`Status`, `Namespaces`, `Kinds`, `List`, `Describe`, `ReadLogs`, `LogsOpen`) through one `Recorder` seam, op kind `kubernetes`. `bridge.KubeRecorder` runs it over `Host.RunOp`. Command text moved to `kubernetes/commands.go`, shared with the MCP approval dialog. dbmcp dropped `Config.Ops`/`OpRunner`; MCP rows stay identical. A log stream's row spans the stream; panel Cancel ends it. Refetches of loaded data pass `background: true` and skip the log. apply/delete/scale/restart/exec/port-forward do not exist (module is read-only), so nothing to record. The running row shows no command (op:start carries none); the plan expected one. Tests: `kubeflow` `TestOpsRecordEveryAction` with contract `kubernetes.json`, `dbmcpflow` single-row guard, UI spec `kubernetes-ops.spec.ts` (3 tests).
 
 ### P485 Kubernetes: reorder clusters
 

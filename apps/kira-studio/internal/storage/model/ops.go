@@ -54,7 +54,7 @@ var opKinds = map[string]bool{
 	"test": true, "read": true, "count": true, "mutate": true, "execute": true, "transfer": true,
 	// P2: the op log's first connectionless op kind (internal/httpclient via bridge/http.go).
 	"http": true,
-	// P440: a Kubernetes read made through the DB MCP server; connectionless like http.
+	// P440: a Kubernetes cluster call, from the module or MCP; connectionless like http.
 	"kubernetes": true,
 	// P11 D7: a gRPC unary or server-streaming call (internal/grpcclient via bridge/grpc.go).
 	"grpc": true,

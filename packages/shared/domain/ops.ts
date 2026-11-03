@@ -28,7 +28,7 @@ export const opKindSchema = /*#__PURE__*/ z.enum([
   'keyTypes',
   // P307: the pre-connect script's startup wait, shown so its progress and timer are visible.
   'preconnect',
-  // P440: a Kubernetes read made through the DB MCP server; connectionless like 'http'.
+  // P440: a Kubernetes cluster call, from the module or MCP; connectionless like 'http'.
   'kubernetes',
 ]);
 export type OpKind = z.infer<typeof opKindSchema>;
