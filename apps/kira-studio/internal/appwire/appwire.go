@@ -31,6 +31,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/logging"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
+	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/terminal"
@@ -231,7 +232,7 @@ func Build(opts Options) (*Wired, error) {
 	}
 	embedded := wireEmbeddedServices(deps, installer, opts.KeepAwakeDriver, connectionsSvc, oplogWiring, metricsTicker, promptRouter, agents, proofSvc, opts)
 	lifecycle := wireLifecycle(windows, embedded.events, embedded.eventsDetach, metricsTicker, oplogWiring, connectionsSvc,
-		embedded.dbMcpSvc, embedded.keepAwakeSvc, embedded.terminalSvc, embedded.dockerSvc, embedded.kubeSvc, updateInstaller, embedded.runs, embedded.closeAgent, embedded.sched, repositories, db)
+		embedded.dbMcpSvc, embedded.keepAwakeSvc, embedded.terminalSvc, embedded.dockerSvc, embedded.kubeSvc, updateInstaller, embedded.runs, embedded.closeAgent, embedded.sched, embedded.runLoader, repositories, db)
 	embedded.sched.Start()
 
 	live := func() shell.QuitStatus {
@@ -281,7 +282,7 @@ func Build(opts Options) (*Wired, error) {
 		DbMcp:           embedded.dbMcpSvc,
 		KeepAwake:       embedded.keepAwakeSvc,
 		Terminal:        embedded.terminalSvc,
-		CustomScripts:   &bridge.CustomScriptsService{Deps: deps, Changed: embedded.sched.Reload},
+		CustomScripts:   &bridge.CustomScriptsService{Svc: &scripts.Service{Loader: embedded.runLoader}},
 		ConfigFiles:     &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"runs": filepath.Join(deps.Home, "runs")})},
 		ScriptRuns:      embedded.scriptRuns,
 		Docker:          embedded.dockerSvc,

@@ -1,6 +1,7 @@
 package appwire
 
 import (
+	"fmt"
 	"log/slog"
 	"path/filepath"
 	"sync"
@@ -44,6 +45,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/metrics"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
+	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/terminal"
@@ -139,6 +141,7 @@ type embeddedWired struct {
 	runs         *scriptruns.Service
 	closeAgent   func()
 	sched        *scriptruns.Scheduler
+	runLoader    *scripts.Loader
 	dockerSvc    *bridge.DockerService
 	kubeSvc      *bridge.KubernetesService
 	events       *bridge.Events
@@ -205,6 +208,16 @@ func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, kee
 	if err := runs.Recover(); err != nil {
 		slog.Warn("recover script runs", "scope", "startup", "err", err)
 	}
+	sched := &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
+	runLoader, err := scripts.NewLoader(scripts.LoaderOptions{
+		Repo: deps.Repos.CustomScripts, Dir: filepath.Join(deps.Home, "runs"), Home: deps.Home, App: "Studio",
+		Emit:     func(snapshot scripts.Snapshot) { deps.Events.Emit(bridge.ChannelCustomScriptsChanged, snapshot) },
+		OnChange: sched.Reload,
+	})
+	if err != nil {
+		panic(fmt.Sprintf("appwire: runs loader (static schema): %v", err))
+	}
+	runLoader.Start()
 	terminalSvc := &bridge.TerminalService{BoundService: &terminal.BoundService{Emit: deps.Events, Registry: registry, Scripts: runs, Agent: agents}}
 	dockerSvc := &bridge.DockerService{BoundService: docker.NewBoundService(deps.Events, dockerOptions(opts, deps.Repos.DockerRestore)...)}
 	docker.StartRestoreBound(dockerSvc.BoundService)
@@ -215,7 +228,7 @@ func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, kee
 		dbMcpSvc: dbMcpSvc, keepAwakeSvc: keepAwakeSvc,
 		windowsSvc: windowsSvc, terminalSvc: terminalSvc, dockerSvc: dockerSvc, kubeSvc: kubeSvc,
 		scriptRuns: &bridge.ScriptRunsService{Bound: &scriptruns.Bound{Svc: runs}}, runs: runs, closeAgent: closeAgent,
-		sched:  &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock},
+		sched: sched, runLoader: runLoader,
 		events: events, eventsDetach: eventsDetach,
 	}
 }
@@ -235,7 +248,7 @@ type lifecycleWired struct {
 // close-flush coordinator -> beforeFlush/teardown (today's OnShutdown, minus the ticker Stop,
 // which moves to beforeFlush, run before the flush wait rather than after it — index.ts:156)
 // -> the quitter built over both.
-func wireLifecycle(windows *shell.WindowRegistry, events *bridge.Events, eventsDetach func(), metricsTicker *metrics.Ticker, oplogWiring *oplog.Wiring, connectionsSvc *connections.Service, dbMcpSvc *bridge.DbMcpService, keepAwakeSvc *bridge.KeepAwakeService, terminalSvc *bridge.TerminalService, dockerSvc *bridge.DockerService, kubeSvc *bridge.KubernetesService, updateInstaller *appupdate.Installer, runs *scriptruns.Service, closeAgent func(), sched *scriptruns.Scheduler, repositories *repos.Repos, db *storage.DB) lifecycleWired {
+func wireLifecycle(windows *shell.WindowRegistry, events *bridge.Events, eventsDetach func(), metricsTicker *metrics.Ticker, oplogWiring *oplog.Wiring, connectionsSvc *connections.Service, dbMcpSvc *bridge.DbMcpService, keepAwakeSvc *bridge.KeepAwakeService, terminalSvc *bridge.TerminalService, dockerSvc *bridge.DockerService, kubeSvc *bridge.KubernetesService, updateInstaller *appupdate.Installer, runs *scriptruns.Service, closeAgent func(), sched *scriptruns.Scheduler, runLoader *scripts.Loader, repositories *repos.Repos, db *storage.DB) lifecycleWired {
 	// windows holds every currently open window's shell.Attach cleanup, keyed by that window's own
 	// identity (replacing the single detachWindow/mainWindow pair that only ever worked because at
 	// most one window could exist at a time). beforeFlush detaches every one of them, not just the
@@ -272,6 +285,7 @@ func wireLifecycle(windows *shell.WindowRegistry, events *bridge.Events, eventsD
 		docker.StopRestoreBound(dockerSvc.BoundService)
 		kubernetes.ServiceOf(kubeSvc.BoundService).Shutdown()
 		sched.Close()
+		runLoader.Close()
 		runs.Close()
 		closeAgent()
 		if err := repositories.Close(); err != nil {

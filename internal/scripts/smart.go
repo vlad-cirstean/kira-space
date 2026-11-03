@@ -3,6 +3,7 @@ package scripts
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -129,89 +130,91 @@ func containsStr(list []string, v string) bool {
 
 func validParams(params []Param, kind, prompt string) ([]Param, error) {
 	if len(params) > MaxParams {
-		return nil, invalid("scripts: at most %d params", MaxParams)
+		return nil, invalid("/params", "backend.core.runs.paramsMax.body", "max", strconv.Itoa(MaxParams))
 	}
 	out := make([]Param, 0, len(params))
 	seen := map[string]bool{}
-	for _, p := range params {
+	for i, p := range params {
+		at := "/params/" + strconv.Itoa(i)
 		p.Name = strings.TrimSpace(p.Name)
 		switch {
 		case !paramNameRE.MatchString(p.Name):
-			return nil, invalid("scripts: param name %q must be lowercase letters, digits and _, starting with a letter, up to 32 characters", p.Name)
+			return nil, invalid(at+"/name", "backend.core.runs.paramName.body")
 		case containsStr(BuiltinVars, p.Name):
-			return nil, invalid("scripts: param name %q is reserved", p.Name)
+			return nil, invalid(at+"/name", "backend.core.runs.paramReserved.body")
 		case seen[p.Name]:
-			return nil, invalid("scripts: param %q is listed twice", p.Name)
+			return nil, invalid(at+"/name", "backend.core.runs.paramDuplicate.body")
 		}
 		seen[p.Name] = true
 		var err error
-		if p, err = validParamShape(p); err != nil {
+		if p, err = validParamShape(p, at); err != nil {
 			return nil, err
 		}
 		if p.Secret && kind == KindSmart && containsVar(prompt, p.Name) {
-			return nil, invalid("scripts: secret param %s cannot be used in the prompt", p.Name)
+			return nil, invalid("/prompt", "backend.core.runs.paramSecretInPrompt.body")
 		}
 		out = append(out, p)
 	}
 	return out, nil
 }
 
-func validParamShape(p Param) (Param, error) {
+func validParamShape(p Param, at string) (Param, error) {
 	p.Options = nonNil(p.Options)
 	p.Default = nonNil(p.Default)
 	switch p.Type {
 	case ParamText:
-		return p, validTextParam(p)
+		return p, validTextParam(p, at)
 	case ParamSelect, ParamMultiselect:
-		return p, validChoiceParam(p)
+		return p, validChoiceParam(p, at)
 	}
-	return p, invalid("scripts: param %s: type must be text, select or multiselect", p.Name)
+	return p, invalid(at+"/type", "backend.core.runs.paramType.body")
 }
 
-func validTextParam(p Param) error {
+func validTextParam(p Param, at string) error {
 	if len(p.Options) > 0 {
-		return invalid("scripts: param %s: a text param has no options", p.Name)
+		return invalid(at+"/options", "backend.core.runs.paramTextOptions.body")
 	}
 	if len(p.Default) > 1 {
-		return invalid("scripts: param %s: a text param has one default", p.Name)
+		return invalid(at+"/default", "backend.core.runs.paramTextDefault.body")
 	}
 	if len(p.Default) == 1 {
 		if p.Secret {
-			return invalid("scripts: secret param %s cannot have a default", p.Name)
+			return invalid(at+"/default", "backend.core.runs.paramSecretDefault.body")
 		}
-		if err := checkText(p.Default[0]); err != nil {
-			return invalid("scripts: param %s: default %v", p.Name, err)
+		if key := textProblem(p.Default[0]); key != "" {
+			return invalid(at+"/default", key, "max", strconv.Itoa(MaxTextValue))
 		}
 	}
 	return nil
 }
 
 // validChoiceParam checks a select or multiselect param; it trims p.Options in place.
-func validChoiceParam(p Param) error {
+func validChoiceParam(p Param, at string) error {
 	if p.Secret {
-		return invalid("scripts: param %s: only a text param can be secret", p.Name)
+		return invalid(at+"/secret", "backend.core.runs.paramChoiceSecret.body")
 	}
 	if len(p.Options) == 0 || len(p.Options) > MaxOptions {
-		return invalid("scripts: param %s: give 1 to %d options", p.Name, MaxOptions)
+		return invalid(at+"/options", "backend.core.runs.paramOptionsCount.body", "max", strconv.Itoa(MaxOptions))
 	}
 	seen := map[string]bool{}
 	for i, o := range p.Options {
 		o = strings.TrimSpace(o)
 		p.Options[i] = o
+		opt := at + "/options/" + strconv.Itoa(i)
 		switch {
 		case o == "" || utf8.RuneCountInString(o) > MaxOptionRunes || strings.ContainsAny(o, "\r\n"):
-			return invalid("scripts: param %s: an option must be 1 to %d characters on one line", p.Name, MaxOptionRunes)
+			return invalid(opt, "backend.core.runs.paramOptionInvalid.body", "max", strconv.Itoa(MaxOptionRunes))
 		case seen[o]:
-			return invalid("scripts: param %s: option %q is listed twice", p.Name, o)
+			return invalid(opt, "backend.core.runs.paramOptionDuplicate.body")
 		}
 		seen[o] = true
 	}
 	if p.Type == ParamSelect && len(p.Default) > 1 {
-		return invalid("scripts: param %s: a select param has one default", p.Name)
+		return invalid(at+"/default", "backend.core.runs.paramSelectDefault.body")
 	}
-	for _, d := range p.Default {
+	for i, d := range p.Default {
 		if !containsStr(p.Options, d) {
-			return invalid("scripts: param %s: default %q is not an option", p.Name, d)
+			return invalid(at+"/default/"+strconv.Itoa(i), "backend.core.runs.paramDefaultNotOption.body")
 		}
 	}
 	return nil
@@ -224,15 +227,23 @@ func nonNil(s []string) []string {
 	return s
 }
 
-// checkText bounds a text value: no NUL or control characters except newline and tab.
-func checkText(v string) error {
+// textProblem returns the catalog key of what is wrong with a text value, "" when it is fine.
+func textProblem(v string) string {
 	if utf8.RuneCountInString(v) > MaxTextValue {
-		return fmt.Errorf("is longer than %d characters", MaxTextValue)
+		return "backend.core.runs.textTooLong.body"
 	}
 	for _, r := range v {
 		if r == 0 || (unicode.IsControl(r) && r != '\n' && r != '\t') {
-			return fmt.Errorf("has a control character")
+			return "backend.core.runs.textControl.body"
 		}
+	}
+	return ""
+}
+
+// checkText bounds a text value: no NUL or control characters except newline and tab.
+func checkText(v string) error {
+	if key := textProblem(v); key != "" {
+		return invalid("", key, "max", strconv.Itoa(MaxTextValue))
 	}
 	return nil
 }
@@ -256,7 +267,7 @@ func validSmart(s *Smart, models harness.Catalog) (*Smart, error) {
 		out.Model = models.Default
 	}
 	if !models.Valid(out.Model) {
-		return nil, invalid("scripts: model must be %s", orList(models.Aliases))
+		return nil, invalid("/smart/model", "backend.core.runs.smartModel.body", "allowed", orList(models.Aliases))
 	}
 	switch {
 	case out.NoCostCap:
@@ -264,7 +275,8 @@ func validSmart(s *Smart, models harness.Catalog) (*Smart, error) {
 	case out.MaxBudgetUSD == 0:
 		out.MaxBudgetUSD = DefaultBudgetUSD
 	case out.MaxBudgetUSD < MinBudgetUSD || out.MaxBudgetUSD > MaxBudgetUSD:
-		return nil, invalid("scripts: budget must be between %.2f and %.0f USD", MinBudgetUSD, MaxBudgetUSD)
+		return nil, invalid("/smart/max_budget_usd", "backend.core.runs.smartBudget.body",
+			"min", fmt.Sprintf("%.2f", MinBudgetUSD), "max", fmt.Sprintf("%.0f", MaxBudgetUSD))
 	}
 	out.Timeout = strings.TrimSpace(out.Timeout)
 	if out.Timeout == "" {
@@ -272,15 +284,15 @@ func validSmart(s *Smart, models harness.Catalog) (*Smart, error) {
 	}
 	d, err := time.ParseDuration(out.Timeout)
 	if err != nil || d < MinTimeout || d > MaxTimeout {
-		return nil, invalid("scripts: timeout must be a duration between 1m and 2h, like 15m")
+		return nil, invalid("/smart/timeout", "backend.core.runs.smartTimeout.body")
 	}
 	if out.Tools == nil {
 		out.Tools = append([]string{}, DefaultTools...)
 	}
 	picked := map[string]bool{}
-	for _, t := range out.Tools {
+	for i, t := range out.Tools {
 		if !containsStr(BuiltinTools, t) {
-			return nil, invalid("scripts: unknown tool %q", t)
+			return nil, invalid("/smart/tools/"+strconv.Itoa(i), "backend.core.runs.smartTool.body")
 		}
 		picked[t] = true
 	}
@@ -303,19 +315,20 @@ func validSmart(s *Smart, models harness.Catalog) (*Smart, error) {
 func validPatterns(patterns []string, bash bool) ([]string, error) {
 	out := []string{}
 	if len(patterns) > 0 && !bash {
-		return nil, invalid("scripts: Bash patterns need the Bash tool")
+		return nil, invalid("/smart/bash_patterns", "backend.core.runs.smartPatternsNeedBash.body")
 	}
 	if len(patterns) > MaxPatterns {
-		return nil, invalid("scripts: at most %d Bash patterns", MaxPatterns)
+		return nil, invalid("/smart/bash_patterns", "backend.core.runs.smartPatternsMax.body", "max", strconv.Itoa(MaxPatterns))
 	}
 	seen := map[string]bool{}
-	for _, p := range patterns {
+	for i, p := range patterns {
+		at := "/smart/bash_patterns/" + strconv.Itoa(i)
 		p = strings.TrimSpace(p)
 		switch {
 		case p == "" || utf8.RuneCountInString(p) > MaxPatternRunes:
-			return nil, invalid("scripts: a Bash pattern must be 1 to %d characters", MaxPatternRunes)
+			return nil, invalid(at, "backend.core.runs.smartPatternLength.body", "max", strconv.Itoa(MaxPatternRunes))
 		case strings.ContainsAny(p, ")\r\n"):
-			return nil, invalid("scripts: a Bash pattern cannot contain ) or a new line")
+			return nil, invalid(at, "backend.core.runs.smartPatternChars.body")
 		}
 		if !seen[p] {
 			seen[p] = true
@@ -328,15 +341,16 @@ func validPatterns(patterns []string, bash bool) ([]string, error) {
 func validMCP(choices []MCPChoice) ([]MCPChoice, error) {
 	out := []MCPChoice{}
 	if len(choices) > MaxMCPServers {
-		return nil, invalid("scripts: at most %d MCP servers", MaxMCPServers)
+		return nil, invalid("/smart/mcp", "backend.core.runs.smartMcpMax.body", "max", strconv.Itoa(MaxMCPServers))
 	}
 	seen := map[string]bool{}
-	for _, c := range choices {
+	for i, c := range choices {
+		at := "/smart/mcp/" + strconv.Itoa(i)
 		if !mcpNameRE.MatchString(c.Server) {
-			return nil, invalid("scripts: MCP server name %q is not valid", c.Server)
+			return nil, invalid(at+"/server", "backend.core.runs.smartMcpName.body")
 		}
 		if seen[c.Server] {
-			return nil, invalid("scripts: MCP server %s is listed twice", c.Server)
+			return nil, invalid(at+"/server", "backend.core.runs.smartMcpDuplicate.body")
 		}
 		seen[c.Server] = true
 		if c.AllTools {
@@ -344,16 +358,16 @@ func validMCP(choices []MCPChoice) ([]MCPChoice, error) {
 			continue
 		}
 		if len(c.Tools) == 0 {
-			return nil, invalid("scripts: tick at least one tool of %s or turn it off", c.Server)
+			return nil, invalid(at+"/tools", "backend.core.runs.smartMcpNeedTool.body")
 		}
 		if len(c.Tools) > MaxMCPTools {
-			return nil, invalid("scripts: at most %d tools per MCP server", MaxMCPTools)
+			return nil, invalid(at+"/tools", "backend.core.runs.smartMcpToolsMax.body", "max", strconv.Itoa(MaxMCPTools))
 		}
 		tools := []string{}
 		dup := map[string]bool{}
-		for _, t := range c.Tools {
+		for j, t := range c.Tools {
 			if !mcpNameRE.MatchString(t) {
-				return nil, invalid("scripts: MCP tool name %q is not valid", t)
+				return nil, invalid(at+"/tools/"+strconv.Itoa(j), "backend.core.runs.smartMcpToolName.body")
 			}
 			if !dup[t] {
 				dup[t] = true

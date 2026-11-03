@@ -1005,10 +1005,171 @@
           "body": "The data is larger than the frame size limit."
         }
       },
-      "scriptDir": {
-        "homeUnresolved": {
-          "body": "Your home folder couldn’t be resolved."
+      "runs": {
+        "collectionLong": {
+          "body": "The collection name is longer than {max} characters."
         },
+        "colorInvalid": {
+          "body": "This colour is not in the palette."
+        },
+        "commandRequired": {
+          "body": "A script needs a command."
+        },
+        "cronFields": {
+          "body": "A schedule needs 5 cron fields."
+        },
+        "cronInvalid": {
+          "body": "This cron expression is not valid."
+        },
+        "dirFixedPath": {
+          "body": "A fixed folder needs an absolute path."
+        },
+        "dirInvalid": {
+          "body": "The folder mode must be kira or fixed."
+        },
+        "dirKiraPath": {
+          "body": "The kira folder takes no path."
+        },
+        "fileChanged": {
+          "body": "This file changed since you opened it."
+        },
+        "kindInvalid": {
+          "body": "The kind must be script or smart."
+        },
+        "nameRequired": {
+          "body": "The name is required."
+        },
+        "paramChoiceSecret": {
+          "body": "Only a text parameter can be secret."
+        },
+        "paramDefaultNotOption": {
+          "body": "This default is not one of the options."
+        },
+        "paramDuplicate": {
+          "body": "This parameter name is used twice."
+        },
+        "paramName": {
+          "body": "A parameter name uses lowercase letters, digits and _, starts with a letter and has up to 32 characters."
+        },
+        "paramOptionDuplicate": {
+          "body": "This option is listed twice."
+        },
+        "paramOptionInvalid": {
+          "body": "An option is 1 to {max} characters on one line."
+        },
+        "paramOptionsCount": {
+          "body": "Give 1 to {max} options."
+        },
+        "paramReserved": {
+          "body": "This parameter name is reserved for a built-in variable."
+        },
+        "paramSecretDefault": {
+          "body": "A secret parameter has no default."
+        },
+        "paramSecretInPrompt": {
+          "body": "A secret parameter can’t be used in the prompt."
+        },
+        "paramSelectDefault": {
+          "body": "A select parameter has at most one default."
+        },
+        "paramsMax": {
+          "body": "A run has at most {max} parameters."
+        },
+        "paramTextDefault": {
+          "body": "A text parameter has at most one default."
+        },
+        "paramTextOptions": {
+          "body": "A text parameter has no options."
+        },
+        "paramType": {
+          "body": "The type must be text, select or multiselect."
+        },
+        "promptRequired": {
+          "body": "A smart script needs a prompt."
+        },
+        "scheduleParamSecret": {
+          "body": "A schedule can’t set the secret parameter {name}. Save its value in Kira."
+        },
+        "scheduleParams": {
+          "body": "A schedule value names an unknown parameter or one the parameter doesn’t accept."
+        },
+        "scheduleSmartTimeout": {
+          "body": "A smart script has no schedule timeout. Its own timeout applies."
+        },
+        "scheduleTimeout": {
+          "body": "The schedule timeout must be between 1m and 24h."
+        },
+        "scriptNoPrompt": {
+          "body": "A script has a command, not a prompt."
+        },
+        "scriptNoSmart": {
+          "body": "Only a smart script has smart settings."
+        },
+        "secretEmpty": {
+          "body": "The saved value of {name} is empty. Clear it instead."
+        },
+        "secretNotParam": {
+          "body": "{name} is not a secret parameter of this run."
+        },
+        "smartBudget": {
+          "body": "The budget must be between {min} and {max} dollars."
+        },
+        "smartMcpDuplicate": {
+          "body": "This MCP server is listed twice."
+        },
+        "smartMcpMax": {
+          "body": "A run uses at most {max} MCP servers."
+        },
+        "smartMcpName": {
+          "body": "This MCP server name is not valid."
+        },
+        "smartMcpNeedTool": {
+          "body": "Choose at least one tool of this server, or set all_tools."
+        },
+        "smartMcpToolName": {
+          "body": "This MCP tool name is not valid."
+        },
+        "smartMcpToolsMax": {
+          "body": "A server lists at most {max} tools."
+        },
+        "smartModel": {
+          "body": "The model must be {allowed}."
+        },
+        "smartNoCommand": {
+          "body": "A smart script has a prompt, not a command."
+        },
+        "smartPatternChars": {
+          "body": "A Bash pattern can’t contain ) or a new line."
+        },
+        "smartPatternLength": {
+          "body": "A Bash pattern is 1 to {max} characters."
+        },
+        "smartPatternsMax": {
+          "body": "A run has at most {max} Bash patterns."
+        },
+        "smartPatternsNeedBash": {
+          "body": "Bash patterns need the Bash tool."
+        },
+        "smartTimeout": {
+          "body": "The timeout must be a duration between 1m and 2h, like 15m."
+        },
+        "smartTool": {
+          "body": "This tool is not one a run can use."
+        },
+        "stemInvalid": {
+          "body": "The file name must be lowercase letters, digits, - and _, up to 80 characters. Rename the file."
+        },
+        "textControl": {
+          "body": "This text has a control character."
+        },
+        "textTooLong": {
+          "body": "This text is longer than {max} characters."
+        },
+        "timezoneUnknown": {
+          "body": "This time zone is unknown."
+        }
+      },
+      "scriptDir": {
         "missing": {
           "body": "{path} does not exist."
         }

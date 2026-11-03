@@ -3,10 +3,9 @@ package scripts
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"time"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
@@ -18,9 +17,10 @@ type rowScanner interface {
 	Scan(dest ...any) error
 }
 
-const selectColumns = `id, name, command, working_dir, dir_mode, color, collection_id, sort_order, created_at, updated_at, kind, params_json, smart_json, use_ade_dir, schedule_json`
+const selectColumns = `id, name, command, working_dir, dir_mode, color, collection, sort_order, created_at, updated_at, kind, params_json, smart_json, use_ade_dir, schedule_json, schedule_task_id, schedule_branch_id`
 
-// Repo reads and writes the `custom_scripts` table, List ordered deterministically.
+// Repo reads and writes the `custom_scripts` table: the projection of the run files plus the state
+// columns (order, schedule target). List is ordered deterministically.
 type Repo struct {
 	DB *sql.DB
 	// Agents supplies the model aliases a smart script may name; nil means the built-in providers.
@@ -38,14 +38,15 @@ func (r *Repo) models() harness.Catalog {
 
 func scanRow(row rowScanner) (CustomScript, error) {
 	var s CustomScript
-	var collectionID sql.NullString
-	var paramsJSON, smartJSON, scheduleJSON string
+	var created, updated int64
+	var paramsJSON, smartJSON, scheduleJSON, taskID, branchID string
 	if err := row.Scan(
-		&s.ID, &s.Name, &s.Command, &s.WorkingDir, &s.DirMode, &s.Color, &collectionID, &s.SortOrder, &s.CreatedAt, &s.UpdatedAt,
-		&s.Kind, &paramsJSON, &smartJSON, &s.UseAdeDir, &scheduleJSON,
+		&s.ID, &s.Name, &s.Command, &s.WorkingDir, &s.DirMode, &s.Color, &s.Collection, &s.SortOrder, &created, &updated,
+		&s.Kind, &paramsJSON, &smartJSON, &s.UseAdeDir, &scheduleJSON, &taskID, &branchID,
 	); err != nil {
 		return CustomScript{}, err
 	}
+	s.CreatedAt, s.UpdatedAt = kiratime.FormatISO(time.UnixMilli(created)), kiratime.FormatISO(time.UnixMilli(updated))
 	s.Params = []Param{}
 	if err := json.Unmarshal([]byte(paramsJSON), &s.Params); err != nil {
 		return CustomScript{}, fmt.Errorf("scripts: decode params of %s: %w", s.ID, err)
@@ -61,9 +62,7 @@ func scanRow(row rowScanner) (CustomScript, error) {
 		if err := json.Unmarshal([]byte(scheduleJSON), s.Schedule); err != nil {
 			return CustomScript{}, fmt.Errorf("scripts: decode schedule of %s: %w", s.ID, err)
 		}
-	}
-	if collectionID.Valid {
-		s.CollectionID = &collectionID.String
+		s.Schedule.TaskID, s.Schedule.BranchID = taskID, branchID
 	}
 	return s, nil
 }
@@ -71,7 +70,8 @@ func scanRow(row rowScanner) (CustomScript, error) {
 // extras are the JSON column values of validated fields.
 type extras struct{ params, smart, schedule string }
 
-// encodeExtras encodes the params, smart and schedule columns; nil values encode as "".
+// encodeExtras encodes the params, smart and schedule columns; nil values encode as "". The schedule
+// target is state, so it never enters the column.
 func encodeExtras(f CustomScriptFields) (extras, error) {
 	pb, err := json.Marshal(f.Params)
 	if err != nil {
@@ -86,7 +86,9 @@ func encodeExtras(f CustomScriptFields) (extras, error) {
 		out.smart = string(sb)
 	}
 	if f.Schedule != nil {
-		sb, err := json.Marshal(f.Schedule)
+		sc := *f.Schedule
+		sc.TaskID, sc.BranchID = "", ""
+		sb, err := json.Marshal(sc)
 		if err != nil {
 			return extras{}, fmt.Errorf("scripts: encode schedule: %w", err)
 		}
@@ -138,263 +140,21 @@ func (r *Repo) Get(id string) (*CustomScript, error) {
 	return rec, nil
 }
 
-// Create inserts a new row, sort_order set to one past the current max — sqlitex.NextSortOrder's
-// own append-at-the-end convention. fields is validated (and its name/command trimmed in place)
-// before the insert.
-func (r *Repo) Create(fields CustomScriptFields, secretValues map[string]*string) (CustomScript, error) {
-	if err := fields.Validate(r.models()); err != nil {
-		return CustomScript{}, fmt.Errorf("scripts: %w", err)
-	}
-	plan, err := r.planSecrets(fields, secretValues, nil)
-	if err != nil {
-		return CustomScript{}, err
-	}
-	if fields.DirMode == DirModeHome {
-		return CustomScript{}, errHomeRetired
-	}
-	if err := r.requireCollection(fields.CollectionID); err != nil {
-		return CustomScript{}, err
-	}
-	sortOrder, err := sqlitex.NextSortOrder(r.DB, "custom_scripts", "")
-	if err != nil {
-		return CustomScript{}, fmt.Errorf("scripts: next sort order: %w", err)
-	}
-	ex, err := encodeExtras(fields)
-	if err != nil {
-		return CustomScript{}, err
-	}
-	now := kiratime.NowISO()
-	rec := CustomScript{
-		ID:           uuid.NewString(),
-		Name:         fields.Name,
-		Command:      fields.Command,
-		WorkingDir:   fields.WorkingDir,
-		DirMode:      fields.DirMode,
-		Color:        fields.Color,
-		CollectionID: fields.CollectionID,
-		SortOrder:    sortOrder,
-		CreatedAt:    now,
-		UpdatedAt:    now,
-		Kind:         fields.Kind,
-		Params:       fields.Params,
-		Smart:        fields.Smart,
-		UseAdeDir:    fields.UseAdeDir,
-		Schedule:     fields.Schedule,
-	}
-	tx, err := r.DB.Begin()
-	if err != nil {
-		return CustomScript{}, fmt.Errorf("scripts: insert: begin: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.Exec(
-		`INSERT INTO custom_scripts (id, name, command, working_dir, dir_mode, color, collection_id, sort_order, created_at, updated_at, kind, params_json, smart_json, use_ade_dir, schedule_json)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		rec.ID, rec.Name, rec.Command, rec.WorkingDir, rec.DirMode, rec.Color, rec.CollectionID, rec.SortOrder, rec.CreatedAt, rec.UpdatedAt,
-		rec.Kind, ex.params, ex.smart, rec.UseAdeDir, ex.schedule,
-	); err != nil {
-		return CustomScript{}, fmt.Errorf("scripts: insert: %w", err)
-	}
-	if err := r.applySecrets(tx, rec.ID, plan); err != nil {
-		return CustomScript{}, err
-	}
-	if err := tx.Commit(); err != nil {
-		return CustomScript{}, fmt.Errorf("scripts: insert: commit: %w", err)
-	}
-	rec.SavedSecrets = plan.savedNames(fields.Params)
-	return rec, nil
-}
-
-// Update writes fields onto id — name/command/workingDir/color/collection only; id, sort_order and
-// created_at are untouched. Returns a wrapped sql.ErrNoRows for an unknown id
-// (ConnectionsRepo.SetMcpEnabled's own recorded fix, applied here from the start).
-func (r *Repo) Update(id string, fields CustomScriptFields, secretValues map[string]*string) (CustomScript, error) {
-	if err := fields.Validate(r.models()); err != nil {
-		return CustomScript{}, fmt.Errorf("scripts: %w", err)
-	}
-	saved, err := r.savedNames()
-	if err != nil {
-		return CustomScript{}, fmt.Errorf("scripts: update %s: %w", id, err)
-	}
-	plan, err := r.planSecrets(fields, secretValues, saved.of(id))
-	if err != nil {
-		return CustomScript{}, err
-	}
-	if err := r.requireCollection(fields.CollectionID); err != nil {
-		return CustomScript{}, err
-	}
-	if fields.DirMode == DirModeHome {
-		cur, err := r.Get(id)
-		if err != nil {
-			return CustomScript{}, err
-		}
-		if cur != nil && cur.DirMode != DirModeHome {
-			return CustomScript{}, errHomeRetired
-		}
-	}
-	ex, err := encodeExtras(fields)
-	if err != nil {
-		return CustomScript{}, err
-	}
-	now := kiratime.NowISO()
-	tx, err := r.DB.Begin()
-	if err != nil {
-		return CustomScript{}, fmt.Errorf("scripts: update %s: begin: %w", id, err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	res, err := tx.Exec(
-		`UPDATE custom_scripts SET name = ?, command = ?, working_dir = ?, dir_mode = ?, color = ?, collection_id = ?, updated_at = ?,
-		 kind = ?, params_json = ?, smart_json = ?, use_ade_dir = ?, schedule_json = ? WHERE id = ?`,
-		fields.Name, fields.Command, fields.WorkingDir, fields.DirMode, fields.Color, fields.CollectionID, now,
-		fields.Kind, ex.params, ex.smart, fields.UseAdeDir, ex.schedule, id,
-	)
-	if err != nil {
-		return CustomScript{}, fmt.Errorf("scripts: update %s: %w", id, err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return CustomScript{}, fmt.Errorf("scripts: update %s: rows affected: %w", id, err)
-	}
-	if n == 0 {
-		return CustomScript{}, fmt.Errorf("scripts: update %s: %w", id, sql.ErrNoRows)
-	}
-	if err := r.applySecrets(tx, id, plan); err != nil {
-		return CustomScript{}, err
-	}
-	if err := tx.Commit(); err != nil {
-		return CustomScript{}, fmt.Errorf("scripts: update %s: commit: %w", id, err)
-	}
-	rec, err := r.Get(id)
-	if err != nil {
-		return CustomScript{}, err
-	}
-	if rec == nil {
-		return CustomScript{}, fmt.Errorf("scripts: update %s: %w", id, sql.ErrNoRows)
-	}
-	return *rec, nil
-}
-
-// Delete deletes one row by id. Returns a wrapped sql.ErrNoRows for an unknown id, the same rule
-// Update above follows.
-func (r *Repo) Delete(id string) error {
-	tx, err := r.DB.Begin()
-	if err != nil {
-		return fmt.Errorf("scripts: delete %s: begin: %w", id, err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	res, err := tx.Exec(`DELETE FROM custom_scripts WHERE id = ?`, id)
-	if err != nil {
-		return fmt.Errorf("scripts: delete %s: %w", id, err)
-	}
-	if err := requireRow(res, "delete", id); err != nil {
-		return err
-	}
-	if err := r.pruneSecrets(tx, id); err != nil {
-		return err
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("scripts: delete %s: commit: %w", id, err)
-	}
-	return nil
-}
-
-// requireCollection refuses a non-nil id that names no custom_script_collections row.
-func (r *Repo) requireCollection(id *string) error {
-	if id == nil {
-		return nil
-	}
-	var one int
-	err := r.DB.QueryRow(`SELECT 1 FROM custom_script_collections WHERE id = ?`, *id).Scan(&one)
-	if errors.Is(err, sql.ErrNoRows) {
-		return invalid("scripts: no such collection")
-	}
-	if err != nil {
-		return fmt.Errorf("scripts: check collection %s: %w", *id, err)
-	}
-	return nil
-}
-
-// Move sets (nil clears) one command's collection and places it in the target set before
-// beforeID, or last when nil, in one transaction. beforeID must be another script of the target
-// set. The target set is rewritten dense; the source set keeps its gap, which is still in order.
-// Returns a wrapped sql.ErrNoRows for an unknown command id.
-func (r *Repo) Move(id string, collectionID, beforeID *string) error {
-	if err := r.requireCollection(collectionID); err != nil {
-		return err
-	}
-	tx, err := r.DB.Begin()
-	if err != nil {
-		return fmt.Errorf("scripts: move %s: begin: %w", id, err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	res, err := tx.Exec(
-		`UPDATE custom_scripts SET collection_id = ?, updated_at = ? WHERE id = ?`,
-		collectionID, kiratime.NowISO(), id,
-	)
-	if err != nil {
-		return fmt.Errorf("scripts: move %s: %w", id, err)
-	}
-	if err := requireRow(res, "move", id); err != nil {
-		return err
-	}
-	rows, err := tx.Query(
-		`SELECT id FROM custom_scripts WHERE collection_id IS ? AND id <> ? ORDER BY sort_order ASC, name ASC`,
-		collectionID, id,
-	)
-	set, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (string, bool, error) {
-		var sid string
-		err := rows.Scan(&sid)
-		return sid, true, err
-	})
-	if err != nil {
-		return fmt.Errorf("scripts: move %s: read target set: %w", id, err)
-	}
-	at := len(set)
-	if beforeID != nil {
-		at = -1
-		for i, sid := range set {
-			if sid == *beforeID {
-				at = i
-			}
-		}
-		if at < 0 {
-			return invalid("scripts: before is not in the target set")
-		}
-	}
-	ordered := make([]string, 0, len(set)+1)
-	ordered = append(ordered, set[:at]...)
-	ordered = append(ordered, id)
-	ordered = append(ordered, set[at:]...)
-	if err := sqlitex.ReorderSortOrder(tx,
-		`SELECT id FROM custom_scripts WHERE collection_id IS ? ORDER BY sort_order ASC, name ASC`,
-		`UPDATE custom_scripts SET sort_order = ? WHERE id = ?`,
-		ordered, collectionID,
-	); err != nil {
-		return fmt.Errorf("scripts: move %s: reorder: %w", id, err)
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("scripts: move %s: commit: %w", id, err)
-	}
-	return nil
-}
-
-// Reorder applies a user's drag order to one set: the ungrouped scripts (nil) or one collection's.
-// sort_order becomes dense per set; updated_at stays, so a script's content hash does not move.
-func (r *Repo) Reorder(collectionID *string, ids []string) error {
-	if err := r.requireCollection(collectionID); err != nil {
-		return err
-	}
+// Reorder applies a user's drag order to one set: the ungrouped scripts ("") or one collection's.
+// sort_order becomes dense per set.
+func (r *Repo) Reorder(collection string, ids []string) error {
 	return r.reorderTx("custom_scripts",
-		`SELECT id FROM custom_scripts WHERE collection_id IS ? ORDER BY sort_order ASC, name ASC`,
+		`SELECT id FROM custom_scripts WHERE collection = ? ORDER BY sort_order ASC, name ASC`,
 		`UPDATE custom_scripts SET sort_order = ? WHERE id = ?`,
-		ids, collectionID)
+		ids, collection)
 }
 
-// ReorderCollections applies a user's drag order to the collections.
-func (r *Repo) ReorderCollections(ids []string) error {
+// ReorderCollections applies a user's drag order to the collections, named by name.
+func (r *Repo) ReorderCollections(names []string) error {
 	return r.reorderTx("custom_script_collections",
-		`SELECT id FROM custom_script_collections ORDER BY sort_order ASC, name ASC`,
-		`UPDATE custom_script_collections SET sort_order = ? WHERE id = ?`,
-		ids)
+		`SELECT name FROM custom_script_collections ORDER BY sort_order ASC, name ASC`,
+		`UPDATE custom_script_collections SET sort_order = ? WHERE name = ?`,
+		names)
 }
 
 func (r *Repo) reorderTx(table, selectSQL, updateSQL string, ids []string, args ...any) error {
@@ -412,91 +172,33 @@ func (r *Repo) reorderTx(table, selectSQL, updateSQL string, ids []string, args 
 	return nil
 }
 
-const collectionColumns = `id, name, sort_order, created_at, updated_at`
-
-func scanCollection(row rowScanner) (Collection, error) {
-	var c Collection
-	err := row.Scan(&c.ID, &c.Name, &c.SortOrder, &c.CreatedAt, &c.UpdatedAt)
-	return c, err
-}
-
 // ListCollections orders by sort_order (user drag order), name as the tiebreak.
 func (r *Repo) ListCollections() ([]Collection, error) {
-	rows, err := r.DB.Query(`SELECT ` + collectionColumns + ` FROM custom_script_collections ORDER BY sort_order ASC, name ASC`)
+	rows, err := r.DB.Query(`SELECT name, sort_order FROM custom_script_collections ORDER BY sort_order ASC, name ASC`)
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (Collection, bool, error) {
-		c, err := scanCollection(rows)
+		var c Collection
+		err := rows.Scan(&c.Name, &c.SortOrder)
 		return c, true, err
 	})
 }
 
-// CreateCollection appends a collection at the end of the order.
-func (r *Repo) CreateCollection(name string) (Collection, error) {
-	name, err := validCollectionName(name)
+// SetScheduleTarget sets the ADE task and branch a schedule runs in. Returns a wrapped sql.ErrNoRows
+// for an unknown id.
+func (r *Repo) SetScheduleTarget(id, taskID, branchID string) error {
+	if taskID == "" {
+		branchID = ""
+	}
+	res, err := r.DB.Exec(`UPDATE custom_scripts SET schedule_task_id = ?, schedule_branch_id = ? WHERE id = ?`, taskID, branchID, id)
 	if err != nil {
-		return Collection{}, err
+		return fmt.Errorf("scripts: set schedule target of %s: %w", id, err)
 	}
-	sortOrder, err := sqlitex.NextSortOrder(r.DB, "custom_script_collections", "")
-	if err != nil {
-		return Collection{}, fmt.Errorf("scripts: next collection sort order: %w", err)
-	}
-	now := kiratime.NowISO()
-	c := Collection{ID: uuid.NewString(), Name: name, SortOrder: sortOrder, CreatedAt: now, UpdatedAt: now}
-	if _, err := r.DB.Exec(
-		`INSERT INTO custom_script_collections (`+collectionColumns+`) VALUES (?, ?, ?, ?, ?)`,
-		c.ID, c.Name, c.SortOrder, c.CreatedAt, c.UpdatedAt,
-	); err != nil {
-		return Collection{}, fmt.Errorf("scripts: insert collection: %w", err)
-	}
-	return c, nil
+	return requireRow(res, "set schedule target", id)
 }
 
-// RenameCollection renames one collection. Returns a wrapped sql.ErrNoRows for an unknown id.
-func (r *Repo) RenameCollection(id, name string) error {
-	name, err := validCollectionName(name)
-	if err != nil {
-		return err
-	}
-	res, err := r.DB.Exec(
-		`UPDATE custom_script_collections SET name = ?, updated_at = ? WHERE id = ?`,
-		name, kiratime.NowISO(), id,
-	)
-	if err != nil {
-		return fmt.Errorf("scripts: rename collection %s: %w", id, err)
-	}
-	return requireRow(res, "rename collection", id)
-}
-
-// DeleteCollection removes a collection; the foreign key cascades to its commands. Returns a
-// wrapped sql.ErrNoRows for an unknown id.
-func (r *Repo) DeleteCollection(id string) error {
-	tx, err := r.DB.Begin()
-	if err != nil {
-		return fmt.Errorf("scripts: delete collection %s: begin: %w", id, err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	rows, err := tx.Query(`SELECT id FROM custom_scripts WHERE collection_id = ?`, id)
-	ids, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (string, bool, error) {
-		var sid string
-		err := rows.Scan(&sid)
-		return sid, true, err
-	})
-	if err != nil {
-		return fmt.Errorf("scripts: delete collection %s: list scripts: %w", id, err)
-	}
-	res, err := tx.Exec(`DELETE FROM custom_script_collections WHERE id = ?`, id)
-	if err != nil {
-		return fmt.Errorf("scripts: delete collection %s: %w", id, err)
-	}
-	if err := requireRow(res, "delete collection", id); err != nil {
-		return err
-	}
-	for _, sid := range ids {
-		if err := r.pruneSecrets(tx, sid); err != nil {
-			return err
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("scripts: delete collection %s: commit: %w", id, err)
+// pruneCollections drops order rows no run names.
+func (r *Repo) pruneCollections() error {
+	if _, err := r.DB.Exec(`DELETE FROM custom_script_collections WHERE name NOT IN (SELECT collection FROM custom_scripts)`); err != nil {
+		return fmt.Errorf("scripts: prune collections: %w", err)
 	}
 	return nil
 }
@@ -508,6 +210,108 @@ func requireRow(res sql.Result, op, id string) error {
 	}
 	if n == 0 {
 		return fmt.Errorf("scripts: %s %s: %w", op, id, sql.ErrNoRows)
+	}
+	return nil
+}
+
+// projection implements configfs.Projection over custom_scripts: the last good file value lives in
+// config_json and the config columns follow it. State columns are never written here.
+type projection struct{ r *Repo }
+
+// Projection returns the configfs projection of the repo.
+func (r *Repo) Projection() *projection { return &projection{r} }
+
+func (p *projection) Snapshot() (map[string]string, error) {
+	rows, err := p.r.DB.Query(`SELECT id, config_json FROM custom_scripts WHERE config_json <> ''`)
+	if err != nil {
+		return nil, fmt.Errorf("scripts: read last good: %w", err)
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var id, js string
+		if err := rows.Scan(&id, &js); err != nil {
+			return nil, fmt.Errorf("scripts: scan last good: %w", err)
+		}
+		out[FileName(id)] = js
+	}
+	return out, rows.Err()
+}
+
+func (p *projection) Record(file, valueJSON string, now int64) error {
+	r := p.r
+	id, ok := StemOf(file)
+	if !ok {
+		return fmt.Errorf("scripts: record %s: not a run id", file)
+	}
+	f, err := DecodeJSON(valueJSON)
+	if err != nil {
+		return err
+	}
+	fields := f.Fields()
+	if err := fields.Validate(r.models()); err != nil {
+		return fmt.Errorf("scripts: record %s: %w", file, err)
+	}
+	ex, err := encodeExtras(fields)
+	if err != nil {
+		return err
+	}
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return fmt.Errorf("scripts: record %s: begin: %w", file, err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	order, err := sqlitex.NextSortOrder(tx, "custom_scripts", "collection = ?", fields.Collection)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.Exec(
+		`INSERT INTO custom_scripts (id, name, command, working_dir, dir_mode, color, collection, sort_order, created_at, updated_at,
+		   kind, params_json, smart_json, use_ade_dir, schedule_json, config_json)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(id) DO UPDATE SET name = excluded.name, command = excluded.command, working_dir = excluded.working_dir,
+		   dir_mode = excluded.dir_mode, color = excluded.color, collection = excluded.collection, updated_at = excluded.updated_at,
+		   kind = excluded.kind, params_json = excluded.params_json, smart_json = excluded.smart_json,
+		   use_ade_dir = excluded.use_ade_dir, schedule_json = excluded.schedule_json, config_json = excluded.config_json`,
+		id, fields.Name, fields.Command, fields.WorkingDir, fields.DirMode, fields.Color, fields.Collection, order, now, now,
+		fields.Kind, ex.params, ex.smart, fields.UseAdeDir, ex.schedule, valueJSON,
+	); err != nil {
+		return fmt.Errorf("scripts: record %s: %w", file, err)
+	}
+	if fields.Collection != "" {
+		if _, err := tx.Exec(`INSERT OR IGNORE INTO custom_script_collections (name, sort_order)
+			VALUES (?, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM custom_script_collections))`, fields.Collection); err != nil {
+			return fmt.Errorf("scripts: record %s: collection: %w", file, err)
+		}
+	}
+	if err := r.pruneUnsecret(tx, id, fields.Params); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("scripts: record %s: commit: %w", file, err)
+	}
+	return nil
+}
+
+func (p *projection) Forget(file string) error {
+	r := p.r
+	id, ok := StemOf(file)
+	if !ok {
+		return nil
+	}
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return fmt.Errorf("scripts: forget %s: begin: %w", file, err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.Exec(`DELETE FROM custom_scripts WHERE id = ?`, id); err != nil {
+		return fmt.Errorf("scripts: forget %s: %w", file, err)
+	}
+	if err := r.pruneSecrets(tx, id); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("scripts: forget %s: commit: %w", file, err)
 	}
 	return nil
 }

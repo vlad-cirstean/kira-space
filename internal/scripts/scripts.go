@@ -6,21 +6,21 @@ package scripts
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/palette"
 	"github.com/kirathecat/kira-studio/internal/secrets"
+	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
-// A script's folder: the app's automations folder, a picked folder, or (legacy rows only) $HOME.
+// A script's folder: the app's automations folder or a picked folder.
 const (
 	DirModeKira  = "kira"
 	DirModeFixed = "fixed"
-	DirModeHome  = "home"
 	// DirModeWorktree is a Dir.Mode only (a run from an ADE task); a script never stores it.
 	DirModeWorktree = "worktree"
 )
@@ -28,13 +28,26 @@ const (
 // MaxCollectionRunes caps a script collection name.
 const MaxCollectionRunes = 64
 
-// ValidationError marks a caller-input failure, answered as E_BAD_REQUEST.
-type ValidationError struct{ Msg string }
+// ValidationError marks a caller-input failure, answered as E_BAD_REQUEST. Path is a JSON pointer in
+// the run file's vocabulary, Key a catalog key; no message echoes a value.
+type ValidationError struct {
+	Path string
+	Key  string
+	Args map[string]string
+}
 
-func (e *ValidationError) Error() string { return e.Msg }
+func (e *ValidationError) Error() string { return i18n.T(e.Key, e.Args) }
 
-func invalid(format string, args ...any) error {
-	return &ValidationError{Msg: fmt.Sprintf(format, args...)}
+// invalid builds a ValidationError; kv are alternating argument names and values.
+func invalid(path, key string, kv ...string) error {
+	var args map[string]string
+	if len(kv) > 0 {
+		args = make(map[string]string, len(kv)/2)
+		for i := 0; i+1 < len(kv); i += 2 {
+			args[kv[i]] = kv[i+1]
+		}
+	}
+	return &ValidationError{Path: path, Key: key, Args: args}
 }
 
 // IsCallerError reports whether err is the caller's fault: a validation failure or an unknown id.
@@ -43,8 +56,8 @@ func IsCallerError(err error) bool {
 	return errors.As(err, &ve) || errors.Is(err, sql.ErrNoRows)
 }
 
-// CustomScript mirrors packages/shared/domain/scripts.ts's customScriptSchema: one custom_scripts
-// row, listed in the Automations panel.
+// CustomScript is one run, listed in the Automations panel: a projection of its run file plus the
+// state columns. Mirrors packages/shared/domain/scripts.ts's customScriptSchema.
 type CustomScript struct {
 	ID         string `json:"id"`
 	Name       string `json:"name"`
@@ -52,11 +65,11 @@ type CustomScript struct {
 	WorkingDir string `json:"workingDir"`
 	DirMode    string `json:"dirMode"`
 	Color      string `json:"color"`
-	// CollectionID is nil for an ungrouped script.
-	CollectionID *string `json:"collectionId"`
-	SortOrder    int     `json:"sortOrder"`
-	CreatedAt    string  `json:"createdAt"`
-	UpdatedAt    string  `json:"updatedAt"`
+	// Collection groups the run in the panel; "" is ungrouped.
+	Collection string `json:"collection"`
+	SortOrder  int    `json:"sortOrder"`
+	CreatedAt  string `json:"createdAt"`
+	UpdatedAt  string `json:"updatedAt"`
 	// Kind is KindScript or KindSmart; for a smart script Command is the prompt.
 	Kind   string  `json:"kind"`
 	Params []Param `json:"params"`
@@ -71,25 +84,35 @@ type CustomScript struct {
 	SavedSecrets []string `json:"savedSecrets"`
 }
 
-// Collection mirrors packages/shared/domain/scripts.ts's scriptCollectionSchema: one
-// custom_script_collections row, the group a script lives under.
+// Collection is one panel group's order row; a collection exists while a run file names it.
 type Collection struct {
-	ID        string `json:"id"`
 	Name      string `json:"name"`
 	SortOrder int    `json:"sortOrder"`
-	CreatedAt string `json:"createdAt"`
-	UpdatedAt string `json:"updatedAt"`
 }
 
-// Snapshot is the whole panel state: List answers it and every mutation broadcasts it.
+// Snapshot is the whole panel state: List answers it and every change broadcasts it.
 type Snapshot struct {
+	// Dir is the runs folder; the panel shows it.
+	Dir         string         `json:"dir"`
 	Collections []Collection   `json:"collections"`
 	Scripts     []CustomScript `json:"scripts"`
-	// SecretStorage is fixed for the process; the editor disables saving a value when off.
+	// Problems lists the files that are invalid now.
+	Problems []FileProblem `json:"problems"`
+	// SecretStorage is fixed for the process; saving a value is off when unavailable.
 	SecretStorage secrets.Status `json:"secretStorage"`
 }
 
-// CustomScriptFields is what Create/Update accept (customScriptFieldsSchema).
+// FileProblem is one invalid run file. ID is "" when the file name is not a valid id; LastGood says a
+// previous valid version keeps running.
+type FileProblem struct {
+	File     string `json:"file"`
+	ID       string `json:"id"`
+	Line     int    `json:"line"`
+	Message  string `json:"message"`
+	LastGood bool   `json:"lastGood"`
+}
+
+// CustomScriptFields is a run's config as Create accepts it and a file decodes to.
 type CustomScriptFields struct {
 	Name       string `json:"name"`
 	Command    string `json:"command"`
@@ -97,8 +120,8 @@ type CustomScriptFields struct {
 	// DirMode is one of the DirMode constants; "" means DirModeKira.
 	DirMode string `json:"dirMode"`
 	Color   string `json:"color"`
-	// CollectionID groups the command in the panel; nil means ungrouped.
-	CollectionID *string `json:"collectionId"`
+	// Collection groups the run in the panel; "" means ungrouped.
+	Collection string `json:"collection"`
 	// Kind is KindScript or KindSmart; "" means KindScript.
 	Kind   string  `json:"kind"`
 	Params []Param `json:"params"`
@@ -110,14 +133,17 @@ type CustomScriptFields struct {
 	Schedule *Schedule `json:"schedule"`
 }
 
-// Validate is the complete rule set: the Go check is the authority, the mirrored zod schema is
-// only the dialog's affordance. A pointer receiver: name and command are trimmed in
-// place (leading/trailing only) so Create/Update persist the trimmed values.
+// Validate is the complete rule set, used for a Create and as the file rule. A pointer receiver:
+// text is trimmed and defaults are filled in place. Errors carry a path in the file's vocabulary.
 func (f *CustomScriptFields) Validate(models harness.Catalog) error {
 	f.Name = strings.TrimSpace(f.Name)
 	f.Command = strings.TrimSpace(f.Command)
+	f.Collection = strings.TrimSpace(f.Collection)
 	if f.Name == "" {
-		return invalid("scripts: name is required")
+		return invalid("/name", "backend.core.runs.nameRequired.body")
+	}
+	if utf8.RuneCountInString(f.Collection) > MaxCollectionRunes {
+		return invalid("/collection", "backend.core.runs.collectionLong.body", "max", strconv.Itoa(MaxCollectionRunes))
 	}
 	if f.Kind == "" {
 		f.Kind = KindScript
@@ -125,17 +151,17 @@ func (f *CustomScriptFields) Validate(models harness.Catalog) error {
 	switch f.Kind {
 	case KindScript:
 		if f.Smart != nil {
-			return invalid("scripts: only a smart script has smart settings")
+			return invalid("/smart", "backend.core.runs.scriptNoSmart.body")
 		}
 		if f.Command == "" {
-			return invalid("scripts: command is required")
+			return invalid("/command", "backend.core.runs.commandRequired.body")
 		}
 	case KindSmart:
 		if f.Command == "" {
-			return invalid("scripts: prompt is required")
+			return invalid("/prompt", "backend.core.runs.promptRequired.body")
 		}
 		if utf8.RuneCountInString(f.Command) > MaxPrompt {
-			return invalid("scripts: prompt is longer than %d characters", MaxPrompt)
+			return invalid("/prompt", "backend.core.scriptRun.promptTooLong.body", "max", strconv.Itoa(MaxPrompt))
 		}
 		smart, err := validSmart(f.Smart, models)
 		if err != nil {
@@ -143,7 +169,7 @@ func (f *CustomScriptFields) Validate(models harness.Catalog) error {
 		}
 		f.Smart = smart
 	default:
-		return invalid("scripts: kind must be script or smart")
+		return invalid("/kind", "backend.core.runs.kindInvalid.body")
 	}
 	params, err := validParams(f.Params, f.Kind, f.Command)
 	if err != nil {
@@ -151,7 +177,7 @@ func (f *CustomScriptFields) Validate(models harness.Catalog) error {
 	}
 	f.Params = params
 	if f.Schedule != nil {
-		if err := validSchedule(f.Schedule, f.Kind, f.Command, f.Params); err != nil {
+		if err := validSchedule(f.Schedule, f.Kind, f.Params); err != nil {
 			return err
 		}
 	}
@@ -159,32 +185,22 @@ func (f *CustomScriptFields) Validate(models harness.Catalog) error {
 		f.DirMode = DirModeKira
 	}
 	switch f.DirMode {
-	case DirModeKira, DirModeHome:
-		f.WorkingDir = ""
+	case DirModeKira:
+		if f.WorkingDir != "" {
+			return invalid("/path", "backend.core.runs.dirKiraPath.body")
+		}
 	case DirModeFixed:
 		if !filepath.IsAbs(f.WorkingDir) {
-			return invalid("scripts: working directory must be an absolute path")
+			return invalid("/path", "backend.core.runs.dirFixedPath.body")
 		}
 	default:
-		return invalid("scripts: invalid directory mode")
+		return invalid("/dir", "backend.core.runs.dirInvalid.body")
+	}
+	if f.Color == "" {
+		f.Color = "none"
 	}
 	if !palette.Valid(f.Color) {
-		return invalid("scripts: invalid colour")
+		return invalid("/color", "backend.core.runs.colorInvalid.body")
 	}
 	return nil
 }
-
-// validCollectionName trims name and enforces non-empty and MaxCollectionRunes.
-func validCollectionName(name string) (string, error) {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return "", invalid("scripts: collection name is required")
-	}
-	if utf8.RuneCountInString(name) > MaxCollectionRunes {
-		return "", invalid("scripts: collection name is too long")
-	}
-	return name, nil
-}
-
-// errHomeRetired refuses the legacy home folder for a new choice.
-var errHomeRetired = invalid("scripts: the home folder is no longer offered")

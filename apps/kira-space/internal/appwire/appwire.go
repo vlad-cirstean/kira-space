@@ -5,6 +5,7 @@
 package appwire
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -57,6 +58,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/metrics"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
+	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/terminal"
@@ -179,6 +181,7 @@ type Wired struct {
 	ScriptRuns      *bridge.ScriptRunsService
 	runs            *scriptruns.Service
 	sched           *scriptruns.Scheduler
+	runLoader       *scripts.Loader
 	Terminal        *bridge.TerminalService
 	AdeTask         *bridge.AdeTaskService
 	Ops             *bridge.OpsService
@@ -409,6 +412,16 @@ func Build(opts Options) *Wired {
 		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, runs, w.Agents, w.Prompts)
 	runs.ADE = w.AdeBoard
 	w.sched = &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
+	loader, err := scripts.NewLoader(scripts.LoaderOptions{
+		Repo: repositories.CustomScripts, Dir: filepath.Join(deps.Home, "runs"), Home: deps.Home, App: "Space", SpaceKeys: true,
+		Emit:     func(snapshot scripts.Snapshot) { emitter.Emit(bridge.ChannelCustomScriptsChanged, snapshot) },
+		OnChange: w.sched.Reload,
+	})
+	if err != nil {
+		panic(fmt.Sprintf("appwire: runs loader (static schema): %v", err))
+	}
+	w.runLoader = loader
+	loader.Start()
 	w.sched.Start()
 	w.IssueTracker = &bridge.IssueTrackerService{Engine: w.AdeBoard, Hosts: git.registry.Hosts.Registry, Providers: git.trackers}
 	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry}
@@ -423,7 +436,7 @@ func Build(opts Options) *Wired {
 	}
 	bridge.KeepAwakeRecompute(w.KeepAwake)
 
-	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"workflows": adeflow.Dir(config.KiraSpaceHome()), agentctx.Folder: filepath.Join(deps.Home, "agent")})}
+	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"workflows": adeflow.Dir(config.KiraSpaceHome()), agentctx.Folder: filepath.Join(deps.Home, "agent"), "runs": filepath.Join(deps.Home, "runs")})}
 
 	// OpenNewWindow is assigned by BindShell once the shell exists.
 	w.WindowsSvc = &bridge.WindowsService{Service: &windowsvc.Service{Windows: deps.Repos.Windows}}
@@ -461,7 +474,7 @@ func Build(opts Options) *Wired {
 	w.Quitter = shell.NewQuitter(events, w.beforeFlushOnce, w.teardownOnce, 2*time.Second, w.Windows.Keys)
 
 	w.Files = &bridge.FilesService{Dialogs: opts.Dialogs}
-	w.CustomScripts = &bridge.CustomScriptsService{Deps: deps, Changed: w.sched.Reload}
+	w.CustomScripts = &bridge.CustomScriptsService{Svc: &scripts.Service{Loader: loader}}
 	w.Ops = &bridge.OpsService{Log: git.opLog}
 	live := liveWork(repositories, terminalRegistry, runs)
 	w.Quitter.SetGate(prompts.QuitGate{R: w.Prompts, LiveFn: func() int { return live().Total() }})
@@ -574,6 +587,7 @@ func (w *Wired) teardown(db io.Closer) {
 	// whatever last-active time is still only in memory and stops the hooks listener.
 	terminal.ShutdownBound(w.Terminal.BoundService)
 	w.sched.Close()
+	w.runLoader.Close()
 	w.runs.Close()
 	shutdownTracker(w.Tracker, w.AgentHooks)
 	w.AdeBoard.Close()
