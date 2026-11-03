@@ -28,7 +28,7 @@ import {
 // one shared slot for a fully-unscoped terminal tab — see state/workspace.ts's own header comment
 // for why there is exactly one non-repo slot here.
 // The files window partitions every tab under FILES_WORKSPACE; `workspaceId` keeps the repo id.
-function workspaceKeyOf(tab: TabRecord): WorkspaceKey {
+function workspaceKeyOf(tab: Pick<TabRecord, 'kind' | 'workspaceId'>): WorkspaceKey {
   if (useOpenedFilesWindowStore().active) return FILES_WORKSPACE;
   return tab.workspaceId ?? GENERAL_WORKSPACE;
 }

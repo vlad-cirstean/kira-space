@@ -119,7 +119,7 @@ export interface TabsHost<
   E extends Record<string, unknown> = Record<string, never>,
 > {
   kinds: KindLookup<R>;
-  workspaceKeyOf(tab: R): K;
+  workspaceKeyOf(tab: Pick<R, 'kind' | 'workspaceId'>): K;
   control: TabsControl<R>;
   /** Where a fresh `openTab` call with no explicit `workspaceId` lands — Kira Studio's own kind's
    *  mode (`STUDIO_TAB_KIND_MODE[kind]`); Kira Space's one shared unscoped slot
@@ -380,7 +380,7 @@ export function createTabsStore<
       const workspaceKey =
         workspaceId === null
           ? host.fallbackWorkspaceKey(kind)
-          : host.workspaceKeyOf({ kind, workspaceId } as unknown as R);
+          : host.workspaceKeyOf({ kind, workspaceId });
 
       const reused = reuseExistingTab(kind, connectionId, path, workspaceId, workspaceKey, opts);
       if (reused) return reused;

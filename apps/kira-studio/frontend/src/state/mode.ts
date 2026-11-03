@@ -24,6 +24,6 @@ export const useModeStore = createModeStore<AppMode, { activeTab: ComputedRef<Ta
 
 // This one function is what replaces the mode filter at every read site tabsState used to scope
 // by mode alone.
-export function workspaceKeyOf(tab: TabRecord): AppMode {
+export function workspaceKeyOf(tab: Pick<TabRecord, 'kind' | 'workspaceId'>): AppMode {
   return (tab.workspaceId as AppMode | null) ?? (STUDIO_TAB_KIND_MODE[tab.kind] as AppMode);
 }
