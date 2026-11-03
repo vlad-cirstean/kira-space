@@ -18,7 +18,7 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 | P500 | ADE: task card icon row | Done |
 | P501 | ADE: task panel restructure | Done |
 | P502 | ADE: multi-branch task panel simplification | Done |
-| P503 | Code review (1 round) | Todo |
+| P503 | Code review (1 round) | Done |
 | P504 | Close chapter v0.2.30 | Todo |
 
 ## Rows
@@ -104,6 +104,8 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 ### P503 Code review (1 round)
 
 One Opus review over the full diff since `main`, findings file under `plans/`, then one Sonnet fixer. Then close, then PR.
+
+- Result: 7 findings (3 Medium, 4 Low), all fixed. Removed-lines capture stores all reviewed lines when the delta has no hunks (patch over cap, binary or gone current side, rename); `RemovedSinceReview` logs a capture failure and still lists stored blocks; `useReviewRemoved` refetches debounced on changed working data. Jira slot takes only Jira issue URLs (`isJiraIssueUrl`); paste submit guarded by `useAsyncAction`. Merged run handover keeps the draft author. Dead `intersectRanges`, `compact` prop and `artifacts.title.title` key removed. Run targets and PR lines computed once per render. New flow test `TestReviewRemovedUnparsedDelta`, extended `ade-v2-task-panel` paste spec. Declined: skipping the commit capture pass on an unchanged tip (per-record `removal_checked` already skips, tip cache adds state).
 
 ### P504 Close chapter v0.2.30
 
