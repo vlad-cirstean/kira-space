@@ -105,6 +105,11 @@ func (e *RepoEntry) captureWorking(ctx context.Context, branch string, rec gitre
 	return nil
 }
 
+// DismissRemoved hides removed entries of branch for good.
+func (e *RepoEntry) DismissRemoved(ctx context.Context, branch string, ids []int64) (int, error) {
+	return e.review.DismissRemoved(ctx, e.Summary.RepoID, branch, ids)
+}
+
 func hasCommittedReview(rec gitreview.FileRecord) bool {
 	switch rec.ContentKind {
 	case gitreview.ContentText:

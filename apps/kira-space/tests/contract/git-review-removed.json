@@ -1,0 +1,55 @@
+{
+  "args:git:review.removed.dismiss": {
+    "branch": "feat",
+    "ids": [
+      1,
+      2
+    ],
+    "repoId": "<work>/proj"
+  },
+  "args:git:review.removed.list": {
+    "base": "main",
+    "branch": "feat",
+    "repoId": "<work>/proj"
+  },
+  "git:review.removed.dismiss": {
+    "dismissed": 2
+  },
+  "git:review.removed.list#dismissed": {
+    "entries": []
+  },
+  "git:review.removed.list#removed": {
+    "entries": [
+      {
+        "contentKind": "text",
+        "id": 1,
+        "origin": "commit",
+        "path": "a.txt",
+        "range": {
+          "end": 8,
+          "start": 6
+        },
+        "removedAt": 0,
+        "reviewedAt": 0,
+        "reviewedAtSha": "<masked>",
+        "text": "a6\na7\na8\n",
+        "truncated": false
+      },
+      {
+        "contentKind": "text",
+        "id": 2,
+        "origin": "commit",
+        "path": "new.txt",
+        "range": {
+          "end": 3,
+          "start": 1
+        },
+        "removedAt": 0,
+        "reviewedAt": 0,
+        "reviewedAtSha": "<masked>",
+        "text": "n1\nn2\nn3\n",
+        "truncated": false
+      }
+    ]
+  }
+}

@@ -14,6 +14,62 @@ import (
 // one RepoEntry call, marshal (with the size guard on review.fileDiff). No handler here computes
 // anything itself.
 
+// maxRemovedDismissIDs bounds one review.removed.dismiss call.
+const maxRemovedDismissIDs = 1000
+
+func (r *Router) handleReviewRemovedList(ctx context.Context, c *gitsession.Conn, params json.RawMessage) (any, error) {
+	return handleRepoCall(ctx, c, "review.removed.list", params,
+		func(p ReviewRemovedListParams) (string, error) {
+			if err := requireNonEmpty("review.removed.list", "repoId", p.RepoID); err != nil {
+				return "", err
+			}
+			if err := validRefArg("branch", p.Branch); err != nil {
+				return "", err
+			}
+			if err := validRefArg("base", p.Base); err != nil {
+				return "", err
+			}
+			return p.RepoID, nil
+		},
+		func(ctx context.Context, entry *gitsession.RepoEntry, p ReviewRemovedListParams) (gitsession.ReviewRemovedResult, error) {
+			result, err := entry.RemovedSinceReview(ctx, p.Base, p.Branch)
+			if err != nil {
+				return gitsession.ReviewRemovedResult{}, mapDetailError(err)
+			}
+			return result, nil
+		},
+	)
+}
+
+func (r *Router) handleReviewRemovedDismiss(ctx context.Context, c *gitsession.Conn, params json.RawMessage) (any, error) {
+	return handleRepoCall(ctx, c, "review.removed.dismiss", params,
+		func(p ReviewRemovedDismissParams) (string, error) {
+			if err := requireNonEmpty("review.removed.dismiss", "repoId", p.RepoID); err != nil {
+				return "", err
+			}
+			if err := validRefArg("branch", p.Branch); err != nil {
+				return "", err
+			}
+			if len(p.IDs) == 0 || len(p.IDs) > maxRemovedDismissIDs {
+				return "", ipcerr.Contract("gitrpc: review.removed.dismiss: ids must hold 1 to 1000 entries")
+			}
+			for _, id := range p.IDs {
+				if id <= 0 {
+					return "", ipcerr.Contract("gitrpc: review.removed.dismiss: every id must be positive")
+				}
+			}
+			return p.RepoID, nil
+		},
+		func(ctx context.Context, entry *gitsession.RepoEntry, p ReviewRemovedDismissParams) (ReviewRemovedDismissResult, error) {
+			n, err := entry.DismissRemoved(ctx, p.Branch, p.IDs)
+			if err != nil {
+				return ReviewRemovedDismissResult{}, mapDetailError(err)
+			}
+			return ReviewRemovedDismissResult{Dismissed: n}, nil
+		},
+	)
+}
+
 func (r *Router) handleReviewFiles(ctx context.Context, c *gitsession.Conn, params json.RawMessage) (any, error) {
 	return handleRepoCall(ctx, c, "review.files", params,
 		func(p ReviewFilesParams) (string, error) {

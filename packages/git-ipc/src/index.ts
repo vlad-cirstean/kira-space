@@ -87,6 +87,7 @@ export type {
   ReviewFileEntry,
   ReviewFileStatus,
   ReviewRangeState,
+  ReviewRemovedEntry,
   ReviewSessionSnapshot,
   SearchMatchField,
   SearchQueryParams,

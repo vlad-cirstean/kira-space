@@ -109,6 +109,17 @@ func TestGitServiceBoundReview(t *testing.T) {
 		t.Fatalf("ReviewCommentClear = %+v", cleared)
 	}
 
+	listed, err := svc.ReviewRemovedList(ctx, bridge.GitReviewRemovedListArgs{WindowKey: "w1", Params: gitrpc.ReviewRemovedListParams{RepoID: id, Branch: "feat", Base: "main"}})
+	chk(err)
+	if listed.Entries == nil || len(listed.Entries) != 0 {
+		t.Fatalf("ReviewRemovedList = %+v, want an empty list", listed)
+	}
+	dismissed, err := svc.ReviewRemovedDismiss(ctx, bridge.GitReviewRemovedDismissArgs{WindowKey: "w1", Params: gitrpc.ReviewRemovedDismissParams{RepoID: id, Branch: "feat", IDs: []int64{1}}})
+	chk(err)
+	if dismissed.Dismissed != 0 {
+		t.Fatalf("ReviewRemovedDismiss = %+v, want 0", dismissed)
+	}
+
 	// Change requests against the fake host.
 	_, err = svc.BranchSyncChangeRequests(ctx, bridge.GitBranchSyncChangeRequestsArgs{WindowKey: "w1", Params: gitrpc.BranchSyncChangeRequestsParams{RepoID: id, Wait: true}})
 	chk(err)

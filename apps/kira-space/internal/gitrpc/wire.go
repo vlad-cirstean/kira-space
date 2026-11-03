@@ -413,6 +413,25 @@ type ReviewFilesParams struct {
 	Base   string `json:"base"`
 }
 
+// ReviewRemovedListParams is review.removed.list's own request.
+type ReviewRemovedListParams struct {
+	RepoID string `json:"repoId"`
+	Branch string `json:"branch"`
+	Base   string `json:"base"`
+}
+
+// ReviewRemovedDismissParams is review.removed.dismiss's own request.
+type ReviewRemovedDismissParams struct {
+	RepoID string  `json:"repoId"`
+	Branch string  `json:"branch"`
+	IDs    []int64 `json:"ids"`
+}
+
+// ReviewRemovedDismissResult carries the number of entries dismissed.
+type ReviewRemovedDismissResult struct {
+	Dismissed int `json:"dismissed"`
+}
+
 // ReviewFileDiffParams is review.fileDiff's own request.
 type ReviewFileDiffParams struct {
 	RepoID string `json:"repoId"`

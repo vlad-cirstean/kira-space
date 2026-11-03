@@ -247,6 +247,12 @@ var requestHandlers = map[string]requestHandler{
 	"review.files": func(r *Router, ctx context.Context, c *gitsession.Conn, params json.RawMessage) (any, error) {
 		return r.handleReviewFiles(ctx, c, params)
 	},
+	"review.removed.list": func(r *Router, ctx context.Context, c *gitsession.Conn, params json.RawMessage) (any, error) {
+		return r.handleReviewRemovedList(ctx, c, params)
+	},
+	"review.removed.dismiss": func(r *Router, ctx context.Context, c *gitsession.Conn, params json.RawMessage) (any, error) {
+		return r.handleReviewRemovedDismiss(ctx, c, params)
+	},
 	"review.fileDiff": func(r *Router, ctx context.Context, c *gitsession.Conn, params json.RawMessage) (any, error) {
 		return r.handleReviewFileDiff(ctx, c, params)
 	},
