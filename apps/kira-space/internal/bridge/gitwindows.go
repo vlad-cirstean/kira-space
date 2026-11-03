@@ -49,15 +49,16 @@ type CredentialAsker interface {
 }
 
 // GitWindows owns one gitsession.Conn per window key, shared by GitService and the window's graph
-// plane. The Conn lives until Close (window close) or ResetWindow. Not a bound service: Close must
+// plane. The Conn lives until Close (window close, final) or Reset (page boot). Not a bound service: Close must
 // not be callable from a page.
 type GitWindows struct {
 	router *gitrpc.Router
 	relay  CredentialAsker
 	events appevent.Emitter
 
-	mu    sync.Mutex
-	byKey map[string]*gitWindow
+	mu     sync.Mutex
+	byKey  map[string]*gitWindow
+	closed map[string]bool // keys whose window closed; only Reset revives one
 }
 
 type gitWindow struct {
@@ -67,14 +68,19 @@ type gitWindow struct {
 
 // NewGitWindows builds the registry; events receives every git event as kira:git:<event>.
 func NewGitWindows(router *gitrpc.Router, relay CredentialAsker, events appevent.Emitter) *GitWindows {
-	return &GitWindows{router: router, relay: relay, events: events, byKey: map[string]*gitWindow{}}
+	return &GitWindows{router: router, relay: relay, events: events, byKey: map[string]*gitWindow{}, closed: map[string]bool{}}
 }
 
-// get returns the window's Conn, creating it on first use. The empty key is valid (flow harness).
-func (g *GitWindows) get(key string) *gitWindow {
+// get returns the window's Conn, creating it on first use. The empty key is valid (flow harness). A
+// closed window answers E_CONFLICT, like the graph plane: a late call must not create a Conn nothing
+// would close.
+func (g *GitWindows) get(key string) (*gitWindow, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	return g.getLocked(key)
+	if g.closed[key] {
+		return nil, ipcerr.T(ipcerr.CodeConflict, "backend.space.gitrpc.repoNotOpen.body", nil)
+	}
+	return g.getLocked(key), nil
 }
 
 // lookup returns the window's Conn only if one exists. A stream for a closed window must not
@@ -109,11 +115,26 @@ func (g *GitWindows) getLocked(key string) *gitWindow {
 	return w
 }
 
-// Close releases the window's Conn and every hold on it. Idempotent.
+// Close releases the window's Conn and every hold on it, and refuses later calls on key until Reset.
+// Idempotent.
 func (g *GitWindows) Close(key string) {
+	g.drop(key, true)
+}
+
+// Reset releases the window's Conn like Close, then lets the key create a fresh one: a page boot.
+func (g *GitWindows) Reset(key string) {
+	g.drop(key, false)
+}
+
+func (g *GitWindows) drop(key string, dead bool) {
 	g.mu.Lock()
 	w, ok := g.byKey[key]
 	delete(g.byKey, key)
+	if dead {
+		g.closed[key] = true
+	} else {
+		delete(g.closed, key)
+	}
 	g.mu.Unlock()
 	if ok {
 		w.conn.Close()

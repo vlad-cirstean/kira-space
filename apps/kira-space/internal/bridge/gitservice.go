@@ -21,15 +21,19 @@ type GitService struct {
 // NewGitService returns the service over windows.
 func NewGitService(windows *GitWindows) *GitService { return &GitService{windows: windows} }
 
-// callGit runs one gitrpc request on the window's Conn and types the result. The two size-capped
-// handlers answer json.RawMessage; everything else answers T directly.
+// callGit runs one gitrpc request on the window's Conn and types the result. Handlers answer T directly;
+// the review comment exports answer an encoded json.RawMessage.
 func callGit[T any](ctx context.Context, windows *GitWindows, key, method string, params any) (T, error) {
 	var zero T
 	raw, err := json.Marshal(params)
 	if err != nil {
 		return zero, ipcerr.Wrap(fmt.Errorf("gitservice: %s: %w", method, err))
 	}
-	res, err := windows.get(key).handlers.Request(ctx, method, raw)
+	w, err := windows.get(key)
+	if err != nil {
+		return zero, err
+	}
+	res, err := w.handlers.Request(ctx, method, raw)
 	if err != nil {
 		return zero, ipcerr.Wrap(err)
 	}

@@ -59,6 +59,6 @@ type GitResetWindowArgs struct {
 // once per load, so a reload does not inherit the previous page's holds. It only touches the
 // caller's own key.
 func (s *GitService) ResetWindow(_ context.Context, a GitResetWindowArgs) (struct{}, error) {
-	s.windows.Close(a.WindowKey)
+	s.windows.Reset(a.WindowKey)
 	return struct{}{}, nil
 }

@@ -139,6 +139,18 @@ func TestGitServiceBound(t *testing.T) {
 	if code, _ := boundCode(t, err); code != string(ipcerr.CodeConflict) {
 		t.Fatalf("StatusGet after close = %s, want E_CONFLICT", code)
 	}
+	// A late open on the closed window is refused and creates no Conn; a page boot revives the key.
+	_, err = svc.RepoOpen(ctx, bridge.GitRepoOpenArgs{WindowKey: "w1", Params: gitrpc.RepoOpenParams{Path: repo.Dir}})
+	if code, _ := boundCode(t, err); code != string(ipcerr.CodeConflict) {
+		t.Fatalf("RepoOpen after close = %s, want E_CONFLICT", code)
+	}
+	if _, err := svc.ResetWindow(ctx, bridge.GitResetWindowArgs{WindowKey: "w1"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.RepoOpen(ctx, bridge.GitRepoOpenArgs{WindowKey: "w1", Params: gitrpc.RepoOpenParams{Path: repo.Dir}}); err != nil {
+		t.Fatalf("RepoOpen after ResetWindow: %v", err)
+	}
+	app.W.GitWindows.Close("w1")
 	if _, err := svc.StatusGet(ctx, bridge.GitStatusGetArgs{WindowKey: "w2", Params: gitrpc.StatusGetParams{RepoID: id}}); err != nil {
 		t.Fatalf("w2 after w1 closed: %v", err)
 	}
