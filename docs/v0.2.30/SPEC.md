@@ -11,8 +11,8 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 | Phase | Title | Status |
 |---|---|---|
 | P495 | ADE: stage action resumes the existing agent session | Done |
-| P496 | ADE: handover only in Notes | Todo |
-| P497 | ADE: task "+" launch menu shares the Runs dropdown | Todo |
+| P496 | ADE: handover only in Notes | Done |
+| P497 | ADE: task "+" launch menu shares the Runs dropdown | Done |
 | P498 | ADE: one Agents tab for Context and Settings | Done |
 | P499 | Review: show reviewed changes removed since review | Done |
 | P500 | ADE: task card icon row | Todo |
@@ -40,7 +40,7 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 - Want: no handover in the Task tab. Handover shows only in Notes. Remove the row, its computed and any i18n key left unused.
 - Frontend only; IPC unchanged, so no backend test.
 - Test: UI spec `ade-v2-handover` updated: no handover on the Task tab, still in Notes.
-- Result: pending.
+- Result: Done. Handover row removed from Task tab (`AdeTaskTab.vue`), kept in Notes. Key `space.ade.taskTab.handover` deleted. `ade-v2-handover` asserts `ade-task-handover-row` count 0 and Notes still lists handovers.
 
 ### P497 ADE: task "+" launch menu shares the Runs dropdown
 
@@ -49,7 +49,7 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 - Plan names the shared component and its home (`packages/workbench`). Plan says which Runs "+" adopts it: at least the one the task "+" matches. Plan maps today's labels, submenus and disabled reasons onto `MenuItem` (`hint`, `submenu`). Keep testids stable or update specs in the same pass.
 - Frontend only; IPC unchanged, so no backend test.
 - Test: UI spec `ade-v2-task-launch` (and `ade-v2-launch` if touched) on the new dropdown; the Runs spec covering the adopted "+" still passes.
-- Result: pending.
+- Result: Done. New shared `MenuIconButton` in `packages/workbench` opens the shared context menu under the button. Runs `automations-add` and the task launch menu both use it. Task items built via `useTaskLaunch.items`. Testids now `menu-item-ade-task-launch-*`; menu container is `context-menu`. `ade-v2-task-launch`, `agent-provider` and the Runs specs updated and pass.
 
 ### P498 ADE: one Agents tab for Context and Settings
 
