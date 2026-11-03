@@ -93,6 +93,9 @@ export const BOUND_METHODS = {
   'gitHost.providers': () => GitHostService.Providers(),
 } satisfies Partial<Record<RequestKey, BoundCall>>;
 
+/** Every git method a bound call carries. */
+export type BoundKey = keyof typeof BOUND_METHODS;
+
 const boundTable: Partial<Record<RequestKey, BoundCall>> = BOUND_METHODS;
 
 /** Every git event the Go side pushes to a window, as `kira:git:<event>` (EmitTo). */

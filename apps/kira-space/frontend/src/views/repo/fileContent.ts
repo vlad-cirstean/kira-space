@@ -6,8 +6,9 @@ import { errorText } from '@workbench/bridge/codedError';
 // out as one pure(ish) async call so mount() itself only branches on the result.
 
 import { control } from '../../bridge/control';
+import { gitCall } from '../../repo/git/gitCall';
 import { gitRepoIdFor } from '../../repo/git/hostHandlers';
-import { gitTransportFor } from '../../repo/git/transport';
+import { withGitRepoHold } from '../../repo/git/repoHolds';
 
 /** A full commit id: the backend pins a branch or tag to one, so a shorter hex spelling may be a
  *  moving ref and never counts as fixed. */
@@ -18,8 +19,8 @@ export type FileContentResult =
   | { kind: 'missing' | 'binary' | 'tooLarge' }
   | { kind: 'error'; message: string };
 
-/** Reads `path` from the worktree (`rev === null`) or, for a revision-pinned tab, via the git
- *  transport's `file.read` (the same request RepoDiffView.vue's own commit-diff sides
+/** Reads `path` from the worktree (`rev === null`) or, for a revision-pinned tab, via
+ *  `file.read` (the same request RepoDiffView.vue's own commit-diff sides
  *  use, never the worktree file). Never throws — a read failure or a missing git repo both come
  *  back as `{ kind: 'error' }`, `mount()`'s own contract for every failure mode it renders. */
 export async function loadFileContent(
@@ -48,15 +49,14 @@ export async function loadFileContent(
 
   const gitRepoId = gitRepoIdFor(repoId);
   if (!gitRepoId) return { kind: 'error', message: t('space.repo.view.repoNotOpen.error') };
-  const transport = gitTransportFor(repoId);
   try {
-    const result = await transport.request('file.read', { repoId: gitRepoId, rev, path });
+    const result = await withGitRepoHold(gitRepoId, () =>
+      gitCall('file.read', { repoId: gitRepoId, rev, path }),
+    );
     return result.kind === 'found'
       ? { kind: 'found', text: result.content }
       : { kind: result.kind };
   } catch (err) {
     return { kind: 'error', message: errorText(err) };
-  } finally {
-    transport.dispose();
   }
 }

@@ -6,13 +6,14 @@
  * `blameAnnotation.ts` keeps just the Monaco decoration/hover/reveal-action rendering of `state`
  * below.
  */
-import type { EventPayload, ResultOf, Transport } from '@kira/git-ipc';
+import type { ResultOf, Transport } from '@kira/git-ipc';
 import { t } from '@theme/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { formatAbsoluteUtc, formatAgeCompact } from '@workbench/behaviour/format';
 import { TIMING } from '@workbench/behaviour/timing';
 import { type ShallowRef, shallowRef } from 'vue';
-import { ensureRepoOpen } from '../../state/repoOpenHold';
+import { gitCall, onGitRepoEvent } from '../../repo/git/gitCall';
+import { holdGitRepo } from '../../repo/git/repoHolds';
 
 type CodeEditor = import('monaco-editor').editor.IStandaloneCodeEditor;
 
@@ -53,7 +54,7 @@ export interface BlameLineControllerDeps {
 export interface BlameLineController {
   readonly state: ShallowRef<BlameLineState>;
   /** Exposed so `blameAnnotation.ts`'s own reveal-in-graph editor action can call
-   *  `graph.revealCommit` without a second transport lease — the controller already holds these. */
+   *  `graph.revealCommit` (host-local, so it needs the transport) without a second lease. */
   readonly gitRepoId: string;
   readonly transport: Transport;
   dispose(): void;
@@ -104,11 +105,6 @@ export function blameLineTooltip(state: Extract<BlameLineState, { kind: 'resolve
   };
 }
 
-// `blame.line` needs this connection to already hold the repo — `ensureRepoOpen` (moved to
-// state/repoOpenHold.ts, so `repo/git/transport.ts`'s own dispose path
-// can clear its memo entry without a views/ -> repo/ layering violation) memoises the `repo.open`
-// call per gitRepoId, one hold per transport for as long as it lives.
-
 /** Resolves `blame.line` for the cursor's current line, debounced/cached/cancelled, and publishes
  *  the result to `state`. Call once per consuming mount; `dispose()` on unmount. Transport
  *  ownership: the caller leases `deps.transport` and is the only one who may release it — this
@@ -117,6 +113,8 @@ export function blameLineTooltip(state: Extract<BlameLineState, { kind: 'resolve
  *  handed). */
 export function createBlameLineController(deps: BlameLineControllerDeps): BlameLineController {
   let disposed = false;
+  // `blame.line` needs the window to hold the repo; the hold lives as long as this controller.
+  const hold = holdGitRepo(deps.gitRepoId);
   const state = shallowRef<BlameLineState>({ kind: 'none' });
 
   // Dedupe on the line, not the column (a horizontal cursor move must not re-fire) — mirrors
@@ -163,7 +161,7 @@ export function createBlameLineController(deps: BlameLineControllerDeps): BlameL
 
   async function resolveLine(line: number): Promise<void> {
     try {
-      await ensureRepoOpen(deps.transport, deps.gitRepoId);
+      await hold.ready;
     } catch {
       // §4.3: failure is silence — from the reader's own vantage this is an ordinary file.
       if (line === lastLine) paint(line, null);
@@ -174,7 +172,7 @@ export function createBlameLineController(deps: BlameLineControllerDeps): BlameL
     const controller = new AbortController();
     inFlight = controller;
     try {
-      const result = await deps.transport.request(
+      const result = await gitCall(
         'blame.line',
         { repoId: deps.gitRepoId, path: deps.path, line },
         controller.signal,
@@ -225,15 +223,12 @@ export function createBlameLineController(deps: BlameLineControllerDeps): BlameL
 
   // §4.3: re-resolve on any change but host data, which cannot change blame. Clearing `lastLine`
   // before `refresh()` re-triggers it even though the cursor hasn't moved.
-  const unsubscribeRepoChanged = deps.transport.on(
-    'repo.changed',
-    (event: EventPayload<'repo.changed'>) => {
-      if (event.repoId !== deps.gitRepoId || event.kind === 'changeRequestsChanged') return;
-      cache.clear();
-      lastLine = undefined;
-      refresh();
-    },
-  );
+  const unsubscribeRepoChanged = onGitRepoEvent('repo.changed', deps.gitRepoId, (event) => {
+    if (event.kind === 'changeRequestsChanged') return;
+    cache.clear();
+    lastLine = undefined;
+    refresh();
+  });
 
   refresh();
 
@@ -246,6 +241,7 @@ export function createBlameLineController(deps: BlameLineControllerDeps): BlameL
       cancelPending();
       cursorSub.dispose();
       unsubscribeRepoChanged();
+      hold.release();
     },
   };
 }

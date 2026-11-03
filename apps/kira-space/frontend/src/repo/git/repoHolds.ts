@@ -40,6 +40,17 @@ function enqueue<T>(path: string, fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
+/** Holds `path` for the duration of `fn`. */
+export async function withGitRepoHold<T>(path: string, fn: () => Promise<T>): Promise<T> {
+  const hold = holdGitRepo(path);
+  try {
+    await hold.ready;
+    return await fn();
+  } finally {
+    hold.release();
+  }
+}
+
 export function holdGitRepo(path: string): GitRepoHold {
   let entry = entries.get(path);
   if (!entry) {

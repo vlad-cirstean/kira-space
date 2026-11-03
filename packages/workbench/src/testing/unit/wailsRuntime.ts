@@ -108,8 +108,25 @@ function Call(...args: unknown[]): Promise<unknown> {
 Call.ByName = (...args: unknown[]): Promise<unknown> => callFactory(...args);
 Call.ByID = (...args: unknown[]): Promise<unknown> => callFactory(...args);
 
+const eventHandlers = new Map<string, Set<(event: { data: unknown }) => void>>();
+
+/** Delivers a Go-pushed event to every `Events.On` subscriber of `name`. */
+export function emitWailsEvent(name: string, data: unknown): void {
+  for (const handler of [...(eventHandlers.get(name) ?? [])]) handler({ data });
+}
+
 const Events = {
-  On: (): (() => void) => () => {},
+  On: (name: string, handler: (event: { data: unknown }) => void): (() => void) => {
+    let handlers = eventHandlers.get(name);
+    if (!handlers) {
+      handlers = new Set();
+      eventHandlers.set(name, handlers);
+    }
+    handlers.add(handler);
+    return () => {
+      handlers.delete(handler);
+    };
+  },
 };
 
 mock.module('/wails/runtime.js', () => ({ Stream, Call, Events }));

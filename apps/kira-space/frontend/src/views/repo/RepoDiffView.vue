@@ -15,7 +15,6 @@ import { useHostLineComment } from '../../ade/v2/review/useHostLineComment';
 import { useReviewWorkingDiff } from '../../ade/v2/review/useReviewWorking';
 import { useAdeReviewWindowStore } from '../../ade/v2/state/adeReviewWindow';
 import { gitRepoIdFor } from '../../repo/git/hostHandlers';
-import { gitTransportFor } from '../../repo/git/transport';
 // The diff editor mount, modelled on RepoFileView.vue line for line — same lazy Monaco
 // bootstrap, same read-only posture, same navigation registration. The one real difference is the
 // editor itself: a diff editor over two models (HEAD, worktree) instead of one.
@@ -199,7 +198,6 @@ async function mount(): Promise<void> {
       mod,
       editor,
       committedReviewSource({
-        transport: gitTransportFor(repoId),
         gitRepoId,
         path: props.tab.path,
         leftRev: left,
