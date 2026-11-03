@@ -92,11 +92,6 @@ const reportRun = (runId: string) => {
   const r = props.card.task.runs.find((x) => x.id === runId);
   return r?.outcome?.report && (r.state === 'failed' || r.state === 'stuck') ? r : undefined;
 };
-// Run lines read in the branch list's order, the task folder first.
-const runs = computed(() => {
-  const at = (branchId: string): number => props.card.rows.findIndex((r) => r.id === branchId);
-  return props.block.runs.toSorted((a, b) => at(a.run.branchId) - at(b.run.branchId));
-});
 // Repo label per run target; the branch name too when another branch of the task shares the repo.
 function target(branchId: string): {
   repo: string;
@@ -123,6 +118,13 @@ function target(branchId: string): {
     named: shared && row.name !== '',
   };
 }
+// Run lines read in the branch list's order, the task folder first; each carries its target.
+const runs = computed(() => {
+  const at = (branchId: string): number => props.card.rows.findIndex((r) => r.id === branchId);
+  return props.block.runs
+    .toSorted((a, b) => at(a.run.branchId) - at(b.run.branchId))
+    .map((rl) => ({ ...rl, target: target(rl.run.branchId) }));
+});
 const heldRow = (rl: { run: { branchId: string }; note: string }) =>
   WAITING_SETUP_NOTES.includes(rl.note)
     ? props.card.rows.find((r) => r.id === rl.run.branchId)
@@ -293,16 +295,13 @@ function logToggleLabel(runId: string): string {
               rl.glyph
             }}</span
           >
-          <AdeRepoTag
-            :code-repo-id="target(rl.run.branchId).codeRepoId"
-            :label="target(rl.run.branchId).repo"
-          />
+          <AdeRepoTag :code-repo-id="rl.target.codeRepoId" :label="rl.target.repo" />
           <span
-            v-if="target(rl.run.branchId).named"
+            v-if="rl.target.named"
             class="max-w-40 shrink-0 truncate font-data text-kira-sm text-subtle"
             data-testid="ade-run-branch"
             >{{
-              target(rl.run.branchId).name
+              rl.target.name
             }}</span
           >
           <span

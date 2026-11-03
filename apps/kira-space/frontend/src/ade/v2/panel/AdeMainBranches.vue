@@ -28,9 +28,9 @@ const addRepo = useAddTaskRepo();
 const changeRequests = useChangeRequests();
 const openView = useOpenHostView();
 
-const prs = computed(() => {
+const lines = computed(() => {
   const byBranch = changeRequests.data.value?.branches ?? {};
-  return new Map(props.card.rows.flatMap((r) => (byBranch[r.id] ? [[r.id, byBranch[r.id]!]] : [])));
+  return props.card.rows.map((row) => ({ row, pr: byBranch[row.id] }));
 });
 const forcePushTarget = ref<{ branchId: string; branchName: string; repo: string } | null>(null);
 
@@ -80,7 +80,7 @@ async function onAddRepo(id: string): Promise<void> {
       </Button>
     </div>
     <div
-      v-for="row in card.rows"
+      v-for="{ row, pr } in lines"
       :key="row.id"
       class="flex flex-col"
       data-testid="ade-task-branch-item"
@@ -100,55 +100,44 @@ async function onAddRepo(id: string): Promise<void> {
         />
       </AdeBranchRow>
       <div
-        v-if="prs.get(row.id)"
+        v-if="pr"
         class="flex min-w-0 items-center gap-2 pb-1 text-kira-sm"
         :style="{ paddingLeft: `${row.depth * 16 + 8}px` }"
         data-testid="ade-task-branch-pr"
         :data-branch-id="row.id"
       >
-        <AdeTip :text="prStateLabel(prs.get(row.id)!.state)">
+        <AdeTip :text="prStateLabel(pr.state)">
           <span
             class="shrink-0"
-            :class="TONE_TEXT_CLASS[PR_TONE[prs.get(row.id)!.state] ?? 'grey']"
-            :data-state="prs.get(row.id)!.state"
+            :class="TONE_TEXT_CLASS[PR_TONE[pr.state] ?? 'grey']"
+            :data-state="pr.state"
             data-testid="ade-task-branch-pr-state"
-            ><CodiconIcon
-              :name="PR_GLYPH[prs.get(row.id)!.state] ?? 'git-pull-request'"
-              :size="12"
-            /></span
+            ><CodiconIcon :name="PR_GLYPH[pr.state] ?? 'git-pull-request'" :size="12" /></span
           >
         </AdeTip>
         <a
-          :href="prs.get(row.id)!.url"
+          :href="pr.url"
           class="min-w-0 truncate text-info"
-          @click.prevent="
-            fireAndForget(openView.mutateAsync(prs.get(row.id)!.url), 'hostView.open')
-          "
+          @click.prevent="fireAndForget(openView.mutateAsync(pr.url), 'hostView.open')"
           >{{
-            prs.get(row.id)!.title
+            pr.title
           }}</a
         >
         <span
-          v-if="prs.get(row.id)!.baseRef"
+          v-if="pr.baseRef"
           class="shrink-0 font-data text-subtle"
           data-testid="ade-task-branch-pr-base"
           >{{
-            t('space.ade.mainTab.prBase.label', { base: prs.get(row.id)!.baseRef })
+            t('space.ade.mainTab.prBase.label', { base: pr.baseRef })
           }}</span
         >
-        <AdeTip
-          v-if="CHECKS_GLYPH[prs.get(row.id)!.checksState]"
-          :text="t(CHECKS_GLYPH[prs.get(row.id)!.checksState]!.tip)"
-        >
+        <AdeTip v-if="CHECKS_GLYPH[pr.checksState]" :text="t(CHECKS_GLYPH[pr.checksState]!.tip)">
           <span
             class="shrink-0"
-            :class="CHECKS_GLYPH[prs.get(row.id)!.checksState]!.class"
-            :data-state="prs.get(row.id)!.checksState"
+            :class="CHECKS_GLYPH[pr.checksState]!.class"
+            :data-state="pr.checksState"
             data-testid="ade-task-branch-pr-checks"
-            ><CodiconIcon
-              :name="CHECKS_GLYPH[prs.get(row.id)!.checksState]!.icon"
-              :size="12"
-            /></span
+            ><CodiconIcon :name="CHECKS_GLYPH[pr.checksState]!.icon" :size="12" /></span
           >
         </AdeTip>
       </div>
