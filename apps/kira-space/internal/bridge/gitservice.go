@@ -27,7 +27,7 @@ func callGit[T any](ctx context.Context, windows *GitWindows, key, method string
 	var zero T
 	raw, err := json.Marshal(params)
 	if err != nil {
-		return zero, ipcerr.Internal(fmt.Sprintf("gitservice: %s: %v", method, err))
+		return zero, ipcerr.Wrap(fmt.Errorf("gitservice: %s: %w", method, err))
 	}
 	res, err := windows.get(key).handlers.Request(ctx, method, raw)
 	if err != nil {
@@ -37,13 +37,13 @@ func callGit[T any](ctx context.Context, windows *GitWindows, key, method string
 	case json.RawMessage:
 		var out T
 		if err := json.Unmarshal(v, &out); err != nil {
-			return zero, ipcerr.Internal(fmt.Sprintf("gitservice: %s: %v", method, err))
+			return zero, ipcerr.Wrap(fmt.Errorf("gitservice: %s: %w", method, err))
 		}
 		return out, nil
 	case T:
 		return v, nil
 	}
-	return zero, ipcerr.Internal(fmt.Sprintf("gitservice: %s: unexpected result type", method))
+	return zero, ipcerr.Wrap(fmt.Errorf("gitservice: %s: unexpected result type", method))
 }
 
 // GitAppInitArgs is AppInit's request.

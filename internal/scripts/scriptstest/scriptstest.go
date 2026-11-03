@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/renameio/v2"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 )
 
@@ -67,7 +68,7 @@ func WriteFile(t testing.TB, dir, id, text string) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, scripts.FileName(id)), []byte(text), 0o644); err != nil {
+	if err := renameio.WriteFile(filepath.Join(dir, scripts.FileName(id)), []byte(text), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
