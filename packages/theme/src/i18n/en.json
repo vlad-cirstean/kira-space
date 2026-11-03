@@ -10425,6 +10425,9 @@
           }
         },
         "stale": {
+          "failed": {
+            "hint": "Saved copy from {when}. Couldn’t update it: {reason}."
+          },
           "hint": "Saved copy from {when}. Updating."
         },
         "view": {

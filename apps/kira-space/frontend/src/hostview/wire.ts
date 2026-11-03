@@ -217,4 +217,6 @@ export interface HostViewIssue {
   detail?: IssueDetail;
   reason?: string;
   compose?: HostViewCompose;
+  /** Client only: why the last fresh read failed while the saved copy stays shown. */
+  refreshFailed?: string;
 }

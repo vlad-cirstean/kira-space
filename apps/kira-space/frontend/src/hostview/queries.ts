@@ -25,16 +25,32 @@ export function useChangeRequestDetail(url: MaybeRefOrGetter<string>) {
 /**
  * One issue's detail, by key or link. A tracker failure is data, like a host failure above. The host
  * answers a saved copy first (marked stale) when it has one, so the first read is instant; a stale
- * answer starts one fresh read at once. refresh() asks for a fresh read.
+ * answer starts one fresh read at once. refresh() asks for a fresh read. A fresh read that fails keeps
+ * the saved copy shown, marked stale, with the failure in refreshFailed.
  */
 export function useIssueDetail(ref: MaybeRefOrGetter<string>) {
   let nextFresh = false;
+  const client = useQueryClient();
   const query = useQuery(() => ({
     queryKey: issueKey(toValue(ref)),
-    queryFn: () => {
+    queryFn: async (): Promise<HostViewIssue> => {
       const fresh = nextFresh;
       nextFresh = false;
-      return control.hostViewIssue({ ref: toValue(ref), fresh });
+      const key = issueKey(toValue(ref));
+      const prev = client.getQueryData<HostViewIssue>(key);
+      const keep = (reason: string): HostViewIssue | undefined =>
+        fresh && prev?.kind === 'ok' && prev.detail
+          ? { ...prev, detail: { ...prev.detail, stale: true }, refreshFailed: reason }
+          : undefined;
+      let next: HostViewIssue;
+      try {
+        next = await control.hostViewIssue({ ref: toValue(ref), fresh });
+      } catch (e) {
+        const kept = keep(String(e));
+        if (kept) return kept;
+        throw e;
+      }
+      return next.kind === 'ok' ? next : (keep(next.reason ?? 'failed') ?? next);
     },
   }));
   function refresh(): void {

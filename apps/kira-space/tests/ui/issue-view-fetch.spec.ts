@@ -5,6 +5,7 @@ import {
   issueFetchFresh,
   issueFetchStale,
   issueTarget,
+  issueUnauthenticated,
   t,
   hostViewTest as test,
 } from './support/hostView';
@@ -49,4 +50,18 @@ test('Refresh asks for a fresh read', async ({ relaunch }) => {
   await page.locator(t('host-view-refresh')).click();
   await expect.poll(() => calls(control, IPC.hostViewIssue)).toHaveLength(2);
   expect(calls(control, IPC.hostViewIssue)[1]?.args).toEqual({ ref: REF, fresh: true });
+});
+
+test('a failed fresh read keeps the saved copy with the failure in the note', async ({
+  relaunch,
+}) => {
+  const { window: page } = await relaunch({
+    control: issueControl([
+      { ...PLAIN, response: issueFetchStale },
+      { ...FRESH, response: issueUnauthenticated },
+    ]),
+  });
+  await expect(page.locator(t('host-view-title'))).toHaveText('Export report as CSV');
+  await expect(page.locator(t('issue-stale'))).toContainText('Couldn’t update it');
+  await expect(page.locator(t('host-view-failure-reason'))).toHaveCount(0);
 });

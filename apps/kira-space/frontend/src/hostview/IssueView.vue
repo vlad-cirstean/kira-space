@@ -101,7 +101,12 @@ function copyLink(): void {
               }}</span>
             </div>
             <FieldDescription v-if="detail.stale" data-testid="issue-stale">{{
-              t('space.hostView.issue.stale.hint', { when: formatRelative(detail.fetchedAt) })
+              result?.refreshFailed
+                ? t('space.hostView.issue.stale.failed.hint', {
+                    when: formatRelative(detail.fetchedAt),
+                    reason: result?.refreshFailed ?? '',
+                  })
+                : t('space.hostView.issue.stale.hint', { when: formatRelative(detail.fetchedAt) })
             }}</FieldDescription>
           </div>
           <section class="flex flex-col gap-2" data-testid="issue-description">
