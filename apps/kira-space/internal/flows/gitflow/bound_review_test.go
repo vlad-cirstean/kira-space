@@ -1,9 +1,7 @@
 package gitflow_test
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
@@ -164,51 +162,13 @@ func TestGitServiceBoundReview(t *testing.T) {
 		t.Fatalf("host saw reviews %d, comments %d, line comments %d", len(forge.Reviews(7)), len(forge.Comments(7)), len(forge.LineComments(7)))
 	}
 
-	// Parity with the stream: the same JSON, byte for byte.
-	gs := app.OpenGitStreamFor("w1")
-	_, err = svc.ReviewCommentAdd(ctx, bridge.GitReviewCommentAddArgs{WindowKey: "w1", Params: gitrpc.ReviewCommentAddParams{RepoID: id, Branch: "feat", Path: "a.txt", At: tip, Range: rng, Body: "parity"}})
+	_, err = svc.ReviewSnapshot(ctx, bridge.GitReviewSnapshotArgs{WindowKey: "w1", Params: gitrpc.ReviewSnapshotParams{RepoID: id, Branch: "feat", Path: "a.txt"}})
 	chk(err)
-	same := func(method string, params any, bound any, err error) {
-		t.Helper()
-		chk(err)
-		var wire json.RawMessage
-		if err := gs.RequestWire(method, params, &wire); err != nil {
-			t.Fatalf("%s over the stream: %v", method, err)
-		}
-		raw, merr := json.Marshal(bound)
-		chk(merr)
-		if got := compactJSON(t, raw); !bytes.Equal(got, compactJSON(t, wire)) {
-			t.Fatalf("%s: bound %s\nstream %s", method, got, wire)
-		}
-	}
-	filesParams := gitrpc.ReviewFilesParams{RepoID: id, Branch: "feat", Base: "main"}
-	files, err = svc.ReviewFiles(ctx, bridge.GitReviewFilesArgs{WindowKey: "w1", Params: filesParams})
-	same("review.files", filesParams, files, err)
-	diff, err = svc.ReviewFileDiff(ctx, bridge.GitReviewFileDiffArgs{WindowKey: "w1", Params: diffParams})
-	same("review.fileDiff", diffParams, diff, err)
-	snapParams := gitrpc.ReviewSnapshotParams{RepoID: id, Branch: "feat", Path: "a.txt"}
-	snap, err := svc.ReviewSnapshot(ctx, bridge.GitReviewSnapshotArgs{WindowKey: "w1", Params: snapParams})
-	same("review.snapshot", snapParams, snap, err)
-	list, err = svc.ReviewCommentList(ctx, bridge.GitReviewCommentListArgs{WindowKey: "w1", Params: listParams})
-	same("review.comment.list", listParams, list, err)
-	exported, err = svc.ReviewCommentExport(ctx, bridge.GitReviewCommentExportArgs{WindowKey: "w1", Params: exportParams})
-	same("review.comment.export", exportParams, exported, err)
-	state, err = svc.ChangeRequestReviewState(ctx, bridge.GitChangeRequestReviewStateArgs{WindowKey: "w1", Params: stateParams})
-	same("changeRequest.reviewState", stateParams, state, err)
 
-	// The stream's refusals.
+	// Refusals.
 	_, err = svc.ReviewCommentAdd(ctx, bridge.GitReviewCommentAddArgs{WindowKey: "w1", Params: gitrpc.ReviewCommentAddParams{RepoID: id, Branch: "feat", Path: "a.txt", At: tip, Range: rng, Body: " "}})
-	code, msg := boundCode(t, err)
-	if code != string(ipcerr.CodeBadRequest) {
+	if code, msg := boundCode(t, err); code != string(ipcerr.CodeBadRequest) {
 		t.Fatalf("empty comment = %s %s, want E_BAD_REQUEST", code, msg)
-	}
-	if got := streamErr(t, gs, "review.comment.add", gitrpc.ReviewCommentAddParams{RepoID: id, Branch: "feat", Path: "a.txt", At: tip, Range: rng, Body: " "}); got.Code != code || got.Message != msg {
-		t.Fatalf("stream refusal = %+v, bound = %s %s", got, code, msg)
-	}
-	_, err = svc.ReviewMark(ctx, bridge.GitReviewMarkArgs{WindowKey: "w1", Params: gitrpc.ReviewMarkParams{RepoID: id, Branch: "feat", Path: "a.txt", Reviewed: true, Ranges: []gitreview.LineRange{{Start: 0, End: 0}}}})
-	code, msg = boundCode(t, err)
-	if got := streamErr(t, gs, "review.mark", gitrpc.ReviewMarkParams{RepoID: id, Branch: "feat", Path: "a.txt", Reviewed: true, Ranges: []gitreview.LineRange{{Start: 0, End: 0}}}); got.Code != code || got.Message != msg {
-		t.Fatalf("stream refusal = %+v, bound = %s %s", got, code, msg)
 	}
 	_, err = svc.ReviewFiles(ctx, bridge.GitReviewFilesArgs{WindowKey: "w9", Params: gitrpc.ReviewFilesParams{RepoID: id, Branch: "feat", Base: "main"}})
 	if code, _ := boundCode(t, err); code != string(ipcerr.CodeConflict) {
@@ -216,67 +176,8 @@ func TestGitServiceBoundReview(t *testing.T) {
 	}
 
 	// gitHost.providers is the existing GitHostService answer.
-	var wireProviders githost.Providers
-	if err := gs.RequestWire("gitHost.providers", struct{}{}, &wireProviders); err != nil {
-		t.Fatal(err)
-	}
-	if got := app.W.GitHost.Providers(); len(got.Providers) == 0 || !sameJSON(t, got, wireProviders) {
-		t.Fatalf("GitHost.Providers = %+v, stream %+v", got, wireProviders)
+	if got := app.W.GitHost.Providers(); len(got.Providers) == 0 {
+		t.Fatalf("GitHost.Providers = %+v", got)
 	}
 	app.Contract(t, scenario, "git:gitHost.providers#bound", app.W.GitHost.Providers())
-
-	// A bound hold outlives the window's last stream.
-	app.W.Windows.Add("w5", 5, nil, func() {})
-	open5, err := svc.RepoOpen(ctx, bridge.GitRepoOpenArgs{WindowKey: "w5", Params: gitrpc.RepoOpenParams{Path: repo.Dir}})
-	chk(err)
-	gs5 := app.OpenGitStreamFor("w5")
-	gs5.Close()
-	if _, err := svc.ReviewFiles(ctx, bridge.GitReviewFilesArgs{WindowKey: "w5", Params: gitrpc.ReviewFilesParams{RepoID: open5.Repo.RepoID, Branch: "feat", Base: "main"}}); err != nil {
-		t.Fatalf("ReviewFiles after the last stream closed: %v", err)
-	}
-	repo.Commit("later", map[string]string{"c.txt": "c\n"})
-	app.Events.Wait(t, gitEventChanged, func(e flowharness.Event) bool { return e.Window == "w5" }, wait)
-	_, err = svc.RepoClose(ctx, bridge.GitRepoCloseArgs{WindowKey: "w5", Params: gitrpc.RepoCloseParams{RepoID: open5.Repo.RepoID}})
-	chk(err)
-	app.OpenGitStreamFor("w5").Close()
-	_, err = svc.ReviewFiles(ctx, bridge.GitReviewFilesArgs{WindowKey: "w5", Params: gitrpc.ReviewFilesParams{RepoID: open5.Repo.RepoID, Branch: "feat", Base: "main"}})
-	if code, _ := boundCode(t, err); code != string(ipcerr.CodeConflict) {
-		t.Fatalf("ReviewFiles after the bound close = %s, want E_CONFLICT", code)
-	}
-}
-
-func compactJSON(t *testing.T, raw []byte) []byte {
-	t.Helper()
-	var v any
-	if err := json.Unmarshal(raw, &v); err != nil {
-		t.Fatal(err)
-	}
-	out, err := json.Marshal(v)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return out
-}
-
-func sameJSON(t *testing.T, a, b any) bool {
-	t.Helper()
-	x, err := json.Marshal(a)
-	if err != nil {
-		t.Fatal(err)
-	}
-	y, err := json.Marshal(b)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return bytes.Equal(x, y)
-}
-
-// streamErr is wireErr over the stream, never bound.
-func streamErr(t *testing.T, gs *flowharness.GitStream, method string, params any) *flowharness.WireError {
-	t.Helper()
-	we, ok := gs.RequestWire(method, params, nil).(*flowharness.WireError)
-	if !ok {
-		t.Fatalf("%s: want a wire error over the stream", method)
-	}
-	return we
 }

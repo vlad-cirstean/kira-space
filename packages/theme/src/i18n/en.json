@@ -1607,6 +1607,11 @@
           "body": "The workspace was closed. Reopen it and retry."
         }
       },
+      "gitGraph": {
+        "frameTooLarge": {
+          "body": "The graph data is larger than the frame size limit."
+        }
+      },
       "gitHost": {
         "notChangeRequestUrl": {
           "body": "That isn’t a {changeRequests} link."

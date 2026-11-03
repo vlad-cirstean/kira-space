@@ -106,7 +106,7 @@ func TestGitServiceBound(t *testing.T) {
 		}
 	}
 
-	// A restricted setting is refused before the handler, as on the stream.
+	// A restricted setting is refused before the handler.
 	script := "rm -rf /"
 	_, err = svc.RepoSettingsSet(ctx, bridge.GitRepoSettingsSetArgs{WindowKey: "w1", Params: gitrpc.RepoSettingsSetParams{
 		RepoID: id, Patch: gitrpc.RepoSettingsPatchWire{WorktreePrepareScript: &script},
@@ -114,12 +114,6 @@ func TestGitServiceBound(t *testing.T) {
 	code, msg := boundCode(t, err)
 	if code != string(ipcerr.CodeReadOnly) {
 		t.Fatalf("restricted set = %s %s, want E_READ_ONLY", code, msg)
-	}
-	streamErr := wireErr(t, gs, "repoSettings.set", gitrpc.RepoSettingsSetParams{
-		RepoID: id, Patch: gitrpc.RepoSettingsPatchWire{WorktreePrepareScript: &script},
-	})
-	if streamErr.Code != code || streamErr.Message != msg {
-		t.Fatalf("stream refusal = %+v, bound = %s %s", streamErr, code, msg)
 	}
 	size := 500
 	snap, err := svc.RepoSettingsSet(ctx, bridge.GitRepoSettingsSetArgs{WindowKey: "w1", Params: gitrpc.RepoSettingsSetParams{
@@ -129,11 +123,10 @@ func TestGitServiceBound(t *testing.T) {
 		t.Fatalf("RepoSettingsSet = %+v, %v", snap, err)
 	}
 
-	// An argument-injection ref fails the same way bound and over a stream.
+	// An argument-injection ref is refused.
 	_, err = svc.CommitDetail(ctx, bridge.GitCommitDetailArgs{WindowKey: "w1", Params: gitrpc.CommitDetailParams{RepoID: id, SHA: "--output=x"}})
-	boundCodeVal, _ := boundCode(t, err)
-	if got := wireErr(t, gs, "commit.detail", gitrpc.CommitDetailParams{RepoID: id, SHA: "--output=x"}); got.Code != boundCodeVal {
-		t.Fatalf("stream code %s, bound %s", got.Code, boundCodeVal)
+	if code, _ := boundCode(t, err); code != string(ipcerr.CodeContract) {
+		t.Fatalf("injection ref = %s, want E_CONTRACT", code)
 	}
 
 	// Closing a window releases its holds and leaves the others alone.

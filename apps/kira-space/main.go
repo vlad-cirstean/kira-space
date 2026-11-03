@@ -157,6 +157,7 @@ func main() {
 	attachDialogs(app, windowToActOn)
 
 	appshell.RegisterGitStream(app, wired.GitWindows)
+	appshell.RegisterGitGraphStream(app, wired.GitWindows)
 
 	winDeps := shell.WindowOpenerDeps{
 		App:        app,

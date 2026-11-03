@@ -35,6 +35,8 @@ type Deps struct {
 // SPEC §7), so internal/bridge adapts these two functions onto rpcstream.Handlers.
 type Handlers struct {
 	Request func(ctx context.Context, method string, params json.RawMessage) (any, error)
+	// GraphStream serves graph.stream for the graph data plane, calling emit per chunk.
+	GraphStream func(ctx context.Context, params json.RawMessage, emit func(payload any, blob []byte) error) error
 	// Stream mirrors rpcstream.Handlers.Stream structurally (D5) — gitrpc still does not import
 	// internal/bridge/rpcstream (SPEC §7's layering rule); internal/bridge adapts the two.
 	Stream func(ctx context.Context, method string, params json.RawMessage, emit func(payload any, blob []byte) error) error
@@ -135,6 +137,9 @@ func (r *Router) ForConn(c *gitsession.Conn) Handlers {
 				return nil, ipcerr.T(ipcerr.CodeUnknownMethod, "backend.space.gitrpc.unknownMethod.body", map[string]string{"method": method})
 			}
 			return h(r, oplog.WithOrigin(ctx, c.Origin()), c, params)
+		},
+		GraphStream: func(ctx context.Context, params json.RawMessage, emit func(payload any, blob []byte) error) error {
+			return r.handleGraphStream(oplog.WithOrigin(ctx, c.Origin()), c, params, emit)
 		},
 		Stream: func(ctx context.Context, method string, params json.RawMessage, emit func(payload any, blob []byte) error) error {
 			ctx = oplog.WithOrigin(ctx, c.Origin())

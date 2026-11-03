@@ -7,7 +7,6 @@ import {
   MalformedBlobFrameError,
   type StreamSocketLike,
 } from './streamChannel.ts';
-import { unwrapVersioned } from './validate.ts';
 
 // A minimal WebSocket-like double: this file's own contract is "MessageChannelLike over a
 // WebSocket-like object" (§3.4), not any particular runtime's WebSocket — a plain in-memory stand-
@@ -292,11 +291,9 @@ test('D16: decodes the captured Go-encoded graph.stream chunk frame field for fi
   // The Wails stream carries whole frames: the captured body goes in with no length prefix.
   socket.deliver(toArrayBuffer(raw));
 
-  const envelope = await received;
-  const frameBody = unwrapVersioned(envelope as { version: number; body: unknown }) as {
+  const frameBody = (await received) as {
     readonly t: string;
     readonly id: number;
-    readonly seq: number;
     readonly chunk: unknown;
   };
   expect(frameBody.t).toBe('chunk');

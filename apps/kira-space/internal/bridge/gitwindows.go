@@ -105,6 +105,15 @@ func (g *GitWindows) get(key string) *gitWindow {
 	return g.getLocked(key)
 }
 
+// lookup returns the window's Conn only if one exists. A stream for a closed window must not
+// resurrect it: nothing would close the new Conn.
+func (g *GitWindows) lookup(key string) (*gitWindow, bool) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	w, ok := g.byKey[key]
+	return w, ok
+}
+
 // getLocked creates the Conn with credential prompts routed to the relay tagged with key.
 func (g *GitWindows) getLocked(key string) *gitWindow {
 	if w, ok := g.byKey[key]; ok {

@@ -1,6 +1,8 @@
 package appshell
 
 import (
+	"context"
+
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -16,5 +18,12 @@ func RegisterGitStream(app *application.App, windows *bridge.GitWindows) {
 			key = w.Name()
 		}
 		bridge.ServeGitStream(windows, c, key)
+	})
+}
+
+// RegisterGitGraphStream registers the graph data plane (bridge.ServeGitGraph).
+func RegisterGitGraphStream(app *application.App, windows *bridge.GitWindows) {
+	app.HandleStream(bridge.GitGraphStreamName, func(c *application.StreamConn) {
+		bridge.ServeGitGraph(context.Background(), windows, c)
 	})
 }
