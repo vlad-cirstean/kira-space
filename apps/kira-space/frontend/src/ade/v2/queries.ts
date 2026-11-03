@@ -59,6 +59,7 @@ import type {
   TakeOverArgs,
   Task,
   TaskArgs,
+  UpdateArtifactArgs,
   UpdateHandoverArgs,
   UpdateTaskArgs,
   UpdateTaskRepoArgs,
@@ -479,6 +480,13 @@ const refetchArtifacts = () => queryClient.invalidateQueries({ queryKey: artifac
 export function useAddArtifact() {
   return useMutation({
     mutationFn: (args: AddArtifactArgs) => control.adeTaskAddArtifact(args),
+    onSuccess: refetchArtifacts,
+  });
+}
+
+export function useUpdateArtifact() {
+  return useMutation({
+    mutationFn: (args: UpdateArtifactArgs) => control.adeTaskUpdateArtifact(args),
     onSuccess: refetchArtifacts,
   });
 }

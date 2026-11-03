@@ -1342,6 +1342,13 @@ type AddArtifactArgs struct {
 	Ref    string `json:"ref"`
 }
 
+// UpdateArtifactArgs renames a stored artifact.
+type UpdateArtifactArgs struct {
+	TaskID string `json:"taskId"`
+	ID     string `json:"id"`
+	Title  string `json:"title"`
+}
+
 type RemoveArtifactArgs struct {
 	TaskID string `json:"taskId"`
 	ID     string `json:"id"`

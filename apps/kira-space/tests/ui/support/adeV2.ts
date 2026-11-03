@@ -178,6 +178,7 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskArtifacts, response: { artifacts: [], gaps: [] } },
     { channel: IPC.adeTaskIssue, response: NO_TRACKER_ISSUE },
     { channel: IPC.adeTaskAddArtifact },
+    { channel: IPC.adeTaskUpdateArtifact },
     { channel: IPC.adeTaskRemoveArtifact },
     {
       channel: IPC.adeTaskSaveStatuses,

@@ -988,6 +988,22 @@ func (s *AdeTaskService) AddArtifact(ctx context.Context, args adewire.AddArtifa
 	return a, adeTaskError(err)
 }
 
+// UpdateArtifact renames a stored artifact. Detected artifacts have no id and cannot be renamed.
+func (s *AdeTaskService) UpdateArtifact(ctx context.Context, args adewire.UpdateArtifactArgs) (adewire.Artifact, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return adewire.Artifact{}, err
+	}
+	if err := validateAdeItemID(args.ID, "id"); err != nil {
+		return adewire.Artifact{}, err
+	}
+	if len(args.Title) > agentmcp.MaxArtifactTitle {
+		return adewire.Artifact{}, ipcerr.Contract("artifact title is too long")
+	}
+	a, err := s.Engine.UpdateArtifact(ctx, args)
+	return a, adeTaskError(err)
+}
+
 // RemoveArtifact deletes a stored artifact. Detected artifacts have no id and cannot be removed.
 func (s *AdeTaskService) RemoveArtifact(ctx context.Context, args adewire.RemoveArtifactArgs) error {
 	ctx = adeUserCtx(ctx)

@@ -80,6 +80,18 @@ func (r *AdeTaskRepo) readArtifact(id string) (model.AdeTaskArtifact, error) {
 	return *a, nil
 }
 
+// UpdateArtifactTitle renames a row and returns it.
+func (r *AdeTaskRepo) UpdateArtifactTitle(taskID, id, title string, now int64) (model.AdeTaskArtifact, error) {
+	res, err := r.DB.Exec(`UPDATE ade_task_artifacts SET title = ?, updated_at = ? WHERE id = ? AND task_id = ?`, title, now, id, taskID)
+	if err != nil {
+		return model.AdeTaskArtifact{}, fmt.Errorf("repos: rename artifact %s: %w", id, err)
+	}
+	if err := sqlitex.RequireOneRow(res, "artifact "+id); err != nil {
+		return model.AdeTaskArtifact{}, err
+	}
+	return r.readArtifact(id)
+}
+
 // DeleteArtifact removes a row.
 func (r *AdeTaskRepo) DeleteArtifact(id string) error {
 	res, err := r.DB.Exec(`DELETE FROM ade_task_artifacts WHERE id = ?`, id)

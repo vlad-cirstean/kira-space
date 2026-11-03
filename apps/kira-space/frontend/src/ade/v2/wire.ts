@@ -498,6 +498,11 @@ export interface AddArtifactArgs {
   url: string;
   ref: string;
 }
+export interface UpdateArtifactArgs {
+  taskId: string;
+  id: string;
+  title: string;
+}
 export interface RemoveArtifactArgs {
   taskId: string;
   id: string;

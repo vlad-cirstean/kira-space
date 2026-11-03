@@ -1405,6 +1405,9 @@
     },
     "space": {
       "ade": {
+        "artifactTitle": {
+          "body": "A title needs 1 to 200 characters."
+        },
         "branchMissing": {
           "body": "That branch no longer exists."
         },
