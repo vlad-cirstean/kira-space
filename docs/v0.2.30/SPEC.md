@@ -17,7 +17,7 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 | P499 | Review: show reviewed changes removed since review | Done |
 | P500 | ADE: task card icon row | Done |
 | P501 | ADE: task panel restructure | Done |
-| P502 | ADE: multi-branch task panel simplification | Todo |
+| P502 | ADE: multi-branch task panel simplification | Done |
 | P503 | Code review (1 round) | Todo |
 | P504 | Close chapter v0.2.30 | Todo |
 
@@ -99,7 +99,7 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 - Runs after P501: both touch `AdeTaskPanel.vue`.
 - Frontend only; IPC unchanged, so no backend test.
 - Test: UI spec for a multi-branch task in the Main tab.
-- Result: pending.
+- Result: Main shows one branch list above the workflow, in the Plan's `AdeBranchRow` look (new `testid` prop, `data-depth`, default slot for the edit menu). PR line sits under its row with a state glyph (`PR_GLYPH`), title, base, checks. Release and Review step rows removed, with `StepBlock.release` and the `mainOpen` key. Run lines sort by branch-list order and show `ade-run-branch` when a repo repeats. Edit menu trigger uses the edit icon; its click stops propagation so it does not select the branch. Review shortcut also works from a focused panel row. New spec `ade-v2-main-branches`; updated `ade-v2-run`, `ade-v2-review-open`, `ade-v2-task-panel`, `ade-v2-panel` (scoped sparkle locator; PR-link test clicked the Jira link first, now picks the PR link). Deviation: aria text is "Change branch or repository" (copy lint bans "repo"). Branch order in `T_bill` is `b_meter`, `b_bill`, `b_billdash` (model order), not the plan's guess.
 
 ### P503 Code review (1 round)
 
