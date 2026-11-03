@@ -241,24 +241,32 @@ func (s *Service) LogsOpen(args LogsOpenArgs) error {
 		Previous: args.Previous, Timestamps: args.Timestamps, Tail: args.Tail,
 	}, args.Follow)
 	opened := make(chan error, 1)
+	var once sync.Once
+	report := func(err error) { once.Do(func() { opened <- err }) }
 	go func() {
 		defer stopBase()
-		ran := false
+		reported := false
 		err := s.rec.Record(context.Background(), cmd, func(runCtx context.Context, note *OpNote) error {
-			ran = true
-			return s.runLogStream(runCtx, base, cs, args, note, opened)
+			return s.runLogStream(runCtx, base, cs, args, note, func(err error) {
+				reported = true
+				report(err)
+			})
 		})
-		if !ran {
+		// Not reported: the recorder skipped the call or recovered a panic before the open result.
+		if !reported {
 			s.logs.remove(args.StreamID)
-			opened <- err
+			if err == nil {
+				err = errors.New("log stream ended before it opened")
+			}
+			report(err)
 		}
 	}()
 	return <-opened
 }
 
-// runLogStream is the stream's recorded call: it reports the open result on opened, then pumps
+// runLogStream is the stream's recorded call: it reports the open result once via report, then pumps
 // until the stream ends. stop is the registry's handle; runCtx ends with a panel Cancel.
-func (s *Service) runLogStream(runCtx, stop context.Context, cs *clusterClient, args LogsOpenArgs, note *OpNote, opened chan<- error) error {
+func (s *Service) runLogStream(runCtx, stop context.Context, cs *clusterClient, args LogsOpenArgs, note *OpNote, report func(error)) error {
 	ctx, cancel := context.WithCancel(runCtx)
 	defer cancel()
 	defer context.AfterFunc(stop, cancel)()
@@ -266,10 +274,10 @@ func (s *Service) runLogStream(runCtx, stop context.Context, cs *clusterClient, 
 	if err != nil {
 		s.logs.remove(args.StreamID)
 		err = mapErr(err)
-		opened <- err
+		report(err)
 		return err
 	}
-	opened <- nil
+	report(nil)
 	streamErr := s.pumpLogs(ctx, args, body, note)
 	if runCtx.Err() != nil {
 		return context.Canceled
