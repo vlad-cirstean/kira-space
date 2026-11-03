@@ -16,7 +16,7 @@ import (
 // unstuck.
 type subscriber struct {
 	repoID string
-	// deliver ends in a connection's rpcstream Emit, which can itself block on a full send
+	// deliver ends in a connection's emit, which can itself block on a full send
 	// buffer behind a wedged socket — precisely why it only ever runs on this subscriber's own
 	// goroutine, never on the watcher's.
 	deliver func(Event)

@@ -32,7 +32,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/azure"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/github"
 	githostproviders "github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/providers"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitrpc"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker/jira"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/lannet"
@@ -572,9 +571,6 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc), application.NewService(w.RepoConfigSvc), application.NewService(w.GitSvc),
 	}
 }
-
-// GitRouter is the router the git stream serves.
-func (w *Wired) GitRouter() *gitrpc.Router { return w.Git.router }
 
 // BeforeFlush stops the metrics ticker and detaches window listeners; idempotent.
 func (w *Wired) BeforeFlush() { w.beforeFlushOnce() }

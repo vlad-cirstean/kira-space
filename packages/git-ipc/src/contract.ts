@@ -981,7 +981,7 @@ export type OpRequest =
   | { readonly kind: 'globalStashRemove'; readonly sha: string };
 
 /** Every `WireError.code` the git RPC emits: Go (`internal/ipcerr`, `gitrpc` `mapGitError`,
- *  `rpcstream`) and this package's server. `E_GIT_*` is `gitclient`'s error kind in
+ *  `graphplane`) and this package's server. `E_GIT_*` is `gitclient`'s error kind in
  *  SCREAMING_SNAKE_CASE. A locally thrown JS error crosses as its class name instead. Keep in
  *  step with `apps/kira-space/internal/gitrpc/contract.go`. */
 export type WireErrorCode =

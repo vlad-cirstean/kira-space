@@ -21,9 +21,6 @@ func TestOpenDefaultGitPath(t *testing.T) {
 	if init.Git.Kind != "ok" || !filepath.IsAbs(init.Git.Path) {
 		t.Fatalf("app.init git = %+v, want ok with an absolute path", init.Git)
 	}
-	if init.ContractVersion != gitrpc.ContractVersion {
-		t.Fatalf("contractVersion = %d, want %d", init.ContractVersion, gitrpc.ContractVersion)
-	}
 	sum := r.open(repo.Dir)
 	if sum.RepoID == "" || sum.Root == "" {
 		t.Fatalf("repo.open summary = %+v, want repoId and root", sum)

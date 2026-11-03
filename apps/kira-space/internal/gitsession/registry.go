@@ -1,7 +1,7 @@
 // Package gitsession owns the session model: Registry (a refcounted, per-repo set of shared
 // RepoEntry state) and Conn (one accepted connection's private holds and event delivery). It
 // imports gitclient, gitpreflight, gitreview, githost, storage/model, oplog and stdlib only — no
-// bridge, no rpcstream — so it stays a domain package internal/layering_test.go's
+// bridge — so it stays a domain package internal/layering_test.go's
 // auto-enumerated check covers without an exemption. Registry.Review (a *gitreview.Store): the one
 // place this package reaches beyond gitclient's own family, and still nowhere near bridge.
 package gitsession

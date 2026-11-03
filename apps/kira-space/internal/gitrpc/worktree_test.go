@@ -133,7 +133,3 @@ func TestOpRunWorktreeAddAndRemove_OverDispatch(t *testing.T) {
 		t.Fatalf("op.run (worktreeRemove) result = %+v (ok=%v)", removeRes, ok)
 	}
 }
-
-// The literal ContractVersion exit-criteria assertion (G26 D17's TestContractVersion_Is29) moves
-// forward again at G28 D17 to gitrpc/stash_test.go's own TestContractVersion_Is30 — the same
-// "moved forward in the same commit that bumps the constant" convention this phase inherits.

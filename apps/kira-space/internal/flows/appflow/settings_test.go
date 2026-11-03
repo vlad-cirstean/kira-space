@@ -52,7 +52,7 @@ func TestGitPathSettingEverywhere(t *testing.T) {
 	writeExecutable(t, bad, "#!/bin/sh\necho not-git\n")
 	setGitPath(t, app, bad)
 
-	app.Contract(t, "git-path", "git:app.init#unusable", gitStatusOf(gs), flowharness.Mask("serverVersion", "contractVersion"))
+	app.Contract(t, "git-path", "git:app.init#unusable", gitStatusOf(gs), flowharness.Mask("serverVersion"))
 	if got := gitStatusOf(gs).Git; got.Kind != "unusable" || got.Path != bad {
 		t.Fatalf("git status after bad path = %+v, want unusable at %s", got, bad)
 	}

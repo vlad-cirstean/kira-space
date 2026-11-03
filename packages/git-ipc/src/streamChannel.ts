@@ -114,7 +114,7 @@ export function createStreamChannel(socket: StreamSocketLike): StreamChannel {
     // the frame.
     try {
       const message = decodeFrame(ev.data);
-      // No pending-frame queue: the transport's own createRpcClient
+      // No pending-frame queue: the graph plane
       // subscribes with onMessage before the socket can have delivered anything, and this channel
       // has exactly one subscriber for its whole life — there is no resubscribe-across-an-await
       // gap to lose a frame in.

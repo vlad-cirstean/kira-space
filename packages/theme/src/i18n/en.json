@@ -790,11 +790,6 @@
           "body": "This prompt no longer exists."
         }
       },
-      "rpcStream": {
-        "frameTooLarge": {
-          "body": "The data is larger than the frame size limit."
-        }
-      },
       "runs": {
         "collectionLong": {
           "body": "The collection name is longer than {max} characters."

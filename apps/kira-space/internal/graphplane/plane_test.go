@@ -196,14 +196,16 @@ func TestPlane_DuplicateLiveIDKeepsFirst(t *testing.T) {
 
 func TestPlane_CloseCancelsStreams(t *testing.T) {
 	p := newPipe()
-	stopped := make(chan struct{})
+	started, stopped := make(chan struct{}), make(chan struct{})
 	open := func(ctx context.Context, _ string, _ json.RawMessage, _ func(any, []byte) error) error {
+		close(started)
 		<-ctx.Done()
 		close(stopped)
 		return ctx.Err()
 	}
 	stop := serve(t, p, open, 0)
 	p.send(t, map[string]any{"t": "open", "id": 1})
+	<-started
 	stop()
 	select {
 	case <-stopped:

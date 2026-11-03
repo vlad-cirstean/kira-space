@@ -30,16 +30,13 @@ type Deps struct {
 	DateFormat func() string
 }
 
-// Handlers is gitrpc's own two-function method table — deliberately not rpcstream.Handlers: gitrpc
-// must not import internal/bridge/rpcstream (a domain package must stay under the layering line,
-// SPEC §7), so internal/bridge adapts these two functions onto rpcstream.Handlers.
+// Handlers is gitrpc's own two-function method table: gitrpc must not import internal/bridge (a
+// domain package stays under the layering line, SPEC §7), so internal/bridge adapts these two
+// functions onto GitService and the graph data plane.
 type Handlers struct {
 	Request func(ctx context.Context, method string, params json.RawMessage) (any, error)
 	// GraphStream serves graph.stream for the graph data plane, calling emit per chunk.
 	GraphStream func(ctx context.Context, params json.RawMessage, emit func(payload any, blob []byte) error) error
-	// Stream mirrors rpcstream.Handlers.Stream structurally (D5) — gitrpc still does not import
-	// internal/bridge/rpcstream (SPEC §7's layering rule); internal/bridge adapts the two.
-	Stream func(ctx context.Context, method string, params json.RawMessage, emit func(payload any, blob []byte) error) error
 }
 
 // repoSettingsQueueCap bounds each connection's own repoSettings.changed mailbox (ForConn) —
@@ -64,16 +61,15 @@ type Router struct {
 // New constructs a Router over deps.
 func New(deps Deps) *Router { return &Router{deps: deps} }
 
-// ForConn returns the two-function Handlers internal/bridge hands to one connection's rpcstream.Session —
-// c is closed over by repo.open/repo.close, exactly the shape the wire contract itself does not
-// change at all (D18): params, results and CONTRACT_VERSION are untouched, only what repo.close
-// means does (evict globally -> release this connection's hold).
+// ForConn returns the two-function Handlers internal/bridge serves for one connection — c is
+// closed over by repo.open/repo.close (repo.close releases this connection's hold, it never evicts
+// globally).
 //
 // G18 D7: also subscribes c to repoSettingsChanged for the life of the connection — unsubscribed
 // via c.Done() rather than repo.close, since repoSettings.changed is not scoped to any one repo
 // being held open. c.Emit (gitsession.Conn) is a
 // mutex-guarded accessor, not a bare field (P108 Part 17 review F9) — c.SetEmit is not called until
-// just after ForConn returns (bridge's ServeGitStream), so an event landing in that narrow window
+// just after ForConn returns (bridge's GitWindows), so an event landing in that narrow window
 // safely no-ops rather than racing gitsession.Conn's own unguarded field the way it used to: an
 // event here is never this connection's OWN repoSettings.set (nothing can call it before this
 // connection's own Handlers exist to dispatch it), but it CAN be a different, already-connected
@@ -82,8 +78,8 @@ func New(deps Deps) *Router { return &Router{deps: deps} }
 //
 // G32 round-3 architecture/security review, finding #5: notify.Emitter.Emit (notify.go) calls
 // every subscriber SEQUENTIALLY, on the calling repoSettings.set request's own goroutine.
-// rpcstream.Session.Emit's own send() blocks on a bounded channel until it either accepts the
-// frame or THAT connection's own s.done fires — a slow-reading or wedged OTHER client used to be
+// A connection's emit can block on a bounded channel until the frame is accepted or THAT
+// connection ends — a slow-reading or wedged OTHER client used to be
 // able to stall the fan-out entirely, delaying the repoSettings.set RPC response for the client
 // that actually made the change, and every subscriber snapshotted after the wedged one. Each
 // connection now gets its own small, bounded mailbox (repoSettingsQueueCap) plus ONE dedicated
@@ -140,15 +136,6 @@ func (r *Router) ForConn(c *gitsession.Conn) Handlers {
 		},
 		GraphStream: func(ctx context.Context, params json.RawMessage, emit func(payload any, blob []byte) error) error {
 			return r.handleGraphStream(oplog.WithOrigin(ctx, c.Origin()), c, params, emit)
-		},
-		Stream: func(ctx context.Context, method string, params json.RawMessage, emit func(payload any, blob []byte) error) error {
-			ctx = oplog.WithOrigin(ctx, c.Origin())
-			switch method {
-			case "graph.stream":
-				return r.handleGraphStream(ctx, c, params, emit)
-			default:
-				return ipcerr.T(ipcerr.CodeUnknownMethod, "backend.space.gitrpc.unknownMethod.body", map[string]string{"method": method})
-			}
 		},
 	}
 }
@@ -360,10 +347,9 @@ var requestHandlers = map[string]requestHandler{
 
 func (r *Router) handleAppInit(ctx context.Context) AppInitResult {
 	return AppInitResult{
-		ContractVersion: ContractVersion,
-		ServerVersion:   r.deps.ServerVersion,
-		Git:             r.deps.Discovery.Status(ctx, gitPathFrom(r.deps.Registry)),
-		DateFormat:      r.dateFormat(),
+		ServerVersion: r.deps.ServerVersion,
+		Git:           r.deps.Discovery.Status(ctx, gitPathFrom(r.deps.Registry)),
+		DateFormat:    r.dateFormat(),
 	}
 }
 
@@ -434,8 +420,8 @@ func handleRepoClose(c *gitsession.Conn, params json.RawMessage) (any, error) {
 }
 
 // mapGitError turns gitclient's closed error vocabulary into ipcerr codes so the classification
-// survives the wire. rpcstream folds anything that is not an *ipcerr.Error into
-// E_INTERNAL (bridge/rpcstream/frame.go), which is the whole reason this exists — a git failure
+// survives the wire. The bridge folds anything that is not an *ipcerr.Error into
+// E_INTERNAL, which is the whole reason this exists — a git failure
 // must cross as E_GIT_<KIND>, never as an anonymous internal error. Every code the server emits is
 // listed in packages/git-ipc/src/contract.ts WireErrorCode; add new ones there.
 func mapGitError(err error) error {

@@ -33,7 +33,7 @@ type Watcher interface {
 }
 
 // Event is repo.changed's payload, SPEC §6/D20's shape verbatim — crossed as-is by
-// (*rpcstream.Session).Emit's own json.Marshal.
+// a connection's emit through json.Marshal.
 type Event struct {
 	RepoID string `json:"repoId"`
 	Kind   string `json:"kind"` // "refsChanged" | "worktreeChanged" | "changeRequestsChanged"

@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpath"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpreflight"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitrpc"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
@@ -137,18 +136,12 @@ func (s *GitService) AppInit(ctx context.Context, a GitAppInitArgs) (gitrpc.AppI
 
 // RepoOpen holds a repository for the window.
 func (s *GitService) RepoOpen(ctx context.Context, a GitRepoOpenArgs) (gitrpc.RepoOpenResult, error) {
-	res, err := callGit[gitrpc.RepoOpenResult](ctx, s.windows, a.WindowKey, "repo.open", a.Params)
-	if err == nil && res.Kind == "ok" && res.Repo != nil {
-		s.windows.noteBoundOpen(a.WindowKey, res.Repo.RepoID)
-	}
-	return res, err
+	return callGit[gitrpc.RepoOpenResult](ctx, s.windows, a.WindowKey, "repo.open", a.Params)
 }
 
 // RepoClose releases the window's hold on a repository.
 func (s *GitService) RepoClose(ctx context.Context, a GitRepoCloseArgs) (struct{}, error) {
-	res, err := callGit[struct{}](ctx, s.windows, a.WindowKey, "repo.close", a.Params)
-	s.windows.noteBoundClose(a.WindowKey, gitpath.CleanNFC(a.Params.RepoID))
-	return res, err
+	return callGit[struct{}](ctx, s.windows, a.WindowKey, "repo.close", a.Params)
 }
 
 // StatusGet answers status.get.

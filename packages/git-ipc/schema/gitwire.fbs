@@ -13,7 +13,7 @@
 // filesystem (G3 plan F6). wire.fbs carries the same note for the same reason.
 //
 // Append-only: never renumber, never reorder, never delete a field — retire with (deprecated).
-// CONTRACT_VERSION, not this file, is the compatibility authority (upstream D46).
+// Both sides ship in one binary, so a layout change lands on both at once.
 
 namespace gitwire;
 

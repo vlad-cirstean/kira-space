@@ -116,7 +116,7 @@ func TestConn_CloseReleasesEveryHoldAndUnsubscribes(t *testing.T) {
 }
 
 // TestConn_ConcurrentOpenSameRepoTakesOneRef exercises the race D15's own second held-check exists
-// for: rpcstream dispatches every request on its own goroutine, so two repo.open calls for the same
+// for: every request runs on its own goroutine, so two repo.open calls for the same
 // path from one connection can race each other.
 func TestConn_ConcurrentOpenSameRepoTakesOneRef(t *testing.T) {
 	t.Parallel()
@@ -321,7 +321,7 @@ func TestConn_MarkWalksStaleRacesSafelyWithWalkRebuild(t *testing.T) {
 }
 
 // TestConn_DisableAutoFetch_OptsThisConnOutOfArming: the native git-graph mount's own
-// Conn (bridge/gitstream.go's ServeGitStream) calls DisableAutoFetch before serving any request,
+// Conn (bridge/gitwindows.go's GitWindows) calls DisableAutoFetch before serving any request,
 // so its own repo.open must never be what arms a RepoEntry's background auto-fetch timer —
 // docs/ARCHITECTURE.md's "Git graph in the native workspace (C10)" section documents that
 // surface as read-only, and a real `git fetch --prune` is a write.
@@ -447,7 +447,7 @@ func TestRegistry_ReconcileAutoFetch_NeverArmsAQuietOnlyEntry(t *testing.T) {
 	}
 }
 
-// TestConn_EmitSetEmitConcurrentAccessIsRace_Free is the regression guard: bridge's ServeGitStream
+// TestConn_EmitSetEmitConcurrentAccessIsRace_Free is the regression guard: bridge's GitWindows
 // constructs a Conn with no Emit yet,
 // start a goroutine that can call Emit (gitrpc.Router.ForConn's own repoSettings.changed
 // forwarding goroutine, started as soon as ForConn is called) before its own SetEmit call
@@ -479,7 +479,7 @@ func TestConn_EmitSetEmitConcurrentAccessIsRaceFree(t *testing.T) {
 		}
 	}()
 
-	// The "sess exists now" write, on its own goroutine too — bridge's ServeGitStream
+	// The "sess exists now" write, on its own goroutine too — bridge's GitWindows
 	// calls SetEmit from a different point in the same connection's own setup, not
 	// from whatever goroutine ForConn's forwarding loop runs on, so this mirrors that separation
 	// rather than serializing the two through the test's own single goroutine.

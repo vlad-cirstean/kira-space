@@ -161,7 +161,7 @@ func TestConcurrent_UnsubscribeAfterTeardown(t *testing.T) {
 // TestConcurrent_SubscribeSameConnNeverOrphansTheWinner is the regression proof (probe: 8
 // concurrent Opens x 200 trials, 27/200 ended with zero subscribers).
 // Two (or more) concurrent Subscribe calls for the SAME conn id — conn.Open's own real race, two
-// repo.open requests for one repo dispatched on their own goroutines by rpcstream, each calling
+// repo.open requests for one repo dispatched on their own goroutines, each calling
 // entry.Subscribe(c.ID, ...) before either learns which one "wins" c.held — used to collide on
 // subs' old ConnID key: the second call's subscriber silently overwrote the first's (orphaning its
 // goroutine), and whichever call's own unsubscribe fired first then deleted-and-closed whatever

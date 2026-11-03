@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"sync"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitaskpass"
@@ -33,8 +32,6 @@ func newStreamConnID() gitsession.ConnID {
 	return gitsession.ConnID(hex.EncodeToString(buf))
 }
 
-type requestFn = func(ctx context.Context, method string, params json.RawMessage) (any, error)
-
 // patchTouchesRestrictedField reports whether patch sets a field repoSettings.set must refuse from
 // a renderer: the worktree prepare script and base path are written only in-process by Kira Space
 // (the ADE repo config).
@@ -42,31 +39,8 @@ func patchTouchesRestrictedField(patch gitrpc.RepoSettingsPatchWire) bool {
 	return patch.WorktreePrepareScript != nil || patch.WorktreeBasePath != nil
 }
 
-// repoSettingsSetTouchesRestrictedField is patchTouchesRestrictedField over raw stream params.
-func repoSettingsSetTouchesRestrictedField(params json.RawMessage) bool {
-	var p gitrpc.RepoSettingsSetParams
-	if err := json.Unmarshal(params, &p); err != nil {
-		// Malformed params: let it through to the real handler, which rejects it properly. This
-		// wrapper only ever narrows what the allowlist admits — it is never a substitute for the
-		// inner handler's own request validation.
-		return false
-	}
-	return patchTouchesRestrictedField(p.Patch)
-}
-
 func errRestrictedSetting() error {
 	return ipcerr.T(ipcerr.CodeReadOnly, "backend.space.gitrpc.fieldUnavailable.body", nil)
-}
-
-// guardRepoSettingsSet adds the one FIELD-level restriction the stream needs: repoSettings.set is
-// served, but only for a patch that leaves every restricted field absent.
-func guardRepoSettingsSet(next requestFn) requestFn {
-	return func(ctx context.Context, method string, params json.RawMessage) (any, error) {
-		if method == "repoSettings.set" && repoSettingsSetTouchesRestrictedField(params) {
-			return nil, errRestrictedSetting()
-		}
-		return next(ctx, method, params)
-	}
 }
 
 // CredentialAsker is the relay a window's credential prompts go to (gitcred.Relay).
@@ -74,8 +48,9 @@ type CredentialAsker interface {
 	AskFrom(ctx context.Context, origin, source string, req gitaskpass.Request) (string, bool)
 }
 
-// GitWindows owns one gitsession.Conn per window key, shared by GitService and every git stream of
-// that window. Not a bound service: Close must not be callable from a page.
+// GitWindows owns one gitsession.Conn per window key, shared by GitService and the window's graph
+// plane. The Conn lives until Close (window close) or ResetWindow. Not a bound service: Close must
+// not be callable from a page.
 type GitWindows struct {
 	router *gitrpc.Router
 	relay  CredentialAsker
@@ -88,9 +63,6 @@ type GitWindows struct {
 type gitWindow struct {
 	conn     *gitsession.Conn
 	handlers gitrpc.Handlers
-	streams  int
-	// bound holds repoIds opened through GitService; they keep the Conn alive past its last stream.
-	bound map[string]struct{}
 }
 
 // NewGitWindows builds the registry; events receives every git event as kira:git:<event>.
@@ -145,49 +117,5 @@ func (g *GitWindows) Close(key string) {
 	g.mu.Unlock()
 	if ok {
 		w.conn.Close()
-	}
-}
-
-// noteBoundOpen records a GitService-held repo so the window's Conn outlives its last stream.
-func (g *GitWindows) noteBoundOpen(key, repoID string) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	w, ok := g.byKey[key]
-	if !ok {
-		return
-	}
-	if w.bound == nil {
-		w.bound = map[string]struct{}{}
-	}
-	w.bound[repoID] = struct{}{}
-}
-
-// noteBoundClose forgets a GitService-held repo.
-func (g *GitWindows) noteBoundClose(key, repoID string) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if w, ok := g.byKey[key]; ok {
-		delete(w.bound, repoID)
-	}
-}
-
-// attachStream counts a git stream on the window; the last detach releases the Conn, as the
-// per-stream Conn was released on stream close.
-func (g *GitWindows) attachStream(key string) (*gitWindow, func()) {
-	g.mu.Lock()
-	w := g.getLocked(key)
-	w.streams++
-	g.mu.Unlock()
-	return w, func() {
-		g.mu.Lock()
-		w.streams--
-		last := w.streams == 0 && len(w.bound) == 0 && g.byKey[key] == w
-		if last {
-			delete(g.byKey, key)
-		}
-		g.mu.Unlock()
-		if last {
-			w.conn.Close()
-		}
 	}
 }

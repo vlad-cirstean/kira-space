@@ -91,7 +91,7 @@ func (r *Router) handleCommitDetail(ctx context.Context, c *gitsession.Conn, par
 // once and, only if the *encoded* result exceeds MaxResultBytes, replaces the body with
 // FileDiffBody's own "tooLarge" arm (carrying the real raw patch size, gitsession.FileDiffResult's
 // own RawPatchBytes — never re-derived from the encoded bytes) and marshals again. Returned as
-// json.RawMessage, which rpcstream's own json.Marshal passes through unchanged.
+// json.RawMessage, which the bound call's json.Marshal passes through unchanged.
 func (r *Router) handleCommitFileDiff(ctx context.Context, c *gitsession.Conn, params json.RawMessage) (any, error) {
 	var p CommitFileDiffParams
 	if err := json.Unmarshal(params, &p); err != nil {

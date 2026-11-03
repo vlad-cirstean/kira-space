@@ -43,7 +43,7 @@ func TestGitServiceBound(t *testing.T) {
 	id := open.Repo.RepoID
 
 	init, err := svc.AppInit(ctx, bridge.GitAppInitArgs{WindowKey: "w1"})
-	if err != nil || init.ContractVersion != gitrpc.ContractVersion {
+	if err != nil || init.Git.Kind == "" {
 		t.Fatalf("AppInit = %+v, %v", init, err)
 	}
 	status, err := svc.StatusGet(ctx, bridge.GitStatusGetArgs{WindowKey: "w1", Params: gitrpc.StatusGetParams{RepoID: id}})

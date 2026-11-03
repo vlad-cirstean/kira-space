@@ -247,7 +247,7 @@ func (d *Discovery) Status(ctx context.Context, configuredPath string) GitStatus
 
 	status := d.probe(ctx, configuredPath)
 
-	// The rpcstream fix made an in-flight repo.open's ctx reliably cancel on disconnect where it
+	// A disconnect reliably cancels an in-flight repo.open's ctx, where it
 	// used to usually race and lose, which made this bug deterministic rather than latent. A
 	// caller-cancelled ctx kills the --version probe mid-flight, and probe() used to have no way
 	// to tell that apart from "git itself is unusable" — so it got cached process-wide for
@@ -270,7 +270,7 @@ func (d *Discovery) Status(ctx context.Context, configuredPath string) GitStatus
 }
 
 // versionProbeTimeout bounds the --version probe: the caller's own ctx has no
-// deadline of its own (an rpcstream request context is undeadlined), so without this a wedged
+// deadline of its own (a request context is undeadlined), so without this a wedged
 // binary — the exact macOS Command Line Tools trap darwinLocator's own gate exists to route
 // around — would hang app.init for as long as the extension is willing to wait.
 const versionProbeTimeout = 5 * time.Second

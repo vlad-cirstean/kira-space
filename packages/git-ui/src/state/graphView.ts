@@ -361,7 +361,7 @@ export class GraphViewState {
           // exhausted/remaining would otherwise be stuck at whatever the last real chunk said —
           // which is exactly "Load the last 0". graph.status already exists and answers exactly
           // this (`{loaded, remaining, exhausted}` off the walk's own cached count), so this needs
-          // no CONTRACT_VERSION bump. A failed status call must not mask the load's own outcome
+          // no new method. A failed status call must not mask the load's own outcome
           // or leave `loading` stuck, so it is caught and logged rather than rethrown.
           try {
             const status = await this.#bridge.request('graph.status', { repoId });
