@@ -10,11 +10,11 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 
 | Phase | Title | Status |
 |---|---|---|
-| P495 | ADE: stage action resumes the existing agent session | Todo |
+| P495 | ADE: stage action resumes the existing agent session | Done |
 | P496 | ADE: handover only in Notes | Todo |
 | P497 | ADE: task "+" launch menu shares the Runs dropdown | Todo |
-| P498 | ADE: one Agents tab for Context and Settings | Todo |
-| P499 | Review: show reviewed changes removed since review | Todo |
+| P498 | ADE: one Agents tab for Context and Settings | Done |
+| P499 | Review: show reviewed changes removed since review | Done |
 | P500 | ADE: task card icon row | Todo |
 | P501 | ADE: task panel restructure | Todo |
 | P502 | ADE: multi-branch task panel simplification | Todo |
@@ -32,7 +32,7 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 - The task menu has one source: `taskMenuModel` mapped by `useTaskMenu` (`plan/useTaskMenu.ts`). Right-click (`AdeTaskCard`, `AdeShelfRow`, panel) and the 3-dots buttons (`ade-panel-more`, shelf row) all open it. Its `ade-task-action` item already mirrors the step action (so shows Resume). Start new goes into `taskMenuModel` only, never a second list. Plan confirms every entry point still goes through `useTaskMenu`.
 - Phone: `mobile/state/useTaskActions.ts` maps `action.kind === 'session'` to its Start button. Plan keeps the phone's behaviour unchanged and says how.
 - Test: backend flow — take over of a stopped manual-stage TUI session resumes its conversation, unless an existing flow already asserts exactly that (plan names it). UI spec on the same scenario: Resume default, Start new in the menu from right-click and 3-dots, Archive/Backlog absent from the header and present in the menu. Update `ade-v2-task-menu`, `ade-v2-archive`, `ade-v2-later`, `ade-v2-task-flow` specs as needed.
-- Result: pending.
+- Result: Done. New `resume` action: default stage action resumes the newest stopped TUI session with a conversation via take over; running session unchanged. Start new moved into `taskMenuModel` only (right-click and 3-dots share `useTaskMenu`). Archive and Backlog removed from panel header; menu keeps them. Phone behaviour unchanged. Specs: new `ade-v2-stage-resume`; `ade-v2-task-flow`, `ade-v2-archive`, `ade-v2-later` updated.
 
 ### P496 ADE: handover only in Notes
 
@@ -58,7 +58,7 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 - One leave guard covers both sub-tabs and the top tab: unsaved edits ask before switching sub-tab or leaving. One store for that concern, not two. The shared editor logic moves to one composable.
 - Frontend only; IPC unchanged, so no backend test.
 - Test: UI specs `ade-agent-context`, `ade-agent-settings`, `ade-agent-port`, `ade-agent-missing`, `agent-provider` updated to the new tab; one new test for the leave guard across sub-tabs.
-- Result: pending.
+- Result: Done. Single Agent config tab with Context and Settings sub-tabs; Settings keeps secrets column. One leave-guard store and one editor composable replace the duplicated pair. Frontend only. Specs: new `ade-agents-tab` (leave guard across sub-tabs); `ade-agent-context`, `ade-agent-settings`, `ade-agent-port` updated.
 
 ### P499 Review: show reviewed changes removed since review
 
@@ -69,7 +69,7 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 - Scope: committed review marks. Plan states whether uncommitted marks (`review_working`, `working_review.go`) can lose reviewed content the same way; if yes, include it, else say why not.
 - Plan may split into Parts (storage + wire, then UI).
 - Test: backend flow in `internal/flows/reviewflow`: mark a file and a hunk reviewed; remove both from the branch; the list returns both entries with their content; dismiss clears them. UI spec on the same scenario (section shows, content visible, dismiss hides). `gitreview` unit tests only for the range arithmetic, if any is new.
-- Result: pending.
+- Result: Done. New `review_removed` table (migration `0006`) written before a mark overwrites the snapshot; wire `review.removed.list` and `review.removed.dismiss`; ADE review window shows a removed-since-review section with path, review time and content; dismissed entries stay gone. Covers uncommitted (working) marks too. Specs: reviewflow flow and new `ade-v2-review-removed`. Caveat: `dismissing an entry` failed once, then passed 18/18; possible flake. Bindings are gitignored; regenerate via `scripts/setup.sh`. Open item: `MaxPatchBytes` limit.
 
 ### P500 ADE: task card icon row
 
