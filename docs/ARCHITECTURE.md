@@ -2321,7 +2321,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - Migration 0052 (P399) adds cr_* columns to ade_task_branches. Archive snapshots each branch's change request there (best effort, 5 s) so the archived view shows it when the host is unreachable.
 - AdeTaskService.ArchivedTask returns an archived task read-only: task, statuses, branches (live PR when the host answers, else the snapshot; prSource says which), stored review comments, no worktree paths. Phone reads it at /api/ade/archived-task.
 - AdeTaskService.RestoreTask revives the task and the branch rows archived with it (same archived_at), adds a Later plan row, and returns the task. It refuses when a branch name is live on another task; nothing changes then. Worktrees come back on next launch via ensureWorktree.
-- No Archived tab. Archived tasks list in the Plan: today's archive rows always show, past days load with the History toggle (`AdeHistoryControl`), and the archived finder (`AdeArchivedFinder`) searches all of board.history. Each selects the task; the panel is read-only, with Restore to edit.
+- No Archived tab. Archived tasks list in the Plan: archive rows, today's included, show only while History (`AdeHistoryControl`) is open. The archived finder (`AdeArchivedFinder`) searches all of board.history; picking any archived task opens History on its day. Each selects the task; the panel is read-only, with Restore to edit.
 - The per-repo prepare timeout is the GitRepoSettings leaf worktreePrepareTimeout, `worktree.prepare_timeout` in the repo file (default 15m, max 2h), shared with git-ui worktree add; Spec.Timeout must be > 0.
 
 ### Git facts
