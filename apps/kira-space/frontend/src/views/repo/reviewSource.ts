@@ -20,7 +20,8 @@ import type { HostCommentTarget } from '../../ade/v2/review/useHostLineComment';
 import { invalidateReviewWorking } from '../../ade/v2/review/useReviewWorking';
 import type { ReviewWindowTarget } from '../../ade/v2/wire';
 import { control } from '../../bridge/control';
-import { gitTransportFor, notifyReviewRepaint, onReviewRepaint } from '../../repo/git/transport';
+import { notifyReviewRepaint, onReviewRepaint } from '../../repo/git/reviewRepaint';
+import { gitTransportFor } from '../../repo/git/transport';
 
 interface ReviewDiffLoad {
   readonly hunks: readonly DiffHunk[];

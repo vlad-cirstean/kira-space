@@ -3,7 +3,8 @@ import { useMutation, useQuery } from '@tanstack/vue-query';
 import { tryOnScopeDispose } from '@vueuse/core';
 import { queryClient } from '@workbench/state/queryClient';
 import { computed } from 'vue';
-import { gitTransportFor, onReviewRepaint } from '../../../repo/git/transport';
+import { onReviewRepaint } from '../../../repo/git/reviewRepaint';
+import { gitTransportFor } from '../../../repo/git/transport';
 import { ensureRepoOpen } from '../../../state/repoOpenHold';
 import type { ReviewWindowTarget } from '../wire';
 
