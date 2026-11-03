@@ -3,12 +3,16 @@ import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { runCommand } from '@workbench/shortcuts/commands';
 import type { PaletteCommand } from '@workbench/shortcuts/palette';
 import { openApiRequestTab, openGrpcRequestTab } from '../api/tabs';
+import { useKubeTabsStore } from '../kubernetes/tabs';
 import { useAppUpdateStore } from '../state/appUpdate';
 import { useConnectionDialogStore } from '../state/connectionDialogs';
 import { useLayoutStore } from '../state/layout';
 import { useModeStore } from '../state/mode';
 import { useSettingsStore } from '../state/settings';
 import { useTabsStore } from '../state/tabs';
+
+// The shell tab store holds no tab in Kubernetes mode; the module keeps its own.
+const kubernetesActive = (): boolean => useModeStore().active === 'kubernetes';
 
 /** Studio's palette commands; call once from App setup (the stores resolve there). The getter re-reads labels when the locale changes. */
 export function studioPaletteCommands(): () => PaletteCommand[] {
@@ -148,17 +152,27 @@ export function studioPaletteCommands(): () => PaletteCommand[] {
     {
       id: 'tab-next',
       label: t('studio.shortcuts.palette.nextTab.label'),
-      run: tabsStore.activateNextTab,
+      run: () => {
+        if (kubernetesActive()) useKubeTabsStore().activateNext();
+        else tabsStore.activateNextTab();
+      },
     },
     {
       id: 'tab-prev',
       label: t('studio.shortcuts.palette.previousTab.label'),
-      run: tabsStore.activatePrevTab,
+      run: () => {
+        if (kubernetesActive()) useKubeTabsStore().activatePrev();
+        else tabsStore.activatePrevTab();
+      },
     },
     {
       id: 'tab-close',
       label: t('studio.shortcuts.palette.closeTab.label'),
       run: () => {
+        if (kubernetesActive()) {
+          useKubeTabsStore().closeActive();
+          return;
+        }
         const active = useModeStore().activeTab;
         if (active) fireAndForget(tabsStore.closeTab(active.id), 'closeTab');
       },
