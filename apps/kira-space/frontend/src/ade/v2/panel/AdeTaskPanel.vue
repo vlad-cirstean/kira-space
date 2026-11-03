@@ -27,8 +27,8 @@ import AdeSessionsTab from '../sessions/AdeSessionsTab.vue';
 import { useSessionViews } from '../sessions/useSessionViews';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
+import AdeMainTab from './AdeMainTab.vue';
 import AdePanelFrame from './AdePanelFrame.vue';
-import AdeTaskTab from './AdeTaskTab.vue';
 
 // Task mode: header facts, the Task, Notes, Artifacts and Sessions tabs.
 const props = defineProps<{ card: CardModel; model: PlanModel }>();
@@ -111,7 +111,7 @@ async function saveNotes(taskId: string, value: string): Promise<void> {
   <AdePanelFrame
     v-model="tab"
     :tabs="[
-      { value: 'task', label: t('common.task.label') },
+      { value: 'main', label: t('common.task.label') },
       { value: 'notes', label: t('space.common.notes.label') },
       { value: 'artifacts', label: t('space.ade.artifacts.title.title') },
       { value: 'sessions', label: t('space.common.sessions.label'), count: sessionCount },
@@ -190,7 +190,7 @@ async function saveNotes(taskId: string, value: string): Promise<void> {
         }}</AlertDescription></Alert
       >
     </template>
-    <AdeTaskTab v-if="tab === 'task'" :card="card" />
+    <AdeMainTab v-if="tab === 'main'" :card="card" />
     <AdeSessionsTab v-else-if="tab === 'sessions'" :task-id="card.task.id" />
     <div
       v-else-if="tab === 'artifacts'"

@@ -9,7 +9,7 @@ export const useAdePanelTabsStore = defineStore('adePanelTabs', () => {
   /** Per task: the session last picked in its task or branch Sessions tab. */
   const sessionIds = ref<Record<string, string>>({});
 
-  const taskTab = (taskId: string): string => taskTabs.value[taskId] ?? 'task';
+  const taskTab = (taskId: string): string => taskTabs.value[taskId] ?? 'main';
   const branchTab = (branchId: string): string => branchTabs.value[branchId] ?? 'details';
   const sessionOf = (taskId: string): string | null => sessionIds.value[taskId] ?? null;
 

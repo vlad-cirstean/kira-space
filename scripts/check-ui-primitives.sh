@@ -170,7 +170,7 @@ U26@@vt@@@@retired tone variant err/destructive/note, or a tone alpha (use Badge
 U27@@v@@StatusDot.vue@@hand-rolled status dot or pill (use StatusDot, Badge)@@\bclass="(?=[^"]*${TOK}rounded-full(?![\w-]))(?:(?=[^"]*${TOK}size-(?:1\.5|2|2\.5)(?![\w.-]))|(?=[^"]*${TOK}w-2(?![\w.-]))(?=[^"]*${TOK}h-2(?![\w.-]))|(?=[^"]*${TOK}w-2\.5(?![\w.-]))(?=[^"]*${TOK}h-2\.5(?![\w.-])))|<span\b(?&t)\s:?class="(?=[^"]*${TOK}(?:rounded-full|rounded-kira-pill)(?![\w-]))(?=[^"]*${TOK}px-)
 U28@@v@@SwatchRadio.vue@@raw checkbox/radio input (use Checkbox, RadioGroup)@@type="(?:checkbox|radio)"
 U28@@vS@@@@Checkbox in a settings pane (a live boolean is a Switch)@@<Checkbox\b
-U28@@v@@/settings/|MemoryPanel.vue|AdeTaskTab.vue|ReposDialog.vue@@Switch outside settings panes (a form option is a Checkbox)@@<Switch\b
+U28@@v@@/settings/|MemoryPanel.vue|AdeMainTab.vue|ReposDialog.vue@@Switch outside settings panes (a form option is a Checkbox)@@<Switch\b
 U29@@v@@@@TooltipProvider with props (the theme owns the delays), or TooltipContent class other than whitespace-pre-wrap@@<TooltipProvider\b(?!\s*>)|<TooltipContent\b(?&t)\s:?class="(?!whitespace-pre-wrap")
 U30@@v@@@@DropdownMenuContent width, or DropdownMenuItem height/padding/gap class@@<DropdownMenuContent\b(?&t)\s:?class="[^"]*${TOK}(?:w|min-w|max-w)-|<DropdownMenuItem\b(?&t)\s:?class="[^"]*${TOK}(?:h|py|px|gap)-
 U31@@v@@@@hand-written resize cursor or handle look, or a separator without resizeHandleVariants@@${TOK}cursor-(?:col|row|ew|ns)-resize|<ResizeHandle\b(?&t)\s:?class="[^"]*${TOK}(?:w-|h-|bg-|shadow|cursor|outline)|(?s)\A(?!.*resizeHandleVariants).*role="separator"
