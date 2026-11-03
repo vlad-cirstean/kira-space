@@ -7,7 +7,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | Phase | Title | Status |
 |---|---|---|
 | P484 | Kubernetes: ops panel tracks every action | Done |
-| P485 | Kubernetes: reorder clusters | Todo |
+| P485 | Kubernetes: reorder clusters | Done |
 | P486 | Kubernetes: resource browser redesign, tabbed pods | Todo |
 | P487 | Kubernetes: drive the kubectl CLI instead of the native client | Todo |
 | P488 | Install instructions: trust the Jira tap | Done |
@@ -30,6 +30,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 
 - Clusters can be ordered by the user (drag or move up and down; plan picks). Order persists.
 - Test: UI spec; backend flow for persistence.
+- Result: pointer drag on cluster rows (`useClusterReorder` over shared `useTreePointerDrag`; `orderAfterDrop`/`EdgeDrop` moved there from `connectionReorder.ts`), with Alt+Up/Down and menu Move up/down as the keyboard path; disabled while searching. Order in `kube_clusters.sort_order` (migration 0057, NULL last). `Service.Reorder` through `sqlitex.ReorderSortOrder`, no op row. `kira:kubernetes:clusters` makes other windows refetch after `Reorder` and `SetMcp`. Tests: `kubeflow` `TestClusterOrder` (contract `kubernetes.json`: `args:KubernetesService.Reorder`, `KubernetesService.Reorder`), UI spec `kubernetes-order.spec.ts` (6 tests).
 
 ### P486 Kubernetes: resource browser redesign, tabbed pods
 
