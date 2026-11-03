@@ -63,6 +63,10 @@ function createMarkdown(): MarkdownItInstance {
       caution: t('space.hostView.markdown.alert.caution.title'),
     },
   });
+  md.renderer.rules.alert_open = (tokens, idx) => {
+    const meta = (tokens[idx] as Token).meta as { title: string; type: string; icon: string };
+    return `<div class="markdown-alert markdown-alert-${meta.type}"><p class="markdown-alert-title">${meta.icon}${md.utils.escapeHtml(meta.title)}</p>`;
+  };
   md.core.ruler.after('inline', 'kira-chips', chipLinks);
 
   const defaultValidateLink = md.validateLink.bind(md);
