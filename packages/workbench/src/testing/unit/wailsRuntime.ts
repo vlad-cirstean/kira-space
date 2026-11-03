@@ -85,14 +85,14 @@ function notImplemented(_what: string): Promise<never> {
   return new Promise(() => {});
 }
 
-let callFactory: () => Promise<unknown> = () => notImplemented('Call');
+let callFactory: (...args: unknown[]) => Promise<unknown> = () => notImplemented('Call');
 
 // bridge-unwrap.spec.ts is the one spec that drives a real bound call end to end (to prove every
 // control.ts method does run its result through `unwrap`); it calls this before importing
 // control.ts and `resetCallFactory()` afterwards, so a later spec's own fire-and-forget calls
 // (state/tabs.ts's unawaited `control.tabsSave(...)`) go back to hanging harmlessly instead of
 // rejecting into an unrelated spec.
-export function setCallFactory(f: () => Promise<unknown>): void {
+export function setCallFactory(f: (...args: unknown[]) => Promise<unknown>): void {
   callFactory = f;
 }
 export function resetCallFactory(): void {
@@ -102,11 +102,11 @@ export function resetCallFactory(): void {
 // The generated bindings do `import { Call as $Call } from '/wails/runtime.js'` then call
 // `$Call.ByName(...)` — the real bundled runtime attaches ByName/ByID onto the Call function
 // object itself, so the stub mirrors that shape rather than exporting them as siblings.
-function Call(): Promise<unknown> {
-  return callFactory();
+function Call(...args: unknown[]): Promise<unknown> {
+  return callFactory(...args);
 }
-Call.ByName = (): Promise<unknown> => callFactory();
-Call.ByID = (): Promise<unknown> => callFactory();
+Call.ByName = (...args: unknown[]): Promise<unknown> => callFactory(...args);
+Call.ByID = (...args: unknown[]): Promise<unknown> => callFactory(...args);
 
 const Events = {
   On: (): (() => void) => () => {},

@@ -40,6 +40,7 @@ import { createRpcClient, createStreamChannel } from '@kira/git-ipc';
 // @ts-ignore
 import { Stream } from '/wails/runtime.js';
 import { forgetRepoOpen } from '../../state/repoOpenHold';
+import { BOUND_METHODS, callBound, onGitEvent } from './boundGit';
 import { clearPendingTargets, createHostHandlers, gitRepoIdFor } from './hostHandlers';
 
 /** The two `EventKey`s this host answers itself rather than forwarding to `remote.on` — never
@@ -116,44 +117,113 @@ const COMMENT_MUTATION_METHODS: ReadonlySet<RequestKey> = new Set([
   'review.comment.clear',
 ]);
 
-/** One named stream per repo workspace, each its own `gitsession.Conn`/repo hold on the Go side
- *  (`handlers.go`'s own per-connection design, §8) — independent even for two workspaces open on
- *  the same repository. */
+/** Events pushed per repo; each payload names its `repoId`. `repoSettings.changed` is not scoped to
+ *  a held repo (a viewer decides for itself), so it passes unfiltered. */
+const REPO_SCOPED_EVENTS: ReadonlySet<EventKey> = new Set([
+  'repo.changed',
+  'autoFetch.changed',
+  'remote.progress',
+  'stack.progress',
+]);
+
+/** One named stream per repo workspace for the methods `GitService` does not carry yet; bound
+ *  methods and every event go through the window's shared Go connection (`bridge.GitWindows`).
+ *  Repo opens go to both: in a native window they reach the same connection, and the server build
+ *  can key the stream differently from the page. */
 function createNativeGitTransport(codeRepoId: string): Transport {
   const channel = createStreamChannel(Stream('git'));
   const rpc = createRpcClient(channel);
+  const inflight = new Set<() => void>();
+  const eventOffs = new Set<() => void>();
+  const heldRepoIds = new Set<string>();
   // Every consumer shares this connection, but only the graph tab ever sent `repo.open`; a reloaded
   // Review pane or diff tab would otherwise compare against a connection holding no repo.
   const opened = new Map<string, Promise<unknown>>();
+  const send = (method: RequestKey, params: unknown, signal?: AbortSignal): Promise<unknown> =>
+    method in BOUND_METHODS
+      ? callBound(method, params, signal, inflight)
+      : rpc.request(method, params as never, signal);
+  const openBoth = async (path: string, signal?: AbortSignal): Promise<unknown> => {
+    const result = await send('repo.open', { path }, signal);
+    await rpc.request('repo.open', { path }, signal);
+    const repoId = (result as { repo?: { repoId?: string } } | null)?.repo?.repoId;
+    if (repoId) heldRepoIds.add(repoId);
+    return result;
+  };
   const ensureOpen = (params: unknown): Promise<unknown> | undefined => {
     const id = (params as { repoId?: unknown } | undefined)?.repoId;
     if (typeof id !== 'string' || id === '') return undefined;
     let held = opened.get(id);
     if (!held) {
-      held = rpc.request('repo.open', { path: id }).catch((err: unknown) => {
-        opened.delete(id);
-        throw err;
-      });
+      held = openBoth(id).then(
+        (result) => {
+          heldRepoIds.add(id);
+          return result;
+        },
+        (err: unknown) => {
+          opened.delete(id);
+          throw err;
+        },
+      );
       opened.set(id, held);
     }
     return held;
   };
-  const remote: typeof rpc = {
-    ...rpc,
-    async request(method, params, signal) {
-      if (method === 'repo.close') opened.delete((params as { repoId: string }).repoId);
-      else if (method !== 'repo.open') await ensureOpen(params);
-      return rpc.request(method, params, signal);
-    },
-    async stream(method, params, onChunk, signal) {
+  const remote = {
+    async request(method: RequestKey, params: unknown, signal?: AbortSignal): Promise<unknown> {
+      if (method === 'repo.close') {
+        const id = (params as { repoId: string }).repoId;
+        opened.delete(id);
+        heldRepoIds.delete(id);
+        const [result] = await Promise.all([
+          send(method, params, signal),
+          rpc.request(method, params as never, signal),
+        ]);
+        return result;
+      }
+      if (method === 'repo.open') return openBoth((params as { path: string }).path, signal);
       await ensureOpen(params);
-      return rpc.stream(method, params, onChunk, signal);
+      return send(method, params, signal);
+    },
+    async stream(
+      method: StreamKey,
+      params: unknown,
+      onChunk: (chunk: never) => void,
+      signal?: AbortSignal,
+    ): Promise<void> {
+      await ensureOpen(params);
+      return rpc.stream(method, params as never, onChunk as never, signal);
+    },
+    on(method: EventKey, handler: (payload: never) => void): () => void {
+      const scoped = REPO_SCOPED_EVENTS.has(method);
+      const off = onGitEvent(method, (payload) => {
+        if (scoped && !heldRepoIds.has((payload as { repoId: string }).repoId)) return;
+        (handler as (payload: unknown) => void)(payload);
+      });
+      eventOffs.add(off);
+      return () => {
+        eventOffs.delete(off);
+        off();
+      };
+    },
+    dispose(): void {
+      for (const off of eventOffs) off();
+      eventOffs.clear();
+      for (const cancel of [...inflight]) cancel();
+      // Releases the hold a closed repo tab would otherwise keep until the window closes.
+      for (const repoId of heldRepoIds) {
+        void callBound('repo.close', { repoId }, undefined, new Set()).catch(() => {
+          // Best effort: the window's close releases any hold this misses.
+        });
+      }
+      heldRepoIds.clear();
+      rpc.dispose();
     },
   };
   const local = createLocalEmitter();
 
   const host = createHostHandlers({
-    remoteRequest: remote.request,
+    remoteRequest: remote.request as Transport['request'],
     codeRepoId,
     emitLocal: local.emit,
   });
@@ -165,7 +235,9 @@ function createNativeGitTransport(codeRepoId: string): Transport {
       signal?: AbortSignal,
     ): Promise<ResultOf<K>> {
       const handler = host[method];
-      const result = handler ? handler(params, signal) : remote.request(method, params, signal);
+      const result = handler
+        ? handler(params, signal)
+        : (remote.request(method, params, signal) as Promise<ResultOf<K>>);
       // §7.6: repaint every open review surface once a mutation actually succeeds, regardless of
       // which half of the UI made the call (the panel's own Comments pane and this Monaco layer
       // share this one Transport per repo workspace) — never on a rejected request.
