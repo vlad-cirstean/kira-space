@@ -6,7 +6,7 @@ import { computed, onMounted, onScopeDispose } from 'vue';
 import { control } from '../../../bridge/control';
 import AdeAbortRebaseDialog from '../AdeAbortRebaseDialog.vue';
 import AdeAddPopover from '../AdeAddPopover.vue';
-import AdeContextPage from '../context/AdeContextPage.vue';
+import AdeAgentsPage from '../agents/AdeAgentsPage.vue';
 import AdeAgentDialog from '../dialog/AdeAgentDialog.vue';
 import AdeLaterPage from '../later/AdeLaterPage.vue';
 import AdeNeedsPage from '../needs/AdeNeedsPage.vue';
@@ -17,11 +17,9 @@ import AdeBranchRequestDialog from '../request/AdeBranchRequestDialog.vue';
 import { useReviewCode } from '../review/useReviewCode';
 import AdeRunDialog from '../run/AdeRunDialog.vue';
 import AdeTakeOverDialog from '../sessions/AdeTakeOverDialog.vue';
-import AdeSettingsPage from '../settings/AdeSettingsPage.vue';
 import AdeStageDialog from '../stage/AdeStageDialog.vue';
+import { useAdeAgentsUiStore } from '../state/adeAgentsUi';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
-import { useAdeContextUiStore } from '../state/adeContextUi';
-import { useAdeSettingsUiStore } from '../state/adeSettingsUi';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
 import AdeWorkflowsPage from '../workflows/AdeWorkflowsPage.vue';
 import AdeCaptureBox from './AdeCaptureBox.vue';
@@ -29,14 +27,12 @@ import AdeCaptureBox from './AdeCaptureBox.vue';
 // Top bar (tabs, capture box, Add) over the active tab; the Plan opens the panel beside it.
 const ui = useAdeBoardUiStore();
 const wfUi = useAdeWorkflowsUiStore();
-const ctxUi = useAdeContextUiStore();
-const setUi = useAdeSettingsUiStore();
+const agentsUi = useAdeAgentsUiStore();
 
 async function onView(view: unknown): Promise<void> {
   if (view === ui.view) return;
   if (ui.view === 'workflows' && !(await wfUi.leave())) return;
-  if (ui.view === 'context' && !(await ctxUi.leave())) return;
-  if (ui.view === 'settings' && !(await setUi.leave())) return;
+  if (ui.view === 'agents' && !(await agentsUi.leave())) return;
   ui.view = view as typeof ui.view;
 }
 const { model } = usePlanModel();
@@ -140,18 +136,11 @@ onScopeDispose(() => offReviewCode?.());
       </div>
       <TabsList class="justify-self-end">
         <TabsTrigger
-          value="context"
-          :class="tabChipVariants({ active: ui.view === 'context', size: 'wide' })"
-          data-testid="ade-tab-context"
+          value="agents"
+          :class="tabChipVariants({ active: ui.view === 'agents', size: 'wide' })"
+          data-testid="ade-tab-agents"
         >
-          {{ t('space.ade.context.tab.label') }}
-        </TabsTrigger>
-        <TabsTrigger
-          value="settings"
-          :class="tabChipVariants({ active: ui.view === 'settings', size: 'wide' })"
-          data-testid="ade-tab-settings"
-        >
-          {{ t('common.module.settings.label') }}
+          {{ t('space.ade.agents.tab.label') }}
         </TabsTrigger>
         <TabsTrigger
           value="workflows"
@@ -168,8 +157,7 @@ onScopeDispose(() => offReviewCode?.());
         <AdePanel v-if="shelfSelected" />
       </template>
       <AdeNeedsPage v-else-if="ui.view === 'needs'" />
-      <AdeContextPage v-else-if="ui.view === 'context'" />
-      <AdeSettingsPage v-else-if="ui.view === 'settings'" />
+      <AdeAgentsPage v-else-if="ui.view === 'agents'" />
       <AdeWorkflowsPage v-else-if="ui.view === 'workflows'" />
       <template v-else>
         <AdePlanView />

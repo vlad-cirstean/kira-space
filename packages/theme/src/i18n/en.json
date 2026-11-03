@@ -7926,6 +7926,11 @@
       "agentOrigin": {
         "tooltip": "Added or named by the agent"
       },
+      "agents": {
+        "tab": {
+          "label": "Agent config"
+        }
+      },
       "allSessions": {
         "archived": {
           "status": "Stopped · archived"
