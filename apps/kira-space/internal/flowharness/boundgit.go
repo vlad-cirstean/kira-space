@@ -198,6 +198,18 @@ func (s *GitStream) boundCall(method string) (boundFn, bool) {
 		"changeRequest.lineComment": bind(func(ctx context.Context, key string, p gitrpc.ChangeRequestLineCommentParams) (any, error) {
 			return svc.ChangeRequestLineComment(ctx, bridge.GitChangeRequestLineCommentArgs{WindowKey: key, Params: p})
 		}),
+		"graph.status": bind(func(ctx context.Context, key string, p gitrpc.GraphStatusParams) (any, error) {
+			return svc.GraphStatus(ctx, bridge.GitGraphStatusArgs{WindowKey: key, Params: p})
+		}),
+		"graph.loadMore": bind(func(ctx context.Context, key string, p gitrpc.GraphLoadMoreParams) (any, error) {
+			return svc.GraphLoadMore(ctx, bridge.GitGraphLoadMoreArgs{WindowKey: key, Params: p})
+		}),
+		"graph.refresh": bind(func(ctx context.Context, key string, p gitrpc.GraphRefreshParams) (any, error) {
+			return svc.GraphRefresh(ctx, bridge.GitGraphRefreshArgs{WindowKey: key, Params: p})
+		}),
+		"graph.reportFailure": bind(func(ctx context.Context, key string, p gitrpc.GraphReportFailureParams) (any, error) {
+			return svc.GraphReportFailure(ctx, bridge.GitGraphReportFailureArgs{WindowKey: key, Params: p})
+		}),
 		"gitHost.providers": func(context.Context, string, json.RawMessage) (any, error) {
 			return s.app.W.GitHost.Providers(), nil
 		},
