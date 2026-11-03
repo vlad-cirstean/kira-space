@@ -1858,6 +1858,53 @@
           "body": "Changes are off for this phone. Turn them on for it in the mobile access settings on the computer."
         }
       },
+      "repoFiles": {
+        "basePathAbsolute": {
+          "body": "The worktree base path must be absolute."
+        },
+        "changed": {
+          "body": "The file changed since you opened it. Refresh it and retry."
+        },
+        "duplicatePath": {
+          "body": "{file} already configures this repository. This file applies nothing."
+        },
+        "envDuplicate": {
+          "body": "An environment name is listed twice."
+        },
+        "envScriptBlank": {
+          "body": "An environment needs a script."
+        },
+        "fileBroken": {
+          "body": "{file} has an error on line {line}. Fix it in the file first."
+        },
+        "gone": {
+          "body": "That settings file no longer exists."
+        },
+        "hashRequired": {
+          "body": "Saving an existing file needs the hash of the text you loaded."
+        },
+        "integrationBlank": {
+          "body": "An integration branch name is empty."
+        },
+        "integrationDuplicate": {
+          "body": "An integration branch is listed twice."
+        },
+        "nicknameLong": {
+          "body": "The nickname must be at most 40 characters on one line."
+        },
+        "pathAbsolute": {
+          "body": "The path must be absolute and free of ~ and relative segments."
+        },
+        "pathRequired": {
+          "body": "A repository path is required."
+        },
+        "pathTaken": {
+          "body": "Another file already configures this repository."
+        },
+        "timeoutInvalid": {
+          "body": "The prepare timeout must be a duration such as 15m, above 0 and at most 2h."
+        }
+      },
       "seed": {
         "body": "Space seed placeholder."
       }
