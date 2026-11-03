@@ -70,6 +70,23 @@ export interface OpenedFileTarget {
   path: string;
   repoId: string;
   relPath: string;
+  // 1-based cursor position; absent when the open names none.
+  line?: number;
+  col?: number;
+}
+
+export interface OpenedFilesTerminalResolveArgs {
+  terminalId: string;
+  fallbackCwd: string;
+  paths: string[];
+}
+
+export interface OpenedFilesTerminalOpenArgs {
+  terminalId: string;
+  fallbackCwd: string;
+  path: string;
+  line: number;
+  col: number;
 }
 
 // Who opens one associated extension: Kira Space (`self`), another app (`other`), nobody (`none`),

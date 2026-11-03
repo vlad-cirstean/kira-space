@@ -54,6 +54,8 @@ import type {
   FileListing,
   FileRead,
   FileStat,
+  OpenedFilesTerminalOpenArgs,
+  OpenedFilesTerminalResolveArgs,
   OpenedFileTarget,
   RepoSummary,
   SearchRequest,
@@ -380,6 +382,13 @@ const spaceControl = {
     ),
   openedFilesRead: (path: string): Promise<FileContent> =>
     unwrap(OpenedFilesService.Read({ path })).then((r) => trust<FileContent>(r)),
+  // Terminal file links: which printed paths are openable files, and open one in Kira Space.
+  openedFilesTerminalResolve: (args: OpenedFilesTerminalResolveArgs): Promise<boolean[]> =>
+    unwrap<{ openable: boolean[] | null }>(OpenedFilesService.TerminalResolve(args)).then(
+      (r) => r.openable ?? [],
+    ),
+  openedFilesTerminalOpen: (args: OpenedFilesTerminalOpenArgs): Promise<void> =>
+    unwrap(OpenedFilesService.TerminalOpen(args)),
 
   // Default app for code and data files: the live handler of every associated extension, and the
   // switch that makes Kira Space (or the previous app) the default for some of them.

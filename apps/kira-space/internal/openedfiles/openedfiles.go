@@ -28,6 +28,9 @@ type Target struct {
 	Path    string `json:"path"`
 	RepoID  string `json:"repoId"`
 	RelPath string `json:"relPath"`
+	// Line and Col place the cursor, 1-based; zero means none.
+	Line int `json:"line,omitempty"`
+	Col  int `json:"col,omitempty"`
 }
 
 // RepoLister is the imported-repository list.
@@ -120,11 +123,7 @@ func (s *Service) Close() { s.co.Close() }
 // Open resolves paths and opens one window for the ones that qualify. A path that does not qualify
 // is logged and skipped; none qualifying opens no window.
 func (s *Service) Open(paths []string) {
-	repos, err := s.Repos.List()
-	if err != nil {
-		slog.Warn("opened files: list repos; opening as standalone files", "scope", "openedfiles", "err", err)
-		repos = nil
-	}
+	repos := s.repos()
 	var targets []Target
 	for _, p := range paths {
 		t, err := Resolve(p, repos)
@@ -134,6 +133,11 @@ func (s *Service) Open(paths []string) {
 		}
 		targets = append(targets, t)
 	}
+	s.deliver(targets)
+}
+
+// deliver is the one place that picks a window for targets.
+func (s *Service) deliver(targets []Target) {
 	if len(targets) == 0 || s.OpenWindow == nil {
 		return
 	}

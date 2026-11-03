@@ -324,6 +324,7 @@ func Build(opts Options) *Wired {
 	// Registry, since Tracker.Reconcile/Send both need the same live-session set and PTYs.
 	terminalRegistry := terminal.NewRegistry()
 	w.TermRegistry = terminalRegistry
+	w.OpenedFilesSvc.Cwd = terminalRegistry.Cwd
 	w.AgentNotify = agentnotify.New(agentnotify.Deps{
 		Prefs: notifyPrefs(repositories), Describe: w.describeAgent, TaskTitle: w.taskTitle, Reveal: w.revealNote,
 		AgentLabel: func() string { return w.Agents.Active().Label() },
