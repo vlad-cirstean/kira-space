@@ -10572,6 +10572,15 @@
         "label": "Unnamed phone"
       }
     },
+    "openedFiles": {
+      "window": {
+        "empty": {
+          "body": "Cmd-click a file path in a terminal, or open a file with Kira Space in Finder.",
+          "title": "No files open"
+        },
+        "title": "Opened files"
+      }
+    },
     "operations": {
       "background": {
         "label": "Background"

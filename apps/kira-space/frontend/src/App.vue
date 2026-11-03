@@ -36,11 +36,13 @@ import CaptureWindow from './capture/CaptureWindow.vue';
 import { useCaptureWindowStore } from './capture/state';
 import HostViewWindow from './hostview/HostViewWindow.vue';
 import { useHostViewWindowStore } from './hostview/state';
+import OpenedFilesWindow from './openedfiles/OpenedFilesWindow.vue';
 import { spacePaletteCommands } from './shortcuts/spaceCommands';
 import { useAppUpdateStore } from './state/appUpdate';
 import { useKeepAwakeStore } from './state/keepAwake';
 import { useLayoutStore } from './state/layout';
 import { type SpaceMode, useModeStore } from './state/mode';
+import { useOpenedFilesWindowStore } from './state/openedFilesWindow';
 import { useSettingsStore } from './state/settings';
 import { createAutomationsModule } from './workbench/automationsModule';
 import GitCredentialDialog from './workbench/GitCredentialDialog.vue';
@@ -88,6 +90,7 @@ const promptKinds = {
 const reviewWindow = useAdeReviewWindowStore();
 const hostView = useHostViewWindowStore();
 const capture = useCaptureWindowStore();
+const openedFilesWindow = useOpenedFilesWindowStore();
 
 let unsubscribe: Array<() => void> = [];
 
@@ -100,12 +103,13 @@ onMounted(() => {
     // A review window has no project panel, and its secondary panel is the agent panel; the layout
     // is shared across windows, so toggling it from here would move the main window's panels.
     control.onToggleProjectPanel(() => {
-      if (!reviewWindow.target && !hostView.target && !capture.item)
+      if (!reviewWindow.target && !hostView.target && !capture.item && !openedFilesWindow.active)
         layoutStore.toggleProjectPanel();
     }),
     control.onToggleOperationsPanel(() => {
       if (reviewWindow.target) reviewWindow.toggleAgentPanel();
-      else if (!hostView.target && !capture.item) layoutStore.toggleOperationsPanel();
+      else if (!hostView.target && !capture.item && !openedFilesWindow.active)
+        layoutStore.toggleOperationsPanel();
     }),
     control.onTabNext(tabsStore.activateNextTab),
     control.onTabPrev(tabsStore.activatePrevTab),
@@ -148,6 +152,7 @@ function onToggleKeepAwake(): void {
     <CaptureWindow v-if="capture.item" />
     <HostViewWindow v-else-if="hostView.target" />
     <AdeReviewWindow v-else-if="reviewWindow.target" />
+    <OpenedFilesWindow v-else-if="openedFilesWindow.active" />
     <div v-else class="h-full flex flex-col">
       <WorkbenchTitleBar
         :order="MODE_ORDER"
