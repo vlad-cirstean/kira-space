@@ -14,7 +14,7 @@ import { artifactKindLabel, artifactStatusLabel, artifactStatusTone } from './st
 // Everything a task produced or points at: detected rows (links, branches, change requests,
 // deployments) mirror git and the host; stored rows are agent or user reports. Read-only: the
 // Details tab owns adding, renaming and removing.
-const props = defineProps<{ taskId: string; compact?: boolean }>();
+const props = defineProps<{ taskId: string }>();
 const query = useTaskArtifacts(() => props.taskId);
 
 const SOURCE_LABEL: Record<string, MessageKey> = {
@@ -40,9 +40,6 @@ function openLink(e: MouseEvent, url: string): void {
 
 <template>
   <div class="flex flex-col gap-2" data-testid="ade-artifacts">
-    <div v-if="!compact" class="text-kira-sm text-muted-foreground">{{
-      t('space.ade.artifacts.title.title')
-    }}</div>
     <QueryState :query="query">
       <Alert
         v-for="g in gaps"

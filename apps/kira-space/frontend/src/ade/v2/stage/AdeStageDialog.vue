@@ -122,7 +122,7 @@ async function move(): Promise<void> {
           data-testid="ade-stage-artifacts"
         >
           <div class="text-muted-foreground">{{ t('space.ade.artifacts.stageDone.label') }}</div>
-          <AdeArtifactList :task-id="store.taskId" compact readonly />
+          <AdeArtifactList :task-id="store.taskId" />
         </div>
         <Alert v-if="live" variant="error" data-testid="ade-stage-live">
           <AlertDescription>{{
