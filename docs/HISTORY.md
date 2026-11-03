@@ -7458,3 +7458,44 @@ One review round over the diff since `main`: 4 findings (1 High, 1 Medium, 2 Low
 ### v0.2.27 P471 (Done)
 Chapter folded by hand into this file; `docs/v0.2.27/` removed. `docs/v0.2.28/` and `docs/v0.2.29/` draft specs stay.
 <!-- /chapter v0.2.27 -->
+
+<!-- chapter v0.2.28 -->
+## v0.2.28
+Source: docs/v0.2.28/ at f5ca3d323. 12 phases.
+
+### v0.2.28 P472 (Done)
+Runs are `<id>.yaml` files in the `runs` config folder (Studio and Space), projected into `custom_scripts`; one-shot migration; bad file keeps last good and surfaces a problem. Secrets stay in keychain. `RunFileDialog` (raw YAML, Reload/Overwrite conflict, secrets section) replaces `ScriptDialog`; Space gets `ScheduleTargetDialog`. New flow `TestScheduleNoTaskWithBuiltinVar`. Deviation: `ScriptRunsService.McpServers` stays bound (used by `tests/claude`).
+
+### v0.2.28 P473 (Done)
+Collections and environments are `<id>.collection.yaml` and `<id>.environment.yaml` in the `api` config folder, projected into `api_*` tables by `apifiles.Store` (only writer). Migration 0055 plus `MigrateOnce`. Secret variables are `${secret:name}`. New `ApiConfigService` (`View`, `SetSecret`, `DeleteSecret`); `kira:api:dataChanged` gains kind `config`. Rename, delete, duplicate, move, reorder and variable CRUD bound methods removed; variable sets and environments read-only in UI. `configfs` doc walker gets a cycle guard.
+
+### v0.2.28 P474 (Done)
+Per-repo settings are `~/.kira-space/repos/<stem>.yaml`, bound by the `path:` key. New `internal/repocfg` (`Store`, `Service`, `Patch` through new shared `configfs.EditYAML`). `git_repo_settings`, `ade_repo_integration`, `ade_repo_envs` and `ade_repo_config.nickname` dropped (migration 0065 plus `MigrateOnce("repos")`). `RepoConfigService` and event `kira:repoConfig:changed` new. Guard `guardRepoSettingsSet` unchanged; a file edit never crosses the stream. `RepoFilePane` and `RepoIdentity` replace `RepoConfigForm`. Base path "Choose..." button gone.
+
+### v0.2.28 P475 (Done)
+Each connection is `~/.kira-studio/connections/<stem>.yaml`, projected by `connfiles.Loader` (only writer); `connections.config_json` holds the last valid file JSON. Secrets are `${secret:<stem>.password}` and `<stem>.uri`. Color, filters and mask rules live in the file. New `ConnectionConfigService` and event `kira:connectionConfig:changed`; update, duplicate, delete and field setters removed. UI: `NewConnectionDialog`, `ConnectionFileDialog`, `ConnectionSecrets`; `ConnectionDialog`, Privacy tab and key regeneration deleted.
+
+### v0.2.28 P476 (Done)
+Git read methods move to bound services. `bridge.GitWindows` holds one `gitsession.Conn` per window key; `bridge.GitService` carries 14 read methods through generic `callGit[T]`. Events push as `EmitTo(windowKey, "kira:git:<event>")`. Frontend `boundGit.ts` routes bound methods through bindings; the rest stay on the stream until P479. New `git-bound.json` contract, `bound_test.go`, `git-bound.spec.ts`. Fixed claudeflow `automations-mcp-app.json` drift. Deviation: under `-tags server` a non-main tab double-holds until P479.
+
+### v0.2.28 P477 (Done)
+23 write methods move to `GitService` (`gitservice_writes.go`; 37 total): preflights, stash, op run, undo, remote incl. `remote.cancel`, worktree, stack. Cancel is explicit; binding-promise cancel only abandons the reply, writes stay detached. git-ui drops `remote.progress` and `stack.progress` outside an active op. New `TestGitServiceBoundWrites`, `git-bound-writes.spec.ts`. Fixed data race in `gitsession.newRepoEntry` and a `TestCredentialRoutes` wait.
+
+### v0.2.28 P478 (Done)
+23 review, comment, change request and `gitHost.info` methods move to `GitService` (60 total); `gitHost.providers` goes to `GitHostService.Providers`. `gitWindow` tracks bound holds. Frontend: `repoHolds.ts`, `gitCall.ts`, `reviewRepaint.ts`; `state/repoOpenHold.ts` deleted; blame, file content, review source, ADE review, repo heads and worktrees leave the transport. Worktree lists use TanStack Query. New `TestGitServiceBoundReview`, `git-bound-review.spec.ts`, `git-repo-holds.spec.ts`.
+
+### v0.2.28 P479 (Done)
+Git stream protocol removed. `GitService` has 65 bound methods plus `ResetWindow`. New `internal/graphplane`: bulk-only `gitgraph` stream (credit 2, 32 MiB frame cap). Deleted: `internal/rpcstream`, `bridge/gitstream.go`, `ContractVersion`, `GitRouter`, `guardRepoSettingsSet` (patch check stays in `patchTouchesRestrictedField`), `packages/git-ipc` `rpc.ts` and `validate.ts`. Frontend `graphStream.ts` dials `gitgraph`. Perf median of 3: Go first chunk 306 to 253 ms; UI first rows within noise; RSS peak within 5%.
+
+### v0.2.28 P480 (Done)
+Probe (`memProbe.ts`, `heapSnapshot.ts`, per-app `heap-ram.spec.ts`) ran on both apps, Chromium and WebKit. Four candidates cleared the threshold: Studio docker list virtualization (+53 MB heap at 400 containers), xterm scrollback, Space memory list virtualization, Space `RepoDiffView` retaining closed diff editors. ADE mount retention (+13 MB) real but unattributed. TanStack `gcTime`, Pinia, images, i18n: no cost.
+
+### v0.2.28 P481 (Done)
+Docker overview table and Memory list virtualized (`useVirtualRows` gains `scrollMargin`); `RepoDiffView` working-diff query exists only for working tabs. Docker `list` heap 64.3 to 18.1 MB, RSS 237 to 168 MB; memory500 heap 19.9 to 12.4 MB; diff `closed` heap 33.5 to 31.3 MB. xterm scrollback stays 5000 (user choice). ADE retention not fixed after three trials; Known open item added. Numbers in `docs/PERF.md` 2.15.
+
+### v0.2.28 P482 (Done)
+Full suite run once, failures fixed (conventions G1/G4, i18n wrappers, stale and fixture-drifted specs, visual baselines, WebKit `img.decode()` timeout in phone visual spec). Round 1 (base `ad451b19`): 8 findings (1 High, 3 Medium, 4 Low) fixed: connections migration deleted rows on a failed file write, API migration rerun lost promoted variables, bound call after window close leaked a Conn, duplicated connection shared secret names, plus 4 Low. Round 2: 1 Medium, connection secret names now insert-only. Flake fix: git unit specs ignore non-git bound calls.
+
+### v0.2.28 P483 (Done)
+Chapter folded by hand into this file; `docs/v0.2.28/` removed. `docs/v0.2.29/` draft spec stays.
+<!-- /chapter v0.2.28 -->
