@@ -1,7 +1,10 @@
 // Field-for-field mirrors of internal/kubernetes' wire types.
 import type { McpPermissionMode } from '@shared/domain/connection';
 
-export const KUBE_CHANNEL = { logs: 'kira:kubernetes:logs' } as const;
+export const KUBE_CHANNEL = {
+  logs: 'kira:kubernetes:logs',
+  clusters: 'kira:kubernetes:clusters',
+} as const;
 
 type ConfigState = 'ok' | 'missing' | 'invalid';
 

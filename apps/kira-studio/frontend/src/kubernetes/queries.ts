@@ -5,8 +5,9 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/vue-query';
-import { useDocumentVisibility } from '@vueuse/core';
+import { tryOnScopeDispose, useDocumentVisibility } from '@vueuse/core';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
+import { optimisticUpdate } from '@workbench/behaviour/optimistic';
 import { TIMING } from '@workbench/behaviour/timing';
 import { computed, type MaybeRefOrGetter, toValue } from 'vue';
 import { kubeControl } from './control';
@@ -27,8 +28,31 @@ const kubeKeys = {
 /** A refetch of loaded data is background work: the backend keeps it out of the Operations panel. */
 const isRefetch = (qc: QueryClient, key: readonly unknown[]) => qc.getQueryData(key) !== undefined;
 
+/** Another window reordered or edited a cluster: refetch. */
 export function useClusters() {
+  const qc = useQueryClient();
+  tryOnScopeDispose(
+    kubeControl.onClusters(() => void qc.invalidateQueries({ queryKey: kubeKeys.clusters })),
+  );
   return useQuery({ queryKey: kubeKeys.clusters, queryFn: kubeControl.clusters });
+}
+
+/** Clusters in `ids` order first; any not listed keep their place after them. */
+function clustersInOrder(old: KubeClusters, ids: readonly string[]): KubeClusters {
+  const byId = new Map(old.clusters.map((c) => [c.id, c]));
+  const listed = ids.flatMap((id) => byId.get(id) ?? []);
+  return { ...old, clusters: [...listed, ...old.clusters.filter((c) => !ids.includes(c.id))] };
+}
+
+/** Saves a cluster order; the cache follows at once, the backend result replaces it. */
+export function useReorderClusters() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationKey: ['kubernetes', 'reorder'],
+    mutationFn: (ids: string[]) => kubeControl.reorder(ids),
+    ...optimisticUpdate<KubeClusters, string[]>(qc, kubeKeys.clusters, clustersInOrder),
+    onSuccess: (result) => qc.setQueryData<KubeClusters>(kubeKeys.clusters, result),
+  });
 }
 
 const statusOptions = (qc: QueryClient, id: string) => ({
