@@ -44,6 +44,12 @@ export interface Repo {
   prepareTimeout: string;
   worktreeBasePath: string /* '' = the default */;
   environments: Environment[];
+  file: string /* stem of the repo file that applies; '' = none */;
+  problem: RepoProblem | null /* why that file is invalid; its last good values apply */;
+}
+export interface RepoProblem {
+  line: number;
+  message: string;
 }
 export interface Folder {
   path: string;
@@ -1015,18 +1021,6 @@ export interface ImportWorkflowArgs {
 }
 export interface NewWorkflowArgs {
   name: string;
-}
-export interface RepoPatch {
-  nickname: string | null;
-  integrationBranches: string[] | null;
-  prepareScript: string | null;
-  prepareTimeout: string | null;
-  worktreeBasePath: string | null;
-  environments: Environment[] | null;
-}
-export interface UpdateRepoArgs {
-  codeRepoId: string;
-  patch: RepoPatch;
 }
 export interface FolderArgs {
   path: string;

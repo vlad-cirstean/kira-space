@@ -51,11 +51,12 @@ const (
 type TaskBoardDeps struct {
 	Tasks *repos.AdeTaskRepo
 	// PromptSink receives the "move to next stage" prompt a finished handover raises; nil drops it.
-	PromptSink      prompts.Sink
-	Statuses        *repos.AdeStatusRepo
-	RepoConfig      *repos.AdeRepoConfigRepo
-	Facts           *repos.AdeFactsRepo
-	CodeRepos       *repos.CodeReposRepo
+	PromptSink prompts.Sink
+	Statuses   *repos.AdeStatusRepo
+	RepoConfig *repos.AdeRepoConfigRepo
+	Facts      *repos.AdeFactsRepo
+	CodeRepos  *repos.CodeReposRepo
+	// GitRepoSettings reads a repo's effective settings from its repo file.
 	GitRepoSettings func(repoID string) (model.GitRepoSettings, error)
 	Registry        *gitsession.Registry
 	// GitStatus is the app's git discovery (cached); every rebase-conflict check consults it first.
@@ -125,12 +126,11 @@ type TaskBoardDeps struct {
 	BranchRequestWait time.Duration
 	// RebaseTimeout bounds a rebase run; 0 = defaultRebaseTimeout.
 	RebaseTimeout time.Duration
-	// SetRepoSettings writes git_repo_settings leaves through the path git-ui's repoSettings.set
-	// uses, notification included, so git-ui sees a new prepare script.
-	SetRepoSettings func(repoID string, patch model.GitRepoSettingsPatch) error
-	OnBoard         func()
-	OnWorkflows     func()
-	OnRepos         func()
+	// RepoFile names the repo file that applies to a repo (its stem, "" for none) and its error, if any.
+	RepoFile    func(repoID string) (stem string, problem *adewire.RepoProblem)
+	OnBoard     func()
+	OnWorkflows func()
+	OnRepos     func()
 	// Credentials receives the remote ops' credential prompts, shown in Kira Space's windows.
 	Credentials      *gitcred.Relay
 	AutofetchMinutes func() int

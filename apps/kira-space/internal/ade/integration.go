@@ -273,7 +273,7 @@ func (b *TaskBoard) RecordMerge(ctx context.Context, branchID, target string) er
 		return err
 	}
 	configured := false
-	for _, t := range cfg.IntegrationBranches {
+	for _, t := range withoutMain(cfg.IntegrationBranches, b.mainShortName(ctx, sb.CodeRepoID)) {
 		configured = configured || t == target
 	}
 	if !configured {

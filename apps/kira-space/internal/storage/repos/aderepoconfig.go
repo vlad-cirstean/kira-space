@@ -5,79 +5,47 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
-// AdeRepoConfigRepo reads and writes the per-repo ade config over code_repos. The prepare script and
-// timeout are git_repo_settings leaves, not stored here.
-type AdeRepoConfigRepo struct {
-	DB *sql.DB
+// RepoFiles is the repo config files: nickname, integration branches and environments of a repo.
+type RepoFiles interface {
+	Repo(repoID string) repocfg.Config
 }
 
-// List returns every code repo (sort order) joined with its ade config, integration branches and
-// environments. A repo with no config row carries the column defaults.
+// AdeRepoConfigRepo reads the per-repo ade config over code_repos and writes its watched folders and
+// import source. The rest of a repo's config (nickname, integration branches, environments, prepare
+// script) lives in the repo files.
+type AdeRepoConfigRepo struct {
+	DB    *sql.DB
+	Files RepoFiles
+}
+
+// List returns every code repo (sort order) joined with its import source and its repo file's
+// nickname, integration branches and environments. A repo with no file carries the defaults.
 func (r *AdeRepoConfigRepo) List() ([]model.AdeRepoConfig, error) {
-	rows, err := r.DB.Query(`SELECT c.id, c.repo_id, c.name, c.root, COALESCE(a.nickname, ''), COALESCE(a.source, 'added')
+	rows, err := r.DB.Query(`SELECT c.id, c.repo_id, c.name, c.root, COALESCE(a.source, 'added')
 		FROM code_repos c LEFT JOIN ade_repo_config a ON a.code_repo_id = c.id ORDER BY c.sort_order, c.id`)
 	if err != nil {
 		return nil, fmt.Errorf("repos: query ade repo config: %w", err)
 	}
+	defer rows.Close()
 	out := make([]model.AdeRepoConfig, 0)
-	idx := make(map[string]int)
 	for rows.Next() {
 		var c model.AdeRepoConfig
-		if err := rows.Scan(&c.CodeRepoID, &c.RepoID, &c.Name, &c.Root, &c.Nickname, &c.Source); err != nil {
-			rows.Close()
+		if err := rows.Scan(&c.CodeRepoID, &c.RepoID, &c.Name, &c.Root, &c.Source); err != nil {
 			return nil, fmt.Errorf("repos: scan ade repo config: %w", err)
 		}
-		c.IntegrationBranches = make([]string, 0)
-		c.Environments = make([]model.AdeRepoEnv, 0)
-		idx[c.CodeRepoID] = len(out)
+		cfg := repocfg.Defaults(c.RepoID)
+		if r.Files != nil {
+			cfg = r.Files.Repo(c.RepoID)
+		}
+		c.Nickname, c.IntegrationBranches, c.Environments = cfg.Nickname, cfg.IntegrationBranches, cfg.Environments
 		out = append(out, c)
 	}
 	if err := rows.Err(); err != nil {
-		rows.Close()
 		return nil, fmt.Errorf("repos: ade repo config rows: %w", err)
-	}
-	rows.Close()
-
-	irows, err := r.DB.Query(`SELECT code_repo_id, branch FROM ade_repo_integration ORDER BY code_repo_id, position`)
-	if err != nil {
-		return nil, fmt.Errorf("repos: query ade repo integration: %w", err)
-	}
-	for irows.Next() {
-		var id, branch string
-		if err := irows.Scan(&id, &branch); err != nil {
-			irows.Close()
-			return nil, fmt.Errorf("repos: scan ade repo integration: %w", err)
-		}
-		if i, ok := idx[id]; ok {
-			out[i].IntegrationBranches = append(out[i].IntegrationBranches, branch)
-		}
-	}
-	if err := irows.Err(); err != nil {
-		irows.Close()
-		return nil, fmt.Errorf("repos: ade repo integration rows: %w", err)
-	}
-	irows.Close()
-
-	erows, err := r.DB.Query(`SELECT code_repo_id, name, deployed_sha_script FROM ade_repo_envs ORDER BY code_repo_id, position`)
-	if err != nil {
-		return nil, fmt.Errorf("repos: query ade repo envs: %w", err)
-	}
-	defer erows.Close()
-	for erows.Next() {
-		var id string
-		var e model.AdeRepoEnv
-		if err := erows.Scan(&id, &e.Name, &e.DeployedShaScript); err != nil {
-			return nil, fmt.Errorf("repos: scan ade repo env: %w", err)
-		}
-		if i, ok := idx[id]; ok {
-			out[i].Environments = append(out[i].Environments, e)
-		}
-	}
-	if err := erows.Err(); err != nil {
-		return nil, fmt.Errorf("repos: ade repo envs rows: %w", err)
 	}
 	return out, nil
 }
@@ -107,94 +75,6 @@ func (r *AdeRepoConfigRepo) Folders() ([]model.AdeFolder, error) {
 		return nil, fmt.Errorf("repos: ade folders rows: %w", err)
 	}
 	return out, nil
-}
-
-// ErrRepoConfigMissing reports a code repo id with no code_repos row.
-var ErrRepoConfigMissing = errors.New("repos: code repo not found")
-
-// Upsert applies patch to one repo in a single transaction: the config row, a dense rewrite of the
-// integration branches, and the environments (removed names deleted, the rest upserted in place so
-// their env state survives).
-func (r *AdeRepoConfigRepo) Upsert(codeRepoID string, patch model.AdeRepoConfigPatch) error {
-	tx, err := r.DB.Begin()
-	if err != nil {
-		return fmt.Errorf("repos: begin ade repo config: %w", err)
-	}
-	defer tx.Rollback() //nolint:errcheck
-	var exists int
-	if err := tx.QueryRow(`SELECT COUNT(*) FROM code_repos WHERE id = ?`, codeRepoID).Scan(&exists); err != nil {
-		return fmt.Errorf("repos: check code repo: %w", err)
-	}
-	if exists == 0 {
-		return ErrRepoConfigMissing
-	}
-	if _, err := tx.Exec(`INSERT INTO ade_repo_config (code_repo_id) VALUES (?) ON CONFLICT(code_repo_id) DO NOTHING`, codeRepoID); err != nil {
-		return fmt.Errorf("repos: ensure ade repo config: %w", err)
-	}
-	if patch.Nickname != nil {
-		if _, err := tx.Exec(`UPDATE ade_repo_config SET nickname = ? WHERE code_repo_id = ?`, *patch.Nickname, codeRepoID); err != nil {
-			return fmt.Errorf("repos: update nickname: %w", err)
-		}
-	}
-	if patch.IntegrationBranches != nil {
-		if _, err := tx.Exec(`DELETE FROM ade_repo_integration WHERE code_repo_id = ?`, codeRepoID); err != nil {
-			return fmt.Errorf("repos: clear integration branches: %w", err)
-		}
-		for i, b := range *patch.IntegrationBranches {
-			if _, err := tx.Exec(`INSERT INTO ade_repo_integration (code_repo_id, branch, position) VALUES (?, ?, ?)`, codeRepoID, b, i); err != nil {
-				return fmt.Errorf("repos: insert integration branch: %w", err)
-			}
-		}
-	}
-	if patch.Environments != nil {
-		if err := upsertEnvs(tx, codeRepoID, *patch.Environments); err != nil {
-			return err
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("repos: commit ade repo config: %w", err)
-	}
-	return nil
-}
-
-func upsertEnvs(tx *sql.Tx, codeRepoID string, envs []model.AdeRepoEnv) error {
-	rows, err := tx.Query(`SELECT name FROM ade_repo_envs WHERE code_repo_id = ?`, codeRepoID)
-	if err != nil {
-		return fmt.Errorf("repos: query ade envs: %w", err)
-	}
-	var existing []string
-	for rows.Next() {
-		var n string
-		if err := rows.Scan(&n); err != nil {
-			rows.Close()
-			return fmt.Errorf("repos: scan ade env: %w", err)
-		}
-		existing = append(existing, n)
-	}
-	if err := rows.Err(); err != nil {
-		rows.Close()
-		return fmt.Errorf("repos: ade env rows: %w", err)
-	}
-	rows.Close()
-	keep := make(map[string]bool, len(envs))
-	for _, e := range envs {
-		keep[e.Name] = true
-	}
-	for _, n := range existing {
-		if !keep[n] {
-			if _, err := tx.Exec(`DELETE FROM ade_repo_envs WHERE code_repo_id = ? AND name = ?`, codeRepoID, n); err != nil {
-				return fmt.Errorf("repos: delete ade env: %w", err)
-			}
-		}
-	}
-	for i, e := range envs {
-		if _, err := tx.Exec(`INSERT INTO ade_repo_envs (code_repo_id, name, deployed_sha_script, position) VALUES (?, ?, ?, ?)
-			ON CONFLICT(code_repo_id, name) DO UPDATE SET deployed_sha_script = excluded.deployed_sha_script, position = excluded.position`,
-			codeRepoID, e.Name, e.DeployedShaScript, i); err != nil {
-			return fmt.Errorf("repos: upsert ade env: %w", err)
-		}
-	}
-	return nil
 }
 
 // AddFolder inserts a watched folder; an existing path keeps its row and updates its watch flag.

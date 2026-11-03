@@ -30,9 +30,6 @@ const (
 	adeTaskMaxPlanKeys = 10_000
 	adeMaxYamlBytes    = 1 << 20
 	adeMaxPathBytes    = 4096
-	adeMaxIntegration  = 32
-	adeMaxEnvironments = 32
-	adeMaxScriptBytes  = 64 << 10
 )
 
 // AdeTaskService is the v2 ADE task surface (P144): board snapshot, task/plan/backlog writes and
@@ -699,45 +696,6 @@ func validateAdePath(path, field string) error {
 	return nil
 }
 
-func validateUpdateRepo(a adewire.UpdateRepoArgs) error {
-	if err := validateAdeItemID(a.CodeRepoID, "codeRepoId"); err != nil {
-		return err
-	}
-	p := a.Patch
-	if p.Nickname != nil {
-		if err := validateAdeName(*p.Nickname, "nickname"); err != nil {
-			return err
-		}
-	}
-	if p.IntegrationBranches != nil {
-		if len(*p.IntegrationBranches) > adeMaxIntegration {
-			return adeTaskInvalid("integrationBranches is too long")
-		}
-		for _, name := range *p.IntegrationBranches {
-			if err := validateAdeBranchName(name, "integrationBranches"); err != nil {
-				return err
-			}
-		}
-	}
-	if p.PrepareScript != nil && len(*p.PrepareScript) > adeMaxScriptBytes {
-		return adeScriptTooLarge()
-	}
-	if p.Environments != nil {
-		if len(*p.Environments) > adeMaxEnvironments {
-			return adeTaskInvalid("environments is too long")
-		}
-		for _, env := range *p.Environments {
-			if err := validateAdeName(env.Name, "environment name"); err != nil {
-				return err
-			}
-			if len(env.DeployedShaScript) > adeMaxScriptBytes {
-				return adeScriptTooLarge()
-			}
-		}
-	}
-	return nil
-}
-
 func (s *AdeTaskService) WorkflowYaml(ctx context.Context, args adewire.FileNameArgs) (adewire.WorkflowYaml, error) {
 	ctx = adeUserCtx(ctx)
 	if err := validateAdeBranchName(args.FileName, "fileName"); err != nil {
@@ -791,15 +749,6 @@ func (s *AdeTaskService) NewWorkflow(ctx context.Context, args adewire.NewWorkfl
 		return adewire.WorkflowEntry{}, err
 	}
 	r, err := s.Engine.NewWorkflow(ctx, args)
-	return r, adeTaskError(err)
-}
-
-func (s *AdeTaskService) UpdateRepo(ctx context.Context, args adewire.UpdateRepoArgs) (adewire.Repo, error) {
-	ctx = adeUserCtx(ctx)
-	if err := validateUpdateRepo(args); err != nil {
-		return adewire.Repo{}, err
-	}
-	r, err := s.Engine.UpdateRepo(ctx, args)
 	return r, adeTaskError(err)
 }
 

@@ -1521,9 +1521,6 @@
             "body": "The sandbox profile did not load: {detail}."
           }
         },
-        "scriptTooLarge": {
-          "body": "The script is too large."
-        },
         "sessionIdUnknown": {
           "body": "The agent hasn’t reported its session ID yet. Retry once it has started."
         },
@@ -2857,9 +2854,6 @@
     },
     "enterWholeNumber": {
       "error": "Enter a whole number."
-    },
-    "environmentName": {
-      "aria": "Environment name"
     },
     "error": {
       "contract": {
@@ -10605,49 +10599,8 @@
         }
       },
       "config": {
-        "basePath": {
-          "chooseTitle": {
-            "title": "Choose worktree base path"
-          },
-          "description": "Pre-fills the path of new worktrees. Empty uses the default.",
-          "label": "Worktree base path",
-          "placeholder": "Default location"
-        },
-        "environments": {
-          "intro": {
-            "hint": "Track which commit each environment runs. For each one, give a command that prints the deployed commit SHA, for example {command}. Kira Space runs it in the repository root when the board refreshes and marks branches deployed there."
-          },
-          "title": "Deployment environments"
-        },
-        "nickname": {
-          "description": "Shown everywhere instead of the repository name.",
-          "label": "Nickname"
-        },
-        "prepare": {
-          "description": "Setup script. Runs in the root of every new worktree of this repository, before any agent starts, for example {command}. A non-zero exit marks setup as failed.",
-          "label": "Prepare worktree"
-        },
         "repository": {
           "label": "Repository"
-        },
-        "source": {
-          "added": {
-            "status": "Added individually"
-          },
-          "imported": {
-            "status": "Imported from {source}"
-          },
-          "notOnPlan": {
-            "status": "Not on the plan"
-          },
-          "usedOnPlan": {
-            "status": "Used by tasks on the plan"
-          }
-        },
-        "targets": {
-          "description": "Besides main. Branches are checked for being merged or stale in these.",
-          "example": "develop, staging",
-          "label": "Integration branches"
         }
       },
       "dialog": {
@@ -10705,24 +10658,6 @@
         },
         "show": {
           "tooltip": "Show in Git panel"
-        }
-      },
-      "env": {
-        "add": {
-          "label": "Add environment"
-        },
-        "command": {
-          "label": "Command that prints the deployed SHA"
-        },
-        "name": {
-          "example": "staging"
-        },
-        "remove": {
-          "tooltip": "Remove environment"
-        },
-        "script": {
-          "aria": "Deployed SHA script",
-          "example": "curl -s https://…/version"
         }
       },
       "file": {
@@ -10827,6 +10762,28 @@
         },
         "truncated": {
           "tooltip": "This file hit the per-file match cap, so not every match is shown"
+        }
+      },
+      "settingsFile": {
+        "create": {
+          "label": "Create settings file"
+        },
+        "field": {
+          "aria": "Repository settings file"
+        },
+        "lastGood": {
+          "hint": "The file has an error. Kira Space uses the last good settings."
+        },
+        "none": {
+          "hint": "No settings file for this repository yet. Create one to set its nickname, branches, worktree and Git options."
+        },
+        "otherFiles": {
+          "empty": "No other settings files",
+          "hint": "Files in the repos folder that configure no listed repository, or whose path an earlier file already owns.",
+          "label": "Other files"
+        },
+        "problem": {
+          "aria": "Settings file has an error"
         }
       },
       "tree": {

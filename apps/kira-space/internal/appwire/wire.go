@@ -3,10 +3,12 @@ package appwire
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 
@@ -29,6 +31,7 @@ import (
 	trackerproviders "github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker/providers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mobileterm"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/appevent"
@@ -199,7 +202,7 @@ func wireAdeTask(
 	repositories *repos.Repos, events *bridge.Events, git gitWired, tracker *ade.Tracker, closeTerminal func(string) error,
 	closeReviewWindows func(taskID string), credentials *gitcred.Relay, keepAwake *bridge.KeepAwakeService,
 	notifier *agentnotify.Notifier, usage *agentusage.Service, rebaseTimeout, branchRequestWait time.Duration, runs *scriptruns.Service,
-	agents harness.Selector, promptSink prompts.Sink,
+	agents harness.Selector, promptSink prompts.Sink, repoFiles *repocfg.Store,
 ) *ade.TaskBoard {
 	userHome, err := os.UserHomeDir()
 	if err != nil {
@@ -213,7 +216,7 @@ func wireAdeTask(
 		Ops:     git.opLog,
 		Prompts: runs.LlmPrompts, PromptSink: promptSink,
 		Tasks: repositories.AdeTasks, Statuses: repositories.AdeStatuses, RepoConfig: repositories.AdeRepoConfig,
-		CodeRepos: repositories.CodeRepos, GitRepoSettings: repositories.GitRepoSettings.Get,
+		CodeRepos: repositories.CodeRepos, GitRepoSettings: repoFiles.Settings, RepoFile: repoFile(repoFiles),
 		Registry:        git.registry,
 		Trackers:        git.trackers,
 		GitStatus:       func(ctx context.Context) gitclient.GitStatus { return git.discovery.Status(ctx, gitPath()) },
@@ -224,7 +227,6 @@ func wireAdeTask(
 		OnRepos:         func() { bridge.AdeTaskReposChanged(events) },
 		Facts:           repositories.AdeFacts,
 		Runner:          git.runner,
-		SetRepoSettings: git.router.SetRepoSettings,
 		Credentials:     credentials,
 		Logs:            repositories.AdeLogs,
 		Sessions:        repositories.AdeSessions,
@@ -357,7 +359,7 @@ func newOpLog(repositories *repos.Repos) *oplog.Log {
 }
 
 // wireGit builds the git runner, discovery (over locator), session registry and router.
-func wireGit(repositories *repos.Repos, locator gitclient.Locator, hosts *githost.Registry, crSync gitsession.CRSyncConfig) gitWired {
+func wireGit(repositories *repos.Repos, locator gitclient.Locator, hosts *githost.Registry, crSync gitsession.CRSyncConfig, repoFiles *repocfg.Store) gitWired {
 	opLog := newOpLog(repositories)
 	gitRunner := oplog.NewRecordingRunner(gitclient.NewExecRunner(), opLog)
 	gitDiscovery := gitclient.NewDiscovery(locator, gitRunner, gitclient.NewRealClock())
@@ -374,8 +376,8 @@ func wireGit(repositories *repos.Repos, locator gitclient.Locator, hosts *githos
 		}
 		return s.Git.ProtectedBranches, s.Git.FetchAutoIntervalMinutes, s.Git.GitPath
 	}
-	gitRegistry.RepoSettingsGet = repositories.GitRepoSettings.Get
-	gitRegistry.RepoSettingsSet = repositories.GitRepoSettings.Set
+	gitRegistry.RepoSettingsGet = repoFiles.Settings
+	gitRegistry.RepoSettingsSet = repoFiles.Patch
 	gitRegistry.CRStore = repositories.GitHostChangeRequests
 	gitRegistry.CRSync = crSync
 
@@ -527,5 +529,56 @@ func (w *Wired) revealNote(n agentnotify.Note) {
 		if n.TaskID != "" {
 			w.Emitter.EmitTo(key, bridge.ChannelAgentRevealTask, map[string]string{"taskId": n.TaskID})
 		}
+	}
+}
+
+// wireRepoConfig builds the repo config store over <home>/repos, moves the legacy rows into files
+// once and loads the folder. The change hooks and the watch start in watchRepoConfig, once the git
+// router and the board exist.
+func wireRepoConfig(repositories *repos.Repos, hosts *githost.Registry) *repocfg.Store {
+	var ids []string
+	if hosts != nil {
+		for _, info := range hosts.Infos() {
+			ids = append(ids, info.ID)
+		}
+	}
+	store, err := repocfg.New(repocfg.Options{DB: repositories.CustomScripts.DB, Dir: filepath.Join(config.KiraSpaceHome(), repocfg.Folder), GitHosts: ids})
+	if err != nil {
+		panic(fmt.Sprintf("appwire: repo config (static schema): %v", err))
+	}
+	repositories.AdeRepoConfig.Files = store
+	if err := store.Start(); err != nil {
+		slog.Warn("repo config: start", "scope", "startup", "err", err)
+	}
+	return store
+}
+
+// watchRepoConfig routes repo file changes to the git clients, the board and the renderer, then
+// watches the folder.
+func (w *Wired) watchRepoConfig(events *bridge.Events) {
+	w.RepoConfig.OnChange = func(changes []repocfg.Change) {
+		for _, c := range changes {
+			if !c.FromPatch && !reflect.DeepEqual(c.Old.Settings, c.New.Settings) {
+				w.Git.router.EmitRepoSettingsChanged(c.Path, c.New.Settings)
+			}
+		}
+		w.AdeBoard.RepoConfigChanged(changes)
+	}
+	w.RepoConfig.OnReload = func() { bridge.RepoConfigChanged(events) }
+	w.RepoConfig.Watch()
+}
+
+// repoFile names the file applying to a repo (its stem) and its error.
+func repoFile(store *repocfg.Store) func(repoID string) (string, *adewire.RepoProblem) {
+	return func(repoID string) (string, *adewire.RepoProblem) {
+		file, p := store.FileInfo(repoID)
+		if file == "" {
+			return "", nil
+		}
+		var problem *adewire.RepoProblem
+		if p != nil {
+			problem = &adewire.RepoProblem{Line: p.Line, Message: p.Message}
+		}
+		return strings.TrimSuffix(file, ".yaml"), problem
 	}
 }

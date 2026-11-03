@@ -6,26 +6,14 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
-	"unicode/utf8"
+	"slices"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpath"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 )
-
-const (
-	maxNicknameRunes  = 40
-	maxIntegration    = 10
-	maxEnvironments   = 10
-	maxEnvScriptBytes = 4 << 10
-	maxPrepareBytes   = 64 << 10
-)
-
-var envNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,31}$`)
 
 func (b *TaskBoard) notifyRepos() {
 	if b.deps.OnRepos != nil {
@@ -47,166 +35,72 @@ func (b *TaskBoard) repoConfig(codeRepoID string) (model.AdeRepoConfig, error) {
 	return model.AdeRepoConfig{}, invalid("code repo %s not found", codeRepoID)
 }
 
-// UpdateRepo applies a partial repo config. The prepare script and timeout go to the shared
-// git_repo_settings leaves, so git-ui's worktree add sees them too.
-func (b *TaskBoard) UpdateRepo(ctx context.Context, args adewire.UpdateRepoArgs) (adewire.Repo, error) {
-	cfg, err := b.repoConfig(args.CodeRepoID)
-	if err != nil {
-		return adewire.Repo{}, err
+// RepoConfigChanged applies a batch of repo file changes: marks and env state of removed targets and
+// environments are dropped, changed environments rerun their scripts, then the repo list and the
+// board refresh once.
+func (b *TaskBoard) RepoConfigChanged(changes []repocfg.Change) {
+	if b.deps.CodeRepos == nil {
+		return
 	}
-	patch, settings, err := b.validatePatch(ctx, cfg, args.Patch)
+	recs, err := b.deps.CodeRepos.List()
 	if err != nil {
-		return adewire.Repo{}, err
+		slog.Warn("ade: list code repos", "scope", "ade", "err", err)
+		return
 	}
-	// The settings write goes first: the config row was just read, so Upsert is the write that
-	// cannot plausibly fail after it.
-	if (settings.WorktreePrepareScript != nil || settings.WorktreePrepareTimeout != nil || settings.WorktreeBasePath != nil) && b.deps.SetRepoSettings != nil {
-		if err := b.deps.SetRepoSettings(cfg.RepoID, settings); err != nil {
-			return adewire.Repo{}, err
+	codeRepoOf := make(map[string]string, len(recs))
+	for _, r := range recs {
+		codeRepoOf[r.RepoID] = r.ID
+	}
+	touched := false
+	for _, ch := range changes {
+		id, ok := codeRepoOf[ch.Path]
+		if !ok {
+			continue
+		}
+		touched = true
+		if err := b.pruneRemoved(id, ch); err != nil {
+			slog.Warn("ade: prune removed targets", "scope", "ade", "repo", id, "err", err)
+		}
+		if !slices.Equal(ch.Old.Environments, ch.New.Environments) {
+			b.goTracked(func() { b.refreshEnvScripts(id) })
 		}
 	}
-	if err := b.deps.RepoConfig.Upsert(args.CodeRepoID, patch); err != nil {
-		if errors.Is(err, repos.ErrRepoConfigMissing) {
-			return adewire.Repo{}, invalid("code repo %s not found", args.CodeRepoID)
-		}
-		return adewire.Repo{}, err
+	if touched {
+		b.notifyRepos()
+		b.notifyBoard()
 	}
-	if err := b.pruneMarks(args.CodeRepoID, patch); err != nil {
-		return adewire.Repo{}, err
-	}
-	if patch.Environments != nil {
-		b.goTracked(func() { b.refreshEnvScripts(args.CodeRepoID) })
-	}
-	b.notifyRepos()
-	b.notifyBoard()
-	return b.repoByID(ctx, args.CodeRepoID)
 }
 
-// validatePatch checks every field before anything is written, so a bad field leaves both stores untouched (a later store failure can still leave the settings applied).
-func (b *TaskBoard) validatePatch(ctx context.Context, cfg model.AdeRepoConfig, p adewire.RepoPatch) (model.AdeRepoConfigPatch, model.GitRepoSettingsPatch, error) {
-	patch := model.AdeRepoConfigPatch{}
-	if p.Nickname != nil {
-		nick := strings.TrimSpace(*p.Nickname)
-		if utf8.RuneCountInString(nick) > maxNicknameRunes || strings.ContainsAny(nick, "\r\n") {
-			return model.AdeRepoConfigPatch{}, model.GitRepoSettingsPatch{}, invalid("nickname must be at most %d characters on one line", maxNicknameRunes)
-		}
-		patch.Nickname = &nick
+// pruneRemoved drops the marks and env state of integration targets and environments the change removed.
+func (b *TaskBoard) pruneRemoved(id string, ch repocfg.Change) error {
+	if b.deps.Facts == nil {
+		return nil
 	}
-	if p.IntegrationBranches != nil {
-		branches, err := b.validateIntegration(ctx, cfg, *p.IntegrationBranches)
-		if err != nil {
-			return model.AdeRepoConfigPatch{}, model.GitRepoSettingsPatch{}, err
+	if !slices.Equal(ch.Old.IntegrationBranches, ch.New.IntegrationBranches) {
+		if err := b.deps.Facts.DeleteMarksNotIn("target", id, ch.New.IntegrationBranches); err != nil {
+			return err
 		}
-		patch.IntegrationBranches = &branches
 	}
-	if p.Environments != nil {
-		envs, err := validateEnvironments(*p.Environments)
-		if err != nil {
-			return model.AdeRepoConfigPatch{}, model.GitRepoSettingsPatch{}, err
+	if !slices.Equal(ch.Old.Environments, ch.New.Environments) {
+		names := make([]string, len(ch.New.Environments))
+		for i, e := range ch.New.Environments {
+			names[i] = e.Name
 		}
-		patch.Environments = &envs
-	}
-	settings := model.GitRepoSettingsPatch{}
-	if p.PrepareScript != nil {
-		if len(*p.PrepareScript) > maxPrepareBytes {
-			return model.AdeRepoConfigPatch{}, model.GitRepoSettingsPatch{}, invalid("prepareScript is too long")
+		if err := b.deps.Facts.DeleteMarksNotIn("env", id, names); err != nil {
+			return err
 		}
-		settings.WorktreePrepareScript = p.PrepareScript
-	}
-	if p.PrepareTimeout != nil {
-		if _, err := model.ParsePrepareTimeout(*p.PrepareTimeout); err != nil {
-			return model.AdeRepoConfigPatch{}, model.GitRepoSettingsPatch{}, invalid("prepareTimeout must be a duration such as 15m, above 0 and at most %s", model.MaxPrepareTimeout)
-		}
-		settings.WorktreePrepareTimeout = p.PrepareTimeout
-	}
-	if p.WorktreeBasePath != nil {
-		base := *p.WorktreeBasePath
-		if base != "" {
-			base = gitpath.CleanNFC(base)
-		}
-		settings.WorktreeBasePath = &base
-	}
-	return patch, settings, nil
-}
-
-// pruneMarks drops marks of targets and environments the patch removed.
-func (b *TaskBoard) pruneMarks(id string, patch model.AdeRepoConfigPatch) error {
-	if b.deps.Facts != nil {
-		if patch.IntegrationBranches != nil {
-			if err := b.deps.Facts.DeleteMarksNotIn("target", id, *patch.IntegrationBranches); err != nil {
-				return err
-			}
-		}
-		if patch.Environments != nil {
-			names := make([]string, len(*patch.Environments))
-			for i, e := range *patch.Environments {
-				names[i] = e.Name
-			}
-			if err := b.deps.Facts.DeleteMarksNotIn("env", id, names); err != nil {
-				return err
-			}
-		}
+		return b.deps.Facts.DeleteEnvStateNotIn(id, names)
 	}
 	return nil
 }
 
-func (b *TaskBoard) repoByID(ctx context.Context, id string) (adewire.Repo, error) {
-	res, err := b.Repos(ctx)
-	if err != nil {
-		return adewire.Repo{}, err
+// withoutMain drops the repo's main branch from a configured target list: main is never an
+// integration target, and a file may list it.
+func withoutMain(targets []string, main string) []string {
+	if main == "" || !slices.Contains(targets, main) {
+		return targets
 	}
-	for _, r := range res.Repos {
-		if r.CodeRepoID == id {
-			return r, nil
-		}
-	}
-	return adewire.Repo{}, invalid("code repo %s not found", id)
-}
-
-func (b *TaskBoard) validateIntegration(ctx context.Context, cfg model.AdeRepoConfig, in []string) ([]string, error) {
-	if len(in) > maxIntegration {
-		return nil, invalid("at most %d integration branches", maxIntegration)
-	}
-	main := b.mainShortName(ctx, cfg.CodeRepoID)
-	seen := make(map[string]bool, len(in))
-	out := make([]string, 0, len(in))
-	for _, raw := range in {
-		name := strings.TrimSpace(raw)
-		switch {
-		case name == "":
-			return nil, invalid("an integration branch name is empty")
-		case seen[name]:
-			return nil, invalid("integration branch %q is listed twice", name)
-		case name == main:
-			return nil, invalid("%q is the repo main branch; list only the branches besides it", name)
-		}
-		seen[name] = true
-		out = append(out, name)
-	}
-	return out, nil
-}
-
-func validateEnvironments(in []adewire.Environment) ([]model.AdeRepoEnv, error) {
-	if len(in) > maxEnvironments {
-		return nil, invalid("at most %d environments", maxEnvironments)
-	}
-	seen := make(map[string]bool, len(in))
-	out := make([]model.AdeRepoEnv, 0, len(in))
-	for _, e := range in {
-		switch {
-		case !envNamePattern.MatchString(e.Name):
-			return nil, invalid("environment name %q must start with a letter or digit and use letters, digits, . _ - (32 characters at most)", e.Name)
-		case seen[e.Name]:
-			return nil, invalid("environment %q is listed twice", e.Name)
-		case strings.TrimSpace(e.DeployedShaScript) == "":
-			return nil, invalid("environment %q needs a script", e.Name)
-		case len(e.DeployedShaScript) > maxEnvScriptBytes:
-			return nil, invalid("environment %q script is longer than 4 KiB", e.Name)
-		}
-		seen[e.Name] = true
-		out = append(out, model.AdeRepoEnv{Name: e.Name, DeployedShaScript: e.DeployedShaScript})
-	}
-	return out, nil
+	return slices.DeleteFunc(slices.Clone(targets), func(t string) bool { return t == main })
 }
 
 // --- folders -------------------------------------------------------------------------------------

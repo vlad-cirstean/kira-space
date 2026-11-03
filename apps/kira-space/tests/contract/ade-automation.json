@@ -21,12 +21,12 @@
     "taskId": "<id:3>"
   },
   "CustomScriptsService.Create": {
-    "collectionId": null,
+    "collection": "",
     "color": "blue",
     "command": "Audit {branch} on {base} in {worktree} for {task}",
     "createdAt": "<time>",
     "dirMode": "kira",
-    "id": "<id:1>",
+    "id": "audit",
     "kind": "smart",
     "name": "audit",
     "params": [],
@@ -51,14 +51,14 @@
     "workingDir": ""
   },
   "ScriptRunsService.Get#done": {
-    "branchId": "<id:2>",
+    "branchId": "<id:1>",
     "branchLabel": "api · feat/api-login",
     "color": "blue",
     "command": "",
     "createdAt": 0,
     "cwd": "<home>/wt/api/api-login",
     "finishedAt": 0,
-    "id": "<id:4>",
+    "id": "<id:3>",
     "kind": "smart",
     "model": "sonnet",
     "outcome": {
@@ -74,12 +74,12 @@
     "provider": "claude",
     "resumable": false,
     "resumedFrom": "",
-    "scriptId": "<id:1>",
+    "scriptId": "audit",
     "scriptName": "audit",
     "sessionId": "<masked>",
     "startedAt": 0,
     "state": "done",
-    "taskId": "<id:3>",
+    "taskId": "<id:2>",
     "taskTitle": "Fix login",
     "terminalId": "",
     "tools": {
@@ -105,14 +105,14 @@
     "trigger": "ade"
   },
   "ScriptRunsService.Get#running": {
-    "branchId": "<id:2>",
+    "branchId": "<id:1>",
     "branchLabel": "api · feat/api-login",
     "color": "blue",
     "command": "",
     "createdAt": 0,
     "cwd": "<home>/wt/api/api-login",
     "finishedAt": null,
-    "id": "<id:4>",
+    "id": "<id:3>",
     "kind": "smart",
     "model": "sonnet",
     "outcome": null,
@@ -121,12 +121,12 @@
     "provider": "claude",
     "resumable": false,
     "resumedFrom": "",
-    "scriptId": "<id:1>",
+    "scriptId": "audit",
     "scriptName": "audit",
     "sessionId": "<masked>",
     "startedAt": 0,
     "state": "running",
-    "taskId": "<id:3>",
+    "taskId": "<id:2>",
     "taskTitle": "Fix login",
     "terminalId": "",
     "tools": {
@@ -153,9 +153,9 @@
   },
   "ScriptRunsService.Preview": {
     "ade": {
-      "branchId": "<id:2>",
+      "branchId": "<id:1>",
       "branchLabel": "api · feat/api-login",
-      "taskId": "<id:3>",
+      "taskId": "<id:2>",
       "taskTitle": "Fix login"
     },
     "allowedTools": [

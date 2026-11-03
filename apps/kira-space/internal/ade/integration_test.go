@@ -3,6 +3,7 @@ package ade
 import (
 	"context"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -11,6 +12,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg/repocfgtest"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 )
@@ -54,30 +57,30 @@ func newIntegFixture(t *testing.T) *integFixture {
 	registry := gitsession.NewRegistry(cr)
 	t.Cleanup(registry.Close)
 	h := &boardHarness{t: t, repos: r}
+	h.files = repocfgtest.New(t, db.DB, filepath.Join(t.TempDir(), "repos"))
+	r.AdeRepoConfig.Files = h.files
 	h.status.Store(gitclient.GitStatus{Kind: "ok", Path: "git"})
 	h.board = NewTaskBoard(TaskBoardDeps{
 		Agent:       testAgents,
 		Credentials: gitcred.New(),
 		Tasks:       r.AdeTasks, Statuses: r.AdeStatuses, RepoConfig: r.AdeRepoConfig, Facts: r.AdeFacts, CodeRepos: r.CodeRepos,
-		Runner: cr, Registry: registry,
+		GitRepoSettings: h.files.Settings,
+		Runner:          cr, Registry: registry,
 		GitStatus: func(context.Context) gitclient.GitStatus { return h.status.Load().(gitclient.GitStatus) },
 		Workflows: &adeflow.Reader{Dir: t.TempDir(), Store: r.AdeTasks},
 		OnBoard:   func() { h.emitted.Add(1) }, HomeDir: "/home/u",
 		AutofetchMinutes: func() int { return 5 },
 	})
 	t.Cleanup(h.board.Close)
+	h.files.OnChange = h.board.RepoConfigChanged
 
 	origin, dir := initQueueRepo(t)
-	h.addRepo("r", dir)
+	h.addRepoFromPath("r", dir)
 	runGitQueue(t, dir, "checkout", "-q", "-b", "develop", "main")
 	runGitQueue(t, dir, "push", "-q", "-u", "origin", "develop")
 	runGitQueue(t, dir, "checkout", "-q", "main")
 	f := &integFixture{boardHarness: h, runner: cr, dir: dir, origin: origin}
-	if _, err := h.board.UpdateRepo(context.Background(), adewire.UpdateRepoArgs{
-		CodeRepoID: "r", Patch: adewire.RepoPatch{IntegrationBranches: &[]string{"develop"}},
-	}); err != nil {
-		t.Fatalf("UpdateRepo: %v", err)
-	}
+	h.setRepoFile("r", func(rf *repocfg.File) { rf.IntegrationBranches = []string{"develop"} })
 	return f
 }
 
@@ -229,12 +232,9 @@ func TestIntegration_cacheAndRefreshMergedInto(t *testing.T) {
 
 func (f *integFixture) setEnv(script string) {
 	f.t.Helper()
-	envs := []adewire.Environment{{Name: "staging", DeployedShaScript: script}}
-	if _, err := f.board.UpdateRepo(context.Background(), adewire.UpdateRepoArgs{
-		CodeRepoID: "r", Patch: adewire.RepoPatch{Environments: &envs},
-	}); err != nil {
-		f.t.Fatalf("UpdateRepo: %v", err)
-	}
+	f.setRepoFile("r", func(rf *repocfg.File) {
+		rf.Environments = []repocfg.Environment{{Name: "staging", DeployedSHAScript: script}}
+	})
 	if err := f.board.RunEnvScripts(context.Background(), "r"); err != nil {
 		f.t.Fatalf("RunEnvScripts: %v", err)
 	}

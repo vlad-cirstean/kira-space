@@ -159,6 +159,19 @@ func (s *Store) FileFor(repoID string) string {
 	return s.owner[Key(repoID)]
 }
 
+// FileInfo is the file applying to a repo and its error, if any.
+func (s *Store) FileInfo(repoID string) (string, *configfs.Problem) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	file := s.owner[Key(repoID)]
+	for _, f := range s.files {
+		if f.File == file {
+			return file, f.Problem
+		}
+	}
+	return "", nil
+}
+
 // Reload re-reads the folder.
 func (s *Store) Reload() {
 	s.op.Lock()

@@ -18,47 +18,5 @@
       "note": "",
       "status": "unknown"
     }
-  ],
-  "AdeTaskService.UpdateRepo": {
-    "codeRepoId": "<id:1>",
-    "environments": [
-      {
-        "deployedShaScript": "git rev-parse HEAD",
-        "name": "prod"
-      },
-      {
-        "deployedShaScript": "true",
-        "name": "broken"
-      }
-    ],
-    "integrationBranches": [],
-    "name": "envs",
-    "nickname": "",
-    "path": "<work>/envs",
-    "prepareScript": "",
-    "prepareTimeout": "15m",
-    "source": "added",
-    "usedByTasks": true,
-    "worktreeBasePath": ""
-  },
-  "args:AdeTaskService.UpdateRepo": {
-    "codeRepoId": "<id:1>",
-    "patch": {
-      "environments": [
-        {
-          "deployedShaScript": "git rev-parse HEAD",
-          "name": "prod"
-        },
-        {
-          "deployedShaScript": "true",
-          "name": "broken"
-        }
-      ],
-      "integrationBranches": null,
-      "nickname": null,
-      "prepareScript": null,
-      "prepareTimeout": null,
-      "worktreeBasePath": null
-    }
-  }
+  ]
 }

@@ -648,7 +648,12 @@ func (b *TaskBoard) Repos(_ context.Context) (adewire.ReposResult, error) {
 				prepare, timeout, basePath = s.WorktreePrepareScript, s.WorktreePrepareTimeout, s.WorktreeBasePath
 			}
 		}
+		stem, problem := "", (*adewire.RepoProblem)(nil)
+		if b.deps.RepoFile != nil {
+			stem, problem = b.deps.RepoFile(c.RepoID)
+		}
 		r := adewire.Repo{
+			File: stem, Problem: problem,
 			CodeRepoID: c.CodeRepoID, Name: c.Name, Nickname: c.Nickname, Path: c.Root, Source: c.Source,
 			UsedByTasks: used[c.CodeRepoID], IntegrationBranches: nonNil(c.IntegrationBranches),
 			PrepareScript: prepare, PrepareTimeout: timeout, WorktreeBasePath: basePath, Environments: make([]adewire.Environment, len(c.Environments)),

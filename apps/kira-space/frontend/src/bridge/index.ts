@@ -24,6 +24,7 @@ import * as MobileAccessService from '@bindings/mobileaccessservice.js';
 import * as OpenedFilesService from '@bindings/openedfilesservice.js';
 import * as OpsService from '@bindings/opsservice.js';
 import * as PromptsService from '@bindings/promptsservice.js';
+import * as RepoConfigService from '@bindings/repoconfigservice.js';
 import * as ScriptRunsService from '@bindings/scriptrunsservice.js';
 import * as SettingsService from '@bindings/settingsservice.js';
 import * as TabsService from '@bindings/tabsservice.js';
@@ -107,6 +108,12 @@ import type {
   HostViewPosted,
   HostViewTarget,
 } from '../hostview/wire';
+import type {
+  RepoConfigFile,
+  RepoConfigFileArgs,
+  RepoConfigList,
+  RepoConfigSaveArgs,
+} from '../repo/state/repoConfigTypes';
 import type { CliToolsResult, IssueTrackers } from '../state/cliToolsDomain';
 import type { SpaceMode } from '../state/modeDomain';
 import type { SpaceOpRecord } from '../state/opsDomain';
@@ -471,6 +478,13 @@ const spaceControl = {
     unwrap(ConfigFilesService.Open(args)),
   configFilesReveal: (args: { folder: string; file: string }): Promise<void> =>
     unwrap(ConfigFilesService.Reveal(args)),
+  repoConfigList: (): Promise<RepoConfigList> =>
+    unwrap(RepoConfigService.List()).then((r) => trust<RepoConfigList>(r)),
+  repoConfigFile: (args: RepoConfigFileArgs): Promise<RepoConfigFile> =>
+    unwrap(RepoConfigService.File(args)).then((r) => trust<RepoConfigFile>(r)),
+  repoConfigSaveFile: (args: RepoConfigSaveArgs): Promise<RepoConfigFile> =>
+    unwrap(RepoConfigService.SaveFile(args)).then((r) => trust<RepoConfigFile>(r)),
+  onRepoConfigChanged: (cb: () => void): (() => void) => on(CHANNEL.repoConfigChanged, cb),
   agentContextGet: (): Promise<AgentContextView> =>
     unwrap(AgentContextService.Get()).then((r) => trust<AgentContextView>(r)),
   agentContextSave: (args: AgentContextSaveArgs): Promise<AgentContextView> =>
@@ -515,8 +529,6 @@ const spaceControl = {
     unwrap(AdeTaskService.ImportWorkflow(args)).then((r) => trust<V2.WorkflowEntry>(r)),
   adeTaskNewWorkflow: (args: V2.NewWorkflowArgs): Promise<V2.WorkflowEntry> =>
     unwrap(AdeTaskService.NewWorkflow(args)).then((r) => trust<V2.WorkflowEntry>(r)),
-  adeTaskUpdateRepo: (args: V2.UpdateRepoArgs): Promise<V2.Repo> =>
-    unwrap(AdeTaskService.UpdateRepo(args)).then((r) => trust<V2.Repo>(r)),
   adeTaskAddFolder: (args: V2.FolderArgs): Promise<V2.FolderImportResult> =>
     unwrap(AdeTaskService.AddFolder(args)).then((r) => trust<V2.FolderImportResult>(r)),
   adeTaskSetFolderWatch: (args: V2.FolderArgs): Promise<V2.Folder> =>

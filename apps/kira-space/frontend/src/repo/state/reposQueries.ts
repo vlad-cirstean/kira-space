@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import { queryClient } from '@workbench/state/queryClient';
-import type { FolderArgs, FolderHiddenArgs, PathArgs, UpdateRepoArgs } from '../../ade/v2/wire';
+import type { FolderArgs, FolderHiddenArgs, PathArgs } from '../../ade/v2/wire';
 import { control } from '../../bridge/control';
 
 export const reposKey = ['adetask', 'repos'] as const;
@@ -10,10 +10,6 @@ export function useRepos() {
     queryKey: reposKey,
     queryFn: () => control.adeTaskRepos(),
   });
-}
-
-export function useUpdateRepo() {
-  return useMutation({ mutationFn: (args: UpdateRepoArgs) => control.adeTaskUpdateRepo(args) });
 }
 
 function invalidateRepos(): Promise<void> {

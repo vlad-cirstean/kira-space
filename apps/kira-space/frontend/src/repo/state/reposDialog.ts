@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { useLayoutStore } from '../../state/layout';
 import { useModeStore } from '../../state/mode';
 
-export type ReposDialogTab = 'repos' | 'folders';
+export type ReposDialogTab = 'repos' | 'folders' | 'files';
 
 export const useReposDialogStore = defineStore('reposDialog', () => {
   const open = ref(false);

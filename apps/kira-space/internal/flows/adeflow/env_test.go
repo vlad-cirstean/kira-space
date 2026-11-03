@@ -6,6 +6,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -22,20 +23,12 @@ func TestRepoEnvironments(t *testing.T) {
 	// main now holds the branch tip, so the prod script's HEAD contains it.
 	repo.Git("merge", "-q", "--ff-only", "feat")
 
-	envs := []adewire.Environment{
-		{Name: "prod", DeployedShaScript: "git rev-parse HEAD"},
-		{Name: "broken", DeployedShaScript: "true"},
-	}
-	args := adewire.UpdateRepoArgs{CodeRepoID: rec.ID, Patch: adewire.RepoPatch{Environments: &envs}}
-	app.Contract(t, "repo-env", "args:AdeTaskService.UpdateRepo", args)
-	updated, err := app.W.AdeTask.UpdateRepo(ctx, args)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(updated.Environments) != 2 || updated.Environments[0].Name != "prod" {
-		t.Fatalf("UpdateRepo = %+v, want both environments stored", updated.Environments)
-	}
-	app.Contract(t, "repo-env", "AdeTaskService.UpdateRepo", updated)
+	setRepoFile(t, app, rec.ID, func(rf *repocfg.File) {
+		rf.Environments = []repocfg.Environment{
+			{Name: "prod", DeployedSHAScript: "git rev-parse HEAD"},
+			{Name: "broken", DeployedSHAScript: "true"},
+		}
+	})
 
 	head := gitOut(t, repo.Dir, "rev-parse", "HEAD")
 	var br adewire.Branch

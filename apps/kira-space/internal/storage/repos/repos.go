@@ -23,7 +23,6 @@ type Repos struct {
 	Windows               *WindowsRepo
 	MobileDevices         *MobileDevicesRepo
 	MobileNetwork         *MobileTrustedNetworkRepo
-	GitRepoSettings       *GitRepoSettingsRepo
 	GitHostChangeRequests *GitHostChangeRequestsRepo
 	FileHandlerPrevious   *FileHandlerPreviousRepo
 	CodeRepos             *CodeReposRepo
@@ -66,7 +65,6 @@ func New(db *sql.DB) (*Repos, error) {
 		Windows:               &WindowsRepo{DB: db},
 		MobileDevices:         &MobileDevicesRepo{DB: db},
 		MobileNetwork:         &MobileTrustedNetworkRepo{DB: db},
-		GitRepoSettings:       &GitRepoSettingsRepo{DB: db},
 		GitHostChangeRequests: &GitHostChangeRequestsRepo{DB: db},
 		FileHandlerPrevious:   &FileHandlerPreviousRepo{DB: db},
 		CodeRepos:             &CodeReposRepo{DB: db},

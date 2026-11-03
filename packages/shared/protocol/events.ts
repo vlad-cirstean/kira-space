@@ -107,6 +107,8 @@ export const CHANNEL = {
   // The shared agent context file changed or was saved; empty payload, refetch (Kira Space only).
   agentContextChanged: 'kira:agentContext:changed',
   agentSettingsChanged: 'kira:agentSettings:changed',
+  // A repo settings file changed or was saved, or the set of file errors changed; empty payload (Kira Space only).
+  repoConfigChanged: 'kira:repoConfig:changed',
   adeTaskRepos: 'kira:adetask:repos',
   adeTaskRuns: 'kira:adetask:runs',
   adeTaskLog: 'kira:adetask:log',
