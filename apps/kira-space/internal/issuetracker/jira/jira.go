@@ -66,7 +66,7 @@ func (p *Provider) Setup() clisetup.Setup {
 	return clisetup.Setup{
 		DocsURL: docsURL,
 		Steps: []clisetup.Step{
-			{Purpose: clisetup.PurposeInstall, Command: "brew tap atlassian/homebrew-acli && brew install acli"},
+			{Purpose: clisetup.PurposeInstall, Command: "brew tap atlassian/homebrew-acli && brew trust --formula atlassian/acli/acli && brew install acli"},
 			{Purpose: clisetup.PurposeLogin, Command: "acli jira auth login --web"},
 			{Purpose: clisetup.PurposeLoginToken, Command: "acli jira auth login --site <your-site>.atlassian.net --email <you@example.com> --token < token.txt"},
 			{Purpose: clisetup.PurposeCheck, Command: "acli jira auth status"},

@@ -33,7 +33,10 @@ test('contract: both tools show their live state and setup commands', async ({ r
   await expect(page.locator(t('cli-tool-status-jira'))).toHaveText('Not installed');
   await expect(page.locator(t('cli-tool-reason-jira'))).toContainText('acli is not installed');
   const steps = page.locator(t('cli-tool-steps-jira'));
-  await expect(steps).toContainText('brew tap atlassian/homebrew-acli && brew install acli');
+  await expect(steps).toContainText(
+    'brew tap atlassian/homebrew-acli && brew trust --formula atlassian/acli/acli && brew install acli',
+  );
+  await expect(steps).toContainText('brew trust --formula atlassian/acli/acli');
   await expect(steps).toContainText('acli jira auth login --web');
   await expect(page.locator(t('cli-tool-steps-github'))).toContainText('gh auth login');
   await expect(page.locator(t('cli-tool-details-github'))).toContainText('octocat');
