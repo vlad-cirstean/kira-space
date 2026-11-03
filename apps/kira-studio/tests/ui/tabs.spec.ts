@@ -1,7 +1,9 @@
 import { dragTab } from '@workbench/testing/ui/drag';
 import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
+import { connectionCreateArgs, createConnection } from './support/connect';
 import { IPC } from './support/ipcChannels';
+import { emitWailsEvent } from './support/mockRuntime';
 import {
   ORDER_ITEMS_PATH,
   orderItemsFixture,
@@ -28,54 +30,10 @@ const CONTROL: ControlSnapshot[] = [
   { channel: IPC.connectionsList, response: [] },
   {
     channel: IPC.connectionsCreate,
-    args: {
-      name: 'Tabs DB',
-      kind: 'postgres',
-      color: 'blue',
-      mode: 'fields',
-      readOnly: false,
-      host: '127.0.0.1',
-      port: 5432,
-      database: 'kira_test',
-      username: 'postgres',
-      password: null,
-      uri: null,
-      options: {},
-      preconnect: null,
-      preconnectSidecar: false,
-      preconnectDelaySec: 0,
-      autoExplain: false,
-      throttlePerSec: 0,
-    },
+    args: connectionCreateArgs('Tabs DB'),
     response: CONNECTION_SUMMARY,
   },
   ...FIXTURE.control,
-  {
-    channel: IPC.connectionsUpdate,
-    args: {
-      id: CONNECTION_ID,
-      input: {
-        name: 'Tabs DB',
-        kind: 'postgres',
-        color: 'magenta',
-        mode: 'fields',
-        readOnly: false,
-        host: '127.0.0.1',
-        port: 5432,
-        database: 'kira_test',
-        username: 'postgres',
-        uri: null,
-        options: {},
-        preconnect: null,
-        preconnectSidecar: false,
-        preconnectDelaySec: 0,
-        autoExplain: false,
-        throttlePerSec: 0,
-        password: null,
-      },
-    },
-    response: { ...CONNECTION_SUMMARY, color: 'magenta' },
-  },
 ];
 
 async function menuItemIds(page: import('@playwright/test').Page): Promise<string[]> {
@@ -94,16 +52,7 @@ async function menuItemIds(page: import('@playwright/test').Page): Promise<strin
 }
 
 async function createAndConnect(page: import('@playwright/test').Page): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Tabs DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-blue"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Tabs DB');
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();
@@ -206,57 +155,11 @@ test('tabs — independent state, context menu, colours', async ({ relaunch }) =
   await expect(tab.locator('span').first()).toHaveClass(/\bbg-conn-blue\b/);
   await expect(page.locator('[data-testid="toolbar-rail"]')).toHaveClass(/\bbg-conn-blue\b/);
 
-  await openRowMenu(page, '');
-  await page.hover('[data-testid="menu-item-color"]');
-  await expect(page.locator('[data-testid="context-submenu"]')).toBeVisible();
-  await page.click('[data-testid="menu-item-color-magenta"]');
+  // The colour lives in the connection's file: an edit there reaches the open tab.
+  await emitWailsEvent(page, IPC.connectionsChanged, [{ ...CONNECTION_SUMMARY, color: 'magenta' }]);
   await expect(tab).toHaveAttribute('data-color', 'magenta');
   await expect(tab.locator('span').first()).toHaveClass(/\bbg-conn-magenta\b/);
   await expect(page.locator('[data-testid="toolbar-rail"]')).toHaveClass(/\bbg-conn-magenta\b/);
-});
-
-// The Color submenu's own trigger was ContextMenu.vue's `.submenu` CSS — `left: 100%; top:
-// -4px`, no flip, no clamp at all — so a submenu opened near the window's right edge rendered
-// partly or wholly offscreen. A narrow viewport plus a right-click near the trigger row's own
-// right edge (rather than its center) reproduces exactly that geometry: the top-level menu still
-// fits, but a naive "open 160px further right" submenu would not.
-test('a submenu near the right edge flips to open on the left instead of running offscreen (P23)', async ({
-  relaunch,
-}) => {
-  const { window: page } = await relaunch({ control: CONTROL });
-  const viewport = { width: 420, height: 720 };
-  await page.setViewportSize(viewport);
-  await createAndConnect(page);
-
-  const row = connectionRow(page);
-  const rowBox = await row.boundingBox();
-  if (!rowBox) throw new Error('expected the connection row to have a bounding box');
-  // Right-click 10px in from the row's own right edge, not its center — a top-level menu opened
-  // that far right already leaves no 160px+ of room to its own right for a submenu.
-  await page.mouse.click(rowBox.x + rowBox.width - 10, rowBox.y + rowBox.height / 2, {
-    button: 'right',
-  });
-  await expect(page.locator('[data-testid="context-menu"]')).toBeVisible();
-
-  await page.hover('[data-testid="menu-item-color"]');
-  const submenu = page.locator('[data-testid="context-submenu"]');
-  await expect(submenu).toBeVisible();
-
-  const submenuBox = await submenu.boundingBox();
-  const triggerBox = await page.locator('[data-testid="menu-item-color"]').boundingBox();
-  if (!submenuBox || !triggerBox) throw new Error('expected bounding boxes for submenu/trigger');
-
-  // The bug: the submenu's right edge used to run past the viewport's own right edge here.
-  expect(submenuBox.x + submenuBox.width).toBeLessThanOrEqual(viewport.width);
-  expect(submenuBox.x).toBeGreaterThanOrEqual(0);
-  // P264: the top-level menu flips first (prioritize-position), so the submenu now has room on the
-  // trigger's right; either side is fine as long as the menu and submenu stay on-screen.
-  const menuBox = await page.locator('[data-testid="context-menu"]').boundingBox();
-  if (!menuBox) throw new Error('expected a bounding box for the context menu');
-  expect(menuBox.x).toBeGreaterThanOrEqual(0);
-  expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(viewport.width);
-  // Every item in the submenu is still reachable, not just its container box.
-  await expect(page.locator('[data-testid="menu-item-color-magenta"]')).toBeVisible();
 });
 
 // WorkbenchShell's own class name used to collide with TabStrip's identically named root under

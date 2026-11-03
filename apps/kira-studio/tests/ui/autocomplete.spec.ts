@@ -3,7 +3,12 @@ import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, PortSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
 import { installClipboardSpy, lastClipboardWrite } from './support/clipboard';
-import { connectMongo, connectRedis, openConsoleFromMenu } from './support/connect';
+import {
+  connectMongo,
+  connectRedis,
+  createConnection,
+  openConsoleFromMenu,
+} from './support/connect';
 import { mongoCreateArgs, redisCreateArgs } from './support/connectionArgs';
 import { hoverWord } from './support/editor';
 import { editorText } from './support/editorText';
@@ -92,19 +97,10 @@ function mariadbCreateArgs(name: string) {
 async function connectMariadb(
   page: Page,
   name: string,
-  color: string,
+  _color: string,
   opts: { expand?: boolean } = {},
 ): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-mariadb"]');
-  await page.fill('[data-testid="connection-name"]', name);
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '3306');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'kira');
-  await page.click(`[data-testid="color-${color}"]`);
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'mariadb', name);
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();

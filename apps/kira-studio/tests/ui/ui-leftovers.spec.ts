@@ -10,7 +10,12 @@ import { modeTab } from './support/apiMode';
 import { collectionRow } from './support/apiRows';
 import { primaryChord } from './support/chord';
 import { installClipboardSpy, lastClipboardWrite } from './support/clipboard';
-import { connectAndExpand, connectionCreateArgs, openConsoleFromMenu } from './support/connect';
+import {
+  connectAndExpand,
+  connectionCreateArgs,
+  createConnection,
+  openConsoleFromMenu,
+} from './support/connect';
 import { acceptConfirm, cancelConfirm } from './support/dialogs';
 import { gridCell } from './support/grid';
 import { IPC } from './support/ipcChannels';
@@ -37,7 +42,7 @@ const GRID_CONTROL: ControlSnapshot[] = [
   { channel: IPC.connectionsList, response: [] },
   {
     channel: IPC.connectionsCreate,
-    args: connectionCreateArgs('Leftover DB', 'green', { mcp: true }),
+    args: connectionCreateArgs('Leftover DB', 'green'),
     response: postgresConnectionSummary(GRID_ID, 'Leftover DB', 'green'),
   },
   ...GRID_FIXTURE.control,
@@ -90,19 +95,19 @@ test('Close others over a dirty tab asks once', async ({ relaunch }) => {
 
 async function openNewPostgresDialog(page: Page): Promise<void> {
   await page.click('[data-testid="add-connection"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toBeVisible();
+  await expect(page.locator('[data-testid="new-connection-dialog"]')).toBeVisible();
   await page.click('[data-testid="connection-kind-postgres"]');
 }
 
-test('connection dialog with a typed name: outside click keeps it open; Esc and X ask to discard; Cancel closes without asking', async ({
+test('new connection dialog with a typed name: outside click keeps it open; Esc and X ask to discard; Cancel closes without asking', async ({
   relaunch,
 }) => {
   const { window: page } = await relaunch({
     control: [{ channel: IPC.connectionsList, response: [] }],
   });
-  const dialog = page.locator('[data-testid="connection-dialog"]');
+  const dialog = page.locator('[data-testid="new-connection-dialog"]');
   await openNewPostgresDialog(page);
-  await page.fill('[data-testid="connection-name"]', 'Draft DB');
+  await page.fill('[data-testid="new-connection-name"]', 'Draft DB');
 
   await page.mouse.click(4, 4);
   await expect(dialog).toBeVisible();
@@ -114,43 +119,33 @@ test('connection dialog with a typed name: outside click keeps it open; Esc and 
   await cancelConfirm(page);
   await expect(dialog).toBeVisible();
 
-  await page.click('[data-testid="connection-dialog-close"]');
+  await page.click('[data-testid="new-connection-close"]');
   await expect(page.locator(CONFIRM)).toBeVisible();
   await cancelConfirm(page);
   await expect(dialog).toBeVisible();
 
-  await page.click('[data-testid="connection-cancel"]');
+  await page.click('[data-testid="new-connection-cancel"]');
   await expect(dialog).toHaveCount(0);
   await expect(page.locator(CONFIRM)).toHaveCount(0);
 });
 
-test('connection dialog submit with an empty name shows the error, focuses the field and returns to General', async ({
+test('new connection dialog: Create stays off until the connection has a name', async ({
   relaunch,
 }) => {
   const { window: page } = await relaunch({
     control: [{ channel: IPC.connectionsList, response: [] }],
   });
   await openNewPostgresDialog(page);
-  await page.click('[data-testid="connection-tab-advanced"]');
-  await expect(page.locator('[data-testid="connection-tab-advanced"]')).toHaveAttribute(
-    'data-state',
-    'on',
-  );
 
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-tab-general"]')).toHaveAttribute(
-    'data-state',
-    'on',
-  );
-  const name = page.locator('[data-testid="connection-name"]');
-  await expect(name).toHaveAttribute('aria-invalid', 'true');
-  await expect(name).toBeFocused();
-  await expect(page.locator('[data-testid="connection-name-error"]')).toHaveText(
-    'Too small: expected string to have >=1 characters',
-  );
+  const create = page.locator('[data-testid="new-connection-create"]');
+  await expect(create).toBeDisabled();
+  await page.fill('[data-testid="new-connection-name"]', 'Named DB');
+  await expect(create).toBeEnabled();
+  await page.fill('[data-testid="new-connection-name"]', '   ');
+  await expect(create).toBeDisabled();
 });
 
-test('saving a connection: Save is aria-busy while the create call is pending', async ({
+test('creating a connection: Create is aria-busy while the create call is pending', async ({
   relaunch,
 }) => {
   const { window: page, control } = await relaunch({
@@ -158,25 +153,20 @@ test('saving a connection: Save is aria-busy while the create call is pending', 
       { channel: IPC.connectionsList, response: [] },
       {
         channel: IPC.connectionsCreate,
-        args: connectionCreateArgs('Busy DB', 'green', { mcp: true }),
+        args: connectionCreateArgs('Busy DB'),
         response: postgresConnectionSummary('conn-ul-busy', 'Busy DB', 'green'),
         hold: true,
       },
     ],
   });
   await openNewPostgresDialog(page);
-  await page.fill('[data-testid="connection-name"]', 'Busy DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-green"]');
+  await page.fill('[data-testid="new-connection-name"]', 'Busy DB');
 
-  const save = page.locator('[data-testid="connection-save"]');
-  await save.click();
-  await expect(save).toHaveAttribute('aria-busy', 'true');
+  const create = page.locator('[data-testid="new-connection-create"]');
+  await create.click();
+  await expect(create).toHaveAttribute('aria-busy', 'true');
   control.release(IPC.connectionsCreate);
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="new-connection-dialog"]')).toHaveCount(0);
 });
 
 // --- shortcuts --------------------------------------------------------------------------------
@@ -249,14 +239,7 @@ test('Ctrl/Cmd+S in a document edit saves it', async ({ relaunch }) => {
     ],
     stream: MONGO_FIXTURE.port,
   });
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-mongodb"]');
-  await page.fill('[data-testid="connection-name"]', 'Mongo UL');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '27017');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'kira');
-  await page.click('[data-testid="connection-save"]');
+  await createConnection(page, 'mongodb', 'Mongo UL');
   await expandRow(page, '');
   await expandRow(page, 'database:kira_test');
   await (await findRow(page, WIDGETS_PATH)).dblclick();

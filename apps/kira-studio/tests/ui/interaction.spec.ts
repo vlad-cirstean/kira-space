@@ -1503,11 +1503,10 @@ test('interaction completeness — grid menus, selection, copy/paste, shortcuts'
   await page.keyboard.press(COPY_KEY);
   expect(await clipboardText(page)).toBe('Interaction DB');
 
+  // Rename moved into the connection's file: F2 opens nothing.
   await connRow.click();
   await page.keyboard.press('F2');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toBeVisible();
-  await page.click('[data-testid="connection-cancel"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="connection-file-dialog"]')).toHaveCount(0);
 
   // Ctrl/Cmd+D last — it's the one assertion here that leaves an extra connection row behind
   // (the duplicate), which would otherwise make `connectionRow`'s own filter ambiguous for

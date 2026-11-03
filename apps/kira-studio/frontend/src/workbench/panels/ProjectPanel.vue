@@ -14,7 +14,9 @@ import ProjectTree from '../../project/ProjectTree.vue';
 import SchemaDialog from '../../project/SchemaDialog.vue';
 import { useCredentialsDialogStore } from '../../project/state/credentialsDialog';
 import { useTreeStore } from '../../project/state/tree';
-import { useConnectionDialogStore, useConnectionsStore } from '../../state/connections';
+import { useConnectionConfig } from '../../state/connectionConfig';
+import { useConnectionDialogStore } from '../../state/connectionDialogs';
+import { useConnectionsStore } from '../../state/connections';
 import { useSchemaDialogStore } from '../../state/schemas';
 
 const connectionsStore = useConnectionsStore();
@@ -23,7 +25,13 @@ const schemaDialogStore = useSchemaDialogStore();
 const credentialsDialogStore = useCredentialsDialogStore();
 const treeStore = useTreeStore();
 
-const empty = computed(() => connectionsStore.records.length === 0);
+const config = useConnectionConfig();
+// A file that never held a valid connection is listed in the tree, so it keeps the panel off the
+// empty state.
+const hasBrokenFile = computed(() =>
+  (config.data.value?.files ?? []).some((f) => f.problem !== null && f.id === ''),
+);
+const empty = computed(() => connectionsStore.records.length === 0 && !hasBrokenFile.value);
 // P104 §3: PanelShell's own header/search-reveal/type-ahead-redirect logic, inlined via the
 // shared usePanelHeaderSearch composable rather than kept as a wrapper component.
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
@@ -58,7 +66,7 @@ const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
           :icon="ICON.add"
           :label="t('studio.project.connectionDialog.newConnection.title')"
           data-testid="add-connection"
-          @click="connectionDialogStore.openCreateDialog"
+          @click="connectionDialogStore.openNew"
         />
       </template>
     </PanelHeader>

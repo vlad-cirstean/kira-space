@@ -7,6 +7,7 @@ import {
   runToJustBeforeTooltipDelay,
   settleTooltipSkipDelay,
 } from './support/clock';
+import { createConnection } from './support/connect';
 import { IPC } from './support/ipcChannels';
 import {
   COMPOSITE_PK_META,
@@ -141,16 +142,7 @@ const PORT: PortSnapshot[] = [...RW_PORT, ...RO_FIXTURE.port];
  *  a real grid open (so `.slick-header-columns` exists in the DOM for AttributeTooltip.vue's own
  *  container prop, §6.4) but not the read-only connection scenario 2 goes on to add. */
 async function openConnectionAndGrid(page: Page): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Tooltips DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-blue"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Tooltips DB');
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();
@@ -219,18 +211,7 @@ test('tooltips — app-owned surface: delay, disabled controls, popovers, a11y',
   // --- scenario 2: a disabled control (F5/D3) — a naive mouseenter implementation never sees
   // this hover at all, since Blink dispatches no pointer events on a disabled form control.
   await connRow.locator('[data-testid="tree-twisty"]').click(); // collapse — keeps the two connections' tree paths distinct
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Tooltips DB (RO)');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-red"]');
-  await page.click('[data-testid="connection-tab-advanced"]');
-  await page.click('[data-testid="connection-readonly"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Tooltips DB (RO)');
 
   const roConnRow = connectionRow(page, 'Tooltips DB (RO)');
   await expect(roConnRow).toBeVisible();

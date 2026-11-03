@@ -6,12 +6,14 @@ import StatusDot from '@theme/components/StatusDot.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
+import { t } from '@theme/i18n';
 import { rowIndent, rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { splitMatches } from '@workbench/behaviour/match';
 import { SORTABLE_GHOST_CLASS } from '@workbench/behaviour/sortableReorder';
 import TreeTwisty from '@workbench/components/TreeTwisty.vue';
 import { computed, type HTMLAttributes } from 'vue';
+import { useConnectionConfig } from '../state/connectionConfig';
 import { useConnectionsStore } from '../state/connections';
 import EngineIcon from '../theme/EngineIcon.vue';
 import { columnTypeIcon, nodeIcon } from '../theme/icons';
@@ -47,6 +49,18 @@ const emit = defineEmits<{
 
 const connectionsStore = useConnectionsStore();
 const treeStore = useTreeStore();
+const config = useConnectionConfig();
+
+// The file behind a connection row has an error: the row keeps its last valid name and color.
+const fileProblem = computed(() => {
+  if (props.row.kind !== 'connection') return null;
+  const file = config.data.value?.files.find((f) => f.id === props.row.connectionId);
+  const problem = file?.problem;
+  if (!problem) return null;
+  return problem.line > 0
+    ? t('common.config.lineError.error', { line: problem.line, text: problem.message })
+    : problem.message;
+});
 
 const icon = computed(() => {
   // P19: a group folder's icon reflects its own expand state, unlike every other kind.
@@ -200,6 +214,16 @@ function onKeydown(e: KeyboardEvent): void {
         <template v-else>{{ row.name }}</template>
       </TruncatedText>
     </span>
+
+    <Tooltip v-if="fileProblem">
+      <TooltipTrigger as-child>
+        <span class="flex shrink-0 text-error" data-testid="tree-connection-problem">
+          <CodiconIcon name="warning" :size="13" />
+          <span class="sr-only">{{ fileProblem }}</span>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{{ fileProblem }}</TooltipContent>
+    </Tooltip>
 
     <span v-if="row.badges?.length" class="flex gap-0.5 shrink-0">
       <span v-for="badge in row.badges" :key="badge" :class="rowMeta">{{ badge }}</span>

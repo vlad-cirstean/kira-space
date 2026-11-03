@@ -213,8 +213,6 @@ test('delete is trash in the connection menu', async ({ relaunch }) => {
 
   await (await connectionRow(page, PG_CONN.name)).click({ button: 'right' });
   await icon(page.locator('[data-testid="menu-item-delete"]'), 'trash');
-  await page.hover('[data-testid="menu-item-color"]');
-  await expect(page.locator('[data-testid="menu-item-color-blue"]')).toContainText('Blue');
   await page.keyboard.press('Escape');
 });
 
@@ -225,23 +223,42 @@ test('Duplicate tab shows the files icon', async ({ relaunch }) => {
   await icon(page.locator('[data-testid="menu-item-duplicate-tab"]'), 'files');
 });
 
-test('a refused SQLite test shows the backend catalog text in the connection dialog', async ({
+test('a refused SQLite test shows the backend catalog text in the file dialog', async ({
   relaunch,
 }) => {
+  const sqlite = {
+    ...PG_CONN,
+    id: 'conn-sqlite',
+    name: 'relative',
+    kind: 'sqlite' as const,
+    file: 'relative.yaml',
+  };
   const { window: page } = await relaunch({
     control: [
-      { channel: IPC.connectionsList, response: [] },
+      { channel: IPC.connectionsList, response: [sqlite] },
+      {
+        channel: IPC.connectionConfigFile,
+        response: {
+          file: 'relative.yaml',
+          id: sqlite.id,
+          path: '/kira/connections/relative.yaml',
+          text: 'name: relative\nkind: sqlite\ndatabase: data/app.db\n',
+          hash: 'hash-1',
+          problem: null,
+          lastGood: false,
+          editable: true,
+          secrets: [],
+        },
+      },
       {
         channel: IPC.connectionsTest,
         response: { ok: false, error: 'The database file must be an absolute path.' },
       },
     ],
   });
-  await emitWailsEvent(page, IPC.newConnection, null);
-  await expect(page.locator('[data-testid="connection-dialog"]')).toBeVisible();
-  await page.click('[data-testid="connection-kind-sqlite"]');
-  await page.fill('[data-testid="connection-name"]', 'relative');
-  await page.fill('[data-testid="connection-database"]', 'data/app.db');
+  await (await connectionRow(page, 'relative')).click({ button: 'right' });
+  await page.click('[data-testid="menu-item-edit"]');
+  await expect(page.locator('[data-testid="connection-file-dialog"]')).toBeVisible();
   await page.click('[data-testid="connection-test"]');
 
   await expect(page.locator('[data-testid="connection-test-result"]')).toHaveText(
@@ -254,9 +271,9 @@ test('renamed menu events still open their UI', async ({ relaunch }) => {
     control: [{ channel: IPC.connectionsList, response: [] }],
   });
   await emitWailsEvent(page, IPC.newConnection, null);
-  await expect(page.locator('[data-testid="connection-dialog"]')).toBeVisible();
-  await page.click('[data-testid="connection-cancel"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="new-connection-dialog"]')).toBeVisible();
+  await page.click('[data-testid="new-connection-cancel"]');
+  await expect(page.locator('[data-testid="new-connection-dialog"]')).toHaveCount(0);
 
   await emitWailsEvent(page, IPC.openSettings, null);
   await expect(page.locator('[data-testid="settings-dialog"]')).toBeVisible();

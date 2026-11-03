@@ -1,6 +1,7 @@
 import * as AgentService from '@bindings/agentservice.js';
 import * as AppService from '@bindings/appservice.js';
 import * as ConfigFilesService from '@bindings/configfilesservice.js';
+import * as ConnectionConfigService from '@bindings/connectionconfigservice.js';
 import * as ConnectionsService from '@bindings/connectionsservice.js';
 import * as CustomScriptsService from '@bindings/customscriptsservice.js';
 import * as DataGripService from '@bindings/datagripservice.js';
@@ -33,6 +34,11 @@ import type {
   ConnectionState,
   ConnectionSummary,
 } from '@shared/domain/connection';
+import type {
+  ConnectionConfigView,
+  ConnectionFileDetail,
+  ConnectionSecretKind,
+} from '@shared/domain/connectionConfig';
 import type { DataGripPreview, DataGripReport } from '@shared/domain/datagrip';
 import type {
   DbMcpApprovalSnapshot,
@@ -155,8 +161,19 @@ const studioControl = {
     unwrap(ConnectionsService.Reorder({ ids })).then((r) => trust<ConnectionSummary[]>(r ?? [])),
   connectionsCreate: (input: ConnectionInput): Promise<ConnectionSummary> =>
     unwrap(ConnectionsService.Create(input)).then((r) => trust<ConnectionSummary>(r)),
-  connectionsUpdate: (id: string, input: ConnectionInput): Promise<ConnectionSummary> =>
-    unwrap(ConnectionsService.Update({ id, input })).then((r) => trust<ConnectionSummary>(r)),
+  // Writes the username into the connection's file and seals the password; a nil field is kept.
+  // Go reconnects a live connection.
+  connectionsUpdateCredentials: (
+    id: string,
+    credentials: { username?: string; password?: string },
+  ): Promise<void> =>
+    unwrap(
+      ConnectionsService.UpdateCredentials({
+        id,
+        username: credentials.username ?? null,
+        password: credentials.password ?? null,
+      }),
+    ),
   connectionsDuplicate: (id: string): Promise<ConnectionSummary> =>
     unwrap(ConnectionsService.Duplicate({ id })).then((r) => trust<ConnectionSummary>(r)),
   // Go-side name is Remove, not Delete (P57 §1.9) — read the .go file, do not assume lowerCamel.
@@ -173,14 +190,9 @@ const studioControl = {
     error: string | null;
     outcome: string;
   }> => unwrap(ConnectionsService.Reveal({ id, confirmed })),
-  // The generated TestResult's serverVersion/error are `string | null | undefined`; the
-  // shape was `string | undefined` only (no null) — normalized here rather than pushed onto
-  // ConnectionDialog.vue, which assigns straight into its own `?: string` reactive state.
-  // id is the dialog's editingId (empty for a brand-new connection) — the backend fills in
-  // the stored secret server-side when the draft carries none, so Test on an existing connection
-  // whose password field was never revealed still probes with the real credential.
+  // Tests the saved file. The generated TestResult's serverVersion/error are
+  // `string | null | undefined`; normalized here to `string | undefined`.
   connectionsTest: (
-    input: ConnectionInput,
     id: string,
   ): Promise<{
     ok: boolean;
@@ -188,7 +200,7 @@ const studioControl = {
     error?: string;
   }> =>
     unwrap<Awaited<ReturnType<typeof ConnectionsService.Test>>>(
-      ConnectionsService.Test({ input, id }),
+      ConnectionsService.Test({ id }),
     ).then((r) => ({
       ok: r.ok,
       serverVersion: r.serverVersion ?? undefined,
@@ -202,6 +214,41 @@ const studioControl = {
     unwrap(ConnectionsService.States()).then((r) => trust<ConnectionState[]>(r ?? [])),
   connectionsSecretsStatus: (): Promise<SecretStorageStatus> =>
     unwrap(ConnectionsService.SecretsStatus()).then((r) => trust<SecretStorageStatus>(r)),
+
+  // The connection files' status and text, and the secret names they reference; SetSecret is
+  // write-only, no call returns a value.
+  connectionConfigView: (): Promise<ConnectionConfigView> =>
+    unwrap(ConnectionConfigService.View()).then((r) => trust<ConnectionConfigView>(r)),
+  connectionConfigFile: (file: string): Promise<ConnectionFileDetail> =>
+    unwrap(ConnectionConfigService.File({ file })).then((r) => trust<ConnectionFileDetail>(r)),
+  connectionConfigSaveFile: (
+    file: string,
+    text: string,
+    baseHash: string,
+  ): Promise<ConnectionFileDetail> =>
+    unwrap(ConnectionConfigService.SaveFile({ file, text, baseHash })).then((r) =>
+      trust<ConnectionFileDetail>(r),
+    ),
+  connectionConfigSetSecret: (
+    kind: ConnectionSecretKind,
+    name: string,
+    value: string,
+  ): Promise<ConnectionConfigView> =>
+    unwrap(ConnectionConfigService.SetSecret({ kind, name, value })).then((r) =>
+      trust<ConnectionConfigView>(r),
+    ),
+  connectionConfigDeleteSecret: (
+    kind: ConnectionSecretKind,
+    name: string,
+  ): Promise<ConnectionConfigView> =>
+    unwrap(ConnectionConfigService.DeleteSecret({ kind, name })).then((r) =>
+      trust<ConnectionConfigView>(r),
+    ),
+  onConnectionConfigChanged: (cb: () => void): (() => void) =>
+    on(CHANNEL.connectionConfigChanged, cb),
+  onConnectionFiltersChanged: (
+    cb: (event: { connectionId: string; visibility: TreeVisibility }) => void,
+  ): (() => void) => on(CHANNEL.connectionFiltersChanged, cb),
 
   // M5 §7.2/§9: the Privacy tab, the grid header menu, and the grid preview's own local tag
   // computation all share these — see state/maskRules.ts for the one store that wraps them.

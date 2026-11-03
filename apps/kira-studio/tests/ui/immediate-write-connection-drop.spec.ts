@@ -5,7 +5,7 @@ import {
 } from '../ipc/redis/redis.fixture';
 import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
-import { disconnectConnection } from './support/connect';
+import { createConnection, disconnectConnection } from './support/connect';
 import { IPC } from './support/ipcChannels';
 import {
   DB_PATH as MONGO_DB_PATH,
@@ -63,16 +63,7 @@ test('documents keep rows and the open editor read-only after a drop', async ({ 
     control: MONGO_CONTROL,
     stream: MONGO_FIXTURE.port,
   });
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-mongodb"]');
-  await page.fill('[data-testid="connection-name"]', 'Mongo Drop');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '27017');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'kira');
-  await page.click('[data-testid="color-green"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'mongodb', 'Mongo Drop');
   await openRowMenu(page, '');
   await page.click('[data-testid="menu-item-connect"]');
   await expect(connectionRow(page).locator('.status-dot')).toHaveAttribute(

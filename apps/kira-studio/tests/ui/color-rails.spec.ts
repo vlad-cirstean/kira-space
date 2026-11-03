@@ -11,6 +11,7 @@ const RAIL_CLASS = 'absolute inset-y-0 left-0 w-1 bg-conn-cyan';
 const EMPTY_RAIL_CLASS = 'absolute inset-y-0 left-0 w-1';
 
 const CONNECTION: ConnectionSummary = {
+  file: 'fixture.yaml',
   id: 'conn-rail',
   name: 'Rail Conn',
   kind: 'postgres',

@@ -10,12 +10,13 @@ import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 import { connectionRow } from './support/tree';
 
-// P248: paste credentials into the connection dialog, and "Update credentials…" on a saved
-// connection. The pasted password must never reach the console.
+// P248: "Update credentials…" on a saved connection takes a pasted block. The pasted password
+// must never reach the console. The connection file dialog holds no password field (P475).
 
 const PASSWORD = 'Zx9!pw;Qq7'; // distinctive; contains `;` to exercise label-based value bounds
 
 const BASE: Omit<ConnectionSummary, 'id' | 'name' | 'kind' | 'mode' | 'sortOrder'> = {
+  file: 'fixture.yaml',
   color: 'blue',
   readOnly: false,
   host: '127.0.0.1',
@@ -56,7 +57,7 @@ const LITE = conn('c-lite', 'File DB', 'sqlite', 'fields', 2);
 const SQS = conn('c-sqs', 'Queue', 'sqs', 'fields', 3);
 
 const CREDENTIAL_CALLS: readonly string[] = [
-  IPC.connectionsUpdate,
+  IPC.connectionsUpdateCredentials,
   IPC.connectionsDisconnect,
   IPC.connectionsConnect,
 ];
@@ -68,128 +69,9 @@ function consoleLog(page: Page): string[] {
   return seen;
 }
 
-function recordArgs(connection: ConnectionSummary): Record<string, unknown> {
-  const { id: _id, sortOrder: _s, createdAt: _c, updatedAt: _u, ...fields } = connection;
-  return fields;
-}
-
 async function paste(page: Page, text: string): Promise<void> {
   await page.fill('[data-testid="paste-credentials-input"]', text);
 }
-
-async function openPastePopover(page: Page): Promise<void> {
-  await page.click('[data-testid="connection-paste-credentials"]');
-  await expect(page.locator('[data-testid="paste-credentials-panel"]')).toBeVisible();
-}
-
-const CREATE_TEXT = [
-  'PGHOST=db.example.com',
-  'PGPORT=5433',
-  `user: alice  pass: ${PASSWORD}`,
-  'login: bob',
-  'service=svc',
-].join('\n');
-
-test('create: review shows masked password, guessed badge and a picker; Apply fills, Save sends', async ({
-  relaunch,
-}) => {
-  const { window: page, control } = await relaunch({
-    control: [
-      { channel: IPC.connectionsList, response: [] },
-      { channel: IPC.connectionsCreate, response: PG },
-    ],
-  });
-  const logged = consoleLog(page);
-
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Pasted');
-  await openPastePopover(page);
-  await paste(page, CREATE_TEXT);
-
-  const passwordRow = page.locator('[data-testid="paste-credentials-row-password"]');
-  await expect(passwordRow).toBeVisible();
-  await expect(passwordRow).not.toContainText(PASSWORD);
-  await page.click('[data-testid="paste-credentials-toggle-password"]');
-  await expect(passwordRow).toContainText(PASSWORD);
-  await expect(page.locator('[data-testid="paste-credentials-row-database"]')).toContainText(
-    'Guessed',
-  );
-
-  const pick = page.locator('[data-testid="paste-credentials-pick-username"]');
-  await expect(pick).toBeVisible();
-  await pick.selectOption({ index: 1 });
-
-  await page.click('[data-testid="paste-credentials-apply"]');
-  await expect(page.locator('[data-testid="paste-credentials-panel"]')).toHaveCount(0);
-  await expect(page.locator('[data-testid="connection-host"]')).toHaveValue('db.example.com');
-  await expect(page.locator('[data-testid="connection-port"]')).toHaveValue('5433');
-  await expect(page.locator('[data-testid="connection-database"]')).toHaveValue('svc');
-  await expect(page.locator('[data-testid="connection-username"]')).toHaveValue('bob');
-
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
-  const create = control.log().find((e) => e.channel === IPC.connectionsCreate);
-  expect(create?.args).toMatchObject({
-    host: 'db.example.com',
-    port: 5433,
-    database: 'svc',
-    username: 'bob',
-    password: PASSWORD,
-  });
-  expect(logged.join('\n')).not.toContain(PASSWORD);
-});
-
-test('cancel leaves the draft untouched and the textarea empty on reopen', async ({ relaunch }) => {
-  const { window: page } = await relaunch({
-    control: [{ channel: IPC.connectionsList, response: [] }],
-  });
-  const logged = consoleLog(page);
-
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  const host = page.locator('[data-testid="connection-host"]');
-  const hostBefore = await host.inputValue();
-  await openPastePopover(page);
-  await paste(page, CREATE_TEXT);
-  await expect(page.locator('[data-testid="paste-credentials-row-password"]')).toBeVisible();
-  await page.click('[data-testid="paste-credentials-cancel"]');
-
-  await expect(page.locator('[data-testid="paste-credentials-panel"]')).toHaveCount(0);
-  await expect(host).toHaveValue(hostBefore);
-  await expect(page.locator('[data-testid="connection-password"]')).toHaveValue('');
-
-  await openPastePopover(page);
-  await expect(page.locator('[data-testid="paste-credentials-input"]')).toHaveValue('');
-  await expect(page.locator('[data-testid="paste-credentials-row-password"]')).toHaveCount(0);
-  expect(logged.join('\n')).not.toContain(PASSWORD);
-});
-
-test('edit: pasted password is sent on Save', async ({ relaunch }) => {
-  const { window: page, control } = await relaunch({
-    control: [
-      { channel: IPC.connectionsList, response: [PG] },
-      { channel: IPC.connectionsUpdate, response: PG },
-    ],
-  });
-  const logged = consoleLog(page);
-
-  await connectionRow(page, PG.name).click({ button: 'right' });
-  await page.click('[data-testid="menu-item-edit"]');
-  await openPastePopover(page);
-  await paste(page, `PGPASSWORD="${PASSWORD}"`);
-  await page.click('[data-testid="paste-credentials-apply"]');
-  await expect(page.locator('[data-testid="connection-password"]')).toHaveValue(PASSWORD);
-
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
-  const update = control.log().find((e) => e.channel === IPC.connectionsUpdate);
-  expect(update?.args).toEqual({
-    id: PG.id,
-    input: { ...recordArgs(PG), password: PASSWORD },
-  });
-  expect(logged.join('\n')).not.toContain(PASSWORD);
-});
 
 test('tree menu offers Update credentials only for fields-mode network connections', async ({
   relaunch,
@@ -214,7 +96,7 @@ test('tree menu offers Update credentials only for fields-mode network connectio
   }
 });
 
-test('Update credentials writes only user and password; a username change leaves the reconnect to the backend', async ({
+test('Update credentials sends only user and password in one call; the backend owns the reconnect', async ({
   relaunch,
 }) => {
   const state = {
@@ -228,9 +110,7 @@ test('Update credentials writes only user and password; a username change leaves
   const control: ControlSnapshot[] = [
     { channel: IPC.connectionsList, response: [PG] },
     { channel: IPC.connectionsStates, response: [state] },
-    { channel: IPC.connectionsUpdate, response: PG },
-    { channel: IPC.connectionsDisconnect, response: { ...state, status: 'disconnected' } },
-    { channel: IPC.connectionsConnect, response: state },
+    { channel: IPC.connectionsUpdateCredentials, response: null },
   ];
   const { window: page, control: handle } = await relaunch({ control });
   const logged = consoleLog(page);
@@ -247,17 +127,12 @@ test('Update credentials writes only user and password; a username change leaves
   await expect(page.locator('[data-testid="credentials-update-dialog"]')).toHaveCount(0);
 
   const calls = handle.log().filter((e) => CREDENTIAL_CALLS.includes(e.channel));
-  expect(calls.map((e) => e.channel)).toEqual([IPC.connectionsUpdate]);
-  expect(calls[0]?.args).toEqual({
-    id: PG.id,
-    input: { ...recordArgs(PG), username: 'rotated', password: PASSWORD },
-  });
+  expect(calls.map((e) => e.channel)).toEqual([IPC.connectionsUpdateCredentials]);
+  expect(calls[0]?.args).toEqual({ id: PG.id, username: 'rotated', password: PASSWORD });
   expect(logged.join('\n')).not.toContain(PASSWORD);
 });
 
-test('Update credentials with a password only reconnects a live connection', async ({
-  relaunch,
-}) => {
+test('Update credentials with a password only sends no username', async ({ relaunch }) => {
   // Backend half: dbflow TestPostgresUpdateCredentials (complete suite).
   const state = {
     ...contract('paste-credentials', 'ConnectionsService.Connect#connected', {
@@ -270,9 +145,7 @@ test('Update credentials with a password only reconnects a live connection', asy
     control: [
       { channel: IPC.connectionsList, response: [PG] },
       { channel: IPC.connectionsStates, response: [state] },
-      { channel: IPC.connectionsUpdate, response: PG },
-      { channel: IPC.connectionsDisconnect, response: { ...state, status: 'disconnected' } },
-      { channel: IPC.connectionsConnect, response: state },
+      { channel: IPC.connectionsUpdateCredentials, response: null },
     ],
   });
 
@@ -282,17 +155,6 @@ test('Update credentials with a password only reconnects a live connection', asy
   await page.click('[data-testid="paste-credentials-apply"]');
   await expect(page.locator('[data-testid="credentials-update-dialog"]')).toHaveCount(0);
 
-  await expect
-    .poll(() =>
-      control
-        .log()
-        .map((e) => e.channel)
-        .filter((c) => CREDENTIAL_CALLS.includes(c)),
-    )
-    .toEqual([IPC.connectionsUpdate, IPC.connectionsDisconnect, IPC.connectionsConnect]);
-  const update = control.log().find((e) => e.channel === IPC.connectionsUpdate);
-  expect(update?.args).toEqual({
-    id: PG.id,
-    input: { ...recordArgs(PG), password: PASSWORD },
-  });
+  const update = control.log().find((e) => e.channel === IPC.connectionsUpdateCredentials);
+  expect(update?.args).toEqual({ id: PG.id, username: null, password: PASSWORD });
 });

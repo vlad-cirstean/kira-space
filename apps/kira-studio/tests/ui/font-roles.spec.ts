@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
+import { createConnection } from './support/connect';
 import { IPC } from './support/ipcChannels';
 import {
   DB_PATH,
@@ -61,16 +62,7 @@ const CONTROL: ControlSnapshot[] = [
 ];
 
 async function connectAndOpenGrid(page: Page): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-mariadb"]');
-  await page.fill('[data-testid="connection-name"]', 'FontRoles');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '3306');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'kira');
-  await page.click('[data-testid="color-amber"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'mariadb', 'FontRoles');
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();

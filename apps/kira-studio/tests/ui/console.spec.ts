@@ -4,7 +4,12 @@ import type { ColumnDescriptor } from '@shared/protocol/page';
 import type { ControlSnapshot, LogicalPage, PortSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
 import { installClipboardSpy, lastClipboardWrite } from './support/clipboard';
-import { connectAndExpand, connectionCreateArgs, openConsoleFromMenu } from './support/connect';
+import {
+  connectAndExpand,
+  connectionCreateArgs,
+  createConnection,
+  openConsoleFromMenu,
+} from './support/connect';
 import { mongoCreateArgs } from './support/connectionArgs';
 import { executeSnap, intColumnPage, numberPage } from './support/consolePages';
 import { typeInto } from './support/editor';
@@ -980,16 +985,7 @@ test('Query console — a Mongo document result copies as JSON, one row or all d
 
   const { window: page } = await relaunch({ control: CONTROL, stream: PORT });
   await installClipboardSpy(page, { lazy: true });
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-mongodb"]');
-  await page.fill('[data-testid="connection-name"]', 'Console Doc Copy');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '27017');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'kira');
-  await page.click('[data-testid="color-green"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'mongodb', 'Console Doc Copy');
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();
   await openRowMenu(page, '');

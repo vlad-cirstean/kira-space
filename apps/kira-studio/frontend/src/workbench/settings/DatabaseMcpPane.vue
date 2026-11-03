@@ -3,6 +3,7 @@ import type { ConnectionSummary } from '@shared/domain/connection';
 import { useQuery } from '@tanstack/vue-query';
 import CodeBlock from '@theme/components/CodeBlock.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { Field, FieldContent, FieldDescription, FieldLegend } from '@theme/components/ui/field';
@@ -14,6 +15,7 @@ import { formatDateTime } from '@workbench/behaviour/format';
 import { computed, ref, useId } from 'vue';
 import ClusterMcpDialog from '../../kubernetes/components/ClusterMcpDialog.vue';
 import { useClusters } from '../../kubernetes/queries';
+import { useConnectionDialogStore } from '../../state/connectionDialogs';
 import { useConnectionsStore } from '../../state/connections';
 import { useDbMcpStore } from '../../state/dbmcp';
 import { loadMaskRuleCounts, maskRuleCountsQueryKey } from '../../state/maskRules';
@@ -26,6 +28,7 @@ import type { SettingsPaneProps } from './types';
 defineProps<SettingsPaneProps>();
 
 const connectionsStore = useConnectionsStore();
+const connectionDialogStore = useConnectionDialogStore();
 const dbMcpStore = useDbMcpStore();
 const settingsStore = useSettingsStore();
 const maskRuleCountsQuery = useQuery({
@@ -50,9 +53,6 @@ const focus = useAsyncAction((enabled: boolean) =>
 );
 const regenerate = useAsyncAction(() => dbMcpStore.regenerateDbMcpToken());
 const install = useAsyncAction(() => dbMcpStore.installDbMcpAgent());
-const connectionToggle = useAsyncAction((id: string, enabled: boolean) =>
-  connectionsStore.setConnectionMcpEnabled(id, enabled),
-);
 const dbMcpToggling = toggle.pending;
 const dbMcpRegenerating = regenerate.pending;
 const dbMcpInstalling = install.pending;
@@ -62,8 +62,7 @@ const actionError = computed(
     preview.error.value ??
     focus.error.value ??
     regenerate.error.value ??
-    install.error.value ??
-    connectionToggle.error.value,
+    install.error.value,
 );
 function clearActionErrors(): void {
   toggle.error.value = null;
@@ -71,7 +70,6 @@ function clearActionErrors(): void {
   focus.error.value = null;
   regenerate.error.value = null;
   install.error.value = null;
-  connectionToggle.error.value = null;
 }
 async function onToggleDbMcpEnabled(enabled: boolean): Promise<void> {
   clearActionErrors();
@@ -111,14 +109,8 @@ const dbMcpInstallMessage = computed(() => {
 
 const dbMcpTokenExpired = computed(() => tokenExpired(dbMcpStore.status.expiresAt));
 
-// M1 §6.1: exposure itself (deny by default) stays an instant toggle here. M2 §7.3: the three
-// permission modes and the description are edited in the connection's own MCP tab, not here —
-// this list stays a read-only glance plus the one control it already had.
-async function onToggleConnectionMcpEnabled(id: string, enabled: boolean): Promise<void> {
-  clearActionErrors();
-  await connectionToggle.run(id, enabled);
-}
-
+// Exposure and the three permission modes live in the connection's file; this list is a glance plus
+// the way into the file.
 // M2 §7.3: the row's own description glance — first line only, "" when unset.
 function mcpDescriptionFirstLine(conn: ConnectionSummary): string {
   return conn.mcpDescription.split('\n', 1)[0] ?? '';
@@ -304,11 +296,24 @@ const dbMcpFocusId = useId();
               }}</FieldDescription
             >
           </div>
-          <Switch
-            :model-value="conn.mcpEnabled"
-            :data-testid="`db-mcp-connection-${conn.id}`"
-            @update:model-value="(v) => onToggleConnectionMcpEnabled(conn.id, v === true)"
-          />
+          <div class="flex shrink-0 items-center gap-1.5">
+            <Badge
+              :variant="conn.mcpEnabled ? 'ok' : 'default'"
+              :data-testid="`db-mcp-connection-${conn.id}`"
+              >{{
+                conn.mcpEnabled ? t('studio.settings.dbMcp.exposed.status') : t('common.off.status')
+              }}</Badge
+            >
+            <Button
+              variant="dialog"
+              size="kira-lg"
+              :disabled="!conn.file"
+              :data-testid="`db-mcp-connection-edit-${conn.id}`"
+              @click="connectionDialogStore.openFile(conn.file)"
+            >
+              {{ t('common.action.edit.label') }}
+            </Button>
+          </div>
         </Card>
       </li>
     </ul>

@@ -327,7 +327,7 @@ test('Query console — auto-explain warns and still runs the query', async ({ r
     { channel: IPC.connectionsList, response: [] },
     {
       channel: IPC.connectionsCreate,
-      args: connectionCreateArgs('Auto DB', 'amber', { autoExplain: true }),
+      args: connectionCreateArgs('Auto DB', 'amber'),
       response: CONNECTION_SUMMARY,
     },
     ...FIXTURE.control,
@@ -386,7 +386,7 @@ test('Query console — loading a saved query clears a stale auto-explain warnin
     { channel: IPC.connectionsList, response: [] },
     {
       channel: IPC.connectionsCreate,
-      args: connectionCreateArgs('Stale DB', 'amber', { autoExplain: true }),
+      args: connectionCreateArgs('Stale DB', 'amber'),
       response: CONNECTION_SUMMARY,
     },
     ...FIXTURE.control,
@@ -464,7 +464,7 @@ test('Query console — a failed EXPLAIN does not fail the real run', async ({ r
     { channel: IPC.connectionsList, response: [] },
     {
       channel: IPC.connectionsCreate,
-      args: connectionCreateArgs('Fail DB', 'magenta', { autoExplain: true }),
+      args: connectionCreateArgs('Fail DB', 'magenta'),
       response: CONNECTION_SUMMARY,
     },
     ...FIXTURE.control,

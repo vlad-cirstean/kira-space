@@ -440,8 +440,8 @@ export const useVariableSetStore = defineStore('variableSet', () => {
   }
 
   /** Runs over http/reveal.ts's shared recurse-once switch — the pattern used to be
-   *  hand-copied from ConnectionDialog.vue's own requestReveal (there was nothing importable to
-   *  reuse); now it is the module's own shared loop, used here and by
+   *  hand-copied per caller (there was nothing importable to reuse); now it is the module's own
+   *  shared loop, used here and by
    *  revealHistoryEntry below.
    *
    *  `onError` is now required rather than falling back to a singleton dialog's error field —

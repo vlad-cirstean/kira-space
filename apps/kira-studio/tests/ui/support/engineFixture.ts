@@ -139,6 +139,7 @@ export function connectionSummary(
   color: ConnectionSummary['color'],
 ): ConnectionSummary {
   return {
+    file: 'fixture.yaml',
     id,
     name,
     kind,

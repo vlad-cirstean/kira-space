@@ -4,6 +4,7 @@ import type { ControlSnapshot, PortSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
 import { primaryChord } from './support/chord';
 import { CLIPBOARD_SHIM } from './support/clipboard';
+import { createConnection } from './support/connect';
 import {
   cellNavButton,
   gridCell,
@@ -253,16 +254,7 @@ async function connectAndOpenSpikeGrid(
   page: import('@playwright/test').Page,
   readySelector = '[data-testid="data-grid"] .slick-cell',
 ): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Slick Spike DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-magenta"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Slick Spike DB');
 
   const connRow = page.locator('[data-testid="tree-row"][data-kind="connection"]');
   await openRowMenu(page, '');
@@ -998,16 +990,7 @@ test('P22 Pass B C6 — select-all completes within the 150ms sandbox gate, wide
   ];
 
   const { window: tall } = await relaunch({ control: bigControl, stream: bigPort });
-  await tall.click('[data-testid="add-connection"]');
-  await tall.click('[data-testid="connection-kind-postgres"]');
-  await tall.fill('[data-testid="connection-name"]', 'Select All Big DB');
-  await tall.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await tall.fill('[data-testid="connection-port"]', '5432');
-  await tall.fill('[data-testid="connection-database"]', 'kira_test');
-  await tall.fill('[data-testid="connection-username"]', 'postgres');
-  await tall.click('[data-testid="color-amber"]');
-  await tall.click('[data-testid="connection-save"]');
-  await expect(tall.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(tall, 'postgres', 'Select All Big DB');
 
   const connRow = tall.locator('[data-testid="tree-row"][data-kind="connection"]');
   await openRowMenu(tall, '');
@@ -1091,16 +1074,7 @@ test('P22 Pass B C12 T7 — select-all stays within the 150ms sandbox gate with 
   ];
 
   const { window: page } = await relaunch({ control: bigControl, stream: bigPort });
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Search Big DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-cyan"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Search Big DB');
 
   const connRow = page.locator('[data-testid="tree-row"][data-kind="connection"]');
   await openRowMenu(page, '');
@@ -1196,16 +1170,7 @@ test('P22 Pass B follow-up — select-all under an active row filter copies only
   await page.reload();
   await page.waitForSelector('[data-testid="status-bar"]');
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Select All Filter DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-magenta"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Select All Filter DB');
 
   const connRow = page.locator('[data-testid="tree-row"][data-kind="connection"]');
   await openRowMenu(page, '');
@@ -1504,16 +1469,7 @@ test('P22 Pass B C11 T9 — the nav button is always visible per nav cell, posit
     control,
     stream: orderItemsFixture(CONNECTION_ID).port,
   });
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Nav Button DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-grey"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Nav Button DB');
 
   const connRow = page.locator('[data-testid="tree-row"][data-kind="connection"]');
   await openRowMenu(page, '');
@@ -1610,16 +1566,7 @@ test('P22 postscript — PK/FK header badge and select-zone survive a tab switch
     control,
     stream: orderItemsFixture(CONNECTION_ID).port,
   });
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Switchback DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-cyan"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Switchback DB');
   const connRow = page.locator('[data-testid="tree-row"][data-kind="connection"]');
   await openRowMenu(page, '');
   await page.click('[data-testid="menu-item-connect"]');
@@ -1710,16 +1657,7 @@ test('P22 Pass B follow-up — a column-resize drag does not force a full grid r
     control,
     stream: orderItemsFixture(CONNECTION_ID).port,
   });
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Resize Echo DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-cyan"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Resize Echo DB');
 
   const connRow = page.locator('[data-testid="tree-row"][data-kind="connection"]');
   await openRowMenu(page, '');
@@ -1823,16 +1761,7 @@ test('P195 — a reload with very different data keeps the settled column widths
     ...fixture.control,
   ];
   const { window: page } = await relaunch({ control, stream: fixture.port });
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Settled Widths DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-cyan"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Settled Widths DB');
 
   const connRow = page.locator('[data-testid="tree-row"][data-kind="connection"]');
   await openRowMenu(page, '');
@@ -1909,16 +1838,7 @@ test('P22 Pass B follow-up — the cell selection highlight tracks its row throu
   const isMac = await page.evaluate(() => navigator.userAgent.includes('Mac'));
   const DELETE_KEY = isMac ? 'Meta+Backspace' : 'Delete';
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Select Highlight Filter DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-blue"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Select Highlight Filter DB');
 
   const connRow = page.locator('[data-testid="tree-row"][data-kind="connection"]');
   await openRowMenu(page, '');
@@ -2013,16 +1933,7 @@ test('P22 Pass B follow-up — a range selection under an active filter only cop
   const isMac = await page.evaluate(() => navigator.userAgent.includes('Mac'));
   const DELETE_KEY = isMac ? 'Meta+Backspace' : 'Delete';
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Range Filter Span DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-grey"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Range Filter Span DB');
 
   const connRow = page.locator('[data-testid="tree-row"][data-kind="connection"]');
   await openRowMenu(page, '');
@@ -2111,16 +2022,7 @@ test('P16 D3/D4 — a column min-width knows what its header renders, and oversc
     control,
     stream: orderItemsFixture(CONNECTION_ID).port,
   });
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Header Chrome DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-amber"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Header Chrome DB');
 
   const connRow = page.locator('[data-testid="tree-row"][data-kind="connection"]');
   await openRowMenu(page, '');

@@ -57,7 +57,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   datagripImport: 'DataGripService.Import',
   connectionsList: 'ConnectionsService.List',
   connectionsCreate: 'ConnectionsService.Create',
-  connectionsUpdate: 'ConnectionsService.Update',
+  connectionsUpdateCredentials: 'ConnectionsService.UpdateCredentials',
   connectionsDuplicate: 'ConnectionsService.Duplicate',
   connectionsDelete: 'ConnectionsService.Delete',
   connectionsReorder: 'ConnectionsService.Reorder',
@@ -121,6 +121,11 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   apiConfigView: 'ApiConfigService.View',
   apiConfigSetSecret: 'ApiConfigService.SetSecret',
   apiConfigDeleteSecret: 'ApiConfigService.DeleteSecret',
+  connectionConfigView: 'ConnectionConfigService.View',
+  connectionConfigFile: 'ConnectionConfigService.File',
+  connectionConfigSaveFile: 'ConnectionConfigService.SaveFile',
+  connectionConfigSetSecret: 'ConnectionConfigService.SetSecret',
+  connectionConfigDeleteSecret: 'ConnectionConfigService.DeleteSecret',
   variablesListEnvironments: 'VariablesService.ListEnvironments',
   variablesCreateEnvironment: 'VariablesService.CreateEnvironment',
   variablesSetActiveEnvironment: 'VariablesService.SetActiveEnvironment',
@@ -334,6 +339,24 @@ const EMPTY_OBJECT_META = {
 };
 const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   [IPC.filtersList]: JSON.stringify({ hiddenKinds: [], hiddenPaths: [] }),
+  // The connection files' status: no file has a problem unless a spec says so.
+  [IPC.connectionConfigView]: JSON.stringify({
+    dir: '',
+    files: [],
+    secrets: [],
+    storage: { available: true, backend: 'keychain', insecureFallback: false, reason: null },
+  }),
+  [IPC.connectionConfigFile]: JSON.stringify({
+    file: '',
+    id: '',
+    path: '',
+    text: '',
+    hash: '',
+    problem: null,
+    lastGood: false,
+    editable: true,
+    secrets: [],
+  }),
   // Every SQL console loads its connection's own DDL document on mount
   // (state/schemas.ts's ensureDdl) — a spec with no Schema (DDL)… of its own gets the same
   // "absent until the user writes one" empty document a fresh connection gets, not a fixture

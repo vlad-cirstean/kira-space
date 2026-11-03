@@ -4,7 +4,7 @@ import { runCommand } from '@workbench/shortcuts/commands';
 import type { PaletteCommand } from '@workbench/shortcuts/palette';
 import { openApiRequestTab, openGrpcRequestTab } from '../api/tabs';
 import { useAppUpdateStore } from '../state/appUpdate';
-import { useConnectionDialogStore } from '../state/connections';
+import { useConnectionDialogStore } from '../state/connectionDialogs';
 import { useLayoutStore } from '../state/layout';
 import { useModeStore } from '../state/mode';
 import { useSettingsStore } from '../state/settings';
@@ -24,7 +24,7 @@ export function studioPaletteCommands(): () => PaletteCommand[] {
     {
       id: 'new-connection',
       label: t('studio.project.connectionDialog.newConnection.title'),
-      run: () => useConnectionDialogStore().openCreateDialog(),
+      run: () => useConnectionDialogStore().openNew(),
     },
     // D13: a one-click action worth a name, the same bar this list's own comment states — no menu
     // or accelerator change (ApiStart.vue/CollectionsPanel.vue's own buttons are the other two).

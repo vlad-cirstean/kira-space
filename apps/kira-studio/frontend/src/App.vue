@@ -27,12 +27,13 @@ import ApiDialogs from './api/ApiDialogs.vue';
 import { useCollectionsStore } from './api/state/collections';
 import { openApiRequestTab } from './api/tabs';
 import { control } from './bridge/control';
-import ConnectionDialog from './project/ConnectionDialog.vue';
+import ConnectionFileDialog from './project/ConnectionFileDialog.vue';
 import DataGripImportDialog from './project/DataGripImportDialog.vue';
+import NewConnectionDialog from './project/NewConnectionDialog.vue';
 import ProofReadyPrompt from './proof/ProofReadyPrompt.vue';
 import { studioPaletteCommands } from './shortcuts/studioCommands';
 import { useAppUpdateStore } from './state/appUpdate';
-import { useConnectionDialogStore } from './state/connections';
+import { useConnectionDialogStore } from './state/connectionDialogs';
 import { useDatagripImportStore } from './state/datagripImport';
 import { useFakeDataStore } from './state/fakeData';
 import { useKeepAwakeStore } from './state/keepAwake';
@@ -109,7 +110,7 @@ onMounted(() => {
     control.onOpenSettings(() => {
       settingsStore.settingsOpen = true;
     }),
-    control.onNewConnection(() => connectionDialogStore.openCreateDialog()),
+    control.onNewConnection(() => connectionDialogStore.openNew()),
     // P28 D18: three menu-bar commands. Subscribed here rather than in the panels that used to
     // own the buttons, so they work with no panel mounted — which is the point of moving them.
     control.onNewRequest(() => {
@@ -173,7 +174,8 @@ onUnmounted(() => {
       </WorkbenchTitleBar>
       <WorkbenchShell />
     </div>
-    <ConnectionDialog v-if="connectionDialogStore.open" />
+    <NewConnectionDialog v-if="connectionDialogStore.newOpen" />
+    <ConnectionFileDialog v-if="connectionDialogStore.file !== null" />
     <DataGripImportDialog v-if="datagripImportStore.open" />
     <ApiDialogs />
     <UploadObjectDialog v-if="objectStoreStore.open" />
