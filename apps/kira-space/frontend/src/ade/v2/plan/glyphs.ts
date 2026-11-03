@@ -1,3 +1,4 @@
+import type { MessageKey } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import type {
   BranchAction,
@@ -81,3 +82,32 @@ export function rowActionSplit(actions: readonly BranchAction[]): {
     ? { shown: [...actions], overflow: [] }
     : { shown: actions.slice(0, 1), overflow: actions.slice(1) };
 }
+
+/** A branch's PR checks, by the host's raw state. A state not listed shows nothing. */
+export const CHECKS_GLYPH: Record<string, { icon: string; class: string; tip: MessageKey }> = {
+  SUCCESS: {
+    icon: ICON.success,
+    class: 'text-tone-green',
+    tip: 'space.ade.mainTab.checksSuccess.tooltip',
+  },
+  FAILURE: {
+    icon: ICON.error,
+    class: 'text-tone-red',
+    tip: 'space.ade.mainTab.checksFailure.tooltip',
+  },
+  ERROR: {
+    icon: ICON.error,
+    class: 'text-tone-red',
+    tip: 'space.ade.mainTab.checksFailure.tooltip',
+  },
+  PENDING: {
+    icon: 'watch',
+    class: 'text-muted-foreground',
+    tip: 'space.ade.mainTab.checksPending.tooltip',
+  },
+  EXPECTED: {
+    icon: 'watch',
+    class: 'text-muted-foreground',
+    tip: 'space.ade.mainTab.checksPending.tooltip',
+  },
+};

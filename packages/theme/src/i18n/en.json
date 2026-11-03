@@ -8682,6 +8682,20 @@
           "tooltip": "View {label} in Kira"
         }
       },
+      "mainTab": {
+        "checksFailure": {
+          "tooltip": "Checks failed"
+        },
+        "checksPending": {
+          "tooltip": "Checks running"
+        },
+        "checksSuccess": {
+          "tooltip": "Checks passed"
+        },
+        "prBase": {
+          "label": "→ {base}"
+        }
+      },
       "needs": {
         "action": {
           "reMerge": {

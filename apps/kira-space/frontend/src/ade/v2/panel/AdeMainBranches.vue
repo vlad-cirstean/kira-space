@@ -1,20 +1,25 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
+import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import ProjectPicker from '@workbench/components/pickers/ProjectPicker.vue';
 import { computed, ref } from 'vue';
+import { useOpenHostView } from '../../../hostview/queries';
 import { useProjectOptions } from '../../../repo/state/projectOptions';
 import AdeChip from '../AdeChip.vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
 import AdeTip from '../AdeTip.vue';
 import { tagLabel } from '../board/actions';
 import { integrationChips } from '../board/labels';
+import { CHECKS_GLYPH } from '../plan/glyphs';
 import { type CardModel, usePlanModel } from '../plan/usePlanModel';
-import { useAddTaskRepo } from '../queries';
+import { useAddTaskRepo, useChangeRequests } from '../queries';
 import { useAdeAddUiStore } from '../state/adeAddUi';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import AdeTaskBranchMenu from './AdeTaskBranchMenu.vue';
+import { PR_TONE, prStateLabel } from './prState';
 
 // Main tab branches: the repo and branch adders, then one row per branch.
 const props = defineProps<{ card: CardModel }>();
@@ -24,6 +29,10 @@ const { liveNow } = usePlanModel();
 const ui = useAdeBoardUiStore();
 const addUi = useAdeAddUiStore();
 const addRepo = useAddTaskRepo();
+const changeRequests = useChangeRequests();
+const openView = useOpenHostView();
+
+const prOf = (branchId: string) => changeRequests.data.value?.branches[branchId] ?? null;
 
 const task = computed(() => props.card.task);
 const review = computed(() => props.card.review);
@@ -77,36 +86,81 @@ const chipClass = (t: 'muted' | 'stale' | 'unknown'): string =>
         {{ t('space.ade.taskTab.addBranch.label') }}
       </Button>
     </div>
-    <div v-for="row in card.rows" :key="row.id" class="flex items-center gap-1 bg-elevated">
-      <Button
-        size="kira"
-        variant="toolbar"
-        class="min-h-row min-w-0 flex-1 justify-start gap-2 bg-elevated px-1.5 text-left text-fg"
-        data-testid="ade-task-branch"
-        :data-branch-id="row.id"
-        @click="ui.selectBranch(task.id, row.id)"
+    <div v-for="row in card.rows" :key="row.id" class="flex flex-col bg-elevated">
+      <div class="flex items-center gap-1">
+        <Button
+          size="kira"
+          variant="toolbar"
+          class="min-h-row min-w-0 flex-1 justify-start gap-2 bg-elevated px-1.5 text-left text-fg"
+          data-testid="ade-task-branch"
+          :data-branch-id="row.id"
+          @click="ui.selectBranch(task.id, row.id)"
+        >
+          <AdeChip :label="tagLabel(row.tag, liveNow.getTime())" :tone="row.tag.tone" wide />
+          <AdeRepoTag :code-repo-id="row.branch.codeRepoId" :label="row.repo" />
+          <AdeTip v-for="c in integrationChips(row.branch)" :key="c.label" :text="c.tip">
+            <span class="shrink-0 text-kira-sm font-medium" :class="chipClass(c.tone)">{{
+              c.label
+            }}</span>
+          </AdeTip>
+          <span
+            class="min-w-0 flex-1 truncate font-data text-kira-md"
+            :class="row.draft ? 'text-muted-foreground' : ''"
+            >{{
+              branchLabel(row)
+            }}</span
+          >
+        </Button>
+        <AdeTaskBranchMenu
+          v-if="!review"
+          :row="row"
+          :used-repo-ids="usedRepoIds"
+          @error="(m: string) => emit('error', m)"
+        />
+      </div>
+      <div
+        v-if="prOf(row.branch.id)"
+        class="flex min-w-0 items-center gap-2 px-1.5 pb-1 text-kira-sm"
+        data-testid="ade-task-branch-pr"
       >
-        <AdeChip :label="tagLabel(row.tag, liveNow.getTime())" :tone="row.tag.tone" wide />
-        <AdeRepoTag :code-repo-id="row.branch.codeRepoId" :label="row.repo" />
-        <AdeTip v-for="c in integrationChips(row.branch)" :key="c.label" :text="c.tip">
-          <span class="shrink-0 text-kira-sm font-medium" :class="chipClass(c.tone)">{{
-            c.label
-          }}</span>
-        </AdeTip>
-        <span
-          class="min-w-0 flex-1 truncate font-data text-kira-md"
-          :class="row.draft ? 'text-muted-foreground' : ''"
+        <AdeChip
+          :label="prStateLabel(prOf(row.branch.id)!.state)"
+          :tone="PR_TONE[prOf(row.branch.id)!.state] ?? 'grey'"
+        />
+        <a
+          :href="prOf(row.branch.id)!.url"
+          class="min-w-0 truncate text-info"
+          @click.prevent="
+            fireAndForget(openView.mutateAsync(prOf(row.branch.id)!.url), 'hostView.open')
+          "
           >{{
-            branchLabel(row)
+            prOf(row.branch.id)!.title
+          }}</a
+        >
+        <span
+          v-if="prOf(row.branch.id)!.baseRef"
+          class="shrink-0 font-data text-subtle"
+          data-testid="ade-task-branch-pr-base"
+          >{{
+            t('space.ade.mainTab.prBase.label', { base: prOf(row.branch.id)!.baseRef })
           }}</span
         >
-      </Button>
-      <AdeTaskBranchMenu
-        v-if="!review"
-        :row="row"
-        :used-repo-ids="usedRepoIds"
-        @error="(m: string) => emit('error', m)"
-      />
+        <AdeTip
+          v-if="CHECKS_GLYPH[prOf(row.branch.id)!.checksState]"
+          :text="t(CHECKS_GLYPH[prOf(row.branch.id)!.checksState]!.tip)"
+        >
+          <span
+            class="shrink-0"
+            :class="CHECKS_GLYPH[prOf(row.branch.id)!.checksState]!.class"
+            :data-state="prOf(row.branch.id)!.checksState"
+            data-testid="ade-task-branch-pr-checks"
+            ><CodiconIcon
+              :name="CHECKS_GLYPH[prOf(row.branch.id)!.checksState]!.icon"
+              :size="12"
+            /></span
+          >
+        </AdeTip>
+      </div>
     </div>
   </div>
 </template>
