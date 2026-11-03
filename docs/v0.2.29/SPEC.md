@@ -12,7 +12,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P487 | Kubernetes: drive the kubectl CLI instead of the native client | Todo |
 | P488 | Install instructions: trust the Jira tap | Done |
 | P489 | Terminals: Cmd-click opens file paths in Kira Space | Done |
-| P490 | Kira Space: file open window shows only ad hoc file tabs | Todo |
+| P490 | Kira Space: file open window shows only ad hoc file tabs | Done |
 | P491 | ADE: hide archived tasks unless History is open | Done |
 | P492 | ADE: agents widget shows active-agents indicator | Done |
 | P493 | Code review (1 round) | Todo |
@@ -64,6 +64,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 
 - Opening a file in Kira Space opens a new window. That window shows no repos or sidebar: a clean window with tabs for the ad hoc opened files only.
 - Test: UI spec.
+- Result: every external open (Finder, default app, terminal Cmd-click) lands in one ephemeral files window (key `files-<uuid>`): title bar, one tab strip, file view; no modes, sidebar, dock, status bar, graph tab or "+". Later opens raise it and add tabs (`kira:openedFiles:arrived`, `Pending` drain); a new window opens only when none lives. Repo and loose files share one strip (`FILES_WORKSPACE` partition; `workspaceId` keeps repo id; `createTabsStore.openTab` now derives the key via `workspaceKeyOf`). Never restored; row dropped on close; `purgeKeyedWindows` replaces two purge loops. Page learns its kind from `OpenedFilesService.IsFilesWindow`. Tests: `TestOpenedFilesWindow`, `TestTerminalFileLinks` (reuse), `opened-files` UI spec (4 tests), `terminal-file-links` and `repo-file-edit` local-file specs moved to `filesTest`. Open: `tests/perf/heap-ram.spec.ts` and `heap-tabs.spec.ts` local-file scenarios still boot a workbench window with pending files and need rework (opt-in perf specs).
 
 ### P491 ADE: hide archived tasks unless History is open
 
