@@ -190,6 +190,7 @@ export const IPC = {
   kubernetesLogsClose: 'kira:kubernetes:logsClose',
   kubernetesLogsOpen: 'kira:kubernetes:logsOpen',
   kubernetesNamespaces: 'kira:kubernetes:namespaces',
+  kubernetesReorder: 'kira:kubernetes:reorder',
   kubernetesSetMcp: 'kira:kubernetes:setMcp',
   kubernetesStatus: 'kira:kubernetes:status',
 
