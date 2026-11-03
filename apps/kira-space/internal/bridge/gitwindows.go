@@ -89,6 +89,8 @@ type gitWindow struct {
 	conn     *gitsession.Conn
 	handlers gitrpc.Handlers
 	streams  int
+	// bound holds repoIds opened through GitService; they keep the Conn alive past its last stream.
+	bound map[string]struct{}
 }
 
 // NewGitWindows builds the registry; events receives every git event as kira:git:<event>.
@@ -137,6 +139,29 @@ func (g *GitWindows) Close(key string) {
 	}
 }
 
+// noteBoundOpen records a GitService-held repo so the window's Conn outlives its last stream.
+func (g *GitWindows) noteBoundOpen(key, repoID string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	w, ok := g.byKey[key]
+	if !ok {
+		return
+	}
+	if w.bound == nil {
+		w.bound = map[string]struct{}{}
+	}
+	w.bound[repoID] = struct{}{}
+}
+
+// noteBoundClose forgets a GitService-held repo.
+func (g *GitWindows) noteBoundClose(key, repoID string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if w, ok := g.byKey[key]; ok {
+		delete(w.bound, repoID)
+	}
+}
+
 // attachStream counts a git stream on the window; the last detach releases the Conn, as the
 // per-stream Conn was released on stream close.
 func (g *GitWindows) attachStream(key string) (*gitWindow, func()) {
@@ -147,7 +172,7 @@ func (g *GitWindows) attachStream(key string) (*gitWindow, func()) {
 	return w, func() {
 		g.mu.Lock()
 		w.streams--
-		last := w.streams == 0 && g.byKey[key] == w
+		last := w.streams == 0 && len(w.bound) == 0 && g.byKey[key] == w
 		if last {
 			delete(g.byKey, key)
 		}
