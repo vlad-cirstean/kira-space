@@ -482,25 +482,19 @@ op_log(id, connection_id, tab_id, started_at, duration_ms, kind, status, rows,
                                                        -- pre-existing row;
                                                        -- source (TEXT, migration 0043, P328) is
                                                        -- 'user' or 'mcp', default 'user'
-custom_scripts(id, name, command, working_dir, dir_mode, kind, params_json, smart_json, use_ade_dir, schedule_json,
-               color, collection_id, sort_order, created_at, updated_at)
-                                                       -- P85, migration 0024; scripts, one row
-                                                       -- per script, user-curated (no cap).
-                                                       -- dir_mode (P242, Studio 0034 / Space 0026):
-                                                       -- 'kira' = <app home>/automations/<id>, 'fixed'
-                                                       -- = working_dir, 'home' = legacy $HOME (rows
-                                                       -- that predate the choice; never offered anew).
-                                                       -- collection_id (P219, Studio 0033 / Space
-                                                       -- 0023; replaced 0031's free-text collection)
-                                                       -- kind 'script'|'smart' (P242 Part 2, Studio
-                                                       -- 0035 / Space 0028), use_ade_dir (Part 3,
-                                                       -- 0036 / 0029), schedule_json (Part 4, 0037 /
-                                                       -- 0030; '' = not recurring):
-                                                       -- NULL = ungrouped, FK to
-                                                       -- custom_script_collections ON DELETE CASCADE;
-                                                       -- sort_order is dense per collection (NULL =
-                                                       -- ungrouped set); Move places the script
-                                                       -- before beforeId in the target set, or last
+custom_scripts(id, name, command, working_dir, dir_mode, color, collection, sort_order, created_at, updated_at,
+               kind, params_json, smart_json, use_ade_dir, schedule_json, schedule_task_id,
+               schedule_branch_id, config_json)
+                                                       -- P472 (Studio 0054 / Space 0064): the projection
+                                                       -- of <home>/runs/<id>.yaml; the file is config.
+                                                       -- id is the file stem; collection is a name
+                                                       -- ('' = ungrouped); config_json is the last good
+                                                       -- File JSON and is the source of every run.
+                                                       -- State the file never holds: sort_order (dense
+                                                       -- per collection), schedule_task_id and
+                                                       -- schedule_branch_id (Space), and the saved
+                                                       -- secrets in secret_values. dir_mode 'kira'|
+                                                       -- 'fixed'. Record never writes the state columns.
 script_runs(id, script_id, script_name, color, kind, trigger_kind, state, terminal_id, cwd, command,
             outcome_json, created_at, started_at, finished_at, model, session_id, prompt, params_json,
             tools_json, task_id, task_title, branch_id, branch_label)
@@ -517,10 +511,9 @@ script_runs(id, script_id, script_name, color, kind, trigger_kind, state, termin
                                                        -- branch_* name the ADE context (Space only).
 script_run_logs(run_id, seq, stream, text)              -- P242 Part 2; smart-run log lines, stream
                                                        -- stdout|stderr|event
-custom_script_collections(id, name, sort_order, created_at, updated_at)
-                                                       -- P219; one row per script collection, name
-                                                       -- trimmed, 64 runes max, order is sort_order
-                                                       -- (user drag order), name. Empty ones may exist.
+custom_script_collections(name, sort_order)           -- P472; WITHOUT ROWID. One row per collection
+                                                       -- name a run file names, order is sort_order.
+                                                       -- Pruned when no run names it.
 secret_values(scope, owner, name, value, updated_ms)     -- P447; sealed kira:v3 values, PK (scope, owner, name),
                                                        -- both apps. script-param rows: owner = custom_scripts.id.
 ui_layout(key, value)                                   -- panel visibility (app-wide), panel sizes per module (modes.<mode>.*)
@@ -585,7 +578,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 
 - P100 dropped git_clients, git_repo_settings and code_repos from Studio's kira.db (0026_p100_drop_git_tables.sql) when the git module was extracted into Kira Space, a separate app with its own kira.db and its own copies of these tables.
 - Kira Space runs its own migration sequence in apps/kira-space/internal/storage/migrations/, separate from Studio's, with high-water mark 0045 (0045_p332_file_handler_previous.sql adds file_handler_previous).
-- Studio's kira.db migration high-water mark is 0037 (0037_p242_recurring_scripts.sql: custom_scripts.schedule_json, script_runs rebuilt with waiting/skipped states).
+- Studio's kira.db migration high-water marks: 0054 (P472, runs as files: custom_scripts rebuilt as a projection, custom_script_collections keyed by name) in Studio and 0064 in Space.
 - Migration 0020 added connections.mcp_enabled (deny-by-default MCP exposure); 0021 added mcp_read_mode/mcp_write_mode/mcp_ddl_mode plus mcp_description; 0022 added mcp_auto_explain (auto-force-EXPLAIN on run_query); 0023 created connection_mask_rules and connections.mask_correlation_key.
 - Migration 0027_p108part11_op_log_path.sql added op_log.path TEXT, the console path an op actually ran against.
 - Op source rides the RunOp ctx (`adapterhost.WithOpSource`), set by dbmcp's tool wrapper; connection lifecycle ops are always `user`, since MCP's connect is a shared, deduplicated attempt with its own ctx.
@@ -668,7 +661,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 | `schema_version` | nothing | one row |
 | `settings`, `ui_layout` | nothing | closed key set; every writer is a hand-listed leaf |
 | `connections`, `connection_ddl`, `connection_tree_filters`, `saved_queries`, `connection_mask_rules` | user action | user action; all cascade on connection delete |
-| `custom_scripts`, `custom_script_collections` | user action | user action; one row per script or collection, created and deleted one at a time; deleting a collection deletes its scripts |
+| `custom_scripts`, `custom_script_collections` | run file written or edited | file deleted (the row and its saved secrets go; run history stays); a collection row goes when no run names it |
 | `secret_values` | save of a secret script param | user clear, param removal, script or collection delete (same tx); one row per saved value |
 | `api_collections`, `api_items`, `api_environments`, `api_variables` | user action / import | user action; import capped at 64 MiB upstream |
 | `tabs` | open tabs | rewritten per window per save; cascades on window close |
@@ -798,27 +791,17 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - The Runs entry in both apps' MODES points at one shared module, packages/workbench/src/automations/module.ts, not two hand-kept-identical copies (renamed from Terminal in P242).
 - Each app's App.vue builds one AutomationsModuleContext object (in its own workbench/automationsModule.ts) and provide()s it once at the root, above WorkbenchShell.vue.
 - The mode key, windows.mode and the module's tab workspace_id are all automations; real terminals in packages/workbench/src/terminal/ stay terminals, only the launching module was renamed. The module shows as Runs (P438); mode key, i18n keys, code names, test IDs and the `<app home>/automations` folder keep `automations`.
-- Script logic lives in repo-root internal/scripts (custom_scripts repo, validation, service); each app's bound bridge.CustomScriptsService keeps its own binding name and delegates to it. List answers and every mutation broadcast one Snapshot{collections, scripts}.
+- Script logic lives in repo-root internal/scripts (loader, projection repo, validation, service); each app's bound bridge.CustomScriptsService keeps its own binding name and delegates to it through a named `Svc` field with explicit forwarders (Wails binds promoted methods, so Studio omits SetScheduleTarget). List answers and every file change broadcast one Snapshot{dir, collections, scripts, problems, secretStorage}. See Runs config files (P472).
 - Script dirMode kira (default) runs in <app home>/automations/<script id>, created 0700 on demand; a symlink or non-directory at any level is refused with "<path> is not a real folder: remove it".
 - Script dirMode fixed is the chosen absolute folder and must exist.
-- Script dirMode home is the retired $HOME default, kept only for rows that predate the choice, and is refused on create or when switching another mode to it.
-- Removing a script removes its kira folder.
+- Script dirMode home is gone (P472): the migration rewrote it to kira.
+- Deleting a run through Delete removes its file, its kira folder and its saved secrets.
 - A script's command and folder are Go-authoritative: terminal.Open with a scriptId loads the stored command and folder and ignores the renderer's cwd/command, so a forged argument cannot run another command.
 - createCustomScriptsStore in packages/workbench/src/automations is the shared store factory over each app's control; both apps' state/customScripts.ts are one-liners.
-- The panel header + ("New script…") is the only add control for scripts; the empty state has none.
-- ScriptDialog.vue edits one script in three force-mounted tabs (Script, Parameters, Schedule), hidden when inactive, so ScheduleFields keeps emitting valid and state survives a tab switch. The server error and footer sit outside the tabs.
-- The script body field (ScriptBodyField.vue) is a multiline AutocompleteField, not Monaco, because no shared Monaco host exists and .fill() on the real textarea stays valid.
-- In multiline AutocompleteField, Enter inserts a newline unless a suggestion was arrowed onto, and Cmd/Ctrl+Enter bubbles to save; autoClose is off and openOnEmptyToken lists every candidate right after { or $.
+- The panel header + (New script, New smart script) is the only add control; it writes a small valid `<id>.yaml` and opens it in RunFileDialog.vue. The empty state has none.
 - A multiline script command runs as-is in the user's login shell with shell -c.
-- A prompt offers non-secret params for completion after {name; a command offers KIRA_PARAM_<NAME> for every param (secret included); with ADE (Space) the built-ins task jira repo branch base worktree are offered (KIRA_<NAME> in a command).
-- Known vars paint as variables; a secret param in a prompt and an unknown $KIRA_PARAM_X paint as unknown; an unknown {word} stays plain text.
-- The "Uses:" chips show the value a run gets without input: the param default, "asked at run" without one, or "from the task" for a built-in.
-- Each dialog tab trigger shows a Badge with its error count from scriptErrors.ts, a client mirror of the Go checks; empty-field errors wait until the field was edited, Save stays disabled while errors remain, and Go stays the authority.
-- Script collections are real rows managed like API collections; the header new-folder button or list background menu creates one named "New collection" and opens it for inline naming via shared InlineRenameInput.vue. Deleting a collection (confirmed) deletes its scripts too.
-- Ungrouped scripts list first, then collections in creation order, empty ones included; collapse state is stored in localStorage key kira.automations.collapsedCollections by collection id (copied once from kira.quickCommands.collapsedCollections).
-- Search shows a collection when its name or one of its scripts matches.
-- New collections are created from the panel, not typed in the script dialog; Settings has no Scripts section.
-- AutomationsPanel.vue, AutomationsStart.vue, AutomationsNewTab.vue, ScriptDialog.vue, TerminalTabView.vue and TerminalHostView.vue are the same six files in both apps, imported lazily via defineAsyncComponent so a git-only session never pays for the terminal launch chunk.
+- Search shows a collection when its name or one of its scripts matches. Ungrouped runs list first, then collections in their stored order; collapse state is in localStorage key kira.automations.collapsedCollections by collection name.
+- AutomationsPanel.vue, AutomationsStart.vue, AutomationsNewTab.vue, RunFileDialog.vue, TerminalTabView.vue and TerminalHostView.vue are the same six files in both apps, imported lazily via defineAsyncComponent so a git-only session never pays for the terminal launch chunk.
 
 - internal/runoutcome is the single run-result type shared by both stores: Outcome{status done|failed|blocked|cancelled, reason, source agent|exit|timeout|start|user|restart, reported, exitCode, lastError, summary}.
 - runoutcome.ForProcess is the only wording table for run outcomes, so ADE step runs (ade_runs.outcome_json, Space only) and script runs use the same wording.
@@ -843,7 +826,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - A smart run's final report must go through finish_step; a run without it fails with the shared "no report" text.
 - Smart script params are text, select or multiselect (a text param may be secret); names are lowercase and must not use the reserved ADE built-ins task, jira, repo, branch, base, worktree; {name} in the prompt is substituted before launch.
 - A secret param value reaches a smart run through env only: never in the prompt, stored script_runs.prompt or params_json (stored as the mask), and a smart script whose prompt names a secret param is refused.
-- P447: a secret text param can have a saved value, sealed in secret_values (scope script-param, owner custom_scripts.id, name = param name). The script record holds names only (savedSecrets). Create/Update take secretValues: string saves, null clears, absent keeps; the value is write-only, never returned. A secret param has no default. Remove, rename or un-secret a param, or delete the script or collection, prunes the row in the same tx. Both apps; no script duplicate or export exists, and any later path must never copy plaintext (a copy starts with no saved values). Without a keychain, saving returns E_SECRET_STORE.
+- P447: a secret text param can have a saved value, sealed in secret_values (scope script-param, owner custom_scripts.id, name = param name). The script record holds names only (savedSecrets). Create takes secretValues and SetSecrets takes values (string saves, null clears, absent keeps); the value is write-only, never returned. A secret param has no default. Un-secreting or removing a param, or deleting the run, prunes the row after the projection commits (the single DB connection forbids a second query inside the tx). Both apps; no script duplicate or export exists, and any later path must never copy plaintext (a copy starts with no saved values). Without a keychain, saving returns E_SECRET_STORE.
 - A saved value fills a secret param only when none was typed (typed wins), stays env-only, and is used by resume and restore. An unreadable saved value counts as absent and sets Preview.SecretIssue.
 - Output masking (Masker over all secret values of the run): log lines before truncation, outcome Reason, LastError, OutputTail and Summary, and the terminal tail. Not masked: the live terminal tab and the Space phone terminal ring (mobileterm), lines cut at linewriter.MaxLine, agent writes through Space task tools, and anything the process writes elsewhere. ADE workflow smart steps fill saved secret params and mask them in the step log. A workflow `params` entry for a secret param is refused.
 - script_run_logs holds the run log (stdout|stderr|event), read by ScriptRuns.ReadLog; script_runs gains model, session_id, prompt, params_json, tools_json.
@@ -3246,7 +3229,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - DB sync, one mechanism: files to DB only. Each module keeps a projection (last valid parsed JSON per file) in its own SQLite table through `configfs.Projection`. The projection exists so last good survives restart, state rows keep a local key, and hot paths read rows. Workflows' projection is `ade_workflow_last_valid`; rows follow file deletion.
 - App writes never touch the projection. A UI edit writes the file (atomic, `baseHash` check), then the same load path projects it. Load: `Folder.List` at start, then on every debounced (200 ms) watch event. Unchanged JSON is skipped. Invalid file: no DB change, a `Problem` with the last good value, one Warn per new hash (file name and line, never content). File gone: `Forget`.
 - State references config only by id (file stem). A rename is a delete plus a create. Each module states whether a delete cascades or orphans its state.
-- Migration of legacy rows (P459 to P462): one-shot, export each row to `<id>.yaml`, then set a marker setting row; never export again once set. Legacy secret values are never exported: they move into the secret store and the file gets a reference.
+- Migration of legacy rows (P459 to P462, P472): `configfs.MigrateOnce(db, name, fn)` runs `fn` once and sets the settings marker `config.migrated.<name>` after it; never export again once set. `configfs.RenderYAML` writes the file text. Legacy secret values are never exported: they move into the secret store and the file gets a reference.
 - Config versus state: workflow files are config; `ade_workflow_last_valid` is a derived projection; task workflow snapshots are state; `AGENTS.md` is derived. The `settings` table stays in SQLite this chapter.
 - References: `${NAME}` reads an env var, `${secret:name}` an app secret, `$${` is a literal `${`. Anything else inside `${...}` is a load-time `Problem`. Only schema fields marked `x-kira-ref` are interpolated; `x-kira-secret` requires the whole value to be one secret reference. Shell command fields are never marked.
 - Load keeps references verbatim in the decoded value and the projection. `Resolver.Resolve` runs at use: it returns the text plus `[]Used{Name, Value, Placeholder}` for secrets, for the caller's masker. A missing env var or secret fails naming the reference, never an empty string. Env source is injected.
@@ -3254,7 +3237,20 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - `AGENTS.md` is generated per folder: `DocFromSchema` builds the options list from the schema, rule docs are listed, the intro is a per-module template with prose only. `Folder.WriteDocs` writes it at app start when bytes differ.
 - Workflows (P451) build their model from the `adeflow` option table, not a schema: `adeflow.DocModel` adds per-agent settings from `providers.StageCatalog` and one doc line per cross-field rule (`TestRuleDocsEnforced` binds each rule to the validator). `DocModel.LocalOverrides` is opt-in, so the `.local.yaml` line prints only for a module that reads it. `ade.TaskBoard.Start` writes the file at Space start, non-fatal; a user edit is overwritten.
 - UI: plain file edit in the user's editor is the default; a module may add small edit actions through `Folder.Save`. `packages/workbench/src/config/ConfigFileBar.vue` shows path, status (valid or "Line N: message"), Open, Reveal and Copy path; the app passes its bound calls in.
-- `configsvc.Service` (`internal/configfs/configsvc`) is the bound Open/Reveal surface. It takes a registered folder name plus a visible file in it; no renderer path reaches the OS. Kira Space registers `workflows`. The OS seam is `shell.NewDeferredFileOpener` (Wails `Browser.OpenFile`, `Env.OpenFileManager`).
+- `configsvc.Service` (`internal/configfs/configsvc`) is the bound Open/Reveal surface. It takes a registered folder name plus a visible file in it; no renderer path reaches the OS. Kira Space registers `workflows`, `agent` and `runs`; Kira Studio registers `runs`. The OS seam is `shell.NewDeferredFileOpener` (Wails `Browser.OpenFile`, `Env.OpenFileManager`).
+
+### Runs config files (P472)
+
+- A run is `<home>/runs/<id>.yaml` in both apps (Studio `~/.kira-studio/runs`, Space `~/.kira-space/runs`); the file stem is the run id (`^[a-z0-9][a-z0-9_-]{0,79}$`). Another name is listed as a problem with `id` empty and never used. `AGENTS.md` beside them is generated from the schema.
+- Keys: `name`, `kind` (`script` default, `smart`), `command` (the shell command, or `prompt` for a smart run), `params`, `smart`, `schedule`, `dir` (`kira`, `fixed`), `path`, `color`, `collection` (a name), `use_ade_dir` (Space only; Studio refuses it). `internal/scripts/run.schema.json` is the base; `assembleSchema` writes every enum and bound the Go validator owns into it, so schema and `AGENTS.md` cannot drift.
+- `scripts.Loader` owns the folder (`configfs.Folder[File]`) and the projection (`Repo.Projection`): `custom_scripts.config_json` is the last good file value. Files to DB only. Invalid file: the row keeps the last good version, a `FileProblem{file, id, line, message, lastGood}` is published, one Warn per new hash. A run with no last good version has a problem and no row. File gone: row, saved secrets and (through Delete) the kira folder go; run history stays.
+- State the file never holds, kept in the row: `sort_order`, `schedule_task_id`, `schedule_branch_id`. `Record` never writes them. The schedule target is set by `SetScheduleTarget` (Space only), apart from the file text.
+- Validation: `Validate` returns `ValidationError{Path, Key, Args}`: `Path` is a JSON pointer in the file's own vocabulary, `Key` a catalog key `backend.core.runs.*.body`. Messages render through i18n. Secrets: a `secret: true` param holds no value in the file; values live in `secret_values` (scope `script-param`, owner run id) and go through `SetSecrets`.
+- Bound surface (`CustomScriptsService`): `List`, `Create(fields, secretValues)` (writes a new `<id>.yaml`; the id is the slugged name, made unique), `Delete`, `File(file)` and `SaveFile(file, text, baseHash)` (whole text; a changed file is `E_CONFLICT`), `SetSecrets`, Space-only `SetScheduleTarget`, `Reorder(collection, ids)`, `ReorderCollections(names)`. Removed: Update, collection CRUD, Move. Studio registers folder `runs` in `ConfigFilesService` (Open, Reveal); Space registers `workflows`, `agent` and `runs`.
+- Migration of legacy rows: `configfs.MigrateOnce` (settings key `config.migrated.runs`) exports each `custom_scripts` row to `<id>.yaml` unless one exists (YAML through `configfs.RenderYAML`). Secret params keep their sealed values; only names go in the file. The marker is set after the last file lands, so a crash reruns the export idempotently.
+- Collections are names. `custom_script_collections(name PK, sort_order)` holds order only; a row goes when no run names it. Reorder is within a set (ungrouped is `''`); drag between sets and Move are gone, the file's `collection` key moves a run.
+- UI: `AutomationsPanel.vue` lists rows; a file with an error and a last good version shows a `script-row-problem` marker, a file with none a `script-broken-<file>` row. `RunFileDialog.vue` (shared) edits the whole text with `ConfigFileBar` (path, status, Open, Reveal, Copy path, About), the `E_CONFLICT` Reload/Overwrite pair and `RunSecretsSection.vue` for write-only secret values. Space adds `ScheduleTargetDialog.vue`. Save does not close the dialog.
+- Tests: flows `TestRunsConfigFile`, `TestRunsFileMigration` (Space), `TestRunsConfigFileStudio` (contracts `runs-file.json`); UI `automations-file.spec.ts` in both apps on the same scenario.
 
 ### Agent context (P452)
 
@@ -3497,7 +3493,7 @@ repo's CI runs.
 - A worker-scoped flowServers fixture spawns apps/kira-studio/bin/flowservers (built once under the shared build lock), so e2e-real and the Go flow tier share one server implementation; the serverEnv option adds environment to it.
 
 - tests/visual/ (bun run test:visual:studio) is a bounded pixel-diff tier of eight specs and 13 snapshots, reusing tests/ui/'s fixtures and mocked wire planes.
-- Seven visual specs (workbench shell, data grid, SQL console, connection dialog, Schema (DDL) editor, HTTP request view, Runs script dialog) have one at-rest screenshot each; settings.spec.ts contributes 6, one per Settings pane.
+- Seven visual specs (workbench shell, data grid, SQL console, connection dialog, Schema (DDL) editor, HTTP request view, Runs restore dialog) have one at-rest screenshot each; settings.spec.ts contributes 6, one per Settings pane.
 - The visual tier is its own Playwright project, not folded into ui, mirroring ui-timing, because a different measurement contract earns a different project.
 - Capture or update visual baselines only from the ui CI job's ubuntu-latest environment, never a local macOS run, because WKWebView and WebKitGTK glyph rendering differ regardless of font choice.
 - Playwright's animations: 'disabled' default freezes the app's state-gated infinite CSS animations before visual capture.
@@ -3577,6 +3573,7 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
 
 - **Jira images do not render inline (P460).** acli lists attachments but downloads none. The content URL needs credentials Kira never touches and the CSP allows only `img-src 'self' data:`. The view shows tiles and chips that open in the browser. Delete once acli downloads an attachment.
 - **Jira PR rows not listed (P459).** acli exposes only the Development count; the dev-status API needs credentials Kira never touches. The task tab and issue view show Jira's count. Delete once acli lists the rows.
+- **A run file deleted outside Kira leaves its folder (P472).** Deleting `<id>.yaml` in an editor drops the row and its secrets, but `<home>/automations/<id>` stays. Delete through the Runs panel removes it.
 - **Agent context rests on a hidden Claude flag (P452).** `--append-system-prompt-file` is absent from `claude --help`. A CLI that drops it fails the launch loudly. `TestAgentContextHeadless` catches it. Studio has no context editor; edit the file in an editor.
 - **Agent settings secrets show in a live terminal (P453).** Only headless step output is masked. A TUI that echoes its env or a hook that prints a secret shows it in the tab and the Space phone terminal ring, as for script secrets below.
 - **Project statuslines are not chained (P453).** A project `.claude/settings*.json` statusline never ran under Kira (flag settings outrank it); the user statusline comes only from `claude.status_line`. Import brings the user's.

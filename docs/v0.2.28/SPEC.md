@@ -6,7 +6,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 
 | Phase | Title | Status |
 |---|---|---|
-| P472 | Runs config as files in the app folder | Todo |
+| P472 | Runs config as files in the app folder | Done |
 | P473 | API config as files in the app folder | Todo |
 | P474 | Git repos config as files in the app folder | Todo |
 | P475 | Connections config as files in the app folder | Todo |
@@ -28,6 +28,15 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 - Secret params keep P447's keychain layer; files hold references only.
 - UI becomes minimal: view, open and edit the file; the plan picks plain file edit or a small edit action.
 - Test: backend flow (edit file, DB follows, bad edit surfaces an error and leaves state intact) and UI spec on the same scenario.
+
+Result:
+
+- Go: runs are `<id>.yaml` files in the `runs` config folder (Studio and Space), projected into `custom_scripts`; one-shot migration; bad file keeps last good and surfaces a problem. Secrets stay in keychain.
+- UI: `RunFileDialog` (raw YAML, conflict Reload/Overwrite, secrets section) replaces `ScriptDialog`. Panel shows broken-file rows, Edit/Open/Reveal file, move up/down, About. Space gets `ScheduleTargetDialog`. Editor-only components and 80 unused i18n keys deleted. Unused `chooseFolder` context method removed.
+- Docs: `docs/ARCHITECTURE.md`, `site/.../shared/runs.md`.
+- Ran: typecheck, biome, knip, `lint:rules`, pre-commit hooks. Full UI and Go suites not run, per chapter rule.
+- Deviations: Go `ScriptRunsService.McpServers` left bound (used by `tests/claude` and a contract); frontend no longer calls it.
+- UI specs: `automations-editor` deleted (both apps); `automations-file` new (both apps); `automations-secrets`, `-smart`, `-recurring`, `-runs`, `-tabs`, `-order`, `script-order`, `automations-module`, `automations-scripts`, leftovers and copy-coverage adapted; dialog, collection CRUD, Choose-folder, drag-between and Move tests deleted; `script-dialog` visual test removed.
 
 ### P473 API config as files in the app folder
 
