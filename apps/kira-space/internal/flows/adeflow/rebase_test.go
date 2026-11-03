@@ -58,6 +58,12 @@ func waitBehind(t *testing.T, app *flowharness.App, br adewire.Branch) {
 	})
 }
 
+// waitBoardBehind waits until the board's cached refs show the branch n commits behind its base.
+func (f *rbFx) waitBoardBehind(t *testing.T, taskID string, n int) {
+	t.Helper()
+	testx.WaitUntil(t, waitFor, func() bool { return f.branch(t, taskID).Behind == n })
+}
+
 // agent scripts the next rebase attempt: sh runs in the root branch worktree, then finish is called.
 func (f *rbFx) agent(sh string, finish map[string]any) {
 	a := fakeagent.Action{Name: "nofinish", Sh: sh}
@@ -144,6 +150,7 @@ func TestRebaseRun(t *testing.T) {
 		commitIn(t, br.Worktree, "clash.txt")
 		gitOut(t, br.Worktree, "push", "-q", "origin", "feat/a")
 		f.advanceMain(t, "clash.txt", "clash.txt\n\ntheirs\n")
+		f.waitBoardBehind(t, task.ID, 2) // the watcher lags a push; a stale base made behind 1 and no conflict
 		f.agent(rebaseSh+" || true", map[string]any{
 			"status": "failed", "summary": "conflict", "reason": "clash.txt conflicts",
 			"conflictedFiles": []string{"clash.txt"}, "lastGitError": "CONFLICT (add/add)", "tried": "plain rebase",
