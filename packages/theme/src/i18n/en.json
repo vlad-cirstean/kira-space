@@ -8285,6 +8285,10 @@
             "label": "Finish",
             "tooltip": "{step} is done; finish the workflow"
           },
+          "resume": {
+            "label": "Resume {step}",
+            "tooltip": "Continue your last {step} session in {product}"
+          },
           "retryFailed": {
             "tooltip": "{step} failed; see its output on the task tab"
           },
@@ -8366,6 +8370,10 @@
           },
           "skipStep": {
             "label": "Skip {step}"
+          },
+          "startNew": {
+            "label": "Start new {step} session",
+            "tooltip": "Open a fresh {product} session for {step}; the last one stays in the session list"
           },
           "stopRuns": {
             "label": "Stop running agents"

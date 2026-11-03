@@ -30,7 +30,7 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
     delete ui.actionError[taskId];
     if (a.kind === 'archive') return dialogs.archive(taskId);
     if (a.kind === 'session') return dialogs.session(taskId);
-    if (a.kind === 'takeOver') return takeOver.request(a.sessionId ?? '');
+    if (a.kind === 'takeOver' || a.kind === 'resume') return takeOver.request(a.sessionId ?? '');
     if (!step) return;
     try {
       if (a.kind === 'run') {
@@ -52,6 +52,12 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
     }
   }
 
+  function startNew(): void {
+    const taskId = toValue(card).task.id;
+    delete ui.actionError[taskId];
+    dialogs.session(taskId);
+  }
+
   /** True while a call is in flight: a repeat click must not launch the step twice. */
   const guarded = useAsyncAction(run);
   const busy = guarded.pending;
@@ -59,5 +65,5 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
     if (!busy.value) await guarded.run();
   }
 
-  return { action, perform, busy };
+  return { action, perform, startNew, busy };
 }

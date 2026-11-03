@@ -17,6 +17,7 @@ export type Tone = 'amber' | 'red' | 'green' | 'blue' | 'purple' | 'grey';
 type TaskActionKind =
   | 'archive'
   | 'session'
+  | 'resume'
   | 'advance'
   | 'finish'
   | 'takeOver'
@@ -31,7 +32,7 @@ export interface TaskAction {
   tone: 'agent' | 'red' | 'amber' | 'green' | 'purple';
   /** Step the action applies to (`approve`, `retry`, `takeOver`). */
   stepId?: string;
-  /** Session to open for `takeOver`. */
+  /** Session to open for `takeOver` and `resume`. */
   sessionId?: string;
 }
 
@@ -74,6 +75,20 @@ function advanceAction(p: TaskProgress): TaskAction {
   };
 }
 
+/** Newest stopped TUI session of this step that still has an agent session to continue. */
+function resumableSession(sessions: readonly Session[], step: { id: string }): Session | undefined {
+  return sessions
+    .filter(
+      (s) =>
+        s.mode === 'tui' &&
+        s.state === 'stopped' &&
+        s.agentSessionId !== '' &&
+        s.stepId === step.id &&
+        (s.purpose !== 'review' || step.id === 'review'),
+    )
+    .sort((a, b) => b.lastActiveAt - a.lastActiveAt || b.startedAt - a.startedAt)[0];
+}
+
 function manualAction(i: TaskCellInput): TaskAction {
   const { progress: p, sessions } = i;
   const step = p.step;
@@ -87,6 +102,17 @@ function manualAction(i: TaskCellInput): TaskAction {
       (s.purpose !== 'review' || step?.id === 'review'),
   );
   if (step?.session && !talking) {
+    const prior = resumableSession(sessions, step);
+    if (prior) {
+      return {
+        kind: 'resume',
+        label: t('space.ade.board.taskAction.resume.label', { step: step.name }),
+        tip: t('space.ade.board.taskAction.resume.tooltip', { step: step.name }),
+        tone: 'agent',
+        stepId: step.id,
+        sessionId: prior.id,
+      };
+    }
     return {
       kind: 'session',
       label: t('space.ade.board.taskAction.session.label', { step: step.name }),
