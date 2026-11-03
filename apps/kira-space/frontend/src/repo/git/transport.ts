@@ -118,7 +118,9 @@ function createNativeGitTransport(codeRepoId: string): Transport {
     try {
       const result = await hold.ready;
       await rpc.request('repo.open', { path }, signal);
-      const repoId = result.kind === 'ok' ? result.repo.repoId : undefined;
+      // A test double may answer null.
+      const opened = result as ResultOf<'repo.open'> | null;
+      const repoId = opened?.kind === 'ok' ? opened.repo.repoId : undefined;
       if (repoId) {
         heldRepoIds.add(repoId);
         pathByRepoId.set(repoId, path);

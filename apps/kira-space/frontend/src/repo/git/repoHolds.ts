@@ -110,8 +110,9 @@ export function holdGitRepo(path: string): GitRepoHold {
       if (held.count > 0) return;
       if (entries.get(path) === held) entries.delete(path);
       void enqueue(path, async () => {
-        const opened = await held.ready;
-        const repoId = opened.kind === 'ok' ? opened.repo.repoId : undefined;
+        // A test double may answer null.
+        const opened = (await held.ready) as ResultOf<'repo.open'> | null;
+        const repoId = opened?.kind === 'ok' ? opened.repo.repoId : undefined;
         if (repoId) await callBound('repo.close', { repoId }, undefined, inflight);
       }).catch(() => {
         // Best effort: the window's close releases any hold this misses.

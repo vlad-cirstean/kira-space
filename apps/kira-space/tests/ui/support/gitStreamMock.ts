@@ -45,8 +45,35 @@ const BOUND_GIT_WIRE: Readonly<Record<string, string>> = Object.fromEntries(
     PreflightRestack: 'preflight.restack',
     StackRestack: 'stack.restack',
     StackCancelRestack: 'stack.cancelRestack',
+    ReviewResolveBase: 'review.resolveBase',
+    ReviewFiles: 'review.files',
+    ReviewFileDiff: 'review.fileDiff',
+    ReviewSnapshot: 'review.snapshot',
+    ReviewMark: 'review.mark',
+    ReviewMarkMany: 'review.markMany',
+    ReviewCommentAdd: 'review.comment.add',
+    ReviewCommentList: 'review.comment.list',
+    ReviewCommentRemove: 'review.comment.remove',
+    ReviewCommentSetState: 'review.comment.setState',
+    ReviewCommentEdit: 'review.comment.edit',
+    ReviewCommentClear: 'review.comment.clear',
+    ReviewCommentExport: 'review.comment.export',
+    CommitResolveChangeRequests: 'commit.resolveChangeRequests',
+    BranchResolveChangeRequest: 'branch.resolveChangeRequest',
+    BranchChangeRequestIndex: 'branch.changeRequestIndex',
+    BranchSyncChangeRequests: 'branch.syncChangeRequests',
+    GitHostInfo: 'gitHost.info',
+    ChangeRequestBrowserUrl: 'changeRequest.browserUrl',
+    ChangeRequestReviewState: 'changeRequest.reviewState',
+    ChangeRequestSubmitReview: 'changeRequest.submitReview',
+    ChangeRequestComment: 'changeRequest.comment',
+    ChangeRequestLineComment: 'changeRequest.lineComment',
   }).map(([name, wire]) => [`${BRIDGE_PKG}.GitService.${name}`, wire]),
 );
+
+// GitHostService.Providers is also the runtime mock's `gitHostProviders`: a spec that sets a
+// `gitHost.providers` result answers it here, any other falls through to that mock.
+const GIT_HOST_PROVIDERS_CALL = `${BRIDGE_PKG}.GitHostService.Providers`;
 
 interface InstallArgs extends GitStreamMockArgs {
   contractVersion: number;
@@ -54,7 +81,11 @@ interface InstallArgs extends GitStreamMockArgs {
 }
 
 function installArgs(args: GitStreamMockArgs): InstallArgs {
-  return { ...args, contractVersion: CONTRACT_VERSION, boundWire: BOUND_GIT_WIRE };
+  return {
+    ...args,
+    contractVersion: CONTRACT_VERSION,
+    boundWire: { ...BOUND_GIT_WIRE, [GIT_HOST_PROVIDERS_CALL]: 'gitHost.providers' },
+  };
 }
 
 // repo/git/transport.ts speaks the native git JSON-RPC protocol (@kira/git-ipc's rpc.ts) over a
@@ -266,6 +297,8 @@ function installInBrowser({
         tags: [],
         head: { kind: 'branch', name: 'main' },
       },
+      // Repo holds queue their next open behind a close, so an unanswered close would stall it.
+      'repo.close': {},
       ...extraResults,
     };
     if (method === undefined || !(method in resultByMethod)) return undefined;
@@ -310,7 +343,10 @@ function installInBrowser({
       }
       const call = envelope.args;
       const wire = call?.methodName === undefined ? undefined : boundWire[call.methodName];
-      if (wire !== undefined) {
+      if (
+        wire !== undefined &&
+        !(wire === 'gitHost.providers' && !(wire in (extraResults ?? {})))
+      ) {
         const arg = (call?.args?.[0] ?? {}) as { windowKey?: string; params?: unknown };
         (window as unknown as { __kiraGitWindowKeys: string[] }).__kiraGitWindowKeys.push(
           arg.windowKey ?? '',
