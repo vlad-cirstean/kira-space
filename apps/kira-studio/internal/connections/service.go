@@ -14,13 +14,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kirathecat/kira-studio/internal/kiratime"
-
 	"github.com/google/uuid"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/preconnect"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/notify"
 	"github.com/kirathecat/kira-studio/internal/secrets"
@@ -106,18 +106,14 @@ type Authorizer interface {
 
 // Deps is everything the service needs from the rest of the app.
 type Deps struct {
-	Conns      *repos.ConnectionsRepo
-	Secrets    *repos.SecretsRepo
+	// Conns reads the projected rows; only connfiles writes them.
+	Conns *repos.ConnectionsRepo
+	// Files is the connections folder: the source of every connection's config and secret refs.
+	Files      *connfiles.Loader
 	Metadata   *repos.MetadataCacheRepo
-	Cipher     *secrets.Cipher
 	Auth       Authorizer
 	Backend    Backend
 	Preconnect *preconnect.Supervisor
-	// MaskRules is the rule store — Duplicate's own use: a duplicated connection
-	// must carry over the source's mask rules, not just its MCP exposure, or it silently exposes
-	// PII the original was protecting. Nil is tolerated (a test harness with nothing to duplicate
-	// against masking need not set it) — Duplicate then skips copying rather than panicking.
-	MaskRules *repos.MaskRulesRepo
 }
 
 // attempt is one in-flight Connect(id) call, shared by every caller that asks for the same id
@@ -287,38 +283,64 @@ func (s *Service) List() ([]model.ConnectionSummary, error) {
 	return list, nil
 }
 
+// Create writes a new connection file. The secret goes into the secret store first, so a missing
+// keychain leaves nothing behind.
 func (s *Service) Create(in Input) (model.ConnectionSummary, error) {
 	in = in.normalized()
 	if err := in.Validate(); err != nil {
 		return model.ConnectionSummary{}, err
 	}
-	if in.Mode == "uri" && in.URI == nil {
-		return model.ConnectionSummary{}, errURIRequired()
+	in.Name = strings.TrimSpace(in.Name)
+	base := connfiles.Slug(in.Name)
+	for attempt := 0; ; attempt++ {
+		stem := s.deps.Files.FreeStem(base)
+		id, err := s.createAt(stem, in)
+		if errors.Is(err, connfiles.ErrExists) && attempt < 3 {
+			continue
+		}
+		if err != nil {
+			return model.ConnectionSummary{}, err
+		}
+		return s.get(id)
 	}
+}
 
-	// P25 D6: encrypt the secret before writing anything — a failure here (cipher unavailable)
-	// leaves no row behind at all. P21 round 3 finding 4: the row and its secrets are written by
-	// the same INSERT statement (InsertWithSecret), never as separate writes.
-	var storedSecret, storedURI *string
-	var err error
-	if in.Mode == "uri" {
-		storedURI, err = s.sealURI(*in.URI, in.Password)
-	} else if in.Password != nil {
-		storedSecret, err = s.sealString(secrets.ScopeConnection, *in.Password)
+func (s *Service) createAt(stem string, in Input) (string, error) {
+	kind, secret := "", ""
+	switch {
+	case in.Mode == "uri":
+		kind, secret = connfiles.KindURI, foldPassword(*in.URI, in.Password)
+	case in.Password != nil && *in.Password != "":
+		kind, secret = connfiles.KindPassword, *in.Password
 	}
+	name := stem + "." + kind
+	if kind != "" {
+		if err := s.deps.Files.PutNewSecret(kind, name, secret); err != nil {
+			if errors.Is(err, connfiles.ErrSecretExists) {
+				return "", connfiles.ErrExists
+			}
+			return "", ipcerr.Wrap(err)
+		}
+	}
+	id, err := s.deps.Files.CreateAt(stem, in.file(stem))
+	if err != nil {
+		if kind != "" {
+			_ = s.deps.Files.DeleteSecret(kind, name)
+		}
+		return "", connfiles.IPCError(err)
+	}
+	return id, nil
+}
+
+func (s *Service) get(id string) (model.ConnectionSummary, error) {
+	row, err := s.deps.Conns.Get(id)
 	if err != nil {
 		return model.ConnectionSummary{}, ipcerr.Wrap(err)
 	}
-
-	fields := in.ConnectionFields
-	fields.Name = strings.TrimSpace(fields.Name)
-	id := uuid.NewString()
-	created, err := s.deps.Conns.InsertWithSecret(id, fields, kiratime.NowISO(), storedSecret, storedURI)
-	if err != nil {
-		return model.ConnectionSummary{}, ipcerr.Wrap(err)
+	if row == nil {
+		return model.ConnectionSummary{}, errConnectionNotFound()
 	}
-	s.emitListChanged()
-	return created, nil
+	return *row, nil
 }
 
 func errURIRequired() *ipcerr.Error {
@@ -329,199 +351,31 @@ func errConnectionNotFound() *ipcerr.Error {
 	return ipcerr.T(ipcerr.CodeNotFound, "backend.studio.connection.notFound.body", nil)
 }
 
-// sealString encrypts plain under scope into a column value.
-func (s *Service) sealString(scope secrets.Scope, plain string) (*string, error) {
-	enc, err := s.deps.Cipher.Encrypt(scope, plain)
+// Duplicate copies the connection's file next to it under a free name, with its own copy of the secrets.
+func (s *Service) Duplicate(id string) (model.ConnectionSummary, error) {
+	existing, err := s.get(id)
 	if err != nil {
-		return nil, err
-	}
-	return &enc, nil
-}
-
-// sealURI folds password into uri (foldPassword) and encrypts the result — the only form in which
-// a URI is ever stored (P181).
-func (s *Service) sealURI(uri string, password *string) (*string, error) {
-	return s.sealString(secrets.ScopeConnectionURI, foldPassword(uri, password))
-}
-
-// secretWrites computes Update's two ciphertext writes (P181). Fields mode: password three-state
-// (nil = unchanged, "" = clear, else replace), uri cleared. URI mode with a URI: sealed fold, the
-// password column cleared. URI mode without one means "unchanged" and is only valid on a URI row.
-func (s *Service) secretWrites(id string, existing *model.ConnectionSummary, in Input) (password, uri repos.SecretWrite, err error) {
-	if in.Mode != "uri" {
-		if in.Password != nil && *in.Password != "" {
-			enc, err := s.sealString(secrets.ScopeConnection, *in.Password)
-			if err != nil {
-				return password, uri, err
-			}
-			password = repos.SecretWrite{Set: true, Value: enc}
-		} else if in.Password != nil {
-			password = repos.SecretWrite{Set: true}
-		}
-		return password, repos.SecretWrite{Set: true}, nil
-	}
-	if in.URI == nil {
-		if existing.Mode != "uri" {
-			return password, uri, errURIRequired()
-		}
-		if in.Password != nil {
-			return password, uri, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.passwordInUri.body", nil)
-		}
-		return password, uri, nil
-	}
-	// Fold the stored password only when nothing else supplies one: a fields-mode connection
-	// flipped to URI without revealing its password must not lose it silently.
-	effective := in.Password
-	if pw := userinfoPassword(*in.URI); effective == nil && (pw == nil || *pw == "") {
-		if effective, err = s.deps.Secrets.Get(id); err != nil {
-			return password, uri, err
-		}
-	}
-	enc, err := s.sealURI(*in.URI, effective)
-	if err != nil {
-		return password, uri, err
-	}
-	return repos.SecretWrite{Set: true}, repos.SecretWrite{Set: true, Value: enc}, nil
-}
-
-func (s *Service) Update(id string, in Input) (model.ConnectionSummary, error) {
-	in = in.normalized()
-	if err := in.Validate(); err != nil {
 		return model.ConnectionSummary{}, err
 	}
-
-	// Read the stored row before it's overwritten, so a live connection's destination and ReadOnly
-	// flag can be compared against the draft below. A connected adapter and both cache layers are
-	// stamped with the config resolved at Connect time and never revisit it — editing them here
-	// would otherwise silently do nothing (ReadOnly) or serve the old destination's cached data
-	// under the new one's name.
-	existing, err := s.deps.Conns.Get(id)
+	newID, err := s.deps.Files.Duplicate(id, duplicateName(existing.Name))
 	if err != nil {
-		return model.ConnectionSummary{}, ipcerr.Wrap(err)
+		return model.ConnectionSummary{}, connfiles.IPCError(err)
 	}
-	if existing == nil {
-		return model.ConnectionSummary{}, errConnectionNotFound()
-	}
-
-	// Encrypt before writing anything — a failure here (cipher unavailable) means Update
-	// never runs, leaving every other field exactly as it was rather than a half-applied edit.
-	// The row and its secrets are written by the same UPDATE statement
-	// (UpdateWithSecret), so a failed write cannot leave a new secret against the old destination.
-	password, uri, err := s.secretWrites(id, existing, in)
-	if err != nil {
-		return model.ConnectionSummary{}, ipcerr.Wrap(err)
-	}
-	// Read before the write below replaces the stored URI.
-	unchanged := s.destinationUnchangedFor(id, in, existing)
-
-	fields := in.ConnectionFields
-	fields.Name = strings.TrimSpace(fields.Name)
-	updated, err := s.deps.Conns.UpdateWithSecret(id, fields, kiratime.NowISO(), password, uri)
-	if err != nil {
-		return model.ConnectionSummary{}, ipcerr.Wrap(err)
-	}
-
-	// destinationUnchanged is the same denylist Test
-	// already trusts to decide whether the old destination's password may be injected — it is a
-	// deliberate denylist (not host/port/database alone) so a future new field defaults to gated.
-	// ReadOnly is the one field it excludes on purpose (safe to change without re-gating Test's
-	// password injection) that still needs to force a reconnect here: it is captured once into
-	// the adapter at Connect time (postgres/mysqlfamily/sqlite/redis/sqs/kafka each read their own
-	// captured copy), so toggling it on a live connection was otherwise silently inert.
-	// An in-flight attempt resolved its config before this edit, so it counts as
-	// live — Disconnect aborts and waits it out, then Connect starts fresh on the new config.
-	if (s.StateOf(id).Status == "connected" || s.connecting(id)) &&
-		(!unchanged || in.ReadOnly != existing.ReadOnly) {
-		// Disconnect (which already drops the enginecache's pages/counts for this connection,
-		// adapterhost/router.go's own DropConnection) then reconnect — attemptConnect moves the
-		// connection's metadata_cache epoch forward and emits the invalidation on its own,
-		// exactly the sequence setConnectionReadOnly's frontend precedent runs for the read-only-
-		// only case. A failed reconnect lands the connection in its normal "error" state, which the
-		// UI already renders — never a silent no-op.
-		if _, err := s.Disconnect(id); err != nil {
-			slog.Warn("disconnect before reconnect failed", "scope", "connections", "id", id, "err", err)
-		}
-		if _, err := s.Connect(id); err != nil {
-			slog.Warn("reconnect after update failed", "scope", "connections", "id", id, "err", err)
-		}
-	} else if s.StateOf(id).Status == "connected" {
-		// Applies live, but only while connected — an edit to a disconnected
-		// connection has nothing running to pace yet, and attemptConnect installs the right value
-		// on the next connect regardless. Skipped above when a reconnect already happened, since
-		// attemptConnect installs the current throttle itself.
-		s.deps.Backend.SetThrottle(id, fields.ThrottlePerSec)
-	}
-	s.emitListChanged()
-	return updated, nil
+	return s.get(newID)
 }
 
-func (s *Service) Duplicate(id string) (model.ConnectionSummary, error) {
-	existing, err := s.deps.Conns.Get(id)
-	if err != nil {
-		return model.ConnectionSummary{}, ipcerr.Wrap(err)
-	}
-	if existing == nil {
-		return model.ConnectionSummary{}, errConnectionNotFound()
-	}
-	newID := uuid.NewString()
-	fields := existing.ConnectionFields
-	fields.Name = duplicateName(fields.Name)
-	// (a raw column copy, not decrypt-then-re-encrypt — the plaintext is never used, so
-	// there is no reason for this path to need the OS key at all) plus the atomicity fix: the
-	// new row and its copied password column are now written by the very same INSERT statement
-	// (InsertDuplicateWithSecret), never as two separate writes — a crash between them can no
-	// longer leave a passwordless duplicate behind.
-	// mcp_enabled is always inserted off (that method's own doc comment) — flipped on below, once
-	// mask rules are copied.
-	created, err := s.deps.Conns.InsertDuplicateWithSecret(id, newID, fields, kiratime.NowISO())
-	if err != nil {
-		return model.ConnectionSummary{}, ipcerr.Wrap(err)
-	}
-	// Finding #6, M6: ConnectionFields carries the source's MCP exposure (McpEnabled/read/write/DDL
-	// modes), but mask rules live in a separate table keyed by connection_id and are never copied by
-	// InsertDuplicateWithSecret's own INSERT. Without this, a duplicated connection that was
-	// masked-and-MCP-exposed would become MCP-exposed with zero mask rules, silently exposing
-	// whatever PII the original was protecting.
-	if s.deps.MaskRules != nil {
-		if err := s.copyMaskRules(id, newID); err != nil {
-			// The new row is already committed above (InsertDuplicateWithSecret)
-			// — keep the UI in sync with what storage holds (a real, if not fully set up,
-			// duplicate) rather than returning an error the caller sees while emitListChanged never
-			// ran, leaving the new row invisible until the next unrelated list refresh.
-			s.emitListChanged()
-			return model.ConnectionSummary{}, ipcerr.Wrap(err)
-		}
-	}
-	// Only now — after the mask rule copy above has succeeded — is MCP exposure switched on to
-	// match the source. Before this, InsertDuplicateWithSecret copied McpEnabled verbatim in the
-	// same INSERT that committed the row, so an error from copyMaskRules above still returned to
-	// the caller, but the already-committed duplicate was left live and MCP-exposed with zero mask
-	// rules. A crash between this write and the one above leaves the duplicate merely
-	// not-yet-MCP-enabled (safe), never exposed-without-rules (unsafe).
-	if fields.McpEnabled {
-		if err := s.deps.Conns.SetMcpEnabled(newID, true, kiratime.NowISO()); err != nil {
-			s.emitListChanged() // F8: same reasoning as the mask-rule-copy failure above.
-			return model.ConnectionSummary{}, ipcerr.Wrap(err)
-		}
-		created.McpEnabled = true
-	}
-	s.emitListChanged()
-	return created, nil
-}
-
-// copyMaskRules copies every mask rule on fromID onto toID — Duplicate's own step.
-// uuid.NewString is passed through as the repo's own id-mint function: the list and every insert
-// it drives now run inside CopyForConnection's own single transaction, rather than this method
-// listing once (to count rows and mint that many ids) before a second, separate list call inside
-// the repo — closing the "N ids for M rules" mismatch a concurrent rule add/remove on fromID could
-// otherwise produce between those two, previously-separate list calls.
-func (s *Service) copyMaskRules(fromID, toID string) error {
-	return s.deps.MaskRules.CopyForConnection(fromID, toID, uuid.NewString, kiratime.NowISO())
-}
-
+// Remove deletes the connection's file. The load that follows forgets the row; Removed tears the
+// connection down first.
 func (s *Service) Remove(id string) error {
-	// F4 (P108 Part 3): abort a racing in-flight Connect before it can finish and re-register a
-	// live adapter/states entry/sidecar for an id this call is about to delete outright.
+	if err := s.deps.Files.Delete(id); err != nil {
+		return connfiles.IPCError(err)
+	}
+	return nil
+}
+
+// Removed is the loader's OnForget hook: the file is gone, so the connection must not outlive its row.
+// It aborts a racing in-flight Connect, drops the live adapter and sidecar, and forgets the state.
+func (s *Service) Removed(id string) {
 	defer s.beginTeardown(id)()
 	s.abortInFlight(id)
 	current := s.StateOf(id)
@@ -529,17 +383,99 @@ func (s *Service) Remove(id string) error {
 		_ = s.deps.Backend.Disconnect(context.Background(), id)
 	}
 	s.deps.Preconnect.Stop(id)
-	if err := s.deps.Conns.Delete(id); err != nil { // cascades filters, metadata cache, saved queries
-		return ipcerr.Wrap(err)
-	}
-	if err := s.deps.Secrets.Delete(id); err != nil {
-		return ipcerr.Wrap(err)
-	}
 	s.mu.Lock()
 	delete(s.states, id)
 	s.mu.Unlock()
+}
+
+// ConfigChanged is the loader's OnChange hook: it applies what a load changed to the live
+// connections, then broadcasts the list. A change to the destination, the secret refs or read-only
+// reconnects a live connection, since the adapter and both cache layers carry what Connect resolved;
+// a throttle-only change applies live.
+func (s *Service) ConfigChanged(ch connfiles.Changes) {
+	for _, c := range ch.Items {
+		if c.Old == nil || c.New == nil {
+			continue
+		}
+		live := s.StateOf(c.ID).Status == "connected" || s.connecting(c.ID)
+		switch {
+		case live && (!destinationUnchanged(*c.Old, *c.New) || c.Old.ReadOnly != c.New.ReadOnly):
+			s.reconnect(c.ID)
+		case s.StateOf(c.ID).Status == "connected" && c.Old.ThrottlePerSec != c.New.ThrottlePerSec:
+			s.deps.Backend.SetThrottle(c.ID, c.New.ThrottlePerSec)
+		}
+	}
 	s.emitListChanged()
+}
+
+// reconnect drops and re-opens a live connection on a goroutine: the load that noticed the change must
+// not wait out a pre-connect script. A failed reconnect lands in the connection's error state.
+func (s *Service) reconnect(id string) {
+	go func() {
+		if _, err := s.Disconnect(id); err != nil {
+			slog.Warn("disconnect before reconnect failed", "scope", "connections", "id", id, "err", err)
+		}
+		if _, err := s.Connect(id); err != nil {
+			slog.Warn("reconnect after file change failed", "scope", "connections", "id", id, "err", err)
+		}
+	}()
+}
+
+// UpdateCredentials edits the username in the file and seals the password under the secret the file
+// names, adding that reference when the file has none. A nil value leaves its field alone. A live
+// connection reconnects.
+func (s *Service) UpdateCredentials(id string, username, password *string) error {
+	rec, ok := s.deps.Files.RecordOf(id)
+	if !ok {
+		return errConnectionNotFound()
+	}
+	if rec.File.EffectiveMode() == connfiles.ModeURI {
+		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.passwordInUri.body", nil)
+	}
+	var sets []configfs.NodeSet
+	fileDiff := false // the file changes where ConfigChanged sees it and reconnects
+	if username != nil {
+		sets = append(sets, configfs.NodeSet{Path: []string{"username"}, Value: *username})
+		fileDiff = *username != rec.File.Username
+	}
+	passwordChanged := password != nil && *password != ""
+	if passwordChanged {
+		name := connfiles.SecretName(rec.File.Password)
+		if name == "" {
+			var err error
+			if name, err = s.putFreshPassword(rec.Stem, *password); err != nil {
+				return ipcerr.Wrap(err)
+			}
+			sets = append(sets, configfs.NodeSet{Path: []string{"password"}, Value: connfiles.RefOf(name)})
+			fileDiff = true
+		} else if err := s.deps.Files.PutSecret(connfiles.KindPassword, name, *password); err != nil {
+			return ipcerr.Wrap(err)
+		}
+	}
+	if len(sets) > 0 {
+		if err := s.deps.Files.Patch(id, sets...); err != nil {
+			return connfiles.IPCError(err)
+		}
+	}
+	if passwordChanged && !fileDiff && (s.StateOf(id).Status == "connected" || s.connecting(id)) {
+		s.reconnect(id)
+	}
 	return nil
+}
+
+// putFreshPassword seals password under the first unused name <stem>.password, <stem>-2.password ...
+func (s *Service) putFreshPassword(stem, password string) (string, error) {
+	for n := 1; ; n++ {
+		base := stem
+		if n > 1 {
+			base = fmt.Sprintf("%s-%d", stem, n)
+		}
+		name := base + "." + connfiles.KindPassword
+		err := s.deps.Files.PutNewSecret(connfiles.KindPassword, name, password)
+		if !errors.Is(err, connfiles.ErrSecretExists) {
+			return name, err
+		}
+	}
 }
 
 // Reorder persists the sidebar's drag order. An id deleted in another window fails the call; the
@@ -570,18 +506,22 @@ func (s *Service) Reorder(ids []string) ([]model.ConnectionSummary, error) {
 // Authorizer.Authorize enforces that (it ignores confirmed whenever it can actually evaluate), so
 // this method never has to re-check which branch produced a grant.
 func (s *Service) Reveal(id string, confirmed bool) RevealResult {
-	existing, err := s.deps.Conns.Get(id)
-	if err == nil && existing == nil {
-		err = fmt.Errorf("connection %s not found", id)
-	}
-	if err != nil {
-		msg := errorMessage(err)
+	rec, ok := s.deps.Files.RecordOf(id)
+	if !ok {
+		msg := errorMessage(errConnectionNotFound())
 		return RevealResult{Outcome: revealOutcomeError, Error: &msg}
 	}
-	uriMode := existing.Mode == "uri"
-	reason, fetch := revealReason, func() (*string, error) { return s.deps.Secrets.Get(id) }
+	uriMode := rec.File.EffectiveMode() == connfiles.ModeURI
+	reason, kind, ref := revealReason, connfiles.KindPassword, rec.File.Password
 	if uriMode {
-		reason, fetch = revealURIReason, func() (*string, error) { return s.deps.Secrets.GetURI(id) }
+		reason, kind, ref = revealURIReason, connfiles.KindURI, rec.File.URI
+	}
+	fetch := func() (*string, error) {
+		v, err := openSecret(s.deps.Files, kind, ref)
+		if errors.Is(err, configfs.ErrSecretMissing) {
+			return nil, nil
+		}
+		return v, err
 	}
 	outcome, value, err := localauth.Gated(s.deps.Auth.Authorize, reason, confirmed, fetch)
 	switch outcome {
@@ -606,42 +546,24 @@ func (s *Service) Reveal(id string, confirmed bool) RevealResult {
 	return RevealResult{Outcome: revealOutcomeRevealed, Password: value}
 }
 
-// destinationUnchanged reports whether the draft still points at the same place, over the same
-// route, as the stored row. Test only injects the stored secret when this holds (see the comment
-// on Test below): a draft edited to reach a different destination must never get the old
-// destination's password handed to it.
+// destinationUnchanged reports whether a file edit still points the connection at the same place,
+// over the same route, with the same secret refs. A live connection keeps what Connect resolved, so a
+// change here reconnects it.
 //
-// A real denylist, not one shaped like an allowlist that merely happened to cover every
-// currently-present field — zeroExemptFields clears every member this function does not gate on,
-// then reflect.DeepEqual compares what is left. Every field zeroExemptFields does not name is
-// therefore gated by construction: a future new ConnectionFields member defaults to gated (safe)
-// instead of silently falling through an allowlist the way the original fix
-// (host/port/database/URI only, missing Preconnect/PreconnectSidecar/Options) once did.
-func destinationUnchanged(in Input, stored model.ConnectionFields) bool {
-	a, b := in.ConnectionFields, stored
-	zeroExemptFields(&a)
-	zeroExemptFields(&b)
-	return reflect.DeepEqual(a, b)
-}
-
-// destinationUnchangedFor is destinationUnchanged against the stored row, with the stored URI
-// decrypted into the comparison copy when the draft carries one (P181: the repo never returns it).
-// A draft with no URI compares nil to nil; a decrypt failure counts as changed.
-func (s *Service) destinationUnchangedFor(id string, in Input, stored *model.ConnectionSummary) bool {
-	fields := stored.ConnectionFields
-	if in.URI != nil && stored.Mode == "uri" {
-		uri, err := s.deps.Secrets.GetURI(id)
-		if err != nil || uri == nil {
-			return false
-		}
-		fields.URI = uri
-	}
-	return destinationUnchanged(in, fields)
+// A real denylist, not an allowlist that merely happened to cover every current field —
+// zeroExemptFields clears every member this function does not gate on, then reflect.DeepEqual compares
+// what is left. Every field zeroExemptFields does not name is therefore gated by construction: a future
+// new ConnectionFields member defaults to gated (safe).
+func destinationUnchanged(a, b connfiles.File) bool {
+	fa, fb := a.Fields(), b.Fields()
+	zeroExemptFields(&fa)
+	zeroExemptFields(&fb)
+	return reflect.DeepEqual(fa, fb) && a.Password == b.Password && a.URI == b.URI
 }
 
 // zeroExemptFields clears every ConnectionFields member that is genuinely safe to change without
-// re-gating Test's stored-password injection — every field zeroExemptFields leaves untouched is
-// exactly what destinationUnchanged compares.
+// reconnecting — every field zeroExemptFields leaves untouched is exactly what destinationUnchanged
+// compares.
 //
 // Name/Color are purely cosmetic. ReadOnly/AutoExplain gate this app's own console, never what a
 // connection connects to. ThrottlePerSec paces commands against whatever destination is
@@ -669,45 +591,18 @@ func zeroExemptFields(f *model.ConnectionFields) {
 	f.McpReviewResults = ""
 }
 
-// Test never errors: a test run is never armed and never leaves a process behind, however it
-// ended (the deferred Stop mirrors connections.ts:348-351's `finally`). It still runs the same
-// Validate() Create/Update do (this was the one Input-accepting entry point that skipped
-// it) — without that, an out-of-range Port reaches postgres/client.go's `uint16(*cfg.Port)`
-// unchecked and silently wraps around to a different, in-range port instead of being rejected.
-//
-// existingID is the dialog's editingId, optional. Since the draft's password is no longer
-// pre-filled on open, testing an existing connection the user hasn't retyped credentials for would
-// otherwise probe with no password at all — resolving the stored secret here, server-side, fixes
-// that properly for both fields and URI mode (URI mode already had this exact gap, for the same
-// reason: an unchanged draft carries `password: null`). Not gated: Test uses the secret without
-// displaying it, the same footing as Connect. A missing or undecryptable secret here is not
-// fatal — resolveFromInput/Backend.Test below still run and report failure the normal way,
-// exactly as a wrong password would.
-//
-// The stored secret is only injected when destinationUnchanged holds — otherwise
-// "Edit connection → change Host (or Preconnect, or
-// Options["sslmode"]/["endpoint"]) → Test" would decrypt the old destination's password and send
-// it down whatever route the draft currently points at, with no auth gate on this path at all
-// (Test is deliberately not auth-gated, see above). An edited destination instead tests with no
-// password, same as a brand-new draft.
-func (s *Service) Test(in Input, existingID string) TestResult {
-	in = in.normalized()
-	if existingID != "" {
-		var err error
-		if in, err = s.fillFromStored(in, existingID); err != nil {
-			msg := errorMessage(err)
-			return TestResult{OK: false, Error: &msg}
-		}
-	}
-	err := in.Validate()
-	if err == nil && in.Mode == "uri" && in.URI == nil {
-		err = errURIRequired()
-	}
+// Test never errors: it tests the saved file, resolves its secret server-side and never displays it
+// (the same footing as Connect, so not auth-gated). A test run is never armed and never leaves a
+// process behind, however it ended; the deferred Stop mirrors connections.ts:348-351's `finally`.
+func (s *Service) Test(id string) TestResult {
+	r, err := resolve(s.deps.Conns, s.deps.Files, id)
 	if err != nil {
 		msg := errorMessage(err)
 		return TestResult{OK: false, Error: &msg}
 	}
-	r := resolveFromInput(in)
+	// A fresh id per call: Preconnect.Start keys its sidecar on the id and kills what is tracked under
+	// it, so a test sharing the live connection's id would kill its tunnel.
+	r.config.ID = "test:" + uuid.NewString()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	run := &attempt{done: make(chan struct{}), cancel: cancel}
@@ -745,33 +640,6 @@ func (s *Service) Test(in Input, existingID string) TestResult {
 		return TestResult{OK: false, Error: &msg}
 	}
 	return TestResult{OK: true, ServerVersion: &serverVersion}
-}
-
-// fillFromStored supplies what a draft leaves to the stored row: a fields-mode
-// draft with no password gets the stored one, a URI-mode draft with no URI (masked, never
-// revealed) gets the stored decrypted URI — both only while destinationUnchanged holds. A URI
-// decrypt failure is returned: there is nothing else to test.
-func (s *Service) fillFromStored(in Input, existingID string) (Input, error) {
-	existing, err := s.deps.Conns.Get(existingID)
-	if err != nil || existing == nil {
-		return in, nil
-	}
-	switch {
-	case in.Mode == "uri" && in.URI == nil:
-		if existing.Mode != "uri" || !s.destinationUnchangedFor(existingID, in, existing) {
-			return in, nil
-		}
-		uri, err := s.deps.Secrets.GetURI(existingID)
-		if err != nil {
-			return in, err
-		}
-		in.URI = uri
-	case in.Mode != "uri" && in.Password == nil && destinationUnchanged(in, existing.ConnectionFields):
-		if pw, err := s.deps.Secrets.Get(existingID); err == nil {
-			in.Password = pw
-		}
-	}
-	return in, nil
 }
 
 // Connect deduplicates concurrent calls for the same id: every caller that arrives while an
@@ -912,7 +780,7 @@ func (s *Service) doConnect(id string, ctx context.Context) (model.ConnectionSta
 // finalizeAbortedAttempt instead of the normal error/success path whenever it fires, so a
 // Disconnect/Remove that arrived mid-connect is never silently undone once this attempt finishes.
 func (s *Service) attemptConnect(id string, ctx context.Context) (model.ConnectionState, error) {
-	r, err := resolve(s.deps.Conns, s.deps.Secrets, id)
+	r, err := resolve(s.deps.Conns, s.deps.Files, id)
 	if err != nil {
 		return model.ConnectionState{}, err
 	}
@@ -1034,7 +902,7 @@ func (s *Service) StateOf(id string) model.ConnectionState {
 	return model.ConnectionState{ConnectionID: id, Status: "disconnected", Since: nowMillis()}
 }
 
-func (s *Service) SecretsStatus() secrets.Status { return s.deps.Cipher.Status() }
+func (s *Service) SecretsStatus() secrets.Status { return s.deps.Files.Secrets().Status() }
 
 func (s *Service) OnStateChange(fn func(model.ConnectionState)) (unsubscribe func()) {
 	return s.stateChanged.Subscribe(fn)

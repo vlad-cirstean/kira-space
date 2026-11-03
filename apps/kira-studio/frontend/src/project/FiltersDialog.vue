@@ -196,7 +196,7 @@ async function onSave(): Promise<void> {
 }
 
 // Title identity (FiltersDialog.html: "Tree filters — prod-analytics") — reads the name off
-// the store that already has it, same as ConnectionDialog.vue does; adds no new state.
+// the store that already has it; adds no new state.
 const connectionName = computed(
   () => connectionsStore.connectionRecord(filtersDialogStore.connectionId)?.name ?? '',
 );

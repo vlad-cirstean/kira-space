@@ -1,5 +1,6 @@
 import type { ControlSnapshot, PortSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
+import { createConnection } from './support/connect';
 import { GRID_SCROLLER_SELECTOR } from './support/grid';
 import { IPC } from './support/ipcChannels';
 import {
@@ -67,16 +68,7 @@ test('__kiraScrollTrace — inert until start(), documented shape on stop()', as
 }) => {
   const { window: page } = await relaunch({ control: CONTROL, stream: PORT });
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Scroll Trace DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-grey"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Scroll Trace DB');
 
   const connRow = page.locator('[data-testid="tree-row"][data-kind="connection"]');
   await openRowMenu(page, '');

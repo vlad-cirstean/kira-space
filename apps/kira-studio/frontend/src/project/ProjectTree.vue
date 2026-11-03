@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { ShortcutId } from '@shared/domain/shortcuts';
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { useEventListener } from '@vueuse/core';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
@@ -16,6 +19,8 @@ import {
   useContextMenuStore,
 } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef, watch } from 'vue';
+import { useConnectionConfig } from '../state/connectionConfig';
+import { useConnectionDialogStore } from '../state/connectionDialogs';
 import { useConnectionsStore } from '../state/connections';
 import { useTabsStore } from '../state/tabs';
 import { reloadTab } from '../state/viewCommands';
@@ -28,6 +33,13 @@ const contextMenuStore = useContextMenuStore();
 const connectionsStore = useConnectionsStore();
 const tabsStore = useTabsStore();
 const treeStore = useTreeStore();
+const connectionDialogStore = useConnectionDialogStore();
+const config = useConnectionConfig();
+
+// A file that never held a valid connection has no row; list it so it can be fixed.
+const brokenFiles = computed(() =>
+  (config.data.value?.files ?? []).filter((f) => f.problem !== null && f.id === ''),
+);
 
 // Double-click opens a data tab for a relation (§8.10's "Open data" — the same action) rather
 // than toggling the twisty, which the twisty button itself already does.
@@ -249,7 +261,6 @@ function moveViaMenu(id: ShortcutId): (key: string) => void {
 useTreeShortcuts(nav, {
   'tree.copyName': viaMenu('tree.copyName'),
   'tree.copyUri': viaMenu('tree.copyUri'),
-  'tree.rename': viaMenu('tree.rename'),
   'tree.duplicate': viaMenu('tree.duplicate'),
   'tree.delete': viaMenu('tree.delete'),
   'list.moveUp': moveViaMenu('list.moveUp'),
@@ -306,6 +317,26 @@ useEventListener(treeBodyEl, 'contextmenu', onBackgroundContextMenu);
         </div>
       </div>
     </div>
+    <ul
+      v-if="brokenFiles.length"
+      class="m-0 flex list-none flex-col gap-0.5 p-1"
+      data-testid="tree-connection-broken"
+    >
+      <li v-for="f in brokenFiles" :key="f.file">
+        <Button
+          variant="link"
+          size="inline"
+          class="w-full min-w-0 justify-start text-error"
+          :data-testid="`tree-connection-broken-${f.file}`"
+          @click="connectionDialogStore.openFile(f.file)"
+        >
+          <CodiconIcon name="warning" :size="13" />
+          <TruncatedText
+            :text="`${f.file}: ${f.problem?.line ? t('common.config.lineError.error', { line: f.problem.line, text: f.problem.message }) : f.problem?.message}`"
+          />
+        </Button>
+      </li>
+    </ul>
     <Alert v-if="treeStore.searchIncomplete" variant="info" data-testid="search-incomplete-note">
       <AlertDescription>
         {{ t('studio.project.tree.searchIncomplete.body') }}

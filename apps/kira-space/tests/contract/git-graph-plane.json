@@ -1,0 +1,22 @@
+{
+  "git:graph.loadMore#bound": {
+    "started": true
+  },
+  "git:graph.refresh#bound": {
+    "restarted": true
+  },
+  "git:graph.status#bound": {
+    "exhausted": true,
+    "loaded": 1200,
+    "remaining": 0
+  },
+  "graph.stream#plane": {
+    "exhausted": false,
+    "from": 500,
+    "remaining": 0,
+    "repoId": "<masked>",
+    "seq": 2,
+    "source": "cache",
+    "to": 1000
+  }
+}

@@ -6,7 +6,7 @@ import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 // revealVariable and revealHistoryEntry (state/variables.ts) and the Copy as curl loop
 // (state/curl.ts, which calls revealVariable rather than hand-rolling its own copy). The
 // four-outcome switch and the recurse-once-on-confirmation shape were identical in all three;
-// project/ConnectionDialog.vue keeps its own copy on purpose — sharing it would need a home
+// project/state/connectionReveal.ts keeps its own copy on purpose — sharing it would need a home
 // both project/** and http/** may import, which is exactly the Studio<->Api coupling this module
 // boundary exists to prevent.
 // Returns this call's own outcome — the revealed plaintext on

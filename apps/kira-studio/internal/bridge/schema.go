@@ -2,12 +2,14 @@ package bridge
 
 import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
-// SchemaService is the DDL half of P18 (v1.1)'s language service — Get/Set for the
-// `connection_ddl` document, modelled method-for-method on FiltersService.
+// SchemaService is the DDL half of P18 (v1.1)'s language service: Get/Set for the schema_ddl text in
+// a connection's file.
 type SchemaService struct {
 	Deps appcore.Deps
 }
@@ -20,7 +22,15 @@ func (s *SchemaService) Get(args SchemaGetArgs) (model.ConnectionDDL, error) {
 	if args.ConnectionID == "" {
 		return model.ConnectionDDL{}, ipcerr.Required("connectionId")
 	}
-	return ipcerr.InternalResult(s.Deps.Repos.Schema.Get(args.ConnectionID))
+	rec, ok := s.Deps.ConnectionFiles.RecordOf(args.ConnectionID)
+	if !ok {
+		return model.ConnectionDDL{}, connfiles.IPCError(connfiles.ErrNotFound)
+	}
+	out := model.ConnectionDDL{ConnectionID: args.ConnectionID, DDL: rec.File.SchemaDDL}
+	if row, err := s.Deps.Repos.Connections.Get(args.ConnectionID); err == nil && row != nil {
+		out.UpdatedAt = row.UpdatedAt
+	}
+	return out, nil
 }
 
 type SchemaSetArgs struct {
@@ -28,17 +38,14 @@ type SchemaSetArgs struct {
 	DDL          string `json:"ddl"`
 }
 
-// Set persists the DDL text and broadcasts unconditionally — mirroring LayoutService.Set/
-// SettingsService.Set (D4): a console open in another window must pick up the edit without a
-// relaunch.
+// Set writes the DDL text into the file. The load that follows broadcasts the change, so a console open
+// in another window picks it up.
 func (s *SchemaService) Set(args SchemaSetArgs) (model.ConnectionDDL, error) {
 	if args.ConnectionID == "" {
 		return model.ConnectionDDL{}, ipcerr.Required("connectionId")
 	}
-	ddl, err := s.Deps.Repos.Schema.Set(args.ConnectionID, args.DDL)
-	if err != nil {
-		return model.ConnectionDDL{}, ipcerr.InternalErr(err)
+	if err := s.Deps.ConnectionFiles.Patch(args.ConnectionID, configfs.NodeSet{Path: []string{"schema_ddl"}, Value: args.DDL}); err != nil {
+		return model.ConnectionDDL{}, connfiles.IPCError(err)
 	}
-	s.Deps.Events.Emit(ChannelSchemaChanged, ddl)
-	return ddl, nil
+	return s.Get(SchemaGetArgs{ConnectionID: args.ConnectionID})
 }

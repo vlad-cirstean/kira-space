@@ -27,7 +27,7 @@ function seedTree(collections: CollectionSummary[], items: CollectionItemSummary
 }
 
 function collection(id: string, name: string, sortOrder = 0): CollectionSummary {
-  return { id, name, sortOrder, createdAt: '', updatedAt: '' };
+  return { id, name, file: `${id}.yaml`, sortOrder, createdAt: '', updatedAt: '' };
 }
 
 function folder(

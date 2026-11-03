@@ -366,14 +366,6 @@ test('the automation submenu shows a disabled hint without scripts', async ({ re
   await expect(page.locator(t('menu-item-ade-automation-none'))).toBeDisabled();
 });
 
-test('the script editor shows the worktree Switch in Space', async ({ relaunch }) => {
-  const { window: page } = await openPlan(relaunch, [SCRIPTS]);
-  await page.locator('[data-testid="mode-tab"][data-mode="automations"]').click();
-  await page.locator(t('automations-add')).click();
-  await page.locator(t('menu-item-new-script')).click();
-  await expect(page.locator(t('script-use-ade-dir'))).toBeVisible();
-});
-
 // Contract ade-automation. Backend half: adeflow TestAutomationRun ("variables, tools and folder",
 // "gate both ways"). The task and branch ids are the fixture board's; every other field is the
 // backend's.

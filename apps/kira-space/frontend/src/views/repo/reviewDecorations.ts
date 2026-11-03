@@ -536,7 +536,7 @@ export function attachReviewDecorations(
       throw err;
     }
     if (closeAfter) closeZone();
-    // No explicit reload — see mark()'s own comment: transport.ts's repaint fan-out covers this
+    // No explicit reload — see mark()'s own comment: reviewRepaint.ts's fan-out covers this
     // editor already (C12-4).
   }
 

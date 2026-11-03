@@ -22,16 +22,21 @@ func (s *ConnectionsService) Create(input ConnectionsCreateArgs) (model.Connecti
 	return s.Deps.Connections.Create(input)
 }
 
-type ConnectionsUpdateArgs struct {
-	ID    string            `json:"id"`
-	Input connections.Input `json:"input"`
+// ConnectionsCredentialsArgs updates the username and password of a fields-mode connection. A nil
+// field stays as it is.
+type ConnectionsCredentialsArgs struct {
+	ID       string  `json:"id"`
+	Username *string `json:"username"`
+	Password *string `json:"password"`
 }
 
-func (s *ConnectionsService) Update(args ConnectionsUpdateArgs) (model.ConnectionSummary, error) {
+// UpdateCredentials edits the username in the connection's file and seals the password under the
+// secret the file names. A live connection reconnects.
+func (s *ConnectionsService) UpdateCredentials(args ConnectionsCredentialsArgs) error {
 	if args.ID == "" {
-		return model.ConnectionSummary{}, ipcerr.Required("id")
+		return ipcerr.Required("id")
 	}
-	return s.Deps.Connections.Update(args.ID, args.Input)
+	return s.Deps.Connections.UpdateCredentials(args.ID, args.Username, args.Password)
 }
 
 // ConnectionsIDArgs is shared by every method below that needs nothing but a connection id.
@@ -86,16 +91,13 @@ func (s *ConnectionsService) Reveal(args ConnectionsRevealArgs) connections.Reve
 	return s.Deps.Connections.Reveal(args.ID, args.Confirmed)
 }
 
-// ConnectionsTestArgs carries the dialog's own editingId alongside the draft (P14 D3) — nil/empty
-// for a brand-new connection, which behaves exactly as it always has.
-type ConnectionsTestArgs struct {
-	Input connections.Input `json:"input"`
-	ID    string            `json:"id"`
-}
-
-// Test never errors, for the same reason: failure is reported inside TestResult.
-func (s *ConnectionsService) Test(args ConnectionsTestArgs) connections.TestResult {
-	return s.Deps.Connections.Test(args.Input, args.ID)
+// Test never errors: failure is reported inside TestResult. It tests the saved file.
+func (s *ConnectionsService) Test(args ConnectionsIDArgs) connections.TestResult {
+	if args.ID == "" {
+		msg := "id is required"
+		return connections.TestResult{Error: &msg}
+	}
+	return s.Deps.Connections.Test(args.ID)
 }
 
 func (s *ConnectionsService) Connect(args ConnectionsIDArgs) (model.ConnectionState, error) {

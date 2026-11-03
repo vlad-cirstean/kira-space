@@ -12,6 +12,5 @@ registerRunsScenarios(
   {
     extraBase: [],
     modeTab: (page) => modeTab(page, 'automations'),
-    homeText: () => '/home/test',
   },
 );

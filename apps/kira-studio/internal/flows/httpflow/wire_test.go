@@ -17,24 +17,12 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/httpclient"
-	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 )
 
 func secretVar(t *testing.T, app *flowharness.App, name, value string) (collectionID, envID string) {
 	t.Helper()
-	col, err := app.W.Collections.CreateCollection(bridge.CollectionsCreateCollectionArgs{Name: "c-" + name})
-	if err != nil {
-		t.Fatal(err)
-	}
-	env, err := app.W.Variables.CreateEnvironment(bridge.VariablesCreateEnvironmentArgs{Name: "e-" + name, Color: "none"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := app.W.Variables.Upsert(bridge.VariablesUpsertArgs{
-		Scope: model.VariableScopeEnvironment, OwnerID: env.ID, Name: name, Value: &value, IsSecret: true,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	col := app.SeedCollection(t, "c-"+name)
+	env := app.SeedEnvironment(t, "e-"+name, flowharness.APIVar{Name: name, Value: value, Secret: true})
 	return col.ID, env.ID
 }
 

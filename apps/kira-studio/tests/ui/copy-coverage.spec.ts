@@ -87,20 +87,17 @@ test('connection row menu', async ({ relaunch }) => {
   await expectCatalogText(loc(page, 'context-menu'), { allow: ALLOW });
 });
 
-test('connection dialog, every tab', async ({ relaunch }) => {
+test('new connection dialog, both steps', async ({ relaunch }) => {
   const { window: page } = await relaunch({
     control: [{ channel: IPC.connectionsList, response: [] }],
   });
   await setPseudoLocale(page);
   await page.click('[data-testid="add-connection"]');
-  const dialog = loc(page, 'connection-dialog');
+  const dialog = loc(page, 'new-connection-dialog');
   await expect(dialog).toBeVisible();
   await expectCatalogText(dialog, { allow: [...ALLOW, PALETTE] });
   await page.click('[data-testid="connection-kind-postgres"]');
-  for (const tab of ['general', 'advanced', 'preconnect', 'mcp']) {
-    await loc(page, `connection-tab-${tab}`).click();
-    await expectCatalogText(dialog, { allow: [...ALLOW, PALETTE] });
-  }
+  await expectCatalogText(dialog, { allow: [...ALLOW, PALETTE] });
 });
 
 test('settings dialog, every pane', async ({ relaunch }) => {

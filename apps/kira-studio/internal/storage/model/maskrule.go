@@ -23,6 +23,9 @@ var maskKinds = map[MaskKind]bool{
 	MaskKindDate: true, MaskKindRedact: true,
 }
 
+// MaskKinds lists every mask kind, sorted.
+func MaskKinds() []string { return sortedKeys(maskKinds) }
+
 // ValidMaskKind mirrors packages/shared/domain/mask.ts's maskKindSchema, the same
 // "ValidMcpPermissionMode mirrors mcpPermissionModeSchema" pattern connection.go:105 already uses.
 func ValidMaskKind(v string) bool { return maskKinds[MaskKind(v)] }

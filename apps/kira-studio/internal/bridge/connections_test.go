@@ -33,9 +33,8 @@ func TestConnectionsServiceRejectsBareID(t *testing.T) {
 		}
 	}
 
-	t.Run("Update", func(t *testing.T) {
-		_, err := svc.Update(bridge.ConnectionsUpdateArgs{ID: ""})
-		assertContract(t, err)
+	t.Run("UpdateCredentials", func(t *testing.T) {
+		assertContract(t, svc.UpdateCredentials(bridge.ConnectionsCredentialsArgs{ID: ""}))
 	})
 	t.Run("Duplicate", func(t *testing.T) {
 		_, err := svc.Duplicate(bridge.ConnectionsIDArgs{ID: ""})

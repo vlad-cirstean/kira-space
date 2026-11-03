@@ -1,65 +1,19 @@
+import { newConnectionArgs } from './connect';
+
+// The `connections.create` args the new-connection dialog sends for each engine. The colour and
+// connection fields live in the file, so the call carries none.
 export function mongoCreateArgs(name: string) {
-  return {
-    name,
-    kind: 'mongodb',
-    color: 'green',
-    mode: 'fields',
-    readOnly: false,
-    host: '127.0.0.1',
-    port: 27017,
-    database: 'kira_test',
-    username: 'kira',
-    password: null,
-    uri: null,
-    options: {},
-    preconnect: null,
-    preconnectSidecar: false,
-    preconnectDelaySec: 0,
-    autoExplain: false,
-    throttlePerSec: 0,
-  };
+  return newConnectionArgs(name, 'mongodb');
 }
 
 export function redisCreateArgs(name: string) {
-  return {
-    name,
-    kind: 'redis',
-    color: 'red',
-    mode: 'fields',
-    readOnly: false,
-    host: '127.0.0.1',
-    port: 6379,
-    database: '0',
-    username: null,
-    password: null,
-    uri: null,
-    options: {},
-    preconnect: null,
-    preconnectSidecar: false,
-    preconnectDelaySec: 0,
-    autoExplain: false,
-    throttlePerSec: 0,
-  };
+  return newConnectionArgs(name, 'redis');
 }
 
-export function postgresCreateArgs(name: string, color: string) {
-  return {
-    name,
-    kind: 'postgres',
-    color,
-    mode: 'fields',
-    readOnly: false,
-    host: '127.0.0.1',
-    port: 5432,
-    database: 'kira_test',
-    username: 'postgres',
-    password: null,
-    uri: null,
-    options: {},
-    preconnect: null,
-    preconnectSidecar: false,
-    preconnectDelaySec: 0,
-    autoExplain: false,
-    throttlePerSec: 0,
-  };
+export function postgresCreateArgs(name: string, _color?: string) {
+  return newConnectionArgs(name, 'postgres');
+}
+
+export function mariadbCreateArgs(name: string) {
+  return newConnectionArgs(name, 'mariadb');
 }

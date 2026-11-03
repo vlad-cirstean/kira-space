@@ -21,7 +21,7 @@
     "provider": "",
     "resumable": false,
     "resumedFrom": "",
-    "scriptId": "<id:2>",
+    "scriptId": "tick",
     "scriptName": "tick",
     "sessionId": "<masked>",
     "startedAt": null,

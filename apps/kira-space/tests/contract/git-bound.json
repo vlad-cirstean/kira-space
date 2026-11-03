@@ -1,0 +1,104 @@
+{
+  "event:kira:git:repo.changed": {
+    "kind": "refsChanged",
+    "repoId": "<work>/proj"
+  },
+  "git:blame.line#bound": {
+    "author": "Test Author",
+    "authorTimeSeconds": 0,
+    "sha": "<masked>",
+    "summary": "first"
+  },
+  "git:commit.detail#bound": {
+    "author": {
+      "email": "author@example.com",
+      "name": "Test Author",
+      "timestamp": 0
+    },
+    "body": "",
+    "committer": {
+      "email": "author@example.com",
+      "name": "Test Author",
+      "timestamp": 0
+    },
+    "decoration": [
+      {
+        "index": 0,
+        "isHead": true,
+        "kind": "branch",
+        "name": "main"
+      }
+    ],
+    "files": [
+      {
+        "kind": "modified",
+        "path": "f.txt"
+      }
+    ],
+    "parentIndex": 0,
+    "parents": [],
+    "sha": "<masked>",
+    "signature": {
+      "signer": "",
+      "status": "N"
+    },
+    "subject": "second",
+    "trailers": []
+  },
+  "git:file.read#bound": {
+    "content": "one\ntwo\nthree\n",
+    "kind": "found"
+  },
+  "git:refs.list#bound": {
+    "branches": [
+      {
+        "committerDate": 0,
+        "isHead": true,
+        "kind": "branch",
+        "objectId": "<masked>",
+        "refname": "refs/heads/main",
+        "shortName": "main"
+      }
+    ],
+    "head": {
+      "kind": "branch",
+      "name": "main"
+    },
+    "remoteBranches": [],
+    "tags": []
+  },
+  "git:repoSettings.get#bound": {
+    "kiraSpace.checkout.autoStash": true,
+    "kiraSpace.gitHost.provider": "auto",
+    "kiraSpace.graph.pageSize": 5000,
+    "kiraSpace.graph.scope": "all",
+    "kiraSpace.pull.strategy": "auto",
+    "kiraSpace.review.baseCandidates": [
+      "main",
+      "master"
+    ],
+    "kiraSpace.stash.includeUntracked": false,
+    "kiraSpace.stash.showInGraph": true,
+    "kiraSpace.worktree.basePath": "",
+    "kiraSpace.worktree.prepareScript": ""
+  },
+  "git:status.get#bound": {
+    "autoFetch": null,
+    "counts": {
+      "staged": 0,
+      "unmerged": 0,
+      "unstaged": 1,
+      "untracked": 0
+    },
+    "dirtyPaths": [
+      "f.txt"
+    ],
+    "dirtyTruncated": false,
+    "head": {
+      "kind": "branch",
+      "name": "main"
+    },
+    "inProgress": null,
+    "isClean": false
+  }
+}

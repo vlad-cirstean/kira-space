@@ -9,8 +9,9 @@ import { errorText } from '@workbench/bridge/codedError';
 import { logError } from '@workbench/bridge/log';
 import { onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
 import { loadGitUi } from '../../../repo/git/gitUiModule';
-import { gitTransportFor, notifyReviewRepaint } from '../../../repo/git/transport';
-import { ensureRepoOpen } from '../../../state/repoOpenHold';
+import { useGitRepoHold } from '../../../repo/git/repoHolds';
+import { notifyReviewRepaint } from '../../../repo/git/reviewRepaint';
+import { gitTransportFor } from '../../../repo/git/transport';
 import { openRepoWorkingReviewTab } from '../../../state/repoTabs';
 import { useReviewNavigationStore } from '../../../state/reviewNavigation';
 import type { ReviewWindowTarget } from '../wire';
@@ -24,6 +25,7 @@ import {
 // The review window's left pane: git-ui's review view locked to this window's branch and base.
 const props = defineProps<{ target: ReviewWindowTarget }>();
 
+const repoHold = useGitRepoHold(() => props.target.gitRepoId);
 const errorMessage = ref('');
 const container = ref<HTMLElement | null>(null);
 let handle: MountHandle | null = null;
@@ -143,9 +145,9 @@ watch(
 onMounted(async () => {
   if (!container.value) return;
   try {
-    // The review view only asks about a repo this connection already holds.
+    // The review view only asks about a repo this window already holds.
+    await repoHold.ready();
     const transport = gitTransportFor(props.target.codeRepoId);
-    await ensureRepoOpen(transport, props.target.gitRepoId);
     const { mount, NullViewStateStore } = await loadGitUi();
     if (!container.value) return;
     handle = mount(container.value, {

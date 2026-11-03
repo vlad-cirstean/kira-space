@@ -13,7 +13,8 @@ import { formatRelative } from '@workbench/behaviour/format';
 import Identifier from '@workbench/components/Identifier.vue';
 import ModuleStart from '@workbench/components/ModuleStart.vue';
 import { computed } from 'vue';
-import { useConnectionDialogStore, useConnectionsStore } from '../../state/connections';
+import { useConnectionDialogStore } from '../../state/connectionDialogs';
+import { useConnectionsStore } from '../../state/connections';
 import { useDatagripImportStore } from '../../state/datagripImport';
 import { type RecentTableEntry, useRecentTablesStore, useTabsStore } from '../../state/tabs';
 
@@ -77,7 +78,7 @@ function openRecent(entry: RecentTableEntry): void {
       variant="dialog-primary"
       size="kira-lg"
       class="gap-1"
-      @click="connectionDialogStore.openCreateDialog"
+      @click="connectionDialogStore.openNew"
     >
       <span class="size-4 flex items-center justify-center shrink-0"
         ><CodiconIcon :name="ICON.add" :size="13" /></span

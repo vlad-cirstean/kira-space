@@ -311,7 +311,8 @@ export class OpsState {
       },
     });
     this.#unsubscribeProgress = bridge.on('remote.progress', (event) => {
-      if (this.#repo.repoId !== event.repoId) return;
+      // Bound replies and events travel apart, so an event can land after the reply.
+      if (this.#repo.repoId !== event.repoId || this.activeRemoteOp.value === undefined) return;
       this.remoteProgress.value = event;
     });
     this.#unsubscribeAutoFetch = bridge.on('autoFetch.changed', (event) => {

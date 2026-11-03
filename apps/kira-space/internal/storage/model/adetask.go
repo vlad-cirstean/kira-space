@@ -312,17 +312,17 @@ type AdeWorktreeSetup struct {
 	Note string
 }
 
-// AdeRepoEnv is one row of ade_repo_envs.
+// AdeRepoEnv is one environment of a repo file.
 type AdeRepoEnv struct {
 	Name              string
 	DeployedShaScript string
 }
 
-// AdeRepoConfig is a code repo joined with its ade config, integration branches and environments.
-// A repo with no ade_repo_config row carries the column defaults.
+// AdeRepoConfig is a code repo joined with its import source and its repo file's nickname,
+// integration branches and environments. A repo without a file carries the defaults.
 type AdeRepoConfig struct {
 	CodeRepoID          string
-	RepoID              string // code_repos.repo_id: the git_repo_settings key
+	RepoID              string // code_repos.repo_id: the key of its repo file
 	Name                string
 	Root                string
 	Nickname            string
@@ -339,15 +339,6 @@ type AdeFolder struct {
 	RepoCount int
 	// HiddenCount is how many of the folder's imported repos are hidden.
 	HiddenCount int
-}
-
-// AdeRepoConfigPatch holds only the ade_repo_config leaves the caller changes; nil = unchanged.
-// Integration branches and environments are dense rewrites. The prepare script and timeout live in
-// git_repo_settings, not here.
-type AdeRepoConfigPatch struct {
-	Nickname            *string
-	IntegrationBranches *[]string
-	Environments        *[]AdeRepoEnv
 }
 
 // AdeBranchMark is the last branch tip seen fully contained in a target (kind 'target') or an

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 )
 
@@ -47,10 +48,7 @@ func TestAgentCommitReachesBoard(t *testing.T) {
 	other.Git("checkout", "-q", "-b", "develop", "origin/main")
 	other.Git("merge", "-q", "--no-ff", "-m", "merge feature into develop", "origin/feat/api-work")
 	other.Git("push", "-q", "origin", "develop")
-	develop := []string{"develop"}
-	if _, err := app.W.AdeTask.UpdateRepo(ctx, adewire.UpdateRepoArgs{CodeRepoID: f.repoID, Patch: adewire.RepoPatch{IntegrationBranches: &develop}}); err != nil {
-		t.Fatal(err)
-	}
+	setRepoFile(t, app, f.repoID, func(rf *repocfg.File) { rf.IntegrationBranches = []string{"develop"} })
 	if err := app.W.AdeTask.RecordMerge(ctx, adewire.RecordMergeArgs{BranchID: br.ID, Target: "develop"}); err == nil {
 		t.Fatal("RecordMerge accepted a develop the local repo has not fetched yet")
 	}

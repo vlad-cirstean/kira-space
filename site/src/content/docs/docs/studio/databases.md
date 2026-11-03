@@ -34,20 +34,23 @@ SQS never polls on its own. Reads happen only when you press **Poll**, because `
 
 ## Save a connection
 
-Pick fields or URI mode in the connection dialog. Click **Test connection** before you save.
+**New connection** asks for a name, an engine and a colour. It writes a file in `~/.kira-studio/connections`, one `<name>.yaml` per connection. Use **Edit connection file…** on a connection to change anything else, or open the file in your editor with **Open in editor**.
 
-- **Read-only guard**: a per-connection switch. The backend enforces it, not the UI.
+The file holds host, port, database, username, URI mode, the read-only guard, the pre-connect command, MCP settings, the row colour and the tree filters. The app watches the folder. A saved edit applies at once.
+
+- **Read-only guard**: a per-connection key. The backend enforces it, not the UI.
 - **Pre-connect command**: a script that runs before the connection opens, for example a port-forward. It holds 1 to 2000 characters.
-- **Import from DataGrip**: reads a JetBrains DataGrip project.
+- **Import from DataGrip**: reads a JetBrains DataGrip project and writes one file per data source.
 - **Paste credentials…**: paste key/value lines, `.env` lines or a `psql` or `mysql` style command. Review what the app recognised, then apply.
+- **Bad edit**: the connection keeps its last valid version. The tree row shows the error line.
 
-**Update credentials…** on a saved connection changes only its username and password.
+Passwords and URIs never sit in the file. The file holds a reference such as `${secret:local.password}`. Set the value in the **Secrets** section of the file dialog. Values are write-only: **Reveal** asks to confirm before it shows one.
 
 Saved credentials are encrypted at rest in the macOS Keychain. Touch ID or the system password confirms a reveal of a saved password.
 
 ## Project panel
 
-The panel shows a lazy, cached connection tree. It has per-connection colours, live status, search and hide or show filters.
+The panel shows a lazy, cached connection tree. It has per-connection colours, live status, search and hide or show filters. Colours and filters live in the connection file.
 
 Open the same table in any number of tabs. Each tab keeps its own paging, sort, filter and scroll. Session restore reopens tabs without connecting.
 

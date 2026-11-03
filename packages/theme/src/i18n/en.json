@@ -1,10 +1,5 @@
 {
   "automations": {
-    "collection": {
-      "deleteConfirm": {
-        "body": "Delete “{name}” and everything inside it."
-      }
-    },
     "dialog": {
       "run": {
         "editPrompt": {
@@ -28,42 +23,8 @@
         }
       },
       "script": {
-        "chooseFolder": {
-          "label": "Choose folder…",
-          "title": "Choose a run folder"
-        },
-        "edit": {
-          "title": "Edit script"
-        },
-        "editSmart": {
-          "title": "Edit smart script"
-        },
-        "homeNotice": {
-          "description": "Runs in your home folder {home}, the old default. New scripts use the Kira scripts folder."
-        },
-        "nameExample": {
-          "example": "Build"
-        },
         "noCollection": {
           "option": "No collection"
-        },
-        "noFolder": {
-          "status": "No folder chosen"
-        },
-        "runFolder": {
-          "label": "Run folder"
-        },
-        "setOnSave": {
-          "status": "Set on save"
-        },
-        "tabs": {
-          "aria": "Script editor tabs"
-        },
-        "useAdeDir": {
-          "label": "Run in the task’s worktree when started from ADE"
-        },
-        "useKira": {
-          "label": "Use Kira scripts folder"
         }
       }
     },
@@ -79,38 +40,23 @@
       }
     },
     "error": {
-      "budget": {
-        "error": "Budget must be above 0."
-      },
-      "commandRequired": {
-        "error": "Command is required."
-      },
-      "folderRequired": {
-        "error": "Choose a folder."
-      },
-      "nameRequired": {
-        "error": "Name is required."
-      },
       "nothingToRun": {
         "error": "Nothing to run yet."
+      }
+    },
+    "file": {
+      "broken": {
+        "status": "Not valid"
       },
-      "paramName": {
-        "error": "Use lowercase letters, digits and underscores, starting with a letter, 32 characters at most."
+      "field": {
+        "aria": "Run file text"
       },
-      "paramOption": {
-        "error": "Add at least one option."
+      "lastGood": {
+        "hint": "The file has an error. Runs use the last good version."
       },
-      "paramReserved": {
-        "error": "“{name}” is reserved."
-      },
-      "paramTwice": {
-        "error": "“{name}” is listed twice."
-      },
-      "promptRequired": {
-        "error": "Prompt is required."
-      },
-      "repeatRequired": {
-        "error": "Repeat is required."
+      "secrets": {
+        "hint": "Saved in the keychain. The file lists only the parameter name.",
+        "title": "Secret values"
       }
     },
     "ops": {
@@ -131,30 +77,6 @@
       }
     },
     "params": {
-      "add": {
-        "label": "Add parameter"
-      },
-      "addOption": {
-        "label": "Add option"
-      },
-      "default": {
-        "aria": "Default {option}"
-      },
-      "multiselect": {
-        "option": "Multiselect"
-      },
-      "option": {
-        "placeholder": "Option"
-      },
-      "remove": {
-        "tooltip": "Remove parameter {name}"
-      },
-      "removeOption": {
-        "tooltip": "Remove option"
-      },
-      "scriptHint": {
-        "description": "Parameters reach the command as {variable}."
-      },
       "secretValue": {
         "saved": {
           "placeholder": "Saved, type to replace",
@@ -163,12 +85,6 @@
         "storageOff": {
           "description": "The keychain is unavailable, so a secret can’t be saved. Each run asks for it."
         }
-      },
-      "smartHint": {
-        "description": "Use {token} in the prompt. A secret reaches the run as {variable} only, never in the prompt."
-      },
-      "title": {
-        "label": "Parameters"
       }
     },
     "restore": {
@@ -329,26 +245,8 @@
       }
     },
     "schedule": {
-      "askEach": {
-        "hint": "A popup asks before each run."
-      },
-      "askLocked": {
-        "hint": "Needs your answer each time. A required secret parameter has no saved value."
-      },
-      "cronExample": {
-        "example": "0 9 * * 1-5"
-      },
-      "cronHint": {
-        "hint": "Minute hour day month weekday."
-      },
       "due": {
         "status": "Due {time}"
-      },
-      "enable": {
-        "label": "Run on a schedule"
-      },
-      "enabled": {
-        "label": "Enabled"
       },
       "everyDay": {
         "option": "Every day {time}"
@@ -359,60 +257,14 @@
       "everyMinutes": {
         "option": "Every {count} minute | Every {count} minutes"
       },
-      "findTimezone": {
-        "placeholder": "Find a timezone"
-      },
       "mondays": {
         "option": "Mondays {time}"
       },
       "next": {
         "label": "Next: {times}"
       },
-      "noTimezone": {
-        "empty": "No timezone"
-      },
-      "note": {
-        "hint": "Runs only while {app} is open. Missed runs are skipped. A run still going, or still waiting for your answer, makes the next one skip."
-      },
-      "presets": {
-        "aria": "Presets",
-        "option": "Choose preset…"
-      },
-      "quiet": {
-        "label": "Run without asking"
-      },
-      "quietWhy": {
-        "hint": "Runs as soon as it is due, with no popup."
-      },
-      "repeat": {
-        "label": "Repeat"
-      },
-      "saveFirst": {
-        "hint": "Save the script, then edit it to choose a task."
-      },
-      "timeoutExample": {
-        "example": "30m"
-      },
-      "timeoutRange": {
-        "hint": "Between 1m and 24h. A run still going at the limit is stopped."
-      },
-      "timezone": {
-        "label": "Timezone"
-      },
-      "title": {
-        "label": "Schedule"
-      },
       "weekdays": {
         "option": "Weekdays {time}"
-      },
-      "where": {
-        "label": "Where"
-      },
-      "whereFolder": {
-        "label": "Script folder"
-      },
-      "whereTask": {
-        "label": "An ADE task"
       }
     },
     "script": {
@@ -428,17 +280,17 @@
       "defaultValue": {
         "label": "Default: {value}"
       },
-      "editSchedule": {
-        "label": "Edit schedule…"
+      "editFile": {
+        "label": "Edit file"
+      },
+      "editTarget": {
+        "label": "Set target…"
       },
       "fromTask": {
         "status": "From the task"
       },
       "gone": {
         "error": "This script no longer exists."
-      },
-      "insertHint": {
-        "hint": "Use {token} to insert a parameter. Press {chord} to save."
       },
       "new": {
         "label": "New script"
@@ -462,9 +314,6 @@
       "secretInPrompt": {
         "error": "A secret can’t be used in the prompt."
       },
-      "shellHint": {
-        "hint": "Runs in your login shell; lines run in order. Press {chord} to save."
-      },
       "showRun": {
         "tooltip": "Show run"
       },
@@ -476,71 +325,8 @@
       }
     },
     "smart": {
-      "addPattern": {
-        "aria": "Add pattern"
-      },
-      "addTool": {
-        "placeholder": "Add tool by name"
-      },
       "badge": {
         "tooltip": "Smart script that runs {agent} headless"
-      },
-      "bashExample": {
-        "example": "git status:*"
-      },
-      "bashHint": {
-        "hint": "Bash commands the script may run, such as {example}. Empty allows any."
-      },
-      "budget": {
-        "label": "Budget in dollars"
-      },
-      "defaultTools": {
-        "label": "Default tools"
-      },
-      "mcp": {
-        "label": "MCP tools"
-      },
-      "mcpAllTools": {
-        "label": "All tools"
-      },
-      "mcpHint": {
-        "hint": "Servers {agent} reports for your user config. A run that uses one loads your {agent} settings."
-      },
-      "mcpHintApp": {
-        "hint": "Servers from Kira’s own agent settings, not your CLI config."
-      },
-      "mcpNone": {
-        "emptyHint": "No MCP servers."
-      },
-      "mcpStatusConnected": {
-        "status": "Online"
-      },
-      "mcpStatusFailed": {
-        "status": "Unreachable"
-      },
-      "mcpStatusNeedsAuth": {
-        "status": "Needs sign-in"
-      },
-      "mcpStatusPending": {
-        "status": "Connecting"
-      },
-      "mcpStatusUnknown": {
-        "status": "Status unknown"
-      },
-      "model": {
-        "label": "Model"
-      },
-      "noCostCap": {
-        "label": "No cost cap"
-      },
-      "remove": {
-        "tooltip": "Remove {name}"
-      },
-      "timeoutExample": {
-        "example": "15m"
-      },
-      "tools": {
-        "label": "Tools"
       }
     },
     "start": {
@@ -551,6 +337,10 @@
         "empty": "No terminal open",
         "emptyHint": "Run a script from the panel, or open a terminal."
       }
+    },
+    "target": {
+      "hint": "The ADE task and branch each scheduled run uses.",
+      "title": "Target of {name}"
     }
   },
   "backend": {
@@ -1000,15 +790,171 @@
           "body": "This prompt no longer exists."
         }
       },
-      "rpcStream": {
-        "frameTooLarge": {
-          "body": "The data is larger than the frame size limit."
+      "runs": {
+        "collectionLong": {
+          "body": "The collection name is longer than {max} characters."
+        },
+        "colorInvalid": {
+          "body": "This colour is not in the palette."
+        },
+        "commandRequired": {
+          "body": "A script needs a command."
+        },
+        "cronFields": {
+          "body": "A schedule needs 5 cron fields."
+        },
+        "cronInvalid": {
+          "body": "This cron expression is not valid."
+        },
+        "dirFixedPath": {
+          "body": "A fixed folder needs an absolute path."
+        },
+        "dirInvalid": {
+          "body": "The folder mode must be kira or fixed."
+        },
+        "dirKiraPath": {
+          "body": "The kira folder takes no path."
+        },
+        "fileChanged": {
+          "body": "This file changed since you opened it."
+        },
+        "kindInvalid": {
+          "body": "The kind must be script or smart."
+        },
+        "nameRequired": {
+          "body": "The name is required."
+        },
+        "paramChoiceSecret": {
+          "body": "Only a text parameter can be secret."
+        },
+        "paramDefaultNotOption": {
+          "body": "This default is not one of the options."
+        },
+        "paramDuplicate": {
+          "body": "This parameter name is used twice."
+        },
+        "paramName": {
+          "body": "A parameter name uses lowercase letters, digits and _, starts with a letter and has up to 32 characters."
+        },
+        "paramOptionDuplicate": {
+          "body": "This option is listed twice."
+        },
+        "paramOptionInvalid": {
+          "body": "An option is 1 to {max} characters on one line."
+        },
+        "paramOptionsCount": {
+          "body": "Give 1 to {max} options."
+        },
+        "paramReserved": {
+          "body": "This parameter name is reserved for a built-in variable."
+        },
+        "paramSecretDefault": {
+          "body": "A secret parameter has no default."
+        },
+        "paramSecretInPrompt": {
+          "body": "A secret parameter can’t be used in the prompt."
+        },
+        "paramSelectDefault": {
+          "body": "A select parameter has at most one default."
+        },
+        "paramsMax": {
+          "body": "A run has at most {max} parameters."
+        },
+        "paramTextDefault": {
+          "body": "A text parameter has at most one default."
+        },
+        "paramTextOptions": {
+          "body": "A text parameter has no options."
+        },
+        "paramType": {
+          "body": "The type must be text, select or multiselect."
+        },
+        "promptRequired": {
+          "body": "A smart script needs a prompt."
+        },
+        "scheduleParamSecret": {
+          "body": "A schedule can’t set the secret parameter {name}. Save its value in Kira."
+        },
+        "scheduleParams": {
+          "body": "A schedule value names an unknown parameter or one the parameter doesn’t accept."
+        },
+        "scheduleSmartTimeout": {
+          "body": "A smart script has no schedule timeout. Its own timeout applies."
+        },
+        "scheduleTimeout": {
+          "body": "The schedule timeout must be between 1m and 24h."
+        },
+        "scriptNoPrompt": {
+          "body": "A script has a command, not a prompt."
+        },
+        "scriptNoSmart": {
+          "body": "Only a smart script has smart settings."
+        },
+        "secretEmpty": {
+          "body": "The saved value of {name} is empty. Clear it instead."
+        },
+        "secretNotParam": {
+          "body": "{name} is not a secret parameter of this run."
+        },
+        "smartBudget": {
+          "body": "The budget must be between {min} and {max} dollars."
+        },
+        "smartMcpDuplicate": {
+          "body": "This MCP server is listed twice."
+        },
+        "smartMcpMax": {
+          "body": "A run uses at most {max} MCP servers."
+        },
+        "smartMcpName": {
+          "body": "This MCP server name is not valid."
+        },
+        "smartMcpNeedTool": {
+          "body": "Choose at least one tool of this server, or set all_tools."
+        },
+        "smartMcpToolName": {
+          "body": "This MCP tool name is not valid."
+        },
+        "smartMcpToolsMax": {
+          "body": "A server lists at most {max} tools."
+        },
+        "smartModel": {
+          "body": "The model must be {allowed}."
+        },
+        "smartNoCommand": {
+          "body": "A smart script has a prompt, not a command."
+        },
+        "smartPatternChars": {
+          "body": "A Bash pattern can’t contain ) or a new line."
+        },
+        "smartPatternLength": {
+          "body": "A Bash pattern is 1 to {max} characters."
+        },
+        "smartPatternsMax": {
+          "body": "A run has at most {max} Bash patterns."
+        },
+        "smartPatternsNeedBash": {
+          "body": "Bash patterns need the Bash tool."
+        },
+        "smartTimeout": {
+          "body": "The timeout must be a duration between 1m and 2h, like 15m."
+        },
+        "smartTool": {
+          "body": "This tool is not one a run can use."
+        },
+        "stemInvalid": {
+          "body": "The file name must be lowercase letters, digits, - and _, up to 80 characters. Rename the file."
+        },
+        "textControl": {
+          "body": "This text has a control character."
+        },
+        "textTooLong": {
+          "body": "This text is longer than {max} characters."
+        },
+        "timezoneUnknown": {
+          "body": "This time zone is unknown."
         }
       },
       "scriptDir": {
-        "homeUnresolved": {
-          "body": "Your home folder couldn’t be resolved."
-        },
         "missing": {
           "body": "{path} does not exist."
         }
@@ -1570,9 +1516,6 @@
             "body": "The sandbox profile did not load: {detail}."
           }
         },
-        "scriptTooLarge": {
-          "body": "The script is too large."
-        },
         "sessionIdUnknown": {
           "body": "The agent hasn’t reported its session ID yet. Retry once it has started."
         },
@@ -1657,6 +1600,11 @@
         },
         "workspaceClosed": {
           "body": "The workspace was closed. Reopen it and retry."
+        }
+      },
+      "gitGraph": {
+        "frameTooLarge": {
+          "body": "The graph data is larger than the frame size limit."
         }
       },
       "gitHost": {
@@ -1907,6 +1855,53 @@
           "body": "Changes are off for this phone. Turn them on for it in the mobile access settings on the computer."
         }
       },
+      "repoFiles": {
+        "basePathAbsolute": {
+          "body": "The worktree base path must be absolute."
+        },
+        "changed": {
+          "body": "The file changed since you opened it. Refresh it and retry."
+        },
+        "duplicatePath": {
+          "body": "{file} already configures this repository. This file applies nothing."
+        },
+        "envDuplicate": {
+          "body": "An environment name is listed twice."
+        },
+        "envScriptBlank": {
+          "body": "An environment needs a script."
+        },
+        "fileBroken": {
+          "body": "{file} has an error on line {line}. Fix it in the file first."
+        },
+        "gone": {
+          "body": "That settings file no longer exists."
+        },
+        "hashRequired": {
+          "body": "Saving an existing file needs the hash of the text you loaded."
+        },
+        "integrationBlank": {
+          "body": "An integration branch name is empty."
+        },
+        "integrationDuplicate": {
+          "body": "An integration branch is listed twice."
+        },
+        "nicknameLong": {
+          "body": "The nickname must be at most 40 characters on one line."
+        },
+        "pathAbsolute": {
+          "body": "The path must be absolute and free of ~ and relative segments."
+        },
+        "pathRequired": {
+          "body": "A repository path is required."
+        },
+        "pathTaken": {
+          "body": "Another file already configures this repository."
+        },
+        "timeoutInvalid": {
+          "body": "The prepare timeout must be a duration such as 15m, above 0 and at most 2h."
+        }
+      },
       "seed": {
         "body": "Space seed placeholder."
       }
@@ -2145,6 +2140,41 @@
           "body": "Couldn’t parse the connection URI."
         }
       },
+      "apiFiles": {
+        "changed": {
+          "body": "The file changed while Kira saved. Retry."
+        },
+        "fileBroken": {
+          "body": "Kira can’t save into {file}. Line {line} has an error. Fix the file first."
+        },
+        "fileName": {
+          "body": "A file name is 1 to 64 lowercase letters, numbers and dashes, plus the suffix of its kind."
+        },
+        "itemDuplicate": {
+          "body": "The item ID {id} is used twice. Each item ID is unique in the file."
+        },
+        "itemKind": {
+          "body": "An item sets exactly one of items, http or grpc."
+        },
+        "noStore": {
+          "body": "The secret store isn’t available, so Kira can’t keep a secret value."
+        },
+        "notFound": {
+          "body": "That item is no longer in the file."
+        },
+        "secretUnreadable": {
+          "body": "Secret {name} can’t be read. Set it again."
+        },
+        "secretUnset": {
+          "body": "Secret {name} is not set. Set it in the secrets section of the environments tab."
+        },
+        "variableBoth": {
+          "body": "The variable {name} sets both value and secret. Set one."
+        },
+        "variableDuplicate": {
+          "body": "The variable {name} is listed twice. Each name appears once."
+        }
+      },
       "collection": {
         "finishWriteFailed": {
           "error": "Couldn’t finish writing {path}: {detail}"
@@ -2192,15 +2222,6 @@
           "variablesInert": {
             "body": "{count} folder- or item-level variables were kept but are not resolved yet. A secret-typed one has its value stripped."
           }
-        },
-        "importRollbackFailed": {
-          "error": "{detail} (also couldn’t remove the partially imported collection “{name}”: {rollbackDetail}). It remains visible. Delete it manually."
-        },
-        "invalidMove": {
-          "body": "That item can’t move there."
-        },
-        "invalidOrder": {
-          "body": "That collection order isn’t valid."
         },
         "writeFailed": {
           "error": "Couldn’t write {path}: {detail}"
@@ -2260,6 +2281,41 @@
         },
         "uriRequired": {
           "body": "A connection URI is required."
+        }
+      },
+      "connectionFiles": {
+        "editInvalid": {
+          "body": "Kira didn’t save that edit. It makes the file invalid: {detail}."
+        },
+        "fieldNotUsed": {
+          "body": "{field} isn’t used by {why}."
+        },
+        "fileName": {
+          "body": "The file name must be lowercase letters, digits and dashes, up to 60 characters, plus the YAML file extension."
+        },
+        "maskColumn": {
+          "body": "A mask needs a column."
+        },
+        "maskDuplicate": {
+          "body": "Column “{column}” already has a mask for this table."
+        },
+        "maskNumber": {
+          "body": "A number mask can’t correlate."
+        },
+        "notFound": {
+          "body": "That connection’s file is gone."
+        },
+        "secretUnreadable": {
+          "body": "The secret “{name}” can’t be read. Save it again."
+        },
+        "secretUnset": {
+          "body": "The secret “{name}” isn’t set. Add it in the connection’s secrets."
+        },
+        "treeDuplicate": {
+          "body": "This entry is listed twice."
+        },
+        "treePathBlank": {
+          "body": "A hidden path can’t be blank."
         }
       },
       "file": {
@@ -2596,9 +2652,6 @@
       "search": {
         "label": "Search"
       },
-      "select": {
-        "label": "Select"
-      },
       "selectAll": {
         "label": "Select all"
       },
@@ -2807,9 +2860,6 @@
     "dashPair": {
       "label": "{first} — {second}"
     },
-    "deleteCollectionConfirm": {
-      "title": "Delete collection?"
-    },
     "details": {
       "title": "Details"
     },
@@ -2839,9 +2889,6 @@
     },
     "enterWholeNumber": {
       "error": "Enter a whole number."
-    },
-    "environmentName": {
-      "aria": "Environment name"
     },
     "error": {
       "contract": {
@@ -10587,28 +10634,6 @@
         }
       },
       "config": {
-        "basePath": {
-          "chooseTitle": {
-            "title": "Choose worktree base path"
-          },
-          "description": "Pre-fills the path of new worktrees. Empty uses the default.",
-          "label": "Worktree base path",
-          "placeholder": "Default location"
-        },
-        "environments": {
-          "intro": {
-            "hint": "Track which commit each environment runs. For each one, give a command that prints the deployed commit SHA, for example {command}. Kira Space runs it in the repository root when the board refreshes and marks branches deployed there."
-          },
-          "title": "Deployment environments"
-        },
-        "nickname": {
-          "description": "Shown everywhere instead of the repository name.",
-          "label": "Nickname"
-        },
-        "prepare": {
-          "description": "Setup script. Runs in the root of every new worktree of this repository, before any agent starts, for example {command}. A non-zero exit marks setup as failed.",
-          "label": "Prepare worktree"
-        },
         "repository": {
           "label": "Repository"
         },
@@ -10625,11 +10650,6 @@
           "usedOnPlan": {
             "status": "Used by tasks on the plan"
           }
-        },
-        "targets": {
-          "description": "Besides main. Branches are checked for being merged or stale in these.",
-          "example": "develop, staging",
-          "label": "Integration branches"
         }
       },
       "dialog": {
@@ -10687,24 +10707,6 @@
         },
         "show": {
           "tooltip": "Show in Git panel"
-        }
-      },
-      "env": {
-        "add": {
-          "label": "Add environment"
-        },
-        "command": {
-          "label": "Command that prints the deployed SHA"
-        },
-        "name": {
-          "example": "staging"
-        },
-        "remove": {
-          "tooltip": "Remove environment"
-        },
-        "script": {
-          "aria": "Deployed SHA script",
-          "example": "curl -s https://…/version"
         }
       },
       "file": {
@@ -10809,6 +10811,28 @@
         },
         "truncated": {
           "tooltip": "This file hit the per-file match cap, so not every match is shown"
+        }
+      },
+      "settingsFile": {
+        "create": {
+          "label": "Create settings file"
+        },
+        "field": {
+          "aria": "Repository settings file"
+        },
+        "lastGood": {
+          "hint": "The file has an error. Kira Space uses the last good settings."
+        },
+        "none": {
+          "hint": "No settings file for this repository yet. Create one to set its nickname, branches, worktree and Git options."
+        },
+        "otherFiles": {
+          "empty": "No other settings files",
+          "hint": "Files in the repos folder that configure no listed repository, or whose path an earlier file already owns.",
+          "label": "Other files"
+        },
+        "problem": {
+          "aria": "Settings file has an error"
         }
       },
       "tree": {
@@ -11260,61 +11284,7 @@
   },
   "studio": {
     "api": {
-      "bulk": {
-        "applyConfirm": {
-          "title": "Apply changes?"
-        },
-        "changedNote": {
-          "body": "Variables changed since you opened bulk edit; applying overwrites those changes."
-        },
-        "hint": "Bulk edit can’t create or remove a row’s secret flag. A new {newLine} line always creates a non-secret variable, and a secret’s own line stays {secretLine} with its value left unchanged unless you type one. Use the row’s own toggle to change a variable’s secret flag.",
-        "removeConfirm": {
-          "body": "This also deletes the value history of {names}.",
-          "title": "Remove {count} variable? | Remove {count} variables?"
-        },
-        "renameWarning": {
-          "body": "Renaming a key here removes the old one and its value history. Rename in the table to keep it."
-        },
-        "summary": {
-          "status": "{added} added · {updated} updated · {removed} removed"
-        },
-        "summaryReordered": {
-          "status": "{added} added · {updated} updated · {removed} removed · reordered"
-        }
-      },
       "collections": {
-        "copyName": {
-          "label": "{name} copy"
-        },
-        "deleteFolderConfirm": {
-          "title": "Delete folder?"
-        },
-        "deleteMany": {
-          "label": "Delete {count} item | Delete {count} items"
-        },
-        "deleteManyConfirm": {
-          "body": "Deletes {list}.",
-          "collections": {
-            "label": "{count} collection | {count} collections"
-          },
-          "nested": {
-            "body": "Everything inside folders and collections goes too."
-          },
-          "openTabs": {
-            "body": "Open tabs for deleted requests stay open as unsaved."
-          },
-          "title": "Delete {count} items?"
-        },
-        "deleteRequestConfirm": {
-          "body": "“{name}” will be deleted.",
-          "title": "Delete request?"
-        },
-        "deleteTreeConfirm": {
-          "body": "“{name}” and everything inside it will be deleted."
-        },
-        "dragCount": {
-          "aria": "Moving {count} items"
-        },
         "empty": "No collections yet",
         "emptyHint": "Create one from the + button above, or import a Postman collection.",
         "export": {
@@ -11334,9 +11304,6 @@
         },
         "postmanFilter": {
           "label": "Postman export"
-        },
-        "requestGone": {
-          "error": "This request no longer exists."
         },
         "title": "Collections",
         "tree": {
@@ -11380,9 +11347,6 @@
         "newRequest": {
           "label": "New request"
         },
-        "reorderBlocked": {
-          "hint": "Clear the filter to reorder."
-        },
         "resizeRequest": {
           "aria": "Resize request pane"
         },
@@ -11399,6 +11363,54 @@
         },
         "unknownDynamic": {
           "tooltip": "{name} is an unknown dynamic value"
+        }
+      },
+      "config": {
+        "invalid": {
+          "status": "Has errors"
+        },
+        "lastGood": {
+          "hint": "The file has an error. The app uses the last good version."
+        },
+        "openFile": {
+          "label": "Open file"
+        },
+        "problems": {
+          "aria": "Config file problems"
+        },
+        "secrets": {
+          "clear": {
+            "label": "Clear value"
+          },
+          "clearConfirm": {
+            "body": "Requests that use this secret fail to send until you set it again.",
+            "title": "Clear {name}?"
+          },
+          "dialog": {
+            "hint": "The value goes to secret storage once and is never shown again.",
+            "title": "Value of {name}"
+          },
+          "hint": "Write {ref} in a value. Values stay sealed on this computer.",
+          "none": {
+            "hint": "No secrets yet. Reference one in a file to see it here."
+          },
+          "set": {
+            "label": "Enter value",
+            "status": "Value set"
+          },
+          "storageOff": {
+            "hint": "Secret storage is not available, so values can’t be saved."
+          },
+          "title": "API secrets",
+          "unset": {
+            "status": "No value"
+          },
+          "unused": {
+            "status": "Unused"
+          }
+        },
+        "variables": {
+          "empty": "No variables in this file"
         }
       },
       "copyAsCurl": {
@@ -11464,13 +11476,6 @@
         },
         "activeGroup": {
           "aria": "Active environment"
-        },
-        "deleteConfirm": {
-          "body": "“{name}” and its variables will be deleted.",
-          "title": "Delete environment?"
-        },
-        "description": {
-          "aria": "Environment description"
         },
         "editVariables": {
           "label": "Edit variables"
@@ -11598,23 +11603,11 @@
         "empty": "No previous values"
       },
       "variableSet": {
-        "bulkToggle": {
-          "label": "Edit as dotenv text"
-        },
-        "colour": {
-          "aria": "Environment colour"
-        },
         "orphan": {
           "empty": "This variable set no longer exists"
         }
       },
       "variables": {
-        "duplicate": {
-          "status": "Duplicate name"
-        },
-        "secretsUnavailable": {
-          "tooltip": "Secret storage is unavailable"
-        },
         "showValue": {
           "label": "Show value"
         }
@@ -12025,9 +12018,6 @@
       "refreshFailed": {
         "error": "Saved, but refresh failed: {errors}"
       },
-      "regenerate": {
-        "label": "Regenerate"
-      },
       "resizeList": {
         "aria": "Resize list"
       },
@@ -12048,6 +12038,35 @@
       },
       "writeUnsupported": {
         "tooltip": "Connection doesn’t support this action"
+      }
+    },
+    "connections": {
+      "file": {
+        "field": {
+          "aria": "Connection file text"
+        },
+        "lastGood": {
+          "hint": "The file has an error. Kira keeps using the last valid version until you fix it."
+        },
+        "secrets": {
+          "clearConfirm": {
+            "body": "The saved value is deleted. The file keeps the reference.",
+            "title": "Clear the secret “{name}”?"
+          },
+          "kindUri": {
+            "label": "URI"
+          },
+          "none": {
+            "hint": "This file references no secrets."
+          },
+          "storageOff": {
+            "hint": "Secure storage is off, so secrets can’t be saved or read."
+          },
+          "value": {
+            "aria": "New value for {name}"
+          }
+        },
+        "title": "Connection file: {name}"
       }
     },
     "console": {
@@ -14055,9 +14074,6 @@
           "option": "{field}, newest first"
         }
       },
-      "space": {
-        "label": "Space"
-      },
       "tab": {
         "title": "Discover"
       },
@@ -14166,36 +14182,11 @@
     },
     "project": {
       "connectionDialog": {
-        "autoExplain": {
-          "description": "Runs the database’s own EXPLAIN before each SELECT this connection issues from a query console, and warns when a query is estimated to read more than the configured row threshold. EXPLAIN only plans the query and never runs it, so this costs one extra planning round trip, not a second execution.",
-          "label": "Auto-explain SELECT queries"
-        },
-        "awsProfile": {
-          "label": "AWS profile (optional)"
-        },
         "changeEngine": {
-          "title": "Change engine",
-          "tooltip": "Choose a different engine"
-        },
-        "colour": {
-          "aria": "Connection colour"
+          "title": "Change engine"
         },
         "column": {
           "placeholder": "Column"
-        },
-        "correlate": {
-          "label": "Correlate"
-        },
-        "credentials": {
-          "encrypted": {
-            "hint": "Credentials are encrypted with the macOS keychain."
-          },
-          "fallback": {
-            "body": "Development fallback. Credentials on this platform are obfuscated with a built-in key, not a real keychain."
-          },
-          "unavailable": {
-            "body": "The macOS keychain is unavailable, so passwords can’t be saved. Everything else about this connection can be."
-          }
         },
         "database": {
           "label": "Database"
@@ -14206,56 +14197,19 @@
         "databasePicker": {
           "title": "Choose a database file"
         },
-        "editTitle": {
-          "title": "Edit {kind} connection"
-        },
         "engineSearch": {
           "placeholder": "Search engines"
         },
         "hidePassword": {
           "label": "Hide password"
         },
-        "hideUri": {
-          "label": "Hide URI"
-        },
         "host": {
           "label": "Host"
-        },
-        "keep": {
-          "domain": {
-            "label": "Keep domain"
-          },
-          "initials": {
-            "label": "Keep initials"
-          },
-          "year": {
-            "label": "Keep year"
-          }
         },
         "kind": {
           "aria": "Connection kind",
           "unsupported": {
             "tooltip": "{kind} isn’t supported yet"
-          }
-        },
-        "maskKind": {
-          "date": {
-            "description": "Keeps the year and destroys the month, day and time."
-          },
-          "email": {
-            "description": "Keeps the domain and the local part’s first letter and length."
-          },
-          "name": {
-            "description": "Keeps initials and word lengths, with the remaining letters replaced by dots."
-          },
-          "number": {
-            "description": "Shows an order of magnitude, never a joinable key. For a value that must join, use a text or redact rule, or mark a numeric identifier column with a kind other than number."
-          },
-          "redact": {
-            "description": "Keeps nothing at all. The right default when unsure, or when the shape itself is sensitive."
-          },
-          "text": {
-            "description": "Keeps nothing but a bucketed length, with no first character and no exact length."
           }
         },
         "mcp": {
@@ -14265,61 +14219,14 @@
           "ddl": {
             "label": "DDL"
           },
-          "ddlNote": {
-            "label": "CREATE, ALTER, DROP, TRUNCATE and equivalents, SQL engines only"
-          },
-          "descriptionNote": {
-            "label": "What this database is for, read verbatim by MCP clients"
-          },
-          "expose": {
-            "description": "Nothing is exposed by default. The same switch lives in the database MCP section of settings; either one toggles the other.",
-            "label": "Expose to the database MCP server"
-          },
-          "plan": {
-            "description": "This engine has no query plan this app can read.",
-            "label": "Plan queries before running them"
-          },
           "prompt": {
             "label": "Ask me"
           },
           "read": {
             "label": "Read"
           },
-          "readNote": {
-            "label": "SELECT and its engine equivalents"
-          },
-          "review": {
-            "description": "The app setting lives in the database MCP section of settings. A write has already run when its result shows.",
-            "label": "Review results"
-          },
-          "reviewAlways": {
-            "option": "Always"
-          },
-          "reviewInheritOff": {
-            "option": "App setting (off)"
-          },
-          "reviewInheritOn": {
-            "option": "App setting (on)"
-          },
-          "reviewNever": {
-            "option": "Never"
-          },
-          "reviewNote": {
-            "label": "Hold each query result for you to check before the AI gets it"
-          },
-          "strictest": {
-            "description": "A statement this app can’t classify is treated as whichever of the three is strictest. These settings govern the MCP server only. The read-only flag on the {tab} tab governs this app’s own console."
-          },
           "write": {
             "label": "Write"
-          },
-          "writeNote": {
-            "label": "INSERT, UPDATE, DELETE and equivalents"
-          }
-        },
-        "mode": {
-          "uri": {
-            "label": "Connection URI"
           }
         },
         "newConnection": {
@@ -14331,118 +14238,20 @@
         "password": {
           "label": "Password"
         },
-        "pasteCredentials": {
-          "label": "Paste credentials…"
-        },
-        "preconnect": {
-          "description": "Runs in your shell before connecting, for example a port-forward or a single sign-on session keeper.",
-          "label": "Pre-connect command",
-          "warning": {
-            "body": "This command runs on your machine with your permissions every time this connection connects."
-          }
-        },
-        "preconnectDelay": {
-          "description": "Seconds to wait after the command starts before the first connect attempt. 0 (default) connects as soon as the command is ready. Cancel it while it runs from the operations list.",
-          "label": "Wait before connecting (seconds)",
-          "range": {
-            "status": "Whole seconds, {min}–{max}"
-          }
-        },
-        "privacy": {
-          "intro": {
-            "description": "Rules redact values for the MCP clients of this connection and for the masking preview of the data viewer. They never change stored data."
-          },
-          "keyFallback": {
-            "body": "Development fallback. The correlation key is obfuscated with a built-in key on this platform, not a real keychain, so an attacker with filesystem access could recover it. The redaction itself is unaffected and stays uninvertible."
-          },
-          "noRules": {
-            "emptyHint": "No masking rules yet on this connection."
-          },
-          "saveFirst": {
-            "hint": "Save this connection first to manage masking rules."
-          }
-        },
-        "readOnly": {
-          "description": "Blocks every mutation path for this connection. That covers grid edits, DDL and console writes."
-        },
         "redact": {
           "label": "Redact"
-        },
-        "regenerate": {
-          "label": "Regenerate correlation key"
-        },
-        "regenerateConfirm": {
-          "body": "Regenerating the correlation key changes every masked correlation tag for this connection. Masked results already given to a client, or saved anywhere outside this app, will no longer correlate with results produced after the change. The real values are not affected.",
-          "title": "Regenerate correlation key?"
         },
         "region": {
           "label": "Region"
         },
-        "removeRule": {
-          "tooltip": "Remove rule"
-        },
         "showPassword": {
           "label": "Show password"
-        },
-        "showUri": {
-          "label": "Show URI"
-        },
-        "sidecar": {
-          "description": "When on, the command stays alive for the whole session, for example a port-forward, and this connection drops the moment it exits. When off (default), a fresh instance runs each time you connect and its exit is never monitored, which suits a one-off prep script.",
-          "label": "Keep it running, disconnect if it dies"
         },
         "sqliteFilter": {
           "label": "SQLite database"
         },
-        "tab": {
-          "general": {
-            "label": "General"
-          },
-          "preconnect": {
-            "label": "Pre-connect"
-          },
-          "privacy": {
-            "label": "Privacy"
-          }
-        },
-        "tabs": {
-          "aria": "Connection detail tabs"
-        },
         "test": {
-          "label": "Test connection",
-          "ok": {
-            "status": "Connected: {message}"
-          },
-          "testing": {
-            "loading": "Testing…"
-          }
-        },
-        "throttle": {
-          "description": "A value of 0 disables the limit. Reads served from cache are never throttled, and connecting is never throttled. Applies immediately to a connected connection.",
-          "label": "Throttle commands",
-          "range": {
-            "status": "Unlimited (0), or {min}–{max}"
-          }
-        },
-        "unchanged": {
-          "placeholder": "Unchanged; click the eye to reveal"
-        },
-        "unnamed": {
-          "label": "Unnamed connection"
-        },
-        "uriNote": {
-          "hidden": {
-            "hint": "Show the URI first to switch it to fields."
-          },
-          "notRepresentable": {
-            "hint": "This URI can’t be represented as fields (multi-host, socket path or unsafe characters). Staying in URI mode."
-          },
-          "secretParam": {
-            "hint": "This URI holds a secret parameter ({param}) that fields mode can’t store. Staying in URI mode."
-          },
-          "unparsable": {
-            "hint": "Can’t parse this URI into fields. It will be used as is."
-          }
+          "label": "Test connection"
         }
       },
       "connectionScope": {
@@ -14754,6 +14563,9 @@
         "disconnect": {
           "label": "Disconnect"
         },
+        "editFile": {
+          "label": "Edit connection file…"
+        },
         "editSchema": {
           "label": "Edit schema (DDL)…"
         },
@@ -14771,6 +14583,12 @@
         },
         "openDefinition": {
           "label": "Open definition"
+        },
+        "openInEditor": {
+          "label": "Open in editor"
+        },
+        "revealFile": {
+          "label": "Show file in folder"
         },
         "savedFilters": {
           "empty": "No saved filters",
@@ -14799,10 +14617,6 @@
       },
       "passwordRevealFailed": {
         "error": "Couldn’t reveal the saved password."
-      },
-      "readOnlyConfirm": {
-        "body": "This connection is live. Changing read-only mode reconnects it.",
-        "title": "Change read-only mode?"
       },
       "schemaDialog": {
         "dialog": {
@@ -15061,8 +14875,9 @@
           "label": "Enable the database MCP server"
         },
         "exposed": {
-          "description": "Deny by default. Only connections checked here are visible to an MCP client through this server.",
-          "label": "Exposed connections"
+          "description": "Deny by default. Only connections whose file turns MCP on are visible to an MCP client through this server.",
+          "label": "Exposed connections",
+          "status": "Exposed"
         },
         "focus": {
           "description": "When a query or result waits for approval, show the window and switch to its desktop.",

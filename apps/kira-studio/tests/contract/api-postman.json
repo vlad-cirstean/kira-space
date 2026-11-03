@@ -51,6 +51,7 @@
     "collections": [
       {
         "createdAt": "<time>",
+        "file": "flow-orders.collection.yaml",
         "id": "<id:1>",
         "name": "Flow Orders",
         "sortOrder": 0,

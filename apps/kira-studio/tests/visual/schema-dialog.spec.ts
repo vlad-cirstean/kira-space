@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from '../ui/fixtures';
+import { createConnection } from '../ui/support/connect';
 import { postgresCreateArgs } from '../ui/support/connectionArgs';
 import { IPC } from '../ui/support/ipcChannels';
 import { orderItemsFixture, postgresConnectionSummary } from '../ui/support/postgresFixture';
@@ -25,16 +26,7 @@ const CONTROL: ControlSnapshot[] = [
 ];
 
 async function connectAndExpandPostgres(page: Page): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Visual Schema');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-green"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Visual Schema');
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();

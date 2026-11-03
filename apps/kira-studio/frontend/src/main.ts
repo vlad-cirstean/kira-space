@@ -15,6 +15,7 @@ import { mountProofWindow } from './proof/boot';
 import { useAppMetricsStore } from './state/appMetrics';
 import { useAppUpdateStore } from './state/appUpdate';
 import { useCacheStatsStore } from './state/cacheStats';
+import { initConnectionConfigSync } from './state/connectionConfig';
 import { useConnectionsStore } from './state/connections';
 import { useCustomScriptsStore } from './state/customScripts';
 import { useDbMcpStore } from './state/dbmcp';
@@ -296,6 +297,7 @@ async function mountShell(): Promise<void> {
   // P112: live before any query exists, whether or not the Api panel ever mounts — needs no data,
   // so it runs synchronously before the Promise.all below rather than joining it.
   initApiDataSync();
+  initConnectionConfigSync();
   // Every store used here runs before app.use(pinia) below, so each needs the module-level
   // `pinia` instance passed explicitly (Pinia has no active instance yet at this point).
   const cacheStatsStore = useCacheStatsStore(pinia);

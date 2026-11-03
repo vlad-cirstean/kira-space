@@ -432,33 +432,3 @@ func TestRepoSettings_PrepareScriptIsRefusedFromTheWire(t *testing.T) {
 		})
 	}
 }
-
-// The in-process host path (ADE) still writes the script and fans out.
-func TestRepoSettings_SetRepoSettingsWritesPrepareScriptInProcess(t *testing.T) {
-	router, _ := newTestRouter()
-	conn := gitsession.NewConn("conn-a", "client-a", "label-a", nil)
-	t.Cleanup(conn.Close)
-	var got changedEventCollector
-	conn.SetEmit(func(method string, payload any) {
-		if method == "repoSettings.changed" {
-			got.record(payload.(RepoSettingsChangedPayload))
-		}
-	})
-	router.ForConn(conn)
-
-	script := "npm ci"
-	if err := router.SetRepoSettings("/repos/a", model.GitRepoSettingsPatch{WorktreePrepareScript: &script}); err != nil {
-		t.Fatalf("SetRepoSettings: %v", err)
-	}
-	snap, _ := router.deps.Registry.RepoSettingsGet("/repos/a")
-	if snap.WorktreePrepareScript != script {
-		t.Fatalf("stored script = %q, want %q", snap.WorktreePrepareScript, script)
-	}
-	deadline := time.Now().Add(time.Second)
-	for len(got.snapshot()) == 0 {
-		if time.Now().After(deadline) {
-			t.Fatal("repoSettings.changed not delivered")
-		}
-		time.Sleep(time.Millisecond)
-	}
-}

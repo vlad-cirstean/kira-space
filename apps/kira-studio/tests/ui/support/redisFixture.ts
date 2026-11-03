@@ -68,6 +68,7 @@ export function redisConnectionSummary(
   color: ConnectionSummary['color'],
 ): ConnectionSummary {
   return {
+    file: 'fixture.yaml',
     id,
     name,
     kind: 'redis',

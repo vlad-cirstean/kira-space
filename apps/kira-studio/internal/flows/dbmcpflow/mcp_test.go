@@ -19,6 +19,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/mcpauth"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/claude"
 	"github.com/kirathecat/kira-studio/internal/harness/claude/mcpinstall"
@@ -499,22 +500,18 @@ func TestDbMcpReviewPerConnection(t *testing.T) {
 		t.Fatal("fixture connection missing")
 		return model.ConnectionSummary{}
 	}
-	setReview := func(value string) (bridge.ConnectionsUpdateArgs, model.ConnectionSummary, error) {
-		cur := current()
-		fields := cur.ConnectionFields
-		fields.McpReviewResults = value
-		args := bridge.ConnectionsUpdateArgs{ID: f.connID, Input: connections.Input{ConnectionFields: fields}}
-		got, err := f.app.W.Connections.Update(args)
-		return args, got, err
+	// The setting lives in the connection's file; the edit is the file's mcp.review_results key.
+	setReview := func(value string) (model.ConnectionSummary, error) {
+		err := f.app.W.ConnectionFiles.Patch(f.connID, configfs.NodeSet{Path: []string{"mcp", "review_results"}, Value: value})
+		return current(), err
 	}
 	replace := flowharness.Replace(f.dbPath, "/data/mcp.db")
 
-	args, got, err := setReview("review")
+	got, err := setReview("review")
 	if err != nil || got.McpReviewResults != "review" {
-		t.Fatalf("Update = %+v (%v), want review", got, err)
+		t.Fatalf("file edit = %+v (%v), want review", got, err)
 	}
-	f.app.Contract(t, "dbmcp-review-connection", "args:ConnectionsService.Update", args, replace)
-	f.app.Contract(t, "dbmcp-review-connection", "ConnectionsService.Update", got, flowharness.Mask("createdAt", "updatedAt"), replace)
+	f.app.Contract(t, "dbmcp-review-connection", "ConnectionsService.List#review", got, flowharness.Mask("createdAt", "updatedAt"), replace)
 
 	done := callAsync(sess, f.connID, read)
 	req := f.pending(t)
@@ -533,8 +530,8 @@ func TestDbMcpReviewPerConnection(t *testing.T) {
 	}
 
 	f.setPreview(t, true)
-	if _, got, err = setReview("send"); err != nil || got.McpReviewResults != "send" {
-		t.Fatalf("Update = %+v (%v), want send", got, err)
+	if got, err = setReview("send"); err != nil || got.McpReviewResults != "send" {
+		t.Fatalf("file edit = %+v (%v), want send", got, err)
 	}
 	if live := runQuery(t, sess, f.connID, read); live.IsError || !strings.Contains(text(live), "two") {
 		t.Fatalf("read with send = %q, want rows straight away", text(live))
@@ -543,8 +540,8 @@ func TestDbMcpReviewPerConnection(t *testing.T) {
 		t.Fatalf("send still queued %+v", snap.Pending)
 	}
 
-	if _, got, err = setReview("inherit"); err != nil || got.McpReviewResults != "inherit" {
-		t.Fatalf("Update = %+v (%v), want inherit", got, err)
+	if got, err = setReview("inherit"); err != nil || got.McpReviewResults != "inherit" {
+		t.Fatalf("file edit = %+v (%v), want inherit", got, err)
 	}
 	done = callAsync(sess, f.connID, read)
 	if q := f.pending(t); q.Stage != "response" {
@@ -555,10 +552,10 @@ func TestDbMcpReviewPerConnection(t *testing.T) {
 		t.Fatalf("withheld read = %q, want an error", text(w))
 	}
 
-	if _, _, err := setReview("maybe"); err == nil {
-		t.Fatal("Update accepted an invalid review setting")
+	if _, err := setReview("maybe"); err == nil {
+		t.Fatal("file edit accepted an invalid review setting")
 	}
 	if cur := current(); cur.McpReviewResults != "inherit" {
-		t.Fatalf("review setting after a refused Update = %q, want inherit", cur.McpReviewResults)
+		t.Fatalf("review setting after a refused file edit = %q, want inherit", cur.McpReviewResults)
 	}
 }

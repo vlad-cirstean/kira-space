@@ -1,28 +1,18 @@
 import { expect, test } from '../ui/fixtures';
 import { IPC } from '../ui/support/ipcChannels';
 
-// v1.4 P6 (docs/HISTORY.md (v1.4 P6)): the three-tab connection dialog at rest
-// — the densest single "form" surface in the app, most token/spacing/icon-alignment area per
-// pixel. Mirrors connection-dialog-tabs.spec.ts's own opening sequence, which asserts tab-switch
-// behaviour only, never how any of the three tabs actually renders.
+// The new-connection dialog at rest (name, kind, color): the only connection form left now that a
+// connection's fields live in its file.
 
-test('connection dialog at rest, General tab (P6)', async ({ relaunch }) => {
+test('new-connection dialog at rest', async ({ relaunch }) => {
   const { window: page } = await relaunch({
     control: [{ channel: IPC.connectionsList, response: [] }],
   });
 
   await page.click('[data-testid="add-connection"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toBeVisible();
+  const dialog = page.locator('[data-testid="new-connection-dialog"]');
+  await expect(dialog).toBeVisible();
   await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Visual Connection Dialog');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'testdb');
-  await page.fill('[data-testid="connection-username"]', 'testuser');
-
-  await expect(page.locator('[data-testid="connection-tab-general"]')).toHaveAttribute(
-    'data-state',
-    'on',
-  );
-  await expect(page).toHaveScreenshot('connection-dialog.png');
+  await page.fill('[data-testid="new-connection-name"]', 'Visual Connection Dialog');
+  await expect(page).toHaveScreenshot('new-connection-dialog.png');
 });

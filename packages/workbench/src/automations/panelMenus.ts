@@ -1,74 +1,65 @@
-import type { CustomScript, ScriptCollection, ScriptKind } from '@shared/domain/scripts';
+import type { CustomScript, ScriptKind } from '@shared/domain/scripts';
 import { t } from '@theme/i18n';
-import { moveToCollectionMenu } from '../lib/collectionMenu';
 import type { MenuItem } from '../state/contextMenu';
 
 // Pure descriptions of the panel's context menus; AutomationsPanel.vue injects what each item does.
 
-export interface MoveStepActions<T> {
-  /** One place within the row's own set. */
-  moveStep(item: T, step: -1 | 1): void;
-  canMoveStep(item: T, step: -1 | 1): boolean;
-}
-
-export interface ScriptMenuActions extends MoveStepActions<CustomScript> {
+export interface ScriptMenuActions {
   run(script: CustomScript): void | Promise<void>;
   runNow(script: CustomScript): void;
-  editSchedule(script: CustomScript): void;
-  edit(script: CustomScript): void;
-  collections(): readonly ScriptCollection[];
-  moveTo(script: CustomScript, collectionId: string | null): void | Promise<void>;
-  moveToNew(script: CustomScript): void | Promise<void>;
+  editFile(script: CustomScript): void;
+  openFile(script: CustomScript): void | Promise<void>;
+  revealFile(script: CustomScript): void | Promise<void>;
+  copyPath(script: CustomScript): void | Promise<void>;
+  /** Kira Space: set the ADE task and branch of a recurring run. */
+  editTarget?(script: CustomScript): void;
+  /** One place within the row's own set. */
+  moveStep(script: CustomScript, step: -1 | 1): void;
+  canMoveStep(script: CustomScript, step: -1 | 1): boolean;
   remove(script: CustomScript): void | Promise<void>;
 }
 
-export interface CollectionMenuActions extends MoveStepActions<ScriptCollection> {
-  newScript(kind: ScriptKind, collectionId: string | null): void;
-  rename(collection: ScriptCollection): void;
-  remove(collection: ScriptCollection): void | Promise<void>;
-}
-
-export function newScriptItems(
-  open: (kind: ScriptKind, collectionId: string | null) => void,
-  collectionId: string | null,
+export function groupMenu(
+  create: (kind: ScriptKind) => void,
+  move: { step(step: -1 | 1): void; can(step: -1 | 1): boolean },
 ): MenuItem[] {
   return [
-    {
-      type: 'item',
-      id: 'new-script',
-      label: t('automations.script.new.label'),
-      icon: 'add',
-      run: () => open('script', collectionId),
-    },
-    {
-      type: 'item',
-      id: 'new-smart-script',
-      label: t('automations.script.newSmart.label'),
-      icon: 'sparkle',
-      run: () => open('smart', collectionId),
-    },
-  ];
-}
-
-function moveItems<T>(item: T, actions: MoveStepActions<T>): MenuItem[] {
-  return [
+    ...newScriptItems(create),
+    { type: 'separator' },
     {
       type: 'item',
       id: 'move-up',
       label: t('common.moveUp.tooltip'),
       icon: 'arrow-up',
-      shortcut: 'list.moveUp',
-      disabled: !actions.canMoveStep(item, -1),
-      run: () => actions.moveStep(item, -1),
+      disabled: !move.can(-1),
+      run: () => move.step(-1),
     },
     {
       type: 'item',
       id: 'move-down',
       label: t('common.moveDown.tooltip'),
       icon: 'arrow-down',
-      shortcut: 'list.moveDown',
-      disabled: !actions.canMoveStep(item, 1),
-      run: () => actions.moveStep(item, 1),
+      disabled: !move.can(1),
+      run: () => move.step(1),
+    },
+  ];
+}
+
+export function newScriptItems(create: (kind: ScriptKind) => void): MenuItem[] {
+  return [
+    {
+      type: 'item',
+      id: 'new-script',
+      label: t('automations.script.new.label'),
+      icon: 'add',
+      run: () => create('script'),
+    },
+    {
+      type: 'item',
+      id: 'new-smart-script',
+      label: t('automations.script.newSmart.label'),
+      icon: 'sparkle',
+      run: () => create('smart'),
     },
   ];
 }
@@ -91,30 +82,66 @@ export function scriptMenu(script: CustomScript, actions: ScriptMenuActions): Me
             icon: 'debug-start',
             run: () => actions.runNow(script),
           },
-          {
-            type: 'item',
-            id: 'edit-schedule',
-            label: t('automations.script.editSchedule.label'),
-            icon: 'watch',
-            run: () => actions.editSchedule(script),
-          },
+          ...(actions.editTarget
+            ? ([
+                {
+                  type: 'item',
+                  id: 'edit-target',
+                  label: t('automations.script.editTarget.label'),
+                  icon: 'target',
+                  run: () => actions.editTarget?.(script),
+                },
+              ] satisfies MenuItem[])
+            : []),
         ] satisfies MenuItem[])
       : []),
     {
       type: 'item',
-      id: 'edit',
-      label: t('common.action.edit.label'),
+      id: 'edit-file',
+      label: t('automations.script.editFile.label'),
       icon: 'edit',
-      run: () => actions.edit(script),
+      run: () => actions.editFile(script),
     },
-    moveToCollectionMenu({
-      collections: actions.collections(),
-      current: script.collectionId,
-      allowNone: true,
-      onMove: (id) => actions.moveTo(script, id),
-      onNew: () => actions.moveToNew(script),
-    }),
-    ...moveItems(script, actions),
+    {
+      type: 'item',
+      id: 'open-file',
+      label: t('common.action.open.label'),
+      icon: 'go-to-file',
+      run: () => actions.openFile(script),
+    },
+    {
+      type: 'item',
+      id: 'reveal-file',
+      label: t('common.action.reveal.label'),
+      icon: 'folder-opened',
+      run: () => actions.revealFile(script),
+    },
+    {
+      type: 'item',
+      id: 'copy-path',
+      label: t('common.action.copyPath.label'),
+      icon: 'copy',
+      run: () => actions.copyPath(script),
+    },
+    { type: 'separator' },
+    {
+      type: 'item',
+      id: 'move-up',
+      label: t('common.moveUp.tooltip'),
+      icon: 'arrow-up',
+      shortcut: 'list.moveUp',
+      disabled: !actions.canMoveStep(script, -1),
+      run: () => actions.moveStep(script, -1),
+    },
+    {
+      type: 'item',
+      id: 'move-down',
+      label: t('common.moveDown.tooltip'),
+      icon: 'arrow-down',
+      shortcut: 'list.moveDown',
+      disabled: !actions.canMoveStep(script, 1),
+      run: () => actions.moveStep(script, 1),
+    },
     { type: 'separator' },
     {
       type: 'item',
@@ -123,32 +150,6 @@ export function scriptMenu(script: CustomScript, actions: ScriptMenuActions): Me
       icon: 'trash',
       danger: true,
       run: () => actions.remove(script),
-    },
-  ];
-}
-
-export function collectionMenu(
-  collection: ScriptCollection,
-  actions: CollectionMenuActions,
-): MenuItem[] {
-  return [
-    ...newScriptItems(actions.newScript, collection.id),
-    {
-      type: 'item',
-      id: 'rename',
-      label: t('common.action.rename.label'),
-      icon: 'edit',
-      run: () => actions.rename(collection),
-    },
-    ...moveItems(collection, actions),
-    { type: 'separator' },
-    {
-      type: 'item',
-      id: 'delete',
-      label: t('common.action.delete.label'),
-      icon: 'trash',
-      danger: true,
-      run: () => actions.remove(collection),
     },
   ];
 }

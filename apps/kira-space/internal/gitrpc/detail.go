@@ -87,11 +87,10 @@ func (r *Router) handleCommitDetail(ctx context.Context, c *gitsession.Conn, par
 	)
 }
 
-// handleCommitFileDiff is one of the two size-sensitive handlers: it marshals its own result
-// once and, only if the *encoded* result exceeds MaxResultBytes, replaces the body with
-// FileDiffBody's own "tooLarge" arm (carrying the real raw patch size, gitsession.FileDiffResult's
-// own RawPatchBytes — never re-derived from the encoded bytes) and marshals again. Returned as
-// json.RawMessage, which rpcstream's own json.Marshal passes through unchanged.
+// handleCommitFileDiff is one of the two size-sensitive handlers: it measures its own encoded result
+// and, only if that exceeds MaxResultBytes, replaces the body with FileDiffBody's own "tooLarge" arm
+// (carrying the real raw patch size, gitsession.FileDiffResult's own RawPatchBytes — never re-derived
+// from the encoded bytes). It returns the typed result, so the bound call decodes nothing.
 func (r *Router) handleCommitFileDiff(ctx context.Context, c *gitsession.Conn, params json.RawMessage) (any, error) {
 	var p CommitFileDiffParams
 	if err := json.Unmarshal(params, &p); err != nil {
@@ -112,22 +111,31 @@ func (r *Router) handleCommitFileDiff(ctx context.Context, c *gitsession.Conn, p
 		return nil, mapDetailError(err)
 	}
 
-	raw, merr := json.Marshal(result)
+	size, merr := encodedSize(result)
 	if merr != nil {
 		return nil, ipcerr.Internal(merr.Error())
 	}
-	if len(raw) > MaxResultBytes {
+	if size > MaxResultBytes {
 		result.Body = porcelain.FileDiffBody{Kind: porcelain.BodyTooLarge, Bytes: result.RawPatchBytes, LimitBytes: MaxResultBytes}
-		raw, merr = json.Marshal(result)
-		if merr != nil {
-			return nil, ipcerr.Internal(merr.Error())
-		}
 	}
-	return json.RawMessage(raw), nil
+	return result, nil
 }
 
-// handleFileRead is D2(b)'s other size-sensitive handler — the same marshal-once, cap-check,
-// re-marshal-if-needed shape as commit.fileDiff, over file.read's own result union.
+type countWriter int
+
+func (c *countWriter) Write(p []byte) (int, error) { *c += countWriter(len(p)); return len(p), nil }
+
+// encodedSize is v's JSON size without keeping the encoding.
+func encodedSize(v any) (int, error) {
+	var n countWriter
+	if err := json.NewEncoder(&n).Encode(v); err != nil {
+		return 0, err
+	}
+	return int(n), nil
+}
+
+// handleFileRead is D2(b)'s other size-sensitive handler — the same measure-then-replace shape as
+// commit.fileDiff, over file.read's own result union.
 func (r *Router) handleFileRead(ctx context.Context, c *gitsession.Conn, params json.RawMessage) (any, error) {
 	var p FileReadParams
 	if err := json.Unmarshal(params, &p); err != nil {
@@ -150,18 +158,14 @@ func (r *Router) handleFileRead(ctx context.Context, c *gitsession.Conn, params 
 		return nil, mapDetailError(err)
 	}
 
-	raw, merr := json.Marshal(result)
+	size, merr := encodedSize(result)
 	if merr != nil {
 		return nil, ipcerr.Internal(merr.Error())
 	}
-	if len(raw) > MaxResultBytes {
+	if size > MaxResultBytes {
 		result = gitsession.BlobResult{Kind: "tooLarge", Bytes: int64(len(result.Content)), LimitBytes: MaxResultBytes}
-		raw, merr = json.Marshal(result)
-		if merr != nil {
-			return nil, ipcerr.Internal(merr.Error())
-		}
 	}
-	return json.RawMessage(raw), nil
+	return result, nil
 }
 
 func (r *Router) handleFileGoToTarget(ctx context.Context, c *gitsession.Conn, params json.RawMessage) (any, error) {
@@ -222,12 +226,12 @@ func (r *Router) handleWorkingDetail(ctx context.Context, c *gitsession.Conn, pa
 			}
 			return p.RepoID, nil
 		},
-		func(ctx context.Context, entry *gitsession.RepoEntry, _ WorkingDetailParams) (workingDetailResult, error) {
+		func(ctx context.Context, entry *gitsession.RepoEntry, _ WorkingDetailParams) (WorkingDetailResult, error) {
 			files, err := entry.WorkingDetail(ctx)
 			if err != nil {
-				return workingDetailResult{}, mapDetailError(err)
+				return WorkingDetailResult{}, mapDetailError(err)
 			}
-			return workingDetailResult{Files: files}, nil
+			return WorkingDetailResult{Files: files}, nil
 		},
 	)
 }

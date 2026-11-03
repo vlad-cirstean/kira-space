@@ -3,23 +3,24 @@ import { useMutation, useQuery } from '@tanstack/vue-query';
 import { tryOnScopeDispose } from '@vueuse/core';
 import { queryClient } from '@workbench/state/queryClient';
 import { computed } from 'vue';
-import { gitTransportFor, onReviewRepaint } from '../../../repo/git/transport';
-import { ensureRepoOpen } from '../../../state/repoOpenHold';
+import { gitCall } from '../../../repo/git/gitCall';
+import { useGitRepoHold } from '../../../repo/git/repoHolds';
+import { onReviewRepaint } from '../../../repo/git/reviewRepaint';
 import type { ReviewWindowTarget } from '../wire';
 
 const commentsKey = (gitRepoId: string, branch: string) =>
   ['reviewComments', gitRepoId, branch] as const;
 
-/** The branch's review comments over the repo's git transport; a comment repaint refetches them. */
+/** The branch's review comments from `GitService`; a comment repaint refetches them. */
 export function useReviewComments(target: () => ReviewWindowTarget) {
+  const hold = useGitRepoHold(() => target().gitRepoId);
   const key = computed(() => commentsKey(target().gitRepoId, target().branch));
   const query = useQuery({
     queryKey: key,
     queryFn: async (): Promise<readonly ReviewComment[]> => {
       const t = target();
-      const transport = gitTransportFor(t.codeRepoId);
-      await ensureRepoOpen(transport, t.gitRepoId);
-      const res = await transport.request('review.comment.list', {
+      await hold.ready();
+      const res = await gitCall('review.comment.list', {
         repoId: t.gitRepoId,
         branch: t.branch,
       });
@@ -40,7 +41,8 @@ export function useReviewComments(target: () => ReviewWindowTarget) {
   const setState = useMutation({
     mutationFn: async (a: { id: number; state: ReviewCommentState }) => {
       const t = target();
-      await gitTransportFor(t.codeRepoId).request('review.comment.setState', {
+      await hold.ready();
+      await gitCall('review.comment.setState', {
         repoId: t.gitRepoId,
         branch: t.branch,
         id: a.id,

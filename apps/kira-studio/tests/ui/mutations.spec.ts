@@ -1,6 +1,7 @@
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, PortSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
+import { connectionCreateArgs, createConnection } from './support/connect';
 import { diffEditorText, editorText } from './support/editorText';
 import { cellText, gridCell, gutterCell } from './support/grid';
 import { IPC } from './support/ipcChannels';
@@ -35,63 +36,13 @@ const CONTROL: ControlSnapshot[] = [
   { channel: IPC.connectionsList, response: [] },
   {
     channel: IPC.connectionsCreate,
-    args: {
-      name: 'Mutations DB',
-      kind: 'postgres',
-      color: 'green',
-      mode: 'fields',
-      readOnly: false,
-      host: '127.0.0.1',
-      port: 5432,
-      database: 'kira_test',
-      username: 'postgres',
-      password: null,
-      uri: null,
-      options: {},
-      preconnect: null,
-      preconnectSidecar: false,
-      preconnectDelaySec: 0,
-      autoExplain: false,
-      throttlePerSec: 0,
-      mcpEnabled: false,
-      mcpDescription: '',
-      mcpReadMode: 'allow',
-      mcpWriteMode: 'prompt',
-      mcpDdlMode: 'deny',
-      mcpAutoExplain: true,
-      mcpReviewResults: 'inherit',
-    },
+    args: connectionCreateArgs('Mutations DB'),
     response: CONNECTION_SUMMARY,
   },
   ...FIXTURE.control,
   {
     channel: IPC.connectionsCreate,
-    args: {
-      name: 'Mutations DB (RO)',
-      kind: 'postgres',
-      color: 'red',
-      mode: 'fields',
-      readOnly: true,
-      host: '127.0.0.1',
-      port: 5432,
-      database: 'kira_test',
-      username: 'postgres',
-      password: null,
-      uri: null,
-      options: {},
-      preconnect: null,
-      preconnectSidecar: false,
-      preconnectDelaySec: 0,
-      autoExplain: false,
-      throttlePerSec: 0,
-      mcpEnabled: false,
-      mcpDescription: '',
-      mcpReadMode: 'allow',
-      mcpWriteMode: 'prompt',
-      mcpDdlMode: 'deny',
-      mcpAutoExplain: true,
-      mcpReviewResults: 'inherit',
-    },
+    args: connectionCreateArgs('Mutations DB (RO)'),
     response: RO_CONNECTION_SUMMARY,
   },
   ...RO_FIXTURE.control,
@@ -229,16 +180,7 @@ test('mutations — edit, add, delete, preview, commit, discard, read-only guard
   test.setTimeout(180_000);
   const { window: page } = await relaunch({ control: CONTROL, stream: PORT });
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Mutations DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-green"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Mutations DB');
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();
@@ -396,18 +338,7 @@ test('mutations — edit, add, delete, preview, commit, discard, read-only guard
   await expect(firstConnRow).toHaveCount(1);
   await firstConnRow.locator('[data-testid="tree-twisty"]').click();
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Mutations DB (RO)');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-red"]');
-  await page.click('[data-testid="connection-tab-advanced"]');
-  await page.click('[data-testid="connection-readonly"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Mutations DB (RO)');
 
   const roConnRow = connectionRow(page, 'Mutations DB (RO)');
   await expect(roConnRow).toBeVisible();

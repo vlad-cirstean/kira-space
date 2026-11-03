@@ -12,7 +12,7 @@ import { IPC } from './support/ipcChannels';
 
 const NOW = '2026-01-01T00:00:00.000Z';
 
-function script(id: string, collectionId: string | null, sortOrder: number) {
+function script(id: string, collection: string, sortOrder: number) {
   return {
     id,
     kind: 'script',
@@ -24,28 +24,24 @@ function script(id: string, collectionId: string | null, sortOrder: number) {
     dirMode: 'fixed',
     useAdeDir: false,
     color: 'green',
-    collectionId,
+    collection,
+    schedule: null,
+    savedSecrets: [],
     sortOrder,
     createdAt: NOW,
     updatedAt: NOW,
   };
 }
-const collection = (id: string, name: string, sortOrder: number) => ({
-  id,
-  name,
-  sortOrder,
-  createdAt: NOW,
-  updatedAt: NOW,
-});
+const collection = (name: string, sortOrder: number) => ({ name, sortOrder });
 
 const SNAPSHOT = {
-  collections: [collection('col-x', 'Xray', 0), collection('col-y', 'Yankee', 1)],
+  collections: [collection('X', 0), collection('Y', 1)],
   scripts: [
-    script('s1', null, 0),
-    script('s2', null, 1),
-    script('s3', null, 2),
-    script('t1', 'col-x', 3),
-    script('t2', 'col-x', 4),
+    script('s1', '', 0),
+    script('s2', '', 1),
+    script('s3', '', 2),
+    script('t1', 'X', 3),
+    script('t2', 'X', 4),
   ],
 };
 const LIST = { channel: IPC.customScriptsList, response: SNAPSHOT };
@@ -57,7 +53,7 @@ const scriptIds = (page: Page, scope: string) =>
 const groupIds = (page: Page) =>
   page
     .locator('[data-testid="script-group"]')
-    .evaluateAll((els) => els.map((el) => el.getAttribute('data-id')));
+    .evaluateAll((els) => els.map((el) => el.getAttribute('data-name')));
 const calls = (
   control: { log(): { channel: string; args?: unknown }[] },
   channel: string,
@@ -102,8 +98,8 @@ async function drag(
 }
 
 const row = (page: Page, id: string) => page.locator(`[data-testid="script-${id}"]`);
-const header = (page: Page, id: string) =>
-  page.locator(`[data-testid="script-group"][data-id="${id}"]`);
+const header = (page: Page, name: string) =>
+  page.locator(`[data-testid="script-group"][data-name="${name}"]`);
 
 test('drag reorders ungrouped scripts, a collection own scripts and the collections', async ({
   relaunch,
@@ -111,9 +107,9 @@ test('drag reorders ungrouped scripts, a collection own scripts and the collecti
   const { window: page, control } = await relaunch({
     control: [
       LIST,
-      { channel: IPC.customScriptsReorder, args: { collectionId: null, ids: ['s3', 's1', 's2'] } },
-      { channel: IPC.customScriptsReorder, args: { collectionId: 'col-x', ids: ['t2', 't1'] } },
-      { channel: IPC.customScriptsReorderCollections, args: { ids: ['col-y', 'col-x'] } },
+      { channel: IPC.customScriptsReorder, args: { collection: '', ids: ['s3', 's1', 's2'] } },
+      { channel: IPC.customScriptsReorder, args: { collection: 'X', ids: ['t2', 't1'] } },
+      { channel: IPC.customScriptsReorderCollections, args: { names: ['Y', 'X'] } },
     ],
   });
   await open(page);
@@ -125,7 +121,7 @@ test('drag reorders ungrouped scripts, a collection own scripts and the collecti
   expect(calls(control, IPC.customScriptsReorder)).toEqual([
     {
       ...contract<object>('script-order', 'args:CustomScriptsService.Reorder#ungrouped'),
-      collectionId: null,
+      collection: '',
       ids: ['s3', 's1', 's2'],
     },
   ]);
@@ -135,18 +131,18 @@ test('drag reorders ungrouped scripts, a collection own scripts and the collecti
     .poll(() => calls(control, IPC.customScriptsReorder)[1])
     .toEqual({
       ...contract<object>('script-order', 'args:CustomScriptsService.Reorder#collection'),
-      collectionId: 'col-x',
+      collection: 'X',
       ids: ['t2', 't1'],
     });
 
-  await drag(page, header(page, 'col-y'), header(page, 'col-x'), () =>
+  await drag(page, header(page, 'Y'), header(page, 'X'), () =>
     expect(page.locator('[data-group-entry]').first()).toHaveClass(/opacity-50/, { timeout: 500 }),
   );
-  await expect.poll(() => groupIds(page)).toEqual(['col-y', 'col-x']);
+  await expect.poll(() => groupIds(page)).toEqual(['Y', 'X']);
   expect(calls(control, IPC.customScriptsReorderCollections)).toEqual([
     {
       ...contract<object>('script-order', 'args:CustomScriptsService.ReorderCollections'),
-      ids: ['col-y', 'col-x'],
+      names: ['Y', 'X'],
     },
   ]);
 });
@@ -157,8 +153,8 @@ test('Alt+Arrow moves within the set; the first script of a collection never mov
   const { window: page, control } = await relaunch({
     control: [
       LIST,
-      { channel: IPC.customScriptsReorder, args: { collectionId: 'col-x', ids: ['t2', 't1'] } },
-      { channel: IPC.customScriptsReorderCollections, args: { ids: ['col-y', 'col-x'] } },
+      { channel: IPC.customScriptsReorder, args: { collection: 'X', ids: ['t2', 't1'] } },
+      { channel: IPC.customScriptsReorderCollections, args: { names: ['Y', 'X'] } },
     ],
   });
   await open(page);
@@ -171,12 +167,12 @@ test('Alt+Arrow moves within the set; the first script of a collection never mov
   await page.keyboard.press('Alt+ArrowDown');
   await expect.poll(() => calls(control, IPC.customScriptsReorder)).toHaveLength(1);
   expect(calls(control, IPC.customScriptsReorderCollections)).toHaveLength(0);
-  expect(await groupIds(page)).toEqual(['col-x', 'col-y']);
+  expect(await groupIds(page)).toEqual(['X', 'Y']);
   await expect(row(page, 't1')).toBeFocused();
 
-  await header(page, 'col-x').focus();
+  await header(page, 'X').focus();
   await page.keyboard.press('Alt+ArrowDown');
-  await expect.poll(() => groupIds(page)).toEqual(['col-y', 'col-x']);
+  await expect.poll(() => groupIds(page)).toEqual(['Y', 'X']);
   expect(calls(control, IPC.customScriptsReorderCollections)).toHaveLength(1);
 });
 
@@ -193,7 +189,7 @@ test('an active search pauses drag', async ({ relaunch }) => {
   expect(calls(control, IPC.customScriptsReorder)).toHaveLength(0);
 });
 
-// P381: drag between sets and the Move up/down menu items; shared with Space.
+// P381: the Move up/down menu items; shared with Space.
 registerOrderScenarios(
   { test, contract, ipc: IPC },
   { extraBase: [], modeTab: (page) => modeTab(page, 'automations') },

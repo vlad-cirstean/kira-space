@@ -302,7 +302,7 @@ test('a repo workspace: switching the panel to Review mounts the review sidebar'
 }) => {
   const { window: page } = await relaunch({ control: CONTROL });
   // Must land before the repo workspace ever opens (ensureWorkspaceShell mounts the pinned graph
-  // tab immediately, which is what first calls Stream('git') — repo/git/transport.ts's
+  // tab immediately, which is what first calls Stream('gitgraph') — repo/git/transport.ts's
   // gitTransportFor is lazy, unlike bridge/port.ts's own module-scope Stream('engine'), so
   // page.evaluate (not page.addInitScript) is both sufficient and correct here.
   // The transport opens the repo before the first request that names it.
@@ -429,7 +429,7 @@ test('contract: a repo workspace: the status bar blame item follows the cursor, 
 
   {
     const { window: page } = await relaunch({ control: CONTROL });
-    // See :364's own comment: lazy `gitTransportFor`, so this lands before Stream('git') is ever
+    // See :364's own comment: lazy `gitTransportFor`, so this lands before Stream('gitgraph') is ever
     // called as long as it precedes the click that opens the workspace.
     await installGitStreamMock(page, REPO.repoId, {
       'repo.open': undefined,
@@ -594,7 +594,7 @@ test('contract: a repo workspace: expanding a row lists its worktrees, and switc
   });
 
   // Installed before the expanding click — repo/git/transport.ts's gitTransportFor is lazy, so
-  // Stream('git') is first called only once the row actually expands (repo-workspace.spec.ts:485's
+  // Stream('gitgraph') is first called only once the row actually expands (repo-workspace.spec.ts:485's
   // own comment gives the identical reason).
   await installGitStreamMock(page, REPO.repoId, {
     'repo.open': undefined,

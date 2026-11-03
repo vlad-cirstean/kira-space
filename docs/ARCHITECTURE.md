@@ -193,7 +193,7 @@ whatever sandbox a session happens to be in),
 - The renderer must never import a DB driver and never parse a wire protocol.
 - The grid must not create a DOM node per cell for off-screen rows; it is virtualized in both axes.
 - Row data must not use Vue reactivity: rows live in plain frozen typed structures, the grid reads them imperatively and re-renders on an explicit version counter.
-- Long lists (tree, log panel, document view) must be virtualized too.
+- Long lists (tree, log panel, document view, Docker overview table, Memory list) must be virtualized too.
 - Every operation exceeding ~150 ms must show progress and a working stop button.
 - Every DB read must go through the cache layer; a cache miss is the only thing that produces a query.
 - Bulk data is produced and encoded exactly once, in the process that owns the window (P58 D3): the Go adapter builds a result page, it is held in the Go-side L2 cache as native structures, and it is serialized once when a renderer asks for it.
@@ -482,25 +482,19 @@ op_log(id, connection_id, tab_id, started_at, duration_ms, kind, status, rows,
                                                        -- pre-existing row;
                                                        -- source (TEXT, migration 0043, P328) is
                                                        -- 'user' or 'mcp', default 'user'
-custom_scripts(id, name, command, working_dir, dir_mode, kind, params_json, smart_json, use_ade_dir, schedule_json,
-               color, collection_id, sort_order, created_at, updated_at)
-                                                       -- P85, migration 0024; scripts, one row
-                                                       -- per script, user-curated (no cap).
-                                                       -- dir_mode (P242, Studio 0034 / Space 0026):
-                                                       -- 'kira' = <app home>/automations/<id>, 'fixed'
-                                                       -- = working_dir, 'home' = legacy $HOME (rows
-                                                       -- that predate the choice; never offered anew).
-                                                       -- collection_id (P219, Studio 0033 / Space
-                                                       -- 0023; replaced 0031's free-text collection)
-                                                       -- kind 'script'|'smart' (P242 Part 2, Studio
-                                                       -- 0035 / Space 0028), use_ade_dir (Part 3,
-                                                       -- 0036 / 0029), schedule_json (Part 4, 0037 /
-                                                       -- 0030; '' = not recurring):
-                                                       -- NULL = ungrouped, FK to
-                                                       -- custom_script_collections ON DELETE CASCADE;
-                                                       -- sort_order is dense per collection (NULL =
-                                                       -- ungrouped set); Move places the script
-                                                       -- before beforeId in the target set, or last
+custom_scripts(id, name, command, working_dir, dir_mode, color, collection, sort_order, created_at, updated_at,
+               kind, params_json, smart_json, use_ade_dir, schedule_json, schedule_task_id,
+               schedule_branch_id, config_json)
+                                                       -- P472 (Studio 0054 / Space 0064): the projection
+                                                       -- of <home>/runs/<id>.yaml; the file is config.
+                                                       -- id is the file stem; collection is a name
+                                                       -- ('' = ungrouped); config_json is the last good
+                                                       -- File JSON and is the source of every run.
+                                                       -- State the file never holds: sort_order (dense
+                                                       -- per collection), schedule_task_id and
+                                                       -- schedule_branch_id (Space), and the saved
+                                                       -- secrets in secret_values. dir_mode 'kira'|
+                                                       -- 'fixed'. Record never writes the state columns.
 script_runs(id, script_id, script_name, color, kind, trigger_kind, state, terminal_id, cwd, command,
             outcome_json, created_at, started_at, finished_at, model, session_id, prompt, params_json,
             tools_json, task_id, task_title, branch_id, branch_label)
@@ -517,10 +511,9 @@ script_runs(id, script_id, script_name, color, kind, trigger_kind, state, termin
                                                        -- branch_* name the ADE context (Space only).
 script_run_logs(run_id, seq, stream, text)              -- P242 Part 2; smart-run log lines, stream
                                                        -- stdout|stderr|event
-custom_script_collections(id, name, sort_order, created_at, updated_at)
-                                                       -- P219; one row per script collection, name
-                                                       -- trimmed, 64 runes max, order is sort_order
-                                                       -- (user drag order), name. Empty ones may exist.
+custom_script_collections(name, sort_order)           -- P472; WITHOUT ROWID. One row per collection
+                                                       -- name a run file names, order is sort_order.
+                                                       -- Pruned when no run names it.
 secret_values(scope, owner, name, value, updated_ms)     -- P447; sealed kira:v3 values, PK (scope, owner, name),
                                                        -- both apps. script-param rows: owner = custom_scripts.id.
 ui_layout(key, value)                                   -- panel visibility (app-wide), panel sizes per module (modes.<mode>.*)
@@ -584,8 +577,8 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 ```
 
 - P100 dropped git_clients, git_repo_settings and code_repos from Studio's kira.db (0026_p100_drop_git_tables.sql) when the git module was extracted into Kira Space, a separate app with its own kira.db and its own copies of these tables.
-- Kira Space runs its own migration sequence in apps/kira-space/internal/storage/migrations/, separate from Studio's, with high-water mark 0045 (0045_p332_file_handler_previous.sql adds file_handler_previous).
-- Studio's kira.db migration high-water mark is 0037 (0037_p242_recurring_scripts.sql: custom_scripts.schedule_json, script_runs rebuilt with waiting/skipped states).
+- Kira Space runs its own migration sequence in apps/kira-space/internal/storage/migrations/, separate from Studio's, with high-water mark 0065 (P474: 0065_p474_repo_files.sql repoints ade_env_state at code_repos before the repo tables go).
+- Studio's kira.db migration high-water marks: 0055 (P473, api as files: stem, item_key, secret_ref columns); 0054 (P472, runs as files: custom_scripts rebuilt as a projection, custom_script_collections keyed by name) before it in Studio and 0064 in Space.
 - Migration 0020 added connections.mcp_enabled (deny-by-default MCP exposure); 0021 added mcp_read_mode/mcp_write_mode/mcp_ddl_mode plus mcp_description; 0022 added mcp_auto_explain (auto-force-EXPLAIN on run_query); 0023 created connection_mask_rules and connections.mask_correlation_key.
 - Migration 0027_p108part11_op_log_path.sql added op_log.path TEXT, the console path an op actually ran against.
 - Op source rides the RunOp ctx (`adapterhost.WithOpSource`), set by dbmcp's tool wrapper; connection lifecycle ops are always `user`, since MCP's connect is a shared, deduplicated attempt with its own ctx.
@@ -596,7 +589,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - The 0010 rename migration uses ALTER TABLE RENAME for each table, then DROP INDEX and CREATE INDEX for each of seven indexes, because SQLite has no ALTER INDEX RENAME; foreign key references are rewritten automatically since db.go sets _foreign_keys=1.
 - Already-applied migrations 0006-0009 are left untouched, so a fresh install creates http_* tables and renames them in 0010; migrate.go refuses to run against a schema_version newer than the build knows.
 - migrate_rename_test.go is the one test that exercises a migration against seeded v9 data; it asserts rows survive under new names, generated scope_key columns still compute, grpc_call_history's foreign key names api_items, and collection delete still cascades.
-- Postman collections are stored in kira.db as a normalized api_collections/api_items tree, not as a .json file edited in place; sort_order is data and is rewritten dense within a parent on any insert or delete.
+- Postman collections are imported into `<id>.collection.yaml` files (P473) and projected into the normalized api_collections/api_items tree; sort_order is data and is rewritten dense within a parent on any insert or delete.
 - api_items.parent_id is a self-reference with ON DELETE CASCADE, enforced because the DSN sets _foreign_keys=1 on every pooled connection, so deleting a folder deletes its subtree at any depth in one statement with no recursive Go delete.
 - Each api row stores origin_json, the original Postman object verbatim minus its recursive item array, because encoding/json drops undeclared struct members and no typed model could round-trip unmodelled members.
 - Postman export starts from origin_json and rewrites only url, header and body, and only when re-importing the origin's member no longer yields what is stored; method is always written from request_json; other members are re-emitted byte-identically.
@@ -668,7 +661,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 | `schema_version` | nothing | one row |
 | `settings`, `ui_layout` | nothing | closed key set; every writer is a hand-listed leaf |
 | `connections`, `connection_ddl`, `connection_tree_filters`, `saved_queries`, `connection_mask_rules` | user action | user action; all cascade on connection delete |
-| `custom_scripts`, `custom_script_collections` | user action | user action; one row per script or collection, created and deleted one at a time; deleting a collection deletes its scripts |
+| `custom_scripts`, `custom_script_collections` | run file written or edited | file deleted (the row and its saved secrets go; run history stays); a collection row goes when no run names it |
 | `secret_values` | save of a secret script param | user clear, param removal, script or collection delete (same tx); one row per saved value |
 | `api_collections`, `api_items`, `api_environments`, `api_variables` | user action / import | user action; import capped at 64 MiB upstream |
 | `tabs` | open tabs | rewritten per window per save; cascades on window close |
@@ -798,27 +791,17 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - The Runs entry in both apps' MODES points at one shared module, packages/workbench/src/automations/module.ts, not two hand-kept-identical copies (renamed from Terminal in P242).
 - Each app's App.vue builds one AutomationsModuleContext object (in its own workbench/automationsModule.ts) and provide()s it once at the root, above WorkbenchShell.vue.
 - The mode key, windows.mode and the module's tab workspace_id are all automations; real terminals in packages/workbench/src/terminal/ stay terminals, only the launching module was renamed. The module shows as Runs (P438); mode key, i18n keys, code names, test IDs and the `<app home>/automations` folder keep `automations`.
-- Script logic lives in repo-root internal/scripts (custom_scripts repo, validation, service); each app's bound bridge.CustomScriptsService keeps its own binding name and delegates to it. List answers and every mutation broadcast one Snapshot{collections, scripts}.
+- Script logic lives in repo-root internal/scripts (loader, projection repo, validation, service); each app's bound bridge.CustomScriptsService keeps its own binding name and delegates to it through a named `Svc` field with explicit forwarders (Wails binds promoted methods, so Studio omits SetScheduleTarget). List answers and every file change broadcast one Snapshot{dir, collections, scripts, problems, secretStorage}. See Runs config files (P472).
 - Script dirMode kira (default) runs in <app home>/automations/<script id>, created 0700 on demand; a symlink or non-directory at any level is refused with "<path> is not a real folder: remove it".
 - Script dirMode fixed is the chosen absolute folder and must exist.
-- Script dirMode home is the retired $HOME default, kept only for rows that predate the choice, and is refused on create or when switching another mode to it.
-- Removing a script removes its kira folder.
+- Script dirMode home is gone (P472): the migration rewrote it to kira.
+- Deleting a run through Delete removes its file, its kira folder and its saved secrets.
 - A script's command and folder are Go-authoritative: terminal.Open with a scriptId loads the stored command and folder and ignores the renderer's cwd/command, so a forged argument cannot run another command.
 - createCustomScriptsStore in packages/workbench/src/automations is the shared store factory over each app's control; both apps' state/customScripts.ts are one-liners.
-- The panel header + ("New script…") is the only add control for scripts; the empty state has none.
-- ScriptDialog.vue edits one script in three force-mounted tabs (Script, Parameters, Schedule), hidden when inactive, so ScheduleFields keeps emitting valid and state survives a tab switch. The server error and footer sit outside the tabs.
-- The script body field (ScriptBodyField.vue) is a multiline AutocompleteField, not Monaco, because no shared Monaco host exists and .fill() on the real textarea stays valid.
-- In multiline AutocompleteField, Enter inserts a newline unless a suggestion was arrowed onto, and Cmd/Ctrl+Enter bubbles to save; autoClose is off and openOnEmptyToken lists every candidate right after { or $.
+- The panel header + (New script, New smart script) is the only add control; it writes a small valid `<id>.yaml` and opens it in RunFileDialog.vue. The empty state has none.
 - A multiline script command runs as-is in the user's login shell with shell -c.
-- A prompt offers non-secret params for completion after {name; a command offers KIRA_PARAM_<NAME> for every param (secret included); with ADE (Space) the built-ins task jira repo branch base worktree are offered (KIRA_<NAME> in a command).
-- Known vars paint as variables; a secret param in a prompt and an unknown $KIRA_PARAM_X paint as unknown; an unknown {word} stays plain text.
-- The "Uses:" chips show the value a run gets without input: the param default, "asked at run" without one, or "from the task" for a built-in.
-- Each dialog tab trigger shows a Badge with its error count from scriptErrors.ts, a client mirror of the Go checks; empty-field errors wait until the field was edited, Save stays disabled while errors remain, and Go stays the authority.
-- Script collections are real rows managed like API collections; the header new-folder button or list background menu creates one named "New collection" and opens it for inline naming via shared InlineRenameInput.vue. Deleting a collection (confirmed) deletes its scripts too.
-- Ungrouped scripts list first, then collections in creation order, empty ones included; collapse state is stored in localStorage key kira.automations.collapsedCollections by collection id (copied once from kira.quickCommands.collapsedCollections).
-- Search shows a collection when its name or one of its scripts matches.
-- New collections are created from the panel, not typed in the script dialog; Settings has no Scripts section.
-- AutomationsPanel.vue, AutomationsStart.vue, AutomationsNewTab.vue, ScriptDialog.vue, TerminalTabView.vue and TerminalHostView.vue are the same six files in both apps, imported lazily via defineAsyncComponent so a git-only session never pays for the terminal launch chunk.
+- Search shows a collection when its name or one of its scripts matches. Ungrouped runs list first, then collections in their stored order; collapse state is in localStorage key kira.automations.collapsedCollections by collection name.
+- AutomationsPanel.vue, AutomationsStart.vue, AutomationsNewTab.vue, RunFileDialog.vue, TerminalTabView.vue and TerminalHostView.vue are the same six files in both apps, imported lazily via defineAsyncComponent so a git-only session never pays for the terminal launch chunk.
 
 - internal/runoutcome is the single run-result type shared by both stores: Outcome{status done|failed|blocked|cancelled, reason, source agent|exit|timeout|start|user|restart, reported, exitCode, lastError, summary}.
 - runoutcome.ForProcess is the only wording table for run outcomes, so ADE step runs (ade_runs.outcome_json, Space only) and script runs use the same wording.
@@ -843,7 +826,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - A smart run's final report must go through finish_step; a run without it fails with the shared "no report" text.
 - Smart script params are text, select or multiselect (a text param may be secret); names are lowercase and must not use the reserved ADE built-ins task, jira, repo, branch, base, worktree; {name} in the prompt is substituted before launch.
 - A secret param value reaches a smart run through env only: never in the prompt, stored script_runs.prompt or params_json (stored as the mask), and a smart script whose prompt names a secret param is refused.
-- P447: a secret text param can have a saved value, sealed in secret_values (scope script-param, owner custom_scripts.id, name = param name). The script record holds names only (savedSecrets). Create/Update take secretValues: string saves, null clears, absent keeps; the value is write-only, never returned. A secret param has no default. Remove, rename or un-secret a param, or delete the script or collection, prunes the row in the same tx. Both apps; no script duplicate or export exists, and any later path must never copy plaintext (a copy starts with no saved values). Without a keychain, saving returns E_SECRET_STORE.
+- P447: a secret text param can have a saved value, sealed in secret_values (scope script-param, owner custom_scripts.id, name = param name). The script record holds names only (savedSecrets). Create takes secretValues and SetSecrets takes values (string saves, null clears, absent keeps); the value is write-only, never returned. A secret param has no default. Un-secreting or removing a param, or deleting the run, prunes the row after the projection commits (the single DB connection forbids a second query inside the tx). Both apps; no script duplicate or export exists, and any later path must never copy plaintext (a copy starts with no saved values). Without a keychain, saving returns E_SECRET_STORE.
 - A saved value fills a secret param only when none was typed (typed wins), stays env-only, and is used by resume and restore. An unreadable saved value counts as absent and sets Preview.SecretIssue.
 - Output masking (Masker over all secret values of the run): log lines before truncation, outcome Reason, LastError, OutputTail and Summary, and the terminal tail. Not masked: the live terminal tab and the Space phone terminal ring (mobileterm), lines cut at linewriter.MaxLine, agent writes through Space task tools, and anything the process writes elsewhere. ADE workflow smart steps fill saved secret params and mask them in the step log. A workflow `params` entry for a secret param is refused.
 - script_run_logs holds the run log (stdout|stderr|event), read by ScriptRuns.ReadLog; script_runs gains model, session_id, prompt, params_json, tools_json.
@@ -1584,7 +1567,7 @@ packaged app does not), where the identical application code runs unchanged over
 
 - Kira Studio's Go side lives in apps/kira-studio/; Wired.Bound() registers 30 bound services under apps/kira-studio/internal/bridge/, with main.go building application.New options from appwire.Build.
 - Kira Studio's Bound() binds no git-related service; GitClientsService moved to Kira Space as of P100 and was deleted there in P243 Part 2 with the Connected editors pane.
-- Kira Space's Bound() binds a separate set of 35 services, counted by the application.NewService entries in Bound() in apps/kira-space/internal/appwire/appwire.go (P452 AgentContextService, P453 AgentSettingsService, P454 AgentPortService).
+- Kira Space's Bound() binds a separate set of 37 services, counted by the application.NewService entries in Bound() in apps/kira-space/internal/appwire/appwire.go (P452 AgentContextService, P453 AgentSettingsService, P454 AgentPortService, P474 RepoConfigService, P476 GitService).
 - TerminalService and WindowsService are per-app embeddings of one shared Go type each: internal/windowsvc.Service (Ensure/SetMode/OpenNew) and internal/terminal.BoundService (Open/Write/Resize/Close/DefaultCwd), living once at repo root (P128).
 - Each app's bridge Windows/Terminal service is a one-line struct embedding the shared type, so Wails' FQN, derived from the embedding type's package, reads WindowsService.Ensure / TerminalService.Open without a binding-name shim.
 - Kira Space's WindowsService gained Ensure/SetMode in P128 §2.2; it previously bound only OpenNew.
@@ -1655,25 +1638,34 @@ packaged app does not), where the identical application code runs unchanged over
 
 ### Transport
 
-- ServeGitStream in apps/kira-space/internal/bridge/gitstream.go serves gitrpc.Router over rpcstream via one in-process Wails stream per window, with no socket, handshake, pairing or trust store, because the peer is the process's own webview.
+- Git has no stream protocol of its own. Every request is a bound `bridge.GitService` call (65 methods across `gitservice.go`, `gitservice_writes.go`, `gitservice_review.go` and `gitservice_graph.go`) over `callGit[T]` and `gitrpc.Handlers.Request`, plus `GitHostService.Providers` for `gitHost.providers`. Every call takes the window key, which `repo/git/boundGit.ts` supplies; cancellation goes through the binding promise's cancel().
+- Graph rows are the one bulk payload and ride the `gitgraph` data plane: `bridge.ServeGitGraph` over `internal/graphplane` (Go), `packages/git-ipc/src/graphPlane.ts` and `repo/git/graphStream.ts` (frontend). One Wails stream per page carries every `graph.stream` of the window; it dials on the first graph call and redials after a close. `graph.status`, `graph.loadMore`, `graph.refresh` and `graph.reportFailure` are plain bound calls.
+- Plane wire: text JSON in (`open` with `id`, `windowKey`, `params`, `credit`; `credit` with `n`; `cancel`), blob frames out for chunks (`0x00 | u32BE header length | {"t":"chunk","id","chunk"} | KIG1 FlatBuffer`), a JSON text `end` with an optional error. No version envelope, no handshake. The page opens with credit 2 and grants 1 more after each awaited chunk.
+- `graphplane.Serve` runs one goroutine per stream and one writer over the send channel. Cancel and plane close cancel the stream ctx, which releases `Walk.Stream`'s lock. A duplicate live id gets an `end` error and leaves the first stream untouched. An `open` for a window with no Conn answers `E_CONFLICT`; bound calls on a closed window answer the same, so no late call recreates a closed window.
+- Cancelling a bound promise abandons the reply, never a write. `remote.cancel` and `stack.cancelRestack` are the only ways to end a remote op or restack; they answer `{cancelled:false}` when nothing runs or the phase is not killable.
+- Replies and `kira:git:remote.progress` / `stack.progress` events travel apart, so a progress event can land after its reply; git-ui drops progress outside its running op.
+- Git events push as window-addressed app events `kira:git:<event>` via `EmitTo(windowKey, ...)`, not over the stream. The Space transport filters repo-scoped events (repo.changed, autoFetch.changed, remote.progress, stack.progress) by the repoIds the page holds.
+- Repo holds are window-level and refcounted (`repo/git/repoHolds.ts`): the transport, `gitCall` consumers and stores share one bound repo.open per path, and the last release sends bound repo.close; opens and closes of one path run in order. A window's Conn lives until `GitWindows.Close` (window close) or `GitService.ResetWindow`.
+- `ResetWindow` closes the window's Conn, releasing every hold and walk. The page awaits it once per page load (`gitWindowReady()` in `boundGit.ts`, started at boot, awaited by every bound call and graph stream) because a reload keeps its window key and would otherwise keep the previous page's holds. A failed reset clears the memo and the next call retries.
+- Frontend callers outside `packages/git-ui` (`views/repo/*`, `ade/v2/review/*`, `repo/state/*`) call `gitCall` and `onGitRepoEvent` over `repoHolds`, with TanStack Query for server state (worktree lists). The transport serves git-ui mounts and host-local methods; review writes repaint every surface through `repo/git/reviewRepaint.ts`.
+- The plane's `open` frame carries the page's window key, so under `-tags server` (where a stream has no window) a non-main tab keeps one key and gets one repo.changed per change.
 - The Unix socket (git.sock) that served a separately-installed VS Code extension, and the extension itself, are gone since P243 Part 2; removeLegacyGitSocket in main.go deletes the git.sock and git.sock.lock left by older builds in KIRA_SPACE_HOME.
 - An flock on ${KIRA_SPACE_HOME}/app.lock is the single-instance guard: config.AcquireLock takes it before storage.Open, and if not acquired the process logs and exits 0.
 - A SIGKILLed instance's app.lock is released by the kernel, so no stale-pid file or manual cleanup exists.
-- gitrpc.ContractVersion and CONTRACT_VERSION in packages/git-ipc/src/validate.ts must be equal (56 currently), asserted by tests on both sides; a mismatch is a build bug since both sides ship in one binary.
-- app.init returns {contractVersion, serverVersion, git, dateFormat}, where dateFormat is Space's app-wide appearance.dateFormat.
+- There is no contract version: both sides ship in one binary, and the contract fixtures under `apps/kira-space/tests/contract` pin every method's result shape. P479 removed the version constant, its TypeScript twin and the handshake.
+- app.init returns {serverVersion, git, dateFormat}, where dateFormat is Space's app-wide appearance.dateFormat.
 - Contract version 47 (P246) dropped credential.request and credential.provide from the stream; credentials go through the relay snapshot and GitCredentialService.Provide.
 - Contract version 46 removed the extension-only surface (worktree.prepare, worktree.cancelPrepare, worktree.openWindow, editor.resolveConflict, worktree.progress, settings.changed and connection.changed events, app.init's host/settings/capabilities, and injected params scope, pageSize, baseCandidates, strategySetting); the server reads stored kiraSpace.* repo settings instead.
 - Contract version 44 added StatusSummary.autoFetch, the autoFetch.changed event and graph.reportFailure; version 43 refused prepare-script writes from repoSettings.set and removed settings.setGitPath.
-- bridge.maxGitStreamFrameBytes caps one frame at 32 MiB, because an 8 MiB cap failed the graph and commit detail on large repositories.
-- A session's sendCh holds up to 16 frames, so worst-case memory is 512 MiB, reached only by 16 concurrent near-cap requests; Wails admits one oversize frame into an empty per-window queue under its 256 MiB global budget.
+- bridge.maxGitGraphFrameBytes caps one plane frame at 32 MiB, because an 8 MiB cap failed the graph on large repositories; an over-cap chunk ends its stream with `E_FRAME_TOO_LARGE`.
+- The plane's sendCh holds up to 16 frames, so worst-case memory is 512 MiB, reached only by 16 near-cap chunks; Wails admits one oversize frame into an empty per-window queue under its 256 MiB global budget. Credit keeps real use far below that.
 - On the JS side a frame is joined once, decoded, parsed and structured-cloned to the webview, costing about 4-5x frame size transiently.
-- On the git stream, control frames (the rpcstream envelope, every request, every small response) are JSON text, while bulk payloads are FlatBuffers, the same split as the studio data plane.
+- On the plane, control frames (open, credit, cancel, end) are JSON text, while bulk payloads are FlatBuffers, the same split as the studio data plane.
 - The git FlatBuffers schema packages/git-ipc/schema/gitwire.fbs uses file identifier "KIG1", distinct from the studio plane's "KIF1" so the two can never be cross-decoded; a frame without "KIG1" is a hard error with no dual-format decoder or compatibility shim.
 - gitwire.fbs has one Frame wrapping a Payload union whose only member is PackedCommitChunk, the graph's column-wise commit block (sha bytes, CSR parent offsets, identity/time table, subject bytes plus offsets, delta-numbered string dictionary, per-row ref decorations).
 - Keep gitwire.fbs append-only: never renumber, reorder or delete a field; retire fields with (deprecated).
 - The schema file is named gitwire.fbs, not gitWire.fbs, because flatc's TypeScript generator names its entry point after the filename and its barrel after the namespace, and names differing only in case collide on case-insensitive filesystems.
-- rpcstream is module-agnostic infrastructure and the deliberate exception to the module-boundary rule: a correlated-RPC-with-credits state machine (req/res/evt/open/chunk/end/credit/cancel) transcribed field-for-field from the TypeScript rpc.ts, and it never learns what a method means (Handlers do).
-- rpcstream lives at repo-root internal/rpcstream since P100, hoisted from apps/kira-studio/internal/bridge/rpcstream so both apps/kira-studio and apps/kira-space can import it, since Go's internal/ visibility blocks cross-app imports.
+- `graphplane` is module-agnostic: a credit-gated chunk-stream server that never learns what a graph chunk is (the `OpenFunc` does). It lives under `apps/kira-space/internal/graphplane`; The shared stream package it replaced is gone since P479.
 
 ### Session model
 
@@ -1688,8 +1680,8 @@ Registry (internal/gitsession): map[RepoID]*RepoEntry — mutex + refcount
     reader/writer gate · git driver · cat-file --batch session · repo watcher
     detail / diff / refs / stack caches · live HEAD · undo slot · active remote op (<=1)
     subscribers: map[ConnID]chan Event
-Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connection
-  client identity · its own ctx · its own rpcstream session and Handlers
+Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared by GitService and the window's graph plane) or ADE connection
+  client identity · its own ctx · its own Handlers (request table, graph stream)
   walks: map[RepoID]*Walk — PRIVATE per (connection, repository)
     log session, commit store, dictionary marks, paging state, the active review walk
 ```
@@ -1703,9 +1695,11 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 - Watcher events are debounced 200 ms and delivered to each subscriber over its own coalescing buffered channel, so one slow client cannot stall the watcher for others.
 - The darwin watcher backend is FSEvents (gitclient/watcher_fsevents_darwin.go, darwin && cgo); the fsnotify implementation remains the !darwin || !cgo companion used by Linux dev/test.
 - FSEvents was chosen over fsnotify on macOS because kqueue needs one open file descriptor per watched directory under commonDir/refs, a cost against kern.maxfilesperproc on repositories with many loose refs; FSEvents watches recursively through one stream.
-- A client disconnect never kills a write: on peer close rpcstream.Serve cancels in-flight requests and streams, the connection's log-session processes are killed and RepoEntry refcounts released, but an in-flight write is detached and finishes with its result delivered nowhere.
+- A client disconnect never kills a write: on plane close the graph streams are cancelled and a bound call cancelled by its page abandons the reply, the connection's log-session processes are killed and RepoEntry refcounts released, but an in-flight write is detached and finishes with its result delivered nowhere.
+- Closing a window (`GitWindows.Close`) behaves the same: the Conn closes, a pending credential prompt is withdrawn and its remote op fails with its auth error, but a local write finishes. The repository entry lingers 5 minutes with zero holders before teardown can force-cancel an op slot.
 - Writes are detached on disconnect because a half-applied checkout from a closed window is far worse than a result nobody reads.
 - The undo slot is one per repository, not per connection, and its label names the originating client, e.g. "Undo reset of main (window: repo-review)".
+- A window's Conn is created on its first git call and released by `GitWindows.Close` (from OnWindowClosing) or `GitService.ResetWindow` (page boot). A call on a closed window answers `E_CONFLICT` and never recreates the Conn; only `ResetWindow` revives the key. Credential routing and auto-fetch off are set once at creation.
 - Credential prompts open in Kira Space's own window (P178): internal/gitcred.Relay holds each prompt labelled "<source> · <repo folder>" and pushes the full pending list on kira:git:credential.
 - The gitCredential Pinia store queues relay prompts behind the native stream's own prompts in one dialog; when the relay withdraws a prompt (answered elsewhere, op cancelled, 120 s timeout) the next snapshot closes the stale dialog.
 - With no Space window open, an arriving credential prompt opens one as a Dock click would (U1); otherwise it focuses the first window. ADE's board connection uses the same relay.
@@ -1715,7 +1709,7 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 - The credential dialog has no client-side timeout because the broker's 120 s bound covers it, and answering a request the broker already gave up on is a documented no-op.
 - Never log, persist, or store credential prompt data beyond the one in-flight prompt; the typed secret lives only in the dialog field, cleared on submit, cancel, Escape or frame close, and the prompt text is treated the same since it may contain a typed username.
 - protectedBranches, fetch.autoInterval and git.path are server-owned settings, edited in Kira Space's Settings dialog (Git section) and read fresh on every push pre-flight and auto-fetch tick, never cached, because two windows disagreeing about a protected-branch list is a safety bug.
-- Per-viewer display settings (graph page size and scope, stash visibility, and similar) are per repository, stored server-side in git_repo_settings and edited from a dialog opened in the graph view.
+- Per-viewer display settings (graph page size and scope, stash visibility, and similar) are per repository, stored in the repo's settings file (Repo config files, P474) and edited from a dialog opened in the graph view.
 
 ### Go packages
 
@@ -1736,13 +1730,13 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 | `gitsearch` | The cancellable, time-boxed tail scan and the Go matcher, plus the RE2/`RegExp` dialect reconciliation (below) |
 | `gitreview` | `review.db`'s whole surface: compressed content snapshots, fast/slow-path diff selection, partial-review ranges, the flat AI-comment list, and the TTL reaper (Storage, above) |
 | `gitsession` | `Registry`, `RepoEntry`, `Conn`, `Walk` — the session model above. Imports `gitclient`, `gitpreflight`, `gitreview`, `githost` and stdlib only |
-| `gitrpc` | The method table (`app.init` through `stack.cancelRestack`, plus the one `graph.stream` stream method), `ContractVersion` (**56**, P413), and the wire types |
+| `gitrpc` | The method table (`app.init` through `stack.cancelRestack`, plus the one `graph.stream` stream method), and the wire types |
 | `gitwire` | Generated FlatBuffers code for the git data plane |
+| `graphplane` | The credit-gated chunk-stream server behind the `gitgraph` stream (Transport, above); it never learns what a chunk is |
 | `gitaskpass` | The credential broker and its `GIT_ASKPASS` shim, over its own private socket, with a bounded wait |
 | `gitprepare` | The worktree prepare script's execution seam, called by ADE only — the one shell exception, below |
 | `githost` | Provider-neutral code host contract and registry (see Git host abstraction, below). `githost/github` is the `gh` provider: CLI discovery and spawn discipline mirroring `gitclient`'s own `Locator`/probe/TTL-cache shape, a status classification, and change request lookup through `gh api`. `githost/providers` builds the registry |
 | `startupfail` (repo-root, shared — not a git package, see above) | Native, pre-window failure alerts for every boot step (below) |
-| `rpcstream` (repo-root, shared) | The correlated-RPC-with-credits protocol (above) — module-agnostic by design, hoisted out of `apps/kira-studio/internal/bridge` at P100 so both apps import it |
 | `config` (`AcquireLock`) | The `app.lock` single-instance flock (Transport, above) |
 
 - Every spawn in the codebase passes a fixed argv to os/exec with no shell, except gitprepare, which runs the user's worktree prepare script through a shell.
@@ -1785,14 +1779,14 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 ### Frontend packages
 
 - The git UI is the package packages/git-ui, mounted by Kira Space's RepoGraphView.vue.
-- The git UI reaches Go through packages/git-ipc's streamChannel.ts, a Wails stream behind the MessageChannelLike seam.
+- The git UI reaches Go through bound GitService calls and, for graph rows, packages/git-ipc's graphPlane.ts over streamChannel.ts, a Wails stream channel.
 - Kira Space's repo/git/hostHandlers.ts answers the few host calls (dialogs, clipboard, open externally, reveal in graph) locally.
 - Repository settings are edited in Kira Space, and the settings dialog is always shown.
 - app.init.dateFormat carries Space's app-wide appearance.dateFormat, read at each app.init.
 
 | Package | Holds |
 |---|---|
-| `packages/git-ipc` | The shared vocabulary: `contract.ts`, `rpc.ts` (client only), `transport.ts`, `codec.ts`, `validate.ts` (`CONTRACT_VERSION`), `streamChannel.ts`, `blobFrame.ts`, `schema/gitwire.fbs` with its generated code, and `graphChunkCodec.ts` |
+| `packages/git-ipc` | The shared vocabulary: `contract.ts`, `transport.ts` (the `Transport` interface and its errors), `graphPlane.ts` (the data plane client), `codec.ts`, `streamChannel.ts`, `blobFrame.ts`, `schema/gitwire.fbs` with its generated code, and `graphChunkCodec.ts` |
 | `packages/git-core` | Client-side domain logic: the commit store, the lane-layout graph worker, the client half of search, the wire model types and the settings schema |
 | `packages/git-ui` | The UI itself — the graph panel, the review panel, the dialogs, the file tree — Vue, mounted by Kira Space |
 | `packages/kira-ui` | Deleted (P267). Was `floatingPosition.ts` only; `AutocompleteField` and `PointPopover` position through reka `Popover` |
@@ -1881,13 +1875,13 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 - Wails emits `ApplicationOpenedWithFile` once per file, cold start included. `openedfiles.Coalescer` batches adds (300 ms after the last) into one new window. `Resolve` follows symlinks, then maps a path inside an imported repo (longest root wins) to `{repoId, relPath}`, else keeps the absolute path. The window pulls its targets once through `OpenedFilesService.Pending(windowKey)`; `Forget` runs on window close.
 - A path outside every repo opens a `local-file` tab in the general workspace, read through `OpenedFilesService.Read`, which accepts only an absolute, clean path with a supported extension. `RepoFileView` and `LocalFileView` share `useReadonlyFileViewer`.
 - The File types settings pane writes LaunchServices through `filehandlers.Registry` (`NSWorkspace setDefaultApplicationAtURL:toOpenContentType:`; macOS cgo build only, `Unsupported` elsewhere and in `-tags server`). Status re-reads live state on every call; nothing is applied on launch. The previous handler is stored per extension in `file_handler_previous` before the first switch; switching off restores it, and a gone app leaves the extension on Kira Space and reports it as `unrestored`.
-- Kira Space has 35 bound services (P452 adds `AgentContextService`, P453 `AgentSettingsService`, P454 `AgentPortService`).
+- Kira Space has 37 bound services (P452 adds `AgentContextService`, P453 `AgentSettingsService`, P454 `AgentPortService`, P474 `RepoConfigService`, P476 `GitService`).
 - Not supported: Linux and Windows (no package; the single-instance lock drops a second process's argv), folders dropped on the Dock icon, editing or live reload of an opened file, a table view for data files, auto-importing an un-imported repo that contains the opened file.
 
 ### Git graph in the native workspace (C10)
 
 - The pinned first tab of every repo workspace (views/repo/RepoGraphView.vue) mounts packages/git-ui's own graph by calling mount() directly in the native window, with no reimplementation and no fork of git-ui.
-- ServeGitStream in apps/kira-space/internal/bridge/gitstream.go mirrors ServeEngineStream over gitrpc.Router as an in-process Wails stream, with no handshake and no pairing token because the peer is this process's own webview.
+- The graph's data plane (bridge.ServeGitGraph) is an in-process Wails stream with no handshake and no pairing token, because the peer is this process's own webview.
 - packages/git-ipc/src/streamChannel.ts is a Wails-stream channel using the blob-frame body shape with no length prefix, no recvBuffer and no drain loop, because a Wails stream is already message-framed.
 - Kira Space graph view stays mounted, hidden via v-show in MainView.vue, from first activation until its tab closes or 4 more recently used kept views displace it (evicted views restore cold from view state). Opt-in by TabKindDef.keepMounted; only repo-graph sets it. A full-layout module (ADE) keeps MainView mounted and passes `suspended`, so kept views go inactive.
 - A Space file or diff editor's view state (scroll, cursor, folds) is saved on unmount and restored on the next mount, held with the tab's models in `views/repo/editors.ts` until the tab closes. A restored view state replaces the persisted `revealLine` reveal; a pending reveal request still wins.
@@ -1897,10 +1891,10 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 - Change request ancestry is rebuilt with a base cutoff (state/changeRequests.ts rebuildAncestry): each baseRef is resolved locally via rowOfBranchTip (a decoration scan, no new RPC) and its ancestors excluded, so badges no longer tag nearly all loaded history behind a branch.
 - Bursts of individually-resolving change request branches coalesce into one ancestry rebuild per tick via scheduleAncestryRebuild's nextTick drain.
 - There is no gitrpc method allowlist (removed in P243 Part 2 with the extension): every gitrpc method is served, and a method the contract does not name does not exist.
-- guardRepoSettingsSet in gitstream.go refuses repoSettings.set with E_READ_ONLY when its patch touches the prepare script or worktreeBasePath, which only Kira Space writes in-process (ADE repo config).
+- GitService.RepoSettingsSet (via patchTouchesRestrictedField in gitwindows.go) refuses repoSettings.set with E_READ_ONLY when its patch touches the prepare script or worktreeBasePath, which exist only in the repo's settings file. The guard covers `repoSettings.set` only: `RepoConfigService.SaveFile` writes the whole repo file text over a bound call, prepare script included.
 - The gitrpc Router refuses the prepare-script leaf on every connection (P172), and there is no gitrpc method for shell execution since 46 removed worktree.prepare.
 - repo.open must never transitively arm a write, because via Registry.Acquire/EnsureAutoFetch it could arm a timer running git fetch --prune when git.fetchAutoIntervalMinutes is above its default of 0.
-- gitsession.Conn has a noAutoFetch flag (DisableAutoFetch), set by ServeGitStream before serving requests, which routes Open through Registry.AcquireQuiet and skips EnsureAutoFetch on existing entries, so the native mount's repo.open never arms auto-fetch.
+- gitsession.Conn has a noAutoFetch flag (DisableAutoFetch), set by GitWindows when it creates the Conn, which routes Open through Registry.AcquireQuiet and skips EnsureAutoFetch on existing entries, so the native mount's repo.open never arms auto-fetch.
 - The auto-fetch opt-out is scoped to one Conn only: RepoEntry and its timer are shared per repository, so another Conn on the same repository that does not opt out can still arm it.
 - P67e kept the auto-fetch opt-out even though the native mount is no longer read-only, because every fetch the native mount runs should be one the user pressed a button for, not an unrequested periodic background fetch.
 - CodeRepo.ID (code_repos.id) is used by native tab/workspace calls, while gitclient.RepoSummary.RepoID is used by git-ui and every gitrpc method; the two are never equal or interchangeable.
@@ -1989,12 +1983,12 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 
 ### Git blame, inline (P62)
 
-- P62 (inline git blame) reused the v1.4 P5 backend with no Go change to blame and no ContractVersion or method-set bump.
+- P62 (inline git blame) reused the v1.4 P5 backend with no Go change to blame and no method-set bump.
 - blame.line runs one git blame spawn per line, blames the working tree only, and takes no atSha.
 - The only Go touched by P62 is internal/storage/{model,repos}/settings.go, to persist the inlineBlame setting.
 - The inline blame annotation renders as injected text at the end of the cursor's line in views/repo/RepoFileView.vue, because that surface's displayed bytes and blame.line's answer are the same document by construction; diff tabs compare historical revisions blame.line cannot answer.
 - P62 declined a status-bar blame item, but P76 shipped it as a left-side status-bar item.
-- Whole-file gutter blame is deliberately not built, because blame.line is one spawn per line; it would need a new multi-hunk porcelain parser, a new blame.file method, and a ContractVersion bump.
+- Whole-file gutter blame is deliberately not built, because blame.line is one spawn per line; it would need a new multi-hunk porcelain parser, and a new blame.file method.
 - views/repo/blameLine.ts owns the blame.line request, debounce, dedupe, per-mount cache and cancellation, so the status-bar renderer shares one request; blameAnnotation.ts keeps only the Monaco decoration/hover/reveal-action rendering.
 - blame.line requires the calling connection to already hold the repository, so the blame controller ensures this with a memoised repo.open, which is idempotent per (connection, repoId).
 - The blame request uses a cursor-line trigger, 150 ms debounce, dedupe on the line, a per-mount cache, and repo.changed invalidation; the cache is sound because the model is immutable for the mount's life.
@@ -2318,7 +2312,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - Repo colour is painted via --kira-conn-* as colorMarkClass row rails on the Repositories dialog and Git panel, repo tab bars, and ADE repo tags; the 20-slot ADE work palette now colours tasks only.
 - internal/palette is the one Go palette set, though Studio's model.ValidPaletteColor still has its own.
 - Worktrees take their anchor repo's colour (repo/state/repoLinks.ts repoColorOf, used by tabKinds.ts and ADE; P227).
-- A deployment environment (ade_repo_envs) is a name plus a shell command that prints the deployed commit SHA; it runs in the repo root on board refresh and marks branches ▲name ✓/⚠/?.
+- A deployment environment (the `environments` key of the repo file) is a name plus a shell command that prints the deployed commit SHA; it runs in the repo root on board refresh and marks branches ▲name ✓/⚠/?.
 - In the deployment environments UI, a new row stays a local draft and is written only once both name and command are filled.
 - Run and setup logs keep a tail of 2 MiB per log in chunks of at most 8 KiB, set truncated once head chunks drop, and batch writes every 250 ms.
 - Archive keeps all task data (P399): logs, review sessions and comments are never purged; per-log size cap still bounds each log. Archive closes review windows only; review sessions stay pinned.
@@ -2327,7 +2321,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - AdeTaskService.ArchivedTask returns an archived task read-only: task, statuses, branches (live PR when the host answers, else the snapshot; prSource says which), stored review comments, no worktree paths. Phone reads it at /api/ade/archived-task.
 - AdeTaskService.RestoreTask revives the task and the branch rows archived with it (same archived_at), adds a Later plan row, and returns the task. It refuses when a branch name is live on another task; nothing changes then. Worktrees come back on next launch via ensureWorktree.
 - No Archived tab. Archived tasks list in the Plan: today's archive rows always show, past days load with the History toggle (`AdeHistoryControl`), and the archived finder (`AdeArchivedFinder`) searches all of board.history. Each selects the task; the panel is read-only, with Restore to edit.
-- The per-repo prepare timeout is the GitRepoSettings leaf worktreePrepareTimeout (default 15m, max 2h), shared with git-ui worktree add; Spec.Timeout must be > 0.
+- The per-repo prepare timeout is the GitRepoSettings leaf worktreePrepareTimeout, `worktree.prepare_timeout` in the repo file (default 15m, max 2h), shared with git-ui worktree add; Spec.Timeout must be > 0.
 
 ### Git facts
 
@@ -2652,7 +2646,7 @@ role (`harness.UsageReporter`): only a provider that reports it feeds the servic
 - Task plus menu (P410, `sessions/AdeTaskLaunchMenu.vue`) on the Sessions tab bar only (not the task list card): per worktree a Terminal (Git module tab via `openRepoTerminalTab`) or an ad hoc agent session (`StartAdHoc`). Disabled items show their reason inline.
 - The repository list is one Pinia store (state/coderepos.ts) fed by the boot-time kira:adetask:repos subscription (initCodeRepos, called from main.ts), so every module in every window sees every change.
 - All repository configuration lives in one Git-module dialog, repo/ReposDialog.vue (P205), with a Repositories tab (import, list, per-repo form, remove) and a Scan folders tab (add, watch, hide all, remove). Agents has no Repos tab.
-- The per-repo form in ReposDialog sets nickname, prepare script and timeout, integration branches, environments and worktreeBasePath (via UpdateRepo).
+- ReposDialog shows per repo `RepoIdentity` (colour, path, source) and `RepoFilePane`, the editor of its settings file. Nickname, integration branches, environments and every Git leaf are keys of that file; there is no per-field form and no UpdateRepo.
 - ReposDialog opens from the Git panel header, GitStart.vue, a repo-row "Configure repository…" item and the Agents empty state.
 - Repo hiding (P259): code_repos.hidden decides visibility for one-by-one and folder imports alike; ade_folders.hidden is the folder "hide all", which bulk-writes its repos, makes later discoveries import hidden, and still lets a single repo be shown inside a hidden folder.
 - Hidden only filters the Git panel Repos list (repo/state/repoVisibility.ts); ADE, agent task_info, mobile and open workspaces ignore it, and the dialog lists every repo.
@@ -3016,6 +3010,7 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 - Live logs virtualize unless Wrap is on; with Wrap on, the last 2000 filtered lines render. The log buffer cap is 20 000.
 - Docker exec uses TerminalHostView with storeId 'docker-exec'; the Terminal tab opens no session until New session is clicked.
 - Per-container CPU and RAM show in the engine overview table, the container header and a Stats view; the side list shows none.
+- The overview table (ContainerTable.vue) virtualizes through `useVirtualRows` with `scrollMargin`: the engine overview is the scroller and other sections sit above the table.
 - Docker endpoint resolution order (endpoint.go): selected UI context, DOCKER_HOST, DOCKER_CONTEXT, then `docker context show` (cached until the client is rebuilt; TLS contexts included), default socket, then socket probe (Desktop, Colima, OrbStack).
 - Docker streams are per window (windowKey); they end on WindowOpenerDeps.OnWindowClosing, service shutdown and quit, and run only while the module is visible. One exception: the restore tracker (P334).
 - Stats share one engine stream per container across windows.
@@ -3246,7 +3241,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - DB sync, one mechanism: files to DB only. Each module keeps a projection (last valid parsed JSON per file) in its own SQLite table through `configfs.Projection`. The projection exists so last good survives restart, state rows keep a local key, and hot paths read rows. Workflows' projection is `ade_workflow_last_valid`; rows follow file deletion.
 - App writes never touch the projection. A UI edit writes the file (atomic, `baseHash` check), then the same load path projects it. Load: `Folder.List` at start, then on every debounced (200 ms) watch event. Unchanged JSON is skipped. Invalid file: no DB change, a `Problem` with the last good value, one Warn per new hash (file name and line, never content). File gone: `Forget`.
 - State references config only by id (file stem). A rename is a delete plus a create. Each module states whether a delete cascades or orphans its state.
-- Migration of legacy rows (P459 to P462): one-shot, export each row to `<id>.yaml`, then set a marker setting row; never export again once set. Legacy secret values are never exported: they move into the secret store and the file gets a reference.
+- Migration of legacy rows (P459 to P462, P472): `configfs.MigrateOnce(db, name, fn)` runs `fn` once and sets the settings marker `config.migrated.<name>` after it; never export again once set. `configfs.RenderYAML` writes the file text. Legacy secret values are never exported: they move into the secret store and the file gets a reference.
 - Config versus state: workflow files are config; `ade_workflow_last_valid` is a derived projection; task workflow snapshots are state; `AGENTS.md` is derived. The `settings` table stays in SQLite this chapter.
 - References: `${NAME}` reads an env var, `${secret:name}` an app secret, `$${` is a literal `${`. Anything else inside `${...}` is a load-time `Problem`. Only schema fields marked `x-kira-ref` are interpolated; `x-kira-secret` requires the whole value to be one secret reference. Shell command fields are never marked.
 - Load keeps references verbatim in the decoded value and the projection. `Resolver.Resolve` runs at use: it returns the text plus `[]Used{Name, Value, Placeholder}` for secrets, for the caller's masker. A missing env var or secret fails naming the reference, never an empty string. Env source is injected.
@@ -3254,7 +3249,67 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - `AGENTS.md` is generated per folder: `DocFromSchema` builds the options list from the schema, rule docs are listed, the intro is a per-module template with prose only. `Folder.WriteDocs` writes it at app start when bytes differ.
 - Workflows (P451) build their model from the `adeflow` option table, not a schema: `adeflow.DocModel` adds per-agent settings from `providers.StageCatalog` and one doc line per cross-field rule (`TestRuleDocsEnforced` binds each rule to the validator). `DocModel.LocalOverrides` is opt-in, so the `.local.yaml` line prints only for a module that reads it. `ade.TaskBoard.Start` writes the file at Space start, non-fatal; a user edit is overwritten.
 - UI: plain file edit in the user's editor is the default; a module may add small edit actions through `Folder.Save`. `packages/workbench/src/config/ConfigFileBar.vue` shows path, status (valid or "Line N: message"), Open, Reveal and Copy path; the app passes its bound calls in.
-- `configsvc.Service` (`internal/configfs/configsvc`) is the bound Open/Reveal surface. It takes a registered folder name plus a visible file in it; no renderer path reaches the OS. Kira Space registers `workflows`. The OS seam is `shell.NewDeferredFileOpener` (Wails `Browser.OpenFile`, `Env.OpenFileManager`).
+- `configsvc.Service` (`internal/configfs/configsvc`) is the bound Open/Reveal surface. It takes a registered folder name plus a visible file in it; no renderer path reaches the OS. Kira Space registers `workflows`, `agent`, `runs` and `repos`; Kira Studio registers `runs`. The OS seam is `shell.NewDeferredFileOpener` (Wails `Browser.OpenFile`, `Env.OpenFileManager`).
+
+### Runs config files (P472)
+
+- A run is `<home>/runs/<id>.yaml` in both apps (Studio `~/.kira-studio/runs`, Space `~/.kira-space/runs`); the file stem is the run id (`^[a-z0-9][a-z0-9_-]{0,79}$`). Another name is listed as a problem with `id` empty and never used. `AGENTS.md` beside them is generated from the schema.
+- Keys: `name`, `kind` (`script` default, `smart`), `command` (the shell command, or `prompt` for a smart run), `params`, `smart`, `schedule`, `dir` (`kira`, `fixed`), `path`, `color`, `collection` (a name), `use_ade_dir` (Space only; Studio refuses it). `internal/scripts/run.schema.json` is the base; `assembleSchema` writes every enum and bound the Go validator owns into it, so schema and `AGENTS.md` cannot drift.
+- `scripts.Loader` owns the folder (`configfs.Folder[File]`) and the projection (`Repo.Projection`): `custom_scripts.config_json` is the last good file value. Files to DB only. Invalid file: the row keeps the last good version, a `FileProblem{file, id, line, message, lastGood}` is published, one Warn per new hash. A run with no last good version has a problem and no row. File gone: row, saved secrets and (through Delete) the kira folder go; run history stays.
+- State the file never holds, kept in the row: `sort_order`, `schedule_task_id`, `schedule_branch_id`. `Record` never writes them. The schedule target is set by `SetScheduleTarget` (Space only), apart from the file text.
+- Validation: `Validate` returns `ValidationError{Path, Key, Args}`: `Path` is a JSON pointer in the file's own vocabulary, `Key` a catalog key `backend.core.runs.*.body`. Messages render through i18n. Secrets: a `secret: true` param holds no value in the file; values live in `secret_values` (scope `script-param`, owner run id) and go through `SetSecrets`.
+- Bound surface (`CustomScriptsService`): `List`, `Create(fields, secretValues)` (writes a new `<id>.yaml`; the id is the slugged name, made unique), `Delete`, `File(file)` and `SaveFile(file, text, baseHash)` (whole text; a changed file is `E_CONFLICT`), `SetSecrets`, Space-only `SetScheduleTarget`, `Reorder(collection, ids)`, `ReorderCollections(names)`. Removed: Update, collection CRUD, Move. Studio registers folder `runs` in `ConfigFilesService` (Open, Reveal); Space registers `workflows`, `agent` and `runs`.
+- Migration of legacy rows: `configfs.MigrateOnce` (settings key `config.migrated.runs`) exports each `custom_scripts` row to `<id>.yaml` unless one exists (YAML through `configfs.RenderYAML`). Secret params keep their sealed values; only names go in the file. The marker is set after the last file lands, so a crash reruns the export idempotently.
+- Collections are names. `custom_script_collections(name PK, sort_order)` holds order only; a row goes when no run names it. Reorder is within a set (ungrouped is `''`); drag between sets and Move are gone, the file's `collection` key moves a run.
+- UI: `AutomationsPanel.vue` lists rows; a file with an error and a last good version shows a `script-row-problem` marker, a file with none a `script-broken-<file>` row. `RunFileDialog.vue` (shared) edits the whole text with `ConfigFileBar` (path, status, Open, Reveal, Copy path, About), the `E_CONFLICT` Reload/Overwrite pair and `RunSecretsSection.vue` for write-only secret values. Space adds `ScheduleTargetDialog.vue`. Save does not close the dialog.
+- Tests: flows `TestRunsConfigFile`, `TestRunsFileMigration` (Space), `TestRunsConfigFileStudio` (contracts `runs-file.json`); UI `automations-file.spec.ts` in both apps on the same scenario.
+
+### Api config files (P473)
+
+- Folder `~/.kira-studio/api` (config folder `api`, `ConfigFilesService` Open and Reveal). A collection is `<id>.collection.yaml` (name, `variables`, `items`: folders nest, requests carry the HTTP or gRPC body). An environment is `<id>.environment.yaml` (name, colour, `variables`). File stem is the id. `AGENTS.md` beside them is generated from the schema (`apifiles/agents_intro.md` plus rule docs). Cap 1 MiB per file.
+- Package `apps/kira-studio/internal/apifiles`: `Store` owns the folder, the load path and every write to `api_*`. Files to DB only. Invalid file: rows keep the last good version, a `Problem` with line is published, one Warn per new hash. File gone: rows go (history cascades).
+- Projection: `api_collections`, `api_items`, `api_environments`, `api_variables` are derived from the files. Surrogate uuid ids stay; new columns `stem`, `item_key`, `secret_ref` bind them to file ids. Renaming a file or item `id` is a delete plus a create; changing `name` keeps history. State kept in the DB: `is_active` (only `SetActiveEnvironment` writes it), response and call history, variable history, tab state.
+- Order is file order: `items` order is the tree order, collections and environments sort by name. Drag, move and reorder are gone.
+- Secrets: a secret variable is `secret: ${secret:<name>}`; the value lives in `secret_values` (scope `variable`, owner `api`). `ApiConfigService.SetSecret` and `DeleteSecret` are write-only. No value reaches a file, a log or a problem message. `apivars` two-stage substitution is unchanged.
+- App writes: Save of a request rewrites only that node through yaml.v3 node edits (`apifiles/edit.go`), so comments elsewhere stay, with a `baseHash` check. Create collection, item and gRPC item, and Import (Postman) write files. Export is unchanged and skips secret values.
+- Bound surface kept: Collections `List`, `GetRequest`, `GetGrpcRequest`, `SaveRequest`, `SaveGrpcRequest`, `CreateCollection`, `CreateItem`, `CreateGrpcItem`, `Import`, `Export`; Variables `ListEnvironments`, `CreateEnvironment`, `SetActiveEnvironment`, `List`, `History`, `Reveal`, `RevealHistory`; `ApiConfigService` `View`, `SetSecret`, `DeleteSecret`. Rename, delete, duplicate, move, reorder, variable CRUD and bulk edit are removed; edit the file.
+- Event `kira:api:dataChanged` kinds: `tree`, `savedRequest`, `variables`, `environments`, `config`. `config` reloads the problem strip and the Secrets section.
+- Migration 0055 adds the columns. `configfs.MigrateOnce(db, "api", ...)` (marker `config.migrated.api`) promotes legacy variables, assigns stems and keys, copies sealed secret envelopes verbatim into `secret_values` (no decrypt, no keychain prompt), writes each file. Dead duplicate variables become YAML comments, secret ones name only.
+- configfs doc walker: `DocFromSchema` guards against schema cycles (the api item schema is recursive through folders). Deviation from the plan, shared by P474 and P475.
+- UI: tree rows offer Open file and Reveal file; `ApiConfigProblems.vue` shows one `ConfigFileBar` per bad file with a last good hint; variable-set tabs and environments are read-only views of the last good rows; `ApiSecrets.vue` sets and clears secret values. Variable-set tab names follow the file through `syncVariableSetTabNames`.
+- Tests: flows in `apiflow` (contract `api-files.json`), migration test, UI `api-config-files.spec.ts` on the same scenario.
+
+### Repo config files (P474)
+
+- Folder `~/.kira-space/repos` (config folder `repos`, Space only). One `<stem>.yaml` per repo; `AGENTS.md` beside them is generated. The binding key is the `path` key (the code repo's `repo_id`, NFC-cleaned absolute path), not the stem: the stem is a readable slug chosen at first save and made unique. This is the keyed-by exception to P450's stem-is-id rule (`configfs.DocModel.KeyedBy`); P475 keeps it.
+- Keys: `path`, `nickname`, `integration_branches`, `environments` (`name`, `deployed_sha_script`), `worktree` (`prepare_script`, `prepare_timeout`, `base_path`), `graph` (`page_size`, `scope`), `stash` (`show_in_graph`, `include_untracked`), `review.base_candidates`, `pull.strategy`, `git_host.provider`, `checkout.auto_stash`. An absent leaf means the default. Limits: nickname 40 runes, 10 integration branches, 10 environments, 4 KiB per environment script, 64 KiB prepare script; `base_path` is absolute; `git_host.provider` is `auto`, `off` or a registered host id.
+- Package `internal/repocfg`. `Store` keeps an in-memory index `path -> Config` rebuilt by `Reload`; settings are never read from SQLite. Files to DB only: the `config_last_valid` projection (`repos`, file) keeps the last good value across restart. Invalid file: last good applies, a `Problem` with line is published, one Warn per new hash. File gone: that repo returns to defaults; env marks of removed environments are pruned.
+- Duplicate `path` across files: the first file by name applies; each later one gets a `Problem` on its `path` line and applies nothing. It lists under Other files, bound to no repo.
+- `Store.Patch` (`repoSettings.set`) edits the file in place through `configfs.EditYAML` (yaml.Node set-by-path: comments and key order stay, parents are created, a flow `{}` becomes a block). A repo with no file gets one. A file with an error is refused. One retry on a hash conflict. `Change.FromPatch` stops the duplicate `repoSettings.changed` push.
+- `configfs.EditYAML` and `NodeSet` are shared with P475 (workflow and run edits).
+- Hooks: `OnChange([]Change)` feeds the git router (`repoSettings.changed` for edits not made through the stream) and `ade.TaskBoard.RepoConfigChanged` (integration targets, environments, prepare script; refreshes env scripts and notifies repos and board once). `OnReload` broadcasts the payload-free `kira:repoConfig:changed`.
+- Guard: `patchTouchesRestrictedField` in `bridge/gitwindows.go` is unchanged and still refuses the prepare script and base path with `E_READ_ONLY`; `Patch` is never reached for them. They are file-only. `SetRepoSettings` is gone from `TaskBoardDeps`.
+- An integration branch equal to the repo's main branch is ignored where targets are used (`withoutMain`); the Repos wire shows the file as written.
+- State: `ade_env_state(code_repo_id, env, ...)` hangs off `code_repos` by FK, not off config. A repo's environment marks survive a rename of the environment only as delete plus create.
+- Migration 0065 rebuilds `ade_env_state` with that FK (dropping `ade_repo_envs` would otherwise cascade its rows). `configfs.MigrateOnce(db, "repos", ...)` then writes a file for each repo whose legacy rows differ from the defaults and drops `git_repo_settings`, `ade_repo_integration`, `ade_repo_envs` and `ade_repo_config.nickname` in one transaction. Legacy values the file could not hold are dropped on export: invalid provider, oversize script, relative base path, blank review candidates. Never exported again once the marker is set.
+- Bound surface (`RepoConfigService`): `List` (dir plus items `file`, `path`, `problem`, `lastGood`, `repo`), `File(path|file)` (text, hash, state; a repo with no file gets a template), `SaveFile(path, file, text, baseHash)` (whole text; `file` empty creates; a changed file is `E_CONFLICT`; an invalid text is kept and flagged). `AdeTaskService.Repos` rows gain `file` and `problem`; `UpdateRepo`, `RepoPatch` and the `git_repo_settings` and `ade_repo_config` repositories are gone.
+- UI: `RepoFilePane.vue` (`ConfigFileBar`, a Textarea draft with the loaded hash, Reload and Overwrite on conflict, "Create settings file" when none), `RepoIdentity.vue`, an error dot on repo rows with a problem, an Other files tab for unbound files. TanStack Query keys `['repoConfig', ...]` invalidate on `kira:repoConfig:changed`.
+- Tests: flows `TestRepoConfigFile`, `TestRepoConfigMigration` (repoflow), `TestRepoSettingsLiveInFile` (gitflow), contract `repo-config-file.json`; UI `repo-config-file.spec.ts`; `configfs` `TestEditYAML`, Space migration test `TestMigration65RepoFiles`.
+
+### Connection config files (P475)
+
+- Folder `~/.kira-studio/connections` (config folder `connections`, Studio only; `ConfigFilesService` Open and Reveal). One `<stem>.yaml` per connection; `AGENTS.md` beside them is generated from the schema. File stem is the id. Cap 1 MiB per file.
+- Keys: name, kind, color, mode (fields or URI), host, port, database, username, read-only, pre-connect command, sidecar, delay, auto-explain, throttle, MCP settings (enabled, description, read, write and DDL modes, auto-explain, review results) and the per-connection tree visibility filters. An absent leaf means the default.
+- Package `internal/connfiles`: `Loader` owns the folder and every write to `connections`. Files to DB only. A surrogate uuid row binds to a file by `stem`. `connections.config_json` holds the last valid file JSON and is the record source. Invalid file: row keeps the last good version, a `Problem` with line is published, one Warn per new hash. File gone: row goes. A file that never held a valid connection lists as a broken entry, bound to no row.
+- Secrets: password and URI are `${secret:<stem>.password}` and `${secret:<stem>.uri}`; values live in `secret_values`. `ConnectionConfigService.SetSecret` and `DeleteSecret` are write-only; Reveal keeps its confirm-before-reveal flow. No value reaches a file, a log or a problem message.
+- State kept in SQLite: sort order, status, caches, last-used, tab state, mask rules (`maskrules` Files, keyed by stem).
+- App writes: `Loader.Patch` edits the file in place through `configfs.EditYAML` (comments and key order stay) and flushes synchronously, then `OnChange` calls `ConnectionsService.ConfigChanged`. Reconnects there are async. Create writes a new file. Tree filters and the visibility toggles write through `Patch`.
+- Bound surface kept: `ConnectionsService` `List`, `Create` (name, kind, color), `Connect`, `Disconnect`, `Reveal`, `UpdateCredentials`, order calls; `ConnectionConfigService` `View`, `File`, `SaveFile(file, text, baseHash)`, `SetSecret`, `DeleteSecret`. Update, duplicate, delete and the other field setters are removed; edit the file.
+- Events: `kira:connections:changed` (rows) and `kira:connectionConfig:changed` (problems, secrets).
+- Migration: `configfs.MigrateOnce(db, "connections", ...)` writes a file for each legacy row, assigns stems, moves sealed secret envelopes verbatim into `secret_values` (no decrypt, no keychain prompt). Never exported again once the marker is set.
+- Deviations from the plan: no `yamledit.go` (`configfs.EditYAML` exists); `config_json` is the record source; no `connfilestest` package (tests call `Loader.Patch` directly).
+- UI: `NewConnectionDialog.vue` (name, kind, color), `ConnectionFileDialog.vue` (`ConfigFileBar`, text draft with base hash, last good hint), `ConnectionSecrets.vue`. Tree rows offer Edit connection file, Open file, Reveal file; no color or read-only item. Rows with a problem show a marker with the line. `DatabaseMcpPane` shows exposed status with an Edit button. Removed: the tabbed connection dialog, Privacy tab and mask-rule management UI, key regeneration.
+- Tests: flows `dbflow` and `dbmcpflow` (contract `connection-files.json`, `connection-secrets.json`, `connection-files-migration.json`), `connfiles` unit tests; UI `connection-files.spec.ts` on the same scenario.
 
 ### Agent context (P452)
 
@@ -3430,7 +3485,7 @@ repo's CI runs.
 - The flow gRPC server runs unary methods through its interceptor, so Calls() and required metadata cover unary and streams.
 - createTerminalsStore (shared by both apps and the Docker exec store) keeps one terminalWrite in flight per tab and coalesces chunks typed meanwhile (state/orderedWrites.ts), because concurrent bound calls reach the backend in any order.
 - Space flow tier: apps/kira-space/internal/appwire is the composition root; Build(Options) wires repos, git, terminal, ADE, memory, mobile and bound services; main.go supplies native pieces and tests supply fakes.
-- Space flow harness uses real SQLite, git (fixed dates, git fast-import history), git stream, PTY, watchers and mobile HTTP; it fakes the claude and gh CLIs (internal/flowtest/fakeagent, scenario JSON), a second code host (flowharness/fakehost, registered with WithGitHost), dialogs, browser, keep-awake, LAN detection and window manager.
+- Space flow harness uses real SQLite, git (fixed dates, git fast-import history), the bound git calls and graph plane, PTY, watchers and mobile HTTP; it fakes the claude and gh CLIs (internal/flowtest/fakeagent, scenario JSON), a second code host (flowharness/fakehost, registered with WithGitHost), dialogs, browser, keep-awake, LAN detection and window manager.
 - appwire.Options exposes test seams GhLocator, TrackerGrace and MobilePoll, set via flowharness.WithoutGh, WithTrackerGrace and WithMobilePoll.
 - The fake claude prints no stream init line under --output-format json, accepts an inline --mcp-config, and answers headless calls by --system-prompt through scenario prompts rules.
 - Space flow tests live in internal/flows/{gitflow,repoflow,editorflow,adeflow,memoryflow,termflow,appflow,mobileflow,githostflow}; bun run test:flows:space is the general suite, and test:flows:space:complete sets KIRA_FLOW_COMPLETE=1 and adds slow permutation coverage.
@@ -3497,7 +3552,7 @@ repo's CI runs.
 - A worker-scoped flowServers fixture spawns apps/kira-studio/bin/flowservers (built once under the shared build lock), so e2e-real and the Go flow tier share one server implementation; the serverEnv option adds environment to it.
 
 - tests/visual/ (bun run test:visual:studio) is a bounded pixel-diff tier of eight specs and 13 snapshots, reusing tests/ui/'s fixtures and mocked wire planes.
-- Seven visual specs (workbench shell, data grid, SQL console, connection dialog, Schema (DDL) editor, HTTP request view, Runs script dialog) have one at-rest screenshot each; settings.spec.ts contributes 6, one per Settings pane.
+- Seven visual specs (workbench shell, data grid, SQL console, connection dialog, Schema (DDL) editor, HTTP request view, Runs restore dialog) have one at-rest screenshot each; settings.spec.ts contributes 6, one per Settings pane.
 - The visual tier is its own Playwright project, not folded into ui, mirroring ui-timing, because a different measurement contract earns a different project.
 - Capture or update visual baselines only from the ui CI job's ubuntu-latest environment, never a local macOS run, because WKWebView and WebKitGTK glyph rendering differ regardless of font choice.
 - Playwright's animations: 'disabled' default freezes the app's state-gated infinite CSS animations before visual capture.
@@ -3575,8 +3630,11 @@ config, project files.
 Kept only while genuinely open — delete an item the moment it's resolved, never mark it done in
 place. `CLAUDE.md` states the process rule; this is the list itself.
 
+- **ADE first mount stays retained after leaving ADE (P480, P481).** ade20: heap 24.9 MB at `left`, 37.9 MB at `back`; about 13 MB once per session, flat on later visits. The retained tree has about 3,600 Vue component instances while live DOM is 121 nodes. Root: Blink `DocumentState` through a detached `<input data-slot="input">` `onKeydown` invoker (P480). Candidate inputs: `ade-capture` (`AdeCaptureBox.vue`), `ade-panel-title` (`AdeTaskPanel.vue`), `ade-estimate-num` (`AdeEstimateField.vue`). `autocomplete="off"` on them, a plain-value `useCandidates` queryFn and dropping the probe's fake clock changed nothing. Delete once the owner is found and `back` heap falls by 2 MB or more.
 - **Jira images do not render inline (P460).** acli lists attachments but downloads none. The content URL needs credentials Kira never touches and the CSP allows only `img-src 'self' data:`. The view shows tiles and chips that open in the browser. Delete once acli downloads an attachment.
 - **Jira PR rows not listed (P459).** acli exposes only the Development count; the dev-status API needs credentials Kira never touches. The task tab and issue view show Jira's count. Delete once acli lists the rows.
+- **A run file deleted outside Kira leaves its folder (P472).** Deleting `<id>.yaml` in an editor drops the row and its secrets, but `<home>/automations/<id>` stays. Delete through the Runs panel removes it.
+- **A collection file over 1 MiB keeps its old rows (P473).** Migration writes the legacy collection anyway; the cap refuses it on read, so the tree shows the rows from before and a "too large" problem. Delete once no file can exceed the cap.
 - **Agent context rests on a hidden Claude flag (P452).** `--append-system-prompt-file` is absent from `claude --help`. A CLI that drops it fails the launch loudly. `TestAgentContextHeadless` catches it. Studio has no context editor; edit the file in an editor.
 - **Agent settings secrets show in a live terminal (P453).** Only headless step output is masked. A TUI that echoes its env or a hook that prints a secret shows it in the tab and the Space phone terminal ring, as for script secrets below.
 - **Project statuslines are not chained (P453).** A project `.claude/settings*.json` statusline never ran under Kira (flag settings outrank it); the user statusline comes only from `claude.status_line`. Import brings the user's.
@@ -3849,9 +3907,9 @@ repo-wide).
   `OpRequest` kinds have no such kind, `packages/git-ipc`'s contract has none, and `packages/git-ui`
   has no `MergeDialog`/`RebaseDialog`. Merge and rebase are reachable only as `remote.run`'s own pull
   strategies (`ff-only`/`merge`/`rebase`) and inside `stack.restack`'s own branch-by-branch rebase.
-  P111 (`ContractVersion` 41) only added a `rebaseMerges` flag onto that existing pull path — still
+  P111 only added a `rebaseMerges` flag onto that existing pull path — still
   no standalone operation. Building one needs a new `OpRequest` kind, a new `opSpec` with an undo
-  policy, a new preflight, a new dialog and a further `ContractVersion` bump — out of scope until a
+  policy, a new preflight, a new dialog and a contract change — out of scope until a
   phase actually asks for it.
 
 Performance:

@@ -33,6 +33,8 @@ export interface UseVirtualRowsOptions {
   overscan?: number | (() => number);
   /** An index that stays mounted outside the window, so a focused row keeps focus while it scrolls away. */
   pinned?: () => number | null;
+  /** Offset of the first row from the scroll element's content top, when other content sits above the list. */
+  scrollMargin?: () => number;
 }
 
 export function useVirtualRows(opts: UseVirtualRowsOptions) {
@@ -42,6 +44,9 @@ export function useVirtualRows(opts: UseVirtualRowsOptions) {
     },
     getScrollElement: () => opts.scrollElement.value,
     estimateSize: (index: number) => opts.rowHeights?.()?.[index] ?? opts.rowHeight(),
+    get scrollMargin() {
+      return opts.scrollMargin?.() ?? 0;
+    },
     get overscan() {
       return typeof opts.overscan === 'function' ? opts.overscan() : (opts.overscan ?? 8);
     },
@@ -89,9 +94,9 @@ export function useVirtualRows(opts: UseVirtualRowsOptions) {
     if (!el) return;
     const heights = opts.rowHeights?.();
     const rowH = opts.rowHeight();
-    let rowTop = index * rowH;
+    let rowTop = (opts.scrollMargin?.() ?? 0) + index * rowH;
     if (heights) {
-      rowTop = 0;
+      rowTop = opts.scrollMargin?.() ?? 0;
       for (let i = 0; i < index; i++) rowTop += heights[i] ?? rowH;
     }
     const thisRowH = heights?.[index] ?? rowH;

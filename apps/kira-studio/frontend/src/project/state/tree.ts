@@ -452,10 +452,19 @@ export const useTreeStore = defineStore('tree', () => {
   let unsubscribeInvalidated: (() => void) | null = null;
   let unsubscribeConnectionsChanged: (() => void) | null = null;
   let unsubscribeConnectionState: (() => void) | null = null;
+  let unsubscribeFilters: (() => void) | null = null;
 
   function initTreeSync(): void {
     unsubscribeInvalidated?.();
     unsubscribeInvalidated = control.onConnectionMetadataInvalidated((connectionId) => {
+      void refreshExpanded(connectionId);
+    });
+
+    // A filters edit in the connection's file: take the new visibility and reload what is open.
+    unsubscribeFilters?.();
+    unsubscribeFilters = control.onConnectionFiltersChanged(({ connectionId, visibility }) => {
+      visibilityGeneration.set(connectionId, visibilityGenerationFor(connectionId) + 1);
+      treeState.visibility[connectionId] = visibility;
       void refreshExpanded(connectionId);
     });
 

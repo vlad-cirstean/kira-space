@@ -17,7 +17,6 @@ export interface Options {
   extraBase: readonly ControlSnapshot[];
   modeTab: (page: Page) => Locator;
   /** The home directory the legacy-home notice shows for a script resolving to `dirPath`. */
-  homeText: (dirPath: string) => string;
 }
 
 export function registerRunsScenarios(env: Env, options: Options): void {
@@ -37,7 +36,7 @@ export function registerRunsScenarios(env: Env, options: Options): void {
     dirMode: 'kira',
     useAdeDir: false,
     color: 'blue',
-    collectionId: null,
+    collection: '',
     sortOrder: 0,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -226,34 +225,6 @@ export function registerRunsScenarios(env: Env, options: Options): void {
     await page.locator(`[data-testid="script-${SCRIPT.id}"] [data-testid="script-play"]`).click();
     await expect(page.locator('[data-testid="script-error"]')).toHaveText(blocked.blocker);
     expect(control.log().some((e) => e.channel === IPC.terminalOpen)).toBe(false);
-  });
-
-  test('contract: a legacy home script offers the Kira scripts folder', async ({ relaunch }) => {
-    const dir = contract<{ path: string }>('script-folders', 'ScriptRunsService.ResolveDir#legacy');
-    const legacy = { ...SCRIPT, dirMode: 'home' };
-    const { window: page } = await relaunch({
-      control: [
-        ...BASE.filter(
-          (s) => s.channel !== IPC.customScriptsList && s.channel !== IPC.scriptRunsResolveDir,
-        ),
-        { channel: IPC.customScriptsList, response: { collections: [], scripts: [legacy] } },
-        {
-          channel: IPC.scriptRunsResolveDir,
-          response: dir,
-        },
-      ],
-    });
-    await modeTab(page).click();
-    await page.locator(`[data-testid="script-${SCRIPT.id}"]`).click({ button: 'right' });
-    await page.locator('[data-testid="menu-item-edit"]').click();
-    const dialog = page.locator('[data-testid="script-dialog"]');
-    const notice = dialog.locator('[data-testid="script-dialog-home-notice"]');
-    await expect(notice.locator('[data-chip="path"][data-var="HOME"]')).toContainText(
-      options.homeText(dir.path),
-    );
-    await notice.locator('[data-testid="script-dialog-use-kira"]').click();
-    await expect(dialog.locator('[data-testid="script-dialog-dir-preview"]')).toBeVisible();
-    await expect(dialog.locator('[data-testid="script-dialog-home-notice"]')).toHaveCount(0);
   });
 
   // Contract automations. Backend half: termflow TestScriptRunLifecycle, TestScriptRunNonZeroExit and

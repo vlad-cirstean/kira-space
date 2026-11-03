@@ -44,7 +44,7 @@ func TestKibanaDiscoverJourney(t *testing.T) {
 	}, Password: fx.Config.Password}
 	conn := createConn(t, app, in)
 
-	if res := app.W.Connections.Test(bridge.ConnectionsTestArgs{Input: in}); !res.OK || res.ServerVersion == nil {
+	if res := app.W.Connections.Test(bridge.ConnectionsIDArgs{ID: conn.ID}); !res.OK || res.ServerVersion == nil {
 		t.Fatalf("Test = %+v, want ok with a server version", res)
 	}
 	st := connect(t, app, conn.ID)

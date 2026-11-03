@@ -21,10 +21,7 @@ const modulePrefix = "github.com/kirathecat/kira-studio/apps/kira-studio/"
 // composition internal/appshell does for the real binary), internal/appshell (the app's own
 // composition-root residue — the generic half is in repo-root internal/shell, which this go list
 // scope no longer even sees), and the bare "internal" package (this file's own
-// directory; it holds no non-test code). rpcstream (the one deliberate module-agnostic-RPC
-// exception) moved out from under internal/bridge to the repo-root internal/rpcstream, so it no
-// longer needs an entry here — go list -deps no longer reports it as depending on anything
-// under .../internal/bridge.
+// directory; it holds no non-test code).
 var packagesExemptFromBridgeCheck = map[string]bool{
 	"internal":            true,
 	"internal/bridge":     true,

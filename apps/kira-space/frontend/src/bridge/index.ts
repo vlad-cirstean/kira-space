@@ -24,6 +24,7 @@ import * as MobileAccessService from '@bindings/mobileaccessservice.js';
 import * as OpenedFilesService from '@bindings/openedfilesservice.js';
 import * as OpsService from '@bindings/opsservice.js';
 import * as PromptsService from '@bindings/promptsservice.js';
+import * as RepoConfigService from '@bindings/repoconfigservice.js';
 import * as ScriptRunsService from '@bindings/scriptrunsservice.js';
 import * as SettingsService from '@bindings/settingsservice.js';
 import * as TabsService from '@bindings/tabsservice.js';
@@ -73,9 +74,8 @@ import type {
 import type {
   CustomScript,
   CustomScriptFields,
-  ScriptCollection,
   ScriptDir,
-  ScriptMcpServerList,
+  ScriptFileView,
   ScriptsSnapshot,
   SecretValues,
 } from '@shared/domain/scripts';
@@ -108,6 +108,12 @@ import type {
   HostViewPosted,
   HostViewTarget,
 } from '../hostview/wire';
+import type {
+  RepoConfigFile,
+  RepoConfigFileArgs,
+  RepoConfigList,
+  RepoConfigSaveArgs,
+} from '../repo/state/repoConfigTypes';
 import type { CliToolsResult, IssueTrackers } from '../state/cliToolsDomain';
 import type { SpaceMode } from '../state/modeDomain';
 import type { SpaceOpRecord } from '../state/opsDomain';
@@ -137,36 +143,37 @@ const spaceControl = {
     unwrap(CustomScriptsService.Create({ fields, secretValues })).then((r) =>
       trust<CustomScript>(r),
     ),
-  customScriptsUpdate: (
+  customScriptsDelete: (id: string): Promise<void> => unwrap(CustomScriptsService.Delete({ id })),
+  customScriptsFile: (file: string): Promise<ScriptFileView> =>
+    unwrap(CustomScriptsService.File({ file })).then((r) => trust<ScriptFileView>(r)),
+  customScriptsSaveFile: (file: string, text: string, baseHash: string): Promise<ScriptFileView> =>
+    unwrap(CustomScriptsService.SaveFile({ file, text, baseHash })).then((r) =>
+      trust<ScriptFileView>(r),
+    ),
+  customScriptsSetSecrets: (id: string, values: SecretValues): Promise<CustomScript> =>
+    unwrap(CustomScriptsService.SetSecrets({ id, values })).then((r) => trust<CustomScript>(r)),
+  customScriptsSetScheduleTarget: (
     id: string,
-    fields: CustomScriptFields,
-    secretValues: SecretValues | null,
+    taskId: string,
+    branchId: string,
   ): Promise<CustomScript> =>
-    unwrap(CustomScriptsService.Update({ id, fields, secretValues })).then((r) =>
+    unwrap(CustomScriptsService.SetScheduleTarget({ id, taskId, branchId })).then((r) =>
       trust<CustomScript>(r),
     ),
-  customScriptsDelete: (id: string): Promise<void> => unwrap(CustomScriptsService.Delete({ id })),
-  customScriptsCreateCollection: (name: string): Promise<ScriptCollection> =>
-    unwrap(CustomScriptsService.CreateCollection({ name })).then((r) => trust<ScriptCollection>(r)),
-  customScriptsRenameCollection: (id: string, name: string): Promise<void> =>
-    unwrap(CustomScriptsService.RenameCollection({ id, name })),
-  customScriptsDeleteCollection: (id: string): Promise<void> =>
-    unwrap(CustomScriptsService.DeleteCollection({ id })),
-  customScriptsMove: (
-    id: string,
-    collectionId: string | null,
-    beforeId: string | null = null,
-  ): Promise<void> => unwrap(CustomScriptsService.Move({ id, collectionId, beforeId })),
-  customScriptsReorder: (collectionId: string | null, ids: string[]): Promise<void> =>
-    unwrap(CustomScriptsService.Reorder({ collectionId, ids })),
-  customScriptsReorderCollections: (ids: string[]): Promise<void> =>
-    unwrap(CustomScriptsService.ReorderCollections({ ids })),
+  customScriptsReorder: (collection: string, ids: string[]): Promise<void> =>
+    unwrap(CustomScriptsService.Reorder({ collection, ids })),
+  customScriptsReorderCollections: (names: string[]): Promise<void> =>
+    unwrap(CustomScriptsService.ReorderCollections({ names })),
   onCustomScriptsChanged: (cb: (snapshot: ScriptsSnapshot) => void): (() => void) =>
     on(CHANNEL.customScriptsChanged, (r) => cb(scriptsSnapshotOf(r))),
 
   scriptRunsList: (limit?: number, taskId?: string): Promise<ScriptRun[]> =>
     unwrap(ScriptRunsService.List({ limit: limit ?? 0, taskId: taskId ?? '' })).then((r) =>
       trust<ScriptRun[]>(r ?? []),
+    ),
+  scriptRunsNextFires: (cron: string, timezone: string, count?: number): Promise<number[]> =>
+    unwrap(ScriptRunsService.NextFires({ cron, timezone, count: count ?? 0 })).then((r) =>
+      trust<number[]>(r ?? []),
     ),
   scriptRunsStop: (id: string): Promise<void> => unwrap(ScriptRunsService.Stop({ id })),
   scriptRunsResolveDir: (scriptId: string): Promise<ScriptDir> =>
@@ -199,10 +206,6 @@ const spaceControl = {
     cb: (push: { runId: string; chunks: ScriptRunLogChunk[] }) => void,
   ): (() => void) =>
     on(CHANNEL.scriptRunLog, (r) => cb(trust<{ runId: string; chunks: ScriptRunLogChunk[] }>(r))),
-  scriptRunsNextFires: (cron: string, timezone: string, count?: number): Promise<number[]> =>
-    unwrap(ScriptRunsService.NextFires({ cron, timezone, count: count ?? 0 })).then((r) =>
-      trust<number[]>(r ?? []),
-    ),
   scriptRunsSchedulePreview: (
     scriptId: string,
     secrets: Record<string, string[]>,
@@ -228,10 +231,6 @@ const spaceControl = {
     ),
   scriptRunsConfirmDecline: (runId: string): Promise<void> =>
     unwrap(ScriptRunsService.ConfirmDecline({ id: runId })),
-  scriptRunsMcpServers: (): Promise<ScriptMcpServerList> =>
-    unwrap(ScriptRunsService.McpServers()).then((r) =>
-      trust<ScriptMcpServerList>(r ?? { source: 'agent', servers: [] }),
-    ),
 
   // P120: openExternal (LinkService) moved off createCoreControl.ts's now-deleted shared `link` binding —
   // Kira Studio never had a real use for it, so this app's own LinkService.OpenExternal call
@@ -479,6 +478,13 @@ const spaceControl = {
     unwrap(ConfigFilesService.Open(args)),
   configFilesReveal: (args: { folder: string; file: string }): Promise<void> =>
     unwrap(ConfigFilesService.Reveal(args)),
+  repoConfigList: (): Promise<RepoConfigList> =>
+    unwrap(RepoConfigService.List()).then((r) => trust<RepoConfigList>(r)),
+  repoConfigFile: (args: RepoConfigFileArgs): Promise<RepoConfigFile> =>
+    unwrap(RepoConfigService.File(args)).then((r) => trust<RepoConfigFile>(r)),
+  repoConfigSaveFile: (args: RepoConfigSaveArgs): Promise<RepoConfigFile> =>
+    unwrap(RepoConfigService.SaveFile(args)).then((r) => trust<RepoConfigFile>(r)),
+  onRepoConfigChanged: (cb: () => void): (() => void) => on(CHANNEL.repoConfigChanged, cb),
   agentContextGet: (): Promise<AgentContextView> =>
     unwrap(AgentContextService.Get()).then((r) => trust<AgentContextView>(r)),
   agentContextSave: (args: AgentContextSaveArgs): Promise<AgentContextView> =>
@@ -523,8 +529,6 @@ const spaceControl = {
     unwrap(AdeTaskService.ImportWorkflow(args)).then((r) => trust<V2.WorkflowEntry>(r)),
   adeTaskNewWorkflow: (args: V2.NewWorkflowArgs): Promise<V2.WorkflowEntry> =>
     unwrap(AdeTaskService.NewWorkflow(args)).then((r) => trust<V2.WorkflowEntry>(r)),
-  adeTaskUpdateRepo: (args: V2.UpdateRepoArgs): Promise<V2.Repo> =>
-    unwrap(AdeTaskService.UpdateRepo(args)).then((r) => trust<V2.Repo>(r)),
   adeTaskAddFolder: (args: V2.FolderArgs): Promise<V2.FolderImportResult> =>
     unwrap(AdeTaskService.AddFolder(args)).then((r) => trust<V2.FolderImportResult>(r)),
   adeTaskSetFolderWatch: (args: V2.FolderArgs): Promise<V2.Folder> =>

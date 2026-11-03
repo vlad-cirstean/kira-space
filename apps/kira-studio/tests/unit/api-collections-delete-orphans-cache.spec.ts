@@ -1,17 +1,14 @@
-// Go's own delete genuinely cascades (repos/collections.go's
-// own comment: "the cascade is genuine") — deleting a folder or a collection removes every
-// descendant api_items row, not just the row clicked. deleteRows used to purge exactly one cache
-// entry (collectionsStore.requests[row.id] / grpcRequests[row.id]), leaving every *descendant*
-// request's cached HttpSavedRequest/GrpcSavedRequest behind. The orphan rule
+// A folder or a collection leaves the tree (its file was edited or removed, in this window or
+// another) and every descendant request leaves with it. The reconcile after the tree refresh must
+// purge every *descendant* request's cached HttpSavedRequest/GrpcSavedRequest, not just one entry.
+// The orphan rule
 // (HttpRequestView.vue: canSave depends on the apiSavedRequestKey query reading non-null) then
 // silently misbehaved for any tab open on one of those orphaned descendants: the stale cache entry
 // made the tab look saveable when its row no longer existed at all.
 //
-// This test fails against the pre-fix deleteRow (only the folder's own id is purged, both
-// descendant requests' cache entries survive) and passes once the whole subtree is purged.
-//
 // Asserts against the apiSavedRequestKey query cache directly (queryClient.getQueryData), which is
-// what deleteRows itself now writes `null` into for the whole orphaned subtree.
+// what reconcileTree writes `null` into for the whole orphaned subtree. The refresh is driven the
+// way a `kira:api:dataChanged` {kind:'tree'} broadcast drives it.
 import '@workbench/testing/unit/window';
 
 import { afterAll, describe, expect, test } from 'bun:test';
@@ -23,6 +20,8 @@ import {
   apiCollectionsTreeKey,
   apiSavedRequestKey,
   loadSavedRequest,
+  reconcileTree,
+  refreshApiQuery,
 } from '../../frontend/src/api/state/apiQueries';
 import { pinia } from '../../frontend/src/state/pinia';
 
@@ -32,8 +31,8 @@ const { control } = await import('../../frontend/src/bridge/control');
 // wailsRuntime.ts's mocked transport deliberately never settles an unmocked call —
 // useCollectionsStore below mounts a permanent, eager `useQuery` for the tree the moment the store
 // is created, so it needs a resolving default in place *before* that first call, or its own
-// initial fetch hangs forever and wedges every later invalidateQueries-triggered refetch (deleteRow
-// → afterTreeListChange → refreshApiQuery) behind it. Set before restoreAfterEach's own snapshot,
+// initial fetch hangs forever and wedges every later invalidateQueries-triggered refetch
+// (refreshApiQuery) behind it. Set before restoreAfterEach's own snapshot,
 // so each test's afterEach restores to this benign default rather than reintroducing the hang.
 //
 // restoreAfterEach's own snapshot is taken *after* this override (deliberately, so the
@@ -67,7 +66,7 @@ function savedRequestCache(itemId: string): unknown {
 }
 
 function collection(id: string, name: string): CollectionSummary {
-  return { id, name, sortOrder: 0, createdAt: '', updatedAt: '' };
+  return { id, name, file: `${id}.yaml`, sortOrder: 0, createdAt: '', updatedAt: '' };
 }
 
 function folder(
@@ -120,8 +119,8 @@ function savedRequest(name: string): Awaited<ReturnType<typeof control.collectio
   >;
 }
 
-describe('deleteRows purges the whole deleted subtree from the request caches (finding 4)', () => {
-  test('deleting a folder also drops its nested requests, not just the folder itself', async () => {
+describe('a tree refresh purges the whole removed subtree from the request caches', () => {
+  test('a removed folder also drops its nested requests, not just the folder itself', async () => {
     // col-1
     //   folder-1 ("Auth")
     //     req-1 ("Login")           <- direct child
@@ -149,49 +148,24 @@ describe('deleteRows purges the whole deleted subtree from the request caches (f
     expect(savedRequestCache('req-2')).not.toBeNull();
     expect(savedRequestCache('req-3')).not.toBeNull();
 
-    const captured: { deletedId: string | null } = { deletedId: null };
-    (
-      control as unknown as { collectionsDeleteMany: typeof control.collectionsDeleteMany }
-    ).collectionsDeleteMany = async (args) => {
-      captured.deletedId = args.itemIds[0] ?? args.collectionIds[0] ?? null;
-    };
     (control as unknown as { collectionsList: typeof control.collectionsList }).collectionsList =
       async () => ({
         collections: collectionsStore.collections,
-        // Mirrors the real cascade: folder-1, req-1, folder-2 and req-2 are all gone post-delete.
+        // Mirrors the real cascade: folder-1, req-1, folder-2 and req-2 are all gone post-removal.
         items: collectionsStore.items.filter((item) => item.id === 'req-3'),
       });
 
-    await collectionsStore.deleteRows([
-      {
-        key: 'i:folder-1',
-        depth: 1,
-        hasChildren: true,
-        expanded: true,
-        kind: 'folder',
-        id: 'folder-1',
-        collectionId: 'col-1',
-        parentId: null,
-        name: 'Auth',
-        method: '',
-        url: '',
-        protocol: 'http',
-        matched: false,
-      },
-    ]);
+    await refreshApiQuery(apiCollectionsTreeKey);
+    reconcileTree();
 
-    expect(captured.deletedId).toBe('folder-1');
-    // The direct child, the nested folder's own child, and the folder itself must all be purged —
-    // this is the assertion that fails against the pre-fix code (only 'folder-1' was purged, which
-    // has no cache entry of its own since it is a folder, so pre-fix this test would still find
-    // req-1/req-2 cached).
+    // The direct child and the nested folder's own child must both be purged.
     expect(savedRequestCache('req-1')).toBeNull();
     expect(savedRequestCache('req-2')).toBeNull();
     // The sibling outside the deleted subtree must survive.
     expect(savedRequestCache('req-3')).not.toBeNull();
   });
 
-  test('deleting a whole collection purges every item in it, regardless of nesting depth', async () => {
+  test('a removed collection purges every item in it, regardless of nesting depth', async () => {
     seedTree(
       [collection('col-2', 'Widgets API')],
       [
@@ -205,32 +179,14 @@ describe('deleteRows purges the whole deleted subtree from the request caches (f
     await loadSavedRequest('req-4');
     expect(savedRequestCache('req-4')).not.toBeNull();
 
-    (
-      control as unknown as { collectionsDeleteMany: typeof control.collectionsDeleteMany }
-    ).collectionsDeleteMany = async () => {};
     (control as unknown as { collectionsList: typeof control.collectionsList }).collectionsList =
       async () => ({
         collections: [],
         items: [],
       });
 
-    await collectionsStore.deleteRows([
-      {
-        key: 'c:col-2',
-        depth: 0,
-        hasChildren: true,
-        expanded: true,
-        kind: 'collection',
-        id: 'col-2',
-        collectionId: 'col-2',
-        parentId: null,
-        name: 'Widgets API',
-        method: '',
-        url: '',
-        protocol: 'http',
-        matched: false,
-      },
-    ]);
+    await refreshApiQuery(apiCollectionsTreeKey);
+    reconcileTree();
 
     expect(savedRequestCache('req-4')).toBeNull();
   });

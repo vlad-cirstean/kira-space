@@ -2,7 +2,7 @@ import { hostWords } from '@theme/i18n';
 import { tryOnScopeDispose, useDebounceFn } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
 import { computed } from 'vue';
-import { gitTransportFor } from '../../../repo/git/transport';
+import { onGitRepoEvent } from '../../../repo/git/gitCall';
 import type { ReviewWindowTarget } from '../wire';
 import { headStale, useChangeRequestReview } from './useChangeRequestReview';
 
@@ -21,10 +21,11 @@ export function useReviewHead(target: () => ReviewWindowTarget) {
     };
   });
   const refetchSoon = useDebounceFn(() => void state.refetch(), TIMING.fileSettle);
-  const lease = gitTransportFor(target().codeRepoId);
-  lease.on('repo.changed', (p) => {
-    if (p.repoId === target().gitRepoId && p.kind === 'refsChanged') void refetchSoon();
-  });
-  tryOnScopeDispose(() => lease.dispose());
+  // The repo hold comes from `useChangeRequestReview` in this scope.
+  tryOnScopeDispose(
+    onGitRepoEvent('repo.changed', target().gitRepoId, (p) => {
+      if (p.kind === 'refsChanged') void refetchSoon();
+    }),
+  );
   return { head };
 }

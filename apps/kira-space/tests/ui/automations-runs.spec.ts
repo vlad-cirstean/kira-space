@@ -11,6 +11,5 @@ registerRunsScenarios(
   {
     extraBase: [{ channel: IPC.windowsEnsure, response: { mode: 'git' } }],
     modeTab: (page) => page.locator('[data-testid="mode-tab"][data-mode="automations"]'),
-    homeText: (dirPath) => dirPath,
   },
 );

@@ -2,15 +2,19 @@ package ipcfixture
 
 import (
 	"context"
-	"github.com/kirathecat/kira-studio/internal/kiratime"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
+
+	"github.com/google/uuid"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connections"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/enginecache"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskrules"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/preconnect"
@@ -34,7 +38,7 @@ const cacheBudgetBytes = 64 << 20
 // services already exist to call.
 type App struct {
 	Repos       *repos.Repos
-	Secrets     *repos.SecretsRepo
+	Files       *connfiles.Loader
 	Cipher      *secrets.Cipher
 	Connections *connections.Service
 	Tree        *tree.Service
@@ -52,6 +56,18 @@ type App struct {
 	// goroutine for the lifetime of one App.
 	connectedMu  sync.Mutex
 	connectedIDs []string
+
+	// nextID is the row id the loader mints for the next file SeedConnection writes.
+	nextID string
+}
+
+func (a *App) mintID() string {
+	if a.nextID != "" {
+		id := a.nextID
+		a.nextID = ""
+		return id
+	}
+	return uuid.NewString()
 }
 
 // trackConnected records id as a connection this harness successfully connected — F9's own
@@ -99,39 +115,53 @@ func NewApp(t *testing.T) *App {
 	if !cipher.Status().Available {
 		t.Fatalf("ipcfixture: cipher unavailable: %+v", cipher.Status())
 	}
-	secretsRepo := repos.NewSecrets(db.DB, cipher)
 
 	deps := adapters.Deps{Log: func(level, message string) {}}
 	cache := enginecache.NewCache(cacheBudgetBytes, deps.Log)
 	router := adapterhost.NewRouter(deps, cache)
 	dispatcher := adapterhost.NewDispatcher(router.Host(), cache)
 
+	app := &App{Repos: r, Cipher: cipher, Router: router, Dispatcher: dispatcher}
+	var connectionsSvc *connections.Service
+	var maskRulesSvc *maskrules.Service
+	files, err := connfiles.New(connfiles.Options{
+		DB: db.DB, Dir: filepath.Join(os.Getenv("KIRA_HOME"), "connections"),
+		Secrets: &connfiles.Secrets{Store: secrets.NewStore(db.DB, cipher), DB: db.DB},
+		NewID:   app.mintID,
+		OnChange: func(ch connfiles.Changes) {
+			connectionsSvc.ConfigChanged(ch)
+			bridge.EmitConnectionChanges(discardEmitter{}, maskRulesSvc, ch)
+		},
+		OnForget: func(id string) { connectionsSvc.Removed(id) },
+	})
+	if err != nil {
+		t.Fatalf("ipcfixture: connfiles.New: %v", err)
+	}
+	t.Cleanup(files.Close)
+
 	pre := preconnect.New()
-	connectionsSvc := connections.New(connections.Deps{
-		Conns: r.Connections, Secrets: secretsRepo, Metadata: r.Metadata,
-		Cipher: cipher, Backend: router, Preconnect: pre, MaskRules: r.MaskRules,
+	connectionsSvc = connections.New(connections.Deps{
+		Conns: r.Connections, Files: files, Metadata: r.Metadata, Backend: router, Preconnect: pre,
 	})
 	connectionsSvc.Start()
 	t.Cleanup(connectionsSvc.Shutdown)
 
 	treeSvc := tree.New(r.Connections, r.Metadata, router, connectionsSvc)
 
-	// M5 §4.6/§9: the same "needs a Cipher, constructed separately" shape as secretsRepo above.
+	// M5 §4.6/§9: the correlation key needs a Cipher, constructed separately.
 	maskKeysRepo := repos.NewMaskKeys(db.DB, cipher)
-	maskRulesSvc := maskrules.New(r.MaskRules, maskKeysRepo)
+	maskRulesSvc = maskrules.New(r.MaskRules, maskKeysRepo, files)
 
 	appDeps := appcore.Deps{
-		DB: db.DB, Repos: r, Connections: connectionsSvc, Tree: treeSvc, Router: router,
+		DB: db.DB, Repos: r, Connections: connectionsSvc, ConnectionFiles: files, Tree: treeSvc, Router: router,
 		MaskRules: maskRulesSvc,
 	}
 
-	app := &App{
-		Repos: r, Secrets: secretsRepo, Cipher: cipher, Connections: connectionsSvc, Tree: treeSvc, Router: router, Dispatcher: dispatcher,
-		ConnectionsSvc: &bridge.ConnectionsService{Deps: appDeps},
-		TreeSvc:        &bridge.TreeService{Deps: appDeps},
-		OpsSvc:         &bridge.OpsService{Deps: appDeps, Canceller: router},
-		MaskRulesSvc:   &bridge.MaskRulesService{Deps: appDeps},
-	}
+	app.Files, app.Connections, app.Tree = files, connectionsSvc, treeSvc
+	app.ConnectionsSvc = &bridge.ConnectionsService{Deps: appDeps}
+	app.TreeSvc = &bridge.TreeService{Deps: appDeps}
+	app.OpsSvc = &bridge.OpsService{Deps: appDeps, Canceller: router}
+	app.MaskRulesSvc = &bridge.MaskRulesService{Deps: appDeps}
 	// Every *_test.go file using this harness calls Recorder.ConnectionsConnect
 	// and none of them call the matching disconnect — real adapters otherwise accumulate in the
 	// process-global registry (adapters.live) across test runs, well after the test DB and
@@ -143,30 +173,44 @@ func NewApp(t *testing.T) *App {
 	return app
 }
 
-// SeedConnection inserts a connection row through the real repo (bypassing only
-// connections.Service.Create's own random uuid.NewString() assignment, so the fixture's connection
-// id is the fixed literal every committed fixture already carries — a harness-only deviation, the
-// same one internal/tree's and internal/connections' own fake-backend tests already make) and
-// stores its password through the real secrets repo and its URI sealed under ScopeConnectionURI.
+// SeedConnection writes a connection file through the real loader (bypassing only
+// connections.Service.Create's random uuid, so the fixture's connection id is the fixed literal every
+// committed fixture already carries) and seals its password and URI as secrets the file names.
 func (a *App) SeedConnection(t *testing.T, id string, fields model.ConnectionFields, password *string) model.ConnectionSummary {
 	t.Helper()
-	var uriEnc *string
+	stem := a.Files.FreeStem(connfiles.Slug(fields.Name))
+	file := connfiles.FileOf(fields, nil, model.EmptyVisibility(), "", "", "")
 	if fields.URI != nil {
-		enc, err := a.Cipher.Encrypt(secrets.ScopeConnectionURI, *fields.URI)
-		if err != nil {
+		name := stem + ".uri"
+		if err := a.Files.PutSecret(connfiles.KindURI, name, *fields.URI); err != nil {
 			t.Fatalf("ipcfixture: seal uri %s: %v", id, err)
 		}
-		uriEnc = &enc
+		file.URI = connfiles.RefOf(name)
 	}
-	created, err := a.Repos.Connections.InsertWithSecret(id, fields, kiratime.NowISO(), nil, uriEnc)
-	if err != nil {
+	if password != nil {
+		name := stem + ".password"
+		if err := a.Files.PutSecret(connfiles.KindPassword, name, *password); err != nil {
+			t.Fatalf("ipcfixture: seed secret %s: %v", id, err)
+		}
+		file.Password = connfiles.RefOf(name)
+	}
+	a.nextID = id
+	if _, err := a.Files.CreateAt(stem, file); err != nil {
 		t.Fatalf("ipcfixture: seed connection %s: %v", id, err)
 	}
-	if err := a.Secrets.Set(id, password); err != nil {
-		t.Fatalf("ipcfixture: seed secret %s: %v", id, err)
+	created, err := a.Repos.Connections.Get(id)
+	if err != nil || created == nil {
+		t.Fatalf("ipcfixture: seeded connection %s unreadable: %v", id, err)
 	}
-	return created
+	return *created
 }
+
+// discardEmitter drops events: a fixture asserts on call results, not pushes.
+type discardEmitter struct{}
+
+func (discardEmitter) Emit(string, any)           {}
+func (discardEmitter) EmitTo(string, string, any) {}
+func (discardEmitter) EmitFocused(string, any)    {}
 
 // Recorder is one scenario's worth of ControlSnapshot/PortSnapshot capture (tests/ipc/support/
 // harness.ts's own openHarness() closures, restated as methods since Go has no closures-over-

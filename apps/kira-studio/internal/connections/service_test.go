@@ -2,26 +2,24 @@ package connections_test
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
-	"math"
-	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
-	"unicode/utf8"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connections"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/preconnect"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
-	"github.com/kirathecat/kira-studio/internal/kiratime"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -126,8 +124,6 @@ func (b *fakeBackend) connectCount() int { return int(b.connectN.Load()) }
 
 func (b *fakeBackend) disconnectCount() int { return int(b.disconnectN.Load()) }
 
-func (b *fakeBackend) testCount() int { return int(b.testN.Load()) }
-
 func (b *fakeBackend) lastConnectConfig() model.ResolvedConnectionConfig {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -156,13 +152,14 @@ func (f *fakeAuthorizer) Authorize(reason string, confirmed bool) (localauth.Out
 	return f.outcome, f.err
 }
 
-// harness wires a real SQLite db (through the real migrations), a real available cipher (the
-// Linux KIRA_INSECURE_SECRETS fallback), a fakeBackend, a fakeAuthorizer, and a real preconnect
-// supervisor behind one connections.Service.
+// harness wires a real SQLite db (through the real migrations), a real connections folder with its
+// secret store, a fakeBackend, a fakeAuthorizer, and a real preconnect supervisor behind one
+// connections.Service. A file edit reaches the service the way a loaded change does: through
+// ConfigChanged.
 type harness struct {
 	svc     *connections.Service
 	repos   *repos.Repos
-	secrets *repos.SecretsRepo
+	files   *connfiles.Loader
 	backend *fakeBackend
 	auth    *fakeAuthorizer
 }
@@ -188,19 +185,53 @@ func newHarness(t *testing.T) *harness {
 	if !cipher.Status().Available {
 		t.Fatalf("cipher unavailable: %+v", cipher.Status())
 	}
-	secretsRepo := repos.NewSecrets(db.DB, cipher)
 	pre := preconnect.New()
 	backend := newFakeBackend()
 	auth := newFakeAuthorizer()
 
-	svc := connections.New(connections.Deps{
-		Conns: r.Connections, Secrets: secretsRepo, Metadata: r.Metadata,
-		Cipher: cipher, Auth: auth, Backend: backend, Preconnect: pre, MaskRules: r.MaskRules,
+	var svc *connections.Service
+	files, err := connfiles.New(connfiles.Options{
+		DB: db.DB, Dir: filepath.Join(t.TempDir(), "connections"),
+		Secrets:  &connfiles.Secrets{Store: secrets.NewStore(db.DB, cipher), DB: db.DB},
+		NewID:    uuid.NewString,
+		OnChange: func(ch connfiles.Changes) { svc.ConfigChanged(ch) },
+		OnForget: func(id string) { svc.Removed(id) },
+	})
+	if err != nil {
+		t.Fatalf("connfiles.New: %v", err)
+	}
+	t.Cleanup(files.Close)
+
+	svc = connections.New(connections.Deps{
+		Conns: r.Connections, Files: files, Metadata: r.Metadata, Auth: auth, Backend: backend, Preconnect: pre,
 	})
 	svc.Start()
 	t.Cleanup(svc.Shutdown)
 
-	return &harness{svc: svc, repos: r, secrets: secretsRepo, backend: backend, auth: auth}
+	return &harness{svc: svc, repos: r, files: files, backend: backend, auth: auth}
+}
+
+// edit applies leaf edits to connection id's file, as an editor save would.
+func (h *harness) edit(t *testing.T, id string, sets ...configfs.NodeSet) {
+	t.Helper()
+	if err := h.files.Patch(id, sets...); err != nil {
+		t.Fatalf("edit file: %v", err)
+	}
+}
+
+// set names one dotted key of the file.
+func set(key string, value any) configfs.NodeSet {
+	return configfs.NodeSet{Path: strings.Split(key, "."), Value: value}
+}
+
+// reconnected waits out the asynchronous reconnect a file change starts: one more disconnect and
+// connect than before, and the connection connected again.
+func (h *harness) reconnected(t *testing.T, id string, connects, disconnects int) {
+	t.Helper()
+	testx.WaitUntil(t, 5*time.Second, func() bool {
+		return h.backend.connectCount() == connects+1 && h.backend.disconnectCount() == disconnects+1 &&
+			h.svc.StateOf(id).Status == "connected"
+	})
 }
 
 // fieldsInput returns a valid, connectable fields-mode Input for name. Kind is "kafka", any real,
@@ -216,66 +247,6 @@ func fieldsInput(name string) connections.Input {
 	}
 }
 
-// newUnavailableCipherHarness is newHarness without KIRA_INSECURE_SECRETS set — on this Linux
-// sandbox that leaves the real probe naturally unavailable, exercising the actual refusal path
-// rather than a fake one.
-func newUnavailableCipherHarness(t *testing.T) *harness {
-	t.Helper()
-	t.Setenv("KIRA_HOME", t.TempDir())
-
-	db, err := storage.Open()
-	if err != nil {
-		t.Fatalf("storage.Open: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	r, err := repos.New(db.DB)
-	if err != nil {
-		t.Fatalf("repos.New: %v", err)
-	}
-	t.Cleanup(func() { _ = r.Close() })
-
-	cipher := secrets.New()
-	if cipher.Status().Available {
-		t.Fatalf("cipher unexpectedly available: %+v", cipher.Status())
-	}
-	secretsRepo := repos.NewSecrets(db.DB, cipher)
-	pre := preconnect.New()
-	backend := newFakeBackend()
-	auth := newFakeAuthorizer()
-
-	svc := connections.New(connections.Deps{
-		Conns: r.Connections, Secrets: secretsRepo, Metadata: r.Metadata,
-		Cipher: cipher, Auth: auth, Backend: backend, Preconnect: pre,
-	})
-	svc.Start()
-	t.Cleanup(svc.Shutdown)
-
-	return &harness{svc: svc, repos: r, secrets: secretsRepo, backend: backend, auth: auth}
-}
-
-// serviceWithUnavailableCipher builds a second Service over h's own db/repos, but with a cipher
-// forced unavailable (by momentarily hiding KIRA_INSECURE_SECRETS for the one secrets.New() call
-// that reads it — safe here since nothing else touches that env var concurrently within a test).
-// It never touches Host/Preconnect, so nil deps for those are fine: this is only ever used to
-// exercise Update, which does not call either.
-func (h *harness) serviceWithUnavailableCipher(t *testing.T) *connections.Service {
-	t.Helper()
-	old, existed := os.LookupEnv("KIRA_INSECURE_SECRETS")
-	_ = os.Unsetenv("KIRA_INSECURE_SECRETS")
-	cipher := secrets.New()
-	if existed {
-		_ = os.Setenv("KIRA_INSECURE_SECRETS", old)
-	}
-	if cipher.Status().Available {
-		t.Fatalf("cipher unexpectedly available: %+v", cipher.Status())
-	}
-	secretsRepo := repos.NewSecrets(h.repos.Connections.DB, cipher)
-	return connections.New(connections.Deps{
-		Conns: h.repos.Connections, Secrets: secretsRepo, Metadata: h.repos.Metadata, Cipher: cipher,
-	})
-}
-
 func mustCreate(t *testing.T, svc *connections.Service, in connections.Input) model.ConnectionSummary {
 	t.Helper()
 	created, err := svc.Create(in)
@@ -283,164 +254,6 @@ func mustCreate(t *testing.T, svc *connections.Service, in connections.Input) mo
 		t.Fatalf("Create: %v", err)
 	}
 	return created
-}
-
-// asIpcErr is testx.AsIpcErr (P107 I2-28).
-var asIpcErr = testx.AsIpcErr
-
-// TestPasswordThreeStateConvention pins Update's three-state password contract — nil leaves the
-// stored secret alone, "" clears it, non-empty replaces it — which a naive `if password != nil`
-// collapses into two states and silently wipes credentials on every unrelated edit.
-func TestPasswordThreeStateConvention(t *testing.T) {
-	h := newHarness(t)
-	in := fieldsInput("pw-conn")
-	in.Password = strPtr("secret1")
-	created := mustCreate(t, h.svc, in)
-
-	get := func() *string {
-		v, err := h.secrets.Get(created.ID)
-		if err != nil {
-			t.Fatalf("Secrets.Get: %v", err)
-		}
-		return v
-	}
-	if v := get(); v == nil || *v != "secret1" {
-		t.Fatalf("initial secret = %v, want secret1", v)
-	}
-
-	// nil = unchanged.
-	unchanged := fieldsInput("pw-conn")
-	if _, err := h.svc.Update(created.ID, unchanged); err != nil {
-		t.Fatalf("Update(nil password): %v", err)
-	}
-	if v := get(); v == nil || *v != "secret1" {
-		t.Errorf("after nil-password update, secret = %v, want unchanged secret1", v)
-	}
-
-	// "" = clear.
-	cleared := fieldsInput("pw-conn")
-	cleared.Password = strPtr("")
-	if _, err := h.svc.Update(created.ID, cleared); err != nil {
-		t.Fatalf("Update(clear password): %v", err)
-	}
-	if v := get(); v != nil {
-		t.Errorf("after clearing, secret = %v, want nil", *v)
-	}
-
-	// non-empty = replace.
-	replaced := fieldsInput("pw-conn")
-	replaced.Password = strPtr("secret2")
-	if _, err := h.svc.Update(created.ID, replaced); err != nil {
-		t.Fatalf("Update(replace password): %v", err)
-	}
-	if v := get(); v == nil || *v != "secret2" {
-		t.Errorf("after replacing, secret = %v, want secret2", v)
-	}
-}
-
-// TestCreateValidatesSecretBeforeWriting covers half of the deliberately asymmetric write
-// ordering: Create must prove the secret can be encrypted BEFORE inserting, so an unavailable
-// cipher leaves no half-written row behind.
-func TestCreateValidatesSecretBeforeWriting(t *testing.T) {
-	h := newUnavailableCipherHarness(t)
-
-	before, err := h.svc.List()
-	if err != nil {
-		t.Fatalf("List: %v", err)
-	}
-
-	withPassword := fieldsInput("should-not-exist")
-	withPassword.Password = strPtr("x")
-	_, err = h.svc.Create(withPassword)
-	if err == nil {
-		t.Fatalf("Create with an unavailable cipher: want an error")
-	}
-	if ie := asIpcErr(t, err); ie.Code != "E_SECRET_STORE" {
-		t.Errorf("Code = %q, want E_SECRET_STORE", ie.Code)
-	}
-	after, err := h.svc.List()
-	if err != nil {
-		t.Fatalf("List: %v", err)
-	}
-	if len(after) != len(before) {
-		t.Errorf("List() grew from %d to %d — a row was left behind despite the failed Create", len(before), len(after))
-	}
-
-	withoutPassword := fieldsInput("no-password-needed")
-	if _, err := h.svc.Create(withoutPassword); err != nil {
-		t.Errorf("Create with a nil password on an unavailable cipher: %v, want success", err)
-	}
-}
-
-// TestUpdateWritesSecretBeforeRow is the other half: the row already exists, so Update writes the
-// secret first and a cipher failure must abort before any other field is touched — a half-applied
-// edit is the failure mode this ordering exists to prevent.
-func TestUpdateWritesSecretBeforeRow(t *testing.T) {
-	h := newHarness(t)
-	created := mustCreate(t, h.svc, fieldsInput("original-name"))
-
-	unavailable := h.serviceWithUnavailableCipher(t)
-	withPassword := fieldsInput("changed-name")
-	withPassword.Password = strPtr("x")
-	_, err := unavailable.Update(created.ID, withPassword)
-	if err == nil {
-		t.Fatalf("Update with an unavailable cipher: want an error")
-	}
-	if ie := asIpcErr(t, err); ie.Code != "E_SECRET_STORE" {
-		t.Errorf("Code = %q, want E_SECRET_STORE", ie.Code)
-	}
-
-	row, err := h.repos.Connections.Get(created.ID)
-	if err != nil {
-		t.Fatalf("Connections.Get: %v", err)
-	}
-	if row == nil || row.Name != "original-name" {
-		t.Errorf("row = %+v, want Name unchanged at original-name", row)
-	}
-}
-
-// TestUpdateDoesNotLeaveANewPasswordStoredAgainstOldFields:
-// connections.Service.Update used to write the new password (Secrets.Set) *before* writing the
-// rest of the row (Conns.Update) — reasoning only about the "cipher unavailable" failure, which
-// that ordering does correctly abort before touching anything. But Conns.Update can fail for a
-// reason that has nothing to do with the cipher: its json.Marshal(f.Options) can itself refuse a
-// value (NaN, which Input.Validate never inspects Options for — Go callers, and a future
-// programmatic caller, can construct one even though the IPC/JSON boundary cannot). Under the old
-// ordering, that failure happened *after* the new password had already been committed, leaving it
-// stored against the connection's old host/port/database — exactly the "old destination's password
-// on a new destination" state destinationUnchanged elsewhere in this file exists to prevent,
-// reached by a different path. UpdateWithSecret's single combined statement computes and validates
-// everything (including the json.Marshal) before issuing any write, so this failure now aborts with
-// nothing changed at all.
-func TestUpdateDoesNotLeaveANewPasswordStoredAgainstOldFields(t *testing.T) {
-	h := newHarness(t)
-	created := mustCreate(t, h.svc, fieldsInput("original-name"))
-	if err := h.secrets.Set(created.ID, strPtr("original-secret")); err != nil {
-		t.Fatalf("seed original secret: %v", err)
-	}
-
-	in := fieldsInput("changed-name")
-	in.Password = strPtr("new-secret")
-	in.Options = map[string]any{"bad": math.NaN()}
-	if _, err := h.svc.Update(created.ID, in); err == nil {
-		t.Fatalf("Update with an unmarshalable Options value: want an error")
-	}
-
-	row, err := h.repos.Connections.Get(created.ID)
-	if err != nil {
-		t.Fatalf("Connections.Get: %v", err)
-	}
-	if row == nil || row.Name != "original-name" {
-		t.Errorf("row = %+v, want Name unchanged at \"original-name\"", row)
-	}
-
-	stored, err := h.secrets.Get(created.ID)
-	if err != nil {
-		t.Fatalf("Secrets.Get: %v", err)
-	}
-	if stored == nil || *stored != "original-secret" {
-		t.Errorf("stored secret = %v, want unchanged \"original-secret\" — a failed update must not leave the new password stored against the old row", stored)
-	}
 }
 
 // TestInFlightConnectDedupe covers the in-flight attempt map: eight concurrent Connect calls for
@@ -676,7 +489,7 @@ func TestConnectWaiterDoesNotRestartDuringTeardown(t *testing.T) {
 }
 
 // TestUpdateWhileConnectingReconnectsOnTheNewConfig is P168 Part 2 F3: an attempt that resolved
-// its config before an edit must not finish on the old ReadOnly/destination.
+// its config before a file edit must not finish on the old ReadOnly/destination.
 func TestUpdateWhileConnectingReconnectsOnTheNewConfig(t *testing.T) {
 	h := newHarness(t)
 	created := mustCreate(t, h.svc, fieldsInput("slow-conn"))
@@ -688,28 +501,16 @@ func TestUpdateWhileConnectingReconnectsOnTheNewConfig(t *testing.T) {
 	}()
 	time.Sleep(200 * time.Millisecond)
 
-	draft := fieldsInput("slow-conn")
-	draft.ReadOnly = true
-	updateDone := make(chan error, 1)
-	go func() {
-		_, err := h.svc.Update(created.ID, draft)
-		updateDone <- err
-	}()
+	h.edit(t, created.ID, set("read_only", true))
 	time.Sleep(200 * time.Millisecond)
 	h.backend.releaseSlow()
 
-	if err := <-updateDone; err != nil {
-		t.Fatalf("Update: %v", err)
-	}
 	<-connectDone
-	if got := h.backend.connectCount(); got != 2 {
-		t.Errorf("Backend.Connect calls = %d, want 2 (aborted attempt plus reconnect)", got)
-	}
+	testx.WaitUntil(t, 5*time.Second, func() bool {
+		return h.backend.connectCount() == 2 && h.svc.StateOf(created.ID).Status == "connected"
+	})
 	if !h.backend.lastConnectConfig().ReadOnly {
 		t.Error("reconnect did not carry ReadOnly=true")
-	}
-	if got := h.svc.StateOf(created.ID).Status; got != "connected" {
-		t.Errorf("status = %q, want connected", got)
 	}
 }
 
@@ -771,161 +572,14 @@ func TestShutdownWaitsOutInFlightConnectBeforeStoppingPreconnect(t *testing.T) {
 	}
 }
 
-// TestTestValidatesInputBeforeProbing is a regression test for the finding where Test was
-// the one Input-accepting entry point (unlike Create/Update) that never called Validate() —  a
-// port outside 1-65535 reached the backend unchecked, and postgres/client.go's own
-// `uint16(*cfg.Port)` would silently wrap it around to a different, in-range port rather than
-// erroring. fakeBackend.Test never rejects a bad port itself, so this can only pass if
-// Service.Test's own Validate() call stops the request before the backend is ever reached.
-func TestTestValidatesInputBeforeProbing(t *testing.T) {
-	h := newHarness(t)
-	in := fieldsInput("bad-port")
-	badPort := 70000 // out of range; uint16(70000) would silently become 4464
-	in.Port = &badPort
-
-	result := h.svc.Test(in, "")
-
-	if result.OK {
-		t.Fatal("Test(port: 70000).OK = true, want a validation failure")
-	}
-	if result.Error == nil || !strings.Contains(*result.Error, "Port") {
-		t.Fatalf("Test(port: 70000).Error = %v, want a message naming the port", result.Error)
-	}
-	if n := h.backend.testCount(); n != 0 {
-		t.Errorf("Backend.Test was called %d times, want 0 — Validate() should have short-circuited first", n)
-	}
-}
-
-// TestTestDoesNotLeakStoredPasswordToARetargetedDraft is a regression test for the
-// credential-reveal bypass: editing an existing connection's Host (or Port/Database/
-// URI) and pressing "Test connection" with no password retyped must not decrypt the stored
-// secret and send it to the new, unverified destination — it should test with no password at
-// all, exactly as a brand-new draft would.
-func TestTestDoesNotLeakStoredPasswordToARetargetedDraft(t *testing.T) {
-	h := newHarness(t)
-	in := fieldsInput("has-secret")
-	in.Password = strPtr("s3cret")
-	created := mustCreate(t, h.svc, in)
-
-	t.Run("unchanged destination still gets the stored secret", func(t *testing.T) {
-		draft := fieldsInput("has-secret")
-		draft.Password = nil // D1: edit dialogs always open with password: null
-
-		result := h.svc.Test(draft, created.ID)
-
-		if !result.OK {
-			t.Fatalf("Test(unchanged destination).OK = false, want true (err: %v)", result.Error)
-		}
-		got := h.backend.lastConnectConfig().Password
-		if got == nil || *got != "s3cret" {
-			t.Fatalf("Backend.Test saw password %v, want the stored secret", got)
-		}
-	})
-
-	t.Run("retargeted host does not get the stored secret", func(t *testing.T) {
-		draft := fieldsInput("has-secret")
-		draft.Password = nil
-		draft.Host = strPtr("attacker.example.com")
-
-		result := h.svc.Test(draft, created.ID)
-
-		if !result.OK {
-			t.Fatalf("Test(retargeted host).OK = false, want true (err: %v)", result.Error)
-		}
-		got := h.backend.lastConnectConfig().Password
-		if got != nil {
-			t.Fatalf("Backend.Test saw password %q for a retargeted host, want nil — the stored secret leaked", *got)
-		}
-		if gotHost := h.backend.lastConnectConfig().Host; gotHost == nil || *gotHost != "attacker.example.com" {
-			t.Fatalf("Backend.Test saw host %v, want the retargeted host", gotHost)
-		}
-	})
-
-	t.Run("retargeted port does not get the stored secret", func(t *testing.T) {
-		draft := fieldsInput("has-secret")
-		draft.Password = nil
-		otherPort := 15432
-		draft.Port = &otherPort
-
-		result := h.svc.Test(draft, created.ID)
-
-		if !result.OK {
-			t.Fatalf("Test(retargeted port).OK = false, want true (err: %v)", result.Error)
-		}
-		if got := h.backend.lastConnectConfig().Password; got != nil {
-			t.Fatalf("Backend.Test saw password %q for a retargeted port, want nil — the stored secret leaked", *got)
-		}
-	})
-}
-
-// TestTestGatesOnPreconnectAndOptionsOnlyEdits is a regression test for the P12 round 2 finding
-// #1 bypass: round 1's fix only compared Host/Port/Database/URI, so a draft that changes only
-// Preconnect (the command Test starts and routes the probe through before the destination is even
-// reached) or only Options["sslmode"] still passed the "unchanged" check and leaked the stored
-// secret down a route the user just edited.
-func TestTestGatesOnPreconnectAndOptionsOnlyEdits(t *testing.T) {
-	h := newHarness(t)
-	in := fieldsInput("has-secret-2")
-	in.Password = strPtr("s3cret")
-	in.Options = map[string]any{"sslmode": "verify-full"}
-	created := mustCreate(t, h.svc, in)
-
-	t.Run("preconnect-only edit does not get the stored secret", func(t *testing.T) {
-		draft := fieldsInput("has-secret-2")
-		draft.Password = nil
-		draft.Options = map[string]any{"sslmode": "verify-full"}
-		draft.Preconnect = strPtr("true")
-
-		result := h.svc.Test(draft, created.ID)
-
-		if !result.OK {
-			t.Fatalf("Test(preconnect-only edit).OK = false, want true (err: %v)", result.Error)
-		}
-		if got := h.backend.lastConnectConfig().Password; got != nil {
-			t.Fatalf("Backend.Test saw password %q for a preconnect-only edit, want nil — the stored secret leaked", *got)
-		}
-	})
-
-	t.Run("sslmode-only edit does not get the stored secret", func(t *testing.T) {
-		draft := fieldsInput("has-secret-2")
-		draft.Password = nil
-		draft.Options = map[string]any{"sslmode": "disable"}
-
-		result := h.svc.Test(draft, created.ID)
-
-		if !result.OK {
-			t.Fatalf("Test(sslmode-only edit).OK = false, want true (err: %v)", result.Error)
-		}
-		if got := h.backend.lastConnectConfig().Password; got != nil {
-			t.Fatalf("Backend.Test saw password %q for an sslmode-only edit, want nil — the stored secret leaked", *got)
-		}
-	})
-
-	t.Run("truly unchanged destination still gets the stored secret", func(t *testing.T) {
-		draft := fieldsInput("has-secret-2")
-		draft.Password = nil
-		draft.Options = map[string]any{"sslmode": "verify-full"}
-
-		result := h.svc.Test(draft, created.ID)
-
-		if !result.OK {
-			t.Fatalf("Test(unchanged destination).OK = false, want true (err: %v)", result.Error)
-		}
-		got := h.backend.lastConnectConfig().Password
-		if got == nil || *got != "s3cret" {
-			t.Fatalf("Backend.Test saw password %v, want the stored secret", got)
-		}
-	})
-}
-
-// TestUpdateAppliesThrottleLiveOnlyWhenConnected covers the "applies live" rule directly: an
-// edit reaches Backend.SetThrottle while the connection is connected, but a throttle
+// TestUpdateAppliesThrottleLiveOnlyWhenConnected covers the "applies live" rule directly: a
+// file edit reaches Backend.SetThrottle while the connection is connected, but a throttle
 // edit to a connection with nothing running yet gets no such call (attemptConnect installs the
 // right value on the next connect regardless — no double-install to reconcile).
 func TestUpdateAppliesThrottleLiveOnlyWhenConnected(t *testing.T) {
 	h := newHarness(t)
 
-	t.Run("connected: Update pushes the new rate live", func(t *testing.T) {
+	t.Run("connected: a file edit pushes the new rate live", func(t *testing.T) {
 		created := mustCreate(t, h.svc, fieldsInput("throttle-connected"))
 		if _, err := h.svc.Connect(created.ID); err != nil {
 			t.Fatalf("Connect: %v", err)
@@ -933,30 +587,22 @@ func TestUpdateAppliesThrottleLiveOnlyWhenConnected(t *testing.T) {
 		// attemptConnect itself calls SetThrottle(id, 0) on the way to Connect — the assertion
 		// below only cares about the *last* call, so that first install is fine to ignore.
 
-		draft := fieldsInput("throttle-connected")
-		draft.ThrottlePerSec = 7.5
-		if _, err := h.svc.Update(created.ID, draft); err != nil {
-			t.Fatalf("Update: %v", err)
-		}
+		h.edit(t, created.ID, set("throttle_per_sec", 7.5))
 
-		calls := h.backend.throttleCallsSnapshot()
-		if len(calls) == 0 {
-			t.Fatal("expected at least one SetThrottle call")
-		}
-		last := calls[len(calls)-1]
-		if last.connectionID != created.ID || last.perSec != 7.5 {
-			t.Errorf("last SetThrottle call = %+v, want {%s 7.5}", last, created.ID)
-		}
+		testx.WaitUntil(t, 5*time.Second, func() bool {
+			calls := h.backend.throttleCallsSnapshot()
+			if len(calls) == 0 {
+				return false
+			}
+			last := calls[len(calls)-1]
+			return last.connectionID == created.ID && last.perSec == 7.5
+		})
 	})
 
-	t.Run("disconnected: Update installs nothing", func(t *testing.T) {
+	t.Run("disconnected: a file edit installs nothing", func(t *testing.T) {
 		created := mustCreate(t, h.svc, fieldsInput("throttle-disconnected"))
 
-		draft := fieldsInput("throttle-disconnected")
-		draft.ThrottlePerSec = 3
-		if _, err := h.svc.Update(created.ID, draft); err != nil {
-			t.Fatalf("Update: %v", err)
-		}
+		h.edit(t, created.ID, set("throttle_per_sec", 3))
 
 		for _, c := range h.backend.throttleCallsSnapshot() {
 			if c.connectionID == created.ID {
@@ -966,132 +612,60 @@ func TestUpdateAppliesThrottleLiveOnlyWhenConnected(t *testing.T) {
 	})
 }
 
-// TestTestInjectsStoredPasswordAcrossThrottleOnlyEdit is the §5.5 "easily-missed correctness
-// detail" regression test: destinationUnchanged must keep holding across a throttle-only edit, or
-// "edit the throttle → Test connection" silently stops injecting the stored password.
-func TestTestInjectsStoredPasswordAcrossThrottleOnlyEdit(t *testing.T) {
-	h := newHarness(t)
-	in := fieldsInput("has-secret-throttle")
-	in.Password = strPtr("s3cret")
-	created := mustCreate(t, h.svc, in)
-
-	draft := fieldsInput("has-secret-throttle")
-	draft.Password = nil
-	draft.ThrottlePerSec = 42
-
-	result := h.svc.Test(draft, created.ID)
-
-	if !result.OK {
-		t.Fatalf("Test(throttle-only edit).OK = false, want true (err: %v)", result.Error)
-	}
-	got := h.backend.lastConnectConfig().Password
-	if got == nil || *got != "s3cret" {
-		t.Fatalf("Backend.Test saw password %v, want the stored secret", got)
-	}
-}
-
-// TestUpdateReconnectsALiveConnectionOnDestinationOrReadOnlyChange is the regression: a connected
-// adapter and both cache layers are
-// stamped with the config resolved at Connect time and never revisit it on their own. Before the
-// fix, Update wrote the new row and, at most, pushed the throttle live — a destination change
-// (host/port/database/etc.) left the old adapter connected to the old server, and toggling
-// ReadOnly on a live connection changed nothing an app-level or server-level guard ever reads
-// (both are captured once at Connect). The fix makes Update disconnect and reconnect whenever
-// destinationUnchanged no longer holds, or ReadOnly itself changed — the same "so the engine
-// picks up the new flag" reconnect the toolbar's own setConnectionReadOnly already performs.
-func TestUpdateReconnectsALiveConnectionOnDestinationOrReadOnlyChange(t *testing.T) {
-	t.Run("toggling ReadOnly on a live connection reconnects", func(t *testing.T) {
+// TestFileEditReconnectsALiveConnectionOnDestinationOrReadOnlyChange: a connected adapter and both
+// cache layers are stamped with the config resolved at Connect time and never revisit it on their
+// own. A destination change (host, port, database) or a read_only flip in the file must disconnect and
+// reconnect a live connection; a cosmetic edit must not.
+func TestFileEditReconnectsALiveConnectionOnDestinationOrReadOnlyChange(t *testing.T) {
+	connected := func(t *testing.T, name string) (*harness, model.ConnectionSummary, int, int) {
+		t.Helper()
 		h := newHarness(t)
-		created := mustCreate(t, h.svc, fieldsInput("ro-toggle"))
+		created := mustCreate(t, h.svc, fieldsInput(name))
 		if _, err := h.svc.Connect(created.ID); err != nil {
 			t.Fatalf("Connect: %v", err)
 		}
-		connectsBefore := h.backend.connectCount()
-		disconnectsBefore := h.backend.disconnectCount()
+		return h, created, h.backend.connectCount(), h.backend.disconnectCount()
+	}
 
-		draft := fieldsInput("ro-toggle")
-		draft.ReadOnly = true
-		if _, err := h.svc.Update(created.ID, draft); err != nil {
-			t.Fatalf("Update: %v", err)
-		}
-
-		if got := h.backend.disconnectCount(); got != disconnectsBefore+1 {
-			t.Errorf("Backend.Disconnect calls = %d, want %d (a reconnect)", got, disconnectsBefore+1)
-		}
-		if got := h.backend.connectCount(); got != connectsBefore+1 {
-			t.Errorf("Backend.Connect calls = %d, want %d (a reconnect)", got, connectsBefore+1)
-		}
+	t.Run("toggling read_only on a live connection reconnects", func(t *testing.T) {
+		h, created, connects, disconnects := connected(t, "ro-toggle")
+		h.edit(t, created.ID, set("read_only", true))
+		h.reconnected(t, created.ID, connects, disconnects)
 		if !h.backend.lastConnectConfig().ReadOnly {
 			t.Error("reconnect did not carry the new ReadOnly=true through to Backend.Connect")
 		}
-		if got := h.svc.StateOf(created.ID).Status; got != "connected" {
-			t.Errorf("status after reconnect = %q, want connected", got)
-		}
 	})
 
-	t.Run("changing the destination (Host) on a live connection reconnects", func(t *testing.T) {
-		h := newHarness(t)
-		created := mustCreate(t, h.svc, fieldsInput("dest-change"))
-		if _, err := h.svc.Connect(created.ID); err != nil {
-			t.Fatalf("Connect: %v", err)
-		}
-		connectsBefore := h.backend.connectCount()
-		disconnectsBefore := h.backend.disconnectCount()
-
-		draft := fieldsInput("dest-change")
-		draft.Host = strPtr("prod.example.internal")
-		if _, err := h.svc.Update(created.ID, draft); err != nil {
-			t.Fatalf("Update: %v", err)
-		}
-
-		if got := h.backend.disconnectCount(); got != disconnectsBefore+1 {
-			t.Errorf("Backend.Disconnect calls = %d, want %d (a reconnect)", got, disconnectsBefore+1)
-		}
-		if got := h.backend.connectCount(); got != connectsBefore+1 {
-			t.Errorf("Backend.Connect calls = %d, want %d (a reconnect)", got, connectsBefore+1)
-		}
+	t.Run("changing the destination (host) on a live connection reconnects", func(t *testing.T) {
+		h, created, connects, disconnects := connected(t, "dest-change")
+		h.edit(t, created.ID, set("host", "prod.example.internal"))
+		h.reconnected(t, created.ID, connects, disconnects)
 		gotHost := h.backend.lastConnectConfig().Host
 		if gotHost == nil || *gotHost != "prod.example.internal" {
 			t.Errorf("reconnect config Host = %v, want prod.example.internal", gotHost)
 		}
 	})
 
-	t.Run("a cosmetic-only edit (Color) on a live connection does not reconnect", func(t *testing.T) {
-		h := newHarness(t)
-		created := mustCreate(t, h.svc, fieldsInput("cosmetic-only"))
-		if _, err := h.svc.Connect(created.ID); err != nil {
-			t.Fatalf("Connect: %v", err)
+	t.Run("a cosmetic-only edit (color) on a live connection does not reconnect", func(t *testing.T) {
+		h, created, connects, disconnects := connected(t, "cosmetic-only")
+		h.edit(t, created.ID, set("color", "red"))
+		time.Sleep(300 * time.Millisecond) // a regressed reconnect starts on its own goroutine
+		if got := h.backend.connectCount(); got != connects {
+			t.Errorf("Backend.Connect calls = %d, want %d (no reconnect for a cosmetic-only edit)", got, connects)
 		}
-		connectsBefore := h.backend.connectCount()
-		disconnectsBefore := h.backend.disconnectCount()
-
-		draft := fieldsInput("cosmetic-only")
-		draft.Color = "red"
-		if _, err := h.svc.Update(created.ID, draft); err != nil {
-			t.Fatalf("Update: %v", err)
-		}
-
-		if got := h.backend.connectCount(); got != connectsBefore {
-			t.Errorf("Backend.Connect calls = %d, want %d (no reconnect for a cosmetic-only edit)", got, connectsBefore)
-		}
-		if got := h.backend.disconnectCount(); got != disconnectsBefore {
-			t.Errorf("Backend.Disconnect calls = %d, want %d (no reconnect for a cosmetic-only edit)", got, disconnectsBefore)
+		if got := h.backend.disconnectCount(); got != disconnects {
+			t.Errorf("Backend.Disconnect calls = %d, want %d (no reconnect for a cosmetic-only edit)", got, disconnects)
 		}
 	})
 
-	t.Run("changing ReadOnly on a disconnected connection does not attempt a reconnect", func(t *testing.T) {
+	t.Run("changing read_only on a disconnected connection does not attempt a reconnect", func(t *testing.T) {
 		h := newHarness(t)
 		created := mustCreate(t, h.svc, fieldsInput("ro-disconnected"))
-		connectsBefore := h.backend.connectCount()
-
-		draft := fieldsInput("ro-disconnected")
-		draft.ReadOnly = true
-		if _, err := h.svc.Update(created.ID, draft); err != nil {
-			t.Fatalf("Update: %v", err)
-		}
-
-		if got := h.backend.connectCount(); got != connectsBefore {
-			t.Errorf("Backend.Connect calls = %d, want %d (nothing live to reconnect)", got, connectsBefore)
+		connects := h.backend.connectCount()
+		h.edit(t, created.ID, set("read_only", true))
+		time.Sleep(300 * time.Millisecond)
+		if got := h.backend.connectCount(); got != connects {
+			t.Errorf("Backend.Connect calls = %d, want %d (nothing live to reconnect)", got, connects)
 		}
 	})
 }
@@ -1133,467 +707,5 @@ func TestConnectKeepsMetadataCacheAndEmitsInvalidation(t *testing.T) {
 
 	if len(invalidated) != 1 || invalidated[0] != created.ID {
 		t.Errorf("metadataInvalidated emissions = %v, want exactly [%s]", invalidated, created.ID)
-	}
-}
-
-// TestDuplicateCapsGeneratedNameAtMaxLength: Duplicate used to append " copy"
-// with no length cap at all — a 118-character name plus " copy" (5 more) is 123 characters, over
-// connectionInputSchema's own 120-character cap that a hand-typed name of that length would have
-// been rejected for at Create time.
-func TestDuplicateCapsGeneratedNameAtMaxLength(t *testing.T) {
-	h := newHarness(t)
-	longName := strings.Repeat("a", 118)
-	created := mustCreate(t, h.svc, fieldsInput(longName))
-
-	dup, err := h.svc.Duplicate(created.ID)
-	if err != nil {
-		t.Fatalf("Duplicate: %v", err)
-	}
-	if len(dup.Name) > 120 {
-		t.Errorf("Duplicate name is %d bytes (%q), want at most 120", len(dup.Name), dup.Name)
-	}
-	if !strings.HasSuffix(dup.Name, " copy") {
-		t.Errorf("Duplicate name = %q, want it to still end in \" copy\"", dup.Name)
-	}
-	if !utf8.ValidString(dup.Name) {
-		t.Errorf("Duplicate name %q is not valid UTF-8", dup.Name)
-	}
-
-	// A short name is untouched apart from the suffix — the cap only bites when it would actually
-	// be exceeded.
-	short := mustCreate(t, h.svc, fieldsInput("short-name"))
-	dupShort, err := h.svc.Duplicate(short.ID)
-	if err != nil {
-		t.Fatalf("Duplicate: %v", err)
-	}
-	if dupShort.Name != "short-name copy" {
-		t.Errorf("Duplicate name = %q, want %q", dupShort.Name, "short-name copy")
-	}
-}
-
-// TestDuplicateCopiesThePasswordAtomically: Duplicate used to Conns.Insert the row and
-// Secrets.Copy the password as two separate statements with no transaction, so a crash between
-// them left a passwordless duplicate. InsertDuplicateWithSecret copies the password in the very
-// same INSERT statement the row itself is written by — this confirms the happy path commits both
-// together against a real database (a crash injected between two statements that no longer exist
-// has nothing left to inject between).
-func TestDuplicateCopiesThePasswordAtomically(t *testing.T) {
-	h := newHarness(t)
-	in := fieldsInput("with-a-password")
-	in.Password = strPtr("s3cret")
-	created := mustCreate(t, h.svc, in)
-
-	dup, err := h.svc.Duplicate(created.ID)
-	if err != nil {
-		t.Fatalf("Duplicate: %v", err)
-	}
-	if dup.ID == created.ID {
-		t.Fatalf("Duplicate returned the same ID as the original")
-	}
-
-	got, err := h.secrets.Get(dup.ID)
-	if err != nil {
-		t.Fatalf("Secrets.Get(duplicate): %v", err)
-	}
-	if got == nil || *got != "s3cret" {
-		t.Errorf("duplicate's stored password = %v, want %q", got, "s3cret")
-	}
-
-	// The original's own password must be untouched by the copy.
-	original, err := h.secrets.Get(created.ID)
-	if err != nil {
-		t.Fatalf("Secrets.Get(original): %v", err)
-	}
-	if original == nil || *original != "s3cret" {
-		t.Errorf("original's stored password = %v, want unchanged %q", original, "s3cret")
-	}
-}
-
-// TestDuplicateCopiesMaskRules: ConnectionFields carries MCP exposure over to a duplicate, but
-// mask rules live in a separate table keyed by connection_id and were never copied
-// — a duplicated connection that was masked-and-MCP-exposed became immediately MCP-exposed with
-// zero mask rules, silently exposing whatever PII the original was protecting.
-func TestDuplicateCopiesMaskRules(t *testing.T) {
-	h := newHarness(t)
-	created := mustCreate(t, h.svc, fieldsInput("masked-source"))
-
-	if _, err := h.repos.MaskRules.Upsert(uuid.NewString(), created.ID, model.MaskRuleFields{
-		TableName: "customers", ColumnName: "email", Kind: model.MaskKindEmail, KeepHint: true, Correlate: true,
-	}, kiratime.NowISO()); err != nil {
-		t.Fatalf("MaskRules.Upsert: %v", err)
-	}
-	if _, err := h.repos.MaskRules.Upsert(uuid.NewString(), created.ID, model.MaskRuleFields{
-		TableName: "customers", ColumnName: "ssn", Kind: model.MaskKindRedact,
-	}, kiratime.NowISO()); err != nil {
-		t.Fatalf("MaskRules.Upsert: %v", err)
-	}
-
-	dup, err := h.svc.Duplicate(created.ID)
-	if err != nil {
-		t.Fatalf("Duplicate: %v", err)
-	}
-
-	dupRules, err := h.repos.MaskRules.ListForConnection(dup.ID)
-	if err != nil {
-		t.Fatalf("MaskRules.ListForConnection(duplicate): %v", err)
-	}
-	if len(dupRules) != 2 {
-		t.Fatalf("duplicate has %d mask rules, want 2 (copied from the source)", len(dupRules))
-	}
-	if dupRules[0].ColumnName != "email" || dupRules[0].Kind != model.MaskKindEmail || !dupRules[0].Correlate {
-		t.Errorf("duplicate rule[0] = %+v, want the source's email rule copied verbatim", dupRules[0])
-	}
-	if dupRules[1].ColumnName != "ssn" || dupRules[1].Kind != model.MaskKindRedact {
-		t.Errorf("duplicate rule[1] = %+v, want the source's ssn rule copied verbatim", dupRules[1])
-	}
-
-	// Fresh ids and a connection_id pointing at the duplicate, not the source.
-	for _, r := range dupRules {
-		if r.ConnectionID != dup.ID {
-			t.Errorf("copied rule ConnectionID = %q, want %q", r.ConnectionID, dup.ID)
-		}
-	}
-
-	// The source's own rules must be untouched by the copy.
-	sourceRules, err := h.repos.MaskRules.ListForConnection(created.ID)
-	if err != nil {
-		t.Fatalf("MaskRules.ListForConnection(source): %v", err)
-	}
-	if len(sourceRules) != 2 {
-		t.Fatalf("source has %d mask rules after Duplicate, want unchanged 2", len(sourceRules))
-	}
-
-	// A source with no mask rules at all duplicates cleanly with none — not an error.
-	plain := mustCreate(t, h.svc, fieldsInput("unmasked-source"))
-	plainDup, err := h.svc.Duplicate(plain.ID)
-	if err != nil {
-		t.Fatalf("Duplicate(no rules): %v", err)
-	}
-	noRules, err := h.repos.MaskRules.ListForConnection(plainDup.ID)
-	if err != nil {
-		t.Fatalf("MaskRules.ListForConnection(no-rules duplicate): %v", err)
-	}
-	if len(noRules) != 0 {
-		t.Fatalf("no-rules duplicate has %d mask rules, want 0", len(noRules))
-	}
-}
-
-// TestDuplicateEnablesMcpOnlyAfterMaskRulesCopySucceeds: a source with MCP exposure and mask rules
-// must still end up MCP-enabled on the happy path — InsertDuplicateWithSecret now always inserts
-// the duplicate with mcp_enabled off, so this confirms Duplicate's own follow-up SetMcpEnabled
-// call restores the source's real state once the mask rule copy succeeds,
-// both in the returned summary and in storage.
-func TestDuplicateEnablesMcpOnlyAfterMaskRulesCopySucceeds(t *testing.T) {
-	h := newHarness(t)
-	in := fieldsInput("masked-and-exposed")
-	in.McpEnabled = true
-	created := mustCreate(t, h.svc, in)
-
-	if _, err := h.repos.MaskRules.Upsert(uuid.NewString(), created.ID, model.MaskRuleFields{
-		TableName: "customers", ColumnName: "email", Kind: model.MaskKindEmail,
-	}, kiratime.NowISO()); err != nil {
-		t.Fatalf("MaskRules.Upsert: %v", err)
-	}
-
-	dup, err := h.svc.Duplicate(created.ID)
-	if err != nil {
-		t.Fatalf("Duplicate: %v", err)
-	}
-	if !dup.McpEnabled {
-		t.Fatal("Duplicate result McpEnabled = false, want true (matching the source, once mask rules copied)")
-	}
-
-	stored, err := h.repos.Connections.Get(dup.ID)
-	if err != nil {
-		t.Fatalf("Conns.Get(duplicate): %v", err)
-	}
-	if stored == nil || !stored.McpEnabled {
-		t.Fatalf("stored duplicate McpEnabled = %v, want true", stored)
-	}
-
-	dupRules, err := h.repos.MaskRules.ListForConnection(dup.ID)
-	if err != nil {
-		t.Fatalf("MaskRules.ListForConnection(duplicate): %v", err)
-	}
-	if len(dupRules) != 1 {
-		t.Fatalf("duplicate has %d mask rules, want 1 (copied before MCP was enabled)", len(dupRules))
-	}
-}
-
-// TestDuplicateLeavesMcpDisabledWhenMaskRuleCopyFails: before this fix, InsertDuplicateWithSecret
-// copied McpEnabled verbatim in the same INSERT that committed the duplicate row, so an error from
-// the mask-rule copy that ran afterward still surfaced to the caller — but the already-committed
-// duplicate was left live and MCP-exposed with zero mask rules. This forces that copy to fail (the
-// mask rules table is dropped after the source's own rule is written, so ListForConnection errors)
-// and confirms the duplicate row that HAS been committed by then is not MCP-exposed, closing
-// exactly that gap.
-func TestDuplicateLeavesMcpDisabledWhenMaskRuleCopyFails(t *testing.T) {
-	h := newHarness(t)
-	in := fieldsInput("masked-and-exposed")
-	in.McpEnabled = true
-	created := mustCreate(t, h.svc, in)
-
-	if _, err := h.repos.MaskRules.Upsert(uuid.NewString(), created.ID, model.MaskRuleFields{
-		TableName: "customers", ColumnName: "email", Kind: model.MaskKindEmail,
-	}, kiratime.NowISO()); err != nil {
-		t.Fatalf("MaskRules.Upsert: %v", err)
-	}
-
-	// Break the mask rule copy deterministically: ListForConnection (copyMaskRules' own first
-	// step) now errors on the missing table.
-	if _, err := h.repos.MaskRules.DB.Exec(`DROP TABLE connection_mask_rules`); err != nil {
-		t.Fatalf("drop connection_mask_rules: %v", err)
-	}
-
-	dup, err := h.svc.Duplicate(created.ID)
-	if err == nil {
-		t.Fatalf("Duplicate = %+v, nil error, want an error once the mask rule copy fails", dup)
-	}
-
-	// The duplicate connection row was already committed by InsertDuplicateWithSecret before the
-	// failing copy step ran — it must not be MCP-exposed regardless.
-	all, err := h.repos.Connections.List()
-	if err != nil {
-		t.Fatalf("Conns.List: %v", err)
-	}
-	for _, c := range all {
-		if c.ID == created.ID {
-			continue
-		}
-		if c.McpEnabled {
-			t.Fatalf("duplicate connection %s committed with McpEnabled = true despite the failed mask rule copy, want false", c.ID)
-		}
-	}
-}
-
-// TestDuplicateEmitsListChangedEvenWhenMaskRuleCopyFails: the new duplicate row is already
-// committed (InsertDuplicateWithSecret) by the time copyMaskRules can fail — emitListChanged must
-// still run on this failure path, or the UI's own connection list never learns the new row exists
-// until some unrelated later refresh.
-func TestDuplicateEmitsListChangedEvenWhenMaskRuleCopyFails(t *testing.T) {
-	h := newHarness(t)
-	created := mustCreate(t, h.svc, fieldsInput("masked-list-changed"))
-
-	// Same deterministic failure as TestDuplicateLeavesMcpDisabledWhenMaskRuleCopyFails.
-	if _, err := h.repos.MaskRules.DB.Exec(`DROP TABLE connection_mask_rules`); err != nil {
-		t.Fatalf("drop connection_mask_rules: %v", err)
-	}
-
-	var (
-		fired    int
-		lastList []model.ConnectionSummary
-	)
-	unsubscribe := h.svc.OnListChanged(func(list []model.ConnectionSummary) {
-		fired++
-		lastList = list
-	})
-	defer unsubscribe()
-
-	dup, err := h.svc.Duplicate(created.ID)
-	if err == nil {
-		t.Fatalf("Duplicate = %+v, nil error, want an error once the mask rule copy fails", dup)
-	}
-	if fired == 0 {
-		t.Fatal("OnListChanged never fired despite the new duplicate row already being committed")
-	}
-
-	found := false
-	for _, c := range lastList {
-		if c.ID != created.ID && strings.HasSuffix(c.Name, " copy") {
-			found = true
-		}
-	}
-	if !found {
-		t.Fatalf("emitted list %+v does not carry the already-committed duplicate row", lastList)
-	}
-}
-
-func uriInput(name string, uri *string) connections.Input {
-	in := fieldsInput(name)
-	in.Mode, in.URI, in.Host, in.Port = "uri", uri, nil, nil
-	return in
-}
-
-func (h *harness) rawColumns(t *testing.T, id string) (uri, options string, password *string) {
-	t.Helper()
-	var pw sql.NullString
-	if err := h.repos.Connections.DB.QueryRow(`SELECT uri, options_json, password FROM connections WHERE id = ?`, id).
-		Scan(&uri, &options, &pw); err != nil {
-		t.Fatalf("raw select: %v", err)
-	}
-	if pw.Valid {
-		password = &pw.String
-	}
-	return uri, options, password
-}
-
-// TestListNeverCarriesTheURI pins P181's one invariant across every exit: whatever secrets a URI
-// holds (userinfo and all four query secrets), no summary, List result or list-changed event
-// carries it, the row stores only ciphertext, and Connect still hands the backend the exact URI.
-func TestListNeverCarriesTheURI(t *testing.T) {
-	h := newHarness(t)
-	const full = "postgresql://u:pw1@h:5432/db?password=pw2&sslpassword=pw3&tlsCertificateKeyFilePassword=pw4&proxyPassword=pw5&sslmode=require"
-	secretValues := []string{"pw1", "pw2", "pw3", "pw4", "pw5"}
-
-	var emitted [][]model.ConnectionSummary
-	unsubscribe := h.svc.OnListChanged(func(list []model.ConnectionSummary) { emitted = append(emitted, list) })
-	defer unsubscribe()
-
-	created := mustCreate(t, h.svc, uriInput("uri-conn", strPtr(full)))
-	updated, err := h.svc.Update(created.ID, uriInput("uri-conn-renamed", strPtr(full)))
-	if err != nil {
-		t.Fatalf("Update: %v", err)
-	}
-	dup, err := h.svc.Duplicate(created.ID)
-	if err != nil {
-		t.Fatalf("Duplicate: %v", err)
-	}
-	listed, err := h.svc.List()
-	if err != nil {
-		t.Fatalf("List: %v", err)
-	}
-
-	check := func(where string, c model.ConnectionSummary) {
-		t.Helper()
-		if c.URI != nil {
-			t.Errorf("%s: URI = %q, want nil", where, *c.URI)
-		}
-		for k := range c.Options {
-			if strings.EqualFold(k, "password") || strings.HasSuffix(strings.ToLower(k), "password") {
-				t.Errorf("%s: options carry %q", where, k)
-			}
-		}
-	}
-	check("Create", created)
-	check("Update", updated)
-	check("Duplicate", dup)
-	for _, c := range listed {
-		check("List", c)
-	}
-	if len(emitted) == 0 {
-		t.Fatal("no list-changed emission observed")
-	}
-	for _, list := range emitted {
-		for _, c := range list {
-			check("list-changed", c)
-		}
-	}
-
-	for _, id := range []string{created.ID, dup.ID} {
-		uri, options, password := h.rawColumns(t, id)
-		if !strings.HasPrefix(uri, "kira:v3:") {
-			t.Errorf("stored uri = %q, want a kira:v3: envelope", uri)
-		}
-		for _, v := range secretValues {
-			if strings.Contains(uri, v) || strings.Contains(options, v) {
-				t.Errorf("stored columns contain %q", v)
-			}
-		}
-		if password != nil {
-			t.Errorf("password column = %q, want NULL", *password)
-		}
-		if _, err := h.svc.Connect(id); err != nil {
-			t.Fatalf("Connect %s: %v", id, err)
-		}
-		if got := h.backend.lastConnectConfig().URI; got == nil || *got != full {
-			t.Errorf("backend-bound uri = %v, want the exact original", got)
-		}
-	}
-}
-
-// TestURIModeUpdateRules pins the three-state URI x three-state password x stored-mode interplay,
-// where a wrong cell silently loses a stored password.
-func TestURIModeUpdateRules(t *testing.T) {
-	fieldsRow := func(h *harness) string {
-		in := fieldsInput("row")
-		in.Password = strPtr("stored")
-		return mustCreate(t, h.svc, in).ID
-	}
-	uriRow := func(h *harness) string {
-		return mustCreate(t, h.svc, uriInput("row", strPtr("postgresql://u:orig@h/db"))).ID
-	}
-	tests := []struct {
-		name         string
-		setup        func(h *harness) string
-		uri          *string
-		password     *string
-		wantCode     string
-		wantURI      string
-		wantPassword *string
-	}{
-		{name: "nil URI keeps both columns", setup: uriRow, wantURI: "postgresql://u:orig@h/db"},
-		{name: "fields row flipped folds the stored password", setup: fieldsRow, uri: strPtr("postgresql://u@h/db"), wantURI: "postgresql://u:stored@h/db"},
-		{name: "explicit empty password does not fold", setup: fieldsRow, uri: strPtr("postgresql://u@h/db"), password: strPtr(""), wantURI: "postgresql://u@h/db"},
-		{name: "URI own password beats the stored one", setup: fieldsRow, uri: strPtr("postgresql://u:own@h/db"), wantURI: "postgresql://u:own@h/db"},
-		{name: "nil URI on a fields row is refused", setup: fieldsRow, wantCode: "E_BAD_REQUEST", wantPassword: strPtr("stored")},
-		{name: "nil URI with a password is refused", setup: uriRow, password: strPtr("x"), wantCode: "E_BAD_REQUEST", wantURI: "postgresql://u:orig@h/db"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			h := newHarness(t)
-			id := tt.setup(h)
-			in := uriInput("row", tt.uri)
-			in.Password = tt.password
-			in.Options = map[string]any{"sslmode": "require"}
-			_, err := h.svc.Update(id, in)
-			if tt.wantCode != "" {
-				if err == nil || asIpcErr(t, err).Code != tt.wantCode {
-					t.Fatalf("Update err = %v, want %s", err, tt.wantCode)
-				}
-			} else if err != nil {
-				t.Fatalf("Update: %v", err)
-			}
-			var opts string
-			if err := h.repos.Connections.DB.QueryRow(`SELECT options_json FROM connections WHERE id = ?`, id).Scan(&opts); err != nil {
-				t.Fatalf("options select: %v", err)
-			}
-			if opts != "{}" {
-				t.Errorf("options_json = %s, want {} in URI mode", opts)
-			}
-			gotURI, err := h.secrets.GetURI(id)
-			if err != nil {
-				t.Fatalf("GetURI: %v", err)
-			}
-			if tt.wantURI == "" && gotURI != nil || tt.wantURI != "" && (gotURI == nil || *gotURI != tt.wantURI) {
-				t.Errorf("URI = %v, want %q", gotURI, tt.wantURI)
-			}
-			gotPw, err := h.secrets.Get(id)
-			if err != nil {
-				t.Fatalf("Get: %v", err)
-			}
-			if (gotPw == nil) != (tt.wantPassword == nil) || gotPw != nil && *gotPw != *tt.wantPassword {
-				t.Errorf("password = %v, want %v", gotPw, tt.wantPassword)
-			}
-		})
-	}
-}
-
-// TestLegacyPlaintextURIFailsLoudly: a pre-P181 plaintext uri stays listed, fails every read with
-// the envelope error (no silent success, no data deleted), and a typed replacement fixes it.
-func TestLegacyPlaintextURIFailsLoudly(t *testing.T) {
-	h := newHarness(t)
-	created := mustCreate(t, h.svc, uriInput("legacy", strPtr("postgresql://u:p@h/db")))
-	if _, err := h.repos.Connections.DB.Exec(`UPDATE connections SET uri = ? WHERE id = ?`,
-		"postgresql://u@h/db", created.ID); err != nil {
-		t.Fatalf("raw plaintext uri: %v", err)
-	}
-
-	list, err := h.svc.List()
-	if err != nil || len(list) != 1 || list[0].URI != nil {
-		t.Fatalf("List = %+v, %v, want the row listed with no URI", list, err)
-	}
-	state, _ := h.svc.Connect(created.ID)
-	if state.Status != "error" || state.Error == nil || !strings.Contains(*state.Error, "envelope") {
-		t.Fatalf("Connect state = %+v, want an error naming the envelope", state)
-	}
-	if res := h.svc.Reveal(created.ID, false); res.Outcome != "error" || res.Error == nil {
-		t.Fatalf("Reveal = %+v, want the error outcome", res)
-	}
-
-	if _, err := h.svc.Update(created.ID, uriInput("legacy", strPtr("postgresql://u:new@h/db"))); err != nil {
-		t.Fatalf("Update: %v", err)
-	}
-	if state, err := h.svc.Connect(created.ID); err != nil || state.Status != "connected" {
-		t.Fatalf("Connect after fix = %+v, %v, want connected", state, err)
 	}
 }

@@ -17,6 +17,7 @@ async function importFromMenu(page: Parameters<typeof emitWailsEvent>[0]): Promi
 // password-not-saved source, and one row that matches an already-existing connection
 // (EXISTING below, by name+host+port+database).
 const EXISTING: ConnectionSummary = {
+  file: 'fixture.yaml',
   id: 'conn-existing',
   name: 'orders-db',
   kind: 'postgres',

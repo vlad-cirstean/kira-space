@@ -18,7 +18,7 @@ import {
   WIDE_TABLE_ROWS,
 } from './support/cellEditorCaptures';
 import { primaryChord } from './support/chord';
-import { connectionCreateArgs } from './support/connect';
+import { connectionCreateArgs, createConnection } from './support/connect';
 import { diffEditorText, editorText as sharedEditorText } from './support/editorText';
 import { gridCell, gridCellSelector, gridScroller } from './support/grid';
 import { IPC } from './support/ipcChannels';
@@ -247,20 +247,8 @@ async function fillConnectionDialog(
   page: import('@playwright/test').Page,
   opts: { name: string; color: string; readOnly?: boolean },
 ): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', opts.name);
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click(`[data-testid="color-${opts.color}"]`);
-  if (opts.readOnly) {
-    await page.click('[data-testid="connection-tab-advanced"]');
-    await page.click('[data-testid="connection-readonly"]');
-  }
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  // Colour and read-only live in the file: the canned Create response carries them.
+  await createConnection(page, 'postgres', opts.name);
 }
 
 /** Fills, saves, connects (via the tree's own root row) and expands down to `app` — the shared
@@ -313,13 +301,13 @@ const CONTROL_1: ControlSnapshot[] = [
   { channel: IPC.connectionsList, response: [] },
   {
     channel: IPC.connectionsCreate,
-    args: connectionCreateArgs('Cell Editor DB', 'green', { mcp: true }),
+    args: connectionCreateArgs('Cell Editor DB', 'green'),
     response: CONNECTION_SUMMARY,
   },
   ...connectAndExpandControl(CONNECTION_ID),
   {
     channel: IPC.connectionsCreate,
-    args: connectionCreateArgs('Cell Editor DB (RO)', 'red', { readOnly: true, mcp: true }),
+    args: connectionCreateArgs('Cell Editor DB (RO)', 'red'),
     response: RO_CONNECTION_SUMMARY,
   },
   ...connectAndExpandControl(RO_CONNECTION_ID),
@@ -827,7 +815,7 @@ const CONTROL_2: ControlSnapshot[] = [
   { channel: IPC.connectionsList, response: [] },
   {
     channel: IPC.connectionsCreate,
-    args: connectionCreateArgs('Format Actions DB', 'blue', { mcp: true }),
+    args: connectionCreateArgs('Format Actions DB', 'blue'),
     response: CONNECTION_SUMMARY_2,
   },
   ...connectAndExpandControl(CONNECTION_ID_2),
@@ -1154,7 +1142,7 @@ const CONTROL_3: ControlSnapshot[] = [
   { channel: IPC.connectionsList, response: [] },
   {
     channel: IPC.connectionsCreate,
-    args: connectionCreateArgs('Ownership DB', 'green', { mcp: true }),
+    args: connectionCreateArgs('Ownership DB', 'green'),
     response: CONNECTION_SUMMARY_3,
   },
   ...connectAndExpandControl(CONNECTION_ID_3),

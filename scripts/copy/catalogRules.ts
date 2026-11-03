@@ -27,6 +27,7 @@ export const PROPER_NOUNS: readonly string[] = [
   'Get Info',
   'Open with',
   'Change All',
+  'Bash',
   'Apache',
   'Claude Code',
   'Claude',

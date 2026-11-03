@@ -1,7 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
-import { connectionCreateArgs } from './support/connect';
+import { connectionCreateArgs, createConnection } from './support/connect';
 import { acceptConfirm } from './support/dialogs';
 import { IPC } from './support/ipcChannels';
 import {
@@ -91,7 +91,7 @@ const CONTROL: ControlSnapshot[] = [
   { channel: IPC.connectionsList, response: [] },
   {
     channel: IPC.connectionsCreate,
-    args: connectionCreateArgs('Tree DB', 'blue', { mcp: true }),
+    args: connectionCreateArgs('Tree DB', 'blue'),
     response: CONNECTION_SUMMARY,
   },
   ...connectAndExpandControl(CONNECTION_ID),
@@ -103,7 +103,7 @@ const CONTROL: ControlSnapshot[] = [
   connectionsDisconnectSnapshot(CONNECTION_ID),
   {
     channel: IPC.connectionsCreate,
-    args: connectionCreateArgs('Tree DB 2', 'cyan', { mcp: true }),
+    args: connectionCreateArgs('Tree DB 2', 'cyan'),
     response: CONNECTION_SUMMARY_2,
   },
   ...connectAndExpandControl(CONN2_ID),
@@ -179,16 +179,7 @@ test('project tree — expansion, caching, disconnect/reconnect, search, filters
 
   // --- setup: create the connection through the real dialog, then connect it through the real
   // UI (12c: window.kira.connectionsCreate no longer exists — see header comment). -------------
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Tree DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-blue"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Tree DB');
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();
@@ -303,6 +294,8 @@ test('project tree — expansion, caching, disconnect/reconnect, search, filters
     'disconnect',
     'refresh',
     'edit',
+    'open-file',
+    'reveal-file',
     'update-credentials',
     'duplicate',
     'move-up',
@@ -312,8 +305,6 @@ test('project tree — expansion, caching, disconnect/reconnect, search, filters
     'filters',
     'schema',
     'open-console',
-    'color',
-    'readonly',
     '--separator--',
     'delete',
   ]);
@@ -496,16 +487,7 @@ test('project tree — expansion, caching, disconnect/reconnect, search, filters
   await settleFrames(page);
 
   // --- two-connection handoff (D4): scrolling from one connection's section into the next ----
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Tree DB 2');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-cyan"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Tree DB 2');
 
   const conn2Row = connectionRow(page, 'Tree DB 2');
   // The first connection's own expanded subtree (schema:app's fourteen tables, four folders, and
@@ -867,7 +849,7 @@ test('a partitioned table expands to its partitions on demand and still opens it
     { channel: IPC.connectionsList, response: [] },
     {
       channel: IPC.connectionsCreate,
-      args: connectionCreateArgs('Tree DB', 'blue', { mcp: true }),
+      args: connectionCreateArgs('Tree DB', 'blue'),
       response: CONNECTION_SUMMARY,
     },
     ...fixture.control.map((snap) => {
@@ -892,15 +874,7 @@ test('a partitioned table expands to its partitions on demand and still opens it
   ];
   const { window: page } = await relaunch({ control, stream: fixture.port });
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Tree DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-blue"]');
-  await page.click('[data-testid="connection-save"]');
+  await createConnection(page, 'postgres', 'Tree DB');
   await openRowMenu(page, '');
   await page.click('[data-testid="menu-item-connect"]');
   await expandRow(page, '');

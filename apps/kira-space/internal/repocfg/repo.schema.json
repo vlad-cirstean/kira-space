@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path"],
+  "properties": {
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The repository this file configures: the absolute path of its root (a bare repository: its git directory)."
+    },
+    "nickname": {
+      "type": "string",
+      "description": "Label the ADE board shows instead of the repository name. Empty uses the name."
+    },
+    "integration_branches": {
+      "type": "array",
+      "maxItems": 10,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Branches tasks merge into, besides the main branch."
+    },
+    "environments": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "deployed_sha_script"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,31}$",
+            "description": "Environment name shown on the ADE board."
+          },
+          "deployed_sha_script": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "Shell script that prints the commit deployed there. It runs in the repository root on board refresh. Never interpolated."
+          }
+        }
+      },
+      "description": "Deploy targets the ADE board tracks."
+    },
+    "worktree": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "New task worktrees.",
+      "properties": {
+        "prepare_script": {
+          "type": "string",
+          "maxLength": 65536,
+          "description": "Shell script that runs in each new task worktree. Never interpolated. Empty runs nothing."
+        },
+        "prepare_timeout": {
+          "type": "string",
+          "description": "Time limit of the prepare script, a duration such as 15m, above 0 and at most 2h."
+        },
+        "base_path": {
+          "type": "string",
+          "description": "Absolute folder the worktree dialog suggests for new worktrees. Empty suggests none."
+        }
+      }
+    },
+    "graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The commit graph.",
+      "properties": {
+        "page_size": { "type": "integer", "description": "Commits loaded per page." },
+        "scope": {
+          "type": "string",
+          "description": "Which commits the graph shows: all refs, or only those reachable from HEAD."
+        }
+      }
+    },
+    "stash": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Stashes.",
+      "properties": {
+        "show_in_graph": { "type": "boolean", "description": "Show stashes as graph rows." },
+        "include_untracked": {
+          "type": "boolean",
+          "description": "The stash dialog starts with untracked files included."
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Branch review.",
+      "properties": {
+        "base_candidates": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Candidate base branches of a review, in order. Tried after the upstream and the detected default branch fail."
+        }
+      }
+    },
+    "pull": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Pull.",
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "description": "How a pull integrates remote commits. auto follows the repository's own Git config."
+        }
+      }
+    },
+    "git_host": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The Git host (pull requests, checks).",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "description": "auto detects the host from the origin remote, off makes no host call."
+        }
+      }
+    },
+    "checkout": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Checkout.",
+      "properties": {
+        "auto_stash": {
+          "type": "boolean",
+          "description": "A checkout blocked by local changes retries with auto-stash instead of opening the checkout dialog."
+        }
+      }
+    }
+  }
+}

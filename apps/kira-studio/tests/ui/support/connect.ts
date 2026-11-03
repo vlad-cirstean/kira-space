@@ -1,4 +1,6 @@
 import type { Page } from '@playwright/test';
+import type { ConnectionKind } from '@shared/domain/connection';
+import { DEFAULT_PORT } from '@shared/domain/connection';
 import { expect } from '../fixtures';
 import { APP_PATH, DB_PATH } from './postgresFixture';
 import { connectionRow, expandRow, openRowMenu } from './tree';
@@ -8,52 +10,63 @@ import { connectionRow, expandRow, openRowMenu } from './tree';
 // connectAndExpand stays local to cell-editor.spec.ts and leaks.spec.ts — see their own doc
 // comments). One copy here, imported everywhere.
 
-export interface ConnectionCreateArgsOptions {
-  readonly readOnly?: boolean;
-  readonly autoExplain?: boolean;
-  /** Adds the seven `mcp*` fields (`mcpEnabled`/`mcpDescription`/`mcpReadMode`/`mcpWriteMode`/
-   *  `mcpDdlMode`/`mcpAutoExplain`/`mcpReviewResults`), all at their own off/default value. */
-  readonly mcp?: boolean;
-}
-
-/** A `connections.create` args fixture for a Postgres connection — `name`/`color` are always the
- *  caller's own, every other field a fixed default unless `options` overrides it. */
-export function connectionCreateArgs(
+/** The `connections.create` args the new-connection dialog sends: the engine's defaults only, the
+ *  rest is edited in the file. `database` is set for file kinds only. */
+export function newConnectionArgs(
   name: string,
-  color: string,
-  options: ConnectionCreateArgsOptions = {},
+  kind: string,
+  database: string | null = null,
 ): Record<string, unknown> {
-  const { readOnly = false, autoExplain = false, mcp = false } = options;
   return {
     name,
-    kind: 'postgres',
-    color,
+    kind,
+    color: 'none',
     mode: 'fields',
-    readOnly,
-    host: '127.0.0.1',
-    port: 5432,
-    database: 'kira_test',
-    username: 'postgres',
+    readOnly: false,
+    host: database === null ? 'localhost' : null,
+    port: database === null ? (DEFAULT_PORT[kind as ConnectionKind] ?? null) : null,
+    database,
+    username: null,
     password: null,
     uri: null,
     options: {},
     preconnect: null,
     preconnectSidecar: false,
     preconnectDelaySec: 0,
-    autoExplain,
+    autoExplain: false,
     throttlePerSec: 0,
-    ...(mcp
-      ? {
-          mcpEnabled: false,
-          mcpDescription: '',
-          mcpReadMode: 'allow',
-          mcpWriteMode: 'prompt',
-          mcpDdlMode: 'deny',
-          mcpAutoExplain: true,
-          mcpReviewResults: 'inherit',
-        }
-      : {}),
+    mcpEnabled: false,
+    mcpDescription: '',
+    mcpReadMode: 'allow',
+    mcpWriteMode: 'prompt',
+    mcpDdlMode: 'deny',
+    mcpAutoExplain: true,
+    mcpReviewResults: 'inherit',
   };
+}
+
+/** A `connections.create` args fixture for a Postgres connection. The colour lives in the file now,
+ *  so the call carries none. */
+export function connectionCreateArgs(name: string, _color?: string): Record<string, unknown> {
+  return newConnectionArgs(name, 'postgres');
+}
+
+/** Creates a connection through the new-connection dialog and closes the file dialog that opens
+ *  next. The canned `Create` response decides the row; the file holds everything else. */
+export async function createConnection(
+  page: Page,
+  kind: string,
+  name: string,
+  database?: string,
+): Promise<void> {
+  await page.click('[data-testid="add-connection"]');
+  await page.click(`[data-testid="connection-kind-${kind}"]`);
+  await page.fill('[data-testid="new-connection-name"]', name);
+  if (database !== undefined) await page.fill('[data-testid="new-connection-database"]', database);
+  await page.click('[data-testid="new-connection-create"]');
+  await expect(page.locator('[data-testid="new-connection-dialog"]')).toHaveCount(0);
+  await page.click('[data-testid="connection-file-close"]');
+  await expect(page.locator('[data-testid="connection-file-dialog"]')).toHaveCount(0);
 }
 
 export interface ConnectAndExpandOptions {
@@ -67,23 +80,10 @@ export interface ConnectAndExpandOptions {
 export async function connectAndExpand(
   page: Page,
   name: string,
-  color: string,
-  options: ConnectAndExpandOptions = {},
+  _color: string,
+  _options: ConnectAndExpandOptions = {},
 ): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', name);
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click(`[data-testid="color-${color}"]`);
-  if (options.autoExplain) {
-    await page.click('[data-testid="connection-tab-advanced"]');
-    await page.click('[data-testid="connection-auto-explain"]');
-  }
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', name);
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();
@@ -99,16 +99,8 @@ export async function connectAndExpand(
 
 /** Fills the "add connection" dialog for a Redis connection and connects it — no tree expand (no
  *  schema/database hierarchy to descend into). */
-export async function connectRedis(page: Page, name: string, color: string): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-redis"]');
-  await page.fill('[data-testid="connection-name"]', name);
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '6379');
-  await page.fill('[data-testid="connection-database"]', '0');
-  await page.click(`[data-testid="color-${color}"]`);
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+export async function connectRedis(page: Page, name: string, _color: string): Promise<void> {
+  await createConnection(page, 'redis', name);
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();
@@ -130,19 +122,10 @@ export interface ConnectMongoOptions {
 export async function connectMongo(
   page: Page,
   name: string,
-  color: string,
+  _color: string,
   options: ConnectMongoOptions = {},
 ): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-mongodb"]');
-  await page.fill('[data-testid="connection-name"]', name);
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '27017');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'kira');
-  await page.click(`[data-testid="color-${color}"]`);
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'mongodb', name);
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();

@@ -19,15 +19,19 @@ var (
 
 // wrappers take the key as a parameter by design; their callers name the literal key.
 var wrappers = map[string]bool{
-	"internal/ipcerr/text.go":                        true,
-	"internal/llmprompts/check.go":                   true,
-	"internal/llmprompts/validate.go":                true,
-	"apps/kira-studio/internal/adapters/errors.go":   true,
-	"apps/kira-studio/internal/httpclient/errors.go": true,
-	"apps/kira-space/internal/mobileweb/respond.go":  true,
-	"apps/kira-space/internal/ade/stagesettings.go":  true,
-	"apps/kira-space/internal/adeflow/docs.go":       true,
-	"internal/agentcfg/rules.go":                     true,
+	"internal/ipcerr/text.go":                         true,
+	"internal/llmprompts/check.go":                    true,
+	"internal/llmprompts/validate.go":                 true,
+	"apps/kira-studio/internal/adapters/errors.go":    true,
+	"apps/kira-studio/internal/httpclient/errors.go":  true,
+	"apps/kira-space/internal/mobileweb/respond.go":   true,
+	"apps/kira-space/internal/ade/stagesettings.go":   true,
+	"apps/kira-space/internal/adeflow/docs.go":        true,
+	"internal/agentcfg/rules.go":                      true,
+	"internal/scripts/scripts.go":                     true,
+	"apps/kira-space/internal/repocfg/rules.go":       true,
+	"apps/kira-studio/internal/apifiles/rules.go":     true,
+	"apps/kira-studio/internal/connfiles/validate.go": true,
 }
 
 func repoRoot(t *testing.T) string {

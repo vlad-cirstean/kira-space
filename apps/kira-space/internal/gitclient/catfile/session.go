@@ -108,7 +108,7 @@ func (p *persistentProcess) fail() {
 // pattern logsession.readChunkLocked already relies on.
 //
 // stop is synchronous: it reports whether the watcher fired, and when it did, waits until Close
-// has finished. rpcstream cancels a request's ctx the instant the handler returns, so an async
+// has finished. A request ctx is cancelled the instant the handler returns, so an async
 // watcher could close a healthy process after a successful request and fail the next one.
 func watchCtx(ctx context.Context, proc gitclient.Process) (stop func() (fired bool)) {
 	closed := make(chan struct{})

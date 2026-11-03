@@ -1,6 +1,6 @@
 /**
  * Where the review layer (`reviewDecorations.ts`) reads and writes: one source per diff tab.
- * Committed sources talk to the git transport; the working source talks to the uncommitted-review
+ * Committed sources call `GitService` directly; the working source talks to the uncommitted-review
  * control methods. Both emit through `notifyReviewRepaint`, so every open surface reloads.
  */
 
@@ -12,7 +12,6 @@ import type {
   ReviewComment,
   ReviewCommentKind,
   ReviewCommentState,
-  Transport,
 } from '@kira/git-ipc';
 import { t } from '@theme/i18n';
 import { logError } from '@workbench/bridge/log';
@@ -20,7 +19,9 @@ import type { HostCommentTarget } from '../../ade/v2/review/useHostLineComment';
 import { invalidateReviewWorking } from '../../ade/v2/review/useReviewWorking';
 import type { ReviewWindowTarget } from '../../ade/v2/wire';
 import { control } from '../../bridge/control';
-import { gitTransportFor, notifyReviewRepaint, onReviewRepaint } from '../../repo/git/transport';
+import { gitCall } from '../../repo/git/gitCall';
+import { type GitRepoHold, holdGitRepo } from '../../repo/git/repoHolds';
+import { notifyReviewRepaint, onReviewRepaint } from '../../repo/git/reviewRepaint';
 
 interface ReviewDiffLoad {
   readonly hunks: readonly DiffHunk[];
@@ -49,7 +50,6 @@ export interface ReviewSource {
 }
 
 export interface CommittedReviewDeps {
-  readonly transport: Transport;
   readonly gitRepoId: string;
   readonly path: string;
   /** The tab's own left revision: merge base in `range` mode, the file's `reviewedAtSha` in
@@ -72,12 +72,17 @@ export interface CommittedReviewDeps {
 // stays distinct from the permanent `base: null` answer.
 const baseMemo = new Map<string, Promise<string | null>>();
 
-function resolveBase(transport: Transport, repoId: string, branch: string): Promise<string | null> {
+/** Runs `call` once the source's hold on the repo is open. */
+async function held<T>(hold: GitRepoHold, call: () => Promise<T>): Promise<T> {
+  await hold.ready;
+  return call();
+}
+
+function resolveBase(hold: GitRepoHold, repoId: string, branch: string): Promise<string | null> {
   const key = `${repoId}\0${branch}`;
   let cached = baseMemo.get(key);
   if (!cached) {
-    cached = transport
-      .request('review.resolveBase', { repoId, branch }, undefined)
+    cached = held(hold, () => gitCall('review.resolveBase', { repoId, branch }))
       .then((r) => r.base)
       .catch((err) => {
         baseMemo.delete(key);
@@ -103,30 +108,23 @@ function toLoad(
 }
 
 function idMutations(
-  transport: () => Transport,
+  hold: () => GitRepoHold,
   gitRepoId: string,
   branch: string,
 ): Pick<ReviewSource, 'editComment' | 'setCommentState' | 'removeComment'> {
   return {
     async editComment(id, body, kind) {
-      await transport().request('review.comment.edit', {
-        repoId: gitRepoId,
-        branch,
-        id,
-        body,
-        kind,
-      });
+      await held(hold(), () =>
+        gitCall('review.comment.edit', { repoId: gitRepoId, branch, id, body, kind }),
+      );
     },
     async setCommentState(id, state) {
-      await transport().request('review.comment.setState', {
-        repoId: gitRepoId,
-        branch,
-        id,
-        state,
-      });
+      await held(hold(), () =>
+        gitCall('review.comment.setState', { repoId: gitRepoId, branch, id, state }),
+      );
     },
     async removeComment(id) {
-      await transport().request('review.comment.remove', { repoId: gitRepoId, branch, id });
+      await held(hold(), () => gitCall('review.comment.remove', { repoId: gitRepoId, branch, id }));
     },
   };
 }
@@ -150,22 +148,25 @@ function subscribeRepaint(
 }
 
 export function committedReviewSource(deps: CommittedReviewDeps): ReviewSource {
-  const { transport, gitRepoId, path, review, hostComment } = deps;
+  const { gitRepoId, path, review, hostComment } = deps;
   const { branch } = review;
+  const hold = holdGitRepo(gitRepoId);
   const host: Pick<ReviewSource, 'hostComment' | 'postToChangeRequest'> = hostComment
     ? {
         hostComment,
         async postToChangeRequest(range, body) {
           const target = hostComment();
           if (!target) throw new Error(t('space.ade.review.actions.errorDisabled.body'));
-          const res = await transport.request('changeRequest.lineComment', {
-            repoId: gitRepoId,
-            number: target.number,
-            path,
-            range,
-            headSha: review.branchTip,
-            body,
-          });
+          const res = await held(hold, () =>
+            gitCall('changeRequest.lineComment', {
+              repoId: gitRepoId,
+              number: target.number,
+              path,
+              range,
+              headSha: review.branchTip,
+              body,
+            }),
+          );
           switch (res.kind) {
             case 'ok':
               return { number: target.number, short: target.short };
@@ -184,10 +185,12 @@ export function committedReviewSource(deps: CommittedReviewDeps): ReviewSource {
   return {
     branch,
     async loadDiff() {
-      const base = await resolveBase(transport, gitRepoId, branch);
+      const base = await resolveBase(hold, gitRepoId, branch);
       if (base === null) return null;
       const fetchDiff = (mode: 'sinceReview' | 'range'): Promise<ResultOf<'review.fileDiff'>> =>
-        transport.request('review.fileDiff', { repoId: gitRepoId, branch, base, path, mode });
+        held(hold, () =>
+          gitCall('review.fileDiff', { repoId: gitRepoId, branch, base, path, mode }),
+        );
       let result = await fetchDiff('sinceReview');
       if (result.reviewedAtSha !== null && result.reviewedAtSha !== deps.leftRev) {
         result = await fetchDiff('range');
@@ -195,42 +198,37 @@ export function committedReviewSource(deps: CommittedReviewDeps): ReviewSource {
       return toLoad(result.body, result.reviewedRanges, result.lineCount);
     },
     async loadComments() {
-      const { comments } = await transport.request('review.comment.list', {
-        repoId: gitRepoId,
-        branch,
-        at: review.branchTip,
-      });
+      const { comments } = await held(hold, () =>
+        gitCall('review.comment.list', { repoId: gitRepoId, branch, at: review.branchTip }),
+      );
       // The list spans every file of the branch and both origins; a stray one would paint as a
       // phantom glyph at the same line number here.
       return comments.filter((c) => c.path === path && c.origin !== 'working');
     },
     async mark(range, reviewed) {
-      await transport.request('review.mark', {
-        repoId: gitRepoId,
-        branch,
-        path,
-        reviewed,
-        ranges: [range],
-      });
+      await held(hold, () =>
+        gitCall('review.mark', { repoId: gitRepoId, branch, path, reviewed, ranges: [range] }),
+      );
     },
     async addComment(range, body, kind) {
-      await transport.request('review.comment.add', {
-        repoId: gitRepoId,
-        branch,
-        path,
-        at: review.branchTip,
-        range,
-        body,
-        kind,
-      });
+      await held(hold, () =>
+        gitCall('review.comment.add', {
+          repoId: gitRepoId,
+          branch,
+          path,
+          at: review.branchTip,
+          range,
+          body,
+          kind,
+        }),
+      );
     },
-    ...idMutations(() => transport, gitRepoId, branch),
+    ...idMutations(() => hold, gitRepoId, branch),
     ...host,
     subscribe: (onDiff, onComments) =>
       subscribeRepaint(gitRepoId, branch, path, 'commit', onDiff, onComments),
     dispose() {
-      // This source leases the transport; nothing else holds it to release.
-      transport.dispose();
+      hold.release();
     },
   };
 }
@@ -245,10 +243,10 @@ export function workingReviewSource(args: {
 }): ReviewSource {
   const { target, path, shownHash, onMarkRefused } = args;
   const { gitRepoId, branch, branchId } = target;
-  let transport: Transport | null = null;
-  const lease = (): Transport => {
-    transport ??= gitTransportFor(target.codeRepoId);
-    return transport;
+  let hold: GitRepoHold | null = null;
+  const lease = (): GitRepoHold => {
+    hold ??= holdGitRepo(gitRepoId);
+    return hold;
   };
   // On E_CONFLICT the diff query re-reads, which rewrites the editor's text, hunks and hash together.
   const isConflict = (err: unknown): boolean => (err as { code?: string }).code === 'E_CONFLICT';
@@ -317,8 +315,8 @@ export function workingReviewSource(args: {
     subscribe: (onDiff, onComments) =>
       subscribeRepaint(gitRepoId, branch, path, 'working', onDiff, onComments),
     dispose() {
-      transport?.dispose();
-      transport = null;
+      hold?.release();
+      hold = null;
     },
   };
 }

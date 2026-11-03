@@ -3,6 +3,7 @@ package gitrpc
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpath"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
@@ -101,6 +102,10 @@ func (r *Router) handleRepoSettingsSet(_ context.Context, _ *gitsession.Conn, pa
 			p.RepoID = gitpath.CleanNFC(p.RepoID)
 			snapshot, err := r.setRepoSettings(p.RepoID, p.Patch.toModel())
 			if err != nil {
+				var structured *ipcerr.Error
+				if errors.As(err, &structured) {
+					return RepoSettingsSnapshot{}, structured
+				}
 				return RepoSettingsSnapshot{}, ipcerr.BadRequest("gitrpc: repoSettings.set: " + err.Error())
 			}
 			return snapshot, nil
@@ -118,10 +123,8 @@ func (r *Router) setRepoSettings(repoID string, patch model.GitRepoSettingsPatch
 	return snapshot, nil
 }
 
-// SetRepoSettings is repoSettings.set's write-and-fan-out path for in-process callers (ADE), so
-// connected git-ui clients see the change. The only writer of the prepare script, never reachable
-// from the wire (P172): a stream client cannot choose what the ADE prepare script runs.
-func (r *Router) SetRepoSettings(repoID string, patch model.GitRepoSettingsPatch) error {
-	_, err := r.setRepoSettings(gitpath.CleanNFC(repoID), patch)
-	return err
+// EmitRepoSettingsChanged fans a settings change that did not come through repoSettings.set (a repo
+// file edited on disk) out to every connected client.
+func (r *Router) EmitRepoSettingsChanged(repoID string, s model.GitRepoSettings) {
+	r.repoSettingsChanged.Emit(RepoSettingsChangedPayload{RepoID: gitpath.CleanNFC(repoID), Settings: repoSettingsSnapshotFrom(s)})
 }

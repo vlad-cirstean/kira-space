@@ -1,6 +1,7 @@
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, PortSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
+import { connectionCreateArgs, createConnection } from './support/connect';
 import { editorText } from './support/editorText';
 import { gridCell } from './support/grid';
 import { IPC } from './support/ipcChannels';
@@ -58,63 +59,13 @@ const CONTROL: ControlSnapshot[] = [
   { channel: IPC.connectionsList, response: [] },
   {
     channel: IPC.connectionsCreate,
-    args: {
-      name: 'Fake Data DB',
-      kind: 'postgres',
-      color: 'green',
-      mode: 'fields',
-      readOnly: false,
-      host: '127.0.0.1',
-      port: 5432,
-      database: 'kira_test',
-      username: 'postgres',
-      password: null,
-      uri: null,
-      options: {},
-      preconnect: null,
-      preconnectSidecar: false,
-      preconnectDelaySec: 0,
-      autoExplain: false,
-      throttlePerSec: 0,
-      mcpEnabled: false,
-      mcpDescription: '',
-      mcpReadMode: 'allow',
-      mcpWriteMode: 'prompt',
-      mcpDdlMode: 'deny',
-      mcpAutoExplain: true,
-      mcpReviewResults: 'inherit',
-    },
+    args: connectionCreateArgs('Fake Data DB'),
     response: CONNECTION_SUMMARY,
   },
   ...FIXTURE.control,
   {
     channel: IPC.connectionsCreate,
-    args: {
-      name: 'Fake Data DB (RO)',
-      kind: 'postgres',
-      color: 'red',
-      mode: 'fields',
-      readOnly: true,
-      host: '127.0.0.1',
-      port: 5432,
-      database: 'kira_test',
-      username: 'postgres',
-      password: null,
-      uri: null,
-      options: {},
-      preconnect: null,
-      preconnectSidecar: false,
-      preconnectDelaySec: 0,
-      autoExplain: false,
-      throttlePerSec: 0,
-      mcpEnabled: false,
-      mcpDescription: '',
-      mcpReadMode: 'allow',
-      mcpWriteMode: 'prompt',
-      mcpDdlMode: 'deny',
-      mcpAutoExplain: true,
-      mcpReviewResults: 'inherit',
-    },
+    args: connectionCreateArgs('Fake Data DB (RO)'),
     response: RO_CONNECTION_SUMMARY,
   },
   ...RO_FIXTURE.control,
@@ -199,16 +150,7 @@ const PORT: PortSnapshot[] = [
 test('fake data generator — gate, defaults, preview, generate, failure', async ({ relaunch }) => {
   const { window: page, stream } = await relaunch({ control: CONTROL, stream: PORT });
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Fake Data DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-green"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Fake Data DB');
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();
@@ -310,18 +252,7 @@ test('fake data generator — gate, defaults, preview, generate, failure', async
   await expect(firstConnRow).toHaveCount(1);
   await firstConnRow.locator('[data-testid="tree-twisty"]').click();
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Fake Data DB (RO)');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-red"]');
-  await page.click('[data-testid="connection-tab-advanced"]');
-  await page.click('[data-testid="connection-readonly"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Fake Data DB (RO)');
 
   const roConnRow = connectionRow(page, 'Fake Data DB (RO)');
   await expect(roConnRow).toBeVisible();

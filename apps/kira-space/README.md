@@ -252,7 +252,7 @@ apps/kira-space/tests/e2e-real  Playwright against a real server build (only wha
 apps/kira-space/tests/contract  JSON fixtures shared by the Go flow tests and the UI specs
 apps/kira-space/tests/claude    opt-in tests against the real `claude` CLI (own Go module)
 apps/kira-space/tests/visual    pixel-diff baselines
-internal             repo-root Go shared by both apps: `shell`, `appevent`, `rpcstream`, `ipcerr`, `startupfail`, `appstorage`, `memory`, `harness`, and more
+internal             repo-root Go shared by both apps: `shell`, `appevent`, `ipcerr`, `startupfail`, `appstorage`, `memory`, `harness`, and more
 packages/workbench   the shared workbench shell (TitleBar/StatusBar/MainView/TabStrip), Pinia store factories, the Monaco editor bootstrap, both apps' test harnesses
 packages/git-ipc     the git contract, RPC/codec/validation, the stream channel, the FlatBuffers schema
 packages/git-core    client-side git logic: commit store, lane layout, the client half of search, settings schema

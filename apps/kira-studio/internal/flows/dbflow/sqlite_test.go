@@ -11,9 +11,11 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connections"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -37,12 +39,12 @@ func (j *journey) run() {
 		t.Fatalf("created %+v", conn)
 	}
 
-	res := app.W.Connections.Test(bridge.ConnectionsTestArgs{Input: j.input})
+	res := app.W.Connections.Test(bridge.ConnectionsIDArgs{ID: conn.ID})
 	if !res.OK || res.ServerVersion == nil {
 		t.Fatalf("Test = %+v, want ok with a server version", res)
 	}
 	if j.bad != nil {
-		if r := app.W.Connections.Test(bridge.ConnectionsTestArgs{Input: *j.bad}); r.OK || r.Error == nil {
+		if r := app.W.Connections.Test(bridge.ConnectionsIDArgs{ID: createConn(t, app, *j.bad).ID}); r.OK || r.Error == nil {
 			t.Fatalf("Test of an unreachable target = %+v, want a failure", r)
 		}
 	}
@@ -285,12 +287,19 @@ func (j *journey) manage(conn model.ConnectionSummary) {
 	if err != nil || dup.ID == conn.ID {
 		t.Fatalf("Duplicate = %+v (%v)", dup, err)
 	}
-	upd := j.input
-	upd.Name = j.input.Name + " renamed"
-	upd.Color = "green"
-	updated, err := app.W.Connections.Update(bridge.ConnectionsUpdateArgs{ID: conn.ID, Input: upd})
-	if err != nil || updated.Name != upd.Name || updated.Color != "green" {
-		t.Fatalf("Update = %+v (%v)", updated, err)
+	renamed := j.input.Name + " renamed"
+	if err := app.W.ConnectionFiles.Patch(conn.ID,
+		configfs.NodeSet{Path: []string{"name"}, Value: renamed},
+		configfs.NodeSet{Path: []string{"color"}, Value: "green"},
+	); err != nil {
+		t.Fatalf("Patch: %v", err)
+	}
+	updated, err := app.W.Connections.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if i := slices.IndexFunc(updated, func(c model.ConnectionSummary) bool { return c.ID == conn.ID }); i < 0 || updated[i].Name != renamed || updated[i].Color != "green" {
+		t.Fatalf("List after the file edit = %+v, want the renamed green connection", updated)
 	}
 	if err := app.W.Connections.Delete(bridge.ConnectionsIDArgs{ID: dup.ID}); err != nil {
 		t.Fatalf("Remove: %v", err)
@@ -390,10 +399,8 @@ func TestSecretsStatusAndReveal(t *testing.T) {
 
 	update := func(password *string) {
 		t.Helper()
-		next := in
-		next.Name, next.Password = "pg renamed", password
-		if _, err := app.W.Connections.Update(bridge.ConnectionsUpdateArgs{ID: conn.ID, Input: next}); err != nil {
-			t.Fatalf("Update: %v", err)
+		if err := app.W.Connections.UpdateCredentials(bridge.ConnectionsCredentialsArgs{ID: conn.ID, Password: password}); err != nil {
+			t.Fatalf("UpdateCredentials: %v", err)
 		}
 	}
 	update(nil)
@@ -402,8 +409,10 @@ func TestSecretsStatusAndReveal(t *testing.T) {
 	wantPassword("a value replaces it", "rotated")
 	app.Restart(t)
 	wantPassword("after a relaunch", "rotated")
-	update(ptr(""))
-	wantPassword("empty clears it", "")
+	if err := app.W.ConnectionFiles.DeleteSecret(connfiles.KindPassword, "pg.password"); err != nil {
+		t.Fatal(err)
+	}
+	wantPassword("a removed secret reveals nothing", "")
 }
 
 func TestSchemaDDLSetGet(t *testing.T) {

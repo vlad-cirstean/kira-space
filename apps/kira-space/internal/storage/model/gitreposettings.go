@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/kirathecat/kira-studio/internal/appsettings"
@@ -98,21 +99,25 @@ func ParsePrepareTimeout(v string) (time.Duration, error) {
 	return d, nil
 }
 
-// ValidGraphScope mirrors schema.ts's kiraSpace.graph.scope enum.
-func ValidGraphScope(v string) bool { return v == "all" || v == "head" }
+// GraphScopes mirrors schema.ts's kiraSpace.graph.scope enum.
+var GraphScopes = []string{"all", "head"}
 
-// ValidPullStrategy mirrors schema.ts's kiraSpace.pull.strategy enum.
-func ValidPullStrategy(v string) bool {
-	switch v {
-	case "auto", "ff-only", "merge", "rebase":
-		return true
-	default:
-		return false
-	}
-}
+// PullStrategies mirrors schema.ts's kiraSpace.pull.strategy enum.
+var PullStrategies = []string{"auto", "ff-only", "merge", "rebase"}
 
-// validGraphPageSize mirrors schema.ts's kiraSpace.graph.pageSize bounds (100-50000).
-var validGraphPageSize = appsettings.InRange(100, 50000)
+// GraphPageSizeMin and GraphPageSizeMax mirror schema.ts's kiraSpace.graph.pageSize bounds.
+const (
+	GraphPageSizeMin = 100
+	GraphPageSizeMax = 50000
+)
+
+// ValidGraphScope reports whether v is in GraphScopes.
+func ValidGraphScope(v string) bool { return slices.Contains(GraphScopes, v) }
+
+// ValidPullStrategy reports whether v is in PullStrategies.
+func ValidPullStrategy(v string) bool { return slices.Contains(PullStrategies, v) }
+
+var validGraphPageSize = appsettings.InRange(GraphPageSizeMin, GraphPageSizeMax)
 
 // Validate checks every leaf the caller actually patched against schema.ts's own bounds, naming
 // the offending leaf in the error — the same discipline SettingsPatch.Validate follows.

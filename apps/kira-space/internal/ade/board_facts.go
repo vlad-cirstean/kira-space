@@ -410,7 +410,7 @@ func (b *TaskBoard) loadFacts(sc *boardCtx, branches []model.AdeTaskBranch) erro
 	}
 	for _, c := range configs {
 		if c.CodeRepoID == sc.repoID {
-			sc.targets, sc.envs = c.IntegrationBranches, c.Environments
+			sc.targets, sc.envs = withoutMain(c.IntegrationBranches, sc.mainName), c.Environments
 		}
 	}
 	if b.deps.Facts == nil {

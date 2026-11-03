@@ -3,7 +3,12 @@ import { defaultSettings } from '../../frontend/src/state/settingsDomain';
 import type { ControlSnapshot, PortSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
 import { modeTab, openHttpModeAndNewRequest } from './support/apiMode';
-import { connectAndExpand, connectionCreateArgs, openConsoleFromMenu } from './support/connect';
+import {
+  connectAndExpand,
+  connectionCreateArgs,
+  createConnection,
+  openConsoleFromMenu,
+} from './support/connect';
 import { executeSnap, numberPage } from './support/consolePages';
 import { typeInto } from './support/editor';
 import { IPC } from './support/ipcChannels';
@@ -57,16 +62,7 @@ const CONTROL: ControlSnapshot[] = [
 ];
 
 async function connectAndOpenGrid(page: Page): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Sizing DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-blue"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Sizing DB');
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();
@@ -461,75 +457,6 @@ test('the row-density ToggleGroup keeps a connected outline with 4px outer corne
   expect(comfortableRadii.tr).toBe('4px');
 
   expect(await comfortable.evaluate((el) => getComputedStyle(el).borderLeftWidth)).toBe('0px');
-});
-
-// The mode Fields/URI toggle and the MCP read/write/DDL toggles moved to
-// `size="kira-lg"` -- dialog density, matching this dialog's own 26px inputs and kira-lg buttons.
-// Font size is 12px, not the original 11px: toggleVariants' base class moved onto the
-// control-text role (text-kira-md).
-test('connection dialog toggles render at dialog density, 26px/12px (P121 S5, S6)', async ({
-  relaunch,
-}) => {
-  const { window: page } = await relaunch({
-    control: [{ channel: IPC.connectionsList, response: [] }],
-  });
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-
-  const modeItem = page.locator('[data-testid="mode-fields"]');
-  const modeStyle = await modeItem.evaluate((el) => ({
-    height: el.getBoundingClientRect().height,
-    fontSize: getComputedStyle(el).fontSize,
-  }));
-  expect(modeStyle.height).toBeCloseTo(26, 0);
-  expect(modeStyle.fontSize).toBe('12px');
-
-  await page.click('[data-testid="connection-tab-mcp"]');
-  await page.click('[data-testid="connection-mcp-enabled"]');
-  const readItem = page.locator('[data-testid="connection-mcp-read-allow"]');
-  const readStyle = await readItem.evaluate((el) => ({
-    height: el.getBoundingClientRect().height,
-    fontSize: getComputedStyle(el).fontSize,
-  }));
-  expect(readStyle.height).toBeCloseTo(26, 0);
-  expect(readStyle.fontSize).toBe('12px');
-});
-
-// P121 §6.2: the connection detail tabs (T5), now shadcn `Tabs` -- gained a hover state, the
-// tab-strip's own 2px chip gap (was 4px), and arrow-key roving focus (was a hand-rolled
-// `role="tab"` with none).
-test('connection detail tabs: hover, 2px gap, and arrow-key roving focus (P121 T5)', async ({
-  relaunch,
-}) => {
-  const { window: page } = await relaunch({
-    control: [{ channel: IPC.connectionsList, response: [] }],
-  });
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-
-  const general = page.locator('[data-testid="connection-tab-general"]');
-  const advanced = page.locator('[data-testid="connection-tab-advanced"]');
-
-  const before = await advanced.evaluate((el) => getComputedStyle(el).backgroundColor);
-  await advanced.hover();
-  await expect
-    .poll(() => advanced.evaluate((el) => getComputedStyle(el).backgroundColor))
-    .not.toBe(before);
-  await page.mouse.move(0, 0); // clears the hover before the gap/geometry read below
-
-  const [generalBox, advancedBox] = await Promise.all([
-    general.boundingBox(),
-    advanced.boundingBox(),
-  ]);
-  if (!generalBox || !advancedBox) throw new Error('expected both tabs to be measurable');
-  expect(advancedBox.x - (generalBox.x + generalBox.width)).toBeCloseTo(2, 0);
-
-  // SecondaryTabs is a ToggleGroup: arrows rove focus, Enter/Space selects.
-  await general.focus();
-  await page.keyboard.press('ArrowRight');
-  await expect(advanced).toBeFocused();
-  await page.keyboard.press('Enter');
-  await expect(advanced).toHaveAttribute('data-state', 'on');
 });
 
 // The console's own result chips ("Result 1", "Result 2") were the one tab-chip copy

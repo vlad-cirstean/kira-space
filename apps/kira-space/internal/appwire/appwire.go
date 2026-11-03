@@ -5,6 +5,7 @@
 package appwire
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -31,13 +32,13 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/azure"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/github"
 	githostproviders "github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/providers"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitrpc"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker/jira"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/lannet"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mobileterm"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mobileweb"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/openedfiles"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
@@ -57,6 +58,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/metrics"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
+	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/terminal"
@@ -165,6 +167,8 @@ type Wired struct {
 	Metrics       *metrics.Ticker
 	UpdateInstall *appupdate.Installer
 
+	GitWindows      *bridge.GitWindows
+	GitSvc          *bridge.GitService
 	GitCredential   *bridge.GitCredentialService
 	GitHost         *bridge.GitHostService
 	HostView        *bridge.HostViewService
@@ -179,6 +183,7 @@ type Wired struct {
 	ScriptRuns      *bridge.ScriptRunsService
 	runs            *scriptruns.Service
 	sched           *scriptruns.Scheduler
+	runLoader       *scripts.Loader
 	Terminal        *bridge.TerminalService
 	AdeTask         *bridge.AdeTaskService
 	Ops             *bridge.OpsService
@@ -207,6 +212,9 @@ type Wired struct {
 	AgentContext     *agentctx.Store
 	AgentContextSvc  *bridge.AgentContextService
 	AgentSettingsSvc *bridge.AgentSettingsService
+	// RepoConfig holds the repo settings files; RepoConfigSvc is its editor surface.
+	RepoConfig    *repocfg.Store
+	RepoConfigSvc *bridge.RepoConfigService
 	// AgentPort imports and exports a provider's native user-level agent config.
 	AgentPort    *agentport.Service
 	AgentPortSvc *bridge.AgentPortService
@@ -250,7 +258,8 @@ func Build(opts Options) *Wired {
 	if hosts == nil {
 		hosts = githostproviders.New(github.Options{}, azure.New(azure.Options{}))
 	}
-	git := wireGit(repositories, opts.Locator, hosts, opts.ChangeRequestSync)
+	w.RepoConfig = wireRepoConfig(repositories, hosts)
+	git := wireGit(repositories, opts.Locator, hosts, opts.ChangeRequestSync, w.RepoConfig)
 	git.trackers = wireTrackers(git.opLog, opts.IssueTracker)
 	w.Git, w.CredentialRelay = git, credentialRelay
 
@@ -298,6 +307,8 @@ func Build(opts Options) *Wired {
 		Registry: handlersRegistry, Previous: repositories.FileHandlerPrevious,
 	}}
 	w.GitCredential = &bridge.GitCredentialService{Deps: deps, Relay: credentialRelay}
+	w.GitWindows = bridge.NewGitWindows(git.router, credentialRelay, emitter)
+	w.GitSvc = bridge.NewGitService(w.GitWindows)
 	w.detachGitCred = bridge.AttachGitCredentialPush(w.GitCredential)
 	w.GitHost = &bridge.GitHostService{Deps: deps, Browser: opts.Browser}
 	w.HostView = &bridge.HostViewService{Deps: deps, Windows: repositories.Windows, Targets: &bridge.HostViewTargets{}, Trackers: git.trackers}
@@ -335,6 +346,7 @@ func Build(opts Options) *Wired {
 	w.stopAgentContext = stopContextWatch
 	w.AgentContextSvc = &bridge.AgentContextService{Service: &agentctx.Service{Store: w.AgentContext}}
 	w.AgentSettingsSvc = &bridge.AgentSettingsService{Service: &agentcfg.Service{Store: w.AgentSettings}}
+	w.RepoConfigSvc = &bridge.RepoConfigService{Service: &repocfg.Service{Store: w.RepoConfig, CodeRepos: codeRepoIDs(repositories)}}
 	w.AgentPort = agentport.New(agentport.Options{Settings: w.AgentSettings, Context: w.AgentContext, Secrets: w.AgentSecrets, Providers: registry})
 	w.AgentPortSvc = &bridge.AgentPortService{Svc: w.AgentPort}
 	adeTracker, agentHooks := wireTracker(repositories, terminalRegistry, emitter, events, opts.TrackerGrace, w.AgentNotify, w.AgentUsage, w.Agents, w.AgentContext.ContextFile)
@@ -406,9 +418,20 @@ func Build(opts Options) *Wired {
 				return w.AdeTask.CloseWindow(key)
 			}
 			return w.Windows.Close(key)
-		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, runs, w.Agents, w.Prompts)
+		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, runs, w.Agents, w.Prompts, w.RepoConfig)
 	runs.ADE = w.AdeBoard
+	w.watchRepoConfig(events)
 	w.sched = &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
+	loader, err := scripts.NewLoader(scripts.LoaderOptions{
+		Repo: repositories.CustomScripts, Dir: filepath.Join(deps.Home, "runs"), Home: deps.Home, App: "Space", SpaceKeys: true,
+		Emit:     func(snapshot scripts.Snapshot) { emitter.Emit(bridge.ChannelCustomScriptsChanged, snapshot) },
+		OnChange: w.sched.Reload,
+	})
+	if err != nil {
+		panic(fmt.Sprintf("appwire: runs loader (static schema): %v", err))
+	}
+	w.runLoader = loader
+	loader.Start()
 	w.sched.Start()
 	w.IssueTracker = &bridge.IssueTrackerService{Engine: w.AdeBoard, Hosts: git.registry.Hosts.Registry, Providers: git.trackers}
 	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry}
@@ -423,7 +446,7 @@ func Build(opts Options) *Wired {
 	}
 	bridge.KeepAwakeRecompute(w.KeepAwake)
 
-	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"workflows": adeflow.Dir(config.KiraSpaceHome()), agentctx.Folder: filepath.Join(deps.Home, "agent")})}
+	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"workflows": adeflow.Dir(config.KiraSpaceHome()), agentctx.Folder: filepath.Join(deps.Home, "agent"), "runs": filepath.Join(deps.Home, "runs"), repocfg.Folder: w.RepoConfig.Dir()})}
 
 	// OpenNewWindow is assigned by BindShell once the shell exists.
 	w.WindowsSvc = &bridge.WindowsService{Service: &windowsvc.Service{Windows: deps.Repos.Windows}}
@@ -461,7 +484,7 @@ func Build(opts Options) *Wired {
 	w.Quitter = shell.NewQuitter(events, w.beforeFlushOnce, w.teardownOnce, 2*time.Second, w.Windows.Keys)
 
 	w.Files = &bridge.FilesService{Dialogs: opts.Dialogs}
-	w.CustomScripts = &bridge.CustomScriptsService{Deps: deps, Changed: w.sched.Reload}
+	w.CustomScripts = &bridge.CustomScriptsService{Svc: &scripts.Service{Loader: loader}}
 	w.Ops = &bridge.OpsService{Log: git.opLog}
 	live := liveWork(repositories, terminalRegistry, runs)
 	w.Quitter.SetGate(prompts.QuitGate{R: w.Prompts, LiveFn: func() int { return live().Total() }})
@@ -533,7 +556,7 @@ func (w *Wired) reopenWindow() {
 // StartMobile starts the phone server when settings enable it; call after the shell is up.
 func (w *Wired) StartMobile() { bridge.StartMobileIfEnabled(w.Mobile) }
 
-// Bound returns the 34 bound services in registration order.
+// Bound returns the 37 bound services in registration order.
 func (w *Wired) Bound() []application.Service {
 	return []application.Service{
 		application.NewService(w.GitCredential),
@@ -545,12 +568,9 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.MemoryImport), application.NewService(w.MemoryDistill), application.NewService(w.WindowsSvc), application.NewService(w.Update),
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),
 		application.NewService(w.PromptsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc),
-		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc),
+		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc), application.NewService(w.RepoConfigSvc), application.NewService(w.GitSvc),
 	}
 }
-
-// GitRouter is the router the git stream serves.
-func (w *Wired) GitRouter() *gitrpc.Router { return w.Git.router }
 
 // BeforeFlush stops the metrics ticker and detaches window listeners; idempotent.
 func (w *Wired) BeforeFlush() { w.beforeFlushOnce() }
@@ -563,6 +583,7 @@ func (w *Wired) teardown(db io.Closer) {
 	// swaps a bundle the user quit away from. After hand-off this is a no-op.
 	w.UpdateInstall.Cancel()
 	w.stopAgentContext()
+	w.RepoConfig.Close()
 	w.OpenedFiles.Close()
 	w.detachMetrics()
 	w.detachOpLog()
@@ -574,6 +595,7 @@ func (w *Wired) teardown(db io.Closer) {
 	// whatever last-active time is still only in memory and stops the hooks listener.
 	terminal.ShutdownBound(w.Terminal.BoundService)
 	w.sched.Close()
+	w.runLoader.Close()
 	w.runs.Close()
 	shutdownTracker(w.Tracker, w.AgentHooks)
 	w.AdeBoard.Close()
@@ -688,5 +710,21 @@ func (w *Wired) closeAgentSettings() {
 	}
 	if w.AgentSecrets != nil {
 		_ = w.AgentSecrets.Close()
+	}
+}
+
+// codeRepoIDs maps each registered repo's repo id to its code repo id.
+func codeRepoIDs(repositories *repos.Repos) func() map[string]string {
+	return func() map[string]string {
+		out := map[string]string{}
+		recs, err := repositories.CodeRepos.List()
+		if err != nil {
+			slog.Warn("repo config: list code repos", "scope", "config", "err", err)
+			return out
+		}
+		for _, r := range recs {
+			out[repocfg.Key(r.RepoID)] = r.ID
+		}
+		return out
 	}
 }

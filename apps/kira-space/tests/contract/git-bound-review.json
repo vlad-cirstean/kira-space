@@ -1,0 +1,165 @@
+{
+  "git:branch.changeRequestIndex#bound": {
+    "branches": [
+      {
+        "changeRequest": {
+          "baseRef": "main",
+          "headRef": "feat",
+          "headSha": "<masked>",
+          "number": 7,
+          "state": "open",
+          "title": "Fix login",
+          "updatedAt": 0,
+          "url": "https://forge.test/acme/r/-/merge_requests/7"
+        },
+        "name": "feat"
+      }
+    ],
+    "complete": true,
+    "syncedAt": 0
+  },
+  "git:changeRequest.reviewState#bound": {
+    "author": "alice",
+    "headSha": "<masked>",
+    "host": {
+      "changeRequest": "Merge request",
+      "changeRequestNoun": "merge request",
+      "changeRequestShort": "MR",
+      "cli": "Forge CLI",
+      "id": "<masked>",
+      "label": "Forge"
+    },
+    "kind": "ok",
+    "localHeadSha": "<masked>",
+    "number": 7,
+    "own": false,
+    "state": "open",
+    "title": "Fix login",
+    "viewer": "forger"
+  },
+  "git:gitHost.info#bound": {
+    "host": {
+      "changeRequest": "Merge request",
+      "changeRequestNoun": "merge request",
+      "changeRequestShort": "MR",
+      "cli": "Forge CLI",
+      "id": "forge",
+      "label": "Forge"
+    }
+  },
+  "git:gitHost.providers#bound": {
+    "providers": [
+      {
+        "changeRequest": "Pull request",
+        "changeRequestNoun": "pull request",
+        "changeRequestShort": "PR",
+        "cli": "GitHub CLI (gh)",
+        "id": "github",
+        "label": "GitHub"
+      },
+      {
+        "changeRequest": "Pull request",
+        "changeRequestNoun": "pull request",
+        "changeRequestShort": "PR",
+        "cli": "Azure CLI (az)",
+        "id": "azure",
+        "label": "Azure Repos"
+      },
+      {
+        "changeRequest": "Merge request",
+        "changeRequestNoun": "merge request",
+        "changeRequestShort": "MR",
+        "cli": "Forge CLI",
+        "id": "forge",
+        "label": "Forge"
+      }
+    ]
+  },
+  "git:review.comment.list#bound": {
+    "at": "<masked>",
+    "comments": [
+      {
+        "anchor": "exact",
+        "anchorSha": "<masked>",
+        "body": "tighten more",
+        "createdAt": 0,
+        "id": 0,
+        "kind": "change",
+        "origin": "commit",
+        "path": "a.txt",
+        "range": {
+          "end": 4,
+          "start": 4
+        },
+        "repliedAt": null,
+        "reply": "",
+        "sentAt": null,
+        "state": "addressed"
+      }
+    ]
+  },
+  "git:review.fileDiff#bound": {
+    "body": {
+      "hunks": [
+        {
+          "heading": "",
+          "lines": [
+            {
+              "kind": "context",
+              "newLine": 1,
+              "noNewlineAtEof": false,
+              "oldLine": 1,
+              "text": "one"
+            },
+            {
+              "kind": "context",
+              "newLine": 2,
+              "noNewlineAtEof": false,
+              "oldLine": 2,
+              "text": "two"
+            },
+            {
+              "kind": "context",
+              "newLine": 3,
+              "noNewlineAtEof": false,
+              "oldLine": 3,
+              "text": "three"
+            },
+            {
+              "kind": "add",
+              "newLine": 4,
+              "noNewlineAtEof": false,
+              "text": "four"
+            }
+          ],
+          "newLines": 4,
+          "newStart": 1,
+          "oldLines": 3,
+          "oldStart": 1
+        }
+      ],
+      "kind": "text"
+    },
+    "deltaSource": "noSnapshot",
+    "lineCount": 4,
+    "path": "a.txt",
+    "reviewedAtSha": null,
+    "reviewedRanges": []
+  },
+  "git:review.files#bound": {
+    "branchTip": "942ef3d4022c4d12417fc5db1f449a4da30e87d8",
+    "files": [
+      {
+        "change": {
+          "kind": "modified",
+          "path": "a.txt"
+        },
+        "review": {
+          "changedSinceReview": false,
+          "kind": "none"
+        }
+      }
+    ],
+    "mergeBase": "4787f8e5de84cf5cc8e496818e1a90a0a4ea94fb"
+  }
+}

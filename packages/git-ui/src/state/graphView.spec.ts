@@ -79,7 +79,7 @@ interface StreamOpen {
 /**
  * The scriptable `Transport`: `graph.stream` opens stay pending — recorded onto
  * `streamOpens` — until the test pushes a chunk and/or ends the stream, or the caller's own
- * `AbortSignal` fires (mirroring `createRpcClient`'s stream(): abort *resolves*, never rejects).
+ * `AbortSignal` fires (abort *resolves*, never rejects, like the graph plane's stream()).
  * `graph.loadMore` calls hand back a controller the test resolves on its own schedule, so a
  * repo switch can land while one is genuinely still in flight.
  * `graph.status` always answers "exhausted", which is all `#runLoad`'s post-resync call reads.

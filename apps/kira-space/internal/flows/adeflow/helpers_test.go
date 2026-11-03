@@ -12,6 +12,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg/repocfgtest"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -205,9 +207,17 @@ func fakeFile(t *testing.T, app *flowharness.App, name string) string {
 	return string(raw)
 }
 
+// setRepoFile edits the repo file of a code repo, creating it when absent.
+func setRepoFile(t *testing.T, app *flowharness.App, codeRepoID string, edit func(*repocfg.File)) {
+	t.Helper()
+	rec, err := app.W.Repos.CodeRepos.Get(codeRepoID)
+	if err != nil || rec == nil {
+		t.Fatalf("code repo %s: %v", codeRepoID, err)
+	}
+	repocfgtest.Set(t, app.W.RepoConfig, rec.RepoID, edit)
+}
+
 func setPrepare(t *testing.T, app *flowharness.App, repoID, script string) {
 	t.Helper()
-	if _, err := app.W.AdeTask.UpdateRepo(ctx, adewire.UpdateRepoArgs{CodeRepoID: repoID, Patch: adewire.RepoPatch{PrepareScript: &script}}); err != nil {
-		t.Fatalf("UpdateRepo prepare script: %v", err)
-	}
+	setRepoFile(t, app, repoID, func(f *repocfg.File) { f.Worktree = &repocfg.Worktree{PrepareScript: &script} })
 }

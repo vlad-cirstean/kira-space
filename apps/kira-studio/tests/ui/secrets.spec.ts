@@ -1,179 +1,129 @@
 import type { ConnectionSummary } from '@shared/domain/connection';
-import type { SecretStorageStatus } from '@shared/domain/secrets';
+import type { ConnectionConfigView, ConnectionFileDetail } from '@shared/domain/connectionConfig';
 import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
 import { IPC } from './support/ipcChannels';
+import { connectionRow } from './support/tree';
 
-// Ported from tests/e2e/secrets.spec.ts — but only a small slice of it. Scenarios 2-4 there (7 of
-// the file's 9 substantive checks) read the app's own on-disk kira.sqlite directly and assert real
-// encrypt-at-rest, plaintext-upgrade-on-relaunch and idempotent-re-encryption behavior across 2-3
-// real relaunches each. None of that has an equivalent here: there is no disk and no second process
-// (tests/ui/fixtures.ts's own header comment), and the guarantee is now covered more precisely at
-// the layer that implements it — apps/kira-studio/internal/storage/repos/secrets_test.go's real
-// AES-256-GCM round trip and apps/kira-studio/internal/connections/service_test.go's
-// TestPasswordThreeStateConvention.
-//
-// What *is* pure UI and ports here: connectionsSecretsStatus()'s three backend shapes and
-// ConnectionDialog.vue's `connection-credential-note` rendering for each, plus the failed/
-// succeeded-save behavior when secrets are unavailable (scenario 5's UI half, minus its own two
-// on-disk assertions). This is a strictly better test than the original: the original
-// branches on `process.platform` and only ever exercises the one status shape the host OS
-// produces, so no sandbox has ever run more than one of these three branches in one
-// process. Mocking the status means all three run unconditionally, on any OS, in one file.
+// The secrets section of a connection's file dialog (P475). Secret values are write-only: the
+// section lists names with set or unset state, saves a typed value once and never echoes it. The
+// storage status comes from the View: with no usable store the inputs are off. Backend half:
+// dbflow TestConnectionSecrets and the connfiles tests; this file only covers the rendering.
 
-const KEYCHAIN: SecretStorageStatus = {
-  available: true,
-  backend: 'keychain',
-  insecureFallback: false,
-  reason: null,
-};
-const BASIC_TEXT: SecretStorageStatus = {
-  available: true,
-  backend: 'basic_text',
-  insecureFallback: true,
-  reason: null,
-};
-const UNAVAILABLE: SecretStorageStatus = {
-  available: false,
-  backend: 'unavailable',
-  insecureFallback: false,
-  reason: 'the platform keychain could not be reached',
+const PASSWORD = 'Zx9!pw;Qq7';
+
+const CONN: ConnectionSummary = {
+  file: 'pg.yaml',
+  id: 'c-pg',
+  name: 'Pg',
+  kind: 'postgres',
+  color: 'none',
+  mode: 'fields',
+  readOnly: false,
+  host: '127.0.0.1',
+  port: 5432,
+  database: 'testdb',
+  username: 'testuser',
+  uri: null,
+  options: {},
+  preconnect: null,
+  preconnectSidecar: false,
+  preconnectDelaySec: 0,
+  autoExplain: false,
+  throttlePerSec: 0,
+  mcpEnabled: false,
+  mcpDescription: '',
+  mcpReadMode: 'allow',
+  mcpWriteMode: 'prompt',
+  mcpDdlMode: 'deny',
+  mcpAutoExplain: true,
+  mcpReviewResults: 'inherit',
+  sortOrder: 0,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
-function withSecretStatus(status: SecretStorageStatus): ControlSnapshot[] {
-  return [{ channel: IPC.connectionsSecretsStatus, response: status }];
+function view(available: boolean, set: boolean): ConnectionConfigView {
+  return {
+    dir: '/kira/connections',
+    files: [{ file: 'pg.yaml', id: CONN.id, name: 'Pg', problem: null, lastGood: false }],
+    secrets: [{ kind: 'password', name: 'pg.password', set, referenced: true }],
+    storage: {
+      available,
+      backend: available ? 'keychain' : 'unavailable',
+      insecureFallback: false,
+      reason: available ? null : 'the platform keychain could not be reached',
+    },
+  };
 }
 
-test('keychain available shows the keychain-encrypted note', async ({ relaunch }) => {
-  const { window: page } = await relaunch({ control: withSecretStatus(KEYCHAIN) });
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await expect(page.locator('[data-testid="connection-credential-note"]')).toContainText(
-    'Credentials are encrypted with the macOS keychain.',
-  );
-});
-
-test('the Linux dev fallback shows the development-fallback note', async ({ relaunch }) => {
-  const { window: page } = await relaunch({ control: withSecretStatus(BASIC_TEXT) });
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await expect(page.locator('[data-testid="connection-credential-note"]')).toContainText(
-    'Development fallback',
-  );
-});
-
-test('the unavailable path fails loudly and safely', async ({ relaunch, consoleErrors }) => {
-  const CREATED: ConnectionSummary = {
-    id: 'conn-unavailable',
-    name: 'Secrets Unavailable',
-    kind: 'postgres',
-    color: 'none',
-    mode: 'fields',
-    readOnly: false,
-    host: '127.0.0.1',
-    port: 5432,
-    database: 'testdb',
-    username: 'testuser',
-    uri: null,
-    options: {},
-    preconnect: null,
-    preconnectSidecar: false,
-    preconnectDelaySec: 0,
-    autoExplain: false,
-    throttlePerSec: 0,
-    mcpEnabled: false,
-    mcpDescription: '',
-    mcpReadMode: 'allow',
-    mcpWriteMode: 'prompt',
-    mcpDdlMode: 'deny',
-    mcpAutoExplain: true,
-    mcpReviewResults: 'inherit',
-    sortOrder: 0,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
+function detail(set: boolean): ConnectionFileDetail {
+  return {
+    file: 'pg.yaml',
+    id: CONN.id,
+    path: '/kira/connections/pg.yaml',
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: a secret reference in file text
+    text: 'name: Pg\nkind: postgres\npassword: ${secret:pg.password}\n',
+    hash: 'hash-1',
+    problem: null,
+    lastGood: false,
+    editable: true,
+    secrets: [{ kind: 'password', name: 'pg.password', set, referenced: true }],
   };
-  const draftArgs = (password: string | null) => ({
-    name: 'Secrets Unavailable',
-    kind: 'postgres',
-    color: 'none',
-    mode: 'fields',
-    readOnly: false,
-    host: '127.0.0.1',
-    port: 5432,
-    database: 'testdb',
-    username: 'testuser',
-    password,
-    uri: null,
-    options: {},
-    preconnect: null,
-    preconnectSidecar: false,
-    preconnectDelaySec: 0,
-    autoExplain: false,
-    throttlePerSec: 0,
-    mcpEnabled: false,
-    mcpDescription: '',
-    mcpReadMode: 'allow',
-    mcpWriteMode: 'prompt',
-    mcpDdlMode: 'deny',
-    mcpAutoExplain: true,
-    mcpReviewResults: 'inherit',
-  });
+}
 
-  const { window: page } = await relaunch({
+function control(available: boolean, set: boolean): ControlSnapshot[] {
+  return [
+    { channel: IPC.connectionsList, response: [CONN] },
+    { channel: IPC.connectionConfigView, response: view(available, set) },
+    { channel: IPC.connectionConfigFile, response: detail(set) },
+  ];
+}
+
+async function openFile(page: import('@playwright/test').Page): Promise<void> {
+  await connectionRow(page, 'Pg').click({ button: 'right' });
+  await page.click('[data-testid="menu-item-edit"]');
+  await expect(page.locator('[data-testid="connection-file-dialog"]')).toBeVisible();
+}
+
+test('with secret storage the section lists the name and takes a value once', async ({
+  relaunch,
+}) => {
+  const { window: page, control: handle } = await relaunch({
     control: [
-      ...withSecretStatus(UNAVAILABLE),
+      ...control(true, false),
       {
-        channel: IPC.connectionsCreate,
-        args: draftArgs('wont-be-saved'),
-        error: { code: 'E_SECRET_STORE', message: 'The macOS Keychain is unavailable.' },
+        channel: IPC.connectionConfigSetSecret,
+        args: { kind: 'password', name: 'pg.password', value: PASSWORD },
+        response: view(true, true),
       },
-      { channel: IPC.connectionsCreate, args: draftArgs(null), response: CREATED },
     ],
   });
+  const logged: string[] = [];
+  page.on('console', (m) => logged.push(m.text()));
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await expect(page.locator('[data-testid="connection-credential-note"]')).toBeVisible();
+  await openFile(page);
+  const row = page.locator('[data-testid="connection-secret-pg.password"]');
+  await expect(row).toBeVisible();
+  await expect(row.locator('[data-testid="connection-secret-state"]')).toHaveText('Not set');
+  await expect(page.locator('[data-testid="connection-secrets-storage-off"]')).toHaveCount(0);
 
-  // With a password: the save fails visibly, the dialog stays open, and no record is created.
-  await page.fill('[data-testid="connection-name"]', 'Secrets Unavailable');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'testdb');
-  await page.fill('[data-testid="connection-username"]', 'testuser');
-  await page.fill('[data-testid="connection-password"]', 'wont-be-saved');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toBeVisible();
-  await expect(page.locator('[data-testid="connection-save-error"]')).toBeVisible();
-  await expect(page.locator('[data-testid="tree-row"][data-kind="connection"]')).toHaveCount(0);
-  await page.click('[data-testid="connection-cancel"]');
+  const input = row.locator('[data-testid="connection-secret-value"]');
+  await expect(input).toBeEnabled();
+  await expect(input).toHaveAttribute('type', 'password');
+  await input.fill(PASSWORD);
+  await row.locator('[data-testid="connection-secret-save"]').click();
+  await expect(input).toHaveValue('');
+  expect(handle.log().filter((e) => e.channel === IPC.connectionConfigSetSecret)).toHaveLength(1);
+  expect(logged.join('\n')).not.toContain(PASSWORD);
+});
 
-  // Without a password (a fresh dialog whose password field is never touched, so it stays
-  // `null`): succeeds normally — proving the cipher is never consulted when there is no secret.
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Secrets Unavailable');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'testdb');
-  await page.fill('[data-testid="connection-username"]', 'testuser');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
-  await expect(
-    page
-      .locator('[data-testid="tree-row"][data-kind="connection"]')
-      .filter({ hasText: 'Secrets Unavailable' }),
-  ).toBeVisible();
+test('without secret storage the section warns and the input is off', async ({ relaunch }) => {
+  const { window: page } = await relaunch({ control: control(false, false) });
 
-  // The real point: no *unhandled* rejection reached the renderer console at any point above.
-  // Under Wails, that no longer means zero console lines — the real bound-call transport answers
-  // every handled business-rule error with a genuine HTTP 422 (`pkg/application/transport_http.go`
-  // — confirmed in the module cache, not assumed), and Chromium/WebKit's own devtools log any
-  // non-2xx fetch as "Failed to load resource" regardless of whether the page's JS handles it
-  // (CLAUDE.md's finding; the same phenomenon `mockRuntime.ts`'s own `/wails/custom.js` comment
-  // documents for a 404). So the real assertion is "no line *other than* that one expected,
-  // already-handled 422" — the one thing this tier can still prove.
-  expect(consoleErrors).toEqual([
-    'Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)',
-  ]);
+  await openFile(page);
+  await expect(page.locator('[data-testid="connection-secrets-storage-off"]')).toBeVisible();
+  const row = page.locator('[data-testid="connection-secret-pg.password"]');
+  await expect(row.locator('[data-testid="connection-secret-value"]')).toBeDisabled();
+  await expect(row.locator('[data-testid="connection-secret-save"]')).toBeDisabled();
 });

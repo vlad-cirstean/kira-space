@@ -19,7 +19,9 @@ import { queryClient } from '@workbench/state/queryClient';
 import { type Ref, ref, shallowRef, type WatchStopHandle, watch } from 'vue';
 import { reviewWorkingDiffOptions } from '../../ade/v2/review/useReviewWorking';
 import { control } from '../../bridge/control';
+import { gitCall } from '../../repo/git/gitCall';
 import { gitRepoIdFor } from '../../repo/git/hostHandlers';
+import { withGitRepoHold } from '../../repo/git/repoHolds';
 import { gitTransportFor } from '../../repo/git/transport';
 import { openRepoFileTab } from '../../state/repoTabs';
 import { useSettingsStore } from '../../state/settings';
@@ -136,17 +138,16 @@ async function loadDiffSides(
       gitRepoId,
     };
   }
-  // 7d (P68 review): this lease is only ever used for the two requests below, so it is released
-  // as soon as they settle rather than left to leak for the rest of the mount.
-  const transport = gitTransportFor(repoId);
   try {
-    const [leftResult, rightResult, snapshot] = await Promise.all([
-      transport.request('file.read', { repoId: gitRepoId, rev: left, path }),
-      transport.request('file.read', { repoId: gitRepoId, rev: right, path }),
-      reviewBranch === undefined
-        ? null
-        : transport.request('review.snapshot', { repoId: gitRepoId, branch: reviewBranch, path }),
-    ]);
+    const [leftResult, rightResult, snapshot] = await withGitRepoHold(gitRepoId, () =>
+      Promise.all([
+        gitCall('file.read', { repoId: gitRepoId, rev: left, path }),
+        gitCall('file.read', { repoId: gitRepoId, rev: right, path }),
+        reviewBranch === undefined
+          ? null
+          : gitCall('review.snapshot', { repoId: gitRepoId, branch: reviewBranch, path }),
+      ]),
+    );
     // A since-review left side is the bytes the reviewer saw, which survive a rewritten branch
     // that made the reviewed commit unreachable.
     const head =
@@ -156,8 +157,6 @@ async function loadDiffSides(
     return { diff: { head, worktree: toDiffSide(rightResult) }, gitRepoId };
   } catch (err) {
     return { error: errorText(err) };
-  } finally {
-    transport.dispose();
   }
 }
 

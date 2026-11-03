@@ -21,6 +21,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg/repocfgtest"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
@@ -182,6 +184,7 @@ type engine struct {
 	tracker *Tracker
 	live    *fakeLive
 	closed  []string
+	files   *repocfg.Store
 }
 
 func newEngine(t *testing.T, scen map[string][]string) *engine {
@@ -199,6 +202,8 @@ func newEngine(t *testing.T, scen map[string][]string) *engine {
 	registry := gitsession.NewRegistry(gitclient.NewExecRunner())
 	t.Cleanup(registry.Close)
 	e := &engine{t: t, repos: r, home: t.TempDir(), fake: t.TempDir(), workdir: t.TempDir(), code: map[string]model.CodeRepo{}}
+	e.files = repocfgtest.New(t, db.DB, filepath.Join(t.TempDir(), "repos"))
+	r.AdeRepoConfig.Files = e.files
 	raw, _ := json.Marshal(scen)
 	t.Setenv(fakeEnv, "1")
 	t.Setenv(fakeDir, e.fake)
@@ -230,7 +235,7 @@ func newEngine(t *testing.T, scen map[string][]string) *engine {
 			return nil
 		},
 		Tasks: r.AdeTasks, Statuses: r.AdeStatuses, RepoConfig: r.AdeRepoConfig, Facts: r.AdeFacts, CodeRepos: r.CodeRepos,
-		GitRepoSettings: r.GitRepoSettings.Get, Runner: gitclient.NewExecRunner(), Registry: registry,
+		GitRepoSettings: e.files.Settings, Runner: gitclient.NewExecRunner(), Registry: registry,
 		GitStatus: func(context.Context) gitclient.GitStatus { return gitclient.GitStatus{Kind: "ok", Path: "git"} },
 		Workflows: &adeflow.Reader{Dir: wfDir, Store: r.AdeTasks},
 		Logs:      r.AdeLogs, Sessions: r.AdeSessions, AgentDir: filepath.Join(t.TempDir(), "agent"), AgentBin: self,
@@ -259,9 +264,9 @@ func (e *engine) repo(name string) {
 
 func (e *engine) prepare(repo, script string) {
 	e.t.Helper()
-	if _, err := e.repos.GitRepoSettings.Set(e.code[repo].RepoID, model.GitRepoSettingsPatch{WorktreePrepareScript: &script}); err != nil {
-		e.t.Fatal(err)
-	}
+	repocfgtest.Set(e.t, e.files, e.code[repo].RepoID, func(f *repocfg.File) {
+		f.Worktree = &repocfg.Worktree{PrepareScript: &script}
+	})
 }
 
 func (e *engine) workflow(yaml string) {

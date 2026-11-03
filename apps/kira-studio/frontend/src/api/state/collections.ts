@@ -20,17 +20,13 @@ import { queryClient } from '@workbench/state/queryClient';
 import { defineStore } from 'pinia';
 import { computed, reactive, toRef, toRefs, watch } from 'vue';
 import { control } from '../../bridge/control';
-import { type Placement, topmost } from '../collectionDrop';
 import {
-  closeVariableSetTabsForOwner,
   openCollectionGrpcRequestTab,
   openCollectionRequestTab,
   patchGrpcRequestTabState,
   patchHttpRequestTabState,
-  renameApiRequestTabs,
-  renameGrpcRequestTabs,
-  renameVariableSetTabs,
   syncRequestTabNames,
+  syncVariableSetTabNames,
 } from '../tabs';
 import {
   type ApiCollectionsTree,
@@ -44,7 +40,6 @@ import {
   refreshApiQuery,
 } from './apiQueries';
 import { collectionKey, itemKey } from './collectionKeys';
-import { collectionStepOrder, itemStepBefore } from './collectionOrder';
 import { useCollectionSelectionStore } from './collectionSelection';
 import { useSaveRequestDialogStore } from './saveRequestDialog';
 
@@ -89,8 +84,6 @@ function rowMatches(name: string, url: string, query: string): boolean {
 // apiQueries.ts's own convention), not a second local Record.
 interface CollectionsState {
   search: string;
-  /** The row key whose label is currently an inline rename input, if any. */
-  renamingKey: string | null;
   busy: boolean;
   importResult: ImportResult | null;
   /** D16: "N secret values were not written to the file" — set after an export that stripped at
@@ -114,7 +107,6 @@ export const useCollectionsStore = defineStore('collections', () => {
   const selection = useCollectionSelectionStore();
   const state = reactive<CollectionsState>({
     search: '',
-    renamingKey: null,
     busy: false,
     importResult: null,
     exportWarning: null,
@@ -150,6 +142,7 @@ export const useCollectionsStore = defineStore('collections', () => {
   // A rename made in another window reaches this one only as a tree refresh: bound tabs follow it
   // here, or Save in this window would write the old name back.
   watch(items, (list) => syncRequestTabNames(list));
+  watch(collections, (list) => syncVariableSetTabNames('collection', list));
   /** P108 F10's successor for the read side: a failed initial/refetch List used to reject into a
    *  void'd promise with nothing shown — this surfaces it the same way state.error does for a
    *  mutation's own failure (rendered in ImportReportStrip.vue). */
@@ -323,9 +316,7 @@ export const useCollectionsStore = defineStore('collections', () => {
   async function createCollection(): Promise<void> {
     try {
       const collection = await createCollectionMutation.mutateAsync();
-      const key = collectionKey(collection.id);
-      selection.selectOnly(key);
-      state.renamingKey = key;
+      selection.selectOnly(collectionKey(collection.id));
       state.error = null;
     } catch (err) {
       state.error = errorText(err);
@@ -362,9 +353,7 @@ export const useCollectionsStore = defineStore('collections', () => {
     try {
       const item = await createItemMutation.mutateAsync({ collectionId, parentId, kind });
       revealItem(collectionId, parentId);
-      const key = itemKey(item.id);
-      selection.selectOnly(key);
-      state.renamingKey = key;
+      selection.selectOnly(itemKey(item.id));
       state.error = null;
     } catch (err) {
       state.error = errorText(err);
@@ -390,261 +379,7 @@ export const useCollectionsStore = defineStore('collections', () => {
     try {
       const item = await createGrpcItemMutation.mutateAsync({ collectionId, parentId });
       revealItem(collectionId, parentId);
-      const key = itemKey(item.id);
-      selection.selectOnly(key);
-      state.renamingKey = key;
-      state.error = null;
-    } catch (err) {
-      state.error = errorText(err);
-    }
-  }
-
-  const renameRowMutation = useMutation(
-    {
-      mutationKey: ['apiCollectionsTree', 'rename'],
-      mutationFn: (args: { id: string; target: 'collection' | 'item'; name: string }) =>
-        control.collectionsRename(args.id, args.target, args.name),
-      onSuccess: afterTreeListChange,
-    },
-    queryClient,
-  );
-
-  async function renameRow(row: CollectionRowVm, name: string): Promise<void> {
-    state.renamingKey = null;
-    try {
-      const target = row.kind === 'collection' ? 'collection' : 'item';
-      await renameRowMutation.mutateAsync({ id: row.id, target, name });
-      // Every tab bound to this row follows immediately, so the view header and the tab strip
-      // never disagree with the tree (D14).
-      if (row.kind === 'request' && row.protocol === 'grpc') renameGrpcRequestTabs(row.id, name);
-      else if (row.kind === 'request') renameApiRequestTabs(row.id, name);
-      // P17 D16: a collection's own variable-set tab follows a rename too.
-      else if (row.kind === 'collection') renameVariableSetTabs('collection', row.id, name);
-      state.error = null;
-    } catch (err) {
-      state.error = errorText(err);
-    }
-  }
-
-  const moveRowsMutation = useMutation(
-    {
-      mutationKey: ['apiCollectionsTree', 'moveItems'],
-      mutationFn: (args: { itemIds: string[]; placement: Placement }) =>
-        control.collectionsMoveItems({ itemIds: args.itemIds, ...args.placement }),
-      onSuccess: afterTreeListChange,
-    },
-    queryClient,
-  );
-
-  /** Moves requests and folders, each with its subtree, to `placement`, keeping their order. The
-   *  moved rows become the selection. Returns whether it moved. */
-  async function moveRows(itemIds: readonly string[], placement: Placement): Promise<boolean> {
-    try {
-      await moveRowsMutation.mutateAsync({ itemIds: [...itemIds], placement });
-      revealItem(placement.collectionId, placement.parentId);
-      const keys = itemIds.map(itemKey);
-      selection.selectMany(keys, keys[0]);
-      state.error = null;
-      return true;
-    } catch (err) {
-      state.error = errorText(err);
-      return false;
-    }
-  }
-
-  const reorderCollectionsMutation = useMutation(
-    {
-      mutationKey: ['apiCollectionsTree', 'reorderCollections'],
-      mutationFn: (ids: string[]) => control.collectionsReorderCollections(ids),
-      onSuccess: afterTreeListChange,
-    },
-    queryClient,
-  );
-
-  /** Applies a whole-list collection order. Returns whether it saved. */
-  async function reorderCollections(ids: readonly string[]): Promise<boolean> {
-    try {
-      await reorderCollectionsMutation.mutateAsync([...ids]);
-      state.error = null;
-      return true;
-    } catch (err) {
-      state.error = errorText(err);
-      return false;
-    }
-  }
-
-  function siblingsOfRow(row: CollectionRowVm): CollectionItemSummary[] {
-    return childrenOf(row.collectionId, row.parentId);
-  }
-
-  /** Whether `row` can step toward `step` within its own sibling set. */
-  function canMoveStep(row: CollectionRowVm, step: -1 | 1): boolean {
-    if (activeSearchQuery.value !== '') return false;
-    if (row.kind === 'collection') {
-      return (
-        collectionStepOrder(
-          collections.value.map((c) => c.id),
-          row.id,
-          step,
-        ) !== null
-      );
-    }
-    return itemStepBefore(siblingsOfRow(row), row.id, step) !== undefined;
-  }
-
-  /** Moves a collection, request or folder one place within its siblings. */
-  async function moveStep(row: CollectionRowVm, step: -1 | 1): Promise<boolean> {
-    if (!canMoveStep(row, step)) return false;
-    if (row.kind === 'collection') {
-      const order = collectionStepOrder(
-        collections.value.map((c) => c.id),
-        row.id,
-        step,
-      );
-      return order ? reorderCollections(order) : false;
-    }
-    const beforeId = itemStepBefore(siblingsOfRow(row), row.id, step);
-    if (beforeId === undefined) return false;
-    return moveRows([row.id], { collectionId: row.collectionId, parentId: row.parentId, beforeId });
-  }
-
-  /** Moves rows to the root of another collection. Returns whether it moved. */
-  function moveRowsToCollection(
-    rows: readonly CollectionRowVm[],
-    collectionId: string,
-  ): Promise<boolean> {
-    return moveRows(
-      rows.map((r) => r.id),
-      { collectionId, parentId: null, beforeId: null },
-    );
-  }
-
-  /** Creates a collection, moves the rows into it, and opens the new collection for naming. */
-  async function moveRowsToNewCollection(rows: readonly CollectionRowVm[]): Promise<void> {
-    try {
-      const collection = await createCollectionMutation.mutateAsync();
-      if (!(await moveRowsToCollection(rows, collection.id))) return;
-      state.renamingKey = collectionKey(collection.id);
-    } catch (err) {
-      state.error = errorText(err);
-    }
-  }
-
-  /** Go's own delete genuinely cascades (repos/collections.go's
-   *  own comment: "the cascade is genuine") — deleting a folder or a collection removes every
-   *  descendant `api_items` row, not just the row itself. This walks the *pre-delete* tree
-   *  (still valid — nothing has re-listed yet) to find every item id that the delete about to
-   *  happen will also remove, so the caller can purge all of them from the renderer's own request
-   *  caches, not just `row.id`. A request row's own subtree is itself.
-   *
-   *  Imperative, called before the delete mutation fires — reads the cache directly (the
-   *  reactive `items` computed can lag it by one macrotask) rather than `childrenOf`'s own index,
-   *  which is built from that same reactive computed. */
-  function subtreeItemIds(row: CollectionRowVm): string[] {
-    if (row.kind === 'request') return [row.id];
-    const currentItems =
-      queryClient.getQueryData<ApiCollectionsTree>(apiCollectionsTreeKey)?.items ?? [];
-    if (row.kind === 'collection') {
-      return currentItems.filter((item) => item.collectionId === row.id).map((item) => item.id);
-    }
-    // row.kind === 'folder': walk down from the folder itself, collecting every descendant
-    // (folders and requests alike — a nested folder's own requests are still cascade-deleted).
-    const ids: string[] = [row.id];
-    const stack: string[] = [row.id];
-    while (stack.length > 0) {
-      const parentId = stack.pop() as string;
-      for (const child of currentItems.filter(
-        (item) => item.collectionId === row.collectionId && item.parentId === parentId,
-      )) {
-        ids.push(child.id);
-        if (child.kind === 'folder') stack.push(child.id);
-      }
-    }
-    return ids;
-  }
-
-  const deleteRowsMutation = useMutation(
-    {
-      mutationKey: ['apiCollectionsTree', 'delete'],
-      mutationFn: (args: { collectionIds: string[]; itemIds: string[] }) =>
-        control.collectionsDeleteMany(args),
-      onSuccess: afterTreeListChange,
-    },
-    queryClient,
-  );
-
-  /** What deleting `rows` removes: the topmost rows, and every item id their subtrees hold. */
-  function planDelete(rows: readonly CollectionRowVm[]): {
-    top: CollectionRowVm[];
-    itemIds: Set<string>;
-  } {
-    const top = topmost(rows, items.value);
-    const itemIds = new Set<string>();
-    for (const row of top) for (const id of subtreeItemIds(row)) itemIds.add(id);
-    return { top, itemIds };
-  }
-
-  /** Deletes `rows` with their subtrees in one call. */
-  async function deleteRows(rows: readonly CollectionRowVm[]): Promise<void> {
-    const { top, itemIds } = planDelete(rows);
-    if (top.length === 0) return;
-    try {
-      await deleteRowsMutation.mutateAsync({
-        collectionIds: top.filter((r) => r.kind === 'collection').map((r) => r.id),
-        itemIds: top.filter((r) => r.kind !== 'collection').map((r) => r.id),
-      });
-      // Deleting a request does not close its open tabs (the orphan rule): a tab is an editing
-      // surface with its own persisted state, and closing one because a row went away would lose
-      // work. Its cached saved request goes, so the tab reads as unsaved. `null` is the orphan
-      // marker, written for every cascaded descendant too and explicitly, so it never depends on
-      // when reconcileTree ran.
-      for (const id of itemIds) {
-        queryClient.setQueryData(apiSavedRequestKey(id), null);
-        queryClient.setQueryData(apiSavedGrpcRequestKey(id), null);
-      }
-      // A variable-set tab has no state worth keeping once its owner is gone.
-      for (const row of top) {
-        if (row.kind === 'collection') closeVariableSetTabsForOwner('collection', row.id);
-      }
-      state.error = null;
-    } catch (err) {
-      state.error = errorText(err);
-    }
-  }
-
-  /** Duplicating a folder or a request copies the row itself, not its subtree — moving and
-   *  reordering are D18/§8 OQ-9's, and a deep copy would need both. */
-  async function duplicateRow(row: CollectionRowVm): Promise<void> {
-    const name = t('studio.api.collections.copyName.label', { name: row.name });
-    try {
-      if (row.kind === 'folder') {
-        await control.collectionsCreateItem({
-          collectionId: row.collectionId,
-          parentId: row.parentId,
-          kind: 'folder',
-          name,
-        });
-      } else if (row.protocol === 'grpc') {
-        const saved = await loadSavedGrpcRequest(row.id);
-        if (!saved) throw new Error(t('studio.api.collections.requestGone.error'));
-        await control.collectionsCreateGrpcItem({
-          collectionId: row.collectionId,
-          parentId: row.parentId,
-          name,
-          request: saved,
-        });
-      } else {
-        const saved = await loadSavedRequest(row.id);
-        if (!saved) throw new Error(t('studio.api.collections.requestGone.error'));
-        await control.collectionsCreateItem({
-          collectionId: row.collectionId,
-          parentId: row.parentId,
-          kind: 'request',
-          name,
-          request: saved,
-        });
-      }
-      await afterTreeListChange();
+      selection.selectOnly(itemKey(item.id));
       state.error = null;
     } catch (err) {
       state.error = errorText(err);
@@ -667,15 +402,6 @@ export const useCollectionsStore = defineStore('collections', () => {
     } catch (err) {
       state.error = errorText(err);
     }
-  }
-
-  function beginRename(row: CollectionRowVm): void {
-    selection.selectOnly(row.key);
-    state.renamingKey = row.key;
-  }
-
-  function cancelRename(): void {
-    state.renamingKey = null;
   }
 
   /** Creates the row, caches it as the tab's saved side, and binds the tab to it. Resolves to the
@@ -930,19 +656,7 @@ export const useCollectionsStore = defineStore('collections', () => {
     createCollection,
     createItem,
     createGrpcItem,
-    renameRow,
-    moveRows,
-    reorderCollections,
-    canMoveStep,
-    moveStep,
-    moveRowsToCollection,
-    moveRowsToNewCollection,
-    planDelete,
-    deleteRows,
-    duplicateRow,
     openRequestRow,
-    beginRename,
-    cancelRename,
     submitSaveDialog,
     saveRequest,
     saveGrpcRequest,

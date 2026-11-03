@@ -4,14 +4,23 @@
 // `cancelPending` (otherwise a same-line cursor move cancels its own in-flight request and
 // nothing restarts it), and an ABORTED request must never be cached as a miss (otherwise fast
 // arrowing through lines accumulates permanently blame-less lines). `repo.changed` invalidation
-// interacts with both. Drives the controller end to end with a plain fake cursor and a fake
-// Transport — no Monaco import, per the controller's own `BlameCursorSource` narrowing.
-import { describe, expect, test } from 'bun:test';
-import type { ResultOf, Transport } from '../../../../packages/git-ipc/src/index.ts';
+// interacts with both. Drives the controller end to end with a plain fake cursor and the Wails
+// call/event stubs the bound `GitService` calls go through — no Monaco import, per the controller's
+// own `BlameCursorSource` narrowing.
+import '@workbench/testing/unit/window';
+
+import { afterEach, describe, expect, test } from 'bun:test';
 import {
-  type BlameLineControllerDeps,
-  createBlameLineController,
-} from '../../frontend/src/views/repo/blameLine';
+  emitWailsEvent,
+  resetCallFactory,
+  setCallFactory,
+} from '@workbench/testing/unit/wailsRuntime';
+import type { ResultOf, Transport } from '../../../../packages/git-ipc/src/index.ts';
+import type { BlameLineControllerDeps } from '../../frontend/src/views/repo/blameLine';
+
+const { createBlameLineController } = await import('../../frontend/src/views/repo/blameLine');
+
+afterEach(resetCallFactory);
 
 type BlameResult = ResultOf<'blame.line'>;
 const UNCOMMITTED_SHA = '0'.repeat(40);
@@ -53,49 +62,43 @@ interface PendingCall {
   reject(err: unknown): void;
 }
 
-/** A fake Transport answering `repo.open` immediately (ensureRepoOpen's own hold) and `blame.line`
- *  per call, left to the test to resolve/reject/abort. `repo.changed` is a real pub/sub so the
- *  controller's own subscription can be driven directly. */
+/** Answers the bound `RepoOpen`/`RepoClose` immediately and `BlameLine` per call, left to the test
+ *  to resolve/reject. `repo.changed` is a real Wails event so the controller's own subscription can
+ *  be driven directly. The transport is only the controller's host-local handle (`graph.revealCommit`). */
 function fakeTransport(): {
   transport: Transport;
   calls: PendingCall[];
   emitRepoChanged: (repoId: string) => void;
 } {
   const calls: PendingCall[] = [];
-  const repoChangedHandlers = new Set<(payload: { repoId: string; kind: string }) => void>();
-  const transport = {
-    request: (async (method: string, params: unknown) => {
-      if (method === 'repo.open') return undefined;
-      if (method === 'blame.line') {
-        const { line } = params as { line: number };
-        // No automatic abort -> reject wiring here, deliberately: the test drives
-        // resolve()/reject() itself, including resolving an already-cancelled request
-        // successfully (the real-world race `if (line === lastLine)` guards against on the
-        // success path, not only via a transport that rejects on abort).
-        return new Promise<BlameResult>((resolve, reject) => {
-          calls.push({ line, resolve, reject });
-        });
-      }
-      throw new Error(`fakeTransport: unexpected request ${method}`);
-      // biome-ignore lint/suspicious/noExplicitAny: matching Transport['request']'s generic shape
-    }) as any,
-    on: ((method: string, handler: (payload: { repoId: string; kind: string }) => void) => {
-      if (method !== 'repo.changed') throw new Error(`fakeTransport: unexpected event ${method}`);
-      repoChangedHandlers.add(handler);
-      return () => repoChangedHandlers.delete(handler);
-      // biome-ignore lint/suspicious/noExplicitAny: matching Transport['on']'s generic shape
-    }) as any,
-    stream: (async () => {
-      throw new Error('fakeTransport: stream not used');
-      // biome-ignore lint/suspicious/noExplicitAny: matching Transport['stream']'s generic shape
-    }) as any,
-    dispose(): void {},
-  } satisfies Transport;
+  setCallFactory((name, arg) => {
+    const method = String(name).split('.').pop();
+    let promise: Promise<unknown> & { cancel(): void };
+    if (method === 'BlameLine') {
+      const { line } = (arg as { params: { line: number } }).params;
+      // No automatic abort -> reject wiring here, deliberately: the test drives
+      // resolve()/reject() itself, including resolving an already-cancelled request
+      // successfully (the real-world race `if (line === lastLine)` guards against on the
+      // success path, not only via a transport that rejects on abort).
+      promise = new Promise<BlameResult>((resolve, reject) => {
+        calls.push({ line, resolve, reject });
+      }) as typeof promise;
+    } else if (method === 'RepoOpen') {
+      const { path } = (arg as { params: { path: string } }).params;
+      promise = Promise.resolve({ kind: 'ok', repo: { repoId: path } }) as typeof promise;
+    } else if (method === 'RepoClose') {
+      promise = Promise.resolve({}) as typeof promise;
+    } else {
+      throw new Error(`unexpected bound call ${String(name)}`);
+    }
+    promise.cancel = () => {};
+    return promise;
+  });
   return {
-    transport,
+    transport: {} as Transport,
     calls,
     emitRepoChanged: (repoId: string) => {
-      for (const h of repoChangedHandlers) h({ repoId, kind: 'refsChanged' });
+      emitWailsEvent('kira:git:repo.changed', { repoId, kind: 'refsChanged' });
     },
   };
 }

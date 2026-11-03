@@ -438,7 +438,7 @@ func blockCheckouts(t *testing.T, repo *flowharness.Repo, root string) (started 
 }
 
 func TestWriteSurvivesCancelAndDisconnect(t *testing.T) {
-	for _, how := range []string{"client cancel", "disconnect"} {
+	for _, how := range []string{"client cancel", "disconnect", "window close"} {
 		t.Run(how, func(t *testing.T) {
 			r := newRig(t)
 			repo := r.app.NewRepo("proj")
@@ -453,10 +453,14 @@ func TestWriteSurvivesCancelAndDisconnect(t *testing.T) {
 			testx.WaitUntil(t, wait, fileExists(started))
 
 			closed := make(chan struct{})
-			if how == "client cancel" {
+			switch how {
+			case "client cancel":
 				cancel()
 				close(closed)
-			} else {
+			case "window close":
+				r.app.W.GitWindows.Close(r.gs.Key())
+				close(closed)
+			default:
 				go func() { r.gs.Close(); close(closed) }()
 			}
 			release()

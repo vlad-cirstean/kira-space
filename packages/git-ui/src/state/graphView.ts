@@ -361,7 +361,7 @@ export class GraphViewState {
           // exhausted/remaining would otherwise be stuck at whatever the last real chunk said —
           // which is exactly "Load the last 0". graph.status already exists and answers exactly
           // this (`{loaded, remaining, exhausted}` off the walk's own cached count), so this needs
-          // no CONTRACT_VERSION bump. A failed status call must not mask the load's own outcome
+          // no new method. A failed status call must not mask the load's own outcome
           // or leave `loading` stuck, so it is caught and logged rather than rethrown.
           try {
             const status = await this.#bridge.request('graph.status', { repoId });
@@ -604,9 +604,9 @@ export class GraphViewState {
     this.streamFailure.value = undefined;
     if (range.staged && this.#packed.pendingStore === undefined) return; // still filling
 
-    // Folds `range` in and returns WITHOUT awaiting its own relayout — `rpc.ts`'s per-chunk
-    // credit gate (`INITIAL_STREAM_CREDIT`) waits on this method's own promise before letting the
-    // host send the next wire chunk, so a fast return here is what lets a large load (a 200k-row
+    // Folds `range` in and returns WITHOUT awaiting its own relayout — the graph plane
+    // client grants the next chunk's credit only after awaiting this method's promise, so a fast
+    // return here is what lets a large load (a 200k-row
     // rehydration is 400 500-row chunks) pipeline many wire chunks per relayout instead of paying
     // one full main-thread plan rebuild plus worker round trip per chunk.
     this.#queueLayoutRebuild();

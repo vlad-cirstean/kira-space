@@ -275,22 +275,6 @@ func TestScriptFolders(t *testing.T) {
 		t.Fatalf("blocked run = %+v, want failed at start", r)
 	}
 
-	// A legacy home row still runs in $HOME; choosing it for a new script is refused.
-	legacy := newScript(t, app, scripts.CustomScriptFields{Command: "pwd"})
-	if _, err := app.DB().Exec(`UPDATE custom_scripts SET dir_mode = 'home' WHERE id = ?`, legacy.ID); err != nil {
-		t.Fatal(err)
-	}
-	d, err = runs.ResolveDir(scriptruns.ResolveDirArgs{ScriptID: legacy.ID})
-	if err != nil || d.Mode != scripts.DirModeHome || d.Path != app.Home {
-		t.Fatalf("legacy dir = %+v, %v, want the home folder", d, err)
-	}
-	// tests/ui automations-runs "contract: a legacy home script offers the Kira scripts folder" reads this.
-	app.Contract(t, "script-folders", "ScriptRunsService.ResolveDir#legacy", d)
-	if _, err := app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
-		Name: "h", Command: "pwd", Color: "blue", DirMode: scripts.DirModeHome,
-	}}); err == nil {
-		t.Fatal("Create with the retired home folder succeeded")
-	}
 	if _, err := runs.ResolveDir(scriptruns.ResolveDirArgs{ScriptID: "missing"}); err == nil {
 		t.Fatal("ResolveDir of an unknown script succeeded")
 	}

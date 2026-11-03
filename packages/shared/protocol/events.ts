@@ -75,6 +75,10 @@ export const CHANNEL = {
   // schemaChanged's own per-connection shape (Emit, not EmitTo), so a second window's Privacy tab,
   // grid header menu and grid preview all stay in sync rather than reading a stale rule list.
   maskRulesChanged: 'kira:maskRules:changed',
+  // P475: a connection file or the problem set changed, or a secret was set or cleared (Emit, payload-free).
+  connectionConfigChanged: 'kira:connectionConfig:changed',
+  // P475: a file changed one connection's left panel visibility (Emit), {connectionId, visibility}.
+  connectionFiltersChanged: 'kira:connection:filtersChanged',
   // P433 F4: a saved query was written (Save/Update/Delete/Touch), Emit'd app-wide, {connectionId, kind}.
   savedQueriesChanged: 'kira:savedQueries:changed',
   // P433 F4: one filter-history row was recorded (Emit, app-wide), {connectionId, path}.
@@ -107,6 +111,8 @@ export const CHANNEL = {
   // The shared agent context file changed or was saved; empty payload, refetch (Kira Space only).
   agentContextChanged: 'kira:agentContext:changed',
   agentSettingsChanged: 'kira:agentSettings:changed',
+  // A repo settings file changed or was saved, or the set of file errors changed; empty payload (Kira Space only).
+  repoConfigChanged: 'kira:repoConfig:changed',
   adeTaskRepos: 'kira:adetask:repos',
   adeTaskRuns: 'kira:adetask:runs',
   adeTaskLog: 'kira:adetask:log',
@@ -146,7 +152,8 @@ export type ApiDataChange =
   | { kind: 'tree' }
   | { kind: 'savedRequest'; itemId: string }
   | { kind: 'variables'; scope: VariableScope; ownerId: string }
-  | { kind: 'environments' };
+  | { kind: 'environments' }
+  | { kind: 'config' };
 
 export interface ApiDataChangedEvent {
   changes: ApiDataChange[];

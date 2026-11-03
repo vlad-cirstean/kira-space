@@ -181,21 +181,12 @@ func dbBytes(t *testing.T, app *flowharness.App) []byte {
 
 func secretVars(t *testing.T, app *flowharness.App, vars map[string]string) (collectionID, envID string) {
 	t.Helper()
-	col, err := app.W.Collections.CreateCollection(bridge.CollectionsCreateCollectionArgs{Name: "grpc"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	env, err := app.W.Variables.CreateEnvironment(bridge.VariablesCreateEnvironmentArgs{Name: "dev", Color: "none"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	col := app.SeedCollection(t, "grpc")
+	seeded := make([]flowharness.APIVar, 0, len(vars))
 	for name, value := range vars {
-		if _, err := app.W.Variables.Upsert(bridge.VariablesUpsertArgs{
-			Scope: model.VariableScopeEnvironment, OwnerID: env.ID, Name: name, Value: &value, IsSecret: true,
-		}); err != nil {
-			t.Fatal(err)
-		}
+		seeded = append(seeded, flowharness.APIVar{Name: name, Value: value, Secret: true})
 	}
+	env := app.SeedEnvironment(t, "dev", seeded...)
 	return col.ID, env.ID
 }
 

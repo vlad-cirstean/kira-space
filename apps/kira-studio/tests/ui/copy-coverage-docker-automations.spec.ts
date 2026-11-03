@@ -254,7 +254,7 @@ const SCRIPT = {
   dirMode: 'kira',
   useAdeDir: false,
   color: 'blue',
-  collectionId: null,
+  collection: '',
   sortOrder: 0,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
@@ -321,6 +321,19 @@ function run(id: string, state: string, createdAt: number): Json {
 
 const AUTOMATIONS: ControlSnapshot[] = [
   { channel: IPC.customScriptsList, response: { collections: [], scripts: [SCRIPT] } },
+  {
+    channel: IPC.customScriptsFile,
+    response: {
+      file: `${SCRIPT.id}.yaml`,
+      id: SCRIPT.id,
+      path: `/kira/runs/${SCRIPT.id}.yaml`,
+      text: 'name: x\n',
+      hash: 'h1',
+      problem: null,
+      lastGood: false,
+      editable: true,
+    },
+  },
   { channel: IPC.scriptRunsResolveDir, response: DIR },
   { channel: IPC.scriptRunsNextFires, response: [1_900_000_000_000, 1_900_086_400_000] },
   { channel: IPC.scriptRunsSchedulePreview, response: PREVIEW },
@@ -339,7 +352,7 @@ const AUTOMATIONS: ControlSnapshot[] = [
 
 // Script, run and folder names and the times the schedule derives from the clock.
 const AUTOMATIONS_DATA = [
-  /Nightly build|make build|\/kira\/|\/home\/test|^\s*UTC\s*$|0 9 \* \* 1-5|^Topic$|^(red|amber|green|cyan|blue|magenta|grey)$|^\/automations\/$/,
+  /Nightly build|rec-1\.yaml|make build|\/kira\/|\/home\/test|^\s*UTC\s*$|0 9 \* \* 1-5|^Topic$|^(red|amber|green|cyan|blue|magenta|grey)$|^\/automations\/$/,
   /\d{1,2}:\d{2}|\d{4}-\d{2}-\d{2}|\b\d+\s?(ms|s|m|h)\b/,
 ];
 
@@ -372,21 +385,15 @@ test('Automations panel, row menu and runs section use catalog text', async ({ r
   await expectCatalogText(tid(page, 'context-menu'));
 });
 
-test('script dialog tabs and schedule fields use catalog text', async ({ relaunch }) => {
+test('run file dialog uses catalog text', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: AUTOMATIONS });
   await openAutomations(page);
 
   await tid(page, `script-${SCRIPT.id}`).click({ button: 'right' });
-  await tid(page, 'menu-item-edit').click();
-  const dialog = tid(page, 'script-dialog');
+  await tid(page, 'menu-item-edit-file').click();
+  const dialog = tid(page, 'run-file-dialog');
   await expect(dialog).toBeVisible();
-
-  for (const tab of ['script', 'params', 'schedule']) {
-    await tid(page, `script-dialog-tab-${tab}`).click();
-    await expectCatalogText(dialog, { allow: AUTOMATIONS_DATA });
-  }
-  await expect(tid(page, 'schedule-fields')).toBeVisible();
-  await expectCatalogText(tid(page, 'schedule-fields'), { allow: AUTOMATIONS_DATA });
+  await expectCatalogText(dialog, { allow: AUTOMATIONS_DATA });
 });
 
 test('run script dialog uses catalog text', async ({ relaunch }) => {

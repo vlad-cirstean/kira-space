@@ -1,6 +1,5 @@
 {
   "git:app.init#unusable": {
-    "contractVersion": 0,
     "dateFormat": "relative",
     "git": {
       "kind": "unusable",

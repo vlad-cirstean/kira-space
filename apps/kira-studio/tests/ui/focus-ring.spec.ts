@@ -37,25 +37,21 @@ async function tabUntilTestId(
   throw new Error(`tabUntilTestId: never reached [data-testid="${testid}"] within ${cap} tabs`);
 }
 
-test('connection dialog Input and Button focus rings never animate', async ({ relaunch }) => {
+test('new connection dialog Input and Button focus rings never animate', async ({ relaunch }) => {
   const { window: page } = await relaunch({
     control: [{ channel: IPC.connectionsList, response: [] }],
   });
   await page.click('[data-testid="add-connection"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toBeVisible();
+  await expect(page.locator('[data-testid="new-connection-dialog"]')).toBeVisible();
   await page.click('[data-testid="connection-kind-postgres"]');
-  // Save must be enabled (reachable in tab order) for the Button assertion below.
-  await page.fill('[data-testid="connection-name"]', 'Focus Ring');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'testdb');
-  await page.fill('[data-testid="connection-username"]', 'testuser');
+  // Create must be enabled (reachable in tab order) for the Button assertion below.
+  await page.fill('[data-testid="new-connection-name"]', 'Focus Ring');
 
   const focusColor = await resolveFocusColor(page);
 
   // Input: the dialog auto-focuses this field, so it's blurred first — a no-op focus() would
   // start no transition and false-pass the pre-fix run.
-  const input = page.locator('[data-testid="connection-name"]');
+  const input = page.locator('[data-testid="new-connection-name"]');
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await expect.poll(() => input.evaluate((el) => el.getAnimations().length)).toBe(0);
   const inputSample = await input.evaluate((el) => {
@@ -76,7 +72,7 @@ test('connection dialog Input and Button focus rings never animate', async ({ re
   expect(inputSample.outlineTransitions).toEqual([]);
 
   // Button.
-  await tabUntilTestId(page, 'connection-save');
+  await tabUntilTestId(page, 'new-connection-create');
   const buttonSample = await page.evaluate(() => {
     const el = document.activeElement as HTMLElement;
     const outlineTransitions: string[] = [];

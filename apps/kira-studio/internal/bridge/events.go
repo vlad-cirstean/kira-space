@@ -36,11 +36,17 @@ const (
 	ChannelConnectionState        = "kira:connection:state"
 	ChannelMetadataInvalidated    = "kira:connection:metadataInvalidated"
 	ChannelConnectionsChanged     = "kira:connections:changed"
-	ChannelSettingsChanged        = appevent.ChannelSettingsChanged
-	ChannelLayoutChanged          = appevent.ChannelLayoutChanged
-	ChannelOpUpdate               = appevent.ChannelOpUpdate
-	ChannelAppMetrics             = appevent.ChannelAppMetrics
-	ChannelSchemaChanged          = "kira:schema:changed"
+	// ChannelConnectionConfigChanged is payload-free: a connection file or the problem set changed, or a
+	// secret was set or cleared. The config panels refetch.
+	ChannelConnectionConfigChanged = "kira:connectionConfig:changed"
+	// ChannelConnectionFiltersChanged carries {connectionId, visibility}: a file changed one connection's
+	// left panel visibility.
+	ChannelConnectionFiltersChanged = "kira:connection:filtersChanged"
+	ChannelSettingsChanged          = appevent.ChannelSettingsChanged
+	ChannelLayoutChanged            = appevent.ChannelLayoutChanged
+	ChannelOpUpdate                 = appevent.ChannelOpUpdate
+	ChannelAppMetrics               = appevent.ChannelAppMetrics
+	ChannelSchemaChanged            = "kira:schema:changed"
 	// ChannelGrpcCall is the new push channel — a server-streaming call's coalesced
 	// message batches, delivered with EmitTo (one window only, GrpcService.Call's own emitter
 	// call) rather than through this file's Events/Sources machinery: it has exactly one producer

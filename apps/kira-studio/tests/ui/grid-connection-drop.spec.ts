@@ -21,7 +21,7 @@ const CONTROL: ControlSnapshot[] = [
   { channel: IPC.connectionsList, response: [] },
   {
     channel: IPC.connectionsCreate,
-    args: connectionCreateArgs('Drop DB', 'green', { mcp: true }),
+    args: connectionCreateArgs('Drop DB', 'green'),
     response: postgresConnectionSummary(CONNECTION_ID, 'Drop DB', 'green'),
   },
   ...FIXTURE.control,

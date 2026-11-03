@@ -10,16 +10,29 @@ const SCRIPT = {
   kind: 'script',
   params: [],
   smart: null,
+  schedule: null,
+  savedSecrets: [],
   name: 'Build all',
   command: 'echo one\necho two',
   workingDir: '',
   dirMode: 'kira',
   useAdeDir: false,
   color: 'none',
-  collectionId: null,
+  collection: '',
   sortOrder: 0,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+const FILE = {
+  file: 'script-1.yaml',
+  id: 'script-1',
+  path: '/kira/runs/script-1.yaml',
+  text: 'name: Build all\n',
+  hash: 'h1',
+  problem: null,
+  lastGood: false,
+  editable: true,
 };
 
 const TERMINAL_OPEN_OK: ControlSnapshot = {
@@ -43,46 +56,39 @@ function modeTab(page: Page) {
   return page.locator('[data-testid="mode-tab"][data-mode="automations"]');
 }
 
-test('the header + adds a two-line script, sent with its newline', async ({ relaunch }) => {
+test('the header + writes a new run file and opens it', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({
     control: [
       { channel: IPC.windowsEnsure, response: { mode: 'automations' } },
       TERMINAL_OPEN_OK,
       RESOLVED_DIR,
       { channel: IPC.customScriptsCreate, response: SCRIPT },
+      { channel: IPC.customScriptsFile, response: FILE },
     ],
   });
   await expect(modeTab(page)).toHaveClass(/is-active/);
   await expect(page.locator('[data-testid="automations-panel"]')).toContainText('No scripts');
 
   await page.locator('[data-testid="automations-add"]').click();
-
   await page.locator('[data-testid="menu-item-new-script"]').click();
-  const dialog = page.locator('[data-testid="script-dialog"]');
-  await expect(dialog).toBeVisible();
-  await dialog.locator('[data-testid="script-dialog-name"]').fill(SCRIPT.name);
-  const script = dialog.locator('[data-testid="script-dialog-command"]');
-  await script.focus();
-  await page.keyboard.type('echo one');
-  await page.keyboard.press('Enter');
-  await page.keyboard.type('echo two');
-  await dialog.locator('[data-testid="script-dialog-save"]').click();
+  await expect(page.locator('[data-testid="run-file-dialog"]')).toBeVisible();
+  await expect(page.locator('[data-testid="config-file-bar"]')).toContainText('script-1.yaml');
 
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.customScriptsCreate)?.args)
     .toEqual({
       fields: {
-        name: SCRIPT.name,
-        command: SCRIPT.command,
+        name: 'New script',
+        command: 'npm run build',
         kind: 'script',
         params: [],
-        schedule: null,
         smart: null,
+        schedule: null,
         dirMode: 'kira',
-        useAdeDir: true,
+        useAdeDir: false,
         workingDir: '',
         color: 'none',
-        collectionId: null,
+        collection: '',
       },
       secretValues: null,
     });
@@ -118,45 +124,6 @@ test('clicking a script opens a terminal tab titled with its name', async ({ rel
         ),
     )
     .toBe(true);
-});
-
-test('contract: Choose folder… switches the script to a fixed folder', async ({ relaunch }) => {
-  const fixed = contract<{ dirMode: string }>(
-    'script-folders',
-    'CustomScriptsService.Create#fixed',
-  );
-  const { window: page, control } = await relaunch({
-    control: [
-      { channel: IPC.windowsEnsure, response: { mode: 'automations' } },
-      RESOLVED_DIR,
-      { channel: IPC.filesChooseFolder, response: { canceled: false, path: '/tmp/picked' } },
-      {
-        channel: IPC.customScriptsCreate,
-        response: { ...SCRIPT, dirMode: fixed.dirMode, workingDir: '/tmp/picked' },
-      },
-    ],
-  });
-  await page.locator('[data-testid="automations-add"]').click();
-  await page.locator('[data-testid="menu-item-new-script"]').click();
-  const dialog = page.locator('[data-testid="script-dialog"]');
-  const preview = dialog.locator('[data-testid="script-dialog-dir-preview"]');
-  const folder = preview.locator('[data-chip="path"][data-var="folder"]');
-  await expect(folder).toContainText('/kira');
-  await expect(folder).toContainText('Set on save');
-
-  await dialog.locator('[data-testid="script-dialog-dir-fixed"]').click();
-  await dialog.locator('[data-testid="script-dialog-workingdir-choose"]').click();
-  await expect(dialog.locator('[data-testid="script-dialog-workingdir"]')).toHaveText(
-    '/tmp/picked',
-  );
-  await expect(preview).toHaveCount(0);
-
-  await dialog.locator('[data-testid="script-dialog-name"]').fill('x');
-  await dialog.locator('[data-testid="script-dialog-command"]').fill('true');
-  await dialog.locator('[data-testid="script-dialog-save"]').click();
-  await expect
-    .poll(() => control.log().find((e) => e.channel === IPC.customScriptsCreate)?.args)
-    .toMatchObject({ fields: { dirMode: fixed.dirMode, workingDir: '/tmp/picked' } });
 });
 
 // Contract commands. Backend half: termflow TestCollectionsMoveAndDelete.

@@ -1,14 +1,14 @@
 import { shortSha } from '@kira/git-core';
-import type { HeadState, Transport } from '@kira/git-ipc';
+import type { HeadState } from '@kira/git-ipc';
 import { t } from '@theme/i18n';
-import { useTimeoutFn } from '@vueuse/core';
 import { logWarn } from '@workbench/bridge/log';
 import { defineStore } from 'pinia';
 import { reactive, watch } from 'vue';
 import { control } from '../../bridge/control';
 import { useCodeReposStore } from '../../state/coderepos';
 import { useWorkspaceStore } from '../../state/workspace';
-import { gitTransportFor, onTransportEvicted, RELEASE_RETRY_MS } from '../git/transport';
+import { onGitRepoEvent } from '../git/gitCall';
+import { type GitRepoHold, holdGitRepo } from '../git/repoHolds';
 import { useRepoVisibilityStore } from './repoVisibility';
 
 export const useRepoHeadsStore = defineStore('repoHeads', () => {
@@ -70,54 +70,30 @@ export const useRepoHeadsStore = defineStore('repoHeads', () => {
     },
   );
 
-  // One lease per open repo workspace, created and released by the same eviction
-  // pattern worktrees.ts:149-155 established. `gitTransportFor` returns a lease over the existing
-  // shared client an open workspace's own graph tab already created — nothing new opened here.
-  // `immediate: true` so a repo workspace already open when this store first activates is covered
-  // too, not only one opened afterward.
-  const leases = new Map<string, { transport: Transport; off: () => void }>();
+  // One window-level repo hold plus its repo.changed subscription per open repo workspace; a
+  // checkout, which is what changes a HEAD, happens in the workspace's own graph. `immediate: true`
+  // so a repo workspace already open when this store first activates is covered too.
+  const holds = new Map<string, { hold: GitRepoHold; off: () => void }>();
 
-  function lease(id: string): void {
-    const transport = gitTransportFor(id);
-    // A checkout is what actually changes a HEAD, and it happens in the workspace's own graph.
-    const offChanged = transport.on('repo.changed', (event) => {
-      const record = codeReposStore.codeRepoRecord(id);
-      if (!record || event.repoId !== record.repoId || event.kind !== 'refsChanged') return;
-      void refreshRepoHeads([id]);
+  function track(id: string, gitRepoId: string): void {
+    const off = onGitRepoEvent('repo.changed', gitRepoId, (event) => {
+      if (event.kind === 'refsChanged') void refreshRepoHeads([id]);
     });
-    // The client closed on its own: the lease is dead, so take a new one while the workspace is open.
-    const offEvicted = onTransportEvicted(id, () => {
-      leases.delete(id);
-      offEvicted();
-      useTimeoutFn(() => {
-        if (!workspaceStore.openRepos.includes(id) || leases.has(id)) return;
-        lease(id);
-        void refreshRepoHeads([id]);
-      }, RELEASE_RETRY_MS);
-    });
-    leases.set(id, {
-      transport,
-      off: () => {
-        offChanged();
-        offEvicted();
-      },
-    });
+    holds.set(id, { hold: holdGitRepo(gitRepoId), off });
   }
 
   watch(
-    () => workspaceStore.openRepos,
-    (openRepos, previous) => {
+    () => [workspaceStore.openRepos, codeReposStore.records] as const,
+    ([openRepos]) => {
       for (const id of openRepos) {
-        if (!leases.has(id)) lease(id);
+        const record = codeReposStore.codeRepoRecord(id);
+        if (record && !holds.has(id)) track(id, record.repoId);
       }
-      if (!previous) return;
-      for (const id of previous) {
+      for (const [id, held] of [...holds]) {
         if (openRepos.includes(id)) continue;
-        const held = leases.get(id);
-        if (!held) continue;
-        leases.delete(id);
+        holds.delete(id);
         held.off();
-        held.transport.dispose();
+        held.hold.release();
       }
     },
     { immediate: true },

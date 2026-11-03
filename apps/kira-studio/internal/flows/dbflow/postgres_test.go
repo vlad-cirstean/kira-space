@@ -78,12 +78,12 @@ func TestPostgresUpdateCredentials(t *testing.T) {
 		t.Fatalf("connect with a stale password = %+v, want an error", st)
 	}
 
-	if _, err := app.W.Connections.Update(bridge.ConnectionsUpdateArgs{ID: conn.ID, Input: in}); err != nil {
+	if err := app.W.Connections.UpdateCredentials(bridge.ConnectionsCredentialsArgs{ID: conn.ID, Password: in.Password}); err != nil {
 		t.Fatal(err)
 	}
 	fixed := connect(t, app, conn.ID)
 	if fixed.Status != "connected" {
-		t.Fatalf("connect after Update = %+v, want connected", fixed)
+		t.Fatalf("connect after UpdateCredentials = %+v, want connected", fixed)
 	}
 	app.Contract(t, "paste-credentials", "ConnectionsService.Connect#connected", fixed,
 		flowharness.Mask("since", "serverVersion"), flowharness.Omit("caps"))

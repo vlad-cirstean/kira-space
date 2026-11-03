@@ -1,11 +1,11 @@
 {
   "CustomScriptsService.Create#fixed": {
-    "collectionId": null,
+    "collection": "",
     "color": "blue",
     "command": "pwd",
     "createdAt": "<time>",
     "dirMode": "fixed",
-    "id": "<id:1>",
+    "id": "job-2",
     "kind": "script",
     "name": "job",
     "params": [],
@@ -16,13 +16,5 @@
     "updatedAt": "<time>",
     "useAdeDir": false,
     "workingDir": "<tmp>/gone"
-  },
-  "ScriptRunsService.ResolveDir#legacy": {
-    "base": "<home>",
-    "blocker": "",
-    "branch": "",
-    "mode": "home",
-    "path": "<home>",
-    "pending": false
   }
 }

@@ -5,11 +5,11 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/scripts/scriptstest"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -185,9 +185,7 @@ func TestRunsRestore(t *testing.T) {
 
 		old := restoreItem(t, restoreState(t, app), "plain")
 		edit := scripts.CustomScriptFields{Name: rec.Name, Kind: rec.Kind, Command: "sleep 61", Color: rec.Color, DirMode: rec.DirMode}
-		if _, err := app.W.CustomScripts.Update(bridge.CustomScriptsUpdateArgs{ID: rec.ID, Fields: edit}); err != nil {
-			t.Fatal(err)
-		}
+		scriptstest.Update(t, app.W.CustomScripts, rec.ID, edit)
 		res, err := app.W.ScriptRuns.Restore(scriptruns.RestoreArgs{Items: []scriptruns.RestoreChoice{choice(old)}})
 		if err != nil || len(res.Items) != 1 || res.Items[0].Code != "E_CONFLICT" || res.Items[0].Started != nil {
 			t.Fatalf("Restore with the old hash = %+v, %v, want E_CONFLICT", res, err)

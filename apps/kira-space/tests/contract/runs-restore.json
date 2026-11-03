@@ -4,11 +4,11 @@
       {
         "code": "",
         "error": "",
-        "runId": "<id:4>",
+        "runId": "<id:2>",
         "started": {
           "runId": "",
           "terminal": {
-            "cwd": "<space>/automations/<id:3>",
+            "cwd": "<space>/automations/plain",
             "token": "<masked>"
           }
         }
@@ -16,9 +16,9 @@
       {
         "code": "",
         "error": "",
-        "runId": "<id:8>",
+        "runId": "<id:4>",
         "started": {
-          "runId": "<id:9>",
+          "runId": "<id:5>",
           "terminal": null
         }
       }
@@ -31,7 +31,7 @@
         "branchLabel": "",
         "color": "blue",
         "command": "sleep 60",
-        "cwd": "<space>/automations/<id:1>",
+        "cwd": "<space>/automations/param",
         "endedAt": 0,
         "hash": "<masked>",
         "kind": "script",
@@ -44,8 +44,8 @@
         ],
         "reason": "",
         "resume": false,
-        "runId": "<id:2>",
-        "scriptId": "<id:1>",
+        "runId": "<id:1>",
+        "scriptId": "param",
         "scriptName": "param",
         "status": "ready",
         "taskId": "",
@@ -57,7 +57,7 @@
         "branchLabel": "",
         "color": "blue",
         "command": "sleep 60",
-        "cwd": "<space>/automations/<id:3>",
+        "cwd": "<space>/automations/plain",
         "endedAt": 0,
         "hash": "<masked>",
         "kind": "script",
@@ -65,8 +65,8 @@
         "params": [],
         "reason": "",
         "resume": false,
-        "runId": "<id:4>",
-        "scriptId": "<id:3>",
+        "runId": "<id:2>",
+        "scriptId": "plain",
         "scriptName": "plain",
         "status": "ready",
         "taskId": "",
@@ -78,7 +78,7 @@
         "branchLabel": "",
         "color": "blue",
         "command": "sleep 60",
-        "cwd": "<space>/automations/<id:5>",
+        "cwd": "<space>/automations/secret",
         "endedAt": 0,
         "hash": "<masked>",
         "kind": "script",
@@ -91,8 +91,8 @@
         ],
         "reason": "Needs values for: token. Save the secret values in the script, or start it yourself.",
         "resume": false,
-        "runId": "<id:6>",
-        "scriptId": "<id:5>",
+        "runId": "<id:3>",
+        "scriptId": "secret",
         "scriptName": "secret",
         "status": "needsInput",
         "taskId": "",
@@ -104,7 +104,7 @@
         "branchLabel": "",
         "color": "blue",
         "command": "Say hi",
-        "cwd": "<space>/automations/<id:7>",
+        "cwd": "<space>/automations/smart",
         "endedAt": 0,
         "hash": "<masked>",
         "kind": "smart",
@@ -112,8 +112,8 @@
         "params": [],
         "reason": "",
         "resume": true,
-        "runId": "<id:8>",
-        "scriptId": "<id:7>",
+        "runId": "<id:4>",
+        "scriptId": "smart",
         "scriptName": "smart",
         "status": "ready",
         "taskId": "",
@@ -126,11 +126,11 @@
     "items": [
       {
         "hash": "<masked>",
-        "runId": "<id:4>"
+        "runId": "<id:2>"
       },
       {
         "hash": "<masked>",
-        "runId": "<id:8>"
+        "runId": "<id:4>"
       }
     ]
   }

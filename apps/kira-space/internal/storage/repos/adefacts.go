@@ -75,6 +75,23 @@ func (r *AdeFactsRepo) DeleteMarksNotIn(kind, codeRepoID string, names []string)
 	return nil
 }
 
+// DeleteEnvStateNotIn drops codeRepoID's environment states whose environment is not in names (an
+// environment removed from config).
+func (r *AdeFactsRepo) DeleteEnvStateNotIn(codeRepoID string, names []string) error {
+	q := `DELETE FROM ade_env_state WHERE code_repo_id = ?`
+	args := []any{codeRepoID}
+	if len(names) > 0 {
+		q += ` AND env NOT IN (?` + strings.Repeat(",?", len(names)-1) + `)`
+		for _, n := range names {
+			args = append(args, n)
+		}
+	}
+	if _, err := r.DB.Exec(q, args...); err != nil {
+		return fmt.Errorf("repos: delete ade env state: %w", err)
+	}
+	return nil
+}
+
 // EnvStates returns codeRepoID's environment states keyed by environment name.
 func (r *AdeFactsRepo) EnvStates(codeRepoID string) (map[string]model.AdeEnvState, error) {
 	rows, err := r.DB.Query(`SELECT code_repo_id, env, sha, prev_sha, error, checked_at FROM ade_env_state WHERE code_repo_id = ?`, codeRepoID)

@@ -9,10 +9,13 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/config"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connections"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskrules"
@@ -21,6 +24,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/appupdate"
+	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/agentsvc"
@@ -30,6 +34,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/logging"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
+	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/terminal"
@@ -52,8 +57,10 @@ type Options struct {
 	McpInstaller    harness.MCPInstaller
 	// Browser opens external URLs (a deferred Wails opener in production).
 	Browser bridge.Browser
-	AppName string
-	Version string
+	// FileOpener opens or reveals a config file; main passes the Wails adapter.
+	FileOpener configsvc.FileOpener
+	AppName    string
+	Version    string
 	// SmartTimeout replaces every smart script's own timeout (a flow-test seam); production leaves it zero.
 	SmartTimeout time.Duration
 	// ScheduleTimeout replaces every headless scheduled run's own timeout and Clock drives the
@@ -93,13 +100,17 @@ type Wired struct {
 	TerminalRegistry *terminal.Registry
 	OnWindowClosing  []func(string)
 
-	App             *bridge.AppService
-	Settings        *bridge.SettingsService
-	Layout          *bridge.LayoutService
-	Tabs            *bridge.TabsService
-	WindowsSvc      *bridge.WindowsService
-	Connections     *bridge.ConnectionsService
-	MaskRules       *bridge.MaskRulesService
+	App         *bridge.AppService
+	Settings    *bridge.SettingsService
+	Layout      *bridge.LayoutService
+	Tabs        *bridge.TabsService
+	WindowsSvc  *bridge.WindowsService
+	Connections *bridge.ConnectionsService
+	MaskRules   *bridge.MaskRulesService
+	// ConnectionConfig is the connections folder's files surface.
+	ConnectionConfig *bridge.ConnectionConfigService
+	// ConnectionFiles is the connections folder behind Connections, Filters, Schema and MaskRules.
+	ConnectionFiles *connfiles.Loader
 	Tree            *bridge.TreeService
 	Ops             *bridge.OpsService
 	Filters         *bridge.FiltersService
@@ -111,6 +122,9 @@ type Wired struct {
 	Grpc            *bridge.GrpcService
 	Collections     *bridge.CollectionsService
 	Variables       *bridge.VariablesService
+	ApiConfig       *bridge.ApiConfigService
+	// ApiFiles is the api config folder behind Collections, Variables and ApiConfig.
+	ApiFiles        *apifiles.Store
 	ResponseHistory *bridge.ResponseHistoryService
 	GrpcHistory     *bridge.GrpcHistoryService
 	DataGrip        *bridge.DataGripService
@@ -118,6 +132,7 @@ type Wired struct {
 	KeepAwake       *bridge.KeepAwakeService
 	Terminal        *bridge.TerminalService
 	CustomScripts   *bridge.CustomScriptsService
+	ConfigFiles     *bridge.ConfigFilesService
 	ScriptRuns      *bridge.ScriptRunsService
 	Docker          *bridge.DockerService
 	Kubernetes      *bridge.KubernetesService
@@ -159,25 +174,50 @@ func Build(opts Options) (*Wired, error) {
 		return s.Agent.Provider, err
 	}}
 
-	secretsRepo := repos.NewSecrets(db.DB, opts.Cipher)
-	// P5: the same "needs a Cipher, constructed separately from repos.New's aggregate" shape as
-	// secretsRepo just above.
+	// P5: needs a Cipher, so constructed separately from repos.New's aggregate.
 	repositories.Variables = repos.NewVariables(db.DB, opts.Cipher)
 	// M5 §2.5/§3.2: the per-connection correlation key column, same "needs a Cipher" shape.
 	maskKeysRepo := repos.NewMaskKeys(db.DB, opts.Cipher)
-	maskRulesSvc := maskrules.New(repositories.MaskRules, maskKeysRepo)
+
+	// The connections folder. Its callbacks reach the connections service, built after it; they run only
+	// once Start has, below.
+	var connectionsSvc *connections.Service
+	var maskRulesSvc *maskrules.Service
+	connFiles, err := connfiles.New(connfiles.Options{
+		DB: db.DB, Dir: filepath.Join(config.KiraHome(), "connections"),
+		Secrets: &connfiles.Secrets{Store: secrets.NewStore(db.DB, opts.Cipher), DB: db.DB},
+		OnChange: func(ch connfiles.Changes) {
+			connectionsSvc.ConfigChanged(ch)
+			bridge.EmitConnectionChanges(opts.Emitter, maskRulesSvc, ch)
+		},
+		OnForget: func(id string) { connectionsSvc.Removed(id) },
+	})
+	if err != nil {
+		return nil, err
+	}
+	maskRulesSvc = maskrules.New(repositories.MaskRules, maskKeysRepo, connFiles)
 
 	// P5 D8: the SAME authorizer instance connections.New below is given: that is what makes the
 	// reveal grace genuinely shared between a connection-password reveal and a variable reveal.
 	promptStore := llmprompts.NewStore(filepath.Join(config.KiraHome(), "llm-prompts.json"))
+	apiSecrets := &apifiles.Secrets{Store: secrets.NewStore(db.DB, opts.Cipher), DB: db.DB}
+	apiFiles, err := apifiles.New(apifiles.Options{
+		DB: db.DB, Dir: filepath.Join(config.KiraHome(), "api"), Secrets: apiSecrets,
+		OnChange: func(ch apifiles.Changes) { bridge.EmitApiChanges(opts.Emitter, ch) },
+	})
+	if err != nil {
+		return nil, err
+	}
 	deps := appcore.Deps{
 		DB:        db.DB,
 		Home:      config.KiraHome(),
 		StartedAt: startedAt.UnixMilli(),
 		Repos:     repositories,
-		ApiVars:   apivars.New(repositories.Variables, opts.Authorizer),
+		ApiVars:   apivars.New(repositories.Variables, opts.Authorizer, apiSecrets),
 		MaskRules: maskRulesSvc,
 		Prompts:   promptStore,
+
+		ConnectionFiles: connFiles,
 	}
 
 	// Read from the just-migrated (possibly still-default) settings row, same as production would
@@ -189,8 +229,9 @@ func Build(opts Options) (*Wired, error) {
 	// P72 §9.2: match the stored advanced.logLevel rather than always booting at Info.
 	logging.SetLevel(settings.Advanced.LogLevel)
 
-	adaptersW := wireAdapters(&deps, settings, repositories, secretsRepo, opts.Cipher, opts.Authorizer, db)
-	router, connectionsSvc := adaptersW.router, adaptersW.connectionsSvc
+	adaptersW := wireAdapters(&deps, settings, repositories, connFiles, opts.Authorizer, db)
+	router := adaptersW.router
+	connectionsSvc = adaptersW.connectionsSvc
 	oplogWiring, metricsTicker := adaptersW.oplogWiring, adaptersW.metricsTicker
 
 	deps.Events = opts.Emitter
@@ -227,13 +268,16 @@ func Build(opts Options) (*Wired, error) {
 	}
 	embedded := wireEmbeddedServices(deps, installer, opts.KeepAwakeDriver, connectionsSvc, oplogWiring, metricsTicker, promptRouter, agents, proofSvc, opts)
 	lifecycle := wireLifecycle(windows, embedded.events, embedded.eventsDetach, metricsTicker, oplogWiring, connectionsSvc,
-		embedded.dbMcpSvc, embedded.keepAwakeSvc, embedded.terminalSvc, embedded.dockerSvc, embedded.kubeSvc, updateInstaller, embedded.runs, embedded.closeAgent, embedded.sched, repositories, db)
+		embedded.dbMcpSvc, embedded.keepAwakeSvc, embedded.terminalSvc, embedded.dockerSvc, embedded.kubeSvc, updateInstaller, embedded.runs, embedded.closeAgent, embedded.sched, embedded.runLoader, apiFiles, connFiles, repositories, db)
 	embedded.sched.Start()
 
 	live := func() shell.QuitStatus {
 		return shell.QuitStatus{Agents: len(embedded.terminalSvc.Registry.AgentSessions()), Scripts: embedded.runs.Live()}
 	}
 	lifecycle.quitter.SetGate(prompts.QuitGate{R: promptRouter, LiveFn: func() int { return live().Total() }})
+
+	apiFiles.Start()
+	connFiles.Start()
 
 	*w = Wired{
 		Prompts:    promptRouter,
@@ -253,35 +297,40 @@ func Build(opts Options) (*Wired, error) {
 			kubernetes.CloseWindowBound(embedded.kubeSvc.BoundService, key)
 		}, proofTargets.Forget},
 
-		App:             &bridge.AppService{Deps: deps},
-		Settings:        &bridge.SettingsService{Deps: deps},
-		Layout:          &bridge.LayoutService{Deps: deps},
-		Tabs:            &bridge.TabsService{Deps: deps},
-		WindowsSvc:      embedded.windowsSvc,
-		Connections:     &bridge.ConnectionsService{Deps: deps},
-		MaskRules:       &bridge.MaskRulesService{Deps: deps},
-		Tree:            &bridge.TreeService{Deps: deps},
-		Ops:             &bridge.OpsService{Deps: deps, Canceller: router},
-		Filters:         &bridge.FiltersService{Deps: deps},
-		Files:           &bridge.FilesService{Dialogs: opts.Dialogs},
-		Queries:         &bridge.QueriesService{Deps: deps},
-		Schema:          &bridge.SchemaService{Deps: deps},
-		Kibana:          &bridge.KibanaService{Deps: deps},
-		Http:            &bridge.HttpService{Deps: deps},
-		Grpc:            &bridge.GrpcService{Deps: deps},
-		Collections:     &bridge.CollectionsService{Deps: deps},
-		Variables:       &bridge.VariablesService{Deps: deps},
-		ResponseHistory: &bridge.ResponseHistoryService{Deps: deps},
-		GrpcHistory:     &bridge.GrpcHistoryService{Deps: deps},
-		DataGrip:        &bridge.DataGripService{Deps: deps},
-		DbMcp:           embedded.dbMcpSvc,
-		KeepAwake:       embedded.keepAwakeSvc,
-		Terminal:        embedded.terminalSvc,
-		CustomScripts:   &bridge.CustomScriptsService{Deps: deps, Changed: embedded.sched.Reload},
-		ScriptRuns:      embedded.scriptRuns,
-		Docker:          embedded.dockerSvc,
-		Kubernetes:      embedded.kubeSvc,
-		Link:            &bridge.LinkService{Browser: opts.Browser},
+		App:              &bridge.AppService{Deps: deps},
+		Settings:         &bridge.SettingsService{Deps: deps},
+		Layout:           &bridge.LayoutService{Deps: deps},
+		Tabs:             &bridge.TabsService{Deps: deps},
+		WindowsSvc:       embedded.windowsSvc,
+		Connections:      &bridge.ConnectionsService{Deps: deps},
+		MaskRules:        &bridge.MaskRulesService{Deps: deps},
+		ConnectionConfig: &bridge.ConnectionConfigService{Deps: deps, Files: connFiles},
+		ConnectionFiles:  connFiles,
+		Tree:             &bridge.TreeService{Deps: deps},
+		Ops:              &bridge.OpsService{Deps: deps, Canceller: router},
+		Filters:          &bridge.FiltersService{Deps: deps},
+		Files:            &bridge.FilesService{Dialogs: opts.Dialogs},
+		Queries:          &bridge.QueriesService{Deps: deps},
+		Schema:           &bridge.SchemaService{Deps: deps},
+		Kibana:           &bridge.KibanaService{Deps: deps},
+		Http:             &bridge.HttpService{Deps: deps},
+		Grpc:             &bridge.GrpcService{Deps: deps},
+		Collections:      &bridge.CollectionsService{Deps: deps, Files: apiFiles},
+		Variables:        &bridge.VariablesService{Deps: deps, Files: apiFiles},
+		ApiConfig:        &bridge.ApiConfigService{Deps: deps, Files: apiFiles},
+		ApiFiles:         apiFiles,
+		ResponseHistory:  &bridge.ResponseHistoryService{Deps: deps},
+		GrpcHistory:      &bridge.GrpcHistoryService{Deps: deps},
+		DataGrip:         &bridge.DataGripService{Deps: deps},
+		DbMcp:            embedded.dbMcpSvc,
+		KeepAwake:        embedded.keepAwakeSvc,
+		Terminal:         embedded.terminalSvc,
+		CustomScripts:    &bridge.CustomScriptsService{Svc: &scripts.Service{Loader: embedded.runLoader}},
+		ConfigFiles:      &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"runs": filepath.Join(deps.Home, "runs"), "api": apiFiles.Dir(), "connections": connFiles.Dir()})},
+		ScriptRuns:       embedded.scriptRuns,
+		Docker:           embedded.dockerSvc,
+		Kubernetes:       embedded.kubeSvc,
+		Link:             &bridge.LinkService{Browser: opts.Browser},
 		Update: &bridge.UpdateService{
 			Checker: updateChecker, Installer: updateInstaller, Quit: lifecycle.quitter.RequestQuit,
 		},
@@ -331,7 +380,7 @@ func (w *Wired) reopenWindow() {
 	}
 }
 
-// Bound returns the 35 bound services in registration order.
+// Bound returns the 38 bound services in registration order.
 func (w *Wired) Bound() []application.Service {
 	return []application.Service{
 		application.NewService(w.App), application.NewService(w.Settings), application.NewService(w.Layout),
@@ -339,11 +388,11 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.MaskRules), application.NewService(w.Tree), application.NewService(w.Ops),
 		application.NewService(w.Filters), application.NewService(w.Files), application.NewService(w.Queries),
 		application.NewService(w.Schema), application.NewService(w.Kibana), application.NewService(w.Http), application.NewService(w.Grpc),
-		application.NewService(w.Collections), application.NewService(w.Variables),
+		application.NewService(w.Collections), application.NewService(w.Variables), application.NewService(w.ApiConfig), application.NewService(w.ConnectionConfig),
 		application.NewService(w.ResponseHistory), application.NewService(w.GrpcHistory),
 		application.NewService(w.DataGrip), application.NewService(w.DbMcp), application.NewService(w.KeepAwake),
 		application.NewService(w.Terminal), application.NewService(w.CustomScripts), application.NewService(w.ScriptRuns), application.NewService(w.Docker), application.NewService(w.Kubernetes), application.NewService(w.Link),
-		application.NewService(w.Update), application.NewService(w.Lifecycle), application.NewService(w.PromptsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.Proof),
+		application.NewService(w.Update), application.NewService(w.Lifecycle), application.NewService(w.PromptsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.Proof), application.NewService(w.ConfigFiles),
 	}
 }
 

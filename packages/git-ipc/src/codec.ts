@@ -78,8 +78,7 @@ export function encodeStreamPayload(method: StreamKey, chunk: unknown): unknown 
 }
 
 /** Reverses `encodeStreamPayload`. Throws if `payload.commits` is not a recognised `$fb`-tagged
- *  wrapper — a webview built against a stale contract must fail loudly (D46/W8's
- *  `CONTRACT_VERSION` bump), not render an empty graph. */
+ *  wrapper — a webview built against a stale contract must fail loudly, not render an empty graph. */
 export function decodeStreamPayload(method: StreamKey, payload: unknown): unknown {
   switch (method) {
     case 'graph.stream': {

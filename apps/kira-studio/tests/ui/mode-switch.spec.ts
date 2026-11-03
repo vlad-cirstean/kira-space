@@ -3,6 +3,7 @@ import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
 import { modeTab } from './support/apiMode';
 import { installFakeTimers } from './support/clock';
+import { createConnection } from './support/connect';
 import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
 import {
@@ -71,16 +72,7 @@ const CONTROL: ControlSnapshot[] = [
 ];
 
 async function createAndConnect(page: import('@playwright/test').Page): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Mode DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-blue"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Mode DB');
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();

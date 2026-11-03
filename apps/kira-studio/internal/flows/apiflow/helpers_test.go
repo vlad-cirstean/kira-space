@@ -24,8 +24,6 @@ var (
 	opSeq atomic.Int64
 )
 
-func ptr[T any](v T) *T { return &v }
-
 func newOp() string { return fmt.Sprintf("aop-%d", opSeq.Add(1)) }
 
 func get(url string) bridge.HttpSendArgs {
@@ -57,26 +55,6 @@ func newCollection(t *testing.T, app *flowharness.App, name string) model.Collec
 		t.Fatal(err)
 	}
 	return c
-}
-
-func newEnv(t *testing.T, app *flowharness.App, name string) model.Environment {
-	t.Helper()
-	e, err := app.W.Variables.CreateEnvironment(bridge.VariablesCreateEnvironmentArgs{Name: name, Color: "none"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return e
-}
-
-func upsertSecret(t *testing.T, app *flowharness.App, scope model.VariableScope, owner, name, value string) model.Variable {
-	t.Helper()
-	v, err := app.W.Variables.Upsert(bridge.VariablesUpsertArgs{
-		Scope: scope, OwnerID: owner, Name: name, Value: &value, IsSecret: true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return v
 }
 
 func savedGet() model.SavedRequest {

@@ -27,9 +27,8 @@ export function isExplainable(sql: string): boolean {
 
 // The switch below is the authority on which kinds get an EXPLAIN statement composed —
 // EXPLAIN_SUPPORTED_KINDS (packages/shared/domain/connection.ts) names the same five kinds for
-// project/ConnectionDialog.vue's own auto-explain checkbox, which cannot import this module
-// directly (project/ must not import views/). Keep both lists in sync by hand; a
-// dialect added here belongs there too.
+// the connection file's schema. Keep both lists in sync by hand; a dialect added here belongs
+// there too.
 
 // Per-dialect EXPLAIN, decided against real servers — never an ANALYZE/execute variant anywhere
 // (EXPLAIN alone is ~800x cheaper than running the query, which is the entire premise auto-explain

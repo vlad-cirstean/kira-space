@@ -25,3 +25,15 @@ func TestAgentsDocCoversSchema(t *testing.T) {
 		}
 	}
 }
+
+func TestAgentsDocKeyedBy(t *testing.T) {
+	_, model, err := YAMLSchema[probe](probeSchema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	model.App, model.Title, model.Pattern, model.Format, model.KeyedBy = "Space", "Probes", "<name>.yaml", "YAML", "name"
+	out := string(RenderAgentsMD(model))
+	if !strings.Contains(out, "The `name` key names the item; the file name is free.") || strings.Contains(out, "is the item id") {
+		t.Errorf("keyed-by line wrong:\n%s", out)
+	}
+}

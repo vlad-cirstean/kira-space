@@ -31,6 +31,7 @@ const BRIDGE_PKG = 'github.com/kirathecat/kira-studio/apps/kira-space/internal/b
 const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   gitHostOpenChangeRequestUrl: 'GitHostService.OpenChangeRequestURL',
   gitHostProviders: 'GitHostService.Providers',
+  gitResetWindow: 'GitService.ResetWindow',
   hostViewOpen: 'HostViewService.Open',
   hostViewWindowTarget: 'HostViewService.WindowTarget',
   hostViewChangeRequest: 'HostViewService.ChangeRequest',
@@ -100,6 +101,9 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
 
   // P116 G5/G6: the two new bound methods window-chrome parity adds.
   windowsOpenNew: 'WindowsService.OpenNew',
+  repoConfigList: 'RepoConfigService.List',
+  repoConfigFile: 'RepoConfigService.File',
+  repoConfigSaveFile: 'RepoConfigService.SaveFile',
   agentContextGet: 'AgentContextService.Get',
   agentContextSave: 'AgentContextService.Save',
   agentSettingsGet: 'AgentSettingsService.Get',
@@ -116,12 +120,11 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   configFilesReveal: 'ConfigFilesService.Reveal',
   customScriptsList: 'CustomScriptsService.List',
   customScriptsCreate: 'CustomScriptsService.Create',
-  customScriptsUpdate: 'CustomScriptsService.Update',
   customScriptsDelete: 'CustomScriptsService.Delete',
-  customScriptsCreateCollection: 'CustomScriptsService.CreateCollection',
-  customScriptsRenameCollection: 'CustomScriptsService.RenameCollection',
-  customScriptsDeleteCollection: 'CustomScriptsService.DeleteCollection',
-  customScriptsMove: 'CustomScriptsService.Move',
+  customScriptsFile: 'CustomScriptsService.File',
+  customScriptsSaveFile: 'CustomScriptsService.SaveFile',
+  customScriptsSetSecrets: 'CustomScriptsService.SetSecrets',
+  customScriptsSetScheduleTarget: 'CustomScriptsService.SetScheduleTarget',
   customScriptsReorder: 'CustomScriptsService.Reorder',
   customScriptsReorderCollections: 'CustomScriptsService.ReorderCollections',
   scriptRunsList: 'ScriptRunsService.List',
@@ -153,7 +156,6 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   scriptRunsPreview: 'ScriptRunsService.Preview',
   scriptRunsStart: 'ScriptRunsService.Start',
   scriptRunsReadLog: 'ScriptRunsService.ReadLog',
-  scriptRunsMcpServers: 'ScriptRunsService.McpServers',
   keepAwakeStatus: 'KeepAwakeService.Status',
   keepAwakeSetManual: 'KeepAwakeService.SetManual',
   agentNotifyReportFocus: 'AgentNotifyService.ReportFocus',
@@ -201,7 +203,6 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskSaveWorkflowYaml: 'AdeTaskService.SaveWorkflowYaml',
   adeTaskImportWorkflow: 'AdeTaskService.ImportWorkflow',
   adeTaskNewWorkflow: 'AdeTaskService.NewWorkflow',
-  adeTaskUpdateRepo: 'AdeTaskService.UpdateRepo',
   adeTaskAddFolder: 'AdeTaskService.AddFolder',
   adeTaskSetFolderWatch: 'AdeTaskService.SetFolderWatch',
   adeTaskSetFolderHidden: 'AdeTaskService.SetFolderHidden',
@@ -321,6 +322,8 @@ export const { channelToFqn: CHANNEL_TO_FQN, fqnToChannel: FQN_TO_CHANNEL } = bu
 // today, and a spec that wants `terminal`/`ade` instead (modules.spec.ts) provides its own
 // `windowsEnsure` snapshot, which always wins over this default.
 const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
+  // Boot resets the window's git connection (repo/git/boundGit.ts).
+  [IPC.gitResetWindow]: 'null',
   [IPC.tabsSave]: 'null',
   // Boot drains Finder-opened files; none by default.
   [IPC.openedFilesPending]: '[]',
@@ -526,7 +529,7 @@ const ADE_TASK_PUSHES: Readonly<Record<string, readonly string[]>> = {
   [IPC.adeTaskSaveWorkflowYaml]: [IPC.adeTaskWorkflowsChanged],
   [IPC.adeTaskImportWorkflow]: [IPC.adeTaskWorkflowsChanged],
   [IPC.adeTaskNewWorkflow]: [IPC.adeTaskWorkflowsChanged],
-  [IPC.adeTaskUpdateRepo]: [IPC.adeTaskReposChanged],
+  [IPC.repoConfigSaveFile]: [IPC.repoConfigChanged, IPC.adeTaskReposChanged],
   [IPC.adeTaskAddFolder]: [IPC.adeTaskReposChanged],
   [IPC.adeTaskSetFolderWatch]: [IPC.adeTaskReposChanged],
   [IPC.adeTaskSetFolderHidden]: [IPC.adeTaskReposChanged],

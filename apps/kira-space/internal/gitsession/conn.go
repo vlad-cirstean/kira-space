@@ -43,7 +43,7 @@ type walkPair struct {
 }
 
 // Conn is one connection's private session state — SPEC §6's Conn box, minus Walk (G6). Emit is
-// supplied by bridge so this package never imports bridge or rpcstream (SPEC §7's layering rule);
+// supplied by bridge so this package never imports bridge (SPEC §7's layering rule);
 // it is called from a subscriber's own goroutine (D14), never from the watcher's.
 type Conn struct {
 	ID       ConnID
@@ -57,7 +57,7 @@ type Conn struct {
 
 	// emitMu guards emitFn: gitrpc.Router.ForConn's own
 	// repoSettings.changed forwarding goroutine starts as soon as ForConn is called — before
-	// bridge's ServeGitStream reaches its own "gconn.SetEmit(sess.Emit)" line
+	// bridge's GitWindows reaches its own SetEmit call
 	// — so a bare, unguarded field here was a genuine read/write data race under the Go memory
 	// model (another connection's concurrent repoSettings.set could deliver its notification right
 	// inside that window). The nil-check every call site used to do individually now lives once,
@@ -67,7 +67,7 @@ type Conn struct {
 	emitFn func(method string, payload any)
 
 	// noAutoFetch is the opt-out: the native git-graph mount's own Conn (bridge/
-	// gitstream.go's ServeGitStream) sets this before serving any request, so its own repo.open
+	// gitwindows.go's GitWindows) sets this before serving any request, so its own repo.open
 	// never arms a RepoEntry's background auto-fetch timer (autofetch.go) — restoring
 	// the read-only claim of docs/ARCHITECTURE.md's "Git graph in the native workspace (C10)"
 	// section for that surface specifically. Set once,
@@ -83,15 +83,14 @@ type Conn struct {
 	held   map[string]*hold     // RepoID -> hold
 	walks  map[string]*walkPair // RepoID -> walkPair (D3), allocated lazily by whichever walk is created first
 	closed bool                 // set by Close, inside the same critical section that swaps held/walks (D3) —
-	// rpcstream.Serve returns without joining its own dispatched handler goroutines (session.go's
-	// receive loop), so a repo.open can, and reproducibly does, complete after handleConn's deferred
-	// Close already ran. Open's final critical section checks this and releases rather than stores a
+	// Requests run on their own goroutines, so a repo.open can, and reproducibly does, complete
+	// after Close already ran. Open's final critical section checks this and releases rather than stores a
 	// hold on a connection that is already gone (F1) — the hold would otherwise never be released by
 	// anyone: Close already swapped in the maps it stored into.
 
 	// done is G7 D20/D21's own disconnect signal — closed once, in Close, so a blocked credential
 	// waiter (AskCredential's own select) can observe this connection going away without ever
-	// reaching into rpcstream, which this package must stay under (SPEC §7's layering
+	// reaching into the bridge, which this package must stay under (SPEC §7's layering
 	// rule).
 	done chan struct{}
 	// routeCred answers every credential prompt this connection raises (RouteCredentials).
@@ -117,9 +116,8 @@ func NewConn(id ConnID, clientID, clientLabel string, emit func(method string, p
 	}
 }
 
-// SetEmit installs (or replaces) this connection's Emit function — bridge's
-// ServeGitStream calls this once, right after its own rpcstream.Session exists,
-// exactly where they used to assign the bare field directly (F9's own doc comment on emitMu).
+// SetEmit installs (or replaces) this connection's Emit function — bridge's GitWindows calls this
+// once, right after the Conn exists (F9's own doc comment on emitMu).
 func (c *Conn) SetEmit(fn func(method string, payload any)) {
 	c.emitMu.Lock()
 	c.emitFn = fn
@@ -143,8 +141,8 @@ func (c *Conn) Done() <-chan struct{} { return c.done }
 
 // DisableAutoFetch opts this Conn's own Open calls out of arming a RepoEntry's background
 // auto-fetch timer. Call it once, right after NewConn, before this Conn is handed to
-// anything that could start dispatching requests on it (ServeGitStream does so before
-// rpcstream.Session.Serve ever runs) — the resulting happens-before edge (the "go" statement that
+// anything that could start dispatching requests on it (GitWindows does so before the Conn is
+// handed out) — the resulting happens-before edge (the "go" statement that
 // starts each request-handling goroutine) is what makes this safe with no lock of its own.
 func (c *Conn) DisableAutoFetch() { c.noAutoFetch = true }
 
@@ -224,9 +222,8 @@ func (c *Conn) Open(ctx context.Context, reg *Registry, gitPath, path string) (g
 	if c.closed {
 		// This connection's Close already ran (and swapped in the fresh maps below) while this
 		// Open was still identifying the repository or subscribing. The repository was identified —
-		// the caller gets a correct summary back — but nothing must be stored: rpcstream's own
-		// removeActiveWork already dropped this request's response, so storing a hold here would
-		// leak it forever.
+		// the caller gets a correct summary back — but nothing must be stored: storing a hold here
+		// would leak it forever.
 		c.mu.Unlock()
 		unsubscribe()
 		release()
@@ -234,7 +231,7 @@ func (c *Conn) Open(ctx context.Context, reg *Registry, gitPath, path string) (g
 	}
 	if existing, ok := c.held[repoID]; ok {
 		// Lost a race against a concurrent Open for the same repo on this connection (two
-		// repo.open requests dispatched on their own goroutines by rpcstream) — clean up the
+		// repo.open requests dispatched on their own goroutines) — clean up the
 		// work just done rather than leaking it.
 		c.mu.Unlock()
 		unsubscribe()

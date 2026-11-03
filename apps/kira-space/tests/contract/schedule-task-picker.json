@@ -10,7 +10,7 @@
       "blocker": "",
       "branch": "",
       "mode": "kira",
-      "path": "<space>/automations/<id:1>",
+      "path": "<space>/automations/nightly",
       "pending": false
     },
     "env": [],
@@ -24,7 +24,7 @@
       "branches": [],
       "tasks": [
         {
-          "id": "<id:2>",
+          "id": "<id:1>",
           "title": "Fix login"
         }
       ]
@@ -39,30 +39,9 @@
     "error": "{\"code\":\"E_CONTRACT\",\"message\":\"scriptId is required\"}",
     "tasks": null
   },
-  "args:CustomScriptsService.Update#task": {
-    "fields": {
-      "collectionId": null,
-      "color": "blue",
-      "command": "echo hi",
-      "dirMode": "",
-      "kind": "script",
-      "name": "nightly",
-      "params": null,
-      "schedule": {
-        "branchId": "",
-        "confirm": false,
-        "cron": "0 9 * * 1-5",
-        "enabled": true,
-        "params": null,
-        "taskId": "<id:2>",
-        "timeout": "",
-        "timezone": "UTC"
-      },
-      "smart": null,
-      "useAdeDir": false,
-      "workingDir": ""
-    },
-    "id": "<id:1>",
-    "secretValues": null
+  "args:CustomScriptsService.SetScheduleTarget#task": {
+    "branchId": "",
+    "id": "nightly",
+    "taskId": "<id:1>"
   }
 }

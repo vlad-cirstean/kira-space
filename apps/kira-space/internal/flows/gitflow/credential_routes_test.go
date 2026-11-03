@@ -82,9 +82,7 @@ func TestCredentialRoutes(t *testing.T) {
 	if e.Origin != "" || e.Target != "w1" || !strings.Contains(e.Title, "Git needs a credential") {
 		t.Fatalf("board entry = %+v, want generic origin targeted at w1", e)
 	}
-	if _, ok := sink.Shown("prompt:git-credential"); !ok {
-		t.Fatal("no credential note")
-	}
+	testx.WaitUntil(t, wait, func() bool { _, ok := sink.Shown("prompt:git-credential"); return ok })
 	app.Contract(t, "git-credential-route", "PromptsService.List#credential", e, flowharness.Mask("createdAt", "id", "ref"))
 	answerLogin(t, app, "ana", "s3cret")
 	<-done

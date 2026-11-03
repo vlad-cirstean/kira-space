@@ -189,23 +189,6 @@ test('collections tree — arrows, expand and collapse, Enter opens, Shift+F10 a
   await expect(page.locator('[data-testid="http-request-view"]')).toBeVisible();
 });
 
-test('collections tree — Escape cancels an inline rename without writing', async ({ relaunch }) => {
-  const { window: page, control } = await relaunch({
-    control: [{ channel: IPC.collectionsList, response: COLLECTION_TREE }],
-  });
-  await modeTab(page, 'api').click();
-  const row = page.locator('[data-testid="collection-row"][data-id="col-1"]');
-  await row.click({ button: 'right' });
-  await page.click('[data-testid="menu-item-rename"]');
-  const input = page.locator('[data-testid="collection-rename-input"]');
-  await expect(input).toBeFocused();
-  await input.fill('Discarded');
-  await input.press('Escape');
-  await expect(input).toHaveCount(0);
-  await expect(row).toContainText('Orders API');
-  expect(control.log().some((e) => e.channel === IPC.collectionsRename)).toBe(false);
-});
-
 // --- request history lists --------------------------------------------------------------------
 
 function httpEntry(id: string, status: number, sentAt: string) {

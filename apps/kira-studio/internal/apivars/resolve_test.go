@@ -15,10 +15,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apifiles/apifilestest"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage"
-	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 )
@@ -84,17 +84,10 @@ func TestResolveAgainstTheSharedCorpus(t *testing.T) {
 	}
 }
 
-// strPtr is repos_test's own helper (storage/repos/ops_test.go), restated here — F2's three-state
-// VariablesRepo.Upsert (P108 Part 3) needs it for every secret seeded below.
-func strPtr(s string) *string { return &s }
-
-// newResolveService opens a real (tmpfile-backed) SQLite database through the real migrations —
-// mirrors repos_test's own newVariablesRepo (variables_test.go); duplicated rather than imported
-// since that helper lives in an internal _test.go file of a different package. Auth is nil: none of
-// ResolveRequest's own path ever calls it (only Reveal/RevealHistory do). The returned
-// *repos.VariablesRepo is the exact instance the Service resolves secrets through — seeding via it
-// directly (rather than a second, independent instance) is what makes SecretsFor see the row.
-func newResolveService(t *testing.T) (*apivars.Service, *repos.VariablesRepo, *repos.CollectionsRepo) {
+// newResolveService opens a real (tmpfile-backed) SQLite database through the real migrations and
+// loads one collection file; addSecret saves a secret and rewrites that file to reference it. Auth is
+// nil: ResolveRequest never calls it (only Reveal/RevealHistory do).
+func newResolveService(t *testing.T) (svc *apivars.Service, collectionID string, addSecret func(name, value string)) {
 	t.Helper()
 	t.Setenv("KIRA_INSECURE_SECRETS", "1")
 	t.Setenv("KIRA_HOME", t.TempDir())
@@ -103,8 +96,20 @@ func newResolveService(t *testing.T) (*apivars.Service, *repos.VariablesRepo, *r
 		t.Fatalf("storage.Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	variablesRepo := repos.NewVariables(db.DB, secrets.New())
-	return apivars.New(variablesRepo, nil), variablesRepo, &repos.CollectionsRepo{DB: db.DB}
+	cipher := secrets.New()
+	fx := apifilestest.New(t, db.DB, cipher)
+	seeder := apifilestest.Seeder{Store: fx.Store}
+	vars := []apifilestest.Var{}
+	seeder.Collection(t, "Orders", vars...)
+	cols, _, err := (&repos.CollectionsRepo{DB: db.DB}).List()
+	if err != nil || len(cols) != 1 {
+		t.Fatalf("collections = %+v (%v), want the seeded one", cols, err)
+	}
+	addSecret = func(name, value string) {
+		vars = append(vars, apifilestest.Var{Name: name, Value: value, Secret: true})
+		seeder.Collection(t, "Orders", vars...)
+	}
+	return apivars.New(repos.NewVariables(db.DB, cipher), nil, fx.Secrets), cols[0].ID, addSecret
 }
 
 // findUsed is resolve_test.go's own small lookup over ResolveRequest/Resolver.Used()'s
@@ -123,22 +128,16 @@ func findUsed(used []apivars.UsedSecret, name string) (apivars.UsedSecret, bool)
 // actually substituted — the (Rendered, Placeholder) pairs P9 D6's masking replacer needs — and
 // empty when the request references none.
 func TestResolveRequestReturnsExactlyTheSecretsItSubstituted(t *testing.T) {
-	svc, variablesRepo, collections := newResolveService(t)
-	c, err := collections.CreateCollection("Orders")
-	if err != nil {
-		t.Fatalf("CreateCollection: %v", err)
-	}
+	svc, collectionID, addSecret := newResolveService(t)
 
 	t.Run("substitutes and reports exactly what it used", func(t *testing.T) {
-		if _, err := variablesRepo.Upsert(model.VariableScopeCollection, c.ID, "", "token", strPtr("sekret-value"), true, ""); err != nil {
-			t.Fatalf("Upsert: %v", err)
-		}
+		addSecret("token", "sekret-value")
 
 		url, headers, body, used, err := svc.ResolveRequest(
 			"https://api.example.com/orders",
 			[]httpclient.Header{{Name: "Authorization", Value: "Bearer {{token}}"}},
 			httpclient.Body{Mode: "none"},
-			c.ID, "",
+			collectionID, "",
 		)
 		if err != nil {
 			t.Fatalf("ResolveRequest: %v", err)
@@ -161,7 +160,7 @@ func TestResolveRequestReturnsExactlyTheSecretsItSubstituted(t *testing.T) {
 	t.Run("empty when the request references no secret", func(t *testing.T) {
 		_, _, _, used, err := svc.ResolveRequest(
 			"https://api.example.com/orders?x={{plain}}",
-			nil, httpclient.Body{Mode: "none"}, c.ID, "",
+			nil, httpclient.Body{Mode: "none"}, collectionID, "",
 		)
 		if err != nil {
 			t.Fatalf("ResolveRequest: %v", err)
@@ -190,7 +189,7 @@ func TestResolveRequestReturnsExactlyTheSecretsItSubstituted(t *testing.T) {
 
 		resolvedURL, _, _, _, err := svc.ResolveRequest(
 			srv.URL+"/orders?a={{base url}}&b=2",
-			nil, httpclient.Body{Mode: "none"}, c.ID, "",
+			nil, httpclient.Body{Mode: "none"}, collectionID, "",
 		)
 		if err != nil {
 			t.Fatalf("ResolveRequest: %v", err)
@@ -223,14 +222,12 @@ func TestResolveRequestReturnsExactlyTheSecretsItSubstituted(t *testing.T) {
 	// proof that the resolver itself hands out the right text; bridge/http_test.go proves the
 	// masking replacer built from it.
 	t.Run("a piped secret's Rendered is the transformed form, not the plaintext", func(t *testing.T) {
-		if _, err := variablesRepo.Upsert(model.VariableScopeCollection, c.ID, "", "piped", strPtr("hunter2"), true, ""); err != nil {
-			t.Fatalf("Upsert: %v", err)
-		}
+		addSecret("piped", "hunter2")
 
 		_, headers, _, used, err := svc.ResolveRequest(
 			"https://api.example.com/orders",
 			[]httpclient.Header{{Name: "X-Signed", Value: "{{piped | base64}}"}},
-			httpclient.Body{Mode: "none"}, c.ID, "",
+			httpclient.Body{Mode: "none"}, collectionID, "",
 		)
 		if err != nil {
 			t.Fatalf("ResolveRequest: %v", err)
@@ -251,9 +248,7 @@ func TestResolveRequestReturnsExactlyTheSecretsItSubstituted(t *testing.T) {
 	// D9(d): a secret used both plainly and piped in one request produces two entries, one per
 	// distinct (Name, Placeholder) — the case a name-keyed model could not represent at all.
 	t.Run("a secret used both plainly and piped records two distinct entries", func(t *testing.T) {
-		if _, err := variablesRepo.Upsert(model.VariableScopeCollection, c.ID, "", "dual", strPtr("s3cr3t"), true, ""); err != nil {
-			t.Fatalf("Upsert: %v", err)
-		}
+		addSecret("dual", "s3cr3t")
 
 		_, headers, _, used, err := svc.ResolveRequest(
 			"https://api.example.com/orders",
@@ -261,7 +256,7 @@ func TestResolveRequestReturnsExactlyTheSecretsItSubstituted(t *testing.T) {
 				{Name: "X-Plain", Value: "{{dual}}"},
 				{Name: "X-Signed", Value: "{{dual | base64}}"},
 			},
-			httpclient.Body{Mode: "none"}, c.ID, "",
+			httpclient.Body{Mode: "none"}, collectionID, "",
 		)
 		if err != nil {
 			t.Fatalf("ResolveRequest: %v", err)
@@ -286,7 +281,7 @@ func TestResolveRequestReturnsExactlyTheSecretsItSubstituted(t *testing.T) {
 	t.Run("D11: an unresolved piped reference in the URL is percent-encoded, pipe included", func(t *testing.T) {
 		resolvedURL, _, _, _, err := svc.ResolveRequest(
 			"https://api.example.com/orders?a={{missing | upper}}&b=2",
-			nil, httpclient.Body{Mode: "none"}, c.ID, "",
+			nil, httpclient.Body{Mode: "none"}, collectionID, "",
 		)
 		if err != nil {
 			t.Fatalf("ResolveRequest: %v", err)

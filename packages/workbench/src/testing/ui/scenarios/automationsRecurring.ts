@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import type { RoutedPrompt } from '@shared/domain/prompts';
 import { scriptRunSchema } from '@shared/domain/scriptRuns';
 import { customScriptSchema } from '@shared/domain/scripts';
@@ -7,9 +7,7 @@ import { emitPrompts, routed } from '../prompts';
 import type { ScenarioEnv } from './env';
 
 type Env = ScenarioEnv<
-  | 'customScriptsCreate'
   | 'customScriptsList'
-  | 'customScriptsUpdate'
   | 'promptsMainWindow'
   | 'scriptRunsChanged'
   | 'scriptRunsConfirmAccept'
@@ -22,17 +20,14 @@ type Env = ScenarioEnv<
 >;
 
 export interface Options {
-  product: string;
   /** Snapshots an app needs ahead of the shared ones. */
   extraBase: readonly ControlSnapshot[];
-  scheduleWhere: boolean;
 }
 
 export type Ctx = {
   BASE: ControlSnapshot[];
   SCRIPT: Record<string, unknown> & { id: string };
   openPanel: (page: Page) => Promise<void>;
-  dialog: (page: Page) => Locator;
 };
 
 export function registerRecurringScenarios(
@@ -67,7 +62,7 @@ export function registerRecurringScenarios(
     dirMode: 'kira',
     useAdeDir: false,
     color: 'blue',
-    collectionId: null,
+    collection: '',
     sortOrder: 0,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -147,135 +142,18 @@ export function registerRecurringScenarios(
   ];
 
   const modeTab = (page: Page) => page.locator('[data-testid="mode-tab"][data-mode="automations"]');
-  const dialog = (page: Page) => page.locator('[data-testid="script-dialog"]');
 
   async function openPanel(page: Page): Promise<void> {
     await modeTab(page).click();
     await expect(page.locator('[data-testid="automations-panel"]')).toBeVisible();
   }
 
-  test('the Schedule tab of a new script turns the schedule on', async ({ relaunch }) => {
-    const { window: page, control } = await relaunch({
-      control: [
-        ...BASE.filter((s) => s.channel !== IPC.customScriptsList),
-        { channel: IPC.customScriptsList, response: { collections: [], scripts: [] } },
-        { channel: IPC.customScriptsCreate, response: SCRIPT },
-      ],
-    });
-    await openPanel(page);
-    await page.locator('[data-testid="automations-add"]').click();
-    await page.locator('[data-testid="menu-item-new-script"]').click();
-
-    await dialog(page).locator('[data-testid="script-dialog-tab-schedule"]').click();
-    await expect(dialog(page).locator('[data-testid="script-schedule"]')).toHaveAttribute(
-      'aria-checked',
-      'false',
-    );
-    await dialog(page).locator('[data-testid="script-schedule"]').click();
-    const fields = dialog(page).locator('[data-testid="schedule-fields"]');
-    await fields.locator('[data-testid="schedule-preset"]').selectOption('0 9 * * 1-5');
-    await expect(fields.locator('[data-testid="schedule-cron"]')).toHaveValue('0 9 * * 1-5');
-    await expect(fields.locator('[data-testid="schedule-next"]')).toContainText('Next:');
-    await expect(fields.locator('[data-testid="schedule-quiet"]')).toHaveAttribute(
-      'aria-checked',
-      'false',
-    );
-    await expect(fields.locator('[data-testid="schedule-note"]')).toContainText(
-      `Runs only while ${options.product} is open. Missed runs are skipped.`,
-    );
-    if (options.scheduleWhere) {
-      await expect(fields.locator('[data-testid="schedule-where"]')).toBeVisible();
-    } else {
-      await expect(fields.locator('[data-testid="schedule-where"]')).toHaveCount(0);
-    }
-
-    await dialog(page).locator('[data-testid="script-dialog-tab-script"]').click();
-    await dialog(page).locator('[data-testid="script-dialog-name"]').fill('Nightly build');
-    await dialog(page).locator('[data-testid="script-dialog-command"]').fill('make build');
-    await dialog(page).locator('[data-testid="script-dialog-save"]').click();
-    await expect
-      .poll(() => control.log().find((e) => e.channel === IPC.customScriptsCreate)?.args)
-      .toMatchObject({
-        fields: {
-          name: 'Nightly build',
-          schedule: { cron: '0 9 * * 1-5', enabled: true, confirm: true },
-        },
-      });
-  });
-
-  test('an invalid cron shows the error and holds Save', async ({ relaunch }) => {
-    const { window: page, control } = await relaunch({
-      control: [
-        ...BASE.filter((s) => s.channel !== IPC.scriptRunsNextFires),
-        {
-          channel: IPC.scriptRunsNextFires,
-          error: {
-            code: 'E_BAD_REQUEST',
-            message: 'cron needs 5 fields: minute hour day month weekday',
-          },
-        },
-      ],
-    });
-    await openPanel(page);
-    await page.locator(`[data-testid="script-${SCRIPT.id}"]`).click({ button: 'right' });
-    await page.locator('[data-testid="menu-item-edit"]').click();
-    await expect(dialog(page).locator('[data-testid="schedule-cron-error"]')).toContainText(
-      'cron needs 5 fields',
-    );
-    await dialog(page).locator('[data-testid="script-dialog-save"]').click();
-    await expect(dialog(page)).toBeVisible();
-    expect(control.log().filter((e) => e.channel === IPC.customScriptsUpdate)).toHaveLength(0);
-  });
-
-  test('Run without asking is locked while a required secret param has no saved value', async ({
-    relaunch,
-  }) => {
-    const secret = {
-      name: 'token',
-      type: 'text',
-      options: [],
-      default: [],
-      required: true,
-      secret: true,
-    };
-    const { window: page } = await relaunch({
-      control: [
-        ...BASE.filter((s) => s.channel !== IPC.customScriptsList),
-        {
-          channel: IPC.customScriptsList,
-          response: { collections: [], scripts: [{ ...SCRIPT, params: [secret] }] },
-        },
-      ],
-    });
-    await openPanel(page);
-    await page.locator(`[data-testid="script-${SCRIPT.id}"]`).click({ button: 'right' });
-    await page.locator('[data-testid="menu-item-edit"]').click();
-    const quiet = dialog(page).locator('[data-testid="schedule-quiet"]');
-    await expect(quiet).toBeDisabled();
-    await expect(dialog(page).locator('[data-testid="schedule-quiet-why"]')).toContainText(
-      'no saved value',
-    );
-  });
-
-  test('a recurring row shows the clock and next fire; Edit schedule opens the Schedule tab and pauses it', async ({
-    relaunch,
-  }) => {
-    const { window: page, control } = await relaunch({
-      control: [...BASE, { channel: IPC.customScriptsUpdate, response: SCRIPT }],
-    });
+  test('a recurring row shows the clock and next fire', async ({ relaunch }) => {
+    const { window: page } = await relaunch({ control: BASE });
     await openPanel(page);
     const row = page.locator(`[data-testid="script-${SCRIPT.id}"]`);
     await expect(row.locator('[data-testid="script-schedule-line"]')).toBeVisible();
     await expect(row.locator('[data-testid="script-next"]')).toContainText('Next');
-
-    await row.click({ button: 'right' });
-    await page.locator('[data-testid="menu-item-edit-schedule"]').click();
-    await expect(dialog(page).locator('[data-testid="schedule-fields"]')).toBeVisible();
-    await dialog(page).locator('[data-testid="schedule-enabled"]').click();
-    await dialog(page).locator('[data-testid="script-dialog-save"]').click();
-    await expect
-      .poll(() => control.log().find((e) => e.channel === IPC.customScriptsUpdate)?.args)
-      .toMatchObject({ id: SCRIPT.id, fields: { schedule: { enabled: false } } });
   });
 
   test('Run now opens the confirm popup and Run starts the schedule run', async ({ relaunch }) => {
@@ -481,5 +359,5 @@ export function registerRecurringScenarios(
     await expect(popup).toHaveCount(0);
   });
 
-  extra?.({ BASE, SCRIPT, openPanel, dialog });
+  extra?.({ BASE, SCRIPT, openPanel });
 }

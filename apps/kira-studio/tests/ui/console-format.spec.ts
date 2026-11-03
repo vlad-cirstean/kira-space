@@ -2,7 +2,12 @@ import type { Locator, Page } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
-import { connectMongo, connectRedis, openConsoleFromMenu } from './support/connect';
+import {
+  connectMongo,
+  connectRedis,
+  createConnection,
+  openConsoleFromMenu,
+} from './support/connect';
 import { mongoCreateArgs, postgresCreateArgs, redisCreateArgs } from './support/connectionArgs';
 import { typeInto } from './support/editor';
 import { editorText } from './support/editorText';
@@ -28,17 +33,8 @@ import { connectionRow, expandRow, openRowMenu } from './support/tree';
 // Format is pure renderer work, and the boot/connect control snapshots each fixture already
 // exports are the whole setup.
 
-async function connectAndExpandPostgres(page: Page, name: string, color: string): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', name);
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click(`[data-testid="color-${color}"]`);
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+async function connectAndExpandPostgres(page: Page, name: string, _color: string): Promise<void> {
+  await createConnection(page, 'postgres', name);
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();

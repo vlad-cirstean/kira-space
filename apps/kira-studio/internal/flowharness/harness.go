@@ -109,6 +109,7 @@ type App struct {
 	Events       *Events
 	Dialogs      *Dialogs
 	Browser      *Browser
+	FileOpener   *FileOpener
 	KeepAwake    *KeepAwakeDriver
 	McpInstaller *McpInstaller
 	OSAuth       *OSAuth
@@ -129,7 +130,7 @@ func New(t *testing.T, opts ...Opt) *App {
 	a := &App{
 		t: t, Home: filepath.Join(root, "home"), KiraHome: filepath.Join(root, "kira"),
 		BinDir: filepath.Join(root, "bin"), FakeDir: filepath.Join(root, "fake"), SpaceHome: filepath.Join(root, "space"),
-		Events: flowtest.NewEvents(), Dialogs: &Dialogs{}, Browser: &Browser{}, KeepAwake: &KeepAwakeDriver{},
+		Events: flowtest.NewEvents(), Dialogs: &Dialogs{}, Browser: &Browser{}, FileOpener: &FileOpener{}, KeepAwake: &KeepAwakeDriver{},
 		McpInstaller: &McpInstaller{}, OSAuth: &OSAuth{}, Focus: &WindowFocus{}, ProofWindows: &ProofShell{},
 	}
 	for _, opt := range opts {
@@ -204,7 +205,7 @@ func (a *App) build() {
 	w, err := appwire.Build(appwire.Options{
 		DB: db, Repos: r, Cipher: cipher,
 		Authorizer: localauth.New(time.Now, a.OSAuth.evaluate, a.OSAuth.isAvailable),
-		Emitter:    a.Events, Browser: a.Browser, Dialogs: a.Dialogs, KeepAwakeDriver: a.KeepAwake, McpInstaller: a.McpInstaller,
+		Emitter:    a.Events, Browser: a.Browser, FileOpener: a.FileOpener, Dialogs: a.Dialogs, KeepAwakeDriver: a.KeepAwake, McpInstaller: a.McpInstaller,
 		AppName: "Kira Studio", Version: "flowtest", SmartTimeout: a.opts.smartTimeout,
 		ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, DockerHubAPI: a.opts.dockerHubAPI, DockerExtra: a.opts.dockerExtra, WindowFocus: a.Focus,
 		KubernetesExtra: append([]kubernetes.Option{kubernetes.WithEnv(kubeEnv)}, a.opts.kubeExtra...),

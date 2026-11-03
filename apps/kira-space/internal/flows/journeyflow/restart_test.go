@@ -13,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/memory"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/scripts/scriptstest"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -85,29 +86,13 @@ func TestRestartKeepsUserData(t *testing.T) {
 	claude(app, fakeagent.Action{Emit: gate})
 
 	cs := app.W.CustomScripts
-	a, err := cs.CreateCollection(bridge.CustomScriptsCreateCollectionArgs{Name: "Build"})
+	script, err := cs.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{Name: "build", Command: "make", Color: "blue", Collection: "Build"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := cs.CreateCollection(bridge.CustomScriptsCreateCollectionArgs{Name: "Deploy"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	script, err := cs.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{Name: "build", Command: "make", Color: "blue", CollectionID: &a.ID}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := cs.RenameCollection(bridge.CustomScriptsRenameCollectionArgs{ID: a.ID, Name: "Compile"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := cs.Update(bridge.CustomScriptsUpdateArgs{ID: script.ID, Fields: scripts.CustomScriptFields{
-		Name: "build all", Command: "make all", Color: "green", CollectionID: &a.ID,
-	}}); err != nil {
-		t.Fatal(err)
-	}
-	if err := cs.Move(bridge.CustomScriptsMoveArgs{ID: script.ID, CollectionID: &b.ID}); err != nil {
-		t.Fatal(err)
-	}
+	scriptstest.Update(t, cs, script.ID, scripts.CustomScriptFields{
+		Name: "build all", Command: "make all", Color: "green", Collection: "Deploy",
+	})
 	extra, err := cs.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{Name: "temp", Command: "true", Color: "blue"}})
 	if err != nil {
 		t.Fatal(err)
@@ -155,7 +140,7 @@ func TestRestartKeepsUserData(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(scripts1, scripts2) {
 		t.Fatalf("scripts after restart = %+v, %v, want %+v", scripts2, err, scripts1)
 	}
-	if len(scripts2.Scripts) != 1 || scripts2.Scripts[0].Name != "build all" || scripts2.Scripts[0].CollectionID == nil || *scripts2.Scripts[0].CollectionID != b.ID {
+	if len(scripts2.Scripts) != 1 || scripts2.Scripts[0].Name != "build all" || scripts2.Scripts[0].Collection != "Deploy" {
 		t.Fatalf("script after restart = %+v", scripts2.Scripts)
 	}
 	recent2, err := app.W.Memory.Recent(ctx)

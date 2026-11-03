@@ -14,8 +14,7 @@ const variableSetStore = useVariableSetStore();
 // via VariableRow.vue's own PopoverAnchor (a plain content component; VariableRow.vue's Popover
 // owns open state and the closeHistoryMenu() side effect for every dismissal). Each entry's
 // relative recorded time, its value (masked for a secret, with its own gated eye — a secret's old
-// value is exactly as sensitive as its current one), and a Restore action, which writes it back
-// through the ordinary Upsert path (so the restore is itself recorded, and therefore undoable).
+// value is exactly as sensitive as its current one). Read-only: a file edit is the way back.
 
 function displayValue(entry: ApiVariableHistoryEntry): string {
   return entry.isSecret ? (variableSetStore.revealedHistoryValues[entry.id] ?? '') : entry.value;
@@ -26,9 +25,6 @@ function notYetRevealed(entry: ApiVariableHistoryEntry): boolean {
 
 function onReveal(id: string): void {
   void variableSetStore.revealHistoryEntry(id);
-}
-function onRestore(entry: ApiVariableHistoryEntry): void {
-  void variableSetStore.restoreHistoryEntry(entry);
 }
 </script>
 
@@ -70,12 +66,6 @@ function onRestore(entry: ApiVariableHistoryEntry): void {
           :label="t('common.action.reveal.label')"
           data-testid="variable-history-reveal"
           @click="onReveal(entry.id)"
-        />
-        <TooltipIconButton
-          icon="reply"
-          :label="t('common.action.restore.label')"
-          data-testid="variable-history-restore"
-          @click="onRestore(entry)"
         />
       </div>
     </div>

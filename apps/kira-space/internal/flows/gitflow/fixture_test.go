@@ -143,15 +143,15 @@ func TestFixtures_CaptureGraphChunkFrame(t *testing.T) {
 	}
 	header, blob := splitBlobFrame(t, raw)
 	var env struct {
-		Body struct {
-			Chunk json.RawMessage `json:"chunk"`
-		} `json:"body"`
+		T     string          `json:"t"`
+		ID    int             `json:"id"`
+		Chunk json.RawMessage `json:"chunk"`
 	}
 	if err := json.Unmarshal(header, &env); err != nil {
 		t.Fatalf("unmarshal header: %v", err)
 	}
 	var meta fixtureEnvelope
-	if err := json.Unmarshal(env.Body.Chunk, &meta); err != nil {
+	if err := json.Unmarshal(env.Chunk, &meta); err != nil {
 		t.Fatalf("unmarshal chunk payload: %v", err)
 	}
 	if meta.RepoID != id {

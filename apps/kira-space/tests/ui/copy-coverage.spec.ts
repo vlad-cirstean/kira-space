@@ -193,7 +193,8 @@ test('repositories dialog', async ({ relaunch }) => {
   await page.locator(t('manage-repos')).click();
   await page.locator(t('repos-dialog')).waitFor();
   await setPseudoLocale(page);
-  const allow = fixtureData();
+  // The settings file's path is data from the contract, not chrome.
+  const allow = [...fixtureData(), /^(?:\/[\w.-]+)*\/repos\/$|^proj\.yaml$/];
   await expectCatalogText(page.locator(t('repos-dialog')), { allow });
   await page.locator(t('repos-dialog-repo')).nth(1).click();
   await expectCatalogText(page.locator(t('repos-dialog')), { allow });

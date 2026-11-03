@@ -192,9 +192,9 @@ func TestWorkingDetail_DispatchReachesTheHandler(t *testing.T) {
 	if err != nil {
 		t.Fatalf("working.detail: %v", err)
 	}
-	wrapped, ok := result.(workingDetailResult)
+	wrapped, ok := result.(WorkingDetailResult)
 	if !ok {
-		t.Fatalf("working.detail: result = %T, want workingDetailResult", result)
+		t.Fatalf("working.detail: result = %T, want WorkingDetailResult", result)
 	}
 	if len(wrapped.Files) != 1 || wrapped.Files[0].Path != "staged.txt" {
 		t.Fatalf("working.detail: Files = %+v, want one added staged.txt", wrapped.Files)

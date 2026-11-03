@@ -13,15 +13,25 @@ export default defineConfig({
     {
       name: 'perf',
       testDir: './tests/perf',
-      testIgnore: 'heap-tabs.spec.ts',
+      testIgnore: 'heap-*.spec.ts',
       use: { browserName: 'webkit', headless: !process.env.PERF_HEADED },
     },
-    // P433: JS heap per tab kind needs CDP, so Chromium. `--project heap heap-tabs`.
+    // P433/P480: JS heap per tab kind and RAM attribution need CDP, so Chromium.
+    // `--project heap heap-tabs` or `heap-ram`.
     {
       name: 'heap',
       testDir: './tests/perf',
-      testMatch: 'heap-tabs.spec.ts',
+      testMatch: 'heap-*.spec.ts',
+      timeout: 600_000,
       use: { browserName: 'chromium', headless: !process.env.PERF_HEADED },
+    },
+    // P480: process RSS only (no CDP) on the shipped engine family.
+    {
+      name: 'heap-webkit',
+      testDir: './tests/perf',
+      testMatch: 'heap-ram.spec.ts',
+      timeout: 600_000,
+      use: { browserName: 'webkit', headless: !process.env.PERF_HEADED },
     },
   ],
 });

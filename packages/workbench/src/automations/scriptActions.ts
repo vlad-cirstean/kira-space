@@ -3,8 +3,12 @@ import { t } from '@theme/i18n';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import type { ScriptsSeam } from './module';
 
-// P133 §2.5: one copy of the confirm-then-remove flow, shared by AutomationsPanel.vue's context menu
-// and ScriptDialog.vue's remove button (both quoted the same string before this phase).
+/** A run's file name in the runs folder. */
+export function runFileName(id: string): string {
+  return `${id}.yaml`;
+}
+
+// One copy of the confirm-then-remove flow for AutomationsPanel.vue's menu and Delete shortcut.
 export function useRemoveScript(): (
   scripts: ScriptsSeam,
   script: CustomScript,

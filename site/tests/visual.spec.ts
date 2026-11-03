@@ -16,7 +16,18 @@ for (const route of [
         window.scrollTo({ top: y, behavior: 'instant' });
         await new Promise((resolve) => setTimeout(resolve, 60));
       }
-      await Promise.all([...document.images].map((img) => img.decode().catch(() => undefined)));
+      // Not img.decode(): WebKit leaves it pending for good under load, even on a loaded image.
+      // A forced-eager image settles on load or error; the screenshot retry covers decoding.
+      await Promise.all(
+        [...document.images].map((img) => {
+          img.loading = 'eager';
+          if (img.complete) return undefined;
+          return new Promise((resolve) => {
+            img.addEventListener('load', resolve, { once: true });
+            img.addEventListener('error', resolve, { once: true });
+          });
+        }),
+      );
       await document.fonts.ready;
       window.scrollTo({ top: 0, behavior: 'instant' });
     });

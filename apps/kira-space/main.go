@@ -156,7 +156,7 @@ func main() {
 	}
 	attachDialogs(app, windowToActOn)
 
-	appshell.RegisterGitStream(app, wired.GitRouter(), wired.CredentialRelay)
+	appshell.RegisterGitGraphStream(app, wired.GitWindows)
 
 	winDeps := shell.WindowOpenerDeps{
 		App:        app,
@@ -172,7 +172,7 @@ func main() {
 			return ok
 		},
 	}
-	winDeps.OnWindowClosing = append(winDeps.OnWindowClosing, wired.OpenedFiles.Forget, wired.HostView.Targets.Forget,
+	winDeps.OnWindowClosing = append(winDeps.OnWindowClosing, wired.OpenedFiles.Forget, wired.HostView.Targets.Forget, wired.GitWindows.Close,
 		func(key string) { bridge.CaptureForget(wired.Capture, key) })
 	openNew := func() { shell.OpenNewWindow(winDeps) }
 	// OpenNewWindow is the title bar's "New window" button (P116 G6) — the same action the ⇧⌘N

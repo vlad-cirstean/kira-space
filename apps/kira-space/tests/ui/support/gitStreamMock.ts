@@ -1,11 +1,106 @@
 import type { Page } from '@playwright/test';
 import type { GraphStreamChunkFixture } from './graphStreamFixture';
 
-// repo/git/transport.ts speaks the native git JSON-RPC protocol (@kira/git-ipc's rpc.ts) over a
-// Wails Stream — an entirely different wire (and mocking mechanism, `window._wails.streamFactory`)
-// than mockRuntime.ts's `control.*` Call endpoint or mockStream.ts's own FlatBuffers bulk-data
-// protocol, and one this repo has no existing mock for (C10 never added a UI test for its own
-// graph mount for the identical reason). installGitStreamMock below is a minimal, purpose-built
+// The bound GitService methods the transport routes off the stream, by the Wails call name the page
+// POSTs to /wails/runtime. Answered in-browser from the same table as the stream requests, so one
+// spec fixture serves both transports.
+const BRIDGE_PKG = 'github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge';
+const BOUND_GIT_WIRE: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.entries({
+    AppInit: 'app.init',
+    RepoOpen: 'repo.open',
+    RepoClose: 'repo.close',
+    GraphStatus: 'graph.status',
+    GraphLoadMore: 'graph.loadMore',
+    GraphRefresh: 'graph.refresh',
+    GraphReportFailure: 'graph.reportFailure',
+    StatusGet: 'status.get',
+    RefsList: 'refs.list',
+    CommitDetail: 'commit.detail',
+    CommitFileDiff: 'commit.fileDiff',
+    WorkingDetail: 'working.detail',
+    FileRead: 'file.read',
+    FileGoToTarget: 'file.goToTarget',
+    BlameLine: 'blame.line',
+    SearchRun: 'search.run',
+    RepoSettingsGet: 'repoSettings.get',
+    RepoSettingsSet: 'repoSettings.set',
+    PreflightCheckout: 'preflight.checkout',
+    PreflightRevert: 'preflight.revert',
+    PreflightReset: 'preflight.reset',
+    PreflightCherryPick: 'preflight.cherryPick',
+    StashList: 'stash.list',
+    StashShow: 'stash.show',
+    PreflightStashPop: 'preflight.stashPop',
+    PreflightStashBranch: 'preflight.stashBranch',
+    GlobalStashList: 'globalStash.list',
+    OpRun: 'op.run',
+    UndoPeek: 'undo.peek',
+    UndoRun: 'undo.run',
+    RemotePullPreflight: 'remote.pullPreflight',
+    RemotePushPreflight: 'remote.pushPreflight',
+    RemoteRun: 'remote.run',
+    RemoteCancel: 'remote.cancel',
+    WorktreeList: 'worktree.list',
+    PreflightWorktreeAdd: 'preflight.worktreeAdd',
+    PreflightWorktreeRemove: 'preflight.worktreeRemove',
+    StackList: 'stack.list',
+    PreflightRestack: 'preflight.restack',
+    StackRestack: 'stack.restack',
+    StackCancelRestack: 'stack.cancelRestack',
+    ReviewResolveBase: 'review.resolveBase',
+    ReviewFiles: 'review.files',
+    ReviewFileDiff: 'review.fileDiff',
+    ReviewSnapshot: 'review.snapshot',
+    ReviewMark: 'review.mark',
+    ReviewMarkMany: 'review.markMany',
+    ReviewCommentAdd: 'review.comment.add',
+    ReviewCommentList: 'review.comment.list',
+    ReviewCommentRemove: 'review.comment.remove',
+    ReviewCommentSetState: 'review.comment.setState',
+    ReviewCommentEdit: 'review.comment.edit',
+    ReviewCommentClear: 'review.comment.clear',
+    ReviewCommentExport: 'review.comment.export',
+    CommitResolveChangeRequests: 'commit.resolveChangeRequests',
+    BranchResolveChangeRequest: 'branch.resolveChangeRequest',
+    BranchChangeRequestIndex: 'branch.changeRequestIndex',
+    BranchSyncChangeRequests: 'branch.syncChangeRequests',
+    GitHostInfo: 'gitHost.info',
+    ChangeRequestBrowserUrl: 'changeRequest.browserUrl',
+    ChangeRequestReviewState: 'changeRequest.reviewState',
+    ChangeRequestSubmitReview: 'changeRequest.submitReview',
+    ChangeRequestComment: 'changeRequest.comment',
+    ChangeRequestLineComment: 'changeRequest.lineComment',
+  }).map(([name, wire]) => [`${BRIDGE_PKG}.GitService.${name}`, wire]),
+);
+
+// GitHostService.Providers is also the runtime mock's `gitHostProviders`: a spec that sets a
+// `gitHost.providers` result answers it here, any other falls through to that mock.
+const GIT_HOST_PROVIDERS_CALL = `${BRIDGE_PKG}.GitHostService.Providers`;
+
+// ResetWindow is no git request: the transport awaits it once per page load before any git call.
+const RESET_WINDOW_CALL = `${BRIDGE_PKG}.GitService.ResetWindow`;
+
+interface InstallArgs extends GitStreamMockArgs {
+  boundWire: Readonly<Record<string, string>>;
+}
+
+function installArgs(args: GitStreamMockArgs): InstallArgs {
+  return {
+    ...args,
+    boundWire: {
+      ...BOUND_GIT_WIRE,
+      [GIT_HOST_PROVIDERS_CALL]: 'gitHost.providers',
+      [RESET_WINDOW_CALL]: 'ResetWindow',
+    },
+  };
+}
+
+// Every git request is a bound GitService call (answered through the patched fetch below); only
+// graph rows ride the `gitgraph` Wails Stream (repo/git/graphStream.ts), mocked through
+// `window._wails.streamFactory`. That is an entirely different wire than mockRuntime.ts's
+// `control.*` Call endpoint or mockStream.ts's own FlatBuffers bulk-data protocol.
+// installGitStreamMock below is a minimal, purpose-built
 // stand-in — real enough to answer the three requests this shallow path actually needs
 // (app.init, repo.list, refs.list) and silent (never crashing, just never resolving) for every
 // other method, which is exactly what a real bootstrap() tolerates: review.session.load and
@@ -59,38 +154,54 @@ function installInBrowser({
   graphStreamOpens,
   graphStreamHoldAfter,
   graphStreamHoldOpen,
-}: GitStreamMockArgs): void {
+  boundWire,
+}: InstallArgs): void {
   const w =
     (window as unknown as { _wails?: { streamFactory?: (name: string) => unknown } })._wails ?? {};
   (window as unknown as { _wails: typeof w })._wails = w;
   const existingFactory = w.streamFactory;
 
-  // P114 §3.1: every method name seen in a `t: 'req'` frame, answered or not — read back by
+  // P114 §3.1: every bound git method name seen, answered or not — read back by
   // `gitStreamRequests` below. Reset per install so a fresh `relaunch()` starts a fresh log.
   (window as unknown as { __kiraGitRequests: string[] }).__kiraGitRequests = [];
+  // Every inbound frame of the `gitgraph` stream, in order; `gitGraphFrames` reads it.
+  const graphFrames: unknown[] = [];
+  (window as unknown as { __kiraGitGraphFrames: unknown[] }).__kiraGitGraphFrames = graphFrames;
+  const graphSockets: MockSocket[] = [];
+  (window as unknown as { __kiraGitGraphDials: () => number }).__kiraGitGraphDials = () =>
+    graphSockets.length;
+  (window as unknown as { __kiraGitGraphClose: () => void }).__kiraGitGraphClose = () => {
+    const socket = graphSockets[graphSockets.length - 1];
+    if (!socket) return;
+    socket.readyState = CLOSED;
+    socket.onclose?.({});
+  };
   (window as unknown as { __kiraGitParams: unknown[] }).__kiraGitParams = [];
+  (window as unknown as { __kiraGitWindowKeys: string[] }).__kiraGitWindowKeys = [];
   const delivered: number[] = [];
   (window as unknown as { __kiraGitDelivered: number[] }).__kiraGitDelivered = delivered;
 
   let streamOpenCount = 0;
+  const cancelled = new Set<string>();
   const seqCounts: Record<string, number> = {};
-  let wireVersion = 0;
   let releaseHeld: (() => void) | undefined;
   (window as unknown as { __kiraGitRelease: () => void }).__kiraGitRelease = () => releaseHeld?.();
   let releaseOne: (() => void) | undefined;
   (window as unknown as { __kiraGitReleaseNext: () => void }).__kiraGitReleaseNext = () =>
     releaseOne?.();
-  const openSockets: MockSocket[] = [];
+  // Git events reach the page as `kira:git:<event>` Wails events (EmitTo), not stream frames.
   (
     window as unknown as {
       __kiraGitEmit: (method: string, payload: unknown) => Promise<void>;
     }
-  ).__kiraGitEmit = (method, payload) =>
-    Promise.all(
-      openSockets.map((socket) =>
-        deliver(socket, { version: wireVersion, body: { t: 'evt', method, payload } }),
-      ),
-    ).then(() => undefined);
+  ).__kiraGitEmit = (method, payload) => {
+    (
+      window as unknown as {
+        _wails: { dispatchWailsEvent(e: { name: string; data: unknown }): void };
+      }
+    )._wails.dispatchWailsEvent({ name: `kira:git:${method}`, data: payload });
+    return Promise.resolve();
+  };
 
   const CONNECTING = 0;
   const OPEN = 1;
@@ -122,33 +233,28 @@ function installInBrowser({
 
   // `blobFrame.ts`'s own layout, assembled here rather than decoded — the real
   // client never sends a blob (that file's own doc comment), so no encoder exists there to
-  // reuse. `id`/`version` are only known at this point (the request's own runtime fields),
+  // reuse. `id` is only known at this point (the open frame's own runtime field),
   // which is why `graphStreamFixture.ts` hands over `meta`/`blob` separately instead of a
   // whole pre-built frame.
   function deliverGraphStreamChunk(
     socket: MockSocket,
-    version: number,
-    id: number,
+    id: string,
     chunk: GraphStreamChunkFixture,
     open: number,
   ): void {
     const blobBytes = Uint8Array.from(atob(chunk.blob), (c) => c.charCodeAt(0));
     const header = {
-      version,
-      body: {
-        t: 'chunk',
-        id,
+      t: 'chunk',
+      id,
+      chunk: {
+        repoId: chunk.meta.repoId,
         seq: chunk.meta.seq,
-        chunk: {
-          repoId: chunk.meta.repoId,
-          seq: chunk.meta.seq,
-          from: chunk.meta.from,
-          to: chunk.meta.to,
-          source: chunk.meta.source,
-          remaining: chunk.meta.remaining,
-          exhausted: chunk.meta.exhausted,
-          commits: { $fb: chunk.meta.commitsFb, d: { $blob: true } },
-        },
+        from: chunk.meta.from,
+        to: chunk.meta.to,
+        source: chunk.meta.source,
+        remaining: chunk.meta.remaining,
+        exhausted: chunk.meta.exhausted,
+        commits: { $fb: chunk.meta.commitsFb, d: { $blob: true } },
       },
     };
     const headerBytes = new TextEncoder().encode(JSON.stringify(header));
@@ -163,6 +269,124 @@ function installInBrowser({
       socket.onmessage?.({ data: out.buffer });
     }, 0);
   }
+
+  // Logs the request and answers it from the fixture table: undefined hangs it forever.
+  // `{ __sequence: [a, b, ...] }`: the Nth request for a method answers entry N (the last repeats);
+  // an entry `{ __error: { code, message } }` answers a wire failure.
+  function answerRequest(
+    method: string | undefined,
+    params: unknown,
+  ): { failure?: { code: string; message: string }; result?: unknown } | undefined {
+    if (method !== undefined) {
+      (window as unknown as { __kiraGitRequests: string[] }).__kiraGitRequests.push(method);
+      (window as unknown as { __kiraGitParams: unknown[] }).__kiraGitParams.push({
+        method,
+        params,
+      });
+    }
+    const resultByMethod: Record<string, unknown> = {
+      ResetWindow: null,
+      'app.init': {
+        serverVersion: 'ui-test',
+        git: { kind: 'ok', path: '/usr/bin/git', version: '2.40.0' },
+      },
+      'repo.list': { candidates: [], activeRepoId: repoId },
+      'refs.list': {
+        branches: [
+          {
+            refname: 'refs/heads/main',
+            kind: 'branch',
+            shortName: 'main',
+            objectId: '0'.repeat(40),
+            peeledObjectId: undefined,
+            upstream: undefined,
+            track: undefined,
+            committerDate: 0,
+            isHead: true,
+            checkedOutIn: undefined,
+            annotation: undefined,
+          },
+        ],
+        remoteBranches: [],
+        tags: [],
+        head: { kind: 'branch', name: 'main' },
+      },
+      // Repo holds queue their next open behind a close, so an unanswered close would stall it.
+      'repo.close': {},
+      ...extraResults,
+    };
+    if (method === undefined || !(method in resultByMethod)) return undefined;
+    let answer = resultByMethod[method] as { __sequence?: unknown[] } | undefined;
+    if (answer && typeof answer === 'object' && Array.isArray(answer.__sequence)) {
+      const n = seqCounts[method] ?? 0;
+      seqCounts[method] = n + 1;
+      answer = answer.__sequence[Math.min(n, answer.__sequence.length - 1)] as typeof answer;
+    }
+    const failure = (answer as { __error?: { code: string; message: string } } | undefined)
+      ?.__error;
+    return failure ? { failure } : { result: answer };
+  }
+
+  // The bound GitService calls: a /wails/runtime POST naming a GitService method is answered here,
+  // everything else falls through to the page.route mock. The log keeps the bound call's params
+  // without its windowKey, in order with the stream's requests.
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async (input, init) => {
+    const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (
+      init?.method === 'POST' &&
+      typeof init.body === 'string' &&
+      new URL(href, window.location.href).pathname === '/wails/runtime'
+    ) {
+      const envelope = JSON.parse(init.body) as {
+        object?: number;
+        method?: number;
+        args?: { methodName?: string; args?: unknown[] };
+      };
+      // Cancelling a bound call (an aborted git request) posts the runtime's cancel call; the
+      // real backend accepts it, the page.route mock has no entry for it.
+      if (
+        envelope.object === 10 &&
+        envelope.method === 0 &&
+        envelope.args?.methodName === undefined
+      ) {
+        return new Response('null', {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      const call = envelope.args;
+      const wire = call?.methodName === undefined ? undefined : boundWire[call.methodName];
+      if (
+        wire !== undefined &&
+        !(wire === 'gitHost.providers' && !(wire in (extraResults ?? {})))
+      ) {
+        const arg = (call?.args?.[0] ?? {}) as { windowKey?: string; params?: unknown };
+        (window as unknown as { __kiraGitWindowKeys: string[] }).__kiraGitWindowKeys.push(
+          arg.windowKey ?? '',
+        );
+        const outcome = answerRequest(wire, arg.params ?? {});
+        if (!outcome) {
+          return new Promise<Response>((_, reject) =>
+            init.signal?.addEventListener('abort', () =>
+              reject(new DOMException('The operation was aborted.', 'AbortError')),
+            ),
+          );
+        }
+        await new Promise((resolve) => nativeSetTimeout(resolve, 0));
+        const json = { 'Content-Type': 'application/json' };
+        if (outcome.failure) {
+          const body = { code: outcome.failure.code, message: outcome.failure.message };
+          return new Response(
+            JSON.stringify({ kind: 'RuntimeError', message: JSON.stringify(body), cause: body }),
+            { status: 422, headers: json },
+          );
+        }
+        return new Response(JSON.stringify(outcome.result ?? null), { status: 200, headers: json });
+      }
+    }
+    return nativeFetch(input, init);
+  };
 
   function createGitMockSocket(): MockSocket {
     const socket: MockSocket = {
@@ -184,115 +408,47 @@ function installInBrowser({
         // transport whose lease/dispose tore down the underlying socket must hang
         // exactly as the real bug did, not (wrongly) still answer.
         if (socket.readyState === CLOSED) return;
-        let envelope: {
-          version: number;
-          body?: { t?: string; id?: number; method?: string; params?: unknown };
-        };
+        let frame: { t?: string; id?: string; params?: unknown };
         try {
-          envelope = JSON.parse(data);
+          frame = JSON.parse(data);
         } catch {
           return;
         }
-        wireVersion = envelope.version;
-        const frame = envelope.body;
-        if (frame?.id === undefined) return;
-        // `graph.stream` opens as `t: 'open'`, not `t: 'req'` — a real unary call's frame
-        // shape (rpc.ts's own `Frame` union). Only handled when a caller supplied
-        // chunks; otherwise this falls through to the `!== 'req'` guard below and hangs,
-        // same as every other unlisted method here.
+        graphFrames.push(frame);
+        if (frame.id === undefined) return;
+        const id = frame.id;
+        if (frame.t === 'cancel') {
+          cancelled.add(id);
+          return;
+        }
+        // Only `open` is answered, and only when a caller supplied chunks: otherwise it hangs,
+        // same as every other unlisted method here. `credit` frames are only logged.
         const openChunks = graphStreamOpens
           ? graphStreamOpens[Math.min(streamOpenCount, graphStreamOpens.length - 1)]
           : graphStreamChunks;
-        if (frame.t === 'open' && frame.method === 'graph.stream' && openChunks) {
-          const id = frame.id;
-          const open = streamOpenCount;
-          const hold = open === (graphStreamHoldOpen ?? 0) ? graphStreamHoldAfter : undefined;
-          streamOpenCount++;
-          const now = hold === undefined ? openChunks : openChunks.slice(0, hold);
-          for (const chunk of now) {
-            deliverGraphStreamChunk(socket, envelope.version, id, chunk, open);
-          }
-          const held = openChunks.slice(now.length);
-          const finish = (): void => {
-            for (const chunk of held.splice(0)) {
-              deliverGraphStreamChunk(socket, envelope.version, id, chunk, open);
-            }
-            deliver(socket, { version: envelope.version, body: { t: 'end', id } });
-          };
-          releaseOne = (): void => {
-            const chunk = held.shift();
-            if (chunk) deliverGraphStreamChunk(socket, envelope.version, id, chunk, open);
-            if (held.length === 0)
-              deliver(socket, { version: envelope.version, body: { t: 'end', id } });
-          };
-          if (hold === undefined) finish();
-          else releaseHeld = finish;
-          return;
-        }
-        if (frame?.t !== 'req' || frame.id === undefined) return;
-        if (frame.method !== undefined) {
-          (window as unknown as { __kiraGitRequests: string[] }).__kiraGitRequests.push(
-            frame.method,
-          );
-          (window as unknown as { __kiraGitParams: unknown[] }).__kiraGitParams.push({
-            method: frame.method,
-            params: frame.params,
-          });
-        }
-        // @kira/git-ipc's rpc.ts frame union: {t:'res', id, ok:true, result}.
-        const resultByMethod: Record<string, unknown> = {
-          'app.init': {
-            contractVersion: envelope.version,
-            serverVersion: 'ui-test',
-            git: { kind: 'ok', path: '/usr/bin/git', version: '2.40.0' },
-          },
-          'repo.list': { candidates: [], activeRepoId: repoId },
-          'refs.list': {
-            branches: [
-              {
-                refname: 'refs/heads/main',
-                kind: 'branch',
-                shortName: 'main',
-                objectId: '0'.repeat(40),
-                peeledObjectId: undefined,
-                upstream: undefined,
-                track: undefined,
-                committerDate: 0,
-                isHead: true,
-                checkedOutIn: undefined,
-                annotation: undefined,
-              },
-            ],
-            remoteBranches: [],
-            tags: [],
-            head: { kind: 'branch', name: 'main' },
-          },
-          ...extraResults,
+        if (frame.t !== 'open' || !openChunks) return;
+        const open = streamOpenCount;
+        const hold = open === (graphStreamHoldOpen ?? 0) ? graphStreamHoldAfter : undefined;
+        streamOpenCount++;
+        const now = hold === undefined ? openChunks : openChunks.slice(0, hold);
+        for (const chunk of now) deliverGraphStreamChunk(socket, id, chunk, open);
+        const held = openChunks.slice(now.length);
+        const end = (): void => {
+          if (!cancelled.has(id)) deliver(socket, { t: 'end', id });
         };
-        const method = frame.method;
-        if (method === undefined || !(method in resultByMethod)) return; // hang forever
-        // `{ __sequence: [a, b, ...] }`: the Nth request for this method answers entry N (the last
-        // repeats); an entry `{ __error: { code, message } }` answers a wire failure.
-        let answer = resultByMethod[method] as { __sequence?: unknown[] } | undefined;
-        if (answer && typeof answer === 'object' && Array.isArray(answer.__sequence)) {
-          const n = seqCounts[method] ?? 0;
-          seqCounts[method] = n + 1;
-          answer = answer.__sequence[Math.min(n, answer.__sequence.length - 1)] as typeof answer;
-        }
-        const failure = (answer as { __error?: { code: string; message: string } } | undefined)
-          ?.__error;
-        deliver(
-          socket,
-          failure
-            ? {
-                version: envelope.version,
-                body: { t: 'res', id: frame.id, ok: false, error: failure },
-              }
-            : {
-                version: envelope.version,
-                body: { t: 'res', id: frame.id, ok: true, result: answer },
-              },
-        );
+        const finish = (): void => {
+          for (const chunk of held.splice(0)) {
+            if (!cancelled.has(id)) deliverGraphStreamChunk(socket, id, chunk, open);
+          }
+          end();
+        };
+        releaseOne = (): void => {
+          const chunk = held.shift();
+          if (chunk && !cancelled.has(id)) deliverGraphStreamChunk(socket, id, chunk, open);
+          if (held.length === 0) end();
+        };
+        if (hold === undefined) finish();
+        else releaseHeld = finish;
       },
       close() {
         socket.readyState = CLOSED;
@@ -301,7 +457,6 @@ function installInBrowser({
     // Genuinely asynchronous — a later macrotask, not the same tick `Stream()` returns in. Any
     // code that sends before this fires is sending on a CONNECTING socket, exactly the window
     // bug 2 lived in.
-    openSockets.push(socket);
     nativeSetTimeout(() => {
       socket.readyState = OPEN;
       socket.onopen?.({});
@@ -309,8 +464,12 @@ function installInBrowser({
     return socket;
   }
 
-  w.streamFactory = (name: string) =>
-    name === 'git' ? createGitMockSocket() : existingFactory?.(name);
+  w.streamFactory = (name: string) => {
+    if (name !== 'gitgraph') return existingFactory?.(name);
+    const socket = createGitMockSocket();
+    graphSockets.push(socket);
+    return socket;
+  };
 }
 
 /**
@@ -327,14 +486,17 @@ export async function installGitStreamMock(
   graphStreamHoldAfter?: number,
   graphStreamHoldOpen?: number,
 ): Promise<void> {
-  await page.evaluate(installInBrowser, {
-    repoId: gitRepoId,
-    extraResults,
-    graphStreamChunks,
-    graphStreamOpens,
-    graphStreamHoldAfter,
-    graphStreamHoldOpen,
-  });
+  await page.evaluate(
+    installInBrowser,
+    installArgs({
+      repoId: gitRepoId,
+      extraResults,
+      graphStreamChunks,
+      graphStreamOpens,
+      graphStreamHoldAfter,
+      graphStreamHoldOpen,
+    }),
+  );
 }
 
 /**
@@ -346,7 +508,7 @@ export async function installGitStreamMockOnInit(
   page: Page,
   args: GitStreamMockArgs,
 ): Promise<void> {
-  await page.addInitScript(installInBrowser, args);
+  await page.addInitScript(installInBrowser, installArgs(args));
 }
 
 /** The git-mock method request log — every method seen in a `t: 'req'` frame, in order, whether
@@ -354,6 +516,36 @@ export async function installGitStreamMockOnInit(
 export async function gitStreamRequests(page: Page): Promise<string[]> {
   return page.evaluate(
     () => (window as unknown as { __kiraGitRequests?: string[] }).__kiraGitRequests ?? [],
+  );
+}
+
+/** Every frame the page sent on the `gitgraph` stream (`open`, `credit`, `cancel`), in order. */
+export async function gitGraphFrames(
+  page: Page,
+): Promise<{ t: string; id?: string; windowKey?: string; credit?: number; params?: unknown }[]> {
+  return page.evaluate(
+    () => (window as unknown as { __kiraGitGraphFrames?: never[] }).__kiraGitGraphFrames ?? [],
+  );
+}
+
+/** How many `gitgraph` sockets the page has dialed. */
+export async function gitGraphDials(page: Page): Promise<number> {
+  return page.evaluate(() =>
+    (window as unknown as { __kiraGitGraphDials: () => number }).__kiraGitGraphDials(),
+  );
+}
+
+/** Closes the newest `gitgraph` socket from the server side. */
+export async function gitGraphClose(page: Page): Promise<void> {
+  await page.evaluate(() =>
+    (window as unknown as { __kiraGitGraphClose: () => void }).__kiraGitGraphClose(),
+  );
+}
+
+/** The window key of every bound GitService call so far, in order. */
+export async function gitBoundWindowKeys(page: Page): Promise<string[]> {
+  return page.evaluate(
+    () => (window as unknown as { __kiraGitWindowKeys?: string[] }).__kiraGitWindowKeys ?? [],
   );
 }
 

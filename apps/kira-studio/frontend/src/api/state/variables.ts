@@ -2,8 +2,6 @@ import type { PaletteColor } from '@shared/domain/color';
 import type {
   ApiEnvironment,
   ApiVariable,
-  ApiVariableBulkEntry,
-  ApiVariableBulkResult,
   ApiVariableHistoryEntry,
   VariableScope,
 } from '@shared/domain/variables';
@@ -17,11 +15,10 @@ import { computed, reactive, toRefs, watch } from 'vue';
 import { control } from '../../bridge/control';
 import { useTabIncognitoStore } from '../../state/tabIncognito';
 import { runReveal } from '../reveal';
-import { closeVariableSetTabsForOwner, openEnvironmentsTab, renameVariableSetTabs } from '../tabs';
+import { openEnvironmentsTab, syncVariableSetTabNames } from '../tabs';
 import {
   apiEnvironmentsKey,
   apiEnvironmentsQueryOptions,
-  apiVariablesKey,
   loadCollectionsTree,
   loadEnvironments,
   loadVariableRows,
@@ -159,6 +156,7 @@ export const useVariablesStore = defineStore('variables', () => {
   // wipes overrides.
   watch(environments, (list) => {
     if (envQuery.data.value === undefined) return;
+    syncVariableSetTabNames('environment', list);
     const ids = new Set(list.map((e) => e.id));
     for (const [tabId, envId] of incognitoEnvByTab) {
       if (!ids.has(envId)) incognitoEnvByTab.delete(tabId);
@@ -190,80 +188,6 @@ export const useVariablesStore = defineStore('variables', () => {
     }
   }
 
-  const updateEnvironmentMutation = useMutation(
-    {
-      mutationKey: ['apiEnvironments', 'update'],
-      mutationFn: (args: { id: string; name: string; description: string; color: PaletteColor }) =>
-        control.variablesUpdateEnvironment(args.id, args.name, args.description, args.color),
-      onSuccess: afterEnvironmentsListChange,
-    },
-    queryClient,
-  );
-
-  /** P17 D14/P18 D19: replaces renameEnvironment — renaming, describing and colouring an
-   *  environment are one row update. Also patches any open variable-set tab for this environment
-   *  (D16), the same rename-follows-tab rule a collection's own rename already has. */
-  async function updateEnvironment(
-    id: string,
-    name: string,
-    description: string,
-    color: PaletteColor = 'none',
-  ): Promise<void> {
-    try {
-      await updateEnvironmentMutation.mutateAsync({ id, name, description, color });
-      renameVariableSetTabs('environment', id, name);
-      state.error = null;
-    } catch (err) {
-      state.error = errorText(err);
-    }
-  }
-
-  const deleteEnvironmentMutation = useMutation(
-    {
-      mutationKey: ['apiEnvironments', 'delete'],
-      mutationFn: (id: string) => control.variablesDeleteEnvironment(id),
-      onSuccess: afterEnvironmentsListChange,
-    },
-    queryClient,
-  );
-
-  /** Deleting the active environment leaves none active — there is nothing to reassign.
-   *  Closes any open variable-set tab for it too — unlike a request tab, it has no state of
-   *  its own worth preserving once its owner is gone. The incognito-override drop and the
-   *  cached variable-rows eviction both now happen reactively — the `environments` watch
-   *  above and `reconcileEnvironments` (afterEnvironmentsListChange) — rather than as explicit
-   *  steps here. */
-  async function deleteEnvironment(id: string): Promise<void> {
-    try {
-      await deleteEnvironmentMutation.mutateAsync(id);
-      closeVariableSetTabsForOwner('environment', id);
-      state.error = null;
-    } catch (err) {
-      state.error = errorText(err);
-    }
-  }
-
-  const duplicateEnvironmentMutation = useMutation(
-    {
-      mutationKey: ['apiEnvironments', 'duplicate'],
-      mutationFn: (id: string) => control.variablesDuplicateEnvironment(id),
-      onSuccess: afterEnvironmentsListChange,
-    },
-    queryClient,
-  );
-
-  /** P17 D17/item 4: a raw-ciphertext duplicate — no history copied, never active. */
-  async function duplicateEnvironment(id: string): Promise<ApiEnvironment | undefined> {
-    try {
-      const env = await duplicateEnvironmentMutation.mutateAsync(id);
-      state.error = null;
-      return env;
-    } catch (err) {
-      state.error = errorText(err);
-      return undefined;
-    }
-  }
-
   // ---- the environments surface ----
   //
   // The dialog flag and its open/close pair are gone. `openEnvironments()` is the one entry point
@@ -272,26 +196,6 @@ export const useVariablesStore = defineStore('variables', () => {
   // trigger here.
   function openEnvironments(): void {
     openEnvironmentsTab();
-  }
-
-  const reorderEnvironmentsMutation = useMutation(
-    {
-      mutationKey: ['apiEnvironments', 'reorder'],
-      mutationFn: (ids: string[]) => control.variablesReorderEnvironments(ids),
-      onSuccess: afterEnvironmentsListChange,
-    },
-    queryClient,
-  );
-
-  async function reorderEnvironmentsList(ids: string[]): Promise<boolean> {
-    try {
-      await reorderEnvironmentsMutation.mutateAsync(ids);
-      state.error = null;
-      return true;
-    } catch (err) {
-      state.error = errorText(err);
-      return false;
-    }
   }
 
   return {
@@ -307,11 +211,7 @@ export const useVariablesStore = defineStore('variables', () => {
     environmentColorForTab,
     selectEnvironmentForTab,
     createEnvironment,
-    updateEnvironment,
-    deleteEnvironment,
-    duplicateEnvironment,
     openEnvironments,
-    reorderEnvironmentsList,
   };
 });
 
@@ -507,145 +407,6 @@ export const useVariableSetStore = defineStore('variableSet', () => {
     ensureVariableSetRuntime(tabId).error = message;
   }
 
-  // ---- mutations (P112: each is a useMutation now; onSuccess refreshes exactly the touched
-  // apiVariablesKey, replacing the old loadVariableSetRows re-list) ----
-
-  const upsertVariableMutation = useMutation(
-    {
-      mutationKey: ['apiVariables', 'upsert'],
-      mutationFn: (args: {
-        scope: VariableScope;
-        ownerId: string;
-        id: string;
-        name: string;
-        value: string | null;
-        isSecret: boolean;
-        description?: string;
-      }) => control.variablesUpsert(args),
-      onSuccess: (_data, vars) => refreshApiQuery(apiVariablesKey(vars.scope, vars.ownerId)),
-    },
-    queryClient,
-  );
-
-  /** id: '' creates a new row (D19). value is three-state (F2, P108 Part 3): null means "leave the
-   *  stored value untouched" — VariableSetView.vue's own valueTouched flag is what decides which
-   *  one it sends; every other caller here (restoreHistoryEntry) always has a real value in hand. */
-  /** This (and deleteVariable/reorderVariables below) used to let a failed IPC call
-   *  throw uncaught — VariableSetView.vue's own call sites (commitDraft, row delete, drag/keyboard
-   *  reorder) have no try/catch of their own, so a rejected edit vanished with nothing telling the
-   *  user why the row snapped back. Reuses the tab's own `variableSetError`/setVariableSetError —
-   *  already wired to an `Alert` in VariableSetView.vue for reveal failures — rather than inventing
-   *  a second error channel. applyBulkVariables is deliberately left alone: its one call site
-   *  (BulkVariablesEditor.vue's onApply) already has its own try/catch and local error display. */
-  async function upsertVariable(
-    tabId: string,
-    scope: VariableScope,
-    ownerId: string,
-    args: {
-      id: string;
-      name: string;
-      value: string | null;
-      isSecret: boolean;
-      description?: string;
-    },
-  ): Promise<boolean> {
-    try {
-      await upsertVariableMutation.mutateAsync({ scope, ownerId, ...args });
-      setVariableSetError(tabId, null);
-      return true;
-    } catch (err) {
-      setVariableSetError(tabId, errorText(err));
-      return false;
-    }
-  }
-
-  const deleteVariableMutation = useMutation(
-    {
-      mutationKey: ['apiVariables', 'delete'],
-      mutationFn: (args: { scope: VariableScope; ownerId: string; id: string }) =>
-        control.variablesDelete(args.id),
-      onSuccess: (_data, vars) => refreshApiQuery(apiVariablesKey(vars.scope, vars.ownerId)),
-    },
-    queryClient,
-  );
-
-  async function deleteVariable(
-    tabId: string,
-    scope: VariableScope,
-    ownerId: string,
-    id: string,
-  ): Promise<void> {
-    try {
-      await deleteVariableMutation.mutateAsync({ scope, ownerId, id });
-      setVariableSetError(tabId, null);
-    } catch (err) {
-      setVariableSetError(tabId, errorText(err));
-    }
-  }
-
-  const reorderVariablesMutation = useMutation(
-    {
-      mutationKey: ['apiVariables', 'reorder'],
-      mutationFn: (args: { scope: VariableScope; ownerId: string; ids: string[] }) =>
-        control.variablesReorder(args.scope, args.ownerId, args.ids),
-      onSuccess: (_data, vars) => refreshApiQuery(apiVariablesKey(vars.scope, vars.ownerId)),
-    },
-    queryClient,
-  );
-
-  /** D14: the full new order, in full. */
-  async function reorderVariables(
-    tabId: string,
-    scope: VariableScope,
-    ownerId: string,
-    ids: string[],
-  ): Promise<boolean> {
-    try {
-      await reorderVariablesMutation.mutateAsync({ scope, ownerId, ids });
-      setVariableSetError(tabId, null);
-      return true;
-    } catch (err) {
-      setVariableSetError(tabId, errorText(err));
-      return false;
-    }
-  }
-
-  const applyBulkVariablesMutation = useMutation(
-    {
-      mutationKey: ['apiVariables', 'applyBulk'],
-      mutationFn: (args: {
-        scope: VariableScope;
-        ownerId: string;
-        entries: ApiVariableBulkEntry[];
-      }) => control.variablesApplyBulk(args.scope, args.ownerId, args.entries),
-      onSuccess: (_data, vars) => refreshApiQuery(apiVariablesKey(vars.scope, vars.ownerId)),
-    },
-    queryClient,
-  );
-
-  /** P17 D21-D23/item 5: applies a parsed `.env` entry list atomically (VariablesRepo.ApplyBulk).
-   *  The returned counts are ApplyBulk's own, from the server-side reconcile — BulkVariablesEditor's
-   *  own live summary is computed independently (dotenv.ts#reconcileEnv) for the pre-Apply preview,
-   *  and the two are expected to agree (§4 of the plan). `_tabId` is unused now that the write goes
-   *  straight through the query cache — kept so this call's shape matches the three mutations above. */
-  async function applyBulkVariables(
-    _tabId: string,
-    scope: VariableScope,
-    ownerId: string,
-    entries: ApiVariableBulkEntry[],
-  ): Promise<ApiVariableBulkResult> {
-    return applyBulkVariablesMutation.mutateAsync({ scope, ownerId, entries });
-  }
-
-  /** D12: a duplicate name within one scope is allowed by the schema and resolved first-wins by
-   *  sort_order — this is the dialog's own "which rows are the later, shadowed duplicates" check,
-   *  over the already-sort_order-ordered list List returns. */
-  function isDuplicateName(rows: ApiVariable[], index: number): boolean {
-    const name = rows[index]?.name.trim();
-    if (!name) return false;
-    return rows.slice(0, index).some((r) => r.name.trim() === name);
-  }
-
   // ---- the gated reveal (D5/D8/D9) ----
 
   /** A revealed variable's plaintext, keyed by variable id — transient, cleared on dialog close
@@ -679,8 +440,8 @@ export const useVariableSetStore = defineStore('variableSet', () => {
   }
 
   /** Runs over http/reveal.ts's shared recurse-once switch — the pattern used to be
-   *  hand-copied from ConnectionDialog.vue's own requestReveal (there was nothing importable to
-   *  reuse); now it is the module's own shared loop, used here and by
+   *  hand-copied per caller (there was nothing importable to reuse); now it is the module's own
+   *  shared loop, used here and by
    *  revealHistoryEntry below.
    *
    *  `onError` is now required rather than falling back to a singleton dialog's error field —
@@ -801,36 +562,6 @@ export const useVariableSetStore = defineStore('variableSet', () => {
     );
   }
 
-  /** D13: restoring writes the prior value through the ordinary Upsert path, so the restore is
-   *  itself recorded in history and is therefore undoable. A secret entry is revealed first if it
-   *  has not been already — restoring is no less a reveal than the eye button is. */
-  async function restoreHistoryEntry(entry: ApiVariableHistoryEntry): Promise<void> {
-    const { tabId, scope, ownerId } = historyMenuState;
-    if (!tabId || !scope) return;
-    // P112: reads the query cache directly (§3.5's imperative-reader rule) rather than a per-tab
-    // rows array — the popover only ever opens once loadVariableRows has already populated this key.
-    const rows = queryClient.getQueryData<ApiVariable[]>(apiVariablesKey(scope, ownerId)) ?? [];
-    const row = rows.find((r) => r.id === entry.variableId);
-    if (!row) return;
-    let value = entry.value;
-    if (entry.isSecret) {
-      if (revealedHistoryValues[entry.id] === undefined) {
-        await revealHistoryEntry(entry.id);
-      }
-      const revealed = revealedHistoryValues[entry.id];
-      if (revealed === undefined) return; // cancelled, unavailable, or errored
-      value = revealed;
-    }
-    await upsertVariable(tabId, scope, ownerId, {
-      id: row.id,
-      name: row.name,
-      value,
-      isSecret: entry.isSecret,
-      description: row.description,
-    });
-    await openHistoryMenu(tabId, scope, ownerId, entry.variableId);
-  }
-
   return {
     variableSetRuntime,
     revealedValues,
@@ -840,17 +571,11 @@ export const useVariableSetStore = defineStore('variableSet', () => {
     setVariableSetError,
     filterQueryFor,
     setFilterQuery,
-    upsertVariable,
-    deleteVariable,
-    reorderVariables,
-    applyBulkVariables,
-    isDuplicateName,
     clearRevealed,
     forgetRevealed,
     revealVariable,
     openHistoryMenu,
     closeHistoryMenu,
     revealHistoryEntry,
-    restoreHistoryEntry,
   };
 });

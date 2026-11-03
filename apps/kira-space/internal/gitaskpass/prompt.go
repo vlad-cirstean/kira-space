@@ -1,7 +1,7 @@
 // Package gitaskpass is the credential broker + GIT_ASKPASS/SSH_ASKPASS shim over its own private
 // unix socket. It imports stdlib only — gitsession supplies the one production Prompter
 // (its Conn's own credential waiters), which is what keeps this package free of any dependency on
-// gitsession, bridge or rpcstream.
+// gitsession or bridge.
 package gitaskpass
 
 import (

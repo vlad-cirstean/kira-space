@@ -12,6 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness/fakehost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/shell"
@@ -136,10 +137,9 @@ func TestTaskArtifacts(t *testing.T) {
 	})
 	// main holds the branch tip, so the prod script's HEAD contains it.
 	gitOut(t, f.repo.Dir, "merge", "-q", "--ff-only", artBranch)
-	envs := []adewire.Environment{{Name: "prod", DeployedShaScript: "git rev-parse HEAD"}}
-	if _, err := app.W.AdeTask.UpdateRepo(ctx, adewire.UpdateRepoArgs{CodeRepoID: f.repoID, Patch: adewire.RepoPatch{Environments: &envs}}); err != nil {
-		t.Fatal(err)
-	}
+	setRepoFile(t, app, f.repoID, func(rf *repocfg.File) {
+		rf.Environments = []repocfg.Environment{{Name: "prod", DeployedSHAScript: "git rev-parse HEAD"}}
+	})
 	testx.WaitUntil(t, waitFor, func() bool {
 		br := branchOf(t, board(t, app), f.taskID, f.repoID)
 		return len(br.Deployments) == 1 && br.Deployments[0].Status == "deployed"

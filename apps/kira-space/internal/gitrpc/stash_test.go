@@ -41,14 +41,6 @@ func initStashRpcRepo(t *testing.T) string {
 	return dir
 }
 
-// TestContractVersion_Is58 is P7 item 2's own literal exit-criteria assertion, moved forward again
-// (57 -> 58, P464) in the same commit that bumps the constant.
-func TestContractVersion_Is58(t *testing.T) {
-	if ContractVersion != 58 {
-		t.Fatalf("ContractVersion = %d, want 58", ContractVersion)
-	}
-}
-
 // TestGlobalStashList_EmptyBucketSpawnsExactlyOneForEachRefAndNoLog is §7.1 item 9's own exact exit
 // criterion: a Router over a counting fake runner drives app.init/repo.open/refs.list/stash.list,
 // then globalStash.list — asserting exactly one `for-each-ref` and zero `log` calls.

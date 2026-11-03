@@ -745,7 +745,7 @@ func TestSession_Check_CtxCancellationUnblocksAStalledReply(t *testing.T) {
 	}
 }
 
-// rpcstream cancels a request's ctx the instant the handler returns. The ctx watcher must not
+// A request ctx is cancelled the instant the handler returns. The ctx watcher must not
 // close the healthy persistent process (or trip the circuit breaker) when that cancel lands.
 func TestSession_CancelAfterSuccessDoesNotKillProcess(t *testing.T) {
 	skipWithoutGit(t)

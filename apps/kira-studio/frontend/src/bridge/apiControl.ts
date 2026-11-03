@@ -1,3 +1,4 @@
+import * as ApiConfigService from '@bindings/apiconfigservice.js';
 import * as CollectionsService from '@bindings/collectionsservice.js';
 import * as GrpcHistoryService from '@bindings/grpchistoryservice.js';
 import * as GrpcService from '@bindings/grpcservice.js';
@@ -9,6 +10,7 @@ import * as VariablesService from '@bindings/variablesservice.js';
 // args/results reference it rather than restating it, so the renderer types against it through
 // vite.config.ts's existing @bindings-internal alias.
 import type * as WailsStorageModels from '@bindings-internal/storage/model/models.js';
+import type { ApiConfigView } from '@shared/domain/apiConfig';
 import type { ImportResult } from '@shared/domain/collections';
 import type { PaletteColor } from '@shared/domain/color';
 import type {
@@ -29,8 +31,6 @@ import type { ResponseHistoryEntry, ResponseHistorySnapshot } from '@shared/doma
 import type {
   ApiEnvironment,
   ApiVariable,
-  ApiVariableBulkEntry,
-  ApiVariableBulkResult,
   ApiVariableHistoryEntry,
   RevealResult,
   VariableScope,
@@ -165,7 +165,7 @@ export const apiControl = {
   onApiDataChanged: (cb: (event: ApiDataChangedEvent) => void): (() => void) =>
     on(CHANNEL.apiDataChanged, cb),
 
-  // Nine wrappers over CollectionsService. These stay typed against the generated models
+  // Wrappers over CollectionsService. These stay typed against the generated models
   // rather than `trust<T>()`-ing a domain type, because the one place a saved request's shape
   // genuinely has to be trusted is where it becomes tab state — `openCollectionRequestTab` Zod-
   // parses it there, which is the app's single trust boundary for this document rather than
@@ -217,18 +217,6 @@ export const apiControl = {
     name: string;
   }): Promise<WailsModels.ItemSummary> =>
     unwrap(CollectionsService.CreateGrpcItem({ ...args, request: args.request ?? null })),
-  collectionsRename: (id: string, target: 'collection' | 'item', name: string): Promise<void> =>
-    unwrap(CollectionsService.Rename({ id, target, name })),
-  collectionsDeleteMany: (args: { collectionIds: string[]; itemIds: string[] }): Promise<void> =>
-    unwrap(CollectionsService.DeleteMany(args)),
-  collectionsMoveItems: (args: {
-    itemIds: string[];
-    collectionId: string;
-    parentId: string | null;
-    beforeId: string | null;
-  }): Promise<void> => unwrap(CollectionsService.MoveItems(args)),
-  collectionsReorderCollections: (ids: string[]): Promise<void> =>
-    unwrap(CollectionsService.ReorderCollections({ ids })),
   collectionsImport: (paths: string[]): Promise<ImportResult> =>
     unwrap(CollectionsService.Import({ paths })).then((r) => trust<ImportResult>(r)),
   // P5 D16: ExportReport.secretCount is what lets the panel say "N secret values were not
@@ -236,7 +224,15 @@ export const apiControl = {
   collectionsExport: (collectionId: string, path: string): Promise<WailsModels.ExportReport> =>
     unwrap(CollectionsService.Export({ collectionId, path })),
 
-  // Thirteen wrappers over VariablesService — typed against the shared domain mirrors
+  // The config files' status and the secret names; SetSecret is write-only, no call returns a value.
+  apiConfigView: (): Promise<ApiConfigView> =>
+    unwrap(ApiConfigService.View()).then((r) => trust<ApiConfigView>(r)),
+  apiConfigSetSecret: (name: string, value: string): Promise<ApiConfigView> =>
+    unwrap(ApiConfigService.SetSecret({ name, value })).then((r) => trust<ApiConfigView>(r)),
+  apiConfigDeleteSecret: (name: string): Promise<ApiConfigView> =>
+    unwrap(ApiConfigService.DeleteSecret({ name })).then((r) => trust<ApiConfigView>(r)),
+
+  // Wrappers over VariablesService — typed against the shared domain mirrors
   // rather than the generated models directly, the one difference from collectionsList's
   // own precedent above (nothing here becomes tab state, so there is no equivalent reason to stay
   // close to the wire shape).
@@ -250,62 +246,13 @@ export const apiControl = {
     unwrap(VariablesService.CreateEnvironment({ name, description, color })).then((r) =>
       trust<ApiEnvironment>(r),
     ),
-  // P17 D14/P18 D19: replaces variablesRenameEnvironment — renaming, describing and colouring an
-  // environment are one row update.
-  variablesUpdateEnvironment: (
-    id: string,
-    name: string,
-    description: string,
-    color: PaletteColor = 'none',
-  ): Promise<void> => unwrap(VariablesService.UpdateEnvironment({ id, name, description, color })),
-  variablesDeleteEnvironment: (id: string): Promise<void> =>
-    unwrap(VariablesService.DeleteEnvironment({ id })),
-  // P17 D17/item 4: a raw-ciphertext duplicate — see repos/variables.go's own DuplicateEnvironment.
-  variablesDuplicateEnvironment: (id: string): Promise<ApiEnvironment> =>
-    unwrap(VariablesService.DuplicateEnvironment({ id })).then((r) => trust<ApiEnvironment>(r)),
   // id: '' selects "No environment" (D3).
   variablesSetActiveEnvironment: (id: string): Promise<void> =>
     unwrap(VariablesService.SetActiveEnvironment({ id })),
-  variablesReorderEnvironments: (ids: string[]): Promise<void> =>
-    unwrap(VariablesService.ReorderEnvironments({ ids })),
-
   variablesList: (scope: VariableScope, ownerId: string): Promise<ApiVariable[]> =>
     unwrap(VariablesService.List({ scope: scopeArg(scope), ownerId })).then((r) =>
       trust<ApiVariable[]>(r ?? []),
     ),
-  // id: '' creates a new row (D19). value is three-state (F2, P108 Part 3) — null leaves the
-  // stored value untouched; VariablesUpsertArgs.Value mirrors ConnectionsUpdateArgs.Password's own
-  // nil-means-unchanged contract on the Go side.
-  variablesUpsert: (args: {
-    scope: VariableScope;
-    ownerId: string;
-    id: string;
-    name: string;
-    value: string | null;
-    isSecret: boolean;
-    description?: string;
-  }): Promise<ApiVariable> =>
-    unwrap(
-      VariablesService.Upsert({
-        ...args,
-        scope: scopeArg(args.scope),
-        description: args.description ?? '',
-      }),
-    ).then((r) => trust<ApiVariable>(r)),
-  variablesDelete: (id: string): Promise<void> => unwrap(VariablesService.Delete({ id })),
-  variablesReorder: (scope: VariableScope, ownerId: string, ids: string[]): Promise<void> =>
-    unwrap(VariablesService.Reorder({ scope: scopeArg(scope), ownerId, ids })),
-  // P17 D21-D23/item 5: one scope's whole variable set, replaced atomically by a parsed `.env`
-  // entry list — see repos/variables.go's own ApplyBulk.
-  variablesApplyBulk: (
-    scope: VariableScope,
-    ownerId: string,
-    entries: ApiVariableBulkEntry[],
-  ): Promise<ApiVariableBulkResult> =>
-    unwrap(VariablesService.ApplyBulk({ scope: scopeArg(scope), ownerId, entries })).then((r) =>
-      trust<ApiVariableBulkResult>(r),
-    ),
-
   variablesHistory: (variableId: string): Promise<ApiVariableHistoryEntry[]> =>
     unwrap(VariablesService.History({ variableId })).then((r) =>
       trust<ApiVariableHistoryEntry[]>(r ?? []),

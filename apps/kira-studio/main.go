@@ -63,10 +63,11 @@ func main() {
 	emitter, attachEmitter := shell.NewDeferredEmitter()
 	rawDialogs, attachDialogs := shell.NewDeferredDialogs()
 	browserOpener, attachBrowser := shell.NewDeferredBrowser()
+	fileOpener, attachFileOpener := shell.NewDeferredFileOpener()
 
 	w, err := appwire.Build(appwire.Options{
 		DB: core.db, Repos: core.repositories, Cipher: core.cipher, Authorizer: core.authorizer,
-		Emitter: emitter, Browser: browserOpener, Dialogs: appshell.NewDialogs(rawDialogs),
+		Emitter: emitter, Browser: browserOpener, FileOpener: fileOpener, Dialogs: appshell.NewDialogs(rawDialogs),
 		// P87 §3/§4: a runtime.GOOS switch — a real caffeinate child on macOS, a documented no-op
 		// everywhere else.
 		KeepAwakeDriver: keepawake.NewPlatformDriver(),
@@ -99,6 +100,7 @@ func main() {
 
 	attachEmitter(app)
 	attachBrowser(app)
+	attachFileOpener(app)
 	w.Quitter.Attach(app)
 
 	wireWindowsAndMenu(postAppDeps{app: app, w: w, attachDialogs: attachDialogs, reporter: reporter})

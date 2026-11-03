@@ -353,3 +353,20 @@ test('memory list — focus on mount, arrows, Home/End, Enter selects and a type
   await expect(search).toBeFocused();
   await expect(search).toHaveValue('z');
 });
+
+test('memory list — 200 memories virtualize, End and Home reach the ends', async ({ relaunch }) => {
+  const records = Array.from({ length: 200 }, (_, i) => memoryRecord(`m${i}`, `Fact ${i}.`));
+  const { window: page } = await relaunch({
+    control: [{ channel: IPC.memoryRecent, response: records }],
+  });
+  await page.locator('[data-testid="mode-tab"][data-mode="memory"]').click();
+
+  const rows = page.locator('[data-testid^="memory-row-m"]');
+  await expect(rows.first()).toBeVisible();
+  expect(await rows.count()).toBeLessThan(60);
+  await rows.first().focus();
+  await page.keyboard.press('End');
+  await expect(page.locator('[data-testid="memory-row-m199"]')).toBeFocused();
+  await page.keyboard.press('Home');
+  await expect(page.locator('[data-testid="memory-row-m0"]')).toBeFocused();
+});

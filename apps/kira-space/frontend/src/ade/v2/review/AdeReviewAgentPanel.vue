@@ -9,7 +9,7 @@ import { useAgentInfo } from '@workbench/agent/agentInfo';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { errorText } from '@workbench/bridge/codedError';
 import { computed, ref } from 'vue';
-import { notifyReviewRepaint } from '../../../repo/git/transport';
+import { notifyReviewRepaint } from '../../../repo/git/reviewRepaint';
 import { useTerminalsStore } from '../../../state/terminals';
 import { useAgentSessionsStore } from '../../state';
 import AdeTip from '../AdeTip.vue';

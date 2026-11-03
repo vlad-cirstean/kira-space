@@ -27,7 +27,7 @@
       "blocker": "",
       "branch": "",
       "mode": "kira",
-      "path": "<space>/automations/<id:1>",
+      "path": "<space>/automations/ask",
       "pending": false
     },
     "env": [],

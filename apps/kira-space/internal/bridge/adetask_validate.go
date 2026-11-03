@@ -71,10 +71,6 @@ func adeMessageTooLong() error {
 	return ipcerr.T(ipcerr.CodeBadRequest, "backend.space.ade.messageTooLong.body", nil)
 }
 
-func adeScriptTooLarge() error {
-	return ipcerr.T(ipcerr.CodeBadRequest, "backend.space.ade.scriptTooLarge.body", nil)
-}
-
 func adeYamlTooLarge() error {
 	return ipcerr.T(ipcerr.CodeBadRequest, "backend.space.ade.yamlTooLarge.body", nil)
 }

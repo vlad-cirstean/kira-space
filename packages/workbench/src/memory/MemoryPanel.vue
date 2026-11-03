@@ -19,7 +19,9 @@ import { useFocusOnMount } from '../behaviour/focus';
 import { useListNavigation } from '../behaviour/listNavigation';
 import { usePanelHeaderSearch } from '../behaviour/panelSearch';
 import { TIMING } from '../behaviour/timing';
+import { useVirtualRows, VIRTUAL_ROW_CLASS } from '../behaviour/virtualRows';
 import QueryState from '../components/QueryState.vue';
+import { useRowHeight } from '../lib/rowHeight';
 import AddMemoryDialog from './AddMemoryDialog.vue';
 import ImportConfirmDialog from './import/ImportConfirmDialog.vue';
 import ImportMenu from './import/ImportMenu.vue';
@@ -72,6 +74,25 @@ watch(
   },
   { immediate: true },
 );
+const rowHeight = useRowHeight();
+const activeIndex = computed(() =>
+  (search.data.value ?? []).findIndex((m) => m.id === activeKey.value),
+);
+const { virtualizer, virtualItems, totalSize, scrollToIndex } = useVirtualRows({
+  count: () => search.data.value?.length ?? 0,
+  rowHeight: () => rowHeight.double.value + 8,
+  scrollElement: resultsEl,
+  pinned: () => (activeIndex.value < 0 ? null : activeIndex.value),
+});
+const windowRows = computed(() =>
+  virtualItems.value.flatMap((item) => {
+    const memory = search.data.value?.[item.index];
+    return memory ? [{ item, memory }] : [];
+  }),
+);
+function measure(el: unknown): void {
+  if (el instanceof Element) virtualizer.value.measureElement(el);
+}
 const nav = useListNavigation({
   container: resultsEl,
   items: () => search.data.value ?? [],
@@ -79,6 +100,8 @@ const nav = useListNavigation({
   activeKey,
   onOpen: (m) => selectMemory(m.id),
   onSelect: (m) => selectMemory(m.id),
+  scrollToIndex: (index) => scrollToIndex(index),
+  rendered: () => virtualItems.value,
 });
 const semanticStatus = useMemorySemanticStatus();
 const semanticState = computed(() => semanticStatus.data.value?.state);
@@ -163,21 +186,24 @@ const historyToggleId = useId();
             />
           </EmptyState>
         </template>
-        <template #default="{ data }">
-          <div class="flex flex-col">
+        <template #default>
+          <div class="relative" :style="{ height: `${totalSize}px` }">
             <button
-              v-for="memory in data"
+              v-for="{ item, memory } in windowRows"
               :key="memory.id"
+              :ref="measure"
               type="button"
+              :data-index="item.index"
               v-bind="nav.rowProps(memory.id)"
               :class="
                 cn(
+                  VIRTUAL_ROW_CLASS,
                   rowVariants({ layout: 'double', selected: selectedId === memory.id }),
                   'w-full flex-col gap-1 whitespace-normal border-b border-border py-1.5 text-left',
                   memory.historical && 'opacity-50',
                 )
               "
-              :style="rowIndent(0)"
+              :style="{ ...rowIndent(0), transform: `translateY(${item.start}px)` }"
               :data-testid="`memory-row-${memory.id}`"
               @click="selectMemory(memory.id)"
             >

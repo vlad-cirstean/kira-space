@@ -205,9 +205,11 @@ func TestSQLiteTestPreconnectKilledOnQuit(t *testing.T) {
 	in.Preconnect = ptr("echo $$ > " + pidFile + "; exec sleep 30")
 	in.PreconnectDelaySec = 30
 
+	conn := createConn(t, app, in)
+
 	mark := app.Events.Mark()
 	done := make(chan connections.TestResult, 1)
-	go func() { done <- app.W.Connections.Test(bridge.ConnectionsTestArgs{Input: in}) }()
+	go func() { done <- app.W.Connections.Test(bridge.ConnectionsIDArgs{ID: conn.ID}) }()
 	waitOp(t, app, mark, "preconnect", "running")
 
 	var pid int

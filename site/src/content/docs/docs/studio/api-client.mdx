@@ -30,13 +30,14 @@ Unary and server-streaming calls. Stop ends a stream. Client-streaming and bidir
 
 A collection is a tree of requests and folders. Import and export use the Postman collection format. Export skips gRPC requests. Move a request or folder to another collection.
 
-Drag collections, folders and requests to reorder them. A folder or request moves within its parent or into another folder or collection. Without a mouse, use **Move up** and **Move down** in the row menu, or Alt+Up and Alt+Down. Reordering pauses while a search filters the tree.
+Collections, environments and variables are files in `~/.kira-studio/api`. Use **Open file** or **Reveal file** in the row menu, and edit in your editor. The order of `items` in a file is the order in the tree. A bad edit shows its line above the tree; the app keeps the last good version until the file is valid. `AGENTS.md` in that folder lists every option.
 
 **Export collection…** does not write secret values to the file.
 
 ## Environments and variables
 
-- Variables belong to a collection or an environment.
+- Variables belong to a collection or an environment. Edit them in the file; the Variables tab shows them read-only.
+- A secret variable is written `secret: ${secret:<name>}`. Set its value under Environments, Secrets. The file never holds it.
 - Environments carry a colour.
 - Dynamic values come from Faker.
 - The app masks secret values before it saves a response to history.

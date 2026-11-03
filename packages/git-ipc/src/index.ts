@@ -116,22 +116,9 @@ export type {
   WorktreeRemoveBlocker,
   WorktreeRemovePreflight,
 } from './contract.ts';
-export type {
-  MessageChannelLike,
-  WireError,
-} from './rpc.ts';
-export { createRpcClient, RpcError } from './rpc.ts';
+export type { GraphPlane } from './graphPlane.ts';
+export { createGraphPlane } from './graphPlane.ts';
 export type { StreamChannel, StreamSocketLike } from './streamChannel.ts';
 export { createStreamChannel, StreamFrameDeliveryError } from './streamChannel.ts';
-export type { Transport, TransportErrorCode } from './transport.ts';
-export { TransportError } from './transport.ts';
-export type { ContractChannel, VersionedEnvelope } from './validate.ts';
-export {
-  assertContractShape,
-  CONTRACT_VERSION,
-  ContractShapeError,
-  ContractVersionMismatchError,
-  unwrapVersioned,
-  validateVersion,
-  wrapVersioned,
-} from './validate.ts';
+export type { Transport, TransportErrorCode, WireError } from './transport.ts';
+export { RpcError, TransportError } from './transport.ts';

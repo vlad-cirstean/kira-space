@@ -226,6 +226,12 @@ historical prose.
   numbers and a real Mac's aren't comparable, so a hard bound would be flaky in exactly the way
   it's meant to guard against. Record numbers in the commit message and, when they
   answer a stated budget, in `docs/PERF.md`.
+- **Git UI mock (P479).** `tests/ui/support/gitStreamMock.ts` mocks bound `GitService` calls
+  (`BOUND_GIT_WIRE`, 65 entries; `ResetWindow` shows in the requests log) plus the `gitgraph` socket.
+  Inspect the plane with `gitGraphFrames` (inbound `open`/`credit`/`cancel`), `gitGraphDials`,
+  `gitGraphClose`. Spec: `git-graph-plane.spec.ts`.
+- **Git contract fixtures have no version.** Regenerating needs no bump. `KIRA_CONTRACT=write` rewrites
+  `graphChunkFrame.{bin,json}` with a random tmp path: `git checkout` them unless regenerating on purpose.
 - **`bun run perf:http:studio` probes the HTTP response viewer** (P160, `tests/perf/`, Playwright
   project `perf`, in no suite script). Builds the production bundle (`build:studio` overwrites
   `frontend/dist`; `test:ui:studio` rebuilds its own test bundle). `KIRA_PERF_RUNS` (default 3) runs
@@ -492,6 +498,7 @@ temp `KIRA_SPACE_HOME`, `WAILS_SERVER_HOST=127.0.0.1`. Run `bun run build:space-
   (merge requests) after GitHub. No CLI, no PATH. Azure registers in every harness through an in-process `fakeaz`; `WithAzure` seeds PRs and auth state, and the default harness has no az. Use `WithoutGh()` to prove no step reaches `gh`. It records reviews and comments (`SetAuthor`, `Reviews`, `Comments`) and refuses approving your own merge request.
   Flow: `flows/githostflow`; UI half
   `tests/ui/git-host-provider.spec.ts`.
+- Harness `GitStream` (P479): `Request` calls the bound-method table (no wire envelope); `Stream` rides the `graphplane` pipe (`openPlane`, `ClosePlane`).
 - Harness roots use a short `os.MkdirTemp("", "ksf")` path: unix-socket paths cap near 108 bytes.
 - Many watchers per parallel test can hit the inotify limit; raise `fs.inotify.max_user_instances`.
 - Run `go test` with `CGO_ENABLED=1`; lint with `PATH=$HOME/go/bin:$PATH`.
@@ -990,6 +997,15 @@ flick). Add a view by copying a probe and calling `measureFlick` over `FLICK_LAD
   lines: heap per open tab, reads per switch round, reads after six fake minutes away, heap after
   close-all. Helper: `packages/workbench/src/testing/ui/heapProbe.ts`. Build first
   (`bun run build:test:studio` or `build:test:space`). `KIRA_HEAP_FILE_LINES` sizes the Space file.
+- RAM probe (P480): `bun run perf:ram:studio` / `perf:ram:space` (Chromium, `--project=heap heap-ram`);
+  `--project=heap-webkit` reports WebKit process RSS only. Per world it prints `RAM <app> <world>
+  <checkpoint> <json>` (JS heap after two GCs, DOM counters, settled renderer RSS, Monaco/xterm/grid/img
+  counts, Pinia and TanStack Query stats) and appends the same to `test-results-perf/ram/`. Knobs:
+  `KIRA_RAM_WORLD=a,b` narrows worlds, `KIRA_RAM_N` sets tab units (default 10). Pass B, attribution:
+  build unminified (`cd apps/kira-studio/frontend && KIRA_DEBUG_HOOKS=1 bunx vite build --minify false`,
+  Space likewise without the flag), then `KIRA_RAM_SNAPSHOTS=1` takes heap snapshots (parsed with
+  `heap-snapshot-toolkit`, `HEAPSNAP` lines; `KIRA_RAM_KEEP_SNAPSHOTS=1` keeps the files). Rebuild
+  minified afterwards (`build:test:*`). Helpers: `memProbe.ts`, `heapSnapshot.ts` in `testing/ui/`.
 - Engine is Playwright WebKit. Linux runs the WPE port: software rendering, no GPU process.
 - fps = 1000 / frame ms. Compare views to each other, not to 16 ms.
 - RSS comes from `ps`. On macOS it omits CoreAnimation/IOSurface graphics memory, the dominant

@@ -13,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/postman"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
 func TestSavedRequestHistory(t *testing.T) {
@@ -33,6 +34,7 @@ func TestSavedRequestHistory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.URL = srv.URL + "/echo?saved=2"
 	mark = app.Events.Mark()
 	if _, err := app.W.Collections.SaveRequest(bridge.CollectionsSaveRequestArgs{ItemID: item.ID, Name: "list", Request: req}); err != nil {
 		t.Fatal(err)
@@ -70,13 +72,10 @@ func TestSavedRequestHistory(t *testing.T) {
 	}
 
 	mark = app.Events.Mark()
-	if err := app.W.Collections.DeleteMany(bridge.CollectionsDeleteManyArgs{CollectionIDs: []string{col.ID}}); err != nil {
-		t.Fatal(err)
-	}
+	app.RemoveAPIFile(t, col.File)
 	ch = apiChanges(t, app, mark)
-	if len(ch) != 1 || !hasChange(ch[0], bridge.ApiDataChange{Kind: bridge.ApiDataTree}) ||
-		!hasChange(ch[0], bridge.ApiDataChange{Kind: bridge.ApiDataVariables, Scope: model.VariableScopeCollection, OwnerID: col.ID}) {
-		t.Errorf("collection delete events = %+v, want tree and the collection's variables", ch)
+	if len(ch) == 0 || !hasChange(ch[0], bridge.ApiDataChange{Kind: bridge.ApiDataTree}) {
+		t.Errorf("collection file removal events = %+v, want a tree change", ch)
 	}
 	if rows, _ := app.W.ResponseHistory.List(bridge.ResponseHistoryScopeArgs{ItemID: item.ID}); len(rows) != 0 {
 		t.Errorf("deleting the collection left %d history rows for its item", len(rows))
@@ -89,12 +88,9 @@ func TestSavedRequestHistory(t *testing.T) {
 func TestVariablePrecedence(t *testing.T) {
 	app := flowharness.New(t)
 	srv := flowharness.HTTP(t)
-	col := newCollection(t, app, "scoped")
-	dev, prod := newEnv(t, app, "dev"), newEnv(t, app, "prod")
-
-	upsertSecret(t, app, model.VariableScopeCollection, col.ID, "who", "from-collection")
-	devVar := upsertSecret(t, app, model.VariableScopeEnvironment, dev.ID, "who", "from-dev")
-	upsertSecret(t, app, model.VariableScopeEnvironment, prod.ID, "who", "from-prod")
+	col := app.SeedCollection(t, "scoped", flowharness.APIVar{Name: "who", Value: "from-collection", Secret: true})
+	dev := app.SeedEnvironment(t, "dev", flowharness.APIVar{Name: "who", Value: "from-dev", Secret: true})
+	prod := app.SeedEnvironment(t, "prod", flowharness.APIVar{Name: "who", Value: "from-prod", Secret: true})
 
 	sendWho := func(envID string) string {
 		t.Helper()
@@ -126,96 +122,57 @@ func TestVariablePrecedence(t *testing.T) {
 		}
 	}
 
-	t.Run("bulk edit", func(t *testing.T) {
-		upsertPlain := func(name, value string) {
-			t.Helper()
-			if _, err := app.W.Variables.Upsert(bridge.VariablesUpsertArgs{
-				Scope: model.VariableScopeCollection, OwnerID: col.ID, Name: name, Value: ptr(value),
-			}); err != nil {
-				t.Fatal(err)
-			}
+	t.Run("reveal", func(t *testing.T) {
+		vars, err := app.W.Variables.List(bridge.VariablesScopeArgs{Scope: model.VariableScopeEnvironment, OwnerID: dev.ID})
+		if err != nil || len(vars) != 1 || !vars[0].IsSecret || vars[0].Value != "" {
+			t.Fatalf("variables = %+v (%v), want one secret without a value", vars, err)
 		}
-		upsertPlain("keep", "1")
-		upsertPlain("change", "old")
-		upsertPlain("drop", "x")
-		res, err := app.W.Variables.ApplyBulk(bridge.VariablesApplyBulkArgs{
-			Scope: model.VariableScopeCollection, OwnerID: col.ID,
-			Entries: []model.VariableBulkEntry{
-				{Name: "who", HasValue: false},
-				{Name: "keep", Value: "1", HasValue: true},
-				{Name: "change", Value: "new", HasValue: true},
-				{Name: "added", Value: "a", HasValue: true},
-			},
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if res.Added != 1 || res.Updated != 1 || res.Removed != 1 {
-			t.Errorf("bulk result = %+v, want 1 added, 1 updated, 1 removed", res)
-		}
-		vars, err := app.W.Variables.List(bridge.VariablesScopeArgs{Scope: model.VariableScopeCollection, OwnerID: col.ID})
-		if err != nil {
-			t.Fatal(err)
-		}
-		var names []string
-		got := map[string]string{}
-		for _, v := range vars {
-			names = append(names, v.Name)
-			got[v.Name] = v.Value
-		}
-		if strings.Join(names, ",") != "who,keep,change,added" || got["change"] != "new" {
-			t.Errorf("variables after bulk = %v %v, want who,keep,change,added with change=new", names, got)
-		}
-		if got := sendWho(""); got != "who=from-collection" {
-			t.Errorf("a bulk edit without a value changed the secret: %q", got)
-		}
-	})
-
-	t.Run("history and reveal", func(t *testing.T) {
-		upsertVal := "from-dev-2"
-		if _, err := app.W.Variables.Upsert(bridge.VariablesUpsertArgs{
-			Scope: model.VariableScopeEnvironment, OwnerID: dev.ID, ID: devVar.ID, Name: "who", Value: &upsertVal, IsSecret: true,
-		}); err != nil {
-			t.Fatal(err)
-		}
-		if got := sendWho(dev.ID); got != "who=from-dev-2" {
-			t.Errorf("after the edit = %q, want the new value", got)
-		}
-		hist, err := app.W.Variables.History(bridge.VariablesHistoryArgs{VariableID: devVar.ID})
-		if err != nil || len(hist) != 1 || !hist[0].IsSecret {
-			t.Fatalf("history = %+v (%v), want the one replaced secret value", hist, err)
-		}
-		if strings.Contains(hist[0].Value, "from-dev") {
-			t.Error("history list exposes a secret value")
-		}
-
-		denied := app.W.Variables.Reveal(bridge.VariablesRevealArgs{VariableID: devVar.ID})
+		denied := app.W.Variables.Reveal(bridge.VariablesRevealArgs{VariableID: vars[0].ID})
 		if denied.Outcome != "confirmation-required" || denied.Value != nil {
 			t.Errorf("unconfirmed reveal = %+v, want confirmation-required without a value", denied)
 		}
-		ok := app.W.Variables.Reveal(bridge.VariablesRevealArgs{VariableID: devVar.ID, Confirmed: true})
-		if ok.Outcome != "revealed" || ok.Value == nil || *ok.Value != "from-dev-2" {
-			t.Errorf("confirmed reveal = %+v, want from-dev-2", ok)
-		}
-		old := app.W.Variables.RevealHistory(bridge.VariablesRevealHistoryArgs{HistoryID: hist[0].ID, Confirmed: true})
-		if old.Outcome != "revealed" || old.Value == nil || *old.Value != "from-dev" {
-			t.Errorf("history reveal = %+v, want from-dev", old)
-		}
-		if u := app.W.Variables.RevealHistory(bridge.VariablesRevealHistoryArgs{HistoryID: hist[0].ID}); u.Outcome != "confirmation-required" {
-			t.Errorf("unconfirmed history reveal = %+v", u)
+		ok := app.W.Variables.Reveal(bridge.VariablesRevealArgs{VariableID: vars[0].ID, Confirmed: true})
+		if ok.Outcome != "revealed" || ok.Value == nil || *ok.Value != "from-dev" {
+			t.Errorf("confirmed reveal = %+v, want from-dev", ok)
 		}
 	})
 
-	t.Run("duplicated environment keeps secrets that decrypt", func(t *testing.T) {
-		dup, err := app.W.Variables.DuplicateEnvironment(bridge.VariablesEnvironmentIDArgs{ID: dev.ID})
+	t.Run("a changed secret is used by the next send", func(t *testing.T) {
+		if _, err := app.W.ApiConfig.SetSecret(bridge.ApiSecretArgs{Name: "dev.who", Value: "from-dev-2"}); err != nil {
+			t.Fatal(err)
+		}
+		if got := sendWho(dev.ID); got != "who=from-dev-2" {
+			t.Errorf("after the change = %q, want the new value", got)
+		}
+		vars, err := app.W.Variables.List(bridge.VariablesScopeArgs{Scope: model.VariableScopeEnvironment, OwnerID: dev.ID})
+		if err != nil || len(vars) != 1 {
+			t.Fatalf("variables = %+v (%v), want one", vars, err)
+		}
+		// A history row from before secrets moved to the secret store still carries its sealed value.
+		sealed, err := secrets.New().Encrypt(secrets.ScopeVariableHistory, "legacy-old")
 		if err != nil {
 			t.Fatal(err)
 		}
-		if dup.ID == dev.ID {
-			t.Fatal("duplicate has the original id")
+		if _, err := app.DB().Exec(`INSERT INTO api_variable_history (id, variable_id, value, is_secret, secret_value, recorded_at)
+			VALUES ('legacy-h1', ?, '', 1, ?, '2026-01-01T00:00:00Z')`, vars[0].ID, sealed); err != nil {
+			t.Fatal(err)
 		}
-		if got := sendWho(dup.ID); got != "who=from-dev-2" {
-			t.Errorf("duplicate sends %q, want who=from-dev-2", got)
+		old := app.W.Variables.RevealHistory(bridge.VariablesRevealHistoryArgs{HistoryID: "legacy-h1", Confirmed: true})
+		if old.Outcome != "revealed" || old.Value == nil || *old.Value != "legacy-old" {
+			t.Errorf("history reveal = %+v, want legacy-old", old)
+		}
+	})
+
+	t.Run("a plain value edited in the file keeps its history", func(t *testing.T) {
+		plain := app.SeedEnvironment(t, "plain", flowharness.APIVar{Name: "mode", Value: "one"})
+		app.SeedEnvironment(t, "plain", flowharness.APIVar{Name: "mode", Value: "two"})
+		vars, err := app.W.Variables.List(bridge.VariablesScopeArgs{Scope: model.VariableScopeEnvironment, OwnerID: plain.ID})
+		if err != nil || len(vars) != 1 || vars[0].Value != "two" {
+			t.Fatalf("variables = %+v (%v), want mode=two", vars, err)
+		}
+		hist, err := app.W.Variables.History(bridge.VariablesHistoryArgs{VariableID: vars[0].ID})
+		if err != nil || len(hist) != 1 || hist[0].Value != "one" {
+			t.Fatalf("history = %+v (%v), want the replaced value one", hist, err)
 		}
 	})
 }
@@ -313,7 +270,17 @@ func TestPostmanImportSendExport(t *testing.T) {
 		}
 	}
 
-	// Collection variables arrive: baseUrl is a secret, so Studio itself resolves it on the wire.
+	// A collection secret arrives unset; the user sets it, and the send then resolves it on the wire.
+	view, err := app.W.ApiConfig.View()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Secrets) != 1 || view.Secrets[0].Set || !view.Secrets[0].Referenced {
+		t.Fatalf("secrets after import = %+v, want one referenced and unset", view.Secrets)
+	}
+	if _, err := app.W.ApiConfig.SetSecret(bridge.ApiSecretArgs{Name: view.Secrets[0].Name, Value: srv.URL}); err != nil {
+		t.Fatal(err)
+	}
 	items, err := app.W.Collections.List()
 	if err != nil {
 		t.Fatal(err)
@@ -405,10 +372,10 @@ func headerOf(h model.SavedHeader) httpclient.Header {
 	return httpclient.Header{Name: h.Name, Value: h.Value}
 }
 
-func TestMoveRenameGrpcItem(t *testing.T) {
+func TestGrpcItemSaveAndRestart(t *testing.T) {
 	app := flowharness.New(t)
 	cs := app.W.Collections
-	from, to := newCollection(t, app, "from"), newCollection(t, app, "to")
+	from := newCollection(t, app, "from")
 	folder, err := cs.CreateItem(bridge.CollectionsCreateItemArgs{CollectionID: from.ID, Kind: model.CollectionItemFolder, Name: "dir"})
 	if err != nil {
 		t.Fatal(err)
@@ -443,16 +410,6 @@ func TestMoveRenameGrpcItem(t *testing.T) {
 		t.Fatalf("GetGrpcRequest of an unknown item = %v, want E_NOT_FOUND", err)
 	}
 
-	if err := cs.Rename(bridge.CollectionsTargetArgs{ID: item.ID, Target: "item", Name: "renamed"}); err != nil {
-		t.Fatal(err)
-	}
-	if err := cs.MoveItems(bridge.CollectionsMoveItemsArgs{ItemIDs: []string{folder.ID}, CollectionID: to.ID}); err != nil {
-		t.Fatal(err)
-	}
-	if err := cs.MoveItems(bridge.CollectionsMoveItemsArgs{ItemIDs: []string{folder.ID}, CollectionID: "missing"}); err == nil {
-		t.Fatal("MoveItems into an unknown collection succeeded")
-	}
-
 	check := func(label string) {
 		t.Helper()
 		all, err := cs.List()
@@ -463,48 +420,23 @@ func TestMoveRenameGrpcItem(t *testing.T) {
 		for _, it := range all.Items {
 			byID[it.ID] = it
 		}
-		if byID[folder.ID].CollectionID != to.ID || byID[item.ID].CollectionID != to.ID {
-			t.Fatalf("%s: folder in %s, item in %s; want both in %s (a move takes the subtree)", label, byID[folder.ID].CollectionID, byID[item.ID].CollectionID, to.ID)
-		}
-		if it := byID[item.ID]; it.Name != "renamed" || it.ParentID == nil || *it.ParentID != folder.ID || it.Protocol != model.ItemProtocolGrpc {
-			t.Fatalf("%s: item = %+v, want renamed, still under the folder, gRPC", label, it)
+		if it := byID[item.ID]; it.Name != "unary v2" || it.ParentID == nil || *it.ParentID != folder.ID || it.Protocol != model.ItemProtocolGrpc {
+			t.Fatalf("%s: item = %+v, want the saved name, still under the folder, gRPC", label, it)
 		}
 		if g, err := cs.GetGrpcRequest(bridge.CollectionsItemArgs{ItemID: item.ID}); err != nil || g.Message != req.Message {
-			t.Fatalf("%s: request body after the move = %+v (%v)", label, g, err)
+			t.Fatalf("%s: request body = %+v (%v)", label, g, err)
 		}
 	}
-	check("after move")
+	check("after save")
 	app.Restart(t)
 	cs = app.W.Collections
 	check("after relaunch")
 
 	// Postman has no gRPC item, so an export skips it; the rest of the collection still exports.
 	dest := filepath.Join(t.TempDir(), "out.json")
-	exp, err := cs.Export(bridge.CollectionsExportArgs{CollectionID: to.ID, Path: dest})
+	exp, err := cs.Export(bridge.CollectionsExportArgs{CollectionID: from.ID, Path: dest})
 	if err != nil || exp.SkippedGrpc != 1 {
 		t.Fatalf("Export = %+v (%v), want the gRPC item skipped", exp, err)
-	}
-}
-
-func TestMoveRequest(t *testing.T) {
-	app := flowharness.New(t)
-	cs := app.W.Collections
-	from, to := newCollection(t, app, "from"), newCollection(t, app, "to")
-	item, err := cs.CreateItem(bridge.CollectionsCreateItemArgs{CollectionID: from.ID, Kind: model.CollectionItemRequest, Name: "health"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := cs.MoveItems(bridge.CollectionsMoveItemsArgs{ItemIDs: []string{item.ID}, CollectionID: to.ID}); err != nil {
-		t.Fatal(err)
-	}
-	all, err := cs.List()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, it := range all.Items {
-		if it.ID == item.ID && it.CollectionID != to.ID {
-			t.Fatalf("item in %s after the move, want %s", it.CollectionID, to.ID)
-		}
 	}
 }
 
@@ -623,136 +555,11 @@ func TestPostmanImportCollectionAndEnvironment(t *testing.T) {
 		got["config"].Value != `{"retry":[1,2]}` || got["blank"].Value != "" || got["legacy"].Name != "" {
 		t.Errorf("variables = %+v, want 6 with a blank-listed secret, a compact object value and the disabled one skipped", got)
 	}
-	var kinds []string
+	var all []bridge.ApiDataChange
 	for _, c := range apiChanges(t, app, mark) {
-		for _, ch := range c {
-			kinds = append(kinds, ch.Kind)
-		}
+		all = append(all, c...)
 	}
-	sort.Strings(kinds)
-	if strings.Join(kinds, ",") != "environments,tree" {
-		t.Errorf("change events = %v, want one tree and one environments change", kinds)
-	}
-}
-
-// childOrder lists a parent's children names in sort_order, asserting the order is dense.
-func childOrder(t *testing.T, app *flowharness.App, collectionID string, parentID *string) []string {
-	t.Helper()
-	all, err := app.W.Collections.List()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var names []string
-	for _, it := range all.Items {
-		if it.CollectionID != collectionID || (it.ParentID == nil) != (parentID == nil) ||
-			(parentID != nil && *it.ParentID != *parentID) {
-			continue
-		}
-		if it.SortOrder >= len(all.Items) {
-			t.Fatalf("sort order %d out of range", it.SortOrder)
-		}
-		for len(names) <= it.SortOrder {
-			names = append(names, "")
-		}
-		if names[it.SortOrder] != "" {
-			t.Fatalf("sort order %d used twice under %v", it.SortOrder, parentID)
-		}
-		names[it.SortOrder] = it.Name
-	}
-	for _, n := range names {
-		if n == "" {
-			t.Fatalf("sort order has a gap under %v: %v", parentID, names)
-		}
-	}
-	return names
-}
-
-func TestBatchMoveDelete(t *testing.T) {
-	app := flowharness.New(t)
-	cs := app.W.Collections
-	orders, billing := newCollection(t, app, "orders"), newCollection(t, app, "billing")
-	mk := func(col model.Collection, parent *model.CollectionItem, kind, name string) model.CollectionItem {
-		t.Helper()
-		args := bridge.CollectionsCreateItemArgs{CollectionID: col.ID, Kind: kind, Name: name}
-		if parent != nil {
-			args.ParentID = &parent.ID
-		}
-		it, err := cs.CreateItem(args)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return it
-	}
-	f := mk(orders, nil, model.CollectionItemFolder, "F")
-	a := mk(orders, &f, model.CollectionItemRequest, "a")
-	b := mk(orders, nil, model.CollectionItemRequest, "b")
-	mk(orders, nil, model.CollectionItemRequest, "c")
-	g := mk(billing, nil, model.CollectionItemFolder, "G")
-	d := mk(billing, &g, model.CollectionItemRequest, "d")
-
-	mark := app.Events.Mark()
-	move := bridge.CollectionsMoveItemsArgs{ItemIDs: []string{b.ID, f.ID}, CollectionID: billing.ID, ParentID: &g.ID, BeforeID: &d.ID}
-	if err := cs.MoveItems(move); err != nil {
-		t.Fatal(err)
-	}
-	if ch := apiChanges(t, app, mark); len(ch) != 1 || len(ch[0]) != 1 || ch[0][0].Kind != bridge.ApiDataTree {
-		t.Errorf("MoveItems events = %+v, want one tree change", ch)
-	}
-	app.Contract(t, "api-move-many", "args:CollectionsService.MoveItems", move)
-	var paths []string
-	for _, line := range tree(t, app, billing.ID) {
-		paths = append(paths, strings.SplitN(line, "|", 2)[0])
-	}
-	sort.Strings(paths)
-	if diff := cmp.Diff([]string{"G", "G/F", "G/F/a", "G/b", "G/d"}, paths); diff != "" {
-		t.Errorf("billing paths (-want +got):\n%s", diff)
-	}
-	if diff := cmp.Diff([]string{"b", "F", "d"}, childOrder(t, app, billing.ID, &g.ID)); diff != "" {
-		t.Errorf("G children order (-want +got):\n%s", diff)
-	}
-	if diff := cmp.Diff([]string{"c"}, childOrder(t, app, orders.ID, nil)); diff != "" {
-		t.Errorf("orders root after the move (-want +got):\n%s", diff)
-	}
-
-	mark = app.Events.Mark()
-	if err := cs.MoveItems(bridge.CollectionsMoveItemsArgs{ItemIDs: []string{g.ID}, CollectionID: billing.ID, ParentID: &f.ID}); ipcErr(t, err).Code != "E_BAD_REQUEST" {
-		t.Fatalf("move a folder into its own descendant = %v, want E_BAD_REQUEST", err)
-	}
-	if ch := apiChanges(t, app, mark); len(ch) != 0 {
-		t.Errorf("a refused move emitted %+v", ch)
-	}
-
-	if err := cs.MoveItems(bridge.CollectionsMoveItemsArgs{ItemIDs: []string{d.ID}, CollectionID: billing.ID, ParentID: &g.ID, BeforeID: &b.ID}); err != nil {
-		t.Fatal(err)
-	}
-	if diff := cmp.Diff([]string{"d", "b", "F"}, childOrder(t, app, billing.ID, &g.ID)); diff != "" {
-		t.Errorf("G children after reorder (-want +got):\n%s", diff)
-	}
-
-	// a is inside F, so the deleted collection covers it and the delete skips it.
-	mark = app.Events.Mark()
-	del := bridge.CollectionsDeleteManyArgs{CollectionIDs: []string{orders.ID}, ItemIDs: []string{f.ID, a.ID}}
-	if err := cs.DeleteMany(del); err != nil {
-		t.Fatal(err)
-	}
-	app.Contract(t, "api-delete-many", "args:CollectionsService.DeleteMany", del)
-	ch := apiChanges(t, app, mark)
-	if len(ch) != 1 || !hasChange(ch[0], bridge.ApiDataChange{Kind: bridge.ApiDataTree}) ||
-		!hasChange(ch[0], bridge.ApiDataChange{Kind: bridge.ApiDataVariables, Scope: model.VariableScopeCollection, OwnerID: orders.ID}) {
-		t.Errorf("DeleteMany events = %+v, want tree and the collection's variables", ch)
-	}
-	all, err := cs.List()
-	if err != nil || len(all.Collections) != 1 || all.Collections[0].ID != billing.ID {
-		t.Fatalf("collections after delete = %+v (%v), want only billing", all.Collections, err)
-	}
-	if diff := cmp.Diff([]string{"d", "b"}, childOrder(t, app, billing.ID, &g.ID)); diff != "" {
-		t.Errorf("G children after delete (-want +got):\n%s", diff)
-	}
-
-	if err := cs.DeleteMany(bridge.CollectionsDeleteManyArgs{ItemIDs: []string{b.ID, "missing"}}); ipcErr(t, err).Code != "E_NOT_FOUND" {
-		t.Fatalf("DeleteMany with a missing id = %v, want E_NOT_FOUND", err)
-	}
-	if diff := cmp.Diff([]string{"d", "b"}, childOrder(t, app, billing.ID, &g.ID)); diff != "" {
-		t.Errorf("a failed batch must delete nothing (-want +got):\n%s", diff)
+	if !hasChange(all, bridge.ApiDataChange{Kind: bridge.ApiDataTree}) || !hasChange(all, bridge.ApiDataChange{Kind: bridge.ApiDataEnvironments}) {
+		t.Errorf("change events = %+v, want a tree and an environments change", all)
 	}
 }

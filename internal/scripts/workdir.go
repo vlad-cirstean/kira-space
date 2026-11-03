@@ -15,7 +15,7 @@ const automationsDir = "automations"
 type Dir struct {
 	Path string `json:"path"`
 	Mode string `json:"mode"`
-	// Base is the app home for DirModeKira and $HOME for DirModeHome; "" for DirModeFixed.
+	// Base is the app home for DirModeKira; "" for DirModeFixed.
 	Base    string `json:"base"`
 	Blocker string `json:"blocker"`
 	// Branch labels a DirModeWorktree folder as "repo · branch"; Pending says the worktree is created on Run.
@@ -25,21 +25,11 @@ type Dir struct {
 
 // ResolveDir reports where s runs, without creating anything. appHome is the app's data folder.
 func ResolveDir(s CustomScript, appHome string) Dir {
-	switch s.DirMode {
-	case DirModeFixed:
+	if s.DirMode == DirModeFixed {
 		d := Dir{Path: s.WorkingDir, Mode: DirModeFixed}
 		if info, err := os.Stat(s.WorkingDir); err != nil || !info.IsDir() {
 			d.Blocker = i18n.T("backend.core.scriptDir.missing.body", map[string]string{"path": s.WorkingDir})
 		}
-		return d
-	case DirModeHome:
-		d := Dir{Mode: DirModeHome}
-		home, err := os.UserHomeDir()
-		if err != nil || home == "" {
-			d.Blocker = i18n.T("backend.core.scriptDir.homeUnresolved.body", nil)
-			return d
-		}
-		d.Path, d.Base = home, home
 		return d
 	}
 	return Dir{Path: filepath.Join(appHome, automationsDir, s.ID), Mode: DirModeKira, Base: appHome}

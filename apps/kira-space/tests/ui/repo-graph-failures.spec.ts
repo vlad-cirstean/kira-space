@@ -172,12 +172,7 @@ test('contract: an unusable git blocks the graph naming the configured path', as
     'git:app.init#unusable',
   );
   const { window: page } = await relaunch({ control: CONTROL });
-  await installGitStreamMock(
-    page,
-    REPO.repoId,
-    { ...base, 'app.init': { ...init, contractVersion: 0 } },
-    goodChunks,
-  );
+  await installGitStreamMock(page, REPO.repoId, { ...base, 'app.init': init }, goodChunks);
   await openGraph(page);
   await expect(page.locator('[data-testid="git-blocked-panel"]')).toContainText(init.git.path);
 });

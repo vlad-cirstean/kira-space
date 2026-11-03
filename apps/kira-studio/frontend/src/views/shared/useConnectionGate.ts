@@ -41,7 +41,7 @@ export function useConnectionGate(
 
   // Returns whether the tab ended up connected. Go's ConnectionsService.Connect
   // never rejects for a bad connection (a wrong password, an unreachable host) — it resolves with
-  // that state, same as ConnectionDialog's own Test — so a caller has to check connectionStatus
+  // that state, same as the file dialog's own Test — so a caller has to check connectionStatus
   // again after the await, not assume the connect it just awaited succeeded. markHydrated/onLoad
   // only run once it did; every existing caller (a template `@click` binding, or an
   // `await onReconnectAndLoad()` that never inspected the old `void` return) is unaffected by the

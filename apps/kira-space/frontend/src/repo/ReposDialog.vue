@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -31,7 +32,9 @@ import { useRowHeight } from '@workbench/lib/rowHeight';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import { control } from '../bridge/control';
 import { useCodeReposStore } from '../state/coderepos';
-import RepoConfigForm from './RepoConfigForm.vue';
+import RepoFilePane from './RepoFilePane.vue';
+import RepoIdentity from './RepoIdentity.vue';
+import { useRepoConfigList } from './state/repoConfigQueries';
 import { useReposDialogStore } from './state/reposDialog';
 import {
   useAddFolder,
@@ -44,6 +47,7 @@ import {
 const dialog = useReposDialogStore();
 const codeRepos = useCodeReposStore();
 const repos = useRepos();
+const repoFiles = useRepoConfigList();
 const addFolder = useAddFolder();
 const watchFolder = useSetFolderWatch();
 const hideFolder = useSetFolderHidden();
@@ -55,6 +59,13 @@ const selected = computed(
   () =>
     codeRepos.records.find((r) => r.id === dialog.selectedRepoId) ?? codeRepos.records[0] ?? null,
 );
+// Files that configure no listed repo (the path is unregistered, or an earlier file owns it).
+const otherFiles = computed(() => (repoFiles.data.value?.files ?? []).filter((f) => !f.repo));
+const pickedFile = ref('');
+const pickedOther = computed(
+  () => otherFiles.value.find((f) => f.file === pickedFile.value) ?? otherFiles.value[0] ?? null,
+);
+const hasProblem = (id: string) => !!configs.value.find((c) => c.codeRepoId === id)?.problem;
 const nickOf = (id: string) => configs.value.find((c) => c.codeRepoId === id)?.nickname ?? '';
 const selectedConfig = computed(
   () => configs.value.find((c) => c.codeRepoId === selected.value?.id) ?? null,
@@ -99,6 +110,7 @@ const nav = useListNavigation({
   rendered: () => virtualItems.value,
 });
 const showRepos = computed(() => dialog.tab === 'repos');
+const showFiles = computed(() => dialog.tab === 'files');
 const error = ref('');
 const note = ref('');
 
@@ -222,6 +234,12 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
                         aria-hidden="true"
                       />
                       <span class="min-w-0 flex-1 truncate">{{ nickOf(r.id) || r.name }}</span>
+                      <StatusDot
+                        v-if="hasProblem(r.id)"
+                        tone="error"
+                        :label="t('space.repo.settingsFile.problem.aria')"
+                        data-testid="repos-dialog-repo-problem"
+                      />
                       <CodiconIcon
                         v-if="r.hidden"
                         name="eye-closed"
@@ -247,6 +265,27 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
             >
               <CodiconIcon name="folder" :size="13" />
               {{ t('space.repo.dialog.scanFolders.label') }}
+            </button>
+            <button
+              type="button"
+              class="flex w-full items-center gap-1.5 border-none text-left"
+              :class="rowVariants({ layout: 'nav', selected: showFiles })"
+              :aria-current="showFiles ? 'page' : undefined"
+              data-testid="repos-dialog-tab-files"
+              @click="dialog.tab = 'files'"
+            >
+              <CodiconIcon name="file" :size="13" />
+              <span class="min-w-0 flex-1 truncate">{{
+                t('space.repo.settingsFile.otherFiles.label')
+              }}</span>
+              <span
+                v-if="otherFiles.length > 0"
+                class="shrink-0 text-kira-sm text-muted-foreground"
+                data-testid="repos-dialog-files-count"
+                >{{
+                  otherFiles.length
+                }}</span
+              >
             </button>
           </div>
           <Button
@@ -325,17 +364,54 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
                 </div>
               </ViewToolbar>
               <div :class="colorMarkClass('band', selected.color)" />
-              <RepoConfigForm
-                v-if="selectedConfig"
-                :key="selectedConfig.codeRepoId"
-                class="m-3"
-                :repo="selectedConfig"
-              />
+              <div v-if="selectedConfig" class="m-3 flex flex-col gap-4">
+                <RepoIdentity :key="selectedConfig.codeRepoId" :repo="selectedConfig" />
+                <RepoFilePane :key="selectedConfig.codeRepoId" :path="selected.repoId" />
+              </div>
             </template>
             <p v-else class="m-3 text-muted-foreground">{{
               t('space.repo.dialog.configureHint.emptyHint')
             }}</p>
           </template>
+          <div
+            v-else-if="showFiles"
+            class="flex flex-col gap-2 p-3"
+            data-testid="repos-dialog-files"
+          >
+            <p class="m-0 text-muted-foreground">{{
+              t('space.repo.settingsFile.otherFiles.hint')
+            }}</p>
+            <p v-if="otherFiles.length === 0" class="m-0 text-muted-foreground">{{
+              t('space.repo.settingsFile.otherFiles.empty')
+            }}</p>
+            <template v-else>
+              <div class="flex flex-wrap gap-1">
+                <Button
+                  v-for="f in otherFiles"
+                  :key="f.file"
+                  variant="dialog"
+                  size="kira-lg"
+                  :aria-pressed="pickedOther?.file === f.file"
+                  data-testid="repos-dialog-file"
+                  :data-file="f.file"
+                  @click="pickedFile = f.file"
+                >
+                  <StatusDot
+                    v-if="f.problem"
+                    tone="error"
+                    :label="t('space.repo.settingsFile.problem.aria')"
+                  />
+                  {{ f.file }}
+                </Button>
+              </div>
+              <RepoFilePane
+                v-if="pickedOther"
+                :key="pickedOther.file"
+                :path="pickedOther.path"
+                :file="pickedOther.file"
+              />
+            </template>
+          </div>
           <div v-else class="flex flex-col gap-2 p-3" data-testid="repos-dialog-folders">
             <div class="flex items-center gap-2">
               <p class="m-0 flex-1 text-muted-foreground">{{

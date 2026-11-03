@@ -4,20 +4,16 @@
  *
  * This implements `Transport` directly, dispatching per method to `hostHandlers.ts`'s own map
  * (`editor.openDiff`, `clipboard.write`, `app.init`'s host half and `repo.list` are host concerns
- * the Go server has no case for) or forwarding to the git stream.
- *
- * No length prefix, no pairing, no trust store: `streamChannel.ts` is message-framed already,
- * and `internal/bridge/gitstream.go`'s own doc comment states why there is no handshake — the peer
- * is this process's own webview, not an external client a trust store exists to gate
- * (`docs/HISTORY.md (v1.5 C10)`).
+ * the Go server has no case for) or forwarding to the bound `GitService` (`boundGit.ts`); graph
+ * rows ride the `gitgraph` data plane (`graphStream.ts`). A transport holds no socket: it is a
+ * lease on repo holds and event subscriptions.
  *
  * This adds a small local event bus alongside the remote one: `review.target` and
  * `ui.action` are composed host-side (`review.open`'s handler, and the repaint choreography below)
  * and Go never emits either — the honest native analogue of what `KiraReviewViewProvider` does
  * with `this.#server?.emit(...)`, not a workaround. The repaint choreography lives here too,
- * as a post-processing step over `request()`: both halves of the review UI (the panel's own pane
- * components and `reviewDecorations.ts`'s Monaco layer) share one `Transport` per repo
- * workspace, so a mutation's success is the one place to fan a repaint out to both.
+ * as a post-processing step over `request()` (`reviewRepaint.ts`'s `afterReviewWrite`, shared with
+ * direct `gitCall` writes).
  */
 import type {
   EventKey,
@@ -30,17 +26,11 @@ import type {
   StreamParamsOf,
   Transport,
 } from '@kira/git-ipc';
-import { createRpcClient, createStreamChannel } from '@kira/git-ipc';
-// tsconfig.json maps this specifier onto @wailsio/runtime's real types (see bridge/port.ts's own
-// identical comment) and resolves it cleanly under typecheck:web; tests/unit's own project has no
-// such mapping (breaks Bun's mock.module interception for every transitive importer), so this
-// stays the suppress-if-present directive that file already established, not the require-an-error
-// kind (which would itself fail where this resolves fine).
-// biome-ignore lint/suspicious/noTsIgnore: an "unused directive" kind fails where this resolves fine (see comment above)
-// @ts-ignore
-import { Stream } from '/wails/runtime.js';
-import { forgetRepoOpen } from '../../state/repoOpenHold';
-import { clearPendingTargets, createHostHandlers, gitRepoIdFor } from './hostHandlers';
+import { callBound, onGitEvent } from './boundGit';
+import { streamGraph } from './graphStream';
+import { clearPendingTargets, createHostHandlers } from './hostHandlers';
+import { type GitRepoHold, holdGitRepo } from './repoHolds';
+import { afterReviewWrite, registerCommentsRefresh } from './reviewRepaint';
 
 /** The two `EventKey`s this host answers itself rather than forwarding to `remote.on` — never
  *  emitted by Go (§8.1). */
@@ -78,82 +68,132 @@ function createLocalEmitter(): {
   };
 }
 
-// The repaint table, the two mutation-triggered rows — `repo.changed` needs no entry here,
-// since it already crosses as an ordinary Go-emitted event `reviewDecorations.ts` subscribes to
-// directly via `transport.on`. Module-level, not per-transport: a listener (one per open review
-// diff editor) filters by its own `(repoId, branch)` or `path`, so one registry serves every
-// open repo workspace.
-export type ReviewRepaintEvent =
-  | { readonly kind: 'comments'; readonly repoId: string; readonly branch: string }
-  | {
-      readonly kind: 'mark';
-      /** `commit`: the committed review; `working`: the uncommitted one (same path, other marks). */
-      readonly scope: 'commit' | 'working';
-      readonly repoId: string;
-      readonly branch: string;
-      readonly paths: readonly string[];
-    };
-
-const reviewRepaintListeners = new Set<(event: ReviewRepaintEvent) => void>();
-
-/** Registered by `views/repo/reviewDecorations.ts` (S9), one per mounted review diff editor. */
-export function onReviewRepaint(listener: (event: ReviewRepaintEvent) => void): () => void {
-  reviewRepaintListeners.add(listener);
-  return () => {
-    reviewRepaintListeners.delete(listener);
-  };
-}
-
-export function notifyReviewRepaint(event: ReviewRepaintEvent): void {
-  for (const listener of reviewRepaintListeners) listener(event);
-}
-
-const COMMENT_MUTATION_METHODS: ReadonlySet<RequestKey> = new Set([
-  'review.comment.add',
-  'review.comment.remove',
-  'review.comment.setState',
-  'review.comment.edit',
-  'review.comment.clear',
+/** Events pushed per repo; each payload names its `repoId`. `repoSettings.changed` is not scoped to
+ *  a held repo (a viewer decides for itself), so it passes unfiltered. */
+const REPO_SCOPED_EVENTS: ReadonlySet<EventKey> = new Set([
+  'repo.changed',
+  'autoFetch.changed',
+  'remote.progress',
+  'stack.progress',
 ]);
 
-/** One named stream per repo workspace, each its own `gitsession.Conn`/repo hold on the Go side
- *  (`handlers.go`'s own per-connection design, §8) — independent even for two workspaces open on
- *  the same repository. */
+/** Every request goes through the window's shared Go connection (`bridge.GitWindows`) as a bound
+ *  call; `graph.stream` rides the data plane. The transport tracks the repos it opened so its
+ *  dispose releases their holds. */
 function createNativeGitTransport(codeRepoId: string): Transport {
-  const channel = createStreamChannel(Stream('git'));
-  const rpc = createRpcClient(channel);
-  // Every consumer shares this connection, but only the graph tab ever sent `repo.open`; a reloaded
-  // Review pane or diff tab would otherwise compare against a connection holding no repo.
+  const inflight = new Set<() => void>();
+  const eventOffs = new Set<() => void>();
+  const heldRepoIds = new Set<string>();
+  let unregisterRefresh = () => {};
+  // Every consumer shares the window's connection, but only the graph tab ever sent `repo.open`; a
+  // reloaded Review pane or diff tab would otherwise compare against a connection holding no repo.
   const opened = new Map<string, Promise<unknown>>();
+  // One window-level hold per opened path (repoHolds.ts).
+  const holds = new Map<string, GitRepoHold>();
+  const pathByRepoId = new Map<string, string>();
+  const send = (method: RequestKey, params: unknown, signal?: AbortSignal): Promise<unknown> =>
+    callBound(method, params, signal, inflight);
+  const openHold = async (path: string): Promise<unknown> => {
+    let hold = holds.get(path);
+    if (!hold) {
+      hold = holdGitRepo(path);
+      holds.set(path, hold);
+    }
+    try {
+      const result = await hold.ready;
+      // A test double may answer null.
+      const opened = result as ResultOf<'repo.open'> | null;
+      const repoId = opened?.kind === 'ok' ? opened.repo.repoId : undefined;
+      if (repoId) {
+        heldRepoIds.add(repoId);
+        pathByRepoId.set(repoId, path);
+      }
+      return result;
+    } catch (err) {
+      if (holds.get(path) === hold) holds.delete(path);
+      hold.release();
+      throw err;
+    }
+  };
+  const releaseHolds = () => {
+    for (const hold of holds.values()) hold.release();
+    holds.clear();
+    pathByRepoId.clear();
+  };
   const ensureOpen = (params: unknown): Promise<unknown> | undefined => {
     const id = (params as { repoId?: unknown } | undefined)?.repoId;
     if (typeof id !== 'string' || id === '') return undefined;
     let held = opened.get(id);
     if (!held) {
-      held = rpc.request('repo.open', { path: id }).catch((err: unknown) => {
-        opened.delete(id);
-        throw err;
-      });
+      held = openHold(id).then(
+        (result) => {
+          heldRepoIds.add(id);
+          return result;
+        },
+        (err: unknown) => {
+          opened.delete(id);
+          throw err;
+        },
+      );
       opened.set(id, held);
     }
     return held;
   };
-  const remote: typeof rpc = {
-    ...rpc,
-    async request(method, params, signal) {
-      if (method === 'repo.close') opened.delete((params as { repoId: string }).repoId);
-      else if (method !== 'repo.open') await ensureOpen(params);
-      return rpc.request(method, params, signal);
-    },
-    async stream(method, params, onChunk, signal) {
+  const remote = {
+    async request(method: RequestKey, params: unknown, signal?: AbortSignal): Promise<unknown> {
+      if (method === 'repo.close') {
+        const id = (params as { repoId: string }).repoId;
+        opened.delete(id);
+        heldRepoIds.delete(id);
+        const path = pathByRepoId.get(id) ?? id;
+        holds.get(path)?.release();
+        holds.delete(path);
+        pathByRepoId.delete(id);
+        return {};
+      }
+      if (method === 'repo.open') return openHold((params as { path: string }).path);
       await ensureOpen(params);
-      return rpc.stream(method, params, onChunk, signal);
+      return send(method, params, signal);
+    },
+    async stream(
+      params: unknown,
+      onChunk: (chunk: never) => void,
+      signal?: AbortSignal,
+    ): Promise<void> {
+      await ensureOpen(params);
+      return streamGraph(params as never, onChunk as never, signal);
+    },
+    on(method: EventKey, handler: (payload: never) => void): () => void {
+      const scoped = REPO_SCOPED_EVENTS.has(method);
+      const off = onGitEvent(method, (payload) => {
+        if (scoped && !heldRepoIds.has((payload as { repoId: string }).repoId)) return;
+        (handler as (payload: unknown) => void)(payload);
+      });
+      eventOffs.add(off);
+      return () => {
+        eventOffs.delete(off);
+        off();
+      };
+    },
+    dispose(): void {
+      for (const off of eventOffs) off();
+      eventOffs.clear();
+      for (const cancel of [...inflight]) cancel();
+      // Releases the holds a closed repo tab would otherwise keep until the window closes.
+      releaseHolds();
+      heldRepoIds.clear();
+      unregisterRefresh();
     },
   };
   const local = createLocalEmitter();
 
+  unregisterRefresh = registerCommentsRefresh(
+    () => local.emit('ui.action', { action: 'refreshReviewComments' }),
+    (repoId) => heldRepoIds.has(repoId),
+  );
+
   const host = createHostHandlers({
-    remoteRequest: remote.request,
+    remoteRequest: remote.request as Transport['request'],
     codeRepoId,
     emitLocal: local.emit,
   });
@@ -165,38 +205,14 @@ function createNativeGitTransport(codeRepoId: string): Transport {
       signal?: AbortSignal,
     ): Promise<ResultOf<K>> {
       const handler = host[method];
-      const result = handler ? handler(params, signal) : remote.request(method, params, signal);
-      // §7.6: repaint every open review surface once a mutation actually succeeds, regardless of
-      // which half of the UI made the call (the panel's own Comments pane and this Monaco layer
-      // share this one Transport per repo workspace) — never on a rejected request.
-      if (method === 'review.mark' || method === 'review.markMany') {
-        const p = params as unknown as {
-          repoId: string;
-          branch: string;
-          path?: string;
-          paths?: readonly string[];
-        };
-        const paths = p.paths ?? (p.path === undefined ? [] : [p.path]);
-        return result.then((value) => {
-          notifyReviewRepaint({
-            kind: 'mark',
-            scope: 'commit',
-            repoId: p.repoId,
-            branch: p.branch,
-            paths,
-          });
-          return value;
-        });
-      }
-      if (COMMENT_MUTATION_METHODS.has(method)) {
-        const { repoId, branch } = params as unknown as { repoId: string; branch: string };
-        return result.then((value) => {
-          notifyReviewRepaint({ kind: 'comments', repoId, branch });
-          local.emit('ui.action', { action: 'refreshReviewComments' });
-          return value;
-        });
-      }
-      return result;
+      const result = handler
+        ? handler(params, signal)
+        : (remote.request(method, params, signal) as Promise<ResultOf<K>>);
+      // Repaint every open review surface once a review write succeeds, never on a rejection.
+      return result.then((value) => {
+        afterReviewWrite(method, params);
+        return value;
+      });
     },
     // Every event Go emits (repo.changed, repoSettings.changed) and the one stream (graph.stream)
     // still forward to remote — only review.target/ui.action are ever local (§8.1).
@@ -204,41 +220,17 @@ function createNativeGitTransport(codeRepoId: string): Transport {
       return LOCAL_EVENT_KEYS.has(method) ? local.on(method, handler) : remote.on(method, handler);
     },
     stream<K extends StreamKey>(
-      method: K,
+      _method: K,
       params: StreamParamsOf<K>,
       onChunk: (chunk: StreamChunkOf<K>) => void,
       signal?: AbortSignal,
     ): Promise<void> {
-      return remote.stream(method, params, onChunk, signal);
+      return remote.stream(params, onChunk, signal);
     },
     dispose(): void {
       remote.dispose();
     },
   };
-
-  // The channel closing (including a self-inflicted close from a decodeFrame failure) used to
-  // go unnoticed entirely — nothing ever subscribed to onClose, so every already-in-flight
-  // request/stream on this client hung forever, and a stale entry in sharedClientsByCodeRepoId
-  // kept handing the now-dead transport to every later gitTransportFor call. remote.dispose()
-  // rejects every pending request/stream immediately; evicting the map entry makes the next
-  // gitTransportFor call dial a fresh connection instead of reusing this one.
-  //
-  // The identity check guards a narrower race this fix adds: `onClose` fires
-  // asynchronously, from the socket's own close event, strictly after `channel.close()` returns —
-  // so `disposeGitTransport(id)` followed by a same-tick `gitTransportFor(id)` (collapse/re-expand
-  // a worktree, or close/reopen a workspace) can install a NEW shared client for `codeRepoId`
-  // before this stale handler runs. Deleting unconditionally would evict that new, live entry
-  // instead of this dead one, orphaning it: still open (socket, Go `gitsession.Conn`, repo hold),
-  // but unreachable from `sharedClientsByCodeRepoId` for the rest of the window's life.
-  channel.onClose(() => {
-    remote.dispose();
-    const shared = sharedClientsByCodeRepoId.get(codeRepoId);
-    if (shared?.transport !== transport) return;
-    evictSharedClient(codeRepoId, shared);
-    // Leases died with the client; their holders re-lease on demand (a self-inflicted close is the
-    // only path here — an intentional one already evicted the entry).
-    for (const fn of [...(evictionListeners.get(codeRepoId) ?? [])]) fn();
-  });
 
   return transport;
 }
@@ -316,35 +308,9 @@ function leaseOf(shared: SharedClient): Transport {
 }
 
 const sharedClientsByCodeRepoId = new Map<string, SharedClient>();
-/** Pause before a lease holder re-leases after an unexpected close, so a client that keeps dying
- *  cannot spin a redial loop. */
-export const RELEASE_RETRY_MS = 1000;
-const evictionListeners = new Map<string, Set<() => void>>();
-
-/** Runs `fn` when `codeRepoId`'s shared client closes on its own, not through
- *  `disposeGitTransport`. Long-lived lease holders use it to re-lease; returns the unsubscribe. */
-export function onTransportEvicted(codeRepoId: string, fn: () => void): () => void {
-  let set = evictionListeners.get(codeRepoId);
-  if (!set) {
-    set = new Set();
-    evictionListeners.set(codeRepoId, set);
-  }
-  set.add(fn);
-  return () => {
-    set.delete(fn);
-    if (set.size === 0 && evictionListeners.get(codeRepoId) === set)
-      evictionListeners.delete(codeRepoId);
-  };
-}
-
 /** Everything tied to one shared client's life, whether it ended on purpose or not. */
 function evictSharedClient(codeRepoId: string, shared: SharedClient): void {
   sharedClientsByCodeRepoId.delete(codeRepoId);
-  // blameAnnotation.ts's `repoOpenMemo` records a `repo.open` hold scoped to this shared
-  // client's own Conn — a reopened workspace gets a new Conn, so the memo must not outlive this
-  // one (Group 3, P69 review).
-  const gitRepoId = gitRepoIdFor(codeRepoId);
-  if (gitRepoId !== undefined) forgetRepoOpen(gitRepoId);
   for (const lease of [...shared.leases]) lease.dispose();
   shared.transport.dispose();
 }

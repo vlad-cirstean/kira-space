@@ -6,15 +6,15 @@ import type { ScenarioEnv } from './env';
 
 type Env = ScenarioEnv<
   | 'customScriptsList'
-  | 'customScriptsUpdate'
+  | 'customScriptsFile'
+  | 'customScriptsSetSecrets'
   | 'scriptRunsNextFires'
-  | 'scriptRunsMcpServers'
   | 'scriptRunsPreview'
   | 'scriptRunsResolveDir'
   | 'scriptRunsStart'
 >;
 
-// P447: a secret param's saved value is write-only in the editor and optional in the run dialog.
+// P447: a secret param's saved value is write-only in the run file dialog and optional in the run dialog.
 // Backend half: termflow TestSecretParam* (both apps) assert the sealed storage and masked output.
 export function registerSecretScenarios(env: Env): void {
   const { test, ipc: IPC } = env;
@@ -54,7 +54,7 @@ export function registerSecretScenarios(env: Env): void {
       dirMode: 'kira',
       workingDir: '',
       color: 'blue',
-      collectionId: null,
+      collection: '',
       useAdeDir: false,
       sortOrder: 0,
       createdAt: '2026-01-01T00:00:00Z',
@@ -84,63 +84,69 @@ export function registerSecretScenarios(env: Env): void {
   const base = (saved: string[], storage = ON): ControlSnapshot[] => [
     { channel: IPC.scriptRunsResolveDir, response: DIR },
     { channel: IPC.scriptRunsNextFires, response: [1_900_000_000_000] },
-    { channel: IPC.scriptRunsMcpServers, response: { source: 'agent', servers: [] } },
     {
       channel: IPC.customScriptsList,
       response: { collections: [], scripts: [script(saved)], secretStorage: storage },
     },
+    {
+      channel: IPC.customScriptsFile,
+      response: {
+        file: 's1.yaml',
+        id: 's1',
+        path: '/kira/runs/s1.yaml',
+        text: 'name: deploy\n',
+        hash: 'h1',
+        problem: null,
+        lastGood: false,
+        editable: true,
+      },
+    },
   ];
-  const dialog = (page: Page) => page.locator('[data-testid="script-dialog"]');
+  const dialog = (page: Page) => page.locator('[data-testid="run-file-dialog"]');
 
   async function openEditor(page: Page): Promise<void> {
     await page.locator('[data-testid="mode-tab"][data-mode="automations"]').click();
     await page.locator('[data-testid="script-s1"]').click({ button: 'right' });
-    await page.locator('[data-testid="menu-item-edit"]').click();
+    await page.locator('[data-testid="menu-item-edit-file"]').click();
     await expect(dialog(page)).toBeVisible();
-    await dialog(page).locator('[data-testid="script-dialog-tab-params"]').click();
   }
 
   test('a saved secret is write-only: empty password field, Saved badge, Clear sends null', async ({
     relaunch,
   }) => {
     const { window: page, control } = await relaunch({
-      control: [
-        ...base(['token']),
-        { channel: IPC.customScriptsUpdate, response: script(['token']) },
-      ],
+      control: [...base(['token']), { channel: IPC.customScriptsSetSecrets, response: script([]) }],
     });
     await openEditor(page);
-    const field = dialog(page).locator('[data-testid="param-secret-value-0"]');
+    const field = dialog(page).locator('[data-testid="run-secret-value-token"]');
     await expect(field).toHaveAttribute('type', 'password');
     await expect(field).toHaveValue('');
-    await expect(dialog(page).locator('[data-testid="param-secret-saved-0"]')).toBeVisible();
+    await expect(dialog(page).locator('[data-testid="run-secret-saved-token"]')).toBeVisible();
 
-    await dialog(page).locator('[data-testid="param-secret-clear-0"]').click();
-    await expect(dialog(page).locator('[data-testid="param-secret-saved-0"]')).toHaveCount(0);
-    await dialog(page).locator('[data-testid="script-dialog-save"]').click();
+    await dialog(page).locator('[data-testid="run-secret-clear-token"]').click();
     await expect
-      .poll(() => control.log().find((e) => e.channel === IPC.customScriptsUpdate)?.args)
-      .toMatchObject({ id: 's1', secretValues: { token: null } });
+      .poll(() => control.log().find((e) => e.channel === IPC.customScriptsSetSecrets)?.args)
+      .toMatchObject({ id: 's1', values: { token: null } });
   });
 
-  test('a typed secret goes out on Update and never reaches the snapshot', async ({ relaunch }) => {
+  test('a typed secret goes out on Save and never reaches the snapshot', async ({ relaunch }) => {
     const { window: page, control } = await relaunch({
-      control: [...base([]), { channel: IPC.customScriptsUpdate, response: script(['token']) }],
+      control: [...base([]), { channel: IPC.customScriptsSetSecrets, response: script(['token']) }],
     });
     await openEditor(page);
-    await dialog(page).locator('[data-testid="param-secret-value-0"]').fill('s3cr3t');
-    await dialog(page).locator('[data-testid="script-dialog-save"]').click();
+    await dialog(page).locator('[data-testid="run-secret-value-token"]').fill('s3cr3t');
+    await dialog(page).locator('[data-testid="run-secret-save-token"]').click();
     await expect
-      .poll(() => control.log().find((e) => e.channel === IPC.customScriptsUpdate)?.args)
-      .toMatchObject({ id: 's1', secretValues: { token: 's3cr3t' } });
+      .poll(() => control.log().find((e) => e.channel === IPC.customScriptsSetSecrets)?.args)
+      .toMatchObject({ id: 's1', values: { token: 's3cr3t' } });
     expect(JSON.stringify(script(['token']))).not.toContain('s3cr3t');
   });
 
   test('storage off disables the field and says why', async ({ relaunch }) => {
     const { window: page } = await relaunch({ control: base([], OFF) });
     await openEditor(page);
-    await expect(dialog(page).locator('[data-testid="param-secret-value-0"]')).toBeDisabled();
-    await expect(dialog(page).locator('[data-testid="param-secret-off-0"]')).toBeVisible();
+    await expect(dialog(page).locator('[data-testid="run-secret-value-token"]')).toBeDisabled();
+    await expect(dialog(page).locator('[data-testid="run-secrets-off"]')).toBeVisible();
   });
 
   test('the run dialog runs with a saved secret without typing', async ({ relaunch }) => {
@@ -162,25 +168,5 @@ export function registerSecretScenarios(env: Env): void {
     await expect
       .poll(() => control.log().find((e) => e.channel === IPC.scriptRunsStart)?.args)
       .toMatchObject({ scriptId: 's1' });
-  });
-
-  test('Run without asking unlocks once the required secret is saved', async ({ relaunch }) => {
-    const { window: page } = await relaunch({ control: base(['token']) });
-    await openEditor(page);
-    await dialog(page).locator('[data-testid="script-dialog-tab-schedule"]').click();
-    await dialog(page).locator('[data-testid="script-schedule"]').click();
-    await expect(dialog(page).locator('[data-testid="schedule-quiet"]')).toBeEnabled();
-    await expect(dialog(page).locator('[data-testid="schedule-quiet-why"]')).toHaveCount(0);
-  });
-
-  test('Run without asking stays locked while the required secret has no saved value', async ({
-    relaunch,
-  }) => {
-    const { window: page } = await relaunch({ control: base([]) });
-    await openEditor(page);
-    await dialog(page).locator('[data-testid="script-dialog-tab-schedule"]').click();
-    await dialog(page).locator('[data-testid="script-schedule"]').click();
-    await expect(dialog(page).locator('[data-testid="schedule-quiet"]')).toBeDisabled();
-    await expect(dialog(page).locator('[data-testid="schedule-quiet-why"]')).toBeVisible();
   });
 }

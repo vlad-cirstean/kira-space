@@ -68,6 +68,15 @@ type Repo struct {
 	PrepareTimeout      string        `json:"prepareTimeout"`
 	WorktreeBasePath    string        `json:"worktreeBasePath"`
 	Environments        []Environment `json:"environments"`
+	// File is the stem of the repo file that applies, "" when the repo has none.
+	File    string       `json:"file"`
+	Problem *RepoProblem `json:"problem"`
+}
+
+// RepoProblem is why a repo's file is invalid; the last good values keep applying.
+type RepoProblem struct {
+	Line    int    `json:"line"`
+	Message string `json:"message"`
 }
 
 type Folder struct {
@@ -957,20 +966,6 @@ type ImportWorkflowArgs struct {
 
 type NewWorkflowArgs struct {
 	Name string `json:"name"`
-}
-
-type RepoPatch struct {
-	Nickname            *string        `json:"nickname"`
-	IntegrationBranches *[]string      `json:"integrationBranches"`
-	PrepareScript       *string        `json:"prepareScript"`
-	PrepareTimeout      *string        `json:"prepareTimeout"`
-	WorktreeBasePath    *string        `json:"worktreeBasePath"`
-	Environments        *[]Environment `json:"environments"`
-}
-
-type UpdateRepoArgs struct {
-	CodeRepoID string    `json:"codeRepoId"`
-	Patch      RepoPatch `json:"patch"`
 }
 
 type FolderArgs struct {

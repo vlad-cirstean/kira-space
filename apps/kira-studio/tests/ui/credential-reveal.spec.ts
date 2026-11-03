@@ -1,18 +1,24 @@
+import type { Page } from '@playwright/test';
 import type { ConnectionSummary } from '@shared/domain/connection';
+import type {
+  ConnectionConfigView,
+  ConnectionFileDetail,
+  ConnectionSecret,
+} from '@shared/domain/connectionConfig';
 import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
 import { acceptConfirm, cancelConfirm } from './support/dialogs';
 import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
 
-// Confirm-before-reveal for saved credentials. Follows secrets.spec.ts's own pattern —
-// mocking ConnectionsService.Reveal's response per scenario, rather than branching on the host OS
-// or a real LocalAuthentication prompt this tier cannot drive at all (no darwin toolchain, no
-// display — evaluate_darwin.go's own header comment). All four RevealResult outcomes run
-// here, on any OS, in one file: revealed, cancelled, confirmation-required (the non-macOS/OS-auth-
-// unavailable fallback this sandbox always takes), and error.
+// Confirm-before-reveal for saved credentials, now from a connection file's secrets section
+// (P475). Follows secrets.spec.ts's pattern: mocking ConnectionsService.Reveal's response per
+// scenario, rather than branching on the host OS or a real LocalAuthentication prompt this tier
+// cannot drive. All four RevealResult outcomes run here, on any OS: revealed, cancelled,
+// confirmation-required (the non-macOS/OS-auth-unavailable fallback this sandbox always takes),
+// and error.
 
 const CONN: ConnectionSummary = {
+  file: 'reveal.yaml',
   id: 'conn-reveal',
   name: 'Reveal Test DB',
   kind: 'postgres',
@@ -42,64 +48,75 @@ const CONN: ConnectionSummary = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
-// The Update args a no-op save (password left untouched) sends — every field from CONN, minus the
-// id/sortOrder/createdAt/updatedAt saveDialog() strips, plus password: null (D1/F4: "never typed"
-// means "unchanged", the same three-state convention URI mode already relied on before P14).
-const UNCHANGED_UPDATE_ARGS = {
-  name: CONN.name,
-  kind: CONN.kind,
-  color: CONN.color,
-  mode: CONN.mode,
-  readOnly: CONN.readOnly,
-  host: CONN.host,
-  port: CONN.port,
-  database: CONN.database,
-  username: CONN.username,
-  uri: CONN.uri,
-  options: CONN.options,
-  preconnect: CONN.preconnect,
-  preconnectSidecar: CONN.preconnectSidecar,
-  autoExplain: CONN.autoExplain,
-  password: null,
+const PASSWORD_SECRET: ConnectionSecret = {
+  kind: 'password',
+  name: 'reveal.password',
+  set: true,
+  referenced: true,
+};
+const URI_SECRET: ConnectionSecret = {
+  kind: 'uri',
+  name: 'reveal.uri',
+  set: true,
+  referenced: true,
 };
 
-function boot(extra: ControlSnapshot[]): ControlSnapshot[] {
-  return [{ channel: IPC.connectionsList, response: [CONN] }, ...extra];
+function boot(secret: ConnectionSecret, extra: ControlSnapshot[]): ControlSnapshot[] {
+  const view: ConnectionConfigView = {
+    dir: '/kira/connections',
+    files: [{ file: CONN.file, id: CONN.id, name: CONN.name, problem: null, lastGood: false }],
+    secrets: [secret],
+    storage: { available: true, backend: 'keychain', insecureFallback: false, reason: null },
+  };
+  const detail: ConnectionFileDetail = {
+    file: CONN.file,
+    id: CONN.id,
+    path: '/kira/connections/reveal.yaml',
+    text: `name: ${CONN.name}\n`,
+    hash: 'hash-1',
+    problem: null,
+    lastGood: false,
+    editable: true,
+    secrets: [secret],
+  };
+  return [
+    { channel: IPC.connectionsList, response: [CONN] },
+    { channel: IPC.connectionConfigView, response: view },
+    { channel: IPC.connectionConfigFile, response: detail },
+    ...extra,
+  ];
 }
 
-function connectionRow(page: import('@playwright/test').Page) {
+function connectionRow(page: Page) {
   return page
     .locator('[data-testid="tree-row"][data-kind="connection"]')
     .filter({ hasText: CONN.name });
 }
 
-async function openEdit(page: import('@playwright/test').Page): Promise<void> {
+async function openFile(page: Page): Promise<void> {
   await connectionRow(page).click({ button: 'right' });
   await page.click('[data-testid="menu-item-edit"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toBeVisible();
+  await expect(page.locator('[data-testid="connection-file-dialog"]')).toBeVisible();
 }
 
-test('opening Edit… does not fetch or show the secret', async ({ relaunch }) => {
-  // Deliberately no connectionsReveal snapshot at all: the whole point is that the plaintext is
-  // no longer fetched just by opening the dialog. If openEditDialog ever regresses back to
-  // reveal-on-open, this test fails on the unmocked call (a 422 E_FIXTURE_MISS the mock answers
-  // any request with no matching snapshot), not just on the password field's own value — the
-  // assertion most likely to survive a "pre-filling is convenient" regression is the call count.
-  const { window: page, control } = await relaunch({ control: boot([]) });
+const revealed = (page: Page) => page.locator('[data-testid="connection-secret-revealed"]');
+const revealButton = (page: Page) => page.locator('[data-testid="connection-secret-reveal"]');
 
-  await openEdit(page);
+test('opening the file does not fetch or show the secret', async ({ relaunch }) => {
+  // No connectionsReveal snapshot at all: an open that fetched the plaintext would fail on the
+  // unmocked call, and the call count below catches a regression that swallowed it.
+  const { window: page, control } = await relaunch({ control: boot(PASSWORD_SECRET, []) });
 
-  const passwordField = page.locator('[data-testid="connection-password"]');
-  await expect(passwordField).toHaveValue('');
-  await expect(passwordField).toHaveAttribute('placeholder', 'Unchanged; click the eye to reveal');
+  await openFile(page);
+
+  await expect(revealed(page)).toHaveCount(0);
+  await expect(revealButton(page)).toBeVisible();
   expect(control.log().filter((e) => e.channel === IPC.connectionsReveal)).toHaveLength(0);
 });
 
-test('revealing fills and unmasks the field; toggling makes no further call', async ({
-  relaunch,
-}) => {
+test('revealing shows the value once per press', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({
-    control: boot([
+    control: boot(PASSWORD_SECRET, [
       {
         channel: IPC.connectionsReveal,
         args: { id: CONN.id, confirmed: false },
@@ -108,56 +125,32 @@ test('revealing fills and unmasks the field; toggling makes no further call', as
     ]),
   });
 
-  await openEdit(page);
-  const passwordField = page.locator('[data-testid="connection-password"]');
-
-  await page.click('[aria-label="Show password"]');
-  await expect(passwordField).toHaveValue('hunter2');
-  await expect(passwordField).toHaveAttribute('type', 'text');
-
-  // F8/D5: once revealed, hide/show is a free client-side toggle — no second round trip.
-  await page.click('[aria-label="Hide password"]');
-  await expect(passwordField).toHaveAttribute('type', 'password');
-  await page.click('[aria-label="Show password"]');
-  await expect(passwordField).toHaveAttribute('type', 'text');
-
+  await openFile(page);
+  await revealButton(page).click();
+  await expect(revealed(page)).toHaveText('hunter2');
   expect(control.log().filter((e) => e.channel === IPC.connectionsReveal)).toHaveLength(1);
 });
 
-test('a cancelled reveal shows nothing, and an untouched save still succeeds', async ({
-  relaunch,
-}) => {
+test('a cancelled reveal shows nothing', async ({ relaunch }) => {
   const { window: page } = await relaunch({
-    control: boot([
+    control: boot(PASSWORD_SECRET, [
       {
         channel: IPC.connectionsReveal,
         args: { id: CONN.id, confirmed: false },
         response: { password: null, error: null, outcome: 'cancelled' },
       },
-      {
-        channel: IPC.connectionsUpdate,
-        args: { id: CONN.id, input: UNCHANGED_UPDATE_ARGS },
-        response: CONN,
-      },
     ]),
   });
 
-  await openEdit(page);
-  const passwordField = page.locator('[data-testid="connection-password"]');
-
-  await page.click('[aria-label="Show password"]');
-  await expect(passwordField).toHaveValue('');
-  await expect(page.locator('[data-testid="connection-save-error"]')).toHaveCount(0);
-
-  // D1/F4: a cancelled reveal must not have turned draft.password into anything but null — a save
-  // right afterward still goes through as "unchanged", not an accidental clear.
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await openFile(page);
+  await revealButton(page).click();
+  await expect(revealed(page)).toHaveCount(0);
+  await expect(page.locator('[data-testid="connection-secret-error"]')).toHaveCount(0);
 });
 
 test('OS auth unavailable routes through the in-app confirmation', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({
-    control: boot([
+    control: boot(PASSWORD_SECRET, [
       {
         channel: IPC.connectionsReveal,
         args: { id: CONN.id, confirmed: false },
@@ -171,78 +164,30 @@ test('OS auth unavailable routes through the in-app confirmation', async ({ rela
     ]),
   });
 
-  await openEdit(page);
-  const passwordField = page.locator('[data-testid="connection-password"]');
+  await openFile(page);
 
-  // First press: confirm-dialog appears with D11's wording; cancelling it reveals nothing and
-  // makes no second Reveal call.
-  await page.click('[aria-label="Show password"]');
+  // First press: the confirm dialog names the connection; cancelling reveals nothing and makes no
+  // second Reveal call.
+  await revealButton(page).click();
   await expect(page.locator('[data-testid="confirm-dialog-message"]')).toHaveText(
     `“${CONN.name}” displays the password in plain text.`,
   );
   await cancelConfirm(page);
-  await expect(passwordField).toHaveValue('');
+  await expect(revealed(page)).toHaveCount(0);
   expect(control.log().filter((e) => e.channel === IPC.connectionsReveal)).toHaveLength(1);
 
-  // Second press, this time confirming: the second Reveal call carries confirmed: true, and the
-  // field fills.
-  await page.click('[aria-label="Show password"]');
+  // Second press, confirming: the next Reveal call carries confirmed: true.
+  await revealButton(page).click();
   await acceptConfirm(page);
-  await expect(passwordField).toHaveValue('hunter2');
+  await expect(revealed(page)).toHaveText('hunter2');
   const revealCalls = control.log().filter((e) => e.channel === IPC.connectionsReveal);
   expect(revealCalls).toHaveLength(3);
   expect(revealCalls[2]?.args).toEqual({ id: CONN.id, confirmed: true });
 });
 
-// A reveal in flight for the connection being edited must not write (or show)
-// its secret into whatever draft has replaced it by the time the reveal resolves —
-// ConnectionDialog.vue stays mounted across the swap (App.vue's `v-if="connectionDialogStore.open"`
-// never toggles: openCreateDialog Object.assigns a fresh draft into the same store, it doesn't
-// close and reopen the dialog), so nothing but requestReveal's own draft-identity check stands
-// between them. The swap itself is the menu-bar "New Connection" command
-// (IPC.newConnection, a push event — same path a Cmd+N keypress or File-menu click takes), fired
-// straight at the mock's dispatch hook rather than closing the dialog: a close (or a v-if-gated
-// remount of any kind) would reset revealed/showPassword on its own even under the old, unfixed
-// code, and would prove nothing about the identity-check fix.
-test("a draft swap while a reveal is in flight does not leak the old draft's secret", async ({
-  relaunch,
-}) => {
-  const { window: page, control } = await relaunch({
-    control: boot([
-      {
-        channel: IPC.connectionsReveal,
-        args: { id: CONN.id, confirmed: false },
-        response: { password: 'hunter2', error: null, outcome: 'revealed' },
-        hold: true,
-      },
-    ]),
-  });
-
-  await openEdit(page);
-  const passwordField = page.locator('[data-testid="connection-password"]');
-
-  // Press reveal for CONN — the reply is held, so this awaits nothing but the click itself.
-  await page.click('[aria-label="Show password"]');
-  expect(control.log().filter((e) => e.channel === IPC.connectionsReveal)).toHaveLength(1);
-
-  // Swap the draft to a brand-new create-mode one while CONN's reveal is still in flight — same
-  // live dialog instance, no close/reopen. defaultDraft()'s own empty name is the swap's signal:
-  // the dialog never unmounted (still visible throughout), only its draft identity changed.
-  await emitWailsEvent(page, IPC.newConnection, undefined);
-  await expect(page.locator('[data-testid="connection-dialog"]')).toBeVisible();
-  await expect(page.locator('[data-testid="connection-name"]')).toHaveValue('');
-  await expect(passwordField).toHaveValue('');
-  await expect(passwordField).toHaveAttribute('type', 'password');
-
-  // Now let CONN's held reveal resolve. It must not land in the new, unrelated draft.
-  control.release(IPC.connectionsReveal);
-  await expect(passwordField).toHaveValue('');
-  await expect(passwordField).toHaveAttribute('type', 'password');
-});
-
-test("a reveal error renders in the dialog's existing error slot", async ({ relaunch }) => {
+test("a reveal error renders in the section's error slot", async ({ relaunch }) => {
   const { window: page } = await relaunch({
-    control: boot([
+    control: boot(PASSWORD_SECRET, [
       {
         channel: IPC.connectionsReveal,
         args: { id: CONN.id, confirmed: false },
@@ -255,23 +200,20 @@ test("a reveal error renders in the dialog's existing error slot", async ({ rela
     ]),
   });
 
-  await openEdit(page);
-
-  await page.click('[aria-label="Show password"]');
-  await expect(page.locator('[data-testid="connection-save-error"]')).toHaveText(
+  await openFile(page);
+  await revealButton(page).click();
+  await expect(page.locator('[data-testid="connection-secret-error"]')).toHaveText(
     'The stored credential could not be decrypted.',
   );
-  await expect(page.locator('[data-testid="connection-password"]')).toHaveValue('');
+  await expect(revealed(page)).toHaveCount(0);
 });
 
-test('a URI-mode connection reveals its URI, not a password', async ({ relaunch }) => {
-  const URI_CONN: ConnectionSummary = { ...CONN, id: 'conn-reveal-uri', mode: 'uri' };
+test('a URI secret reveals the URI, not a password', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({
-    control: [
-      { channel: IPC.connectionsList, response: [URI_CONN] },
+    control: boot(URI_SECRET, [
       {
         channel: IPC.connectionsReveal,
-        args: { id: URI_CONN.id, confirmed: false },
+        args: { id: CONN.id, confirmed: false },
         response: {
           outcome: 'revealed',
           password: null,
@@ -279,18 +221,11 @@ test('a URI-mode connection reveals its URI, not a password', async ({ relaunch 
           error: null,
         },
       },
-    ],
+    ]),
   });
 
-  await openEdit(page);
-  const uriField = page.locator('[data-testid="connection-uri"]');
-  await expect(uriField).toHaveValue('');
-  await expect(uriField).toHaveAttribute('placeholder', 'Unchanged; click the eye to reveal');
-
-  await page.click('[aria-label="Show URI"]');
-  await expect(uriField).toHaveValue('postgresql://u:hunter2@h:5432/db');
-  await expect(uriField).toHaveAttribute('type', 'text');
-  await page.click('[aria-label="Hide URI"]');
-  await expect(uriField).toHaveAttribute('type', 'password');
+  await openFile(page);
+  await revealButton(page).click();
+  await expect(revealed(page)).toHaveText('postgresql://u:hunter2@h:5432/db');
   expect(control.log().filter((e) => e.channel === IPC.connectionsReveal)).toHaveLength(1);
 });

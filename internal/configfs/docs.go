@@ -26,6 +26,8 @@ type DocModel struct {
 	LocalOverrides bool
 	// Singleton: the folder holds one file, not one item per file.
 	Singleton bool
+	// KeyedBy: the key naming the item, when the file name is free instead of the item id.
+	KeyedBy string
 	// MaxBytes is the file size cap; 0 means MaxFileBytes.
 	MaxBytes int
 	// Sections document each file of a folder that holds several kinds: a `## <Pattern>` block with
@@ -52,17 +54,28 @@ func DocFromSchema(schemaJSON []byte, rules []string) (DocModel, error) {
 	if err := json.Unmarshal(schemaJSON, &root); err != nil {
 		return DocModel{}, fmt.Errorf("configfs: schema: %w", err)
 	}
-	w := &schemaWalker{rc: &refChecker{root: root}, m: DocModel{Rules: rules}}
+	w := &schemaWalker{rc: &refChecker{root: root}, m: DocModel{Rules: rules}, open: map[string]bool{}}
 	w.walk(root, "", false)
 	return w.m, nil
 }
 
 type schemaWalker struct {
-	rc *refChecker
-	m  DocModel
+	rc   *refChecker
+	m    DocModel
+	open map[string]bool // $defs names being walked, so a recursive schema ends at its second level
 }
 
 func (w *schemaWalker) walk(s map[string]any, path string, required bool) {
+	if ref, _ := s["$ref"].(string); ref != "" {
+		if w.open[ref] {
+			if path != "" {
+				w.m.Options = append(w.m.Options, DocOption{Path: path, Type: "object", Required: required, Description: "Same fields as the enclosing " + strings.TrimPrefix(ref, "#/$defs/") + "."})
+			}
+			return
+		}
+		w.open[ref] = true
+		defer delete(w.open, ref)
+	}
 	s = w.rc.resolve(s)
 	if path != "" {
 		o := optionOf(s, path, required)
@@ -220,9 +233,12 @@ func writeFileDoc(b *bytes.Buffer, m DocModel, h string, hidden bool) {
 		limit = MaxFileBytes
 	}
 	fmt.Fprintf(b, "%s Files\n\n- Name: `%s`, %s, at most %s.\n", h, m.Pattern, m.Format, sizeText(limit))
-	if m.Singleton {
+	switch {
+	case m.Singleton:
 		b.WriteString("- A single file.\n")
-	} else {
+	case m.KeyedBy != "":
+		fmt.Fprintf(b, "- One item per file. The `%s` key names the item; the file name is free.\n", m.KeyedBy)
+	default:
 		b.WriteString("- One item per file. The file name without its extension is the item id.\n")
 	}
 	if hidden {

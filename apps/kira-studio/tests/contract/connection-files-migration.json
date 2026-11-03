@@ -1,0 +1,41 @@
+{
+  "ConnectionConfigService.View": {
+    "dir": "<kira>/connections",
+    "files": [
+      {
+        "file": "legacy-mongo.yaml",
+        "id": "<id:1>",
+        "lastGood": false,
+        "name": "Legacy Mongo",
+        "problem": null
+      },
+      {
+        "file": "legacy-pg.yaml",
+        "id": "<id:2>",
+        "lastGood": false,
+        "name": "Legacy Pg",
+        "problem": null
+      }
+    ],
+    "secrets": [
+      {
+        "kind": "password",
+        "name": "legacy-pg.password",
+        "referenced": true,
+        "set": true
+      },
+      {
+        "kind": "uri",
+        "name": "legacy-mongo.uri",
+        "referenced": true,
+        "set": true
+      }
+    ],
+    "storage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    }
+  }
+}

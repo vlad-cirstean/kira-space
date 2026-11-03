@@ -15,7 +15,8 @@ import type {
   CustomScriptFields,
   ScriptCollection,
   ScriptDir,
-  ScriptMcpServerList,
+  ScriptFileProblem,
+  ScriptFileView,
   SecretValues,
 } from '@shared/domain/scripts';
 import type { SecretStorageStatus } from '@shared/domain/secrets';
@@ -29,28 +30,28 @@ import type { TerminalHostDeps } from '../terminal/terminalHost';
 // three components mount in both apps. `openTerminalTab` binds the app's own module workspace
 // ('terminal' in both) itself, so shared code never names a workspace key.
 
-/** Each app's script store (createCustomScriptsStore.ts), as the panel and its dialog see it. */
+/** Each app's script store (createCustomScriptsStore.ts), as the panel and its file dialog see it. */
 export interface ScriptsSeam {
   records(): readonly CustomScript[];
-  /** `secretValues` is write-only: a string saves, null clears, an absent name keeps. */
-  create(fields: CustomScriptFields, secretValues?: SecretValues | null): Promise<unknown>;
-  update(
-    id: string,
-    fields: CustomScriptFields,
-    secretValues?: SecretValues | null,
-  ): Promise<unknown>;
-  secretStorage(): SecretStorageStatus;
-  remove(id: string): Promise<void>;
   collections(): readonly ScriptCollection[];
-  createCollection(name: string): Promise<ScriptCollection>;
-  renameCollection(id: string, name: string): Promise<void>;
-  removeCollection(id: string): Promise<void>;
-  /** collectionId null ungroups. */
-  /** `beforeId` places the script before that sibling of the target set; null appends. */
-  move(id: string, collectionId: string | null, beforeId?: string | null): Promise<void>;
-  /** Persists one set's order: the ungrouped scripts (null) or one collection's. */
-  reorder(collectionId: string | null, ids: string[]): Promise<void>;
-  reorderCollections(ids: string[]): Promise<void>;
+  /** Run files that are invalid now. */
+  problems(): readonly ScriptFileProblem[];
+  /** The runs folder. */
+  dir(): string;
+  secretStorage(): SecretStorageStatus;
+  /** Writes a new run file from `fields`; the panel opens it for editing. */
+  create(fields: CustomScriptFields): Promise<CustomScript>;
+  remove(id: string): Promise<void>;
+  readFile(file: string): Promise<ScriptFileView>;
+  /** `baseHash` is the hash of the text the editor loaded; a file changed since answers E_CONFLICT. */
+  saveFile(file: string, text: string, baseHash: string): Promise<ScriptFileView>;
+  /** A string saves, null clears, an absent name keeps. Write-only: no read returns a value. */
+  setSecrets(id: string, values: SecretValues): Promise<void>;
+  /** Kira Space: the ADE task and branch a schedule runs in. Absent in Kira Studio. */
+  setScheduleTarget?(id: string, taskId: string, branchId: string): Promise<void>;
+  /** Persists one set's order: the ungrouped scripts ('') or one collection's. */
+  reorder(collection: string, ids: string[]): Promise<void>;
+  reorderCollections(names: string[]): Promise<void>;
 }
 
 /** The run store's bound calls and push channel (ScriptRunsService), the same in both apps. */
@@ -93,8 +94,6 @@ export interface ScriptRunsSeam {
     secrets: Record<string, string[]>,
   ): Promise<ScriptRunStarted>;
   confirmDecline(runId: string): Promise<void>;
-  /** The MCP servers a smart run can tick and where the list came from. */
-  mcpServers(): Promise<ScriptMcpServerList>;
 }
 
 export interface AutomationsModuleContext {
@@ -111,14 +110,14 @@ export interface AutomationsModuleContext {
   host: TerminalHostDeps;
   scripts: ScriptsSeam;
   runs: ScriptRunsSeam;
+  /** The runs folder's plain-file actions; `file` is a name in it ('AGENTS.md' for the guide). */
+  files: { open(file: string): Promise<unknown>; reveal(file: string): Promise<unknown> };
   /** Focuses the Automations module, e.g. from the status bar. */
   showAutomations(): void;
   /** Opens the Operations dock, where finished runs are listed. */
   showOperations(): void;
   /** Kira Space: scripts can run for an ADE task. */
   ade: boolean;
-  /** Native folder dialog; null when cancelled. */
-  chooseFolder(title: string): Promise<string | null>;
 }
 
 export const automationsModuleKey: InjectionKey<AutomationsModuleContext> =

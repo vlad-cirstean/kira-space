@@ -2,7 +2,6 @@ package connections
 
 import (
 	"net/url"
-	"sort"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
@@ -60,28 +59,6 @@ func queryRange(uri string) (start, end int, ok bool) {
 		end = start + h
 	}
 	return start, end, true
-}
-
-// secretOptionKeys are query parameters whose value is a secret a driver honours: pgx's password
-// and key passphrase, Mongo's key-file passphrase and proxy password. A URI keeps them inside its
-// encrypted blob; fields mode has no slot for them, so an Options key in this set is refused.
-var secretOptionKeys = map[string]bool{
-	"password": true, "sslpassword": true, "tlscertificatekeyfilepassword": true, "proxypassword": true,
-}
-
-// secretOptionKey returns the first (sorted) key of options that is in secretOptionKeys.
-func secretOptionKey(options map[string]any) (string, bool) {
-	var found []string
-	for k := range options {
-		if secretOptionKeys[strings.ToLower(k)] {
-			found = append(found, k)
-		}
-	}
-	if len(found) == 0 {
-		return "", false
-	}
-	sort.Strings(found)
-	return found[0], true
 }
 
 // uriQueryOptions returns uri's query pairs as options, decoded like the renderer's

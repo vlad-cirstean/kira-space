@@ -220,7 +220,7 @@ func (r *Router) handleGraphReportFailure(_ context.Context, c *gitsession.Conn,
 
 // handleGraphStream serves graph.stream: upstream's streamGraph, via gitsession.Walk.Stream
 // — every emitted StreamChunk is packed to a FlatBuffer (gitstore.EncodeChunkFrame) and
-// handed to rpcstream's emit as the chunk envelope's out-of-band blob. `range` present
+// handed to the plane's emit as the chunk envelope's out-of-band blob. `range` present
 // streams the review walk instead of the graph's.
 //
 // resumeThroughRow used to be forced nil on this path (the "a ranged walk has no persisted

@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import type { ControlSnapshot, PortSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
+import { createConnection } from './support/connect';
 import { gridScroller } from './support/grid';
 import { IPC } from './support/ipcChannels';
 import { percentile } from './support/measure';
@@ -107,16 +108,7 @@ test('perf tripwires — scroll frame time, DOM cell bound, retained bytes', asy
   test.setTimeout(120_000);
   const { window: page } = await relaunch({ control: CONTROL, stream: PORT });
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Perf DB');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-grey"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Perf DB');
 
   const connRow = page.locator('[data-testid="tree-row"][data-kind="connection"]');
   await openRowMenu(page, '');

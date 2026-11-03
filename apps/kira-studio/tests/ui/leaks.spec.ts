@@ -2,7 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, LogicalPage, PortSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
-import { connectionCreateArgs, openConsoleFromMenu } from './support/connect';
+import { connectionCreateArgs, createConnection, openConsoleFromMenu } from './support/connect';
 import { acceptConfirm } from './support/dialogs';
 import { typeInto } from './support/editor';
 import { IPC } from './support/ipcChannels';
@@ -196,13 +196,13 @@ const CONTROL: ControlSnapshot[] = [
   { channel: IPC.connectionsList, response: [] },
   {
     channel: IPC.connectionsCreate,
-    args: connectionCreateArgs('Leaks A', 'blue', { mcp: true }),
+    args: connectionCreateArgs('Leaks A', 'blue'),
     response: SUMMARY_A,
   },
   ...FIXTURE_A.control,
   {
     channel: IPC.connectionsCreate,
-    args: connectionCreateArgs('Leaks B', 'magenta', { mcp: true }),
+    args: connectionCreateArgs('Leaks B', 'magenta'),
     response: SUMMARY_B,
   },
   ...FIXTURE_B.control,
@@ -282,16 +282,7 @@ test('leak sweep — tab/store symmetry, connection delete purges the tree', asy
   test.setTimeout(120_000);
   const { window: page } = await relaunch({ control: CONTROL, stream: PORT });
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Leaks A');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-blue"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Leaks A');
 
   await connectAndExpand(page, 'Leaks A');
 
@@ -366,16 +357,7 @@ test('leak sweep — tab/store symmetry, connection delete purges the tree', asy
   // convention, for the identical reason).
   await connectionRootRow(page, 'Leaks A').locator('[data-testid="tree-twisty"]').click();
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Leaks B');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'postgres');
-  await page.click('[data-testid="color-magenta"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'postgres', 'Leaks B');
 
   await connectAndExpand(page, 'Leaks B');
   await (await findRow(page, ORDER_ITEMS_PATH)).dblclick();

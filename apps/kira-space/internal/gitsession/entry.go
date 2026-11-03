@@ -33,7 +33,7 @@ type Watcher interface {
 }
 
 // Event is repo.changed's payload, SPEC §6/D20's shape verbatim — crossed as-is by
-// (*rpcstream.Session).Emit's own json.Marshal.
+// a connection's emit through json.Marshal.
 type Event struct {
 	RepoID string `json:"repoId"`
 	Kind   string `json:"kind"` // "refsChanged" | "worktreeChanged" | "changeRequestsChanged"
@@ -204,7 +204,6 @@ func newRepoEntry(
 	// until some later real acquirer calls markAcquiredNonQuiet (Registry.acquire's reuse branch).
 	// No lock needed here: e is not yet reachable from anywhere else.
 	e.autoFetch.everAcquiredNonQuiet = !skipInitialAutoFetch
-	go e.pump()
 	if _, minutes, _ := settings(); minutes > 0 && !skipInitialAutoFetch {
 		e.startAutoFetch(minutes)
 	}
@@ -212,6 +211,8 @@ func newRepoEntry(
 		e.crSync = newCRSyncer(e, crStore, crCfg, crShare)
 		e.crSync.start()
 	}
+	// Last: pump reads e.crSync, so it must not start before the field is set.
+	go e.pump()
 	return e
 }
 

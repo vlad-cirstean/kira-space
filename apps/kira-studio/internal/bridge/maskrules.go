@@ -20,6 +20,10 @@ type MaskRulesService struct {
 // writeErr labels a rule/script write failure: caller-input problems (a validation error, an
 // unknown id) are E_BAD_REQUEST, anything else (locked DB, full disk) is E_INTERNAL.
 func writeErr(err error) error {
+	var ie *ipcerr.Error
+	if errors.As(err, &ie) {
+		return ie
+	}
 	var ve *model.ValidationError
 	if errors.As(err, &ve) || errors.Is(err, sql.ErrNoRows) {
 		return ipcerr.BadRequest(err.Error())

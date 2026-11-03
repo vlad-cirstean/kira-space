@@ -57,7 +57,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   datagripImport: 'DataGripService.Import',
   connectionsList: 'ConnectionsService.List',
   connectionsCreate: 'ConnectionsService.Create',
-  connectionsUpdate: 'ConnectionsService.Update',
+  connectionsUpdateCredentials: 'ConnectionsService.UpdateCredentials',
   connectionsDuplicate: 'ConnectionsService.Duplicate',
   connectionsDelete: 'ConnectionsService.Delete',
   connectionsReorder: 'ConnectionsService.Reorder',
@@ -116,24 +116,20 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   collectionsSaveRequest: 'CollectionsService.SaveRequest',
   collectionsCreateCollection: 'CollectionsService.CreateCollection',
   collectionsCreateItem: 'CollectionsService.CreateItem',
-  collectionsRename: 'CollectionsService.Rename',
-  collectionsDeleteMany: 'CollectionsService.DeleteMany',
-  collectionsMoveItems: 'CollectionsService.MoveItems',
-  collectionsReorderCollections: 'CollectionsService.ReorderCollections',
   collectionsImport: 'CollectionsService.Import',
   collectionsExport: 'CollectionsService.Export',
+  apiConfigView: 'ApiConfigService.View',
+  apiConfigSetSecret: 'ApiConfigService.SetSecret',
+  apiConfigDeleteSecret: 'ApiConfigService.DeleteSecret',
+  connectionConfigView: 'ConnectionConfigService.View',
+  connectionConfigFile: 'ConnectionConfigService.File',
+  connectionConfigSaveFile: 'ConnectionConfigService.SaveFile',
+  connectionConfigSetSecret: 'ConnectionConfigService.SetSecret',
+  connectionConfigDeleteSecret: 'ConnectionConfigService.DeleteSecret',
   variablesListEnvironments: 'VariablesService.ListEnvironments',
   variablesCreateEnvironment: 'VariablesService.CreateEnvironment',
-  variablesUpdateEnvironment: 'VariablesService.UpdateEnvironment',
-  variablesDeleteEnvironment: 'VariablesService.DeleteEnvironment',
-  variablesDuplicateEnvironment: 'VariablesService.DuplicateEnvironment',
   variablesSetActiveEnvironment: 'VariablesService.SetActiveEnvironment',
-  variablesReorderEnvironments: 'VariablesService.ReorderEnvironments',
   variablesList: 'VariablesService.List',
-  variablesUpsert: 'VariablesService.Upsert',
-  variablesDelete: 'VariablesService.Delete',
-  variablesReorder: 'VariablesService.Reorder',
-  variablesApplyBulk: 'VariablesService.ApplyBulk',
   variablesHistory: 'VariablesService.History',
   variablesReveal: 'VariablesService.Reveal',
   variablesRevealHistory: 'VariablesService.RevealHistory',
@@ -176,16 +172,17 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
 
   customScriptsList: 'CustomScriptsService.List',
   customScriptsCreate: 'CustomScriptsService.Create',
-  customScriptsUpdate: 'CustomScriptsService.Update',
+  configFilesOpen: 'ConfigFilesService.Open',
+  configFilesReveal: 'ConfigFilesService.Reveal',
   customScriptsDelete: 'CustomScriptsService.Delete',
-  customScriptsCreateCollection: 'CustomScriptsService.CreateCollection',
-  customScriptsRenameCollection: 'CustomScriptsService.RenameCollection',
-  customScriptsDeleteCollection: 'CustomScriptsService.DeleteCollection',
-  customScriptsMove: 'CustomScriptsService.Move',
+  customScriptsFile: 'CustomScriptsService.File',
+  customScriptsSaveFile: 'CustomScriptsService.SaveFile',
+  customScriptsSetSecrets: 'CustomScriptsService.SetSecrets',
   customScriptsReorder: 'CustomScriptsService.Reorder',
   customScriptsReorderCollections: 'CustomScriptsService.ReorderCollections',
   scriptRunsList: 'ScriptRunsService.List',
   scriptRunsNextFires: 'ScriptRunsService.NextFires',
+  scriptRunsMcpServers: 'ScriptRunsService.McpServers',
   scriptRunsSchedulePreview: 'ScriptRunsService.SchedulePreview',
   scriptRunsRunScheduleNow: 'ScriptRunsService.RunScheduleNow',
   scriptRunsConfirmAccept: 'ScriptRunsService.ConfirmAccept',
@@ -225,7 +222,6 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   scriptRunsPreview: 'ScriptRunsService.Preview',
   scriptRunsStart: 'ScriptRunsService.Start',
   scriptRunsReadLog: 'ScriptRunsService.ReadLog',
-  scriptRunsMcpServers: 'ScriptRunsService.McpServers',
 
   linkOpenExternal: 'LinkService.OpenExternal',
   keepAwakeStatus: 'KeepAwakeService.Status',
@@ -343,6 +339,24 @@ const EMPTY_OBJECT_META = {
 };
 const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   [IPC.filtersList]: JSON.stringify({ hiddenKinds: [], hiddenPaths: [] }),
+  // The connection files' status: no file has a problem unless a spec says so.
+  [IPC.connectionConfigView]: JSON.stringify({
+    dir: '',
+    files: [],
+    secrets: [],
+    storage: { available: true, backend: 'keychain', insecureFallback: false, reason: null },
+  }),
+  [IPC.connectionConfigFile]: JSON.stringify({
+    file: '',
+    id: '',
+    path: '',
+    text: '',
+    hash: '',
+    problem: null,
+    lastGood: false,
+    editable: true,
+    secrets: [],
+  }),
   // Every SQL console loads its connection's own DDL document on mount
   // (state/schemas.ts's ensureDdl) — a spec with no Schema (DDL)… of its own gets the same
   // "absent until the user writes one" empty document a fresh connection gets, not a fixture
@@ -456,7 +470,8 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   // P85: main.ts's bootstrap() joins hydrateCustomScripts() to the same unconditional-every-boot
   // Promise.all as updateStatus above, same reasoning — a spec that never configures a
   // script gets "no scripts yet", not a fixture miss.
-  [IPC.customScriptsList]: '{"collections":[],"scripts":[]}',
+  [IPC.customScriptsList]:
+    '{"dir":"/home/test/runs","collections":[],"scripts":[],"problems":[],"secretStorage":{"available":true,"backend":"keychain","insecureFallback":false,"reason":null}}',
   // main.ts's bootstrap() joins hydrateTerminalDefaults() to the same unconditional-every-boot
   // Promise.all, same reasoning — a spec that never cares about the Automations module's own
   // default cwd gets a plausible home directory, not a fixture miss. A spec that DOES care

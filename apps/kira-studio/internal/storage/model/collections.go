@@ -10,6 +10,8 @@ type Collection struct {
 	SortOrder int    `json:"sortOrder"`
 	CreatedAt string `json:"createdAt"`
 	UpdatedAt string `json:"updatedAt"`
+	// File is the collection file's name in the api folder, "" before the file is projected.
+	File string `json:"file"`
 }
 
 // CollectionItem is one api_items row, minus request_json and origin_json. Method and URL are

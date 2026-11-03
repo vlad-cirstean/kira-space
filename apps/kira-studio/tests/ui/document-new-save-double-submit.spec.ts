@@ -1,6 +1,7 @@
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, PortSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
+import { createConnection } from './support/connect';
 import { IPC } from './support/ipcChannels';
 import {
   DB_PATH as MONGO_DB_PATH,
@@ -64,16 +65,7 @@ const PORT: PortSnapshot[] = [
 test('a double click on the new-document Save inserts once', async ({ relaunch }) => {
   const { window: page, stream } = await relaunch({ control: CONTROL, stream: PORT });
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-mongodb"]');
-  await page.fill('[data-testid="connection-name"]', 'Mongo Save');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '27017');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'kira');
-  await page.click('[data-testid="color-green"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'mongodb', 'Mongo Save');
 
   const connRow = connectionRow(page);
   await openRowMenu(page, '');

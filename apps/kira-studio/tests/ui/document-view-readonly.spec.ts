@@ -1,6 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
+import { createConnection } from './support/connect';
 import { IPC } from './support/ipcChannels';
 import {
   DB_PATH as MONGO_DB_PATH,
@@ -75,18 +76,7 @@ test('a read-only MongoDB connection disables Add/Edit/Delete on the document vi
 }) => {
   const { window: page } = await relaunch({ control: CONTROL, stream: FIXTURE.port });
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-mongodb"]');
-  await page.fill('[data-testid="connection-name"]', 'Mongo RO');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '27017');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'kira');
-  await page.click('[data-testid="color-red"]');
-  await page.click('[data-testid="connection-tab-advanced"]');
-  await page.click('[data-testid="connection-readonly"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'mongodb', 'Mongo RO');
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();

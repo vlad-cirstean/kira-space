@@ -3,7 +3,6 @@ package termflow
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,8 +10,8 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/flowharness"
-	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/scripts/scriptstest"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 )
 
@@ -68,68 +67,43 @@ func TestScriptInPickedFolder(t *testing.T) {
 func TestScriptCollections(t *testing.T) {
 	app := flowharness.New(t)
 	cs := app.W.CustomScripts
-	fields := func(name string, coll *string) scripts.CustomScriptFields {
-		return scripts.CustomScriptFields{Name: name, Command: "echo " + name, Color: "blue", CollectionID: coll}
+	mk := func(name, coll string) scripts.CustomScript {
+		t.Helper()
+		rec, err := cs.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{Name: name, Command: "echo " + name, Color: "blue", Collection: coll}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return rec
 	}
+	s1, s2 := mk("one", "A"), mk("two", "A")
 
-	a, err := cs.CreateCollection(bridge.CustomScriptsCreateCollectionArgs{Name: "A"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, err := cs.CreateCollection(bridge.CustomScriptsCreateCollectionArgs{Name: "B"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	s1, err := cs.Create(bridge.CustomScriptsCreateArgs{Fields: fields("one", &a.ID)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	s2, err := cs.Create(bridge.CustomScriptsCreateArgs{Fields: fields("two", &a.ID)})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	toB := bridge.CustomScriptsMoveArgs{ID: s1.ID, CollectionID: &b.ID}
-	if err := cs.Move(toB); err != nil {
-		t.Fatal(err)
-	}
-	toNone := bridge.CustomScriptsMoveArgs{ID: s2.ID, CollectionID: nil}
-	if err := cs.Move(toNone); err != nil {
-		t.Fatal(err)
-	}
-	app.Contract(t, "script-collections", "args:CustomScriptsService.Move#to-collection", toB)
-	app.Contract(t, "script-collections", "args:CustomScriptsService.Move#to-none", toNone)
-	if err := cs.RenameCollection(bridge.CustomScriptsRenameCollectionArgs{ID: b.ID, Name: "Renamed"}); err != nil {
-		t.Fatal(err)
-	}
+	scriptstest.Update(t, cs, s1.ID, scripts.CustomScriptFields{
+		Name: s1.Name, Kind: s1.Kind, Command: s1.Command, Color: s1.Color, Collection: "B",
+	})
+	scriptstest.Update(t, cs, s2.ID, scripts.CustomScriptFields{
+		Name: s2.Name, Kind: s2.Kind, Command: s2.Command, Color: s2.Color,
+	})
 	snap := lastSnapshot(t, app)
 	byName := map[string]scripts.CustomScript{}
 	for _, s := range snap.Scripts {
 		byName[s.Name] = s
 	}
-	if c := byName["one"].CollectionID; c == nil || *c != b.ID {
-		t.Fatalf("one in %v, want collection B", c)
+	if byName["one"].Collection != "B" || byName["two"].Collection != "" {
+		t.Fatalf("one in %q, two in %q, want B and ungrouped", byName["one"].Collection, byName["two"].Collection)
 	}
-	if byName["two"].CollectionID != nil {
-		t.Fatalf("two in %v, want ungrouped", *byName["two"].CollectionID)
-	}
-	renamed := false
-	for _, c := range snap.Collections {
-		renamed = renamed || (c.ID == b.ID && c.Name == "Renamed")
-	}
-	if !renamed {
-		t.Fatalf("collections = %+v, want B renamed", snap.Collections)
+	if len(snap.Collections) != 1 || snap.Collections[0].Name != "B" {
+		t.Fatalf("collections = %+v, want only B (A emptied and pruned)", snap.Collections)
 	}
 
-	if err := cs.DeleteCollection(bridge.CustomScriptsDeleteCollectionArgs{ID: b.ID}); err != nil {
+	if err := cs.Delete(bridge.CustomScriptsDeleteArgs{ID: s1.ID}); err != nil {
 		t.Fatal(err)
 	}
 	listed, err := cs.List()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Scripts) != 1 || listed.Scripts[0].ID != s2.ID || len(listed.Collections) != 1 {
-		t.Fatalf("after delete = %+v, want only the ungrouped command and collection A", listed)
+	if len(listed.Scripts) != 1 || listed.Scripts[0].ID != s2.ID || len(listed.Collections) != 0 {
+		t.Fatalf("after delete = %+v, want only the ungrouped command and no collection", listed)
 	}
 	if got := lastSnapshot(t, app); !sameJSON(got, listed) {
 		t.Fatalf("event snapshot %+v differs from List %+v", got, listed)
@@ -148,28 +122,21 @@ func TestScriptCollections(t *testing.T) {
 func TestScriptOrder(t *testing.T) {
 	app := flowharness.New(t)
 	cs := app.W.CustomScripts
-	mk := func(name string, coll *string) scripts.CustomScript {
+	mk := func(name, coll string) scripts.CustomScript {
 		t.Helper()
-		rec, err := cs.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{Name: name, Command: "echo " + name, Color: "blue", CollectionID: coll}})
+		rec, err := cs.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{Name: name, Command: "echo " + name, Color: "blue", Collection: coll}})
 		if err != nil {
 			t.Fatal(err)
 		}
 		return rec
 	}
-	x, err := cs.CreateCollection(bridge.CustomScriptsCreateCollectionArgs{Name: "X"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	y, err := cs.CreateCollection(bridge.CustomScriptsCreateCollectionArgs{Name: "Y"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	s1, s2, s3 := mk("s1", nil), mk("s2", nil), mk("s3", nil)
-	t1, t2 := mk("t1", &x.ID), mk("t2", &x.ID)
+	s1, s2, s3 := mk("s1", ""), mk("s2", ""), mk("s3", "")
+	t1, t2 := mk("t1", "X"), mk("t2", "X")
+	mk("u1", "Y")
 
 	ungrouped := bridge.CustomScriptsReorderArgs{IDs: []string{s3.ID, s1.ID, s2.ID}}
-	inX := bridge.CustomScriptsReorderArgs{CollectionID: &x.ID, IDs: []string{t2.ID, t1.ID}}
-	colls := bridge.CustomScriptsReorderCollectionsArgs{IDs: []string{y.ID, x.ID}}
+	inX := bridge.CustomScriptsReorderArgs{Collection: "X", IDs: []string{t2.ID, t1.ID}}
+	colls := bridge.CustomScriptsReorderCollectionsArgs{Names: []string{"Y", "X"}}
 	for _, call := range []func() error{
 		func() error { return cs.Reorder(ungrouped) },
 		func() error { return cs.Reorder(inX) },
@@ -182,10 +149,10 @@ func TestScriptOrder(t *testing.T) {
 
 	order := func(snap scripts.Snapshot) (ung, inx, cols []string) {
 		for _, s := range snap.Scripts {
-			switch {
-			case s.CollectionID == nil:
+			switch s.Collection {
+			case "":
 				ung = append(ung, s.Name)
-			case *s.CollectionID == x.ID:
+			case "X":
 				inx = append(inx, s.Name)
 			}
 		}
@@ -194,58 +161,27 @@ func TestScriptOrder(t *testing.T) {
 		}
 		return
 	}
-	check := func(label string, snap scripts.Snapshot, wantX string) {
-		t.Helper()
-		ung, inx, cols := order(snap)
-		if got := strings.Join(ung, ","); got != "s3,s1,s2" && !(wantX == "t2,t1,s1" && got == "s3,s2") {
-			t.Fatalf("%s ungrouped = %s", label, got)
-		}
-		if got := strings.Join(inx, ","); got != wantX {
-			t.Fatalf("%s X = %s, want %s", label, got, wantX)
-		}
-		if got := strings.Join(cols, ","); got != "Y,X" {
-			t.Fatalf("%s collections = %s", label, got)
-		}
-	}
 	listed, err := cs.List()
 	if err != nil {
 		t.Fatal(err)
 	}
-	check("List", listed, "t2,t1")
+	ung, inx, cols := order(listed)
+	if strings.Join(ung, ",") != "s3,s1,s2" || strings.Join(inx, ",") != "t2,t1" || strings.Join(cols, ",") != "Y,X" {
+		t.Fatalf("order = %v / %v / %v, want [s3 s1 s2] / [t2 t1] / [Y X]", ung, inx, cols)
+	}
 	if got := lastSnapshot(t, app); !sameJSON(got, listed) {
 		t.Fatalf("event snapshot %+v differs from List %+v", got, listed)
 	}
-
-	if err := cs.Move(bridge.CustomScriptsMoveArgs{ID: s1.ID, CollectionID: &x.ID}); err != nil {
-		t.Fatal(err)
-	}
-	moved, err := cs.List()
-	if err != nil {
-		t.Fatal(err)
-	}
-	check("after Move", moved, "t2,t1,s1")
 
 	app.Contract(t, "script-order", "args:CustomScriptsService.Reorder#ungrouped", ungrouped)
 	app.Contract(t, "script-order", "args:CustomScriptsService.Reorder#collection", inX)
 	app.Contract(t, "script-order", "args:CustomScriptsService.ReorderCollections", colls)
 
-	before := bridge.CustomScriptsMoveArgs{ID: s2.ID, CollectionID: &x.ID, BeforeID: &t1.ID}
-	if err := cs.Move(before); err != nil {
-		t.Fatal(err)
+	if err := cs.Reorder(bridge.CustomScriptsReorderArgs{IDs: []string{t1.ID}}); err == nil {
+		t.Fatal("Reorder with a script of another set succeeded")
 	}
-	app.Contract(t, "script-order", "args:CustomScriptsService.Move#before", before)
-	moved, err = cs.List()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if ung, inx, _ := order(moved); strings.Join(ung, ",") != "s3" || strings.Join(inx, ",") != "t2,s2,t1,s1" {
-		t.Fatalf("after Move before: ungrouped %v, X %v; want [s3], [t2 s2 t1 s1]", ung, inx)
-	}
-	if err := cs.Move(bridge.CustomScriptsMoveArgs{ID: t1.ID, BeforeID: &t2.ID}); !ipcerrBadRequest(err) {
-		t.Fatalf("Move before a script of another set = %v, want E_BAD_REQUEST", err)
-	}
-	if again, err := cs.List(); err != nil || !sameJSON(again, moved) {
-		t.Fatalf("a refused Move changed the order: %+v (%v)", again, err)
+	if again, err := cs.List(); err != nil || !sameJSON(again, listed) {
+		t.Fatalf("a refused Reorder changed the order: %+v (%v)", again, err)
 	}
 
 	app.Restart(t)
@@ -253,8 +189,8 @@ func TestScriptOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !sameJSON(again, moved) {
-		t.Fatalf("after Restart = %+v, want %+v", again, moved)
+	if !sameJSON(again, listed) {
+		t.Fatalf("after Restart = %+v, want %+v", again, listed)
 	}
 }
 
@@ -289,11 +225,11 @@ func TestCustomScriptUpdateRemove(t *testing.T) {
 
 	mark := app.Events.Mark()
 	dir := t.TempDir()
-	upd, err := cs.Update(bridge.CustomScriptsUpdateArgs{ID: rec.ID, Fields: scripts.CustomScriptFields{
+	upd := scriptstest.Update(t, cs, rec.ID, scripts.CustomScriptFields{
 		Name: "new", Command: "echo new; exit 3", DirMode: scripts.DirModeFixed, WorkingDir: dir, Color: "red",
-	}})
-	if err != nil || upd.Name != "new" || upd.Command != "echo new; exit 3" || upd.WorkingDir != dir || upd.Color != "red" {
-		t.Fatalf("Update = %+v (%v)", upd, err)
+	})
+	if upd.Name != "new" || upd.Command != "echo new; exit 3" || upd.WorkingDir != dir || upd.Color != "red" {
+		t.Fatalf("Update = %+v", upd)
 	}
 	app.Events.WaitAfter(t, mark, bridge.ChannelCustomScriptsChanged, nil, wait)
 
@@ -306,13 +242,6 @@ func TestCustomScriptUpdateRemove(t *testing.T) {
 	waitMatch(t, app, mark, "w1", "upd", line("new"))
 	if code := waitExit(t, app, mark, "w1", "upd"); code != 3 {
 		t.Fatalf("exit code = %d, want 3", code)
-	}
-
-	if _, err := cs.Update(bridge.CustomScriptsUpdateArgs{ID: "missing", Fields: scripts.CustomScriptFields{Name: "x", Command: "x", Color: "blue"}}); err == nil {
-		t.Fatal("Update of an unknown command succeeded")
-	}
-	if _, err := cs.Update(bridge.CustomScriptsUpdateArgs{ID: rec.ID, Fields: scripts.CustomScriptFields{Name: "", Command: "x", Color: "blue"}}); err == nil {
-		t.Fatal("Update with an empty name succeeded")
 	}
 
 	mark = app.Events.Mark()
@@ -333,9 +262,4 @@ func TestCustomScriptUpdateRemove(t *testing.T) {
 	if err != nil || len(again.Scripts) != 1 || again.Scripts[0].ID != keep.ID {
 		t.Fatalf("after Restart = %+v (%v)", again, err)
 	}
-}
-
-func ipcerrBadRequest(err error) bool {
-	var ie *ipcerr.Error
-	return errors.As(err, &ie) && ie.Code == string(ipcerr.CodeBadRequest)
 }

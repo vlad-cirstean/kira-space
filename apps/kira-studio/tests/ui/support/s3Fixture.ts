@@ -41,6 +41,7 @@ export const CAPS = {
 
 function summary(): ConnectionSummary {
   return {
+    file: 'fixture.yaml',
     id: S3_ID,
     name: 'Test S3',
     kind: 's3',

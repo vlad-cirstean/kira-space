@@ -247,6 +247,31 @@ describe('StackState — runRestack/progress/restacking', () => {
     stack.dispose();
   });
 
+  test('progress arriving after the restack reply is ignored', async () => {
+    const transport = new FakeTransport();
+    const bridge = new BridgeClient(transport);
+    const stack = new StackState(bridge);
+    transport.onRequest = (method) =>
+      method === 'stack.restack'
+        ? {
+            ok: true,
+            restacked: [],
+            stoppedAt: undefined,
+            remaining: [],
+            undo: undefined,
+            head: { kind: 'branch', name: 'feat2' },
+            inProgress: null,
+          }
+        : emptyResult();
+    stack.setRepoId(REPO_A);
+    await sleep();
+
+    await stack.runRestack('feat2');
+    transport.emit('stack.progress', { repoId: REPO_A, branch: 'feat2', index: 1, total: 1 });
+    expect(stack.progress.value.length).toBe(0);
+    stack.dispose();
+  });
+
   test('progress from a different repo is ignored', async () => {
     const transport = new FakeTransport();
     const bridge = new BridgeClient(transport);

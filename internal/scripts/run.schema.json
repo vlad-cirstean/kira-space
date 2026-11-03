@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Name shown in the Runs panel."
+    },
+    "kind": {
+      "enum": ["script", "smart"],
+      "default": "script",
+      "description": "script runs a shell command, smart runs a prompt in headless Claude Code."
+    },
+    "command": {
+      "type": "string",
+      "description": "Shell command of a script. Not for a smart run."
+    },
+    "prompt": { "type": "string", "description": "Prompt of a smart run. Not for a script." },
+    "collection": {
+      "type": "string",
+      "description": "Group name in the Runs panel. Omit for no group."
+    },
+    "color": { "type": "string", "default": "none", "description": "Palette colour of the run." },
+    "dir": {
+      "enum": ["kira", "fixed"],
+      "default": "kira",
+      "description": "kira runs in a folder Kira keeps for this run, fixed runs in path."
+    },
+    "path": { "type": "string", "description": "Absolute folder to run in. Only with dir fixed." },
+    "use_ade_dir": {
+      "type": "boolean",
+      "default": false,
+      "description": "Run in the task's branch worktree when started from an ADE task."
+    },
+    "params": {
+      "type": "array",
+      "maxItems": 20,
+      "description": "Inputs of the run. A command reads KIRA_PARAM_<NAME>, a prompt reads {name}.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "type"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Lowercase letters, digits and _, starting with a letter."
+          },
+          "type": { "enum": ["text", "select", "multiselect"], "description": "Kind of input." },
+          "options": {
+            "type": "array",
+            "maxItems": 50,
+            "items": { "type": "string" },
+            "description": "Choices of a select or multiselect."
+          },
+          "default": {
+            "type": ["string", "array"],
+            "items": { "type": "string" },
+            "description": "Default value, one string or a list of strings."
+          },
+          "required": {
+            "type": "boolean",
+            "default": false,
+            "description": "The run needs a value."
+          },
+          "secret": {
+            "type": "boolean",
+            "default": false,
+            "description": "Text only. The value is never in a file: set it in Kira."
+          }
+        }
+      }
+    },
+    "smart": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Settings of a smart run. Only with kind smart.",
+      "properties": {
+        "model": { "type": "string", "description": "Model alias." },
+        "max_budget_usd": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Cost cap in USD. 0 or absent takes the default."
+        },
+        "no_cost_cap": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run with no cost cap."
+        },
+        "timeout": {
+          "type": "string",
+          "default": "15m",
+          "description": "Duration limit, like 15m."
+        },
+        "tools": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Claude tools the run may use. Absent takes Read, Grep, Glob."
+        },
+        "bash_patterns": {
+          "type": "array",
+          "maxItems": 30,
+          "items": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "description": "Bash command patterns the run may use. Needs the Bash tool."
+        },
+        "mcp": {
+          "type": "array",
+          "maxItems": 10,
+          "description": "MCP servers the run may use.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["server"],
+            "properties": {
+              "server": {
+                "type": "string",
+                "description": "Name of an MCP server defined in agent settings."
+              },
+              "all_tools": {
+                "type": "boolean",
+                "default": false,
+                "description": "Allow every tool of the server."
+              },
+              "tools": {
+                "type": "array",
+                "maxItems": 100,
+                "items": { "type": "string" },
+                "description": "Allowed tools when all_tools is off."
+              }
+            }
+          }
+        }
+      }
+    },
+    "schedule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cron"],
+      "description": "Run on a schedule while the app is open.",
+      "properties": {
+        "cron": {
+          "type": "string",
+          "description": "Five cron fields: minute hour day month weekday."
+        },
+        "timezone": { "type": "string", "default": "UTC", "description": "IANA time zone name." },
+        "enabled": { "type": "boolean", "default": false, "description": "The schedule fires." },
+        "confirm": { "type": "boolean", "default": false, "description": "Ask before each run." },
+        "timeout": {
+          "type": "string",
+          "description": "Duration limit of a script run, like 30m. Not for a smart run."
+        },
+        "params": {
+          "type": "object",
+          "description": "Fixed values of non-secret params.",
+          "additionalProperties": { "type": ["string", "array"], "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

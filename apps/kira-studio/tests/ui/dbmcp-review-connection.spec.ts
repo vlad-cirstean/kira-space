@@ -3,31 +3,25 @@ import { emitPrompts, routed } from '@workbench/testing/ui/prompts';
 import { expect, test } from './fixtures';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
+import { emitWailsEvent } from './support/mockRuntime';
 import { openSettings } from './support/settings';
-import { connectionRow } from './support/tree';
 
-// Contract dbmcp-review-connection. Backend half: dbmcpflow TestDbMcpReviewPerConnection. A
-// connection's review setting overrides the app switch: its results are held with the app switch off.
+// Contract dbmcp-review-connection. Backend half: dbmcpflow TestDbMcpReviewPerConnection, which sets
+// the review setting in the connection's file. A connection's review setting overrides the app switch:
+// its results are held with the app switch off.
 
 interface Snapshot {
   pending: { requestId: string; target: { database: string } };
   queued: number;
 }
-interface UpdateArgs {
-  id: string;
-  input: Record<string, unknown>;
-}
-
 const ID = 'conn-review';
 const OTHER_ID = 'conn-inherit';
 
-const updated = () =>
-  contract<ConnectionSummary>('dbmcp-review-connection', 'ConnectionsService.Update');
-const updateArgs = () =>
-  contract<UpdateArgs>('dbmcp-review-connection', 'args:ConnectionsService.Update');
+const reviewed = () =>
+  contract<ConnectionSummary>('dbmcp-review-connection', 'ConnectionsService.List#review');
 
 const inheriting = (): ConnectionSummary => ({
-  ...updated(),
+  ...reviewed(),
   id: ID,
   mcpReviewResults: 'inherit',
   sortOrder: 0,
@@ -39,31 +33,30 @@ const other = (): ConnectionSummary => ({
   sortOrder: 1,
 });
 
-test('contract: picking Always in the MCP tab saves the review setting', async ({ relaunch }) => {
-  const saved = { ...updated(), id: ID };
-  const { window: page, control } = await relaunch({
-    control: [
-      { channel: IPC.connectionsList, response: [inheriting()] },
-      { channel: IPC.connectionsUpdate, response: saved },
-    ],
+test('contract: a file edit that sets the review override reaches the settings glance', async ({
+  relaunch,
+}) => {
+  const { window: page } = await relaunch({
+    control: [{ channel: IPC.connectionsList, response: [inheriting()] }],
   });
-  await (await connectionRow(page, updated().name)).click({ button: 'right' });
-  await page.click('[data-testid="menu-item-edit"]');
-  await page.click('[data-testid="connection-tab-mcp"]');
+  await openSettings(page);
+  await page.click('[data-testid="settings-section-Database MCP"]');
+  await expect(page.locator(`[data-testid="db-mcp-connection-review-${ID}"]`)).toHaveCount(0);
 
-  await expect(page.locator('[data-testid="connection-mcp-review-inherit"]')).toHaveAttribute(
-    'data-state',
-    'on',
+  await emitWailsEvent(page, IPC.connectionsChanged, [{ ...reviewed(), id: ID }]);
+  await expect(page.locator(`[data-testid="db-mcp-connection-review-${ID}"]`)).toHaveText(
+    'Results always reviewed',
   );
-  await expect(page.locator('[data-testid="connection-mcp-review-inherit"]')).toHaveText(
-    'App setting (off)',
-  );
-  await page.click('[data-testid="connection-mcp-review-review"]');
-  await page.click('[data-testid="connection-save"]');
+});
 
-  await expect
-    .poll(() => control.log().find((e) => e.channel === IPC.connectionsUpdate)?.args)
-    .toEqual({ ...updateArgs(), id: ID });
+test('the settings glance opens the connection file', async ({ relaunch }) => {
+  const { window: page } = await relaunch({
+    control: [{ channel: IPC.connectionsList, response: [inheriting()] }],
+  });
+  await openSettings(page);
+  await page.click('[data-testid="settings-section-Database MCP"]');
+  await page.click(`[data-testid="db-mcp-connection-edit-${ID}"]`);
+  await expect(page.locator('[data-testid="connection-file-dialog"]')).toBeVisible();
 });
 
 test('the settings glance flags a connection with an override and skips one that inherits', async ({

@@ -13,9 +13,8 @@ import (
 // host/capabilities/settings, all three of which are properties of the editor, not of Kira Space
 // (SPEC §5 item 3; D11). The extension composes the full result from its own ports plus this.
 type AppInitResult struct {
-	ContractVersion int                 `json:"contractVersion"`
-	ServerVersion   string              `json:"serverVersion"`
-	Git             gitclient.GitStatus `json:"git"`
+	ServerVersion string              `json:"serverVersion"`
+	Git           gitclient.GitStatus `json:"git"`
 	// DateFormat is Kira Space's app-wide appearance.dateFormat ("relative" | "absolute").
 	DateFormat string `json:"dateFormat"`
 }
@@ -144,9 +143,8 @@ type GraphStreamParams struct {
 }
 
 // commitsBlob marshals as {"$fb":"gitwire/1","d":{"$blob":true}} — the marker naming where
-// the frame's out-of-band FlatBuffer belongs once rpcstream substitutes it.
-// rpcstream never learns what a graph chunk is (session.go:1-9's own module doc); this is the one
-// place that shape is stated.
+// the frame's out-of-band FlatBuffer belongs once the graph plane substitutes it. The plane never
+// learns what a graph chunk is; this is the one place that shape is stated.
 type commitsBlob struct{}
 
 func (commitsBlob) MarshalJSON() ([]byte, error) {
@@ -162,7 +160,7 @@ func (commitsBlob) MarshalJSON() ([]byte, error) {
 // ---------------------------------------------------------------------------------------
 
 // MaxResultBytes is the cap on commit.fileDiff/file.read's *encoded* result — comfortably
-// under rpcstream's frame cap, far above anything a 1 MiB patch (gitsession.MaxPatchBytes)
+// under the bound-call result size, far above anything a 1 MiB patch (gitsession.MaxPatchBytes)
 // produces in practice (~2.5 MiB worst realistic case). Not measured against a real budget —
 // there is no decision this number would change.
 const MaxResultBytes = 6 << 20
@@ -214,10 +212,10 @@ type WorkingDetailParams struct {
 	RepoID string `json:"repoId"`
 }
 
-// workingDetailResult is working.detail's own wire result — a bare `readonly FileChange[]` at the
+// WorkingDetailResult is working.detail's own wire result — a bare `readonly FileChange[]` at the
 // contract layer, wrapped in one field here purely because a JSON-RPC result is always an object,
 // never a bare array (the same reason commit.fileDiff's own result wraps its FileDiffBody).
-type workingDetailResult struct {
+type WorkingDetailResult struct {
 	Files []porcelain.FileChange `json:"files"`
 }
 
@@ -238,9 +236,7 @@ type graphChunk struct {
 // Refs, status, pre-flight and operations. Results are gitsession's/
 // gitpreflight's own wire-shaped types (RefsResult, StatusSummary, CheckoutPreflight,
 // RevertPreflight, OpResult, UndoSlotSnapshot) — the precedent applied again: no second,
-// gitrpc-owned copy of a shape those packages already produce JSON-tagged. CONTRACT_VERSION stays
-// 14: every one of these seven request keys, and every type, has been in contract.ts/
-// validate.ts.
+// gitrpc-owned copy of a shape those packages already produce JSON-tagged.
 // ---------------------------------------------------------------------------------------
 
 type RefsListParams struct {
@@ -303,8 +299,6 @@ type UndoRunParams struct {
 // ([]porcelain.StashEntry wrapped in StashListResult, gitsession.StashShowResult,
 // gitpreflight.StashPopPreflight, gitpreflight.StashBranchPreflight) — the precedent applied
 // again: no second, gitrpc-owned copy of a shape those packages already produce JSON-tagged.
-// CONTRACT_VERSION stays 21: every one of these four request keys, and every stash type, has
-// been in contract.ts/validate.ts.
 // ---------------------------------------------------------------------------------------
 
 type StashListParams struct {
@@ -356,7 +350,7 @@ type GlobalStashListParams struct {
 // ---------------------------------------------------------------------------------------
 // Branch review. review.resolveBase's own result is gitreview.BaseResolution (the precedent
 // applied again — no second, gitrpc-owned copy of a shape gitreview already produces
-// JSON-tagged). CONTRACT_VERSION moves 14 -> 15: review.resolveBase gains one optional param.
+// JSON-tagged).
 // ---------------------------------------------------------------------------------------
 
 // ReviewResolveBaseParams is review.resolveBase's own request.
@@ -369,9 +363,7 @@ type ReviewResolveBaseParams struct {
 // ---------------------------------------------------------------------------------------
 // Remote ops and the credential relay. remote.pullPreflight/remote.pushPreflight's own
 // results are gitpreflight's own wire-shaped types (PullPreflight/PushPreflight) — no second,
-// gitrpc-owned copy of a shape that package already produces JSON-tagged. CONTRACT_VERSION moves
-// 15 -> 16 for exactly three additions: credential.request, credential.provide, and
-// remote.pullPreflight's own optional strategySetting param.
+// gitrpc-owned copy of a shape that package already produces JSON-tagged.
 // ---------------------------------------------------------------------------------------
 
 // RemotePullPreflightParams is remote.pullPreflight's own request.
@@ -410,9 +402,7 @@ type RemoteCancelResult struct {
 // ---------------------------------------------------------------------------------------
 // incremental review: review.files/review.fileDiff/review.mark. Results are gitsession's own
 // wire-shaped types (RangeFilesResult, ReviewFileDiffResult, ReviewFileStatus) — no second,
-// gitrpc-owned copy of a shape gitsession already produces JSON-tagged. CONTRACT_VERSION moves
-// 17 -> 18 for exactly these three requests plus one new UiActionKind member (toggleFileReviewed,
-// a webview-local control frame the Go server never sees).
+// gitrpc-owned copy of a shape gitsession already produces JSON-tagged.
 // ---------------------------------------------------------------------------------------
 
 // ReviewFilesParams is review.files' own request — D5's session key: base is needed to compute the

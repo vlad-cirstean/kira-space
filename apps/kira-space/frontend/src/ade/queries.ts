@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/vue-query';
 import { watch } from 'vue';
 import { control } from '../bridge/control';
+import { repoConfigKey } from '../repo/state/repoConfigQueries';
 import { reposKey } from '../repo/state/reposQueries';
 import type { useAgentSessionsStore } from './state';
 import { agentContextKey } from './v2/context/queries';
@@ -51,6 +52,10 @@ export function installAdeSignals(
   });
   control.onAdeTaskSessions(() => {
     void queryClient.invalidateQueries({ queryKey: reviewAgentPrefix });
+  });
+  control.onRepoConfigChanged(() => {
+    void queryClient.invalidateQueries({ queryKey: repoConfigKey });
+    void queryClient.invalidateQueries({ queryKey: reposKey, exact: true });
   });
   control.onAgentContextChanged(() => {
     void queryClient.invalidateQueries({ queryKey: agentContextKey });

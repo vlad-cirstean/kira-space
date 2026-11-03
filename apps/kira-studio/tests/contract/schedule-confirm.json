@@ -1,11 +1,11 @@
 {
   "CustomScriptsService.Create": {
-    "collectionId": null,
+    "collection": "",
     "color": "blue",
     "command": "echo hello",
     "createdAt": "<time>",
     "dirMode": "kira",
-    "id": "<id:1>",
+    "id": "tick",
     "kind": "script",
     "name": "tick",
     "params": [],
@@ -27,7 +27,7 @@
     "workingDir": ""
   },
   "ScriptRunsService.ConfirmAccept": {
-    "runId": "<id:2>",
+    "runId": "<id:1>",
     "terminal": null
   },
   "ScriptRunsService.Get#done": {
@@ -36,9 +36,9 @@
     "color": "blue",
     "command": "echo hello",
     "createdAt": 0,
-    "cwd": "<kira>/automations/<id:1>",
+    "cwd": "<kira>/automations/tick",
     "finishedAt": 0,
-    "id": "<id:2>",
+    "id": "<id:1>",
     "kind": "script",
     "model": "",
     "outcome": {
@@ -53,7 +53,7 @@
     "provider": "",
     "resumable": false,
     "resumedFrom": "",
-    "scriptId": "<id:1>",
+    "scriptId": "tick",
     "scriptName": "tick",
     "sessionId": "",
     "startedAt": 0,
@@ -74,9 +74,9 @@
     "color": "blue",
     "command": "echo hello",
     "createdAt": 0,
-    "cwd": "<kira>/automations/<id:1>",
+    "cwd": "<kira>/automations/tick",
     "finishedAt": null,
-    "id": "<id:2>",
+    "id": "<id:1>",
     "kind": "script",
     "model": "",
     "outcome": null,
@@ -85,7 +85,7 @@
     "provider": "",
     "resumable": false,
     "resumedFrom": "",
-    "scriptId": "<id:1>",
+    "scriptId": "tick",
     "scriptName": "tick",
     "sessionId": "",
     "startedAt": null,
@@ -121,7 +121,7 @@
       "blocker": "",
       "branch": "",
       "mode": "kira",
-      "path": "<kira>/automations/<id:1>",
+      "path": "<kira>/automations/tick",
       "pending": false
     },
     "env": [],
@@ -143,7 +143,7 @@
   },
   "args:ScriptRunsService.ConfirmAccept": {
     "hash": "<masked>",
-    "runId": "<id:2>",
+    "runId": "<id:1>",
     "secrets": null
   }
 }

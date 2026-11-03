@@ -1,15 +1,15 @@
 import type { ConnectionSummary } from '@shared/domain/connection';
-import { AWS_STYLE_KINDS, CONNECTION_COLOR_CHOICES, FILE_KINDS } from '@shared/domain/connection';
+import { AWS_STYLE_KINDS, FILE_KINDS } from '@shared/domain/connection';
 import { decodePath } from '@shared/domain/tree';
 import { formatConnectionUri } from '@shared/domain/uri';
-import { colourLabel } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { copyAndAnnounce } from '@workbench/behaviour/clipboard';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { control } from '../bridge/control';
-import { useConnectionDialogStore, useConnectionsStore } from '../state/connections';
+import { useConnectionDialogStore } from '../state/connectionDialogs';
+import { useConnectionsStore } from '../state/connections';
 import { useConsoleDefaultsStore } from '../state/consoleDefaults';
 import { useObjectStoreStore } from '../state/objectStore';
 import { schemaDialectFor, useSchemaDialogStore } from '../state/schemas';
@@ -317,10 +317,26 @@ function connectionMenu(row: TreeRowVm): MenuItem[] {
     {
       type: 'item',
       id: 'edit',
-      label: t('common.action.edit.label'),
+      label: t('studio.project.menu.editFile.label'),
       icon: ICON.edit,
-      shortcut: 'tree.rename',
-      run: () => useConnectionDialogStore().openEditDialog(row.connectionId),
+      disabled: !record?.file,
+      run: () => useConnectionDialogStore().openFile(record?.file ?? ''),
+    },
+    {
+      type: 'item',
+      id: 'open-file',
+      label: t('studio.project.menu.openInEditor.label'),
+      icon: 'go-to-file',
+      disabled: !record?.file,
+      run: () => control.configFilesOpen({ folder: 'connections', file: record?.file ?? '' }),
+    },
+    {
+      type: 'item',
+      id: 'reveal-file',
+      label: t('studio.project.menu.revealFile.label'),
+      icon: 'folder-opened',
+      disabled: !record?.file,
+      run: () => control.configFilesReveal({ folder: 'connections', file: record?.file ?? '' }),
     },
     ...(canUpdateCredentials(record)
       ? [
@@ -388,46 +404,6 @@ function connectionMenu(row: TreeRowVm): MenuItem[] {
       : []),
     ...consoleMenuItem(row),
     ...newDiscoverItem(row),
-    {
-      type: 'submenu',
-      id: 'color',
-      label: t('common.field.colour.label'),
-      icon: 'symbol-color',
-      // P42 D34: the offered subset — a connection already stored with a retired colour is
-      // untouched and still checked correctly if `record.color` happens to be one (checked below
-      // compares against record?.color, not against this list).
-      items: CONNECTION_COLOR_CHOICES.map((color) => ({
-        type: 'item' as const,
-        id: `color-${color}`,
-        label: colourLabel(color),
-        swatch: color,
-        checked: record?.color === color,
-        run: () => useConnectionsStore().setConnectionColor(row.connectionId, color),
-      })),
-    },
-    {
-      type: 'item',
-      id: 'readonly',
-      label: t('common.state.readOnly.status'),
-      checked: record?.readOnly ?? false,
-      run: async () => {
-        if (
-          isLive &&
-          !(await useConfirmDialogStore().confirm({
-            title: t('studio.project.readOnlyConfirm.title'),
-            message: t('studio.project.readOnlyConfirm.body'),
-            confirmLabel: t('common.continue.label'),
-            tone: 'primary',
-          }))
-        ) {
-          return;
-        }
-        await useConnectionsStore().setConnectionReadOnly(
-          row.connectionId,
-          !(record?.readOnly ?? false),
-        );
-      },
-    },
     { type: 'separator' },
     {
       type: 'item',
@@ -710,7 +686,7 @@ export function emptyBackgroundMenu(): MenuItem[] {
       label: t('studio.project.connectionDialog.newConnection.title'),
       icon: ICON.add,
       shortcut: 'app.newConnection',
-      run: () => useConnectionDialogStore().openCreateDialog(),
+      run: () => useConnectionDialogStore().openNew(),
     },
     {
       type: 'item',

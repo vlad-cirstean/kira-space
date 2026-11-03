@@ -9,12 +9,18 @@ import (
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
+// Cipher is implemented by internal/secrets: the kira:v3: AES-256-GCM envelope. The scope argument is
+// the kind of column the ciphertext lives in; every reader and writer of one column uses one scope.
+type Cipher interface {
+	Encrypt(scope secrets.Scope, plain string) (string, error)
+	Decrypt(scope secrets.Scope, stored string) (string, error)
+}
+
 // maskKeyBytes is the correlation key's own size (plan §2.5: "32 random bytes, per connection").
 const maskKeyBytes = 32
 
 // MaskKeysRepo is the only file in this tree that reads or writes
-// connections.mask_correlation_key — SecretsRepo's own "only file that touches this column"
-// discipline (secrets.go:21-23), applied to the correlation key. It is deliberately not part of
+// connections.mask_correlation_key. It is deliberately not part of
 // ConnectionFields (model/connection.go), so a key can never reach the renderer, the
 // connection URI, or the Copy URI menu item.
 type MaskKeysRepo struct {
@@ -22,8 +28,8 @@ type MaskKeysRepo struct {
 	cipher Cipher
 }
 
-// NewMaskKeys is separate from repos.New, the same reason NewSecrets is (D5): it needs a Cipher
-// that does not exist inside that constructor's aggregate.
+// NewMaskKeys is separate from repos.New: it needs a Cipher that does not exist inside that
+// constructor's aggregate.
 func NewMaskKeys(db *sql.DB, cipher Cipher) *MaskKeysRepo {
 	return &MaskKeysRepo{db: db, cipher: cipher}
 }

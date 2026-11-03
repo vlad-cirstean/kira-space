@@ -1,5 +1,7 @@
 package model
 
+import "sort"
+
 // ConnectionFields is the shape both ConnectionsRepo.Insert/Update accept and ConnectionSummary
 // embeds — packages/shared/domain/connection.ts's connectionFieldsSchema, minus `password` (no
 // password field anywhere in this package, enforced by the type itself, same as the TS build's
@@ -55,6 +57,8 @@ type ConnectionFields struct {
 type ConnectionSummary struct {
 	ID string `json:"id"`
 	ConnectionFields
+	// File is the name of the connection's config file in the connections folder.
+	File      string `json:"file"`
 	SortOrder int    `json:"sortOrder"`
 	CreatedAt string `json:"createdAt"`
 	UpdatedAt string `json:"updatedAt"`
@@ -87,6 +91,18 @@ var paletteColors = map[string]bool{
 	"none": true, "red": true, "orange": true, "amber": true, "olive": true, "green": true,
 	"teal": true, "cyan": true, "blue": true, "indigo": true, "violet": true, "magenta": true,
 	"grey": true,
+}
+
+// ConnectionKinds lists every connection kind, sorted.
+func ConnectionKinds() []string { return sortedKeys(connectionKinds) }
+
+func sortedKeys[K ~string](m map[K]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, string(k))
+	}
+	sort.Strings(out)
+	return out
 }
 
 // ValidConnectionKind mirrors connection.ts's connectionKindSchema.

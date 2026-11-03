@@ -3,6 +3,7 @@ package ade
 import (
 	"context"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
+	"path/filepath"
 	"slices"
 	"sync/atomic"
 	"testing"
@@ -11,6 +12,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg/repocfgtest"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
@@ -20,6 +23,7 @@ type boardHarness struct {
 	t       *testing.T
 	repos   *repos.Repos
 	board   *TaskBoard
+	files   *repocfg.Store
 	emitted atomic.Int32
 	status  atomic.Value // gitclient.GitStatus
 	mid     string
@@ -39,19 +43,33 @@ func newBoardHarness(t *testing.T) *boardHarness {
 	registry := gitsession.NewRegistry(gitclient.NewExecRunner())
 	t.Cleanup(registry.Close)
 	h := &boardHarness{t: t, repos: r}
+	h.files = repocfgtest.New(t, db.DB, filepath.Join(t.TempDir(), "repos"))
+	r.AdeRepoConfig.Files = h.files
 	h.status.Store(gitclient.GitStatus{Kind: "ok", Path: "git"})
 	h.board = NewTaskBoard(TaskBoardDeps{
 		Agent:       testAgents,
 		Credentials: gitcred.New(),
 		Tasks:       r.AdeTasks, Statuses: r.AdeStatuses, RepoConfig: r.AdeRepoConfig, Facts: r.AdeFacts, CodeRepos: r.CodeRepos, Runner: gitclient.NewExecRunner(),
-		Registry:  registry,
-		GitStatus: func(context.Context) gitclient.GitStatus { return h.status.Load().(gitclient.GitStatus) },
-		Workflows: &adeflow.Reader{Dir: t.TempDir(), Store: r.AdeTasks},
-		OnBoard:   func() { h.emitted.Add(1) }, HomeDir: "/home/u",
+		GitRepoSettings: h.files.Settings,
+		Registry:        registry,
+		GitStatus:       func(context.Context) gitclient.GitStatus { return h.status.Load().(gitclient.GitStatus) },
+		Workflows:       &adeflow.Reader{Dir: t.TempDir(), Store: r.AdeTasks},
+		OnBoard:         func() { h.emitted.Add(1) }, HomeDir: "/home/u",
 		AutofetchMinutes: func() int { return 5 },
 	})
 	t.Cleanup(h.board.Close)
+	h.files.OnChange = h.board.RepoConfigChanged
 	return h
+}
+
+// setRepoFile edits the repo file of a code repo added with addRepoFromPath.
+func (h *boardHarness) setRepoFile(id string, edit func(*repocfg.File)) {
+	h.t.Helper()
+	rec, err := h.repos.CodeRepos.Get(id)
+	if err != nil || rec == nil {
+		h.t.Fatalf("code repo %s: %v", id, err)
+	}
+	repocfgtest.Set(h.t, h.files, rec.RepoID, edit)
 }
 
 func (h *boardHarness) addRepo(id, root string) {
