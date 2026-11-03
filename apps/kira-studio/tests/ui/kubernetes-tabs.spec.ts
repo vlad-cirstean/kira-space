@@ -270,3 +270,21 @@ test('the close tab command closes the active Kubernetes tab', async ({ relaunch
   await expect(tabs(page)).toHaveCount(1);
   await expect(tabChip(page, 'web-1')).toHaveAttribute('data-active', 'true');
 });
+
+test('the Window menu tab channels step and close Kubernetes tabs', async ({ relaunch }) => {
+  const { page } = await setupKubernetes(relaunch);
+  await openKubernetes(page);
+  await openKind(page, 'kind-dev', 'v1/pods');
+  await openPermanent(page, 'web-1');
+  await openPermanent(page, 'web-2');
+  await expect(tabChip(page, 'web-2')).toHaveAttribute('data-active', 'true');
+
+  await emitWailsEvent(page, IPC.tabPrev, null);
+  await expect(tabChip(page, 'web-1')).toHaveAttribute('data-active', 'true');
+  await emitWailsEvent(page, IPC.tabNext, null);
+  await expect(tabChip(page, 'web-2')).toHaveAttribute('data-active', 'true');
+
+  await emitWailsEvent(page, IPC.tabClose, null);
+  await expect(tabs(page)).toHaveCount(1);
+  await expect(tabChip(page, 'web-1')).toHaveAttribute('data-active', 'true');
+});
