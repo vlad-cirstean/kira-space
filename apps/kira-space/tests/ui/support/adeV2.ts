@@ -372,7 +372,7 @@ export async function openTask(page: Page, id: string): Promise<void> {
   await page
     .locator(`[data-testid="ade-card"][data-task-id="${id}"] [data-testid="ade-card-head"]`)
     .click();
-  await page.locator('[data-testid="ade-task-tab"]').waitFor();
+  await page.locator('[data-testid="ade-main-tab"]').waitFor();
 }
 
 /** Opens the inspector's collapsed Advanced section. */
