@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/secrets"
@@ -64,6 +65,20 @@ func (s *Secrets) Delete(kind, name string) error {
 		return err
 	}
 	_, err = s.DB.Exec(`DELETE FROM secret_values WHERE scope = ? AND owner = ? AND name = ?`, string(scope), SecretOwner, name)
+	return err
+}
+
+// Copy duplicates the sealed value of from as to, verbatim: the scope is the authenticated data, so no
+// decrypt is needed. An absent from copies nothing.
+func (s *Secrets) Copy(kind, from, to string) error {
+	scope, err := scopeOf(kind)
+	if err != nil {
+		return err
+	}
+	_, err = s.DB.Exec(`INSERT INTO secret_values (scope, owner, name, value, updated_ms)
+		SELECT scope, owner, ?, value, ? FROM secret_values WHERE scope = ? AND owner = ? AND name = ?
+		ON CONFLICT (scope, owner, name) DO UPDATE SET value = excluded.value, updated_ms = excluded.updated_ms`,
+		to, time.Now().UnixMilli(), string(scope), SecretOwner, from)
 	return err
 }
 

@@ -564,8 +564,9 @@ func (l *Loader) create(stem string, text []byte) (string, error) {
 	return id, nil
 }
 
-// Duplicate copies connection id's file to a free stem next to it, with name as its name. Secret
-// references are shared with the original.
+// Duplicate copies connection id's file to a free stem next to it, with name as its name. The copy gets
+// its own sealed password and URI under its stem, so changing one connection's credentials never changes
+// the other's.
 func (l *Loader) Duplicate(id, name string) (string, error) {
 	rec, ok := l.RecordOf(id)
 	if !ok {
@@ -575,14 +576,44 @@ func (l *Loader) Duplicate(id, name string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%w: %s", ErrNotFound, FileName(rec.Stem))
 	}
-	text, err := configfs.EditYAML(src, []configfs.NodeSet{{Path: []string{"name"}, Value: name}})
-	if err != nil {
-		return "", err
-	}
 	l.mu.Lock()
 	stem := l.freeStemLocked(rec.Stem + "-copy")
 	l.mu.Unlock()
-	return l.create(stem, text)
+	sets := []configfs.NodeSet{{Path: []string{"name"}, Value: name}}
+	var copied []movedSecret
+	for _, f := range []struct{ kind, field, ref string }{
+		{KindPassword, "password", rec.File.Password},
+		{KindURI, "uri", rec.File.URI},
+	} {
+		from := SecretName(f.ref)
+		if from == "" {
+			continue
+		}
+		to := stem + "." + f.kind
+		if err := l.o.Secrets.Copy(f.kind, from, to); err != nil {
+			l.dropCopies(copied)
+			return "", err
+		}
+		copied = append(copied, movedSecret{f.kind, to})
+		sets = append(sets, configfs.NodeSet{Path: []string{f.field}, Value: RefOf(to)})
+	}
+	text, err := configfs.EditYAML(src, sets)
+	if err == nil {
+		var newID string
+		if newID, err = l.create(stem, text); err == nil {
+			return newID, nil
+		}
+	}
+	l.dropCopies(copied)
+	return "", err
+}
+
+type movedSecret struct{ kind, name string }
+
+func (l *Loader) dropCopies(copied []movedSecret) {
+	for _, c := range copied {
+		_ = l.o.Secrets.Delete(c.kind, c.name)
+	}
 }
 
 // Delete removes connection id's file; the row and its state go with it.

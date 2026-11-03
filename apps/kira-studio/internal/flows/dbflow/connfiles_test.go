@@ -418,3 +418,36 @@ func TestConnectionFilesMigrationFailedWrite(t *testing.T) {
 		}
 	}
 }
+
+// A duplicate owns its password: changing it leaves the original's alone.
+func TestConnectionDuplicateOwnsSecret(t *testing.T) {
+	app := flowharness.New(t)
+	in := sqliteInput("Pg", "")
+	in.Kind, in.Database = "postgres", ptr("app")
+	in.Host, in.Port, in.Username = ptr("127.0.0.1"), ptr(5432), ptr("kira")
+	in.Password = ptr(fileSecret)
+	conn := createConn(t, app, in)
+	dup, err := app.W.Connections.Duplicate(bridge.ConnectionsIDArgs{ID: conn.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	password := func(id string) string {
+		r := app.W.Connections.Reveal(bridge.ConnectionsRevealArgs{ID: id, Confirmed: true})
+		if r.Password == nil {
+			t.Fatalf("Reveal %s = %+v, want a password", id, r)
+		}
+		return *r.Password
+	}
+	if got := password(dup.ID); got != fileSecret {
+		t.Fatalf("duplicate password = %q, want the original's", got)
+	}
+	if err := app.W.Connections.UpdateCredentials(bridge.ConnectionsCredentialsArgs{ID: dup.ID, Password: ptr("staging")}); err != nil {
+		t.Fatal(err)
+	}
+	if got := password(conn.ID); got != fileSecret {
+		t.Errorf("original password = %q after the copy changed, want unchanged", got)
+	}
+	if got := password(dup.ID); got != "staging" {
+		t.Errorf("duplicate password = %q, want staging", got)
+	}
+}

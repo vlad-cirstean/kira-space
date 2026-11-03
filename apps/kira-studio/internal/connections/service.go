@@ -348,7 +348,7 @@ func errConnectionNotFound() *ipcerr.Error {
 	return ipcerr.T(ipcerr.CodeNotFound, "backend.studio.connection.notFound.body", nil)
 }
 
-// Duplicate copies the connection's file next to it under a free name. Secret refs are shared.
+// Duplicate copies the connection's file next to it under a free name, with its own copy of the secrets.
 func (s *Service) Duplicate(id string) (model.ConnectionSummary, error) {
 	existing, err := s.get(id)
 	if err != nil {
