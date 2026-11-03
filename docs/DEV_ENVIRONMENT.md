@@ -990,6 +990,15 @@ flick). Add a view by copying a probe and calling `measureFlick` over `FLICK_LAD
   lines: heap per open tab, reads per switch round, reads after six fake minutes away, heap after
   close-all. Helper: `packages/workbench/src/testing/ui/heapProbe.ts`. Build first
   (`bun run build:test:studio` or `build:test:space`). `KIRA_HEAP_FILE_LINES` sizes the Space file.
+- RAM probe (P480): `bun run perf:ram:studio` / `perf:ram:space` (Chromium, `--project=heap heap-ram`);
+  `--project=heap-webkit` reports WebKit process RSS only. Per world it prints `RAM <app> <world>
+  <checkpoint> <json>` (JS heap after two GCs, DOM counters, settled renderer RSS, Monaco/xterm/grid/img
+  counts, Pinia and TanStack Query stats) and appends the same to `test-results-perf/ram/`. Knobs:
+  `KIRA_RAM_WORLD=a,b` narrows worlds, `KIRA_RAM_N` sets tab units (default 10). Pass B, attribution:
+  build unminified (`cd apps/kira-studio/frontend && KIRA_DEBUG_HOOKS=1 bunx vite build --minify false`,
+  Space likewise without the flag), then `KIRA_RAM_SNAPSHOTS=1` takes heap snapshots (parsed with
+  `heap-snapshot-toolkit`, `HEAPSNAP` lines; `KIRA_RAM_KEEP_SNAPSHOTS=1` keeps the files). Rebuild
+  minified afterwards (`build:test:*`). Helpers: `memProbe.ts`, `heapSnapshot.ts` in `testing/ui/`.
 - Engine is Playwright WebKit. Linux runs the WPE port: software rendering, no GPU process.
 - fps = 1000 / frame ms. Compare views to each other, not to 16 ms.
 - RSS comes from `ps`. On macOS it omits CoreAnimation/IOSurface graphics memory, the dominant

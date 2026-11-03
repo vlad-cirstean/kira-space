@@ -88,6 +88,7 @@ function cpuTimes(): { busy: number; total: number } {
  * load1. Gives up after `maxMs`.
  */
 export async function waitForQuietHost(maxMs = 120_000): Promise<number> {
+  if (process.env.KIRA_RAM_NOGATE === '1') return 0;
   const t0 = Date.now();
   let busy = 1;
   while (Date.now() - t0 < maxMs) {
