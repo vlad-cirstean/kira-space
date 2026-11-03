@@ -451,3 +451,46 @@ func TestConnectionDuplicateOwnsSecret(t *testing.T) {
 		t.Errorf("duplicate password = %q, want staging", got)
 	}
 }
+
+// A secret name outlives a file rename: duplicating again never overwrites the renamed file's password.
+func TestConnectionDuplicateKeepsRenamedFileSecret(t *testing.T) {
+	app := flowharness.New(t)
+	in := sqliteInput("Pg", "")
+	in.Kind, in.Database = "postgres", ptr("app")
+	in.Host, in.Port, in.Username = ptr("127.0.0.1"), ptr(5432), ptr("kira")
+	in.Password = ptr(fileSecret)
+	conn := createConn(t, app, in)
+	dup, err := app.W.Connections.Duplicate(bridge.ConnectionsIDArgs{ID: conn.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := app.W.Connections.UpdateCredentials(bridge.ConnectionsCredentialsArgs{ID: dup.ID, Password: ptr("staging")}); err != nil {
+		t.Fatal(err)
+	}
+	dir := app.W.ConnectionFiles.Dir()
+	if err := os.Rename(filepath.Join(dir, dup.File), filepath.Join(dir, "staging.yaml")); err != nil {
+		t.Fatal(err)
+	}
+	var staging model.ConnectionSummary
+	testx.WaitUntil(t, waitFor, func() bool {
+		list, _ := app.W.Connections.List()
+		for _, c := range list {
+			if c.File == "staging.yaml" {
+				staging = c
+				return true
+			}
+		}
+		return false
+	})
+	again, err := app.W.Connections.Duplicate(bridge.ConnectionsIDArgs{ID: conn.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.File == dup.File {
+		t.Errorf("second duplicate reused %s, whose secret the renamed file still names", dup.File)
+	}
+	r := app.W.Connections.Reveal(bridge.ConnectionsRevealArgs{ID: staging.ID, Confirmed: true})
+	if r.Password == nil || *r.Password != "staging" {
+		t.Errorf("renamed file password = %+v, want staging", r)
+	}
+}

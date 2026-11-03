@@ -315,7 +315,10 @@ func (s *Service) createAt(stem string, in Input) (string, error) {
 	}
 	name := stem + "." + kind
 	if kind != "" {
-		if err := s.deps.Files.PutSecret(kind, name, secret); err != nil {
+		if err := s.deps.Files.PutNewSecret(kind, name, secret); err != nil {
+			if errors.Is(err, connfiles.ErrSecretExists) {
+				return "", connfiles.ErrExists
+			}
 			return "", ipcerr.Wrap(err)
 		}
 	}
@@ -439,11 +442,13 @@ func (s *Service) UpdateCredentials(id string, username, password *string) error
 	if passwordChanged {
 		name := connfiles.SecretName(rec.File.Password)
 		if name == "" {
-			name = rec.Stem + ".password"
+			var err error
+			if name, err = s.putFreshPassword(rec.Stem, *password); err != nil {
+				return ipcerr.Wrap(err)
+			}
 			sets = append(sets, configfs.NodeSet{Path: []string{"password"}, Value: connfiles.RefOf(name)})
 			fileDiff = true
-		}
-		if err := s.deps.Files.PutSecret(connfiles.KindPassword, name, *password); err != nil {
+		} else if err := s.deps.Files.PutSecret(connfiles.KindPassword, name, *password); err != nil {
 			return ipcerr.Wrap(err)
 		}
 	}
@@ -456,6 +461,21 @@ func (s *Service) UpdateCredentials(id string, username, password *string) error
 		s.reconnect(id)
 	}
 	return nil
+}
+
+// putFreshPassword seals password under the first unused name <stem>.password, <stem>-2.password ...
+func (s *Service) putFreshPassword(stem, password string) (string, error) {
+	for n := 1; ; n++ {
+		base := stem
+		if n > 1 {
+			base = fmt.Sprintf("%s-%d", stem, n)
+		}
+		name := base + "." + connfiles.KindPassword
+		err := s.deps.Files.PutNewSecret(connfiles.KindPassword, name, password)
+		if !errors.Is(err, connfiles.ErrSecretExists) {
+			return name, err
+		}
+	}
 }
 
 // Reorder persists the sidebar's drag order. An id deleted in another window fails the call; the

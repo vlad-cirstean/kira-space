@@ -35,6 +35,22 @@ func (s *Store) Put(q Execer, scope Scope, owner, name, plain string) error {
 	return err
 }
 
+// PutNew seals plain as name only when no such row exists, and reports whether it inserted.
+func (s *Store) PutNew(q Execer, scope Scope, owner, name, plain string) (bool, error) {
+	sealed, err := s.c.Encrypt(scope, plain)
+	if err != nil {
+		return false, err
+	}
+	res, err := q.Exec(`INSERT INTO secret_values (scope, owner, name, value, updated_ms) VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT (scope, owner, name) DO NOTHING`,
+		string(scope), owner, name, sealed, time.Now().UnixMilli())
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n == 1, err
+}
+
 // Prune deletes the owner's names not in keep; keep nil deletes them all.
 func (s *Store) Prune(q Execer, scope Scope, owner string, keep []string) error {
 	query := `DELETE FROM secret_values WHERE scope = ? AND owner = ?`

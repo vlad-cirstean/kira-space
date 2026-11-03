@@ -39,6 +39,9 @@ func scopeOf(kind string) (secrets.Scope, error) {
 	return "", fmt.Errorf("connfiles: unknown secret kind %q", kind)
 }
 
+// ErrSecretExists marks a new-name write that found the name in use; the existing value is untouched.
+var ErrSecretExists = errors.New("connfiles: the secret name is in use")
+
 // Secrets is the module's sealed values: secret_values rows of scope connection and connection-uri,
 // owner connections.
 type Secrets struct {
@@ -58,6 +61,30 @@ func (s *Secrets) Put(kind, name, value string) error {
 	return s.Store.Put(s.DB, scope, SecretOwner, name, value)
 }
 
+// PutNew seals value as name only when the name is free, else ErrSecretExists. It never overwrites, so a
+// caller's failure path may delete the name: only this call's insert can be there.
+func (s *Secrets) PutNew(kind, name, value string) error {
+	scope, err := scopeOf(kind)
+	if err != nil {
+		return err
+	}
+	ok, err := s.Store.PutNew(s.DB, scope, SecretOwner, name, value)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("%w: %s", ErrSecretExists, name)
+	}
+	return nil
+}
+
+// Taken reports whether either kind holds a secret named name.
+func (s *Secrets) Taken(name string) bool {
+	var one int
+	return s.DB.QueryRow(`SELECT 1 FROM secret_values WHERE owner = ? AND name = ? AND scope IN (?, ?)`,
+		SecretOwner, name, string(secrets.ScopeConnection), string(secrets.ScopeConnectionURI)).Scan(&one) == nil
+}
+
 // Delete removes name; an absent name is not an error.
 func (s *Secrets) Delete(kind, name string) error {
 	scope, err := scopeOf(kind)
@@ -69,17 +96,29 @@ func (s *Secrets) Delete(kind, name string) error {
 }
 
 // Copy duplicates the sealed value of from as to, verbatim: the scope is the authenticated data, so no
-// decrypt is needed. An absent from copies nothing.
-func (s *Secrets) Copy(kind, from, to string) error {
+// decrypt is needed. An absent from copies nothing. A taken to is never overwritten: ErrSecretExists.
+// It reports whether it inserted a row.
+func (s *Secrets) Copy(kind, from, to string) (bool, error) {
 	scope, err := scopeOf(kind)
 	if err != nil {
-		return err
+		return false, err
 	}
-	_, err = s.DB.Exec(`INSERT INTO secret_values (scope, owner, name, value, updated_ms)
+	res, err := s.DB.Exec(`INSERT INTO secret_values (scope, owner, name, value, updated_ms)
 		SELECT scope, owner, ?, value, ? FROM secret_values WHERE scope = ? AND owner = ? AND name = ?
-		ON CONFLICT (scope, owner, name) DO UPDATE SET value = excluded.value, updated_ms = excluded.updated_ms`,
+		ON CONFLICT (scope, owner, name) DO NOTHING`,
 		to, time.Now().UnixMilli(), string(scope), SecretOwner, from)
-	return err
+	if err != nil {
+		return false, err
+	}
+	if n, _ := res.RowsAffected(); n == 1 {
+		return true, nil
+	}
+	var one int
+	if s.DB.QueryRow(`SELECT 1 FROM secret_values WHERE scope = ? AND owner = ? AND name = ?`,
+		string(scope), SecretOwner, to).Scan(&one) == nil {
+		return false, fmt.Errorf("%w: %s", ErrSecretExists, to)
+	}
+	return false, nil
 }
 
 // Names lists the saved names of kind, never the values.

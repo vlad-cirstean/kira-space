@@ -505,6 +505,21 @@ func (l *Loader) stemTaken(stem string) bool {
 	return l.o.DB.QueryRow(`SELECT 1 FROM connections WHERE stem = ?`, stem).Scan(&one) == nil
 }
 
+// stemClaimed adds the stem-named secrets to stemTaken: a secret name outlives a file rename, so a free
+// file name alone does not make its secret names free. Only stem picking asks; create must not, since
+// its caller has already sealed the stem's secrets.
+func (l *Loader) stemClaimed(stem string) bool {
+	if l.stemTaken(stem) {
+		return true
+	}
+	for _, k := range Kinds {
+		if l.o.Secrets.Taken(stem + "." + k) {
+			return true
+		}
+	}
+	return false
+}
+
 // FreeStem returns base, or base-2, base-3 ... the first no file or row uses.
 func (l *Loader) FreeStem(base string) string {
 	l.mu.Lock()
@@ -513,7 +528,7 @@ func (l *Loader) FreeStem(base string) string {
 }
 
 func (l *Loader) freeStemLocked(base string) string {
-	if !l.stemTaken(base) {
+	if !l.stemClaimed(base) {
 		return base
 	}
 	for n := 2; ; n++ {
@@ -522,7 +537,7 @@ func (l *Loader) freeStemLocked(base string) string {
 		if len(head)+len(suffix) > 60 {
 			head = trimDash(head[:60-len(suffix)])
 		}
-		if cand := head + suffix; !l.stemTaken(cand) {
+		if cand := head + suffix; !l.stemClaimed(cand) {
 			return cand
 		}
 	}
@@ -576,9 +591,20 @@ func (l *Loader) Duplicate(id, name string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%w: %s", ErrNotFound, FileName(rec.Stem))
 	}
-	l.mu.Lock()
-	stem := l.freeStemLocked(rec.Stem + "-copy")
-	l.mu.Unlock()
+	for attempt := 0; ; attempt++ {
+		l.mu.Lock()
+		stem := l.freeStemLocked(rec.Stem + "-copy")
+		l.mu.Unlock()
+		newID, err := l.duplicateAt(stem, src, rec, name)
+		if (errors.Is(err, ErrSecretExists) || errors.Is(err, ErrExists)) && attempt < 3 {
+			continue
+		}
+		return newID, err
+	}
+}
+
+// duplicateAt copies the secrets under stem, then writes the file. It deletes only the copies it inserted.
+func (l *Loader) duplicateAt(stem string, src []byte, rec Record, name string) (string, error) {
 	sets := []configfs.NodeSet{{Path: []string{"name"}, Value: name}}
 	var copied []movedSecret
 	for _, f := range []struct{ kind, field, ref string }{
@@ -590,11 +616,14 @@ func (l *Loader) Duplicate(id, name string) (string, error) {
 			continue
 		}
 		to := stem + "." + f.kind
-		if err := l.o.Secrets.Copy(f.kind, from, to); err != nil {
+		inserted, err := l.o.Secrets.Copy(f.kind, from, to)
+		if err != nil {
 			l.dropCopies(copied)
 			return "", err
 		}
-		copied = append(copied, movedSecret{f.kind, to})
+		if inserted {
+			copied = append(copied, movedSecret{f.kind, to})
+		}
 		sets = append(sets, configfs.NodeSet{Path: []string{f.field}, Value: RefOf(to)})
 	}
 	text, err := configfs.EditYAML(src, sets)
@@ -678,6 +707,11 @@ func (l *Loader) editLocked(file string, fn func(src []byte) ([]byte, error)) er
 }
 
 // ---- secrets ----
+
+// PutNewSecret seals value as name only when the name is free, else ErrSecretExists.
+func (l *Loader) PutNewSecret(kind, name, value string) error {
+	return l.o.Secrets.PutNew(kind, name, value)
+}
 
 // PutSecret seals value as the secret name of kind.
 func (l *Loader) PutSecret(kind, name, value string) error { return l.o.Secrets.Put(kind, name, value) }
