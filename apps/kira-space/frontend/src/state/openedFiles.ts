@@ -6,7 +6,7 @@ import { openLocalFileTab, openRepoFileTab } from './repoTabs';
 import { GENERAL_WORKSPACE, useWorkspaceStore } from './workspace';
 
 // Opens one target. A `line` places the cursor; `col` refines it.
-export function openTarget(target: OpenedFileTarget): void {
+function openTarget(target: OpenedFileTarget): void {
   const reveal = target.line ? { line: target.line, column: target.col } : undefined;
   if (target.repoId) {
     useWorkspaceStore().openRepoWorkspace(target.repoId);
