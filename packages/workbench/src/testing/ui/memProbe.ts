@@ -74,17 +74,32 @@ export function worldEnabled(name: string): boolean {
   return !only || only.split(',').includes(name);
 }
 
-/** P311 precedent: another suite on this host invalidates a run. Waits for load1 <= 1.0. */
+function cpuTimes(): { busy: number; total: number } {
+  const f =
+    readFileSync('/proc/stat', 'utf8').split('\n')[0]?.split(/\s+/).slice(1).map(Number) ?? [];
+  const total = f.reduce((a, b) => a + b, 0);
+  const idle = (f[3] ?? 0) + (f[4] ?? 0);
+  return { busy: total - idle, total };
+}
+
+/**
+ * P311 precedent: another suite on this host invalidates a run. load1 decays for minutes after
+ * this probe's own previous test, so gate on instantaneous CPU busy (<= 25 % over 3 s) and log
+ * load1. Gives up after `maxMs`.
+ */
 export async function waitForQuietHost(maxMs = 120_000): Promise<number> {
   const t0 = Date.now();
-  let load = Number.POSITIVE_INFINITY;
+  let busy = 1;
   while (Date.now() - t0 < maxMs) {
-    load = Number.parseFloat(readFileSync('/proc/loadavg', 'utf8').split(' ')[0] ?? '0');
-    if (load <= 1.0) return load;
-    await new Promise((r) => setTimeout(r, 5000));
+    const a = cpuTimes();
+    await new Promise((r) => setTimeout(r, 3000));
+    const b = cpuTimes();
+    busy = (b.busy - a.busy) / Math.max(1, b.total - a.total);
+    if (busy <= 0.25) break;
   }
-  console.log(`RAMLOAD gave up waiting; load1=${load}`);
-  return load;
+  const load1 = Number.parseFloat(readFileSync('/proc/loadavg', 'utf8').split(' ')[0] ?? '0');
+  console.log(`RAMLOAD busy=${busy.toFixed(2)} load1=${load1}`);
+  return load1;
 }
 
 function psRss(pids: readonly number[]): number {
@@ -181,9 +196,10 @@ const INTROSPECT_FN = () => {
     }
     out.queries = s;
   } else missing.push('VUE_QUERY_CLIENT');
-  const i18n = app.config.globalProperties.$i18n;
-  if (i18n?.messages) out.i18nLocales = Object.keys(i18n.messages);
-  else missing.push('$i18n');
+  const i18n = app.__VUE_I18N__?.global;
+  const msgs = i18n?.messages?.value ?? i18n?.messages;
+  if (msgs) out.i18nLocales = Object.keys(msgs);
+  else missing.push('__VUE_I18N__.global.messages');
   for (const k of ['__kiraRetention', '__kiraRetainedBytes', '__kiraGridRetainedBytes']) {
     if (typeof w[k] === 'function') {
       try {
@@ -335,7 +351,7 @@ export class MemSampler {
     });
     roots.push({
       name: 'i18n:messages',
-      expression: `document.querySelector('#app').__vue_app__.config.globalProperties.$i18n.messages`,
+      expression: `(()=>{const g=document.querySelector('#app').__vue_app__.__VUE_I18N__.global;return g.messages.value??g.messages})()`,
     });
     return roots;
   }
@@ -483,5 +499,39 @@ export async function runMemWorld(w: MemWorld): Promise<MemSampler> {
     leakPerCycleMb: cycles > 0 ? (mb(last) - mb(closed)) / cycles : null,
   };
   console.log(`RAMSUM ${w.app} ${w.world} ${s.engine} ${JSON.stringify(summary)}`);
+  return s;
+}
+
+export interface MemStep {
+  /** Checkpoint name, e.g. `mode:docker` or `logs10k`. */
+  name: string;
+  run: () => Promise<void>;
+  /** Also take a heap snapshot after this step in pass B; `'keep'` leaves the file for a diff. */
+  snapshot?: boolean | 'keep';
+  /** Called with the sampler after the sample, e.g. for a TanStack `gcTime` sweep. */
+  after?: (s: MemSampler) => Promise<void>;
+}
+
+export interface MemStepsWorld {
+  app: string;
+  world: string;
+  page: Page;
+  info: TestInfo;
+  steps: readonly MemStep[];
+}
+
+/** For worlds with no tab cycle (modes, log streams, scaled lists): `boot`, then a sample per step. */
+export async function runMemSteps(w: MemStepsWorld): Promise<MemSampler> {
+  await waitForQuietHost();
+  const s = await MemSampler.attach(w.app, w.world, w.page, w.info);
+  await w.page.waitForTimeout(2000);
+  await s.sample('boot');
+  for (const step of w.steps) {
+    await step.run();
+    await w.page.waitForTimeout(SETTLE_MS * 2);
+    await s.sample(step.name);
+    await step.after?.(s);
+    if (step.snapshot) await s.snapshot(step.name, step.snapshot === 'keep');
+  }
   return s;
 }

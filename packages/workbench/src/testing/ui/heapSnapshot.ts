@@ -59,15 +59,6 @@ export function parseSnapshot(file: string): Promise<Snapshot> {
   return parse(createReadStream(file, 'utf-8'));
 }
 
-/** Node index of the heap object with `id`, or -1. One scan over the node table. */
-function nodeIndexById(s: Snapshot, id: number): number {
-  const step = s.nodeFieldCount;
-  for (let i = 0; i < s.nodes.length; i += step) {
-    if (s.nodes.getValue(i + s.nodeIdOffset) === id) return i;
-  }
-  return -1;
-}
-
 export function namedRootSizes(s: Snapshot, roots: readonly NamedRoot[]): SnapshotReport['named'] {
   const wanted = new Map(roots.map((r) => [r.id, r.name]));
   const out: SnapshotReport['named'] = [];
