@@ -164,10 +164,11 @@ export function retainerPath(s: Snapshot, nodeIndex: number, maxHops = 14): stri
   return path;
 }
 
-/** Constructor growth between two kept snapshots, plus the retainer path of the top grower. */
+/** Constructor growth between two kept snapshots, plus the retainer path of the top grower (or the top `focus` match). */
 export async function diffSnapshotFiles(
   fileA: string,
   fileB: string,
+  focus?: RegExp,
 ): Promise<{ rows: DiffRow[]; topPath: string[] }> {
   const a = await parseSnapshot(fileA);
   const b = await parseSnapshot(fileB);
@@ -180,7 +181,7 @@ export async function diffSnapshotFiles(
   const rows = entries
     .slice(0, 20)
     .map(([, v]) => ({ name: v.name, countDelta: v.countDelta, sizeDeltaKb: kb(v.sizeDelta) }));
-  const top = entries.find(([, v]) => v.addedIndexes.length > 0);
+  const top = entries.find(([, v]) => v.addedIndexes.length > 0 && (!focus || focus.test(v.name)));
   const topPath = top ? retainerPath(b, top[1].addedIndexes[0]) : [];
   return { rows, topPath };
 }

@@ -282,10 +282,11 @@ test('ram: api', async ({ relaunch }, info) => {
     ],
   });
   await pinClock(page);
-  await tabWorld({
+  const s = await tabWorld({
     world: 'api',
     page,
     info,
+    snapshotAt: ['closed', 'closed2', 'closed3'],
     enter: async () => {
       await modeTab(page, 'api').click();
       await expect(page.locator('[data-testid="grpc-request-view"]')).toBeVisible();
@@ -299,6 +300,10 @@ test('ram: api', async ({ relaunch }, info) => {
       await expect(page.locator('[data-testid="http-request-view"]:visible').first()).toBeVisible();
     },
   });
+  if (SNAPSHOTS) {
+    const d = await diffSnapshotFiles(s.snapshotFile('closed2'), s.snapshotFile('closed3'));
+    console.log(`HEAPDIFF ${APP} api closed2-closed3 ${JSON.stringify(d)}`);
+  }
 });
 
 test('ram: terminal', async ({ relaunch }, info) => {

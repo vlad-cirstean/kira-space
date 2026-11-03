@@ -1,5 +1,7 @@
+import type { Page } from '@playwright/test';
 import { closeAllTabs } from '@workbench/testing/ui/heapProbe';
-import { type MemStep, runMemSteps } from '@workbench/testing/ui/memProbe';
+import { diffSnapshotFiles } from '@workbench/testing/ui/heapSnapshot';
+import { type MemStep, runMemSteps, SNAPSHOTS } from '@workbench/testing/ui/memProbe';
 import { expect, test } from '../ui/fixtures';
 import { adeBoard, adeV2Control, openTask } from '../ui/support/adeV2';
 import { installGitStreamMock } from '../ui/support/gitStreamMock';
@@ -276,11 +278,12 @@ test('ram: diff', async ({ relaunch }, info) => {
   const page = await openGraphWithFiles(relaunch);
   await page.clock.install();
   await page.locator('[data-testid="git-panel-tab-files"]').click();
-  await tabWorld({
+  const s = await tabWorld({
     world: 'diff',
     page,
     info,
     keep: 1,
+    snapshotAt: ['mode', 'closed', 'closed2', 'closed3'],
     open: async (i) => {
       await treeRow(page, DIFFS[i]).click({ button: 'right' });
       await page.locator('[data-testid="menu-item-open-changes"]').click();
@@ -288,6 +291,16 @@ test('ram: diff', async ({ relaunch }, info) => {
       await expect(page.locator('[data-testid="tab"]')).toHaveCount(i + 2);
     },
   });
+  if (SNAPSHOTS) {
+    const d = await diffSnapshotFiles(
+      s.snapshotFile('closed2'),
+      s.snapshotFile('closed3'),
+      /Detached/,
+    );
+    console.log(`HEAPDIFF ${APP} diff closed2-closed3 ${JSON.stringify(d)}`);
+    const m = await diffSnapshotFiles(s.snapshotFile('mode'), s.snapshotFile('closed'), /Detached/);
+    console.log(`HEAPDIFF ${APP} diff mode-closed ${JSON.stringify(m)}`);
+  }
 });
 
 test('ram: local-file', async ({ relaunch }, info) => {
@@ -343,18 +356,33 @@ test('ram: terminal', async ({ relaunch }, info) => {
   });
   await page.clock.install();
   await repoRow(page, PORT_REPO.id).click();
-  await tabWorld({
+  const s = await tabWorld({
     world: 'terminal',
     page,
     info,
     units: 5,
     keep: 1,
+    snapshotAt: ['closed', 'closed2', 'closed3'],
     open: async () => {
       const id = await openTerminalTab(page);
       await feedTerminal(page, IPC.terminal, id, 10_000);
     },
   });
+  if (SNAPSHOTS) {
+    const d = await diffSnapshotFiles(s.snapshotFile('closed2'), s.snapshotFile('closed3'));
+    console.log(`HEAPDIFF ${APP} terminal closed2-closed3 ${JSON.stringify(d)}`);
+  }
 });
+
+/** Mounted ADE roots and cards: tells a duplicate mount from a retained one. */
+async function logAdeDom(page: Page, label: string): Promise<void> {
+  const c = await page.evaluate(() => ({
+    views: document.querySelectorAll('[data-testid="ade-view"]').length,
+    cards: document.querySelectorAll('[data-testid="ade-card"]').length,
+    nodes: document.querySelectorAll('*').length,
+  }));
+  console.log(`ADEDOM ${label} ${JSON.stringify(c)}`);
+}
 
 for (const tasks of [20, 200]) {
   test(`ram: ade ${tasks} tasks`, async ({ relaunch }, info) => {
@@ -378,7 +406,7 @@ for (const tasks of [20, 200]) {
     });
     await page.clock.install();
     await expect(page.locator('[data-testid="ade-card"]').first()).toBeVisible({ timeout: 30_000 });
-    await runMemSteps({
+    const s = await runMemSteps({
       app: APP,
       world: `ade${tasks}`,
       page,
@@ -391,18 +419,41 @@ for (const tasks of [20, 200]) {
           run: async () => {
             await modeTab(page, 'git').click();
             await page.waitForTimeout(1500);
+            await logAdeDom(page, `ade${tasks} left`);
           },
-          snapshot: true,
+          snapshot: 'keep',
         },
         {
           name: 'back',
           run: async () => {
             await modeTab(page, 'ade').click();
             await page.waitForTimeout(1500);
+            await logAdeDom(page, `ade${tasks} back`);
           },
+          snapshot: 'keep',
         },
+        ...[2, 3].flatMap((n): MemStep[] => [
+          {
+            name: `left${n}`,
+            run: async () => {
+              await modeTab(page, 'git').click();
+              await page.waitForTimeout(1500);
+            },
+          },
+          {
+            name: `back${n}`,
+            run: async () => {
+              await modeTab(page, 'ade').click();
+              await page.waitForTimeout(1500);
+            },
+          },
+        ]),
       ],
     });
+    if (SNAPSHOTS) {
+      const d = await diffSnapshotFiles(s.snapshotFile('left'), s.snapshotFile('back'));
+      console.log(`HEAPDIFF ${APP} ade${tasks} left-back ${JSON.stringify(d)}`);
+    }
   });
 }
 

@@ -458,7 +458,7 @@ export async function runMemWorld(w: MemWorld): Promise<MemSampler> {
   }
   const mode = await s.sample('mode');
   const snapAt = new Set(w.snapshotAt ?? ['mode', 'openN', 'closed']);
-  if (snapAt.has('mode')) await s.snapshot('mode');
+  if (snapAt.has('mode')) await s.snapshot('mode', snapAt.has('closed2'));
 
   await w.open(0);
   await w.page.waitForTimeout(SETTLE_MS * 2);
@@ -480,7 +480,7 @@ export async function runMemWorld(w: MemWorld): Promise<MemSampler> {
   await w.page.waitForTimeout(SETTLE_MS * 2);
   const closed = await s.sample('closed');
   await w.atCheckpoint?.('closed', s);
-  if (snapAt.has('closed')) await s.snapshot('closed');
+  if (snapAt.has('closed')) await s.snapshot('closed', snapAt.has('closed2'));
 
   let last = closed;
   const cycles = w.extraCycles ?? 2;
@@ -492,6 +492,7 @@ export async function runMemWorld(w: MemWorld): Promise<MemSampler> {
     await w.closeAll();
     await w.page.waitForTimeout(SETTLE_MS * 2);
     last = await s.sample(`closed${c + 2}`);
+    if (snapAt.has(`closed${c + 2}`)) await s.snapshot(`closed${c + 2}`, true);
   }
 
   const mb = (p: MemPoint) => p.heapMb ?? p.rss.rendererMb;
