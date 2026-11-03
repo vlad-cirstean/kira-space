@@ -337,8 +337,10 @@ function script(id: string, name: string, kind: 'script' | 'smart', command: str
     workingDir: '',
     dirMode: 'kira',
     useAdeDir: true,
+    schedule: null,
+    savedSecrets: [],
     color: 'none',
-    collectionId: null,
+    collection: '',
     sortOrder: 0,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -350,7 +352,13 @@ export const PLAIN = script('plain-1', 'Lint', 'script', 'bun run lint');
 
 export const SCRIPTS: ControlSnapshot = {
   channel: IPC.customScriptsList,
-  response: { collections: [], scripts: [PLAIN, SMART] },
+  response: {
+    dir: '/home/test/runs',
+    collections: [],
+    scripts: [PLAIN, SMART],
+    problems: [],
+    secretStorage: { available: true, backend: 'keychain', insecureFallback: false, reason: null },
+  },
 };
 
 /** Selects the card of `id` and waits for its Task tab. */

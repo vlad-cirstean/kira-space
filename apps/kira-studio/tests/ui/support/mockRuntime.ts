@@ -176,12 +176,12 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
 
   customScriptsList: 'CustomScriptsService.List',
   customScriptsCreate: 'CustomScriptsService.Create',
-  customScriptsUpdate: 'CustomScriptsService.Update',
+  configFilesOpen: 'ConfigFilesService.Open',
+  configFilesReveal: 'ConfigFilesService.Reveal',
   customScriptsDelete: 'CustomScriptsService.Delete',
-  customScriptsCreateCollection: 'CustomScriptsService.CreateCollection',
-  customScriptsRenameCollection: 'CustomScriptsService.RenameCollection',
-  customScriptsDeleteCollection: 'CustomScriptsService.DeleteCollection',
-  customScriptsMove: 'CustomScriptsService.Move',
+  customScriptsFile: 'CustomScriptsService.File',
+  customScriptsSaveFile: 'CustomScriptsService.SaveFile',
+  customScriptsSetSecrets: 'CustomScriptsService.SetSecrets',
   customScriptsReorder: 'CustomScriptsService.Reorder',
   customScriptsReorderCollections: 'CustomScriptsService.ReorderCollections',
   scriptRunsList: 'ScriptRunsService.List',
@@ -225,7 +225,6 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   scriptRunsPreview: 'ScriptRunsService.Preview',
   scriptRunsStart: 'ScriptRunsService.Start',
   scriptRunsReadLog: 'ScriptRunsService.ReadLog',
-  scriptRunsMcpServers: 'ScriptRunsService.McpServers',
 
   linkOpenExternal: 'LinkService.OpenExternal',
   keepAwakeStatus: 'KeepAwakeService.Status',
@@ -456,7 +455,8 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   // P85: main.ts's bootstrap() joins hydrateCustomScripts() to the same unconditional-every-boot
   // Promise.all as updateStatus above, same reasoning — a spec that never configures a
   // script gets "no scripts yet", not a fixture miss.
-  [IPC.customScriptsList]: '{"collections":[],"scripts":[]}',
+  [IPC.customScriptsList]:
+    '{"dir":"/home/test/runs","collections":[],"scripts":[],"problems":[],"secretStorage":{"available":true,"backend":"keychain","insecureFallback":false,"reason":null}}',
   // main.ts's bootstrap() joins hydrateTerminalDefaults() to the same unconditional-every-boot
   // Promise.all, same reasoning — a spec that never cares about the Automations module's own
   // default cwd gets a plausible home directory, not a fixture miss. A spec that DOES care

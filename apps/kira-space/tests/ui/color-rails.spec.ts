@@ -24,7 +24,7 @@ const SCRIPT = {
   command: 'npm run dev',
   workingDir: '',
   color: 'cyan',
-  collectionId: null,
+  collection: '',
   sortOrder: 0,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',

@@ -173,12 +173,12 @@ export const IPC = {
   // P85 §9.2: the custom-scripts CRUD surface.
   customScriptsList: 'kira:customScripts:list',
   customScriptsCreate: 'kira:customScripts:create',
-  customScriptsUpdate: 'kira:customScripts:update',
+  configFilesOpen: 'kira:configfiles:open',
+  configFilesReveal: 'kira:configfiles:reveal',
   customScriptsDelete: 'kira:customScripts:delete',
-  customScriptsCreateCollection: 'kira:customScripts:createCollection',
-  customScriptsRenameCollection: 'kira:customScripts:renameCollection',
-  customScriptsDeleteCollection: 'kira:customScripts:deleteCollection',
-  customScriptsMove: 'kira:customScripts:move',
+  customScriptsFile: 'kira:customScripts:file',
+  customScriptsSaveFile: 'kira:customScripts:saveFile',
+  customScriptsSetSecrets: 'kira:customScripts:setSecrets',
   customScriptsReorder: 'kira:customScripts:reorder',
   customScriptsReorderCollections: 'kira:customScripts:reorderCollections',
 
@@ -297,7 +297,6 @@ export const IPC = {
   scriptRunsPreview: 'kira:scriptRuns:preview',
   scriptRunsStart: 'kira:scriptRuns:start',
   scriptRunsReadLog: 'kira:scriptRuns:readLog',
-  scriptRunsMcpServers: 'kira:scriptRuns:mcpServers',
   // The titlebar keep-awake toggle's own state, Emit'd (not EmitTo) —
   // customScriptsChanged's own shape restated. Real wire channel string verbatim
   // (internal/appevent's ChannelKeepAwake), no FQN_SUFFIX_BY_IPC_KEY entry (a push channel, never

@@ -8,10 +8,10 @@ type Env = ScenarioEnv<
   | 'agentInfo'
   | 'customScriptsCreate'
   | 'customScriptsList'
-  | 'customScriptsUpdate'
+  | 'customScriptsFile'
+  | 'customScriptsSaveFile'
   | 'scriptRunLog'
   | 'scriptRunsChanged'
-  | 'scriptRunsMcpServers'
   | 'scriptRunsPreview'
   | 'scriptRunsReadLog'
   | 'scriptRunsResumeCommand'
@@ -70,7 +70,7 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
     dirMode: 'kira',
     useAdeDir: false,
     color: 'none',
-    collectionId: null,
+    collection: '',
     sortOrder: 0,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -163,150 +163,46 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
     await expect(page.locator('[data-testid="automations-panel"]')).toBeVisible();
   }
 
-  test('New smart script: tools, Bash patterns, MCP and params in the editor', async ({
+  const FILE = {
+    file: 'smart-1.yaml',
+    id: 'smart-1',
+    path: '/kira/runs/smart-1.yaml',
+    text: 'name: Ask Claude\n',
+    hash: 'h1',
+    problem: null,
+    lastGood: false,
+    editable: true,
+  };
+
+  test('New smart script: written with the default model, then opened as a file', async ({
     relaunch,
   }) => {
     const { window: page, control } = await relaunch({
       control: [
         { channel: IPC.customScriptsList, response: { collections: [], scripts: [] } },
-        {
-          channel: IPC.scriptRunsMcpServers,
-          response: {
-            source: 'agent',
-            servers: [
-              { name: 'fake', transport: 'stdio', target: 'fake-mcp', status: 'connected' },
-            ],
-          },
-        },
         { channel: IPC.customScriptsCreate, response: SMART },
+        { channel: IPC.customScriptsFile, response: FILE },
       ],
     });
     await openPanel(page);
     await page.locator('[data-testid="automations-add"]').click();
     await page.locator('[data-testid="menu-item-new-smart-script"]').click();
-
-    const dialog = page.locator('[data-testid="script-dialog"]');
-    await expect(dialog).toContainText('New smart script');
-    await expect(dialog.locator('[data-testid="script-ai-badge"]')).toBeVisible();
-    await expect(dialog.locator('[data-testid="smart-tools-default"]')).toHaveText('Default tools');
-    await expect(page.getByText(/read-only/i)).toHaveCount(0);
-    await expect(dialog.locator('[data-testid="smart-model"]')).toHaveValue('sonnet');
-    await expect(dialog.locator('[data-testid="smart-allowed-line"]')).toHaveText(
-      '--allowedTools Read Grep Glob',
-    );
-
-    await expect(dialog.locator('[data-testid="smart-bash-patterns"]')).toHaveCount(0);
-    await dialog.locator('[data-testid="smart-tool-Bash"]').click();
-    await expect(dialog.locator('[data-testid="smart-bash-patterns"]')).toBeVisible();
-    await dialog.locator('[data-testid="smart-bash-input"]').fill('git status:*');
-    await dialog.locator('[data-testid="smart-bash-add"]').click();
-    await expect(dialog.locator('[data-testid="smart-allowed-line"]')).toHaveText(
-      '--allowedTools Read Grep Glob Bash(git status:*)',
-    );
-    await dialog.locator('[data-testid="smart-tools-default"]').click();
-    await expect(dialog.locator('[data-testid="smart-bash-patterns"]')).toHaveCount(0);
-
-    const sw = dialog.locator('[data-testid="smart-mcp-switch-fake"]');
-    await expect(sw).toHaveAttribute('aria-checked', 'false');
-    await expect(dialog.locator('[data-testid="smart-mcp-tools"]')).toHaveCount(0);
-    await expect(dialog.locator('[data-testid="smart-mcp-status"]')).toHaveText('Online');
-    await sw.click();
-    const all = dialog.locator('[data-testid="smart-mcp-all"]');
-    await expect(all).toHaveAttribute('aria-checked', 'true');
-    await expect(dialog.locator('[data-testid="smart-allowed-line"]')).toContainText('mcp__fake');
-    await all.click();
-    await dialog.locator('[data-testid="smart-mcp-add-input"]').fill('echo');
-    await dialog.locator('[data-testid="smart-mcp-add"]').click();
-    await expect(dialog.locator('[data-testid="smart-allowed-line"]')).toContainText(
-      'mcp__fake__echo',
-    );
-
-    await dialog.locator('[data-testid="script-dialog-tab-params"]').click();
-    await dialog.locator('[data-testid="param-add"]').click();
-    await dialog.locator('[data-testid="param-name-0"]').fill('topic');
-    await dialog.locator('[data-testid="param-type-0-select"]').click();
-    await dialog.locator('[data-testid="param-option-add-0"]').click();
-    await dialog.locator('[data-testid="param-option-0-0"]').fill('dev');
-
-    await dialog.locator('[data-testid="script-dialog-tab-script"]').click();
-    await dialog.locator('[data-testid="script-dialog-name"]').fill('Ask Claude');
-    await dialog.locator('[data-testid="script-dialog-command"]').fill('Look at {topic}');
-    await expect(
-      dialog.locator('[data-testid="script-dialog-uses"] [data-var="topic"]'),
-    ).toBeVisible();
-    await dialog.locator('[data-testid="script-dialog-save"]').click();
-
+    await expect(page.locator('[data-testid="run-file-dialog"]')).toBeVisible();
     await expect
       .poll(() => control.log().find((e) => e.channel === IPC.customScriptsCreate)?.args)
       .toMatchObject({
         fields: {
-          name: 'Ask Claude',
+          name: 'New smart script',
           kind: 'smart',
-          command: 'Look at {topic}',
-          params: [{ name: 'topic', type: 'select', options: ['dev'] }],
-          smart: {
-            model: 'sonnet',
-            maxBudgetUsd: 1,
-            noCostCap: false,
-            timeout: '15m',
-            tools: ['Read', 'Grep', 'Glob'],
-            mcp: [{ server: 'fake', allTools: false, tools: ['echo'] }],
-          },
+          smart: { model: 'sonnet', maxBudgetUsd: 1, noCostCap: false, timeout: '15m' },
         },
       });
-  });
-
-  test('New smart script: the no cost cap switch disables the budget and saves noCostCap', async ({
-    relaunch,
-  }) => {
-    const { window: page, control } = await relaunch({
-      control: [
-        { channel: IPC.customScriptsList, response: { collections: [], scripts: [] } },
-        { channel: IPC.customScriptsCreate, response: SMART },
-      ],
-    });
-    await openPanel(page);
-    await page.locator('[data-testid="automations-add"]').click();
-    await page.locator('[data-testid="menu-item-new-smart-script"]').click();
-    const dialog = page.locator('[data-testid="script-dialog"]');
-    const sw = dialog.locator('[data-testid="smart-no-cost-cap"]');
-    await expect(sw).toHaveAttribute('aria-checked', 'false');
-    await expect(dialog.locator('[data-testid="smart-budget"]')).toBeEnabled();
-    await sw.click();
-    await expect(sw).toHaveAttribute('aria-checked', 'true');
-    await expect(dialog.locator('[data-testid="smart-budget"]')).toBeDisabled();
-    await dialog.locator('[data-testid="script-dialog-name"]').fill('Ask Claude');
-    await dialog.locator('[data-testid="script-dialog-command"]').fill('Look around');
-    await dialog.locator('[data-testid="script-dialog-save"]').click();
     await expect
-      .poll(() => control.log().find((e) => e.channel === IPC.customScriptsCreate)?.args)
-      .toMatchObject({ fields: { smart: { noCostCap: true } } });
+      .poll(() => control.log().find((e) => e.channel === IPC.customScriptsFile)?.args)
+      .toMatchObject({ file: 'smart-1.yaml' });
   });
 
-  test('contract: hermetic launches list the app agent settings servers, no status', async ({
-    relaunch,
-  }) => {
-    const { window: page } = await relaunch({
-      control: [
-        { channel: IPC.customScriptsList, response: { collections: [], scripts: [] } },
-        {
-          channel: IPC.scriptRunsMcpServers,
-          response: contract('automations-mcp-app', 'ScriptRunsService.McpServers'),
-        },
-      ],
-    });
-    await openPanel(page);
-    await page.locator('[data-testid="automations-add"]').click();
-    await page.locator('[data-testid="menu-item-new-smart-script"]').click();
-    const dialog = page.locator('[data-testid="script-dialog"]');
-    await expect(dialog.locator('[data-testid="smart-mcp-switch-app-srv"]')).toBeVisible();
-    await expect(dialog.locator('[data-testid="smart-mcp-status"]')).toHaveCount(0);
-    await expect(dialog.locator('[data-testid="smart-mcp"]')).toContainText(
-      'Servers from Kira’s own agent settings',
-    );
-  });
-
-  test('the smart model select lists the active provider models', async ({ relaunch }) => {
+  test('a new smart script takes the active provider default model', async ({ relaunch }) => {
     const provider = {
       id: 'fake',
       label: 'Fake agent',
@@ -321,21 +217,20 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
       hooks: false,
       usage: false,
     };
-    const { window: page } = await relaunch({
+    const { window: page, control } = await relaunch({
       control: [
         { channel: IPC.customScriptsList, response: { collections: [], scripts: [] } },
         { channel: IPC.agentInfo, response: provider },
+        { channel: IPC.customScriptsCreate, response: SMART },
+        { channel: IPC.customScriptsFile, response: FILE },
       ],
     });
     await openPanel(page);
     await page.locator('[data-testid="automations-add"]').click();
     await page.locator('[data-testid="menu-item-new-smart-script"]').click();
-    const model = page.locator('[data-testid="script-dialog"] [data-testid="smart-model"]');
-    await expect(model).toHaveValue('fast');
-    const values = await model
-      .locator('option')
-      .evaluateAll((els) => els.map((e) => (e as HTMLOptionElement).value));
-    expect(values).toEqual(['fast', 'deep']);
+    await expect
+      .poll(() => control.log().find((e) => e.channel === IPC.customScriptsCreate)?.args)
+      .toMatchObject({ fields: { smart: { model: 'fast' } } });
   });
 
   test('a smart script row has the AI badge and opens the run dialog', async ({ relaunch }) => {
@@ -392,7 +287,7 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
     await expect
       .poll(() => control.log().find((e) => e.channel === IPC.scriptRunsStart)?.args)
       .toMatchObject({ scriptId: SMART.id, prompt: 'Only for today: {topic}', hash: 'h1' });
-    expect(control.log().some((e) => e.channel === IPC.customScriptsUpdate)).toBe(false);
+    expect(control.log().some((e) => e.channel === IPC.customScriptsSaveFile)).toBe(false);
     await expect(page.locator('[data-testid="script-run-view"]')).toBeVisible();
   });
 

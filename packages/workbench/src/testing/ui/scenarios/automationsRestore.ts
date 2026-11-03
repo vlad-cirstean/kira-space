@@ -55,7 +55,7 @@ export function registerRestoreScenarios(env: Env, options: Options): void {
     dirMode: 'kira',
     useAdeDir: false,
     color: item.color,
-    collectionId: null,
+    collection: '',
     sortOrder: 0,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',

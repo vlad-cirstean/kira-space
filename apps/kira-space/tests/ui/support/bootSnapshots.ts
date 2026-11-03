@@ -23,7 +23,21 @@ export const EMPTY_BOOT_SNAPSHOTS: readonly ControlSnapshot[] = [
   { channel: IPC.settingsGetAll, response: defaultSettings },
   { channel: IPC.codeWorkspaceListRepos, response: [] },
   { channel: IPC.tabsList, response: [] },
-  { channel: IPC.customScriptsList, response: { collections: [], scripts: [] } },
+  {
+    channel: IPC.customScriptsList,
+    response: {
+      dir: '/home/test/runs',
+      collections: [],
+      scripts: [],
+      problems: [],
+      secretStorage: {
+        available: true,
+        backend: 'keychain',
+        insecureFallback: false,
+        reason: null,
+      },
+    },
+  },
   { channel: IPC.scriptRunsList, response: [] },
   { channel: IPC.promptsList, response: [] },
 ];

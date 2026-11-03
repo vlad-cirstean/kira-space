@@ -16,13 +16,5 @@
     "updatedAt": "<time>",
     "useAdeDir": false,
     "workingDir": "<tmp>/gone"
-  },
-  "ScriptRunsService.ResolveDir#legacy": {
-    "base": "<home>",
-    "blocker": "",
-    "branch": "",
-    "mode": "home",
-    "path": "<home>",
-    "pending": false
   }
 }

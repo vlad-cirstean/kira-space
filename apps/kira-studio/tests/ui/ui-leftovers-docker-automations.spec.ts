@@ -148,35 +148,56 @@ test('docker rows: Enter opens the Logs tab, right-click selects the container',
 });
 
 const SCRIPT_CONTROL: ControlSnapshot[] = [
-  { channel: IPC.customScriptsList, response: { collections: [], scripts: [] } },
   {
-    channel: IPC.scriptRunsResolveDir,
+    channel: IPC.customScriptsList,
     response: {
-      path: '/kira/automations/x',
-      mode: 'kira',
-      base: '/kira',
-      blocker: '',
-      branch: '',
-      pending: false,
+      collections: [],
+      scripts: [
+        customScriptSchema.parse({
+          id: 'draft',
+          name: 'draft',
+          kind: 'script',
+          command: 'true',
+          params: [],
+          smart: null,
+          schedule: null,
+          dirMode: 'kira',
+          workingDir: '',
+          color: 'blue',
+          collection: '',
+          useAdeDir: false,
+          sortOrder: 0,
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
+          savedSecrets: [],
+        }),
+      ],
+    },
+  },
+  {
+    channel: IPC.customScriptsFile,
+    response: {
+      file: 'draft.yaml',
+      id: 'draft',
+      path: '/kira/runs/draft.yaml',
+      text: 'name: draft\n',
+      hash: 'h1',
+      problem: null,
+      lastGood: false,
+      editable: true,
     },
   },
   { channel: IPC.scriptRunsNextFires, response: [1_900_000_000_000] },
-  { channel: IPC.scriptRunsMcpServers, response: { source: 'agent', servers: [] } },
 ];
 
-async function openNewScript(page: Page): Promise<void> {
-  await modeTab(page, 'automations').click();
-  await page.locator('[data-testid="automations-add"]').click();
-  await page.locator('[data-testid="menu-item-new-script"]').click();
-  await expect(page.locator('[data-testid="script-dialog"]')).toBeVisible();
-}
-
-test('script dialog: Escape on unsaved edits asks to discard first', async ({ relaunch }) => {
+test('run file dialog: Escape on unsaved edits asks to discard first', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: SCRIPT_CONTROL });
-  await openNewScript(page);
-  const dialog = page.locator('[data-testid="script-dialog"]');
+  await modeTab(page, 'automations').click();
+  await page.locator('[data-testid="script-draft"]').dblclick();
+  const dialog = page.locator('[data-testid="run-file-dialog"]');
+  await expect(dialog).toBeVisible();
 
-  await dialog.locator('[data-testid="script-dialog-name"]').fill('draft');
+  await dialog.locator('[data-testid="run-file-text"]').fill('name: changed\n');
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-testid="confirm-dialog"]')).toBeVisible();
   await page.locator('[data-testid="confirm-dialog-cancel"]').click();
@@ -185,19 +206,6 @@ test('script dialog: Escape on unsaved edits asks to discard first', async ({ re
   await page.keyboard.press('Escape');
   await page.locator('[data-testid="confirm-dialog-confirm"]').click();
   await expect(dialog).toHaveCount(0);
-});
-
-test('script dialog: Save with an empty name shows the error and focuses Name', async ({
-  relaunch,
-}) => {
-  const { window: page, control } = await relaunch({ control: SCRIPT_CONTROL });
-  await openNewScript(page);
-  const dialog = page.locator('[data-testid="script-dialog"]');
-
-  await dialog.locator('[data-testid="script-dialog-save"]').click();
-  await expect(dialog.locator('[data-testid="script-dialog-name-error"]')).toBeVisible();
-  await expect(dialog.locator('[data-testid="script-dialog-name"]')).toBeFocused();
-  expect(control.log().filter((e) => e.channel === IPC.customScriptsCreate)).toHaveLength(0);
 });
 
 test('contract: the run log keeps ANSI colour', async ({ relaunch }) => {

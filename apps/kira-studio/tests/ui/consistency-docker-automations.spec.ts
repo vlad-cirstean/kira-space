@@ -99,7 +99,7 @@ const SCRIPT = {
   dirMode: 'fixed',
   useAdeDir: false,
   color: 'green',
-  collectionId: null,
+  collection: '',
   sortOrder: 0,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
@@ -118,7 +118,6 @@ const AUTOMATIONS_COMMON: ControlSnapshot[] = [
     },
   },
   { channel: IPC.scriptRunsNextFires, response: [] },
-  { channel: IPC.scriptRunsMcpServers, response: { source: 'agent', servers: [] } },
 ];
 
 test('automations front door is a module start with one new-script action', async ({

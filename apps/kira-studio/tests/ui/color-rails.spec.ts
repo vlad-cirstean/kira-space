@@ -47,7 +47,7 @@ function script(id: string, color: string, sortOrder: number) {
     command: 'npm run dev',
     workingDir: '/tmp/demo-repo',
     color,
-    collectionId: null,
+    collection: '',
     sortOrder,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',

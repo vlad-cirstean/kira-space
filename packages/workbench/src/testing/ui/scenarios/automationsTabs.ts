@@ -4,6 +4,7 @@ import { type ControlSnapshot, emitWailsEvent } from '../mockRuntime';
 import type { ScenarioEnv } from './env';
 
 type Env = ScenarioEnv<
+  | 'customScriptsFile'
   | 'customScriptsList'
   | 'scriptRunsChanged'
   | 'scriptRunsList'
@@ -31,7 +32,7 @@ export function registerTabScenarios(env: Env, options: Options): void {
     workingDir: '',
     dirMode: 'kira',
     useAdeDir: false,
-    collectionId: null,
+    collection: '',
     sortOrder: 0,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -117,6 +118,19 @@ export function registerTabScenarios(env: Env, options: Options): void {
       response: { runId: 'run-2', terminal: null },
     },
     { channel: IPC.customScriptsList, response: { collections: [], scripts: [PLAIN, SMART] } },
+    {
+      channel: IPC.customScriptsFile,
+      response: {
+        file: `${PLAIN.id}.yaml`,
+        id: PLAIN.id,
+        path: `/kira/runs/${PLAIN.id}.yaml`,
+        text: 'name: Lint\n',
+        hash: 'h1',
+        problem: null,
+        lastGood: false,
+        editable: true,
+      },
+    },
   ];
 
   const row = (page: Page, id: string) => page.locator(`[data-testid="script-${id}"]`);
@@ -189,7 +203,7 @@ export function registerTabScenarios(env: Env, options: Options): void {
     await emitWailsEvent(page, IPC.terminal, { terminalId, data: '', exited: true, exitCode: 0 });
   }
 
-  test('a row click selects it; double-click and Enter edit; nothing starts', async ({
+  test('a row click selects it; double-click and Enter open the file; nothing starts', async ({
     relaunch,
   }) => {
     const { window: page, control } = await relaunch({ control: BASE });
@@ -197,17 +211,17 @@ export function registerTabScenarios(env: Env, options: Options): void {
     await row(page, PLAIN.id).click();
     await expect(row(page, PLAIN.id)).toHaveAttribute('aria-selected', 'true');
     await expect(tabs(page)).toHaveCount(0);
-    await expect(page.locator('[data-testid="script-dialog"]')).toHaveCount(0);
+    await expect(page.locator('[data-testid="run-file-dialog"]')).toHaveCount(0);
 
     await row(page, PLAIN.id).dblclick();
-    await expect(page.locator('[data-testid="script-dialog"]')).toBeVisible();
-    await page.locator('[data-testid="script-dialog-cancel"]').click();
-    await expect(page.locator('[data-testid="script-dialog"]')).toHaveCount(0);
+    await expect(page.locator('[data-testid="run-file-dialog"]')).toBeVisible();
+    await page.locator('[data-testid="run-file-cancel"]').click();
+    await expect(page.locator('[data-testid="run-file-dialog"]')).toHaveCount(0);
 
     await row(page, PLAIN.id).focus();
     await page.keyboard.press('Enter');
-    await expect(page.locator('[data-testid="script-dialog"]')).toBeVisible();
-    await page.locator('[data-testid="script-dialog-cancel"]').click();
+    await expect(page.locator('[data-testid="run-file-dialog"]')).toBeVisible();
+    await page.locator('[data-testid="run-file-cancel"]').click();
 
     expect(opens(control)).toHaveLength(0);
     expect(starts(control)).toBe(0);
