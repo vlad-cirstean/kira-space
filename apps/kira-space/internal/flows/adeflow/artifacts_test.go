@@ -28,7 +28,7 @@ const (
 	artPreview = "https://preview.example/1"
 )
 
-var artMask = flowharness.Mask("id", "createdAt", "ref", "taskId")
+var artMask = flowharness.Mask("id", "createdAt", "ref", "taskId", "sessionId")
 
 func reportCall(items ...map[string]any) fakeagent.MCPCall {
 	arr := make([]any, len(items))

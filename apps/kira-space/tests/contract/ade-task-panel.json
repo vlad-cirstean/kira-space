@@ -1,0 +1,146 @@
+{
+  "AdeTaskService.Artifacts": {
+    "artifacts": [
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "changeRequest",
+        "ref": "<masked>",
+        "repo": "api",
+        "sessionId": "",
+        "source": "host",
+        "status": "open",
+        "title": "Fix login",
+        "url": "https://forge.test/acme/api/-/merge_requests/7"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "changeRequest",
+        "ref": "<masked>",
+        "repo": "",
+        "sessionId": "",
+        "source": "user",
+        "status": "",
+        "title": "api!8",
+        "url": "https://forge.test/acme/api/-/merge_requests/8"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "branch",
+        "ref": "<masked>",
+        "repo": "api",
+        "sessionId": "",
+        "source": "git",
+        "status": "pushed",
+        "title": "feat/api-work",
+        "url": "https://forge.test/acme/api/-/tree/feat/api-work"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "link",
+        "ref": "<masked>",
+        "repo": "",
+        "sessionId": "<id:1>",
+        "source": "agent",
+        "status": "",
+        "title": "Runbook",
+        "url": "https://wiki.example/runbook"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "link",
+        "ref": "<masked>",
+        "repo": "",
+        "sessionId": "",
+        "source": "user",
+        "status": "",
+        "title": "Other docs",
+        "url": "https://wiki.example/other"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "link",
+        "ref": "<masked>",
+        "repo": "",
+        "sessionId": "",
+        "source": "user",
+        "status": "",
+        "title": "docs.example/guide/start",
+        "url": "https://docs.example/guide/start/"
+      }
+    ],
+    "gaps": []
+  },
+  "AdeTaskService.ChangeRequests": {
+    "branchUrls": {
+      "<id:3>": "https://forge.test/acme/api/-/tree/feat/api-work"
+    },
+    "branches": {
+      "<id:3>": {
+        "baseRef": "main",
+        "checksState": "FAILURE",
+        "number": 7,
+        "state": "open",
+        "title": "Fix login",
+        "url": "https://forge.test/acme/api/-/merge_requests/7"
+      }
+    },
+    "repos": [
+      {
+        "codeRepoId": "<id:4>",
+        "host": {
+          "changeRequest": "Merge request",
+          "changeRequestNoun": "merge request",
+          "changeRequestShort": "MR",
+          "cli": "Forge CLI",
+          "id": "<masked>",
+          "label": "Forge"
+        },
+        "kind": "ok"
+      }
+    ]
+  },
+  "AdeTaskService.Handovers": {
+    "handovers": [
+      {
+        "body": "Form wired; tests missing.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "work",
+        "fromStepName": "Work",
+        "id": "<masked>",
+        "sessionId": "<id:1>",
+        "source": "agent",
+        "state": "draft",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      },
+      {
+        "body": "summary-done",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "one",
+        "fromStepName": "one",
+        "id": "<masked>",
+        "sessionId": "<id:2>",
+        "source": "run",
+        "state": "handed",
+        "taskId": "<masked>",
+        "toStepId": "work",
+        "toStepName": "Work",
+        "updatedAt": 0
+      }
+    ]
+  }
+}

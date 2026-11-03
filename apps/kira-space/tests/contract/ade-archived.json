@@ -8,6 +8,8 @@
         "base": "",
         "branchUrl": "https://forge.test/acme/api/-/tree/feat/api-keep",
         "changeRequest": {
+          "baseRef": "main",
+          "checksState": "",
           "number": 7,
           "state": "open",
           "title": "Fix login",
@@ -194,6 +196,8 @@
         "base": "",
         "branchUrl": "https://forge.test/acme/api/-/tree/feat/api-keep",
         "changeRequest": {
+          "baseRef": "",
+          "checksState": "",
           "number": 7,
           "state": "open",
           "title": "Fix login",

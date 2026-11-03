@@ -18,6 +18,7 @@
       "fromStepId": "two",
       "fromStepName": "two",
       "id": "<id:5>",
+      "sessionId": "<id:6>",
       "source": "run",
       "state": "handed",
       "taskId": "<id:1>",
@@ -73,7 +74,7 @@
         "branchId": "<id:4>",
         "exitCode": 0,
         "finishedAt": 0,
-        "id": "<id:6>",
+        "id": "<id:7>",
         "loops": 0,
         "note": "",
         "outcome": {
@@ -96,7 +97,7 @@
           "enforced": false,
           "last": ""
         },
-        "sessionId": "<id:7>",
+        "sessionId": "<id:6>",
         "startedAt": 0,
         "state": "done",
         "stepId": "two",
