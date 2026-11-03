@@ -81,7 +81,7 @@ for non-URL input. Every other URL goes to the host slot / `link` artifact path.
 
 ## handover.go: merged run handover drops the draft author
 
-**L1 — Low.** `apps/kira-space/internal/ade/handover.go:160-165`.
+**L1 — Low.** `apps/kira-space/internal/ade/handover.go:143-149`.
 
 When a session's draft exists and run summaries are appended, the handed row gets
 `run.SessionID`; `applyHandoff` deletes the draft row. The interactive session that wrote the
