@@ -7536,3 +7536,37 @@ Full suite run once (base `dd416364`): unit, Go, Studio UI 673, Space UI 1034 pa
 ### v0.2.29 P494 (Done)
 Chapter folded by hand into this file; `docs/v0.2.29/` removed. `docs/v0.2.30/` spec stays.
 <!-- /chapter v0.2.29 -->
+<!-- chapter v0.2.30 -->
+## v0.2.30
+Source: docs/v0.2.30/ at a54e90241. 10 phases.
+
+### v0.2.30 P495 (Done)
+New `resume` stage action: default action resumes the newest stopped TUI session with a conversation via take over; running session unchanged. Start new lives only in `taskMenuModel` (right-click and 3-dots share `useTaskMenu`). Archive and Backlog left the panel header; menu keeps them. Phone behaviour unchanged. New `ade-v2-stage-resume` spec; `ade-v2-task-flow`, `ade-v2-archive`, `ade-v2-later` updated.
+
+### v0.2.30 P496 (Done)
+Handover row removed from the Task tab; Notes keeps handovers. Key `space.ade.taskTab.handover` deleted. Frontend only. `ade-v2-handover` asserts `ade-task-handover-row` count 0 and Notes still lists handovers.
+
+### v0.2.30 P497 (Done)
+Shared `MenuIconButton` in `packages/workbench` opens the shared context menu under the button. Runs `automations-add` and the task launch menu both use it; task items built via `useTaskLaunch.items`. Testids now `menu-item-ade-task-launch-*`, container `context-menu`. Frontend only. `ade-v2-task-launch`, `agent-provider` and Runs specs updated.
+
+### v0.2.30 P498 (Done)
+One Agent config top tab with Context and Settings sub-tabs; Settings keeps its secrets column. One leave-guard store and one editor composable replace the duplicated pair. Frontend only. New `ade-agents-tab` spec (leave guard across sub-tabs); `ade-agent-context`, `ade-agent-settings`, `ade-agent-port` updated.
+
+### v0.2.30 P499 (Done)
+New `review_removed` table (migration `0006`) written before a mark overwrites the snapshot; wire `review.removed.list` and `review.removed.dismiss`. ADE review window shows a removed-since-review section with path, review time and content; dismissed entries stay gone. Covers uncommitted (working) marks too. Reviewflow flow test and new `ade-v2-review-removed` spec. Open item: `MaxPatchBytes` limit.
+
+### v0.2.30 P500 (Done)
+`AdeActionCell` column and `ade-task-cells` gone. Task tag and step action are icons in the card head line; each branch row ends with tag glyph, at most 2 actions, or 1 action plus More. `BranchTag.kind` and `TaskCell.tag.kind` added; glyph tables in `plan/glyphs.ts`. Urgent kinds render a solid disc; no glyph is hover-only. Deviations: `preparing` uses static `settings-gear`; only `Spinner` spins; More uses `ICON.moreActions`. New `ade-v2-card-icons` spec; 10 specs updated; 3 `ade-plan-branches` baselines re-recorded.
+
+### v0.2.30 P501 (Done)
+Task panel tabs Main, Details, Sessions. Main shows workflow and branches; a branch with a change request shows a PR line with base ref and checks glyph. Details merges notes and artifacts: Main and Related link groups, paste with provider detection, inline edit, handovers, collapsed timeline. Migration 0066 adds `session_id` to handovers and artifacts; `AdeOriginSession` links an item to its session. New `UpdateArtifact`. Flow `TestTaskPanelOrigins`, new `ade-v2-task-panel` spec.
+
+### v0.2.30 P502 (Done)
+Main shows one branch list above the workflow in the Plan's `AdeBranchRow` look; PR line sits under its row. Release and Review step rows removed. Run lines sort by branch order and show `ade-run-branch` when a repo repeats. New `ade-v2-main-branches` spec; `ade-v2-run`, `ade-v2-review-open`, `ade-v2-task-panel`, `ade-v2-panel` updated.
+
+### v0.2.30 P503 (Done)
+Full suite run once: lint, knip, typecheck, Go, unit and all UI, visual and mobile projects pass. One flaky `ade-v2-review-removed` spec fixed (`f98df9ec`; call-count dependent mock now uses `__afterCall`). Not run: container-backed Go tests and `e2e-real` (no Docker), `-race`, `test:claude*`. Review: 7 findings (3 Medium, 4 Low), all fixed: removed-lines capture when the delta has no hunks, capture failure logged, debounced refetch, Jira slot takes only Jira URLs, merged run handover keeps draft author, dead code removed. Declined: skipping commit capture on an unchanged tip.
+
+### v0.2.30 P504 (Done)
+Chapter folded by hand into this file; `docs/v0.2.30/` removed.
+<!-- /chapter v0.2.30 -->
