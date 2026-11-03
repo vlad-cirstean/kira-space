@@ -149,7 +149,6 @@ function createNativeGitTransport(codeRepoId: string): Transport {
         holds.get(path)?.release();
         holds.delete(path);
         pathByRepoId.delete(id);
-        await send(method, params, signal);
         return {};
       }
       if (method === 'repo.open') return openHold((params as { path: string }).path);
