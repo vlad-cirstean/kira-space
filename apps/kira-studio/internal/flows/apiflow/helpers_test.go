@@ -24,8 +24,6 @@ var (
 	opSeq atomic.Int64
 )
 
-func ptr[T any](v T) *T { return &v }
-
 func newOp() string { return fmt.Sprintf("aop-%d", opSeq.Add(1)) }
 
 func get(url string) bridge.HttpSendArgs {

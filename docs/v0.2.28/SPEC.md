@@ -7,7 +7,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | Phase | Title | Status |
 |---|---|---|
 | P472 | Runs config as files in the app folder | Done |
-| P473 | API config as files in the app folder | Todo |
+| P473 | API config as files in the app folder | Done |
 | P474 | Git repos config as files in the app folder | Todo |
 | P475 | Connections config as files in the app folder | Todo |
 | P476 | Git on bound services: connection lifecycle, events, read methods | Todo |
@@ -46,6 +46,17 @@ Result:
 - Plan decides per field what stays in SQLite, formats, sync, watching, validation, bad edits, migration, Studio/Space split.
 - Minimal UI as in P472.
 - Test: as P472.
+
+Result:
+
+- Go: collections and environments are `<id>.collection.yaml` and `<id>.environment.yaml` files in the `api` config folder, projected into the `api_*` tables by `apifiles.Store` (the only writer, except `SetActiveEnvironment`). Migration 0055 and a one-shot `MigrateOnce` export. Secret variables are `${secret:name}` (scope `variable`, owner `api`); sealed envelopes move verbatim. Bad file keeps last good and surfaces a line problem. `ApiConfigService` (`View`, `SetSecret`, `DeleteSecret`) is new; event `kira:api:dataChanged` gains kind `config`.
+- Removed bound methods: collection and item rename, delete, duplicate, move, reorder; environment update, delete, duplicate, reorder; variable CRUD, bulk and restore. Kept: see `docs/ARCHITECTURE.md` "Api config files (P473)".
+- UI: tree rows Open file and Reveal file; `ApiConfigProblems`, `ApiSecrets`; variable sets and environments read-only; variable-set tab names follow the file (`syncVariableSetTabNames`). Deleted: `EnvironmentFields`, `BulkVariablesEditor`, `collectionDrop`, `collectionOrder`, `draftMerge`.
+- Ran: `go vet ./apps/kira-studio/... ./internal/...` (Space vet needs its dist, not built here), `golangci-lint run` (0 issues), `bun run lint`, `lint:dead`, all typechecks, unit suite (1126 pass). Go: `apifiles`, `flows/apiflow` (`TestApiConfigFiles` and siblings), `storage/...` (migration test), `internal/configfs`. UI after `build:test:studio`: new `api-config-files`, plus the Studio api, http, variables, consistency, grpc, list-keyboard, ui-leftovers specs (51 + 191 + 22 + 103 pass). Full suites not run, per chapter rule.
+- Specs: kept `api-cross-window-sync`. Deleted `api-order`, unit `api-collection-drop`, `api-draft-merge`. Adapted `api-collections-delete-orphans-cache`, `api-variables-delete-eviction`, `api-collections-search-debounce`, collections, http-variables, api-secret-reveal-isolation, api-ui-consistency, consistency, grpc-request, list-keyboard, ui-leftovers (move, reorder, rename, bulk, duplicate and delete tests removed).
+- Deviation: `configfs` doc walker gets a cycle guard (the item schema recurses through folders). Shared by P474 and P475.
+- Found: `golangci-lint` gocognit on `syncItems`, `syncVariables` and the migration; split into helpers.
+- Docs: `docs/ARCHITECTURE.md`, `site/.../studio/api-client.mdx`.
 
 ### P474 Git repos config as files in the app folder
 

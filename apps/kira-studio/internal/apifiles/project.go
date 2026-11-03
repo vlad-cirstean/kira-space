@@ -201,89 +201,29 @@ func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, c
 	if err := flatten(items, "", &flat); err != nil {
 		return err
 	}
-	rows, err := tx.Query(`SELECT id, COALESCE(item_key, ''), COALESCE(parent_id, ''), kind, name, sort_order, method, url, protocol, request_json, origin_json
-		FROM api_items WHERE collection_id = ?`, collectionID)
+	existing, unkeyed, err := loadItemRows(tx, collectionID, stem)
 	if err != nil {
-		return fmt.Errorf("apifiles: read items of %s: %w", stem, err)
+		return err
 	}
-	existing := map[string]itemRow{}
-	var unkeyed []string
-	for rows.Next() {
-		var key string
-		var r itemRow
-		if err := rows.Scan(&r.id, &key, &r.parent, &r.kind, &r.name, &r.order, &r.method, &r.url, &r.protocol, &r.requestJSON, &r.origin); err != nil {
-			rows.Close()
-			return fmt.Errorf("apifiles: scan item of %s: %w", stem, err)
-		}
-		if key == "" {
-			unkeyed = append(unkeyed, r.id)
-			continue
-		}
-		existing[key] = r
-	}
-	if err := rows.Err(); err != nil {
-		rows.Close()
-		return fmt.Errorf("apifiles: items of %s: %w", stem, err)
-	}
-	rows.Close()
-
 	kept := map[string]bool{}
 	ids := map[string]string{}
 	now := kiratime.NowISO()
 	for _, f := range flat {
-		kind := model.CollectionItemRequest
-		if f.folder {
-			kind = model.CollectionItemFolder
-		}
 		parent := ids[f.parentKey]
 		old, found := existing[f.key]
 		if !found {
-			id := uuid.NewString()
+			id, err := s.insertItem(tx, collectionID, stem, parent, f, now, ch)
+			if err != nil {
+				return err
+			}
 			ids[f.key] = id
-			var parentArg any
-			if parent != "" {
-				parentArg = parent
-			}
-			if _, err := tx.Exec(`INSERT INTO api_items (id, collection_id, parent_id, kind, name, sort_order, method, url, protocol, request_json, origin_json, created_at, updated_at, item_key)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				id, collectionID, parentArg, kind, f.name, f.order, f.method, f.url, f.protocol, f.requestJSON, s.takeOrigin(stem, f.key), now, now, f.key); err != nil {
-				return fmt.Errorf("apifiles: insert item %s: %w", f.key, err)
-			}
-			ch.Tree = true
-			if kind == model.CollectionItemRequest {
-				ch.request(id)
-			}
 			kept[id] = true
 			continue
 		}
 		ids[f.key] = old.id
 		kept[old.id] = true
-		structural := old.parent != parent || old.kind != kind || old.name != f.name || old.order != f.order ||
-			old.method != f.method || old.url != f.url || old.protocol != f.protocol
-		requestChanged := old.requestJSON != f.requestJSON
-		if !structural && !requestChanged {
-			continue
-		}
-		origin := old.origin
-		if requestChanged && f.protocol == model.ItemProtocolHTTP && f.requestJSON != "" {
-			var req model.SavedRequest
-			if err := json.Unmarshal([]byte(f.requestJSON), &req); err == nil {
-				origin = shedOrigin(old.origin, req)
-			}
-		}
-		var parentArg any
-		if parent != "" {
-			parentArg = parent
-		}
-		if _, err := tx.Exec(`UPDATE api_items SET parent_id = ?, kind = ?, name = ?, sort_order = ?, method = ?, url = ?, protocol = ?, request_json = ?, origin_json = ?, updated_at = ?
-			WHERE id = ?`, parentArg, kind, f.name, f.order, f.method, f.url, f.protocol, f.requestJSON, origin, now, old.id); err != nil {
-			return fmt.Errorf("apifiles: update item %s: %w", f.key, err)
-		}
-		if structural {
-			ch.Tree = true
-		}
-		if requestChanged {
-			ch.request(old.id)
+		if err := updateItem(tx, old, parent, f, now, ch); err != nil {
+			return err
 		}
 	}
 	for _, r := range existing {
@@ -299,6 +239,91 @@ func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, c
 			return fmt.Errorf("apifiles: delete unkeyed item: %w", err)
 		}
 		ch.Tree = true
+	}
+	return nil
+}
+
+// loadItemRows returns the collection's rows by item key and the ids of rows with no key.
+func loadItemRows(tx *sql.Tx, collectionID, stem string) (map[string]itemRow, []string, error) {
+	rows, err := tx.Query(`SELECT id, COALESCE(item_key, ''), COALESCE(parent_id, ''), kind, name, sort_order, method, url, protocol, request_json, origin_json
+		FROM api_items WHERE collection_id = ?`, collectionID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("apifiles: read items of %s: %w", stem, err)
+	}
+	defer rows.Close()
+	existing := map[string]itemRow{}
+	var unkeyed []string
+	for rows.Next() {
+		var key string
+		var r itemRow
+		if err := rows.Scan(&r.id, &key, &r.parent, &r.kind, &r.name, &r.order, &r.method, &r.url, &r.protocol, &r.requestJSON, &r.origin); err != nil {
+			return nil, nil, fmt.Errorf("apifiles: scan item of %s: %w", stem, err)
+		}
+		if key == "" {
+			unkeyed = append(unkeyed, r.id)
+			continue
+		}
+		existing[key] = r
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("apifiles: items of %s: %w", stem, err)
+	}
+	return existing, unkeyed, nil
+}
+
+func itemKind(f flatItem) string {
+	if f.folder {
+		return model.CollectionItemFolder
+	}
+	return model.CollectionItemRequest
+}
+
+func nullable(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+func (s *Store) insertItem(tx *sql.Tx, collectionID, stem, parent string, f flatItem, now string, ch *Changes) (string, error) {
+	id := uuid.NewString()
+	kind := itemKind(f)
+	if _, err := tx.Exec(`INSERT INTO api_items (id, collection_id, parent_id, kind, name, sort_order, method, url, protocol, request_json, origin_json, created_at, updated_at, item_key)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, collectionID, nullable(parent), kind, f.name, f.order, f.method, f.url, f.protocol, f.requestJSON, s.takeOrigin(stem, f.key), now, now, f.key); err != nil {
+		return "", fmt.Errorf("apifiles: insert item %s: %w", f.key, err)
+	}
+	ch.Tree = true
+	if kind == model.CollectionItemRequest {
+		ch.request(id)
+	}
+	return id, nil
+}
+
+func updateItem(tx *sql.Tx, old itemRow, parent string, f flatItem, now string, ch *Changes) error {
+	kind := itemKind(f)
+	structural := old.parent != parent || old.kind != kind || old.name != f.name || old.order != f.order ||
+		old.method != f.method || old.url != f.url || old.protocol != f.protocol
+	requestChanged := old.requestJSON != f.requestJSON
+	if !structural && !requestChanged {
+		return nil
+	}
+	origin := old.origin
+	if requestChanged && f.protocol == model.ItemProtocolHTTP && f.requestJSON != "" {
+		var req model.SavedRequest
+		if err := json.Unmarshal([]byte(f.requestJSON), &req); err == nil {
+			origin = shedOrigin(old.origin, req)
+		}
+	}
+	if _, err := tx.Exec(`UPDATE api_items SET parent_id = ?, kind = ?, name = ?, sort_order = ?, method = ?, url = ?, protocol = ?, request_json = ?, origin_json = ?, updated_at = ?
+		WHERE id = ?`, nullable(parent), kind, f.name, f.order, f.method, f.url, f.protocol, f.requestJSON, origin, now, old.id); err != nil {
+		return fmt.Errorf("apifiles: update item %s: %w", f.key, err)
+	}
+	if structural {
+		ch.Tree = true
+	}
+	if requestChanged {
+		ch.request(old.id)
 	}
 	return nil
 }
@@ -428,33 +453,10 @@ func syncVariables(tx *sql.Tx, scope, ownerID string, vars []Variable, ch *Chang
 	if scope == OwnerEnvironment {
 		column = "environment_id"
 	}
-	rows, err := tx.Query(`SELECT id, name, value, is_secret, COALESCE(secret_ref, ''), description, sort_order FROM api_variables
-		WHERE `+column+` = ? ORDER BY sort_order, rowid`, ownerID)
+	existing, all, err := loadVariableRows(tx, column, ownerID)
 	if err != nil {
-		return fmt.Errorf("apifiles: read variables: %w", err)
+		return err
 	}
-	existing := map[string]varRow{}
-	var all []string
-	for rows.Next() {
-		var name string
-		var r varRow
-		var secret int
-		if err := rows.Scan(&r.id, &name, &r.value, &secret, &r.ref, &r.description, &r.order); err != nil {
-			rows.Close()
-			return fmt.Errorf("apifiles: scan variable: %w", err)
-		}
-		r.secret = secret != 0
-		all = append(all, r.id)
-		if _, dup := existing[name]; !dup {
-			existing[name] = r
-		}
-	}
-	if err := rows.Err(); err != nil {
-		rows.Close()
-		return fmt.Errorf("apifiles: variables: %w", err)
-	}
-	rows.Close()
-
 	kept := map[string]bool{}
 	now := kiratime.NowISO()
 	changed := false
@@ -465,12 +467,12 @@ func syncVariables(tx *sql.Tx, scope, ownerID string, vars []Variable, ch *Chang
 		if secret {
 			value = ""
 		}
+		var refArg any
+		if secret {
+			refArg = ref
+		}
 		old, found := existing[v.Name]
 		if !found {
-			var refArg any
-			if secret {
-				refArg = ref
-			}
 			if _, err := tx.Exec(`INSERT INTO api_variables (id, `+column+`, name, value, is_secret, secret_value, sort_order, description, secret_ref, created_at, updated_at)
 				VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)`,
 				uuid.NewString(), ownerID, v.Name, value, boolInt(secret), i, v.Description, refArg, now, now); err != nil {
@@ -483,23 +485,8 @@ func syncVariables(tx *sql.Tx, scope, ownerID string, vars []Variable, ch *Chang
 		if old.secret == secret && old.value == value && old.ref == ref && old.description == v.Description && old.order == i {
 			continue
 		}
-		if !old.secret && !secret && old.value != value {
-			if err := recordHistory(tx, old.id, old.value, now); err != nil {
-				return err
-			}
-		}
-		if secret && !old.secret {
-			if _, err := tx.Exec(`DELETE FROM api_variable_history WHERE variable_id = ? AND is_secret = 0`, old.id); err != nil {
-				return fmt.Errorf("apifiles: purge plain history: %w", err)
-			}
-		}
-		var refArg any
-		if secret {
-			refArg = ref
-		}
-		if _, err := tx.Exec(`UPDATE api_variables SET value = ?, is_secret = ?, secret_value = NULL, secret_ref = ?, description = ?, sort_order = ?, updated_at = ? WHERE id = ?`,
-			value, boolInt(secret), refArg, v.Description, i, now, old.id); err != nil {
-			return fmt.Errorf("apifiles: update variable: %w", err)
+		if err := updateVariable(tx, old, v, value, secret, refArg, i, now); err != nil {
+			return err
 		}
 		changed = true
 	}
@@ -514,6 +501,53 @@ func syncVariables(tx *sql.Tx, scope, ownerID string, vars []Variable, ch *Chang
 	}
 	if changed {
 		ch.variables(scope, ownerID)
+	}
+	return nil
+}
+
+// loadVariableRows returns the owner's rows by name (first wins) and every row id.
+func loadVariableRows(tx *sql.Tx, column, ownerID string) (map[string]varRow, []string, error) {
+	rows, err := tx.Query(`SELECT id, name, value, is_secret, COALESCE(secret_ref, ''), description, sort_order FROM api_variables
+		WHERE `+column+` = ? ORDER BY sort_order, rowid`, ownerID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("apifiles: read variables: %w", err)
+	}
+	defer rows.Close()
+	existing := map[string]varRow{}
+	var all []string
+	for rows.Next() {
+		var name string
+		var r varRow
+		var secret int
+		if err := rows.Scan(&r.id, &name, &r.value, &secret, &r.ref, &r.description, &r.order); err != nil {
+			return nil, nil, fmt.Errorf("apifiles: scan variable: %w", err)
+		}
+		r.secret = secret != 0
+		all = append(all, r.id)
+		if _, dup := existing[name]; !dup {
+			existing[name] = r
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("apifiles: variables: %w", err)
+	}
+	return existing, all, nil
+}
+
+func updateVariable(tx *sql.Tx, old varRow, v Variable, value string, secret bool, refArg any, order int, now string) error {
+	if !old.secret && !secret && old.value != value {
+		if err := recordHistory(tx, old.id, old.value, now); err != nil {
+			return err
+		}
+	}
+	if secret && !old.secret {
+		if _, err := tx.Exec(`DELETE FROM api_variable_history WHERE variable_id = ? AND is_secret = 0`, old.id); err != nil {
+			return fmt.Errorf("apifiles: purge plain history: %w", err)
+		}
+	}
+	if _, err := tx.Exec(`UPDATE api_variables SET value = ?, is_secret = ?, secret_value = NULL, secret_ref = ?, description = ?, sort_order = ?, updated_at = ? WHERE id = ?`,
+		value, boolInt(secret), refArg, v.Description, order, now, old.id); err != nil {
+		return fmt.Errorf("apifiles: update variable: %w", err)
 	}
 	return nil
 }

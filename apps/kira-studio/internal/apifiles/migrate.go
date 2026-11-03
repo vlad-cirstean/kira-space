@@ -109,28 +109,10 @@ func (m *migration) freeStem(table, ext, base string, taken map[string]bool) (st
 // variables binds the variables of one owner and returns them in file form. Later rows of a name are
 // dead (sends were first-wins) and come back as comment lines.
 func (m *migration) variables(column, ownerID, ownerStem string, promoted []postman.Variable) ([]Variable, []string, error) {
-	rows, err := m.tx.Query(`SELECT id, name, value, is_secret, secret_value, description, COALESCE(secret_ref, '') FROM api_variables
-		WHERE `+column+` = ? ORDER BY sort_order, rowid`, ownerID)
+	all, err := m.legacyVars(column, ownerID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("apifiles: read variables: %w", err)
-	}
-	var all []legacyVar
-	for rows.Next() {
-		var v legacyVar
-		var secret int
-		if err := rows.Scan(&v.id, &v.name, &v.value, &secret, &v.sealed, &v.desc, &v.ref); err != nil {
-			rows.Close()
-			return nil, nil, err
-		}
-		v.secret = secret != 0
-		all = append(all, v)
-	}
-	if err := rows.Err(); err != nil {
-		rows.Close()
 		return nil, nil, err
 	}
-	rows.Close()
-
 	var out []Variable
 	var dead []string
 	seen := map[string]bool{}
@@ -146,19 +128,9 @@ func (m *migration) variables(column, ownerID, ownerStem string, promoted []post
 			out = append(out, fv)
 			continue
 		}
-		ref := v.ref
-		if ref == "" {
-			ref = m.newSecretName(ownerStem, v.name)
-			if v.sealed.Valid {
-				if _, err := m.tx.Exec(`INSERT INTO secret_values (scope, owner, name, value, updated_ms) VALUES (?, ?, ?, ?, ?)
-					ON CONFLICT (scope, owner, name) DO UPDATE SET value = excluded.value, updated_ms = excluded.updated_ms`,
-					string(secrets.ScopeVariable), SecretOwner, ref, v.sealed.String, nowMillis()); err != nil {
-					return nil, nil, fmt.Errorf("apifiles: move secret: %w", err)
-				}
-			}
-			if _, err := m.tx.Exec(`UPDATE api_variables SET secret_ref = ?, secret_value = NULL WHERE id = ?`, ref, v.id); err != nil {
-				return nil, nil, fmt.Errorf("apifiles: bind secret ref: %w", err)
-			}
+		ref, err := m.bindLegacySecret(ownerStem, v)
+		if err != nil {
+			return nil, nil, err
 		}
 		fv.Secret = "${secret:" + ref + "}"
 		out = append(out, fv)
@@ -172,22 +144,64 @@ func (m *migration) variables(column, ownerID, ownerStem string, promoted []post
 			continue
 		}
 		seen[p.Name] = true
-		fv := Variable{Name: p.Name, Description: p.Description}
-		if !p.Secret {
-			fv.Value = p.Value
-			out = append(out, fv)
-			continue
-		}
-		ref := m.newSecretName(ownerStem, p.Name)
-		if p.Value != "" {
-			if err := m.s.o.Secrets.Store.Put(m.tx, secrets.ScopeVariable, SecretOwner, ref, p.Value); err != nil {
-				slog.Warn("api: a promoted secret value could not be sealed and stays unset", "scope", "startup", "name", ref)
-			}
-		}
-		fv.Secret = "${secret:" + ref + "}"
-		out = append(out, fv)
+		out = append(out, m.promotedVariable(ownerStem, p))
 	}
 	return out, dead, nil
+}
+
+func (m *migration) legacyVars(column, ownerID string) ([]legacyVar, error) {
+	rows, err := m.tx.Query(`SELECT id, name, value, is_secret, secret_value, description, COALESCE(secret_ref, '') FROM api_variables
+		WHERE `+column+` = ? ORDER BY sort_order, rowid`, ownerID)
+	if err != nil {
+		return nil, fmt.Errorf("apifiles: read variables: %w", err)
+	}
+	defer rows.Close()
+	var all []legacyVar
+	for rows.Next() {
+		var v legacyVar
+		var secret int
+		if err := rows.Scan(&v.id, &v.name, &v.value, &secret, &v.sealed, &v.desc, &v.ref); err != nil {
+			return nil, err
+		}
+		v.secret = secret != 0
+		all = append(all, v)
+	}
+	return all, rows.Err()
+}
+
+// bindLegacySecret moves a row's sealed value into the secret store and returns its secret name.
+func (m *migration) bindLegacySecret(ownerStem string, v legacyVar) (string, error) {
+	if v.ref != "" {
+		return v.ref, nil
+	}
+	ref := m.newSecretName(ownerStem, v.name)
+	if v.sealed.Valid {
+		if _, err := m.tx.Exec(`INSERT INTO secret_values (scope, owner, name, value, updated_ms) VALUES (?, ?, ?, ?, ?)
+			ON CONFLICT (scope, owner, name) DO UPDATE SET value = excluded.value, updated_ms = excluded.updated_ms`,
+			string(secrets.ScopeVariable), SecretOwner, ref, v.sealed.String, nowMillis()); err != nil {
+			return "", fmt.Errorf("apifiles: move secret: %w", err)
+		}
+	}
+	if _, err := m.tx.Exec(`UPDATE api_variables SET secret_ref = ?, secret_value = NULL WHERE id = ?`, ref, v.id); err != nil {
+		return "", fmt.Errorf("apifiles: bind secret ref: %w", err)
+	}
+	return ref, nil
+}
+
+func (m *migration) promotedVariable(ownerStem string, p postman.Variable) Variable {
+	fv := Variable{Name: p.Name, Description: p.Description}
+	if !p.Secret {
+		fv.Value = p.Value
+		return fv
+	}
+	ref := m.newSecretName(ownerStem, p.Name)
+	if p.Value != "" {
+		if err := m.s.o.Secrets.Store.Put(m.tx, secrets.ScopeVariable, SecretOwner, ref, p.Value); err != nil {
+			slog.Warn("api: a promoted secret value could not be sealed and stays unset", "scope", "startup", "name", ref)
+		}
+	}
+	fv.Secret = "${secret:" + ref + "}"
+	return fv
 }
 
 func deadVariable(name, value string, secret bool) string {
@@ -205,23 +219,24 @@ func (m *migration) newSecretName(ownerStem, variable string) string {
 
 func nowMillis() int64 { return time.Now().UnixMilli() }
 
-func (m *migration) collections() error {
+type legacyCollection struct {
+	id, name, origin, stem string
+	promoted               bool
+}
+
+func (m *migration) legacyCollections() ([]legacyCollection, map[string]bool, error) {
 	rows, err := m.tx.Query(`SELECT id, name, origin_json, variables_promoted, COALESCE(stem, '') FROM api_collections ORDER BY sort_order, name`)
 	if err != nil {
-		return fmt.Errorf("apifiles: read collections: %w", err)
+		return nil, nil, fmt.Errorf("apifiles: read collections: %w", err)
 	}
-	type col struct {
-		id, name, origin, stem string
-		promoted               bool
-	}
-	var cols []col
+	defer rows.Close()
+	var cols []legacyCollection
 	taken := map[string]bool{}
 	for rows.Next() {
-		var c col
+		var c legacyCollection
 		var promoted int
 		if err := rows.Scan(&c.id, &c.name, &c.origin, &promoted, &c.stem); err != nil {
-			rows.Close()
-			return err
+			return nil, nil, err
 		}
 		c.promoted = promoted != 0
 		if c.stem != "" {
@@ -229,12 +244,38 @@ func (m *migration) collections() error {
 		}
 		cols = append(cols, c)
 	}
-	if err := rows.Err(); err != nil {
-		rows.Close()
+	return cols, taken, rows.Err()
+}
+
+// promoteOrigin lifts a not-yet-promoted collection's Postman variables out of its origin.
+func (m *migration) promoteOrigin(c legacyCollection) ([]postman.Variable, error) {
+	if c.promoted {
+		return nil, nil
+	}
+	var promoted []postman.Variable
+	origin := map[string]json.RawMessage{}
+	_ = json.Unmarshal([]byte(c.origin), &origin)
+	if raw, ok := origin["variable"]; ok {
+		if decoded, isArray := postman.DecodeVariables(raw); isArray {
+			promoted = decoded
+			delete(origin, "variable")
+		}
+	}
+	js, err := encodeJSON(origin)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := m.tx.Exec(`UPDATE api_collections SET origin_json = ?, variables_promoted = 1 WHERE id = ?`, js, c.id); err != nil {
+		return nil, fmt.Errorf("apifiles: stamp promoted: %w", err)
+	}
+	return promoted, nil
+}
+
+func (m *migration) collections() error {
+	cols, taken, err := m.legacyCollections()
+	if err != nil {
 		return err
 	}
-	rows.Close()
-
 	for _, c := range cols {
 		if c.stem == "" {
 			stem, err := m.freeStem("api_collections", CollectionExt, Slug(c.name, "collection"), taken)
@@ -247,23 +288,9 @@ func (m *migration) collections() error {
 				return fmt.Errorf("apifiles: bind collection: %w", err)
 			}
 		}
-		var promoted []postman.Variable
-		if !c.promoted {
-			origin := map[string]json.RawMessage{}
-			_ = json.Unmarshal([]byte(c.origin), &origin)
-			if raw, ok := origin["variable"]; ok {
-				if decoded, isArray := postman.DecodeVariables(raw); isArray {
-					promoted = decoded
-					delete(origin, "variable")
-				}
-			}
-			js, err := encodeJSON(origin)
-			if err != nil {
-				return err
-			}
-			if _, err := m.tx.Exec(`UPDATE api_collections SET origin_json = ?, variables_promoted = 1 WHERE id = ?`, js, c.id); err != nil {
-				return fmt.Errorf("apifiles: stamp promoted: %w", err)
-			}
+		promoted, err := m.promoteOrigin(c)
+		if err != nil {
+			return err
 		}
 		vars, dead, err := m.variables("collection_id", c.id, c.stem, promoted)
 		if err != nil {
