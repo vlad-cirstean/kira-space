@@ -45,6 +45,13 @@ func (n *OpNote) Command() string {
 	return n.command
 }
 
+// plainRecorder runs the call with no row: the default, and the tests' recorder.
+type plainRecorder struct{}
+
+func (plainRecorder) Record(ctx context.Context, _ string, fn func(context.Context, *OpNote) error) error {
+	return fn(ctx, &OpNote{})
+}
+
 // WithRecorder routes every cluster call through r.
 func WithRecorder(r Recorder) Option { return func(s *Service) { s.rec = r } }
 
@@ -55,7 +62,7 @@ func (s *Service) record(ctx context.Context, clusterID string, background bool,
 	if err != nil {
 		return err
 	}
-	if background || s.rec == nil {
+	if background {
 		return fn(ctx, &OpNote{})
 	}
 	return s.rec.Record(ctx, command(name), fn)

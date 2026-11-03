@@ -78,7 +78,7 @@ func NewService(store ClusterStore, emit appevent.Emitter, opts ...Option) *Serv
 	s := &Service{
 		store: store, emit: emit, now: time.Now, env: probe.get,
 		listPage: defaultListPage, listMax: defaultListMax,
-		clients: map[string]*clusterClient{}, logs: newLogRegistry(),
+		clients: map[string]*clusterClient{}, logs: newLogRegistry(), rec: plainRecorder{},
 	}
 	for _, o := range opts {
 		o(s)
