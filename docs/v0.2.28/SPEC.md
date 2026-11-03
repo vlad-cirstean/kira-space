@@ -1,6 +1,6 @@
 # v0.2.28
 
-Branch `chapter/v0.2.28`. First `P` is 472 (highest in v0.2.27 is P471). Open.
+Branch `chapter/v0.2.28`. First `P` is 472 (highest in v0.2.27 is P471). Done.
 
 Source: user request. Phases run top to bottom, two phases in parallel where file ownership allows (worktree per stream). Scope is closed: any further phases go to v0.2.29. Ends with two code review rounds, then close, then PR.
 
@@ -16,8 +16,8 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | P479 | Git graph data plane; remove the git stream protocol | Done |
 | P480 | Frontend RAM measurement, both apps | Done |
 | P481 | Frontend RAM: implement the proven wins | Done |
-| P482 | Code review (2 rounds) | Todo |
-| P483 | Close chapter v0.2.28 | Todo |
+| P482 | Code review (2 rounds) | Done |
+| P483 | Close chapter v0.2.28 | Done |
 
 ## Rows
 
@@ -184,6 +184,15 @@ Result:
 
 One row, two rounds. Each round: one Opus review over the full diff since `main`, findings file under `plans/`, then one Sonnet fixer. Then close, then PR, as in v0.2.25.
 
+Result:
+
+- Full suite run once first (`plans/full-suite-run.md`): lint, typecheck, `lint:dead`, unit, Go, UI and visual both apps, `site:check`. Failures fixed: biome ignore, `TestGoConventions` (G1, G4), i18n wrappers, stale Space spec, Studio create fixtures, visual specs and baselines, WebKit `img.decode()` timeout in the phone visual spec. No second full run: fixes touched test code only.
+- Round 1 (base `ad451b19`): 8 findings (1 High, 3 Medium, 4 Low), fixed in `46e22f33`, `60555938`, `0e17a23c`, `9198ca70`. F1 connections migration wrote `config_json` before files, so a failed write deleted rows; F2 API migration rerun lost promoted variables; F3 bound call after window close leaked a Conn; F4 duplicated connection shared secret names; F5 to F8 refcount, stale docs, dead field, triple encode.
+- Round 2: 1 finding (Medium), fixed in `06550076`. F1 stem-derived connection secret names could overwrite another file's secret; new names are insert-only.
+- Flake fix `8d78b6dd`: git unit specs ignore non-git bound calls.
+
 ### P483 Close chapter v0.2.28
 
 Hand-written close per CLAUDE.md "Closing a chapter". Push, open PR to `main`.
+
+Result: Chapter folded by hand into `docs/HISTORY.md`; `docs/v0.2.28/` removed. No `docs/history-runs/`. Known open items checked: ADE first-mount retention (P481) present. Nothing under `scripts/`, `tests/` or `apps/` reads `docs/v0.2.28`.
