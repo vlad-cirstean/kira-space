@@ -254,6 +254,8 @@ export type ConnectionInput = z.infer<typeof connectionInputSchema>;
 export const connectionSummarySchema = connectionFieldsSchema.omit({ password: true }).extend({
   uri: z.null(), // P181: the stored URI is ciphertext, only the gated reveal returns it
   id: z.string(),
+  /** The connection's config file name in the connections folder. */
+  file: z.string(),
   sortOrder: z.number(),
   createdAt: z.string(),
   updatedAt: z.string(),

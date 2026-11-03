@@ -9,7 +9,7 @@ import type { ConnectionSummary } from '@shared/domain/connection';
 // reads.
 export type ResolvedConnectionConfig = Omit<
   ConnectionSummary,
-  'preconnect' | 'preconnectSidecar' | 'preconnectDelaySec'
+  'file' | 'preconnect' | 'preconnectSidecar' | 'preconnectDelaySec'
 > & {
   password: string | null;
 };

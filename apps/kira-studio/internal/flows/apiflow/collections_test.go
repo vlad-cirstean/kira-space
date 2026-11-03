@@ -13,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/postman"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
 func TestSavedRequestHistory(t *testing.T) {
@@ -142,6 +143,23 @@ func TestVariablePrecedence(t *testing.T) {
 		}
 		if got := sendWho(dev.ID); got != "who=from-dev-2" {
 			t.Errorf("after the change = %q, want the new value", got)
+		}
+		vars, err := app.W.Variables.List(bridge.VariablesScopeArgs{Scope: model.VariableScopeEnvironment, OwnerID: dev.ID})
+		if err != nil || len(vars) != 1 {
+			t.Fatalf("variables = %+v (%v), want one", vars, err)
+		}
+		// A history row from before secrets moved to the secret store still carries its sealed value.
+		sealed, err := secrets.New().Encrypt(secrets.ScopeVariableHistory, "legacy-old")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := app.DB().Exec(`INSERT INTO api_variable_history (id, variable_id, value, is_secret, secret_value, recorded_at)
+			VALUES ('legacy-h1', ?, '', 1, ?, '2026-01-01T00:00:00Z')`, vars[0].ID, sealed); err != nil {
+			t.Fatal(err)
+		}
+		old := app.W.Variables.RevealHistory(bridge.VariablesRevealHistoryArgs{HistoryID: "legacy-h1", Confirmed: true})
+		if old.Outcome != "revealed" || old.Value == nil || *old.Value != "legacy-old" {
+			t.Errorf("history reveal = %+v, want legacy-old", old)
 		}
 	})
 

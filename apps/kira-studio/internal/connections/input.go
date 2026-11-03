@@ -1,170 +1,52 @@
 package connections
 
 import (
-	"math"
 	"strings"
 
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
-// maxNameLength (UTF-16 units, as zod counts) is connectionInputSchema's own name cap — the single
-// source Validate and Service.Duplicate's generated "<name> copy" both read, so the two can never
-// drift apart (Duplicate used to append " copy" with no cap at all, which Validate would then have
-// rejected outright for any name already close to the limit).
-const maxNameLength = 120
-
-// ThrottlePerSecRange mirrors packages/shared/domain/connection.ts's CONNECTION_THROTTLE_RANGE —
-// 0 (unlimited) or 0.01-1000 commands/sec.
-const (
-	throttlePerSecMin = 0.01
-	throttlePerSecMax = 1000
-)
-
-// preconnectDelaySecMax mirrors PRECONNECT_DELAY_RANGE.max.
-const preconnectDelaySecMax = 300
-
-// fileKinds mirrors connection.ts's FILE_KINDS: fields mode repurposes `database` for an absolute
-// local file path.
-var fileKinds = map[string]bool{"sqlite": true}
-
-// awsStyleKinds mirrors connection.ts's AWS_STYLE_KINDS: no host/port at all.
-var awsStyleKinds = map[string]bool{"sqs": true, "s3": true}
-
-// Input is connectionInputSchema's Go shape. It lives here, not in internal/storage/model, so
-// P53's D9 invariant — "no password field anywhere in the model package" — stays literally true.
+// Input is what Create takes: the connection's config plus the secret a file never holds. It lives
+// here, not in internal/storage/model, so that package never carries a password.
 type Input struct {
 	model.ConnectionFields
 	Password *string `json:"password"`
 }
 
-// Validate ports connectionInputSchema's superRefine plus the field constraints zod enforced by
-// shape (P52 §4.2: "an explicit guard at the top of the method, returning E_BAD_REQUEST").
+// Validate runs the file rules on the file Create would write.
 func (in Input) Validate() error {
-	if err := in.validateIdentity(); err != nil {
-		return err
+	if in.Mode == "uri" {
+		if in.URI == nil || strings.TrimSpace(*in.URI) == "" {
+			return errURIRequired()
+		}
+		// A password with a raw '/', '?' or '#' defeats findAuthority's delimiter scan, so foldPassword
+		// would misplace it. Reject rather than corrupt it.
+		if uriHasAmbiguousPassword(*in.URI) {
+			return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.uriPasswordAmbiguous.body", nil)
+		}
 	}
-	if err := in.validateLimits(); err != nil {
-		return err
-	}
-	if err := in.validateMcp(); err != nil {
-		return err
-	}
-	return in.validateMode()
-}
-
-// validateIdentity checks name/kind/color/mode — the connection's own identity fields.
-func (in Input) validateIdentity() error {
-	name := strings.TrimSpace(in.Name)
-	if name == "" || model.UTF16Len(name) > maxNameLength {
-		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.nameLength.body", nil)
-	}
-	if !model.ValidConnectionKind(in.Kind) {
-		return ipcerr.Contract("invalid connection kind")
-	}
-	if !model.ValidConnectionColor(in.Color) {
-		return ipcerr.Contract("invalid connection color")
-	}
-	if !model.ValidConnectionMode(in.Mode) {
-		return ipcerr.Contract("invalid connection mode")
+	if err := in.file("check").Validate(); err != nil {
+		return ipcerr.T(ipcerr.CodeBadRequest, err.Key, err.Args)
 	}
 	return nil
 }
 
-// validateLimits checks port/preconnect/throttlePerSec — the bounded numeric/length fields.
-func (in Input) validateLimits() error {
-	if in.Port != nil && (*in.Port < 1 || *in.Port > 65535) {
-		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.portRange.body", nil)
+// file builds the file Create writes; the secret refs are named for stem.
+func (in Input) file(stem string) connfiles.File {
+	f := connfiles.FileOf(in.ConnectionFields, nil, model.EmptyVisibility(), "", "", "")
+	if in.Mode == "uri" {
+		f.URI = connfiles.RefOf(stem + ".uri")
+	} else if in.Password != nil && *in.Password != "" {
+		f.Password = connfiles.RefOf(stem + ".password")
 	}
-	if in.Preconnect != nil {
-		trimmed := strings.TrimSpace(*in.Preconnect)
-		if trimmed == "" || len(*in.Preconnect) > 2000 {
-			return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.preconnectLength.body", nil)
-		}
-	}
-	if math.IsNaN(in.ThrottlePerSec) || math.IsInf(in.ThrottlePerSec, 0) {
-		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.throttleFinite.body", nil)
-	}
-	if in.ThrottlePerSec != 0 &&
-		(in.ThrottlePerSec < throttlePerSecMin || in.ThrottlePerSec > throttlePerSecMax) {
-		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.throttleRange.body", nil)
-	}
-	if in.PreconnectDelaySec < 0 || in.PreconnectDelaySec > preconnectDelaySecMax {
-		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.preconnectDelayRange.body", nil)
-	}
-	return nil
+	return f
 }
 
-// validateMcp checks the MCP permission modes, review setting and description length.
-func (in Input) validateMcp() error {
-	if !model.ValidMcpPermissionMode(in.McpReadMode) ||
-		!model.ValidMcpPermissionMode(in.McpWriteMode) ||
-		!model.ValidMcpPermissionMode(in.McpDdlMode) {
-		return ipcerr.Contract("invalid MCP permission mode")
-	}
-	if !model.ValidMcpReviewResults(in.McpReviewResults) {
-		return ipcerr.Contract("invalid MCP review setting")
-	}
-	if len(in.McpDescription) > 1000 {
-		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.mcpDescriptionLength.body", nil)
-	}
-	return nil
-}
-
-// validateMode checks the fields-vs-URI shape: fields mode requires a database file (fileKinds) or
-// host/port (unless an AWS-style kind) and no secret option; URI mode refuses a blank URI. A nil
-// URI passes: on Update and Test it means "unchanged" (P181), and Create refuses it itself.
-func (in Input) validateMode() error {
-	if in.Mode == "fields" {
-		return in.validateFields()
-	}
-	return in.validateURI()
-}
-
-func (in Input) validateFields() error {
-	if fileKinds[in.Kind] {
-		path := ""
-		if in.Database != nil {
-			path = strings.TrimSpace(*in.Database)
-		}
-		if path == "" {
-			return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.databaseFileRequired.body", nil)
-		}
-		if !strings.HasPrefix(path, "/") {
-			return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.databasePathAbsolute.body", nil)
-		}
-	} else {
-		if !awsStyleKinds[in.Kind] && (in.Host == nil || *in.Host == "") {
-			return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.hostRequired.body", nil)
-		}
-		if !awsStyleKinds[in.Kind] && in.Port == nil {
-			return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.portRequired.body", nil)
-		}
-	}
-	if key, found := secretOptionKey(in.Options); found {
-		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.secretOption.body", map[string]string{"option": key})
-	}
-	return nil
-}
-
-func (in Input) validateURI() error {
-	if in.URI == nil {
-		return nil
-	}
-	if strings.TrimSpace(*in.URI) == "" {
-		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.uriRequired.body", nil)
-	}
-	// F3 (P108 Part 3): a password containing a raw '/', '?' or '#' defeats findAuthority's own
-	// delimiter scan, so foldPassword would misplace the password. Reject rather than corrupt it.
-	if uriHasAmbiguousPassword(*in.URI) {
-		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.connection.uriPasswordAmbiguous.body", nil)
-	}
-	return nil
-}
-
-// normalized drops what the mode does not own (P181): fields mode never carries a URI, URI mode
-// derives its options from the URI in Go, so a stale draft leftover cannot reach storage or flag
-// destinationUnchanged. An unset McpReviewResults becomes inherit.
+// normalized drops what the mode does not own: fields mode never carries a URI, URI mode derives its
+// options from the URI in Go, so a stale draft leftover cannot reach a file. An unset McpReviewResults
+// becomes inherit.
 func (in Input) normalized() Input {
 	if in.Mode == "uri" {
 		in.Options = map[string]any{}
@@ -177,20 +59,15 @@ func (in Input) normalized() Input {
 	return in
 }
 
-// copySuffix is Service.Duplicate's own generated-name suffix.
+// copySuffix is the suffix of Duplicate's generated name.
 const copySuffix = " copy"
 
-// duplicateName is Service.Duplicate's name generator: name + copySuffix, capped at
-// maxNameLength UTF-16 units — the base name is truncated (never the suffix, so the result always
-// reads as a copy) at a rune boundary so it is never invalid UTF-8. Duplicate used to append
-// copySuffix with no cap at all, which Validate would then reject outright for any name already
-// within copySuffix's own length of the limit — Duplicate itself never calls Validate (an
-// already-stored name is by definition valid input; a rejection here would be a duplicate that
-// silently never happens), so the cap has to be applied at generation time instead.
+// duplicateName is Duplicate's name generator: name + copySuffix, capped at connfiles.NameMax UTF-16
+// units. The base name is truncated, never the suffix, at a rune boundary so it is never invalid UTF-8.
 func duplicateName(name string) string {
-	if model.UTF16Len(name)+len(copySuffix) <= maxNameLength {
+	if model.UTF16Len(name)+len(copySuffix) <= connfiles.NameMax {
 		return name + copySuffix
 	}
-	base, _ := model.TruncateUTF16(name, maxNameLength-len(copySuffix))
+	base, _ := model.TruncateUTF16(name, connfiles.NameMax-len(copySuffix))
 	return base + copySuffix
 }

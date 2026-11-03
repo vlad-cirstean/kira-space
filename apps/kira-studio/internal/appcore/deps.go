@@ -8,6 +8,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connections"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskrules"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/tree"
@@ -43,9 +44,11 @@ type Deps struct {
 
 	Repos       *repos.Repos
 	Connections *connections.Service
-	Tree        *tree.Service
-	Router      *adapterhost.Router // PushCacheConfig's Go-side half (bridge/settings.go); A17
-	Events      Emitter
+	// ConnectionFiles is the connections folder: the source of every connection's config.
+	ConnectionFiles *connfiles.Loader
+	Tree            *tree.Service
+	Router          *adapterhost.Router // PushCacheConfig's Go-side half (bridge/settings.go); A17
+	Events          Emitter
 	// ApiVars (it resolves gRPC targets too) is the gated variable/history reveal and stage 2 of
 	// the two-stage {{name}} substitution
 	// (bridge/http.go's Send calls ResolveRequest directly; every other VariablesService method

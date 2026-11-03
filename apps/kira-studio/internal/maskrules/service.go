@@ -6,24 +6,26 @@ package maskrules
 
 import (
 	"encoding/hex"
-	"github.com/kirathecat/kira-studio/internal/kiratime"
+	"fmt"
 	"strings"
 	"sync"
 
-	"github.com/google/uuid"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/mask"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 )
 
-// Service holds the two repos the rules span (the rule table, and the cipher-backed key column —
-// SecretsRepo's own split, mirrored here) plus a small per-connection read cache: MaskSetFor is on
+// Service holds the two repos the rules span (the rule table, and the cipher-backed key column) and
+// the connection files that own the rules, plus a small per-connection read cache: MaskSetFor is on
 // dbmcp's own run_query hot path, and re-querying + re-folding the rule set on every call
 // would cost a query per row rendered across a busy connection for no benefit, since a rule set
-// changes only through this same Service's own write methods.
+// changes only through a connection file, which calls Invalidate.
 type Service struct {
 	rules *repos.MaskRulesRepo
 	keys  *repos.MaskKeysRepo
+	files Files
 
 	mu    sync.Mutex
 	cache map[string]mask.Set // connectionID -> resolved Set; cleared for a connection on any write to it
@@ -35,9 +37,15 @@ type Service struct {
 	afterRead func() // test seam: runs between MaskSetFor's query and its store
 }
 
-// New constructs a Service over the two repos it owns.
-func New(rules *repos.MaskRulesRepo, keys *repos.MaskKeysRepo) *Service {
-	return &Service{rules: rules, keys: keys, cache: map[string]mask.Set{}, gen: map[string]uint64{}}
+// Files is the connection files: where every rule is written.
+type Files interface {
+	RecordOf(id string) (connfiles.Record, bool)
+	Patch(id string, sets ...configfs.NodeSet) error
+}
+
+// New constructs a Service over the two repos it owns and the files that hold the rules.
+func New(rules *repos.MaskRulesRepo, keys *repos.MaskKeysRepo, files Files) *Service {
+	return &Service{rules: rules, keys: keys, files: files, cache: map[string]mask.Set{}, gen: map[string]uint64{}}
 }
 
 // List returns every rule on connectionID, repo order (lower(table_name), lower(column_name)).
@@ -45,12 +53,12 @@ func (s *Service) List(connectionID string) ([]model.MaskRule, error) {
 	return s.rules.ListForConnection(connectionID)
 }
 
-// Upsert validates and writes one rule, forcing correlate=false for a `number` rule regardless of
-// what the caller passed ("A number never carries a correlation tag" — a bucket is
-// many-to-one, so tagging it would be dishonest; internal/mask.Apply enforces the same rule again,
-// defensively, so this is belt-and-suspenders, not the only place it holds). table_name defaults to
-// "*" (any table) when left blank — the header menu's own common case, marking a column PII without
-// the user needing to know or care which table it came from.
+// Upsert validates one rule and writes it into the connection's file: the masks list is the source,
+// the rule rows its projection. A number rule never correlates ("A number never carries a correlation
+// tag" — a bucket is many-to-one, so tagging it would be dishonest; internal/mask.Apply enforces the
+// same rule again, defensively). table_name defaults to "*" (any table) when left blank — the header
+// menu's own common case, marking a column PII without the user needing to know which table it came
+// from. A file with a problem is refused, never edited.
 func (s *Service) Upsert(connectionID string, f model.MaskRuleFields) (model.MaskRule, error) {
 	if !model.ValidMaskKind(string(f.Kind)) {
 		return model.MaskRule{}, model.Invalid("maskrules: invalid kind %q", f.Kind)
@@ -64,27 +72,71 @@ func (s *Service) Upsert(connectionID string, f model.MaskRuleFields) (model.Mas
 	if f.Kind == model.MaskKindNumber {
 		f.Correlate = false
 	}
-	rec, err := s.rules.Upsert(uuid.NewString(), connectionID, f, kiratime.NowISO())
+	rec, ok := s.files.RecordOf(connectionID)
+	if !ok {
+		return model.MaskRule{}, connfiles.IPCError(connfiles.ErrNotFound)
+	}
+	next := make([]connfiles.Mask, 0, len(rec.File.Masks)+1)
+	replaced := false
+	for _, m := range rec.File.Masks {
+		if sameColumn(m.MaskFields(), f) {
+			if !replaced {
+				next = append(next, connfiles.MaskOf(f))
+			}
+			replaced = true
+			continue
+		}
+		next = append(next, m)
+	}
+	if !replaced {
+		next = append(next, connfiles.MaskOf(f))
+	}
+	if err := s.files.Patch(connectionID, configfs.NodeSet{Path: []string{"masks"}, Value: next}); err != nil {
+		return model.MaskRule{}, connfiles.IPCError(err)
+	}
+	s.Invalidate(connectionID)
+	rows, err := s.rules.ListForConnection(connectionID)
 	if err != nil {
 		return model.MaskRule{}, err
 	}
-	s.invalidate(connectionID)
-	return rec, nil
+	for _, r := range rows {
+		if sameColumn(model.MaskRuleFields{TableName: r.TableName, ColumnName: r.ColumnName}, f) {
+			return r, nil
+		}
+	}
+	return model.MaskRule{}, fmt.Errorf("maskrules: rule %s.%s is not readable after the write", f.TableName, f.ColumnName)
 }
 
-// Remove deletes one rule by id — idempotent (removing an already-gone rule is not an error, the
-// grid header menu's own "Not PII" action can race a concurrent edit harmlessly).
+func sameColumn(a, b model.MaskRuleFields) bool {
+	return strings.EqualFold(a.TableName, b.TableName) && strings.EqualFold(strings.TrimSpace(a.ColumnName), strings.TrimSpace(b.ColumnName))
+}
+
+// Remove deletes one rule by id from its connection's file — idempotent (removing an already-gone
+// rule is not an error, the grid header menu's own "Not PII" action can race a concurrent edit
+// harmlessly).
 func (s *Service) Remove(id string) error {
 	existing, err := s.rules.Get(id)
 	if err != nil {
 		return err
 	}
-	if err := s.rules.Remove(id); err != nil {
-		return err
+	if existing == nil {
+		return nil
 	}
-	if existing != nil {
-		s.invalidate(existing.ConnectionID)
+	rec, ok := s.files.RecordOf(existing.ConnectionID)
+	if !ok {
+		return nil
 	}
+	gone := model.MaskRuleFields{TableName: existing.TableName, ColumnName: existing.ColumnName}
+	next := make([]connfiles.Mask, 0, len(rec.File.Masks))
+	for _, m := range rec.File.Masks {
+		if !sameColumn(m.MaskFields(), gone) {
+			next = append(next, m)
+		}
+	}
+	if err := s.files.Patch(existing.ConnectionID, configfs.NodeSet{Path: []string{"masks"}, Value: next}); err != nil {
+		return connfiles.IPCError(err)
+	}
+	s.Invalidate(existing.ConnectionID)
 	return nil
 }
 
@@ -95,7 +147,7 @@ func (s *Service) RegenerateKey(connectionID string) error {
 	if err := s.keys.Regenerate(connectionID); err != nil {
 		return err
 	}
-	s.invalidate(connectionID)
+	s.Invalidate(connectionID)
 	return nil
 }
 
@@ -212,7 +264,9 @@ func (s *Service) store(connectionID string, startGen uint64, set mask.Set) {
 	s.mu.Unlock()
 }
 
-func (s *Service) invalidate(connectionID string) {
+// Invalidate drops connectionID's cached rule set; the connection files loader calls it when a file
+// changes the masks.
+func (s *Service) Invalidate(connectionID string) {
 	s.mu.Lock()
 	delete(s.cache, connectionID)
 	s.gen[connectionID]++

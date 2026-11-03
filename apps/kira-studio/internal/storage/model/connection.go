@@ -57,6 +57,8 @@ type ConnectionFields struct {
 type ConnectionSummary struct {
 	ID string `json:"id"`
 	ConnectionFields
+	// File is the name of the connection's config file in the connections folder.
+	File      string `json:"file"`
 	SortOrder int    `json:"sortOrder"`
 	CreatedAt string `json:"createdAt"`
 	UpdatedAt string `json:"updatedAt"`

@@ -6,7 +6,6 @@ import (
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage"
-	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
 )
 
@@ -33,12 +32,17 @@ func TestMaskSetForDoesNotCacheSetStaleAfterConcurrentWrite(t *testing.T) {
 		t.Fatalf("seed connection: %v", err)
 	}
 
-	svc := New(r.MaskRules, nil)
+	svc := New(r.MaskRules, nil, nil)
 	svc.afterRead = func() {
 		svc.afterRead = nil
-		if _, err := svc.Upsert("c1", model.MaskRuleFields{ColumnName: "email", Kind: model.MaskKindRedact}); err != nil {
-			t.Errorf("Upsert: %v", err)
+		// A file load projects the rule row, then invalidates the cache.
+		if _, err := db.DB.Exec(
+			`INSERT INTO connection_mask_rules (id, connection_id, table_name, column_name, mask_kind, keep_hint, correlate, created_at, updated_at)
+			 VALUES ('r1', 'c1', '*', 'email', 'redact', 0, 0, ?, ?)`, now, now,
+		); err != nil {
+			t.Errorf("insert rule: %v", err)
 		}
+		svc.Invalidate("c1")
 	}
 	if _, err := svc.MaskSetFor("c1"); err != nil {
 		t.Fatalf("MaskSetFor: %v", err)

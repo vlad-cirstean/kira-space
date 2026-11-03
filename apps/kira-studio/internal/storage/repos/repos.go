@@ -9,11 +9,9 @@ import (
 	"github.com/kirathecat/kira-studio/internal/scripts"
 )
 
-// Repos is every storage repo that needs no cipher, constructed once at startup. SecretsRepo is
-// deliberately not a member — it needs a Cipher that does not exist, so it is constructed
-// separately via NewSecrets. Variables follows the exact same shape via NewVariables — set by
-// main.go once the cipher is wired, rather than widening this constructor's signature for the one
-// repo among many that needs one.
+// Repos is every storage repo that needs no cipher, constructed once at startup. Variables and
+// MaskKeys need one, so they are constructed separately via NewVariables and NewMaskKeys once the
+// cipher is wired.
 type Repos struct {
 	Settings        *SettingsRepo
 	Layout          *LayoutRepo
@@ -21,11 +19,9 @@ type Repos struct {
 	Windows         *WindowsRepo
 	Connections     *ConnectionsRepo
 	Ops             *OpsRepo
-	Filters         *FiltersRepo
 	SavedQueries    *SavedQueriesRepo
 	FilterHistory   *FilterHistoryRepo
 	Metadata        *MetadataCacheRepo
-	Schema          *SchemaRepo
 	Collections     *CollectionsRepo
 	Variables       *VariablesRepo
 	ResponseHistory *ResponseHistoryRepo
@@ -77,11 +73,9 @@ func New(db *sql.DB) (*Repos, error) {
 		Windows:         &WindowsRepo{DB: db},
 		Connections:     &ConnectionsRepo{DB: db},
 		Ops:             &OpsRepo{DB: db, insert: opsInsert, update: opsUpdate},
-		Filters:         &FiltersRepo{DB: db},
 		SavedQueries:    &SavedQueriesRepo{DB: db},
 		FilterHistory:   &FilterHistoryRepo{DB: db},
 		Metadata:        &MetadataCacheRepo{DB: db},
-		Schema:          &SchemaRepo{DB: db},
 		Collections:     &CollectionsRepo{DB: db},
 		ResponseHistory: &ResponseHistoryRepo{DB: db},
 		GrpcHistory:     &GrpcHistoryRepo{DB: db},

@@ -21,7 +21,7 @@ type VariablesRepo struct {
 	cipher Cipher
 }
 
-// NewVariables mirrors NewSecrets: the cipher opens a history entry's sealed value.
+// NewVariables takes the cipher that opens a history entry's sealed value.
 func NewVariables(db *sql.DB, cipher Cipher) *VariablesRepo {
 	return &VariablesRepo{db: db, cipher: cipher}
 }

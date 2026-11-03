@@ -196,7 +196,7 @@ func RunMatrix(t *testing.T, kind string, fixture any, base model.ResolvedConnec
 	}
 }
 
-// uriSecretQueryKeys mirrors internal/connections' secretOptionKeys (a local copy: importing that
+// uriSecretQueryKeys mirrors connfiles secretOptionKeys (a local copy: importing that
 // package here would invert the dependency).
 var uriSecretQueryKeys = map[string]bool{
 	"password": true, "sslpassword": true, "tlscertificatekeyfilepassword": true, "proxypassword": true,

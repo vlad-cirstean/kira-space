@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "kind"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "description": "Name shown in the left panel."
+    },
+    "kind": {
+      "type": "string",
+      "description": "Database or service kind."
+    },
+    "color": {
+      "type": "string",
+      "default": "none",
+      "description": "Palette colour of the connection. It paints the row rail in the left panel."
+    },
+    "read_only": {
+      "type": "boolean",
+      "default": false,
+      "description": "Refuse writes from the console and the grid."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["fields", "uri"],
+      "default": "fields",
+      "description": "fields connects with host, port, database, username and password. uri connects with one URI."
+    },
+    "host": {
+      "type": "string",
+      "description": "Server host. Fields mode; not for sqlite, sqs and s3."
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535,
+      "description": "Server port. Fields mode; not for sqlite, sqs and s3."
+    },
+    "database": {
+      "type": "string",
+      "description": "Database name. For sqlite the absolute file path; for sqs and s3 the AWS region."
+    },
+    "username": {
+      "type": "string",
+      "description": "User name. For sqs and s3 the AWS profile."
+    },
+    "password": {
+      "type": "string",
+      "x-kira-secret": true,
+      "description": "Secret reference ${secret:name}. Fields mode only. Set the value in Kira, in the connection's secrets section."
+    },
+    "uri": {
+      "type": "string",
+      "x-kira-secret": true,
+      "description": "Secret reference ${secret:name} that holds the whole connection URI. Uri mode only. Set the value in Kira, in the connection's secrets section."
+    },
+    "options": {
+      "type": "object",
+      "description": "Driver options, such as sslmode. A secret option such as a key passphrase needs uri mode.",
+      "additionalProperties": { "type": ["string", "number", "boolean"] }
+    },
+    "preconnect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command"],
+      "description": "A command Kira runs before it connects, such as an SSH tunnel.",
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "description": "Shell command. Never interpolated: ${...} stays literal text."
+        },
+        "sidecar": {
+          "type": "boolean",
+          "default": false,
+          "description": "Keep the command running and drop the connection when it exits."
+        },
+        "delay_sec": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 300,
+          "default": 0,
+          "description": "Seconds to wait after the command starts before the first connect."
+        }
+      }
+    },
+    "auto_explain": {
+      "type": "boolean",
+      "default": false,
+      "description": "Run EXPLAIN before every SELECT the console runs and warn about costly plans."
+    },
+    "throttle_per_sec": {
+      "type": "number",
+      "default": 0,
+      "description": "Commands per second this connection is paced to. 0 is unlimited, otherwise 0.01 to 1000."
+    },
+    "mcp": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "What an AI client may do through the DB MCP server.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Expose the connection to the DB MCP server."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "What the database is for. Shown to the AI client."
+        },
+        "read": {
+          "type": "string",
+          "enum": ["deny", "allow", "prompt"],
+          "default": "allow",
+          "description": "Read statements."
+        },
+        "write": {
+          "type": "string",
+          "enum": ["deny", "allow", "prompt"],
+          "default": "prompt",
+          "description": "Write statements."
+        },
+        "ddl": {
+          "type": "string",
+          "enum": ["deny", "allow", "prompt"],
+          "default": "deny",
+          "description": "Schema statements."
+        },
+        "auto_explain": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run EXPLAIN first and hold costly queries for a decision."
+        },
+        "review_results": {
+          "type": "string",
+          "enum": ["inherit", "review", "send"],
+          "default": "inherit",
+          "description": "inherit follows the app setting; review always holds results for a look; send never holds them."
+        }
+      }
+    },
+    "masks": {
+      "type": "array",
+      "description": "Columns whose values the DB MCP server hides.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["column", "kind"],
+        "properties": {
+          "table": {
+            "type": "string",
+            "default": "*",
+            "description": "Table name. * matches any table."
+          },
+          "column": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Column name. Matching is by column name, ignoring case."
+          },
+          "kind": { "type": "string", "description": "How the value is masked." },
+          "keep_hint": {
+            "type": "boolean",
+            "default": true,
+            "description": "Keep the kind's small hint: initials of a name, domain of an email, year of a date."
+          },
+          "correlate": {
+            "type": "boolean",
+            "default": true,
+            "description": "Add a keyed tag so equal values stay recognisable. Not for number."
+          }
+        }
+      }
+    },
+    "tree": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "What the left panel hides for this connection.",
+      "properties": {
+        "hidden_kinds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Object kinds to hide, such as sequence."
+        },
+        "hidden_paths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Object paths to hide, such as public/audit_log."
+        }
+      }
+    },
+    "schema_ddl": {
+      "type": "string",
+      "description": "DDL text for the SQL editor's completion and diagnostics."
+    }
+  }
+}

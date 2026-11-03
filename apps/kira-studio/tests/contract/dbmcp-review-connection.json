@@ -1,9 +1,10 @@
 {
-  "ConnectionsService.Update": {
+  "ConnectionsService.List#review": {
     "autoExplain": false,
     "color": "teal",
     "createdAt": "<masked>",
     "database": "/data/mcp.db",
+    "file": "notes-db.yaml",
     "host": null,
     "id": "<id:1>",
     "kind": "sqlite",
@@ -59,34 +60,5 @@
     "isError": false,
     "requestId": "<id:2>",
     "text": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}"
-  },
-  "args:ConnectionsService.Update": {
-    "id": "<id:1>",
-    "input": {
-      "autoExplain": false,
-      "color": "teal",
-      "database": "/data/mcp.db",
-      "host": null,
-      "kind": "sqlite",
-      "mcpAutoExplain": false,
-      "mcpDdlMode": "deny",
-      "mcpDescription": "scratch notes",
-      "mcpEnabled": true,
-      "mcpReadMode": "allow",
-      "mcpReviewResults": "review",
-      "mcpWriteMode": "prompt",
-      "mode": "fields",
-      "name": "notes db",
-      "options": {},
-      "password": null,
-      "port": null,
-      "preconnect": null,
-      "preconnectDelaySec": 0,
-      "preconnectSidecar": false,
-      "readOnly": false,
-      "throttlePerSec": 0,
-      "uri": null,
-      "username": null
-    }
   }
 }
