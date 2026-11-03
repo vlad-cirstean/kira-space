@@ -193,7 +193,7 @@ whatever sandbox a session happens to be in),
 - The renderer must never import a DB driver and never parse a wire protocol.
 - The grid must not create a DOM node per cell for off-screen rows; it is virtualized in both axes.
 - Row data must not use Vue reactivity: rows live in plain frozen typed structures, the grid reads them imperatively and re-renders on an explicit version counter.
-- Long lists (tree, log panel, document view) must be virtualized too.
+- Long lists (tree, log panel, document view, Docker overview table, Memory list) must be virtualized too.
 - Every operation exceeding ~150 ms must show progress and a working stop button.
 - Every DB read must go through the cache layer; a cache miss is the only thing that produces a query.
 - Bulk data is produced and encoded exactly once, in the process that owns the window (P58 D3): the Go adapter builds a result page, it is held in the Go-side L2 cache as native structures, and it is serialized once when a renderer asks for it.
@@ -3010,6 +3010,7 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 - Live logs virtualize unless Wrap is on; with Wrap on, the last 2000 filtered lines render. The log buffer cap is 20 000.
 - Docker exec uses TerminalHostView with storeId 'docker-exec'; the Terminal tab opens no session until New session is clicked.
 - Per-container CPU and RAM show in the engine overview table, the container header and a Stats view; the side list shows none.
+- The overview table (ContainerTable.vue) virtualizes through `useVirtualRows` with `scrollMargin`: the engine overview is the scroller and other sections sit above the table.
 - Docker endpoint resolution order (endpoint.go): selected UI context, DOCKER_HOST, DOCKER_CONTEXT, then `docker context show` (cached until the client is rebuilt; TLS contexts included), default socket, then socket probe (Desktop, Colima, OrbStack).
 - Docker streams are per window (windowKey); they end on WindowOpenerDeps.OnWindowClosing, service shutdown and quit, and run only while the module is visible. One exception: the restore tracker (P334).
 - Stats share one engine stream per container across windows.
@@ -3629,6 +3630,7 @@ config, project files.
 Kept only while genuinely open — delete an item the moment it's resolved, never mark it done in
 place. `CLAUDE.md` states the process rule; this is the list itself.
 
+- **ADE first mount stays retained after leaving ADE (P480, P481).** ade20: heap 24.9 MB at `left`, 37.9 MB at `back`; about 13 MB once per session, flat on later visits. The retained tree has about 3,600 Vue component instances while live DOM is 121 nodes. Root: Blink `DocumentState` through a detached `<input data-slot="input">` `onKeydown` invoker (P480). Candidate inputs: `ade-capture` (`AdeCaptureBox.vue`), `ade-panel-title` (`AdeTaskPanel.vue`), `ade-estimate-num` (`AdeEstimateField.vue`). `autocomplete="off"` on them, a plain-value `useCandidates` queryFn and dropping the probe's fake clock changed nothing. Delete once the owner is found and `back` heap falls by 2 MB or more.
 - **Jira images do not render inline (P460).** acli lists attachments but downloads none. The content URL needs credentials Kira never touches and the CSP allows only `img-src 'self' data:`. The view shows tiles and chips that open in the browser. Delete once acli downloads an attachment.
 - **Jira PR rows not listed (P459).** acli exposes only the Development count; the dev-status API needs credentials Kira never touches. The task tab and issue view show Jira's count. Delete once acli lists the rows.
 - **A run file deleted outside Kira leaves its folder (P472).** Deleting `<id>.yaml` in an editor drops the row and its secrets, but `<home>/automations/<id>` stays. Delete through the Runs panel removes it.

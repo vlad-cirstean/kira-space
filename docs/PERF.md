@@ -954,6 +954,56 @@ none of its commits recorded it. Measured later with the Vite production build a
 `bf0a1d8`: raw 65,409 B → 61,466 B (**−3,943 B**), gzip 9,867 B → 9,700 B (−167 B). A shrink: shared
 component classes replaced duplicated `.kv-*` styling. Container build, not a packaged one.
 
+### 2.15 P481 — frontend RAM wins (P480 probe)
+
+Base `c9ec9d14` (chapter `v0.2.28` after P479). Host: 4-core container, Linux 6.18, Chromium
+headless shell 1243, WebKit 2370. Probe: `heap-ram.spec.ts` of each app, Pass A (minified build,
+3 repeats, median [spread]); the probe's load gate waits for `load1 <= 1.0`. Commands:
+`KIRA_RAM_WORLD=docker bunx playwright test --config=apps/kira-studio/playwright.perf.config.ts --project=heap heap-ram --repeat-each=3`
+and `KIRA_RAM_WORLD=memory,diff,ade` for Space (`apps/kira-space/playwright.perf.config.ts`).
+"Before" was measured on the base commit, "after" on the fixed tree, same host.
+
+Docker overview table (`ContainerTable.vue`, 400 containers, checkpoint `list`):
+
+| number | before | after |
+|---|---|---|
+| V8 heap MB | 64.3 [0.0] | 18.1 [0.0] |
+| renderer RSS MB | 237 [1] | 168 [2] |
+| DOM nodes | 26,832 | 3,270 |
+| WebKit renderer RSS MB | 619 (P480) | 478 [2] |
+
+Other docker checkpoints moved by at most -1.1 MB heap (`logs0` 16.2 to 15.3, `left` 14.5 to 13.7).
+
+Memory list (`MemoryPanel.vue`, checkpoint `list`; memory500 before is 2 repeats, the first run
+was cut off by a tool timeout):
+
+| number | before | after |
+|---|---|---|
+| memory500 heap MB | 19.9 [0.0] | 12.4 [0.0] |
+| memory500 renderer RSS MB | 173 [0] | 154 [3] |
+| memory500 DOM nodes | 9,682 | 1,044 |
+| memory50 heap MB | 12.5 [0.0] | 12.2 [0.0] |
+
+Closed diff tabs (`RepoDiffView.vue`, 10 tabs opened then closed, checkpoint `closed`):
+
+| number | before | after |
+|---|---|---|
+| V8 heap MB | 33.5 [0.0] | 31.3 [0.0] |
+| DOM nodes (counter) | 3,196 | 2,568 |
+| Pass B: `StandaloneDiffEditor2` | 10 | 1 |
+| Pass B: `Detached <div>` retained | 3.5 MB | 0.78 MB |
+
+The one editor left is held by Monaco's global hover delegate (`vscodeWindowId` getter, then
+`InstantiationService`, then the editor's context-key service), not by app code. Heap saving
+2.2 MB meets the 2 MB threshold; the planned 28.5 to 30 MB range was not reached.
+
+ADE first mount retained after leaving (ade20, `left` 24.9 to `back` 37.9 MB): not fixed. Three
+trials, none moved `back`: (1) `useCandidates` queryFn without caller getters (Pass B, 3,618
+components still retained); (2) probe without `page.clock.install()` (left 24.8, back 37.7, so the
+fake clock is not the cause); (3) `autocomplete="off"` on the capture box, title and estimate
+inputs (left 24.9, back 37.9). Inputs present at the `task` checkpoint: `ade-capture`,
+`ade-panel-title`, `ade-task-host-input`, `ade-estimate-num`. Open item in `docs/ARCHITECTURE.md`.
+
 ## 3. Manual procedures (macOS, packaged build)
 
 Not yet run — no macOS hardware here. Run these once on macOS 26+ arm64 and record the results

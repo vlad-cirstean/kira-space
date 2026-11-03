@@ -15,7 +15,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | P478 | Git on bound services: review, change requests, ADE and repo consumers | Done |
 | P479 | Git graph data plane; remove the git stream protocol | Done |
 | P480 | Frontend RAM measurement, both apps | Done |
-| P481 | Frontend RAM: implement the proven wins | Todo |
+| P481 | Frontend RAM: implement the proven wins | Done |
 | P482 | Code review (2 rounds) | Todo |
 | P483 | Close chapter v0.2.28 | Todo |
 
@@ -177,6 +177,8 @@ Result:
 - The planner may split this row into `P481 Part 1`, `Part 2`, … by finding group.
 - Behaviour unchanged: switching tabs never loses state or refetches only because of UI interaction (P433 rule).
 - Test: heap and RSS probes rerun; affected UI specs. A new spec only where a fix changes when state is released and restored (e.g. an editor disposed while hidden, restored on return).
+
+**Result:** Docker overview table (`ContainerTable.vue`, `useVirtualRows` with new `scrollMargin`), Memory list (`MemoryPanel.vue`) virtualized; `RepoDiffView.vue` working-diff query takes plain values and exists only for working tabs. Pass A, median of 3: docker `list` heap 64.3 to 18.1 MB, RSS 237 to 168 MB, DOM 26,832 to 3,270, WebKit RSS 619 to 478 MB; memory500 `list` heap 19.9 to 12.4 MB, DOM 9,682 to 1,044; diff `closed` heap 33.5 to 31.3 MB, Pass B editors 10 to 1 (the last held by Monaco's global hover delegate). xterm scrollback stays 5000 (user choice, rank 2 declined). ADE first-mount retention not fixed after three trials (owner not named); Known open item added. New End/Home specs: `list-keyboard-docker.spec.ts`, `list-keyboard.spec.ts`. Numbers and plan: `docs/PERF.md` section 2.15, `plans/P481.md` Results.
 
 ### P482 Code review (2 rounds)
 
