@@ -20,7 +20,7 @@ function recordBoundCalls(): void {
   calls.length = 0;
   setCallFactory((name, arg) => {
     // The window reset every bound call waits for.
-    if (String(name).endsWith('.ResetWindow')) {
+    if (String(name).endsWith('.ResetWindow') || !/GitService\./.test(String(name))) {
       return Object.assign(Promise.resolve(null), { cancel() {} });
     }
     let resolve!: (value: unknown) => void;

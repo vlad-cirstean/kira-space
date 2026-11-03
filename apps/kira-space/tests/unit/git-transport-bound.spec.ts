@@ -32,6 +32,10 @@ let holdReset = false;
 function recordBoundCalls(): void {
   calls.length = 0;
   setCallFactory((name, arg) => {
+    // Other specs' debounced work (e.g. the mode store's SetMode) can fire into this window.
+    if (!/Git(Host)?Service\./.test(String(name))) {
+      return Object.assign(Promise.resolve(null), { cancel() {} });
+    }
     let resolve!: (value: unknown) => void;
     let reject!: (err: unknown) => void;
     const promise = new Promise<unknown>((res, rej) => {
