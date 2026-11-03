@@ -79,9 +79,12 @@ test('contract: selecting a row opens its panel', async ({ relaunch }) => {
   await expect(row(page, 'one')).toHaveAttribute('data-selected', 'true');
   await expect(page.locator(t('ade-panel'))).toBeVisible();
   await expect(page.locator(t('ade-panel-title'))).toHaveValue('one');
-  await expect(page.locator(t('ade-panel-shelve'))).toHaveText('Backlog');
+  await page.locator(t('ade-panel-more')).click();
+  await expect(page.locator(t('menu-item-ade-task-backlog'))).toBeVisible();
+  await page.keyboard.press('Escape');
   await row(page, 'two').click();
-  await expect(page.locator(t('ade-panel-shelve'))).toHaveText('Later');
+  await page.locator(t('ade-panel-more')).click();
+  await expect(page.locator(t('menu-item-ade-task-later'))).toBeVisible();
 });
 
 test('contract: dragging within Later sends ShelveTask before the drop target', async ({
@@ -126,15 +129,16 @@ test('contract: the menu offers Move to backlog right above Archive', async ({ r
   });
 });
 
-test('contract: a Backlog task moves to Later from the panel button', async ({ relaunch }) => {
+test('contract: a Backlog task moves to Later from the panel menu', async ({ relaunch }) => {
   const { window: page, control } = await openLater(relaunch);
   await row(page, 'two').click();
-  await page.locator(t('ade-panel-shelve')).click();
+  await page.locator(t('ade-panel-more')).click();
+  await page.locator(t('menu-item-ade-task-later')).click();
   await expect.poll(() => calls(control, IPC.adeTaskShelveTask)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskShelveTask)[0]?.args).toEqual({
     taskId: idOf('two'),
     shelf: 'later',
-    beforeId: '',
+    beforeId: idOf('planned'),
   });
 });
 
