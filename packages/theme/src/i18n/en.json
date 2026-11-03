@@ -9861,9 +9861,6 @@
           "label": "Branch request",
           "status": "An agent waits for your approval"
         },
-        "handover": {
-          "label": "Handover"
-        },
         "issue": {
           "label": "Issue"
         },

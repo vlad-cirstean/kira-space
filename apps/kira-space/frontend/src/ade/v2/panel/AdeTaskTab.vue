@@ -23,7 +23,6 @@ import { useAddTaskRepo, useUpdateTask } from '../queries';
 import { useAdeAddUiStore } from '../state/adeAddUi';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeBranchRequestStore } from '../state/adeBranchRequest';
-import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import type { TaskPatch } from '../wire';
 import AdeEstimateField from './AdeEstimateField.vue';
 import AdeLinkRow from './AdeLinkRow.vue';
@@ -38,7 +37,6 @@ const props = defineProps<{ card: CardModel }>();
 const { liveNow } = usePlanModel();
 
 const ui = useAdeBoardUiStore();
-const tabs = useAdePanelTabsStore();
 const addUi = useAdeAddUiStore();
 const requestStore = useAdeBranchRequestStore();
 const update = useUpdateTask();
@@ -59,18 +57,6 @@ async function write(patch: Partial<TaskPatch>): Promise<boolean> {
     return false;
   }
 }
-
-// ---- handover
-const currentStepId = computed(() =>
-  props.card.progress.finished ? 'done' : (props.card.progress.step?.id ?? ''),
-);
-/** The current stage's open draft, else what the last move left for it. */
-const handoverSnippet = computed(() => {
-  const draft = task.value.handoverDrafts.find((d) => d.fromStepId === currentStepId.value);
-  if (draft?.body) return draft.body;
-  const h = task.value.handoverIn;
-  return h && h.toStepId === currentStepId.value ? h.body : '';
-});
 
 // ---- status
 const why = computed(() => statusWhy(task.value, props.card.blocked, props.card.progress));
@@ -174,20 +160,6 @@ const chipClass = (t: 'muted' | 'stale' | 'unknown'): string =>
       <dd
         ><AdeEstimateField :est="task.est" :days="spanDays" :error="estError" @save="saveEst" /></dd
       >
-      <template v-if="!review && handoverSnippet">
-        <dt>{{ t('space.ade.taskTab.handover.label') }}</dt>
-        <dd>
-          <button
-            type="button"
-            class="line-clamp-2 w-full text-left text-kira-md hover:underline"
-            data-testid="ade-task-handover-row"
-            @click="tabs.setTaskTab(task.id, 'notes')"
-            >{{
-              handoverSnippet
-            }}</button
-          >
-        </dd>
-      </template>
       <template v-if="task.branchRequestId">
         <dt>{{ t('space.ade.taskTab.branchRequest.label') }}</dt>
         <dd class="flex min-h-row items-center gap-2" data-testid="ade-task-branch-request-row">
