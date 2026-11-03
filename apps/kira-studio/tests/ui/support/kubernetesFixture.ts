@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { runtimeErrorBody } from '@workbench/testing/ui/mockRuntime';
+import type { ControlSnapshot } from '../../ipc/support/types';
 import { expect, type test } from '../fixtures';
 import { contract } from './contract';
 
@@ -108,8 +109,9 @@ async function install(page: Page, handlers: Record<string, KubeHandler>): Promi
 export async function setupKubernetes(
   relaunch: Parameters<Parameters<typeof test>[2]>[0]['relaunch'],
   overrides: Record<string, KubeHandler> = {},
+  controlRoutes: readonly ControlSnapshot[] = [],
 ) {
-  const { window: page, control } = await relaunch({ control: [] });
+  const { window: page, control } = await relaunch({ control: controlRoutes });
   const kube = await install(page, { ...defaults(), ...overrides });
   return { page, kube, control };
 }
