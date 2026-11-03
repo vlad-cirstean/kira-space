@@ -21,6 +21,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/appupdate"
+	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/agentsvc"
@@ -52,8 +53,10 @@ type Options struct {
 	McpInstaller    harness.MCPInstaller
 	// Browser opens external URLs (a deferred Wails opener in production).
 	Browser bridge.Browser
-	AppName string
-	Version string
+	// FileOpener opens or reveals a config file; main passes the Wails adapter.
+	FileOpener configsvc.FileOpener
+	AppName    string
+	Version    string
 	// SmartTimeout replaces every smart script's own timeout (a flow-test seam); production leaves it zero.
 	SmartTimeout time.Duration
 	// ScheduleTimeout replaces every headless scheduled run's own timeout and Clock drives the
@@ -118,6 +121,7 @@ type Wired struct {
 	KeepAwake       *bridge.KeepAwakeService
 	Terminal        *bridge.TerminalService
 	CustomScripts   *bridge.CustomScriptsService
+	ConfigFiles     *bridge.ConfigFilesService
 	ScriptRuns      *bridge.ScriptRunsService
 	Docker          *bridge.DockerService
 	Kubernetes      *bridge.KubernetesService
@@ -278,6 +282,7 @@ func Build(opts Options) (*Wired, error) {
 		KeepAwake:       embedded.keepAwakeSvc,
 		Terminal:        embedded.terminalSvc,
 		CustomScripts:   &bridge.CustomScriptsService{Deps: deps, Changed: embedded.sched.Reload},
+		ConfigFiles:     &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"runs": filepath.Join(deps.Home, "runs")})},
 		ScriptRuns:      embedded.scriptRuns,
 		Docker:          embedded.dockerSvc,
 		Kubernetes:      embedded.kubeSvc,
@@ -331,7 +336,7 @@ func (w *Wired) reopenWindow() {
 	}
 }
 
-// Bound returns the 35 bound services in registration order.
+// Bound returns the 36 bound services in registration order.
 func (w *Wired) Bound() []application.Service {
 	return []application.Service{
 		application.NewService(w.App), application.NewService(w.Settings), application.NewService(w.Layout),
@@ -343,7 +348,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.ResponseHistory), application.NewService(w.GrpcHistory),
 		application.NewService(w.DataGrip), application.NewService(w.DbMcp), application.NewService(w.KeepAwake),
 		application.NewService(w.Terminal), application.NewService(w.CustomScripts), application.NewService(w.ScriptRuns), application.NewService(w.Docker), application.NewService(w.Kubernetes), application.NewService(w.Link),
-		application.NewService(w.Update), application.NewService(w.Lifecycle), application.NewService(w.PromptsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.Proof),
+		application.NewService(w.Update), application.NewService(w.Lifecycle), application.NewService(w.PromptsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.Proof), application.NewService(w.ConfigFiles),
 	}
 }
 
