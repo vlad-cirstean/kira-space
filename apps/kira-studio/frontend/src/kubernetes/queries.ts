@@ -5,7 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/vue-query';
-import { tryOnScopeDispose, useDocumentVisibility } from '@vueuse/core';
+import { createSharedComposable, tryOnScopeDispose, useDocumentVisibility } from '@vueuse/core';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { optimisticUpdate } from '@workbench/behaviour/optimistic';
 import { TIMING } from '@workbench/behaviour/timing';
@@ -19,6 +19,7 @@ const LARGE_LIST_ROWS = 1000;
 
 const kubeKeys = {
   clusters: ['kubernetes', 'clusters'] as const,
+  reorder: ['kubernetes', 'reorder'] as const,
   cluster: (id: string) => ['kubernetes', id] as const,
   status: (id: string) => ['kubernetes', id, 'status'] as const,
   namespaces: (id: string) => ['kubernetes', id, 'namespaces'] as const,
@@ -28,12 +29,21 @@ const kubeKeys = {
 /** A refetch of loaded data is background work: the backend keeps it out of the Operations panel. */
 const isRefetch = (qc: QueryClient, key: readonly unknown[]) => qc.getQueryData(key) !== undefined;
 
-/** Another window reordered or edited a cluster: refetch. */
-export function useClusters() {
+/** One listener per window, however many components list clusters. */
+const useClustersChanged = createSharedComposable(() => {
   const qc = useQueryClient();
   tryOnScopeDispose(
-    kubeControl.onClusters(() => void qc.invalidateQueries({ queryKey: kubeKeys.clusters })),
+    kubeControl.onClusters(() => {
+      // The event fires before this window's own reorder resolves; that result already sets the cache.
+      if (qc.isMutating({ mutationKey: kubeKeys.reorder }) > 0) return;
+      void qc.invalidateQueries({ queryKey: kubeKeys.clusters });
+    }),
   );
+});
+
+/** Another window reordered or edited a cluster: refetch. */
+export function useClusters() {
+  useClustersChanged();
   return useQuery({ queryKey: kubeKeys.clusters, queryFn: kubeControl.clusters });
 }
 
@@ -48,7 +58,7 @@ function clustersInOrder(old: KubeClusters, ids: readonly string[]): KubeCluster
 export function useReorderClusters() {
   const qc = useQueryClient();
   return useMutation({
-    mutationKey: ['kubernetes', 'reorder'],
+    mutationKey: kubeKeys.reorder,
     mutationFn: (ids: string[]) => kubeControl.reorder(ids),
     ...optimisticUpdate<KubeClusters, string[]>(qc, kubeKeys.clusters, clustersInOrder),
     onSuccess: (result) => qc.setQueryData<KubeClusters>(kubeKeys.clusters, result),
