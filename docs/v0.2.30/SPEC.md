@@ -1,12 +1,12 @@
 # v0.2.30
 
-Branch `chapter/v0.2.30`. First `P` is 495 (highest in v0.2.29 is P494).
+Branch `chapter/v0.2.30`. First `P` is 495 (highest in v0.2.29 is P494), last is P504.
 
 Source: user request. Phases run top to bottom, one at a time. Scope is closed: further phases go to v0.2.31. Ends with one code review round, then close, then PR.
 
 All rows are Kira Space (`apps/kira-space`), ADE unless named.
 
-Parallel streams: code files are disjoint between every pair of P495, P496, P497, P498 and P499, except one shared file, `packages/theme/src/i18n/en.json`. P495/P496 touch neighbouring panel files (`AdeTaskPanel.vue`, `AdeTaskTab.vue`) but no common file. P499 (Go review store, `packages/git-ipc`, `packages/git-ui`, review window) shares nothing with P495–P498 but `en.json`. So P499 can run as a stream beside one of P495–P498, if the plan confirms the split per CLAUDE.md: an ownership table, `en.json` key ownership, no ordering dependency. Without that confirmation, rows run in sequence. Cap 2 streams.
+Parallel streams: code files are disjoint between every pair of P495, P496, P497, P498 and P499, except one shared file, `packages/theme/src/i18n/en.json`. P495/P496 touch neighbouring panel files (`AdeTaskPanel.vue`, `AdeTaskTab.vue`) but no common file. P499 (Go review store, `packages/git-ipc`, `packages/git-ui`, review window) shares nothing with P495–P498 but `en.json`. So P499 can run as a stream beside one of P495–P498, if the plan confirms the split per CLAUDE.md: an ownership table, `en.json` key ownership, no ordering dependency. Without that confirmation, rows run in sequence. Cap 2 streams. P500–P502 run in sequence, never as streams: P500 shares `board/actions.ts` with P495, P501 and P502 share `AdeTaskPanel.vue` with each other and with P496.
 
 | Phase | Title | Status |
 |---|---|---|
@@ -15,8 +15,11 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 | P497 | ADE: task "+" launch menu shares the Runs dropdown | Todo |
 | P498 | ADE: one Agents tab for Context and Settings | Todo |
 | P499 | Review: show reviewed changes removed since review | Todo |
-| P500 | Code review (1 round) | Todo |
-| P501 | Close chapter v0.2.30 | Todo |
+| P500 | ADE: task card icon row | Todo |
+| P501 | ADE: task panel restructure | Todo |
+| P502 | ADE: multi-branch task panel simplification | Todo |
+| P503 | Code review (1 round) | Todo |
+| P504 | Close chapter v0.2.30 | Todo |
 
 ## Rows
 
@@ -68,10 +71,40 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 - Test: backend flow in `internal/flows/reviewflow`: mark a file and a hunk reviewed; remove both from the branch; the list returns both entries with their content; dismiss clears them. UI spec on the same scenario (section shows, content visible, dismiss hides). `gitreview` unit tests only for the range arithmetic, if any is new.
 - Result: pending.
 
-### P500 Code review (1 round)
+### P500 ADE: task card icon row
+
+- Today: `plan/AdeTaskCard.vue` has a left `AdeActionCell` column holding the primary action.
+- Want: remove the left `AdeActionCell` column. The task tag becomes a toned icon with a tooltip in the card header line. The primary action (`AdeTaskActionButton`) is an icon at the right end. Each branch row shows status icon(s) at its right edge: max 2-3, the rest go in the row menu.
+- Each state has a distinct glyph, not only a colour. Urgent states (conflict, setup failed, rebasing) are styled more prominently. The context-menu handler moves onto the icons. Icons are always visible, never hover-only. The card may grow a bit in height and width.
+- Files: `AdeTaskCard.vue`, `AdeActionCell.vue`, `AdeBranchRow.vue`, `board/actions.ts`.
+- Frontend only; IPC unchanged, so no backend test.
+- Test: UI specs covering the card, action button and branch row updated to the new layout.
+- Result: pending.
+
+### P501 ADE: task panel restructure
+
+- Want: tabs Main, Details, Sessions. Title stays where it is.
+- Main: workflow steps and branches. A PR shows on its branch, with target branch and check result.
+- Details: merges the task Notes and Artifacts tabs. Linked items sit in categories Main and Related, shown as links only (no bare numbers). Paste adds an item, with provider detection. Edit is inline, Notion-style, not one input per item. A collapsible chronological timeline lists everything added during the task's life.
+- Handovers, agent notes and artifacts link to the agent session that created them. Plan checks whether entries already store the originating session id. If not, the backend records it, with a flow test.
+- Plan accounts for P496 (handover only in Notes). Not parallel with P496.
+- Files: `panel/AdeTaskPanel.vue`, `panel/AdeTaskTab.vue` and sibling tab components, adewire types, backend storage if the session id is missing.
+- Test: backend flow if storage changes; UI specs for the tabs, Details editing, timeline and session links.
+- Result: pending.
+
+### P502 ADE: multi-branch task panel simplification
+
+- Today: multi-branch tasks are confusing in the details panel. The task list is fine.
+- Want: simplify how several branches show in the Main tab. Free hand for the planner.
+- Runs after P501: both touch `AdeTaskPanel.vue`.
+- Frontend only; IPC unchanged, so no backend test.
+- Test: UI spec for a multi-branch task in the Main tab.
+- Result: pending.
+
+### P503 Code review (1 round)
 
 One Opus review over the full diff since `main`, findings file under `plans/`, then one Sonnet fixer. Then close, then PR.
 
-### P501 Close chapter v0.2.30
+### P504 Close chapter v0.2.30
 
 Hand-written close per CLAUDE.md "Closing a chapter". Push, open PR to `main`.
