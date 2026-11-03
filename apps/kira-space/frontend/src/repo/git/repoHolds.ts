@@ -7,7 +7,9 @@
  * the older close. A failed open drops its entry; the next hold retries.
  */
 import type { ResultOf } from '@kira/git-ipc';
+import { tryOnScopeDispose } from '@vueuse/core';
 import { logError } from '@workbench/bridge/log';
+import { watch } from 'vue';
 import { callBound } from './boundGit';
 
 export interface GitRepoHold {
@@ -38,6 +40,33 @@ function enqueue<T>(path: string, fn: () => Promise<T>): Promise<T> {
     if (queues.get(path) === tail) queues.delete(path);
   });
   return run;
+}
+
+/** A hold scoped to the calling composable or component; follows `path` and releases on dispose.
+ *  `ready` rethrows a failed open and takes a fresh hold, so the next call retries. */
+export function useGitRepoHold(path: () => string): { ready: () => Promise<unknown> } {
+  let hold: GitRepoHold | undefined;
+  const swap = (next: string) => {
+    hold?.release();
+    hold = next === '' ? undefined : holdGitRepo(next);
+  };
+  watch(path, swap, { immediate: true });
+  tryOnScopeDispose(() => {
+    hold?.release();
+    hold = undefined;
+  });
+  return {
+    ready: async () => {
+      const current = hold;
+      if (!current) return;
+      try {
+        return await current.ready;
+      } catch (err) {
+        if (hold === current) swap(path());
+        throw err;
+      }
+    },
+  };
 }
 
 /** Holds `path` for the duration of `fn`. */

@@ -3,8 +3,8 @@ import { useMutation, useQuery } from '@tanstack/vue-query';
 import { hostWords, t } from '@theme/i18n';
 import { computed } from 'vue';
 import { control } from '../../../bridge/control';
-import { gitTransportFor } from '../../../repo/git/transport';
-import { ensureRepoOpen } from '../../../state/repoOpenHold';
+import { gitCall } from '../../../repo/git/gitCall';
+import { useGitRepoHold } from '../../../repo/git/repoHolds';
 import type { ReviewWindowTarget } from '../wire';
 
 type OkState = Extract<ChangeRequestReviewState, { kind: 'ok' }>;
@@ -41,17 +41,13 @@ export function useChangeRequestReview(target: () => ReviewWindowTarget) {
   const key = computed(() =>
     reviewStateKey(target().gitRepoId, target().branch, target().changeRequest),
   );
-  const transport = async () => {
-    const tg = target();
-    const tr = gitTransportFor(tg.codeRepoId);
-    await ensureRepoOpen(tr, tg.gitRepoId);
-    return tr;
-  };
+  const hold = useGitRepoHold(() => target().gitRepoId);
   const state = useQuery({
     queryKey: key,
     queryFn: async (): Promise<ChangeRequestReviewState> => {
       const tg = target();
-      return (await transport()).request('changeRequest.reviewState', {
+      await hold.ready();
+      return gitCall('changeRequest.reviewState', {
         repoId: tg.gitRepoId,
         branch: tg.branch,
         ...(tg.changeRequest > 0 ? { number: tg.changeRequest } : {}),
@@ -66,21 +62,20 @@ export function useChangeRequestReview(target: () => ReviewWindowTarget) {
       event: ChangeRequestReviewEvent;
       body: string;
       headSha: string;
-    }) =>
-      (await transport()).request('changeRequest.submitReview', {
-        repoId: target().gitRepoId,
-        ...a,
-      }),
+    }) => {
+      await hold.ready();
+      return gitCall('changeRequest.submitReview', { repoId: target().gitRepoId, ...a });
+    },
   });
   const comment = useMutation({
-    mutationFn: async (a: { number: number; body: string }) =>
-      (await transport()).request('changeRequest.comment', { repoId: target().gitRepoId, ...a }),
+    mutationFn: async (a: { number: number; body: string }) => {
+      await hold.ready();
+      return gitCall('changeRequest.comment', { repoId: target().gitRepoId, ...a });
+    },
   });
   async function openChangeRequest(number: number): Promise<void> {
-    const res = await (await transport()).request('changeRequest.browserUrl', {
-      repoId: target().gitRepoId,
-      number,
-    });
+    await hold.ready();
+    const res = await gitCall('changeRequest.browserUrl', { repoId: target().gitRepoId, number });
     if (res.url !== null) await control.gitHostOpenChangeRequestUrl(res.url);
   }
   return { state, submitReview, comment, openChangeRequest };
