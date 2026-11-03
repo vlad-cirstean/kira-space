@@ -7,6 +7,7 @@ import { reactive } from 'vue';
 import { errorText } from '../bridge/codedError';
 import { fireAndForget } from '../bridge/fireAndForget';
 import { logError } from '../bridge/log';
+import type { TerminalFileLinks } from '../terminal/terminalRenderer';
 import { loadTerminalRenderer } from '../terminal/terminalRendererLoader';
 import { createOrderedWriter } from './orderedWrites';
 
@@ -75,6 +76,8 @@ export interface TerminalsStoreOptions {
   openExternal(url: string): Promise<void>;
   /** Pinia store id; a second terminals store (Docker exec) needs its own. Default `terminals`. */
   storeId?: string;
+  /** File-path links; set only where Kira Space can open them. */
+  fileLinks?: TerminalFileLinks;
 }
 
 export function createTerminalsStore(control: TerminalsControl, options: TerminalsStoreOptions) {
@@ -165,6 +168,7 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
           writeTerminal,
           openLink: (url) => void options.openExternal(url),
           linkActivation: 'modifier',
+          fileLinks: options.fileLinks,
         });
       } catch (err) {
         logError('terminals', `${tabId}: renderer load failed`, err);

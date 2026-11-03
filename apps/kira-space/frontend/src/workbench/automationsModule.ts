@@ -6,7 +6,7 @@ import { useLayoutStore } from '../state/layout';
 import { useModeStore } from '../state/mode';
 import { useSettingsStore } from '../state/settings';
 import { useTabsStore } from '../state/tabs';
-import { useTerminalsStore } from '../state/terminals';
+import { terminalFileLinks, useTerminalsStore } from '../state/terminals';
 import { openTerminalTab } from '../state/terminalTabs';
 
 // This app's own Automations-module context, provided once in App.vue (alongside
@@ -50,6 +50,7 @@ export function createAutomationsModule(): AutomationsModuleContext {
         writeTerminal: terminalsStore.writeTerminal,
         openLink: (url) => fireAndForget(control.openExternal(url), 'terminalLink'),
         linkActivation: 'modifier',
+        fileLinks: terminalFileLinks,
       },
       terminalSession: terminalsStore.terminalSession,
       openTerminalSession: terminalsStore.openTerminalSession,
