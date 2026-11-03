@@ -12,7 +12,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | P475 | Connections config as files in the app folder | Done |
 | P476 | Git on bound services: connection lifecycle, events, read methods | Done |
 | P477 | Git on bound services: write operations | Done |
-| P478 | Git on bound services: review, change requests, ADE and repo consumers | Todo |
+| P478 | Git on bound services: review, change requests, ADE and repo consumers | Done |
 | P479 | Git graph data plane; remove the git stream protocol | Todo |
 | P480 | Frontend RAM measurement, both apps | Done |
 | P481 | Frontend RAM: implement the proven wins | Todo |
@@ -134,6 +134,15 @@ Result:
 - Move `review.*`, `changeRequest.*`, comments and `gitHost.*`.
 - Move every caller outside `packages/git-ui`: review windows (`apps/kira-space/frontend/src/repo/git/reviewSession.ts`), `views/repo/*` (blame line, review threads and decorations), `repo/*` (`RepoList.vue`, `RepoWorktreeRow.vue`, `state/repoHeads.ts`, `state/worktrees.ts`), `state/repoOpenHold.ts`, and ADE (`ade/v2/wire.ts`, `ade/v2/review/*`).
 - Test: `flows/reviewflow`, `flows/githostflow`; ADE review and repo list UI specs unchanged in assertions.
+
+Result:
+
+- Go: `bridge/gitservice_review.go` adds 23 `GitService` methods over `callGit[T]` (review.*, comments, commit/branch change request methods, `gitHost.info`, `changeRequest.*`); 60 in total. `gitHost.providers` goes to the existing `GitHostService.Providers`. `gitWindow` tracks bound repo holds (`noteBoundOpen`/`noteBoundClose`): a window's Conn outlives its last stream while any remain. No handler change, contract version stays 58.
+- Frontend: 24 more `BOUND_METHODS`. New `repo/git/repoHolds.ts` (window-level refcounted holds, ordered per-path open/close), `gitCall.ts` (`gitCall`, `onGitRepoEvent`), `reviewRepaint.ts` (review-write repaint fan-out and comment refresh, moved out of `transport.ts`). `state/repoOpenHold.ts` deleted. Consumers off the transport: `blameLine`, `fileContent`, `reviewSource`, `useDiffEditor` (snapshot), `ade/v2/review/*`, `repoHeads`, `worktrees`. `transport.ts` keeps git-ui mounts and host-local methods; its repo hold is the shared registry. Dead `onTransportEvicted` and `RELEASE_RETRY_MS` removed.
+- Worktree lists are TanStack Query (`state/worktreeQueries.ts`); `worktrees.ts` keeps expand state, holds and `repo.changed` invalidation.
+- Tests. Add: `flows/gitflow/bound_review_test.go` (`TestGitServiceBoundReview`: 23 methods, stream byte parity, error parity, hold outlives last stream), contract `git-bound-review.json`, `tests/ui/git-bound-review.spec.ts`, `tests/unit/git-repo-holds.spec.ts`. Adapt: harness bound table (+24), `RequestWire`, `GitStream.Close` releases bound-opened repos; `gitStreamMock.ts` `BOUND_GIT_WIRE` (+24, `repo.close` answers by default); unit Wails stub keeps `Events.On` handlers (`emitWailsEvent`); `blame-line-controller.spec.ts` mocks. Existing contract files byte-identical.
+- Ran: go vet, golangci-lint (root and apps/kira-space, 0 issues), `bun run lint`, `lint:dead`, typecheck, `test:unit` (1973 pass), flow packages (gitflow under `-race`, repoflow, reviewflow, githostflow, appflow, journeyflow, adeflow), bridge, gitrpc, flowharness, related UI specs (219 plus the new spec). Full e2e suites not run (chapter rule).
+- Fixed on the spot: gocritic `stringXbytes` in the new flow test; knip unused exports left by the move.
 
 ### P479 Git graph data plane; remove the git stream protocol
 
