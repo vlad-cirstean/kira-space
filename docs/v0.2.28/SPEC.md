@@ -11,7 +11,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | P474 | Git repos config as files in the app folder | Done |
 | P475 | Connections config as files in the app folder | Done |
 | P476 | Git on bound services: connection lifecycle, events, read methods | Done |
-| P477 | Git on bound services: write operations | Todo |
+| P477 | Git on bound services: write operations | Done |
 | P478 | Git on bound services: review, change requests, ADE and repo consumers | Todo |
 | P479 | Git graph data plane; remove the git stream protocol | Todo |
 | P480 | Frontend RAM measurement, both apps | Done |
@@ -119,6 +119,15 @@ Result:
 - Move every write method: preflight, branch, commit writes, stash and global stash, undo, remote (fetch, push, pull through the credential relay), worktree, stack, working-tree writes, op cancel.
 - Long ops keep progress events and cancel. The plan picks the cancel path (binding call cancellation or an explicit cancel method) and proves an in-flight write still finishes after window close.
 - Test: `flows/gitflow` write flows through the bound service, incl. credential prompt routing (`TestCredentialRoutes`) and cancel. Affected git UI specs unchanged in assertions.
+
+Result:
+
+- Go: `bridge/gitservice_writes.go` adds 23 `GitService` methods over `callGit[T]` (all preflights, stash, global stash, `op.run`, undo, remote incl. `remote.cancel`, worktree, stack incl. `stack.cancelRestack`); 37 methods in total. No handler change, no contract version bump (58). Cancel path: explicit cancel methods; binding-promise cancel only abandons the reply, writes stay detached.
+- Frontend: 23 more `BOUND_METHODS` in `repo/git/boundGit.ts`. git-ui drops `remote.progress` outside an active remote op and `stack.progress` outside a restack, since bound replies and events no longer share one ordered stream.
+- Tests. Keep: all `packages/git-ui` and `git-ipc` specs, all UI specs using the git mock (208 pass), every existing gitflow, repoflow, appflow, reviewflow, githostflow and journeyflow test now running writes bound; existing `tests/contract/*.json` byte-identical after a `KIRA_CONTRACT=write` run. Adapt: harness bound table (+23) and `GitStream.Key()`; `gitStreamMock.ts` `BOUND_GIT_WIRE` (+23); `TestWriteSurvivesCancelAndDisconnect` gains a `window close` case. Add: `flows/gitflow/bound_writes_test.go` (`TestGitServiceBoundWrites`: all 23 methods, progress addressing, `RemoteCancel`, binding-ctx cancel, window close mid-write with op log record, window close mid-credential-prompt freeing the slot; contract `git-bound-writes.json`); `tests/ui/git-bound-writes.spec.ts`; one late-progress case each in `ops.spec.ts` and `stack.spec.ts`. Delete: none.
+- Ran: go vet (`./internal/...`; `main.go` needs `frontend/dist-mobile`), golangci-lint (apps/kira-space and root `./internal/...`), `bun run lint`, `bun run lint:dead`, typecheck, `bun run test:unit` (1969 pass), the flow packages above plus bridge, gitrpc and flowharness, gitflow under `-race`, git-mock UI specs and the new spec. Full e2e suites not run (chapter rule).
+- Fixed on the spot: data race in `gitsession.newRepoEntry` (`pump` read `crSync` before it was set; `pump` now starts last); `TestCredentialRoutes` read the credential note before it showed, now waits. One `test:unit` failure on the first run did not reproduce in 3 reruns.
+- Deviations: commits 2 and 3 of the plan landed as one (`feat: git transport routes writes bound`, with the git-ui guards). The `-tags server` Wails call lifetime check with a slow remote was not run in the native app; the code path is unchanged.
 
 ### P478 Git on bound services: review, change requests, ADE and repo consumers
 
