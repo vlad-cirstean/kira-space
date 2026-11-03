@@ -279,6 +279,10 @@ type ChangeRequest struct {
 	Title  string `json:"title"`
 	State  string `json:"state"`
 	URL    string `json:"url"`
+	// BaseRef is the target branch; '' when unknown (an archived snapshot).
+	BaseRef string `json:"baseRef"`
+	// ChecksState is '' | SUCCESS | FAILURE | PENDING | ERROR | EXPECTED.
+	ChecksState string `json:"checksState"`
 }
 
 type Branch struct {

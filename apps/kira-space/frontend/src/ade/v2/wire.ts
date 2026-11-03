@@ -202,6 +202,10 @@ export interface ChangeRequest {
   title: string;
   state: string;
   url: string;
+  /** The target branch; '' when unknown (an archived snapshot). */
+  baseRef: string;
+  /** '' | SUCCESS | FAILURE | PENDING | ERROR | EXPECTED. */
+  checksState: string;
 }
 export interface Branch {
   id: string;

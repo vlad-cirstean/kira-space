@@ -698,7 +698,7 @@ func resolveRepoHost(ctx context.Context, entry *gitsession.RepoEntry, branches 
 			kind = res.Kind
 		} else if len(res.ChangeRequests) > 0 {
 			cr := res.ChangeRequests[0]
-			found[br.ID] = adewire.ChangeRequest{Number: cr.Number, Title: cr.Title, State: cr.State, URL: cr.URL}
+			found[br.ID] = adewire.ChangeRequest{Number: cr.Number, Title: cr.Title, State: cr.State, URL: cr.URL, BaseRef: cr.BaseRef, ChecksState: cr.ChecksState}
 		}
 	}
 	return kind, host, found, urls
