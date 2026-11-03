@@ -7415,3 +7415,46 @@ Two review rounds over the full diff since `main`: round 1 found 14 (6 Medium, 8
 ### v0.2.26 P458 (Done)
 Chapter folded by hand into this file; `docs/v0.2.26/` removed. Manual step before merge: apply `docs/pending-changes/.github__workflows__secrets-path.patch`, else the darwin CI job tests a deleted path. Smart scripts always run isolated and get no app settings. Studio and Space host the shared context differently. No screenshots for the new Context, Settings and Agent panes.
 <!-- /chapter v0.2.26 -->
+<!-- chapter v0.2.27 -->
+## v0.2.27
+Source: docs/v0.2.27/ at 3ade39626. 13 phases.
+
+### v0.2.27 P459 (Done)
+Task tab drops the Notes row; Notes tab and data unchanged. Rows labeled "Issue" and "PR". Jira exposes no PR links without credentials (Development count only), so key-based PR search removed (`ade.KeyChangeRequests`, `githost.ChangeRequestSearch`, `ByHeadContaining`); UI shows Jira's PR count. Open item: Jira PR rows not listed.
+
+### v0.2.27 P460 (Done)
+Jira issue open: one `workitem view` per read, comment overflow in parallel, saved copy served under 30 s, under 10 min with `Stale`, else one coalesced read; window open prefetches; posting a comment drops the copy. Render: callouts (`markdown-it-github-alerts`), mention and status chips, scrolling tables, 760 px column, relative times. Images only as links and tiles: acli has no download command, attachment URL needs credentials, CSP allows `img-src 'self' data:`. Open item added.
+
+### v0.2.27 P461 (Done)
+Task "+" menu was off-screen: a Tooltip root between DropdownMenu and trigger stole the Popper anchor. Now `TooltipIconButton` inside `DropdownMenuTrigger as-child`. Card-head terminal button removed. Rule added to ARCHITECTURE.
+
+### v0.2.27 P462 (Done)
+Capture dialog keyboard only: Enter adds to Later, CmdOrCtrl+Enter to Today; radios and open actions gone. A pasted PR is fetched and its head branch attached as a review branch (`TaskBoard.AddReviewLink`); partial outcomes return a `notice` and keep the task.
+
+### v0.2.27 P463 (Done)
+New Pinia store `adePanelTabs` keeps tab and picked session per task, tab per branch, in memory for the app session. Entries pruned when tasks and branches leave the board. No refetch on switch.
+
+### v0.2.27 P464 (Done)
+Review compose thread opens on Question. Send clears sent comments (`gitreview.RemoveComments`). New PR line comment: contract `changeRequest.lineComment`, GitHub, Azure and fake hosts, `headMoved` check; third compose tab on committed window-branch tabs. Review panes resize without a max cap, centre min 320.
+
+### v0.2.27 P465 (Done)
+Server-side `changedSinceReview` was ignored by the UI. New `reviewAttention` maps status to unreviewed, partial, reviewed or changed; a changed file shows unreviewed. Rows carry `data-review-state`; prev and next unreviewed buttons plus Alt+F8 / Shift+Alt+F8. Live refresh via `AdeTaskService.ReviewWorkingStamp` poll.
+
+### v0.2.27 P466 (Done)
+`SecondaryTabs` opt-in `countBadge` (`Badge variant="count"`): grey circle on Sessions tabs and the All sessions filters. Labels lose `{count}`.
+
+### v0.2.27 P467 (Done)
+Workflows start with no repo. Task folder `<home>/ade/tasks/<taskId>` hosts runs and manual sessions; archive removes it. Target `""` for a task with no mine branch; review and `only` steps refuse. `advanceLocked` runs `prepareWorktrees` so branches the first stage requests get worktrees. Prompts gain a no-repo line. Gap: TS manual-session preview omits the folder path.
+
+### v0.2.27 P468 (Done)
+`request_branches` worktrees go to `<home>/wt/<repo>/<10-char nanoid>`; requested refs resolve against registered repos; approval adds an off-task repo row (origin `agent`) so the branch shows in Branches. Agent-chosen branch names out of scope: names stay `kira/<nanoid>`.
+
+### v0.2.27 P469 (Done)
+Action `done` becomes `advance` ("Next stage ›"); last stage keeps Finish. `talking` counts only the current step's sessions, fixing Finish for a previous-stage session. Stage dialog gains Close/Keep open; `closeSessions` closes the leaving stage's terminals (and the review agent when leaving review).
+
+### v0.2.27 P470 (Done)
+One review round over the diff since `main`: 4 findings (1 High, 1 Medium, 2 Low), all fixed. Alert titles escaped; Jira detail save guarded by a per-key generation against in-flight reads across a post; saved copy kept as stale when a fresh read fails; `ReviewThread` reads `hostComment` inside the computed.
+
+### v0.2.27 P471 (Done)
+Chapter folded by hand into this file; `docs/v0.2.27/` removed. `docs/v0.2.28/` and `docs/v0.2.29/` draft specs stay.
+<!-- /chapter v0.2.27 -->
