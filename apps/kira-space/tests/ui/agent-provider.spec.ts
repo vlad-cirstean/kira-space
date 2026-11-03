@@ -125,8 +125,8 @@ test('the plus menu offers each installed agent and sends the provider', async (
   await openTask(page, 'T_cart');
   await page.locator(t('ade-panel-tab-sessions')).click();
   await page.locator(`${t('ade-session-bar-row')} ${t('ade-task-launch')}`).click();
-  await expect(page.locator(t('ade-task-launch-agent-claude-b_cart'))).toBeInViewport();
-  await page.locator(t('ade-task-launch-agent-opencode-b_cart')).click();
+  await expect(page.locator(t('menu-item-ade-task-launch-agent-claude-b_cart'))).toBeInViewport();
+  await page.locator(t('menu-item-ade-task-launch-agent-opencode-b_cart')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStartAdHoc)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskStartAdHoc)[0]?.args).toEqual({
     branchId: 'b_cart',
