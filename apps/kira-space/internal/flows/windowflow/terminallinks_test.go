@@ -102,11 +102,17 @@ func TestTerminalFileLinks(t *testing.T) {
 		}
 	})
 
-	t.Run("open outside the repos", func(t *testing.T) {
+	t.Run("open outside the repos reuses the window", func(t *testing.T) {
 		if err := app.W.OpenedFilesSvc.TerminalOpen(bridge.OpenedFilesTerminalOpenArgs{TerminalID: term, Path: loose, Line: 1}); err != nil {
 			t.Fatal(err)
 		}
-		got := pendingFor(t, app, app.WindowMgr.OpenedKeyed[1])
+		if windows() != 1 {
+			t.Fatalf("keyed windows = %d, want 1 (reused)", windows())
+		}
+		if f := app.WindowMgr.Focused; len(f) == 0 || f[len(f)-1] != app.WindowMgr.OpenedKeyed[0] {
+			t.Fatalf("focused = %v, want the files window raised", f)
+		}
+		got := pendingFor(t, app, app.WindowMgr.OpenedKeyed[0])
 		want := []openedfiles.Target{{Path: loose, Line: 1}}
 		if !slices.Equal(got, want) {
 			t.Fatalf("targets = %+v, want %+v", got, want)
@@ -120,8 +126,8 @@ func TestTerminalFileLinks(t *testing.T) {
 			t.Fatalf("code = %s, want %s", e.Code, ipcerr.CodeNotFound)
 		}
 		app.Contract(t, linksScenario, "error:OpenedFilesService.TerminalOpen", err.Error())
-		if windows() != 2 {
-			t.Fatalf("keyed windows = %d, want 2", windows())
+		if windows() != 1 {
+			t.Fatalf("keyed windows = %d, want 1", windows())
 		}
 	})
 
@@ -157,8 +163,8 @@ func TestTerminalFileLinks(t *testing.T) {
 		if e := testx.AsIpcErr(t, err); e.Code != string(ipcerr.CodeBadRequest) {
 			t.Errorf("col without line: code = %s, want %s", e.Code, ipcerr.CodeBadRequest)
 		}
-		if windows() != 2 {
-			t.Fatalf("keyed windows = %d, want 2", windows())
+		if windows() != 1 {
+			t.Fatalf("keyed windows = %d, want 1", windows())
 		}
 	})
 }

@@ -1,4 +1,6 @@
 {
+  "OpenedFilesService.IsFilesWindow": true,
+  "OpenedFilesService.IsFilesWindow:other": false,
   "OpenedFilesService.Pending": [
     {
       "path": "",
@@ -11,6 +13,13 @@
       "repoId": ""
     }
   ],
+  "OpenedFilesService.Pending:reuse": [
+    {
+      "path": "",
+      "relPath": "src/a.go",
+      "repoId": "<id:1>"
+    }
+  ],
   "OpenedFilesService.Read": {
     "bytes": 9,
     "kind": "found",
@@ -21,5 +30,8 @@
       "size": 9
     },
     "text": "{\"k\": 1}\n"
+  },
+  "args:OpenedFilesService.IsFilesWindow": {
+    "windowKey": "<masked>"
   }
 }
