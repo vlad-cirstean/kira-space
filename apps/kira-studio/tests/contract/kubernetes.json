@@ -498,6 +498,85 @@
     "namespaces": [],
     "restricted": true
   },
+  "KubernetesService.Reorder": {
+    "clusters": [
+      {
+        "cluster": "down",
+        "context": "down",
+        "current": false,
+        "id": "<id:3>",
+        "mcp": {
+          "describe": "prompt",
+          "description": "",
+          "discover": "prompt",
+          "list": "prompt",
+          "logs": "prompt"
+        },
+        "namespace": "",
+        "server": "<down>",
+        "source": "<kubeconfig>",
+        "user": "dev-user"
+      },
+      {
+        "cluster": "kind-dev",
+        "context": "kind-dev",
+        "current": true,
+        "id": "<id:1>",
+        "mcp": {
+          "describe": "prompt",
+          "description": "",
+          "discover": "prompt",
+          "list": "prompt",
+          "logs": "prompt"
+        },
+        "namespace": "default",
+        "server": "<kube>",
+        "source": "<kubeconfig>",
+        "user": "dev-user"
+      },
+      {
+        "cluster": "kind-dev",
+        "context": "bad-token",
+        "current": false,
+        "id": "<id:2>",
+        "mcp": {
+          "describe": "prompt",
+          "description": "",
+          "discover": "prompt",
+          "list": "prompt",
+          "logs": "prompt"
+        },
+        "namespace": "",
+        "server": "<kube>",
+        "source": "<kubeconfig>",
+        "user": "bad-user"
+      },
+      {
+        "cluster": "kind-dev",
+        "context": "plugin-ctx",
+        "current": false,
+        "id": "<id:4>",
+        "mcp": {
+          "describe": "prompt",
+          "description": "",
+          "discover": "prompt",
+          "list": "prompt",
+          "logs": "prompt"
+        },
+        "namespace": "",
+        "server": "<kube>",
+        "source": "<kubeconfig>",
+        "user": "plugin-user"
+      }
+    ],
+    "config": {
+      "message": "",
+      "paths": [
+        "<kubeconfig>"
+      ],
+      "state": "ok"
+    }
+  },
   "KubernetesService.Status": {
     "message": "",
     "reason": "",
@@ -670,6 +749,14 @@
       "tabId": null
     }
   ],
+  "args:KubernetesService.Reorder": {
+    "ids": [
+      "<id:3>",
+      "<id:1>",
+      "<id:2>",
+      "<id:4>"
+    ]
+  },
   "event:kira:kubernetes:logs": {
     "ended": true,
     "lines": [
