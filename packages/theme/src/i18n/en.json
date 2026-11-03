@@ -1858,6 +1858,9 @@
       "openedFiles": {
         "notOpenable": {
           "body": "Can’t open {path}. The file is missing, or Kira Space can’t show this type."
+        },
+        "window": {
+          "title": "Opened files"
         }
       },
       "repoFiles": {

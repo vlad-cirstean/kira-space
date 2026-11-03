@@ -11,8 +11,8 @@ import (
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
-// OpenedFilesService is the page's side of an external open: it pulls the files its window was
-// opened for and reads standalone ones. Open and Add stay off the bound surface.
+// OpenedFilesService is the page's side of an external open: it learns whether its window is the
+// files window, pulls the files waiting for it and reads standalone ones. Open and Add stay off the bound surface.
 type OpenedFilesService struct {
 	Files *openedfiles.Service
 	// Cwd is a terminal's live working directory; false when no live terminal has the id. A field,
@@ -51,6 +51,18 @@ type OpenedFilesPendingArgs struct {
 
 type OpenedFilesReadArgs struct {
 	Path string `json:"path"`
+}
+
+type OpenedFilesWindowArgs struct {
+	WindowKey string `json:"windowKey"`
+}
+
+// IsFilesWindow reports whether windowKey names the files window; the page reads it once at boot.
+func (s *OpenedFilesService) IsFilesWindow(args OpenedFilesWindowArgs) (bool, error) {
+	if args.WindowKey == "" {
+		return false, ipcerr.Required("windowKey")
+	}
+	return openedfiles.IsWindowKey(args.WindowKey), nil
 }
 
 // Pending returns the files windowKey was opened for, once.
