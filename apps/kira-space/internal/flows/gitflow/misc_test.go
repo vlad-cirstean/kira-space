@@ -1,10 +1,14 @@
 package gitflow_test
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpreflight"
@@ -124,6 +128,58 @@ func TestRepoSettingsAffectStream(t *testing.T) {
 	}
 	if got := call[gitrpc.RepoSettingsSnapshot](t, r.gs, "repoSettings.get", gitrpc.RepoSettingsGetParams{RepoID: id}); got.GraphPageSize != 150 || got.WorktreePrepareScript != "" {
 		t.Fatalf("settings after refused patches = %+v", got)
+	}
+}
+
+func TestRepoSettingsLiveInFile(t *testing.T) {
+	r := newRig(t)
+	repo := r.app.NewRepo("filed")
+	repo.Commit("init", map[string]string{"a.txt": "a\n"})
+	id := r.open(repo.Dir).RepoID
+	path := filepath.Join(r.app.SpaceHome, "repos", "filed.yaml")
+	read := func() string {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(raw)
+	}
+
+	size := 150
+	r.setSettings(id, gitrpc.RepoSettingsPatchWire{GraphPageSize: &size})
+	if text := read(); !strings.Contains(text, "page_size: 150") || !strings.Contains(text, "path: "+id) {
+		t.Fatalf("file after the first patch:\n%s", text)
+	}
+
+	if err := os.WriteFile(path, []byte(read()+"# kept\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	on := true
+	r.setSettings(id, gitrpc.RepoSettingsPatchWire{StashIncludeUntracked: &on})
+	if text := read(); !strings.Contains(text, "# kept") || !strings.Contains(text, "include_untracked: true") {
+		t.Fatalf("file after the second patch lost the comment or the leaf:\n%s", text)
+	}
+
+	edited := strings.Replace(read(), "page_size: 150", "page_size: 300", 1)
+	if err := os.WriteFile(path, []byte(edited), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r.gs.WaitEvent("repoSettings.changed", func(raw json.RawMessage) bool {
+		var p gitrpc.RepoSettingsChangedPayload
+		return json.Unmarshal(raw, &p) == nil && p.RepoID == id && p.Settings.GraphPageSize == 300
+	}, wait)
+
+	mark := r.app.Events.Mark()
+	if err := os.WriteFile(path, []byte("path: "+id+"\nbogus: 1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r.app.Events.WaitAfter(t, mark, bridge.ChannelRepoConfigChanged, nil, wait)
+	next := 200
+	if we := wireErr(t, r.gs, "repoSettings.set", gitrpc.RepoSettingsSetParams{RepoID: id, Patch: gitrpc.RepoSettingsPatchWire{GraphPageSize: &next}}); we.Code == "" {
+		t.Fatal("repoSettings.set wrote into a broken file")
+	}
+	if got := call[gitrpc.RepoSettingsSnapshot](t, r.gs, "repoSettings.get", gitrpc.RepoSettingsGetParams{RepoID: id}); got.GraphPageSize != 300 {
+		t.Fatalf("settings with a broken file = %+v, want the last good page size 300", got)
 	}
 }
 
