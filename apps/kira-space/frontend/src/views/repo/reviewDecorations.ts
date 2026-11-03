@@ -508,7 +508,7 @@ export function attachReviewDecorations(
       const app = createApp(ReviewThread, {
         mode: 'compose' as const,
         branch: source.branch,
-        host: source.hostComment?.() ?? null,
+        hostComment: source.hostComment,
         onCancel: () => closeZone(),
         onClose: () => closeZone(),
         onResize,

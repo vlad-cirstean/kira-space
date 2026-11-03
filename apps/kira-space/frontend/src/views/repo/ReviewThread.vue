@@ -29,8 +29,8 @@ const props = defineProps<{
    *  'removed'/'stale' message text; 'exact'/'projected' render no label (current lines, no
    *  caveat). */
   branch: string;
-  /** Compose only: the change request a line comment may post to; absent hides the host tab. */
-  host?: HostCommentTarget | null;
+  /** Compose only: reads the change request a line comment may post to; null hides the host tab. */
+  hostComment?: () => HostCommentTarget | null;
   onSubmit?: (body: string, kind: ReviewCommentKind) => Promise<void>;
   onEdit?: (body: string, kind: ReviewCommentKind) => Promise<void>;
   /** Posts the body to the host's change request; resolves with where it landed. Kira keeps no copy. */
@@ -55,7 +55,7 @@ type ComposeKind = ReviewCommentKind | 'host';
 const kind = ref<ComposeKind>('question');
 const posted = ref<{ number: number; short: string } | null>(null);
 const hostTab = computed(() =>
-  mode.value === 'compose' && props.onPostToHost ? props.host : null,
+  mode.value === 'compose' && props.onPostToHost ? (props.hostComment?.() ?? null) : null,
 );
 const KIND_ITEMS = computed(() => [
   {
