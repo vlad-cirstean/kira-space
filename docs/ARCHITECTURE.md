@@ -1567,7 +1567,7 @@ packaged app does not), where the identical application code runs unchanged over
 
 - Kira Studio's Go side lives in apps/kira-studio/; Wired.Bound() registers 30 bound services under apps/kira-studio/internal/bridge/, with main.go building application.New options from appwire.Build.
 - Kira Studio's Bound() binds no git-related service; GitClientsService moved to Kira Space as of P100 and was deleted there in P243 Part 2 with the Connected editors pane.
-- Kira Space's Bound() binds a separate set of 35 services, counted by the application.NewService entries in Bound() in apps/kira-space/internal/appwire/appwire.go (P452 AgentContextService, P453 AgentSettingsService, P454 AgentPortService).
+- Kira Space's Bound() binds a separate set of 37 services, counted by the application.NewService entries in Bound() in apps/kira-space/internal/appwire/appwire.go (P452 AgentContextService, P453 AgentSettingsService, P454 AgentPortService, P474 RepoConfigService, P476 GitService).
 - TerminalService and WindowsService are per-app embeddings of one shared Go type each: internal/windowsvc.Service (Ensure/SetMode/OpenNew) and internal/terminal.BoundService (Open/Write/Resize/Close/DefaultCwd), living once at repo root (P128).
 - Each app's bridge Windows/Terminal service is a one-line struct embedding the shared type, so Wails' FQN, derived from the embedding type's package, reads WindowsService.Ensure / TerminalService.Open without a binding-name shim.
 - Kira Space's WindowsService gained Ensure/SetMode in P128 §2.2; it previously bound only OpenNew.
@@ -1639,10 +1639,14 @@ packaged app does not), where the identical application code runs unchanged over
 ### Transport
 
 - ServeGitStream in apps/kira-space/internal/bridge/gitstream.go serves gitrpc.Router over rpcstream via one in-process Wails stream per window, with no socket, handshake, pairing or trust store, because the peer is the process's own webview.
+- P476 to P479 move the surface onto bound services; both transports coexist until P479. bridge.GitService carries 14 read methods (app.init, repo.open, repo.close, status.get, refs.list, commit.detail, commit.fileDiff, working.detail, file.read, file.goToTarget, blame.line, search.run, repoSettings.get, repoSettings.set). Every call takes the window key, which `repo/git/boundGit.ts` supplies; cancellation goes through the binding promise's cancel().
+- Git events push as window-addressed app events `kira:git:<event>` via `EmitTo(windowKey, ...)`, not over the stream. The Space transport filters repo-scoped events (repo.changed, autoFetch.changed, remote.progress, stack.progress) by the repoIds the page holds.
+- During P476 to P479 a repo opens on both transports (bound first, then the stream), and dispose sends a bound repo.close per held repo. The contract version stays 58: methods and shapes are unchanged.
+- Under `-tags server` the stream has no window, so its key falls back to "main"; a non-main tab then holds the repo under two keys and gets doubled repo.changed events until P479.
 - The Unix socket (git.sock) that served a separately-installed VS Code extension, and the extension itself, are gone since P243 Part 2; removeLegacyGitSocket in main.go deletes the git.sock and git.sock.lock left by older builds in KIRA_SPACE_HOME.
 - An flock on ${KIRA_SPACE_HOME}/app.lock is the single-instance guard: config.AcquireLock takes it before storage.Open, and if not acquired the process logs and exits 0.
 - A SIGKILLed instance's app.lock is released by the kernel, so no stale-pid file or manual cleanup exists.
-- gitrpc.ContractVersion and CONTRACT_VERSION in packages/git-ipc/src/validate.ts must be equal (56 currently), asserted by tests on both sides; a mismatch is a build bug since both sides ship in one binary.
+- gitrpc.ContractVersion and CONTRACT_VERSION in packages/git-ipc/src/validate.ts must be equal (58 currently), asserted by tests on both sides; a mismatch is a build bug since both sides ship in one binary.
 - app.init returns {contractVersion, serverVersion, git, dateFormat}, where dateFormat is Space's app-wide appearance.dateFormat.
 - Contract version 47 (P246) dropped credential.request and credential.provide from the stream; credentials go through the relay snapshot and GitCredentialService.Provide.
 - Contract version 46 removed the extension-only surface (worktree.prepare, worktree.cancelPrepare, worktree.openWindow, editor.resolveConflict, worktree.progress, settings.changed and connection.changed events, app.init's host/settings/capabilities, and injected params scope, pageSize, baseCandidates, strategySetting); the server reads stored kiraSpace.* repo settings instead.
@@ -1671,7 +1675,7 @@ Registry (internal/gitsession): map[RepoID]*RepoEntry — mutex + refcount
     reader/writer gate · git driver · cat-file --batch session · repo watcher
     detail / diff / refs / stack caches · live HEAD · undo slot · active remote op (<=1)
     subscribers: map[ConnID]chan Event
-Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connection
+Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared by GitService and the window's git streams) or ADE connection
   client identity · its own ctx · its own rpcstream session and Handlers
   walks: map[RepoID]*Walk — PRIVATE per (connection, repository)
     log session, commit store, dictionary marks, paging state, the active review walk
@@ -1689,6 +1693,7 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 - A client disconnect never kills a write: on peer close rpcstream.Serve cancels in-flight requests and streams, the connection's log-session processes are killed and RepoEntry refcounts released, but an in-flight write is detached and finishes with its result delivered nowhere.
 - Writes are detached on disconnect because a half-applied checkout from a closed window is far worse than a result nobody reads.
 - The undo slot is one per repository, not per connection, and its label names the originating client, e.g. "Undo reset of main (window: repo-review)".
+- A window's Conn is created on its first git call and released by `GitWindows.Close` (from OnWindowClosing) or when its last stream closes. Credential routing and auto-fetch off are set once at creation.
 - Credential prompts open in Kira Space's own window (P178): internal/gitcred.Relay holds each prompt labelled "<source> · <repo folder>" and pushes the full pending list on kira:git:credential.
 - The gitCredential Pinia store queues relay prompts behind the native stream's own prompts in one dialog; when the relay withdraws a prompt (answered elsewhere, op cancelled, 120 s timeout) the next snapshot closes the stale dialog.
 - With no Space window open, an arriving credential prompt opens one as a Dock click would (U1); otherwise it focuses the first window. ADE's board connection uses the same relay.
@@ -1719,7 +1724,7 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 | `gitsearch` | The cancellable, time-boxed tail scan and the Go matcher, plus the RE2/`RegExp` dialect reconciliation (below) |
 | `gitreview` | `review.db`'s whole surface: compressed content snapshots, fast/slow-path diff selection, partial-review ranges, the flat AI-comment list, and the TTL reaper (Storage, above) |
 | `gitsession` | `Registry`, `RepoEntry`, `Conn`, `Walk` — the session model above. Imports `gitclient`, `gitpreflight`, `gitreview`, `githost` and stdlib only |
-| `gitrpc` | The method table (`app.init` through `stack.cancelRestack`, plus the one `graph.stream` stream method), `ContractVersion` (**56**, P413), and the wire types |
+| `gitrpc` | The method table (`app.init` through `stack.cancelRestack`, plus the one `graph.stream` stream method), `ContractVersion` (**58**), and the wire types |
 | `gitwire` | Generated FlatBuffers code for the git data plane |
 | `gitaskpass` | The credential broker and its `GIT_ASKPASS` shim, over its own private socket, with a bounded wait |
 | `gitprepare` | The worktree prepare script's execution seam, called by ADE only — the one shell exception, below |
@@ -1864,7 +1869,7 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 - Wails emits `ApplicationOpenedWithFile` once per file, cold start included. `openedfiles.Coalescer` batches adds (300 ms after the last) into one new window. `Resolve` follows symlinks, then maps a path inside an imported repo (longest root wins) to `{repoId, relPath}`, else keeps the absolute path. The window pulls its targets once through `OpenedFilesService.Pending(windowKey)`; `Forget` runs on window close.
 - A path outside every repo opens a `local-file` tab in the general workspace, read through `OpenedFilesService.Read`, which accepts only an absolute, clean path with a supported extension. `RepoFileView` and `LocalFileView` share `useReadonlyFileViewer`.
 - The File types settings pane writes LaunchServices through `filehandlers.Registry` (`NSWorkspace setDefaultApplicationAtURL:toOpenContentType:`; macOS cgo build only, `Unsupported` elsewhere and in `-tags server`). Status re-reads live state on every call; nothing is applied on launch. The previous handler is stored per extension in `file_handler_previous` before the first switch; switching off restores it, and a gone app leaves the extension on Kira Space and reports it as `unrestored`.
-- Kira Space has 35 bound services (P452 adds `AgentContextService`, P453 `AgentSettingsService`, P454 `AgentPortService`).
+- Kira Space has 37 bound services (P452 adds `AgentContextService`, P453 `AgentSettingsService`, P454 `AgentPortService`, P474 `RepoConfigService`, P476 `GitService`).
 - Not supported: Linux and Windows (no package; the single-instance lock drops a second process's argv), folders dropped on the Dock icon, editing or live reload of an opened file, a table view for data files, auto-importing an un-imported repo that contains the opened file.
 
 ### Git graph in the native workspace (C10)
@@ -1880,10 +1885,10 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 - Change request ancestry is rebuilt with a base cutoff (state/changeRequests.ts rebuildAncestry): each baseRef is resolved locally via rowOfBranchTip (a decoration scan, no new RPC) and its ancestors excluded, so badges no longer tag nearly all loaded history behind a branch.
 - Bursts of individually-resolving change request branches coalesce into one ancestry rebuild per tick via scheduleAncestryRebuild's nextTick drain.
 - There is no gitrpc method allowlist (removed in P243 Part 2 with the extension): every gitrpc method is served, and a method the contract does not name does not exist.
-- guardRepoSettingsSet in gitstream.go refuses repoSettings.set with E_READ_ONLY when its patch touches the prepare script or worktreeBasePath, which exist only in the repo's settings file; no process writes them over the stream.
+- guardRepoSettingsSet in gitwindows.go (shared by the stream and GitService.RepoSettingsSet) refuses repoSettings.set with E_READ_ONLY when its patch touches the prepare script or worktreeBasePath, which exist only in the repo's settings file; no process writes them over the stream.
 - The gitrpc Router refuses the prepare-script leaf on every connection (P172), and there is no gitrpc method for shell execution since 46 removed worktree.prepare.
 - repo.open must never transitively arm a write, because via Registry.Acquire/EnsureAutoFetch it could arm a timer running git fetch --prune when git.fetchAutoIntervalMinutes is above its default of 0.
-- gitsession.Conn has a noAutoFetch flag (DisableAutoFetch), set by ServeGitStream before serving requests, which routes Open through Registry.AcquireQuiet and skips EnsureAutoFetch on existing entries, so the native mount's repo.open never arms auto-fetch.
+- gitsession.Conn has a noAutoFetch flag (DisableAutoFetch), set by GitWindows when it creates the Conn, which routes Open through Registry.AcquireQuiet and skips EnsureAutoFetch on existing entries, so the native mount's repo.open never arms auto-fetch.
 - The auto-fetch opt-out is scoped to one Conn only: RepoEntry and its timer are shared per repository, so another Conn on the same repository that does not opt out can still arm it.
 - P67e kept the auto-fetch opt-out even though the native mount is no longer read-only, because every fetch the native mount runs should be one the user pressed a button for, not an unrequested periodic background fetch.
 - CodeRepo.ID (code_repos.id) is used by native tab/workspace calls, while gitclient.RepoSummary.RepoID is used by git-ui and every gitrpc method; the two are never equal or interchangeable.
@@ -3276,7 +3281,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - `Store.Patch` (git stream `repoSettings.set`) edits the file in place through `configfs.EditYAML` (yaml.Node set-by-path: comments and key order stay, parents are created, a flow `{}` becomes a block). A repo with no file gets one. A file with an error is refused. One retry on a hash conflict. `Change.FromPatch` stops the duplicate `repoSettings.changed` push.
 - `configfs.EditYAML` and `NodeSet` are shared with P475 (workflow and run edits).
 - Hooks: `OnChange([]Change)` feeds the git router (`repoSettings.changed` for edits not made through the stream) and `ade.TaskBoard.RepoConfigChanged` (integration targets, environments, prepare script; refreshes env scripts and notifies repos and board once). `OnReload` broadcasts the payload-free `kira:repoConfig:changed`.
-- Guard: `guardRepoSettingsSet` in `bridge/gitstream.go` is unchanged and still refuses the prepare script and base path with `E_READ_ONLY`; `Patch` is never reached for them. They are file-only. `SetRepoSettings` is gone from `TaskBoardDeps`.
+- Guard: `guardRepoSettingsSet` in `bridge/gitwindows.go` is unchanged and still refuses the prepare script and base path with `E_READ_ONLY`; `Patch` is never reached for them. They are file-only. `SetRepoSettings` is gone from `TaskBoardDeps`.
 - An integration branch equal to the repo's main branch is ignored where targets are used (`withoutMain`); the Repos wire shows the file as written.
 - State: `ade_env_state(code_repo_id, env, ...)` hangs off `code_repos` by FK, not off config. A repo's environment marks survive a rename of the environment only as delete plus create.
 - Migration 0065 rebuilds `ade_env_state` with that FK (dropping `ade_repo_envs` would otherwise cascade its rows). `configfs.MigrateOnce(db, "repos", ...)` then writes a file for each repo whose legacy rows differ from the defaults and drops `git_repo_settings`, `ade_repo_integration`, `ade_repo_envs` and `ade_repo_config.nickname` in one transaction. Legacy values the file could not hold are dropped on export: invalid provider, oversize script, relative base path, blank review candidates. Never exported again once the marker is set.

@@ -101,4 +101,3 @@ func (s *GitStream) requestBound(call boundFn, method string, params, out any) e
 	}
 	return nil
 }
-

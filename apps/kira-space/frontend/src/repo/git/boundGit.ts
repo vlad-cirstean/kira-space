@@ -36,7 +36,7 @@ export const BOUND_METHODS: Partial<Record<RequestKey, BoundCall>> = {
 };
 
 /** Every git event the Go side pushes to a window, as `kira:git:<event>` (EmitTo). */
-export const GIT_EVENT_PREFIX = 'kira:git:';
+const GIT_EVENT_PREFIX = 'kira:git:';
 
 /** Runs a bound call. `signal` abort cancels the binding promise; `inflight` lets the owning
  *  transport cancel everything on dispose. */

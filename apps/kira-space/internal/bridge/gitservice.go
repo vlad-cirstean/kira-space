@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpreflight"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitrpc"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -34,14 +34,14 @@ func callGit[T any](ctx context.Context, windows *GitWindows, key, method string
 		return zero, ipcerr.Wrap(err)
 	}
 	switch v := res.(type) {
-	case T:
-		return v, nil
 	case json.RawMessage:
 		var out T
 		if err := json.Unmarshal(v, &out); err != nil {
 			return zero, ipcerr.Internal(fmt.Sprintf("gitservice: %s: %v", method, err))
 		}
 		return out, nil
+	case T:
+		return v, nil
 	}
 	return zero, ipcerr.Internal(fmt.Sprintf("gitservice: %s: unexpected result type", method))
 }

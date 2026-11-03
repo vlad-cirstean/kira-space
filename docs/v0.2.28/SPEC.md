@@ -10,7 +10,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | P473 | API config as files in the app folder | Done |
 | P474 | Git repos config as files in the app folder | Done |
 | P475 | Connections config as files in the app folder | Todo |
-| P476 | Git on bound services: connection lifecycle, events, read methods | Todo |
+| P476 | Git on bound services: connection lifecycle, events, read methods | Done |
 | P477 | Git on bound services: write operations | Todo |
 | P478 | Git on bound services: review, change requests, ADE and repo consumers | Todo |
 | P479 | Git graph data plane; remove the git stream protocol | Todo |
@@ -95,6 +95,15 @@ Result:
 - P476 moves the read-only methods; the plan lists the exact set from `handlers.go` (app, repo, status, refs, detail, file, blame, search, settings and host reads). Both transports coexist until P479.
 - Surface ownership, in migration order: P476 bridge service, connection lifecycle, events, reads. P477 write handlers (`ops.go`, `stash.go`, `stack.go`, `worktree.go`, `remote.go`, `reset.go`) and their git-ui callers. P478 `review.go`, `changerequests.go`, `comments.go` and every consumer outside `packages/git-ui`. P479 `graph.go`, `incremental.go` and the deletions. Each phase touches the shared service and `BridgeClient`, so they run in order, not as parallel streams.
 - Test: Go flow tests (`flows/gitflow`, `flows/repoflow`) call the bound service as other modules' flows do. UI tier: migrated methods answer from `/wails/runtime` fixtures (`CHANNEL_TO_FQN`) instead of the fake stream socket; existing git UI specs pass with unchanged assertions. Contract fixtures regenerated.
+
+Result:
+
+- Go: `bridge.GitWindows` (`gitwindows.go`) holds one `gitsession.Conn` per window key, created on the first call and released by `Close(key)` (OnWindowClosing) or when the window's last stream closes. Credential routing to `gitcred.Relay` with the key, auto-fetch off and the `Module` tag are set once at creation. `bridge.GitService` (`gitservice.go`) carries 14 methods through generic `callGit[T]` over `handlers.Request`: AppInit, RepoOpen, RepoClose, StatusGet, RefsList, CommitDetail, CommitFileDiff, WorkingDetail, FileRead, FileGoToTarget, BlameLine, SearchRun, RepoSettingsGet, RepoSettingsSet. `guardRepoSettingsSet` moved to `gitwindows.go` and guards both paths. `ServeGitStream` attaches to the window's Conn; the stream keeps serving every method until P479. Events push as `EmitTo(windowKey, "kira:git:<event>")`. Bound services: 37. `gitrpc.ContractVersion` stays 58 (no method or shape change).
+- Frontend: `repo/git/boundGit.ts` plus a rewritten `createNativeGitTransport`: `BOUND_METHODS` go through the bindings (abort and dispose call `CancellablePromise.cancel()`; `RpcError`/`TransportError` mapping kept), the rest stay on the stream. Repos open on both transports; events are filtered by held repoIds; dispose sends a bound `repo.close` per held repo. `BridgeClient` and `packages/git-ui` unchanged.
+- Tests. Keep: all `packages/git-ui` and `packages/git-ipc` specs, unchanged assertions (262 pass); all 25 UI specs using the git mock (211 pass after the mock change). Adapt: `flowharness` `GitStream` routes bound methods through `GitSvc` and reads events from `app.Events`; `gitstream_test.go` unchanged and passing; UI mock `gitStreamMock.ts` answers `/wails/runtime` GitService calls (its own `BOUND_GIT_WIRE` map, not `CHANNEL_TO_FQN`), emits `kira:git:*` app events, and answers the runtime cancel call. Add: `flows/gitflow/bound_test.go` (all 14 methods, event addressing, guard parity with the stream, error-code parity, window close; contract `git-bound.json`); `tests/ui/git-bound.spec.ts` (window key on bound calls, repo.changed own repo vs other); `tests/unit/git-transport-bound.spec.ts` (cancel, dispose release, stream fallback). Delete: none.
+- Ran: go vet and golangci-lint (apps/kira-space and root), `bun run lint`, `bun run lint:dead`, typecheck, `bun run test:unit` (1967 pass), `go test ./internal/flows/...` with `KIRA_CONTRACT` write then compare, bridge, gitrpc, flowharness; UI specs for the git mock and the new spec. Full e2e suites not run (chapter rule).
+- Fixed on the spot: claudeflow `TestHermeticClaude/user_server_blocks` contract (`automations-mcp-app.json`) drifted since scripts took the name as id (`<space>/automations/ask`); regenerated.
+- Deviations: UI mock uses a self-contained `BOUND_GIT_WIRE` map instead of 14 new `ipcChannels.ts`/`mockRuntime.ts` entries. The restricted-setting refusal has no UI assertion (git-ui cannot reach it); the Go flow test covers it. Under `-tags server` the stream key falls back to "main", so a non-main tab double-holds and gets doubled `repo.changed` until P479.
 
 ### P477 Git on bound services: write operations
 
