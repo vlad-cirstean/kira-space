@@ -22,6 +22,12 @@ export const idOf = (context: string): string => {
   return c.id;
 };
 
+/** The Clusters result with its clusters in `ids` order (Reorder's answer for other orders). */
+export const clustersIn = (ids: readonly string[]) => {
+  const all = k<{ clusters: { id: string }[] }>(KEY('Clusters'));
+  return { ...all, clusters: ids.map((id) => all.clusters.find((c) => c.id === id)) };
+};
+
 const SECRET_LIST = {
   columns: [
     { name: 'Name', type: 'string' },
@@ -41,6 +47,7 @@ const SECRET_LIST = {
 function defaults(): Record<string, KubeHandler> {
   return {
     Clusters: () => k(KEY('Clusters')),
+    Reorder: () => k(KEY('Reorder')),
     Status: (a) => {
       if (a.clusterId === idOf('bad-token')) return k(KEY('Status:unauthorized'));
       if (a.clusterId === idOf('plugin-ctx')) return k(KEY('Status:plugin'));
