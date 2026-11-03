@@ -9,7 +9,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | P472 | Runs config as files in the app folder | Done |
 | P473 | API config as files in the app folder | Done |
 | P474 | Git repos config as files in the app folder | Done |
-| P475 | Connections config as files in the app folder | Todo |
+| P475 | Connections config as files in the app folder | Done |
 | P476 | Git on bound services: connection lifecycle, events, read methods | Done |
 | P477 | Git on bound services: write operations | Todo |
 | P478 | Git on bound services: review, change requests, ADE and repo consumers | Todo |
@@ -83,6 +83,15 @@ Result:
 - Plan decides per field what stays in SQLite, formats, sync, watching, validation, bad edits, migration, Studio/Space split.
 - Minimal UI as in P472; filter colors move from the UI editor to the file.
 - Test: as P472, plus a color edit in the file shows in the left panel.
+
+Result:
+
+- Go: each connection is `~/.kira-studio/connections/<stem>.yaml`, bound to a surrogate row by `stem` and projected by `connfiles.Loader` (only writer). `connections.config_json` holds the last valid file JSON and is the record source. Secrets are `${secret:<stem>.password}` and `<stem>.uri` in `secret_values`; sealed envelopes move verbatim. Bad file keeps last good, publishes a line problem. Edits from the app go through `Loader.Patch` (`configfs.EditYAML`). Connection `color` (row rail) and per-connection visibility filters both live in the file. `ConnectionConfigService` (`View`, `File`, `SaveFile`, `SetSecret`, `DeleteSecret`) and event `kira:connectionConfig:changed` are new. Update, duplicate, delete and field setters are removed. Mask rules key by stem. Migration `MigrateOnce("connections")` plus schema migration.
+- UI: `NewConnectionDialog`, `ConnectionFileDialog`, `ConnectionSecrets`; tree menu Edit connection file, Open file, Reveal file; problem marker on rows; broken-file entries in the panel; MCP pane Edit button. Deleted: `ConnectionDialog` and its tabs, `CheckboxRow`, connection `form.ts` and `reveal.ts`, Privacy tab and mask-rule management UI, key regeneration. 80 unused i18n keys pruned.
+- Ran: `go test ./internal/...`, `go vet`, `golangci-lint` (0 issues), `bun run lint`, `lint:dead`, `typecheck`, `test:unit`, `site:check`. Contracts regenerated (`connection-files`, `connection-secrets`, `connection-files-migration`, `connection-order`, `dbmcp-review-connection`). UI after `build:test:studio`: new `connection-files`; rewritten `connections`, `secrets`, `credential-reveal`, `preconnect`; adapted `connection-paste-credentials`, `dbmcp-review-connection`, `tabs`, `consistency`, `interaction`, `control-sizing`, `copy-coverage`, `focus-ring`, `ui-leftovers`, `cell-editor` and about 20 specs moved to `createConnection`. Full suites not run, per chapter rule.
+- Keep/adapt/delete: deleted `connection-dialog-tabs.spec.ts`; dropped the submenu-flip test in `tabs`, the dialog-only control-sizing tests, the preconnect dialog tests, and the Privacy tab, mask-rule management and key regeneration coverage. The Filters... save path stays covered by `tree.spec`.
+- Deviations: no `yamledit.go` (`configfs.EditYAML` exists); `config_json` is the record source; no `connfilestest` package (tests call `Loader.Patch`).
+- Docs: `docs/ARCHITECTURE.md` ("Connection config files (P475)"), `site/.../studio/databases.md`.
 
 ### P476 Git on bound services: connection lifecycle, events, read methods
 

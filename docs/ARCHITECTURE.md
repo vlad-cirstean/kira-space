@@ -3289,6 +3289,21 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - UI: `RepoFilePane.vue` (`ConfigFileBar`, a Textarea draft with the loaded hash, Reload and Overwrite on conflict, "Create settings file" when none), `RepoIdentity.vue`, an error dot on repo rows with a problem, an Other files tab for unbound files. TanStack Query keys `['repoConfig', ...]` invalidate on `kira:repoConfig:changed`.
 - Tests: flows `TestRepoConfigFile`, `TestRepoConfigMigration` (repoflow), `TestRepoSettingsLiveInFile` (gitflow), contract `repo-config-file.json`; UI `repo-config-file.spec.ts`; `configfs` `TestEditYAML`, Space migration test `TestMigration65RepoFiles`.
 
+### Connection config files (P475)
+
+- Folder `~/.kira-studio/connections` (config folder `connections`, Studio only; `ConfigFilesService` Open and Reveal). One `<stem>.yaml` per connection; `AGENTS.md` beside them is generated from the schema. File stem is the id. Cap 1 MiB per file.
+- Keys: name, kind, color, mode (fields or URI), host, port, database, username, read-only, pre-connect command, sidecar, delay, auto-explain, throttle, MCP settings (enabled, description, read, write and DDL modes, auto-explain, review results) and the per-connection tree visibility filters. An absent leaf means the default.
+- Package `internal/connfiles`: `Loader` owns the folder and every write to `connections`. Files to DB only. A surrogate uuid row binds to a file by `stem`. `connections.config_json` holds the last valid file JSON and is the record source. Invalid file: row keeps the last good version, a `Problem` with line is published, one Warn per new hash. File gone: row goes. A file that never held a valid connection lists as a broken entry, bound to no row.
+- Secrets: password and URI are `${secret:<stem>.password}` and `${secret:<stem>.uri}`; values live in `secret_values`. `ConnectionConfigService.SetSecret` and `DeleteSecret` are write-only; Reveal keeps its confirm-before-reveal flow. No value reaches a file, a log or a problem message.
+- State kept in SQLite: sort order, status, caches, last-used, tab state, mask rules (`maskrules` Files, keyed by stem).
+- App writes: `Loader.Patch` edits the file in place through `configfs.EditYAML` (comments and key order stay) and flushes synchronously, then `OnChange` calls `ConnectionsService.ConfigChanged`. Reconnects there are async. Create writes a new file. Tree filters and the visibility toggles write through `Patch`.
+- Bound surface kept: `ConnectionsService` `List`, `Create` (name, kind, color), `Connect`, `Disconnect`, `Reveal`, `UpdateCredentials`, order calls; `ConnectionConfigService` `View`, `File`, `SaveFile(file, text, baseHash)`, `SetSecret`, `DeleteSecret`. Update, duplicate, delete and the other field setters are removed; edit the file.
+- Events: `kira:connections:changed` (rows) and `kira:connectionConfig:changed` (problems, secrets).
+- Migration: `configfs.MigrateOnce(db, "connections", ...)` writes a file for each legacy row, assigns stems, moves sealed secret envelopes verbatim into `secret_values` (no decrypt, no keychain prompt). Never exported again once the marker is set.
+- Deviations from the plan: no `yamledit.go` (`configfs.EditYAML` exists); `config_json` is the record source; no `connfilestest` package (tests call `Loader.Patch` directly).
+- UI: `NewConnectionDialog.vue` (name, kind, color), `ConnectionFileDialog.vue` (`ConfigFileBar`, text draft with base hash, last good hint), `ConnectionSecrets.vue`. Tree rows offer Edit connection file, Open file, Reveal file; no color or read-only item. Rows with a problem show a marker with the line. `DatabaseMcpPane` shows exposed status with an Edit button. Removed: the tabbed connection dialog, Privacy tab and mask-rule management UI, key regeneration.
+- Tests: flows `dbflow` and `dbmcpflow` (contract `connection-files.json`, `connection-secrets.json`, `connection-files-migration.json`), `connfiles` unit tests; UI `connection-files.spec.ts` on the same scenario.
+
 ### Agent context (P452)
 
 - File `~/.kira-space/agent/context.md`, plain Markdown, cap 32 KiB (`agentctx.MaxBytes`). A blank or missing file means no context.
