@@ -14,7 +14,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | P477 | Git on bound services: write operations | Todo |
 | P478 | Git on bound services: review, change requests, ADE and repo consumers | Todo |
 | P479 | Git graph data plane; remove the git stream protocol | Todo |
-| P480 | Frontend RAM measurement, both apps | Todo |
+| P480 | Frontend RAM measurement, both apps | Done |
 | P481 | Frontend RAM: implement the proven wins | Todo |
 | P482 | Code review (2 rounds) | Todo |
 | P483 | Close chapter v0.2.28 | Todo |
@@ -122,6 +122,8 @@ Result:
 - Suspects to measure: Monaco instances and models, SlickGrid grids and row caches, TanStack Query retention (`gcTime`), Pinia stores holding large data, kept-alive or mounted-but-hidden panes, xterm instances and scrollback, large lists, images, the whole-catalog i18n bundle (`packages/theme/src/i18n/en.json`), git graph store, ADE board, memory module, Docker and Kubernetes logs.
 - Findings file `plans/P480-ram-findings.md`, committed before P481 starts: per candidate the measured cost, the fix, the expected saving, a rank, and a stated saving threshold for "proven". A candidate with no real cost says so.
 - Probe additions stay report-only. No app code changes in this phase.
+
+**Result:** Probe (`memProbe.ts`, `heapSnapshot.ts`, per-app `heap-ram.spec.ts`) ran Pass A (3 repeats, Chromium and WebKit) and Pass B (unminified snapshots) on both apps; findings in `plans/P480-ram-findings.md`. 4 candidates clear the threshold: Studio docker list virtualization (+53 MB heap, +90 MB RSS at 400 containers), xterm scrollback (about 4 MB array bytes per full terminal), Space memory list virtualization (+9 MB heap at 500 rows), Space `RepoDiffView` retaining closed diff editors (3.5 MB). Space ADE mount retained after leaving (+13 MB heap) is real but unattributed, so not proven; TanStack `gcTime`, Pinia, images, i18n and the Discover growth (V8 JIT) have no cost.
 
 ### P481 Frontend RAM: implement the proven wins
 
