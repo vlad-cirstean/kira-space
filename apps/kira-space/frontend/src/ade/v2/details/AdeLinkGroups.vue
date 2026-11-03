@@ -19,11 +19,13 @@ import {
 } from '../queries';
 import type { Task } from '../wire';
 import AdeDetailsLink from './AdeDetailsLink.vue';
+import AdeOriginSession from './AdeOriginSession.vue';
 import { type LinkItem, linkGroups } from './linkGroups';
 
 // The task's links in two groups: Main (Jira, host link, detected change requests) and Related
 // (every other artifact). One row edits at a time; the paste line adds links.
 const props = defineProps<{ task: Task; readonly?: boolean }>();
+const emit = defineEmits<{ openSession: [sessionId: string] }>();
 
 const query = useTaskArtifacts(() => props.task.id);
 const update = useUpdateTask();
@@ -197,7 +199,16 @@ function onPaste(e: ClipboardEvent): void {
               @edit="editingKey = item.key"
               @done="editingKey = null"
               @remove="remove(item)"
-            />
+            >
+              <template #trailing>
+                <AdeOriginSession
+                  :task-id="task.id"
+                  :session-id="item.sessionId"
+                  :archived="readonly"
+                  @open="emit('openSession', $event)"
+                />
+              </template>
+            </AdeDetailsLink>
             <li v-if="item.origin === 'jira'" class="min-w-0 pl-1">
               <AdeTaskIssueLine :task-id="task.id" :link="`${item.label} ${item.url}`" />
             </li>

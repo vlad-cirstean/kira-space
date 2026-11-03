@@ -8540,6 +8540,9 @@
         "related": {
           "title": "Related"
         },
+        "session": {
+          "tooltip": "Open the session that added this"
+        },
         "timeline": {
           "artifact": {
             "label": "Added {title}"

@@ -13,10 +13,16 @@ import { control } from '../../../bridge/control';
 import { useHandovers, useTaskArtifacts } from '../queries';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import type { Task } from '../wire';
+import AdeOriginSession from './AdeOriginSession.vue';
 import { type TimelineBranch, taskTimeline } from './taskTimeline';
 
 // What happened to the task, oldest first. Closed until asked for; the choice is kept per task.
-const props = defineProps<{ task: Task; branches: readonly TimelineBranch[] }>();
+const props = defineProps<{
+  task: Task;
+  branches: readonly TimelineBranch[];
+  archived?: boolean;
+}>();
+const emit = defineEmits<{ openSession: [sessionId: string] }>();
 
 const tabs = useAdePanelTabsStore();
 const open = computed({
@@ -69,7 +75,12 @@ function openLink(e: MouseEvent, url: string): void {
             }}</a
           >
           <span v-else class="min-w-0 truncate">{{ e.label }}</span>
-          <slot name="trailing" :entry="e" />
+          <AdeOriginSession
+            :task-id="task.id"
+            :session-id="e.sessionId"
+            :archived="archived"
+            @open="emit('openSession', $event)"
+          />
         </li>
       </ol>
     </CollapsibleContent>

@@ -18,6 +18,7 @@ const props = defineProps<{
   readonly?: boolean;
 }>();
 
+const emit = defineEmits<{ openSession: [sessionId: string] }>();
 const update = useUpdateTask();
 const notesError = ref('');
 
@@ -37,8 +38,21 @@ async function saveNotes(taskId: string, value: string): Promise<void> {
     <Alert v-if="notesError" variant="error" data-testid="ade-notes-error"
       ><AlertDescription>{{ notesError }}</AlertDescription></Alert
     >
-    <AdeLinkGroups :task="props.task" :readonly="readonly" />
-    <AdeHandoverList :task-id="task.id" :readonly="readonly" />
-    <AdeTaskTimeline :task="task" :branches="branches" />
+    <AdeLinkGroups
+      :task="props.task"
+      :readonly="readonly"
+      @open-session="emit('openSession', $event)"
+    />
+    <AdeHandoverList
+      :task-id="task.id"
+      :readonly="readonly"
+      @open-session="emit('openSession', $event)"
+    />
+    <AdeTaskTimeline
+      :task="task"
+      :branches="branches"
+      :archived="readonly"
+      @open-session="emit('openSession', $event)"
+    />
   </div>
 </template>

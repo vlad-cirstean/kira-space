@@ -9,6 +9,7 @@ import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { formatRelative } from '@workbench/behaviour/format';
 import { computed, ref } from 'vue';
 import AdeChip from '../AdeChip.vue';
+import AdeOriginSession from '../details/AdeOriginSession.vue';
 import { useHandovers, useUpdateHandover } from '../queries';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import type { Handover } from '../wire';
@@ -16,6 +17,7 @@ import type { Handover } from '../wire';
 // What each stage left for the next: the open draft first, then one row per stage move, newest first.
 // A row's body is editable unless the task is archived.
 const props = defineProps<{ taskId: string; readonly?: boolean }>();
+const emit = defineEmits<{ openSession: [sessionId: string] }>();
 const stage = useAdeStageDialogStore();
 const { data } = useHandovers(() => props.taskId);
 const update = useUpdateHandover();
@@ -78,6 +80,12 @@ const SOURCE = {
         />
         <AdeChip v-if="h.edited" :label="t('llmPrompts.badge.edited.label')" tone="grey" />
         <span class="ml-auto text-subtle">{{ formatRelative(h.updatedAt) }}</span>
+        <AdeOriginSession
+          :task-id="taskId"
+          :session-id="h.sessionId"
+          :archived="readonly"
+          @open="emit('openSession', $event)"
+        />
         <TooltipIconButton
           v-if="!readonly && editing !== h.id"
           icon="edit"

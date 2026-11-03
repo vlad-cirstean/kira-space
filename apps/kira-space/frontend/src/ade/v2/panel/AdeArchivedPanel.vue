@@ -20,7 +20,7 @@ import { useRestoreTask } from '../queries';
 import { useArchivedTask } from '../readQueries';
 import AdeSessionsTab from '../sessions/AdeSessionsTab.vue';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
-import type { TaskPanelTab } from '../state/adePanelTabs';
+import { type TaskPanelTab, useAdePanelTabsStore } from '../state/adePanelTabs';
 import type { ArchivedBranch, ArchivedComment, ArchivedTask } from '../wire';
 import AdePanelFrame from './AdePanelFrame.vue';
 import { PR_TONE, prStateLabel } from './prState';
@@ -30,6 +30,7 @@ import { PR_TONE, prStateLabel } from './prState';
 const props = defineProps<{ taskId: string }>();
 
 const boardUi = useAdeBoardUiStore();
+const panelTabs = useAdePanelTabsStore();
 const { sessions, repoLabel } = usePlanModel();
 const hostLabels = useHostLabels();
 const query = useArchivedTask(() => props.taskId);
@@ -44,6 +45,12 @@ watch(
     restoreError.value = '';
   },
 );
+
+function showSession(sessionId: string): void {
+  panelTabs.selectSession(props.taskId, sessionId);
+  boardUi.revealSessionId = sessionId;
+  tab.value = 'sessions';
+}
 
 const count = computed(() => sessions.value.filter((s) => s.taskId === props.taskId).length);
 const tabs = computed(() => [
@@ -310,6 +317,7 @@ async function onRestore(): Promise<void> {
           :task="a.task"
           :branches="a.branches.filter((b) => !b.removed)"
           readonly
+          @open-session="showSession"
         />
         <AdeSessionsTab v-else :task-id="a.task.id" archived />
       </AdePanelFrame>
