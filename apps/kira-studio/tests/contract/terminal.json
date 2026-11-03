@@ -1,11 +1,11 @@
 {
   "CustomScriptsService.Create#fixed": {
-    "collectionId": null,
+    "collection": "",
     "color": "blue",
     "command": "ls marker.txt; exit 4",
     "createdAt": "<time>",
     "dirMode": "fixed",
-    "id": "<id:1>",
+    "id": "list",
     "kind": "script",
     "name": "list",
     "params": [],

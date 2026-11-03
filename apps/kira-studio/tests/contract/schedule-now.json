@@ -1,11 +1,11 @@
 {
   "CustomScriptsService.Create": {
-    "collectionId": null,
+    "collection": "",
     "color": "blue",
     "command": "sleep 30",
     "createdAt": "<time>",
     "dirMode": "kira",
-    "id": "<id:1>",
+    "id": "tick",
     "kind": "script",
     "name": "tick",
     "params": [],
@@ -32,9 +32,9 @@
     "color": "blue",
     "command": "sleep 30",
     "createdAt": 0,
-    "cwd": "<kira>/automations/<id:1>",
+    "cwd": "<kira>/automations/tick",
     "finishedAt": null,
-    "id": "<id:2>",
+    "id": "<id:1>",
     "kind": "script",
     "model": "",
     "outcome": null,
@@ -43,7 +43,7 @@
     "provider": "",
     "resumable": false,
     "resumedFrom": "",
-    "scriptId": "<id:1>",
+    "scriptId": "tick",
     "scriptName": "tick",
     "sessionId": "",
     "startedAt": 0,
@@ -59,7 +59,7 @@
     "trigger": "scheduled"
   },
   "ScriptRunsService.RunScheduleNow": {
-    "runId": "<id:2>",
+    "runId": "<id:1>",
     "terminal": null
   },
   "ScriptRunsService.SchedulePreview": {
@@ -73,7 +73,7 @@
       "blocker": "",
       "branch": "",
       "mode": "kira",
-      "path": "<kira>/automations/<id:1>",
+      "path": "<kira>/automations/tick",
       "pending": false
     },
     "env": [],
@@ -95,7 +95,7 @@
   },
   "args:ScriptRunsService.RunScheduleNow": {
     "hash": "<masked>",
-    "scriptId": "<id:1>",
+    "scriptId": "tick",
     "secrets": null
   }
 }

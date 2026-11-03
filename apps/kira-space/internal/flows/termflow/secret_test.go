@@ -16,6 +16,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/scripts/scriptstest"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -190,15 +191,9 @@ func TestSecretParamSchedule(t *testing.T) {
 		t.Errorf("run log = %q, want the masked echo", logs)
 	}
 
-	f := scripts.CustomScriptFields{
-		Name: rec.Name, Kind: rec.Kind, Command: rec.Command, Params: rec.Params, Schedule: rec.Schedule, DirMode: rec.DirMode, Color: rec.Color,
-	}
-	_, err := app.W.CustomScripts.Update(bridge.CustomScriptsUpdateArgs{ID: rec.ID, Fields: f, SecretValues: map[string]*string{"key": nil}})
-	if err == nil || !strings.Contains(err.Error(), "needs a saved value for secret param key") {
-		t.Fatalf("Update after Clear = %v, want the saved-value refusal", err)
-	}
-	if n := secretRows(t, app); n != 1 {
-		t.Errorf("secret rows after a refused Clear = %d, want 1", n)
+	scriptstest.SetSecrets(t, app.W.CustomScripts, rec.ID, map[string]*string{"key": nil})
+	if n := secretRows(t, app); n != 0 {
+		t.Errorf("secret rows after Clear = %d, want 0", n)
 	}
 }
 
@@ -253,41 +248,24 @@ func TestSecretParamCleanup(t *testing.T) {
 		Name: rec.Name, Kind: rec.Kind, Command: rec.Command, DirMode: rec.DirMode, Color: rec.Color,
 		Params: []scripts.Param{{Name: "other", Type: scripts.ParamText, Secret: true}},
 	}
-	out, err := app.W.CustomScripts.Update(bridge.CustomScriptsUpdateArgs{ID: rec.ID, Fields: renamed})
-	if err != nil {
-		t.Fatal(err)
-	}
+	out := scriptstest.Update(t, app.W.CustomScripts, rec.ID, renamed)
 	if len(out.SavedSecrets) != 0 || secretRows(t, app) != 0 {
 		t.Errorf("after rename: saved %v, rows %d, want none", out.SavedSecrets, secretRows(t, app))
 	}
 
-	if _, err := app.W.CustomScripts.Update(bridge.CustomScriptsUpdateArgs{ID: rec.ID, Fields: renamed, SecretValues: withNamed("ghost", secretValue)}); err == nil {
+	if _, err := app.W.CustomScripts.SetSecrets(bridge.CustomScriptsSetSecretsArgs{ID: rec.ID, Values: withNamed("ghost", secretValue)}); err == nil {
 		t.Error("a value for a param that does not exist was accepted")
 	}
 
-	if _, err := app.W.CustomScripts.Update(bridge.CustomScriptsUpdateArgs{ID: rec.ID, Fields: renamed, SecretValues: withNamed("other", secretValue)}); err != nil {
-		t.Fatal(err)
+	scriptstest.SetSecrets(t, app.W.CustomScripts, rec.ID, withNamed("other", secretValue))
+	if secretRows(t, app) != 1 {
+		t.Fatal("no secret row after SetSecrets")
 	}
 	if err := app.W.CustomScripts.Delete(bridge.CustomScriptsDeleteArgs{ID: rec.ID}); err != nil {
 		t.Fatal(err)
 	}
 	if secretRows(t, app) != 0 {
 		t.Error("Delete left a secret row")
-	}
-
-	col, err := app.W.CustomScripts.CreateCollection(bridge.CustomScriptsCreateCollectionArgs{Name: "keys"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	createSecretScript(t, app, scripts.CustomScriptFields{Name: "inner", Command: "true", CollectionID: &col.ID}, withSecret(secretValue))
-	if secretRows(t, app) != 1 {
-		t.Fatal("no secret row in the collection")
-	}
-	if err := app.W.CustomScripts.DeleteCollection(bridge.CustomScriptsDeleteCollectionArgs{ID: col.ID}); err != nil {
-		t.Fatal(err)
-	}
-	if secretRows(t, app) != 0 {
-		t.Error("DeleteCollection left a secret row")
 	}
 }
 

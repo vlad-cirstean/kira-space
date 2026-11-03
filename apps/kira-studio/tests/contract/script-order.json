@@ -1,28 +1,23 @@
 {
-  "args:CustomScriptsService.Move#before": {
-    "beforeId": "<id:6>",
-    "collectionId": "<id:4>",
-    "id": "<id:3>"
-  },
   "args:CustomScriptsService.Reorder#collection": {
-    "collectionId": "<id:4>",
+    "collection": "X",
     "ids": [
-      "<id:5>",
-      "<id:6>"
+      "t2",
+      "t1"
     ]
   },
   "args:CustomScriptsService.Reorder#ungrouped": {
-    "collectionId": null,
+    "collection": "",
     "ids": [
-      "<id:1>",
-      "<id:2>",
-      "<id:3>"
+      "s3",
+      "s1",
+      "s2"
     ]
   },
   "args:CustomScriptsService.ReorderCollections": {
-    "ids": [
-      "<id:7>",
-      "<id:4>"
+    "names": [
+      "Y",
+      "X"
     ]
   }
 }

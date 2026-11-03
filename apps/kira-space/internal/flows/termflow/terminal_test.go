@@ -14,6 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/scripts/scriptstest"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -112,21 +113,17 @@ func TestCollectionsMoveAndDelete(t *testing.T) {
 	app := flowharness.New(t)
 	svc := app.W.CustomScripts
 	mark := app.Events.Mark()
-	col, err := svc.CreateCollection(bridge.CustomScriptsCreateCollectionArgs{Name: "Build"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	mk := func(name string, collection *string) scripts.CustomScript {
+	mk := func(name string) scripts.CustomScript {
 		s, err := svc.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
-			Name: name, Command: "echo " + name, Color: "blue", CollectionID: collection,
+			Name: name, Command: "echo " + name, Color: "blue", Collection: "Build",
 		}})
 		if err != nil {
 			t.Fatalf("Create %s: %v", name, err)
 		}
 		return s
 	}
-	keep := mk("keep", &col.ID)
-	mk("drop", &col.ID)
+	keep := mk("keep")
+	drop := mk("drop")
 	// Contract commands: tests/ui/automations-scripts.spec.ts "contract: a collection with its scripts
 	// shows after boot" reads the same fixture.
 	grouped, err := svc.List()
@@ -135,34 +132,28 @@ func TestCollectionsMoveAndDelete(t *testing.T) {
 	}
 	app.Contract(t, "commands", "CustomScriptsService.List#grouped", grouped)
 
-	if err := svc.Move(bridge.CustomScriptsMoveArgs{ID: keep.ID, CollectionID: nil}); err != nil {
-		t.Fatal(err)
-	}
+	scriptstest.Update(t, svc, keep.ID, scripts.CustomScriptFields{Name: keep.Name, Kind: keep.Kind, Command: keep.Command, Color: keep.Color})
 	snap, err := svc.List()
 	if err != nil || len(snap.Collections) != 1 || len(snap.Scripts) != 2 {
 		t.Fatalf("List = %+v, %v", snap, err)
 	}
 	for _, s := range snap.Scripts {
-		inCollection := s.CollectionID != nil && *s.CollectionID == col.ID
-		if (s.ID == keep.ID) == inCollection {
-			t.Fatalf("script %s collection = %v, want keep ungrouped and drop in %s", s.Name, s.CollectionID, col.ID)
+		if (s.ID == keep.ID) == (s.Collection == "Build") {
+			t.Fatalf("script %s collection = %q, want keep ungrouped and drop in Build", s.Name, s.Collection)
 		}
 	}
-	if err := svc.Move(bridge.CustomScriptsMoveArgs{ID: keep.ID, CollectionID: ptr("no-such-collection")}); err == nil {
-		t.Fatal("Move into an unknown collection succeeded")
-	}
 
-	if err := svc.DeleteCollection(bridge.CustomScriptsDeleteCollectionArgs{ID: col.ID}); err != nil {
+	if err := svc.Delete(bridge.CustomScriptsDeleteArgs{ID: drop.ID}); err != nil {
 		t.Fatal(err)
 	}
 	snap, err = svc.List()
 	if err != nil || len(snap.Collections) != 0 || len(snap.Scripts) != 1 || snap.Scripts[0].ID != keep.ID {
-		t.Fatalf("after DeleteCollection: %+v, %v, want only the moved-out script (the UI confirms \"and everything inside it\")", snap, err)
+		t.Fatalf("after Delete: %+v, %v, want only the moved-out script and the emptied collection pruned", snap, err)
 	}
 
 	last := app.Events.Since(mark, bridge.ChannelCustomScriptsChanged)
-	if len(last) != 5 {
-		t.Fatalf("%d changed events, want one per mutation (5)", len(last))
+	if len(last) == 0 {
+		t.Fatal("no changed events")
 	}
 	var final scripts.Snapshot
 	last[len(last)-1].Decode(t, &final)

@@ -13,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeclock"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/scripts/scriptstest"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -162,11 +163,12 @@ func TestSchedulePickerListsTasks(t *testing.T) {
 
 	fields := scripts.CustomScriptFields{
 		Name: rec.Name, Kind: rec.Kind, Command: rec.Command, Color: rec.Color,
-		Schedule: &scripts.Schedule{Cron: "0 9 * * 1-5", Timezone: "UTC", Enabled: true, TaskID: listed.Needs.Tasks[0].ID},
+		Schedule: &scripts.Schedule{Cron: "0 9 * * 1-5", Timezone: "UTC", Enabled: true},
 	}
-	args := bridge.CustomScriptsUpdateArgs{ID: rec.ID, Fields: fields}
-	f.app.Contract(t, "schedule-task-picker", "args:CustomScriptsService.Update#task", args)
-	updated, err := f.app.W.CustomScripts.Update(args)
+	scriptstest.Update(t, f.app.W.CustomScripts, rec.ID, fields)
+	args := bridge.CustomScriptsSetScheduleTargetArgs{ID: rec.ID, TaskID: listed.Needs.Tasks[0].ID}
+	f.app.Contract(t, "schedule-task-picker", "args:CustomScriptsService.SetScheduleTarget#task", args)
+	updated, err := f.app.W.CustomScripts.SetScheduleTarget(args)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,11 +1,11 @@
 {
   "CustomScriptsService.Create": {
-    "collectionId": null,
+    "collection": "",
     "color": "blue",
     "command": "Say hi about {topic}",
     "createdAt": "<time>",
     "dirMode": "kira",
-    "id": "<id:1>",
+    "id": "ask",
     "kind": "smart",
     "name": "ask",
     "params": [
@@ -39,12 +39,12 @@
     "workingDir": ""
   },
   "CustomScriptsService.Create#failed": {
-    "collectionId": null,
+    "collection": "",
     "color": "blue",
     "command": "go",
     "createdAt": "<time>",
     "dirMode": "kira",
-    "id": "<id:1>",
+    "id": "ask",
     "kind": "smart",
     "name": "ask",
     "params": [],
@@ -74,9 +74,9 @@
     "color": "blue",
     "command": "",
     "createdAt": 0,
-    "cwd": "<kira>/automations/<id:1>",
+    "cwd": "<kira>/automations/ask",
     "finishedAt": 0,
-    "id": "<id:2>",
+    "id": "<id:1>",
     "kind": "smart",
     "model": "sonnet",
     "outcome": {
@@ -97,9 +97,9 @@
     "provider": "claude",
     "resumable": false,
     "resumedFrom": "",
-    "scriptId": "<id:1>",
+    "scriptId": "ask",
     "scriptName": "ask",
-    "sessionId": "<id:3>",
+    "sessionId": "<id:2>",
     "startedAt": 0,
     "state": "done",
     "taskId": "",
@@ -127,9 +127,9 @@
     "color": "blue",
     "command": "",
     "createdAt": 0,
-    "cwd": "<kira>/automations/<id:1>",
+    "cwd": "<kira>/automations/ask",
     "finishedAt": 0,
-    "id": "<id:2>",
+    "id": "<id:1>",
     "kind": "smart",
     "model": "sonnet",
     "outcome": {
@@ -145,9 +145,9 @@
     "provider": "claude",
     "resumable": false,
     "resumedFrom": "",
-    "scriptId": "<id:1>",
+    "scriptId": "ask",
     "scriptName": "ask",
-    "sessionId": "<id:3>",
+    "sessionId": "<id:2>",
     "startedAt": 0,
     "state": "failed",
     "taskId": "",
@@ -185,7 +185,7 @@
       "blocker": "",
       "branch": "",
       "mode": "kira",
-      "path": "<kira>/automations/<id:1>",
+      "path": "<kira>/automations/ask",
       "pending": false
     },
     "env": [
@@ -262,7 +262,7 @@
       ]
     },
     "prompt": null,
-    "scriptId": "<id:1>",
+    "scriptId": "ask",
     "taskId": ""
   }
 }

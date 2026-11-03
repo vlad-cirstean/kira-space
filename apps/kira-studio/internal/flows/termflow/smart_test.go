@@ -25,6 +25,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/scripts/scriptstest"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -129,16 +130,16 @@ func TestSmartScript(t *testing.T) {
 			{"reserved name", "reserved", func(f *scripts.CustomScriptFields) {
 				f.Params = []scripts.Param{{Name: "task", Type: scripts.ParamText}}
 			}},
-			{"secret in prompt", "secret param token cannot be used in the prompt", func(f *scripts.CustomScriptFields) {
+			{"secret in prompt", "A secret parameter can’t be used in the prompt.", func(f *scripts.CustomScriptFields) {
 				f.Command = "use {token}"
 				f.Params = []scripts.Param{{Name: "token", Type: scripts.ParamText, Secret: true}}
 			}},
-			{"unknown tool", "unknown tool", func(f *scripts.CustomScriptFields) { f.Smart = &scripts.Smart{Tools: []string{"Fly"}} }},
-			{"pattern with paren", "cannot contain )", func(f *scripts.CustomScriptFields) {
+			{"This tool is not one a run can use.", "This tool is not one a run can use.", func(f *scripts.CustomScriptFields) { f.Smart = &scripts.Smart{Tools: []string{"Fly"}} }},
+			{"pattern with paren", "A Bash pattern can’t contain )", func(f *scripts.CustomScriptFields) {
 				f.Smart = &scripts.Smart{Tools: []string{"Bash"}, BashPatterns: []string{"git status)"}}
 			}},
 			{"budget", "budget must be between", func(f *scripts.CustomScriptFields) { f.Smart = &scripts.Smart{MaxBudgetUSD: 30} }},
-			{"mcp without tools", "tick at least one tool of fake or turn it off", func(f *scripts.CustomScriptFields) {
+			{"mcp without tools", "Choose at least one tool of this server", func(f *scripts.CustomScriptFields) {
 				f.Smart = &scripts.Smart{MCP: []scripts.MCPChoice{{Server: "fake"}}}
 			}},
 		} {
@@ -423,11 +424,9 @@ func TestSmartScript(t *testing.T) {
 		edit := scripts.CustomScriptFields{
 			Name: rec.Name, Kind: rec.Kind, Command: "changed {topic}", Color: rec.Color,
 			Params: rec.Params, Smart: rec.Smart, DirMode: rec.DirMode,
-			WorkingDir: rec.WorkingDir, CollectionID: rec.CollectionID,
+			WorkingDir: rec.WorkingDir, Collection: rec.Collection,
 		}
-		if _, err := app.W.CustomScripts.Update(bridge.CustomScriptsUpdateArgs{ID: rec.ID, Fields: edit}); err != nil {
-			t.Fatal(err)
-		}
+		scriptstest.Update(t, app.W.CustomScripts, rec.ID, edit)
 		if _, err := app.W.ScriptRuns.Start(startArgs(args, pv)); errCode(err) != "E_CONFLICT" ||
 			!strings.Contains(err.Error(), "The script changed since the preview. Preview it again.") {
 			t.Fatalf("Start with a stale hash = %v", err)
@@ -677,7 +676,7 @@ func TestSmartScript(t *testing.T) {
 			Name: "none", Kind: scripts.KindSmart, Command: "x", Color: "blue",
 			Smart: &scripts.Smart{MCP: []scripts.MCPChoice{{Server: "fake"}}},
 		}})
-		if err == nil || !strings.Contains(err.Error(), "tick at least one tool of fake") {
+		if err == nil || !strings.Contains(err.Error(), "Choose at least one tool of this server") {
 			t.Errorf("no tools and no AllTools = %v", err)
 		}
 
@@ -714,13 +713,9 @@ func TestSmartScript(t *testing.T) {
 
 func TestStudioRefusesTaskContext(t *testing.T) {
 	app := flowharness.New(t)
-	rec := newSmart(t, app, "hi", func(f *scripts.CustomScriptFields) { f.UseAdeDir = true })
+	rec := newSmart(t, app, "hi", nil)
 	_, err := app.W.ScriptRuns.Preview(scriptruns.RunArgs{ScriptID: rec.ID, TaskID: "t1"})
 	if errCode(err) != "E_BAD_REQUEST" || !strings.Contains(err.Error(), "Tasks exist only in Kira Space") {
 		t.Fatalf("Preview err = %v, want E_BAD_REQUEST naming Kira Space", err)
-	}
-	snap, err := app.W.CustomScripts.List()
-	if err != nil || len(snap.Scripts) != 1 || !snap.Scripts[0].UseAdeDir {
-		t.Fatalf("scripts = %+v, %v; want useAdeDir kept", snap.Scripts, err)
 	}
 }

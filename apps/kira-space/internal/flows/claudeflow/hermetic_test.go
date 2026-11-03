@@ -15,6 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/scripts/scriptstest"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -168,12 +169,10 @@ func TestHermeticClaude(t *testing.T) {
 	})
 
 	t.Run("user_server_blocks", func(t *testing.T) {
-		if _, err := app.W.CustomScripts.Update(bridge.CustomScriptsUpdateArgs{ID: script.ID, Fields: scripts.CustomScriptFields{
+		scriptstest.Update(t, app.W.CustomScripts, script.ID, scripts.CustomScriptFields{
 			Name: "ask", Kind: scripts.KindSmart, Command: "Reply ok.", Color: "blue",
 			Smart: &scripts.Smart{MCP: []scripts.MCPChoice{{Server: "user-srv", Tools: []string{"echo"}}}},
-		}}); err != nil {
-			t.Fatal(err)
-		}
+		})
 		pv, err := app.W.ScriptRuns.Preview(scriptruns.RunArgs{ScriptID: script.ID})
 		if err != nil || pv.Blocker == "" || !strings.Contains(pv.Blocker, "user-srv") {
 			t.Fatalf("Preview = %+v, %v, want a blocker naming user-srv", pv, err)

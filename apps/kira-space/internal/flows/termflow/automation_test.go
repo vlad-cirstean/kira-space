@@ -281,22 +281,6 @@ func TestScriptFolders(t *testing.T) {
 		t.Fatalf("blocked run = %+v, want failed at start", r)
 	}
 
-	// A legacy home row still runs in $HOME; choosing it for a new script is refused.
-	legacy := newScript(t, app, scripts.CustomScriptFields{Command: "pwd"})
-	if _, err := app.DB().Exec(`UPDATE custom_scripts SET dir_mode = 'home' WHERE id = ?`, legacy.ID); err != nil {
-		t.Fatal(err)
-	}
-	d, err = runs.ResolveDir(scriptruns.ResolveDirArgs{ScriptID: legacy.ID})
-	if err != nil || d.Mode != scripts.DirModeHome || d.Path != app.Home {
-		t.Fatalf("legacy dir = %+v, %v, want the home folder", d, err)
-	}
-	// tests/ui automations-runs "contract: a legacy home script offers the Kira scripts folder" reads this.
-	app.Contract(t, "script-folders", "ScriptRunsService.ResolveDir#legacy", d)
-	if _, err := app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
-		Name: "h", Command: "pwd", Color: "blue", DirMode: scripts.DirModeHome,
-	}}); err == nil {
-		t.Fatal("Create with the retired home folder succeeded")
-	}
 	if _, err := runs.ResolveDir(scriptruns.ResolveDirArgs{ScriptID: "missing"}); err == nil {
 		t.Fatal("ResolveDir of an unknown script succeeded")
 	}
@@ -307,23 +291,16 @@ func TestScriptFolders(t *testing.T) {
 func TestScriptOrder(t *testing.T) {
 	app := flowharness.New(t)
 	cs := app.W.CustomScripts
-	x, err := cs.CreateCollection(bridge.CustomScriptsCreateCollectionArgs{Name: "X"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	y, err := cs.CreateCollection(bridge.CustomScriptsCreateCollectionArgs{Name: "Y"})
-	if err != nil {
-		t.Fatal(err)
-	}
 	s1 := newScript(t, app, scripts.CustomScriptFields{Name: "s1", Command: "echo s1"})
 	s2 := newScript(t, app, scripts.CustomScriptFields{Name: "s2", Command: "echo s2"})
 	s3 := newScript(t, app, scripts.CustomScriptFields{Name: "s3", Command: "echo s3"})
-	t1 := newScript(t, app, scripts.CustomScriptFields{Name: "t1", Command: "echo t1", CollectionID: &x.ID})
-	t2 := newScript(t, app, scripts.CustomScriptFields{Name: "t2", Command: "echo t2", CollectionID: &x.ID})
+	t1 := newScript(t, app, scripts.CustomScriptFields{Name: "t1", Command: "echo t1", Collection: "X"})
+	t2 := newScript(t, app, scripts.CustomScriptFields{Name: "t2", Command: "echo t2", Collection: "X"})
+	newScript(t, app, scripts.CustomScriptFields{Name: "u1", Command: "echo u1", Collection: "Y"})
 
 	ungrouped := bridge.CustomScriptsReorderArgs{IDs: []string{s3.ID, s1.ID, s2.ID}}
-	inX := bridge.CustomScriptsReorderArgs{CollectionID: &x.ID, IDs: []string{t2.ID, t1.ID}}
-	colls := bridge.CustomScriptsReorderCollectionsArgs{IDs: []string{y.ID, x.ID}}
+	inX := bridge.CustomScriptsReorderArgs{Collection: "X", IDs: []string{t2.ID, t1.ID}}
+	colls := bridge.CustomScriptsReorderCollectionsArgs{Names: []string{"Y", "X"}}
 	if err := cs.Reorder(ungrouped); err != nil {
 		t.Fatal(err)
 	}
@@ -340,10 +317,10 @@ func TestScriptOrder(t *testing.T) {
 	names := func(snap scripts.Snapshot) (ung, inx, cols string) {
 		var u, in, c []string
 		for _, s := range snap.Scripts {
-			switch {
-			case s.CollectionID == nil:
+			switch s.Collection {
+			case "":
 				u = append(u, s.Name)
-			case *s.CollectionID == x.ID:
+			case "X":
 				in = append(in, s.Name)
 			}
 		}
@@ -352,44 +329,25 @@ func TestScriptOrder(t *testing.T) {
 		}
 		return strings.Join(u, ","), strings.Join(in, ","), strings.Join(c, ",")
 	}
-	check := func(label string, snap scripts.Snapshot, wantUng, wantX string) {
+	check := func(label string, snap scripts.Snapshot) {
 		t.Helper()
-		if ung, inx, cols := names(snap); ung != wantUng || inx != wantX || cols != "Y,X" {
-			t.Fatalf("%s = ungrouped %s, X %s, collections %s; want %s, %s, Y,X", label, ung, inx, cols, wantUng, wantX)
+		if ung, inx, cols := names(snap); ung != "s3,s1,s2" || inx != "t2,t1" || cols != "Y,X" {
+			t.Fatalf("%s = ungrouped %s, X %s, collections %s; want s3,s1,s2, t2,t1, Y,X", label, ung, inx, cols)
 		}
 	}
 	snap, err := cs.List()
 	if err != nil {
 		t.Fatal(err)
 	}
-	check("List", snap, "s3,s1,s2", "t2,t1")
+	check("List", snap)
 
-	before := bridge.CustomScriptsMoveArgs{ID: s2.ID, CollectionID: &x.ID, BeforeID: &t1.ID}
-	if err := cs.Move(before); err != nil {
-		t.Fatal(err)
-	}
-	app.Contract(t, "script-order", "args:CustomScriptsService.Move#before", before)
-	snap, err = cs.List()
-	if err != nil {
-		t.Fatal(err)
-	}
-	check("after Move before", snap, "s3,s1", "t2,s2,t1")
-
-	if err := cs.Move(bridge.CustomScriptsMoveArgs{ID: t1.ID, BeforeID: &s1.ID}); err != nil {
-		t.Fatal(err)
-	}
-	snap, err = cs.List()
-	if err != nil {
-		t.Fatal(err)
-	}
-	check("after Move out before s1", snap, "s3,t1,s1", "t2,s2")
-	if err := cs.Move(bridge.CustomScriptsMoveArgs{ID: t1.ID, CollectionID: &x.ID, BeforeID: &s1.ID}); err == nil {
-		t.Fatal("Move before a script of another set succeeded")
+	if err := cs.Reorder(bridge.CustomScriptsReorderArgs{IDs: []string{t1.ID}}); err == nil {
+		t.Fatal("Reorder with a script of another set succeeded")
 	}
 	if again, err := cs.List(); err != nil {
 		t.Fatal(err)
 	} else if !reflect.DeepEqual(again, snap) {
-		t.Fatalf("a refused Move changed the order: %+v, want %+v", again, snap)
+		t.Fatalf("a refused Reorder changed the order: %+v, want %+v", again, snap)
 	}
 
 	app.Restart()
@@ -397,7 +355,7 @@ func TestScriptOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	check("after Restart", again, "s3,t1,s1", "t2,s2")
+	check("after Restart", again)
 }
 
 func TestScriptLaunchIgnoresForgedCommand(t *testing.T) {

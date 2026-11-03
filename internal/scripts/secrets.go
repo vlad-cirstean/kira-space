@@ -58,7 +58,7 @@ func (r *Repo) pruneSecrets(q secrets.Execer, id string) error {
 }
 
 // pruneUnsecret drops the saved values of id whose name is no longer a secret param.
-func (r *Repo) pruneUnsecret(tx *sql.Tx, id string, params []Param) error {
+func (r *Repo) pruneUnsecret(id string, params []Param) error {
 	if r.Secrets == nil {
 		return nil
 	}
@@ -77,7 +77,7 @@ func (r *Repo) pruneUnsecret(tx *sql.Tx, id string, params []Param) error {
 	if len(keep) == len(saved[id]) {
 		return nil
 	}
-	if err := r.Secrets.Prune(tx, secrets.ScopeScriptParam, id, keep); err != nil {
+	if err := r.Secrets.Prune(r.DB, secrets.ScopeScriptParam, id, keep); err != nil {
 		return fmt.Errorf("scripts: prune saved secrets of %s: %w", id, err)
 	}
 	return nil

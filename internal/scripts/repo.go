@@ -284,13 +284,10 @@ func (p *projection) Record(file, valueJSON string, now int64) error {
 			return fmt.Errorf("scripts: record %s: collection: %w", file, err)
 		}
 	}
-	if err := r.pruneUnsecret(tx, id, fields.Params); err != nil {
-		return err
-	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("scripts: record %s: commit: %w", file, err)
 	}
-	return nil
+	return r.pruneUnsecret(id, fields.Params)
 }
 
 func (p *projection) Forget(file string) error {

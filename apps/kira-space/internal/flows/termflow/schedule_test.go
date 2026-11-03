@@ -14,6 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeclock"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/scripts/scriptstest"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -63,14 +64,10 @@ func update(t *testing.T, app *flowharness.App, rec scripts.CustomScript, mod fu
 	t.Helper()
 	f := scripts.CustomScriptFields{
 		Name: rec.Name, Kind: rec.Kind, Command: rec.Command, Params: rec.Params, Smart: rec.Smart,
-		Schedule: rec.Schedule, DirMode: rec.DirMode, WorkingDir: rec.WorkingDir, Color: rec.Color,
+		Schedule: rec.Schedule, DirMode: rec.DirMode, WorkingDir: rec.WorkingDir, Color: rec.Color, Collection: rec.Collection,
 	}
 	mod(&f)
-	out, err := app.W.CustomScripts.Update(bridge.CustomScriptsUpdateArgs{ID: rec.ID, Fields: f})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return out
+	return scriptstest.Update(t, app.W.CustomScripts, rec.ID, f)
 }
 
 func scheduledRuns(t *testing.T, app *flowharness.App, scriptID string) []scriptruns.Run {
@@ -129,20 +126,15 @@ func TestScheduleValidation(t *testing.T) {
 		name, want string
 		mod        func(*scripts.CustomScriptFields)
 	}{
-		{"four fields", "cron needs 5 fields", func(f *scripts.CustomScriptFields) { f.Schedule.Cron = "* * * *" }},
-		{"six fields", "cron needs 5 fields", func(f *scripts.CustomScriptFields) { f.Schedule.Cron = "0 * * * * *" }},
-		{"at tag", "cron needs 5 fields", func(f *scripts.CustomScriptFields) { f.Schedule.Cron = "@daily" }},
-		{"bad cron", "is not a valid expression", func(f *scripts.CustomScriptFields) { f.Schedule.Cron = "99 * * * *" }},
-		{"bad zone", "unknown timezone", func(f *scripts.CustomScriptFields) { f.Schedule.Timezone = "Nope/Zone" }},
+		{"four fields", "5 cron fields", func(f *scripts.CustomScriptFields) { f.Schedule.Cron = "* * * *" }},
+		{"six fields", "5 cron fields", func(f *scripts.CustomScriptFields) { f.Schedule.Cron = "0 * * * * *" }},
+		{"at tag", "5 cron fields", func(f *scripts.CustomScriptFields) { f.Schedule.Cron = "@daily" }},
+		{"bad cron", "cron expression is not valid", func(f *scripts.CustomScriptFields) { f.Schedule.Cron = "99 * * * *" }},
+		{"bad zone", "time zone is unknown", func(f *scripts.CustomScriptFields) { f.Schedule.Timezone = "Nope/Zone" }},
 		{"timeout low", "between 1m and 24h", func(f *scripts.CustomScriptFields) { f.Schedule.Timeout = "10s" }},
 		{"timeout high", "between 1m and 24h", func(f *scripts.CustomScriptFields) { f.Schedule.Timeout = "25h" }},
-		{"required secret without a saved value", "needs a saved value for secret param token", func(f *scripts.CustomScriptFields) {
-			f.Params = []scripts.Param{{Name: "token", Type: scripts.ParamText, Secret: true, Required: true}}
-			f.Schedule.Confirm = false
-		}},
-		{"task variable without task", "without a task cannot use {branch}", func(f *scripts.CustomScriptFields) { f.Command = "echo {branch}" }},
-		{"unknown param", "schedule params", func(f *scripts.CustomScriptFields) { f.Schedule.Params = map[string][]string{"ghost": {"x"}} }},
-		{"stored secret", "save its value in the Parameters tab", func(f *scripts.CustomScriptFields) {
+		{"unknown param", "unknown parameter", func(f *scripts.CustomScriptFields) { f.Schedule.Params = map[string][]string{"ghost": {"x"}} }},
+		{"stored secret", "secret parameter token", func(f *scripts.CustomScriptFields) {
 			f.Params = []scripts.Param{{Name: "token", Type: scripts.ParamText, Secret: true}}
 			f.Schedule.Confirm = true
 			f.Schedule.Params = map[string][]string{"token": {"x"}}
@@ -168,7 +160,7 @@ func TestScheduleValidation(t *testing.T) {
 		}
 	}
 	if _, err := app.W.ScriptRuns.NextFires(scriptruns.NextFiresArgs{Cron: "* * *", Timezone: "UTC"}); errCode(err) != "E_BAD_REQUEST" ||
-		!strings.Contains(err.Error(), "cron needs 5 fields") {
+		!strings.Contains(err.Error(), "5 cron fields") {
 		t.Fatalf("NextFires with a bad cron = %v", err)
 	}
 }

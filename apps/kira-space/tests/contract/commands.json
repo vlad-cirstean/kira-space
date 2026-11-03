@@ -2,21 +2,20 @@
   "CustomScriptsService.List#grouped": {
     "collections": [
       {
-        "createdAt": "<time>",
-        "id": "<id:1>",
         "name": "Build",
-        "sortOrder": 0,
-        "updatedAt": "<time>"
+        "sortOrder": 0
       }
     ],
+    "dir": "<space>/runs",
+    "problems": [],
     "scripts": [
       {
-        "collectionId": "<id:1>",
+        "collection": "Build",
         "color": "blue",
         "command": "echo keep",
         "createdAt": "<time>",
         "dirMode": "kira",
-        "id": "<id:2>",
+        "id": "keep",
         "kind": "script",
         "name": "keep",
         "params": [],
@@ -29,12 +28,12 @@
         "workingDir": ""
       },
       {
-        "collectionId": "<id:1>",
+        "collection": "Build",
         "color": "blue",
         "command": "echo drop",
         "createdAt": "<time>",
         "dirMode": "kira",
-        "id": "<id:3>",
+        "id": "drop",
         "kind": "script",
         "name": "drop",
         "params": [],
