@@ -92,6 +92,37 @@ const reportRun = (runId: string) => {
   const r = props.card.task.runs.find((x) => x.id === runId);
   return r?.outcome?.report && (r.state === 'failed' || r.state === 'stuck') ? r : undefined;
 };
+// Run lines read in the branch list's order, the task folder first.
+const runs = computed(() => {
+  const at = (branchId: string): number => props.card.rows.findIndex((r) => r.id === branchId);
+  return props.block.runs.toSorted((a, b) => at(a.run.branchId) - at(b.run.branchId));
+});
+// Repo label per run target; the branch name too when another branch of the task shares the repo.
+function target(branchId: string): {
+  repo: string;
+  codeRepoId: string;
+  name: string;
+  named: boolean;
+} {
+  const row = props.card.rows.find((r) => r.id === branchId);
+  if (!row) {
+    return {
+      repo: t('space.ade.stepBlock.taskFolder.label'),
+      codeRepoId: '',
+      name: '',
+      named: false,
+    };
+  }
+  const shared = props.card.rows.some(
+    (r) => r.id !== row.id && r.branch.codeRepoId === row.branch.codeRepoId,
+  );
+  return {
+    repo: row.repo,
+    codeRepoId: row.branch.codeRepoId,
+    name: row.name,
+    named: shared && row.name !== '',
+  };
+}
 const heldRow = (rl: { run: { branchId: string }; note: string }) =>
   WAITING_SETUP_NOTES.includes(rl.note)
     ? props.card.rows.find((r) => r.id === rl.run.branchId)
@@ -248,7 +279,7 @@ function logToggleLabel(runId: string): string {
           >
         </AdeTip>
       </div>
-      <template v-for="rl in block.runs" :key="rl.run.branchId">
+      <template v-for="rl in runs" :key="rl.run.branchId">
         <div
           class="flex min-h-control items-center gap-2 pl-6"
           data-testid="ade-run-line"
@@ -263,13 +294,17 @@ function logToggleLabel(runId: string): string {
             }}</span
           >
           <AdeRepoTag
-            :code-repo-id="card.rows.find((r) => r.id === rl.run.branchId)?.branch.codeRepoId ?? ''"
-            :label="
-              rl.run.branchId === ''
-                ? t('space.ade.stepBlock.taskFolder.label')
-                : (card.rows.find((r) => r.id === rl.run.branchId)?.repo ?? '')
-            "
+            :code-repo-id="target(rl.run.branchId).codeRepoId"
+            :label="target(rl.run.branchId).repo"
           />
+          <span
+            v-if="target(rl.run.branchId).named"
+            class="max-w-40 shrink-0 truncate font-data text-kira-sm text-subtle"
+            data-testid="ade-run-branch"
+            >{{
+              target(rl.run.branchId).name
+            }}</span
+          >
           <span
             class="min-w-16 shrink-0 whitespace-nowrap text-kira-sm"
             :class="TONE_TEXT_CLASS[rl.tone]"
