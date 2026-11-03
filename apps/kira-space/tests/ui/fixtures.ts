@@ -35,7 +35,7 @@ export const AGENT_PANEL_ON = { 'kira.ade.review.agentPanel': 'true' } as const;
  * the static build and mock the control-call wire protocol from scratch". No `stream`/`MockStreamHandle`
  * fixture here: that whole mechanism (mockStream.ts) is Studio's own bulk-data grid-page protocol
  * (`window._wails.streamFactory('data')`), which this app has no counterpart for — the one stream
- * this app's own repo-graph mount opens (`window._wails.streamFactory('git')`) is a different wire
+ * this app's own repo-graph mount opens (`window._wails.streamFactory('gitgraph')`) is a different wire
  * entirely, mocked per-spec by `installGitStreamMock` (support/gitStreamMock.ts) by default, or via
  * this fixture's own `gitStream` option when boot itself opens the transport.
  */

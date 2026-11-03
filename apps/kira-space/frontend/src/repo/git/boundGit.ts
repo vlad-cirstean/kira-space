@@ -1,6 +1,6 @@
 /**
- * Git methods served by the bound `GitService` instead of the git stream. `transport.ts` routes a
- * request here when its method has an entry; the rest still go over the stream.
+ * Every git request method, served by the bound `GitService` (plus `GitHostService.Providers`).
+ * Graph rows are the one bulk path and ride the `gitgraph` data plane (`graphStream.ts`).
  *
  * Imports the bindings directly, not through `bridge/index.ts`: `unwrap` returns a plain promise
  * and loses `.cancel()`, and git errors must surface as `RpcError` (git-ui branches on its code),
@@ -19,10 +19,14 @@ interface Cancellable extends Promise<unknown> {
 
 type BoundCall = (windowKey: string, params: never) => Cancellable;
 
-export const BOUND_METHODS = {
+const BOUND_METHODS = {
   'app.init': (w) => GitService.AppInit({ windowKey: w }),
   'repo.open': (w, p) => GitService.RepoOpen({ windowKey: w, params: p }),
   'repo.close': (w, p) => GitService.RepoClose({ windowKey: w, params: p }),
+  'graph.status': (w, p) => GitService.GraphStatus({ windowKey: w, params: p }),
+  'graph.loadMore': (w, p) => GitService.GraphLoadMore({ windowKey: w, params: p }),
+  'graph.refresh': (w, p) => GitService.GraphRefresh({ windowKey: w, params: p }),
+  'graph.reportFailure': (w, p) => GitService.GraphReportFailure({ windowKey: w, params: p }),
   'status.get': (w, p) => GitService.StatusGet({ windowKey: w, params: p }),
   'refs.list': (w, p) => GitService.RefsList({ windowKey: w, params: p }),
   'commit.detail': (w, p) => GitService.CommitDetail({ windowKey: w, params: p }),
@@ -101,8 +105,31 @@ const boundTable: Partial<Record<RequestKey, BoundCall>> = BOUND_METHODS;
 /** Every git event the Go side pushes to a window, as `kira:git:<event>` (EmitTo). */
 const GIT_EVENT_PREFIX = 'kira:git:';
 
-/** Runs a bound call. `signal` abort cancels the binding promise; `inflight` lets the owning
- *  transport cancel everything on dispose. */
+let windowReady: Promise<void> | undefined;
+
+/** Forgets the memoized reset so the next call sends it again; unit specs share one module graph. */
+export function forgetGitWindowReset(): void {
+  windowReady = undefined;
+}
+
+/** Resets this window's Go connection once per page load, before any other git call: a reload
+ *  keeps its window key, so the previous page's holds and walks are released at once instead of
+ *  at window close. A failure clears the memo so the next caller retries. */
+export function gitWindowReady(): Promise<void> {
+  if (windowReady) return windowReady;
+  const ready: Promise<void> = GitService.ResetWindow({ windowKey }).then(
+    () => undefined,
+    (err: unknown) => {
+      windowReady = undefined;
+      throw err;
+    },
+  );
+  windowReady = ready;
+  return ready;
+}
+
+/** Runs a bound call once the window reset settled. `signal` abort cancels the call (or the wait
+ *  for the reset); `inflight` lets the owning transport cancel everything on dispose. */
 export function callBound(
   method: RequestKey,
   params: unknown,
@@ -117,7 +144,7 @@ export function callBound(
     );
   }
   return new Promise((resolve, reject) => {
-    const promise = call(windowKey, params as never);
+    let promise: Cancellable | undefined;
     let settled = false;
     const finish = () => {
       settled = true;
@@ -127,26 +154,28 @@ export function callBound(
     const stop = (code: 'cancelled' | 'transport-closed') => {
       if (settled) return;
       finish();
-      promise.cancel();
+      promise?.cancel();
       reject(new TransportError(code, `request '${method}' was ${code}`));
+    };
+    const fail = (err: unknown) => {
+      if (settled) return;
+      finish();
+      const coded = toCodedError(err);
+      reject(new RpcError({ code: coded.code ?? 'E_INTERNAL', message: coded.message }));
     };
     const closeOut = () => stop('transport-closed');
     const onAbort = () => stop('cancelled');
     inflight.add(closeOut);
     signal?.addEventListener('abort', onAbort);
-    promise.then(
-      (value) => {
+    gitWindowReady().then(() => {
+      if (settled) return;
+      promise = call(windowKey, params as never);
+      promise.then((value) => {
         if (settled) return;
         finish();
         resolve(value);
-      },
-      (err: unknown) => {
-        if (settled) return;
-        finish();
-        const coded = toCodedError(err);
-        reject(new RpcError({ code: coded.code ?? 'E_INTERNAL', message: coded.message }));
-      },
-    );
+      }, fail);
+    }, fail);
   });
 }
 

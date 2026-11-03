@@ -1116,7 +1116,6 @@ export type GitStatus =
 // The Go server's real `app.init` result — `ResultOf<'app.init'>` is the client-visible shape,
 // which drops `serverVersion`. Mirrors internal/gitrpc/wire.go's AppInitResult field for field.
 export interface ServerAppInitResult {
-  readonly contractVersion: number;
   readonly serverVersion: string;
   readonly git: GitStatus;
   /** Kira Space's app-wide `appearance.dateFormat`. */
@@ -1533,7 +1532,6 @@ export type Contract = {
     'app.init': {
       params: Record<string, never>;
       result: {
-        contractVersion: number;
         git: GitStatus;
         /** Kira Space's app-wide date format; the UI falls back to its own persisted preference
          *  when absent. */
@@ -2043,7 +2041,7 @@ export type Contract = {
     };
     // ---- P11: search -----------------------------------------------------------------------
     /** One request, one cancellable read — no cancel key, no second walk session.
-     *  Superseded by the caller's own `AbortSignal`, which `rpc.ts` already threads to the spawn.
+     *  Superseded by the caller's own `AbortSignal`, which the bound call already threads to the spawn.
      *  Refs/Both are resolved entirely client-side against `RefsState`;
      *  this request is commits-only. */
     'search.run': {

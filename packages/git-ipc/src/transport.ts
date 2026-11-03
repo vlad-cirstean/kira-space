@@ -25,6 +25,24 @@ export class TransportError extends Error {
   }
 }
 
+/** An error that crossed the wire as data: `code` is a `WireErrorCode` (contract.ts) or a bound
+ *  call's `E_*` code, `message` is display-ready. A git failure's kind is folded into the code
+ *  (`E_GIT_<KIND>`) by Go's `mapGitError`. Raw stderr never crosses. */
+export interface WireError {
+  readonly code: string;
+  readonly message: string;
+}
+
+export class RpcError extends Error {
+  readonly code: string;
+
+  constructor(wire: WireError) {
+    super(wire.message);
+    this.name = 'RpcError';
+    this.code = wire.code;
+  }
+}
+
 /**
  * Kira Space's native transport and the test fakes implement this. The UI's bridge client (`packages/ui/src/bridge/client.ts`,
  * P1+) depends only on this interface, never on a concrete transport.

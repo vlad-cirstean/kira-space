@@ -148,7 +148,6 @@ func (c Chunk) Graph(t testing.TB) (GraphMeta, []GraphRow) {
 	return meta, rows
 }
 
-
 // planeFrame is a graph data plane frame without its blob: the header both directions share.
 type planeFrame struct {
 	T         string          `json:"t"`

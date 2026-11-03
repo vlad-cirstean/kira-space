@@ -31,6 +31,7 @@ const BRIDGE_PKG = 'github.com/kirathecat/kira-studio/apps/kira-space/internal/b
 const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   gitHostOpenChangeRequestUrl: 'GitHostService.OpenChangeRequestURL',
   gitHostProviders: 'GitHostService.Providers',
+  gitResetWindow: 'GitService.ResetWindow',
   hostViewOpen: 'HostViewService.Open',
   hostViewWindowTarget: 'HostViewService.WindowTarget',
   hostViewChangeRequest: 'HostViewService.ChangeRequest',
@@ -321,6 +322,8 @@ export const { channelToFqn: CHANNEL_TO_FQN, fqnToChannel: FQN_TO_CHANNEL } = bu
 // today, and a spec that wants `terminal`/`ade` instead (modules.spec.ts) provides its own
 // `windowsEnsure` snapshot, which always wins over this default.
 const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
+  // Boot resets the window's git connection (repo/git/boundGit.ts).
+  [IPC.gitResetWindow]: 'null',
   [IPC.tabsSave]: 'null',
   // Boot drains Finder-opened files; none by default.
   [IPC.openedFilesPending]: '[]',

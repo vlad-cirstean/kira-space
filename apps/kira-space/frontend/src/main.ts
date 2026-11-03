@@ -17,6 +17,7 @@ import { captureItemKey } from './capture/queries';
 import { useCaptureWindowStore } from './capture/state';
 import { hostViewTargetKey } from './hostview/queries';
 import { useHostViewWindowStore } from './hostview/state';
+import { gitWindowReady } from './repo/git/boundGit';
 import { useAdeLayoutStore } from './state/adeLayout';
 import { installAgentNotifyFocus } from './state/agentNotify';
 import { useAppMetricsStore } from './state/appMetrics';
@@ -81,6 +82,9 @@ async function mountShell(): Promise<void> {
   // `useAdeSnapshot`/`useAdeSessions` call. No teardown — the window is the lifetime
   // (queries.ts's own doc comment).
   installAdeSignals(queryClient, agentSessionsStore);
+
+  // Resets this window's git connection once per page load, ahead of the first git call.
+  gitWindowReady().catch((err: unknown) => logError('git', 'window reset failed', err));
 
   // Kira Studio's own initAppMetrics precedent: just subscribes, no data dependency — runs
   // synchronously before the Promise.all below rather than joining it.

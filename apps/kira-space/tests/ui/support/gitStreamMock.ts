@@ -1,4 +1,3 @@
-import { CONTRACT_VERSION } from '@kira/git-ipc';
 import type { Page } from '@playwright/test';
 import type { GraphStreamChunkFixture } from './graphStreamFixture';
 
@@ -11,6 +10,10 @@ const BOUND_GIT_WIRE: Readonly<Record<string, string>> = Object.fromEntries(
     AppInit: 'app.init',
     RepoOpen: 'repo.open',
     RepoClose: 'repo.close',
+    GraphStatus: 'graph.status',
+    GraphLoadMore: 'graph.loadMore',
+    GraphRefresh: 'graph.refresh',
+    GraphReportFailure: 'graph.reportFailure',
     StatusGet: 'status.get',
     RefsList: 'refs.list',
     CommitDetail: 'commit.detail',
@@ -75,24 +78,29 @@ const BOUND_GIT_WIRE: Readonly<Record<string, string>> = Object.fromEntries(
 // `gitHost.providers` result answers it here, any other falls through to that mock.
 const GIT_HOST_PROVIDERS_CALL = `${BRIDGE_PKG}.GitHostService.Providers`;
 
+// ResetWindow is no git request: the transport awaits it once per page load before any git call.
+const RESET_WINDOW_CALL = `${BRIDGE_PKG}.GitService.ResetWindow`;
+
 interface InstallArgs extends GitStreamMockArgs {
-  contractVersion: number;
   boundWire: Readonly<Record<string, string>>;
 }
 
 function installArgs(args: GitStreamMockArgs): InstallArgs {
   return {
     ...args,
-    contractVersion: CONTRACT_VERSION,
-    boundWire: { ...BOUND_GIT_WIRE, [GIT_HOST_PROVIDERS_CALL]: 'gitHost.providers' },
+    boundWire: {
+      ...BOUND_GIT_WIRE,
+      [GIT_HOST_PROVIDERS_CALL]: 'gitHost.providers',
+      [RESET_WINDOW_CALL]: 'ResetWindow',
+    },
   };
 }
 
-// repo/git/transport.ts speaks the native git JSON-RPC protocol (@kira/git-ipc's rpc.ts) over a
-// Wails Stream — an entirely different wire (and mocking mechanism, `window._wails.streamFactory`)
-// than mockRuntime.ts's `control.*` Call endpoint or mockStream.ts's own FlatBuffers bulk-data
-// protocol, and one this repo has no existing mock for (C10 never added a UI test for its own
-// graph mount for the identical reason). installGitStreamMock below is a minimal, purpose-built
+// Every git request is a bound GitService call (answered through the patched fetch below); only
+// graph rows ride the `gitgraph` Wails Stream (repo/git/graphStream.ts), mocked through
+// `window._wails.streamFactory`. That is an entirely different wire than mockRuntime.ts's
+// `control.*` Call endpoint or mockStream.ts's own FlatBuffers bulk-data protocol.
+// installGitStreamMock below is a minimal, purpose-built
 // stand-in — real enough to answer the three requests this shallow path actually needs
 // (app.init, repo.list, refs.list) and silent (never crashing, just never resolving) for every
 // other method, which is exactly what a real bootstrap() tolerates: review.session.load and
@@ -146,7 +154,6 @@ function installInBrowser({
   graphStreamOpens,
   graphStreamHoldAfter,
   graphStreamHoldOpen,
-  contractVersion,
   boundWire,
 }: InstallArgs): void {
   const w =
@@ -154,15 +161,28 @@ function installInBrowser({
   (window as unknown as { _wails: typeof w })._wails = w;
   const existingFactory = w.streamFactory;
 
-  // P114 §3.1: every method name seen in a `t: 'req'` frame, answered or not — read back by
+  // P114 §3.1: every bound git method name seen, answered or not — read back by
   // `gitStreamRequests` below. Reset per install so a fresh `relaunch()` starts a fresh log.
   (window as unknown as { __kiraGitRequests: string[] }).__kiraGitRequests = [];
+  // Every inbound frame of the `gitgraph` stream, in order; `gitGraphFrames` reads it.
+  const graphFrames: unknown[] = [];
+  (window as unknown as { __kiraGitGraphFrames: unknown[] }).__kiraGitGraphFrames = graphFrames;
+  const graphSockets: MockSocket[] = [];
+  (window as unknown as { __kiraGitGraphDials: () => number }).__kiraGitGraphDials = () =>
+    graphSockets.length;
+  (window as unknown as { __kiraGitGraphClose: () => void }).__kiraGitGraphClose = () => {
+    const socket = graphSockets[graphSockets.length - 1];
+    if (!socket) return;
+    socket.readyState = CLOSED;
+    socket.onclose?.({});
+  };
   (window as unknown as { __kiraGitParams: unknown[] }).__kiraGitParams = [];
   (window as unknown as { __kiraGitWindowKeys: string[] }).__kiraGitWindowKeys = [];
   const delivered: number[] = [];
   (window as unknown as { __kiraGitDelivered: number[] }).__kiraGitDelivered = delivered;
 
   let streamOpenCount = 0;
+  const cancelled = new Set<string>();
   const seqCounts: Record<string, number> = {};
   let releaseHeld: (() => void) | undefined;
   (window as unknown as { __kiraGitRelease: () => void }).__kiraGitRelease = () => releaseHeld?.();
@@ -213,33 +233,28 @@ function installInBrowser({
 
   // `blobFrame.ts`'s own layout, assembled here rather than decoded — the real
   // client never sends a blob (that file's own doc comment), so no encoder exists there to
-  // reuse. `id`/`version` are only known at this point (the request's own runtime fields),
+  // reuse. `id` is only known at this point (the open frame's own runtime field),
   // which is why `graphStreamFixture.ts` hands over `meta`/`blob` separately instead of a
   // whole pre-built frame.
   function deliverGraphStreamChunk(
     socket: MockSocket,
-    version: number,
-    id: number,
+    id: string,
     chunk: GraphStreamChunkFixture,
     open: number,
   ): void {
     const blobBytes = Uint8Array.from(atob(chunk.blob), (c) => c.charCodeAt(0));
     const header = {
-      version,
-      body: {
-        t: 'chunk',
-        id,
+      t: 'chunk',
+      id,
+      chunk: {
+        repoId: chunk.meta.repoId,
         seq: chunk.meta.seq,
-        chunk: {
-          repoId: chunk.meta.repoId,
-          seq: chunk.meta.seq,
-          from: chunk.meta.from,
-          to: chunk.meta.to,
-          source: chunk.meta.source,
-          remaining: chunk.meta.remaining,
-          exhausted: chunk.meta.exhausted,
-          commits: { $fb: chunk.meta.commitsFb, d: { $blob: true } },
-        },
+        from: chunk.meta.from,
+        to: chunk.meta.to,
+        source: chunk.meta.source,
+        remaining: chunk.meta.remaining,
+        exhausted: chunk.meta.exhausted,
+        commits: { $fb: chunk.meta.commitsFb, d: { $blob: true } },
       },
     };
     const headerBytes = new TextEncoder().encode(JSON.stringify(header));
@@ -269,10 +284,9 @@ function installInBrowser({
         params,
       });
     }
-    // @kira/git-ipc's rpc.ts frame union: {t:'res', id, ok:true, result}.
     const resultByMethod: Record<string, unknown> = {
+      ResetWindow: null,
       'app.init': {
-        contractVersion,
         serverVersion: 'ui-test',
         git: { kind: 'ok', path: '/usr/bin/git', version: '2.40.0' },
       },
@@ -394,65 +408,47 @@ function installInBrowser({
         // transport whose lease/dispose tore down the underlying socket must hang
         // exactly as the real bug did, not (wrongly) still answer.
         if (socket.readyState === CLOSED) return;
-        let envelope: {
-          version: number;
-          body?: { t?: string; id?: number; method?: string; params?: unknown };
-        };
+        let frame: { t?: string; id?: string; params?: unknown };
         try {
-          envelope = JSON.parse(data);
+          frame = JSON.parse(data);
         } catch {
           return;
         }
-        const frame = envelope.body;
-        if (frame?.id === undefined) return;
-        // `graph.stream` opens as `t: 'open'`, not `t: 'req'` — a real unary call's frame
-        // shape (rpc.ts's own `Frame` union). Only handled when a caller supplied
-        // chunks; otherwise this falls through to the `!== 'req'` guard below and hangs,
-        // same as every other unlisted method here.
+        graphFrames.push(frame);
+        if (frame.id === undefined) return;
+        const id = frame.id;
+        if (frame.t === 'cancel') {
+          cancelled.add(id);
+          return;
+        }
+        // Only `open` is answered, and only when a caller supplied chunks: otherwise it hangs,
+        // same as every other unlisted method here. `credit` frames are only logged.
         const openChunks = graphStreamOpens
           ? graphStreamOpens[Math.min(streamOpenCount, graphStreamOpens.length - 1)]
           : graphStreamChunks;
-        if (frame.t === 'open' && frame.method === 'graph.stream' && openChunks) {
-          const id = frame.id;
-          const open = streamOpenCount;
-          const hold = open === (graphStreamHoldOpen ?? 0) ? graphStreamHoldAfter : undefined;
-          streamOpenCount++;
-          const now = hold === undefined ? openChunks : openChunks.slice(0, hold);
-          for (const chunk of now) {
-            deliverGraphStreamChunk(socket, envelope.version, id, chunk, open);
+        if (frame.t !== 'open' || !openChunks) return;
+        const open = streamOpenCount;
+        const hold = open === (graphStreamHoldOpen ?? 0) ? graphStreamHoldAfter : undefined;
+        streamOpenCount++;
+        const now = hold === undefined ? openChunks : openChunks.slice(0, hold);
+        for (const chunk of now) deliverGraphStreamChunk(socket, id, chunk, open);
+        const held = openChunks.slice(now.length);
+        const end = (): void => {
+          if (!cancelled.has(id)) deliver(socket, { t: 'end', id });
+        };
+        const finish = (): void => {
+          for (const chunk of held.splice(0)) {
+            if (!cancelled.has(id)) deliverGraphStreamChunk(socket, id, chunk, open);
           }
-          const held = openChunks.slice(now.length);
-          const finish = (): void => {
-            for (const chunk of held.splice(0)) {
-              deliverGraphStreamChunk(socket, envelope.version, id, chunk, open);
-            }
-            deliver(socket, { version: envelope.version, body: { t: 'end', id } });
-          };
-          releaseOne = (): void => {
-            const chunk = held.shift();
-            if (chunk) deliverGraphStreamChunk(socket, envelope.version, id, chunk, open);
-            if (held.length === 0)
-              deliver(socket, { version: envelope.version, body: { t: 'end', id } });
-          };
-          if (hold === undefined) finish();
-          else releaseHeld = finish;
-          return;
-        }
-        if (frame?.t !== 'req' || frame.id === undefined) return;
-        const outcome = answerRequest(frame.method, frame.params);
-        if (!outcome) return; // hang forever
-        deliver(
-          socket,
-          outcome.failure
-            ? {
-                version: envelope.version,
-                body: { t: 'res', id: frame.id, ok: false, error: outcome.failure },
-              }
-            : {
-                version: envelope.version,
-                body: { t: 'res', id: frame.id, ok: true, result: outcome.result },
-              },
-        );
+          end();
+        };
+        releaseOne = (): void => {
+          const chunk = held.shift();
+          if (chunk && !cancelled.has(id)) deliverGraphStreamChunk(socket, id, chunk, open);
+          if (held.length === 0) end();
+        };
+        if (hold === undefined) finish();
+        else releaseHeld = finish;
       },
       close() {
         socket.readyState = CLOSED;
@@ -468,8 +464,12 @@ function installInBrowser({
     return socket;
   }
 
-  w.streamFactory = (name: string) =>
-    name === 'git' ? createGitMockSocket() : existingFactory?.(name);
+  w.streamFactory = (name: string) => {
+    if (name !== 'gitgraph') return existingFactory?.(name);
+    const socket = createGitMockSocket();
+    graphSockets.push(socket);
+    return socket;
+  };
 }
 
 /**
@@ -516,6 +516,29 @@ export async function installGitStreamMockOnInit(
 export async function gitStreamRequests(page: Page): Promise<string[]> {
   return page.evaluate(
     () => (window as unknown as { __kiraGitRequests?: string[] }).__kiraGitRequests ?? [],
+  );
+}
+
+/** Every frame the page sent on the `gitgraph` stream (`open`, `credit`, `cancel`), in order. */
+export async function gitGraphFrames(
+  page: Page,
+): Promise<{ t: string; id?: string; windowKey?: string; credit?: number; params?: unknown }[]> {
+  return page.evaluate(
+    () => (window as unknown as { __kiraGitGraphFrames?: never[] }).__kiraGitGraphFrames ?? [],
+  );
+}
+
+/** How many `gitgraph` sockets the page has dialed. */
+export async function gitGraphDials(page: Page): Promise<number> {
+  return page.evaluate(() =>
+    (window as unknown as { __kiraGitGraphDials: () => number }).__kiraGitGraphDials(),
+  );
+}
+
+/** Closes the newest `gitgraph` socket from the server side. */
+export async function gitGraphClose(page: Page): Promise<void> {
+  await page.evaluate(() =>
+    (window as unknown as { __kiraGitGraphClose: () => void }).__kiraGitGraphClose(),
   );
 }
 

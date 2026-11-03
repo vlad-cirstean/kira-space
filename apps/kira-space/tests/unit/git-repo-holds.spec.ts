@@ -19,6 +19,10 @@ const calls: BoundCall[] = [];
 function recordBoundCalls(): void {
   calls.length = 0;
   setCallFactory((name, arg) => {
+    // The window reset every bound call waits for.
+    if (String(name).endsWith('.ResetWindow')) {
+      return Object.assign(Promise.resolve(null), { cancel() {} });
+    }
     let resolve!: (value: unknown) => void;
     let reject!: (err: unknown) => void;
     const promise = new Promise<unknown>((res, rej) => {

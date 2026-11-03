@@ -4,12 +4,9 @@
  *
  * This implements `Transport` directly, dispatching per method to `hostHandlers.ts`'s own map
  * (`editor.openDiff`, `clipboard.write`, `app.init`'s host half and `repo.list` are host concerns
- * the Go server has no case for) or forwarding to the git stream.
- *
- * No length prefix, no pairing, no trust store: `streamChannel.ts` is message-framed already,
- * and `internal/bridge/gitstream.go`'s own doc comment states why there is no handshake — the peer
- * is this process's own webview, not an external client a trust store exists to gate
- * (`docs/HISTORY.md (v1.5 C10)`).
+ * the Go server has no case for) or forwarding to the bound `GitService` (`boundGit.ts`); graph
+ * rows ride the `gitgraph` data plane (`graphStream.ts`). A transport holds no socket: it is a
+ * lease on repo holds and event subscriptions.
  *
  * This adds a small local event bus alongside the remote one: `review.target` and
  * `ui.action` are composed host-side (`review.open`'s handler, and the repaint choreography below)
@@ -29,16 +26,8 @@ import type {
   StreamParamsOf,
   Transport,
 } from '@kira/git-ipc';
-import { createRpcClient, createStreamChannel } from '@kira/git-ipc';
-// tsconfig.json maps this specifier onto @wailsio/runtime's real types (see bridge/port.ts's own
-// identical comment) and resolves it cleanly under typecheck:web; tests/unit's own project has no
-// such mapping (breaks Bun's mock.module interception for every transitive importer), so this
-// stays the suppress-if-present directive that file already established, not the require-an-error
-// kind (which would itself fail where this resolves fine).
-// biome-ignore lint/suspicious/noTsIgnore: an "unused directive" kind fails where this resolves fine (see comment above)
-// @ts-ignore
-import { Stream } from '/wails/runtime.js';
-import { BOUND_METHODS, callBound, onGitEvent } from './boundGit';
+import { callBound, onGitEvent } from './boundGit';
+import { streamGraph } from './graphStream';
 import { clearPendingTargets, createHostHandlers } from './hostHandlers';
 import { type GitRepoHold, holdGitRepo } from './repoHolds';
 import { afterReviewWrite, registerCommentsRefresh } from './reviewRepaint';
@@ -88,28 +77,23 @@ const REPO_SCOPED_EVENTS: ReadonlySet<EventKey> = new Set([
   'stack.progress',
 ]);
 
-/** One named stream per repo workspace for the methods `GitService` does not carry yet; bound
- *  methods and every event go through the window's shared Go connection (`bridge.GitWindows`).
- *  Repo opens go to both: in a native window they reach the same connection, and the server build
- *  can key the stream differently from the page. */
+/** Every request goes through the window's shared Go connection (`bridge.GitWindows`) as a bound
+ *  call; `graph.stream` rides the data plane. The transport tracks the repos it opened so its
+ *  dispose releases their holds. */
 function createNativeGitTransport(codeRepoId: string): Transport {
-  const channel = createStreamChannel(Stream('git'));
-  const rpc = createRpcClient(channel);
   const inflight = new Set<() => void>();
   const eventOffs = new Set<() => void>();
   const heldRepoIds = new Set<string>();
   let unregisterRefresh = () => {};
-  // Every consumer shares this connection, but only the graph tab ever sent `repo.open`; a reloaded
-  // Review pane or diff tab would otherwise compare against a connection holding no repo.
+  // Every consumer shares the window's connection, but only the graph tab ever sent `repo.open`; a
+  // reloaded Review pane or diff tab would otherwise compare against a connection holding no repo.
   const opened = new Map<string, Promise<unknown>>();
-  // One window-level hold per opened path (repoHolds.ts); the stream half stays per transport.
+  // One window-level hold per opened path (repoHolds.ts).
   const holds = new Map<string, GitRepoHold>();
   const pathByRepoId = new Map<string, string>();
   const send = (method: RequestKey, params: unknown, signal?: AbortSignal): Promise<unknown> =>
-    method in BOUND_METHODS
-      ? callBound(method, params, signal, inflight)
-      : rpc.request(method, params as never, signal);
-  const openBoth = async (path: string, signal?: AbortSignal): Promise<unknown> => {
+    callBound(method, params, signal, inflight);
+  const openHold = async (path: string): Promise<unknown> => {
     let hold = holds.get(path);
     if (!hold) {
       hold = holdGitRepo(path);
@@ -117,7 +101,6 @@ function createNativeGitTransport(codeRepoId: string): Transport {
     }
     try {
       const result = await hold.ready;
-      await rpc.request('repo.open', { path }, signal);
       // A test double may answer null.
       const opened = result as ResultOf<'repo.open'> | null;
       const repoId = opened?.kind === 'ok' ? opened.repo.repoId : undefined;
@@ -142,7 +125,7 @@ function createNativeGitTransport(codeRepoId: string): Transport {
     if (typeof id !== 'string' || id === '') return undefined;
     let held = opened.get(id);
     if (!held) {
-      held = openBoth(id).then(
+      held = openHold(id).then(
         (result) => {
           heldRepoIds.add(id);
           return result;
@@ -166,21 +149,20 @@ function createNativeGitTransport(codeRepoId: string): Transport {
         holds.get(path)?.release();
         holds.delete(path);
         pathByRepoId.delete(id);
-        await rpc.request(method, params as never, signal);
+        await send(method, params, signal);
         return {};
       }
-      if (method === 'repo.open') return openBoth((params as { path: string }).path, signal);
+      if (method === 'repo.open') return openHold((params as { path: string }).path);
       await ensureOpen(params);
       return send(method, params, signal);
     },
     async stream(
-      method: StreamKey,
       params: unknown,
       onChunk: (chunk: never) => void,
       signal?: AbortSignal,
     ): Promise<void> {
       await ensureOpen(params);
-      return rpc.stream(method, params as never, onChunk as never, signal);
+      return streamGraph(params as never, onChunk as never, signal);
     },
     on(method: EventKey, handler: (payload: never) => void): () => void {
       const scoped = REPO_SCOPED_EVENTS.has(method);
@@ -202,7 +184,6 @@ function createNativeGitTransport(codeRepoId: string): Transport {
       releaseHolds();
       heldRepoIds.clear();
       unregisterRefresh();
-      rpc.dispose();
     },
   };
   const local = createLocalEmitter();
@@ -240,38 +221,17 @@ function createNativeGitTransport(codeRepoId: string): Transport {
       return LOCAL_EVENT_KEYS.has(method) ? local.on(method, handler) : remote.on(method, handler);
     },
     stream<K extends StreamKey>(
-      method: K,
+      _method: K,
       params: StreamParamsOf<K>,
       onChunk: (chunk: StreamChunkOf<K>) => void,
       signal?: AbortSignal,
     ): Promise<void> {
-      return remote.stream(method, params, onChunk, signal);
+      return remote.stream(params, onChunk, signal);
     },
     dispose(): void {
       remote.dispose();
     },
   };
-
-  // The channel closing (including a self-inflicted close from a decodeFrame failure) used to
-  // go unnoticed entirely — nothing ever subscribed to onClose, so every already-in-flight
-  // request/stream on this client hung forever, and a stale entry in sharedClientsByCodeRepoId
-  // kept handing the now-dead transport to every later gitTransportFor call. remote.dispose()
-  // rejects every pending request/stream immediately; evicting the map entry makes the next
-  // gitTransportFor call dial a fresh connection instead of reusing this one.
-  //
-  // The identity check guards a narrower race this fix adds: `onClose` fires
-  // asynchronously, from the socket's own close event, strictly after `channel.close()` returns —
-  // so `disposeGitTransport(id)` followed by a same-tick `gitTransportFor(id)` (collapse/re-expand
-  // a worktree, or close/reopen a workspace) can install a NEW shared client for `codeRepoId`
-  // before this stale handler runs. Deleting unconditionally would evict that new, live entry
-  // instead of this dead one, orphaning it: still open (socket, Go `gitsession.Conn`, repo hold),
-  // but unreachable from `sharedClientsByCodeRepoId` for the rest of the window's life.
-  channel.onClose(() => {
-    remote.dispose();
-    const shared = sharedClientsByCodeRepoId.get(codeRepoId);
-    if (shared?.transport !== transport) return;
-    evictSharedClient(codeRepoId, shared);
-  });
 
   return transport;
 }

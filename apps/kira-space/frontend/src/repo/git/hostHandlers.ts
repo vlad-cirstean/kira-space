@@ -173,7 +173,6 @@ export function createHostHandlers(deps: HostHandlersDeps): HostHandlers {
         signal,
       )) as unknown as ServerAppInitResult;
       return {
-        contractVersion: server.contractVersion,
         git: server.git,
         dateFormat: server.dateFormat,
       };

@@ -1,23 +1,20 @@
 /**
- * The native channel — a `MessageChannelLike` over a Wails stream.
- * `internal/bridge/gitstream.go` hands `*application.StreamConn` straight to
- * `rpcstream.NewSession` with no length prefix at all (a Wails stream is message-framed already),
- * so every inbound message here is one whole frame body. A Wails stream carries real
- * `ArrayBuffer`s.
+ * The native channel — a message channel over a Wails stream.
+ * `internal/bridge/gitgraph.go` hands `*application.StreamConn` straight to `graphplane.Serve`
+ * with no length prefix at all (a Wails stream is message-framed already), so every inbound
+ * message here is one whole frame body. A Wails stream carries real `ArrayBuffer`s.
  *
  * The frame *body* shape is the one `blobFrame.ts` already owns: a `0x00` first byte is a
  * blob frame (`0x00 | uint32BE headerLen | headerJSON | blob…`), anything else is a plain JSON
  * frame. One implementation of that layout.
  *
- * `post` never encodes a blob — the client here never sends one, only
- * `internal/bridge/rpcstream` does.
+ * `post` never encodes a blob — the client here never sends one, only `internal/graphplane` does.
  */
 import {
   BLOB_FRAME_DISCRIMINANT,
   MalformedBlobFrameError,
   parseBlobFrameBody,
 } from './blobFrame.ts';
-import type { MessageChannelLike } from './rpc.ts';
 
 // Re-exported so a caller can `instanceof`-check a close reason without importing blobFrame.ts
 // directly.
@@ -57,7 +54,10 @@ export interface StreamSocketLike {
   close(): void;
 }
 
-export interface StreamChannel extends MessageChannelLike {
+export interface StreamChannel {
+  post(message: unknown): void;
+  onMessage(handler: (message: unknown) => void): () => void;
+  close(): void;
   onClose(handler: (err?: Error) => void): () => void;
 }
 
@@ -95,7 +95,7 @@ export function createStreamChannel(socket: StreamSocketLike): StreamChannel {
 
   // `Stream()` returns a socket in the CONNECTING state, and Wails' own
   // `send()` throws on a CONNECTING socket rather than queueing — `post` must stay synchronous
-  // (rpc.ts calls it from inside a Promise executor and from the credit path) so this is a FIFO
+  // (graphPlane.ts calls it from inside a Promise executor and from the credit path) so this is a FIFO
   // queue, not a promise chain, preserving frame order relative to credit/cancel.
   let phase: 'connecting' | 'open' | 'closed' =
     socket.readyState === SOCKET_OPEN ? 'open' : 'connecting';
@@ -109,10 +109,9 @@ export function createStreamChannel(socket: StreamSocketLike): StreamChannel {
   };
 
   socket.onmessage = (ev: { data: ArrayBuffer }) => {
-    // Decode and delivery share one try/catch —
-    // a synchronous throw from the handler (the RPC client's own ContractVersionMismatchError/
-    // ContractShapeError/TransportError) must destroy the connection the same way a malformed
-    // frame does, never escape uncaught and silently drop the frame.
+    // Decode and delivery share one try/catch: a synchronous throw from the handler must destroy
+    // the connection the same way a malformed frame does, never escape uncaught and silently drop
+    // the frame.
     try {
       const message = decodeFrame(ev.data);
       // No pending-frame queue: the transport's own createRpcClient
@@ -140,11 +139,8 @@ export function createStreamChannel(socket: StreamSocketLike): StreamChannel {
       const frame = JSON.stringify(message);
       if (phase === 'open') socket.send(frame);
       else if (phase === 'connecting') queued.push(frame);
-      // 'closed': dropped — the peer is gone; onclose has already fired. This file makes no
-      // guarantee that pending requests get rejected on its own — that is up to whoever created
-      // this channel subscribing to onClose (createNativeGitTransport does, via
-      // remote.dispose()); before that fix nothing did, and every already-in-flight
-      // request/stream on a dead channel hung forever instead.
+      // 'closed': dropped — the peer is gone; onclose has already fired. Settling in-flight
+      // streams is the subscriber's job (graphPlane.ts does, on onClose).
     },
 
     onMessage(handler): () => void {
