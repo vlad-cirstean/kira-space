@@ -236,12 +236,10 @@ async function mount(): Promise<void> {
 }
 
 // An uncommitted file follows the disk: a refreshed read rewrites both models in place.
-const workingDiff = useReviewWorkingDiff(
-  () => workingBranchId ?? '',
-  () => props.tab.path,
-);
+// Plain values, no getters: a setup closure in the query key would pin this whole view after close.
+const workingDiff = workingBranchId ? useReviewWorkingDiff(workingBranchId, props.tab.path) : null;
 watch(
-  () => workingDiff.data.value,
+  () => workingDiff?.data.value,
   (diff) => {
     const models = diffEditor?.editor.value?.getModel();
     if (!diff || !models || diff.head.kind === 'binary' || diff.worktree.kind === 'binary') return;
