@@ -54,7 +54,13 @@ reviewTest('dismissing an entry hides it and keeps the rest', async ({ relaunch 
   const rest = all.filter((e) => e.id !== first.id);
   const { window: page } = await relaunch({
     control: reviewControl(),
-    gitStream: git({ __sequence: [{ entries: all }, { entries: rest }] }),
+    gitStream: git({
+      __afterCall: {
+        method: 'review.removed.dismiss',
+        before: { entries: all },
+        after: { entries: rest },
+      },
+    }),
   });
   const entries = page.locator(t('ade-review-removed-entry'));
   await expect(entries).toHaveCount(all.length);

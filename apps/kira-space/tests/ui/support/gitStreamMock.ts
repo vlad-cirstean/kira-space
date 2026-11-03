@@ -275,6 +275,8 @@ function installInBrowser({
   // Logs the request and answers it from the fixture table: undefined hangs it forever.
   // `{ __sequence: [a, b, ...] }`: the Nth request for a method answers entry N (the last repeats);
   // an entry `{ __error: { code, message } }` answers a wire failure.
+  // `{ __afterCall: { method, before, after } }`: `before` until `method` has been requested, then
+  // `after`; unlike `__sequence` it ignores how many refetches happen first.
   function answerRequest(
     method: string | undefined,
     params: unknown,
@@ -323,6 +325,13 @@ function installInBrowser({
       const n = seqCounts[method] ?? 0;
       seqCounts[method] = n + 1;
       answer = answer.__sequence[Math.min(n, answer.__sequence.length - 1)] as typeof answer;
+    }
+    const gate = (
+      answer as { __afterCall?: { method: string; before: unknown; after: unknown } } | undefined
+    )?.__afterCall;
+    if (gate) {
+      const seen = (window as unknown as { __kiraGitRequests: string[] }).__kiraGitRequests;
+      answer = (seen.includes(gate.method) ? gate.after : gate.before) as typeof answer;
     }
     const failure = (answer as { __error?: { code: string; message: string } } | undefined)
       ?.__error;
