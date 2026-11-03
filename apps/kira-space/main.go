@@ -17,6 +17,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/buildinfo"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/openedfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
@@ -165,7 +166,7 @@ func main() {
 		Terminal: wired.Terminal.Registry, Repo: repositories.Windows,
 		Cfg: shell.Config{AppName: "Kira Space", WindowTitle: "Kira Space"},
 		Ephemeral: func(key string) bool {
-			if bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) {
+			if bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) {
 				return true
 			}
 			ok, _ := repositories.AdeReview.IsReviewKey(key)
@@ -206,8 +207,7 @@ func main() {
 	}))
 
 	purgeReviewWindows(repositories)
-	purgeHostViewWindows(repositories)
-	purgeCaptureWindows(repositories)
+	purgeKeyedWindows(repositories)
 	records, err := repositories.Windows.List()
 	if err != nil {
 		reporter.Fatal(startupfail.StepWindowList, err)
@@ -262,36 +262,20 @@ func purgeReviewWindows(repositories *repos.Repos) {
 	}
 }
 
-// purgeCaptureWindows drops capture popup rows a previous run left behind: they are never restored.
-func purgeCaptureWindows(repositories *repos.Repos) {
+// purgeKeyedWindows drops capture popup, host view and files window rows a previous run left
+// behind: they are never restored.
+func purgeKeyedWindows(repositories *repos.Repos) {
 	records, err := repositories.Windows.List()
 	if err != nil {
-		slog.Warn("capture: list windows to purge", "scope", "capture", "err", err)
+		slog.Warn("list windows to purge", "scope", "window", "err", err)
 		return
 	}
 	for _, r := range records {
-		if !bridge.IsCaptureKey(r.Key) {
+		if !bridge.IsHostViewKey(r.Key) && !bridge.IsCaptureKey(r.Key) && !openedfiles.IsWindowKey(r.Key) {
 			continue
 		}
 		if err := repositories.Windows.Delete(r.Key); err != nil {
-			slog.Warn("capture: purge window", "scope", "capture", "key", r.Key, "err", err)
-		}
-	}
-}
-
-// purgeHostViewWindows drops host view window rows a previous run left behind: they are never restored.
-func purgeHostViewWindows(repositories *repos.Repos) {
-	records, err := repositories.Windows.List()
-	if err != nil {
-		slog.Warn("hostview: list windows to purge", "scope", "hostview", "err", err)
-		return
-	}
-	for _, r := range records {
-		if !bridge.IsHostViewKey(r.Key) {
-			continue
-		}
-		if err := repositories.Windows.Delete(r.Key); err != nil {
-			slog.Warn("hostview: purge window", "scope", "hostview", "key", r.Key, "err", err)
+			slog.Warn("purge window", "scope", "window", "key", r.Key, "err", err)
 		}
 	}
 }

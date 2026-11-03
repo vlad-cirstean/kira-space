@@ -11,10 +11,12 @@ import type { LocalFileTabRecord } from '../../state/tabDomain';
 import { useTabsStore } from '../../state/tabs';
 import { registerEditor, unmountEditor } from './editors';
 import { loadMonaco, localFileUri } from './monaco';
+import { applyMountReveal, consumeReveal } from './reveal';
 import { useReadonlyFileViewer } from './useReadonlyFileViewer';
 
-// A file opened from outside the app (Finder) that lies in no imported repository: read-only
-// Monaco over the file on disk, through OpenedFilesService.Read. No blame, no reveal requests.
+// A file opened from outside the app (Finder, a terminal link) that lies in no imported repository:
+// read-only Monaco over the file on disk, through OpenedFilesService.Read. No blame. A pending
+// reveal places the cursor on mount; a live one is applied by requestReveal.
 const props = defineProps<{ tab: LocalFileTabRecord }>();
 const tabsStore = useTabsStore();
 
@@ -58,11 +60,7 @@ async function mountEditor(text: string): Promise<void> {
   const editor = viewer.createEditor(mod, uri, text);
   if (!editor) return;
   const restored = registerEditor(props.tab.id, uri, editor);
-  const revealLine = props.tab.state.revealLine;
-  if (revealLine !== null && !restored) {
-    editor.revealLineInCenter(revealLine);
-    editor.setPosition({ lineNumber: revealLine, column: 1 });
-  }
+  applyMountReveal(editor, consumeReveal(props.tab.id), restored, props.tab.state.revealLine);
   const sub = editor.onDidChangeCursorPosition((e) => {
     tabsStore.patchLocalFileTabState(props.tab.id, { revealLine: e.position.lineNumber });
   });

@@ -3,6 +3,7 @@ import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { runCommand } from '@workbench/shortcuts/commands';
 import type { PaletteCommand } from '@workbench/shortcuts/palette';
 import { openApiRequestTab, openGrpcRequestTab } from '../api/tabs';
+import { useKubeTabsStore } from '../kubernetes/tabs';
 import { useAppUpdateStore } from '../state/appUpdate';
 import { useConnectionDialogStore } from '../state/connectionDialogs';
 import { useLayoutStore } from '../state/layout';
@@ -10,10 +11,32 @@ import { useModeStore } from '../state/mode';
 import { useSettingsStore } from '../state/settings';
 import { useTabsStore } from '../state/tabs';
 
+// The shell tab store holds no tab in Kubernetes mode; the module keeps its own.
+const kubernetesActive = (): boolean => useModeStore().active === 'kubernetes';
+
+/** Tab stepping and closing for the palette and the Window menu; Kubernetes mode has its own store. */
+export function nextTab(): void {
+  if (kubernetesActive()) useKubeTabsStore().activateNext();
+  else useTabsStore().activateNextTab();
+}
+
+export function prevTab(): void {
+  if (kubernetesActive()) useKubeTabsStore().activatePrev();
+  else useTabsStore().activatePrevTab();
+}
+
+export function closeTab(): void {
+  if (kubernetesActive()) {
+    useKubeTabsStore().closeActive();
+    return;
+  }
+  const active = useModeStore().activeTab;
+  if (active) fireAndForget(useTabsStore().closeTab(active.id), 'closeTab');
+}
+
 /** Studio's palette commands; call once from App setup (the stores resolve there). The getter re-reads labels when the locale changes. */
 export function studioPaletteCommands(): () => PaletteCommand[] {
   const layoutStore = useLayoutStore();
-  const tabsStore = useTabsStore();
   const settingsStore = useSettingsStore();
   const appUpdateStore = useAppUpdateStore();
 
@@ -145,23 +168,8 @@ export function studioPaletteCommands(): () => PaletteCommand[] {
       label: t('studio.shortcuts.palette.generateData.label'),
       run: () => runCommand('data.generate'),
     },
-    {
-      id: 'tab-next',
-      label: t('studio.shortcuts.palette.nextTab.label'),
-      run: tabsStore.activateNextTab,
-    },
-    {
-      id: 'tab-prev',
-      label: t('studio.shortcuts.palette.previousTab.label'),
-      run: tabsStore.activatePrevTab,
-    },
-    {
-      id: 'tab-close',
-      label: t('studio.shortcuts.palette.closeTab.label'),
-      run: () => {
-        const active = useModeStore().activeTab;
-        if (active) fireAndForget(tabsStore.closeTab(active.id), 'closeTab');
-      },
-    },
+    { id: 'tab-next', label: t('studio.shortcuts.palette.nextTab.label'), run: nextTab },
+    { id: 'tab-prev', label: t('studio.shortcuts.palette.previousTab.label'), run: prevTab },
+    { id: 'tab-close', label: t('studio.shortcuts.palette.closeTab.label'), run: closeTab },
   ];
 }

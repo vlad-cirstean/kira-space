@@ -7499,3 +7499,40 @@ Full suite run once, failures fixed (conventions G1/G4, i18n wrappers, stale and
 ### v0.2.28 P483 (Done)
 Chapter folded by hand into this file; `docs/v0.2.28/` removed. `docs/v0.2.29/` draft spec stays.
 <!-- /chapter v0.2.28 -->
+<!-- chapter v0.2.29 -->
+## v0.2.29
+Source: docs/v0.2.29/ at 42d774b68. 11 phases.
+
+### v0.2.29 P484 (Done)
+`kubernetes.Service` records every cluster call (`Status`, `Namespaces`, `Kinds`, `List`, `Describe`, `ReadLogs`, `LogsOpen`) through one `Recorder` seam, op kind `kubernetes`; `bridge.KubeRecorder` runs it over `Host.RunOp`. Command text moved to `kubernetes/commands.go`, shared with the MCP approval dialog. dbmcp dropped `Config.Ops`/`OpRunner`. A log stream's row spans the stream; panel Cancel ends it. Refetches of loaded data pass `background: true` and skip the log. The module is read-only, so apply/delete/scale/restart/exec/port-forward do not exist. Caveat: a running row shows no command until `op:end` (op:start carries none). New `TestOpsRecordEveryAction`, contract `kubernetes.json`, `kubernetes-ops.spec.ts`.
+
+### v0.2.29 P485 (Done)
+Pointer drag on cluster rows (`useClusterReorder` over shared `useTreePointerDrag`), Alt+Up/Down and menu Move up/down; disabled while searching. Order in `kube_clusters.sort_order` (migration 0057, NULL last) via `Service.Reorder` and `sqlitex.ReorderSortOrder`; no op row. `kira:kubernetes:clusters` makes other windows refetch. New `TestClusterOrder` and `kubernetes-order.spec.ts` (6 tests). Caveat: `TestConnectionOrder` not rerun after the shared drop-order refactor.
+
+### v0.2.29 P486 (Done)
+Frontend only. Flat cluster list; a cluster opens on its pods. Kind bar (Pods, 3 recent kinds, categorized picker). Resources open in module-local tabs (`useKubeTabsStore` over shared `TabStrip`): click previews, double-click/Enter/menu keeps; each pod tab keeps its log stream. Resizable, hideable list; compact columns under 32 rem. Tab commands route to the module in Kubernetes mode. New `kubernetes-tabs.spec.ts` (9 tests).
+
+### v0.2.29 P487 (Won't be implemented)
+Cancelled by user; native client-go client kept. kubectl cannot give the server Table as JSON (`-o json` turns server-side tables off) and text-table parsing is too fragile. Plan removed.
+
+### v0.2.29 P488 (Done)
+Jira install step is `brew tap atlassian/homebrew-acli && brew trust --formula atlassian/acli/acli && brew install acli` (Homebrew 6 tap trust). Other CLI steps come from homebrew/core, unchanged. Contract `space-cli-tools.json` regenerated; UI spec asserts new command; ARCHITECTURE CLISetup bullet notes the rule.
+
+### v0.2.29 P489 (Done)
+Kira Space desktop terminals link file paths (`path`, `path:line`, `path:line:col`); Cmd/Ctrl-click opens the file with the cursor placed. Relative paths resolve against the live cwd (foreground process group, then shell, then start cwd). Only existing, supported files link; bare words without slash or extension never do. Backend: `Registry.Cwd`, `openedfiles.TerminalPath/Openable/OpenAt`, `OpenedFilesService.TerminalResolve/TerminalOpen`. Studio, Docker exec and phone terminals unchanged. New `TestTerminalFileLinks`, `terminal-file-links` UI spec, `terminal-file-paths` unit spec.
+
+### v0.2.29 P490 (Done)
+Every external open (Finder, default app, terminal Cmd-click) lands in one ephemeral files window (`files-<uuid>`): title bar, one tab strip, file view; no modes, sidebar, dock or status bar. Later opens raise it and add tabs; a new window opens only when none lives. Never restored; row dropped on close. `OpenedFilesService.IsFilesWindow` tells the page its kind. New `TestOpenedFilesWindow`, `opened-files` UI spec (4 tests).
+
+### v0.2.29 P491 (Done)
+`buildBand` shows history rows only while History is open; day 0 no longer exempt. `onFindArchived` opens History for every archived pick. Frontend only. UI specs `ade-v2-plan` rewritten, `ade-v2-archived` extended.
+
+### v0.2.29 P492 (Done)
+`AdeAgentsStatusItem` shows a pulsing `StatusDot` with `N working` label while any agent is mid-turn; count badge declined (label prints the count). Reduced motion static. Frontend only. UI spec `status-agents` extended; status-bar visual baseline re-recorded. Caveat: indicator shows on working sessions, not on every running one.
+
+### v0.2.29 P493 (Done)
+Full suite run once (base `dd416364`): unit, Go, Studio UI 673, Space UI 1034 pass after two fixes (mock runtime lacked `KubernetesService.Reorder`; opened-files terminal arg violations now `ipcerr.Contract`). Review (base `697cd65e`): 1 Medium, 4 Low, all fixed: Window menu tab keys ignored Kubernetes tabs; `LogsOpen` could hang on a recorded-call panic; terminal hover did full repo matching; cluster-change event subscribed per caller; `workspaceKeyOf` cast. Caveats: sandbox had no Docker, so container-backed Go tests did not run against real containers; no `-race` in the full suite; `memProbe` `noExplicitAny` silenced; 50000-row graph perf run failed at baseline; docker-before WebKit figure not rerun; no test for concurrent duplicate connections.
+
+### v0.2.29 P494 (Done)
+Chapter folded by hand into this file; `docs/v0.2.29/` removed. `docs/v0.2.30/` spec stays.
+<!-- /chapter v0.2.29 -->

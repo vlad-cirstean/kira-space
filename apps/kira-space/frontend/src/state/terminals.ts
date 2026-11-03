@@ -1,6 +1,7 @@
 import { createTerminalsStore } from '@workbench/state/createTerminalsStore';
 import { control } from '../bridge/control';
 import { useSettingsStore } from './settings';
+import { createTerminalFileLinks } from './terminalFileLinks';
 
 // The terminal registry — session state by tab id, plus output routing. Lives in
 // `state/`, not `repo/state/`: biome.json forbids `repo/**` importing `views/**` and `views/**`
@@ -12,7 +13,13 @@ import { useSettingsStore } from './settings';
 // now lives in packages/workbench/src/state/createTerminalsStore.ts. This file is the
 // `control` wiring.
 
+// The fallback cwd is read lazily, so this module needs no store at init.
+export const terminalFileLinks = createTerminalFileLinks(
+  (id) => useTerminalsStore().terminalSession(id)?.cwd ?? '',
+);
+
 export const useTerminalsStore = createTerminalsStore(control, {
   appearance: () => useSettingsStore().appearance,
   openExternal: control.openExternal,
+  fileLinks: terminalFileLinks,
 });

@@ -298,6 +298,7 @@ func Build(opts Options) *Wired {
 		OnReposChanged: func() { bridge.AdeTaskReposChanged(events) },
 	}
 	w.OpenedFiles = openedfiles.New(repositories.CodeRepos)
+	w.OpenedFiles.Events = emitter
 	w.OpenedFilesSvc = &bridge.OpenedFilesService{Files: w.OpenedFiles}
 	handlersRegistry := opts.FileHandlers
 	if handlersRegistry == nil {
@@ -324,6 +325,7 @@ func Build(opts Options) *Wired {
 	// Registry, since Tracker.Reconcile/Send both need the same live-session set and PTYs.
 	terminalRegistry := terminal.NewRegistry()
 	w.TermRegistry = terminalRegistry
+	w.OpenedFilesSvc.Cwd = terminalRegistry.Cwd
 	w.AgentNotify = agentnotify.New(agentnotify.Deps{
 		Prefs: notifyPrefs(repositories), Describe: w.describeAgent, TaskTitle: w.taskTitle, Reveal: w.revealNote,
 		AgentLabel: func() string { return w.Agents.Active().Label() },
@@ -519,6 +521,8 @@ func (w *Wired) BindShell(h ShellHooks) {
 	w.HostView.SetWindowTitle = setTitle
 	w.WindowsSvc.OpenNewWindow = h.OpenNewWindow
 	w.OpenedFiles.OpenWindow = h.OpenNewWindowKeyed
+	w.OpenedFiles.FocusWindow = focusWindow
+	w.OpenedFiles.SetWindowTitle = setTitle
 	w.bindCapture(h, closeWindow, focusWindow)
 }
 

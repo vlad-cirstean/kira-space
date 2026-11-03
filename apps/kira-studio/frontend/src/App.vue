@@ -31,7 +31,7 @@ import ConnectionFileDialog from './project/ConnectionFileDialog.vue';
 import DataGripImportDialog from './project/DataGripImportDialog.vue';
 import NewConnectionDialog from './project/NewConnectionDialog.vue';
 import ProofReadyPrompt from './proof/ProofReadyPrompt.vue';
-import { studioPaletteCommands } from './shortcuts/studioCommands';
+import { closeTab, nextTab, prevTab, studioPaletteCommands } from './shortcuts/studioCommands';
 import { useAppUpdateStore } from './state/appUpdate';
 import { useConnectionDialogStore } from './state/connectionDialogs';
 import { useDatagripImportStore } from './state/datagripImport';
@@ -41,7 +41,6 @@ import { useLayoutStore } from './state/layout';
 import { useModeStore } from './state/mode';
 import { useObjectStoreStore } from './state/objectStore';
 import { useSettingsStore } from './state/settings';
-import { useTabsStore } from './state/tabs';
 import { createAutomationsModule } from './workbench/automationsModule';
 import DbMcpApprovalDialog from './workbench/DbMcpApprovalDialog.vue';
 import GenerateDataDialog from './workbench/GenerateDataDialog.vue';
@@ -81,7 +80,6 @@ const objectStoreStore = useObjectStoreStore();
 const layoutStore = useLayoutStore();
 const collectionsStore = useCollectionsStore();
 const connectionDialogStore = useConnectionDialogStore();
-const tabsStore = useTabsStore();
 const settingsStore = useSettingsStore();
 useAgentMessageDefaults(() => settingsStore.agent.provider, control);
 const keepAwakeStore = useKeepAwakeStore();
@@ -98,10 +96,6 @@ function onToggleKeepAwake(): void {
     keepAwakeStore.setKeepAwakeManual(!keepAwakeStore.status.manual),
     'toggleKeepAwake',
   );
-}
-
-function closeActiveTab(): void {
-  if (modeStore.activeTab) fireAndForget(tabsStore.closeTab(modeStore.activeTab.id), 'closeTab');
 }
 
 onMounted(() => {
@@ -128,9 +122,9 @@ onMounted(() => {
     control.onToggleProjectPanel(layoutStore.toggleProjectPanel),
     control.onToggleOperationsPanel(layoutStore.toggleOperationsPanel),
     control.onCommandPalette(paletteStore.togglePalette),
-    control.onTabNext(tabsStore.activateNextTab),
-    control.onTabPrev(tabsStore.activatePrevTab),
-    control.onTabClose(closeActiveTab),
+    control.onTabNext(nextTab),
+    control.onTabPrev(prevTab),
+    control.onTabClose(closeTab),
     control.onViewFind(() => runCommand('view.find')),
     control.onViewRefresh(() => runCommand('view.refresh')),
     control.onViewRun(() => runCommand('view.run')),

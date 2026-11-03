@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipDetails from '@theme/components/TooltipDetails.vue';
 import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
@@ -11,7 +12,8 @@ import AdeAgentsStatusList from './AdeAgentsStatusList.vue';
 import { agentsSummary } from './agentsSummary';
 
 // Status bar count of running ADE agents (every mode and purpose), hidden at zero. A click opens a
-// popover listing them; the list and its plan model load only while it is open.
+// popover listing them; the list and its plan model load only while it is open. A pulsing dot marks
+// agents mid-turn (working).
 const sessionsQuery = useSessions();
 const agents = useAgentSessionsStore();
 const open = ref(false);
@@ -51,6 +53,15 @@ const rows = computed(() =>
         :data-kind="summary.top"
       >
         {{ label }}
+        <StatusDot
+          v-if="summary.byKind.working > 0"
+          tone="ok"
+          pulse
+          :label="
+            t('space.ade.allSessions.summaryWorking.label', { count: summary.byKind.working })
+          "
+          data-testid="status-agents-working"
+        />
         <template #tip>
           <TooltipDetails
             :title="t('space.statusBar.agents.tooltip')"

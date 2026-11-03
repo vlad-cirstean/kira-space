@@ -1,5 +1,6 @@
 import { expect, test } from './fixtures';
 import {
+  activePanel,
   idOf,
   k,
   kubeError,
@@ -7,6 +8,7 @@ import {
   openKind,
   openKubernetes,
   setupKubernetes,
+  tabChip,
 } from './support/kubernetesFixture';
 import { emitWailsEvent } from './support/mockRuntime';
 
@@ -29,7 +31,11 @@ test('contract: clusters connect lazily; only the opened one is probed', async (
     page.locator('[data-testid="kube-cluster-row"][data-context="kind-dev"]'),
   ).toHaveAttribute('data-state', 'ok');
   expect(kube.calls('Status').map((c) => c.args.clusterId)).toEqual([idOf('kind-dev')]);
-  await expect(loc(page, 'kube-kind-row')).toHaveCount(8);
+  await expect(
+    page.locator('[data-testid="kube-kind-chip-v1_pods"][data-state="on"]'),
+  ).toBeVisible();
+  await loc(page, 'kube-kind-more').click();
+  await expect(page.locator('[data-testid^="kube-kind-more-option-"]')).toHaveCount(8);
 });
 
 test('contract: missing and invalid kubeconfig show the start state', async ({ relaunch }) => {
@@ -122,20 +128,28 @@ test('contract: describe filters across sections; Secret values stay redacted', 
   await openKind(page, 'kind-dev', 'v1/pods');
   await row(page, 'web-1').click();
 
-  await expect(loc(page, 'kube-detail')).toBeVisible();
+  await expect(activePanel(page)).toBeVisible();
   expect(kube.calls('Describe').at(-1)?.args).toMatchObject({ ...POD, kind: 'v1/pods' });
-  await expect(loc(page, 'kube-describe-section-conditions')).toBeVisible();
-  await expect(loc(page, 'kube-describe-section-events')).toBeVisible();
+  await expect(
+    activePanel(page).locator('[data-testid="kube-describe-section-conditions"]'),
+  ).toBeVisible();
+  await expect(
+    activePanel(page).locator('[data-testid="kube-describe-section-events"]'),
+  ).toBeVisible();
 
   await loc(page, 'kube-describe-filter').fill('Scheduled');
-  await expect(loc(page, 'kube-describe-section-conditions')).toBeVisible();
-  await expect(loc(page, 'kube-describe-section-events')).toHaveCount(0);
+  await expect(
+    activePanel(page).locator('[data-testid="kube-describe-section-conditions"]'),
+  ).toBeVisible();
+  await expect(
+    activePanel(page).locator('[data-testid="kube-describe-section-events"]'),
+  ).toHaveCount(0);
   await loc(page, 'kube-describe-filter').fill('zzz-nothing');
   await expect(loc(page, 'kube-describe-no-match')).toBeVisible();
-  await loc(page, 'kube-detail-close').click();
+  await tabChip(page, 'web-1').locator('[data-testid="tab-close"]').click();
   await expect(loc(page, 'kube-detail')).toHaveCount(0);
 
-  await page.locator('[data-testid="kube-kind-row"][data-kind="v1/secrets"]').click();
+  await openKind(page, 'kind-dev', 'v1/secrets');
   await row(page, 'db-creds').click();
   await expect(loc(page, 'kube-manifest')).toContainText('<14 bytes>');
   await expect(loc(page, 'kube-manifest')).not.toContainText('hunter2');
@@ -146,7 +160,7 @@ test('contract: pod logs stream, filter, and reopen on option change', async ({ 
   await openKubernetes(page);
   await openKind(page, 'kind-dev', 'v1/pods');
   await row(page, 'web-1').click();
-  await loc(page, 'kube-detail-tab-logs').click();
+  await activePanel(page).locator('[data-testid="kube-detail-tab-logs"]').click();
 
   await expect.poll(() => kube.calls('LogsOpen').length).toBe(1);
   const first = kube.calls('LogsOpen')[0].args as { streamId: string };

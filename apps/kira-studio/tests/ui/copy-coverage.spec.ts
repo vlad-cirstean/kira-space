@@ -429,7 +429,7 @@ test('collections panel menu', async ({ relaunch }) => {
 // Cluster, kind and pod names, versions and table cells are data, not chrome.
 const KUBE_DATA = [
   /kind-dev|bad-token|plugin-ctx|down|dev-user|web-\d|db-\d|db-creds|default|kube-system|apps|ReplicaSet|kubelet|v1\.\d+/,
-  /^(Deployment|Pod|Service|Secret|Event|Namespace|Node|Widget|Ready|Status|Restarts|Age|Name|Namespace|Running|Opaque|True|False|Normal|PodScheduled|Scheduled|Started|Pulled|app|web)$/,
+  /^(Deployment|Pod|Service|Secret|Event|Namespace|Node|Widget|v1|apps\/v1|example\.com\/v1|Ready|Status|Restarts|Age|Name|Namespace|Running|Opaque|True|False|Normal|PodScheduled|Scheduled|Started|Pulled|app|web)$/,
   /^\s*[\d/.,]+\s*(m|s|h|d)?\s*$/,
   /container started|image pulled|assigned to node|\bUTC\b|\d{4}-\d{2}-\d{2}|apiVersion|metadata|creationTimestamp|uid/,
 ];
@@ -447,9 +447,16 @@ test('Kubernetes panel, list, describe and logs use catalog text', async ({ rela
 
   await loc(page, 'kube-row').first().click();
   await expect(loc(page, 'kube-describe-section-events')).toBeVisible();
-  await expectCatalogText(loc(page, 'kube-detail'), { allow: KUBE_DATA });
+  const panel = page.locator('[data-testid="kube-detail"][data-active="true"]');
+  await expectCatalogText(panel, { allow: KUBE_DATA });
+  await expectCatalogText(loc(page, 'kube-tabs'), { allow: KUBE_DATA });
 
-  await loc(page, 'kube-detail-tab-logs').click();
+  await loc(page, 'kube-kind-more').click();
+  await expect(loc(page, 'kube-kind-more-content')).toBeVisible();
+  await expectCatalogText(loc(page, 'kube-kind-more-content'), { allow: KUBE_DATA });
+  await page.keyboard.press('Escape');
+
+  await panel.locator('[data-testid="kube-detail-tab-logs"]').click();
   await expect(loc(page, 'kube-logs')).toBeVisible();
   await expectCatalogText(loc(page, 'kube-logs'), {
     allow: [...KUBE_DATA, /^app$|^init$|^sidecar$/],

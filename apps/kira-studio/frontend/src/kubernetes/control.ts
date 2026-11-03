@@ -15,23 +15,42 @@ import {
 
 export const kubeControl = {
   clusters: () => unwrap(KubernetesService.Clusters()).then((r) => trust<KubeClusters>(r)),
-  status: (clusterId: string, refresh: boolean) =>
-    unwrap(KubernetesService.Status({ clusterId, refresh })).then((r) => trust<KubeStatus>(r)),
+  reorder: (ids: string[]) =>
+    unwrap(KubernetesService.Reorder({ ids })).then((r) => trust<KubeClusters>(r)),
+  status: (clusterId: string, refresh: boolean, background: boolean) =>
+    unwrap(KubernetesService.Status({ clusterId, refresh, background })).then((r) =>
+      trust<KubeStatus>(r),
+    ),
   setMcp: (clusterId: string, mcp: KubeMcpSettings) =>
     unwrap(KubernetesService.SetMcp({ clusterId, mcp })).then((r) => trust<KubeMcpSettings>(r)),
-  namespaces: (clusterId: string) =>
-    unwrap(KubernetesService.Namespaces({ clusterId })).then((r) => trust<KubeNamespaces>(r)),
-  kinds: (clusterId: string) =>
-    unwrap(KubernetesService.Kinds({ clusterId })).then((r) => trust<KubeKinds>(r)),
-  list: (clusterId: string, kind: string, namespace: string, labelSelector: string) =>
-    unwrap(KubernetesService.List({ clusterId, kind, namespace, labelSelector })).then((r) =>
-      trust<KubeList>(r),
+  namespaces: (clusterId: string, background: boolean) =>
+    unwrap(KubernetesService.Namespaces({ clusterId, background })).then((r) =>
+      trust<KubeNamespaces>(r),
     ),
-  describe: (clusterId: string, kind: string, namespace: string, name: string) =>
-    unwrap(KubernetesService.Describe({ clusterId, kind, namespace, name })).then((r) =>
+  kinds: (clusterId: string, background: boolean) =>
+    unwrap(KubernetesService.Kinds({ clusterId, background })).then((r) => trust<KubeKinds>(r)),
+  list: (
+    clusterId: string,
+    kind: string,
+    namespace: string,
+    labelSelector: string,
+    background: boolean,
+  ) =>
+    unwrap(KubernetesService.List({ clusterId, kind, namespace, labelSelector, background })).then(
+      (r) => trust<KubeList>(r),
+    ),
+  describe: (
+    clusterId: string,
+    kind: string,
+    namespace: string,
+    name: string,
+    background: boolean,
+  ) =>
+    unwrap(KubernetesService.Describe({ clusterId, kind, namespace, name, background })).then((r) =>
       trust<KubeDescription>(r),
     ),
   logsOpen: (a: KubeLogsOpen) => unwrap(KubernetesService.LogsOpen({ windowKey, ...a })),
   logsClose: (streamId: string) => unwrap(KubernetesService.LogsClose({ streamId })),
+  onClusters: (cb: () => void) => on<unknown>(KUBE_CHANNEL.clusters, () => cb()),
   onLogs: (cb: (e: KubeLogsEvent) => void) => on<KubeLogsEvent>(KUBE_CHANNEL.logs, cb),
 };

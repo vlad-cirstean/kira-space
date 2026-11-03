@@ -54,6 +54,21 @@ func kindKey(group, version, resource string) string {
 // Namespaces lists namespace names. A forbidden list is not an error: the UI falls back to the
 // context's own namespace.
 func (s *Service) Namespaces(ctx context.Context, args ClusterArgs) (NamespacesResult, error) {
+	var res NamespacesResult
+	err := s.record(ctx, args.ClusterID, args.Background, NamespacesCommand, func(ctx context.Context, note *OpNote) error {
+		var err error
+		if res, err = s.namespaces(ctx, args); err == nil {
+			note.SetRows(len(res.Namespaces))
+		}
+		return err
+	})
+	if err != nil {
+		return NamespacesResult{}, err
+	}
+	return res, nil
+}
+
+func (s *Service) namespaces(ctx context.Context, args ClusterArgs) (NamespacesResult, error) {
 	cs, err := s.client(args.ClusterID)
 	if err != nil {
 		return NamespacesResult{}, mapErr(err)
@@ -88,11 +103,22 @@ func (s *Service) Namespaces(ctx context.Context, args ClusterArgs) (NamespacesR
 
 // Kinds lists the listable resource types through discovery.
 func (s *Service) Kinds(ctx context.Context, args ClusterArgs) (KindsResult, error) {
-	cs, err := s.client(args.ClusterID)
+	var res KindsResult
+	err := s.record(ctx, args.ClusterID, args.Background, KindsCommand, func(ctx context.Context, note *OpNote) error {
+		cs, err := s.client(args.ClusterID)
+		if err != nil {
+			return mapErr(err)
+		}
+		if res, err = s.kindsOf(ctx, cs); err != nil {
+			return err
+		}
+		note.SetRows(len(res.Kinds))
+		return nil
+	})
 	if err != nil {
-		return KindsResult{}, mapErr(err)
+		return KindsResult{}, err
 	}
-	return s.kindsOf(ctx, cs)
+	return res, nil
 }
 
 func (s *Service) kindsOf(ctx context.Context, cs *clusterClient) (KindsResult, error) {

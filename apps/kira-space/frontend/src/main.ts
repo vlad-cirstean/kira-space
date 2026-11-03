@@ -17,6 +17,7 @@ import { captureItemKey } from './capture/queries';
 import { useCaptureWindowStore } from './capture/state';
 import { hostViewTargetKey } from './hostview/queries';
 import { useHostViewWindowStore } from './hostview/state';
+import { openedFilesWindowKey } from './openedfiles/queries';
 import { gitWindowReady } from './repo/git/boundGit';
 import { useAdeLayoutStore } from './state/adeLayout';
 import { installAgentNotifyFocus } from './state/agentNotify';
@@ -31,6 +32,7 @@ import { useMobileAccessStore } from './state/mobileAccess';
 import { useMobileTerminalsStore } from './state/mobileTerminals';
 import { useModeStore } from './state/mode';
 import { openPendingFiles } from './state/openedFiles';
+import { useOpenedFilesWindowStore } from './state/openedFilesWindow';
 import { useOpsStore } from './state/ops';
 import { pinia } from './state/pinia';
 import { ensureWorkspaceShell } from './state/repoTabs';
@@ -76,6 +78,7 @@ async function mountShell(): Promise<void> {
   const reviewWindowStore = useAdeReviewWindowStore(pinia);
   const hostViewStore = useHostViewWindowStore(pinia);
   const captureStore = useCaptureWindowStore(pinia);
+  const openedFilesWindowStore = useOpenedFilesWindowStore(pinia);
 
   // Right after the stores are built, before mount() below, so no push (`kira:adetask:*`
   // channels/agent `Stop`) is missed between mount and this window's first
@@ -96,7 +99,16 @@ async function mountShell(): Promise<void> {
   // still runs regardless of which mode this resolves to (state/workspace.ts's own
   // `openRepoWorkspace`/`activateWorkspace` doc comment: that fall-forward must honour a persisted
   // `terminal`/`ade` mode, not silently override it back to `git`).
-  modeStore.hydrateMode(await control.windowsEnsure());
+  const [mode, filesWindow] = await Promise.all([
+    control.windowsEnsure(),
+    queryClient.query({
+      queryKey: openedFilesWindowKey(windowKey),
+      queryFn: () => control.openedFilesIsFilesWindow({ windowKey }),
+    }),
+  ]);
+  modeStore.hydrateMode(mode);
+  // Before hydrateTabs, so the restored tabs partition under the files window's one key.
+  openedFilesWindowStore.active = filesWindow;
 
   await Promise.all([
     layoutStore.hydrateLayout(),
@@ -161,7 +173,7 @@ async function mountShell(): Promise<void> {
   // themselves — ensureWorkspaceShell's own doc comment calls for running it once per restored repo
   // right here, after hydrateTabs, since hydrateTabs itself never calls back into it (avoiding a
   // third link in that module pair's existing two-way call graph).
-  const workbenchWindow = !reviewTarget && !hostViewTarget && !captureItem;
+  const workbenchWindow = !reviewTarget && !hostViewTarget && !captureItem && !filesWindow;
   if (workbenchWindow) for (const repoId of workspaceStore.openRepos) ensureWorkspaceShell(repoId);
   // Falls forward onto the last active repo (persisted per window), else the first restored one,
   // so a relaunch with open repositories skips the empty GitStart screen. `activateWorkspace`
@@ -179,8 +191,12 @@ async function mountShell(): Promise<void> {
     );
   }
 
-  // Files Finder opened into this window; after the fall-forward so the last one wins focus.
-  if (workbenchWindow) await openPendingFiles();
+  // The files window drains what was opened for it, then again on every arrival. Subscribe first so
+  // none is missed; no teardown, the window is the lifetime. Pending drains atomically in Go.
+  if (filesWindow) {
+    control.onOpenedFilesArrived(() => void openPendingFiles());
+    await openPendingFiles();
+  }
 
   const app = createApp(App);
   app.use(i18n);

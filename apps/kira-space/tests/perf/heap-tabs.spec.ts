@@ -4,7 +4,7 @@ import {
   isReadChannel,
   runHeapScenario,
 } from '@workbench/testing/ui/heapProbe';
-import { expect, type KiraApp, test } from '../ui/fixtures';
+import { expect, filesTest, type KiraApp, test } from '../ui/fixtures';
 import { gitStreamRequests } from '../ui/support/gitStreamMock';
 import {
   manyRowShas,
@@ -20,7 +20,7 @@ import type { ControlSnapshot } from '../ui/support/types';
 
 // P433 heap probe: per tab kind, JS heap per open tab, switch rounds, six minutes away, close all.
 // Chromium only (CDP); report-only. `bunx playwright test -c playwright.perf.config.ts heap-tabs
-// --project heap`. A Finder-opened local file lives in the general workspace, so it is its own test.
+// --project heap`. A Finder-opened local file lives in the files window (no modes, so no away step), so it is its own test.
 
 const LARGE_LINES = Number(process.env.KIRA_HEAP_FILE_LINES ?? 40_000);
 const LARGE_TEXT = Array.from(
@@ -147,9 +147,10 @@ test('heap: repo graph, repo file, diff', async ({ relaunch }) => {
   });
 });
 
-test('heap: local file', async ({ relaunch }) => {
+filesTest('heap: local file', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({
     control: [
+      { channel: IPC.openedFilesIsFilesWindow, response: true },
       { channel: IPC.openedFilesPending, response: [LOCAL] },
       {
         channel: IPC.openedFilesRead,
@@ -166,15 +167,10 @@ test('heap: local file', async ({ relaunch }) => {
   });
   await expect(page.locator('[data-testid="tab"][data-tab-kind="local-file"]')).toHaveCount(1);
   await page.clock.install();
-  const mode = (m: string) => page.locator(`[data-testid="mode-tab"][data-mode="${m}"]`);
   await runHeapScenario({
     page,
     tabs: [{ name: 'local-file', open: async () => {}, bootOnly: true }],
     closeAll: () => closeAllTabs(page),
-    away: {
-      leave: () => mode('automations').click(),
-      back: () => mode('git').click(),
-    },
     reads: async () =>
       control
         .log()

@@ -292,7 +292,7 @@ test('Kubernetes: a list failure offers Retry; an empty kubeconfig is an EmptySt
     Clusters: () => ({ config: { state: 'ok', paths: [], message: '' }, clusters: [] }),
   });
   await openKubernetes(empty.page);
-  const none = loc(empty.page, 'kube-tree-empty');
+  const none = loc(empty.page, 'kube-clusters-empty');
   await expect(none).toBeVisible();
   await expect(none.locator('button')).toHaveCount(0);
 });

@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import { closeAllTabs } from '@workbench/testing/ui/heapProbe';
 import { diffSnapshotFiles } from '@workbench/testing/ui/heapSnapshot';
 import { type MemStep, runMemSteps, SNAPSHOTS } from '@workbench/testing/ui/memProbe';
-import { expect, test } from '../ui/fixtures';
+import { expect, filesTest, test } from '../ui/fixtures';
 import { adeBoard, adeV2Control, openTask } from '../ui/support/adeV2';
 import { installGitStreamMock } from '../ui/support/gitStreamMock';
 import {
@@ -303,11 +303,12 @@ test('ram: diff', async ({ relaunch }, info) => {
   }
 });
 
-test('ram: local-file', async ({ relaunch }, info) => {
-  test.skip(!worldEnabled('local-file'));
+filesTest('ram: local-file', async ({ relaunch }, info) => {
+  filesTest.skip(!worldEnabled('local-file'));
   const LOCAL = { path: '/tmp/outside/b.json', relPath: '', repoId: '' };
   const { window: page } = await relaunch({
     control: [
+      { channel: IPC.openedFilesIsFilesWindow, response: true },
       { channel: IPC.openedFilesPending, response: [LOCAL] },
       {
         channel: IPC.openedFilesRead,
@@ -331,16 +332,9 @@ test('ram: local-file', async ({ relaunch }, info) => {
     info,
     steps: [
       {
-        name: 'mode:automations',
+        name: 'idle:6m',
         run: async () => {
-          await modeTab(page, 'automations').click();
-          await page.waitForTimeout(1500);
-        },
-      },
-      {
-        name: 'back:git',
-        run: async () => {
-          await modeTab(page, 'git').click();
+          await page.clock.fastForward(6 * 60_000);
           await page.waitForTimeout(1500);
         },
       },

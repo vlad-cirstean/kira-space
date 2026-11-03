@@ -20,7 +20,7 @@ const PLACES = [
   { id: 'qa03', terminalId: '', taskId: 'T_cart', branchId: 'b_cart' },
 ];
 
-function sessions(running = true): unknown {
+function sessions(running = true, idle = false): unknown {
   const fx = contract<{ sessions: Record<string, unknown>[] }>(
     'ade-sessions-running',
     'AdeTaskService.Sessions#mixed',
@@ -29,6 +29,7 @@ function sessions(running = true): unknown {
     sessions: (running ? fx.sessions : []).map((s, i) => ({
       ...s,
       ...PLACES[i],
+      ...(idle && s.activity ? { activity: 'idle' } : {}),
       stepId: '',
       runId: '',
       cwd: '/tmp/work',
@@ -49,6 +50,7 @@ const control = (extra: readonly ControlSnapshot[] = []): ControlSnapshot[] => {
 };
 
 const item = (page: Page) => page.locator(t('status-agents'));
+const dot = (page: Page) => page.locator(t('status-agents-working'));
 
 test('contract: the bar counts the running agents in git mode and the tooltip counts them by activity', async ({
   relaunch,
@@ -56,6 +58,10 @@ test('contract: the bar counts the running agents in git mode and the tooltip co
   const { window: page } = await relaunch({ control: control(), clockTime: FIXED_NOW });
   await expect(item(page)).toHaveText('2 agents');
   await expect(item(page)).toHaveAttribute('data-kind', 'working');
+  await expect(dot(page)).toBeVisible();
+  await expect(dot(page)).toHaveAttribute('aria-label', '1 working');
+  await expect(dot(page)).toHaveClass(/(^|\s)animate-pulse(\s|$)/);
+  await expect(item(page)).toHaveText('2 agents');
   await item(page).hover();
   const tip = page.locator(t('tooltip-details'));
   await expect(tip.locator(t('tooltip-details-title'))).toHaveText('Running agents');
@@ -79,6 +85,37 @@ test('contract: an agent asking for input shows in the label and turns the item 
   await expect(item(page)).toHaveText('2 agents · 1 needs input');
   await expect(item(page)).toHaveAttribute('data-kind', 'input');
   await expect(item(page)).toHaveClass(/(^|\s)text-warn(\s|$)/);
+  await expect(dot(page)).toBeVisible();
+});
+
+test('contract: the working dot shows only while an agent works and follows the TUI activity', async ({
+  relaunch,
+}) => {
+  const { window: page } = await relaunch({
+    control: control([{ channel: IPC.adeTaskSessions, response: sessions(true, true) }]),
+    clockTime: FIXED_NOW,
+  });
+  await expect(item(page)).toHaveText('2 agents');
+  await expect(dot(page)).toHaveCount(0);
+  await emitAgentSessions(page, ['term-qa01']);
+  await emitAgentEvent(page, 'term-qa01', 'PreToolUse');
+  await expect(dot(page)).toBeVisible();
+  await expect(dot(page)).toHaveAttribute('aria-label', '1 working');
+  await expect(item(page)).toHaveAttribute('data-kind', 'working');
+  await emitAgentEvent(page, 'term-qa01', 'Stop');
+  await expect(dot(page)).toHaveCount(0);
+  await expect(item(page)).toHaveText('2 agents');
+});
+
+test('contract: reduced motion keeps the working dot but stops its pulse', async ({ relaunch }) => {
+  const { window: page } = await relaunch({ control: control(), clockTime: FIXED_NOW });
+  const animation = () => dot(page).evaluate((el) => getComputedStyle(el).animationName);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await expect(dot(page)).toBeVisible();
+  expect(await animation()).not.toBe('none');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(dot(page)).toBeVisible();
+  expect(await animation()).toBe('none');
 });
 
 test('contract: no running agent hides the item', async ({ relaunch }) => {

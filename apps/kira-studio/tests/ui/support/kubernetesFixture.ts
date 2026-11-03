@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { runtimeErrorBody } from '@workbench/testing/ui/mockRuntime';
+import type { ControlSnapshot } from '../../ipc/support/types';
 import { expect, type test } from '../fixtures';
 import { contract } from './contract';
 
@@ -21,6 +22,12 @@ export const idOf = (context: string): string => {
   return c.id;
 };
 
+/** The Clusters result with its clusters in `ids` order (Reorder's answer for other orders). */
+export const clustersIn = (ids: readonly string[]) => {
+  const all = k<{ clusters: { id: string }[] }>(KEY('Clusters'));
+  return { ...all, clusters: ids.map((id) => all.clusters.find((c) => c.id === id)) };
+};
+
 const SECRET_LIST = {
   columns: [
     { name: 'Name', type: 'string' },
@@ -40,6 +47,7 @@ const SECRET_LIST = {
 function defaults(): Record<string, KubeHandler> {
   return {
     Clusters: () => k(KEY('Clusters')),
+    Reorder: () => k(KEY('Reorder')),
     Status: (a) => {
       if (a.clusterId === idOf('bad-token')) return k(KEY('Status:unauthorized'));
       if (a.clusterId === idOf('plugin-ctx')) return k(KEY('Status:plugin'));
@@ -108,8 +116,9 @@ async function install(page: Page, handlers: Record<string, KubeHandler>): Promi
 export async function setupKubernetes(
   relaunch: Parameters<Parameters<typeof test>[2]>[0]['relaunch'],
   overrides: Record<string, KubeHandler> = {},
+  controlRoutes: readonly ControlSnapshot[] = [],
 ) {
-  const { window: page, control } = await relaunch({ control: [] });
+  const { window: page, control } = await relaunch({ control: controlRoutes });
   const kube = await install(page, { ...defaults(), ...overrides });
   return { page, kube, control };
 }
@@ -121,9 +130,27 @@ export async function openKubernetes(page: Page): Promise<void> {
   await expect(loc(page, 'kubernetes-panel')).toBeVisible();
 }
 
-export async function openKind(page: Page, context: string, kind: string): Promise<void> {
+export async function openCluster(page: Page, context: string): Promise<void> {
   const row = page.locator(`[data-testid="kube-cluster-row"][data-context="${context}"]`);
   await row.click();
   await expect(row).toHaveAttribute('data-state', 'ok');
-  await page.locator(`[data-testid="kube-kind-row"][data-kind="${kind}"]`).click();
 }
+
+/** Opens the cluster, then shows `key`: Pods is the default chip, any other kind comes from the picker. */
+export async function openKind(page: Page, context: string, key: string): Promise<void> {
+  await openCluster(page, context);
+  if (key === 'v1/pods') {
+    await expect(
+      page.locator('[data-testid="kube-kind-chip-v1_pods"][data-state="on"]'),
+    ).toBeVisible();
+    return;
+  }
+  await loc(page, 'kube-kind-more').click();
+  await loc(page, `kube-kind-more-option-${key.replaceAll('/', '_')}`).click();
+}
+
+export const activePanel = (page: Page) =>
+  page.locator('[data-testid="kube-detail"][data-active="true"]');
+
+export const tabChip = (page: Page, name: string) =>
+  loc(page, 'kube-tabs').locator('[data-testid="tab"]').filter({ hasText: name });

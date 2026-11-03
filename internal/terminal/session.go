@@ -458,6 +458,15 @@ func (r *Registry) get(id string) *Session {
 	return r.sessions[id]
 }
 
+// Cwd is id's live working directory; false only when no live session has id.
+func (r *Registry) Cwd(id string) (string, bool) {
+	sess := r.get(id)
+	if sess == nil {
+		return "", false
+	}
+	return sess.liveCwd(), true
+}
+
 // Write is a no-op, not an error, for an id with no live session — mirroring Session.Write's own
 // close-is-silent rule for the "already gone by the time this arrived" case.
 func (r *Registry) Write(id string, b []byte) error {

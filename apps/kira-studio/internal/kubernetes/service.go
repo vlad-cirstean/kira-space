@@ -39,6 +39,7 @@ type Service struct {
 	env   func() Env
 
 	listPage, listMax int
+	rec               Recorder
 
 	mu      sync.Mutex
 	clients map[string]*clusterClient
@@ -77,7 +78,7 @@ func NewService(store ClusterStore, emit appevent.Emitter, opts ...Option) *Serv
 	s := &Service{
 		store: store, emit: emit, now: time.Now, env: probe.get,
 		listPage: defaultListPage, listMax: defaultListMax,
-		clients: map[string]*clusterClient{}, logs: newLogRegistry(),
+		clients: map[string]*clusterClient{}, logs: newLogRegistry(), rec: plainRecorder{},
 	}
 	for _, o := range opts {
 		o(s)
@@ -203,10 +204,11 @@ func (s *Service) drop(id string) {
 	s.logs.closeCluster(id)
 }
 
-// Clusters lists the kubeconfig contexts, current first, then by name.
+// Clusters lists the kubeconfig contexts in the user's order; clusters never placed follow, current first, then by name.
 func (s *Service) Clusters(context.Context) (ClustersResult, error) {
 	ld := s.load()
 	res := ClustersResult{Config: ld.info, Clusters: []Cluster{}}
+	orders := map[string]*int{}
 	now := s.now()
 	for name, c := range ld.cfg.Contexts {
 		server := serverOf(ld.cfg, c)
@@ -215,9 +217,15 @@ func (s *Service) Clusters(context.Context) (ClustersResult, error) {
 			return ClustersResult{}, ipcerr.Internal(err.Error())
 		}
 		res.Clusters = append(res.Clusters, clusterOf(ld, rec, name, c))
+		orders[rec.ID] = rec.SortOrder
 	}
 	sort.Slice(res.Clusters, func(i, j int) bool {
 		a, b := res.Clusters[i], res.Clusters[j]
+		if ao, bo := orders[a.ID], orders[b.ID]; ao != nil && bo != nil {
+			return *ao < *bo
+		} else if ao != nil || bo != nil {
+			return ao != nil
+		}
 		if a.Current != b.Current {
 			return a.Current
 		}
@@ -226,12 +234,62 @@ func (s *Service) Clusters(context.Context) (ClustersResult, error) {
 	return res, nil
 }
 
+// Reorder stores the cluster order. A setting write: no op row.
+func (s *Service) Reorder(ctx context.Context, args ReorderArgs) (ClustersResult, error) {
+	if len(args.IDs) == 0 {
+		return ClustersResult{}, ipcerr.Required("ids")
+	}
+	seen := make(map[string]bool, len(args.IDs))
+	for _, id := range args.IDs {
+		if seen[id] {
+			return ClustersResult{}, ipcerr.Contract("ids must be unique")
+		}
+		seen[id] = true
+	}
+	for _, id := range args.IDs {
+		_, ok, err := s.store.Get(id)
+		if err != nil {
+			return ClustersResult{}, ipcerr.Internal(err.Error())
+		}
+		if !ok {
+			return ClustersResult{}, unknownCluster()
+		}
+	}
+	if err := s.store.Reorder(args.IDs); err != nil {
+		return ClustersResult{}, ipcerr.Internal(err.Error())
+	}
+	s.emit.Emit(ChannelClusters, struct{}{})
+	return s.Clusters(ctx)
+}
+
 // Status probes the API server. Cluster trouble comes back as a value; only an unknown id errors.
 func (s *Service) Status(ctx context.Context, args StatusArgs) (Status, error) {
 	if args.Refresh && args.ClusterID != "" {
 		s.drop(args.ClusterID)
 	}
-	cs, err := s.client(args.ClusterID)
+	var st Status
+	var probeErr error
+	err := s.record(ctx, args.ClusterID, args.Background, StatusCommand, func(ctx context.Context, _ *OpNote) error {
+		st, probeErr = s.probe(ctx, args.ClusterID)
+		if probeErr != nil {
+			return probeErr
+		}
+		if st.State == StatusUnavailable {
+			return errors.New(st.Message)
+		}
+		return nil
+	})
+	if probeErr != nil {
+		return Status{}, probeErr
+	}
+	if st.State != "" {
+		return st, nil
+	}
+	return Status{}, err
+}
+
+func (s *Service) probe(ctx context.Context, clusterID string) (Status, error) {
+	cs, err := s.client(clusterID)
 	var ie *ipcerr.Error
 	if errors.As(err, &ie) {
 		return Status{}, ie
@@ -285,5 +343,6 @@ func (s *Service) SetMcp(_ context.Context, args SetMcpArgs) (McpSettings, error
 	if !ok {
 		return McpSettings{}, unknownCluster()
 	}
+	s.emit.Emit(ChannelClusters, struct{}{})
 	return m, nil
 }

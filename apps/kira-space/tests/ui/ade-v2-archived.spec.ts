@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { adeFixture, archivedTaskFx, openPlan } from './support/adeV2';
+import { adeBoard, adeFixture, archivedTaskFx, bandOf, FIXED_NOW, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -45,6 +45,25 @@ test('picking an old archived task reveals its day and opens its panel', async (
   ]);
   await pickArchived(page, 'H_5');
   await expect(page.locator(`${t('ade-history-row')}[data-task-id="H_5"]`)).toBeVisible();
+  await expect(page.locator(t('ade-panel-title'))).toBeVisible();
+});
+
+test('finding a task archived today opens History on Today', async ({ relaunch }) => {
+  const board = adeBoard((b) => {
+    const h = (b.history as { taskId: string; archivedAt: number }[]).find(
+      (e) => e.taskId === 'H_1',
+    );
+    if (h) h.archivedAt = FIXED_NOW - 36e5;
+  });
+  const { window: page } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskBoard, response: board },
+    { channel: IPC.adeTaskArchivedTask, response: archivedTaskFx('H_1') },
+  ]);
+  await pickArchived(page, 'H_1');
+  await expect(page.locator(t('ade-load-history'))).toContainText('Hide history');
+  await expect(
+    bandOf(page, 0).locator(`${t('ade-history-row')}[data-task-id="H_1"]`),
+  ).toBeVisible();
   await expect(page.locator(t('ade-panel-title'))).toBeVisible();
 });
 

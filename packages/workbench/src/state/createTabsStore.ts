@@ -119,7 +119,7 @@ export interface TabsHost<
   E extends Record<string, unknown> = Record<string, never>,
 > {
   kinds: KindLookup<R>;
-  workspaceKeyOf(tab: R): K;
+  workspaceKeyOf(tab: Pick<R, 'kind' | 'workspaceId'>): K;
   control: TabsControl<R>;
   /** Where a fresh `openTab` call with no explicit `workspaceId` lands — Kira Studio's own kind's
    *  mode (`STUDIO_TAB_KIND_MODE[kind]`); Kira Space's one shared unscoped slot
@@ -375,9 +375,12 @@ export function createTabsStore<
       opts: OpenTabOpts,
     ): OpenTabResult {
       const workspaceId = opts.workspaceId ?? null;
-      // An explicit `workspaceId` is trusted to already be a real `K` — same trust boundary the
-      // original per-app code had (a plain string column, never validated against the key union).
-      const workspaceKey = (workspaceId ?? host.fallbackWorkspaceKey(kind)) as K;
+      // Same derivation as every other action, so an app whose partition key differs from the
+      // tab's `workspaceId` (Kira Space's files window) keeps one key per tab.
+      const workspaceKey =
+        workspaceId === null
+          ? host.fallbackWorkspaceKey(kind)
+          : host.workspaceKeyOf({ kind, workspaceId });
 
       const reused = reuseExistingTab(kind, connectionId, path, workspaceId, workspaceKey, opts);
       if (reused) return reused;

@@ -2,17 +2,19 @@ import { usePersistedState } from '@workbench/behaviour/persisted';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { z } from 'zod';
+import { POD_KIND } from './kinds';
 
-export type KubeDetailTab = 'describe' | 'logs';
+const RECENT_MAX = 3;
 
-export interface KubeRowRef {
-  namespace: string;
-  name: string;
+interface PerCluster {
+  kind: string;
+  namespace: string | null;
+  recent: string[];
 }
 
 interface Remembered {
   clusterId: string;
-  perCluster: Record<string, { kind: string; namespace: string | null }>;
+  perCluster: Record<string, PerCluster>;
 }
 
 const EMPTY: Remembered = { clusterId: '', perCluster: {} };
@@ -21,7 +23,11 @@ const rememberedSchema = z.object({
   clusterId: z.string(),
   perCluster: z.record(
     z.string(),
-    z.object({ kind: z.string(), namespace: z.string().nullable() }),
+    z.object({
+      kind: z.string(),
+      namespace: z.string().nullable(),
+      recent: z.array(z.string()).max(RECENT_MAX).default([]),
+    }),
   ),
 });
 
@@ -29,22 +35,22 @@ export const useKubernetesUiStore = defineStore('kubernetesUi', () => {
   const remembered = usePersistedState<Remembered>('kira.kubernetes.selection', EMPTY, {
     schema: rememberedSchema,
   });
-  const detailSize = usePersistedState('kira.kubernetes.detailHeight', 280);
+  const listWidth = usePersistedState('kira.kubernetes.listWidth', 440);
+  const listHidden = usePersistedState('kira.kubernetes.listHidden', false);
 
   const clusterId = computed(() => remembered.value.clusterId);
+  /** Empty until the user picks one; the browser then shows the default kind. */
   const kind = computed(() => remembered.value.perCluster[clusterId.value]?.kind ?? '');
+  const recent = computed(() => remembered.value.perCluster[clusterId.value]?.recent ?? []);
   /** Null until the user picks one; the browser then falls back to the context's namespace. */
   const namespace = computed(() => remembered.value.perCluster[clusterId.value]?.namespace ?? null);
 
   const labelSelector = ref('');
   const listFilter = ref('');
-  const selected = ref<KubeRowRef | null>(null);
-  const detailTab = ref<KubeDetailTab>('describe');
-  const expanded = ref<string[]>([]);
-  const treeSearch = ref('');
+  const clusterSearch = ref('');
 
-  function remember(id: string, patch: { kind?: string; namespace?: string | null }): void {
-    const prev = remembered.value.perCluster[id] ?? { kind: '', namespace: null };
+  function remember(id: string, patch: Partial<PerCluster>): void {
+    const prev = remembered.value.perCluster[id] ?? { kind: '', namespace: null, recent: [] };
     remembered.value = {
       clusterId: remembered.value.clusterId,
       perCluster: { ...remembered.value.perCluster, [id]: { ...prev, ...patch } },
@@ -54,58 +60,41 @@ export const useKubernetesUiStore = defineStore('kubernetesUi', () => {
   function resetView(): void {
     labelSelector.value = '';
     listFilter.value = '';
-    selected.value = null;
-    detailTab.value = 'describe';
-  }
-
-  function selectKind(id: string, nextKind: string): void {
-    const changed = id !== clusterId.value || nextKind !== kind.value;
-    remember(id, { kind: nextKind });
-    remembered.value = { ...remembered.value, clusterId: id };
-    if (!expanded.value.includes(id)) expanded.value = [...expanded.value, id];
-    if (changed) resetView();
   }
 
   function selectCluster(id: string): void {
-    const changed = id !== clusterId.value || kind.value !== '';
-    remember(id, { kind: '' });
+    if (id === clusterId.value) return;
     remembered.value = { ...remembered.value, clusterId: id };
-    if (!expanded.value.includes(id)) expanded.value = [...expanded.value, id];
+    resetView();
+  }
+
+  function selectKind(key: string): void {
+    const changed = key !== kind.value;
+    const patch: Partial<PerCluster> = { kind: key };
+    if (key !== POD_KIND && !recent.value.includes(key)) {
+      patch.recent = [...recent.value, key].slice(-RECENT_MAX);
+    }
+    remember(clusterId.value, patch);
     if (changed) resetView();
   }
 
   function setNamespace(next: string | null): void {
     if (clusterId.value === '') return;
     remember(clusterId.value, { namespace: next });
-    selected.value = null;
-  }
-
-  function toggleExpanded(id: string): void {
-    expanded.value = expanded.value.includes(id)
-      ? expanded.value.filter((x) => x !== id)
-      : [...expanded.value, id];
-  }
-
-  function selectRow(row: KubeRowRef | null, tab: KubeDetailTab = 'describe'): void {
-    selected.value = row;
-    detailTab.value = tab;
   }
 
   return {
     clusterId,
     kind,
+    recent,
     namespace,
     labelSelector,
     listFilter,
-    selected,
-    detailTab,
-    expanded,
-    treeSearch,
-    detailSize,
+    clusterSearch,
+    listWidth,
+    listHidden,
     selectCluster,
     selectKind,
     setNamespace,
-    toggleExpanded,
-    selectRow,
   };
 });

@@ -9,6 +9,7 @@ import { disposeGitTransport } from '../repo/git/transport';
 import { useFileTreeStore } from '../repo/state/fileTree';
 import { useRepoSearchStore } from '../repo/state/search';
 import { useModeStore } from './mode';
+import { useOpenedFilesWindowStore } from './openedFilesWindow';
 import { ensureWorkspaceShell } from './repoTabs';
 import { closeWorkspaceTabs } from './tabs';
 
@@ -24,6 +25,10 @@ export type WorkspaceKey = string;
 // scope) and the moment before any repository has ever been opened. Never a real code_repos id
 // (crypto.randomUUID() never produces this literal), so it can never collide with one.
 export const GENERAL_WORKSPACE = '__general__';
+
+// The files window's one tab partition: repo and loose file tabs share a strip. Never a real
+// code_repos id, same reasoning as GENERAL_WORKSPACE.
+export const FILES_WORKSPACE = '__files__';
 
 /** Identity — every WorkspaceKey here already is a repo id (or GENERAL_WORKSPACE). Kept as a named
  *  function so call sites written against the old `repo:${id}`-prefixed type need no edit. */
@@ -139,6 +144,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 // function `host.ts`'s `activeWorkspace` and `state/tabs.ts`'s tab-stepping actions need to read
 // across both the workspace and mode stores.
 export function visibleWorkspace(): WorkspaceKey {
+  if (useOpenedFilesWindowStore().active) return FILES_WORKSPACE;
   const modeStore = useModeStore();
   if (modeStore.active === 'git') return useWorkspaceStore().active;
   return modeStore.active;

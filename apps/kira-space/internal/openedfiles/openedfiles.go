@@ -1,5 +1,5 @@
 // Package openedfiles turns external file opens (Finder's Open With, a double-click once Kira
-// Space is the default app) into a new window that shows those files read-only.
+// Space is the default app, a terminal path click) into tabs of one files window.
 package openedfiles
 
 import (
@@ -17,7 +17,17 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filetypes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
+
+// WindowKeyPrefix marks the files window's key; its row is ephemeral.
+const WindowKeyPrefix = "files-"
+
+// ChannelArrived signals the files window that targets wait in Pending.
+const ChannelArrived = "kira:openedFiles:arrived"
+
+// IsWindowKey reports whether key names the files window.
+func IsWindowKey(key string) bool { return strings.HasPrefix(key, WindowKeyPrefix) }
 
 // coalesceDelay is how long after the last openFile: a batch waits for more.
 const coalesceDelay = 300 * time.Millisecond
@@ -28,6 +38,9 @@ type Target struct {
 	Path    string `json:"path"`
 	RepoID  string `json:"repoId"`
 	RelPath string `json:"relPath"`
+	// Line and Col place the cursor, 1-based; zero means none.
+	Line int `json:"line,omitempty"`
+	Col  int `json:"col,omitempty"`
 }
 
 // RepoLister is the imported-repository list.
@@ -85,16 +98,27 @@ func within(root, p string) bool {
 	return p == root || strings.HasPrefix(p, strings.TrimSuffix(root, string(filepath.Separator))+string(filepath.Separator))
 }
 
-// Service owns the opened-files lifecycle: coalesce, resolve, open a keyed window, hand the
-// targets to that window's page once.
+// Service owns the opened-files lifecycle: coalesce, resolve, then raise the files window (or open
+// one) and hand it the targets.
 type Service struct {
 	Repos RepoLister
-	// OpenWindow opens a new workbench window under key; BindShell sets it.
+	// OpenWindow opens a new window under key; BindShell sets it.
 	OpenWindow func(key string)
+	// FocusWindow raises key's window; false when no live window has the key.
+	FocusWindow func(key string) bool
+	// SetWindowTitle titles key's window.
+	SetWindowTitle func(key, title string)
+	// Events signals a live files window that targets arrived.
+	Events interface {
+		EmitTo(windowKey, name string, data any)
+	}
 
 	co      *Coalescer
+	openMu  sync.Mutex
 	mu      sync.Mutex
 	pending map[string][]Target
+	// filesKey is the live files window's key, "" when none.
+	filesKey string
 }
 
 // New builds a Service whose Add batches with the production timer.
@@ -107,7 +131,7 @@ func NewWithAfter(repos RepoLister, after After) *Service {
 	return s
 }
 
-// Add queues one externally opened path; the batch opens one window.
+// Add queues one externally opened path; the batch lands in the files window.
 func (s *Service) Add(path string) {
 	if path != "" {
 		s.co.Add(path)
@@ -117,14 +141,10 @@ func (s *Service) Add(path string) {
 // Close drops any batch still waiting; called at teardown.
 func (s *Service) Close() { s.co.Close() }
 
-// Open resolves paths and opens one window for the ones that qualify. A path that does not qualify
-// is logged and skipped; none qualifying opens no window.
+// Open resolves paths and shows the ones that qualify in the files window. A path that does not
+// qualify is logged and skipped; none qualifying touches no window.
 func (s *Service) Open(paths []string) {
-	repos, err := s.Repos.List()
-	if err != nil {
-		slog.Warn("opened files: list repos; opening as standalone files", "scope", "openedfiles", "err", err)
-		repos = nil
-	}
+	repos := s.repos()
 	var targets []Target
 	for _, p := range paths {
 		t, err := Resolve(p, repos)
@@ -134,14 +154,44 @@ func (s *Service) Open(paths []string) {
 		}
 		targets = append(targets, t)
 	}
+	s.deliver(targets)
+}
+
+// deliver is the one place that picks a window for targets: the live files window, else a new one.
+// Focus, open, title and emit never run under mu (Focus runs on the main thread; Forget runs from
+// WindowClosing and takes mu). A window closing between Focus and its drain drops these targets.
+func (s *Service) deliver(targets []Target) {
 	if len(targets) == 0 || s.OpenWindow == nil {
 		return
 	}
-	key := uuid.NewString()
+	s.openMu.Lock()
+	defer s.openMu.Unlock()
 	s.mu.Lock()
-	s.pending[key] = targets
+	key := s.filesKey
+	if key != "" {
+		s.pending[key] = append(s.pending[key], targets...)
+	}
+	s.mu.Unlock()
+	if key != "" && s.FocusWindow != nil && s.FocusWindow(key) {
+		if s.Events != nil {
+			s.Events.EmitTo(key, ChannelArrived, nil)
+		}
+		return
+	}
+	s.mu.Lock()
+	fresh := targets
+	if key != "" {
+		fresh = s.pending[key]
+		delete(s.pending, key)
+	}
+	key = WindowKeyPrefix + uuid.NewString()
+	s.pending[key] = fresh
+	s.filesKey = key
 	s.mu.Unlock()
 	s.OpenWindow(key)
+	if s.SetWindowTitle != nil {
+		s.SetWindowTitle(key, i18n.T("backend.space.openedFiles.window.title", nil))
+	}
 }
 
 // Pending returns windowKey's targets once; a second call returns none.
@@ -157,6 +207,9 @@ func (s *Service) Pending(windowKey string) []Target {
 func (s *Service) Forget(windowKey string) {
 	s.mu.Lock()
 	delete(s.pending, windowKey)
+	if s.filesKey == windowKey {
+		s.filesKey = ""
+	}
 	s.mu.Unlock()
 }
 

@@ -1,5 +1,6 @@
 import { createTabsStore } from '@workbench/state/createTabsStore';
 import { control } from '../bridge/control';
+import { useOpenedFilesWindowStore } from './openedFilesWindow';
 import {
   defaultRepoGraphTabState,
   type LocalFileTabState,
@@ -9,6 +10,7 @@ import {
 } from './tabDomain';
 import { TAB_KINDS } from './tabKinds';
 import {
+  FILES_WORKSPACE,
   GENERAL_WORKSPACE,
   useWorkspaceStore,
   visibleWorkspace,
@@ -25,7 +27,9 @@ import {
 // A tab's own workspace: its `workspaceId` when a repo (or a scoped terminal) set one, else the
 // one shared slot for a fully-unscoped terminal tab — see state/workspace.ts's own header comment
 // for why there is exactly one non-repo slot here.
-function workspaceKeyOf(tab: TabRecord): WorkspaceKey {
+// The files window partitions every tab under FILES_WORKSPACE; `workspaceId` keeps the repo id.
+function workspaceKeyOf(tab: Pick<TabRecord, 'kind' | 'workspaceId'>): WorkspaceKey {
+  if (useOpenedFilesWindowStore().active) return FILES_WORKSPACE;
   return tab.workspaceId ?? GENERAL_WORKSPACE;
 }
 
@@ -40,12 +44,14 @@ export const useTabsStore = createTabsStore({
   control,
   // No explicit workspaceId ⇒ the one shared unscoped slot, regardless of kind — this app has no
   // per-kind mode the way Kira Studio's STUDIO_TAB_KIND_MODE does.
-  fallbackWorkspaceKey: () => GENERAL_WORKSPACE,
+  fallbackWorkspaceKey: () =>
+    useOpenedFilesWindowStore().active ? FILES_WORKSPACE : GENERAL_WORKSPACE,
   // state/workspace.ts imports closeWorkspaceTabs from this file, a two-way call graph — not a
   // cycle, since neither side reads the other at module-evaluation time, only inside a function
   // body called after both modules have finished loading (Pinia's own store registry resolves
   // useWorkspaceStore() lazily regardless).
   onHydrated(tabs) {
+    if (useOpenedFilesWindowStore().active) return;
     const openRepos: string[] = [];
     for (const t of tabs) {
       const key = workspaceKeyOf(t);

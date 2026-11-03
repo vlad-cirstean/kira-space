@@ -361,7 +361,7 @@ function buildBand(ctx: BandCtx, dk: number, label: string): TimelineBand {
     hours,
     taskIds: ctx.shownTaskIds.filter((id) => bandKey(ctx.entries.get(id) as TimelineEntry) === dk),
     spans: spansOn(ctx, dk),
-    history: ctx.showHistory || dk >= 0 ? ctx.history.filter((h) => h.day === dk) : [],
+    history: ctx.showHistory ? ctx.history.filter((h) => h.day === dk) : [],
     isToday: dk === 0,
     isPast,
     weekend,

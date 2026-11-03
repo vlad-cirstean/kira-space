@@ -11,6 +11,7 @@ import { tooltipContentVariants } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { isPrimaryModifier, primaryModifierName } from '../shortcuts/keys';
 import { registerTabRuntimeCleanup } from '../state/tabRuntime';
+import { createFileLinkProvider } from './fileLinkProvider';
 
 interface Attached {
   term: Terminal;
@@ -36,6 +37,21 @@ export interface TerminalRendererDeps {
   openLink(url: string): void;
   /** 'modifier': Cmd-click (mac) or Ctrl-click, with a hover hint. 'tap': plain click/tap (phone). */
   linkActivation: 'modifier' | 'tap';
+  /** Kira Space desktop only; absent means file paths are not links. */
+  fileLinks?: TerminalFileLinks;
+}
+
+export interface FileLinkTarget {
+  path: string;
+  line: number | null;
+  col: number | null;
+}
+
+export interface TerminalFileLinks {
+  /** One answer per path: does it name an openable file, against tabId's live cwd. */
+  resolve(tabId: string, paths: string[]): Promise<boolean[]>;
+  /** Opens one target in Kira Space; never throws (announces a failure). */
+  open(tabId: string, target: FileLinkTarget): void;
 }
 
 // Mirrors the Go OpenExternalURL rule; Go stays the authority.
@@ -171,6 +187,20 @@ export function getOrCreateTerminal(tabId: string, deps: TerminalRendererDeps): 
   });
   term.open(host);
   if (deps.linkActivation === 'modifier') hint = createLinkHint(term);
+  const fileLinks = deps.fileLinks;
+  if (fileLinks) {
+    term.registerLinkProvider(
+      createFileLinkProvider(term, tabId, fileLinks, {
+        open: (event, target) => {
+          if (deps.linkActivation === 'modifier' && !isPrimaryModifier(event)) return;
+          hint?.hide();
+          fileLinks.open(tabId, target);
+        },
+        hover: (event, text) => hint?.show(event, text),
+        leave: () => hint?.hide(),
+      }),
+    );
+  }
 
   const off = deps.onTerminalOutput(tabId, (bytes) => term.write(bytes));
   // onData is real text (typed characters, paste, escape sequences) — UTF-8 encoded before it

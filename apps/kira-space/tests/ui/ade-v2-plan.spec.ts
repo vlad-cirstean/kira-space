@@ -44,9 +44,7 @@ test('loads the archived history into the day bands', async ({ relaunch }) => {
   await expect(page.locator('[data-testid="ade-history-row"]')).toHaveCount(0);
 });
 
-test('a task archived today lists in the Today band without Load history, name first', async ({
-  relaunch,
-}) => {
+test('a task archived today stays hidden until History opens, name first', async ({ relaunch }) => {
   const board = adeBoard((b) => {
     const h = (b.history as { taskId: string; archivedAt: number }[]).find(
       (e) => e.taskId === 'H_1',
@@ -56,13 +54,19 @@ test('a task archived today lists in the Today band without Load history, name f
   const { window: page } = await openPlan(relaunch, [
     { channel: IPC.adeTaskBoard, response: board },
   ]);
-  const row = page.locator('[data-testid="ade-history-row"][data-task-id="H_1"]');
+  const rows = page.locator('[data-testid="ade-history-row"]');
+  const load = page.locator('[data-testid="ade-load-history"]');
+  await expect(rows).toHaveCount(0);
+  await expect(bandOf(page, 0).locator('[data-testid="ade-history-row"]')).toHaveCount(0);
+  await expect(load).toContainText('5');
+  await load.click();
+  const row = bandOf(page, 0).locator('[data-testid="ade-history-row"][data-task-id="H_1"]');
   await expect(row).toBeVisible();
   await expect(row).toContainText('Audit log for admin actions');
-  await expect(page.locator('[data-testid="ade-history-row"]')).toHaveCount(1);
-  expect(await bandOf(page, 0).locator('[data-testid="ade-history-row"]').count()).toBe(1);
   const box = await row.locator('span.font-medium').boundingBox();
   expect(box?.width ?? 0).toBeGreaterThan(80);
+  await load.click();
+  await expect(rows).toHaveCount(0);
 });
 
 test('weekend bands carry the hatched pattern; workdays do not', async ({ relaunch }) => {

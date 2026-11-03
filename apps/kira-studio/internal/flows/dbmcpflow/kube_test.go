@@ -203,9 +203,22 @@ func TestKubeMcp(t *testing.T) {
 	t.Run("ask", func(t *testing.T) {
 		k.setMcp(t, "kind-dev", kubernetes.McpSettings{Discover: "allow", List: "prompt", Describe: "allow", Logs: "allow"})
 		before := k.podRequests()
+		const stmt = "kubectl get pods -n default --context kind-dev"
+		stmtRows := func() (n int) {
+			recent, err := k.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 200})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, r := range recent {
+				if r.Kind == "kubernetes" && r.Command != nil && *r.Command == stmt {
+					n++
+				}
+			}
+			return n
+		}
+		rowsBefore := stmtRows()
 		pending := k.callAsync("kube_list_resources", k.listPods("default", nil))
 		req := k.pending(t)
-		const stmt = "kubectl get pods -n default --context kind-dev"
 		if req.Kind != "kubernetes" || req.Statement != stmt || req.Cluster == nil ||
 			*req.Cluster != (bridge.DbMcpApprovalCluster{Context: "kind-dev", Server: k.fake.URL, Namespace: "default", Operation: "list"}) {
 			t.Fatalf("pending approval = %+v (cluster %+v)", req, req.Cluster)
@@ -240,6 +253,9 @@ func TestKubeMcp(t *testing.T) {
 		})
 		if row.Source != "mcp" || row.Command == nil || *row.Command != stmt || row.Rows == nil || *row.Rows != 3 || row.ConnectionID != nil {
 			t.Fatalf("op row = %+v, want an mcp row with the statement and 3 rows", row)
+		}
+		if n := stmtRows(); n != rowsBefore+1 {
+			t.Fatalf("one MCP read wrote %d rows, want 1", n-rowsBefore)
 		}
 		// Contract dbmcp-kube: tests/ui/kubernetes-mcp.spec.ts renders this row in the Operations panel.
 		k.contract(t, "OpsService.Recent", []model.OpRecord{row})

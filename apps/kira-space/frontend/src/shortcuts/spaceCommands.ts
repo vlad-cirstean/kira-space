@@ -3,6 +3,7 @@ import { runCommand } from '@workbench/shortcuts/commands';
 import type { PaletteCommand } from '@workbench/shortcuts/palette';
 import { useAppUpdateStore } from '../state/appUpdate';
 import { useLayoutStore } from '../state/layout';
+import { useOpenedFilesWindowStore } from '../state/openedFilesWindow';
 import { useSettingsStore } from '../state/settings';
 import { useTabsStore } from '../state/tabs';
 
@@ -12,6 +13,31 @@ export function spacePaletteCommands(): () => PaletteCommand[] {
   const tabsStore = useTabsStore();
   const settingsStore = useSettingsStore();
   const appUpdateStore = useAppUpdateStore();
+  const filesWindow = useOpenedFilesWindowStore();
+
+  // The files window has no settings mount or panels; the toggles would move the shared layout.
+  const workbenchOnly = (): PaletteCommand[] =>
+    filesWindow.active
+      ? []
+      : [
+          {
+            id: 'open-settings',
+            label: t('common.action.openSettings.label'),
+            run: () => {
+              settingsStore.settingsOpen = true;
+            },
+          },
+          {
+            id: 'toggle-project-panel',
+            label: t('space.shortcuts.palette.toggleProjectPanel.label'),
+            run: () => layoutStore.toggleProjectPanel(),
+          },
+          {
+            id: 'toggle-operations-panel',
+            label: t('space.shortcuts.palette.toggleOperationsPanel.label'),
+            run: () => layoutStore.toggleOperationsPanel(),
+          },
+        ];
 
   return () => [
     {
@@ -19,23 +45,7 @@ export function spacePaletteCommands(): () => PaletteCommand[] {
       label: t('common.action.checkForUpdates.label'),
       run: () => void appUpdateStore.checkForUpdates(),
     },
-    {
-      id: 'open-settings',
-      label: t('common.action.openSettings.label'),
-      run: () => {
-        settingsStore.settingsOpen = true;
-      },
-    },
-    {
-      id: 'toggle-project-panel',
-      label: t('space.shortcuts.palette.toggleProjectPanel.label'),
-      run: () => layoutStore.toggleProjectPanel(),
-    },
-    {
-      id: 'toggle-operations-panel',
-      label: t('space.shortcuts.palette.toggleOperationsPanel.label'),
-      run: () => layoutStore.toggleOperationsPanel(),
-    },
+    ...workbenchOnly(),
     { id: 'view.find', label: t('common.action.find.label'), run: () => runCommand('view.find') },
     {
       id: 'tab-next',

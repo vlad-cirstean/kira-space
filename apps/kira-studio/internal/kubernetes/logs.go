@@ -227,19 +227,62 @@ func (s *Service) LogsOpen(args LogsOpenArgs) error {
 	if err != nil {
 		return mapErr(err)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	if !s.logs.add(args.StreamID, &logStream{windowKey: args.WindowKey, clusterID: args.ClusterID, cancel: cancel}) {
-		cancel()
+	_, name, _, err := s.target(args.ClusterID)
+	if err != nil {
+		return err
+	}
+	base, stopBase := context.WithCancel(context.Background())
+	if !s.logs.add(args.StreamID, &logStream{windowKey: args.WindowKey, clusterID: args.ClusterID, cancel: stopBase}) {
+		stopBase()
 		return ipcerr.Contract("streamId is already open")
 	}
+	cmd := LogsCommand(name, LogsReadArgs{
+		Namespace: args.Namespace, Pod: args.Pod, Container: args.Container,
+		Previous: args.Previous, Timestamps: args.Timestamps, Tail: args.Tail,
+	}, args.Follow)
+	opened := make(chan error, 1)
+	var once sync.Once
+	report := func(err error) { once.Do(func() { opened <- err }) }
+	go func() {
+		defer stopBase()
+		reported := false
+		err := s.rec.Record(context.Background(), cmd, func(runCtx context.Context, note *OpNote) error {
+			return s.runLogStream(runCtx, base, cs, args, note, func(err error) {
+				reported = true
+				report(err)
+			})
+		})
+		// Not reported: the recorder skipped the call or recovered a panic before the open result.
+		if !reported {
+			s.logs.remove(args.StreamID)
+			if err == nil {
+				err = errors.New("log stream ended before it opened")
+			}
+			report(err)
+		}
+	}()
+	return <-opened
+}
+
+// runLogStream is the stream's recorded call: it reports the open result once via report, then pumps
+// until the stream ends. stop is the registry's handle; runCtx ends with a panel Cancel.
+func (s *Service) runLogStream(runCtx, stop context.Context, cs *clusterClient, args LogsOpenArgs, note *OpNote, report func(error)) error {
+	ctx, cancel := context.WithCancel(runCtx)
+	defer cancel()
+	defer context.AfterFunc(stop, cancel)()
 	body, err := openLogStream(ctx, cancel, cs, args)
 	if err != nil {
 		s.logs.remove(args.StreamID)
-		cancel()
-		return mapErr(err)
+		err = mapErr(err)
+		report(err)
+		return err
 	}
-	go s.pumpLogs(ctx, cancel, args, body)
-	return nil
+	report(nil)
+	streamErr := s.pumpLogs(ctx, args, body, note)
+	if runCtx.Err() != nil {
+		return context.Canceled
+	}
+	return streamErr
 }
 
 // openLogStream opens the stream under ctx; cancel is ctx's own, fired if the open outlives callTimeout.
@@ -255,8 +298,8 @@ func openLogStream(ctx context.Context, cancel context.CancelFunc, cs *clusterCl
 	return body, err
 }
 
-func (s *Service) pumpLogs(ctx context.Context, cancel context.CancelFunc, args LogsOpenArgs, body io.ReadCloser) {
-	defer cancel()
+// pumpLogs streams body to the window and returns the read error that ended it, nil on a normal end.
+func (s *Service) pumpLogs(ctx context.Context, args LogsOpenArgs, body io.ReadCloser, note *OpNote) error {
 	defer s.logs.remove(args.StreamID)
 	defer body.Close()
 
@@ -267,11 +310,13 @@ func (s *Service) pumpLogs(ctx context.Context, cancel context.CancelFunc, args 
 	framer := newLineFramer(args.Timestamps)
 	buf := make([]byte, readChunk)
 	var err error
+	lines := 0
 	for {
 		var n int
 		n, err = body.Read(buf)
 		for _, l := range framer.write(buf[:n]) {
 			co.Push(l)
+			lines++
 		}
 		if err != nil {
 			break
@@ -279,12 +324,18 @@ func (s *Service) pumpLogs(ctx context.Context, cancel context.CancelFunc, args 
 	}
 	for _, l := range framer.flush() {
 		co.Push(l)
+		lines++
 	}
+	note.SetRows(lines)
 	final := logsFinal{}
 	if ctx.Err() == nil && !errors.Is(err, io.EOF) {
 		final.err = err.Error()
 	}
 	co.Finish(final)
+	if final.err != "" {
+		return err
+	}
+	return nil
 }
 
 // LogsClose ends one stream.

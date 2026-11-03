@@ -1,6 +1,13 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/vue-query';
-import { useDocumentVisibility } from '@vueuse/core';
+import {
+  type QueryClient,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/vue-query';
+import { createSharedComposable, tryOnScopeDispose, useDocumentVisibility } from '@vueuse/core';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
+import { optimisticUpdate } from '@workbench/behaviour/optimistic';
 import { TIMING } from '@workbench/behaviour/timing';
 import { computed, type MaybeRefOrGetter, toValue } from 'vue';
 import { kubeControl } from './control';
@@ -12,68 +19,101 @@ const LARGE_LIST_ROWS = 1000;
 
 const kubeKeys = {
   clusters: ['kubernetes', 'clusters'] as const,
+  reorder: ['kubernetes', 'reorder'] as const,
   cluster: (id: string) => ['kubernetes', id] as const,
   status: (id: string) => ['kubernetes', id, 'status'] as const,
   namespaces: (id: string) => ['kubernetes', id, 'namespaces'] as const,
   kinds: (id: string) => ['kubernetes', id, 'kinds'] as const,
 };
 
+/** A refetch of loaded data is background work: the backend keeps it out of the Operations panel. */
+const isRefetch = (qc: QueryClient, key: readonly unknown[]) => qc.getQueryData(key) !== undefined;
+
+/** One listener per window, however many components list clusters. */
+const useClustersChanged = createSharedComposable(() => {
+  const qc = useQueryClient();
+  tryOnScopeDispose(
+    kubeControl.onClusters(() => {
+      // The event fires before this window's own reorder resolves; that result already sets the cache.
+      if (qc.isMutating({ mutationKey: kubeKeys.reorder }) > 0) return;
+      void qc.invalidateQueries({ queryKey: kubeKeys.clusters });
+    }),
+  );
+});
+
+/** Another window reordered or edited a cluster: refetch. */
 export function useClusters() {
+  useClustersChanged();
   return useQuery({ queryKey: kubeKeys.clusters, queryFn: kubeControl.clusters });
 }
 
-const statusOptions = (id: string) => ({
+/** Clusters in `ids` order first; any not listed keep their place after them. */
+function clustersInOrder(old: KubeClusters, ids: readonly string[]): KubeClusters {
+  const byId = new Map(old.clusters.map((c) => [c.id, c]));
+  const listed = ids.flatMap((id) => byId.get(id) ?? []);
+  return { ...old, clusters: [...listed, ...old.clusters.filter((c) => !ids.includes(c.id))] };
+}
+
+/** Saves a cluster order; the cache follows at once, the backend result replaces it. */
+export function useReorderClusters() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationKey: kubeKeys.reorder,
+    mutationFn: (ids: string[]) => kubeControl.reorder(ids),
+    ...optimisticUpdate<KubeClusters, string[]>(qc, kubeKeys.clusters, clustersInOrder),
+    onSuccess: (result) => qc.setQueryData<KubeClusters>(kubeKeys.clusters, result),
+  });
+}
+
+const statusOptions = (qc: QueryClient, id: string) => ({
   queryKey: kubeKeys.status(id),
-  queryFn: () => kubeControl.status(id, false),
+  queryFn: () => kubeControl.status(id, false, isRefetch(qc, kubeKeys.status(id))),
   staleTime: TIMING.pollSlow,
 });
 
-const kindsOptions = (id: string) => ({
-  queryKey: kubeKeys.kinds(id),
-  queryFn: () => kubeControl.kinds(id),
-  staleTime: TIMING.pollSlow,
-});
-
-/** Probe/discovery for every listed cluster; only the ones in `active` ever connect. */
+/** Probe for every listed cluster; only the ones in `active` ever connect. */
 export function useClusterProbes(
   ids: MaybeRefOrGetter<readonly string[]>,
   active: MaybeRefOrGetter<readonly string[]>,
 ) {
-  const statuses = useQueries({
+  const qc = useQueryClient();
+  return useQueries({
     queries: computed(() =>
-      toValue(ids).map((id) => ({ ...statusOptions(id), enabled: toValue(active).includes(id) })),
+      toValue(ids).map((id) => ({
+        ...statusOptions(qc, id),
+        enabled: toValue(active).includes(id),
+      })),
     ),
   });
-  const kinds = useQueries({
-    queries: computed(() =>
-      toValue(ids).map((id) => ({ ...kindsOptions(id), enabled: toValue(active).includes(id) })),
-    ),
-  });
-  return { statuses, kinds };
 }
 
 export function useClusterStatus(id: MaybeRefOrGetter<string>) {
+  const qc = useQueryClient();
   return useQuery({
     queryKey: computed(() => kubeKeys.status(toValue(id))),
-    queryFn: () => kubeControl.status(toValue(id), false),
+    queryFn: () =>
+      kubeControl.status(toValue(id), false, isRefetch(qc, kubeKeys.status(toValue(id)))),
     staleTime: TIMING.pollSlow,
     enabled: computed(() => toValue(id) !== ''),
   });
 }
 
 export function useKinds(id: MaybeRefOrGetter<string>) {
+  const qc = useQueryClient();
   return useQuery({
     queryKey: computed(() => kubeKeys.kinds(toValue(id))),
-    queryFn: () => kubeControl.kinds(toValue(id)),
+    queryFn: () => kubeControl.kinds(toValue(id), isRefetch(qc, kubeKeys.kinds(toValue(id)))),
     staleTime: TIMING.pollSlow,
     enabled: computed(() => toValue(id) !== ''),
   });
 }
 
 export function useNamespaces(id: MaybeRefOrGetter<string>, enabled: MaybeRefOrGetter<boolean>) {
+  const qc = useQueryClient();
   return useQuery({
     queryKey: computed(() => kubeKeys.namespaces(toValue(id))),
-    queryFn: () => kubeControl.namespaces(toValue(id)),
+    queryFn: () =>
+      kubeControl.namespaces(toValue(id), isRefetch(qc, kubeKeys.namespaces(toValue(id)))),
     staleTime: TIMING.pollSlow,
     enabled: computed(() => toValue(id) !== '' && toValue(enabled)),
   });
@@ -87,21 +127,24 @@ export function useResourceList(args: {
   enabled: MaybeRefOrGetter<boolean>;
 }) {
   const visibility = useDocumentVisibility();
+  const qc = useQueryClient();
+  const queryKey = computed(() => [
+    'kubernetes',
+    toValue(args.clusterId),
+    'list',
+    toValue(args.kind),
+    toValue(args.namespace),
+    toValue(args.labelSelector),
+  ]);
   return useQuery({
-    queryKey: computed(() => [
-      'kubernetes',
-      toValue(args.clusterId),
-      'list',
-      toValue(args.kind),
-      toValue(args.namespace),
-      toValue(args.labelSelector),
-    ]),
+    queryKey,
     queryFn: () =>
       kubeControl.list(
         toValue(args.clusterId),
         toValue(args.kind),
         toValue(args.namespace),
         toValue(args.labelSelector),
+        isRefetch(qc, queryKey.value),
       ),
     refetchInterval: (query) => {
       if (visibility.value !== 'visible') return false;
@@ -120,21 +163,24 @@ export function useDescribe(args: {
   namespace: MaybeRefOrGetter<string>;
   name: MaybeRefOrGetter<string>;
 }) {
+  const qc = useQueryClient();
+  const queryKey = computed(() => [
+    'kubernetes',
+    toValue(args.clusterId),
+    'describe',
+    toValue(args.kind),
+    toValue(args.namespace),
+    toValue(args.name),
+  ]);
   return useQuery({
-    queryKey: computed(() => [
-      'kubernetes',
-      toValue(args.clusterId),
-      'describe',
-      toValue(args.kind),
-      toValue(args.namespace),
-      toValue(args.name),
-    ]),
+    queryKey,
     queryFn: () =>
       kubeControl.describe(
         toValue(args.clusterId),
         toValue(args.kind),
         toValue(args.namespace),
         toValue(args.name),
+        isRefetch(qc, queryKey.value),
       ),
   });
 }
@@ -143,7 +189,7 @@ export function useDescribe(args: {
 export function useRefreshCluster() {
   const qc = useQueryClient();
   return useAsyncAction(async (id: string) => {
-    const status = await kubeControl.status(id, true);
+    const status = await kubeControl.status(id, true, false);
     await qc.invalidateQueries({ queryKey: kubeKeys.cluster(id) });
     qc.setQueryData<KubeStatus>(kubeKeys.status(id), status);
   });

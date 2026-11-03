@@ -86,7 +86,7 @@
           "docsUrl": "https://developer.atlassian.com/cloud/acli/guides/introduction/",
           "steps": [
             {
-              "command": "brew tap atlassian/homebrew-acli && brew install acli",
+              "command": "brew tap atlassian/homebrew-acli && brew trust --formula atlassian/acli/acli && brew install acli",
               "purpose": "install"
             },
             {
@@ -202,7 +202,7 @@
           "docsUrl": "https://developer.atlassian.com/cloud/acli/guides/introduction/",
           "steps": [
             {
-              "command": "brew tap atlassian/homebrew-acli && brew install acli",
+              "command": "brew tap atlassian/homebrew-acli && brew trust --formula atlassian/acli/acli && brew install acli",
               "purpose": "install"
             },
             {
@@ -322,7 +322,7 @@
           "docsUrl": "https://developer.atlassian.com/cloud/acli/guides/introduction/",
           "steps": [
             {
-              "command": "brew tap atlassian/homebrew-acli && brew install acli",
+              "command": "brew tap atlassian/homebrew-acli && brew trust --formula atlassian/acli/acli && brew install acli",
               "purpose": "install"
             },
             {
@@ -442,7 +442,7 @@
           "docsUrl": "https://developer.atlassian.com/cloud/acli/guides/introduction/",
           "steps": [
             {
-              "command": "brew tap atlassian/homebrew-acli && brew install acli",
+              "command": "brew tap atlassian/homebrew-acli && brew trust --formula atlassian/acli/acli && brew install acli",
               "purpose": "install"
             },
             {
@@ -562,7 +562,7 @@
           "docsUrl": "https://developer.atlassian.com/cloud/acli/guides/introduction/",
           "steps": [
             {
-              "command": "brew tap atlassian/homebrew-acli && brew install acli",
+              "command": "brew tap atlassian/homebrew-acli && brew trust --formula atlassian/acli/acli && brew install acli",
               "purpose": "install"
             },
             {
@@ -678,7 +678,7 @@
           "docsUrl": "https://developer.atlassian.com/cloud/acli/guides/introduction/",
           "steps": [
             {
-              "command": "brew tap atlassian/homebrew-acli && brew install acli",
+              "command": "brew tap atlassian/homebrew-acli && brew trust --formula atlassian/acli/acli && brew install acli",
               "purpose": "install"
             },
             {

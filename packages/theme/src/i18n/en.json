@@ -1855,6 +1855,14 @@
           "body": "Changes are off for this phone. Turn them on for it in the mobile access settings on the computer."
         }
       },
+      "openedFiles": {
+        "notOpenable": {
+          "body": "Can’t open {path}. The file is missing, or Kira Space can’t show this type."
+        },
+        "window": {
+          "title": "Opened files"
+        }
+      },
       "repoFiles": {
         "basePathAbsolute": {
           "body": "The worktree base path must be absolute."
@@ -6147,12 +6155,6 @@
       }
     },
     "detail": {
-      "close": {
-        "label": "Close details"
-      },
-      "resize": {
-        "label": "Resize details"
-      },
       "tab": {
         "describe": {
           "label": "Describe"
@@ -6178,6 +6180,22 @@
         },
         "workloads": {
           "label": "Workloads"
+        }
+      }
+    },
+    "kinds": {
+      "more": {
+        "label": "More kinds"
+      },
+      "none": {
+        "empty": "This cluster lists no resource kinds"
+      },
+      "partial": {
+        "hint": "Some API groups did not answer; their kinds are missing."
+      },
+      "picker": {
+        "search": {
+          "placeholder": "Find a resource kind"
         }
       }
     },
@@ -6270,9 +6288,26 @@
         "emptyHint": "The kubeconfig lists no contexts."
       }
     },
+    "row": {
+      "openLogs": {
+        "label": "Open logs"
+      }
+    },
     "start": {
-      "body": "Expand a context in the sidebar and choose a resource kind.",
+      "body": "Choose a context in the sidebar.",
       "title": "Browse a cluster"
+    },
+    "tabs": {
+      "aria": "Open resources",
+      "hideList": {
+        "label": "Hide resource list"
+      },
+      "resize": {
+        "label": "Resize resource list"
+      },
+      "showList": {
+        "label": "Show resource list"
+      }
     },
     "unavailable": {
       "config": {
@@ -10562,6 +10597,15 @@
       },
       "unnamed": {
         "label": "Unnamed phone"
+      }
+    },
+    "openedFiles": {
+      "window": {
+        "empty": {
+          "body": "Cmd-click a file path in a terminal, or open a file with Kira Space in Finder.",
+          "title": "No files open"
+        },
+        "title": "Opened files"
       }
     },
     "operations": {

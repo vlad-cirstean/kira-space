@@ -58,6 +58,21 @@ func (s *Service) list(ctx context.Context, args ListArgs, max int) (ListResult,
 			return ListResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.kubernetes.badSelector.error", map[string]string{"message": err.Error()})
 		}
 	}
+	var res ListResult
+	err := s.record(ctx, args.ClusterID, args.Background, func(n string) string { return ListCommand(n, args) }, func(ctx context.Context, note *OpNote) error {
+		var err error
+		if res, err = s.listRows(ctx, args, max); err == nil {
+			note.SetRows(len(res.Rows))
+		}
+		return err
+	})
+	if err != nil {
+		return ListResult{}, err
+	}
+	return res, nil
+}
+
+func (s *Service) listRows(ctx context.Context, args ListArgs, max int) (ListResult, error) {
 	cs, err := s.client(args.ClusterID)
 	if err != nil {
 		return ListResult{}, mapErr(err)

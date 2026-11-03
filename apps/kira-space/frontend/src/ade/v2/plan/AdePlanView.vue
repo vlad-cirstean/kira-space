@@ -294,7 +294,7 @@ async function onGoToDate(iso: string): Promise<void> {
 async function onFindArchived(taskId: string): Promise<void> {
   ui.select(taskId);
   const item = model.value?.view.history.find((h) => h.taskId === taskId);
-  if (!item || item.day >= 0) return;
+  if (!item) return;
   ui.showHistory = true;
   await revealDay(item.day);
 }

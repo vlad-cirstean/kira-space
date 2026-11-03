@@ -54,6 +54,8 @@ import type {
   FileListing,
   FileRead,
   FileStat,
+  OpenedFilesTerminalOpenArgs,
+  OpenedFilesTerminalResolveArgs,
   OpenedFileTarget,
   RepoSummary,
   SearchRequest,
@@ -108,6 +110,7 @@ import type {
   HostViewPosted,
   HostViewTarget,
 } from '../hostview/wire';
+import { CHANNEL_OPENED_FILES_ARRIVED } from '../openedfiles/wire';
 import type {
   RepoConfigFile,
   RepoConfigFileArgs,
@@ -373,13 +376,24 @@ const spaceControl = {
       trust<WriteFileResult>(r),
     ),
 
-  // External opens: the files this window was opened for (once), and a standalone file's content.
+  // External opens: whether this window is the files window, the files waiting for it (once per
+  // drain), and a standalone file's content.
+  openedFilesIsFilesWindow: (args: { windowKey: string }): Promise<boolean> =>
+    unwrap(OpenedFilesService.IsFilesWindow(args)).then((r) => trust<boolean>(r)),
+  onOpenedFilesArrived: (cb: () => void): (() => void) => on(CHANNEL_OPENED_FILES_ARRIVED, cb),
   openedFilesPending: (): Promise<OpenedFileTarget[]> =>
     unwrap(OpenedFilesService.Pending({ windowKey })).then((r) =>
       trust<OpenedFileTarget[]>(r ?? []),
     ),
   openedFilesRead: (path: string): Promise<FileContent> =>
     unwrap(OpenedFilesService.Read({ path })).then((r) => trust<FileContent>(r)),
+  // Terminal file links: which printed paths are openable files, and open one in Kira Space.
+  openedFilesTerminalResolve: (args: OpenedFilesTerminalResolveArgs): Promise<boolean[]> =>
+    unwrap<{ openable: boolean[] | null }>(OpenedFilesService.TerminalResolve(args)).then(
+      (r) => r.openable ?? [],
+    ),
+  openedFilesTerminalOpen: (args: OpenedFilesTerminalOpenArgs): Promise<void> =>
+    unwrap(OpenedFilesService.TerminalOpen(args)),
 
   // Default app for code and data files: the live handler of every associated extension, and the
   // switch that makes Kira Space (or the previous app) the default for some of them.

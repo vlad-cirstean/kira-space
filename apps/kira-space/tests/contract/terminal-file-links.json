@@ -1,0 +1,43 @@
+{
+  "OpenedFilesService.Pending:terminal": [
+    {
+      "col": 5,
+      "line": 2,
+      "path": "",
+      "relPath": "src/a.go",
+      "repoId": "<id:1>"
+    }
+  ],
+  "OpenedFilesService.TerminalResolve": {
+    "openable": [
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "args:OpenedFilesService.TerminalOpen": {
+    "col": 5,
+    "fallbackCwd": "",
+    "line": 2,
+    "path": "a.go",
+    "terminalId": "<masked>"
+  },
+  "args:OpenedFilesService.TerminalResolve": {
+    "fallbackCwd": "",
+    "paths": [
+      "src/a.go",
+      "./src/a.go",
+      "missing.go",
+      "src",
+      "<work>/notes/b.json",
+      "x.txt",
+      "~/k.json"
+    ],
+    "terminalId": "<masked>"
+  },
+  "error:OpenedFilesService.TerminalOpen": "{\"code\":\"E_NOT_FOUND\",\"message\":\"Can’t open missing.go. The file is missing, or Kira Space can’t show this type.\"}"
+}
