@@ -37,14 +37,14 @@ func TerminalPath(raw, cwd, home string) (string, bool) {
 
 // Openable reports per path whether it names an existing file Kira Space can show.
 func (s *Service) Openable(cwd, home string, paths []string) []bool {
-	repos := s.repos()
 	out := make([]bool, len(paths))
 	for i, p := range paths {
 		abs, ok := TerminalPath(p, cwd, home)
 		if !ok {
 			continue
 		}
-		_, err := Resolve(abs, repos)
+		// Repo matching never changes the answer; nil repos skips its per-root symlink walks.
+		_, err := Resolve(abs, nil)
 		out[i] = err == nil
 	}
 	return out
