@@ -13,3 +13,7 @@ export function redisCreateArgs(name: string) {
 export function postgresCreateArgs(name: string, _color?: string) {
   return newConnectionArgs(name, 'postgres');
 }
+
+export function mariadbCreateArgs(name: string) {
+  return newConnectionArgs(name, 'mariadb');
+}

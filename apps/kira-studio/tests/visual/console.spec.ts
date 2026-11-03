@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
 import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from '../ui/fixtures';
+import { createConnection } from '../ui/support/connect';
+import { mariadbCreateArgs } from '../ui/support/connectionArgs';
 import { IPC } from '../ui/support/ipcChannels';
 import { DB_PATH, mariadbConnectionSummary, orderItemsFixture } from '../ui/support/mariadbFixture';
 import { connectionRow, expandRow, openRowMenu } from '../ui/support/tree';
@@ -18,40 +20,14 @@ const CONTROL: ControlSnapshot[] = [
   { channel: IPC.connectionsList, response: [] },
   {
     channel: IPC.connectionsCreate,
-    args: {
-      name: 'VisualConsole',
-      kind: 'mariadb',
-      color: 'blue',
-      mode: 'fields',
-      readOnly: false,
-      host: '127.0.0.1',
-      port: 3306,
-      database: 'kira_test',
-      username: 'kira',
-      password: null,
-      uri: null,
-      options: {},
-      preconnect: null,
-      preconnectSidecar: false,
-      autoExplain: false,
-      throttlePerSec: 0,
-    },
+    args: mariadbCreateArgs('VisualConsole'),
     response: CONNECTION_SUMMARY,
   },
   ...FIXTURE.control,
 ];
 
 async function connectAndExpand(page: Page): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-mariadb"]');
-  await page.fill('[data-testid="connection-name"]', 'VisualConsole');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '3306');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'kira');
-  await page.click('[data-testid="color-blue"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'mariadb', 'VisualConsole');
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();

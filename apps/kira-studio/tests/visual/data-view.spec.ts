@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
 import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from '../ui/fixtures';
+import { createConnection } from '../ui/support/connect';
+import { mariadbCreateArgs } from '../ui/support/connectionArgs';
 import { IPC } from '../ui/support/ipcChannels';
 import {
   DB_PATH,
@@ -24,40 +26,14 @@ const CONTROL: ControlSnapshot[] = [
   { channel: IPC.connectionsList, response: [] },
   {
     channel: IPC.connectionsCreate,
-    args: {
-      name: 'VisualDataView',
-      kind: 'mariadb',
-      color: 'amber',
-      mode: 'fields',
-      readOnly: false,
-      host: '127.0.0.1',
-      port: 3306,
-      database: 'kira_test',
-      username: 'kira',
-      password: null,
-      uri: null,
-      options: {},
-      preconnect: null,
-      preconnectSidecar: false,
-      autoExplain: false,
-      throttlePerSec: 0,
-    },
+    args: mariadbCreateArgs('VisualDataView'),
     response: CONNECTION_SUMMARY,
   },
   ...FIXTURE.control,
 ];
 
 async function connectAndOpenGrid(page: Page): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-mariadb"]');
-  await page.fill('[data-testid="connection-name"]', 'VisualDataView');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '3306');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'kira');
-  await page.click('[data-testid="color-amber"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'mariadb', 'VisualDataView');
 
   const connRow = connectionRow(page);
   await expect(connRow).toBeVisible();

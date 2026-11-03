@@ -1,4 +1,6 @@
 import type { Page } from '@playwright/test';
+import type { ConnectionKind } from '@shared/domain/connection';
+import { DEFAULT_PORT } from '@shared/domain/connection';
 import { expect } from '../fixtures';
 import { APP_PATH, DB_PATH } from './postgresFixture';
 import { connectionRow, expandRow, openRowMenu } from './tree';
@@ -7,12 +9,6 @@ import { connectionRow, expandRow, openRowMenu } from './tree';
 // were copied, byte-identically or nearly so, across 8/5/2/2/6 spec files (a genuinely divergent
 // connectAndExpand stays local to cell-editor.spec.ts and leaks.spec.ts — see their own doc
 // comments). One copy here, imported everywhere.
-
-const DEFAULT_PORTS: Readonly<Record<string, number>> = {
-  postgres: 5432,
-  mongodb: 27017,
-  redis: 6379,
-};
 
 /** The `connections.create` args the new-connection dialog sends: the engine's defaults only, the
  *  rest is edited in the file. `database` is set for file kinds only. */
@@ -28,7 +24,7 @@ export function newConnectionArgs(
     mode: 'fields',
     readOnly: false,
     host: database === null ? 'localhost' : null,
-    port: database === null ? (DEFAULT_PORTS[kind] ?? null) : null,
+    port: database === null ? (DEFAULT_PORT[kind as ConnectionKind] ?? null) : null,
     database,
     username: null,
     password: null,
