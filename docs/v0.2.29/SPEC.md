@@ -8,7 +8,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 |---|---|---|
 | P484 | Kubernetes: ops panel tracks every action | Done |
 | P485 | Kubernetes: reorder clusters | Done |
-| P486 | Kubernetes: resource browser redesign, tabbed pods | Todo |
+| P486 | Kubernetes: resource browser redesign, tabbed pods | Done |
 | P487 | Kubernetes: drive the kubectl CLI instead of the native client | Todo |
 | P488 | Install instructions: trust the Jira tap | Done |
 | P489 | Terminals: Cmd-click opens file paths in Kira Space | Done |
@@ -38,6 +38,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 - Open a pod in a tab. Multiple pod tabs.
 - Overall presentation is poor. Plan proposes a new layout and may split into Parts.
 - Test: UI spec.
+- Result: frontend only, no IPC change. Flat cluster list (`ClusterList.vue`); a cluster opens on its pods. Kind bar (`KindBar.vue`: Pods plus 3 recent kinds via `SecondaryTabs`, plus a categorized `PickerPopover`). Resources open in module-local tabs (`useKubeTabsStore`, `createKubeTabHost` over the shared `TabStrip`): click previews, double-click/Enter/menu keeps. A tab mounts on first activation and stays until closed, so each pod tab keeps its log stream. Resizable, hideable list beside the tab pane; compact columns under 32 rem. `tab-next`/`tab-prev`/`tab-close` route to the module in Kubernetes mode. `kubernetes-tabs.spec.ts` (9 tests) plus updated module, ops, order, consistency and copy-coverage specs.
 
 ### P487 Kubernetes: drive the kubectl CLI instead of the native client
 
