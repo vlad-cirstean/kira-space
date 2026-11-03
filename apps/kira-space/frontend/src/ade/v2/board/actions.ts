@@ -53,7 +53,7 @@ export interface TaskCellInput {
   sessions: readonly Session[];
 }
 
-export const archiveTip = (): string => t('space.ade.board.taskAction.archive.hint');
+const archiveTip = (): string => t('space.ade.board.taskAction.archive.hint');
 
 function advanceAction(p: TaskProgress): TaskAction {
   const rest = p.segments.slice(p.stepIndex + 1).filter((s) => s.state !== 'skipped');
