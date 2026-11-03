@@ -1,21 +1,13 @@
-import { useTreePointerDrag } from '@workbench/behaviour/treePointerDrag';
+import {
+  type EdgeDrop,
+  orderAfterDrop,
+  useTreePointerDrag,
+} from '@workbench/behaviour/treePointerDrag';
 import { computed, type Ref } from 'vue';
 
 const CONNECTION_ROW = '[role="treeitem"][data-kind="connection"]';
 
-export interface ConnectionDrop {
-  id: string;
-  edge: 'top' | 'bottom';
-}
-
-/** Order after dropping `dragged` on `target`'s top or bottom edge; the input when nothing moves. */
-function orderAfterDrop(ids: readonly string[], dragged: string, drop: ConnectionDrop): string[] {
-  const rest = ids.filter((id) => id !== dragged);
-  const at = rest.indexOf(drop.id);
-  if (at < 0 || !ids.includes(dragged)) return [...ids];
-  rest.splice(drop.edge === 'top' ? at : at + 1, 0, dragged);
-  return rest;
-}
+export type ConnectionDrop = EdgeDrop;
 
 /**
  * Pointer drag reorder for the virtualized project tree, on the shared tree pointer drag. A drop

@@ -2,6 +2,21 @@ import { useElementByPoint, useEventListener, useMouse, useRafFn } from '@vueuse
 import { type Ref, shallowRef, watch } from 'vue';
 import { DRAG_TOLERANCE_PX } from './sortableReorder';
 
+/** A drop on the top or bottom edge of the row with `id`. */
+export interface EdgeDrop {
+  id: string;
+  edge: 'top' | 'bottom';
+}
+
+/** Order after dropping `dragged` on `target`'s top or bottom edge; the input when nothing moves. */
+export function orderAfterDrop(ids: readonly string[], dragged: string, drop: EdgeDrop): string[] {
+  const rest = ids.filter((id) => id !== dragged);
+  const at = rest.indexOf(drop.id);
+  if (at < 0 || !ids.includes(dragged)) return [...ids];
+  rest.splice(drop.edge === 'top' ? at : at + 1, 0, dragged);
+  return rest;
+}
+
 /**
  * Pointer drag for a virtualized tree. Sortable cannot serve one: only the visible window is
  * mounted, rows are absolutely positioned, and a drag has to survive its source row unmounting
