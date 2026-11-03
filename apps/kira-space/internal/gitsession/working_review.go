@@ -90,23 +90,24 @@ func workingRecordRanges(rec gitreview.WorkingRecord) []gitreview.LineRange {
 
 // projectWorkingRanges maps a record's ranges (snapshot coordinates) onto cur. Non-text records and
 // non-text cur carry no line ranges.
-// It also returns the snapshot-to-cur hunks, nil when none were computed.
-func (e *RepoEntry) projectWorkingRanges(ctx context.Context, rec gitreview.WorkingRecord, snapshot []byte, cur WorkingContent) ([]gitreview.LineRange, []porcelain.DiffHunk, error) {
+// It also returns the snapshot-to-cur hunks, nil when none were computed, and whether the delta
+// carried no parsed hunks.
+func (e *RepoEntry) projectWorkingRanges(ctx context.Context, rec gitreview.WorkingRecord, snapshot []byte, cur WorkingContent) ([]gitreview.LineRange, []porcelain.DiffHunk, bool, error) {
 	if rec.ContentKind != gitreview.ContentText || cur.Kind != gitreview.ContentText {
-		return nil, nil, nil
+		return nil, nil, false, nil
 	}
 	ranges := workingRecordRanges(rec)
 	if len(ranges) == 0 {
-		return nil, nil, nil
+		return nil, nil, false, nil
 	}
 	if rec.ContentHash == cur.Hash {
-		return gitreview.ProjectRanges(ranges, nil, cur.lineCount()), nil, nil
+		return gitreview.ProjectRanges(ranges, nil, cur.lineCount()), nil, false, nil
 	}
-	hunks, _, _, err := e.contentDelta(ctx, snapshot, cur.Text)
+	hunks, body, _, err := e.contentDelta(ctx, snapshot, cur.Text)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
-	return gitreview.ProjectRanges(ranges, hunks, cur.lineCount()), hunks, nil
+	return gitreview.ProjectRanges(ranges, hunks, cur.lineCount()), hunks, unparsedBody(body), nil
 }
 
 func (e *RepoEntry) workingBody(ctx context.Context, head, cur WorkingContent) (porcelain.FileDiffBody, error) {
@@ -139,7 +140,7 @@ func (e *RepoEntry) WorkingFileReview(ctx context.Context, branch, path string, 
 	}
 	reviewed := []gitreview.LineRange{}
 	if found {
-		projected, _, perr := e.projectWorkingRanges(ctx, rec, snapshot, cur)
+		projected, _, _, perr := e.projectWorkingRanges(ctx, rec, snapshot, cur)
 		if perr != nil {
 			return WorkingReviewResult{}, perr
 		}
@@ -174,11 +175,12 @@ func (e *RepoEntry) markWorkingLocked(ctx context.Context, branch, path string, 
 	var existing []gitreview.LineRange
 	if found {
 		var hunks []porcelain.DiffHunk
-		if existing, hunks, err = e.projectWorkingRanges(ctx, rec, snapshot, cur); err != nil {
+		var unparsed bool
+		if existing, hunks, unparsed, err = e.projectWorkingRanges(ctx, rec, snapshot, cur); err != nil {
 			return ReviewFileStatus{}, err
 		}
 		// Capture before PutWorking overwrites the snapshot.
-		if err := e.captureWorking(ctx, branch, rec, snapshot, cur, hunks); err != nil {
+		if err := e.captureWorking(ctx, branch, rec, snapshot, cur, hunks, unparsed); err != nil {
 			return ReviewFileStatus{}, err
 		}
 	}
@@ -342,11 +344,6 @@ func addedLines(hunks []porcelain.DiffHunk) []gitreview.LineRange {
 	return gitreview.Normalize(out)
 }
 
-// intersectRanges is a ∩ b.
-func intersectRanges(a, b []gitreview.LineRange) []gitreview.LineRange {
-	return gitreview.Intersect(a, b)
-}
-
 // PromoteWorkingReview carries uncommitted review state onto commits made since it was taken, and
 // returns the paths it changed. A path is touched only when the branch tip's blob differs from the
 // blob at the record's head; ranges move only for lines the work added. Idempotent. tip is the
@@ -490,7 +487,7 @@ func (e *RepoEntry) landedWorkingRanges(ctx context.Context, rec gitreview.Worki
 	if err != nil {
 		return nil, false, err
 	}
-	marked := intersectRanges(workingRecordRanges(rec), addedLines(addHunks))
+	marked := gitreview.Intersect(workingRecordRanges(rec), addedLines(addHunks))
 
 	exact = tipContent.Kind == gitreview.ContentText && bytes.Equal(tipContent.Text, snapshot)
 	switch {

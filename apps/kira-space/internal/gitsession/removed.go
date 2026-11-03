@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/catfile"
@@ -57,12 +58,17 @@ func workingSource(rec gitreview.WorkingRecord) gitreview.RemovedSource {
 }
 
 // captureCommitted stores the reviewed lines of rec that hunks (snapshot to current) delete, or a
-// whole-file row for a fully reviewed non-text record whose file is gone.
-func (e *RepoEntry) captureCommitted(ctx context.Context, branch string, rec gitreview.FileRecord, snapshot []byte, hunks []porcelain.DiffHunk, currentAbsent bool) error {
+// whole-file row for a fully reviewed non-text record whose file is gone. unparsed marks a delta
+// without usable hunks (patch over the cap, binary current side): every reviewed line counts as
+// removed, as when the file is gone.
+func (e *RepoEntry) captureCommitted(ctx context.Context, branch string, rec gitreview.FileRecord, snapshot []byte, hunks []porcelain.DiffHunk, currentAbsent, unparsed bool) error {
 	repo := e.Summary.RepoID
 	switch rec.ContentKind {
 	case gitreview.ContentText:
-		ranges := gitreview.DeletedRanges(recordRanges(rec), hunks)
+		ranges := recordRanges(rec)
+		if !currentAbsent && !unparsed {
+			ranges = gitreview.DeletedRanges(ranges, hunks)
+		}
 		if len(ranges) == 0 {
 			return nil
 		}
@@ -78,17 +84,15 @@ func (e *RepoEntry) captureCommitted(ctx context.Context, branch string, rec git
 }
 
 // captureWorking is captureCommitted for an uncommitted record against cur. hunks is the
-// snapshot-to-cur delta, nil when unchanged or not computed.
-func (e *RepoEntry) captureWorking(ctx context.Context, branch string, rec gitreview.WorkingRecord, snapshot []byte, cur WorkingContent, hunks []porcelain.DiffHunk) error {
+// snapshot-to-cur delta, nil when unchanged or not computed; unparsed marks a text delta without
+// usable hunks (patch over the cap).
+func (e *RepoEntry) captureWorking(ctx context.Context, branch string, rec gitreview.WorkingRecord, snapshot []byte, cur WorkingContent, hunks []porcelain.DiffHunk, unparsed bool) error {
 	repo := e.Summary.RepoID
 	switch rec.ContentKind {
 	case gitreview.ContentText:
 		reviewed := workingRecordRanges(rec)
-		var ranges []gitreview.LineRange
-		switch cur.Kind {
-		case gitreview.ContentAbsent:
-			ranges = reviewed
-		case gitreview.ContentText:
+		ranges := reviewed
+		if cur.Kind == gitreview.ContentText && !unparsed {
 			ranges = gitreview.DeletedRanges(reviewed, hunks)
 		}
 		if len(ranges) == 0 {
@@ -130,6 +134,11 @@ func hasWorkingReview(rec gitreview.WorkingRecord) bool {
 	return false
 }
 
+// unparsedBody reports a diff body that carries no hunks to read deletions from.
+func unparsedBody(b porcelain.FileDiffBody) bool {
+	return b.Kind == porcelain.BodyTooLarge || b.Kind == porcelain.BodyBinary || b.Kind == porcelain.BodyLFSPointer
+}
+
 func oidKey(oid string) string {
 	if oid == "" {
 		return absentKey
@@ -138,16 +147,30 @@ func oidKey(oid string) string {
 }
 
 // RemovedSinceReview captures reviewed lines gone from the branch tip, then lists every stored
-// undismissed block of the branch (both origins).
+// undismissed block of the branch (both origins). A failed capture is logged and the stored blocks
+// still list; a canceled context fails the call.
 func (e *RepoEntry) RemovedSinceReview(ctx context.Context, base, branch string) (ReviewRemovedResult, error) {
-	res, _, err := e.rangeFilesRecords(ctx, base, branch)
+	if err := e.captureCommittedRemoved(ctx, base, branch); err != nil {
+		if ctx.Err() != nil {
+			return ReviewRemovedResult{}, err
+		}
+		slog.Warn("gitsession: capture removed lines", "scope", "gitsession", "repo", e.Summary.RepoID, "branch", branch, "err", err)
+	}
+	stored, err := e.review.Removed(ctx, e.Summary.RepoID, branch)
 	if err != nil {
 		return ReviewRemovedResult{}, err
 	}
-	repo := e.Summary.RepoID
-	records, err := e.review.Records(ctx, repo, branch)
+	return ReviewRemovedResult{Entries: toRemovedEntries(stored)}, nil
+}
+
+func (e *RepoEntry) captureCommittedRemoved(ctx context.Context, base, branch string) error {
+	res, _, err := e.rangeFilesRecords(ctx, base, branch)
 	if err != nil {
-		return ReviewRemovedResult{}, err
+		return err
+	}
+	records, err := e.review.Records(ctx, e.Summary.RepoID, branch)
+	if err != nil {
+		return err
 	}
 
 	renamed := map[string]string{} // old path -> new path
@@ -172,7 +195,7 @@ func (e *RepoEntry) RemovedSinceReview(ctx context.Context, base, branch string)
 	}
 	oids, err := e.blobOIDs(ctx, res.BranchTip, current)
 	if err != nil {
-		return ReviewRemovedResult{}, err
+		return err
 	}
 	for i, rec := range recs {
 		oid := oids[i]
@@ -180,15 +203,10 @@ func (e *RepoEntry) RemovedSinceReview(ctx context.Context, base, branch string)
 			continue
 		}
 		if err := e.captureCommittedRecord(ctx, branch, res.BranchTip, rec, current[i], oid); err != nil {
-			return ReviewRemovedResult{}, err
+			return err
 		}
 	}
-
-	stored, err := e.review.Removed(ctx, repo, branch)
-	if err != nil {
-		return ReviewRemovedResult{}, err
-	}
-	return ReviewRemovedResult{Entries: toRemovedEntries(stored)}, nil
+	return nil
 }
 
 func (e *RepoEntry) captureCommittedRecord(ctx context.Context, branch, tip string, listed gitreview.FileRecord, currentPath, oid string) error {
@@ -207,7 +225,7 @@ func (e *RepoEntry) captureCommittedRecord(ctx context.Context, branch, tip stri
 		if err != nil {
 			return err
 		}
-		if err := e.captureCommitted(ctx, branch, rec, snapshot, delta.Hunks, delta.CurrentOID == ""); err != nil {
+		if err := e.captureCommitted(ctx, branch, rec, snapshot, delta.Hunks, delta.CurrentOID == "", unparsedBody(delta.Body)); err != nil {
 			return err
 		}
 	} else if rec.ContentKind == gitreview.ContentText {
@@ -215,14 +233,17 @@ func (e *RepoEntry) captureCommittedRecord(ctx context.Context, branch, tip stri
 		if err != nil && !errors.Is(err, catfile.ErrMissing) && !errors.Is(err, catfile.ErrTooLarge) {
 			return err
 		}
-		if err == nil && !looksBinary(content) && len(content) <= gitreview.MaxSnapshotBytes {
-			hunks, _, _, err := e.contentDelta(ctx, snapshot, content)
-			if err != nil {
+		var hunks []porcelain.DiffHunk
+		unparsed := err != nil || looksBinary(content) || len(content) > gitreview.MaxSnapshotBytes
+		if !unparsed {
+			var body porcelain.FileDiffBody
+			if hunks, body, _, err = e.contentDelta(ctx, snapshot, content); err != nil {
 				return err
 			}
-			if err := e.captureCommitted(ctx, branch, rec, snapshot, hunks, false); err != nil {
-				return err
-			}
+			unparsed = unparsedBody(body)
+		}
+		if err := e.captureCommitted(ctx, branch, rec, snapshot, hunks, false, unparsed); err != nil {
+			return err
 		}
 	}
 	return e.review.SetRemovalChecked(ctx, repo, branch, gitreview.OriginCommit, rec.Path, rec.ReviewedAt, oidKey(oid))
@@ -273,12 +294,15 @@ func (e *RepoEntry) captureWorkingRecord(ctx context.Context, branch string, lis
 		return nil
 	}
 	var hunks []porcelain.DiffHunk
+	var unparsed bool
 	if rec.ContentKind == gitreview.ContentText && cur.Kind == gitreview.ContentText {
-		if hunks, _, _, err = e.contentDelta(ctx, snapshot, cur.Text); err != nil {
+		var body porcelain.FileDiffBody
+		if hunks, body, _, err = e.contentDelta(ctx, snapshot, cur.Text); err != nil {
 			return err
 		}
+		unparsed = unparsedBody(body)
 	}
-	if err := e.captureWorking(ctx, branch, rec, snapshot, cur, hunks); err != nil {
+	if err := e.captureWorking(ctx, branch, rec, snapshot, cur, hunks, unparsed); err != nil {
 		return err
 	}
 	return e.review.SetRemovalChecked(ctx, repo, branch, gitreview.OriginWorking, rec.Path, rec.ReviewedAt, key)

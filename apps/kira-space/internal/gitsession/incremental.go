@@ -793,7 +793,7 @@ func (e *RepoEntry) markFileAt(ctx context.Context, tip, branch, path string, re
 			return gitreview.FileRecord{}, derr
 		}
 		// Capture before Put overwrites the snapshot: reviewed lines the delta deletes are lost after.
-		if err := e.captureCommitted(ctx, branch, existingRec, snapshot, delta.Hunks, delta.CurrentOID == ""); err != nil {
+		if err := e.captureCommitted(ctx, branch, existingRec, snapshot, delta.Hunks, delta.CurrentOID == "", unparsedBody(delta.Body)); err != nil {
 			return gitreview.FileRecord{}, err
 		}
 		existing = gitreview.ProjectRanges(recordRanges(existingRec), delta.Hunks, delta.CurrentLineCount)

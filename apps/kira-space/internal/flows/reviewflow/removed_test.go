@@ -1,7 +1,9 @@
 package reviewflow_test
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -96,6 +98,50 @@ func TestReviewRemovedSinceReview(t *testing.T) {
 	}
 	if code := wireErrCode(gs, "review.removed.dismiss", gitrpc.ReviewRemovedDismissParams{RepoID: id, Branch: "feat", IDs: []int64{0}}); code != "E_CONTRACT" {
 		t.Fatalf("zero id = %q, want E_CONTRACT", code)
+	}
+}
+
+// A reviewed file rewritten past the patch cap has no parsed hunks; every reviewed line still counts
+// as removed. A range error (unrelated base) keeps the stored blocks listed.
+func TestReviewRemovedUnparsedDelta(t *testing.T) {
+	app := flowharness.New(t)
+	gs := app.OpenGitStream()
+	repo := app.NewRepo("proj")
+	lines := func(prefix string) string {
+		var b strings.Builder
+		for i := range 6000 {
+			fmt.Fprintf(&b, "%s%04d %s\n", prefix, i, strings.Repeat("x", 90))
+		}
+		return b.String()
+	}
+	repo.Commit("base", map[string]string{"seed.txt": "s\n"})
+	repo.Git("checkout", "-q", "-b", "feat")
+	repo.Commit("work", map[string]string{"big.txt": lines("old")})
+	repo.Checkout("main")
+	id := openRepo(t, gs, repo.Dir)
+	call[gitrpc.ReviewMarkResult](t, gs, "review.mark", gitrpc.ReviewMarkParams{
+		RepoID: id, Branch: "feat", Path: "big.txt", Reviewed: true,
+	})
+
+	repo.Checkout("feat")
+	repo.Commit("rewrite", map[string]string{"big.txt": lines("new")})
+	repo.Checkout("main")
+	waitTip(t, gs, id, repo.Git("rev-parse", "feat"))
+
+	list := gitrpc.ReviewRemovedListParams{RepoID: id, Branch: "feat", Base: "main"}
+	got := call[gitsession.ReviewRemovedResult](t, gs, "review.removed.list", list)
+	if len(got.Entries) != 1 || got.Entries[0].Path != "big.txt" || got.Entries[0].Range == nil ||
+		*got.Entries[0].Range != (gitreview.LineRange{Start: 1, End: 6000}) {
+		t.Fatalf("entries = %+v, want big.txt 1-6000", got.Entries)
+	}
+
+	repo.Git("checkout", "-q", "--orphan", "lone")
+	repo.Commit("lone", map[string]string{"lone.txt": "l\n"})
+	repo.Checkout("main")
+	list.Base = "lone"
+	kept := call[gitsession.ReviewRemovedResult](t, gs, "review.removed.list", list)
+	if len(kept.Entries) != 1 {
+		t.Fatalf("entries on range error = %+v, want the stored block", kept.Entries)
 	}
 }
 

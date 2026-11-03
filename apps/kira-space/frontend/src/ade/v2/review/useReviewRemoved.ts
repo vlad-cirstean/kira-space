@@ -15,7 +15,7 @@ const reviewRemovedKey = (gitRepoId: string, branch: string, base: string) =>
 
 /** Reviewed lines that left the branch since they were reviewed, committed and uncommitted. The
  *  list call captures pending removals, so any change that could remove reviewed lines refetches:
- *  a ref change, a review mark, and a re-read of the uncommitted list. */
+ *  a ref change, a review mark, and a changed uncommitted list. */
 export function useReviewRemoved(target: () => ReviewWindowTarget) {
   const key = computed(() => reviewRemovedKey(target().gitRepoId, target().branch, target().base));
   const hold = useGitRepoHold(() => target().gitRepoId);
@@ -56,7 +56,11 @@ export function useReviewRemoved(target: () => ReviewWindowTarget) {
     for (const stop of stops) stop();
   });
   const working = useReviewWorking(() => target().branchId);
-  watch(() => working.dataUpdatedAt.value, invalidate);
+  // Compare data, not dataUpdatedAt: identical refetches keep their structural-shared reference.
+  watch(
+    () => working.data.value,
+    () => void invalidateSoon(),
+  );
 
   const dismiss = useMutation({
     mutationFn: async (ids: readonly number[]) => {
