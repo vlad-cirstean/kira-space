@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Collection name shown in the Api panel."
+    },
+    "variables": {
+      "type": "array",
+      "description": "Collection variables, used as {{name}} in requests. An environment variable of the same name wins.",
+      "items": { "$ref": "#/$defs/variable" }
+    },
+    "items": {
+      "type": "array",
+      "description": "Folders and requests, in tree order.",
+      "items": { "$ref": "#/$defs/item" }
+    }
+  },
+  "$defs": {
+    "variable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Name used as {{name}}."
+        },
+        "value": { "type": "string", "description": "Plain value. Never a secret." },
+        "secret": {
+          "type": "string",
+          "x-kira-secret": true,
+          "description": "Secret reference ${secret:name}. Set the value in Kira, under Api, Environments, Secrets."
+        },
+        "description": { "type": "string", "description": "Free text." }
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "value": { "type": "string" },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "A disabled row is kept and not sent."
+        },
+        "description": { "type": "string" }
+      }
+    },
+    "formfield": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "kind": { "enum": ["text", "file"], "default": "text" },
+        "value": { "type": "string" },
+        "path": { "type": "string", "description": "Local file path for a file field." },
+        "file_name": { "type": "string" },
+        "file_size": { "type": "integer", "minimum": 0 },
+        "content_type": { "type": "string" },
+        "enabled": { "type": "boolean", "default": true },
+        "description": { "type": "string" }
+      }
+    },
+    "body": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": ["none", "raw", "code", "urlencoded", "formdata", "file"],
+          "default": "none",
+          "description": "Which buffer is sent. The other buffers are kept."
+        },
+        "raw": { "type": "string", "description": "Raw text buffer." },
+        "code": { "type": "string", "description": "Code buffer, for example JSON." },
+        "language": {
+          "enum": ["javascript", "json", "html", "xml"],
+          "default": "json",
+          "description": "Language of the code buffer."
+        },
+        "urlencoded": { "type": "array", "items": { "$ref": "#/$defs/row" } },
+        "formdata": { "type": "array", "items": { "$ref": "#/$defs/formfield" } },
+        "file": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path"],
+          "properties": {
+            "path": { "type": "string" },
+            "name": { "type": "string" },
+            "size": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "http": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method"],
+      "properties": {
+        "method": { "type": "string", "minLength": 1, "description": "HTTP method." },
+        "url": { "type": "string", "description": "URL. Takes {{name}} variables." },
+        "headers": { "type": "array", "items": { "$ref": "#/$defs/row" } },
+        "param_descriptions": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Description of a query parameter, by name."
+        },
+        "body": { "$ref": "#/$defs/body" }
+      }
+    },
+    "grpc": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "target": { "type": "string", "description": "host:port. Takes {{name}} variables." },
+        "tls": { "enum": ["plaintext", "tls"], "default": "tls" },
+        "ca_file": { "type": "string" },
+        "server_name": { "type": "string" },
+        "descriptor": {
+          "enum": ["reflection", "proto"],
+          "default": "reflection",
+          "description": "Where the service description comes from."
+        },
+        "proto_path": { "type": "string" },
+        "import_paths": { "type": "array", "items": { "type": "string" } },
+        "service": { "type": "string" },
+        "method": { "type": "string" },
+        "message": { "type": "string", "description": "Request message as JSON." },
+        "metadata": { "type": "array", "items": { "$ref": "#/$defs/row" } }
+      }
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+          "description": "Stable id of the item in this file."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Name shown in the tree."
+        },
+        "items": {
+          "type": "array",
+          "description": "Children of a folder.",
+          "items": { "$ref": "#/$defs/item" }
+        },
+        "http": { "$ref": "#/$defs/http" },
+        "grpc": { "$ref": "#/$defs/grpc" }
+      }
+    }
+  }
+}

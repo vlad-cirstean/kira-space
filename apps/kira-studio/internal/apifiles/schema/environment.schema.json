@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Environment name shown in the environment picker."
+    },
+    "description": { "type": "string", "description": "Free text." },
+    "color": {
+      "type": "string",
+      "default": "none",
+      "description": "Palette colour of the environment."
+    },
+    "variables": {
+      "type": "array",
+      "description": "Environment variables, used as {{name}} in requests. They win over collection variables.",
+      "items": { "$ref": "#/$defs/variable" }
+    }
+  },
+  "$defs": {
+    "variable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Name used as {{name}}."
+        },
+        "value": { "type": "string", "description": "Plain value. Never a secret." },
+        "secret": {
+          "type": "string",
+          "x-kira-secret": true,
+          "description": "Secret reference ${secret:name}. Set the value in Kira, under Api, Environments, Secrets."
+        },
+        "description": { "type": "string", "description": "Free text." }
+      }
+    }
+  }
+}

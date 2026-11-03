@@ -23,6 +23,8 @@ type Environment struct {
 	IsActive    bool   `json:"isActive"`
 	Description string `json:"description"`
 	Color       string `json:"color"`
+	// File is the environment file's name in the api folder, "" before the file is projected.
+	File string `json:"file"`
 }
 
 // Variable is one api_variables row's **list projection**. Value is the empty string whenever

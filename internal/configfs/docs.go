@@ -52,17 +52,28 @@ func DocFromSchema(schemaJSON []byte, rules []string) (DocModel, error) {
 	if err := json.Unmarshal(schemaJSON, &root); err != nil {
 		return DocModel{}, fmt.Errorf("configfs: schema: %w", err)
 	}
-	w := &schemaWalker{rc: &refChecker{root: root}, m: DocModel{Rules: rules}}
+	w := &schemaWalker{rc: &refChecker{root: root}, m: DocModel{Rules: rules}, open: map[string]bool{}}
 	w.walk(root, "", false)
 	return w.m, nil
 }
 
 type schemaWalker struct {
-	rc *refChecker
-	m  DocModel
+	rc   *refChecker
+	m    DocModel
+	open map[string]bool // $defs names being walked, so a recursive schema ends at its second level
 }
 
 func (w *schemaWalker) walk(s map[string]any, path string, required bool) {
+	if ref, _ := s["$ref"].(string); ref != "" {
+		if w.open[ref] {
+			if path != "" {
+				w.m.Options = append(w.m.Options, DocOption{Path: path, Type: "object", Required: required, Description: "Same fields as the enclosing " + strings.TrimPrefix(ref, "#/$defs/") + "."})
+			}
+			return
+		}
+		w.open[ref] = true
+		defer delete(w.open, ref)
+	}
 	s = w.rc.resolve(s)
 	if path != "" {
 		o := optionOf(s, path, required)
