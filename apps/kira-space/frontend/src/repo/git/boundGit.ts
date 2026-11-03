@@ -6,6 +6,7 @@
  * and loses `.cancel()`, and git errors must surface as `RpcError` (git-ui branches on its code),
  * not `CodedError`.
  */
+import * as GitHostService from '@bindings/githostservice.js';
 import * as GitService from '@bindings/gitservice.js';
 import type { RequestKey } from '@kira/git-ipc';
 import { RpcError, TransportError } from '@kira/git-ipc';
@@ -18,7 +19,7 @@ interface Cancellable extends Promise<unknown> {
 
 type BoundCall = (windowKey: string, params: never) => Cancellable;
 
-export const BOUND_METHODS: Partial<Record<RequestKey, BoundCall>> = {
+export const BOUND_METHODS = {
   'app.init': (w) => GitService.AppInit({ windowKey: w }),
   'repo.open': (w, p) => GitService.RepoOpen({ windowKey: w, params: p }),
   'repo.close': (w, p) => GitService.RepoClose({ windowKey: w, params: p }),
@@ -57,7 +58,42 @@ export const BOUND_METHODS: Partial<Record<RequestKey, BoundCall>> = {
   'preflight.restack': (w, p) => GitService.PreflightRestack({ windowKey: w, params: p }),
   'stack.restack': (w, p) => GitService.StackRestack({ windowKey: w, params: p }),
   'stack.cancelRestack': (w, p) => GitService.StackCancelRestack({ windowKey: w, params: p }),
-};
+  'review.resolveBase': (w, p) => GitService.ReviewResolveBase({ windowKey: w, params: p }),
+  'review.files': (w, p) => GitService.ReviewFiles({ windowKey: w, params: p }),
+  'review.fileDiff': (w, p) => GitService.ReviewFileDiff({ windowKey: w, params: p }),
+  'review.snapshot': (w, p) => GitService.ReviewSnapshot({ windowKey: w, params: p }),
+  'review.mark': (w, p) => GitService.ReviewMark({ windowKey: w, params: p }),
+  'review.markMany': (w, p) => GitService.ReviewMarkMany({ windowKey: w, params: p }),
+  'review.comment.add': (w, p) => GitService.ReviewCommentAdd({ windowKey: w, params: p }),
+  'review.comment.list': (w, p) => GitService.ReviewCommentList({ windowKey: w, params: p }),
+  'review.comment.remove': (w, p) => GitService.ReviewCommentRemove({ windowKey: w, params: p }),
+  'review.comment.setState': (w, p) =>
+    GitService.ReviewCommentSetState({ windowKey: w, params: p }),
+  'review.comment.edit': (w, p) => GitService.ReviewCommentEdit({ windowKey: w, params: p }),
+  'review.comment.clear': (w, p) => GitService.ReviewCommentClear({ windowKey: w, params: p }),
+  'review.comment.export': (w, p) => GitService.ReviewCommentExport({ windowKey: w, params: p }),
+  'commit.resolveChangeRequests': (w, p) =>
+    GitService.CommitResolveChangeRequests({ windowKey: w, params: p }),
+  'branch.resolveChangeRequest': (w, p) =>
+    GitService.BranchResolveChangeRequest({ windowKey: w, params: p }),
+  'branch.changeRequestIndex': (w, p) =>
+    GitService.BranchChangeRequestIndex({ windowKey: w, params: p }),
+  'branch.syncChangeRequests': (w, p) =>
+    GitService.BranchSyncChangeRequests({ windowKey: w, params: p }),
+  'gitHost.info': (w, p) => GitService.GitHostInfo({ windowKey: w, params: p }),
+  'changeRequest.browserUrl': (w, p) =>
+    GitService.ChangeRequestBrowserUrl({ windowKey: w, params: p }),
+  'changeRequest.reviewState': (w, p) =>
+    GitService.ChangeRequestReviewState({ windowKey: w, params: p }),
+  'changeRequest.submitReview': (w, p) =>
+    GitService.ChangeRequestSubmitReview({ windowKey: w, params: p }),
+  'changeRequest.comment': (w, p) => GitService.ChangeRequestComment({ windowKey: w, params: p }),
+  'changeRequest.lineComment': (w, p) =>
+    GitService.ChangeRequestLineComment({ windowKey: w, params: p }),
+  'gitHost.providers': () => GitHostService.Providers(),
+} satisfies Partial<Record<RequestKey, BoundCall>>;
+
+const boundTable: Partial<Record<RequestKey, BoundCall>> = BOUND_METHODS;
 
 /** Every git event the Go side pushes to a window, as `kira:git:<event>` (EmitTo). */
 const GIT_EVENT_PREFIX = 'kira:git:';
@@ -70,7 +106,7 @@ export function callBound(
   signal: AbortSignal | undefined,
   inflight: Set<() => void>,
 ): Promise<unknown> {
-  const call = BOUND_METHODS[method];
+  const call = boundTable[method];
   if (!call) return Promise.reject(new Error(`git method '${method}' is not bound`));
   if (signal?.aborted) {
     return Promise.reject(
