@@ -2781,9 +2781,6 @@
     "dashPair": {
       "label": "{first} — {second}"
     },
-    "deleteCollectionConfirm": {
-      "title": "Delete collection?"
-    },
     "details": {
       "title": "Details"
     },
@@ -11234,61 +11231,7 @@
   },
   "studio": {
     "api": {
-      "bulk": {
-        "applyConfirm": {
-          "title": "Apply changes?"
-        },
-        "changedNote": {
-          "body": "Variables changed since you opened bulk edit; applying overwrites those changes."
-        },
-        "hint": "Bulk edit can’t create or remove a row’s secret flag. A new {newLine} line always creates a non-secret variable, and a secret’s own line stays {secretLine} with its value left unchanged unless you type one. Use the row’s own toggle to change a variable’s secret flag.",
-        "removeConfirm": {
-          "body": "This also deletes the value history of {names}.",
-          "title": "Remove {count} variable? | Remove {count} variables?"
-        },
-        "renameWarning": {
-          "body": "Renaming a key here removes the old one and its value history. Rename in the table to keep it."
-        },
-        "summary": {
-          "status": "{added} added · {updated} updated · {removed} removed"
-        },
-        "summaryReordered": {
-          "status": "{added} added · {updated} updated · {removed} removed · reordered"
-        }
-      },
       "collections": {
-        "copyName": {
-          "label": "{name} copy"
-        },
-        "deleteFolderConfirm": {
-          "title": "Delete folder?"
-        },
-        "deleteMany": {
-          "label": "Delete {count} item | Delete {count} items"
-        },
-        "deleteManyConfirm": {
-          "body": "Deletes {list}.",
-          "collections": {
-            "label": "{count} collection | {count} collections"
-          },
-          "nested": {
-            "body": "Everything inside folders and collections goes too."
-          },
-          "openTabs": {
-            "body": "Open tabs for deleted requests stay open as unsaved."
-          },
-          "title": "Delete {count} items?"
-        },
-        "deleteRequestConfirm": {
-          "body": "“{name}” will be deleted.",
-          "title": "Delete request?"
-        },
-        "deleteTreeConfirm": {
-          "body": "“{name}” and everything inside it will be deleted."
-        },
-        "dragCount": {
-          "aria": "Moving {count} items"
-        },
         "empty": "No collections yet",
         "emptyHint": "Create one from the + button above, or import a Postman collection.",
         "export": {
@@ -11308,9 +11251,6 @@
         },
         "postmanFilter": {
           "label": "Postman export"
-        },
-        "requestGone": {
-          "error": "This request no longer exists."
         },
         "title": "Collections",
         "tree": {
@@ -11354,9 +11294,6 @@
         "newRequest": {
           "label": "New request"
         },
-        "reorderBlocked": {
-          "hint": "Clear the filter to reorder."
-        },
         "resizeRequest": {
           "aria": "Resize request pane"
         },
@@ -11373,6 +11310,54 @@
         },
         "unknownDynamic": {
           "tooltip": "{name} is an unknown dynamic value"
+        }
+      },
+      "config": {
+        "invalid": {
+          "status": "Has errors"
+        },
+        "lastGood": {
+          "hint": "The file has an error. The app uses the last good version."
+        },
+        "openFile": {
+          "label": "Open file"
+        },
+        "problems": {
+          "aria": "Config file problems"
+        },
+        "secrets": {
+          "clear": {
+            "label": "Clear value"
+          },
+          "clearConfirm": {
+            "body": "Requests that use this secret fail to send until you set it again.",
+            "title": "Clear {name}?"
+          },
+          "dialog": {
+            "hint": "The value goes to secret storage once and is never shown again.",
+            "title": "Value of {name}"
+          },
+          "hint": "Write {ref} in a value. Values stay sealed on this computer.",
+          "none": {
+            "hint": "No secrets yet. Reference one in a file to see it here."
+          },
+          "set": {
+            "label": "Enter value",
+            "status": "Value set"
+          },
+          "storageOff": {
+            "hint": "Secret storage is not available, so values can’t be saved."
+          },
+          "title": "API secrets",
+          "unset": {
+            "status": "No value"
+          },
+          "unused": {
+            "status": "Unused"
+          }
+        },
+        "variables": {
+          "empty": "No variables in this file"
         }
       },
       "copyAsCurl": {
@@ -11438,13 +11423,6 @@
         },
         "activeGroup": {
           "aria": "Active environment"
-        },
-        "deleteConfirm": {
-          "body": "“{name}” and its variables will be deleted.",
-          "title": "Delete environment?"
-        },
-        "description": {
-          "aria": "Environment description"
         },
         "editVariables": {
           "label": "Edit variables"
@@ -11572,23 +11550,11 @@
         "empty": "No previous values"
       },
       "variableSet": {
-        "bulkToggle": {
-          "label": "Edit as dotenv text"
-        },
-        "colour": {
-          "aria": "Environment colour"
-        },
         "orphan": {
           "empty": "This variable set no longer exists"
         }
       },
       "variables": {
-        "duplicate": {
-          "status": "Duplicate name"
-        },
-        "secretsUnavailable": {
-          "tooltip": "Secret storage is unavailable"
-        },
         "showValue": {
           "label": "Show value"
         }

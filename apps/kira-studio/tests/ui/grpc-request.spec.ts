@@ -591,7 +591,7 @@ test('gRPC request — a request in a collection opens the grpc-request tab kind
     parentId: null,
     kind: 'request',
     protocol: 'grpc',
-    name: 'New gRPC request',
+    name: 'List items',
     sortOrder: 0,
     method: '',
     url: '',
@@ -599,8 +599,6 @@ test('gRPC request — a request in a collection opens the grpc-request tab kind
     updatedAt: NOW,
   };
   const TREE_WITH_ITEM = { collections: TREE_EMPTY.collections, items: [CREATED_ITEM] };
-  const RENAMED_ITEM = { ...CREATED_ITEM, name: 'List items' };
-  const TREE_RENAMED = { collections: TREE_EMPTY.collections, items: [RENAMED_ITEM] };
   const SAVED_REQUEST = {
     target: 'demo.example.com:443',
     tlsMode: 'tls',
@@ -620,8 +618,6 @@ test('gRPC request — a request in a collection opens the grpc-request tab kind
     { channel: IPC.collectionsList, response: TREE_EMPTY },
     { channel: IPC.collectionsCreateGrpcItem, response: CREATED_ITEM },
     { channel: IPC.collectionsList, response: TREE_WITH_ITEM },
-    { channel: IPC.collectionsRename, response: undefined },
-    { channel: IPC.collectionsList, response: TREE_RENAMED },
     { channel: IPC.collectionsGetGrpcRequest, response: SAVED_REQUEST },
     // Opening the tab sets a non-empty target, which fires GrpcRequestView's own reflection
     // watch (D4) — seeded so the Schema pane behind the toolbar's method chip has something real
@@ -633,8 +629,7 @@ test('gRPC request — a request in a collection opens the grpc-request tab kind
   await modeTab(page, 'api').click();
 
   // *New gRPC request* from the tree's own context menu (D12's sibling of *New request*) creates
-  // the row directly — D13's inline rename is this tree's own "name it and it's saved" step, in
-  // place of a Save-as dialog it does not need for a row that already exists.
+  // the row directly; the item is a file entry and is named in the file.
   await collectionRow(page, 'col-1').click({ button: 'right' });
   await page.click('[data-testid="menu-item-new-grpc-request"]');
 
@@ -645,8 +640,6 @@ test('gRPC request — a request in a collection opens the grpc-request tab kind
   // collection row without a live call), so this is the row's one identifying mark.
   await expect(created.locator('[data-testid="grpc-collection-chip"]')).toHaveText('gRPC');
 
-  await page.locator('[data-testid="collection-rename-input"]').fill('List items');
-  await page.keyboard.press('Enter');
   await expect(collectionRow(page, 'item-grpc-1')).toContainText('List items');
 
   await collectionRow(page, 'item-grpc-1').dblclick();

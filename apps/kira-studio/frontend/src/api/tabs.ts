@@ -11,7 +11,6 @@ import {
   httpRequestTabStateSchema,
 } from '@shared/domain/http';
 import type { VariableScope } from '@shared/domain/variables';
-import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import {
   asGrpcRequestTab,
   asHttpRequestTab,
@@ -100,16 +99,6 @@ export function openCollectionRequestTab(
   });
 }
 
-/** Renaming a request in the tree patches every tab bound to it, so the view header and the tab
- *  strip follow immediately (D14). A tab whose row was deleted keeps the name it last knew. */
-export function renameApiRequestTabs(itemId: string, name: string): void {
-  for (const tab of useTabsStore().tabs) {
-    if (tab.kind !== 'http-request') continue;
-    if ((tab as HttpRequestTabRecord).state.itemId !== itemId) continue;
-    patchHttpRequestTabState(tab.id, { name });
-  }
-}
-
 /** Brings every bound request tab's name in line with the tree (a rename in another window only
  *  refreshes the tree there). A tab whose row is gone (orphan) keeps its last known name. */
 export function syncRequestTabNames(items: readonly { id: string; name: string }[]): void {
@@ -157,14 +146,6 @@ export function openCollectionGrpcRequestTab(
   });
 }
 
-export function renameGrpcRequestTabs(itemId: string, name: string): void {
-  for (const tab of useTabsStore().tabs) {
-    if (tab.kind !== 'grpc-request') continue;
-    if ((tab as GrpcRequestTabRecord).state.itemId !== itemId) continue;
-    patchGrpcRequestTabState(tab.id, { name });
-  }
-}
-
 // P2: no skipUnchanged guard — a Params-table edit rewriting the URL to the value it already had
 // (D9) is rare enough that the extra write is not worth the comparison every other patcher above
 // already accepts skipping for a hotter path (scroll offsets, page index).
@@ -174,15 +155,6 @@ export function patchHttpRequestTabState(id: string, patch: Partial<HttpRequestT
 
 export function patchGrpcRequestTabState(id: string, patch: Partial<GrpcRequestTabState>): void {
   useTabsStore().patchTabState(id, 'grpc-request', patch, { skipUnchanged: false });
-}
-
-/** True when any open request tab (HTTP or gRPC) is bound to one of `itemIds`. */
-export function hasOpenRequestTab(itemIds: ReadonlySet<string>): boolean {
-  return useTabsStore().tabs.some((tab) => {
-    if (tab.kind !== 'http-request' && tab.kind !== 'grpc-request') return false;
-    const { itemId } = (tab as HttpRequestTabRecord | GrpcRequestTabRecord).state;
-    return itemId !== null && itemIds.has(itemId);
-  });
 }
 
 export function findHttpRequestTab(id: string): HttpRequestTabRecord | null {
@@ -215,29 +187,24 @@ export function openEnvironmentsTab(): OpenTabResult {
   return useTabsStore().openTab('environments', null, 'environments', () => ({}), { reuse: true });
 }
 
-/** Renaming a collection or environment patches every open tab bound to it (D16), the same
- *  `renameApiRequestTabs`/`renameGrpcRequestTabs` shape. */
-export function renameVariableSetTabs(scope: VariableScope, ownerId: string, name: string): void {
+/** Brings every open variable-set tab's name in line with its owner's current name (a file edit
+ *  renames a collection or environment). A tab whose owner is gone keeps its last known name. */
+export function syncVariableSetTabNames(
+  scope: VariableScope,
+  owners: readonly { id: string; name: string }[],
+): void {
+  const nameById = new Map(owners.map((owner) => [owner.id, owner.name]));
   for (const tab of useTabsStore().tabs) {
     if (tab.kind !== 'variable-set') continue;
-    const vt = tab as VariableSetTabRecord;
-    if (vt.state.scope !== scope || vt.state.ownerId !== ownerId) continue;
-    patchVariableSetTabState(tab.id, { name });
-  }
-}
-
-function patchVariableSetTabState(id: string, patch: Partial<VariableSetTabState>): void {
-  useTabsStore().patchTabState(id, 'variable-set', patch, { skipUnchanged: false });
-}
-
-/** Deleting a collection or an environment closes any open tab for it (D16) — unlike a request
- *  tab, a variable-set tab has no state of its own worth preserving once its owner is gone. */
-export function closeVariableSetTabsForOwner(scope: VariableScope, ownerId: string): void {
-  const tabsStore = useTabsStore();
-  for (const tab of [...tabsStore.tabs]) {
-    if (tab.kind !== 'variable-set') continue;
-    const vt = tab as VariableSetTabRecord;
-    if (vt.state.scope === scope && vt.state.ownerId === ownerId)
-      fireAndForget(tabsStore.closeTab(tab.id), 'closeVariableSetTab');
+    const { state } = tab as VariableSetTabRecord;
+    const next = state.scope === scope ? nameById.get(state.ownerId) : undefined;
+    if (next !== undefined && next !== state.name) {
+      useTabsStore().patchTabState(
+        tab.id,
+        'variable-set',
+        { name: next },
+        { skipUnchanged: false },
+      );
+    }
   }
 }

@@ -91,6 +91,8 @@ export function defaultGrpcSavedRequest(): GrpcSavedRequest {
 export interface CollectionSummary {
   id: string;
   name: string;
+  /** The collection's config file name in the api folder. */
+  file: string;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;

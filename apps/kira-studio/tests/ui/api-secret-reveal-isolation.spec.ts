@@ -1,4 +1,3 @@
-import { boxCenter, sortableHover } from '@workbench/testing/ui/drag';
 import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
 import { openHttpMode } from './support/apiMode';
@@ -6,11 +5,11 @@ import { collectionRow, variableRow } from './support/apiRows';
 import { IPC } from './support/ipcChannels';
 
 // revealedValues (state/variables.ts) is shared between the Variables
-// dialog and the Copy-as-curl dialog's own revealSecretValues loop (curl.ts), but only
+// tab and the Copy-as-curl dialog's own revealSecretValues loop (curl.ts), but only
 // closeVariablesDialog used to clear it — closeCopyAsCurlDialog cleared only its own, separate
-// revealedSecretValues map. A secret revealed via Copy-as-curl left a stale entry that
-// VariablesDialog.vue's un-tick-secret flow trusted in place of its own re-auth gate, committing
-// the secret as plaintext with no reveal call — no re-auth — at all. Separately,
+// revealedSecretValues map. A secret revealed via Copy-as-curl left a stale entry that the
+// Variables tab trusted in place of its own re-auth gate, showing the secret with no reveal call
+// — no re-auth — at all. Separately,
 // revealedHistoryValues (VariableRow.vue's own per-row history popover) leaked across rows for the
 // same reason: switching from one row's popover to another's unmounts the first via `v-if` without
 // ever firing its own `@close`.
@@ -22,7 +21,16 @@ import { IPC } from './support/ipcChannels';
 const NOW = '2026-01-01T00:00:00.000Z';
 
 const TREE = {
-  collections: [{ id: 'col-1', name: 'Orders API', sortOrder: 0, createdAt: NOW, updatedAt: NOW }],
+  collections: [
+    {
+      id: 'col-1',
+      name: 'Orders API',
+      file: 'orders-api.yaml',
+      sortOrder: 0,
+      createdAt: NOW,
+      updatedAt: NOW,
+    },
+  ],
   items: [
     {
       id: 'item-1',
@@ -78,10 +86,6 @@ test('a secret revealed via Copy as curl does not skip re-auth in the later-open
       args: { variableId: 'var-apikey', confirmed: false },
       response: { value: 's3cr3t-key', error: null, outcome: 'revealed' },
     },
-    {
-      channel: IPC.variablesUpsert,
-      response: { ...SECRET_VAR, value: 's3cr3t-key', isSecret: false },
-    },
   ];
   const { window: page, control } = await relaunch({ control: CONTROL });
 
@@ -105,84 +109,18 @@ test('a secret revealed via Copy as curl does not skip re-auth in the later-open
   await page.click('[data-testid="copy-as-curl-dialog-close"]');
   await expect(page.locator('[data-testid="copy-as-curl-dialog"]')).toBeHidden();
 
-  // Open the Variables dialog for the same variable and turn its secret flag off — this must run
-  // its own real reveal call, not silently trust the stale entry left by Copy as curl.
+  // Open the Variables tab for the same variable and reveal it — this must run its own real reveal
+  // call, not silently trust the stale entry left by Copy as curl.
   await collectionRow(page, 'col-1').click({ button: 'right' });
   await page.click('[data-testid="menu-item-variables"]');
   await expect(page.locator('[data-testid="variables-dialog"]')).toBeVisible();
 
-  // Controlled ARIA toggle: it flips only once the re-auth reveal resolves, so `.uncheck()`'s
-  // one-shot post-click read races that IPC round trip. Click, then wait for the flip.
-  const secretBox = variableRow(page, 'var-apikey').locator('[data-testid="variable-secret"]');
-  await secretBox.click();
-  await expect(secretBox).not.toBeChecked();
-
-  expect(control.log().filter((e) => e.channel === IPC.variablesReveal)).toHaveLength(2);
-});
-
-// onUpdateSecret's read-back after `revealVariable(id)` used to consult
-// the *shared* revealedValues map instead of this call's own outcome. A variable revealed once
-// successfully earlier in the same dialog session leaves its plaintext sitting in that map — so a
-// later, freshly-*cancelled* re-auth (declining the confirm prompt when turning the secret flag
-// off) was indistinguishable from a fresh success, and the stale plaintext got committed via
-// Upsert despite the user explicitly declining. Fixed by having runReveal/revealVariable return
-// this call's own outcome and branching on that return value instead of the map.
-test('a cancelled re-auth does not commit a stale plaintext from an earlier successful reveal in the same session', async ({
-  relaunch,
-}) => {
-  const SECRET_VAR = {
-    id: 'var-apikey',
-    scope: 'collection',
-    ownerId: 'col-1',
-    name: 'apiKey',
-    value: '',
-    isSecret: true,
-    sortOrder: 0,
-  };
-
-  const CONTROL: ControlSnapshot[] = [
-    { channel: IPC.collectionsList, response: TREE },
-    { channel: IPC.variablesListEnvironments, response: [] },
-    {
-      channel: IPC.variablesList,
-      args: { scope: 'collection', ownerId: 'col-1' },
-      response: [SECRET_VAR],
-    },
-    {
-      channel: IPC.variablesReveal,
-      args: { variableId: 'var-apikey', confirmed: false },
-      response: { value: 's3cr3t-key', error: null, outcome: 'revealed' },
-    },
-    {
-      channel: IPC.variablesReveal,
-      args: { variableId: 'var-apikey', confirmed: false },
-      response: { value: null, error: null, outcome: 'cancelled' },
-    },
-  ];
-  const { window: page, control } = await relaunch({ control: CONTROL });
-
-  await openHttpMode(page);
-  await collectionRow(page, 'col-1').click({ button: 'right' });
-  await page.click('[data-testid="menu-item-variables"]');
-  await expect(page.locator('[data-testid="variables-dialog"]')).toBeVisible();
-
-  // First reveal succeeds — var-apikey's plaintext now sits in the shared revealedValues map,
-  // populated by this very dialog, well before the un-tick below.
   await variableRow(page, 'var-apikey').locator('[data-testid="variable-reveal"]').click();
   await expect(
     variableRow(page, 'var-apikey').locator('[data-testid="variable-value"]'),
-  ).toHaveValue('s3cr3t-key');
-  expect(control.log().filter((e) => e.channel === IPC.variablesReveal)).toHaveLength(1);
+  ).toHaveText('s3cr3t-key');
 
-  // Un-ticking "secret" triggers a second, independent reveal call (D9) — this one is cancelled,
-  // so the checkbox (a controlled ARIA toggle, not a native input) stays checked; a plain click
-  // fires the action without asserting the unchecked postcondition `.uncheck()` would demand.
-  await variableRow(page, 'var-apikey').locator('[data-testid="variable-secret"]').click();
   expect(control.log().filter((e) => e.channel === IPC.variablesReveal)).toHaveLength(2);
-
-  // The stale success from the *first* reveal must not stand in for the second, cancelled one:
-  // no Upsert is ever sent, so the secret is never committed as plaintext.
-  expect(control.log().filter((e) => e.channel === IPC.variablesUpsert)).toHaveLength(0);
 });
 
 test("switching the history popover to a different row clears the previous row's revealed value", async ({
@@ -266,12 +204,10 @@ test("switching the history popover to a different row clears the previous row's
   await expect(page.locator('[data-testid="variable-history-value"]')).toHaveCount(0);
 });
 
-// P16 §5/D14: the variables filter matches the row's `name` and nothing else — this is the test
+// P16 §5: the variables filter matches the row's `name` and nothing else — this is the test
 // that pins §5's own invariant, that a filter box can never become an oracle a user probes a
-// masked secret's plaintext with. Beside D14's second rule: reordering is refused while filtered.
-test('the variables filter matches a secret’s name, never its plaintext, and disables reordering while filtered', async ({
-  relaunch,
-}) => {
+// masked secret's plaintext with.
+test('the variables filter matches a secret’s name, never its plaintext', async ({ relaunch }) => {
   const SECRET_VAR = {
     id: 'var-apikey',
     scope: 'collection',
@@ -303,14 +239,14 @@ test('the variables filter matches a secret’s name, never its plaintext, and d
       response: [SECRET_VAR, PLAIN_VAR],
     },
   ];
-  const { window: page, control } = await relaunch({ control: CONTROL });
+  const { window: page } = await relaunch({ control: CONTROL });
 
   await openHttpMode(page);
   await collectionRow(page, 'col-1').click({ button: 'right' });
   await page.click('[data-testid="menu-item-variables"]');
   await expect(page.locator('[data-testid="variables-dialog"]')).toBeVisible();
 
-  const realRows = page.locator('[data-testid="variable-row"]:not([data-id=""])');
+  const realRows = page.locator('[data-testid="variable-row"]');
   await expect(realRows).toHaveCount(2);
 
   // Typing the secret's own plaintext into the filter matches nothing — not the secret row (whose
@@ -322,33 +258,6 @@ test('the variables filter matches a secret’s name, never its plaintext, and d
   await page.fill('[data-testid="variables-filter"]', 'apiKey');
   await expect(realRows).toHaveCount(1);
   await expect(variableRow(page, 'var-apikey')).toBeVisible();
-
-  // D14: reordering is refused while filtered — the drag handle says why via its own tooltip,
-  // and Alt+↑ is a no-op.
-  await variableRow(page, 'var-apikey').locator('[data-testid="variable-grip"]').hover();
-  await expect(page.locator('[data-slot="tooltip-content"]').first()).toContainText(
-    'Clear the filter to reorder.',
-  );
-  await variableRow(page, 'var-apikey').locator('[data-testid="variable-name"]').focus();
-  await page.keyboard.press('Alt+ArrowUp');
-  expect(control.log().filter((e) => e.channel === IPC.variablesReorder)).toHaveLength(0);
-
-  // A drag between two still-visible rows is refused too (P140: Sortable is disabled).
-  await page.fill('[data-testid="variables-filter"]', 'e');
-  await expect(realRows).toHaveCount(2);
-  const grip = await variableRow(page, 'var-region')
-    .locator('[data-testid="variable-grip"]')
-    .boundingBox();
-  const target = await variableRow(page, 'var-apikey').boundingBox();
-  if (!grip || !target) throw new Error('variable row has no box');
-  await sortableHover(
-    page,
-    boxCenter(grip),
-    { x: target.x + target.width / 2, y: target.y + target.height * 0.25 },
-    { start: { x: 0, y: -10 } },
-  );
-  await page.mouse.up();
-  expect(control.log().filter((e) => e.channel === IPC.variablesReorder)).toHaveLength(0);
 
   // Clearing the filter restores every row.
   await page.fill('[data-testid="variables-filter"]', '');

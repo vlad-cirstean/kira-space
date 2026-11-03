@@ -1,13 +1,10 @@
-// deleteEnvironment closed the environment's own variable-set tabs and reloaded the list,
-// but left `incognitoEnvByTab` entries holding the deleted id (an incognito tab kept substituting
-// its plain values in stage 1 while Go resolved no secrets for the missing environment) and left
-// the environment-scope variables query cached forever (a later read for that owner id would keep
-// reading the deleted rows back). This pins both evictions.
+// An environment's file is removed (in this window or another) and the list refreshes. A leftover
+// `incognitoEnvByTab` entry holding the removed id would keep an incognito tab substituting its
+// plain values in stage 1 while Go resolved no secrets for the missing environment, and the
+// environment-scope variables query would stay cached forever. This pins both evictions.
 //
-// `listCache` is gone — eviction is `reconcileEnvironments`/`reconcileTree` (apiQueries.ts),
-// run from `afterEnvironmentsListChange`/`afterTreeListChange` after every list mutation. The
-// collection-delete case below is `reconcileTree`'s own half, re-added now that
-// `collections.ts`'s own migration wires `deleteRows` through `afterTreeListChange`.
+// Eviction is `reconcileEnvironments`/`reconcileTree` (apiQueries.ts), run after a
+// `kira:api:dataChanged` {kind:'environments'|'tree'} refresh, which these tests drive directly.
 import '@workbench/testing/unit/window';
 
 import { afterAll, describe, expect, test } from 'bun:test';
@@ -53,23 +50,38 @@ afterAll(() => {
 (control as unknown as { tabsSave: typeof control.tabsSave }).tabsSave = () => Promise.resolve();
 restoreAfterEach(control);
 const { useVariablesStore } = await import('../../frontend/src/api/state/variables');
-const { apiVariablesKey, apiEnvironmentsKey, apiCollectionsTreeKey, loadVariableRows } =
-  await import('../../frontend/src/api/state/apiQueries');
+const {
+  apiVariablesKey,
+  apiEnvironmentsKey,
+  apiCollectionsTreeKey,
+  loadVariableRows,
+  reconcileEnvironments,
+  reconcileTree,
+  refreshApiQuery,
+} = await import('../../frontend/src/api/state/apiQueries');
 const { useTabIncognitoStore } = await import('../../frontend/src/state/tabIncognito');
 const { useCollectionsStore } = await import('../../frontend/src/api/state/collections');
 
 const variablesStore = useVariablesStore();
-const collectionsStore = useCollectionsStore();
+useCollectionsStore();
 // Lets both stores' own eager initial fetch (above) actually settle before any test runs, so
 // `refreshApiQuery`'s own in-flight capture never mistakes it for a test's own mocked fetch.
 await new Promise((resolve) => setTimeout(resolve, 0));
 
 function environment(id: string): ApiEnvironment {
-  return { id, name: id, description: '', color: 'none', sortOrder: 0, isActive: false };
+  return {
+    id,
+    name: id,
+    file: `${id}.yaml`,
+    description: '',
+    color: 'none',
+    sortOrder: 0,
+    isActive: false,
+  };
 }
 
 function collection(id: string, name: string): CollectionSummary {
-  return { id, name, sortOrder: 0, createdAt: '', updatedAt: '' };
+  return { id, name, file: `${id}.yaml`, sortOrder: 0, createdAt: '', updatedAt: '' };
 }
 
 function folder(id: string, collectionId: string): CollectionItemSummary {
@@ -108,12 +120,12 @@ function flush(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-describe('deleteEnvironment evicts the incognito override and the cached variables query (P108 F9)', () => {
-  test('an incognito tab pointing at the deleted environment falls back to the app-wide selection', async () => {
+describe('a removed environment evicts the incognito override and the cached variables query', () => {
+  test('an incognito tab pointing at the removed environment falls back to the app-wide selection', async () => {
     const tabId = 'tab-incognito-1';
     const envId = 'env-to-delete-1';
-    // Seeds the environments list with the id about to be deleted — TanStack's default structural
-    // sharing would otherwise reuse the same (empty) array reference across the delete below,
+    // Seeds the environments list with the id about to be removed — TanStack's default structural
+    // sharing would otherwise reuse the same (empty) array reference across the refresh below,
     // since an empty-to-empty transition has no content change for it to detect, and the
     // eviction watch (variables.ts) would then have nothing to react to.
     queryClient.setQueryData(apiEnvironmentsKey, [environment(envId)]);
@@ -123,23 +135,19 @@ describe('deleteEnvironment evicts the incognito override and the cached variabl
     expect(variablesStore.environmentIdForTab(tabId)).toBe(envId);
 
     (
-      control as unknown as {
-        variablesDeleteEnvironment: typeof control.variablesDeleteEnvironment;
-      }
-    ).variablesDeleteEnvironment = async () => {};
-    (
       control as unknown as { variablesListEnvironments: typeof control.variablesListEnvironments }
     ).variablesListEnvironments = async () => [];
 
-    await variablesStore.deleteEnvironment(envId);
+    await refreshApiQuery(apiEnvironmentsKey);
+    reconcileEnvironments();
     await flush();
 
     // Falls back to the app-wide selection ('' — no environment active) rather than keeping the
-    // deleted id.
+    // removed id.
     expect(variablesStore.environmentIdForTab(tabId)).toBe('');
   });
 
-  test('deleting an environment evicts its cached variables query, not just the environments list', async () => {
+  test('a removed environment evicts its cached variables query, not just the environments list', async () => {
     const envId = 'env-to-delete-2';
     (control as unknown as { variablesList: typeof control.variablesList }).variablesList =
       async () => [variable('v1', envId)];
@@ -147,15 +155,11 @@ describe('deleteEnvironment evicts the incognito override and the cached variabl
     expect(queryClient.getQueryData(apiVariablesKey('environment', envId))).toHaveLength(1);
 
     (
-      control as unknown as {
-        variablesDeleteEnvironment: typeof control.variablesDeleteEnvironment;
-      }
-    ).variablesDeleteEnvironment = async () => {};
-    (
       control as unknown as { variablesListEnvironments: typeof control.variablesListEnvironments }
     ).variablesListEnvironments = async () => [];
 
-    await variablesStore.deleteEnvironment(envId);
+    await refreshApiQuery(apiEnvironmentsKey);
+    reconcileEnvironments();
 
     // reconcileEnvironments reads the query cache directly (an imperative reader, §3.5) —
     // no reactivity lag to wait out here.
@@ -176,8 +180,8 @@ describe('deleteEnvironment evicts the incognito override and the cached variabl
   });
 });
 
-describe('deleteRows (collections.ts) evicts the collection-scope variables query on a collection delete (reconcileTree, P112)', () => {
-  test('deleting a collection evicts its cached variables query, not just the tree', async () => {
+describe('a removed collection evicts the collection-scope variables query (reconcileTree)', () => {
+  test('a removed collection evicts its cached variables query, not just the tree', async () => {
     const collectionId = 'col-to-delete-1';
     queryClient.setQueryData(apiCollectionsTreeKey, {
       collections: [collection(collectionId, 'Orders API')],
@@ -189,29 +193,11 @@ describe('deleteRows (collections.ts) evicts the collection-scope variables quer
     await loadVariableRows('collection', collectionId);
     expect(queryClient.getQueryData(apiVariablesKey('collection', collectionId))).toHaveLength(1);
 
-    (
-      control as unknown as { collectionsDeleteMany: typeof control.collectionsDeleteMany }
-    ).collectionsDeleteMany = async () => {};
     (control as unknown as { collectionsList: typeof control.collectionsList }).collectionsList =
       async () => ({ collections: [], items: [] });
 
-    await collectionsStore.deleteRows([
-      {
-        key: `c:${collectionId}`,
-        depth: 0,
-        hasChildren: true,
-        expanded: true,
-        kind: 'collection',
-        id: collectionId,
-        collectionId,
-        parentId: null,
-        name: 'Orders API',
-        method: '',
-        url: '',
-        protocol: 'http',
-        matched: false,
-      },
-    ]);
+    await refreshApiQuery(apiCollectionsTreeKey);
+    reconcileTree();
 
     // reconcileTree reads the query cache directly (an imperative reader, §3.5) — no reactivity
     // lag to wait out here.

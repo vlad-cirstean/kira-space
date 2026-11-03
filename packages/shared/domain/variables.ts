@@ -31,6 +31,8 @@ export interface ApiVariable {
 export interface ApiEnvironment {
   id: string;
   name: string;
+  /** The environment's config file name in the api folder. */
+  file: string;
   sortOrder: number;
   isActive: boolean;
   description: string;
@@ -44,25 +46,6 @@ export interface ApiVariableHistoryEntry {
   value: string;
   isSecret: boolean;
   recordedAt: string;
-}
-
-// P17 D21/D22/D23: one line of a parsed `.env` bulk edit — the wire mirror of
-// api-core's own dotenv.ts#EnvEntry, carried across the bridge to VariablesRepo.ApplyBulk.
-// hasValue is false for a bare `KEY=` line (D22 rule 3).
-export interface ApiVariableBulkEntry {
-  name: string;
-  value: string;
-  hasValue: boolean;
-  description: string;
-}
-
-// ApplyBulk's own answer — the same counts the renderer's own reconcileEnv already computed
-// locally for its live summary (§4's guard that the two reconciles agree).
-export interface ApiVariableBulkResult {
-  added: number;
-  updated: number;
-  removed: number;
-  reordered: boolean;
 }
 
 // D8: the same four-outcome vocabulary v1.1 P14 already established for connections.RevealResult,

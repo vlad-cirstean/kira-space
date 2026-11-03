@@ -146,7 +146,8 @@ export type ApiDataChange =
   | { kind: 'tree' }
   | { kind: 'savedRequest'; itemId: string }
   | { kind: 'variables'; scope: VariableScope; ownerId: string }
-  | { kind: 'environments' };
+  | { kind: 'environments' }
+  | { kind: 'config' };
 
 export interface ApiDataChangedEvent {
   changes: ApiDataChange[];

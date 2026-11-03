@@ -10,6 +10,7 @@ import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
+import ApiConfigProblems from './ApiConfigProblems.vue';
 import CollectionsTree from './CollectionsTree.vue';
 import ImportReportStrip from './ImportReportStrip.vue';
 import { useCollectionSelectionStore } from './state/collectionSelection';
@@ -192,13 +193,9 @@ onUnmounted(() => {
             />
             <CollectionsTree v-if="collectionsExpanded" class="flex-1 min-h-0" />
           </div>
-          <!-- Removes the environments category from this panel by user request
-               ("remove the environment list from alongside the collections list entirely"). The
-               environments themselves did not go anywhere: the header's own action opens the
-               environments tab, which lists and manages them, and each row there still opens the
-               same openVariableSetTab('environment', …) this category used to. -->
         </div>
       </div>
+      <ApiConfigProblems />
     </template>
     <div v-else class="flex min-h-0 flex-1 flex-col">
       <ImportReportStrip />
@@ -209,6 +206,7 @@ onUnmounted(() => {
         :title="t('studio.api.collections.empty')"
         :description="t('studio.api.collections.emptyHint')"
       />
+      <ApiConfigProblems />
     </div>
   </div>
 </template>

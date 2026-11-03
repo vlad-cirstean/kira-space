@@ -8,7 +8,7 @@ import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
 import { modeTab } from './support/apiMode';
 import { collectionRow } from './support/apiRows';
-import { deleteChord, primaryChord } from './support/chord';
+import { primaryChord } from './support/chord';
 import { installClipboardSpy, lastClipboardWrite } from './support/clipboard';
 import { connectAndExpand, connectionCreateArgs, openConsoleFromMenu } from './support/connect';
 import { acceptConfirm, cancelConfirm } from './support/dialogs';
@@ -326,19 +326,6 @@ test('Browse: the tree.copyName chord copies the name', async ({ relaunch }) => 
   await expect.poll(() => lastClipboardWrite(page)).toBe('user:1:bighash');
 });
 
-test('collections tree: the tree.delete chord opens the delete confirm', async ({ relaunch }) => {
-  const { window: page } = await relaunch({
-    control: [{ channel: IPC.collectionsList, response: COLLECTION_TREE }],
-  });
-  await modeTab(page, 'api').click();
-  await collectionRow(page, 'col-1').locator('[data-testid="tree-twisty"]').click();
-  await collectionRow(page, 'item-health').focus();
-  await page.keyboard.press(await deleteChord(page));
-  await expect(page.locator(CONFIRM)).toBeVisible();
-  await cancelConfirm(page);
-  await expect(collectionRow(page, 'item-health')).toBeVisible();
-});
-
 // --- InlineState, find bar --------------------------------------------------------------------
 
 function httpRequestTab(state: Record<string, unknown>): Record<string, unknown> {
@@ -465,69 +452,6 @@ test('collections tree expansion survives a reload', async ({ relaunch }) => {
   await page.reload();
   await modeTab(page, 'api').click();
   await expect(collectionRow(page, 'item-health')).toBeVisible();
-});
-
-// --- environments list ------------------------------------------------------------------------
-
-const ENVS = [
-  { id: 'env-a', name: 'Alpha', sortOrder: 0, isActive: true, description: '' },
-  { id: 'env-b', name: 'Bravo', sortOrder: 1, isActive: false, description: '' },
-  { id: 'env-c', name: 'Charlie', sortOrder: 2, isActive: false, description: '' },
-];
-
-async function openEnvironments(page: Page): Promise<Locator> {
-  await modeTab(page, 'api').click();
-  await page.locator('[data-testid="tree-background"]').click({ button: 'right' });
-  await page.click('[data-testid="menu-item-environments"]');
-  await expect(page.locator('[data-testid="environments-dialog"]')).toBeVisible();
-  return page.locator('[data-testid="environment-row"]');
-}
-
-test('environments: Alt+Down moves a row', async ({ relaunch }) => {
-  const { window: page } = await relaunch({
-    control: [
-      { channel: IPC.collectionsList, response: COLLECTION_TREE },
-      { channel: IPC.variablesListEnvironments, response: ENVS },
-      { channel: IPC.variablesReorderEnvironments, response: ENVS },
-    ],
-  });
-  const rows = await openEnvironments(page);
-  await expect(rows.first().locator('[data-testid="environment-name"]')).toHaveValue('Alpha');
-
-  // The row itself is not focusable; its name input is where a keyboard user stands.
-  await rows.first().locator('[data-testid="environment-name"]').focus();
-  await page.keyboard.press('Alt+ArrowDown');
-  await expect(rows.nth(1).locator('[data-testid="environment-name"]')).toHaveValue('Alpha');
-  await expect(rows.first().locator('[data-testid="environment-name"]')).toHaveValue('Bravo');
-});
-
-test('environments: Escape during a drag restores the order', async ({ relaunch }) => {
-  const { window: page, control } = await relaunch({
-    control: [
-      { channel: IPC.collectionsList, response: COLLECTION_TREE },
-      { channel: IPC.variablesListEnvironments, response: ENVS },
-      { channel: IPC.variablesReorderEnvironments, response: ENVS },
-    ],
-  });
-  const rows = await openEnvironments(page);
-  const grip = await rows.first().locator('[data-testid="environment-grip"]').boundingBox();
-  const target = await rows.nth(2).boundingBox();
-  if (!grip || !target) throw new Error('environment row has no box');
-
-  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2 + 10, { steps: 5 });
-  await page.mouse.move(target.x + target.width / 2, target.y + target.height * 0.75, {
-    steps: 15,
-  });
-  await page.keyboard.press('Escape');
-  await page.mouse.up();
-
-  await expect(rows.first().locator('[data-testid="environment-name"]')).toHaveValue('Alpha');
-  await expect(rows.nth(2).locator('[data-testid="environment-name"]')).toHaveValue('Charlie');
-  expect(control.log().filter((e) => e.channel === IPC.variablesReorderEnvironments)).toHaveLength(
-    0,
-  );
 });
 
 // --- layering, cursor -------------------------------------------------------------------------

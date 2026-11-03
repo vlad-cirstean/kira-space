@@ -20,7 +20,6 @@ import { connectionRow } from './support/tree';
 // internal/flows/appflow/errors_test.go; texts below are the catalog's literals.
 
 const BRIDGE_PKG = 'github.com/kirathecat/kira-studio/apps/kira-studio/internal/bridge';
-const NOW = '2026-01-01T00:00:00.000Z';
 
 const DOCKER_OK = {
   state: 'ok',
@@ -205,36 +204,11 @@ test('side-panel empties are EmptyState with no button', async ({ relaunch }) =>
   await expect(collections.locator('button')).toHaveCount(0);
 });
 
-const TREE = {
-  collections: [{ id: 'col-1', name: 'Orders API', sortOrder: 0, createdAt: NOW, updatedAt: NOW }],
-  items: [],
-};
-const ENV = { id: 'env-1', name: 'Prod', sortOrder: 0, isActive: true };
-const VARIABLE = {
-  id: 'var-host',
-  scope: 'collection',
-  ownerId: 'col-1',
-  name: 'host',
-  value: 'api.example.com',
-  isSecret: false,
-  sortOrder: 0,
-};
-
 const icon = (el: Locator, name: string) => expect(el.locator(`.codicon-${name}`)).toBeVisible();
 
-test('delete is trash in the connection and collection menus; remove is close on a variable row', async ({
-  relaunch,
-}) => {
+test('delete is trash in the connection menu', async ({ relaunch }) => {
   const { window: page } = await relaunch({
-    control: [
-      { channel: IPC.connectionsList, response: [PG_CONN] },
-      { channel: IPC.collectionsList, response: TREE },
-      {
-        channel: IPC.variablesList,
-        args: { scope: 'collection', ownerId: 'col-1' },
-        response: [VARIABLE],
-      },
-    ],
+    control: [{ channel: IPC.connectionsList, response: [PG_CONN] }],
   });
 
   await (await connectionRow(page, PG_CONN.name)).click({ button: 'right' });
@@ -242,26 +216,6 @@ test('delete is trash in the connection and collection menus; remove is close on
   await page.hover('[data-testid="menu-item-color"]');
   await expect(page.locator('[data-testid="menu-item-color-blue"]')).toContainText('Blue');
   await page.keyboard.press('Escape');
-
-  await modeTab(page, 'api').click();
-  const collection = page.locator('[data-testid="collection-row"][data-id="col-1"]');
-  await collection.click({ button: 'right' });
-  await icon(page.locator('[data-testid="menu-item-delete"]'), 'trash');
-  await page.click('[data-testid="menu-item-variables"]');
-  await icon(page.locator('[data-testid="variable-remove"]').first(), 'close');
-});
-
-test('delete is trash on an environment row', async ({ relaunch }) => {
-  const { window: page } = await relaunch({
-    control: [
-      { channel: IPC.collectionsList, response: TREE },
-      { channel: IPC.variablesListEnvironments, response: [ENV] },
-    ],
-  });
-  await modeTab(page, 'api').click();
-  await page.click('[data-testid="api-environments"]');
-  await expect(page.locator('[data-testid="environments-dialog"]')).toBeVisible();
-  await icon(page.locator('[data-testid="environment-remove"]'), 'trash');
 });
 
 test('Duplicate tab shows the files icon', async ({ relaunch }) => {

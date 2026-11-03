@@ -1,5 +1,4 @@
 import type { Page } from '@playwright/test';
-import { boxCenter, sortableHover } from '@workbench/testing/ui/drag';
 import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
 import { openHttpMode } from './support/apiMode';
@@ -17,7 +16,16 @@ const NOW = '2026-01-01T00:00:00.000Z';
 // One collection, one request item directly under its root (no folder — one twisty click reaches
 // it), reused by every test below.
 const TREE = {
-  collections: [{ id: 'col-1', name: 'Orders API', sortOrder: 0, createdAt: NOW, updatedAt: NOW }],
+  collections: [
+    {
+      id: 'col-1',
+      name: 'Orders API',
+      file: 'orders-api.yaml',
+      sortOrder: 0,
+      createdAt: NOW,
+      updatedAt: NOW,
+    },
+  ],
   items: [
     {
       id: 'item-1',
@@ -132,9 +140,9 @@ test('a secret is masked, and revealing it is gated', async ({ relaunch }) => {
 
   // The plaintext row shows its value; every secret row is masked; not one Reveal call has been
   // made yet, and no bound call's own log carries the secret's plaintext before a reveal.
-  await expect(
-    variableRow(page, 'var-plain').locator('[data-testid="variable-value"]'),
-  ).toHaveValue('api.example.com');
+  await expect(variableRow(page, 'var-plain').locator('[data-testid="variable-value"]')).toHaveText(
+    'api.example.com',
+  );
   await expect(
     variableRow(page, 'var-secret-ok').locator('[data-testid="variable-value-masked"]'),
   ).toHaveText('••••••••');
@@ -152,7 +160,7 @@ test('a secret is masked, and revealing it is gated', async ({ relaunch }) => {
   await acceptConfirm(page);
   await expect(
     variableRow(page, 'var-secret-ok').locator('[data-testid="variable-value"]'),
-  ).toHaveValue('s3cr3t');
+  ).toHaveText('s3cr3t');
   expect(control.log().filter((e) => e.channel === IPC.variablesReveal)).toHaveLength(2);
 
   // A cancelled reveal leaves the row masked, with no further call than the one Reveal itself.
@@ -334,82 +342,9 @@ test('precedence is environment-over-collection', async ({ relaunch }) => {
   expect(sendCalls[1].args).toMatchObject({ url: 'https://api.example.com/us-collection' });
 });
 
-// ---- 4. Reorder persists what was dragged ----
+// ---- 5. History lists prior values, read-only ----
 
-test('reorder persists what was dragged', async ({ relaunch }) => {
-  const V1 = {
-    id: 'v1',
-    scope: 'collection',
-    ownerId: 'col-1',
-    name: 'a',
-    value: '1',
-    isSecret: false,
-    sortOrder: 0,
-  };
-  const V2 = {
-    id: 'v2',
-    scope: 'collection',
-    ownerId: 'col-1',
-    name: 'b',
-    value: '2',
-    isSecret: false,
-    sortOrder: 1,
-  };
-  const V3 = {
-    id: 'v3',
-    scope: 'collection',
-    ownerId: 'col-1',
-    name: 'c',
-    value: '3',
-    isSecret: false,
-    sortOrder: 2,
-  };
-
-  const CONTROL: ControlSnapshot[] = [
-    { channel: IPC.collectionsList, response: TREE },
-    {
-      channel: IPC.variablesList,
-      args: { scope: 'collection', ownerId: 'col-1' },
-      response: [V1, V2, V3],
-    },
-    { channel: IPC.variablesReorder },
-  ];
-  const { window: page, control } = await relaunch({ control: CONTROL });
-
-  await openVariablesDialog(page);
-  await expect(variableRow(page, 'v3')).toBeVisible();
-
-  // Drag row 3 above row 1.
-  const grip = await variableRow(page, 'v3').locator('[data-testid="variable-grip"]').boundingBox();
-  const target = await variableRow(page, 'v1').boundingBox();
-  if (!grip || !target) throw new Error('variable row has no box');
-  await sortableHover(
-    page,
-    boxCenter(grip),
-    { x: target.x + target.width / 2, y: target.y + target.height * 0.25 },
-    { start: { x: 0, y: -10 } },
-  );
-  await page.mouse.up();
-  const dragCalls = control.log().filter((e) => e.channel === IPC.variablesReorder);
-  expect(dragCalls).toHaveLength(1);
-  expect(dragCalls[0].args).toMatchObject({
-    scope: 'collection',
-    ownerId: 'col-1',
-    ids: ['v3', 'v1', 'v2'],
-  });
-
-  // Alt+↑ on a focused row produces the same call shape — focus row v2 (now last) and move it up.
-  await variableRow(page, 'v2').locator('[data-testid="variable-name"]').focus();
-  await page.keyboard.press('Alt+ArrowUp');
-  const keyCalls = control.log().filter((e) => e.channel === IPC.variablesReorder);
-  expect(keyCalls).toHaveLength(2);
-  expect(keyCalls[1].args).toMatchObject({ scope: 'collection', ownerId: 'col-1' });
-  expect((keyCalls[1].args as { ids: string[] }).ids).toContain('v2');
-});
-
-// ---- 5. History restores a prior value ----
-
-test('history restores a prior value', async ({ relaunch }) => {
+test('history lists prior values and offers no restore', async ({ relaunch }) => {
   const CURRENT = {
     id: 'var-1',
     scope: 'collection',
@@ -419,7 +354,6 @@ test('history restores a prior value', async ({ relaunch }) => {
     isSecret: false,
     sortOrder: 0,
   };
-  const RESTORED = { ...CURRENT, value: 'v2' };
   const HISTORY = [
     {
       id: 'h3',
@@ -446,22 +380,14 @@ test('history restores a prior value', async ({ relaunch }) => {
 
   const CONTROL: ControlSnapshot[] = [
     { channel: IPC.collectionsList, response: TREE },
-    // Two snapshots sharing one (channel, args) key, on purpose (mockRuntime.ts's own supported
-    // shape) — the dialog's initial load, then its reload after the restore's own Upsert.
     {
       channel: IPC.variablesList,
       args: { scope: 'collection', ownerId: 'col-1' },
       response: [CURRENT],
     },
-    {
-      channel: IPC.variablesList,
-      args: { scope: 'collection', ownerId: 'col-1' },
-      response: [RESTORED],
-    },
     { channel: IPC.variablesHistory, args: { variableId: 'var-1' }, response: HISTORY },
-    { channel: IPC.variablesUpsert, response: RESTORED },
   ];
-  const { window: page, control } = await relaunch({ control: CONTROL });
+  const { window: page } = await relaunch({ control: CONTROL });
 
   await openVariablesDialog(page);
   await variableRow(page, 'var-1').locator('[data-testid="variable-history"]').click();
@@ -473,116 +399,7 @@ test('history restores a prior value', async ({ relaunch }) => {
   await expect(entries.nth(1).locator('[data-testid="variable-history-value"]')).toHaveText('v2');
   await expect(entries.nth(2).locator('[data-testid="variable-history-value"]')).toHaveText('v1');
 
-  await entries.nth(1).locator('[data-testid="variable-history-restore"]').click();
-
-  const upsertCalls = control.log().filter((e) => e.channel === IPC.variablesUpsert);
-  expect(upsertCalls).toHaveLength(1);
-  expect(upsertCalls[0].args).toMatchObject({
-    id: 'var-1',
-    name: 'baseUrl',
-    value: 'v2',
-    isSecret: false,
-  });
-  await expect(variableRow(page, 'var-1').locator('[data-testid="variable-value"]')).toHaveValue(
-    'v2',
-  );
-});
-
-// ---- 6. D16: the trailing draft row scrolls into view when it appears ----
-
-test('a new variable row scrolls into view when it appears (D16)', async ({ relaunch }) => {
-  const VARS = Array.from({ length: 30 }, (_, i) => ({
-    id: `var-${i}`,
-    name: `v${i}`,
-    value: `val${i}`,
-    isSecret: false,
-    sortOrder: i,
-  }));
-  const NEW_ROW = { id: 'var-new', name: 'vNew', value: '', isSecret: false, sortOrder: 30 };
-  const CONTROL: ControlSnapshot[] = [
-    { channel: IPC.collectionsList, response: TREE },
-    {
-      channel: IPC.variablesList,
-      args: { scope: 'collection', ownerId: 'col-1' },
-      response: VARS,
-    },
-    {
-      channel: IPC.variablesUpsert,
-      args: {
-        scope: 'collection',
-        ownerId: 'col-1',
-        id: '',
-        name: 'vNew',
-        value: '',
-        isSecret: false,
-        description: '',
-      },
-      response: NEW_ROW,
-    },
-    {
-      channel: IPC.variablesList,
-      args: { scope: 'collection', ownerId: 'col-1' },
-      response: [...VARS, NEW_ROW],
-    },
-  ];
-  const { window: page } = await relaunch({ control: CONTROL });
-  await openVariablesDialog(page);
-
-  const list = page.locator('[data-testid="variables-list"]');
-  const rows = page.locator('[data-testid="variable-row"]');
-  await expect(rows).toHaveCount(31); // 30 real rows plus the trailing draft
-
-  const trailing = rows.last();
-  // commitDraft only fires on blur (VariableSetView.vue's own onBlur) — .fill() alone leaves the
-  // draft staged but never calls variablesUpsert.
-  await trailing.locator('[data-testid="variable-name"]').fill('vNew');
-  await trailing.locator('[data-testid="variable-name"]').blur();
-  await expect(rows).toHaveCount(32);
-
-  const newTrailing = rows.last();
-  const listBox = await list.boundingBox();
-  const rowBox = await newTrailing.boundingBox();
-  if (!listBox || !rowBox) throw new Error('list/row has no box');
-  expect(rowBox.y).toBeGreaterThanOrEqual(listBox.y);
-  expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(listBox.y + listBox.height + 1);
-});
-
-// The growth guard (D16's own reasoning — see http-request.spec.ts's identical test).
-test('deleting a variable row does not scroll (D16 guard)', async ({ relaunch }) => {
-  const VARS = Array.from({ length: 30 }, (_, i) => ({
-    id: `var-${i}`,
-    name: `v${i}`,
-    value: `val${i}`,
-    isSecret: false,
-    sortOrder: i,
-  }));
-  const CONTROL: ControlSnapshot[] = [
-    { channel: IPC.collectionsList, response: TREE },
-    {
-      channel: IPC.variablesList,
-      args: { scope: 'collection', ownerId: 'col-1' },
-      response: VARS,
-    },
-    { channel: IPC.variablesDelete, args: { id: 'var-20' }, response: undefined },
-    {
-      channel: IPC.variablesList,
-      args: { scope: 'collection', ownerId: 'col-1' },
-      response: VARS.filter((v) => v.id !== 'var-20'),
-    },
-  ];
-  const { window: page } = await relaunch({ control: CONTROL });
-  await openVariablesDialog(page);
-
-  const list = page.locator('[data-testid="variables-list"]');
-  await expect(list.evaluate((el) => el.scrollTop)).resolves.toBe(0);
-
-  const rows = page.locator('[data-testid="variable-row"]');
-  await rows
-    .nth(20)
-    .locator('[data-testid="variable-remove"]')
-    .evaluate((el: HTMLElement) => el.click());
-  await expect(rows).toHaveCount(30);
-  await expect(list.evaluate((el) => el.scrollTop)).resolves.toBe(0);
+  await expect(page.locator('[data-testid="variable-history-restore"]')).toHaveCount(0);
 });
 
 // ---- 8. The active environment's base variable reaches the wire (contract: api-boot) ----

@@ -15,6 +15,7 @@
 //   - Imperative code after an `await` (a mutation continuing on, send(), the reconcilers below)
 //     reads `queryClient.getQueryData(key)` or awaits a `load*()` reader — never the observer ref.
 
+import type { ApiConfigView } from '@shared/domain/apiConfig';
 import type {
   CollectionItemSummary,
   CollectionSummary,
@@ -42,6 +43,7 @@ export function apiSavedGrpcRequestKey(itemId: string) {
   return ['apiSavedGrpcRequest', itemId] as const;
 }
 export const apiEnvironmentsKey = ['apiEnvironments'] as const;
+export const apiConfigKey = ['apiConfig'] as const;
 export function apiVariablesKey(scope: VariableScope, ownerId: string) {
   return ['apiVariables', scope, ownerId] as const;
 }
@@ -107,6 +109,14 @@ export function apiEnvironmentsQueryOptions() {
     queryKey: apiEnvironmentsKey,
     gcTime: KEEP_WHILE_OPEN,
     queryFn: (): Promise<ApiEnvironment[]> => control.variablesListEnvironments(),
+  };
+}
+
+export function apiConfigQueryOptions() {
+  return {
+    queryKey: apiConfigKey,
+    gcTime: KEEP_WHILE_OPEN,
+    queryFn: (): Promise<ApiConfigView> => control.apiConfigView(),
   };
 }
 
@@ -248,6 +258,9 @@ async function handleApiDataChange(change: ApiDataChange): Promise<void> {
     case 'environments':
       await refreshApiQuery(apiEnvironmentsKey);
       reconcileEnvironments();
+      return;
+    case 'config':
+      await refreshApiQuery(apiConfigKey);
       return;
   }
 }
