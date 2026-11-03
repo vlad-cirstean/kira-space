@@ -294,6 +294,8 @@ test('project tree — expansion, caching, disconnect/reconnect, search, filters
     'disconnect',
     'refresh',
     'edit',
+    'open-file',
+    'reveal-file',
     'update-credentials',
     'duplicate',
     'move-up',
@@ -303,8 +305,6 @@ test('project tree — expansion, caching, disconnect/reconnect, search, filters
     'filters',
     'schema',
     'open-console',
-    'color',
-    'readonly',
     '--separator--',
     'delete',
   ]);
