@@ -1,6 +1,6 @@
 # v0.2.28
 
-Branch `chapter/v0.2.28`. First `P` is 472 (highest in v0.2.27 is P471). Draft: opens after v0.2.27 merges.
+Branch `chapter/v0.2.28`. First `P` is 472 (highest in v0.2.27 is P471). Open.
 
 Source: user request. Phases run top to bottom, two phases in parallel where file ownership allows (worktree per stream). Scope is closed: any further phases go to v0.2.29. Ends with two code review rounds, then close, then PR.
 
