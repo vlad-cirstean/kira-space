@@ -183,6 +183,8 @@ type GitStream struct {
 	mu      sync.Mutex
 	nextID  int
 	waiters map[int]chan frameIn
+	// held lists repos opened bound through this stream; Close releases them, as the page's transport does.
+	held []string
 }
 
 var gitStreamSeq atomic.Int64
@@ -243,7 +245,16 @@ func (s *GitStream) Fire(method string, params any) (cancel func()) {
 
 // Close ends the connection and waits for the server loop to return.
 func (s *GitStream) Close() {
-	s.closed.Do(s.conn.closeOut)
+	s.closed.Do(func() {
+		s.mu.Lock()
+		held := s.held
+		s.held = nil
+		s.mu.Unlock()
+		for _, id := range held {
+			_, _ = s.app.W.GitSvc.RepoClose(context.Background(), bridge.GitRepoCloseArgs{WindowKey: s.key, Params: gitrpc.RepoCloseParams{RepoID: id}})
+		}
+		s.conn.closeOut()
+	})
 	done := make(chan struct{})
 	go func() { s.wg.Wait(); close(done) }()
 	select {
@@ -325,6 +336,12 @@ func (s *GitStream) Request(method string, params, out any) error {
 	if call, ok := s.boundCall(method); ok {
 		return s.requestBound(call, method, params, out)
 	}
+	return s.RequestWire(method, params, out)
+}
+
+// RequestWire is Request always over the stream, never bound: the parity reference for bound methods.
+func (s *GitStream) RequestWire(method string, params, out any) error {
+	s.t.Helper()
 	id, ch := s.register()
 	defer s.unregister(id)
 	s.send(wireFrame{T: "req", ID: id, Method: method, Params: rawParams(s.t, params)})

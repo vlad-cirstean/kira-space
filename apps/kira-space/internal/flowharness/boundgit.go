@@ -129,6 +129,78 @@ func (s *GitStream) boundCall(method string) (boundFn, bool) {
 		"stack.cancelRestack": bind(func(ctx context.Context, key string, p gitrpc.StackCancelRestackParams) (any, error) {
 			return svc.StackCancelRestack(ctx, bridge.GitStackCancelRestackArgs{WindowKey: key, Params: p})
 		}),
+		"review.resolveBase": bind(func(ctx context.Context, key string, p gitrpc.ReviewResolveBaseParams) (any, error) {
+			return svc.ReviewResolveBase(ctx, bridge.GitReviewResolveBaseArgs{WindowKey: key, Params: p})
+		}),
+		"review.files": bind(func(ctx context.Context, key string, p gitrpc.ReviewFilesParams) (any, error) {
+			return svc.ReviewFiles(ctx, bridge.GitReviewFilesArgs{WindowKey: key, Params: p})
+		}),
+		"review.fileDiff": bind(func(ctx context.Context, key string, p gitrpc.ReviewFileDiffParams) (any, error) {
+			return svc.ReviewFileDiff(ctx, bridge.GitReviewFileDiffArgs{WindowKey: key, Params: p})
+		}),
+		"review.snapshot": bind(func(ctx context.Context, key string, p gitrpc.ReviewSnapshotParams) (any, error) {
+			return svc.ReviewSnapshot(ctx, bridge.GitReviewSnapshotArgs{WindowKey: key, Params: p})
+		}),
+		"review.mark": bind(func(ctx context.Context, key string, p gitrpc.ReviewMarkParams) (any, error) {
+			return svc.ReviewMark(ctx, bridge.GitReviewMarkArgs{WindowKey: key, Params: p})
+		}),
+		"review.markMany": bind(func(ctx context.Context, key string, p gitrpc.ReviewMarkManyParams) (any, error) {
+			return svc.ReviewMarkMany(ctx, bridge.GitReviewMarkManyArgs{WindowKey: key, Params: p})
+		}),
+		"review.comment.add": bind(func(ctx context.Context, key string, p gitrpc.ReviewCommentAddParams) (any, error) {
+			return svc.ReviewCommentAdd(ctx, bridge.GitReviewCommentAddArgs{WindowKey: key, Params: p})
+		}),
+		"review.comment.list": bind(func(ctx context.Context, key string, p gitrpc.ReviewCommentListParams) (any, error) {
+			return svc.ReviewCommentList(ctx, bridge.GitReviewCommentListArgs{WindowKey: key, Params: p})
+		}),
+		"review.comment.remove": bind(func(ctx context.Context, key string, p gitrpc.ReviewCommentRemoveParams) (any, error) {
+			return svc.ReviewCommentRemove(ctx, bridge.GitReviewCommentRemoveArgs{WindowKey: key, Params: p})
+		}),
+		"review.comment.setState": bind(func(ctx context.Context, key string, p gitrpc.ReviewCommentSetStateParams) (any, error) {
+			return svc.ReviewCommentSetState(ctx, bridge.GitReviewCommentSetStateArgs{WindowKey: key, Params: p})
+		}),
+		"review.comment.edit": bind(func(ctx context.Context, key string, p gitrpc.ReviewCommentEditParams) (any, error) {
+			return svc.ReviewCommentEdit(ctx, bridge.GitReviewCommentEditArgs{WindowKey: key, Params: p})
+		}),
+		"review.comment.clear": bind(func(ctx context.Context, key string, p gitrpc.ReviewCommentClearParams) (any, error) {
+			return svc.ReviewCommentClear(ctx, bridge.GitReviewCommentClearArgs{WindowKey: key, Params: p})
+		}),
+		"review.comment.export": bind(func(ctx context.Context, key string, p gitrpc.ReviewCommentExportParams) (any, error) {
+			return svc.ReviewCommentExport(ctx, bridge.GitReviewCommentExportArgs{WindowKey: key, Params: p})
+		}),
+		"commit.resolveChangeRequests": bind(func(ctx context.Context, key string, p gitrpc.CommitResolveChangeRequestsParams) (any, error) {
+			return svc.CommitResolveChangeRequests(ctx, bridge.GitCommitResolveChangeRequestsArgs{WindowKey: key, Params: p})
+		}),
+		"branch.resolveChangeRequest": bind(func(ctx context.Context, key string, p gitrpc.BranchResolveChangeRequestParams) (any, error) {
+			return svc.BranchResolveChangeRequest(ctx, bridge.GitBranchResolveChangeRequestArgs{WindowKey: key, Params: p})
+		}),
+		"branch.changeRequestIndex": bind(func(ctx context.Context, key string, p gitrpc.BranchChangeRequestIndexParams) (any, error) {
+			return svc.BranchChangeRequestIndex(ctx, bridge.GitBranchChangeRequestIndexArgs{WindowKey: key, Params: p})
+		}),
+		"branch.syncChangeRequests": bind(func(ctx context.Context, key string, p gitrpc.BranchSyncChangeRequestsParams) (any, error) {
+			return svc.BranchSyncChangeRequests(ctx, bridge.GitBranchSyncChangeRequestsArgs{WindowKey: key, Params: p})
+		}),
+		"gitHost.info": bind(func(ctx context.Context, key string, p gitrpc.GitHostInfoParams) (any, error) {
+			return svc.GitHostInfo(ctx, bridge.GitGitHostInfoArgs{WindowKey: key, Params: p})
+		}),
+		"changeRequest.browserUrl": bind(func(ctx context.Context, key string, p gitrpc.ChangeRequestBrowserUrlParams) (any, error) {
+			return svc.ChangeRequestBrowserUrl(ctx, bridge.GitChangeRequestBrowserUrlArgs{WindowKey: key, Params: p})
+		}),
+		"changeRequest.reviewState": bind(func(ctx context.Context, key string, p gitrpc.ChangeRequestReviewStateParams) (any, error) {
+			return svc.ChangeRequestReviewState(ctx, bridge.GitChangeRequestReviewStateArgs{WindowKey: key, Params: p})
+		}),
+		"changeRequest.submitReview": bind(func(ctx context.Context, key string, p gitrpc.ChangeRequestSubmitReviewParams) (any, error) {
+			return svc.ChangeRequestSubmitReview(ctx, bridge.GitChangeRequestSubmitReviewArgs{WindowKey: key, Params: p})
+		}),
+		"changeRequest.comment": bind(func(ctx context.Context, key string, p gitrpc.ChangeRequestCommentParams) (any, error) {
+			return svc.ChangeRequestComment(ctx, bridge.GitChangeRequestCommentArgs{WindowKey: key, Params: p})
+		}),
+		"changeRequest.lineComment": bind(func(ctx context.Context, key string, p gitrpc.ChangeRequestLineCommentParams) (any, error) {
+			return svc.ChangeRequestLineComment(ctx, bridge.GitChangeRequestLineCommentArgs{WindowKey: key, Params: p})
+		}),
+		"gitHost.providers": func(context.Context, string, json.RawMessage) (any, error) {
+			return s.app.W.GitHost.Providers(), nil
+		},
 	}
 	fn, ok := table[method]
 	return fn, ok
@@ -167,6 +239,11 @@ func (s *GitStream) requestBound(call boundFn, method string, params, out any) e
 	}
 	if err := json.Unmarshal(raw, out); err != nil {
 		return fmt.Errorf("%s: decode result %s: %w", method, raw, err)
+	}
+	if opened, ok := res.(gitrpc.RepoOpenResult); ok && opened.Kind == "ok" && opened.Repo != nil {
+		s.mu.Lock()
+		s.held = append(s.held, opened.Repo.RepoID)
+		s.mu.Unlock()
 	}
 	return nil
 }
