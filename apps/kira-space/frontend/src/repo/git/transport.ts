@@ -271,9 +271,6 @@ function createNativeGitTransport(codeRepoId: string): Transport {
     const shared = sharedClientsByCodeRepoId.get(codeRepoId);
     if (shared?.transport !== transport) return;
     evictSharedClient(codeRepoId, shared);
-    // Leases died with the client; their holders re-lease on demand (a self-inflicted close is the
-    // only path here — an intentional one already evicted the entry).
-    for (const fn of [...(evictionListeners.get(codeRepoId) ?? [])]) fn();
   });
 
   return transport;
@@ -352,27 +349,6 @@ function leaseOf(shared: SharedClient): Transport {
 }
 
 const sharedClientsByCodeRepoId = new Map<string, SharedClient>();
-/** Pause before a lease holder re-leases after an unexpected close, so a client that keeps dying
- *  cannot spin a redial loop. */
-export const RELEASE_RETRY_MS = 1000;
-const evictionListeners = new Map<string, Set<() => void>>();
-
-/** Runs `fn` when `codeRepoId`'s shared client closes on its own, not through
- *  `disposeGitTransport`. Long-lived lease holders use it to re-lease; returns the unsubscribe. */
-export function onTransportEvicted(codeRepoId: string, fn: () => void): () => void {
-  let set = evictionListeners.get(codeRepoId);
-  if (!set) {
-    set = new Set();
-    evictionListeners.set(codeRepoId, set);
-  }
-  set.add(fn);
-  return () => {
-    set.delete(fn);
-    if (set.size === 0 && evictionListeners.get(codeRepoId) === set)
-      evictionListeners.delete(codeRepoId);
-  };
-}
-
 /** Everything tied to one shared client's life, whether it ended on purpose or not. */
 function evictSharedClient(codeRepoId: string, shared: SharedClient): void {
   sharedClientsByCodeRepoId.delete(codeRepoId);

@@ -1,6 +1,7 @@
 package gitflow_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"testing"
@@ -176,7 +177,7 @@ func TestGitServiceBoundReview(t *testing.T) {
 		}
 		raw, merr := json.Marshal(bound)
 		chk(merr)
-		if got := compactJSON(t, raw); string(got) != string(compactJSON(t, wire)) {
+		if got := compactJSON(t, raw); !bytes.Equal(got, compactJSON(t, wire)) {
 			t.Fatalf("%s: bound %s\nstream %s", method, got, wire)
 		}
 	}
@@ -267,7 +268,7 @@ func sameJSON(t *testing.T, a, b any) bool {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return string(x) == string(y)
+	return bytes.Equal(x, y)
 }
 
 // streamErr is wireErr over the stream, never bound.
