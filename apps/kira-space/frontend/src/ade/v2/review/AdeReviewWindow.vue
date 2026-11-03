@@ -3,6 +3,7 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
 import { t } from '@theme/i18n';
+import { useElementSize } from '@vueuse/core';
 import { usePersistedState } from '@workbench/behaviour/persisted';
 import MainView from '@workbench/components/MainView.vue';
 import TabStrip from '@workbench/components/TabStrip.vue';
@@ -48,24 +49,51 @@ const RIGHT_TABS = computed(() => [
   { value: 'ask', label: t('space.ade.reviewStep.tab.ask.label'), testid: 'ade-review-tab-ask' },
 ]);
 
+// Pane bounds come from the row, not fixed caps: the right pane takes priority, the left fits
+// around it, and the diffs keep CENTRE_MIN while the window is wide enough. The clamp never writes
+// back, so a stored width survives a window that is briefly too narrow.
 const LEFT_MIN = 180;
-const LEFT_MAX = 480;
-const storedLeft = usePersistedState('kira.ade.review.leftWidth', 260);
-// A width stored under the older 220-560 bounds is clamped, not reset.
-const left = useLiveSize(
-  () => Math.max(LEFT_MIN, Math.min(LEFT_MAX, storedLeft.value)),
+const RIGHT_MIN = 280;
+const CENTRE_MIN = 320;
+// Row layout in px: `gap-0.5` between children, `w-0.5` per resize handle. The row's content width
+// excludes its own padding.
+const GAP = 2;
+const HANDLE = 2;
+const row = useTemplateRef<HTMLElement>('row');
+const { width: rowWidth } = useElementSize(row);
+const chrome = computed(() => (store.agentPanelVisible ? 2 : 1) * (HANDLE + 2 * GAP));
+// Before the first layout the row has no width: only the minimums apply.
+const measured = computed(() => rowWidth.value > 0);
+
+const rightMax = computed(() =>
+  measured.value
+    ? Math.max(RIGHT_MIN, rowWidth.value - LEFT_MIN - CENTRE_MIN - chrome.value)
+    : undefined,
+);
+const storedRight = usePersistedState('kira.ade.review.rightWidth', 380);
+const right = useLiveSize(
+  () => Math.min(rightMax.value ?? Infinity, Math.max(RIGHT_MIN, storedRight.value)),
   (w) => {
-    storedLeft.value = w;
+    storedRight.value = w;
   },
 );
 
-const RIGHT_MIN = 280;
-const RIGHT_MAX = 720;
-const storedRight = usePersistedState('kira.ade.review.rightWidth', 380);
-const right = useLiveSize(
-  () => Math.max(RIGHT_MIN, Math.min(RIGHT_MAX, storedRight.value)),
+const leftMax = computed(() =>
+  measured.value
+    ? Math.max(
+        LEFT_MIN,
+        rowWidth.value -
+          CENTRE_MIN -
+          chrome.value -
+          (store.agentPanelVisible ? right.size.value : 0),
+      )
+    : undefined,
+);
+const storedLeft = usePersistedState('kira.ade.review.leftWidth', 260);
+const left = useLiveSize(
+  () => Math.min(leftMax.value ?? Infinity, Math.max(LEFT_MIN, storedLeft.value)),
   (w) => {
-    storedRight.value = w;
+    storedLeft.value = w;
   },
 );
 </script>
@@ -73,7 +101,7 @@ const right = useLiveSize(
 <template>
   <div v-if="target" class="flex h-full flex-col" data-testid="ade-review-window">
     <AdeReviewHeader :target="target" />
-    <div class="flex min-h-0 flex-1 gap-0.5 bg-chrome px-1.5 pb-0.5">
+    <div ref="row" class="flex min-h-0 flex-1 gap-0.5 bg-chrome px-1.5 pb-0.5">
       <section
         class="min-h-0 flex-none overflow-hidden rounded-kira border border-border bg-bg"
         :style="{ width: `${left.size.value}px` }"
@@ -86,7 +114,7 @@ const right = useLiveSize(
         :label="t('space.ade.panel.resize.label')"
         data-testid="ade-panel-resize-handle"
         :min="LEFT_MIN"
-        :max="LEFT_MAX"
+        :max="leftMax"
         v-bind="left.bind"
       />
       <section
@@ -116,7 +144,7 @@ const right = useLiveSize(
         data-testid="ade-panel-resize-handle"
         direction="reverse"
         :min="RIGHT_MIN"
-        :max="RIGHT_MAX"
+        :max="rightMax"
         v-bind="right.bind"
       />
       <section

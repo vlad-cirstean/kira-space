@@ -168,13 +168,15 @@ type StepVars struct {
 
 // ManualVars fills the manual step message. StepPrompt arrives substituted; Notes arrive capped.
 type ManualVars struct {
-	StepName   string         `json:"stepName"`
-	Title      string         `json:"title"`
-	JiraKey    string         `json:"jiraKey"`
-	JiraURL    string         `json:"jiraURL"`
-	Notes      string         `json:"notes"`
-	Repos      []RepoLineVars `json:"repos"`
-	StepPrompt string         `json:"stepPrompt"`
+	StepName string         `json:"stepName"`
+	Title    string         `json:"title"`
+	JiraKey  string         `json:"jiraKey"`
+	JiraURL  string         `json:"jiraURL"`
+	Notes    string         `json:"notes"`
+	Repos    []RepoLineVars `json:"repos"`
+	// Folder is the task folder, shown while the task has no repo.
+	Folder     string `json:"folder"`
+	StepPrompt string `json:"stepPrompt"`
 	// Handover is what the previous stage left, HandoverFrom its stage name; both capped.
 	Handover     string `json:"handover"`
 	HandoverFrom string `json:"handoverFrom"`
@@ -911,11 +913,11 @@ var _ = arg(HeadlessToolDeclareRepos.id, "repos", spaceApp, NextCall,
 // HeadlessToolRequestBranches describes the request_branches tool.
 var HeadlessToolRequestBranches = define(Entry{
 	ID: "headless.tool.request_branches", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "request_branches",
-	Default: `Ask the user to approve branches and worktrees for task repos, all in one call; waits for the answer. Kira Space names each new branch. Per repo: created, existing, denied, failed or timeout. A new worktree may still be preparing: call branch_status before editing there.`,
+	Default: `Ask the user to approve branches and worktrees for repos, all in one call; waits for the answer. Kira Space names each branch and folder. Approval adds a registered repo missing from the task. Per repo: created, existing, denied, failed or timeout. A new worktree may still be preparing: call branch_status before editing there.`,
 }, NoVars{})
 
 var (
-	_ = arg(HeadlessToolRequestBranches.id, "repos", spaceApp, NextCall, `Task repos, 1 to {{.Max}}: nickname, name or code repo id. Add others first with declare_repos.`, MaxVars{Max: 20})
+	_ = arg(HeadlessToolRequestBranches.id, "repos", spaceApp, NextCall, `Repos, 1 to {{.Max}}: nickname, name or code repo id, from task_info.`, MaxVars{Max: 20})
 )
 
 // HeadlessToolBranchStatus describes the branch_status tool.
@@ -1061,7 +1063,7 @@ var AdeStepPrompt = define(Entry{
 	RequiredFragments: []ID{"headless.finishStep.suffix"},
 	Default: `{{if .Message}}{{.Message}}{{else}}Task: {{.Title}}
 {{if .JiraKey}}{{template "ade.jiraLine" .}}
-{{end}}- Repo: {{.Repo}} · Branch: {{.Branch}} · Worktree: {{.Worktree}}
+{{end}}{{if .Repo}}- Repo: {{.Repo}} · Branch: {{.Branch}} · Worktree: {{.Worktree}}{{else}}- No repo yet. Folder: {{.Worktree}}. Pick repos and branches with the Kira Space tools.{{end}}
 Step {{.StepNumber}}/{{.StepCount}}: {{.StepName}}{{if .StepPrompt}}
 {{.StepPrompt}}{{end}}{{end}}{{if .Extra}}
 
@@ -1093,7 +1095,8 @@ var AdeManualMessage = define(Entry{
 	UsedByKey:  "llmPrompts.entry.adeManualMessage.usedBy.body",
 	Default: `{{.StepName}}: {{.Title}}{{if .JiraKey}}
 {{template "ade.jiraLine" .}}{{end}}{{range .Repos}}
-{{template "ade.repoLine" .}}{{end}}{{if .Notes}}
+{{template "ade.repoLine" .}}{{end}}{{if not .Repos}}
+- No repo yet. Folder: {{.Folder}}. Pick repos and branches with the Kira Space tools.{{end}}{{if .Notes}}
 - Notes: {{.Notes}}{{end}}{{if .StepPrompt}}
 {{.StepPrompt}}{{end}}{{if .Handover}}
 {{template "ade.handoverBlock" .}}{{end}}

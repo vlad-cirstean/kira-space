@@ -128,8 +128,12 @@ func TestOpsAde(t *testing.T) {
 		if slug == nil {
 			t.Fatalf("no kira/<id> branch in %q", *child.Command)
 		}
+		folder := regexp.MustCompile(`/wt/api/(\w+)`).FindStringSubmatch(*child.Command)
+		if folder == nil {
+			t.Fatalf("no wt/api/<folder> worktree in %q", *child.Command)
+		}
 		f.app.Contract(t, opsScenario, "record#child", child, flowharness.Mask("id", "startedAt", "durationMs", "parentId", "taskId"),
-			flowharness.Replace(f.app.Work, "<work>"), flowharness.Replace(slug[1], "<branch-id>"))
+			flowharness.Replace(f.app.Work, "<work>"), flowharness.Replace(folder[1], "<folder-id>"), flowharness.Replace(slug[1], "<branch-id>"))
 		f.app.Contract(t, opsScenario, "record#mcp", call, opMask)
 		noAppModule(t, opsNow(t, f.app))
 	})

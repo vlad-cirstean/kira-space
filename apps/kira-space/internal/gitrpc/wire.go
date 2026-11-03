@@ -825,6 +825,23 @@ type ChangeRequestCommentParams struct {
 	Body   string `json:"body"`
 }
 
+// ChangeRequestLineCommentParams is changeRequest.lineComment's own request.
+type ChangeRequestLineCommentParams struct {
+	RepoID  string              `json:"repoId"`
+	Number  int                 `json:"number"`
+	Path    string              `json:"path"`
+	Range   gitreview.LineRange `json:"range"`
+	HeadSha string              `json:"headSha"` // the commit the caller reads; must be the host head
+	Body    string              `json:"body"`
+}
+
+// ChangeRequestLineCommentResult mirrors @kira/git-ipc's ChangeRequestLineCommentResult.
+type ChangeRequestLineCommentResult struct {
+	Kind    string      `json:"kind"`
+	Status  *HostStatus `json:"status,omitempty"`
+	HeadSha string      `json:"headSha,omitempty"`
+}
+
 // ChangeRequestPostResult mirrors @kira/git-ipc's ChangeRequestPostResult.
 type ChangeRequestPostResult struct {
 	Kind   string      `json:"kind"`

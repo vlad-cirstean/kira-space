@@ -293,14 +293,15 @@ func (r *AdeTaskRepo) CreateTask(t model.AdeTask, branches []model.AdeTaskBranch
 	return out, nil
 }
 
-// CaptureTask inserts a branchless task at the top of Later (no day) and returns the stored task.
-func (r *AdeTaskRepo) CaptureTask(t model.AdeTask) (model.AdeTask, error) {
+// CaptureTask inserts a branchless task at the top of Later (nil day) or of the day, and returns
+// the stored task.
+func (r *AdeTaskRepo) CaptureTask(t model.AdeTask, day *string) (model.AdeTask, error) {
 	tx, err := r.DB.Begin()
 	if err != nil {
 		return model.AdeTask{}, fmt.Errorf("repos: begin capture ade task: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	out, err := insertTask(tx, t, nil, nil, true)
+	out, err := insertTask(tx, t, nil, day, true)
 	if err != nil {
 		return model.AdeTask{}, err
 	}

@@ -1,0 +1,49 @@
+import { defineStore } from 'pinia';
+import { ref } from 'vue';
+
+// Last view of each task and branch panel: the tab, and the session picked in a task's Sessions
+// tab. In memory only; entries of tasks and branches that left the board are pruned.
+export const useAdePanelTabsStore = defineStore('adePanelTabs', () => {
+  const taskTabs = ref<Record<string, string>>({});
+  const branchTabs = ref<Record<string, string>>({});
+  /** Per task: the session last picked in its task or branch Sessions tab. */
+  const sessionIds = ref<Record<string, string>>({});
+
+  const taskTab = (taskId: string): string => taskTabs.value[taskId] ?? 'task';
+  const branchTab = (branchId: string): string => branchTabs.value[branchId] ?? 'details';
+  const sessionOf = (taskId: string): string | null => sessionIds.value[taskId] ?? null;
+
+  function setTaskTab(taskId: string, tab: string): void {
+    taskTabs.value[taskId] = tab;
+  }
+  function setBranchTab(branchId: string, tab: string): void {
+    branchTabs.value[branchId] = tab;
+  }
+  function selectSession(taskId: string, sessionId: string): void {
+    sessionIds.value[taskId] = sessionId;
+  }
+
+  function dropMissing(rec: Record<string, string>, keep: ReadonlySet<string>): void {
+    for (const k of Object.keys(rec)) if (!keep.has(k)) delete rec[k];
+  }
+
+  /** Drops entries of tasks and branches no longer on the board (archived, removed). */
+  function prune(taskIds: ReadonlySet<string>, branchIds: ReadonlySet<string>): void {
+    dropMissing(taskTabs.value, taskIds);
+    dropMissing(sessionIds.value, taskIds);
+    dropMissing(branchTabs.value, branchIds);
+  }
+
+  return {
+    taskTabs,
+    branchTabs,
+    sessionIds,
+    taskTab,
+    branchTab,
+    sessionOf,
+    setTaskTab,
+    setBranchTab,
+    selectSession,
+    prune,
+  };
+});

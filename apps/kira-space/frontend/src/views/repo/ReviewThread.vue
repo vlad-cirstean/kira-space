@@ -17,6 +17,7 @@ import { useEventListener, useFocus, useResizeObserver, useTextareaAutosize } fr
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, type ShallowRef, useTemplateRef } from 'vue';
+import type { HostCommentTarget } from '../../ade/v2/review/useHostLineComment';
 import { anchorParts } from './reviewAnchor';
 
 const props = defineProps<{
@@ -28,8 +29,12 @@ const props = defineProps<{
    *  'removed'/'stale' message text; 'exact'/'projected' render no label (current lines, no
    *  caveat). */
   branch: string;
+  /** Compose only: reads the change request a line comment may post to; null hides the host tab. */
+  hostComment?: () => HostCommentTarget | null;
   onSubmit?: (body: string, kind: ReviewCommentKind) => Promise<void>;
   onEdit?: (body: string, kind: ReviewCommentKind) => Promise<void>;
+  /** Posts the body to the host's change request; resolves with where it landed. Kira keeps no copy. */
+  onPostToHost?: (body: string) => Promise<{ number: number; short: string }>;
   onSetState?: (state: ReviewCommentState) => Promise<void>;
   onDelete?: () => Promise<void>;
 }>();
@@ -46,19 +51,35 @@ const mode = ref<'view' | 'compose' | 'edit'>(props.mode);
 const anchorLabel = computed(() => anchorParts(current.value, props.branch));
 
 const draft = ref('');
-const kind = ref<ReviewCommentKind>('change');
+type ComposeKind = ReviewCommentKind | 'host';
+const kind = ref<ComposeKind>('question');
+const posted = ref<{ number: number; short: string } | null>(null);
+const hostTab = computed(() =>
+  mode.value === 'compose' && props.onPostToHost ? (props.hostComment?.() ?? null) : null,
+);
 const KIND_ITEMS = computed(() => [
-  {
-    value: 'change',
-    label: t('git.review.comments.kind.change.label'),
-    testid: 'review-thread-kind-change',
-  },
   {
     value: 'question',
     label: t('space.ade.needs.kind.question.label'),
     testid: 'review-thread-kind-question',
   },
+  {
+    value: 'change',
+    label: t('git.review.comments.kind.change.label'),
+    testid: 'review-thread-kind-change',
+  },
+  ...(hostTab.value
+    ? [
+        {
+          value: 'host',
+          label: t('git.review.comments.kind.host.label', { short: hostTab.value.short }),
+          testid: 'review-thread-kind-host',
+        },
+      ]
+    : []),
 ]);
+const toHost = computed(() => kind.value === 'host' && hostTab.value !== null);
+const hostBlocked = computed(() => (toHost.value ? (hostTab.value?.blocked ?? '') : ''));
 const nextState = computed<ReviewCommentState>(() =>
   current.value?.state === 'addressed' ? 'open' : 'addressed',
 );
@@ -96,13 +117,20 @@ const { run, pending, error } = useAsyncAction(async (action: () => Promise<void
   await action();
 });
 
+// Edit and submit never carry the host tab: it is a destination, not a comment kind.
+const wireKind = (): ReviewCommentKind => (kind.value === 'host' ? 'question' : kind.value);
+
 async function submit(): Promise<void> {
   const body = draft.value.trim();
   if (body === '' || pending.value) return;
   if (mode.value === 'edit') {
-    if (await run(() => props.onEdit?.(body, kind.value))) mode.value = 'view';
+    if (await run(() => props.onEdit?.(body, wireKind()))) mode.value = 'view';
+  } else if (kind.value === 'host') {
+    await run(async () => {
+      if (hostBlocked.value === '') posted.value = (await props.onPostToHost?.(body)) ?? null;
+    });
   } else {
-    await run(() => props.onSubmit?.(body, kind.value));
+    await run(() => props.onSubmit?.(body, wireKind()));
   }
 }
 
@@ -200,6 +228,27 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
           </Button>
         </div>
       </template>
+      <template v-else-if="posted">
+        <Alert variant="info" data-testid="review-thread-posted"
+          ><AlertDescription>{{
+            t('git.review.comments.host.posted.status', {
+              short: posted.short,
+              number: posted.number,
+            })
+          }}</AlertDescription></Alert
+        >
+        <div class="flex justify-end">
+          <Button
+            variant="toolbar"
+            size="kira"
+            data-testid="review-thread-posted-close"
+            @click="emit('close')"
+          >
+            <CodiconIcon name="close" :size="13" />
+            {{ t('common.action.close.label') }}
+          </Button>
+        </div>
+      </template>
       <template v-else>
         <SecondaryTabs
           v-model="kind"
@@ -215,6 +264,16 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
           rows="3"
           data-testid="review-thread-input"
         />
+        <div
+          v-if="toHost && hostTab"
+          class="text-kira-sm text-muted-foreground"
+          data-testid="review-thread-host-hint"
+        >
+          {{
+            hostTab.blocked ||
+            t('git.review.comments.host.hint', { short: hostTab.short, number: hostTab.number })
+          }}
+        </div>
         <Alert v-if="error" variant="error" data-testid="review-thread-error"
           ><AlertDescription>{{ error }}</AlertDescription></Alert
         >
@@ -232,12 +291,18 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
             variant="toolbar-primary"
             size="kira"
             :pending="pending"
-            :disabled="draft.trim() === ''"
+            :disabled="draft.trim() === '' || hostBlocked !== ''"
             :data-testid="mode === 'edit' ? 'review-thread-save' : 'review-thread-send'"
             @click="submit"
           >
             <CodiconIcon :name="mode === 'edit' ? 'save' : 'comment'" :size="13" />
-            {{ mode === 'edit' ? t('common.action.save.label') : t('common.comment.label') }}
+            {{
+              mode === 'edit'
+                ? t('common.action.save.label')
+                : toHost && hostTab
+                  ? t('git.review.comments.host.send.label', { short: hostTab.short })
+                  : t('common.comment.label')
+            }}
           </Button>
         </div>
       </template>

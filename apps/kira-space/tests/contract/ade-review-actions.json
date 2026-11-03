@@ -1,6 +1,24 @@
 {
+  "args:changeRequest.lineComment": {
+    "body": "tighten this",
+    "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "number": 7,
+    "path": "a.txt",
+    "range": {
+      "end": 2,
+      "start": 1
+    },
+    "repoId": "<work>/r"
+  },
   "git:changeRequest.comment": {
     "kind": "ok"
+  },
+  "git:changeRequest.lineComment": {
+    "kind": "ok"
+  },
+  "git:changeRequest.lineComment#headMoved": {
+    "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "kind": "headMoved"
   },
   "git:changeRequest.reviewState": {
     "author": "alice",

@@ -42,6 +42,10 @@ export const SHORTCUTS = {
   'window.new': { scope: 'global', chord: { key: 'N', cmdOrCtrl: true, shift: true } },
   'window.close': { scope: 'global', chord: { key: 'W', cmdOrCtrl: true, shift: true } },
 
+  // Review window files list: next/previous file still needing a review.
+  'review.nextUnreviewed': { scope: 'view', chord: { key: 'F8', alt: true } },
+  'review.previousUnreviewed': { scope: 'view', chord: { key: 'F8', alt: true, shift: true } },
+
   'ade.reviewCode': { scope: 'global', chord: { key: 'R', cmdOrCtrl: true, shift: true } },
 
   'grid.copy': { scope: 'grid', chord: { key: 'C', cmdOrCtrl: true } },

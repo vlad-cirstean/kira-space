@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,12 +14,11 @@ import {
 import { t } from '@theme/i18n';
 import { useAgentInfo, useAgentList } from '@workbench/agent/agentInfo';
 import { computed } from 'vue';
-import AdeTip from '../AdeTip.vue';
 import type { Gate, LaunchTarget } from '../board/taskLaunch';
 import { useTaskLaunch } from './useTaskLaunch';
 
-// The plus on a task: per worktree, a terminal (Git module) or an agent session with no first message.
-const props = defineProps<{ taskId: string; branchId?: string; size: 'card' | 'bar' }>();
+// The plus on a task's Sessions tab bar: per worktree, a terminal (Git module) or an agent session with no first message.
+const props = defineProps<{ taskId: string; branchId?: string }>();
 
 const { info } = useAgentInfo();
 const { list } = useAgentList();
@@ -41,26 +38,19 @@ const agentLabel = computed(() => agentLabelOf(info.value.productLabel));
 const label = (x: LaunchTarget): string =>
   t('common.dotPair.label', { first: x.repo, second: x.branch });
 const reason = (g: Gate): string => (g.reason ? t(g.reason) : '');
-const triggerClass = computed(() => (props.size === 'card' ? 'size-4.5 shrink-0' : 'shrink-0'));
 </script>
 
 <template>
   <DropdownMenu v-if="usable">
-    <AdeTip :text="t('space.ade.taskLaunch.trigger.tooltip')">
-      <DropdownMenuTrigger as-child>
-        <Button
-          variant="toolbar"
-          size="kira-icon"
-          :class="triggerClass"
-          :pending="pending"
-          :aria-label="t('space.ade.taskLaunch.trigger.tooltip')"
-          data-testid="ade-task-launch"
-          @click.stop
-        >
-          <CodiconIcon name="add" :size="13" />
-        </Button>
-      </DropdownMenuTrigger>
-    </AdeTip>
+    <DropdownMenuTrigger as-child>
+      <TooltipIconButton
+        icon="add"
+        :label="t('space.ade.taskLaunch.trigger.tooltip')"
+        class="shrink-0"
+        :pending="pending"
+        data-testid="ade-task-launch"
+      />
+    </DropdownMenuTrigger>
     <DropdownMenuContent align="end" data-testid="ade-task-launch-menu">
       <template v-if="several">
         <DropdownMenuLabel>{{ t('common.module.terminal.label') }}</DropdownMenuLabel>
@@ -184,10 +174,9 @@ const triggerClass = computed(() => (props.size === 'card' ? 'size-4.5 shrink-0'
     v-else
     icon="add"
     :label="t('space.ade.taskLaunch.reason.noWorktree.label')"
-    :class="triggerClass"
+    class="shrink-0"
     disabled-trigger
     disabled
     data-testid="ade-task-launch"
-    @click.stop
   />
 </template>

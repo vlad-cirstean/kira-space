@@ -26,6 +26,7 @@ const brScenario = "ade-branch-request"
 var (
 	brMask      = flowharness.Mask("id", "taskId", "createdAt", "expiresAt", "codeRepoId")
 	kiraBranch  = regexp.MustCompile(`^kira/[0-9a-hjkmnp-tv-z]{10}$`)
+	nanoFolder  = regexp.MustCompile(`^[0-9a-hjkmnp-tv-z]{10}$`)
 	onceStepYML = "  - id: one\n    name: one\n    kind: agent\n    runs_on: once\n    timeout: 1m\n    prompt: ask for branches\n"
 )
 
@@ -145,6 +146,10 @@ func TestBranchRequest(t *testing.T) {
 		if name := f.branchName(t, f.web); name != "" {
 			t.Fatalf("web branch = %q, want none", name)
 		}
+		wt := branchOf(t, board(t, f.app), f.task.ID, f.api).Worktree
+		if !nanoFolder.MatchString(filepath.Base(wt)) || filepath.Base(filepath.Dir(wt)) != "api" {
+			t.Fatalf("api worktree = %q, want wt/api/<nanoid>", wt)
+		}
 		if ps := f.requestPrompts(t); len(ps) != 0 {
 			t.Fatalf("prompts after answer = %+v", ps)
 		}
@@ -159,15 +164,53 @@ func TestBranchRequest(t *testing.T) {
 		}
 	})
 
-	t.Run("undeclared repo is refused before any prompt", func(t *testing.T) {
-		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall("web")}, Name: "done"}}, onceStepYML, false)
+	t.Run("unregistered repo is refused before any prompt", func(t *testing.T) {
+		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall("nope")}, Name: "done"}}, onceStepYML, false)
 		f.startRun(t)
 		waitRun(t, f.app, f.task.ID, "one", "done")
-		if got := f.result(t, 1); !strings.Contains(got, "declare_repos") {
-			t.Fatalf("agent result = %s, want the declare_repos hint", got)
+		if got := f.result(t, 1); !strings.Contains(got, "not registered") {
+			t.Fatalf("agent result = %s, want the not-registered refusal", got)
 		}
 		if ps := f.requestPrompts(t); len(ps) != 0 {
 			t.Fatalf("prompts = %+v, want none", ps)
+		}
+	})
+
+	t.Run("registered repo off the task is added on approval", func(t *testing.T) {
+		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall("web")}, Name: "done"}}, onceStepYML, false)
+		f.startRun(t)
+		req := f.waitRequest(t)
+		if len(req.Items) != 1 || req.Items[0].CodeRepoID != f.web || req.Items[0].Kind != "branch" {
+			t.Fatalf("request = %+v, want a new-branch item for web", req)
+		}
+		if n := len(taskOf(t, board(t, f.app), f.task.ID).BranchIDs); n != 1 {
+			t.Fatalf("branch rows before approval = %d, want 1", n)
+		}
+		if _, err := f.app.W.AdeTask.ApproveBranchRequest(adewire.ApproveBranchRequestArgs{ID: req.ID, CodeRepoIDs: []string{f.web}}); err != nil {
+			t.Fatal(err)
+		}
+		waitRun(t, f.app, f.task.ID, "one", "done")
+		b := board(t, f.app)
+		if n := len(taskOf(t, b, f.task.ID).BranchIDs); n != 2 {
+			t.Fatalf("branch rows after approval = %d, want 2", n)
+		}
+		row := branchOf(t, b, f.task.ID, f.web)
+		if row.Origin != "agent" || !kiraBranch.MatchString(row.Name) || !nanoFolder.MatchString(filepath.Base(row.Worktree)) {
+			t.Fatalf("web row = %+v, want an agent kira/ branch in a nanoid folder", row)
+		}
+		f.app.Contract(t, brScenario, "AdeTaskBoard.Board.addedBranch", row, brMask, flowharness.Mask("worktree", "addedAt", "name", "tip", "base", "setup"))
+	})
+
+	t.Run("deny adds no row", func(t *testing.T) {
+		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall("web")}, Name: "done"}}, onceStepYML, false)
+		f.startRun(t)
+		req := f.waitRequest(t)
+		if _, err := f.app.W.AdeTask.DenyBranchRequest(adewire.BranchRequestArgs{ID: req.ID}); err != nil {
+			t.Fatal(err)
+		}
+		waitRun(t, f.app, f.task.ID, "one", "done")
+		if n := len(taskOf(t, board(t, f.app), f.task.ID).BranchIDs); n != 1 {
+			t.Fatalf("branch rows after deny = %d, want 1", n)
 		}
 	})
 

@@ -30,6 +30,7 @@ import { useReviewCode } from '../review/useReviewCode';
 import AdeSessionsTab from '../sessions/AdeSessionsTab.vue';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
+import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import { ACTION_CLASS, TONE_SOLID_CLASS } from '../tones';
 import type { ChangeRequest, Deployment, Integration, Run } from '../wire';
 import AdePanelFrame from './AdePanelFrame.vue';
@@ -42,6 +43,11 @@ import { PR_TONE, prStateLabel } from './prState';
 const props = defineProps<{ card: CardModel; row: CardModel['rows'][number]; model: PlanModel }>();
 
 const ui = useAdeBoardUiStore();
+const tabs = useAdePanelTabsStore();
+const tab = computed({
+  get: () => tabs.branchTab(props.row.id),
+  set: (v) => tabs.setBranchTab(props.row.id, v),
+});
 const dialogs = useAdeDialogsStore();
 const { sessions } = usePlanModel();
 const sessionCount = computed(
@@ -233,10 +239,10 @@ function deployNote(d: Deployment): string {
 
 <template>
   <AdePanelFrame
-    v-model="ui.branchTab"
+    v-model="tab"
     :tabs="[
       { value: 'details', label: t('common.details.title') },
-      { value: 'sessions', label: t('space.ade.panel.sessionsTab.label', { count: sessionCount }) },
+      { value: 'sessions', label: t('space.common.sessions.label'), count: sessionCount },
     ]"
   >
     <template #header>
@@ -355,7 +361,7 @@ function deployNote(d: Deployment): string {
     </template>
 
     <div
-      v-if="ui.branchTab === 'details'"
+      v-if="tab === 'details'"
       class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-3 pb-3 pt-3 text-kira-md"
       data-testid="ade-branch-details"
     >

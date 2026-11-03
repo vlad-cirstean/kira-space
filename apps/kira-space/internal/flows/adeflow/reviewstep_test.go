@@ -499,8 +499,8 @@ func TestReviewForwardComments(t *testing.T) {
 		fakeagent.Action{WaitFile: hold, Name: "done"})
 	f.toReview(t, "feat/api-review-forward")
 	f.window(t)
-	first := f.comment(t, 1, "rename this", "")
-	second := f.comment(t, 3, "why twice?", "question")
+	f.comment(t, 1, "rename this", "")
+	f.comment(t, 3, "why twice?", "question")
 	done := f.comment(t, 2, "already handled", "")
 	f.setState(t, done.ID, "addressed")
 
@@ -545,15 +545,12 @@ func TestReviewForwardComments(t *testing.T) {
 	if p := fakeFile(t, f.app, "api-2.prompt"); strings.Contains(p, "already handled") || strings.Contains(p, "reply_review_comment") {
 		t.Fatalf("forwarded prompt carries an addressed comment or the round tool:\n%s", p)
 	}
-	for _, c := range f.comments(t) {
-		sent := c.SentAt != nil
-		if sent != (c.ID == first.ID || c.ID == second.ID) {
-			t.Fatalf("comment %d sentAt = %v, want it stamped only on the forwarded two", c.ID, c.SentAt)
-		}
+	left := f.comments(t)
+	if len(left) != 1 || left[0].ID != done.ID {
+		t.Fatalf("comments after the forward = %+v, want only the addressed one", left)
 	}
-
-	f.setState(t, first.ID, "addressed")
-	f.setState(t, second.ID, "addressed")
+	f.app.Contract(t, "ade-review-forward", "git:review.comment.list#forwarded", gitsession.CommentListResult{Comments: left},
+		flowharness.Mask("at", "createdAt", "anchorSha"))
 	if _, err := f.app.W.AdeTask.ForwardReviewComments(ctx, args); err == nil {
 		t.Fatal("ForwardReviewComments succeeded with no open comment")
 	}

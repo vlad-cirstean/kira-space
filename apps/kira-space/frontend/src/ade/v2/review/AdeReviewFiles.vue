@@ -7,7 +7,7 @@ import { useTimeoutFn, useWindowFocus } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
 import { errorText } from '@workbench/bridge/codedError';
 import { logError } from '@workbench/bridge/log';
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
 import { loadGitUi } from '../../../repo/git/gitUiModule';
 import { gitTransportFor, notifyReviewRepaint } from '../../../repo/git/transport';
 import { ensureRepoOpen } from '../../../state/repoOpenHold';
@@ -18,6 +18,7 @@ import {
   invalidateReviewWorking,
   useReviewWorking,
   useReviewWorkingMark,
+  useReviewWorkingStamp,
 } from './useReviewWorking';
 
 // The review window's left pane: git-ui's review view locked to this window's branch and base.
@@ -26,7 +27,7 @@ const props = defineProps<{ target: ReviewWindowTarget }>();
 const errorMessage = ref('');
 const container = ref<HTMLElement | null>(null);
 let handle: MountHandle | null = null;
-let api: ReviewApi | null = null;
+const api = shallowRef<ReviewApi | null>(null);
 let unregisterNavigator: (() => void) | null = null;
 const navigation = useReviewNavigationStore();
 
@@ -35,18 +36,27 @@ defineExpose({
   selectFile: (path: string, origin: ReviewComment['origin'] = 'commit') =>
     origin === 'working'
       ? openRepoWorkingReviewTab(props.target.codeRepoId, path, props.target.branchId, false)
-      : api?.selectFile(path),
+      : api.value?.selectFile(path),
 });
 
 // A missed watcher event (sleep, dropped FS event) heals when the window regains focus.
 const focused = useWindowFocus();
 watch(focused, (now, was) => {
-  if (now && !was) api?.refresh();
+  if (now && !was) api.value?.refresh();
 });
 
 // The uncommitted section under the committed list; git-ui renders it, this window feeds it.
 const working = useReviewWorking(() => props.target.branchId);
 const mark = useReviewWorkingMark();
+// An edit no agent hook announced: poll a stat stamp of every listed path.
+useReviewWorkingStamp(
+  () => props.target.branchId,
+  () => [
+    ...(api.value?.committedPaths() ?? []),
+    ...(working.data.value?.files.map((f) => f.path) ?? []),
+  ],
+  () => working.data.value?.worktree !== '' && api.value !== null,
+);
 
 // Every open diff of these paths re-reads its working review.
 function repaintWorking(paths: readonly string[]): void {
@@ -113,7 +123,7 @@ watch(
   () => working.data.value?.promoted,
   (promoted) => {
     if (!promoted || promoted.length === 0) return;
-    api?.refresh();
+    api.value?.refresh();
     notifyReviewRepaint({
       kind: 'mark',
       scope: 'commit',
@@ -149,8 +159,9 @@ onMounted(async () => {
         pane: 'files',
       },
       lockTarget: true,
+      reviewShortcuts: true,
       onReviewApi: (a) => {
-        api = a;
+        api.value = a;
         unregisterNavigator?.();
         unregisterNavigator = navigation.register(props.target.codeRepoId, a);
       },

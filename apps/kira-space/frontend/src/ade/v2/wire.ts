@@ -459,15 +459,6 @@ export interface ArtifactGap {
   repo: string;
   /** Why a tracker source is partial; '' for the others. */
   reason?: string;
-  /** Change requests the tracker reports beyond the ones found (changeRequestsMissing). */
-  count?: number;
-}
-interface IssueChangeRequest {
-  title: string;
-  url: string;
-  ref: string;
-  state: string;
-  repo: string;
 }
 /** The issue tracker's view of a task's linked issue. */
 export interface TaskIssue {
@@ -479,11 +470,8 @@ export interface TaskIssue {
   status: string;
   statusCategory: 'new' | 'indeterminate' | 'done' | '';
   summary: { known: boolean; count: number; state: string; providers: string[] };
-  changeRequests: IssueChangeRequest[];
   /** Why the issue could not be read; '' when it was. noTracker: no tracker recognises the link. */
   reason: string;
-  /** Set when only the pull request lookup failed. */
-  changeRequestsReason: string;
 }
 export interface ArtifactsResult {
   artifacts: Artifact[];
@@ -512,6 +500,8 @@ export interface UpdateHandoverArgs {
 export interface StepDoneArgs {
   taskId: string;
   notes?: string | null;
+  /** Closes the stage sessions of the move first. */
+  closeSessions?: boolean;
 }
 /** The 16 status colours (`--color-status-*`). */
 export type StatusColor =
@@ -768,6 +758,13 @@ export interface ReviewWorkingMarkArgs {
     string
   > /* hash the user saw by path; E_CONFLICT, nothing marked, when any changed */;
 }
+export interface ReviewWorkingStampArgs {
+  branchId: string;
+  paths: string[];
+}
+export interface ReviewWorkingStamp {
+  stamp: string /* digest of size, mtime and mode of the listed worktree files; '' without a worktree */;
+}
 export interface ReviewWorkingMarkResult {
   files: { path: string; review: ReviewFileStatus }[];
 }
@@ -994,6 +991,8 @@ export interface ShelveTaskArgs {
 }
 export interface CaptureTaskArgs {
   title: string;
+  /** Plan day (YYYY-MM-DD) the task lands on; null lands in Later. */
+  day: string | null;
 }
 export interface FileNameArgs {
   fileName: string;
@@ -1128,6 +1127,8 @@ export interface SetTaskStepArgs {
   stepId: string;
   fromStepId?: string;
   notes?: string | null;
+  /** Closes the stage sessions of the move first. */
+  closeSessions?: boolean;
 }
 export interface SendArgs {
   sessionId: string;

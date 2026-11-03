@@ -1626,6 +1626,9 @@
         }
       },
       "capture": {
+        "noBranch": {
+          "body": "The task “{title}” was added without its branch. Reason: {error}."
+        },
         "partial": {
           "body": "The task “{title}” was added, but its details were not saved: {error}."
         }
@@ -5464,6 +5467,9 @@
       }
     },
     "review": {
+      "allReviewed": {
+        "announce": "Every file is reviewed"
+      },
       "ask": {
         "body": "Nothing was detected for {branch}. Choose a base above. Kira doesn’t guess."
       },
@@ -5494,6 +5500,9 @@
         "suggested": {
           "label": "Suggested"
         }
+      },
+      "changedCount": {
+        "label": "{count} changed since review"
       },
       "changedSince": {
         "hint": "Changed since you reviewed it."
@@ -5526,9 +5535,24 @@
         "empty": {
           "emptyHint": "No comments yet. Open a file from the file list and use the + in the diff gutter."
         },
+        "host": {
+          "headMoved": {
+            "error": "The {short} head is not the commit shown here. Push or pull the branch, then post again."
+          },
+          "hint": "Posts to {short} #{number}. Kira keeps no copy.",
+          "posted": {
+            "status": "Posted to {short} #{number}"
+          },
+          "send": {
+            "label": "Post to {short}"
+          }
+        },
         "kind": {
           "change": {
             "label": "Change"
+          },
+          "host": {
+            "label": "{short} comment"
           }
         },
         "line": {
@@ -5596,6 +5620,12 @@
         "neverReviewed": {
           "status": "Never reviewed, showing the full range diff"
         },
+        "nextUnreviewed": {
+          "tooltip": "Next file to review"
+        },
+        "prevUnreviewed": {
+          "tooltip": "Previous file to review"
+        },
         "sinceReview": {
           "label": "Since review"
         },
@@ -5614,6 +5644,9 @@
       },
       "loading": {
         "loading": "Loading review…"
+      },
+      "markAgain": {
+        "tooltip": "Changed since your review. Mark reviewed again"
       },
       "noBranch": {
         "emptyHint": "Choose a branch to compare its commits against a base you set or one Kira detects."
@@ -7861,18 +7894,6 @@
         },
         "gap": {
           "body": "Couldn’t read {source} for {repo}. The list may be incomplete.",
-          "changeRequestsFailed": {
-            "body": "Couldn’t search the code host for pull requests of {source}. The list may be incomplete."
-          },
-          "changeRequestsMissing": {
-            "body": "{source} counts {count} more pull request than found here. Links made only in commit messages aren’t found. | {source} counts {count} more pull requests than found here. Links made only in commit messages aren’t found."
-          },
-          "changeRequestsUnauthenticated": {
-            "body": "Searching for pull requests needs a sign-in to the code host. Sign in from settings, under CLI tools."
-          },
-          "changeRequestsUnavailable": {
-            "body": "Searching for pull requests needs the code host command line tool. Set it up in settings, under CLI tools."
-          },
           "notFound": {
             "body": "{source} has no such issue, or you don’t have access to it."
           },
@@ -8168,22 +8189,19 @@
           }
         },
         "taskAction": {
+          "advance": {
+            "label": "Next stage ›",
+            "tooltip": "{step} is done; move to {next}"
+          },
           "approve": {
             "tooltip": "Run “{step}”"
           },
           "archive": {
             "hint": "Stops its agents, deletes its worktrees and hides it. Branches, notes and links are kept; it stays in history."
           },
-          "done": {
-            "label": "Done ›",
-            "tooltip": "{step} is done; move to {next}"
-          },
-          "doneLast": {
-            "tooltip": "{step} is done"
-          },
           "finish": {
             "label": "Finish",
-            "tooltip": "Finish the workflow"
+            "tooltip": "{step} is done; finish the workflow"
           },
           "retryFailed": {
             "tooltip": "{step} failed; see its output on the task tab"
@@ -8358,7 +8376,7 @@
           }
         },
         "naming": {
-          "hint": "Kira Space names new branches kira/ plus a random ID. The agent then works in the worktrees."
+          "hint": "Kira Space names new branches kira/ plus a random ID, and each worktree folder a random ID. Approving adds a repository the task does not have yet."
         },
         "source": {
           "automation": {
@@ -8747,9 +8765,6 @@
         },
         "resize": {
           "label": "Resize panel"
-        },
-        "sessionsTab": {
-          "label": "Sessions {count}"
         }
       },
       "panelFacts": {
@@ -9297,6 +9312,9 @@
         "handover": {
           "label": "Handover from {stage}"
         },
+        "noRepo": {
+          "hint": "No repository on this task yet. The step runs in the task folder and can choose repositories and branches."
+        },
         "smartMissing": {
           "error": "This smart script was not found."
         },
@@ -9380,9 +9398,6 @@
         },
         "stopped": {
           "label": "Finished or stopped"
-        },
-        "trigger": {
-          "label": "Sessions"
         },
         "waitingId": {
           "status": "Waiting for session ID"
@@ -9470,6 +9485,16 @@
           "hint": "The next stage’s agent and sessions read these. Leave empty to pass nothing on.",
           "label": "Handover notes",
           "placeholder": "What the next stage needs to know"
+        },
+        "sessions": {
+          "close": {
+            "label": "Close {count} session | Close all {count} sessions"
+          },
+          "hint": "Closing keeps the history. A closed session can be taken over again.",
+          "keep": {
+            "label": "Keep open"
+          },
+          "label": "{count} session still open | {count} sessions still open"
         },
         "target": {
           "label": "Move to"
@@ -9602,6 +9627,9 @@
         "needsApproval": {
           "status": "Needs approval"
         },
+        "needsRepo": {
+          "status": "Needs a repository"
+        },
         "output": {
           "label": "Output"
         },
@@ -9613,6 +9641,9 @@
         },
         "skipThis": {
           "label": "Skip this step"
+        },
+        "taskFolder": {
+          "label": "Task folder"
         }
       },
       "stepMover": {
@@ -9724,6 +9755,9 @@
         },
         "notMerging": {
           "hint": "Stays on the plan; never merged."
+        },
+        "pr": {
+          "label": "PR"
         }
       },
       "tui": {
@@ -10123,27 +10157,14 @@
       }
     },
     "capture": {
-      "action": {
-        "later": {
-          "label": "Save for later"
-        },
-        "openChangeRequest": {
-          "label": "Open PR view"
-        },
-        "openIssue": {
-          "label": "Open issue view"
-        }
-      },
-      "actions": {
-        "label": "Actions"
-      },
       "empty": {
         "body": "The clipboard has no text."
       },
-      "hint": {
-        "confirm": {
-          "label": "Confirm"
-        }
+      "fetching": {
+        "body": "Fetching the branch."
+      },
+      "review": {
+        "body": "Its branch is fetched and added to the task for review."
       },
       "title": {
         "label": "Task title"
@@ -10208,6 +10229,9 @@
       },
       "reply": {
         "label": "Reply"
+      },
+      "sessions": {
+        "label": "Sessions"
       },
       "showLog": {
         "label": "Show log"
@@ -10325,12 +10349,23 @@
             "empty": "Unassigned"
           }
         },
+        "attachments": {
+          "heading": {
+            "title": "Attachments"
+          },
+          "truncated": {
+            "hint": "More attachments exist. Open on {label} for the rest."
+          }
+        },
         "comments": {
           "edited": {
             "status": "Revised"
           },
           "omitted": {
             "hint": "Comments are too large to load here. Open on {label} to read them."
+          },
+          "open": {
+            "tooltip": "Open comment on {label}"
           },
           "truncated": {
             "hint": "Older comments are not shown. Open on {label} for the rest."
@@ -10389,6 +10424,12 @@
             "empty": "No reporter"
           }
         },
+        "stale": {
+          "failed": {
+            "hint": "Saved copy from {when}. Couldn’t update it: {reason}."
+          },
+          "hint": "Saved copy from {when}. Updating."
+        },
         "view": {
           "tooltip": "View issue"
         }
@@ -10399,6 +10440,25 @@
         },
         "heading": {
           "title": "Applied labels"
+        }
+      },
+      "markdown": {
+        "alert": {
+          "caution": {
+            "title": "Caution"
+          },
+          "important": {
+            "title": "Important"
+          },
+          "note": {
+            "title": "Note"
+          },
+          "tip": {
+            "title": "Tip"
+          },
+          "warning": {
+            "title": "Warning"
+          }
         }
       },
       "mergeable": {

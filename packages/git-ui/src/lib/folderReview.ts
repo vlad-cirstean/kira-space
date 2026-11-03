@@ -1,5 +1,6 @@
 import type { ReviewFileStatus } from '@kira/git-ipc';
 import type { FileTreeNode } from './fileTreeModel.ts';
+import { reviewAttention } from './reviewAttention.ts';
 
 export interface FolderReview {
   readonly state: boolean | 'indeterminate';
@@ -9,7 +10,7 @@ export interface FolderReview {
   readonly notNone: readonly string[];
 }
 
-/** One post-order walk: each directory's files and tri-state (`true` all full, `false` all none). */
+/** One post-order walk: each directory's files and tri-state (`true` all reviewed, `false` none reviewed or partial; a changed file counts as unreviewed). */
 export function buildFolderReview(
   tree: readonly FileTreeNode[],
   states: ReadonlyMap<string, ReviewFileStatus> | undefined,
@@ -19,11 +20,11 @@ export function buildFolderReview(
   const walk = (node: FileTreeNode): Omit<FolderReview, 'state'> => {
     if (node.kind === 'file') {
       const path = node.change.path;
-      const kind = states.get(path)?.kind ?? 'none';
+      const attention = reviewAttention(states.get(path));
       return {
         paths: [path],
-        full: kind === 'full' ? [path] : [],
-        notNone: kind === 'none' ? [] : [path],
+        full: attention === 'reviewed' ? [path] : [],
+        notNone: attention === 'reviewed' || attention === 'partial' ? [path] : [],
       };
     }
     const paths: string[] = [];

@@ -1,21 +1,28 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { adeBoard, adeFixture, archivedTaskFx, openPlan, openTask } from './support/adeV2';
+import { adeBoard, adeFixture, archivedTaskFx, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 
-// The task plus: a terminal in a worktree, or an agent session with no first message.
+// The task plus on the Sessions tab bar: a terminal in a worktree, or an agent session with no first message.
 // Contract ade-adhoc. Backend half: adeflow TestAdHocSession.
 
 const t = (id: string) => `[data-testid="${id}"]`;
 const card = (id: string) => `[data-testid="ade-card"][data-task-id="${id}"]`;
-const plus = (id: string) => `${card(id)} ${t('ade-task-launch')}`;
+const bar = (): string => `${t('ade-session-bar-row')} ${t('ade-task-launch')}`;
 
-/** The menu floats off-screen in this runtime, so the item is picked with the keyboard. */
-async function choose(page: Page, id: string): Promise<void> {
-  await page.locator(t(id)).focus();
-  await page.keyboard.press('Enter');
+/** Opens the task panel's Sessions tab and returns its plus. */
+async function plusOf(page: Page, id: string): Promise<Locator> {
+  await page.locator(`${card(id)} ${t('ade-card-head')}`).click();
+  await page.locator(t('ade-panel-tab-sessions')).click();
+  return page.locator(bar());
+}
+
+/** Clicks the plus; the menu must sit inside the viewport so a mouse pick works. */
+async function openMenu(page: Page, id: string): Promise<void> {
+  await (await plusOf(page, id)).click();
+  await expect(page.locator(t('ade-task-launch-menu'))).toBeInViewport();
 }
 
 const launch = {
@@ -25,15 +32,17 @@ const launch = {
 
 test('one worktree: Terminal opens a shell there', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch);
-  await page.locator(plus('T_cart')).click();
-  await expect(page.locator(t('ade-task-launch-menu'))).toBeVisible();
+  await openMenu(page, 'T_cart');
   await expect(page.locator(t('ade-task-launch-reason'))).toHaveCount(0);
-  await choose(page, 'ade-task-launch-terminal-b_cart');
+  await page.locator(t('ade-task-launch-terminal-b_cart')).click();
   await expect.poll(() => calls(control, IPC.terminalOpen)).toHaveLength(1);
   expect(calls(control, IPC.terminalOpen)[0]?.args).toMatchObject({
     cwd: '~/wt/web-app/cart-flaky',
     launchKind: 'shell',
   });
+  await expect(
+    page.locator('[data-testid="tab-strip-wrapper"] [data-testid="tab"][data-tab-kind="terminal"]'),
+  ).toBeVisible();
   expect(calls(control, IPC.adeTaskStartAdHoc)).toHaveLength(0);
 });
 
@@ -41,8 +50,8 @@ test('Agent session starts with no message and opens in the branch panel', async
   const { window: page, control } = await openPlan(relaunch, [
     { channel: IPC.adeTaskStartAdHoc, response: launch },
   ]);
-  await page.locator(plus('T_cart')).click();
-  await choose(page, 'ade-task-launch-agent-b_cart');
+  await openMenu(page, 'T_cart');
+  await page.locator(t('ade-task-launch-agent-b_cart')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStartAdHoc)).toHaveLength(1);
   const sent = calls(control, IPC.adeTaskStartAdHoc)[0]?.args as Record<string, unknown>;
   expect(sent).toEqual({ branchId: 'b_cart', provider: '' });
@@ -67,7 +76,7 @@ test('several worktrees: grouped items, one per branch, and a busy one says why'
   const { window: page, control } = await openPlan(relaunch, [
     { channel: IPC.adeTaskBoard, response: board },
   ]);
-  await page.locator(plus('T_auth')).click();
+  await openMenu(page, 'T_auth');
   for (const id of ['b_auth', 'b_authui', 'b_authcb']) {
     await expect(page.locator(t(`ade-task-launch-terminal-${id}`))).toBeVisible();
     await expect(page.locator(t(`ade-task-launch-agent-${id}`))).toBeVisible();
@@ -85,7 +94,7 @@ test('several worktrees: grouped items, one per branch, and a busy one says why'
     'data-disabled',
     '',
   );
-  await choose(page, 'ade-task-launch-agent-b_authui');
+  await page.locator(t('ade-task-launch-agent-b_authui')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStartAdHoc)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskStartAdHoc)[0]?.args).toEqual({
     branchId: 'b_authui',
@@ -95,14 +104,14 @@ test('several worktrees: grouped items, one per branch, and a busy one says why'
 
 test('setup states disable only the agent item', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
-  await page.locator(plus('T_search')).click();
+  await openMenu(page, 'T_search');
   await expect(page.locator(t('ade-task-launch-agent-b_searchui'))).toContainText('Setup failed');
   await expect(page.locator(t('ade-task-launch-terminal-b_searchui'))).not.toHaveAttribute(
     'data-disabled',
     '',
   );
   await page.keyboard.press('Escape');
-  await page.locator(plus('T_push')).click();
+  await openMenu(page, 'T_push');
   await expect(page.locator(t('ade-task-launch-agent-b_push'))).toContainText('Preparing worktree');
 });
 
@@ -113,17 +122,17 @@ test('a refusal lands in the panel action error', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [
     { channel: IPC.adeTaskStartAdHoc, error: refusal },
   ]);
-  await page.locator(plus('T_cart')).click();
-  await choose(page, 'ade-task-launch-agent-b_cart');
+  await openMenu(page, 'T_cart');
+  await page.locator(t('ade-task-launch-agent-b_cart')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStartAdHoc)).toHaveLength(1);
   await expect(page.getByText('a session is already open on feat/api-adhoc')).toBeVisible();
   expect(calls(control, IPC.terminalOpen)).toHaveLength(0);
 });
 
-test('a task without a branch name has no plus on its card', async ({ relaunch }) => {
+test('no card in the plan has a plus', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
   await expect(page.locator(card('T_cart'))).toBeVisible();
-  await expect(page.locator(plus('T_alerts'))).toHaveCount(0);
+  await expect(page.locator(`${t('ade-card')} ${t('ade-task-launch')}`)).toHaveCount(0);
 });
 
 test('the Sessions tab bar has a plus even with no session, scoped to its branch', async ({
@@ -136,12 +145,10 @@ test('the Sessions tab bar has a plus even with no session, scoped to its branch
       response: { ...fx, sessions: fx.sessions.filter((s) => s.taskId !== 'T_cart') },
     },
   ]);
-  await openTask(page, 'T_cart');
-  await page.locator(t('ade-panel-tab-sessions')).click();
-  const bar = page.locator(`${t('ade-session-bar-row')} ${t('ade-task-launch')}`);
-  await expect(bar).toBeVisible();
-  await bar.click();
-  await choose(page, 'ade-task-launch-agent-b_cart');
+  const plus = await plusOf(page, 'T_cart');
+  await expect(plus).toBeVisible();
+  await plus.click();
+  await page.locator(t('ade-task-launch-agent-b_cart')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStartAdHoc)).toHaveLength(1);
 });
 

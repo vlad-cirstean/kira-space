@@ -481,7 +481,7 @@ func agentArtifacts(res adewire.ArtifactsResult) agentmcp.TaskArtifacts {
 		out.Artifacts[i] = agentmcp.Artifact{Kind: a.Kind, Title: a.Title, URL: a.URL, Ref: a.Ref, Status: a.Status, Repo: a.Repo, Source: a.Source}
 	}
 	for i, g := range res.Gaps {
-		out.Gaps[i] = agentmcp.ArtifactGap{Source: g.Source, Repo: g.Repo, Reason: g.Reason, Count: g.Count}
+		out.Gaps[i] = agentmcp.ArtifactGap{Source: g.Source, Repo: g.Repo, Reason: g.Reason}
 	}
 	return out
 }

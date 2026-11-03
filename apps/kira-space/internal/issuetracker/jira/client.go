@@ -38,21 +38,29 @@ type devInfo struct {
 	noDevTo time.Time // no Development field until then
 }
 
+type detailEntry struct {
+	d  issuetracker.IssueDetail
+	at time.Time
+}
+
 type client struct {
 	disc   *discovery
 	runner Runner
 	clock  Clock
-	crs    func(ctx context.Context, key string) ([]issuetracker.ChangeRequest, error)
 	bound  time.Duration
 
 	mu    sync.Mutex
 	cache map[string]resultEntry
 	dev   map[string]devInfo
-	sf    singleflight.Group
+	// details holds the last issue view per key, see detail.
+	details map[string]detailEntry
+	// detailGen counts forgetDetail calls per key; a read that began before one must not save.
+	detailGen map[string]uint64
+	sf        singleflight.Group
 }
 
-func newClient(d *discovery, r Runner, c Clock, crs func(ctx context.Context, key string) ([]issuetracker.ChangeRequest, error)) *client {
-	return &client{disc: d, runner: r, clock: c, crs: crs, bound: fetchBound, cache: map[string]resultEntry{}, dev: map[string]devInfo{}}
+func newClient(d *discovery, r Runner, c Clock) *client {
+	return &client{disc: d, runner: r, clock: c, bound: fetchBound, cache: map[string]resultEntry{}, dev: map[string]devInfo{}, details: map[string]detailEntry{}, detailGen: map[string]uint64{}}
 }
 
 type fetched struct {
@@ -99,14 +107,14 @@ func (c *client) cached(key string) (resultEntry, bool) {
 }
 
 // store keeps a result. Missing CLI or login is cheap to re-probe through the status cache, so those
-// are not stored; a partial result (failed PR lookup) and the other errors live the short TTL.
+// are not stored; the other errors live the short TTL.
 func (c *client) store(key string, iss issuetracker.Issue, err error) {
 	if errors.Is(err, issuetracker.ErrUnavailable) || errors.Is(err, issuetracker.ErrUnauthenticated) ||
 		errors.Is(err, issuetracker.ErrOtherSite) {
 		return
 	}
 	ttl := resultOKTTL
-	if err != nil || iss.ChangeRequestsReason != "" {
+	if err != nil {
 		ttl = resultErrTTL
 	}
 	c.mu.Lock()
@@ -194,14 +202,6 @@ func (c *client) fetch(ctx context.Context, ref issuetracker.Ref) (issuetracker.
 		}
 	}
 
-	if c.crs != nil && (iss.Summary.Count > 0 || !iss.Summary.Known) {
-		// Rows found beside a failure stay: a failed host leaves the other matches in place.
-		crs, err := c.crs(ctx, p.key)
-		iss.ChangeRequests = crs
-		if err != nil {
-			iss.ChangeRequestsReason = issuetracker.Reason(err)
-		}
-	}
 	return iss, nil
 }
 

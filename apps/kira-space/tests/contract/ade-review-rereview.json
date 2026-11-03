@@ -1,0 +1,77 @@
+{
+  "AdeTaskService.ReviewWorking#changed": {
+    "contentHashes": {
+      "work.txt": "c3f9c8c283a2b1f2f1896f27a01cbe3cddc0c9d93f752e4639035a0f5b36f6e8"
+    },
+    "files": [
+      {
+        "kind": "added",
+        "path": "work.txt"
+      }
+    ],
+    "head": "<masked>",
+    "promoted": [],
+    "reviews": {
+      "work.txt": {
+        "changedSinceReview": true,
+        "kind": "full",
+        "reviewedAt": 0,
+        "reviewedAtSha": "<masked>"
+      }
+    },
+    "worktree": "<worktree>"
+  },
+  "AdeTaskService.ReviewWorking#reviewed": {
+    "contentHashes": {
+      "work.txt": "2c8b08da5ce60398e1f19af0e5dccc744df274b826abe585eaba68c525434806"
+    },
+    "files": [
+      {
+        "kind": "added",
+        "path": "work.txt"
+      }
+    ],
+    "head": "<masked>",
+    "promoted": [],
+    "reviews": {
+      "work.txt": {
+        "changedSinceReview": false,
+        "kind": "full",
+        "reviewedAt": 0,
+        "reviewedAtSha": "<masked>"
+      }
+    },
+    "worktree": "<worktree>"
+  },
+  "AdeTaskService.ReviewWorkingStamp#after": {
+    "stamp": "<masked>"
+  },
+  "AdeTaskService.ReviewWorkingStamp#before": {
+    "stamp": "<masked>"
+  },
+  "args:AdeTaskService.ReviewWorkingStamp": {
+    "branchId": "<id:1>",
+    "paths": [
+      "base.txt",
+      "work.txt"
+    ]
+  },
+  "review.files#changed": {
+    "branchTip": "<masked>",
+    "files": [
+      {
+        "change": {
+          "kind": "modified",
+          "path": "base.txt"
+        },
+        "review": {
+          "changedSinceReview": true,
+          "kind": "full",
+          "reviewedAt": 0,
+          "reviewedAtSha": "<masked>"
+        }
+      }
+    ],
+    "mergeBase": "<masked>"
+  }
+}

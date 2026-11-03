@@ -144,7 +144,10 @@ test('contract: quick add sends CaptureTask', async ({ relaunch }) => {
   await input.fill('Ship the changelog');
   await input.press('Enter');
   await expect.poll(() => calls(control, IPC.adeTaskCaptureTask)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskCaptureTask)[0]?.args).toEqual({ title: 'Ship the changelog' });
+  expect(calls(control, IPC.adeTaskCaptureTask)[0]?.args).toEqual({
+    title: 'Ship the changelog',
+    day: null,
+  });
 });
 
 test('an empty shelf says where to drag', async ({ relaunch }) => {

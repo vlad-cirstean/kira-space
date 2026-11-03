@@ -176,7 +176,7 @@ func (b *TaskBoard) plan(tc *taskCtx) ([]stepView, error) {
 	for i, def := range steps {
 		v := stepView{Def: def, Runs: map[string]model.AdeRun{}}
 		if !def.manual() {
-			if v.Targets, v.TargetErr = stepTargets(def.RunsOn, tc.mine); v.TargetErr != nil {
+			if v.Targets, v.TargetErr = stepTargets(def.RunsOn, def.Kind == adewire.KindReview, tc.mine); v.TargetErr != nil {
 				v.Targets = nil
 			}
 		}
@@ -184,6 +184,9 @@ func (b *TaskBoard) plan(tc *taskCtx) ([]stepView, error) {
 			if r.Purpose == "" && r.StepID == def.ID && tc.inPass(r) {
 				v.Runs[r.BranchID] = r
 			}
+		}
+		if _, ok := v.Runs[taskTarget]; ok && !def.manual() { // the step started without a branch and keeps its target
+			v.Targets, v.TargetErr = []string{taskTarget}, nil
 		}
 		out[i] = v
 	}
@@ -430,14 +433,25 @@ func (b *TaskBoard) queueRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 	if err := b.checkNotArchiving(tc.task.ID); err != nil {
 		return model.AdeRun{}, err
 	}
-	sb, ok := tc.branch(branchID)
-	if !ok {
-		return model.AdeRun{}, invalid("branch %s is not on this task", branchID)
-	}
-	if path == "" {
-		var err error
-		if path, err = b.worktreeOf(ctx, sb); err != nil {
-			return model.AdeRun{}, err
+	var sb model.AdeTaskBranch
+	if branchID == taskTarget {
+		sb.TaskID = tc.task.ID
+		if path == "" {
+			var err error
+			if path, err = b.taskDir(tc.task.ID); err != nil {
+				return model.AdeRun{}, err
+			}
+		}
+	} else {
+		var ok bool
+		if sb, ok = tc.branch(branchID); !ok {
+			return model.AdeRun{}, invalid("branch %s is not on this task", branchID)
+		}
+		if path == "" {
+			var err error
+			if path, err = b.worktreeOf(ctx, sb); err != nil {
+				return model.AdeRun{}, err
+			}
 		}
 	}
 	setups, err := b.deps.Tasks.SetupByBranch()
@@ -451,7 +465,7 @@ func (b *TaskBoard) queueRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 		ID: b.newID(), TaskID: tc.task.ID, StepID: plan[idx].Def.ID, BranchID: branchID,
 		Attempt: attempt, State: model.AdeRunPending, Loops: opts.Loops, Launch: opts.Launch,
 	}
-	open := path != "" && b.setupReady(sb, path, setups)
+	open := path != "" && (branchID == taskTarget || b.setupReady(sb, path, setups))
 	if !open {
 		run.Note = noteWaitingSetup
 		switch s, has := setups[branchID]; {
@@ -535,12 +549,9 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 	if def.Kind == adewire.KindReview {
 		return b.enterReview(ctx, tc, def, run, sb)
 	}
-	rec, err := b.deps.CodeRepos.Get(sb.CodeRepoID)
+	rec, err := b.stepRepo(sb)
 	if err != nil {
 		return run, err
-	}
-	if rec == nil {
-		return run, invalid("code repo %s not found", sb.CodeRepoID)
 	}
 	if err := b.deps.Logs.Reset(repos.AdeLogRun, run.ID, run.TaskID); err != nil {
 		return run, err
@@ -641,6 +652,21 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 		}()
 	}
 	return updated, nil
+}
+
+// stepRepo is the code repo a step on sb runs in; empty for the task folder target.
+func (b *TaskBoard) stepRepo(sb model.AdeTaskBranch) (*model.CodeRepo, error) {
+	if sb.ID == taskTarget {
+		return &model.CodeRepo{}, nil
+	}
+	rec, err := b.deps.CodeRepos.Get(sb.CodeRepoID)
+	if err != nil {
+		return nil, err
+	}
+	if rec == nil {
+		return nil, invalid("code repo %s not found", sb.CodeRepoID)
+	}
+	return rec, nil
 }
 
 func parseStepTimeout(s string) time.Duration {
@@ -1197,7 +1223,16 @@ func (b *TaskBoard) advanceLocked(ctx context.Context, taskID string) {
 	}
 	switch act := nextAction(plan, entry); act.Kind {
 	case actStart:
-		if _, err := b.startStep(ctx, tc, plan, act.Step, nil); err != nil {
+		def := plan[act.Step].Def
+		paths, err := b.prepareWorktrees(ctx, tc, nil, def.Kind == adewire.KindAgent || def.SmartScript != "")
+		if err != nil {
+			slog.Warn("ade: prepare worktrees", "scope", "ade", "task", taskID, "err", err)
+			return
+		}
+		if tc, err = b.loadTaskCtx(taskID); err != nil { // branch names changed
+			return
+		}
+		if _, err := b.startStep(ctx, tc, plan, act.Step, paths); err != nil {
 			slog.Warn("ade: start step", "scope", "ade", "task", taskID, "err", err)
 		}
 	case actComplete:
@@ -1427,7 +1462,8 @@ func (b *TaskBoard) restartHeadless(ctx context.Context, rec *model.AdeSession) 
 }
 
 // StepDone ends the current manual step: the task enters the next step, or finishes after the last.
-func (b *TaskBoard) StepDone(_ context.Context, taskID string, notes *string) (adewire.Task, error) {
+// closeSessions closes the stage sessions of the move first.
+func (b *TaskBoard) StepDone(_ context.Context, taskID string, notes *string, closeSessions bool) (adewire.Task, error) {
 	if err := checkNotes(notes); err != nil {
 		return adewire.Task{}, err
 	}
@@ -1460,6 +1496,11 @@ func (b *TaskBoard) StepDone(_ context.Context, taskID string, notes *string) (a
 	if i, more := nextStep(*tc.wf, cur); more {
 		next = tc.wf.Steps[i].ID
 	}
+	if closeSessions {
+		if err := b.closeStageSessionsLocked(taskID, plan[cur].Def.ID, next); err != nil {
+			return adewire.Task{}, err
+		}
+	}
 	if err := b.deps.Tasks.SetEntryStep(taskID, next, nil, b.handoffFor(tc, plan[cur].Def.ID, next, notes)); err != nil {
 		return adewire.Task{}, err
 	}
@@ -1475,7 +1516,8 @@ func (b *TaskBoard) StepDone(_ context.Context, taskID string, notes *string) (a
 
 // SetTaskStep moves the task to any non-skipped step of its workflow, or to "done". The target and every
 // later step run fresh: their earlier runs stay as history. Refused while a run of the task is live.
-func (b *TaskBoard) SetTaskStep(_ context.Context, taskID, stepID, fromStepID string, notes *string) (adewire.Task, error) {
+// closeSessions closes the stage sessions of the move first.
+func (b *TaskBoard) SetTaskStep(_ context.Context, taskID, stepID, fromStepID string, notes *string, closeSessions bool) (adewire.Task, error) {
 	if err := checkNotes(notes); err != nil {
 		return adewire.Task{}, err
 	}
@@ -1513,6 +1555,11 @@ func (b *TaskBoard) SetTaskStep(_ context.Context, taskID, stepID, fromStepID st
 		}
 		if tc.wf.Steps[target].Skip {
 			return adewire.Task{}, invalid("step %q is skipped in workflow %q", stepID, tc.wf.Name)
+		}
+	}
+	if closeSessions {
+		if err := b.closeStageSessionsLocked(taskID, from, stepID); err != nil {
+			return adewire.Task{}, err
 		}
 	}
 	if err := b.snapshotWorkflow(&tc.task); err != nil {

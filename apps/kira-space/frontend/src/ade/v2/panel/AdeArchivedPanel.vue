@@ -51,7 +51,7 @@ const tabs = computed(() => [
   { value: 'task', label: t('common.task.label') },
   { value: 'notes', label: t('space.common.notes.label') },
   { value: 'artifacts', label: t('space.ade.artifacts.title.title') },
-  { value: 'sessions', label: t('space.ade.panel.sessionsTab.label', { count: count.value }) },
+  { value: 'sessions', label: t('space.common.sessions.label'), count: count.value },
 ]);
 
 function titleOf(a: ArchivedTask): string {
@@ -174,7 +174,7 @@ async function onRestore(): Promise<void> {
         >
           <KeyValueList class="items-center">
             <template v-if="a.task.jira">
-              <dt>{{ t('common.product.jira.label') }}</dt>
+              <dt>{{ t('space.ade.taskTab.issue.label') }}</dt>
               <dd class="min-h-row">
                 <a
                   :href="a.task.jira.url"
@@ -188,7 +188,7 @@ async function onRestore(): Promise<void> {
               </dd>
             </template>
             <template v-if="a.task.hostLink">
-              <dt>{{ hostLabels.labels.value }}</dt>
+              <dt>{{ t('space.ade.taskTab.pr.label') }}</dt>
               <dd class="flex min-h-row items-center gap-2">
                 <AdeChip :label="hostLabels.chipOf(a.task.hostLink)" tone="grey" />
                 <a

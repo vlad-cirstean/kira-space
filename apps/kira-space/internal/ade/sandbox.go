@@ -79,12 +79,15 @@ func (b *TaskBoard) sandboxInput(run model.AdeRun, l agentLaunch, sd adewire.Ste
 		}
 		return in, nil
 	}
-	sb, err := b.deps.Tasks.GetBranch(run.BranchID)
-	if err != nil {
-		return in, err
+	var sb model.AdeTaskBranch
+	if run.BranchID != taskTarget {
+		var err error
+		if sb, err = b.deps.Tasks.GetBranch(run.BranchID); err != nil {
+			return in, err
+		}
+		in.Branch = map[string]string{l.worktree: sb.Name}
 	}
-	in.Branch = map[string]string{l.worktree: sb.Name}
-	if sb.Name == "" {
+	if run.BranchID != taskTarget && sb.Name == "" {
 		allow, err := b.requestedWorktreeDirs(sb.TaskID)
 		if err != nil {
 			return in, err
@@ -166,7 +169,7 @@ func (b *TaskBoard) prepareSandbox(ctx context.Context, run model.AdeRun, l agen
 	sr.policy, sr.prep, sr.notes, sr.scratch = pol, prep, notes, pol.Scratch
 	sr.release = func() { b.deps.Sandbox.Release(run.ID) }
 	sr.grant = sandboxGrantFor(rebase, sr.access)
-	if sr.grant != nil {
+	if sr.grant != nil && run.BranchID != taskTarget { // no repo to act on
 		sb, err := b.deps.Tasks.GetBranch(run.BranchID)
 		if err != nil {
 			sr.cleanup()

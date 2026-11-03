@@ -156,7 +156,7 @@ func (b *TaskBoard) ReviewForwardText(ctx context.Context, branchID string) (str
 }
 
 // ForwardReviewComments pastes the branch's open review comments into the running review agent and
-// stamps them sent. It returns how many it forwarded.
+// removes them. It returns how many it forwarded.
 func (b *TaskBoard) ForwardReviewComments(ctx context.Context, branchID string) (int, error) {
 	sb, err := b.deps.Tasks.GetBranch(branchID)
 	if err != nil {
@@ -196,8 +196,8 @@ func (b *TaskBoard) ForwardReviewComments(ctx context.Context, branchID string) 
 	}
 	// The agent already has the comments: failing here would invite a second forward that pastes
 	// them again.
-	if err := store.MarkSent(ctx, tgt.GitRepoID, tgt.Branch, ids, b.deps.Now()); err != nil {
-		slog.Warn("ade: mark forwarded review comments sent", "scope", "ade", "branch", sb.ID, "err", err)
+	if _, err := store.RemoveComments(ctx, tgt.GitRepoID, tgt.Branch, ids); err != nil {
+		slog.Warn("ade: remove forwarded review comments", "scope", "ade", "branch", sb.ID, "err", err)
 	}
 	b.emitReview(sb.TaskID, sb.ID)
 	return len(open), nil

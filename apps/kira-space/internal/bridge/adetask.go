@@ -649,7 +649,7 @@ func (s *AdeTaskService) ShelveTask(ctx context.Context, args adewire.ShelveTask
 	return adeTaskError(s.Engine.ShelveTask(ctx, args))
 }
 
-// CaptureTask adds a title-only task at the top of Later.
+// CaptureTask adds a title-only task at the top of Later, or of args.Day.
 func (s *AdeTaskService) CaptureTask(ctx context.Context, args adewire.CaptureTaskArgs) (adewire.Task, error) {
 	ctx = adeUserCtx(ctx)
 	if strings.TrimSpace(args.Title) == "" {
@@ -657,6 +657,11 @@ func (s *AdeTaskService) CaptureTask(ctx context.Context, args adewire.CaptureTa
 	}
 	if err := validateAdeName(args.Title, "title"); err != nil {
 		return adewire.Task{}, err
+	}
+	if args.Day != nil {
+		if err := validateAdeISODate(*args.Day); err != nil {
+			return adewire.Task{}, err
+		}
 	}
 	t, err := s.Engine.CaptureTask(ctx, args)
 	return t, adeTaskError(err)
@@ -964,7 +969,7 @@ func (s *AdeTaskService) StepDone(ctx context.Context, args adewire.StepDoneArgs
 	if err := validateAdeHandoverNotes(args.Notes); err != nil {
 		return adewire.Task{}, err
 	}
-	t, err := s.Engine.StepDone(ctx, args.TaskID, args.Notes)
+	t, err := s.Engine.StepDone(ctx, args.TaskID, args.Notes, args.CloseSessions)
 	return t, adeTaskError(err)
 }
 
@@ -1060,7 +1065,7 @@ func (s *AdeTaskService) SetTaskStep(ctx context.Context, args adewire.SetTaskSt
 	if err := validateAdeHandoverNotes(args.Notes); err != nil {
 		return adewire.Task{}, err
 	}
-	t, err := s.Engine.SetTaskStep(ctx, args.TaskID, args.StepID, args.FromStepID, args.Notes)
+	t, err := s.Engine.SetTaskStep(ctx, args.TaskID, args.StepID, args.FromStepID, args.Notes, args.CloseSessions)
 	return t, adeTaskError(err)
 }
 

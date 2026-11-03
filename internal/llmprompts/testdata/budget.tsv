@@ -80,7 +80,7 @@ headless.finishStep.ack	19
 headless.tool.task_info	115
 headless.tool.declare_repos	169
 headless.tool.declare_repos.arg.repos	91
-headless.tool.request_branches	271
+headless.tool.request_branches	328
 headless.tool.request_branches.arg.repos	89
 headless.tool.branch_status	93
 headless.tool.branch_status.arg.repo	42

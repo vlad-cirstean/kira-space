@@ -1,0 +1,354 @@
+{
+  "AdeTaskService.Board#advanced": {
+    "branchIds": [
+      "<id:4>"
+    ],
+    "branchRequestId": "",
+    "color": 0,
+    "createdAt": 0,
+    "entryStepId": "done",
+    "est": "",
+    "handoverDrafts": [],
+    "handoverIn": {
+      "body": "summary-done",
+      "createdAt": 0,
+      "dismissed": false,
+      "edited": false,
+      "finished": false,
+      "fromStepId": "two",
+      "fromStepName": "two",
+      "id": "<id:5>",
+      "source": "run",
+      "state": "handed",
+      "taskId": "<id:1>",
+      "toStepId": "done",
+      "toStepName": "",
+      "updatedAt": 0
+    },
+    "hostLink": null,
+    "hostUrl": "",
+    "id": "<id:1>",
+    "jira": null,
+    "kind": "task",
+    "notes": "",
+    "owner": "",
+    "runs": [
+      {
+        "attempt": 1,
+        "branchId": "",
+        "exitCode": 0,
+        "finishedAt": 0,
+        "id": "<id:2>",
+        "loops": 0,
+        "note": "",
+        "outcome": {
+          "exitCode": 0,
+          "reason": "",
+          "reported": true,
+          "result": "done",
+          "route": "next",
+          "source": "agent",
+          "status": "done",
+          "summary": "summary-done"
+        },
+        "purpose": "",
+        "resumable": false,
+        "returns": 0,
+        "review": null,
+        "sandbox": {
+          "access": "write",
+          "denials": 0,
+          "enforced": false,
+          "last": ""
+        },
+        "sessionId": "<id:3>",
+        "startedAt": 0,
+        "state": "done",
+        "stepId": "one",
+        "summary": "summary-done",
+        "taskId": "<id:1>"
+      },
+      {
+        "attempt": 1,
+        "branchId": "<id:4>",
+        "exitCode": 0,
+        "finishedAt": 0,
+        "id": "<id:6>",
+        "loops": 0,
+        "note": "",
+        "outcome": {
+          "exitCode": 0,
+          "reason": "",
+          "reported": true,
+          "result": "done",
+          "route": "next",
+          "source": "agent",
+          "status": "done",
+          "summary": "summary-done"
+        },
+        "purpose": "",
+        "resumable": false,
+        "returns": 0,
+        "review": null,
+        "sandbox": {
+          "access": "write",
+          "denials": 0,
+          "enforced": false,
+          "last": ""
+        },
+        "sessionId": "<id:7>",
+        "startedAt": 0,
+        "state": "done",
+        "stepId": "two",
+        "summary": "summary-done",
+        "taskId": "<id:1>"
+      }
+    ],
+    "since": {},
+    "statusBy": "auto",
+    "statusId": "done",
+    "statusStep": "done",
+    "title": "Fix login",
+    "workflow": {
+      "id": "flow",
+      "name": "Flow",
+      "steps": [
+        {
+          "agent": "",
+          "allowedTools": [],
+          "before": "auto",
+          "command": "<masked>",
+          "id": "one",
+          "kind": "agent",
+          "maxReturns": 3,
+          "name": "one",
+          "params": {},
+          "prompt": "ask for branches",
+          "results": [
+            {
+              "description": "",
+              "id": "done",
+              "loop": false,
+              "next": "next",
+              "ok": true
+            },
+            {
+              "description": "",
+              "id": "failed",
+              "loop": false,
+              "next": "stop",
+              "ok": false
+            }
+          ],
+          "review": null,
+          "runsOn": "once",
+          "sandbox": {
+            "access": "write",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": false,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": "1m"
+        },
+        {
+          "agent": "",
+          "allowedTools": [],
+          "before": "auto",
+          "command": "<masked>",
+          "id": "two",
+          "kind": "agent",
+          "maxReturns": 3,
+          "name": "two",
+          "params": {},
+          "prompt": "work on {branch} in {repo}",
+          "results": [
+            {
+              "description": "",
+              "id": "done",
+              "loop": false,
+              "next": "next",
+              "ok": true
+            },
+            {
+              "description": "",
+              "id": "failed",
+              "loop": false,
+              "next": "stop",
+              "ok": false
+            }
+          ],
+          "review": null,
+          "runsOn": "each repo",
+          "sandbox": {
+            "access": "write",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": false,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": "1m"
+        }
+      ]
+    },
+    "workflowId": "flow",
+    "workflowOutdated": false
+  },
+  "AdeTaskService.Board#started": {
+    "branchIds": [],
+    "branchRequestId": "",
+    "color": 0,
+    "createdAt": 0,
+    "entryStepId": "one",
+    "est": "",
+    "handoverDrafts": [],
+    "handoverIn": null,
+    "hostLink": null,
+    "hostUrl": "",
+    "id": "<id:1>",
+    "jira": null,
+    "kind": "task",
+    "notes": "",
+    "owner": "",
+    "runs": [
+      {
+        "attempt": 1,
+        "branchId": "",
+        "exitCode": null,
+        "finishedAt": null,
+        "id": "<id:2>",
+        "loops": 0,
+        "note": "",
+        "outcome": null,
+        "purpose": "",
+        "resumable": false,
+        "returns": 0,
+        "review": null,
+        "sandbox": {
+          "access": "write",
+          "denials": 0,
+          "enforced": false,
+          "last": ""
+        },
+        "sessionId": "<id:3>",
+        "startedAt": 0,
+        "state": "running",
+        "stepId": "one",
+        "summary": "",
+        "taskId": "<id:1>"
+      }
+    ],
+    "since": {},
+    "statusBy": "auto",
+    "statusId": "in-progress",
+    "statusStep": "one",
+    "title": "Fix login",
+    "workflow": {
+      "id": "flow",
+      "name": "Flow",
+      "steps": [
+        {
+          "agent": "",
+          "allowedTools": [],
+          "before": "auto",
+          "command": "<masked>",
+          "id": "one",
+          "kind": "agent",
+          "maxReturns": 3,
+          "name": "one",
+          "params": {},
+          "prompt": "ask for branches",
+          "results": [
+            {
+              "description": "",
+              "id": "done",
+              "loop": false,
+              "next": "next",
+              "ok": true
+            },
+            {
+              "description": "",
+              "id": "failed",
+              "loop": false,
+              "next": "stop",
+              "ok": false
+            }
+          ],
+          "review": null,
+          "runsOn": "once",
+          "sandbox": {
+            "access": "write",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": false,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": "1m"
+        },
+        {
+          "agent": "",
+          "allowedTools": [],
+          "before": "auto",
+          "command": "<masked>",
+          "id": "two",
+          "kind": "agent",
+          "maxReturns": 3,
+          "name": "two",
+          "params": {},
+          "prompt": "work on {branch} in {repo}",
+          "results": [
+            {
+              "description": "",
+              "id": "done",
+              "loop": false,
+              "next": "next",
+              "ok": true
+            },
+            {
+              "description": "",
+              "id": "failed",
+              "loop": false,
+              "next": "stop",
+              "ok": false
+            }
+          ],
+          "review": null,
+          "runsOn": "each repo",
+          "sandbox": {
+            "access": "write",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": false,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": "1m"
+        }
+      ]
+    },
+    "workflowId": "flow",
+    "workflowOutdated": false
+  },
+  "AdeTaskService.LaunchStep": {
+    "command": "<masked>",
+    "cwd": "<masked>",
+    "sessionId": "<id:1>",
+    "terminalId": "<masked>"
+  },
+  "error:AdeTaskService.StartRun#review": "{\"code\":\"E_BAD_REQUEST\",\"message\":\"step \\\"review\\\": the review step needs a branch to review\"}"
+}

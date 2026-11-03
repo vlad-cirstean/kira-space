@@ -1,5 +1,5 @@
 // Package jira is the issue tracker provider over Atlassian's `acli`. It reads title, status and the
-// Development summary of one work item; pull request rows come from the code host (see Options).
+// Development summary of one work item.
 // acli keeps its own login; Kira holds no Jira credential.
 package jira
 
@@ -31,9 +31,6 @@ type Options struct {
 	Locator Locator
 	Runner  Runner
 	Clock   Clock
-	// ChangeRequests finds the pull requests that carry the issue key in their title or head branch. Jira's
-	// GitHub app links pull requests by the same rule. nil skips PR rows.
-	ChangeRequests func(ctx context.Context, key string) ([]issuetracker.ChangeRequest, error)
 }
 
 // Provider is the Jira issue tracker.
@@ -56,7 +53,7 @@ func New(o Options) *Provider {
 		o.Clock = realClock{}
 	}
 	d := newDiscovery(o.Locator, o.Runner, o.Clock)
-	return &Provider{disc: d, client: newClient(d, o.Runner, o.Clock, o.ChangeRequests)}
+	return &Provider{disc: d, client: newClient(d, o.Runner, o.Clock)}
 }
 
 func (p *Provider) ID() string { return ProviderID }

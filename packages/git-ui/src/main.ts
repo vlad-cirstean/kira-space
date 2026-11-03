@@ -42,6 +42,9 @@ export interface MountOptions {
   readonly lockTarget?: boolean;
   /** Only meaningful when `view === "review"`: receives a handle that opens a file's diff, as a click in the Files pane does. */
   readonly onReviewApi?: (api: ReviewApi) => void;
+  /** Only meaningful when `view === "review"`: binds Alt+F8 / Shift+Alt+F8 to the next / previous
+   *  file to review. Off for sidebars that share a window with other mounts. */
+  readonly reviewShortcuts?: boolean;
   /** Only meaningful when `view === "graph"` — the exact mirror of `target` above, for a
    *  palette command that fired while the graph webview was cold (`panelView.ts`'s own
    *  `#pendingUiAction`/bootstrap-island arm). `undefined`/`null` means no action is pending.
@@ -84,6 +87,7 @@ export function mount(container: Element, opts: MountOptions): MountHandle {
     target,
     lockTarget,
     onReviewApi,
+    reviewShortcuts,
     pendingUiAction,
     dateFormat,
     onShowOperations,
@@ -96,7 +100,7 @@ export function mount(container: Element, opts: MountOptions): MountHandle {
   // Shallow: `transport`/`viewState` must not be proxied; `update` swaps top-level props.
   const rootProps = shallowReactive<Record<string, unknown>>(
     view === 'review'
-      ? { ...rest, target, lockTarget, onReviewApi, repoHead }
+      ? { ...rest, target, lockTarget, onReviewApi, reviewShortcuts, repoHead }
       : { ...rest, pendingUiAction, dateFormat, showOperations: onShowOperations, repoHead },
   );
   const app: VueApp = createApp(MountRoot, {

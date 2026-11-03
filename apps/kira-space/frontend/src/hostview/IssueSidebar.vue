@@ -5,45 +5,19 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
-import { formatRelative } from '@workbench/behaviour/format';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { computed } from 'vue';
-import { gapText } from '../ade/v2/artifacts/gapText';
-import type { ArtifactGap } from '../ade/v2/wire';
+import { initials, statusVariant } from './issueFormat';
 import { useOpenHostView } from './queries';
-import type { IssueChangeRequest, IssueDetail } from './wire';
+import RelativeTime from './RelativeTime.vue';
+import type { IssueDetail } from './wire';
 
-const props = defineProps<{ detail: IssueDetail; provider: string; stacked: boolean }>();
+const props = defineProps<{ detail: IssueDetail; stacked: boolean }>();
 const open = useOpenHostView();
+const tone = computed(() => statusVariant(props.detail.statusCategory));
 
 function openView(urlOrKey: string): void {
   fireAndForget(open.mutateAsync(urlOrKey), 'hostView.issue');
-}
-
-// Same derivation as the task tab's issue line: a lookup failure, else the tracker's count above the
-// rows found.
-const gap = computed<ArtifactGap | null>(() => {
-  const d = props.detail;
-  const source = props.provider;
-  if (d.changeRequestsReason) {
-    const r = d.changeRequestsReason;
-    return { source, repo: '', reason: `changeRequests${r.charAt(0).toUpperCase()}${r.slice(1)}` };
-  }
-  const missing = d.summary.known ? d.summary.count - d.changeRequests.length : 0;
-  return missing > 0 ? { source, repo: '', reason: 'changeRequestsMissing', count: missing } : null;
-});
-
-function stateVariant(cr: IssueChangeRequest) {
-  switch (cr.state) {
-    case 'merged':
-      return 'info' as const;
-    case 'closed':
-      return 'error' as const;
-    case 'draft':
-      return 'chip' as const;
-    default:
-      return 'ok' as const;
-  }
 }
 </script>
 
@@ -55,7 +29,9 @@ function stateVariant(cr: IssueChangeRequest) {
   >
     <KeyValueList class="items-baseline gap-y-2">
       <dt>{{ t('common.field.status.label') }}</dt>
-      <dd data-testid="issue-side-status">{{ detail.status }}</dd>
+      <dd>
+        <Badge :variant="tone" data-testid="issue-side-status">{{ detail.status }}</Badge>
+      </dd>
       <template v-if="detail.type">
         <dt>{{ t('common.field.type.label') }}</dt>
         <dd data-testid="issue-side-type">{{ detail.type }}</dd>
@@ -69,20 +45,34 @@ function stateVariant(cr: IssueChangeRequest) {
         <dd data-testid="issue-side-resolution">{{ detail.resolution }}</dd>
       </template>
       <dt>{{ t('space.hostView.issue.field.assignee.label') }}</dt>
-      <dd data-testid="issue-side-assignee">{{
-        detail.assignee?.name || t('space.hostView.issue.assignee.none.empty')
-      }}</dd>
+      <dd class="flex items-center gap-1.5" data-testid="issue-side-assignee">
+        <span
+          v-if="detail.assignee"
+          class="grid size-5 shrink-0 place-items-center rounded-full bg-field text-kira-sm"
+          aria-hidden="true"
+          >{{
+            initials(detail.assignee.name)
+          }}</span
+        >{{ detail.assignee?.name || t('space.hostView.issue.assignee.none.empty') }}
+      </dd>
       <dt>{{ t('space.hostView.issue.field.reporter.label') }}</dt>
-      <dd data-testid="issue-side-reporter">{{
-        detail.reporter?.name || t('space.hostView.issue.reporter.none.empty')
-      }}</dd>
+      <dd class="flex items-center gap-1.5" data-testid="issue-side-reporter">
+        <span
+          v-if="detail.reporter"
+          class="grid size-5 shrink-0 place-items-center rounded-full bg-field text-kira-sm"
+          aria-hidden="true"
+          >{{
+            initials(detail.reporter.name)
+          }}</span
+        >{{ detail.reporter?.name || t('space.hostView.issue.reporter.none.empty') }}
+      </dd>
       <template v-if="detail.createdAt">
         <dt>{{ t('common.created.label') }}</dt>
-        <dd data-testid="issue-side-created">{{ formatRelative(detail.createdAt) }}</dd>
+        <dd data-testid="issue-side-created"><RelativeTime :at="detail.createdAt" /></dd>
       </template>
       <template v-if="detail.updatedAt">
         <dt>{{ t('space.hostView.issue.date.updated.label') }}</dt>
-        <dd data-testid="issue-side-updated">{{ formatRelative(detail.updatedAt) }}</dd>
+        <dd data-testid="issue-side-updated"><RelativeTime :at="detail.updatedAt" /></dd>
       </template>
       <template v-if="detail.dueDate">
         <dt>{{ t('space.hostView.issue.date.due.label') }}</dt>
@@ -135,31 +125,16 @@ function stateVariant(cr: IssueChangeRequest) {
       </div>
     </section>
 
-    <section class="flex flex-col gap-1.5" data-testid="issue-side-pull-requests">
+    <section
+      v-if="detail.summary.known"
+      class="flex flex-col gap-1.5"
+      data-testid="issue-side-pull-requests"
+    >
       <SectionHeading :label="t('space.hostView.issue.pullRequests.heading.title')" />
-      <FieldDescription v-if="detail.changeRequests.length === 0 && !gap">{{
-        t('space.ade.taskTab.issueLine.prsNone.label')
-      }}</FieldDescription>
-      <div
-        v-for="cr in detail.changeRequests"
-        :key="cr.url"
-        class="flex items-center gap-2 text-kira-sm"
-        data-testid="issue-side-pull-request"
-      >
-        <Button
-          size="inline"
-          variant="link"
-          class="min-w-0 flex-1 justify-start truncate"
-          :title="cr.title"
-          data-testid="issue-side-pull-request-open"
-          @click="openView(cr.url)"
-        >
-          {{ cr.ref }} {{ cr.title }}
-        </Button>
-        <Badge :variant="stateVariant(cr)" class="shrink-0">{{ cr.state }}</Badge>
-      </div>
-      <FieldDescription v-if="gap" data-testid="issue-side-pull-requests-gap">{{
-        gapText(gap)
+      <FieldDescription data-testid="issue-side-pull-requests-count">{{
+        detail.summary.count > 0
+          ? t('space.ade.taskTab.issueLine.prs.label', { count: detail.summary.count })
+          : t('space.ade.taskTab.issueLine.prsNone.label')
       }}</FieldDescription>
     </section>
   </aside>

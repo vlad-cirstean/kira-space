@@ -274,6 +274,7 @@ export const IPC = {
   adeTaskReviewWorking: 'kira:adetask:reviewWorking',
   adeTaskReviewWorkingDiff: 'kira:adetask:reviewWorkingDiff',
   adeTaskReviewWorkingFile: 'kira:adetask:reviewWorkingFile',
+  adeTaskReviewWorkingStamp: 'kira:adetask:reviewWorkingStamp',
   adeTaskReviewWorkingMark: 'kira:adetask:reviewWorkingMark',
   adeTaskReviewWorkingComments: 'kira:adetask:reviewWorkingComments',
   adeTaskReviewWorkingCommentAdd: 'kira:adetask:reviewWorkingCommentAdd',

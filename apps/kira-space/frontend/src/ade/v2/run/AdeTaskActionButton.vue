@@ -6,7 +6,7 @@ import type { CardModel } from '../plan/usePlanModel';
 import { ACTION_CLASS } from '../tones';
 import { useTaskAction } from './useTaskAction';
 
-// `quiet` is the Plan card's neutral look. The task's step action: `▶ Run`, `▶ <Step>`, `Take over`, `Approve`, `Retry`, `Done ›`, `Finish ✓`,
+// `quiet` is the Plan card's neutral look. The task's step action: `▶ Run`, `▶ <Step>`, `Take over`, `Approve`, `Retry`, `Next stage ›`, `Finish`,
 // `Archive`; nothing otherwise.
 const props = defineProps<{ card: CardModel; quiet?: boolean }>();
 const { action, perform, busy } = useTaskAction(() => props.card);

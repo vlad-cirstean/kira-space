@@ -215,7 +215,7 @@ test('Done and Finish call StepDone', async ({ relaunch }) => {
       for (const r of b.tasks.find((x) => x.id === 'T_hooks')?.runs ?? []) r.state = 'done';
     }),
   ]);
-  await page.locator(cellAction('T_hooks', 'done')).click();
+  await page.locator(cellAction('T_hooks', 'advance')).click();
   await page.locator(t('ade-stage-move')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStepDone)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskStepDone)[0]?.args).toEqual({ taskId: 'T_hooks' });

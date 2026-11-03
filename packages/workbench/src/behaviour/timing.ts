@@ -23,6 +23,8 @@ export const TIMING = {
   postedStatus: 6000,
   /** Wait after agent activity before re-reading the files it may have written. */
   fileSettle: 300,
+  /** Stat poll of the files a review window lists. */
+  reviewStamp: 1500,
   /** Hover info popup delay. */
   hoverInfo: 400,
   pollFast: 5000,

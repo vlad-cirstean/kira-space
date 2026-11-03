@@ -82,6 +82,8 @@ type TaskBoardDeps struct {
 	OnReview func(adewire.ReviewEvent)
 	// AgentDir holds each run's MCP config file (0700 dir, 0600 files).
 	AgentDir string
+	// TasksDir holds each task's folder for runs and sessions on a task with no branch.
+	TasksDir string
 	// Prompts resolves the editable LLM prompt texts; nil means the registry defaults.
 	Prompts llmprompts.Source
 	// Agent resolves the provider of a new run. AgentBin overrides its CLI (a test points it at a fake).

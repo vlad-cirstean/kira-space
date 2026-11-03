@@ -324,6 +324,9 @@ var requestHandlers = map[string]requestHandler{
 	"changeRequest.submitReview": func(r *Router, ctx context.Context, c *gitsession.Conn, params json.RawMessage) (any, error) {
 		return r.handleChangeRequestSubmitReview(ctx, c, params)
 	},
+	"changeRequest.lineComment": func(r *Router, ctx context.Context, c *gitsession.Conn, params json.RawMessage) (any, error) {
+		return r.handleChangeRequestLineComment(ctx, c, params)
+	},
 	"changeRequest.comment": func(r *Router, ctx context.Context, c *gitsession.Conn, params json.RawMessage) (any, error) {
 		return r.handleChangeRequestComment(ctx, c, params)
 	},

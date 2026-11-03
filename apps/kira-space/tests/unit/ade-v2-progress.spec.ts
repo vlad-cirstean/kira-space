@@ -83,6 +83,30 @@ describe('step targets and percent', () => {
     expect(p.steps[1]?.state).toBe('pending');
   });
 
+  test('a task with no mine branch runs steps on the task folder, except review and only', () => {
+    const wf: Workflow = {
+      ...workflow,
+      steps: [
+        mkStep({ id: 'a', runsOn: 'once' }),
+        mkStep({ id: 'b', runsOn: 'only web-app' }),
+        mkStep({ id: 'c', kind: 'review' }),
+      ],
+    };
+    const p = buildTaskProgress(input([], { entryStepId: 'a', branchIds: [] }, wf));
+    expect(p.steps.map((s) => s.runs.map((r) => r.branchId))).toEqual([[''], [], []]);
+  });
+
+  test('a step that ran without a branch keeps the task folder once repos exist', () => {
+    const p = buildTaskProgress(
+      input([run('plan', '', { state: 'done' }), run('code', 'b_api', { state: 'running' })], {
+        entryStepId: 'plan',
+      }),
+    );
+    expect(p.steps[1]?.runs.map((r) => r.branchId)).toEqual(['']);
+    expect(p.steps[1]?.state).toBe('done');
+    expect(p.steps[2]?.runs.map((r) => r.branchId)).toEqual(['b_api', 'b_web']);
+  });
+
   test('review branches are never targets', () => {
     const was = branches[1];
     branches[1] = mkBranch({ id: 'b_web', taskId: 'T', codeRepoId: 'repo-web', kind: 'review' });

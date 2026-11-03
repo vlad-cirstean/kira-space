@@ -15,6 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/shell"
+	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
 // CaptureWindowKeyPrefix marks a clipboard capture popup key: never restored.
@@ -29,16 +30,12 @@ const (
 	ChannelCaptureStatus = "kira:capture:status"
 )
 
-// Capture item kinds and actions.
+// Capture item kinds.
 const (
 	CaptureKindChangeRequest = "changeRequest"
 	CaptureKindIssue         = "issue"
 	CaptureKindText          = "text"
 	CaptureKindEmpty         = "empty"
-
-	CaptureActionOpenChangeRequest = "openChangeRequest"
-	CaptureActionOpenIssue         = "openIssue"
-	CaptureActionLater             = "later"
 )
 
 const (
@@ -47,7 +44,7 @@ const (
 )
 
 // CaptureService is the clipboard capture popup: the global hotkey reads the clipboard once, the
-// popup offers actions for what it holds, Confirm runs one.
+// popup shows what it holds, Confirm adds it as a task.
 type CaptureService struct {
 	Deps     appcore.Deps
 	HostView *HostViewService
@@ -72,15 +69,14 @@ type captureEntry struct {
 	jira *adewire.Jira
 }
 
-// CaptureItem is what the popup shows. Actions are ordered; the first is preselected.
+// CaptureItem is what the popup shows.
 type CaptureItem struct {
-	ID        string   `json:"id"`
-	Kind      string   `json:"kind"`
-	Text      string   `json:"text"`
-	Truncated bool     `json:"truncated"`
-	Label     string   `json:"label"`
-	Actions   []string `json:"actions"`
-	Title     string   `json:"title"`
+	ID        string `json:"id"`
+	Kind      string `json:"kind"`
+	Text      string `json:"text"`
+	Truncated bool   `json:"truncated"`
+	Label     string `json:"label"`
+	Title     string `json:"title"`
 }
 
 // CaptureWindowArgs names a popup.
@@ -88,19 +84,20 @@ type CaptureWindowArgs struct {
 	WindowKey string `json:"windowKey"`
 }
 
-// CaptureConfirmArgs runs one action on the popup's item; ItemID guards against a replaced item.
+// CaptureConfirmArgs adds the popup's item as a task; ItemID guards against a replaced item.
 type CaptureConfirmArgs struct {
 	WindowKey string `json:"windowKey"`
 	ItemID    string `json:"itemId"`
-	Action    string `json:"action"`
 	Title     string `json:"title"`
+	// Day is the plan day (YYYY-MM-DD) the task lands on; nil lands at the top of Later.
+	Day *string `json:"day"`
 }
 
-// CaptureResult is Confirm's result. Key is the opened view window, TaskID the created task.
+// CaptureResult is Confirm's result. Notice names what the added task lacks ("" when complete);
+// with a notice the popup stays open to show it.
 type CaptureResult struct {
-	Action string `json:"action"`
-	Key    string `json:"key,omitempty"`
-	TaskID string `json:"taskId,omitempty"`
+	TaskID string `json:"taskId"`
+	Notice string `json:"notice"`
 }
 
 // WindowItem returns the item a popup shows, null for a non-capture or closed window.
@@ -138,8 +135,9 @@ func (s *CaptureService) Dismiss(_ context.Context, args CaptureWindowArgs) erro
 	return nil
 }
 
-// Confirm runs one of the item's actions and closes the popup on success. A failure leaves the
-// popup open with the error.
+// Confirm adds the item as a task and closes the popup. An error means no task was added: the
+// popup and its item stay, so a retry is safe. A notice means a task exists but lacks its details
+// or branch: the popup stays to show it and the item is dropped, so a repeat Confirm is refused.
 func (s *CaptureService) Confirm(ctx context.Context, args CaptureConfirmArgs) (CaptureResult, error) {
 	if err := validateAdeItemID(args.WindowKey, "windowKey"); err != nil {
 		return CaptureResult{}, err
@@ -150,36 +148,38 @@ func (s *CaptureService) Confirm(ctx context.Context, args CaptureConfirmArgs) (
 	if !ok || e.item.ID != args.ItemID {
 		return CaptureResult{}, ipcerr.Contract("capture item is stale")
 	}
-	if !containsString(e.item.Actions, args.Action) {
-		return CaptureResult{}, ipcerr.Contract("action %q is not offered for this item", args.Action)
+	if e.item.Kind == CaptureKindEmpty {
+		return CaptureResult{}, ipcerr.Contract("nothing to capture")
 	}
-	res := CaptureResult{Action: args.Action}
-	switch args.Action {
-	case CaptureActionOpenChangeRequest, CaptureActionOpenIssue:
-		opened, err := s.HostView.Open(ctx, HostViewOpenArgs{URL: e.item.Text})
-		if err != nil {
+	if args.Day != nil {
+		if err := validateAdeISODate(*args.Day); err != nil {
 			return CaptureResult{}, err
 		}
-		res.Key = opened.Key
-	case CaptureActionLater:
-		id, err := s.later(ctx, e, args.Title)
-		if err != nil {
-			return CaptureResult{}, err
-		}
-		res.TaskID = id
 	}
-	s.closePopup(args.WindowKey)
+	res, err := s.add(ctx, e, args.Title, args.Day)
+	if err != nil {
+		return CaptureResult{}, err
+	}
+	if res.Notice == "" {
+		s.closePopup(args.WindowKey)
+		return res, nil
+	}
+	s.mu.Lock()
+	delete(s.entries, args.WindowKey)
+	s.mu.Unlock()
 	return res, nil
 }
 
-// later captures a task at the top of Later, then adds what the title cannot hold. The two calls are
-// not atomic: a failed patch leaves the title-only task, and the error names it.
-func (s *CaptureService) later(ctx context.Context, e captureEntry, title string) (string, error) {
+// add captures a task at the top of Later or of day, adds what the title cannot hold, then fetches a
+// change request's head branch onto the task as a review branch. The steps are not atomic: a
+// failed one leaves the task and returns a notice naming what it lacks.
+func (s *CaptureService) add(ctx context.Context, e captureEntry, title string, day *string) (CaptureResult, error) {
 	title = strings.TrimSpace(title)
-	task, err := s.Tasks.CaptureTask(ctx, adewire.CaptureTaskArgs{Title: title})
+	task, err := s.Tasks.CaptureTask(ctx, adewire.CaptureTaskArgs{Title: title, Day: day})
 	if err != nil {
-		return "", err
+		return CaptureResult{}, err
 	}
+	res := CaptureResult{TaskID: task.ID}
 	var patch adewire.TaskPatch
 	if e.item.Text != title {
 		patch.Notes = &e.item.Text
@@ -190,14 +190,21 @@ func (s *CaptureService) later(ctx context.Context, e captureEntry, title string
 		}
 	}
 	patch.Jira = e.jira
-	if patch.Notes == nil && patch.HostURL == nil && patch.Jira == nil {
-		return task.ID, nil
+	if patch.Notes != nil || patch.HostURL != nil || patch.Jira != nil {
+		if _, err := s.Tasks.UpdateTask(ctx, adewire.UpdateTaskArgs{TaskID: task.ID, Patch: patch}); err != nil {
+			res.Notice = i18n.T("backend.space.capture.partial.body",
+				map[string]string{"title": title, "error": strings.TrimSuffix(errText(err), ".")})
+			return res, nil
+		}
 	}
-	if _, err := s.Tasks.UpdateTask(ctx, adewire.UpdateTaskArgs{TaskID: task.ID, Patch: patch}); err != nil {
-		return "", ipcerr.T(ipcerr.CodeInternal, "backend.space.capture.partial.body",
-			map[string]string{"title": title, "error": errText(err)})
+	if e.item.Kind == CaptureKindChangeRequest {
+		_, err := s.Tasks.Engine.AddReviewLink(adeUserCtx(ctx), adewire.HostLinkArgs{URL: e.item.Text, TaskID: task.ID})
+		if err != nil {
+			res.Notice = i18n.T("backend.space.capture.noBranch.body",
+				map[string]string{"title": title, "error": strings.TrimSuffix(errText(adeTaskError(err)), ".")})
+		}
 	}
-	return task.ID, nil
+	return res, nil
 }
 
 func errText(err error) string {
@@ -209,15 +216,6 @@ func errText(err error) string {
 
 func (s *CaptureService) singleLink(text string) bool {
 	return len(text) <= maxHostViewURLBytes && !strings.ContainsFunc(text, unicode.IsSpace)
-}
-
-func containsString(list []string, v string) bool {
-	for _, x := range list {
-		if x == v {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *CaptureService) closePopup(key string) {
@@ -307,11 +305,11 @@ func captureTrigger(s *CaptureService) {
 	s.OpenPopup(key)
 }
 
-// classify builds the item for clipboard text: a change request link or issue key or link gets its
-// open action first; any other text goes to Later; nothing shows the empty state.
+// classify builds the item for clipboard text: a change request link, issue key or link, or other
+// text; nothing shows the empty state.
 func (s *CaptureService) classify(ctx context.Context, raw string, ok bool) captureEntry {
 	text := strings.TrimSpace(raw)
-	item := CaptureItem{ID: uuid.NewString(), Kind: CaptureKindEmpty, Actions: []string{}}
+	item := CaptureItem{ID: uuid.NewString(), Kind: CaptureKindEmpty}
 	if !ok || text == "" {
 		return captureEntry{item: item}
 	}
@@ -322,7 +320,6 @@ func (s *CaptureService) classify(ctx context.Context, raw string, ok bool) capt
 	item.Text = text
 	item.Title = cutUTF8(firstLine(text), captureMaxTitleBytes)
 	item.Kind = CaptureKindText
-	item.Actions = []string{CaptureActionLater}
 	e := captureEntry{item: item}
 	if !s.singleLink(text) {
 		return e
@@ -331,14 +328,12 @@ func (s *CaptureService) classify(ctx context.Context, raw string, ok bool) capt
 		if p, _, repo, n, ok := hosts.ParseChangeRequestLink(ctx, text); ok {
 			e.item.Kind = CaptureKindChangeRequest
 			e.item.Label = p.Terms().ChangeRequestShort + " #" + strconv.Itoa(n) + " " + repo.Owner + "/" + repo.Name
-			e.item.Actions = []string{CaptureActionOpenChangeRequest, CaptureActionLater}
 			return e
 		}
 	}
 	if p, ref, ok := s.HostView.issueProvider(text); ok {
 		e.item.Kind = CaptureKindIssue
 		e.item.Label = p.Terms().Label + " " + ref.Key
-		e.item.Actions = []string{CaptureActionOpenIssue, CaptureActionLater}
 		e.jira = &adewire.Jira{Key: ref.Key, URL: ref.URL}
 	}
 	return e

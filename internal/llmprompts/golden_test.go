@@ -77,6 +77,7 @@ func TestGolden(t *testing.T) {
 			v.Message = "Do the thing for Add login form."
 			v.Notes, v.Handover, v.HandoverFrom = "Check the error states.", "Form wired; validation missing.", "Design"
 		})},
+		{"ade.step.prompt.no-repo", AdeStepPrompt.id, step(func(v *StepVars) { v.Repo, v.Branch, v.Worktree = "", "", "/home/u/ade/tasks/t1" })},
 		{"ade.step.prompt.declared-results", AdeStepPrompt.id, step(func(v *StepVars) { v.Finish = declared })},
 		{"ade.step.prompt.empty-step-prompt", AdeStepPrompt.id, step(func(v *StepVars) { v.StepPrompt, v.StepNumber, v.StepCount = "", 1, 1 })},
 
@@ -87,6 +88,7 @@ func TestGolden(t *testing.T) {
 		{"ade.manual.message.handover", AdeManualMessage.id, ManualVars{
 			StepName: "Review", Title: "Add login form", Repos: repos[:1], Handover: "Form wired; validation missing.", HandoverFrom: "Implement",
 		}},
+		{"ade.manual.message.no-repo", AdeManualMessage.id, ManualVars{StepName: "Plan", Title: "Add login form", Folder: "/home/u/ade/tasks/t1"}},
 		{"ade.manual.message.minimal", AdeManualMessage.id, ManualVars{StepName: "Plan", Title: "Add login form", Repos: repos[:1]}},
 		{"ade.review.message.full", AdeReviewMessage.id, ReviewVars{Title: "Add login form", JiraKey: jiraKey, JiraURL: jiraURL, Notes: capped, Repos: withPR(repos)}},
 		{"ade.review.message.minimal", AdeReviewMessage.id, ReviewVars{Title: "Add login form", Repos: repos[:1]}},

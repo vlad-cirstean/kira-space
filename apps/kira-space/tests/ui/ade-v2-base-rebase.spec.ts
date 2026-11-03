@@ -199,7 +199,7 @@ test('the card base button opens the dialog for one branch and a menu for severa
   await page.locator(t('ade-dialog-cancel')).click();
   const auth = page.locator(`${t('ade-card')}[data-task-id="T_auth"]`);
   await auth.locator(t('ade-card-change-base')).click();
-  await expect(page.locator(t('ade-card-change-base-menu'))).toBeVisible();
+  await expect(page.locator(t('ade-card-change-base-menu'))).toBeInViewport();
   await expect(page.locator(t('ade-card-change-base-item')).first()).toBeVisible();
 });
 

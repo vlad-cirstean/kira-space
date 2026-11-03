@@ -83,7 +83,7 @@ test('Escape in the panel title reverts the text and writes nothing', async ({ r
   expect(updates(control)).toHaveLength(0);
 });
 
-test('name, Jira, GitHub and Not merging write UpdateTask patches', async ({ relaunch }) => {
+test('name, Issue, PR and Not merging write UpdateTask patches', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch);
   await openTask(page, 'T_notif');
   const name = page.locator('[data-testid="ade-panel-title"]');
@@ -181,6 +181,24 @@ test('+ Add branch attaches an existing branch to this task', async ({ relaunch 
     name: 'fix/invoice-rounding',
     taskId: 'T_bill',
   });
+});
+
+test('Task tab labels Issue and PR, no Notes row; notes stay in the Notes tab', async ({
+  relaunch,
+}) => {
+  const { window: page } = await openPlan(relaunch);
+  await openTask(page, 'T_bill');
+  const labels = (await page.locator('[data-testid="ade-task-tab"] dt').allTextContents()).map(
+    (s) => s.trim(),
+  );
+  expect(labels).toContain('Issue');
+  expect(labels).toContain('PR');
+  for (const vendor of ['Jira', 'GitHub', 'Notes']) expect(labels).not.toContain(vendor);
+  await expect(page.locator('[data-testid="ade-task-notes-row"]')).toHaveCount(0);
+  await page.locator('[data-testid="ade-panel-tab-notes"]').click();
+  await expect(page.locator('[data-testid="ade-notes-tab"] .ProseMirror')).toContainText(
+    'Q4 pricing launch',
+  );
 });
 
 test('typing in Notes saves once, debounced', async ({ relaunch }) => {

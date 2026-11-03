@@ -202,7 +202,9 @@ import type { EventKey, RequestKey, StreamKey } from './contract.ts';
 // P413: 55 -> 56, additive. New request 'review.comment.edit' (replace a comment's body and kind).
 // P418: 56 -> 57, additive. 'ReviewComment' gains 'origin' ('commit' | 'working'); 'CommentAnchor' gains
 // 'uncommitted' (a comment written on uncommitted worktree content).
-export const CONTRACT_VERSION = 57;
+// P464: 57 -> 58, additive. New request 'changeRequest.lineComment' (comment on lines of a file at a
+// change request's head).
+export const CONTRACT_VERSION = 58;
 
 export class ContractVersionMismatchError extends Error {
   readonly received: number;
@@ -322,6 +324,7 @@ const REQUEST_KEY_MAP: Record<RequestKey, true> = {
   'changeRequest.reviewState': true,
   'changeRequest.submitReview': true,
   'changeRequest.comment': true,
+  'changeRequest.lineComment': true,
   'changeRequest.openExternal': true,
   'link.openExternal': true,
   'worktree.list': true,

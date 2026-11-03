@@ -263,6 +263,35 @@ func (s *Store) RemoveComment(ctx context.Context, repoID, branch string, id int
 	return n > 0, nil
 }
 
+// RemoveComments deletes the given comments of this session with one statement. Returns how many
+// it removed.
+func (s *Store) RemoveComments(ctx context.Context, repoID, branch string, ids []int64) (int, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	db, err := s.conn()
+	if err != nil {
+		return 0, err
+	}
+	marks := strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",")
+	args := make([]any, 0, len(ids)+2)
+	for _, id := range ids {
+		args = append(args, id)
+	}
+	args = append(args, repoID, branch)
+	res, err := db.ExecContext(ctx, `DELETE FROM review_comment WHERE id IN (`+marks+`) AND session_id = (
+		SELECT id FROM review_session WHERE repo_id = ? AND branch = ?
+	)`, args...)
+	if err != nil {
+		return 0, fmt.Errorf("gitreview: delete review_comments: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("gitreview: read RowsAffected: %w", err)
+	}
+	return int(n), nil
+}
+
 // ClearComments removes every comment for one session and nothing else — never a review_file, a
 // review_range, or the session row itself (D14). Runs no incremental_vacuum (the sweep's and
 // Purge's own job, D14). Returns how many were removed.

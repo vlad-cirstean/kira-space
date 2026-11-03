@@ -225,3 +225,48 @@ func (r *Router) handleChangeRequestComment(ctx context.Context, c *gitsession.C
 		},
 	)
 }
+
+// handleChangeRequestLineComment is changeRequest.lineComment's own handler: a comment on lines of
+// a file at the change request's head. A host refusal or a moved head is a result kind.
+func (r *Router) handleChangeRequestLineComment(ctx context.Context, c *gitsession.Conn, params json.RawMessage) (any, error) {
+	var body string // set by resolve, read by call: normalized once.
+	return handleRepoCall(ctx, c, "changeRequest.lineComment", params,
+		func(p ChangeRequestLineCommentParams) (string, error) {
+			if err := requireNonEmpty("changeRequest.lineComment", "repoId", p.RepoID); err != nil {
+				return "", err
+			}
+			if err := requireNonEmpty("changeRequest.lineComment", "path", p.Path); err != nil {
+				return "", err
+			}
+			if p.Number <= 0 {
+				return "", ipcerr.Contract("gitrpc: changeRequest.lineComment: a positive number is required")
+			}
+			if p.Range.Start < 1 || p.Range.End < p.Range.Start {
+				return "", ipcerr.Contract("gitrpc: changeRequest.lineComment: range must satisfy 1 <= start <= end")
+			}
+			if err := validObjectID("headSha", p.HeadSha); err != nil {
+				return "", err
+			}
+			body = normalizeCommentBody(p.Body)
+			if body == "" {
+				return "", ipcerr.T(ipcerr.CodeBadRequest, "backend.space.gitrpc.commentEmpty.body", nil)
+			}
+			if len(body) > githost.MaxHostCommentBytes {
+				return "", ipcerr.T(ipcerr.CodeBadRequest, "backend.space.gitrpc.hostCommentTooLong.body", nil)
+			}
+			return p.RepoID, nil
+		},
+		func(ctx context.Context, entry *gitsession.RepoEntry, p ChangeRequestLineCommentParams) (ChangeRequestLineCommentResult, error) {
+			post, err := entry.CommentOnChangeRequestLines(ctx, p.Number, p.HeadSha, p.Path, p.Range, body)
+			if err != nil {
+				return ChangeRequestLineCommentResult{}, err
+			}
+			out := ChangeRequestLineCommentResult{Kind: post.Kind, HeadSha: post.HeadSha}
+			if post.Status != nil {
+				s := hostStatusFrom(*post.Status)
+				out.Status = &s
+			}
+			return out, nil
+		},
+	)
+}

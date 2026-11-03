@@ -172,13 +172,14 @@ export interface IssueComment {
   pending?: boolean;
 }
 
-export interface IssueChangeRequest {
-  title: string;
+export interface IssueAttachment {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  createdAt: number;
+  author?: IssuePerson;
   url: string;
-  ref: string;
-  state: string;
-  repo: string;
-  provider: string;
 }
 
 export interface IssueDetail {
@@ -202,9 +203,13 @@ export interface IssueDetail {
   commentsTotal: number;
   commentsTruncated?: boolean;
   commentsOmitted?: boolean;
+  attachments: IssueAttachment[];
+  attachmentsTruncated?: boolean;
   summary: { known: boolean; count: number; state: string; providers: string[] };
-  changeRequests: IssueChangeRequest[];
-  changeRequestsReason?: string;
+  /** Unix ms of the tracker's answer. */
+  fetchedAt: number;
+  /** A saved copy past its fresh window; a revalidating read follows. */
+  stale?: boolean;
 }
 
 export interface HostViewIssue {
@@ -212,4 +217,6 @@ export interface HostViewIssue {
   detail?: IssueDetail;
   reason?: string;
   compose?: HostViewCompose;
+  /** Client only: why the last fresh read failed while the saved copy stays shown. */
+  refreshFailed?: string;
 }

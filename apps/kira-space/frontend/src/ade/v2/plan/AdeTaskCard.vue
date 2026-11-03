@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
@@ -24,9 +23,9 @@ import { changeBaseChoices } from '../board/changeBase';
 import { taskReviewTip } from '../board/reviewCode';
 import { useReviewCode } from '../review/useReviewCode';
 import AdeTaskActionButton from '../run/AdeTaskActionButton.vue';
-import AdeTaskLaunchMenu from '../sessions/AdeTaskLaunchMenu.vue';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
+import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import AdeActionCell from './AdeActionCell.vue';
 import AdeAttention from './AdeAttention.vue';
@@ -39,6 +38,7 @@ const props = defineProps<{ card: CardModel }>();
 const emit = defineEmits<{ select: []; forcePush: [row: BranchRowModel] }>();
 
 const ui = useAdeBoardUiStore();
+const tabs = useAdePanelTabsStore();
 const dialogs = useAdeDialogsStore();
 const takeOver = useAdeTakeOverStore();
 const { model } = usePlanModel();
@@ -65,10 +65,11 @@ function act(row: BranchRowModel, a: BranchAction): void {
   else if (a.kind === 'forcePush') emit('forcePush', row);
   else if (a.kind === 'seeError') {
     ui.selectBranch(row.branch.taskId, row.id);
+    tabs.setBranchTab(row.id, 'details');
     ui.focusSetup = true;
   } else if (a.kind === 'seeLog') {
     ui.selectBranch(row.branch.taskId, row.id);
-    ui.branchTab = 'details';
+    tabs.setBranchTab(row.id, 'details');
     ui.focusRebaseLog = true;
   } else if (a.kind === 'takeOver') {
     delete ui.actionError[row.branch.taskId];
@@ -203,20 +204,16 @@ const boxClass = computed(() => {
             >
           </AdeTip>
           <DropdownMenu v-if="baseChoices.length > 1">
-            <AdeTip :text="t('space.ade.plan.card.changeBase.tooltip')">
-              <DropdownMenuTrigger as-child>
-                <Button
-                  variant="toolbar"
-                  size="kira-icon"
-                  class="size-4.5 shrink-0"
-                  :aria-label="t('space.ade.rebase.changeBase.label')"
-                  data-testid="ade-card-change-base"
-                  @click.stop
-                >
-                  <CodiconIcon name="git-branch" :size="13" />
-                </Button>
-              </DropdownMenuTrigger>
-            </AdeTip>
+            <DropdownMenuTrigger as-child>
+              <TooltipIconButton
+                icon="git-branch"
+                :label="t('space.ade.plan.card.changeBase.tooltip')"
+                :aria-label="t('space.ade.rebase.changeBase.label')"
+                class="size-4.5 shrink-0"
+                data-testid="ade-card-change-base"
+                @click.stop
+              />
+            </DropdownMenuTrigger>
             <DropdownMenuContent align="end" data-testid="ade-card-change-base-menu">
               <DropdownMenuItem
                 v-for="c in baseChoices"
@@ -256,11 +253,6 @@ const boxClass = computed(() => {
             <VarText :parts="reviewTip" />
             <Kbd>{{ formatShortcut('ade.reviewCode') }}</Kbd>
           </TooltipIconButton>
-          <AdeTaskLaunchMenu
-            v-if="card.rows.some((r) => r.branch.name !== '')"
-            :task-id="card.task.id"
-            size="card"
-          />
         </div>
         <AdeTip :text="card.title">
           <Button

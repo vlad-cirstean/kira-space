@@ -69,10 +69,8 @@ type Artifact struct {
 type ArtifactGap struct {
 	Source string `json:"source"`
 	Repo   string `json:"repo,omitempty"`
-	// Reason says why a tracker source is partial (unauthenticated, timeout, changeRequestsMissing, ...).
+	// Reason says why a tracker source is partial (unauthenticated, timeout, ...).
 	Reason string `json:"reason,omitempty"`
-	// Count is how many change requests the tracker lists beyond the ones found (changeRequestsMissing).
-	Count int `json:"count,omitempty"`
 }
 
 // TaskArtifacts is every artifact of a task; Gaps lists the sources that failed, so the list is partial.

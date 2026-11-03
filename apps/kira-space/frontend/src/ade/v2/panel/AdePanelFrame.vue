@@ -5,7 +5,7 @@ import { computed } from 'vue';
 
 // Panel body shared by task and branch mode: summary slot, then the tab row (tabs left, actions
 // right), then the active tab.
-const props = defineProps<{ tabs: { value: string; label: string }[] }>();
+const props = defineProps<{ tabs: { value: string; label: string; count?: number }[] }>();
 const items = computed(() => props.tabs.map((t) => ({ ...t, testid: `ade-panel-tab-${t.value}` })));
 const tab = defineModel<string>({ required: true });
 </script>
@@ -19,7 +19,7 @@ const tab = defineModel<string>({ required: true });
       <slot name="header" />
     </div>
     <PanelBar class="flex-row flex-wrap items-center">
-      <SecondaryTabs v-model="tab" :items="items" />
+      <SecondaryTabs v-model="tab" :items="items" count-badge />
       <div
         v-if="$slots.actions"
         class="ml-auto flex shrink-0 items-center gap-1"

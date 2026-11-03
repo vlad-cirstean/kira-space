@@ -12,6 +12,7 @@ import {
 import { FieldDescription } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
+import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
@@ -32,6 +33,15 @@ const fromName = computed(
 const targets = computed(() =>
   (store.moves?.options ?? []).filter((o) => o.id !== store.fromStepId && !o.skipped),
 );
+
+const sessionStages = computed(() => {
+  const names = new Map((store.moves?.options ?? []).map((o) => [o.id, o.name]));
+  const owners = store.closable.map((s) => (s.purpose === 'review' ? 'review' : s.stepId));
+  return [...new Set(owners)]
+    .map((id) => names.get(id) ?? '')
+    .filter(Boolean)
+    .join(', ');
+});
 
 function close(): void {
   store.close();
@@ -80,6 +90,31 @@ async function move(): Promise<void> {
             data-testid="ade-stage-notes"
           />
           <FieldDescription>{{ t('space.ade.stageDialog.notes.hint') }}</FieldDescription>
+        </div>
+        <div
+          v-if="store.closable.length"
+          class="flex flex-col gap-1.5"
+          data-testid="ade-stage-sessions"
+        >
+          <div class="text-muted-foreground">
+            {{ t('space.ade.stageDialog.sessions.label', { count: store.closable.length }) }}
+            <span v-if="sessionStages" class="text-kira-sm">({{ sessionStages }})</span>
+          </div>
+          <RadioGroup v-model="store.closeChoice" class="gap-1.5">
+            <div class="flex items-center gap-2">
+              <RadioGroupItem id="ade-stage-close" value="close" data-testid="ade-stage-close" />
+              <Label for="ade-stage-close">{{
+                t('space.ade.stageDialog.sessions.close.label', { count: store.closable.length })
+              }}</Label>
+            </div>
+            <div class="flex items-center gap-2">
+              <RadioGroupItem id="ade-stage-keep" value="keep" data-testid="ade-stage-keep" />
+              <Label for="ade-stage-keep">{{
+                t('space.ade.stageDialog.sessions.keep.label')
+              }}</Label>
+            </div>
+          </RadioGroup>
+          <FieldDescription>{{ t('space.ade.stageDialog.sessions.hint') }}</FieldDescription>
         </div>
         <div
           v-if="store.taskId && store.toStepId === 'done'"

@@ -288,7 +288,11 @@ function logToggleLabel(runId: string): string {
           >
           <AdeRepoTag
             :code-repo-id="card.rows.find((r) => r.id === rl.run.branchId)?.branch.codeRepoId ?? ''"
-            :label="card.rows.find((r) => r.id === rl.run.branchId)?.repo ?? ''"
+            :label="
+              rl.run.branchId === ''
+                ? t('space.ade.stepBlock.taskFolder.label')
+                : (card.rows.find((r) => r.id === rl.run.branchId)?.repo ?? '')
+            "
           />
           <span
             class="min-w-16 shrink-0 whitespace-nowrap text-kira-sm"

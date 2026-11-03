@@ -74,11 +74,15 @@ duplicated here; this file only points at them.
   end, with fixes landing as follow-up commits. Commits still land incrementally as work completes,
   for legible history — only *when* the expensive verification happens changes, not whether the
   result must be correct or commits stay granular.
-- **One full run of an expensive suite per phase, then targeted reruns only.** Run the full
-  end-to-end/UI suite once, near phase end. After a fix, rerun only the failing specs and the specs
-  that share its code, never the whole suite again. A timeout under load gets a lone rerun of that
-  spec first. Rerun the full suite a second time only when a fix touched shared code (a package, a
-  fixture, a config) that targeted reruns cannot cover; say so in the Result.
+- **One full run of an expensive suite per chapter, not per phase.** Implementers run fast checks
+  (typecheck, lint, build) and only their own new or changed specs per phase. After the last
+  implementation phase, before the code review, run the full end-to-end/UI/Go suites once. The run
+  isn't done until every failure is fixed, committed and passing on rerun. After a fix, rerun only the failing specs and the specs that share its code. A timeout under load gets a
+  lone rerun of that spec first. Rerun the full suite a second time only when a fix touched shared
+  code (a package, a fixture, a config) that targeted reruns cannot cover; say so in the Result.
+- **Every chapter ends the same way, unasked:** last implementation phase, then the one full suite
+  run with its fixes committed, then 1 code review round (unless the spec row says more), then the
+  close phase, then the PR. The user need not restate it.
 - **The loop per phase:** check for a plan, spawn an Opus subagent to write one if missing, spawn
   a Sonnet subagent (or several, only if genuinely parallelizable) to implement the whole phase, and
   wait for it before moving on. One phase at a time, in order — never parallelize or batch phases.

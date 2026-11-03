@@ -508,9 +508,14 @@ export function attachReviewDecorations(
       const app = createApp(ReviewThread, {
         mode: 'compose' as const,
         branch: source.branch,
+        hostComment: source.hostComment,
         onCancel: () => closeZone(),
+        onClose: () => closeZone(),
         onResize,
         onSubmit: (body: string, kind: ReviewCommentKind) => handleSubmit(line, body, kind),
+        onPostToHost: source.postToChangeRequest
+          ? (body: string) => handlePostToHost(line, body)
+          : undefined,
       });
       app.use(i18n);
       app.mount(container);
@@ -539,6 +544,23 @@ export function attachReviewDecorations(
     return runThreadAction('add comment', () =>
       source.addComment({ start: line, end: line }, body, kind),
     );
+  }
+
+  async function handlePostToHost(
+    line: number,
+    body: string,
+  ): Promise<{ number: number; short: string }> {
+    let posted = { number: 0, short: '' };
+    await runThreadAction(
+      'post to host',
+      async () => {
+        posted = await (
+          source.postToChangeRequest as NonNullable<ReviewSource['postToChangeRequest']>
+        )({ start: line, end: line }, body);
+      },
+      false,
+    );
+    return posted;
   }
 
   function handleEdit(

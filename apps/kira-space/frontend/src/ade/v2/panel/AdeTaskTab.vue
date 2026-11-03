@@ -23,6 +23,7 @@ import { useAddTaskRepo, useUpdateTask } from '../queries';
 import { useAdeAddUiStore } from '../state/adeAddUi';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeBranchRequestStore } from '../state/adeBranchRequest';
+import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import type { TaskPatch } from '../wire';
 import AdeEstimateField from './AdeEstimateField.vue';
 import AdeLinkRow from './AdeLinkRow.vue';
@@ -37,6 +38,7 @@ const props = defineProps<{ card: CardModel }>();
 const { liveNow } = usePlanModel();
 
 const ui = useAdeBoardUiStore();
+const tabs = useAdePanelTabsStore();
 const addUi = useAdeAddUiStore();
 const requestStore = useAdeBranchRequestStore();
 const update = useUpdateTask();
@@ -135,7 +137,7 @@ const chipClass = (t: 'muted' | 'stale' | 'unknown'): string =>
       </dd>
       <AdeLinkRow
         id="ade-task-jira"
-        :label="t('common.product.jira.label')"
+        :label="t('space.ade.taskTab.issue.label')"
         chip=""
         :text="jira?.key ?? ''"
         :url="jira?.url ?? ''"
@@ -152,7 +154,7 @@ const chipClass = (t: 'muted' | 'stale' | 'unknown'): string =>
       </template>
       <AdeLinkRow
         id="ade-task-host"
-        :label="hostLabels.labels.value"
+        :label="t('space.ade.taskTab.pr.label')"
         :chip="hostLabels.chipOf(hostLink)"
         :text="hostLink?.ref ?? ''"
         :url="hostLink ? task.hostUrl : ''"
@@ -172,35 +174,19 @@ const chipClass = (t: 'muted' | 'stale' | 'unknown'): string =>
       <dd
         ><AdeEstimateField :est="task.est" :days="spanDays" :error="estError" @save="saveEst" /></dd
       >
-      <template v-if="!review && (task.notes || handoverSnippet)">
-        <template v-if="task.notes">
-          <dt>{{ t('space.common.notes.label') }}</dt>
-          <dd>
-            <button
-              type="button"
-              class="line-clamp-2 w-full text-left text-kira-md hover:underline"
-              data-testid="ade-task-notes-row"
-              @click="ui.taskTab = 'notes'"
-              >{{
-                task.notes
-              }}</button
-            >
-          </dd>
-        </template>
-        <template v-if="handoverSnippet">
-          <dt>{{ t('space.ade.taskTab.handover.label') }}</dt>
-          <dd>
-            <button
-              type="button"
-              class="line-clamp-2 w-full text-left text-kira-md hover:underline"
-              data-testid="ade-task-handover-row"
-              @click="ui.taskTab = 'notes'"
-              >{{
-                handoverSnippet
-              }}</button
-            >
-          </dd>
-        </template>
+      <template v-if="!review && handoverSnippet">
+        <dt>{{ t('space.ade.taskTab.handover.label') }}</dt>
+        <dd>
+          <button
+            type="button"
+            class="line-clamp-2 w-full text-left text-kira-md hover:underline"
+            data-testid="ade-task-handover-row"
+            @click="tabs.setTaskTab(task.id, 'notes')"
+            >{{
+              handoverSnippet
+            }}</button
+          >
+        </dd>
       </template>
       <template v-if="task.branchRequestId">
         <dt>{{ t('space.ade.taskTab.branchRequest.label') }}</dt>

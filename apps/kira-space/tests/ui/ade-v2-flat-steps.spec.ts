@@ -49,7 +49,7 @@ test('contract: a created task starts on the first step and the panel lists ever
 
 test('a manual first step with a running session offers Done on its card', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
-  await expect(page.locator(cellAction('T_alerts', 'done'))).toBeVisible();
+  await expect(page.locator(cellAction('T_alerts', 'advance'))).toBeVisible();
 });
 
 test('contract: Move task here and the step mover send SetTaskStep with the target step', async ({

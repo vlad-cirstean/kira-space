@@ -11,6 +11,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness/fakehost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitreview"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitrpc"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -63,6 +64,29 @@ func TestChangeRequestReviewActions(t *testing.T) {
 	}
 	r.app.Contract(t, scenario, "git:changeRequest.comment", commented)
 
+	lineParams := gitrpc.ChangeRequestLineCommentParams{
+		RepoID: r.gitID, Number: 7, Path: "a.txt", Range: gitreview.LineRange{Start: 1, End: 2}, HeadSha: r.tip, Body: "tighten this",
+	}
+	r.app.Contract(t, scenario, "args:changeRequest.lineComment", lineParams, sha)
+	lined := call[gitrpc.ChangeRequestLineCommentResult](t, r.gs, "changeRequest.lineComment", lineParams)
+	if lined.Kind != "ok" {
+		t.Fatalf("lineComment = %+v", lined)
+	}
+	wantLine := []githost.LineComment{{Path: "a.txt", Start: 1, End: 2, EndColumn: 2, CommitSHA: r.tip, Body: "tighten this"}}
+	if got := forge.LineComments(7); !reflect.DeepEqual(got, wantLine) {
+		t.Fatalf("LineComments = %+v, want %+v", got, wantLine)
+	}
+	r.app.Contract(t, scenario, "git:changeRequest.lineComment", lined)
+
+	pastEnd := lineParams
+	pastEnd.Range.End = 3
+	if err := r.gs.Request("changeRequest.lineComment", pastEnd, nil); flowharness.ErrorCode(err) == "" {
+		t.Fatalf("lineComment past the end of the file = %v, want a bad request", err)
+	}
+	if n := len(forge.LineComments(7)); n != 1 {
+		t.Fatalf("LineComments after refusal = %d, want 1", n)
+	}
+
 	forge.SetAuthor(7, "forger")
 	own := state()
 	if own.Kind != "ok" || own.ChangeRequestReview == nil || !own.Own {
@@ -89,6 +113,15 @@ func TestChangeRequestReviewActions(t *testing.T) {
 		t.Fatalf("stale payload = %+v", sv)
 	}
 	r.app.Contract(t, scenario, "git:changeRequest.reviewState#stale", stale, sha)
+
+	moved := call[gitrpc.ChangeRequestLineCommentResult](t, r.gs, "changeRequest.lineComment", lineParams)
+	if moved.Kind != "headMoved" || moved.HeadSha != hostHead {
+		t.Fatalf("lineComment on a moved head = %+v, want headMoved at %s", moved, hostHead)
+	}
+	if n := len(forge.LineComments(7)); n != 1 {
+		t.Fatalf("LineComments after headMoved = %d, want 1", n)
+	}
+	r.app.Contract(t, scenario, "git:changeRequest.lineComment#headMoved", moved)
 }
 
 // reviewAgentPrompt launches the task's review agent and returns its argv, which carries the first message.

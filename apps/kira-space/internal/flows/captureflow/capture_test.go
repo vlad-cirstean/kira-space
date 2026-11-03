@@ -82,11 +82,11 @@ func (r *rig) item(t *testing.T, key string) bridge.CaptureItem {
 	return *item
 }
 
-func (r *rig) confirm(t *testing.T, key string, it bridge.CaptureItem, action, title string) bridge.CaptureResult {
+func (r *rig) confirm(t *testing.T, key string, it bridge.CaptureItem, title string, day *string) bridge.CaptureResult {
 	t.Helper()
-	res, err := r.app.W.Capture.Confirm(ctx, bridge.CaptureConfirmArgs{WindowKey: key, ItemID: it.ID, Action: action, Title: title})
+	res, err := r.app.W.Capture.Confirm(ctx, bridge.CaptureConfirmArgs{WindowKey: key, ItemID: it.ID, Title: title, Day: day})
 	if err != nil {
-		t.Fatalf("Confirm(%s) = %v", action, err)
+		t.Fatalf("Confirm = %v", err)
 	}
 	return res
 }
@@ -146,10 +146,9 @@ func TestBootRegistersDefaultChord(t *testing.T) {
 	}
 }
 
-// A change request link on the clipboard preselects the PR view; Enter opens it and closes the popup.
+// Change request links classify with a provider label; the confirm args are the UI's contract.
 func TestChangeRequestLinks(t *testing.T) {
 	r := newRig(t)
-	wm := r.app.WindowMgr
 	for _, c := range []struct{ name, link, label string }{
 		{"github", ghLink, "PR #7 acme/api"},
 		{"azure", azLink, "PR #12 acme/Web App/api"},
@@ -157,58 +156,30 @@ func TestChangeRequestLinks(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			key, it := r.press(t, "  "+c.link+"\n")
-			if it.Kind != bridge.CaptureKindChangeRequest || it.Label != c.label || it.Text != c.link ||
-				!slices.Equal(it.Actions, []string{bridge.CaptureActionOpenChangeRequest, bridge.CaptureActionLater}) {
+			if it.Kind != bridge.CaptureKindChangeRequest || it.Label != c.label || it.Text != c.link {
 				t.Fatalf("item = %+v", it)
 			}
 			if c.name == "github" {
 				r.app.Contract(t, scenario, "CaptureService.WindowItem#changeRequest", it, flowharness.Mask("id"))
 				r.app.Contract(t, scenario, "args:CaptureService.Confirm", bridge.CaptureConfirmArgs{
-					WindowKey: key, ItemID: it.ID, Action: bridge.CaptureActionOpenChangeRequest, Title: it.Title,
+					WindowKey: key, ItemID: it.ID, Title: it.Title, Day: str("2026-03-02"),
 				}, flowharness.Mask("windowKey", "itemId"))
-			}
-			before := len(wm.Opened)
-			res := r.confirm(t, key, it, bridge.CaptureActionOpenChangeRequest, it.Title)
-			if len(wm.Opened) != before+1 || wm.Opened[before].Key != res.Key || !bridge.IsHostViewKey(res.Key) {
-				t.Fatalf("host view not opened: %+v result %+v", wm.Opened, res)
-			}
-			target, err := r.app.W.HostView.WindowTarget(ctx, bridge.HostViewWindowArgs{WindowKey: res.Key})
-			if err != nil || target == nil || target.Kind != "changeRequest" {
-				t.Fatalf("target = %+v, %v", target, err)
-			}
-			isOpen(t, r, key, true)
-			if again, _ := r.app.W.Capture.WindowItem(ctx, bridge.CaptureWindowArgs{WindowKey: key}); again != nil {
-				t.Fatalf("closed popup still has an item: %+v", again)
 			}
 		})
 	}
 }
 
-// A Jira key and a Jira link are the same issue: one view window.
+// A Jira key and a Jira link classify as the same issue.
 func TestIssueKeyAndLink(t *testing.T) {
 	r := newRig(t)
-	key, it := r.press(t, "PROJ-12")
-	if it.Kind != bridge.CaptureKindIssue || it.Label != "Jira PROJ-12" ||
-		!slices.Equal(it.Actions, []string{bridge.CaptureActionOpenIssue, bridge.CaptureActionLater}) {
+	_, it := r.press(t, "PROJ-12")
+	if it.Kind != bridge.CaptureKindIssue || it.Label != "Jira PROJ-12" {
 		t.Fatalf("item = %+v", it)
 	}
 	r.app.Contract(t, scenario, "CaptureService.WindowItem#issue", it, flowharness.Mask("id"))
-	first := r.confirm(t, key, it, bridge.CaptureActionOpenIssue, it.Title)
-	if first.Key == "" {
-		t.Fatalf("result = %+v", first)
-	}
-	target, err := r.app.W.HostView.WindowTarget(ctx, bridge.HostViewWindowArgs{WindowKey: first.Key})
-	if err != nil || target == nil || target.Kind != "issue" || target.Key != "PROJ-12" {
-		t.Fatalf("target = %+v, %v", target, err)
-	}
-
-	key2, it2 := r.press(t, jiraLink)
-	if it2.Kind != bridge.CaptureKindIssue {
+	_, it2 := r.press(t, jiraLink)
+	if it2.Kind != bridge.CaptureKindIssue || it2.Label != it.Label {
 		t.Fatalf("link item = %+v", it2)
-	}
-	second := r.confirm(t, key2, it2, bridge.CaptureActionOpenIssue, it2.Title)
-	if second.Key != first.Key {
-		t.Fatalf("link opened %s, want the key's window %s", second.Key, first.Key)
 	}
 }
 
@@ -217,7 +188,7 @@ func TestTextToLater(t *testing.T) {
 	r := newRig(t)
 	text := "\n  Fix the export header\nsecond line with detail\n"
 	key, it := r.press(t, text)
-	if it.Kind != bridge.CaptureKindText || it.Title != "Fix the export header" || !slices.Equal(it.Actions, []string{bridge.CaptureActionLater}) {
+	if it.Kind != bridge.CaptureKindText || it.Title != "Fix the export header" {
 		t.Fatalf("item = %+v", it)
 	}
 	r.app.Contract(t, scenario, "CaptureService.WindowItem#text", it, flowharness.Mask("id"))
@@ -225,7 +196,7 @@ func TestTextToLater(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res := r.confirm(t, key, it, bridge.CaptureActionLater, "  Export header  ")
+	res := r.confirm(t, key, it, "  Export header  ", nil)
 	r.app.Contract(t, scenario, "CaptureService.Confirm#later", res, flowharness.Mask("taskId"))
 	tk := r.task(t, res.TaskID)
 	if tk.Title != "Export header" || tk.Notes != strings.TrimSpace(text) || tk.HostURL != "" || tk.Jira != nil {
@@ -239,33 +210,72 @@ func TestTextToLater(t *testing.T) {
 	if slices.Index(order, res.TaskID) > slices.Index(order, older.ID) {
 		t.Errorf("captured task is below the older one: %v", order)
 	}
+	if _, onDay := board.Plan.Day[res.TaskID]; onDay {
+		t.Errorf("a Later capture has a plan day: %v", board.Plan.Day)
+	}
+	isOpen(t, r, key, true)
 }
 
-// Later keeps the link and the issue key on the task.
-func TestLaterKeepsLinkAndKey(t *testing.T) {
+// A day lands the task at the top of that day; a malformed day is refused and adds nothing.
+func TestTodayLandsOnDay(t *testing.T) {
+	r := newRig(t)
+	day := "2026-03-02"
+	older, err := r.app.W.AdeTask.CaptureTask(ctx, adewire.CaptureTaskArgs{Title: "Older", Day: &day})
+	if err != nil {
+		t.Fatal(err)
+	}
+	key, it := r.press(t, "Ship the report")
+	if _, err := r.app.W.Capture.Confirm(ctx, bridge.CaptureConfirmArgs{WindowKey: key, ItemID: it.ID, Title: "Ship", Day: str("2026-13-40")}); err == nil {
+		t.Fatal("Confirm with a bad day succeeded")
+	}
+	isOpen(t, r, key, false)
+	res := r.confirm(t, key, it, "Ship", &day)
+	board, _ := r.app.W.AdeTask.Board(ctx)
+	if got := board.Plan.Day[res.TaskID]; got != day {
+		t.Fatalf("plan day = %q, want %q", got, day)
+	}
+	if slices.Index(board.Plan.Order, res.TaskID) > slices.Index(board.Plan.Order, older.ID) {
+		t.Errorf("captured task is below the older one: %v", board.Plan.Order)
+	}
+}
+
+// A change request in a workspace without its repo still becomes a task with the link; a notice says
+// the branch is missing, the popup stays and a repeat Confirm is refused. An issue keeps its key.
+func TestChangeRequestUnknownRepo(t *testing.T) {
 	r := newRig(t)
 	key, it := r.press(t, ghLink)
-	res := r.confirm(t, key, it, bridge.CaptureActionLater, "Review the API change")
-	if tk := r.task(t, res.TaskID); tk.HostURL != ghLink || tk.Notes != ghLink || tk.HostLink == nil {
+	res := r.confirm(t, key, it, "Review the API change", nil)
+	if !strings.Contains(res.Notice, "No repo in your workspace") {
+		t.Fatalf("notice = %q", res.Notice)
+	}
+	r.app.Contract(t, scenario, "CaptureService.Confirm#noBranch", res, flowharness.Mask("taskId"))
+	tk := r.task(t, res.TaskID)
+	if tk.HostURL != ghLink || tk.Notes != ghLink || tk.HostLink == nil || len(tk.BranchIDs) != 0 {
 		t.Fatalf("PR task = %+v", tk)
 	}
-	key, it = r.press(t, "PROJ-12")
-	res = r.confirm(t, key, it, bridge.CaptureActionLater, "Export CSV")
-	if tk := r.task(t, res.TaskID); tk.Jira == nil || tk.Jira.Key != "PROJ-12" {
-		t.Fatalf("issue task = %+v", tk)
+	isOpen(t, r, key, false)
+	if _, err := r.app.W.Capture.Confirm(ctx, bridge.CaptureConfirmArgs{WindowKey: key, ItemID: it.ID, Title: "again"}); err == nil {
+		t.Fatal("repeat Confirm after a notice succeeded")
 	}
+
+	key, it = r.press(t, "PROJ-12")
+	res = r.confirm(t, key, it, "Export CSV", nil)
+	if tk := r.task(t, res.TaskID); tk.Jira == nil || tk.Jira.Key != "PROJ-12" || res.Notice != "" {
+		t.Fatalf("issue task = %+v, notice %q", tk, res.Notice)
+	}
+	isOpen(t, r, key, true)
 }
 
-// An empty clipboard shows the empty state: no actions, Confirm refused, Dismiss closes.
+// An empty clipboard shows the empty state: Confirm refused, Dismiss closes.
 func TestEmptyClipboard(t *testing.T) {
 	r := newRig(t)
 	r.app.Clipboard.SetEmpty()
 	key, it := r.fire(t)
-	if it.Kind != bridge.CaptureKindEmpty || len(it.Actions) != 0 {
+	if it.Kind != bridge.CaptureKindEmpty {
 		t.Fatalf("item = %+v", it)
 	}
 	r.app.Contract(t, scenario, "CaptureService.WindowItem#empty", it, flowharness.Mask("id"))
-	if _, err := r.app.W.Capture.Confirm(ctx, bridge.CaptureConfirmArgs{WindowKey: key, ItemID: it.ID, Action: bridge.CaptureActionLater, Title: "x"}); err == nil {
+	if _, err := r.app.W.Capture.Confirm(ctx, bridge.CaptureConfirmArgs{WindowKey: key, ItemID: it.ID, Title: "x"}); err == nil {
 		t.Fatal("Confirm on an empty item succeeded")
 	}
 	if err := r.app.W.Capture.Dismiss(ctx, bridge.CaptureWindowArgs{WindowKey: key}); err != nil {
@@ -294,11 +304,8 @@ func TestSecondPressReplacesItem(t *testing.T) {
 	if !slices.Contains(r.app.WindowMgr.Focused, key) {
 		t.Errorf("popup not focused: %v", r.app.WindowMgr.Focused)
 	}
-	if _, err := r.app.W.Capture.Confirm(ctx, bridge.CaptureConfirmArgs{WindowKey: key, ItemID: first.ID, Action: bridge.CaptureActionLater, Title: "x"}); err == nil {
+	if _, err := r.app.W.Capture.Confirm(ctx, bridge.CaptureConfirmArgs{WindowKey: key, ItemID: first.ID, Title: "x"}); err == nil {
 		t.Fatal("Confirm with the replaced item id succeeded")
-	}
-	if _, err := r.app.W.Capture.Confirm(ctx, bridge.CaptureConfirmArgs{WindowKey: key, ItemID: second.ID, Action: bridge.CaptureActionOpenIssue, Title: "x"}); err == nil {
-		t.Fatal("Confirm with an action the item does not offer succeeded")
 	}
 	// Once the popup is gone a press opens a fresh one.
 	if err := r.app.W.Capture.Dismiss(ctx, bridge.CaptureWindowArgs{WindowKey: key}); err != nil {

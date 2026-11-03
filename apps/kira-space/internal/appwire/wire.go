@@ -99,14 +99,12 @@ type gitWired struct {
 	trackers      *issuetracker.Registry
 }
 
-// wireTrackers builds the issue tracker registry. Jira finds the pull requests that name an issue key
-// through the code hosts' search and the change request index.
-func wireTrackers(repositories *repos.Repos, hosts *githost.Registry, opLog *oplog.Log, o jira.Options) *issuetracker.Registry {
+// wireTrackers builds the issue tracker registry.
+func wireTrackers(opLog *oplog.Log, o jira.Options) *issuetracker.Registry {
 	if o.Runner == nil {
 		o.Runner = jira.NewExecRunner()
 	}
 	o.Runner = oplog.NewRecordingToolRunner(o.Runner, opLog, jira.ProviderLabel)
-	o.ChangeRequests = ade.KeyChangeRequests(hosts, repositories.GitHostChangeRequests)
 	return trackerproviders.New(o)
 }
 
@@ -258,6 +256,7 @@ func wireAdeTask(
 		CustomScripts: runs.Scripts, ScriptsHome: runs.Home,
 		ScriptRunsOf: func(taskID string, limit int) ([]scriptruns.Run, error) { return runs.List(limit, taskID) },
 		AgentDir:     filepath.Join(config.KiraSpaceHome(), "ade", "runs"),
+		TasksDir:     filepath.Join(config.KiraSpaceHome(), "ade", "tasks"),
 		HeadlessSettingSources: func() string {
 			settings, err := repositories.Settings.GetAll()
 			if err != nil {

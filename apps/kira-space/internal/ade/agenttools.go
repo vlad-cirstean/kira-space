@@ -283,7 +283,7 @@ func (b *TaskBoard) checkNewBranchName(ctx context.Context, rec model.CodeRepo, 
 	return "", nil
 }
 
-// createBranch makes one repo's branch and worktree under a generated name. A ToolError is a failure
+// createBranch makes one repo's branch under a generated name and its worktree in a nanoid folder. A ToolError is a failure
 // of this repo alone.
 func (b *TaskBoard) createBranch(ctx context.Context, sb model.AdeTaskBranch, nick string) (agentmcp.RequestedBranch, error) {
 	if sb.Kind != model.AdeBranchKindMine {
@@ -297,7 +297,7 @@ func (b *TaskBoard) createBranch(ctx context.Context, sb model.AdeTaskBranch, ni
 		return agentmcp.RequestedBranch{}, agentmcp.ToolError(fmt.Sprintf("Repo %s is no longer registered.", nick))
 	}
 	fresh := sb.Name == ""
-	res, err := b.ensureWorktree(ctx, *rec, sb, newBranchName{generated: true})
+	res, err := b.ensureWorktree(ctx, *rec, sb, newBranchName{generated: true, idFolder: true})
 	if err != nil {
 		return agentmcp.RequestedBranch{}, toolErr(err)
 	}

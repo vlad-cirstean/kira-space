@@ -153,7 +153,10 @@ func (b *TaskBoard) ensureWorktree(ctx context.Context, rec model.CodeRepo, sb m
 		if row, ok := localBranch(inv, sb.Name); ok && row.WorktreePath != "" {
 			return worktreeResult{Path: row.WorktreePath, Name: sb.Name}, nil
 		}
-		path := b.freePath(rec.Name, sb.Name)
+		path, err := b.worktreeDir(rec.Name, sb.Name, naming)
+		if err != nil {
+			return worktreeResult{}, err
+		}
 		req := gitsession.OpRequest{Kind: "worktreeAdd", Mode: "existingBranch", Path: path, Branch: sb.Name}
 		if _, local := localBranch(inv, sb.Name); !local {
 			// Remote-only: git cannot resolve the bare short name, so branch it off the tracking ref.
@@ -175,9 +178,12 @@ func (b *TaskBoard) ensureWorktree(ctx context.Context, rec model.CodeRepo, sb m
 	if err != nil {
 		return worktreeResult{}, err
 	}
-	path := b.freePath(rec.Name, name)
-	req := gitsession.OpRequest{Kind: "worktreeAdd", Mode: "newBranch", Path: path, Branch: name, StartPoint: start}
-	if err := b.addWorktree(ctx, entry, req); err != nil {
+	path, err := b.worktreeDir(rec.Name, name, naming)
+	if err == nil {
+		req := gitsession.OpRequest{Kind: "worktreeAdd", Mode: "newBranch", Path: path, Branch: name, StartPoint: start}
+		err = b.addWorktree(ctx, entry, req)
+	}
+	if err != nil {
 		if rerr := b.deps.Tasks.SetBranchName(sb.ID, ""); rerr != nil {
 			slog.Warn("ade: release branch name", "scope", "ade", "branch", sb.ID, "err", rerr)
 		}
@@ -193,9 +199,35 @@ const (
 )
 
 // newBranchName is how a not-created branch gets its name: wanted as given, generated, else derived from title.
+// idFolder puts its worktree in a nanoid folder instead of one named after the branch.
 type newBranchName struct {
 	title, wanted string
 	generated     bool
+	idFolder      bool
+}
+
+// idPath returns <home>/wt/<repo>/<nanoid>, redrawing while the path exists.
+func (b *TaskBoard) idPath(repoName string) (string, error) {
+	dir := filepath.Join(b.deps.HomeDir, "wt", safeSegment(repoName))
+	for range maxGeneratedNameTries {
+		id, err := shortid.New(agentBranchIDLen)
+		if err != nil {
+			return "", err
+		}
+		path := filepath.Join(dir, id)
+		if _, err := os.Lstat(path); os.IsNotExist(err) {
+			return path, nil
+		}
+	}
+	return "", fmt.Errorf("ade: no free worktree folder after %d tries", maxGeneratedNameTries)
+}
+
+// worktreeDir picks the worktree folder: a nanoid when n.idFolder, else named after the branch.
+func (b *TaskBoard) worktreeDir(repoName, branch string, n newBranchName) (string, error) {
+	if n.idFolder {
+		return b.idPath(repoName)
+	}
+	return b.freePath(repoName, branch), nil
 }
 
 // claimBranchName stores the branch's name before git runs, so the board shows it. An explicit name

@@ -102,7 +102,7 @@ reviewTest('committed and uncommitted files sit in separate sections', async ({ 
   await page.locator(t('ade-review-window')).waitFor();
   const committed = page.locator(t('review-committed-header'));
   await expect(committed).toContainText('Committed');
-  await expect(committed).toContainText('2 of 3 reviewed');
+  await expect(committed).toContainText('1 of 3 reviewed');
   const header = page.locator(t('review-working-header'));
   await expect(header).toContainText('Uncommitted');
   await expect(header).toContainText(`0 of ${working.files.length} reviewed`);
@@ -167,6 +167,8 @@ reviewTest(
     await line.hover();
     await modified.locator('.kira-review-ln-add').click();
     const thread = page.locator(t('review-thread'));
+    await expect(thread.getByTestId('review-thread-kind-question')).toBeVisible();
+    await expect(thread.getByTestId('review-thread-kind-host')).toHaveCount(0);
     await thread.getByTestId('review-thread-input').fill((addArgs as { body: string }).body);
     await thread.getByTestId('review-thread-send').click();
     await expect

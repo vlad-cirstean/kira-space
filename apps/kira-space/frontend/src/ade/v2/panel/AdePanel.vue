@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import EmptyState from '@theme/components/EmptyState.vue';
 import { t } from '@theme/i18n';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { usePlanModel } from '../plan/usePlanModel';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import AdeArchivedPanel from './AdeArchivedPanel.vue';
 import AdeBranchPanel from './AdeBranchPanel.vue';
 import AdePanelPane from './AdePanelPane.vue';
@@ -11,7 +12,15 @@ import AdeTaskPanel from './AdeTaskPanel.vue';
 
 // Right-hand panel of the Plan: the selected task, or one of its branches.
 const ui = useAdeBoardUiStore();
+const tabs = useAdePanelTabsStore();
 const { model } = usePlanModel();
+
+watch(
+  () => model.value?.board,
+  (b) => {
+    if (b) tabs.prune(new Set(b.tasks.map((x) => x.id)), new Set(b.branches.map((x) => x.id)));
+  },
+);
 
 const card = computed(() =>
   ui.selectedTaskId ? (model.value?.cardFor(ui.selectedTaskId) ?? null) : null,

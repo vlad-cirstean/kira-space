@@ -43,7 +43,7 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
           .find((s) => s.id === a.stepId)
           ?.runs.filter((r) => r.state === 'failed' || r.state === 'stuck');
         await Promise.all((runs ?? []).map((r) => retry.mutateAsync({ runId: r.runId })));
-      } else {
+      } else if (a.kind === 'advance' || a.kind === 'finish') {
         stage.open({ taskId });
       }
     } catch (err) {

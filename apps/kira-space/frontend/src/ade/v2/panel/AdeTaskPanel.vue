@@ -28,13 +28,19 @@ import AdeSessionsTab from '../sessions/AdeSessionsTab.vue';
 import { useSessionViews } from '../sessions/useSessionViews';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
+import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import AdePanelFrame from './AdePanelFrame.vue';
 import AdeTaskTab from './AdeTaskTab.vue';
 
-// Task mode: header facts, the Task, Notes and Sessions tabs.
+// Task mode: header facts, the Task, Notes, Artifacts and Sessions tabs.
 const props = defineProps<{ card: CardModel; model: PlanModel }>();
 
 const ui = useAdeBoardUiStore();
+const tabs = useAdePanelTabsStore();
+const tab = computed({
+  get: () => tabs.taskTab(props.card.task.id),
+  set: (v) => tabs.setTaskTab(props.card.task.id, v),
+});
 const dialogs = useAdeDialogsStore();
 const { sessions } = useSessionViews();
 const sessionCount = computed(
@@ -128,12 +134,12 @@ async function saveNotes(taskId: string, value: string): Promise<void> {
 
 <template>
   <AdePanelFrame
-    v-model="ui.taskTab"
+    v-model="tab"
     :tabs="[
       { value: 'task', label: t('common.task.label') },
       { value: 'notes', label: t('space.common.notes.label') },
       { value: 'artifacts', label: t('space.ade.artifacts.title.title') },
-      { value: 'sessions', label: t('space.ade.panel.sessionsTab.label', { count: sessionCount }) },
+      { value: 'sessions', label: t('space.common.sessions.label'), count: sessionCount },
     ]"
   >
     <template #actions>
@@ -229,10 +235,10 @@ async function saveNotes(taskId: string, value: string): Promise<void> {
         }}</AlertDescription></Alert
       >
     </template>
-    <AdeTaskTab v-if="ui.taskTab === 'task'" :card="card" />
-    <AdeSessionsTab v-else-if="ui.taskTab === 'sessions'" :task-id="card.task.id" />
+    <AdeTaskTab v-if="tab === 'task'" :card="card" />
+    <AdeSessionsTab v-else-if="tab === 'sessions'" :task-id="card.task.id" />
     <div
-      v-else-if="ui.taskTab === 'artifacts'"
+      v-else-if="tab === 'artifacts'"
       class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3"
       data-testid="ade-artifacts-tab"
     >

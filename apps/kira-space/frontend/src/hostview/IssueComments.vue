@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import SectionHeading from '@theme/components/SectionHeading.vue';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
-import { formatRelative } from '@workbench/behaviour/format';
+import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import { control } from '../bridge/control';
+import { initials } from './issueFormat';
 import MarkdownBody from './MarkdownBody.vue';
+import RelativeTime from './RelativeTime.vue';
 import type { IssueComment } from './wire';
 
 // Read-only comments, oldest first, with a note when the list is partial.
@@ -13,10 +17,14 @@ defineProps<{
   omitted: boolean;
   label: string;
 }>();
+
+function openComment(url: string): void {
+  fireAndForget(control.openExternal(url), 'hostView.issue');
+}
 </script>
 
 <template>
-  <section class="mt-6 flex flex-col gap-3" data-testid="issue-comments">
+  <section class="flex flex-col gap-3" data-testid="issue-comments">
     <SectionHeading :label="t('space.hostView.conversation.heading.title')" />
     <FieldDescription v-if="comments.length === 0 && !omitted" data-testid="issue-comments-empty">{{
       t('space.hostView.conversation.empty.empty')
@@ -30,21 +38,38 @@ defineProps<{
     <article
       v-for="comment in comments"
       :key="comment.id"
-      class="rounded-kira-md border border-border px-3 py-2"
+      class="flex flex-col gap-1 border-t border-border pt-3 first:border-t-0 first:pt-0"
       :class="comment.pending && 'text-muted-foreground'"
       :data-pending="comment.pending || undefined"
       data-testid="issue-comment"
     >
-      <div class="m-0 mb-1 text-kira-sm text-muted-foreground">
+      <div class="flex items-center gap-2 text-kira-sm text-muted-foreground">
+        <span
+          class="grid size-6 shrink-0 place-items-center rounded-full bg-field text-kira-sm text-fg"
+          aria-hidden="true"
+          >{{
+            initials(comment.author.name)
+          }}</span
+        >
         <span class="font-medium text-fg">{{ comment.author.name }}</span>
-        · {{ formatRelative(comment.createdAt) }}
+        <RelativeTime :at="comment.createdAt" />
         <span
           v-if="comment.updatedAt && comment.updatedAt > comment.createdAt"
           data-testid="issue-comment-edited"
           >· {{ t('space.hostView.issue.comments.edited.status') }}</span
         >
+        <TooltipIconButton
+          v-if="comment.url"
+          icon="link-external"
+          class="ml-auto"
+          :label="t('space.hostView.issue.comments.open.tooltip', { label })"
+          data-testid="issue-comment-open"
+          @click="openComment(comment.url)"
+        />
       </div>
-      <MarkdownBody :source="comment.body" />
+      <div class="pl-8">
+        <MarkdownBody :source="comment.body" />
+      </div>
     </article>
   </section>
 </template>

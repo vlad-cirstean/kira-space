@@ -212,15 +212,6 @@ type RateLimit struct {
 	ResetAt   time.Time
 }
 
-// ChangeRequestSearch is optional: a provider that finds change requests by text without knowing the
-// repository, for an issue tracker looking up the ones that name an issue key. Every call reports
-// failure in Status, never an error. The provider searches its primary host.
-type ChangeRequestSearch interface {
-	// SearchChangeRequests returns up to limit change requests whose title contains text, newest first.
-	// Each carries Number, Title, URL and State; the other fields stay empty.
-	SearchChangeRequests(ctx context.Context, text string, limit int) ([]ChangeRequest, Status)
-}
-
 // CLISetup is optional: a provider driven by a local CLI that Settings explains how to install and
 // sign in to.
 type CLISetup interface {

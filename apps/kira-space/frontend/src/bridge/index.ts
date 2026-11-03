@@ -248,8 +248,8 @@ const spaceControl = {
   captureConfirm: (args: {
     windowKey: string;
     itemId: string;
-    action: string;
     title: string;
+    day: string | null;
   }): Promise<CaptureResult> =>
     unwrap(CaptureService.Confirm(args)).then((r) => trust<CaptureResult>(r)),
   captureDismiss: (windowKey: string): Promise<void> =>
@@ -265,8 +265,10 @@ const spaceControl = {
     unwrap(HostViewService.WindowTarget(args)).then((r) => trust<HostViewTarget | null>(r)),
   hostViewChangeRequest: (args: { url: string }): Promise<HostViewChangeRequest> =>
     unwrap(HostViewService.ChangeRequest(args)).then((r) => trust<HostViewChangeRequest>(r)),
-  hostViewIssue: (args: { ref: string }): Promise<HostViewIssue> =>
-    unwrap(HostViewService.Issue(args)).then((r) => trust<HostViewIssue>(r)),
+  hostViewIssue: (args: { ref: string; fresh?: boolean }): Promise<HostViewIssue> =>
+    unwrap(HostViewService.Issue({ ref: args.ref, fresh: args.fresh ?? false })).then((r) =>
+      trust<HostViewIssue>(r),
+    ),
   hostViewPostComment: (args: {
     windowKey: string;
     body: string;
@@ -618,6 +620,8 @@ const spaceControl = {
     unwrap(AdeTaskService.ReviewWorkingFile(args)).then((r) =>
       trust<V2.ReviewWorkingFileReview>(r),
     ),
+  adeTaskReviewWorkingStamp: (args: V2.ReviewWorkingStampArgs): Promise<V2.ReviewWorkingStamp> =>
+    unwrap(AdeTaskService.ReviewWorkingStamp(args)).then((r) => trust<V2.ReviewWorkingStamp>(r)),
   adeTaskReviewWorkingMark: (args: V2.ReviewWorkingMarkArgs): Promise<V2.ReviewWorkingMarkResult> =>
     unwrap(AdeTaskService.ReviewWorkingMark(args)).then((r) =>
       trust<V2.ReviewWorkingMarkResult>(r),

@@ -53,7 +53,7 @@ func newRig(t *testing.T, forge *fakehost.Forge, opts ...flowharness.Opt) *rig {
 	forge.AddChangeRequest(forgeCR)
 	app := flowharness.New(t, append(opts, flowharness.WithGitHost(forge), flowharness.WithoutGh())...)
 	app.Scenario(fakeagent.Scenario{Claude: map[string][]fakeagent.Action{
-		"*": {{Name: "done", Sh: "echo a > a.txt && git add -A && git commit -q -m add-a"}},
+		"*": {{Name: "done", Sh: "printf 'a\\nb\\n' > a.txt && git add -A && git commit -q -m add-a"}},
 	}})
 
 	dir := filepath.Join(app.Work, "r")

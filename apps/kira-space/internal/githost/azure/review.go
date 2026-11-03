@@ -28,12 +28,35 @@ func (p *Provider) Comment(ctx context.Context, r githost.Repo, number int, body
 	if !ok {
 		return invalidRepo(r)
 	}
-	thread := map[string]any{
+	return p.postThread(ctx, org, project, r, number, newThread(body))
+}
+
+func newThread(body string) map[string]any {
+	return map[string]any{
 		"comments": []map[string]any{{"parentCommentId": 0, "content": body, "commentType": 1}},
 		"status":   1, // active
 	}
+}
+
+func (p *Provider) postThread(ctx context.Context, org, project string, r githost.Repo, number int, thread map[string]any) githost.Status {
 	route := []string{"project=" + project, "repositoryId=" + r.Name, "pullRequestId=" + strconv.Itoa(number)}
 	return p.client.invoke(ctx, orgURL(org), true, "POST", "pullRequestThreads", route, "", thread, nil)
+}
+
+// CommentOnLines posts a thread anchored to the right side of c.Path. CommitSHA is not sent: a
+// thread attaches to the latest iteration, which the caller's head check already pinned.
+func (p *Provider) CommentOnLines(ctx context.Context, r githost.Repo, number int, c githost.LineComment) githost.Status {
+	org, project, ok := split(r)
+	if !ok {
+		return invalidRepo(r)
+	}
+	thread := newThread(c.Body)
+	thread["threadContext"] = map[string]any{
+		"filePath":       "/" + c.Path,
+		"rightFileStart": map[string]any{"line": c.Start, "offset": 1},
+		"rightFileEnd":   map[string]any{"line": c.End, "offset": c.EndColumn},
+	}
+	return p.postThread(ctx, org, project, r, number, thread)
 }
 
 // SubmitReview posts the body as a new thread, then casts the vote.

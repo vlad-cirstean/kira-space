@@ -66,6 +66,11 @@ test('a selected archived task shows all it kept, read-only', async ({ relaunch 
 
   await expect(page.locator(t('ade-panel-title'))).toHaveText('Fix login');
   await expect(page.locator(t('ade-archived-status'))).toHaveText('Done');
+  const labels = (
+    await page.locator(t('ade-archived-task-tab')).locator('dt').allTextContents()
+  ).map((s) => s.trim());
+  expect(labels).toContain('Issue');
+  expect(labels).toContain('PR');
   await expect(page.locator(t('ade-archived-jira-link'))).toHaveText('KIRA-12');
   await expect(page.locator(t('ade-archived-host-link'))).toHaveText('api!9');
   const branch = page.locator(t('ade-archived-branch'));

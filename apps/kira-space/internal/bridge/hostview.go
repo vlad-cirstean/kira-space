@@ -99,9 +99,11 @@ type HostViewTarget struct {
 	Key     string              `json:"key,omitempty"`
 }
 
-// HostViewIssueArgs is Issue's request: an issue key or link.
+// HostViewIssueArgs is Issue's request: an issue key or link. Fresh forces a tracker read; otherwise a
+// recent saved copy may answer, marked stale.
 type HostViewIssueArgs struct {
-	Ref string `json:"ref"`
+	Ref   string `json:"ref"`
+	Fresh bool   `json:"fresh"`
 }
 
 // HostViewIssue is Issue's result. Kind unavailable carries a Reason word.
@@ -234,7 +236,17 @@ func (s *HostViewService) openIssue(ctx context.Context, p issuetracker.Provider
 	}
 	id := "issue|" + p.ID() + "|" + strings.ToLower(site) + "|" + ref.Key
 	title := i18n.T("backend.space.issueTracker.view.window.title", map[string]string{"key": ref.Key, "label": terms.Label})
-	return s.openTarget(id, target, title)
+	out, err := s.openTarget(id, target, title)
+	if err == nil && out.Opened {
+		go s.prefetchIssue(ctx, p, ref)
+	}
+	return out, err
+}
+
+// prefetchIssue starts the tracker read while the new window boots, so its first Issue call finds the
+// result saved. The read outlives ctx; its error is dropped, the window's own call reports it.
+func (s *HostViewService) prefetchIssue(ctx context.Context, p issuetracker.Provider, ref issuetracker.Ref) {
+	_, _ = p.(issuetracker.IssueDetails).IssueDetail(context.WithoutCancel(ctx), ref, true)
 }
 
 // OpenHostViewChangeRequest opens the PR view for repo r and change request n of provider p. It is a
@@ -307,7 +319,7 @@ func (s *HostViewService) Issue(ctx context.Context, args HostViewIssueArgs) (Ho
 		return HostViewIssue{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.space.issueTracker.view.notIssue.body",
 			map[string]string{"issues": s.Trackers.IssueViewLabels()})
 	}
-	d, err := p.(issuetracker.IssueDetails).IssueDetail(ctx, ref)
+	d, err := p.(issuetracker.IssueDetails).IssueDetail(ctx, ref, args.Fresh)
 	switch {
 	case err == nil:
 		out := HostViewIssue{Kind: HostViewOK, Detail: &d}

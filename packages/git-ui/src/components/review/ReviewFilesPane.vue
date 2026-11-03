@@ -22,11 +22,14 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
  */
 import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { FieldError } from '@theme/components/ui/field';
 import { type MessageKey, t } from '@theme/i18n';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
-import { computed, ref } from 'vue';
+import { formatShortcut } from '@workbench/shortcuts/keys';
+import { computed } from 'vue';
 import { ACTION_ICONS } from '../../icons/index.ts';
+import { markOnToggle, reviewAttention } from '../../lib/reviewAttention.ts';
 import type { FileListMode } from '../../state/detail.ts';
 import type { DetailActions } from '../../state/detailActions.ts';
 import type { ReviewWorkingSection } from '../../state/review.ts';
@@ -51,6 +54,17 @@ const props = defineProps<{
   filter: string;
   /** Uncommitted changes under the committed list; `null` hides the section. */
   working: ReviewWorkingSection | null;
+  /** The file last opened, committed or uncommitted. */
+  cursor: { section: 'committed' | 'working'; path: string } | null;
+  /** Some listed file still needs a review. */
+  canStep: boolean;
+  /** Show the Alt+F8 chords on the step buttons. */
+  reviewShortcuts: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: 'step', dir: 'next' | 'previous'): void;
+  (e: 'openedWorking', path: string): void;
 }>();
 
 const diffModeOptions: readonly DiffModeOption[] = [
@@ -74,20 +88,37 @@ const reviewStatesMap = computed<ReadonlyMap<string, ReviewFileStatus>>(() => {
 });
 
 const reviewedCount = computed(
-  () => props.reviewFiles.files.value.filter((e) => e.review.kind === 'full').length,
+  () =>
+    props.reviewFiles.files.value.filter((e) => reviewAttention(e.review) === 'reviewed').length,
+);
+const changedCount = computed(
+  () => props.reviewFiles.files.value.filter((e) => reviewAttention(e.review) === 'changed').length,
 );
 
 const workingFiles = computed(() => props.working?.files ?? []);
 const workingReviewedCount = computed(
   () =>
-    workingFiles.value.filter((f) => props.working?.reviewStates.get(f.path)?.kind === 'full')
-      .length,
+    workingFiles.value.filter(
+      (f) => reviewAttention(props.working?.reviewStates.get(f.path)) === 'reviewed',
+    ).length,
 );
-const workingSelected = ref(-1);
+const workingChangedCount = computed(
+  () =>
+    workingFiles.value.filter(
+      (f) => reviewAttention(props.working?.reviewStates.get(f.path)) === 'changed',
+    ).length,
+);
+const workingSelected = computed(() =>
+  props.cursor?.section === 'working'
+    ? workingFiles.value.findIndex((f) => f.path === props.cursor?.path)
+    : -1,
+);
 
 function onOpenWorkingIndex(index: number, pinned: boolean): void {
   const file = workingFiles.value[index];
-  if (file) props.working?.onOpen(file.path, pinned);
+  if (!file) return;
+  emit('openedWorking', file.path);
+  props.working?.onOpen(file.path, pinned);
 }
 
 const selectedIndex = computed(() => {
@@ -121,8 +152,7 @@ function onOpenFileIndex(index: number, pinned: boolean): void {
 
 function onToggleReviewed(path: string): void {
   const entry = props.reviewFiles.files.value.find((e) => e.change.path === path);
-  const isReviewed = entry ? entry.review.kind !== 'none' : false;
-  void props.reviewFiles.mark(path, !isReviewed);
+  void props.reviewFiles.mark(path, markOnToggle(reviewAttention(entry?.review)));
 }
 
 function onToggleReviewedFolder(paths: string[], reviewed: boolean): void {
@@ -130,8 +160,10 @@ function onToggleReviewedFolder(paths: string[], reviewed: boolean): void {
 }
 
 function onToggleWorkingReviewed(path: string): void {
-  const isReviewed = (props.working?.reviewStates.get(path)?.kind ?? 'none') !== 'none';
-  props.working?.onToggleReviewed(path, !isReviewed);
+  props.working?.onToggleReviewed(
+    path,
+    markOnToggle(reviewAttention(props.working.reviewStates.get(path))),
+  );
 }
 </script>
 
@@ -157,6 +189,22 @@ function onToggleWorkingReviewed(path: string): void {
             <span class="sr-only">{{ item.label }}</span>
           </template>
         </SecondaryTabs>
+        <TooltipIconButton
+          icon="arrow-up"
+          :label="t('git.review.files.prevUnreviewed.tooltip')"
+          :kbd="reviewShortcuts ? formatShortcut('review.previousUnreviewed') : undefined"
+          :disabled="!canStep"
+          data-testid="review-prev-unreviewed"
+          @click="emit('step', 'previous')"
+        />
+        <TooltipIconButton
+          icon="arrow-down"
+          :label="t('git.review.files.nextUnreviewed.tooltip')"
+          :kbd="reviewShortcuts ? formatShortcut('review.nextUnreviewed') : undefined"
+          :disabled="!canStep"
+          data-testid="review-next-unreviewed"
+          @click="emit('step', 'next')"
+        />
         <span v-if="deltaStatusText" class="ml-auto text-muted-foreground text-graph-sm">{{
           deltaStatusText
         }}</span>
@@ -177,6 +225,14 @@ function onToggleWorkingReviewed(path: string): void {
       >
         <CodiconIcon name="git-commit" :size="13" />
         <span>{{ t('git.review.committed.title') }}</span>
+        <span
+          v-if="changedCount > 0"
+          class="text-warn font-normal"
+          data-testid="review-committed-changed-count"
+          >{{
+            t('git.review.changedCount.label', { count: changedCount })
+          }}</span
+        >
         <span class="ml-auto text-muted-foreground font-normal">{{
           t('git.review.reviewedCount.label', {
             reviewed: reviewedCount,
@@ -212,6 +268,14 @@ function onToggleWorkingReviewed(path: string): void {
         >
           <CodiconIcon name="edit" :size="13" class="text-warn" />
           <span>{{ t('space.ade.changes.uncommitted.label') }}</span>
+          <span
+            v-if="workingChangedCount > 0"
+            class="text-warn font-normal"
+            data-testid="review-working-changed-count"
+            >{{
+              t('git.review.changedCount.label', { count: workingChangedCount })
+            }}</span
+          >
           <span class="ml-auto text-muted-foreground font-normal">{{
             t('git.review.reviewedCount.label', {
               reviewed: workingReviewedCount,
@@ -235,7 +299,6 @@ function onToggleWorkingReviewed(path: string): void {
           :store="store"
           :actions="actions"
           :review-states="working?.reviewStates"
-          @select-file="(i) => (workingSelected = i)"
           @open-file="onOpenWorkingIndex"
           @toggle-reviewed="onToggleWorkingReviewed"
           @toggle-reviewed-folder="

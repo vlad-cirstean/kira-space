@@ -61,6 +61,8 @@ export interface RunMessageInput {
   /** Its 1-based position among the workflow's automatic steps, and their count. */
   stepNumber: number;
   stepCount: number;
+  /** The task has no mine branch: the step runs in the task folder. */
+  noRepo?: boolean;
 }
 
 /** Vars of `ade.step.prompt` for the Run dialog, keys in alphabetical order. Per-run placeholders (`{repo}` `{branch}`
@@ -80,7 +82,7 @@ export function runMessageVars(i: RunMessageInput): Record<string, unknown> {
     jiraKey: jira,
     jiraURL: i.jira?.url ?? '',
     message: '',
-    repo: '{repo}',
+    repo: i.noRepo ? '' : '{repo}',
     stepCount: i.stepCount,
     stepName: first.name,
     stepNumber: i.stepNumber,

@@ -557,7 +557,7 @@ func (b *TaskBoard) ShelveTask(_ context.Context, args adewire.ShelveTaskArgs) e
 	return nil
 }
 
-// CaptureTask adds a repo-less, workflow-less task at the top of Later.
+// CaptureTask adds a repo-less, workflow-less task at the top of Later, or of Day.
 func (b *TaskBoard) CaptureTask(_ context.Context, args adewire.CaptureTaskArgs) (adewire.Task, error) {
 	title := strings.TrimSpace(args.Title)
 	if title == "" {
@@ -565,7 +565,7 @@ func (b *TaskBoard) CaptureTask(_ context.Context, args adewire.CaptureTaskArgs)
 	}
 	task, err := b.deps.Tasks.CaptureTask(model.AdeTask{
 		ID: b.newID(), Kind: model.AdeTaskKindTask, Title: title, CreatedAt: b.deps.Now().UnixMilli(),
-	})
+	}, args.Day)
 	if err != nil {
 		return adewire.Task{}, err
 	}

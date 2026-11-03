@@ -46,3 +46,46 @@ func TestReviewArgv(t *testing.T) {
 		t.Fatalf("comment argv tail = %v", args)
 	}
 }
+
+// TestCommentOnLinesArgv guards the line comment fields: line and start_line are typed (`-F`) so GitHub
+// reads JSON integers; every user-supplied field stays behind `-f`.
+func TestCommentOnLinesArgv(t *testing.T) {
+	ctx := context.Background()
+	sha := strings.Repeat("a", 40)
+	runner := &recordingRunner{}
+	c := testClient(t, runner)
+
+	if s := c.CommentOnLines(ctx, testRepo, 7, "src/a.ts", 3, 5, sha, "@alice why?"); !s.OK() {
+		t.Fatalf("range status = %+v", s)
+	}
+	args := runner.lastArgs
+	if args[len(args)-1] == "" || !slices.Contains(args, "repos/o/r/pulls/7/comments") {
+		t.Fatalf("argv lacks the endpoint: %v", args)
+	}
+	for _, want := range []string{"body=@alice why?", "path=src/a.ts", "commit_id=" + sha, "side=RIGHT", "start_side=RIGHT"} {
+		if i := slices.Index(args, want); i < 1 || args[i-1] != "-f" {
+			t.Fatalf("argv lacks -f %q: %v", want, args)
+		}
+	}
+	for _, want := range []string{"line=5", "start_line=3"} {
+		if i := slices.Index(args, want); i < 1 || args[i-1] != "-F" {
+			t.Fatalf("argv lacks -F %q: %v", want, args)
+		}
+	}
+	if n := strings.Count(strings.Join(args, " "), " -F "); n != 2 {
+		t.Fatalf("argv has %d -F fields, want 2: %v", n, args)
+	}
+
+	if s := c.CommentOnLines(ctx, testRepo, 7, "src/a.ts", 4, 4, sha, "one line"); !s.OK() {
+		t.Fatalf("single line status = %+v", s)
+	}
+	args = runner.lastArgs
+	for _, a := range args {
+		if strings.HasPrefix(a, "start_line=") || strings.HasPrefix(a, "start_side=") {
+			t.Fatalf("single line argv has %q: %v", a, args)
+		}
+	}
+	if i := slices.Index(args, "line=4"); i < 1 || args[i-1] != "-F" {
+		t.Fatalf("argv lacks -F line=4: %v", args)
+	}
+}

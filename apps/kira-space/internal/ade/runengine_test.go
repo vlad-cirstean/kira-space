@@ -395,7 +395,7 @@ func TestRunEngine_eachRepoAutoAdvanceApprovalAndStepDone(t *testing.T) {
 		agentStep("one", "    allowed_tools: [\"Bash(git *)\"]\n") + agentStep("two", "    before: approval\n") + manualStep))
 	id := e.task("api", "web")
 
-	if _, err := e.board.StepDone(context.Background(), id, nil); err == nil {
+	if _, err := e.board.StepDone(context.Background(), id, nil, false); err == nil {
 		t.Fatal("StepDone accepted before the steps ran")
 	}
 	if runIDs := e.start(id); len(runIDs) != 2 {
@@ -458,7 +458,7 @@ func TestRunEngine_eachRepoAutoAdvanceApprovalAndStepDone(t *testing.T) {
 	e.waitRun(id, "two/api", model.AdeRunDone)
 	e.waitRun(id, "two/web", model.AdeRunDone)
 
-	task, err := e.board.StepDone(context.Background(), id, nil)
+	task, err := e.board.StepDone(context.Background(), id, nil, false)
 	if err != nil || task.EntryStepID != "done" {
 		t.Fatalf("StepDone = %+v, %v; want done", task, err)
 	}

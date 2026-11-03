@@ -26,11 +26,11 @@ test('issue renders header, description, comments and sidebar', async ({ relaunc
   await expect(page.locator(t('host-view-state'))).toHaveText('In Progress');
   await expect(page.locator(t('issue-meta'))).toContainText('Rita Reporter reported');
 
-  const body = page.locator(t('issue-view')).locator(`main > ${t('host-view-markdown')}`);
+  const body = page.locator(t('issue-description')).locator(t('host-view-markdown'));
   await expect(body.locator('h2')).toHaveText('Goal');
   await expect(body.locator('script')).toHaveCount(0);
   await expect(body).toContainText('<script>alert(1)</script>');
-  await expect(body).toContainText('[attachment: mockup.png]');
+  await expect(body.locator('[data-kira-image]')).toHaveText('mockup.png');
   const link = body.locator('a', { hasText: 'the spec' });
   await expect(link).toHaveAttribute('href', 'https://example.com/spec');
   await link.click();
@@ -48,27 +48,46 @@ test('issue renders header, description, comments and sidebar', async ({ relaunc
   await expect(page.locator(t('issue-comments-truncated'))).toContainText('Open on Jira');
 
   await expect(page.locator(t('issue-side-assignee'))).toHaveText('Unassigned');
-  await expect(page.locator(t('issue-side-reporter'))).toHaveText('Rita Reporter');
+  await expect(page.locator(t('issue-side-reporter'))).toContainText('Rita Reporter');
   await expect(page.locator(t('issue-side-priority'))).toHaveText('High');
   await expect(page.locator(t('issue-side-label'))).toHaveText(['backend', 'export']);
   await expect(page.locator(t('issue-side-component'))).toHaveText(['Reports', 'API']);
   await expect(page.locator(t('issue-side-parent'))).toContainText('PROJ-1 Reporting epic');
-  const prs = page.locator(t('issue-side-pull-request'));
-  await expect(prs).toHaveCount(1);
-  await expect(prs).toContainText('#12 PROJ-12 export csv');
-  await expect(page.locator(t('issue-side-pull-requests-gap'))).toBeVisible();
+  await expect(page.locator(t('issue-side-pull-requests-count'))).toHaveText('2 pull requests');
 });
 
-test('the PR row and the parent open their own views', async ({ relaunch }) => {
-  const { window: page, control } = await relaunch({ control: issueControl(issueOk, [OPEN]) });
-  await page.locator(t('issue-side-pull-request-open')).click();
-  await expect.poll(() => calls(control, IPC.hostViewOpen)).toHaveLength(1);
-  expect(calls(control, IPC.hostViewOpen)[0]?.args).toEqual({
-    url: 'https://forge.test/acme/api/-/merge_requests/12',
+test('description renders chips, callouts and attachments', async ({ relaunch }) => {
+  const { window: page, control } = await relaunch({ control: issueControl(issueOk, [LINK]) });
+  const body = page.locator(t('issue-description')).locator(t('host-view-markdown'));
+  await expect(body.locator('.markdown-alert-note')).toContainText('Export runs nightly.');
+  await expect(body.locator('.markdown-alert-note .markdown-alert-title')).toHaveText('Note');
+  await expect(body.locator('span', { hasText: '@Dana Dev' })).toHaveCount(1);
+  await expect(body.locator('a', { hasText: '@Dana Dev' })).toHaveCount(0);
+  await expect(body.locator('span', { hasText: 'IN REVIEW' })).toHaveCount(1);
+  await expect(body.locator('.kira-prose-scroll table')).toHaveCount(1);
+
+  await body.locator('[data-kira-image]').click();
+  await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(1);
+  expect(calls(control, IPC.linkOpenExternal)[0]?.args).toEqual({
+    url: 'https://acme.atlassian.net/rest/api/3/attachment/content/10100',
   });
+
+  const tiles = page.locator(t('issue-attachment'));
+  await expect(tiles).toHaveCount(2);
+  await expect(tiles.nth(0)).toContainText('spec.pdf');
+  await expect(tiles.nth(1)).toContainText('mockup.png');
+  await tiles.nth(1).click();
+  await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(2);
+  expect(calls(control, IPC.linkOpenExternal)[1]?.args).toEqual({
+    url: 'https://acme.atlassian.net/rest/api/3/attachment/content/10100',
+  });
+});
+
+test('the parent opens its own view', async ({ relaunch }) => {
+  const { window: page, control } = await relaunch({ control: issueControl(issueOk, [OPEN]) });
   await page.locator(t('issue-side-parent-open')).click();
-  await expect.poll(() => calls(control, IPC.hostViewOpen)).toHaveLength(2);
-  expect(calls(control, IPC.hostViewOpen)[1]?.args).toEqual({ url: 'PROJ-1' });
+  await expect.poll(() => calls(control, IPC.hostViewOpen)).toHaveLength(1);
+  expect(calls(control, IPC.hostViewOpen)[0]?.args).toEqual({ url: 'PROJ-1' });
 });
 
 test('Open on Jira and Copy link use the browse URL', async ({ relaunch }) => {

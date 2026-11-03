@@ -54,6 +54,35 @@ export function useReviewWorkingMark() {
   });
 }
 
+/** Most paths one stamp covers; the server refuses more. */
+const MAX_STAMP_PATHS = 5000;
+
+/** Polls a stat stamp of the listed files; a changed stamp re-reads the uncommitted list, so an edit
+ *  no agent hook announced still shows. Outside `reviewWorkingPrefix`: a list invalidation never
+ *  refetches it, and a refetched list over the same paths yields the same stamp. */
+export function useReviewWorkingStamp(
+  branchId: MaybeRefOrGetter<string>,
+  paths: MaybeRefOrGetter<readonly string[]>,
+  enabled: MaybeRefOrGetter<boolean>,
+): void {
+  const stamp = useQuery({
+    queryKey: ['adetask', 'reviewStamp', branchId] as const,
+    queryFn: () =>
+      control.adeTaskReviewWorkingStamp({
+        branchId: toValue(branchId),
+        paths: toValue(paths).slice(0, MAX_STAMP_PATHS),
+      }),
+    refetchInterval: TIMING.reviewStamp,
+    enabled: () => toValue(branchId) !== '' && toValue(enabled),
+  });
+  watch(
+    () => stamp.data.value?.stamp,
+    (now, was) => {
+      if (was !== undefined && now !== was) void invalidateReviewWorking();
+    },
+  );
+}
+
 /** Agent hook events that follow a file write or the end of a turn. */
 const SETTLE_EVENTS = new Set(['PostToolUse', 'Stop']);
 
@@ -70,7 +99,7 @@ function branchSignature(board: Board | undefined, branchId: string | undefined)
 
 /** Keeps the uncommitted queries fresh: a change to this branch's tip or dirty paths (commit, stage,
  *  checkout), window focus, and agent activity inside the worktree. Other tasks' board pushes are
- *  ignored. There is no polling; an edit made elsewhere shows on refocus. */
+ *  ignored. Edits no hook announces are caught by `useReviewWorkingStamp`. */
 export function useReviewWorkingSync(target: () => ReviewWindowTarget | null): void {
   const board = useBoard();
   const invalidate = (): void => {

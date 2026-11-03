@@ -110,21 +110,29 @@ export const issueOmitted = contract<IssueWire>(
   'issue-view',
   'HostViewService.Issue#commentsOmitted',
 );
+// issue-view-fetch.json is written by issueview_fetch_test.go.
+export const issueFetchStale = contract<IssueWire>(
+  'issue-view-fetch',
+  'HostViewService.Issue#stale',
+);
+export const issueFetchFresh = contract<IssueWire>(
+  'issue-view-fetch',
+  'HostViewService.Issue#fresh',
+);
 export const issueGone = contract<IssueWire>('issue-view', 'HostViewService.Issue#gone');
 export const issueUnauthenticated = contract<IssueWire>(
   'issue-view',
   'HostViewService.Issue#unauthenticated',
 );
 
+/** The window target plus the issue answer: one result for any args, or a snapshot sequence keyed by args. */
 export function issueControl(
-  result: IssueWire,
+  result: IssueWire | readonly ControlSnapshot[],
   extra: readonly ControlSnapshot[] = [],
 ): ControlSnapshot[] {
-  return [
-    { channel: IPC.hostViewWindowTarget, response: issueTarget },
-    { channel: IPC.hostViewIssue, response: result },
-    ...extra,
-  ];
+  const issue: readonly ControlSnapshot[] =
+    'kind' in result ? [{ channel: IPC.hostViewIssue, response: result }] : result;
+  return [{ channel: IPC.hostViewWindowTarget, response: issueTarget }, ...issue, ...extra];
 }
 
 // host-view-comments.json is written by githostflow/comments_test.go.

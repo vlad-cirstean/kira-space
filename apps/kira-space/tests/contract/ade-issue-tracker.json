@@ -15,28 +15,6 @@
       {
         "createdAt": 0,
         "id": "<masked>",
-        "kind": "changeRequest",
-        "ref": "<masked>",
-        "repo": "acme/lib",
-        "source": "jira",
-        "status": "merged",
-        "title": "KIRA-12 groundwork",
-        "url": "https://forge.test/acme/lib/-/merge_requests/20"
-      },
-      {
-        "createdAt": 0,
-        "id": "<masked>",
-        "kind": "changeRequest",
-        "ref": "<masked>",
-        "repo": "acme/web",
-        "source": "jira",
-        "status": "draft",
-        "title": "Other approach",
-        "url": "https://forge.test/acme/web/-/merge_requests/8"
-      },
-      {
-        "createdAt": 0,
-        "id": "<masked>",
         "kind": "issue",
         "ref": "<masked>",
         "repo": "",
@@ -57,62 +35,9 @@
         "url": "https://forge.test/acme/api/-/tree/feat/KIRA-12-login"
       }
     ],
-    "gaps": [
-      {
-        "count": 1,
-        "reason": "changeRequestsMissing",
-        "repo": "",
-        "source": "jira"
-      }
-    ]
-  },
-  "AdeTaskService.Artifacts#lookup-failed": {
-    "artifacts": [
-      {
-        "createdAt": 0,
-        "id": "<masked>",
-        "kind": "issue",
-        "ref": "<masked>",
-        "repo": "",
-        "source": "jira",
-        "status": "Done",
-        "title": "Eighty",
-        "url": "https://acme.atlassian.net/browse/KIRA-80"
-      }
-    ],
-    "gaps": [
-      {
-        "reason": "changeRequestsUnauthenticated",
-        "repo": "",
-        "source": "jira"
-      }
-    ]
+    "gaps": []
   },
   "IssueTrackerService.TaskIssue": {
-    "changeRequests": [
-      {
-        "ref": "#20",
-        "repo": "acme/lib",
-        "state": "merged",
-        "title": "KIRA-12 groundwork",
-        "url": "https://forge.test/acme/lib/-/merge_requests/20"
-      },
-      {
-        "ref": "#7",
-        "repo": "acme/api",
-        "state": "open",
-        "title": "Fix login",
-        "url": "https://forge.test/acme/api/-/merge_requests/7"
-      },
-      {
-        "ref": "#8",
-        "repo": "acme/web",
-        "state": "draft",
-        "title": "Other approach",
-        "url": "https://forge.test/acme/web/-/merge_requests/8"
-      }
-    ],
-    "changeRequestsReason": "",
     "key": "KIRA-12",
     "label": "Jira",
     "provider": "jira",
@@ -131,8 +56,6 @@
     "url": "https://acme.atlassian.net/browse/KIRA-12"
   },
   "IssueTrackerService.TaskIssue#unauthenticated": {
-    "changeRequests": [],
-    "changeRequestsReason": "",
     "key": "KIRA-72",
     "label": "Jira",
     "provider": "jira",

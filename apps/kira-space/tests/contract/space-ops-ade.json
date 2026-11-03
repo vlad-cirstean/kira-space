@@ -3,7 +3,7 @@
     "background": false,
     "cancellable": false,
     "category": "git",
-    "command": "git worktree add -b kira/<branch-id> -- <home>/wt/api/<branch-id> refs/remotes/origin/main",
+    "command": "git worktree add -b kira/<branch-id> -- <home>/wt/api/<folder-id> refs/remotes/origin/main",
     "durationMs": 0,
     "error": null,
     "id": "<masked>",
@@ -42,7 +42,7 @@
         "stderr": null
       },
       {
-        "argv": "git worktree add -b kira/<branch-id> -- <home>/wt/api/<branch-id> refs/remotes/origin/main",
+        "argv": "git worktree add -b kira/<branch-id> -- <home>/wt/api/<folder-id> refs/remotes/origin/main",
         "durationMs": 0,
         "exitCode": 0,
         "readOnly": false,

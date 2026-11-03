@@ -71,6 +71,8 @@ function stepStatusText(s: StepProgress, now: boolean): string {
     return now ? t('automations.run.state.waiting.status') : runStateLabel('pending');
   }
   if (s.state === 'stuck') return t('space.ade.allSessions.stuck.status');
+  if (now && s.state === 'pending' && !s.runs.length)
+    return t('space.ade.stepBlock.needsRepo.status');
   if (s.state === 'pending' && s.approval) return t('space.ade.step.waitingApproval.status');
   return runStateLabel(s.state);
 }

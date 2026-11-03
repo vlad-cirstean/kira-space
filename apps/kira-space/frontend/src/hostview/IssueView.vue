@@ -2,6 +2,7 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Badge } from '@theme/components/ui/badge';
+import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { useElementSize } from '@vueuse/core';
 import { useCopy } from '@workbench/behaviour/clipboard';
@@ -12,19 +13,22 @@ import { gapText } from '../ade/v2/artifacts/gapText';
 import { control } from '../bridge/control';
 import CommentComposer from './CommentComposer.vue';
 import HostViewFrame from './HostViewFrame.vue';
+import IssueAttachments from './IssueAttachments.vue';
 import IssueComments from './IssueComments.vue';
 import IssueSidebar from './IssueSidebar.vue';
+import { statusVariant } from './issueFormat';
 import MarkdownBody from './MarkdownBody.vue';
 import { issueKey, useIssueDetail } from './queries';
 import type { IssueTarget } from './wire';
 
 // One issue: description and comments (left), fields and pull requests (right), stacked when narrow.
-// Refresh is the only refetch trigger; a tracker failure shows its reason with Retry.
+// Refresh is the only refetch trigger besides a stale saved copy; a tracker failure shows its reason
+// with Retry.
 const WIDE_PX = 900;
 const props = defineProps<{ target: IssueTarget }>();
 const { copy } = useCopy();
 const refText = computed(() => props.target.url || props.target.key);
-const query = useIssueDetail(refText);
+const { query, refresh } = useIssueDetail(refText);
 const queryKey = computed(() => issueKey(refText.value));
 const result = computed(() => query.data.value);
 const compose = computed(() => result.value?.compose);
@@ -38,23 +42,11 @@ const failure = computed(() => {
 const title = computed(() => detail.value?.title ?? props.target.key);
 const url = computed(() => detail.value?.ref.url || props.target.url);
 const label = computed(() => props.target.tracker.label);
-const statusVariant = computed(() => {
-  switch (detail.value?.statusCategory) {
-    case 'done':
-      return 'ok' as const;
-    case 'indeterminate':
-      return 'info' as const;
-    default:
-      return 'chip' as const;
-  }
-});
+const tone = computed(() => statusVariant(detail.value?.statusCategory));
 const body = useTemplateRef('body');
 const { width } = useElementSize(body);
 const stacked = computed(() => width.value < WIDE_PX);
 
-function refresh(): void {
-  void query.refetch();
-}
 function openOnTracker(): void {
   if (url.value) fireAndForget(control.openExternal(url.value), 'hostView.issue');
 }
@@ -78,7 +70,7 @@ function copyLink(): void {
     @open="openOnTracker"
   >
     <template #badge>
-      <Badge v-if="detail" :variant="statusVariant" class="shrink-0" data-testid="host-view-state">
+      <Badge v-if="detail" :variant="tone" class="shrink-0" data-testid="host-view-state">
         {{ detail.status }}
       </Badge>
     </template>
@@ -90,40 +82,60 @@ function copyLink(): void {
       data-testid="issue-view"
     >
       <main class="min-w-0 flex-1 p-4" :class="stacked ? '' : 'overflow-y-auto'">
-        <div
-          class="mb-3 flex flex-wrap items-center gap-x-2 text-kira-sm text-muted-foreground"
-          data-testid="issue-meta"
-        >
-          <CodiconIcon name="issues" :size="13" />
-          <span>{{
-            detail.reporter
-              ? t('space.hostView.issue.header.reported.label', {
-                  author: detail.reporter.name,
-                  when: formatRelative(detail.createdAt),
-                })
-              : t('space.hostView.issue.header.created.label', {
-                  when: formatRelative(detail.createdAt),
-                })
-          }}</span>
-        </div>
-        <MarkdownBody :source="detail.description" />
-        <IssueComments
-          :comments="detail.comments"
-          :truncated="!!detail.commentsTruncated"
-          :omitted="!!detail.commentsOmitted"
-          :label="label"
-        />
-        <section v-if="compose" class="mt-4 flex flex-col gap-2" data-testid="issue-compose">
-          <SectionHeading :label="t('space.hostView.compose.heading.title')" />
-          <CommentComposer
-            kind="issue"
-            :compose="compose"
-            :query-key="queryKey"
-            :provider="target.provider"
+        <div class="mx-auto flex w-full max-w-[760px] flex-col gap-6">
+          <div class="flex flex-col gap-2">
+            <div
+              class="flex flex-wrap items-center gap-x-2 text-kira-sm text-muted-foreground"
+              data-testid="issue-meta"
+            >
+              <CodiconIcon name="issues" :size="13" />
+              <span>{{
+                detail.reporter
+                  ? t('space.hostView.issue.header.reported.label', {
+                      author: detail.reporter.name,
+                      when: formatRelative(detail.createdAt),
+                    })
+                  : t('space.hostView.issue.header.created.label', {
+                      when: formatRelative(detail.createdAt),
+                    })
+              }}</span>
+            </div>
+            <FieldDescription v-if="detail.stale" data-testid="issue-stale">{{
+              result?.refreshFailed
+                ? t('space.hostView.issue.stale.failed.hint', {
+                    when: formatRelative(detail.fetchedAt),
+                    reason: result?.refreshFailed ?? '',
+                  })
+                : t('space.hostView.issue.stale.hint', { when: formatRelative(detail.fetchedAt) })
+            }}</FieldDescription>
+          </div>
+          <section class="flex flex-col gap-2" data-testid="issue-description">
+            <SectionHeading :label="t('common.field.description.label')" />
+            <MarkdownBody :source="detail.description" />
+          </section>
+          <IssueAttachments
+            :attachments="detail.attachments"
+            :truncated="!!detail.attachmentsTruncated"
+            :label="label"
           />
-        </section>
+          <IssueComments
+            :comments="detail.comments"
+            :truncated="!!detail.commentsTruncated"
+            :omitted="!!detail.commentsOmitted"
+            :label="label"
+          />
+          <section v-if="compose" class="flex flex-col gap-2" data-testid="issue-compose">
+            <SectionHeading :label="t('space.hostView.compose.heading.title')" />
+            <CommentComposer
+              kind="issue"
+              :compose="compose"
+              :query-key="queryKey"
+              :provider="target.provider"
+            />
+          </section>
+        </div>
       </main>
-      <IssueSidebar :detail="detail" :provider="target.provider" :stacked="stacked" />
+      <IssueSidebar :detail="detail" :stacked="stacked" />
     </div>
   </HostViewFrame>
 </template>

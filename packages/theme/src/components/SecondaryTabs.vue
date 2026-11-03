@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import { Badge } from '@theme/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@theme/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { cn } from '@theme/lib/utils';
@@ -22,11 +23,13 @@ withDefaults(
     variant?: 'tabs' | 'segmented';
     size?: 'kira' | 'kira-lg';
     ariaLabel?: string;
+    countBadge?: boolean;
   }>(),
   {
     variant: 'tabs',
     size: 'kira',
     ariaLabel: undefined,
+    countBadge: false,
   },
 );
 
@@ -64,9 +67,10 @@ function onUpdate(v: unknown): void {
               <slot name="item" :item="item" :active="item.value === model">
                 <CodiconIcon v-if="item.icon" :name="item.icon" :size="13" />
                 <span>{{ item.label }}</span>
-                <span v-if="item.count !== undefined" class="text-kira-sm text-muted-foreground">{{
-                  item.count
-                }}</span>
+                <template v-if="item.count !== undefined">
+                  <Badge v-if="countBadge" variant="count" class="px-1">{{ item.count }}</Badge>
+                  <span v-else class="text-kira-sm text-muted-foreground">{{ item.count }}</span>
+                </template>
               </slot>
             </ToggleGroupItem>
           </span>
@@ -83,9 +87,10 @@ function onUpdate(v: unknown): void {
         <slot name="item" :item="item" :active="item.value === model">
           <CodiconIcon v-if="item.icon" :name="item.icon" :size="13" />
           <span>{{ item.label }}</span>
-          <span v-if="item.count !== undefined" class="text-kira-sm text-muted-foreground">{{
-            item.count
-          }}</span>
+          <template v-if="item.count !== undefined">
+            <Badge v-if="countBadge" variant="count" class="px-1">{{ item.count }}</Badge>
+            <span v-else class="text-kira-sm text-muted-foreground">{{ item.count }}</span>
+          </template>
         </slot>
       </ToggleGroupItem>
     </template>
