@@ -90,22 +90,23 @@ func workingRecordRanges(rec gitreview.WorkingRecord) []gitreview.LineRange {
 
 // projectWorkingRanges maps a record's ranges (snapshot coordinates) onto cur. Non-text records and
 // non-text cur carry no line ranges.
-func (e *RepoEntry) projectWorkingRanges(ctx context.Context, rec gitreview.WorkingRecord, snapshot []byte, cur WorkingContent) ([]gitreview.LineRange, error) {
+// It also returns the snapshot-to-cur hunks, nil when none were computed.
+func (e *RepoEntry) projectWorkingRanges(ctx context.Context, rec gitreview.WorkingRecord, snapshot []byte, cur WorkingContent) ([]gitreview.LineRange, []porcelain.DiffHunk, error) {
 	if rec.ContentKind != gitreview.ContentText || cur.Kind != gitreview.ContentText {
-		return nil, nil
+		return nil, nil, nil
 	}
 	ranges := workingRecordRanges(rec)
 	if len(ranges) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	if rec.ContentHash == cur.Hash {
-		return gitreview.ProjectRanges(ranges, nil, cur.lineCount()), nil
+		return gitreview.ProjectRanges(ranges, nil, cur.lineCount()), nil, nil
 	}
 	hunks, _, _, err := e.contentDelta(ctx, snapshot, cur.Text)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return gitreview.ProjectRanges(ranges, hunks, cur.lineCount()), nil
+	return gitreview.ProjectRanges(ranges, hunks, cur.lineCount()), hunks, nil
 }
 
 func (e *RepoEntry) workingBody(ctx context.Context, head, cur WorkingContent) (porcelain.FileDiffBody, error) {
@@ -138,7 +139,7 @@ func (e *RepoEntry) WorkingFileReview(ctx context.Context, branch, path string, 
 	}
 	reviewed := []gitreview.LineRange{}
 	if found {
-		projected, perr := e.projectWorkingRanges(ctx, rec, snapshot, cur)
+		projected, _, perr := e.projectWorkingRanges(ctx, rec, snapshot, cur)
 		if perr != nil {
 			return WorkingReviewResult{}, perr
 		}
@@ -172,7 +173,12 @@ func (e *RepoEntry) markWorkingLocked(ctx context.Context, branch, path string, 
 	lineCount := cur.lineCount()
 	var existing []gitreview.LineRange
 	if found {
-		if existing, err = e.projectWorkingRanges(ctx, rec, snapshot, cur); err != nil {
+		var hunks []porcelain.DiffHunk
+		if existing, hunks, err = e.projectWorkingRanges(ctx, rec, snapshot, cur); err != nil {
+			return ReviewFileStatus{}, err
+		}
+		// Capture before PutWorking overwrites the snapshot.
+		if err := e.captureWorking(ctx, branch, rec, snapshot, cur, hunks); err != nil {
 			return ReviewFileStatus{}, err
 		}
 	}
