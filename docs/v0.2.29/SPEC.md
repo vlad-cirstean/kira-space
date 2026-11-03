@@ -9,7 +9,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P484 | Kubernetes: ops panel tracks every action | Done |
 | P485 | Kubernetes: reorder clusters | Done |
 | P486 | Kubernetes: resource browser redesign, tabbed pods | Done |
-| P487 | Kubernetes: drive the kubectl CLI instead of the native client | Todo |
+| P487 | Kubernetes: drive the kubectl CLI instead of the native client | Won't be implemented |
 | P488 | Install instructions: trust the Jira tap | Done |
 | P489 | Terminals: Cmd-click opens file paths in Kira Space | Done |
 | P490 | Kira Space: file open window shows only ad hoc file tabs | Done |
@@ -48,6 +48,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 - Never read kubeconfig credentials/tokens. CLI credential rule, ARCHITECTURE "CLI credentials: never touched". Reading non-secret config such as context names via kubectl is fine.
 - Interacts with P484 (ops panel records the kubectl invocations) and P486 (redesign consumes same data). Plan states ordering consequences.
 - Test: backend flow with fake `kubectl` on PATH; UI spec on same scenario.
+- Result: Won't be implemented (user request). Module stays on client-go (read-only, native client). Reason: kubectl cannot give the server Table as JSON (`-o json` turns server-side tables off); text-table parsing too fragile. Plan removed.
 
 ### P488 Install instructions: trust the Jira tap
 
