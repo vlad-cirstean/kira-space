@@ -3323,7 +3323,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - `ContextFile()` writes an immutable snapshot `<snapshots>/<hash16>/AGENTS.md` (0600), touches its mtime on reuse, prunes dirs older than 30 days. A running agent never sees an edit; its path never changes under it.
 - Launch sites that set `ContextFile`: `ade.Tracker.Prepare`, `TaskBoard.superviseAgent`, scriptruns smart run, `ResumeCommand`. `superviseAgent` resolves it before `prepareSandbox` so the sandbox knows `ContextDir` (plan said after `Register`). A resolve error fails the launch.
 - Which launches see an edit: new conversations and resumes both pass the current file. Claude's snapshot keeps the recorded prompt on resume until compaction, so a resumed Claude conversation shows the old context. The editor says so per provider (`keepsOnResume`).
-- Space hosts and edits the file (`AgentContextService` Get and Save, Context tab in Agents, `ConfigFilesService` folder `agent`, generated `AGENTS.md`). Studio only reads it from the same path. Spec says Studio owns it; Space hosts the folder because the editor lives in Space. Studio has no editor.
+- Space hosts and edits the file (`AgentContextService` Get and Save, Context sub-tab of the Agent config tab, `ConfigFilesService` folder `agent`, generated `AGENTS.md`). Studio only reads it from the same path. Spec says Studio owns it; Space hosts the folder because the editor lives in Space. Studio has no editor.
 - Save checks `baseHash` against the file in `Store.Save` itself: `Folder.Save` skips the check for an empty hash, so a create over a concurrent create needs it.
 - Structured calls (memory distill, import) get no context. Their prompts are app prompts; user text stays out of `internal/llmprompts`.
 
