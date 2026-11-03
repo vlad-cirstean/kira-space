@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/bridge"
@@ -97,24 +98,27 @@ type Wired struct {
 	TerminalRegistry *terminal.Registry
 	OnWindowClosing  []func(string)
 
-	App             *bridge.AppService
-	Settings        *bridge.SettingsService
-	Layout          *bridge.LayoutService
-	Tabs            *bridge.TabsService
-	WindowsSvc      *bridge.WindowsService
-	Connections     *bridge.ConnectionsService
-	MaskRules       *bridge.MaskRulesService
-	Tree            *bridge.TreeService
-	Ops             *bridge.OpsService
-	Filters         *bridge.FiltersService
-	Files           *bridge.FilesService
-	Queries         *bridge.QueriesService
-	Schema          *bridge.SchemaService
-	Kibana          *bridge.KibanaService
-	Http            *bridge.HttpService
-	Grpc            *bridge.GrpcService
-	Collections     *bridge.CollectionsService
-	Variables       *bridge.VariablesService
+	App         *bridge.AppService
+	Settings    *bridge.SettingsService
+	Layout      *bridge.LayoutService
+	Tabs        *bridge.TabsService
+	WindowsSvc  *bridge.WindowsService
+	Connections *bridge.ConnectionsService
+	MaskRules   *bridge.MaskRulesService
+	Tree        *bridge.TreeService
+	Ops         *bridge.OpsService
+	Filters     *bridge.FiltersService
+	Files       *bridge.FilesService
+	Queries     *bridge.QueriesService
+	Schema      *bridge.SchemaService
+	Kibana      *bridge.KibanaService
+	Http        *bridge.HttpService
+	Grpc        *bridge.GrpcService
+	Collections *bridge.CollectionsService
+	Variables   *bridge.VariablesService
+	ApiConfig   *bridge.ApiConfigService
+	// ApiFiles is the api config folder behind Collections, Variables and ApiConfig.
+	ApiFiles        *apifiles.Store
 	ResponseHistory *bridge.ResponseHistoryService
 	GrpcHistory     *bridge.GrpcHistoryService
 	DataGrip        *bridge.DataGripService
@@ -175,12 +179,20 @@ func Build(opts Options) (*Wired, error) {
 	// P5 D8: the SAME authorizer instance connections.New below is given: that is what makes the
 	// reveal grace genuinely shared between a connection-password reveal and a variable reveal.
 	promptStore := llmprompts.NewStore(filepath.Join(config.KiraHome(), "llm-prompts.json"))
+	apiSecrets := &apifiles.Secrets{Store: secrets.NewStore(db.DB, opts.Cipher), DB: db.DB}
+	apiFiles, err := apifiles.New(apifiles.Options{
+		DB: db.DB, Dir: filepath.Join(config.KiraHome(), "api"), Secrets: apiSecrets,
+		OnChange: func(ch apifiles.Changes) { bridge.EmitApiChanges(opts.Emitter, ch) },
+	})
+	if err != nil {
+		return nil, err
+	}
 	deps := appcore.Deps{
 		DB:        db.DB,
 		Home:      config.KiraHome(),
 		StartedAt: startedAt.UnixMilli(),
 		Repos:     repositories,
-		ApiVars:   apivars.New(repositories.Variables, opts.Authorizer),
+		ApiVars:   apivars.New(repositories.Variables, opts.Authorizer, apiSecrets),
 		MaskRules: maskRulesSvc,
 		Prompts:   promptStore,
 	}
@@ -232,13 +244,15 @@ func Build(opts Options) (*Wired, error) {
 	}
 	embedded := wireEmbeddedServices(deps, installer, opts.KeepAwakeDriver, connectionsSvc, oplogWiring, metricsTicker, promptRouter, agents, proofSvc, opts)
 	lifecycle := wireLifecycle(windows, embedded.events, embedded.eventsDetach, metricsTicker, oplogWiring, connectionsSvc,
-		embedded.dbMcpSvc, embedded.keepAwakeSvc, embedded.terminalSvc, embedded.dockerSvc, embedded.kubeSvc, updateInstaller, embedded.runs, embedded.closeAgent, embedded.sched, embedded.runLoader, repositories, db)
+		embedded.dbMcpSvc, embedded.keepAwakeSvc, embedded.terminalSvc, embedded.dockerSvc, embedded.kubeSvc, updateInstaller, embedded.runs, embedded.closeAgent, embedded.sched, embedded.runLoader, apiFiles, repositories, db)
 	embedded.sched.Start()
 
 	live := func() shell.QuitStatus {
 		return shell.QuitStatus{Agents: len(embedded.terminalSvc.Registry.AgentSessions()), Scripts: embedded.runs.Live()}
 	}
 	lifecycle.quitter.SetGate(prompts.QuitGate{R: promptRouter, LiveFn: func() int { return live().Total() }})
+
+	apiFiles.Start()
 
 	*w = Wired{
 		Prompts:    promptRouter,
@@ -274,8 +288,10 @@ func Build(opts Options) (*Wired, error) {
 		Kibana:          &bridge.KibanaService{Deps: deps},
 		Http:            &bridge.HttpService{Deps: deps},
 		Grpc:            &bridge.GrpcService{Deps: deps},
-		Collections:     &bridge.CollectionsService{Deps: deps},
-		Variables:       &bridge.VariablesService{Deps: deps},
+		Collections:     &bridge.CollectionsService{Deps: deps, Files: apiFiles},
+		Variables:       &bridge.VariablesService{Deps: deps, Files: apiFiles},
+		ApiConfig:       &bridge.ApiConfigService{Deps: deps, Files: apiFiles},
+		ApiFiles:        apiFiles,
 		ResponseHistory: &bridge.ResponseHistoryService{Deps: deps},
 		GrpcHistory:     &bridge.GrpcHistoryService{Deps: deps},
 		DataGrip:        &bridge.DataGripService{Deps: deps},
@@ -283,7 +299,7 @@ func Build(opts Options) (*Wired, error) {
 		KeepAwake:       embedded.keepAwakeSvc,
 		Terminal:        embedded.terminalSvc,
 		CustomScripts:   &bridge.CustomScriptsService{Svc: &scripts.Service{Loader: embedded.runLoader}},
-		ConfigFiles:     &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"runs": filepath.Join(deps.Home, "runs")})},
+		ConfigFiles:     &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"runs": filepath.Join(deps.Home, "runs"), "api": apiFiles.Dir()})},
 		ScriptRuns:      embedded.scriptRuns,
 		Docker:          embedded.dockerSvc,
 		Kubernetes:      embedded.kubeSvc,
@@ -337,7 +353,7 @@ func (w *Wired) reopenWindow() {
 	}
 }
 
-// Bound returns the 36 bound services in registration order.
+// Bound returns the 37 bound services in registration order.
 func (w *Wired) Bound() []application.Service {
 	return []application.Service{
 		application.NewService(w.App), application.NewService(w.Settings), application.NewService(w.Layout),
@@ -345,7 +361,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.MaskRules), application.NewService(w.Tree), application.NewService(w.Ops),
 		application.NewService(w.Filters), application.NewService(w.Files), application.NewService(w.Queries),
 		application.NewService(w.Schema), application.NewService(w.Kibana), application.NewService(w.Http), application.NewService(w.Grpc),
-		application.NewService(w.Collections), application.NewService(w.Variables),
+		application.NewService(w.Collections), application.NewService(w.Variables), application.NewService(w.ApiConfig),
 		application.NewService(w.ResponseHistory), application.NewService(w.GrpcHistory),
 		application.NewService(w.DataGrip), application.NewService(w.DbMcp), application.NewService(w.KeepAwake),
 		application.NewService(w.Terminal), application.NewService(w.CustomScripts), application.NewService(w.ScriptRuns), application.NewService(w.Docker), application.NewService(w.Kubernetes), application.NewService(w.Link),

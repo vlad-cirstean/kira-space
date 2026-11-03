@@ -1,9 +1,12 @@
 package apivars
 
 import (
+	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/localauth"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 )
 
 // revealReason mirrors connections.revealReason — LAContext.evaluatePolicy's localizedReason
@@ -35,7 +38,7 @@ func (s *Service) Reveal(variableID string, confirmed bool) RevealResult {
 		msg := "variableId is required"
 		return RevealResult{Outcome: OutcomeError, Error: &msg}
 	}
-	return s.reveal(revealReason, variableID, confirmed, s.deps.Repo.RevealValue, "variable")
+	return s.reveal(revealReason, variableID, confirmed, s.revealVariable, "variable")
 }
 
 // RevealHistory is Reveal's sibling over api_variable_history (D13) — a secret's old value is
@@ -46,6 +49,20 @@ func (s *Service) RevealHistory(historyID string, confirmed bool) RevealResult {
 		return RevealResult{Outcome: OutcomeError, Error: &msg}
 	}
 	return s.reveal(revealReason, historyID, confirmed, s.deps.Repo.RevealHistoryValue, "variable history entry")
+}
+
+// revealVariable opens the secret a variable row points at. A secret that is not set is an error the
+// caller turns into an error result.
+func (s *Service) revealVariable(variableID string) (string, error) {
+	ref, err := s.deps.Repo.SecretRefOf(variableID)
+	if err != nil {
+		return "", err
+	}
+	v, err := s.deps.Secrets.Reveal(ref)
+	if errors.Is(err, configfs.ErrSecretMissing) {
+		return "", fmt.Errorf("the secret %s is not set", ref)
+	}
+	return v, err
 }
 
 func (s *Service) reveal(reason, id string, confirmed bool, decrypt func(string) (string, error), subject string) RevealResult {

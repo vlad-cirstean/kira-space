@@ -478,18 +478,40 @@ func createFile[T any](s *Store, f *configfs.Folder[T], ext, base string, render
 	return stem, nil
 }
 
-// CreateCollection writes a new empty collection file named after name and returns its stem.
+// PutSecret seals value as the secret name.
+func (s *Store) PutSecret(name, value string) error { return s.o.Secrets.Put(name, value) }
+
+// DeleteSecret removes the secret name; an absent name is not an error.
+func (s *Store) DeleteSecret(name string) error { return s.o.Secrets.Delete(name) }
+
+// CreateCollection writes a new empty collection file named after name and returns the row id.
 func (s *Store) CreateCollection(name string) (string, error) {
-	return createFile(s, s.collections, CollectionExt, Slug(name, "collection"), func(string) ([]byte, error) {
+	stem, err := createFile(s, s.collections, CollectionExt, Slug(name, "collection"), func(string) ([]byte, error) {
 		return configfs.RenderYAML(CollectionFile{Name: name, Items: []Item{}}, "")
 	})
+	if err != nil {
+		return "", err
+	}
+	return s.rowID(`SELECT id FROM api_collections WHERE stem = ?`, stem)
 }
 
-// CreateEnvironment writes a new environment file and returns its stem.
+// CreateEnvironment writes a new environment file and returns the row id.
 func (s *Store) CreateEnvironment(f EnvironmentFile) (string, error) {
-	return createFile(s, s.environments, EnvironmentExt, Slug(f.Name, "environment"), func(string) ([]byte, error) {
+	stem, err := createFile(s, s.environments, EnvironmentExt, Slug(f.Name, "environment"), func(string) ([]byte, error) {
 		return configfs.RenderYAML(f, "")
 	})
+	if err != nil {
+		return "", err
+	}
+	return s.rowID(`SELECT id FROM api_environments WHERE stem = ?`, stem)
+}
+
+func (s *Store) rowID(query string, args ...any) (string, error) {
+	var id string
+	if err := s.o.DB.QueryRow(query, args...).Scan(&id); err != nil {
+		return "", fmt.Errorf("apifiles: the written row is missing: %w", err)
+	}
+	return id, nil
 }
 
 // SaveRequest replaces an HTTP item's request and name in its file.
@@ -518,24 +540,26 @@ type NewItem struct {
 	GRPC   *GRPC
 }
 
-// CreateItem appends an item under the folder parentItemID of the collection, or at the root when it is "".
-func (s *Store) CreateItem(collectionID, parentItemID string, n NewItem) error {
+// CreateItem appends an item under the folder parentItemID of the collection, or at the root when it is
+// "", and returns the new row id.
+func (s *Store) CreateItem(collectionID, parentItemID string, n NewItem) (string, error) {
 	file, err := s.collectionFile(collectionID)
 	if err != nil {
-		return err
+		return "", err
 	}
 	parentKey := ""
 	if parentItemID != "" {
 		pf, key, owner, err := s.locate(parentItemID)
 		if err != nil {
-			return err
+			return "", err
 		}
 		if owner != collectionID || pf != file {
-			return fmt.Errorf("%w: item %s is not in collection %s", ErrNotFolder, parentItemID, collectionID)
+			return "", fmt.Errorf("%w: item %s is not in collection %s", ErrNotFolder, parentItemID, collectionID)
 		}
 		parentKey = key
 	}
-	return s.editCollection(file, func(src []byte) ([]byte, error) {
+	newKey := ""
+	err = s.editCollection(file, func(src []byte) ([]byte, error) {
 		f, _ := s.dec.collection(file, src)
 		taken := map[string]bool{}
 		var collect func(items []Item)
@@ -552,8 +576,13 @@ func (s *Store) CreateItem(collectionID, parentItemID string, n NewItem) error {
 		if n.Folder {
 			item.Items = &[]Item{}
 		}
+		newKey = item.ID
 		return appendItem(src, parentKey, item)
 	})
+	if err != nil {
+		return "", err
+	}
+	return s.rowID(`SELECT id FROM api_items WHERE collection_id = ? AND item_key = ?`, collectionID, newKey)
 }
 
 // StemOfCollection returns the file stem of a collection row.

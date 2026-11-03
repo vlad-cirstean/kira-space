@@ -2,23 +2,25 @@ package bridge
 
 import (
 	"errors"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
 
 	"github.com/google/renameio/v2"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/postman"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
 // CollectionsService is the QueriesService shape (a typed-struct wrapper per method, with an
-// explicit guard and an ipcerr translation) over Deps.Repos.Collections, plus the two file
-// methods.
+// explicit guard and an ipcerr translation). Reads go to Deps.Repos.Collections; every write is an
+// edit of a collection file through Files, which projects the file back into the rows and pushes the
+// change event itself. Import and Export are the two file methods.
 //
 // **Go reads and writes the file.** CHUNK_THRESHOLD is 512 KiB with a serial fetch per chunk and
 // an outright refusal above a 64 MiB assembled body, so a 10-50 MB collection through the
@@ -33,7 +35,10 @@ import (
 // useful semantics either. The panel's own header action carries a spinner instead, and Wails
 // handles each bound call in its own goroutine, so a long import blocks that call and
 // nothing else.
-type CollectionsService struct{ Deps appcore.Deps }
+type CollectionsService struct {
+	Deps  appcore.Deps
+	Files *apifiles.Store
+}
 
 // CollectionSummary and ItemSummary are the two flat row shapes the tree renders from — the
 // renderer builds the tree, mirroring how TreeService.Children returns flat nodes.
@@ -96,6 +101,8 @@ type CollectionsSaveRequestArgs struct {
 	Request model.SavedRequest `json:"request"`
 }
 
+// SaveRequest replaces the request's node in its collection file and answers with the item row the
+// file now projects to.
 func (s *CollectionsService) SaveRequest(args CollectionsSaveRequestArgs) (ItemSummary, error) {
 	if args.ItemID == "" {
 		return ItemSummary{}, ipcerr.Required("itemId")
@@ -103,12 +110,13 @@ func (s *CollectionsService) SaveRequest(args CollectionsSaveRequestArgs) (ItemS
 	if args.Name == "" {
 		return ItemSummary{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.validation.nameRequired.body", nil)
 	}
-	item, err := s.Deps.Repos.Collections.SaveRequest(args.ItemID, args.Name, args.Request)
-	if err != nil {
-		return ItemSummary{}, ipcerr.InternalErr(err)
+	if err := args.Request.Validate(); err != nil {
+		return ItemSummary{}, ipcerr.BadRequest(err.Error())
 	}
-	emitApiData(s.Deps.Events, treeChange(), savedRequestChange(args.ItemID))
-	return item, nil
+	if err := s.Files.SaveRequest(args.ItemID, args.Name, apifiles.HTTPOf(args.Request)); err != nil {
+		return ItemSummary{}, apiFilesErr(err)
+	}
+	return readErr(s.Deps.Repos.Collections.GetItem(args.ItemID))
 }
 
 type CollectionsSaveGrpcRequestArgs struct {
@@ -125,27 +133,32 @@ func (s *CollectionsService) SaveGrpcRequest(args CollectionsSaveGrpcRequestArgs
 	if args.Name == "" {
 		return ItemSummary{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.validation.nameRequired.body", nil)
 	}
-	item, err := s.Deps.Repos.Collections.SaveGrpcRequest(args.ItemID, args.Name, args.Request)
-	if err != nil {
-		return ItemSummary{}, ipcerr.InternalErr(err)
+	if err := args.Request.Validate(); err != nil {
+		return ItemSummary{}, ipcerr.BadRequest(err.Error())
 	}
-	emitApiData(s.Deps.Events, treeChange(), savedRequestChange(args.ItemID))
-	return item, nil
+	if err := s.Files.SaveGrpcRequest(args.ItemID, args.Name, apifiles.GRPCOf(args.Request)); err != nil {
+		return ItemSummary{}, apiFilesErr(err)
+	}
+	return readErr(s.Deps.Repos.Collections.GetItem(args.ItemID))
 }
 
 type CollectionsCreateCollectionArgs struct {
 	Name string `json:"name"`
 }
 
+// CreateCollection writes a new empty collection file.
 func (s *CollectionsService) CreateCollection(args CollectionsCreateCollectionArgs) (CollectionSummary, error) {
 	if args.Name == "" {
 		return CollectionSummary{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.validation.nameRequired.body", nil)
 	}
-	c, err := s.Deps.Repos.Collections.CreateCollection(args.Name)
+	id, err := s.Files.CreateCollection(args.Name)
+	if err != nil {
+		return CollectionSummary{}, apiFilesErr(err)
+	}
+	c, err := s.Deps.Repos.Collections.GetCollection(id)
 	if err != nil {
 		return CollectionSummary{}, ipcerr.InternalErr(err)
 	}
-	emitApiData(s.Deps.Events, treeChange())
 	return c, nil
 }
 
@@ -157,6 +170,7 @@ type CollectionsCreateItemArgs struct {
 	Request      *model.SavedRequest `json:"request"`
 }
 
+// CreateItem appends a folder or a request to the collection file.
 func (s *CollectionsService) CreateItem(args CollectionsCreateItemArgs) (ItemSummary, error) {
 	if args.CollectionID == "" {
 		return ItemSummary{}, ipcerr.Required("collectionId")
@@ -167,12 +181,19 @@ func (s *CollectionsService) CreateItem(args CollectionsCreateItemArgs) (ItemSum
 	if args.Name == "" {
 		return ItemSummary{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.validation.nameRequired.body", nil)
 	}
-	item, err := s.Deps.Repos.Collections.CreateItem(args.CollectionID, args.ParentID, args.Kind, args.Name, args.Request)
-	if err != nil {
-		return ItemSummary{}, ipcerr.InternalErr(err)
+	n := apifiles.NewItem{Name: args.Name, Folder: args.Kind == model.CollectionItemFolder}
+	if !n.Folder {
+		req := model.SavedRequest{Method: "GET", Headers: []model.SavedHeader{}, BodyMode: "none", CodeLanguage: "json", ParamDescriptions: map[string]string{}}
+		if args.Request != nil {
+			req = *args.Request
+		}
+		if err := req.Validate(); err != nil {
+			return ItemSummary{}, ipcerr.BadRequest(err.Error())
+		}
+		h := apifiles.HTTPOf(req)
+		n.HTTP = &h
 	}
-	emitApiData(s.Deps.Events, treeChange())
-	return item, nil
+	return s.createItem(args.CollectionID, args.ParentID, n)
 }
 
 type CollectionsCreateGrpcItemArgs struct {
@@ -191,119 +212,50 @@ func (s *CollectionsService) CreateGrpcItem(args CollectionsCreateGrpcItemArgs) 
 	if args.Name == "" {
 		return ItemSummary{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.validation.nameRequired.body", nil)
 	}
-	item, err := s.Deps.Repos.Collections.CreateGrpcItem(args.CollectionID, args.ParentID, args.Name, args.Request)
+	req := model.SavedGrpcRequest{TLSMode: "tls", DescriptorMode: "reflection", ImportPaths: []string{}, Metadata: []model.SavedGrpcMetaRow{}}
+	if args.Request != nil {
+		req = *args.Request
+	}
+	if err := req.Validate(); err != nil {
+		return ItemSummary{}, ipcerr.BadRequest(err.Error())
+	}
+	g := apifiles.GRPCOf(req)
+	return s.createItem(args.CollectionID, args.ParentID, apifiles.NewItem{Name: args.Name, GRPC: &g})
+}
+
+func (s *CollectionsService) createItem(collectionID string, parentID *string, n apifiles.NewItem) (ItemSummary, error) {
+	parent := ""
+	if parentID != nil {
+		parent = *parentID
+	}
+	id, err := s.Files.CreateItem(collectionID, parent, n)
 	if err != nil {
-		return ItemSummary{}, ipcerr.InternalErr(err)
+		return ItemSummary{}, apiFilesErr(err)
 	}
-	emitApiData(s.Deps.Events, treeChange())
-	return item, nil
+	return readErr(s.Deps.Repos.Collections.GetItem(id))
 }
 
-// CollectionsTargetArgs names a row in either table — 'collection' or 'item' — so the renderer
-// never has to know which one a tree row lives in.
-type CollectionsTargetArgs struct {
-	ID     string `json:"id"`
-	Target string `json:"target"`
-	Name   string `json:"name,omitempty"`
-}
-
-func (s *CollectionsService) Rename(args CollectionsTargetArgs) error {
-	if err := validTarget(args); err != nil {
-		return err
-	}
-	if args.Name == "" {
-		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.validation.nameRequired.body", nil)
-	}
-	if err := s.Deps.Repos.Collections.Rename(args.ID, args.Target, args.Name); err != nil {
-		return ipcerr.InternalErr(err)
-	}
-	emitApiData(s.Deps.Events, treeChange())
-	return nil
-}
-
-type CollectionsDeleteManyArgs struct {
-	CollectionIDs []string `json:"collectionIds"`
-	ItemIDs       []string `json:"itemIds"`
-}
-
-// DeleteMany deletes collections and items, each with its subtree, in one transaction.
-func (s *CollectionsService) DeleteMany(args CollectionsDeleteManyArgs) error {
-	if len(args.CollectionIDs) == 0 && len(args.ItemIDs) == 0 {
-		return ipcerr.Required("collectionIds or itemIds")
-	}
-	if err := s.Deps.Repos.Collections.DeleteMany(args.CollectionIDs, args.ItemIDs); err != nil {
-		return collectionsWriteErr(err)
-	}
-	changes := []ApiDataChange{treeChange()}
-	for _, id := range args.CollectionIDs {
-		changes = append(changes, variablesChange(model.VariableScopeCollection, id))
-	}
-	emitApiData(s.Deps.Events, changes...)
-	return nil
-}
-
-type CollectionsMoveItemsArgs struct {
-	ItemIDs      []string `json:"itemIds"`
-	CollectionID string   `json:"collectionId"`
-	ParentID     *string  `json:"parentId"`
-	BeforeID     *string  `json:"beforeId"`
-}
-
-// MoveItems moves requests and folders, each with its subtree, under parentId (null = collection
-// root) of collectionId, before beforeId or last when null.
-func (s *CollectionsService) MoveItems(args CollectionsMoveItemsArgs) error {
-	if len(args.ItemIDs) == 0 {
-		return ipcerr.Required("itemIds")
-	}
-	if args.CollectionID == "" {
-		return ipcerr.Required("collectionId")
-	}
-	if err := s.Deps.Repos.Collections.MoveItems(args.ItemIDs, args.CollectionID, args.ParentID, args.BeforeID); err != nil {
-		return collectionsWriteErr(err)
-	}
-	emitApiData(s.Deps.Events, treeChange())
-	return nil
-}
-
-type CollectionsReorderCollectionsArgs struct {
-	IDs []string `json:"ids"`
-}
-
-// ReorderCollections applies the user's order to the top-level collections; ids left out keep
-// their relative order after.
-func (s *CollectionsService) ReorderCollections(args CollectionsReorderCollectionsArgs) error {
-	if len(args.IDs) == 0 {
-		return ipcerr.Required("ids")
-	}
-	if err := s.Deps.Repos.Collections.ReorderCollections(args.IDs); err != nil {
-		return collectionsWriteErr(err)
-	}
-	emitApiData(s.Deps.Events, treeChange())
-	return nil
-}
-
-// collectionsWriteErr maps a batch write failure: a refused placement is E_BAD_REQUEST, a missing
-// id E_NOT_FOUND, anything else E_INTERNAL.
-func collectionsWriteErr(err error) error {
+// apiFilesErr maps a config file write failure: a missing row or item is E_NOT_FOUND, a broken or
+// refused file E_BAD_REQUEST, a file changed twice during the write E_CONFLICT.
+func apiFilesErr(err error) error {
+	var broken *apifiles.BrokenError
+	var invalid *apifiles.InvalidError
 	switch {
-	case errors.Is(err, repos.ErrInvalidMove):
-		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.collection.invalidMove.body", nil)
-	case errors.Is(err, repos.ErrInvalidOrder):
-		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.collection.invalidOrder.body", nil)
-	case errors.Is(err, repos.ErrItemNotFound), errors.Is(err, repos.ErrCollectionNotFound):
-		return ipcerr.NotFound(err.Error())
+	case errors.As(err, &broken):
+		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.apiFiles.fileBroken.body",
+			map[string]string{"file": broken.File, "line": strconv.Itoa(broken.Line)})
+	case errors.As(err, &invalid):
+		return ipcerr.BadRequest(invalid.Problem.Message)
+	case errors.Is(err, apifiles.ErrNotFound), errors.Is(err, apifiles.ErrItemGone):
+		return ipcerr.T(ipcerr.CodeNotFound, "backend.studio.apiFiles.notFound.body", nil)
+	case errors.Is(err, apifiles.ErrNotFolder), errors.Is(err, apifiles.ErrProtocol), errors.Is(err, configfs.ErrInvalid):
+		return ipcerr.BadRequest(err.Error())
+	case errors.Is(err, configfs.ErrConflict):
+		return ipcerr.T(ipcerr.CodeConflict, "backend.studio.apiFiles.changed.body", nil)
+	case errors.Is(err, apifiles.ErrSecretStoreOff):
+		return ipcerr.T(ipcerr.CodeSecretStore, "backend.studio.apiFiles.noStore.body", nil)
 	}
-	return ipcerr.InternalErr(err)
-}
-
-func validTarget(args CollectionsTargetArgs) error {
-	if args.ID == "" {
-		return ipcerr.Required("id")
-	}
-	if args.Target != "collection" && args.Target != "item" {
-		return ipcerr.Contract("target must be 'collection' or 'item'")
-	}
-	return nil
+	return ipcerr.Wrap(err)
 }
 
 // ImportWarning is one counted class of "the app quietly did something other than what the file
@@ -474,12 +426,16 @@ func (s *CollectionsService) importFile(path string) (importedFile, error) {
 }
 
 func (s *CollectionsService) importEnvironment(env *postman.Environment) (*EnvironmentImportReport, error) {
-	created, err := s.Deps.Repos.Variables.ImportEnvironment(env.Name, env.Variables)
+	stem, err := s.Files.ImportEnvironment(env)
 	if err != nil {
+		return nil, apiFilesErr(err)
+	}
+	var id string
+	if err := s.Deps.DB.QueryRow(`SELECT id FROM api_environments WHERE stem = ?`, stem).Scan(&id); err != nil {
 		return nil, ipcerr.InternalErr(err)
 	}
 	report := &EnvironmentImportReport{
-		EnvironmentID: created.ID, Name: created.Name, Variables: len(env.Variables),
+		EnvironmentID: id, Name: env.Name, Variables: len(env.Variables),
 		Warnings: []ImportWarning{},
 	}
 	for _, w := range []struct {
@@ -500,40 +456,17 @@ func (s *CollectionsService) importEnvironment(env *postman.Environment) (*Envir
 }
 
 func (s *CollectionsService) importCollection(tree *postman.Tree) (importedFile, error) {
-	collection, err := s.Deps.Repos.Collections.ImportTree(tree)
+	stem, err := s.Files.ImportCollection(tree)
 	if err != nil {
-		return importedFile{}, ipcerr.InternalErr(err)
+		return importedFile{}, apiFilesErr(err)
 	}
-	// ImportTree committed from here on, on every path below — success, rollback success (net-zero
-	// change, one harmless refetch) and rollback failure (the partially imported collection stays
-	// visible, and other windows must see it too).
 	out := importedFile{treeCommitted: true}
-	// A second call, deliberately — encrypting a secret variable needs VariablesRepo's
-	// own Cipher, which CollectionsRepo does not have (the module boundary). See
-	// VariablesRepo.ImportVariables' own comment for why this cannot join ImportTree's transaction.
-	//
-	// The two commits are not atomic across that
-	// boundary. If this second one fails — the realistic case is a `type: "secret"` variable on a
-	// machine where secret storage is unavailable — the collection and its whole request tree
-	// ImportTree just committed would otherwise be left behind, visible in the panel, while the
-	// renderer reports the import as failed. Deleting it (ON DELETE CASCADE on api_items makes this
-	// one statement) keeps what's on disk matching the reported outcome.
-	if len(tree.Variables) > 0 {
-		if err := s.Deps.Repos.Variables.ImportVariables(collection.ID, tree.Variables); err != nil {
-			// Folding a failed compensating delete into the returned error lets the UI say the
-			// collection is still there.
-			if delErr := s.Deps.Repos.Collections.DeleteCollection(collection.ID); delErr != nil {
-				slog.Error("rolling back a collection import after ImportVariables failed",
-					"scope", "bridge/collections", "collectionId", collection.ID, "importVariablesErr", err, "deleteErr", delErr)
-				return out, ipcerr.T(ipcerr.CodeInternal, "backend.studio.collection.importRollbackFailed.error",
-					map[string]string{"detail": err.Error(), "name": collection.Name, "rollbackDetail": delErr.Error()})
-			}
-			return out, ipcerr.InternalErr(err)
-		}
+	var id string
+	if err := s.Deps.DB.QueryRow(`SELECT id FROM api_collections WHERE stem = ?`, stem).Scan(&id); err != nil {
+		return out, ipcerr.InternalErr(err)
 	}
-
 	report := &ImportReport{
-		CollectionID: collection.ID, Name: collection.Name,
+		CollectionID: id, Name: tree.Name,
 		Folders: tree.Report.Folders, Requests: tree.Report.Requests,
 		Warnings: []ImportWarning{},
 	}

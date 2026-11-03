@@ -1,10 +1,14 @@
 package apivars
 
 import (
+	"context"
+	"errors"
 	"log/slog"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/httpclient"
+	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
 // ReferenceKind classifies one {{name}} reference D17's grammar found.
@@ -354,9 +358,12 @@ func referencedFields(url string, headers []httpclient.Header, body httpclient.B
 // protocol package for it: apivars gains no gRPC import, which is what keeps it protocol-neutral
 // rather than becoming a two-protocol module.
 type Resolver struct {
+	refs         map[string]string // secret variable name to secret ref
+	src          configfs.SecretSource
 	secretValues map[string]string
 	used         []UsedSecret
 	usedSeen     map[string]bool
+	err          error
 }
 
 // UsedSecret is one substituted secret span: the text written into the request, and the
@@ -380,38 +387,63 @@ type UsedSecret struct {
 	Placeholder string
 }
 
-// NewResolver fetches every secret reachable from collectionID/environmentID once
-// (repos.VariablesRepo.SecretsFor already applies D2's environment-over-collection precedence)
-// and returns a resolver that substitutes text and accumulates what it actually used.
+// NewResolver names every secret variable reachable from collectionID/environmentID
+// (repos.VariablesRepo.SecretRefsFor already applies D2's environment-over-collection precedence)
+// and returns a resolver that substitutes text and accumulates what it actually used. A secret's
+// value is opened only when a text references it.
 func (s *Service) NewResolver(collectionID, environmentID string) (*Resolver, error) {
-	secretValues, err := s.deps.Repo.SecretsFor(collectionID, environmentID)
+	refs, err := s.deps.Repo.SecretRefsFor(collectionID, environmentID)
 	if err != nil {
 		return nil, err
 	}
-	return &Resolver{secretValues: secretValues, usedSeen: map[string]bool{}}, nil
+	return &Resolver{refs: refs, src: s.deps.Secrets.Snapshot(), secretValues: map[string]string{}, usedSeen: map[string]bool{}}, nil
 }
 
 // Any reports whether this scope has any secret at all — false means there is nothing this
 // resolver could ever substitute, so a caller can skip walking its own fields entirely.
 func (r *Resolver) Any() bool {
-	return len(r.secretValues) > 0
+	return len(r.refs) > 0
 }
 
+// Err is the first secret a resolved text referenced that cannot be used: not set, or not readable.
+// The send must fail with it; the reference is never left literal and never empty.
+func (r *Resolver) Err() error { return r.err }
+
 // Text resolves every {{name}} reference in text that names one of this scope's secrets, and
-// records each one substituted into Used(). A reference that still resolves to
-// nothing — a stale id, a typo, a secret whose decrypt failed — is left verbatim; this package
-// never fails a caller over one unresolved reference, the server's
-// own response is the honest signal.
+// records each one substituted into Used(). A secret that is unset or unreadable sets Err().
 func (r *Resolver) Text(text string) string {
 	return r.text(text, nil)
 }
 
-// URLText is Text's twin for the one field with query-string delimiter syntax to break: a secret
-// whose decrypt failed still resolves to nothing and is left
-// verbatim by Text's own contract above, but for the URL specifically that verbatim span must not
-// inject a raw space/&/#/= into url.Parse's RawQuery or the request line itself.
+// URLText is Text's twin for the one field with query-string delimiter syntax to break: an
+// unknown span is left verbatim, but must not inject a raw space/&/#/= into url.Parse's RawQuery
+// or the request line itself.
 func (r *Resolver) URLText(text string) string {
 	return r.text(text, urlUnsafeReplacer.Replace)
+}
+
+// load opens the value of every referenced secret name once.
+func (r *Resolver) load(text string) {
+	for _, name := range Names(text) {
+		ref, ok := r.refs[name]
+		if !ok {
+			continue
+		}
+		if _, done := r.secretValues[name]; done {
+			continue
+		}
+		v, err := r.src.Secret(context.Background(), "", ref)
+		switch {
+		case err == nil:
+			r.secretValues[name] = v
+		case r.err != nil:
+		case errors.Is(err, configfs.ErrSecretMissing):
+			r.err = ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.apiFiles.secretUnset.body", map[string]string{"name": ref})
+		default:
+			slog.Warn("an api secret could not be read", "scope", "apivars", "name", ref, "err", err)
+			r.err = ipcerr.T(ipcerr.CodeSecretStore, "backend.studio.apiFiles.secretUnreadable.body", map[string]string{"name": ref})
+		}
+	}
 }
 
 func (r *Resolver) text(text string, sanitize func(string) string) string {
@@ -429,6 +461,7 @@ func (r *Resolver) text(text string, sanitize func(string) string) string {
 		r.usedSeen[key] = true
 		r.used = append(r.used, UsedSecret{Name: ref.Name, Rendered: rendered, Placeholder: placeholder})
 	}
+	r.load(text)
 	result := resolveWithSanitizer(text, r.secretValues, nil, sanitize, onResolved)
 	return result.Text
 }
@@ -447,12 +480,11 @@ func (r *Resolver) Used() []UsedSecret {
 
 // ResolveRequest is the stage 2, called from bridge/http.go strictly *after* op.SetCommand
 // — the URL/headers/body it is given must never feed back into anything logged or persisted.
-// It decrypts every secret variable reachable from collectionID/environmentID
-// (repos.VariablesRepo.SecretsFor already applies the environment-over-collection precedence)
+// It opens every secret a field references, reachable from collectionID/environmentID
+// (repos.VariablesRepo.SecretRefsFor already applies the environment-over-collection precedence),
 // and resolves every remaining {{name}} reference across the same field list as stage 1. A
-// reference that still resolves to nothing — a stale id, a typo, a secret whose decrypt failed —
-// is left verbatim; Go never fails a send over one unresolved reference, the server's own
-// response is the honest signal.
+// reference that names no secret — a stale id, a typo — is left verbatim; a secret that is unset
+// or unreadable fails the send, naming it.
 //
 // The fourth return, `used`, is every secret span substituted — Resolver.Used()'s own
 // []UsedSecret, one entry per distinct (name, placeholder) pair. bridge/http.go builds a
@@ -514,6 +546,9 @@ func (s *Service) ResolveRequest(
 		resolvedBody.FormData = fields
 	}
 
+	if err := resolver.Err(); err != nil {
+		return url, headers, body, nil, err
+	}
 	used := resolver.Used()
 	// D5: the count and the *names* of the secrets resolved (deduplicated — a secret used both
 	// plainly and piped is still one name), never their values or rendered forms, and only at

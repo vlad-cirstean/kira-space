@@ -411,5 +411,5 @@ func mapHttpError(err error) error {
 		}
 		return e
 	}
-	return ipcerr.InternalErr(err)
+	return ipcerr.Wrap(err)
 }

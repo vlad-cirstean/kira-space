@@ -78,6 +78,9 @@ func (s *GrpcService) resolveGrpcSource(args GrpcDescribeArgs, used *[]apivars.U
 	}
 	src.Target = resolver.Text(args.Target)
 	src.Metadata = resolveMetaPairs(resolver, args.Metadata)
+	if err := resolver.Err(); err != nil {
+		return grpcclient.Source{}, err
+	}
 	*used = append(*used, resolver.Used()...)
 	return src, nil
 }
@@ -130,6 +133,9 @@ func (s *GrpcService) resolveGrpcCallSource(args GrpcCallArgs) (grpcclient.Sourc
 	src.Target = resolver.Text(args.Target)
 	src.Metadata = resolveMetaPairs(resolver, args.Metadata)
 	resolvedMessage := resolver.Text(args.MessageJSON)
+	if err := resolver.Err(); err != nil {
+		return grpcclient.Source{}, "", nil, err
+	}
 	used = make([]apivars.UsedSecret, 0, len(resolver.Used()))
 	used = append(used, resolver.Used()...)
 	return src, resolvedMessage, used, nil
@@ -575,5 +581,5 @@ func mapGrpcError(err error) error {
 		}
 		return e
 	}
-	return ipcerr.InternalErr(err)
+	return ipcerr.Wrap(err)
 }

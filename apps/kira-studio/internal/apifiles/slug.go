@@ -69,4 +69,5 @@ func SecretName(owner, variable string) string {
 	return name
 }
 
-func validSecretName(name string) bool { return secretNameRe.MatchString(name) }
+// ValidSecretName reports whether name fits the secret name pattern.
+func ValidSecretName(name string) bool { return secretNameRe.MatchString(name) }

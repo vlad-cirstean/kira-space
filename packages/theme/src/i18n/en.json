@@ -2096,6 +2096,41 @@
           "body": "Couldn’t parse the connection URI."
         }
       },
+      "apiFiles": {
+        "changed": {
+          "body": "The file changed while Kira saved. Retry."
+        },
+        "fileBroken": {
+          "body": "Kira can’t save into {file}. Line {line} has an error. Fix the file first."
+        },
+        "fileName": {
+          "body": "A file name is 1 to 64 lowercase letters, numbers and dashes, plus the suffix of its kind."
+        },
+        "itemDuplicate": {
+          "body": "The item ID {id} is used twice. Each item ID is unique in the file."
+        },
+        "itemKind": {
+          "body": "An item sets exactly one of items, http or grpc."
+        },
+        "noStore": {
+          "body": "The secret store isn’t available, so Kira can’t keep a secret value."
+        },
+        "notFound": {
+          "body": "That item is no longer in the file."
+        },
+        "secretUnreadable": {
+          "body": "Secret {name} can’t be read. Set it again."
+        },
+        "secretUnset": {
+          "body": "Secret {name} is not set. Set it in the secrets section of the environments tab."
+        },
+        "variableBoth": {
+          "body": "The variable {name} sets both value and secret. Set one."
+        },
+        "variableDuplicate": {
+          "body": "The variable {name} is listed twice. Each name appears once."
+        }
+      },
       "collection": {
         "finishWriteFailed": {
           "error": "Couldn’t finish writing {path}: {detail}"
@@ -2143,15 +2178,6 @@
           "variablesInert": {
             "body": "{count} folder- or item-level variables were kept but are not resolved yet. A secret-typed one has its value stripped."
           }
-        },
-        "importRollbackFailed": {
-          "error": "{detail} (also couldn’t remove the partially imported collection “{name}”: {rollbackDetail}). It remains visible. Delete it manually."
-        },
-        "invalidMove": {
-          "body": "That item can’t move there."
-        },
-        "invalidOrder": {
-          "body": "That collection order isn’t valid."
         },
         "writeFailed": {
           "error": "Couldn’t write {path}: {detail}"

@@ -20,6 +20,7 @@ import (
 	_ "github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters/s3"
 	_ "github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters/sqlite"
 	_ "github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters/sqs"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connections"
@@ -248,7 +249,7 @@ type lifecycleWired struct {
 // close-flush coordinator -> beforeFlush/teardown (today's OnShutdown, minus the ticker Stop,
 // which moves to beforeFlush, run before the flush wait rather than after it — index.ts:156)
 // -> the quitter built over both.
-func wireLifecycle(windows *shell.WindowRegistry, events *bridge.Events, eventsDetach func(), metricsTicker *metrics.Ticker, oplogWiring *oplog.Wiring, connectionsSvc *connections.Service, dbMcpSvc *bridge.DbMcpService, keepAwakeSvc *bridge.KeepAwakeService, terminalSvc *bridge.TerminalService, dockerSvc *bridge.DockerService, kubeSvc *bridge.KubernetesService, updateInstaller *appupdate.Installer, runs *scriptruns.Service, closeAgent func(), sched *scriptruns.Scheduler, runLoader *scripts.Loader, repositories *repos.Repos, db *storage.DB) lifecycleWired {
+func wireLifecycle(windows *shell.WindowRegistry, events *bridge.Events, eventsDetach func(), metricsTicker *metrics.Ticker, oplogWiring *oplog.Wiring, connectionsSvc *connections.Service, dbMcpSvc *bridge.DbMcpService, keepAwakeSvc *bridge.KeepAwakeService, terminalSvc *bridge.TerminalService, dockerSvc *bridge.DockerService, kubeSvc *bridge.KubernetesService, updateInstaller *appupdate.Installer, runs *scriptruns.Service, closeAgent func(), sched *scriptruns.Scheduler, runLoader *scripts.Loader, apiFiles *apifiles.Store, repositories *repos.Repos, db *storage.DB) lifecycleWired {
 	// windows holds every currently open window's shell.Attach cleanup, keyed by that window's own
 	// identity (replacing the single detachWindow/mainWindow pair that only ever worked because at
 	// most one window could exist at a time). beforeFlush detaches every one of them, not just the
@@ -286,6 +287,7 @@ func wireLifecycle(windows *shell.WindowRegistry, events *bridge.Events, eventsD
 		kubernetes.ServiceOf(kubeSvc.BoundService).Shutdown()
 		sched.Close()
 		runLoader.Close()
+		apiFiles.Close()
 		runs.Close()
 		closeAgent()
 		if err := repositories.Close(); err != nil {
