@@ -42,6 +42,7 @@
     {
       "color": "none",
       "description": "",
+      "file": "dev.environment.yaml",
       "id": "<id:1>",
       "isActive": true,
       "name": "dev",

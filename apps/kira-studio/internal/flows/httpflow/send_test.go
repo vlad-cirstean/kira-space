@@ -23,15 +23,7 @@ func TestSendResolvesSecretsOnlyOnTheWire(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	env, err := app.W.Variables.CreateEnvironment(bridge.VariablesCreateEnvironmentArgs{Name: "dev", Color: "none"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := app.W.Variables.Upsert(bridge.VariablesUpsertArgs{
-		Scope: model.VariableScopeEnvironment, OwnerID: env.ID, Name: "token", Value: ptr(secretToken), IsSecret: true,
-	}); err != nil {
-		t.Fatal(err)
-	}
+	env := app.SeedEnvironment(t, "dev", flowharness.APIVar{Name: "token", Value: secretToken, Secret: true})
 	if err := app.W.Variables.SetActiveEnvironment(bridge.VariablesEnvironmentIDArgs{ID: env.ID}); err != nil {
 		t.Fatal(err)
 	}

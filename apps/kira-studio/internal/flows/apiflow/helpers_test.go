@@ -59,26 +59,6 @@ func newCollection(t *testing.T, app *flowharness.App, name string) model.Collec
 	return c
 }
 
-func newEnv(t *testing.T, app *flowharness.App, name string) model.Environment {
-	t.Helper()
-	e, err := app.W.Variables.CreateEnvironment(bridge.VariablesCreateEnvironmentArgs{Name: name, Color: "none"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return e
-}
-
-func upsertSecret(t *testing.T, app *flowharness.App, scope model.VariableScope, owner, name, value string) model.Variable {
-	t.Helper()
-	v, err := app.W.Variables.Upsert(bridge.VariablesUpsertArgs{
-		Scope: scope, OwnerID: owner, Name: name, Value: &value, IsSecret: true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return v
-}
-
 func savedGet() model.SavedRequest {
 	return model.SavedRequest{Method: "GET", BodyMode: "none", CodeLanguage: "json"}
 }

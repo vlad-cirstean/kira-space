@@ -124,9 +124,9 @@ func withStem[T any](ext string, decode configfs.DecodeFunc[T]) configfs.DecodeF
 
 // Decoders holds the two file decoders and their AGENTS.md models.
 type decoders struct {
-	collection    configfs.DecodeFunc[CollectionFile]
-	environment   configfs.DecodeFunc[EnvironmentFile]
-	collectionDoc configfs.DocModel
+	collection     configfs.DecodeFunc[CollectionFile]
+	environment    configfs.DecodeFunc[EnvironmentFile]
+	collectionDoc  configfs.DocModel
 	environmentDoc configfs.DocModel
 }
 

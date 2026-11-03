@@ -25,18 +25,7 @@ func newResponseHistoryRepo(t *testing.T) (*repos.ResponseHistoryRepo, *sql.DB) 
 
 func newItemFor(t *testing.T, db *sql.DB) string {
 	t.Helper()
-	cr := &repos.CollectionsRepo{DB: db}
-	c, err := cr.CreateCollection("Orders")
-	if err != nil {
-		t.Fatalf("CreateCollection: %v", err)
-	}
-	item, err := cr.CreateItem(c.ID, nil, model.CollectionItemRequest, "Get order", &model.SavedRequest{
-		Method: "GET", BodyMode: "none", CodeLanguage: "json",
-	})
-	if err != nil {
-		t.Fatalf("CreateItem: %v", err)
-	}
-	return item.ID
+	return seedApiItem(t, db, "http")
 }
 
 func seedLiveTab(t *testing.T, db *sql.DB, tabID string) {
@@ -323,22 +312,12 @@ func TestResponseHistoryOversizedRequestFieldsDoesNotEmptyTable(t *testing.T) {
 
 func TestResponseHistoryCascadeAndSweepOrphans(t *testing.T) {
 	r, db := newResponseHistoryRepo(t)
-	cr := &repos.CollectionsRepo{DB: db}
-	c, err := cr.CreateCollection("Orders")
-	if err != nil {
-		t.Fatalf("CreateCollection: %v", err)
-	}
-	item, err := cr.CreateItem(c.ID, nil, model.CollectionItemRequest, "Get order", &model.SavedRequest{
-		Method: "GET", BodyMode: "none", CodeLanguage: "json",
-	})
-	if err != nil {
-		t.Fatalf("CreateItem: %v", err)
-	}
+	itemID := seedApiItem(t, db, "http")
 
 	seedLiveTab(t, db, "live-tab")
 	// "closed-tab" is deliberately never seeded into `tabs` — SweepOrphans' liveness oracle.
 
-	if err := r.Record(rec(item.ID, "tab-for-item", 200, "kept-by-cascade-test")); err != nil {
+	if err := r.Record(rec(itemID, "tab-for-item", 200, "kept-by-cascade-test")); err != nil {
 		t.Fatalf("Record item-scoped: %v", err)
 	}
 	if err := r.Record(rec("", "live-tab", 200, "live")); err != nil {
@@ -349,10 +328,10 @@ func TestResponseHistoryCascadeAndSweepOrphans(t *testing.T) {
 	}
 
 	// F5: deleting the item cascades its history away.
-	if err := cr.DeleteMany(nil, []string{item.ID}); err != nil {
+	if _, err := db.Exec(`DELETE FROM api_items WHERE id = ?`, itemID); err != nil {
 		t.Fatalf("Delete item: %v", err)
 	}
-	if entries, err := r.List(item.ID); err != nil || len(entries) != 0 {
+	if entries, err := r.List(itemID); err != nil || len(entries) != 0 {
 		t.Fatalf("List(item.ID) after delete = %d entries, err %v, want 0", len(entries), err)
 	}
 

@@ -360,7 +360,9 @@ func (e *BrokenError) Error() string {
 // InvalidError means Kira's own edit would make the file invalid, so nothing was written.
 type InvalidError struct{ Problem *configfs.Problem }
 
-func (e *InvalidError) Error() string { return "apifiles: the edit makes the file invalid: " + e.Problem.Message }
+func (e *InvalidError) Error() string {
+	return "apifiles: the edit makes the file invalid: " + e.Problem.Message
+}
 
 var (
 	collectionNameRe  = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}\.collection\.yaml$`)

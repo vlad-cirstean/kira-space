@@ -33,11 +33,11 @@ type Variable struct {
 
 // Item is a folder (Items), an HTTP request or a gRPC request.
 type Item struct {
-	ID    string    `json:"id"`
-	Name  string    `json:"name"`
-	Items *[]Item   `json:"items,omitempty"`
-	HTTP  *HTTP     `json:"http,omitempty"`
-	GRPC  *GRPC     `json:"grpc,omitempty"`
+	ID    string  `json:"id"`
+	Name  string  `json:"name"`
+	Items *[]Item `json:"items,omitempty"`
+	HTTP  *HTTP   `json:"http,omitempty"`
+	GRPC  *GRPC   `json:"grpc,omitempty"`
 }
 
 // Row is one header, urlencoded or metadata row. Enabled nil means on.

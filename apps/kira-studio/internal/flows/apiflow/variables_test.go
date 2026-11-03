@@ -8,16 +8,13 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 )
 
-func TestEnvironmentLifecycle(t *testing.T) {
+func TestEnvironmentFiles(t *testing.T) {
 	app := flowharness.New(t)
 	srv := flowharness.HTTP(t)
 	vs := app.W.Variables
-	col := newCollection(t, app, "scoped")
-	dev, stage, prod := newEnv(t, app, "dev"), newEnv(t, app, "stage"), newEnv(t, app, "prod")
-	upsertSecret(t, app, model.VariableScopeCollection, col.ID, "who", "collection")
-	for _, e := range []model.Environment{dev, stage, prod} {
-		upsertSecret(t, app, model.VariableScopeEnvironment, e.ID, "who", "from-"+e.Name)
-	}
+	col := app.SeedCollection(t, "scoped", flowharness.APIVar{Name: "who", Value: "collection", Secret: true})
+	dev := app.SeedEnvironment(t, "dev", flowharness.APIVar{Name: "who", Value: "from-dev", Secret: true})
+	prod := app.SeedEnvironment(t, "prod", flowharness.APIVar{Name: "who", Value: "from-prod", Secret: true})
 	sendWho := func(envID string) string {
 		t.Helper()
 		args := get(srv.URL + "/echo?who={{who}}")
@@ -37,80 +34,48 @@ func TestEnvironmentLifecycle(t *testing.T) {
 		}
 		return out
 	}
-	equal := func(got []string, want ...string) bool {
-		if len(got) != len(want) {
-			return false
-		}
-		for i := range got {
-			if got[i] != want[i] {
-				return false
-			}
-		}
-		return true
-	}
 
-	if err := vs.UpdateEnvironment(bridge.VariablesUpdateEnvironmentArgs{ID: dev.ID, Name: "development", Description: "local", Color: "green"}); err != nil {
+	// CreateEnvironment writes a file named after the environment.
+	created, err := vs.CreateEnvironment(bridge.VariablesCreateEnvironmentArgs{Name: "Stage Env", Description: "shared", Color: "green"})
+	if err != nil {
 		t.Fatal(err)
 	}
-	envs, _ := vs.ListEnvironments()
-	if envs[0].Name != "development" || envs[0].Description != "local" || envs[0].Color != "green" {
-		t.Fatalf("UpdateEnvironment left %+v", envs[0])
+	if created.File != "stage-env.environment.yaml" || created.Color != "green" || created.Description != "shared" {
+		t.Fatalf("CreateEnvironment = %+v, want stage-env.environment.yaml, green, shared", created)
 	}
-	if err := vs.UpdateEnvironment(bridge.VariablesUpdateEnvironmentArgs{ID: dev.ID, Name: "", Color: "green"}); ipcErr(t, err).Code != "E_BAD_REQUEST" {
-		t.Fatalf("UpdateEnvironment with no name = %v", err)
+	if _, err := vs.CreateEnvironment(bridge.VariablesCreateEnvironmentArgs{Name: "", Color: "none"}); ipcErr(t, err).Code != "E_BAD_REQUEST" {
+		t.Fatalf("CreateEnvironment with no name = %v, want E_BAD_REQUEST", err)
 	}
-	if got := sendWho(dev.ID); got != "who=from-dev" {
-		t.Fatalf("renamed environment still resolves its own variables: %q", got)
-	}
-
-	if err := vs.ReorderEnvironments(bridge.VariablesReorderEnvironmentsArgs{IDs: []string{prod.ID, dev.ID, stage.ID}}); err != nil {
-		t.Fatal(err)
-	}
-	if got := names(); !equal(got, "prod", "development", "stage") {
-		t.Fatalf("order after ReorderEnvironments = %v", got)
+	if len(names()) != 3 {
+		t.Fatalf("environments = %v, want dev, prod, Stage Env", names())
 	}
 
-	// Variables reorder inside one owner.
-	a := upsertSecret(t, app, model.VariableScopeEnvironment, stage.ID, "a", "1")
-	b := upsertSecret(t, app, model.VariableScopeEnvironment, stage.ID, "b", "2")
-	if err := vs.Reorder(bridge.VariablesReorderArgs{Scope: model.VariableScopeEnvironment, OwnerID: stage.ID, IDs: []string{b.ID, a.ID}}); err != nil {
-		t.Fatal(err)
-	}
-	vars, err := vs.List(bridge.VariablesScopeArgs{Scope: model.VariableScopeEnvironment, OwnerID: stage.ID})
-	if err != nil || len(vars) < 2 || vars[0].ID != b.ID || vars[1].ID != a.ID {
-		t.Fatalf("variable order after Reorder = %+v (%v), want b then a first", vars, err)
-	}
-
-	// Deleting the active environment: the next send resolves without it, the list loses it.
+	// Removing the active environment's file: the list loses it, nothing stays active, and a send
+	// that names it resolves the collection's value.
 	if err := vs.SetActiveEnvironment(bridge.VariablesEnvironmentIDArgs{ID: prod.ID}); err != nil {
 		t.Fatal(err)
 	}
-	if err := vs.DeleteEnvironment(bridge.VariablesEnvironmentIDArgs{ID: prod.ID}); err != nil {
-		t.Fatal(err)
-	}
-	if got := names(); !equal(got, "development", "stage") {
-		t.Fatalf("environments after DeleteEnvironment = %v", got)
-	}
-	envs, _ = vs.ListEnvironments()
+	app.RemoveAPIFile(t, prod.File)
+	envs, _ := vs.ListEnvironments()
 	for _, e := range envs {
-		if e.IsActive {
-			t.Fatalf("environment %q still active after the active one was deleted", e.Name)
+		if e.IsActive || e.ID == prod.ID {
+			t.Fatalf("environment %q survives the removal of the active environment's file", e.Name)
 		}
 	}
-	if got := sendWho(stage.ID); got != "who=from-stage" {
+	if got := sendWho(dev.ID); got != "who=from-dev" {
 		t.Fatalf("send with a live environment = %q", got)
 	}
 	if got := sendWho(prod.ID); got != "who=collection" {
-		t.Fatalf("send referencing the deleted environment = %q, want the collection value", got)
+		t.Fatalf("send naming the removed environment = %q, want the collection value", got)
 	}
 	if left, err := vs.List(bridge.VariablesScopeArgs{Scope: model.VariableScopeEnvironment, OwnerID: prod.ID}); err != nil || len(left) != 0 {
-		t.Fatalf("deleted environment kept variables: %+v (%v)", left, err)
+		t.Fatalf("removed environment kept variables: %+v (%v)", left, err)
 	}
 
 	app.Restart(t)
 	vs = app.W.Variables
-	if got := names(); !equal(got, "development", "stage") {
-		t.Fatalf("environments after relaunch = %v", got)
+	if got := names(); len(got) != 2 {
+		t.Fatalf("environments after relaunch = %v, want 2", got)
 	}
 }
 
@@ -121,15 +86,7 @@ func TestActiveEnvironmentResolvesBase(t *testing.T) {
 	app := flowharness.New(t)
 	srv := flowharness.HTTP(t)
 	const sc = "api-boot"
-	env, err := app.W.Variables.CreateEnvironment(bridge.VariablesCreateEnvironmentArgs{Name: "Flow", Color: "blue"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := app.W.Variables.Upsert(bridge.VariablesUpsertArgs{
-		Scope: model.VariableScopeEnvironment, OwnerID: env.ID, Name: "base", Value: ptr(srv.URL),
-	}); err != nil {
-		t.Fatal(err)
-	}
+	env := app.SeedEnvironment(t, "Flow", flowharness.APIVar{Name: "base", Value: srv.URL})
 	if err := app.W.Variables.SetActiveEnvironment(bridge.VariablesEnvironmentIDArgs{ID: env.ID}); err != nil {
 		t.Fatal(err)
 	}

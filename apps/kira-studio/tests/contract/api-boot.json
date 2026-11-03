@@ -24,8 +24,9 @@
   ],
   "VariablesService.ListEnvironments": [
     {
-      "color": "blue",
+      "color": "none",
       "description": "",
+      "file": "flow.environment.yaml",
       "id": "<id:1>",
       "isActive": true,
       "name": "Flow",

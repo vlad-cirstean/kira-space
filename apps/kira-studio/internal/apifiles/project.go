@@ -193,7 +193,7 @@ func flatten(items []Item, parentKey string, out *[]flatItem) error {
 
 type itemRow struct {
 	id, parent, kind, name, method, url, protocol, requestJSON, origin string
-	order                                                               int
+	order                                                              int
 }
 
 func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, ch *Changes) error {

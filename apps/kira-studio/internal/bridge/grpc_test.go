@@ -8,11 +8,11 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apifiles/apifilestest"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/grpcclient"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage"
-	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 )
@@ -134,14 +134,12 @@ func TestGrpcHasAnyReference(t *testing.T) {
 	}
 }
 
-// strPtr is repos_test's own helper (storage/repos/ops_test.go), restated here — F2's three-state
-// VariablesRepo.Upsert (P108 Part 3) needs it for every secret seeded below.
-func strPtr(s string) *string { return &s }
-
 // newGrpcServiceForTest opens a real (tmpfile-backed) SQLite database through the real migrations
 // and wires a *GrpcService against it — mirrors apivars/resolve_test.go's own newResolveService
 // and bridge/http_test.go's own newRepos-backed setup.
-func newGrpcServiceForTest(t *testing.T) (*GrpcService, *storage.DB, *repos.VariablesRepo, *repos.CollectionsRepo) {
+//
+// seedProbes writes a "Probes" collection file whose variables are the given secrets and returns its ID.
+func newGrpcServiceForTest(t *testing.T) (svc *GrpcService, db *storage.DB, seedProbes func(secretVars map[string]string) string) {
 	t.Helper()
 	t.Setenv("KIRA_INSECURE_SECRETS", "1")
 	t.Setenv("KIRA_HOME", t.TempDir())
@@ -158,10 +156,24 @@ func newGrpcServiceForTest(t *testing.T) (*GrpcService, *storage.DB, *repos.Vari
 	cipher := secrets.New()
 	variablesRepo := repos.NewVariables(db.DB, cipher)
 	repositories.Variables = variablesRepo
-	apiVars := apivars.New(variablesRepo, nil)
+	fx := apifilestest.New(t, db.DB, cipher)
+	apiVars := apivars.New(variablesRepo, nil, fx.Secrets)
 
-	svc := &GrpcService{Deps: appcore.Deps{DB: db.DB, Repos: repositories, ApiVars: apiVars}}
-	return svc, db, variablesRepo, repositories.Collections
+	svc = &GrpcService{Deps: appcore.Deps{DB: db.DB, Repos: repositories, ApiVars: apiVars}}
+	seedProbes = func(secretVars map[string]string) string {
+		t.Helper()
+		var vars []apifilestest.Var
+		for name, value := range secretVars {
+			vars = append(vars, apifilestest.Var{Name: name, Value: value, Secret: true})
+		}
+		apifilestest.Seeder{Store: fx.Store}.Collection(t, "Probes", vars...)
+		cols, _, err := repositories.Collections.List()
+		if err != nil || len(cols) != 1 {
+			t.Fatalf("collections = %+v (%v), want the seeded one", cols, err)
+		}
+		return cols[0].ID
+	}
+	return svc, db, seedProbes
 }
 
 // TestRecordGrpcHistory_NeverPersistsResolvedSecrets is the masking checklist's own
@@ -174,15 +186,9 @@ func newGrpcServiceForTest(t *testing.T) (*GrpcService, *storage.DB, *repos.Vari
 // grpc_call_history, read back as a raw column straight out of a real migrated SQLite database,
 // must still be spelled {{name}}, never the live value.
 func TestRecordGrpcHistory_NeverPersistsResolvedSecrets(t *testing.T) {
-	svc, db, variablesRepo, collections := newGrpcServiceForTest(t)
-	c, err := collections.CreateCollection("Probes")
-	if err != nil {
-		t.Fatalf("CreateCollection: %v", err)
-	}
+	svc, db, seedProbes := newGrpcServiceForTest(t)
 	const secretToken = "sk_live_super_secret_token"
-	if _, err := variablesRepo.Upsert(model.VariableScopeCollection, c.ID, "", "token", strPtr(secretToken), true, ""); err != nil {
-		t.Fatalf("Upsert secret: %v", err)
-	}
+	collectionID := seedProbes(map[string]string{"token": secretToken})
 
 	// The call args as the bridge's own RunOp closure builds them before ever resolving anything —
 	// still spelled {{token}}.
@@ -192,7 +198,7 @@ func TestRecordGrpcHistory_NeverPersistsResolvedSecrets(t *testing.T) {
 		Service: "kira.probe.v1.Echo", Method: "Unary",
 		MessageJSON:  `{"token":"{{token}}"}`,
 		Metadata:     []grpcclient.MetaPair{{Name: "authorization", Value: "Bearer {{token}}"}},
-		CollectionID: c.ID,
+		CollectionID: collectionID,
 	}
 	// The CallResult as if the live call actually resolved and sent the secret — recordGrpcHistory
 	// must never be handed this and must never derive persisted fields from it; passed here as the
@@ -244,19 +250,10 @@ func TestRecordGrpcHistory_NeverPersistsResolvedSecrets(t *testing.T) {
 // same function and always needs a real network target and its metadata resolved, .proto schema
 // source or not. resolveGrpcCallSource is Call's own replacement, with no such short-circuit.
 func TestResolveGrpcCallSource_ResolvesTargetAndMetadataInProtoDescriptorMode(t *testing.T) {
-	svc, _, variablesRepo, collections := newGrpcServiceForTest(t)
-	c, err := collections.CreateCollection("Probes")
-	if err != nil {
-		t.Fatalf("CreateCollection: %v", err)
-	}
+	svc, _, seedProbes := newGrpcServiceForTest(t)
 	const secretHost = "internal-secret-host.example.com"
 	const secretToken = "sk_live_super_secret_token"
-	if _, err := variablesRepo.Upsert(model.VariableScopeCollection, c.ID, "", "host", strPtr(secretHost), true, ""); err != nil {
-		t.Fatalf("Upsert host secret: %v", err)
-	}
-	if _, err := variablesRepo.Upsert(model.VariableScopeCollection, c.ID, "", "token", strPtr(secretToken), true, ""); err != nil {
-		t.Fatalf("Upsert token secret: %v", err)
-	}
+	collectionID := seedProbes(map[string]string{"host": secretHost, "token": secretToken})
 
 	args := GrpcCallArgs{
 		OpID: "op1", TabID: "tab1", DescriptorMode: "proto",
@@ -265,7 +262,7 @@ func TestResolveGrpcCallSource_ResolvesTargetAndMetadataInProtoDescriptorMode(t 
 		Metadata:  []grpcclient.MetaPair{{Name: "authorization", Value: "Bearer {{token}}"}},
 		Service:   "kira.probe.v1.Echo", Method: "Unary",
 		MessageJSON:  `{"ok":true}`,
-		CollectionID: c.ID,
+		CollectionID: collectionID,
 	}
 
 	src, _, used, err := svc.resolveGrpcCallSource(args)
@@ -435,7 +432,7 @@ func (r *raceCheckEmitter) EmitFocused(name string, data any) {}
 // the row already exists. It fails against the pre-fix ordering and passes once recordGrpcHistory
 // runs before coalescer.finish inside runServerStream itself.
 func TestRunServerStream_RecordsHistoryBeforeEmittingTerminalEvent(t *testing.T) {
-	svc, _, _, _ := newGrpcServiceForTest(t)
+	svc, _, _ := newGrpcServiceForTest(t)
 
 	old := serverStreamFn
 	t.Cleanup(func() { serverStreamFn = old })

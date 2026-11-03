@@ -81,8 +81,7 @@ func TestDynamicValues(t *testing.T) {
 	app := flowharness.New(t)
 	srv := flowharness.HTTP(t)
 	col := newCollection(t, app, "dyn")
-	env := newEnv(t, app, "dev")
-	upsertSecret(t, app, model.VariableScopeEnvironment, env.ID, "sk", "dyn-secret-77")
+	env := app.SeedEnvironment(t, "dev", flowharness.APIVar{Name: "sk", Value: "dyn-secret-77", Secret: true})
 
 	args := get(srv.URL + "/echo?id={{$uuid}}&ts={{$timestamp}}&k={{sk}}")
 	args.CollectionID, args.EnvironmentID = col.ID, env.ID
@@ -127,8 +126,7 @@ func TestRestartKeepsApiState(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	env := newEnv(t, app, "dev")
-	upsertSecret(t, app, model.VariableScopeEnvironment, env.ID, "tok", "persist-secret-1")
+	env := app.SeedEnvironment(t, "dev", flowharness.APIVar{Name: "tok", Value: "persist-secret-1", Secret: true})
 	if err := app.W.Variables.SetActiveEnvironment(bridge.VariablesEnvironmentIDArgs{ID: env.ID}); err != nil {
 		t.Fatal(err)
 	}

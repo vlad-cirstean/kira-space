@@ -3,6 +3,7 @@
     "collections": [
       {
         "createdAt": "<time>",
+        "file": "persist.collection.yaml",
         "id": "<id:1>",
         "name": "persist",
         "sortOrder": 0,
@@ -55,6 +56,7 @@
     {
       "color": "none",
       "description": "",
+      "file": "dev.environment.yaml",
       "id": "<id:5>",
       "isActive": true,
       "name": "dev",

@@ -34,23 +34,15 @@ func grpcRec(itemID, tabID string, messages int) model.GrpcCallHistoryRecord {
 
 func TestGrpcHistoryPerScopeCountCap(t *testing.T) {
 	r := newGrpcHistoryRepo(t)
-	cr := &repos.CollectionsRepo{DB: r.DB}
-	c, err := cr.CreateCollection("Probes")
-	if err != nil {
-		t.Fatalf("CreateCollection: %v", err)
-	}
-	item, err := cr.CreateGrpcItem(c.ID, nil, "Unary", nil)
-	if err != nil {
-		t.Fatalf("CreateGrpcItem: %v", err)
-	}
+	itemID := seedApiItem(t, r.DB, "grpc")
 
 	for i := 0; i < 35; i++ {
-		if err := r.Record(grpcRec(item.ID, "tab1", 1)); err != nil {
+		if err := r.Record(grpcRec(itemID, "tab1", 1)); err != nil {
 			t.Fatalf("Record(%d): %v", i, err)
 		}
 	}
 
-	entries, err := r.List(item.ID)
+	entries, err := r.List(itemID)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -300,27 +292,19 @@ func TestGrpcHistoryOversizedMetadataDoesNotEmptyTableAndIsElided(t *testing.T) 
 
 func TestGrpcHistoryAdopt(t *testing.T) {
 	r := newGrpcHistoryRepo(t)
-	cr := &repos.CollectionsRepo{DB: r.DB}
-	c, err := cr.CreateCollection("Probes")
-	if err != nil {
-		t.Fatalf("CreateCollection: %v", err)
-	}
-	item, err := cr.CreateGrpcItem(c.ID, nil, "Unary", nil)
-	if err != nil {
-		t.Fatalf("CreateGrpcItem: %v", err)
-	}
+	itemID := seedApiItem(t, r.DB, "grpc")
 
 	if err := r.Record(grpcRec("", "tab1", 1)); err != nil {
 		t.Fatalf("Record: %v", err)
 	}
-	n, err := r.Adopt("tab1", item.ID)
+	n, err := r.Adopt("tab1", itemID)
 	if err != nil {
 		t.Fatalf("Adopt: %v", err)
 	}
 	if n != 1 {
 		t.Fatalf("Adopt moved %d rows, want 1", n)
 	}
-	entries, err := r.List(item.ID)
+	entries, err := r.List(itemID)
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("List(item.ID) after adopt = %d entries, err %v, want 1", len(entries), err)
 	}
