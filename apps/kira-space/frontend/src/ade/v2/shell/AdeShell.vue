@@ -48,7 +48,9 @@ const reviewCode = useReviewCode();
 function reviewTarget(): { taskId?: string; branchId?: string; el?: HTMLElement } {
   const active = document.activeElement;
   const t = active instanceof Element ? active : null;
-  const rowEl = t?.closest<HTMLElement>('[data-testid="ade-branch-row"][data-branch-id]');
+  const rowEl = t?.closest<HTMLElement>(
+    ':is([data-testid="ade-branch-row"],[data-testid="ade-task-branch"])[data-branch-id]',
+  );
   if (rowEl) return { branchId: rowEl.dataset.branchId, el: rowEl };
   const cardEl = t?.closest<HTMLElement>('[data-testid="ade-card"][data-task-id]');
   if (cardEl) {

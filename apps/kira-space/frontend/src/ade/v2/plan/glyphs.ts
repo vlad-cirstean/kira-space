@@ -111,3 +111,11 @@ export const CHECKS_GLYPH: Record<string, { icon: string; class: string; tip: Me
     tip: 'space.ade.mainTab.checksPending.tooltip',
   },
 };
+
+/** Codicon per change-request state, fallback `git-pull-request`. */
+export const PR_GLYPH: Record<string, string> = {
+  open: 'git-pull-request',
+  draft: 'git-pull-request-draft',
+  merged: 'git-merge',
+  closed: 'git-pull-request-closed',
+};

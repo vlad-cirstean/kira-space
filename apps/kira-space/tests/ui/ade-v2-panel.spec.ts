@@ -549,14 +549,14 @@ test('agent-made branches carry a sparkle', async ({ relaunch }) => {
   ]);
   await openTask(page, 'T_bill');
   await expect(page.locator('[data-testid="ade-workflow-space"]')).toHaveCount(0);
-  const sparkle = page.locator('[data-testid="ade-branch-agent"]');
+  const sparkle = page.locator('[data-testid="ade-task-branch"] [data-testid="ade-branch-agent"]');
   await expect(sparkle).toHaveCount(1);
   await sparkle.hover();
   await expect(
     page.locator('[data-testid="ade-branch-tip"]').getByText('Added or named by the agent').first(),
   ).toBeVisible();
   await page
-    .locator('[data-testid="ade-branch-row"]:has([data-testid="ade-branch-agent"])')
+    .locator('[data-testid="ade-task-branch"]:has([data-testid="ade-branch-agent"])')
     .click();
   await expect(page.locator('[data-testid="ade-panel-agent"]')).toBeVisible();
 });
@@ -576,7 +576,9 @@ test('a change request link opens the in-app PR view', async ({ relaunch }) => {
   ]);
   await openTask(page, 'T_bill');
   await page.locator('[data-testid="ade-panel-tab-details"]').click();
-  await page.locator('[data-testid="ade-details-link-title"]').first().click();
+  await page
+    .locator('[data-testid="ade-details-link-title"]', { hasText: 'acme/web-app#7' })
+    .click();
   await expect
     .poll(() => control.log().filter((e) => e.channel === IPC.hostViewOpen))
     .toHaveLength(1);

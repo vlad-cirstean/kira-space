@@ -18,7 +18,7 @@ import AdeMainBranches from './AdeMainBranches.vue';
 import AdeStatusPicker from './AdeStatusPicker.vue';
 import AdeWorkflowBlock from './AdeWorkflowBlock.vue';
 
-// Main tab: the editable fields, the workflow, then the branches.
+// Main tab: the editable fields, the branches, then the workflow.
 const props = defineProps<{ card: CardModel }>();
 
 const requestStore = useAdeBranchRequestStore();
@@ -111,8 +111,8 @@ const spanDays = computed(() => props.card.entry.span);
       ><AlertDescription>{{ fieldError }}</AlertDescription></Alert
     >
 
-    <AdeWorkflowBlock v-if="!review && !card.parked" :card="card" />
-
     <AdeMainBranches :card="card" @error="(m: string) => (fieldError = m)" />
+
+    <AdeWorkflowBlock v-if="!review && !card.parked" :card="card" />
   </div>
 </template>

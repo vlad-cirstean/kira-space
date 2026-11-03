@@ -9894,7 +9894,7 @@
             "title": "Remove repository from task?"
           },
           "trigger": {
-            "aria": "Repository and branch actions"
+            "aria": "Change branch or repository"
           }
         },
         "branchRequest": {

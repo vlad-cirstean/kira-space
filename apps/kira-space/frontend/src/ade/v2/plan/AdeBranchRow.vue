@@ -30,7 +30,10 @@ import AdeTagIcon from './AdeTagIcon.vue';
 import { BRANCH_ACTION_ICON, BRANCH_TAG_GLYPH, rowActionSplit } from './glyphs';
 import { type BranchRowModel, usePlanModel } from './usePlanModel';
 
-const props = defineProps<{ row: BranchRowModel; color: string | null; taskRow?: boolean }>();
+const props = withDefaults(
+  defineProps<{ row: BranchRowModel; color: string | null; taskRow?: boolean; testid?: string }>(),
+  { testid: 'ade-branch-row' },
+);
 const emit = defineEmits<{ forcePush: []; taskMenu: [ev: MouseEvent] }>();
 const ui = useAdeBoardUiStore();
 const dialogs = useAdeDialogsStore();
@@ -228,8 +231,9 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
     tabindex="0"
     :data-selected="selected || undefined"
     :data-ripple="row.ripple || undefined"
-    data-testid="ade-branch-row"
+    :data-testid="testid"
     :data-branch-id="row.id"
+    :data-depth="row.depth"
     @click="pick"
     @contextmenu="onMenu"
     @keydown.enter.self="pick"
@@ -376,5 +380,6 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
       <VarText :parts="choice.tip" />
       <Kbd>{{ formatShortcut('ade.reviewCode') }}</Kbd>
     </TooltipIconButton>
+    <slot />
   </div>
 </template>

@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { errorText } from '@workbench/bridge/codedError';
 import { computed, ref } from 'vue';
 import type { BranchRowModel } from '../plan/usePlanModel';
@@ -85,8 +86,9 @@ async function remove(what: 'branch' | 'repo'): Promise<void> {
           :aria-label="t('space.ade.taskTab.branchMenu.trigger.aria')"
           data-testid="ade-task-branch-menu"
           :data-branch-id="row.id"
+          @click.stop
         >
-          <CodiconIcon name="ellipsis" :size="13" />
+          <CodiconIcon :name="ICON.edit" :size="13" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent

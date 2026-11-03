@@ -179,7 +179,7 @@ test('a branch with only uncommitted changes is disabled and says why', async ({
   expect(calls(control)).toHaveLength(0);
 });
 
-test('an open failure shows in the panel and the step block', async ({ relaunch }) => {
+test('an open failure shows in the panel', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [
     { channel: IPC.adeTaskOpenReviewWindow, error: { code: 'failed', message: 'no window' } },
   ]);
@@ -188,9 +188,9 @@ test('an open failure shows in the panel and the step block', async ({ relaunch 
 
   await page.locator(`${card('T_auth')} ${t('ade-card-head')}`).click();
   await page
-    .locator(`${t('ade-review-row')}[data-branch-id="b_auth"] ${t('ade-review-code')}`)
+    .locator(`${t('ade-task-branch')}[data-branch-id="b_auth"] ${t('ade-branch-review')}`)
     .click();
-  await expect(page.locator(t('ade-step-block-error'))).toContainText('no window');
+  await expect(page.locator(t('ade-panel-action-error'))).toContainText('no window');
 });
 
 test('the earlier entry points still open their branch', async ({ relaunch }) => {
@@ -207,7 +207,7 @@ test('the earlier entry points still open their branch', async ({ relaunch }) =>
 
   await page.locator(`${card('T_auth')} ${t('ade-card-head')}`).click();
   await page
-    .locator(`${t('ade-review-row')}[data-branch-id="b_auth"] ${t('ade-review-code')}`)
+    .locator(`${t('ade-task-branch')}[data-branch-id="b_auth"] ${t('ade-branch-review')}`)
     .click();
   await expect.poll(() => calls(control)).toHaveLength(3);
   expect(calls(control)[2]?.args).toEqual({ branchId: 'b_auth' });

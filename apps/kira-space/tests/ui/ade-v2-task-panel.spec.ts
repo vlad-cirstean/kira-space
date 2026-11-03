@@ -106,9 +106,10 @@ test('Main shows branches with their PR line and never handover text', async ({ 
   await expect(page.locator(t('ade-task-branch-pr-base')).first()).toHaveText('→ main');
   const failed = page.locator(`${t('ade-task-branch-pr-checks')}[data-state="FAILURE"]`);
   await expect(failed).toHaveCount(1);
-  const dash = page.locator(`${t('ade-task-branch')}[data-branch-id="b_billdash"]`);
-  await expect(dash).toBeVisible();
-  await expect(dash.locator('xpath=../..').locator(t('ade-task-branch-pr'))).toHaveCount(0);
+  await expect(page.locator(`${t('ade-task-branch')}[data-branch-id="b_billdash"]`)).toBeVisible();
+  await expect(page.locator(`${t('ade-task-branch-pr')}[data-branch-id="b_billdash"]`)).toHaveCount(
+    0,
+  );
   await expect(page.locator(t('ade-handovers'))).toHaveCount(0);
 });
 
