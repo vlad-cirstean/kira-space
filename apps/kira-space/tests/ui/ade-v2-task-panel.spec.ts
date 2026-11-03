@@ -166,6 +166,8 @@ test('paste: a Jira key updates the task, a URL adds an untitled link, text show
     ref: '',
   });
 
+  await expect(paste).toHaveValue('');
+
   // A key-shaped token in a non-Jira URL does not route to the Jira slot.
   await paste.fill('https://github.com/acme/web-app/tree/PROJ-42-fix');
   await paste.press('Enter');
