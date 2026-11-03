@@ -25,8 +25,7 @@ type Dir struct {
 
 // ResolveDir reports where s runs, without creating anything. appHome is the app's data folder.
 func ResolveDir(s CustomScript, appHome string) Dir {
-	switch s.DirMode {
-	case DirModeFixed:
+	if s.DirMode == DirModeFixed {
 		d := Dir{Path: s.WorkingDir, Mode: DirModeFixed}
 		if info, err := os.Stat(s.WorkingDir); err != nil || !info.IsDir() {
 			d.Blocker = i18n.T("backend.core.scriptDir.missing.body", map[string]string{"path": s.WorkingDir})

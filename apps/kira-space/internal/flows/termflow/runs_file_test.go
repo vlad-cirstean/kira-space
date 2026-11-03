@@ -101,7 +101,11 @@ func TestRunsConfigFile(t *testing.T) {
 	app.Contract(t, "runs-file", "file#edited", view, runsMasks...)
 
 	bad := strings.Replace(edited, "color: blue", "kind: bogus", 1)
-	if line := 1 + strings.Count(bad[:strings.Index(bad, "kind: bogus")], "\n"); line != 3 {
+	badAt := strings.Index(bad, "kind: bogus")
+	if badAt < 0 {
+		t.Fatalf("fixture lacks %q", "kind: bogus")
+	}
+	if line := 1 + strings.Count(bad[:badAt], "\n"); line != 3 {
 		t.Fatalf("fixture line = %d", line)
 	}
 	mark = app.Events.Mark()
@@ -172,8 +176,8 @@ func TestRunsFileMigration(t *testing.T) {
 	smart, _ := json.Marshal(scripts.Smart{Model: "sonnet"})
 	for _, r := range []struct {
 		id, name, kind, cmd, dirMode, dir, collection, smart string
-		sort                                                int
-		task, branch                                        string
+		sort                                                 int
+		task, branch                                         string
 	}{
 		{"11111111-aaaa-4aaa-8aaa-111111111111", "Legacy", "script", "echo legacy", "home", "", "Old", "", 1, "", ""},
 		{"22222222-bbbb-4bbb-8bbb-222222222222", "Brain", "smart", "Think", "kira", "", "", string(smart), 2, "task-1", "branch-1"},
@@ -258,4 +262,3 @@ func TestRunsFileMigration(t *testing.T) {
 		t.Fatal("kept run is gone")
 	}
 }
-
