@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -356,5 +357,64 @@ func TestConnectionFilesMigration(t *testing.T) {
 	app.Restart(t)
 	if _, err := os.Stat(filepath.Join(dir, "legacy-pg.yaml")); !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("a later start rewrote the deleted file (%d bytes before): %v", len(before), err)
+	}
+}
+
+// A failed file write during the export leaves every legacy row in place, and the next start finishes it.
+func TestConnectionFilesMigrationFailedWrite(t *testing.T) {
+	app := flowharness.New(t)
+	const now = "2026-01-01T00:00:00Z"
+	ids := []string{"11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"}
+	for _, q := range []string{
+		`ALTER TABLE connections ADD COLUMN password TEXT`,
+		`ALTER TABLE connections ADD COLUMN uri TEXT`,
+		`CREATE TABLE connection_tree_filters (connection_id TEXT NOT NULL REFERENCES connections(id) ON DELETE CASCADE,
+			scope TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY (connection_id, scope, value))`,
+		`CREATE TABLE connection_ddl (connection_id TEXT PRIMARY KEY REFERENCES connections(id) ON DELETE CASCADE,
+			ddl TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+		`DELETE FROM settings WHERE key = 'config.migrated.connections'`,
+	} {
+		if _, err := app.DB().Exec(q); err != nil {
+			t.Fatalf("seed %q: %v", q, err)
+		}
+	}
+	for i, name := range []string{"Legacy One", "Legacy Two"} {
+		if _, err := app.DB().Exec(`INSERT INTO connections (id, name, kind, color, mode, host, port, database, username, created_at, updated_at)
+			VALUES (?, ?, 'postgres', 'none', 'fields', '127.0.0.1', 5432, 'app', 'kira', ?, ?)`, ids[i], name, now, now); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// An immutable folder makes every file write fail, even for root.
+	dir := app.W.ConnectionFiles.Dir()
+	app.Quit(t)
+	if err := os.RemoveAll(dir); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := exec.Command("chattr", "+i", dir).Run(); err != nil {
+		t.Skipf("cannot make the folder immutable: %v", err)
+	}
+	unlock := func() { _ = exec.Command("chattr", "-i", dir).Run() }
+	t.Cleanup(unlock)
+	app.Restart(t)
+	for _, id := range ids {
+		if _, ok := connectionNamed(t, app, id); !ok {
+			t.Fatalf("connection %s is gone after a failed export", id)
+		}
+	}
+
+	app.Quit(t)
+	unlock()
+	app.Restart(t)
+	for i, file := range []string{"legacy-one.yaml", "legacy-two.yaml"} {
+		if _, err := os.Stat(filepath.Join(dir, file)); err != nil {
+			t.Errorf("rerun did not write %s: %v", file, err)
+		}
+		if c, ok := connectionNamed(t, app, ids[i]); !ok || c.File != file {
+			t.Errorf("connection %s = %+v (%v), want bound to %s", ids[i], c, ok, file)
+		}
 	}
 }

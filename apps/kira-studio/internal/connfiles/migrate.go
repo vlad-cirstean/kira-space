@@ -16,26 +16,36 @@ import (
 )
 
 // migrate exports the rows that predate the files: it binds each row to a stem, copies sealed password and
-// URI envelopes into the secret store as they are, seeds config_json, writes one file per connection and
-// drops the superseded columns and tables. A crash before the marker reruns it with the stored stems.
+// URI envelopes into the secret store as they are, writes one file per connection, seeds that row's
+// config_json only after its file exists, and drops the superseded columns and tables. A row without
+// config_json is never projected, so a failed write cannot cost a row. A crash before the marker reruns it
+// with the stored stems.
 func (l *Loader) migrate() error {
 	files, err := l.bindLegacyRows()
 	if err != nil {
 		return err
 	}
-	for name, text := range files {
-		path := filepath.Join(l.o.Dir, name)
-		if _, err := os.Stat(path); err == nil {
-			continue
+	for _, f := range files {
+		path := filepath.Join(l.o.Dir, f.name)
+		if _, err := os.Stat(path); err != nil {
+			if len(f.text) > configfs.MaxFileBytes {
+				slog.Warn("connections: migrated file is over the size cap and stays invalid until edited", "scope", "startup", "file", f.name)
+			}
+			if err := configfs.WriteAtomic(path, f.text, 0o644); err != nil {
+				return err
+			}
 		}
-		if len(text) > configfs.MaxFileBytes {
-			slog.Warn("connections: migrated file is over the size cap and stays invalid until edited", "scope", "startup", "file", name)
-		}
-		if err := configfs.WriteAtomic(path, text, 0o644); err != nil {
-			return err
+		if _, err := l.o.DB.Exec(`UPDATE connections SET config_json = ? WHERE id = ? AND config_json = ''`, f.json, f.id); err != nil {
+			return fmt.Errorf("connfiles: seed %s: %w", f.name, err)
 		}
 	}
 	return l.dropLegacy()
+}
+
+// legacyOut is one migrated connection: its file text and the config_json to seed once the file exists.
+type legacyOut struct {
+	id, name, json string
+	text           []byte
 }
 
 func (l *Loader) hasColumn(table, column string) (bool, error) {
@@ -104,7 +114,7 @@ func (l *Loader) legacyRows(tx *sql.Tx, withSecrets bool) ([]legacyConn, error) 
 	return out, rows.Err()
 }
 
-func (l *Loader) bindLegacyRows() (map[string][]byte, error) {
+func (l *Loader) bindLegacyRows() ([]legacyOut, error) {
 	hasPassword, err := l.hasColumn("connections", "password")
 	if err != nil {
 		return nil, err
@@ -133,7 +143,7 @@ func (l *Loader) bindLegacyRows() (map[string][]byte, error) {
 			taken[c.stem] = true
 		}
 	}
-	files := map[string][]byte{}
+	var files []legacyOut
 	for _, c := range conns {
 		if c.stem == "" {
 			c.stem = freeBase(Slug(c.fields.Name), func(s string) bool {
@@ -148,11 +158,11 @@ func (l *Loader) bindLegacyRows() (map[string][]byte, error) {
 				return nil, fmt.Errorf("connfiles: bind connection: %w", err)
 			}
 		}
-		text, err := legacyFile(tx, c, hasFilters, hasDDL)
+		text, js, err := legacyFile(tx, c, hasFilters, hasDDL)
 		if err != nil {
 			return nil, err
 		}
-		files[FileName(c.stem)] = text
+		files = append(files, legacyOut{id: c.id, name: FileName(c.stem), json: js, text: text})
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("connfiles: commit migration: %w", err)
@@ -160,46 +170,44 @@ func (l *Loader) bindLegacyRows() (map[string][]byte, error) {
 	return files, nil
 }
 
-// legacyFile moves one connection's secrets, masks, tree filters and DDL into its file text and seeds
-// the row's config_json with the same content.
-func legacyFile(tx *sql.Tx, c legacyConn, hasFilters, hasDDL bool) ([]byte, error) {
+// legacyFile moves one connection's secrets, masks, tree filters and DDL into its file text. It also
+// returns the config_json to seed after the file is written.
+func legacyFile(tx *sql.Tx, c legacyConn, hasFilters, hasDDL bool) ([]byte, string, error) {
 	var passRef, uriRef string
 	var err error
 	if c.password.Valid {
 		if passRef, err = copyEnvelope(tx, secrets.ScopeConnection, c.stem+".password", c.password.String); err != nil {
-			return nil, err
+			return nil, "", err
 		}
 	}
 	if c.uri.Valid {
 		if uriRef, err = copyEnvelope(tx, secrets.ScopeConnectionURI, c.stem+".uri", c.uri.String); err != nil {
-			return nil, err
+			return nil, "", err
 		}
 	}
 	masks, err := legacyMasks(tx, c.id)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	tree := model.EmptyVisibility()
 	if hasFilters {
 		if tree, err = legacyTree(tx, c.id); err != nil {
-			return nil, err
+			return nil, "", err
 		}
 	}
 	var ddl string
 	if hasDDL {
 		if err := tx.QueryRow(`SELECT COALESCE((SELECT ddl FROM connection_ddl WHERE connection_id = ?), '')`, c.id).Scan(&ddl); err != nil {
-			return nil, fmt.Errorf("connfiles: read ddl: %w", err)
+			return nil, "", fmt.Errorf("connfiles: read ddl: %w", err)
 		}
 	}
 	f := FileOf(c.fields, masks, tree, ddl, passRef, uriRef)
 	js, err := json.Marshal(f)
 	if err != nil {
-		return nil, fmt.Errorf("connfiles: encode %s: %w", c.stem, err)
+		return nil, "", fmt.Errorf("connfiles: encode %s: %w", c.stem, err)
 	}
-	if _, err := tx.Exec(`UPDATE connections SET config_json = ? WHERE id = ? AND config_json = ''`, string(js), c.id); err != nil {
-		return nil, fmt.Errorf("connfiles: seed %s: %w", c.stem, err)
-	}
-	return configfs.RenderYAML(f, Header)
+	text, err := configfs.RenderYAML(f, Header)
+	return text, string(js), err
 }
 
 // copyEnvelope stores a sealed envelope as it is under name and returns the file reference. No decrypt: the

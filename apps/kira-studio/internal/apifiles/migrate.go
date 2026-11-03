@@ -18,22 +18,34 @@ import (
 
 // migrate exports the rows that predate the api files: it binds each row to a stem, an item key and a
 // secret ref, moves sealed secret values into the secret store as they are, and writes one file per
-// collection and environment. A crash before the marker reruns it with the stored stems.
+// collection and environment. A file that exists is never overwritten. A collection's promoted Postman
+// variables leave its origin only after its file exists, so a rerun renders them again. A crash before the
+// marker reruns it with the stored stems.
 func (s *Store) migrate() error {
-	files, err := s.bindLegacyRows()
+	m, err := s.bindLegacyRows()
 	if err != nil {
 		return err
 	}
-	for name, text := range files {
-		if len(text) > configfs.MaxFileBytes {
-			slog.Warn("api: migrated file is over the size cap and stays invalid until edited", "scope", "startup", "file", name)
+	for name, text := range m.files {
+		if !fileExists(s.o.Dir, name) {
+			if len(text) > configfs.MaxFileBytes {
+				slog.Warn("api: migrated file is over the size cap and stays invalid until edited", "scope", "startup", "file", name)
+			}
+			if err := configfs.WriteAtomic(filepath.Join(s.o.Dir, name), text, 0o644); err != nil {
+				return err
+			}
 		}
-		if err := configfs.WriteAtomic(filepath.Join(s.o.Dir, name), text, 0o644); err != nil {
-			return err
+		if st, ok := m.stamps[name]; ok {
+			if _, err := s.o.DB.Exec(`UPDATE api_collections SET origin_json = ?, variables_promoted = 1 WHERE id = ?`, st.origin, st.id); err != nil {
+				return fmt.Errorf("apifiles: stamp promoted: %w", err)
+			}
 		}
 	}
 	return nil
 }
+
+// stamp is a collection's origin without its promoted variables, applied once its file exists.
+type stamp struct{ id, origin string }
 
 type legacyVar struct {
 	id, name, value, desc, ref string
@@ -45,14 +57,14 @@ type legacyItem struct {
 	id, parent, kind, name, protocol, requestJSON, key string
 }
 
-func (s *Store) bindLegacyRows() (map[string][]byte, error) {
+func (s *Store) bindLegacyRows() (*migration, error) {
 	tx, err := s.o.DB.Begin()
 	if err != nil {
 		return nil, fmt.Errorf("apifiles: begin migration: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	m := &migration{s: s, tx: tx, files: map[string][]byte{}, usedSecrets: map[string]bool{}}
+	m := &migration{s: s, tx: tx, files: map[string][]byte{}, stamps: map[string]stamp{}, usedSecrets: map[string]bool{}}
 	if err := m.loadSecretNames(); err != nil {
 		return nil, err
 	}
@@ -65,13 +77,14 @@ func (s *Store) bindLegacyRows() (map[string][]byte, error) {
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("apifiles: commit migration: %w", err)
 	}
-	return m.files, nil
+	return m, nil
 }
 
 type migration struct {
 	s           *Store
 	tx          *sql.Tx
 	files       map[string][]byte
+	stamps      map[string]stamp
 	usedSecrets map[string]bool
 }
 
@@ -247,10 +260,11 @@ func (m *migration) legacyCollections() ([]legacyCollection, map[string]bool, er
 	return cols, taken, rows.Err()
 }
 
-// promoteOrigin lifts a not-yet-promoted collection's Postman variables out of its origin.
-func (m *migration) promoteOrigin(c legacyCollection) ([]postman.Variable, error) {
+// promoteOrigin lifts a not-yet-promoted collection's Postman variables out of its origin and returns the
+// stamp that makes it permanent. The caller applies the stamp after the file exists.
+func (m *migration) promoteOrigin(c legacyCollection) ([]postman.Variable, *stamp, error) {
 	if c.promoted {
-		return nil, nil
+		return nil, nil, nil
 	}
 	var promoted []postman.Variable
 	origin := map[string]json.RawMessage{}
@@ -263,12 +277,9 @@ func (m *migration) promoteOrigin(c legacyCollection) ([]postman.Variable, error
 	}
 	js, err := encodeJSON(origin)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	if _, err := m.tx.Exec(`UPDATE api_collections SET origin_json = ?, variables_promoted = 1 WHERE id = ?`, js, c.id); err != nil {
-		return nil, fmt.Errorf("apifiles: stamp promoted: %w", err)
-	}
-	return promoted, nil
+	return promoted, &stamp{id: c.id, origin: js}, nil
 }
 
 func (m *migration) collections() error {
@@ -288,7 +299,7 @@ func (m *migration) collections() error {
 				return fmt.Errorf("apifiles: bind collection: %w", err)
 			}
 		}
-		promoted, err := m.promoteOrigin(c)
+		promoted, st, err := m.promoteOrigin(c)
 		if err != nil {
 			return err
 		}
@@ -305,6 +316,9 @@ func (m *migration) collections() error {
 			return err
 		}
 		m.files[c.stem+CollectionExt] = text
+		if st != nil {
+			m.stamps[c.stem+CollectionExt] = *st
+		}
 	}
 	return nil
 }

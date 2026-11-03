@@ -37,7 +37,6 @@ type Store struct {
 	pend     *Changes
 	problems map[string]string
 	origins  map[string]string
-	migrated bool
 	stop     func()
 }
 
@@ -63,14 +62,12 @@ func New(o Options) (*Store, error) {
 func (s *Store) Dir() string { return s.o.Dir }
 
 // Start migrates the legacy rows once, loads the folder, writes AGENTS.md and watches the folder. A
-// failure of the migration, the docs or the watch is logged and never fatal.
+// failed migration skips the rest: an unfinished export never projects. A failure of the docs or the
+// watch is logged and never fatal.
 func (s *Store) Start() {
 	if err := configfs.MigrateOnce(s.o.DB, "api", s.migrate); err != nil {
 		slog.Warn("api: migrate to files", "scope", "startup", "err", err)
-	} else {
-		s.mu.Lock()
-		s.migrated = true
-		s.mu.Unlock()
+		return
 	}
 	s.Sync()
 	model, err := DocModel()
