@@ -27,6 +27,8 @@ type AdeHandover struct {
 	Edited       bool
 	CreatedAt    int64
 	UpdatedAt    int64
+	// SessionID is the Kira session that wrote the row; "" for a user row or an old one.
+	SessionID string
 }
 
 // AdeHandoff turns the open draft of FromStepID into a handed row in the same transaction that moves
@@ -43,5 +45,7 @@ type AdeHandoff struct {
 	ToStepName   string
 	Notes        *string
 	Source       string
-	Now          int64
+	// SessionID is the session behind a run row; a promoted draft keeps its own.
+	SessionID string
+	Now       int64
 }

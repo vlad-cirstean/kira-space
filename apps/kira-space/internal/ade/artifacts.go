@@ -194,6 +194,7 @@ func (s storedSource) Artifacts(_ context.Context, sc ArtifactScope) ([]adewire.
 func wireStoredArtifact(r model.AdeTaskArtifact) adewire.Artifact {
 	return adewire.Artifact{
 		ID: r.ID, Kind: r.Kind, Title: r.Title, URL: r.URL, Ref: r.Ref, Source: r.Source, CreatedAt: r.CreatedAt,
+		SessionID: r.SessionID,
 	}
 }
 
@@ -392,7 +393,7 @@ func (b *TaskBoard) normalizeArtifact(in agentmcp.ArtifactInput) agentmcp.Artifa
 
 // storeArtifacts validates and upserts a batch under the task lock; nothing is written when any item
 // or the task's cap refuses. The refusal is an ErrInvalidInput.
-func (b *TaskBoard) storeArtifacts(taskID, source, stepID, runID string, in []agentmcp.ArtifactInput) ([]model.AdeTaskArtifact, error) {
+func (b *TaskBoard) storeArtifacts(taskID, source, stepID, runID, sessionID string, in []agentmcp.ArtifactInput) ([]model.AdeTaskArtifact, error) {
 	if n := len(in); n == 0 || n > agentmcp.MaxArtifactsPerCall {
 		return nil, invalid("artifacts needs 1 to %d entries.", agentmcp.MaxArtifactsPerCall)
 	}
@@ -441,7 +442,7 @@ func (b *TaskBoard) storeArtifacts(taskID, source, stepID, runID string, in []ag
 	for _, c := range clean {
 		row, err := b.deps.Tasks.UpsertArtifact(model.AdeTaskArtifact{
 			ID: b.newID(), TaskID: taskID, Kind: c.Kind, Title: c.Title, URL: c.URL, Ref: c.Ref, Source: source,
-			StepID: stepID, RunID: runID, CreatedAt: now, UpdatedAt: now,
+			StepID: stepID, RunID: runID, SessionID: sessionID, CreatedAt: now, UpdatedAt: now,
 		})
 		if err != nil {
 			return nil, err
@@ -454,7 +455,7 @@ func (b *TaskBoard) storeArtifacts(taskID, source, stepID, runID string, in []ag
 
 // ReportArtifacts records the artifacts an agent reports for its task.
 func (b *TaskBoard) ReportArtifacts(_ context.Context, call agentmcp.SpaceCall, in []agentmcp.ArtifactInput) (agentmcp.ReportArtifactsResult, error) {
-	rows, err := b.storeArtifacts(call.TaskID, model.AdeArtifactSourceAgent, call.StepID, call.RunID, in)
+	rows, err := b.storeArtifacts(call.TaskID, model.AdeArtifactSourceAgent, call.StepID, call.RunID, call.SessionID, in)
 	if err != nil {
 		if errors.Is(err, ErrInvalidInput) {
 			return agentmcp.ReportArtifactsResult{}, agentmcp.ToolError(trimInvalid(err))
@@ -488,7 +489,7 @@ func agentArtifacts(res adewire.ArtifactsResult) agentmcp.TaskArtifacts {
 
 // AddArtifact records an artifact the user adds to a live task.
 func (b *TaskBoard) AddArtifact(_ context.Context, args adewire.AddArtifactArgs) (adewire.Artifact, error) {
-	rows, err := b.storeArtifacts(args.TaskID, model.AdeArtifactSourceUser, "", "", []agentmcp.ArtifactInput{
+	rows, err := b.storeArtifacts(args.TaskID, model.AdeArtifactSourceUser, "", "", "", []agentmcp.ArtifactInput{
 		{Kind: args.Kind, Title: args.Title, URL: args.URL, Ref: args.Ref},
 	})
 	if err != nil {

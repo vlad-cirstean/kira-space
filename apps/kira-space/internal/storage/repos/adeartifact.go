@@ -8,12 +8,12 @@ import (
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
-const artifactCols = `id, task_id, kind, title, url, ref, source, step_id, run_id, created_at, updated_at`
+const artifactCols = `id, task_id, kind, title, url, ref, source, step_id, run_id, created_at, updated_at, session_id`
 
 func scanArtifact(row rowScanner) (model.AdeTaskArtifact, error) {
 	var a model.AdeTaskArtifact
 	err := row.Scan(&a.ID, &a.TaskID, &a.Kind, &a.Title, &a.URL, &a.Ref, &a.Source, &a.StepID, &a.RunID,
-		&a.CreatedAt, &a.UpdatedAt)
+		&a.CreatedAt, &a.UpdatedAt, &a.SessionID)
 	return a, err
 }
 
@@ -49,19 +49,20 @@ func (r *AdeTaskRepo) CountArtifacts(taskID string) (int, error) {
 func (r *AdeTaskRepo) UpsertArtifact(a model.AdeTaskArtifact) (model.AdeTaskArtifact, error) {
 	if a.URL == "" {
 		if _, err := r.DB.Exec(`INSERT INTO ade_task_artifacts
-			(id, task_id, kind, title, url, ref, source, step_id, run_id, created_at, updated_at)
-			VALUES (?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?)`,
-			a.ID, a.TaskID, a.Kind, a.Title, a.Ref, a.Source, a.StepID, a.RunID, a.CreatedAt, a.UpdatedAt); err != nil {
+			(id, task_id, kind, title, url, ref, source, step_id, run_id, created_at, updated_at, session_id)
+			VALUES (?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?)`,
+			a.ID, a.TaskID, a.Kind, a.Title, a.Ref, a.Source, a.StepID, a.RunID, a.CreatedAt, a.UpdatedAt, a.SessionID); err != nil {
 			return model.AdeTaskArtifact{}, fmt.Errorf("repos: insert artifact %s: %w", a.TaskID, err)
 		}
 		return r.readArtifact(a.ID)
 	}
 	if _, err := r.DB.Exec(`INSERT INTO ade_task_artifacts
-		(id, task_id, kind, title, url, ref, source, step_id, run_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		(id, task_id, kind, title, url, ref, source, step_id, run_id, created_at, updated_at, session_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (task_id, url) WHERE url <> '' DO UPDATE SET
-			kind = excluded.kind, title = excluded.title, ref = excluded.ref, updated_at = excluded.updated_at`,
-		a.ID, a.TaskID, a.Kind, a.Title, a.URL, a.Ref, a.Source, a.StepID, a.RunID, a.CreatedAt, a.UpdatedAt); err != nil {
+			kind = excluded.kind, title = excluded.title, ref = excluded.ref, updated_at = excluded.updated_at,
+			session_id = CASE WHEN excluded.session_id <> '' THEN excluded.session_id ELSE ade_task_artifacts.session_id END`,
+		a.ID, a.TaskID, a.Kind, a.Title, a.URL, a.Ref, a.Source, a.StepID, a.RunID, a.CreatedAt, a.UpdatedAt, a.SessionID); err != nil {
 		return model.AdeTaskArtifact{}, fmt.Errorf("repos: upsert artifact %s: %w", a.TaskID, err)
 	}
 	var id string

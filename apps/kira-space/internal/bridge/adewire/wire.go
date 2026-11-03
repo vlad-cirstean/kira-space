@@ -543,6 +543,7 @@ type Handover struct {
 	Finished     bool   `json:"finished"`
 	Dismissed    bool   `json:"dismissed"`
 	Edited       bool   `json:"edited"`
+	SessionID    string `json:"sessionId"` // the Kira session that wrote it; '' = user or unknown
 	CreatedAt    int64  `json:"createdAt"`
 	UpdatedAt    int64  `json:"updatedAt"`
 }
@@ -1279,14 +1280,16 @@ type RepoBranches struct {
 // Artifact is something a task produced or points at: a change request, issue, branch, deployment, doc
 // or link. Detected artifacts (ID "") are derived on read; stored ones carry the row id.
 type Artifact struct {
-	ID        string `json:"id"`
-	Kind      string `json:"kind"` // changeRequest | issue | branch | deployment | doc | link
-	Title     string `json:"title"`
-	URL       string `json:"url"` // '' none
-	Ref       string `json:"ref"` // display ref: #12, PROJ-7, worktree path, short sha, file path
-	Status    string `json:"status"`
-	Repo      string `json:"repo"`   // repo nickname, '' none
-	Source    string `json:"source"` // task | host | git | agent | user, or a tracker id
+	ID     string `json:"id"`
+	Kind   string `json:"kind"` // changeRequest | issue | branch | deployment | doc | link
+	Title  string `json:"title"`
+	URL    string `json:"url"` // '' none
+	Ref    string `json:"ref"` // display ref: #12, PROJ-7, worktree path, short sha, file path
+	Status string `json:"status"`
+	Repo   string `json:"repo"`   // repo nickname, '' none
+	Source string `json:"source"` // task | host | git | agent | user, or a tracker id
+	// SessionID is the Kira session that reported it; '' = user, detected or unknown.
+	SessionID string `json:"sessionId"`
 	CreatedAt int64  `json:"createdAt"`
 }
 

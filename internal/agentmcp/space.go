@@ -92,6 +92,8 @@ type SpaceCall struct {
 	RunID string
 	// StepID is the stage a session was opened for, "" for a run.
 	StepID string
+	// SessionID is the Kira session record that made the call, "" when unknown.
+	SessionID string
 }
 
 // SpaceTools is what the Kira Space tools call; *ade.TaskBoard implements it. Every method acts on
@@ -135,7 +137,7 @@ func (s *Server) spaceTask(req *mcp.CallToolRequest) (SpaceCall, *mcp.CallToolRe
 	if !ok || !g.Space || g.TaskID == "" {
 		return SpaceCall{}, toolError("Kira Space tools are not available for this session.")
 	}
-	return SpaceCall{TaskID: g.TaskID, RunID: g.RunID, StepID: g.StepID}, nil
+	return SpaceCall{TaskID: g.TaskID, RunID: g.RunID, StepID: g.StepID, SessionID: g.SessionID}, nil
 }
 
 // cleanRepos trims and dedups refs; it returns the refusal text when the list is empty, too long or

@@ -849,7 +849,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	if sbx != nil {
 		grantSandbox = sbx.grant
 	}
-	cfg, release, err := b.agent.Register(agentmcp.Grant{RunID: run.ID, TaskID: run.TaskID, Space: space, Git: l.git, Review: l.review, Sandbox: grantSandbox, Agent: l.agent, Results: grantResults(rebase || round, def)})
+	cfg, release, err := b.agent.Register(agentmcp.Grant{RunID: run.ID, TaskID: run.TaskID, SessionID: l.sessionID, Space: space, Git: l.git, Review: l.review, Sandbox: grantSandbox, Agent: l.agent, Results: grantResults(rebase || round, def)})
 	if err != nil {
 		fail(err)
 		return
