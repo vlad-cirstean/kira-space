@@ -155,13 +155,13 @@ func TestTerminalFileLinks(t *testing.T) {
 		}
 		for name, args := range resolveCases {
 			_, err := app.W.OpenedFilesSvc.TerminalResolve(args)
-			if e := testx.AsIpcErr(t, err); e.Code != string(ipcerr.CodeBadRequest) {
-				t.Errorf("%s: code = %s, want %s", name, e.Code, ipcerr.CodeBadRequest)
+			if e := testx.AsIpcErr(t, err); e.Code != string(ipcerr.CodeContract) {
+				t.Errorf("%s: code = %s, want %s", name, e.Code, ipcerr.CodeContract)
 			}
 		}
 		err := app.W.OpenedFilesSvc.TerminalOpen(bridge.OpenedFilesTerminalOpenArgs{TerminalID: term, Path: loose, Col: 3})
-		if e := testx.AsIpcErr(t, err); e.Code != string(ipcerr.CodeBadRequest) {
-			t.Errorf("col without line: code = %s, want %s", e.Code, ipcerr.CodeBadRequest)
+		if e := testx.AsIpcErr(t, err); e.Code != string(ipcerr.CodeContract) {
+			t.Errorf("col without line: code = %s, want %s", e.Code, ipcerr.CodeContract)
 		}
 		if windows() != 1 {
 			t.Fatalf("keyed windows = %d, want 1", windows())

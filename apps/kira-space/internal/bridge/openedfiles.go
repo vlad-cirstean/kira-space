@@ -95,10 +95,10 @@ func (s *OpenedFilesService) Read(args OpenedFilesReadArgs) (codeworkspace.FileC
 // run shells; the answer is a boolean limited to the supported file types.
 func (s *OpenedFilesService) TerminalResolve(args OpenedFilesTerminalResolveArgs) (OpenedFilesTerminalResolveResult, error) {
 	if args.TerminalID == "" {
-		return OpenedFilesTerminalResolveResult{}, ipcerr.BadRequest("terminalId is required")
+		return OpenedFilesTerminalResolveResult{}, ipcerr.Contract("terminalId is required")
 	}
 	if n := len(args.Paths); n < 1 || n > maxTermPaths {
-		return OpenedFilesTerminalResolveResult{}, ipcerr.BadRequest("paths must hold 1 to 20 entries")
+		return OpenedFilesTerminalResolveResult{}, ipcerr.Contract("paths must hold 1 to 20 entries")
 	}
 	for _, p := range args.Paths {
 		if err := checkTermPath(p); err != nil {
@@ -115,16 +115,16 @@ func (s *OpenedFilesService) TerminalResolve(args OpenedFilesTerminalResolveArgs
 // TerminalOpen opens one terminal path in an opened-files window, cursor at line and col.
 func (s *OpenedFilesService) TerminalOpen(args OpenedFilesTerminalOpenArgs) error {
 	if args.TerminalID == "" {
-		return ipcerr.BadRequest("terminalId is required")
+		return ipcerr.Contract("terminalId is required")
 	}
 	if err := checkTermPath(args.Path); err != nil {
 		return err
 	}
 	if args.Line < 0 || args.Line > maxTermPosition || args.Col < 0 || args.Col > maxTermPosition {
-		return ipcerr.BadRequest("line and col must be 0 to 10000000")
+		return ipcerr.Contract("line and col must be 0 to 10000000")
 	}
 	if args.Col > 0 && args.Line == 0 {
-		return ipcerr.BadRequest("col needs line")
+		return ipcerr.Contract("col needs line")
 	}
 	cwd, err := s.termCwd(args.TerminalID, args.FallbackCwd)
 	if err != nil {
@@ -144,7 +144,7 @@ func (s *OpenedFilesService) TerminalOpen(args OpenedFilesTerminalOpenArgs) erro
 
 func checkTermPath(p string) error {
 	if p == "" || len(p) > maxTermPathLen || strings.ContainsRune(p, 0) {
-		return ipcerr.BadRequest("path must be 1 to 4096 bytes without NUL")
+		return ipcerr.Contract("path must be 1 to 4096 bytes without NUL")
 	}
 	return nil
 }
@@ -152,7 +152,7 @@ func checkTermPath(p string) error {
 // termCwd is the terminal's live cwd, else fallback; fallback is empty or absolute.
 func (s *OpenedFilesService) termCwd(terminalID, fallback string) (string, error) {
 	if fallback != "" && !filepath.IsAbs(fallback) {
-		return "", ipcerr.BadRequest("fallbackCwd must be absolute")
+		return "", ipcerr.Contract("fallbackCwd must be absolute")
 	}
 	if s.Cwd != nil {
 		if cwd, ok := s.Cwd(terminalID); ok && cwd != "" {
