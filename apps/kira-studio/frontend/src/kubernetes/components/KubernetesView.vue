@@ -73,7 +73,7 @@ watch(
         <section
           v-show="listShown"
           :class="['flex min-h-0 min-w-0 flex-col', hasTabs ? 'flex-none' : 'flex-1']"
-          :style="hasTabs ? { width: `${pane.size}px` } : undefined"
+          :style="hasTabs ? { width: `${pane.size.value}px` } : undefined"
           data-testid="kube-resources"
         >
           <QueryState v-if="cluster" :query="status" :is-empty="() => false">
