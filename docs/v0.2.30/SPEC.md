@@ -19,7 +19,7 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 | P501 | ADE: task panel restructure | Done |
 | P502 | ADE: multi-branch task panel simplification | Done |
 | P503 | Code review (1 round) | Done |
-| P504 | Close chapter v0.2.30 | Todo |
+| P504 | Close chapter v0.2.30 | Done |
 
 ## Rows
 
@@ -105,8 +105,10 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 
 One Opus review over the full diff since `main`, findings file under `plans/`, then one Sonnet fixer. Then close, then PR.
 
-- Result: 7 findings (3 Medium, 4 Low), all fixed. Removed-lines capture stores all reviewed lines when the delta has no hunks (patch over cap, binary or gone current side, rename); `RemovedSinceReview` logs a capture failure and still lists stored blocks; `useReviewRemoved` refetches debounced on changed working data. Jira slot takes only Jira issue URLs (`isJiraIssueUrl`); paste submit guarded by `useAsyncAction`. Merged run handover keeps the draft author. Dead `intersectRanges`, `compact` prop and `artifacts.title.title` key removed. Run targets and PR lines computed once per render. New flow test `TestReviewRemovedUnparsedDelta`, extended `ade-v2-task-panel` paste spec. Declined: skipping the commit capture pass on an unchanged tip (per-record `removal_checked` already skips, tip cache adds state).
+- Result: Full suite run once first (`plans/full-run.md`): lint, knip, typecheck, Go, unit and all UI/visual/mobile projects pass; one flaky `ade-v2-review-removed` spec fixed (`f98df9ec`, call-count dependent mock now uses `__afterCall`). Not run: container-backed Go tests and `e2e-real` (no Docker), `-race`, `test:claude*`. Review: 7 findings (3 Medium, 4 Low), all fixed. Removed-lines capture stores all reviewed lines when the delta has no hunks (patch over cap, binary or gone current side, rename); `RemovedSinceReview` logs a capture failure and still lists stored blocks; `useReviewRemoved` refetches debounced on changed working data. Jira slot takes only Jira issue URLs (`isJiraIssueUrl`); paste submit guarded by `useAsyncAction`. Merged run handover keeps the draft author. Dead `intersectRanges`, `compact` prop and `artifacts.title.title` key removed. Run targets and PR lines computed once per render. New flow test `TestReviewRemovedUnparsedDelta`, extended `ade-v2-task-panel` paste spec. Declined: skipping the commit capture pass on an unchanged tip (per-record `removal_checked` already skips, tip cache adds state).
 
 ### P504 Close chapter v0.2.30
 
 Hand-written close per CLAUDE.md "Closing a chapter". Push, open PR to `main`.
+
+- Result: Done. Chapter folded by hand into `docs/HISTORY.md`; `docs/v0.2.30/` removed. Pushed `chapter/v0.2.30`; PR opened by orchestrator.
