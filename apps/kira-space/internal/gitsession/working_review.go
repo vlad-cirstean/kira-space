@@ -338,7 +338,7 @@ func addedLines(hunks []porcelain.DiffHunk) []gitreview.LineRange {
 
 // intersectRanges is a ∩ b.
 func intersectRanges(a, b []gitreview.LineRange) []gitreview.LineRange {
-	return gitreview.Subtract(a, gitreview.Subtract(a, b))
+	return gitreview.Intersect(a, b)
 }
 
 // PromoteWorkingReview carries uncommitted review state onto commits made since it was taken, and

@@ -108,6 +108,9 @@ type FileRecord struct {
 	ContentBytes  int         // UNCOMPRESSED length
 	LineCount     int         // text only; 0 otherwise
 	Ranges        []LineRange // snapshot coordinates (D10's invariant); empty when State == "full"
+	// RemovalChecked is the current-side identity (tip blob oid) last checked for removed reviewed
+	// lines; Records only.
+	RemovalChecked string
 }
 
 // sessionID resolves (repoID, branch) to its review_session row id — false, not an error, when no
@@ -196,7 +199,7 @@ func (s *Store) Records(ctx context.Context, repoID, branch string) (map[string]
 	}
 
 	rows, err := db.QueryContext(ctx, `
-		SELECT path, state, reviewed_at_sha, reviewed_at, blob_oid, content_kind, content_bytes, line_count
+		SELECT path, state, reviewed_at_sha, reviewed_at, blob_oid, content_kind, content_bytes, line_count, removal_checked
 		FROM review_file WHERE session_id = ?`, id)
 	if err != nil {
 		return nil, fmt.Errorf("gitreview: query review_file: %w", err)
@@ -207,7 +210,7 @@ func (s *Store) Records(ctx context.Context, repoID, branch string) (map[string]
 		var reviewedAtMillis int64
 		var kind string
 		if err := rows.Scan(&rec.Path, &rec.State, &rec.ReviewedAtSHA, &reviewedAtMillis,
-			&rec.BlobOID, &kind, &rec.ContentBytes, &rec.LineCount); err != nil {
+			&rec.BlobOID, &kind, &rec.ContentBytes, &rec.LineCount, &rec.RemovalChecked); err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("gitreview: scan review_file: %w", err)
 		}
@@ -333,7 +336,8 @@ func (s *Store) Put(ctx context.Context, repoID, branch string, rec FileRecord, 
 		ON CONFLICT (session_id, path) DO UPDATE SET
 			state = excluded.state, reviewed_at_sha = excluded.reviewed_at_sha, reviewed_at = excluded.reviewed_at,
 			blob_oid = excluded.blob_oid, content_kind = excluded.content_kind,
-			content_bytes = excluded.content_bytes, line_count = excluded.line_count, content = excluded.content
+			content_bytes = excluded.content_bytes, line_count = excluded.line_count, content = excluded.content,
+			removal_checked = ''
 	`, id, rec.Path, rec.State, rec.ReviewedAtSHA, rec.ReviewedAt.UnixMilli(), rec.BlobOID,
 		string(rec.ContentKind), rec.ContentBytes, rec.LineCount, compressed); err != nil {
 		return fmt.Errorf("gitreview: upsert review_file: %w", err)
