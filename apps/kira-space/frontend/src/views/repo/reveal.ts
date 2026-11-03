@@ -39,6 +39,34 @@ export function consumeReveal(tabId: string): RevealRequest | null {
   return req;
 }
 
+/** A fresh editor's initial position: the pending reveal wins over the persisted line, which only
+ *  applies when the editor was not restored from a cached model. */
+export function applyMountReveal(
+  editor: import('monaco-editor').editor.IStandaloneCodeEditor,
+  pendingReveal: RevealRequest | null,
+  restored: boolean,
+  revealLine: number | null,
+): void {
+  if (pendingReveal) {
+    if (pendingReveal.column === undefined) {
+      editor.revealLineInCenter(pendingReveal.line);
+      editor.setPosition({ lineNumber: pendingReveal.line, column: 1 });
+    } else {
+      const range = {
+        startLineNumber: pendingReveal.line,
+        startColumn: pendingReveal.column,
+        endLineNumber: pendingReveal.line,
+        endColumn: pendingReveal.endColumn ?? pendingReveal.column,
+      };
+      editor.setSelection(range);
+      editor.revealRangeInCenter(range);
+    }
+  } else if (!restored && revealLine !== null) {
+    editor.revealLineInCenter(revealLine);
+    editor.setPosition({ lineNumber: revealLine, column: 1 });
+  }
+}
+
 function applyReveal(
   editor: import('monaco-editor').editor.IStandaloneCodeEditor,
   req: RevealRequest,

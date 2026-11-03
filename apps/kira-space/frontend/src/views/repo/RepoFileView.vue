@@ -17,7 +17,7 @@ import { knownRead, registerEditor, rememberRead, unmountEditor } from './editor
 import { FULL_COMMIT_ID, loadFileContent } from './fileContent';
 import { loadMonaco, peekModel, repoFileUri, repoRevisionFileUri } from './monaco';
 import RepoFileEditBar from './RepoFileEditBar.vue';
-import { consumeReveal } from './reveal';
+import { applyMountReveal, consumeReveal } from './reveal';
 import { useFileEdit } from './useFileEdit';
 import { type InlineBlameAttachParams, useInlineBlame } from './useInlineBlame';
 import { useReadonlyFileViewer } from './useReadonlyFileViewer';
@@ -171,28 +171,7 @@ async function mount(): Promise<void> {
 
   // A pending reveal (a search result or go-to-definition match that arrived while this tab wasn't
   // mounted) wins over the persisted revealLine.
-  const pendingReveal = consumeReveal(props.tab.id);
-  if (pendingReveal) {
-    if (pendingReveal.column === undefined) {
-      editor.revealLineInCenter(pendingReveal.line);
-      editor.setPosition({ lineNumber: pendingReveal.line, column: 1 });
-    } else {
-      const range = {
-        startLineNumber: pendingReveal.line,
-        startColumn: pendingReveal.column,
-        endLineNumber: pendingReveal.line,
-        endColumn: pendingReveal.endColumn ?? pendingReveal.column,
-      };
-      editor.setSelection(range);
-      editor.revealRangeInCenter(range);
-    }
-  } else if (!restored) {
-    const revealLine = props.tab.state.revealLine;
-    if (revealLine !== null) {
-      editor.revealLineInCenter(revealLine);
-      editor.setPosition({ lineNumber: revealLine, column: 1 });
-    }
-  }
+  applyMountReveal(editor, consumeReveal(props.tab.id), restored, props.tab.state.revealLine);
 
   // Debounced patch (patchRepoFileTabState's own skipUnchanged) re-persists revealLine as the user
   // scrolls/navigates, so a restored session reopens roughly where it was left.

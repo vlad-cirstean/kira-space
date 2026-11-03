@@ -1,5 +1,5 @@
 import { t } from '@theme/i18n';
-import { requestReveal } from '../views/repo/reveal';
+import { type RevealRequest, requestReveal } from '../views/repo/reveal';
 import {
   asRepoDiffTab,
   asRepoFileTab,
@@ -86,12 +86,21 @@ export function openRepoFileTab(
 
 // A file opened from Finder that sits outside every imported repository: a read-only tab in the
 // general workspace, deduped by absolute path.
-export function openLocalFileTab(path: string): OpenTabResult {
-  return useTabsStore().openTab('local-file', null, path, defaultLocalFileTabState, {
-    reuse: true,
-    workspaceId: GENERAL_WORKSPACE,
-    preview: false,
-  });
+export function openLocalFileTab(path: string, reveal?: RevealRequest): OpenTabResult {
+  const tabsStore = useTabsStore();
+  const revealLine = reveal?.line ?? null;
+  const result = tabsStore.openTab(
+    'local-file',
+    null,
+    path,
+    () => ({ ...defaultLocalFileTabState(), revealLine }),
+    { reuse: true, workspaceId: GENERAL_WORKSPACE, preview: false },
+  );
+  if (reveal) {
+    if (result.reused) tabsStore.patchLocalFileTabState(result.id, { revealLine: reveal.line });
+    requestReveal(result.id, reveal);
+  }
+  return result;
 }
 
 // "Open changes" opens a permanent tab, never the preview slot — a single tree click
