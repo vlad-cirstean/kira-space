@@ -15,8 +15,8 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P490 | Kira Space: file open window shows only ad hoc file tabs | Done |
 | P491 | ADE: hide archived tasks unless History is open | Done |
 | P492 | ADE: agents widget shows active-agents indicator | Done |
-| P493 | Code review (1 round) | Todo |
-| P494 | Close chapter v0.2.29 | Todo |
+| P493 | Code review (1 round) | Done |
+| P494 | Close chapter v0.2.29 | Done |
 
 ## Rows
 
@@ -84,6 +84,10 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 
 One Opus review over the full diff since `main`, findings file under `plans/`, then one Sonnet fixer. Then close, then PR.
 
+- Result: full suite run once first (base `dd416364`): unit 1993, Go rest, Studio UI 673, Space UI 1034 all pass after two fixes (`95962777` mock runtime lacked `KubernetesService.Reorder`; `cd819559` opened-files terminal arg violations now `ipcerr.Contract`). No Docker in sandbox, so container-backed Go tests skipped. No `-race`. Review base `697cd65e`: 1 Medium, 4 Low, all fixed: Window menu tab keys ignored Kubernetes tabs (`b02be48d`), `LogsOpen` could hang if the recorded call panicked, now reports exactly once (`75749a79`), terminal hover skipped repo matching (`26663b68`), cluster-change event subscribed once per window (`838d0b04`), `workspaceKeyOf` typed on `kind`/`workspaceId` (`5a4873c0`). Findings doc removed (`640871e5`).
+
 ### P494 Close chapter v0.2.29
 
 Hand-written close per CLAUDE.md "Closing a chapter". Push, open PR to `main`.
+
+- Result: chapter folded by hand into `docs/HISTORY.md`; `docs/v0.2.29/` removed; `docs/v0.2.30/` spec stays. PR `chapter/v0.2.29` to `main`.
