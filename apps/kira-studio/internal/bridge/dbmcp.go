@@ -65,7 +65,6 @@ func NewDbMcpService(deps appcore.Deps, installer harness.MCPInstaller, approval
 				Approvals:        s.Approvals,
 				Proof:            s.Proof,
 				Kube:             s.Kube,
-				Ops:              s.Deps.Router.Host(),
 				MaskRules:        s.Deps.MaskRules,
 				ExplainThreshold: s.explainThreshold,
 				PreviewResponses: s.previewResponses,

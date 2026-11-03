@@ -39,6 +39,7 @@ type Service struct {
 	env   func() Env
 
 	listPage, listMax int
+	rec               Recorder
 
 	mu      sync.Mutex
 	clients map[string]*clusterClient
@@ -231,7 +232,29 @@ func (s *Service) Status(ctx context.Context, args StatusArgs) (Status, error) {
 	if args.Refresh && args.ClusterID != "" {
 		s.drop(args.ClusterID)
 	}
-	cs, err := s.client(args.ClusterID)
+	var st Status
+	var probeErr error
+	err := s.record(ctx, args.ClusterID, args.Background, StatusCommand, func(ctx context.Context, _ *OpNote) error {
+		st, probeErr = s.probe(ctx, args.ClusterID)
+		if probeErr != nil {
+			return probeErr
+		}
+		if st.State == StatusUnavailable {
+			return errors.New(st.Message)
+		}
+		return nil
+	})
+	if probeErr != nil {
+		return Status{}, probeErr
+	}
+	if st.State != "" {
+		return st, nil
+	}
+	return Status{}, err
+}
+
+func (s *Service) probe(ctx context.Context, clusterID string) (Status, error) {
+	cs, err := s.client(clusterID)
 	var ie *ipcerr.Error
 	if errors.As(err, &ie) {
 		return Status{}, ie

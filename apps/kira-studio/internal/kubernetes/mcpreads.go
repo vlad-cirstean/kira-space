@@ -46,6 +46,21 @@ func (s *Service) ReadLogs(ctx context.Context, args LogsReadArgs) (LogsReadResu
 	case args.Tail <= 0:
 		return LogsReadResult{}, ipcerr.Contract("tail must be positive")
 	}
+	var res LogsReadResult
+	err := s.record(ctx, args.ClusterID, false, func(n string) string { return LogsCommand(n, args, false) }, func(ctx context.Context, note *OpNote) error {
+		var err error
+		if res, err = s.readLogs(ctx, args); err == nil {
+			note.SetRows(len(res.Lines))
+		}
+		return err
+	})
+	if err != nil {
+		return LogsReadResult{}, err
+	}
+	return res, nil
+}
+
+func (s *Service) readLogs(ctx context.Context, args LogsReadArgs) (LogsReadResult, error) {
 	cs, err := s.client(args.ClusterID)
 	if err != nil {
 		return LogsReadResult{}, mapErr(err)

@@ -27,6 +27,21 @@ func (s *Service) Describe(ctx context.Context, args DescribeArgs) (Description,
 	if args.Name == "" {
 		return Description{}, ipcerr.Required("name")
 	}
+	var d Description
+	err := s.record(ctx, args.ClusterID, args.Background, func(n string) string { return DescribeCommand(n, args) }, func(ctx context.Context, note *OpNote) error {
+		var err error
+		if d, err = s.describe(ctx, args); err == nil {
+			note.SetRows(1)
+		}
+		return err
+	})
+	if err != nil {
+		return Description{}, err
+	}
+	return d, nil
+}
+
+func (s *Service) describe(ctx context.Context, args DescribeArgs) (Description, error) {
 	cs, err := s.client(args.ClusterID)
 	if err != nil {
 		return Description{}, mapErr(err)

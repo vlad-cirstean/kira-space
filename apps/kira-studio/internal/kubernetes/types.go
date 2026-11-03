@@ -170,10 +170,13 @@ type Description struct {
 type StatusArgs struct {
 	ClusterID string `json:"clusterId"`
 	Refresh   bool   `json:"refresh"`
+	// Background marks a refetch of loaded data: it skips the op log.
+	Background bool `json:"background,omitempty"`
 }
 
 type ClusterArgs struct {
-	ClusterID string `json:"clusterId"`
+	ClusterID  string `json:"clusterId"`
+	Background bool   `json:"background,omitempty"`
 }
 
 type ListArgs struct {
@@ -181,13 +184,15 @@ type ListArgs struct {
 	Kind          string `json:"kind"`
 	Namespace     string `json:"namespace"`
 	LabelSelector string `json:"labelSelector"`
+	Background    bool   `json:"background,omitempty"`
 }
 
 type DescribeArgs struct {
-	ClusterID string `json:"clusterId"`
-	Kind      string `json:"kind"`
-	Namespace string `json:"namespace"`
-	Name      string `json:"name"`
+	ClusterID  string `json:"clusterId"`
+	Kind       string `json:"kind"`
+	Namespace  string `json:"namespace"`
+	Name       string `json:"name"`
+	Background bool   `json:"background,omitempty"`
 }
 
 type StreamArgs struct {

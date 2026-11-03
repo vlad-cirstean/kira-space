@@ -161,7 +161,7 @@ func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, kee
 	// restart of the embedded server within one app run.
 	dbMcpApprovals := dbmcp.NewApprovalBroker(time.Now)
 	dbMcpApprovals.Prompts = promptRouter
-	kubeSvc := &bridge.KubernetesService{BoundService: kubernetes.NewBoundService(deps.Repos.KubeClusters, deps.Events, opts.KubernetesExtra...)}
+	kubeSvc := &bridge.KubernetesService{BoundService: kubernetes.NewBoundService(deps.Repos.KubeClusters, deps.Events, append([]kubernetes.Option{kubernetes.WithRecorder(bridge.KubeRecorder{Host: deps.Router.Host()})}, opts.KubernetesExtra...)...)}
 	dbMcpSvc := bridge.NewDbMcpService(deps, installer, dbMcpApprovals, proofSvc, kubernetes.ServiceOf(kubeSvc.BoundService))
 	bridge.StartDbMcpIfEnabled(dbMcpSvc)
 

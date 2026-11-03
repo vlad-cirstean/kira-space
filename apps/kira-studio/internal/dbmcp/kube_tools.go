@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
@@ -21,11 +20,6 @@ type KubeReader interface {
 	ListCapped(context.Context, kubernetes.ListArgs, int) (kubernetes.ListResult, error)
 	Describe(context.Context, kubernetes.DescribeArgs) (kubernetes.Description, error)
 	ReadLogs(context.Context, kubernetes.LogsReadArgs) (kubernetes.LogsReadResult, error)
-}
-
-// OpRunner is adapterhost.Host's RunOp, for the op-log row of each Kubernetes read.
-type OpRunner interface {
-	RunOp(context.Context, adapterhost.OpSpec, func(context.Context, *adapters.OpCtx) (any, error)) (string, any, error)
 }
 
 const (
@@ -147,8 +141,8 @@ func noClusterResult(id string) (*mcp.CallToolResult, any, error) {
 }
 
 // kubeRun is the gate every cluster read passes: exposure, the group's mode, the approval for
-// prompt, then the read under an op-log row. read returns the result and the row count to record.
-func (s *Server) kubeRun(ctx context.Context, clusterID, group, namespace string, statement func(kubernetes.Cluster) string, read func(context.Context) (any, int, error)) (*mcp.CallToolResult, any, error) {
+// prompt, then the read. The kubernetes service records the op-log row.
+func (s *Server) kubeRun(ctx context.Context, clusterID, group, namespace string, statement func(kubernetes.Cluster) string, read func(context.Context) (any, error)) (*mcp.CallToolResult, any, error) {
 	c, found, err := s.resolveCluster(ctx, clusterID)
 	if err != nil {
 		return toolError(err)
@@ -183,15 +177,7 @@ func (s *Server) kubeRun(ctx context.Context, clusterID, group, namespace string
 		return errResult(kubeDeniedText(c.Context, group, "deny"))
 	}
 
-	_, out, err := s.cfg.Ops.RunOp(ctx, adapterhost.OpSpec{Kind: "kubernetes"}, func(ctx context.Context, op *adapters.OpCtx) (any, error) {
-		op.SetCommand(stmt)
-		v, n, err := read(ctx)
-		if err != nil {
-			return nil, err
-		}
-		op.SetRows(n)
-		return v, nil
-	})
+	out, err := read(ctx)
 	if err != nil {
 		return toolError(err)
 	}
@@ -224,25 +210,24 @@ func (s *Server) kubeListClusters(ctx context.Context, _ *mcp.CallToolRequest, _
 func (s *Server) kubeListNamespaces(ctx context.Context, _ *mcp.CallToolRequest, a kubeClusterArgs) (*mcp.CallToolResult, any, error) {
 	return s.kubeRun(ctx, a.ClusterID, kubeDiscover, "",
 		func(c kubernetes.Cluster) string { return kubernetes.NamespacesCommand(c.Context) },
-		func(ctx context.Context) (any, int, error) {
-			r, err := s.cfg.Kube.Namespaces(ctx, kubernetes.ClusterArgs{ClusterID: a.ClusterID})
-			return r, len(r.Namespaces), err
+		func(ctx context.Context) (any, error) {
+			return s.cfg.Kube.Namespaces(ctx, kubernetes.ClusterArgs{ClusterID: a.ClusterID})
 		})
 }
 
 func (s *Server) kubeListKinds(ctx context.Context, _ *mcp.CallToolRequest, a kubeClusterArgs) (*mcp.CallToolResult, any, error) {
 	return s.kubeRun(ctx, a.ClusterID, kubeDiscover, "",
 		func(c kubernetes.Cluster) string { return kubernetes.KindsCommand(c.Context) },
-		func(ctx context.Context) (any, int, error) {
+		func(ctx context.Context) (any, error) {
 			r, err := s.cfg.Kube.Kinds(ctx, kubernetes.ClusterArgs{ClusterID: a.ClusterID})
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 			kinds := make([]kubeKindView, 0, len(r.Kinds))
 			for _, k := range r.Kinds {
 				kinds = append(kinds, kubeKindView{Key: k.Key, Kind: k.Kind, Namespaced: k.Namespaced, Category: k.Category})
 			}
-			return map[string]any{"kinds": kinds, "partial": r.Partial}, len(kinds), nil
+			return map[string]any{"kinds": kinds, "partial": r.Partial}, nil
 		})
 }
 
@@ -252,12 +237,12 @@ func (s *Server) kubeListResources(ctx context.Context, _ *mcp.CallToolRequest, 
 		func(c kubernetes.Cluster) string {
 			return kubernetes.ListCommand(c.Context, kubernetes.ListArgs{ClusterID: a.ClusterID, Kind: a.Kind, Namespace: a.Namespace, LabelSelector: a.LabelSelector})
 		},
-		func(ctx context.Context) (any, int, error) {
+		func(ctx context.Context) (any, error) {
 			r, err := s.cfg.Kube.ListCapped(ctx, kubernetes.ListArgs{
 				ClusterID: a.ClusterID, Kind: a.Kind, Namespace: a.Namespace, LabelSelector: a.LabelSelector,
 			}, maxRows)
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 			cols := make([]string, 0, len(r.Columns))
 			for _, col := range r.Columns {
@@ -267,7 +252,7 @@ func (s *Server) kubeListResources(ctx context.Context, _ *mcp.CallToolRequest, 
 			for _, row := range r.Rows {
 				rows = append(rows, kubeRowView{Name: row.Name, Namespace: row.Namespace, Cells: row.Cells})
 			}
-			return map[string]any{"columns": cols, "rows": rows, "rowCount": len(rows), "truncated": r.Truncated}, len(rows), nil
+			return map[string]any{"columns": cols, "rows": rows, "rowCount": len(rows), "truncated": r.Truncated}, nil
 		})
 }
 
@@ -276,16 +261,16 @@ func (s *Server) kubeDescribeTool(ctx context.Context, _ *mcp.CallToolRequest, a
 		func(c kubernetes.Cluster) string {
 			return kubernetes.DescribeCommand(c.Context, kubernetes.DescribeArgs{ClusterID: a.ClusterID, Kind: a.Kind, Namespace: a.Namespace, Name: a.Name})
 		},
-		func(ctx context.Context) (any, int, error) {
+		func(ctx context.Context) (any, error) {
 			d, err := s.cfg.Kube.Describe(ctx, kubernetes.DescribeArgs{
 				ClusterID: a.ClusterID, Kind: a.Kind, Namespace: a.Namespace, Name: a.Name,
 			})
 			if err != nil {
-				return nil, 0, err
+				return nil, err
 			}
 			res := kubeDescribeResult{Description: d}
 			res.Manifest, res.ManifestTruncated = cutLines(d.Manifest, kubeManifestMax)
-			return res, 1, nil
+			return res, nil
 		})
 }
 
@@ -295,12 +280,11 @@ func (s *Server) kubePodLogs(ctx context.Context, _ *mcp.CallToolRequest, a kube
 		func(c kubernetes.Cluster) string {
 			return kubernetes.LogsCommand(c.Context, kubernetes.LogsReadArgs{Namespace: a.Namespace, Pod: a.Pod, Container: a.Container, Previous: a.Previous, Timestamps: a.Timestamps, Tail: tail}, false)
 		},
-		func(ctx context.Context) (any, int, error) {
-			r, err := s.cfg.Kube.ReadLogs(ctx, kubernetes.LogsReadArgs{
+		func(ctx context.Context) (any, error) {
+			return s.cfg.Kube.ReadLogs(ctx, kubernetes.LogsReadArgs{
 				ClusterID: a.ClusterID, Namespace: a.Namespace, Pod: a.Pod, Container: a.Container,
 				Previous: a.Previous, Timestamps: a.Timestamps, Tail: tail,
 			})
-			return r, len(r.Lines), err
 		})
 }
 
