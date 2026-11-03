@@ -129,7 +129,7 @@ test('run dialog', async ({ relaunch }) => {
   const allow = fixtureData();
   await page
     .locator(
-      `[data-testid="ade-task"][data-task-id="T_alerts"] ${t('ade-task-cells')} ${t('ade-task-action-run')}`,
+      `[data-testid="ade-task"][data-task-id="T_alerts"] ${t('ade-card-head')} ${t('ade-task-action-run')}`,
     )
     .click();
   const dialog = page.locator(t('ade-run-dialog'));

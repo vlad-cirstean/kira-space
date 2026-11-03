@@ -140,7 +140,7 @@ const solidBorder = computed(() => props.band.isMonday || props.band.isLater || 
         v-for="h in history"
         :key="h.key"
         variant="toolbar"
-        class="ml-54.5 h-row w-auto justify-start gap-2 px-2 font-normal data-[selected]:bg-select"
+        class="h-row w-auto justify-start gap-2 px-2 font-normal data-[selected]:bg-select"
         :data-selected="ui.selectedTaskId === h.key || undefined"
         :data-task-id="h.key"
         data-testid="ade-history-row"
@@ -156,7 +156,7 @@ const solidBorder = computed(() => props.band.isMonday || props.band.isLater || 
           h.meta
         }}</span>
       </Button>
-      <div v-if="overdue" class="flex items-center gap-2 pl-54.5 text-kira-sm text-tone-amber">
+      <div v-if="overdue" class="flex items-center gap-2 text-kira-sm text-tone-amber">
         <span>{{ overdueNote }}</span>
         <Button
           variant="dialog"
@@ -167,7 +167,7 @@ const solidBorder = computed(() => props.band.isMonday || props.band.isLater || 
           {{ t('space.ade.board.taskMenu.moveToday.label') }}
         </Button>
       </div>
-      <div v-if="over" class="flex items-center gap-2 pl-54.5 text-kira-sm text-tone-red">
+      <div v-if="over" class="flex items-center gap-2 text-kira-sm text-tone-red">
         <span>{{ overflowNote }}</span>
         <Button
           variant="dialog-danger"
@@ -192,7 +192,7 @@ const solidBorder = computed(() => props.band.isMonday || props.band.isLater || 
         v-for="s in spans"
         :key="s.taskId"
         variant="toolbar"
-        class="ml-54.5 h-row w-auto justify-start gap-2 border border-border px-2 font-normal data-[selected]:bg-select"
+        class="h-row w-auto justify-start gap-2 border border-border px-2 font-normal data-[selected]:bg-select"
         :data-task-id="s.taskId"
         :data-selected="ui.selectedTaskId === s.taskId || undefined"
         data-testid="ade-span-row"

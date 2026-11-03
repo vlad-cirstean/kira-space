@@ -115,7 +115,7 @@ test('a review card opens from its menu and its row', async ({ relaunch }) => {
   await page.locator(t('ade-load-all')).click();
   await page.locator(card('R_sara')).scrollIntoViewIfNeeded();
   await page
-    .locator(`[data-testid="ade-task"][data-task-id="R_sara"] ${t('ade-task-cells')} > *`)
+    .locator(`[data-testid="ade-task"][data-task-id="R_sara"] ${t('ade-tag')}`)
     .first()
     .click({ button: 'right' });
   await expect(page.locator(item('ade-task-review-shortcut'))).toBeVisible();

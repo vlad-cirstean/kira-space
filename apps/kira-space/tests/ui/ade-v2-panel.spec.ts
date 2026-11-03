@@ -417,10 +417,10 @@ test('a running setup shows a ticking preparing tag', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
   const tag = page
     .locator('[data-testid="ade-task"][data-task-id="T_push"] [data-testid="ade-tag"]')
-    .filter({ hasText: 'preparing' });
+    .and(page.locator('[aria-label*="preparing" i]'));
   await expect(tag).toHaveCount(1);
-  const first = await tag.textContent();
-  await expect.poll(async () => tag.textContent()).not.toBe(first);
+  const first = await tag.getAttribute('aria-label');
+  await expect.poll(async () => tag.getAttribute('aria-label')).not.toBe(first);
 });
 
 test('See error opens the branch with the failed setup log, Retry setup sends the branch', async ({

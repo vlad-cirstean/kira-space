@@ -143,7 +143,7 @@ test('a branch behind a develop base offers Rebase onto develop, run in the back
 }) => {
   const { window: page, control } = await open(relaunch, onDevelop);
   const tag = authTask(page).locator(t('ade-rebase')).first();
-  await expect(tag).toHaveText('Rebase');
+  await expect(tag).toHaveAttribute('aria-label', 'Rebase');
   await tag.hover();
   await expect(
     page.locator('[data-testid="branch-chip"][data-var="base"]', { hasText: 'develop' }).first(),
@@ -359,7 +359,9 @@ test('a missing base shows its tag and disables Review code', async ({ relaunch 
     Object.assign(branch(b, 'b_notif'), { base: 'gone/base', baseMissing: true });
   });
   const notif = page.locator(`${t('ade-card')}[data-task-id="T_notif"]`);
-  await expect(page.getByText('base missing').first()).toBeVisible();
+  await expect(
+    page.locator('[data-testid="ade-tag"][data-kind="baseMissing"]').first(),
+  ).toBeVisible();
   await expect(notif.locator(t('ade-card-review'))).toBeDisabled();
 });
 

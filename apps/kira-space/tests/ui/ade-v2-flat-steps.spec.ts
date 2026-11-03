@@ -12,7 +12,7 @@ const t = (id: string) => `[data-testid="${id}"]`;
 const card = (page: Page, id: string) =>
   page.locator(`[data-testid="ade-card"][data-task-id="${id}"]`);
 const cellAction = (id: string, kind: string) =>
-  `${t('ade-task')}[data-task-id="${id}"] ${t('ade-task-cells')} ${t(`ade-task-action-${kind}`)}`;
+  `${t('ade-task')}[data-task-id="${id}"] ${t('ade-card-head')} ${t(`ade-task-action-${kind}`)}`;
 const block = (page: Page, id: string) =>
   page.locator(`${t('ade-step-block')}[data-step-id="${id}"]`);
 const node = (page: Page, id: string) => page.locator(`${t('ade-wf-node')}[data-step-id="${id}"]`);

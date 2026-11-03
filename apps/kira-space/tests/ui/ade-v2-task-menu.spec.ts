@@ -70,7 +70,7 @@ test('a review item gets the reduced set', async ({ relaunch }) => {
   await page.locator(t('ade-load-all')).click();
   await page.locator(card('R_sara')).scrollIntoViewIfNeeded();
   await page
-    .locator(`[data-testid="ade-task"][data-task-id="R_sara"] ${t('ade-task-cells')} > *`)
+    .locator(`[data-testid="ade-task"][data-task-id="R_sara"] ${t('ade-tag')}`)
     .first()
     .click({ button: 'right' });
   await expect(page.locator(t('context-menu'))).toBeVisible();
