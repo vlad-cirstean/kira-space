@@ -1,5 +1,6 @@
 import * as AgentService from '@bindings/agentservice.js';
 import * as AppService from '@bindings/appservice.js';
+import * as ConfigFilesService from '@bindings/configfilesservice.js';
 import * as ConnectionsService from '@bindings/connectionsservice.js';
 import * as CustomScriptsService from '@bindings/customscriptsservice.js';
 import * as DataGripService from '@bindings/datagripservice.js';
@@ -94,9 +95,8 @@ import type {
 import type {
   CustomScript,
   CustomScriptFields,
-  ScriptCollection,
   ScriptDir,
-  ScriptMcpServerList,
+  ScriptFileView,
   ScriptsSnapshot,
   SecretValues,
 } from '@shared/domain/scripts';
@@ -497,6 +497,10 @@ const studioControl = {
 
   // P85 §9.3: the Scripts settings section and the tab strip's own dropdown both go through
   // state/customScripts.ts, the one store that wraps these.
+  configFilesOpen: (args: { folder: string; file: string }): Promise<void> =>
+    unwrap(ConfigFilesService.Open(args)),
+  configFilesReveal: (args: { folder: string; file: string }): Promise<void> =>
+    unwrap(ConfigFilesService.Reveal(args)),
   customScriptsList: (): Promise<ScriptsSnapshot> =>
     unwrap(CustomScriptsService.List()).then((r) => scriptsSnapshotOf(r)),
   customScriptsCreate: (
@@ -506,36 +510,29 @@ const studioControl = {
     unwrap(CustomScriptsService.Create({ fields, secretValues })).then((r) =>
       trust<CustomScript>(r),
     ),
-  customScriptsUpdate: (
-    id: string,
-    fields: CustomScriptFields,
-    secretValues: SecretValues | null,
-  ): Promise<CustomScript> =>
-    unwrap(CustomScriptsService.Update({ id, fields, secretValues })).then((r) =>
-      trust<CustomScript>(r),
-    ),
   customScriptsDelete: (id: string): Promise<void> => unwrap(CustomScriptsService.Delete({ id })),
-  customScriptsCreateCollection: (name: string): Promise<ScriptCollection> =>
-    unwrap(CustomScriptsService.CreateCollection({ name })).then((r) => trust<ScriptCollection>(r)),
-  customScriptsRenameCollection: (id: string, name: string): Promise<void> =>
-    unwrap(CustomScriptsService.RenameCollection({ id, name })),
-  customScriptsDeleteCollection: (id: string): Promise<void> =>
-    unwrap(CustomScriptsService.DeleteCollection({ id })),
-  customScriptsMove: (
-    id: string,
-    collectionId: string | null,
-    beforeId: string | null = null,
-  ): Promise<void> => unwrap(CustomScriptsService.Move({ id, collectionId, beforeId })),
-  customScriptsReorder: (collectionId: string | null, ids: string[]): Promise<void> =>
-    unwrap(CustomScriptsService.Reorder({ collectionId, ids })),
-  customScriptsReorderCollections: (ids: string[]): Promise<void> =>
-    unwrap(CustomScriptsService.ReorderCollections({ ids })),
+  customScriptsFile: (file: string): Promise<ScriptFileView> =>
+    unwrap(CustomScriptsService.File({ file })).then((r) => trust<ScriptFileView>(r)),
+  customScriptsSaveFile: (file: string, text: string, baseHash: string): Promise<ScriptFileView> =>
+    unwrap(CustomScriptsService.SaveFile({ file, text, baseHash })).then((r) =>
+      trust<ScriptFileView>(r),
+    ),
+  customScriptsSetSecrets: (id: string, values: SecretValues): Promise<CustomScript> =>
+    unwrap(CustomScriptsService.SetSecrets({ id, values })).then((r) => trust<CustomScript>(r)),
+  customScriptsReorder: (collection: string, ids: string[]): Promise<void> =>
+    unwrap(CustomScriptsService.Reorder({ collection, ids })),
+  customScriptsReorderCollections: (names: string[]): Promise<void> =>
+    unwrap(CustomScriptsService.ReorderCollections({ names })),
   onCustomScriptsChanged: (cb: (snapshot: ScriptsSnapshot) => void): (() => void) =>
     on(CHANNEL.customScriptsChanged, (r) => cb(scriptsSnapshotOf(r))),
 
   scriptRunsList: (limit?: number, taskId?: string): Promise<ScriptRun[]> =>
     unwrap(ScriptRunsService.List({ limit: limit ?? 0, taskId: taskId ?? '' })).then((r) =>
       trust<ScriptRun[]>(r ?? []),
+    ),
+  scriptRunsNextFires: (cron: string, timezone: string, count?: number): Promise<number[]> =>
+    unwrap(ScriptRunsService.NextFires({ cron, timezone, count: count ?? 0 })).then((r) =>
+      trust<number[]>(r ?? []),
     ),
   scriptRunsStop: (id: string): Promise<void> => unwrap(ScriptRunsService.Stop({ id })),
   scriptRunsResolveDir: (scriptId: string): Promise<ScriptDir> =>
@@ -568,10 +565,6 @@ const studioControl = {
     cb: (push: { runId: string; chunks: ScriptRunLogChunk[] }) => void,
   ): (() => void) =>
     on(CHANNEL.scriptRunLog, (r) => cb(trust<{ runId: string; chunks: ScriptRunLogChunk[] }>(r))),
-  scriptRunsNextFires: (cron: string, timezone: string, count?: number): Promise<number[]> =>
-    unwrap(ScriptRunsService.NextFires({ cron, timezone, count: count ?? 0 })).then((r) =>
-      trust<number[]>(r ?? []),
-    ),
   scriptRunsSchedulePreview: (
     scriptId: string,
     secrets: Record<string, string[]>,
@@ -597,10 +590,6 @@ const studioControl = {
     ),
   scriptRunsConfirmDecline: (runId: string): Promise<void> =>
     unwrap(ScriptRunsService.ConfirmDecline({ id: runId })),
-  scriptRunsMcpServers: (): Promise<ScriptMcpServerList> =>
-    unwrap(ScriptRunsService.McpServers()).then((r) =>
-      trust<ScriptMcpServerList>(r ?? { source: 'agent', servers: [] }),
-    ),
 };
 
 // One exported object, composed from the methods shared with Kira Space

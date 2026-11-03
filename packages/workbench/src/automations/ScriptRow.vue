@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ScriptRun } from '@shared/domain/scriptRuns';
-import type { CustomScript } from '@shared/domain/scripts';
+import type { CustomScript, ScriptFileProblem } from '@shared/domain/scripts';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import Spinner from '@theme/components/Spinner.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
@@ -17,11 +18,19 @@ defineProps<{
   script: CustomScript;
   depth: 0 | 1;
   liveRun?: ScriptRun;
+  /** The run's file has an error now; the last good version keeps running. */
+  problem?: ScriptFileProblem | null;
   selected: boolean;
   /** The script's own tab is still running: the play button shows it instead of starting. */
   live: boolean;
 }>();
 const emit = defineEmits<{ run: []; open: []; menu: [event: MouseEvent] }>();
+
+function problemText(p: ScriptFileProblem): string {
+  return p.line > 0
+    ? t('common.config.lineError.error', { line: p.line, text: p.message })
+    : t('common.config.fileError.error', { text: p.message });
+}
 
 function firstLine(command: string): string {
   const [first = '', ...rest] = command.split('\n');
@@ -52,6 +61,17 @@ function firstLine(command: string): string {
           <span class="flex min-w-0 items-center gap-1">
             <SmartBadge v-if="script.kind === 'smart'" />
             <span class="truncate">{{ script.name }}</span>
+            <Tooltip v-if="problem">
+              <TooltipTrigger as-child>
+                <CodiconIcon
+                  name="warning"
+                  :size="12"
+                  class="shrink-0 text-tone-red"
+                  data-testid="script-row-problem"
+                />
+              </TooltipTrigger>
+              <TooltipContent>{{ problemText(problem) }}</TooltipContent>
+            </Tooltip>
           </span>
           <span class="truncate text-muted-foreground text-kira-sm">{{
             firstLine(script.command)

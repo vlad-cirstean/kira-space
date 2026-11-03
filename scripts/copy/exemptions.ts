@@ -27,9 +27,4 @@ export const EXEMPTIONS: readonly Exemption[] = [
     path: 'packages/workbench/src/automations/run/RunPreview.vue',
     reason: '`--tools` and `--allowedTools` are claude CLI flag names, shown as the command line',
   },
-  {
-    rule: 'U64',
-    path: 'packages/workbench/src/automations/smart/ToolsField.vue',
-    reason: '`--allowedTools` is a claude CLI flag name, shown as the command line',
-  },
 ];

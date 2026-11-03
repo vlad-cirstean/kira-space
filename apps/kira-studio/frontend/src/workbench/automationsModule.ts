@@ -74,31 +74,27 @@ export function createAutomationsModule(): AutomationsModuleContext {
       confirmAccept: (runId, hash, secrets) =>
         control.scriptRunsConfirmAccept(runId, hash, secrets),
       confirmDecline: (runId) => control.scriptRunsConfirmDecline(runId),
-      mcpServers: () => control.scriptRunsMcpServers(),
     },
     ade: false,
     showAutomations: () => modeStore.setMode('automations'),
     showOperations: () => layoutStore.showOperationsPanel(),
-    chooseFolder: async (title) => {
-      const chosen = await control.filesChooseFolder(title);
-      return chosen.canceled ? null : chosen.path;
+    files: {
+      open: (file) => control.configFilesOpen({ folder: 'runs', file }),
+      reveal: (file) => control.configFilesReveal({ folder: 'runs', file }),
     },
     scripts: {
       records: () => customScriptsStore.records,
-      create: (fields, secretValues) =>
-        customScriptsStore.createCustomScript(fields, secretValues ?? null),
-      update: (id, fields, secretValues) =>
-        customScriptsStore.updateCustomScript(id, fields, secretValues ?? null),
-      secretStorage: () => customScriptsStore.secretStorage,
-      remove: (id) => customScriptsStore.removeCustomScript(id),
       collections: () => customScriptsStore.collections,
-      createCollection: (name) => customScriptsStore.createCollection(name),
-      renameCollection: (id, name) => customScriptsStore.renameCollection(id, name),
-      removeCollection: (id) => customScriptsStore.removeCollection(id),
-      move: (id, collectionId, beforeId) =>
-        customScriptsStore.moveScript(id, collectionId, beforeId),
-      reorder: (collectionId, ids) => customScriptsStore.reorderScripts(collectionId, ids),
-      reorderCollections: (ids) => customScriptsStore.reorderCollections(ids),
+      problems: () => customScriptsStore.problems,
+      dir: () => customScriptsStore.dir,
+      secretStorage: () => customScriptsStore.secretStorage,
+      create: (fields) => customScriptsStore.createCustomScript(fields),
+      remove: (id) => customScriptsStore.removeCustomScript(id),
+      readFile: (file) => customScriptsStore.readFile(file),
+      saveFile: (file, text, baseHash) => customScriptsStore.saveFile(file, text, baseHash),
+      setSecrets: (id, values) => customScriptsStore.setSecrets(id, values),
+      reorder: (collection, ids) => customScriptsStore.reorderScripts(collection, ids),
+      reorderCollections: (names) => customScriptsStore.reorderCollections(names),
     },
   };
 }

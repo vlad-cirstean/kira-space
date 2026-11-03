@@ -1,10 +1,5 @@
 {
   "automations": {
-    "collection": {
-      "deleteConfirm": {
-        "body": "Delete “{name}” and everything inside it."
-      }
-    },
     "dialog": {
       "run": {
         "editPrompt": {
@@ -28,42 +23,8 @@
         }
       },
       "script": {
-        "chooseFolder": {
-          "label": "Choose folder…",
-          "title": "Choose a run folder"
-        },
-        "edit": {
-          "title": "Edit script"
-        },
-        "editSmart": {
-          "title": "Edit smart script"
-        },
-        "homeNotice": {
-          "description": "Runs in your home folder {home}, the old default. New scripts use the Kira scripts folder."
-        },
-        "nameExample": {
-          "example": "Build"
-        },
         "noCollection": {
           "option": "No collection"
-        },
-        "noFolder": {
-          "status": "No folder chosen"
-        },
-        "runFolder": {
-          "label": "Run folder"
-        },
-        "setOnSave": {
-          "status": "Set on save"
-        },
-        "tabs": {
-          "aria": "Script editor tabs"
-        },
-        "useAdeDir": {
-          "label": "Run in the task’s worktree when started from ADE"
-        },
-        "useKira": {
-          "label": "Use Kira scripts folder"
         }
       }
     },
@@ -79,38 +40,23 @@
       }
     },
     "error": {
-      "budget": {
-        "error": "Budget must be above 0."
-      },
-      "commandRequired": {
-        "error": "Command is required."
-      },
-      "folderRequired": {
-        "error": "Choose a folder."
-      },
-      "nameRequired": {
-        "error": "Name is required."
-      },
       "nothingToRun": {
         "error": "Nothing to run yet."
+      }
+    },
+    "file": {
+      "broken": {
+        "status": "Not valid"
       },
-      "paramName": {
-        "error": "Use lowercase letters, digits and underscores, starting with a letter, 32 characters at most."
+      "field": {
+        "aria": "Run file text"
       },
-      "paramOption": {
-        "error": "Add at least one option."
+      "lastGood": {
+        "hint": "The file has an error. Runs use the last good version."
       },
-      "paramReserved": {
-        "error": "“{name}” is reserved."
-      },
-      "paramTwice": {
-        "error": "“{name}” is listed twice."
-      },
-      "promptRequired": {
-        "error": "Prompt is required."
-      },
-      "repeatRequired": {
-        "error": "Repeat is required."
+      "secrets": {
+        "hint": "Saved in the keychain. The file lists only the parameter name.",
+        "title": "Secret values"
       }
     },
     "ops": {
@@ -131,30 +77,6 @@
       }
     },
     "params": {
-      "add": {
-        "label": "Add parameter"
-      },
-      "addOption": {
-        "label": "Add option"
-      },
-      "default": {
-        "aria": "Default {option}"
-      },
-      "multiselect": {
-        "option": "Multiselect"
-      },
-      "option": {
-        "placeholder": "Option"
-      },
-      "remove": {
-        "tooltip": "Remove parameter {name}"
-      },
-      "removeOption": {
-        "tooltip": "Remove option"
-      },
-      "scriptHint": {
-        "description": "Parameters reach the command as {variable}."
-      },
       "secretValue": {
         "saved": {
           "placeholder": "Saved, type to replace",
@@ -163,12 +85,6 @@
         "storageOff": {
           "description": "The keychain is unavailable, so a secret can’t be saved. Each run asks for it."
         }
-      },
-      "smartHint": {
-        "description": "Use {token} in the prompt. A secret reaches the run as {variable} only, never in the prompt."
-      },
-      "title": {
-        "label": "Parameters"
       }
     },
     "restore": {
@@ -329,26 +245,8 @@
       }
     },
     "schedule": {
-      "askEach": {
-        "hint": "A popup asks before each run."
-      },
-      "askLocked": {
-        "hint": "Needs your answer each time. A required secret parameter has no saved value."
-      },
-      "cronExample": {
-        "example": "0 9 * * 1-5"
-      },
-      "cronHint": {
-        "hint": "Minute hour day month weekday."
-      },
       "due": {
         "status": "Due {time}"
-      },
-      "enable": {
-        "label": "Run on a schedule"
-      },
-      "enabled": {
-        "label": "Enabled"
       },
       "everyDay": {
         "option": "Every day {time}"
@@ -359,60 +257,14 @@
       "everyMinutes": {
         "option": "Every {count} minute | Every {count} minutes"
       },
-      "findTimezone": {
-        "placeholder": "Find a timezone"
-      },
       "mondays": {
         "option": "Mondays {time}"
       },
       "next": {
         "label": "Next: {times}"
       },
-      "noTimezone": {
-        "empty": "No timezone"
-      },
-      "note": {
-        "hint": "Runs only while {app} is open. Missed runs are skipped. A run still going, or still waiting for your answer, makes the next one skip."
-      },
-      "presets": {
-        "aria": "Presets",
-        "option": "Choose preset…"
-      },
-      "quiet": {
-        "label": "Run without asking"
-      },
-      "quietWhy": {
-        "hint": "Runs as soon as it is due, with no popup."
-      },
-      "repeat": {
-        "label": "Repeat"
-      },
-      "saveFirst": {
-        "hint": "Save the script, then edit it to choose a task."
-      },
-      "timeoutExample": {
-        "example": "30m"
-      },
-      "timeoutRange": {
-        "hint": "Between 1m and 24h. A run still going at the limit is stopped."
-      },
-      "timezone": {
-        "label": "Timezone"
-      },
-      "title": {
-        "label": "Schedule"
-      },
       "weekdays": {
         "option": "Weekdays {time}"
-      },
-      "where": {
-        "label": "Where"
-      },
-      "whereFolder": {
-        "label": "Script folder"
-      },
-      "whereTask": {
-        "label": "An ADE task"
       }
     },
     "script": {
@@ -428,17 +280,17 @@
       "defaultValue": {
         "label": "Default: {value}"
       },
-      "editSchedule": {
-        "label": "Edit schedule…"
+      "editFile": {
+        "label": "Edit file"
+      },
+      "editTarget": {
+        "label": "Set target…"
       },
       "fromTask": {
         "status": "From the task"
       },
       "gone": {
         "error": "This script no longer exists."
-      },
-      "insertHint": {
-        "hint": "Use {token} to insert a parameter. Press {chord} to save."
       },
       "new": {
         "label": "New script"
@@ -462,9 +314,6 @@
       "secretInPrompt": {
         "error": "A secret can’t be used in the prompt."
       },
-      "shellHint": {
-        "hint": "Runs in your login shell; lines run in order. Press {chord} to save."
-      },
       "showRun": {
         "tooltip": "Show run"
       },
@@ -476,71 +325,8 @@
       }
     },
     "smart": {
-      "addPattern": {
-        "aria": "Add pattern"
-      },
-      "addTool": {
-        "placeholder": "Add tool by name"
-      },
       "badge": {
         "tooltip": "Smart script that runs {agent} headless"
-      },
-      "bashExample": {
-        "example": "git status:*"
-      },
-      "bashHint": {
-        "hint": "Bash commands the script may run, such as {example}. Empty allows any."
-      },
-      "budget": {
-        "label": "Budget in dollars"
-      },
-      "defaultTools": {
-        "label": "Default tools"
-      },
-      "mcp": {
-        "label": "MCP tools"
-      },
-      "mcpAllTools": {
-        "label": "All tools"
-      },
-      "mcpHint": {
-        "hint": "Servers {agent} reports for your user config. A run that uses one loads your {agent} settings."
-      },
-      "mcpHintApp": {
-        "hint": "Servers from Kira’s own agent settings, not your CLI config."
-      },
-      "mcpNone": {
-        "emptyHint": "No MCP servers."
-      },
-      "mcpStatusConnected": {
-        "status": "Online"
-      },
-      "mcpStatusFailed": {
-        "status": "Unreachable"
-      },
-      "mcpStatusNeedsAuth": {
-        "status": "Needs sign-in"
-      },
-      "mcpStatusPending": {
-        "status": "Connecting"
-      },
-      "mcpStatusUnknown": {
-        "status": "Status unknown"
-      },
-      "model": {
-        "label": "Model"
-      },
-      "noCostCap": {
-        "label": "No cost cap"
-      },
-      "remove": {
-        "tooltip": "Remove {name}"
-      },
-      "timeoutExample": {
-        "example": "15m"
-      },
-      "tools": {
-        "label": "Tools"
       }
     },
     "start": {
@@ -551,6 +337,10 @@
         "empty": "No terminal open",
         "emptyHint": "Run a script from the panel, or open a terminal."
       }
+    },
+    "target": {
+      "hint": "The ADE task and branch each scheduled run uses.",
+      "title": "Target of {name}"
     }
   },
   "backend": {
@@ -2756,9 +2546,6 @@
       },
       "search": {
         "label": "Search"
-      },
-      "select": {
-        "label": "Select"
       },
       "selectAll": {
         "label": "Select all"

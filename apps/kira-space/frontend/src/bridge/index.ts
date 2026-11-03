@@ -73,9 +73,8 @@ import type {
 import type {
   CustomScript,
   CustomScriptFields,
-  ScriptCollection,
   ScriptDir,
-  ScriptMcpServerList,
+  ScriptFileView,
   ScriptsSnapshot,
   SecretValues,
 } from '@shared/domain/scripts';
@@ -137,36 +136,37 @@ const spaceControl = {
     unwrap(CustomScriptsService.Create({ fields, secretValues })).then((r) =>
       trust<CustomScript>(r),
     ),
-  customScriptsUpdate: (
+  customScriptsDelete: (id: string): Promise<void> => unwrap(CustomScriptsService.Delete({ id })),
+  customScriptsFile: (file: string): Promise<ScriptFileView> =>
+    unwrap(CustomScriptsService.File({ file })).then((r) => trust<ScriptFileView>(r)),
+  customScriptsSaveFile: (file: string, text: string, baseHash: string): Promise<ScriptFileView> =>
+    unwrap(CustomScriptsService.SaveFile({ file, text, baseHash })).then((r) =>
+      trust<ScriptFileView>(r),
+    ),
+  customScriptsSetSecrets: (id: string, values: SecretValues): Promise<CustomScript> =>
+    unwrap(CustomScriptsService.SetSecrets({ id, values })).then((r) => trust<CustomScript>(r)),
+  customScriptsSetScheduleTarget: (
     id: string,
-    fields: CustomScriptFields,
-    secretValues: SecretValues | null,
+    taskId: string,
+    branchId: string,
   ): Promise<CustomScript> =>
-    unwrap(CustomScriptsService.Update({ id, fields, secretValues })).then((r) =>
+    unwrap(CustomScriptsService.SetScheduleTarget({ id, taskId, branchId })).then((r) =>
       trust<CustomScript>(r),
     ),
-  customScriptsDelete: (id: string): Promise<void> => unwrap(CustomScriptsService.Delete({ id })),
-  customScriptsCreateCollection: (name: string): Promise<ScriptCollection> =>
-    unwrap(CustomScriptsService.CreateCollection({ name })).then((r) => trust<ScriptCollection>(r)),
-  customScriptsRenameCollection: (id: string, name: string): Promise<void> =>
-    unwrap(CustomScriptsService.RenameCollection({ id, name })),
-  customScriptsDeleteCollection: (id: string): Promise<void> =>
-    unwrap(CustomScriptsService.DeleteCollection({ id })),
-  customScriptsMove: (
-    id: string,
-    collectionId: string | null,
-    beforeId: string | null = null,
-  ): Promise<void> => unwrap(CustomScriptsService.Move({ id, collectionId, beforeId })),
-  customScriptsReorder: (collectionId: string | null, ids: string[]): Promise<void> =>
-    unwrap(CustomScriptsService.Reorder({ collectionId, ids })),
-  customScriptsReorderCollections: (ids: string[]): Promise<void> =>
-    unwrap(CustomScriptsService.ReorderCollections({ ids })),
+  customScriptsReorder: (collection: string, ids: string[]): Promise<void> =>
+    unwrap(CustomScriptsService.Reorder({ collection, ids })),
+  customScriptsReorderCollections: (names: string[]): Promise<void> =>
+    unwrap(CustomScriptsService.ReorderCollections({ names })),
   onCustomScriptsChanged: (cb: (snapshot: ScriptsSnapshot) => void): (() => void) =>
     on(CHANNEL.customScriptsChanged, (r) => cb(scriptsSnapshotOf(r))),
 
   scriptRunsList: (limit?: number, taskId?: string): Promise<ScriptRun[]> =>
     unwrap(ScriptRunsService.List({ limit: limit ?? 0, taskId: taskId ?? '' })).then((r) =>
       trust<ScriptRun[]>(r ?? []),
+    ),
+  scriptRunsNextFires: (cron: string, timezone: string, count?: number): Promise<number[]> =>
+    unwrap(ScriptRunsService.NextFires({ cron, timezone, count: count ?? 0 })).then((r) =>
+      trust<number[]>(r ?? []),
     ),
   scriptRunsStop: (id: string): Promise<void> => unwrap(ScriptRunsService.Stop({ id })),
   scriptRunsResolveDir: (scriptId: string): Promise<ScriptDir> =>
@@ -199,10 +199,6 @@ const spaceControl = {
     cb: (push: { runId: string; chunks: ScriptRunLogChunk[] }) => void,
   ): (() => void) =>
     on(CHANNEL.scriptRunLog, (r) => cb(trust<{ runId: string; chunks: ScriptRunLogChunk[] }>(r))),
-  scriptRunsNextFires: (cron: string, timezone: string, count?: number): Promise<number[]> =>
-    unwrap(ScriptRunsService.NextFires({ cron, timezone, count: count ?? 0 })).then((r) =>
-      trust<number[]>(r ?? []),
-    ),
   scriptRunsSchedulePreview: (
     scriptId: string,
     secrets: Record<string, string[]>,
@@ -228,10 +224,6 @@ const spaceControl = {
     ),
   scriptRunsConfirmDecline: (runId: string): Promise<void> =>
     unwrap(ScriptRunsService.ConfirmDecline({ id: runId })),
-  scriptRunsMcpServers: (): Promise<ScriptMcpServerList> =>
-    unwrap(ScriptRunsService.McpServers()).then((r) =>
-      trust<ScriptMcpServerList>(r ?? { source: 'agent', servers: [] }),
-    ),
 
   // P120: openExternal (LinkService) moved off createCoreControl.ts's now-deleted shared `link` binding —
   // Kira Studio never had a real use for it, so this app's own LinkService.OpenExternal call
