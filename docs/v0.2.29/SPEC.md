@@ -11,7 +11,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P486 | Kubernetes: resource browser redesign, tabbed pods | Todo |
 | P487 | Kubernetes: drive the kubectl CLI instead of the native client | Todo |
 | P488 | Install instructions: trust the Jira tap | Done |
-| P489 | Terminals: Cmd-click opens file paths in Kira Space | Todo |
+| P489 | Terminals: Cmd-click opens file paths in Kira Space | Done |
 | P490 | Kira Space: file open window shows only ad hoc file tabs | Todo |
 | P491 | ADE: hide archived tasks unless History is open | Todo |
 | P492 | ADE: agents widget shows active-agents indicator | Todo |
@@ -57,6 +57,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 
 - Cmd-click already opens links. Make file paths clickable too and open them in Kira Space. Plan covers `path:line:col`, relative paths against the terminal cwd, nonexistent paths.
 - Test: UI spec.
+- Result: Kira Space desktop terminals link file paths (`path`, `path:line`, `path:line:col`); Cmd/Ctrl-click opens the file in the opened-files window with the cursor placed. Relative paths resolve against the live cwd (foreground process group, then shell, then start cwd; `fallbackCwd` once exited). Only existing, supported files link. Backend: `Registry.Cwd`, `openedfiles.TerminalPath/Openable/OpenAt/deliver`, `OpenedFilesService.TerminalResolve/TerminalOpen`, `Target.line/col`. Frontend: `filePaths.ts`, `fileLinkProvider.ts`, `terminalFileLinks.ts`, `openTarget`, `applyMountReveal`. Studio, Docker exec and phone terminals unchanged. A bare word with no slash or extension (`src`) is never a candidate. Tests: `TestTerminalFileLinks`, `terminal-file-links` UI spec, `terminal-file-paths` unit spec.
 
 ### P490 Kira Space: file open window shows only ad hoc file tabs
 
