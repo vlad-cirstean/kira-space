@@ -1,13 +1,16 @@
 package flowharness
 
 import (
+	"context"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -166,9 +169,13 @@ type frameIn struct {
 	raw  []byte
 }
 
-// GitStream is a client of the real bridge.ServeGitStream over an in-memory connection.
+// GitStream is a client of one window's git connection: the bound GitService for the methods it
+// carries, the real bridge.ServeGitStream over an in-memory connection for the rest.
 type GitStream struct {
 	t      testing.TB
+	app    *App
+	key    string
+	mark   int
 	conn   *pipeConn
 	wg     sync.WaitGroup
 	closed sync.Once
@@ -176,29 +183,33 @@ type GitStream struct {
 	mu      sync.Mutex
 	nextID  int
 	waiters map[int]chan frameIn
-	events  []Event
-	notify  chan struct{}
 }
 
-// OpenGitStream starts ServeGitStream on the app's router, exactly as appshell registers it, with
-// no window behind the connection.
-func (a *App) OpenGitStream() *GitStream { return a.OpenGitStreamFor("") }
+var gitStreamSeq atomic.Int64
 
-// OpenGitStreamFor is OpenGitStream for a connection opened by window windowKey.
+// OpenGitStream opens a stream on a window of its own, so each stream keeps its own connection.
+func (a *App) OpenGitStream() *GitStream {
+	return a.OpenGitStreamFor(fmt.Sprintf("flow-git-%d", gitStreamSeq.Add(1)))
+}
+
+// OpenGitStreamFor is OpenGitStream for a connection opened by window windowKey; streams on one
+// key share its connection.
 func (a *App) OpenGitStreamFor(windowKey string) *GitStream {
 	a.t.Helper()
 	s := &GitStream{
 		t:       a.t,
+		app:     a,
+		key:     windowKey,
+		mark:    a.Events.Mark(),
 		conn:    &pipeConn{in: make(chan []byte, 64), out: make(chan []byte, 64)},
 		nextID:  1,
 		waiters: map[int]chan frameIn{},
-		notify:  make(chan struct{}),
 	}
 	server := &pipeConn{in: s.conn.out, out: s.conn.in}
 	s.wg.Add(2)
 	go func() {
 		defer s.wg.Done()
-		bridge.ServeGitStream(a.W.GitRouter(), server, windowKey, a.W.CredentialRelay)
+		bridge.ServeGitStream(a.W.GitWindows, server, windowKey)
 		server.closeOut()
 	}()
 	go func() {
@@ -213,6 +224,12 @@ func (a *App) OpenGitStreamFor(windowKey string) *GitStream {
 // a call would. The reply, if any, is dropped.
 func (s *GitStream) Fire(method string, params any) (cancel func()) {
 	s.t.Helper()
+	if call, ok := s.boundCall(method); ok {
+		ctx, stop := context.WithCancel(context.Background())
+		raw := rawParams(s.t, params)
+		go func() { _, _ = call(ctx, s.key, raw) }()
+		return stop
+	}
 	id, _ := s.register()
 	s.send(wireFrame{T: "req", ID: id, Method: method, Params: rawParams(s.t, params)})
 	return func() {
@@ -250,15 +267,6 @@ func (s *GitStream) readLoop() {
 			continue
 		}
 		f := frameIn{wireFrame: env.Body, blob: blob, raw: raw}
-		if f.T == "evt" {
-			s.mu.Lock()
-			s.events = append(s.events, Event{Seq: len(s.events), Channel: f.Method, Data: f.Payload})
-			old := s.notify
-			s.notify = make(chan struct{})
-			s.mu.Unlock()
-			close(old)
-			continue
-		}
 		s.mu.Lock()
 		w := s.waiters[f.ID]
 		s.mu.Unlock()
@@ -311,6 +319,9 @@ const requestTimeout = 60 * time.Second
 // comes back as *WireError.
 func (s *GitStream) Request(method string, params, out any) error {
 	s.t.Helper()
+	if call, ok := s.boundCall(method); ok {
+		return s.requestBound(call, method, params, out)
+	}
 	id, ch := s.register()
 	defer s.unregister(id)
 	s.send(wireFrame{T: "req", ID: id, Method: method, Params: rawParams(s.t, params)})
@@ -432,41 +443,39 @@ func (c *StreamCall) Drain() []Chunk {
 	}
 }
 
-// Events returns the pushed events (repo.changed, credential.request, ...) so far for method;
-// "" returns all. Data is the raw JSON payload.
+// Events returns the git events pushed to this stream's window since it opened for method
+// (repo.changed, ...); "" returns all. Data is the raw JSON payload.
 func (s *GitStream) Events(method string) []Event {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	var out []Event
-	for _, e := range s.events {
-		if method == "" || e.Channel == method {
-			out = append(out, e)
+	for _, e := range s.app.Events.Since(s.mark, "") {
+		name, ok := s.eventName(e)
+		if ok && (method == "" || name == method) {
+			out = append(out, Event{Seq: len(out), Channel: name, Data: s.rawData(e)})
 		}
 	}
 	return out
 }
 
+func (s *GitStream) eventName(e Event) (string, bool) {
+	if e.Window != s.key || !strings.HasPrefix(e.Channel, bridge.GitEventPrefix) {
+		return "", false
+	}
+	return strings.TrimPrefix(e.Channel, bridge.GitEventPrefix), true
+}
+
+func (s *GitStream) rawData(e Event) json.RawMessage {
+	raw, err := json.Marshal(e.Data)
+	if err != nil {
+		s.t.Fatalf("git event %s: marshal: %v", e.Channel, err)
+	}
+	return raw
+}
+
 // WaitEvent blocks until a pushed event of method satisfies pred (nil matches any).
 func (s *GitStream) WaitEvent(method string, pred func(json.RawMessage) bool, timeout time.Duration) json.RawMessage {
 	s.t.Helper()
-	deadline := time.After(timeout)
-	seen := 0
-	for {
-		s.mu.Lock()
-		for ; seen < len(s.events); seen++ {
-			e := s.events[seen]
-			if e.Channel == method && (pred == nil || pred(e.Data.(json.RawMessage))) {
-				s.mu.Unlock()
-				return e.Data.(json.RawMessage)
-			}
-		}
-		wake := s.notify
-		s.mu.Unlock()
-		select {
-		case <-wake:
-		case <-deadline:
-			s.t.Fatalf("no %q event within %s", method, timeout)
-			return nil
-		}
-	}
+	e := s.app.Events.WaitAfter(s.t, s.mark, bridge.GitEventPrefix+method, func(e Event) bool {
+		return e.Window == s.key && (pred == nil || pred(s.rawData(e)))
+	}, timeout)
+	return s.rawData(e)
 }

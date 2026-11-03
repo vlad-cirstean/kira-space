@@ -168,6 +168,8 @@ type Wired struct {
 	Metrics       *metrics.Ticker
 	UpdateInstall *appupdate.Installer
 
+	GitWindows      *bridge.GitWindows
+	GitSvc          *bridge.GitService
 	GitCredential   *bridge.GitCredentialService
 	GitHost         *bridge.GitHostService
 	HostView        *bridge.HostViewService
@@ -306,6 +308,8 @@ func Build(opts Options) *Wired {
 		Registry: handlersRegistry, Previous: repositories.FileHandlerPrevious,
 	}}
 	w.GitCredential = &bridge.GitCredentialService{Deps: deps, Relay: credentialRelay}
+	w.GitWindows = bridge.NewGitWindows(git.router, credentialRelay, emitter)
+	w.GitSvc = bridge.NewGitService(w.GitWindows)
 	w.detachGitCred = bridge.AttachGitCredentialPush(w.GitCredential)
 	w.GitHost = &bridge.GitHostService{Deps: deps, Browser: opts.Browser}
 	w.HostView = &bridge.HostViewService{Deps: deps, Windows: repositories.Windows, Targets: &bridge.HostViewTargets{}, Trackers: git.trackers}
@@ -553,7 +557,7 @@ func (w *Wired) reopenWindow() {
 // StartMobile starts the phone server when settings enable it; call after the shell is up.
 func (w *Wired) StartMobile() { bridge.StartMobileIfEnabled(w.Mobile) }
 
-// Bound returns the 34 bound services in registration order.
+// Bound returns the 37 bound services in registration order.
 func (w *Wired) Bound() []application.Service {
 	return []application.Service{
 		application.NewService(w.GitCredential),
@@ -565,7 +569,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.MemoryImport), application.NewService(w.MemoryDistill), application.NewService(w.WindowsSvc), application.NewService(w.Update),
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),
 		application.NewService(w.PromptsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc),
-		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc), application.NewService(w.RepoConfigSvc),
+		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc), application.NewService(w.RepoConfigSvc), application.NewService(w.GitSvc),
 	}
 }
 

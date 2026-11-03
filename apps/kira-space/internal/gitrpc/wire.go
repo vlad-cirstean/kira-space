@@ -214,10 +214,10 @@ type WorkingDetailParams struct {
 	RepoID string `json:"repoId"`
 }
 
-// workingDetailResult is working.detail's own wire result — a bare `readonly FileChange[]` at the
+// WorkingDetailResult is working.detail's own wire result — a bare `readonly FileChange[]` at the
 // contract layer, wrapped in one field here purely because a JSON-RPC result is always an object,
 // never a bare array (the same reason commit.fileDiff's own result wraps its FileDiffBody).
-type workingDetailResult struct {
+type WorkingDetailResult struct {
 	Files []porcelain.FileChange `json:"files"`
 }
 

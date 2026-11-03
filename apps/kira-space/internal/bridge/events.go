@@ -132,3 +132,7 @@ func (ev *Events) AttachOpLog(l *oplog.Log) (detach func()) {
 	})
 	return func() { d1(); d2() }
 }
+
+// GitEventPrefix prefixes every git event name (repo.changed, remote.progress, ...) pushed to one
+// window with EmitTo.
+const GitEventPrefix = "kira:git:"

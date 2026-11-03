@@ -222,12 +222,12 @@ func (r *Router) handleWorkingDetail(ctx context.Context, c *gitsession.Conn, pa
 			}
 			return p.RepoID, nil
 		},
-		func(ctx context.Context, entry *gitsession.RepoEntry, _ WorkingDetailParams) (workingDetailResult, error) {
+		func(ctx context.Context, entry *gitsession.RepoEntry, _ WorkingDetailParams) (WorkingDetailResult, error) {
 			files, err := entry.WorkingDetail(ctx)
 			if err != nil {
-				return workingDetailResult{}, mapDetailError(err)
+				return WorkingDetailResult{}, mapDetailError(err)
 			}
-			return workingDetailResult{Files: files}, nil
+			return WorkingDetailResult{Files: files}, nil
 		},
 	)
 }
