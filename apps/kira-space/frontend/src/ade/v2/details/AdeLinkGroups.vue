@@ -2,12 +2,13 @@
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { errorText, toCodedError } from '@workbench/bridge/codedError';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed, ref } from 'vue';
 import { gapText } from '../artifacts/gapText';
 import { taskPatch } from '../board/panelFacts';
-import { parseJira } from '../jira';
+import { isJiraIssueUrl, parseJira } from '../jira';
 import AdeTaskIssueLine from '../panel/AdeTaskIssueLine.vue';
 import { type LinkPatch, useLinkFields } from '../panel/useLinkFields';
 import {
@@ -96,7 +97,10 @@ const isUrl = (raw: string): boolean => {
  *  a provider owns the link), else a stored artifact the backend names and sorts. */
 async function addValue(raw: string): Promise<void> {
   const taskId = props.task.id;
-  const jira = parseJira(raw);
+  const jira =
+    !isUrl(raw) || isJiraIssueUrl(raw, props.task.jira?.url ?? '')
+      ? parseJira(raw)
+      : { key: '', url: '' };
   if (jira.key && !props.task.jira) {
     await update.mutateAsync({ taskId, patch: taskPatch({ jira }) });
     return;
@@ -152,10 +156,15 @@ async function submit(text: string): Promise<void> {
   pasteText.value = '';
 }
 
+const pasting = useAsyncAction(submit);
+function submitPaste(text: string): void {
+  if (!pasting.pending.value) void pasting.run(text);
+}
+
 function onPaste(e: ClipboardEvent): void {
   const text = e.clipboardData?.getData('text') ?? '';
   e.preventDefault();
-  void submit(text);
+  submitPaste(text);
 }
 </script>
 
@@ -226,7 +235,7 @@ function onPaste(e: ClipboardEvent): void {
         :aria-label="t('space.ade.details.paste.aria')"
         size="kira"
         data-testid="ade-details-paste"
-        @keydown.enter.prevent="submit(pasteText)"
+        @keydown.enter.prevent="submitPaste(pasteText)"
         @paste="onPaste"
       />
       <Alert v-if="pasteError" variant="error" data-testid="ade-details-paste-error"

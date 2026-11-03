@@ -166,10 +166,20 @@ test('paste: a Jira key updates the task, a URL adds an untitled link, text show
     ref: '',
   });
 
+  // A key-shaped token in a non-Jira URL does not route to the Jira slot.
+  await paste.fill('https://github.com/acme/web-app/tree/PROJ-42-fix');
+  await paste.press('Enter');
+  await expect.poll(() => calls(control, IPC.adeTaskAddArtifact)).toHaveLength(2);
+  expect(calls(control, IPC.adeTaskAddArtifact)[1]?.args).toMatchObject({
+    kind: 'link',
+    url: 'https://github.com/acme/web-app/tree/PROJ-42-fix',
+  });
+  expect(calls(control, IPC.adeTaskUpdateTask)).toHaveLength(1);
+
   await paste.fill('not a link');
   await paste.press('Enter');
   await expect(page.locator(t('ade-details-paste-error'))).toBeVisible();
-  expect(calls(control, IPC.adeTaskAddArtifact)).toHaveLength(1);
+  expect(calls(control, IPC.adeTaskAddArtifact)).toHaveLength(2);
 });
 
 test('inline edit: Enter renames, Escape cancels, empty removes, detected rows have no edit', async ({
