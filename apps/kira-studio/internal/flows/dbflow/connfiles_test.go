@@ -1,6 +1,7 @@
 package dbflow
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"os"
@@ -225,7 +226,7 @@ func TestConnectionSecrets(t *testing.T) {
 	if _, err := cfg.SetSecret(bridge.ConnectionSecretArgs{Kind: connfiles.KindPassword, Name: "pg.password", Value: "rotated"}); err != nil {
 		t.Fatal(err)
 	}
-	if after, _ := os.ReadFile(file); string(after) != string(before) {
+	if after, _ := os.ReadFile(file); !bytes.Equal(after, before) {
 		t.Errorf("SetSecret rewrote the file:\n%s", after)
 	}
 	if r := reveal(); r.Password == nil || *r.Password != "rotated" {
