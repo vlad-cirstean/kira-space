@@ -15,7 +15,7 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 | P497 | ADE: task "+" launch menu shares the Runs dropdown | Done |
 | P498 | ADE: one Agents tab for Context and Settings | Done |
 | P499 | Review: show reviewed changes removed since review | Done |
-| P500 | ADE: task card icon row | Todo |
+| P500 | ADE: task card icon row | Done |
 | P501 | ADE: task panel restructure | Todo |
 | P502 | ADE: multi-branch task panel simplification | Todo |
 | P503 | Code review (1 round) | Todo |
@@ -79,7 +79,7 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 - Files: `AdeTaskCard.vue`, `AdeActionCell.vue`, `AdeBranchRow.vue`, `board/actions.ts`.
 - Frontend only; IPC unchanged, so no backend test.
 - Test: UI specs covering the card, action button and branch row updated to the new layout.
-- Result: pending.
+- Result: left `AdeActionCell` column and `ade-task-cells` gone. Task tag and step action sit in the card head line as icons (`AdeTagIcon`, `AdeTaskActionButton icon`). Each branch row ends with tag glyph, at most 2 actions, or 1 action plus More (`MenuIconButton`; overflow `seeError`/`seeLog`/`takeOver`/`start` join the row menu). `BranchTag.kind` and `TaskCell.tag.kind` added in `board/actions.ts`; glyph tables in `plan/glyphs.ts`. Urgent kinds render a solid disc. Right-click on any icon opens the card or row menu. No glyph hover-only. Deviations: `preparing` uses static `settings-gear` (check-ui-primitives bans `gear` and raw `animate-spin`; only `Spinner` may spin, so `checking` and `rebasing` spin via `Spinner`); More uses `ICON.moreActions` (`ellipsis`), not `kebab-vertical` (banned); day-band history, span and note rows drop their `54.5` left offset (the column that it aligned with is gone). New `ade-v2-card-icons.spec.ts`; 10 existing specs updated; 3 `ade-plan-branches` baselines re-recorded (Inter confirmed). Full-suite run pending at chapter end.
 
 ### P501 ADE: task panel restructure
 
