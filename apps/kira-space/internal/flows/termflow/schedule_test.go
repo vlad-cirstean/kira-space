@@ -442,6 +442,16 @@ func TestScheduleMissingTask(t *testing.T) {
 	}
 }
 
+func TestScheduleNoTaskWithBuiltinVar(t *testing.T) {
+	app, clock := clockApp(t)
+	rec := recurring(t, app, "* * * * *", func(f *scripts.CustomScriptFields) { f.Command = "echo {branch}" })
+	advance(t, clock, 30*time.Second)
+	r := waitSched(t, app, rec.ID, 0, "skipped")
+	if !strings.Contains(reasonOf(r), "no value for task") {
+		t.Fatalf("reason = %q, want a missing task", reasonOf(r))
+	}
+}
+
 const wait = 20 * time.Second
 
 func errCode(err error) string {

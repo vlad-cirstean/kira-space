@@ -72,7 +72,7 @@ test('the header + writes a new run file and opens it', async ({ relaunch }) => 
   await page.locator('[data-testid="automations-add"]').click();
   await page.locator('[data-testid="menu-item-new-script"]').click();
   await expect(page.locator('[data-testid="run-file-dialog"]')).toBeVisible();
-  await expect(page.locator('[data-testid="config-file-path"]')).toContainText('script-1.yaml');
+  await expect(page.locator('[data-testid="config-file-bar"]')).toContainText('script-1.yaml');
 
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.customScriptsCreate)?.args)
@@ -83,6 +83,7 @@ test('the header + writes a new run file and opens it', async ({ relaunch }) => 
         kind: 'script',
         params: [],
         smart: null,
+        schedule: null,
         dirMode: 'kira',
         useAdeDir: false,
         workingDir: '',

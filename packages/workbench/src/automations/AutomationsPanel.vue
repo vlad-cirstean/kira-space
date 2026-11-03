@@ -22,7 +22,7 @@ import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu
 import { computed, ref, useTemplateRef } from 'vue';
 import { errorText } from '../bridge/codedError';
 import { useAutomationsModule } from './module';
-import { newScriptItems, type ScriptMenuActions, scriptMenu } from './panelMenus';
+import { groupMenu, newScriptItems, type ScriptMenuActions, scriptMenu } from './panelMenus';
 import RunFileDialog from './RunFileDialog.vue';
 import RunsRestoreBanner from './restore/RunsRestoreBanner.vue';
 import { useRunScript } from './runScript';
@@ -142,7 +142,7 @@ const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
 });
 
 // A new run starts from a small valid example and opens as text to edit.
-async function createScript(kind: ScriptKind): Promise<void> {
+async function createScript(kind: ScriptKind, collection = ''): Promise<void> {
   const smart = kind === 'smart';
   await guarded(async () => {
     const created = await scripts.create({
@@ -159,7 +159,7 @@ async function createScript(kind: ScriptKind): Promise<void> {
       dirMode: 'kira',
       workingDir: '',
       color: 'none',
-      collection: '',
+      collection,
       useAdeDir: false,
     });
     if (created.collection !== '') openGroup(created.collection);
@@ -324,6 +324,21 @@ const scriptActions: ScriptMenuActions = {
   },
 };
 
+function onGroupMenu(e: MouseEvent, name: string): void {
+  const step = (by: -1 | 1) => {
+    const order = stepIds(groupNames.value, name, by);
+    if (order) void guarded(() => scripts.reorderCollections(order));
+  };
+  openMenu(
+    { key: `group:${name}`, kind: 'group', id: name, depth: 0 },
+    e,
+    groupMenu((kind) => createScript(kind, name), {
+      step,
+      can: (by) => !reorderOff.value && stepIds(groupNames.value, name, by) !== null,
+    }),
+  );
+}
+
 function onContextMenu(e: MouseEvent, script: CustomScript): void {
   openMenu(navItemOf(script.id), e, scriptMenu(script, scriptActions));
 }
@@ -427,6 +442,7 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
                   :open="isOpen(group.name)"
                   v-bind="nav.rowProps(`group:${group.name}`)"
                   @toggle="toggleGroup(group.name)"
+                  @menu="onGroupMenu($event, group.name)"
                 />
                 <SortableList
                   v-if="isOpen(group.name)"

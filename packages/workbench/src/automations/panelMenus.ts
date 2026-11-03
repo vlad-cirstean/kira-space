@@ -19,6 +19,32 @@ export interface ScriptMenuActions {
   remove(script: CustomScript): void | Promise<void>;
 }
 
+export function groupMenu(
+  create: (kind: ScriptKind) => void,
+  move: { step(step: -1 | 1): void; can(step: -1 | 1): boolean },
+): MenuItem[] {
+  return [
+    ...newScriptItems(create),
+    { type: 'separator' },
+    {
+      type: 'item',
+      id: 'move-up',
+      label: t('common.moveUp.tooltip'),
+      icon: 'arrow-up',
+      disabled: !move.can(-1),
+      run: () => move.step(-1),
+    },
+    {
+      type: 'item',
+      id: 'move-down',
+      label: t('common.moveDown.tooltip'),
+      icon: 'arrow-down',
+      disabled: !move.can(1),
+      run: () => move.step(1),
+    },
+  ];
+}
+
 export function newScriptItems(create: (kind: ScriptKind) => void): MenuItem[] {
   return [
     {
