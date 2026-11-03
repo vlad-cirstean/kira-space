@@ -53,120 +53,126 @@ func columnExists(db *sql.DB, table, column string) (bool, error) {
 	return n > 0, nil
 }
 
+// legacyRows collects the Config per repo id while the legacy tables are read.
+type legacyRows struct {
+	db        *sql.DB
+	byPath    map[string]*Config
+	codeRepos map[string]string // code repo id -> repo id
+}
+
+func (l *legacyRows) get(path string) *Config {
+	key := Key(path)
+	if c, ok := l.byPath[key]; ok {
+		return c
+	}
+	c := Defaults(key)
+	l.byPath[key] = &c
+	return &c
+}
+
 // readLegacy builds one Config per repo id found in the legacy rows, sorted by path.
 func readLegacy(db *sql.DB) ([]Config, error) {
-	byPath := map[string]*Config{}
-	get := func(path string) *Config {
-		key := Key(path)
-		if c, ok := byPath[key]; ok {
-			return c
+	l := &legacyRows{db: db, byPath: map[string]*Config{}, codeRepos: map[string]string{}}
+	steps := []func() error{l.readSettings, l.readCodeRepos, l.readNicknames, l.readIntegration, l.readEnvs}
+	for _, step := range steps {
+		if err := step(); err != nil {
+			return nil, err
 		}
-		c := Defaults(key)
-		byPath[key] = &c
-		return &c
 	}
+	out := make([]Config, 0, len(l.byPath))
+	for _, c := range l.byPath {
+		out = append(out, *c)
+	}
+	slices.SortFunc(out, func(a, b Config) int { return strings.Compare(a.Path, b.Path) })
+	return out, nil
+}
 
+func (l *legacyRows) readSettings() error {
 	stored := map[string]map[string]json.RawMessage{}
-	rows, err := db.Query(`SELECT repo_id, key, value FROM git_repo_settings`)
-	if err != nil {
-		return nil, fmt.Errorf("repocfg: read git repo settings: %w", err)
-	}
-	for rows.Next() {
+	err := eachRow(l.db, `SELECT repo_id, key, value FROM git_repo_settings`, func(sc func(...any) error) error {
 		var repo, key, value string
-		if err := rows.Scan(&repo, &key, &value); err != nil {
-			rows.Close()
-			return nil, fmt.Errorf("repocfg: scan git repo settings: %w", err)
+		if err := sc(&repo, &key, &value); err != nil {
+			return err
 		}
 		if stored[repo] == nil {
 			stored[repo] = map[string]json.RawMessage{}
 		}
 		stored[repo][key] = json.RawMessage(value)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 	for repo, leaves := range stored {
-		get(repo).Settings = legacySettings(leaves)
+		l.get(repo).Settings = legacySettings(leaves)
 	}
+	return nil
+}
 
-	codeRepos := map[string]string{} // code repo id -> repo id
-	crows, err := db.Query(`SELECT id, repo_id FROM code_repos`)
-	if err != nil {
-		return nil, fmt.Errorf("repocfg: read code repos: %w", err)
-	}
-	for crows.Next() {
+func (l *legacyRows) readCodeRepos() error {
+	return eachRow(l.db, `SELECT id, repo_id FROM code_repos`, func(sc func(...any) error) error {
 		var id, repo string
-		if err := crows.Scan(&id, &repo); err != nil {
-			crows.Close()
-			return nil, fmt.Errorf("repocfg: scan code repos: %w", err)
+		if err := sc(&id, &repo); err != nil {
+			return err
 		}
-		codeRepos[id] = repo
-	}
-	if err := crows.Close(); err != nil {
-		return nil, err
-	}
+		l.codeRepos[id] = repo
+		return nil
+	})
+}
 
-	if ok, err := columnExists(db, "ade_repo_config", "nickname"); err != nil {
-		return nil, err
-	} else if ok {
-		if err := eachRow(db, `SELECT code_repo_id, nickname FROM ade_repo_config WHERE nickname <> ''`, func(sc func(...any) error) error {
-			var id, nick string
-			if err := sc(&id, &nick); err != nil {
-				return err
-			}
-			if repo, ok := codeRepos[id]; ok {
-				get(repo).Nickname = strings.TrimSpace(nick)
-			}
-			return nil
-		}); err != nil {
-			return nil, err
-		}
+func (l *legacyRows) readNicknames() error {
+	if ok, err := columnExists(l.db, "ade_repo_config", "nickname"); err != nil || !ok {
+		return err
 	}
-	if ok, err := tableExists(db, "ade_repo_integration"); err != nil {
-		return nil, err
-	} else if ok {
-		if err := eachRow(db, `SELECT code_repo_id, branch FROM ade_repo_integration ORDER BY code_repo_id, position`, func(sc func(...any) error) error {
-			var id, branch string
-			if err := sc(&id, &branch); err != nil {
-				return err
-			}
-			branch = strings.TrimSpace(branch)
-			if repo, ok := codeRepos[id]; ok && branch != "" {
-				c := get(repo)
-				if !slices.Contains(c.IntegrationBranches, branch) {
-					c.IntegrationBranches = append(c.IntegrationBranches, branch)
-				}
-			}
-			return nil
-		}); err != nil {
-			return nil, err
+	return eachRow(l.db, `SELECT code_repo_id, nickname FROM ade_repo_config WHERE nickname <> ''`, func(sc func(...any) error) error {
+		var id, nick string
+		if err := sc(&id, &nick); err != nil {
+			return err
 		}
-	}
-	if ok, err := tableExists(db, "ade_repo_envs"); err != nil {
-		return nil, err
-	} else if ok {
-		if err := eachRow(db, `SELECT code_repo_id, name, deployed_sha_script FROM ade_repo_envs ORDER BY code_repo_id, position`, func(sc func(...any) error) error {
-			var id string
-			var e model.AdeRepoEnv
-			if err := sc(&id, &e.Name, &e.DeployedShaScript); err != nil {
-				return err
-			}
-			if repo, ok := codeRepos[id]; ok {
-				c := get(repo)
-				c.Environments = append(c.Environments, e)
-			}
-			return nil
-		}); err != nil {
-			return nil, err
+		if repo, ok := l.codeRepos[id]; ok {
+			l.get(repo).Nickname = strings.TrimSpace(nick)
 		}
-	}
+		return nil
+	})
+}
 
-	out := make([]Config, 0, len(byPath))
-	for _, c := range byPath {
-		out = append(out, *c)
+func (l *legacyRows) readIntegration() error {
+	if ok, err := tableExists(l.db, "ade_repo_integration"); err != nil || !ok {
+		return err
 	}
-	slices.SortFunc(out, func(a, b Config) int { return strings.Compare(a.Path, b.Path) })
-	return out, nil
+	return eachRow(l.db, `SELECT code_repo_id, branch FROM ade_repo_integration ORDER BY code_repo_id, position`, func(sc func(...any) error) error {
+		var id, branch string
+		if err := sc(&id, &branch); err != nil {
+			return err
+		}
+		branch = strings.TrimSpace(branch)
+		repo, ok := l.codeRepos[id]
+		if !ok || branch == "" {
+			return nil
+		}
+		if c := l.get(repo); !slices.Contains(c.IntegrationBranches, branch) {
+			c.IntegrationBranches = append(c.IntegrationBranches, branch)
+		}
+		return nil
+	})
+}
+
+func (l *legacyRows) readEnvs() error {
+	if ok, err := tableExists(l.db, "ade_repo_envs"); err != nil || !ok {
+		return err
+	}
+	return eachRow(l.db, `SELECT code_repo_id, name, deployed_sha_script FROM ade_repo_envs ORDER BY code_repo_id, position`, func(sc func(...any) error) error {
+		var id string
+		var e model.AdeRepoEnv
+		if err := sc(&id, &e.Name, &e.DeployedShaScript); err != nil {
+			return err
+		}
+		if repo, ok := l.codeRepos[id]; ok {
+			c := l.get(repo)
+			c.Environments = append(c.Environments, e)
+		}
+		return nil
+	})
 }
 
 func eachRow(db *sql.DB, query string, f func(scan func(...any) error) error) error {

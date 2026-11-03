@@ -1,9 +1,9 @@
 // Mirrors internal/repocfg Service views and args.
-export interface RepoConfigProblem {
+interface RepoConfigProblem {
   line: number;
   message: string;
 }
-export interface RepoConfigItem {
+interface RepoConfigItem {
   file: string;
   path: string;
   problem: RepoConfigProblem | null;

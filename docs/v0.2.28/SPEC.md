@@ -8,7 +8,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 |---|---|---|
 | P472 | Runs config as files in the app folder | Done |
 | P473 | API config as files in the app folder | Done |
-| P474 | Git repos config as files in the app folder | Todo |
+| P474 | Git repos config as files in the app folder | Done |
 | P475 | Connections config as files in the app folder | Todo |
 | P476 | Git on bound services: connection lifecycle, events, read methods | Todo |
 | P477 | Git on bound services: write operations | Todo |
@@ -65,6 +65,16 @@ Result:
 - Plan decides per field what stays in SQLite, formats, sync, watching, validation, bad edits, migration, Studio/Space split.
 - Minimal UI as in P472.
 - Test: as P472, plus the guard still refuses what it refuses today.
+
+Result:
+
+- Go: per-repo settings are `~/.kira-space/repos/<stem>.yaml`, bound to a repo by the `path:` key (not the stem). New `internal/repocfg` (`Store` with an in-memory index, last-good projection, hot reload, `Patch` through the new shared `configfs.EditYAML`, `Service`, `repocfgtest`). All 11 `git_repo_settings` leaves plus nickname, integration branches and environments live in the file. `git_repo_settings`, `ade_repo_config.nickname`, `ade_repo_integration` and `ade_repo_envs` are gone; migration 0065 repoints `ade_env_state` at `code_repos`, a `MigrateOnce("repos")` export writes the files first and drops the legacy tables in one transaction. `AdeTaskService.UpdateRepo` and the `SetRepoSettings` dep are removed; `RepoConfigService` (`List`, `File`, `SaveFile`) and event `kira:repoConfig:changed` are new.
+- Guard: `guardRepoSettingsSet` and `bridge/gitstream.go` are unchanged (also `packages/git-ui`, `packages/git-ipc`). The stream still refuses the prepare script and base path with `E_READ_ONLY` before `Patch`; a file edit never crosses the stream. A file edit emits `repoSettings.changed` (a stream patch does not twice, `FromPatch`).
+- UI: `RepoFilePane` (file editor with hash, Reload and Overwrite, template and Create settings file) plus `RepoIdentity` (colour, path, source) replace `RepoConfigForm` and `RepoEnvRow`; an error dot on repo rows; an Other files tab for unbound or duplicate files. `useUpdateRepo` and `RepoPatch` are deleted.
+- Ran: `go vet` (Space `./internal/...`, root `./internal/...`), `golangci-lint run ./internal/...` in both modules (0 issues; Space `./...` only fails on the missing `frontend/dist-mobile` embed), `bun run lint`, `lint:dead`, `typecheck`, `test:unit` (1965 pass). Go: `internal/configfs` (`TestEditYAML`, `TestAgentsDocKeyedBy`), Space `storage/...` (`TestMigration65RepoFiles`), `ade`, `gitrpc`, `gitsession`, `bridge` (guard tests), `appwire`, `flows/repoflow` (new `TestRepoConfigFile`, `TestRepoConfigMigration`), `flows/adeflow`, `flows/gitflow` (new `TestRepoSettingsLiveInFile`). UI after `build:test:space`: new `repo-config-file`, `repos-dialog`, `ade-v2-panel`, `color-rails`, `consistency`, `copy-coverage`, `copy-wording`, `list-keyboard`, `ade-agent-context`; `site:check` green. Full suites not run, per chapter rule.
+- Keep/adapt/delete: kept the colour, hide, remove, folder and import tests of `repos-dialog`; adapted `selecting a repo`, `a repo row menu` and the `copy-coverage` repositories test; deleted `each field sends a one-leaf patch`, `Choose... writes the picked folder`, `a rejected timeout`, `Add environment writes nothing` (the form is gone). Go: adapted board, integration, run-engine and adeflow harnesses to write repo files; deleted the `git_repo_settings` repository test; contract `repo-env.json` regenerated without the UpdateRepo keys, `ade-automation.json` regenerated (stale since P472, found failing before this phase).
+- Deviations: the Base path "Choose..." button is gone (the file holds the path); an integration branch equal to main stays in the file and in the Repos wire, it is ignored where targets are used; `configfs.DocModel.KeyedBy` added for the path-keyed folder; the migration drops legacy values the file could not hold (invalid provider, oversize script, relative base path, blank review candidates).
+- Docs: `docs/ARCHITECTURE.md` ("Repo config files (P474)" and the git facts), `site/.../space/git.mdx`.
 
 ### P475 Connections config as files in the app folder
 

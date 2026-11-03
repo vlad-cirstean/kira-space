@@ -5,7 +5,7 @@ import { control } from '../../bridge/control';
 import type { RepoConfigFileArgs, RepoConfigSaveArgs } from './repoConfigTypes';
 
 export const repoConfigKey = ['repoConfig'] as const;
-export const repoConfigListKey = [...repoConfigKey, 'list'] as const;
+const repoConfigListKey = [...repoConfigKey, 'list'] as const;
 
 const fileKey = (args: RepoConfigFileArgs) => [...repoConfigKey, 'file', args.file, args.path];
 

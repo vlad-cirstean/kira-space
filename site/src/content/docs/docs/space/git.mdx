@@ -7,6 +7,7 @@ sources:
   - packages/git-core/src
   - apps/kira-space/internal/gitsession
   - packages/git-ui/src/components/dialogs/RepoSettingsDialog.vue
+  - apps/kira-space/internal/repocfg
   - packages/theme/src/i18n/en.json
 sidebar:
   order: 1
@@ -71,7 +72,7 @@ A literal query runs no regex engine. The app translates a regex query construct
 ## Worktrees and stacks
 
 - Create, list, switch and remove worktrees.
-- An optional prepare script per repository runs after you approve it once.
+- An optional prepare script per repository runs after you approve it once. It lives in the repository's settings file, never in the Git window.
 - Stacked branches restack and navigate as a stack.
 - **Create worktree** is on the context menu of a branch, a remote branch and a commit row.
 
@@ -95,5 +96,15 @@ Open **Repository settings** from the Git toolbar. Each setting applies to one r
 - Candidate base branches for branch review, one per line.
 - Code host for this repository: detect from the remote, off, or a provider.
 - The pull strategy.
+
+### Settings file
+
+Every repository setting lives in one YAML file under `~/.kira-space/repos/`, matched to its repository by the `path:` key. The file also holds the nickname, the integration branches, the deployment environments and the worktree options (prepare script, timeout, base path). Edit it in the **Repositories** dialog, or in your own editor: a saved change applies at once.
+
+- A repository with no file uses the defaults. **Create settings file** in the dialog starts one from a template.
+- Changing a setting in the Git window edits the same file and keeps your comments.
+- A file with an error keeps the last good settings and shows the failing line.
+- Two files with the same `path:`: the first by name applies, the other is flagged under **Other files**.
+- Deleting the file returns the repository to the defaults.
 
 `Settings > Git` holds the global settings: protected branches, the auto-fetch interval, the git path and the graph font size.

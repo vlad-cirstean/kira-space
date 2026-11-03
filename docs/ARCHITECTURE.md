@@ -577,7 +577,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 ```
 
 - P100 dropped git_clients, git_repo_settings and code_repos from Studio's kira.db (0026_p100_drop_git_tables.sql) when the git module was extracted into Kira Space, a separate app with its own kira.db and its own copies of these tables.
-- Kira Space runs its own migration sequence in apps/kira-space/internal/storage/migrations/, separate from Studio's, with high-water mark 0045 (0045_p332_file_handler_previous.sql adds file_handler_previous).
+- Kira Space runs its own migration sequence in apps/kira-space/internal/storage/migrations/, separate from Studio's, with high-water mark 0065 (P474: 0065_p474_repo_files.sql repoints ade_env_state at code_repos before the repo tables go).
 - Studio's kira.db migration high-water marks: 0055 (P473, api as files: stem, item_key, secret_ref columns); 0054 (P472, runs as files: custom_scripts rebuilt as a projection, custom_script_collections keyed by name) before it in Studio and 0064 in Space.
 - Migration 0020 added connections.mcp_enabled (deny-by-default MCP exposure); 0021 added mcp_read_mode/mcp_write_mode/mcp_ddl_mode plus mcp_description; 0022 added mcp_auto_explain (auto-force-EXPLAIN on run_query); 0023 created connection_mask_rules and connections.mask_correlation_key.
 - Migration 0027_p108part11_op_log_path.sql added op_log.path TEXT, the console path an op actually ran against.
@@ -1698,7 +1698,7 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 - The credential dialog has no client-side timeout because the broker's 120 s bound covers it, and answering a request the broker already gave up on is a documented no-op.
 - Never log, persist, or store credential prompt data beyond the one in-flight prompt; the typed secret lives only in the dialog field, cleared on submit, cancel, Escape or frame close, and the prompt text is treated the same since it may contain a typed username.
 - protectedBranches, fetch.autoInterval and git.path are server-owned settings, edited in Kira Space's Settings dialog (Git section) and read fresh on every push pre-flight and auto-fetch tick, never cached, because two windows disagreeing about a protected-branch list is a safety bug.
-- Per-viewer display settings (graph page size and scope, stash visibility, and similar) are per repository, stored server-side in git_repo_settings and edited from a dialog opened in the graph view.
+- Per-viewer display settings (graph page size and scope, stash visibility, and similar) are per repository, stored in the repo's settings file (Repo config files, P474) and edited from a dialog opened in the graph view.
 
 ### Go packages
 
@@ -1880,7 +1880,7 @@ Conn (internal/gitsession): one per native stream (ServeGitStream) or ADE connec
 - Change request ancestry is rebuilt with a base cutoff (state/changeRequests.ts rebuildAncestry): each baseRef is resolved locally via rowOfBranchTip (a decoration scan, no new RPC) and its ancestors excluded, so badges no longer tag nearly all loaded history behind a branch.
 - Bursts of individually-resolving change request branches coalesce into one ancestry rebuild per tick via scheduleAncestryRebuild's nextTick drain.
 - There is no gitrpc method allowlist (removed in P243 Part 2 with the extension): every gitrpc method is served, and a method the contract does not name does not exist.
-- guardRepoSettingsSet in gitstream.go refuses repoSettings.set with E_READ_ONLY when its patch touches the prepare script or worktreeBasePath, which only Kira Space writes in-process (ADE repo config).
+- guardRepoSettingsSet in gitstream.go refuses repoSettings.set with E_READ_ONLY when its patch touches the prepare script or worktreeBasePath, which exist only in the repo's settings file; no process writes them over the stream.
 - The gitrpc Router refuses the prepare-script leaf on every connection (P172), and there is no gitrpc method for shell execution since 46 removed worktree.prepare.
 - repo.open must never transitively arm a write, because via Registry.Acquire/EnsureAutoFetch it could arm a timer running git fetch --prune when git.fetchAutoIntervalMinutes is above its default of 0.
 - gitsession.Conn has a noAutoFetch flag (DisableAutoFetch), set by ServeGitStream before serving requests, which routes Open through Registry.AcquireQuiet and skips EnsureAutoFetch on existing entries, so the native mount's repo.open never arms auto-fetch.
@@ -2301,7 +2301,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - Repo colour is painted via --kira-conn-* as colorMarkClass row rails on the Repositories dialog and Git panel, repo tab bars, and ADE repo tags; the 20-slot ADE work palette now colours tasks only.
 - internal/palette is the one Go palette set, though Studio's model.ValidPaletteColor still has its own.
 - Worktrees take their anchor repo's colour (repo/state/repoLinks.ts repoColorOf, used by tabKinds.ts and ADE; P227).
-- A deployment environment (ade_repo_envs) is a name plus a shell command that prints the deployed commit SHA; it runs in the repo root on board refresh and marks branches ▲name ✓/⚠/?.
+- A deployment environment (the `environments` key of the repo file) is a name plus a shell command that prints the deployed commit SHA; it runs in the repo root on board refresh and marks branches ▲name ✓/⚠/?.
 - In the deployment environments UI, a new row stays a local draft and is written only once both name and command are filled.
 - Run and setup logs keep a tail of 2 MiB per log in chunks of at most 8 KiB, set truncated once head chunks drop, and batch writes every 250 ms.
 - Archive keeps all task data (P399): logs, review sessions and comments are never purged; per-log size cap still bounds each log. Archive closes review windows only; review sessions stay pinned.
@@ -2310,7 +2310,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - AdeTaskService.ArchivedTask returns an archived task read-only: task, statuses, branches (live PR when the host answers, else the snapshot; prSource says which), stored review comments, no worktree paths. Phone reads it at /api/ade/archived-task.
 - AdeTaskService.RestoreTask revives the task and the branch rows archived with it (same archived_at), adds a Later plan row, and returns the task. It refuses when a branch name is live on another task; nothing changes then. Worktrees come back on next launch via ensureWorktree.
 - No Archived tab. Archived tasks list in the Plan: today's archive rows always show, past days load with the History toggle (`AdeHistoryControl`), and the archived finder (`AdeArchivedFinder`) searches all of board.history. Each selects the task; the panel is read-only, with Restore to edit.
-- The per-repo prepare timeout is the GitRepoSettings leaf worktreePrepareTimeout (default 15m, max 2h), shared with git-ui worktree add; Spec.Timeout must be > 0.
+- The per-repo prepare timeout is the GitRepoSettings leaf worktreePrepareTimeout, `worktree.prepare_timeout` in the repo file (default 15m, max 2h), shared with git-ui worktree add; Spec.Timeout must be > 0.
 
 ### Git facts
 
@@ -2635,7 +2635,7 @@ role (`harness.UsageReporter`): only a provider that reports it feeds the servic
 - Task plus menu (P410, `sessions/AdeTaskLaunchMenu.vue`) on the Sessions tab bar only (not the task list card): per worktree a Terminal (Git module tab via `openRepoTerminalTab`) or an ad hoc agent session (`StartAdHoc`). Disabled items show their reason inline.
 - The repository list is one Pinia store (state/coderepos.ts) fed by the boot-time kira:adetask:repos subscription (initCodeRepos, called from main.ts), so every module in every window sees every change.
 - All repository configuration lives in one Git-module dialog, repo/ReposDialog.vue (P205), with a Repositories tab (import, list, per-repo form, remove) and a Scan folders tab (add, watch, hide all, remove). Agents has no Repos tab.
-- The per-repo form in ReposDialog sets nickname, prepare script and timeout, integration branches, environments and worktreeBasePath (via UpdateRepo).
+- ReposDialog shows per repo `RepoIdentity` (colour, path, source) and `RepoFilePane`, the editor of its settings file. Nickname, integration branches, environments and every Git leaf are keys of that file; there is no per-field form and no UpdateRepo.
 - ReposDialog opens from the Git panel header, GitStart.vue, a repo-row "Configure repository…" item and the Agents empty state.
 - Repo hiding (P259): code_repos.hidden decides visibility for one-by-one and folder imports alike; ade_folders.hidden is the folder "hide all", which bulk-writes its repos, makes later discoveries import hidden, and still lets a single repo be shown inside a hidden folder.
 - Hidden only filters the Git panel Repos list (repo/state/repoVisibility.ts); ADE, agent task_info, mobile and open workspaces ignore it, and the dialog lists every repo.
@@ -3237,7 +3237,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - `AGENTS.md` is generated per folder: `DocFromSchema` builds the options list from the schema, rule docs are listed, the intro is a per-module template with prose only. `Folder.WriteDocs` writes it at app start when bytes differ.
 - Workflows (P451) build their model from the `adeflow` option table, not a schema: `adeflow.DocModel` adds per-agent settings from `providers.StageCatalog` and one doc line per cross-field rule (`TestRuleDocsEnforced` binds each rule to the validator). `DocModel.LocalOverrides` is opt-in, so the `.local.yaml` line prints only for a module that reads it. `ade.TaskBoard.Start` writes the file at Space start, non-fatal; a user edit is overwritten.
 - UI: plain file edit in the user's editor is the default; a module may add small edit actions through `Folder.Save`. `packages/workbench/src/config/ConfigFileBar.vue` shows path, status (valid or "Line N: message"), Open, Reveal and Copy path; the app passes its bound calls in.
-- `configsvc.Service` (`internal/configfs/configsvc`) is the bound Open/Reveal surface. It takes a registered folder name plus a visible file in it; no renderer path reaches the OS. Kira Space registers `workflows`, `agent` and `runs`; Kira Studio registers `runs`. The OS seam is `shell.NewDeferredFileOpener` (Wails `Browser.OpenFile`, `Env.OpenFileManager`).
+- `configsvc.Service` (`internal/configfs/configsvc`) is the bound Open/Reveal surface. It takes a registered folder name plus a visible file in it; no renderer path reaches the OS. Kira Space registers `workflows`, `agent`, `runs` and `repos`; Kira Studio registers `runs`. The OS seam is `shell.NewDeferredFileOpener` (Wails `Browser.OpenFile`, `Env.OpenFileManager`).
 
 ### Runs config files (P472)
 
@@ -3266,6 +3266,23 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - configfs doc walker: `DocFromSchema` guards against schema cycles (the api item schema is recursive through folders). Deviation from the plan, shared by P474 and P475.
 - UI: tree rows offer Open file and Reveal file; `ApiConfigProblems.vue` shows one `ConfigFileBar` per bad file with a last good hint; variable-set tabs and environments are read-only views of the last good rows; `ApiSecrets.vue` sets and clears secret values. Variable-set tab names follow the file through `syncVariableSetTabNames`.
 - Tests: flows in `apiflow` (contract `api-files.json`), migration test, UI `api-config-files.spec.ts` on the same scenario.
+
+### Repo config files (P474)
+
+- Folder `~/.kira-space/repos` (config folder `repos`, Space only). One `<stem>.yaml` per repo; `AGENTS.md` beside them is generated. The binding key is the `path` key (the code repo's `repo_id`, NFC-cleaned absolute path), not the stem: the stem is a readable slug chosen at first save and made unique. This is the keyed-by exception to P450's stem-is-id rule (`configfs.DocModel.KeyedBy`); P475 keeps it.
+- Keys: `path`, `nickname`, `integration_branches`, `environments` (`name`, `deployed_sha_script`), `worktree` (`prepare_script`, `prepare_timeout`, `base_path`), `graph` (`page_size`, `scope`), `stash` (`show_in_graph`, `include_untracked`), `review.base_candidates`, `pull.strategy`, `git_host.provider`, `checkout.auto_stash`. An absent leaf means the default. Limits: nickname 40 runes, 10 integration branches, 10 environments, 4 KiB per environment script, 64 KiB prepare script; `base_path` is absolute; `git_host.provider` is `auto`, `off` or a registered host id.
+- Package `internal/repocfg`. `Store` keeps an in-memory index `path -> Config` rebuilt by `Reload`; settings are never read from SQLite. Files to DB only: the `config_last_valid` projection (`repos`, file) keeps the last good value across restart. Invalid file: last good applies, a `Problem` with line is published, one Warn per new hash. File gone: that repo returns to defaults; env marks of removed environments are pruned.
+- Duplicate `path` across files: the first file by name applies; each later one gets a `Problem` on its `path` line and applies nothing. It lists under Other files, bound to no repo.
+- `Store.Patch` (git stream `repoSettings.set`) edits the file in place through `configfs.EditYAML` (yaml.Node set-by-path: comments and key order stay, parents are created, a flow `{}` becomes a block). A repo with no file gets one. A file with an error is refused. One retry on a hash conflict. `Change.FromPatch` stops the duplicate `repoSettings.changed` push.
+- `configfs.EditYAML` and `NodeSet` are shared with P475 (workflow and run edits).
+- Hooks: `OnChange([]Change)` feeds the git router (`repoSettings.changed` for edits not made through the stream) and `ade.TaskBoard.RepoConfigChanged` (integration targets, environments, prepare script; refreshes env scripts and notifies repos and board once). `OnReload` broadcasts the payload-free `kira:repoConfig:changed`.
+- Guard: `guardRepoSettingsSet` in `bridge/gitstream.go` is unchanged and still refuses the prepare script and base path with `E_READ_ONLY`; `Patch` is never reached for them. They are file-only. `SetRepoSettings` is gone from `TaskBoardDeps`.
+- An integration branch equal to the repo's main branch is ignored where targets are used (`withoutMain`); the Repos wire shows the file as written.
+- State: `ade_env_state(code_repo_id, env, ...)` hangs off `code_repos` by FK, not off config. A repo's environment marks survive a rename of the environment only as delete plus create.
+- Migration 0065 rebuilds `ade_env_state` with that FK (dropping `ade_repo_envs` would otherwise cascade its rows). `configfs.MigrateOnce(db, "repos", ...)` then writes a file for each repo whose legacy rows differ from the defaults and drops `git_repo_settings`, `ade_repo_integration`, `ade_repo_envs` and `ade_repo_config.nickname` in one transaction. Legacy values the file could not hold are dropped on export: invalid provider, oversize script, relative base path, blank review candidates. Never exported again once the marker is set.
+- Bound surface (`RepoConfigService`): `List` (dir plus items `file`, `path`, `problem`, `lastGood`, `repo`), `File(path|file)` (text, hash, state; a repo with no file gets a template), `SaveFile(path, file, text, baseHash)` (whole text; `file` empty creates; a changed file is `E_CONFLICT`; an invalid text is kept and flagged). `AdeTaskService.Repos` rows gain `file` and `problem`; `UpdateRepo`, `RepoPatch` and the `git_repo_settings` and `ade_repo_config` repositories are gone.
+- UI: `RepoFilePane.vue` (`ConfigFileBar`, a Textarea draft with the loaded hash, Reload and Overwrite on conflict, "Create settings file" when none), `RepoIdentity.vue`, an error dot on repo rows with a problem, an Other files tab for unbound files. TanStack Query keys `['repoConfig', ...]` invalidate on `kira:repoConfig:changed`.
+- Tests: flows `TestRepoConfigFile`, `TestRepoConfigMigration` (repoflow), `TestRepoSettingsLiveInFile` (gitflow), contract `repo-config-file.json`; UI `repo-config-file.spec.ts`; `configfs` `TestEditYAML`, Space migration test `TestMigration65RepoFiles`.
 
 ### Agent context (P452)
 

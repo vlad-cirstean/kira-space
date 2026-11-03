@@ -210,7 +210,7 @@ func TestRepoConfigFile(t *testing.T) {
 		if err := os.Remove(filepath.Join(dir, file)); err != nil {
 			t.Fatal(err)
 		}
-		got := waitRepo(t, app, rec.ID, func(r adewire.Repo) bool { return r.File == "" })
+		got := waitRepo(t, app, rec.ID, func(r adewire.Repo) bool { return r.File == "" && len(r.IntegrationBranches) == 0 })
 		if len(got.IntegrationBranches) != 0 || got.Nickname != "" || got.Problem != nil {
 			t.Fatalf("Repos after the delete = %+v, want defaults", got)
 		}

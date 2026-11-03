@@ -28,7 +28,7 @@ export interface RemoteOpError {
 }
 
 // ---- repos (§6.3, D15)
-export interface Environment {
+interface Environment {
   name: string;
   deployedShaScript: string;
 }
@@ -47,7 +47,7 @@ export interface Repo {
   file: string /* stem of the repo file that applies; '' = none */;
   problem: RepoProblem | null /* why that file is invalid; its last good values apply */;
 }
-export interface RepoProblem {
+interface RepoProblem {
   line: number;
   message: string;
 }
