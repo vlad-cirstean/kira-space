@@ -16,7 +16,7 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 | P498 | ADE: one Agents tab for Context and Settings | Done |
 | P499 | Review: show reviewed changes removed since review | Done |
 | P500 | ADE: task card icon row | Done |
-| P501 | ADE: task panel restructure | Todo |
+| P501 | ADE: task panel restructure | Done |
 | P502 | ADE: multi-branch task panel simplification | Todo |
 | P503 | Code review (1 round) | Todo |
 | P504 | Close chapter v0.2.30 | Todo |
@@ -90,7 +90,7 @@ Parallel streams: code files are disjoint between every pair of P495, P496, P497
 - Plan accounts for P496 (handover only in Notes). Not parallel with P496.
 - Files: `panel/AdeTaskPanel.vue`, `panel/AdeTaskTab.vue` and sibling tab components, adewire types, backend storage if the session id is missing.
 - Test: backend flow if storage changes; UI specs for the tabs, Details editing, timeline and session links.
-- Result: pending.
+- Result: Done. Tabs Main, Details, Sessions (default Main). Main: `AdeMainTab` plus `AdeMainBranches`; a branch with a change request shows a PR line with base ref and checks glyph (`ChangeRequest.baseRef`, `checksState`). Details: notes, Main and Related link groups (Jira, host link, detected change requests; stored links), paste with provider detection, inline edit and remove, handovers, collapsed timeline. New `UpdateArtifact`; empty-title add takes the host link ref, else host plus path. Migration 0066 adds `session_id` to handovers and artifacts; `Grant.SessionID` and `PrepareArgs.RecordID` name the session before its row exists. `AdeOriginSession` links an item to its session; archived Details is read-only. `AdeArtifactAdd` and `AdeLinkRow` deleted; `AdeArtifactList` read-only, stage dialog only. Tests: flow `TestTaskPanelOrigins` (contract `ade-task-panel`; `ade-handover`, `ade-artifacts` regenerated), new `ade-v2-task-panel.spec.ts`, 11 existing specs updated for moved testids. Visual baselines unchanged. Container-backed Go tests not run (no Docker). Full suite pending at chapter end.
 
 ### P502 ADE: multi-branch task panel simplification
 
