@@ -13,7 +13,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P488 | Install instructions: trust the Jira tap | Done |
 | P489 | Terminals: Cmd-click opens file paths in Kira Space | Done |
 | P490 | Kira Space: file open window shows only ad hoc file tabs | Todo |
-| P491 | ADE: hide archived tasks unless History is open | Todo |
+| P491 | ADE: hide archived tasks unless History is open | Done |
 | P492 | ADE: agents widget shows active-agents indicator | Todo |
 | P493 | Code review (1 round) | Todo |
 | P494 | Close chapter v0.2.29 | Todo |
@@ -68,6 +68,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 
 - Archived tasks stay hidden, including ones archived today, until the user opens History.
 - Test: UI spec.
+- Result: `buildBand` (`timeline.ts`) shows history rows only while History is open; day 0 no longer exempt. `onFindArchived` opens History for every archived pick, today's included. Frontend only: `board.history` payload unchanged, so no backend test. UI specs: `ade-v2-plan` today-archive test rewritten (hidden, count on button, shows on open, hides on close); `ade-v2-archived` gains finder-picks-today-task test. ARCHITECTURE archived-tasks bullet updated.
 
 ### P492 ADE: agents widget shows active-agents indicator
 
