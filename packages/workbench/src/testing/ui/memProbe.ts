@@ -242,7 +242,8 @@ export class MemSampler {
       cdp = await page.context().newCDPSession(page);
       if (browser) browserCdp = await browser.newBrowserCDPSession();
     }
-    const root = info.project.outputDir;
+    // Not under outputDir: Playwright wipes that at the start of every run.
+    const root = join(info.project.outputDir, '..', 'perf-ram');
     const dir = join(root, 'ram');
     mkdirSync(dir, { recursive: true });
     return new MemSampler(

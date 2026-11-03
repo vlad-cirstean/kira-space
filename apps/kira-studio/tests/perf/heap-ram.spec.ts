@@ -1,8 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { Page } from '@playwright/test';
 import type { KibanaDiscoverRequest } from '@shared/domain/kibana';
 import { closeAllTabs } from '@workbench/testing/ui/heapProbe';
 import { diffSnapshotFiles } from '@workbench/testing/ui/heapSnapshot';
-import { type MemStep, runMemSteps, SNAPSHOTS } from '@workbench/testing/ui/memProbe';
+import { MemSampler, type MemStep, runMemSteps, SNAPSHOTS } from '@workbench/testing/ui/memProbe';
 import { emitWailsEvent } from '@workbench/testing/ui/mockRuntime';
 import { browserTimeZone, resolveTime } from '../../frontend/src/views/console/kibana/time';
 import {
@@ -469,4 +471,20 @@ test('ram: documents-list', async ({ relaunch }, info) => {
       { name: 'closed', run: () => closeAllTabs(page), snapshot: true },
     ],
   });
+});
+
+test('ram: i18n catalog parse', async ({ relaunch }, info) => {
+  test.skip(!worldEnabled('i18n'));
+  const { window: page } = await relaunch({});
+  await page.goto('about:blank');
+  const s = await MemSampler.attach(APP, 'i18n', page, info);
+  await s.sample('blank');
+  const json = readFileSync(
+    resolve(__dirname, '../../../../packages/theme/src/i18n/en.json'),
+    'utf8',
+  );
+  await page.evaluate((text) => {
+    (window as unknown as { __catalog: unknown }).__catalog = JSON.parse(text);
+  }, json);
+  await s.sample('parsed');
 });

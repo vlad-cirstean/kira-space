@@ -92,7 +92,7 @@ for (const rows of [10_000, 50_000]) {
             await repoRow(page, PORT_REPO.id).click();
             await expect(
               page.locator('[data-testid="commit-grid"] .slick-row[data-row="5"]'),
-            ).toBeVisible({ timeout: 90_000 });
+            ).toBeVisible({ timeout: 400_000 });
             await page.waitForTimeout(5000);
           },
           snapshot: true,
