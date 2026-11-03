@@ -156,6 +156,7 @@ const INTROSPECT_FN = () => {
   const missing: string[] = [];
   // biome-ignore lint/suspicious/noExplicitAny: probing untyped app internals
   const w = window as any;
+  // biome-ignore lint/suspicious/noExplicitAny: probing untyped app internals
   const app = document.querySelector('#app')?.['__vue_app__' as never] as any;
   const out: {
     piniaStores: string[];
