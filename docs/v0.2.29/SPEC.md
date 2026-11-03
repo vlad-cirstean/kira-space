@@ -10,7 +10,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P485 | Kubernetes: reorder clusters | Todo |
 | P486 | Kubernetes: resource browser redesign, tabbed pods | Todo |
 | P487 | Kubernetes: drive the kubectl CLI instead of the native client | Todo |
-| P488 | Install instructions: trust the Jira tap | Todo |
+| P488 | Install instructions: trust the Jira tap | Done |
 | P489 | Terminals: Cmd-click opens file paths in Kira Space | Todo |
 | P490 | Kira Space: file open window shows only ad hoc file tabs | Todo |
 | P491 | ADE: hide archived tasks unless History is open | Todo |
@@ -51,6 +51,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 
 - Jira brew install requires trusting the tap. Update the instructions. Check the other CLI install instructions for the same requirement and update them.
 - Test: none (docs and in-app text); a UI spec only if in-app text changes.
+- Result: Jira install step now `brew tap atlassian/homebrew-acli && brew trust --formula atlassian/acli/acli && brew install acli` (Homebrew 6 tap trust, per-formula). Other CLI steps (gh, azure-cli, git, grep) come from homebrew/core; no change. Contract `space-cli-tools.json` regenerated; UI spec asserts new command and trust. ARCHITECTURE CLISetup bullet notes the rule.
 
 ### P489 Terminals: Cmd-click opens file paths in Kira Space
 
