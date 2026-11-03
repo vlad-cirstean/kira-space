@@ -220,6 +220,9 @@ func (a *App) OpenGitStreamFor(windowKey string) *GitStream {
 	return s
 }
 
+// Key is the window key the stream's connection belongs to.
+func (s *GitStream) Key() string { return s.key }
+
 // Fire sends a request without waiting for its reply and returns a cancel for it, as a UI abandoning
 // a call would. The reply, if any, is dropped.
 func (s *GitStream) Fire(method string, params any) (cancel func()) {

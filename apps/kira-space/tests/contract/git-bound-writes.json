@@ -1,0 +1,114 @@
+{
+  "git:op.run#bound": {
+    "head": {
+      "kind": "branch",
+      "name": "sibling"
+    },
+    "inProgress": null,
+    "ok": true,
+    "undo": null
+  },
+  "git:remote.cancel#bound": {
+    "cancelled": false
+  },
+  "git:remote.run#bound": {
+    "head": {
+      "kind": "branch",
+      "name": "main"
+    },
+    "inProgress": null,
+    "ok": true,
+    "updates": [
+      {
+        "forced": false,
+        "from": "b8bc82d9a1e4ac5c364ca80246c59a313885c345",
+        "ref": "refs/remotes/origin/HEAD",
+        "to": "7b126a7f3937e4b5d3bee5ac2220459c2950bed7"
+      },
+      {
+        "forced": false,
+        "from": "b8bc82d9a1e4ac5c364ca80246c59a313885c345",
+        "ref": "refs/remotes/origin/main",
+        "to": "7b126a7f3937e4b5d3bee5ac2220459c2950bed7"
+      }
+    ]
+  },
+  "git:stack.list#bound": {
+    "orphans": [],
+    "stacks": [
+      {
+        "base": "main",
+        "baseTip": "9e428c1da904ce514a54d1bbf595f7bf9e249cc4",
+        "branches": [
+          {
+            "ahead": 1,
+            "behind": 1,
+            "depth": 0,
+            "isHead": false,
+            "name": "feat",
+            "parent": "main",
+            "parentTip": "9e428c1da904ce514a54d1bbf595f7bf9e249cc4",
+            "recordedBase": "b8bc82d9a1e4ac5c364ca80246c59a313885c345",
+            "state": "needsRestack",
+            "tip": "485adb523cd252f9ae78afa4dba31badc94d4714"
+          }
+        ],
+        "needsRestack": true
+      }
+    ]
+  },
+  "git:stash.list#bound": {
+    "entries": [
+      {
+        "baseSha": "<masked>",
+        "baseSubject": "main moves",
+        "branch": "main",
+        "fileCount": 1,
+        "includedUntracked": false,
+        "index": 0,
+        "indexSha": "<masked>",
+        "message": "On main: wip",
+        "ref": "",
+        "scope": "stack",
+        "sha": "<masked>",
+        "timestamp": 0
+      }
+    ]
+  },
+  "git:undo.peek#bound": {
+    "slot": {
+      "createdAt": 0,
+      "id": "<masked>",
+      "label": "Deleted tag t1",
+      "recoverySha": "9e428c1da904ce514a54d1bbf595f7bf9e249cc4"
+    }
+  },
+  "git:worktree.list#bound": {
+    "worktrees": [
+      {
+        "branch": "refs/heads/main",
+        "head": "<masked>",
+        "isBare": false,
+        "isCurrent": true,
+        "isDetached": false,
+        "isMain": true,
+        "locked": null,
+        "openElsewhere": false,
+        "path": "<masked>",
+        "prunable": null
+      },
+      {
+        "branch": "refs/heads/wt-b",
+        "head": "<masked>",
+        "isBare": false,
+        "isCurrent": false,
+        "isDetached": false,
+        "isMain": false,
+        "locked": null,
+        "openElsewhere": false,
+        "path": "<masked>",
+        "prunable": null
+      }
+    ]
+  }
+}
