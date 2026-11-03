@@ -33,6 +33,7 @@ import { computed, ref, useTemplateRef, watch } from 'vue';
 import { control } from '../bridge/control';
 import { useCodeReposStore } from '../state/coderepos';
 import RepoFilePane from './RepoFilePane.vue';
+import RepoIdentity from './RepoIdentity.vue';
 import { useRepoConfigList } from './state/repoConfigQueries';
 import { useReposDialogStore } from './state/reposDialog';
 import {
@@ -363,12 +364,10 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
                 </div>
               </ViewToolbar>
               <div :class="colorMarkClass('band', selected.color)" />
-              <RepoFilePane
-                v-if="selectedConfig"
-                :key="selectedConfig.codeRepoId"
-                class="m-3"
-                :path="selected.repoId"
-              />
+              <div v-if="selectedConfig" class="m-3 flex flex-col gap-4">
+                <RepoIdentity :key="selectedConfig.codeRepoId" :repo="selectedConfig" />
+                <RepoFilePane :key="selectedConfig.codeRepoId" :path="selected.repoId" />
+              </div>
             </template>
             <p v-else class="m-3 text-muted-foreground">{{
               t('space.repo.dialog.configureHint.emptyHint')

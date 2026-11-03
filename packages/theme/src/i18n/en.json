@@ -10601,6 +10601,20 @@
       "config": {
         "repository": {
           "label": "Repository"
+        },
+        "source": {
+          "added": {
+            "status": "Added individually"
+          },
+          "imported": {
+            "status": "Imported from {source}"
+          },
+          "notOnPlan": {
+            "status": "Not on the plan"
+          },
+          "usedOnPlan": {
+            "status": "Used by tasks on the plan"
+          }
         }
       },
       "dialog": {

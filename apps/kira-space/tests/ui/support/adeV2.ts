@@ -150,9 +150,14 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskSaveWorkflowYaml, response: firstWorkflow() },
     { channel: IPC.adeTaskImportWorkflow, response: firstWorkflow() },
     { channel: IPC.adeTaskNewWorkflow, response: firstWorkflow() },
+    { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/repos', files: [] } },
     {
-      channel: IPC.adeTaskUpdateRepo,
-      response: adeFixture<{ repos: unknown[] }>('repos').repos[0],
+      channel: IPC.repoConfigFile,
+      response: contract('repo-config-file', 'RepoConfigService.SaveFile'),
+    },
+    {
+      channel: IPC.repoConfigSaveFile,
+      response: contract('repo-config-file', 'RepoConfigService.SaveFile'),
     },
     { channel: IPC.adeTaskAddFolder, response: adeFixture('folder-import') },
     {

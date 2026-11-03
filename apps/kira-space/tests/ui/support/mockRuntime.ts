@@ -100,6 +100,9 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
 
   // P116 G5/G6: the two new bound methods window-chrome parity adds.
   windowsOpenNew: 'WindowsService.OpenNew',
+  repoConfigList: 'RepoConfigService.List',
+  repoConfigFile: 'RepoConfigService.File',
+  repoConfigSaveFile: 'RepoConfigService.SaveFile',
   agentContextGet: 'AgentContextService.Get',
   agentContextSave: 'AgentContextService.Save',
   agentSettingsGet: 'AgentSettingsService.Get',
@@ -199,7 +202,6 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskSaveWorkflowYaml: 'AdeTaskService.SaveWorkflowYaml',
   adeTaskImportWorkflow: 'AdeTaskService.ImportWorkflow',
   adeTaskNewWorkflow: 'AdeTaskService.NewWorkflow',
-  adeTaskUpdateRepo: 'AdeTaskService.UpdateRepo',
   adeTaskAddFolder: 'AdeTaskService.AddFolder',
   adeTaskSetFolderWatch: 'AdeTaskService.SetFolderWatch',
   adeTaskSetFolderHidden: 'AdeTaskService.SetFolderHidden',
@@ -524,7 +526,7 @@ const ADE_TASK_PUSHES: Readonly<Record<string, readonly string[]>> = {
   [IPC.adeTaskSaveWorkflowYaml]: [IPC.adeTaskWorkflowsChanged],
   [IPC.adeTaskImportWorkflow]: [IPC.adeTaskWorkflowsChanged],
   [IPC.adeTaskNewWorkflow]: [IPC.adeTaskWorkflowsChanged],
-  [IPC.adeTaskUpdateRepo]: [IPC.adeTaskReposChanged],
+  [IPC.repoConfigSaveFile]: [IPC.repoConfigChanged, IPC.adeTaskReposChanged],
   [IPC.adeTaskAddFolder]: [IPC.adeTaskReposChanged],
   [IPC.adeTaskSetFolderWatch]: [IPC.adeTaskReposChanged],
   [IPC.adeTaskSetFolderHidden]: [IPC.adeTaskReposChanged],
