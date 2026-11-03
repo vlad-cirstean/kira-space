@@ -50,6 +50,11 @@ type McpSettings struct {
 	Logs        string `json:"logs"`
 }
 
+// ReorderArgs is Reorder's argument: cluster ids in the wanted order.
+type ReorderArgs struct {
+	IDs []string `json:"ids"`
+}
+
 // SetMcpArgs is SetMcp's argument.
 type SetMcpArgs struct {
 	ClusterID string      `json:"clusterId"`

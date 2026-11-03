@@ -43,6 +43,11 @@ func (b *BoundService) SetMcp(args SetMcpArgs) (McpSettings, error) {
 	return b.s.SetMcp(context.Background(), args)
 }
 
+// Reorder stores the user's cluster order and returns the reordered list.
+func (b *BoundService) Reorder(args ReorderArgs) (ClustersResult, error) {
+	return b.s.Reorder(context.Background(), args)
+}
+
 func (b *BoundService) Namespaces(args ClusterArgs) (NamespacesResult, error) {
 	return b.s.Namespaces(context.Background(), args)
 }
