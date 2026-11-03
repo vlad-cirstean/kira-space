@@ -26,6 +26,8 @@ type DocModel struct {
 	LocalOverrides bool
 	// Singleton: the folder holds one file, not one item per file.
 	Singleton bool
+	// KeyedBy: the key naming the item, when the file name is free instead of the item id.
+	KeyedBy string
 	// MaxBytes is the file size cap; 0 means MaxFileBytes.
 	MaxBytes int
 	// Sections document each file of a folder that holds several kinds: a `## <Pattern>` block with
@@ -231,9 +233,12 @@ func writeFileDoc(b *bytes.Buffer, m DocModel, h string, hidden bool) {
 		limit = MaxFileBytes
 	}
 	fmt.Fprintf(b, "%s Files\n\n- Name: `%s`, %s, at most %s.\n", h, m.Pattern, m.Format, sizeText(limit))
-	if m.Singleton {
+	switch {
+	case m.Singleton:
 		b.WriteString("- A single file.\n")
-	} else {
+	case m.KeyedBy != "":
+		fmt.Fprintf(b, "- One item per file. The `%s` key names the item; the file name is free.\n", m.KeyedBy)
+	default:
 		b.WriteString("- One item per file. The file name without its extension is the item id.\n")
 	}
 	if hidden {
