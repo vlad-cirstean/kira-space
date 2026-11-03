@@ -17,7 +17,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P467 | Start a workflow without a repo | Done |
 | P468 | Agent branch and worktree requests: nanoid worktree name, branch in task | Done |
 | P469 | Stage move: advance button with close-session prompt | Done |
-| P470 | Code review (1 round) | Todo |
+| P470 | Code review (1 round) | Done |
 | P471 | Close chapter v0.2.27 | Todo |
 
 ## Rows
@@ -115,6 +115,8 @@ Result: Action kind `done` becomes `advance` ("Next stage ›"); last stage keep
 ### P470 Code review (1 round)
 
 One Opus review over the full diff since `main`, findings file under `plans/`, then one Sonnet fixer. Then close, then PR.
+
+Result: 4 findings (1 High, 1 Medium, 2 Low), all real and fixed. F1: markdown alert titles were emitted raw; `alert_open` renderer now escapes the title (`hostview/markdown.ts`), unit `host-view-markdown`. F2: Jira `forgetDetail` bumps a per-key generation and calls `sf.Forget`; `saveDetail` skips when the generation moved and writes the Issue cache under the same lock; `postComment` forgets detail before the Issue cache; Go test `TestDetailInFlightReadDoesNotSaveAcrossPost` (fails without the fix). F3: `useIssueDetail` keeps the saved copy, marked stale, when a fresh read fails (`refreshFailed`), note key `space.hostView.issue.stale.failed.hint`; UI spec in `issue-view-fetch`. F4: `ReviewThread` takes `hostComment` getter and reads it inside the `hostTab` computed. Ran: Go `-race` jira package; typecheck, lint, copy checks via hooks; unit `host-view-markdown`; UI `issue-view*`, `host-view*`, `ade-v2-review*` (122 passed).
 
 ### P471 Close chapter v0.2.27
 
