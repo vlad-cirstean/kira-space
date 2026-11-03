@@ -14,7 +14,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P489 | Terminals: Cmd-click opens file paths in Kira Space | Done |
 | P490 | Kira Space: file open window shows only ad hoc file tabs | Todo |
 | P491 | ADE: hide archived tasks unless History is open | Done |
-| P492 | ADE: agents widget shows active-agents indicator | Todo |
+| P492 | ADE: agents widget shows active-agents indicator | Done |
 | P493 | Code review (1 round) | Todo |
 | P494 | Close chapter v0.2.29 | Todo |
 
@@ -75,6 +75,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 
 - The agents widget shows a distinct indicator when agents are running (plan picks: pulse dot, count badge).
 - Test: UI spec.
+- Result: "running" read as "mid-turn (working)": `AdeAgentsStatusItem` shows a pulsing `StatusDot` (tone ok, `N working` label, testid `status-agents-working`) while `summary.byKind.working > 0`. Count badge declined: label already prints the count. Reduced motion static via global CSS. Frontend only, no backend test. UI spec `status-agents` extended (dot, TUI follow, reduced motion); status-bar visual baseline re-recorded (tooltip, popover unchanged). ARCHITECTURE status bar bullet updated.
 
 ### P493 Code review (1 round)
 
