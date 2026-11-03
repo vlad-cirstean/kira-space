@@ -18,7 +18,7 @@ Source: user request. Phases run top to bottom, one at a time. Scope is closed: 
 | P468 | Agent branch and worktree requests: nanoid worktree name, branch in task | Done |
 | P469 | Stage move: advance button with close-session prompt | Done |
 | P470 | Code review (1 round) | Done |
-| P471 | Close chapter v0.2.27 | Todo |
+| P471 | Close chapter v0.2.27 | Done |
 
 ## Rows
 
@@ -121,3 +121,5 @@ Result: 4 findings (1 High, 1 Medium, 2 Low), all real and fixed. F1: markdown a
 ### P471 Close chapter v0.2.27
 
 Hand-written close per CLAUDE.md "Closing a chapter". Push, open PR to `main`.
+
+**Result.** Chapter folded by hand into `docs/HISTORY.md`; `docs/v0.2.27/` removed. `docs/v0.2.28/` and `docs/v0.2.29/` draft specs stay. No links to the chapter outside its own dir.
