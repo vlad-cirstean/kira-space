@@ -9789,9 +9789,6 @@
         "hideOutput": {
           "label": "Hide output"
         },
-        "mainOpen": {
-          "status": "{main} —"
-        },
         "moveHere": {
           "label": "Move task here"
         },

@@ -41,8 +41,6 @@ export interface StepBlock {
   runs: RunLine[];
   /** Kind line: `Agent · background claude -p`, `Script`, `Review`, `Manual`. */
   mode: string;
-  /** The Release block lists the task's branches under its row. */
-  release: boolean;
 }
 
 const RUN_GLYPH: Record<StepRun['state'], { glyph: string; tone: Tone }> = {
@@ -204,7 +202,6 @@ export function buildStepBlocks(p: TaskProgress, workflow: Workflow | null): Ste
         ? s.runs.map((r) => runLine(r, backLimit(p.steps, s.id), s.maxReturns))
         : [],
       mode: modeText(s),
-      release: s.id === 'release' && k <= idx,
     };
   });
 }
