@@ -226,6 +226,12 @@ historical prose.
   numbers and a real Mac's aren't comparable, so a hard bound would be flaky in exactly the way
   it's meant to guard against. Record numbers in the commit message and, when they
   answer a stated budget, in `docs/PERF.md`.
+- **Git UI mock (P479).** `tests/ui/support/gitStreamMock.ts` mocks bound `GitService` calls
+  (`BOUND_GIT_WIRE`, 65 entries; `ResetWindow` shows in the requests log) plus the `gitgraph` socket.
+  Inspect the plane with `gitGraphFrames` (inbound `open`/`credit`/`cancel`), `gitGraphDials`,
+  `gitGraphClose`. Spec: `git-graph-plane.spec.ts`.
+- **Git contract fixtures have no version.** Regenerating needs no bump. `KIRA_CONTRACT=write` rewrites
+  `graphChunkFrame.{bin,json}` with a random tmp path: `git checkout` them unless regenerating on purpose.
 - **`bun run perf:http:studio` probes the HTTP response viewer** (P160, `tests/perf/`, Playwright
   project `perf`, in no suite script). Builds the production bundle (`build:studio` overwrites
   `frontend/dist`; `test:ui:studio` rebuilds its own test bundle). `KIRA_PERF_RUNS` (default 3) runs
@@ -492,6 +498,7 @@ temp `KIRA_SPACE_HOME`, `WAILS_SERVER_HOST=127.0.0.1`. Run `bun run build:space-
   (merge requests) after GitHub. No CLI, no PATH. Azure registers in every harness through an in-process `fakeaz`; `WithAzure` seeds PRs and auth state, and the default harness has no az. Use `WithoutGh()` to prove no step reaches `gh`. It records reviews and comments (`SetAuthor`, `Reviews`, `Comments`) and refuses approving your own merge request.
   Flow: `flows/githostflow`; UI half
   `tests/ui/git-host-provider.spec.ts`.
+- Harness `GitStream` (P479): `Request` calls the bound-method table (no wire envelope); `Stream` rides the `graphplane` pipe (`openPlane`, `ClosePlane`).
 - Harness roots use a short `os.MkdirTemp("", "ksf")` path: unix-socket paths cap near 108 bytes.
 - Many watchers per parallel test can hit the inotify limit; raise `fs.inotify.max_user_instances`.
 - Run `go test` with `CGO_ENABLED=1`; lint with `PATH=$HOME/go/bin:$PATH`.

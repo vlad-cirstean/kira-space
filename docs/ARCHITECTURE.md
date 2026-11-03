@@ -1638,32 +1638,34 @@ packaged app does not), where the identical application code runs unchanged over
 
 ### Transport
 
-- ServeGitStream in apps/kira-space/internal/bridge/gitstream.go serves gitrpc.Router over rpcstream via one in-process Wails stream per window, with no socket, handshake, pairing or trust store, because the peer is the process's own webview.
-- P476 to P479 move the surface onto bound services; both transports coexist until P479. bridge.GitService carries 60 methods: P476's 14 reads (app.init, repo.open, repo.close, status.get, refs.list, commit.detail, commit.fileDiff, working.detail, file.read, file.goToTarget, blame.line, search.run, repoSettings.get, repoSettings.set), P477's 23 writes in `gitservice_writes.go` (every preflight.*, stash.list, stash.show, globalStash.list, op.run, undo.peek, undo.run, remote.pullPreflight, remote.pushPreflight, remote.run, remote.cancel, worktree.list, stack.list, stack.restack, stack.cancelRestack) and P478's 23 in `gitservice_review.go` (review.*, commit and branch change request methods, gitHost.info, changeRequest.*). `gitHost.providers` goes to `GitHostService.Providers`. Only `graph.*` stays stream-only from the client until P479. Every call takes the window key, which `repo/git/boundGit.ts` supplies; cancellation goes through the binding promise's cancel().
+- Git has no stream protocol of its own. Every request is a bound `bridge.GitService` call (65 methods across `gitservice.go`, `gitservice_writes.go`, `gitservice_review.go` and `gitservice_graph.go`) over `callGit[T]` and `gitrpc.Handlers.Request`, plus `GitHostService.Providers` for `gitHost.providers`. Every call takes the window key, which `repo/git/boundGit.ts` supplies; cancellation goes through the binding promise's cancel().
+- Graph rows are the one bulk payload and ride the `gitgraph` data plane: `bridge.ServeGitGraph` over `internal/graphplane` (Go), `packages/git-ipc/src/graphPlane.ts` and `repo/git/graphStream.ts` (frontend). One Wails stream per page carries every `graph.stream` of the window; it dials on the first graph call and redials after a close. `graph.status`, `graph.loadMore`, `graph.refresh` and `graph.reportFailure` are plain bound calls.
+- Plane wire: text JSON in (`open` with `id`, `windowKey`, `params`, `credit`; `credit` with `n`; `cancel`), blob frames out for chunks (`0x00 | u32BE header length | {"t":"chunk","id","chunk"} | KIG1 FlatBuffer`), a JSON text `end` with an optional error. No version envelope, no handshake. The page opens with credit 2 and grants 1 more after each awaited chunk.
+- `graphplane.Serve` runs one goroutine per stream and one writer over the send channel. Cancel and plane close cancel the stream ctx, which releases `Walk.Stream`'s lock. A duplicate live id gets an `end` error and leaves the first stream untouched. An `open` for a window with no Conn answers `E_CONFLICT`, so a late open never recreates a closed window.
 - Cancelling a bound promise abandons the reply, never a write. `remote.cancel` and `stack.cancelRestack` are the only ways to end a remote op or restack; they answer `{cancelled:false}` when nothing runs or the phase is not killable.
 - Replies and `kira:git:remote.progress` / `stack.progress` events travel apart, so a progress event can land after its reply; git-ui drops progress outside its running op.
 - Git events push as window-addressed app events `kira:git:<event>` via `EmitTo(windowKey, ...)`, not over the stream. The Space transport filters repo-scoped events (repo.changed, autoFetch.changed, remote.progress, stack.progress) by the repoIds the page holds.
-- During P476 to P479 a repo opens on both transports (bound first, then the stream). Repo holds are window-level and refcounted (`repo/git/repoHolds.ts`): the transport, `gitCall` consumers and stores share one bound repo.open per path, and the last release sends bound repo.close; opens and closes of one path run in order. A window's Conn outlives its last stream while bound holds remain (`gitWindow.bound`); a reload keeps them until window close, until P479's reset. The contract version stays 58: methods and shapes are unchanged.
+- Repo holds are window-level and refcounted (`repo/git/repoHolds.ts`): the transport, `gitCall` consumers and stores share one bound repo.open per path, and the last release sends bound repo.close; opens and closes of one path run in order. A window's Conn lives until `GitWindows.Close` (window close) or `GitService.ResetWindow`.
+- `ResetWindow` closes the window's Conn, releasing every hold and walk. The page awaits it once per page load (`gitWindowReady()` in `boundGit.ts`, started at boot, awaited by every bound call and graph stream) because a reload keeps its window key and would otherwise keep the previous page's holds. A failed reset clears the memo and the next call retries.
 - Frontend callers outside `packages/git-ui` (`views/repo/*`, `ade/v2/review/*`, `repo/state/*`) call `gitCall` and `onGitRepoEvent` over `repoHolds`, with TanStack Query for server state (worktree lists). The transport serves git-ui mounts and host-local methods; review writes repaint every surface through `repo/git/reviewRepaint.ts`.
-- Under `-tags server` the stream has no window, so its key falls back to "main"; a non-main tab then holds the repo under two keys and gets doubled repo.changed events until P479.
+- The plane's `open` frame carries the page's window key, so under `-tags server` (where a stream has no window) a non-main tab keeps one key and gets one repo.changed per change.
 - The Unix socket (git.sock) that served a separately-installed VS Code extension, and the extension itself, are gone since P243 Part 2; removeLegacyGitSocket in main.go deletes the git.sock and git.sock.lock left by older builds in KIRA_SPACE_HOME.
 - An flock on ${KIRA_SPACE_HOME}/app.lock is the single-instance guard: config.AcquireLock takes it before storage.Open, and if not acquired the process logs and exits 0.
 - A SIGKILLed instance's app.lock is released by the kernel, so no stale-pid file or manual cleanup exists.
-- gitrpc.ContractVersion and CONTRACT_VERSION in packages/git-ipc/src/validate.ts must be equal (58 currently), asserted by tests on both sides; a mismatch is a build bug since both sides ship in one binary.
-- app.init returns {contractVersion, serverVersion, git, dateFormat}, where dateFormat is Space's app-wide appearance.dateFormat.
+- There is no contract version: both sides ship in one binary, and the contract fixtures under `apps/kira-space/tests/contract` pin every method's result shape. P479 removed the version constant, its TypeScript twin and the handshake.
+- app.init returns {serverVersion, git, dateFormat}, where dateFormat is Space's app-wide appearance.dateFormat.
 - Contract version 47 (P246) dropped credential.request and credential.provide from the stream; credentials go through the relay snapshot and GitCredentialService.Provide.
 - Contract version 46 removed the extension-only surface (worktree.prepare, worktree.cancelPrepare, worktree.openWindow, editor.resolveConflict, worktree.progress, settings.changed and connection.changed events, app.init's host/settings/capabilities, and injected params scope, pageSize, baseCandidates, strategySetting); the server reads stored kiraSpace.* repo settings instead.
 - Contract version 44 added StatusSummary.autoFetch, the autoFetch.changed event and graph.reportFailure; version 43 refused prepare-script writes from repoSettings.set and removed settings.setGitPath.
-- bridge.maxGitStreamFrameBytes caps one frame at 32 MiB, because an 8 MiB cap failed the graph and commit detail on large repositories.
-- A session's sendCh holds up to 16 frames, so worst-case memory is 512 MiB, reached only by 16 concurrent near-cap requests; Wails admits one oversize frame into an empty per-window queue under its 256 MiB global budget.
+- bridge.maxGitGraphFrameBytes caps one plane frame at 32 MiB, because an 8 MiB cap failed the graph on large repositories; an over-cap chunk ends its stream with `E_FRAME_TOO_LARGE`.
+- The plane's sendCh holds up to 16 frames, so worst-case memory is 512 MiB, reached only by 16 near-cap chunks; Wails admits one oversize frame into an empty per-window queue under its 256 MiB global budget. Credit keeps real use far below that.
 - On the JS side a frame is joined once, decoded, parsed and structured-cloned to the webview, costing about 4-5x frame size transiently.
-- On the git stream, control frames (the rpcstream envelope, every request, every small response) are JSON text, while bulk payloads are FlatBuffers, the same split as the studio data plane.
+- On the plane, control frames (open, credit, cancel, end) are JSON text, while bulk payloads are FlatBuffers, the same split as the studio data plane.
 - The git FlatBuffers schema packages/git-ipc/schema/gitwire.fbs uses file identifier "KIG1", distinct from the studio plane's "KIF1" so the two can never be cross-decoded; a frame without "KIG1" is a hard error with no dual-format decoder or compatibility shim.
 - gitwire.fbs has one Frame wrapping a Payload union whose only member is PackedCommitChunk, the graph's column-wise commit block (sha bytes, CSR parent offsets, identity/time table, subject bytes plus offsets, delta-numbered string dictionary, per-row ref decorations).
 - Keep gitwire.fbs append-only: never renumber, reorder or delete a field; retire fields with (deprecated).
 - The schema file is named gitwire.fbs, not gitWire.fbs, because flatc's TypeScript generator names its entry point after the filename and its barrel after the namespace, and names differing only in case collide on case-insensitive filesystems.
-- rpcstream is module-agnostic infrastructure and the deliberate exception to the module-boundary rule: a correlated-RPC-with-credits state machine (req/res/evt/open/chunk/end/credit/cancel) transcribed field-for-field from the TypeScript rpc.ts, and it never learns what a method means (Handlers do).
-- rpcstream lives at repo-root internal/rpcstream since P100, hoisted from apps/kira-studio/internal/bridge/rpcstream so both apps/kira-studio and apps/kira-space can import it, since Go's internal/ visibility blocks cross-app imports.
+- `graphplane` is module-agnostic: a credit-gated chunk-stream server that never learns what a graph chunk is (the `OpenFunc` does). It lives under `apps/kira-space/internal/graphplane`; The shared stream package it replaced is gone since P479.
 
 ### Session model
 
@@ -1678,8 +1680,8 @@ Registry (internal/gitsession): map[RepoID]*RepoEntry — mutex + refcount
     reader/writer gate · git driver · cat-file --batch session · repo watcher
     detail / diff / refs / stack caches · live HEAD · undo slot · active remote op (<=1)
     subscribers: map[ConnID]chan Event
-Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared by GitService and the window's git streams) or ADE connection
-  client identity · its own ctx · its own rpcstream session and Handlers
+Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared by GitService and the window's graph plane) or ADE connection
+  client identity · its own ctx · its own Handlers (request table, graph stream)
   walks: map[RepoID]*Walk — PRIVATE per (connection, repository)
     log session, commit store, dictionary marks, paging state, the active review walk
 ```
@@ -1693,7 +1695,7 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 - Watcher events are debounced 200 ms and delivered to each subscriber over its own coalescing buffered channel, so one slow client cannot stall the watcher for others.
 - The darwin watcher backend is FSEvents (gitclient/watcher_fsevents_darwin.go, darwin && cgo); the fsnotify implementation remains the !darwin || !cgo companion used by Linux dev/test.
 - FSEvents was chosen over fsnotify on macOS because kqueue needs one open file descriptor per watched directory under commonDir/refs, a cost against kern.maxfilesperproc on repositories with many loose refs; FSEvents watches recursively through one stream.
-- A client disconnect never kills a write: on peer close rpcstream.Serve cancels in-flight requests and streams, the connection's log-session processes are killed and RepoEntry refcounts released, but an in-flight write is detached and finishes with its result delivered nowhere.
+- A client disconnect never kills a write: on plane close the graph streams are cancelled and a bound call cancelled by its page abandons the reply, the connection's log-session processes are killed and RepoEntry refcounts released, but an in-flight write is detached and finishes with its result delivered nowhere.
 - Closing a window (`GitWindows.Close`) behaves the same: the Conn closes, a pending credential prompt is withdrawn and its remote op fails with its auth error, but a local write finishes. The repository entry lingers 5 minutes with zero holders before teardown can force-cancel an op slot.
 - Writes are detached on disconnect because a half-applied checkout from a closed window is far worse than a result nobody reads.
 - The undo slot is one per repository, not per connection, and its label names the originating client, e.g. "Undo reset of main (window: repo-review)".
@@ -1728,13 +1730,13 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 | `gitsearch` | The cancellable, time-boxed tail scan and the Go matcher, plus the RE2/`RegExp` dialect reconciliation (below) |
 | `gitreview` | `review.db`'s whole surface: compressed content snapshots, fast/slow-path diff selection, partial-review ranges, the flat AI-comment list, and the TTL reaper (Storage, above) |
 | `gitsession` | `Registry`, `RepoEntry`, `Conn`, `Walk` — the session model above. Imports `gitclient`, `gitpreflight`, `gitreview`, `githost` and stdlib only |
-| `gitrpc` | The method table (`app.init` through `stack.cancelRestack`, plus the one `graph.stream` stream method), `ContractVersion` (**58**), and the wire types |
+| `gitrpc` | The method table (`app.init` through `stack.cancelRestack`, plus the one `graph.stream` stream method), and the wire types |
 | `gitwire` | Generated FlatBuffers code for the git data plane |
+| `graphplane` | The credit-gated chunk-stream server behind the `gitgraph` stream (Transport, above); it never learns what a chunk is |
 | `gitaskpass` | The credential broker and its `GIT_ASKPASS` shim, over its own private socket, with a bounded wait |
 | `gitprepare` | The worktree prepare script's execution seam, called by ADE only — the one shell exception, below |
 | `githost` | Provider-neutral code host contract and registry (see Git host abstraction, below). `githost/github` is the `gh` provider: CLI discovery and spawn discipline mirroring `gitclient`'s own `Locator`/probe/TTL-cache shape, a status classification, and change request lookup through `gh api`. `githost/providers` builds the registry |
 | `startupfail` (repo-root, shared — not a git package, see above) | Native, pre-window failure alerts for every boot step (below) |
-| `rpcstream` (repo-root, shared) | The correlated-RPC-with-credits protocol (above) — module-agnostic by design, hoisted out of `apps/kira-studio/internal/bridge` at P100 so both apps import it |
 | `config` (`AcquireLock`) | The `app.lock` single-instance flock (Transport, above) |
 
 - Every spawn in the codebase passes a fixed argv to os/exec with no shell, except gitprepare, which runs the user's worktree prepare script through a shell.
@@ -1777,14 +1779,14 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 ### Frontend packages
 
 - The git UI is the package packages/git-ui, mounted by Kira Space's RepoGraphView.vue.
-- The git UI reaches Go through packages/git-ipc's streamChannel.ts, a Wails stream behind the MessageChannelLike seam.
+- The git UI reaches Go through bound GitService calls and, for graph rows, packages/git-ipc's graphPlane.ts over streamChannel.ts, a Wails stream channel.
 - Kira Space's repo/git/hostHandlers.ts answers the few host calls (dialogs, clipboard, open externally, reveal in graph) locally.
 - Repository settings are edited in Kira Space, and the settings dialog is always shown.
 - app.init.dateFormat carries Space's app-wide appearance.dateFormat, read at each app.init.
 
 | Package | Holds |
 |---|---|
-| `packages/git-ipc` | The shared vocabulary: `contract.ts`, `rpc.ts` (client only), `transport.ts`, `codec.ts`, `validate.ts` (`CONTRACT_VERSION`), `streamChannel.ts`, `blobFrame.ts`, `schema/gitwire.fbs` with its generated code, and `graphChunkCodec.ts` |
+| `packages/git-ipc` | The shared vocabulary: `contract.ts`, `transport.ts` (the `Transport` interface and its errors), `graphPlane.ts` (the data plane client), `codec.ts`, `streamChannel.ts`, `blobFrame.ts`, `schema/gitwire.fbs` with its generated code, and `graphChunkCodec.ts` |
 | `packages/git-core` | Client-side domain logic: the commit store, the lane-layout graph worker, the client half of search, the wire model types and the settings schema |
 | `packages/git-ui` | The UI itself — the graph panel, the review panel, the dialogs, the file tree — Vue, mounted by Kira Space |
 | `packages/kira-ui` | Deleted (P267). Was `floatingPosition.ts` only; `AutocompleteField` and `PointPopover` position through reka `Popover` |
@@ -1879,7 +1881,7 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 ### Git graph in the native workspace (C10)
 
 - The pinned first tab of every repo workspace (views/repo/RepoGraphView.vue) mounts packages/git-ui's own graph by calling mount() directly in the native window, with no reimplementation and no fork of git-ui.
-- ServeGitStream in apps/kira-space/internal/bridge/gitstream.go mirrors ServeEngineStream over gitrpc.Router as an in-process Wails stream, with no handshake and no pairing token because the peer is this process's own webview.
+- The graph's data plane (bridge.ServeGitGraph) is an in-process Wails stream with no handshake and no pairing token, because the peer is this process's own webview.
 - packages/git-ipc/src/streamChannel.ts is a Wails-stream channel using the blob-frame body shape with no length prefix, no recvBuffer and no drain loop, because a Wails stream is already message-framed.
 - Kira Space graph view stays mounted, hidden via v-show in MainView.vue, from first activation until its tab closes or 4 more recently used kept views displace it (evicted views restore cold from view state). Opt-in by TabKindDef.keepMounted; only repo-graph sets it. A full-layout module (ADE) keeps MainView mounted and passes `suspended`, so kept views go inactive.
 - A Space file or diff editor's view state (scroll, cursor, folds) is saved on unmount and restored on the next mount, held with the tab's models in `views/repo/editors.ts` until the tab closes. A restored view state replaces the persisted `revealLine` reveal; a pending reveal request still wins.
@@ -1889,7 +1891,7 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 - Change request ancestry is rebuilt with a base cutoff (state/changeRequests.ts rebuildAncestry): each baseRef is resolved locally via rowOfBranchTip (a decoration scan, no new RPC) and its ancestors excluded, so badges no longer tag nearly all loaded history behind a branch.
 - Bursts of individually-resolving change request branches coalesce into one ancestry rebuild per tick via scheduleAncestryRebuild's nextTick drain.
 - There is no gitrpc method allowlist (removed in P243 Part 2 with the extension): every gitrpc method is served, and a method the contract does not name does not exist.
-- guardRepoSettingsSet in gitwindows.go (shared by the stream and GitService.RepoSettingsSet) refuses repoSettings.set with E_READ_ONLY when its patch touches the prepare script or worktreeBasePath, which exist only in the repo's settings file; no process writes them over the stream.
+- GitService.RepoSettingsSet (via patchTouchesRestrictedField in gitwindows.go) refuses repoSettings.set with E_READ_ONLY when its patch touches the prepare script or worktreeBasePath, which exist only in the repo's settings file; no process writes them over a bound call.
 - The gitrpc Router refuses the prepare-script leaf on every connection (P172), and there is no gitrpc method for shell execution since 46 removed worktree.prepare.
 - repo.open must never transitively arm a write, because via Registry.Acquire/EnsureAutoFetch it could arm a timer running git fetch --prune when git.fetchAutoIntervalMinutes is above its default of 0.
 - gitsession.Conn has a noAutoFetch flag (DisableAutoFetch), set by GitWindows when it creates the Conn, which routes Open through Registry.AcquireQuiet and skips EnsureAutoFetch on existing entries, so the native mount's repo.open never arms auto-fetch.
@@ -1981,12 +1983,12 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 
 ### Git blame, inline (P62)
 
-- P62 (inline git blame) reused the v1.4 P5 backend with no Go change to blame and no ContractVersion or method-set bump.
+- P62 (inline git blame) reused the v1.4 P5 backend with no Go change to blame and no method-set bump.
 - blame.line runs one git blame spawn per line, blames the working tree only, and takes no atSha.
 - The only Go touched by P62 is internal/storage/{model,repos}/settings.go, to persist the inlineBlame setting.
 - The inline blame annotation renders as injected text at the end of the cursor's line in views/repo/RepoFileView.vue, because that surface's displayed bytes and blame.line's answer are the same document by construction; diff tabs compare historical revisions blame.line cannot answer.
 - P62 declined a status-bar blame item, but P76 shipped it as a left-side status-bar item.
-- Whole-file gutter blame is deliberately not built, because blame.line is one spawn per line; it would need a new multi-hunk porcelain parser, a new blame.file method, and a ContractVersion bump.
+- Whole-file gutter blame is deliberately not built, because blame.line is one spawn per line; it would need a new multi-hunk porcelain parser, and a new blame.file method.
 - views/repo/blameLine.ts owns the blame.line request, debounce, dedupe, per-mount cache and cancellation, so the status-bar renderer shares one request; blameAnnotation.ts keeps only the Monaco decoration/hover/reveal-action rendering.
 - blame.line requires the calling connection to already hold the repository, so the blame controller ensures this with a memoised repo.open, which is idempotent per (connection, repoId).
 - The blame request uses a cursor-line trigger, 150 ms debounce, dedupe on the line, a per-mount cache, and repo.changed invalidation; the cache is sound because the model is immutable for the mount's life.
@@ -3282,10 +3284,10 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - Keys: `path`, `nickname`, `integration_branches`, `environments` (`name`, `deployed_sha_script`), `worktree` (`prepare_script`, `prepare_timeout`, `base_path`), `graph` (`page_size`, `scope`), `stash` (`show_in_graph`, `include_untracked`), `review.base_candidates`, `pull.strategy`, `git_host.provider`, `checkout.auto_stash`. An absent leaf means the default. Limits: nickname 40 runes, 10 integration branches, 10 environments, 4 KiB per environment script, 64 KiB prepare script; `base_path` is absolute; `git_host.provider` is `auto`, `off` or a registered host id.
 - Package `internal/repocfg`. `Store` keeps an in-memory index `path -> Config` rebuilt by `Reload`; settings are never read from SQLite. Files to DB only: the `config_last_valid` projection (`repos`, file) keeps the last good value across restart. Invalid file: last good applies, a `Problem` with line is published, one Warn per new hash. File gone: that repo returns to defaults; env marks of removed environments are pruned.
 - Duplicate `path` across files: the first file by name applies; each later one gets a `Problem` on its `path` line and applies nothing. It lists under Other files, bound to no repo.
-- `Store.Patch` (git stream `repoSettings.set`) edits the file in place through `configfs.EditYAML` (yaml.Node set-by-path: comments and key order stay, parents are created, a flow `{}` becomes a block). A repo with no file gets one. A file with an error is refused. One retry on a hash conflict. `Change.FromPatch` stops the duplicate `repoSettings.changed` push.
+- `Store.Patch` (`repoSettings.set`) edits the file in place through `configfs.EditYAML` (yaml.Node set-by-path: comments and key order stay, parents are created, a flow `{}` becomes a block). A repo with no file gets one. A file with an error is refused. One retry on a hash conflict. `Change.FromPatch` stops the duplicate `repoSettings.changed` push.
 - `configfs.EditYAML` and `NodeSet` are shared with P475 (workflow and run edits).
 - Hooks: `OnChange([]Change)` feeds the git router (`repoSettings.changed` for edits not made through the stream) and `ade.TaskBoard.RepoConfigChanged` (integration targets, environments, prepare script; refreshes env scripts and notifies repos and board once). `OnReload` broadcasts the payload-free `kira:repoConfig:changed`.
-- Guard: `guardRepoSettingsSet` in `bridge/gitwindows.go` is unchanged and still refuses the prepare script and base path with `E_READ_ONLY`; `Patch` is never reached for them. They are file-only. `SetRepoSettings` is gone from `TaskBoardDeps`.
+- Guard: `patchTouchesRestrictedField` in `bridge/gitwindows.go` is unchanged and still refuses the prepare script and base path with `E_READ_ONLY`; `Patch` is never reached for them. They are file-only. `SetRepoSettings` is gone from `TaskBoardDeps`.
 - An integration branch equal to the repo's main branch is ignored where targets are used (`withoutMain`); the Repos wire shows the file as written.
 - State: `ade_env_state(code_repo_id, env, ...)` hangs off `code_repos` by FK, not off config. A repo's environment marks survive a rename of the environment only as delete plus create.
 - Migration 0065 rebuilds `ade_env_state` with that FK (dropping `ade_repo_envs` would otherwise cascade its rows). `configfs.MigrateOnce(db, "repos", ...)` then writes a file for each repo whose legacy rows differ from the defaults and drops `git_repo_settings`, `ade_repo_integration`, `ade_repo_envs` and `ade_repo_config.nickname` in one transaction. Legacy values the file could not hold are dropped on export: invalid provider, oversize script, relative base path, blank review candidates. Never exported again once the marker is set.
@@ -3482,7 +3484,7 @@ repo's CI runs.
 - The flow gRPC server runs unary methods through its interceptor, so Calls() and required metadata cover unary and streams.
 - createTerminalsStore (shared by both apps and the Docker exec store) keeps one terminalWrite in flight per tab and coalesces chunks typed meanwhile (state/orderedWrites.ts), because concurrent bound calls reach the backend in any order.
 - Space flow tier: apps/kira-space/internal/appwire is the composition root; Build(Options) wires repos, git, terminal, ADE, memory, mobile and bound services; main.go supplies native pieces and tests supply fakes.
-- Space flow harness uses real SQLite, git (fixed dates, git fast-import history), git stream, PTY, watchers and mobile HTTP; it fakes the claude and gh CLIs (internal/flowtest/fakeagent, scenario JSON), a second code host (flowharness/fakehost, registered with WithGitHost), dialogs, browser, keep-awake, LAN detection and window manager.
+- Space flow harness uses real SQLite, git (fixed dates, git fast-import history), the bound git calls and graph plane, PTY, watchers and mobile HTTP; it fakes the claude and gh CLIs (internal/flowtest/fakeagent, scenario JSON), a second code host (flowharness/fakehost, registered with WithGitHost), dialogs, browser, keep-awake, LAN detection and window manager.
 - appwire.Options exposes test seams GhLocator, TrackerGrace and MobilePoll, set via flowharness.WithoutGh, WithTrackerGrace and WithMobilePoll.
 - The fake claude prints no stream init line under --output-format json, accepts an inline --mcp-config, and answers headless calls by --system-prompt through scenario prompts rules.
 - Space flow tests live in internal/flows/{gitflow,repoflow,editorflow,adeflow,memoryflow,termflow,appflow,mobileflow,githostflow}; bun run test:flows:space is the general suite, and test:flows:space:complete sets KIRA_FLOW_COMPLETE=1 and adds slow permutation coverage.
@@ -3903,9 +3905,9 @@ repo-wide).
   `OpRequest` kinds have no such kind, `packages/git-ipc`'s contract has none, and `packages/git-ui`
   has no `MergeDialog`/`RebaseDialog`. Merge and rebase are reachable only as `remote.run`'s own pull
   strategies (`ff-only`/`merge`/`rebase`) and inside `stack.restack`'s own branch-by-branch rebase.
-  P111 (`ContractVersion` 41) only added a `rebaseMerges` flag onto that existing pull path — still
+  P111 only added a `rebaseMerges` flag onto that existing pull path — still
   no standalone operation. Building one needs a new `OpRequest` kind, a new `opSpec` with an undo
-  policy, a new preflight, a new dialog and a further `ContractVersion` bump — out of scope until a
+  policy, a new preflight, a new dialog and a contract change — out of scope until a
   phase actually asks for it.
 
 Performance:

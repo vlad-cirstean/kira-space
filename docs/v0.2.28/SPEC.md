@@ -13,7 +13,7 @@ Source: user request. Phases run top to bottom, two phases in parallel where fil
 | P476 | Git on bound services: connection lifecycle, events, read methods | Done |
 | P477 | Git on bound services: write operations | Done |
 | P478 | Git on bound services: review, change requests, ADE and repo consumers | Done |
-| P479 | Git graph data plane; remove the git stream protocol | Todo |
+| P479 | Git graph data plane; remove the git stream protocol | Done |
 | P480 | Frontend RAM measurement, both apps | Done |
 | P481 | Frontend RAM: implement the proven wins | Todo |
 | P482 | Code review (2 rounds) | Todo |
@@ -150,6 +150,16 @@ Result:
 - Delete the custom git stream protocol for everything except the graph bulk payload: `ServeGitStream` request/response handling, the `packages/git-ipc` `rpc.ts`, `validate.ts`, `gitrpc.ContractVersion` and `CONTRACT_VERSION` with their tests, the UI tier's fake git stream. Delete `internal/rpcstream`, `transport.ts` and `streamChannel.ts` only if nothing still uses them after the graph data plane lands. Keep `gitwire.fbs`, the codec and `blobFrame.ts` as the data plane needs.
 - Update ARCHITECTURE "Git module" (Transport, Frontend packages) and `docs/DEV_ENVIRONMENT.md` git sections.
 - Test: full git flow and UI suites once (shared code); perf probe before and after, numbers in the plan.
+
+**Result:**
+
+- Go: `GitService` has 65 bound methods plus `ResetWindow` (drops the window's Conn; the frontend calls it once per page load). New `internal/graphplane`: bulk-only `gitgraph` stream (initial credit 2, 32 MiB frame cap, `E_FRAME_TOO_LARGE`, duplicate live id refused, missing window `E_CONFLICT`). `GitWindows` conns live until `Close(key)` or `ResetWindow`; stream/bound refcounting gone.
+- Deleted: `internal/rpcstream`, `bridge/gitstream.go`, `gitrpc.ContractVersion`/`Protocol`, `AppInitResult.ContractVersion`, `GitRouter`, `guardRepoSettingsSet` (patch check stays in `patchTouchesRestrictedField`, now covered by a reflection test), `packages/git-ipc` `rpc.ts`/`validate.ts`, `CONTRACT_VERSION`, `git-transport-late-close.spec.ts`.
+- Frontend: every git request is `callBound` after `gitWindowReady()`; `repo/git/graphStream.ts` dials `Stream('gitgraph')` (lazy, redial after close) over `packages/git-ipc` `graphPlane.ts`. UI mock rewritten for the `gitgraph` socket; new `git-graph-plane.spec.ts` (5 tests).
+- Contract fixtures: only `app.init` entries changed (`contractVersion` removed) plus new `git-graph-plane.json`.
+- Ran: Go flows (`KIRA_CONTRACT=write`, gitflow under `-race`), bridge, gitrpc, graphplane, flowharness; go vet and golangci-lint (root and nested modules, 0 issues); `bun run lint`, `lint:dead`, typecheck, `test:unit` (1972 pass); 324 git/repo/ADE-review UI specs pass.
+- Perf (median of 3): Go first chunk 306 to 253 ms; UI first rows 6149 to 6763 ms (within noise, range overlaps), flick p95 unchanged, RSS peak within 5%. Details in `plans/P479.md`.
+- Deviation: old rows in this file still name removed symbols; left as history.
 
 ### P480 Frontend RAM measurement, both apps
 
