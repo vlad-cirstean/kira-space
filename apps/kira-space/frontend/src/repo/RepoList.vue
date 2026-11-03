@@ -32,6 +32,7 @@ import { useRepoHeadsStore } from './state/repoHeads';
 import { useRepoLinksStore } from './state/repoLinks';
 import { useReposDialogStore } from './state/reposDialog';
 import { useRepoVisibilityStore } from './state/repoVisibility';
+import { useRepoWorktreeLists } from './state/worktreeQueries';
 import { useWorktreesStore, worktreeLabel } from './state/worktrees';
 
 type ColourName = Parameters<typeof colourLabel>[0];
@@ -45,6 +46,7 @@ const codeReposStore = useCodeReposStore();
 const workspaceStore = useWorkspaceStore();
 const repoHeadsStore = useRepoHeadsStore();
 const worktreesStore = useWorktreesStore();
+const worktreeLists = useRepoWorktreeLists(() => worktreesStore.expandedRows);
 const repoLinksStore = useRepoLinksStore();
 const visibility = useRepoVisibilityStore();
 const terminalsStore = useTerminalsStore();
@@ -305,8 +307,8 @@ const navRows = computed<NavRow[]>(() =>
   filteredRepos.value.flatMap((repo): NavRow[] => [
     { key: repo.id, kind: 'repo', repo },
     ...(worktreesStore.isWorktreesExpanded(repo.id)
-      ? worktreesStore
-          .worktreeEntries(repo.id)
+      ? worktreeLists
+          .entries(repo.id)
           .map((wt): NavRow => ({ key: wtKey(wt), kind: 'worktree', repo, wt }))
       : []),
   ]),
@@ -514,7 +516,7 @@ useTreeShortcuts(nav, {
         :aria-label="t('common.module.worktrees.label')"
       >
         <RepoWorktreeRow
-          v-for="wt in worktreesStore.worktreeEntries(repo.id)"
+          v-for="wt in worktreeLists.entries(repo.id)"
           :key="wt.path"
           :wt="wt"
           :color="repo.color"
@@ -528,25 +530,22 @@ useTreeShortcuts(nav, {
         />
         <!-- Same indent as the worktree row above. -->
         <InlineState
-          v-if="worktreesStore.worktreesError(repo.id)"
+          v-if="worktreesStore.switchError(repo.id) ?? worktreeLists.error(repo.id)"
           kind="error"
           :style="rowIndent(1)"
           data-testid="repo-worktree-error"
         >
-          {{ worktreesStore.worktreesError(repo.id) }}
+          {{ worktreesStore.switchError(repo.id) ?? worktreeLists.error(repo.id) }}
         </InlineState>
         <InlineState
-          v-else-if="
-            worktreesStore.worktreesLoading(repo.id) &&
-            worktreesStore.worktreeEntries(repo.id).length === 0
-          "
+          v-else-if="worktreeLists.loading(repo.id) && worktreeLists.entries(repo.id).length === 0"
           kind="loading"
           :style="rowIndent(1)"
         >
           {{ t('common.state.loading.loading') }}
         </InlineState>
         <InlineState
-          v-else-if="worktreesStore.worktreeEntries(repo.id).length === 0"
+          v-else-if="worktreeLists.entries(repo.id).length === 0"
           kind="empty"
           :style="rowIndent(1)"
         >
