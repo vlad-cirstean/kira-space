@@ -54,11 +54,13 @@ type client struct {
 	dev   map[string]devInfo
 	// details holds the last issue view per key, see detail.
 	details map[string]detailEntry
-	sf      singleflight.Group
+	// detailGen counts forgetDetail calls per key; a read that began before one must not save.
+	detailGen map[string]uint64
+	sf        singleflight.Group
 }
 
 func newClient(d *discovery, r Runner, c Clock) *client {
-	return &client{disc: d, runner: r, clock: c, bound: fetchBound, cache: map[string]resultEntry{}, dev: map[string]devInfo{}, details: map[string]detailEntry{}}
+	return &client{disc: d, runner: r, clock: c, bound: fetchBound, cache: map[string]resultEntry{}, dev: map[string]devInfo{}, details: map[string]detailEntry{}, detailGen: map[string]uint64{}}
 }
 
 type fetched struct {

@@ -70,9 +70,10 @@ func (c *client) detail(ctx context.Context, ref issuetracker.Ref, fresh bool) (
 	ch := c.sf.DoChan("detail|"+key, func() (any, error) {
 		dctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), detailBound)
 		defer cancel()
+		gen := c.detailGeneration(key)
 		d, err := c.readDetail(dctx, st, ref)
 		if err == nil {
-			c.saveDetail(key, d)
+			c.saveDetail(key, d, gen)
 		}
 		return detailResult{d, err}, nil
 	})
@@ -105,20 +106,34 @@ func (c *client) savedDetail(key string) (issuetracker.IssueDetail, bool) {
 	return d, true
 }
 
-// saveDetail keeps d and refreshes the Issue result cache from it, so the next Issue read is free.
-func (c *client) saveDetail(key string, d issuetracker.IssueDetail) {
+func (c *client) detailGeneration(key string) uint64 {
 	c.mu.Lock()
-	c.details[key] = detailEntry{d: d, at: c.clock.Now()}
-	c.mu.Unlock()
-	c.store(key, issuetracker.Issue{
+	defer c.mu.Unlock()
+	return c.detailGen[key]
+}
+
+// saveDetail keeps d and refreshes the Issue result cache from it, so the next Issue read is free.
+// It skips when forgetDetail ran since gen was taken: d predates a write and is stale.
+func (c *client) saveDetail(key string, d issuetracker.IssueDetail, gen uint64) {
+	c.mu.Lock()
+	if c.detailGen[key] != gen {
+		c.mu.Unlock()
+		return
+	}
+	now := c.clock.Now()
+	c.details[key] = detailEntry{d: d, at: now}
+	c.cache[key] = resultEntry{issue: issuetracker.Issue{
 		Ref: d.Ref, Title: d.Title, Status: d.Status, StatusCategory: d.StatusCategory, Summary: d.Summary,
-	}, nil)
+	}, until: now.Add(resultOKTTL)}
+	c.mu.Unlock()
 }
 
 func (c *client) forgetDetail(key string) {
 	c.mu.Lock()
 	delete(c.details, key)
+	c.detailGen[key]++
 	c.mu.Unlock()
+	c.sf.Forget("detail|" + key)
 }
 
 // readDetail reads the work item in one acli call. Only a site's first read also runs c.issue, which

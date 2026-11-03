@@ -298,3 +298,32 @@ func TestDetailOverflowParallel(t *testing.T) {
 		t.Fatalf("%+v %v", got.Comments, err)
 	}
 }
+
+func TestDetailInFlightReadDoesNotSaveAcrossPost(t *testing.T) {
+	r := newDetailRunner(t)
+	var reads atomic.Int32
+	started, release := make(chan struct{}), make(chan struct{})
+	d := readTestdata(t, "issue-detail.json")
+	r.full = func() ([]byte, error) {
+		if reads.Add(1) == 1 {
+			close(started)
+			<-release
+		}
+		return d, nil
+	}
+	p, _ := newTestProvider(r)
+	ctx := context.Background()
+	done := make(chan error, 1)
+	go func() { _, err := p.IssueDetail(ctx, detailRef, true); done <- err }()
+	<-started
+	if err := p.PostIssueComment(ctx, detailRef, "hi"); err != nil {
+		t.Fatal(err)
+	}
+	close(release)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if got, err := p.IssueDetail(ctx, detailRef, false); err != nil || got.Stale || reads.Load() != 2 {
+		t.Fatalf("pre-post copy was saved: reads %d err %v", reads.Load(), err)
+	}
+}

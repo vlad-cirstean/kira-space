@@ -48,10 +48,10 @@ func (c *client) postComment(ctx context.Context, ref issuetracker.Ref, body str
 	if err != nil {
 		return classify(err, wctx, "workitem comment create")
 	}
-	c.forget(cacheKey(ref))
 	if ref.Site == "" {
 		ref.Site = st.Site
 	}
 	c.forgetDetail(cacheKey(ref))
+	c.forget(cacheKey(ref))
 	return nil
 }
