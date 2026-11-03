@@ -8,7 +8,7 @@ import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { ref, useTemplateRef } from 'vue';
 import { useKubernetesUiStore } from '../state';
-import ClusterTree from './ClusterTree.vue';
+import ClusterList from './ClusterList.vue';
 
 const ui = useKubernetesUiStore();
 const qc = useQueryClient();
@@ -16,9 +16,9 @@ const qc = useQueryClient();
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
   searchable: () => true,
-  getSearch: () => ui.treeSearch,
+  getSearch: () => ui.clusterSearch,
   setSearch: (v) => {
-    ui.treeSearch = v;
+    ui.clusterSearch = v;
   },
 });
 
@@ -57,8 +57,8 @@ async function refresh(): Promise<void> {
       </template>
     </PanelHeader>
     <PanelBar v-if="showSearch">
-      <SearchField v-model="ui.treeSearch" data-testid="tree-search" />
+      <SearchField v-model="ui.clusterSearch" data-testid="tree-search" />
     </PanelBar>
-    <ClusterTree />
+    <ClusterList />
   </div>
 </template>

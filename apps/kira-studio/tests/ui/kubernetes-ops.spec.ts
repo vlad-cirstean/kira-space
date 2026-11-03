@@ -1,6 +1,7 @@
 import { expect, test } from './fixtures';
 import { IPC } from './support/ipcChannels';
 import {
+  activePanel,
   idOf,
   k,
   loc,
@@ -64,7 +65,7 @@ test('contract: Cancel in the panel ends a running log stream', async ({ relaunc
   await openKubernetes(page);
   await openKind(page, 'kind-dev', 'v1/pods');
   await loc(page, 'kube-row').first().click();
-  await loc(page, 'kube-detail-tab-logs').click();
+  await activePanel(page).locator('[data-testid="kube-detail-tab-logs"]').click();
   await expect.poll(() => kube.calls('LogsOpen').length).toBe(1);
   const { streamId } = kube.calls('LogsOpen')[0].args as { streamId: string };
 

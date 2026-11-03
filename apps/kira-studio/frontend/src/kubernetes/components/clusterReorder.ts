@@ -5,11 +5,11 @@ import {
 } from '@workbench/behaviour/treePointerDrag';
 import { computed, type Ref } from 'vue';
 
-const CLUSTER_ROW = '[role="treeitem"][data-kind="cluster"]';
+const CLUSTER_ROW = '[data-kind="cluster"]';
 
 /**
- * Pointer drag reorder for the cluster tree, on the shared tree pointer drag. A drop lands before
- * or after the cluster row under the pointer; category and kind rows are no target.
+ * Pointer drag reorder for the cluster list, on the shared tree pointer drag. A drop lands before
+ * or after the cluster row under the pointer; elsewhere is no target.
  */
 export function useClusterReorder(opts: {
   container: Ref<HTMLElement | null>;

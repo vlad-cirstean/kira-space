@@ -60,14 +60,13 @@ test('contract: drag a cluster above another: drop line, one Reorder call, new o
   expect(calls[0].args).toEqual(k('args:KubernetesService.Reorder'));
 });
 
-test('dropping on a kind row, or pressing Escape, reorders nothing', async ({ relaunch }) => {
+test('dropping outside a cluster row, or pressing Escape, reorders nothing', async ({
+  relaunch,
+}) => {
   const { page, kube } = await setupKubernetes(relaunch);
   await open(page);
-  await row(page, 'kind-dev').click();
-  const kind = loc(page, 'kube-kind-row').first();
-  await expect(kind).toBeVisible();
 
-  await dragTo(page, row(page, 'down'), kind, 'top');
+  await dragTo(page, row(page, 'down'), loc(page, 'kube-cluster-list'), 'bottom');
   await expect(indicator(page)).toHaveCount(0);
   await page.mouse.up();
 

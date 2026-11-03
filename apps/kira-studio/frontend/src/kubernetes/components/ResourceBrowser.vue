@@ -1,26 +1,31 @@
 <script setup lang="ts">
+import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { FieldError } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { ResizeHandle } from '@theme/components/ui/resizable';
 import { t } from '@theme/i18n';
 import { toCodedError } from '@workbench/bridge/codedError';
 import QueryState from '@workbench/components/QueryState.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { computed, ref, watch } from 'vue';
+import { defaultKind } from '../kinds';
 import { useKinds, useNamespaces, useResourceList } from '../queries';
 import { useKubernetesUiStore } from '../state';
 import type { KubeCluster } from '../wire';
+import KindBar from './KindBar.vue';
 import NamespacePicker from './NamespacePicker.vue';
-import ResourceDetail from './ResourceDetail.vue';
 import ResourceTable from './ResourceTable.vue';
 
 const props = defineProps<{ cluster: KubeCluster }>();
 
 const ui = useKubernetesUiStore();
 const kinds = useKinds(() => props.cluster.id);
-const kind = computed(() => kinds.data.value?.kinds.find((k) => k.key === ui.kind));
+// The stored pick wins while listed; nothing is written until the user picks.
+const kind = computed(() => {
+  const all = kinds.data.value?.kinds ?? [];
+  return all.find((k) => k.key === ui.kind) ?? defaultKind(all);
+});
 const namespaced = computed(() => kind.value?.namespaced === true);
 const namespaces = useNamespaces(
   () => props.cluster.id,
@@ -38,7 +43,7 @@ const namespace = computed(() => {
 
 const list = useResourceList({
   clusterId: () => props.cluster.id,
-  kind: () => ui.kind,
+  kind: () => kind.value?.key ?? '',
   namespace,
   labelSelector: () => ui.labelSelector,
   enabled: () => kind.value !== undefined && (!namespaced.value || !namespaces.isPending.value),
@@ -60,83 +65,73 @@ const badSelector = computed(() => {
   return err && toCodedError(err).code === 'E_BAD_REQUEST' ? toCodedError(err).message : '';
 });
 
-const hasDetail = computed(() => ui.selected !== null && kind.value !== undefined);
 const shownCount = computed(() => list.data.value?.rows.length ?? 0);
-
-const liveHeight = ref<number | null>(null);
-const detailHeight = computed(() => liveHeight.value ?? ui.detailSize);
-function commitHeight(size: number): void {
-  ui.detailSize = size;
-  liveHeight.value = null;
-}
 </script>
 
 <template>
   <div class="flex h-full min-h-0 flex-col" data-testid="kube-browser">
-    <ViewToolbar class="flex-wrap">
-      <span class="font-medium" data-testid="kube-kind-title">{{ kind?.kind }}</span>
-      <NamespacePicker
-        v-if="namespaced"
-        :value="namespace"
-        :data="namespaces.data.value"
-        @change="ui.setNamespace($event)"
-      />
-      <Input
-        v-model="selector"
-        class="w-56"
-        :placeholder="t('kubernetes.list.labelSelector.placeholder')"
-        :aria-label="t('kubernetes.list.labelSelector.label')"
-        :aria-invalid="badSelector !== ''"
-        data-testid="kube-label-selector"
-        @change="applySelector"
-      />
-      <SearchField
-        v-model="ui.listFilter"
-        class="w-48"
-        :placeholder="t('kubernetes.list.filter.placeholder')"
-        data-testid="kube-list-filter"
-      />
-      <span class="ml-auto text-kira-sm text-muted-foreground" data-testid="kube-count">{{
-        t('kubernetes.list.count.status', { count: shownCount })
-      }}</span>
-      <TooltipIconButton
-        icon="refresh"
-        :label="t('common.action.refresh.label')"
-        data-testid="kube-list-refresh"
-        @click="list.refetch()"
-      />
-    </ViewToolbar>
-    <FieldError v-if="badSelector" class="px-2" data-testid="kube-selector-error">{{
-      badSelector
-    }}</FieldError>
-    <div class="flex min-h-0 flex-1 flex-col">
-      <div class="flex min-h-0 flex-1 flex-col">
-        <QueryState v-if="!badSelector" :query="list" :is-empty="() => false">
-          <template #default="{ data }"><ResourceTable :data="data" /></template>
-        </QueryState>
-      </div>
-      <template v-if="hasDetail && ui.selected && kind">
-        <ResizeHandle
-          axis="y"
-          direction="reverse"
-          line
-          :label="t('kubernetes.detail.resize.label')"
-          :size="detailHeight"
-          :min="140"
-          @live="liveHeight = $event"
-          @commit="commitHeight"
-          @cancel="liveHeight = null"
-        />
-        <div class="shrink-0" :style="{ height: `${detailHeight}px` }">
-          <ResourceDetail
-            :key="`${ui.selected.namespace}/${ui.selected.name}`"
-            :cluster-id="cluster.id"
-            :kind="kind"
-            :namespace="ui.selected.namespace"
-            :name="ui.selected.name"
+    <QueryState :query="kinds" :is-empty="() => (kinds.data.value?.kinds.length ?? 0) === 0">
+      <template #empty>
+        <EmptyState fill data-testid="kube-kinds-empty" :title="t('kubernetes.kinds.none.empty')" />
+      </template>
+      <template #default="{ data }">
+        <ViewToolbar>
+          <KindBar
+            :kinds="data.kinds"
+            :value="kind?.key ?? ''"
+            :recent="ui.recent"
+            :partial="data.partial"
+            @select="ui.selectKind"
           />
+          <span class="ml-auto text-kira-sm text-muted-foreground" data-testid="kube-count">{{
+            t('kubernetes.list.count.status', { count: shownCount })
+          }}</span>
+          <TooltipIconButton
+            icon="refresh"
+            :label="t('common.action.refresh.label')"
+            data-testid="kube-list-refresh"
+            @click="list.refetch()"
+          />
+        </ViewToolbar>
+        <ViewToolbar class="flex-wrap">
+          <NamespacePicker
+            v-if="namespaced"
+            :value="namespace"
+            :data="namespaces.data.value"
+            @change="ui.setNamespace($event)"
+          />
+          <SearchField
+            v-model="ui.listFilter"
+            class="min-w-32 flex-1"
+            :placeholder="t('kubernetes.list.filter.placeholder')"
+            data-testid="kube-list-filter"
+          />
+          <Input
+            v-model="selector"
+            class="w-40"
+            :placeholder="t('kubernetes.list.labelSelector.placeholder')"
+            :aria-label="t('kubernetes.list.labelSelector.label')"
+            :aria-invalid="badSelector !== ''"
+            data-testid="kube-label-selector"
+            @change="applySelector"
+          />
+        </ViewToolbar>
+        <FieldError v-if="badSelector" class="px-2" data-testid="kube-selector-error">{{
+          badSelector
+        }}</FieldError>
+        <div class="flex min-h-0 flex-1 flex-col">
+          <QueryState v-if="!badSelector && kind" :query="list" :is-empty="() => false">
+            <template #default="{ data: rows }">
+              <ResourceTable
+                :data="rows"
+                :cluster-id="cluster.id"
+                :context="cluster.context"
+                :kind="kind"
+              />
+            </template>
+          </QueryState>
         </div>
       </template>
-    </div>
+    </QueryState>
   </div>
 </template>

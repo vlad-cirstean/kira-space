@@ -130,9 +130,27 @@ export async function openKubernetes(page: Page): Promise<void> {
   await expect(loc(page, 'kubernetes-panel')).toBeVisible();
 }
 
-export async function openKind(page: Page, context: string, kind: string): Promise<void> {
+export async function openCluster(page: Page, context: string): Promise<void> {
   const row = page.locator(`[data-testid="kube-cluster-row"][data-context="${context}"]`);
   await row.click();
   await expect(row).toHaveAttribute('data-state', 'ok');
-  await page.locator(`[data-testid="kube-kind-row"][data-kind="${kind}"]`).click();
 }
+
+/** Opens the cluster, then shows `key`: Pods is the default chip, any other kind comes from the picker. */
+export async function openKind(page: Page, context: string, key: string): Promise<void> {
+  await openCluster(page, context);
+  if (key === 'v1/pods') {
+    await expect(
+      page.locator('[data-testid="kube-kind-chip-v1_pods"][data-state="on"]'),
+    ).toBeVisible();
+    return;
+  }
+  await loc(page, 'kube-kind-more').click();
+  await loc(page, `kube-kind-more-option-${key.replaceAll('/', '_')}`).click();
+}
+
+export const activePanel = (page: Page) =>
+  page.locator('[data-testid="kube-detail"][data-active="true"]');
+
+export const tabChip = (page: Page, name: string) =>
+  loc(page, 'kube-tabs').locator('[data-testid="tab"]').filter({ hasText: name });

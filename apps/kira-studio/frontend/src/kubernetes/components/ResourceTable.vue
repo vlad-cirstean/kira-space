@@ -6,17 +6,28 @@ import { tableHeadClass, tableHeadRowClass, tableRowClass } from '@theme/compone
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
+import { useElementSize } from '@vueuse/core';
+import { copyText } from '@workbench/behaviour/clipboard';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { compareNatural, matchesQuery, splitMatches } from '@workbench/behaviour/match';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
 import { useRowHeight } from '@workbench/lib/rowHeight';
+import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref } from 'vue';
 import { useKubernetesUiStore } from '../state';
-import type { KubeList, KubeRow } from '../wire';
+import {
+  type KubeResourceRef,
+  type KubeTabView,
+  refKey as tabRefKey,
+  useKubeTabsStore,
+} from '../tabs';
+import type { KubeKind, KubeList, KubeRow } from '../wire';
 
-const props = defineProps<{ data: KubeList }>();
+const props = defineProps<{ data: KubeList; clusterId: string; context: string; kind: KubeKind }>();
 
 const ui = useKubernetesUiStore();
+const tabs = useKubeTabsStore();
+const contextMenu = useContextMenuStore();
 const { single: rowHeight } = useRowHeight();
 
 const sortBy = ref<{ index: number; dir: 1 | -1 } | null>(null);
@@ -37,18 +48,79 @@ function toggleSort(index: number): void {
     cur?.index !== index ? { index, dir: 1 } : cur.dir === 1 ? { index, dir: -1 } : null;
 }
 
+const rootEl = ref<HTMLElement | null>(null);
+const { width } = useElementSize(rootEl);
+const COMPACT_BELOW = 512;
+const SHOWN_WHEN_COMPACT = ['Ready', 'Status', 'Age'];
+const compact = computed(() => width.value > 0 && width.value < COMPACT_BELOW);
+
+// Compact: the name plus the first two of Ready, Status, Age; else the first other column.
+const visibleColumns = computed<number[]>(() => {
+  const all = props.data.columns.map((_, i) => i);
+  if (!compact.value) return all;
+  const named = SHOWN_WHEN_COMPACT.flatMap((n) => {
+    const i = props.data.columns.findIndex((c, ci) => ci > 0 && c.name === n);
+    return i < 0 ? [] : [i];
+  }).sort((a, b) => a - b);
+  const extra = named.length > 0 ? named.slice(0, 2) : all.slice(1, 2);
+  return [0, ...extra].filter((i) => i < all.length);
+});
+
 const gridStyle = computed(() => ({
-  gridTemplateColumns: `repeat(${props.data.columns.length}, minmax(5rem, 1fr))`,
+  gridTemplateColumns: `repeat(${visibleColumns.value.length}, minmax(5rem, 1fr))`,
 }));
 
-const refKey = (r: KubeRow): string => `${r.namespace}/${r.name}`;
-function isSelected(r: KubeRow): boolean {
-  return ui.selected?.name === r.name && ui.selected.namespace === r.namespace;
+const rowKey = (r: KubeRow): string => `${r.namespace}/${r.name}`;
+const refOf = (r: KubeRow): KubeResourceRef => ({
+  clusterId: props.clusterId,
+  context: props.context,
+  kind: props.kind,
+  namespace: r.namespace,
+  name: r.name,
+});
+const activeRef = computed(() => {
+  const r = tabs.activeTab?.state.ref;
+  return r ? tabRefKey(r) : null;
+});
+const isSelected = (r: KubeRow): boolean => tabRefKey(refOf(r)) === activeRef.value;
+
+function openRow(r: KubeRow, preview: boolean, view?: KubeTabView): void {
+  tabs.open(refOf(r), { preview, view });
+}
+
+function menuFor(r: KubeRow): MenuItem[] {
+  return [
+    {
+      type: 'item',
+      id: 'kube-open',
+      label: t('common.action.open.label'),
+      icon: 'go-to-file',
+      run: () => openRow(r, false),
+    },
+    ...(props.kind.logs
+      ? [
+          {
+            type: 'item',
+            id: 'kube-open-logs',
+            label: t('kubernetes.row.openLogs.label'),
+            icon: 'output',
+            run: () => openRow(r, false, 'logs'),
+          } as const,
+        ]
+      : []),
+    {
+      type: 'item',
+      id: 'copy-name',
+      label: t('common.action.copyName.label'),
+      icon: 'copy',
+      run: () => copyText(r.name),
+    },
+  ];
 }
 
 const scrollEl = ref<HTMLElement | null>(null);
 const activeKey = ref<string | null>(null);
-const activeIndex = computed(() => rows.value.findIndex((r) => refKey(r) === activeKey.value));
+const activeIndex = computed(() => rows.value.findIndex((r) => rowKey(r) === activeKey.value));
 const { virtualItems, totalSize, onScroll, scrollToIndex } = useVirtualRows({
   count: () => rows.value.length,
   rowHeight: () => rowHeight.value,
@@ -58,17 +130,22 @@ const { virtualItems, totalSize, onScroll, scrollToIndex } = useVirtualRows({
 const nav = useListNavigation<KubeRow>({
   container: scrollEl,
   items: () => rows.value,
-  key: refKey,
+  key: rowKey,
   activeKey,
-  onSelect: (r) => ui.selectRow({ namespace: r.namespace, name: r.name }),
-  onOpen: (r) => ui.selectRow({ namespace: r.namespace, name: r.name }),
+  onOpen: (r) => openRow(r, false),
+  onMenu: (r, rect) => contextMenu.openContextMenuAt(rect.left, rect.bottom, menuFor(r)),
   scrollToIndex: (index) => scrollToIndex(index),
   rendered: () => virtualItems.value,
 });
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col" data-testid="kube-table">
+  <div
+    ref="rootEl"
+    class="flex min-h-0 flex-1 flex-col"
+    :data-compact="compact"
+    data-testid="kube-table"
+  >
     <EmptyState
       v-if="data.rows.length === 0"
       fill
@@ -90,14 +167,14 @@ const nav = useListNavigation<KubeRow>({
         data-testid="kube-table-head"
       >
         <button
-          v-for="(col, i) in data.columns"
-          :key="col.name"
+          v-for="i in visibleColumns"
+          :key="data.columns[i]!.name"
           type="button"
           class="flex min-w-0 cursor-default items-center gap-1 border-0 bg-transparent p-0 text-left font-inherit text-inherit"
-          :data-testid="`kube-sort-${col.name}`"
+          :data-testid="`kube-sort-${data.columns[i]!.name}`"
           @click="toggleSort(i)"
         >
-          <span class="truncate">{{ col.name }}</span>
+          <span class="truncate">{{ data.columns[i]!.name }}</span>
           <CodiconIcon
             v-if="sortBy?.index === i"
             :name="sortBy.dir === 1 ? 'arrow-up' : 'arrow-down'"
@@ -116,7 +193,7 @@ const nav = useListNavigation<KubeRow>({
           <!-- biome-ignore lint/a11y/useKeyWithClickEvents: Enter comes from useListNavigation on the container. -->
           <div
             v-for="vi in virtualItems"
-            :key="refKey(rows[vi.index]!)"
+            :key="rowKey(rows[vi.index]!)"
             :class="
               cn(
                 tableRowClass,
@@ -135,14 +212,18 @@ const nav = useListNavigation<KubeRow>({
             data-testid="kube-row"
             :data-name="rows[vi.index]!.name"
             :data-namespace="rows[vi.index]!.namespace"
-            v-bind="nav.rowProps(refKey(rows[vi.index]!))"
-            :tabindex="nav.tabindexFor(refKey(rows[vi.index]!))"
-            @click="
-              ui.selectRow({ namespace: rows[vi.index]!.namespace, name: rows[vi.index]!.name })
+            v-bind="nav.rowProps(rowKey(rows[vi.index]!))"
+            :tabindex="nav.tabindexFor(rowKey(rows[vi.index]!))"
+            @click="openRow(rows[vi.index]!, true)"
+            @dblclick="openRow(rows[vi.index]!, false)"
+            @contextmenu.prevent="
+              nav.contextMenu(rows[vi.index]!, $event, menuFor(rows[vi.index]!))
             "
           >
-            <span v-for="(cell, ci) in rows[vi.index]!.cells" :key="ci" class="min-w-0 truncate"
-              ><HighlightedText :parts="splitMatches(cell, needle)" /></span
+            <span v-for="ci in visibleColumns" :key="ci" class="min-w-0 truncate"
+              ><HighlightedText
+                :parts="splitMatches(rows[vi.index]!.cells[ci] ?? '', needle)"
+              /></span
             >
           </div>
         </div>

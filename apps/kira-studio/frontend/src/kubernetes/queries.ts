@@ -61,19 +61,13 @@ const statusOptions = (qc: QueryClient, id: string) => ({
   staleTime: TIMING.pollSlow,
 });
 
-const kindsOptions = (qc: QueryClient, id: string) => ({
-  queryKey: kubeKeys.kinds(id),
-  queryFn: () => kubeControl.kinds(id, isRefetch(qc, kubeKeys.kinds(id))),
-  staleTime: TIMING.pollSlow,
-});
-
-/** Probe/discovery for every listed cluster; only the ones in `active` ever connect. */
+/** Probe for every listed cluster; only the ones in `active` ever connect. */
 export function useClusterProbes(
   ids: MaybeRefOrGetter<readonly string[]>,
   active: MaybeRefOrGetter<readonly string[]>,
 ) {
   const qc = useQueryClient();
-  const statuses = useQueries({
+  return useQueries({
     queries: computed(() =>
       toValue(ids).map((id) => ({
         ...statusOptions(qc, id),
@@ -81,15 +75,6 @@ export function useClusterProbes(
       })),
     ),
   });
-  const kinds = useQueries({
-    queries: computed(() =>
-      toValue(ids).map((id) => ({
-        ...kindsOptions(qc, id),
-        enabled: toValue(active).includes(id),
-      })),
-    ),
-  });
-  return { statuses, kinds };
 }
 
 export function useClusterStatus(id: MaybeRefOrGetter<string>) {
