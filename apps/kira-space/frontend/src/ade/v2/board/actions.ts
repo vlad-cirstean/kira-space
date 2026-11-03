@@ -7,14 +7,14 @@ import { branchParts } from './catalogParts';
 import type { TaskProgress } from './progress';
 import { type RebaseAct, rebaseActs } from './rebaseActions';
 
-// Left action column: task step action and branch tag + action, both first-match tables
+// Card tag and actions: task step action and branch tag + action, both first-match tables
 // (SPEC2 §4.2, mockup v2 lines 1855-1856 and 1934-1957).
 
 export type Tone = 'amber' | 'red' | 'green' | 'blue' | 'purple' | 'grey';
 
 // ---- task cell
 
-type TaskActionKind =
+export type TaskActionKind =
   | 'archive'
   | 'session'
   | 'resume'
@@ -36,8 +36,10 @@ export interface TaskAction {
   sessionId?: string;
 }
 
+export type TaskTagKind = 'status' | 'blocked' | 'merged' | 'notMerging';
+
 export interface TaskCell {
-  tag: { label: string; tone?: Tone; color?: StatusColor; tip: string };
+  tag: { kind: TaskTagKind; label: string; tone?: Tone; color?: StatusColor; tip: string };
   action: TaskAction | null;
 }
 
@@ -192,6 +194,7 @@ export function taskCell(i: TaskCellInput): TaskCell | null {
   if (task.kind === 'parked') {
     return {
       tag: {
+        kind: 'notMerging',
         label: t('space.ade.board.notMerging.label'),
         tone: 'grey',
         tip: t('space.ade.board.taskStatus.tooltip'),
@@ -204,6 +207,7 @@ export function taskCell(i: TaskCellInput): TaskCell | null {
   if (progress.finished || (allMerged && !progress.hasWorkflow)) {
     return {
       tag: {
+        kind: 'merged',
         label: t('common.merged.status'),
         tone: 'purple',
         tip: t('space.ade.board.taskMerged.tooltip'),
@@ -218,6 +222,7 @@ export function taskCell(i: TaskCellInput): TaskCell | null {
   }
   return {
     tag: {
+      kind: i.blocked ? 'blocked' : 'status',
       label: i.blocked ? t('space.common.status.blocked.status') : i.status.name,
       ...(i.blocked ? { tone: 'red' as const } : { color: i.status.color }),
       tip: t('space.ade.board.taskStatus.tooltip'),
@@ -228,7 +233,7 @@ export function taskCell(i: TaskCellInput): TaskCell | null {
 
 // ---- branch cell
 
-type BranchActionKind =
+export type BranchActionKind =
   | 'seeError'
   | 'forcePush'
   | 'rebase'
@@ -252,7 +257,32 @@ export interface BranchAction {
   sessionId?: string;
 }
 
+export type BranchTagKind =
+  | 'notCreated'
+  | 'preparing'
+  | 'setupFailed'
+  | 'merged'
+  | 'parked'
+  | 'review'
+  | 'reviewConflict'
+  | 'rebasing'
+  | 'rebasePending'
+  | 'rebaseFailed'
+  | 'rebaseInProgress'
+  | 'baseMissing'
+  | 'conflict'
+  | 'rebaseConflicts'
+  | 'notPushed'
+  | 'behind'
+  | 'sharesFiles'
+  | 'waiting'
+  | 'baseAttention'
+  | 'checking'
+  | 'checkFailed'
+  | 'clean';
+
 export interface BranchTag {
+  kind: BranchTagKind;
   label: string;
   tone: Tone;
   tip: string;
@@ -288,7 +318,14 @@ export interface BranchTagInput {
 
 type Rule = (i: BranchTagInput) => BranchTag | null;
 
-const tag = (label: string, tone: Tone, tip: string, actions: BranchAction[] = []): BranchTag => ({
+const tag = (
+  kind: BranchTagKind,
+  label: string,
+  tone: Tone,
+  tip: string,
+  actions: BranchAction[] = [],
+): BranchTag => ({
+  kind,
   label,
   tone,
   tip,
@@ -316,6 +353,7 @@ function rebaseConflict(i: BranchTagInput): string[] {
 const notCreated: Rule = (i) =>
   i.branch.name === ''
     ? tag(
+        'notCreated',
         t('space.ade.board.branchTag.notCreated.label'),
         'grey',
         t('space.ade.board.branchTag.notCreated.tooltip'),
@@ -327,6 +365,7 @@ const preparing: Rule = (i) => {
   if (s?.state !== 'running') return null;
   return {
     ...tag(
+      'preparing',
       t('space.ade.board.branchTag.preparing.label', {
         duration: formatCompactDuration(i.nowMs - s.startedAt),
       }),
@@ -340,6 +379,7 @@ const preparing: Rule = (i) => {
 const setupFailed: Rule = (i) =>
   i.branch.setup?.state === 'failed'
     ? tag(
+        'setupFailed',
         t('space.ade.needs.kind.setupFailed.label'),
         'red',
         i.branch.setup.note || t('space.ade.board.branchTag.setupFailed.tooltip'),
@@ -355,12 +395,18 @@ const setupFailed: Rule = (i) =>
 
 const merged: Rule = (i) =>
   i.branch.mergedIntoMain
-    ? tag(t('common.merged.status'), 'purple', t('space.ade.board.branchTag.merged.tooltip'))
+    ? tag(
+        'merged',
+        t('common.merged.status'),
+        'purple',
+        t('space.ade.board.branchTag.merged.tooltip'),
+      )
     : null;
 
 const parked: Rule = (i) =>
   i.branch.kind === 'parked'
     ? tag(
+        'parked',
         t('space.ade.board.notMerging.label'),
         'grey',
         t('space.ade.board.branchTag.parked.tooltip'),
@@ -372,6 +418,7 @@ const review: Rule = (i) => {
   const conf = i.graph.conflicts.get(i.branch.id)?.[0];
   return conf
     ? tag(
+        'reviewConflict',
         t('space.ade.board.branchTag.conflict.label'),
         'red',
         t('space.ade.board.branchTag.reviewOverlap.tooltip', {
@@ -380,6 +427,7 @@ const review: Rule = (i) => {
         }),
       )
     : tag(
+        'review',
         t('space.ade.board.branchTag.review.label'),
         'blue',
         t('space.ade.board.branchTag.review.tooltip'),
@@ -391,6 +439,7 @@ const conflict: Rule = (i) => {
   if (!conf) return null;
   const name = nameOf(i, conf.with);
   return tag(
+    'conflict',
     t('space.ade.board.branchTag.conflict.label'),
     'red',
     t('space.ade.rebase.conflictWith.tooltip', { base: name, files: conf.files.join(', ') }),
@@ -471,6 +520,7 @@ const rebasing: Rule = (i) => {
   const run = lastRebase(i);
   return run && (run.state === 'running' || run.state === 'pending')
     ? tag(
+        'rebasing',
         t('git.op.inProgress.rebase.label'),
         'blue',
         t('space.ade.board.branchTag.rebasing.tooltip'),
@@ -492,11 +542,17 @@ const rebasePending: Rule = (i) => {
     ...(reason ? [reason] : []),
   ];
   return {
-    ...tag(t('space.ade.board.branchTag.rebasePending.label'), 'amber', plain(parts), [
-      ...actsOf(i, 'rebase-retry', 'abort-rebase'),
-      ...(run ? [seeLog()] : []),
-      ...takeOverOf(run && (run.state === 'failed' || run.state === 'stuck') ? run : null),
-    ]),
+    ...tag(
+      'rebasePending',
+      t('space.ade.board.branchTag.rebasePending.label'),
+      'amber',
+      plain(parts),
+      [
+        ...actsOf(i, 'rebase-retry', 'abort-rebase'),
+        ...(run ? [seeLog()] : []),
+        ...takeOverOf(run && (run.state === 'failed' || run.state === 'stuck') ? run : null),
+      ],
+    ),
     tipParts: parts,
   };
 };
@@ -506,6 +562,7 @@ const rebaseRunFailed: Rule = (i) => {
   if (!run || (run.state !== 'failed' && run.state !== 'stuck')) return null;
   const stuck = run.state === 'stuck';
   return tag(
+    'rebaseFailed',
     t(
       stuck
         ? 'space.ade.board.branchTag.rebaseNeedsYou.label'
@@ -529,6 +586,7 @@ const rebaseRunFailed: Rule = (i) => {
 const rebaseInProgress: Rule = (i) =>
   i.branch.kind === 'mine' && i.branch.rebaseInProgress
     ? tag(
+        'rebaseInProgress',
         t('space.ade.board.branchTag.rebaseInProgress.label'),
         'amber',
         t('space.ade.board.branchTag.rebaseInProgress.tooltip'),
@@ -542,6 +600,7 @@ const baseMissing: Rule = (i) => {
   const parts = branchParts('space.ade.board.branchTag.baseMissing.tooltip', { base: b.base });
   return {
     ...tag(
+      'baseMissing',
       t('space.ade.board.branchTag.baseMissing.label'),
       'red',
       plain(parts),
@@ -556,6 +615,7 @@ const rebaseConflicts: Rule = (i) => {
   if (!paths.length) return null;
   const base = baseLabel(i);
   return tag(
+    'rebaseConflicts',
     t('space.ade.board.branchTag.conflict.label'),
     'red',
     t('space.ade.board.branchTag.rebaseConflicts.tooltip', { base, files: paths.join(', ') }),
@@ -566,6 +626,7 @@ const rebaseConflicts: Rule = (i) => {
 const notPushed: Rule = (i) =>
   i.plan.unpushed[i.branch.id]
     ? tag(
+        'notPushed',
         t('space.ade.board.branchTag.notPushed.label'),
         'amber',
         t('space.ade.board.branchTag.notPushed.tooltip'),
@@ -582,6 +643,7 @@ const notPushed: Rule = (i) =>
 const behindMain: Rule = (i) =>
   rootIsMain(i) && i.branch.behind > 0
     ? tag(
+        'behind',
         t('space.ade.board.branchTag.behind.label', {
           behind: i.branch.behind,
           base: baseLabel(i),
@@ -600,6 +662,7 @@ const sharesFiles: Rule = (i) => {
   if (!a) return null;
   const name = nameOf(i, a.id);
   return tag(
+    'sharesFiles',
     t('space.ade.board.branchTag.sharesFiles.label', { branch: shortBranchName(name) }),
     'amber',
     t('space.ade.board.branchTag.sharesFiles.tooltip', { file: a.file, branch: name }),
@@ -612,6 +675,7 @@ const waitingOnReview: Rule = (i) => {
   const p = pid === undefined ? undefined : i.graph.byBranch.get(pid);
   return p?.kind === 'review'
     ? tag(
+        'waiting',
         t('space.ade.board.branchTag.waiting.label', { owner: p.owner }),
         'blue',
         t('space.ade.board.branchTag.waiting.tooltip', { branch: p.name }),
@@ -632,12 +696,15 @@ const baseNeedsAttention: Rule = (i) => {
     : anc.some((a) => (a?.behind ?? 0) > 0)
       ? t('space.ade.board.branchTag.baseBehind.label')
       : '';
-  return label ? tag(label, 'amber', t('space.ade.board.branchTag.baseAttention.tooltip')) : null;
+  return label
+    ? tag('baseAttention', label, 'amber', t('space.ade.board.branchTag.baseAttention.tooltip'))
+    : null;
 };
 
 const checking: Rule = (i) =>
   i.branch.conflictCheck === 'checking'
     ? tag(
+        'checking',
         t('space.ade.board.branchTag.checking.loading'),
         'grey',
         t('space.ade.board.branchTag.checking.tooltip'),
@@ -647,6 +714,7 @@ const checking: Rule = (i) =>
 const checkFailed: Rule = (i) =>
   i.branch.conflictCheck === 'failed'
     ? tag(
+        'checkFailed',
         t('space.ade.board.branchTag.checkFailed.label'),
         'amber',
         i.branch.conflictCheckReason || t('space.ade.board.branchTag.checkFailed.label'),
@@ -655,6 +723,7 @@ const checkFailed: Rule = (i) =>
 
 const clean: Rule = () =>
   tag(
+    'clean',
     t('space.ade.board.branchTag.clean.label'),
     'green',
     t('space.ade.board.branchTag.clean.tooltip'),
@@ -686,7 +755,7 @@ const BRANCH_RULES: readonly Rule[] = [
 ];
 
 export function branchTag(i: BranchTagInput): BranchTag {
-  let result: BranchTag = tag(t('space.ade.board.branchTag.clean.label'), 'green', '');
+  let result: BranchTag = tag('clean', t('space.ade.board.branchTag.clean.label'), 'green', '');
   for (const rule of BRANCH_RULES) {
     const found = rule(i);
     if (found) {
