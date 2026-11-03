@@ -12,25 +12,22 @@ import { Kbd } from '@theme/components/ui/kbd';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
 import { formatPercent } from '@workbench/behaviour/format';
-import { errorText } from '@workbench/bridge/codedError';
 import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { computed, useTemplateRef } from 'vue';
 import AdeTip from '../AdeTip.vue';
 import AdeAutomationChip from '../automation/AdeAutomationChip.vue';
-import type { BranchAction } from '../board/actions';
 import { changeBaseChoices } from '../board/changeBase';
 import { taskReviewTip } from '../board/reviewCode';
 import { useReviewCode } from '../review/useReviewCode';
 import AdeTaskActionButton from '../run/AdeTaskActionButton.vue';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
-import { useAdePanelTabsStore } from '../state/adePanelTabs';
-import { useAdeTakeOverStore } from '../state/adeTakeOver';
-import AdeActionCell from './AdeActionCell.vue';
 import AdeAttention from './AdeAttention.vue';
 import AdeBranchRow from './AdeBranchRow.vue';
+import AdeTagIcon from './AdeTagIcon.vue';
 import AdeTaskSessions from './AdeTaskSessions.vue';
+import { TASK_TAG_GLYPH } from './glyphs';
 import { type BranchRowModel, type CardModel, usePlanModel } from './usePlanModel';
 import { useTaskMenu } from './useTaskMenu';
 
@@ -38,9 +35,7 @@ const props = defineProps<{ card: CardModel }>();
 const emit = defineEmits<{ select: []; forcePush: [row: BranchRowModel] }>();
 
 const ui = useAdeBoardUiStore();
-const tabs = useAdePanelTabsStore();
 const dialogs = useAdeDialogsStore();
-const takeOver = useAdeTakeOverStore();
 const { model } = usePlanModel();
 const taskMenu = useTaskMenu(() => props.card);
 const reviewCode = useReviewCode();
@@ -59,26 +54,6 @@ const baseChoices = computed(() => {
     ? changeBaseChoices(props.card, { graph: m.view.graph, after: m.view.after, board: m.board })
     : [];
 });
-
-function act(row: BranchRowModel, a: BranchAction): void {
-  if (a.act) dialogs.act(a.act);
-  else if (a.kind === 'forcePush') emit('forcePush', row);
-  else if (a.kind === 'seeError') {
-    ui.selectBranch(row.branch.taskId, row.id);
-    tabs.setBranchTab(row.id, 'details');
-    ui.focusSetup = true;
-  } else if (a.kind === 'seeLog') {
-    ui.selectBranch(row.branch.taskId, row.id);
-    tabs.setBranchTab(row.id, 'details');
-    ui.focusRebaseLog = true;
-  } else if (a.kind === 'takeOver') {
-    delete ui.actionError[row.branch.taskId];
-    takeOver.request(a.sessionId ?? '').catch((err: unknown) => {
-      ui.actionError[row.branch.taskId] = errorText(err);
-      ui.select(row.branch.taskId);
-    });
-  } else if (a.kind === 'start') dialogs.start(row.id);
-}
 
 const headSelected = computed(() => props.card.selected && ui.selectedBranchId === null);
 const p = computed(() => props.card.progress);
@@ -107,21 +82,6 @@ const boxClass = computed(() => {
     :data-task-id="card.task.id"
     :data-selected="card.selected || undefined"
   >
-    <div class="flex w-52.5 shrink-0 flex-col pt-px" data-testid="ade-task-cells">
-      <AdeActionCell v-if="card.tag" :tag="card.tag" tall @contextmenu="taskMenu.open">
-        <AdeTaskActionButton :card="card" quiet />
-      </AdeActionCell>
-      <AdeActionCell
-        v-for="row in card.rows"
-        :key="row.id"
-        :tag="row.tag"
-        :row="row"
-        :color="card.color"
-        :actions="row.tag.actions"
-        @act="(a) => act(row, a)"
-        @contextmenu="(ev: MouseEvent) => card.review && taskMenu.open(ev)"
-      />
-    </div>
     <Card
       variant="section"
       :data-task-id="card.task.id"
@@ -151,6 +111,15 @@ const boxClass = computed(() => {
             :class="card.parked ? 'border-2' : ''"
             :style="card.parked ? { borderColor: card.color } : { background: card.color }"
             data-testid="ade-card-dot"
+          />
+          <AdeTagIcon
+            v-if="card.tag"
+            :glyph="TASK_TAG_GLYPH[card.tag.kind]"
+            :kind="card.tag.kind"
+            :label="card.tag.label"
+            :tip="card.tag.tip"
+            :tone="card.tag.tone"
+            :color="card.tag.color"
           />
           <template v-if="p.hasWorkflow && !card.parked">
             <AdeTip :text="p.workflowTip">
@@ -253,6 +222,7 @@ const boxClass = computed(() => {
             <VarText :parts="reviewTip" />
             <Kbd>{{ formatShortcut('ade.reviewCode') }}</Kbd>
           </TooltipIconButton>
+          <AdeTaskActionButton :card="card" icon />
         </div>
         <AdeTip :text="card.title">
           <Button

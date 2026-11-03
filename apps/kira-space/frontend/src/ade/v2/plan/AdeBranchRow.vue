@@ -6,21 +6,28 @@ import { Badge } from '@theme/components/ui/badge';
 import { Kbd } from '@theme/components/ui/kbd';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
-import { rowActions } from '@theme/lib/rowVariants';
+import { ICON } from '@theme/icons';
 import { useFocus } from '@vueuse/core';
+import { errorText } from '@workbench/bridge/codedError';
+import MenuIconButton from '@workbench/components/MenuIconButton.vue';
 import { formatShortcut } from '@workbench/shortcuts/keys';
-import { useContextMenuStore } from '@workbench/state/contextMenu';
+import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import { useRepoLinksStore } from '../../../repo/state/repoLinks';
 import { useRepos } from '../../../repo/state/reposQueries';
 import { repoTint } from '../../../state/coderepos';
 import { useRunAutomation } from '../automation/useRunAutomation';
+import { type BranchAction, tagLabel } from '../board/actions';
 import { fixItems } from '../board/menu';
 import { useReviewCode } from '../review/useReviewCode';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
+import { useAdePanelTabsStore } from '../state/adePanelTabs';
+import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import AdeAttention from './AdeAttention.vue';
 import AdeBranchTip from './AdeBranchTip.vue';
+import AdeTagIcon from './AdeTagIcon.vue';
+import { BRANCH_ACTION_ICON, BRANCH_TAG_GLYPH, rowActionSplit } from './glyphs';
 import { type BranchRowModel, usePlanModel } from './usePlanModel';
 
 const props = defineProps<{ row: BranchRowModel; color: string | null; taskRow?: boolean }>();
@@ -28,7 +35,9 @@ const emit = defineEmits<{ forcePush: []; taskMenu: [ev: MouseEvent] }>();
 const ui = useAdeBoardUiStore();
 const dialogs = useAdeDialogsStore();
 const contextMenu = useContextMenuStore();
-const { model } = usePlanModel();
+const tabs = useAdePanelTabsStore();
+const takeOver = useAdeTakeOverStore();
+const { model, liveNow } = usePlanModel();
 const repos = useRepos();
 const repoLinks = useRepoLinksStore();
 const repoTintOf = computed(() => repoTint(repoLinks.repoColorOf(props.row.branch.codeRepoId)));
@@ -56,11 +65,56 @@ function pick(): void {
   else ui.selectBranch(props.row.branch.taskId, props.row.id);
 }
 
-function onMenu(ev: MouseEvent): void {
-  if (props.taskRow) {
-    emit('taskMenu', ev);
-    return;
-  }
+const VARIANT: Record<BranchAction['kind'], 'dialog' | 'dialog-danger'> = {
+  forcePush: 'dialog',
+  rebase: 'dialog',
+  queue: 'dialog-danger',
+  changeBase: 'dialog',
+  abortRebase: 'dialog-danger',
+  seeLog: 'dialog',
+  takeOver: 'dialog-danger',
+  seeError: 'dialog-danger',
+  start: 'dialog',
+};
+const TESTID: Record<BranchAction['kind'], string> = {
+  forcePush: 'ade-force-push',
+  rebase: 'ade-rebase',
+  queue: 'ade-queue-after',
+  changeBase: 'ade-change-base',
+  abortRebase: 'ade-abort-rebase',
+  seeLog: 'ade-see-log',
+  takeOver: 'ade-take-over',
+  seeError: 'ade-see-error',
+  start: 'ade-start',
+};
+// Rebase acts and force push are already in the fix items; the overflow adds the rest.
+const MENU_KINDS: readonly BranchAction['kind'][] = ['seeError', 'seeLog', 'takeOver', 'start'];
+
+const tagText = computed(() => tagLabel(props.row.tag, liveNow.value.getTime()));
+const split = computed(() => rowActionSplit(props.row.tag.actions));
+
+function act(a: BranchAction): void {
+  const row = props.row;
+  if (a.act) dialogs.act(a.act);
+  else if (a.kind === 'forcePush') emit('forcePush');
+  else if (a.kind === 'seeError') {
+    ui.selectBranch(row.branch.taskId, row.id);
+    tabs.setBranchTab(row.id, 'details');
+    ui.focusSetup = true;
+  } else if (a.kind === 'seeLog') {
+    ui.selectBranch(row.branch.taskId, row.id);
+    tabs.setBranchTab(row.id, 'details');
+    ui.focusRebaseLog = true;
+  } else if (a.kind === 'takeOver') {
+    delete ui.actionError[row.branch.taskId];
+    takeOver.request(a.sessionId ?? '').catch((err: unknown) => {
+      ui.actionError[row.branch.taskId] = errorText(err);
+      ui.select(row.branch.taskId);
+    });
+  } else if (a.kind === 'start') dialogs.start(row.id);
+}
+
+function menuItems(): MenuItem[] {
   const m = model.value;
   const items = m
     ? fixItems({
@@ -76,10 +130,8 @@ function onMenu(ev: MouseEvent): void {
           m.board.repos.find((r) => r.codeRepoId === props.row.branch.codeRepoId)?.mainName ?? '',
       })
     : null;
-  ev.preventDefault();
-  ev.stopPropagation();
   const id = props.row.id;
-  contextMenu.openContextMenu(ev, [
+  return [
     {
       type: 'label',
       label: t('space.ade.plan.branchRow.menuTitle.label', {
@@ -127,7 +179,27 @@ function onMenu(ev: MouseEvent): void {
               else emit('forcePush');
             },
           }))),
-  ]);
+    ...split.value.overflow
+      .filter((a) => MENU_KINDS.includes(a.kind))
+      .map((a) => ({
+        type: 'item' as const,
+        id: `ade-row-action-${a.kind}`,
+        label: a.label,
+        disabled: a.disabled,
+        hint: a.tipParts,
+        run: () => act(a),
+      })),
+  ];
+}
+
+function onMenu(ev: MouseEvent): void {
+  if (props.taskRow) {
+    emit('taskMenu', ev);
+    return;
+  }
+  ev.preventDefault();
+  ev.stopPropagation();
+  contextMenu.openContextMenu(ev, menuItems());
 }
 
 const SEG: Record<string, string> = {
@@ -258,12 +330,44 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
       </div>
     </AdeBranchTip>
     <AdeAttention v-if="row.attention" :tip="row.attention" :item="row.attentionItem" />
+    <AdeTagIcon
+      :glyph="BRANCH_TAG_GLYPH[row.tag.kind]"
+      :kind="row.tag.kind"
+      :label="tagText"
+      :tip="row.tag.tip"
+      :tip-parts="row.tag.tipParts"
+      :tone="row.tag.tone"
+    />
+    <TooltipIconButton
+      v-for="a in split.shown"
+      :key="a.act?.id ?? a.kind"
+      :icon="BRANCH_ACTION_ICON[a.kind]"
+      :label="a.label"
+      :variant="VARIANT[a.kind]"
+      size="kira-icon"
+      class="shrink-0"
+      disabled-trigger
+      :disabled="a.disabled"
+      :data-testid="TESTID[a.kind]"
+      @click.stop="act(a)"
+    >
+      <div class="font-medium">{{ a.label }}</div>
+      <div><VarText :parts="a.tipParts ?? [a.tip]" /></div>
+    </TooltipIconButton>
+    <MenuIconButton
+      v-if="split.overflow.length"
+      :icon="ICON.moreActions"
+      :label="t('common.moreActions.tooltip')"
+      :items="menuItems"
+      class="shrink-0"
+      data-testid="ade-branch-more"
+      @click.stop
+    />
     <TooltipIconButton
       v-if="choice"
       icon="git-compare"
       :label="t('space.ade.board.taskMenu.reviewCode.label')"
       class="size-5 shrink-0"
-      :class="selected ? 'opacity-100' : rowActions"
       disabled-trigger
       :disabled="reviewCode.pending.value || choice.disabled"
       data-testid="ade-branch-review"
