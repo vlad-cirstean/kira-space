@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, type KiraApp, type RelaunchOptions, test } from './fixtures';
+import { expect, filesTest, type KiraApp, type RelaunchOptions, test } from './fixtures';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 import { repoRowById, repoTab, treeRow } from './support/repoRows';
@@ -257,7 +257,7 @@ test('a revision-pinned tab has no Edit button', async ({ relaunch }) => {
   await expect(page.locator('[data-testid="repo-file-edit"]')).toHaveCount(0);
 });
 
-test('a local file has no Edit button', async ({ relaunch }) => {
+filesTest('a local file has no Edit button', async ({ relaunch }) => {
   const pending = contract<Array<{ path: string; repoId: string }>>(
     'opened-files',
     'OpenedFilesService.Pending',
@@ -266,6 +266,7 @@ test('a local file has no Edit button', async ({ relaunch }) => {
   if (!outside) throw new Error('contract has no outside-repo target');
   const { window: page } = await relaunch({
     control: [
+      { channel: IPC.openedFilesIsFilesWindow, response: true },
       { channel: IPC.openedFilesPending, response: [outside] },
       {
         channel: IPC.openedFilesRead,

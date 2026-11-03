@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { test } from './fixtures';
+import { filesTest, test } from './fixtures';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
@@ -182,7 +182,7 @@ test('contract: a file gone by click time announces the error', async ({ relaunc
   await expect(page.locator('[data-testid="app-live-region"]')).toContainText(notOpenable.message);
 });
 
-test('contract: the opened window places the cursor', async ({ relaunch }) => {
+filesTest('contract: the opened window places the cursor', async ({ relaunch }) => {
   const target = pendingTerminal[0];
   if (!target) throw new Error('contract has no pending target');
   const { line, col } = target as { line: number; col: number };
@@ -206,6 +206,7 @@ test('contract: the opened window places the cursor', async ({ relaunch }) => {
           language: 'go',
         },
       },
+      { channel: IPC.openedFilesIsFilesWindow, response: true },
       { channel: IPC.openedFilesPending, response: [{ ...target, repoId: REPO.id }] },
     ],
   });
@@ -224,11 +225,12 @@ test('contract: the opened window places the cursor', async ({ relaunch }) => {
     .toBe(true);
 });
 
-test('contract: a local file opens at its line', async ({ relaunch }) => {
+filesTest('contract: a local file opens at its line', async ({ relaunch }) => {
   const outside = { path: '/tmp/work/notes/b.json', repoId: '', relPath: '', line: 2 };
   const text = '{\n  "k": 1\n}\n';
   const { window: page } = await relaunch({
     control: [
+      { channel: IPC.openedFilesIsFilesWindow, response: true },
       { channel: IPC.openedFilesPending, response: [outside] },
       {
         channel: IPC.openedFilesRead,

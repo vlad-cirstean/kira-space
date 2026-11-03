@@ -64,4 +64,11 @@ export const reviewTest = createUiFixtures<KiraAppExtra, RelaunchOptions>({
   readySelector: '[data-testid="ade-review-window"]',
 });
 
+/** The files window has no status bar: it is ready once its own root renders. */
+export const filesTest = createUiFixtures<KiraAppExtra, RelaunchOptions>({
+  distDir: DIST_DIR,
+  installMocks,
+  readySelector: '[data-testid="opened-files-window"]',
+});
+
 export { expect } from '@playwright/test';

@@ -178,6 +178,8 @@ export const IPC = {
   codeWorkspaceWriteFile: 'kira:codeWorkspace:writeFile',
   fileHandlersStatus: 'kira:fileHandlers:status',
   fileHandlersSet: 'kira:fileHandlers:set',
+  openedFilesIsFilesWindow: 'kira:openedFiles:isFilesWindow',
+  openedFilesArrived: 'kira:openedFiles:arrived',
   openedFilesPending: 'kira:openedFiles:pending',
   openedFilesRead: 'kira:openedFiles:read',
   openedFilesTerminalResolve: 'kira:openedFiles:terminalResolve',

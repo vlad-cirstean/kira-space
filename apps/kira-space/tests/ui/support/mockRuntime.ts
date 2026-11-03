@@ -86,6 +86,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   codeWorkspaceWriteFile: 'CodeWorkspaceService.WriteFile',
   fileHandlersStatus: 'FileHandlersService.Status',
   fileHandlersSet: 'FileHandlersService.Set',
+  openedFilesIsFilesWindow: 'OpenedFilesService.IsFilesWindow',
   openedFilesPending: 'OpenedFilesService.Pending',
   openedFilesRead: 'OpenedFilesService.Read',
   openedFilesTerminalResolve: 'OpenedFilesService.TerminalResolve',
@@ -328,6 +329,7 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   [IPC.gitResetWindow]: 'null',
   [IPC.tabsSave]: 'null',
   // Boot drains Finder-opened files; none by default.
+  [IPC.openedFilesIsFilesWindow]: 'false',
   [IPC.openedFilesPending]: '[]',
   [IPC.openedFilesTerminalResolve]: '{"openable":[]}',
   [IPC.openedFilesTerminalOpen]: 'null',
