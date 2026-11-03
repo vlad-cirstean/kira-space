@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures';
-import { openDocker, setupDocker } from './support/dockerFixture';
+import { container, openDocker, setupDocker } from './support/dockerFixture';
 
 test('container list: arrows, Home/End, Left/Right on a compose group, Enter opens, Shift+F10 menu returns focus', async ({
   relaunch,
@@ -89,4 +89,30 @@ test('overview container table: arrows, Home/End and Enter open the container', 
 
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-testid="docker-container-detail"]')).toBeVisible();
+});
+
+test('overview container table: 200 containers virtualize, End and Home reach the ends', async ({
+  relaunch,
+}) => {
+  const { page, state } = await setupDocker(relaunch);
+  state.containers.splice(
+    0,
+    state.containers.length,
+    ...Array.from({ length: 200 }, (_, i) => {
+      const n = String(i).padStart(3, '0');
+      return container(`c${n}`, `box-${n}`, 'running');
+    }),
+  );
+  await openDocker(page);
+
+  const rows = page.locator('[data-testid="docker-table-row"]');
+  await expect(rows.first()).toBeVisible();
+  expect(await rows.count()).toBeLessThan(60);
+  await rows.first().focus();
+  await page.keyboard.press('End');
+  const last = page.locator('[data-testid="docker-table-row"][data-name="box-199"]');
+  await expect(last).toBeFocused();
+  await expect(last).toHaveAttribute('tabindex', '0');
+  await page.keyboard.press('Home');
+  await expect(page.locator('[data-testid="docker-table-row"][data-name="box-000"]')).toBeFocused();
 });

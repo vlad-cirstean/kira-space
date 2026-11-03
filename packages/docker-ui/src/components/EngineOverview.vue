@@ -27,6 +27,7 @@ import EngineDiskSection from './EngineDiskSection.vue';
 import StatsSparkline from './StatsSparkline.vue';
 import UsageBar from './UsageBar.vue';
 
+const scrollEl = ref<HTMLElement | null>(null);
 const ui = useDockerUiStore();
 const qc = useQueryClient();
 const status = useDockerStatus();
@@ -166,8 +167,8 @@ function refresh(): Promise<void> {
 </script>
 
 <template>
-  <div class="flex h-full flex-col gap-3 overflow-auto p-3" data-testid="docker-engine-overview">
-    <template v-if="engine">
+  <div ref="scrollEl" class="h-full overflow-auto p-3" data-testid="docker-engine-overview">
+    <div v-if="engine" class="flex flex-col gap-3">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
         <h2 class="text-kira-lg font-medium">{{ t('docker.engine.title.title') }}</h2>
         <Badge variant="info">{{ engine.version }}</Badge>
@@ -290,7 +291,7 @@ function refresh(): Promise<void> {
       <EngineDiskSection />
 
       <DetailSection :title="t('docker.section.containers.label')" flush class="shrink-0">
-        <ContainerTable />
+        <ContainerTable :scroll-el="scrollEl" />
       </DetailSection>
 
       <DetailSection :title="t('docker.engine.engine.title')" class="shrink-0">
@@ -301,6 +302,6 @@ function refresh(): Promise<void> {
           </template>
         </KeyValueList>
       </DetailSection>
-    </template>
+    </div>
   </div>
 </template>
