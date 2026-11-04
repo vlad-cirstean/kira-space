@@ -79,7 +79,6 @@
     "params": {
       "secretValue": {
         "saved": {
-          "placeholder": "Saved, type to replace",
           "status": "Value saved"
         },
         "storageOff": {
@@ -3268,7 +3267,10 @@
       "aria": "Search results"
     },
     "secret": {
-      "label": "Secret"
+      "label": "Secret",
+      "saved": {
+        "placeholder": "Saved, type to replace"
+      }
     },
     "sendTest": {
       "label": "Send test notification"

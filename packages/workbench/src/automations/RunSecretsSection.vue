@@ -4,10 +4,10 @@ import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
-import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
 import { computed, ref } from 'vue';
 import { useAsyncAction } from '../behaviour/asyncAction';
+import SecretInput from '../components/SecretInput.vue';
 import { useAutomationsModule } from './module';
 
 // The saved values of a run's secret params. A value goes in once and is never shown; the file
@@ -49,15 +49,11 @@ const apply = action.run;
         :data-testid="`run-secret-${p.name}`"
       >
         <span class="w-32 shrink-0 truncate font-data text-kira-sm">{{ p.name }}</span>
-        <Input
+        <SecretInput
           :model-value="drafts[p.name] ?? ''"
-          type="password"
-          autocomplete="new-password"
-          class="min-w-0 flex-1 font-data"
+          :set="isSaved(p.name)"
+          class="min-w-0 flex-1"
           :disabled="storageOff"
-          :placeholder="
-            isSaved(p.name) ? t('automations.params.secretValue.saved.placeholder') : ''
-          "
           :aria-label="t('automations.script.paramNamed.label', { name: p.name })"
           :data-testid="`run-secret-value-${p.name}`"
           @update:model-value="(v) => (drafts = { ...drafts, [p.name]: String(v) })"

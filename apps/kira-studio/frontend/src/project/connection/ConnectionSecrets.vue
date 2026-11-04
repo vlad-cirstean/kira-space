@@ -5,9 +5,9 @@ import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
-import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
+import SecretInput from '@workbench/components/SecretInput.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { ref } from 'vue';
 import { useDeleteConnectionSecret, useSetConnectionSecret } from '../../state/connectionConfig';
@@ -108,11 +108,10 @@ async function reveal(row: ConnectionSecret): Promise<void> {
           }}</Badge>
         </div>
         <div class="flex items-center gap-2">
-          <Input
+          <SecretInput
             v-model="drafts[key(row)]"
-            type="password"
-            autocomplete="new-password"
-            class="min-w-0 flex-1 font-data"
+            :set="row.set"
+            class="min-w-0 flex-1"
             :disabled="!storageAvailable"
             :aria-label="t('studio.connections.file.secrets.value.aria', { name: row.name })"
             data-testid="connection-secret-value"
