@@ -10,7 +10,7 @@ Source: user request. Four phases. P511 is the last implementation phase. Close 
 | P509 Part 1 | Task details: free-form link add and edit | Done |
 | P509 Part 2 | Task details: Main tab row grid | Done |
 | P510 | Workflow inspector redesign, script sandbox, outside-repo steps | Done |
-| P511 | Manual session steps get per-step sandbox | Todo |
+| P511 | Manual session steps get per-step sandbox | Done |
 
 ## Rows
 
@@ -46,4 +46,4 @@ Source: user request. Four phases. P511 is the last implementation phase. Close 
 
 - Ask: Manual session steps get the per-step sandbox config too. Sandbox disableable per step (access `off`, no wrapping) for agent, script and manual steps; inspector exposes `off` for manual sessions; a test asserts it.
 - Plan: `plans/P511.md`.
-- Result: pending.
+- Result: Manual steps with a session take a `sandbox` block (parser, writer, docs, `DefaultSandboxFor` off for script and manual). Without a session the key is refused. Migration 0069 adds `ade_session_sandbox` and rewrites started tasks' manual-step snapshots to off. `agentsandbox.Input.ReadFiles` lets the profile read launch files. `harness.InteractiveSpec` gains `Sandbox` and `DisallowedTools`; claude, opencode, fakeprovider and lean wrap the interactive launch. `LaunchStep` and Take over build the plan; `BoundService.AgentStarted` feeds the denial watch after the PTY opens. `Sessions[].sandbox` badge and `SessionSandbox` detail are on the wire; the inspector shows the Sandbox section for session steps, the TUI pane header shows the chip. Tests run: adeflow, ade, agentsandbox, harness, terminal, migrations, repos and llmprompts packages; all flows (stale contracts regenerated, prompt count 133); UI specs ade-v2-sandbox, workflows, flat-steps, launch, norepo, sessions (all pass); typecheck, lint, knip. Not run: the full suite (chapter close), real Mac Seatbelt check, real `claude` tests. Enforcement is macOS only; Linux gets flags and env only and says not enforced. Caveats: login shell rc files run before the wrapper, unconfined; a sandboxed TUI has no sandbox git tools and cannot push or fetch; `~/.claude` and keychain writes are denied, so sign-in from inside fails. Deviations: read-only repo roots use `ReadWorktrees`; with no writable worktree the task folder is writable; fixture manual steps stay at `write`; `ConfigDir` unset on the TUI policy (`ReadFiles` covers launch files).
