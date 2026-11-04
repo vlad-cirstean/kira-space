@@ -20,6 +20,8 @@ func TestDiff(t *testing.T) {
 	}{
 		{"cr unchanged", KindChangeRequest, open.Encode(), open.Encode(), nil, nil, false},
 		{"cr opened", KindChangeRequest, CRSnap{}.Encode(), open.Encode(), []string{"opened"}, nil, false},
+		{"cr replaced", KindChangeRequest, with(open, func(s *CRSnap) { s.Number = 1; s.State = "closed" }).Encode(),
+			with(open, func(s *CRSnap) { s.Number = 2 }).Encode(), []string{"opened"}, nil, false},
 		{"cr vanished", KindChangeRequest, open.Encode(), CRSnap{}.Encode(), nil, nil, false},
 		{"comments grow", KindChangeRequest, open.Encode(), with(open, func(s *CRSnap) { s.CommentCount = n(3) }).Encode(),
 			[]string{"commentAdded"}, map[string]int{"commentAdded": 2}, false},

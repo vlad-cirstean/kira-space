@@ -30,6 +30,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appwire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
@@ -75,6 +76,7 @@ type options struct {
 	embedSpec       *embed.Spec
 	providers       []harness.Provider
 	crSync          gitsession.CRSyncConfig
+	updates         *ade.UpdatesConfig
 	wayland         bool
 }
 
@@ -108,6 +110,10 @@ func WithGitHost(p githost.Provider) Opt {
 // timer, no run on a refs change, a 1 ns min gap and checks interval, and a short backoff, so a
 // test drives each run through branch.syncChangeRequests.
 func WithChangeRequestSync(c gitsession.CRSyncConfig) Opt { return func(o *options) { o.crSync = c } }
+
+// WithTrackedUpdates replaces the tracked item watcher config. Flows default to Disabled: no first
+// pass, no timer, no run on a board change, so only Refresh observes.
+func WithTrackedUpdates(c ade.UpdatesConfig) Opt { return func(o *options) { o.updates = &c } }
 
 // WithWayland makes the capture hotkey binding report a Wayland session (the portal decides the
 // trigger), whatever the process environment says.
@@ -212,6 +218,9 @@ func New(t *testing.T, opts ...Opt) *App {
 			Disabled: true, MinGap: time.Nanosecond, ChecksInterval: time.Nanosecond,
 			BackoffInitial: 20 * time.Millisecond, BackoffMax: 100 * time.Millisecond,
 		}
+	}
+	if o.updates == nil {
+		o.updates = &ade.UpdatesConfig{Disabled: true}
 	}
 	root, err := os.MkdirTemp("", "ksf")
 	if err != nil {
@@ -386,7 +395,7 @@ func (a *App) build() {
 	}
 	a.W = appwire.Build(appwire.Options{
 		Providers: registry, IssueTracker: tracker,
-		GitHosts: githostproviders.New(ghOptions, append([]githost.Provider{azure.New(az)}, a.opts.gitHosts...)...), TrackerGrace: a.opts.trackerGrace, RebaseTimeout: a.opts.rebaseTimeout, BranchRequestWait: a.opts.branchWait, SmartTimeout: a.opts.smartTimeout, Sandbox: a.opts.sandbox, ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, EmbedSpec: a.opts.embedSpec, MobilePoll: a.opts.mobilePoll, ChangeRequestSync: a.opts.crSync,
+		GitHosts: githostproviders.New(ghOptions, append([]githost.Provider{azure.New(az)}, a.opts.gitHosts...)...), TrackerGrace: a.opts.trackerGrace, RebaseTimeout: a.opts.rebaseTimeout, BranchRequestWait: a.opts.branchWait, SmartTimeout: a.opts.smartTimeout, Sandbox: a.opts.sandbox, ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, EmbedSpec: a.opts.embedSpec, MobilePoll: a.opts.mobilePoll, ChangeRequestSync: a.opts.crSync, TrackedUpdates: *a.opts.updates,
 		Repos: r, DB: db, Emitter: a.Events, Browser: a.Browser, FileOpener: a.FileOpener, Dialogs: a.Dialogs,
 		Locator: gitclient.NewHostLocator(), KeepAwakeDriver: a.KeepAwake, FileHandlers: a.opts.fileHandlers,
 		MobileAssets: fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>phone</title>")}},

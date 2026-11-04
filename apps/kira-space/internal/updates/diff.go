@@ -22,19 +22,19 @@ func Diff(kind, seen, current string) Change {
 	switch kind {
 	case KindChangeRequest:
 		var a, b CRSnap
-		if !decode(seen, &a, func(s CRSnap) int { return s.V }) || !decode(current, &b, func(s CRSnap) int { return s.V }) {
+		if !DecodeCR(seen, &a) || !DecodeCR(current, &b) {
 			return Change{Reset: true}
 		}
 		c = diffCR(a, b)
 	case KindIssue:
 		var a, b IssueSnap
-		if !decode(seen, &a, func(s IssueSnap) int { return s.V }) || !decode(current, &b, func(s IssueSnap) int { return s.V }) {
+		if !DecodeIssue(seen, &a) || !DecodeIssue(current, &b) {
 			return Change{Reset: true}
 		}
 		c = diffIssue(a, b)
 	case KindBranch:
 		var a, b BranchSnap
-		if !decode(seen, &a, func(s BranchSnap) int { return s.V }) || !decode(current, &b, func(s BranchSnap) int { return s.V }) {
+		if !DecodeBranch(seen, &a) || !DecodeBranch(current, &b) {
 			return Change{Reset: true}
 		}
 		c = diffBranch(a, b)
@@ -75,6 +75,11 @@ func diffCR(a, b CRSnap) Change {
 		return c.Change
 	}
 	if !a.Present || !b.Present {
+		return c.Change
+	}
+	if a.Number != 0 && b.Number != 0 && a.Number != b.Number {
+		// A new change request took the branch's place.
+		c.add("opened", true)
 		return c.Change
 	}
 	if d, ok := grew(a.CommentCount, b.CommentCount); ok {

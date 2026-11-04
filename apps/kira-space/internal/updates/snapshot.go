@@ -10,6 +10,7 @@ const Version = 1
 type CRSnap struct {
 	V              int      `json:"v"`
 	Present        bool     `json:"present"`
+	Number         int      `json:"number,omitempty"`
 	State          string   `json:"state,omitempty"` // open | draft | merged | closed
 	Title          string   `json:"title,omitempty"`
 	HeadSha        string   `json:"headSha,omitempty"`
@@ -23,6 +24,7 @@ type CRSnap struct {
 // tracker does not say.
 type IssueSnap struct {
 	V        int    `json:"v"`
+	Key      string `json:"key,omitempty"`
 	Title    string `json:"title,omitempty"`
 	Status   string `json:"status,omitempty"`
 	Priority string `json:"priority,omitempty"`
@@ -65,4 +67,19 @@ func decode[T any](stored string, v *T, version func(T) int) bool {
 		return false
 	}
 	return version(*v) == Version
+}
+
+// DecodeCR reads a stored change request snapshot; false when unreadable or of another version.
+func DecodeCR(stored string, v *CRSnap) bool {
+	return decode(stored, v, func(s CRSnap) int { return s.V })
+}
+
+// DecodeIssue reads a stored issue snapshot; false when unreadable or of another version.
+func DecodeIssue(stored string, v *IssueSnap) bool {
+	return decode(stored, v, func(s IssueSnap) int { return s.V })
+}
+
+// DecodeBranch reads a stored branch snapshot; false when unreadable or of another version.
+func DecodeBranch(stored string, v *BranchSnap) bool {
+	return decode(stored, v, func(s BranchSnap) int { return s.V })
 }

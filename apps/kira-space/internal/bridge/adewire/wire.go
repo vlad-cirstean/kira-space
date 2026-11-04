@@ -1380,3 +1380,25 @@ type RemoveArtifactArgs struct {
 	TaskID string `json:"taskId"`
 	ID     string `json:"id"`
 }
+
+// TrackedUpdate is one tracked item with changes the user has not seen. Concepts are unfiltered:
+// the renderer applies the user's tracking settings.
+type TrackedUpdate struct {
+	TaskID    string         `json:"taskId"`
+	ItemKey   string         `json:"itemKey"`
+	Kind      string         `json:"kind"`     // changeRequest | issue | branch
+	BranchID  string         `json:"branchId"` // '' for an issue
+	Label     string         `json:"label"`    // "#12", "KIRA-12", a branch name
+	Concepts  []string       `json:"concepts"`
+	Counts    map[string]int `json:"counts"` // commentAdded -> new comments
+	ChangedAt int64          `json:"changedAt"`
+}
+
+type TrackedUpdatesResult struct {
+	Updates []TrackedUpdate `json:"updates"`
+}
+
+type MarkTrackedSeenArgs struct {
+	TaskID   string   `json:"taskId"`
+	ItemKeys []string `json:"itemKeys"` // empty = every item of the task
+}

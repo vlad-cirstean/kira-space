@@ -161,6 +161,7 @@ func (b *TaskBoard) Start() {
 			recovered := b.recoveredRebases
 			b.goTracked(func() { b.reverifyRecovered(recovered) })
 		}
+		b.updates.start()
 		b.goTracked(b.launchAutomationHeld)
 		b.goTracked(b.reopenHandoverPrompts)
 		b.goTracked(func() { b.RunAllEnvScripts(b.ctx) })

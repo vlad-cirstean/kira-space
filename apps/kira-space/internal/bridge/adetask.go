@@ -57,6 +57,9 @@ func AdeTaskOpenSession(e appcore.Emitter, windowKey string, payload adewire.Ope
 // AdeTaskBoardChanged is TaskBoard.OnBoard's target: payload-free, every window re-fetches Board.
 func AdeTaskBoardChanged(ev *Events) { ev.Broadcast(adewire.ChannelBoard) }
 
+// AdeTaskUpdatesChanged is TaskBoard.OnUpdates' target: payload-free, every window re-fetches TrackedUpdates.
+func AdeTaskUpdatesChanged(ev *Events) { ev.Broadcast(adewire.ChannelUpdates) }
+
 // AdeTaskRunsChanged is TaskBoard.OnRuns' target: the changed runs ride the event.
 func AdeTaskRunsChanged(ev *Events, payload adewire.RunsChangedEvent) {
 	ev.emit.Emit(adewire.ChannelRuns, payload)
@@ -137,6 +140,10 @@ func adeTaskError(err error) error {
 	}
 	return ipcerr.Wrap(err)
 }
+
+const adeTaskMaxItemKeys = 64
+
+var adeTrackedItemKeyRe = regexp.MustCompile(`^(issue|cr:[A-Za-z0-9_-]{1,64}|branch:[A-Za-z0-9_-]{1,64})$`)
 
 var adeWorkflowIDRe = regexp.MustCompile(`^[a-z0-9_-]{1,64}$`)
 
@@ -339,6 +346,28 @@ func (s *AdeTaskService) ChangeRequests(ctx context.Context) (adewire.ChangeRequ
 	ctx = adeUserCtx(ctx)
 	r, err := s.Engine.ChangeRequests(ctx)
 	return r, adeTaskError(err)
+}
+
+func (s *AdeTaskService) TrackedUpdates(ctx context.Context) (adewire.TrackedUpdatesResult, error) {
+	ctx = adeUserCtx(ctx)
+	r, err := s.Engine.TrackedUpdates(ctx)
+	return r, adeTaskError(err)
+}
+
+func (s *AdeTaskService) MarkTrackedSeen(ctx context.Context, args adewire.MarkTrackedSeenArgs) error {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return err
+	}
+	if len(args.ItemKeys) > adeTaskMaxItemKeys {
+		return adeTaskInvalid("itemKeys: too many")
+	}
+	for _, k := range args.ItemKeys {
+		if !adeTrackedItemKeyRe.MatchString(k) {
+			return adeTaskInvalid("itemKeys: invalid key")
+		}
+	}
+	return adeTaskError(s.Engine.MarkTrackedSeen(ctx, args))
 }
 
 func (s *AdeTaskService) Refresh(ctx context.Context, args adewire.RefreshArgs) (adewire.RefreshResult, error) {

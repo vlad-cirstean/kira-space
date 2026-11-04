@@ -121,6 +121,9 @@ type Options struct {
 	// ChangeRequestSync tunes the change request index sync; the zero value is production's (a
 	// flow-test seam).
 	ChangeRequestSync gitsession.CRSyncConfig
+	// TrackedUpdates tunes the tracked item update watcher; the zero value is production's (a
+	// flow-test seam).
+	TrackedUpdates ade.UpdatesConfig
 }
 
 // ShellHooks completes the window-manager seams once the shell exists. CloseWindow, FocusWindow and
@@ -420,7 +423,7 @@ func Build(opts Options) *Wired {
 				return w.AdeTask.CloseWindow(key)
 			}
 			return w.Windows.Close(key)
-		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, runs, w.Agents, w.Prompts, w.RepoConfig)
+		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.RepoConfig)
 	runs.ADE = w.AdeBoard
 	w.watchRepoConfig(events)
 	w.sched = &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
