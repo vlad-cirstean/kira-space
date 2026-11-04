@@ -513,7 +513,7 @@ test('console result tabs render at tab-strip size, 2px strip gap (P121 T4)', as
 });
 
 // P121 §6.2: T1's own `pt-0.5` removal -- the scrolling tab now centres in its 34px `h-tabbar`
-// bar (`tab-strip`, minus its own 1px `border-b`) instead of sitting 2px low.
+// bar (`tab-strip`) instead of sitting 2px low.
 test('the first document tab sits vertically centred in the tab-strip bar (P121 T1)', async ({
   relaunch,
 }) => {
@@ -527,7 +527,7 @@ test('the first document tab sits vertically centred in the tab-strip bar (P121 
   if (!barBox || !tabBox)
     throw new Error('expected both the bar and its first tab to be measurable');
 
-  const barBottomInterior = barBox.y + barBox.height - 1; // 1px border-b
+  const barBottomInterior = barBox.y + barBox.height;
   const topGap = tabBox.y - barBox.y;
   const bottomGap = barBottomInterior - (tabBox.y + tabBox.height);
   expect(Math.abs(topGap - bottomGap)).toBeLessThanOrEqual(0.5);

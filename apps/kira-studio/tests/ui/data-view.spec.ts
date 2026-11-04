@@ -1086,7 +1086,7 @@ test('data view — pagination, count, projection, sort, filter, search, stop, N
   expect(pagerBox.x).toBeLessThan(searchToggleBox.x);
   await expect(page.locator('[data-testid="pager-next"]')).toBeEnabled();
 
-  // --- Dividers match the graph toolbar's (repo-graph-toolbar.spec.ts): 1x14, centred, border-strong.
+  // --- Dividers match the graph toolbar's (repo-graph-toolbar.spec.ts): 1x14, centred, transparent spacer.
   const dataBar = await page.locator('[data-testid="data-toolbar"]').boundingBox();
   if (!dataBar) throw new Error('data-toolbar has no bounding box');
   const separators = page.locator('[data-testid="data-toolbar"] [data-testid="toolbar-separator"]');

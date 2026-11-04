@@ -380,16 +380,14 @@ test('the task open in the panel is marked on its card, spans and branch rows', 
 }) => {
   const { window: page } = await openPlan(relaunch);
   const marked = page.locator('[data-testid="ade-card"][aria-current="true"]');
-  const [focusColor, strongBorderColor] = await page.evaluate(() =>
-    ['--kira-focus', '--kira-border-strong'].map((v) => {
-      const span = document.createElement('span');
-      span.style.color = `var(${v})`;
-      document.body.appendChild(span);
-      const color = getComputedStyle(span).color;
-      span.remove();
-      return color;
-    }),
-  );
+  const focusColor = await page.evaluate(() => {
+    const span = document.createElement('span');
+    span.style.color = 'var(--kira-focus)';
+    document.body.appendChild(span);
+    const color = getComputedStyle(span).color;
+    span.remove();
+    return color;
+  });
 
   await card(page, 'T_search').locator('[data-testid="ade-card-head"]').click();
   await expect(card(page, 'T_search')).toHaveAttribute('aria-current', 'true');
@@ -401,7 +399,7 @@ test('the task open in the panel is marked on its card, spans and branch rows', 
   await card(page, 'T_push').locator('[data-testid="ade-card-head"]').click();
   await expect(card(page, 'T_push')).toHaveAttribute('aria-current', 'true');
   expect(await card(page, 'T_search').evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(
-    strongBorderColor,
+    'rgba(0, 0, 0, 0)',
   );
   await expect(card(page, 'T_search')).not.toHaveAttribute('aria-current', 'true');
 
@@ -539,7 +537,7 @@ test('line 2 shows merged and deployed chips with stale in amber and tooltips', 
   const auth = page.locator('[data-testid="ade-branch-row"][data-branch-id="b_auth"]').first();
   const stale = auth.locator('[data-testid="ade-branch-merged"]');
   await expect(stale).toHaveText('dev ⚠');
-  await expect(stale).toHaveCSS('color', 'rgb(229, 180, 115)');
+  await expect(stale).toHaveCSS('color', 'rgb(219, 175, 113)');
   await auth.hover();
   await expect(
     page
