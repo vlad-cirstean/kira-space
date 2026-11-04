@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/catfile"
@@ -182,7 +184,8 @@ func (e *RepoEntry) captureCommittedRemoved(ctx context.Context, base, branch st
 
 	var recs []gitreview.FileRecord
 	var current []string
-	for _, rec := range records {
+	for _, path := range slices.Sorted(maps.Keys(records)) { // id order must not depend on map order
+		rec := records[path]
 		if !hasCommittedReview(rec) {
 			continue
 		}
@@ -257,7 +260,8 @@ func (e *RepoEntry) CaptureWorkingRemoved(ctx context.Context, branch string, re
 	if err != nil {
 		return err
 	}
-	for _, listed := range records {
+	for _, path := range slices.Sorted(maps.Keys(records)) { // id order must not depend on map order
+		listed := records[path]
 		if !hasWorkingReview(listed) {
 			continue
 		}
