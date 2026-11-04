@@ -7586,3 +7586,11 @@ Source: docs/v0.2.32/ at 639668fac. 1 phases.
 ### v0.2.32 P506 (Done)
 Fix repoless workflow test race. `TestRepolessWorkflow` snapshotted `Board#started` while the fake agent kept running; its `declare_repos` call could create a branch first on a slow runner, drifting contract `ade-norepo.json` (`go (Linux)` failed on PR #26). Added `Action.WaitBefore` to the fake agent and gated the first stage's MCP calls on a hold file the test releases after the snapshot. Verified: vet, `-count=3` at `GOMAXPROCS=1`, adeflow package. Not run: container tests (no Docker). No review.
 <!-- /chapter v0.2.32 -->
+
+<!-- chapter v0.2.33 -->
+## v0.2.33
+Source: docs/v0.2.33/ at a845e3570. 1 phases.
+
+### v0.2.33 P507 (Done)
+Deterministic removed-entry order. `CaptureWorkingRemoved` and `captureCommittedRemoved` ranged over Go maps, so autoincrement ids in the removed table followed random path order; `TestReviewWorkingRemoved` failed about 5 in 40 runs. Both now iterate `slices.Sorted(maps.Keys(records))`. Found by the P506 follow-up while chasing a pre-push failure; PR #27 merged before the fix could ride it. No other order-sensitive map range in `gitsession` or `gitreview`. Verified: vet, `-count=40` 0 failures, `gitsession` and `reviewflow` packages. Not run: container tests (no Docker). No review.
+<!-- /chapter v0.2.33 -->
