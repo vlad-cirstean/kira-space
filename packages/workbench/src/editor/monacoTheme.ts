@@ -16,9 +16,9 @@ export const KIRA_EDITOR_THEME = 'kira-editor';
 // app's WKWebView actually embeds, matching playwright.config.ts's own choice of `webkit` for
 // UI-fidelity projects), **widened by a second P60a dogfooding finding**: WebKit's
 // `getComputedStyle` canonicalises a custom property's own color value to whatever it considers
-// its *shortest* serialization — a 3-digit hex shorthand for `--kira-fg: #cccccc` (C6's own
+// its *shortest* serialization — a 3-digit hex shorthand for `#cccccc` (C6's own
 // finding, `#ccc`), but a bare CSS colour *keyword* when one exactly matches, e.g.
-// `--kira-syntax-meta: #808080` comes back as the literal string `"gray"`. Monaco's `defineTheme`
+// `#808080` comes back as the literal string `"gray"`. Monaco's `defineTheme`
 // validates a token rule's `foreground` strictly as a hex string, throwing on either form
 // ("Illegal value for token color: #ccc" / "... gray") and rejecting `loadMonaco()`'s own memoised
 // promise *permanently* — every MonacoHost on the page is left showing its pending `<pre>` forever,
@@ -79,20 +79,20 @@ export function cssVar(name: string, fallback: string): string {
 // §4.1 token-colour table — Lezer tag group -> Monarch scope, both keyed by the same
 // `--kira-syntax-*` custom property `theme.ts`'s `kiraHighlightStyle` already reads.
 function tokenRules(): { token: string; foreground: string }[] {
-  const comment = cssVar('--kira-syntax-comment', '#6a9955');
-  const string = cssVar('--kira-syntax-string', '#ce9178');
-  const number = cssVar('--kira-syntax-number', '#b5cea8');
-  const keyword = cssVar('--kira-syntax-keyword', '#569cd6');
-  const control = cssVar('--kira-syntax-control', '#c586c0');
-  const property = cssVar('--kira-syntax-property', '#9cdcfe');
-  const name = cssVar('--kira-syntax-name', '#9cdcfe');
-  const fn = cssVar('--kira-syntax-function', '#dcdcaa');
-  const tag = cssVar('--kira-syntax-tag', '#569cd6');
-  const attribute = cssVar('--kira-syntax-attribute', '#9cdcfe');
-  const operator = cssVar('--kira-syntax-operator', '#d4d4d4');
-  const punctuation = cssVar('--kira-syntax-punctuation', '#d4d4d4');
-  const meta = cssVar('--kira-syntax-meta', '#569cd6');
-  const invalid = cssVar('--kira-syntax-invalid', '#f44747');
+  const comment = cssVar('--kira-syntax-comment', '#7f9a6f');
+  const string = cssVar('--kira-syntax-string', '#d29a7e');
+  const number = cssVar('--kira-syntax-number', '#b4c79e');
+  const keyword = cssVar('--kira-syntax-keyword', '#6e9fd8');
+  const control = cssVar('--kira-syntax-control', '#c296c4');
+  const property = cssVar('--kira-syntax-property', '#93c6e8');
+  const name = cssVar('--kira-syntax-name', '#93c6e8');
+  const fn = cssVar('--kira-syntax-function', '#d8d2a0');
+  const tag = cssVar('--kira-syntax-tag', '#6e9fd8');
+  const attribute = cssVar('--kira-syntax-attribute', '#93c6e8');
+  const operator = cssVar('--kira-syntax-operator', '#c8c8cc');
+  const punctuation = cssVar('--kira-syntax-punctuation', '#bdbdc4');
+  const meta = cssVar('--kira-syntax-meta', '#8e8e97');
+  const invalid = cssVar('--kira-syntax-invalid', '#e66e68');
 
   // `foreground` strips a leading '#' — Monaco's `editor.IStandaloneThemeData['rules']` wants the
   // bare hex, unlike `colors` below which wants the full `#RRGGBB` string.
@@ -172,7 +172,7 @@ export function defineKiraTheme(mod: MonacoModule): void {
       'editorSuggestWidget.background': cssVar('--kira-bg-elevated', '#1f1f23'),
       'editorSuggestWidget.border': cssVar('--kira-border-strong', '#37373d'),
       'editorSuggestWidget.selectedBackground': cssVar('--kira-select', '#1f3354'),
-      'editorSuggestWidget.highlightForeground': cssVar('--kira-syntax-function', '#dcdcaa'),
+      'editorSuggestWidget.highlightForeground': cssVar('--kira-syntax-function', '#d8d2a0'),
 
       // The ~16 keys above cover the editor surface itself; the context menu, the
       // rest of the suggest widget, the find/peek widgets and every reparented list read from a
@@ -191,7 +191,7 @@ export function defineKiraTheme(mod: MonacoModule): void {
 
       'editorSuggestWidget.foreground': cssVar('--kira-fg', '#d4d4d8'),
       'editorSuggestWidget.selectedForeground': cssVar('--kira-fg', '#d4d4d8'),
-      'editorSuggestWidget.focusHighlightForeground': cssVar('--kira-syntax-function', '#dcdcaa'),
+      'editorSuggestWidget.focusHighlightForeground': cssVar('--kira-syntax-function', '#d8d2a0'),
       'editorSuggestWidget.selectedIconForeground': cssVar('--kira-fg-muted', '#a1a1aa'),
       'editorSuggestWidgetStatus.foreground': cssVar('--kira-fg-muted', '#a1a1aa'),
 
@@ -201,7 +201,7 @@ export function defineKiraTheme(mod: MonacoModule): void {
       'list.activeSelectionForeground': cssVar('--kira-accent-fg', '#ffffff'),
       'list.focusBackground': cssVar('--kira-select', '#1f3354'),
       'list.focusOutline': cssVar('--kira-focus', '#5a8ae6'),
-      'list.highlightForeground': cssVar('--kira-syntax-function', '#dcdcaa'),
+      'list.highlightForeground': cssVar('--kira-syntax-function', '#d8d2a0'),
 
       'dropdown.background': cssVar('--kira-bg-input', '#27272c'),
       'dropdown.foreground': cssVar('--kira-fg', '#d4d4d8'),
@@ -233,7 +233,7 @@ export function defineKiraTheme(mod: MonacoModule): void {
       // `--kira-search-match` is a translucent `color-mix(… transparent)` token — same alpha branch
       // as the scrollbar above. `--kira-search-match-current` resolves to an opaque `--kira-warn`
       // and needs no conversion, but is routed through the same `cssVar` call for consistency.
-      'editor.findMatchBackground': cssVar('--kira-search-match-current', '#cca700'),
+      'editor.findMatchBackground': cssVar('--kira-search-match-current', '#d5b449'),
       'editor.findMatchHighlightBackground': cssVar('--kira-search-match', '#d5b44940'),
 
       'textLink.foreground': cssVar('--kira-info', '#69a1e8'),

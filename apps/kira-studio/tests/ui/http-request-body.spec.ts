@@ -61,7 +61,7 @@ test('Http request body — code · XML round-trips through the builder and the 
   await page.click('[data-testid="http-body-mode-code"]');
   await page.selectOption('[data-testid="http-body-code-language"]', 'xml');
 
-  // --kira-syntax-tag: #569cd6 = rgb(86, 156, 214) (theme/tokens.css) — a tag name colored this
+  // --kira-syntax-tag: #6e9fd8 = rgb(110, 159, 216) (theme/tokens.css) — a tag name colored this
   // way is the observable proof the xml() grammar (not plain text) is active.
   const editor = page.locator('[data-testid="http-request-pane"]');
   await typeInto(editor, page, '<root><a>1</a><b>two</b></root>');
@@ -69,7 +69,7 @@ test('Http request body — code · XML round-trips through the builder and the 
   // api-ui-consistency.spec.ts's own token-colour check does (its comment at the same call).
   // Monaco's own debounced marker/tokenize pass can still be catching up on the language-mode
   // switch plus the insertText above when this first samples the DOM.
-  await expect.poll(() => hasTokenColor(editor, 'rgb(86, 156, 214)')).toBe(true);
+  await expect.poll(() => hasTokenColor(editor, 'rgb(110, 159, 216)')).toBe(true);
 
   await page.click('[data-testid="http-body-beautify"]');
   const BEAUTIFIED = '<root>\n  <a>\n    1\n  </a>\n  <b>\n    two\n  </b>\n</root>';

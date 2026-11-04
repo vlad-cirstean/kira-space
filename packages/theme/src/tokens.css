@@ -155,39 +155,39 @@
   --kira-ease: cubic-bezier(0.4, 0, 0.2, 1);
   --kira-control-inline-h: 14px; /* drawn inside a control or a bar: checkbox box, toolbar separator, tab rail */
 
-  /* §8.12 connection color palette — softened to oklch(0.72 0.09 h): one lightness
+  /* §8.12 connection color palette — muted to oklch(0.72 0.075 h): one lightness
      and one chroma for all eleven hues plus a near-neutral grey, so no connection
      shouts louder than another (P16 design system). */
-  --kira-conn-red: #d78e88;
-  --kira-conn-orange: #d1966d;
-  --kira-conn-amber: #bca260;
-  --kira-conn-olive: #9fad6b;
-  --kira-conn-green: #7db485;
-  --kira-conn-teal: #5fb7a5;
-  --kira-conn-cyan: #58b4c4;
-  --kira-conn-blue: #7ba8dc;
-  --kira-conn-indigo: #979fdd;
-  --kira-conn-violet: #b296d2;
-  --kira-conn-magenta: #cb8eb6;
+  --kira-conn-red: #d0938d;
+  --kira-conn-orange: #ca9877;
+  --kira-conn-amber: #baa16e;
+  --kira-conn-olive: #a3ab74;
+  --kira-conn-green: #83b28c;
+  --kira-conn-teal: #6db4a6;
+  --kira-conn-cyan: #68b3bb;
+  --kira-conn-blue: #81a9d2;
+  --kira-conn-indigo: #96a1d4;
+  --kira-conn-violet: #ac9acd;
+  --kira-conn-magenta: #c592b3;
   --kira-conn-grey: #9fa5ac;
 
-  /* P411 task status palette: oklch(0.78 0.11 h), grey and brown desaturated; at least 6.4:1 on --kira-bg-elevated. */
-  --kira-status-grey: #adb1b8;
-  --kira-status-brown: #c19c7f;
-  --kira-status-red: #f69b94;
-  --kira-status-orange: #eea471;
-  --kira-status-amber: #dcaf61;
-  --kira-status-yellow: #c8b962;
-  --kira-status-lime: #a7c474;
-  --kira-status-green: #82cb92;
-  --kira-status-teal: #59ceba;
-  --kira-status-cyan: #4fccd9;
-  --kira-status-sky: #64c4f0;
-  --kira-status-blue: #8eb8fe;
-  --kira-status-indigo: #a9b0fd;
-  --kira-status-violet: #c2a7f4;
-  --kira-status-purple: #d7a0e3;
-  --kira-status-pink: #ed9ac1;
+  /* P411 task status palette: oklch(0.78 0.095 h), grey and brown desaturated; at least 6.4:1 on --kira-bg-elevated. */
+  --kira-status-grey: #b0b8c1;
+  --kira-status-brown: #d1b099;
+  --kira-status-red: #eea099;
+  --kira-status-orange: #e9a680;
+  --kira-status-amber: #dbaf71;
+  --kira-status-yellow: #cab76f;
+  --kira-status-lime: #a9c27f;
+  --kira-status-green: #8bc997;
+  --kira-status-teal: #6cccba;
+  --kira-status-cyan: #65c9d4;
+  --kira-status-sky: #6fc4e5;
+  --kira-status-blue: #8ebaf4;
+  --kira-status-indigo: #a5b3f4;
+  --kira-status-violet: #bbacee;
+  --kira-status-purple: #cfa5e1;
+  --kira-status-pink: #e69ec0;
 
   /* P17 D19: eight method-colour aliases, borrowed from the connection palette above rather than
      new hues — it was already tuned for "one lightness and one chroma for N things, so none
@@ -208,21 +208,21 @@
   --kira-method-other: var(--kira-conn-grey);
 
   /* Syntax tokens for CodeMirror (§3's editor surfaces: DDL, cell editor, document view,
-     command preview, console). Dark Modern's default token colours. */
-  --kira-syntax-comment: #6a9955;
-  --kira-syntax-string: #ce9178;
-  --kira-syntax-number: #b5cea8;
-  --kira-syntax-keyword: #569cd6;
-  --kira-syntax-control: #c586c0;
-  --kira-syntax-name: #9cdcfe;
-  --kira-syntax-property: #9cdcfe;
-  --kira-syntax-function: #dcdcaa;
-  --kira-syntax-tag: #569cd6;
-  --kira-syntax-attribute: #9cdcfe;
-  --kira-syntax-operator: #d4d4d4;
-  --kira-syntax-punctuation: #cccccc;
-  --kira-syntax-meta: #808080;
-  --kira-syntax-invalid: #f14c4c;
+     command preview, console). Dark Modern hue roles at lower chroma; each at least 4.5:1 on --kira-bg. */
+  --kira-syntax-comment: #7f9a6f;
+  --kira-syntax-string: #d29a7e;
+  --kira-syntax-number: #b4c79e;
+  --kira-syntax-keyword: #6e9fd8;
+  --kira-syntax-control: #c296c4;
+  --kira-syntax-name: #93c6e8;
+  --kira-syntax-property: #93c6e8;
+  --kira-syntax-function: #d8d2a0;
+  --kira-syntax-tag: #6e9fd8;
+  --kira-syntax-attribute: #93c6e8;
+  --kira-syntax-operator: #c8c8cc;
+  --kira-syntax-punctuation: #bdbdc4;
+  --kira-syntax-meta: #8e8e97;
+  --kira-syntax-invalid: #e66e68;
   /* P28 D17(c): the floating-surface stacking ladder, as tokens rather than five bare literals
      spread across PopoverPanel/DialogFrame/ContextMenu/AutocompleteField/AppTooltip. Two orderings
      changed with the move: a popover now outranks a dialog (one opened from inside a dialog used
