@@ -786,6 +786,8 @@ type Session struct {
 	CwdMissing     bool   `json:"cwdMissing"`
 	StartedAt      int64  `json:"startedAt"`
 	LastActiveAt   int64  `json:"lastActiveAt"`
+	// Sandbox is the badge of a manual step session's sandbox; null when it runs without one.
+	Sandbox *RunSandboxBadge `json:"sandbox"`
 }
 
 type SessionsResult struct {
@@ -1167,6 +1169,10 @@ type RestartSessionArgs struct {
 }
 
 type CloseSessionArgs struct {
+	SessionID string `json:"sessionId"`
+}
+
+type SessionSandboxArgs struct {
 	SessionID string `json:"sessionId"`
 }
 

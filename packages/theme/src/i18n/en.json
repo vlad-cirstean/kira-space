@@ -6414,6 +6414,13 @@
           "body": "Sent to {agent} when a manual step session starts."
         }
       },
+      "adeManualSandboxNote": {
+        "description": "Tells the agent of a sandboxed manual step session where it may write and to stop when the sandbox blocks an action.",
+        "title": "Manual session sandbox notice",
+        "usedBy": {
+          "body": "Added to the first message of a manual step session that runs under the sandbox."
+        }
+      },
       "adeRebaseContextLine": {
         "description": "Tells the agent that the last rebase of a branch did not finish and points to run_outcome.",
         "title": "Unfinished rebase line",

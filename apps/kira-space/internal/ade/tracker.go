@@ -62,6 +62,9 @@ type TrackerDeps struct {
 	// OnStopped is called with a record id after Reconcile marked it stopped (its terminal is gone);
 	// the v2 engine releases per-session state here. Never called with the lock held.
 	OnStopped func(recordID string)
+	// OnAgentStarted is called with a record id and the pid of its running shell once the terminal
+	// spawned; the task board starts a sandbox watch here. Never called with the lock held.
+	OnAgentStarted func(recordID string, pid int)
 	// OnStarted is called with the task id after a new task-level session record is inserted. Never
 	// called with the lock held.
 	OnStarted func(taskID string)
@@ -136,6 +139,13 @@ type PrepareArgs struct {
 	IsolationDir string
 	// RecordID presets the new record's id when Resume is ""; "" mints one.
 	RecordID string
+	// Sandbox wraps the agent, Env adds to the launch env (an unenforced sandbox's overrides) and
+	// DisallowedTools are denied; zero = an unconfined launch.
+	Sandbox         *harness.SandboxExec
+	Env             []string
+	DisallowedTools []string
+	// ContextFile is the agent context path the caller already resolved; "" = look it up.
+	ContextFile string
 }
 
 // PrepareResult is Prepare's own return shape. SessionID is the agent session id (stable across
@@ -216,6 +226,25 @@ func (t *Tracker) SetStartedHandler(fn func(taskID string)) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.deps.OnStarted = fn
+}
+
+// SetAgentStartedHandler installs TrackerDeps.OnAgentStarted after construction.
+func (t *Tracker) SetAgentStartedHandler(fn func(recordID string, pid int)) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.deps.OnAgentStarted = fn
+}
+
+// OnAgentStarted is BoundService.AgentStarted's target: it reports the shell pid of a composed
+// launch to the handler, keyed by the record the terminal belongs to.
+func (t *Tracker) OnAgentStarted(terminalID string, pid int) {
+	t.mu.Lock()
+	recordID, ok := t.live[terminalID]
+	fn := t.deps.OnAgentStarted
+	t.mu.Unlock()
+	if ok && fn != nil {
+		fn(recordID, pid)
+	}
 }
 
 // SetStoppedHandler installs TrackerDeps.OnStopped after construction: the handler's owner (the v2
@@ -308,8 +337,8 @@ func (t *Tracker) Prepare(args PrepareArgs) (PrepareResult, error) {
 		return PrepareResult{}, err
 	}
 	agentBin := cmpNonEmpty(t.deps.AgentBin, agent.Command())
-	var contextFile string
-	if t.deps.ContextFile != nil {
+	contextFile := args.ContextFile
+	if contextFile == "" && t.deps.ContextFile != nil {
 		var err error
 		if contextFile, err = t.deps.ContextFile(); err != nil {
 			return PrepareResult{}, ipcerr.InternalErr(err)
@@ -320,7 +349,9 @@ func (t *Tracker) Prepare(args PrepareArgs) (PrepareResult, error) {
 		AddDirs: args.AddDirs, MCPConfig: args.MCPConfig, AllowedTools: args.AllowedTools,
 		Stage: stageValues(args.Settings, agent), ContextFile: contextFile, App: args.App,
 		Hermetic: args.Hermetic, IsolationDir: args.IsolationDir,
+		Sandbox: args.Sandbox, DisallowedTools: args.DisallowedTools,
 	})
+	launch.Env = append(launch.Env, args.Env...)
 	command, agentSessionID := launch.Command, launch.SessionID
 
 	terminalID := uuid.NewString()

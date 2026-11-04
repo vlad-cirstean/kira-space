@@ -17,6 +17,7 @@
             "session": true,
             "command": "",
             "runsOn": "",
+            "outsideRepo": false,
             "before": "",
             "results": [],
             "maxReturns": 0,
@@ -44,6 +45,7 @@
             "session": false,
             "command": "",
             "runsOn": "once",
+            "outsideRepo": false,
             "before": "auto",
             "results": [
               {
@@ -86,6 +88,7 @@
             "session": false,
             "command": "",
             "runsOn": "each repo",
+            "outsideRepo": false,
             "before": "auto",
             "results": [
               {
@@ -128,6 +131,7 @@
             "session": false,
             "command": "",
             "runsOn": "each repo",
+            "outsideRepo": false,
             "before": "auto",
             "results": [
               {
@@ -170,6 +174,7 @@
             "session": false,
             "command": "",
             "runsOn": "each repo",
+            "outsideRepo": false,
             "before": "auto",
             "results": [
               {
@@ -212,6 +217,7 @@
             "session": false,
             "command": "",
             "runsOn": "each repo",
+            "outsideRepo": false,
             "before": "approval",
             "results": [
               {
@@ -254,6 +260,7 @@
             "session": true,
             "command": "",
             "runsOn": "",
+            "outsideRepo": false,
             "before": "",
             "results": [],
             "maxReturns": 0,
@@ -281,6 +288,7 @@
             "session": false,
             "command": "./scripts/release.sh --branch {branch}",
             "runsOn": "each repo",
+            "outsideRepo": false,
             "before": "auto",
             "results": [
               {
@@ -336,6 +344,7 @@
             "session": true,
             "command": "",
             "runsOn": "",
+            "outsideRepo": false,
             "before": "",
             "results": [],
             "maxReturns": 0,
@@ -363,6 +372,7 @@
             "session": false,
             "command": "",
             "runsOn": "each repo",
+            "outsideRepo": false,
             "before": "auto",
             "results": [
               {
@@ -405,6 +415,7 @@
             "session": false,
             "command": "",
             "runsOn": "each repo",
+            "outsideRepo": false,
             "before": "auto",
             "results": [
               {
@@ -447,6 +458,7 @@
             "session": false,
             "command": "",
             "runsOn": "each repo",
+            "outsideRepo": false,
             "before": "auto",
             "results": [
               {
@@ -489,6 +501,7 @@
             "session": false,
             "command": "",
             "runsOn": "each repo",
+            "outsideRepo": false,
             "before": "approval",
             "results": [
               {
@@ -531,6 +544,7 @@
             "session": false,
             "command": "./scripts/release.sh --branch {branch}",
             "runsOn": "each repo",
+            "outsideRepo": false,
             "before": "auto",
             "results": [
               {
@@ -586,6 +600,7 @@
             "session": false,
             "command": "",
             "runsOn": "each repo",
+            "outsideRepo": false,
             "before": "auto",
             "results": [
               {
@@ -628,6 +643,7 @@
             "session": false,
             "command": "",
             "runsOn": "each repo",
+            "outsideRepo": false,
             "before": "auto",
             "results": [
               {
@@ -670,6 +686,7 @@
             "session": false,
             "command": "make release",
             "runsOn": "each repo",
+            "outsideRepo": false,
             "before": "auto",
             "results": [
               {

@@ -193,7 +193,11 @@ func (b *TaskBoard) takeOverLocked(ctx context.Context, tr *Tracker, rec *model.
 	if rec.Mode == model.AdeSessionModeHeadless {
 		runID = b.finishableRun(tc, rec)
 	}
-	return b.prepareWithGrant(ctx, tr, tc, pa, kind, runID, rec.StepID)
+	plan, err := b.resumeSandboxPlan(ctx, tc, rec, cwd)
+	if err != nil {
+		return adewire.Launch{}, err
+	}
+	return b.prepareWithGrant(ctx, tr, tc, pa, kind, runID, rec.StepID, plan)
 }
 
 // errSessionGone is the refusal for a session whose terminal already closed.
@@ -406,8 +410,9 @@ func (b *TaskBoard) finishableRun(tc *taskCtx, rec *model.AdeSession) string {
 // prepareWithGrant registers the agent MCP grant every task TUI launch carries (handover, run_outcome;
 // finish_step for a taken-over run; the Space tools) and prepares the
 // launch with its flags. grantStep is the stage the session opens for, "" when it has none. The grant
-// lives until the record stops or its launch expires.
-func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskCtx, pa PrepareArgs, kind, runID, grantStep string) (_ adewire.Launch, err error) {
+// lives until the record stops or its launch expires. plan, when not nil and not off, confines the
+// session (P511); nil launches it unconfined.
+func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskCtx, pa PrepareArgs, kind, runID, grantStep string, plan *tuiSandboxPlan) (_ adewire.Launch, err error) {
 	agent, err := b.agentFor(pa.Provider)
 	if err != nil {
 		return adewire.Launch{}, err
@@ -456,15 +461,26 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 			return adewire.Launch{}, fmt.Errorf("hermetic launch: %w", err)
 		}
 	}
+	recordID := cmpNonEmpty(pa.Resume, pa.RecordID)
+	releaseSandbox := func() {}
+	if sr, err := b.sandboxTUI(ctx, &pa, recordID, agent, plan, prep.App, cfg); err != nil {
+		release()
+		prep.Release()
+		releaseIso()
+		return adewire.Launch{}, err
+	} else if sr != nil {
+		releaseSandbox = b.holdTUISandbox(recordID, sr)
+	}
 	res, err := tr.Prepare(pa)
 	if err != nil {
 		release()
 		prep.Release()
 		releaseIso()
+		releaseSandbox()
 		return adewire.Launch{}, err
 	}
 	pa.Op.SetCommand(res.Command)
-	b.bindTUI(res.RecordID, runID, func() { release(); prep.Release(); releaseIso() })
+	b.bindTUI(res.RecordID, runID, func() { release(); prep.Release(); releaseIso(); releaseSandbox() })
 	return launchOf(res), nil
 }
 
@@ -641,7 +657,11 @@ func (b *TaskBoard) LaunchStep(ctx context.Context, args adewire.LaunchStepArgs)
 	if len(extra) > 0 {
 		pa.AddDirs = extra
 	}
-	return b.prepareWithGrant(ctx, tr, tc, pa, opManual, "", step.ID)
+	sbPlan, err := b.manualSandboxPlan(step.Sandbox, tc, lines, cwd, folder)
+	if err != nil {
+		return adewire.Launch{}, err
+	}
+	return b.prepareWithGrant(ctx, tr, tc, pa, opManual, "", step.ID, sbPlan)
 }
 
 // errNoRepo says launchDirs found no repo on the task.
@@ -753,7 +773,7 @@ func (b *TaskBoard) startBranch(ctx context.Context, branchID, kind string, prov
 	if err := b.checkNoBackgroundRun(sb); err != nil {
 		return adewire.Launch{}, err
 	}
-	return b.prepareWithGrant(ctx, tr, tc, PrepareArgs{TaskID: tc.task.ID, BranchID: sb.ID, Cwd: path, Message: message(tc, sb, path), Provider: provider(tc)}, kind, "", "")
+	return b.prepareWithGrant(ctx, tr, tc, PrepareArgs{TaskID: tc.task.ID, BranchID: sb.ID, Cwd: path, Message: message(tc, sb, path), Provider: provider(tc)}, kind, "", "", nil)
 }
 
 // checkNoBackgroundRun refuses a session on a worktree a run or a rebase is working in.

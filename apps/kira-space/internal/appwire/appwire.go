@@ -388,7 +388,7 @@ func Build(opts Options) *Wired {
 	}
 	w.ScriptRuns = &bridge.ScriptRunsService{Bound: &scriptruns.Bound{Svc: runs}}
 	w.Terminal = &bridge.TerminalService{BoundService: &terminal.BoundService{
-		Emit: emitter, Registry: terminalRegistry, ComposeAgent: adeTracker.Compose, AbortAgent: adeTracker.Abort,
+		Emit: emitter, Registry: terminalRegistry, ComposeAgent: adeTracker.Compose, AbortAgent: adeTracker.Abort, AgentStarted: adeTracker.OnAgentStarted,
 		Arbiter: termBroker, Scripts: runs, Agent: w.Agents,
 	}}
 	// P116 G5 keep-awake toggle plus P188's agent reason: the live Claude Code session count —

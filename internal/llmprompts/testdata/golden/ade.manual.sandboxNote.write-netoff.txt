@@ -1,0 +1,5 @@
+Sandbox: write only in /wt/kira-space/feat-login and $TMPDIR.
+Read also: /specs/payments
+Network: Claude API only.
+No git push or fetch here; the user pushes from Kira Space.
+"Operation not permitted" means the sandbox blocked it. Do not retry. Tell the user the path.

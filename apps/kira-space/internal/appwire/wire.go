@@ -277,6 +277,7 @@ func wireAdeTask(
 		Now:               time.Now,
 	})
 	tracker.SetStoppedHandler(board.OnTUIStopped)
+	tracker.SetAgentStartedHandler(board.OnTUIAgentStarted)
 	tracker.SetStartedHandler(board.OnTUIStarted)
 	if err := board.Recover(); err != nil {
 		slog.Warn("ade: recover task board", "scope", "ade", "err", err)

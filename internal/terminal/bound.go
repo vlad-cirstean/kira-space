@@ -28,6 +28,9 @@ type BoundService struct {
 	// AbortAgent undoes ComposeAgent's persisted side effects when Open fails after a successful
 	// compose. Set together with ComposeAgent; a no-op for a terminalID it composed nothing for.
 	AbortAgent func(terminalID string)
+	// AgentStarted, when set, is called with the shell pid once a composed agent launch is running,
+	// so a sandbox watch can follow its process tree. Kira Space sets it; Kira Studio leaves it nil.
+	AgentStarted func(terminalID string, pid int)
 	// Arbiter, when set, decides who drives an agent session's input and size and sees its output.
 	// Kira Space sets it (P212 Part 2, the phone terminal broker); Kira Studio leaves it nil, so
 	// the window always drives. A field, not a method, so nothing new is bound.
@@ -234,6 +237,9 @@ func (b *BoundService) Open(args OpenArgs) (OpenResult, error) {
 
 	if agent && b.Arbiter != nil {
 		b.Arbiter.Opened(args.TerminalID, args.Cols, args.Rows)
+	}
+	if composedAgent && b.AgentStarted != nil {
+		b.AgentStarted(args.TerminalID, sess.PID())
 	}
 	return OpenResult{Shell: sess.Shell()}, nil
 }

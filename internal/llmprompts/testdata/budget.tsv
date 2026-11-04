@@ -113,6 +113,7 @@ headless.tool.git.arg.args	93
 ade.rebase.prompt	338
 ade.step.prompt	904
 ade.manual.message	775
+ade.manual.sandboxNote	330
 ade.review.message	900
 ade.start.message	680
 ade.repoLine	79

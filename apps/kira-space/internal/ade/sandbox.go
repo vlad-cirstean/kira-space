@@ -288,10 +288,26 @@ func (b *TaskBoard) applySandbox(spec harness.HeadlessSpec, sr *sandboxRun, l ag
 // denialFlushEvery bounds how often repeated denials write the run row.
 const denialFlushEvery = time.Second
 
-// watchSandbox starts the denial watch for pid and returns the stop function. A repeated denial
-// only counts in memory; the count reaches the row at most once per denialFlushEvery, via a
-// trailing timer, and at stop.
+// watchSandbox starts the denial watch for pid and returns the stop function. A new denial is also
+// a run log line.
 func (b *TaskBoard) watchSandbox(run model.AdeRun, sr *sandboxRun, sink *logSink, pid int) func() {
+	return b.watchDenials(run.ID, sr, pid,
+		func(n int, listJSON string) { b.countDenials(run.ID, n, listJSON) },
+		func(d agentsandbox.Denial) {
+			sink.add(logStdout, fmt.Sprintf("sandbox denied %s %s (%s)", d.Op, d.Target, d.Process))
+		},
+		func() {
+			if cur, err := b.deps.Tasks.GetRun(run.ID); err == nil {
+				b.emitRuns(cur)
+			}
+		})
+}
+
+// watchDenials watches the process tree of pid for denials of sandbox id. A repeated denial only
+// counts in memory; the count reaches the store at most once per denialFlushEvery, via a trailing
+// timer, and at stop. count stores a delta (and the kept list when listJSON is set), onNew sees each
+// first-of-its-kind denial and changed runs after the store took it.
+func (b *TaskBoard) watchDenials(id string, sr *sandboxRun, pid int, count func(n int, listJSON string), onNew func(agentsandbox.Denial), changed func()) func() {
 	var (
 		mu      sync.Mutex
 		pending int
@@ -307,9 +323,9 @@ func (b *TaskBoard) watchSandbox(run model.AdeRun, sr *sandboxRun, sink *logSink
 			timer = nil
 		}
 		mu.Unlock()
-		b.countDenials(run.ID, n, listJSON)
+		count(n, listJSON)
 	}
-	stop := b.deps.Sandbox.Watch(pid, run.ID, func(d agentsandbox.Denial) {
+	stop := b.deps.Sandbox.Watch(pid, id, func(d agentsandbox.Denial) {
 		if !sr.tracker.Add(d) {
 			mu.Lock()
 			pending++
@@ -326,17 +342,15 @@ func (b *TaskBoard) watchSandbox(run model.AdeRun, sr *sandboxRun, sink *logSink
 		mu.Lock()
 		pending++
 		mu.Unlock()
-		sink.add(logStdout, fmt.Sprintf("sandbox denied %s %s (%s)", d.Op, d.Target, d.Process))
+		onNew(d)
 		list, _ := sr.tracker.Snapshot()
 		raw, err := json.Marshal(list)
 		if err != nil {
-			slog.Warn("ade: encode sandbox denials", "scope", "ade", "run", run.ID, "err", err)
+			slog.Warn("ade: encode sandbox denials", "scope", "ade", "sandbox", id, "err", err)
 			return
 		}
 		flush(string(raw))
-		if cur, err := b.deps.Tasks.GetRun(run.ID); err == nil {
-			b.emitRuns(cur)
-		}
+		changed()
 	})
 	return func() {
 		stop()
@@ -505,9 +519,13 @@ func (b *TaskBoard) sandboxSupport() adewire.SandboxSupport {
 }
 
 func badgeOf(s repos.AdeRunSandbox) *adewire.RunSandboxBadge {
-	badge := &adewire.RunSandboxBadge{Access: s.Access, Enforced: s.Enforced, Denials: s.DenialCount}
+	return badgeFrom(s.Access, s.Enforced, s.DenialCount, s.DenialsJSON)
+}
+
+func badgeFrom(access string, enforced bool, denialCount int, denialsJSON string) *adewire.RunSandboxBadge {
+	badge := &adewire.RunSandboxBadge{Access: access, Enforced: enforced, Denials: denialCount}
 	var list []agentsandbox.Denial
-	if json.Unmarshal([]byte(s.DenialsJSON), &list) == nil && len(list) > 0 {
+	if json.Unmarshal([]byte(denialsJSON), &list) == nil && len(list) > 0 {
 		last := list[len(list)-1]
 		badge.Last = last.Op + " " + last.Target
 	}
@@ -572,23 +590,29 @@ func (b *TaskBoard) RunSandbox(_ context.Context, runID string) (adewire.RunSand
 	if row == nil {
 		return adewire.RunSandboxDetail{}, invalid("run %s has no sandbox", runID)
 	}
+	reason := ""
+	if row.Reason != "" {
+		reason = b.notEnforcedText(runID)
+	}
+	return sandboxDetail(row.Access, row.Enforced, reason, row.Profile, row.PolicyJSON, row.DenialsJSON, row.DenialCount), nil
+}
+
+// sandboxDetail builds the popover and profile dialog data from a stored sandbox row.
+func sandboxDetail(access string, enforced bool, reason, profile, policyJSON, denialsJSON string, denialCount int) adewire.RunSandboxDetail {
 	out := adewire.RunSandboxDetail{
-		Access: row.Access, Enforced: row.Enforced, Profile: row.Profile, DenialCount: row.DenialCount,
+		Access: access, Enforced: enforced, Reason: reason, Profile: profile, DenialCount: denialCount,
 		Write: []string{}, Read: []string{}, Allow: []string{}, Denials: []adewire.SandboxDenial{},
 	}
-	if row.Reason != "" {
-		out.Reason = b.notEnforcedText(runID)
-	}
 	var pol agentsandbox.Policy
-	if err := json.Unmarshal([]byte(row.PolicyJSON), &pol); err == nil {
+	if err := json.Unmarshal([]byte(policyJSON), &pol); err == nil {
 		out.Write, out.Read, out.Allow = nonNil(pol.Write), nonNil(pol.Read), nonNil(pol.Allow)
 		out.Network = pol.Network
 	}
 	var list []agentsandbox.Denial
-	if err := json.Unmarshal([]byte(row.DenialsJSON), &list); err == nil {
+	if err := json.Unmarshal([]byte(denialsJSON), &list); err == nil {
 		for _, d := range list {
 			out.Denials = append(out.Denials, adewire.SandboxDenial{At: d.At.UnixMilli(), Op: d.Op, Target: d.Target, Process: d.Process})
 		}
 	}
-	return out, nil
+	return out
 }

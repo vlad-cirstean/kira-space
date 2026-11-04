@@ -1117,6 +1117,21 @@ var AdeManualMessage = define(Entry{
 	},
 })
 
+// AdeManualSandboxNote tells the agent of a sandboxed manual step session what it may write.
+var AdeManualSandboxNote = define(Entry{
+	ID: "ade.manual.sandboxNote", Kind: KindFragment, Apps: spaceApp, Applies: NextCall,
+	TitleKey:   "llmPrompts.entry.adeManualSandboxNote.title",
+	PurposeKey: "llmPrompts.entry.adeManualSandboxNote.description",
+	UsedByKey:  "llmPrompts.entry.adeManualSandboxNote.usedBy.body",
+	Default: `Sandbox{{if not .Enforced}} (declared, not enforced){{end}}: {{if eq .Access "write"}}write only in {{.Worktree}} and $TMPDIR{{else}}read only; write only in $TMPDIR{{end}}.{{range .Read}}
+Read also: {{.}}{{end}}{{if not .Network}}
+Network: Claude API only.{{end}}
+No git push or fetch here; the user pushes from Kira Space.
+"Operation not permitted" means the sandbox blocked it. Do not retry. Tell the user the path.`,
+}, SandboxNoteVars{
+	Access: "write", Worktree: "/work/kira-space/feat-login", Read: []string{"/work/specs"}, Network: false, Enforced: true,
+})
+
 // AdeReviewMessage is the first message of a task's review agent.
 var AdeReviewMessage = define(Entry{
 	ID: "ade.review.message", Kind: KindMessage, Apps: spaceApp, Applies: NextCall,

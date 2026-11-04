@@ -1768,6 +1768,7 @@ func (b *TaskBoard) Sessions(_ context.Context) (adewire.SessionsResult, error) 
 	for i, s := range rows {
 		out.Sessions[i] = toWireSession(s)
 	}
+	b.badgeSessions(out.Sessions)
 	return out, nil
 }
 

@@ -84,6 +84,9 @@ type Session struct {
 // ID is this session's own id (the tab id it was opened with).
 func (s *Session) ID() string { return s.id }
 
+// PID is the process id of the session's shell, the root of everything it runs.
+func (s *Session) PID() int { return s.cmd.Process.Pid }
+
 // Shell is the resolved shell path this session started — TerminalService.Open's own {shell}
 // result field.
 func (s *Session) Shell() string { return s.shell }

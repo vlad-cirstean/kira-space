@@ -1089,6 +1089,16 @@ func (s *AdeTaskService) RunSandbox(ctx context.Context, args adewire.RunArgs) (
 	return d, adeTaskError(err)
 }
 
+// SessionSandbox returns the sandbox a manual step session started with.
+func (s *AdeTaskService) SessionSandbox(ctx context.Context, args adewire.SessionSandboxArgs) (adewire.RunSandboxDetail, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeItemID(args.SessionID, "sessionId"); err != nil {
+		return adewire.RunSandboxDetail{}, err
+	}
+	d, err := s.Engine.SessionSandbox(ctx, args.SessionID)
+	return d, adeTaskError(err)
+}
+
 func (s *AdeTaskService) Sessions(ctx context.Context) (adewire.SessionsResult, error) {
 	ctx = adeUserCtx(ctx)
 	r, err := s.Engine.Sessions(ctx)

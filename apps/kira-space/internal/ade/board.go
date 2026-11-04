@@ -173,6 +173,7 @@ type TaskBoard struct {
 	runMu            sync.Mutex                 // guards live, setupLive, archiving, taskMus, finishes, stepMsgs
 	live             map[string]*liveRun        // run id -> its process
 	tuiGrants        map[string]tuiBinding      // TUI record id -> the agent MCP grant its launch registered
+	tuiSandbox       map[string]*liveTUISandbox // TUI record id -> its live sandbox
 	setupLive        map[string]*liveRun        // branch id -> its running prepare script
 	archiving        map[string]int             // task id -> archives in progress; blocks launches
 	taskMus          map[string]*sync.Mutex     // task id -> serializes that task's run transitions
@@ -205,7 +206,7 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 	b := &TaskBoard{
 		deps: deps, ctx: ctx, cancel: cancel, folderW: map[string]*folderWatcher{},
 		repoMus: map[string]*sync.Mutex{}, byGitRepoID: map[string]string{}, gitRepoIDOf: map[string]string{},
-		caches: map[string]*repoCaches{}, rebase: map[string]*rebaseCache{}, live: map[string]*liveRun{}, tuiGrants: map[string]tuiBinding{}, setupLive: map[string]*liveRun{},
+		caches: map[string]*repoCaches{}, rebase: map[string]*rebaseCache{}, live: map[string]*liveRun{}, tuiGrants: map[string]tuiBinding{}, tuiSandbox: map[string]*liveTUISandbox{}, setupLive: map[string]*liveRun{},
 		taskMus: map[string]*sync.Mutex{}, archiving: map[string]int{}, finishes: map[string]agentmcp.Finish{}, claims: map[string]string{}, stepMsgs: map[string]string{},
 	}
 	b.agent = agentmcp.NewServer(agentmcp.Options{Dir: deps.AgentDir, OnFinish: b.recordFinish, Space: b, Outcomes: b, Review: b, SandboxGit: b, Git: b, Handover: b, Prompts: b.prompts(), OnToolCall: b.mcpRecorder})
