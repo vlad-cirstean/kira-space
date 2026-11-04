@@ -19,7 +19,7 @@ byte for byte. Thresholds unchanged.
 
 Fix: baselines re-recorded with `fc-match sans-serif` = Inter. Viewed `console` and
 `plan-branches-pending`: readable, mask stays magenta. Rerun: Studio 21 pass, Space 26 pass.
-Commit hash in git log (`test(visual): re-record baselines for flat palette`).
+Commit `3f0a683a`.
 
 ## Not run
 
