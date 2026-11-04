@@ -1,0 +1,33 @@
+{
+  "AdeTaskService.Branch#deployments": [
+    {
+      "checkedAt": 0,
+      "deployedSha": "<masked>",
+      "env": "staging",
+      "error": "",
+      "missingCommits": 0,
+      "note": "runs 8b88927, contains this branch",
+      "status": "deployed"
+    },
+    {
+      "checkedAt": 0,
+      "deployedSha": "<masked>",
+      "env": "qa",
+      "error": "Run script \"Missing sha\": not found",
+      "missingCommits": 0,
+      "note": "",
+      "status": "unknown"
+    }
+  ],
+  "AdeTaskService.Branch#setup-failed": {
+    "log": "Run script \"Nope\": not found\n",
+    "note": "Run script \"Nope\": not found"
+  },
+  "AdeTaskService.ReadLog#setup-ready": [
+    "running Run script \"Install deps\"",
+    "mode=ci task=Fix login",
+    "token=••••",
+    "wt=<worktree>",
+    "cwd=<worktree>"
+  ]
+}
