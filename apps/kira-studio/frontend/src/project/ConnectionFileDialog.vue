@@ -302,6 +302,8 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
                 :saved-password="savedSecret('password')"
                 :saved-uri="savedSecret('uri')"
                 :storage-available="storageAvailable"
+                :connection-id="detail.id"
+                :connection-name="record?.name ?? detail.file"
               />
               <ConnectionAdvancedTab
                 v-show="section === 'advanced'"

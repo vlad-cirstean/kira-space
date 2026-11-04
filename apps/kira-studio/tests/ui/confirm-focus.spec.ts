@@ -82,13 +82,13 @@ test('primary confirm opens with the confirm button focused; Enter accepts', asy
     .filter({ hasText: CONN.name })
     .click({ button: 'right' });
   await page.click('[data-testid="menu-item-edit"]');
-  await page.click('[data-testid="connection-secret-reveal"]');
+  await page.click('[data-testid="connection-secret-value-reveal"]');
 
   await expect(page.locator(dialog)).toBeVisible();
   await expect(page.locator('[data-testid="confirm-dialog-confirm"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.locator(dialog)).toHaveCount(0);
-  await expect(page.locator('[data-testid="connection-secret-revealed"]')).toHaveText('hunter2');
+  await expect(page.locator('[data-testid="connection-secret-value"]')).toHaveValue('hunter2');
   expect(
     control
       .log()

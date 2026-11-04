@@ -18,8 +18,9 @@ import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
 import SwatchRadio from '@theme/SwatchRadio.vue';
 import SecretInput from '@workbench/components/SecretInput.vue';
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import { control } from '../../bridge/control';
+import { revealConnectionSecret } from '../state/connectionReveal';
 import ConnectionEnginePicker from './ConnectionEnginePicker.vue';
 import { secretRef } from './form';
 
@@ -32,6 +33,9 @@ const props = defineProps<{
   savedPassword: boolean;
   savedUri: boolean;
   storageAvailable: boolean;
+  /** Set once the file has an id: the saved password or URI can then be revealed. */
+  connectionId?: string;
+  connectionName?: string;
 }>();
 const file = defineModel<ConnectionFileModel>({ required: true });
 const secrets = defineModel<{ password: string; uri: string }>('secrets', { required: true });
@@ -71,6 +75,30 @@ function setMode(next: 'fields' | 'uri'): void {
 function setPort(value: string): void {
   const n = Number.parseFloat(value);
   file.value.port = Number.isNaN(n) ? 0 : n;
+}
+
+const revealError = ref<{ password?: string; uri?: string }>({});
+let alive = true;
+onBeforeUnmount(() => {
+  alive = false;
+});
+
+async function revealSaved(which: 'password' | 'uri'): Promise<string | undefined> {
+  const id = props.connectionId;
+  if (!id) return undefined;
+  revealError.value = { ...revealError.value, [which]: undefined };
+  const result = await revealConnectionSecret(
+    id,
+    props.connectionName ?? id,
+    which === 'uri' ? 'uri' : 'fields',
+    () => alive && props.connectionId === id,
+  );
+  if (!result) return undefined;
+  if (result.outcome === 'error') {
+    revealError.value = { ...revealError.value, [which]: result.error };
+    return undefined;
+  }
+  return (which === 'uri' ? result.uri : result.password) ?? '';
 }
 
 // A first typed value names the secret the file will point at.
@@ -271,10 +299,18 @@ async function onBrowseDatabaseFile(): Promise<void> {
               <SecretInput
                 :model-value="secrets.password"
                 :set="savedPassword"
+                :reveal="connectionId ? () => revealSaved('password') : undefined"
                 :disabled="!storageAvailable"
                 data-testid="connection-password"
                 @update:model-value="(v) => typeSecret('password', v)"
               />
+              <FieldError
+                v-if="revealError.password"
+                data-testid="connection-secret-reveal-error"
+                >{{
+                  revealError.password
+                }}</FieldError
+              >
             </Field>
           </div>
         </template>
@@ -284,10 +320,14 @@ async function onBrowseDatabaseFile(): Promise<void> {
         <SecretInput
           :model-value="secrets.uri"
           :set="savedUri"
+          :reveal="connectionId ? () => revealSaved('uri') : undefined"
           :disabled="!storageAvailable"
           data-testid="connection-uri"
           @update:model-value="(v) => typeSecret('uri', v)"
         />
+        <FieldError v-if="revealError.uri" data-testid="connection-secret-reveal-error">{{
+          revealError.uri
+        }}</FieldError>
         <FieldError v-if="props.errorFor('/uri')">{{ props.errorFor('/uri') }}</FieldError>
       </Field>
     </template>
