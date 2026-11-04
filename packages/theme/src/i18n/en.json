@@ -12168,6 +12168,9 @@
         }
       },
       "copyAsCurl": {
+        "hide": {
+          "label": "Hide secret values"
+        },
         "reveal": {
           "label": "Show secret values"
         },

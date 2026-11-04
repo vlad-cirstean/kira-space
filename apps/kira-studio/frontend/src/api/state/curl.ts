@@ -189,6 +189,20 @@ export const useCopyAsCurlStore = defineStore('copyAsCurl', () => {
   // Bumped on open and close: a reveal loop from a superseded dialog stops and writes nothing.
   let openSeq = 0;
 
+  function dropRevealed(): void {
+    for (const key of Object.keys(state.revealedSecretValues)) {
+      delete state.revealedSecretValues[key];
+    }
+    revealedSecretValuesExpiry.clearAll();
+  }
+
+  /** Re-masks the command; the shared reveal map goes too, so a later Show runs the gate again. */
+  function hideSecretValues(): void {
+    openSeq++;
+    dropRevealed();
+    useVariableSetStore().clearRevealed();
+  }
+
   function openCopyAsCurlDialog(
     method: string,
     resolved: ResolvedRequest,
@@ -206,10 +220,7 @@ export const useCopyAsCurlStore = defineStore('copyAsCurl', () => {
     state.environmentId = environmentId;
     state.deferredNames = [...deferredNames];
     state.error = null;
-    for (const key of Object.keys(state.revealedSecretValues)) {
-      delete state.revealedSecretValues[key];
-    }
-    revealedSecretValuesExpiry.clearAll();
+    dropRevealed();
   }
 
   function closeCopyAsCurlDialog(): void {
@@ -218,10 +229,7 @@ export const useCopyAsCurlStore = defineStore('copyAsCurl', () => {
     state.resolved = null;
     // D10: nothing generated is ever persisted — dropped on close, the same discipline
     // `revealedValues` follows.
-    for (const key of Object.keys(state.revealedSecretValues)) {
-      delete state.revealedSecretValues[key];
-    }
-    revealedSecretValuesExpiry.clearAll();
+    dropRevealed();
     // revealSecretValues below calls the *shared* revealVariable (state/variables.ts),
     // which writes into variables.ts's own revealedValues map, not this dialog's own
     // revealedSecretValues — closing only the latter left a stale entry there for
@@ -309,6 +317,7 @@ export const useCopyAsCurlStore = defineStore('copyAsCurl', () => {
     closeCopyAsCurlDialog,
     currentCurlCommand,
     revealSecretValues,
+    hideSecretValues,
     copyCurlCommand,
   };
 });
