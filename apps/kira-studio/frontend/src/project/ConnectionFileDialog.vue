@@ -21,12 +21,14 @@ import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
+import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref, watch } from 'vue';
 import { control } from '../bridge/control';
 import {
   useConnectionConfig,
   useConnectionFile,
   useConnectionForm,
+  useDeleteConnectionFile,
   useSaveConnectionFile,
   useSetConnectionSecret,
   useTestConnection,
@@ -58,6 +60,8 @@ const query = useConnectionFile(() => dialogStore.file);
 const save = useSaveConnectionFile();
 const test = useTestConnection();
 const setSecret = useSetConnectionSecret();
+const deleteFile = useDeleteConnectionFile();
+const confirmDialogStore = useConfirmDialogStore();
 const applyForm = useConnectionForm(() => dialogStore.file ?? '');
 
 const testResult = ref<{ ok: boolean; message: string } | null>(null);
@@ -144,7 +148,9 @@ const savedSecret = (kind: 'password' | 'uri'): boolean => {
 };
 const hasTyped = computed(() => !!secrets.value.password || !!secrets.value.uri);
 const canSave = computed(() => draft.canSave.value || hasTyped.value);
-const saveError = computed(() => draft.saveError.value || secretError.value);
+const saveError = computed(
+  () => draft.saveError.value || secretError.value || lifecycleError.value,
+);
 
 async function saveNow(): Promise<void> {
   secretError.value = '';
@@ -159,6 +165,44 @@ async function saveNow(): Promise<void> {
 
 function close(): void {
   dialogStore.closeFile();
+}
+
+const lifecycleError = ref('');
+
+// The copy is a new file; the dialog follows it.
+async function onDuplicate(): Promise<void> {
+  const id = detail.value?.id;
+  if (!id) return;
+  lifecycleError.value = '';
+  try {
+    const created = await connectionsStore.duplicateConnection(id);
+    dialogStore.openFile(created.file);
+  } catch (err) {
+    lifecycleError.value = errorText(err);
+  }
+}
+
+async function onDelete(): Promise<void> {
+  const d = detail.value;
+  if (!d) return;
+  const ok = await confirmDialogStore.confirm({
+    title: t('studio.project.deleteConnectionConfirm.title'),
+    message: [
+      t('studio.project.deleteConnectionConfirm.body', { name: record.value?.name ?? d.file }),
+      t('common.confirm.irreversible.body'),
+    ].join(' '),
+    confirmLabel: t('common.action.delete.label'),
+    tone: 'danger',
+  });
+  if (!ok) return;
+  lifecycleError.value = '';
+  try {
+    if (d.id) await connectionsStore.deleteConnection(d.id);
+    else await deleteFile.mutateAsync(d.file);
+    close();
+  } catch (err) {
+    lifecycleError.value = errorText(err);
+  }
 }
 
 async function onTest(): Promise<void> {
@@ -328,6 +372,34 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
 
       <DialogFooter>
         <template #start>
+          <Button
+            variant="dialog"
+            size="kira-lg"
+            :disabled="!detail?.id || draft.dirty.value"
+            data-testid="connection-duplicate"
+            @click="onDuplicate"
+          >
+            <CodiconIcon name="copy" :size="13" />
+            {{ t('common.action.duplicate.label') }}
+          </Button>
+          <Button
+            variant="dialog-danger"
+            size="kira-lg"
+            :disabled="!detail"
+            data-testid="connection-delete"
+            @click="onDelete"
+          >
+            <CodiconIcon name="trash" :size="13" />
+            {{ t('common.action.delete.label') }}
+          </Button>
+          <span
+            v-if="detail?.id && draft.dirty.value"
+            class="text-kira-sm text-subtle"
+            data-testid="connection-save-first"
+            >{{
+              t('studio.project.connectionDialog.saveFirst.hint')
+            }}</span
+          >
           <Button
             variant="dialog"
             size="kira-lg"

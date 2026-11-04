@@ -15100,6 +15100,9 @@
         "removeRule": {
           "tooltip": "Remove rule"
         },
+        "saveFirst": {
+          "hint": "Save first to duplicate."
+        },
         "showPassword": {
           "label": "Show password"
         },

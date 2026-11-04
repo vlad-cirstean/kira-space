@@ -121,6 +121,7 @@ export const IPC = {
   connectionConfigFile: 'kira:connectionConfig:file',
   connectionConfigSaveFile: 'kira:connectionConfig:saveFile',
   connectionConfigForm: 'kira:connectionConfig:form',
+  connectionConfigDeleteFile: 'kira:connectionConfig:deleteFile',
   connectionConfigSetSecret: 'kira:connectionConfig:setSecret',
   connectionConfigDeleteSecret: 'kira:connectionConfig:deleteSecret',
   variablesListEnvironments: 'kira:variables:listEnvironments',

@@ -63,6 +63,17 @@ export function useConnectionForm(file: MaybeRefOrGetter<string>) {
   return (text: string, edits: FormEdit[]) => mutation.mutateAsync({ text, edits });
 }
 
+/** Removes a file that never held a connection. A connection is deleted through its store. */
+export function useDeleteConnectionFile() {
+  return useMutation(
+    {
+      mutationFn: (file: string) => control.connectionConfigDeleteFile(file),
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['connectionConfig'] }),
+    },
+    queryClient,
+  );
+}
+
 function refreshAfterSecret(view: ConnectionConfigView): Promise<void> {
   queryClient.setQueryData(connectionConfigKey, view);
   return queryClient.invalidateQueries({ queryKey: ['connectionConfig', 'file'] });

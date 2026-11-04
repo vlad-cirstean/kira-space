@@ -245,6 +245,8 @@ const studioControl = {
         edits: edits.map((e) => ({ path: e.path, value: e.value ?? null, unset: e.unset })),
       }),
     ).then((r) => trust<ConnectionFormResult>(r)),
+  connectionConfigDeleteFile: (file: string): Promise<void> =>
+    unwrap(ConnectionConfigService.DeleteFile({ file })),
   connectionConfigSetSecret: (
     kind: ConnectionSecretKind,
     name: string,

@@ -1,6 +1,7 @@
 package bridge
 
 import (
+	"errors"
 	"slices"
 	"strings"
 
@@ -84,6 +85,22 @@ func (s *ConnectionConfigService) SaveFile(args ConnectionSaveFileArgs) (connfil
 		return connfiles.FileDetail{}, connfiles.IPCError(err)
 	}
 	return d, nil
+}
+
+// DeleteFile removes a file that never held a valid connection. A file with a connection is refused;
+// Connections.Delete removes that one.
+func (s *ConnectionConfigService) DeleteFile(args ConnectionFileArgs) error {
+	if args.File == "" {
+		return ipcerr.Required("file")
+	}
+	if err := s.Files.DeleteFile(args.File); err != nil {
+		if errors.Is(err, connfiles.ErrExists) {
+			return ipcerr.BadRequest(err.Error())
+		}
+		return connfiles.IPCError(err)
+	}
+	s.Deps.Events.Emit(ChannelConnectionConfigChanged, struct{}{})
+	return nil
 }
 
 // ConnectionFormArgs is one form call: the draft text and the edits to apply to it.
