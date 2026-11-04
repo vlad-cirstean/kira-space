@@ -31,6 +31,15 @@ func (p *ParamValues) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// MarshalJSON writes one value as a string, else an array. Mirrors UnmarshalJSON so a decoded file
+// round-trips in its own shape.
+func (p ParamValues) MarshalJSON() ([]byte, error) {
+	if len(p) == 1 {
+		return json.Marshal(p[0])
+	}
+	return json.Marshal([]string(p))
+}
+
 // ScriptRef names a Run-module script a repo file runs in place of inline shell text. It mirrors a
 // workflow step's `smart_script` plus `params`.
 type ScriptRef struct {
