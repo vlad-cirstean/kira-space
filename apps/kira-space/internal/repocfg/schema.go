@@ -42,6 +42,7 @@ func assembleSchema(hosts []string) ([]byte, error) {
 	timeout := leaf("worktree", "prepare_timeout")
 	timeout["default"] = d.WorktreePrepareTimeout
 	leaf("worktree", "prepare_script")["maxLength"] = MaxPrepareBytes
+	leaf("worktree", "prepare_run")["properties"].(map[string]any)["script"].(map[string]any)["maxLength"] = model.MaxScriptRefName
 	provider := leaf("git_host", "provider")
 	provider["pattern"], provider["default"] = providerPattern, d.GitHostProvider
 	if len(hosts) > 0 {
@@ -51,6 +52,8 @@ func assembleSchema(hosts []string) ([]byte, error) {
 	props["integration_branches"].(map[string]any)["maxItems"] = MaxIntegration
 	envs := props["environments"].(map[string]any)
 	envs["maxItems"] = MaxEnvironments
-	envs["items"].(map[string]any)["properties"].(map[string]any)["deployed_sha_script"].(map[string]any)["maxLength"] = MaxEnvScriptBytes
+	envProps := envs["items"].(map[string]any)["properties"].(map[string]any)
+	envProps["deployed_sha_script"].(map[string]any)["maxLength"] = MaxEnvScriptBytes
+	envProps["deployed_sha_run"].(map[string]any)["properties"].(map[string]any)["script"].(map[string]any)["maxLength"] = model.MaxScriptRefName
 	return json.Marshal(root)
 }

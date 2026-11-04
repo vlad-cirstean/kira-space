@@ -16,7 +16,10 @@
     "integration_branches": {
       "type": "array",
       "maxItems": 10,
-      "items": { "type": "string", "minLength": 1 },
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
       "description": "Branches tasks merge into, besides the main branch."
     },
     "environments": {
@@ -25,7 +28,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["name", "deployed_sha_script"],
+        "required": ["name"],
         "properties": {
           "name": {
             "type": "string",
@@ -35,7 +38,30 @@
           "deployed_sha_script": {
             "type": "string",
             "maxLength": 4096,
-            "description": "Shell script that prints the commit deployed there. It runs in the repository root on board refresh. Never interpolated."
+            "description": "Shell script that prints the commit deployed there. It runs in the repository root on board refresh. Never interpolated. Set exactly one of this and deployed_sha_run."
+          },
+          "deployed_sha_run": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["script"],
+            "properties": {
+              "script": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Name of a normal script of the Run module (a smart script is refused). It runs like a workflow step's script: params arrive as KIRA_PARAM_<NAME>, task variables as KIRA_<NAME>, secret params come from the script's saved values only and never from this file. It runs in the repository root when the script has Run in ADE worktree on, else in the script's own folder. A renamed or deleted script fails at the next refresh."
+              },
+              "params": {
+                "type": "object",
+                "description": "Param values by lowercase param name: a text, or a list of texts.",
+                "additionalProperties": {
+                  "type": ["string", "array"],
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "description": "Run script that prints the commit deployed there, in place of deployed_sha_script. Its first output line matching a commit id is the deployed commit. Set exactly one of this and deployed_sha_script."
           }
         }
       },
@@ -49,7 +75,30 @@
         "prepare_script": {
           "type": "string",
           "maxLength": 65536,
-          "description": "Shell script that runs in each new task worktree. Never interpolated. Empty runs nothing."
+          "description": "Shell script that runs in each new task worktree. Never interpolated. Empty runs nothing. Not with prepare_run."
+        },
+        "prepare_run": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["script"],
+          "properties": {
+            "script": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Name of a normal script of the Run module (a smart script is refused). It runs like a workflow step's script: params arrive as KIRA_PARAM_<NAME>, task variables as KIRA_<NAME>, secret params come from the script's saved values only and never from this file. It runs in the new worktree when the script has Run in ADE worktree on, else in the script's own folder. A renamed or deleted script fails at the next run."
+            },
+            "params": {
+              "type": "object",
+              "description": "Param values by lowercase param name: a text, or a list of texts.",
+              "additionalProperties": {
+                "type": ["string", "array"],
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "description": "Run script that runs in each new task worktree, in place of prepare_script. Not with prepare_script."
         },
         "prepare_timeout": {
           "type": "string",
@@ -66,7 +115,10 @@
       "additionalProperties": false,
       "description": "The commit graph.",
       "properties": {
-        "page_size": { "type": "integer", "description": "Commits loaded per page." },
+        "page_size": {
+          "type": "integer",
+          "description": "Commits loaded per page."
+        },
         "scope": {
           "type": "string",
           "description": "Which commits the graph shows: all refs, or only those reachable from HEAD."
@@ -78,7 +130,10 @@
       "additionalProperties": false,
       "description": "Stashes.",
       "properties": {
-        "show_in_graph": { "type": "boolean", "description": "Show stashes as graph rows." },
+        "show_in_graph": {
+          "type": "boolean",
+          "description": "Show stashes as graph rows."
+        },
         "include_untracked": {
           "type": "boolean",
           "description": "The stash dialog starts with untracked files included."
@@ -92,7 +147,10 @@
       "properties": {
         "base_candidates": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 },
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
           "description": "Candidate base branches of a review, in order. Tried after the upstream and the detected default branch fail."
         }
       }

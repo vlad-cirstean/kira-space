@@ -1888,8 +1888,8 @@
         "envDuplicate": {
           "body": "An environment name is listed twice."
         },
-        "envScriptBlank": {
-          "body": "An environment needs a script."
+        "envScriptOne": {
+          "body": "An environment needs exactly one of deployed_sha_script and deployed_sha_run."
         },
         "fileBroken": {
           "body": "{file} has an error on line {line}. Fix it in the file first."
@@ -1917,6 +1917,15 @@
         },
         "pathTaken": {
           "body": "Another file already configures this repository."
+        },
+        "prepareBoth": {
+          "body": "Set one of prepare_script and prepare_run, not both."
+        },
+        "refParamName": {
+          "body": "A param name is lowercase letters, digits and underscores, starting with a letter, at most 32 characters."
+        },
+        "refScriptBlank": {
+          "body": "A script reference needs a script name on one line, at most 200 characters."
         },
         "timeoutInvalid": {
           "body": "The prepare timeout must be a duration such as 15m, above 0 and at most 2h."

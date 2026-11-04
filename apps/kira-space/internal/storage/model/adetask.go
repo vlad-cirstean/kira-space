@@ -316,6 +316,13 @@ type AdeWorktreeSetup struct {
 type AdeRepoEnv struct {
 	Name              string
 	DeployedShaScript string
+	// DeployedShaRun runs a Run-module script instead of DeployedShaScript.
+	DeployedShaRun *ScriptRef
+}
+
+// Equal reports whether e and o configure the same environment.
+func (e AdeRepoEnv) Equal(o AdeRepoEnv) bool {
+	return e.Name == o.Name && e.DeployedShaScript == o.DeployedShaScript && e.DeployedShaRun.Equal(o.DeployedShaRun)
 }
 
 // AdeRepoConfig is a code repo joined with its import source and its repo file's nickname,

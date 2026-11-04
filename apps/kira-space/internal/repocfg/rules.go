@@ -1,7 +1,10 @@
 package repocfg
 
 import (
+	"maps"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -13,6 +16,25 @@ import (
 
 func problem(path, key string) *configfs.Problem {
 	return &configfs.Problem{Path: path, Message: i18n.T(key, nil)}
+}
+
+var paramName = regexp.MustCompile(`^[a-z][a-z0-9_]{0,31}$`)
+
+// refProblem is the first problem of a Run script reference at path at, or nil.
+func refProblem(at string, r *model.ScriptRef) *configfs.Problem {
+	if r == nil {
+		return nil
+	}
+	name := strings.TrimSpace(r.Script)
+	if name == "" || strings.ContainsAny(name, "\r\n") || utf8.RuneCountInString(name) > model.MaxScriptRefName {
+		return problem(at+"/script", "backend.space.repoFiles.refScriptBlank.body")
+	}
+	for _, p := range slices.Sorted(maps.Keys(r.Params)) {
+		if !paramName.MatchString(p) {
+			return problem(at+"/params/"+p, "backend.space.repoFiles.refParamName.body")
+		}
+	}
+	return nil
 }
 
 // absolutePath reports whether p is absolute with no `~` start and no `.` or `..` segment.
@@ -68,18 +90,44 @@ func rules() []configfs.Rule[File] {
 			},
 		},
 		{
-			Doc: "Environment names are unique and every `deployed_sha_script` is not blank.",
+			Doc: "Environment names are unique and every environment sets exactly one of `deployed_sha_script` (not blank) or `deployed_sha_run`.",
 			Check: func(f File, _ configfs.Locator) *configfs.Problem {
 				seen := map[string]bool{}
 				for i, e := range f.Environments {
 					at := "/environments/" + strconv.Itoa(i)
+					inline := strings.TrimSpace(e.DeployedSHAScript) != ""
 					switch {
 					case seen[e.Name]:
 						return problem(at+"/name", "backend.space.repoFiles.envDuplicate.body")
-					case strings.TrimSpace(e.DeployedSHAScript) == "":
-						return problem(at+"/deployed_sha_script", "backend.space.repoFiles.envScriptBlank.body")
+					case inline == (e.DeployedSHARun != nil):
+						return problem(at, "backend.space.repoFiles.envScriptOne.body")
 					}
 					seen[e.Name] = true
+				}
+				return nil
+			},
+		},
+		{
+			Doc: "`worktree.prepare_script` and `worktree.prepare_run` are exclusive.",
+			Check: func(f File, _ configfs.Locator) *configfs.Problem {
+				if w := f.Worktree; w != nil && w.PrepareScript != nil && w.PrepareRun != nil {
+					return problem("/worktree/prepare_run", "backend.space.repoFiles.prepareBoth.body")
+				}
+				return nil
+			},
+		},
+		{
+			Doc: "A `prepare_run` or `deployed_sha_run` block names a script on one line, at most " + strconv.Itoa(model.MaxScriptRefName) + " characters, and its param names are lowercase letters, digits and underscores, starting with a letter, at most 32 characters.",
+			Check: func(f File, _ configfs.Locator) *configfs.Problem {
+				if f.Worktree != nil {
+					if p := refProblem("/worktree/prepare_run", f.Worktree.PrepareRun); p != nil {
+						return p
+					}
+				}
+				for i, e := range f.Environments {
+					if p := refProblem("/environments/"+strconv.Itoa(i)+"/deployed_sha_run", e.DeployedSHARun); p != nil {
+						return p
+					}
 				}
 				return nil
 			},
