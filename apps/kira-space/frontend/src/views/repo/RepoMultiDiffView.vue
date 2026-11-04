@@ -132,7 +132,7 @@ onUnmounted(() => {
       :key="section.path"
       class="flex flex-none flex-col border-b border-border"
     >
-      <ViewToolbar border="none">
+      <ViewToolbar>
         <TooltipIconButton
           :icon="section.expanded ? 'chevron-down' : 'chevron-right'"
           :label="

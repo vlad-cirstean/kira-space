@@ -356,7 +356,7 @@ onMounted(() => {
     </ViewToolbar>
 
     <div :class="colorMarkClass('band', railColor)" />
-    <ViewToolbar border="none">
+    <ViewToolbar>
       <div class="flex items-center gap-1.5 min-w-0">
         <TooltipIconButton
           :icon="ICON.refresh"

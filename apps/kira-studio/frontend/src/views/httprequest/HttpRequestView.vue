@@ -467,7 +467,7 @@ onUnmounted(() => {
       </div>
     </ViewToolbar>
 
-    <ViewToolbar border="none">
+    <ViewToolbar>
       <SecondaryTabs
         :model-value="tab.state.requestPane"
         :items="REQUEST_PANE_OPTIONS"

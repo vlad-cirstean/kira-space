@@ -91,7 +91,7 @@ onUnmounted(() => {
 <template>
   <template v-if="state === 'loading' || state === 'found'">
     <div v-if="isMarkdown" class="flex flex-col h-full w-full">
-      <ViewToolbar border="none">
+      <ViewToolbar>
         <SecondaryTabs
           :model-value="view"
           :items="viewOptions"

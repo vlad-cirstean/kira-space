@@ -102,10 +102,7 @@ function toggle(id: string, on: boolean): void {
           </div>
         </div>
 
-        <ul
-          v-if="listed.length"
-          class="m-0 flex list-none flex-col divide-y divide-border rounded-kira-sm border border-border"
-        >
+        <ul v-if="listed.length" class="m-0 flex list-none flex-col rounded-kira-sm">
           <li
             v-for="r in listed"
             :key="r.id"

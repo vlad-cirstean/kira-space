@@ -306,11 +306,7 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
           </Alert>
           <template v-if="showRepos">
             <template v-if="selected">
-              <ViewToolbar
-                border="none"
-                data-testid="repos-dialog-repo-head"
-                :data-repo-id="selected.id"
-              >
+              <ViewToolbar data-testid="repos-dialog-repo-head" :data-repo-id="selected.id">
                 <span :class="colorMarkClass('dot', selected.color)" />
                 <span
                   class="flex size-4 shrink-0 items-center justify-center text-muted-foreground"

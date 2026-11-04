@@ -161,7 +161,7 @@ onUnmounted(() => {
         <span class="ml-auto flex items-center gap-1" />
       </ViewToolbar>
       <div :class="colorMarkClass('band', connColor)" />
-      <ViewToolbar border="none">
+      <ViewToolbar>
         <div class="flex items-center gap-1.5 min-w-0">
           <TooltipIconButton
             :icon="ICON.refresh"

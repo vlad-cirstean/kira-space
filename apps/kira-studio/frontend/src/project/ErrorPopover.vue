@@ -54,7 +54,7 @@ function onCopy(): void {
         </FieldError>
         <!-- Footer is the same 28px band used everywhere a toolbar sits at the edge of a floating
              surface, with the border on top since this one closes the popover. -->
-        <ViewToolbar border="top">
+        <ViewToolbar>
           <Button variant="toolbar" size="kira" class="ml-auto" @click="onCopy">{{
             t('common.action.copy.label')
           }}</Button>

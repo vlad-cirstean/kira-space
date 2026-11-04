@@ -197,7 +197,7 @@ onUnmounted(teardownEditor);
     ref="root"
     class="flex flex-col h-full w-full"
   >
-    <ViewToolbar v-if="isMarkdown || canEdit" border="none">
+    <ViewToolbar v-if="isMarkdown || canEdit">
       <SecondaryTabs
         v-if="isMarkdown && !edit.editing.value"
         :model-value="view"

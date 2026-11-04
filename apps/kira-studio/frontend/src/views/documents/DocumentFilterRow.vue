@@ -127,7 +127,7 @@ function applyFromFilterHistory(where: string | null, orderBy: SortSpec | null):
 </script>
 
 <template>
-  <ViewToolbar border="none">
+  <ViewToolbar>
     <div class="relative">
       <TooltipIconButton
         :icon="ICON.history"

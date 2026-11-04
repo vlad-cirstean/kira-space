@@ -330,7 +330,7 @@ function onCloseSearch(): void {
         </template>
       </div>
     </ViewToolbar>
-    <ViewToolbar border="none" data-testid="filter-toolbar">
+    <ViewToolbar data-testid="filter-toolbar">
       <FilterToolbar :tab="tab" />
     </ViewToolbar>
 

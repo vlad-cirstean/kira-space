@@ -64,7 +64,7 @@ function commitOps(size: number): void {
     <div class="flex flex-1 min-h-0 gap-0.5">
       <div
         v-if="projectVisible"
-        class="overflow-hidden min-w-0 min-h-0 rounded-kira border border-border bg-bg"
+        class="overflow-hidden min-w-0 min-h-0 rounded-kira bg-bg"
         data-testid="project-panel"
         :style="{ flex: `0 0 ${projectSize}px` }"
       >
@@ -84,14 +84,14 @@ function commitOps(size: number): void {
       <div class="min-w-0 flex-1" data-testid="main-panel">
         <div
           class="h-full flex flex-col min-w-0 min-h-0 overflow-hidden"
-          :class="{ 'rounded-kira border border-border bg-bg': mainFramed }"
+          :class="{ 'rounded-kira bg-bg': mainFramed }"
         >
           <!-- Taller than a tab (--kira-h-md, 26px) by design (h-tabbar) — the extra height is
-               the tab's own breathing room from this row's border-bottom, not a margin tacked
+               the tab's own breathing room within the chrome row, not a margin tacked
                on after it. -->
           <div
             v-if="tabStripVisible"
-            class="h-tabbar min-h-0 overflow-hidden shrink-0 border-b border-border bg-chrome"
+            class="h-tabbar min-h-0 overflow-hidden shrink-0 bg-chrome"
             data-testid="tab-strip"
           >
             <slot name="tab-strip"><TabStrip /></slot>
@@ -116,7 +116,7 @@ function commitOps(size: number): void {
         @cancel="liveOps = null"
       />
       <div
-        class="shrink-0 overflow-hidden min-w-0 min-h-0 rounded-kira border border-border bg-bg"
+        class="shrink-0 overflow-hidden min-w-0 min-h-0 rounded-kira bg-bg"
         data-testid="operations-panel"
         :style="{ height: `${dockHeight}px` }"
       >

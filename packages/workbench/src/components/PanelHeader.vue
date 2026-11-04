@@ -4,7 +4,7 @@
 
 <template>
   <div
-    class="flex items-center shrink-0 h-bar gap-1 px-1.5 border-b border-border text-kira-sm text-muted-foreground uppercase tracking-wider"
+    class="flex items-center shrink-0 h-bar gap-1 px-1.5 text-kira-sm text-muted-foreground uppercase tracking-wider"
     data-slot="panel-header"
   >
     <div v-if="$slots.start" class="flex items-center gap-1 normal-case tracking-normal"

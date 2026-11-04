@@ -114,7 +114,7 @@ function onHistoryClickFor(row: ApiVariable): void {
       <span class="ml-auto flex items-center gap-1" />
     </ViewToolbar>
     <div :class="colorMarkClass('band', railColor)" />
-    <ViewToolbar v-if="ownerExists && fileName" border="none">
+    <ViewToolbar v-if="ownerExists && fileName">
       <ConfigFileBar
         :path="fileInfo?.path ?? fileName"
         :error="fileInfo?.problem ?? null"
@@ -123,7 +123,7 @@ function onHistoryClickFor(row: ApiVariable): void {
         :about="() => control.configFilesOpen({ folder: 'api', file: 'AGENTS.md' })"
       />
     </ViewToolbar>
-    <ViewToolbar border="none">
+    <ViewToolbar>
       <div class="w-64"
         ><SearchField
           v-model="filterQuery"

@@ -46,7 +46,7 @@ function stepDuration(step: OpLogStep): string {
 <template>
   <!-- biome-ignore lint/a11y/noStaticElementInteractions: keys bubble up from the controls and selectable text inside. -->
   <div
-    class="flex flex-col gap-1.5 border-b border-border bg-elevated py-1.5 pr-2 pl-[52px] text-kira-sm select-text"
+    class="flex flex-col gap-1.5 bg-elevated py-1.5 pr-2 pl-[52px] text-kira-sm select-text"
     data-testid="op-detail"
     :data-op-id="record.id"
     @keydown.esc.stop="emit('escape')"

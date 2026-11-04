@@ -55,7 +55,7 @@ function toggleFacet(value: string): void {
 </script>
 
 <template>
-  <div class="shrink-0 flex items-center gap-2 py-1 px-2 border-b border-border">
+  <div class="shrink-0 flex items-center gap-2 py-1 px-2">
     <div class="w-40 shrink-0">
       <SearchField
         v-model="filterText"

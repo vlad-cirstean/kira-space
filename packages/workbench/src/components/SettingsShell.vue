@@ -210,7 +210,7 @@ async function onSave(): Promise<void> {
       </DialogHeader>
 
       <DialogBody flush class="flex-row">
-        <nav class="w-44 shrink-0 flex flex-col gap-px border-r border-border py-1.5 px-1">
+        <nav class="w-44 shrink-0 flex flex-col gap-px py-1.5 px-1">
           <button
             v-for="section in sections"
             :key="section"
