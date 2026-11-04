@@ -278,7 +278,10 @@ test('a manual step with a session has the sandbox section, off by default', asy
   ]);
   await openStep(page, 'free');
   await expect(page.locator(t('ade-wf-sandbox-off'))).toContainText('full rights');
+  const node = page.locator(`${t('ade-wf-node')}[data-step-id="free"]`);
+  await expect(node.locator(t('ade-wf-node-sandbox'))).toHaveCount(0);
   await page.locator(t('ade-wf-sandbox-access-write')).click();
+  await expect(node.locator(t('ade-wf-node-sandbox'))).toHaveText('Write worktree');
   await expect(page.locator(t('ade-wf-sandbox-manual-limits'))).toContainText('push or fetch');
   await page.locator(t('ade-wf-step-session')).click();
   await expect(page.locator(t('ade-wf-step-section-sandbox'))).toHaveCount(0);

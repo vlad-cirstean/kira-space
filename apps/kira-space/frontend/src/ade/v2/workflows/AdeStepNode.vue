@@ -140,7 +140,7 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
         t('space.ade.workflows.stepNode.smart.label')
       }}</span>
       <span
-        v-if="step.kind !== 'manual' && !isDefaultSandbox(step.kind, step.sandbox)"
+        v-if="!isDefaultSandbox(step.kind, step.sandbox)"
         class="shrink-0"
         :class="step.sandbox.access === 'off' ? 'text-warn-text' : 'text-muted-foreground'"
         data-testid="ade-wf-node-sandbox"
