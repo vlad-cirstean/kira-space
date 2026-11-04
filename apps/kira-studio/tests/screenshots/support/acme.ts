@@ -136,23 +136,3 @@ export const ACME: { control: ControlSnapshot[]; port: PortSnapshot[] } = orderI
     { filter: null, pageSize: 1000, rows: ORDER_ROWS },
   ],
 );
-
-/** The `connections.create` args the add-connection dialog sends for `SUMMARY`. */
-export const CREATE_ARGS = {
-  name: CONNECTION_NAME,
-  kind: 'postgres',
-  color: 'blue',
-  mode: 'fields',
-  readOnly: false,
-  host: '127.0.0.1',
-  port: 5432,
-  database: 'acme_shop',
-  username: 'shop_app',
-  password: null,
-  uri: null,
-  options: {},
-  preconnect: null,
-  preconnectSidecar: false,
-  autoExplain: false,
-  throttlePerSec: 0,
-};
