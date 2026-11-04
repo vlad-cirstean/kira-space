@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
-import { Label } from '@theme/components/ui/label';
+import { FieldDescription } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { type MessageKey, t } from '@theme/i18n';
 import { computed, ref, watch } from 'vue';
@@ -22,10 +22,12 @@ import {
   TOOLCHAINS,
 } from '../../board/stepSandbox';
 import { useWorkflows } from '../../queries';
-import type { SandboxAccess, StepSandbox } from '../../wire';
+import type { SandboxAccess, StepKind, StepSandbox } from '../../wire';
+import AdeInspectorRow from './AdeInspectorRow.vue';
 
-// A step's agent sandbox: access level, extra folders, network.
-const props = defineProps<{ sandbox: StepSandbox; stepId: string }>();
+// A step's sandbox, for its agent or script: access level, extra folders, network.
+const props = defineProps<{ sandbox: StepSandbox; stepId: string; kind: StepKind }>();
+const script = computed(() => props.kind === 'script');
 const emit = defineEmits<{ patch: [sandbox: StepSandbox] }>();
 const workflows = useWorkflows();
 const support = computed(() => workflows.data.value?.sandbox ?? null);
@@ -82,91 +84,103 @@ const preset = (paths: readonly string[]): void => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-2" data-testid="ade-wf-step-sandbox">
-    <Label class="text-kira-sm text-muted-foreground">{{
-      t('space.ade.workflows.sandbox.title.label')
-    }}</Label>
-    <SecondaryTabs
-      :model-value="sandbox.access"
-      :items="items"
-      data-testid="ade-wf-sandbox-access"
-      @update:model-value="(v: string) => set({ access: v as SandboxAccess })"
-    />
-    <Alert v-if="sandbox.access === 'off'" variant="warn" data-testid="ade-wf-sandbox-off">
+  <div class="flex flex-col gap-3" data-testid="ade-wf-step-sandbox">
+    <AdeInspectorRow :label="t('space.ade.workflows.sandbox.access.label')">
+      <SecondaryTabs
+        :model-value="sandbox.access"
+        :items="items"
+        data-testid="ade-wf-sandbox-access"
+        @update:model-value="(v: string) => set({ access: v as SandboxAccess })"
+      />
+    </AdeInspectorRow>
+    <FieldDescription v-if="sandbox.access === 'off' && script" data-testid="ade-wf-sandbox-off">{{
+      t('space.ade.workflows.sandbox.offScript.hint')
+    }}</FieldDescription>
+    <Alert v-else-if="sandbox.access === 'off'" variant="warn" data-testid="ade-wf-sandbox-off">
       <AlertDescription>{{ t('space.ade.workflows.sandbox.offWarning.body') }}</AlertDescription>
     </Alert>
     <template v-else>
-      <Label :for="id('read')" class="text-kira-sm text-muted-foreground"
-        >{{ t('space.ade.workflows.sandbox.read.label') }}
-        <span class="text-subtle">{{ t('space.ade.workflows.sandbox.paths.hint') }}</span></Label
+      <AdeInspectorRow stack :label="t('space.ade.workflows.sandbox.read.label')" :for="id('read')">
+        <Textarea
+          :id="id('read')"
+          :model-value="readText"
+          :placeholder="t('space.ade.workflows.sandbox.read.example')"
+          class="min-h-12 w-full resize-y font-data leading-normal"
+          data-testid="ade-wf-sandbox-read"
+          @update:model-value="onRead"
+        />
+        <template #hint>
+          {{
+            sandbox.access === 'read' && script
+              ? t('space.ade.workflows.sandbox.readScript.hint')
+              : t('space.ade.workflows.sandbox.paths.hint')
+          }}
+        </template>
+        <template v-if="readInvalid" #error>
+          <span data-testid="ade-wf-sandbox-read-error">{{
+            t('space.ade.workflows.sandbox.pathInvalid.error')
+          }}</span>
+        </template>
+      </AdeInspectorRow>
+      <AdeInspectorRow
+        v-if="sandbox.access === 'write'"
+        stack
+        :label="t('space.ade.workflows.sandbox.allow.label')"
+        :for="id('allow')"
       >
-      <Textarea
-        :id="id('read')"
-        :model-value="readText"
-        :placeholder="t('space.ade.workflows.sandbox.read.example')"
-        class="min-h-12 w-auto resize-y font-data leading-normal"
-        data-testid="ade-wf-sandbox-read"
-        @update:model-value="onRead"
-      />
-      <span
-        v-if="readInvalid"
-        class="text-kira-sm text-error"
-        data-testid="ade-wf-sandbox-read-error"
-        >{{
-          t('space.ade.workflows.sandbox.pathInvalid.error')
-        }}</span
-      >
-      <template v-if="sandbox.access === 'write'">
-        <div class="flex items-center gap-2">
-          <Label :for="id('allow')" class="flex-1 text-kira-sm text-muted-foreground">{{
-            t('space.ade.workflows.sandbox.allow.label')
-          }}</Label>
-          <DropdownMenu :modal="false">
-            <DropdownMenuTrigger as-child>
-              <Button variant="dialog" size="kira" data-testid="ade-wf-sandbox-preset">{{
-                t('space.ade.workflows.sandbox.preset.label')
-              }}</Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                v-for="c in TOOLCHAINS"
-                :key="c.id"
-                :data-testid="`ade-wf-sandbox-preset-${c.id}`"
-                @select="preset(c.paths)"
-                >{{
-                  t(PRESET_LABEL[c.id])
-                }}</DropdownMenuItem
-              >
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
         <Textarea
           :id="id('allow')"
           :model-value="allowText"
           :placeholder="t('space.ade.workflows.sandbox.allow.example')"
-          class="min-h-12 w-auto resize-y font-data leading-normal"
+          class="min-h-12 w-full resize-y font-data leading-normal"
           data-testid="ade-wf-sandbox-allow"
           @update:model-value="onAllow"
         />
-        <span
-          v-if="allowInvalid"
-          class="text-kira-sm text-error"
-          data-testid="ade-wf-sandbox-allow-error"
-          >{{
+        <DropdownMenu :modal="false">
+          <DropdownMenuTrigger as-child>
+            <Button
+              variant="dialog"
+              size="kira"
+              class="self-start"
+              data-testid="ade-wf-sandbox-preset"
+              >{{
+                t('space.ade.workflows.sandbox.preset.label')
+              }}</Button
+            >
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem
+              v-for="c in TOOLCHAINS"
+              :key="c.id"
+              :data-testid="`ade-wf-sandbox-preset-${c.id}`"
+              @select="preset(c.paths)"
+              >{{
+                t(PRESET_LABEL[c.id])
+              }}</DropdownMenuItem
+            >
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <template v-if="allowInvalid" #error>
+          <span data-testid="ade-wf-sandbox-allow-error">{{
             t('space.ade.workflows.sandbox.pathInvalid.error')
-          }}</span
-        >
-      </template>
-      <div class="flex items-center gap-2 text-kira-sm text-muted-foreground">
+          }}</span>
+        </template>
+      </AdeInspectorRow>
+      <AdeInspectorRow :label="t('space.ade.workflows.sandbox.network.label')" :for="id('network')">
         <Checkbox
           :id="id('network')"
           :model-value="sandbox.network"
           data-testid="ade-wf-sandbox-network"
           @update:model-value="(v) => set({ network: v === true })"
         />
-        <Label :for="id('network')">{{ t('space.ade.workflows.sandbox.network.label') }}</Label>
-        <span class="text-subtle">{{ t('space.ade.workflows.sandbox.network.hint') }}</span>
-      </div>
+        <template #hint>
+          {{
+            script
+              ? t('space.ade.workflows.sandbox.networkScript.hint')
+              : t('space.ade.workflows.sandbox.network.hint')
+          }}
+        </template>
+      </AdeInspectorRow>
     </template>
     <Alert v-if="support && !support.enforced" variant="info" data-testid="ade-wf-sandbox-notice">
       <AlertDescription>{{ support.reason }}</AlertDescription>

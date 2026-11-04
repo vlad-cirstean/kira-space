@@ -5,6 +5,12 @@ export function defaultSandbox(kind: StepKind): StepSandbox {
   return { access: kind === 'script' ? 'off' : 'write', read: [], allow: [], network: true };
 }
 
+/** Whether sb is the policy a step of kind gets without a sandbox block. */
+export function isDefaultSandbox(kind: StepKind, sb: StepSandbox): boolean {
+  const d = defaultSandbox(kind);
+  return sb.access === d.access && sb.network === d.network && !sb.read.length && !sb.allow.length;
+}
+
 export const ACCESS_MODES: readonly SandboxAccess[] = ['write', 'read', 'off'];
 
 export const TOOLCHAINS = [

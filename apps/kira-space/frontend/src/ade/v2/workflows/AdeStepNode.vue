@@ -22,11 +22,10 @@ import { computed, ref, useTemplateRef } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import AdeTip from '../AdeTip.vue';
 import { promptParts } from '../automation/smartStepBody';
-import type { Tone } from '../board/actions';
-import { kindLabel, runsOnLabel, STEP_KINDS } from '../board/workflowForm';
+import { isDefaultSandbox } from '../board/stepSandbox';
+import { KIND_TONE, kindLabel, runsOnLabel, STEP_KINDS } from '../board/workflowForm';
 import { resultHandleId, type StepNodeData } from '../board/workflowGraph';
 import { useAdeWorkflowDraftStore } from '../state/adeWorkflowDraft';
-import type { StepKind } from '../wire';
 import { useStepRemoval } from './useStepRemoval';
 
 // One step on the canvas: number, name, kind, what it runs, and one connector per result. Fixed size;
@@ -42,12 +41,11 @@ useEventListener(root, 'contextmenu', (e: MouseEvent) => {
   menuOpen.value = true;
 });
 const step = computed(() => props.data.step);
-const KIND_TONE: Record<StepKind, Tone> = {
-  agent: 'amber',
-  script: 'green',
-  review: 'blue',
-  manual: 'grey',
-};
+const SANDBOX_CHIP = {
+  write: 'space.ade.sandbox.write.label',
+  read: 'space.ade.sandbox.read.label',
+  off: 'space.ade.sandbox.off.label',
+} as const;
 const manual = computed(() => step.value.kind === 'manual');
 const body = computed(() => {
   const s = step.value;
@@ -142,16 +140,20 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
         t('space.ade.workflows.stepNode.smart.label')
       }}</span>
       <span
-        v-if="(step.kind === 'agent' || step.kind === 'review') && step.sandbox.access !== 'write'"
+        v-if="step.kind !== 'manual' && !isDefaultSandbox(step.kind, step.sandbox)"
         class="shrink-0"
         :class="step.sandbox.access === 'off' ? 'text-warn-text' : 'text-muted-foreground'"
         data-testid="ade-wf-node-sandbox"
         >{{
-          t(
-            step.sandbox.access === 'off'
-              ? 'space.ade.sandbox.off.label'
-              : 'space.ade.sandbox.read.label',
-          )
+          t(SANDBOX_CHIP[step.sandbox.access])
+        }}</span
+      >
+      <span
+        v-if="step.outsideRepo"
+        class="shrink-0 text-muted-foreground"
+        data-testid="ade-wf-node-outside"
+        >{{
+          t('space.ade.workflows.stepNode.outside.label')
         }}</span
       >
       <span v-if="loops" class="shrink-0 text-muted-foreground" data-testid="ade-wf-node-returns">{{
@@ -233,7 +235,9 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
-    <div v-if="!manual" class="truncate px-2 text-subtle">{{ runsOnLabel(step.runsOn) }}</div>
+    <div v-if="!manual && !step.outsideRepo" class="truncate px-2 text-subtle">{{
+      runsOnLabel(step.runsOn)
+    }}</div>
     <div
       class="truncate px-2 text-muted-foreground [&>span]:whitespace-nowrap"
       :class="step.kind === 'script' ? 'font-data' : ''"

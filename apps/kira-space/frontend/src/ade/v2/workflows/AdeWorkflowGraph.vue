@@ -345,14 +345,14 @@ onBeforeUnmount(() => {
         v-bind="graphPane.bind"
       />
       <div class="min-w-0 flex-1">
-        <div class="h-full overflow-auto p-3" data-testid="ade-wf-inspector">
+        <div class="flex h-full min-h-0 flex-col" data-testid="ade-wf-inspector">
           <AdeStepInspector
             v-if="draft.step"
             :key="draft.step.id"
             :step="draft.step"
             :steps="draft.draft.steps"
           />
-          <FieldDescription v-else data-testid="ade-wf-inspector-empty">
+          <FieldDescription v-else class="p-3" data-testid="ade-wf-inspector-empty">
             <CatalogText k="space.ade.workflows.graph.inspectorEmpty.emptyHint">
               <template #tokens><span class="font-data">{{ PLACEHOLDER_TOKENS }}</span></template>
             </CatalogText>

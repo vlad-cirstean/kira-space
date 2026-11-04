@@ -10124,6 +10124,9 @@
           }
         },
         "sandbox": {
+          "access": {
+            "label": "Access"
+          },
           "allow": {
             "example": "~/go",
             "label": "Allow writes"
@@ -10131,6 +10134,12 @@
           "network": {
             "hint": "Off: {agent} API only.",
             "label": "Allow network"
+          },
+          "networkScript": {
+            "hint": "Off blocks all network access from the script."
+          },
+          "offScript": {
+            "hint": "The script runs with your full rights."
           },
           "offWarning": {
             "body": "Agent runs with your full rights."
@@ -10160,8 +10169,8 @@
             "example": "~/notes",
             "label": "Read folders"
           },
-          "title": {
-            "label": "Sandbox"
+          "readScript": {
+            "hint": "The script can’t write the worktree."
           }
         },
         "saveBar": {
@@ -10172,9 +10181,6 @@
         "settings": {
           "range": {
             "error": "Enter a whole number from {min} to {max}, or leave it empty."
-          },
-          "title": {
-            "label": "Agent settings"
           }
         },
         "step": {
@@ -10190,14 +10196,17 @@
             "example": "./scripts/release.sh",
             "hint": "Runs in each branch’s worktree. A non-zero exit fails the step. {tokens} are shell-quoted when needed."
           },
+          "commandOutside": {
+            "hint": "Runs in the task folder. A non-zero exit fails the step. {tokens} are shell-quoted when needed."
+          },
           "editStatuses": {
             "label": "Edit statuses"
           },
           "end": {
-            "title": "How it ends"
+            "title": "Results"
           },
           "endManual": {
-            "hint": "Moves on to the next step once you finish it."
+            "hint": "Moves on when you finish it."
           },
           "finishNote": {
             "hint": "Kira Space adds this finish_step instruction to the prompt."
@@ -10219,9 +10228,19 @@
           "name": {
             "aria": "Step name"
           },
+          "outsideVars": {
+            "error": "This step runs outside the repositories. Remove {repo} and {branch}."
+          },
+          "position": {
+            "label": "Step {n} of {of}"
+          },
           "prompt": {
             "aria": "Session prompt",
             "placeholder": "First message for the session (optional)"
+          },
+          "repoAware": {
+            "hint": "Off runs the step in the task folder, outside every repository.",
+            "label": "Repository aware"
           },
           "reviewImplementer": {
             "label": "Implementer step"
@@ -10235,11 +10254,11 @@
           "reviewSendTo": {
             "label": "Send comments to"
           },
+          "sandbox": {
+            "title": "Sandbox"
+          },
           "scriptMissing": {
             "error": "Script not found."
-          },
-          "scriptNote": {
-            "hint": "Exit code 0 ends with done, any other with failed."
           },
           "secretParams": {
             "hint": "Secret params use the value saved in the script: {names}."
@@ -10268,10 +10287,7 @@
             "label": "Include this step"
           },
           "what": {
-            "title": "What it does"
-          },
-          "where": {
-            "title": "Where and when"
+            "title": "Action"
           }
         },
         "stepNode": {
@@ -10280,6 +10296,9 @@
           },
           "noCommand": {
             "label": "No command"
+          },
+          "outside": {
+            "label": "No repository"
           },
           "resultGoes": {
             "tooltip": "{id} ({outcome}) goes to {next}"
