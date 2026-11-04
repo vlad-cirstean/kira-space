@@ -82,7 +82,7 @@ async function remove(what: 'branch' | 'repo'): Promise<void> {
         <Button
           variant="toolbar"
           size="kira-icon"
-          class="size-5 shrink-0"
+          class="shrink-0"
           :aria-label="t('space.ade.taskTab.branchMenu.trigger.aria')"
           data-testid="ade-task-branch-menu"
           :data-branch-id="row.id"

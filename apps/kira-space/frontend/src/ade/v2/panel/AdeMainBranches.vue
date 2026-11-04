@@ -2,6 +2,7 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { rowMeta } from '@theme/lib/rowVariants';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import ProjectPicker from '@workbench/components/pickers/ProjectPicker.vue';
@@ -16,6 +17,7 @@ import type { CardModel } from '../plan/usePlanModel';
 import { useAddTaskRepo, useChangeRequests } from '../queries';
 import { useAdeAddUiStore } from '../state/adeAddUi';
 import { TONE_TEXT_CLASS } from '../tones';
+import AdeRow from './AdeRow.vue';
 import AdeTaskBranchMenu from './AdeTaskBranchMenu.vue';
 import { PR_TONE, prStateLabel } from './prState';
 
@@ -52,13 +54,11 @@ async function onAddRepo(id: string): Promise<void> {
 </script>
 
 <template>
-  <div class="flex flex-col gap-0.5">
-    <div class="flex items-center gap-2 pb-0.5">
-      <span class="text-kira-sm text-subtle">{{ t('common.module.branches.label') }}</span>
-      <span class="flex-1" />
-      <template v-if="!review">
+  <div class="flex flex-col">
+    <AdeRow :label="t('common.module.branches.label')">
+      <template #actions>
         <ProjectPicker
-          v-if="addProjects.options.value.length > 0"
+          v-if="!review && addProjects.options.value.length > 0"
           v-model="addRepoValue"
           size="kira"
           testid="ade-add-repo"
@@ -69,16 +69,16 @@ async function onAddRepo(id: string): Promise<void> {
           class="max-w-50"
           @select="(o) => onAddRepo(o.value)"
         />
+        <Button
+          variant="dialog"
+          size="kira"
+          data-testid="ade-add-branch"
+          @click="addUi.openAttach(task.id, card.title)"
+        >
+          {{ t('space.ade.taskTab.addBranch.label') }}
+        </Button>
       </template>
-      <Button
-        variant="dialog"
-        size="kira"
-        data-testid="ade-add-branch"
-        @click="addUi.openAttach(task.id, card.title)"
-      >
-        {{ t('space.ade.taskTab.addBranch.label') }}
-      </Button>
-    </div>
+    </AdeRow>
     <div
       v-for="{ row, pr } in lines"
       :key="row.id"
@@ -89,6 +89,7 @@ async function onAddRepo(id: string): Promise<void> {
       <AdeBranchRow
         :row="row"
         :color="card.color"
+        layout="panel"
         testid="ade-task-branch"
         @force-push="forcePushTarget = { branchId: row.id, branchName: row.name, repo: row.repo }"
       >
@@ -99,22 +100,23 @@ async function onAddRepo(id: string): Promise<void> {
           @error="(m: string) => emit('error', m)"
         />
       </AdeBranchRow>
-      <div
+      <AdeRow
         v-if="pr"
-        class="flex min-w-0 items-center gap-2 pb-1 text-kira-sm"
-        :style="{ paddingLeft: `${row.depth * 16 + 8}px` }"
+        :depth="row.depth + 1"
         data-testid="ade-task-branch-pr"
         :data-branch-id="row.id"
       >
-        <AdeTip :text="prStateLabel(pr.state)">
-          <span
-            class="shrink-0"
-            :class="TONE_TEXT_CLASS[PR_TONE[pr.state] ?? 'grey']"
-            :data-state="pr.state"
-            data-testid="ade-task-branch-pr-state"
-            ><CodiconIcon :name="PR_GLYPH[pr.state] ?? 'git-pull-request'" :size="12" /></span
-          >
-        </AdeTip>
+        <template #lead>
+          <AdeTip :text="prStateLabel(pr.state)">
+            <span
+              class="shrink-0"
+              :class="TONE_TEXT_CLASS[PR_TONE[pr.state] ?? 'grey']"
+              :data-state="pr.state"
+              data-testid="ade-task-branch-pr-state"
+              ><CodiconIcon :name="PR_GLYPH[pr.state] ?? 'git-pull-request'" :size="13" /></span
+            >
+          </AdeTip>
+        </template>
         <a
           :href="pr.url"
           class="min-w-0 truncate text-info"
@@ -125,7 +127,8 @@ async function onAddRepo(id: string): Promise<void> {
         >
         <span
           v-if="pr.baseRef"
-          class="shrink-0 font-data text-subtle"
+          class="shrink-0 font-data"
+          :class="rowMeta"
           data-testid="ade-task-branch-pr-base"
           >{{
             t('space.ade.mainTab.prBase.label', { base: pr.baseRef })
@@ -137,10 +140,10 @@ async function onAddRepo(id: string): Promise<void> {
             :class="CHECKS_GLYPH[pr.checksState]!.class"
             :data-state="pr.checksState"
             data-testid="ade-task-branch-pr-checks"
-            ><CodiconIcon :name="CHECKS_GLYPH[pr.checksState]!.icon" :size="12" /></span
+            ><CodiconIcon :name="CHECKS_GLYPH[pr.checksState]!.icon" :size="13" /></span
           >
         </AdeTip>
-      </div>
+      </AdeRow>
     </div>
     <AdeForcePushDialog :target="forcePushTarget" @close="forcePushTarget = null" />
   </div>
