@@ -88,7 +88,7 @@ test('task panel, every tab', async ({ relaunch }) => {
     .click();
   const panel = page.locator(t('ade-panel'));
   await expect(panel).toBeVisible();
-  for (const tab of ['task', 'notes', 'sessions']) {
+  for (const tab of ['main', 'details', 'sessions']) {
     await page.locator(t(`ade-panel-tab-${tab}`)).click();
     await expectCatalogText(panel, { allow });
   }
@@ -129,7 +129,7 @@ test('run dialog', async ({ relaunch }) => {
   const allow = fixtureData();
   await page
     .locator(
-      `[data-testid="ade-task"][data-task-id="T_alerts"] ${t('ade-task-cells')} ${t('ade-task-action-run')}`,
+      `[data-testid="ade-task"][data-task-id="T_alerts"] ${t('ade-card-head')} ${t('ade-task-action-run')}`,
     )
     .click();
   const dialog = page.locator(t('ade-run-dialog'));

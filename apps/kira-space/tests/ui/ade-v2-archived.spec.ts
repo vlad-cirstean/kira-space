@@ -101,8 +101,8 @@ test('a selected archived task shows all it kept, read-only', async ({ relaunch 
   await page.locator(t('ade-archived-comments')).getByRole('button').click();
   await expect(page.locator(t('ade-archived-comment'))).toContainText('rename this');
 
-  await page.locator(t('ade-panel-tab-notes')).click();
-  const editor = page.locator(`${t('ade-archived-notes')} .ProseMirror`);
+  await page.locator(t('ade-panel-tab-details')).click();
+  const editor = page.locator(`${t('ade-details-tab')} .ProseMirror`);
   await expect(editor).toContainText('remember the cache');
   await expect(editor).toHaveAttribute('contenteditable', 'false');
   await expect(page.locator(t('ade-notes-toolbar-btn'))).toHaveCount(0);

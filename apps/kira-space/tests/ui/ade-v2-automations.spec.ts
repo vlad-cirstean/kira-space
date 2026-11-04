@@ -297,7 +297,7 @@ test('the ADE Run dialog shows a smart step body read-only', async ({ relaunch }
   const { window: page } = await openPlan(relaunch, [SCRIPTS, smartStepBoard()]);
   await page
     .locator(
-      `[data-testid="ade-task"][data-task-id="T_alerts"] ${t('ade-task-cells')} ${t('ade-task-action-run')}`,
+      `[data-testid="ade-task"][data-task-id="T_alerts"] ${t('ade-card-head')} ${t('ade-task-action-run')}`,
     )
     .click();
   const dialog = page.locator(t('ade-run-dialog'));

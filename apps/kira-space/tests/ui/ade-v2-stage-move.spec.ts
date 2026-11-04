@@ -11,7 +11,7 @@ import type { ControlSnapshot } from './support/types';
 const t = (id: string) => `[data-testid="${id}"]`;
 const task = (id: string) => `[data-testid="ade-task"][data-task-id="${id}"]`;
 const cellAction = (id: string, kind: string) =>
-  `${task(id)} ${t('ade-task-cells')} ${t(`ade-task-action-${kind}`)}`;
+  `${task(id)} ${t('ade-card-head')} ${t(`ade-task-action-${kind}`)}`;
 
 interface SessionFx extends Record<string, unknown> {
   id: string;
@@ -80,7 +80,7 @@ test('Next stage asks to close the open sessions; Close is the default', async (
     sessionsOf('T_alerts', stageOne),
   ]);
   const action = page.locator(cellAction('T_alerts', 'advance'));
-  await expect(action).toHaveText('Next stage ›');
+  await expect(action).toHaveAttribute('aria-label', 'Next stage ›');
   await action.click();
   await expect(page.locator(t('ade-stage-dialog'))).toBeVisible();
   await expect(page.locator(t('ade-stage-sessions'))).toContainText('2 sessions still open');
@@ -112,7 +112,7 @@ test('Finish on the last stage closes its session too', async ({ relaunch }) => 
     sessionsOf('T_auth', [session('st1', 'T_auth', 'review')]),
   ]);
   const action = page.locator(cellAction('T_auth', 'finish'));
-  await expect(action).toHaveText('Finish');
+  await expect(action).toHaveAttribute('aria-label', 'Finish');
   await action.click();
   await expect(page.locator(t('ade-stage-target'))).toHaveValue('done');
   await expect(page.locator(t('ade-stage-sessions'))).toContainText('1 session still open');

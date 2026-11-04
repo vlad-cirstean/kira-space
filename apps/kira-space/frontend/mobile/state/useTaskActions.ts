@@ -24,7 +24,8 @@ export function useTaskActions(card: () => PlanCard) {
   const startKind = computed<'run' | 'launch' | null>(() => {
     const kind = card().action?.kind;
     if (kind === 'run') return 'run';
-    return kind === 'session' ? 'launch' : null;
+    // Resume is desktop only; the phone's Start still opens a new session.
+    return kind === 'session' || kind === 'resume' ? 'launch' : null;
   });
   const busy = computed(
     () =>

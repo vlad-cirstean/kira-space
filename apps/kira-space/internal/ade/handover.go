@@ -59,7 +59,7 @@ func (b *TaskBoard) closeHandoverPrompt(taskID string) {
 // RecordHandover stores a session's handover notes as the open draft of the task's current stage. stepID is the
 // stage the session was opened for; a task that moved on since refuses. A finished draft on a live stage raises
 // the "move to next stage" prompt.
-func (b *TaskBoard) RecordHandover(_ context.Context, taskID, stepID, notes string, finished bool) error {
+func (b *TaskBoard) RecordHandover(_ context.Context, taskID, stepID, sessionID, notes string, finished bool) error {
 	if len(notes) > maxHandoverBytes {
 		return agentmcp.ToolError(fmt.Sprintf("notes is too long: at most %d bytes.", maxHandoverBytes))
 	}
@@ -76,7 +76,7 @@ func (b *TaskBoard) RecordHandover(_ context.Context, taskID, stepID, notes stri
 	}
 	if _, err := b.deps.Tasks.UpsertHandoverDraft(model.AdeHandover{
 		ID: b.newID(), TaskID: taskID, FromStepID: cur, FromStepName: stepName(tc, cur),
-		Body: notes, Finished: finished, UpdatedAt: b.deps.Now().UnixMilli(),
+		Body: notes, Finished: finished, SessionID: sessionID, UpdatedAt: b.deps.Now().UnixMilli(),
 	}); err != nil {
 		return err
 	}
@@ -141,11 +141,14 @@ func (b *TaskBoard) recordRunHandoverLocked(run model.AdeRun) {
 	}
 	h := b.handoffFor(tc, run.StepID, to, nil)
 	if summaries := b.runSummaries(tc, plan[idx]); summaries != "" {
-		body := summaries
+		body, author := summaries, run.SessionID
 		if draft != nil && strings.TrimSpace(draft.Body) != "" {
 			body = draft.Body + "\n\n" + summaries
+			if draft.SessionID != "" {
+				author = draft.SessionID // the draft's text leads the body
+			}
 		}
-		h.Notes, h.Source = &body, model.AdeHandoverSourceRun
+		h.Notes, h.Source, h.SessionID = &body, model.AdeHandoverSourceRun, author
 	} else if draft == nil {
 		return
 	}
@@ -294,7 +297,7 @@ func toWireHandover(h model.AdeHandover) adewire.Handover {
 	return adewire.Handover{
 		ID: h.ID, TaskID: h.TaskID, FromStepID: h.FromStepID, FromStepName: h.FromStepName, ToStepID: h.ToStepID,
 		ToStepName: h.ToStepName, Body: h.Body, Source: h.Source, State: h.State, Finished: h.Finished,
-		Dismissed: h.Dismissed, Edited: h.Edited, CreatedAt: h.CreatedAt, UpdatedAt: h.UpdatedAt,
+		Dismissed: h.Dismissed, Edited: h.Edited, SessionID: h.SessionID, CreatedAt: h.CreatedAt, UpdatedAt: h.UpdatedAt,
 	}
 }
 

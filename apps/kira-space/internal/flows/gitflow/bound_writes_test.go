@@ -4,12 +4,14 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitops"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitrpc"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
@@ -169,6 +171,8 @@ func TestGitServiceBoundWrites(t *testing.T) {
 	if !fetched.OK || len(fetched.Updates) == 0 {
 		t.Fatalf("RemoteRun fetch = %+v", fetched)
 	}
+	// git emits fetch ref updates in nondeterministic order.
+	slices.SortFunc(fetched.Updates, func(a, b gitops.RefUpdate) int { return strings.Compare(a.Ref, b.Ref) })
 	app.Contract(t, scenario, "git:remote.run#bound", fetched, mask)
 	if len(app.Events.Since(mark, gitEventRemoteProgress)) == 0 {
 		t.Fatal("fetch emitted no remote.progress")

@@ -25,4 +25,6 @@ type AdeTaskArtifact struct {
 	RunID     string
 	CreatedAt int64
 	UpdatedAt int64
+	// SessionID is the Kira session that reported it; "" for a user add or an old row.
+	SessionID string
 }

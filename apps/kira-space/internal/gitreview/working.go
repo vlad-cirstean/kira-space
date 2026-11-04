@@ -35,6 +35,9 @@ type WorkingRecord struct {
 	ContentBytes int // UNCOMPRESSED length
 	LineCount    int
 	Ranges       []LineRange
+	// RemovalChecked is the worktree content identity last checked for removed reviewed lines;
+	// WorkingRecords only.
+	RemovalChecked string
 }
 
 // WorkingRecords returns every working record for (repoID, branch) keyed by path, without content.
@@ -51,7 +54,7 @@ func (s *Store) WorkingRecords(ctx context.Context, repoID, branch string) (map[
 		return map[string]WorkingRecord{}, nil
 	}
 	rows, err := db.QueryContext(ctx, `
-		SELECT path, state, head_sha, reviewed_at, content_hash, content_kind, content_bytes, line_count
+		SELECT path, state, head_sha, reviewed_at, content_hash, content_kind, content_bytes, line_count, removal_checked
 		FROM review_working_file WHERE session_id = ?`, id)
 	if err != nil {
 		return nil, fmt.Errorf("gitreview: query review_working_file: %w", err)
@@ -62,7 +65,7 @@ func (s *Store) WorkingRecords(ctx context.Context, repoID, branch string) (map[
 		var at int64
 		var kind string
 		if err := rows.Scan(&rec.Path, &rec.State, &rec.HeadSHA, &at, &rec.ContentHash, &kind,
-			&rec.ContentBytes, &rec.LineCount); err != nil {
+			&rec.ContentBytes, &rec.LineCount, &rec.RemovalChecked); err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("gitreview: scan review_working_file: %w", err)
 		}
@@ -186,7 +189,8 @@ func (s *Store) PutWorking(ctx context.Context, repoID, branch string, rec Worki
 		ON CONFLICT (session_id, path) DO UPDATE SET
 			state = excluded.state, head_sha = excluded.head_sha, reviewed_at = excluded.reviewed_at,
 			content_hash = excluded.content_hash, content_kind = excluded.content_kind,
-			content_bytes = excluded.content_bytes, line_count = excluded.line_count, content = excluded.content
+			content_bytes = excluded.content_bytes, line_count = excluded.line_count, content = excluded.content,
+			removal_checked = ''
 	`, id, rec.Path, rec.State, rec.HeadSHA, rec.ReviewedAt.UnixMilli(), rec.ContentHash,
 		string(rec.ContentKind), rec.ContentBytes, rec.LineCount, compressed); err != nil {
 		return fmt.Errorf("gitreview: upsert review_working_file: %w", err)

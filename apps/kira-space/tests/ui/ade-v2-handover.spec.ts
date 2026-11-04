@@ -144,14 +144,16 @@ test('the step mover opens the dialog and sends SetTaskStep with the typed notes
   });
 });
 
-test('the Notes tab lists the draft and the stage moves; an edit sends UpdateHandover', async ({
+test('Task tab shows no handover; Notes lists the draft and moves; an edit sends UpdateHandover', async ({
   relaunch,
 }) => {
   const { handed } = recorded();
   const { window: page, control } = await openPlan(relaunch, snapshots(withDraft));
   await openTask(page, 'T_alerts');
-  await expect(page.locator(t('ade-task-handover-row'))).toContainText(BODY);
-  await page.locator(t('ade-panel-tab-notes')).click();
+  await expect(page.locator(t('ade-main-tab'))).toBeVisible();
+  await expect(page.locator(t('ade-main-tab'))).not.toContainText(BODY);
+  await expect(page.locator(t('ade-task-handover-row'))).toHaveCount(0);
+  await page.locator(t('ade-panel-tab-details')).click();
   const list = page.locator(t('ade-handovers'));
   await expect(list.locator(t('ade-handover-draft'))).toContainText(BODY);
   await expect(list.locator(t('ade-handover-row'))).toHaveCount(handed.length);
@@ -170,7 +172,7 @@ test('the Notes tab lists the draft and the stage moves; an edit sends UpdateHan
 test('Move on in the Notes tab opens the stage dialog', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, snapshots(withDraft));
   await openTask(page, 'T_alerts');
-  await page.locator(t('ade-panel-tab-notes')).click();
+  await page.locator(t('ade-panel-tab-details')).click();
   await page.locator(t('ade-handover-move-on')).click();
   await expect(page.locator(t('ade-stage-dialog'))).toBeVisible();
   await expect(page.locator(t('ade-stage-not-now'))).toHaveCount(0);

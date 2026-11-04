@@ -40,7 +40,8 @@ async function openSettings(
     { channel: IPC.agentPortList, response: providers },
     ...extra,
   ]);
-  await app.window.locator(t('ade-tab-settings')).click();
+  await app.window.locator(t('ade-tab-agents')).click();
+  await app.window.locator(t('ade-agents-tab-settings')).click();
   await app.window.locator(t('ade-settings-port')).waitFor();
   return app;
 }

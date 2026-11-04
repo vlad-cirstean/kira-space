@@ -578,6 +578,8 @@ const spaceControl = {
     unwrap(IssueTrackerService.Trackers()).then((r) => trust<IssueTrackers>(r)),
   adeTaskAddArtifact: (args: V2.AddArtifactArgs): Promise<V2.Artifact> =>
     unwrap(AdeTaskService.AddArtifact(args)).then((r) => trust<V2.Artifact>(r)),
+  adeTaskUpdateArtifact: (args: V2.UpdateArtifactArgs): Promise<V2.Artifact> =>
+    unwrap(AdeTaskService.UpdateArtifact(args)).then((r) => trust<V2.Artifact>(r)),
   adeTaskRemoveArtifact: (args: V2.RemoveArtifactArgs): Promise<void> =>
     unwrap(AdeTaskService.RemoveArtifact(args)),
   adeTaskSetTaskStep: (args: V2.SetTaskStepArgs): Promise<V2.Task> =>

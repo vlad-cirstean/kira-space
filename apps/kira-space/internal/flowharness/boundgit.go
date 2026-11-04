@@ -162,6 +162,12 @@ func (s *GitStream) boundCall(method string) (boundFn, bool) {
 		"review.comment.edit": bind(func(ctx context.Context, key string, p gitrpc.ReviewCommentEditParams) (any, error) {
 			return svc.ReviewCommentEdit(ctx, bridge.GitReviewCommentEditArgs{WindowKey: key, Params: p})
 		}),
+		"review.removed.list": bind(func(ctx context.Context, key string, p gitrpc.ReviewRemovedListParams) (any, error) {
+			return svc.ReviewRemovedList(ctx, bridge.GitReviewRemovedListArgs{WindowKey: key, Params: p})
+		}),
+		"review.removed.dismiss": bind(func(ctx context.Context, key string, p gitrpc.ReviewRemovedDismissParams) (any, error) {
+			return svc.ReviewRemovedDismiss(ctx, bridge.GitReviewRemovedDismissArgs{WindowKey: key, Params: p})
+		}),
 		"review.comment.clear": bind(func(ctx context.Context, key string, p gitrpc.ReviewCommentClearParams) (any, error) {
 			return svc.ReviewCommentClear(ctx, bridge.GitReviewCommentClearArgs{WindowKey: key, Params: p})
 		}),

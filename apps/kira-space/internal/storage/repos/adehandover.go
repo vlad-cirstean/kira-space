@@ -9,12 +9,12 @@ import (
 )
 
 const handoverCols = `id, task_id, from_step_id, from_step_name, to_step_id, to_step_name, body, source, state,
-	finished, dismissed, edited, created_at, updated_at`
+	finished, dismissed, edited, created_at, updated_at, session_id`
 
 func scanHandover(row rowScanner) (model.AdeHandover, error) {
 	var h model.AdeHandover
 	err := row.Scan(&h.ID, &h.TaskID, &h.FromStepID, &h.FromStepName, &h.ToStepID, &h.ToStepName, &h.Body,
-		&h.Source, &h.State, &h.Finished, &h.Dismissed, &h.Edited, &h.CreatedAt, &h.UpdatedAt)
+		&h.Source, &h.State, &h.Finished, &h.Dismissed, &h.Edited, &h.CreatedAt, &h.UpdatedAt, &h.SessionID)
 	return h, err
 }
 
@@ -111,12 +111,12 @@ func (r *AdeTaskRepo) UpsertHandoverDraft(h model.AdeHandover) (model.AdeHandove
 		fin = 1
 	}
 	if _, err := r.DB.Exec(`INSERT INTO ade_task_handovers
-		(id, task_id, from_step_id, from_step_name, body, source, state, finished, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, 'agent', 'draft', ?, ?, ?)
+		(id, task_id, from_step_id, from_step_name, body, source, state, finished, created_at, updated_at, session_id)
+		VALUES (?, ?, ?, ?, ?, 'agent', 'draft', ?, ?, ?, ?)
 		ON CONFLICT (task_id, from_step_id) WHERE state = 'draft' DO UPDATE SET
 			body = excluded.body, source = 'agent', finished = excluded.finished, dismissed = 0, edited = 0,
-			from_step_name = excluded.from_step_name, updated_at = excluded.updated_at`,
-		h.ID, h.TaskID, h.FromStepID, h.FromStepName, h.Body, fin, h.UpdatedAt, h.UpdatedAt); err != nil {
+			from_step_name = excluded.from_step_name, updated_at = excluded.updated_at, session_id = excluded.session_id`,
+		h.ID, h.TaskID, h.FromStepID, h.FromStepName, h.Body, fin, h.UpdatedAt, h.UpdatedAt, h.SessionID); err != nil {
 		return model.AdeHandover{}, fmt.Errorf("repos: upsert handover draft %s: %w", h.TaskID, err)
 	}
 	d, err := r.HandoverDraft(h.TaskID, h.FromStepID)
@@ -184,11 +184,11 @@ func applyHandoff(tx *sql.Tx, taskID string, h model.AdeHandoff) error {
 	} else if err != sql.ErrNoRows {
 		return fmt.Errorf("repos: read handover draft %s: %w", taskID, err)
 	}
-	insert := func(body, source string) error {
+	insert := func(body, source, sessionID string) error {
 		if _, err := tx.Exec(`INSERT INTO ade_task_handovers
-			(id, task_id, from_step_id, from_step_name, to_step_id, to_step_name, body, source, state, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'handed', ?, ?)`,
-			h.ID, taskID, h.FromStepID, h.FromStepName, h.ToStepID, h.ToStepName, body, source, h.Now, h.Now); err != nil {
+			(id, task_id, from_step_id, from_step_name, to_step_id, to_step_name, body, source, state, created_at, updated_at, session_id)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'handed', ?, ?, ?)`,
+			h.ID, taskID, h.FromStepID, h.FromStepName, h.ToStepID, h.ToStepName, body, source, h.Now, h.Now, sessionID); err != nil {
 			return fmt.Errorf("repos: insert handover %s: %w", taskID, err)
 		}
 		return nil
@@ -202,13 +202,13 @@ func applyHandoff(tx *sql.Tx, taskID string, h model.AdeHandoff) error {
 		if h.Notes == nil || *h.Notes == "" {
 			return nil
 		}
-		return insert(*h.Notes, model.AdeHandoverSourceRun)
+		return insert(*h.Notes, model.AdeHandoverSourceRun, h.SessionID)
 	}
 	if draft == nil {
 		if h.Notes == nil || *h.Notes == "" {
 			return nil
 		}
-		return insert(*h.Notes, model.AdeHandoverSourceUser)
+		return insert(*h.Notes, model.AdeHandoverSourceUser, "")
 	}
 	if h.Notes != nil && *h.Notes == "" {
 		if _, err := tx.Exec(`DELETE FROM ade_task_handovers WHERE id = ?`, draft.ID); err != nil {

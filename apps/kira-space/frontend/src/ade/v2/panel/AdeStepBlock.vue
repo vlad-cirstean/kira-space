@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
-import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { type MessageKey, t } from '@theme/i18n';
 import SmartBadge from '@workbench/automations/smart/SmartBadge.vue';
 import { errorText } from '@workbench/bridge/codedError';
@@ -13,24 +11,23 @@ import AdeChip from '../AdeChip.vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
 import AdeTip from '../AdeTip.vue';
 import type { Tone } from '../board/actions';
-import { integrationChips } from '../board/labels';
 import type { StepRun } from '../board/progress';
 import { WAITING_SETUP_NOTES } from '../board/setupGate';
 import { nextStepId, type StepBlock } from '../board/stepBlocks';
-import { type CardModel, usePlanModel } from '../plan/usePlanModel';
+import type { CardModel } from '../plan/usePlanModel';
 import { useApprove, useResumeRun, useRetryRun } from '../queries';
 import { useReviewCode } from '../review/useReviewCode';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
-import { ACTION_CLASS, TONE_SOLID_CLASS, TONE_TAG_CLASS, TONE_TEXT_CLASS } from '../tones';
+import { ACTION_CLASS, TONE_SOLID_CLASS, TONE_TEXT_CLASS } from '../tones';
 import AdeRunLog from './AdeRunLog.vue';
 import AdeRunOutcome from './AdeRunOutcome.vue';
 import AdeRunSandboxBadge from './AdeRunSandboxBadge.vue';
 import AdeSetupProgress from './AdeSetupProgress.vue';
 
 // One step of the Workflow block: header (state chip, action slot, name, mode), the step row, then
-// its per-repo run lines, or the branches of the Release step.
+// its per-repo run lines.
 const props = defineProps<{ block: StepBlock; card: CardModel }>();
 const ui = useAdeBoardUiStore();
 const takeOver = useAdeTakeOverStore();
@@ -40,9 +37,6 @@ const resume = useResumeRun();
 const stage = useAdeStageDialogStore();
 const contextMenu = useContextMenuStore();
 const reviewCode = useReviewCode();
-const { model } = usePlanModel();
-const mainNameOf = (codeRepoId: string): string =>
-  model.value?.board.repos.find((r) => r.codeRepoId === codeRepoId)?.mainName ?? 'main';
 
 const error = ref('');
 const openLog = ref<string | null>(null);
@@ -98,6 +92,39 @@ const reportRun = (runId: string) => {
   const r = props.card.task.runs.find((x) => x.id === runId);
   return r?.outcome?.report && (r.state === 'failed' || r.state === 'stuck') ? r : undefined;
 };
+// Repo label per run target; the branch name too when another branch of the task shares the repo.
+function target(branchId: string): {
+  repo: string;
+  codeRepoId: string;
+  name: string;
+  named: boolean;
+} {
+  const row = props.card.rows.find((r) => r.id === branchId);
+  if (!row) {
+    return {
+      repo: t('space.ade.stepBlock.taskFolder.label'),
+      codeRepoId: '',
+      name: '',
+      named: false,
+    };
+  }
+  const shared = props.card.rows.some(
+    (r) => r.id !== row.id && r.branch.codeRepoId === row.branch.codeRepoId,
+  );
+  return {
+    repo: row.repo,
+    codeRepoId: row.branch.codeRepoId,
+    name: row.name,
+    named: shared && row.name !== '',
+  };
+}
+// Run lines read in the branch list's order, the task folder first; each carries its target.
+const runs = computed(() => {
+  const at = (branchId: string): number => props.card.rows.findIndex((r) => r.id === branchId);
+  return props.block.runs
+    .toSorted((a, b) => at(a.run.branchId) - at(b.run.branchId))
+    .map((rl) => ({ ...rl, target: target(rl.run.branchId) }));
+});
 const heldRow = (rl: { run: { branchId: string }; note: string }) =>
   WAITING_SETUP_NOTES.includes(rl.note)
     ? props.card.rows.find((r) => r.id === rl.run.branchId)
@@ -151,28 +178,10 @@ const canTakeOver = (r: StepRun): boolean =>
   r.sessionId !== '' &&
   (r.state === 'stuck' || r.state === 'failed' || r.state === 'running');
 
-const released = computed(() =>
-  props.block.release ? props.card.rows.filter((r) => r.branch.kind === 'mine' && !r.draft) : [],
-);
-const reviewRows = computed(() =>
-  props.block.step.id === 'review' ? props.card.rows.filter((r) => r.branch.kind === 'mine') : [],
-);
-const reviewOff = (row: CardModel['rows'][number]): boolean => {
-  const c = reviewCode.choiceOf(row);
-  return reviewCode.pending.value || !c || c.disabled;
-};
 const onReview = (branchId: string): void => {
   error.value = '';
   reviewCode.open(props.card.task.id, branchId, null, { onError: (msg) => (error.value = msg) });
 };
-const mainBadge = (b: CardModel['rows'][number]['branch']): string => {
-  const main = mainNameOf(b.codeRepoId);
-  return b.mergedIntoMain
-    ? t('space.ade.progress.stepDone.label', { name: main })
-    : t('space.ade.stepBlock.mainOpen.status', { main });
-};
-const chipClass = (tone: 'muted' | 'stale' | 'unknown'): string =>
-  tone === 'stale' ? 'text-tone-amber' : 'text-muted-foreground';
 function logToggleLabel(runId: string): string {
   const open = openLog.value === runId;
   if (props.block.step.kind === 'script') {
@@ -272,7 +281,7 @@ function logToggleLabel(runId: string): string {
           >
         </AdeTip>
       </div>
-      <template v-for="rl in block.runs" :key="rl.run.branchId">
+      <template v-for="rl in runs" :key="rl.run.branchId">
         <div
           class="flex min-h-control items-center gap-2 pl-6"
           data-testid="ade-run-line"
@@ -286,14 +295,15 @@ function logToggleLabel(runId: string): string {
               rl.glyph
             }}</span
           >
-          <AdeRepoTag
-            :code-repo-id="card.rows.find((r) => r.id === rl.run.branchId)?.branch.codeRepoId ?? ''"
-            :label="
-              rl.run.branchId === ''
-                ? t('space.ade.stepBlock.taskFolder.label')
-                : (card.rows.find((r) => r.id === rl.run.branchId)?.repo ?? '')
-            "
-          />
+          <AdeRepoTag :code-repo-id="rl.target.codeRepoId" :label="rl.target.repo" />
+          <span
+            v-if="rl.target.named"
+            class="max-w-40 shrink-0 truncate font-data text-kira-sm text-subtle"
+            data-testid="ade-run-branch"
+            >{{
+              rl.target.name
+            }}</span
+          >
           <span
             class="min-w-16 shrink-0 whitespace-nowrap text-kira-sm"
             :class="TONE_TEXT_CLASS[rl.tone]"
@@ -405,56 +415,6 @@ function logToggleLabel(runId: string): string {
       </template>
     </div>
 
-    <Button
-      v-for="row in released"
-      :key="row.id"
-      variant="toolbar"
-      size="kira-lg"
-      class="w-full justify-start gap-2 bg-bg px-1.5 text-left text-fg"
-      data-testid="ade-release-row"
-      :data-branch-id="row.id"
-      @click="ui.selectBranch(card.task.id, row.id)"
-    >
-      <span
-        class="shrink-0 rounded-kira-sm px-1.5 py-px text-kira-sm font-medium"
-        :class="TONE_TAG_CLASS[row.branch.mergedIntoMain ? 'purple' : 'grey']"
-        >{{
-          mainBadge(row.branch)
-        }}</span
-      >
-      <AdeTip v-for="c in integrationChips(row.branch)" :key="c.label" :text="c.tip">
-        <span class="shrink-0 text-kira-sm font-medium" :class="chipClass(c.tone)">{{
-          c.label
-        }}</span>
-      </AdeTip>
-      <AdeRepoTag :code-repo-id="row.branch.codeRepoId" :label="row.repo" />
-      <span class="min-w-0 truncate font-data text-kira-md">{{ row.name }}</span>
-    </Button>
-    <div
-      v-for="row in reviewRows"
-      :key="`review-${row.id}`"
-      class="flex min-h-row items-center gap-2 rounded-kira-sm bg-bg px-1.5"
-      data-testid="ade-review-row"
-      :data-branch-id="row.id"
-    >
-      <AdeRepoTag :code-repo-id="row.branch.codeRepoId" :label="row.repo" />
-      <span class="min-w-0 flex-1 truncate font-data text-kira-md">{{ row.name }}</span>
-      <AdeTip :parts="reviewCode.choiceOf(row)?.tip ?? []">
-        <TooltipDisabledTrigger :disabled="reviewOff(row)">
-          <Button
-            variant="dialog"
-            size="kira"
-            class="shrink-0"
-            :disabled="reviewOff(row)"
-            data-testid="ade-review-code"
-            @click="onReview(row.id)"
-          >
-            <CodiconIcon name="git-compare" :size="13" />
-            {{ t('space.ade.board.taskMenu.reviewCode.label') }}
-          </Button>
-        </TooltipDisabledTrigger>
-      </AdeTip>
-    </div>
     <Alert v-if="error" variant="error" data-testid="ade-step-block-error"
       ><AlertDescription>{{ error }}</AlertDescription></Alert
     >

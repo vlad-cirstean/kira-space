@@ -85,12 +85,10 @@ test('branch status tags keep their tones', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
   await page.locator('[data-testid="ade-load-all"]').click();
   const tags = await page
-    .locator(
-      '[data-testid="ade-task-cells"] [data-testid="ade-action-cell"]:not(:first-child) [data-testid="ade-tag"]',
-    )
+    .locator('[data-testid="ade-branch-row"] [data-testid="ade-tag"]')
     .evaluateAll((els) =>
       els.map((el) => ({
-        text: (el.textContent ?? '').trim(),
+        text: (el.getAttribute('aria-label') ?? '').trim(),
         tone: el.getAttribute('data-tone'),
       })),
     );
@@ -171,7 +169,9 @@ test('branch rows show base markers and the derived branch tags', async ({ relau
 
   const markers = await page.locator('[data-testid="ade-base-marker"]').allInnerTexts();
   expect(markers.map((m) => m.replace(/\s+/g, ''))).toContain('search-schema');
-  const tags = await page.locator('[data-testid="ade-tag"]').allInnerTexts();
+  const tags = await page
+    .locator('[data-testid="ade-tag"]')
+    .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label') ?? ''));
   expect(tags).toContain('3 behind main');
   expect(tags).toContain('Checking…');
   expect(tags).toContain('Conflict check failed');
@@ -255,7 +255,7 @@ async function dragCardToBand(page: Page, taskId: string, day: number): Promise<
   await page.mouse.move(from.x + 40, from.y + 30);
   await page.mouse.down();
   await page.mouse.move(from.x + 60, from.y + 50, { steps: 4 });
-  await page.mouse.move(to.x + 200, to.y + to.height / 2, { steps: 12 });
+  await page.mouse.move(to.x + 4, to.y + to.height / 2, { steps: 12 });
   // The drop target is hit-tested per animation frame: let it catch up with the pointer.
   await page.evaluate(
     () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
@@ -480,7 +480,11 @@ test('plan cards use colour only for task edge, status, problems and the repo ba
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch);
-  await expect(page.locator('[data-testid="ade-action-cell"] [class*="-solid"]')).toHaveCount(0);
+  await expect(
+    page.locator(
+      '[data-testid="ade-card"] [data-testid="ade-tag"]:not([data-urgent])[class*="-solid"]',
+    ),
+  ).toHaveCount(0);
   await expect(card(page, 'T_search').locator('[data-testid="ade-step-label"]')).not.toHaveClass(
     /tone-amber|tone-green/,
   );

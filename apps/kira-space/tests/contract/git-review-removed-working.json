@@ -1,0 +1,56 @@
+{
+  "args:git:review.removed.list": {
+    "base": "origin/main",
+    "branch": "<branch>",
+    "repoId": "<repo>"
+  },
+  "git:review.removed.list#working": {
+    "entries": [
+      {
+        "contentKind": "text",
+        "id": 1,
+        "origin": "working",
+        "path": "c.txt",
+        "range": {
+          "end": 3,
+          "start": 2
+        },
+        "removedAt": 0,
+        "reviewedAt": 0,
+        "reviewedAtSha": "<masked>",
+        "text": "c2\nc3\n",
+        "truncated": false
+      },
+      {
+        "contentKind": "text",
+        "id": 3,
+        "origin": "working",
+        "path": "c.txt",
+        "range": {
+          "end": 2,
+          "start": 2
+        },
+        "removedAt": 0,
+        "reviewedAt": 0,
+        "reviewedAtSha": "<masked>",
+        "text": "c4\n",
+        "truncated": false
+      },
+      {
+        "contentKind": "text",
+        "id": 2,
+        "origin": "working",
+        "path": "d.txt",
+        "range": {
+          "end": 3,
+          "start": 3
+        },
+        "removedAt": 0,
+        "reviewedAt": 0,
+        "reviewedAtSha": "<masked>",
+        "text": "d3\n",
+        "truncated": false
+      }
+    ]
+  }
+}

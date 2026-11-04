@@ -56,7 +56,9 @@ const (
 type Grant struct {
 	RunID  string
 	TaskID string
-	Space  bool
+	// SessionID is the Kira session record behind the call; "" outside ADE.
+	SessionID string
+	Space     bool
 	// Git, when set, adds the git tool for those worktrees.
 	Git *GitGrant
 	// Results are the step's declared results; finish_step's status is one of their ids or

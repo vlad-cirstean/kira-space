@@ -30,6 +30,28 @@ func (s *GitService) ReviewFiles(ctx context.Context, a GitReviewFilesArgs) (git
 	return callGit[gitsession.RangeFilesResult](ctx, s.windows, a.WindowKey, "review.files", a.Params)
 }
 
+// GitReviewRemovedListArgs is ReviewRemovedList's request.
+type GitReviewRemovedListArgs struct {
+	WindowKey string                         `json:"windowKey"`
+	Params    gitrpc.ReviewRemovedListParams `json:"params"`
+}
+
+// ReviewRemovedList answers review.removed.list.
+func (s *GitService) ReviewRemovedList(ctx context.Context, a GitReviewRemovedListArgs) (gitsession.ReviewRemovedResult, error) {
+	return callGit[gitsession.ReviewRemovedResult](ctx, s.windows, a.WindowKey, "review.removed.list", a.Params)
+}
+
+// GitReviewRemovedDismissArgs is ReviewRemovedDismiss's request.
+type GitReviewRemovedDismissArgs struct {
+	WindowKey string                            `json:"windowKey"`
+	Params    gitrpc.ReviewRemovedDismissParams `json:"params"`
+}
+
+// ReviewRemovedDismiss answers review.removed.dismiss.
+func (s *GitService) ReviewRemovedDismiss(ctx context.Context, a GitReviewRemovedDismissArgs) (gitrpc.ReviewRemovedDismissResult, error) {
+	return callGit[gitrpc.ReviewRemovedDismissResult](ctx, s.windows, a.WindowKey, "review.removed.dismiss", a.Params)
+}
+
 // GitReviewFileDiffArgs is ReviewFileDiff's request.
 type GitReviewFileDiffArgs struct {
 	WindowKey string                      `json:"windowKey"`

@@ -13,7 +13,8 @@ async function openArchive(page: Page): Promise<void> {
   await page
     .locator('[data-testid="ade-card"][data-task-id="T_cart"] [data-testid="ade-card-head"]')
     .click();
-  await page.locator(t('ade-panel-archive')).click();
+  await page.locator(t('ade-panel-more')).click();
+  await page.locator(t('menu-item-ade-task-archive')).click();
 }
 
 const branchRisk = (over: Record<string, unknown> = {}) => ({

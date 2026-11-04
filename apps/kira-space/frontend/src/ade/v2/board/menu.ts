@@ -17,6 +17,7 @@ import { nextStepId } from './stepBlocks';
 
 export type TaskMenuCmd =
   | { kind: 'action' }
+  | { kind: 'startNew' }
   | { kind: 'moveStep'; stepId: string }
   | { kind: 'setStatus'; statusId: string }
   | { kind: 'stopRuns' }
@@ -283,6 +284,16 @@ export function taskMenuModel(i: TaskMenuInput): TaskMenuEntry[] {
         label: c.action.label.replace(/^▶ /, ''),
         cmd: { kind: 'action' },
         hint: c.action.tip,
+      });
+    }
+    if (c.action?.kind === 'resume') {
+      const step = c.progress.step?.name ?? '';
+      out.push({
+        type: 'item',
+        id: 'ade-task-start-new',
+        label: t('space.ade.board.taskMenu.startNew.label', { step }),
+        cmd: { kind: 'startNew' },
+        hint: t('space.ade.board.taskMenu.startNew.tooltip', { step }),
       });
     }
     out.push(statusEntry(c, i.statuses), ...stepEntries(c, live));

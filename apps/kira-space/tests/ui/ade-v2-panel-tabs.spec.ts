@@ -20,16 +20,16 @@ test('each task reopens on the tab it was left on', async ({ relaunch }) => {
   const sessions = calls(control, IPC.adeTaskSessions).length;
 
   await page.locator(head('T_notif')).click();
-  await expect(page.locator(t('ade-task-tab'))).toBeVisible();
-  await page.locator(t('ade-panel-tab-notes')).click();
-  await expect(page.locator(t('ade-notes-tab'))).toBeVisible();
+  await expect(page.locator(t('ade-main-tab'))).toBeVisible();
+  await page.locator(t('ade-panel-tab-details')).click();
+  await expect(page.locator(t('ade-details-tab'))).toBeVisible();
 
   await page.locator(head('T_bill')).click();
   await expect(page.locator(t('ade-sessions-tab'))).toBeVisible();
   await expect(page.locator(t('ade-session-tab-b1c2'))).toHaveAttribute('data-selected', 'true');
 
   await page.locator(head('T_notif')).click();
-  await expect(page.locator(t('ade-notes-tab'))).toBeVisible();
+  await expect(page.locator(t('ade-details-tab'))).toBeVisible();
 
   expect(calls(control, IPC.adeTaskBoard)).toHaveLength(boards);
   expect(calls(control, IPC.adeTaskSessions)).toHaveLength(sessions);
@@ -49,7 +49,7 @@ test('each branch reopens on the tab it was left on', async ({ relaunch }) => {
   await expect(page.locator(t('ade-sessions-tab'))).toBeVisible();
 
   await page.locator(t('ade-panel-back')).click();
-  await expect(page.locator(t('ade-task-tab'))).toBeVisible();
+  await expect(page.locator(t('ade-main-tab'))).toBeVisible();
 });
 
 test('tab counts show in a grey circle badge', async ({ relaunch }) => {

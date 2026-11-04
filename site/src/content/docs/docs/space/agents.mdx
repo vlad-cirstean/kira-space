@@ -227,7 +227,7 @@ Finished and stopped sessions sit behind the **Finished or stopped** dropdown at
 
 ## Agent context
 
-The **Context** tab in Agents edits one Markdown file that every agent gets as extra system prompt: `~/.kira-space/agent/context.md`.
+The **Context** sub-tab of **Agent config** edits one Markdown file that every agent gets as extra system prompt: `~/.kira-space/agent/context.md`.
 
 - Both apps use it: sessions, Take over, resume, headless steps, smart scripts and Continue in terminal. Memory calls do not.
 - Up to 32 KiB. Empty or missing means no context. A broken file gives agents the last good text.
@@ -237,7 +237,7 @@ The **Context** tab in Agents edits one Markdown file that every agent gets as e
 
 ## Agent settings
 
-The **Settings** tab in Agents edits `~/.kira-space/agent/settings.yaml`. One file serves every agent. Kira renders it in each agent's own format. The file is up to 256 KiB, and an unknown key is refused with its line.
+The **Settings** sub-tab of **Agent config** edits `~/.kira-space/agent/settings.yaml`. One file serves every agent. Kira renders it in each agent's own format. The file is up to 256 KiB, and an unknown key is refused with its line.
 
 Common keys:
 
@@ -289,7 +289,7 @@ The **Secrets** section lists the secrets the file references. **Set value** sto
 
 ## Import and export
 
-Under each agent in the **Settings** tab, **Import from Claude Code** or **Import from OpenCode** reads that agent's user-level config. **Export to Claude Code** or **Export to OpenCode** writes Kira's settings and context into it.
+Under each agent in the **Settings** sub-tab of **Agent config**, **Import from Claude Code** or **Import from OpenCode** reads that agent's user-level config. **Export to Claude Code** or **Export to OpenCode** writes Kira's settings and context into it.
 
 - Claude Code files: `~/.claude/settings.json`, `~/.claude/CLAUDE.md` and the `mcpServers` of `~/.claude.json`.
 - OpenCode files: `opencode.json`, `opencode.jsonc` or `config.json`, and `AGENTS.md`, in `$XDG_CONFIG_HOME/opencode` or else `~/.config/opencode`. `opencode.jsonc` wins over `opencode.json`.

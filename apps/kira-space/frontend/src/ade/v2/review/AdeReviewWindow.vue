@@ -13,6 +13,7 @@ import { useAdeReviewWindowStore } from '../state/adeReviewWindow';
 import AdeReviewAgentPanel from './AdeReviewAgentPanel.vue';
 import AdeReviewFiles from './AdeReviewFiles.vue';
 import AdeReviewHeader from './AdeReviewHeader.vue';
+import AdeReviewRemoved from './AdeReviewRemoved.vue';
 import AdeWorkflowReviewPanel from './AdeWorkflowReviewPanel.vue';
 import { useReviewContext } from './useReviewContext';
 import { useReviewWorkingSync } from './useReviewWorking';
@@ -103,12 +104,19 @@ const left = useLiveSize(
     <AdeReviewHeader :target="target" />
     <div ref="row" class="flex min-h-0 flex-1 gap-0.5 bg-chrome px-1.5 pb-0.5">
       <section
-        class="min-h-0 flex-none overflow-hidden rounded-kira border border-border bg-bg"
+        class="flex min-h-0 flex-none flex-col overflow-hidden rounded-kira border border-border bg-bg"
         :style="{ width: `${left.size.value}px` }"
         :aria-label="t('space.ade.review.window.files.aria')"
         data-testid="ade-review-left"
       >
-        <AdeReviewFiles ref="files" :target="target" />
+        <div class="min-h-0 flex-1">
+          <AdeReviewFiles ref="files" :target="target" />
+        </div>
+        <div
+          class="flex max-h-[40%] shrink-0 flex-col overflow-auto border-t border-border empty:hidden"
+        >
+          <AdeReviewRemoved :target="target" />
+        </div>
       </section>
       <ResizeHandle
         :label="t('space.ade.panel.resize.label')"

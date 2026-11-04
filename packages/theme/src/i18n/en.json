@@ -1405,6 +1405,9 @@
     },
     "space": {
       "ade": {
+        "artifactTitle": {
+          "body": "A title needs 1 to 200 characters."
+        },
         "branchMissing": {
           "body": "That branch no longer exists."
         },
@@ -3026,6 +3029,9 @@
     },
     "later": {
       "label": "Later"
+    },
+    "main": {
+      "label": "Main"
     },
     "mainWorktree": {
       "tooltip": "Main worktree"
@@ -7926,6 +7932,11 @@
       "agentOrigin": {
         "tooltip": "Added or named by the agent"
       },
+      "agents": {
+        "tab": {
+          "label": "Agent config"
+        }
+      },
       "allSessions": {
         "archived": {
           "status": "Stopped · archived"
@@ -7968,9 +7979,6 @@
         }
       },
       "artifacts": {
-        "add": {
-          "label": "Add artifact"
-        },
         "empty": {
           "body": "No artifacts yet. Branches, pull requests and deployments show up as the task produces them."
         },
@@ -8006,12 +8014,6 @@
             "label": "Web link"
           }
         },
-        "ref": {
-          "label": "Reference"
-        },
-        "remove": {
-          "tooltip": "Remove artifact"
-        },
         "stageDone": {
           "label": "Produced by this task"
         },
@@ -8022,12 +8024,6 @@
           "pushed": {
             "status": "Pushed"
           }
-        },
-        "title": {
-          "title": "Artifacts"
-        },
-        "url": {
-          "label": "Web address"
         }
       },
       "automation": {
@@ -8061,9 +8057,6 @@
         },
         "excludedStacked": {
           "hint": "Stacked on this branch."
-        },
-        "main": {
-          "label": "Main"
         },
         "planner": {
           "label": "Planner branches"
@@ -8285,6 +8278,10 @@
             "label": "Finish",
             "tooltip": "{step} is done; finish the workflow"
           },
+          "resume": {
+            "label": "Resume {step}",
+            "tooltip": "Continue your last {step} session in {product}"
+          },
           "retryFailed": {
             "tooltip": "{step} failed; see its output on the task tab"
           },
@@ -8366,6 +8363,10 @@
           },
           "skipStep": {
             "label": "Skip {step}"
+          },
+          "startNew": {
+            "label": "Start new {step} session",
+            "tooltip": "Open a fresh {product} session for {step}; the last one stays in the session list"
           },
           "stopRuns": {
             "label": "Stop running agents"
@@ -8516,6 +8517,50 @@
         "body": "{day} is now a day off. This moves {count} task planned for it to {to}. | {day} is now a day off. This moves {count} tasks planned for it to {to}.",
         "title": "Move tasks?"
       },
+      "details": {
+        "empty": {
+          "body": "No links yet."
+        },
+        "link": {
+          "aria": "Link title"
+        },
+        "links": {
+          "title": "Links"
+        },
+        "paste": {
+          "aria": "Add a link",
+          "notLink": {
+            "error": "That is not a link or a Jira key."
+          },
+          "placeholder": "Paste a link or Jira key"
+        },
+        "related": {
+          "title": "Related"
+        },
+        "session": {
+          "tooltip": "Open the session that added this"
+        },
+        "timeline": {
+          "artifact": {
+            "label": "Added {title}"
+          },
+          "branch": {
+            "label": "Added branch {name}"
+          },
+          "created": {
+            "label": "Task created"
+          },
+          "draft": {
+            "label": "Draft handover from {from}"
+          },
+          "handover": {
+            "label": "Handover from {from} to {to}"
+          },
+          "header": {
+            "label": "Timeline ({count})"
+          }
+        }
+      },
       "estimate": {
         "clear": {
           "tooltip": "Clear estimate"
@@ -8630,17 +8675,25 @@
         "copy": {
           "tooltip": "Copy {label} link"
         },
-        "field": {
-          "label": "{label} link"
-        },
         "notJira": {
           "error": "Not a Jira key or link."
         },
-        "remove": {
-          "tooltip": "Remove {label} link"
-        },
         "view": {
           "tooltip": "View {label} in Kira"
+        }
+      },
+      "mainTab": {
+        "checksFailure": {
+          "tooltip": "Checks failed"
+        },
+        "checksPending": {
+          "tooltip": "Checks running"
+        },
+        "checksSuccess": {
+          "tooltip": "Checks passed"
+        },
+        "prBase": {
+          "label": "→ {base}"
         }
       },
       "needs": {
@@ -9298,6 +9351,39 @@
             "label": "{count} uncommitted | {count} uncommitted"
           }
         },
+        "removed": {
+          "dismiss": {
+            "aria": "Dismiss removed lines in {path}",
+            "tooltip": "Dismiss for good"
+          },
+          "dismissFailed": {
+            "body": "Couldn’t dismiss this entry. Retry."
+          },
+          "header": {
+            "label": "Removed since review · {count}"
+          },
+          "line": {
+            "label": "Line {line}"
+          },
+          "lines": {
+            "label": "Lines {start}–{end}"
+          },
+          "notStored": {
+            "hint": "The file content is not stored."
+          },
+          "reviewed": {
+            "label": "Reviewed"
+          },
+          "section": {
+            "aria": "Reviewed lines removed since review"
+          },
+          "truncated": {
+            "hint": "The rest of this block is not shown."
+          },
+          "wholeFile": {
+            "label": "Whole file"
+          }
+        },
         "window": {
           "diffs": {
             "aria": "Diffs"
@@ -9700,9 +9786,6 @@
         "hideOutput": {
           "label": "Hide output"
         },
-        "mainOpen": {
-          "status": "{main} —"
-        },
         "moveHere": {
           "label": "Move task here"
         },
@@ -9808,15 +9891,12 @@
             "title": "Remove repository from task?"
           },
           "trigger": {
-            "aria": "Repository and branch actions"
+            "aria": "Change branch or repository"
           }
         },
         "branchRequest": {
           "label": "Branch request",
           "status": "An agent waits for your approval"
-        },
-        "handover": {
-          "label": "Handover"
         },
         "issue": {
           "label": "Issue"
@@ -9828,12 +9908,6 @@
           "prsNone": {
             "label": "No pull requests"
           }
-        },
-        "jiraPlaceholder": {
-          "placeholder": "Paste Jira link or key"
-        },
-        "linkPlaceholder": {
-          "placeholder": "Paste {labels} issue or {shorts} link"
         },
         "notMerging": {
           "hint": "Stays on the plan; never merged."

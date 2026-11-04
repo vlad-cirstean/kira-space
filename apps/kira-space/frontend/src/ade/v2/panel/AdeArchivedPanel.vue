@@ -13,15 +13,14 @@ import { control } from '../../../bridge/control';
 import AdeChip from '../AdeChip.vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
 import AdeTip from '../AdeTip.vue';
-import AdeArtifactList from '../artifacts/AdeArtifactList.vue';
+import AdeDetailsTab from '../details/AdeDetailsTab.vue';
 import { useHostLabels } from '../hostLabels';
-import AdeHandoverList from '../notes/AdeHandoverList.vue';
-import AdeNotesEditor from '../notes/AdeNotesEditor.vue';
 import { usePlanModel } from '../plan/usePlanModel';
 import { useRestoreTask } from '../queries';
 import { useArchivedTask } from '../readQueries';
 import AdeSessionsTab from '../sessions/AdeSessionsTab.vue';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { type TaskPanelTab, useAdePanelTabsStore } from '../state/adePanelTabs';
 import type { ArchivedBranch, ArchivedComment, ArchivedTask } from '../wire';
 import AdePanelFrame from './AdePanelFrame.vue';
 import { PR_TONE, prStateLabel } from './prState';
@@ -31,26 +30,32 @@ import { PR_TONE, prStateLabel } from './prState';
 const props = defineProps<{ taskId: string }>();
 
 const boardUi = useAdeBoardUiStore();
+const panelTabs = useAdePanelTabsStore();
 const { sessions, repoLabel } = usePlanModel();
 const hostLabels = useHostLabels();
 const query = useArchivedTask(() => props.taskId);
 const restore = useRestoreTask();
 const restoreError = ref('');
-const tab = ref('task');
+const tab = ref<TaskPanelTab>('main');
 
 watch(
   () => props.taskId,
   () => {
-    tab.value = 'task';
+    tab.value = 'main';
     restoreError.value = '';
   },
 );
 
+function showSession(sessionId: string): void {
+  panelTabs.selectSession(props.taskId, sessionId);
+  boardUi.revealSessionId = sessionId;
+  tab.value = 'sessions';
+}
+
 const count = computed(() => sessions.value.filter((s) => s.taskId === props.taskId).length);
 const tabs = computed(() => [
-  { value: 'task', label: t('common.task.label') },
-  { value: 'notes', label: t('space.common.notes.label') },
-  { value: 'artifacts', label: t('space.ade.artifacts.title.title') },
+  { value: 'main', label: t('common.main.label') },
+  { value: 'details', label: t('common.details.title') },
   { value: 'sessions', label: t('space.common.sessions.label'), count: count.value },
 ]);
 
@@ -168,7 +173,7 @@ async function onRestore(): Promise<void> {
         </template>
 
         <div
-          v-if="tab === 'task'"
+          v-if="tab === 'main'"
           class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-3 pb-3 pt-3 text-kira-md"
           data-testid="ade-archived-task-tab"
         >
@@ -307,21 +312,13 @@ async function onRestore(): Promise<void> {
             </div>
           </div>
         </div>
-        <div
-          v-else-if="tab === 'notes'"
-          class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3"
-          data-testid="ade-archived-notes"
-        >
-          <AdeNotesEditor :notes="a.task.notes" :item-id="a.task.id" readonly />
-          <AdeHandoverList :task-id="a.task.id" readonly />
-        </div>
-        <div
-          v-else-if="tab === 'artifacts'"
-          class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3"
-          data-testid="ade-archived-artifacts"
-        >
-          <AdeArtifactList :task-id="a.task.id" readonly />
-        </div>
+        <AdeDetailsTab
+          v-else-if="tab === 'details'"
+          :task="a.task"
+          :branches="a.branches.filter((b) => !b.removed)"
+          readonly
+          @open-session="showSession"
+        />
         <AdeSessionsTab v-else :task-id="a.task.id" archived />
       </AdePanelFrame>
     </template>

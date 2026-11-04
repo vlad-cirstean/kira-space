@@ -23,7 +23,8 @@ async function openSettings(
     { channel: IPC.agentSettingsGet, response: view(over) },
     ...extra,
   ]);
-  await app.window.locator(t('ade-tab-settings')).click();
+  await app.window.locator(t('ade-tab-agents')).click();
+  await app.window.locator(t('ade-agents-tab-settings')).click();
   await app.window.locator(t('ade-settings')).waitFor();
   await app.window.locator(t('ade-settings-note')).waitFor();
   return app;
@@ -86,7 +87,8 @@ test('Save sends the text with the loaded hash and a reload shows the saved text
   });
   await expect(page.locator(t('ade-settings-save'))).toBeDisabled();
   await page.reload();
-  await page.locator(t('ade-tab-settings')).click();
+  await page.locator(t('ade-tab-agents')).click();
+  await page.locator(t('ade-agents-tab-settings')).click();
   await expect(page.locator(t('ade-settings-text'))).toHaveValue('env:\n  A: b\n');
 });
 

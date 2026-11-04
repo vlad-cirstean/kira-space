@@ -57,7 +57,7 @@ export function baseChoiceOf(value: string): BaseChoice {
 export function baseGroups(): PickerGroup[] {
   return [
     { id: 'previous', label: t('space.ade.basePicker.previous.label') },
-    { id: 'main', label: t('space.ade.basePicker.main.label') },
+    { id: 'main', label: t('common.main.label') },
     { id: 'planner', label: t('space.ade.basePicker.planner.label') },
     { id: 'branches', label: t('common.module.branches.label') },
   ];

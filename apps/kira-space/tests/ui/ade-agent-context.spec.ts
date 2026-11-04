@@ -31,7 +31,8 @@ async function openContext(
     { channel: IPC.agentContextGet, response: view(over) },
     ...extra,
   ]);
-  await app.window.locator(t('ade-tab-context')).click();
+  await app.window.locator(t('ade-tab-agents')).click();
+  await app.window.locator(t('ade-agents-tab-context')).click();
   await app.window.locator(t('ade-context')).waitFor();
   await app.window.locator(t('ade-context-note')).waitFor();
   return app;
@@ -64,7 +65,8 @@ test('a reload after a save shows the saved text', async ({ relaunch }) => {
   await page.locator(t('ade-context-save')).click();
   await expect(page.locator(t('ade-context-save'))).toBeDisabled();
   await page.reload();
-  await page.locator(t('ade-tab-context')).click();
+  await page.locator(t('ade-tab-agents')).click();
+  await page.locator(t('ade-agents-tab-context')).click();
   await expect(page.locator(t('ade-context-text'))).toHaveValue('Use spaces.\n');
 });
 

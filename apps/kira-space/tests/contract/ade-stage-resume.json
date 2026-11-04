@@ -1,0 +1,25 @@
+{
+  "AdeTaskService.Sessions#stopped-step": {
+    "activity": "",
+    "agentSessionId": "<masked>",
+    "branchId": "<masked>",
+    "cwd": "<masked>",
+    "cwdMissing": false,
+    "id": "<masked>",
+    "lastActiveAt": 0,
+    "mode": "tui",
+    "provider": "claude",
+    "purpose": "",
+    "resumes": "<masked>",
+    "runId": "<masked>",
+    "startedAt": 0,
+    "state": "stopped",
+    "stepId": "work",
+    "taskId": "<masked>",
+    "terminalId": "<masked>"
+  },
+  "args:AdeTaskService.TakeOver": {
+    "sessionId": "<id:1>",
+    "stopIfRunning": true
+  }
+}

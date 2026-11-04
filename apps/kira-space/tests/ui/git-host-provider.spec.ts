@@ -130,9 +130,11 @@ test('the branch panel and the task link use the host words', async ({ relaunch 
     },
   ]);
   await page.locator(`${t('ade-card')}[data-task-id="T_auth"] ${t('ade-card-head')}`).click();
-  const link = page.locator(t('ade-task-host-link'));
-  await expect(link).toHaveText('web-app!7');
-  await expect(page.locator('dd', { has: link })).toContainText('MR');
+  await page.locator(t('ade-panel-tab-details')).click();
+  await expect(
+    page.locator(`${t('ade-details-link')}[data-origin="host"] ${t('ade-details-link-title')}`),
+  ).toHaveText('web-app!7');
+  await page.locator(t('ade-panel-tab-main')).click();
 
   await page.locator(`${t('ade-task-branch')}[data-branch-id="b_auth"]`).click();
   const pr = page.locator(t('ade-branch-pr'));

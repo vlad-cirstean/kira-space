@@ -68,6 +68,8 @@
     "author": "sara",
     "branch": "forker/main",
     "changeRequest": {
+      "baseRef": "main",
+      "checksState": "",
       "number": 12,
       "state": "open",
       "title": "Fork change",
@@ -83,6 +85,8 @@
     "author": "me",
     "branch": "feat/login",
     "changeRequest": {
+      "baseRef": "main",
+      "checksState": "",
       "number": 11,
       "state": "open",
       "title": "Fix login",

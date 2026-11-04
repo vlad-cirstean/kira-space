@@ -9,6 +9,7 @@ import { IPC } from './support/ipcChannels';
 // Contract ade-adhoc. Backend half: adeflow TestAdHocSession.
 
 const t = (id: string) => `[data-testid="${id}"]`;
+const item = (id: string) => t(`menu-item-ade-task-launch-${id}`);
 const card = (id: string) => `[data-testid="ade-card"][data-task-id="${id}"]`;
 const bar = (): string => `${t('ade-session-bar-row')} ${t('ade-task-launch')}`;
 
@@ -22,7 +23,7 @@ async function plusOf(page: Page, id: string): Promise<Locator> {
 /** Clicks the plus; the menu must sit inside the viewport so a mouse pick works. */
 async function openMenu(page: Page, id: string): Promise<void> {
   await (await plusOf(page, id)).click();
-  await expect(page.locator(t('ade-task-launch-menu'))).toBeInViewport();
+  await expect(page.locator(t('context-menu'))).toBeInViewport();
 }
 
 const launch = {
@@ -33,8 +34,9 @@ const launch = {
 test('one worktree: Terminal opens a shell there', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch);
   await openMenu(page, 'T_cart');
-  await expect(page.locator(t('ade-task-launch-reason'))).toHaveCount(0);
-  await page.locator(t('ade-task-launch-terminal-b_cart')).click();
+  await expect(page.locator(item('terminal-b_cart'))).not.toHaveAttribute('aria-describedby');
+  await expect(page.locator(item('agent-b_cart'))).not.toHaveAttribute('aria-describedby');
+  await page.locator(item('terminal-b_cart')).click();
   await expect.poll(() => calls(control, IPC.terminalOpen)).toHaveLength(1);
   expect(calls(control, IPC.terminalOpen)[0]?.args).toMatchObject({
     cwd: '~/wt/web-app/cart-flaky',
@@ -51,7 +53,7 @@ test('Agent session starts with no message and opens in the branch panel', async
     { channel: IPC.adeTaskStartAdHoc, response: launch },
   ]);
   await openMenu(page, 'T_cart');
-  await page.locator(t('ade-task-launch-agent-b_cart')).click();
+  await page.locator(item('agent-b_cart')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStartAdHoc)).toHaveLength(1);
   const sent = calls(control, IPC.adeTaskStartAdHoc)[0]?.args as Record<string, unknown>;
   expect(sent).toEqual({ branchId: 'b_cart', provider: '' });
@@ -78,23 +80,15 @@ test('several worktrees: grouped items, one per branch, and a busy one says why'
   ]);
   await openMenu(page, 'T_auth');
   for (const id of ['b_auth', 'b_authui', 'b_authcb']) {
-    await expect(page.locator(t(`ade-task-launch-terminal-${id}`))).toBeVisible();
-    await expect(page.locator(t(`ade-task-launch-agent-${id}`))).toBeVisible();
+    await expect(page.locator(item(`terminal-${id}`))).toBeVisible();
+    await expect(page.locator(item(`agent-${id}`))).toBeVisible();
   }
-  await expect(page.locator(t('ade-task-launch-agent-b_auth'))).toContainText('Session open');
-  await expect(page.locator(t('ade-task-launch-agent-b_auth'))).toHaveAttribute(
-    'data-disabled',
-    '',
-  );
-  await expect(page.locator(t('ade-task-launch-agent-b_authcb'))).toContainText('No worktree yet');
-  await expect(page.locator(t('ade-task-launch-terminal-b_authcb'))).toContainText(
-    'No worktree yet',
-  );
-  await expect(page.locator(t('ade-task-launch-terminal-b_auth'))).not.toHaveAttribute(
-    'data-disabled',
-    '',
-  );
-  await page.locator(t('ade-task-launch-agent-b_authui')).click();
+  await expect(page.locator(item('agent-b_auth'))).toContainText('Session open');
+  await expect(page.locator(item('agent-b_auth'))).toHaveAttribute('data-disabled', '');
+  await expect(page.locator(item('agent-b_authcb'))).toContainText('No worktree yet');
+  await expect(page.locator(item('terminal-b_authcb'))).toContainText('No worktree yet');
+  await expect(page.locator(item('terminal-b_auth'))).not.toHaveAttribute('data-disabled', '');
+  await page.locator(item('agent-b_authui')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStartAdHoc)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskStartAdHoc)[0]?.args).toEqual({
     branchId: 'b_authui',
@@ -102,17 +96,22 @@ test('several worktrees: grouped items, one per branch, and a busy one says why'
   });
 });
 
+test('a disabled item explains itself on hover, like the Runs menu', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch);
+  await openMenu(page, 'T_auth');
+  await expect(page.locator(bar())).toHaveAttribute('aria-haspopup', 'menu');
+  await page.locator(item('agent-b_auth')).hover();
+  await expect(page.getByRole('tooltip')).toContainText('Session open');
+});
+
 test('setup states disable only the agent item', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
   await openMenu(page, 'T_search');
-  await expect(page.locator(t('ade-task-launch-agent-b_searchui'))).toContainText('Setup failed');
-  await expect(page.locator(t('ade-task-launch-terminal-b_searchui'))).not.toHaveAttribute(
-    'data-disabled',
-    '',
-  );
+  await expect(page.locator(item('agent-b_searchui'))).toContainText('Setup failed');
+  await expect(page.locator(item('terminal-b_searchui'))).not.toHaveAttribute('data-disabled', '');
   await page.keyboard.press('Escape');
   await openMenu(page, 'T_push');
-  await expect(page.locator(t('ade-task-launch-agent-b_push'))).toContainText('Preparing worktree');
+  await expect(page.locator(item('agent-b_push'))).toContainText('Preparing worktree');
 });
 
 test('a refusal lands in the panel action error', async ({ relaunch }) => {
@@ -123,7 +122,7 @@ test('a refusal lands in the panel action error', async ({ relaunch }) => {
     { channel: IPC.adeTaskStartAdHoc, error: refusal },
   ]);
   await openMenu(page, 'T_cart');
-  await page.locator(t('ade-task-launch-agent-b_cart')).click();
+  await page.locator(item('agent-b_cart')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStartAdHoc)).toHaveLength(1);
   await expect(page.getByText('a session is already open on feat/api-adhoc')).toBeVisible();
   expect(calls(control, IPC.terminalOpen)).toHaveLength(0);
@@ -148,7 +147,7 @@ test('the Sessions tab bar has a plus even with no session, scoped to its branch
   const plus = await plusOf(page, 'T_cart');
   await expect(plus).toBeVisible();
   await plus.click();
-  await page.locator(t('ade-task-launch-agent-b_cart')).click();
+  await page.locator(item('agent-b_cart')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStartAdHoc)).toHaveLength(1);
 });
 

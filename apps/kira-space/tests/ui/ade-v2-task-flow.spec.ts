@@ -33,13 +33,15 @@ test('Archive asks first: Cancel sends nothing, Archive sends it', async ({ rela
     { channel: IPC.adeTaskArchiveRisk, response: CLEAR_RISK },
   ]);
   await openTask(page, 'T_cart');
-  await page.locator(t('ade-panel-archive')).click();
+  await page.locator(t('ade-panel-more')).click();
+  await page.locator(t('menu-item-ade-task-archive')).click();
   await expect(page.locator(t('confirm-dialog'))).toBeVisible();
   await page.locator(t('confirm-dialog-cancel')).click();
   await expect(page.locator(t('confirm-dialog'))).toHaveCount(0);
   expect(calls(control, IPC.adeTaskArchiveTask)).toHaveLength(0);
 
-  await page.locator(t('ade-panel-archive')).click();
+  await page.locator(t('ade-panel-more')).click();
+  await page.locator(t('menu-item-ade-task-archive')).click();
   await page.locator(t('confirm-dialog-confirm')).click();
   await expect.poll(() => calls(control, IPC.adeTaskArchiveTask)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskArchiveTask)[0]?.args).toEqual({ taskId: 'T_cart' });

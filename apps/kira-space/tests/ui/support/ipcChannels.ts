@@ -252,6 +252,7 @@ export const IPC = {
   cliTools: 'kira:issuetracker:tools',
   issueTrackers: 'kira:issuetracker:trackers',
   adeTaskAddArtifact: 'kira:adetask:addArtifact',
+  adeTaskUpdateArtifact: 'kira:adetask:updateArtifact',
   adeTaskRemoveArtifact: 'kira:adetask:removeArtifact',
   adeTaskSetTaskStep: 'kira:adetask:setTaskStep',
   adeTaskSaveStatuses: 'kira:adetask:saveStatuses',

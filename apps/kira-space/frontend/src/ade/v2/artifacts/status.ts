@@ -1,5 +1,6 @@
 import { type MessageKey, t } from '@theme/i18n';
 import type { Tone } from '../board/actions';
+import type { Artifact } from '../wire';
 
 const TONE: Record<string, Tone> = {
   open: 'blue',
@@ -29,3 +30,14 @@ export function artifactStatusLabel(status: string): string {
   const key = LABEL[status];
   return key ? t(key) : status;
 }
+
+const KIND_LABEL = {
+  changeRequest: 'common.gitHost.changeRequest.label',
+  issue: 'space.ade.taskTab.issue.label',
+  branch: 'common.field.branch.label',
+  deployment: 'space.ade.artifacts.kind.deployment.label',
+  doc: 'space.ade.artifacts.kind.doc.label',
+  link: 'space.ade.artifacts.kind.link.label',
+} as const satisfies Record<Artifact['kind'], MessageKey>;
+
+export const artifactKindLabel = (kind: Artifact['kind']): string => t(KIND_LABEL[kind]);

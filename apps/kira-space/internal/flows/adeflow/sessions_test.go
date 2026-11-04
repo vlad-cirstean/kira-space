@@ -409,3 +409,60 @@ func TestRunningSessionsList(t *testing.T) {
 	app.Contract(t, "ade-sessions-running", "AdeTaskService.Sessions#mixed", res,
 		flowharness.Mask("id", "agentSessionId", "terminalId", "taskId", "branchId", "stepId", "runId", "resumes", "cwd", "startedAt", "lastActiveAt"))
 }
+
+func TestStageSessionResume(t *testing.T) {
+	dir := t.TempDir()
+	flag := func(n string) string { return filepath.Join(dir, n) }
+	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second))
+	claude(app, map[string][]fakeagent.Action{"*": {{WaitFile: flag("first")}, {WaitFile: flag("again")}}})
+	t.Cleanup(func() {
+		for _, n := range []string{"first", "again"} {
+			_ = os.WriteFile(flag(n), nil, 0o644)
+		}
+	})
+	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
+	rec := importRepo(t, app, repo.Dir)
+	saveWorkflow(t, app, "flow", flowYAML("flow",
+		"  - id: work\n    name: Work\n    kind: manual\n    status: In progress\n    session: true\n"))
+	task := createTask(t, app, "Fix login", "flow", rec.ID)
+	app.WindowMgr.OpenWindow(shell.WindowRecord{Key: sessionWindow})
+
+	// The stage's session ends; the board offers Resume for the stopped row.
+	step, err := app.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: task.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	openLaunch(t, app, step)
+	waitSession(t, app, step.SessionID, "running")
+	if err := os.WriteFile(flag("first"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	waitSession(t, app, step.SessionID, "stopped")
+	testx.WaitUntil(t, waitFor, func() bool { return sessionByID(t, app, step.SessionID).AgentSessionID != "" })
+	row := sessionByID(t, app, step.SessionID)
+	if row.Mode != "tui" || row.StepID != "work" || row.Purpose != "" {
+		t.Fatalf("stopped stage session = %+v, want a tui row on step work", row)
+	}
+	app.Contract(t, "ade-stage-resume", "AdeTaskService.Sessions#stopped-step", row,
+		flowharness.Mask("id", "agentSessionId", "terminalId", "taskId", "branchId", "runId", "resumes",
+			"cwd", "startedAt", "lastActiveAt"))
+
+	// Resume takes the stopped row over in place: the same session id, the same conversation.
+	args := adewire.TakeOverArgs{SessionID: row.ID, StopIfRunning: true}
+	app.Contract(t, "ade-stage-resume", "args:AdeTaskService.TakeOver", args)
+	launch, err := app.W.AdeTask.TakeOver(ctx, args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if launch.SessionID != row.ID || launch.Cwd != row.Cwd || !strings.Contains(launch.Command, "--resume '"+row.AgentSessionID+"'") {
+		t.Fatalf("resume launch = %+v, want a resume of %s in %s", launch, row.AgentSessionID, row.Cwd)
+	}
+	openLaunch(t, app, launch)
+	again := waitSession(t, app, row.ID, "running")
+	if again.StepID != "work" {
+		t.Fatalf("resumed session step = %q, want work", again.StepID)
+	}
+	if err := os.WriteFile(flag("again"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}

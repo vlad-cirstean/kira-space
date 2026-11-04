@@ -38,7 +38,7 @@ export function useTaskMenu(card: MaybeRefOrGetter<CardModel>) {
   const contextMenu = useContextMenuStore();
   const { model, today, sessions } = usePlanModel();
   const { view } = useSessionViews();
-  const { perform } = useTaskAction(card);
+  const { perform, startNew } = useTaskAction(card);
   const stage = useAdeStageDialogStore();
   const setPlan = useSetPlan();
   const shelve = useShelveTask();
@@ -63,6 +63,8 @@ export function useTaskMenu(card: MaybeRefOrGetter<CardModel>) {
       switch (cmd.kind) {
         case 'action':
           return await perform();
+        case 'startNew':
+          return startNew();
         case 'moveStep':
           return stage.open({ taskId, toStepId: cmd.stepId });
         case 'setStatus':

@@ -419,7 +419,10 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 			pa.Op.Finish(oplog.StatusError, err.Error())
 		}
 	}()
-	grant := agentmcp.Grant{RunID: runID, TaskID: tc.task.ID, Space: true, Agent: agent}
+	if pa.Resume == "" && pa.RecordID == "" {
+		pa.RecordID = b.newID()
+	}
+	grant := agentmcp.Grant{RunID: runID, TaskID: tc.task.ID, SessionID: cmpNonEmpty(pa.Resume, pa.RecordID), Space: true, Agent: agent}
 	var ids []harness.MCPTool
 	if runID != "" {
 		grant.Results = resultSpecs(stepResultsOf(tc, pa.StepID))

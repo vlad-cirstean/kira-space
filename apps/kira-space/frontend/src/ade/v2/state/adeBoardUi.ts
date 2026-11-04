@@ -10,7 +10,7 @@ import { useAdePanelTabsStore } from './adePanelTabs';
 // and the picked session live in `adePanelTabs`.
 export const useAdeBoardUiStore = defineStore('adeBoardUi', () => {
   const tabs = useAdePanelTabsStore();
-  const view = ref<'plan' | 'later' | 'needs' | 'context' | 'settings' | 'workflows'>('plan');
+  const view = ref<'plan' | 'later' | 'needs' | 'agents' | 'workflows'>('plan');
   const selectedTaskId = ref<string | null>(null);
   const selectedBranchId = ref<string | null>(null);
   /** An explicit open asked the Sessions tab to show this session, even if stopped. */

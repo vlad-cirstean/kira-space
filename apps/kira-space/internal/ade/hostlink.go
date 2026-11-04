@@ -209,7 +209,7 @@ func changeRequestHead(ctx context.Context, p githost.Provider, bl githost.Branc
 func (b *TaskBoard) planChangeRequest(plan *linkPlan, f linkFacts, bl githost.BranchLinks, link githost.BranchLink, head githost.ChangeRequestHead) {
 	t := &plan.target
 	t.Author = head.Author
-	t.ChangeRequest = &adewire.ChangeRequest{Number: head.Number, Title: head.Title, State: head.State, URL: head.URL}
+	t.ChangeRequest = &adewire.ChangeRequest{Number: head.Number, Title: head.Title, State: head.State, URL: head.URL, BaseRef: head.BaseRef, ChecksState: head.ChecksState}
 	sameRepo := head.HeadOwner != "" && strings.EqualFold(head.HeadOwner, link.Repo.Owner)
 	t.Fork = !sameRepo
 	switch {

@@ -284,6 +284,9 @@ func (b *TaskBoard) ReviewWorking(ctx context.Context, branchID string) (adewire
 		}
 		return c, err
 	}
+	if err := entry.CaptureWorkingRemoved(ctx, w.branch, current); err != nil {
+		return adewire.ReviewWorking{}, err
+	}
 	reviews, err := entry.WorkingReviewStates(ctx, w.branch, paths, current)
 	if err != nil {
 		return adewire.ReviewWorking{}, err

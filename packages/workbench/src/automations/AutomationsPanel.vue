@@ -15,6 +15,7 @@ import { usePanelHeaderSearch } from '@workbench/behaviour/panelSearch';
 import { usePersistedState } from '@workbench/behaviour/persisted';
 import { moveId } from '@workbench/behaviour/sortableReorder';
 import { useTreeShortcuts } from '@workbench/behaviour/treeShortcuts';
+import MenuIconButton from '@workbench/components/MenuIconButton.vue';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import SortableList from '@workbench/components/SortableList.vue';
@@ -165,12 +166,6 @@ async function createScript(kind: ScriptKind, collection = ''): Promise<void> {
     if (created.collection !== '') openGroup(created.collection);
     fileDialog.value = runFileName(created.id);
   });
-}
-
-// The header "+" opens a dropdown under the button, the tab strip "+" pattern.
-function onAddClick(e: MouseEvent): void {
-  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-  contextMenuStore.openContextMenuAt(rect.left, rect.bottom + 2, newScriptItems(createScript));
 }
 
 interface NavItem {
@@ -372,12 +367,11 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
             data-testid="automations-about"
             @click="guarded(() => ctx.files.open('AGENTS.md'))"
           />
-          <TooltipIconButton
-            icon="add"
+          <MenuIconButton
             :label="t('automations.panel.add.tooltip')"
             :aria-label="t('automations.script.new.label')"
+            :items="() => newScriptItems(createScript)"
             data-testid="automations-add"
-            @click="onAddClick"
           />
         </template>
       </PanelHeader>

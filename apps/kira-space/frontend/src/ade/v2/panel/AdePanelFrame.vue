@@ -1,13 +1,13 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends string">
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import { computed } from 'vue';
 
 // Panel body shared by task and branch mode: summary slot, then the tab row (tabs left, actions
 // right), then the active tab.
-const props = defineProps<{ tabs: { value: string; label: string; count?: number }[] }>();
+const props = defineProps<{ tabs: { value: T; label: string; count?: number }[] }>();
 const items = computed(() => props.tabs.map((t) => ({ ...t, testid: `ade-panel-tab-${t.value}` })));
-const tab = defineModel<string>({ required: true });
+const tab = defineModel<T>({ required: true });
 </script>
 
 <template>

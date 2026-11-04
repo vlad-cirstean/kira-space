@@ -167,3 +167,35 @@ func TestProjectRangesEmptyInput(t *testing.T) {
 		t.Errorf("ProjectRanges(nil, nil, 100) = %v, want nil", got)
 	}
 }
+
+func TestDeletedRanges(t *testing.T) {
+	hunk := func(lines ...porcelain.DiffLine) []porcelain.DiffHunk {
+		return []porcelain.DiffHunk{{Lines: lines}}
+	}
+	cases := []struct {
+		name   string
+		ranges []LineRange
+		hunks  []porcelain.DiffHunk
+		want   []LineRange
+	}{
+		{"no hunks", []LineRange{{1, 5}}, nil, nil},
+		{"pure insertion", []LineRange{{1, 5}}, hunk(addLine(3)), nil},
+		{"deletion inside", []LineRange{{2, 6}}, hunk(delLine(3), delLine(4)), []LineRange{{3, 4}}},
+		{"deletion straddling", []LineRange{{4, 6}}, hunk(delLine(3), delLine(4), delLine(5)), []LineRange{{4, 5}}},
+		{"deletion outside", []LineRange{{4, 6}}, hunk(delLine(1), delLine(9)), nil},
+		{"replace counts as deleted", []LineRange{{2, 3}}, hunk(delLine(2), addLine(2)), []LineRange{{2, 2}}},
+		{"whole file", []LineRange{{1, 3}}, hunk(delLine(1), delLine(2), delLine(3)), []LineRange{{1, 3}}},
+		{
+			"two hunks", []LineRange{{1, 10}},
+			[]porcelain.DiffHunk{{Lines: []porcelain.DiffLine{delLine(2)}}, {Lines: []porcelain.DiffLine{delLine(7), delLine(8)}}},
+			[]LineRange{{2, 2}, {7, 8}},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := DeletedRanges(c.ranges, c.hunks); !reflect.DeepEqual(got, c.want) {
+				t.Fatalf("got %v, want %v", got, c.want)
+			}
+		})
+	}
+}

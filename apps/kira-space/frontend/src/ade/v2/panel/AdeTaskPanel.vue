@@ -7,32 +7,27 @@ import { Input } from '@theme/components/ui/input';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useInlineEdit } from '@workbench/behaviour/inlineEdit';
-import { errorText } from '@workbench/bridge/codedError';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import AdeTip from '../AdeTip.vue';
-import AdeArtifactList from '../artifacts/AdeArtifactList.vue';
 import AdeAutomationsBlock from '../automation/AdeAutomationsBlock.vue';
-import { archiveTip } from '../board/actions';
 import { dayLabel, LATER } from '../board/calendar';
 import { taskFacts, taskPatch } from '../board/panelFacts';
 import { taskReviewTip } from '../board/reviewCode';
-import AdeHandoverList from '../notes/AdeHandoverList.vue';
-import AdeNotesEditor from '../notes/AdeNotesEditor.vue';
+import AdeDetailsTab from '../details/AdeDetailsTab.vue';
 import type { CardModel, PlanModel } from '../plan/usePlanModel';
 import { useTaskMenu } from '../plan/useTaskMenu';
-import { useShelveTask, useUpdateTask } from '../queries';
+import { useUpdateTask } from '../queries';
 import { useReviewCode } from '../review/useReviewCode';
 import AdeTaskActionButton from '../run/AdeTaskActionButton.vue';
 import AdeSessionsTab from '../sessions/AdeSessionsTab.vue';
 import { useSessionViews } from '../sessions/useSessionViews';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
-import { useAdeDialogsStore } from '../state/adeDialogs';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
+import AdeMainTab from './AdeMainTab.vue';
 import AdePanelFrame from './AdePanelFrame.vue';
-import AdeTaskTab from './AdeTaskTab.vue';
 
-// Task mode: header facts, the Task, Notes, Artifacts and Sessions tabs.
+// Task mode: header facts, then the Main, Details and Sessions tabs.
 const props = defineProps<{ card: CardModel; model: PlanModel }>();
 
 const ui = useAdeBoardUiStore();
@@ -41,14 +36,12 @@ const tab = computed({
   get: () => tabs.taskTab(props.card.task.id),
   set: (v) => tabs.setTaskTab(props.card.task.id, v),
 });
-const dialogs = useAdeDialogsStore();
 const { sessions } = useSessionViews();
 const sessionCount = computed(
   () =>
     sessions.value.filter((x) => x.taskId === props.card.task.id && x.state === 'running').length,
 );
 const update = useUpdateTask();
-const shelve = useShelveTask();
 const taskMenu = useTaskMenu(() => props.card);
 function openMore(ev: MouseEvent): void {
   if (ev.currentTarget instanceof Element) taskMenu.openAt(ev.currentTarget);
@@ -59,7 +52,6 @@ const reviewTip = computed(() => taskReviewTip(choices.value));
 const reviewDisabled = computed(
   () => reviewCode.pending.value || choices.value.every((c) => c.disabled),
 );
-const notesError = ref('');
 
 const titleEdit = useInlineEdit({
   source: () => props.card.task.title,
@@ -71,27 +63,6 @@ const titleEdit = useInlineEdit({
     return Boolean(props.card.task.jira);
   },
 });
-
-/** A finished task shows Archive as its step action; any other task gets the quiet one. */
-const quietArchive = computed(
-  () => props.card.task.kind !== 'review' && props.card.action?.kind !== 'archive',
-);
-
-/** Backlog tasks go back to Later and any other task to Backlog; a review item stays on the Plan. */
-const shelfTarget = computed(() => {
-  if (props.card.review) return null;
-  return props.card.shelf === 'backlog' ? 'later' : 'backlog';
-});
-async function moveShelf(): Promise<void> {
-  const to = shelfTarget.value;
-  if (!to) return;
-  delete ui.actionError[props.card.task.id];
-  try {
-    await shelve.mutateAsync({ taskId: props.card.task.id, shelf: to, beforeId: '' });
-  } catch (err) {
-    ui.actionError[props.card.task.id] = errorText(err);
-  }
-}
 
 const chip = computed(() =>
   props.card.parked ? { tone: 'grey' as const } : { color: props.card.status.color },
@@ -121,50 +92,19 @@ const facts = computed(() => {
     steps: p.totalSteps,
   });
 });
-
-async function saveNotes(taskId: string, value: string): Promise<void> {
-  notesError.value = '';
-  try {
-    await update.mutateAsync({ taskId, patch: taskPatch({ notes: value }) });
-  } catch (err) {
-    notesError.value = errorText(err);
-  }
-}
 </script>
 
 <template>
   <AdePanelFrame
     v-model="tab"
     :tabs="[
-      { value: 'task', label: t('common.task.label') },
-      { value: 'notes', label: t('space.common.notes.label') },
-      { value: 'artifacts', label: t('space.ade.artifacts.title.title') },
+      { value: 'main', label: t('common.main.label') },
+      { value: 'details', label: t('common.details.title') },
       { value: 'sessions', label: t('space.common.sessions.label'), count: sessionCount },
     ]"
   >
     <template #actions>
       <AdeTaskActionButton :card="card" />
-      <AdeTip v-if="quietArchive" :text="archiveTip()">
-        <Button
-          variant="dialog"
-          size="kira-lg"
-          :pending="dialogs.pending.has(`archive:${card.task.id}`)"
-          data-testid="ade-panel-archive"
-          @click="dialogs.archive(card.task.id)"
-        >
-          {{ t('space.common.archive.label') }}
-        </Button>
-      </AdeTip>
-      <Button
-        v-if="shelfTarget"
-        variant="dialog"
-        size="kira-lg"
-        :pending="shelve.isPending.value"
-        data-testid="ade-panel-shelve"
-        @click="moveShelf"
-      >
-        {{ shelfTarget === 'backlog' ? t('space.common.backlog.label') : t('common.later.label') }}
-      </Button>
       <AdeTip v-if="choices.length" :parts="reviewTip">
         <TooltipDisabledTrigger :disabled="reviewDisabled">
           <Button
@@ -188,7 +128,8 @@ async function saveNotes(taskId: string, value: string): Promise<void> {
       />
     </template>
     <template #header>
-      <div class="flex items-start gap-2">
+      <!-- biome-ignore lint/a11y/noStaticElementInteractions: right-click only; the keyboard opens the same menu from More. -->
+      <div class="flex items-start gap-2" @contextmenu="taskMenu.open">
         <span
           class="mt-1 box-border size-3 shrink-0 rounded-kira-xs"
           :class="card.parked ? 'border-2' : ''"
@@ -235,25 +176,8 @@ async function saveNotes(taskId: string, value: string): Promise<void> {
         }}</AlertDescription></Alert
       >
     </template>
-    <AdeTaskTab v-if="tab === 'task'" :card="card" />
+    <AdeMainTab v-if="tab === 'main'" :card="card" />
     <AdeSessionsTab v-else-if="tab === 'sessions'" :task-id="card.task.id" />
-    <div
-      v-else-if="tab === 'artifacts'"
-      class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3"
-      data-testid="ade-artifacts-tab"
-    >
-      <AdeArtifactList :task-id="card.task.id" />
-    </div>
-    <div
-      v-else
-      class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3"
-      data-testid="ade-notes-tab"
-    >
-      <AdeNotesEditor :notes="card.task.notes" :item-id="card.task.id" @save="saveNotes" />
-      <Alert v-if="notesError" variant="error" data-testid="ade-notes-error"
-        ><AlertDescription>{{ notesError }}</AlertDescription></Alert
-      >
-      <AdeHandoverList :task-id="card.task.id" />
-    </div>
+    <AdeDetailsTab v-else :task="card.task" :branches="card.rows.map((r) => r.branch)" />
   </AdePanelFrame>
 </template>

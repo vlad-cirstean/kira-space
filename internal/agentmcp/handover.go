@@ -16,7 +16,7 @@ const MaxHandoverBytes = 16 << 10
 // HandoverRecorder stores a session's handover notes; *ade.TaskBoard implements it. stepID is the stage
 // the session was opened for ("" when unknown); the recorder refuses a stage the task has left.
 type HandoverRecorder interface {
-	RecordHandover(ctx context.Context, taskID, stepID, notes string, finished bool) error
+	RecordHandover(ctx context.Context, taskID, stepID, sessionID, notes string, finished bool) error
 }
 
 type handoverArgs struct {
@@ -52,7 +52,7 @@ func (s *Server) addHandoverTool(srv *mcp.Server) {
 		if len(args.Notes) > MaxHandoverBytes {
 			return toolError(fmt.Sprintf("notes is too long: at most %d bytes.", MaxHandoverBytes)), nil, nil
 		}
-		if err := s.handover.RecordHandover(ctx, g.TaskID, g.StepID, args.Notes, args.Finished); err != nil {
+		if err := s.handover.RecordHandover(ctx, g.TaskID, g.StepID, g.SessionID, args.Notes, args.Finished); err != nil {
 			return fail("handover", err), nil, nil
 		}
 		ack := llmprompts.HeadlessHandoverAck.Text(s.prompts, llmprompts.NoVars{})

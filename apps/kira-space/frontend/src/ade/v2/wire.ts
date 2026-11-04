@@ -202,6 +202,10 @@ export interface ChangeRequest {
   title: string;
   state: string;
   url: string;
+  /** The target branch; '' when unknown (an archived snapshot). */
+  baseRef: string;
+  /** '' | SUCCESS | FAILURE | PENDING | ERROR | EXPECTED. */
+  checksState: string;
 }
 export interface Branch {
   id: string;
@@ -444,6 +448,8 @@ export interface Handover {
   finished: boolean;
   dismissed: boolean;
   edited: boolean;
+  /** The Kira session that wrote it; '' = user or unknown. */
+  sessionId: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -457,6 +463,8 @@ export interface Artifact {
   status: string;
   repo: string;
   source: 'task' | 'host' | 'git' | 'agent' | 'user' | (string & {});
+  /** The Kira session that reported it; '' = user, detected or unknown. */
+  sessionId: string;
   createdAt: number;
 }
 /** A source that failed or timed out; the list is partial. */
@@ -489,6 +497,11 @@ export interface AddArtifactArgs {
   title: string;
   url: string;
   ref: string;
+}
+export interface UpdateArtifactArgs {
+  taskId: string;
+  id: string;
+  title: string;
 }
 export interface RemoveArtifactArgs {
   taskId: string;

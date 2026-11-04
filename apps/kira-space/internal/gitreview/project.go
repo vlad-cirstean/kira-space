@@ -126,3 +126,18 @@ func clampToLineCount(ranges []LineRange, newLineCount int) []LineRange {
 	}
 	return Normalize(out)
 }
+
+// DeletedRanges returns the part of ranges (snapshot coordinates) that a snapshot->current patch
+// deletes: every old line a `del` line removes, intersected with ranges. A line rewritten in place
+// (del plus add) counts as deleted.
+func DeletedRanges(ranges []LineRange, hunks []porcelain.DiffHunk) []LineRange {
+	var del []LineRange
+	for _, h := range hunks {
+		for _, l := range h.Lines {
+			if l.Kind == porcelain.LineDel && l.OldLine != nil {
+				del = append(del, LineRange{Start: *l.OldLine, End: *l.OldLine})
+			}
+		}
+	}
+	return Intersect(Normalize(ranges), Normalize(del))
+}

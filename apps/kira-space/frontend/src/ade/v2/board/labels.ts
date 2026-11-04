@@ -10,7 +10,7 @@ function integrationLabel(target: string): string {
   return SHORT_TARGET[target] ?? target;
 }
 
-export interface LabelChip {
+interface LabelChip {
   label: string;
   /** `muted` is up to date, `stale` renders amber, `unknown` is a failed deployment script. */
   tone: 'muted' | 'stale' | 'unknown';
@@ -22,7 +22,7 @@ function chipsApply(b: Branch): boolean {
 }
 
 /** `dev ✓` / `stg ⚠`; nothing for a target the branch is not merged into. */
-export function integrationChips(b: Branch): LabelChip[] {
+function integrationChips(b: Branch): LabelChip[] {
   if (!chipsApply(b)) return [];
   const out: LabelChip[] = [];
   for (const i of b.integration) {

@@ -77,6 +77,11 @@ func Subtract(a, b []LineRange) []LineRange {
 	return Normalize(out)
 }
 
+// Intersect returns a ∩ b, normalized.
+func Intersect(a, b []LineRange) []LineRange {
+	return Subtract(a, Subtract(a, b))
+}
+
 // Expand turns the "full" state into its concrete range — "Expand is the only thing that turns
 // [state=full] into a materialised [1..N]", used solely by an unmark of part of a fully-reviewed
 // file (the one path that needs a concrete range to subtract from). lineCount <= 0 (a non-text

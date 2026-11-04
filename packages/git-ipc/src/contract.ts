@@ -1319,6 +1319,22 @@ export interface ReviewFileStatus {
   readonly reviewedAtSha: string | undefined;
 }
 
+/** P499: one block of reviewed lines that left the current content. `range` is in the reviewed
+ *  snapshot's line numbers; `null` with `text: null` for a non-text whole-file entry. */
+export interface ReviewRemovedEntry {
+  readonly id: number;
+  readonly origin: 'commit' | 'working';
+  readonly path: string;
+  readonly reviewedAt: number; // unix millis
+  readonly reviewedAtSha: string;
+  readonly contentKind: 'text' | 'binary' | 'tooLarge';
+  readonly range: LineRange | null;
+  readonly text: string | null;
+  /** The stored text is longer than `text`. */
+  readonly truncated: boolean;
+  readonly removedAt: number; // unix millis
+}
+
 export interface ReviewFileEntry {
   readonly change: FileChange;
   readonly review: ReviewFileStatus;
@@ -1595,6 +1611,20 @@ export type Contract = {
     'review.open': {
       params: { repoId: string; branch: string };
       result: Record<string, never>;
+    };
+    /**
+     * P499: reviewed lines that left the current content since review (file reverted or deleted,
+     * lines deleted, snapshot overwritten by a re-mark), committed and uncommitted. Captures any
+     * pending removal first, then lists every undismissed entry. Text is cut at 64 KiB.
+     */
+    'review.removed.list': {
+      params: { repoId: string; branch: string; base: string };
+      result: { readonly entries: readonly ReviewRemovedEntry[] };
+    };
+    /** P499: hides removed entries for good; ids of another branch dismiss nothing. */
+    'review.removed.dismiss': {
+      params: { repoId: string; branch: string; ids: readonly number[] };
+      result: { readonly dismissed: number };
     };
     /**
      * G11 D1/D6: the range's file list — the three-dot (merge-base) diff's own file set, each

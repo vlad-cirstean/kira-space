@@ -134,6 +134,8 @@ type PrepareArgs struct {
 	// Isolator prepared for it (harness.PrepareIsolation); "" = none.
 	Hermetic     bool
 	IsolationDir string
+	// RecordID presets the new record's id when Resume is ""; "" mints one.
+	RecordID string
 }
 
 // PrepareResult is Prepare's own return shape. SessionID is the agent session id (stable across
@@ -283,7 +285,7 @@ func (t *Tracker) Prepare(args PrepareArgs) (PrepareResult, error) {
 
 	var recordID, agentSessionID, cwd string
 	if args.Resume == "" {
-		recordID = uuid.NewString()
+		recordID = cmpNonEmpty(args.RecordID, uuid.NewString())
 		agentSessionID = uuid.NewString()
 		if args.Resumes != "" {
 			agentSessionID = args.Resumes

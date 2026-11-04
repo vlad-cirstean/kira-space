@@ -95,22 +95,23 @@ test('name, Issue, PR and Not merging write UpdateTask patches', async ({ relaun
     patch: { title: 'Notify on mention', jira: null, hostUrl: null, est: null, kind: null },
   });
 
-  await page.locator('[data-testid="ade-task-jira-input"]').fill('PAY-9');
-  await page.locator('[data-testid="ade-task-jira-save"]').click();
+  const paste = page.locator('[data-testid="ade-details-paste"]');
+  await page.locator('[data-testid="ade-panel-tab-details"]').click();
+  await paste.fill('PAY-9');
+  await paste.press('Enter');
   await expect.poll(() => updates(control)).toHaveLength(2);
   expect(updates(control)[1]?.args).toMatchObject({
     patch: { jira: { key: 'PAY-9', url: '' } },
   });
 
-  await page
-    .locator('[data-testid="ade-task-host-input"]')
-    .fill('https://github.com/acme/web-app/issues/882');
-  await page.locator('[data-testid="ade-task-host-save"]').click();
+  await paste.fill('https://github.com/acme/web-app/issues/882');
+  await paste.press('Enter');
   await expect.poll(() => updates(control)).toHaveLength(3);
   expect(updates(control)[2]?.args).toMatchObject({
     patch: { hostUrl: 'https://github.com/acme/web-app/issues/882' },
   });
 
+  await page.locator('[data-testid="ade-panel-tab-main"]').click();
   await page.locator('[data-testid="ade-task-parked"]').click();
   await expect.poll(() => updates(control)).toHaveLength(4);
   expect(updates(control)[3]?.args).toMatchObject({ patch: { kind: 'parked' } });
@@ -124,9 +125,11 @@ test('a refused git host link shows the backend error', async ({ relaunch }) => 
     },
   ]);
   await openTask(page, 'T_notif');
-  await page.locator('[data-testid="ade-task-host-input"]').fill('not a link');
-  await page.locator('[data-testid="ade-task-host-save"]').click();
-  await expect(page.locator('[data-testid="ade-task-host-error"]')).toContainText(
+  await page.locator('[data-testid="ade-panel-tab-details"]').click();
+  const paste = page.locator('[data-testid="ade-details-paste"]');
+  await paste.fill('https://example.com/not-a-forge-link');
+  await paste.press('Enter');
+  await expect(page.locator('[data-testid="ade-details-paste-error"]')).toContainText(
     'Not a GitHub PR or issue link.',
   );
 });
@@ -183,20 +186,16 @@ test('+ Add branch attaches an existing branch to this task', async ({ relaunch 
   });
 });
 
-test('Task tab labels Issue and PR, no Notes row; notes stay in the Notes tab', async ({
-  relaunch,
-}) => {
+test('Main tab has no link or notes rows; notes live in the Details tab', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
   await openTask(page, 'T_bill');
-  const labels = (await page.locator('[data-testid="ade-task-tab"] dt').allTextContents()).map(
+  const labels = (await page.locator('[data-testid="ade-main-tab"] dt').allTextContents()).map(
     (s) => s.trim(),
   );
-  expect(labels).toContain('Issue');
-  expect(labels).toContain('PR');
-  for (const vendor of ['Jira', 'GitHub', 'Notes']) expect(labels).not.toContain(vendor);
+  for (const label of ['Issue', 'PR', 'Notes']) expect(labels).not.toContain(label);
   await expect(page.locator('[data-testid="ade-task-notes-row"]')).toHaveCount(0);
-  await page.locator('[data-testid="ade-panel-tab-notes"]').click();
-  await expect(page.locator('[data-testid="ade-notes-tab"] .ProseMirror')).toContainText(
+  await page.locator('[data-testid="ade-panel-tab-details"]').click();
+  await expect(page.locator('[data-testid="ade-details-tab"] .ProseMirror')).toContainText(
     'Q4 pricing launch',
   );
 });
@@ -204,8 +203,8 @@ test('Task tab labels Issue and PR, no Notes row; notes stay in the Notes tab', 
 test('typing in Notes saves once, debounced', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch);
   await openTask(page, 'T_notif');
-  await page.locator('[data-testid="ade-panel-tab-notes"]').click();
-  const editor = page.locator('[data-testid="ade-notes-tab"] .ProseMirror');
+  await page.locator('[data-testid="ade-panel-tab-details"]').click();
+  const editor = page.locator('[data-testid="ade-details-tab"] .ProseMirror');
   await editor.click();
   await page.keyboard.type('check the digest', { delay: 20 });
   await expect.poll(() => updates(control)).toHaveLength(1);
@@ -239,7 +238,7 @@ test('a branch opens Details with merged and deployed rows; back to the task', a
     details.locator('[data-testid="ade-branch-deploy"][data-env="preview"]'),
   ).toContainText('Unknown');
   await page.locator('[data-testid="ade-panel-back"]').click();
-  await expect(page.locator('[data-testid="ade-task-tab"]')).toBeVisible();
+  await expect(page.locator('[data-testid="ade-main-tab"]')).toBeVisible();
 });
 
 test("the panel has no toolbar; actions sit at the tab row's right end", async ({ relaunch }) => {
@@ -252,7 +251,7 @@ test("the panel has no toolbar; actions sit at the tab row's right end", async (
   await expect(actions.locator('[data-testid^="ade-task-action-"]').first()).toBeVisible();
   const box = await actions.boundingBox();
   const panelBox = await panel.boundingBox();
-  const tab = await panel.locator('[data-testid="ade-panel-tab-task"]').boundingBox();
+  const tab = await panel.locator('[data-testid="ade-panel-tab-main"]').boundingBox();
   if (!box || !panelBox || !tab) {
     throw new Error('missing bounding box');
   }
@@ -417,10 +416,10 @@ test('a running setup shows a ticking preparing tag', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch);
   const tag = page
     .locator('[data-testid="ade-task"][data-task-id="T_push"] [data-testid="ade-tag"]')
-    .filter({ hasText: 'preparing' });
+    .and(page.locator('[aria-label*="preparing" i]'));
   await expect(tag).toHaveCount(1);
-  const first = await tag.textContent();
-  await expect.poll(async () => tag.textContent()).not.toBe(first);
+  const first = await tag.getAttribute('aria-label');
+  await expect.poll(async () => tag.getAttribute('aria-label')).not.toBe(first);
 });
 
 test('See error opens the branch with the failed setup log, Retry setup sends the branch', async ({
@@ -550,14 +549,14 @@ test('agent-made branches carry a sparkle', async ({ relaunch }) => {
   ]);
   await openTask(page, 'T_bill');
   await expect(page.locator('[data-testid="ade-workflow-space"]')).toHaveCount(0);
-  const sparkle = page.locator('[data-testid="ade-branch-agent"]');
+  const sparkle = page.locator('[data-testid="ade-task-branch"] [data-testid="ade-branch-agent"]');
   await expect(sparkle).toHaveCount(1);
   await sparkle.hover();
   await expect(
     page.locator('[data-testid="ade-branch-tip"]').getByText('Added or named by the agent').first(),
   ).toBeVisible();
   await page
-    .locator('[data-testid="ade-branch-row"]:has([data-testid="ade-branch-agent"])')
+    .locator('[data-testid="ade-task-branch"]:has([data-testid="ade-branch-agent"])')
     .click();
   await expect(page.locator('[data-testid="ade-panel-agent"]')).toBeVisible();
 });
@@ -576,7 +575,10 @@ test('a change request link opens the in-app PR view', async ({ relaunch }) => {
     { channel: IPC.hostViewOpen, response: { key: 'hostview-1', opened: true } },
   ]);
   await openTask(page, 'T_bill');
-  await page.locator('[data-testid="ade-task-host-view"]').click();
+  await page.locator('[data-testid="ade-panel-tab-details"]').click();
+  await page
+    .locator('[data-testid="ade-details-link-title"]', { hasText: 'acme/web-app#7' })
+    .click();
   await expect
     .poll(() => control.log().filter((e) => e.channel === IPC.hostViewOpen))
     .toHaveLength(1);

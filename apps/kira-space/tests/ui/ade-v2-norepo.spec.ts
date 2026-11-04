@@ -11,7 +11,7 @@ import type { ControlSnapshot } from './support/types';
 const t = (id: string) => `[data-testid="${id}"]`;
 const task = (id: string) => `[data-testid="ade-task"][data-task-id="${id}"]`;
 const cellAction = (id: string, kind: string) =>
-  `${task(id)} ${t('ade-task-cells')} ${t(`ade-task-action-${kind}`)}`;
+  `${task(id)} ${t('ade-card-head')} ${t(`ade-task-action-${kind}`)}`;
 
 const started = contract<{ runs: Record<string, unknown>[] }>(
   'ade-norepo',

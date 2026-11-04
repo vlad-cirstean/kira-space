@@ -82,3 +82,23 @@ export const STATUS_SWATCH_CLASS: Record<StatusColor, string> = {
   purple: 'bg-status-purple data-[state=checked]:bg-status-purple',
   pink: 'bg-status-pink data-[state=checked]:bg-status-pink',
 };
+
+/** Coloured text. */
+export const STATUS_TEXT_CLASS: Record<StatusColor, string> = {
+  grey: 'text-status-grey',
+  brown: 'text-status-brown',
+  red: 'text-status-red',
+  orange: 'text-status-orange',
+  amber: 'text-status-amber',
+  yellow: 'text-status-yellow',
+  lime: 'text-status-lime',
+  green: 'text-status-green',
+  teal: 'text-status-teal',
+  cyan: 'text-status-cyan',
+  sky: 'text-status-sky',
+  blue: 'text-status-blue',
+  indigo: 'text-status-indigo',
+  violet: 'text-status-violet',
+  purple: 'text-status-purple',
+  pink: 'text-status-pink',
+};
