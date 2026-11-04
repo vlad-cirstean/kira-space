@@ -235,13 +235,17 @@ func (b *BoundService) Open(args OpenArgs) (OpenResult, error) {
 		return OpenResult{}, ipcerr.InternalErr(err)
 	}
 
+	b.opened(args, sess, agent, composedAgent)
+	return OpenResult{Shell: sess.Shell()}, nil
+}
+
+func (b *BoundService) opened(args OpenArgs, sess *Session, agent, composedAgent bool) {
 	if agent && b.Arbiter != nil {
 		b.Arbiter.Opened(args.TerminalID, args.Cols, args.Rows)
 	}
 	if composedAgent && b.AgentStarted != nil {
 		b.AgentStarted(args.TerminalID, sess.PID())
 	}
-	return OpenResult{Shell: sess.Shell()}, nil
 }
 
 // exitHook reports a script or Continue in terminal session's end to the launcher; nil for others.

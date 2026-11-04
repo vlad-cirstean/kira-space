@@ -178,7 +178,7 @@ If the implementer session is gone, the round moves to a new review agent and th
 
 ### Sandbox
 
-On macOS every agent and script step runs under a Seatbelt sandbox, unless its access is `off`. An agent or review step without a `sandbox` block gets the default: write the branch worktree, network on. A script step without one runs with no sandbox, so existing scripts behave as before.
+On macOS every agent, script and session step runs under a Seatbelt sandbox, unless its access is `off`. An agent or review step without a `sandbox` block gets the default: write the branch worktree, network on. A script step or manual session step without one runs with no sandbox, so existing steps behave as before.
 
 ```yaml
 sandbox:
@@ -190,15 +190,16 @@ sandbox:
 
 - `write`: writes the worktree and the scratch folder. Reads the worktree, tools and the `read` list. A home file outside them fails.
 - `read`: same reads, no worktree writes.
-- `off`: no sandbox, no other keys. The step badge shows `No sandbox`. This is the script default.
+- `off`: no sandbox, no other keys. The step badge shows `No sandbox`. This is the script and manual session default.
 - A script step can set `sandbox` like an agent step. `read` fits a check that must not change files.
+- A manual step with a session can set `sandbox` too. The session chip shows the policy and blocked actions. A sandboxed session cannot push or fetch, change agent settings or sign in again; push from the branch menu.
 - Paths are absolute or start with `~/`. Keychain paths are refused.
 
 Git inside the sandbox can stage, commit, amend and rebase in place. It cannot create branches, worktrees or tags, change config or hooks, write other branches, or delete objects. Use `request_branches` for a branch. Use `fetch_remote` and `push_branch` for the network; both run in the app. `push_branch` pushes the task branch only, never a protected branch, and a read step cannot push.
 
 The SSH agent is blocked. With `network: false` only the agent's model API is reachable. With OpenCode, `network: false` reaches only a fixed list of model hosts. Sandboxed agents read the macOS keychain, so Claude Code signs in as usual. OpenCode reads its sign-in from its own data folder.
 
-The run line shows a lock badge: `Write worktree`, `Read only`, `No sandbox`, or `N blocked` after denials. Click it for the policy, the first 50 blocked actions and the profile. A run that fails after a block says `Sandbox blocked <op> <path>.` Take over opens an unsandboxed session.
+The run line shows a lock badge: `Write worktree`, `Read only`, `No sandbox`, or `N blocked` after denials. Click it for the policy, the first 50 blocked actions and the profile. A run that fails after a block says `Sandbox blocked <op> <path>.` Take over of an agent run opens an unsandboxed session.
 
 ### Outside the repositories
 

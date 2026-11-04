@@ -2353,7 +2353,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - The workflows folder is a `configfs.Folder` (P450, see Config files): watched, debounced 200 ms; a broken edit keeps the last valid version and reports the line plus a message. Saves are atomic with a baseHash check. `ade_workflow_last_valid` rows follow file deletion. The writer keeps key order and comments.
 - `apps/kira-space/internal/adeflow/options.go` is the single list of workflow keys (P451): `Parse` and the writer derive their key sets from it, and the folder's `AGENTS.md` is generated from it. A new key needs a row there or the parser refuses it.
 - A workflow has a flat list `steps` of kind agent|script|review|manual (P293); `kind` is required and each kind allows only its own keys.
-- Allowed keys: agent: outside_repo runs_on before results max_returns timeout prompt allowed_tools smart_script params sandbox settings; script: outside_repo command runs_on before results max_returns timeout sandbox; review: review runs_on before results max_returns timeout sandbox settings; manual: session and, with it, prompt, settings and outside_repo.
+- Allowed keys: agent: outside_repo runs_on before results max_returns timeout prompt allowed_tools smart_script params sandbox settings; script: outside_repo command runs_on before results max_returns timeout sandbox; review: review runs_on before results max_returns timeout sandbox settings; manual: session and, with it, prompt, settings, outside_repo and sandbox.
 - A top-level `stages` key fails with the error "stages" is no longer supported: list every step under "steps".
 - Agent `allowed_tools` feeds the headless `--allowedTools` list.
 - Sample workflows in apps/kira-space/internal/adeflow/testdata/ import and validate in the app.
@@ -2422,7 +2422,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
   - `plan()` gives the step target `""` (same as a repo-less task). `runs_on` and `outside_repo` together fail parsing. The inspector clears `runs_on` when the switch goes off.
   - The prompt (agent, manual session) and command (script) may not use `{repo}` or `{branch}`; the parser refuses them (`outsideVars`). Prompts `ade.step.prompt` and `ade.manual.message` carry an "Outside the repos" line with the folder.
   - `prepareStepWorktrees` skips an outside step unless the Run dialog named branches; those still get worktrees.
-  - A review step cannot be outside the repos. A manual session step has no sandbox.
+  - A review step cannot be outside the repos. A manual session step takes a sandbox block (P511); a manual step without a session does not.
 - Restart recovery (D7): Recover() runs before Start(); running runs become stuck with note 'interrupted by restart', running setups fail, task sessions stop, and stale *.mcp.json files are removed.
 - After restart, pending runs keep their launch spec and launch when their gate opens; nothing auto-resumes, and a restart-stuck agent run offers Resume.
 - Agent tools (P199) are implemented in ade/agenttools.go as agentmcp.SpaceTools on *ade.TaskBoard; the loopback MCP server issues scoped grants (run, task, Space) with one bearer token per launch.
@@ -2487,6 +2487,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - The agent session id is learned, not always chosen: a provider that is a `harness.SessionLocator` may launch with `Launch.SessionID == ""`. The row then stores `''` (only headless rows require an id). A `SessionStart` event with a valid id (`harness.ValidSessionID`) fills it. At stop (`Stop`, `Reconcile`) and at resume (`resumeTarget`, `takeOverLocked`) the tracker asks `FindSession{Cwd, Since: StartedAt}`; still unknown at resume, Take over and Resume refuse with `backend.space.ade.sessionIdUnknown.body`.
 - Tracker.Prepare records a pending launch intent with a 2 min TTL; the renderer opens the terminal through the ordinary TerminalService.Open; ComposeAgent then consumes the intent, inserts the ade_sessions row as running and appends hooks env, --settings and the initial prompt.
 - Launch preset (P501): `PrepareArgs.RecordID` is the session id minted at Prepare when `Resume == ''`; `Grant.SessionID` is `Resume` or `RecordID`, so MCP calls name their session before the row exists. Headless runs set it to the run's session id.
+- A manual step session starts under its step's sandbox when the access is read or write (P511). See Agent sandbox.
 - Reconcile stops a session record only when its terminal is gone and a 30s grace window has passed.
 - The user message follows ' -- ' in argv so it cannot parse as a flag.
 - A resume runs in the recorded cwd; a missing cwd yields ErrInvalidInput and the directory is not recreated.
@@ -2515,11 +2516,14 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - Git rules: the worktree is read-write except its .git file; the linked gitdir is read-write except gitdir, commondir, locked, config.worktree; common objects are append-only; the run's own branch ref, lock and reflog are writable.
 - The rest of the git common dir is read-only, so branch, worktree, tag, stash, remote-ref, config and hook writes fail with EPERM; allow entries never open these because the protections come last.
 - Sandboxed agents always read the macOS keychain; the CLI signs in from it. Keychain writes stay denied (P341).
-- A step without a sandbox block defaults to access write with network on; a script step defaults to access off (`adewire.DefaultSandboxFor(kind)`). Migration 0067 rewrites script steps in stored task snapshots to off, so running tasks keep their old behavior. `decorateTask` compares the live workflow hash with the hash of the re-marshalled snapshot, so a snapshot rewritten by a migration stays current.
+- A step without a sandbox block defaults to access write with network on; a script or manual step defaults to access off (`adewire.DefaultSandboxFor(kind)`). Migrations 0067 (script) and 0069 (manual) rewrite those steps in stored task snapshots to off, so running tasks keep their old behavior. `decorateTask` compares the live workflow hash with the hash of the re-marshalled snapshot, so a snapshot rewritten by a migration stays current.
 - The sandbox covers headless agents from superviseAgent (steps, review rounds, rebase runs with every stack worktree writable) and scriptruns smart runs in dir mode worktree.
-- The sandbox does not cover TUI sessions and Take over, setup scripts, folder-mode scripts, or memory claude calls.
+- The sandbox does not cover setup scripts, folder-mode scripts, or memory claude calls.
 - A script step with access read or write runs under the sandbox (P510): `superviseScript` calls `prepareScriptSandbox`, wraps the command with `ExecArgv` (`gitprepare.Spec.Wrap`, `Spec.OnStart` feeds `watchSandbox`) and records the outcome through `sandboxOutcome`. A profile failure ends the run with `EndStartErr`. Without enforcement the notice uses `NotEnforcedScriptText`.
 - The Enforcer interface has Support, Prepare and Watch; System() is real only on darwin, elsewhere Support is Enforced:false with Reason NotEnforcedKey and Prepare still builds profile, flags and env but no wrapper.
+- A manual step session with access read or write runs its TUI under the sandbox (P511); Take over of such a session re-prepares it. `InteractiveSpec.Sandbox` and `DisallowedTools` carry the wrapper: claude prefixes the sandbox words before the binary, opencode joins them with its env words. `Input.ReadFiles` lets the profile read the launch files (MCP config, context file) by literal path. `Tracker.Prepare` takes the plan from `prepareWithGrant`; the renderer still opens the PTY, and `BoundService.AgentStarted(terminalID, pid)` feeds the denial watch after `Compose`. The release is chained into `bindTUI`.
+- A sandboxed TUI has no sandbox git tools: it cannot push or fetch, change agent settings or sign in again. Keychain and `~/.claude` writes are denied. The login shell rc files run before the wrapper, unconfined.
+- Manual session sandbox data is stored in table ade_session_sandbox (migration 0069), keyed by session id. Access off keeps no row. `AdeTaskService.Sessions[].sandbox` carries the badge; `SessionSandbox` returns the detail. The chip sits in the TUI pane header (`ade-session-sandbox-badge`).
 - sandboxtest.Fake stands in for flow tests; the flow harness defaults to a not-enforced fake so contracts do not depend on the host OS.
 - With agentmcp.Spec.Sandbox, Script emits exec /usr/bin/env -u … K=V /usr/bin/sandbox-exec -f <profile> claude … after the login shell sources the user profile.
 - The profile is checked with sandbox-exec -f <profile> /usr/bin/true first; a failure fails the run before claude starts.
@@ -3719,7 +3723,7 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
 - **A short-lived process of a sandboxed run can lose its denial (P292).** The system-wide denial stream names a pid, and an exited pid is attributed only when its process name matches an earlier denial of the run.
 - **Hooks and build scripts an agent edits run unsandboxed later (P287).** Kira's own git operations and the
   user run them outside the sandbox.
-- **The sandbox is unverified on a real Mac (P287).** Linux checks the generator and flows only. Delete once
+- **The sandbox is unverified on a real Mac (P287, P510, P511).** Linux checks the generator and flows only. The sandboxed TUI launch (`$SHELL -l -i -c` wrapper, `Input.ReadFiles`, denial watch by pid) has not run under Seatbelt. Delete once
   the Mac checklist in `docs/DEV_ENVIRONMENT.md` passes.
 - **A written memory doc holds no per-fact keywords (P285 Part 3).** Importing it into another store indexes its facts with the doc-level keywords only; the store regenerates per-fact keywords only for facts the gate sees.
 - **Memory ingest compression target not met (P285, P291).** `round-p3-01`: `C_fact` 0.434, `C_store` 0.661, `C_doc` 0.734, `R_ess` 0.885. Golden essential facts alone are 0.47 of source chars. The telegraph style cuts fact chars 7% and `C_store` 4.5% on identical facts; run on the pipeline it raised recall and stored 18% more facts (XT, commit `a487cbc18`, `C_store` 0.753), so it is not adopted. Residual token loss of the style: 14 of 209 facts fail the preservation check.
