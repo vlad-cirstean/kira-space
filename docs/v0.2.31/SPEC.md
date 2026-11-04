@@ -6,7 +6,7 @@ Source: user request. One phase. No code review (user waived). P505 is the last 
 
 | Phase | Title | Status |
 |---|---|---|
-| P505 | Flat minimalist redesign | Todo |
+| P505 | Flat minimalist redesign | Done |
 
 ## Rows
 
@@ -20,4 +20,4 @@ Source: user request. One phase. No code review (user waived). P505 is the last 
   - Styles stay in Tailwind/shadcn tokens (`packages/theme`). No new scoped `<style>` blocks, no hard-coded colors outside tokens.
 - Tests: no new tests. Visual baselines re-record once, after `fc-match sans-serif` prints Inter, in the single full suite run. Review recorded diffs: only styling may differ.
 - Close (same phase, hand-written per CLAUDE.md "Closing a chapter"): Done row and Result in `SPEC.md`, `docs/HISTORY.md` block, `git rm -r docs/v0.2.31/`, push, PR to `main`.
-- Result: pending.
+- Result: Flat redesign landed. Single retuned dark palette only: app has no light theme, a theme switch would be a feature (out of scope); light theme needs its own phase. Dialog radius 10px to 8px is the only geometry change. Repaired presentation screenshot flows (pre-existing breakage), fixed a Go window test and the ADE spec reading old tokens. Discovery: Playwright default per-pixel `threshold` 0.2 left visual projects blind to the shift, so all 47 baselines (21 Studio, 26 Space) re-recorded (`3f0a683a`). Full run: lint, lint:dead, lint:go, vet, typecheck clean; unit 1993; Go all ok; Studio 702; Space 1172 (1 in-code skip). Not run: container-backed Go tests and `e2e-real` (no Docker), `ui-timing`, `test:claude*`, `-race`. No code review (user waived).
