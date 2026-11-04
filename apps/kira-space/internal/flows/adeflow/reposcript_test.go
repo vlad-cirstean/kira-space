@@ -183,7 +183,9 @@ func TestRepoScriptDeployedShaRun(t *testing.T) {
 	}
 
 	env("bad")
-	got := deployments(func(m map[string]adewire.Deployment) bool { return m["staging"].CheckedAt != 0 && m["qa"].CheckedAt != 0 })
+	got := deployments(func(m map[string]adewire.Deployment) bool {
+		return m["staging"].CheckedAt != 0 && m["qa"].CheckedAt != 0
+	})
 	if d := got["staging"]; !strings.Contains(d.Error, "the script printed no commit sha") {
 		t.Fatalf("staging = %+v, want the no-sha error", d)
 	}
