@@ -7,9 +7,11 @@ import { formatTools, parseTools } from '../../board/workflowForm';
 import { useAdeWorkflowDraftStore } from '../../state/adeWorkflowDraft';
 import type { WorkflowStep } from '../../wire';
 import AdeInspectorRow from './AdeInspectorRow.vue';
+import AdeStepAgentPick from './AdeStepAgentPick.vue';
 import AdeStepSettings from './AdeStepSettings.vue';
+import AdeStepStatus from './AdeStepStatus.vue';
 
-// Rarely changed: allowed tools, agent settings and skipping the step.
+// Rarely changed: allowed tools, agent settings and skipping the step. A manual step keeps its status and agent here.
 const props = defineProps<{ step: WorkflowStep }>();
 const emit = defineEmits<{ patch: [p: Partial<WorkflowStep>] }>();
 const draft = useAdeWorkflowDraftStore();
@@ -36,6 +38,10 @@ function onTools(v: string | number): void {
 </script>
 
 <template>
+  <template v-if="step.kind === 'manual'">
+    <AdeStepStatus :step="step" @patch="(p) => emit('patch', p)" />
+    <AdeStepAgentPick v-if="step.session" :step="step" @patch="(p) => emit('patch', p)" />
+  </template>
   <AdeInspectorRow
     v-if="step.kind === 'agent' && step.smartScript === ''"
     stack

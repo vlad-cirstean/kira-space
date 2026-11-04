@@ -73,6 +73,32 @@ test('a run without a branch reads as the task folder', async ({ relaunch }) => 
   await expect(line).toContainText('Task folder');
 });
 
+test('an outside-repo step on a task with repos shows the task folder', async ({ relaunch }) => {
+  const run = {
+    ...started.runs[0],
+    taskId: 'T_alerts',
+    stepId: 'plan',
+    branchId: '',
+    note: 'waiting for branch approval',
+  };
+  const { window: page } = await openPlan(relaunch, [
+    board((b) => {
+      const alerts = b.tasks.find((x) => x.id === 'T_alerts');
+      if (!alerts) throw new Error('fixture tasks missing');
+      alerts.entryStepId = 'plan';
+      alerts.workflowId = 'standard';
+      alerts.runs = [run];
+    }),
+  ]);
+  await page
+    .locator(`[data-testid="ade-card"][data-task-id="T_alerts"] [data-testid="ade-card-head"]`)
+    .click();
+  const line = page.locator(
+    `${t('ade-step-block')}[data-step-id="plan"] [data-testid="ade-run-line"][data-branch-id=""]`,
+  );
+  await expect(line).toContainText('Task folder');
+});
+
 const sessions = adeFixture<{ sessions: { taskId: string; mode: string }[] }>('sessions');
 // No open conversation on the task, or the stage offers Done instead of a session.
 const noTalking = {

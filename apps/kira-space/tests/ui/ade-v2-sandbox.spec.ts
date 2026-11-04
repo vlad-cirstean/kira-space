@@ -74,6 +74,14 @@ test('contract: the run line shows the policy in the popover', async ({ relaunch
   await expect(pop.locator(t('ade-run-sandbox-denial'))).toHaveCount(0);
 });
 
+test('contract: a script run shows its read-only sandbox', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, sandboxControl('script'));
+  await openBillTask(page);
+  const badge = line(page).locator(t('ade-run-sandbox'));
+  await expect(badge).toHaveText('Read only');
+  await expect(badge).toHaveAttribute('data-enforced', 'true');
+});
+
 test('contract: denials show as a count, a row and the profile', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, sandboxControl('denied'));
   await openBillTask(page);
@@ -128,7 +136,6 @@ async function openStep(page: Page, step: string): Promise<void> {
   await page.locator(t('ade-tab-workflows')).click();
   await page.locator(t('ade-workflows')).waitFor();
   await page.locator(`${t('ade-wf-node')}[data-step-id="${step}"]`).click();
-  await page.locator(t('ade-wf-step-advanced')).click();
   await expect(page.locator(t('ade-wf-step-sandbox'))).toBeVisible();
 }
 
@@ -193,4 +200,23 @@ test('an OS that cannot enforce shows the notice in the inspector', async ({ rel
   ]);
   await openStep(page, 'plan');
   await expect(page.locator(t('ade-wf-sandbox-notice'))).toContainText('runs on macOS only');
+});
+
+test('a script step has its sandbox section without opening Advanced', async ({ relaunch }) => {
+  const fx = contract<WorkflowsFx>('ade-workflow-editor', 'AdeTaskService.Workflows#outside');
+  const { window: page, control } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskWorkflows, response: fx },
+  ]);
+  await openStep(page, 'build');
+  await expect(page.locator(t('ade-wf-step-advanced'))).toHaveAttribute('aria-expanded', 'false');
+  await page.locator(t('ade-wf-sandbox-access-write')).click();
+  await page.locator(t('ade-wf-sandbox-network')).click();
+  await page.locator(t('ade-wf-sandbox-access-read')).click();
+  const args = await saved(page, control);
+  expect(args.workflow.steps.find((s) => s.id === 'build')?.sandbox).toEqual({
+    access: 'read',
+    read: [],
+    allow: [],
+    network: true,
+  });
 });

@@ -23,6 +23,7 @@ interface SavedStep {
   review: { sendTo: string; implementer: string } | null;
   maxReturns: number;
   runsOn: string;
+  outsideRepo: boolean;
   results: { id: string; ok: boolean; next: string; loop: boolean; description: string }[];
 }
 interface SavedWorkflow {
@@ -178,7 +179,7 @@ test('the inspector groups a step into What it does, Where and when and How it e
 }) => {
   const { window: page } = await openWorkflows(relaunch);
   await node(page, 'ci').click();
-  for (const section of ['what', 'where', 'end'])
+  for (const section of ['what', 'where', 'sandbox', 'end'])
     await expect(page.locator(t(`ade-wf-step-section-${section}`))).toBeVisible();
   await expect(page.locator(t('ade-wf-step-tools'))).toBeHidden();
   await openAdvanced(page);
@@ -729,3 +730,38 @@ for (const edit of STALE_IMPLEMENTER_EDITS) {
     await expect(page.locator(t('ade-wf-save-error'))).toHaveCount(0);
   });
 }
+
+const outside = contract<WorkflowsFx>('ade-workflow-editor', 'AdeTaskService.Workflows#outside');
+const outsideVars = JSON.parse(
+  contract<string>('ade-workflow-editor', 'AdeTaskService.SaveWorkflow#outside-vars'),
+) as { code: string; message: string };
+
+test('contract: an outside-repo step shows Repository aware off and no Repos row', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await openWorkflows(relaunch, [
+    { channel: IPC.adeTaskWorkflows, response: outside },
+  ]);
+  await node(page, 'build').click();
+  const aware = page.locator(t('ade-wf-step-repo-aware'));
+  await expect(aware).not.toBeChecked();
+  await expect(page.locator(t('ade-wf-step-scope'))).toHaveCount(0);
+  await expect(node(page, 'build').locator(t('ade-wf-node-outside'))).toBeVisible();
+  await expect(page.locator(t('ade-wf-sandbox-access-read'))).toHaveAttribute('data-state', 'on');
+  await aware.click();
+  await expect(page.locator(t('ade-wf-step-scope'))).toBeVisible();
+  await expect(node(page, 'build').locator(t('ade-wf-node-outside'))).toHaveCount(0);
+  const out = await saved<SavedWorkflow>(page, control, 1);
+  expect(stepOf(out, 'build')).toMatchObject({ outsideRepo: false, runsOn: 'each repo' });
+});
+
+test('contract: a refused outside-repo save shows the backend error', async ({ relaunch }) => {
+  const { window: page } = await openWorkflows(relaunch, [
+    { channel: IPC.adeTaskWorkflows, response: outside },
+    { channel: IPC.adeTaskSaveWorkflow, error: outsideVars },
+  ]);
+  await node(page, 'build').click();
+  await page.locator(t('ade-wf-form-name')).fill('Renamed');
+  await page.locator(t('ade-wf-save')).click();
+  await expect(page.locator(t('ade-wf-save-error'))).toContainText('does not have (line 15)');
+});
