@@ -78,7 +78,7 @@ export function cssVar(name: string, fallback: string): string {
 
 // §4.1 token-colour table — Lezer tag group -> Monarch scope, both keyed by the same
 // `--kira-syntax-*` custom property `theme.ts`'s `kiraHighlightStyle` already reads.
-function tokenRules(): { token: string; foreground: string }[] {
+function tokenRules(): { token: string; foreground?: string; fontStyle?: string }[] {
   const comment = cssVar('--kira-syntax-comment', '#7f9a6f');
   const string = cssVar('--kira-syntax-string', '#d29a7e');
   const number = cssVar('--kira-syntax-number', '#b4c79e');
@@ -117,6 +117,12 @@ function tokenRules(): { token: string; foreground: string }[] {
     // `clojure.js` all still emit a bare `key` token — several only reachable since D3 registered
     // their grammars at all (verified with a grep across every `languages/definitions/*/*.js`).
     { token: 'key', foreground: bare(property) },
+    // Monaco's YAML grammar emits mapping keys as `type.yaml`, which the `type` rule above would
+    // paint keyword blue, the same as `true`/`null`.
+    { token: 'type.yaml', foreground: bare(property) },
+    { token: 'operators.yaml', foreground: bare(operator) },
+    { token: 'strong', fontStyle: 'bold' },
+    { token: 'emphasis', fontStyle: 'italic' },
     // Monaco's own JSON tokenizer (`languages/features/json/tokenization.js`) emits
     // `string.key.json` for an object key and `string.value.json` for a string value — distinct
     // scopes so a package.json's keys and values no longer share one color. `string.value` is
