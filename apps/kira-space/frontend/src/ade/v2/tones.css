@@ -1,25 +1,23 @@
-/* Tone tokens: queue state, not theme, so the values stay literal (scripts/check-ade-colours.sh).
-   Classes come from the maps in tones.ts. */
+/* Tone tokens: queue state, built on theme tokens. Classes come from the maps in tones.ts. */
 @theme {
-  --color-tone-amber-tint: rgba(203, 146, 63, 0.14);
-  --color-tone-amber: #e5b473;
-  --color-tone-amber-solid: #cb923f;
-  --color-tone-red-tint: rgba(223, 128, 114, 0.14);
-  --color-tone-red: #f7a599;
-  --color-tone-red-solid: #df8072;
-  --color-tone-green-tint: rgba(92, 180, 123, 0.14);
-  --color-tone-green: #8ad1a0;
-  --color-tone-green-solid: #5cb47b;
-  --color-tone-blue-tint: rgba(118, 157, 233, 0.14);
-  --color-tone-blue: #9cbeff;
-  --color-tone-blue-solid: #769de9;
-  --color-tone-purple-tint: rgba(128, 93, 192, 0.16);
-  --color-tone-purple: #c5b0f6;
-  --color-tone-purple-solid: #805dc0;
-  --color-tone-grey-tint: #232327;
-  --color-tone-grey: #babec4;
-  --color-tone-grey-solid: #7d8088;
-  --color-tone-ink: #15161a;
-  --color-tone-ink-light: #ffffff;
-  --color-agent: #d97757;
+  --color-tone-amber-tint: color-mix(in srgb, var(--kira-status-amber) 14%, transparent);
+  --color-tone-amber: var(--kira-status-amber);
+  --color-tone-amber-solid: var(--kira-warn);
+  --color-tone-red-tint: color-mix(in srgb, var(--kira-status-red) 14%, transparent);
+  --color-tone-red: var(--kira-status-red);
+  --color-tone-red-solid: var(--kira-error);
+  --color-tone-green-tint: color-mix(in srgb, var(--kira-status-green) 14%, transparent);
+  --color-tone-green: var(--kira-status-green);
+  --color-tone-green-solid: var(--kira-ok);
+  --color-tone-blue-tint: color-mix(in srgb, var(--kira-status-blue) 14%, transparent);
+  --color-tone-blue: var(--kira-status-blue);
+  --color-tone-blue-solid: var(--kira-info);
+  --color-tone-purple-tint: color-mix(in srgb, var(--kira-status-violet) 14%, transparent);
+  --color-tone-purple: var(--kira-status-violet);
+  --color-tone-purple-solid: var(--kira-status-purple);
+  --color-tone-grey-tint: color-mix(in srgb, var(--kira-status-grey) 14%, transparent);
+  --color-tone-grey: var(--kira-status-grey);
+  --color-tone-grey-solid: var(--kira-fg-subtle);
+  --color-tone-ink: var(--kira-bg-chrome);
+  --color-agent: var(--kira-agent);
 }

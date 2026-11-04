@@ -3,7 +3,7 @@
   /* Surface ladder, darkest to lightest: chrome < bg < elevated < hover < input. */
   --kira-bg: #1b1b1e;
   --kira-bg-elevated: #1f1f23;
-  --kira-bg-chrome: #161618; /* sideBar / statusBar / titleBar / panel */
+  --kira-bg-chrome: #131315; /* frame: sideBar / statusBar / titleBar / ADE plan ground */
   --kira-bg-input: #27272c; /* input + dropdown */
   --kira-fg: #d4d4d8;
   --kira-fg-muted: #a1a1aa;
@@ -12,13 +12,13 @@
      may stay under 4.5:1 and this may not. 5.29:1 on --kira-bg, 5.06:1 on --kira-bg-elevated. */
   --kira-fg-subtle: #8e8e97;
   --kira-fg-disabled: #63636b; /* :disabled / .is-disabled only */
-  --kira-border: #28282d; /* hairline */
-  --kira-border-strong: #37373d; /* field and widget edge */
+  --kira-border: #2b2b30; /* hairline: grid cells, resize line, menu separator */
+  --kira-border-strong: #37373d; /* field edge, floating-surface ring */
   --kira-focus: #5a8ae6; /* lighter than the accent fill so the ring reads on the primary button */
   --kira-accent: #3b6ed1; /* primary action, selection, focus only */
   --kira-accent-fg: #ffffff;
   --kira-select: #1f3354;
-  --kira-hover: #26262a;
+  --kira-hover: #242427; /* opaque: sticky rows paint over content */
   --kira-badge: #4a4a52;
   --kira-scrollbar: #71717a59;
   --kira-scrollbar-hover: #8e8e9780;
@@ -214,28 +214,24 @@
   --kira-syntax-number: #b4c79e;
   --kira-syntax-keyword: #6e9fd8;
   --kira-syntax-control: #c296c4;
-  --kira-syntax-name: #93c6e8;
+  --kira-syntax-name: var(--kira-syntax-property);
   --kira-syntax-property: #93c6e8;
   --kira-syntax-function: #d8d2a0;
-  --kira-syntax-tag: #6e9fd8;
-  --kira-syntax-attribute: #93c6e8;
+  --kira-syntax-tag: var(--kira-syntax-keyword);
+  --kira-syntax-attribute: var(--kira-syntax-property);
   --kira-syntax-operator: #c8c8cc;
   --kira-syntax-punctuation: #bdbdc4;
-  --kira-syntax-meta: #8e8e97;
-  --kira-syntax-invalid: #e66e68;
+  --kira-syntax-meta: var(--kira-fg-subtle);
+  --kira-syntax-invalid: var(--kira-error);
   /* P28 D17(c): the floating-surface stacking ladder, as tokens rather than five bare literals
      spread across PopoverPanel/DialogFrame/ContextMenu/AutocompleteField/AppTooltip. Two orderings
      changed with the move: a popover now outranks a dialog (one opened from inside a dialog used
      to paint underneath it), and a context menu outranks the autocomplete popup (the two used to
      tie at 200, so DOM order decided which won). Rungs are 50 apart so a surface can be inserted
      between two without renumbering the ladder. */
-  /* v1.9 tailwind-declines deep dive: promoted off `text-[#d9c47a]`/`text-[#a8c8ee]` literals
-     repeated across 30 call sites (each file's own scoped warn/note alert-tone class, since
-     retired in P110 B23) — P104 §9 rule 5 had kept them as literal hex specifically because they
-     weren't --kira-* tokens yet, not because they shouldn't be; naming them here is that
-     follow-through. */
-  --kira-warn-text: #d5c488;
-  --kira-note-text: #acc7e8;
+  --kira-warn-text: var(--kira-status-yellow);
+  --kira-note-text: var(--kira-status-blue);
+  --kira-agent: #d97757; /* Claude identity */
   --kira-z-dialog: 100;
   --kira-z-popover: 200;
   --kira-z-menu: 300;

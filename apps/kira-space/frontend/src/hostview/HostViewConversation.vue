@@ -55,7 +55,7 @@ function reviewLabel(state: ReviewerState | undefined): string {
       :key="thread.id"
       as="article"
       :default-open="!thread.resolved"
-      class="rounded-kira-md border border-border"
+      class="rounded-kira"
       :data-kind="thread.kind"
       data-testid="host-view-thread"
     >
