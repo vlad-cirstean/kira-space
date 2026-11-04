@@ -1637,6 +1637,9 @@
         "branchRequestGone": {
           "body": "This branch request was already answered."
         },
+        "draftInRepo": {
+          "body": "This task already has a branch slot waiting for a name in that repository."
+        },
         "estimateInvalid": {
           "body": "Enter an estimate like 2h or 3d."
         },
@@ -1666,9 +1669,6 @@
         },
         "notesTooLong": {
           "body": "The notes are too long."
-        },
-        "repoOnTask": {
-          "body": "This task already has a branch in that repository."
         },
         "resumeCwdNotDir": {
           "body": "The folder to resume in is a file, not a folder."

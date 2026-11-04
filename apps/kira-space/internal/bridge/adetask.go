@@ -102,7 +102,7 @@ var adeTaskCatalog = []struct {
 	{ade.ErrWorkflowChanged, ipcerr.CodeConflict, "backend.space.ade.workflowChanged.body"},
 	{ade.ErrSetupPending, ipcerr.CodePreparing, "backend.space.ade.setupPending.body"},
 	{repos.ErrBranchOnTask, ipcerr.CodeConflict, "backend.space.ade.branchOnTask.body"},
-	{repos.ErrRepoOnTask, ipcerr.CodeConflict, "backend.space.ade.repoOnTask.body"},
+	{repos.ErrDraftInRepo, ipcerr.CodeConflict, "backend.space.ade.draftInRepo.body"},
 	{ade.ErrSessionRunning, ipcerr.CodeConflict, "backend.space.ade.sessionRunning.body"},
 	{ade.ErrSessionNotRunning, ipcerr.CodeConflict, "backend.space.ade.sessionNotRunning.body"},
 	{ade.ErrResumeCwdNotDir, ipcerr.CodeConflict, "backend.space.ade.resumeCwdNotDir.body"},

@@ -16,8 +16,8 @@ import { useDiscardGuard } from './useDiscardGuard';
 const props = defineProps<{
   branch: Branch;
   mode: 'branch' | 'repo';
-  /** Repos the task already uses, the row's included. */
-  usedRepoIds: readonly string[];
+  /** Repos where the task has a branch slot waiting for a name. */
+  draftRepoIds: readonly string[];
 }>();
 const open = defineModel<boolean>('open', { required: true });
 
@@ -33,7 +33,7 @@ const candidates = useCandidates(
 const branches = computed(() =>
   candidateOptions(candidates.data.value?.branches ?? [], () => '', Date.now()),
 );
-const projects = useProjectOptions(() => props.usedRepoIds);
+const projects = useProjectOptions(() => props.draftRepoIds);
 
 const guard = useDiscardGuard();
 const setBranch = useSetTaskBranch();

@@ -21,8 +21,8 @@ import { useDiscardGuard } from './useDiscardGuard';
 // Row menu of the Task tab: add or change the branch, change or remove the repo (P397).
 const props = defineProps<{
   row: BranchRowModel;
-  /** Repos the task already uses, `row`'s included. */
-  usedRepoIds: readonly string[];
+  /** Repos where the task has a branch slot waiting for a name. */
+  draftRepoIds: readonly string[];
 }>();
 const emit = defineEmits<{ error: [message: string] }>();
 
@@ -75,7 +75,7 @@ async function remove(what: 'branch' | 'repo'): Promise<void> {
     v-model:open="formOpen"
     :branch="row.branch"
     :mode="mode"
-    :used-repo-ids="usedRepoIds"
+    :draft-repo-ids="draftRepoIds"
   >
     <DropdownMenu>
       <DropdownMenuTrigger as-child>

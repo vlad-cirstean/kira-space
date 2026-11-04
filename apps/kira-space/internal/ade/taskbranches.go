@@ -249,7 +249,8 @@ func (b *TaskBoard) wireRow(ctx context.Context, branchID string) (adewire.Branc
 	return facts.branches[sb.ID], nil
 }
 
-// RemoveTaskBranch detaches a created row's branch. The repo stays as a row without a branch.
+// RemoveTaskBranch detaches a created row's branch. The repo stays as a row without a branch, unless
+// the task has another live row in that repo: then the row goes away whole.
 func (b *TaskBoard) RemoveTaskBranch(ctx context.Context, args adewire.RemoveTaskRowArgs) error {
 	branchID := args.BranchID
 	cur, err := b.deps.Tasks.GetBranch(branchID)
@@ -259,18 +260,21 @@ func (b *TaskBoard) RemoveTaskBranch(ctx context.Context, args adewire.RemoveTas
 	mu := b.taskMu(cur.TaskID)
 	mu.Lock()
 	defer mu.Unlock()
-	_, old, err := b.editableRow(ctx, cur.TaskID, branchID)
+	tc, old, err := b.editableRow(ctx, cur.TaskID, branchID)
 	if err != nil {
 		return err
 	}
 	if old.Name == "" {
 		return invalid("the repo has no branch to remove")
 	}
-	draft := model.AdeTaskBranch{
-		ID: b.newID(), TaskID: old.TaskID, CodeRepoID: old.CodeRepoID, Kind: ownKind(old.Kind), AddedAt: b.deps.Now().UnixMilli(),
-		Base: old.Base, BaseBranchID: old.BaseBranchID, QueuedAfter: old.QueuedAfter,
+	var draft *model.AdeTaskBranch
+	if !slices.ContainsFunc(tc.branches, func(br model.AdeTaskBranch) bool { return br.CodeRepoID == old.CodeRepoID && br.ID != old.ID }) {
+		draft = &model.AdeTaskBranch{
+			ID: b.newID(), TaskID: old.TaskID, CodeRepoID: old.CodeRepoID, Kind: ownKind(old.Kind), AddedAt: b.deps.Now().UnixMilli(),
+			Base: old.Base, BaseBranchID: old.BaseBranchID, QueuedAfter: old.QueuedAfter,
+		}
 	}
-	if err := b.detachRow(ctx, old, &draft, args.DiscardChanges); err != nil {
+	if err := b.detachRow(ctx, old, draft, args.DiscardChanges); err != nil {
 		return err
 	}
 	b.notifyBoard()
@@ -318,8 +322,10 @@ func (b *TaskBoard) UpdateTaskRepo(ctx context.Context, args adewire.UpdateTaskR
 	if err := b.requireRepos([]string{args.CodeRepoID}); err != nil {
 		return adewire.Branch{}, err
 	}
-	if slices.ContainsFunc(tc.branches, func(br model.AdeTaskBranch) bool { return br.CodeRepoID == args.CodeRepoID }) {
-		return adewire.Branch{}, repos.ErrRepoOnTask
+	if slices.ContainsFunc(tc.branches, func(br model.AdeTaskBranch) bool {
+		return br.CodeRepoID == args.CodeRepoID && br.Name == "" && br.ID != old.ID
+	}) {
+		return adewire.Branch{}, repos.ErrDraftInRepo
 	}
 	next := model.AdeTaskBranch{ID: b.newID(), TaskID: old.TaskID, CodeRepoID: args.CodeRepoID, Kind: old.Kind, AddedAt: b.deps.Now().UnixMilli()}
 	if err := b.detachRow(ctx, old, &next, false); err != nil {

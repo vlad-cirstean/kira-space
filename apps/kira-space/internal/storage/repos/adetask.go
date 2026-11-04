@@ -24,7 +24,7 @@ var (
 	// ErrShelfTarget marks a Shelve beforeID that is not on the target shelf.
 	ErrShelfTarget   = errors.New("repos: before task is not on that shelf")
 	ErrBranchOnTask  = errors.New("repos: branch is already on a task")
-	ErrRepoOnTask    = errors.New("repos: task already has a branch in that repo")
+	ErrDraftInRepo   = errors.New("repos: task already has a branch slot waiting for a name in that repo")
 	ErrReviewKind    = errors.New("repos: a task only moves between task and parked, and a review task only becomes a task")
 	ErrTaskUnnamed   = errors.New("a task needs a title or a Jira key")
 	ErrBranchMissing = errors.New("repos: branch not found")
@@ -439,8 +439,8 @@ func moveBranchKinds(tx *sql.Tx, id string, prev, to string) error {
 	return nil
 }
 
-// AddBranch appends b to its task after the last branch. A task holds at most one live branch per
-// repo (ErrRepoOnTask); a created branch name is unique among live branches of the repo
+// AddBranch appends b to its task after the last branch. A task holds at most one not-created
+// (draft) live branch per repo (ErrDraftInRepo); a created branch name is unique among live branches of the repo
 // (ErrBranchOnTask). b.Position is overwritten.
 func (r *AdeTaskRepo) AddBranch(b model.AdeTaskBranch) (model.AdeTaskBranch, error) {
 	tx, err := r.DB.Begin()
@@ -455,13 +455,15 @@ func (r *AdeTaskRepo) AddBranch(b model.AdeTaskBranch) (model.AdeTaskBranch, err
 	if exists == 0 {
 		return model.AdeTaskBranch{}, ErrTaskNotFound
 	}
-	var same int
-	if err := tx.QueryRow(`SELECT COUNT(*) FROM ade_task_branches WHERE task_id = ? AND code_repo_id = ? AND archived_at IS NULL`,
-		b.TaskID, b.CodeRepoID).Scan(&same); err != nil {
-		return model.AdeTaskBranch{}, fmt.Errorf("repos: check ade task repo: %w", err)
-	}
-	if same > 0 {
-		return model.AdeTaskBranch{}, ErrRepoOnTask
+	if b.Name == "" {
+		var drafts int
+		if err := tx.QueryRow(`SELECT COUNT(*) FROM ade_task_branches WHERE task_id = ? AND code_repo_id = ? AND name = '' AND archived_at IS NULL`,
+			b.TaskID, b.CodeRepoID).Scan(&drafts); err != nil {
+			return model.AdeTaskBranch{}, fmt.Errorf("repos: check ade task repo drafts: %w", err)
+		}
+		if drafts > 0 {
+			return model.AdeTaskBranch{}, ErrDraftInRepo
+		}
 	}
 	if err := tx.QueryRow(`SELECT COALESCE(MAX(position) + 1, 0) FROM ade_task_branches WHERE task_id = ?`, b.TaskID).Scan(&b.Position); err != nil {
 		return model.AdeTaskBranch{}, fmt.Errorf("repos: next ade branch position: %w", err)
