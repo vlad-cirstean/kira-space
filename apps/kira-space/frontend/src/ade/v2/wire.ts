@@ -128,6 +128,7 @@ export interface StageSettingSpec {
   hint: string;
 }
 export type SandboxAccess = 'write' | 'read' | 'off';
+/** A step's sandbox. Agent, review, script and manual session steps carry one; `off` runs unwrapped. */
 export interface StepSandbox {
   access: SandboxAccess;
   /** Extra read-only folders: absolute or `~/`. */

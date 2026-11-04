@@ -336,6 +336,14 @@ func (v *validator) manualStep(step *adewire.WorkflowStep, sm map[string]*yaml.N
 			return
 		}
 	}
+	if n, has := sm["sandbox"]; has && v.err == nil {
+		if step.Session {
+			step.Sandbox = v.sandbox(n, sp)
+		} else {
+			v.fail(n, sp, "sandbox is not allowed on %s steps without a session", step.Kind)
+			return
+		}
+	}
 	if step.Session {
 		step.Prompt = v.str(sm, sp, "prompt", false)
 		if step.OutsideRepo && v.err == nil {

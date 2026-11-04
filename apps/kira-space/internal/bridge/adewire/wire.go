@@ -174,9 +174,10 @@ func DefaultSandbox() StepSandbox {
 	return StepSandbox{Access: SandboxWrite, Read: []string{}, Allow: []string{}, Network: true}
 }
 
-// DefaultSandboxFor is the policy of a step of kind without a sandbox block: scripts run unconfined.
+// DefaultSandboxFor is the policy of a step of kind without a sandbox block: scripts and manual
+// sessions run unconfined.
 func DefaultSandboxFor(kind StepKind) StepSandbox {
-	if kind == KindScript {
+	if kind == KindScript || kind == KindManual {
 		return StepSandbox{Access: SandboxOff, Read: []string{}, Allow: []string{}, Network: true}
 	}
 	return DefaultSandbox()

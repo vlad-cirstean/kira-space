@@ -61,7 +61,7 @@ func workflowSteps(wf adewire.Workflow) []stepDef {
 			out[i].Settings, out[i].Agent = nil, ""
 		}
 		if s.Kind == adewire.KindManual {
-			out[i].Sandbox, out[i].Settings, out[i].Agent = adewire.DefaultSandbox(), nil, ""
+			out[i].Settings, out[i].Agent = nil, ""
 		}
 	}
 	return out

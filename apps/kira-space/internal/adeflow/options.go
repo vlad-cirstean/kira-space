@@ -69,7 +69,7 @@ var options = []option{
 	{Path: "steps[].review", Type: "mapping", Kinds: reviewOnly, Doc: "Review settings. An empty mapping takes the defaults."},
 	{Path: "steps[].review.send_to", Type: "text", Default: adewire.ReviewSendImplementer, Enum: sendToValues, Doc: "Who gets the review findings."},
 	{Path: "steps[].review.implementer", Type: "text", Doc: "Id of an earlier agent step without `smart_script`. The review resumes that step's session."},
-	{Path: "steps[].sandbox", Type: "mapping", Kinds: autoKinds, Doc: "File and network limits. An empty mapping takes the defaults. Without the block: `write` for agent and review steps, `off` for script steps."},
+	{Path: "steps[].sandbox", Type: "mapping", Doc: "File and network limits. An empty mapping takes the defaults. Without the block: `write` for agent and review steps, `off` for script and manual steps. Manual steps: only with `session: true`."},
 	{Path: "steps[].sandbox.access", Type: "text", Default: adewire.SandboxWrite, Enum: accessValues, Doc: "`write` writes the task worktree (the task folder on an outside-repo step), `read` only reads, `off` turns the sandbox off."},
 	{Path: "steps[].sandbox.read", Type: "list of text", Range: fmt.Sprintf("at most %d paths", maxSandboxPaths), Doc: "Extra paths the step may read."},
 	{Path: "steps[].sandbox.allow", Type: "list of text", Range: fmt.Sprintf("at most %d paths", maxSandboxPaths), Doc: "Extra paths the step may write."},

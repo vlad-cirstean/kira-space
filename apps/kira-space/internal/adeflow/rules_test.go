@@ -57,6 +57,9 @@ func TestRuleDocsEnforced(t *testing.T) {
 			t.Errorf("legacy status read as %q", wf.Steps[0].Status)
 		}
 	}
+	if _, perr := Parse([]byte(head + manual + "    sandbox:\n      access: read\n")); perr == nil {
+		t.Error("sandbox on a manual step without a session accepted")
+	}
 	for id := range fix {
 		t.Errorf("fixture %q names no rule", id)
 	}

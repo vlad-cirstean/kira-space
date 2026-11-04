@@ -455,10 +455,11 @@ func applyStep(m *yaml.Node, s adewire.WorkflowStep) {
 			dropKeys(m, "prompt")
 		}
 		if s.Session {
+			applySandbox(m, s.Sandbox, s.Kind)
 			applyAgent(m, s.Agent)
 			applySettings(m, s.Settings)
 		} else {
-			dropKeys(m, "agent", "settings")
+			dropKeys(m, "sandbox", "agent", "settings")
 		}
 		return
 	}
