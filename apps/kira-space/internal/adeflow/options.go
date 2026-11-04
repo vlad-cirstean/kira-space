@@ -36,7 +36,6 @@ type option struct {
 
 var (
 	autoKinds   = []adewire.StepKind{adewire.KindAgent, adewire.KindScript, adewire.KindReview}
-	agentReview = []adewire.StepKind{adewire.KindAgent, adewire.KindReview}
 	agentOnly   = []adewire.StepKind{adewire.KindAgent}
 	scriptOnly  = []adewire.StepKind{adewire.KindScript}
 	reviewOnly  = []adewire.StepKind{adewire.KindReview}
