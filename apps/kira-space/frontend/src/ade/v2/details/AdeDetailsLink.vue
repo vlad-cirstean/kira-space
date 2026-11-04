@@ -6,6 +6,7 @@ import { control } from '../../../bridge/control';
 import { useOpenHostView } from '../../../hostview/queries';
 import AdeChip from '../AdeChip.vue';
 import { artifactKindLabel, artifactStatusLabel, artifactStatusTone } from '../artifacts/status';
+import AdeRow from '../panel/AdeRow.vue';
 import type { Artifact } from '../wire';
 import AdeDetailsLinkEdit from './AdeDetailsLinkEdit.vue';
 import AdeLinkKindMenu from './AdeLinkKindMenu.vue';
@@ -33,8 +34,9 @@ function open(e: MouseEvent): void {
 </script>
 
 <template>
-  <li
-    class="flex min-h-row min-w-0 items-center gap-2 text-kira-md"
+  <AdeRow
+    as="li"
+    label=""
     data-testid="ade-details-link"
     :data-origin="item.origin"
     :data-url="item.url"
@@ -48,12 +50,6 @@ function open(e: MouseEvent): void {
       @done="emit('done')"
     />
     <template v-else>
-      <AdeLinkKindMenu
-        v-if="item.origin === 'stored' && canEdit()"
-        :kind="item.kind"
-        @pick="emit('kind', $event)"
-      />
-      <AdeChip v-else :label="artifactKindLabel(item.kind)" tone="grey" wide />
       <a
         v-if="item.url"
         :href="item.url"
@@ -72,7 +68,16 @@ function open(e: MouseEvent): void {
         :label="artifactStatusLabel(item.status)"
         :tone="artifactStatusTone(item.status)"
       />
-      <span class="flex-1" />
+    </template>
+    <template v-if="!editing" #label>
+      <AdeLinkKindMenu
+        v-if="item.origin === 'stored' && canEdit()"
+        :kind="item.kind"
+        @pick="emit('kind', $event)"
+      />
+      <AdeChip v-else :label="artifactKindLabel(item.kind)" tone="grey" wide />
+    </template>
+    <template v-if="!editing" #actions>
       <slot name="trailing" />
       <template v-if="canEdit()">
         <TooltipIconButton
@@ -91,5 +96,5 @@ function open(e: MouseEvent): void {
         />
       </template>
     </template>
-  </li>
+  </AdeRow>
 </template>

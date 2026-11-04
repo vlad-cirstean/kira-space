@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { t } from '@theme/i18n';
+import { rowMeta } from '@theme/lib/rowVariants';
 import { errorText } from '@workbench/bridge/codedError';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed, ref } from 'vue';
 import { gapText } from '../artifacts/gapText';
 import { taskPatch } from '../board/panelFacts';
+import AdeRow from '../panel/AdeRow.vue';
 import AdeTaskIssueLine from '../panel/AdeTaskIssueLine.vue';
 import {
   useAddLink,
@@ -91,7 +93,7 @@ const add = (line: string) => addLink.mutateAsync({ taskId: props.task.id, text:
 
 <template>
   <div class="flex flex-col gap-2" data-testid="ade-details-links">
-    <div class="text-kira-sm text-muted-foreground">{{ t('space.ade.details.links.title') }}</div>
+    <AdeRow :label="t('space.ade.details.links.title')" />
     <QueryState :query="query">
       <Alert
         v-for="g in gaps"
@@ -107,21 +109,16 @@ const add = (line: string) => addLink.mutateAsync({ taskId: props.task.id, text:
           { id: 'related', title: t('space.ade.details.related.title'), items: groups.related },
         ]"
         :key="group.id"
-        class="flex flex-col gap-1"
+        class="flex flex-col"
         :data-testid="`ade-details-${group.id}`"
       >
-        <div class="text-kira-sm text-subtle">{{ group.title }}</div>
-        <div
-          v-if="group.items.length === 0"
-          class="text-kira-sm text-subtle"
-          data-testid="ade-details-empty"
-          >{{
-            t('space.ade.details.empty.body')
-          }}</div
-        >
+        <AdeRow :label="group.title" />
+        <AdeRow v-if="group.items.length === 0" label="" data-testid="ade-details-empty">
+          <span :class="rowMeta">{{ t('space.ade.details.empty.body') }}</span>
+        </AdeRow>
         <ul
           v-if="group.items.length > 0 || (group.id === 'related' && !readonly)"
-          class="m-0 flex list-none flex-col gap-0.5 p-0"
+          class="m-0 flex list-none flex-col p-0"
         >
           <template v-for="item in group.items" :key="item.key">
             <AdeDetailsLink
@@ -143,7 +140,7 @@ const add = (line: string) => addLink.mutateAsync({ taskId: props.task.id, text:
                 />
               </template>
             </AdeDetailsLink>
-            <li v-if="item.origin === 'jira'" class="min-w-0 pl-1">
+            <li v-if="item.origin === 'jira'" class="flex min-w-0 flex-col">
               <AdeTaskIssueLine :task-id="task.id" :link="`${item.label} ${item.url}`" />
             </li>
           </template>

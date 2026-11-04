@@ -10,6 +10,8 @@ import { formatRelative } from '@workbench/behaviour/format';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { computed } from 'vue';
 import { control } from '../../../bridge/control';
+import AdeRow from '../panel/AdeRow.vue';
+import { ADE_ROW, ADE_ROW_BODY, ADE_ROW_LEAD, rowIndent } from '../panel/adeRow';
 import { useHandovers, useTaskArtifacts } from '../queries';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import type { Task } from '../wire';
@@ -47,24 +49,29 @@ function openLink(e: MouseEvent, url: string): void {
 </script>
 
 <template>
-  <Collapsible v-model:open="open" class="flex flex-col gap-1">
+  <Collapsible v-model:open="open" class="flex flex-col">
     <CollapsibleTrigger
-      class="flex items-center gap-1 text-left text-kira-sm text-muted-foreground"
+      :class="[ADE_ROW, 'w-full text-left']"
+      :style="rowIndent(0)"
       data-testid="ade-details-timeline-toggle"
     >
-      <CodiconIcon :name="open ? 'chevron-down' : 'chevron-right'" :size="12" />
-      {{ t('space.ade.details.timeline.header.label', { count: entries.length }) }}
+      <span :class="ADE_ROW_LEAD"
+        ><CodiconIcon :name="open ? 'chevron-down' : 'chevron-right'" :size="13" /></span
+      >
+      <span :class="[ADE_ROW_BODY, 'text-kira-sm text-muted-foreground']">{{
+        t('space.ade.details.timeline.header.label', { count: entries.length })
+      }}</span>
     </CollapsibleTrigger>
     <CollapsibleContent>
-      <ol class="m-0 flex list-none flex-col gap-0.5 p-0" data-testid="ade-details-timeline">
-        <li
+      <ol class="m-0 flex list-none flex-col p-0" data-testid="ade-details-timeline">
+        <AdeRow
           v-for="e in entries"
           :key="e.key"
-          class="flex min-h-row min-w-0 items-center gap-2 text-kira-md"
+          as="li"
+          :label="formatRelative(e.at)"
           data-testid="ade-details-timeline-entry"
           :data-kind="e.kind"
         >
-          <span class="w-20 shrink-0 text-kira-sm text-subtle">{{ formatRelative(e.at) }}</span>
           <a
             v-if="e.url"
             :href="e.url"
@@ -75,13 +82,15 @@ function openLink(e: MouseEvent, url: string): void {
             }}</a
           >
           <span v-else class="min-w-0 truncate">{{ e.label }}</span>
-          <AdeOriginSession
-            :task-id="task.id"
-            :session-id="e.sessionId"
-            :archived="archived"
-            @open="emit('openSession', $event)"
-          />
-        </li>
+          <template #actions>
+            <AdeOriginSession
+              :task-id="task.id"
+              :session-id="e.sessionId"
+              :archived="archived"
+              @open="emit('openSession', $event)"
+            />
+          </template>
+        </AdeRow>
       </ol>
     </CollapsibleContent>
   </Collapsible>

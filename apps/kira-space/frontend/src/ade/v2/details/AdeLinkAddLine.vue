@@ -6,6 +6,9 @@ import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { errorText } from '@workbench/bridge/codedError';
 import { ref, watch } from 'vue';
+import AdeRow from '../panel/AdeRow.vue';
+import AdeRowDetail from '../panel/AdeRowDetail.vue';
+import { rowMeta } from '../panel/adeRow';
 import type { LinkResult } from '../wire';
 
 // The always-present last row of the links list. Type or paste a line and press Enter: the backend
@@ -69,11 +72,13 @@ function onKeydown(e: KeyboardEvent): void {
 </script>
 
 <template>
-  <li class="flex min-w-0 flex-col gap-1" data-testid="ade-details-add">
-    <div class="flex min-h-row min-w-0 items-center gap-2">
-      <span class="flex min-w-21 shrink-0 justify-center text-subtle"
-        ><CodiconIcon name="add" :size="12" /></span
-      >
+  <li class="flex min-w-0 flex-col" data-testid="ade-details-add">
+    <AdeRow label="">
+      <template #label>
+        <span class="flex w-full justify-center text-muted-foreground"
+          ><CodiconIcon name="add" :size="13" /></span
+        >
+      </template>
       <Input
         v-model="text"
         :placeholder="t('space.ade.details.addLine.placeholder')"
@@ -85,17 +90,16 @@ function onKeydown(e: KeyboardEvent): void {
         @keydown="onKeydown"
         @paste="onPaste"
       />
-    </div>
-    <div
-      v-if="known"
-      class="pl-23 text-kira-sm text-subtle"
-      data-testid="ade-details-paste-known"
-      >{{
+    </AdeRow>
+    <AdeRowDetail v-if="known" labelled>
+      <div :class="rowMeta" data-testid="ade-details-paste-known">{{
         t('space.ade.details.addLine.known.body')
-      }}</div
-    >
-    <Alert v-if="error" variant="error" data-testid="ade-details-paste-error"
-      ><AlertDescription>{{ error }}</AlertDescription></Alert
-    >
+      }}</div>
+    </AdeRowDetail>
+    <AdeRowDetail v-if="error" labelled>
+      <Alert variant="error" data-testid="ade-details-paste-error"
+        ><AlertDescription>{{ error }}</AlertDescription></Alert
+      >
+    </AdeRowDetail>
   </li>
 </template>

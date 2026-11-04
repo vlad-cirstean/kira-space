@@ -131,7 +131,7 @@ const facts = computed(() => {
       <!-- biome-ignore lint/a11y/noStaticElementInteractions: right-click only; the keyboard opens the same menu from More. -->
       <div class="flex items-start gap-2" @contextmenu="taskMenu.open">
         <span
-          class="mt-1 box-border size-3 shrink-0 rounded-kira-xs"
+          class="mt-1 box-border size-3 shrink-0 rounded-kira-sm"
           :class="card.parked ? 'border-2' : ''"
           :style="card.parked ? { borderColor: card.color } : { background: card.color }"
           data-testid="ade-panel-dot"
