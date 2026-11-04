@@ -81,7 +81,7 @@ func TestRunsLifecycleStudio(t *testing.T) {
 	if err := cs.Move(out); err != nil {
 		t.Fatal(err)
 	}
-	snap = waitSnapshot(t, app, 0, func(s scripts.Snapshot) bool {
+	waitSnapshot(t, app, 0, func(s scripts.Snapshot) bool {
 		return len(collectionOrder(s, "")) == 1 && len(collectionOrder(s, "A")) == 2
 	})
 	if txt := fileText(t, app, "z.yaml"); strings.Contains(txt, "collection:") {
