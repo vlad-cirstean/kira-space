@@ -114,7 +114,7 @@ func manualOf(s adewire.WorkflowStep) adewire.WorkflowStep {
 	return adewire.WorkflowStep{
 		ID: s.ID, Name: s.Name, Kind: adewire.KindManual, Status: s.Status, Skip: s.Skip,
 		Results: []adewire.StepResult{}, AllowedTools: []string{}, Params: map[string][]string{},
-		Sandbox: adewire.DefaultSandbox(),
+		Sandbox: adewire.DefaultSandboxFor(adewire.KindManual),
 	}
 }
 
@@ -194,7 +194,7 @@ func TestWorkflowEditorOutsideRepo(t *testing.T) {
 	}
 	session := adewire.WorkflowStep{
 		ID: "work", Name: "work", Kind: adewire.KindManual, Session: true, OutsideRepo: true, Results: []adewire.StepResult{},
-		AllowedTools: []string{}, Params: map[string][]string{}, Sandbox: adewire.DefaultSandbox(),
+		AllowedTools: []string{}, Params: map[string][]string{}, Sandbox: adewire.DefaultSandboxFor(adewire.KindManual),
 	}
 	wf.Steps = append(wf.Steps, script, session)
 	saved, err := app.W.AdeTask.SaveWorkflow(ctx, adewire.SaveWorkflowArgs{FileName: "flow.yaml", Workflow: wf, BaseHash: entry.Hash})
@@ -228,4 +228,50 @@ func TestWorkflowEditorOutsideRepo(t *testing.T) {
 	msg := badRequest(t, refused)
 	mustContain(t, "message", msg, "{branch}", "outside_repo")
 	app.Contract(t, weScenario, "AdeTaskService.SaveWorkflow#outside-vars", refused.Error())
+}
+
+// P511 a manual session step keeps its sandbox through a save and reload; off is the default and
+// writes no block; a step without a session refuses one. Contract ade-workflow-editor.
+func TestWorkflowEditorManualSandbox(t *testing.T) {
+	app := flowharness.New(t)
+	saveWorkflow(t, app, "flow", flowYAML("flow", agentStep("plan", "")))
+	entry, _ := workflowEntry(t, app, "flow.yaml")
+	wf := *entry.Workflow
+	wf.Steps = append([]adewire.WorkflowStep(nil), wf.Steps...)
+	step := func(id string, sb adewire.StepSandbox) adewire.WorkflowStep {
+		s := manualOf(adewire.WorkflowStep{ID: id, Name: id})
+		s.Session, s.Sandbox = true, sb
+		return s
+	}
+	read := adewire.StepSandbox{Access: adewire.SandboxRead, Read: []string{}, Allow: []string{}, Network: false}
+	wf.Steps = append(wf.Steps, step("look", read), step("free", adewire.DefaultSandboxFor(adewire.KindManual)))
+	saved, err := app.W.AdeTask.SaveWorkflow(ctx, adewire.SaveWorkflowArgs{FileName: "flow.yaml", Workflow: wf, BaseHash: entry.Hash})
+	if err != nil || saved.Error != nil {
+		t.Fatalf("SaveWorkflow = %+v, %v", saved, err)
+	}
+	text, err := app.W.AdeTask.WorkflowYaml(ctx, adewire.FileNameArgs{FileName: "flow.yaml"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := strings.Split(text.Yaml, "  - id: ")
+	mustContain(t, "look yaml", parts[2], "sandbox:", "access: read", "network: false")
+	mustLack(t, "free yaml", parts[3], "sandbox")
+
+	again, list := workflowEntry(t, app, "flow.yaml")
+	look := again.Workflow.Steps[stepIndex(t, *again.Workflow, "look")]
+	if look.Sandbox.Access != adewire.SandboxRead || look.Sandbox.Network || !look.Session {
+		t.Fatalf("reloaded look step = %+v, want a read session sandbox without network", look)
+	}
+	free := again.Workflow.Steps[stepIndex(t, *again.Workflow, "free")]
+	if free.Sandbox.Access != adewire.SandboxOff {
+		t.Fatalf("reloaded free step sandbox = %+v, want off", free.Sandbox)
+	}
+	app.Contract(t, weScenario, "AdeTaskService.Workflows#manual-sandbox", list)
+
+	const noSession = "  - id: sign\n    name: sign\n    kind: manual\n    sandbox:\n      access: read\n"
+	refused, err := app.W.AdeTask.SaveWorkflowYaml(ctx, adewire.SaveWorkflowYamlArgs{FileName: "bad.yaml", Yaml: flowYAML("bad", noSession)})
+	if err != nil || refused.Error == nil {
+		t.Fatalf("SaveWorkflowYaml = %+v, %v, want a validation error", refused, err)
+	}
+	mustContain(t, "message", refused.Error.Message, "sandbox is not allowed on manual steps without a session")
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/agentsandbox/sandboxtest"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
+	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -329,6 +330,218 @@ func TestSandboxScriptStep(t *testing.T) {
 		}
 		if run.Sandbox != nil {
 			t.Fatalf("run badge = %+v, want none", run.Sandbox)
+		}
+	})
+}
+
+// P511 manual session steps take a sandbox. Contract ade-sandbox.
+
+var sbSessionMask = flowharness.Mask("id", "taskId", "branchId", "agentSessionId", "terminalId", "startedAt", "lastActiveAt", "at", "profile")
+
+func sessionStep(id, extra string) string {
+	return "  - id: " + id + "\n    name: " + id + "\n    kind: manual\n    session: true\n" + extra
+}
+
+// manualSbFx is a task whose steps include a manual session step, with every interactive call held open.
+type manualSbFx struct {
+	*runFixture
+	fake *sandboxtest.Fake
+}
+
+func newManualSbFx(t *testing.T, fake *sandboxtest.Fake, steps string) *manualSbFx {
+	t.Helper()
+	gate := filepath.Join(t.TempDir(), "gate")
+	t.Cleanup(func() { _ = os.WriteFile(gate, nil, 0o644) })
+	hold := fakeagent.Action{WaitFile: gate}
+	f := newSandboxFx(t, fake, []fakeagent.Action{{Name: "done"}, hold, hold, hold, hold}, steps)
+	f.app.WindowMgr.OpenWindow(shell.WindowRecord{Key: sessionWindow})
+	return &manualSbFx{runFixture: f, fake: fake}
+}
+
+// afterRun starts the task's branch and waits for the step before the session step.
+func (f *manualSbFx) afterRun(t *testing.T) {
+	t.Helper()
+	f.start(t, "feat/api-sb")
+	waitRun(t, f.app, f.taskID, "one", "done")
+}
+
+func (f *manualSbFx) policyOf(t *testing.T, sessionID string) agentsandbox.Policy {
+	t.Helper()
+	var got []agentsandbox.Policy
+	for _, p := range f.fake.Policies() {
+		if p.RunID == sessionID {
+			got = append(got, p)
+		}
+	}
+	if len(got) != 1 {
+		t.Fatalf("policies for session %s = %+v, want exactly one", sessionID, got)
+	}
+	return got[0]
+}
+
+func (f *manualSbFx) launch(t *testing.T) adewire.Launch {
+	t.Helper()
+	l, err := f.app.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: f.taskID})
+	if err != nil {
+		t.Fatalf("LaunchStep: %v", err)
+	}
+	return l
+}
+
+func (f *manualSbFx) sessionDetail(t *testing.T, id string) (adewire.RunSandboxDetail, error) {
+	t.Helper()
+	return f.app.W.AdeTask.SessionSandbox(ctx, adewire.SessionSandboxArgs{SessionID: id})
+}
+
+func sessionsOnly(s adewire.Session) adewire.SessionsResult {
+	return adewire.SessionsResult{Sessions: []adewire.Session{s}}
+}
+
+func TestSandboxManualSession(t *testing.T) {
+	const shim = "sandbox-exec-shim"
+
+	t.Run("write, network off", func(t *testing.T) {
+		fake := &sandboxtest.Fake{}
+		f := newManualSbFx(t, fake, sbStep("one", "")+sessionStep("work", "    sandbox:\n      access: write\n      network: false\n"))
+		f.afterRun(t)
+		launch := f.launch(t)
+		mustContain(t, "launch command", launch.Command, filepath.Join(fake.Dir, shim), " -f ", "'--disallowedTools'")
+		br := branchOf(t, board(t, f.app), f.taskID, f.repoID)
+		real, err := filepath.EvalSymlinks(br.Worktree)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pol := f.policyOf(t, launch.SessionID)
+		if len(pol.Write) != 1 || pol.Write[0] != real || pol.Network || pol.Branch[real] != "feat/api-sb" {
+			t.Fatalf("policy = %+v, want the worktree %s writable on feat/api-sb, network off", pol, real)
+		}
+		if !slices.ContainsFunc(pol.ReadFiles, func(p string) bool { return strings.HasSuffix(p, ".mcp.json") }) {
+			t.Fatalf("policy read files = %v, want the MCP config", pol.ReadFiles)
+		}
+		openLaunch(t, f.app, launch)
+		waitSession(t, f.app, launch.SessionID, "running")
+		testx.WaitUntil(t, waitFor, func() bool { return fake.WatchedRun() == launch.SessionID })
+		row := sessionByID(t, f.app, launch.SessionID)
+		if row.Sandbox == nil || row.Sandbox.Access != "write" || !row.Sandbox.Enforced {
+			t.Fatalf("session badge = %+v, want an enforced write sandbox", row.Sandbox)
+		}
+		d := agentsandbox.Denial{At: time.Unix(1_700_000_000, 0), Op: "file-write-create", Target: "/etc/kira-denied", Process: "git"}
+		if !fake.Inject(launch.SessionID, d) {
+			t.Fatal("the session is not watched")
+		}
+		var detail adewire.RunSandboxDetail
+		testx.WaitUntil(t, waitFor, func() bool {
+			var err error
+			detail, err = f.sessionDetail(t, launch.SessionID)
+			return err == nil && detail.DenialCount == 1
+		})
+		if detail.Access != "write" || detail.Network || len(detail.Write) != 1 || detail.Write[0] != real {
+			t.Fatalf("detail = %+v, want write access on %s, network off", detail, real)
+		}
+		row = sessionByID(t, f.app, launch.SessionID)
+		f.app.Contract(t, sbScenario, "AdeTaskService.Sessions#manual-sandbox", sessionsOnly(row), sbSessionMask)
+		f.app.Contract(t, sbScenario, "AdeTaskService.SessionSandbox#manual", detail, sbSessionMask)
+
+		scratch := pol.Scratch
+		if err := f.app.W.AdeTask.CloseSession(ctx, adewire.CloseSessionArgs{SessionID: launch.SessionID}); err != nil {
+			t.Fatal(err)
+		}
+		waitSession(t, f.app, launch.SessionID, "stopped")
+		testx.WaitUntil(t, waitFor, func() bool { _, err := os.Stat(scratch); return os.IsNotExist(err) })
+
+		// Take over re-prepares the sandbox under the same record id.
+		again, err := f.app.W.AdeTask.TakeOver(ctx, adewire.TakeOverArgs{SessionID: launch.SessionID})
+		if err != nil {
+			t.Fatalf("TakeOver: %v", err)
+		}
+		mustContain(t, "take over command", again.Command, filepath.Join(fake.Dir, shim), "--resume")
+		n := 0
+		for _, p := range fake.Policies() {
+			if p.RunID == launch.SessionID {
+				n++
+			}
+		}
+		if n != 2 {
+			t.Fatalf("%d policies for the record, want 2 (launch and take over)", n)
+		}
+	})
+
+	t.Run("explicit off", func(t *testing.T) {
+		fake := &sandboxtest.Fake{}
+		f := newManualSbFx(t, fake, sessionStep("work", "    sandbox:\n      access: off\n"))
+		launch := f.launch(t)
+		mustLack(t, "launch command", launch.Command, filepath.Join(fake.Dir, shim), " -f ", "--disallowed", "--add-dir")
+		openLaunch(t, f.app, launch)
+		waitSession(t, f.app, launch.SessionID, "running")
+		if n := len(fake.Policies()); n != 0 {
+			t.Fatalf("Prepare ran %d times for an unconfined session", n)
+		}
+		if id := fake.WatchedRun(); id != "" {
+			t.Fatalf("session %s is watched although the sandbox is off", id)
+		}
+		row := sessionByID(t, f.app, launch.SessionID)
+		if row.Sandbox != nil {
+			t.Fatalf("session badge = %+v, want none", row.Sandbox)
+		}
+		if _, err := f.sessionDetail(t, launch.SessionID); err == nil {
+			t.Fatal("SessionSandbox returned a sandbox for an unconfined session")
+		}
+		f.app.Contract(t, sbScenario, "AdeTaskService.Sessions#manual-off", sessionsOnly(row), sbSessionMask)
+	})
+
+	t.Run("no block is off", func(t *testing.T) {
+		fake := &sandboxtest.Fake{}
+		f := newManualSbFx(t, fake, sessionStep("work", ""))
+		entry, _ := workflowEntry(t, f.app, "flow.yaml")
+		if got := entry.Workflow.Steps[0].Sandbox.Access; got != adewire.SandboxOff {
+			t.Fatalf("manual step sandbox access = %q, want off", got)
+		}
+		launch := f.launch(t)
+		mustLack(t, "launch command", launch.Command, filepath.Join(fake.Dir, shim), " -f ", "--disallowed")
+		openLaunch(t, f.app, launch)
+		waitSession(t, f.app, launch.SessionID, "running")
+		if n := len(fake.Policies()); n != 0 {
+			t.Fatalf("Prepare ran %d times for an unconfined session", n)
+		}
+		if row := sessionByID(t, f.app, launch.SessionID); row.Sandbox != nil {
+			t.Fatalf("session badge = %+v, want none", row.Sandbox)
+		}
+	})
+
+	t.Run("outside repo, read", func(t *testing.T) {
+		fake := &sandboxtest.Fake{}
+		f := newManualSbFx(t, fake, sessionStep("work", "    outside_repo: true\n    sandbox:\n      access: read\n"))
+		launch := f.launch(t)
+		real, err := filepath.EvalSymlinks(launch.Cwd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pol := f.policyOf(t, launch.SessionID)
+		if len(pol.Write) != 0 || !slices.Contains(pol.Read, real) || len(pol.Branch) != 0 {
+			t.Fatalf("policy = %+v, want the task folder %s read-only and no branch", pol, real)
+		}
+	})
+
+	t.Run("not enforced", func(t *testing.T) {
+		fake := &sandboxtest.Fake{NotEnforced: true}
+		f := newManualSbFx(t, fake, sessionStep("work", "    outside_repo: true\n"+"    sandbox:\n      access: write\n"))
+		launch := f.launch(t)
+		mustLack(t, "launch command", launch.Command, filepath.Join(fake.Dir, shim), " -f ")
+		mustContain(t, "launch command", launch.Command, "'--disallowedTools'")
+		openLaunch(t, f.app, launch)
+		waitSession(t, f.app, launch.SessionID, "running")
+		var detail adewire.RunSandboxDetail
+		testx.WaitUntil(t, waitFor, func() bool {
+			var err error
+			detail, err = f.sessionDetail(t, launch.SessionID)
+			return err == nil
+		})
+		if detail.Enforced || detail.Access != "write" {
+			t.Fatalf("detail = %+v, want a declared write sandbox, not enforced", detail)
+		}
+		mustContain(t, "reason", detail.Reason, "not enforced")
+		if row := sessionByID(t, f.app, launch.SessionID); row.Sandbox == nil || row.Sandbox.Enforced {
+			t.Fatalf("session badge = %+v, want not enforced", row.Sandbox)
 		}
 	})
 }

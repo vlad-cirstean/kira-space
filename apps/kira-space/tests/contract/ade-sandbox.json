@@ -247,5 +247,79 @@
     ],
     "reason": "",
     "write": []
+  },
+  "AdeTaskService.SessionSandbox#manual": {
+    "access": "write",
+    "allow": [],
+    "denialCount": 1,
+    "denials": [
+      {
+        "at": 0,
+        "op": "file-write-create",
+        "process": "git",
+        "target": "/etc/kira-denied"
+      }
+    ],
+    "enforced": true,
+    "network": false,
+    "profile": "<masked>",
+    "read": [],
+    "reason": "",
+    "write": [
+      "<home>/wt/api/api-sb"
+    ]
+  },
+  "AdeTaskService.Sessions#manual-off": {
+    "sessions": [
+      {
+        "activity": "",
+        "agentSessionId": "<masked>",
+        "branchId": "<masked>",
+        "cwd": "<work>/api",
+        "cwdMissing": false,
+        "id": "<masked>",
+        "lastActiveAt": 0,
+        "mode": "tui",
+        "provider": "claude",
+        "purpose": "",
+        "resumes": "",
+        "runId": "",
+        "sandbox": null,
+        "startedAt": 0,
+        "state": "running",
+        "stepId": "work",
+        "taskId": "<masked>",
+        "terminalId": "<masked>"
+      }
+    ]
+  },
+  "AdeTaskService.Sessions#manual-sandbox": {
+    "sessions": [
+      {
+        "activity": "",
+        "agentSessionId": "<masked>",
+        "branchId": "<masked>",
+        "cwd": "<home>/wt/api/api-sb",
+        "cwdMissing": false,
+        "id": "<masked>",
+        "lastActiveAt": 0,
+        "mode": "tui",
+        "provider": "claude",
+        "purpose": "",
+        "resumes": "",
+        "runId": "",
+        "sandbox": {
+          "access": "write",
+          "denials": 1,
+          "enforced": true,
+          "last": "file-write-create /etc/kira-denied"
+        },
+        "startedAt": 0,
+        "state": "running",
+        "stepId": "work",
+        "taskId": "<masked>",
+        "terminalId": "<masked>"
+      }
+    ]
   }
 }
