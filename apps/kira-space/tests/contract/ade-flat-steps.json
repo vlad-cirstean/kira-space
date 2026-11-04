@@ -108,6 +108,7 @@
           "kind": "manual",
           "maxReturns": 0,
           "name": "Spec",
+          "outsideRepo": false,
           "params": {},
           "prompt": "Write the spec for {task}",
           "results": [],
@@ -135,6 +136,7 @@
           "kind": "agent",
           "maxReturns": 3,
           "name": "Build it",
+          "outsideRepo": false,
           "params": {},
           "prompt": "work on {branch} in {repo}",
           "results": [
@@ -177,6 +179,7 @@
           "kind": "review",
           "maxReturns": 2,
           "name": "review",
+          "outsideRepo": false,
           "params": {},
           "prompt": "",
           "results": [
@@ -229,6 +232,7 @@
           "kind": "script",
           "maxReturns": 3,
           "name": "release",
+          "outsideRepo": false,
           "params": {},
           "prompt": "",
           "results": [
@@ -250,7 +254,7 @@
           "review": null,
           "runsOn": "each repo",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -441,6 +445,7 @@
           "kind": "manual",
           "maxReturns": 0,
           "name": "Spec",
+          "outsideRepo": false,
           "params": {},
           "prompt": "Write the spec for {task}",
           "results": [],
@@ -468,6 +473,7 @@
           "kind": "agent",
           "maxReturns": 3,
           "name": "implement",
+          "outsideRepo": false,
           "params": {},
           "prompt": "work on {branch} in {repo}",
           "results": [
@@ -510,6 +516,7 @@
           "kind": "review",
           "maxReturns": 2,
           "name": "review",
+          "outsideRepo": false,
           "params": {},
           "prompt": "",
           "results": [
@@ -562,6 +569,7 @@
           "kind": "script",
           "maxReturns": 3,
           "name": "release",
+          "outsideRepo": false,
           "params": {},
           "prompt": "",
           "results": [
@@ -583,7 +591,7 @@
           "review": null,
           "runsOn": "each repo",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -635,6 +643,7 @@
           "kind": "manual",
           "maxReturns": 0,
           "name": "Spec",
+          "outsideRepo": false,
           "params": {},
           "prompt": "Write the spec for {task}",
           "results": [],
@@ -662,6 +671,7 @@
           "kind": "agent",
           "maxReturns": 3,
           "name": "implement",
+          "outsideRepo": false,
           "params": {},
           "prompt": "work on {branch} in {repo}",
           "results": [
@@ -704,6 +714,7 @@
           "kind": "review",
           "maxReturns": 2,
           "name": "review",
+          "outsideRepo": false,
           "params": {},
           "prompt": "",
           "results": [
@@ -756,6 +767,7 @@
           "kind": "script",
           "maxReturns": 3,
           "name": "release",
+          "outsideRepo": false,
           "params": {},
           "prompt": "",
           "results": [
@@ -777,7 +789,7 @@
           "review": null,
           "runsOn": "each repo",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -910,6 +922,7 @@
           "kind": "manual",
           "maxReturns": 0,
           "name": "Spec",
+          "outsideRepo": false,
           "params": {},
           "prompt": "Write the spec for {task}",
           "results": [],
@@ -937,6 +950,7 @@
           "kind": "agent",
           "maxReturns": 3,
           "name": "implement",
+          "outsideRepo": false,
           "params": {},
           "prompt": "work on {branch} in {repo}",
           "results": [
@@ -979,6 +993,7 @@
           "kind": "review",
           "maxReturns": 2,
           "name": "review",
+          "outsideRepo": false,
           "params": {},
           "prompt": "",
           "results": [
@@ -1031,6 +1046,7 @@
           "kind": "script",
           "maxReturns": 3,
           "name": "release",
+          "outsideRepo": false,
           "params": {},
           "prompt": "",
           "results": [
@@ -1052,7 +1068,7 @@
           "review": null,
           "runsOn": "each repo",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -1279,6 +1295,7 @@
           "kind": "manual",
           "maxReturns": 0,
           "name": "Spec",
+          "outsideRepo": false,
           "params": {},
           "prompt": "Write the spec for {task}",
           "results": [],
@@ -1306,6 +1323,7 @@
           "kind": "agent",
           "maxReturns": 3,
           "name": "implement",
+          "outsideRepo": false,
           "params": {},
           "prompt": "work on {branch} in {repo}",
           "results": [
@@ -1348,6 +1366,7 @@
           "kind": "review",
           "maxReturns": 2,
           "name": "review",
+          "outsideRepo": false,
           "params": {},
           "prompt": "",
           "results": [
@@ -1400,6 +1419,7 @@
           "kind": "script",
           "maxReturns": 3,
           "name": "release",
+          "outsideRepo": false,
           "params": {},
           "prompt": "",
           "results": [
@@ -1421,7 +1441,7 @@
           "review": null,
           "runsOn": "each repo",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -1454,6 +1474,7 @@
           "kind": "manual",
           "maxReturns": 0,
           "name": "Spec",
+          "outsideRepo": false,
           "params": {},
           "prompt": "Write the spec for {task}",
           "results": [],
@@ -1481,6 +1502,7 @@
           "kind": "agent",
           "maxReturns": 3,
           "name": "Build it",
+          "outsideRepo": false,
           "params": {},
           "prompt": "work on {branch} in {repo}",
           "results": [
@@ -1523,6 +1545,7 @@
           "kind": "review",
           "maxReturns": 2,
           "name": "review",
+          "outsideRepo": false,
           "params": {},
           "prompt": "",
           "results": [
@@ -1575,6 +1598,7 @@
           "kind": "script",
           "maxReturns": 3,
           "name": "release",
+          "outsideRepo": false,
           "params": {},
           "prompt": "",
           "results": [
@@ -1596,7 +1620,7 @@
           "review": null,
           "runsOn": "each repo",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []

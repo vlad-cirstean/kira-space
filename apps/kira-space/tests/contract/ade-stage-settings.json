@@ -44,6 +44,7 @@
               "kind": "agent",
               "maxReturns": 3,
               "name": "tuned",
+              "outsideRepo": false,
               "params": {},
               "prompt": "work on {branch} in {repo}",
               "results": [
@@ -90,6 +91,7 @@
               "kind": "agent",
               "maxReturns": 3,
               "name": "plain",
+              "outsideRepo": false,
               "params": {},
               "prompt": "work on {branch} in {repo}",
               "results": [
@@ -144,6 +146,7 @@
           "kind": "agent",
           "maxReturns": 3,
           "name": "tuned",
+          "outsideRepo": false,
           "params": {},
           "prompt": "work on {branch} in {repo}",
           "results": [
@@ -190,6 +193,7 @@
           "kind": "agent",
           "maxReturns": 3,
           "name": "plain",
+          "outsideRepo": false,
           "params": {},
           "prompt": "work on {branch} in {repo}",
           "results": [

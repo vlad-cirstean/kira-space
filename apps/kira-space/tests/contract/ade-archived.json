@@ -148,6 +148,7 @@
             "kind": "agent",
             "maxReturns": 3,
             "name": "one",
+            "outsideRepo": false,
             "params": {},
             "prompt": "work on {branch} in {repo}",
             "results": [
@@ -336,6 +337,7 @@
             "kind": "agent",
             "maxReturns": 3,
             "name": "one",
+            "outsideRepo": false,
             "params": {},
             "prompt": "work on {branch} in {repo}",
             "results": [

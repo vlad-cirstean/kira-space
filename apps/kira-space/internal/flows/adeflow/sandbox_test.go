@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -283,4 +284,51 @@ func TestSmartRunSandboxed(t *testing.T) {
 	if got := fake.Policies(); len(got) != 3 {
 		t.Fatalf("policies = %d, want two step runs and the smart run", len(got))
 	}
+}
+
+// P510 script steps take a sandbox block; without one they run unconfined. Contract ade-sandbox.
+func TestSandboxScriptStep(t *testing.T) {
+	const cmd = "'printenv TMPDIR > \"$PWD/.script-tmpdir\"'"
+	t.Run("read access with the network off", func(t *testing.T) {
+		fake := &sandboxtest.Fake{}
+		steps := scriptStep("check", cmd) + "    sandbox:\n      access: read\n      network: false\n"
+		f := newSandboxFx(t, fake, nil, steps)
+		f.start(t, "feat/api-script")
+		run := waitRun(t, f.app, f.taskID, "check", "done")
+		br := branchOf(t, board(t, f.app), f.taskID, f.repoID)
+		real, err := filepath.EvalSymlinks(br.Worktree)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pols := fake.Policies()
+		if len(pols) != 1 || len(pols[0].Write) != 0 || pols[0].Network || !slices.Contains(pols[0].Read, real) || pols[0].Branch[real] != "feat/api-script" {
+			t.Fatalf("policies = %+v, want one read-only policy on %s, network off", pols, real)
+		}
+		raw, err := os.ReadFile(filepath.Join(br.Worktree, ".script-tmpdir"))
+		if err != nil || !strings.Contains(string(raw), pols[0].Scratch) {
+			t.Fatalf("script TMPDIR = %q (%v), want it under the scratch dir %s", raw, err, pols[0].Scratch)
+		}
+		d := sandboxOf(t, f, run.ID)
+		if d.Access != "read" || d.Network || len(d.Write) != 0 {
+			t.Fatalf("detail = %+v, want read access, network off", d)
+		}
+		if run.Sandbox == nil || run.Sandbox.Access != "read" || !run.Sandbox.Enforced {
+			t.Fatalf("run badge = %+v, want an enforced read sandbox", run.Sandbox)
+		}
+		f.app.Contract(t, sbScenario, "AdeTaskService.RunSandbox#script", d, sbMask)
+		f.app.Contract(t, sbScenario, "AdeTaskService.Run#script", run, sbMask)
+	})
+
+	t.Run("no block runs unconfined", func(t *testing.T) {
+		fake := &sandboxtest.Fake{}
+		f := newSandboxFx(t, fake, nil, scriptStep("check", "'echo ok'"))
+		f.start(t, "feat/api-script")
+		run := waitRun(t, f.app, f.taskID, "check", "done")
+		if n := len(fake.Policies()); n != 0 {
+			t.Fatalf("Prepare ran %d times for an unconfined script", n)
+		}
+		if run.Sandbox != nil {
+			t.Fatalf("run badge = %+v, want none", run.Sandbox)
+		}
+	})
 }

@@ -357,9 +357,10 @@ func (b *TaskBoard) checkBranchNames(tc *taskCtx, names map[string]string) error
 	return nil
 }
 
-// prepareStepWorktrees prepares the worktrees a step starts in; an outside-repo step uses none.
+// prepareStepWorktrees prepares the worktrees a step starts in. An outside-repo step uses none, so it
+// prepares only the branches the user named in the Run dialog.
 func (b *TaskBoard) prepareStepWorktrees(ctx context.Context, tc *taskCtx, def stepDef, names map[string]string) (map[string]string, error) {
-	if def.OutsideRepo {
+	if def.OutsideRepo && len(names) == 0 {
 		return map[string]string{}, nil
 	}
 	return b.prepareWorktrees(ctx, tc, names, def.Kind == adewire.KindAgent || def.SmartScript != "")

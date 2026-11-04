@@ -142,6 +142,7 @@
               "kind": "agent",
               "maxReturns": 3,
               "name": "impl",
+              "outsideRepo": false,
               "params": {},
               "prompt": "work on {branch} in {repo}",
               "results": [
@@ -184,6 +185,7 @@
               "kind": "agent",
               "maxReturns": 2,
               "name": "review",
+              "outsideRepo": false,
               "params": {},
               "prompt": "work on {branch} in {repo}",
               "results": [

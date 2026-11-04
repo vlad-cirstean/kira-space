@@ -139,6 +139,40 @@
     "summary": "summary-done",
     "taskId": "<masked>"
   },
+  "AdeTaskService.Run#script": {
+    "attempt": 0,
+    "branchId": "<masked>",
+    "exitCode": 0,
+    "finishedAt": 0,
+    "id": "<masked>",
+    "loops": 0,
+    "note": "",
+    "outcome": {
+      "exitCode": 0,
+      "reason": "",
+      "reported": false,
+      "result": "done",
+      "route": "next",
+      "source": "exit",
+      "status": "done"
+    },
+    "purpose": "",
+    "resumable": false,
+    "returns": 0,
+    "review": null,
+    "sandbox": {
+      "access": "read",
+      "denials": 0,
+      "enforced": true,
+      "last": ""
+    },
+    "sessionId": "<masked>",
+    "startedAt": 0,
+    "state": "done",
+    "stepId": "check",
+    "summary": "",
+    "taskId": "<masked>"
+  },
   "AdeTaskService.RunSandbox#denied": {
     "access": "write",
     "allow": [],
@@ -199,5 +233,19 @@
     "write": [
       "<home>/wt/api/api-sb"
     ]
+  },
+  "AdeTaskService.RunSandbox#script": {
+    "access": "read",
+    "allow": [],
+    "denialCount": 0,
+    "denials": [],
+    "enforced": true,
+    "network": false,
+    "profile": "<masked>",
+    "read": [
+      "<home>/wt/api/api-script"
+    ],
+    "reason": "",
+    "write": []
   }
 }

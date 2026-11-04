@@ -132,3 +132,63 @@ func TestRepolessWorkflow(t *testing.T) {
 		f.app.Contract(t, nrScenario, "error:AdeTaskService.StartRun#review", err.Error())
 	})
 }
+
+// P510 outside-repo steps run once in the task folder, even on a task with branches. Contract ade-norepo.
+func TestOutsideRepoStep(t *testing.T) {
+	const outsideAgent = "  - id: one\n    name: one\n    kind: agent\n    outside_repo: true\n    timeout: 1m\n    prompt: survey the folder\n"
+	taskDir := func(f *runFixture) string { return filepath.Join(f.app.SpaceHome, "ade", "tasks", f.taskID) }
+
+	t.Run("agent step runs in the task folder, the next on the branch", func(t *testing.T) {
+		f := newRunFixture(t, []fakeagent.Action{{Name: "done"}}, outsideAgent+agentStep("two", ""))
+		f.start(t, "feat/api-out")
+		one := waitRun(t, f.app, f.taskID, "one", "done")
+		two := waitRun(t, f.app, f.taskID, "two", "done")
+		br := branchOf(t, board(t, f.app), f.taskID, f.repoID)
+		if one.BranchID != "" || two.BranchID != br.ID {
+			t.Fatalf("branches = %q and %q, want none and %q", one.BranchID, two.BranchID, br.ID)
+		}
+		if s := sessionByID(t, f.app, one.SessionID); s.Cwd != taskDir(f) {
+			t.Fatalf("session cwd = %q, want the task folder %q", s.Cwd, taskDir(f))
+		}
+		prompts, _ := filepath.Glob(filepath.Join(f.app.FakeDir, "*.prompt"))
+		var outside, noRepo int
+		for _, p := range prompts {
+			raw, _ := os.ReadFile(p)
+			if strings.Contains(string(raw), "Outside the repos. Folder: "+taskDir(f)) {
+				outside++
+			}
+			if strings.Contains(string(raw), "No repo yet") {
+				noRepo++
+			}
+		}
+		if outside != 1 || noRepo != 0 {
+			t.Fatalf("prompts: %d outside-repo, %d no-repo, want 1 and 0 (%v)", outside, noRepo, prompts)
+		}
+		f.app.Contract(t, nrScenario, "AdeTaskService.Board#outside", taskOf(t, board(t, f.app), f.taskID), nrMask)
+	})
+
+	t.Run("script step runs in the task folder", func(t *testing.T) {
+		step := "  - id: one\n    name: one\n    kind: script\n    outside_repo: true\n    timeout: 1m\n    command: 'printenv KIRA_WORKTREE_PATH > .where'\n"
+		f := newRunFixture(t, nil, step)
+		f.start(t, "feat/api-out")
+		if r := waitRun(t, f.app, f.taskID, "one", "done"); r.BranchID != "" {
+			t.Fatalf("run branch = %q, want none", r.BranchID)
+		}
+		raw, err := os.ReadFile(filepath.Join(taskDir(f), ".where"))
+		if err != nil || strings.TrimSpace(string(raw)) != taskDir(f) {
+			t.Fatalf("script folder = %q (%v), want %q", raw, err, taskDir(f))
+		}
+	})
+
+	t.Run("manual session step opens in the task folder", func(t *testing.T) {
+		f := newRunFixture(t, nil, "  - id: work\n    name: Work\n    kind: manual\n    session: true\n    outside_repo: true\n")
+		f.app.WindowMgr.OpenWindow(shell.WindowRecord{Key: sessionWindow})
+		launch, err := f.app.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: f.taskID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if launch.Cwd != taskDir(f) {
+			t.Fatalf("launch cwd = %q, want %q", launch.Cwd, taskDir(f))
+		}
+	})
+}
