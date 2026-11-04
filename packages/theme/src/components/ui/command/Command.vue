@@ -96,7 +96,7 @@ provideCommandContext({
     v-bind="forwarded"
     :class="
       cn(
-        'bg-elevated text-fg rounded-kira-pill! p-1 flex size-full flex-col overflow-hidden',
+        'bg-elevated text-fg rounded-kira-lg! p-1 flex size-full flex-col overflow-hidden',
         props.class,
       )
     "

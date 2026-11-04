@@ -8,7 +8,7 @@ defineProps<{ origin: ContainerOrigin; size: CodiconSize }>();
 </script>
 
 <template>
-  <CodiconIcon v-if="origin === 'compose'" name="layers" :size="size" style="color: #00b4ff" />
+  <CodiconIcon v-if="origin === 'compose'" name="layers" :size="size" class="text-info" />
   <svg
     v-else-if="origin === 'kubernetes' || origin === 'kind'"
     :width="size"

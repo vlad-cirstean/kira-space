@@ -14,8 +14,7 @@ export { default as CardTitle } from './CardTitle.vue';
 export const cardVariants = cva('group/card min-w-0', {
   variants: {
     variant: {
-      inset:
-        'flex flex-col gap-1.5 rounded-kira-sm border border-border-strong bg-field px-2.5 py-2',
+      inset: 'flex flex-col gap-1.5 rounded-kira-sm border border-border bg-field px-2.5 py-2',
       section: 'flex flex-col rounded-kira border border-border bg-elevated',
       list: 'flex flex-col rounded-kira-sm border border-border p-1',
     },
