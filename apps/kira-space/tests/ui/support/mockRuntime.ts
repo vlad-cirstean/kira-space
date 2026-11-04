@@ -221,6 +221,8 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskDismissHandover: 'AdeTaskService.DismissHandover',
   adeTaskArtifacts: 'AdeTaskService.Artifacts',
   adeTaskIssue: 'IssueTrackerService.TaskIssue',
+  adeTaskTrackedUpdates: 'AdeTaskService.TrackedUpdates',
+  adeTaskMarkTrackedSeen: 'AdeTaskService.MarkTrackedSeen',
   cliTools: 'IssueTrackerService.Tools',
   issueTrackers: 'IssueTrackerService.Trackers',
   adeTaskAddLink: 'AdeTaskService.AddLink',

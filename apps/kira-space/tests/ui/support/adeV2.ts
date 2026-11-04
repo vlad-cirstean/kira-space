@@ -177,6 +177,8 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskDismissHandover },
     { channel: IPC.adeTaskArtifacts, response: { artifacts: [], gaps: [] } },
     { channel: IPC.adeTaskIssue, response: NO_TRACKER_ISSUE },
+    { channel: IPC.adeTaskTrackedUpdates, response: { updates: [] } },
+    { channel: IPC.adeTaskMarkTrackedSeen },
     { channel: IPC.adeTaskAddLink, response: { filed: 'stored', kind: 'link', artifact: null } },
     { channel: IPC.adeTaskEditLink, response: { filed: 'stored', kind: 'link', artifact: null } },
     { channel: IPC.adeTaskRemoveArtifact },

@@ -1,0 +1,35 @@
+{
+  "SettingsService.GetAll#tracking": {
+    "branch": {
+      "baseMoved": false,
+      "conflicts": true,
+      "deploymentChanged": true,
+      "localCommits": false,
+      "merged": true,
+      "remoteCommits": true
+    },
+    "changeRequest": {
+      "approved": true,
+      "assigneeChanged": false,
+      "changesRequested": true,
+      "checksFailed": true,
+      "checksPassed": false,
+      "closed": true,
+      "commentAdded": true,
+      "merged": true,
+      "newCommits": false,
+      "opened": true,
+      "readyForReview": true,
+      "reopened": true,
+      "titleChanged": false
+    },
+    "issue": {
+      "assigneeChanged": false,
+      "commentAdded": true,
+      "linkedChangeRequests": false,
+      "priorityChanged": false,
+      "statusChanged": true,
+      "titleChanged": false
+    }
+  }
+}
