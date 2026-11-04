@@ -972,36 +972,58 @@ func (s *AdeTaskService) Artifacts(ctx context.Context, args adewire.TaskArgs) (
 	return res, adeTaskError(err)
 }
 
-// AddArtifact stores an artifact the user reports for a live task.
-func (s *AdeTaskService) AddArtifact(ctx context.Context, args adewire.AddArtifactArgs) (adewire.Artifact, error) {
-	ctx = adeUserCtx(ctx)
-	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
-		return adewire.Artifact{}, err
+// validateLinkText checks one line of link text: non-empty, bounded, no control characters.
+func validateLinkText(text string) error {
+	text = strings.TrimSpace(text)
+	if text == "" || len(text) > agentmcp.MaxArtifactURL+agentmcp.MaxArtifactTitle+16 || strings.ContainsFunc(text, unicode.IsControl) {
+		return ipcerr.Contract("link text must be one line of at most %d bytes", agentmcp.MaxArtifactURL+agentmcp.MaxArtifactTitle+16)
 	}
-	switch {
-	case !agentmcp.ReportableArtifactKind(args.Kind):
-		return adewire.Artifact{}, ipcerr.Contract("kind %q is not a reportable artifact kind", args.Kind)
-	case len(args.Title) > agentmcp.MaxArtifactTitle, len(args.URL) > agentmcp.MaxArtifactURL, len(args.Ref) > agentmcp.MaxArtifactRef:
-		return adewire.Artifact{}, ipcerr.Contract("artifact title, url or ref is too long")
-	}
-	a, err := s.Engine.AddArtifact(ctx, args)
-	return a, adeTaskError(err)
+	return nil
 }
 
-// UpdateArtifact renames a stored artifact. Detected artifacts have no id and cannot be renamed.
-func (s *AdeTaskService) UpdateArtifact(ctx context.Context, args adewire.UpdateArtifactArgs) (adewire.Artifact, error) {
+// AddLink files one line of text under the right category of the task's links.
+func (s *AdeTaskService) AddLink(ctx context.Context, args adewire.AddLinkArgs) (adewire.LinkResult, error) {
 	ctx = adeUserCtx(ctx)
 	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
-		return adewire.Artifact{}, err
+		return adewire.LinkResult{}, err
 	}
-	if err := validateAdeItemID(args.ID, "id"); err != nil {
-		return adewire.Artifact{}, err
+	if err := validateLinkText(args.Text); err != nil {
+		return adewire.LinkResult{}, err
 	}
-	if len(args.Title) > agentmcp.MaxArtifactTitle {
-		return adewire.Artifact{}, ipcerr.Contract("artifact title is too long")
+	res, err := s.Engine.AddLink(ctx, args)
+	return res, adeTaskError(err)
+}
+
+// EditLink re-files a link row from new text, or recategorises a stored row.
+func (s *AdeTaskService) EditLink(ctx context.Context, args adewire.EditLinkArgs) (adewire.LinkResult, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return adewire.LinkResult{}, err
 	}
-	a, err := s.Engine.UpdateArtifact(ctx, args)
-	return a, adeTaskError(err)
+	switch args.Slot {
+	case "jira", "host":
+		if args.ID != "" || args.Kind != "" {
+			return adewire.LinkResult{}, ipcerr.Contract("a %s link has neither an id nor a kind", args.Slot)
+		}
+	case "stored":
+		if err := validateAdeItemID(args.ID, "id"); err != nil {
+			return adewire.LinkResult{}, err
+		}
+	default:
+		return adewire.LinkResult{}, ipcerr.Contract("slot %q is not jira, host or stored", args.Slot)
+	}
+	switch {
+	case (args.Text == "") == (args.Kind == ""):
+		return adewire.LinkResult{}, ipcerr.Contract("give exactly one of text and kind")
+	case args.Kind != "" && !agentmcp.ReportableArtifactKind(args.Kind) && args.Kind != "branch":
+		return adewire.LinkResult{}, ipcerr.Contract("kind %q is not a link kind", args.Kind)
+	case args.Text != "":
+		if err := validateLinkText(args.Text); err != nil {
+			return adewire.LinkResult{}, err
+		}
+	}
+	res, err := s.Engine.EditLink(ctx, args)
+	return res, adeTaskError(err)
 }
 
 // RemoveArtifact deletes a stored artifact. Detected artifacts have no id and cannot be removed.

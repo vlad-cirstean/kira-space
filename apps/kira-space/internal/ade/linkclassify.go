@@ -17,6 +17,8 @@ import (
 const (
 	linkErrOneLink = "oneLink"
 	linkErrNotLink = "notLink"
+	// linkErrAlreadyUsed is EditLink's refusal when another row holds the new URL.
+	linkErrAlreadyUsed = "alreadyLinked"
 )
 
 var markdownLinkRe = regexp.MustCompile(`^\[([^\]]*)\]\(([^()\s]+)\)$`)

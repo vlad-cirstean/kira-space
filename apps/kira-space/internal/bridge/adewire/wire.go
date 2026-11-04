@@ -1334,19 +1334,28 @@ type ArtifactsResult struct {
 	Gaps      []ArtifactGap `json:"gaps"`
 }
 
-type AddArtifactArgs struct {
+// AddLinkArgs is one line of free text the user adds to a task's links.
+type AddLinkArgs struct {
 	TaskID string `json:"taskId"`
-	Kind   string `json:"kind"`
-	Title  string `json:"title"`
-	URL    string `json:"url"`
-	Ref    string `json:"ref"`
+	Text   string `json:"text"`
 }
 
-// UpdateArtifactArgs renames a stored artifact.
-type UpdateArtifactArgs struct {
+// EditLinkArgs edits one link row: Text re-files it from free text, Kind (stored rows only) recategorises
+// it. Exactly one is set. ID names the stored row; it is empty for the jira and host slots.
+type EditLinkArgs struct {
 	TaskID string `json:"taskId"`
+	Slot   string `json:"slot"` // "jira" | "host" | "stored"
 	ID     string `json:"id"`
-	Title  string `json:"title"`
+	Text   string `json:"text"`
+	Kind   string `json:"kind"`
+}
+
+// LinkResult says where a link landed: "jira" or "host" (the task's slot), "stored" (Artifact is the row)
+// or "known" (the task already shows it; nothing was written).
+type LinkResult struct {
+	Filed    string    `json:"filed"`
+	Kind     string    `json:"kind"`
+	Artifact *Artifact `json:"artifact"`
 }
 
 type RemoveArtifactArgs struct {
