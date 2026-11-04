@@ -26,6 +26,8 @@ export interface CollectionMenuActions {
   /** The collection row's own "Variables…" item — opens (or activates) the variable-set tab
    *  scoped to it. */
   variables(row: CollectionRowVm): void;
+  /** The collection row's own "Edit variables" item — the variables file dialog. */
+  editVariables(row: CollectionRowVm): void;
   /** The background menu's own "Environments…" item. */
   environments(): void;
   /** The background menu's own "Dynamic values…" item — opens the read-only reference
@@ -115,6 +117,13 @@ export function menuForRow(row: CollectionRowVm, actions: CollectionMenuActions)
         label: t('common.module.variables.label'),
         icon: ICON.variables,
         run: () => actions.variables(row),
+      },
+      {
+        type: 'item',
+        id: 'edit-variables',
+        label: t('studio.api.environments.editVariables.label'),
+        icon: 'edit',
+        run: () => actions.editVariables(row),
       },
       {
         type: 'item',

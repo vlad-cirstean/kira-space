@@ -22,11 +22,13 @@ import type { EnvironmentsTabRecord } from '../state/tabDomain';
 import ApiConfigProblems from './ApiConfigProblems.vue';
 import ApiSecrets from './ApiSecrets.vue';
 import { useApiConfig } from './state/apiConfig';
+import { useApiVariablesDialogStore } from './state/apiVariablesDialog';
 import { useVariableSetStore, useVariablesStore } from './state/variables';
 import { openVariableSetTab } from './tabs';
 
 const variablesStore = useVariablesStore();
 const variableSetStore = useVariableSetStore();
+const variablesDialogStore = useApiVariablesDialogStore();
 const connectionsStore = useConnectionsStore();
 const config = useApiConfig();
 
@@ -190,6 +192,14 @@ async function onSetActive(id: string): Promise<void> {
               @click="onEditVariables(env.id, env.name)"
             >
               {{ t('studio.api.environments.editVariables.label') }}
+            </Button>
+            <Button
+              variant="toolbar"
+              size="kira"
+              data-testid="environment-edit"
+              @click="variablesDialogStore.open(env.file, 'environment')"
+            >
+              {{ t('studio.api.variablesDialog.editEnvironment.label') }}
             </Button>
           </div>
           <EmptyState

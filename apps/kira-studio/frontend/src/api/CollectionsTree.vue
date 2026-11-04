@@ -13,6 +13,7 @@ import { computed, ref, useTemplateRef, watch } from 'vue';
 import { control } from '../bridge/control';
 import CollectionRow from './CollectionRow.vue';
 import { backgroundMenu, type CollectionMenuActions, menuForRow } from './menu';
+import { useApiVariablesDialogStore } from './state/apiVariablesDialog';
 import { useCollectionSelectionStore } from './state/collectionSelection';
 import { type CollectionRowVm, useCollectionsStore } from './state/collections';
 import { useImportCurlStore } from './state/curl';
@@ -22,6 +23,7 @@ import { openVariableSetTab } from './tabs';
 
 const contextMenuStore = useContextMenuStore();
 const dynamicValuesStore = useDynamicValuesStore();
+const variablesDialogStore = useApiVariablesDialogStore();
 const collectionsStore = useCollectionsStore();
 const selection = useCollectionSelectionStore();
 const importCurlStore = useImportCurlStore();
@@ -116,6 +118,10 @@ const actions: CollectionMenuActions = {
   importCurl: () => importCurlStore.openImportCurlDialog(),
   exportCollection: (row) => void collectionsStore.exportCollection(row.id, row.name),
   variables: (row) => openVariableSetTab('collection', row.id, row.name),
+  editVariables: (row) => {
+    const file = fileOf(row);
+    if (file) variablesDialogStore.open(file);
+  },
   environments: () => variablesStore.openEnvironments(),
   dynamicValues: () => dynamicValuesStore.openDynamicValuesDialog(),
   openFile: (row) => void runFileAction(row, control.configFilesOpen),

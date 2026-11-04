@@ -12281,6 +12281,47 @@
           "label": "Show value"
         }
       },
+      "variablesDialog": {
+        "bulk": {
+          "hint": "One name=value per line. A comment line above a variable is its description. A secret keeps its bare name= line and its value unless you type one.",
+          "summary": {
+            "status": "{added} added · {updated} updated · {removed} removed"
+          },
+          "toggle": {
+            "label": "Edit as dotenv text"
+          }
+        },
+        "colour": {
+          "aria": "Environment colour"
+        },
+        "description": {
+          "aria": "Variable description"
+        },
+        "duplicate": {
+          "status": "Duplicate name"
+        },
+        "editEnvironment": {
+          "label": "Edit environment"
+        },
+        "file": {
+          "aria": "Variables file"
+        },
+        "name": {
+          "aria": "Variable name"
+        },
+        "secret": {
+          "value": {
+            "aria": "Secret value of {name}"
+          }
+        },
+        "tabs": {
+          "aria": "Variables file sections"
+        },
+        "title": "Variables of {name}",
+        "value": {
+          "aria": "Variable value"
+        }
+      },
       "variablesOverview": {
         "editCollection": {
           "label": "Edit collection variables"
