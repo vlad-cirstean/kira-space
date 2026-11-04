@@ -11,6 +11,7 @@ import {
   httpRequestTabStateSchema,
 } from '@shared/domain/http';
 import type { VariableScope } from '@shared/domain/variables';
+import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import {
   asGrpcRequestTab,
   asHttpRequestTab,
@@ -157,6 +158,30 @@ export function patchGrpcRequestTabState(id: string, patch: Partial<GrpcRequestT
   useTabsStore().patchTabState(id, 'grpc-request', patch, { skipUnchanged: false });
 }
 
+/** True when any open request tab (HTTP or gRPC) is bound to one of `itemIds`. */
+export function hasOpenRequestTab(itemIds: ReadonlySet<string>): boolean {
+  return useTabsStore().tabs.some((tab) => {
+    if (tab.kind !== 'http-request' && tab.kind !== 'grpc-request') return false;
+    const { itemId } = (tab as HttpRequestTabRecord | GrpcRequestTabRecord).state;
+    return itemId !== null && itemIds.has(itemId);
+  });
+}
+
+/** A move into another collection file makes new rows: every tab bound to a moved row follows it. */
+export function remapRequestTabItems(moved: Readonly<Record<string, string>>): void {
+  for (const tab of useTabsStore().tabs) {
+    if (tab.kind === 'http-request') {
+      const { itemId } = (tab as HttpRequestTabRecord).state;
+      const next = itemId ? moved[itemId] : undefined;
+      if (next && next !== itemId) patchHttpRequestTabState(tab.id, { itemId: next });
+    } else if (tab.kind === 'grpc-request') {
+      const { itemId } = (tab as GrpcRequestTabRecord).state;
+      const next = itemId ? moved[itemId] : undefined;
+      if (next && next !== itemId) patchGrpcRequestTabState(tab.id, { itemId: next });
+    }
+  }
+}
+
 export function findHttpRequestTab(id: string): HttpRequestTabRecord | null {
   return asHttpRequestTab(useTabsStore().tabs.find((t) => t.id === id));
 }
@@ -205,6 +230,19 @@ export function syncVariableSetTabNames(
         { name: next },
         { skipUnchanged: false },
       );
+    }
+  }
+}
+
+/** Deleting a collection or an environment closes its open variable-set tab: unlike a request tab,
+ *  it has no state of its own worth keeping once its owner is gone. */
+export function closeVariableSetTabsForOwner(scope: VariableScope, ownerId: string): void {
+  const tabsStore = useTabsStore();
+  for (const tab of [...tabsStore.tabs]) {
+    if (tab.kind !== 'variable-set') continue;
+    const { state } = tab as VariableSetTabRecord;
+    if (state.scope === scope && state.ownerId === ownerId) {
+      fireAndForget(tabsStore.closeTab(tab.id), 'closeVariableSetTab');
     }
   }
 }

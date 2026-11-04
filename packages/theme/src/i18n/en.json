@@ -11962,6 +11962,38 @@
   "studio": {
     "api": {
       "collections": {
+        "copyName": {
+          "label": "{name} copy"
+        },
+        "deleteFolderConfirm": {
+          "title": "Delete folder?"
+        },
+        "deleteMany": {
+          "label": "Delete {count} item | Delete {count} items"
+        },
+        "deleteManyConfirm": {
+          "body": "Deletes {list}.",
+          "collections": {
+            "label": "{count} collection | {count} collections"
+          },
+          "nested": {
+            "body": "Everything inside folders and collections goes too."
+          },
+          "openTabs": {
+            "body": "Open tabs for deleted requests stay open as unsaved."
+          },
+          "title": "Delete {count} items?"
+        },
+        "deleteRequestConfirm": {
+          "body": "“{name}” will be deleted.",
+          "title": "Delete request?"
+        },
+        "deleteTreeConfirm": {
+          "body": "“{name}” and everything inside it will be deleted."
+        },
+        "dragCount": {
+          "aria": "Moving {count} items"
+        },
         "empty": "No collections yet",
         "emptyHint": "Create one from the + button above, or import a Postman collection.",
         "export": {
@@ -11981,6 +12013,9 @@
         },
         "postmanFilter": {
           "label": "Postman export"
+        },
+        "requestGone": {
+          "error": "This request no longer exists."
         },
         "title": "Collections",
         "tree": {
@@ -12153,6 +12188,10 @@
         },
         "activeGroup": {
           "aria": "Active environment"
+        },
+        "deleteConfirm": {
+          "body": "“{name}” and its variables will be deleted.",
+          "title": "Delete environment?"
         },
         "editVariables": {
           "label": "Edit variables"

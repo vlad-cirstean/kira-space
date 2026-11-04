@@ -108,6 +108,9 @@ export const IPC = {
   collectionsSaveRequest: 'kira:collections:saveRequest',
   collectionsCreateCollection: 'kira:collections:createCollection',
   collectionsCreateItem: 'kira:collections:createItem',
+  collectionsRename: 'kira:collections:rename',
+  collectionsDeleteMany: 'kira:collections:deleteMany',
+  collectionsMoveItems: 'kira:collections:moveItems',
   collectionsImport: 'kira:collections:import',
   collectionsExport: 'kira:collections:export',
 
@@ -126,6 +129,8 @@ export const IPC = {
   connectionConfigDeleteSecret: 'kira:connectionConfig:deleteSecret',
   variablesListEnvironments: 'kira:variables:listEnvironments',
   variablesCreateEnvironment: 'kira:variables:createEnvironment',
+  variablesDeleteEnvironment: 'kira:variables:deleteEnvironment',
+  variablesDuplicateEnvironment: 'kira:variables:duplicateEnvironment',
   variablesSetActiveEnvironment: 'kira:variables:setActiveEnvironment',
   variablesList: 'kira:variables:list',
   variablesHistory: 'kira:variables:history',

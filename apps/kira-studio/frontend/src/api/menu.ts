@@ -1,11 +1,12 @@
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
+import { type CollectionChoice, moveToCollectionMenu } from '@workbench/lib/collectionMenu';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import type { CollectionRowVm } from './state/collections';
 
 // The row and background context menus, built with the existing MenuItem type from
-// state/contextMenu.ts. The collections are config files now (P473): the menu browses, creates,
-// imports and exports; renaming, moving and deleting are done in the file.
+// state/contextMenu.ts. The collections are config files: each action here is an edit of the
+// collection file, and Open file / Reveal show the file itself.
 //
 // The actions themselves are injected rather than imported, so this module stays free of both the
 // store's mutation half and the request-view's open path — the menu is a description, and
@@ -17,6 +18,17 @@ export interface CollectionMenuActions {
   newGrpcRequest(row: CollectionRowVm): void;
   newFolder(row: CollectionRowVm): void;
   newCollection(): void;
+  rename(row: CollectionRowVm): void;
+  duplicate(row: CollectionRowVm): void;
+  /** Confirms, then deletes the rows with their subtrees. */
+  remove(rows: readonly CollectionRowVm[]): void;
+  /** Every collection, as the Move to collection submenu's choices. */
+  collections(): readonly CollectionChoice[];
+  moveTo(rows: readonly CollectionRowVm[], collectionId: string): void;
+  moveToNewCollection(rows: readonly CollectionRowVm[]): void;
+  /** One place within the row's own sibling set. */
+  moveStep(row: CollectionRowVm, step: -1 | 1): Promise<void>;
+  canMoveStep(row: CollectionRowVm, step: -1 | 1): boolean;
   copyUrl(row: CollectionRowVm): void;
   importPostman(): void;
   /** The background menu's own "Import from curl…" item — opens the paste-a-curl-command
@@ -58,6 +70,82 @@ function fileItems(row: CollectionRowVm, actions: CollectionMenuActions): MenuIt
   ];
 }
 
+// Request and folder rows only: a move lands at a collection's root, so a collection is a valid
+// target unless every row already sits at its root.
+function moveMenu(rows: readonly CollectionRowVm[], actions: CollectionMenuActions): MenuItem {
+  const home = rows.every((r) => r.collectionId === rows[0].collectionId)
+    ? rows[0].collectionId
+    : null;
+  return moveToCollectionMenu({
+    collections: actions.collections(),
+    current: home,
+    allowNone: false,
+    canMoveTo: (id) => !rows.every((r) => r.collectionId === id && r.parentId === null),
+    onMove: (id) => {
+      if (id !== null) actions.moveTo(rows, id);
+    },
+    onNew: () => actions.moveToNewCollection(rows),
+  });
+}
+
+function moveItems(row: CollectionRowVm, actions: CollectionMenuActions): MenuItem[] {
+  return [
+    {
+      type: 'item',
+      id: 'move-up',
+      label: t('common.moveUp.tooltip'),
+      icon: 'arrow-up',
+      shortcut: 'list.moveUp',
+      disabled: !actions.canMoveStep(row, -1),
+      run: () => actions.moveStep(row, -1),
+    },
+    {
+      type: 'item',
+      id: 'move-down',
+      label: t('common.moveDown.tooltip'),
+      icon: 'arrow-down',
+      shortcut: 'list.moveDown',
+      disabled: !actions.canMoveStep(row, 1),
+      run: () => actions.moveStep(row, 1),
+    },
+  ];
+}
+
+/** The menu for two or more selected rows: the actions that apply to a set. `deleteCount` is the
+ *  topmost rows a delete removes, so the label matches the confirm prompt. */
+export function menuForSelection(
+  rows: readonly CollectionRowVm[],
+  deleteCount: number,
+  actions: CollectionMenuActions,
+): MenuItem[] {
+  const items: MenuItem[] = [];
+  if (rows.every((r) => r.kind !== 'collection')) {
+    items.push(moveMenu(rows, actions), { type: 'separator' });
+  }
+  items.push({
+    type: 'item',
+    id: 'delete',
+    label: t('studio.api.collections.deleteMany.label', { count: deleteCount }),
+    icon: ICON.delete,
+    danger: true,
+    shortcut: 'tree.delete',
+    run: () => actions.remove(rows),
+  });
+  return items;
+}
+
+function deleteItem(row: CollectionRowVm, actions: CollectionMenuActions): MenuItem {
+  return {
+    type: 'item',
+    id: 'delete',
+    label: t('common.action.delete.label'),
+    icon: ICON.delete,
+    danger: true,
+    shortcut: 'tree.delete',
+    run: () => actions.remove([row]),
+  };
+}
+
 export function menuForRow(row: CollectionRowVm, actions: CollectionMenuActions): MenuItem[] {
   if (row.kind === 'request') {
     return [
@@ -66,7 +154,25 @@ export function menuForRow(row: CollectionRowVm, actions: CollectionMenuActions)
         id: 'open',
         label: t('common.action.open.label'),
         icon: 'go-to-file',
+        shortcut: 'tree.open',
         run: () => actions.open(row),
+      },
+      { type: 'separator' },
+      {
+        type: 'item',
+        id: 'rename',
+        label: t('common.action.rename.label'),
+        icon: ICON.rename,
+        shortcut: 'tree.rename',
+        run: () => actions.rename(row),
+      },
+      {
+        type: 'item',
+        id: 'duplicate',
+        label: t('common.action.duplicate.label'),
+        icon: ICON.duplicate,
+        shortcut: 'tree.duplicate',
+        run: () => actions.duplicate(row),
       },
       {
         type: 'item',
@@ -76,8 +182,12 @@ export function menuForRow(row: CollectionRowVm, actions: CollectionMenuActions)
         disabled: !row.url,
         run: () => actions.copyUrl(row),
       },
+      moveMenu([row], actions),
+      ...moveItems(row, actions),
       { type: 'separator' },
       ...fileItems(row, actions),
+      { type: 'separator' },
+      deleteItem(row, actions),
     ];
   }
 
@@ -102,6 +212,15 @@ export function menuForRow(row: CollectionRowVm, actions: CollectionMenuActions)
       label: t('studio.api.collections.newFolder.label'),
       icon: 'new-folder',
       run: () => actions.newFolder(row),
+    },
+    { type: 'separator' },
+    {
+      type: 'item',
+      id: 'rename',
+      label: t('common.action.rename.label'),
+      icon: ICON.rename,
+      shortcut: 'tree.rename',
+      run: () => actions.rename(row),
     },
   ];
 
@@ -133,9 +252,27 @@ export function menuForRow(row: CollectionRowVm, actions: CollectionMenuActions)
         run: () => actions.exportCollection(row),
       },
     );
+  } else {
+    items.push(
+      {
+        type: 'item',
+        id: 'duplicate',
+        label: t('common.action.duplicate.label'),
+        icon: ICON.duplicate,
+        shortcut: 'tree.duplicate',
+        run: () => actions.duplicate(row),
+      },
+      moveMenu([row], actions),
+      ...moveItems(row, actions),
+    );
   }
 
-  items.push({ type: 'separator' }, ...fileItems(row, actions));
+  items.push(
+    { type: 'separator' },
+    ...fileItems(row, actions),
+    { type: 'separator' },
+    deleteItem(row, actions),
+  );
   return items;
 }
 

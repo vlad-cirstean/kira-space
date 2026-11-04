@@ -2,6 +2,7 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -14,6 +15,7 @@ import RunState from '@theme/RunState.vue';
 import { matchesQuery } from '@workbench/behaviour/match';
 import { errorText } from '@workbench/bridge/codedError';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
+import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed } from 'vue';
 import { control } from '../bridge/control';
 import { useConnectionsStore } from '../state/connections';
@@ -26,6 +28,7 @@ import { useApiVariablesDialogStore } from './state/apiVariablesDialog';
 import { useVariableSetStore, useVariablesStore } from './state/variables';
 import { openVariableSetTab } from './tabs';
 
+const confirmDialogStore = useConfirmDialogStore();
 const variablesStore = useVariablesStore();
 const variableSetStore = useVariableSetStore();
 const variablesDialogStore = useApiVariablesDialogStore();
@@ -33,8 +36,9 @@ const connectionsStore = useConnectionsStore();
 const config = useApiConfig();
 
 // The environment list, re-hosted in a tab. Environments are config files (P473): a row picks the
-// active one, opens its variables or its file, and shows whether the file is valid. Creating one
-// writes a new file; renaming, coloring and deleting are done in the file.
+// active one, opens its variables or its file, and shows whether the file is valid. Creating or
+// duplicating one writes a new file, deleting one removes it; renaming and coloring are done in the
+// file or its dialog.
 //
 // ViewChrome/ViewHeader/RunState inlined at this call site (no library counterpart).
 const props = defineProps<{ tab: EnvironmentsTabRecord }>();
@@ -70,6 +74,24 @@ async function onOpenFile(file: string): Promise<void> {
   } catch (err) {
     variablesStore.error = errorText(err);
   }
+}
+
+async function onDelete(id: string, name: string): Promise<void> {
+  const confirmed = await confirmDialogStore.confirm({
+    title: t('studio.api.environments.deleteConfirm.title'),
+    message: [
+      t('studio.api.environments.deleteConfirm.body', { name }),
+      t('common.confirm.irreversible.body'),
+    ].join(' '),
+    confirmLabel: t('common.action.delete.label'),
+    tone: 'danger',
+  });
+  if (!confirmed) return;
+  await variablesStore.deleteEnvironment(id);
+}
+
+async function onDuplicate(id: string): Promise<void> {
+  await variablesStore.duplicateEnvironment(id);
 }
 
 // The group is controlled by the store's active row, so a failed activation leaves the radio on
@@ -201,6 +223,18 @@ async function onSetActive(id: string): Promise<void> {
             >
               {{ t('studio.api.variablesDialog.editEnvironment.label') }}
             </Button>
+            <TooltipIconButton
+              :icon="ICON.duplicate"
+              :label="t('common.action.duplicate.label')"
+              data-testid="environment-duplicate"
+              @click="onDuplicate(env.id)"
+            />
+            <TooltipIconButton
+              :icon="ICON.delete"
+              :label="t('common.action.delete.label')"
+              data-testid="environment-remove"
+              @click="onDelete(env.id, env.name)"
+            />
           </div>
           <EmptyState
             v-if="variablesStore.environments.length === 0"

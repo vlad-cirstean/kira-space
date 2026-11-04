@@ -61,6 +61,35 @@ type VariablesEnvironmentIDArgs struct {
 	ID string `json:"id"`
 }
 
+// DeleteEnvironment removes the environment's file.
+func (s *VariablesService) DeleteEnvironment(args VariablesEnvironmentIDArgs) error {
+	if args.ID == "" {
+		return ipcerr.Required("id")
+	}
+	return apiFilesErr(s.Files.DeleteEnvironment(args.ID))
+}
+
+// DuplicateEnvironment copies the environment file under a free name.
+func (s *VariablesService) DuplicateEnvironment(args VariablesEnvironmentIDArgs) (model.Environment, error) {
+	if args.ID == "" {
+		return model.Environment{}, ipcerr.Required("id")
+	}
+	id, err := s.Files.DuplicateEnvironment(args.ID)
+	if err != nil {
+		return model.Environment{}, apiFilesErr(err)
+	}
+	envs, err := s.Deps.Repos.Variables.ListEnvironments()
+	if err != nil {
+		return model.Environment{}, ipcerr.InternalErr(err)
+	}
+	for _, e := range envs {
+		if e.ID == id {
+			return e, nil
+		}
+	}
+	return model.Environment{}, ipcerr.NotFound("environment " + id + " does not exist")
+}
+
 // SetActiveEnvironment's id may be "" — D3: that selects "No environment", the first half of the
 // repo's own transaction alone.
 func (s *VariablesService) SetActiveEnvironment(args VariablesEnvironmentIDArgs) error {

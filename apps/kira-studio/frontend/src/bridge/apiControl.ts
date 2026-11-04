@@ -218,6 +218,18 @@ export const apiControl = {
     name: string;
   }): Promise<WailsModels.ItemSummary> =>
     unwrap(CollectionsService.CreateGrpcItem({ ...args, request: args.request ?? null })),
+  collectionsRename: (id: string, target: 'collection' | 'item', name: string): Promise<void> =>
+    unwrap(CollectionsService.Rename({ id, target, name })),
+  collectionsDeleteMany: (args: { collectionIds: string[]; itemIds: string[] }): Promise<void> =>
+    unwrap(CollectionsService.DeleteMany(args)),
+  /** Answers each moved row id with the row id it has now: a move into another file makes new rows. */
+  collectionsMoveItems: (args: {
+    itemIds: string[];
+    collectionId: string;
+    parentId: string | null;
+    beforeId: string | null;
+  }): Promise<Record<string, string>> =>
+    unwrap(CollectionsService.MoveItems(args)).then((r) => trust<Record<string, string>>(r ?? {})),
   collectionsImport: (paths: string[]): Promise<ImportResult> =>
     unwrap(CollectionsService.Import({ paths })).then((r) => trust<ImportResult>(r)),
   // P5 D16: ExportReport.secretCount is what lets the panel say "N secret values were not
@@ -261,6 +273,10 @@ export const apiControl = {
     unwrap(VariablesService.CreateEnvironment({ name, description, color })).then((r) =>
       trust<ApiEnvironment>(r),
     ),
+  variablesDeleteEnvironment: (id: string): Promise<void> =>
+    unwrap(VariablesService.DeleteEnvironment({ id })),
+  variablesDuplicateEnvironment: (id: string): Promise<ApiEnvironment> =>
+    unwrap(VariablesService.DuplicateEnvironment({ id })).then((r) => trust<ApiEnvironment>(r)),
   // id: '' selects "No environment" (D3).
   variablesSetActiveEnvironment: (id: string): Promise<void> =>
     unwrap(VariablesService.SetActiveEnvironment({ id })),

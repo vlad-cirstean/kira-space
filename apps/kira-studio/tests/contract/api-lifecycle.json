@@ -1,0 +1,434 @@
+{
+  "args:CollectionsService.DeleteMany#collection": {
+    "collectionIds": [
+      "<id:2>"
+    ],
+    "itemIds": [
+      "<id:7>"
+    ]
+  },
+  "args:CollectionsService.DeleteMany#items": {
+    "collectionIds": null,
+    "itemIds": [
+      "<id:10>",
+      "<id:4>",
+      "<id:9>"
+    ]
+  },
+  "args:CollectionsService.MoveItems#across": {
+    "beforeId": null,
+    "collectionId": "<id:1>",
+    "itemIds": [
+      "<id:6>"
+    ],
+    "parentId": null
+  },
+  "args:CollectionsService.MoveItems#before": {
+    "beforeId": "<id:5>",
+    "collectionId": "<id:2>",
+    "itemIds": [
+      "<id:7>"
+    ],
+    "parentId": null
+  },
+  "args:CollectionsService.MoveItems#into": {
+    "beforeId": null,
+    "collectionId": "<id:2>",
+    "itemIds": [
+      "<id:5>"
+    ],
+    "parentId": "<id:6>"
+  },
+  "args:CollectionsService.Rename#collection": {
+    "id": "<id:2>",
+    "name": "Orders v2",
+    "target": "collection"
+  },
+  "args:CollectionsService.Rename#folder": {
+    "id": "<id:6>",
+    "name": "Operations",
+    "target": "item"
+  },
+  "args:CollectionsService.Rename#request": {
+    "id": "<id:5>",
+    "name": "List all orders",
+    "target": "item"
+  },
+  "environments#deleted": [
+    {
+      "color": "none",
+      "description": "",
+      "file": "production-copy.environment.yaml",
+      "id": "<id:13>",
+      "isActive": false,
+      "name": "Production copy",
+      "sortOrder": 0
+    }
+  ],
+  "environments#duplicated": [
+    {
+      "color": "none",
+      "description": "",
+      "file": "production.environment.yaml",
+      "id": "<id:12>",
+      "isActive": true,
+      "name": "Production",
+      "sortOrder": 0
+    },
+    {
+      "color": "none",
+      "description": "",
+      "file": "production-copy.environment.yaml",
+      "id": "<id:13>",
+      "isActive": false,
+      "name": "Production copy",
+      "sortOrder": 1
+    }
+  ],
+  "environments#seed": [
+    {
+      "color": "none",
+      "description": "",
+      "file": "production.environment.yaml",
+      "id": "<id:12>",
+      "isActive": true,
+      "name": "Production",
+      "sortOrder": 0
+    }
+  ],
+  "result#across": {
+    "<id:5>": "<id:11>",
+    "<id:6>": "<id:9>",
+    "<id:8>": "<id:10>"
+  },
+  "result#before": {
+    "<id:7>": "<id:7>"
+  },
+  "tree#deleted": {
+    "collections": [
+      {
+        "createdAt": "<time>",
+        "file": "billing.collection.yaml",
+        "id": "<id:1>",
+        "name": "Billing",
+        "sortOrder": 0,
+        "updatedAt": "<time>"
+      }
+    ],
+    "items": [
+      {
+        "collectionId": "<id:1>",
+        "createdAt": "<time>",
+        "id": "<id:3>",
+        "kind": "request",
+        "method": "GET",
+        "name": "List invoices",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 0,
+        "updatedAt": "<time>",
+        "url": "<http>/echo?invoices=1"
+      }
+    ]
+  },
+  "tree#moved": {
+    "collections": [
+      {
+        "createdAt": "<time>",
+        "file": "billing.collection.yaml",
+        "id": "<id:1>",
+        "name": "Billing",
+        "sortOrder": 0,
+        "updatedAt": "<time>"
+      },
+      {
+        "createdAt": "<time>",
+        "file": "orders.collection.yaml",
+        "id": "<id:2>",
+        "name": "Orders v2",
+        "sortOrder": 1,
+        "updatedAt": "<time>"
+      }
+    ],
+    "items": [
+      {
+        "collectionId": "<id:1>",
+        "createdAt": "<time>",
+        "id": "<id:3>",
+        "kind": "request",
+        "method": "GET",
+        "name": "List invoices",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 0,
+        "updatedAt": "<time>",
+        "url": "<http>/echo?invoices=1"
+      },
+      {
+        "collectionId": "<id:1>",
+        "createdAt": "<time>",
+        "id": "<id:4>",
+        "kind": "folder",
+        "method": "",
+        "name": "Archive",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 1,
+        "updatedAt": "<time>",
+        "url": ""
+      },
+      {
+        "collectionId": "<id:1>",
+        "createdAt": "<time>",
+        "id": "<id:9>",
+        "kind": "folder",
+        "method": "",
+        "name": "Operations",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 2,
+        "updatedAt": "<time>",
+        "url": ""
+      },
+      {
+        "collectionId": "<id:1>",
+        "createdAt": "<time>",
+        "id": "<id:10>",
+        "kind": "request",
+        "method": "GET",
+        "name": "Purge",
+        "parentId": "<id:9>",
+        "protocol": "http",
+        "sortOrder": 0,
+        "updatedAt": "<time>",
+        "url": "<http>/echo?purge=1"
+      },
+      {
+        "collectionId": "<id:1>",
+        "createdAt": "<time>",
+        "id": "<id:11>",
+        "kind": "request",
+        "method": "GET",
+        "name": "List all orders",
+        "parentId": "<id:9>",
+        "protocol": "http",
+        "sortOrder": 1,
+        "updatedAt": "<time>",
+        "url": "<http>/echo?list=1"
+      },
+      {
+        "collectionId": "<id:2>",
+        "createdAt": "<time>",
+        "id": "<id:7>",
+        "kind": "request",
+        "method": "GET",
+        "name": "Get order",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 0,
+        "updatedAt": "<time>",
+        "url": "<http>/echo?get=1"
+      }
+    ]
+  },
+  "tree#nested": {
+    "collections": [
+      {
+        "createdAt": "<time>",
+        "file": "billing.collection.yaml",
+        "id": "<id:1>",
+        "name": "Billing",
+        "sortOrder": 0,
+        "updatedAt": "<time>"
+      },
+      {
+        "createdAt": "<time>",
+        "file": "orders.collection.yaml",
+        "id": "<id:2>",
+        "name": "Orders v2",
+        "sortOrder": 1,
+        "updatedAt": "<time>"
+      }
+    ],
+    "items": [
+      {
+        "collectionId": "<id:1>",
+        "createdAt": "<time>",
+        "id": "<id:3>",
+        "kind": "request",
+        "method": "GET",
+        "name": "List invoices",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 0,
+        "updatedAt": "<time>",
+        "url": "<http>/echo?invoices=1"
+      },
+      {
+        "collectionId": "<id:1>",
+        "createdAt": "<time>",
+        "id": "<id:4>",
+        "kind": "folder",
+        "method": "",
+        "name": "Archive",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 1,
+        "updatedAt": "<time>",
+        "url": ""
+      },
+      {
+        "collectionId": "<id:2>",
+        "createdAt": "<time>",
+        "id": "<id:7>",
+        "kind": "request",
+        "method": "GET",
+        "name": "Get order",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 0,
+        "updatedAt": "<time>",
+        "url": "<http>/echo?get=1"
+      },
+      {
+        "collectionId": "<id:2>",
+        "createdAt": "<time>",
+        "id": "<id:6>",
+        "kind": "folder",
+        "method": "",
+        "name": "Operations",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 1,
+        "updatedAt": "<time>",
+        "url": ""
+      },
+      {
+        "collectionId": "<id:2>",
+        "createdAt": "<time>",
+        "id": "<id:8>",
+        "kind": "request",
+        "method": "GET",
+        "name": "Purge",
+        "parentId": "<id:6>",
+        "protocol": "http",
+        "sortOrder": 0,
+        "updatedAt": "<time>",
+        "url": "<http>/echo?purge=1"
+      },
+      {
+        "collectionId": "<id:2>",
+        "createdAt": "<time>",
+        "id": "<id:5>",
+        "kind": "request",
+        "method": "GET",
+        "name": "List all orders",
+        "parentId": "<id:6>",
+        "protocol": "http",
+        "sortOrder": 1,
+        "updatedAt": "<time>",
+        "url": "<http>/echo?list=1"
+      }
+    ]
+  },
+  "tree#seed": {
+    "collections": [
+      {
+        "createdAt": "<time>",
+        "file": "billing.collection.yaml",
+        "id": "<id:1>",
+        "name": "Billing",
+        "sortOrder": 0,
+        "updatedAt": "<time>"
+      },
+      {
+        "createdAt": "<time>",
+        "file": "orders.collection.yaml",
+        "id": "<id:2>",
+        "name": "Orders",
+        "sortOrder": 1,
+        "updatedAt": "<time>"
+      }
+    ],
+    "items": [
+      {
+        "collectionId": "<id:1>",
+        "createdAt": "<time>",
+        "id": "<id:3>",
+        "kind": "request",
+        "method": "GET",
+        "name": "List invoices",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 0,
+        "updatedAt": "<time>",
+        "url": "<http>/echo?invoices=1"
+      },
+      {
+        "collectionId": "<id:1>",
+        "createdAt": "<time>",
+        "id": "<id:4>",
+        "kind": "folder",
+        "method": "",
+        "name": "Archive",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 1,
+        "updatedAt": "<time>",
+        "url": ""
+      },
+      {
+        "collectionId": "<id:2>",
+        "createdAt": "<time>",
+        "id": "<id:5>",
+        "kind": "request",
+        "method": "GET",
+        "name": "List orders",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 0,
+        "updatedAt": "<time>",
+        "url": "<http>/echo?list=1"
+      },
+      {
+        "collectionId": "<id:2>",
+        "createdAt": "<time>",
+        "id": "<id:6>",
+        "kind": "folder",
+        "method": "",
+        "name": "Admin",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 1,
+        "updatedAt": "<time>",
+        "url": ""
+      },
+      {
+        "collectionId": "<id:2>",
+        "createdAt": "<time>",
+        "id": "<id:7>",
+        "kind": "request",
+        "method": "GET",
+        "name": "Get order",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 2,
+        "updatedAt": "<time>",
+        "url": "<http>/echo?get=1"
+      },
+      {
+        "collectionId": "<id:2>",
+        "createdAt": "<time>",
+        "id": "<id:8>",
+        "kind": "request",
+        "method": "GET",
+        "name": "Purge",
+        "parentId": "<id:6>",
+        "protocol": "http",
+        "sortOrder": 0,
+        "updatedAt": "<time>",
+        "url": "<http>/echo?purge=1"
+      }
+    ]
+  }
+}

@@ -47,7 +47,9 @@ function hydrate(v: unknown, origins: ContractOptions<unknown>['origins']): unkn
   if (typeof v === 'string') return hydrateString(v, origins);
   if (Array.isArray(v)) return v.map((e) => hydrate(e, origins));
   if (v !== null && typeof v === 'object') {
-    return Object.fromEntries(Object.entries(v).map(([k, e]) => [k, hydrate(e, origins)]));
+    return Object.fromEntries(
+      Object.entries(v).map(([k, e]) => [hydrateString(k, origins), hydrate(e, origins)]),
+    );
   }
   return v;
 }
