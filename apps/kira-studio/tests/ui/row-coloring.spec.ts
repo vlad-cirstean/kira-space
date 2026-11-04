@@ -22,7 +22,7 @@ const CONNECTION_SUMMARY = postgresConnectionSummary(CONNECTION_ID, 'Row Colorin
 const FIXTURE = bigRowsFixture(CONNECTION_ID);
 
 const NUMBER_COLOR = 'rgb(181, 206, 168)'; // --kira-syntax-number, #b5cea8
-const PLAIN_COLOR = 'rgb(204, 204, 204)'; // --kira-fg, #cccccc
+const PLAIN_COLOR = 'rgb(212, 212, 216)'; // --kira-fg, #d4d4d8
 
 const CONNECTION_CREATE_SNAPSHOT: ControlSnapshot = {
   channel: IPC.connectionsCreate,

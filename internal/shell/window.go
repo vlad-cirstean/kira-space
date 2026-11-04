@@ -72,9 +72,9 @@ func Options(sec SecurityOptions, w WindowRecord, primaryWorkArea *application.R
 		Height:    height,
 		MinWidth:  minWindowWidth,
 		MinHeight: minWindowHeight,
-		// P1 F3: matches --kira-bg-chrome (#181818, tokens.css) — was #18181B, invisible until
+		// P1 F3: matches --kira-bg-chrome (#161618, tokens.css) — was #18181B, invisible until
 		// the title-bar strip became the app's own paint over a transparent AppKit title bar.
-		BackgroundColour: application.NewRGB(24, 24, 24),
+		BackgroundColour: application.NewRGB(22, 22, 24),
 		URL:              "/?window=" + w.Key,
 		Name:             w.Key,
 		Permissions:      sec.Permissions,

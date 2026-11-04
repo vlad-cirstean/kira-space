@@ -177,9 +177,9 @@ func TestOptions_CustomTitleBarPosture(t *testing.T) {
 	if opts.Frameless {
 		t.Error("Frameless = true, want false — Frameless hides the macOS traffic lights (F2)")
 	}
-	wantBackground := application.NewRGB(24, 24, 24)
+	wantBackground := application.NewRGB(22, 22, 24)
 	if opts.BackgroundColour != wantBackground {
-		t.Errorf("BackgroundColour = %+v, want %+v (matches --kira-bg-chrome, #181818)", opts.BackgroundColour, wantBackground)
+		t.Errorf("BackgroundColour = %+v, want %+v (matches --kira-bg-chrome, #161618)", opts.BackgroundColour, wantBackground)
 	}
 }
 
