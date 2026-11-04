@@ -272,7 +272,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
     <span v-if="panel" data-slot="ade-row-lead" :class="ADE_ROW_LEAD">
       <span
         v-if="row.depth"
-        class="absolute -left-1 -top-1 box-border h-4.5 w-1.5 rounded-bl-kira-sm border-b-2 border-l-2 border-border-strong"
+        class="absolute -left-1 -top-1 box-border h-4.5 w-1.5 rounded-bl-kira-sm border-b-2 border-l-2 border-border"
       />
       <AdeTagIcon v-bind="tagProps" />
     </span>

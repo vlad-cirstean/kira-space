@@ -21,10 +21,13 @@ import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import { ACTION_CLASS, TONE_SOLID_CLASS, TONE_TEXT_CLASS } from '../tones';
+import AdeRow from './AdeRow.vue';
+import AdeRowDetail from './AdeRowDetail.vue';
 import AdeRunLog from './AdeRunLog.vue';
 import AdeRunOutcome from './AdeRunOutcome.vue';
 import AdeRunSandboxBadge from './AdeRunSandboxBadge.vue';
 import AdeSetupProgress from './AdeSetupProgress.vue';
+import { ADE_ROW_GLYPH, ADE_ROW_STATUS, rowMeta } from './adeRow';
 
 // One step of the Workflow block: header (state chip, action slot, name, mode), the step row, then
 // its per-repo run lines.
@@ -158,7 +161,7 @@ const TEXT_TONE: Record<string, string> = {
   running: 'text-tone-amber',
   done: 'text-tone-green',
 };
-const statusClass = (state: string): string => TEXT_TONE[state] ?? 'text-subtle';
+const statusClass = (state: string): string => TEXT_TONE[state] ?? 'text-muted-foreground';
 
 async function run(fn: () => Promise<unknown>): Promise<void> {
   error.value = '';
@@ -194,229 +197,200 @@ function logToggleLabel(runId: string): string {
 <template>
   <Card
     variant="section"
-    class="gap-1 px-2 py-2"
+    class="gap-0 py-1"
     :class="[skipped ? 'text-muted-foreground' : '', boxClass]"
     data-testid="ade-step-block"
     :data-step-id="block.step.id"
     :data-state="block.state"
   >
-    <!-- biome-ignore lint/a11y/noStaticElementInteractions: right-click only; the header holds nested interactive controls. -->
-    <div
-      class="flex min-h-6 items-center gap-2"
-      data-testid="ade-step-block-head"
-      @contextmenu="onMenu"
-    >
-      <AdeChip
-        :label="stateLabel(block.state)"
-        :tone="STATE_TONE[block.state]"
-        class="min-w-10 text-center"
-      />
-      <slot name="actions" />
-      <span class="shrink-0 text-kira-sm text-subtle">{{ block.step.n }}.</span>
+    <AdeRow data-testid="ade-step-block-head" @contextmenu="onMenu">
+      <template #lead>
+        <span :class="[ADE_ROW_GLYPH, glyphClass(block.step.state)]">{{
+          STEP_GLYPH[block.step.state]
+        }}</span>
+      </template>
+      <span :class="rowMeta" class="shrink-0">{{ block.step.n }}.</span>
       <span
-        class="min-w-0 truncate text-kira-lg font-medium"
-        :class="block.step.state === 'done' ? 'text-subtle' : 'text-fg'"
+        class="min-w-0 truncate font-medium"
+        :class="block.step.state === 'done' ? 'text-muted-foreground' : 'text-fg'"
         data-testid="ade-step-name"
         >{{
           block.step.name
         }}</span
       >
+      <AdeChip :label="stateLabel(block.state)" :tone="STATE_TONE[block.state]" />
       <SmartBadge v-if="block.step.smartScript" />
-      <span class="min-w-0 truncate text-kira-sm text-subtle" data-testid="ade-step-block-mode">{{
+      <span class="min-w-0 truncate" :class="rowMeta" data-testid="ade-step-block-mode">{{
         block.mode
       }}</span>
-    </div>
+      <template #actions><slot name="actions" /></template>
+    </AdeRow>
 
-    <div
-      class="flex flex-col gap-0.5 rounded-kira-sm bg-bg px-1.5 py-1"
-      data-testid="ade-step"
-      :data-step-id="block.step.id"
-    >
-      <div class="flex min-h-control items-center gap-2">
+    <div class="flex flex-col" data-testid="ade-step" :data-step-id="block.step.id">
+      <AdeRow>
         <span
-          class="box-border flex size-4 shrink-0 items-center justify-center rounded-kira-sm text-kira-sm font-medium"
-          :class="glyphClass(block.step.state)"
-          >{{
-            STEP_GLYPH[block.step.state]
-          }}</span
-        >
-        <span
-          class="shrink-0 whitespace-nowrap text-kira-sm"
-          :class="statusClass(block.step.state)"
+          :class="[ADE_ROW_STATUS, statusClass(block.step.state)]"
           data-testid="ade-step-status"
           >{{
             block.statusText
           }}</span
         >
-        <Button
-          variant="dialog"
-          v-if="block.step.approval"
-          size="kira"
-          class="shrink-0 "
-          :class="TONE_SOLID_CLASS.amber"
-          data-testid="ade-step-approve"
-          @click="onApprove(block.step.id)"
-        >
-          {{ t('common.action.approve.label') }}
-        </Button>
         <span
           v-if="block.routeText"
           data-testid="ade-step-route"
-          class="shrink-0 whitespace-nowrap text-kira-sm text-tone-blue"
+          :class="ADE_ROW_STATUS"
+          class="text-tone-blue"
           >{{
             block.routeText
           }}</span
         >
-        <span v-if="block.gated" class="shrink-0 whitespace-nowrap text-kira-sm text-tone-amber">{{
+        <span v-if="block.gated" :class="ADE_ROW_STATUS" class="text-tone-amber">{{
           t('space.ade.stepBlock.needsApproval.status')
         }}</span>
         <AdeTip v-if="block.scope" :text="block.scope">
           <span
-            class="min-w-0 shrink truncate text-kira-sm text-subtle"
-            :class="block.step.kind === 'script' ? 'font-data' : ''"
+            class="min-w-0 shrink truncate"
+            :class="[rowMeta, block.step.kind === 'script' ? 'font-data' : '']"
             data-testid="ade-step-scope"
             >{{
               block.scope
             }}</span
           >
         </AdeTip>
-      </div>
-      <template v-for="rl in runs" :key="rl.run.branchId">
-        <div
-          class="flex min-h-control items-center gap-2 pl-6"
-          data-testid="ade-run-line"
-          :data-branch-id="rl.run.branchId"
-        >
-          <span
-            class="w-3.5 shrink-0 text-center text-kira-sm font-medium"
-            :class="TONE_TEXT_CLASS[rl.tone]"
-            data-testid="ade-run-glyph"
-            >{{
-              rl.glyph
-            }}</span
+        <template v-if="block.step.approval" #actions>
+          <Button
+            variant="dialog"
+            size="kira"
+            class="shrink-0"
+            :class="TONE_SOLID_CLASS.amber"
+            data-testid="ade-step-approve"
+            @click="onApprove(block.step.id)"
           >
+            {{ t('common.action.approve.label') }}
+          </Button>
+        </template>
+      </AdeRow>
+      <template v-for="rl in runs" :key="rl.run.branchId">
+        <AdeRow :depth="1" data-testid="ade-run-line" :data-branch-id="rl.run.branchId">
+          <template #lead>
+            <span :class="[ADE_ROW_GLYPH, TONE_TEXT_CLASS[rl.tone]]" data-testid="ade-run-glyph">{{
+              rl.glyph
+            }}</span>
+          </template>
           <AdeRepoTag :code-repo-id="rl.target.codeRepoId" :label="rl.target.repo" />
           <span
             v-if="rl.target.named"
-            class="max-w-40 shrink-0 truncate font-data text-kira-sm text-subtle"
+            class="max-w-40 shrink-0 truncate font-data"
+            :class="rowMeta"
             data-testid="ade-run-branch"
             >{{
               rl.target.name
             }}</span
           >
-          <span
-            class="min-w-16 shrink-0 whitespace-nowrap text-kira-sm"
-            :class="TONE_TEXT_CLASS[rl.tone]"
-            data-testid="ade-run-status"
-            >{{
-              rl.status
-            }}</span
-          >
+          <span :class="[ADE_ROW_STATUS, TONE_TEXT_CLASS[rl.tone]]" data-testid="ade-run-status">{{
+            rl.status
+          }}</span>
           <AdeRunSandboxBadge
             v-if="rl.run.sandbox && rl.run.runId"
             :run-id="rl.run.runId"
             :badge="rl.run.sandbox"
           />
-          <Button
-            v-if="rl.hasLog"
-            variant="dialog"
-            size="kira"
-            class="shrink-0"
-            data-testid="ade-run-log-toggle"
-            @click="openLog = openLog === rl.run.runId ? null : rl.run.runId"
-          >
-            {{ logToggleLabel(rl.run.runId) }}
-          </Button>
-          <AdeTip v-if="rl.canResume" :text="t('space.ade.stepBlock.resume.tooltip')">
-            <Button
-              variant="dialog"
-              size="kira"
-              class="shrink-0"
-              :class="ACTION_CLASS.agent"
-              :pending="resume.isPending.value"
-              data-testid="ade-run-resume"
-              @click="onResume(rl.run.runId)"
-            >
-              {{ t('common.action.resume.label') }}
-            </Button>
-          </AdeTip>
-          <Button
-            v-if="rl.canReview"
-            variant="dialog"
-            size="kira"
-            class="shrink-0"
-            data-testid="ade-run-review"
-            @click="onReview(rl.run.branchId)"
-          >
-            {{ t('space.ade.board.branchTag.review.label') }}
-          </Button>
-          <AdeTip
-            v-if="canTakeOver(rl.run)"
-            :text="
-              rl.run.sandbox && rl.run.sandbox.access !== 'off'
-                ? t('space.ade.sandbox.takeOver.hint')
-                : ''
-            "
-          >
-            <Button
-              variant="dialog"
-              size="kira"
-              class="shrink-0 "
-              :class="ACTION_CLASS.agent"
-              :pending="takeOver.pending.has(rl.run.sessionId)"
-              data-testid="ade-run-takeover"
-              @click="takeOver.request(rl.run.sessionId)"
-            >
-              {{ t('common.action.takeOver.label') }}
-            </Button>
-          </AdeTip>
-          <Button
-            variant="dialog"
-            v-if="rl.canRetry"
-            size="kira"
-            class="shrink-0 "
-            :class="TONE_SOLID_CLASS.red"
-            data-testid="ade-run-retry"
-            @click="onRetry(rl.run.runId)"
-          >
-            {{ t('common.action.retry.label') }}
-          </Button>
           <AdeTip v-if="rl.returns" :text="rl.returnsTip">
             <span class="shrink-0" data-testid="ade-run-returns" :data-spent="rl.returnsSpent"
               ><AdeChip :label="rl.returns" :tone="rl.returnsSpent ? 'red' : 'amber'" /></span
             >
           </AdeTip>
           <AdeTip v-if="rl.note" :text="rl.note">
-            <span
-              class="min-w-0 truncate text-kira-sm text-muted-foreground"
-              data-testid="ade-run-note"
-              >{{
-                rl.note
-              }}</span
-            >
+            <span class="min-w-0 truncate" :class="rowMeta" data-testid="ade-run-note">{{
+              rl.note
+            }}</span>
           </AdeTip>
-        </div>
-        <AdeSetupProgress
-          v-if="heldRow(rl)?.branch.setup"
-          class="my-0.5 ml-6"
-          compact
-          :branch="heldRow(rl)!.branch"
-          :repo="heldRow(rl)!.repo"
-        />
-        <AdeRunOutcome
-          v-if="reportRun(rl.run.runId)"
-          :run="reportRun(rl.run.runId)!"
-          :title="t('space.ade.stepBlock.report.title', { step: block.step.name })"
-          class="my-0.5 ml-6"
-        />
-        <div v-if="openLog === rl.run.runId && rl.run.runId" class="my-0.5 ml-6">
+          <template #actions>
+            <Button
+              v-if="rl.hasLog"
+              variant="dialog"
+              size="kira"
+              class="shrink-0"
+              data-testid="ade-run-log-toggle"
+              @click="openLog = openLog === rl.run.runId ? null : rl.run.runId"
+            >
+              {{ logToggleLabel(rl.run.runId) }}
+            </Button>
+            <AdeTip v-if="rl.canResume" :text="t('space.ade.stepBlock.resume.tooltip')">
+              <Button
+                variant="dialog"
+                size="kira"
+                class="shrink-0"
+                :class="ACTION_CLASS.agent"
+                :pending="resume.isPending.value"
+                data-testid="ade-run-resume"
+                @click="onResume(rl.run.runId)"
+              >
+                {{ t('common.action.resume.label') }}
+              </Button>
+            </AdeTip>
+            <Button
+              v-if="rl.canReview"
+              variant="dialog"
+              size="kira"
+              class="shrink-0"
+              data-testid="ade-run-review"
+              @click="onReview(rl.run.branchId)"
+            >
+              {{ t('space.ade.board.branchTag.review.label') }}
+            </Button>
+            <AdeTip
+              v-if="canTakeOver(rl.run)"
+              :text="
+                rl.run.sandbox && rl.run.sandbox.access !== 'off'
+                  ? t('space.ade.sandbox.takeOver.hint')
+                  : ''
+              "
+            >
+              <Button
+                variant="dialog"
+                size="kira"
+                class="shrink-0"
+                :class="ACTION_CLASS.agent"
+                :pending="takeOver.pending.has(rl.run.sessionId)"
+                data-testid="ade-run-takeover"
+                @click="takeOver.request(rl.run.sessionId)"
+              >
+                {{ t('common.action.takeOver.label') }}
+              </Button>
+            </AdeTip>
+            <Button
+              v-if="rl.canRetry"
+              variant="dialog"
+              size="kira"
+              class="shrink-0"
+              :class="TONE_SOLID_CLASS.red"
+              data-testid="ade-run-retry"
+              @click="onRetry(rl.run.runId)"
+            >
+              {{ t('common.action.retry.label') }}
+            </Button>
+          </template>
+        </AdeRow>
+        <AdeRowDetail v-if="heldRow(rl)?.branch.setup" :depth="1">
+          <AdeSetupProgress compact :branch="heldRow(rl)!.branch" :repo="heldRow(rl)!.repo" />
+        </AdeRowDetail>
+        <AdeRowDetail v-if="reportRun(rl.run.runId)" :depth="1">
+          <AdeRunOutcome
+            :run="reportRun(rl.run.runId)!"
+            :title="t('space.ade.stepBlock.report.title', { step: block.step.name })"
+          />
+        </AdeRowDetail>
+        <AdeRowDetail v-if="openLog === rl.run.runId && rl.run.runId" :depth="1">
           <AdeRunLog kind="run" :id="rl.run.runId" max-height="140px" />
-        </div>
+        </AdeRowDetail>
       </template>
     </div>
 
-    <Alert v-if="error" variant="error" data-testid="ade-step-block-error"
-      ><AlertDescription>{{ error }}</AlertDescription></Alert
-    >
+    <AdeRowDetail v-if="error">
+      <Alert variant="error" data-testid="ade-step-block-error"
+        ><AlertDescription>{{ error }}</AlertDescription></Alert
+      >
+    </AdeRowDetail>
   </Card>
 </template>

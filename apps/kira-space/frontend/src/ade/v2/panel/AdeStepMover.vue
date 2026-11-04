@@ -13,6 +13,7 @@ import { computed } from 'vue';
 import { stepMoves } from '../board/stepMoves';
 import type { CardModel } from '../plan/usePlanModel';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
+import AdeRow from './AdeRow.vue';
 
 // Moves the task to any step of its workflow, or to Done, in either direction: each move opens the
 // stage dialog, where the handover notes go.
@@ -43,49 +44,52 @@ function move(toStepId: string): void {
 </script>
 
 <template>
-  <div v-if="card.blocks.length" class="flex flex-col gap-1" data-testid="ade-step-mover">
-    <div class="flex items-center gap-1">
-      <span class="text-kira-sm text-muted-foreground">{{ t('space.common.step.label') }}</span>
-      <TooltipIconButton
-        :icon="ICON.back"
-        :label="reason || t('space.ade.stepMover.back.tooltip')"
-        :aria-label="t('space.ade.stepMover.back.tooltip')"
-        :disabled="live || !prev"
-        disabled-trigger
-        data-testid="ade-step-back"
-        @click="move(prev?.id ?? '')"
-      />
-      <DropdownMenu>
-        <DropdownMenuTrigger as-child>
-          <PickerTrigger
-            size="kira"
-            :label="options[at]?.name"
-            :disabled="live"
-            data-testid="ade-step-pick"
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" data-testid="ade-step-menu">
-          <DropdownMenuItem
-            v-for="o in options"
-            :key="o.id"
-            :data-testid="`ade-step-option-${o.id}`"
-            :disabled="o.skipped"
-            @select="move(o.id)"
+  <AdeRow
+    v-if="card.blocks.length"
+    :label="t('space.common.step.label')"
+    data-testid="ade-step-mover"
+  >
+    <TooltipIconButton
+      :icon="ICON.back"
+      :label="reason || t('space.ade.stepMover.back.tooltip')"
+      :aria-label="t('space.ade.stepMover.back.tooltip')"
+      :disabled="live || !prev"
+      disabled-trigger
+      data-testid="ade-step-back"
+      @click="move(prev?.id ?? '')"
+    />
+    <DropdownMenu>
+      <DropdownMenuTrigger as-child>
+        <PickerTrigger
+          size="kira"
+          :label="options[at]?.name"
+          :disabled="live"
+          data-testid="ade-step-pick"
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" data-testid="ade-step-menu">
+        <DropdownMenuItem
+          v-for="o in options"
+          :key="o.id"
+          :data-testid="`ade-step-option-${o.id}`"
+          :disabled="o.skipped"
+          @select="move(o.id)"
+        >
+          {{ o.name
+          }}<span v-if="o.skipped" class="text-muted-foreground">
+            {{ t('common.skipped.status') }}</span
           >
-            {{ o.name
-            }}<span v-if="o.skipped" class="text-subtle"> {{ t('common.skipped.status') }}</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <TooltipIconButton
-        icon="arrow-right"
-        :label="reason || t('space.ade.stepMover.next.tooltip')"
-        :aria-label="t('space.ade.stepMover.next.tooltip')"
-        :disabled="live || !next"
-        disabled-trigger
-        data-testid="ade-step-next"
-        @click="move(next?.id ?? '')"
-      />
-    </div>
-  </div>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+    <TooltipIconButton
+      icon="arrow-right"
+      :label="reason || t('space.ade.stepMover.next.tooltip')"
+      :aria-label="t('space.ade.stepMover.next.tooltip')"
+      :disabled="live || !next"
+      disabled-trigger
+      data-testid="ade-step-next"
+      @click="move(next?.id ?? '')"
+    />
+  </AdeRow>
 </template>
