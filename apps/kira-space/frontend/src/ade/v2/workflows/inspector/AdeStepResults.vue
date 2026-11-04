@@ -114,7 +114,7 @@ const targets = (next: string): WorkflowStep[] => {
       variant="dialog"
       size="kira-lg"
       v-if="!fixed"
-      class="self-start border-dashed bg-transparent"
+      class="self-start bg-transparent"
       :disabled="step.results.length >= 12"
       data-testid="ade-wf-add-result"
       @click="draft.createResult(step.id)"

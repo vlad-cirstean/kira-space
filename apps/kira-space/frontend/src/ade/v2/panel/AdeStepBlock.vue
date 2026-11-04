@@ -83,7 +83,7 @@ function onMenu(ev: MouseEvent): void {
   contextMenu.openContextMenu(ev, items);
 }
 const boxClass = computed(() => {
-  if (current.value) return 'border-tone-amber-solid/40 bg-tone-amber-solid/5';
+  if (current.value) return 'border-tone-amber';
   return '';
 });
 /** The row of a run line held back by its branch's prepare script. */

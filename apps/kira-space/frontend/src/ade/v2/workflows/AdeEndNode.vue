@@ -8,7 +8,7 @@ defineProps<{ data: { w: number; h: number } }>();
 
 <template>
   <div
-    class="flex items-center justify-center rounded-kira-pill border border-dashed border-border bg-bg text-kira-sm text-subtle"
+    class="flex items-center justify-center rounded-kira-pill border border-border bg-bg text-kira-sm text-subtle"
     :style="{ width: `${data.w}px`, height: `${data.h}px` }"
     data-testid="ade-wf-end-node"
   >

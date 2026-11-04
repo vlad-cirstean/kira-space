@@ -47,7 +47,6 @@ function open(): void {
     role="button"
     tabindex="0"
     class="flex items-center gap-3 rounded-kira px-3 py-1.5"
-    :class="input && 'bg-tone-amber-solid/7'"
     data-testid="ade-all-session"
     :data-session-id="view.session.id"
     @click="open"

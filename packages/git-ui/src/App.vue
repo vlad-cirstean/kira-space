@@ -1903,7 +1903,7 @@ onBeforeUnmount(() => {
         >
           <aside
             ref="overlayDetailRegionEl"
-            class="relative shrink-0 border-l border-border bg-bg overflow-auto w-80 max-w-[90vw] shadow-kira-dialog"
+            class="relative shrink-0 border-l border-border bg-bg overflow-auto w-80 max-w-[90vw] shadow-kira"
             data-testid="detail-region"
             :aria-label="t('git.detail.region.aria')"
           >

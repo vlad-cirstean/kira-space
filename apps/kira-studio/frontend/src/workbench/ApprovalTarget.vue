@@ -32,7 +32,7 @@ const bannerStyle = computed(() =>
   accent.value
     ? {
         borderLeftColor: accent.value,
-        backgroundColor: `color-mix(in srgb, ${accent.value} 14%, transparent)`,
+        backgroundColor: `color-mix(in srgb, ${accent.value} 15%, transparent)`,
       }
     : undefined,
 );

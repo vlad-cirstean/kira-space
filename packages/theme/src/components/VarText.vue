@@ -30,7 +30,7 @@ defineProps<{ parts: readonly TextPart[] }>();
       />
       <span
         v-else
-        class="inline-flex items-center gap-0.5 rounded-kira-xs border border-dashed border-info bg-field px-1 font-data text-info"
+        class="inline-flex items-center gap-0.5 rounded-kira-xs border border-info bg-field px-1 font-data text-info"
         data-testid="var-chip"
         :data-var="p.name"
         :aria-label="t('theme.varText.aria', { name: p.name, value: p.value })"

@@ -315,7 +315,7 @@ onBeforeUnmount(() => {
                 <Button
                   variant="dialog"
                   size="kira-lg"
-                  class="border-dashed bg-transparent"
+                  class="bg-transparent"
                   data-testid="ade-wf-add-step"
                 >
                   {{ t('space.ade.workflows.graph.addStep.label') }}

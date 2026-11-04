@@ -25,11 +25,11 @@ const buttonClass = computed(() => {
   return props.item.tone === 'grey' ? 'bg-border text-fg' : TONE_SOLID_CLASS[props.item.tone];
 });
 const ROW_BG_CLASS: Record<Tone, string> = {
-  amber: 'bg-tone-amber-solid/5',
-  red: 'bg-tone-red-solid/6',
-  green: 'bg-tone-green-solid/5',
-  blue: 'bg-tone-blue-solid/5',
-  purple: 'bg-tone-purple-solid/5',
+  amber: '',
+  red: '',
+  green: '',
+  blue: '',
+  purple: '',
   grey: 'bg-elevated',
 };
 </script>

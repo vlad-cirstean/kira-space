@@ -90,6 +90,7 @@ U41 packages/theme/src/wrapSelection.ts # modifier-free typing guard on beforein
 U41 packages/workbench/src/terminal/terminalRenderer.ts # xterm engine host maps Shift+Enter to meta-Enter bytes, not an app shortcut
 U11 packages/workbench/src/components/LogLines.vue # ANSI bold is log data
 U62 packages/workbench/src/components/AutocompleteField.vue # accepting a suggestion restores focus and the caret on the real input
+U26 packages/workbench/src/components/OpLogPanel.vue # error log row wash at the shared /15 tint, with the inset rail
 # A (apps/kira-studio)
 U100 apps/kira-studio/frontend/src/api/CopyAsCurlDialog.vue # read-only output fields, nothing to discard
 U34 apps/kira-studio/frontend/src/theme/EngineIcon.vue # engine brand marks are third-party logo colours

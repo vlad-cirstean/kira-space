@@ -164,7 +164,7 @@ function buildBadgeElement(
   // G-UX (item 1): a subtle ring on the current-branch badge itself. `ring-current` (not a fixed
   // tone like `ring-focus`): the ring must read as "this badge" however many tones exist
   // (ok/warn today), never a colour of its own that can clash with the badge's own text-{tone}.
-  if (spec.isCurrentBranch) classes.push('ring-1 ring-inset ring-current');
+  if (spec.isCurrentBranch) classes.push('outline outline-1 -outline-offset-1 outline-current');
   badge.className = refBadgeClass(variant, 'shrink min-w-0', ...classes);
   if (spec.icon === BADGE_ICONS.tag) badge.dataset.testid = 'badge-tag';
   // The full name lives in `data-kira-tip`, read by the one `AttributeTooltip`
