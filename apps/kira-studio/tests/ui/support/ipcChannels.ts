@@ -182,6 +182,9 @@ export const IPC = {
   customScriptsSetSecrets: 'kira:customScripts:setSecrets',
   customScriptsReorder: 'kira:customScripts:reorder',
   customScriptsReorderCollections: 'kira:customScripts:reorderCollections',
+  customScriptsMove: 'kira:customScripts:move',
+  customScriptsRenameCollection: 'kira:customScripts:renameCollection',
+  customScriptsDeleteCollection: 'kira:customScripts:deleteCollection',
 
   // P87 §10.3: the titlebar keep-awake toggle.
   keepAwakeStatus: 'kira:keepAwake:status',

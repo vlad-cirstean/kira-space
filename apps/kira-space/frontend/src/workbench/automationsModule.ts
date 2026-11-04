@@ -103,6 +103,9 @@ export function createAutomationsModule(): AutomationsModuleContext {
         customScriptsStore.setScheduleTarget(id, taskId, branchId),
       reorder: (collection, ids) => customScriptsStore.reorderScripts(collection, ids),
       reorderCollections: (names) => customScriptsStore.reorderCollections(names),
+      move: (id, collection, beforeId) => customScriptsStore.move(id, collection, beforeId),
+      renameCollection: (name, newName) => customScriptsStore.renameCollection(name, newName),
+      removeCollection: (name) => customScriptsStore.removeCollection(name),
     },
   };
 }

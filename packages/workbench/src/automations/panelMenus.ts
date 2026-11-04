@@ -1,5 +1,6 @@
 import type { CustomScript, ScriptKind } from '@shared/domain/scripts';
 import { t } from '@theme/i18n';
+import { moveToCollectionMenu } from '../lib/collectionMenu';
 import type { MenuItem } from '../state/contextMenu';
 
 // Pure descriptions of the panel's context menus; AutomationsPanel.vue injects what each item does.
@@ -13,18 +14,36 @@ export interface ScriptMenuActions {
   copyPath(script: CustomScript): void | Promise<void>;
   /** Kira Space: set the ADE task and branch of a recurring run. */
   editTarget?(script: CustomScript): void;
+  /** Collection names, in panel order. */
+  collections(): readonly string[];
+  moveTo(script: CustomScript, collection: string): void | Promise<void>;
+  moveToNew(script: CustomScript): void | Promise<void>;
   /** One place within the row's own set. */
   moveStep(script: CustomScript, step: -1 | 1): void;
   canMoveStep(script: CustomScript, step: -1 | 1): boolean;
   remove(script: CustomScript): void | Promise<void>;
 }
 
-export function groupMenu(
-  create: (kind: ScriptKind) => void,
-  move: { step(step: -1 | 1): void; can(step: -1 | 1): boolean },
-): MenuItem[] {
+export interface GroupMenuActions {
+  create(kind: ScriptKind): void;
+  rename(): void;
+  remove(): void | Promise<void>;
+  step(step: -1 | 1): void;
+  can(step: -1 | 1): boolean;
+}
+
+export function groupMenu(actions: GroupMenuActions): MenuItem[] {
+  const move = { step: actions.step, can: actions.can };
   return [
-    ...newScriptItems(create),
+    ...newScriptItems(actions.create),
+    {
+      type: 'item',
+      id: 'rename',
+      label: t('common.action.rename.label'),
+      icon: 'edit',
+      shortcut: 'tree.rename',
+      run: () => actions.rename(),
+    },
     { type: 'separator' },
     {
       type: 'item',
@@ -41,6 +60,15 @@ export function groupMenu(
       icon: 'arrow-down',
       disabled: !move.can(1),
       run: () => move.step(1),
+    },
+    { type: 'separator' },
+    {
+      type: 'item',
+      id: 'delete',
+      label: t('common.action.delete.label'),
+      icon: 'trash',
+      danger: true,
+      run: () => actions.remove(),
     },
   ];
 }
@@ -124,6 +152,13 @@ export function scriptMenu(script: CustomScript, actions: ScriptMenuActions): Me
       run: () => actions.copyPath(script),
     },
     { type: 'separator' },
+    moveToCollectionMenu({
+      collections: actions.collections().map((name) => ({ id: name, name })),
+      current: script.collection === '' ? null : script.collection,
+      allowNone: true,
+      onMove: (name) => actions.moveTo(script, name ?? ''),
+      onNew: () => actions.moveToNew(script),
+    }),
     {
       type: 'item',
       id: 'move-up',

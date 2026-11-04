@@ -98,6 +98,9 @@ export function createAutomationsModule(): AutomationsModuleContext {
       setSecrets: (id, values) => customScriptsStore.setSecrets(id, values),
       reorder: (collection, ids) => customScriptsStore.reorderScripts(collection, ids),
       reorderCollections: (names) => customScriptsStore.reorderCollections(names),
+      move: (id, collection, beforeId) => customScriptsStore.move(id, collection, beforeId),
+      renameCollection: (name, newName) => customScriptsStore.renameCollection(name, newName),
+      removeCollection: (name) => customScriptsStore.removeCollection(name),
     },
   };
 }

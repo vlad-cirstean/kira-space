@@ -1,5 +1,10 @@
 {
   "automations": {
+    "collection": {
+      "deleteConfirm": {
+        "body": "Delete “{name}” and everything inside it."
+      }
+    },
     "dialog": {
       "run": {
         "editPrompt": {
@@ -3108,6 +3113,9 @@
     },
     "dashPair": {
       "label": "{first} — {second}"
+    },
+    "deleteCollectionConfirm": {
+      "title": "Delete collection?"
     },
     "details": {
       "title": "Details"

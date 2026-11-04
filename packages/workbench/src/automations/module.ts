@@ -57,6 +57,12 @@ export interface ScriptsSeam {
   /** Persists one set's order: the ungrouped scripts ('') or one collection's. */
   reorder(collection: string, ids: string[]): Promise<void>;
   reorderCollections(names: string[]): Promise<void>;
+  /** Puts a run in a collection ('' ungroups) before `beforeId` (null appends). A new name creates the collection. */
+  move(id: string, collection: string, beforeId: string | null): Promise<void>;
+  /** Renames the collection in every member run file. */
+  renameCollection(name: string, newName: string): Promise<void>;
+  /** Deletes every run in the collection. */
+  removeCollection(name: string): Promise<void>;
 }
 
 /** The run store's bound calls and push channel (ScriptRunsService), the same in both apps. */

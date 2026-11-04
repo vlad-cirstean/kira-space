@@ -37,6 +37,10 @@ export interface CustomScriptsControl {
   /** collection '' is the ungrouped set. */
   customScriptsReorder(collection: string, ids: string[]): Promise<void>;
   customScriptsReorderCollections(names: string[]): Promise<void>;
+  /** collection '' ungroups; `beforeId` null appends to the target set. */
+  customScriptsMove(id: string, collection: string, beforeId: string | null): Promise<void>;
+  customScriptsRenameCollection(name: string, newName: string): Promise<void>;
+  customScriptsDeleteCollection(name: string): Promise<void>;
   onCustomScriptsChanged(cb: (snapshot: ScriptsSnapshot) => void): () => void;
 }
 
@@ -154,6 +158,18 @@ export function createCustomScriptsStore(control: CustomScriptsControl) {
       }
     }
 
+    async function move(id: string, collection: string, beforeId: string | null): Promise<void> {
+      await control.customScriptsMove(id, collection, beforeId);
+    }
+
+    async function renameCollection(name: string, newName: string): Promise<void> {
+      await control.customScriptsRenameCollection(name, newName);
+    }
+
+    async function removeCollection(name: string): Promise<void> {
+      await control.customScriptsDeleteCollection(name);
+    }
+
     return {
       ...toRefs(state),
       hydrateCustomScripts,
@@ -166,6 +182,9 @@ export function createCustomScriptsStore(control: CustomScriptsControl) {
       setScheduleTarget,
       reorderScripts,
       reorderCollections,
+      move,
+      renameCollection,
+      removeCollection,
     };
   });
 }

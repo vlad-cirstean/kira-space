@@ -19,6 +19,7 @@ import MenuIconButton from '@workbench/components/MenuIconButton.vue';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import SortableList from '@workbench/components/SortableList.vue';
+import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef } from 'vue';
 import { errorText } from '../bridge/codedError';
@@ -39,6 +40,7 @@ import { useScriptTabs } from './scriptTabs';
 import { defaultSmart } from './smart/smartSettings';
 
 const contextMenuStore = useContextMenuStore();
+const confirmDialogStore = useConfirmDialogStore();
 const ctx = useAutomationsModule();
 const removeScript = useRemoveScript();
 const { info: agentInfo } = useAgentInfo();
@@ -52,6 +54,8 @@ const fileDialog = ref<string | null>(null);
 const targetFor = ref<CustomScript | null>(null);
 
 const search = ref('');
+// The collection whose header shows the inline name field.
+const renamingName = ref<string | null>(null);
 const actionError = ref<string | null>(null);
 
 interface ScriptGroup {
@@ -114,12 +118,60 @@ const reorderOff = computed(() => search.value.trim() !== '');
 const ungroupedIds = computed(() => view.value.ungrouped.map((s) => s.id));
 const groupNames = computed(() => view.value.groups.map((g) => g.name));
 
+// Runs drag between the ungrouped list and every open collection; the lists share this group.
+const SCRIPT_GROUP = 'automation-scripts';
+function scriptIdOf(el: HTMLElement): string | null {
+  return el.dataset.navKey?.replace(/^script:/, '') ?? null;
+}
+function dropScript(collection: string, id: string, beforeId: string | null): void {
+  void guarded(() => scripts.move(id, collection, beforeId));
+}
+
 function reorderSet(collection: string, ids: readonly string[], from: string, to: string): void {
   void guarded(() => scripts.reorder(collection, moveId(ids, from, to)));
 }
 
 function reorderGroups(from: string, to: string): void {
   void guarded(() => scripts.reorderCollections(moveId(groupNames.value, from, to)));
+}
+
+// A free placeholder name: "New collection", "New collection-2", ...
+function freeCollectionName(): string {
+  const base = t('common.newCollection.label');
+  const taken = new Set(scripts.collections().map((c) => c.name));
+  let name = base;
+  for (let n = 2; taken.has(name); n++) name = `${base}-${n}`;
+  return name;
+}
+
+async function moveToNewCollection(script: CustomScript): Promise<void> {
+  await guarded(async () => {
+    const name = freeCollectionName();
+    await scripts.move(script.id, name, null);
+    openGroup(name);
+    renamingName.value = name;
+  });
+}
+
+function commitRename(name: string, next: string): void {
+  renamingName.value = null;
+  if (next === name) return;
+  const wasClosed = collapsed.value.includes(name);
+  void guarded(async () => {
+    await scripts.renameCollection(name, next);
+    if (wasClosed) collapsed.value = [...collapsed.value.filter((n) => n !== name), next];
+  });
+}
+
+async function confirmDeleteCollection(name: string): Promise<void> {
+  const ok = await confirmDialogStore.confirm({
+    title: t('common.deleteCollectionConfirm.title'),
+    message: t('automations.collection.deleteConfirm.body', { name }),
+    confirmLabel: t('common.action.delete.label'),
+    tone: 'danger',
+  });
+  if (!ok) return;
+  await guarded(() => scripts.removeCollection(name));
 }
 
 const empty = computed(() => scripts.records().length === 0 && scripts.problems().length === 0);
@@ -241,10 +293,17 @@ useTreeShortcuts(
       const name = item?.kind === 'script' ? scriptById(item.id)?.name : item?.id;
       if (name !== undefined) void copy(name);
     },
+    'tree.rename': (key) => {
+      const item = navItems.value.find((i) => i.key === key);
+      if (item?.kind === 'group') renamingName.value = item.id;
+    },
     'tree.delete': (key) => {
       const item = navItems.value.find((i) => i.key === key);
-      const script = item?.kind === 'script' ? scriptById(item.id) : undefined;
-      if (script) void onRemove(script);
+      if (item?.kind === 'group') void confirmDeleteCollection(item.id);
+      else if (item?.kind === 'script') {
+        const script = scriptById(item.id);
+        if (script) void onRemove(script);
+      }
     },
   },
 );
@@ -311,6 +370,9 @@ const scriptActions: ScriptMenuActions = {
       }
     : undefined,
   remove: onRemove,
+  collections: () => scripts.collections().map((c) => c.name),
+  moveTo: (script, collection) => guarded(() => scripts.move(script.id, collection, null)),
+  moveToNew: moveToNewCollection,
   canMoveStep: (script, step) =>
     !reorderOff.value && stepIds(setIdsOf(script), script.id, step) !== null,
   moveStep: (script, step) => {
@@ -327,7 +389,13 @@ function onGroupMenu(e: MouseEvent, name: string): void {
   openMenu(
     { key: `group:${name}`, kind: 'group', id: name, depth: 0 },
     e,
-    groupMenu((kind) => createScript(kind, name), {
+    groupMenu({
+      create: (kind) => createScript(kind, name),
+      rename: () =>
+        contextMenuStore.afterClose(() => {
+          renamingName.value = name;
+        }),
+      remove: () => confirmDeleteCollection(name),
       step,
       can: (by) => !reorderOff.value && stepIds(groupNames.value, name, by) !== null,
     }),
@@ -388,9 +456,12 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
             <SortableList
               :ids="ungroupedIds"
               draggable='[data-nav-key^="script:"]'
+              :group="SCRIPT_GROUP"
+              :item-id="scriptIdOf"
               :disabled="reorderOff"
-              class="flex flex-col"
+              :class="['flex flex-col', ungroupedIds.length === 0 && 'min-h-2']"
               @move="(from, to) => reorderSet('', ungroupedIds, from, to)"
+              @add="(id, beforeId) => dropScript('', id, beforeId)"
             >
               <ScriptRow
                 v-for="script in view.ungrouped"
@@ -434,16 +505,22 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
                   :name="group.name"
                   :count="group.rows.length"
                   :open="isOpen(group.name)"
+                  :renaming="renamingName === group.name"
                   v-bind="nav.rowProps(`group:${group.name}`)"
                   @toggle="toggleGroup(group.name)"
+                  @commit="(next) => commitRename(group.name, next)"
+                  @cancel="renamingName = null"
                   @menu="onGroupMenu($event, group.name)"
                 />
                 <SortableList
                   v-if="isOpen(group.name)"
                   :ids="group.rows.map((s) => s.id)"
                   draggable='[data-nav-key^="script:"]'
+                  :group="SCRIPT_GROUP"
+                  :item-id="scriptIdOf"
                   :disabled="reorderOff"
-                  class="flex flex-col"
+                  :class="['flex flex-col', group.rows.length === 0 && 'min-h-2']"
+                  @add="(id, beforeId) => dropScript(group.name, id, beforeId)"
                   @move="
                     (from, to) =>
                       reorderSet(
