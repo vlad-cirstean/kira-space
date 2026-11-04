@@ -75,7 +75,7 @@ export function readPalette(rowHeightOverride?: number): Palette {
     fgSubtle: color('--kira-fg-subtle'),
     border: color('--kira-border'),
     select: color('--kira-select'),
-    hover: color('--kira-hover'),
+    hover: color('--kira-bg-input'),
     focus: color('--kira-focus'),
     warn: color('--kira-warn'),
     ok: color('--kira-ok'),

@@ -57,7 +57,7 @@ whatever sandbox a session happens to be in),
 - A DialogContent with no explicit width spans the viewport minus 2rem, since shadcn's default sm:max-w-sm was removed; every dialog sets its own w-N.
 - scripts/check-class-conflicts.ts (bun run lint) parses every .vue under app/theme/workbench, resolves static class and conditional :class literals through cn/twMergeKv, and fails on a surviving static duplicate or a conditional literal that drops a static token; it skips where the :class root is itself a cn(...)/twMergeKv(...) call.
 - A registration self-check in the class-conflict lint asserts every new @theme token name (colour, spacing, radius, shadow, animation, leading) wins a same-group merge, so a token not wired into that group fails lint.
-- There is one canonical name per colour/radius value repo-wide, including components/ui; shadcn-alias/kira pairs collapse onto the kira name (e.g. background/bg, card/elevated, muted/field, input/border-strong, ring/focus, accent/hover, destructive/error, rounded-sm/md/lg/xl to rounded-kira-xs/sm/kira/pill), because no CSS custom property is set at runtime.
+- There is one canonical name per colour/radius value repo-wide, including components/ui; shadcn-alias/kira pairs collapse onto the kira name (e.g. background/bg, card/elevated, muted/field, input/border, ring/focus, accent/field, destructive/error, rounded-sm/md/lg/xl to rounded-kira-sm/kira-sm/kira/full), because no CSS custom property is set at runtime.
 - shadcn-bridge.css's @theme inline keeps exactly --color-primary, --color-primary-foreground, --color-muted-foreground and --color-border, and no --radius-* at all.
 - check-theme-classes.sh's check_alias guard keeps retired aliases from returning; it never excludes components/ui and is never extended to git-ui.
 - alertVariants has no err key; every error alert uses variant="error" (P263).
@@ -88,7 +88,7 @@ whatever sandbox a session happens to be in),
 - Fetch a new shadcn-vue component set by direct-registry pull, not by shadcn-vue add; the procedure is in docs/DEV_ENVIRONMENT.md's shadcn-vue section.
 - Empty/EmptyMedia/EmptyTitle/EmptyDescription (components/ui/empty/) is the one empty-state component; Alert with class empty-state (role=alert on a merely empty list) was a misuse and was converted.
 - Row components (TreeRow, CollectionRow, RepoTreeRow, RepoSearchRow) take a class prop and own their selection ternary instead of using a shared .tree-row/.selected/.sticky CSS rule.
-- Row state class is selected ? 'bg-select' : sticky ? 'bg-bg hover:bg-hover' : 'hover:bg-hover'; sticky is a prop so a row in a sticky layer paints its own background, and selected beats hover by ternary order, not CSS specificity.
+- Row state class is selected ? 'bg-select' : sticky ? 'bg-bg hover:bg-field' : 'hover:bg-field'; sticky is a prop so a row in a sticky layer paints its own background, and selected beats hover by ternary order, not CSS specificity.
 - In git-ui dialogs, pair every control that is not natively input-like with an explicit useId()-driven for/id, because biome's noLabelWithoutControl can't see through a wrapped component's inheritAttrs: false to the native element.
 - Pass prioritize-position on a point-anchored DropdownMenu so reka's Popper flips before it shifts, since shift alone can clamp overflow to zero against a 0×0 anchor and starve flip of a signal.
 - Never put a Tooltip between a DropdownMenu or Popover root and its trigger: reka shares one unscoped PopperRoot context, so the trigger anchors the Tooltip and the menu stays at translate(0,-200%), off-screen. Put `TooltipIconButton` inside `DropdownMenuTrigger as-child`, or anchor explicitly (RefsPopover).
@@ -747,7 +747,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - A boolean that applies on flip is a Switch; an option in a form committed by a button is a Checkbox (14px box).
 - Use Tooltip for hints, never native title; the theme provider owns the 400ms delay. Shortcuts use Kbd. A tooltip with several facts uses TooltipDetails (title, label/value rows, hint); a joined sentence of facts is not allowed.
 - Loading uses Spinner; Skeleton only where the layout is known.
-- Grey has three roles: text-muted-foreground for secondary content, text-subtle for tertiary chrome, text-disabled for absence markers.
+- Grey has three roles: text-muted-foreground for secondary content, text-subtle for tertiary chrome and absence markers.
 - Card inset holds text only, because its bg-field fill hides an Input, Select or Checkbox; Card section holds controls.
 - DropdownMenuContent is content-sized (min-w-45, max-w-80).
 - Every pane resize handle binds resizeHandleVariants (2px bar, 4px/8px hit area, bg-focus on hover/focus/drag, 10px arrow step, Home/End); shell, dock and ADE panel handles measure identical at rest, hover and drag.
@@ -1341,7 +1341,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 ### UI leftover conventions (P267)
 
 - Use text-muted-foreground for row meta, KV keys, secondary labels and values, timestamps, counts, icons, DialogDescription and bar status; muted never uses opacity.
-- Use text-subtle for section headings and legends, FieldDescription, empty and inline-state lines, placeholders, NULL markers and row numbers; use text-disabled for absence markers.
+- Use text-subtle for section headings and legends, FieldDescription, empty and inline-state lines, placeholders, NULL markers and row numbers.
 - Use cursor-default on every control and row; pointer only for Button variant="link", linkify.ts anchors and the PR badge link; grab on drag handles; never help or copy cursors.
 - View or detail titles use text-kira-lg font-medium text-fg; sections use SectionHeading (pane, panel, list, picker) or FieldSet + FieldLegend + FieldDescription (form, settings pane).
 - A hint paragraph is FieldDescription; an empty line is InlineState kind="empty" or EmptyState.
@@ -1352,7 +1352,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - Loading placeholders wait SPINNER_DELAY (packages/theme/src/timing.ts, TIMING.spinnerDelay) before showing.
 - CodiconIcon size must be one of 12, 13, 16, 24; RunState is a Spinner at size 12 or a StatusDot error.
 - .kira-prose in base.css is the one prose layer.
-- Elevation tiers: Popover z-(--kira-z-popover) + shadow-kira; Dialog, overlay, CommandDialog z-(--kira-z-dialog) + shadow-kira-dialog; DropdownMenu z-(--kira-z-menu) + shadow-kira; Tooltip z-(--kira-z-tooltip) with no shadow; in-pane layers z-1..3.
+- Elevation tiers: Popover z-(--kira-z-popover) + shadow-kira; Dialog, overlay, CommandDialog z-(--kira-z-dialog) + shadow-kira; DropdownMenu z-(--kira-z-menu) + shadow-kira; Tooltip z-(--kira-z-tooltip) with no shadow; in-pane layers z-1..3.
 - TooltipContent has two variants sharing one ground (elevated, ring, shadow, no arrow, sideOffset 4, fade only): `default` (padded, max-w-sm, plain text, `\n` breaks lines) and `surface` (layout only, caller pads) for rich content using the ADE tones, which are dark-only. A branch chip inside a default tooltip renders neutral via `data-chip="branch"`.
 - Density scale is 0.5, 1, 1.5, 2, 3, 4; 0.25/1.25/1.75/2.5/3.5 are not allowed anywhere. Dialog width uses size variants only.
 - With DialogContent dirty, outside click is ignored, and Esc and the header X ask the discard confirm; footer Cancel never asks.
@@ -1911,7 +1911,7 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 - git-ui has no token layer of its own: its markup uses the app's Tailwind utilities and --kira-* tokens, compiled by Kira Space's root styles.css which @sources packages/git-ui/src; the only git CSS is packages/git-ui/src/theme/git.css, imported by styles.css because @theme needs the host root.
 - git.css defines the graph scale --kira-graph-t-* (xs/sm/md = graph font size -2/-1/0px), --kira-graph-h-xs and --kira-graph-row-h, exposed as text-graph-*, h-graph-row-compact and h-graph-h-xs utilities registered in packages/theme/src/lib/utils.ts so cn merges them.
 - The lane palette graph-lane-0..7 aliases the connection palette --kira-conn-*, and SlickGrid structural rules (.kira-commit-grid .slick-*, in @layer components) live in git.css because SlickGrid builds those nodes itself.
-- Other git colours are app utilities: status ok/warn/error, remote and stash origin info, stash and draft muted-foreground, rows bg-hover/bg-select, borders border-border; there is no kv- marker layer (lint bans it).
+- Other git colours are app utilities: status ok/warn/error, remote and stash origin info, stash and draft muted-foreground, rows bg-field/bg-select, borders border-border; there is no kv- marker layer (lint bans it).
 - TokenReader measures the graph tokens for SlickGrid's rowHeight and rowSvg.ts geometry.
 - Test hooks in git-ui are data-testid; the grid's runtime classes are kira-* (kira-cell-message, kira-row-selected).
 - Size a codicon span with a utility using the ! suffix (text-graph-xs!), because codicon.css's unlayered font shorthand beats layered utilities.
