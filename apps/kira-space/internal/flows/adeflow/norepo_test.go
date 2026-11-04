@@ -52,8 +52,11 @@ func waitFakeText(t *testing.T, app *flowharness.App, name, want string) {
 func TestRepolessWorkflow(t *testing.T) {
 	t.Run("agent stages: the first picks repos, the next runs on them", func(t *testing.T) {
 		pick := fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "declare_repos", Args: map[string]any{"repos": []any{"api"}}}
+		// The agent holds its MCP calls until the "started" snapshot is taken, else declare_repos races it.
+		hold := filepath.Join(t.TempDir(), "hold")
+		t.Cleanup(func() { _ = os.WriteFile(hold, nil, 0o644) })
 		f := newNRFixture(t, map[string][]fakeagent.Action{
-			"tasks": {{MCP: []fakeagent.MCPCall{pick, requestCall("api")}, Name: "done"}},
+			"tasks": {{WaitBefore: hold, MCP: []fakeagent.MCPCall{pick, requestCall("api")}, Name: "done"}},
 			"api":   {{Name: "done"}},
 		}, onceStepYML+agentStep("two", ""))
 		if _, err := f.app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: f.task.ID, BranchNames: map[string]string{}}); err != nil {
@@ -71,6 +74,9 @@ func TestRepolessWorkflow(t *testing.T) {
 		}
 		waitFakeText(t, f.app, "tasks-1.prompt", "No repo yet. Folder: "+f.dir)
 		f.app.Contract(t, nrScenario, "AdeTaskService.Board#started", taskOf(t, board(t, f.app), f.task.ID), nrMask)
+		if err := os.WriteFile(hold, nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
 
 		var id string
 		testx.WaitUntil(t, waitFor, func() bool {
