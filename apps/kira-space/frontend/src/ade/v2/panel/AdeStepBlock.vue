@@ -197,7 +197,7 @@ function logToggleLabel(runId: string): string {
 <template>
   <Card
     variant="section"
-    class="-mx-px gap-0 py-1"
+    class="gap-0 py-1"
     :class="[skipped ? 'text-muted-foreground' : '', boxClass]"
     data-testid="ade-step-block"
     :data-step-id="block.step.id"
