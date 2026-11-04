@@ -83,8 +83,7 @@
   --color-status-purple: var(--kira-status-purple);
   --color-status-pink: var(--kira-status-pink);
 
-  /* Control, container; xs is a stopgap alias, drop with its last use (AdeTaskPanel.vue) in P509. */
-  --radius-kira-xs: var(--kira-radius-sm);
+  /* Control, container. */
   --radius-kira-sm: var(--kira-radius-sm);
   --radius-kira: var(--kira-radius);
 
