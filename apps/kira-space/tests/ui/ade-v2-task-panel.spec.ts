@@ -1,19 +1,12 @@
 import { expect, test } from './fixtures';
-import {
-  adeBoard,
-  adeFixture,
-  archivedTaskFx,
-  FIXED_NOW,
-  openPlan,
-  openTask,
-} from './support/adeV2';
+import { adeFixture, archivedTaskFx, FIXED_NOW, openPlan, openTask } from './support/adeV2';
 import { contract } from './support/contract';
-import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 import type { ControlSnapshot } from './support/types';
 
-// Task panel: Main, Details and Sessions tabs, link groups, paste, inline edit, timeline and
-// session links. Contract ade-task-panel; backend half: flows/adeflow TestTaskPanelOrigins.
+// Task panel: Main, Details and Sessions tabs, link groups, timeline and session links. Link adding
+// and editing: ade-v2-details-links.spec.ts. Contract ade-task-panel; backend half: flows/adeflow
+// TestTaskPanelOrigins.
 
 const t = (id: string) => `[data-testid="${id}"]`;
 
@@ -130,91 +123,6 @@ test('Details groups the Jira and host links in Main and stored links in Related
     expect(await title.getAttribute('href')).toBeTruthy();
     expect((await title.textContent())?.trim()).not.toMatch(/^[#!]?\d+$/);
   }
-});
-
-test('paste: a Jira key updates the task, a URL adds an untitled link, text shows an error', async ({
-  relaunch,
-}) => {
-  const withHost = adeBoard((b) => {
-    const task = b.tasks.find((x) => x.id === 'T_notif');
-    Object.assign(task ?? {}, { hostUrl: 'https://github.com/acme/web-app/issues/1' });
-  });
-  const { window: page, control } = await openPlan(relaunch, [
-    ...panel(),
-    { channel: IPC.adeTaskBoard, response: withHost },
-  ]);
-  await openTask(page, 'T_notif');
-  await page.locator(t('ade-panel-tab-details')).click();
-  const paste = page.locator(t('ade-details-paste'));
-  await paste.fill('PAY-9');
-  await paste.press('Enter');
-  await expect.poll(() => calls(control, IPC.adeTaskUpdateTask)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskUpdateTask)[0]?.args).toMatchObject({
-    taskId: 'T_notif',
-    patch: { jira: { key: 'PAY-9' } },
-  });
-  await expect(paste).toHaveValue('');
-
-  await paste.fill('https://wiki.example/new-page');
-  await paste.press('Enter');
-  await expect.poll(() => calls(control, IPC.adeTaskAddArtifact)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskAddArtifact)[0]?.args).toEqual({
-    taskId: 'T_notif',
-    kind: 'link',
-    title: '',
-    url: 'https://wiki.example/new-page',
-    ref: '',
-  });
-
-  await expect(paste).toHaveValue('');
-
-  // A key-shaped token in a non-Jira URL does not route to the Jira slot.
-  await paste.fill('https://github.com/acme/web-app/tree/PROJ-42-fix');
-  await paste.press('Enter');
-  await expect.poll(() => calls(control, IPC.adeTaskAddArtifact)).toHaveLength(2);
-  expect(calls(control, IPC.adeTaskAddArtifact)[1]?.args).toMatchObject({
-    kind: 'link',
-    url: 'https://github.com/acme/web-app/tree/PROJ-42-fix',
-  });
-  expect(calls(control, IPC.adeTaskUpdateTask)).toHaveLength(1);
-
-  await paste.fill('not a link');
-  await paste.press('Enter');
-  await expect(page.locator(t('ade-details-paste-error'))).toBeVisible();
-  expect(calls(control, IPC.adeTaskAddArtifact)).toHaveLength(2);
-});
-
-test('inline edit: Enter renames, Escape cancels, empty removes, detected rows have no edit', async ({
-  relaunch,
-}) => {
-  const { window: page, control } = await openPlan(relaunch, panel());
-  await openDetails(page);
-  const id = artifacts().artifacts.find((a) => a.title === 'Other docs')?.id;
-
-  await row(page, 'Other docs').locator(t('ade-details-link-edit')).click();
-  await page.locator(t('ade-details-link-input')).fill('Other docs v2');
-  await page.locator(t('ade-details-link-input')).press('Enter');
-  await expect.poll(() => calls(control, IPC.adeTaskUpdateArtifact)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskUpdateArtifact)[0]?.args).toEqual({
-    taskId: 'T_alerts',
-    id,
-    title: 'Other docs v2',
-  });
-
-  await row(page, 'Runbook').locator(t('ade-details-link-edit')).click();
-  await page.locator(t('ade-details-link-input')).fill('discarded');
-  await page.locator(t('ade-details-link-input')).press('Escape');
-  await expect(page.locator(t('ade-details-link-input'))).toHaveCount(0);
-  expect(calls(control, IPC.adeTaskUpdateArtifact)).toHaveLength(1);
-
-  await row(page, 'Runbook').locator(t('ade-details-link-edit')).click();
-  await page.locator(t('ade-details-link-input')).fill('');
-  await page.locator(t('ade-details-link-input')).press('Enter');
-  await expect.poll(() => calls(control, IPC.adeTaskRemoveArtifact)).toHaveLength(1);
-
-  const detected = row(page, 'Fix login');
-  await expect(detected).toHaveAttribute('data-origin', 'detected');
-  await expect(detected.locator(t('ade-details-link-edit'))).toHaveCount(0);
 });
 
 test('the timeline starts closed and lists entries oldest first', async ({ relaunch }) => {

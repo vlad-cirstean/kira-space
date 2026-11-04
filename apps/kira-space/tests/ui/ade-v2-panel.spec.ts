@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { adeBoard, adeFixture, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
+import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
 
@@ -99,39 +100,31 @@ test('name, Issue, PR and Not merging write UpdateTask patches', async ({ relaun
   await page.locator('[data-testid="ade-panel-tab-details"]').click();
   await paste.fill('PAY-9');
   await paste.press('Enter');
-  await expect.poll(() => updates(control)).toHaveLength(2);
-  expect(updates(control)[1]?.args).toMatchObject({
-    patch: { jira: { key: 'PAY-9', url: '' } },
-  });
-
-  await paste.fill('https://github.com/acme/web-app/issues/882');
-  await paste.press('Enter');
-  await expect.poll(() => updates(control)).toHaveLength(3);
-  expect(updates(control)[2]?.args).toMatchObject({
-    patch: { hostUrl: 'https://github.com/acme/web-app/issues/882' },
-  });
+  await expect.poll(() => calls(control, IPC.adeTaskAddLink)).toHaveLength(1);
+  expect(calls(control, IPC.adeTaskAddLink)[0]?.args).toEqual({ taskId: 'T_notif', text: 'PAY-9' });
 
   await page.locator('[data-testid="ade-panel-tab-main"]').click();
   await page.locator('[data-testid="ade-task-parked"]').click();
-  await expect.poll(() => updates(control)).toHaveLength(4);
-  expect(updates(control)[3]?.args).toMatchObject({ patch: { kind: 'parked' } });
+  await expect.poll(() => updates(control)).toHaveLength(2);
+  expect(updates(control)[1]?.args).toMatchObject({ patch: { kind: 'parked' } });
 });
 
-test('a refused git host link shows the backend error', async ({ relaunch }) => {
+test('a refused link line shows the backend error and keeps the text', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [
     {
-      channel: IPC.adeTaskUpdateTask,
-      error: { code: 'invalid', message: 'Not a GitHub PR or issue link.' },
+      channel: IPC.adeTaskAddLink,
+      error: { code: 'E_BAD_REQUEST', message: 'Not a link or issue key.' },
     },
   ]);
   await openTask(page, 'T_notif');
   await page.locator('[data-testid="ade-panel-tab-details"]').click();
   const paste = page.locator('[data-testid="ade-details-paste"]');
-  await paste.fill('https://example.com/not-a-forge-link');
+  await paste.fill('not a link');
   await paste.press('Enter');
   await expect(page.locator('[data-testid="ade-details-paste-error"]')).toContainText(
-    'Not a GitHub PR or issue link.',
+    'Not a link or issue key.',
   );
+  await expect(paste).toHaveValue('not a link');
 });
 
 test('a refused estimate shows the backend error', async ({ relaunch }) => {

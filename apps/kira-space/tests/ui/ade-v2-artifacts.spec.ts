@@ -75,34 +75,23 @@ test('contract: the Details tab lists every link with kind and status', async ({
   await expect(gap).toContainText('The Jira command line tool isn’t installed');
 });
 
-test('contract: pasting a link sends AddArtifact with an empty title', async ({ relaunch }) => {
-  const sentKeys = Object.keys(
-    contract<Record<string, unknown>>('ade-artifacts', 'args:AdeTaskService.AddArtifact'),
+test('contract: submitting a link line sends AddLink with the text as typed', async ({
+  relaunch,
+}) => {
+  const sent = contract<{ taskId: string; text: string }>(
+    'ade-artifacts',
+    'args:AdeTaskService.AddLink',
   );
-  // With the host slot filled, a pasted URL becomes an artifact instead of the host link.
-  const withHost = adeBoard((b) => {
-    const task = b.tasks.find((x) => x.id === 'T_alerts');
-    Object.assign(task ?? {}, { hostUrl: 'https://forge.test/acme/api/-/issues/3' });
-  });
   const { window: page, control } = await openPlan(relaunch, [
     snapshot(withIds(recorded('AdeTaskService.Artifacts'))),
-    { channel: IPC.adeTaskBoard, response: withHost },
   ]);
   await openTask(page, 'T_alerts');
   await page.locator(t('ade-panel-tab-details')).click();
   const paste = page.locator(t('ade-details-paste'));
-  await paste.fill('https://wiki.example/runbook');
+  await paste.fill(sent.text);
   await paste.press('Enter');
-  await expect.poll(() => calls(control, IPC.adeTaskAddArtifact)).toHaveLength(1);
-  const sent = calls(control, IPC.adeTaskAddArtifact)[0]?.args as Record<string, unknown>;
-  expect(sent).toEqual({
-    taskId: 'T_alerts',
-    kind: 'link',
-    title: '',
-    url: 'https://wiki.example/runbook',
-    ref: '',
-  });
-  expect(Object.keys(sent).sort()).toEqual([...sentKeys].sort());
+  await expect.poll(() => calls(control, IPC.adeTaskAddLink)).toHaveLength(1);
+  expect(calls(control, IPC.adeTaskAddLink)[0]?.args).toEqual({ ...sent, taskId: 'T_alerts' });
   await expect(paste).toHaveValue('');
 });
 
