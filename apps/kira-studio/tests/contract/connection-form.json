@@ -1,0 +1,237 @@
+{
+  "args:ConnectionConfigService.Form#bad": {
+    "edits": [],
+    "file": "pg.yaml",
+    "text": "# Staging database for the web team.\nname: Pg # shown in the sidebar\nkind: nosuchkind\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\ncolor: blue\n"
+  },
+  "args:ConnectionConfigService.Form#edited": {
+    "edits": [
+      {
+        "path": [
+          "port"
+        ],
+        "unset": false,
+        "value": 5433
+      },
+      {
+        "path": [
+          "mcp",
+          "description"
+        ],
+        "unset": false,
+        "value": "Replica for reports"
+      },
+      {
+        "path": [
+          "masks"
+        ],
+        "unset": false,
+        "value": [
+          {
+            "column": "email",
+            "kind": "email",
+            "table": "users"
+          }
+        ]
+      },
+      {
+        "path": [
+          "color"
+        ],
+        "unset": true,
+        "value": null
+      }
+    ],
+    "file": "pg.yaml",
+    "text": "# Staging database for the web team.\nname: Pg # shown in the sidebar\nkind: postgres\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\ncolor: blue\n"
+  },
+  "args:ConnectionConfigService.Form#password": {
+    "edits": [
+      {
+        "path": [
+          "password"
+        ],
+        "unset": false,
+        "value": "${secret:pg-staging.password}"
+      }
+    ],
+    "file": "pg.yaml",
+    "text": "# Staging database for the web team.\nname: Pg # shown in the sidebar\nkind: postgres\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\ncolor: blue\n"
+  },
+  "args:ConnectionConfigService.Form#read": {
+    "edits": [],
+    "file": "pg.yaml",
+    "text": "# Staging database for the web team.\nname: Pg # shown in the sidebar\nkind: postgres\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\ncolor: blue\n"
+  },
+  "args:ConnectionConfigService.Form#rename": {
+    "edits": [
+      {
+        "path": [
+          "name"
+        ],
+        "unset": false,
+        "value": "Pg staging"
+      }
+    ],
+    "file": "pg.yaml",
+    "text": "# Staging database for the web team.\nname: Pg # shown in the sidebar\nkind: postgres\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\ncolor: blue\n"
+  },
+  "args:ConnectionConfigService.Form#yaml": {
+    "edits": [],
+    "file": "pg.yaml",
+    "text": "# Staging database for the web team.\nname: Pg yaml # shown in the sidebar\nkind: postgres\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\ncolor: blue\n"
+  },
+  "args:ConnectionConfigService.SaveFile": {
+    "baseHash": "<masked>",
+    "file": "pg.yaml",
+    "text": "# Staging database for the web team.\nname: Pg # shown in the sidebar\nkind: postgres\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg-staging.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\ncolor: blue\n"
+  },
+  "file#read": {
+    "editable": true,
+    "file": "pg.yaml",
+    "hash": "<masked>",
+    "id": "<id:1>",
+    "lastGood": false,
+    "path": "<kira>/connections/pg.yaml",
+    "problem": null,
+    "secrets": [
+      {
+        "kind": "password",
+        "name": "pg.password",
+        "referenced": true,
+        "set": true
+      }
+    ],
+    "text": "# Staging database for the web team.\nname: Pg # shown in the sidebar\nkind: postgres\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\ncolor: blue\n"
+  },
+  "file#saved": {
+    "editable": true,
+    "file": "pg.yaml",
+    "hash": "<masked>",
+    "id": "<id:1>",
+    "lastGood": false,
+    "path": "<kira>/connections/pg.yaml",
+    "problem": null,
+    "secrets": [
+      {
+        "kind": "password",
+        "name": "pg-staging.password",
+        "referenced": true,
+        "set": true
+      }
+    ],
+    "text": "# Staging database for the web team.\nname: Pg # shown in the sidebar\nkind: postgres\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg-staging.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\ncolor: blue\n"
+  },
+  "form#bad": {
+    "problem": {
+      "col": 1,
+      "line": 3,
+      "message": "kind must be one of \"clickhouse\", \"kafka\", \"kibana\", \"mariadb\", \"mongodb\", \"mysql\", \"postgres\", \"redis\", \"s3\", \"sqlite\", \"sqs\".",
+      "path": "/kind"
+    },
+    "text": "# Staging database for the web team.\nname: Pg # shown in the sidebar\nkind: nosuchkind\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\ncolor: blue\n",
+    "value": null
+  },
+  "form#edited": {
+    "problem": null,
+    "text": "# Staging database for the web team.\nname: Pg # shown in the sidebar\nkind: postgres\nhost: 127.0.0.1\nport: 5433\ndatabase: app\nusername: kira\npassword: ${secret:pg.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\n  description: Replica for reports\nmasks:\n  - column: email\n    kind: email\n    table: users\n",
+    "value": {
+      "database": "app",
+      "host": "127.0.0.1",
+      "kind": "postgres",
+      "masks": [
+        {
+          "column": "email",
+          "kind": "email",
+          "table": "users"
+        }
+      ],
+      "mcp": {
+        "auto_explain": false,
+        "description": "Replica for reports",
+        "read": "deny",
+        "write": "deny"
+      },
+      "name": "Pg",
+      "password": "${secret:pg.password}",
+      "port": 5433,
+      "username": "kira"
+    }
+  },
+  "form#password": {
+    "problem": null,
+    "text": "# Staging database for the web team.\nname: Pg # shown in the sidebar\nkind: postgres\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg-staging.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\ncolor: blue\n",
+    "value": {
+      "color": "blue",
+      "database": "app",
+      "host": "127.0.0.1",
+      "kind": "postgres",
+      "mcp": {
+        "auto_explain": false,
+        "read": "deny",
+        "write": "deny"
+      },
+      "name": "Pg",
+      "password": "${secret:pg-staging.password}",
+      "port": 5432,
+      "username": "kira"
+    }
+  },
+  "form#read": {
+    "problem": null,
+    "text": "# Staging database for the web team.\nname: Pg # shown in the sidebar\nkind: postgres\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\ncolor: blue\n",
+    "value": {
+      "color": "blue",
+      "database": "app",
+      "host": "127.0.0.1",
+      "kind": "postgres",
+      "mcp": {
+        "auto_explain": false,
+        "read": "deny",
+        "write": "deny"
+      },
+      "name": "Pg",
+      "password": "${secret:pg.password}",
+      "port": 5432,
+      "username": "kira"
+    }
+  },
+  "form#rename": {
+    "problem": null,
+    "text": "# Staging database for the web team.\nname: Pg staging # shown in the sidebar\nkind: postgres\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\ncolor: blue\n",
+    "value": {
+      "color": "blue",
+      "database": "app",
+      "host": "127.0.0.1",
+      "kind": "postgres",
+      "mcp": {
+        "auto_explain": false,
+        "read": "deny",
+        "write": "deny"
+      },
+      "name": "Pg staging",
+      "password": "${secret:pg.password}",
+      "port": 5432,
+      "username": "kira"
+    }
+  },
+  "form#yaml": {
+    "problem": null,
+    "text": "# Staging database for the web team.\nname: Pg yaml # shown in the sidebar\nkind: postgres\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\ncolor: blue\n",
+    "value": {
+      "color": "blue",
+      "database": "app",
+      "host": "127.0.0.1",
+      "kind": "postgres",
+      "mcp": {
+        "auto_explain": false,
+        "read": "deny",
+        "write": "deny"
+      },
+      "name": "Pg yaml",
+      "password": "${secret:pg.password}",
+      "port": 5432,
+      "username": "kira"
+    }
+  }
+}
