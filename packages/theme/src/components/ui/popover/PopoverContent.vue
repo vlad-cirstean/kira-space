@@ -43,7 +43,7 @@ function onOpenAutoFocus(event: Event): void {
       @open-auto-focus="onOpenAutoFocus"
       :class="
         cn(
-          'bg-elevated text-fg data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ring-border-strong flex flex-col gap-2.5 rounded-kira p-2.5 text-kira-md shadow-kira ring-1 duration-100 z-(--kira-z-popover) w-72 max-w-(--reka-popover-content-available-width) origin-(--reka-popover-content-transform-origin) outline-hidden',
+          'bg-elevated text-fg data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ring-border flex flex-col gap-2.5 rounded-kira p-2.5 text-kira-md shadow-kira ring-1 duration-100 z-(--kira-z-popover) w-72 max-w-(--reka-popover-content-available-width) origin-(--reka-popover-content-transform-origin) outline-hidden',
           props.class,
         )
       "

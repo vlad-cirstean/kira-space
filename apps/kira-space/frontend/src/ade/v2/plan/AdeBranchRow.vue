@@ -210,7 +210,7 @@ const SEG: Record<string, string> = {
   running: 'bg-fg',
   bad: 'bg-tone-red-solid',
 };
-const segClass = (state: string): string => SEG[state] ?? 'bg-border-strong';
+const segClass = (state: string): string => SEG[state] ?? 'bg-border';
 const progClass = computed(() => {
   return props.row.prog?.tone === 'red' ? 'text-tone-red' : 'text-muted-foreground';
 });
@@ -242,7 +242,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
     <span class="relative shrink-0 self-stretch" :style="{ width: `${row.depth * 16}px` }">
       <span
         v-if="row.depth"
-        class="absolute -top-1 right-0.5 box-border h-4.5 w-2 rounded-bl-kira-sm border-b-2 border-l-2 border-border-strong"
+        class="absolute -top-1 right-0.5 box-border h-4.5 w-2 rounded-bl-kira-sm border-b-2 border-l-2 border-border"
       />
     </span>
     <AdeBranchTip v-model:open="tipOpen" :row="row" :color="color">
@@ -318,7 +318,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
                 c.label
               }}</span
             >
-            <span v-if="row.chips.divider" class="h-2.5 w-px shrink-0 bg-border-strong" />
+            <span v-if="row.chips.divider" class="h-2.5 w-px shrink-0 bg-border" />
             <span
               v-for="c in row.chips.deployed"
               :key="c.label"

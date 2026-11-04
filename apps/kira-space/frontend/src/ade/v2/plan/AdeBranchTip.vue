@@ -30,7 +30,7 @@ const SEG: Record<string, string> = {
   running: 'bg-tone-amber-solid',
   bad: 'bg-tone-red-solid',
 };
-const segClass = (state: string): string => SEG[state] ?? 'bg-border-strong';
+const segClass = (state: string): string => SEG[state] ?? 'bg-border';
 const staleClass = (tone: string): string => (tone === 'stale' ? 'text-tone-amber' : '');
 </script>
 

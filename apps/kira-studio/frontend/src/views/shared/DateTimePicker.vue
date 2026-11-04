@@ -313,7 +313,7 @@ const secondText = computed<string>({
             :data-selected="cell.isSelected"
             :class="[
               cell.isSelected ? '' : cell.inMonth ? 'text-fg' : 'text-subtle',
-              cell.isToday ? 'border-border-strong' : '',
+              cell.isToday ? 'border-border' : '',
             ]"
             @click="pickDay(cell)"
           >

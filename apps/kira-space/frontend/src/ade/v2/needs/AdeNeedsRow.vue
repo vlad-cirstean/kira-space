@@ -22,9 +22,7 @@ const hasLog = computed(
 const buttonClass = computed(() => {
   if (props.item.action === 'Take over' || props.item.action === 'Resume')
     return ACTION_CLASS.agent;
-  return props.item.tone === 'grey'
-    ? 'bg-border-strong text-fg'
-    : TONE_SOLID_CLASS[props.item.tone];
+  return props.item.tone === 'grey' ? 'bg-border text-fg' : TONE_SOLID_CLASS[props.item.tone];
 });
 const ROW_BG_CLASS: Record<Tone, string> = {
   amber: 'bg-tone-amber-solid/5',

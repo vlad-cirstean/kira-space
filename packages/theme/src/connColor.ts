@@ -70,7 +70,7 @@ export function colorMarkClass(mark: ColorMark, color: string | null | undefined
   const paint = connBgClass(color);
   if (paint) return `${MARK_SHAPE[mark]} ${paint}`;
   return mark === 'dot' || mark === 'swatch'
-    ? `${MARK_SHAPE[mark]} bg-none border border-disabled`
+    ? `${MARK_SHAPE[mark]} bg-none border border-border`
     : MARK_SHAPE[mark];
 }
 

@@ -233,7 +233,7 @@ const stateLabel = (c: ReviewComment): string =>
         <p class="m-0 whitespace-pre-wrap break-words">{{ c.body }}</p>
         <p
           v-if="c.reply"
-          class="m-0 whitespace-pre-wrap break-words border-l-2 border-border-strong pl-2 text-muted-foreground"
+          class="m-0 whitespace-pre-wrap break-words border-l-2 border-border pl-2 text-muted-foreground"
           data-testid="ade-review-comment-reply"
         >
           {{ c.reply }}

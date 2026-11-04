@@ -77,7 +77,7 @@ const rowColoringId = useId();
            font-data (unlike their data-row counterparts below), so they already inherit naturally
            -- porting `inherit` as a class would re-state the default. -->
       <div class="overflow-hidden rounded-kira-sm border border-border">
-        <div class="flex bg-elevated border-b border-border-strong">
+        <div class="flex bg-elevated border-b border-border">
           <span
             class="flex items-center truncate px-2 border-r border-border flex-none basis-9 justify-end text-muted-foreground text-kira-sm bg-elevated"
             :style="{ height: `${rowPreviewHeight}px` }"

@@ -265,7 +265,7 @@ const CELL_BASE =
       show-all-testid="stream-show-all-rows"
     />
     <template v-else>
-      <div class="h-control-lg shrink-0 flex bg-elevated border-b border-border-strong">
+      <div class="h-control-lg shrink-0 flex bg-elevated border-b border-border">
         <div
           class="flex items-center gap-1 px-2 border-r border-border text-kira-sm text-muted-foreground overflow-hidden whitespace-nowrap relative w-10"
         />
@@ -313,7 +313,7 @@ const CELL_BASE =
             :class="streamRowClass(rowIndices[vi.index])"
           >
             <div
-              class="flex items-center justify-end px-2 border-r border-b border-border border-r-border-strong bg-elevated font-data text-kira-sm text-subtle truncate relative w-10"
+              class="flex items-center justify-end px-2 border-r border-b border-border border-r-border bg-elevated font-data text-kira-sm text-subtle truncate relative w-10"
               role="option"
               v-bind="nav.rowProps(String(rowIndices[vi.index]))"
               :tabindex="nav.tabindexFor(String(rowIndices[vi.index]))"

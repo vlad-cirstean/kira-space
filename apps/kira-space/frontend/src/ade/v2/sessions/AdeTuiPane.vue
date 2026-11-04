@@ -56,7 +56,7 @@ async function show(): Promise<void> {
       />
       <div
         v-if="hold"
-        class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-bg/90 p-4 text-center text-kira-md"
+        class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-bg p-4 text-center text-kira-md"
         data-testid="ade-tui-phone-overlay"
       >
         <p class="m-0">{{ t('space.ade.tui.controlled.label', { device: hold.label }) }}</p>

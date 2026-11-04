@@ -18,7 +18,7 @@ const TONE_CLASS = {
   warn: 'bg-warn',
   error: 'bg-error',
   info: 'bg-info',
-  muted: 'bg-disabled',
+  muted: 'bg-subtle',
   'state-on': 'bg-state-on',
 } as const;
 

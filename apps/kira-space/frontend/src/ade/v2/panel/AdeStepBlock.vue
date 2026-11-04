@@ -142,7 +142,7 @@ const GLYPH_BOX: Record<string, string> = {
   stuck: 'bg-tone-amber-solid text-bg',
   failed: 'bg-tone-red-solid text-bg',
   running: 'border border-tone-amber-solid text-tone-amber-solid',
-  pending: 'border border-border-strong text-subtle',
+  pending: 'border border-border text-subtle',
 };
 const STEP_GLYPH: Record<string, string> = {
   done: '✓',

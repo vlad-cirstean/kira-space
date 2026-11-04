@@ -53,7 +53,7 @@ useEventListener(scrimEl, 'click', (e) => e.stopPropagation());
         role="dialog"
         aria-modal="true"
         :aria-labelledby="titleId"
-        class="mx-4 w-100 max-w-full flex flex-col overflow-hidden rounded-kira-lg bg-elevated text-fg text-kira-md ring-1 ring-border-strong"
+        class="mx-4 w-100 max-w-full flex flex-col overflow-hidden rounded-kira-lg bg-elevated text-fg text-kira-md ring-1 ring-border"
       >
         <div :class="dialogHeaderClass">
           <div :id="titleId" class="text-kira-lg">{{ title }}</div>

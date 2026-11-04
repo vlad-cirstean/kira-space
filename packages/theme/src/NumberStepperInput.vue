@@ -45,9 +45,7 @@ function stepBy(dir: 1 | -1): void {
   <div ref="containerRef" class="contents">
     <InputGroup
       variant="default"
-      :class="
-        cn('h-control-lg w-full rounded-kira-sm border-border-strong bg-field', props.groupClass)
-      "
+      :class="cn('h-control-lg w-full rounded-kira-sm border-border bg-field', props.groupClass)"
     >
       <InputGroupInput
         type="number"

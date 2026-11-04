@@ -216,7 +216,7 @@ function keepFocus(e: MouseEvent): void {
 
 <template>
   <div
-    class="flex min-h-35 flex-1 flex-col overflow-hidden rounded-kira-sm border border-border-strong bg-bg"
+    class="flex min-h-35 flex-1 flex-col overflow-hidden rounded-kira-sm border border-border bg-bg"
   >
     <div
       v-if="!readonly"

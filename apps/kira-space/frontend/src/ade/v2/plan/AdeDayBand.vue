@@ -69,21 +69,19 @@ const highlight = computed(() => props.dragOver && accepts.value);
 
 const rulerBorderClass = computed(() => {
   if (props.band.isToday) return 'border-r-tone-amber-solid';
-  return props.band.isPast || greyed.value ? 'border-r-border' : 'border-r-border-strong';
+  return props.band.isPast || greyed.value ? 'border-r-border' : 'border-r-border';
 });
 const dotClass = computed(() => {
   if (props.band.isToday) return 'border-tone-amber-solid bg-tone-amber-solid';
-  return props.band.isPast || greyed.value
-    ? 'border-border bg-chrome'
-    : 'border-border-strong bg-chrome';
+  return props.band.isPast || greyed.value ? 'border-border bg-chrome' : 'border-subtle bg-chrome';
 });
 const labelClass = computed(() => {
-  if (greyed.value) return 'text-disabled';
+  if (greyed.value) return 'text-subtle';
   if (overdue.value) return 'text-tone-amber';
   return empty.value || props.band.isPast ? 'text-subtle' : 'text-fg';
 });
 const subClass = computed(() => {
-  if (greyed.value) return 'text-disabled';
+  if (greyed.value) return 'text-subtle';
   return props.band.overflowHours > 0 && !props.band.isLater
     ? 'text-tone-red'
     : 'text-muted-foreground';
@@ -99,7 +97,7 @@ const solidBorder = computed(() => props.band.isMonday || props.band.isLater || 
   <!-- biome-ignore lint/a11y/noStaticElementInteractions: right-click only; the band holds nested interactive rows. -->
   <div
     class="flex border-t"
-    :class="solidBorder ? 'border-t-border-strong' : 'border-t-border'"
+    :class="solidBorder ? 'border-t-border' : 'border-t-border'"
     data-testid="ade-day-band"
     data-ade-band
     :data-weekend="band.weekend || undefined"
@@ -129,7 +127,7 @@ const solidBorder = computed(() => props.band.isMonday || props.band.isLater || 
         empty ? (greyed ? 'min-h-4' : 'min-h-control') : 'pb-2 pl-2 pt-2',
         highlight ? 'outline outline-1 outline-focus' : '',
         band.weekend
-          ? 'bg-[repeating-linear-gradient(135deg,var(--color-border)_0_1px,transparent_1px_6px)]'
+          ? 'bg-[repeating-linear-gradient(135deg,var(--color-elevated)_0_1px,transparent_1px_8px)]'
           : '',
       ]"
       ref="dropEl"

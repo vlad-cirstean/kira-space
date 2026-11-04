@@ -14,7 +14,7 @@ export const tabChipVariants = cva(
     variants: {
       active: {
         true: 'is-active bg-elevated border-transparent text-fg',
-        false: 'border-transparent text-muted-foreground hover:bg-hover',
+        false: 'border-transparent text-muted-foreground hover:bg-field',
       },
       size: { default: 'px-1.5', icon: 'px-1', wide: 'px-3' },
     },

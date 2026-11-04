@@ -18,7 +18,7 @@ const forwardedProps = useForwardProps(delegatedProps);
     v-bind="forwardedProps"
     :class="
       cn(
-        'group/radio-group-item peer relative flex aspect-square size-control-inline shrink-0 rounded-full border border-border-strong bg-field transition-colors data-[state=checked]:border-primary data-[state=checked]:bg-primary aria-invalid:border-error aria-invalid:aria-checked:border-primary after:absolute after:-inset-1 disabled:cursor-default disabled:opacity-50',
+        'group/radio-group-item peer relative flex aspect-square size-control-inline shrink-0 rounded-full border border-border bg-field transition-colors data-[state=checked]:border-primary data-[state=checked]:bg-primary aria-invalid:border-error aria-invalid:aria-checked:border-primary after:absolute after:-inset-1 disabled:cursor-default disabled:opacity-50',
         props.class,
       )
     "

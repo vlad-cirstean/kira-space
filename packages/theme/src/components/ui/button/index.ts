@@ -15,19 +15,19 @@ export const buttonVariants = cva(
         // Geometry stays on the `kira`/`kira-lg`/`kira-icon` sizes below (design-system tokens,
         // runtime-adjustable via @theme's --spacing-control* -- see base.css).
         toolbar:
-          'rounded-kira-sm text-muted-foreground hover:bg-hover hover:text-fg aria-pressed:bg-field aria-pressed:text-fg data-[tone=error]:text-error data-[tone=error]:hover:text-error data-[tone=ok]:text-ok data-[tone=ok]:hover:text-ok',
+          'rounded-kira-sm text-muted-foreground hover:bg-field hover:text-fg aria-pressed:bg-field aria-pressed:text-fg data-[tone=error]:text-error data-[tone=error]:hover:text-error data-[tone=ok]:text-ok data-[tone=ok]:hover:text-ok',
         'toolbar-primary': 'rounded-kira-sm bg-primary text-primary-foreground hover:bg-primary/80',
         dialog:
-          'justify-center rounded-kira-sm border border-border-strong bg-field text-fg hover:bg-hover',
+          'justify-center rounded-kira-sm border border-border bg-field text-fg hover:bg-field',
         'dialog-primary':
           'justify-center rounded-kira-sm border border-primary bg-primary text-primary-foreground hover:bg-primary/80',
         'dialog-danger':
           'justify-center rounded-kira-sm border border-error bg-error/10 text-error hover:bg-error/20',
-        danger: 'rounded-kira-sm text-error hover:bg-hover',
+        danger: 'rounded-kira-sm text-error hover:bg-field',
         // P110 B13: TitleBar.vue's own action row -- `aria-pressed` replaces `.is-on`'s own class
         // toggle, fixing the state's previously unexposed accessibility gap.
         title:
-          'rounded-kira-sm border border-transparent bg-transparent text-muted-foreground hover:bg-hover wails-no-drag aria-pressed:bg-elevated aria-pressed:text-fg aria-pressed:hover:bg-hover',
+          'rounded-kira-sm border border-transparent bg-transparent text-muted-foreground hover:bg-field wails-no-drag aria-pressed:bg-elevated aria-pressed:text-fg aria-pressed:hover:bg-field',
       },
       size: {
         'icon-sm':

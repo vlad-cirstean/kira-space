@@ -61,7 +61,7 @@
   }
 
   .kira-commit-grid .slick-row:hover {
-    @apply bg-hover;
+    @apply bg-field;
   }
 
   .kira-commit-grid .slick-row.kira-row-selected {

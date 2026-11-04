@@ -11,7 +11,7 @@ export { default as TableRow } from './TableRow.vue';
 export const tableHeadRowClass = 'bg-elevated';
 export const tableHeadClass =
   'h-row px-2 text-left align-middle text-kira-sm font-normal whitespace-nowrap text-muted-foreground';
-export const tableRowClass = 'h-row hover:bg-hover data-[state=selected]:bg-select';
+export const tableRowClass = 'h-row hover:bg-field data-[state=selected]:bg-select';
 export const tableCellClass = 'px-2 align-middle';
 /** Column dividers, only on data tables (`Table columns`). */
 export const tableColumnDividerClass =

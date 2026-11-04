@@ -122,7 +122,7 @@ async function onRestore(): Promise<void> {
       <AdePanelFrame v-model="tab" :tabs="tabs">
         <template #header>
           <div class="flex items-start gap-2">
-            <span class="mt-1 box-border size-3 shrink-0 rounded-kira-xs bg-disabled" />
+            <span class="mt-1 box-border size-3 shrink-0 rounded-kira-xs bg-subtle" />
             <AdeChip :label="t('space.ade.panel.archived.label')" tone="grey" />
             <AdeChip
               v-if="status(a)"
