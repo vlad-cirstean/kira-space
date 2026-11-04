@@ -87,6 +87,8 @@ type Action struct {
 	Emit string `json:"emit,omitempty"`
 	// WaitFile blocks until the path exists.
 	WaitFile string `json:"waitFile,omitempty"`
+	// WaitBefore blocks until the path exists, before the shell and MCP calls run.
+	WaitBefore string `json:"waitBefore,omitempty"`
 	// Stderr replaces the "fail" behaviour's message (a CLI error line such as a sign-in failure).
 	Stderr string `json:"stderr,omitempty"`
 	// Exit, when set, ends the run with that code instead of the named behaviour.
@@ -306,6 +308,12 @@ func pickAction(scen Scenario, dir, repo, cwd string, args []string) pickedActio
 
 // runSideEffects plays the action's shell, MCP calls, emit and wait; done reports an early exit code.
 func runSideEffects(action Action, dir, cwd string, args []string) (code int, done bool) {
+	for action.WaitBefore != "" {
+		if _, err := os.Stat(action.WaitBefore); err == nil {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 	if action.Sh != "" {
 		cmd := exec.Command("sh", "-c", action.Sh)
 		cmd.Dir = cwd
