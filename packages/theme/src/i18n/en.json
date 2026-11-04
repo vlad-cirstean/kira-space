@@ -1405,9 +1405,6 @@
     },
     "space": {
       "ade": {
-        "artifactTitle": {
-          "body": "A title needs 1 to 200 characters."
-        },
         "branchMissing": {
           "body": "That branch no longer exists."
         },
@@ -1437,6 +1434,15 @@
         },
         "jiraKeyInvalid": {
           "body": "That Jira key isn’t valid."
+        },
+        "linkAlreadyLinked": {
+          "body": "This task already has that link."
+        },
+        "linkNotLink": {
+          "body": "Not a link or issue key. Put free text in the notes."
+        },
+        "linkOneLink": {
+          "body": "Add one link per line."
         },
         "messageTooLong": {
           "body": "The message is too long."
@@ -8518,21 +8524,25 @@
         "title": "Move tasks?"
       },
       "details": {
+        "addLine": {
+          "aria": "Add a link",
+          "known": {
+            "body": "Already linked."
+          },
+          "placeholder": "Paste or type a link, with an optional title"
+        },
         "empty": {
           "body": "No links yet."
         },
+        "kindMenu": {
+          "label": "Change kind"
+        },
         "link": {
-          "aria": "Link title"
+          "aria": "Link title",
+          "placeholder": "Title and link"
         },
         "links": {
           "title": "Links"
-        },
-        "paste": {
-          "aria": "Add a link",
-          "notLink": {
-            "error": "That is not a link or a Jira key."
-          },
-          "placeholder": "Paste a link or Jira key"
         },
         "related": {
           "title": "Related"
@@ -8674,9 +8684,6 @@
       "link": {
         "copy": {
           "tooltip": "Copy {label} link"
-        },
-        "notJira": {
-          "error": "Not a Jira key or link."
         },
         "view": {
           "tooltip": "View {label} in Kira"

@@ -1,78 +1,64 @@
 <script setup lang="ts">
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
-import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
-import { useAsyncAction } from '@workbench/behaviour/asyncAction';
-import { errorText, toCodedError } from '@workbench/bridge/codedError';
+import { errorText } from '@workbench/bridge/codedError';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed, ref } from 'vue';
 import { gapText } from '../artifacts/gapText';
 import { taskPatch } from '../board/panelFacts';
-import { isJiraIssueUrl, parseJira } from '../jira';
 import AdeTaskIssueLine from '../panel/AdeTaskIssueLine.vue';
-import { type LinkPatch, useLinkFields } from '../panel/useLinkFields';
 import {
-  useAddArtifact,
+  useAddLink,
+  useEditLink,
   useRemoveArtifact,
   useTaskArtifacts,
-  useUpdateArtifact,
   useUpdateTask,
 } from '../queries';
-import type { Task } from '../wire';
+import type { Artifact, Task } from '../wire';
 import AdeDetailsLink from './AdeDetailsLink.vue';
+import AdeLinkAddLine from './AdeLinkAddLine.vue';
 import AdeOriginSession from './AdeOriginSession.vue';
 import { type LinkItem, linkGroups } from './linkGroups';
 
 // The task's links in two groups: Main (Jira, host link, detected change requests) and Related
-// (every other artifact). One row edits at a time; the paste line adds links.
+// (every other artifact). One row edits at a time; the add line files typed or pasted text, the
+// backend picks the category.
 const props = defineProps<{ task: Task; readonly?: boolean }>();
 const emit = defineEmits<{ openSession: [sessionId: string] }>();
 
 const query = useTaskArtifacts(() => props.task.id);
 const update = useUpdateTask();
-const addArtifact = useAddArtifact();
-const updateArtifact = useUpdateArtifact();
+const addLink = useAddLink();
+const editLink = useEditLink();
 const removeArtifact = useRemoveArtifact();
 
 const groups = computed(() => linkGroups(props.task, query.data.value?.artifacts ?? []));
 const gaps = computed(() => query.data.value?.gaps ?? []);
 const editingKey = ref<string | null>(null);
 const removeError = ref('');
-const pasteText = ref('');
-const pasteError = ref('');
-
-async function write(patch: LinkPatch): Promise<string | null> {
-  try {
-    await update.mutateAsync({ taskId: props.task.id, patch: taskPatch(patch) });
-    return null;
-  } catch (err) {
-    return errorText(err);
-  }
-}
-const links = useLinkFields(() => props.task.hostLink, write);
-
-function fail(message: string | null): void {
-  if (message) throw new Error(message);
-}
 
 /** Saves one row's edit; an empty text removes it. A failure throws, so the edit stays open. */
 async function commit(item: LinkItem, text: string): Promise<void> {
+  const taskId = props.task.id;
   const value = text.trim();
-  if (item.origin === 'jira') {
-    if (value) {
-      await links.saveJira(value);
-      fail(links.jiraError.value);
-    } else fail(await links.clearJira());
-  } else if (item.origin === 'host') {
-    if (value) {
-      await links.saveHost(value);
-      fail(links.hostError.value);
-    } else fail(await links.clearHost());
-  } else if (item.artifactId) {
-    const args = { taskId: props.task.id, id: item.artifactId };
-    if (value) await updateArtifact.mutateAsync({ ...args, title: value });
-    else await removeArtifact.mutateAsync(args);
+  if (!value) {
+    if (item.origin === 'jira') {
+      await update.mutateAsync({ taskId, patch: taskPatch({ clearJira: true }) });
+    } else if (item.origin === 'host') {
+      await update.mutateAsync({ taskId, patch: taskPatch({ hostUrl: '' }) });
+    } else if (item.artifactId) {
+      await removeArtifact.mutateAsync({ taskId, id: item.artifactId });
+    }
+    return;
   }
+  if (item.origin === 'detected') return;
+  await editLink.mutateAsync({
+    taskId,
+    slot: item.origin,
+    id: item.artifactId ?? '',
+    text: value,
+    kind: '',
+  });
 }
 
 async function remove(item: LinkItem): Promise<void> {
@@ -84,88 +70,23 @@ async function remove(item: LinkItem): Promise<void> {
   }
 }
 
-const isUrl = (raw: string): boolean => {
+async function recategorise(item: LinkItem, kind: Artifact['kind']): Promise<void> {
+  if (!item.artifactId || kind === item.kind) return;
+  removeError.value = '';
   try {
-    const u = new URL(raw);
-    return u.protocol === 'http:' || u.protocol === 'https:';
-  } catch {
-    return false;
-  }
-};
-
-/** One pasted value: the task's empty Jira slot, then its empty host slot (the backend says whether
- *  a provider owns the link), else a stored artifact the backend names and sorts. */
-async function addValue(raw: string): Promise<void> {
-  const taskId = props.task.id;
-  const jira =
-    !isUrl(raw) || isJiraIssueUrl(raw, props.task.jira?.url ?? '')
-      ? parseJira(raw)
-      : { key: '', url: '' };
-  if (jira.key && !props.task.jira) {
-    await update.mutateAsync({ taskId, patch: taskPatch({ jira }) });
-    return;
-  }
-  if (jira.key && props.task.jira?.key !== jira.key && !isUrl(raw)) {
-    await addArtifact.mutateAsync({
-      taskId,
-      kind: 'issue',
-      title: jira.key,
-      url: '',
-      ref: jira.key,
+    await editLink.mutateAsync({
+      taskId: props.task.id,
+      slot: 'stored',
+      id: item.artifactId,
+      text: '',
+      kind,
     });
-    return;
+  } catch (err) {
+    removeError.value = errorText(err);
   }
-  if (!isUrl(raw)) throw new Error(t('space.ade.details.paste.notLink.error'));
-  if (!props.task.hostUrl) {
-    try {
-      await update.mutateAsync({ taskId, patch: taskPatch({ hostUrl: raw }) });
-      return;
-    } catch (err) {
-      if (toCodedError(err).code !== 'E_BAD_REQUEST') throw err;
-    }
-  }
-  if (jira.key && props.task.jira?.key !== jira.key) {
-    await addArtifact.mutateAsync({
-      taskId,
-      kind: 'issue',
-      title: jira.key,
-      url: jira.url,
-      ref: jira.key,
-    });
-    return;
-  }
-  await addArtifact.mutateAsync({ taskId, kind: 'link', title: '', url: raw, ref: '' });
 }
 
-async function submit(text: string): Promise<void> {
-  const values = text
-    .split(/\r?\n/)
-    .map((v) => v.trim())
-    .filter(Boolean);
-  if (values.length === 0) return;
-  pasteError.value = '';
-  for (const [i, value] of values.entries()) {
-    try {
-      await addValue(value);
-    } catch (err) {
-      pasteText.value = values.slice(i).join('\n');
-      pasteError.value = errorText(err);
-      return;
-    }
-  }
-  pasteText.value = '';
-}
-
-const pasting = useAsyncAction(submit);
-function submitPaste(text: string): void {
-  if (!pasting.pending.value) void pasting.run(text);
-}
-
-function onPaste(e: ClipboardEvent): void {
-  const text = e.clipboardData?.getData('text') ?? '';
-  e.preventDefault();
-  submitPaste(text);
-}
+const add = (line: string) => addLink.mutateAsync({ taskId: props.task.id, text: line });
 </script>
 
 <template>
@@ -198,7 +119,10 @@ function onPaste(e: ClipboardEvent): void {
             t('space.ade.details.empty.body')
           }}</div
         >
-        <ul v-else class="m-0 flex list-none flex-col gap-0.5 p-0">
+        <ul
+          v-if="group.items.length > 0 || (group.id === 'related' && !readonly)"
+          class="m-0 flex list-none flex-col gap-0.5 p-0"
+        >
           <template v-for="item in group.items" :key="item.key">
             <AdeDetailsLink
               :item="item"
@@ -208,6 +132,7 @@ function onPaste(e: ClipboardEvent): void {
               @edit="editingKey = item.key"
               @done="editingKey = null"
               @remove="remove(item)"
+              @kind="recategorise(item, $event)"
             >
               <template #trailing>
                 <AdeOriginSession
@@ -222,25 +147,12 @@ function onPaste(e: ClipboardEvent): void {
               <AdeTaskIssueLine :task-id="task.id" :link="`${item.label} ${item.url}`" />
             </li>
           </template>
+          <AdeLinkAddLine v-if="group.id === 'related' && !readonly" :add="add" />
         </ul>
       </div>
       <Alert v-if="removeError" variant="error" data-testid="ade-details-link-error"
         ><AlertDescription>{{ removeError }}</AlertDescription></Alert
       >
     </QueryState>
-    <template v-if="!readonly">
-      <Input
-        v-model="pasteText"
-        :placeholder="t('space.ade.details.paste.placeholder')"
-        :aria-label="t('space.ade.details.paste.aria')"
-        size="kira"
-        data-testid="ade-details-paste"
-        @keydown.enter.prevent="submitPaste(pasteText)"
-        @paste="onPaste"
-      />
-      <Alert v-if="pasteError" variant="error" data-testid="ade-details-paste-error"
-        ><AlertDescription>{{ pasteError }}</AlertDescription></Alert
-      >
-    </template>
   </div>
 </template>

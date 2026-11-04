@@ -6,17 +6,20 @@ import { control } from '../../../bridge/control';
 import { useOpenHostView } from '../../../hostview/queries';
 import AdeChip from '../AdeChip.vue';
 import { artifactKindLabel, artifactStatusLabel, artifactStatusTone } from '../artifacts/status';
+import type { Artifact } from '../wire';
 import AdeDetailsLinkEdit from './AdeDetailsLinkEdit.vue';
+import AdeLinkKindMenu from './AdeLinkKindMenu.vue';
 import type { LinkItem } from './linkGroups';
 
-// One link row: kind, title as a link, status, then edit and remove. Detected rows are read-only.
+// One link row: kind, title as a link, status, then edit and remove. Detected rows are read-only; a
+// stored row's kind chip is a menu.
 const props = defineProps<{
   item: LinkItem;
   editing: boolean;
   readonly?: boolean;
   commit: (item: LinkItem, text: string) => Promise<void>;
 }>();
-const emit = defineEmits<{ edit: []; done: []; remove: [] }>();
+const emit = defineEmits<{ edit: []; done: []; remove: []; kind: [kind: Artifact['kind']] }>();
 
 const openView = useOpenHostView();
 const canEdit = () => !props.readonly && props.item.origin !== 'detected';
@@ -36,6 +39,7 @@ function open(e: MouseEvent): void {
     :data-origin="item.origin"
     :data-url="item.url"
     @dblclick="canEdit() && !editing && emit('edit')"
+    @keydown.f2.prevent="canEdit() && !editing && emit('edit')"
   >
     <AdeDetailsLinkEdit
       v-if="editing"
@@ -44,7 +48,12 @@ function open(e: MouseEvent): void {
       @done="emit('done')"
     />
     <template v-else>
-      <AdeChip :label="artifactKindLabel(item.kind)" tone="grey" wide />
+      <AdeLinkKindMenu
+        v-if="item.origin === 'stored' && canEdit()"
+        :kind="item.kind"
+        @pick="emit('kind', $event)"
+      />
+      <AdeChip v-else :label="artifactKindLabel(item.kind)" tone="grey" wide />
       <a
         v-if="item.url"
         :href="item.url"

@@ -13,7 +13,7 @@ import type {
 import type { RunOutcome } from '@shared/domain/runOutcome';
 
 // ---- shared
-export interface Jira {
+interface Jira {
   key: string;
   url: string;
 }
@@ -491,17 +491,24 @@ export interface ArtifactsResult {
   artifacts: Artifact[];
   gaps: ArtifactGap[];
 }
-export interface AddArtifactArgs {
+export interface AddLinkArgs {
   taskId: string;
-  kind: 'changeRequest' | 'issue' | 'deployment' | 'doc' | 'link';
-  title: string;
-  url: string;
-  ref: string;
+  text: string;
 }
-export interface UpdateArtifactArgs {
+export interface EditLinkArgs {
   taskId: string;
+  slot: 'jira' | 'host' | 'stored';
+  /** '' unless `slot` is 'stored'. */
   id: string;
-  title: string;
+  /** '' when `kind` is set. */
+  text: string;
+  kind: '' | Artifact['kind'];
+}
+/** Where a link landed: a task slot, a stored row, or `known` (already shown; nothing written). */
+export interface LinkResult {
+  filed: 'jira' | 'host' | 'stored' | 'known';
+  kind: Artifact['kind'];
+  artifact: Artifact | null;
 }
 export interface RemoveArtifactArgs {
   taskId: string;
