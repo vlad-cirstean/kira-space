@@ -308,8 +308,7 @@ Conventional Commits; each ends with the session trailers.
 
 - `bun run typecheck`, `bun run lint` (biome plus every `lint:rules` script), `bun run build:studio`
   and `bun run build:space` (Space includes mobile).
-- Commit 1: `go build ./internal/shell/... && go test ./internal/shell/...`; the pre-commit hook
-  also runs `bun run lint:go` scope.
+- Commit 1: `go build ./internal/shell/... && go test ./internal/shell/...`.
 - Targeted specs, built bundles first (`bun run build:test:studio`, `bun run build:test:space`):
   - Studio `--project=ui`: `control-sizing`, `data-view`, `api-ui-consistency`, `row-coloring`,
     `http-request-body`, `focus-ring`, `color-rails`, `workbench`, `consistency`, `font-roles`.
