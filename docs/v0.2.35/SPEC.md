@@ -1,10 +1,10 @@
 # v0.2.35
 
-Branch `chapter/v0.2.35`, based on `chapter/v0.2.34` (v0.2.34 not yet merged to main). First `P` is 512 (highest in v0.2.34 is P511), last is P521.
+Branch `chapter/v0.2.35`, based on `chapter/v0.2.34` (v0.2.34 not yet merged to main). First `P` is 512 (highest in v0.2.34 is P511), last is P522.
 
-Source: user request. Ten phases. P521 is the last implementation phase. Close duty after P521: one full suite run, 2 code review rounds (user ask), hand-written close, PR. Each phase: Opus plan, Sonnet implementation.
+Source: user request. Eleven phases. P522 is the last implementation phase. Close duty after P522: one full suite run, 2 code review rounds (user ask), hand-written close, PR. Each phase: Opus plan, Sonnet implementation.
 
-Parallelism (user ask): up to 3 phases run at once as named streams, each its own worktree off the same base, zero file overlap. Waves keep table order; a wave starts only when the prior wave is landed. Waves: A = P512, P513, P514. B = P515, P516, P517. C = P518, P519. D = P520, P521 (planner may force sequential on overlap in the shared MCP access settings).
+Parallelism (user ask): up to 3 phases run at once as named streams, each its own worktree off the same base, zero file overlap. Waves keep table order; a wave starts only when the prior wave is landed. Waves: A = P512, P513, P514. B = P515, P516, P517. C = P518, P519. D = P520, P521 (planner may force sequential on overlap in the shared MCP access settings). E = P522 alone (touches every id generator, so it runs after all others land). From P512 on, new Kira-generated ids follow the P522 convention where cheap.
 
 | Phase | Title | Status |
 |---|---|---|
@@ -18,6 +18,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each its ow
 | P519 | Proof window cell editor and multi-file screenshots | Pending |
 | P520 | Scripts MCP | Pending |
 | P521 | API MCP | Pending |
+| P522 | Prefixed nanoid for every Kira-generated id | Pending |
 
 ## Rows
 
@@ -71,3 +72,9 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each its ow
 
 - Ask: Agents call saved API requests via MCP. Same access model as P520: explicit opt-in per item, prompt on or off, description field. Tools are async per P518.
 - Plan: `plans/P521.md`.
+
+### P522 Prefixed nanoid for every Kira-generated id
+
+- Ask: Every id Kira generates, of any kind, in the Kira apps is a nanoid with a short prefix. The prefix names the feature the id belongs to. External ids (GitHub, Jira, Docker, etc.) stay unaltered.
+- Plan decides: inventory of all generators (uuid, ulid, autoincrement-as-id, hand-rolled), one shared id helper and prefix registry per language, handling of stored existing ids (migrate or leave, with reasoning), lint guard against new unprefixed generators. Uses an existing nanoid library.
+- Plan: `plans/P522.md`.
