@@ -7578,3 +7578,11 @@ Source: docs/v0.2.31/ at e2316a6a3. 1 phases.
 ### v0.2.31 P505 (Done)
 Flat minimalist redesign. Single retuned dark palette only; app has no light theme, so a theme switch stays out of scope and needs its own phase. Dialog radius 10px to 8px is the only geometry change. Repaired presentation screenshot flows (pre-existing breakage); fixed a Go window test and the ADE spec reading old tokens. Playwright default 0.2 `threshold` left visual projects blind to the shift, so all 47 baselines re-recorded (`3f0a683a`). Full run: lint and typecheck clean, unit 1993, Go all ok, Studio 702, Space 1172. Not run: container-backed Go and `e2e-real` (no Docker), `ui-timing`, `test:claude*`, `-race`. No code review (user waived).
 <!-- /chapter v0.2.31 -->
+
+<!-- chapter v0.2.32 -->
+## v0.2.32
+Source: docs/v0.2.32/ at 639668fac. 1 phases.
+
+### v0.2.32 P506 (Done)
+Fix repoless workflow test race. `TestRepolessWorkflow` snapshotted `Board#started` while the fake agent kept running; its `declare_repos` call could create a branch first on a slow runner, drifting contract `ade-norepo.json` (`go (Linux)` failed on PR #26). Added `Action.WaitBefore` to the fake agent and gated the first stage's MCP calls on a hold file the test releases after the snapshot. Verified: vet, `-count=3` at `GOMAXPROCS=1`, adeflow package. Not run: container tests (no Docker). No review.
+<!-- /chapter v0.2.32 -->
