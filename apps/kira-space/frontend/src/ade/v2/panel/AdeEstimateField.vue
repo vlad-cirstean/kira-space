@@ -3,8 +3,8 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { FieldError } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
+import { rowMeta } from '@theme/lib/rowVariants';
 import { computed, ref, watch } from 'vue';
 
 // Estimate row: number + h/d, written on change; empty clears.
@@ -59,15 +59,14 @@ const hint = computed(() =>
 
 <template>
   <div class="flex flex-col gap-0.5">
-    <div class="flex min-h-row items-center gap-1.5">
-      <Label for="ade-est-num" class="sr-only">{{ t('space.ade.estimate.field.label') }}</Label>
+    <div class="flex items-center gap-1.5">
       <Input
         id="ade-est-num"
         v-model="num"
         type="number"
         min="0"
         step="0.5"
-        size="kira-lg"
+        size="kira"
         class="w-20"
         :aria-invalid="error ? true : undefined"
         :aria-describedby="error ? 'ade-estimate-error-text' : undefined"
@@ -77,7 +76,7 @@ const hint = computed(() =>
       <!-- mousedown.prevent: a click would otherwise blur the number input first and commit with the stale unit. -->
       <SecondaryTabs
         variant="segmented"
-        size="kira-lg"
+        size="kira"
         :model-value="unit"
         :items="unitItems"
         :aria-label="t('space.ade.estimate.unit.aria')"
@@ -91,7 +90,7 @@ const hint = computed(() =>
         data-testid="ade-estimate-clear"
         @click="clear"
       />
-      <span class="text-kira-sm text-muted-foreground">{{ hint }}</span>
+      <span :class="rowMeta">{{ hint }}</span>
     </div>
     <FieldError v-if="error" id="ade-estimate-error-text" data-testid="ade-estimate-error">{{
       error
