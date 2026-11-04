@@ -9,6 +9,11 @@ export const REPO_FIELDS: readonly FieldSpec[] = [
     unsetWhenEmpty: true,
     clears: [['worktree', 'prepare_run']],
   },
+  {
+    path: ['worktree', 'prepare_run'],
+    unsetWhenEmpty: true,
+    clears: [['worktree', 'prepare_script']],
+  },
   { path: ['worktree', 'prepare_timeout'], unsetWhenEmpty: true },
   { path: ['worktree', 'base_path'], unsetWhenEmpty: true },
   { path: ['integration_branches'], unsetWhenEmpty: true },

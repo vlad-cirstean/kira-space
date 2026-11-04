@@ -11166,7 +11166,46 @@
           "label": "Repository"
         },
         "scriptRef": {
-          "hint": "Runs the automation “{script}”. Type a script here to replace it."
+          "defaults": {
+            "hint": "Empty uses the script’s default."
+          },
+          "dirOwn": {
+            "hint": "Runs in the script’s own folder. {variable} points at the worktree."
+          },
+          "dirRepo": {
+            "hint": "Runs in the repository folder."
+          },
+          "dirWorktree": {
+            "hint": "Runs in the worktree."
+          },
+          "duplicate": {
+            "error": "{count} run scripts are named “{script}”. Rename all but one."
+          },
+          "empty": "No run scripts yet",
+          "missing": {
+            "error": "No run script named “{script}”."
+          },
+          "mode": {
+            "aria": "Script source"
+          },
+          "script": {
+            "label": "Script to run"
+          },
+          "secretGiven": {
+            "error": "A secret param takes the value saved in the script, not one in the repository file: {names}."
+          },
+          "secretParams": {
+            "hint": "Saved with the script: {names}."
+          },
+          "secretUnsaved": {
+            "hint": "No value saved yet for {names}."
+          },
+          "smart": {
+            "error": "A repository file runs a normal script, not the smart script “{script}”."
+          },
+          "unknownParams": {
+            "error": "Not params of “{script}”: {names}."
+          }
         },
         "source": {
           "added": {
@@ -11248,9 +11287,6 @@
       "env": {
         "add": {
           "label": "Add environment"
-        },
-        "command": {
-          "label": "Command that prints the deployed SHA"
         },
         "name": {
           "example": "staging"

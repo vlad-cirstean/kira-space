@@ -16,7 +16,7 @@ import { ref, watch } from 'vue';
 import { control } from '../bridge/control';
 import RepoEnvRow from './RepoEnvRow.vue';
 import RepoScriptField from './RepoScriptField.vue';
-import type { RepoFileModel, RepoFileWorktree } from './state/repoFormTypes';
+import type { RepoFileModel, RepoFileWorktree, RepoScriptRefValue } from './state/repoFormTypes';
 
 // The repo settings file as a form. Edits the file's own keys; the field table (REPO_FIELDS) names
 // every leaf written, so the rest of the file (graph, stash, review, ...) is never sent.
@@ -37,8 +37,16 @@ function worktree(key: keyof Pick<RepoFileWorktree, 'prepare_timeout' | 'base_pa
 const timeout = worktree('prepare_timeout');
 const basePath = worktree('base_path');
 
+// The model holds at most one of text and reference: a write of either drops the other.
 function setPrepare(v: string): void {
-  file.value.worktree = { ...file.value.worktree, prepare_script: v };
+  const { prepare_run: _, ...rest } = file.value.worktree ?? {};
+  file.value.worktree = { ...(v ? rest : file.value.worktree), prepare_script: v };
+}
+function setPrepareRun(ref: RepoScriptRefValue | undefined): void {
+  const { prepare_run: _, prepare_script: text, ...rest } = file.value.worktree ?? {};
+  file.value.worktree = ref
+    ? { ...rest, prepare_run: ref }
+    : { ...rest, ...(text !== undefined && { prepare_script: text }) };
 }
 
 const parseTargets = (v: string): string[] =>
@@ -113,8 +121,10 @@ function addEnv(): void {
           :model-value="file.worktree?.prepare_script ?? ''"
           :run-ref="file.worktree?.prepare_run"
           :rows="6"
+          place="worktree"
           testid="repo-prepare"
           @update:model-value="setPrepare"
+          @update:run-ref="setPrepareRun"
         />
         <FieldError
           v-if="props.errorFor('/worktree/prepare_script')"
@@ -205,15 +215,7 @@ function addEnv(): void {
       <InlineState v-if="!file.environments?.length" kind="empty" data-testid="repo-env-empty">
         {{ t('common.noEnvironments.empty') }}
       </InlineState>
-      <div v-else class="flex flex-col gap-1.5">
-        <div
-          class="flex items-center gap-1.5 text-kira-sm text-muted-foreground"
-          aria-hidden="true"
-        >
-          <span class="w-32 shrink-0">{{ t('common.field.name.label') }}</span>
-          <span class="min-w-0 flex-1">{{ t('space.repo.env.command.label') }}</span>
-          <span class="size-6 shrink-0" />
-        </div>
+      <div v-else class="flex flex-col gap-3">
         <RepoEnvRow
           v-for="(env, i) in file.environments"
           :key="i"

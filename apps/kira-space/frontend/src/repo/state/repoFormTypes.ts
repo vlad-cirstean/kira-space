@@ -1,9 +1,11 @@
 import type { FormEdit, FormProblem } from '@workbench/config/configForm';
 
-// Mirrors internal/repocfg File in the file's own key vocabulary. Run references are opaque here:
-// the form only shows which script one names and never edits it.
+// Mirrors internal/repocfg File in the file's own key vocabulary. A param holds one value as a
+// string, several as a list (model.ParamValues).
+export type RefParamValue = string | string[];
 export interface RepoScriptRefValue {
-  script?: string;
+  script: string;
+  params?: Record<string, RefParamValue>;
 }
 export interface RepoFileEnvironment {
   name: string;
