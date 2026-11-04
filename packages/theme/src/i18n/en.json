@@ -9959,6 +9959,104 @@
           "label": "Interactive · {activity} · {ago}"
         }
       },
+      "updates": {
+        "branch": {
+          "baseMoved": {
+            "status": "Base branch moved"
+          },
+          "conflicts": {
+            "status": "Branch conflicts"
+          },
+          "deploymentChanged": {
+            "status": "Deploy status changed"
+          },
+          "localCommits": {
+            "status": "Local commits added"
+          },
+          "merged": {
+            "status": "Branch merged"
+          },
+          "remoteCommits": {
+            "status": "New commits on remote"
+          }
+        },
+        "changeRequest": {
+          "approved": {
+            "status": "Approval received"
+          },
+          "assigneeChanged": {
+            "status": "Request reassigned"
+          },
+          "changesRequested": {
+            "status": "Request changes asked"
+          },
+          "checksFailed": {
+            "status": "Request checks failing"
+          },
+          "checksPassed": {
+            "status": "Request checks passing"
+          },
+          "closed": {
+            "status": "Closed unmerged"
+          },
+          "commentAdded": {
+            "status": "{count} new request comment | {count} new request comments"
+          },
+          "merged": {
+            "status": "Merge completed"
+          },
+          "newCommits": {
+            "status": "Request has new commits"
+          },
+          "opened": {
+            "status": "Request opened"
+          },
+          "readyForReview": {
+            "status": "Request ready for review"
+          },
+          "reopened": {
+            "status": "Request reopened"
+          },
+          "titleChanged": {
+            "status": "Request retitled"
+          }
+        },
+        "dot": {
+          "aria": "Unseen updates"
+        },
+        "issue": {
+          "assigneeChanged": {
+            "status": "Issue reassigned"
+          },
+          "commentAdded": {
+            "status": "{count} new issue comment | {count} new issue comments"
+          },
+          "linkedChangeRequests": {
+            "status": "Issue link count changed"
+          },
+          "priorityChanged": {
+            "status": "Issue priority changed"
+          },
+          "statusChanged": {
+            "status": "Issue status changed"
+          },
+          "titleChanged": {
+            "status": "Issue retitled"
+          }
+        },
+        "line": {
+          "label": "{subject} updated: {changes}"
+        },
+        "markAllSeen": {
+          "label": "Mark all seen"
+        },
+        "markSeen": {
+          "label": "Mark seen"
+        },
+        "strip": {
+          "title": "Since you last looked"
+        }
+      },
       "view": {
         "empty": {
           "hint": "Add repositories from the Git module to start planning agent work.",
