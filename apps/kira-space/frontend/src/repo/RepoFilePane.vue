@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { Label } from '@theme/components/ui/label';
-import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
+import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import { control } from '../bridge/control';
@@ -111,16 +110,15 @@ useShortcut(root, ['form.save'], () => void saveNow());
       {{ t('space.ade.context.readOnly.hint') }}
     </div>
     <template v-else>
-      <Label for="repo-file-text" class="sr-only">{{
-        t('space.repo.settingsFile.field.aria')
-      }}</Label>
-      <Textarea
-        id="repo-file-text"
+      <CodeTextEditor
         :model-value="draft"
-        spellcheck="false"
-        class="min-h-72 resize-y font-data leading-relaxed"
+        language="yaml"
+        :ariaLabel="t('space.repo.settingsFile.field.aria')"
+        class="h-72"
         data-testid="repo-file-text"
         @update:model-value="onInput"
+        @save="saveNow"
+        @submit="saveNow"
       />
       <div class="flex flex-wrap items-center justify-end gap-2">
         <Button

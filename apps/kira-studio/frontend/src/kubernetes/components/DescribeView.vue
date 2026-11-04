@@ -9,7 +9,9 @@ import { t } from '@theme/i18n';
 import { copyText } from '@workbench/behaviour/clipboard';
 import { compareNatural, matchesQuery, splitMatches } from '@workbench/behaviour/match';
 import QueryState from '@workbench/components/QueryState.vue';
-import { computed, ref } from 'vue';
+import { loadMonaco } from '@workbench/editor/monaco';
+import { paintOverlayHtml } from '@workbench/editor/paintSpans';
+import { computed, ref, watch } from 'vue';
 import { useDescribe } from '../queries';
 import type { KubeDescription } from '../wire';
 
@@ -66,6 +68,41 @@ const sections = computed<Sections | null>(() => {
       .filter((l) => l.text !== '' && hit(l.text)),
   };
 });
+
+// Manifest lines coloured as YAML with search hits kept marked; plain text until Monaco loads.
+const painted = ref<ReadonlyMap<number, string>>(new Map());
+let paintRun = 0;
+function matchRanges(
+  text: string,
+  needleText: string,
+): { from: number; to: number; class: string }[] {
+  const out: { from: number; to: number; class: string }[] = [];
+  let at = 0;
+  for (const part of splitMatches(text, needleText)) {
+    if (part.match) {
+      out.push({ from: at, to: at + part.text.length, class: 'bg-search-match rounded-kira-sm' });
+    }
+    at += part.text.length;
+  }
+  return out;
+}
+watch(
+  () => [sections.value?.manifest, needle.value] as const,
+  async ([lines, needleText]) => {
+    const mine = ++paintRun;
+    if (!lines) return;
+    try {
+      const mod = await loadMonaco();
+      const html = await Promise.all(
+        lines.map((l) => paintOverlayHtml(mod, l.text, 'yaml', matchRanges(l.text, needleText))),
+      );
+      if (mine === paintRun) painted.value = new Map(lines.map((l, i) => [l.n, html[i] ?? '']));
+    } catch {
+      if (mine === paintRun) painted.value = new Map();
+    }
+  },
+  { immediate: true },
+);
 
 const SECTION_IDS = [
   'overview',
@@ -187,7 +224,7 @@ const label = (id: SectionId): string => LABELS[id]();
               v-else
               class="m-0 overflow-auto font-data text-kira-sm leading-relaxed"
               data-testid="kube-manifest"
-            ><template v-for="l in sections!.manifest" :key="l.n"><span class="mr-3 inline-block w-8 select-none text-right text-subtle">{{ l.n }}</span><HighlightedText :parts="parts(l.text)" />
+            ><template v-for="l in sections!.manifest" :key="l.n"><span class="mr-3 inline-block w-8 select-none text-right text-subtle">{{ l.n }}</span><span v-if="painted.has(l.n)" v-html="painted.get(l.n)"></span><HighlightedText v-else :parts="parts(l.text)" />
 </template></pre>
           </section>
         </template>

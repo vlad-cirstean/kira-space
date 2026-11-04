@@ -1,3 +1,8 @@
+import {
+  codeEditorText,
+  expectHighlighted,
+  replaceCodeEditorText,
+} from '@workbench/testing/ui/codeEditor';
 import { expect, test } from './fixtures';
 import { openPlan } from './support/adeV2';
 import { contract } from './support/contract';
@@ -32,7 +37,10 @@ async function openSettings(
 
 test('the YAML and the resulting config show, with references as written', async ({ relaunch }) => {
   const { window: page } = await openSettings(relaunch);
-  await expect(page.locator(t('ade-settings-text'))).toHaveValue(String(base.text ?? ''));
+  await expect
+    .poll(() => codeEditorText(page.locator(t('ade-settings-text'))))
+    .toBe(String(base.text ?? ''));
+  await expectHighlighted(page.locator(t('ade-settings-text')), 'yaml');
   const files = page.locator(t('ade-settings-file'));
   await expect(files.first()).toContainText(`Bearer ${ref}`);
   await expect(page.locator(t('ade-settings-result'))).not.toContainText('p453-');
@@ -78,7 +86,7 @@ test('Save sends the text with the loaded hash and a reload shows the saved text
     { channel: IPC.agentSettingsGet, response: saved },
   ]);
   await expect(page.locator(t('ade-settings-save'))).toBeDisabled();
-  await page.locator(t('ade-settings-text')).fill('env:\n  A: b\n');
+  await replaceCodeEditorText(page, page.locator(t('ade-settings-text')), 'env:\n  A: b\n');
   await page.locator(t('ade-settings-save')).click();
   await expect.poll(() => calls(control, IPC.agentSettingsSave)).toHaveLength(1);
   expect(calls(control, IPC.agentSettingsSave)[0]?.args).toEqual({
@@ -89,7 +97,9 @@ test('Save sends the text with the loaded hash and a reload shows the saved text
   await page.reload();
   await page.locator(t('ade-tab-agents')).click();
   await page.locator(t('ade-agents-tab-settings')).click();
-  await expect(page.locator(t('ade-settings-text'))).toHaveValue('env:\n  A: b\n');
+  await expect
+    .poll(() => codeEditorText(page.locator(t('ade-settings-text'))))
+    .toBe('env:\n  A: b\n');
 });
 
 test('a file with an error shows its line and the last-good note', async ({ relaunch }) => {
@@ -143,7 +153,7 @@ test('a save refused for a changed file offers Reload and Overwrite', async ({ r
       error: { code: 'E_CONFLICT', message: 'The settings file changed since you loaded it.' },
     },
   ]);
-  await page.locator(t('ade-settings-text')).fill('env:\n  A: b\n');
+  await replaceCodeEditorText(page, page.locator(t('ade-settings-text')), 'env:\n  A: b\n');
   await page.locator(t('ade-settings-save')).click();
   await expect(page.locator(t('ade-settings-save-error'))).toContainText('changed');
   await page.locator(t('ade-settings-overwrite')).click();

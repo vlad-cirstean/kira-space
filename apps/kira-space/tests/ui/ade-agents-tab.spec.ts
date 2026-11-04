@@ -1,3 +1,4 @@
+import { codeEditorText, replaceCodeEditorText } from '@workbench/testing/ui/codeEditor';
 import { expect, test } from './fixtures';
 import { openPlan } from './support/adeV2';
 import { contract } from './support/contract';
@@ -36,20 +37,22 @@ test('unsaved edits ask before switching sub-tab or leaving Agent config', async
   await expect(dialog).toHaveCount(0);
   await page.locator(t('ade-agents-tab-context')).click();
 
-  await page.locator(t('ade-context-text')).fill('Use spaces.\n');
+  await replaceCodeEditorText(page, page.locator(t('ade-context-text')), 'Use spaces.\n');
   await page.locator(t('ade-agents-tab-settings')).click();
   await expect(page.locator(t('confirm-dialog-message'))).toContainText(
     'unsaved changes to the agent context',
   );
   await page.locator(t('confirm-dialog-cancel')).click();
-  await expect(page.locator(t('ade-context-text'))).toHaveValue('Use spaces.\n');
+  await expect
+    .poll(() => codeEditorText(page.locator(t('ade-context-text'))))
+    .toBe('Use spaces.\n');
   await expect(page.locator(t('ade-settings'))).toHaveCount(0);
 
   await page.locator(t('ade-agents-tab-settings')).click();
   await page.locator(t('confirm-dialog-confirm')).click();
   await expect(page.locator(t('ade-settings'))).toBeVisible();
 
-  await page.locator(t('ade-settings-text')).fill('env:\n  A: b\n');
+  await replaceCodeEditorText(page, page.locator(t('ade-settings-text')), 'env:\n  A: b\n');
   await page.locator(t('ade-tab-plan')).click();
   await expect(page.locator(t('confirm-dialog-message'))).toContainText(
     'unsaved changes to the agent settings',

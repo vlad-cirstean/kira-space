@@ -2,12 +2,11 @@
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { FieldError } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
-import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
 import { errorText } from '@workbench/bridge/codedError';
+import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import { useSaveWorkflowYaml, useValidateWorkflowYaml, useWorkflowYaml } from '../queries';
@@ -51,6 +50,11 @@ const message = computed(() => {
   return e.line > 0
     ? t('space.ade.workflows.yaml.lineError.error', { line: e.line, text })
     : t('space.ade.workflows.yaml.fileError.error', { text });
+});
+
+const problem = computed(() => {
+  const e = error.value;
+  return e && e.line > 0 ? { line: e.line, message: message.value } : null;
 });
 
 const runValidate = useDebounceFn(async () => {
@@ -135,16 +139,16 @@ onBeforeUnmount(() => {
       @save="saveNow"
       @discard="discard"
     />
-    <Label for="ade-wf-yaml" class="sr-only">{{ t('space.ade.workflows.yaml.field.aria') }}</Label>
-    <Textarea
-      id="ade-wf-yaml"
+    <CodeTextEditor
       :model-value="draft"
-      spellcheck="false"
-      class="resize-y font-data leading-relaxed [tab-size:2]"
-      :aria-invalid="error ? true : undefined"
-      :aria-describedby="error ? 'ade-wf-yaml-msg-text' : undefined"
+      language="yaml"
+      :ariaLabel="t('space.ade.workflows.yaml.field.aria')"
+      :problem="problem"
+      class="h-72"
       data-testid="ade-wf-yaml"
       @update:model-value="onInput"
+      @save="saveNow"
+      @submit="saveNow"
     />
     <div v-if="!error" class="text-kira-sm text-ok" data-testid="ade-wf-yaml-msg">
       {{ t('space.ade.workflows.yaml.valid.status') }}

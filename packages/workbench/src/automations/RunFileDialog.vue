@@ -10,9 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Label } from '@theme/components/ui/label';
-import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
+import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, watch } from 'vue';
 import { errorText } from '../bridge/codedError';
@@ -136,16 +135,15 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
             {{ t('space.ade.context.readOnly.hint') }}
           </div>
           <template v-else>
-            <Label for="run-file-text" class="sr-only">{{
-              t('automations.file.field.aria')
-            }}</Label>
-            <Textarea
-              id="run-file-text"
+            <CodeTextEditor
               :model-value="draft"
-              spellcheck="false"
-              class="min-h-64 resize-y font-data leading-relaxed"
+              language="yaml"
+              :ariaLabel="t('automations.file.field.aria')"
+              class="h-64"
               data-testid="run-file-text"
               @update:model-value="onInput"
+              @save="saveNow"
+              @submit="saveNow"
             />
           </template>
           <Alert v-if="saveError" variant="error" data-testid="run-file-save-error">

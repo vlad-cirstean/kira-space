@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { scriptRunSchema } from '@shared/domain/scriptRuns';
 import { customScriptSchema } from '@shared/domain/scripts';
+import { replaceCodeEditorText } from '@workbench/testing/ui/codeEditor';
 import { installDockerMocks } from '../../../../packages/docker-ui/src/testing/ui/dockerMock';
 import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
@@ -197,7 +198,11 @@ test('run file dialog: Escape on unsaved edits asks to discard first', async ({ 
   const dialog = page.locator('[data-testid="run-file-dialog"]');
   await expect(dialog).toBeVisible();
 
-  await dialog.locator('[data-testid="run-file-text"]').fill('name: changed\n');
+  await replaceCodeEditorText(
+    page,
+    dialog.locator('[data-testid="run-file-text"]'),
+    'name: changed\n',
+  );
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-testid="confirm-dialog"]')).toBeVisible();
   await page.locator('[data-testid="confirm-dialog-cancel"]').click();

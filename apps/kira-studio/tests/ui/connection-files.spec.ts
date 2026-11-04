@@ -1,5 +1,6 @@
 import type { ConnectionSummary } from '@shared/domain/connection';
 import type { ConnectionConfigView, ConnectionFileDetail } from '@shared/domain/connectionConfig';
+import { expectHighlighted, replaceCodeEditorText } from '@workbench/testing/ui/codeEditor';
 import type { ControlSnapshot } from '../ipc/support/types';
 import { expect, test } from './fixtures';
 import { contract } from './support/contract';
@@ -147,8 +148,13 @@ test('Edit file shows the file error and Save sends the text with its base hash'
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('[data-testid="config-file-status"]')).toContainText('Line 2');
   await expect(dialog.locator('[data-testid="connection-file-last-good"]')).toBeVisible();
+  await expectHighlighted(dialog.locator('[data-testid="connection-file-text"]'), 'yaml');
 
-  await dialog.locator('[data-testid="connection-file-text"]').fill(fixed.text);
+  await replaceCodeEditorText(
+    page,
+    dialog.locator('[data-testid="connection-file-text"]'),
+    fixed.text,
+  );
   await dialog.locator('[data-testid="connection-file-save"]').click();
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.connectionConfigSaveFile)?.args)

@@ -17,6 +17,7 @@ import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
 import { errorText } from '@workbench/bridge/codedError';
+import OpLogCodeBlock from '@workbench/components/OpLogCodeBlock.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { computed, ref, watch } from 'vue';
 import AdePortResult from './AdePortResult.vue';
@@ -38,6 +39,10 @@ const modes = ref<Record<string, string>>({});
 const error = ref('');
 const result = ref<PortResult | null>(null);
 const scrollEl = ref<HTMLElement | null>(null);
+
+function snippetLanguage(id: string): 'yaml' | 'markdown' {
+  return id === 'context' ? 'markdown' : 'yaml';
+}
 
 const items = computed(() => preview.value?.items ?? []);
 const selectable = (item: PortItem): boolean => item.state === 'new' || item.state === 'conflict';
@@ -228,10 +233,11 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
                     }}</Badge>
                   </div>
                   <span v-if="item.reason" class="text-kira-sm text-subtle">{{ item.reason }}</span>
-                  <pre
+                  <OpLogCodeBlock
                     v-if="item.text && item.state !== 'skipped'"
-                    class="m-0 max-h-32 overflow-auto rounded-kira bg-field p-2 font-data text-kira-sm"
-                  >{{ item.text }}</pre>
+                    :text="item.text"
+                    :language="snippetLanguage(item.id)"
+                  />
                   <ul
                     v-if="item.secrets?.length"
                     class="m-0 flex list-none flex-col gap-0.5 p-0 text-kira-sm"
@@ -251,9 +257,7 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
                     :label="t('space.ade.port.current.label')"
                     content-class="pt-1"
                   >
-                    <pre
-                      class="m-0 max-h-32 overflow-auto rounded-kira bg-field p-2 font-data text-kira-sm"
-                    >{{ item.current }}</pre>
+                    <OpLogCodeBlock :text="item.current" :language="snippetLanguage(item.id)" />
                   </Disclosure>
                 </li>
               </ul>

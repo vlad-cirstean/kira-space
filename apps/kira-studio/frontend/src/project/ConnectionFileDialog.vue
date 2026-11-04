@@ -12,11 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Label } from '@theme/components/ui/label';
-import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
+import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import { control } from '../bridge/control';
@@ -158,16 +157,15 @@ useShortcut(root, ['form.save'], () => void saveNow());
           >
             {{ t('studio.connections.file.lastGood.hint') }}
           </div>
-          <Label for="connection-file-text" class="sr-only">{{
-            t('studio.connections.file.field.aria')
-          }}</Label>
-          <Textarea
-            id="connection-file-text"
+          <CodeTextEditor
             :model-value="draft"
-            spellcheck="false"
-            class="min-h-72 resize-y font-data leading-relaxed"
+            language="yaml"
+            :ariaLabel="t('studio.connections.file.field.aria')"
+            class="h-72"
             data-testid="connection-file-text"
             @update:model-value="onInput"
+            @save="saveNow"
+            @submit="saveNow"
           />
           <Alert v-if="saveError" variant="error" data-testid="connection-file-save-error">
             <AlertDescription>{{ saveError }}</AlertDescription>
