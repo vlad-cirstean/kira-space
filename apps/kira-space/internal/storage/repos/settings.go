@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/updates"
 	"github.com/kirathecat/kira-studio/internal/appsettings"
 	"github.com/kirathecat/kira-studio/internal/appstorage"
 	"github.com/kirathecat/kira-studio/internal/harness"
@@ -60,6 +61,7 @@ func (r *SettingsRepo) GetAll() (model.Settings, error) {
 	result.Mobile = readMobile(stored)
 	result.Capture = readCapture(stored)
 	readAgent(stored, &result.Agent)
+	readTracking(stored, &result.Tracking)
 	appsettings.Leaf(stored, "memory.models", &result.Memory.Models)
 	result.Memory.Models = model.CleanMemoryModels(r.agents(), result.Memory.Models)
 	appsettings.LeafValid(stored, "advanced.gitLogLevel", &result.Advanced.GitLogLevel, appsettings.ValidLogLevel)
@@ -110,6 +112,36 @@ func readMobile(stored map[string]json.RawMessage) model.MobileSettings {
 	appsettings.LeafValid(stored, "mobile.port", &result.Port, model.ValidMobilePort)
 	appsettings.Leaf(stored, "mobile.agentInput", &result.AgentInput)
 	return result
+}
+
+// readTracking overlays the stored known concepts of each kind on the catalog defaults.
+func readTracking(stored map[string]json.RawMessage, t *model.TrackingSettings) {
+	for _, leaf := range []struct {
+		key  string
+		kind string
+		dst  *map[string]bool
+	}{
+		{"tracking.changeRequest", updates.KindChangeRequest, &t.ChangeRequest},
+		{"tracking.issue", updates.KindIssue, &t.Issue},
+		{"tracking.branch", updates.KindBranch, &t.Branch},
+	} {
+		var saved map[string]bool
+		appsettings.Leaf(stored, leaf.key, &saved)
+		*leaf.dst = model.OverlayTracking(leaf.kind, saved)
+	}
+}
+
+func upsertTracking(tx *sql.Tx, t *model.TrackingPatch) error {
+	if t == nil {
+		return nil
+	}
+	if err := appsettings.UpsertOptional(tx, "tracking.changeRequest", t.ChangeRequest); err != nil {
+		return err
+	}
+	if err := appsettings.UpsertOptional(tx, "tracking.issue", t.Issue); err != nil {
+		return err
+	}
+	return appsettings.UpsertOptional(tx, "tracking.branch", t.Branch)
 }
 
 func upsertMemory(tx *sql.Tx, m *model.MemoryPatch) error {
@@ -246,6 +278,9 @@ func (r *SettingsRepo) Set(patch model.SettingsPatch) (model.Settings, error) {
 			return err
 		}
 		if err := upsertMemory(tx, patch.Memory); err != nil {
+			return err
+		}
+		if err := upsertTracking(tx, patch.Tracking); err != nil {
 			return err
 		}
 		return upsertAgent(tx, patch.Agent)
