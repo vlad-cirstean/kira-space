@@ -165,3 +165,45 @@ test('an archived task opens Details read-only', async ({ relaunch }) => {
   await expect(page.locator(t('ade-details-link-edit'))).toHaveCount(0);
   await expect(page.locator(t('ade-details-link-remove'))).toHaveCount(0);
 });
+
+// Layout only, no IPC: the backend half has nothing to assert.
+test('Main tab rows share one grid', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, panel());
+  await openTask(page, 'T_bill');
+  await expect(page.locator(t('ade-main-tab'))).toBeVisible();
+  const rows = await page.locator(`${t('ade-main-tab')} [data-slot="ade-row"]`).evaluateAll((els) =>
+    els.map((el) => {
+      const x = (sel: string): number | null => {
+        const n = el.querySelector(`:scope > ${sel}`);
+        return n ? n.getBoundingClientRect().x : null;
+      };
+      const label = el.querySelector(':scope > [data-slot="ade-row-label"]');
+      return {
+        depth: Number((el as HTMLElement).dataset.depth),
+        lead: x('[data-slot="ade-row-lead"]'),
+        labelX: label ? label.getBoundingClientRect().x : null,
+        labelW: label ? label.getBoundingClientRect().width : null,
+        body: x('[data-slot="ade-row-body"]'),
+        height: el.getBoundingClientRect().height,
+        minHeight: Number.parseFloat(getComputedStyle(el).minHeight),
+      };
+    }),
+  );
+  expect(rows.length).toBeGreaterThanOrEqual(12);
+  const uniq = (xs: (number | null)[]) => [...new Set(xs.map((v) => Math.round(v ?? -1)))];
+  const leadAt = (d: number) => uniq(rows.filter((r) => r.depth === d).map((r) => r.lead));
+  const depths = [...new Set(rows.map((r) => r.depth))].sort();
+  for (const d of depths) expect(leadAt(d)).toHaveLength(1);
+  for (const d of depths.slice(1)) {
+    expect((leadAt(d)[0] ?? 0) - (leadAt(d - 1)[0] ?? 0)).toBe(14);
+  }
+  const labelled = rows.filter((r) => r.labelX !== null);
+  expect(labelled.length).toBeGreaterThan(0);
+  expect(uniq(labelled.map((r) => r.labelX))).toHaveLength(1);
+  expect(uniq(labelled.map((r) => r.labelW))).toHaveLength(1);
+  expect(uniq(labelled.map((r) => r.body))).toHaveLength(1);
+  const plain = rows.filter((r) => r.depth === 0 && r.labelX === null);
+  expect(plain.length).toBeGreaterThan(0);
+  expect(uniq(plain.map((r) => r.body))).toEqual(uniq(labelled.map((r) => r.labelX)));
+  for (const r of rows) expect(Math.round(r.height)).toBe(Math.round(r.minHeight));
+});
