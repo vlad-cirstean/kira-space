@@ -21,7 +21,8 @@ Source: user request. Four phases. P511 is the last implementation phase. Close 
 - Colors: audit every surface, text, border, accent and status color. One coherent scale, no near-duplicate greys, no ad-hoc one-off hues. Everything via `packages/theme` tokens.
 - Constraints: styling only. No component swaps, no features. Keep proportions and condensed density. Tailwind/shadcn tokens, no new scoped `<style>` blocks, no hard-coded colors outside tokens.
 - Tests: no new tests. Baselines re-record once in the chapter's single full run, after `fc-match sans-serif` prints Inter.
-- Result: pending.
+- Plan: `plans/P508.md`, `plans/P508-iter2.md`.
+- Result: Flatter palette on one token scale: surface and tone tokens, shared primitives and workbench, theme scale and greys folded to one set, buttons flattened, shadows, radius and dividers cut back, the old lint rules retired, test expectations updated. Styling only; no new tests. Baselines not re-recorded yet; they re-record once in the chapter's full run. Written afterwards from the commit log.
 
 ### P509 Part 1 Task details: free-form link add and edit
 
