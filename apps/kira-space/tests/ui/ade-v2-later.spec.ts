@@ -50,13 +50,13 @@ async function dragOnto(page: Page, from: string, onto: string, frac: number): P
   await page.mouse.up();
 }
 
-test('contract: tabs read Needs you, Plan, Later with no count', async ({ relaunch }) => {
+test('contract: tabs read Needs you, Later, Plan with no count', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [BOARD]);
   const order = await page.locator('[role="tab"]').allInnerTexts();
   expect(order.slice(0, 3).map((x) => x.replace(/\d+$/, '').trim())).toEqual([
     'Needs you',
-    'Plan',
     'Later',
+    'Plan',
   ]);
   await expect(page.locator(t('ade-tab-backlog'))).toHaveCount(0);
   await expect(page.locator(t('ade-backlog-count'))).toHaveCount(0);
