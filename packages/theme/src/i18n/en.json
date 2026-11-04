@@ -11414,6 +11414,126 @@
         },
         "mobileAccess": {
           "label": "Mobile access"
+        },
+        "updates": {
+          "label": "Updates"
+        }
+      },
+      "updates": {
+        "branch": {
+          "baseMoved": {
+            "description": "The base branch gets new commits.",
+            "label": "Base moved"
+          },
+          "conflicts": {
+            "description": "Rebasing the branch would now conflict.",
+            "label": "Conflicts"
+          },
+          "deploymentChanged": {
+            "description": "An environment’s deploy status of the branch changes.",
+            "label": "Deployment changed"
+          },
+          "description": "The branches of a task.",
+          "localCommits": {
+            "description": "The branch’s tip moves, including by your own commits.",
+            "label": "Local commits"
+          },
+          "merged": {
+            "description": "The branch lands in the main branch.",
+            "label": "Merged into main"
+          },
+          "remoteCommits": {
+            "description": "Someone pushes to the branch.",
+            "label": "New commits on the remote"
+          },
+          "title": "Task branches"
+        },
+        "changeRequest": {
+          "approved": {
+            "description": "The request is approved.",
+            "label": "Request approved"
+          },
+          "assigneeChanged": {
+            "description": "The request’s assignees change. Azure reports none.",
+            "label": "Assignee changed"
+          },
+          "changesRequested": {
+            "description": "A reviewer asks for changes.",
+            "label": "Reviewer wants changes"
+          },
+          "checksFailed": {
+            "description": "The checks on the request start failing.",
+            "label": "Checks start failing"
+          },
+          "checksPassed": {
+            "description": "The checks on the request pass.",
+            "label": "Checks start passing"
+          },
+          "closed": {
+            "description": "The request is closed without a merge.",
+            "label": "Request closed"
+          },
+          "commentAdded": {
+            "description": "Someone comments on the request or submits a review.",
+            "label": "New comments"
+          },
+          "description": "The pull or merge request of each branch a task tracks. Azure reports no comment count and no assignees, so those two never fire there.",
+          "merged": {
+            "description": "The request is merged.",
+            "label": "Request merged"
+          },
+          "newCommits": {
+            "description": "The request’s head moves to a new commit.",
+            "label": "New commits"
+          },
+          "opened": {
+            "description": "A pull request or merge request appears for a branch you track.",
+            "label": "Opened"
+          },
+          "readyForReview": {
+            "description": "A draft request is marked ready.",
+            "label": "Ready for review"
+          },
+          "reopened": {
+            "description": "A merged or closed request is open again.",
+            "label": "Reopened"
+          },
+          "title": "Pull and merge requests",
+          "titleChanged": {
+            "description": "The request is renamed.",
+            "label": "Title changed"
+          }
+        },
+        "intro": {
+          "description": "Choose which changes to a tracked item count as an update. A dot marks tasks and branches with unseen updates. Mark them seen to clear the dot."
+        },
+        "issue": {
+          "assigneeChanged": {
+            "description": "The issue is assigned to someone else.",
+            "label": "Issue assignee changed"
+          },
+          "commentAdded": {
+            "description": "Someone comments on the issue.",
+            "label": "New issue comments"
+          },
+          "description": "The issue a task links.",
+          "linkedChangeRequests": {
+            "description": "The number of pull requests linked to the issue changes.",
+            "label": "Linked pull requests"
+          },
+          "priorityChanged": {
+            "description": "The issue’s priority changes.",
+            "label": "Priority changed"
+          },
+          "statusChanged": {
+            "description": "The issue moves to another status.",
+            "label": "Status changed"
+          },
+          "title": "Issues",
+          "titleChanged": {
+            "description": "The issue is renamed.",
+            "label": "Issue title changed"
+          }
         }
       }
     },
