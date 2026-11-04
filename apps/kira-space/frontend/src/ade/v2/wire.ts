@@ -1159,3 +1159,27 @@ export interface FocusSessionArgs {
   sessionId: string;
   taskId: string;
 }
+
+/** A tracked item with changes the user has not seen. Concepts are unfiltered; the renderer applies
+ *  the tracking settings. */
+export interface TrackedUpdate {
+  taskId: string;
+  /** `issue`, `cr:<branchId>` or `branch:<branchId>`. */
+  itemKey: string;
+  kind: 'changeRequest' | 'issue' | 'branch';
+  /** '' for an issue. */
+  branchId: string;
+  label: string;
+  concepts: string[];
+  /** commentAdded -> new comments. */
+  counts: Record<string, number>;
+  changedAt: number;
+}
+export interface TrackedUpdatesResult {
+  updates: TrackedUpdate[];
+}
+export interface MarkTrackedSeenArgs {
+  taskId: string;
+  /** Empty = every item of the task. */
+  itemKeys: string[];
+}

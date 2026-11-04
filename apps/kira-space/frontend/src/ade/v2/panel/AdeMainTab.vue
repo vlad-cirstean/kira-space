@@ -12,6 +12,7 @@ import { statusWhy, taskPatch } from '../board/panelFacts';
 import type { CardModel } from '../plan/usePlanModel';
 import { useUpdateTask } from '../queries';
 import { useAdeBranchRequestStore } from '../state/adeBranchRequest';
+import AdeTaskUpdates from '../updates/AdeTaskUpdates.vue';
 import type { TaskPatch } from '../wire';
 import AdeEstimateField from './AdeEstimateField.vue';
 import AdeMainBranches from './AdeMainBranches.vue';
@@ -115,6 +116,8 @@ const spanDays = computed(() => props.card.entry.span);
         ><AlertDescription>{{ fieldError }}</AlertDescription></Alert
       >
     </AdeRowDetail>
+
+    <AdeTaskUpdates :task-id="task.id" />
 
     <AdeMainBranches :card="card" @error="(m: string) => (fieldError = m)" />
 

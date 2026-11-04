@@ -38,7 +38,10 @@ function build() {
     return t('space.ade.updates.line.label', { subject, changes });
   }
 
-  return { items, byTask, byBranch, describe };
+  const pending = (taskId: string, itemKey: string): boolean =>
+    (byTask.value.get(taskId) ?? []).some((u) => u.itemKey === itemKey);
+
+  return { items, byTask, byBranch, describe, pending };
 }
 
 export const useTaskUpdates = createSharedComposable(build);

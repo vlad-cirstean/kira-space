@@ -9,6 +9,8 @@ import AdeChip from '../AdeChip.vue';
 import { gapText } from '../artifacts/gapText';
 import type { Tone } from '../board/actions';
 import { useTaskIssue } from '../queries';
+import { useMarkTrackedSeen } from '../updates/queries';
+import { useTaskUpdates } from '../updates/useTaskUpdates';
 import type { ArtifactGap } from '../wire';
 import AdeRow from './AdeRow.vue';
 import { rowMeta } from './adeRow';
@@ -37,7 +39,12 @@ const gap = computed<ArtifactGap | null>(() => {
 
 const openView = useOpenHostView();
 
+const { pending } = useTaskUpdates();
+const markSeen = useMarkTrackedSeen();
+
 function viewIssue(): void {
+  if (pending(props.taskId, 'issue'))
+    markSeen.mutate({ taskId: props.taskId, itemKeys: ['issue'] });
   // link is `<key> <url>`; the view takes the link when there is one, else the key.
   const [key = '', url = ''] = props.link.trim().split(/\s+/);
   fireAndForget(openView.mutateAsync(url || key), 'ade.taskIssue');
