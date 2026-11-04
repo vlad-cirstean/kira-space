@@ -18,6 +18,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/shortid"
 )
 
@@ -379,7 +380,8 @@ func (b *TaskBoard) startSetup(rec model.CodeRepo, sb model.AdeTaskBranch, name,
 	if err != nil {
 		return err
 	}
-	if settings.WorktreePrepareScript == "" {
+	ref := settings.WorktreePrepareRun
+	if settings.WorktreePrepareScript == "" && ref == nil {
 		if err := b.deps.Logs.Reset(repos.AdeLogSetup, sb.ID, sb.TaskID); err != nil {
 			return err
 		}
@@ -395,6 +397,15 @@ func (b *TaskBoard) startSetup(rec model.CodeRepo, sb model.AdeTaskBranch, name,
 	sctx, endSetup, ok := b.claimSetup(sb.ID)
 	if !ok {
 		return invalid("a setup is already running for this branch")
+	}
+	script := setupScript{command: settings.WorktreePrepareScript, dir: path, label: settings.WorktreePrepareScript}
+	if ref != nil {
+		var err error
+		if script, err = b.refSetupScript(sb, path, ref); err != nil {
+			endSetup()
+			b.recordSetupFailure(sb, err.Error())
+			return nil
+		}
 	}
 	if err := b.deps.Logs.Reset(repos.AdeLogSetup, sb.ID, sb.TaskID); err != nil {
 		endSetup()
@@ -416,7 +427,7 @@ func (b *TaskBoard) startSetup(rec model.CodeRepo, sb model.AdeTaskBranch, name,
 	go func() {
 		defer b.wg.Done()
 		defer endSetup()
-		b.runSetup(sctx, rec, sb, name, path, settings.WorktreePrepareScript, timeout, timeoutText, sink, now, onReady)
+		b.runSetup(sctx, rec, sb, name, path, script, timeout, timeoutText, sink, now, onReady)
 	}()
 	return nil
 }
@@ -432,8 +443,43 @@ func (b *TaskBoard) claimSetup(branchID string) (context.Context, func(), bool) 
 	return ctx, end, true
 }
 
-func (b *TaskBoard) runSetup(ctx context.Context, rec model.CodeRepo, sb model.AdeTaskBranch, name, path, script string, timeout time.Duration, timeoutText string, sink *logSink, startedAt int64, onReady func(string)) {
-	op := b.startSessionOp(ctx, opSetup, sb.TaskID, "", script)
+// setupScript is what a setup runs: the shell text, the folder, the extra env and the mask of a
+// referenced Run script's secret values.
+type setupScript struct {
+	command, dir, label, ref string
+	env                      []string
+	mask                     *secrets.Masker
+}
+
+// refSetupScript resolves the Run script a repo file names as the prepare hook. The error text is
+// the failed setup's note.
+func (b *TaskBoard) refSetupScript(sb model.AdeTaskBranch, path string, ref *model.ScriptRef) (setupScript, error) {
+	fail := func(reason string) (setupScript, error) {
+		return setupScript{}, fmt.Errorf("Run script %q: %s", ref.Script, reason)
+	}
+	tc, err := b.loadTaskCtx(sb.TaskID)
+	if err != nil {
+		return fail(err.Error())
+	}
+	all, err := b.listScripts()
+	if err != nil {
+		return fail(err.Error())
+	}
+	res, err := b.resolveScriptRef(all, repoFileUse, ref.Script, ref.Values(), b.adeVars(tc, sb, path), path)
+	if err != nil {
+		return fail(err.Error())
+	}
+	return setupScript{command: res.script.Command, dir: res.dir, label: res.script.Command, env: res.env, mask: secrets.NewMasker(res.secrets...), ref: ref.Script}, nil
+}
+
+func (b *TaskBoard) runSetup(ctx context.Context, rec model.CodeRepo, sb model.AdeTaskBranch, name, path string, script setupScript, timeout time.Duration, timeoutText string, sink *logSink, startedAt int64, onReady func(string)) {
+	if script.mask != nil {
+		sink.setMask(script.mask)
+	}
+	if script.ref != "" {
+		sink.add(logEvent, fmt.Sprintf("running Run script %q", script.ref))
+	}
+	op := b.startSessionOp(ctx, opSetup, sb.TaskID, "", script.label)
 	op.SetCancel(func() bool { return b.cancelLive(b.setupLive, sb.ID, errStopped) != nil })
 	commonDir := rec.Root
 	if entry, err := b.openRepo(ctx, sb.CodeRepoID); err == nil {
@@ -441,8 +487,8 @@ func (b *TaskBoard) runSetup(ctx context.Context, rec model.CodeRepo, sb model.A
 	}
 	shell, login := loginshell.ResolveShell(os.Getenv, loginshell.IsExecutableFile)
 	res, err := b.scriptRunner().Run(ctx, gitprepare.Spec{
-		Shell: shell, LoginShell: login, Script: script, Dir: path, Timeout: timeout,
-		Env: gitprepare.BuildEnv(os.Environ(), gitprepare.Vars{WorktreePath: path, WorktreeBranch: name, RepoRoot: rec.Root, RepoCommonDir: commonDir}),
+		Shell: shell, LoginShell: login, Script: script.command, Dir: script.dir, Timeout: timeout,
+		Env: append(gitprepare.BuildEnv(os.Environ(), gitprepare.Vars{WorktreePath: path, WorktreeBranch: name, RepoRoot: rec.Root, RepoCommonDir: commonDir}), script.env...),
 		OnBatch: func(lines []gitprepare.Line) {
 			for _, l := range lines {
 				sink.add(l.Stream, l.Text)
