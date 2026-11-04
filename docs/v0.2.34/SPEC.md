@@ -1,13 +1,16 @@
 # v0.2.34
 
-Branch `chapter/v0.2.34`. First `P` is 508 (highest in v0.2.33 is P507), last is P509.
+Branch `chapter/v0.2.34`. First `P` is 508 (highest in v0.2.33 is P507), last is P511.
 
-Source: user request. Two phases. P509 is the last phase, so it also closes the chapter: Opus plan, Sonnet implementation per phase, one full suite run after P509 (baselines re-record once), 1 code review round, then hand-written close and PR.
+Source: user request. Four phases. P511 is the last implementation phase. Close duty after P511: one full suite run (baselines re-record once), 1 code review round, hand-written close, PR. Each phase: Opus plan, Sonnet implementation.
 
 | Phase | Title | Status |
 |---|---|---|
 | P508 | Flatter, consistent visual pass | Done |
-| P509 | Task details: free-form editing, aligned Main tab | Todo |
+| P509 Part 1 | Task details: free-form link add and edit | Done |
+| P509 Part 2 | Task details: Main tab row grid | Done |
+| P510 | Workflow inspector redesign, script sandbox, outside-repo steps | Done |
+| P511 | Manual session steps get per-step sandbox | Todo |
 
 ## Rows
 
@@ -20,10 +23,26 @@ Source: user request. Two phases. P509 is the last phase, so it also closes the 
 - Tests: no new tests. Baselines re-record once in the chapter's single full run, after `fc-match sans-serif` prints Inter.
 - Result: pending.
 
-### P509 Task details: free-form editing, aligned Main tab
+### P509 Part 1 Task details: free-form link add and edit
 
-- Ask 1, details panel: adding and editing items is restricted and cumbersome. Make it Notion-like. Items keep their categories, but editing is as simple as typing text or pasting a link. Paste a URL, it is recognized and filed under the right category. No multi-step forms or dialogs for the common case.
-- Ask 2, Main tab of task details: rows look different, are unaligned and hard to follow, and tire the eye. Give every row one shared layout (same columns, alignment, spacing, type scale, icon size), so the tab scans top to bottom.
-- Frontend plus whatever bridge support free-form add/edit needs. New feature tests follow the IPC-split rule: flow test and UI spec for the same scenario.
-- Close (same phase, after full suite run and 1 code review round, hand-written per CLAUDE.md "Closing a chapter"): Done rows and Results in `SPEC.md`, `docs/HISTORY.md` block, `git rm -r docs/v0.2.34/`, push, PR to `main`.
+- Ask: Details panel items editable like Notion. One add line, type or paste, filed under the right category. No multi-step forms or dialogs for the common case.
+- Plan: `plans/P509-part1.md`.
+- Result: Backend classifies. `AddLink` and `EditLink` replace `AddArtifact` and `UpdateArtifact`; rules in `ade/linkclassify.go`. Stored links may be branches (migration 0067 widens the kind check). Details tab gets one add line, in-place free-text edit of stored rows and a kind menu. Flow test and UI spec cover the same add, edit and recategorise scenario.
+
+### P509 Part 2 Task details: Main tab row grid
+
+- Ask: Main tab rows look different and misaligned. One shared layout (columns, alignment, spacing, type scale, icon size).
+- Plan: `plans/P509-part2.md`.
+- Result: Shared task-panel row component. Fields, branches, workflow and Details rows sit on it; task panel dot uses `rounded-kira-sm`. UI spec asserts rows share one grid. `--radius-kira-xs` alias and its twMerge entry deleted at integration.
+
+### P510 Workflow inspector redesign, script sandbox, outside-repo steps
+
+- Ask: Redesign the workflow step inspector (flat rows, sandbox section). Script steps get a sandbox, default off. Agent, script and manual-session steps may run outside the repo (`outside_repo`, task folder, no worktree). Later tab shows before Plan.
+- Plan: `plans/P510.md`.
+- Result: Parser and wire accept `sandbox` on script steps and `outside_repo` on agent, script, manual-session steps. Script steps run behind the sandbox profile when access is not off. Outside-repo steps target the task folder once. Migration 0068 rewrites started tasks' script-step snapshots to the off sandbox; `decorateTask` hashes the re-marshalled snapshot so added wire fields never flag outdated. Inspector rebuilt with sections and a no-repo node chip. Flow tests and UI specs added. Migration renumbered from 0067 at integration (collision with P509 Part 1).
+
+### P511 Manual session steps get per-step sandbox
+
+- Ask: Manual session steps get the per-step sandbox config too. Sandbox disableable per step (access `off`, no wrapping) for agent, script and manual steps; inspector exposes `off` for manual sessions; a test asserts it.
+- Plan: `plans/P511.md`.
 - Result: pending.
