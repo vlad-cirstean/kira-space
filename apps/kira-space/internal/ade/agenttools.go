@@ -297,7 +297,7 @@ func (b *TaskBoard) createBranch(ctx context.Context, sb model.AdeTaskBranch, ni
 		return agentmcp.RequestedBranch{}, agentmcp.ToolError(fmt.Sprintf("Repo %s is no longer registered.", nick))
 	}
 	fresh := sb.Name == ""
-	res, err := b.ensureWorktree(ctx, *rec, sb, newBranchName{generated: true, idFolder: true})
+	res, err := b.ensureWorktree(ctx, *rec, sb, newBranchName{generated: true})
 	if err != nil {
 		return agentmcp.RequestedBranch{}, toolErr(err)
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -75,25 +74,6 @@ func taskTitle(t model.AdeTask, branches []model.AdeTaskBranch) string {
 	return "New task"
 }
 
-func lastSegment(branch string) string {
-	if i := strings.LastIndexByte(branch, '/'); i >= 0 && i < len(branch)-1 {
-		return branch[i+1:]
-	}
-	return branch
-}
-
-// freePath returns <home>/wt/<repo>/<branch last segment>, with -2, -3... if the path exists.
-func (b *TaskBoard) freePath(repoName, branch string) string {
-	base := filepath.Join(b.deps.HomeDir, "wt", safeSegment(repoName), safeSegment(lastSegment(branch)))
-	path := base
-	for n := 2; ; n++ {
-		if _, err := os.Lstat(path); os.IsNotExist(err) {
-			return path
-		}
-		path = fmt.Sprintf("%s-%d", base, n)
-	}
-}
-
 func localBranch(inv []porcelain.InventoryRef, short string) (porcelain.InventoryRef, bool) {
 	for _, r := range inv {
 		if r.Remote == "" && r.Short == short {
@@ -154,7 +134,7 @@ func (b *TaskBoard) ensureWorktree(ctx context.Context, rec model.CodeRepo, sb m
 		if row, ok := localBranch(inv, sb.Name); ok && row.WorktreePath != "" {
 			return worktreeResult{Path: row.WorktreePath, Name: sb.Name}, nil
 		}
-		path, err := b.worktreeDir(rec.Name, sb.Name, naming)
+		path, err := b.worktreeDirFor(sb, rec.Name, "")
 		if err != nil {
 			return worktreeResult{}, err
 		}
@@ -179,7 +159,7 @@ func (b *TaskBoard) ensureWorktree(ctx context.Context, rec model.CodeRepo, sb m
 	if err != nil {
 		return worktreeResult{}, err
 	}
-	path, err := b.worktreeDir(rec.Name, name, naming)
+	path, err := b.worktreeDirFor(sb, rec.Name, "")
 	if err == nil {
 		req := gitsession.OpRequest{Kind: "worktreeAdd", Mode: "newBranch", Path: path, Branch: name, StartPoint: start}
 		err = b.addWorktree(ctx, entry, req)
@@ -200,35 +180,9 @@ const (
 )
 
 // newBranchName is how a not-created branch gets its name: wanted as given, generated, else derived from title.
-// idFolder puts its worktree in a nanoid folder instead of one named after the branch.
 type newBranchName struct {
 	title, wanted string
 	generated     bool
-	idFolder      bool
-}
-
-// idPath returns <home>/wt/<repo>/<nanoid>, redrawing while the path exists.
-func (b *TaskBoard) idPath(repoName string) (string, error) {
-	dir := filepath.Join(b.deps.HomeDir, "wt", safeSegment(repoName))
-	for range maxGeneratedNameTries {
-		id, err := shortid.New(agentBranchIDLen)
-		if err != nil {
-			return "", err
-		}
-		path := filepath.Join(dir, id)
-		if _, err := os.Lstat(path); os.IsNotExist(err) {
-			return path, nil
-		}
-	}
-	return "", fmt.Errorf("ade: no free worktree folder after %d tries", maxGeneratedNameTries)
-}
-
-// worktreeDir picks the worktree folder: a nanoid when n.idFolder, else named after the branch.
-func (b *TaskBoard) worktreeDir(repoName, branch string, n newBranchName) (string, error) {
-	if n.idFolder {
-		return b.idPath(repoName)
-	}
-	return b.freePath(repoName, branch), nil
 }
 
 // claimBranchName stores the branch's name before git runs, so the board shows it. An explicit name

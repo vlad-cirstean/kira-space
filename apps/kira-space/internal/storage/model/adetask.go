@@ -108,6 +108,8 @@ type AdeTaskBranch struct {
 	// ReviewCommentsJSON holds the review comments moved off the branch at archive or detach; ""
 	// = no snapshot.
 	ReviewCommentsJSON string
+	// WorktreeDir is the reserved worktree folder name (wt_<id>) under <home>/wt/<repo>; "" until first needed.
+	WorktreeDir string
 }
 
 // AdeChangeRequest is a pull or merge request stored on a branch row.

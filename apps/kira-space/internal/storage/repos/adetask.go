@@ -72,7 +72,7 @@ func EstOverCap(est string) bool {
 
 const adeTaskColumns = `id, kind, title, owner, jira_key, jira_url, host_url, workflow_id, entry_step_id, since_json, workflow_json, workflow_hash, est, notes, color, created_at, archived_at, status_id, status_by, status_step`
 const adeTaskBranchInsertColumns = `id, task_id, code_repo_id, name, kind, base, base_branch_id, base_pending_from, queued_after, position, had_commits, added_at, merged_at, archived_at, origin`
-const adeTaskBranchColumns = adeTaskBranchInsertColumns + `, cr_number, cr_title, cr_state, cr_url, review_comments`
+const adeTaskBranchColumns = adeTaskBranchInsertColumns + `, cr_number, cr_title, cr_state, cr_url, review_comments, worktree_dir`
 const adeRunColumns = `id, task_id, step_id, branch_id, attempt, state, loops, note, summary, session_id, exit_code, started_at, finished_at, outcome_json, purpose, spec_json, launch_note, launch_resume_id, launch_prompt, launch_extra`
 
 // AdeTaskRepo reads and writes the v2 task store: tasks, branches, plan, runs, worktree setup and
@@ -117,7 +117,7 @@ func scanAdeTaskBranch(row rowScanner) (model.AdeTaskBranch, error) {
 	var merged, archived, crNumber sql.NullInt64
 	var crTitle, crState, crURL, comments sql.NullString
 	if err := row.Scan(&b.ID, &b.TaskID, &b.CodeRepoID, &b.Name, &b.Kind, &b.Base, &b.BaseBranchID, &b.BasePendingFrom, &b.QueuedAfter, &b.Position,
-		&had, &b.AddedAt, &merged, &archived, &b.Origin, &crNumber, &crTitle, &crState, &crURL, &comments); err != nil {
+		&had, &b.AddedAt, &merged, &archived, &b.Origin, &crNumber, &crTitle, &crState, &crURL, &comments, &b.WorktreeDir); err != nil {
 		return model.AdeTaskBranch{}, err
 	}
 	if crNumber.Valid {
@@ -540,7 +540,7 @@ func (r *AdeTaskRepo) DetachBranch(id string, replacement *model.AdeTaskBranch, 
 
 func (r *AdeTaskRepo) queryBranches(where string, args ...any) ([]model.AdeTaskBranch, error) {
 	rows, err := r.DB.Query(`SELECT b.id, b.task_id, b.code_repo_id, b.name, b.kind, b.base, b.base_branch_id, b.base_pending_from, b.queued_after, b.position,
-		b.had_commits, b.added_at, b.merged_at, b.archived_at, b.origin, b.cr_number, b.cr_title, b.cr_state, b.cr_url, b.review_comments
+		b.had_commits, b.added_at, b.merged_at, b.archived_at, b.origin, b.cr_number, b.cr_title, b.cr_state, b.cr_url, b.review_comments, b.worktree_dir
 		FROM ade_task_branches b JOIN ade_tasks t ON t.id = b.task_id WHERE `+where+` ORDER BY b.task_id, b.position, b.id`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("repos: query ade task branches: %w", err)
@@ -937,6 +937,31 @@ func (r *AdeTaskRepo) SetBranchOrigin(id, origin string) error {
 	}
 	if n == 0 {
 		return ErrBranchMissing
+	}
+	return nil
+}
+
+// ReserveWorktreeDir stores dir as the row's worktree folder when it has none and returns the stored
+// value, so the first writer wins.
+func (r *AdeTaskRepo) ReserveWorktreeDir(branchID, dir string) (string, error) {
+	if _, err := r.DB.Exec(`UPDATE ade_task_branches SET worktree_dir = ? WHERE id = ? AND worktree_dir = ''`, dir, branchID); err != nil {
+		return "", fmt.Errorf("repos: reserve ade worktree dir %s: %w", branchID, err)
+	}
+	var stored string
+	err := r.DB.QueryRow(`SELECT worktree_dir FROM ade_task_branches WHERE id = ?`, branchID).Scan(&stored)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrBranchMissing
+	}
+	if err != nil {
+		return "", fmt.Errorf("repos: read ade worktree dir %s: %w", branchID, err)
+	}
+	return stored, nil
+}
+
+// ReplaceWorktreeDir swaps the row's worktree folder from old to next; a no-op when it changed meanwhile.
+func (r *AdeTaskRepo) ReplaceWorktreeDir(branchID, old, next string) error {
+	if _, err := r.DB.Exec(`UPDATE ade_task_branches SET worktree_dir = ? WHERE id = ? AND worktree_dir = ?`, next, branchID, old); err != nil {
+		return fmt.Errorf("repos: replace ade worktree dir %s: %w", branchID, err)
 	}
 	return nil
 }

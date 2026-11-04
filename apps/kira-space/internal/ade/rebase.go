@@ -219,7 +219,9 @@ func (b *TaskBoard) planRebase(ctx context.Context, tc *taskCtx, args adewire.On
 			paths[i] = row.WorktreePath
 		}
 		if paths[i] == "" {
-			p.predicted[n.sb.ID] = b.freePath(rec.Name, n.sb.Name)
+			if p.predicted[n.sb.ID], err = b.worktreeDirFor(n.sb, rec.Name, ""); err != nil {
+				return nil, err
+			}
 		}
 	}
 	if commit {

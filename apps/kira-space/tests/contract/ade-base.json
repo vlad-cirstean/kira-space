@@ -36,7 +36,7 @@
     "upstream": "refs/remotes/origin/develop",
     "upstreamAhead": 0,
     "upstreamBehind": 0,
-    "worktree": "<home>/wt/api/api-dev"
+    "worktree": "<home>/wt/api/<wt>"
   },
   "AdeTaskService.Branch#rebase-conflict": {
     "addedAt": 0,
@@ -82,7 +82,7 @@
     "upstream": "refs/remotes/origin/feat/a",
     "upstreamAhead": 0,
     "upstreamBehind": 0,
-    "worktree": "<home>/wt/api/a"
+    "worktree": "<home>/wt/api/<wt>"
   },
   "AdeTaskService.RepoBranches": {
     "branches": [

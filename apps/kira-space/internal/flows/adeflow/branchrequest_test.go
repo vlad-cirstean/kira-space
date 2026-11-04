@@ -26,7 +26,7 @@ const brScenario = "ade-branch-request"
 var (
 	brMask      = flowharness.Mask("id", "taskId", "createdAt", "expiresAt", "codeRepoId")
 	kiraBranch  = regexp.MustCompile(`^kira/[0-9a-hjkmnp-tv-z]{10}$`)
-	nanoFolder  = regexp.MustCompile(`^[0-9a-hjkmnp-tv-z]{10}$`)
+	nanoFolder  = regexp.MustCompile(`^wt_[0-9a-hjkmnp-tv-z]{10}$`)
 	onceStepYML = "  - id: one\n    name: one\n    kind: agent\n    runs_on: once\n    timeout: 1m\n    prompt: ask for branches\n"
 )
 

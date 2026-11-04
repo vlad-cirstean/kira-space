@@ -17,7 +17,7 @@ import (
 const branchHold = 65 * time.Second
 
 var kiraBranch = regexp.MustCompile(`^kira/[0-9a-hjkmnp-tv-z]{10}$`)
-var nanoFolder = regexp.MustCompile(`^[0-9a-hjkmnp-tv-z]{10}$`)
+var nanoFolder = regexp.MustCompile(`^wt_[0-9a-hjkmnp-tv-z]{10}$`)
 
 // TestAdeBranchRequest runs a headless step on a task with no branch. The agent must ask for one through
 // request_branches, wait for the approval, then work in the returned worktree.

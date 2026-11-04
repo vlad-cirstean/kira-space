@@ -36,7 +36,7 @@
     "upstream": "refs/remotes/origin/main",
     "upstreamAhead": 1,
     "upstreamBehind": 0,
-    "worktree": "<home>/wt/api/api-open"
+    "worktree": "<home>/wt/api/<wt>"
   },
   "AdeTaskService.Branch#uncommitted": {
     "addedAt": 0,
@@ -80,7 +80,7 @@
     "upstream": "refs/remotes/origin/main",
     "upstreamAhead": 0,
     "upstreamBehind": 0,
-    "worktree": "<home>/wt/api/api-open"
+    "worktree": "<home>/wt/api/<wt>"
   },
   "AdeTaskService.OpenReviewWindow#existing": false,
   "args:AdeTaskService.OpenReviewWindow": {

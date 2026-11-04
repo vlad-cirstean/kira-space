@@ -76,7 +76,7 @@ test('contract: the run line shows the policy in the popover', async ({ relaunch
   await badge.click();
   const pop = page.locator(t('ade-run-sandbox-popover'));
   await expect(pop.locator(t('ade-run-sandbox-enforced'))).toHaveText('Enforced by macOS');
-  await expect(pop.locator(t('ade-run-sandbox-write'))).toContainText('/api-sb');
+  await expect(pop.locator(t('ade-run-sandbox-write'))).toContainText('/api/<wt>');
   await expect(pop.locator(t('ade-run-sandbox-network'))).toHaveText('All hosts');
   await expect(pop.locator(t('ade-run-sandbox-denial'))).toHaveCount(0);
 });
