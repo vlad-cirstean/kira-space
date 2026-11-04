@@ -16,6 +16,7 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/updates"
@@ -195,7 +196,7 @@ func (w *updateWatcher) pass(ctx context.Context, fresh bool) error {
 		wanted[model.AdeTrackedKey{TaskID: br.TaskID, ItemKey: "cr:" + br.ID}] = true
 		wanted[model.AdeTrackedKey{TaskID: br.TaskID, ItemKey: "branch:" + br.ID}] = true
 	}
-	var observed []observation
+	observed := make([]observation, 0, 2*len(created))
 	observed = append(observed, w.branchObservations(ctx, created, prev)...)
 	observed = append(observed, w.crObservations(ctx, created, prev)...)
 
@@ -307,34 +308,11 @@ func (w *updateWatcher) crObservations(ctx context.Context, created []model.AdeT
 				slog.Warn("ade updates: open repo", "scope", "ade", "repo", id, "err", err)
 				return nil
 			}
-			var rows []observation
+			rows := make([]observation, 0, len(byRepo[id]))
 			for _, br := range byRepo[id] {
-				res := entry.ResolveBranchChangeRequest(gctx, br.Name)
-				if res.Kind != "ok" {
-					continue
+				if o, ok := crObservation(gctx, entry, br, prev); ok {
+					rows = append(rows, o)
 				}
-				snap := updates.CRSnap{}
-				if len(res.ChangeRequests) > 0 {
-					cr := res.ChangeRequests[0]
-					snap = updates.CRSnap{
-						Present: true, Number: cr.Number, State: cr.State, Title: cr.Title, HeadSha: cr.HeadSha,
-						ReviewDecision: cr.ReviewDecision, ChecksState: cr.ChecksState,
-						CommentCount: cr.CommentCount, Assignees: slices.Clone(cr.Assignees),
-					}
-					// The per-branch fallback carries no counts: keep the last known ones.
-					if old, ok := prev[model.AdeTrackedKey{TaskID: br.TaskID, ItemKey: "cr:" + br.ID}]; ok {
-						var was updates.CRSnap
-						if updates.DecodeCR(old.CurrentJSON, &was) && was.Present && was.Number == snap.Number {
-							if snap.CommentCount == nil {
-								snap.CommentCount = was.CommentCount
-							}
-							if snap.Assignees == nil {
-								snap.Assignees = was.Assignees
-							}
-						}
-					}
-				}
-				rows = append(rows, observation{taskID: br.TaskID, key: "cr:" + br.ID, kind: updates.KindChangeRequest, snap: snap.Encode()})
 			}
 			mu.Lock()
 			out = append(out, rows...)
@@ -344,6 +322,41 @@ func (w *updateWatcher) crObservations(ctx context.Context, created []model.AdeT
 	}
 	_ = g.Wait() // per-repo failures keep the previous snapshots
 	return out
+}
+
+// crObservation resolves one branch's change request; ok is false when the host lookup is not ok.
+func crObservation(ctx context.Context, entry *gitsession.RepoEntry, br model.AdeTaskBranch, prev map[model.AdeTrackedKey]model.AdeTrackedItem) (observation, bool) {
+	res := entry.ResolveBranchChangeRequest(ctx, br.Name)
+	if res.Kind != "ok" {
+		return observation{}, false
+	}
+	snap := updates.CRSnap{}
+	if len(res.ChangeRequests) > 0 {
+		cr := res.ChangeRequests[0]
+		snap = updates.CRSnap{
+			Present: true, Number: cr.Number, State: cr.State, Title: cr.Title, HeadSha: cr.HeadSha,
+			ReviewDecision: cr.ReviewDecision, ChecksState: cr.ChecksState,
+			CommentCount: cr.CommentCount, Assignees: slices.Clone(cr.Assignees),
+		}
+		if old, ok := prev[model.AdeTrackedKey{TaskID: br.TaskID, ItemKey: "cr:" + br.ID}]; ok {
+			keepCRCounts(&snap, old)
+		}
+	}
+	return observation{taskID: br.TaskID, key: "cr:" + br.ID, kind: updates.KindChangeRequest, snap: snap.Encode()}, true
+}
+
+// keepCRCounts fills counts the per-branch fallback omits from the previous snapshot of the same CR.
+func keepCRCounts(snap *updates.CRSnap, old model.AdeTrackedItem) {
+	var was updates.CRSnap
+	if !updates.DecodeCR(old.CurrentJSON, &was) || !was.Present || was.Number != snap.Number {
+		return
+	}
+	if snap.CommentCount == nil {
+		snap.CommentCount = was.CommentCount
+	}
+	if snap.Assignees == nil {
+		snap.Assignees = was.Assignees
+	}
 }
 
 type issueTask struct {
