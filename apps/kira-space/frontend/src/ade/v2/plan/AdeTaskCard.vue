@@ -96,7 +96,7 @@ const boxClass = computed(() => {
       <div
         v-if="!card.review"
         ref="head"
-        class="box-border flex h-17 w-full flex-col justify-center gap-1 border-b border-b-border px-2 py-1.5"
+        class="box-border flex h-17 w-full flex-col justify-center gap-1 px-2 py-1.5"
         :class="headSelected ? 'bg-select' : 'hover:bg-field'"
         role="button"
         tabindex="0"

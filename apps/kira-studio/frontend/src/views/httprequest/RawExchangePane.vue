@@ -268,7 +268,7 @@ function setHostRef(key: RawSection['key'], instance: unknown): void {
           <Alert v-if="section.noteBefore" variant="info" :data-testid="section.noteBeforeTestid">
             <AlertDescription>{{ section.noteBefore }}</AlertDescription>
           </Alert>
-          <div class="flex-1 min-h-52 overflow-hidden rounded-kira border border-border">
+          <div class="flex-1 min-h-52 overflow-hidden rounded-kira">
             <MonacoHost
               :ref="(el) => setHostRef(section.key, el)"
               :doc="section.doc"

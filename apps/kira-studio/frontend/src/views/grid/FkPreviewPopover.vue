@@ -100,7 +100,7 @@ onUnmounted(() => {
     @update:open="onOpenChange"
   >
     <div class="flex min-h-0 flex-col" data-testid="fk-preview">
-      <div class="flex items-center justify-between border-b border-border flex-none gap-1 p-1.5">
+      <div class="flex items-center justify-between flex-none gap-1 p-1.5">
         <span class="min-w-0 font-medium"><TruncatedText :text="tableLabel" /></span>
         <Badge
           v-if="state.status === 'ready' && state.hasMore"
@@ -111,7 +111,7 @@ onUnmounted(() => {
         </Badge>
       </div>
 
-      <div class="flex border-b border-border flex-none gap-1 p-1.5">
+      <div class="flex flex-none gap-1 p-1.5">
         <Button variant="toolbar" size="kira" data-testid="fk-preview-open" @click="onOpenClick">
           <CodiconIcon name="arrow-right" :size="13" />
           {{ t('common.action.openInNewTab.label') }}

@@ -22,7 +22,7 @@ function taskOf(taskId: string): { title: string; color: string } {
 
 <template>
   <div
-    class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-kira border border-border bg-bg"
+    class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-kira bg-bg"
     data-testid="ade-needs-page"
   >
     <PanelHeader>
@@ -44,14 +44,12 @@ function taskOf(taskId: string): { title: string; color: string } {
         />
         <div
           v-if="needs.empty"
-          class="border-b border-border px-3 py-6 text-kira-lg text-tone-green"
+          class="px-3 py-6 text-kira-lg text-tone-green"
           data-testid="ade-needs-empty"
         >
           {{ t('space.ade.needsPage.empty.emptyHint') }}
         </div>
-        <div
-          class="flex items-center gap-3 border-b border-border px-3 py-2 text-kira-md text-muted-foreground"
-        >
+        <div class="flex items-center gap-3 px-3 py-2 text-kira-md text-muted-foreground">
           <span class="flex-1" data-testid="ade-needs-footer">{{ needs.footer }}</span>
           <Button
             variant="dialog"

@@ -61,7 +61,7 @@ function reviewLabel(state: ReviewerState | undefined): string {
     >
       <header
         v-if="thread.kind !== 'comment' || thread.resolved"
-        class="flex flex-wrap items-center gap-2 border-b border-border px-3 py-1.5 text-kira-sm"
+        class="flex flex-wrap items-center gap-2 px-3 py-1.5 text-kira-sm"
       >
         <Badge
           v-if="thread.kind === 'review'"
@@ -92,7 +92,7 @@ function reviewLabel(state: ReviewerState | undefined): string {
       <CollapsibleContent>
         <FieldDescription
           v-if="thread.commentsTruncated"
-          class="border-b border-border px-3 py-1.5"
+          class="px-3 py-1.5"
           data-testid="host-view-comments-truncated"
           >{{
             t('space.hostView.conversation.commentsTruncated.hint')
@@ -101,7 +101,7 @@ function reviewLabel(state: ReviewerState | undefined): string {
         <div
           v-for="comment in thread.comments"
           :key="comment.id"
-          class="border-b border-border px-3 py-2 last:border-b-0"
+          class="px-3 py-2"
           :class="comment.pending && 'text-muted-foreground'"
           :data-pending="comment.pending || undefined"
           data-testid="host-view-comment"
@@ -114,7 +114,7 @@ function reviewLabel(state: ReviewerState | undefined): string {
           </div>
           <MarkdownBody :source="comment.body" />
         </div>
-        <div v-if="canReply(thread)" class="border-t border-border px-3 py-2">
+        <div v-if="canReply(thread)" class="px-3 py-2">
           <Button
             v-if="replying !== thread.id"
             variant="toolbar"

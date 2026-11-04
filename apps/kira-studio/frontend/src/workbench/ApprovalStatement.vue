@@ -66,8 +66,8 @@ const items = computed<SecondaryTabItem[]>(() => [
     <div
       :class="
         compact
-          ? 'h-24 overflow-hidden rounded-kira border border-border'
-          : 'min-h-40 flex-1 overflow-hidden rounded-kira border border-border'
+          ? 'h-24 overflow-hidden rounded-kira'
+          : 'min-h-40 flex-1 overflow-hidden rounded-kira'
       "
       data-testid="db-mcp-approval-statement"
     >

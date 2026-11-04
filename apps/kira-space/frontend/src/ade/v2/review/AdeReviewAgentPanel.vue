@@ -154,7 +154,7 @@ async function focus(): Promise<void> {
     </Alert>
     <template v-if="session && running && view">
       <div
-        class="flex flex-none items-center gap-2 border-b border-border px-2 py-1.5"
+        class="flex flex-none items-center gap-2 px-2 py-1.5"
         data-testid="ade-review-forward-bar"
       >
         <AdeTip :text="forwardTip">

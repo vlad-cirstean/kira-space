@@ -177,7 +177,7 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
             <div
               v-else
               ref="scrollEl"
-              class="min-h-0 flex-1 overflow-auto rounded-kira border border-border"
+              class="min-h-0 flex-1 overflow-auto rounded-kira"
               data-testid="ade-port-items"
               @scroll="onScroll"
             >
@@ -191,7 +191,7 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
                   :key="String(vi.key)"
                   :ref="measureRef"
                   :data-index="vi.index"
-                  :class="[VIRTUAL_ROW_CLASS, 'flex flex-col gap-1 border-b border-border p-2']"
+                  :class="[VIRTUAL_ROW_CLASS, 'flex flex-col gap-1 p-2']"
                   :style="{ transform: `translateY(${vi.start}px)` }"
                   :data-testid="`ade-port-item-${item.id}`"
                   :data-state="item.state"

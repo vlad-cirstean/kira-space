@@ -252,7 +252,7 @@ onBeforeUnmount(() => {
         @update:model-value="(v: string | number) => draft.patchWorkflow({ name: String(v) })"
       />
     </div>
-    <div ref="split" class="flex min-h-96 flex-1 rounded-kira border border-border bg-bg">
+    <div ref="split" class="flex min-h-96 flex-1 rounded-kira bg-bg">
       <div class="relative min-w-0" :style="{ flex: `0 0 ${graphPane.size.value}%` }">
         <div
           ref="scroller"

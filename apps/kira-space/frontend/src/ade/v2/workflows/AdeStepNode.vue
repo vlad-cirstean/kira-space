@@ -248,7 +248,7 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
       :position="Position.Bottom"
       class="!size-2 !border-0 !bg-muted-foreground"
     />
-    <div v-else class="mt-auto flex border-t border-border">
+    <div v-else class="mt-auto flex">
       <AdeTip v-for="r in step.results" :key="r.id" :text="tip(r)">
         <span
           class="relative flex min-w-0 flex-1 items-center justify-center gap-1 px-1 py-1"

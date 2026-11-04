@@ -191,7 +191,7 @@ const padBottom = computed(() => {
         <div
           v-if="showTable && grid"
           ref="scrollRef"
-          class="min-h-24 flex-1 overflow-auto rounded-kira border border-border"
+          class="min-h-24 flex-1 overflow-auto rounded-kira"
           data-testid="db-mcp-preview-table"
           @scroll.passive="onScroll"
         >
@@ -261,7 +261,7 @@ const padBottom = computed(() => {
         </div>
         <div
           v-else
-          class="min-h-24 flex-1 overflow-hidden rounded-kira border border-border"
+          class="min-h-24 flex-1 overflow-hidden rounded-kira"
           data-testid="db-mcp-preview-raw"
         >
           <MonacoHost :doc="text" language="json" readonly force-wrap />

@@ -114,7 +114,7 @@ const right = useLiveSize(
     <div v-else class="h-titlebar shrink-0 bg-chrome" />
     <div class="flex min-h-0 flex-1 gap-0.5 bg-chrome px-1.5 pb-0.5">
       <section
-        class="min-h-0 flex-none overflow-hidden rounded-kira border border-border bg-bg"
+        class="min-h-0 flex-none overflow-hidden rounded-kira bg-bg"
         :style="{ width: `${left.size.value}px` }"
         :aria-label="t('studio.proof.history.aria')"
         data-testid="proof-left"
@@ -130,14 +130,14 @@ const right = useLiveSize(
       />
       <section
         ref="centre"
-        class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-kira border border-border bg-bg"
+        class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-kira bg-bg"
         :aria-label="t('studio.proof.session.aria')"
         data-testid="proof-centre"
       >
         <QueryState v-if="store.sessionId" :query="session">
           <template #default="{ data }">
             <div
-              class="h-tabbar min-h-0 shrink-0 overflow-hidden border-b border-border bg-chrome"
+              class="h-tabbar min-h-0 shrink-0 overflow-hidden bg-chrome"
               :aria-label="t('studio.proof.tabs.aria')"
               data-testid="proof-tabs"
             >
@@ -178,7 +178,7 @@ const right = useLiveSize(
           v-bind="right.bind"
         />
         <section
-          class="flex min-h-0 flex-none flex-col overflow-hidden rounded-kira border border-border bg-bg"
+          class="flex min-h-0 flex-none flex-col overflow-hidden rounded-kira bg-bg"
           :style="{ width: `${right.size.value}px` }"
           :aria-label="t('studio.proof.change.title')"
           data-testid="proof-right"

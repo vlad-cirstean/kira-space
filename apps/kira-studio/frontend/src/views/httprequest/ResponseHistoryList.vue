@@ -201,12 +201,7 @@ async function onClear(): Promise<void> {
       <div
         v-for="(entry, i) in filteredEntries"
         :key="entry.id"
-        :class="
-          cn(
-            rowVariants({ layout: 'double', selected: entry.id === viewingId }),
-            'border-b border-border',
-          )
-        "
+        :class="cn(rowVariants({ layout: 'double', selected: entry.id === viewingId }))"
         data-testid="http-history-row"
         role="option"
         v-bind="nav.rowProps(entry.id)"
@@ -270,7 +265,7 @@ async function onClear(): Promise<void> {
 
     <div
       v-if="atCap"
-      class="text-kira-sm text-subtle shrink-0 border-t border-border px-1.5 py-1"
+      class="text-kira-sm text-subtle shrink-0 px-1.5 py-1"
       data-testid="http-history-cap-note"
     >
       {{ t('studio.http.history.capNote.hint', { limit: HISTORY_PER_SCOPE_LIMIT }) }}

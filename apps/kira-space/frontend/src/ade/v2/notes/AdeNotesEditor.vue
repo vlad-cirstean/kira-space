@@ -222,7 +222,7 @@ function keepFocus(e: MouseEvent): void {
       v-if="!readonly"
       role="toolbar"
       :aria-label="t('space.ade.notes.formatting.aria')"
-      class="flex shrink-0 items-center gap-0.5 border-b border-border bg-chrome px-1.5 py-1"
+      class="flex shrink-0 items-center gap-0.5 bg-chrome px-1.5 py-1"
     >
       <span class="px-1.5 text-kira-sm text-muted-foreground">{{
         t('space.common.notes.label')

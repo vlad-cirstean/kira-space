@@ -75,7 +75,7 @@ watch(menuOpen, (open) => {
   <div class="flex min-h-0 flex-1 flex-col bg-bg" data-testid="ade-sessions-tab">
     <div
       v-if="!archived"
-      class="flex shrink-0 items-center gap-1 border-b border-border bg-chrome pr-1.5"
+      class="flex shrink-0 items-center gap-1 bg-chrome pr-1.5"
       data-testid="ade-session-bar-row"
     >
       <AdeSessionStrip

@@ -39,7 +39,7 @@ function onHeadKeydown(e: KeyboardEvent): void {
 
 <template>
   <div
-    class="doc-row flex flex-col border-b border-border"
+    class="doc-row flex flex-col"
     :class="{
       'search-match bg-search-match': searchMatch,
       'search-match-current bg-search-match-current': searchMatchCurrent,

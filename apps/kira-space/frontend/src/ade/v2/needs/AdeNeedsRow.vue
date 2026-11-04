@@ -36,7 +36,7 @@ const ROW_BG_CLASS: Record<Tone, string> = {
 
 <template>
   <div
-    class="flex flex-col border-b border-border"
+    class="flex flex-col"
     data-testid="ade-needs-item"
     :data-kind="item.kind"
     :data-item-id="item.id"
@@ -56,7 +56,7 @@ const ROW_BG_CLASS: Record<Tone, string> = {
       <Button
         variant="dialog"
         size="kira-lg"
-        class="w-23 shrink-0 "
+        class="w-23 shrink-0"
         :class="buttonClass"
         :pending="busy"
         data-testid="ade-needs-action"

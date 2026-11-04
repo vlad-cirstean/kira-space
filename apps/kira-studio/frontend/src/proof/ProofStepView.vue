@@ -114,7 +114,7 @@ onBeforeUnmount(() => {
         />
         <template v-else>
           <div
-            class="flex h-control-lg shrink-0 items-center gap-2 border-b border-border px-3"
+            class="flex h-control-lg shrink-0 items-center gap-2 px-3"
             data-testid="proof-step-header"
           >
             <CodiconIcon
@@ -140,7 +140,7 @@ onBeforeUnmount(() => {
           </div>
           <div
             v-if="data.query && view.seed.value"
-            class="shrink-0 overflow-hidden border-b border-border"
+            class="shrink-0 overflow-hidden"
             :style="{ height: `${queryHeight}px` }"
             :aria-label="t('studio.console.plan.root.query.label')"
             data-testid="proof-step-query"

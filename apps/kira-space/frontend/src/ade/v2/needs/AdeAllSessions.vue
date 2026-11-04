@@ -124,7 +124,7 @@ const summary = computed(() => {
       class="flex flex-col gap-0.5"
       data-testid="ade-all-group"
     >
-      <div class="mb-1 flex items-center gap-2 border-b border-border px-3 pb-1.5">
+      <div class="mb-1 flex items-center gap-2 px-3 pb-1.5">
         <span class="size-2.5 shrink-0 rounded-kira-sm" :style="{ background: g.color }" />
         <h3 class="m-0 truncate text-kira-lg font-medium">{{ g.title }}</h3>
       </div>

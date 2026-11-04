@@ -57,7 +57,7 @@ function onContextMenu(ev: MouseEvent, session: ProofSummary): void {
 <template>
   <div class="flex h-full min-h-0 flex-col" data-testid="proof-history">
     <div
-      class="flex h-tabbar shrink-0 items-center border-b border-border bg-chrome px-3 text-kira-sm font-medium text-muted-foreground"
+      class="flex h-tabbar shrink-0 items-center bg-chrome px-3 text-kira-sm font-medium text-muted-foreground"
     >
       {{ t('common.module.history.label') }}
     </div>

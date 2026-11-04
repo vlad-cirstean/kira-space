@@ -12,7 +12,7 @@ defineProps<{ view: SessionView }>();
     <div class="min-h-0 flex-1 overflow-auto p-2">
       <AdeRunLog v-if="view.session.runId" kind="run" :id="view.session.runId" max-height="100%" />
     </div>
-    <div class="shrink-0 border-t border-border px-3 py-2 text-kira-sm text-subtle">
+    <div class="shrink-0 px-3 py-2 text-kira-sm text-subtle">
       {{ t('space.ade.headless.footer.hint') }}
     </div>
   </div>

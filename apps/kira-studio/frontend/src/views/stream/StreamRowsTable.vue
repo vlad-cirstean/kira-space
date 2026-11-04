@@ -313,7 +313,7 @@ const CELL_BASE =
             :class="streamRowClass(rowIndices[vi.index])"
           >
             <div
-              class="flex items-center justify-end px-2 border-r border-b border-border border-r-border bg-elevated font-data text-kira-sm text-subtle truncate relative w-10"
+              class="flex items-center justify-end px-2 border-r border-b border-border bg-elevated font-data text-kira-sm text-subtle truncate relative w-10"
               role="option"
               v-bind="nav.rowProps(String(rowIndices[vi.index]))"
               :tabindex="nav.tabindexFor(String(rowIndices[vi.index]))"

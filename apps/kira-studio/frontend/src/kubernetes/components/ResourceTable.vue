@@ -230,7 +230,7 @@ const nav = useListNavigation<KubeRow>({
       </div>
       <div
         v-if="data.truncated"
-        class="shrink-0 border-t border-border bg-chrome px-2 py-0.5 text-kira-sm text-muted-foreground"
+        class="shrink-0 bg-chrome px-2 py-0.5 text-kira-sm text-muted-foreground"
         data-testid="kube-truncated"
       >
         {{ t('kubernetes.list.truncated.status', { count: data.rows.length }) }}

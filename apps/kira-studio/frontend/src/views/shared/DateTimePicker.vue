@@ -354,7 +354,7 @@ const secondText = computed<string>({
         </Button>
       </div>
     </div>
-    <div class="flex items-center border-t border-border gap-0.5 pt-1">
+    <div class="flex items-center gap-0.5 pt-1">
       <Input
         v-model="hourText"
         type="number"

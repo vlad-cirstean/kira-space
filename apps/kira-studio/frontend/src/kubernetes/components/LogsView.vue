@@ -218,7 +218,7 @@ function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {
       </template>
     </LogLines>
     <div
-      class="flex shrink-0 items-center gap-2 border-t border-border bg-chrome px-2 py-0.5 text-kira-sm text-muted-foreground"
+      class="flex shrink-0 items-center gap-2 bg-chrome px-2 py-0.5 text-kira-sm text-muted-foreground"
     >
       <span v-if="needle !== ''" data-testid="kube-logs-matches">{{
         t('kubernetes.logs.matches.status', { shown: shown.length, total: lines.length })

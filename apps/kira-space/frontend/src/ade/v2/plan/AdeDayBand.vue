@@ -69,7 +69,7 @@ const highlight = computed(() => props.dragOver && accepts.value);
 
 const rulerBorderClass = computed(() => {
   if (props.band.isToday) return 'border-r-tone-amber-solid';
-  return props.band.isPast || greyed.value ? 'border-r-border' : 'border-r-border';
+  return 'border-r-border';
 });
 const dotClass = computed(() => {
   if (props.band.isToday) return 'border-tone-amber-solid bg-tone-amber-solid';
@@ -97,7 +97,7 @@ const solidBorder = computed(() => props.band.isMonday || props.band.isLater || 
   <!-- biome-ignore lint/a11y/noStaticElementInteractions: right-click only; the band holds nested interactive rows. -->
   <div
     class="flex border-t"
-    :class="solidBorder ? 'border-t-border' : 'border-t-border'"
+    :class="solidBorder ? 'border-t-border' : 'border-t-transparent'"
     data-testid="ade-day-band"
     data-ade-band
     :data-weekend="band.weekend || undefined"

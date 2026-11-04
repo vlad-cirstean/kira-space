@@ -214,7 +214,7 @@ function cellClass(row: number, col: 'field' | 'value') {
               @contextmenu="onRowContextMenuFromEvent"
             >
               <div
-                class="flex items-center justify-end px-2 border-r border-b border-border border-r-border bg-elevated font-data text-kira-sm text-subtle truncate relative w-10 shrink-0"
+                class="flex items-center justify-end px-2 border-r border-b border-border bg-elevated font-data text-kira-sm text-subtle truncate relative w-10 shrink-0"
                 >{{
                   entry.i + 1
                 }}</div

@@ -80,7 +80,7 @@ onUnmounted(() => {
 
 <template>
   <div class="max-h-80 flex flex-col">
-    <div class="flex border-b border-border gap-1 p-1">
+    <div class="flex gap-1 p-1">
       <Button
         variant="toolbar"
         size="kira"

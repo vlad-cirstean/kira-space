@@ -59,7 +59,7 @@ function showAll(): void {
       :title="titleOf(r.session.taskId)"
       @open="open(r.session.taskId, r.session.id, r.session.branchId)"
     />
-    <div class="flex justify-end border-t border-border px-1 pt-1">
+    <div class="flex justify-end px-1 pt-1">
       <Button variant="link" size="inline" data-testid="status-agents-all" @click="showAll">{{
         t('space.ade.needsPage.showAll.label')
       }}</Button>

@@ -171,7 +171,7 @@ function onOpenFile(index: number, pinned: boolean): void {
 <template>
   <div
     v-if="commit"
-    class="flex flex-col border-b border-border group focus-visible:focus-ring"
+    class="flex flex-col group focus-visible:focus-ring"
     role="treeitem"
     :aria-expanded="expanded"
     :tabindex="focused ? 0 : -1"
@@ -245,7 +245,7 @@ function onOpenFile(index: number, pinned: boolean): void {
       </span>
     </div>
 
-    <div v-if="expanded" class="border-t border-border min-h-30 max-h-80 flex flex-col">
+    <div v-if="expanded" class="min-h-30 max-h-80 flex flex-col">
       <FieldError v-if="expansion?.detail.error.value" class="p-2">
         {{ t('git.detail.loadError.error', { error: expansion.detail.error.value }) }}
       </FieldError>

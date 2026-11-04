@@ -199,11 +199,7 @@ const rawLanguage = computed(() =>
         />
         <span :class="rowMeta">{{ t('common.raw.label') }}</span>
       </div>
-      <div
-        v-if="showRaw"
-        class="h-64 border border-border rounded-kira overflow-hidden"
-        data-testid="explain-raw"
-      >
+      <div v-if="showRaw" class="h-64 rounded-kira overflow-hidden" data-testid="explain-raw">
         <MonacoHost :doc="plan.raw" :language="rawLanguage" readonly :autocomplete="false" />
       </div>
     </template>

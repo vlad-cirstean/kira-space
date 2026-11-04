@@ -394,7 +394,7 @@ onMounted(() => {
       <div class="flex items-center gap-1.5 min-w-0"></div>
     </ViewToolbar>
 
-    <div v-if="filterOpen" class="shrink-0 px-1.5 py-1 border-b border-border">
+    <div v-if="filterOpen" class="shrink-0 px-1.5 py-1">
       <div class="flex w-full font-ui"
         ><SearchField
           :model-value="filterText"
@@ -528,7 +528,7 @@ onMounted(() => {
                       layout: 'tree',
                       selected: rt?.selected === filteredNodes[vi.index]?.path,
                     }),
-                    'border-b border-border px-2',
+                    'px-2',
                     VIRTUAL_ROW_CLASS,
                   )
                 "

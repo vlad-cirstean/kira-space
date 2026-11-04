@@ -163,12 +163,7 @@ async function onClear(): Promise<void> {
       <div
         v-for="entry in filteredEntries"
         :key="entry.id"
-        :class="
-          cn(
-            rowVariants({ layout: 'tree', selected: entry.id === viewingId }),
-            'border-b border-border py-1',
-          )
-        "
+        :class="cn(rowVariants({ layout: 'tree', selected: entry.id === viewingId }), 'py-1')"
         data-testid="grpc-history-row"
         role="option"
         v-bind="nav.rowProps(entry.id)"
@@ -202,7 +197,7 @@ async function onClear(): Promise<void> {
 
     <div
       v-if="atCap"
-      class="text-kira-sm text-subtle shrink-0 border-t border-border px-1.5 py-1"
+      class="text-kira-sm text-subtle shrink-0 px-1.5 py-1"
       data-testid="grpc-history-cap-note"
     >
       {{ t('studio.grpc.history.capNote.hint', { limit: GRPC_HISTORY_PER_SCOPE_LIMIT }) }}

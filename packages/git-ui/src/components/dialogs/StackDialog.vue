@@ -198,7 +198,7 @@ function closeDialog(): void {
                 <template #base><Identifier :value="preflight.base" /></template>
               </CatalogText>
             </p>
-            <ul class="max-h-50 overflow-y-auto p-1 bg-bg border border-border text-kira-md">
+            <ul class="max-h-50 overflow-y-auto p-1 bg-bg text-kira-md">
               <li v-for="entry in preflight.plan" :key="entry.branch">
                 <CatalogText
                   k="git.dialog.stack.planEntry.label"
@@ -227,7 +227,7 @@ function closeDialog(): void {
 
           <template v-if="stack.restacking.value">
             <p>{{ t('git.toolbar.restacking.loading') }}</p>
-            <ul class="max-h-50 overflow-y-auto p-1 bg-bg border border-border text-kira-md">
+            <ul class="max-h-50 overflow-y-auto p-1 bg-bg text-kira-md">
               <li v-for="(p, i) in stack.progress.value" :key="i">
                 {{
                   t('git.dialog.stack.progress.status', {

@@ -283,7 +283,7 @@ function clear(): void {
     </Button>
     <div
       v-if="ended && !errorMessage"
-      class="shrink-0 border-t border-border bg-chrome px-2 py-0.5 text-kira-sm text-muted-foreground"
+      class="shrink-0 bg-chrome px-2 py-0.5 text-kira-sm text-muted-foreground"
       data-testid="docker-logs-ended"
     >
       {{ t('docker.logs.stopped.status') }}

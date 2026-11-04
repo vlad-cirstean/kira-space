@@ -40,7 +40,7 @@ watch(
 <template>
   <div :class="cn(paneFrame, 'flex min-w-0 flex-1 flex-col')" data-testid="ade-later">
     <PanelHeader>{{ t('common.later.label') }}</PanelHeader>
-    <div class="flex shrink-0 flex-col gap-2 border-b border-border p-3">
+    <div class="flex shrink-0 flex-col gap-2 p-3">
       <FieldDescription>{{ t('space.ade.later.intro.hint') }}</FieldDescription>
       <Alert v-if="error" variant="error" data-testid="ade-later-error"
         ><AlertDescription>{{ error }}</AlertDescription></Alert
