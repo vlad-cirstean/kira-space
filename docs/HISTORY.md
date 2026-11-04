@@ -7570,3 +7570,11 @@ Full suite run once: lint, knip, typecheck, Go, unit and all UI, visual and mobi
 ### v0.2.30 P504 (Done)
 Chapter folded by hand into this file; `docs/v0.2.30/` removed.
 <!-- /chapter v0.2.30 -->
+
+<!-- chapter v0.2.31 -->
+## v0.2.31
+Source: docs/v0.2.31/ at e2316a6a3. 1 phases.
+
+### v0.2.31 P505 (Done)
+Flat minimalist redesign. Single retuned dark palette only; app has no light theme, so a theme switch stays out of scope and needs its own phase. Dialog radius 10px to 8px is the only geometry change. Repaired presentation screenshot flows (pre-existing breakage); fixed a Go window test and the ADE spec reading old tokens. Playwright default 0.2 `threshold` left visual projects blind to the shift, so all 47 baselines re-recorded (`3f0a683a`). Full run: lint and typecheck clean, unit 1993, Go all ok, Studio 702, Space 1172. Not run: container-backed Go and `e2e-real` (no Docker), `ui-timing`, `test:claude*`, `-race`. No code review (user waived).
+<!-- /chapter v0.2.31 -->

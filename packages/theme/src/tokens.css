@@ -1,32 +1,33 @@
-/* VS Code Dark Modern derived tokens (SPEC.md §8.1). */
+/* Flat zinc dark palette. The only colour source for the app. */
 :root {
-  --kira-bg: #1f1f1f; /* editor.background */
-  --kira-bg-elevated: #202020; /* editorWidget.background */
-  --kira-bg-chrome: #181818; /* sideBar / statusBar / titleBar / panel */
-  --kira-bg-input: #313131; /* input + dropdown */
-  --kira-fg: #cccccc;
-  --kira-fg-muted: #9d9d9d;
+  /* Surface ladder, darkest to lightest: chrome < bg < elevated < hover < input. */
+  --kira-bg: #1b1b1e;
+  --kira-bg-elevated: #1f1f23;
+  --kira-bg-chrome: #161618; /* sideBar / statusBar / titleBar / panel */
+  --kira-bg-input: #27272c; /* input + dropdown */
+  --kira-fg: #d4d4d8;
+  --kira-fg-muted: #a1a1aa;
   /* Tertiary, non-interactive text: separators, captions, row numbers, NULL markers, empty-state
      copy. Not a disabled control — WCAG 1.4.3 exempts those, which is why --kira-fg-disabled below
-     may stay under 4.5:1 and this may not. 4.77:1 on --kira-bg, 4.72:1 on --kira-bg-elevated. */
-  --kira-fg-subtle: #8a8a8a;
-  --kira-fg-disabled: #6e6e6e; /* :disabled / .is-disabled only */
-  --kira-border: #2b2b2b; /* contrastBorder / panel.border */
-  --kira-border-strong: #313131; /* widget.border */
-  --kira-focus: #0078d4;
-  --kira-accent: #0078d4; /* button.background */
+     may stay under 4.5:1 and this may not. 5.29:1 on --kira-bg, 5.06:1 on --kira-bg-elevated. */
+  --kira-fg-subtle: #8e8e97;
+  --kira-fg-disabled: #63636b; /* :disabled / .is-disabled only */
+  --kira-border: #28282d; /* hairline */
+  --kira-border-strong: #37373d; /* field and widget edge */
+  --kira-focus: #5a8ae6; /* lighter than the accent fill so the ring reads on the primary button */
+  --kira-accent: #3b6ed1; /* primary action, selection, focus only */
   --kira-accent-fg: #ffffff;
-  --kira-select: #04395e; /* list.activeSelectionBackground */
-  --kira-hover: #2a2d2e; /* list.hoverBackground */
-  --kira-badge: #616161;
-  --kira-scrollbar: #79797966;
-  --kira-scrollbar-hover: #646464b3;
-  --kira-scrollbar-active: #bfbfbf66;
-  --kira-scrim: rgb(0 0 0 / 0.3);
-  --kira-error: #f14c4c;
-  --kira-warn: #cca700;
-  --kira-ok: #23d18b;
-  --kira-info: #3794ff;
+  --kira-select: #1f3354;
+  --kira-hover: #26262a;
+  --kira-badge: #4a4a52;
+  --kira-scrollbar: #71717a59;
+  --kira-scrollbar-hover: #8e8e9780;
+  --kira-scrollbar-active: #a1a1aa80;
+  --kira-scrim: rgb(0 0 0 / 0.4);
+  --kira-error: #e66e68;
+  --kira-warn: #d5b449;
+  --kira-ok: #57bc8a;
+  --kira-info: #69a1e8;
   /* P39 D15: the grid/document/keyvalue/stream search toolbars' match tint + solid current-match
      pair, hoisted out of four scoped stylesheets that had grown the same two declarations
      independently (P31 D20/D21). Values are the expressions already in use, so no colour changes. */
@@ -35,12 +36,12 @@
   /* P19 D17: "a filter/sort/projection is applied right now". Deliberately NOT --kira-accent:
      that token means primary action / focus / selection everywhere else, and the three filter
      fields that carry this cue paint their own value through a CodeMirror overlay in
-     --kira-syntax-keyword (#569cd6) and --kira-syntax-name (#9cdcfe) — within 8 degrees of hue of
-     --kira-accent's own #0078d4, so "this filter is on" was indistinguishable from "this is part
+     --kira-syntax-keyword (#6e9fd8) and --kira-syntax-name (#93c6e8) — within 8 degrees of hue of
+     --kira-accent's own #3b6ed1, so "this filter is on" was indistinguishable from "this is part
      of the query". P19 D17 picked #4ec9b0 (teal, ~168deg) as the one hue no syntax token and no
      other state colour occupied.
-     P22 D9 re-picks it as gold/amber at the user's request. #e0a33c (~34deg): 5.94:1 on
-     --kira-bg-input and 7.56:1 on --kira-bg; 44deg clear of --kira-warn (#cca700), which is NOT
+     P22 D9 re-picks it as gold/amber at the user's request. #e79f55 (~65deg oklch): 7.76:1 on
+     --kira-bg; 27deg clear of --kira-warn (#d5b449, ~92deg), which is NOT
      available for this because it is simultaneously --kira-search-match,
      --kira-search-match-current and the unresolved-{{variable}} colour, and three of this token's
      own call sites sit inside or beside a search-highlight surface; and clearly above
@@ -50,14 +51,14 @@
      selected right now"). slickTheme.css's sort chevron stays excluded, per its own comment.
      P22b D4 (below) is the other half of this swap, not a coincidence: moving this token off
      #4ec9b0 is what frees that hue back up for --kira-var-resolved. */
-  --kira-state-on: #e0a33c;
+  --kira-state-on: #e79f55;
   /* P22b D4: "this {{reference}} will produce a value". P15b D2 painted it --kira-syntax-name
      under a no-new-tokens constraint; --kira-syntax-name is byte-identical to
-     --kira-syntax-property (#9cdcfe), so in a JSON body — the default body mode — a resolved
+     --kira-syntax-property (#93c6e8), so in a JSON body — the default body mode — a resolved
      reference was indistinguishable from the keys around it and only a FAILURE (--kira-warn) had
-     a colour. #4ec9b0 is the hue P19 D17 measured as free of every syntax token and every state
+     a colour. #64bead (was #4ec9b0) is the hue P19 D17 measured as free of every syntax token and every state
      colour; it is available again now that P22 D9 (above) has moved --kira-state-on to gold. */
-  --kira-var-resolved: #4ec9b0;
+  --kira-var-resolved: #64bead;
 
   /* Layout tokens for the reworked "detached" chrome: rounded, floating panels, thin borders.
      Radius tier system (VS Code Modern UI, docs/design/kira-design-system): xs for the tightest
@@ -82,8 +83,8 @@
   --kira-tabbar-h: var(--kira-bar-h);
   --kira-statusbar-h: 22px;
   --kira-titlebar-inset-left: 78px;
-  --kira-shadow: 0 2px 8px rgb(0 0 0 / 0.32);
-  --kira-shadow-dialog: 0 8px 28px rgb(0 0 0 / 0.45);
+  --kira-shadow: 0 2px 6px rgb(0 0 0 / 0.18);
+  --kira-shadow-dialog: 0 6px 20px rgb(0 0 0 / 0.28);
 
   /* Appearance tokens: defaults here, overwritten at runtime from `settings` (Step 6).
      --kira-font-family is the *channel* the Appearance "Data font" control writes; the two roles
@@ -154,39 +155,39 @@
   --kira-ease: cubic-bezier(0.4, 0, 0.2, 1);
   --kira-control-inline-h: 14px; /* drawn inside a control or a bar: checkbox box, toolbar separator, tab rail */
 
-  /* §8.12 connection color palette — softened to oklch(0.72 0.09 h): one lightness
+  /* §8.12 connection color palette — muted to oklch(0.72 0.075 h): one lightness
      and one chroma for all eleven hues plus a near-neutral grey, so no connection
      shouts louder than another (P16 design system). */
-  --kira-conn-red: #d78e88;
-  --kira-conn-orange: #d1966d;
-  --kira-conn-amber: #bca260;
-  --kira-conn-olive: #9fad6b;
-  --kira-conn-green: #7db485;
-  --kira-conn-teal: #5fb7a5;
-  --kira-conn-cyan: #58b4c4;
-  --kira-conn-blue: #7ba8dc;
-  --kira-conn-indigo: #979fdd;
-  --kira-conn-violet: #b296d2;
-  --kira-conn-magenta: #cb8eb6;
+  --kira-conn-red: #d0938d;
+  --kira-conn-orange: #ca9877;
+  --kira-conn-amber: #baa16e;
+  --kira-conn-olive: #a3ab74;
+  --kira-conn-green: #83b28c;
+  --kira-conn-teal: #6db4a6;
+  --kira-conn-cyan: #68b3bb;
+  --kira-conn-blue: #81a9d2;
+  --kira-conn-indigo: #96a1d4;
+  --kira-conn-violet: #ac9acd;
+  --kira-conn-magenta: #c592b3;
   --kira-conn-grey: #9fa5ac;
 
-  /* P411 task status palette: oklch(0.78 0.11 h), grey and brown desaturated; at least 6.4:1 on --kira-bg-elevated. */
-  --kira-status-grey: #adb1b8;
-  --kira-status-brown: #c19c7f;
-  --kira-status-red: #f69b94;
-  --kira-status-orange: #eea471;
-  --kira-status-amber: #dcaf61;
-  --kira-status-yellow: #c8b962;
-  --kira-status-lime: #a7c474;
-  --kira-status-green: #82cb92;
-  --kira-status-teal: #59ceba;
-  --kira-status-cyan: #4fccd9;
-  --kira-status-sky: #64c4f0;
-  --kira-status-blue: #8eb8fe;
-  --kira-status-indigo: #a9b0fd;
-  --kira-status-violet: #c2a7f4;
-  --kira-status-purple: #d7a0e3;
-  --kira-status-pink: #ed9ac1;
+  /* P411 task status palette: oklch(0.78 0.095 h), grey and brown desaturated; at least 6.4:1 on --kira-bg-elevated. */
+  --kira-status-grey: #b0b8c1;
+  --kira-status-brown: #d1b099;
+  --kira-status-red: #eea099;
+  --kira-status-orange: #e9a680;
+  --kira-status-amber: #dbaf71;
+  --kira-status-yellow: #cab76f;
+  --kira-status-lime: #a9c27f;
+  --kira-status-green: #8bc997;
+  --kira-status-teal: #6cccba;
+  --kira-status-cyan: #65c9d4;
+  --kira-status-sky: #6fc4e5;
+  --kira-status-blue: #8ebaf4;
+  --kira-status-indigo: #a5b3f4;
+  --kira-status-violet: #bbacee;
+  --kira-status-purple: #cfa5e1;
+  --kira-status-pink: #e69ec0;
 
   /* P17 D19: eight method-colour aliases, borrowed from the connection palette above rather than
      new hues — it was already tuned for "one lightness and one chroma for N things, so none
@@ -207,21 +208,21 @@
   --kira-method-other: var(--kira-conn-grey);
 
   /* Syntax tokens for CodeMirror (§3's editor surfaces: DDL, cell editor, document view,
-     command preview, console). Dark Modern's default token colours. */
-  --kira-syntax-comment: #6a9955;
-  --kira-syntax-string: #ce9178;
-  --kira-syntax-number: #b5cea8;
-  --kira-syntax-keyword: #569cd6;
-  --kira-syntax-control: #c586c0;
-  --kira-syntax-name: #9cdcfe;
-  --kira-syntax-property: #9cdcfe;
-  --kira-syntax-function: #dcdcaa;
-  --kira-syntax-tag: #569cd6;
-  --kira-syntax-attribute: #9cdcfe;
-  --kira-syntax-operator: #d4d4d4;
-  --kira-syntax-punctuation: #cccccc;
-  --kira-syntax-meta: #808080;
-  --kira-syntax-invalid: #f14c4c;
+     command preview, console). Dark Modern hue roles at lower chroma; each at least 4.5:1 on --kira-bg. */
+  --kira-syntax-comment: #7f9a6f;
+  --kira-syntax-string: #d29a7e;
+  --kira-syntax-number: #b4c79e;
+  --kira-syntax-keyword: #6e9fd8;
+  --kira-syntax-control: #c296c4;
+  --kira-syntax-name: #93c6e8;
+  --kira-syntax-property: #93c6e8;
+  --kira-syntax-function: #d8d2a0;
+  --kira-syntax-tag: #6e9fd8;
+  --kira-syntax-attribute: #93c6e8;
+  --kira-syntax-operator: #c8c8cc;
+  --kira-syntax-punctuation: #bdbdc4;
+  --kira-syntax-meta: #8e8e97;
+  --kira-syntax-invalid: #e66e68;
   /* P28 D17(c): the floating-surface stacking ladder, as tokens rather than five bare literals
      spread across PopoverPanel/DialogFrame/ContextMenu/AutocompleteField/AppTooltip. Two orderings
      changed with the move: a popover now outranks a dialog (one opened from inside a dialog used
@@ -233,8 +234,8 @@
      retired in P110 B23) — P104 §9 rule 5 had kept them as literal hex specifically because they
      weren't --kira-* tokens yet, not because they shouldn't be; naming them here is that
      follow-through. */
-  --kira-warn-text: #d9c47a;
-  --kira-note-text: #a8c8ee;
+  --kira-warn-text: #d5c488;
+  --kira-note-text: #acc7e8;
   --kira-z-dialog: 100;
   --kira-z-popover: 200;
   --kira-z-menu: 300;

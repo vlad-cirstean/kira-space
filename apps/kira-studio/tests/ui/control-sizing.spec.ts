@@ -117,7 +117,7 @@ async function expectFocusRing(el: Locator): Promise<void> {
   // outline-width/-color/-offset along with everything else -- so a one-shot read right after
   // focus can catch it mid-transition. Poll past the (150ms default) transition instead of
   // sleeping a fixed amount.
-  await expect.poll(async () => (await readStyle()).outlineColor).toBe('rgb(0, 120, 212)');
+  await expect.poll(async () => (await readStyle()).outlineColor).toBe('rgb(90, 138, 230)');
   const style = await readStyle();
   expect(style.outlineStyle).toBe('solid');
   expect(style.outlineWidth).toBe('1px');

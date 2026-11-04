@@ -10,7 +10,7 @@ const props = defineProps<{ class?: HTMLAttributes['class'] }>();
     data-slot="kbd"
     :class="
       cn(
-        'pointer-events-none inline-flex h-4 min-w-4 select-none items-center justify-center rounded-kira-xs border border-border-strong bg-field px-1 font-ui text-kira-sm text-muted-foreground',
+        'pointer-events-none inline-flex h-4 min-w-4 select-none items-center justify-center rounded-kira-xs border border-border bg-field px-1 font-ui text-kira-sm text-muted-foreground',
         props.class,
       )
     "

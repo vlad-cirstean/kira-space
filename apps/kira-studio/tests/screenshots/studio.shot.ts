@@ -10,8 +10,6 @@ import { connectionRow, expandRow, findRow, openRowMenu } from '../ui/support/tr
 import {
   ACME,
   CONNECTION_ID,
-  CONNECTION_NAME,
-  CREATE_ARGS,
   col,
   DB_PATH,
   ORDERS_PATH,
@@ -23,23 +21,11 @@ import {
 // runtime. Run by `bun run screenshots`; output goes to /screenshots.
 
 const CONTROL: ControlSnapshot[] = [
-  { channel: IPC.connectionsList, response: [] },
-  { channel: IPC.connectionsCreate, args: CREATE_ARGS, response: SUMMARY },
+  { channel: IPC.connectionsList, response: [SUMMARY] },
   ...ACME.control,
 ];
 
 async function connectAndExpand(page: Page): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', CONNECTION_NAME);
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '5432');
-  await page.fill('[data-testid="connection-database"]', 'acme_shop');
-  await page.fill('[data-testid="connection-username"]', 'shop_app');
-  await page.click('[data-testid="color-blue"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
-
   const row = connectionRow(page);
   await expect(row).toBeVisible();
   await openRowMenu(page, '');
@@ -173,7 +159,10 @@ test('studio api request', async ({ relaunch, consoleErrors }) => {
   };
   const { window: page } = await relaunch({
     ...CAPTURE_LAUNCH,
-    control: [{ channel: IPC.httpSend, response }],
+    control: [
+      { channel: IPC.apiConfigView, response: { files: [], secrets: [] } },
+      { channel: IPC.httpSend, response },
+    ],
   });
   await openHttpModeAndNewRequest(page);
   await page.fill('[data-testid="http-url"]', 'https://api.acme.example/v1/orders/4217');

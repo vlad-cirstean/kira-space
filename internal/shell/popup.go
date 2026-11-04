@@ -17,7 +17,7 @@ func PopupOptions(sec SecurityOptions, key string, cfg Config, spec PopupSpec, s
 		Title:            cfg.WindowTitle,
 		Width:            spec.Width,
 		Height:           spec.Height,
-		BackgroundColour: application.NewRGB(24, 24, 24),
+		BackgroundColour: application.NewRGB(22, 22, 24),
 		URL:              "/?window=" + key,
 		Name:             key,
 		Permissions:      sec.Permissions,

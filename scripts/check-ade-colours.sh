@@ -17,50 +17,50 @@ export LC_ALL=C
 # Lines starting with `;` are group comments.
 grep -v '^;' >"$TMP/allow.raw" <<'EOF'
 ; tone tint, text, solid (`TONE`, tones.ts)
-rgba(232,163,61,0.14)
-#f0b85c
-#e8a33d
-rgba(239,107,91,0.14)
-#f28b7d
-#ef6b5b
-rgba(108,197,138,0.14)
-#7fd49b
-#6cc58a
-rgba(122,167,255,0.14)
-#93b6ff
-#7aa7ff
-rgba(163,113,247,0.16)
-#c3a3fb
-#a371f7
-#23252b
-#b4b6bd
-#6b6f7a
+rgba(203,146,63,0.14)
+#e5b473
+#cb923f
+rgba(223,128,114,0.14)
+#f7a599
+#df8072
+rgba(92,180,123,0.14)
+#8ad1a0
+#5cb47b
+rgba(118,157,233,0.14)
+#9cbeff
+#769de9
+rgba(128,93,192,0.16)
+#c5b0f6
+#805dc0
+#232327
+#babec4
+#7d8088
 ; Claude launch button solid (`CLAUDE_SOLID`, tones.ts)
 #d97757
 ; ink on a tone solid (`TONE_INK`)
 #15161a
 #ffffff
 ; work palette (`PALETTE`, palette.ts)
-#e07a4f
-#e3a53c
-#c9c23a
-#8cc152
-#4db86c
-#35b5a0
-#38a8cc
-#4a8ee6
-#6e79ea
-#9a6ee2
-#c566d8
-#e062a8
-#e35f79
-#b88458
-#94a35a
-#58a08e
-#7b92b8
-#a57ec0
-#d58c8c
-#a3aab4
+#d38261
+#d2a155
+#b4b04d
+#90ba66
+#64b477
+#57b1a0
+#56a6c2
+#5a8fd5
+#727ed7
+#9676d1
+#bc72cb
+#d36fa4
+#d56c7e
+#b18765
+#95a269
+#669d8e
+#8092b0
+#a182b7
+#cc9191
+#a4aab2
 EOF
 sort -u "$TMP/allow.raw" >"$TMP/allow"
 

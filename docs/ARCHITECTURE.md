@@ -46,7 +46,7 @@ whatever sandbox a session happens to be in),
 - P60b removed the nine @codemirror/* packages plus @lezer/highlight, which had been eagerly bundled into the main chunk, cutting index-*.js from 1 723.09 kB raw / 520.66 kB gzip to 1 307.65 kB raw / 384.15 kB gzip.
 - After the P98-P112 frontend-library migration (Pinia, TanStack Query, shadcn-vue, reka-ui) and P100 git-ui removal, index-*.js measures 1 339.31 kB raw / 355.29 kB gzip (v1.9 P109, bun run build:studio).
 - The UI uses Vue 3 with script setup and the Composition API in VDOM mode; Vapor mode was evaluated and declined in P6.
-- Styling uses Tailwind v4 with CSS-first config; tokens mirror VS Code Dark Modern.
+- Styling uses Tailwind v4 with CSS-first config; the flat zinc dark palette; `packages/theme/src/tokens.css` is its only colour source.
 - Dynamic colours must be Record<Enum,string> class maps of full literals, never template-built class names, because Tailwind emits only scanned literals.
 - ADE tones are @theme tokens in ade/v2/tones.css.
 - Every palette colour mark must go through colorMarkClass(mark, color) in packages/theme/src/connColor.ts: rail on left-panel rows, bar on tabs, dot inline, band under view toolbars; no colour leaves the slot empty, and a dot shows a ring. The rail is 4px (`w-1`).

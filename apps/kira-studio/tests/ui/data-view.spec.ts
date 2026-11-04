@@ -1538,7 +1538,7 @@ test('data view — pagination, count, projection, sort, filter, search, stop, N
 
   // --- stop: a real mid-flight cancellation, previous page stays on screen -------------------
   const firstBeforeStop = await firstGutterNumber(page);
-  // P110 I2-4: RunState.vue's TONE lookup — while running, the label reads --kira-info (#3794ff),
+  // P110 I2-4: RunState.vue's TONE lookup — while running, the label reads --kira-info (#69a1e8),
   // not the idle text-subtle colour. `toolbar-stop`'s enabled state is a local, optimistic flag
   // independent of opsStore, and this mocked `ui` tier never fires real control.onOpUpdate pushes
   // (tests/ui/interaction.spec.ts's own header comment documents this as a hard, structural gap) —
@@ -1563,7 +1563,7 @@ test('data view — pagination, count, projection, sort, filter, search, stop, N
   });
   await expect(page.locator('[data-testid="run-state"]').first()).toHaveCSS(
     'color',
-    'rgb(55, 148, 255)',
+    'rgb(105, 161, 232)',
   );
   // Close out the synthetic record so it doesn't linger as "running" once the real stop-flow below
   // clears the optimistic rt.opId — opsStore only updates on the next matching-id push.

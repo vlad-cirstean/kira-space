@@ -162,9 +162,9 @@ test('a disabled Call button dims via opacity, not an unreadable label on a full
     const style = getComputedStyle(el as HTMLElement);
     return { color: style.color, opacity: style.opacity };
   });
-  // rgb(110, 110, 110) is --kira-fg-disabled — the pre-D3 defect kept this on the full accent
+  // rgb(99, 99, 107) is --kira-fg-disabled — the pre-D3 defect kept this on the full accent
   // fill. Post-D3 the label stays --kira-accent-fg and the whole control dims via opacity.
-  expect(color).not.toBe('rgb(110, 110, 110)');
+  expect(color).not.toBe('rgb(99, 99, 107)');
   expect(Number.parseFloat(opacity)).toBeLessThan(1);
 });
 
@@ -412,7 +412,7 @@ test('the request body: a resolved {{variable}} has a colour of its own, hovers,
   await expect(resolvedSpan).toHaveCount(1);
   await expect(unknownSpan).toHaveCount(1);
 
-  // --kira-var-resolved (#4ec9b0) vs --kira-warn (#cca700) vs --kira-syntax-property (#9cdcfe,
+  // --kira-var-resolved (#64bead) vs --kira-warn (#d5b449) vs --kira-syntax-property (#93c6e8,
   // what the "base"/"missing" JSON keys beside them are painted in) — three distinct colours, not
   // the two the resolved reference used to share with its own JSON key. monacoTheme.ts's own token
   // rules generate opaque `mtk*` class names rather than semantic ones (the same reason
@@ -421,8 +421,8 @@ test('the request body: a resolved {{variable}} has a colour of its own, hovers,
   // `toHaveCSS`/`expect.poll` (auto-retrying), not a one-shot `evaluate()`: Monaco's own debounced
   // marker pass (`scheduleLint`, independent of these decorations) can re-render `.view-lines`'
   // span DOM shortly after mount, and a plain `evaluate()` can catch that mid-churn.
-  await expect(resolvedSpan).toHaveCSS('color', 'rgb(78, 201, 176)');
-  await expect(unknownSpan).toHaveCSS('color', 'rgb(204, 167, 0)');
+  await expect(resolvedSpan).toHaveCSS('color', 'rgb(100, 190, 173)');
+  await expect(unknownSpan).toHaveCSS('color', 'rgb(213, 180, 73)');
   let keyColor = '';
   const readKeyColor = (): Promise<string> =>
     body.evaluate((el) => {
@@ -999,8 +999,8 @@ test('a method is coloured text on a neutral ground, not a tinted fill (D7)', as
       return { color: style.color, backgroundColor: style.backgroundColor };
     });
     // A neutral background: fully transparent, or the select's own --kira-bg-input ground
-    // (#313131) — never a color-mix tint of the method colour.
-    expect(['rgba(0, 0, 0, 0)', 'rgb(49, 49, 49)']).toContain(backgroundColor);
+    // (#27272c) — never a color-mix tint of the method colour.
+    expect(['rgba(0, 0, 0, 0)', 'rgb(39, 39, 44)']).toContain(backgroundColor);
     // The method's own colour still reaches the label — not the muted/neutral foreground a plain
     // select or chip would otherwise use.
     expect(color).not.toBe('rgba(0, 0, 0, 0)');

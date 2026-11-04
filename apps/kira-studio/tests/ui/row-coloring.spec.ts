@@ -13,7 +13,7 @@ import {
 import { expandRow, findRow, openRowMenu } from './support/tree';
 
 // appearance.rowColoring, and the string/uuid colour drop from icons.ts's CATEGORY_COLOR
-// (verified by scenario 1 below — before that change `hash` read #ce9178, not --kira-fg).
+// (verified by scenario 1 below — before that change `hash` read #d29a7e, not --kira-fg).
 // bigRowsFixture's page is the minimal shape that distinguishes all three states: `id` is
 // typeClass 'number' (colours), `hash` is typeClass 'text' (plain).
 
@@ -21,8 +21,8 @@ const CONNECTION_ID = 'conn-row-coloring';
 const CONNECTION_SUMMARY = postgresConnectionSummary(CONNECTION_ID, 'Row Coloring DB', 'blue');
 const FIXTURE = bigRowsFixture(CONNECTION_ID);
 
-const NUMBER_COLOR = 'rgb(181, 206, 168)'; // --kira-syntax-number, #b5cea8
-const PLAIN_COLOR = 'rgb(204, 204, 204)'; // --kira-fg, #cccccc
+const NUMBER_COLOR = 'rgb(180, 199, 158)'; // --kira-syntax-number, #b4c79e
+const PLAIN_COLOR = 'rgb(212, 212, 216)'; // --kira-fg, #d4d4d8
 
 const CONNECTION_CREATE_SNAPSHOT: ControlSnapshot = {
   channel: IPC.connectionsCreate,
@@ -87,7 +87,7 @@ test('colouring on (default boot) — a number column is coloured, a text column
   });
   await connectAndOpenBigRows(page);
   await expect.poll(() => computedColor(page, 'id')).toBe(NUMBER_COLOR);
-  // The C1 guard: before C1 this read rgb(206, 145, 120) (--kira-syntax-string, #ce9178).
+  // The C1 guard: before C1 this read rgb(210, 154, 126) (--kira-syntax-string, #d29a7e).
   expect(await computedColor(page, 'hash')).toBe(PLAIN_COLOR);
 });
 
