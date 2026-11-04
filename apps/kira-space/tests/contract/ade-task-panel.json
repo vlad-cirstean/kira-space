@@ -16,18 +16,6 @@
       {
         "createdAt": 0,
         "id": "<masked>",
-        "kind": "changeRequest",
-        "ref": "<masked>",
-        "repo": "",
-        "sessionId": "",
-        "source": "user",
-        "status": "",
-        "title": "api!8",
-        "url": "https://forge.test/acme/api/-/merge_requests/8"
-      },
-      {
-        "createdAt": 0,
-        "id": "<masked>",
         "kind": "branch",
         "ref": "<masked>",
         "repo": "api",
@@ -60,18 +48,6 @@
         "status": "",
         "title": "Other docs",
         "url": "https://wiki.example/other"
-      },
-      {
-        "createdAt": 0,
-        "id": "<masked>",
-        "kind": "link",
-        "ref": "<masked>",
-        "repo": "",
-        "sessionId": "",
-        "source": "user",
-        "status": "",
-        "title": "docs.example/guide/start",
-        "url": "https://docs.example/guide/start/"
       }
     ],
     "gaps": []

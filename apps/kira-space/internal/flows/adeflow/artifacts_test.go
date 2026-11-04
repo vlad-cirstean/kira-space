@@ -220,20 +220,16 @@ func TestTaskArtifacts(t *testing.T) {
 	}
 
 	// 4. The bridge adds a user row, removes one, and refuses a detected id.
-	add := adewire.AddArtifactArgs{TaskID: f.taskID, Kind: "link", Title: "Runbook", URL: "https://wiki.example/runbook"}
-	app.Contract(t, "ade-artifacts", "args:AdeTaskService.AddArtifact", add)
-	added, err := app.W.AdeTask.AddArtifact(ctx, add)
-	if err != nil || added.ID == "" || added.Source != "user" {
-		t.Fatalf("AddArtifact = %+v, %v", added, err)
+	add := adewire.AddLinkArgs{TaskID: f.taskID, Text: "Runbook https://wiki.example/runbook"}
+	app.Contract(t, "ade-artifacts", "args:AdeTaskService.AddLink", add)
+	added, err := app.W.AdeTask.AddLink(ctx, add)
+	if err != nil || added.Artifact == nil || added.Artifact.ID == "" || added.Artifact.Source != "user" {
+		t.Fatalf("AddLink = %+v, %v", added, err)
 	}
-	app.Contract(t, "ade-artifacts", "AdeTaskService.AddArtifact", added, artMask)
-	for _, bad := range []adewire.AddArtifactArgs{
-		{TaskID: f.taskID, Kind: "branch", Title: "b", Ref: "b"},
-		{TaskID: f.taskID, Kind: "doc", Title: "x"},
-		{TaskID: f.taskID, Kind: "link", Title: "x", URL: "ftp://x.example/f"},
-	} {
-		if _, err := app.W.AdeTask.AddArtifact(ctx, bad); err == nil {
-			t.Fatalf("AddArtifact accepted %+v", bad)
+	app.Contract(t, "ade-artifacts", "AdeTaskService.AddLink", added, artMask)
+	for _, bad := range []string{"plain words", "ftp://x.example/f", "https://a.example https://b.example"} {
+		if _, err := app.W.AdeTask.AddLink(ctx, adewire.AddLinkArgs{TaskID: f.taskID, Text: bad}); err == nil {
+			t.Fatalf("AddLink accepted %q", bad)
 		}
 	}
 	rm := adewire.RemoveArtifactArgs{TaskID: f.taskID, ID: doc.ID}
@@ -304,8 +300,8 @@ func TestTaskArtifacts(t *testing.T) {
 	if _, ok := findArtifact(arch, "link", "Runbook"); !ok {
 		t.Fatal("archived task lost its stored rows")
 	}
-	if _, err := app.W.AdeTask.AddArtifact(ctx, add); err == nil {
-		t.Fatal("AddArtifact accepted an archived task")
+	if _, err := app.W.AdeTask.AddLink(ctx, add); err == nil {
+		t.Fatal("AddLink accepted an archived task")
 	}
 	app.Contract(t, "ade-artifacts", "AdeTaskService.Artifacts#archived", arch, artMask)
 }

@@ -22,7 +22,6 @@ const (
 	tpScenario = "ade-task-panel"
 	tpRunbook  = "https://wiki.example/runbook"
 	tpOther    = "https://wiki.example/other"
-	tpMR       = "https://forge.test/acme/api/-/merge_requests/8"
 )
 
 var tpMask = flowharness.Mask("id", "createdAt", "updatedAt", "taskId", "ref")
@@ -122,35 +121,26 @@ func TestTaskPanelOrigins(t *testing.T) {
 	app.Contract(t, tpScenario, "AdeTaskService.Handovers", adewire.HandoversResult{Handovers: hs}, tpMask)
 
 	// A user add of a reported URL keeps the agent origin; another URL has none.
-	kept, err := app.W.AdeTask.AddArtifact(ctx, adewire.AddArtifactArgs{TaskID: task.ID, Kind: "link", Title: "Runbook", URL: tpRunbook})
-	if err != nil || kept.SessionID != first.SessionID {
-		t.Fatalf("re-add = %+v, %v, want sessionId %q kept", kept, err, first.SessionID)
+	keptRes, err := app.W.AdeTask.AddLink(ctx, adewire.AddLinkArgs{TaskID: task.ID, Text: "Runbook " + tpRunbook})
+	if kept := keptRes.Artifact; err != nil || kept == nil || kept.SessionID != first.SessionID {
+		t.Fatalf("re-add = %+v, %v, want sessionId %q kept", keptRes, err, first.SessionID)
 	}
-	other, err := app.W.AdeTask.AddArtifact(ctx, adewire.AddArtifactArgs{TaskID: task.ID, Kind: "link", Title: "Other", URL: tpOther})
-	if err != nil || other.SessionID != "" || other.Source != "user" {
-		t.Fatalf("user add = %+v, %v, want no session", other, err)
-	}
-
-	// An empty title takes the host link ref, and the kind follows the link.
-	mr, err := app.W.AdeTask.AddArtifact(ctx, adewire.AddArtifactArgs{TaskID: task.ID, Kind: "link", Title: "", URL: tpMR})
-	if err != nil || mr.Kind != "changeRequest" || mr.Title == "" || mr.Title != mr.Ref {
-		t.Fatalf("empty-title add = %+v, %v, want the ref as title and kind changeRequest", mr, err)
-	}
-	plain, err := app.W.AdeTask.AddArtifact(ctx, adewire.AddArtifactArgs{TaskID: task.ID, Kind: "link", Title: "", URL: "https://docs.example/guide/start/"})
-	if err != nil || plain.Kind != "link" || plain.Title != "docs.example/guide/start" {
-		t.Fatalf("plain empty-title add = %+v, %v, want the host and path as title", plain, err)
+	otherRes, err := app.W.AdeTask.AddLink(ctx, adewire.AddLinkArgs{TaskID: task.ID, Text: "Other " + tpOther})
+	other := otherRes.Artifact
+	if err != nil || other == nil || other.SessionID != "" || other.Source != "user" {
+		t.Fatalf("user add = %+v, %v, want no session", otherRes, err)
 	}
 
-	// Rename a stored row; a detected id and an empty title refuse.
-	renamed, err := app.W.AdeTask.UpdateArtifact(ctx, adewire.UpdateArtifactArgs{TaskID: task.ID, ID: other.ID, Title: "  Other docs  "})
-	if err != nil || renamed.Title != "Other docs" || renamed.ID != other.ID {
-		t.Fatalf("UpdateArtifact = %+v, %v", renamed, err)
+	// Rename a stored row; a detected id and an empty text refuse.
+	renamed, err := app.W.AdeTask.EditLink(ctx, adewire.EditLinkArgs{TaskID: task.ID, Slot: "stored", ID: other.ID, Text: "  Other docs  "})
+	if err != nil || renamed.Artifact == nil || renamed.Artifact.Title != "Other docs" || renamed.Artifact.ID != other.ID {
+		t.Fatalf("EditLink = %+v, %v", renamed, err)
 	}
-	if _, err := app.W.AdeTask.UpdateArtifact(ctx, adewire.UpdateArtifactArgs{TaskID: task.ID, ID: br.ID, Title: "x"}); err == nil {
-		t.Fatal("UpdateArtifact accepted a detected id")
+	if _, err := app.W.AdeTask.EditLink(ctx, adewire.EditLinkArgs{TaskID: task.ID, Slot: "stored", ID: br.ID, Text: "x"}); err == nil {
+		t.Fatal("EditLink accepted a detected id")
 	}
-	if _, err := app.W.AdeTask.UpdateArtifact(ctx, adewire.UpdateArtifactArgs{TaskID: task.ID, ID: other.ID, Title: "  "}); err == nil {
-		t.Fatal("UpdateArtifact accepted an empty title")
+	if _, err := app.W.AdeTask.EditLink(ctx, adewire.EditLinkArgs{TaskID: task.ID, Slot: "stored", ID: other.ID, Text: "  "}); err == nil {
+		t.Fatal("EditLink accepted an empty text")
 	}
 	app.Contract(t, tpScenario, "AdeTaskService.Artifacts", artifactsOf(t, app, task.ID), tpMask)
 
