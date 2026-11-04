@@ -44,7 +44,7 @@ The file holds host, port, database, username, URI mode, the read-only guard, th
 - **Paste credentials…**: paste key/value lines, `.env` lines or a `psql` or `mysql` style command. Review what the app recognised, then apply.
 - **Bad edit**: the connection keeps its last valid version. The tree row shows the error line.
 
-Passwords and URIs never sit in the file. The file holds a reference such as `${secret:local.password}`. Set the value in the **Secrets** section of the file dialog. Values are write-only: **Reveal** asks to confirm before it shows one.
+Passwords and URIs never sit in the file. The file holds a reference such as `${secret:local.password}`. Set the value in the **Secrets** section of the file dialog. Values are write-only: the eye on a saved field asks to confirm before it shows one.
 
 Saved credentials are encrypted at rest in the macOS Keychain. Touch ID or the system password confirms a reveal of a saved password.
 
