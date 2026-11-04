@@ -615,14 +615,20 @@ func (b *TaskBoard) LaunchStep(ctx context.Context, args adewire.LaunchStepArgs)
 	if err := b.snapshotWorkflow(&tc.task); err != nil {
 		return adewire.Launch{}, err
 	}
-	lines, cwd, extra, err := b.launchDirs(ctx, tc)
+	var lines []repoLine
+	var cwd string
+	var extra []string
+	if !step.OutsideRepo {
+		lines, cwd, extra, err = b.launchDirs(ctx, tc)
+	}
 	folder := ""
-	if errors.Is(err, errNoRepo) { // a task with no repo yet: the session works in the task folder
+	if step.OutsideRepo || errors.Is(err, errNoRepo) { // outside the repos, or a task with no repo yet: the session works in the task folder
 		lines, extra = nil, nil
 		if cwd, err = b.taskDir(tc.task.ID); err != nil {
 			return adewire.Launch{}, err
 		}
 		folder = cwd
+		err = nil
 	}
 	if err != nil {
 		return adewire.Launch{}, err

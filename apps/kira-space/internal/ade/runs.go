@@ -175,7 +175,10 @@ func (b *TaskBoard) plan(tc *taskCtx) ([]stepView, error) {
 	out := make([]stepView, len(steps))
 	for i, def := range steps {
 		v := stepView{Def: def, Runs: map[string]model.AdeRun{}}
-		if !def.manual() {
+		switch {
+		case def.OutsideRepo && !def.manual():
+			v.Targets = []string{taskTarget}
+		case !def.manual():
 			if v.Targets, v.TargetErr = stepTargets(def.RunsOn, def.Kind == adewire.KindReview, tc.mine); v.TargetErr != nil {
 				v.Targets = nil
 			}
@@ -324,7 +327,7 @@ func (b *TaskBoard) StartRun(ctx context.Context, args adewire.StartRunArgs) (ad
 	if plan[cur].TargetErr != nil {
 		return adewire.StartRunResult{}, invalid("step %q: %v", plan[cur].Def.Name, plan[cur].TargetErr)
 	}
-	paths, err := b.prepareWorktrees(ctx, tc, args.BranchNames, plan[cur].Def.Kind == adewire.KindAgent || plan[cur].Def.SmartScript != "")
+	paths, err := b.prepareStepWorktrees(ctx, tc, plan[cur].Def, args.BranchNames)
 	if err != nil {
 		return adewire.StartRunResult{}, err
 	}
@@ -351,6 +354,14 @@ func (b *TaskBoard) checkBranchNames(tc *taskCtx, names map[string]string) error
 		}
 	}
 	return nil
+}
+
+// prepareStepWorktrees prepares the worktrees a step starts in; an outside-repo step uses none.
+func (b *TaskBoard) prepareStepWorktrees(ctx context.Context, tc *taskCtx, def stepDef, names map[string]string) (map[string]string, error) {
+	if def.OutsideRepo {
+		return map[string]string{}, nil
+	}
+	return b.prepareWorktrees(ctx, tc, names, def.Kind == adewire.KindAgent || def.SmartScript != "")
 }
 
 // prepareWorktrees makes every mine branch's worktree exist and starts a setup in each new one. When the
@@ -571,6 +582,7 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 	running := model.AdeRunRunning
 	patch := model.AdeRunPatch{State: &running, StartedAt: &now, Note: &note, Launch: &model.AdeRunLaunch{}}
 	vars := b.runVarsFor(tc, sb, path)
+	vars.Outside = def.OutsideRepo
 
 	var smart *smartStep
 	runPath := path
@@ -1224,7 +1236,7 @@ func (b *TaskBoard) advanceLocked(ctx context.Context, taskID string) {
 	switch act := nextAction(plan, entry); act.Kind {
 	case actStart:
 		def := plan[act.Step].Def
-		paths, err := b.prepareWorktrees(ctx, tc, nil, def.Kind == adewire.KindAgent || def.SmartScript != "")
+		paths, err := b.prepareStepWorktrees(ctx, tc, def, nil)
 		if err != nil {
 			slog.Warn("ade: prepare worktrees", "scope", "ade", "task", taskID, "err", err)
 			return
