@@ -35,6 +35,12 @@ const (
 	artifactBranch = "branch"
 )
 
+// userArtifactKind reports whether the user may file a stored row under kind: the agent-reportable
+// kinds plus branch.
+func userArtifactKind(kind string) bool {
+	return kind == artifactBranch || agentmcp.ReportableArtifactKind(kind)
+}
+
 // ArtifactSource is one supplier of a task's artifacts. Built-ins cover task links, repos and stored
 // rows; TaskBoardDeps.ArtifactSources appends more. A returned error or a missed deadline becomes a
 // gap named Name; artifacts returned beside it are kept.
@@ -395,13 +401,13 @@ func (b *TaskBoard) normalizeArtifact(in agentmcp.ArtifactInput) agentmcp.Artifa
 
 // storeArtifacts validates and upserts a batch under the task lock; nothing is written when any item
 // or the task's cap refuses. The refusal is an ErrInvalidInput.
-func (b *TaskBoard) storeArtifacts(taskID, source, stepID, runID, sessionID string, in []agentmcp.ArtifactInput) ([]model.AdeTaskArtifact, error) {
+func (b *TaskBoard) storeArtifacts(taskID, source, stepID, runID, sessionID string, kindOK func(string) bool, in []agentmcp.ArtifactInput) ([]model.AdeTaskArtifact, error) {
 	if n := len(in); n == 0 || n > agentmcp.MaxArtifactsPerCall {
 		return nil, invalid("artifacts needs 1 to %d entries.", agentmcp.MaxArtifactsPerCall)
 	}
 	clean := make([]agentmcp.ArtifactInput, len(in))
 	for i, a := range in {
-		c, msg := agentmcp.CleanArtifact(a)
+		c, msg := agentmcp.CleanArtifactAs(a, kindOK)
 		if msg != "" {
 			return nil, invalid("artifacts[%d]: %s", i, msg)
 		}
@@ -457,7 +463,7 @@ func (b *TaskBoard) storeArtifacts(taskID, source, stepID, runID, sessionID stri
 
 // ReportArtifacts records the artifacts an agent reports for its task.
 func (b *TaskBoard) ReportArtifacts(_ context.Context, call agentmcp.SpaceCall, in []agentmcp.ArtifactInput) (agentmcp.ReportArtifactsResult, error) {
-	rows, err := b.storeArtifacts(call.TaskID, model.AdeArtifactSourceAgent, call.StepID, call.RunID, call.SessionID, in)
+	rows, err := b.storeArtifacts(call.TaskID, model.AdeArtifactSourceAgent, call.StepID, call.RunID, call.SessionID, agentmcp.ReportableArtifactKind, in)
 	if err != nil {
 		if errors.Is(err, ErrInvalidInput) {
 			return agentmcp.ReportArtifactsResult{}, agentmcp.ToolError(trimInvalid(err))
@@ -495,7 +501,7 @@ func (b *TaskBoard) AddArtifact(_ context.Context, args adewire.AddArtifactArgs)
 	if title == "" {
 		title = b.pastedArtifactTitle(strings.TrimSpace(args.URL))
 	}
-	rows, err := b.storeArtifacts(args.TaskID, model.AdeArtifactSourceUser, "", "", "", []agentmcp.ArtifactInput{
+	rows, err := b.storeArtifacts(args.TaskID, model.AdeArtifactSourceUser, "", "", "", agentmcp.ReportableArtifactKind, []agentmcp.ArtifactInput{
 		{Kind: args.Kind, Title: title, URL: args.URL, Ref: args.Ref},
 	})
 	if err != nil {
