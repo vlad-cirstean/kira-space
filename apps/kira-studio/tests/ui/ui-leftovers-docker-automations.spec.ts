@@ -197,6 +197,7 @@ test('run file dialog: Escape on unsaved edits asks to discard first', async ({ 
   await page.locator('[data-testid="script-draft"]').dblclick();
   const dialog = page.locator('[data-testid="run-file-dialog"]');
   await expect(dialog).toBeVisible();
+  await dialog.locator('[data-testid="run-file-tab-yaml"]').click();
 
   await replaceCodeEditorText(
     page,

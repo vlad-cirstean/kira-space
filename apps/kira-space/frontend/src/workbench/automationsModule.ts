@@ -23,6 +23,7 @@ export function createAutomationsModule(): AutomationsModuleContext {
   const layoutStore = useLayoutStore();
 
   return {
+    chooseFolder: async (title) => (await control.filesChooseFolder(title)).path,
     defaultCwd: () => terminalsStore.terminalDefaults.cwd,
     openTerminalTab: (opts) => {
       openTerminalTab({
@@ -60,6 +61,7 @@ export function createAutomationsModule(): AutomationsModuleContext {
       list: (limit, taskId) => control.scriptRunsList(limit, taskId),
       stop: (id) => control.scriptRunsStop(id),
       resolveDir: (scriptId) => control.scriptRunsResolveDir(scriptId),
+      mcpServers: () => control.scriptRunsMcpServers(),
       onChanged: (cb) => control.onScriptRunsChanged(cb),
       preview: (args) => control.scriptRunsPreview(args),
       start: (args, hash) => control.scriptRunsStart(args, hash),
@@ -95,6 +97,7 @@ export function createAutomationsModule(): AutomationsModuleContext {
       remove: (id) => customScriptsStore.removeCustomScript(id),
       readFile: (file) => customScriptsStore.readFile(file),
       saveFile: (file, text, baseHash) => customScriptsStore.saveFile(file, text, baseHash),
+      form: (file, text, edits) => customScriptsStore.form(file, text, edits),
       setSecrets: (id, values) => customScriptsStore.setSecrets(id, values),
       setScheduleTarget: (id, taskId, branchId) =>
         customScriptsStore.setScheduleTarget(id, taskId, branchId),

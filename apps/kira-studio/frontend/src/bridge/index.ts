@@ -101,8 +101,10 @@ import type {
 import type {
   CustomScript,
   CustomScriptFields,
+  RunFormResult,
   ScriptDir,
   ScriptFileView,
+  ScriptMcpServerList,
   ScriptsSnapshot,
   SecretValues,
 } from '@shared/domain/scripts';
@@ -120,6 +122,7 @@ import { createCoreControl } from '@workbench/bridge/createCoreControl';
 import { logWarn } from '@workbench/bridge/log';
 import { createOpenExternal } from '@workbench/bridge/openExternal';
 import { on, trust, unwrap, windowKey } from '@workbench/bridge/rpc';
+import type { FormEdit } from '@workbench/config/configForm';
 import type { Settings, SettingsPatch } from '../state/settingsDomain';
 import type { TabRecord } from '../state/tabDomain';
 import { apiControl } from './apiControl';
@@ -564,6 +567,14 @@ const studioControl = {
     unwrap(CustomScriptsService.SaveFile({ file, text, baseHash })).then((r) =>
       trust<ScriptFileView>(r),
     ),
+  customScriptsForm: (file: string, text: string, edits: FormEdit[]): Promise<RunFormResult> =>
+    unwrap(
+      CustomScriptsService.Form({
+        file,
+        text,
+        edits: edits.map((e) => ({ path: e.path, value: e.value ?? null, unset: e.unset })),
+      }),
+    ).then((r) => trust<RunFormResult>(r)),
   customScriptsSetSecrets: (id: string, values: SecretValues): Promise<CustomScript> =>
     unwrap(CustomScriptsService.SetSecrets({ id, values })).then((r) => trust<CustomScript>(r)),
   customScriptsReorder: (collection: string, ids: string[]): Promise<void> =>
@@ -584,6 +595,8 @@ const studioControl = {
   scriptRunsStop: (id: string): Promise<void> => unwrap(ScriptRunsService.Stop({ id })),
   scriptRunsResolveDir: (scriptId: string): Promise<ScriptDir> =>
     unwrap(ScriptRunsService.ResolveDir({ scriptId })).then((r) => trust<ScriptDir>(r)),
+  scriptRunsMcpServers: (): Promise<ScriptMcpServerList> =>
+    unwrap(ScriptRunsService.McpServers()).then((r) => trust<ScriptMcpServerList>(r)),
   onScriptRunsChanged: (cb: (run: ScriptRun) => void): (() => void) =>
     on(CHANNEL.scriptRunsChanged, (r) => cb(trust<ScriptRun>(r))),
   scriptRunsPreview: (args: ScriptRunArgs): Promise<ScriptRunPreview> =>

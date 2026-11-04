@@ -44,6 +44,8 @@ export function useConfigFormDraft<V extends object>(opts: ConfigFormDraftOption
   const model = ref<V | null>(null);
   const problem = ref<FormProblem | null>(null);
   const conflict = ref(false);
+  // The draft text as loaded or typed in YAML does not decode: the form has nothing to show.
+  const undecodable = ref(false);
 
   let baseline: V | null = null;
   let chain: Promise<void> = Promise.resolve();
@@ -69,9 +71,13 @@ export function useConfigFormDraft<V extends object>(opts: ConfigFormDraftOption
       const text = draft.value;
       try {
         const result = await opts.form(text, []);
-        if (mine === decodeSeq && draft.value === text) adopt(result);
+        if (mine === decodeSeq && draft.value === text) {
+          adopt(result);
+          undecodable.value = result.problem !== null;
+        }
       } catch (err) {
         problem.value = { line: 0, message: errorText(err) };
+        undecodable.value = true;
       }
     });
   }
@@ -155,7 +161,7 @@ export function useConfigFormDraft<V extends object>(opts: ConfigFormDraftOption
   const canSave = computed(
     () => dirty.value && !saving.value && !(tab.value === 'form' && problem.value),
   );
-  const formDisabled = computed(() => problem.value !== null);
+  const formDisabled = computed(() => undecodable.value);
 
   function discard(): Promise<void> {
     return resetTo(toValue(opts.file));

@@ -16,7 +16,7 @@ import AdeWorkflowYaml from './AdeWorkflowYaml.vue';
 const AdeWorkflowGraph = defineAsyncComponent(() => import('./AdeWorkflowGraph.vue'));
 const modeItems = [
   { value: 'graph', label: t('common.graph.label'), testid: 'ade-wf-mode-graph' },
-  { value: 'yaml', label: t('space.ade.workflows.editor.yaml.label'), testid: 'ade-wf-mode-yaml' },
+  { value: 'yaml', label: t('common.yaml.label'), testid: 'ade-wf-mode-yaml' },
 ];
 const props = defineProps<{ entry: WorkflowEntry }>();
 const wfUi = useAdeWorkflowsUiStore();

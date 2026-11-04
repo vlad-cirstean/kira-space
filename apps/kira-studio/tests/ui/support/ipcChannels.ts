@@ -174,6 +174,7 @@ export const IPC = {
   customScriptsDelete: 'kira:customScripts:delete',
   customScriptsFile: 'kira:customScripts:file',
   customScriptsSaveFile: 'kira:customScripts:saveFile',
+  customScriptsForm: 'kira:customScripts:form',
   customScriptsSetSecrets: 'kira:customScripts:setSecrets',
   customScriptsReorder: 'kira:customScripts:reorder',
   customScriptsReorderCollections: 'kira:customScripts:reorderCollections',

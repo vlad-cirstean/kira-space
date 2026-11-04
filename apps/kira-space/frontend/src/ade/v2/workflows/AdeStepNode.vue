@@ -141,9 +141,7 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
           t('space.ade.needs.kind.approval.label')
         }}</span
       >
-      <span v-if="step.smartScript" class="shrink-0 text-info">{{
-        t('space.ade.workflows.stepNode.smart.label')
-      }}</span>
+      <span v-if="step.smartScript" class="shrink-0 text-info">{{ t('common.smart.label') }}</span>
       <span
         v-if="step.outsideRepo"
         class="shrink-0 text-muted-foreground"

@@ -36,11 +36,22 @@ func TestRunsForm(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	read, err := cs.Form(bridge.CustomScriptsFormArgs{File: "ship.yaml", Text: view.Text})
+	app.Contract(t, "runs-form", "file#read", view, runsMasks...)
+	readArgs := bridge.CustomScriptsFormArgs{File: "ship.yaml", Text: view.Text, Edits: []configfs.Edit{}}
+	app.Contract(t, "runs-form", "args:CustomScriptsService.Form#read", readArgs, runsMasks...)
+	read, err := cs.Form(readArgs)
 	if err != nil || read.Problem != nil || read.Text != formRunYAML {
 		t.Fatalf("Form without edits = %+v, %v, want the text unchanged and no problem", read, err)
 	}
 	app.Contract(t, "runs-form", "form#read", read, runsMasks...)
+
+	renameArgs := bridge.CustomScriptsFormArgs{File: "ship.yaml", Text: view.Text, Edits: []configfs.Edit{{Path: []string{"name"}, Value: "Release"}}}
+	app.Contract(t, "runs-form", "args:CustomScriptsService.Form#rename", renameArgs, runsMasks...)
+	renamed, err := cs.Form(renameArgs)
+	if err != nil || renamed.Problem != nil || !strings.Contains(renamed.Text, "name: Release # shown in the panel") {
+		t.Fatalf("Form of one scalar = %+v, %v", renamed, err)
+	}
+	app.Contract(t, "runs-form", "form#renamed", renamed, runsMasks...)
 
 	args := bridge.CustomScriptsFormArgs{File: "ship.yaml", Text: view.Text, Edits: []configfs.Edit{
 		{Path: []string{"name"}, Value: "Release"},
@@ -48,7 +59,7 @@ func TestRunsForm(t *testing.T) {
 		{Path: []string{"params"}, Value: []any{map[string]any{"name": "token", "type": "text", "secret": true}}},
 		{Path: []string{"color"}, Unset: true},
 	}}
-	app.Contract(t, "runs-form", "args:CustomScriptsService.Form", args, runsMasks...)
+	app.Contract(t, "runs-form", "args:CustomScriptsService.Form#edited", args, runsMasks...)
 	res, err := cs.Form(args)
 	if err != nil || res.Problem != nil {
 		t.Fatalf("Form = %+v, %v", res, err)
@@ -66,6 +77,11 @@ func TestRunsForm(t *testing.T) {
 	}
 	app.Contract(t, "runs-form", "form#edited", res, runsMasks...)
 
+	saveArgs := bridge.CustomScriptsSaveFileArgs{File: "ship.yaml", Text: renamed.Text, BaseHash: view.Hash}
+	app.Contract(t, "runs-form", "args:CustomScriptsService.SaveFile", saveArgs, runsMasks...)
+	if _, err := cs.SaveFile(bridge.CustomScriptsSaveFileArgs{File: "ship.yaml", Text: renamed.Text, BaseHash: "stale"}); errCode(err) != "E_CONFLICT" {
+		t.Fatalf("SaveFile with a stale hash = %v, want E_CONFLICT", err)
+	}
 	saved, err := cs.SaveFile(bridge.CustomScriptsSaveFileArgs{File: "ship.yaml", Text: res.Text, BaseHash: view.Hash})
 	if err != nil || saved.Problem != nil || saved.Text != res.Text {
 		t.Fatalf("SaveFile = %+v, %v", saved, err)
@@ -86,16 +102,21 @@ func TestRunsForm(t *testing.T) {
 	}
 	app.Contract(t, "runs-form", "file#saved", back, runsMasks...)
 
-	yamlSide := strings.Replace(back.Text, "name: Release", "name: Rollout", 1)
-	changed, err := cs.Form(bridge.CustomScriptsFormArgs{File: "ship.yaml", Text: yamlSide})
+	yamlSide := strings.Replace(view.Text, "name: Ship", "name: Rollout", 1)
+	yamlArgs := bridge.CustomScriptsFormArgs{File: "ship.yaml", Text: yamlSide, Edits: []configfs.Edit{}}
+	app.Contract(t, "runs-form", "args:CustomScriptsService.Form#yaml", yamlArgs, runsMasks...)
+	changed, err := cs.Form(yamlArgs)
 	if err != nil || changed.Problem != nil || changed.Text != yamlSide {
 		t.Fatalf("Form of a YAML-side change = %+v, %v", changed, err)
 	}
 	if v, ok := changed.Value.(scripts.File); !ok || v.Name != "Rollout" {
 		t.Fatalf("decoded value = %#v, want name Rollout", changed.Value)
 	}
+	app.Contract(t, "runs-form", "form#yaml", changed, runsMasks...)
 
-	bad, err := cs.Form(bridge.CustomScriptsFormArgs{File: "ship.yaml", Text: back.Text + "  broken: [\n"})
+	badArgs := bridge.CustomScriptsFormArgs{File: "ship.yaml", Text: view.Text + "  broken: [\n", Edits: []configfs.Edit{}}
+	app.Contract(t, "runs-form", "args:CustomScriptsService.Form#bad", badArgs, runsMasks...)
+	bad, err := cs.Form(badArgs)
 	if err != nil || bad.Problem == nil || bad.Problem.Line == 0 || bad.Value != nil {
 		t.Fatalf("Form of bad text = %+v, %v, want a problem with a line and no value", bad, err)
 	}

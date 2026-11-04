@@ -109,6 +109,7 @@ export function registerSecretScenarios(env: Env): void {
     await page.locator('[data-testid="script-s1"]').click({ button: 'right' });
     await page.locator('[data-testid="menu-item-edit-file"]').click();
     await expect(dialog(page)).toBeVisible();
+    await dialog(page).locator('[data-testid="run-file-tab-yaml"]').click();
   }
 
   test('a saved secret is write-only: empty password field, Saved badge, Clear sends null', async ({

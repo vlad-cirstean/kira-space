@@ -177,6 +177,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   customScriptsDelete: 'CustomScriptsService.Delete',
   customScriptsFile: 'CustomScriptsService.File',
   customScriptsSaveFile: 'CustomScriptsService.SaveFile',
+  customScriptsForm: 'CustomScriptsService.Form',
   customScriptsSetSecrets: 'CustomScriptsService.SetSecrets',
   customScriptsReorder: 'CustomScriptsService.Reorder',
   customScriptsReorderCollections: 'CustomScriptsService.ReorderCollections',

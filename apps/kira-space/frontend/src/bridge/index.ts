@@ -76,8 +76,10 @@ import type {
 import type {
   CustomScript,
   CustomScriptFields,
+  RunFormResult,
   ScriptDir,
   ScriptFileView,
+  ScriptMcpServerList,
   ScriptsSnapshot,
   SecretValues,
 } from '@shared/domain/scripts';
@@ -86,6 +88,7 @@ import { scriptsSnapshotOf } from '@workbench/automations/createCustomScriptsSto
 import { createCoreControl } from '@workbench/bridge/createCoreControl';
 import { createOpenExternal } from '@workbench/bridge/openExternal';
 import { on, trust, unwrap, windowKey } from '@workbench/bridge/rpc';
+import type { FormEdit } from '@workbench/config/configForm';
 import type { AgentContextSaveArgs, AgentContextView } from '../ade/v2/context/types';
 import type {
   ExportApplyArgs,
@@ -153,6 +156,14 @@ const spaceControl = {
     unwrap(CustomScriptsService.SaveFile({ file, text, baseHash })).then((r) =>
       trust<ScriptFileView>(r),
     ),
+  customScriptsForm: (file: string, text: string, edits: FormEdit[]): Promise<RunFormResult> =>
+    unwrap(
+      CustomScriptsService.Form({
+        file,
+        text,
+        edits: edits.map((e) => ({ path: e.path, value: e.value ?? null, unset: e.unset })),
+      }),
+    ).then((r) => trust<RunFormResult>(r)),
   customScriptsSetSecrets: (id: string, values: SecretValues): Promise<CustomScript> =>
     unwrap(CustomScriptsService.SetSecrets({ id, values })).then((r) => trust<CustomScript>(r)),
   customScriptsSetScheduleTarget: (
@@ -181,6 +192,8 @@ const spaceControl = {
   scriptRunsStop: (id: string): Promise<void> => unwrap(ScriptRunsService.Stop({ id })),
   scriptRunsResolveDir: (scriptId: string): Promise<ScriptDir> =>
     unwrap(ScriptRunsService.ResolveDir({ scriptId })).then((r) => trust<ScriptDir>(r)),
+  scriptRunsMcpServers: (): Promise<ScriptMcpServerList> =>
+    unwrap(ScriptRunsService.McpServers()).then((r) => trust<ScriptMcpServerList>(r)),
   onScriptRunsChanged: (cb: (run: ScriptRun) => void): (() => void) =>
     on(CHANNEL.scriptRunsChanged, (r) => cb(trust<ScriptRun>(r))),
   scriptRunsPreview: (args: ScriptRunArgs): Promise<ScriptRunPreview> =>

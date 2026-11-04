@@ -13,15 +13,18 @@ import type {
 import type {
   CustomScript,
   CustomScriptFields,
+  RunFormResult,
   ScriptCollection,
   ScriptDir,
   ScriptFileProblem,
   ScriptFileView,
+  ScriptMcpServerList,
   SecretValues,
 } from '@shared/domain/scripts';
 import type { SecretStorageStatus } from '@shared/domain/secrets';
 import type { ScriptRunTabState } from '@shared/domain/tabs';
 import { type ComputedRef, computed, type InjectionKey, inject } from 'vue';
+import type { FormEdit } from '../config/configForm';
 import type { TerminalLaunch } from '../state/createTerminalTabs';
 import type { TerminalHostDeps } from '../terminal/terminalHost';
 
@@ -45,6 +48,8 @@ export interface ScriptsSeam {
   readFile(file: string): Promise<ScriptFileView>;
   /** `baseHash` is the hash of the text the editor loaded; a file changed since answers E_CONFLICT. */
   saveFile(file: string, text: string, baseHash: string): Promise<ScriptFileView>;
+  /** Applies form edits to a draft text and decodes it; nothing is written. */
+  form(file: string, text: string, edits: FormEdit[]): Promise<RunFormResult>;
   /** A string saves, null clears, an absent name keeps. Write-only: no read returns a value. */
   setSecrets(id: string, values: SecretValues): Promise<void>;
   /** Kira Space: the ADE task and branch a schedule runs in. Absent in Kira Studio. */
@@ -61,6 +66,8 @@ export interface ScriptRunsSeam {
   stop(id: string): Promise<void>;
   /** Where a saved script runs; an empty id answers the app home as `base`, for an unsaved script. */
   resolveDir(scriptId: string): Promise<ScriptDir>;
+  /** The MCP servers a smart run can tick, and where the list came from. */
+  mcpServers(): Promise<ScriptMcpServerList>;
   onChanged(cb: (run: ScriptRun) => void): () => void;
   /** What a run would do, exactly as `start` does it. */
   preview(args: ScriptRunArgs): Promise<ScriptRunPreview>;
@@ -98,6 +105,8 @@ export interface ScriptRunsSeam {
 
 export interface AutomationsModuleContext {
   defaultCwd(): string;
+  /** The native folder picker; null when cancelled. */
+  chooseFolder(title: string): Promise<string | null>;
   /** `replace` names a tab the new one takes the strip slot of. */
   openTerminalTab(opts: { cwd: string; launch?: TerminalLaunch; replace?: string }): void;
   /** Opens or focuses the tab of one script run by run id; `replace` names a tab it takes over. */

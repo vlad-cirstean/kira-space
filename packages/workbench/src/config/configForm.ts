@@ -7,6 +7,8 @@ export interface FieldSpec {
   unsetWhenEmpty?: boolean;
   /** Exclusive partner keys: a non-empty write of this field unsets each of them. */
   clears?: readonly (readonly string[])[];
+  /** A mapping whose children have their own specs: this spec only adds or removes the mapping. */
+  presence?: boolean;
 }
 
 /** One file edit, in the file's own key vocabulary (the server's `configfs.Edit`). */
@@ -65,6 +67,17 @@ export function diffLeaves(
   const edits: FormEdit[] = [];
   for (const spec of fields) {
     const next = getLeaf(model, spec.path);
+    if (spec.presence) {
+      const had = !isEmptyValue(getLeaf(base, spec.path));
+      const has = !isEmptyValue(next);
+      if (had === has) continue;
+      edits.push(
+        has
+          ? { path: [...spec.path], value: next, unset: false }
+          : { path: [...spec.path], unset: true },
+      );
+      continue;
+    }
     if (sameValue(next, getLeaf(base, spec.path))) continue;
     const empty = isEmptyValue(next);
     if (empty && (spec.unsetWhenEmpty || next === undefined || next === null)) {

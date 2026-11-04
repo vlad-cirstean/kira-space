@@ -165,6 +165,79 @@ export const scriptFileViewSchema = /*#__PURE__*/ z.object({
 });
 export type ScriptFileView = z.infer<typeof scriptFileViewSchema>;
 
+// runFileSchema mirrors scripts.File — the decoded value of a run file in the file's own keys
+// (snake_case, omitted when empty). The form edits this shape.
+const runFileStringsSchema = /*#__PURE__*/ z.union([z.string(), z.array(z.string())]);
+export const runFileSchema = /*#__PURE__*/ z.object({
+  name: z.string(),
+  kind: z.string().optional(),
+  command: z.string().optional(),
+  prompt: z.string().optional(),
+  collection: z.string().optional(),
+  color: z.string().optional(),
+  dir: z.string().optional(),
+  path: z.string().optional(),
+  use_ade_dir: z.boolean().optional(),
+  params: z
+    .array(
+      z.object({
+        name: z.string(),
+        type: z.string(),
+        options: z.array(z.string()).optional(),
+        default: runFileStringsSchema.optional(),
+        required: z.boolean().optional(),
+        secret: z.boolean().optional(),
+      }),
+    )
+    .optional(),
+  smart: z
+    .object({
+      model: z.string().optional(),
+      max_budget_usd: z.number().optional(),
+      no_cost_cap: z.boolean().optional(),
+      timeout: z.string().optional(),
+      tools: z.array(z.string()).optional(),
+      bash_patterns: z.array(z.string()).optional(),
+      mcp: z
+        .array(
+          z.object({
+            server: z.string(),
+            all_tools: z.boolean().optional(),
+            tools: z.array(z.string()).optional(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+  schedule: z
+    .object({
+      cron: z.string(),
+      timezone: z.string().optional(),
+      enabled: z.boolean(),
+      confirm: z.boolean(),
+      timeout: z.string().optional(),
+      params: z.record(z.string(), runFileStringsSchema).optional(),
+    })
+    .optional(),
+});
+export type RunFile = z.infer<typeof runFileSchema>;
+
+// runFormResultSchema mirrors configfs.FormResult for a run file: the draft after the edits and
+// its decoded value, or the problem with its line.
+export const runFormResultSchema = /*#__PURE__*/ z.object({
+  text: z.string(),
+  value: runFileSchema.nullable(),
+  problem: z
+    .object({
+      line: z.number(),
+      col: z.number().optional(),
+      path: z.string().optional(),
+      message: z.string(),
+    })
+    .nullable(),
+});
+export type RunFormResult = z.infer<typeof runFormResultSchema>;
+
 // scriptDirSchema mirrors scripts.Dir — where a saved script runs, and why it cannot.
 export const scriptDirSchema = /*#__PURE__*/ z.object({
   path: z.string(),

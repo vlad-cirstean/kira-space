@@ -1,6 +1,7 @@
 import type {
   CustomScript,
   CustomScriptFields,
+  RunFormResult,
   ScriptCollection,
   ScriptFileProblem,
   ScriptFileView,
@@ -10,6 +11,7 @@ import type {
 import type { SecretStorageStatus } from '@shared/domain/secrets';
 import { defineStore } from 'pinia';
 import { reactive, toRefs } from 'vue';
+import type { FormEdit } from '../config/configForm';
 import { hydrateThenSubscribe } from '../state/hydrateThenSubscribe';
 
 // The script store both apps define from their own `control` calls (createKeepAwakeStore's
@@ -24,6 +26,7 @@ export interface CustomScriptsControl {
   customScriptsDelete(id: string): Promise<void>;
   customScriptsFile(file: string): Promise<ScriptFileView>;
   customScriptsSaveFile(file: string, text: string, baseHash: string): Promise<ScriptFileView>;
+  customScriptsForm(file: string, text: string, edits: FormEdit[]): Promise<RunFormResult>;
   customScriptsSetSecrets(id: string, values: SecretValues): Promise<CustomScript>;
   /** Kira Space only. */
   customScriptsSetScheduleTarget?(
@@ -115,6 +118,10 @@ export function createCustomScriptsStore(control: CustomScriptsControl) {
       return control.customScriptsSaveFile(file, text, baseHash);
     }
 
+    function form(file: string, text: string, edits: FormEdit[]): Promise<RunFormResult> {
+      return control.customScriptsForm(file, text, edits);
+    }
+
     async function setSecrets(id: string, values: SecretValues): Promise<void> {
       await control.customScriptsSetSecrets(id, values);
     }
@@ -154,6 +161,7 @@ export function createCustomScriptsStore(control: CustomScriptsControl) {
       removeCustomScript,
       readFile,
       saveFile,
+      form,
       setSecrets,
       setScheduleTarget,
       reorderScripts,

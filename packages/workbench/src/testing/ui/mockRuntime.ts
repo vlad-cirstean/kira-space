@@ -121,9 +121,17 @@ export function canonical(value: unknown, options: CanonicalOptions): string {
       if (options.dropKey?.(key, v)) continue;
       out[key] = v;
     }
-    return JSON.stringify(out);
+    return JSON.stringify(out, (_k, v: unknown) => sortNested(v));
   }
-  return JSON.stringify(value);
+  return JSON.stringify(value, (_k, v: unknown) => sortNested(v));
+}
+
+// Nested objects compare by content, not key order (a Go contract writes keys sorted).
+function sortNested(v: unknown): unknown {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return v;
+  return Object.fromEntries(
+    Object.entries(v as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+  );
 }
 
 /** The exact shape each app's own `internal/bridge` transport writes for a bound method's error —
