@@ -796,6 +796,17 @@ check_git_ui_type_scale() {
 }
 check_git_ui_type_scale
 
+# The site imports packages/theme tokens.css: a retired token there resolves to nothing.
+if [ -z "$TC_COLLECT" ]; then
+  site_hits=$(grep -rnoP --include='*.css' --include='*.astro' \
+    -- '--kira-(?:hover|border-strong|fg-disabled|badge|shadow-dialog|radius-(?:xs|lg|pill))(?![-\w])' site/src 2>/dev/null || true)
+  if [ -n "$site_hits" ]; then
+    echo "check-theme-classes: site/ reads a retired token -- use --kira-border, --kira-bg-input, --kira-shadow or --kira-radius*:" >&2
+    echo "$site_hits" >&2
+    STATUS=1
+  fi
+fi
+
 if [ -s "$GREP_ERRORS" ]; then
   echo "check-theme-classes: grep failed, results are unreliable:" >&2
   cat "$GREP_ERRORS" >&2

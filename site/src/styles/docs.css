@@ -12,7 +12,7 @@
   --sl-color-gray-2: var(--kira-fg-muted);
   --sl-color-gray-3: var(--kira-fg-subtle);
   --sl-color-gray-4: #4a4a4a;
-  --sl-color-gray-5: var(--kira-border-strong);
+  --sl-color-gray-5: var(--kira-border);
   --sl-color-gray-6: var(--kira-bg-chrome);
   --sl-color-gray-7: var(--kira-bg-chrome);
   --sl-color-black: var(--kira-bg);
