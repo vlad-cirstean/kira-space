@@ -126,4 +126,21 @@ func TestDetailsLinks(t *testing.T) {
 		t.Fatalf("unknown id = %v, want E_BAD_REQUEST", err)
 	}
 	app.Contract(t, dlScenario, "AdeTaskService.Artifacts", artifactsOf(t, app, task.ID), dlMask)
+
+	// Edits to what the Jira or host slot already shows are refused; a repeated bare key is known.
+	if res := add("https://forge.test/acme/api/-/merge_requests/8"); res.Filed != "host" {
+		t.Fatalf("host slot refill = %+v", res)
+	}
+	for _, text := range []string{"PAY-10", "https://jira.example.com/browse/PAY-10", "https://forge.test/acme/api/-/merge_requests/8"} {
+		if _, err := app.W.AdeTask.EditLink(ctx, adewire.EditLinkArgs{TaskID: task.ID, Slot: "stored", ID: cr.ID, Text: text}); errCode(err) != "E_BAD_REQUEST" {
+			t.Fatalf("edit to slot link %q = %v, want E_BAD_REQUEST", text, err)
+		}
+	}
+	if res := add("PAY-20"); res.Filed != "stored" {
+		t.Fatalf("bare key = %+v, want stored", res)
+	}
+	n = storedRows()
+	if res := add("PAY-20"); res.Filed != "known" || storedRows() != n {
+		t.Fatalf("repeat bare key = %+v, rows %d -> %d, want known and no write", res, n, storedRows())
+	}
 }

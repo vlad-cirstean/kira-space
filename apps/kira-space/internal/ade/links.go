@@ -105,6 +105,17 @@ func (b *TaskBoard) fileLinkLocked(tc *taskCtx, c linkClass) (adewire.LinkResult
 			return b.setSlotLocked(t.ID, linkFiledHost, c)
 		}
 	}
+	if c.Origin == linkOriginTracker && c.Ref != "" {
+		others, err := b.deps.Tasks.Artifacts(t.ID)
+		if err != nil {
+			return adewire.LinkResult{}, err
+		}
+		for _, o := range others {
+			if o.Kind == c.Kind && o.Ref == c.Ref {
+				return adewire.LinkResult{Filed: linkFiledKnown, Kind: c.Kind}, nil
+			}
+		}
+	}
 	title := c.Title
 	if title == "" {
 		title = b.autoLinkTitle(c)
@@ -225,18 +236,15 @@ func (b *TaskBoard) editStoredLocked(tc *taskCtx, args adewire.EditLinkArgs, p p
 	case args.Kind != "":
 		kind = args.Kind
 	case p.URL == "" && c.Origin == linkOriginTracker:
+		if err := b.refuseTakenLink(tc, row.ID, c, ""); err != nil {
+			return adewire.LinkResult{}, err
+		}
 		kind, ref, url = c.Kind, c.Ref, ""
 	case p.URL == "":
 		title = p.Words
 	default:
-		others, err := b.deps.Tasks.Artifacts(args.TaskID)
-		if err != nil {
+		if err := b.refuseTakenLink(tc, row.ID, c, p.URL); err != nil {
 			return adewire.LinkResult{}, err
-		}
-		for _, o := range others {
-			if o.ID != row.ID && o.URL != "" && sameLinkURL(o.URL, p.URL) {
-				return adewire.LinkResult{}, linkRefusal(linkErrAlreadyUsed)
-			}
 		}
 		autoTitle := row.Title == b.pastedArtifactTitle(row.URL) || row.Title == row.Ref
 		kind, url, ref = c.Kind, c.URL, c.Ref
@@ -258,4 +266,33 @@ func (b *TaskBoard) editStoredLocked(tc *taskCtx, args adewire.EditLinkArgs, p p
 	b.notifyBoard()
 	a := wireStoredArtifact(updated)
 	return adewire.LinkResult{Filed: linkFiledStored, Kind: a.Kind, Artifact: &a}, nil
+}
+
+// refuseTakenLink refuses an edit whose target the task already shows elsewhere: another stored row
+// (same URL, or same tracker ref when url is empty) or the Jira or host slot, which the Details tab
+// would otherwise hide the edited row behind.
+func (b *TaskBoard) refuseTakenLink(tc *taskCtx, rowID string, c linkClass, url string) error {
+	t := tc.task
+	if c.Origin == linkOriginTracker && c.Ref != "" && t.JiraKey == c.Ref {
+		return linkRefusal(linkErrAlreadyUsed)
+	}
+	if url != "" && (t.HostURL != "" && sameLinkURL(t.HostURL, url) || t.JiraURL != "" && sameLinkURL(t.JiraURL, url)) {
+		return linkRefusal(linkErrAlreadyUsed)
+	}
+	others, err := b.deps.Tasks.Artifacts(tc.task.ID)
+	if err != nil {
+		return err
+	}
+	for _, o := range others {
+		if o.ID == rowID {
+			continue
+		}
+		if url != "" && o.URL != "" && sameLinkURL(o.URL, url) {
+			return linkRefusal(linkErrAlreadyUsed)
+		}
+		if url == "" && o.Kind == c.Kind && o.Ref == c.Ref {
+			return linkRefusal(linkErrAlreadyUsed)
+		}
+	}
+	return nil
 }
