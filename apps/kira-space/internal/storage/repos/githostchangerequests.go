@@ -2,6 +2,7 @@ package repos
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -17,14 +18,25 @@ type GitHostChangeRequestsRepo struct {
 }
 
 const gitHostCRColumns = `number, node_id, head_ref, head_owner, head_sha, base_ref, state, draft, title, url,
-	review_decision, checks_state, updated_at, synced_at`
+	review_decision, checks_state, comment_count, assignees, updated_at, synced_at`
 
 func scanGitHostCR(rows *sql.Rows) (model.GitHostChangeRequest, bool, error) {
 	var c model.GitHostChangeRequest
 	var draft int
+	var comments sql.NullInt64
+	var assignees sql.NullString
 	err := rows.Scan(&c.Number, &c.NodeID, &c.HeadRef, &c.HeadOwner, &c.HeadSha, &c.BaseRef, &c.State, &draft, &c.Title, &c.URL,
-		&c.ReviewDecision, &c.ChecksState, &c.UpdatedAt, &c.SyncedAt)
+		&c.ReviewDecision, &c.ChecksState, &comments, &assignees, &c.UpdatedAt, &c.SyncedAt)
 	c.Draft = draft != 0
+	if comments.Valid {
+		n := int(comments.Int64)
+		c.CommentCount = &n
+	}
+	if assignees.Valid {
+		if jerr := json.Unmarshal([]byte(assignees.String), &c.Assignees); jerr != nil && err == nil {
+			err = fmt.Errorf("repos: decode assignees of change request %d: %w", c.Number, jerr)
+		}
+	}
 	return c, true, err
 }
 
@@ -40,25 +52,39 @@ func (r *GitHostChangeRequestsRepo) UpsertChangeRequests(repoKey string, rows []
 	}
 	defer tx.Rollback() //nolint:errcheck
 	stmt, err := tx.Prepare(`INSERT INTO git_host_change_requests (repo_key, ` + gitHostCRColumns + `)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (repo_key, number) DO UPDATE SET
 			node_id = excluded.node_id, head_ref = excluded.head_ref, head_owner = excluded.head_owner,
 			head_sha = excluded.head_sha, base_ref = excluded.base_ref, state = excluded.state, draft = excluded.draft,
 			title = excluded.title, url = excluded.url, review_decision = excluded.review_decision,
-			checks_state = excluded.checks_state, updated_at = excluded.updated_at, synced_at = excluded.synced_at
+			checks_state = excluded.checks_state, comment_count = excluded.comment_count, assignees = excluded.assignees,
+			updated_at = excluded.updated_at, synced_at = excluded.synced_at
 		WHERE git_host_change_requests.node_id IS NOT excluded.node_id OR git_host_change_requests.head_ref IS NOT excluded.head_ref
 			OR git_host_change_requests.head_owner IS NOT excluded.head_owner OR git_host_change_requests.head_sha IS NOT excluded.head_sha
 			OR git_host_change_requests.base_ref IS NOT excluded.base_ref OR git_host_change_requests.state IS NOT excluded.state
 			OR git_host_change_requests.draft IS NOT excluded.draft OR git_host_change_requests.title IS NOT excluded.title
 			OR git_host_change_requests.url IS NOT excluded.url OR git_host_change_requests.review_decision IS NOT excluded.review_decision
-			OR git_host_change_requests.checks_state IS NOT excluded.checks_state OR git_host_change_requests.updated_at IS NOT excluded.updated_at`)
+			OR git_host_change_requests.checks_state IS NOT excluded.checks_state OR git_host_change_requests.updated_at IS NOT excluded.updated_at
+			OR git_host_change_requests.comment_count IS NOT excluded.comment_count OR git_host_change_requests.assignees IS NOT excluded.assignees`)
 	if err != nil {
 		return 0, fmt.Errorf("repos: prepare upsert change requests: %w", err)
 	}
 	defer stmt.Close()
 	for _, c := range rows {
+		var comments any
+		if c.CommentCount != nil {
+			comments = *c.CommentCount
+		}
+		var assignees any
+		if c.Assignees != nil {
+			b, jerr := json.Marshal(c.Assignees)
+			if jerr != nil {
+				return 0, fmt.Errorf("repos: encode assignees of change request %s#%d: %w", repoKey, c.Number, jerr)
+			}
+			assignees = string(b)
+		}
 		res, err := stmt.Exec(repoKey, c.Number, c.NodeID, c.HeadRef, c.HeadOwner, c.HeadSha, c.BaseRef, c.State, boolInt(c.Draft),
-			c.Title, c.URL, c.ReviewDecision, c.ChecksState, c.UpdatedAt, c.SyncedAt)
+			c.Title, c.URL, c.ReviewDecision, c.ChecksState, comments, assignees, c.UpdatedAt, c.SyncedAt)
 		if err != nil {
 			return 0, fmt.Errorf("repos: upsert change request %s#%d: %w", repoKey, c.Number, err)
 		}

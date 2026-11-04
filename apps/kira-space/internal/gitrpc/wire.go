@@ -688,6 +688,9 @@ type ChangeRequestRecord struct {
 	Draft          bool   `json:"draft,omitempty"`
 	ReviewDecision string `json:"reviewDecision,omitempty"`
 	ChecksState    string `json:"checksState,omitempty"`
+	// CommentCount and Assignees are nil when the host does not say.
+	CommentCount *int     `json:"commentCount,omitempty"`
+	Assignees    []string `json:"assignees,omitempty"`
 }
 
 func changeRequestRecordFrom(p githost.ChangeRequest) ChangeRequestRecord {
@@ -695,6 +698,7 @@ func changeRequestRecordFrom(p githost.ChangeRequest) ChangeRequestRecord {
 		Number: p.Number, Title: p.Title, URL: p.URL, State: p.State,
 		HeadRef: p.HeadRef, HeadSha: p.HeadSha, BaseRef: p.BaseRef, UpdatedAt: p.UpdatedAt,
 		Draft: p.Draft, ReviewDecision: p.ReviewDecision, ChecksState: p.ChecksState,
+		CommentCount: p.CommentCount, Assignees: p.Assignees,
 	}
 }
 
