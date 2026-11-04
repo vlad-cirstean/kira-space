@@ -44,6 +44,7 @@ async function open(relaunch: Parameters<typeof openPlan>[0], extra: ControlSnap
   await app.window.locator(t('manage-repos')).click();
   await app.window.locator(t('repos-dialog')).waitFor();
   await app.window.locator(t('repo-file')).waitFor();
+  await app.window.locator(t('repo-file-tab-yaml')).click();
   return app;
 }
 

@@ -107,6 +107,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   repoConfigList: 'RepoConfigService.List',
   repoConfigFile: 'RepoConfigService.File',
   repoConfigSaveFile: 'RepoConfigService.SaveFile',
+  repoConfigForm: 'RepoConfigService.Form',
   agentContextGet: 'AgentContextService.Get',
   agentContextSave: 'AgentContextService.Save',
   agentSettingsGet: 'AgentSettingsService.Get',

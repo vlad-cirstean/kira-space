@@ -54,6 +54,7 @@ export const IPC = {
   repoConfigList: 'kira:repoconfig:list',
   repoConfigFile: 'kira:repoconfig:file',
   repoConfigSaveFile: 'kira:repoconfig:savefile',
+  repoConfigForm: 'kira:repoconfig:form',
   repoConfigChanged: 'kira:repoConfig:changed',
   agentContextGet: 'kira:agentcontext:get',
   agentContextSave: 'kira:agentcontext:save',

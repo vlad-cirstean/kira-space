@@ -3139,6 +3139,9 @@
     "enterWholeNumber": {
       "error": "Enter a whole number."
     },
+    "environmentName": {
+      "aria": "Environment name"
+    },
     "error": {
       "contract": {
         "body": "Something went wrong inside Kira ({detail})."
@@ -3232,6 +3235,9 @@
     },
     "forcePush": {
       "label": "Force push"
+    },
+    "form": {
+      "label": "Form"
     },
     "gitHost": {
       "changeRequest": {
@@ -11126,8 +11132,33 @@
         }
       },
       "config": {
+        "basePath": {
+          "chooseTitle": {
+            "title": "Choose worktree base path"
+          },
+          "description": "Pre-fills the path of new worktrees. Empty uses the default.",
+          "label": "Worktree base path",
+          "placeholder": "Default location"
+        },
+        "environments": {
+          "intro": {
+            "hint": "Track which commit each environment runs. For each one, give a command that prints the deployed commit SHA, for example {command}. Kira Space runs it in the repository root when the board refreshes and marks branches deployed there."
+          },
+          "title": "Deployment environments"
+        },
+        "nickname": {
+          "description": "Shown everywhere instead of the repository name.",
+          "label": "Nickname"
+        },
+        "prepare": {
+          "description": "Setup script. Runs in the root of every new worktree of this repository, before any agent starts, for example {command}. A non-zero exit marks setup as failed.",
+          "label": "Prepare worktree"
+        },
         "repository": {
           "label": "Repository"
+        },
+        "scriptRef": {
+          "hint": "Runs the automation “{script}”. Type a script here to replace it."
         },
         "source": {
           "added": {
@@ -11142,6 +11173,11 @@
           "usedOnPlan": {
             "status": "Used by tasks on the plan"
           }
+        },
+        "targets": {
+          "description": "Besides main. Branches are checked for being merged or stale in these.",
+          "example": "develop, staging",
+          "label": "Integration branches"
         }
       },
       "dialog": {
@@ -11199,6 +11235,24 @@
         },
         "show": {
           "tooltip": "Show in Git panel"
+        }
+      },
+      "env": {
+        "add": {
+          "label": "Add environment"
+        },
+        "command": {
+          "label": "Command that prints the deployed SHA"
+        },
+        "name": {
+          "example": "staging"
+        },
+        "remove": {
+          "tooltip": "Remove environment"
+        },
+        "script": {
+          "aria": "Deployed SHA script",
+          "example": "curl -s https://…/version"
         }
       },
       "file": {
@@ -11325,6 +11379,9 @@
         },
         "problem": {
           "aria": "Settings file has an error"
+        },
+        "tabs": {
+          "aria": "Settings file view"
         }
       },
       "tree": {

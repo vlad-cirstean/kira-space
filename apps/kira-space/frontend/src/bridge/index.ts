@@ -120,6 +120,7 @@ import type {
   RepoConfigList,
   RepoConfigSaveArgs,
 } from '../repo/state/repoConfigTypes';
+import type { RepoFormArgs, RepoFormResult } from '../repo/state/repoFormTypes';
 import type { CliToolsResult, IssueTrackers } from '../state/cliToolsDomain';
 import type { SpaceMode } from '../state/modeDomain';
 import type { SpaceOpRecord } from '../state/opsDomain';
@@ -511,6 +512,14 @@ const spaceControl = {
     unwrap(RepoConfigService.File(args)).then((r) => trust<RepoConfigFile>(r)),
   repoConfigSaveFile: (args: RepoConfigSaveArgs): Promise<RepoConfigFile> =>
     unwrap(RepoConfigService.SaveFile(args)).then((r) => trust<RepoConfigFile>(r)),
+  repoConfigForm: (args: RepoFormArgs): Promise<RepoFormResult> =>
+    unwrap(
+      RepoConfigService.Form({
+        file: args.file,
+        text: args.text,
+        edits: args.edits.map((e) => ({ path: e.path, value: e.value ?? null, unset: e.unset })),
+      }),
+    ).then((r) => trust<RepoFormResult>(r)),
   onRepoConfigChanged: (cb: () => void): (() => void) => on(CHANNEL.repoConfigChanged, cb),
   agentContextGet: (): Promise<AgentContextView> =>
     unwrap(AgentContextService.Get()).then((r) => trust<AgentContextView>(r)),
