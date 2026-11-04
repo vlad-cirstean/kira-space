@@ -11,7 +11,7 @@
    P110-css-tailwind-migration-iter2.md §3.11.3) -- every shadcn colour AND radius alias that
    duplicated a kira name was renamed away in PT/components/ui and deleted from here (I2-38 also
    dropped --radius and its shadcn-scale @theme inline radius-step twins: every former shadcn-scale
-   site now reads rounded-kira-xs/rounded-kira-sm/rounded-kira/rounded-kira-pill directly, base.css's
+   site now reads rounded-kira-sm/rounded-kira/rounded-full directly, base.css's
    own tokens.css-backed radius scale). What's left is each remaining value's *only* name:
    --primary/--primary-foreground (no kira twin), --muted-foreground (no kira twin), --border (no
    kira twin). A future `shadcn-vue add` re-pull of any file under components/ui takes the same
@@ -26,6 +26,7 @@
 :root {
   --primary: var(--kira-accent);
   --primary-foreground: var(--kira-accent-fg);
+  --primary-hover: var(--kira-accent-hover);
   --muted-foreground: var(--kira-fg-muted);
   --border: var(--kira-border);
 }
@@ -33,6 +34,7 @@
 @theme inline {
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
 }

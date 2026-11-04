@@ -26,12 +26,8 @@
   --color-field: var(--kira-bg-input);
   --color-fg: var(--kira-fg);
   --color-subtle: var(--kira-fg-subtle);
-  --color-disabled: var(--kira-fg-disabled);
-  --color-border-strong: var(--kira-border-strong);
   --color-focus: var(--kira-focus);
   --color-select: var(--kira-select);
-  --color-hover: var(--kira-hover);
-  --color-badge: var(--kira-badge);
   --color-error: var(--kira-error);
   --color-scrim: var(--kira-scrim);
   --color-warn: var(--kira-warn);
@@ -87,13 +83,10 @@
   --color-status-purple: var(--kira-status-purple);
   --color-status-pink: var(--kira-status-pink);
 
-  /* P110 I2-38: xs is the replacement for shadcn's own retired 4px radius alias -- see
-     tokens.css's --kira-radius-xs comment. */
-  --radius-kira-xs: var(--kira-radius-xs);
+  /* Control, container; xs is a stopgap alias, drop with its last use (AdeTaskPanel.vue) in P509. */
+  --radius-kira-xs: var(--kira-radius-sm);
   --radius-kira-sm: var(--kira-radius-sm);
   --radius-kira: var(--kira-radius);
-  --radius-kira-lg: var(--kira-radius-lg);
-  --radius-kira-pill: var(--kira-radius-pill);
 
   /* P104 §7.2: runtime-settable (Appearance) or a deliberate one-edit design seam -- must stay
      indirect, so a static Tailwind scale step is never an option for these (unlike the raw
@@ -135,7 +128,6 @@
   --font-ui: var(--kira-font-ui);
 
   --shadow-kira: var(--kira-shadow);
-  --shadow-kira-dialog: var(--kira-shadow-dialog);
 }
 
 /* P110 B6: recurring multi-declaration patterns, promoted to @utility ahead of the scoped-block

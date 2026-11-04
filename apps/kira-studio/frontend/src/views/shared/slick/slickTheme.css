@@ -50,7 +50,7 @@
 .slick-grid-host .slick-header,
 .slick-grid-host .slick-headerrow {
   background: var(--kira-bg-elevated);
-  border-bottom: var(--kira-border-width) solid var(--kira-border-strong);
+  border-bottom: var(--kira-border-width) solid var(--kira-border);
 }
 
 /* Real-interaction fix (a later coordinator round, "a white bar/strip renders above the
@@ -247,7 +247,7 @@
 
 /* No zebra striping (GridRow.vue's own precedent) — only the hover state below. */
 .slick-grid-host:not(.kira-select-all) .slick-row:hover .slick-cell:not(.kira-cell-selected) {
-  background: var(--kira-hover);
+  background: var(--kira-bg-input);
 }
 
 .slick-grid-host .slick-cell {
@@ -344,7 +344,7 @@
      `justify-content: flex-end` is restored here too, keeping both fixes correct together under
      the layout model D7 item 2 switched to. */
   @apply text-right justify-end;
-  border-right: var(--kira-border-width) solid var(--kira-border-strong);
+  border-right: var(--kira-border-width) solid var(--kira-border);
 }
 
 /* P22 iter2-pacing D6 — the dirty/deleted-row rails dataSource.ts's own pendingRowClasses has
@@ -381,7 +381,7 @@
 /* C10 — GridRow.vue's own `.grid-row.pending-insert` background tint, ported verbatim; drawn on
    `.slick-row` itself (the same class this file's own three rails above key off), not per cell. */
 .slick-grid-host .slick-row.kira-row-inserted {
-  background: color-mix(in srgb, var(--kira-accent) 8%, transparent);
+  background: color-mix(in srgb, var(--kira-accent) 15%, transparent);
 }
 
 /* C10 — GridRow.vue's own `.grid-row.pending-delete` rule, ported verbatim: the whole-row
@@ -638,7 +638,7 @@
   @apply m-0 w-0 min-w-0;
   height: 12px;
   @apply p-0 inline-flex items-center justify-center;
-  border-radius: 6px;
+  @apply rounded-full;
   background: var(--kira-accent);
   color: var(--kira-accent-fg);
   @apply font-ui not-italic font-normal;

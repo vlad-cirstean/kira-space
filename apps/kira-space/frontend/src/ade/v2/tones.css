@@ -1,21 +1,21 @@
 /* Tone tokens: queue state, built on theme tokens. Classes come from the maps in tones.ts. */
 @theme {
-  --color-tone-amber-tint: color-mix(in srgb, var(--kira-status-amber) 14%, transparent);
+  --color-tone-amber-tint: color-mix(in srgb, var(--kira-status-amber) 15%, transparent);
   --color-tone-amber: var(--kira-status-amber);
   --color-tone-amber-solid: var(--kira-warn);
-  --color-tone-red-tint: color-mix(in srgb, var(--kira-status-red) 14%, transparent);
+  --color-tone-red-tint: color-mix(in srgb, var(--kira-status-red) 15%, transparent);
   --color-tone-red: var(--kira-status-red);
   --color-tone-red-solid: var(--kira-error);
-  --color-tone-green-tint: color-mix(in srgb, var(--kira-status-green) 14%, transparent);
+  --color-tone-green-tint: color-mix(in srgb, var(--kira-status-green) 15%, transparent);
   --color-tone-green: var(--kira-status-green);
   --color-tone-green-solid: var(--kira-ok);
-  --color-tone-blue-tint: color-mix(in srgb, var(--kira-status-blue) 14%, transparent);
+  --color-tone-blue-tint: color-mix(in srgb, var(--kira-status-blue) 15%, transparent);
   --color-tone-blue: var(--kira-status-blue);
   --color-tone-blue-solid: var(--kira-info);
-  --color-tone-purple-tint: color-mix(in srgb, var(--kira-status-violet) 14%, transparent);
+  --color-tone-purple-tint: color-mix(in srgb, var(--kira-status-violet) 15%, transparent);
   --color-tone-purple: var(--kira-status-violet);
   --color-tone-purple-solid: var(--kira-status-purple);
-  --color-tone-grey-tint: color-mix(in srgb, var(--kira-status-grey) 14%, transparent);
+  --color-tone-grey-tint: var(--kira-bg-input);
   --color-tone-grey: var(--kira-status-grey);
   --color-tone-grey-solid: var(--kira-fg-subtle);
   --color-tone-ink: var(--kira-bg-chrome);

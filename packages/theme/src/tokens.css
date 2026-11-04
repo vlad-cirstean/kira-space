@@ -1,28 +1,24 @@
 /* Flat zinc dark palette. The only colour source for the app. */
 :root {
-  /* Surface ladder, darkest to lightest: chrome < bg < elevated < hover < input. */
+  /* Surface ladder, darkest to lightest: chrome < bg < elevated < field. */
   --kira-bg: #1b1b1e;
-  --kira-bg-elevated: #1f1f23;
+  --kira-bg-elevated: #212125; /* raised + overlay: cards, table head, active tab, popover, menu, dialog */
   --kira-bg-chrome: #131315; /* frame: sideBar / statusBar / titleBar / ADE plan ground */
-  --kira-bg-input: #27272c; /* input + dropdown */
+  --kira-bg-input: #27272c; /* field + hover + pressed: inputs, inset card, kbd, row hover */
   --kira-fg: #d4d4d8;
   --kira-fg-muted: #a1a1aa;
   /* Tertiary, non-interactive text: separators, captions, row numbers, NULL markers, empty-state
-     copy. Not a disabled control — WCAG 1.4.3 exempts those, which is why --kira-fg-disabled below
-     may stay under 4.5:1 and this may not. 5.29:1 on --kira-bg, 5.06:1 on --kira-bg-elevated. */
+     copy. 5.29:1 on --kira-bg, 4.94:1 on --kira-bg-elevated. */
   --kira-fg-subtle: #8e8e97;
-  --kira-fg-disabled: #63636b; /* :disabled / .is-disabled only */
-  --kira-border: #2b2b30; /* hairline: grid cells, resize line, menu separator */
-  --kira-border-strong: #37373d; /* field edge, floating-surface ring */
+  --kira-border: #323237; /* the one line: input edge, secondary button, floating edge, grid cell, resize, menu separator */
   --kira-focus: #5a8ae6; /* lighter than the accent fill so the ring reads on the primary button */
   --kira-accent: #3b6ed1; /* primary action, selection, focus only */
   --kira-accent-fg: #ffffff;
+  --kira-accent-hover: #355dad;
   --kira-select: #1f3354;
-  --kira-hover: #242427; /* opaque: sticky rows paint over content */
-  --kira-badge: #4a4a52;
-  --kira-scrollbar: #71717a59;
-  --kira-scrollbar-hover: #8e8e9780;
-  --kira-scrollbar-active: #a1a1aa80;
+  --kira-scrollbar: var(--kira-border);
+  --kira-scrollbar-hover: var(--kira-fg-subtle);
+  --kira-scrollbar-active: var(--kira-fg-subtle);
   --kira-scrim: rgb(0 0 0 / 0.4);
   --kira-error: #e66e68;
   --kira-warn: #d5b449;
@@ -61,19 +57,10 @@
   --kira-var-resolved: #64bead;
 
   /* Layout tokens for the reworked "detached" chrome: rounded, floating panels, thin borders.
-     Radius tier system (VS Code Modern UI, docs/design/kira-design-system): xs for the tightest
-     inline chrome (command palette rows, tooltips), sm for interactive controls (buttons, tabs,
-     inputs, chips), the bare token for panel-level surfaces, lg for floating modal dialogs, pill
-     for status-style chips. */
-  /* P110 I2-38: rung 3 (§1.1) -- the 2px step recurs 5 times (OperationsPanel, TreeRow,
-     RepoSearchRow, CommandItem, TooltipContent). Once shadcn's own 4px-fallback radius alias
-     is retired, leaving it unpromoted would silently regress those 5 sites to Tailwind's stock
-     4px default. */
-  --kira-radius-xs: 2px;
+     Radius: sm (4px) for controls and rows, the bare token (6px) for containers and
+     floating surfaces, rounded-full for circles and pills. */
   --kira-radius-sm: 4px;
   --kira-radius: 6px;
-  --kira-radius-lg: 8px;
-  --kira-radius-pill: 10px;
   --kira-border-width: 1px;
   /* Custom title bar (workbench/TitleBar.vue). --kira-titlebar-h is 34px, taller than the standard
      28px macOS title bar (no toolbar, internal/shell/window.go) so the strip matches
@@ -83,8 +70,7 @@
   --kira-tabbar-h: var(--kira-bar-h);
   --kira-statusbar-h: 22px;
   --kira-titlebar-inset-left: 78px;
-  --kira-shadow: 0 2px 6px rgb(0 0 0 / 0.18);
-  --kira-shadow-dialog: 0 6px 20px rgb(0 0 0 / 0.28);
+  --kira-shadow: 0 4px 16px rgb(0 0 0 / 0.24);
 
   /* Appearance tokens: defaults here, overwritten at runtime from `settings` (Step 6).
      --kira-font-family is the *channel* the Appearance "Data font" control writes; the two roles
@@ -169,10 +155,10 @@
   --kira-conn-indigo: #96a1d4;
   --kira-conn-violet: #ac9acd;
   --kira-conn-magenta: #c592b3;
-  --kira-conn-grey: #9fa5ac;
+  --kira-conn-grey: var(--kira-fg-subtle);
 
   /* P411 task status palette: oklch(0.78 0.095 h), grey and brown desaturated; at least 6.4:1 on --kira-bg-elevated. */
-  --kira-status-grey: #b0b8c1;
+  --kira-status-grey: var(--kira-fg-muted);
   --kira-status-brown: #d1b099;
   --kira-status-red: #eea099;
   --kira-status-orange: #e9a680;
@@ -219,8 +205,8 @@
   --kira-syntax-function: #d8d2a0;
   --kira-syntax-tag: var(--kira-syntax-keyword);
   --kira-syntax-attribute: var(--kira-syntax-property);
-  --kira-syntax-operator: #c8c8cc;
-  --kira-syntax-punctuation: #bdbdc4;
+  --kira-syntax-operator: var(--kira-fg);
+  --kira-syntax-punctuation: var(--kira-fg);
   --kira-syntax-meta: var(--kira-fg-subtle);
   --kira-syntax-invalid: var(--kira-error);
   /* P28 D17(c): the floating-surface stacking ladder, as tokens rather than five bare literals
