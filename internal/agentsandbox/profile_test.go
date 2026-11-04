@@ -98,6 +98,11 @@ func TestProfileGolden(t *testing.T) {
 			p.Allow = []string{"/Users/ada/src/app/.git", "/Users/ada/.cache/my-tool", "/Users/ada/.claude/hooks"}
 			return p, rt
 		},
+		"read_files": func() (Policy, Runtime) {
+			p := basePolicy()
+			p.ReadFiles = []string{configDir + "/task-t1-2.mcp.json", configDir + "/tui-s1.settings.json"}
+			return p, rt
+		},
 		"path_escaping": func() (Policy, Runtime) {
 			p := basePolicy()
 			p.Allow = []string{`/Users/ada/we"ird\dir`, "/Users/ada/sp ace"}

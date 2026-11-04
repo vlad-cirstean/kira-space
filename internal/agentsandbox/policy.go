@@ -49,6 +49,8 @@ type Policy struct {
 	ConfigDir string
 	// ContextDir is the folder holding the run's agent context file; readable, never an --add-dir.
 	ContextDir string
+	// ReadFiles are single files the run reads (an interactive launch's MCP config and app settings).
+	ReadFiles []string
 	// Ports are the loopback ports the run reaches: the kira-ade MCP server, the allowlist proxy.
 	Ports []int
 	// Branch maps a worktree to the branch it may advance.
@@ -82,8 +84,10 @@ type Input struct {
 	ConfigDir string
 	// ContextDir is the folder of the run's agent context file ("" = none).
 	ContextDir string
-	Ports      []int
-	Branch     map[string]string
+	// ReadFiles are launch files outside ConfigDir's run-keyed names; each becomes a literal read allow.
+	ReadFiles []string
+	Ports     []int
+	Branch    map[string]string
 }
 
 // Denial is one blocked operation.
@@ -167,6 +171,14 @@ func ResolvePolicy(in Input, rt Runtime) (Policy, []string, error) {
 		p.ContextDir = realPath(filepath.Clean(in.ContextDir))
 	}
 	p.Allow = allowExtra
+	for _, f := range in.ReadFiles {
+		r, err := real(f)
+		if err != nil {
+			notes = append(notes, i18n.T("backend.space.ade.sandbox.pathMissing.body", map[string]string{"path": f}))
+			continue
+		}
+		p.ReadFiles = appendUnique(p.ReadFiles, r)
+	}
 	if err := ensureDirs(in, &p); err != nil {
 		return Policy{}, nil, err
 	}
