@@ -86,7 +86,13 @@ func decorateTask(out *adewire.Task, t model.AdeTask, live func(id string) liveI
 	}
 	out.Workflow = &wf
 	if li.ok {
-		out.WorkflowOutdated = li.hash != t.WorkflowHash
+		// Compare the re-marshalled snapshot, so a wire field added since the task started does not
+		// read as an edit of the live file.
+		hash := t.WorkflowHash
+		if js, err := json.Marshal(wf); err == nil {
+			hash = workflowHash(js)
+		}
+		out.WorkflowOutdated = li.hash != hash
 	}
 }
 
