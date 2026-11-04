@@ -19,6 +19,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
+	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -34,13 +35,27 @@ func (b *TaskBoard) scriptRunner() gitprepare.Runner {
 	return gitprepare.NewOSRunner()
 }
 
-// runEnvScript runs one environment script in the repo root and returns the sha it prints: the
-// first stdout line that looks like one.
-func (b *TaskBoard) runEnvScript(ctx context.Context, root, script string) (string, error) {
+// runEnvScript runs one environment's script, inline or a referenced Run script, and returns the sha
+// it prints: the first stdout line that looks like one. Inline scripts run in the repo root.
+func (b *TaskBoard) runEnvScript(ctx context.Context, rec *model.CodeRepo, nick string, env model.AdeRepoEnv, all func() ([]scripts.CustomScript, error)) (string, error) {
+	root := rec.Root
+	command, dir, extra := env.DeployedShaScript, root, []string(nil)
+	if ref := env.DeployedShaRun; ref != nil {
+		list, err := all()
+		if err != nil {
+			return "", fmt.Errorf("Run script %q: %w", ref.Script, err)
+		}
+		vars := map[string]string{"repo": nick, "worktree": root, "base": b.mainShortName(ctx, rec.ID)}
+		r, err := b.resolveScriptRef(list, repoFileUse, ref.Script, ref.Values(), vars, root)
+		if err != nil {
+			return "", fmt.Errorf("Run script %q: %w", ref.Script, err)
+		}
+		command, dir, extra = r.script.Command, r.dir, r.env
+	}
 	shell, login := loginshell.ResolveShell(os.Getenv, loginshell.IsExecutableFile)
 	res, err := b.scriptRunner().Run(ctx, gitprepare.Spec{
-		Shell: shell, LoginShell: login, Script: script, Dir: root, Timeout: envScriptTimeout,
-		Env: gitprepare.BuildEnv(os.Environ(), gitprepare.Vars{WorktreePath: root, RepoRoot: root}),
+		Shell: shell, LoginShell: login, Script: command, Dir: dir, Timeout: envScriptTimeout,
+		Env: append(gitprepare.BuildEnv(os.Environ(), gitprepare.Vars{WorktreePath: root, RepoRoot: root}), extra...),
 	})
 	switch {
 	case err != nil:
@@ -86,9 +101,21 @@ func (b *TaskBoard) RunEnvScripts(ctx context.Context, codeRepoID string) error 
 	if rec == nil {
 		return fmt.Errorf("ade: code repo %s not found", codeRepoID)
 	}
+	var (
+		listed  []scripts.CustomScript
+		listErr error
+		loaded  bool
+	)
+	all := func() ([]scripts.CustomScript, error) {
+		if !loaded {
+			listed, listErr = b.listScripts()
+			loaded = true
+		}
+		return listed, listErr
+	}
 	for _, env := range cfg.Environments {
 		st := model.AdeEnvState{CodeRepoID: codeRepoID, Env: env.Name, CheckedAt: b.deps.Now().UnixMilli()}
-		sha, err := b.runEnvScript(ctx, rec.Root, env.DeployedShaScript)
+		sha, err := b.runEnvScript(ctx, rec, cmpNonEmpty(cfg.Nickname, cfg.Name), env, all)
 		if err != nil {
 			st.Error = err.Error()
 		} else {
