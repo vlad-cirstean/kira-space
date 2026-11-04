@@ -59,7 +59,7 @@ export function cleanVariable(v: ApiFileVariable): ApiFileVariable {
   return out;
 }
 
-export function toEnvRows(vars: readonly ApiFileVariable[]): EnvRow[] {
+function toEnvRows(vars: readonly ApiFileVariable[]): EnvRow[] {
   return vars.map((v, i) => ({
     id: String(i),
     name: v.name,
