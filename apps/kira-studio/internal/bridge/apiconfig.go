@@ -5,6 +5,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appcore"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -61,4 +62,70 @@ func (s *ApiConfigService) DeleteSecret(args ApiSecretNameArgs) (apifiles.View, 
 	}
 	emitApiData(s.Deps.Events, configChange())
 	return s.View()
+}
+
+// ApiFileArgs names one collection or environment file.
+type ApiFileArgs struct {
+	File string `json:"file"`
+}
+
+// ApiSaveFileArgs saves the whole text of a file built on the text with BaseHash.
+type ApiSaveFileArgs struct {
+	File     string `json:"file"`
+	Text     string `json:"text"`
+	BaseHash string `json:"baseHash"`
+}
+
+// ApiFormArgs is one form call: the draft text and the edits to apply to it.
+type ApiFormArgs struct {
+	File  string          `json:"file"`
+	Text  string          `json:"text"`
+	Edits []configfs.Edit `json:"edits"`
+}
+
+// File answers one file's text and state.
+func (s *ApiConfigService) File(args ApiFileArgs) (apifiles.FileDetail, error) {
+	if args.File == "" {
+		return apifiles.FileDetail{}, ipcerr.Required("file")
+	}
+	d, err := s.Files.FileText(args.File)
+	if err != nil {
+		return apifiles.FileDetail{}, apiFilesErr(err)
+	}
+	return d, nil
+}
+
+// SaveFile writes the text. Invalid text is saved too and comes back with its problem; the last good
+// content keeps serving.
+func (s *ApiConfigService) SaveFile(args ApiSaveFileArgs) (apifiles.FileDetail, error) {
+	if args.File == "" {
+		return apifiles.FileDetail{}, ipcerr.Required("file")
+	}
+	if args.BaseHash == "" {
+		return apifiles.FileDetail{}, ipcerr.Required("baseHash")
+	}
+	d, err := s.Files.SaveFile(args.File, args.BaseHash, args.Text)
+	if err != nil {
+		return apifiles.FileDetail{}, apiFilesErr(err)
+	}
+	return d, nil
+}
+
+// Form applies the form's edits to the draft and decodes the result. Stateless: nothing is written;
+// the dialog saves the returned text with SaveFile.
+func (s *ApiConfigService) Form(args ApiFormArgs) (configfs.FormResult, error) {
+	if args.File == "" {
+		return configfs.FormResult{}, ipcerr.Required("file")
+	}
+	if len(args.Text) > configfs.MaxFileBytes {
+		return configfs.FormResult{}, ipcerr.BadRequest(configfs.ErrTooLarge.Error())
+	}
+	res, err := s.Files.Form(args.File, args.Text, args.Edits)
+	if err != nil {
+		return configfs.FormResult{}, apiFilesErr(err)
+	}
+	if len(res.Text) > configfs.MaxFileBytes {
+		return configfs.FormResult{}, ipcerr.BadRequest(configfs.ErrTooLarge.Error())
+	}
+	return res, nil
 }

@@ -34,6 +34,7 @@ func TestEditYAMLUnset(t *testing.T) {
 		{"nested prunes empty parents", "x: 1\nw:\n  p:\n    q: 1\n", "x: 1\n", []string{"w", "p", "q"}},
 		{"sibling keeps parent", "w:\n  p: 1\n  q: 2\n", "w:\n  q: 2\n", []string{"w", "p"}},
 		{"parent with head comment stays", "# why\nw:\n  p: 1\n", "# why\nw: {}\n", []string{"w", "p"}},
+		{"file header moves to the next key", "# top\na: 1\nb: 2\n", "# top\nb: 2\n", []string{"a"}},
 		{"missing path is a no-op", "a: 1\n", "a: 1\n", []string{"w", "p"}},
 		{"path through a scalar is a no-op", "a: 1\n", "a: 1\n", []string{"a", "b"}},
 	}

@@ -106,6 +106,14 @@ func unsetNode(m *yaml.Node, path []string) {
 				return
 			}
 		}
+		// A comment above the first key is the file's header: it moves to the next key.
+		if head := m.Content[i].HeadComment; i == 0 && head != "" && len(m.Content) > 2 {
+			next := m.Content[2]
+			if next.HeadComment != "" {
+				head += "\n" + next.HeadComment
+			}
+			next.HeadComment = head
+		}
 		m.Content = append(m.Content[:i], m.Content[i+2:]...)
 		return
 	}
