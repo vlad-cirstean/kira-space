@@ -67,7 +67,7 @@ const boxClass = computed(() => {
   const c = props.card;
   return [
     c.parked ? 'bg-chrome' : '',
-    'cursor-grab border',
+    'cursor-grab border border-l-3',
     c.selected ? 'border-focus' : 'border-transparent',
     c.ripple && !c.selected ? 'outline-1 outline-border' : '',
   ];
@@ -85,7 +85,7 @@ const boxClass = computed(() => {
     <Card
       variant="section"
       :data-task-id="card.task.id"
-      class="box-border flex min-w-0 flex-1 flex-col overflow-hidden border-l-3"
+      class="box-border flex min-w-0 flex-1 flex-col overflow-hidden"
       :class="boxClass"
       :style="{ borderLeftColor: card.color }"
       :aria-current="card.selected || undefined"

@@ -6,7 +6,7 @@ Source: user request. Two phases. P509 is the last phase, so it also closes the 
 
 | Phase | Title | Status |
 |---|---|---|
-| P508 | Flatter, consistent visual pass | Todo |
+| P508 | Flatter, consistent visual pass | Done |
 | P509 | Task details: free-form editing, aligned Main tab | Todo |
 
 ## Rows
