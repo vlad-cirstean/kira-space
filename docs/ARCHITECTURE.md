@@ -2246,6 +2246,17 @@ and `docs/HISTORY.md (v2.0)`.
 
 ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBadge`. Labels carry no number; the count goes in the item's `count`.
 
+### Tracked-item updates (P512)
+
+- Each task tracks items: `cr:<branchId>` (the branch's change request), `branch:<branchId>`, `issue`. Table `ade_tracked_items` (migration 0070) holds a seen and a current snapshot per item. First observation sets seen = current. A snapshot of another `updates.Version` resets seen = current. A value the host or tracker does not report is nil and never fires.
+- `internal/updates` is the one Go source of concepts: `Catalog` (kind, concept id, default), `Diff(kind, seen, current)` returning `Change{Concepts, Counts, Reset}` in catalog order. `frontend/src/state/trackingConcepts.ts` mirrors it; `tests/ui/settings-updates.spec.ts` proves the two equal through the `settings-tracking` contract.
+- `ade.updateWatcher` (owned by `TaskBoard`) observes: at the end of `Refresh` (awaited, fresh issue read), after a board change (at least `MinGap` apart), on a timer, and once at `Start`. Passes serialize on `runMu` and share a result through singleflight. A repo whose host lookup fails, or a conflict check still running, keeps its previous snapshot. A Jira issue reads at most once per `JiraInterval` outside `Refresh`. The flow harness defaults to `Disabled`: only `Refresh` observes.
+- Change request counts come from the sync query (`comments{totalCount}`, `reviews{totalCount}`, `assignees`): comment count = comments plus reviews. `GitHostSchemaVersion` 2 re-syncs stored rows once. The per-branch fallback and the detail query carry no counts; the watcher keeps the last known ones.
+- `AdeTaskService.TrackedUpdates` returns every item whose snapshots differ, concepts unfiltered. `MarkTrackedSeen(taskId, itemKeys)` sets seen = current (empty keys = all of the task; keys match `issue|cr:<id>|branch:<id>`, at most 64). Both pushes use `kira:adetask:updates`, payload-free.
+- Settings `tracking.changeRequest|issue|branch`: a whole-map leaf each. Read overlays catalog defaults on stored known keys; `Set` refuses an unknown concept. The server does not filter by settings: `ade/v2/updates/meaningful.ts` drops concepts the user turned off, and an item with none left shows nothing.
+- UI: `AdeUpdatesDot` on the task card (`ade-task-updated`) and per branch row (`ade-branch-updated-<id>`); `AdeTaskUpdates` strip in the Main tab with Mark seen buttons. Opening the pull request view marks `cr:<id>`, the issue view marks `issue`, opening a branch panel marks `branch:<id>`.
+- Tests: `TestTrackedUpdates` and `TestTrackingSettings` (`flows/adeflow/trackedupdates_test.go`, contracts `ade-tracked-updates`, `settings-tracking`), `updates.TestDiff`, `tests/ui/ade-tracked-updates.spec.ts`, `tests/ui/settings-updates.spec.ts`.
+
 ### Clipboard capture (P430)
 
 - Global hotkey (default `CmdOrCtrl+Shift+K`, user-set in Settings > Capture, on by default) opens a small popup showing the clipboard text with actions that fit it. Wails `App.GlobalShortcut` registers the chord; `App.Clipboard.Text` reads it. No new library. No Accessibility permission, no selection reading.
@@ -2298,8 +2309,8 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 
 - In internal/appwire/wire.go, wireAdeTask builds ade.TaskBoard from TaskBoardDeps: repos, discovery GitStatus (no GitPath), its own gitsession.Conn named ade-board, adeflow.Reader over <home>/workflows, the agentmcp finish_step server, the Tracker, log sink and session store.
 - wireAdeTask calls Recover() then Start() on the task board, and installs board.OnTUIStopped as the tracker's stopped handler.
-- bridge.AdeTaskService binds 69 methods, each with one adeTask* entry in frontend/src/bridge/index.ts.
-- AdeTaskService push channels are defined in bridge/adewire/channels.go with prefix kira:adetask: and suffixes board, workflows, repos, runs, log, sessions and open-session; open-session is emitted to one window via EmitTo.
+- bridge.AdeTaskService binds 71 methods, each with one adeTask* entry in frontend/src/bridge/index.ts.
+- AdeTaskService push channels are defined in bridge/adewire/channels.go with prefix kira:adetask: and suffixes board, workflows, repos, runs, log, sessions, updates and open-session; open-session is emitted to one window via EmitTo.
 - bridge/adewire is the frozen wire contract; tests/fixtures/ade-v2/ holds 27 fixtures decoded by adewire/wire_test.go and the mock runtime.
 - layeringtest.RunAllowing admits the adewire package.
 
@@ -3658,6 +3669,8 @@ config, project files.
 
 Kept only while genuinely open — delete an item the moment it's resolved, never mark it done in
 place. `CLAUDE.md` states the process rule; this is the list itself.
+
+- **Azure change requests never report comment or assignee updates (P512).** The Azure provider leaves `CommentCount` and `Assignees` nil, so `commentAdded` and `assigneeChanged` never fire there. Delete once Azure reads both.
 
 - **Removed review lines miss oversized deltas (P499).** A reviewed file whose snapshot-to-current patch exceeds `MaxPatchBytes` has no parsed hunks, so no removed lines are captured for it. Delete once capture diffs without the patch cap.
 - **ADE first mount stays retained after leaving ADE (P480, P481).** ade20: heap 24.9 MB at `left`, 37.9 MB at `back`; about 13 MB once per session, flat on later visits. The retained tree has about 3,600 Vue component instances while live DOM is 121 nodes. Root: Blink `DocumentState` through a detached `<input data-slot="input">` `onKeydown` invoker (P480). Candidate inputs: `ade-capture` (`AdeCaptureBox.vue`), `ade-panel-title` (`AdeTaskPanel.vue`), `ade-estimate-num` (`AdeEstimateField.vue`). `autocomplete="off"` on them, a plain-value `useCandidates` queryFn and dropping the probe's fake clock changed nothing. Delete once the owner is found and `back` heap falls by 2 MB or more.
