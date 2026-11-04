@@ -2,10 +2,10 @@ package ade
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
@@ -35,62 +35,22 @@ func (b *TaskBoard) planSmartStep(tc *taskCtx, sb model.AdeTaskBranch, path stri
 	fail := func(format string, a ...any) (*smartStep, error) {
 		return nil, invalid("smart script %q: %s", def.SmartScript, fmt.Sprintf(format, a...))
 	}
-	if b.deps.CustomScripts == nil {
-		return fail("scripts are not available")
-	}
-	all, err := b.deps.CustomScripts.List()
+	all, err := b.listScripts()
 	if err != nil {
 		return nil, err
 	}
-	var found []scripts.CustomScript
-	for _, s := range all {
-		if s.Kind == scripts.KindSmart && s.Name == def.SmartScript && s.Smart != nil {
-			found = append(found, s)
-		}
-	}
-	switch len(found) {
-	case 0:
-		return fail("not found")
-	case 1:
-	default:
-		return fail("%d scripts have that name", len(found))
-	}
-	script := found[0]
-	given, err := b.secretParams(script, def.Params)
+	res, err := b.resolveScriptRef(all, workflowUse, def.SmartScript, def.Params, b.adeVars(tc, sb, path), path)
 	if err != nil {
-		return fail("%s", err)
-	}
-	vals, missing, err := scripts.ParamValues(script.Params, given)
-	if err != nil {
-		return fail("%s", err)
-	}
-	if len(missing) > 0 {
-		return fail("needs a value for %s", strings.Join(missing, ", "))
-	}
-	rendered := b.adeVars(tc, sb, path)
-	env := []string{}
-	for _, name := range scripts.BuiltinVars {
-		env = append(env, scripts.BuiltinEnv(name)+"="+rendered[name])
-	}
-	var secretVals []string
-	for _, v := range vals {
-		env = append(env, scripts.EnvName(v.Name)+"="+v.Env)
-		if v.Secret {
-			secretVals = append(secretVals, v.Env)
-		} else {
-			rendered[v.Name] = v.Rendered
+		var r refReason
+		if errors.As(err, &r) {
+			return fail("%s", r)
 		}
+		return nil, err
 	}
-	step := &smartStep{script: script, env: env, dir: path, timeout: script.Smart.TimeoutDuration(), secrets: secretVals}
+	script, rendered := res.script, res.rendered
+	step := &smartStep{script: script, env: res.env, dir: res.dir, timeout: script.Smart.TimeoutDuration(), secrets: res.secrets}
 	if def.Timeout != "" {
 		step.timeout = parseStepTimeout(def.Timeout)
-	}
-	if !script.UseAdeDir {
-		dir := scripts.ResolveDir(script, b.deps.ScriptsHome)
-		if err := scripts.PrepareDir(dir); err != nil {
-			return fail("%s", err)
-		}
-		step.dir = dir.Path
 	}
 	body := scripts.PlainText(scripts.Compose(script.Command, rendered))
 	step.prompt = body + "\n\n" + agentmcp.SpaceNote(b.prompts()) + "\n\n" + agentmcp.FinishInstruction(b.prompts(), resultSpecs(def.Results))
@@ -100,7 +60,7 @@ func (b *TaskBoard) planSmartStep(tc *taskCtx, sb model.AdeTaskBranch, path stri
 // secretParams is the step's param values with each saved secret param filled from the script's sealed
 // value, as a run does. A workflow file never carries a secret value: a `params` entry for a secret
 // param is refused, since the file is plain text.
-func (b *TaskBoard) secretParams(script scripts.CustomScript, given map[string][]string) (map[string][]string, error) {
+func (b *TaskBoard) secretParams(script scripts.CustomScript, given map[string][]string, file string) (map[string][]string, error) {
 	out := make(map[string][]string, len(given))
 	maps.Copy(out, given)
 	for _, p := range script.Params {
@@ -114,7 +74,7 @@ func (b *TaskBoard) secretParams(script scripts.CustomScript, given map[string][
 			continue
 		}
 		if len(given[p.Name]) > 0 {
-			return nil, fmt.Errorf("%s is a secret param: save its value in the script, not in the workflow file", p.Name)
+			return nil, fmt.Errorf("%s is a secret param: save its value in the script, not in the %s", p.Name, file)
 		}
 		if slices.Contains(script.SavedSecrets, p.Name) {
 			want = append(want, p.Name)
