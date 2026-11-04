@@ -1,0 +1,99 @@
+{
+  "args:CustomScriptsService.Form": {
+    "edits": [
+      {
+        "path": [
+          "name"
+        ],
+        "unset": false,
+        "value": "Release"
+      },
+      {
+        "path": [
+          "schedule",
+          "cron"
+        ],
+        "unset": false,
+        "value": "30 8 * * 1"
+      },
+      {
+        "path": [
+          "params"
+        ],
+        "unset": false,
+        "value": [
+          {
+            "name": "token",
+            "secret": true,
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "path": [
+          "color"
+        ],
+        "unset": true,
+        "value": null
+      }
+    ],
+    "file": "ship.yaml",
+    "text": "# Ship the build.\nname: Ship # shown in the panel\nschedule:\n  enabled: false\n  confirm: false\n  cron: \"0 9 * * *\"\ncommand: echo ship\ncolor: blue\ncollection: Ops\n"
+  },
+  "file#saved": {
+    "editable": true,
+    "file": "ship.yaml",
+    "hash": "<masked>",
+    "id": "ship",
+    "lastGood": false,
+    "path": "<kira>/runs/ship.yaml",
+    "problem": null,
+    "text": "# Ship the build.\nname: Release # shown in the panel\nschedule:\n  enabled: false\n  confirm: false\n  cron: 30 8 * * 1\ncommand: echo ship\ncollection: Ops\nparams:\n  - name: token\n    secret: true\n    type: text\n"
+  },
+  "form#bad": {
+    "problem": {
+      "col": 0,
+      "line": 9,
+      "message": "Invalid YAML syntax: did not find expected '-' indicator.",
+      "path": ""
+    },
+    "text": "# Ship the build.\nname: Release # shown in the panel\nschedule:\n  enabled: false\n  confirm: false\n  cron: 30 8 * * 1\ncommand: echo ship\ncollection: Ops\nparams:\n  - name: token\n    secret: true\n    type: text\n  broken: [\n",
+    "value": null
+  },
+  "form#edited": {
+    "problem": null,
+    "text": "# Ship the build.\nname: Release # shown in the panel\nschedule:\n  enabled: false\n  confirm: false\n  cron: 30 8 * * 1\ncommand: echo ship\ncollection: Ops\nparams:\n  - name: token\n    secret: true\n    type: text\n",
+    "value": {
+      "collection": "Ops",
+      "command": "echo ship",
+      "name": "Release",
+      "params": [
+        {
+          "name": "token",
+          "secret": true,
+          "type": "text"
+        }
+      ],
+      "schedule": {
+        "confirm": false,
+        "cron": "30 8 * * 1",
+        "enabled": false
+      }
+    }
+  },
+  "form#read": {
+    "problem": null,
+    "text": "# Ship the build.\nname: Ship # shown in the panel\nschedule:\n  enabled: false\n  confirm: false\n  cron: \"0 9 * * *\"\ncommand: echo ship\ncolor: blue\ncollection: Ops\n",
+    "value": {
+      "collection": "Ops",
+      "color": "blue",
+      "command": "echo ship",
+      "name": "Ship",
+      "schedule": {
+        "confirm": false,
+        "cron": "0 9 * * *",
+        "enabled": false
+      }
+    }
+  }
+}

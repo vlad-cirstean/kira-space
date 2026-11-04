@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/google/renameio/v2"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 )
 
@@ -17,6 +18,7 @@ type Bound interface {
 	File(scripts.FileArgs) (scripts.FileView, error)
 	SaveFile(scripts.SaveFileArgs) (scripts.FileView, error)
 	SetSecrets(scripts.SetSecretsArgs) (scripts.CustomScript, error)
+	Form(scripts.FormArgs) (configfs.FormResult, error)
 }
 
 // Update replaces the config of run id with fields: it renders the file and saves it. A text that

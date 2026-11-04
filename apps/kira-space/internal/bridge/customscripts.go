@@ -1,6 +1,7 @@
 package bridge
 
 import (
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 )
 
@@ -14,6 +15,7 @@ type (
 	CustomScriptsCreateArgs             = scripts.CreateArgs
 	CustomScriptsDeleteArgs             = scripts.DeleteArgs
 	CustomScriptsFileArgs               = scripts.FileArgs
+	CustomScriptsFormArgs               = scripts.FormArgs
 	CustomScriptsSaveFileArgs           = scripts.SaveFileArgs
 	CustomScriptsSetSecretsArgs         = scripts.SetSecretsArgs
 	CustomScriptsSetScheduleTargetArgs  = scripts.SetScheduleTargetArgs
@@ -55,4 +57,8 @@ func (s *CustomScriptsService) Reorder(args CustomScriptsReorderArgs) error {
 
 func (s *CustomScriptsService) ReorderCollections(args CustomScriptsReorderCollectionsArgs) error {
 	return s.Svc.ReorderCollections(args)
+}
+
+func (s *CustomScriptsService) Form(args CustomScriptsFormArgs) (configfs.FormResult, error) {
+	return s.Svc.Form(args)
 }
