@@ -118,6 +118,8 @@ type TaskBoardDeps struct {
 	// policy and denials.
 	Sandbox    agentsandbox.Enforcer
 	RunSandbox *repos.AdeRunSandboxRepo
+	// SessionSandbox stores each manual step session's policy and denials (P511).
+	SessionSandbox *repos.AdeSessionSandboxRepo
 	// Trackers are the issue tracker providers; each adds a task artifact source and fills TaskIssue. nil = none.
 	Trackers *issuetracker.Registry
 	// ArtifactSources append to the built-in task artifact sources.

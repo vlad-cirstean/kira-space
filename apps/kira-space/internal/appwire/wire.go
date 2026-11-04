@@ -230,7 +230,7 @@ func wireAdeTask(
 		Credentials: credentials,
 		Logs:        repositories.AdeLogs,
 		Sessions:    repositories.AdeSessions,
-		Sandbox:     runs.Sandbox, RunSandbox: repositories.AdeRunSandbox,
+		Sandbox:     runs.Sandbox, RunSandbox: repositories.AdeRunSandbox, SessionSandbox: repositories.AdeSessionSandbox,
 		Tracker:       tracker,
 		CloseTerminal: closeTerminal,
 		Windows:       repositories.Windows, ReviewWindows: repositories.AdeReview,
