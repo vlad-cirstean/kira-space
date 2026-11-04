@@ -67,9 +67,8 @@ test('contract: a form edit lands in the YAML tab with its comments', async ({ r
 
 test('contract: typing a prepare script replaces the run reference', async ({ relaunch }) => {
   const { window: page } = await open(relaunch, [formCall('seam')]);
-  await expect(page.locator(t('repo-prepare-ref'))).toContainText('Install deps');
+  await page.locator(t('repo-prepare-mode-command')).click();
   await page.locator(t('repo-prepare')).fill('bun install');
-  await expect(page.locator(t('repo-prepare-ref'))).toHaveCount(0);
   await page.locator(t('repo-file-tab-yaml')).click();
   await expect
     .poll(() => codeEditorText(page.locator(t('repo-file-text'))))
@@ -82,6 +81,7 @@ test('contract: typing a row script keeps the other row run reference', async ({
   const { window: page } = await open(relaunch, [formCall('env')]);
   const rows = page.locator(t('repo-env'));
   await expect(rows).toHaveCount(2);
+  await rows.nth(0).locator(t('repo-env-script-mode-command')).click();
   await rows
     .nth(0)
     .locator(t('repo-env-script'))

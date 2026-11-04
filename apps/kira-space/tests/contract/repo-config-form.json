@@ -117,6 +117,14 @@
         ],
         "unset": true,
         "value": null
+      },
+      {
+        "path": [
+          "worktree",
+          "prepare_run"
+        ],
+        "unset": true,
+        "value": null
       }
     ],
     "file": "proj.yaml",

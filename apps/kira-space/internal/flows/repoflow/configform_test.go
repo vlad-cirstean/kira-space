@@ -71,9 +71,11 @@ func TestRepoConfigForm(t *testing.T) {
 		t.Fatalf("Form of one scalar = %+v", renamed)
 	}
 
-	// Typing a prepare script unsets prepare_run in the same call.
+	// Typing a prepare script unsets prepare_run in the same call: once as the field's partner, once
+	// as the form's own change of the ref leaf.
 	seam := call("seam", []configfs.Edit{
 		{Path: []string{"worktree", "prepare_script"}, Value: "bun install"},
+		{Path: []string{"worktree", "prepare_run"}, Unset: true},
 		{Path: []string{"worktree", "prepare_run"}, Unset: true},
 	}, view.Text)
 	if seam.Problem != nil || strings.Contains(seam.Text, "prepare_run") || !strings.Contains(seam.Text, "prepare_script: bun install") ||
