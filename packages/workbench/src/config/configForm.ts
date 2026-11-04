@@ -5,6 +5,8 @@ export interface FieldSpec {
   path: readonly string[];
   /** An empty value removes the key instead of writing it. */
   unsetWhenEmpty?: boolean;
+  /** A value equal to this (the key's default) removes the key instead of writing it. */
+  unsetWhen?: unknown;
   /** Exclusive partner keys: a non-empty write of this field unsets each of them. */
   clears?: readonly (readonly string[])[];
   /** A mapping whose children have their own specs: this spec only adds or removes the mapping. */
@@ -79,13 +81,14 @@ export function diffLeaves(
       continue;
     }
     if (sameValue(next, getLeaf(base, spec.path))) continue;
+    const atDefault = spec.unsetWhen !== undefined && sameValue(next, spec.unsetWhen);
     const empty = isEmptyValue(next);
-    if (empty && (spec.unsetWhenEmpty || next === undefined || next === null)) {
+    if (atDefault || (empty && (spec.unsetWhenEmpty || next === undefined || next === null))) {
       edits.push({ path: [...spec.path], unset: true });
       continue;
     }
     edits.push({ path: [...spec.path], value: next, unset: false });
-    if (!empty) {
+    if (!empty && !atDefault) {
       for (const partner of spec.clears ?? []) edits.push({ path: [...partner], unset: true });
     }
   }

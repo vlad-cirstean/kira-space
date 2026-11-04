@@ -37,6 +37,7 @@ import type {
 import type {
   ConnectionConfigView,
   ConnectionFileDetail,
+  ConnectionFormResult,
   ConnectionSecretKind,
 } from '@shared/domain/connectionConfig';
 import type { DataGripPreview, DataGripReport } from '@shared/domain/datagrip';
@@ -232,6 +233,18 @@ const studioControl = {
     unwrap(ConnectionConfigService.SaveFile({ file, text, baseHash })).then((r) =>
       trust<ConnectionFileDetail>(r),
     ),
+  connectionConfigForm: (
+    file: string,
+    text: string,
+    edits: FormEdit[],
+  ): Promise<ConnectionFormResult> =>
+    unwrap(
+      ConnectionConfigService.Form({
+        file,
+        text,
+        edits: edits.map((e) => ({ path: e.path, value: e.value ?? null, unset: e.unset })),
+      }),
+    ).then((r) => trust<ConnectionFormResult>(r)),
   connectionConfigSetSecret: (
     kind: ConnectionSecretKind,
     name: string,

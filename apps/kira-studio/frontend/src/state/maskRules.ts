@@ -63,6 +63,16 @@ export async function removeMaskRule(connectionId: string, id: string): Promise<
   await loadMaskRules(connectionId);
 }
 
+export async function regenerateMaskKey(connectionId: string): Promise<void> {
+  await control.maskRulesRegenerateKey(connectionId);
+  // Force the next correlationKeyFor to refetch: every existing tag is now stale.
+  invalidateCorrelationKey(connectionId);
+  // The grid's masking preview watches this query's data identity; a shallow copy re-runs it so a
+  // tab keeps no tag computed under the old key.
+  const rules = queryClient.getQueryData<MaskRule[]>(maskRulesQueryKey(connectionId));
+  if (rules) queryClient.setQueryData(maskRulesQueryKey(connectionId), [...rules]);
+}
+
 // A plain memoised cache, not TanStack Query — never read reactively by any component (only
 // correlationKeyFor below reads it), so it needs none of Query's cache/invalidation machinery.
 const correlationKeys: Record<string, string> = {};

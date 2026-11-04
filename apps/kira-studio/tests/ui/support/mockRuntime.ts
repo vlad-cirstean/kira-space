@@ -124,6 +124,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   connectionConfigView: 'ConnectionConfigService.View',
   connectionConfigFile: 'ConnectionConfigService.File',
   connectionConfigSaveFile: 'ConnectionConfigService.SaveFile',
+  connectionConfigForm: 'ConnectionConfigService.Form',
   connectionConfigSetSecret: 'ConnectionConfigService.SetSecret',
   connectionConfigDeleteSecret: 'ConnectionConfigService.DeleteSecret',
   variablesListEnvironments: 'VariablesService.ListEnvironments',

@@ -148,6 +148,7 @@ test('Edit file shows the file error and Save sends the text with its base hash'
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('[data-testid="config-file-status"]')).toContainText('Line 2');
   await expect(dialog.locator('[data-testid="connection-file-last-good"]')).toBeVisible();
+  await dialog.locator('[data-testid="connection-tab-yaml"]').click();
   await expectHighlighted(dialog.locator('[data-testid="connection-file-text"]'), 'yaml');
 
   await replaceCodeEditorText(

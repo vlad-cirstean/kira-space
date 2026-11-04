@@ -12687,6 +12687,9 @@
       "refreshFailed": {
         "error": "Saved, but refresh failed: {errors}"
       },
+      "regenerate": {
+        "label": "Regenerate"
+      },
       "resizeList": {
         "aria": "Resize list"
       },
@@ -14743,6 +14746,9 @@
           "option": "{field}, newest first"
         }
       },
+      "space": {
+        "label": "Space"
+      },
       "tab": {
         "title": "Discover"
       },
@@ -14851,11 +14857,24 @@
     },
     "project": {
       "connectionDialog": {
+        "autoExplain": {
+          "description": "Runs the database’s own EXPLAIN before each SELECT this connection issues from a query console, and warns when a query is estimated to read more than the configured row threshold. EXPLAIN only plans the query and never runs it, so this costs one extra planning round trip, not a second execution.",
+          "label": "Auto-explain SELECT queries"
+        },
+        "awsProfile": {
+          "label": "AWS profile (optional)"
+        },
         "changeEngine": {
           "title": "Change engine"
         },
+        "colour": {
+          "aria": "Connection colour"
+        },
         "column": {
           "placeholder": "Column"
+        },
+        "correlate": {
+          "label": "Correlate"
         },
         "database": {
           "label": "Database"
@@ -14875,10 +14894,41 @@
         "host": {
           "label": "Host"
         },
+        "keep": {
+          "domain": {
+            "label": "Keep domain"
+          },
+          "initials": {
+            "label": "Keep initials"
+          },
+          "year": {
+            "label": "Keep year"
+          }
+        },
         "kind": {
           "aria": "Connection kind",
           "unsupported": {
             "tooltip": "{kind} isn’t supported yet"
+          }
+        },
+        "maskKind": {
+          "date": {
+            "description": "Keeps the year and destroys the month, day and time."
+          },
+          "email": {
+            "description": "Keeps the domain and the local part’s first letter and length."
+          },
+          "name": {
+            "description": "Keeps initials and word lengths, with the remaining letters replaced by dots."
+          },
+          "number": {
+            "description": "Shows an order of magnitude, never a joinable key. For a value that must join, use a text or redact rule, or mark a numeric identifier column with a kind other than number."
+          },
+          "redact": {
+            "description": "Keeps nothing at all. The right default when unsure, or when the shape itself is sensitive."
+          },
+          "text": {
+            "description": "Keeps nothing but a bucketed length, with no first character and no exact length."
           }
         },
         "mcp": {
@@ -14888,14 +14938,61 @@
           "ddl": {
             "label": "DDL"
           },
+          "ddlNote": {
+            "label": "CREATE, ALTER, DROP, TRUNCATE and equivalents, SQL engines only"
+          },
+          "descriptionNote": {
+            "label": "What this database is for, read verbatim by MCP clients"
+          },
+          "expose": {
+            "description": "Nothing is exposed by default. The same switch lives in the database MCP section of settings; either one toggles the other.",
+            "label": "Expose to the database MCP server"
+          },
+          "plan": {
+            "description": "This engine has no query plan this app can read.",
+            "label": "Plan queries before running them"
+          },
           "prompt": {
             "label": "Ask me"
           },
           "read": {
             "label": "Read"
           },
+          "readNote": {
+            "label": "SELECT and its engine equivalents"
+          },
+          "review": {
+            "description": "The app setting lives in the database MCP section of settings. A write has already run when its result shows.",
+            "label": "Review results"
+          },
+          "reviewAlways": {
+            "option": "Always"
+          },
+          "reviewInheritOff": {
+            "option": "App setting (off)"
+          },
+          "reviewInheritOn": {
+            "option": "App setting (on)"
+          },
+          "reviewNever": {
+            "option": "Never"
+          },
+          "reviewNote": {
+            "label": "Hold each query result for you to check before the AI gets it"
+          },
+          "strictest": {
+            "description": "A statement this app can’t classify is treated as whichever of the three is strictest. These settings govern the MCP server only. The read-only flag on the {tab} tab governs this app’s own console."
+          },
           "write": {
             "label": "Write"
+          },
+          "writeNote": {
+            "label": "INSERT, UPDATE, DELETE and equivalents"
+          }
+        },
+        "mode": {
+          "uri": {
+            "label": "Connection URI"
           }
         },
         "newConnection": {
@@ -14907,20 +15004,86 @@
         "password": {
           "label": "Password"
         },
+        "preconnect": {
+          "description": "Runs in your shell before connecting, for example a port-forward or a single sign-on session keeper.",
+          "label": "Pre-connect command",
+          "warning": {
+            "body": "This command runs on your machine with your permissions every time this connection connects."
+          }
+        },
+        "preconnectDelay": {
+          "description": "Seconds to wait after the command starts before the first connect attempt. 0 (default) connects as soon as the command is ready. Cancel it while it runs from the operations list.",
+          "label": "Wait before connecting (seconds)",
+          "range": {
+            "status": "Whole seconds, {min}–{max}"
+          }
+        },
+        "privacy": {
+          "intro": {
+            "description": "Rules redact values for the MCP clients of this connection and for the masking preview of the data viewer. They never change stored data."
+          },
+          "keyFallback": {
+            "body": "Development fallback. The correlation key is obfuscated with a built-in key on this platform, not a real keychain, so an attacker with filesystem access could recover it. The redaction itself is unaffected and stays uninvertible."
+          },
+          "noRules": {
+            "emptyHint": "No masking rules yet on this connection."
+          },
+          "saveFirst": {
+            "hint": "Save this connection first to manage masking rules."
+          }
+        },
+        "readOnly": {
+          "description": "Blocks every mutation path for this connection. That covers grid edits, DDL and console writes."
+        },
         "redact": {
           "label": "Redact"
+        },
+        "regenerate": {
+          "label": "Regenerate correlation key"
+        },
+        "regenerateConfirm": {
+          "body": "Regenerating the correlation key changes every masked correlation tag for this connection. Masked results already given to a client, or saved anywhere outside this app, will no longer correlate with results produced after the change. The real values are not affected.",
+          "title": "Regenerate correlation key?"
         },
         "region": {
           "label": "Region"
         },
+        "removeRule": {
+          "tooltip": "Remove rule"
+        },
         "showPassword": {
           "label": "Show password"
+        },
+        "sidecar": {
+          "description": "When on, the command stays alive for the whole session, for example a port-forward, and this connection drops the moment it exits. When off (default), a fresh instance runs each time you connect and its exit is never monitored, which suits a one-off prep script.",
+          "label": "Keep it running, disconnect if it dies"
         },
         "sqliteFilter": {
           "label": "SQLite database"
         },
+        "tab": {
+          "general": {
+            "label": "General"
+          },
+          "preconnect": {
+            "label": "Pre-connect"
+          },
+          "privacy": {
+            "label": "Privacy"
+          }
+        },
+        "tabs": {
+          "aria": "Connection detail tabs"
+        },
         "test": {
           "label": "Test connection"
+        },
+        "throttle": {
+          "description": "A value of 0 disables the limit. Reads served from cache are never throttled, and connecting is never throttled. Applies immediately to a connected connection.",
+          "label": "Throttle commands",
+          "range": {
+            "status": "Unlimited (0), or {min}–{max}"
+          }
         }
       },
       "connectionScope": {
