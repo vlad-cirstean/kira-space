@@ -28,6 +28,8 @@ import AdeInspectorRow from './AdeInspectorRow.vue';
 // A step's sandbox, for its agent or script: access level, extra folders, network.
 const props = defineProps<{ sandbox: StepSandbox; stepId: string; kind: StepKind }>();
 const script = computed(() => props.kind === 'script');
+const manual = computed(() => props.kind === 'manual');
+const unconfinedByDefault = computed(() => script.value || manual.value);
 const emit = defineEmits<{ patch: [sandbox: StepSandbox] }>();
 const workflows = useWorkflows();
 const support = computed(() => workflows.data.value?.sandbox ?? null);
@@ -93,9 +95,15 @@ const preset = (paths: readonly string[]): void => {
         @update:model-value="(v: string) => set({ access: v as SandboxAccess })"
       />
     </AdeInspectorRow>
-    <FieldDescription v-if="sandbox.access === 'off' && script" data-testid="ade-wf-sandbox-off">{{
-      t('space.ade.workflows.sandbox.offScript.hint')
-    }}</FieldDescription>
+    <FieldDescription
+      v-if="sandbox.access === 'off' && unconfinedByDefault"
+      data-testid="ade-wf-sandbox-off"
+      >{{
+        manual
+          ? t('space.ade.workflows.sandbox.offManual.hint')
+          : t('space.ade.workflows.sandbox.offScript.hint')
+      }}</FieldDescription
+    >
     <Alert v-else-if="sandbox.access === 'off'" variant="warn" data-testid="ade-wf-sandbox-off">
       <AlertDescription>{{ t('space.ade.workflows.sandbox.offWarning.body') }}</AlertDescription>
     </Alert>
@@ -182,6 +190,13 @@ const preset = (paths: readonly string[]): void => {
         </template>
       </AdeInspectorRow>
     </template>
+    <FieldDescription
+      v-if="manual && sandbox.access !== 'off'"
+      data-testid="ade-wf-sandbox-manual-limits"
+      >{{
+        t('space.ade.workflows.sandbox.manualLimits.hint')
+      }}</FieldDescription
+    >
     <Alert v-if="support && !support.enforced" variant="info" data-testid="ade-wf-sandbox-notice">
       <AlertDescription>{{ support.reason }}</AlertDescription>
     </Alert>

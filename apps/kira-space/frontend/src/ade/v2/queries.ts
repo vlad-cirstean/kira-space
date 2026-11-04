@@ -281,6 +281,18 @@ export function useRunSandbox(runId: MaybeRefOrGetter<string>, enabled: MaybeRef
   }));
 }
 
+/** The sandbox a manual step session started with; the badge popover reads it. */
+export function useSessionSandbox(
+  sessionId: MaybeRefOrGetter<string>,
+  enabled: MaybeRefOrGetter<boolean>,
+) {
+  return useQuery(() => ({
+    queryKey: [...runSandboxKey, 'session', toValue(sessionId)] as const,
+    queryFn: () => control.adeTaskSessionSandbox({ sessionId: toValue(sessionId) }),
+    enabled: toValue(enabled) && toValue(sessionId) !== '',
+  }));
+}
+
 export function useWorkflowYaml(fileName: MaybeRefOrGetter<string>) {
   return useQuery(() => ({
     queryKey: [...workflowYamlKey, toValue(fileName)] as const,

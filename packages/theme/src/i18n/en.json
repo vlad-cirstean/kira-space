@@ -10138,12 +10138,18 @@
             "example": "~/go",
             "label": "Allow writes"
           },
+          "manualLimits": {
+            "hint": "A sandboxed session can’t push or fetch, change agent settings or sign in again. Push from the branch menu."
+          },
           "network": {
             "hint": "Off: {agent} API only.",
             "label": "Allow network"
           },
           "networkScript": {
             "hint": "Off blocks all network access from the script."
+          },
+          "offManual": {
+            "hint": "Off. The session runs with your full rights."
           },
           "offScript": {
             "hint": "The script runs with your full rights."

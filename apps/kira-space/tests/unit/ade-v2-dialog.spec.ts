@@ -131,6 +131,7 @@ describe('busy and headless blocks', () => {
     purpose: '',
     cwd: '',
     cwdMissing: false,
+    sandbox: null,
     startedAt: 0,
     lastActiveAt: 0,
     ...over,
@@ -187,6 +188,7 @@ describe('targets', () => {
     purpose: '',
     cwd: '',
     cwdMissing: false,
+    sandbox: null,
     startedAt: 0,
     lastActiveAt: 0,
   });

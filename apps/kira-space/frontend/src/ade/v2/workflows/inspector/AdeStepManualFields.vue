@@ -4,6 +4,7 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
+import { defaultSandbox } from '../../board/stepSandbox';
 import { usesRepoTokens } from '../../board/workflowForm';
 import type { WorkflowStep } from '../../wire';
 import AdeInspectorRow from './AdeInspectorRow.vue';
@@ -33,6 +34,7 @@ const outsideVars = computed(() => props.step.outsideRepo && usesRepoTokens(prop
             prompt: v === true ? step.prompt : '',
             settings: v === true ? step.settings : {},
             outsideRepo: v === true ? step.outsideRepo : false,
+            sandbox: v === true ? step.sandbox : defaultSandbox('manual'),
           })
       "
     />

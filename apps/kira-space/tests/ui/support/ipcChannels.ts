@@ -259,6 +259,7 @@ export const IPC = {
   adeTaskRetrySetup: 'kira:adetask:retrySetup',
   adeTaskReadLog: 'kira:adetask:readLog',
   adeTaskRunSandbox: 'kira:adetask:runSandbox',
+  adeTaskSessionSandbox: 'kira:adetask:sessionSandbox',
   adeTaskSessions: 'kira:adetask:sessions:call',
   adeTaskStopRun: 'kira:adetask:stopRun',
   adeTaskReviewStep: 'kira:adetask:reviewStep',

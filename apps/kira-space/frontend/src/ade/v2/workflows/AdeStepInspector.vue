@@ -126,7 +126,7 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
         </AdeInspectorSection>
 
         <AdeInspectorSection
-          v-if="step.kind !== 'manual'"
+          v-if="step.kind !== 'manual' || step.session"
           name="sandbox"
           :title="t('space.ade.workflows.stepInspector.sandbox.title')"
         >

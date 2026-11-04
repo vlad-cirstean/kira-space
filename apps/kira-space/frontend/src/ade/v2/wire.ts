@@ -731,6 +731,7 @@ export interface Session {
   purpose: '' | 'review';
   cwd: string;
   cwdMissing: boolean;
+  sandbox: RunSandboxBadge | null /* tui manual step */;
   startedAt: number;
   lastActiveAt: number;
 }
@@ -1072,6 +1073,9 @@ export interface StepArgs {
 }
 export interface RunArgs {
   runId: string;
+}
+export interface SessionSandboxArgs {
+  sessionId: string;
 }
 export interface TaskArgs {
   taskId: string;

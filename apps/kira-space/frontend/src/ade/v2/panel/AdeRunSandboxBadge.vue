@@ -15,18 +15,18 @@ import { formatClockTime } from '@theme/format';
 import { t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { computed, ref } from 'vue';
-import { useRunSandbox } from '../queries';
+import { useRunSandbox, useSessionSandbox } from '../queries';
 import type { RunSandboxBadge } from '../wire';
 
 // The run's sandbox: a lock chip (access, blocked count) that opens the policy, the first denials
-// and the profile. Detail loads when the popover opens.
-const props = defineProps<{ runId: string; badge: RunSandboxBadge }>();
+// and the profile. Detail loads when the popover opens. A manual step session passes sessionId.
+const props = defineProps<{ runId?: string; sessionId?: string; badge: RunSandboxBadge }>();
 const open = ref(false);
 const profileOpen = ref(false);
-const detail = useRunSandbox(
-  () => props.runId,
-  () => open.value || profileOpen.value,
-);
+const shown = (): boolean => open.value || profileOpen.value;
+const runDetail = useRunSandbox(() => props.runId ?? '', shown);
+const sessionDetail = useSessionSandbox(() => props.sessionId ?? '', shown);
+const detail = computed(() => (props.sessionId ? sessionDetail : runDetail));
 const { copy, copied } = useCopy();
 
 const label = computed(() => {
@@ -46,7 +46,7 @@ const tone = computed(() => {
   if (b.denials > 0 || b.access === 'off') return 'text-warn-text';
   return b.enforced ? 'text-muted-foreground' : 'text-subtle';
 });
-const d = computed(() => detail.data.value ?? null);
+const d = computed(() => detail.value.data.value ?? null);
 const lists = computed(() =>
   d.value
     ? (
@@ -68,7 +68,7 @@ const lists = computed(() =>
         size="kira"
         class="shrink-0 gap-1"
         :class="tone"
-        data-testid="ade-run-sandbox"
+        :data-testid="sessionId ? 'ade-session-sandbox-badge' : 'ade-run-sandbox'"
         :data-access="badge.access"
         :data-enforced="badge.enforced"
         :data-denials="badge.denials"

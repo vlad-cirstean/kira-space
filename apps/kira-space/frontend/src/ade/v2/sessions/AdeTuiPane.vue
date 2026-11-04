@@ -7,6 +7,7 @@ import TerminalHostView from '@workbench/terminal/TerminalHostView.vue';
 import { computed, ref } from 'vue';
 import { useMobileTerminalsStore } from '../../../state/mobileTerminals';
 import { useTerminalsStore } from '../../../state/terminals';
+import AdeRunSandboxBadge from '../panel/AdeRunSandboxBadge.vue';
 import { useFocusSession } from '../queries';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import type { SessionView } from './sessionView';
@@ -47,6 +48,9 @@ async function show(): Promise<void> {
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col" data-testid="ade-tui-pane">
+    <div v-if="view.session.sandbox" class="flex shrink-0 items-center bg-chrome px-1.5">
+      <AdeRunSandboxBadge :session-id="view.session.id" :badge="view.session.sandbox" />
+    </div>
     <div v-if="held" class="relative flex min-h-0 flex-1 flex-col">
       <TerminalHostView
         :key="view.session.terminalId"
