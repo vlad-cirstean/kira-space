@@ -18,6 +18,14 @@ func NotEnforcedText(a Namer) string {
 	return i18n.T("backend.space.ade.sandbox.notEnforced.body", map[string]string{"agent": a.Label()})
 }
 
+// NotEnforcedScriptKey is the catalog key shown when the OS cannot enforce a script's profile.
+const NotEnforcedScriptKey = "backend.space.ade.sandbox.notEnforcedScript.body"
+
+// NotEnforcedScriptText is the not-enforced notice of a script step in the user's language.
+func NotEnforcedScriptText() string {
+	return i18n.T(NotEnforcedScriptKey, nil)
+}
+
 // Namer names the agent in sandbox texts; a harness provider satisfies it.
 type Namer interface {
 	Label() string

@@ -1518,6 +1518,9 @@
           "notEnforced": {
             "body": "The sandbox is not enforced on this OS. It runs on macOS only. {agent} permission rules still apply, but they do not stop shell commands."
           },
+          "notEnforcedScript": {
+            "body": "The sandbox is not enforced on this OS. It runs on macOS only. The script runs with your full rights."
+          },
           "pathMissing": {
             "body": "Sandbox path missing: {path}."
           },

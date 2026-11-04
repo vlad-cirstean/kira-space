@@ -63,3 +63,13 @@ func MergeEnv(environ, overrides []string) []string {
 	}
 	return append(out, overrides...)
 }
+
+// ExecArgv is the argv prefix that runs a command under e's profile: the sandbox runner, then its profile.
+// The env and unset half of e is MergeEnv's job.
+func ExecArgv(e *harness.SandboxExec) []string {
+	bin := e.Bin
+	if bin == "" {
+		bin = harness.DefaultSandboxBin
+	}
+	return []string{bin, "-f", e.Profile}
+}

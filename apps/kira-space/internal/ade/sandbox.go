@@ -185,6 +185,41 @@ func (b *TaskBoard) prepareSandbox(ctx context.Context, run model.AdeRun, l agen
 	return sr, nil
 }
 
+// prepareScriptSandbox resolves and prepares the sandbox of a script step run in path. It returns nil
+// when the board has no enforcer or the step's access is off: an unconfined script keeps no row.
+func (b *TaskBoard) prepareScriptSandbox(ctx context.Context, run model.AdeRun, def stepDef, branch, path string) (*sandboxRun, error) {
+	sd := def.Sandbox.NormalizedFor(def.Kind)
+	if b.deps.Sandbox == nil || agentsandbox.Access(sd.Access) == agentsandbox.AccessOff {
+		return nil, nil
+	}
+	in := agentsandbox.Input{
+		RunID: run.ID, Access: agentsandbox.Access(sd.Access), Read: sd.Read, Allow: sd.Allow, Network: sd.Network,
+		Worktrees: []string{path}, RunDir: path,
+		Scratch: filepath.Join(b.deps.AgentDir, "sandbox", run.ID), Cache: filepath.Join(b.deps.AgentDir, "sandbox-cache"),
+	}
+	if branch != "" {
+		in.Branch = map[string]string{path: branch}
+	}
+	rt := agentsandbox.ShellRuntime(ctx)
+	pol, notes, err := agentsandbox.ResolvePolicy(in, rt)
+	if err != nil {
+		return nil, err
+	}
+	prep, err := b.deps.Sandbox.Prepare(pol, rt)
+	if err != nil {
+		_ = os.RemoveAll(pol.Scratch)
+		return nil, err
+	}
+	sr := &sandboxRun{access: agentsandbox.Access(sd.Access), prep: prep, policy: pol, notes: notes, scratch: pol.Scratch}
+	sr.release = func() { b.deps.Sandbox.Release(run.ID) }
+	sup := b.deps.Sandbox.Support()
+	if err := b.storeSandbox(run.ID, sr, sup.Enforced, sup.Reason); err != nil {
+		sr.cleanup()
+		return nil, err
+	}
+	return sr, nil
+}
+
 func (b *TaskBoard) storeSandbox(runID string, sr *sandboxRun, enforced bool, reason string) error {
 	if b.deps.RunSandbox == nil {
 		return nil
@@ -444,7 +479,11 @@ func (b *TaskBoard) noticeSandbox(sink *logSink, sr *sandboxRun) {
 		return
 	}
 	if sup := b.deps.Sandbox.Support(); !sup.Enforced {
-		sink.add(logStdout, agentsandbox.NotEnforcedText(sr.agent))
+		if sr.agent == nil {
+			sink.add(logStdout, agentsandbox.NotEnforcedScriptText())
+		} else {
+			sink.add(logStdout, agentsandbox.NotEnforcedText(sr.agent))
+		}
 	}
 	for _, n := range sr.notes {
 		sink.add(logStdout, n)
@@ -513,6 +552,14 @@ func (b *TaskBoard) runProvider(runID string) harness.Provider {
 	return b.deps.Agent.Active()
 }
 
+// notEnforcedText is the not-enforced notice of a stored run: a run without a session is a script.
+func (b *TaskBoard) notEnforcedText(runID string) string {
+	if run, err := b.deps.Tasks.GetRun(runID); err == nil && run.SessionID == "" {
+		return agentsandbox.NotEnforcedScriptText()
+	}
+	return agentsandbox.NotEnforcedText(b.runProvider(runID))
+}
+
 // RunSandbox returns the stored sandbox of a run: its policy, profile and denials.
 func (b *TaskBoard) RunSandbox(_ context.Context, runID string) (adewire.RunSandboxDetail, error) {
 	if b.deps.RunSandbox == nil {
@@ -530,7 +577,7 @@ func (b *TaskBoard) RunSandbox(_ context.Context, runID string) (adewire.RunSand
 		Write: []string{}, Read: []string{}, Allow: []string{}, Denials: []adewire.SandboxDenial{},
 	}
 	if row.Reason != "" {
-		out.Reason = agentsandbox.NotEnforcedText(b.runProvider(runID))
+		out.Reason = b.notEnforcedText(runID)
 	}
 	var pol agentsandbox.Policy
 	if err := json.Unmarshal([]byte(row.PolicyJSON), &pol); err == nil {

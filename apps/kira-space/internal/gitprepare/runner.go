@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os/exec"
+	"slices"
 	"syscall"
 	"time"
 
@@ -42,6 +43,10 @@ type Spec struct {
 	// goroutine other than Run's own caller; callers that touch shared state from it must
 	// synchronize themselves (gitsession's own conn.Emit already does).
 	OnBatch func([]Line)
+	// Wrap is an argv prefix the shell command runs behind, such as a sandbox runner and its profile.
+	Wrap []string
+	// OnStart, when non-nil, is called with the child's pid right after it starts.
+	OnStart func(pid int)
 }
 
 // Result is Run's own outcome — Output is the FINAL, capped/sanitized transcript (never the live
@@ -90,7 +95,7 @@ func (osRunner) Run(ctx context.Context, spec Spec) (Result, error) {
 	runCtx, cancel := context.WithTimeout(ctx, spec.Timeout)
 	defer cancel()
 
-	argv := loginshell.BuildArgv(spec.Shell, spec.LoginShell, spec.Script)
+	argv := append(slices.Clone(spec.Wrap), loginshell.BuildArgv(spec.Shell, spec.LoginShell, spec.Script)...)
 	cmd := exec.CommandContext(runCtx, argv[0], argv[1:]...)
 	cmd.Dir = spec.Dir
 	cmd.Env = spec.Env
@@ -109,6 +114,9 @@ func (osRunner) Run(ctx context.Context, spec Spec) (Result, error) {
 
 	if err := cmd.Start(); err != nil {
 		return Result{}, err
+	}
+	if spec.OnStart != nil {
+		spec.OnStart(cmd.Process.Pid)
 	}
 
 	tickerDone := make(chan struct{})

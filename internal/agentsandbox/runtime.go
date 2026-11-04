@@ -57,26 +57,51 @@ func DiscoverRuntime(_ context.Context, p harness.Provider, bin string) Runtime 
 	return rt
 }
 
+// ShellRuntime is the runtime of a sandboxed script: no agent, so only the machine's own paths.
+// It is cached like a provider's, under the empty key.
+func ShellRuntime(context.Context) Runtime {
+	rtMu.Lock()
+	cached, ok := rtVals[""]
+	rtMu.Unlock()
+	if ok {
+		return cached
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), discoverTimeout)
+	defer cancel()
+	rt, complete := discover(ctx, nil, "")
+	if complete {
+		rtMu.Lock()
+		rtVals[""] = rt
+		rtMu.Unlock()
+	}
+	return rt
+}
+
 // discover reports whether the probe is complete enough to cache.
 func discover(ctx context.Context, p harness.Provider, bin string) (Runtime, bool) {
-	rt := Runtime{SSHAuthSock: os.Getenv("SSH_AUTH_SOCK"), Provider: p}
+	rt := Runtime{SSHAuthSock: os.Getenv("SSH_AUTH_SOCK")}
+	if p != nil {
+		rt.Provider = p
+	}
 	if h, err := os.UserHomeDir(); err == nil {
 		rt.Home = realPath(h)
 	} else {
 		slog.Warn("sandbox: no home dir", "scope", "agentsandbox", "err", err)
 	}
-	resolved := ""
-	if path, err := p.Locate(ctx, bin); err == nil {
-		resolved = realPath(path)
-	} else {
-		slog.Warn("sandbox: agent not resolved", "scope", "agentsandbox", "agent", p.ID(), "err", err)
+	if p != nil {
+		resolved := ""
+		if path, err := p.Locate(ctx, bin); err == nil {
+			resolved = realPath(path)
+		} else {
+			slog.Warn("sandbox: agent not resolved", "scope", "agentsandbox", "agent", p.ID(), "err", err)
+		}
+		rt.Agent = p.SandboxNeeds(rt.Home, resolved)
 	}
-	rt.Agent = p.SandboxNeeds(rt.Home, resolved)
 	var pathOK bool
 	rt.PathPrefixes, pathOK = shellPathPrefixes(ctx, rt.Home)
 	rt.UserTemp = getconf(ctx, "DARWIN_USER_TEMP_DIR")
 	rt.UserCache = getconf(ctx, "DARWIN_USER_CACHE_DIR")
-	return rt, rt.Agent.InstallPrefix != "" && pathOK
+	return rt, (p == nil || rt.Agent.InstallPrefix != "") && pathOK
 }
 
 func realPath(p string) string {
