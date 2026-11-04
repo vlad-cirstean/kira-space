@@ -43,8 +43,8 @@ const twMerge = extendTailwindMerge({
         'completion-max-w',
         'touch',
       ],
-      radius: ['kira-xs', 'kira-sm', 'kira', 'kira-lg', 'kira-pill'],
-      shadow: ['kira', 'kira-dialog'],
+      radius: ['kira-sm', 'kira'],
+      shadow: ['kira'],
     },
   },
 });

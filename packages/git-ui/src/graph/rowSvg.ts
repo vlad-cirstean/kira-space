@@ -295,9 +295,9 @@ function buildNodeElement(plan: NodeShapePlan): SVGCircleElement {
   circle.setAttribute('r', fmt(plan.r));
 
   // G-UX (item 1): the HEAD halo, like the HEAD ring below, is never lane-coloured —
-  // `fill-focus/18` paints it in `--kira-focus` at low opacity.
+  // `fill-focus/15` paints it in `--kira-focus` at low opacity.
   if (plan.isHeadHalo) {
-    circle.setAttribute('class', 'fill-focus/18');
+    circle.setAttribute('class', 'fill-focus/15');
     return circle;
   }
 

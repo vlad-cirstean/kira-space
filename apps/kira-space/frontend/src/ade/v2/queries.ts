@@ -8,8 +8,8 @@ import { control } from '../../bridge/control';
 import { withShelved } from './board/shelf';
 import { archivedTaskKey, boardKey, runSandboxKey, sessionsKey } from './readQueries';
 import type {
-  AddArtifactArgs,
   AddExistingBranchArgs,
+  AddLinkArgs,
   AddTaskRepoArgs,
   ApproveBranchRequestArgs,
   Board,
@@ -18,6 +18,7 @@ import type {
   CaptureTaskArgs,
   CloseSessionArgs,
   CreateTaskArgs,
+  EditLinkArgs,
   FinishReviewArgs,
   FocusSessionArgs,
   ForwardReviewResult,
@@ -59,7 +60,6 @@ import type {
   TakeOverArgs,
   Task,
   TaskArgs,
-  UpdateArtifactArgs,
   UpdateHandoverArgs,
   UpdateTaskArgs,
   UpdateTaskRepoArgs,
@@ -281,6 +281,18 @@ export function useRunSandbox(runId: MaybeRefOrGetter<string>, enabled: MaybeRef
   }));
 }
 
+/** The sandbox a manual step session started with; the badge popover reads it. */
+export function useSessionSandbox(
+  sessionId: MaybeRefOrGetter<string>,
+  enabled: MaybeRefOrGetter<boolean>,
+) {
+  return useQuery(() => ({
+    queryKey: [...runSandboxKey, 'session', toValue(sessionId)] as const,
+    queryFn: () => control.adeTaskSessionSandbox({ sessionId: toValue(sessionId) }),
+    enabled: toValue(enabled) && toValue(sessionId) !== '',
+  }));
+}
+
 export function useWorkflowYaml(fileName: MaybeRefOrGetter<string>) {
   return useQuery(() => ({
     queryKey: [...workflowYamlKey, toValue(fileName)] as const,
@@ -477,16 +489,16 @@ export function useTaskIssue(taskId: MaybeRefOrGetter<string>, link: MaybeRefOrG
 
 const refetchArtifacts = () => queryClient.invalidateQueries({ queryKey: artifactsPrefix });
 
-export function useAddArtifact() {
+export function useAddLink() {
   return useMutation({
-    mutationFn: (args: AddArtifactArgs) => control.adeTaskAddArtifact(args),
+    mutationFn: (args: AddLinkArgs) => control.adeTaskAddLink(args),
     onSuccess: refetchArtifacts,
   });
 }
 
-export function useUpdateArtifact() {
+export function useEditLink() {
   return useMutation({
-    mutationFn: (args: UpdateArtifactArgs) => control.adeTaskUpdateArtifact(args),
+    mutationFn: (args: EditLinkArgs) => control.adeTaskEditLink(args),
     onSuccess: refetchArtifacts,
   });
 }

@@ -702,6 +702,14 @@ func queueCycle(byID map[string]model.AdeTaskBranch, selfID string, start model.
 	return true
 }
 
+// hostRegistry is the code host registry, nil when none is wired.
+func (b *TaskBoard) hostRegistry() *githost.Registry {
+	if b.deps.Registry == nil {
+		return nil
+	}
+	return b.deps.Registry.Hosts.Registry
+}
+
 // hostLink is the issue or change-request link a pasted URL names, nil when none matches.
 func (b *TaskBoard) hostLink(raw string) *githost.Link {
 	if raw == "" || b.deps.Registry == nil {

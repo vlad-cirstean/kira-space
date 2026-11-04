@@ -13,7 +13,7 @@ import type {
 import type { RunOutcome } from '@shared/domain/runOutcome';
 
 // ---- shared
-export interface Jira {
+interface Jira {
   key: string;
   url: string;
 }
@@ -91,8 +91,10 @@ export interface WorkflowStep {
   session: boolean;
   /** Script. */
   command: string;
-  /** Agent, script, review; '' on a manual step. */
+  /** Agent, script, review; '' on a manual step and on an outside-repo step. */
   runsOn: RunsOn | '';
+  /** Runs once in the task folder, outside every repo (agent, script, manual session). */
+  outsideRepo: boolean;
   before: 'auto' | 'approval' | '';
   results: StepResult[];
   /** Returns a result may make to this step or an earlier one before the run stops; 0 = no limit (review steps only). */
@@ -107,7 +109,7 @@ export interface WorkflowStep {
   params: Record<string, string[]>;
   /** Set on a review step: it waits for the user instead of running an agent. */
   review: ReviewStepConfig | null;
-  /** Agent policy; the default (write, network on) when the step has no block. */
+  /** What the step's agent or script may do; the kind's default when the step has no block. */
   sandbox: StepSandbox;
   /** Agent provider id that runs the step's new conversations; '' = the Agent setting. */
   agent: string;
@@ -126,6 +128,7 @@ export interface StageSettingSpec {
   hint: string;
 }
 export type SandboxAccess = 'write' | 'read' | 'off';
+/** A step's sandbox. Agent, review, script and manual session steps carry one; `off` runs unwrapped. */
 export interface StepSandbox {
   access: SandboxAccess;
   /** Extra read-only folders: absolute or `~/`. */
@@ -491,17 +494,24 @@ export interface ArtifactsResult {
   artifacts: Artifact[];
   gaps: ArtifactGap[];
 }
-export interface AddArtifactArgs {
+export interface AddLinkArgs {
   taskId: string;
-  kind: 'changeRequest' | 'issue' | 'deployment' | 'doc' | 'link';
-  title: string;
-  url: string;
-  ref: string;
+  text: string;
 }
-export interface UpdateArtifactArgs {
+export interface EditLinkArgs {
   taskId: string;
+  slot: 'jira' | 'host' | 'stored';
+  /** '' unless `slot` is 'stored'. */
   id: string;
-  title: string;
+  /** '' when `kind` is set. */
+  text: string;
+  kind: '' | Artifact['kind'];
+}
+/** Where a link landed: a task slot, a stored row, or `known` (already shown; nothing written). */
+export interface LinkResult {
+  filed: 'jira' | 'host' | 'stored' | 'known';
+  kind: Artifact['kind'];
+  artifact: Artifact | null;
 }
 export interface RemoveArtifactArgs {
   taskId: string;
@@ -721,6 +731,7 @@ export interface Session {
   purpose: '' | 'review';
   cwd: string;
   cwdMissing: boolean;
+  sandbox: RunSandboxBadge | null /* tui manual step */;
   startedAt: number;
   lastActiveAt: number;
 }
@@ -1062,6 +1073,9 @@ export interface StepArgs {
 }
 export interface RunArgs {
   runId: string;
+}
+export interface SessionSandboxArgs {
+  sessionId: string;
 }
 export interface TaskArgs {
   taskId: string;

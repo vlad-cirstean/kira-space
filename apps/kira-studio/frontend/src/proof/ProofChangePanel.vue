@@ -67,18 +67,18 @@ const locked = computed(() => accept.isPending.value || reject.isPending.value);
 <template>
   <div class="flex h-full min-h-0 flex-col" data-testid="proof-change">
     <div
-      class="flex h-tabbar shrink-0 items-center border-b border-border bg-chrome px-3 text-kira-sm font-medium text-muted-foreground"
+      class="flex h-tabbar shrink-0 items-center bg-chrome px-3 text-kira-sm font-medium text-muted-foreground"
     >
       {{ t('studio.proof.change.title') }}
     </div>
     <p
       v-if="pending.reason"
-      class="m-0 shrink-0 whitespace-pre-wrap border-b border-border p-3"
+      class="m-0 shrink-0 whitespace-pre-wrap p-3"
       data-testid="proof-change-reason"
     >
       {{ pending.reason }}
     </p>
-    <div class="shrink-0 border-b border-border p-2">
+    <div class="shrink-0 p-2">
       <SecondaryTabs
         v-model="view"
         variant="segmented"
@@ -113,7 +113,7 @@ const locked = computed(() => accept.isPending.value || reject.isPending.value);
         </button>
       </li>
     </ul>
-    <div class="flex shrink-0 justify-end gap-2 border-t border-border p-2">
+    <div class="flex shrink-0 justify-end gap-2 p-2">
       <Button
         variant="dialog"
         size="kira-lg"

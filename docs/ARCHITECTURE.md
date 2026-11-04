@@ -57,7 +57,7 @@ whatever sandbox a session happens to be in),
 - A DialogContent with no explicit width spans the viewport minus 2rem, since shadcn's default sm:max-w-sm was removed; every dialog sets its own w-N.
 - scripts/check-class-conflicts.ts (bun run lint) parses every .vue under app/theme/workbench, resolves static class and conditional :class literals through cn/twMergeKv, and fails on a surviving static duplicate or a conditional literal that drops a static token; it skips where the :class root is itself a cn(...)/twMergeKv(...) call.
 - A registration self-check in the class-conflict lint asserts every new @theme token name (colour, spacing, radius, shadow, animation, leading) wins a same-group merge, so a token not wired into that group fails lint.
-- There is one canonical name per colour/radius value repo-wide, including components/ui; shadcn-alias/kira pairs collapse onto the kira name (e.g. background/bg, card/elevated, muted/field, input/border-strong, ring/focus, accent/hover, destructive/error, rounded-sm/md/lg/xl to rounded-kira-xs/sm/kira/pill), because no CSS custom property is set at runtime.
+- There is one canonical name per colour/radius value repo-wide, including components/ui; shadcn-alias/kira pairs collapse onto the kira name (e.g. background/bg, card/elevated, muted/field, input/border, ring/focus, accent/field, destructive/error, rounded-sm/md/lg/xl to rounded-kira-sm/kira-sm/kira/full), because no CSS custom property is set at runtime.
 - shadcn-bridge.css's @theme inline keeps exactly --color-primary, --color-primary-foreground, --color-muted-foreground and --color-border, and no --radius-* at all.
 - check-theme-classes.sh's check_alias guard keeps retired aliases from returning; it never excludes components/ui and is never extended to git-ui.
 - alertVariants has no err key; every error alert uses variant="error" (P263).
@@ -88,7 +88,7 @@ whatever sandbox a session happens to be in),
 - Fetch a new shadcn-vue component set by direct-registry pull, not by shadcn-vue add; the procedure is in docs/DEV_ENVIRONMENT.md's shadcn-vue section.
 - Empty/EmptyMedia/EmptyTitle/EmptyDescription (components/ui/empty/) is the one empty-state component; Alert with class empty-state (role=alert on a merely empty list) was a misuse and was converted.
 - Row components (TreeRow, CollectionRow, RepoTreeRow, RepoSearchRow) take a class prop and own their selection ternary instead of using a shared .tree-row/.selected/.sticky CSS rule.
-- Row state class is selected ? 'bg-select' : sticky ? 'bg-bg hover:bg-hover' : 'hover:bg-hover'; sticky is a prop so a row in a sticky layer paints its own background, and selected beats hover by ternary order, not CSS specificity.
+- Row state class is selected ? 'bg-select' : sticky ? 'bg-bg hover:bg-field' : 'hover:bg-field'; sticky is a prop so a row in a sticky layer paints its own background, and selected beats hover by ternary order, not CSS specificity.
 - In git-ui dialogs, pair every control that is not natively input-like with an explicit useId()-driven for/id, because biome's noLabelWithoutControl can't see through a wrapped component's inheritAttrs: false to the native element.
 - Pass prioritize-position on a point-anchored DropdownMenu so reka's Popper flips before it shifts, since shift alone can clamp overflow to zero against a 0×0 anchor and starve flip of a signal.
 - Never put a Tooltip between a DropdownMenu or Popover root and its trigger: reka shares one unscoped PopperRoot context, so the trigger anchors the Tooltip and the menu stays at translate(0,-200%), off-screen. Put `TooltipIconButton` inside `DropdownMenuTrigger as-child`, or anchor explicitly (RefsPopover).
@@ -747,7 +747,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - A boolean that applies on flip is a Switch; an option in a form committed by a button is a Checkbox (14px box).
 - Use Tooltip for hints, never native title; the theme provider owns the 400ms delay. Shortcuts use Kbd. A tooltip with several facts uses TooltipDetails (title, label/value rows, hint); a joined sentence of facts is not allowed.
 - Loading uses Spinner; Skeleton only where the layout is known.
-- Grey has three roles: text-muted-foreground for secondary content, text-subtle for tertiary chrome, text-disabled for absence markers.
+- Grey has three roles: text-muted-foreground for secondary content, text-subtle for tertiary chrome and absence markers.
 - Card inset holds text only, because its bg-field fill hides an Input, Select or Checkbox; Card section holds controls.
 - DropdownMenuContent is content-sized (min-w-45, max-w-80).
 - Every pane resize handle binds resizeHandleVariants (2px bar, 4px/8px hit area, bg-focus on hover/focus/drag, 10px arrow step, Home/End); shell, dock and ADE panel handles measure identical at rest, hover and drag.
@@ -1341,7 +1341,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 ### UI leftover conventions (P267)
 
 - Use text-muted-foreground for row meta, KV keys, secondary labels and values, timestamps, counts, icons, DialogDescription and bar status; muted never uses opacity.
-- Use text-subtle for section headings and legends, FieldDescription, empty and inline-state lines, placeholders, NULL markers and row numbers; use text-disabled for absence markers.
+- Use text-subtle for section headings and legends, FieldDescription, empty and inline-state lines, placeholders, NULL markers and row numbers.
 - Use cursor-default on every control and row; pointer only for Button variant="link", linkify.ts anchors and the PR badge link; grab on drag handles; never help or copy cursors.
 - View or detail titles use text-kira-lg font-medium text-fg; sections use SectionHeading (pane, panel, list, picker) or FieldSet + FieldLegend + FieldDescription (form, settings pane).
 - A hint paragraph is FieldDescription; an empty line is InlineState kind="empty" or EmptyState.
@@ -1352,7 +1352,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - Loading placeholders wait SPINNER_DELAY (packages/theme/src/timing.ts, TIMING.spinnerDelay) before showing.
 - CodiconIcon size must be one of 12, 13, 16, 24; RunState is a Spinner at size 12 or a StatusDot error.
 - .kira-prose in base.css is the one prose layer.
-- Elevation tiers: Popover z-(--kira-z-popover) + shadow-kira; Dialog, overlay, CommandDialog z-(--kira-z-dialog) + shadow-kira-dialog; DropdownMenu z-(--kira-z-menu) + shadow-kira; Tooltip z-(--kira-z-tooltip) with no shadow; in-pane layers z-1..3.
+- Elevation tiers: Popover z-(--kira-z-popover) + shadow-kira; Dialog, overlay, CommandDialog z-(--kira-z-dialog) + shadow-kira; DropdownMenu z-(--kira-z-menu) + shadow-kira; Tooltip z-(--kira-z-tooltip) with no shadow; in-pane layers z-1..3.
 - TooltipContent has two variants sharing one ground (elevated, ring, shadow, no arrow, sideOffset 4, fade only): `default` (padded, max-w-sm, plain text, `\n` breaks lines) and `surface` (layout only, caller pads) for rich content using the ADE tones, which are dark-only. A branch chip inside a default tooltip renders neutral via `data-chip="branch"`.
 - Density scale is 0.5, 1, 1.5, 2, 3, 4; 0.25/1.25/1.75/2.5/3.5 are not allowed anywhere. Dialog width uses size variants only.
 - With DialogContent dirty, outside click is ignored, and Esc and the header X ask the discard confirm; footer Cancel never asks.
@@ -1911,7 +1911,7 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 - git-ui has no token layer of its own: its markup uses the app's Tailwind utilities and --kira-* tokens, compiled by Kira Space's root styles.css which @sources packages/git-ui/src; the only git CSS is packages/git-ui/src/theme/git.css, imported by styles.css because @theme needs the host root.
 - git.css defines the graph scale --kira-graph-t-* (xs/sm/md = graph font size -2/-1/0px), --kira-graph-h-xs and --kira-graph-row-h, exposed as text-graph-*, h-graph-row-compact and h-graph-h-xs utilities registered in packages/theme/src/lib/utils.ts so cn merges them.
 - The lane palette graph-lane-0..7 aliases the connection palette --kira-conn-*, and SlickGrid structural rules (.kira-commit-grid .slick-*, in @layer components) live in git.css because SlickGrid builds those nodes itself.
-- Other git colours are app utilities: status ok/warn/error, remote and stash origin info, stash and draft muted-foreground, rows bg-hover/bg-select, borders border-border; there is no kv- marker layer (lint bans it).
+- Other git colours are app utilities: status ok/warn/error, remote and stash origin info, stash and draft muted-foreground, rows bg-field/bg-select, borders border-border; there is no kv- marker layer (lint bans it).
 - TokenReader measures the graph tokens for SlickGrid's rowHeight and rowSvg.ts geometry.
 - Test hooks in git-ui are data-testid; the grid's runtime classes are kira-* (kira-cell-message, kira-row-selected).
 - Size a codicon span with a utility using the ! suffix (text-graph-xs!), because codicon.css's unlayered font shorthand beats layered utilities.
@@ -2353,7 +2353,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - The workflows folder is a `configfs.Folder` (P450, see Config files): watched, debounced 200 ms; a broken edit keeps the last valid version and reports the line plus a message. Saves are atomic with a baseHash check. `ade_workflow_last_valid` rows follow file deletion. The writer keeps key order and comments.
 - `apps/kira-space/internal/adeflow/options.go` is the single list of workflow keys (P451): `Parse` and the writer derive their key sets from it, and the folder's `AGENTS.md` is generated from it. A new key needs a row there or the parser refuses it.
 - A workflow has a flat list `steps` of kind agent|script|review|manual (P293); `kind` is required and each kind allows only its own keys.
-- Allowed keys: agent: runs_on before results max_returns timeout prompt allowed_tools smart_script params sandbox settings; script: command runs_on before results max_returns timeout; review: review runs_on before results max_returns timeout sandbox settings; manual: session and, with it, prompt and settings.
+- Allowed keys: agent: outside_repo runs_on before results max_returns timeout prompt allowed_tools smart_script params sandbox settings; script: outside_repo command runs_on before results max_returns timeout sandbox; review: review runs_on before results max_returns timeout sandbox settings; manual: session and, with it, prompt, settings, outside_repo and sandbox.
 - A top-level `stages` key fails with the error "stages" is no longer supported: list every step under "steps".
 - Agent `allowed_tools` feeds the headless `--allowedTools` list.
 - Sample workflows in apps/kira-space/internal/adeflow/testdata/ import and validate in the app.
@@ -2417,6 +2417,12 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
   - Sandbox is fixed at start: a folder run cannot write worktrees it requests mid-run. `request_branches` and `declare_repos` still work; the next stage runs on those branches.
   - `advanceLocked` calls `prepareWorktrees` before starting a step, so branches the previous stage requested get worktrees.
   - A manual session step with no repo launches with cwd the task folder (`taskLaunchDirs`); the review agent still refuses ("the task has no repo"). Prompts `ade.step.prompt` and `ade.manual.message` carry a "No repo yet" line with the folder.
+- Outside-repo steps (P510): `outside_repo: true` on an agent, script or session-manual step runs it in the task folder even when the task has branches.
+  - Wire `outsideRepo` is inverted on purpose: `false` keeps repo-aware behavior, so old snapshots behave as before. The inspector shows a Repository aware switch (on is `outsideRepo: false`).
+  - `plan()` gives the step target `""` (same as a repo-less task). `runs_on` and `outside_repo` together fail parsing. The inspector clears `runs_on` when the switch goes off.
+  - The prompt (agent, manual session) and command (script) may not use `{repo}` or `{branch}`; the parser refuses them (`outsideVars`). Prompts `ade.step.prompt` and `ade.manual.message` carry an "Outside the repos" line with the folder.
+  - `prepareStepWorktrees` skips an outside step unless the Run dialog named branches; those still get worktrees.
+  - A review step cannot be outside the repos. A manual session step takes a sandbox block (P511); a manual step without a session does not.
 - Restart recovery (D7): Recover() runs before Start(); running runs become stuck with note 'interrupted by restart', running setups fail, task sessions stop, and stale *.mcp.json files are removed.
 - After restart, pending runs keep their launch spec and launch when their gate opens; nothing auto-resumes, and a restart-stuck agent run offers Resume.
 - Agent tools (P199) are implemented in ade/agenttools.go as agentmcp.SpaceTools on *ade.TaskBoard; the loopback MCP server issues scoped grants (run, task, Space) with one bearer token per launch.
@@ -2481,6 +2487,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - The agent session id is learned, not always chosen: a provider that is a `harness.SessionLocator` may launch with `Launch.SessionID == ""`. The row then stores `''` (only headless rows require an id). A `SessionStart` event with a valid id (`harness.ValidSessionID`) fills it. At stop (`Stop`, `Reconcile`) and at resume (`resumeTarget`, `takeOverLocked`) the tracker asks `FindSession{Cwd, Since: StartedAt}`; still unknown at resume, Take over and Resume refuse with `backend.space.ade.sessionIdUnknown.body`.
 - Tracker.Prepare records a pending launch intent with a 2 min TTL; the renderer opens the terminal through the ordinary TerminalService.Open; ComposeAgent then consumes the intent, inserts the ade_sessions row as running and appends hooks env, --settings and the initial prompt.
 - Launch preset (P501): `PrepareArgs.RecordID` is the session id minted at Prepare when `Resume == ''`; `Grant.SessionID` is `Resume` or `RecordID`, so MCP calls name their session before the row exists. Headless runs set it to the run's session id.
+- A manual step session starts under its step's sandbox when the access is read or write (P511). See Agent sandbox.
 - Reconcile stops a session record only when its terminal is gone and a 30s grace window has passed.
 - The user message follows ' -- ' in argv so it cannot parse as a flag.
 - A resume runs in the recorded cwd; a missing cwd yields ErrInvalidInput and the directory is not recreated.
@@ -2509,10 +2516,14 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - Git rules: the worktree is read-write except its .git file; the linked gitdir is read-write except gitdir, commondir, locked, config.worktree; common objects are append-only; the run's own branch ref, lock and reflog are writable.
 - The rest of the git common dir is read-only, so branch, worktree, tag, stash, remote-ref, config and hook writes fail with EPERM; allow entries never open these because the protections come last.
 - Sandboxed agents always read the macOS keychain; the CLI signs in from it. Keychain writes stay denied (P341).
-- A step without a sandbox block defaults to access write with network on.
+- A step without a sandbox block defaults to access write with network on; a script or manual step defaults to access off (`adewire.DefaultSandboxFor(kind)`). Migrations 0067 (script) and 0069 (manual) rewrite those steps in stored task snapshots to off, so running tasks keep their old behavior. `decorateTask` compares the live workflow hash with the hash of the re-marshalled snapshot, so a snapshot rewritten by a migration stays current.
 - The sandbox covers headless agents from superviseAgent (steps, review rounds, rebase runs with every stack worktree writable) and scriptruns smart runs in dir mode worktree.
-- The sandbox does not cover TUI sessions and Take over, script steps, setup scripts, folder-mode scripts, or memory claude calls.
+- The sandbox does not cover setup scripts, folder-mode scripts, or memory claude calls.
+- A script step with access read or write runs under the sandbox (P510): `superviseScript` calls `prepareScriptSandbox`, wraps the command with `ExecArgv` (`gitprepare.Spec.Wrap`, `Spec.OnStart` feeds `watchSandbox`) and records the outcome through `sandboxOutcome`. A profile failure ends the run with `EndStartErr`. Without enforcement the notice uses `NotEnforcedScriptText`.
 - The Enforcer interface has Support, Prepare and Watch; System() is real only on darwin, elsewhere Support is Enforced:false with Reason NotEnforcedKey and Prepare still builds profile, flags and env but no wrapper.
+- A manual step session with access read or write runs its TUI under the sandbox (P511); Take over of such a session re-prepares it. `InteractiveSpec.Sandbox` and `DisallowedTools` carry the wrapper: claude prefixes the sandbox words before the binary, opencode joins them with its env words. `Input.ReadFiles` lets the profile read the launch files (MCP config, context file) by literal path. `Tracker.Prepare` takes the plan from `prepareWithGrant`; the renderer still opens the PTY, and `BoundService.AgentStarted(terminalID, pid)` feeds the denial watch after `Compose`. The release is chained into `bindTUI`.
+- A sandboxed TUI has no sandbox git tools: it cannot push or fetch, change agent settings or sign in again. Keychain and `~/.claude` writes are denied. The login shell rc files run before the wrapper, unconfined.
+- Manual session sandbox data is stored in table ade_session_sandbox (migration 0069), keyed by session id. Access off keeps no row. `AdeTaskService.Sessions[].sandbox` carries the badge; `SessionSandbox` returns the detail. The chip sits in the TUI pane header (`ade-session-sandbox-badge`).
 - sandboxtest.Fake stands in for flow tests; the flow harness defaults to a not-enforced fake so contracts do not depend on the host OS.
 - With agentmcp.Spec.Sandbox, Script emits exec /usr/bin/env -u … K=V /usr/bin/sandbox-exec -f <profile> claude … after the login shell sources the user profile.
 - The profile is checked with sandbox-exec -f <profile> /usr/bin/true first; a failure fails the run before claude starts.
@@ -2776,9 +2787,9 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 - Stored rows: unique on (task, url) when url is set; a re-report updates kind, title, ref. Limits in `agentmcp`: 20 per call, 200 per task, title 200, url 2048, ref 512; url must be absolute http or https.
 - MCP tool `report_artifacts` (`artifacts`: kind, title, url, ref) is in `SpaceToolIDs`. `finish_step` and `handover` with `finished: true` append the full list as text: header line, then compact JSON `{"artifacts","gaps"}`, at most 100 rows plus a "more" line. A list failure appends an unavailable line and never fails the call.
 - `session_id` (migration 0066): the reporting session. A user re-add of the same URL keeps a non-empty origin; a new user row has `''`.
-- Wire: `AdeTaskService.Artifacts`, `AddArtifact`, `UpdateArtifact` (rename a stored row: trimmed title, 1 to 200 characters, detected ids refused), `RemoveArtifact` (stored rows only). `AddArtifact` with an empty title takes the host link ref, else host plus path. Board pushes invalidate the artifacts query.
+- Wire: `AdeTaskService.Artifacts`, `AddLink` (one line of text), `EditLink` (new text, or a new kind for a stored row), `RemoveArtifact` (stored rows only). Details links: backend classifies; rules in `ade/linkclassify.go`. A line files into the empty Jira or host slot, else a stored row; kind `branch` is stored for user rows only (migration 0067). Plain words refuse. Board pushes invalidate the artifacts query.
 - Frontend: the Details tab (`details/`) in `AdeTaskPanel.vue` and `AdeArchivedPanel.vue` (read-only). `AdeLinkGroups` shows Main (Jira, host link, detected change requests) and Related (every other link), one paste input, inline edit and remove, and `AdeTaskTimeline`. `AdeArtifactList.vue` is read-only and shows in the stage dialog when moving to Done only.
-- Tests: flows/adeflow `TestTaskArtifacts` (contract `ade-artifacts`), tests/ui/ade-v2-artifacts.spec.ts, real `claude` `TestAdeReportArtifacts`. `TestTaskPanelOrigins` (contract `ade-task-panel`) covers session ids, `UpdateArtifact`, empty-title add and change request base and checks; tests/ui/ade-v2-task-panel.spec.ts is its UI half.
+- Tests: flows/adeflow `TestTaskArtifacts` (contract `ade-artifacts`), tests/ui/ade-v2-artifacts.spec.ts, real `claude` `TestAdeReportArtifacts`. `TestTaskPanelOrigins` (contract `ade-task-panel`) covers session ids, `EditLink` rename and change request base and checks; `TestDetailsLinks` (contract `ade-details-links`, UI half ade-v2-details-links.spec.ts) covers filing and editing; tests/ui/ade-v2-task-panel.spec.ts is its UI half.
 
 ### Tests
 
@@ -3712,7 +3723,7 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
 - **A short-lived process of a sandboxed run can lose its denial (P292).** The system-wide denial stream names a pid, and an exited pid is attributed only when its process name matches an earlier denial of the run.
 - **Hooks and build scripts an agent edits run unsandboxed later (P287).** Kira's own git operations and the
   user run them outside the sandbox.
-- **The sandbox is unverified on a real Mac (P287).** Linux checks the generator and flows only. Delete once
+- **The sandbox is unverified on a real Mac (P287, P510, P511).** Linux checks the generator and flows only. The sandboxed TUI launch (`$SHELL -l -i -c` wrapper, `Input.ReadFiles`, denial watch by pid) has not run under Seatbelt. Delete once
   the Mac checklist in `docs/DEV_ENVIRONMENT.md` passes.
 - **A written memory doc holds no per-fact keywords (P285 Part 3).** Importing it into another store indexes its facts with the doc-level keywords only; the store regenerates per-fact keywords only for facts the gate sees.
 - **Memory ingest compression target not met (P285, P291).** `round-p3-01`: `C_fact` 0.434, `C_store` 0.661, `C_doc` 0.734, `R_ess` 0.885. Golden essential facts alone are 0.47 of source chars. The telegraph style cuts fact chars 7% and `C_store` 4.5% on identical facts; run on the pipeline it raised recall and stored 18% more facts (XT, commit `a487cbc18`, `C_store` 0.753), so it is not adopted. Residual token loss of the style: 14 of 209 facts fail the preservation check.

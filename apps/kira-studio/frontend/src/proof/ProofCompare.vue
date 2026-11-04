@@ -23,7 +23,7 @@ const hasNew = computed(() => props.meta.diff !== 'removed');
       :aria-label="t('studio.proof.compare.old.label')"
       data-testid="proof-compare-old"
     >
-      <div class="flex h-control shrink-0 items-center border-b border-border px-3">
+      <div class="flex h-control shrink-0 items-center px-3">
         <Badge>{{ t('studio.proof.compare.old.label') }}</Badge>
       </div>
       <div class="min-h-0 flex-1">
@@ -47,7 +47,7 @@ const hasNew = computed(() => props.meta.diff !== 'removed');
       :aria-label="t('studio.proof.compare.new.label')"
       data-testid="proof-compare-new"
     >
-      <div class="flex h-control shrink-0 items-center border-b border-border px-3">
+      <div class="flex h-control shrink-0 items-center px-3">
         <Badge variant="warn">{{ t('studio.proof.compare.new.label') }}</Badge>
       </div>
       <div class="min-h-0 flex-1">

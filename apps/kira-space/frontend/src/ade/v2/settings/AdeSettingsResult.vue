@@ -78,7 +78,7 @@ const exportOpen = computed({
       >
         <div class="m-0 font-data text-kira-sm text-subtle">{{ f.name }}</div>
         <pre
-          class="m-0 max-h-96 overflow-auto rounded-kira-sm bg-field p-2 font-data text-kira-sm"
+          class="m-0 max-h-96 overflow-auto rounded-kira bg-field p-2 font-data text-kira-sm"
         >{{ f.text }}</pre>
       </section>
       <section v-if="current.env.length > 0" class="flex flex-col gap-1">

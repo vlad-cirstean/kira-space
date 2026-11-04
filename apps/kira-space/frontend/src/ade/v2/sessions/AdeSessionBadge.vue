@@ -7,12 +7,8 @@ defineProps<{ view: SessionView }>();
 
 <template>
   <span
-    class="shrink-0 rounded-kira-xs px-1 text-kira-sm"
-    :class="
-      view.headless
-        ? 'border border-dashed border-border-strong text-muted-foreground'
-        : ACTION_CLASS.agent
-    "
+    class="shrink-0 rounded-kira-sm px-1 text-kira-sm"
+    :class="view.headless ? 'border border-border text-muted-foreground' : ACTION_CLASS.agent"
     data-testid="ade-session-badge"
     >{{
       view.badge

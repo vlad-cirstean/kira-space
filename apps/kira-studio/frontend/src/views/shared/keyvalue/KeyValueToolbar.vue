@@ -98,7 +98,7 @@ defineExpose({
     }}</Badge>
   </ViewToolbar>
 
-  <ViewToolbar border="none" data-testid="keyvalue-toolbar">
+  <ViewToolbar data-testid="keyvalue-toolbar">
     <div class="flex items-center gap-1.5 min-w-0">
       <TooltipIconButton
         v-if="!gate.isSingleObjectPage.value"

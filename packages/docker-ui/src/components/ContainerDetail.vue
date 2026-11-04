@@ -136,7 +136,7 @@ function act(action: ContainerAction): void {
         </div>
       </template>
       <template v-if="c" #default="{ data }">
-        <div class="flex shrink-0 flex-col gap-1 border-b border-border px-3 py-2">
+        <div class="flex shrink-0 flex-col gap-1 px-3 py-2">
           <div class="flex min-w-0 items-center gap-2">
             <StatusDot :tone="stateDotTone(c.state)" />
             <span

@@ -80,10 +80,7 @@ watch(
 </script>
 
 <template>
-  <div
-    ref="root"
-    class="relative h-full min-h-40 overflow-hidden rounded-kira-sm border border-border"
-  >
+  <div ref="root" class="relative h-full min-h-40 overflow-hidden rounded-kira">
     <div ref="host" class="absolute inset-0"></div>
   </div>
 </template>

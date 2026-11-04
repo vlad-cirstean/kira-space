@@ -30,12 +30,7 @@ const facts = computed(() =>
 <template>
   <!-- biome-ignore lint/a11y/useSemanticElements: the row holds buttons a button cannot. -->
   <div
-    :class="
-      cn(
-        rowVariants({ layout: 'tree', selected: card.selected }),
-        'cursor-grab gap-2 border-b border-border py-1',
-      )
-    "
+    :class="cn(rowVariants({ layout: 'tree', selected: card.selected }), 'cursor-grab gap-2 py-1')"
     :style="rowIndent(0)"
     role="button"
     tabindex="0"
@@ -49,7 +44,7 @@ const facts = computed(() =>
     @contextmenu="menu.open"
   >
     <span
-      class="box-border size-3 shrink-0 rounded-kira-xs"
+      class="box-border size-3 shrink-0 rounded-kira-sm"
       :class="card.parked ? 'border-2' : ''"
       :style="card.parked ? { borderColor: card.color } : { background: card.color }"
       data-testid="ade-shelf-dot"

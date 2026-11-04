@@ -392,7 +392,7 @@ check_class_all 'bg-input' 'bg-field'
 # from Tailwind's own `ring` utility name colliding with the `.ring` hook class).
 check_class_all 'p-run-state' 'data-testid="run-state"/"run-state-label" plus plain utilities'
 # P110 B8
-check_class_all 'p-panel-head' 'flex items-center shrink-0 h-control-lg (or h-bar) gap-1 px-1.5 border-b border-border text-kira-sm text-muted-foreground uppercase tracking-wider'
+check_class_all 'p-panel-head' 'flex items-center shrink-0 h-control-lg (or h-bar) gap-1 px-1.5 text-kira-sm text-muted-foreground uppercase tracking-wider'
 # P110 B12: SettingsShell.vue's own panes' shared field-level vocabulary, deleted from
 # packages/workbench/src/workbench.css. Guards only the four names with zero legitimate survivors
 # repo-wide -- `field`/`field.checkbox`/`field-error`/`helper-text` are deliberately NOT guarded
@@ -474,22 +474,22 @@ check_class_all 'p-toolbar' 'h-bar shrink-0 flex items-center gap-1.5 px-2 (+ bo
 check_class_all 'p-toolbar-rail' "colorMarkClass('band', color) (packages/theme/src/connColor.ts)"
 check_class_all 'p-view-head' 'h-bar shrink-0 flex items-center gap-1.5 px-2 border-b border-border'
 check_class_all 'p-view-target' 'text-kira-md text-fg truncate (plus text-subtle for .path)'
-check_class_all 'p-float' 'bg-elevated border border-border-strong rounded-kira shadow-kira-dialog overflow-hidden'
-check_class_all 'p-panel' 'border border-border rounded-kira bg-bg overflow-hidden flex flex-col min-h-0'
+check_class_all 'p-float' 'bg-elevated border border-border rounded-kira shadow-kira overflow-hidden'
+check_class_all 'p-panel' 'rounded-kira bg-bg overflow-hidden flex flex-col min-h-0'
 # P110 B29: the list/table family, folded into plain utilities (and, for method colour, a small
 # literal-class-map helper -- a template literal can never resolve at scan time). Not common prose.
 check_class_all 'p-tab' 'h-control-lg inline-flex items-center gap-1 px-1.5 rounded-kira-sm border cursor-pointer max-w-52 shrink-0 text-kira-md (plus a local tab-chip hook class where a scoped selector needs one)'
-check_class_all 'p-row' 'h-control flex items-center gap-1 px-1.5 rounded-kira-sm text-fg text-kira-md cursor-pointer (plus hover:bg-hover or a selection ternary)'
+check_class_all 'p-row' 'h-control flex items-center gap-1 px-1.5 rounded-kira-sm text-fg text-kira-md cursor-pointer (plus hover:bg-field or a selection ternary)'
 check_class_all 'p-method' 'methodTextClass() (packages/theme/src/methodColor.ts)'
 check_class_all 'p-conn-dot' "colorMarkClass('dot', color) (packages/theme/src/connColor.ts)"
 check_class_all 'p-tab-rail' "colorMarkClass('bar', color) (packages/theme/src/connColor.ts)"
 check_class_all 'p-tree-rail' "colorMarkClass('rail', color) (packages/theme/src/connColor.ts)"
 check_class_all 'bg-\(--kira-rail\)' "colorMarkClass() (packages/theme/src/connColor.ts)"
-check_class_all 'p-thead' 'h-control-lg shrink-0 flex bg-elevated border-b border-border-strong'
+check_class_all 'p-thead' 'h-control-lg shrink-0 flex bg-elevated'
 check_class_all 'p-th' 'flex items-center gap-1 px-2 border-r border-border text-kira-sm text-muted-foreground overflow-hidden whitespace-nowrap'
 check_class_all 'p-td' 'flex items-center px-2 border-r border-b border-border font-data text-kira-md text-fg truncate (plus the gutter variant)'
 check_class_all 'p-statusbar' 'h-statusbar shrink-0 flex items-center justify-between px-1.5'
-check_class_all 'p-status' 'h-control-sm inline-flex items-center gap-1 px-1.5 rounded-kira-sm text-fg text-kira-sm cursor-pointer border-0 bg-none hover:bg-hover'
+check_class_all 'p-status' 'h-control-sm inline-flex items-center gap-1 px-1.5 rounded-kira-sm text-fg text-kira-sm cursor-pointer border-0 bg-none hover:bg-field'
 # P110 B30: the rest -- empty state, menu label, AutocompleteField's completion popup, the
 # <details> disclosure marker and the shared kv-row/definition-table families.
 check_class_all 'p-empty' 'flex-1 min-h-0 flex flex-col items-center justify-center gap-2 text-subtle'
@@ -508,8 +508,8 @@ check_class_all 'def-section-head' 'flex items-center gap-1.5'
 check_class_all 'def-section-title' 'text-kira-sm text-muted-foreground uppercase tracking-wider'
 check_class_all 'def-empty' 'text-muted-foreground m-0'
 check_class_all 'def-table' 'w-full border-collapse text-kira-md'
-check_class_all 'def-head-row' 'per-th px-1.5 py-1 bg-elevated border-b border-border-strong text-muted-foreground text-kira-sm whitespace-nowrap (plus border-r border-border except the last column)'
-check_class_all 'def-row' 'border-b border-border hover:bg-hover'
+check_class_all 'def-head-row' 'per-th px-1.5 py-1 bg-elevated border-b border-border text-muted-foreground text-kira-sm whitespace-nowrap (plus border-r border-border except the last column)'
+check_class_all 'def-row' 'border-b border-border hover:bg-field'
 
 # P131 Part 3 §6.3: every Kui* component (and the kui-* classes it carried) is gone from GU/KU --
 # one guard replaces the 30 individual P110 A3-A7 check_kui_class calls above.
@@ -661,20 +661,24 @@ check_alias "${ALIAS_COLOR_PREFIX}-background(?:/\\d+)?" 'the -bg equivalent (e.
 check_alias "${ALIAS_COLOR_PREFIX}-(?:foreground|card-foreground|popover-foreground|secondary-foreground|accent-foreground)(?:/\\d+)?" 'the -fg equivalent (e.g. text-foreground -> text-fg)'
 check_alias "${ALIAS_COLOR_PREFIX}-(?:card|popover)(?:/\\d+)?" 'the -elevated equivalent (e.g. bg-card -> bg-elevated)'
 check_alias "${ALIAS_COLOR_PREFIX}-(?:secondary|muted)(?:/\\d+)?" 'the -field equivalent (e.g. bg-muted -> bg-field)'
-check_alias "${ALIAS_COLOR_PREFIX}-input(?:/\\d+)?" 'the -border-strong equivalent (e.g. border-input -> border-border-strong)'
+check_alias "${ALIAS_COLOR_PREFIX}-input(?:/\\d+)?" 'the -border equivalent (e.g. border-input -> border-border)'
 check_alias "${ALIAS_COLOR_PREFIX}-ring(?:/\\d+)?" 'the -focus equivalent (e.g. ring-ring -> ring-focus)'
-check_alias "${ALIAS_COLOR_PREFIX}-accent(?:/\\d+)?" 'the -hover equivalent (e.g. bg-accent -> bg-hover)'
+check_alias "${ALIAS_COLOR_PREFIX}-accent(?:/\\d+)?" 'the -field equivalent (e.g. bg-accent -> bg-field)'
 check_alias "${ALIAS_COLOR_PREFIX}-destructive(?:/\\d+)?" 'the -error equivalent (e.g. text-destructive -> text-error), never the variant="destructive" prop value'
 
 # P110 I2-38: one radius name per value, repo-wide -- kira names win (§3.11.3's radius half).
 ALIAS_ROUNDED_SIDE='(?:t|r|b|l|tl|tr|bl|br|ss|se|es|ee)'
-check_alias "rounded(?:-${ALIAS_ROUNDED_SIDE})?-sm!?" 'the rounded-kira-xs equivalent (e.g. rounded-sm -> rounded-kira-xs)'
+check_alias "rounded(?:-${ALIAS_ROUNDED_SIDE})?-sm!?" 'the rounded-kira-sm equivalent (e.g. rounded-sm -> rounded-kira-sm)'
 check_alias "rounded(?:-${ALIAS_ROUNDED_SIDE})?-md!?" 'the rounded-kira-sm equivalent (e.g. rounded-md -> rounded-kira-sm)'
 check_alias "rounded(?:-${ALIAS_ROUNDED_SIDE})?-lg!?" 'the rounded-kira equivalent (e.g. rounded-lg -> rounded-kira)'
-check_alias "rounded(?:-${ALIAS_ROUNDED_SIDE})?-xl!?" 'the rounded-kira-pill equivalent (e.g. rounded-xl -> rounded-kira-pill)'
+check_alias "rounded(?:-${ALIAS_ROUNDED_SIDE})?-xl!?" 'the rounded-full equivalent (e.g. rounded-xl -> rounded-full)'
 check_alias 'var\(--radius(-sm|-md|-lg|-xl)?\)' 'var(--kira-radius) (or the matching --kira-radius-* step) -- shadcn-bridge.css no longer defines --radius'
-# P267: popovers and menus take shadow-kira, dialogs shadow-kira-dialog; no stock Tailwind shadow step.
-check_alias 'shadow-(?:sm|md|lg|xl|2xl)' 'shadow-kira (popover, menu) or shadow-kira-dialog'
+# One shadow: floating surfaces and dialogs take shadow-kira; no stock Tailwind shadow step.
+check_alias 'shadow-(?:sm|md|lg|xl|2xl)' 'shadow-kira'
+# Retired names stay retired: one radius scale (sm control, kira container, full), one grey scale.
+check_alias 'rounded-(?:kira-(?:lg|pill)|xs)!?' 'rounded-kira-sm (control), rounded-kira (container) or rounded-full'
+check_alias 'rounded-\[[^\]]*\]' 'rounded-kira-sm, rounded-kira or rounded-full'
+check_alias '(?:shadow-kira-dialog|(?:bg|border|ring|text|outline)-(?:hover|border-strong|disabled|badge))' 'the neutral scale: bg-field, border-border, text-subtle, shadow-kira'
 
 # P122: the one focus ring is 1px solid --kira-focus, inset (base.css's `focus-ring` utility) --
 # no component may bypass it with its own halo or a wider/coloured outline.
@@ -791,6 +795,17 @@ check_git_ui_type_scale() {
   fi
 }
 check_git_ui_type_scale
+
+# The site imports packages/theme tokens.css: a retired token there resolves to nothing.
+if [ -z "$TC_COLLECT" ]; then
+  site_hits=$(grep -rnoP --include='*.css' --include='*.astro' \
+    -- '--kira-(?:hover|border-strong|fg-disabled|badge|shadow-dialog|radius-(?:xs|lg|pill))(?![-\w])' site/src 2>/dev/null || true)
+  if [ -n "$site_hits" ]; then
+    echo "check-theme-classes: site/ reads a retired token -- use --kira-border, --kira-bg-input, --kira-shadow or --kira-radius*:" >&2
+    echo "$site_hits" >&2
+    STATUS=1
+  fi
+fi
 
 if [ -s "$GREP_ERRORS" ]; then
   echo "check-theme-classes: grep failed, results are unreliable:" >&2

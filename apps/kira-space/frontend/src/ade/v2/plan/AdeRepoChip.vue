@@ -44,7 +44,7 @@ const tint = computed(() => repoTint(repoLinks.repoColorOf(props.codeRepoId)));
 <template>
   <Badge
     variant="chip"
-    class="h-control-lg max-w-80 gap-1.5 border border-border-strong px-0.5"
+    class="h-control-lg max-w-80 gap-1.5 border border-border px-0.5"
     :class="shown ? 'bg-elevated' : 'bg-transparent'"
     data-testid="ade-repo-chip"
     :data-repo-id="codeRepoId"

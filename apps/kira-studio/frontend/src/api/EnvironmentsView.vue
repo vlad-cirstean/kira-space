@@ -93,7 +93,7 @@ async function onSetActive(id: string): Promise<void> {
       <span class="ml-auto flex items-center gap-1" />
     </ViewToolbar>
     <div :class="colorMarkClass('band', railColor)" />
-    <ViewToolbar border="none">
+    <ViewToolbar>
       <div v-if="variablesStore.environments.length > 0" class="w-64"
         ><SearchField
           v-model="filterQuery"

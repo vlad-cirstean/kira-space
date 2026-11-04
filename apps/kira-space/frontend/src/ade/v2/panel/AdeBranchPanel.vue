@@ -257,7 +257,7 @@ function deployNote(d: Deployment): string {
       </Button>
       <div class="flex items-start gap-2">
         <span
-          class="mt-1 box-border size-3 shrink-0 rounded-kira-xs border-2"
+          class="mt-1 box-border size-3 shrink-0 rounded-kira-sm border-2"
           :class="card.review && 'border-tone-blue-solid'"
           :style="card.review ? undefined : { borderColor: card.color }"
           data-testid="ade-panel-dot"

@@ -78,7 +78,7 @@ async function discard(): Promise<void> {
     data-testid="import-job"
     :data-state="job.state"
   >
-    <div class="flex shrink-0 flex-col gap-1.5 border-b border-border p-3">
+    <div class="flex shrink-0 flex-col gap-1.5 p-3">
       <div class="flex items-center gap-1.5">
         <Tooltip>
           <TooltipTrigger as-child>
@@ -242,7 +242,7 @@ async function discard(): Promise<void> {
     </div>
     <div
       v-if="selectedFile"
-      class="flex max-h-1/3 shrink-0 flex-col gap-1 overflow-y-auto border-t border-border p-3 text-kira-md"
+      class="flex max-h-1/3 shrink-0 flex-col gap-1 overflow-y-auto p-3 text-kira-md"
       data-testid="import-file-detail"
     >
       <span class="font-medium">{{ selectedFile.title || selectedFile.relPath }}</span>

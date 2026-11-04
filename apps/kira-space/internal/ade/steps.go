@@ -17,6 +17,8 @@ import (
 type stepDef struct {
 	ID, Name, Kind, RunsOn, Before, Timeout, Prompt string
 	Skip, Session                                   bool
+	// OutsideRepo runs the step once in the task folder, on no branch.
+	OutsideRepo bool
 	// Results are the step's declared (or default) results with their routes.
 	Results []adewire.StepResult
 	// ReturnLimit is how many returns the step may make before the run stops; 0 is no limit.
@@ -53,10 +55,13 @@ func workflowSteps(wf adewire.Workflow) []stepDef {
 			prompt = s.Command
 		}
 		out[i] = stepDef{ID: s.ID, Name: s.Name, Kind: s.Kind, RunsOn: s.RunsOn, Before: s.Before, Timeout: s.Timeout, Prompt: prompt,
-			Skip: s.Skip, Session: s.Session, Results: results, ReturnLimit: s.MaxReturns, AllowedTools: s.AllowedTools,
-			SmartScript: s.SmartScript, Params: s.Params, Review: s.Review, Sandbox: s.Sandbox.Normalized(), Settings: s.Settings, Agent: s.Agent}
-		if s.Kind == adewire.KindScript || s.Kind == adewire.KindManual {
-			out[i].Sandbox, out[i].Settings, out[i].Agent = adewire.DefaultSandbox(), nil, ""
+			Skip: s.Skip, Session: s.Session, OutsideRepo: s.OutsideRepo, Results: results, ReturnLimit: s.MaxReturns, AllowedTools: s.AllowedTools,
+			SmartScript: s.SmartScript, Params: s.Params, Review: s.Review, Sandbox: s.Sandbox.NormalizedFor(s.Kind), Settings: s.Settings, Agent: s.Agent}
+		if s.Kind == adewire.KindScript {
+			out[i].Settings, out[i].Agent = nil, ""
+		}
+		if s.Kind == adewire.KindManual {
+			out[i].Settings, out[i].Agent = nil, ""
 		}
 	}
 	return out

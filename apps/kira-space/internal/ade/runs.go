@@ -18,6 +18,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
@@ -175,7 +176,10 @@ func (b *TaskBoard) plan(tc *taskCtx) ([]stepView, error) {
 	out := make([]stepView, len(steps))
 	for i, def := range steps {
 		v := stepView{Def: def, Runs: map[string]model.AdeRun{}}
-		if !def.manual() {
+		switch {
+		case def.OutsideRepo && !def.manual():
+			v.Targets = []string{taskTarget}
+		case !def.manual():
 			if v.Targets, v.TargetErr = stepTargets(def.RunsOn, def.Kind == adewire.KindReview, tc.mine); v.TargetErr != nil {
 				v.Targets = nil
 			}
@@ -324,7 +328,7 @@ func (b *TaskBoard) StartRun(ctx context.Context, args adewire.StartRunArgs) (ad
 	if plan[cur].TargetErr != nil {
 		return adewire.StartRunResult{}, invalid("step %q: %v", plan[cur].Def.Name, plan[cur].TargetErr)
 	}
-	paths, err := b.prepareWorktrees(ctx, tc, args.BranchNames, plan[cur].Def.Kind == adewire.KindAgent || plan[cur].Def.SmartScript != "")
+	paths, err := b.prepareStepWorktrees(ctx, tc, plan[cur].Def, args.BranchNames)
 	if err != nil {
 		return adewire.StartRunResult{}, err
 	}
@@ -351,6 +355,15 @@ func (b *TaskBoard) checkBranchNames(tc *taskCtx, names map[string]string) error
 		}
 	}
 	return nil
+}
+
+// prepareStepWorktrees prepares the worktrees a step starts in. An outside-repo step uses none, so it
+// prepares only the branches the user named in the Run dialog.
+func (b *TaskBoard) prepareStepWorktrees(ctx context.Context, tc *taskCtx, def stepDef, names map[string]string) (map[string]string, error) {
+	if def.OutsideRepo && len(names) == 0 {
+		return map[string]string{}, nil
+	}
+	return b.prepareWorktrees(ctx, tc, names, def.Kind == adewire.KindAgent || def.SmartScript != "")
 }
 
 // prepareWorktrees makes every mine branch's worktree exist and starts a setup in each new one. When the
@@ -571,6 +584,7 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 	running := model.AdeRunRunning
 	patch := model.AdeRunPatch{State: &running, StartedAt: &now, Note: &note, Launch: &model.AdeRunLaunch{}}
 	vars := b.runVarsFor(tc, sb, path)
+	vars.Outside = def.OutsideRepo
 
 	var smart *smartStep
 	runPath := path
@@ -1118,16 +1132,37 @@ func reportOf(f agentmcp.Finish) *model.AgentReport {
 
 func (b *TaskBoard) superviseScript(ctx context.Context, run model.AdeRun, def stepDef, rec model.CodeRepo, sb model.AdeTaskBranch, path, command string, timeout time.Duration) {
 	sink := b.newLogSink(repos.AdeLogRun, run.ID, run.TaskID)
+	sbx, err := b.prepareScriptSandbox(ctx, run, def, sb.Name, path)
+	if err != nil {
+		sink.add(logStderr, "could not start: "+err.Error())
+		sink.flush()
+		b.completeRun(run, "", fromOutcome(model.AdeRunFailed, runoutcome.ForProcess(runoutcome.Process{Kind: runoutcome.KindScript, End: runoutcome.EndStartErr, Err: err})))
+		return
+	}
+	defer b.endSandbox(run.ID, sbx)
 	shell, login := loginshell.ResolveShell(os.Getenv, loginshell.IsExecutableFile)
-	res, err := b.scriptRunner().Run(ctx, gitprepare.Spec{
-		Shell: shell, LoginShell: login, Script: command, Dir: path, Timeout: timeout,
-		Env: gitprepare.BuildEnv(os.Environ(), gitprepare.Vars{WorktreePath: path, WorktreeBranch: sb.Name, RepoRoot: rec.Root}),
+	env := gitprepare.BuildEnv(os.Environ(), gitprepare.Vars{WorktreePath: path, WorktreeBranch: sb.Name, RepoRoot: rec.Root})
+	spec := gitprepare.Spec{
+		Shell: shell, LoginShell: login, Script: command, Dir: path, Timeout: timeout, Env: env,
 		OnBatch: func(lines []gitprepare.Line) {
 			for _, l := range lines {
 				sink.add(l.Stream, l.Text)
 			}
 		},
-	})
+	}
+	var stopWatch func()
+	if sbx.on() {
+		spec.Env = agentsandbox.MergeEnv(env, sbx.prep.Env)
+		if sbx.prep.Exec != nil {
+			spec.Wrap = agentsandbox.ExecArgv(sbx.prep.Exec)
+		}
+		b.noticeSandbox(sink, sbx)
+		spec.OnStart = func(pid int) { stopWatch = b.watchSandbox(run, sbx, sink, pid) }
+	}
+	res, err := b.scriptRunner().Run(ctx, spec)
+	if stopWatch != nil {
+		stopWatch()
+	}
 	sink.flush()
 	if b.ctx.Err() != nil {
 		return // app quit: rows stay running (R18)
@@ -1153,7 +1188,7 @@ func (b *TaskBoard) superviseScript(ctx context.Context, run model.AdeRun, def s
 	if o.Status != runoutcome.StatusDone {
 		state = model.AdeRunFailed
 	}
-	b.completeRun(run, "", fromOutcome(state, o))
+	b.completeRun(run, "", sbx.sandboxOutcome(fromOutcome(state, o)))
 }
 
 // completeRun records how a process ended, then moves the task on.
@@ -1224,7 +1259,7 @@ func (b *TaskBoard) advanceLocked(ctx context.Context, taskID string) {
 	switch act := nextAction(plan, entry); act.Kind {
 	case actStart:
 		def := plan[act.Step].Def
-		paths, err := b.prepareWorktrees(ctx, tc, nil, def.Kind == adewire.KindAgent || def.SmartScript != "")
+		paths, err := b.prepareStepWorktrees(ctx, tc, def, nil)
 		if err != nil {
 			slog.Warn("ade: prepare worktrees", "scope", "ade", "task", taskID, "err", err)
 			return
@@ -1733,6 +1768,7 @@ func (b *TaskBoard) Sessions(_ context.Context) (adewire.SessionsResult, error) 
 	for i, s := range rows {
 		out.Sessions[i] = toWireSession(s)
 	}
+	b.badgeSessions(out.Sessions)
 	return out, nil
 }
 

@@ -139,7 +139,7 @@ const tooltipText = computed(() => {
     :class="
       cn(
         rowVariants({ layout: 'tree' }),
-        'shrink-0 w-full min-h-0 h-graph-row-compact border-0 border-b border-border bg-bg text-inherit text-left',
+        'shrink-0 w-full min-h-0 h-graph-row-compact bg-bg text-inherit text-left',
       )
     "
     data-testid="uncommitted-strip"

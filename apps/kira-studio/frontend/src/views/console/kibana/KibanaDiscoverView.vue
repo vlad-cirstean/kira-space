@@ -242,7 +242,7 @@ onUnmounted(() => {
 
     <div class="flex min-h-0 flex-1">
       <aside
-        class="shrink-0 border-r border-border"
+        class="shrink-0"
         :style="{ flex: `0 0 ${sidebar.size.value}px` }"
         data-testid="kibana-sidebar"
       >

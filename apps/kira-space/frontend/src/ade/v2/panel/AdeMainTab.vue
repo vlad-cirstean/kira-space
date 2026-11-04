@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import KeyValueList from '@theme/components/KeyValueList.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Label } from '@theme/components/ui/label';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
+import { rowMeta } from '@theme/lib/rowVariants';
 import { errorText } from '@workbench/bridge/codedError';
 import { computed, ref } from 'vue';
 import AdeChip from '../AdeChip.vue';
@@ -15,6 +15,8 @@ import { useAdeBranchRequestStore } from '../state/adeBranchRequest';
 import type { TaskPatch } from '../wire';
 import AdeEstimateField from './AdeEstimateField.vue';
 import AdeMainBranches from './AdeMainBranches.vue';
+import AdeRow from './AdeRow.vue';
+import AdeRowDetail from './AdeRowDetail.vue';
 import AdeStatusPicker from './AdeStatusPicker.vue';
 import AdeWorkflowBlock from './AdeWorkflowBlock.vue';
 
@@ -57,12 +59,11 @@ const spanDays = computed(() => props.card.entry.span);
 
 <template>
   <div
-    class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-3 pb-3 pt-3 text-kira-md"
+    class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-1.5 py-3 text-kira-md"
     data-testid="ade-main-tab"
   >
-    <KeyValueList class="items-center">
-      <dt>{{ t('common.field.status.label') }}</dt>
-      <dd class="flex min-h-row items-center gap-2">
+    <dl class="m-0 flex flex-col">
+      <AdeRow term :label="t('common.field.status.label')">
         <AdeStatusPicker :card="card" />
         <AdeChip
           v-if="card.blocked"
@@ -70,46 +71,50 @@ const spanDays = computed(() => props.card.entry.span);
           tone="red"
           data-testid="ade-task-blocked"
         />
-        <span class="text-kira-sm text-subtle" data-testid="ade-task-status-why">{{ why }}</span>
-      </dd>
-      <dt>{{ t('space.ade.estimate.field.label') }}</dt>
-      <dd
-        ><AdeEstimateField :est="task.est" :days="spanDays" :error="estError" @save="saveEst" /></dd
+        <span class="truncate" :class="rowMeta" data-testid="ade-task-status-why">{{ why }}</span>
+      </AdeRow>
+      <AdeRow term :label="t('space.ade.estimate.field.label')" label-for="ade-est-num">
+        <AdeEstimateField :est="task.est" :days="spanDays" :error="estError" @save="saveEst" />
+      </AdeRow>
+      <AdeRow
+        v-if="task.branchRequestId"
+        term
+        :label="t('space.ade.taskTab.branchRequest.label')"
+        data-testid="ade-task-branch-request-row"
       >
-      <template v-if="task.branchRequestId">
-        <dt>{{ t('space.ade.taskTab.branchRequest.label') }}</dt>
-        <dd class="flex min-h-row items-center gap-2" data-testid="ade-task-branch-request-row">
-          <span class="text-kira-md">{{ t('space.ade.taskTab.branchRequest.status') }}</span>
+        <span>{{ t('space.ade.taskTab.branchRequest.status') }}</span>
+        <template #actions>
           <Button
             variant="dialog"
-            size="kira-lg"
+            size="kira"
             data-testid="ade-task-branch-request-open"
             @click="requestStore.open({ id: task.branchRequestId })"
             >{{
               t('space.ade.board.branchTag.review.label')
             }}</Button
           >
-        </dd>
-      </template>
-      <template v-if="!review">
-        <dt />
-        <dd class="flex min-h-row items-center gap-2">
-          <Switch
-            id="ade-task-parked"
-            :model-value="card.parked"
-            data-testid="ade-task-parked"
-            @update:model-value="(v: boolean) => write({ kind: v ? 'parked' : 'task' })"
-          />
-          <Label for="ade-task-parked" class="text-kira-md">{{
+        </template>
+      </AdeRow>
+      <AdeRow v-if="!review" term>
+        <template #label>
+          <Label for="ade-task-parked" class="text-kira-sm font-normal text-muted-foreground">{{
             t('space.ade.board.notMerging.label')
           }}</Label>
-          <span class="text-kira-sm text-subtle">{{ t('space.ade.taskTab.notMerging.hint') }}</span>
-        </dd>
-      </template>
-    </KeyValueList>
-    <Alert v-if="fieldError" variant="error" data-testid="ade-task-error"
-      ><AlertDescription>{{ fieldError }}</AlertDescription></Alert
-    >
+        </template>
+        <Switch
+          id="ade-task-parked"
+          :model-value="card.parked"
+          data-testid="ade-task-parked"
+          @update:model-value="(v: boolean) => write({ kind: v ? 'parked' : 'task' })"
+        />
+        <span class="truncate" :class="rowMeta">{{ t('space.ade.taskTab.notMerging.hint') }}</span>
+      </AdeRow>
+    </dl>
+    <AdeRowDetail v-if="fieldError">
+      <Alert variant="error" data-testid="ade-task-error"
+        ><AlertDescription>{{ fieldError }}</AlertDescription></Alert
+      >
+    </AdeRowDetail>
 
     <AdeMainBranches :card="card" @error="(m: string) => (fieldError = m)" />
 

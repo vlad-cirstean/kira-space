@@ -19,6 +19,7 @@ func TestRuleDocsEnforced(t *testing.T) {
 		"unique-step":    {src: head + agent + agent},
 		"kind-keys":      {src: head + manual + "    runs_on: once\n"},
 		"agent-body":     {src: head + agent + "    smart_script: s\n"},
+		"outside-repo":   {src: head + agent + "    outside_repo: true\n"},
 		"manual-session": {src: head + agent + manual + "    prompt: hi\n"},
 		"script-results": {src: head + "  - id: s\n    name: S\n    kind: script\n    runs_on: once\n    timeout: 5m\n    command: c\n    results:\n      - id: ok\n        ok: true\n"},
 		"unique-result":  {src: head + agent + "    results:\n      - id: r\n        ok: true\n      - id: r\n        ok: false\n"},
@@ -55,6 +56,9 @@ func TestRuleDocsEnforced(t *testing.T) {
 		if r.ID == "legacy-status" && perr == nil && wf.Steps[0].Status != "in-review" {
 			t.Errorf("legacy status read as %q", wf.Steps[0].Status)
 		}
+	}
+	if _, perr := Parse([]byte(head + manual + "    sandbox:\n      access: read\n")); perr == nil {
+		t.Error("sandbox on a manual step without a session accepted")
 	}
 	for id := range fix {
 		t.Errorf("fixture %q names no rule", id)

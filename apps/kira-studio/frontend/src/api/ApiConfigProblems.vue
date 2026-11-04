@@ -14,7 +14,7 @@ const broken = computed(() => (config.data.value?.files ?? []).filter((f) => f.p
 <template>
   <section
     v-if="broken.length > 0"
-    class="flex shrink-0 flex-col gap-2 border-t border-border p-2"
+    class="flex shrink-0 flex-col gap-2 p-2"
     :aria-label="t('studio.api.config.problems.aria')"
     data-testid="api-config-problems"
   >

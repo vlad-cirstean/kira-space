@@ -259,7 +259,7 @@ function onToggleWorkingReviewed(path: string): void {
       />
       <section
         v-if="workingFiles.length > 0"
-        class="flex flex-col min-h-0 max-h-[40%] shrink-0 border-t border-border border-l-2 border-l-warn"
+        class="flex flex-col min-h-0 max-h-[40%] shrink-0 border-l-2 border-l-warn"
         data-testid="review-working"
       >
         <div

@@ -481,12 +481,7 @@ onUnmounted(() => {
                  box-sizing. -->
             <button
               type="button"
-              :class="
-                cn(
-                  rowVariants(),
-                  'box-border w-full rounded-none border-0 border-b border-border bg-none px-1.5',
-                )
-              "
+              :class="cn(rowVariants(), 'box-border w-full rounded-none bg-none px-1.5')"
               :style="{ height: `${messageRowHeight}px` }"
               @click="toggleExpanded(entry.m.seq)"
             >
@@ -515,10 +510,7 @@ onUnmounted(() => {
                  numerically equal to the script's own MESSAGE_DETAIL_HEIGHT (200px); a JSON
                  document taller than this scrolls inside MonacoHost's own scroller instead of
                  growing the row. -->
-            <div
-              v-if="expanded.has(entry.m.seq)"
-              class="box-border h-50 overflow-auto border-b border-border"
-            >
+            <div v-if="expanded.has(entry.m.seq)" class="box-border h-50 overflow-auto">
               <MonacoHost
                 :ref="(el) => setMessageHost(entry.m.seq, el)"
                 :doc="entry.m.json"

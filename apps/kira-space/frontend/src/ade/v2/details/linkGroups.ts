@@ -8,7 +8,7 @@ export interface LinkItem {
   editText: string;
   url: string;
   kind: Artifact['kind'];
-  /** `jira` and `host` are the task's own link fields; `stored` rows can be renamed. */
+  /** `jira` and `host` are the task's own link fields; `stored` rows are the user's own. */
   origin: 'jira' | 'host' | 'stored' | 'detected';
   artifactId?: string;
   /** The Kira session that reported it; '' = user, detected or unknown. */
@@ -25,12 +25,18 @@ function artifactLabel(a: Artifact): string {
   return a.url;
 }
 
+/** The free text a stored row edits as: `title url`, the bare url, or the title/ref of a urlless row. */
+function storedEditText(a: Artifact): string {
+  if (!a.url) return a.title || a.ref;
+  return a.title && a.title !== a.url ? `${a.title} ${a.url}` : a.url;
+}
+
 function fromArtifact(a: Artifact): LinkItem {
   const stored = a.id !== '';
   return {
     key: stored ? `stored:${a.id}` : `detected:${a.kind}:${a.url}:${a.ref}:${a.title}:${a.repo}`,
     label: artifactLabel(a),
-    editText: a.title,
+    editText: stored ? storedEditText(a) : a.title,
     url: a.url,
     kind: a.kind,
     origin: stored ? 'stored' : 'detected',
@@ -41,7 +47,7 @@ function fromArtifact(a: Artifact): LinkItem {
 }
 
 /** Main: the task's Jira and host links and its detected change requests. Related: every other
- *  artifact but branches (Main shows those), minus what Main already holds. */
+ *  artifact but detected branches (Main shows those), minus what Main already holds. */
 export function linkGroups(
   task: Task,
   artifacts: readonly Artifact[],
@@ -52,7 +58,7 @@ export function linkGroups(
     main.push({
       key: 'jira',
       label: jira.key,
-      editText: jira.key,
+      editText: jira.url || jira.key,
       url: jira.url,
       kind: 'issue',
       origin: 'jira',
@@ -79,7 +85,7 @@ export function linkGroups(
   }
   const related: LinkItem[] = [];
   for (const a of artifacts) {
-    if (a.kind === 'branch') continue;
+    if (a.kind === 'branch' && a.id === '') continue;
     if (a.url && seen.has(norm(a.url))) continue;
     // The tracker's own row for the Jira key the task already shows.
     if (a.kind === 'issue' && jira && (a.title === jira.key || a.ref === jira.key)) continue;

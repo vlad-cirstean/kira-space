@@ -12,6 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/claude"
+	"github.com/kirathecat/kira-studio/internal/loginshell"
 )
 
 // LeanID is the lean provider's registry id.
@@ -59,7 +60,10 @@ func (p *Lean) Available() error {
 
 // InteractiveCommand starts a session with no id up front; a resume names the id it continues.
 func (*Lean) InteractiveCommand(s harness.InteractiveSpec) harness.Launch {
-	l := harness.Launch{Command: fakeagent.Persona + " " + fakeagent.LeanArg, Env: []string{LeanEnv}}
+	l := harness.Launch{Command: sandboxPrefix(s.Sandbox) + fakeagent.Persona + " " + fakeagent.LeanArg, Env: []string{LeanEnv}}
+	for _, t := range s.DisallowedTools {
+		l.Command += " --disallowed " + loginshell.Quote(t)
+	}
 	if s.Resume {
 		l.Command += " --resume " + s.SessionID
 		l.SessionID = s.SessionID

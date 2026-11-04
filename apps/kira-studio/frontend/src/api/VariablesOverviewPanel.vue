@@ -190,7 +190,7 @@ function editEnvironmentVariables(): void {
         </div>
       </div>
 
-      <div class="flex flex-col gap-0.5 border-t border-border p-1">
+      <div class="flex flex-col gap-0.5 p-1">
         <Button
           v-if="canEdit"
           variant="link"

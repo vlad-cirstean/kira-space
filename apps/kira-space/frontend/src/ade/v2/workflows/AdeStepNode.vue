@@ -22,11 +22,10 @@ import { computed, ref, useTemplateRef } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import AdeTip from '../AdeTip.vue';
 import { promptParts } from '../automation/smartStepBody';
-import type { Tone } from '../board/actions';
-import { kindLabel, runsOnLabel, STEP_KINDS } from '../board/workflowForm';
+import { isDefaultSandbox } from '../board/stepSandbox';
+import { KIND_TONE, kindLabel, runsOnLabel, STEP_KINDS } from '../board/workflowForm';
 import { resultHandleId, type StepNodeData } from '../board/workflowGraph';
 import { useAdeWorkflowDraftStore } from '../state/adeWorkflowDraft';
-import type { StepKind } from '../wire';
 import { useStepRemoval } from './useStepRemoval';
 
 // One step on the canvas: number, name, kind, what it runs, and one connector per result. Fixed size;
@@ -42,13 +41,17 @@ useEventListener(root, 'contextmenu', (e: MouseEvent) => {
   menuOpen.value = true;
 });
 const step = computed(() => props.data.step);
-const KIND_TONE: Record<StepKind, Tone> = {
-  agent: 'amber',
-  script: 'green',
-  review: 'blue',
-  manual: 'grey',
-};
+const SANDBOX_CHIP = {
+  write: 'space.ade.sandbox.write.label',
+  read: 'space.ade.sandbox.read.label',
+  off: 'space.ade.sandbox.off.label',
+} as const;
 const manual = computed(() => step.value.kind === 'manual');
+const showMeta = computed(
+  () =>
+    (!manual.value && !step.value.outsideRepo) ||
+    !isDefaultSandbox(step.value.kind, step.value.sandbox),
+);
 const body = computed(() => {
   const s = step.value;
   if (s.kind === 'review' && s.review)
@@ -86,8 +89,8 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
   <div
     class="flex flex-col rounded-kira border bg-elevated text-kira-sm"
     :class="[
-      data.selected ? 'border-info' : 'border-border-strong',
-      step.skip ? 'border-dashed text-muted-foreground' : '',
+      data.selected ? 'border-info' : 'border-border',
+      step.skip ? 'text-muted-foreground' : '',
     ]"
     :style="{ width: `${data.w}px`, height: `${data.h}px` }"
     data-testid="ade-wf-node"
@@ -142,16 +145,11 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
         t('space.ade.workflows.stepNode.smart.label')
       }}</span>
       <span
-        v-if="(step.kind === 'agent' || step.kind === 'review') && step.sandbox.access !== 'write'"
-        class="shrink-0"
-        :class="step.sandbox.access === 'off' ? 'text-warn-text' : 'text-muted-foreground'"
-        data-testid="ade-wf-node-sandbox"
+        v-if="step.outsideRepo"
+        class="shrink-0 text-muted-foreground"
+        data-testid="ade-wf-node-outside"
         >{{
-          t(
-            step.sandbox.access === 'off'
-              ? 'space.ade.sandbox.off.label'
-              : 'space.ade.sandbox.read.label',
-          )
+          t('space.ade.workflows.stepNode.outside.label')
         }}</span
       >
       <span v-if="loops" class="shrink-0 text-muted-foreground" data-testid="ade-wf-node-returns">{{
@@ -233,7 +231,20 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
-    <div v-if="!manual" class="truncate px-2 text-subtle">{{ runsOnLabel(step.runsOn) }}</div>
+    <div v-if="showMeta" class="flex items-center gap-1.5 px-2 text-subtle">
+      <span v-if="!manual && !step.outsideRepo" class="min-w-0 truncate">{{
+        runsOnLabel(step.runsOn)
+      }}</span>
+      <span
+        v-if="!isDefaultSandbox(step.kind, step.sandbox)"
+        class="shrink-0"
+        :class="step.sandbox.access === 'off' ? 'text-warn-text' : ''"
+        data-testid="ade-wf-node-sandbox"
+        >{{
+          t(SANDBOX_CHIP[step.sandbox.access])
+        }}</span
+      >
+    </div>
     <div
       class="truncate px-2 text-muted-foreground [&>span]:whitespace-nowrap"
       :class="step.kind === 'script' ? 'font-data' : ''"
@@ -248,7 +259,7 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
       :position="Position.Bottom"
       class="!size-2 !border-0 !bg-muted-foreground"
     />
-    <div v-else class="mt-auto flex border-t border-border">
+    <div v-else class="mt-auto flex">
       <AdeTip v-for="r in step.results" :key="r.id" :text="tip(r)">
         <span
           class="relative flex min-w-0 flex-1 items-center justify-center gap-1 px-1 py-1"

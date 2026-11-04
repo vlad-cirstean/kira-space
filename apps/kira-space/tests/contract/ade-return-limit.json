@@ -114,6 +114,7 @@
           "kind": "agent",
           "maxReturns": 5,
           "name": "impl",
+          "outsideRepo": false,
           "params": {},
           "prompt": "work on {branch} in {repo}",
           "results": [
@@ -156,6 +157,7 @@
           "kind": "review",
           "maxReturns": 0,
           "name": "Gate",
+          "outsideRepo": false,
           "params": {},
           "prompt": "",
           "results": [
@@ -211,6 +213,7 @@
           "kind": "agent",
           "maxReturns": 5,
           "name": "impl",
+          "outsideRepo": false,
           "params": {},
           "prompt": "work on {branch} in {repo}",
           "results": [
@@ -253,6 +256,7 @@
           "kind": "review",
           "maxReturns": 0,
           "name": "Gate",
+          "outsideRepo": false,
           "params": {},
           "prompt": "",
           "results": [

@@ -252,7 +252,7 @@ onBeforeUnmount(() => {
         @update:model-value="(v: string | number) => draft.patchWorkflow({ name: String(v) })"
       />
     </div>
-    <div ref="split" class="flex min-h-96 flex-1 rounded-kira border border-border bg-bg">
+    <div ref="split" class="flex min-h-96 flex-1 rounded-kira bg-bg">
       <div class="relative min-w-0" :style="{ flex: `0 0 ${graphPane.size.value}%` }">
         <div
           ref="scroller"
@@ -315,7 +315,7 @@ onBeforeUnmount(() => {
                 <Button
                   variant="dialog"
                   size="kira-lg"
-                  class="border-dashed bg-transparent"
+                  class="bg-transparent"
                   data-testid="ade-wf-add-step"
                 >
                   {{ t('space.ade.workflows.graph.addStep.label') }}
@@ -345,14 +345,14 @@ onBeforeUnmount(() => {
         v-bind="graphPane.bind"
       />
       <div class="min-w-0 flex-1">
-        <div class="h-full overflow-auto p-3" data-testid="ade-wf-inspector">
+        <div class="flex h-full min-h-0 flex-col" data-testid="ade-wf-inspector">
           <AdeStepInspector
             v-if="draft.step"
             :key="draft.step.id"
             :step="draft.step"
             :steps="draft.draft.steps"
           />
-          <FieldDescription v-else data-testid="ade-wf-inspector-empty">
+          <FieldDescription v-else class="p-3" data-testid="ade-wf-inspector-empty">
             <CatalogText k="space.ade.workflows.graph.inspectorEmpty.emptyHint">
               <template #tokens><span class="font-data">{{ PLACEHOLDER_TOKENS }}</span></template>
             </CatalogText>

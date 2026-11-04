@@ -36,7 +36,7 @@ watch(
 
 const klass = computed(() =>
   cn(
-    'm-0 max-h-[calc(12*1lh)] overflow-auto rounded-kira-xs bg-bg px-1.5 py-1 font-data break-all whitespace-pre-wrap select-text',
+    'm-0 max-h-[calc(12*1lh)] overflow-auto rounded-kira-sm bg-bg px-1.5 py-1 font-data break-all whitespace-pre-wrap select-text',
     props.tone === 'error' && 'text-error',
   ),
 );

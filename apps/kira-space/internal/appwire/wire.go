@@ -230,7 +230,7 @@ func wireAdeTask(
 		Credentials: credentials,
 		Logs:        repositories.AdeLogs,
 		Sessions:    repositories.AdeSessions,
-		Sandbox:     runs.Sandbox, RunSandbox: repositories.AdeRunSandbox,
+		Sandbox:     runs.Sandbox, RunSandbox: repositories.AdeRunSandbox, SessionSandbox: repositories.AdeSessionSandbox,
 		Tracker:       tracker,
 		CloseTerminal: closeTerminal,
 		Windows:       repositories.Windows, ReviewWindows: repositories.AdeReview,
@@ -277,6 +277,7 @@ func wireAdeTask(
 		Now:               time.Now,
 	})
 	tracker.SetStoppedHandler(board.OnTUIStopped)
+	tracker.SetAgentStartedHandler(board.OnTUIAgentStarted)
 	tracker.SetStartedHandler(board.OnTUIStarted)
 	if err := board.Recover(); err != nil {
 		slog.Warn("ade: recover task board", "scope", "ade", "err", err)

@@ -112,7 +112,7 @@ async function submit(): Promise<void> {
       <FieldError v-if="error" data-testid="stream-add-message-error">{{ error }}</FieldError>
     </div>
 
-    <div class="flex justify-end gap-1.5 border-t border-border py-1.5 px-2">
+    <div class="flex justify-end gap-1.5 py-1.5 px-2">
       <Button variant="dialog" size="kira-lg" @click="emit('close')">{{
         t('common.action.cancel.label')
       }}</Button>

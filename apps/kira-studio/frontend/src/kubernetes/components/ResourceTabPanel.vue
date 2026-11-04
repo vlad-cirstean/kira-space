@@ -43,7 +43,7 @@ const view = computed<KubeTabView>(() =>
     :data-tab-id="tab.id"
     :data-active="tab.active"
   >
-    <div class="flex h-bar shrink-0 items-center gap-2 border-b border-border px-2">
+    <div class="flex h-bar shrink-0 items-center gap-2 px-2">
       <span class="min-w-0 shrink truncate text-muted-foreground">
         {{ target.context }}
         ›

@@ -24,7 +24,7 @@ const dot = computed(() => (big.value ? 'size-2.5' : 'size-2'));
       <span
         v-else-if="kind === 'working'"
         :class="dot"
-        class="m-0.5 inline-block rounded-full bg-tone-green-solid shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-tone-green-solid)_28%,transparent)]"
+        class="m-0.5 inline-block rounded-full bg-tone-green-solid"
       />
       <span
         v-else-if="kind === 'waiting'"
@@ -37,7 +37,7 @@ const dot = computed(() => (big.value ? 'size-2.5' : 'size-2'));
         :class="dot"
         class="m-0.5 inline-block rounded-full border-2 border-subtle"
       />
-      <span v-else class="m-0.75 inline-block size-1.5 rounded-kira-xs bg-disabled" />
+      <span v-else class="m-0.75 inline-block size-1.5 rounded-kira-sm bg-subtle" />
     </span>
   </AdeTip>
 </template>

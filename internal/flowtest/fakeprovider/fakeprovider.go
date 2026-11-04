@@ -19,6 +19,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/claude"
+	"github.com/kirathecat/kira-studio/internal/loginshell"
 )
 
 // ID is the provider's registry id.
@@ -167,7 +168,10 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 	if s.Resume {
 		flag = "--resume"
 	}
-	cmd := fakeagent.Persona + " " + flag + " " + s.SessionID
+	cmd := sandboxPrefix(s.Sandbox) + fakeagent.Persona + " " + flag + " " + s.SessionID
+	for _, t := range s.DisallowedTools {
+		cmd += " --disallowed " + loginshell.Quote(t)
+	}
 	if s.ContextFile != "" {
 		cmd += " " + fakeagent.PersonaContextFlag + " " + s.ContextFile
 	}
@@ -183,6 +187,27 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 	}
 	launch.Command = cmd
 	return launch
+}
+
+// sandboxPrefix is the wrapper words in front of the persona: env overrides, the sandbox runner,
+// its profile. "" for no sandbox.
+func sandboxPrefix(sb *harness.SandboxExec) string {
+	if sb == nil {
+		return ""
+	}
+	words := []string{"/usr/bin/env"}
+	for _, n := range sb.Unset {
+		words = append(words, "-u", loginshell.Quote(n))
+	}
+	for _, kv := range sb.Env {
+		words = append(words, loginshell.Quote(kv))
+	}
+	sbin := sb.Bin
+	if sbin == "" {
+		sbin = harness.DefaultSandboxBin
+	}
+	words = append(words, loginshell.Quote(sbin), "-f", loginshell.Quote(sb.Profile))
+	return strings.Join(words, " ") + " "
 }
 
 // SettingsSchema: the fake's section holds a model only.

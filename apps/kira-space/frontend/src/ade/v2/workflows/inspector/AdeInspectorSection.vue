@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@theme/components/ui/collapsible';
+import SectionHeading from '@theme/components/SectionHeading.vue';
+import { Collapsible, CollapsibleContent } from '@theme/components/ui/collapsible';
 import { usePersistedState } from '@workbench/behaviour/persisted';
 
 const props = defineProps<{ title: string; name: string; collapsible?: boolean }>();
@@ -14,25 +11,22 @@ const open = usePersistedState(`ade.wf.inspector.${props.name}`, false);
   <Collapsible
     v-if="collapsible"
     v-model:open="open"
-    class="flex flex-col gap-2 border-t pt-2"
+    class="flex flex-col gap-3"
     :data-testid="`ade-wf-step-section-${name}`"
   >
-    <CollapsibleTrigger
-      class="flex items-center gap-1 text-left text-kira-sm font-medium text-muted-foreground"
+    <SectionHeading
+      collapsible
+      :label="title"
+      :expanded="open"
       :data-testid="`ade-wf-step-${name}`"
-    >
-      {{ open ? '▾' : '▸' }} {{ title }}
-    </CollapsibleTrigger>
+      @toggle="open = !open"
+    />
     <CollapsibleContent class="flex flex-col gap-3">
       <slot />
     </CollapsibleContent>
   </Collapsible>
-  <section
-    v-else
-    class="flex flex-col gap-2 border-t pt-2"
-    :data-testid="`ade-wf-step-section-${name}`"
-  >
-    <div class="text-kira-sm font-medium text-muted-foreground">{{ title }}</div>
+  <section v-else class="flex flex-col gap-3" :data-testid="`ade-wf-step-section-${name}`">
+    <SectionHeading :label="title" />
     <slot />
   </section>
 </template>

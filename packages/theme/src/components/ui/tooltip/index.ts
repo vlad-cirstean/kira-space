@@ -9,7 +9,7 @@ export { default as TooltipTrigger } from '@theme/components/ui/tooltip/TooltipT
 
 // Both variants share the elevated ground; `default` is inline text, `surface` is a wide column layout.
 export const tooltipContentVariants = cva(
-  'data-open:animate-in data-open:fade-in-0 data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-closed:animate-out data-closed:fade-out-0 duration-100 pointer-events-none z-(--kira-z-tooltip) rounded-kira-sm bg-elevated text-fg ring-1 ring-fg/10 shadow-kira text-kira-md break-words origin-(--reka-tooltip-content-transform-origin)',
+  'data-open:animate-in data-open:fade-in-0 data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-closed:animate-out data-closed:fade-out-0 duration-100 pointer-events-none z-(--kira-z-tooltip) rounded-kira bg-elevated text-fg border border-border shadow-kira text-kira-md break-words origin-(--reka-tooltip-content-transform-origin)',
   {
     variants: {
       variant: {

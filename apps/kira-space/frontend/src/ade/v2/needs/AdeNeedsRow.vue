@@ -22,23 +22,21 @@ const hasLog = computed(
 const buttonClass = computed(() => {
   if (props.item.action === 'Take over' || props.item.action === 'Resume')
     return ACTION_CLASS.agent;
-  return props.item.tone === 'grey'
-    ? 'bg-border-strong text-fg'
-    : TONE_SOLID_CLASS[props.item.tone];
+  return props.item.tone === 'grey' ? 'bg-border text-fg' : TONE_SOLID_CLASS[props.item.tone];
 });
 const ROW_BG_CLASS: Record<Tone, string> = {
-  amber: 'bg-tone-amber-solid/5',
-  red: 'bg-tone-red-solid/6',
-  green: 'bg-tone-green-solid/5',
-  blue: 'bg-tone-blue-solid/5',
-  purple: 'bg-tone-purple-solid/5',
+  amber: '',
+  red: '',
+  green: '',
+  blue: '',
+  purple: '',
   grey: 'bg-elevated',
 };
 </script>
 
 <template>
   <div
-    class="flex flex-col border-b border-border"
+    class="flex flex-col"
     data-testid="ade-needs-item"
     :data-kind="item.kind"
     :data-item-id="item.id"
@@ -58,7 +56,7 @@ const ROW_BG_CLASS: Record<Tone, string> = {
       <Button
         variant="dialog"
         size="kira-lg"
-        class="w-23 shrink-0 "
+        class="w-23 shrink-0"
         :class="buttonClass"
         :pending="busy"
         data-testid="ade-needs-action"
@@ -99,7 +97,7 @@ const ROW_BG_CLASS: Record<Tone, string> = {
         >
         <span class="flex items-center gap-1 truncate text-kira-sm text-subtle">
           <span
-            class="inline-block size-2 shrink-0 rounded-kira-xs"
+            class="inline-block size-2 shrink-0 rounded-kira-sm"
             :style="{ background: taskColor }"
           />
           {{ taskTitle }}

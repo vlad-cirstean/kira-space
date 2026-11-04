@@ -144,7 +144,7 @@ async function refresh(): Promise<void> {
       </PanelBar>
       <div
         v-if="ui.section === 'containers'"
-        class="flex h-control shrink-0 cursor-default items-center gap-1.5 border-b border-border px-1.5 text-kira-sm text-muted-foreground"
+        class="flex h-control shrink-0 cursor-default items-center gap-1.5 px-1.5 text-kira-sm text-muted-foreground"
       >
         <Checkbox
           id="docker-show-stopped"

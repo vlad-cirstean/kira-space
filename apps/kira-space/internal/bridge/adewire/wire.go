@@ -110,16 +110,18 @@ type StepResult struct {
 
 // WorkflowStep is one step of a workflow. Fields of another kind than Kind hold their zero value.
 type WorkflowStep struct {
-	ID      string       `json:"id"`
-	Name    string       `json:"name"`
-	Kind    StepKind     `json:"kind"`
-	Status  TaskStatus   `json:"status"` // '' uses the default of the step's kind
-	Skip    bool         `json:"skip"`
-	Session bool         `json:"session"` // manual: open a Claude Code session
-	Command string       `json:"command"` // script
-	RunsOn  RunsOn       `json:"runsOn"`  // agent, script, review
-	Before  string       `json:"before"`  // 'auto' | 'approval'
-	Results []StepResult `json:"results"`
+	ID      string     `json:"id"`
+	Name    string     `json:"name"`
+	Kind    StepKind   `json:"kind"`
+	Status  TaskStatus `json:"status"` // '' uses the default of the step's kind
+	Skip    bool       `json:"skip"`
+	Session bool       `json:"session"` // manual: open a Claude Code session
+	Command string     `json:"command"` // script
+	RunsOn  RunsOn     `json:"runsOn"`  // agent, script, review; '' on an outside-repo step
+	// OutsideRepo runs the step once in the task folder, outside every repo (agent, script, manual session).
+	OutsideRepo bool         `json:"outsideRepo"`
+	Before      string       `json:"before"` // 'auto' | 'approval'
+	Results     []StepResult `json:"results"`
 	// MaxReturns is how many times a result may send the run back to this step or an earlier one before
 	// the run stops; 0 is no limit (review steps only).
 	MaxReturns   int      `json:"maxReturns"`
@@ -131,7 +133,7 @@ type WorkflowStep struct {
 	Params      map[string][]string `json:"params"`
 	// Review is set on review steps: they wait for the user instead of running an agent.
 	Review *ReviewStepConfig `json:"review"`
-	// Sandbox is what the step's agent may do on the machine; always set, the default when absent.
+	// Sandbox is what the step's agent or script may do on the machine; always set, the kind's default when absent.
 	Sandbox StepSandbox `json:"sandbox"`
 	// Settings are the stage settings per agent provider id, key to value; empty means every provider's defaults.
 	Settings map[string]map[string]string `json:"settings"`
@@ -167,15 +169,24 @@ type StepSandbox struct {
 	Network bool     `json:"network"`
 }
 
-// DefaultSandbox is the policy of a step without a sandbox block: write its worktree, network on.
+// DefaultSandbox is the policy of an agent or review step without a sandbox block: write its worktree, network on.
 func DefaultSandbox() StepSandbox {
 	return StepSandbox{Access: SandboxWrite, Read: []string{}, Allow: []string{}, Network: true}
 }
 
-// Normalized fills the default into a zero value (a snapshot from before the field existed).
-func (s StepSandbox) Normalized() StepSandbox {
+// DefaultSandboxFor is the policy of a step of kind without a sandbox block: scripts and manual
+// sessions run unconfined.
+func DefaultSandboxFor(kind StepKind) StepSandbox {
+	if kind == KindScript || kind == KindManual {
+		return StepSandbox{Access: SandboxOff, Read: []string{}, Allow: []string{}, Network: true}
+	}
+	return DefaultSandbox()
+}
+
+// NormalizedFor fills the kind's default into a zero value (a snapshot from before the field existed).
+func (s StepSandbox) NormalizedFor(kind StepKind) StepSandbox {
 	if s.Access == "" {
-		return DefaultSandbox()
+		return DefaultSandboxFor(kind)
 	}
 	if s.Read == nil {
 		s.Read = []string{}
@@ -186,10 +197,11 @@ func (s StepSandbox) Normalized() StepSandbox {
 	return s
 }
 
-// IsDefault reports whether s equals the default policy.
-func (s StepSandbox) IsDefault() bool {
-	s = s.Normalized()
-	return s.Access == SandboxWrite && len(s.Read) == 0 && len(s.Allow) == 0 && s.Network
+// IsDefaultFor reports whether s equals the default policy of kind.
+func (s StepSandbox) IsDefaultFor(kind StepKind) bool {
+	s = s.NormalizedFor(kind)
+	d := DefaultSandboxFor(kind)
+	return s.Access == d.Access && len(s.Read) == 0 && len(s.Allow) == 0 && s.Network == d.Network
 }
 
 // Review step routes.
@@ -774,6 +786,8 @@ type Session struct {
 	CwdMissing     bool   `json:"cwdMissing"`
 	StartedAt      int64  `json:"startedAt"`
 	LastActiveAt   int64  `json:"lastActiveAt"`
+	// Sandbox is the badge of a manual step session's sandbox; null when it runs without one.
+	Sandbox *RunSandboxBadge `json:"sandbox"`
 }
 
 type SessionsResult struct {
@@ -1158,6 +1172,10 @@ type CloseSessionArgs struct {
 	SessionID string `json:"sessionId"`
 }
 
+type SessionSandboxArgs struct {
+	SessionID string `json:"sessionId"`
+}
+
 type LaunchStepArgs struct {
 	TaskID  string `json:"taskId"`
 	Message string `json:"message"`
@@ -1334,19 +1352,28 @@ type ArtifactsResult struct {
 	Gaps      []ArtifactGap `json:"gaps"`
 }
 
-type AddArtifactArgs struct {
+// AddLinkArgs is one line of free text the user adds to a task's links.
+type AddLinkArgs struct {
 	TaskID string `json:"taskId"`
-	Kind   string `json:"kind"`
-	Title  string `json:"title"`
-	URL    string `json:"url"`
-	Ref    string `json:"ref"`
+	Text   string `json:"text"`
 }
 
-// UpdateArtifactArgs renames a stored artifact.
-type UpdateArtifactArgs struct {
+// EditLinkArgs edits one link row: Text re-files it from free text, Kind (stored rows only) recategorises
+// it. Exactly one is set. ID names the stored row; it is empty for the jira and host slots.
+type EditLinkArgs struct {
 	TaskID string `json:"taskId"`
+	Slot   string `json:"slot"` // "jira" | "host" | "stored"
 	ID     string `json:"id"`
-	Title  string `json:"title"`
+	Text   string `json:"text"`
+	Kind   string `json:"kind"`
+}
+
+// LinkResult says where a link landed: "jira" or "host" (the task's slot), "stored" (Artifact is the row)
+// or "known" (the task already shows it; nothing was written).
+type LinkResult struct {
+	Filed    string    `json:"filed"`
+	Kind     string    `json:"kind"`
+	Artifact *Artifact `json:"artifact"`
 }
 
 type RemoveArtifactArgs struct {

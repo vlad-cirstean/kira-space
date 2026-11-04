@@ -19,6 +19,9 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 		flag = " --resume "
 	}
 	var b strings.Builder
+	for _, w := range sandboxWords(s.Sandbox) {
+		b.WriteString(w + " ")
+	}
 	b.WriteString(bin + flag + loginshell.Quote(s.SessionID))
 	word := func(w string) { b.WriteString(" " + loginshell.Quote(w)) }
 	for _, w := range stageArgs(s.Stage, func(w string) string { return w }) {
@@ -36,6 +39,12 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 		word("--add-dir")
 		for _, d := range s.AddDirs {
 			word(d)
+		}
+	}
+	if len(s.DisallowedTools) > 0 {
+		word("--disallowedTools")
+		for _, t := range s.DisallowedTools {
+			word(t)
 		}
 	}
 	appMCP := ""

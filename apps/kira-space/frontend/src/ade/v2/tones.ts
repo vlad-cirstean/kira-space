@@ -1,7 +1,6 @@
 import type { TaskAction, Tone } from './board/actions';
 
-// Class maps over the tokens in tones.css (literal values: tones encode state, not theme, and are
-// pinned by scripts/check-ade-colours.sh). Tailwind emits only literals, so each is spelled in full.
+// Class maps over the tokens in tones.css (built on theme tokens). Tailwind emits only literals, so each is spelled in full.
 export const TONE_TEXT_CLASS: Record<Tone, string> = {
   amber: 'text-tone-amber',
   red: 'text-tone-red',
@@ -27,7 +26,7 @@ export const TONE_SOLID_CLASS: Record<Tone, string> = {
   red: 'bg-tone-red-solid text-tone-ink border-transparent',
   green: 'bg-tone-green-solid text-tone-ink border-transparent',
   blue: 'bg-tone-blue-solid text-tone-ink border-transparent',
-  purple: 'bg-tone-purple-solid text-tone-ink-light border-transparent',
+  purple: 'bg-tone-purple-solid text-tone-ink border-transparent',
   grey: 'bg-tone-grey-solid text-tone-ink border-transparent',
 };
 

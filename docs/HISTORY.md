@@ -7594,3 +7594,25 @@ Source: docs/v0.2.33/ at a845e3570. 1 phases.
 ### v0.2.33 P507 (Done)
 Deterministic removed-entry order. `CaptureWorkingRemoved` and `captureCommittedRemoved` ranged over Go maps, so autoincrement ids in the removed table followed random path order; `TestReviewWorkingRemoved` failed about 5 in 40 runs. Both now iterate `slices.Sorted(maps.Keys(records))`. Found by the P506 follow-up while chasing a pre-push failure; PR #27 merged before the fix could ride it. No other order-sensitive map range in `gitsession` or `gitreview`. Verified: vet, `-count=40` 0 failures, `gitsession` and `reviewflow` packages. Not run: container tests (no Docker). No review.
 <!-- /chapter v0.2.33 -->
+
+<!-- chapter v0.2.34 -->
+## v0.2.34
+Source: docs/v0.2.34/ at c3471d921. 5 phases.
+
+### v0.2.34 P508 (Done)
+Flatter, consistent visual pass. One token scale in `packages/theme`: surface and tone tokens, near-duplicate greys folded to one set, buttons flattened, shadows, radius and dividers cut back, old lint rules retired, test expectations updated. Styling only; no new tests.
+
+### v0.2.34 P509 Part 1 (Done)
+Free-form link add and edit on task details. `AddLink` and `EditLink` replace `AddArtifact` and `UpdateArtifact`; the backend classifies input (`ade/linkclassify.go`). Stored links may be branches (migration 0067 widens the kind check). Details tab gets one add line, in-place free-text edit and a kind menu. Flow test and UI spec cover the same add, edit and recategorise scenario.
+
+### v0.2.34 P509 Part 2 (Done)
+Main tab row grid. One shared task-panel row component under fields, branches, workflow and Details rows. Task panel dot uses `rounded-kira-sm`. UI spec asserts rows share one grid. `--radius-kira-xs` alias and its twMerge entry deleted.
+
+### v0.2.34 P510 (Done)
+Workflow inspector redesign, script sandbox, outside-repo steps. Parser and wire accept `sandbox` on script steps and `outside_repo` on agent, script and manual-session steps. Script steps run behind the sandbox profile unless access is off. Outside-repo steps target the task folder once. Migration 0068 rewrites started tasks' script-step snapshots to the off sandbox; `decorateTask` hashes the re-marshalled snapshot so added wire fields never flag outdated. Inspector rebuilt with sections and a no-repo node chip. Later tab shows before Plan. Flow tests and UI specs added.
+
+### v0.2.34 P511 (Done)
+Manual session steps get a per-step sandbox. Manual steps with a session take a `sandbox` block; without a session the key is refused. `DefaultSandboxFor` is off for script and manual. Migration 0069 adds `ade_session_sandbox` and rewrites started tasks' manual-step snapshots to off. `agentsandbox.Input.ReadFiles` lets the profile read launch files. `harness.InteractiveSpec` gains `Sandbox` and `DisallowedTools`; claude, opencode, fakeprovider and lean wrap the interactive launch. `Sessions[].sandbox` badge and `SessionSandbox` detail ride the wire; inspector shows a Sandbox section for session steps and the TUI pane header shows the chip. Enforcement is macOS only; Linux gets flags and env only. Caveats: login shell rc files run before the wrapper, unconfined; a sandboxed TUI has no sandbox git tools and cannot push or fetch; `~/.claude` and keychain writes are denied, so sign-in from inside fails. Real macOS Seatbelt check stays in ARCHITECTURE.md "Known open items".
+
+Full run once after P511: Go `test:go:rest` 139 ok, containers 15 ok (Docker tests self-skipped), Studio UI 674, Space UI 1078, `test:unit` 1993, Space mobile 83 plus 1 skipped, ipc-frontend 7. Visual baselines re-recorded once, 53 images. Fixes: i18n catalog exemption, step card `-mx-px`, Workflows header padding, automations tab test race. Review round 1: 6 findings (M1, M2, L1 to L4), all fixed. Not run: Docker-backed tests, `e2e-real`, `ui-timing`, `test:claude*`, proto/perf, real macOS Seatbelt check.
+<!-- /chapter v0.2.34 -->

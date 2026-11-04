@@ -138,12 +138,7 @@ const listEl = useTemplateRef<HTMLElement>('list');
           class="flex-1 min-h-0 overflow-auto"
           :aria-label="t('git.review.pane.comments.label')"
         >
-          <section
-            v-for="group in groups"
-            :key="group.path"
-            :aria-label="group.path"
-            class="border-t border-border first:border-t-0"
-          >
+          <section v-for="group in groups" :key="group.path" :aria-label="group.path">
             <div class="pt-1 px-2 pb-0.5 font-data text-fg" aria-hidden="true">
               {{ group.path }}
             </div>

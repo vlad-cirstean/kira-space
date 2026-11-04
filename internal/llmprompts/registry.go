@@ -145,12 +145,14 @@ type JiraLineVars struct {
 // StepVars fills the step prompt. Message and StepPrompt arrive with placeholders substituted and
 // trailing newlines trimmed. A non-empty Message replaces the composed header.
 type StepVars struct {
-	Title      string     `json:"title"`
-	JiraKey    string     `json:"jiraKey"`
-	JiraURL    string     `json:"jiraURL"`
-	Repo       string     `json:"repo"`
-	Branch     string     `json:"branch"`
-	Worktree   string     `json:"worktree"`
+	Title    string `json:"title"`
+	JiraKey  string `json:"jiraKey"`
+	JiraURL  string `json:"jiraURL"`
+	Repo     string `json:"repo"`
+	Branch   string `json:"branch"`
+	Worktree string `json:"worktree"`
+	// Outside says the step runs outside the repos, in the task folder (Worktree).
+	Outside    bool       `json:"outside"`
 	StepNumber int        `json:"stepNumber"`
 	StepCount  int        `json:"stepCount"`
 	StepName   string     `json:"stepName"`
@@ -175,7 +177,9 @@ type ManualVars struct {
 	Notes    string         `json:"notes"`
 	Repos    []RepoLineVars `json:"repos"`
 	// Folder is the task folder, shown while the task has no repo.
-	Folder     string `json:"folder"`
+	Folder string `json:"folder"`
+	// Outside says the step runs outside the repos, in Folder.
+	Outside    bool   `json:"outside"`
 	StepPrompt string `json:"stepPrompt"`
 	// Handover is what the previous stage left, HandoverFrom its stage name; both capped.
 	Handover     string `json:"handover"`
@@ -1063,7 +1067,7 @@ var AdeStepPrompt = define(Entry{
 	RequiredFragments: []ID{"headless.finishStep.suffix"},
 	Default: `{{if .Message}}{{.Message}}{{else}}Task: {{.Title}}
 {{if .JiraKey}}{{template "ade.jiraLine" .}}
-{{end}}{{if .Repo}}- Repo: {{.Repo}} · Branch: {{.Branch}} · Worktree: {{.Worktree}}{{else}}- No repo yet. Folder: {{.Worktree}}. Pick repos and branches with the Kira Space tools.{{end}}
+{{end}}{{if .Repo}}- Repo: {{.Repo}} · Branch: {{.Branch}} · Worktree: {{.Worktree}}{{else if .Outside}}- Outside the repos. Folder: {{.Worktree}}.{{else}}- No repo yet. Folder: {{.Worktree}}. Pick repos and branches with the Kira Space tools.{{end}}
 Step {{.StepNumber}}/{{.StepCount}}: {{.StepName}}{{if .StepPrompt}}
 {{.StepPrompt}}{{end}}{{end}}{{if .Extra}}
 
@@ -1095,7 +1099,8 @@ var AdeManualMessage = define(Entry{
 	UsedByKey:  "llmPrompts.entry.adeManualMessage.usedBy.body",
 	Default: `{{.StepName}}: {{.Title}}{{if .JiraKey}}
 {{template "ade.jiraLine" .}}{{end}}{{range .Repos}}
-{{template "ade.repoLine" .}}{{end}}{{if not .Repos}}
+{{template "ade.repoLine" .}}{{end}}{{if .Outside}}
+- Outside the repos. Folder: {{.Folder}}.{{else if not .Repos}}
 - No repo yet. Folder: {{.Folder}}. Pick repos and branches with the Kira Space tools.{{end}}{{if .Notes}}
 - Notes: {{.Notes}}{{end}}{{if .StepPrompt}}
 {{.StepPrompt}}{{end}}{{if .Handover}}
@@ -1110,6 +1115,21 @@ var AdeManualMessage = define(Entry{
 		{Repo: "kira-space", Branch: "feat/login", Worktree: "/work/kira-space/feat-login", Base: "main"},
 		{Repo: "docs", ReadOnlyRoot: "/repos/docs"},
 	},
+})
+
+// AdeManualSandboxNote tells the agent of a sandboxed manual step session what it may write.
+var AdeManualSandboxNote = define(Entry{
+	ID: "ade.manual.sandboxNote", Kind: KindFragment, Apps: spaceApp, Applies: NextCall,
+	TitleKey:   "llmPrompts.entry.adeManualSandboxNote.title",
+	PurposeKey: "llmPrompts.entry.adeManualSandboxNote.description",
+	UsedByKey:  "llmPrompts.entry.adeManualSandboxNote.usedBy.body",
+	Default: `Sandbox{{if not .Enforced}} (declared, not enforced){{end}}: {{if eq .Access "write"}}write only in {{.Worktree}} and $TMPDIR{{else}}read only; write only in $TMPDIR{{end}}.{{range .Read}}
+Read also: {{.}}{{end}}{{if not .Network}}
+Network: Claude API only.{{end}}
+No git push or fetch here; the user pushes from Kira Space.
+"Operation not permitted" means the sandbox blocked it. Do not retry. Tell the user the path.`,
+}, SandboxNoteVars{
+	Access: "write", Worktree: "/work/kira-space/feat-login", Read: []string{"/work/specs"}, Network: false, Enforced: true,
 })
 
 // AdeReviewMessage is the first message of a task's review agent.

@@ -22,7 +22,7 @@
   font:
     normal normal normal 14px / 1 codicon,
     sans-serif;
-  color: var(--kira-fg-disabled);
+  color: var(--kira-fg-subtle);
 }
 
 .monaco-editor .margin-view-overlays .line-numbers.kira-review-ln-add:hover::before {
@@ -32,14 +32,14 @@
 /* A commented line keeps its number, tinted. */
 .monaco-editor .margin-view-overlays .line-numbers.kira-review-ln-comment {
   color: var(--kira-info);
-  background-color: color-mix(in srgb, var(--kira-info) 14%, transparent);
+  background-color: color-mix(in srgb, var(--kira-info) 15%, transparent);
 }
 
 /* Whole-line background for a reviewed range (reviewedType's native equivalent, §7.4). A subtle
    tint of --kira-ok rather than a second token — this app has one fixed dark theme (monaco.ts's
    own doc comment), so no light-mode counterpart is needed. */
 .kira-review-line-reviewed {
-  background-color: color-mix(in srgb, var(--kira-ok) 10%, transparent);
+  background-color: color-mix(in srgb, var(--kira-ok) 15%, transparent);
 }
 
 /* The hunk mark lives in a zone's margin node; lift that layer over the line-number overlays so

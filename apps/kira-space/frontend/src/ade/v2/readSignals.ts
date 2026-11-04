@@ -33,6 +33,7 @@ export function installAdeReadSignals(queryClient: QueryClient, source: AdeSigna
   });
   source.onSessions(() => {
     void queryClient.invalidateQueries({ queryKey: sessionsKey, exact: true });
+    void queryClient.invalidateQueries({ queryKey: [...runSandboxKey, 'session'] });
   });
   source.onRuns((event) => {
     queryClient.setQueryData<Board>(boardKey, (board) => (board ? mergeRuns(board, event) : board));

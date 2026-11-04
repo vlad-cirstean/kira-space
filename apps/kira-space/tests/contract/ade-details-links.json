@@ -1,0 +1,140 @@
+{
+  "AdeTaskService.AddLink": {
+    "artifact": {
+      "createdAt": 0,
+      "id": "<masked>",
+      "kind": "doc",
+      "ref": "",
+      "repo": "",
+      "sessionId": "",
+      "source": "user",
+      "status": "",
+      "title": "Design notes",
+      "url": "https://docs.google.com/document/d/abc/edit"
+    },
+    "filed": "stored",
+    "kind": "doc"
+  },
+  "AdeTaskService.Artifacts": {
+    "artifacts": [
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "changeRequest",
+        "ref": "api!9",
+        "repo": "",
+        "sessionId": "",
+        "source": "user",
+        "status": "",
+        "title": "api!9",
+        "url": "https://forge.test/acme/api/-/merge_requests/9"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "issue",
+        "ref": "PAY-10",
+        "repo": "",
+        "sessionId": "",
+        "source": "jira",
+        "status": "",
+        "title": "PAY-10",
+        "url": ""
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "issue",
+        "ref": "PAY-12",
+        "repo": "",
+        "sessionId": "",
+        "source": "user",
+        "status": "",
+        "title": "PAY-12",
+        "url": "https://jira.example.com/browse/PAY-12"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "branch",
+        "ref": "feat/x",
+        "repo": "",
+        "sessionId": "",
+        "source": "user",
+        "status": "",
+        "title": "feat/x",
+        "url": "https://github.com/acme/api/tree/feat/x"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "doc",
+        "ref": "",
+        "repo": "",
+        "sessionId": "",
+        "source": "user",
+        "status": "",
+        "title": "Design spec",
+        "url": "https://docs.google.com/document/d/abc/edit"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "doc",
+        "ref": "",
+        "repo": "",
+        "sessionId": "",
+        "source": "user",
+        "status": "",
+        "title": "Runbook",
+        "url": "https://wiki.example/runbook-v2"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "link",
+        "ref": "",
+        "repo": "",
+        "sessionId": "",
+        "source": "user",
+        "status": "",
+        "title": "wiki.example/x",
+        "url": "https://wiki.example/x"
+      }
+    ],
+    "gaps": [
+      {
+        "reason": "unavailable",
+        "repo": "",
+        "source": "jira"
+      }
+    ]
+  },
+  "AdeTaskService.EditLink": {
+    "artifact": {
+      "createdAt": 0,
+      "id": "<masked>",
+      "kind": "link",
+      "ref": "",
+      "repo": "",
+      "sessionId": "",
+      "source": "user",
+      "status": "",
+      "title": "Runbook",
+      "url": "https://wiki.example/runbook-v2"
+    },
+    "filed": "stored",
+    "kind": "link"
+  },
+  "args:AdeTaskService.AddLink": {
+    "taskId": "<masked>",
+    "text": "Design notes https://docs.google.com/document/d/abc/edit"
+  },
+  "args:AdeTaskService.EditLink": {
+    "id": "<masked>",
+    "kind": "",
+    "slot": "stored",
+    "taskId": "<masked>",
+    "text": "https://wiki.example/runbook-v2"
+  }
+}

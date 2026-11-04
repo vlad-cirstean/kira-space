@@ -178,7 +178,7 @@ const partitionButtonLabel = computed(() => {
 </script>
 
 <template>
-  <ViewToolbar border="none">
+  <ViewToolbar>
     <div class="relative">
       <TooltipIconButton
         :icon="ICON.history"

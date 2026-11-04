@@ -220,7 +220,7 @@ async function onConfirm(): Promise<void> {
             <div
               v-for="row in rows"
               :key="row.uuid"
-              class="flex items-center gap-1.5 h-6.5 px-3 border-b border-border text-kira-md"
+              class="flex items-center gap-1.5 h-6.5 px-3 text-kira-md"
               :class="{ 'text-muted-foreground': !row.importable }"
               :data-testid="`datagrip-row-${row.uuid}`"
               :data-importable="row.importable"
@@ -317,7 +317,7 @@ async function onConfirm(): Promise<void> {
             <div
               v-for="row in report.rows"
               :key="row.uuid"
-              class="flex items-center gap-1.5 h-6.5 px-3 border-b border-border text-kira-md"
+              class="flex items-center gap-1.5 h-6.5 px-3 text-kira-md"
               :data-testid="`datagrip-report-row-${row.uuid}`"
             >
               <span class="shrink-0 flex" :class="row.created ? 'text-ok' : 'text-error'">

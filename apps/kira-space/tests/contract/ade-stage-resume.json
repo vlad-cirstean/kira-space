@@ -12,6 +12,7 @@
     "purpose": "",
     "resumes": "<masked>",
     "runId": "<masked>",
+    "sandbox": null,
     "startedAt": 0,
     "state": "stopped",
     "stepId": "work",

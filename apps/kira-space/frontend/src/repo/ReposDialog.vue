@@ -189,7 +189,7 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
       </DialogHeader>
 
       <DialogBody flush class="flex-row overflow-hidden">
-        <nav class="flex w-44 shrink-0 flex-col border-r border-border">
+        <nav class="flex w-44 shrink-0 flex-col">
           <div
             ref="listEl"
             class="min-h-0 flex-1 overflow-y-auto px-1 py-1.5"
@@ -254,7 +254,7 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
               </div>
             </div>
           </div>
-          <div class="flex flex-col gap-px border-t border-border px-1 py-1.5">
+          <div class="flex flex-col gap-px px-1 py-1.5">
             <button
               type="button"
               class="flex w-full items-center gap-1.5 border-none text-left"
@@ -306,11 +306,7 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
           </Alert>
           <template v-if="showRepos">
             <template v-if="selected">
-              <ViewToolbar
-                border="none"
-                data-testid="repos-dialog-repo-head"
-                :data-repo-id="selected.id"
-              >
+              <ViewToolbar data-testid="repos-dialog-repo-head" :data-repo-id="selected.id">
                 <span :class="colorMarkClass('dot', selected.color)" />
                 <span
                   class="flex size-4 shrink-0 items-center justify-center text-muted-foreground"

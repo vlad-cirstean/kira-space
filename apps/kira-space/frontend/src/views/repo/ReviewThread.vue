@@ -164,7 +164,7 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
   <!-- Monaco's view-lines layer otherwise wins text selection inside this zone too. -->
   <div
     ref="root"
-    class="box-border h-full w-full overflow-auto bg-elevated border-t border-b border-border-strong text-fg text-kira-md select-text"
+    class="box-border h-full w-full overflow-auto bg-elevated text-fg text-kira-md select-text"
     data-testid="review-thread"
   >
     <div ref="content" class="flex flex-col gap-1.5 py-2 px-3">
@@ -187,7 +187,7 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
         </div>
         <div
           v-if="current.reply"
-          class="whitespace-pre-wrap break-words border-l-2 border-border-strong pl-2 text-muted-foreground"
+          class="whitespace-pre-wrap break-words border-l-2 border-border pl-2 text-muted-foreground"
           data-testid="review-thread-reply"
         >
           {{ current.reply }}

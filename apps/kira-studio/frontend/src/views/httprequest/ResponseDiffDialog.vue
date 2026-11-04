@@ -273,10 +273,7 @@ onUnmounted(() => {
           ><AlertDescription>{{ loadError }}</AlertDescription></Alert
         >
         <div v-else-if="snapA && snapB" class="flex h-full min-h-0 flex-col">
-          <div
-            class="flex shrink-0 items-center gap-2 border-b border-border px-2 py-1.5"
-            data-testid="http-diff-summary"
-          >
+          <div class="flex shrink-0 items-center gap-2 px-2 py-1.5" data-testid="http-diff-summary">
             <div class="flex flex-col gap-0.5">
               <Tooltip>
                 <TooltipTrigger as-child>
@@ -332,10 +329,7 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div
-            class="max-h-40 shrink-0 overflow-auto border-b border-border px-2 py-1"
-            data-testid="http-diff-headers"
-          >
+          <div class="max-h-40 shrink-0 overflow-auto px-2 py-1" data-testid="http-diff-headers">
             <Table>
               <TableHeader>
                 <TableRow>

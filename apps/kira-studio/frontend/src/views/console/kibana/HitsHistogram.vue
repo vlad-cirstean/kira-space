@@ -161,7 +161,7 @@ function onInterval(value: unknown): void {
 </script>
 
 <template>
-  <section class="flex flex-col border-b border-border" data-testid="kibana-histogram">
+  <section class="flex flex-col" data-testid="kibana-histogram">
     <header class="flex items-center gap-2 px-2 py-1 text-kira-sm text-muted-foreground">
       <span class="text-fg" data-testid="kibana-total">{{ totalLabel }}</span>
       <span v-if="scaled" data-testid="kibana-interval-scaled">{{

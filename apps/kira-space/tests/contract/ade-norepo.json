@@ -123,6 +123,7 @@
           "kind": "agent",
           "maxReturns": 3,
           "name": "one",
+          "outsideRepo": false,
           "params": {},
           "prompt": "ask for branches",
           "results": [
@@ -165,6 +166,213 @@
           "kind": "agent",
           "maxReturns": 3,
           "name": "two",
+          "outsideRepo": false,
+          "params": {},
+          "prompt": "work on {branch} in {repo}",
+          "results": [
+            {
+              "description": "",
+              "id": "done",
+              "loop": false,
+              "next": "next",
+              "ok": true
+            },
+            {
+              "description": "",
+              "id": "failed",
+              "loop": false,
+              "next": "stop",
+              "ok": false
+            }
+          ],
+          "review": null,
+          "runsOn": "each repo",
+          "sandbox": {
+            "access": "write",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": false,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": "1m"
+        }
+      ]
+    },
+    "workflowId": "flow",
+    "workflowOutdated": false
+  },
+  "AdeTaskService.Board#outside": {
+    "branchIds": [
+      "<id:1>"
+    ],
+    "branchRequestId": "",
+    "color": 0,
+    "createdAt": 0,
+    "entryStepId": "done",
+    "est": "",
+    "handoverDrafts": [],
+    "handoverIn": {
+      "body": "summary-done",
+      "createdAt": 0,
+      "dismissed": false,
+      "edited": false,
+      "finished": false,
+      "fromStepId": "two",
+      "fromStepName": "two",
+      "id": "<id:2>",
+      "sessionId": "<id:3>",
+      "source": "run",
+      "state": "handed",
+      "taskId": "<id:4>",
+      "toStepId": "done",
+      "toStepName": "",
+      "updatedAt": 0
+    },
+    "hostLink": null,
+    "hostUrl": "",
+    "id": "<id:4>",
+    "jira": null,
+    "kind": "task",
+    "notes": "",
+    "owner": "",
+    "runs": [
+      {
+        "attempt": 1,
+        "branchId": "",
+        "exitCode": 0,
+        "finishedAt": 0,
+        "id": "<id:5>",
+        "loops": 0,
+        "note": "",
+        "outcome": {
+          "exitCode": 0,
+          "reason": "",
+          "reported": true,
+          "result": "done",
+          "route": "next",
+          "source": "agent",
+          "status": "done",
+          "summary": "summary-done"
+        },
+        "purpose": "",
+        "resumable": false,
+        "returns": 0,
+        "review": null,
+        "sandbox": {
+          "access": "write",
+          "denials": 0,
+          "enforced": false,
+          "last": ""
+        },
+        "sessionId": "<id:6>",
+        "startedAt": 0,
+        "state": "done",
+        "stepId": "one",
+        "summary": "summary-done",
+        "taskId": "<id:4>"
+      },
+      {
+        "attempt": 1,
+        "branchId": "<id:1>",
+        "exitCode": 0,
+        "finishedAt": 0,
+        "id": "<id:7>",
+        "loops": 0,
+        "note": "",
+        "outcome": {
+          "exitCode": 0,
+          "reason": "",
+          "reported": true,
+          "result": "done",
+          "route": "next",
+          "source": "agent",
+          "status": "done",
+          "summary": "summary-done"
+        },
+        "purpose": "",
+        "resumable": false,
+        "returns": 0,
+        "review": null,
+        "sandbox": {
+          "access": "write",
+          "denials": 0,
+          "enforced": false,
+          "last": ""
+        },
+        "sessionId": "<id:3>",
+        "startedAt": 0,
+        "state": "done",
+        "stepId": "two",
+        "summary": "summary-done",
+        "taskId": "<id:4>"
+      }
+    ],
+    "since": {},
+    "statusBy": "auto",
+    "statusId": "done",
+    "statusStep": "done",
+    "title": "Fix login",
+    "workflow": {
+      "id": "flow",
+      "name": "Flow",
+      "steps": [
+        {
+          "agent": "",
+          "allowedTools": [],
+          "before": "auto",
+          "command": "<masked>",
+          "id": "one",
+          "kind": "agent",
+          "maxReturns": 3,
+          "name": "one",
+          "outsideRepo": true,
+          "params": {},
+          "prompt": "survey the folder",
+          "results": [
+            {
+              "description": "",
+              "id": "done",
+              "loop": false,
+              "next": "next",
+              "ok": true
+            },
+            {
+              "description": "",
+              "id": "failed",
+              "loop": false,
+              "next": "stop",
+              "ok": false
+            }
+          ],
+          "review": null,
+          "runsOn": "",
+          "sandbox": {
+            "access": "write",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": false,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": "1m"
+        },
+        {
+          "agent": "",
+          "allowedTools": [],
+          "before": "auto",
+          "command": "<masked>",
+          "id": "two",
+          "kind": "agent",
+          "maxReturns": 3,
+          "name": "two",
+          "outsideRepo": false,
           "params": {},
           "prompt": "work on {branch} in {repo}",
           "results": [
@@ -265,6 +473,7 @@
           "kind": "agent",
           "maxReturns": 3,
           "name": "one",
+          "outsideRepo": false,
           "params": {},
           "prompt": "ask for branches",
           "results": [
@@ -307,6 +516,7 @@
           "kind": "agent",
           "maxReturns": 3,
           "name": "two",
+          "outsideRepo": false,
           "params": {},
           "prompt": "work on {branch} in {repo}",
           "results": [

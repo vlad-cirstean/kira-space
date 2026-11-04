@@ -162,7 +162,7 @@ async function pick(value: string): Promise<void> {
       class="w-120 gap-0 overflow-hidden p-0"
       data-testid="ade-add-popover"
     >
-      <div class="border-b border-border p-1">
+      <div class="p-1">
         <SecondaryTabs v-model="tab" :items="tabItems" size="kira-lg" class="w-full" />
       </div>
       <div
@@ -212,11 +212,7 @@ async function pick(value: string): Promise<void> {
         </div>
       </div>
       <div v-else>
-        <FieldDescription
-          v-if="attachTo"
-          class="truncate border-b border-border px-3 py-1.5"
-          data-testid="ade-add-attach"
-        >
+        <FieldDescription v-if="attachTo" class="truncate px-3 py-1.5" data-testid="ade-add-attach">
           <CatalogText k="space.ade.add.attach.label">
             <template #title
               ><span class="font-medium text-fg">{{ attachTo.title }}</span></template

@@ -15,11 +15,11 @@ import TitleBarBase from '@workbench/components/TitleBar.vue';
     </TitleBarBase>
     <div class="flex min-h-0 flex-1 bg-chrome px-1.5 pb-0.5">
       <section
-        class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-kira border border-border bg-bg"
+        class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-kira bg-bg"
         :aria-label="t('space.openedFiles.window.title')"
       >
         <div
-          class="h-tabbar min-h-0 shrink-0 overflow-hidden border-b border-border bg-chrome"
+          class="h-tabbar min-h-0 shrink-0 overflow-hidden bg-chrome"
           data-testid="opened-files-tabs"
         >
           <TabStrip />

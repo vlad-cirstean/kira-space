@@ -151,7 +151,7 @@ function cellClass(row: number, col: 'field' | 'value') {
   />
 
   <div class="bg-bg overflow-hidden flex flex-col flex-1 min-h-0 border-0 rounded-none">
-    <div class="h-control-lg shrink-0 flex bg-elevated border-b border-border-strong">
+    <div class="h-control-lg shrink-0 flex bg-elevated border-b border-border">
       <div
         class="flex items-center gap-1 px-2 border-r border-border text-kira-sm text-muted-foreground overflow-hidden whitespace-nowrap w-10 shrink-0"
       ></div>
@@ -214,7 +214,7 @@ function cellClass(row: number, col: 'field' | 'value') {
               @contextmenu="onRowContextMenuFromEvent"
             >
               <div
-                class="flex items-center justify-end px-2 border-r border-b border-border border-r-border-strong bg-elevated font-data text-kira-sm text-subtle truncate relative w-10 shrink-0"
+                class="flex items-center justify-end px-2 border-r border-b border-border bg-elevated font-data text-kira-sm text-subtle truncate relative w-10 shrink-0"
                 >{{
                   entry.i + 1
                 }}</div

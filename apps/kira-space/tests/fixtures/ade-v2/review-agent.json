@@ -16,7 +16,8 @@
     "cwd": "~/wt/web-app/billing-dashboard",
     "cwdMissing": false,
     "startedAt": 1790060500000,
-    "lastActiveAt": 1790067700000
+    "lastActiveAt": 1790067700000,
+    "sandbox": null
   },
   "hostWindowKey": "main"
 }

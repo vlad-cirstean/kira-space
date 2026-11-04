@@ -4,7 +4,7 @@ import { cva } from 'class-variance-authority';
 export { default as Button } from '@theme/components/ui/button/Button.vue';
 
 export const buttonVariants = cva(
-  'aria-invalid:border-error rounded-kira border border-transparent bg-clip-padding text-kira-md font-medium active:not-aria-[haspopup]:translate-y-px [&_svg:not([class*=size-])]:size-4 group/button inline-flex shrink-0 items-center justify-center whitespace-nowrap transition-all select-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0',
+  'aria-invalid:border-error rounded-kira-sm border border-transparent bg-clip-padding text-kira-md font-medium active:not-aria-[haspopup]:translate-y-px [&_svg:not([class*=size-])]:size-4 group/button inline-flex shrink-0 items-center justify-center whitespace-nowrap transition-all select-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0',
   {
     variants: {
       variant: {
@@ -15,23 +15,21 @@ export const buttonVariants = cva(
         // Geometry stays on the `kira`/`kira-lg`/`kira-icon` sizes below (design-system tokens,
         // runtime-adjustable via @theme's --spacing-control* -- see base.css).
         toolbar:
-          'rounded-kira-sm text-muted-foreground hover:bg-hover hover:text-fg aria-pressed:bg-field aria-pressed:text-fg data-[tone=error]:text-error data-[tone=error]:hover:text-error data-[tone=ok]:text-ok data-[tone=ok]:hover:text-ok',
-        'toolbar-primary': 'rounded-kira-sm bg-primary text-primary-foreground hover:bg-primary/80',
-        dialog:
-          'justify-center rounded-kira-sm border border-border-strong bg-field text-fg hover:bg-hover',
+          'text-muted-foreground hover:bg-field hover:text-fg aria-pressed:bg-field aria-pressed:text-fg data-[tone=error]:text-error data-[tone=error]:hover:text-error data-[tone=ok]:text-ok data-[tone=ok]:hover:text-ok',
+        'toolbar-primary':
+          'border-primary bg-primary text-primary-foreground hover:border-primary-hover hover:bg-primary-hover',
+        dialog: 'justify-center border-border bg-transparent text-fg hover:bg-field',
         'dialog-primary':
-          'justify-center rounded-kira-sm border border-primary bg-primary text-primary-foreground hover:bg-primary/80',
-        'dialog-danger':
-          'justify-center rounded-kira-sm border border-error bg-error/10 text-error hover:bg-error/20',
-        danger: 'rounded-kira-sm text-error hover:bg-hover',
+          'justify-center border-primary bg-primary text-primary-foreground hover:border-primary-hover hover:bg-primary-hover',
+        'dialog-danger': 'justify-center border-error bg-transparent text-error hover:bg-error/15',
+        danger: 'text-error hover:bg-field',
         // P110 B13: TitleBar.vue's own action row -- `aria-pressed` replaces `.is-on`'s own class
         // toggle, fixing the state's previously unexposed accessibility gap.
         title:
-          'rounded-kira-sm border border-transparent bg-transparent text-muted-foreground hover:bg-hover wails-no-drag aria-pressed:bg-elevated aria-pressed:border-border-strong aria-pressed:text-fg aria-pressed:hover:bg-hover',
+          'bg-transparent text-muted-foreground hover:bg-field wails-no-drag aria-pressed:bg-elevated aria-pressed:text-fg aria-pressed:hover:bg-field',
       },
       size: {
-        'icon-sm':
-          'size-7 rounded-[min(var(--kira-radius-sm),12px)] in-data-[slot=button-group]:rounded-kira',
+        'icon-sm': 'size-7',
         // P104 §3: AppButton/IconButton's own runtime-adjustable control heights (base.css's
         // --spacing-control*, an @theme-indirected --kira-control-h*) track the Appearance density.
         kira: 'h-control gap-1.5 px-3 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',

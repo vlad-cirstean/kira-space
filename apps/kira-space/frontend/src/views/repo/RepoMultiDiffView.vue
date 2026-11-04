@@ -127,12 +127,8 @@ onUnmounted(() => {
     <EmptyState fill icon="warning" :title="noRepositoryMessage()" />
   </div>
   <div v-else class="h-full overflow-y-auto flex flex-col" data-testid="repo-multi-diff-view">
-    <div
-      v-for="section in sections"
-      :key="section.path"
-      class="flex flex-none flex-col border-b border-border"
-    >
-      <ViewToolbar border="none">
+    <div v-for="section in sections" :key="section.path" class="flex flex-none flex-col">
+      <ViewToolbar>
         <TooltipIconButton
           :icon="section.expanded ? 'chevron-down' : 'chevron-right'"
           :label="

@@ -9,7 +9,7 @@
   --color-accent: var(--kira-accent);
   --color-accent-fg: var(--kira-accent-fg);
   --color-border: var(--kira-border);
-  --color-border-strong: var(--kira-border-strong);
+  --color-border-strong: var(--kira-border);
   --color-subtle: var(--kira-fg-subtle);
   --color-input: var(--kira-bg-input);
   --color-info: var(--kira-info);

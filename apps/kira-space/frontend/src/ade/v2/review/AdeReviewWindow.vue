@@ -104,7 +104,7 @@ const left = useLiveSize(
     <AdeReviewHeader :target="target" />
     <div ref="row" class="flex min-h-0 flex-1 gap-0.5 bg-chrome px-1.5 pb-0.5">
       <section
-        class="flex min-h-0 flex-none flex-col overflow-hidden rounded-kira border border-border bg-bg"
+        class="flex min-h-0 flex-none flex-col overflow-hidden rounded-kira bg-bg"
         :style="{ width: `${left.size.value}px` }"
         :aria-label="t('space.ade.review.window.files.aria')"
         data-testid="ade-review-left"
@@ -112,9 +112,7 @@ const left = useLiveSize(
         <div class="min-h-0 flex-1">
           <AdeReviewFiles ref="files" :target="target" />
         </div>
-        <div
-          class="flex max-h-[40%] shrink-0 flex-col overflow-auto border-t border-border empty:hidden"
-        >
+        <div class="flex max-h-[40%] shrink-0 flex-col overflow-auto empty:hidden">
           <AdeReviewRemoved :target="target" />
         </div>
       </section>
@@ -126,12 +124,12 @@ const left = useLiveSize(
         v-bind="left.bind"
       />
       <section
-        class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-kira border border-border bg-bg"
+        class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-kira bg-bg"
         :aria-label="t('space.ade.review.window.diffs.aria')"
         data-testid="ade-review-centre"
       >
         <div
-          class="h-tabbar min-h-0 shrink-0 overflow-hidden border-b border-border bg-chrome"
+          class="h-tabbar min-h-0 shrink-0 overflow-hidden bg-chrome"
           data-testid="ade-review-tabs"
         >
           <TabStrip />
@@ -157,7 +155,7 @@ const left = useLiveSize(
       />
       <section
         v-if="store.agentPanelVisible"
-        class="flex min-h-0 flex-none flex-col overflow-hidden rounded-kira border border-border bg-bg"
+        class="flex min-h-0 flex-none flex-col overflow-hidden rounded-kira bg-bg"
         :style="{ width: `${right.size.value}px` }"
         :aria-label="t('space.ade.review.agent.label')"
         data-testid="ade-review-right"
@@ -166,7 +164,7 @@ const left = useLiveSize(
           v-if="hasWorkflowReview"
           v-model="rightTab"
           :items="RIGHT_TABS"
-          class="shrink-0 border-b border-border"
+          class="shrink-0"
           data-testid="ade-review-right-tabs"
         />
         <div class="min-h-0 flex-1">

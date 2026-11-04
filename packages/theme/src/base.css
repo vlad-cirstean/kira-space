@@ -135,7 +135,7 @@ html.kira-resizing-y * {
     @apply font-medium leading-tight mt-4 mx-0 mb-1.5;
   }
   .kira-prose h1 {
-    @apply border-b border-border text-[1.6em] pb-1.5;
+    @apply text-[1.6em] pb-1.5;
   }
   .kira-prose h2 {
     @apply text-[1.4em];

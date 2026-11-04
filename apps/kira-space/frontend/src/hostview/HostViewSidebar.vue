@@ -64,7 +64,7 @@ function openCheck(c: Check): void {
 
 <template>
   <aside
-    class="flex w-72 shrink-0 flex-col gap-5 overflow-y-auto border-l border-border p-4"
+    class="flex w-72 shrink-0 flex-col gap-5 overflow-y-auto p-4"
     data-testid="host-view-sidebar"
   >
     <section

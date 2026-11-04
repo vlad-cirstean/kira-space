@@ -177,7 +177,7 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
             <div
               v-else
               ref="scrollEl"
-              class="min-h-0 flex-1 overflow-auto rounded-kira-sm border border-border"
+              class="min-h-0 flex-1 overflow-auto rounded-kira"
               data-testid="ade-port-items"
               @scroll="onScroll"
             >
@@ -191,7 +191,7 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
                   :key="String(vi.key)"
                   :ref="measureRef"
                   :data-index="vi.index"
-                  :class="[VIRTUAL_ROW_CLASS, 'flex flex-col gap-1 border-b border-border p-2']"
+                  :class="[VIRTUAL_ROW_CLASS, 'flex flex-col gap-1 p-2']"
                   :style="{ transform: `translateY(${vi.start}px)` }"
                   :data-testid="`ade-port-item-${item.id}`"
                   :data-state="item.state"
@@ -230,7 +230,7 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
                   <span v-if="item.reason" class="text-kira-sm text-subtle">{{ item.reason }}</span>
                   <pre
                     v-if="item.text && item.state !== 'skipped'"
-                    class="m-0 max-h-32 overflow-auto rounded-kira-sm bg-field p-2 font-data text-kira-sm"
+                    class="m-0 max-h-32 overflow-auto rounded-kira bg-field p-2 font-data text-kira-sm"
                   >{{ item.text }}</pre>
                   <ul
                     v-if="item.secrets?.length"
@@ -252,7 +252,7 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
                     content-class="pt-1"
                   >
                     <pre
-                      class="m-0 max-h-32 overflow-auto rounded-kira-sm bg-field p-2 font-data text-kira-sm"
+                      class="m-0 max-h-32 overflow-auto rounded-kira bg-field p-2 font-data text-kira-sm"
                     >{{ item.current }}</pre>
                   </Disclosure>
                 </li>

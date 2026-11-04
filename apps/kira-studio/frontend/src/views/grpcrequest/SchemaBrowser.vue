@@ -169,7 +169,7 @@ function selectMethod(service: string, method: string): void {
 
     <div
       v-if="tab.state.descriptorMode === 'proto'"
-      class="flex flex-col gap-0.5 border-b border-border px-1.5 py-1"
+      class="flex flex-col gap-0.5 px-1.5 py-1"
       data-testid="grpc-import-paths"
     >
       <SectionHeading :label="t('studio.grpc.schema.importPaths.label')" />

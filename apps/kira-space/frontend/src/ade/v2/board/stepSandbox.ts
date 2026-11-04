@@ -1,7 +1,19 @@
-import type { SandboxAccess, StepSandbox } from '../wire';
+import type { SandboxAccess, StepKind, StepSandbox } from '../wire';
 
-export function defaultSandbox(): StepSandbox {
-  return { access: 'write', read: [], allow: [], network: true };
+/** The policy of a step without a sandbox block: scripts and manual sessions run unconfined, the rest write their worktree. */
+export function defaultSandbox(kind: StepKind): StepSandbox {
+  return {
+    access: kind === 'script' || kind === 'manual' ? 'off' : 'write',
+    read: [],
+    allow: [],
+    network: true,
+  };
+}
+
+/** Whether sb is the policy a step of kind gets without a sandbox block. */
+export function isDefaultSandbox(kind: StepKind, sb: StepSandbox): boolean {
+  const d = defaultSandbox(kind);
+  return sb.access === d.access && sb.network === d.network && !sb.read.length && !sb.allow.length;
 }
 
 export const ACCESS_MODES: readonly SandboxAccess[] = ['write', 'read', 'off'];

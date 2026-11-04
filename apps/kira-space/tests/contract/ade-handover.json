@@ -197,6 +197,7 @@
               "kind": "agent",
               "maxReturns": 3,
               "name": "one",
+              "outsideRepo": false,
               "params": {},
               "prompt": "work on {branch} in {repo}",
               "results": [
@@ -239,13 +240,14 @@
               "kind": "manual",
               "maxReturns": 0,
               "name": "Work",
+              "outsideRepo": false,
               "params": {},
               "prompt": "",
               "results": [],
               "review": null,
               "runsOn": "",
               "sandbox": {
-                "access": "write",
+                "access": "off",
                 "allow": [],
                 "network": true,
                 "read": []
@@ -266,6 +268,7 @@
               "kind": "agent",
               "maxReturns": 3,
               "name": "two",
+              "outsideRepo": false,
               "params": {},
               "prompt": "work on {branch} in {repo}",
               "results": [
@@ -308,13 +311,14 @@
               "kind": "manual",
               "maxReturns": 0,
               "name": "Ship",
+              "outsideRepo": false,
               "params": {},
               "prompt": "",
               "results": [],
               "review": null,
               "runsOn": "",
               "sandbox": {
-                "access": "write",
+                "access": "off",
                 "allow": [],
                 "network": true,
                 "read": []
@@ -461,6 +465,7 @@
           "kind": "agent",
           "maxReturns": 3,
           "name": "one",
+          "outsideRepo": false,
           "params": {},
           "prompt": "work on {branch} in {repo}",
           "results": [
@@ -503,13 +508,14 @@
           "kind": "manual",
           "maxReturns": 0,
           "name": "Work",
+          "outsideRepo": false,
           "params": {},
           "prompt": "",
           "results": [],
           "review": null,
           "runsOn": "",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -530,6 +536,7 @@
           "kind": "agent",
           "maxReturns": 3,
           "name": "two",
+          "outsideRepo": false,
           "params": {},
           "prompt": "work on {branch} in {repo}",
           "results": [
@@ -572,13 +579,14 @@
           "kind": "manual",
           "maxReturns": 0,
           "name": "Ship",
+          "outsideRepo": false,
           "params": {},
           "prompt": "",
           "results": [],
           "review": null,
           "runsOn": "",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []

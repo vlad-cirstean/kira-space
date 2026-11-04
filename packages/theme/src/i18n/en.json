@@ -1405,9 +1405,6 @@
     },
     "space": {
       "ade": {
-        "artifactTitle": {
-          "body": "A title needs 1 to 200 characters."
-        },
         "branchMissing": {
           "body": "That branch no longer exists."
         },
@@ -1437,6 +1434,15 @@
         },
         "jiraKeyInvalid": {
           "body": "That Jira key isn’t valid."
+        },
+        "linkAlreadyLinked": {
+          "body": "This task already has that link."
+        },
+        "linkNotLink": {
+          "body": "Not a link or issue key. Put free text in the notes."
+        },
+        "linkOneLink": {
+          "body": "Add one link per line."
         },
         "messageTooLong": {
           "body": "The message is too long."
@@ -1511,6 +1517,9 @@
           },
           "notEnforced": {
             "body": "The sandbox is not enforced on this OS. It runs on macOS only. {agent} permission rules still apply, but they do not stop shell commands."
+          },
+          "notEnforcedScript": {
+            "body": "The sandbox is not enforced on this OS. It runs on macOS only. The script runs with your full rights."
           },
           "pathMissing": {
             "body": "Sandbox path missing: {path}."
@@ -6405,6 +6414,13 @@
           "body": "Sent to {agent} when a manual step session starts."
         }
       },
+      "adeManualSandboxNote": {
+        "description": "Tells the agent of a sandboxed manual step session where it may write and to stop when the sandbox blocks an action.",
+        "title": "Manual session sandbox notice",
+        "usedBy": {
+          "body": "Added to the first message of a manual step session that runs under the sandbox."
+        }
+      },
       "adeRebaseContextLine": {
         "description": "Tells the agent that the last rebase of a branch did not finish and points to run_outcome.",
         "title": "Unfinished rebase line",
@@ -8518,21 +8534,25 @@
         "title": "Move tasks?"
       },
       "details": {
+        "addLine": {
+          "aria": "Add a link",
+          "known": {
+            "body": "Already linked."
+          },
+          "placeholder": "Paste or type a link, with an optional title"
+        },
         "empty": {
           "body": "No links yet."
         },
+        "kindMenu": {
+          "label": "Change kind"
+        },
         "link": {
-          "aria": "Link title"
+          "aria": "Link title",
+          "placeholder": "Title and link"
         },
         "links": {
           "title": "Links"
-        },
-        "paste": {
-          "aria": "Add a link",
-          "notLink": {
-            "error": "That is not a link or a Jira key."
-          },
-          "placeholder": "Paste a link or Jira key"
         },
         "related": {
           "title": "Related"
@@ -8674,9 +8694,6 @@
       "link": {
         "copy": {
           "tooltip": "Copy {label} link"
-        },
-        "notJira": {
-          "error": "Not a Jira key or link."
         },
         "view": {
           "tooltip": "View {label} in Kira"
@@ -10114,13 +10131,28 @@
           }
         },
         "sandbox": {
+          "access": {
+            "label": "Access"
+          },
           "allow": {
             "example": "~/go",
             "label": "Allow writes"
           },
+          "manualLimits": {
+            "hint": "A sandboxed session can’t push or fetch, change agent settings or sign in again. Push from the branch menu."
+          },
           "network": {
             "hint": "Off: {agent} API only.",
             "label": "Allow network"
+          },
+          "networkScript": {
+            "hint": "Off blocks all network access from the script."
+          },
+          "offManual": {
+            "hint": "Off. The session runs with your full rights."
+          },
+          "offScript": {
+            "hint": "The script runs with your full rights."
           },
           "offWarning": {
             "body": "Agent runs with your full rights."
@@ -10150,8 +10182,8 @@
             "example": "~/notes",
             "label": "Read folders"
           },
-          "title": {
-            "label": "Sandbox"
+          "readScript": {
+            "hint": "The script can’t write the worktree."
           }
         },
         "saveBar": {
@@ -10162,9 +10194,6 @@
         "settings": {
           "range": {
             "error": "Enter a whole number from {min} to {max}, or leave it empty."
-          },
-          "title": {
-            "label": "Agent settings"
           }
         },
         "step": {
@@ -10180,14 +10209,17 @@
             "example": "./scripts/release.sh",
             "hint": "Runs in each branch’s worktree. A non-zero exit fails the step. {tokens} are shell-quoted when needed."
           },
+          "commandOutside": {
+            "hint": "Runs in the task folder. A non-zero exit fails the step. {tokens} are shell-quoted when needed."
+          },
           "editStatuses": {
             "label": "Edit statuses"
           },
           "end": {
-            "title": "How it ends"
+            "title": "Results"
           },
           "endManual": {
-            "hint": "Moves on to the next step once you finish it."
+            "hint": "Moves on when you finish it."
           },
           "finishNote": {
             "hint": "Kira Space adds this finish_step instruction to the prompt."
@@ -10209,9 +10241,19 @@
           "name": {
             "aria": "Step name"
           },
+          "outsideVars": {
+            "error": "This step runs outside the repositories. Remove {repo} and {branch}."
+          },
+          "position": {
+            "label": "Step {n} of {of}"
+          },
           "prompt": {
             "aria": "Session prompt",
             "placeholder": "First message for the session (optional)"
+          },
+          "repoAware": {
+            "hint": "Off runs the step in the task folder, outside every repository.",
+            "label": "Repository aware"
           },
           "reviewImplementer": {
             "label": "Implementer step"
@@ -10225,11 +10267,11 @@
           "reviewSendTo": {
             "label": "Send comments to"
           },
+          "sandbox": {
+            "title": "Sandbox"
+          },
           "scriptMissing": {
             "error": "Script not found."
-          },
-          "scriptNote": {
-            "hint": "Exit code 0 ends with done, any other with failed."
           },
           "secretParams": {
             "hint": "Secret params use the value saved in the script: {names}."
@@ -10258,10 +10300,7 @@
             "label": "Include this step"
           },
           "what": {
-            "title": "What it does"
-          },
-          "where": {
-            "title": "Where and when"
+            "title": "Action"
           }
         },
         "stepNode": {
@@ -10270,6 +10309,9 @@
           },
           "noCommand": {
             "label": "No command"
+          },
+          "outside": {
+            "label": "No repository"
           },
           "resultGoes": {
             "tooltip": "{id} ({outcome}) goes to {next}"

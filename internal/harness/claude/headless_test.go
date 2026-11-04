@@ -93,3 +93,12 @@ func TestInteractiveHermetic(t *testing.T) {
 		t.Fatalf("env %v", l.Env)
 	}
 }
+
+func TestInteractiveSandbox(t *testing.T) {
+	sb := &harness.SandboxExec{Profile: "/p/profile.sb", Env: []string{"TMPDIR=/s/tmp"}, Unset: []string{"SSH_AUTH_SOCK"}}
+	l := (&Provider{}).InteractiveCommand(harness.InteractiveSpec{Bin: "claude", SessionID: "s-1", Sandbox: sb, DisallowedTools: []string{"WebFetch"}})
+	want := "/usr/bin/env -u 'SSH_AUTH_SOCK' 'TMPDIR=/s/tmp' '/usr/bin/sandbox-exec' -f '/p/profile.sb' claude --session-id 's-1' '--disallowedTools' 'WebFetch'"
+	if l.Command != want {
+		t.Fatalf("got %s want %s", l.Command, want)
+	}
+}

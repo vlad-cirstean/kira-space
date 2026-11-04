@@ -6,10 +6,10 @@ import {
   buildMultiBranchRefsList,
 } from './support/graphStreamFixture';
 
-// Every graph toolbar divider is the shared ToolbarSeparator: 1x14, centred in the bar, border-strong.
+// Every graph toolbar divider is the shared ToolbarSeparator: 1x14, centred in the bar, transparent spacer.
 // Studio's DataToolbar asserts the same numbers (data-view.spec.ts).
 
-test('graph toolbar dividers are 1x14, centred, border-strong', async ({ relaunch }) => {
+test('graph toolbar dividers are 1x14, centred, transparent', async ({ relaunch }) => {
   const page = await openPortGraph(relaunch, {
     chunks: [buildGraphStreamChunk(PORT_REPO.repoId, 0, buildMultiBranchChunk())],
     results: { 'refs.list': buildMultiBranchRefsList() },
@@ -21,7 +21,7 @@ test('graph toolbar dividers are 1x14, centred, border-strong', async ({ relaunc
 
   const expected = await page.evaluate(() => {
     const probe = document.createElement('div');
-    probe.className = 'bg-border-strong';
+    probe.className = 'bg-transparent';
     document.body.appendChild(probe);
     const color = getComputedStyle(probe).backgroundColor;
     probe.remove();

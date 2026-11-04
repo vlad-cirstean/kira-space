@@ -19,6 +19,14 @@ import { repoTint } from '../../../state/coderepos';
 import { useRunAutomation } from '../automation/useRunAutomation';
 import { type BranchAction, tagLabel } from '../board/actions';
 import { fixItems } from '../board/menu';
+import {
+  ADE_ROW,
+  ADE_ROW_ACTIONS,
+  ADE_ROW_BODY,
+  ADE_ROW_LEAD,
+  rowIndent,
+  rowMeta,
+} from '../panel/adeRow';
 import { useReviewCode } from '../review/useReviewCode';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
@@ -31,9 +39,17 @@ import { BRANCH_ACTION_ICON, BRANCH_TAG_GLYPH, rowActionSplit } from './glyphs';
 import { type BranchRowModel, usePlanModel } from './usePlanModel';
 
 const props = withDefaults(
-  defineProps<{ row: BranchRowModel; color: string | null; taskRow?: boolean; testid?: string }>(),
-  { testid: 'ade-branch-row' },
+  defineProps<{
+    row: BranchRowModel;
+    color: string | null;
+    taskRow?: boolean;
+    testid?: string;
+    /** `panel`: one row on the task panel's grid; `board`: the two-line plan row. */
+    layout?: 'board' | 'panel';
+  }>(),
+  { testid: 'ade-branch-row', layout: 'board' },
 );
+const panel = computed(() => props.layout === 'panel');
 const emit = defineEmits<{ forcePush: []; taskMenu: [ev: MouseEvent] }>();
 const ui = useAdeBoardUiStore();
 const dialogs = useAdeDialogsStore();
@@ -210,7 +226,7 @@ const SEG: Record<string, string> = {
   running: 'bg-fg',
   bad: 'bg-tone-red-solid',
 };
-const segClass = (state: string): string => SEG[state] ?? 'bg-border-strong';
+const segClass = (state: string): string => SEG[state] ?? 'bg-border';
 const progClass = computed(() => {
   return props.row.prog?.tone === 'red' ? 'text-tone-red' : 'text-muted-foreground';
 });
@@ -218,6 +234,15 @@ const baseName = computed(() => {
   const part = props.row.base?.label.find((p) => typeof p !== 'string');
   return part && typeof part !== 'string' ? part.value : '';
 });
+const metaText = computed(() => (panel.value ? rowMeta : 'text-kira-sm text-subtle'));
+const tagProps = computed(() => ({
+  glyph: BRANCH_TAG_GLYPH[props.row.tag.kind],
+  kind: props.row.tag.kind,
+  label: tagText.value,
+  tip: props.row.tag.tip,
+  tipParts: props.row.tag.tipParts,
+  tone: props.row.tag.tone,
+}));
 const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'));
 </script>
 
@@ -225,8 +250,13 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
   <!-- biome-ignore lint/a11y/useSemanticElements: the row holds block content a button cannot. -->
   <div
     ref="rowEl"
-    class="group box-border flex h-board-row w-full items-center gap-1.5 px-2"
-    :class="selected ? 'bg-select' : ''"
+    class="group"
+    :class="[
+      panel ? ADE_ROW : 'box-border flex h-board-row w-full items-center gap-1.5 px-2',
+      selected ? 'bg-select' : '',
+    ]"
+    :style="panel ? rowIndent(row.depth) : undefined"
+    :data-slot="panel ? 'ade-row' : undefined"
     role="button"
     tabindex="0"
     :data-selected="selected || undefined"
@@ -239,14 +269,24 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
     @keydown.enter.self="pick"
     @keydown.space.self.prevent="pick"
   >
-    <span class="relative shrink-0 self-stretch" :style="{ width: `${row.depth * 16}px` }">
+    <span v-if="panel" data-slot="ade-row-lead" :class="ADE_ROW_LEAD">
       <span
         v-if="row.depth"
-        class="absolute -top-1 right-0.5 box-border h-4.5 w-2 rounded-bl-kira-sm border-b-2 border-l-2 border-border-strong"
+        class="absolute -left-1 -top-1 box-border h-4.5 w-1.5 rounded-bl-kira-sm border-b-2 border-l-2 border-border"
+      />
+      <AdeTagIcon v-bind="tagProps" />
+    </span>
+    <span v-else class="relative shrink-0 self-stretch" :style="{ width: `${row.depth * 16}px` }">
+      <span
+        v-if="row.depth"
+        class="absolute -top-1 right-0.5 box-border h-4.5 w-2 rounded-bl-kira-sm border-b-2 border-l-2 border-border"
       />
     </span>
     <AdeBranchTip v-model:open="tipOpen" :row="row" :color="color">
-      <div class="flex h-full min-w-0 flex-1 items-center gap-1.5">
+      <div
+        :data-slot="panel ? 'ade-row-body' : undefined"
+        :class="panel ? ADE_ROW_BODY : 'flex h-full min-w-0 flex-1 items-center gap-1.5'"
+      >
         <Badge
           variant="chip"
           :class="repoTintOf.class"
@@ -272,10 +312,13 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
         >
           <CodiconIcon name="sparkle" :size="13" />
         </span>
-        <div class="flex h-full min-w-0 flex-1 flex-col justify-center text-left">
+        <div
+          class="min-w-0 flex-1 text-left"
+          :class="panel ? 'flex items-center gap-1.5' : 'flex h-full flex-col justify-center'"
+        >
           <span
-            class="truncate font-data text-kira-md font-medium leading-4"
-            :class="row.draft ? 'text-muted-foreground' : 'text-fg'"
+            class="truncate font-data text-kira-md font-medium"
+            :class="[row.draft ? 'text-muted-foreground' : 'text-fg', panel ? '' : 'leading-4']"
             data-testid="ade-branch-name"
             >{{
               row.name
@@ -283,7 +326,8 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
           >
           <span
             v-if="row.context || row.prog || hasChips"
-            class="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap leading-3.5"
+            class="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap"
+            :class="panel ? '' : 'leading-3.5'"
           >
             <span
               v-if="row.prog"
@@ -294,7 +338,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
                 <span
                   v-for="(seg, i) in row.prog.segs"
                   :key="i"
-                  class="h-1.25 w-1.75 rounded-kira-xs"
+                  class="h-1.25 w-1.75 rounded-kira-sm"
                   :class="segClass(seg)"
                 />
               </span>
@@ -302,7 +346,8 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
             </span>
             <span
               v-if="row.context"
-              class="truncate text-kira-sm text-subtle"
+              class="truncate"
+              :class="metaText"
               data-testid="ade-branch-context"
               >{{
                 row.context
@@ -312,18 +357,18 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
               v-for="c in row.chips.merged"
               :key="c.label"
               class="shrink-0 text-kira-sm"
-              :class="c.tone === 'stale' ? 'text-tone-amber' : 'text-subtle'"
+              :class="c.tone === 'stale' ? 'text-tone-amber' : metaText"
               data-testid="ade-branch-merged"
               >{{
                 c.label
               }}</span
             >
-            <span v-if="row.chips.divider" class="h-2.5 w-px shrink-0 bg-border-strong" />
+            <span v-if="row.chips.divider" class="h-2.5 w-px shrink-0 bg-border" />
             <span
               v-for="c in row.chips.deployed"
               :key="c.label"
               class="shrink-0 text-kira-sm"
-              :class="c.tone === 'stale' ? 'text-tone-amber' : 'text-subtle'"
+              :class="c.tone === 'stale' ? 'text-tone-amber' : metaText"
               data-testid="ade-branch-deployed"
               >{{
                 c.label
@@ -331,55 +376,60 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
             >
           </span>
         </div>
+        <AdeAttention
+          v-if="panel && row.attention"
+          :tip="row.attention"
+          :item="row.attentionItem"
+        />
       </div>
     </AdeBranchTip>
-    <AdeAttention v-if="row.attention" :tip="row.attention" :item="row.attentionItem" />
-    <AdeTagIcon
-      :glyph="BRANCH_TAG_GLYPH[row.tag.kind]"
-      :kind="row.tag.kind"
-      :label="tagText"
-      :tip="row.tag.tip"
-      :tip-parts="row.tag.tipParts"
-      :tone="row.tag.tone"
-    />
-    <TooltipIconButton
-      v-for="a in split.shown"
-      :key="a.act?.id ?? a.kind"
-      :icon="BRANCH_ACTION_ICON[a.kind]"
-      :label="a.label"
-      :variant="VARIANT[a.kind]"
-      size="kira-icon"
-      class="shrink-0"
-      disabled-trigger
-      :disabled="a.disabled"
-      :data-testid="TESTID[a.kind]"
-      @click.stop="act(a)"
+    <template v-if="!panel">
+      <AdeAttention v-if="row.attention" :tip="row.attention" :item="row.attentionItem" />
+      <AdeTagIcon v-bind="tagProps" />
+    </template>
+    <div
+      :data-slot="panel ? 'ade-row-actions' : undefined"
+      :class="panel ? ADE_ROW_ACTIONS : 'contents'"
     >
-      <div class="font-medium">{{ a.label }}</div>
-      <div><VarText :parts="a.tipParts ?? [a.tip]" /></div>
-    </TooltipIconButton>
-    <MenuIconButton
-      v-if="split.overflow.length"
-      :icon="ICON.moreActions"
-      :label="t('common.moreActions.tooltip')"
-      :items="menuItems"
-      class="shrink-0"
-      data-testid="ade-branch-more"
-      @click.stop
-    />
-    <TooltipIconButton
-      v-if="choice"
-      icon="git-compare"
-      :label="t('space.ade.board.taskMenu.reviewCode.label')"
-      class="size-5 shrink-0"
-      disabled-trigger
-      :disabled="reviewCode.pending.value || choice.disabled"
-      data-testid="ade-branch-review"
-      @click.stop="reviewCode.open(row.branch.taskId, row.id, rowRef)"
-    >
-      <VarText :parts="choice.tip" />
-      <Kbd>{{ formatShortcut('ade.reviewCode') }}</Kbd>
-    </TooltipIconButton>
-    <slot />
+      <TooltipIconButton
+        v-for="a in split.shown"
+        :key="a.act?.id ?? a.kind"
+        :icon="BRANCH_ACTION_ICON[a.kind]"
+        :label="a.label"
+        :variant="VARIANT[a.kind]"
+        size="kira-icon"
+        class="shrink-0"
+        disabled-trigger
+        :disabled="a.disabled"
+        :data-testid="TESTID[a.kind]"
+        @click.stop="act(a)"
+      >
+        <div class="font-medium">{{ a.label }}</div>
+        <div><VarText :parts="a.tipParts ?? [a.tip]" /></div>
+      </TooltipIconButton>
+      <MenuIconButton
+        v-if="split.overflow.length"
+        :icon="ICON.moreActions"
+        :label="t('common.moreActions.tooltip')"
+        :items="menuItems"
+        class="shrink-0"
+        data-testid="ade-branch-more"
+        @click.stop
+      />
+      <TooltipIconButton
+        v-if="choice"
+        icon="git-compare"
+        :label="t('space.ade.board.taskMenu.reviewCode.label')"
+        :class="panel ? 'shrink-0' : 'size-5 shrink-0'"
+        disabled-trigger
+        :disabled="reviewCode.pending.value || choice.disabled"
+        data-testid="ade-branch-review"
+        @click.stop="reviewCode.open(row.branch.taskId, row.id, rowRef)"
+      >
+        <VarText :parts="choice.tip" />
+        <Kbd>{{ formatShortcut('ade.reviewCode') }}</Kbd>
+      </TooltipIconButton>
+      <slot />
+    </div>
   </div>
 </template>

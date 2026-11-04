@@ -441,7 +441,7 @@ function onToggleFolder(path: string): void {
          single-root detection for THIS toolchain (Vue 3.5.42 /
          @vitejs/plugin-vue 6.0.8: confirmed empirically, not merely suspected), which silently
          drops every attrs-fallthrough class a caller passes — `DetailPane.vue`'s own `class` prop
-         on its `<FileTree>` usage (now `flex-auto min-h-0 border-y border-border`) never reached
+         on its `<FileTree>` usage (now `flex-auto min-h-0`) never reached
          this component's root at all. -->
     <!-- P131 Part 2 §5.6: one hoisted AttributeTooltip for every row's data-kira-tip span --
          treeEl always names whichever of the two row containers below is currently mounted. -->
@@ -586,11 +586,6 @@ function onToggleFolder(path: string): void {
     </div>
 
     <!-- Outside the tree/listbox: those roles may own only treeitems/options. -->
-    <ShowMoreButton
-      :hidden-count="hiddenCount"
-      :step="capStep"
-      class="border-t border-border"
-      @click="showMore"
-    />
+    <ShowMoreButton :hidden-count="hiddenCount" :step="capStep" @click="showMore" />
   </div>
 </template>

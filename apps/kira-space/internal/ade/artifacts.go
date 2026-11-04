@@ -16,7 +16,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
-	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
 // artifacts.go lists everything a task produced or points at (P409). Detected artifacts come from
@@ -32,8 +31,14 @@ const (
 	artifactSrcGit    = "git"
 	artifactSrcStored = "stored"
 
-	artifactBranch = "branch"
+	artifactBranch = model.AdeArtifactBranch
 )
+
+// userArtifactKind reports whether the user may file a stored row under kind: the agent-reportable
+// kinds plus branch.
+func userArtifactKind(kind string) bool {
+	return kind == artifactBranch || agentmcp.ReportableArtifactKind(kind)
+}
 
 // ArtifactSource is one supplier of a task's artifacts. Built-ins cover task links, repos and stored
 // rows; TaskBoardDeps.ArtifactSources appends more. A returned error or a missed deadline becomes a
@@ -395,13 +400,13 @@ func (b *TaskBoard) normalizeArtifact(in agentmcp.ArtifactInput) agentmcp.Artifa
 
 // storeArtifacts validates and upserts a batch under the task lock; nothing is written when any item
 // or the task's cap refuses. The refusal is an ErrInvalidInput.
-func (b *TaskBoard) storeArtifacts(taskID, source, stepID, runID, sessionID string, in []agentmcp.ArtifactInput) ([]model.AdeTaskArtifact, error) {
+func (b *TaskBoard) storeArtifacts(taskID, source, stepID, runID, sessionID string, kindOK func(string) bool, in []agentmcp.ArtifactInput) ([]model.AdeTaskArtifact, error) {
 	if n := len(in); n == 0 || n > agentmcp.MaxArtifactsPerCall {
 		return nil, invalid("artifacts needs 1 to %d entries.", agentmcp.MaxArtifactsPerCall)
 	}
 	clean := make([]agentmcp.ArtifactInput, len(in))
 	for i, a := range in {
-		c, msg := agentmcp.CleanArtifact(a)
+		c, msg := agentmcp.CleanArtifactAs(a, kindOK)
 		if msg != "" {
 			return nil, invalid("artifacts[%d]: %s", i, msg)
 		}
@@ -414,6 +419,12 @@ func (b *TaskBoard) storeArtifacts(taskID, source, stepID, runID, sessionID stri
 	if err != nil {
 		return nil, err
 	}
+	return b.storeCleanLocked(tc, source, stepID, runID, sessionID, clean)
+}
+
+// storeCleanLocked upserts validated artifacts. The caller holds the task lock and loaded tc under it.
+func (b *TaskBoard) storeCleanLocked(tc *taskCtx, source, stepID, runID, sessionID string, clean []agentmcp.ArtifactInput) ([]model.AdeTaskArtifact, error) {
+	taskID := tc.task.ID
 	existing, err := b.deps.Tasks.Artifacts(taskID)
 	if err != nil {
 		return nil, err
@@ -457,7 +468,7 @@ func (b *TaskBoard) storeArtifacts(taskID, source, stepID, runID, sessionID stri
 
 // ReportArtifacts records the artifacts an agent reports for its task.
 func (b *TaskBoard) ReportArtifacts(_ context.Context, call agentmcp.SpaceCall, in []agentmcp.ArtifactInput) (agentmcp.ReportArtifactsResult, error) {
-	rows, err := b.storeArtifacts(call.TaskID, model.AdeArtifactSourceAgent, call.StepID, call.RunID, call.SessionID, in)
+	rows, err := b.storeArtifacts(call.TaskID, model.AdeArtifactSourceAgent, call.StepID, call.RunID, call.SessionID, agentmcp.ReportableArtifactKind, in)
 	if err != nil {
 		if errors.Is(err, ErrInvalidInput) {
 			return agentmcp.ReportArtifactsResult{}, agentmcp.ToolError(trimInvalid(err))
@@ -489,21 +500,6 @@ func agentArtifacts(res adewire.ArtifactsResult) agentmcp.TaskArtifacts {
 	return out
 }
 
-// AddArtifact records an artifact the user adds to a live task.
-func (b *TaskBoard) AddArtifact(_ context.Context, args adewire.AddArtifactArgs) (adewire.Artifact, error) {
-	title := strings.TrimSpace(args.Title)
-	if title == "" {
-		title = b.pastedArtifactTitle(strings.TrimSpace(args.URL))
-	}
-	rows, err := b.storeArtifacts(args.TaskID, model.AdeArtifactSourceUser, "", "", "", []agentmcp.ArtifactInput{
-		{Kind: args.Kind, Title: title, URL: args.URL, Ref: args.Ref},
-	})
-	if err != nil {
-		return adewire.Artifact{}, err
-	}
-	return wireStoredArtifact(rows[0]), nil
-}
-
 // pastedArtifactTitle names a pasted link: the host link ref when a provider claims it, else the URL's
 // host and path. "" when url is empty or unparsable, which leaves the title check to refuse it.
 func (b *TaskBoard) pastedArtifactTitle(raw string) string {
@@ -522,33 +518,6 @@ func (b *TaskBoard) pastedArtifactTitle(raw string) string {
 		t = strings.ToValidUTF8(t[:agentmcp.MaxArtifactTitle], "")
 	}
 	return t
-}
-
-// UpdateArtifact renames a stored artifact of a live task. Detected artifacts have no id to rename.
-func (b *TaskBoard) UpdateArtifact(_ context.Context, args adewire.UpdateArtifactArgs) (adewire.Artifact, error) {
-	title := strings.TrimSpace(args.Title)
-	if title == "" || len(title) > agentmcp.MaxArtifactTitle {
-		return adewire.Artifact{}, invalid("%s", i18n.T("backend.space.ade.artifactTitle.body", nil))
-	}
-	mu := b.taskMu(args.TaskID)
-	mu.Lock()
-	defer mu.Unlock()
-	if _, err := b.loadTaskCtx(args.TaskID); err != nil {
-		return adewire.Artifact{}, err
-	}
-	row, err := b.deps.Tasks.GetArtifact(args.ID)
-	if err != nil {
-		return adewire.Artifact{}, err
-	}
-	if row == nil || row.TaskID != args.TaskID {
-		return adewire.Artifact{}, invalid("artifact %s is not stored for this task", args.ID)
-	}
-	row2, err := b.deps.Tasks.UpdateArtifactTitle(args.TaskID, args.ID, title, b.deps.Now().UnixMilli())
-	if err != nil {
-		return adewire.Artifact{}, err
-	}
-	b.notifyBoard()
-	return wireStoredArtifact(row2), nil
 }
 
 // RemoveArtifact deletes a stored artifact of a live task. Detected artifacts have no id to remove.

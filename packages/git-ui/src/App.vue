@@ -1723,7 +1723,7 @@ onBeforeUnmount(() => {
       class="flex flex-col items-center justify-center gap-2 h-full p-4 text-center text-fg"
       data-testid="boot-error"
     >
-      <p class=" max-w-120 text-muted-foreground">{{
+      <p class="max-w-120 text-muted-foreground">{{
         t('git.app.bootError.error', { error: bootError })
       }}</p>
       <Button variant="dialog" size="kira" data-testid="boot-retry" @click="retryBootstrap">
@@ -1770,11 +1770,7 @@ onBeforeUnmount(() => {
       <template v-else-if="repoState.activeRepo.value.head.kind === 'unborn'">
         <GitViewHead v-if="repoHead" :repo="repoHead" v-bind="viewHeadBindings" />
         <AppToolbar ref="toolbarRef" v-bind="toolbarBindings" />
-        <div
-          v-if="searchOpen"
-          ref="searchRowEl"
-          class="flex items-center gap-1 py-1 px-2 border-b border-border shrink-0"
-        >
+        <div v-if="searchOpen" ref="searchRowEl" class="flex items-center gap-1 py-1 px-2 shrink-0">
           <SearchBox
             ref="searchBoxRef"
             :search="searchState"
@@ -1789,11 +1785,7 @@ onBeforeUnmount(() => {
       <template v-else>
         <GitViewHead v-if="repoHead" :repo="repoHead" v-bind="viewHeadBindings" />
         <AppToolbar ref="toolbarRef" v-bind="toolbarBindings" />
-        <div
-          v-if="searchOpen"
-          ref="searchRowEl"
-          class="flex items-center gap-1 py-1 px-2 border-b border-border shrink-0"
-        >
+        <div v-if="searchOpen" ref="searchRowEl" class="flex items-center gap-1 py-1 px-2 shrink-0">
           <SearchBox
             ref="searchBoxRef"
             :search="searchState"
@@ -1852,7 +1844,7 @@ onBeforeUnmount(() => {
 
           <aside
             v-if="detailOpen && breakpoint !== 'overlay'"
-            class="relative shrink-0 border-l border-border bg-bg overflow-auto"
+            class="relative shrink-0 bg-bg overflow-auto"
             data-testid="detail-region"
             :aria-label="t('git.detail.region.aria')"
             :style="{ width: detailWidthPx }"
@@ -1903,7 +1895,7 @@ onBeforeUnmount(() => {
         >
           <aside
             ref="overlayDetailRegionEl"
-            class="relative shrink-0 border-l border-border bg-bg overflow-auto w-80 max-w-[90vw] shadow-kira-dialog"
+            class="relative shrink-0 border-l border-border bg-bg overflow-auto w-80 max-w-[90vw] shadow-kira"
             data-testid="detail-region"
             :aria-label="t('git.detail.region.aria')"
           >

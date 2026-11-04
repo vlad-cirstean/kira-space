@@ -1,15 +1,19 @@
 {
-  "AdeTaskService.AddArtifact": {
-    "createdAt": 0,
-    "id": "<masked>",
-    "kind": "link",
-    "ref": "<masked>",
-    "repo": "",
-    "sessionId": "<masked>",
-    "source": "user",
-    "status": "",
-    "title": "Runbook",
-    "url": "https://wiki.example/runbook"
+  "AdeTaskService.AddLink": {
+    "artifact": {
+      "createdAt": 0,
+      "id": "<masked>",
+      "kind": "link",
+      "ref": "<masked>",
+      "repo": "",
+      "sessionId": "<masked>",
+      "source": "user",
+      "status": "",
+      "title": "Runbook",
+      "url": "https://wiki.example/runbook"
+    },
+    "filed": "stored",
+    "kind": "link"
   },
   "AdeTaskService.Artifacts": {
     "artifacts": [
@@ -292,12 +296,9 @@
       }
     ]
   },
-  "args:AdeTaskService.AddArtifact": {
-    "kind": "link",
-    "ref": "",
+  "args:AdeTaskService.AddLink": {
     "taskId": "<id:1>",
-    "title": "Runbook",
-    "url": "https://wiki.example/runbook"
+    "text": "Runbook https://wiki.example/runbook"
   },
   "args:AdeTaskService.RemoveArtifact": {
     "id": "<id:2>",

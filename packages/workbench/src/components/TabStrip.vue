@@ -248,7 +248,7 @@ if (moveTab) {
           <TooltipContent>{{ titleFor(tab) }}</TooltipContent>
         </Tooltip>
       </template>
-      <span class="self-stretch shrink-0 w-px my-1 mr-0.5 bg-border" aria-hidden="true"></span>
+      <span class="self-stretch shrink-0 w-px my-1 mr-0.5 bg-transparent" aria-hidden="true"></span>
     </div>
     <div
       ref="stripRef"

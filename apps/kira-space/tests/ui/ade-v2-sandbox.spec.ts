@@ -1,6 +1,13 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { type AdeBoardFx, adeBoard, adeFixture, openBillTask, openPlan } from './support/adeV2';
+import {
+  type AdeBoardFx,
+  adeBoard,
+  adeFixture,
+  openBillTask,
+  openPlan,
+  openSessions,
+} from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -74,6 +81,14 @@ test('contract: the run line shows the policy in the popover', async ({ relaunch
   await expect(pop.locator(t('ade-run-sandbox-denial'))).toHaveCount(0);
 });
 
+test('contract: a script run shows its read-only sandbox', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, sandboxControl('script'));
+  await openBillTask(page);
+  const badge = line(page).locator(t('ade-run-sandbox'));
+  await expect(badge).toHaveText('Read only');
+  await expect(badge).toHaveAttribute('data-enforced', 'true');
+});
+
 test('contract: denials show as a count, a row and the profile', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, sandboxControl('denied'));
   await openBillTask(page);
@@ -128,7 +143,6 @@ async function openStep(page: Page, step: string): Promise<void> {
   await page.locator(t('ade-tab-workflows')).click();
   await page.locator(t('ade-workflows')).waitFor();
   await page.locator(`${t('ade-wf-node')}[data-step-id="${step}"]`).click();
-  await page.locator(t('ade-wf-step-advanced')).click();
   await expect(page.locator(t('ade-wf-step-sandbox'))).toBeVisible();
 }
 
@@ -193,4 +207,85 @@ test('an OS that cannot enforce shows the notice in the inspector', async ({ rel
   ]);
   await openStep(page, 'plan');
   await expect(page.locator(t('ade-wf-sandbox-notice'))).toContainText('runs on macOS only');
+});
+
+test('a script step has its sandbox section without opening Advanced', async ({ relaunch }) => {
+  const fx = contract<WorkflowsFx>('ade-workflow-editor', 'AdeTaskService.Workflows#outside');
+  const { window: page, control } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskWorkflows, response: fx },
+  ]);
+  await openStep(page, 'build');
+  await expect(page.locator(t('ade-wf-step-advanced'))).toHaveAttribute('aria-expanded', 'false');
+  await page.locator(t('ade-wf-sandbox-access-write')).click();
+  await page.locator(t('ade-wf-sandbox-network')).click();
+  await page.locator(t('ade-wf-sandbox-access-read')).click();
+  const args = await saved(page, control);
+  expect(args.workflow.steps.find((s) => s.id === 'build')?.sandbox).toEqual({
+    access: 'read',
+    read: [],
+    allow: [],
+    network: true,
+  });
+});
+
+const sessionOf = (id: string) =>
+  contract<{ sessions: Wire[] }>('ade-sandbox', `AdeTaskService.Sessions#${id}`).sessions[0];
+
+test('contract: a sandboxed manual session shows its chip and policy', async ({ relaunch }) => {
+  const fx = adeFixture<{ sessions: Wire[] }>('sessions');
+  fx.sessions = fx.sessions.map((s) =>
+    s.id === 'tk01' ? { ...s, sandbox: sessionOf('manual-sandbox')?.sandbox } : s,
+  );
+  const detail = contract<{ denials: Wire[] } & Wire>(
+    'ade-sandbox',
+    'AdeTaskService.SessionSandbox#manual',
+  );
+  const { window: page, control } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskSessions, response: fx },
+    {
+      channel: IPC.adeTaskSessionSandbox,
+      response: {
+        ...detail,
+        profile: PROFILE,
+        denials: detail.denials.map((d) => ({ ...d, at: 1_790_036_400_000 })),
+      },
+    },
+  ]);
+  await openSessions(page, 'T_bill');
+  const badge = page.locator(t('ade-session-sandbox-badge'));
+  await expect(badge).toHaveAttribute('data-denials', '1');
+  await badge.click();
+  const pop = page.locator(t('ade-run-sandbox-popover'));
+  await expect(pop.locator(t('ade-run-sandbox-denial'))).toContainText('/etc/kira-denied');
+  expect(calls(control, IPC.adeTaskSessionSandbox)[0]?.args).toEqual({ sessionId: 'tk01' });
+});
+
+test('an unsandboxed manual session shows no chip', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch);
+  await openSessions(page, 'T_bill');
+  await expect(page.locator(t('ade-session-sandbox-badge'))).toHaveCount(0);
+});
+
+test('a manual step with a session has the sandbox section, off by default', async ({
+  relaunch,
+}) => {
+  const fx = contract<WorkflowsFx>(
+    'ade-workflow-editor',
+    'AdeTaskService.Workflows#manual-sandbox',
+  );
+  const { window: page, control } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskWorkflows, response: fx },
+  ]);
+  await openStep(page, 'free');
+  await expect(page.locator(t('ade-wf-sandbox-off'))).toContainText('full rights');
+  const node = page.locator(`${t('ade-wf-node')}[data-step-id="free"]`);
+  await expect(node.locator(t('ade-wf-node-sandbox'))).toHaveCount(0);
+  await page.locator(t('ade-wf-sandbox-access-write')).click();
+  await expect(node.locator(t('ade-wf-node-sandbox'))).toHaveText('Write worktree');
+  await expect(page.locator(t('ade-wf-sandbox-manual-limits'))).toContainText('push or fetch');
+  await page.locator(t('ade-wf-step-session')).click();
+  await expect(page.locator(t('ade-wf-step-section-sandbox'))).toHaveCount(0);
+  const args = await saved(page, control);
+  const step = args.workflow.steps.find((s) => s.id === 'free');
+  expect(step?.sandbox).toMatchObject({ access: 'off' });
 });

@@ -130,7 +130,7 @@ onBeforeUnmount(() => {
 <template>
   <PopoverContent align="end" class="w-56 gap-0 p-0" data-testid="columns-menu">
     <div class="max-h-80 flex flex-col">
-      <div class="flex border-b border-border gap-1 p-1">
+      <div class="flex gap-1 p-1">
         <Button variant="toolbar" size="kira" data-testid="columns-select-all" @click="selectAll">{{
           t('common.state.all.option')
         }}</Button>

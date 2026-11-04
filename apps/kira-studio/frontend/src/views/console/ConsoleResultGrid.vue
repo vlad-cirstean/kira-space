@@ -503,7 +503,7 @@ function onKeyValueRowContextMenuFromEvent(e: MouseEvent): void {
               v-if="
                 consoleViewStore.isResultDocExpanded(tabId, pageKey, documentRows[vi.index]!.id)
               "
-              class="flex-1 min-h-0 border-t border-border bg-elevated overflow-hidden"
+              class="flex-1 min-h-0 bg-elevated overflow-hidden"
               data-testid="document-body"
             >
               <DocumentTree
@@ -537,7 +537,7 @@ function onKeyValueRowContextMenuFromEvent(e: MouseEvent): void {
         <div
           v-for="vi in kvVirtual.virtualItems.value"
           :key="String(vi.key)"
-          class="flex border-b border-border w-(--total-width)"
+          class="flex w-(--total-width)"
           data-testid="console-result-kv-row"
           :data-row="rowIndices[vi.index]"
           :class="VIRTUAL_ROW_CLASS"

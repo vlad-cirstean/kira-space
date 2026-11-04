@@ -86,10 +86,15 @@ type ReportArtifactsResult struct {
 
 // CleanArtifact trims an input and returns it, or the refusal text when it breaks a rule.
 func CleanArtifact(in ArtifactInput) (ArtifactInput, string) {
+	return CleanArtifactAs(in, ReportableArtifactKind)
+}
+
+// CleanArtifactAs is CleanArtifact with the caller's own set of allowed kinds.
+func CleanArtifactAs(in ArtifactInput, kindOK func(string) bool) (ArtifactInput, string) {
 	in.Kind, in.Title = strings.TrimSpace(in.Kind), strings.TrimSpace(in.Title)
 	in.URL, in.Ref = strings.TrimSpace(in.URL), strings.TrimSpace(in.Ref)
 	switch {
-	case !ReportableArtifactKind(in.Kind):
+	case !kindOK(in.Kind):
 		return in, "unknown kind; use one the tool lists."
 	case in.Title == "":
 		return in, "title must not be empty."

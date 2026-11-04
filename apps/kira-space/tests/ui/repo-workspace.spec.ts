@@ -1060,7 +1060,7 @@ test('the pinned graph tab and a promoted file tab sit vertically centred in the
   async function assertCentred(tabLocator: import('@playwright/test').Locator) {
     const [barBox, tabBox] = await Promise.all([bar.boundingBox(), tabLocator.boundingBox()]);
     if (!barBox || !tabBox) throw new Error('expected both the bar and its tab to be measurable');
-    const barBottomInterior = barBox.y + barBox.height - 1; // 1px border-b
+    const barBottomInterior = barBox.y + barBox.height;
     const topGap = tabBox.y - barBox.y;
     const bottomGap = barBottomInterior - (tabBox.y + tabBox.height);
     expect(Math.abs(topGap - bottomGap)).toBeLessThanOrEqual(0.5);

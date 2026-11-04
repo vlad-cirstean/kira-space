@@ -85,7 +85,7 @@ function onOpenFile(index: number, pinned: boolean): void {
         "
       />
       <FileTree
-        class="flex-auto min-h-0 border-y border-border"
+        class="flex-auto min-h-0"
         :files="detail.files"
         :selected-file="detailState.selectedFile.value"
         :list-mode="detailState.listMode.value"

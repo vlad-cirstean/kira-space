@@ -118,18 +118,18 @@ onScopeDispose(() => offReviewCode?.());
           }}</Badge>
         </TabsTrigger>
         <TabsTrigger
-          value="plan"
-          :class="tabChipVariants({ active: ui.view === 'plan', size: 'wide' })"
-          data-testid="ade-tab-plan"
-        >
-          {{ t('space.common.plan.label') }}
-        </TabsTrigger>
-        <TabsTrigger
           value="later"
           :class="tabChipVariants({ active: ui.view === 'later', size: 'wide' })"
           data-testid="ade-tab-later"
         >
           {{ t('common.later.label') }}
+        </TabsTrigger>
+        <TabsTrigger
+          value="plan"
+          :class="tabChipVariants({ active: ui.view === 'plan', size: 'wide' })"
+          data-testid="ade-tab-plan"
+        >
+          {{ t('space.common.plan.label') }}
         </TabsTrigger>
       </TabsList>
       <div class="mx-2 flex items-center gap-2">

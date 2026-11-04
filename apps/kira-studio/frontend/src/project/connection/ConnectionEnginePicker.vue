@@ -49,7 +49,7 @@ function pick(kind: ConnectionKind): void {
             :disabled="!SUPPORTED_KINDS.has(option)"
             :aria-label="KIND_LABEL[option]"
             :data-testid="`connection-kind-${option}`"
-            class="relative flex flex-col items-start gap-1 rounded-kira border bg-bg px-2 py-3 text-left text-inherit not-data-[disabled]:hover:border-border-strong not-data-[disabled]:hover:bg-hover data-[disabled]:opacity-50"
+            class="relative flex flex-col items-start gap-1 rounded-kira border bg-bg px-2 py-3 text-left text-inherit not-data-[disabled]:hover:border-border not-data-[disabled]:hover:bg-field data-[disabled]:opacity-50"
             :class="kind === option ? 'border-focus' : 'border-border'"
             @click="pick(option)"
           >

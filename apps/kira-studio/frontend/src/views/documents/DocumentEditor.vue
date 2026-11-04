@@ -32,7 +32,7 @@ useShortcut(rootEl, ['form.save'], () => {
 <template>
   <div ref="rootEl" class="flex min-h-0 flex-1 flex-col">
     <MonacoHost :doc="props.buffer.doc.value" language="json" @update:doc="props.buffer.writeDoc" />
-    <div class="flex shrink-0 items-center gap-1.5 border-t border-border py-1 px-2">
+    <div class="flex shrink-0 items-center gap-1.5 py-1 px-2">
       <EditBufferActions
         :buffer="props.buffer"
         :testid-prefix="testidPrefix"

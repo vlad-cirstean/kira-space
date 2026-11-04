@@ -415,7 +415,7 @@ onUnmounted(() => {
     <template v-else>
       <div
         v-if="creatingNew"
-        class="h-55 shrink-0 flex flex-col border-b border-border bg-elevated"
+        class="h-55 shrink-0 flex flex-col bg-elevated"
         data-testid="document-new"
       >
         <DocumentEditor
@@ -542,7 +542,7 @@ onUnmounted(() => {
                     v-if="
                       documentViewStore.isDocumentExpanded(tab.id, rowAt(rows[vi.index])!.view.id)
                     "
-                    class="flex-1 min-h-0 flex flex-col overflow-hidden border-t border-border bg-elevated"
+                    class="flex-1 min-h-0 flex flex-col overflow-hidden bg-elevated"
                     data-testid="document-body"
                   >
                     <!-- The editor is the same code surface the definition view and the console views

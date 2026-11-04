@@ -118,7 +118,7 @@ const usedByRows = computed(() =>
     data-testid="docker-resource-detail"
     :data-kind="kind"
   >
-    <div class="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
+    <div class="flex shrink-0 items-center gap-2 px-3 py-2">
       <CodiconIcon :name="ICONS[kind]" :size="16" class="text-muted-foreground" />
       <span class="min-w-0 truncate text-kira-lg font-medium" data-testid="docker-resource-title">{{
         title

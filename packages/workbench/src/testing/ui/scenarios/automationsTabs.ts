@@ -294,6 +294,7 @@ export function registerTabScenarios(env: Env, options: Options): void {
     await openPanel(page);
     await play(page, PLAIN.id).click();
     await expect(tabs(page)).toHaveCount(1);
+    await expect.poll(() => opens(control)).toHaveLength(1);
     const [first] = opens(control);
     await exit(page, first ?? '');
     await emitWailsEvent(page, IPC.scriptRunsChanged, plainRun(first ?? '', 'r1', 'done', 1_000));
@@ -301,7 +302,7 @@ export function registerTabScenarios(env: Env, options: Options): void {
     await expect(tabs(page)).toHaveCount(0);
     await play(page, PLAIN.id).click();
     await expect(tabs(page)).toHaveCount(1);
-    expect(opens(control)).toHaveLength(2);
+    await expect.poll(() => opens(control)).toHaveLength(2);
   });
 
   test('a smart script keeps one run tab; Operations opens an older run in it', async ({

@@ -38,7 +38,7 @@ function openComment(url: string): void {
     <article
       v-for="comment in comments"
       :key="comment.id"
-      class="flex flex-col gap-1 border-t border-border pt-3 first:border-t-0 first:pt-0"
+      class="flex flex-col gap-1 pt-3 first:pt-0"
       :class="comment.pending && 'text-muted-foreground'"
       :data-pending="comment.pending || undefined"
       data-testid="issue-comment"

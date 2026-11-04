@@ -139,7 +139,7 @@ function confirmPlain(): void {
           />
         </Field>
 
-        <Disclosure class="pt-2 border-t border-border" trigger-class="text-muted-foreground">
+        <Disclosure class="pt-2" trigger-class="text-muted-foreground">
           <template #label
             ><CatalogText k="git.dialog.forcePushConfirm.plain.label">
               <template #flag><code class="font-data">--force</code></template>

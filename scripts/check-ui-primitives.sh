@@ -90,11 +90,12 @@ U41 packages/theme/src/wrapSelection.ts # modifier-free typing guard on beforein
 U41 packages/workbench/src/terminal/terminalRenderer.ts # xterm engine host maps Shift+Enter to meta-Enter bytes, not an app shortcut
 U11 packages/workbench/src/components/LogLines.vue # ANSI bold is log data
 U62 packages/workbench/src/components/AutocompleteField.vue # accepting a suggestion restores focus and the caret on the real input
+U26 packages/workbench/src/components/OpLogPanel.vue # error log row wash at the shared /15 tint, with the inset rail
+U36 packages/theme/src/components/VarText.vue # inline variable mark, not a content box
 # A (apps/kira-studio)
 U100 apps/kira-studio/frontend/src/api/CopyAsCurlDialog.vue # read-only output fields, nothing to discard
 U34 apps/kira-studio/frontend/src/theme/EngineIcon.vue # engine brand marks are third-party logo colours
 U36 apps/kira-studio/frontend/src/project/connection/ConnectionEnginePicker.vue # engine tile is a selectable radio card, not a content box
-U37 apps/kira-studio/frontend/src/project/connection/ConnectionEnginePicker.vue # engine tile hover fill (radio card, not a row)
 U46 apps/kira-studio/frontend/src/bridge/port.ts # bridge transport timeout
 U41 apps/kira-studio/frontend/src/editor/MonacoHost.vue # Monaco engine host reads modifier keys
 U62 apps/kira-studio/frontend/src/editor/MonacoHost.vue # Monaco engine host owns editor focus
@@ -152,7 +153,7 @@ U9@@v@@NumberStepperInput.vue@@Input/NativeSelect/Textarea/InputGroup with size=
 U10@@v@@@@raw <label>/<select> (use FieldLabel/Label, NativeSelect)@@<(?:label|select)\b
 U11@@vt@@@@font-bold, font-semibold, font-extrabold or font-black (headings use SectionHeading, FieldLegend)@@${TOK}font-(?:bold|semibold|extrabold|black)(?![\w-])
 U12@@v@@@@CodiconIcon :size outside 12/13/16/24@@<CodiconIcon\b(?&t)\s:size="(?!(?:12|13|16|24)")\d+"
-U13@@v@@PanelHeader.vue@@hand-rolled panel header/toolbar bar (use PanelHeader/ViewToolbar)@@\bclass="(?=[^"]*${TOK}h-bar(?![\w-]))(?=[^"]*${TOK}gap-1(?![\w.-]))(?=[^"]*${TOK}border-b(?![\w-]))(?:(?=[^"]*${TOK}px-1\.5(?![\w-]))(?=[^"]*${TOK}text-kira-sm(?![\w-]))|(?=[^"]*${TOK}px-2(?![\w-]))(?=[^"]*${TOK}shrink-0(?![\w-])))
+U13@@v@@@@hand-rolled panel header/toolbar bar (use PanelHeader/ViewToolbar)@@\bclass="(?=[^"]*${TOK}h-bar(?![\w-]))(?=[^"]*${TOK}gap-1(?![\w.-]))(?=[^"]*${TOK}border-b(?![\w-]))(?:(?=[^"]*${TOK}px-1\.5(?![\w-]))(?=[^"]*${TOK}text-kira-sm(?![\w-]))|(?=[^"]*${TOK}px-2(?![\w-]))(?=[^"]*${TOK}shrink-0(?![\w-])))
 U14@@v@@@@EmptyMedia variant="icon", or Alert faking an empty state@@<EmptyMedia\b(?&t)\svariant="icon"|<Alert\b(?&t)\sclass="[^"]*${TOK}bg-transparent
 U15@@v@@@@PopoverContent width outside w-56/w-80/w-96/w-120/w-auto@@<PopoverContent\b(?&t)\s:?class="[^"]*${TOK}w-(?!(?:56|80|96|120|auto)(?![\w.\[(-]))
 U16@@v@@@@DialogClose wrapping an icon-sm Button (use DialogHeader closable)@@<DialogClose\b(?&t)>\s*<Button\b(?&t)\ssize="icon-sm"
@@ -166,7 +167,7 @@ U23@@vt@@Spinner.vue|StatusDot.vue@@animate-spin/animate-pulse/codicon-modifier-
 U24@@v@@@@Alert class sets width/margin/fill/radius/border/padding, AlertDescription class, or variant="default"@@<Alert\b(?&t)\s:?class="[^"]*${TOK}(?:(?:w|m|mx|my|mt|mb|ml|mr|bg|p|px|py|pt|pb)-|(?:rounded|border)\b)|<AlertDescription\b(?&t)\s:?class="(?!whitespace-pre-wrap")|<Alert\b(?&t)\svariant="default"
 U25@@v@@InlineState.vue@@p/div with text-error (use FieldError or InlineState)@@<(?:p|div)\b(?&t)\s:?class="[^"]*${TOK}text-error(?![\w-])
 U26@@vt@@@@retired tone variant err/destructive/note, or a tone alpha (use Badge, Alert, StatusDot)@@<(?:Badge|Alert|DropdownMenuItem)\b(?&t)\svariant="(?:err|destructive|note)"|${TOK}(?:text|bg|border)-(?:ok|warn|info|error)/\d+
-U27@@v@@StatusDot.vue@@hand-rolled status dot or pill (use StatusDot, Badge)@@\bclass="(?=[^"]*${TOK}rounded-full(?![\w-]))(?:(?=[^"]*${TOK}size-(?:1\.5|2|2\.5)(?![\w.-]))|(?=[^"]*${TOK}w-2(?![\w.-]))(?=[^"]*${TOK}h-2(?![\w.-]))|(?=[^"]*${TOK}w-2\.5(?![\w.-]))(?=[^"]*${TOK}h-2\.5(?![\w.-])))|<span\b(?&t)\s:?class="(?=[^"]*${TOK}(?:rounded-full|rounded-kira-pill)(?![\w-]))(?=[^"]*${TOK}px-)
+U27@@v@@StatusDot.vue@@hand-rolled status dot or pill (use StatusDot, Badge)@@\bclass="(?=[^"]*${TOK}rounded-full(?![\w-]))(?:(?=[^"]*${TOK}size-(?:1\.5|2|2\.5)(?![\w.-]))|(?=[^"]*${TOK}w-2(?![\w.-]))(?=[^"]*${TOK}h-2(?![\w.-]))|(?=[^"]*${TOK}w-2\.5(?![\w.-]))(?=[^"]*${TOK}h-2\.5(?![\w.-])))|<span\b(?&t)\s:?class="(?=[^"]*${TOK}rounded-full(?![\w-]))(?=[^"]*${TOK}px-)
 U28@@v@@SwatchRadio.vue@@raw checkbox/radio input (use Checkbox, RadioGroup)@@type="(?:checkbox|radio)"
 U28@@vS@@@@Checkbox in a settings pane (a live boolean is a Switch)@@<Checkbox\b
 U28@@v@@/settings/|MemoryPanel.vue|AdeMainTab.vue|ReposDialog.vue@@Switch outside settings panes (a form option is a Checkbox)@@<Switch\b
@@ -177,8 +178,8 @@ U32@@v@@@@scrollbar styling in a component (use scrollbar-none, base.css)@@\[scr
 U33@@v@@@@keyboard hint text (use Kbd)@@Cmd/Ctrl|\(\{\{\s*formatShortcut
 U34@@vt@@monacoTheme.ts|/setiFileIcon|/ade/v2/palette.ts@@colour literal in app code (use tokens)@@(?:["'\`\[(]|:\s*)#(?:[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?|(?=[0-9]*[a-fA-F])[0-9a-fA-F]{3,4}|(?<d>\d)\k<d>\k<d>\k<d>?)\b|${TOK}(?:bg|text|border)-(?:black|white)(?![\w-])
 U35@@v@@AdeNotesEditor.vue|AutocompleteField.vue@@outline-none, border-focus, not-allowed cursor or odd disabled opacity (one focus and disabled recipe)@@${TOK}outline-(?:none|hidden|0)(?![\w-])|focus:outline|focus-visible:outline-|${TOK}focus(?:-visible|-within)?:border-focus|${TOK}cursor-not-allowed|${TOK}disabled:opacity-(?!50(?![\w-]))|data-\[off\]
-U36@@v@@PickerTrigger.vue@@hand-rolled box (use Card)@@\bclass="(?=[^"]*${TOK}rounded-kira(?:-sm|-lg)?(?![\w-]))(?=[^"]*${TOK}border(?![\w-]))(?=[^"]*${TOK}(?:p|px|py)-)
-U37@@vt@@rowVariants.ts|PickerTrigger.vue@@raw table markup, density formula, or hand-rolled row state (use Table, useRowHeight, rowVariants)@@<(?:table|thead|tbody|tr|th|td)\b|rowDensity\s*===|${TOK}(?:hover:)?bg-(?:select|hover)(?![\w-])
+U36@@v@@PickerTrigger.vue@@hand-rolled box (use Card)@@\bclass="(?=[^"]*${TOK}rounded-kira(?:-sm)?(?![\w-]))(?=[^"]*${TOK}border(?![\w-]))(?=[^"]*${TOK}(?:p|px|py)-)
+U37@@vt@@rowVariants.ts@@raw table markup, density formula, or hand-rolled row state (use Table, useRowHeight, rowVariants)@@<(?:table|thead|tbody|tr|th|td)\b|rowDensity\s*===|${TOK}(?:hover:)?bg-select(?![\w-])
 U38@@v@@@@scale leftovers: text-kira-xs, stock text size/radius, text-[Npx], raw h-5..h-12@@${TOK}text-kira-xs(?![\w-])|${TOK}text-(?:xs|sm|base|lg|xl|2xl)(?![\w-])|${TOK}text-\[\d|${TOK}rounded(?:-md|-lg|-xl)?(?![\w-])|${TOK}h-(?:5|6|7|8|9|10|12)(?![\w.-])
 U39@@vt@@/behaviour/!|/testing/!@@instanceof Error ? message : String (use errorText)@@instanceof\s+Error\s*\?\s*[\w.]+\.message\s*:\s*String\(
 U40@@vt@@/behaviour/!|/testing/!@@@keydown.<modifier>, @keydown.context-menu or onKeyStroke (use useShortcut)@@@keydown\.(?:meta|ctrl|alt|shift)|@keydown\.context-menu|\bonKeyStroke\(

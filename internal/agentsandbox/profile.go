@@ -73,6 +73,9 @@ func Profile(p Policy, rt Runtime) string {
 	if p.ContextDir != "" {
 		allowRead = append(allowRead, sub(p.ContextDir))
 	}
+	for _, f := range p.ReadFiles {
+		allowRead = append(allowRead, lit(f))
+	}
 	b.rule("allow", "file-read-data", dedupe(allowRead)...)
 
 	b.section("writes")

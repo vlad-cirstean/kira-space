@@ -113,12 +113,19 @@ async function createNew(): Promise<void> {
           <Button
             variant="dialog"
             size="kira-lg"
+            class="px-1.5"
             data-testid="ade-wf-import"
             @click="importOpen = !importOpen"
           >
             {{ t('space.ade.workflows.page.import.label') }}
           </Button>
-          <Button variant="dialog" size="kira-lg" data-testid="ade-wf-new" @click="createNew">
+          <Button
+            variant="dialog"
+            size="kira-lg"
+            class="px-1.5"
+            data-testid="ade-wf-new"
+            @click="createNew"
+          >
             {{ t('space.ade.workflows.page.new.label') }}
           </Button>
         </template>

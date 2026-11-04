@@ -1,19 +1,12 @@
 import { expect, test } from './fixtures';
-import {
-  adeBoard,
-  adeFixture,
-  archivedTaskFx,
-  FIXED_NOW,
-  openPlan,
-  openTask,
-} from './support/adeV2';
+import { adeFixture, archivedTaskFx, FIXED_NOW, openPlan, openTask } from './support/adeV2';
 import { contract } from './support/contract';
-import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 import type { ControlSnapshot } from './support/types';
 
-// Task panel: Main, Details and Sessions tabs, link groups, paste, inline edit, timeline and
-// session links. Contract ade-task-panel; backend half: flows/adeflow TestTaskPanelOrigins.
+// Task panel: Main, Details and Sessions tabs, link groups, timeline and session links. Link adding
+// and editing: ade-v2-details-links.spec.ts. Contract ade-task-panel; backend half: flows/adeflow
+// TestTaskPanelOrigins.
 
 const t = (id: string) => `[data-testid="${id}"]`;
 
@@ -132,91 +125,6 @@ test('Details groups the Jira and host links in Main and stored links in Related
   }
 });
 
-test('paste: a Jira key updates the task, a URL adds an untitled link, text shows an error', async ({
-  relaunch,
-}) => {
-  const withHost = adeBoard((b) => {
-    const task = b.tasks.find((x) => x.id === 'T_notif');
-    Object.assign(task ?? {}, { hostUrl: 'https://github.com/acme/web-app/issues/1' });
-  });
-  const { window: page, control } = await openPlan(relaunch, [
-    ...panel(),
-    { channel: IPC.adeTaskBoard, response: withHost },
-  ]);
-  await openTask(page, 'T_notif');
-  await page.locator(t('ade-panel-tab-details')).click();
-  const paste = page.locator(t('ade-details-paste'));
-  await paste.fill('PAY-9');
-  await paste.press('Enter');
-  await expect.poll(() => calls(control, IPC.adeTaskUpdateTask)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskUpdateTask)[0]?.args).toMatchObject({
-    taskId: 'T_notif',
-    patch: { jira: { key: 'PAY-9' } },
-  });
-  await expect(paste).toHaveValue('');
-
-  await paste.fill('https://wiki.example/new-page');
-  await paste.press('Enter');
-  await expect.poll(() => calls(control, IPC.adeTaskAddArtifact)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskAddArtifact)[0]?.args).toEqual({
-    taskId: 'T_notif',
-    kind: 'link',
-    title: '',
-    url: 'https://wiki.example/new-page',
-    ref: '',
-  });
-
-  await expect(paste).toHaveValue('');
-
-  // A key-shaped token in a non-Jira URL does not route to the Jira slot.
-  await paste.fill('https://github.com/acme/web-app/tree/PROJ-42-fix');
-  await paste.press('Enter');
-  await expect.poll(() => calls(control, IPC.adeTaskAddArtifact)).toHaveLength(2);
-  expect(calls(control, IPC.adeTaskAddArtifact)[1]?.args).toMatchObject({
-    kind: 'link',
-    url: 'https://github.com/acme/web-app/tree/PROJ-42-fix',
-  });
-  expect(calls(control, IPC.adeTaskUpdateTask)).toHaveLength(1);
-
-  await paste.fill('not a link');
-  await paste.press('Enter');
-  await expect(page.locator(t('ade-details-paste-error'))).toBeVisible();
-  expect(calls(control, IPC.adeTaskAddArtifact)).toHaveLength(2);
-});
-
-test('inline edit: Enter renames, Escape cancels, empty removes, detected rows have no edit', async ({
-  relaunch,
-}) => {
-  const { window: page, control } = await openPlan(relaunch, panel());
-  await openDetails(page);
-  const id = artifacts().artifacts.find((a) => a.title === 'Other docs')?.id;
-
-  await row(page, 'Other docs').locator(t('ade-details-link-edit')).click();
-  await page.locator(t('ade-details-link-input')).fill('Other docs v2');
-  await page.locator(t('ade-details-link-input')).press('Enter');
-  await expect.poll(() => calls(control, IPC.adeTaskUpdateArtifact)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskUpdateArtifact)[0]?.args).toEqual({
-    taskId: 'T_alerts',
-    id,
-    title: 'Other docs v2',
-  });
-
-  await row(page, 'Runbook').locator(t('ade-details-link-edit')).click();
-  await page.locator(t('ade-details-link-input')).fill('discarded');
-  await page.locator(t('ade-details-link-input')).press('Escape');
-  await expect(page.locator(t('ade-details-link-input'))).toHaveCount(0);
-  expect(calls(control, IPC.adeTaskUpdateArtifact)).toHaveLength(1);
-
-  await row(page, 'Runbook').locator(t('ade-details-link-edit')).click();
-  await page.locator(t('ade-details-link-input')).fill('');
-  await page.locator(t('ade-details-link-input')).press('Enter');
-  await expect.poll(() => calls(control, IPC.adeTaskRemoveArtifact)).toHaveLength(1);
-
-  const detected = row(page, 'Fix login');
-  await expect(detected).toHaveAttribute('data-origin', 'detected');
-  await expect(detected.locator(t('ade-details-link-edit'))).toHaveCount(0);
-});
-
 test('the timeline starts closed and lists entries oldest first', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, panel());
   await openDetails(page);
@@ -256,4 +164,46 @@ test('an archived task opens Details read-only', async ({ relaunch }) => {
   await expect(page.locator(t('ade-details-paste'))).toHaveCount(0);
   await expect(page.locator(t('ade-details-link-edit'))).toHaveCount(0);
   await expect(page.locator(t('ade-details-link-remove'))).toHaveCount(0);
+});
+
+// Layout only, no IPC: the backend half has nothing to assert.
+test('Main tab rows share one grid', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, panel());
+  await openTask(page, 'T_bill');
+  await expect(page.locator(t('ade-main-tab'))).toBeVisible();
+  const rows = await page.locator(`${t('ade-main-tab')} [data-slot="ade-row"]`).evaluateAll((els) =>
+    els.map((el) => {
+      const x = (sel: string): number | null => {
+        const n = el.querySelector(`:scope > ${sel}`);
+        return n ? n.getBoundingClientRect().x : null;
+      };
+      const label = el.querySelector(':scope > [data-slot="ade-row-label"]');
+      return {
+        depth: Number((el as HTMLElement).dataset.depth),
+        lead: x('[data-slot="ade-row-lead"]'),
+        labelX: label ? label.getBoundingClientRect().x : null,
+        labelW: label ? label.getBoundingClientRect().width : null,
+        body: x('[data-slot="ade-row-body"]'),
+        height: el.getBoundingClientRect().height,
+        minHeight: Number.parseFloat(getComputedStyle(el).minHeight),
+      };
+    }),
+  );
+  expect(rows.length).toBeGreaterThanOrEqual(12);
+  const uniq = (xs: (number | null)[]) => [...new Set(xs.map((v) => Math.round(v ?? -1)))];
+  const leadAt = (d: number) => uniq(rows.filter((r) => r.depth === d).map((r) => r.lead));
+  const depths = [...new Set(rows.map((r) => r.depth))].sort();
+  for (const d of depths) expect(leadAt(d)).toHaveLength(1);
+  for (const d of depths.slice(1)) {
+    expect((leadAt(d)[0] ?? 0) - (leadAt(d - 1)[0] ?? 0)).toBe(14);
+  }
+  const labelled = rows.filter((r) => r.labelX !== null);
+  expect(labelled.length).toBeGreaterThan(0);
+  expect(uniq(labelled.map((r) => r.labelX))).toHaveLength(1);
+  expect(uniq(labelled.map((r) => r.labelW))).toHaveLength(1);
+  expect(uniq(labelled.map((r) => r.body))).toHaveLength(1);
+  const plain = rows.filter((r) => r.depth === 0 && r.labelX === null);
+  expect(plain.length).toBeGreaterThan(0);
+  expect(uniq(plain.map((r) => r.body))).toEqual(uniq(labelled.map((r) => r.labelX)));
+  for (const r of rows) expect(Math.round(r.height)).toBe(Math.round(r.minHeight));
 });

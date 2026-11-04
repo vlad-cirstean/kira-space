@@ -36,7 +36,7 @@ watch(
     :aria-label="t('kubernetes.tabs.aria')"
     data-testid="kube-tabs"
   >
-    <div class="flex h-tabbar shrink-0 items-center border-b border-border bg-chrome">
+    <div class="flex h-tabbar shrink-0 items-center bg-chrome">
       <TooltipIconButton
         class="ml-1 shrink-0"
         :icon="ui.listHidden ? 'layout-sidebar-left-off' : 'layout-sidebar-left'"

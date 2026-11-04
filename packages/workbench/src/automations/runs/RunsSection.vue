@@ -37,10 +37,7 @@ function show(run: ScriptRun): void {
 </script>
 
 <template>
-  <section
-    :class="cn('flex min-h-0 flex-col border-t border-border', open && 'max-h-1/2')"
-    data-testid="runs-section"
-  >
+  <section :class="cn('flex min-h-0 flex-col', open && 'max-h-1/2')" data-testid="runs-section">
     <SectionHeading
       :label="t('common.state.running.status')"
       collapsible

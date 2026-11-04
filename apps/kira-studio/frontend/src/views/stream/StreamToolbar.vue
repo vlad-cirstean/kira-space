@@ -166,7 +166,7 @@ async function onDeleteMessage(): Promise<void> {
 </script>
 
 <template>
-  <ViewToolbar :border="isKafka ? 'bottom' : 'none'">
+  <ViewToolbar>
     <div class="flex items-center gap-1.5 min-w-0">
       <TooltipIconButton
         :icon="ICON.refresh"

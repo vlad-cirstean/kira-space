@@ -4,6 +4,7 @@ package model
 const (
 	AdeArtifactChangeRequest = "changeRequest"
 	AdeArtifactIssue         = "issue"
+	AdeArtifactBranch        = "branch"
 	AdeArtifactDeployment    = "deployment"
 	AdeArtifactDoc           = "doc"
 	AdeArtifactLink          = "link"

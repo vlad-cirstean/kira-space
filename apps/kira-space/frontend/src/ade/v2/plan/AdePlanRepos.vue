@@ -26,10 +26,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div
-    class="flex flex-wrap items-center gap-1.5 border-b border-border px-3 py-1.5"
-    data-testid="ade-plan-repos"
-  >
+  <div class="flex flex-wrap items-center gap-1.5 px-3 py-1.5" data-testid="ade-plan-repos">
     <AdeRepoChip
       v-for="r in repos"
       :key="r.codeRepoId"

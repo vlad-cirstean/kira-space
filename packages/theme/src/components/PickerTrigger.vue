@@ -20,7 +20,7 @@ const SIZE = { kira: 'h-control', 'kira-lg': 'h-control-lg' } as const;
     data-slot="picker-trigger"
     :class="
       cn(
-        'inline-flex max-w-full min-w-0 shrink-0 cursor-default items-center gap-1.5 rounded-kira-sm border border-border-strong bg-field px-2 text-kira-md text-fg aria-expanded:bg-hover aria-invalid:border-error disabled:pointer-events-none disabled:opacity-50',
+        'inline-flex max-w-full min-w-0 shrink-0 cursor-default items-center gap-1.5 rounded-kira-sm border border-border bg-field px-2 text-kira-md text-fg aria-expanded:bg-field aria-invalid:border-error disabled:pointer-events-none disabled:opacity-50',
         SIZE[props.size],
         props.class,
       )

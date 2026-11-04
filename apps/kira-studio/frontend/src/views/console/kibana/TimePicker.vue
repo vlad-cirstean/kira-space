@@ -103,7 +103,7 @@ const isActive = (preset: KibanaTimePreset): boolean =>
             {{ t(PRESET_KEYS[p]) }}
           </button>
         </div>
-        <div class="mt-2 flex flex-col gap-1.5 border-t border-border pt-2">
+        <div class="mt-2 flex flex-col gap-1.5 pt-2">
           <div class="flex items-center gap-2 text-kira-sm text-muted-foreground">
             <span class="w-10 shrink-0">{{ t('studio.kibana.time.from.label') }}</span>
             <Input

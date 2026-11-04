@@ -86,7 +86,7 @@ function onOpenFile(index: number, pinned: boolean): void {
         </Tooltip>
       </ViewToolbar>
       <FileTree
-        class="flex-auto min-h-0 border-y border-border"
+        class="flex-auto min-h-0"
         :files="files"
         :selected-file="stash.selectedFile.value"
         :list-mode="stash.listMode.value"

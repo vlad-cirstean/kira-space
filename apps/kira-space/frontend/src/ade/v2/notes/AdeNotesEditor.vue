@@ -216,13 +216,13 @@ function keepFocus(e: MouseEvent): void {
 
 <template>
   <div
-    class="flex min-h-35 flex-1 flex-col overflow-hidden rounded-kira-sm border border-border-strong bg-bg"
+    class="flex min-h-35 flex-1 flex-col overflow-hidden rounded-kira-sm border border-border bg-bg"
   >
     <div
       v-if="!readonly"
       role="toolbar"
       :aria-label="t('space.ade.notes.formatting.aria')"
-      class="flex shrink-0 items-center gap-0.5 border-b border-border bg-chrome px-1.5 py-1"
+      class="flex shrink-0 items-center gap-0.5 bg-chrome px-1.5 py-1"
     >
       <span class="px-1.5 text-kira-sm text-muted-foreground">{{
         t('space.common.notes.label')

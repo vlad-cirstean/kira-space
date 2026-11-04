@@ -12,6 +12,8 @@ import (
 // runVars are the prompt and command variables of one run (SPEC2 section 5.1.1).
 type runVars struct {
 	Task, Jira, Repo, Branch, Worktree string
+	// Outside says the step runs outside the repos, in the task folder.
+	Outside bool
 }
 
 // substitute fills {task} {jira} {repo} {branch} {worktree} in one pass, so a value that contains
@@ -52,7 +54,7 @@ type promptInput struct {
 func stepVars(in promptInput) llmprompts.StepVars {
 	v := llmprompts.StepVars{
 		Title: in.Vars.Task, JiraKey: in.JiraKey, JiraURL: in.JiraURL,
-		Repo: in.Vars.Repo, Branch: in.Vars.Branch, Worktree: in.Vars.Worktree,
+		Repo: in.Vars.Repo, Branch: in.Vars.Branch, Worktree: in.Vars.Worktree, Outside: in.Vars.Outside,
 		StepNumber: in.Step, StepCount: in.Of, StepName: in.Def.Name,
 		StepPrompt: strings.TrimRight(substitute(in.Def.Prompt, in.Vars, false), "\n"),
 		Extra:      in.Extra, Context: in.Context,
@@ -103,7 +105,7 @@ func repoLineVars(repos []repoLine) []llmprompts.RepoLineVars {
 func composeManualMessage(src llmprompts.Source, step adewire.WorkflowStep, title, jiraKey, jiraURL, notes string, repos []repoLine, folder string, in handoverText) string {
 	v := llmprompts.ManualVars{
 		StepName: step.Name, Title: title, JiraKey: jiraKey, JiraURL: jiraURL,
-		Notes: capNotes(notes), Repos: repoLineVars(repos), Folder: folder, Handover: capNotes(in.Body), HandoverFrom: in.From,
+		Notes: capNotes(notes), Repos: repoLineVars(repos), Folder: folder, Outside: step.OutsideRepo, Handover: capNotes(in.Body), HandoverFrom: in.From,
 	}
 	if step.Prompt != "" {
 		v.StepPrompt = substitute(step.Prompt, repoVars(title, jiraKey, repos), false)

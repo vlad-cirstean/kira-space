@@ -101,7 +101,7 @@ const label = (id: SectionId): string => LABELS[id]();
 <template>
   <QueryState :query="describe" :is-empty="() => false">
     <div class="flex h-full min-h-0 flex-col" data-testid="kube-describe">
-      <div class="flex shrink-0 items-center gap-1.5 border-b border-border px-2 py-1">
+      <div class="flex shrink-0 items-center gap-1.5 px-2 py-1">
         <SearchField
           v-model="filter"
           class="flex-1"
