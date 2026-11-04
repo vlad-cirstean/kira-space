@@ -56,7 +56,7 @@ func TestRepolessWorkflow(t *testing.T) {
 		hold := filepath.Join(t.TempDir(), "hold")
 		t.Cleanup(func() { _ = os.WriteFile(hold, nil, 0o644) })
 		f := newNRFixture(t, map[string][]fakeagent.Action{
-			"tasks": {{WaitBefore: hold, MCP: []fakeagent.MCPCall{pick, requestCall("api")}, Name: "done"}},
+			"tasks": {{WaitBefore: hold, MCP: []fakeagent.MCPCall{pick, requestCall([2]string{"api", "feat/agent"})}, Name: "done"}},
 			"api":   {{Name: "done"}},
 		}, onceStepYML+agentStep("two", ""))
 		if _, err := f.app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: f.task.ID, BranchNames: map[string]string{}}); err != nil {
@@ -83,7 +83,11 @@ func TestRepolessWorkflow(t *testing.T) {
 			id = taskOf(t, board(t, f.app), f.task.ID).BranchRequestID
 			return id != ""
 		})
-		if _, err := f.app.W.AdeTask.ApproveBranchRequest(adewire.ApproveBranchRequestArgs{ID: id, CodeRepoIDs: []string{f.api}}); err != nil {
+		req, err := f.app.W.AdeTask.BranchRequest(adewire.BranchRequestArgs{ID: id})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := f.app.W.AdeTask.ApproveBranchRequest(adewire.ApproveBranchRequestArgs{ID: id, ItemIDs: []string{req.Items[0].ID}}); err != nil {
 			t.Fatal(err)
 		}
 		waitRun(t, f.app, f.task.ID, "one", "done")

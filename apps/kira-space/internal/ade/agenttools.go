@@ -283,9 +283,9 @@ func (b *TaskBoard) checkNewBranchName(ctx context.Context, rec model.CodeRepo, 
 	return "", nil
 }
 
-// createBranch makes one repo's branch under a generated name and its worktree in a nanoid folder. A ToolError is a failure
-// of this repo alone.
-func (b *TaskBoard) createBranch(ctx context.Context, sb model.AdeTaskBranch, nick string) (agentmcp.RequestedBranch, error) {
+// createBranch makes one branch under the agent's name and its worktree. A ToolError is a failure
+// of this branch alone.
+func (b *TaskBoard) createBranch(ctx context.Context, sb model.AdeTaskBranch, nick, wanted string) (agentmcp.RequestedBranch, error) {
 	if sb.Kind != model.AdeBranchKindMine {
 		return agentmcp.RequestedBranch{}, agentmcp.ToolError(fmt.Sprintf("The branch of %s on this task is not yours to create.", nick))
 	}
@@ -297,7 +297,7 @@ func (b *TaskBoard) createBranch(ctx context.Context, sb model.AdeTaskBranch, ni
 		return agentmcp.RequestedBranch{}, agentmcp.ToolError(fmt.Sprintf("Repo %s is no longer registered.", nick))
 	}
 	fresh := sb.Name == ""
-	res, err := b.ensureWorktree(ctx, *rec, sb, newBranchName{generated: true})
+	res, err := b.ensureWorktree(ctx, *rec, sb, newBranchName{wanted: wanted})
 	if err != nil {
 		return agentmcp.RequestedBranch{}, toolErr(err)
 	}
@@ -335,15 +335,12 @@ func (b *TaskBoard) branchInfo(sb model.AdeTaskBranch, nick, worktree string) ag
 	return info
 }
 
-// BranchStatus implements agentmcp.SpaceTools: the state of the repo's worktree, waiting up to wait
+// BranchStatus implements agentmcp.SpaceTools: the state of the branch's worktree, waiting up to wait
 // for a running setup to finish.
-func (b *TaskBoard) BranchStatus(ctx context.Context, taskID, ref string, wait time.Duration) (agentmcp.BranchInfo, error) {
-	br, nick, early, err := b.taskBranch(taskID, ref)
+func (b *TaskBoard) BranchStatus(ctx context.Context, taskID, repo, branch string, wait time.Duration) (agentmcp.BranchInfo, error) {
+	br, nick, err := b.taskBranch(taskID, repo, branch)
 	if err != nil {
 		return agentmcp.BranchInfo{}, err
-	}
-	if early != nil {
-		return *early, nil
 	}
 	deadline := time.Now().Add(wait)
 	for b.setupRunning(br) && time.Now().Before(deadline) {
@@ -361,31 +358,26 @@ func (b *TaskBoard) setupRunning(sb model.AdeTaskBranch) bool {
 	return err == nil && row != nil && row.State == model.AdeSetupRunning
 }
 
-// taskBranch resolves ref to the task's branch row; early answers a repo with no branch yet.
-func (b *TaskBoard) taskBranch(taskID, ref string) (br model.AdeTaskBranch, nick string, early *agentmcp.BranchInfo, err error) {
+// taskBranch resolves repo and branch to the task's live branch row.
+func (b *TaskBoard) taskBranch(taskID, repo, branch string) (br model.AdeTaskBranch, nick string, err error) {
 	tc, err := b.spaceCtx(taskID)
 	if err != nil {
-		return br, "", nil, err
+		return br, "", err
 	}
 	_, cfgs, err := b.registeredCandidates()
 	if err != nil {
-		return br, "", nil, err
+		return br, "", err
 	}
-	id, err := resolveRepoRef(ref, b.taskCandidates(tc, cfgs), "task")
+	id, err := resolveRepoRef(repo, b.taskCandidates(tc, cfgs), "task")
 	if err != nil {
-		return br, "", nil, err
+		return br, "", err
 	}
 	for _, br := range tc.branches {
-		if br.CodeRepoID != id {
-			continue
+		if br.CodeRepoID == id && br.Name == branch {
+			return br, tc.nick[id], nil
 		}
-		if br.Name == "" {
-			return br, "", &agentmcp.BranchInfo{Repo: tc.nick[id], Setup: agentmcp.SetupInfo{State: "none"},
-				Next: "No branch yet. Call request_branches."}, nil
-		}
-		return br, tc.nick[id], nil, nil
 	}
-	return br, "", nil, agentmcp.ToolError("Repo is not on this task.")
+	return br, "", agentmcp.ToolError(fmt.Sprintf("Branch %q is not on this task in that repo. Call request_branches.", branch))
 }
 
 // RunOutcomes is the run_outcome tool's read: the task's runs, newest first, filtered by q.

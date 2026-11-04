@@ -807,7 +807,7 @@ var HeadlessSpaceSuffix = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessSpaceSuffix.title",
 	PurposeKey: "llmPrompts.entry.headlessSpaceSuffix.description",
 	UsedByKey:  "llmPrompts.entry.headlessSpaceSuffix.usedBy.body",
-	Default:    `Kira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every repo you need; the user approves it. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.`,
+	Default:    `Kira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every branch; you name each, the user approves. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.`,
 }, NoVars{})
 
 // HeadlessSandboxNote tells a sandboxed agent what it may write and what to do on a denial.
@@ -849,7 +849,7 @@ var HeadlessSpaceInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessSpaceInstructions.title",
 	PurposeKey: "llmPrompts.entry.headlessSpaceInstructions.description",
 	UsedByKey:  "llmPrompts.entry.headlessSpaceInstructions.usedBy.body",
-	Default:    `Kira Space tools for this task. Call task_info first. Declare repos the work touches with declare_repos before branching. Create branches and worktrees only with request_branches, one call for all repos; the user approves it. Never git branch or git worktree. A new worktree may still be preparing: call branch_status before editing there. Record docs, deployments and links you make with report_artifacts; finishing replies list every artifact.`,
+	Default:    `Kira Space tools for this task. Call task_info first. Declare repos the work touches with declare_repos before branching. Create branches and worktrees only with request_branches, one call for all; you name each branch, the user approves. Never git branch or git worktree. A new worktree may still be preparing: call branch_status before editing there. Record docs, deployments and links you make with report_artifacts; finishing replies list every artifact.`,
 }, NoVars{})
 
 // HeadlessToolFinishStep describes the finish_step tool.
@@ -902,7 +902,7 @@ var HeadlessReviewReplyAck = define(Entry{
 // HeadlessToolTaskInfo describes the task_info tool.
 var HeadlessToolTaskInfo = define(Entry{
 	ID: "headless.tool.task_info", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "task_info",
-	Default: `Your Kira Space task: title, Jira key, workflow, step, its repos and branches, and repos registered in Kira Space.`,
+	Default: `Your Kira Space task: title, Jira key, workflow, step, its repos and branches (a repo may list several), and repos registered in Kira Space.`,
 }, NoVars{})
 
 // HeadlessToolDeclareRepos describes the declare_repos tool.
@@ -917,21 +917,24 @@ var _ = arg(HeadlessToolDeclareRepos.id, "repos", spaceApp, NextCall,
 // HeadlessToolRequestBranches describes the request_branches tool.
 var HeadlessToolRequestBranches = define(Entry{
 	ID: "headless.tool.request_branches", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "request_branches",
-	Default: `Ask the user to approve branches and worktrees for repos, all in one call; waits for the answer. Kira Space names each branch and folder. Approval adds a registered repo missing from the task. Per repo: created, existing, denied, failed or timeout. A new worktree may still be preparing: call branch_status before editing there.`,
+	Default: `Ask the user to approve branches and worktrees, all in one call; waits for the answer. You name each branch; Kira Space picks the folder. A repo may get several branches. Approval adds a registered repo missing from the task. Per branch: created, existing, denied, failed or timeout. A new worktree may still be preparing: call branch_status before editing there.`,
 }, NoVars{})
 
 var (
-	_ = arg(HeadlessToolRequestBranches.id, "repos", spaceApp, NextCall, `Repos, 1 to {{.Max}}: nickname, name or code repo id, from task_info.`, MaxVars{Max: 20})
+	_ = arg(HeadlessToolRequestBranches.id, "branches", spaceApp, NextCall, `Branches, 1 to {{.Max}}.`, MaxVars{Max: 20})
+	_ = arg(HeadlessToolRequestBranches.id, "branches.repo", spaceApp, NextCall, `Repo: nickname, name or code repo id, from task_info.`, NoVars{})
+	_ = arg(HeadlessToolRequestBranches.id, "branches.branch", spaceApp, NextCall, `New branch name, such as feat/login-form. Must not exist yet.`, NoVars{})
 )
 
 // HeadlessToolBranchStatus describes the branch_status tool.
 var HeadlessToolBranchStatus = define(Entry{
 	ID: "headless.tool.branch_status", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "branch_status",
-	Default: `Worktree and setup state of a task branch. With waitSeconds, waits until setup stops running.`,
+	Default: `Worktree and setup state of a task branch, found by repo and branch name. With waitSeconds, waits until setup stops running.`,
 }, NoVars{})
 
 var (
 	_ = arg(HeadlessToolBranchStatus.id, "repo", spaceApp, NextCall, `Task repo: nickname, name or code repo id.`, NoVars{})
+	_ = arg(HeadlessToolBranchStatus.id, "branch", spaceApp, NextCall, `Branch name, as in task_info or request_branches.`, NoVars{})
 	_ = arg(HeadlessToolBranchStatus.id, "waitSeconds", spaceApp, NextCall, `Seconds to wait for worktree setup, 0 to {{.Max}}. Default 0.`, MaxVars{Max: 600})
 )
 

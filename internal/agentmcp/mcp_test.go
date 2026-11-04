@@ -137,23 +137,23 @@ func (f *fakeSpace) DeclareRepos(_ context.Context, task string, repos []string)
 	return TaskInfo{Title: "t-" + task, Repos: []TaskRepo{}, Registered: []RegisteredRepo{}}, nil
 }
 
-func (f *fakeSpace) RequestBranches(ctx context.Context, call SpaceCall, repos []string) (RequestBranchesResult, error) {
-	f.rec("branch|" + call.TaskID + "|" + repos[0])
-	if repos[0] == "gone" {
+func (f *fakeSpace) RequestBranches(ctx context.Context, call SpaceCall, specs []BranchSpec) (RequestBranchesResult, error) {
+	f.rec("branch|" + call.TaskID + "|" + specs[0].Repo)
+	if specs[0].Repo == "gone" {
 		return RequestBranchesResult{}, ToolError("repo is no longer registered")
 	}
-	if repos[0] == "block" {
+	if specs[0].Repo == "block" {
 		<-ctx.Done()
 		return RequestBranchesResult{}, ctx.Err()
 	}
 	out := RequestBranchesResult{}
-	for _, r := range repos {
-		out.Branches = append(out.Branches, RequestedBranch{BranchInfo: BranchInfo{Repo: r, Branch: "kira/x"}, Outcome: BranchCreated})
+	for _, sp := range specs {
+		out.Branches = append(out.Branches, RequestedBranch{BranchInfo: BranchInfo{Repo: sp.Repo, Branch: sp.Branch}, Outcome: BranchCreated})
 	}
 	return out, nil
 }
 
-func (f *fakeSpace) BranchStatus(_ context.Context, task, repo string, _ time.Duration) (BranchInfo, error) {
+func (f *fakeSpace) BranchStatus(_ context.Context, task, repo, _ string, _ time.Duration) (BranchInfo, error) {
 	f.rec("status|" + task + "|" + repo)
 	return BranchInfo{Repo: repo}, nil
 }
@@ -210,7 +210,7 @@ func TestGrantScopes(t *testing.T) {
 	if names := toolNames(t, run); !names["finish_step"] || names["request_branches"] || names["task_info"] {
 		t.Fatalf("run-only grant tools = %v", names)
 	}
-	if res, err := run.CallTool(context.Background(), &mcp.CallToolParams{Name: "request_branches", Arguments: map[string]any{"repos": []string{"r"}}}); err == nil && !res.IsError {
+	if res, err := run.CallTool(context.Background(), &mcp.CallToolParams{Name: "request_branches", Arguments: map[string]any{"branches": []map[string]string{{"repo": "r", "branch": "feat/x"}}}}); err == nil && !res.IsError {
 		t.Fatal("run-only grant called a Space tool")
 	}
 
@@ -232,14 +232,14 @@ func TestGrantScopes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := both.CallTool(context.Background(), &mcp.CallToolParams{Name: "request_branches", Arguments: map[string]any{"repos": []string{"api"}}})
+	res, err := both.CallTool(context.Background(), &mcp.CallToolParams{Name: "request_branches", Arguments: map[string]any{"branches": []map[string]string{{"repo": "api", "branch": "feat/x"}}}})
 	if err != nil || res.IsError {
 		t.Fatalf("request_branches: %v %v", err, res)
 	}
 	if _, err := sp.CallTool(context.Background(), &mcp.CallToolParams{Name: "task_info"}); err != nil {
 		t.Fatal(err)
 	}
-	res, err = both.CallTool(context.Background(), &mcp.CallToolParams{Name: "request_branches", Arguments: map[string]any{"repos": []string{"gone"}}})
+	res, err = both.CallTool(context.Background(), &mcp.CallToolParams{Name: "request_branches", Arguments: map[string]any{"branches": []map[string]string{{"repo": "gone", "branch": "feat/x"}}}})
 	if err != nil || !res.IsError {
 		t.Fatalf("a ToolError must come back as an error result: %v %v", err, res)
 	}
@@ -358,7 +358,7 @@ func TestReleaseCancelsBlockedCall(t *testing.T) {
 	}
 	done := make(chan *mcp.CallToolResult, 1)
 	go func() {
-		res, _ := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "request_branches", Arguments: map[string]any{"repos": []string{"block"}}})
+		res, _ := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "request_branches", Arguments: map[string]any{"branches": []map[string]string{{"repo": "block", "branch": "feat/x"}}}})
 		done <- res
 	}()
 	time.Sleep(200 * time.Millisecond)

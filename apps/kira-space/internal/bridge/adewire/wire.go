@@ -505,9 +505,11 @@ type Task struct {
 	BranchRequestID string `json:"branchRequestId"`
 }
 
-// BranchRequestItem is one repo an agent asks branch work for. Kind 'branch': a new branch from Base (” =
-// the repo's main branch). Kind 'worktree': a worktree for the named, not yet checked out Branch.
+// BranchRequestItem is one branch an agent asks work for. ID is the item's key in the request. Kind 'branch':
+// a new branch named Branch from Base (” = the repo's main branch). Kind 'worktree': a worktree for the named,
+// not yet checked out Branch.
 type BranchRequestItem struct {
+	ID         string `json:"id"`
 	CodeRepoID string `json:"codeRepoId"`
 	Repo       string `json:"repo"`
 	Kind       string `json:"kind"`
@@ -534,8 +536,8 @@ type BranchRequestArgs struct {
 }
 
 type ApproveBranchRequestArgs struct {
-	ID          string   `json:"id"`
-	CodeRepoIDs []string `json:"codeRepoIds"`
+	ID      string   `json:"id"`
+	ItemIDs []string `json:"itemIds"`
 }
 
 // BranchRequestAnswer says whether an approve or deny reached a request still open.

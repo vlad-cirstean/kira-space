@@ -5,7 +5,7 @@ import { computed, ref, watch } from 'vue';
 import { usePlanModel } from '../plan/usePlanModel';
 import { useApproveBranchRequest, useBranchRequest, useDenyBranchRequest } from '../queries';
 
-// The branch request dialog: which request it is open for and which repos are checked. One concern:
+// The branch request dialog: which request it is open for and which items are checked. One concern:
 // answering an agent's request. The Task tab row and the routed `branch-request` prompt open it here.
 export const useAdeBranchRequestStore = defineStore('adeBranchRequest', () => {
   const { model } = usePlanModel();
@@ -15,16 +15,14 @@ export const useAdeBranchRequestStore = defineStore('adeBranchRequest', () => {
   const id = ref('');
   /** Opened by the routed prompt rather than by the Task tab. */
   const routed = ref(false);
-  /** Unchecked repo ids; every repo starts checked. */
+  /** Unchecked item ids; every item starts checked. */
   const unchecked = ref<string[]>([]);
   const query = useBranchRequest(id);
 
   const request = computed(() => query.data.value ?? null);
   const isOpen = computed(() => id.value !== '' && request.value !== null);
   const selected = computed(
-    () =>
-      request.value?.items.map((i) => i.codeRepoId).filter((c) => !unchecked.value.includes(c)) ??
-      [],
+    () => request.value?.items.map((i) => i.id).filter((c) => !unchecked.value.includes(c)) ?? [],
   );
 
   function open(args: { id: string; routed?: boolean }): void {
@@ -37,10 +35,10 @@ export const useAdeBranchRequestStore = defineStore('adeBranchRequest', () => {
     id.value = '';
   }
 
-  function toggle(codeRepoId: string): void {
-    unchecked.value = unchecked.value.includes(codeRepoId)
-      ? unchecked.value.filter((c) => c !== codeRepoId)
-      : [...unchecked.value, codeRepoId];
+  function toggle(itemId: string): void {
+    unchecked.value = unchecked.value.includes(itemId)
+      ? unchecked.value.filter((c) => c !== itemId)
+      : [...unchecked.value, itemId];
   }
 
   // Answered elsewhere (a timeout, another window, the agent stopped): nothing left to decide.
@@ -62,7 +60,7 @@ export const useAdeBranchRequestStore = defineStore('adeBranchRequest', () => {
   );
 
   const approval = useAsyncAction(async () => {
-    await approveM.mutateAsync({ id: id.value, codeRepoIds: selected.value });
+    await approveM.mutateAsync({ id: id.value, itemIds: selected.value });
     close();
   });
   const denial = useAsyncAction(async () => {

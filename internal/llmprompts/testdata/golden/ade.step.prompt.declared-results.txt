@@ -3,6 +3,6 @@ Task: Add login form
 Step 2/5: Implement
 Implement Add login form in kira-space on feat/login.
 
-Kira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every repo you need; the user approves it. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.
+Kira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every branch; you name each, the user approves. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.
 
 When this step ends, call finish_step once with status one of: pass (ok: All checks green), fail (not ok: A check is red), skip (ok). Add a one-line summary; for a not-ok status add the reason. If you need a decision from me, use status "needs_input" with your question.

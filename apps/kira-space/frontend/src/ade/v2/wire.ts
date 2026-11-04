@@ -1080,8 +1080,9 @@ export interface SessionSandboxArgs {
 export interface TaskArgs {
   taskId: string;
 }
-/** One repo an agent asks branch work for: a new `branch` from `base` ('' = main), or a `worktree` for `branch`. */
+/** One branch an agent asks work for: a new `branch` from `base` ('' = main), or a `worktree` for `branch`. */
 export interface BranchRequestItem {
+  id: string;
   codeRepoId: string;
   repo: string;
   kind: 'branch' | 'worktree';
@@ -1104,7 +1105,7 @@ export interface BranchRequestArgs {
 }
 export interface ApproveBranchRequestArgs {
   id: string;
-  codeRepoIds: string[];
+  itemIds: string[];
 }
 /** `resolved` is false when the request was already answered. */
 export interface BranchRequestAnswer {

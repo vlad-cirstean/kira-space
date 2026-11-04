@@ -82,8 +82,24 @@ func TestTaskReposAndBranches(t *testing.T) {
 	if filled.Worktree == "" {
 		t.Fatal("attached branch has no worktree")
 	}
-	if _, err := app.W.AdeTask.AddExistingBranch(ctx, adewire.AddExistingBranchArgs{CodeRepoID: a.ID, Name: "feat/a-other", TaskID: task.ID}); errCode(err) != "E_CONFLICT" {
-		t.Fatalf("second branch in the repo = %v, want E_CONFLICT", err)
+	// A second branch of the same repo gets its own row; removing it leaves no draft behind.
+	if _, err := app.W.AdeTask.AddExistingBranch(ctx, adewire.AddExistingBranchArgs{CodeRepoID: a.ID, Name: "feat/a-other", TaskID: task.ID}); err != nil {
+		t.Fatalf("second branch in the repo: %v", err)
+	}
+	var other adewire.Branch
+	for _, r := range branchesOf(t, app, task.ID) {
+		if r.Name == "feat/a-other" {
+			other = r
+		}
+	}
+	if other.ID == "" || other.ID == filled.ID {
+		t.Fatalf("rows = %+v, want a second row on feat/a-other", branchesOf(t, app, task.ID))
+	}
+	if err := app.W.AdeTask.RemoveTaskBranch(ctx, adewire.RemoveTaskRowArgs{BranchID: other.ID}); err != nil {
+		t.Fatalf("RemoveTaskBranch of one of two: %v", err)
+	}
+	if rows = branchesOf(t, app, task.ID); len(rows) != 1 || rows[0].ID != filled.ID {
+		t.Fatalf("rows = %+v, want only the first branch", rows)
 	}
 
 	// Remove branch: the repo stays, git keeps the ref, the worktree goes.
@@ -149,8 +165,18 @@ func TestTaskReposAndBranches(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := app.W.AdeTask.UpdateTaskRepo(ctx, adewire.UpdateTaskRepoArgs{BranchID: added.ID, CodeRepoID: a.ID}); errCode(err) != "E_CONFLICT" {
-		t.Fatalf("UpdateTaskRepo into a repo already on the task = %v, want E_CONFLICT", err)
+	draftC, err := app.W.AdeTask.AddTaskRepo(ctx, adewire.AddTaskRepoArgs{TaskID: task.ID, CodeRepoID: c.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.W.AdeTask.AddTaskRepo(ctx, adewire.AddTaskRepoArgs{TaskID: task.ID, CodeRepoID: c.ID}); errCode(err) != "E_CONFLICT" {
+		t.Fatalf("second draft in a repo = %v, want E_CONFLICT", err)
+	}
+	if _, err := app.W.AdeTask.UpdateTaskRepo(ctx, adewire.UpdateTaskRepoArgs{BranchID: added.ID, CodeRepoID: c.ID}); errCode(err) != "E_CONFLICT" {
+		t.Fatalf("UpdateTaskRepo into a repo with a draft = %v, want E_CONFLICT", err)
+	}
+	if err := app.W.AdeTask.RemoveTaskRepo(ctx, adewire.RemoveTaskRowArgs{BranchID: draftC.ID}); err != nil {
+		t.Fatal(err)
 	}
 	swapped, err := app.W.AdeTask.UpdateTaskRepo(ctx, adewire.UpdateTaskRepoArgs{BranchID: added.ID, CodeRepoID: c.ID})
 	if err != nil || swapped.CodeRepoID != c.ID {

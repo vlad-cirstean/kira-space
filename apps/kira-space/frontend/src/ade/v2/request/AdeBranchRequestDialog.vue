@@ -18,7 +18,7 @@ import { computed } from 'vue';
 import { useAdeBranchRequestStore } from '../state/adeBranchRequest';
 import type { BranchRequestItem } from '../wire';
 
-// An agent asks for branches and worktrees; the user keeps the repos they allow. `routed` picks which
+// An agent asks for branches and worktrees; the user keeps the branches they allow. `routed` picks which
 // mount shows it: the ADE shell for the Task tab row, the prompt host for the routed popup. Escape and
 // the close button only hide it: an accidental key must not answer for the user.
 const props = defineProps<{ routed: boolean }>();
@@ -48,8 +48,8 @@ function itemText(item: BranchRequestItem): string {
     return t('space.ade.branchRequest.item.worktree.label', { branch: item.branch });
   }
   return item.base
-    ? t('space.ade.branchRequest.item.branch.label', { base: item.base })
-    : t('space.ade.branchRequest.item.branchMain.label');
+    ? t('space.ade.branchRequest.item.branch.label', { branch: item.branch, base: item.base })
+    : t('space.ade.branchRequest.item.branchMain.label', { branch: item.branch });
 }
 
 function hide(): void {
@@ -79,16 +79,16 @@ async function deny(): Promise<void> {
         <ul class="m-0 flex list-none flex-col gap-1 p-0">
           <li
             v-for="item in request?.items ?? []"
-            :key="item.codeRepoId"
+            :key="item.id"
             class="flex items-center gap-2"
-            :data-testid="`ade-branch-request-item-${item.repo}`"
+            :data-testid="`ade-branch-request-item-${item.id}`"
           >
             <Checkbox
-              :id="`ade-branch-request-${item.codeRepoId}`"
-              :model-value="store.selected.includes(item.codeRepoId)"
-              @update:model-value="store.toggle(item.codeRepoId)"
+              :id="`ade-branch-request-${item.id}`"
+              :model-value="store.selected.includes(item.id)"
+              @update:model-value="store.toggle(item.id)"
             />
-            <Label :for="`ade-branch-request-${item.codeRepoId}`" class="font-medium">{{
+            <Label :for="`ade-branch-request-${item.id}`" class="font-medium">{{
               item.repo
             }}</Label>
             <span class="text-muted-foreground">{{ itemText(item) }}</span>

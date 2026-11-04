@@ -65,7 +65,7 @@ type BranchInfo struct {
 	Next     string    `json:"next"`
 }
 
-// Outcomes of one repo in a request_branches call.
+// Outcomes of one branch in a request_branches call.
 const (
 	BranchCreated  = "created"
 	BranchExisting = "existing"
@@ -74,13 +74,13 @@ const (
 	BranchTimeout  = "timeout"
 )
 
-// RequestedBranch is the answer for one repo of a request_branches call.
+// RequestedBranch is the answer for one branch of a request_branches call.
 type RequestedBranch struct {
 	BranchInfo
 	Outcome string `json:"outcome"`
 }
 
-// RequestBranchesResult is request_branches' answer, one entry per repo asked for.
+// RequestBranchesResult is request_branches' answer, one entry per branch asked for.
 type RequestBranchesResult struct {
 	Branches []RequestedBranch `json:"branches"`
 }
@@ -101,8 +101,8 @@ type SpaceCall struct {
 type SpaceTools interface {
 	TaskInfo(ctx context.Context, taskID string) (TaskInfo, error)
 	DeclareRepos(ctx context.Context, taskID string, repos []string) (TaskInfo, error)
-	RequestBranches(ctx context.Context, call SpaceCall, repos []string) (RequestBranchesResult, error)
-	BranchStatus(ctx context.Context, taskID, repo string, wait time.Duration) (BranchInfo, error)
+	RequestBranches(ctx context.Context, call SpaceCall, branches []BranchSpec) (RequestBranchesResult, error)
+	BranchStatus(ctx context.Context, taskID, repo, branch string, wait time.Duration) (BranchInfo, error)
 	ReportArtifacts(ctx context.Context, call SpaceCall, in []ArtifactInput) (ReportArtifactsResult, error)
 	// ListArtifacts lists every artifact of the task; a failing source is a gap, not an error.
 	ListArtifacts(ctx context.Context, taskID string) (TaskArtifacts, error)
@@ -112,12 +112,19 @@ type declareArgs struct {
 	Repos []string `json:"repos"`
 }
 
+// BranchSpec is one branch an agent asks for: a task or registered repo and the branch name the agent chose.
+type BranchSpec struct {
+	Repo   string `json:"repo"`
+	Branch string `json:"branch"`
+}
+
 type requestBranchesArgs struct {
-	Repos []string `json:"repos"`
+	Branches []BranchSpec `json:"branches"`
 }
 
 type branchStatusArgs struct {
 	Repo        string `json:"repo"`
+	Branch      string `json:"branch"`
 	WaitSeconds int    `json:"waitSeconds,omitempty"`
 }
 
@@ -140,22 +147,22 @@ func (s *Server) spaceTask(req *mcp.CallToolRequest) (SpaceCall, *mcp.CallToolRe
 	return SpaceCall{TaskID: g.TaskID, RunID: g.RunID, StepID: g.StepID, SessionID: g.SessionID}, nil
 }
 
-// cleanRepos trims and dedups refs; it returns the refusal text when the list is empty, too long or
-// holds a blank entry.
-func cleanRepos(refs []string) ([]string, string) {
-	if n := len(refs); n == 0 || n > maxDeclareRepos {
-		return nil, "repos needs 1 to 20 entries."
+// cleanBranches trims and dedups specs by (repo, branch); it returns the refusal text when the list is
+// empty, too long or holds a blank field.
+func cleanBranches(specs []BranchSpec) ([]BranchSpec, string) {
+	if n := len(specs); n == 0 || n > maxDeclareRepos {
+		return nil, "branches needs 1 to 20 entries."
 	}
-	out := make([]string, 0, len(refs))
-	seen := map[string]bool{}
-	for _, r := range refs {
-		r = strings.TrimSpace(r)
-		if r == "" {
-			return nil, "repos must not hold an empty entry."
+	out := make([]BranchSpec, 0, len(specs))
+	seen := map[BranchSpec]bool{}
+	for _, sp := range specs {
+		sp = BranchSpec{Repo: strings.TrimSpace(sp.Repo), Branch: strings.TrimSpace(sp.Branch)}
+		if sp.Repo == "" || sp.Branch == "" {
+			return nil, "Every branches entry needs a repo and a branch."
 		}
-		if !seen[r] {
-			seen[r] = true
-			out = append(out, r)
+		if !seen[sp] {
+			seen[sp] = true
+			out = append(out, sp)
 		}
 	}
 	return out, ""
@@ -214,20 +221,20 @@ func (s *Server) addSpaceTools(srv *mcp.Server) {
 		Name:        "request_branches",
 		Description: llmprompts.HeadlessToolRequestBranches.Text(s.prompts, llmprompts.NoVars{}),
 		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[requestBranchesArgs](s.prompts, llmprompts.HeadlessToolRequestBranches.ID(), map[string]any{
-			"repos": llmprompts.MaxVars{Max: maxDeclareRepos},
-		}), "repos"),
+			"branches": llmprompts.MaxVars{Max: maxDeclareRepos},
+		}), "branches"),
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args requestBranchesArgs) (*mcp.CallToolResult, RequestBranchesResult, error) {
 		call, bad := s.spaceTask(req)
 		if bad != nil {
 			return bad, RequestBranchesResult{}, nil
 		}
-		repos, msg := cleanRepos(args.Repos)
+		specs, msg := cleanBranches(args.Branches)
 		if msg != "" {
 			return toolError(msg), RequestBranchesResult{}, nil
 		}
 		ctx, done := s.callCtx(ctx, req)
 		defer done()
-		res, err := s.space.RequestBranches(ctx, call, repos)
+		res, err := s.space.RequestBranches(ctx, call, specs)
 		if err != nil {
 			return fail("request_branches", err), RequestBranchesResult{}, nil
 		}
@@ -238,7 +245,7 @@ func (s *Server) addSpaceTools(srv *mcp.Server) {
 		Description: llmprompts.HeadlessToolBranchStatus.Text(s.prompts, llmprompts.NoVars{}),
 		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[branchStatusArgs](s.prompts, llmprompts.HeadlessToolBranchStatus.ID(), map[string]any{
 			"waitSeconds": llmprompts.MaxVars{Max: maxWaitSeconds},
-		}), "repo"),
+		}), "repo", "branch"),
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args branchStatusArgs) (*mcp.CallToolResult, BranchInfo, error) {
 		call, bad := s.spaceTask(req)
 		if bad != nil {
@@ -249,7 +256,7 @@ func (s *Server) addSpaceTools(srv *mcp.Server) {
 		}
 		ctx, done := s.callCtx(ctx, req)
 		defer done()
-		info, err := s.space.BranchStatus(ctx, call.TaskID, args.Repo, time.Duration(args.WaitSeconds)*time.Second)
+		info, err := s.space.BranchStatus(ctx, call.TaskID, args.Repo, args.Branch, time.Duration(args.WaitSeconds)*time.Second)
 		if err != nil {
 			return fail("branch_status", err), BranchInfo{}, nil
 		}

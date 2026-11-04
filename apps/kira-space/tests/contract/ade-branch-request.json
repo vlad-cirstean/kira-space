@@ -39,15 +39,17 @@
     "items": [
       {
         "base": "",
-        "branch": "",
+        "branch": "feat/login",
         "codeRepoId": "<masked>",
+        "id": "<masked>",
         "kind": "branch",
         "repo": "api"
       },
       {
         "base": "",
-        "branch": "",
+        "branch": "feat/login-web",
         "codeRepoId": "<masked>",
+        "id": "<masked>",
         "kind": "branch",
         "repo": "web"
       }

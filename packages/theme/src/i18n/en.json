@@ -8723,17 +8723,17 @@
         },
         "item": {
           "branch": {
-            "label": "New branch from {base}"
+            "label": "Create {branch} from {base}"
           },
           "branchMain": {
-            "label": "New branch from the repository’s main branch"
+            "label": "Create {branch} from the repository’s main branch"
           },
           "worktree": {
             "label": "Worktree for {branch}"
           }
         },
         "naming": {
-          "hint": "Kira Space names new branches kira/ plus a random ID, and each worktree folder a random ID. Approving adds a repository the task does not have yet."
+          "hint": "The agent names each branch. Kira Space picks each worktree folder. Approving adds a repository the task does not have yet."
         },
         "source": {
           "automation": {

@@ -1281,18 +1281,15 @@ func (s *AdeTaskService) BranchRequest(args adewire.BranchRequestArgs) (adewire.
 	return r, adeTaskError(err)
 }
 
-// ApproveBranchRequest approves the checked repos of a request and denies the rest.
+// ApproveBranchRequest approves the checked items of a request and denies the rest.
 func (s *AdeTaskService) ApproveBranchRequest(args adewire.ApproveBranchRequestArgs) (adewire.BranchRequestAnswer, error) {
 	if err := validateAdeItemID(args.ID, "id"); err != nil {
 		return adewire.BranchRequestAnswer{}, err
 	}
-	if len(args.CodeRepoIDs) == 0 {
-		return adewire.BranchRequestAnswer{}, adeTaskInvalid("codeRepoIds is empty")
+	if len(args.ItemIDs) == 0 {
+		return adewire.BranchRequestAnswer{}, adeTaskInvalid("itemIds is empty")
 	}
-	if err := validateAdeTaskRepoIDs(args.CodeRepoIDs); err != nil {
-		return adewire.BranchRequestAnswer{}, err
-	}
-	resolved, err := s.Engine.ApproveBranchRequest(args.ID, args.CodeRepoIDs)
+	resolved, err := s.Engine.ApproveBranchRequest(args.ID, args.ItemIDs)
 	return adewire.BranchRequestAnswer{Resolved: resolved}, adeTaskError(err)
 }
 

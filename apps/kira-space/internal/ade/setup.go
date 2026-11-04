@@ -18,7 +18,6 @@ import (
 	"github.com/kirathecat/kira-studio/internal/loginshell"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
 	"github.com/kirathecat/kira-studio/internal/secrets"
-	"github.com/kirathecat/kira-studio/internal/shortid"
 )
 
 // setup.go creates the worktrees a run needs and runs each repo's prepare script in a new one. The
@@ -173,21 +172,11 @@ func (b *TaskBoard) ensureWorktree(ctx context.Context, rec model.CodeRepo, sb m
 	return worktreeResult{Path: path, Name: name, Fresh: true}, nil
 }
 
-const (
-	agentBranchPrefix     = "kira/"
-	agentBranchIDLen      = 10
-	maxGeneratedNameTries = 5
-)
-
-// newBranchName is how a not-created branch gets its name: wanted as given, generated, else derived from title.
-type newBranchName struct {
-	title, wanted string
-	generated     bool
-}
+// newBranchName is how a not-created branch gets its name: wanted as given, else derived from title.
+type newBranchName struct{ title, wanted string }
 
 // claimBranchName stores the branch's name before git runs, so the board shows it. An explicit name
-// that already exists is refused; a generated one is kira/<nanoid>; a derived one gets -2, -3...
-// until free.
+// that already exists is refused; a derived one gets -2, -3... until free.
 func (b *TaskBoard) claimBranchName(sb model.AdeTaskBranch, n newBranchName, inv []porcelain.InventoryRef) (string, error) {
 	if n.wanted != "" {
 		if branchExists(inv, n.wanted) {
@@ -197,26 +186,6 @@ func (b *TaskBoard) claimBranchName(sb model.AdeTaskBranch, n newBranchName, inv
 			return "", branchNameErr(err, n.wanted)
 		}
 		return n.wanted, nil
-	}
-	if n.generated {
-		for range maxGeneratedNameTries {
-			id, err := shortid.New(agentBranchIDLen)
-			if err != nil {
-				return "", err
-			}
-			name := agentBranchPrefix + id
-			if branchExists(inv, name) {
-				continue
-			}
-			err = b.deps.Tasks.SetBranchName(sb.ID, name)
-			if err == nil {
-				return name, nil
-			}
-			if !errors.Is(err, repos.ErrBranchNameTaken) {
-				return "", err
-			}
-		}
-		return "", fmt.Errorf("ade: no free generated branch name after %d tries", maxGeneratedNameTries)
 	}
 	base := "feat/" + slug(n.title)
 	for i := 1; ; i++ {

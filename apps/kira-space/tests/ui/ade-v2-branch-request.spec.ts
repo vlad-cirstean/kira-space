@@ -18,6 +18,7 @@ interface RequestFx {
   source: string;
   stepName: string;
   items: {
+    id: string;
     codeRepoId: string;
     repo: string;
     kind: string;
@@ -28,7 +29,7 @@ interface RequestFx {
   expiresAt: number;
 }
 
-/** The recorded request, with stable repo ids and an expiry far enough ahead to stay open. */
+/** The recorded request, with stable item and repo ids and an expiry far enough ahead to stay open. */
 function request(): RequestFx {
   const r = contract<RequestFx>('ade-branch-request', 'AdeTaskService.BranchRequest');
   return {
@@ -36,7 +37,7 @@ function request(): RequestFx {
     id: 'br_1',
     taskId: 'T_alerts',
     expiresAt: Date.now() + 30 * 60_000,
-    items: r.items.map((i) => ({ ...i, codeRepoId: `R_${i.repo}` })),
+    items: r.items.map((item, n) => ({ ...item, id: `i${n}`, codeRepoId: `R_${item.repo}` })),
   };
 }
 
@@ -60,7 +61,7 @@ async function openRouted(relaunch: Parameters<typeof openPlan>[0], extra?: Cont
   return { page, control };
 }
 
-test('contract: the routed prompt lists every repo and Approve sends the checked ones', async ({
+test('contract: the routed prompt lists every branch and Approve sends the checked items', async ({
   relaunch,
 }) => {
   const req = request();
@@ -68,12 +69,15 @@ test('contract: the routed prompt lists every repo and Approve sends the checked
   const dialog = page.locator(t('ade-branch-request-dialog'));
   await expect(dialog.locator(t('ade-branch-request-source'))).toContainText(req.stepName);
   for (const item of req.items) {
-    await expect(dialog.locator(t(`ade-branch-request-item-${item.repo}`))).toBeVisible();
+    await expect(dialog.locator(t(`ade-branch-request-item-${item.id}`))).toBeVisible();
+    await expect(dialog.locator(t(`ade-branch-request-item-${item.id}`))).toContainText(
+      item.branch,
+    );
   }
   expect(req.items).toHaveLength(2);
   const [kept, dropped] = req.items;
   await dialog
-    .locator(t(`ade-branch-request-item-${dropped?.repo}`))
+    .locator(t(`ade-branch-request-item-${dropped?.id}`))
     .getByRole('checkbox')
     .click();
   await expect(dialog.locator(t('ade-branch-request-approve'))).toContainText('(1)');
@@ -81,7 +85,7 @@ test('contract: the routed prompt lists every repo and Approve sends the checked
   await expect.poll(() => calls(control, IPC.adeTaskApproveBranchRequest)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskApproveBranchRequest)[0]?.args).toEqual({
     id: 'br_1',
-    codeRepoIds: [kept?.codeRepoId],
+    itemIds: [kept?.id],
   });
   await expect(dialog).toBeHidden();
 });
@@ -101,7 +105,7 @@ test('Approve is disabled with nothing checked', async ({ relaunch }) => {
   const dialog = page.locator(t('ade-branch-request-dialog'));
   for (const item of request().items) {
     await dialog
-      .locator(t(`ade-branch-request-item-${item.repo}`))
+      .locator(t(`ade-branch-request-item-${item.id}`))
       .getByRole('checkbox')
       .click();
   }
@@ -166,7 +170,7 @@ test('a repo added by an approved request shows in the task Branches', async ({ 
           id: 'b_agent_mobile',
           taskId: 'T_alerts',
           codeRepoId: 'repo-mobile',
-          name: 'kira/k3m9x2q7ab',
+          name: 'feat/agent-named',
           base: 'main',
         });
       }),
@@ -175,5 +179,5 @@ test('a repo added by an approved request shows in the task Branches', async ({ 
   await openTask(page, 'T_alerts');
   await expect(
     page.locator(`${t('ade-task-branch')}[data-branch-id="b_agent_mobile"]`),
-  ).toContainText('kira/k3m9x2q7ab');
+  ).toContainText('feat/agent-named');
 });
