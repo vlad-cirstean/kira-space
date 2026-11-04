@@ -48,6 +48,7 @@ type liveTUISandbox struct {
 	sr      *sandboxRun
 	stop    func()
 	started bool
+	done    bool
 }
 
 // manualSandboxPlan builds the plan of a manual session step from the folders its launch resolved.
@@ -131,7 +132,7 @@ func (b *TaskBoard) prepareTUISandbox(ctx context.Context, recordID string, agen
 	in := agentsandbox.Input{
 		RunID: recordID, Access: agentsandbox.Access(sd.Access), Read: sd.Read, Allow: slices.Clone(sd.Allow), Network: sd.Network,
 		Worktrees: plan.in.worktrees, ReadWorktrees: plan.in.read, RunDir: plan.in.runDir, Branch: plan.in.branch,
-		Scratch: filepath.Join(b.deps.AgentDir, "sandbox", recordID), Cache: filepath.Join(b.deps.AgentDir, "sandbox-cache"),
+		Scratch: filepath.Join(b.deps.AgentDir, "sandbox", recordID+"-"+b.newID()), Cache: filepath.Join(b.deps.AgentDir, "sandbox-cache"),
 		Ports: []int{b.agent.Port()}, ReadFiles: files.read,
 	}
 	if files.isolation != "" {
@@ -190,10 +191,18 @@ func (b *TaskBoard) holdTUISandbox(recordID string, sr *sandboxRun) func() {
 	return func() { b.endTUISandbox(recordID, live) }
 }
 
-// endTUISandbox stops the watch and drops the sandbox of a record, unless a newer one replaced it.
+// endTUISandbox stops the watch and drops the sandbox of a record. A sandbox a newer launch of the
+// same record replaced only loses its scratch: the proxy registration now belongs to the newer one.
+// Idempotent.
 func (b *TaskBoard) endTUISandbox(recordID string, live *liveTUISandbox) {
 	b.runMu.Lock()
-	if b.tuiSandbox[recordID] == live {
+	if live.done {
+		b.runMu.Unlock()
+		return
+	}
+	live.done = true
+	current := b.tuiSandbox[recordID] == live
+	if current {
 		delete(b.tuiSandbox, recordID)
 	}
 	stop := live.stop
@@ -202,7 +211,11 @@ func (b *TaskBoard) endTUISandbox(recordID string, live *liveTUISandbox) {
 	if stop != nil {
 		stop()
 	}
-	live.sr.cleanup()
+	if current {
+		live.sr.cleanup()
+		return
+	}
+	_ = os.RemoveAll(live.sr.scratch)
 }
 
 // OnTUIAgentStarted is Tracker's agent-started target: the session row exists and the shell runs,
