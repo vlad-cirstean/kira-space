@@ -32,6 +32,8 @@ var wrappers = map[string]bool{
 	"apps/kira-space/internal/repocfg/rules.go":       true,
 	"apps/kira-studio/internal/apifiles/rules.go":     true,
 	"apps/kira-studio/internal/connfiles/validate.go": true,
+	"apps/kira-space/internal/ade/links.go":           true,
+	"internal/agentsandbox/enforcer.go":               true,
 }
 
 func repoRoot(t *testing.T) string {
