@@ -42,4 +42,8 @@ type InteractiveSpec struct {
 	Hermetic bool
 	// IsolationDir is a Kira-owned 0700 dir an Isolator prepared for this launch; "" none.
 	IsolationDir string
+	// Sandbox wraps the agent; nil runs it plain.
+	Sandbox *SandboxExec
+	// DisallowedTools are denied; a deny beats every allow.
+	DisallowedTools []string
 }

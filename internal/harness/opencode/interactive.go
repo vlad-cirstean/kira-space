@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/internal/harness"
@@ -43,13 +44,26 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 	if content != "" {
 		l.Env = append(l.Env, "OPENCODE_CONFIG_CONTENT="+content)
 	}
+	var ew envWords
 	if s.Hermetic {
 		// The words run after the login profile, so a profile export cannot bring user config back.
-		words := hermeticWords(isolatedConfigHome(s.IsolationDir), ownLayers(l.Env)).quoted()
-		l.Command = "/usr/bin/env " + strings.Join(words, " ") + " " + bin + resume
+		ew = hermeticWords(isolatedConfigHome(s.IsolationDir), ownLayers(l.Env))
+	}
+	sb := s.Sandbox
+	if sb != nil {
+		ew.unset = append(slices.Clone(sb.Unset), ew.unset...)
+		ew.set = append(slices.Clone(sb.Env), ew.set...)
+	}
+	if !s.Hermetic && sb == nil {
+		l.Command = bin + resume
 		return l
 	}
-	l.Command = bin + resume
+	words := append([]string{"/usr/bin/env"}, ew.quoted()...)
+	if sb != nil {
+		sbin := cmp.Or(sb.Bin, harness.DefaultSandboxBin)
+		words = append(words, loginshell.Quote(sbin), "-f", loginshell.Quote(sb.Profile))
+	}
+	l.Command = strings.Join(words, " ") + " " + bin + resume
 	return l
 }
 
@@ -84,6 +98,15 @@ func interactivePermission(s harness.InteractiveSpec) string {
 			for k, v := range rules {
 				doc[k] = v
 			}
+		}
+	}
+	if len(s.DisallowedTools) > 0 {
+		rules, err := translateRules(s.DisallowedTools, "deny")
+		if err != nil {
+			slog.Warn("opencode: tool denials not applied", "scope", "opencode", "err", err)
+		}
+		for k, v := range rules {
+			doc[k] = v
 		}
 	}
 	if len(doc) == 0 {
