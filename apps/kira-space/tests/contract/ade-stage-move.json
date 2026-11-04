@@ -14,6 +14,7 @@
         "purpose": "",
         "resumes": "",
         "runId": "<masked>",
+        "sandbox": null,
         "startedAt": 0,
         "state": "running",
         "stepId": "build",
@@ -33,6 +34,7 @@
         "purpose": "",
         "resumes": "",
         "runId": "<masked>",
+        "sandbox": null,
         "startedAt": 0,
         "state": "running",
         "stepId": "spec",
@@ -85,7 +87,7 @@
           "review": null,
           "runsOn": "",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -113,7 +115,7 @@
           "review": null,
           "runsOn": "",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -141,7 +143,7 @@
           "review": null,
           "runsOn": "",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []

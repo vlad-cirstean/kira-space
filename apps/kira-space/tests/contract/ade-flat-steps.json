@@ -115,7 +115,7 @@
           "review": null,
           "runsOn": "",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -452,7 +452,7 @@
           "review": null,
           "runsOn": "",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -650,7 +650,7 @@
           "review": null,
           "runsOn": "",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -929,7 +929,7 @@
           "review": null,
           "runsOn": "",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -1302,7 +1302,7 @@
           "review": null,
           "runsOn": "",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
@@ -1481,7 +1481,7 @@
           "review": null,
           "runsOn": "",
           "sandbox": {
-            "access": "write",
+            "access": "off",
             "allow": [],
             "network": true,
             "read": []
