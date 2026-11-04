@@ -1,7 +1,8 @@
-import type { SandboxAccess, StepSandbox } from '../wire';
+import type { SandboxAccess, StepKind, StepSandbox } from '../wire';
 
-export function defaultSandbox(): StepSandbox {
-  return { access: 'write', read: [], allow: [], network: true };
+/** The policy of a step without a sandbox block: scripts run unconfined, the rest write their worktree. */
+export function defaultSandbox(kind: StepKind): StepSandbox {
+  return { access: kind === 'script' ? 'off' : 'write', read: [], allow: [], network: true };
 }
 
 export const ACCESS_MODES: readonly SandboxAccess[] = ['write', 'read', 'off'];

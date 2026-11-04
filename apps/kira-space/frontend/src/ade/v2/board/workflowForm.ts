@@ -44,6 +44,7 @@ function kindDefaults(kind: StepKind): Omit<WorkflowStep, 'id' | 'name'> {
     session: false,
     command: '',
     runsOn: '',
+    outsideRepo: false,
     before: '',
     results: [],
     maxReturns: 0,
@@ -53,7 +54,7 @@ function kindDefaults(kind: StepKind): Omit<WorkflowStep, 'id' | 'name'> {
     smartScript: '',
     params: {},
     review: null,
-    sandbox: defaultSandbox(),
+    sandbox: defaultSandbox(kind),
     agent: '',
     settings: {},
   };
@@ -87,13 +88,15 @@ export function newStep(kind: StepKind, taken: readonly string[]): WorkflowStep 
 export function withKind(step: WorkflowStep, kind: StepKind): WorkflowStep {
   if (step.kind === kind) return step;
   const fresh = kindDefaults(kind);
+  const keepOutside = step.outsideRepo && (kind === 'agent' || kind === 'script');
   return {
     ...fresh,
     id: step.id,
     name: step.name,
     skip: step.skip,
     status: step.status,
-    runsOn: fresh.runsOn === '' ? '' : step.runsOn || fresh.runsOn,
+    outsideRepo: keepOutside,
+    runsOn: fresh.runsOn === '' || keepOutside ? '' : step.runsOn || fresh.runsOn,
     settings: kind === 'agent' || kind === 'review' ? step.settings : {},
   };
 }

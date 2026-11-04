@@ -448,6 +448,7 @@ func applyStep(m *yaml.Node, s adewire.WorkflowStep) {
 	dropOthers(m, keep)
 	if s.Kind == adewire.KindManual {
 		setScalar(m, "session", kBool, fmt.Sprint(s.Session), s.Session, stepOrder)
+		applyOutside(m, s.Session && s.OutsideRepo)
 		if s.Session && s.Prompt != "" {
 			setScalar(m, "prompt", kBlock, s.Prompt, true, stepOrder)
 		} else {
@@ -461,20 +462,26 @@ func applyStep(m *yaml.Node, s adewire.WorkflowStep) {
 		}
 		return
 	}
-	setScalar(m, "runs_on", kText, s.RunsOn, true, stepOrder)
+	applyOutside(m, s.OutsideRepo)
+	if s.OutsideRepo {
+		dropKeys(m, "runs_on")
+	} else {
+		setScalar(m, "runs_on", kText, s.RunsOn, true, stepOrder)
+	}
 	setScalar(m, "before", kText, defaultStr(s.Before, "auto"), s.Before != "" && s.Before != "auto", stepOrder)
 	applyResults(m, s)
 	setScalar(m, "timeout", kText, s.Timeout, true, stepOrder)
 	switch s.Kind {
 	case adewire.KindScript:
 		setScalar(m, "command", kBlock, s.Command, true, stepOrder)
+		applySandbox(m, s.Sandbox, s.Kind)
 	case adewire.KindReview:
-		applySandbox(m, s.Sandbox)
+		applySandbox(m, s.Sandbox, s.Kind)
 		applyAgent(m, s.Agent)
 		applySettings(m, s.Settings)
 		applyReview(m, defaultReview(s.Review))
 	default:
-		applySandbox(m, s.Sandbox)
+		applySandbox(m, s.Sandbox, s.Kind)
 		applyAgent(m, s.Agent)
 		applySettings(m, s.Settings)
 		if s.SmartScript == "" {
@@ -496,14 +503,22 @@ func defaultReview(r *adewire.ReviewStepConfig) adewire.ReviewStepConfig {
 	return *r
 }
 
+// applyOutside writes outside_repo: true, or removes the key.
+func applyOutside(m *yaml.Node, outside bool) {
+	setScalar(m, "outside_repo", kBool, "true", outside, stepOrder)
+	if !outside {
+		dropKeys(m, "outside_repo")
+	}
+}
+
 // applySandbox writes a step's sandbox block, or removes it when the policy is the default so a
 // file without one stays unchanged.
-func applySandbox(m *yaml.Node, sb adewire.StepSandbox) {
-	if sb.IsDefault() {
+func applySandbox(m *yaml.Node, sb adewire.StepSandbox, kind adewire.StepKind) {
+	if sb.IsDefaultFor(kind) {
 		dropKeys(m, "sandbox")
 		return
 	}
-	sb = sb.Normalized()
+	sb = sb.NormalizedFor(kind)
 	_, sn := find(m, "sandbox")
 	if sn == nil || sn.Kind != yaml.MappingNode {
 		sn = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}

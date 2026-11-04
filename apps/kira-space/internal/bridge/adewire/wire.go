@@ -110,16 +110,18 @@ type StepResult struct {
 
 // WorkflowStep is one step of a workflow. Fields of another kind than Kind hold their zero value.
 type WorkflowStep struct {
-	ID      string       `json:"id"`
-	Name    string       `json:"name"`
-	Kind    StepKind     `json:"kind"`
-	Status  TaskStatus   `json:"status"` // '' uses the default of the step's kind
-	Skip    bool         `json:"skip"`
-	Session bool         `json:"session"` // manual: open a Claude Code session
-	Command string       `json:"command"` // script
-	RunsOn  RunsOn       `json:"runsOn"`  // agent, script, review
-	Before  string       `json:"before"`  // 'auto' | 'approval'
-	Results []StepResult `json:"results"`
+	ID      string     `json:"id"`
+	Name    string     `json:"name"`
+	Kind    StepKind   `json:"kind"`
+	Status  TaskStatus `json:"status"` // '' uses the default of the step's kind
+	Skip    bool       `json:"skip"`
+	Session bool       `json:"session"` // manual: open a Claude Code session
+	Command string     `json:"command"` // script
+	RunsOn  RunsOn     `json:"runsOn"`  // agent, script, review; '' on an outside-repo step
+	// OutsideRepo runs the step once in the task folder, outside every repo (agent, script, manual session).
+	OutsideRepo bool         `json:"outsideRepo"`
+	Before      string       `json:"before"` // 'auto' | 'approval'
+	Results     []StepResult `json:"results"`
 	// MaxReturns is how many times a result may send the run back to this step or an earlier one before
 	// the run stops; 0 is no limit (review steps only).
 	MaxReturns   int      `json:"maxReturns"`
@@ -131,7 +133,7 @@ type WorkflowStep struct {
 	Params      map[string][]string `json:"params"`
 	// Review is set on review steps: they wait for the user instead of running an agent.
 	Review *ReviewStepConfig `json:"review"`
-	// Sandbox is what the step's agent may do on the machine; always set, the default when absent.
+	// Sandbox is what the step's agent or script may do on the machine; always set, the kind's default when absent.
 	Sandbox StepSandbox `json:"sandbox"`
 	// Settings are the stage settings per agent provider id, key to value; empty means every provider's defaults.
 	Settings map[string]map[string]string `json:"settings"`
@@ -167,15 +169,23 @@ type StepSandbox struct {
 	Network bool     `json:"network"`
 }
 
-// DefaultSandbox is the policy of a step without a sandbox block: write its worktree, network on.
+// DefaultSandbox is the policy of an agent or review step without a sandbox block: write its worktree, network on.
 func DefaultSandbox() StepSandbox {
 	return StepSandbox{Access: SandboxWrite, Read: []string{}, Allow: []string{}, Network: true}
 }
 
-// Normalized fills the default into a zero value (a snapshot from before the field existed).
-func (s StepSandbox) Normalized() StepSandbox {
+// DefaultSandboxFor is the policy of a step of kind without a sandbox block: scripts run unconfined.
+func DefaultSandboxFor(kind StepKind) StepSandbox {
+	if kind == KindScript {
+		return StepSandbox{Access: SandboxOff, Read: []string{}, Allow: []string{}, Network: true}
+	}
+	return DefaultSandbox()
+}
+
+// NormalizedFor fills the kind's default into a zero value (a snapshot from before the field existed).
+func (s StepSandbox) NormalizedFor(kind StepKind) StepSandbox {
 	if s.Access == "" {
-		return DefaultSandbox()
+		return DefaultSandboxFor(kind)
 	}
 	if s.Read == nil {
 		s.Read = []string{}
@@ -186,10 +196,11 @@ func (s StepSandbox) Normalized() StepSandbox {
 	return s
 }
 
-// IsDefault reports whether s equals the default policy.
-func (s StepSandbox) IsDefault() bool {
-	s = s.Normalized()
-	return s.Access == SandboxWrite && len(s.Read) == 0 && len(s.Allow) == 0 && s.Network
+// IsDefaultFor reports whether s equals the default policy of kind.
+func (s StepSandbox) IsDefaultFor(kind StepKind) bool {
+	s = s.NormalizedFor(kind)
+	d := DefaultSandboxFor(kind)
+	return s.Access == d.Access && len(s.Read) == 0 && len(s.Allow) == 0 && s.Network == d.Network
 }
 
 // Review step routes.

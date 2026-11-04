@@ -24,6 +24,7 @@ var rules = []rule{
 	{"unique-step", "Step ids are unique."},
 	{"kind-keys", "A step takes only the keys of its kind (see each option)."},
 	{"agent-body", "An agent step has either `prompt` (with optional `allowed_tools`) or `smart_script` (with optional `params`), never both."},
+	{"outside-repo", "`outside_repo: true` takes no `runs_on`, and its `prompt` or `command` uses no `{repo}` or `{branch}`. On a manual step it needs `session: true`."},
 	{"manual-session", "A manual step takes `prompt`, `settings` and `agent` only with `session: true`."},
 	{"script-results", "A script step declares no `results`, or exactly `done` (ok: true) then `failed` (ok: false)."},
 	{"unique-result", "Result ids are unique in a step. `needs_input` is reserved."},

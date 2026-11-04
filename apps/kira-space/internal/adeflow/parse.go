@@ -218,6 +218,7 @@ func (v *validator) step(sn *yaml.Node, sp string, earlier, candidates map[strin
 	if !v.stepHead(&step, sm, sp, earlier) {
 		return step, nil
 	}
+	step.Sandbox = adewire.DefaultSandboxFor(step.Kind)
 	step.Status = v.status(sm, sp)
 	step.Skip = v.boolean(sm, sp, "skip")
 	if v.err != nil {
@@ -227,7 +228,20 @@ func (v *validator) step(sn *yaml.Node, sp string, earlier, candidates map[strin
 		v.manualStep(&step, sm, sp)
 		return step, nil
 	}
-	step.RunsOn = v.runsOn(sm, sp)
+	if _, has := sm["outside_repo"]; has {
+		step.OutsideRepo = v.boolean(sm, sp, "outside_repo")
+	}
+	if v.err != nil {
+		return step, nil
+	}
+	if step.OutsideRepo {
+		if n, has := sm["runs_on"]; has {
+			v.fail(n, sp, "runs_on is not allowed with outside_repo")
+			return step, nil
+		}
+	} else {
+		step.RunsOn = v.runsOn(sm, sp)
+	}
 	step.Before = v.before(sm, sp)
 	var rn *resultNodes
 	if n, has := sm["results"]; has {
@@ -253,6 +267,9 @@ func (v *validator) step(sn *yaml.Node, sp string, earlier, candidates map[strin
 		v.agentBody(sm, sp, &step)
 	}
 	v.maxReturns(sm, sp, &step)
+	if step.OutsideRepo && v.err == nil {
+		v.outsideVars(sm, sp, &step)
+	}
 	if n, has := sm["sandbox"]; has && v.err == nil {
 		step.Sandbox = v.sandbox(n, sp)
 	}
@@ -261,6 +278,20 @@ func (v *validator) step(sn *yaml.Node, sp string, earlier, candidates map[strin
 		step.Settings = v.settings(n, sp)
 	}
 	return step, rn
+}
+
+// outsideVars rejects {repo} and {branch} in the prompt or command of an outside-repo step: they would expand empty.
+func (v *validator) outsideVars(sm map[string]*yaml.Node, sp string, step *adewire.WorkflowStep) {
+	key, text := "prompt", step.Prompt
+	if step.Kind == adewire.KindScript {
+		key, text = "command", step.Command
+	}
+	for _, tok := range []string{"{repo}", "{branch}"} {
+		if strings.Contains(text, tok) {
+			v.fail(sm[key], sp, "%s uses %s, which an outside_repo step does not have", key, tok)
+			return
+		}
+	}
 }
 
 // stepHead reads id, name and kind and rejects keys the kind disallows. It reports whether the step may go on.
@@ -297,8 +328,19 @@ func (v *validator) manualStep(step *adewire.WorkflowStep, sm map[string]*yaml.N
 	if v.err != nil {
 		return
 	}
+	if n, has := sm["outside_repo"]; has {
+		if step.Session {
+			step.OutsideRepo = v.boolean(sm, sp, "outside_repo")
+		} else {
+			v.fail(n, sp, "outside_repo is not allowed on %s steps without a session", step.Kind)
+			return
+		}
+	}
 	if step.Session {
 		step.Prompt = v.str(sm, sp, "prompt", false)
+		if step.OutsideRepo && v.err == nil {
+			v.outsideVars(sm, sp, step)
+		}
 	} else if n, has := sm["prompt"]; has {
 		v.fail(n, sp, "prompt is not allowed on %s steps without a session", step.Kind)
 	}

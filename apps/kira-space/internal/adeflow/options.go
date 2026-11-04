@@ -41,6 +41,7 @@ var (
 	scriptOnly  = []adewire.StepKind{adewire.KindScript}
 	reviewOnly  = []adewire.StepKind{adewire.KindReview}
 	manualOnly  = []adewire.StepKind{adewire.KindManual}
+	withScript  = []adewire.StepKind{adewire.KindAgent, adewire.KindScript, adewire.KindManual}
 	withSession = []adewire.StepKind{adewire.KindAgent, adewire.KindReview, adewire.KindManual}
 )
 
@@ -56,7 +57,8 @@ var options = []option{
 	{Path: "steps[].status", Type: "text", Range: fmt.Sprintf("status id, at most %d characters", maxStatusID), Doc: "Task status while the step runs. Default: the kind's own status. Must exist in the Statuses list of the Workflows page."},
 	{Path: "steps[].skip", Type: "boolean", Default: "false", Doc: "Keep the step in the file but never run it."},
 	{Path: "steps[].session", Type: "boolean", Kinds: manualOnly, Default: "false", Doc: "Open an agent session for the step."},
-	{Path: "steps[].runs_on", Type: "text", Kinds: autoKinds, RequiredOn: autoKinds, Range: "`once`, `each repo` or `only <repo>`", Doc: "Where the step runs."},
+	{Path: "steps[].outside_repo", Type: "boolean", Kinds: withScript, Default: "false", Doc: "Run in the task folder, outside every repo: one run, no branch. Manual steps: only with `session: true`."},
+	{Path: "steps[].runs_on", Type: "text", Kinds: autoKinds, RequiredOn: autoKinds, Range: "`once`, `each repo` or `only <repo>`", Doc: "Where the step runs. Required unless `outside_repo: true`, which refuses it."},
 	{Path: "steps[].before", Type: "text", Kinds: autoKinds, Default: "auto", Enum: beforeValues, Doc: "`approval` waits for a person before the step starts."},
 	{Path: "steps[].results", Type: "list", Kinds: autoKinds, Range: fmt.Sprintf("1 to %d results", maxResults), Doc: "Outcomes the step can report. Default: `done` (ok) and `failed` (not ok)."},
 	{Path: "steps[].max_returns", Type: "whole number", Kinds: autoKinds, Default: fmt.Sprint(adewire.DefaultMaxReturns), Range: fmt.Sprintf("1 to %d, review steps 0 to %d (0 is no limit)", adewire.MaxMaxReturns, adewire.MaxMaxReturns), Doc: "How often results may route back to this or an earlier step. Review steps default to 0."},
@@ -68,8 +70,8 @@ var options = []option{
 	{Path: "steps[].review", Type: "mapping", Kinds: reviewOnly, Doc: "Review settings. An empty mapping takes the defaults."},
 	{Path: "steps[].review.send_to", Type: "text", Default: adewire.ReviewSendImplementer, Enum: sendToValues, Doc: "Who gets the review findings."},
 	{Path: "steps[].review.implementer", Type: "text", Doc: "Id of an earlier agent step without `smart_script`. The review resumes that step's session."},
-	{Path: "steps[].sandbox", Type: "mapping", Kinds: agentReview, Doc: "File and network limits. An empty mapping takes the defaults."},
-	{Path: "steps[].sandbox.access", Type: "text", Default: adewire.SandboxWrite, Enum: accessValues, Doc: "`write` writes the task worktree, `read` only reads, `off` turns the sandbox off."},
+	{Path: "steps[].sandbox", Type: "mapping", Kinds: autoKinds, Doc: "File and network limits. An empty mapping takes the defaults. Without the block: `write` for agent and review steps, `off` for script steps."},
+	{Path: "steps[].sandbox.access", Type: "text", Default: adewire.SandboxWrite, Enum: accessValues, Doc: "`write` writes the task worktree (the task folder on an outside-repo step), `read` only reads, `off` turns the sandbox off."},
 	{Path: "steps[].sandbox.read", Type: "list of text", Range: fmt.Sprintf("at most %d paths", maxSandboxPaths), Doc: "Extra paths the step may read."},
 	{Path: "steps[].sandbox.allow", Type: "list of text", Range: fmt.Sprintf("at most %d paths", maxSandboxPaths), Doc: "Extra paths the step may write."},
 	{Path: "steps[].sandbox.network", Type: "boolean", Default: "true", Doc: "Allow network access."},

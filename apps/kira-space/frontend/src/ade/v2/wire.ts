@@ -91,8 +91,10 @@ export interface WorkflowStep {
   session: boolean;
   /** Script. */
   command: string;
-  /** Agent, script, review; '' on a manual step. */
+  /** Agent, script, review; '' on a manual step and on an outside-repo step. */
   runsOn: RunsOn | '';
+  /** Runs once in the task folder, outside every repo (agent, script, manual session). */
+  outsideRepo: boolean;
   before: 'auto' | 'approval' | '';
   results: StepResult[];
   /** Returns a result may make to this step or an earlier one before the run stops; 0 = no limit (review steps only). */
@@ -107,7 +109,7 @@ export interface WorkflowStep {
   params: Record<string, string[]>;
   /** Set on a review step: it waits for the user instead of running an agent. */
   review: ReviewStepConfig | null;
-  /** Agent policy; the default (write, network on) when the step has no block. */
+  /** What the step's agent or script may do; the kind's default when the step has no block. */
   sandbox: StepSandbox;
   /** Agent provider id that runs the step's new conversations; '' = the Agent setting. */
   agent: string;
