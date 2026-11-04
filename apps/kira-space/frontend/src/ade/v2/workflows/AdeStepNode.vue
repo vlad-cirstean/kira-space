@@ -47,6 +47,11 @@ const SANDBOX_CHIP = {
   off: 'space.ade.sandbox.off.label',
 } as const;
 const manual = computed(() => step.value.kind === 'manual');
+const showMeta = computed(
+  () =>
+    (!manual.value && !step.value.outsideRepo) ||
+    !isDefaultSandbox(step.value.kind, step.value.sandbox),
+);
 const body = computed(() => {
   const s = step.value;
   if (s.kind === 'review' && s.review)
@@ -140,15 +145,6 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
         t('space.ade.workflows.stepNode.smart.label')
       }}</span>
       <span
-        v-if="!isDefaultSandbox(step.kind, step.sandbox)"
-        class="shrink-0"
-        :class="step.sandbox.access === 'off' ? 'text-warn-text' : 'text-muted-foreground'"
-        data-testid="ade-wf-node-sandbox"
-        >{{
-          t(SANDBOX_CHIP[step.sandbox.access])
-        }}</span
-      >
-      <span
         v-if="step.outsideRepo"
         class="shrink-0 text-muted-foreground"
         data-testid="ade-wf-node-outside"
@@ -235,9 +231,20 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
-    <div v-if="!manual && !step.outsideRepo" class="truncate px-2 text-subtle">{{
-      runsOnLabel(step.runsOn)
-    }}</div>
+    <div v-if="showMeta" class="flex items-center gap-1.5 px-2 text-subtle">
+      <span v-if="!manual && !step.outsideRepo" class="min-w-0 truncate">{{
+        runsOnLabel(step.runsOn)
+      }}</span>
+      <span
+        v-if="!isDefaultSandbox(step.kind, step.sandbox)"
+        class="shrink-0"
+        :class="step.sandbox.access === 'off' ? 'text-warn-text' : ''"
+        data-testid="ade-wf-node-sandbox"
+        >{{
+          t(SANDBOX_CHIP[step.sandbox.access])
+        }}</span
+      >
+    </div>
     <div
       class="truncate px-2 text-muted-foreground [&>span]:whitespace-nowrap"
       :class="step.kind === 'script' ? 'font-data' : ''"
