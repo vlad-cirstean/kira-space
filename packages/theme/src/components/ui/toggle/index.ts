@@ -14,7 +14,7 @@ export const toggleVariants = cva(
       size: {
         default:
           'h-8 min-w-8 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
-        sm: 'h-7 min-w-7 rounded-[min(var(--kira-radius-sm),12px)] px-2.5 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*=size-])]:size-3.5',
+        sm: 'h-7 min-w-7 rounded-kira-sm px-2.5 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*=size-])]:size-3.5',
         lg: 'h-9 min-w-9 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
         // P117 A1: the control-scale token size (Button's own kira precedent) — every pane/tab
         // ToggleGroup previously rendered at this cva's stock default (14px/32px) beside 11px/22px

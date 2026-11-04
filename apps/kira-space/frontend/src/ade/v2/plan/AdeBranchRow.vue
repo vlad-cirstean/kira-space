@@ -294,7 +294,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
                 <span
                   v-for="(seg, i) in row.prog.segs"
                   :key="i"
-                  class="h-1.25 w-1.75 rounded-kira-xs"
+                  class="h-1.25 w-1.75 rounded-kira-sm"
                   :class="segClass(seg)"
                 />
               </span>

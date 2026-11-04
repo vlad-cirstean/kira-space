@@ -97,7 +97,7 @@ const ROW_BG_CLASS: Record<Tone, string> = {
         >
         <span class="flex items-center gap-1 truncate text-kira-sm text-subtle">
           <span
-            class="inline-block size-2 shrink-0 rounded-kira-xs"
+            class="inline-block size-2 shrink-0 rounded-kira-sm"
             :style="{ background: taskColor }"
           />
           {{ taskTitle }}

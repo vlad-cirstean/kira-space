@@ -197,7 +197,7 @@ const solidBorder = computed(() => props.band.isMonday || props.band.isLater || 
         @click="emit('select', s.taskId)"
       >
         <CodiconIcon name="indent" :size="12" class="shrink-0 text-subtle" />
-        <span class="size-2 shrink-0 rounded-kira-xs" :style="{ background: s.color }" />
+        <span class="size-2 shrink-0 rounded-kira-sm" :style="{ background: s.color }" />
         <span class="shrink-0 whitespace-nowrap text-kira-sm text-subtle">{{ s.note }}</span>
         <span class="min-w-0 truncate font-medium text-fg">{{ s.title }}</span>
       </Button>

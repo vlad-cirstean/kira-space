@@ -118,7 +118,7 @@ const sizeStyle = computed(() =>
 
 const contentClass = computed(() =>
   cn(
-    'bg-elevated text-fg data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 border-border rounded-kira-lg text-kira-md border duration-100 fixed top-1/2 left-1/2 z-(--kira-z-dialog) shadow-kira -translate-x-1/2 -translate-y-1/2 outline-none',
+    'bg-elevated text-fg data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 border-border rounded-kira text-kira-md border duration-100 fixed top-1/2 left-1/2 z-(--kira-z-dialog) shadow-kira -translate-x-1/2 -translate-y-1/2 outline-none',
     dialogContentSizeVariants({ size: props.size, fixedHeight: props.fixedHeight }),
     props.class,
   ),

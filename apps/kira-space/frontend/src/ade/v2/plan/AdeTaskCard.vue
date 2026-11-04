@@ -107,7 +107,7 @@ const boxClass = computed(() => {
       >
         <div class="flex h-4.5 min-w-0 items-center gap-1.5">
           <span
-            class="box-border size-3 shrink-0 rounded-kira-xs"
+            class="box-border size-3 shrink-0 rounded-kira-sm"
             :class="card.parked ? 'border-2' : ''"
             :style="card.parked ? { borderColor: card.color } : { background: card.color }"
             data-testid="ade-card-dot"
@@ -130,7 +130,7 @@ const boxClass = computed(() => {
                 <span
                   v-for="seg in p.segments"
                   :key="seg.id"
-                  class="h-1.5 flex-1 rounded-kira-xs"
+                  class="h-1.5 flex-1 rounded-kira-sm"
                   :class="segClass(seg.state)"
                 />
               </span>
@@ -145,7 +145,7 @@ const boxClass = computed(() => {
             >
             <AdeTip v-if="p.showBar" :text="p.barTip">
               <span class="inline-flex shrink-0 items-center gap-1">
-                <span class="inline-block h-1.25 w-11.5 overflow-hidden rounded-kira-xs bg-border">
+                <span class="inline-block h-1.25 w-11.5 overflow-hidden rounded-kira-sm bg-border">
                   <span
                     class="block h-full"
                     :class="p.bad ? 'bg-tone-red-solid' : 'bg-muted-foreground'"

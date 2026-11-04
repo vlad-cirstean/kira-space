@@ -15,7 +15,7 @@ export const badgeVariants = cva(
         warn: 'rounded-kira-sm px-1 bg-warn/15 text-warn',
         error: 'rounded-kira-sm px-1 bg-error/15 text-error',
         info: 'rounded-kira-sm px-1 bg-info/15 text-info',
-        count: 'min-w-control-sm justify-center rounded-kira-pill px-1.5 bg-field text-fg',
+        count: 'min-w-control-sm justify-center rounded-full px-1.5 bg-field text-fg',
       },
     },
     defaultVariants: {

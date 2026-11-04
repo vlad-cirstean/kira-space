@@ -49,7 +49,7 @@ const facts = computed(() =>
     @contextmenu="menu.open"
   >
     <span
-      class="box-border size-3 shrink-0 rounded-kira-xs"
+      class="box-border size-3 shrink-0 rounded-kira-sm"
       :class="card.parked ? 'border-2' : ''"
       :style="card.parked ? { borderColor: card.color } : { background: card.color }"
       data-testid="ade-shelf-dot"

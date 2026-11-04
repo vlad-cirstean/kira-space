@@ -91,6 +91,7 @@ U41 packages/workbench/src/terminal/terminalRenderer.ts # xterm engine host maps
 U11 packages/workbench/src/components/LogLines.vue # ANSI bold is log data
 U62 packages/workbench/src/components/AutocompleteField.vue # accepting a suggestion restores focus and the caret on the real input
 U26 packages/workbench/src/components/OpLogPanel.vue # error log row wash at the shared /15 tint, with the inset rail
+U36 packages/theme/src/components/VarText.vue # inline variable mark, not a content box
 # A (apps/kira-studio)
 U100 apps/kira-studio/frontend/src/api/CopyAsCurlDialog.vue # read-only output fields, nothing to discard
 U34 apps/kira-studio/frontend/src/theme/EngineIcon.vue # engine brand marks are third-party logo colours
@@ -177,7 +178,7 @@ U32@@v@@@@scrollbar styling in a component (use scrollbar-none, base.css)@@\[scr
 U33@@v@@@@keyboard hint text (use Kbd)@@Cmd/Ctrl|\(\{\{\s*formatShortcut
 U34@@vt@@monacoTheme.ts|/setiFileIcon|/ade/v2/palette.ts@@colour literal in app code (use tokens)@@(?:["'\`\[(]|:\s*)#(?:[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?|(?=[0-9]*[a-fA-F])[0-9a-fA-F]{3,4}|(?<d>\d)\k<d>\k<d>\k<d>?)\b|${TOK}(?:bg|text|border)-(?:black|white)(?![\w-])
 U35@@v@@AdeNotesEditor.vue|AutocompleteField.vue@@outline-none, border-focus, not-allowed cursor or odd disabled opacity (one focus and disabled recipe)@@${TOK}outline-(?:none|hidden|0)(?![\w-])|focus:outline|focus-visible:outline-|${TOK}focus(?:-visible|-within)?:border-focus|${TOK}cursor-not-allowed|${TOK}disabled:opacity-(?!50(?![\w-]))|data-\[off\]
-U36@@v@@PickerTrigger.vue@@hand-rolled box (use Card)@@\bclass="(?=[^"]*${TOK}rounded-kira(?:-sm|-lg)?(?![\w-]))(?=[^"]*${TOK}border(?![\w-]))(?=[^"]*${TOK}(?:p|px|py)-)
+U36@@v@@PickerTrigger.vue@@hand-rolled box (use Card)@@\bclass="(?=[^"]*${TOK}rounded-kira(?:-sm)?(?![\w-]))(?=[^"]*${TOK}border(?![\w-]))(?=[^"]*${TOK}(?:p|px|py)-)
 U37@@vt@@rowVariants.ts@@raw table markup, density formula, or hand-rolled row state (use Table, useRowHeight, rowVariants)@@<(?:table|thead|tbody|tr|th|td)\b|rowDensity\s*===|${TOK}(?:hover:)?bg-select(?![\w-])
 U38@@v@@@@scale leftovers: text-kira-xs, stock text size/radius, text-[Npx], raw h-5..h-12@@${TOK}text-kira-xs(?![\w-])|${TOK}text-(?:xs|sm|base|lg|xl|2xl)(?![\w-])|${TOK}text-\[\d|${TOK}rounded(?:-md|-lg|-xl)?(?![\w-])|${TOK}h-(?:5|6|7|8|9|10|12)(?![\w.-])
 U39@@vt@@/behaviour/!|/testing/!@@instanceof Error ? message : String (use errorText)@@instanceof\s+Error\s*\?\s*[\w.]+\.message\s*:\s*String\(

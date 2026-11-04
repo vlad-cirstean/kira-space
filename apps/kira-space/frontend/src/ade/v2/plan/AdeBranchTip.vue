@@ -43,7 +43,7 @@ const staleClass = (tone: string): string => (tone === 'stale' ? 'text-tone-ambe
       <div class="flex items-center gap-1.5">
         <span
           v-if="color"
-          class="size-2.5 shrink-0 rounded-kira-xs"
+          class="size-2.5 shrink-0 rounded-kira-sm"
           :style="{ background: color }"
         />
         <span class="min-w-0 font-data font-medium wrap-anywhere">{{ row.name }}</span>
@@ -73,7 +73,7 @@ const staleClass = (tone: string): string => (tone === 'stale' ? 'text-tone-ambe
           <dd class="flex items-center gap-1">
             <span
               v-if="row.base.color"
-              class="size-2 shrink-0 rounded-kira-xs"
+              class="size-2 shrink-0 rounded-kira-sm"
               :style="{ background: row.base.color }"
             />
             <VarText :parts="row.base.tip" />
@@ -86,7 +86,7 @@ const staleClass = (tone: string): string => (tone === 'stale' ? 'text-tone-ambe
               <span
                 v-for="(seg, i) in row.prog.segs"
                 :key="i"
-                class="h-1.25 w-1.75 rounded-kira-xs"
+                class="h-1.25 w-1.75 rounded-kira-sm"
                 :class="segClass(seg)"
               />
             </span>

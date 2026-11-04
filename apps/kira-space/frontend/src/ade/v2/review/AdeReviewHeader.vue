@@ -44,7 +44,7 @@ const headHint = computed(() => {
   <TitleBarBase>
     <div class="flex min-w-0 flex-1 items-center gap-2" data-testid="ade-review-header">
       <span
-        class="inline-block size-2.5 shrink-0 rounded-kira-xs"
+        class="inline-block size-2.5 shrink-0 rounded-kira-sm"
         :style="{ background: taskColor(task?.color ?? 0) }"
         data-testid="ade-review-task-colour"
       />

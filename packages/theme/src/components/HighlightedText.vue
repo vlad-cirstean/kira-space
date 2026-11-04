@@ -14,7 +14,7 @@ defineProps<{
         v-if="part.match"
         data-testid="match"
         :class="[
-          'rounded-kira-xs text-inherit',
+          'rounded-kira-sm text-inherit',
           i === current ? 'bg-search-match-current' : 'bg-search-match',
         ]"
         >{{

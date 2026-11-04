@@ -201,7 +201,7 @@ const rawLanguage = computed(() =>
       </div>
       <div
         v-if="showRaw"
-        class="h-64 border border-border rounded-kira-sm overflow-hidden"
+        class="h-64 border border-border rounded-kira overflow-hidden"
         data-testid="explain-raw"
       >
         <MonacoHost :doc="plan.raw" :language="rawLanguage" readonly :autocomplete="false" />

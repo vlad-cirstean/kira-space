@@ -209,7 +209,7 @@ const fileName = (path: string): string => path.split(/[\\/]/).pop() ?? path;
               <h3 class="m-0 text-kira-lg font-medium">{{ t('space.ade.port.env.title') }}</h3>
               <FieldDescription>{{ t('space.ade.port.env.hint') }}</FieldDescription>
               <pre
-                class="m-0 overflow-auto rounded-kira-sm bg-field p-2 font-data text-kira-sm"
+                class="m-0 overflow-auto rounded-kira bg-field p-2 font-data text-kira-sm"
                 data-testid="ade-port-env-lines"
               >{{ envLines }}</pre>
               <div>

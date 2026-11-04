@@ -66,7 +66,7 @@ onUnmounted(() => {
     data-slot="command-item"
     :class="
       cn(
-        'data-highlighted:bg-field data-highlighted:text-fg data-highlighted:*:[svg]:text-fg relative flex cursor-default items-center gap-2 rounded-kira-xs px-2 py-1.5 text-kira-md outline-hidden select-none in-data-[slot=dialog-content]:rounded-kira! [&_svg:not([class*=size-])]:size-4 group/command-item data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0',
+        'data-highlighted:bg-field data-highlighted:text-fg data-highlighted:*:[svg]:text-fg relative flex cursor-default items-center gap-2 rounded-kira-sm px-2 py-1.5 text-kira-md outline-hidden select-none in-data-[slot=dialog-content]:rounded-kira-sm! [&_svg:not([class*=size-])]:size-4 group/command-item data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0',
         props.class,
       )
     "
