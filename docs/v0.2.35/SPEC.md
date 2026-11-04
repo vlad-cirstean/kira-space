@@ -2,7 +2,7 @@
 
 Branch `chapter/v0.2.35`, based on `chapter/v0.2.34` (v0.2.34 not yet merged to main). First `P` is 512 (highest in v0.2.34 is P511), last is P523.
 
-Source: user request. Twelve phases. P523 is the last implementation phase. Close duty after P523: one full suite run, 2 code review rounds (user ask), hand-written close, PR. Each phase: Opus plan, Sonnet implementation.
+Source: user request. Twelve phases. P523 is the last implementation phase. Close duty after P523: one full suite run, 2 code review rounds (user ask), hand-written close. User decision: the v0.2.34 PR is not merged yet, so after the close and push, stop. Do NOT open the v0.2.35 PR or subscribe to one; report that the branch is ready. Each phase: Opus plan, Sonnet implementation.
 
 Parallelism (user ask): up to 3 phases run at once as named streams, each its own worktree off the same base, zero file overlap. Waves keep table order; a wave starts only when the prior wave is landed. Waves: A = P512, P513, P514. B = P515, P516, P517. C = P518, P519. D = P520 alone (async touches every MCP tool). E = P521, P522 (planner may force sequential on overlap in the shared MCP access settings). F = P523 alone (touches every id generator). From P512 on, new Kira-generated ids follow the P523 convention where cheap.
 
