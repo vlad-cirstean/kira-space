@@ -1,24 +1,24 @@
 /* Tone tokens: queue state, not theme, so the values stay literal (scripts/check-ade-colours.sh).
    Classes come from the maps in tones.ts. */
 @theme {
-  --color-tone-amber-tint: rgba(232, 163, 61, 0.14);
-  --color-tone-amber: #f0b85c;
-  --color-tone-amber-solid: #e8a33d;
-  --color-tone-red-tint: rgba(239, 107, 91, 0.14);
-  --color-tone-red: #f28b7d;
-  --color-tone-red-solid: #ef6b5b;
-  --color-tone-green-tint: rgba(108, 197, 138, 0.14);
-  --color-tone-green: #7fd49b;
-  --color-tone-green-solid: #6cc58a;
-  --color-tone-blue-tint: rgba(122, 167, 255, 0.14);
-  --color-tone-blue: #93b6ff;
-  --color-tone-blue-solid: #7aa7ff;
-  --color-tone-purple-tint: rgba(163, 113, 247, 0.16);
-  --color-tone-purple: #c3a3fb;
-  --color-tone-purple-solid: #a371f7;
-  --color-tone-grey-tint: #23252b;
-  --color-tone-grey: #b4b6bd;
-  --color-tone-grey-solid: #6b6f7a;
+  --color-tone-amber-tint: rgba(203, 146, 63, 0.14);
+  --color-tone-amber: #e5b473;
+  --color-tone-amber-solid: #cb923f;
+  --color-tone-red-tint: rgba(223, 128, 114, 0.14);
+  --color-tone-red: #f7a599;
+  --color-tone-red-solid: #df8072;
+  --color-tone-green-tint: rgba(92, 180, 123, 0.14);
+  --color-tone-green: #8ad1a0;
+  --color-tone-green-solid: #5cb47b;
+  --color-tone-blue-tint: rgba(118, 157, 233, 0.14);
+  --color-tone-blue: #9cbeff;
+  --color-tone-blue-solid: #769de9;
+  --color-tone-purple-tint: rgba(128, 93, 192, 0.16);
+  --color-tone-purple: #c5b0f6;
+  --color-tone-purple-solid: #805dc0;
+  --color-tone-grey-tint: #232327;
+  --color-tone-grey: #babec4;
+  --color-tone-grey-solid: #7d8088;
   --color-tone-ink: #15161a;
   --color-tone-ink-light: #ffffff;
   --color-agent: #d97757;

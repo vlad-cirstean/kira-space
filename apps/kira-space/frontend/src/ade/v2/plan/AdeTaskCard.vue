@@ -68,7 +68,7 @@ const boxClass = computed(() => {
   return [
     c.parked ? 'bg-chrome' : '',
     'cursor-grab',
-    c.selected ? 'border-focus ring-1 ring-focus' : 'border-badge',
+    c.selected ? 'border-focus ring-1 ring-focus' : 'border-border-strong',
     c.ripple && !c.selected ? 'outline-dashed outline-1 outline-border-strong' : '',
   ];
 });
