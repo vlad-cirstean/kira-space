@@ -63,6 +63,10 @@ test('Set on a secret that is not set sends the value once and clears the field'
   const input = page.locator(t('ade-settings-secret-value'));
   await expect(input).toHaveAttribute('type', 'password');
   await input.fill('s3cret-value');
+  await page.locator(t('ade-settings-secret-value-reveal')).click();
+  await expect(input).toHaveAttribute('type', 'text');
+  await page.locator(t('ade-settings-secret-value-reveal')).click();
+  await expect(input).toHaveAttribute('type', 'password');
   await page.locator(t('ade-settings-secret-save')).click();
   await expect.poll(() => calls(control, IPC.agentSettingsSetSecret)).toHaveLength(1);
   expect(calls(control, IPC.agentSettingsSetSecret)[0]?.args).toEqual({

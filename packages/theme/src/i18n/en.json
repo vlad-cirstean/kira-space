@@ -3503,8 +3503,14 @@
     },
     "secret": {
       "label": "Secret",
+      "notRevealable": {
+        "tooltip": "Saved values can’t be shown. Type a new value to replace it"
+      },
       "saved": {
         "placeholder": "Saved, type to replace"
+      },
+      "show": {
+        "label": "Show value"
       }
     },
     "sendTest": {
@@ -12357,11 +12363,6 @@
       "variableSet": {
         "orphan": {
           "empty": "This variable set no longer exists"
-        }
-      },
-      "variables": {
-        "showValue": {
-          "label": "Show value"
         }
       },
       "variablesDialog": {
