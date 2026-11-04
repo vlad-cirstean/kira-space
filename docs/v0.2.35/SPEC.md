@@ -1,10 +1,10 @@
 # v0.2.35
 
-Branch `chapter/v0.2.35`, based on `chapter/v0.2.34` (v0.2.34 not yet merged to main). First `P` is 512 (highest in v0.2.34 is P511), last is P524.
+Branch `chapter/v0.2.35`, based on `chapter/v0.2.34` (v0.2.34 not yet merged to main). First `P` is 512 (highest in v0.2.34 is P511), last is P523.
 
-Source: user request. Thirteen phases. P524 is the last implementation phase. Close duty after P524: one full suite run, 2 code review rounds (user ask), hand-written close, PR. Each phase: Opus plan, Sonnet implementation.
+Source: user request. Twelve phases. P523 is the last implementation phase. Close duty after P523: one full suite run, 2 code review rounds (user ask), hand-written close, PR. Each phase: Opus plan, Sonnet implementation.
 
-Parallelism (user ask): up to 3 phases run at once as named streams, each its own worktree off the same base, zero file overlap. Waves keep table order; a wave starts only when the prior wave is landed. Waves: A = P512, P513, P514. B = P515, P516, P517. C = P518, P519. D = P520 alone (async touches every MCP tool). E = P521, P522, P523 (planner may force sequential on overlap in the shared MCP access settings). F = P524 alone (touches every id generator). From P512 on, new Kira-generated ids follow the P524 convention where cheap.
+Parallelism (user ask): up to 3 phases run at once as named streams, each its own worktree off the same base, zero file overlap. Waves keep table order; a wave starts only when the prior wave is landed. Waves: A = P512, P513, P514. B = P515, P516, P517. C = P518, P519. D = P520 alone (async touches every MCP tool). E = P521, P522 (planner may force sequential on overlap in the shared MCP access settings). F = P523 alone (touches every id generator). From P512 on, new Kira-generated ids follow the P523 convention where cheap.
 
 | Phase | Title | Status |
 |---|---|---|
@@ -19,8 +19,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each its ow
 | P520 | Async MCP tools with aggregated approvals and result push | Pending |
 | P521 | Scripts MCP | Pending |
 | P522 | API MCP | Pending |
-| P523 | Config MCP | Pending |
-| P524 | Prefixed nanoid for every Kira-generated id | Pending |
+| P523 | Prefixed nanoid for every Kira-generated id | Pending |
 
 ## Rows
 
@@ -82,15 +81,8 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each its ow
 - Ask: Agents call saved API requests via MCP. Same access model as P521: explicit opt-in per item, prompt on or off, description field. Tools are async per P520.
 - Plan: `plans/P522.md`.
 
-### P523 Config MCP
-
-- Ask (user): an MCP tool lets an agent configure the app. Config stays YAML files (P513, P514): files are what the AI edits, forms are what the human edits, and the human can see and edit the YAML in the UI too. The tool edits through the typed form layer (`configfs.Form`, `EditYAML`), keeping comments and key order. Available only from a dedicated menu in Settings that opens an agent session with this MCP attached, never in ordinary sessions.
-- Instructions, or part of them, ship with the tool itself (tool descriptions plus a guide/schema read), so any agent knows how to configure without external prompts.
-- Writes need an approval dialog showing the change; secret values never reach the agent. Tools are async per P520. Covers every config surface from P514's inventory; planner lists them.
-- Plan: `plans/P523.md`.
-
-### P524 Prefixed nanoid for every Kira-generated id
+### P523 Prefixed nanoid for every Kira-generated id
 
 - Ask: Every id Kira generates, of any kind, in the Kira apps is a nanoid with a short prefix. The prefix names the feature the id belongs to. External ids (GitHub, Jira, Docker, etc.) stay unaltered.
 - Plan decides: inventory of all generators (uuid, ulid, autoincrement-as-id, hand-rolled), one shared id helper and prefix registry per language, handling of stored existing ids (migrate or leave, with reasoning), lint guard against new unprefixed generators. Uses an existing nanoid library.
-- Plan: `plans/P524.md`.
+- Plan: `plans/P523.md`.
