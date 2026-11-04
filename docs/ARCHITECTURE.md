@@ -2353,7 +2353,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - The workflows folder is a `configfs.Folder` (P450, see Config files): watched, debounced 200 ms; a broken edit keeps the last valid version and reports the line plus a message. Saves are atomic with a baseHash check. `ade_workflow_last_valid` rows follow file deletion. The writer keeps key order and comments.
 - `apps/kira-space/internal/adeflow/options.go` is the single list of workflow keys (P451): `Parse` and the writer derive their key sets from it, and the folder's `AGENTS.md` is generated from it. A new key needs a row there or the parser refuses it.
 - A workflow has a flat list `steps` of kind agent|script|review|manual (P293); `kind` is required and each kind allows only its own keys.
-- Allowed keys: agent: runs_on before results max_returns timeout prompt allowed_tools smart_script params sandbox settings; script: command runs_on before results max_returns timeout; review: review runs_on before results max_returns timeout sandbox settings; manual: session and, with it, prompt and settings.
+- Allowed keys: agent: outside_repo runs_on before results max_returns timeout prompt allowed_tools smart_script params sandbox settings; script: outside_repo command runs_on before results max_returns timeout sandbox; review: review runs_on before results max_returns timeout sandbox settings; manual: session and, with it, prompt, settings and outside_repo.
 - A top-level `stages` key fails with the error "stages" is no longer supported: list every step under "steps".
 - Agent `allowed_tools` feeds the headless `--allowedTools` list.
 - Sample workflows in apps/kira-space/internal/adeflow/testdata/ import and validate in the app.
@@ -2417,6 +2417,12 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
   - Sandbox is fixed at start: a folder run cannot write worktrees it requests mid-run. `request_branches` and `declare_repos` still work; the next stage runs on those branches.
   - `advanceLocked` calls `prepareWorktrees` before starting a step, so branches the previous stage requested get worktrees.
   - A manual session step with no repo launches with cwd the task folder (`taskLaunchDirs`); the review agent still refuses ("the task has no repo"). Prompts `ade.step.prompt` and `ade.manual.message` carry a "No repo yet" line with the folder.
+- Outside-repo steps (P510): `outside_repo: true` on an agent, script or session-manual step runs it in the task folder even when the task has branches.
+  - Wire `outsideRepo` is inverted on purpose: `false` keeps repo-aware behavior, so old snapshots behave as before. The inspector shows a Repository aware switch (on is `outsideRepo: false`).
+  - `plan()` gives the step target `""` (same as a repo-less task). `runs_on` and `outside_repo` together fail parsing. The inspector clears `runs_on` when the switch goes off.
+  - The prompt (agent, manual session) and command (script) may not use `{repo}` or `{branch}`; the parser refuses them (`outsideVars`). Prompts `ade.step.prompt` and `ade.manual.message` carry an "Outside the repos" line with the folder.
+  - `prepareStepWorktrees` skips an outside step unless the Run dialog named branches; those still get worktrees.
+  - A review step cannot be outside the repos. A manual session step has no sandbox.
 - Restart recovery (D7): Recover() runs before Start(); running runs become stuck with note 'interrupted by restart', running setups fail, task sessions stop, and stale *.mcp.json files are removed.
 - After restart, pending runs keep their launch spec and launch when their gate opens; nothing auto-resumes, and a restart-stuck agent run offers Resume.
 - Agent tools (P199) are implemented in ade/agenttools.go as agentmcp.SpaceTools on *ade.TaskBoard; the loopback MCP server issues scoped grants (run, task, Space) with one bearer token per launch.
@@ -2509,9 +2515,10 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 - Git rules: the worktree is read-write except its .git file; the linked gitdir is read-write except gitdir, commondir, locked, config.worktree; common objects are append-only; the run's own branch ref, lock and reflog are writable.
 - The rest of the git common dir is read-only, so branch, worktree, tag, stash, remote-ref, config and hook writes fail with EPERM; allow entries never open these because the protections come last.
 - Sandboxed agents always read the macOS keychain; the CLI signs in from it. Keychain writes stay denied (P341).
-- A step without a sandbox block defaults to access write with network on.
+- A step without a sandbox block defaults to access write with network on; a script step defaults to access off (`adewire.DefaultSandboxFor(kind)`). Migration 0067 rewrites script steps in stored task snapshots to off, so running tasks keep their old behavior. `decorateTask` compares the live workflow hash with the hash of the re-marshalled snapshot, so a snapshot rewritten by a migration stays current.
 - The sandbox covers headless agents from superviseAgent (steps, review rounds, rebase runs with every stack worktree writable) and scriptruns smart runs in dir mode worktree.
-- The sandbox does not cover TUI sessions and Take over, script steps, setup scripts, folder-mode scripts, or memory claude calls.
+- The sandbox does not cover TUI sessions and Take over, setup scripts, folder-mode scripts, or memory claude calls.
+- A script step with access read or write runs under the sandbox (P510): `superviseScript` calls `prepareScriptSandbox`, wraps the command with `ExecArgv` (`gitprepare.Spec.Wrap`, `Spec.OnStart` feeds `watchSandbox`) and records the outcome through `sandboxOutcome`. A profile failure ends the run with `EndStartErr`. Without enforcement the notice uses `NotEnforcedScriptText`.
 - The Enforcer interface has Support, Prepare and Watch; System() is real only on darwin, elsewhere Support is Enforced:false with Reason NotEnforcedKey and Prepare still builds profile, flags and env but no wrapper.
 - sandboxtest.Fake stands in for flow tests; the flow harness defaults to a not-enforced fake so contracts do not depend on the host OS.
 - With agentmcp.Spec.Sandbox, Script emits exec /usr/bin/env -u … K=V /usr/bin/sandbox-exec -f <profile> claude … after the login shell sources the user profile.
