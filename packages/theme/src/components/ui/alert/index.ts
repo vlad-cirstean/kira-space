@@ -6,21 +6,21 @@ export { default as AlertAction } from '@theme/components/ui/alert/AlertAction.v
 export { default as AlertDescription } from '@theme/components/ui/alert/AlertDescription.vue';
 export { default as AlertTitle } from '@theme/components/ui/alert/AlertTitle.vue';
 
-// P263 §2.7: two-column grid (tone icon, content). Banner tint /10 on fill, /20 on border; text uses
+// P263 §2.7: two-column grid (tone icon, content). Banner tint /10 on fill, no border; text uses
 // the tone's readable token (`warn-text`, `note-text` for info). A grid block fills its row, so no
 // width class; spacing between blocks belongs to the parent.
 export const alertVariants = cva(
-  'group/alert relative grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2 gap-y-0.5 rounded-kira border px-2.5 py-2 text-left text-kira-md has-data-[slot=alert-action]:pr-18 *:col-start-2 *:data-[slot=alert-icon]:col-start-1 *:data-[slot=alert-icon]:row-start-1',
+  'group/alert relative grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2 gap-y-0.5 rounded-kira px-2.5 py-2 text-left text-kira-md has-data-[slot=alert-action]:pr-18 *:col-start-2 *:data-[slot=alert-icon]:col-start-1 *:data-[slot=alert-icon]:row-start-1',
   {
     variants: {
       variant: {
         error:
-          'bg-error/10 border-error/20 text-error *:data-[slot=alert-description]:text-error *:data-[slot=alert-icon]:text-error',
-        warn: 'bg-warn/10 border-warn/20 text-warn-text *:data-[slot=alert-description]:text-warn-text *:data-[slot=alert-icon]:text-warn',
-        info: 'bg-info/10 border-info/20 text-note-text *:data-[slot=alert-description]:text-note-text *:data-[slot=alert-icon]:text-info',
+          'bg-error/10 text-error *:data-[slot=alert-description]:text-error *:data-[slot=alert-icon]:text-error',
+        warn: 'bg-warn/10 text-warn-text *:data-[slot=alert-description]:text-warn-text *:data-[slot=alert-icon]:text-warn',
+        info: 'bg-info/10 text-note-text *:data-[slot=alert-description]:text-note-text *:data-[slot=alert-icon]:text-info',
       },
       strip: {
-        true: 'rounded-none border-x-0 border-t-0',
+        true: 'rounded-none',
         false: '',
       },
     },

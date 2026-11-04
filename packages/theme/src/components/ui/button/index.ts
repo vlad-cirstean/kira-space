@@ -27,7 +27,7 @@ export const buttonVariants = cva(
         // P110 B13: TitleBar.vue's own action row -- `aria-pressed` replaces `.is-on`'s own class
         // toggle, fixing the state's previously unexposed accessibility gap.
         title:
-          'rounded-kira-sm border border-transparent bg-transparent text-muted-foreground hover:bg-hover wails-no-drag aria-pressed:bg-elevated aria-pressed:border-border-strong aria-pressed:text-fg aria-pressed:hover:bg-hover',
+          'rounded-kira-sm border border-transparent bg-transparent text-muted-foreground hover:bg-hover wails-no-drag aria-pressed:bg-elevated aria-pressed:text-fg aria-pressed:hover:bg-hover',
       },
       size: {
         'icon-sm':

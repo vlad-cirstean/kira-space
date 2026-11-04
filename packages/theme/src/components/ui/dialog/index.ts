@@ -15,11 +15,9 @@ export type { ConfirmDiscard, DiscardPrompt } from '@theme/components/ui/dialog/
 export { CONFIRM_DISCARD_KEY } from '@theme/components/ui/dialog/discard';
 
 // P262 §2.2: shared class strings, also consumed by TextPromptDialog (non-portaled, own scrim).
-export const dialogHeaderClass =
-  'flex flex-row items-center gap-1.5 border-b border-border px-3 py-2';
+export const dialogHeaderClass = 'flex flex-row items-center gap-1.5 px-3 py-2';
 export const dialogBodyClass = 'flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3';
-export const dialogFooterClass =
-  'flex items-center justify-end gap-1.5 border-t border-border px-3 py-2';
+export const dialogFooterClass = 'flex items-center justify-end gap-1.5 px-3 py-2';
 
 export const dialogContentSizeVariants = cva(
   'flex flex-col gap-0 p-0 max-w-[90vw] max-h-4/5 overflow-hidden',
