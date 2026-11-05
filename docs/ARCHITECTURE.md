@@ -1360,7 +1360,10 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - With DialogContent dirty, outside click is ignored, and Esc and the header X ask the discard confirm; footer Cancel never asks.
 - Every host (Studio, Space, Space mobile, git-ui mount()) calls provideShellServices(app) from bootstrapShell.ts once per createApp, providing CONFIRM_DISCARD_KEY backed by the confirm store, because theme cannot import the store.
 - Each host mounts one ConfirmDialog; mobile passes touch for 44px buttons. Tabs ask before closing a dirty tab (TabKindDef.isDirty).
-- DialogHeader has no icon, and a dialog footer has one emphasised button.
+- Two button looks: toolbar (borderless) and outline (1px border, transparent, hover:bg-field). No filled button. Emphasis is the border: dialog-primary is the accent outline with text-fg, dialog-danger is the error outline, ADE task actions use ACTION_CLASS tone outlines.
+- A labelled destructive action is dialog-danger; an icon or toolbar one is toolbar plus data-tone="error". Toggle state goes through aria-pressed (TooltipIconButton pressed) or aria-expanded, never a bg-field class.
+- Fills stay only on state controls (Checkbox, Radio, Switch, Progress), selection (bg-select, date cells) and indicators (StatusDot, Badge, ADE SOLID_CLASS, AdeAttention). Solid fill on a button fails U106.
+- DialogHeader has no icon (U107), and a dialog footer has one emphasised button. Dialog, command palette, text prompt, popover and menus share floatingSurface (packages/theme/src/lib/frames.ts).
 - Operation failures use Alert variant="error" in the body; FieldError is only under a field or as a one-line footer status, paired with aria-invalid and aria-describedby (useFormErrors).
 - Use Button pending for busy state, never :disabled on a busy flag.
 - packages/theme/src/format.ts owns formatBytes (1024 base, KB/MB/GB, space before unit), formatPercent, formatDuration (0.42ms, 240ms, 3.4s, no space), formatCompactDuration, formatCurrency, formatElapsed, formatZonedWeekdayClock and displayValue; formatCount lives in i18n/number.ts.
@@ -1371,7 +1374,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - Every debounce, poll, tick and UI delay must be a TIMING key, and sort comparators must end on a stable key.
 - Bind shortcuts printed on a surface there; trees use useTreeShortcuts; refresh is F5 only; render cap is 500 via useCappedList.
 - In-memory trees (Studio collections, Space repo file tree) persist expanded keys with usePersistedState('kira.<module>.expanded', []); lazy IPC trees (Studio project tree) do not restore.
-- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U103) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
+- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U108) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
 - check-conventions.ts N8-N12 check duplicate spec helpers, .ts files under components/, .vue files over 600 lines, printed shortcuts without binding, and state/ dir and menu file naming.
 - check-ui-primitives.sh keeps 38 named PERMANENT lines, each with a reason; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
 - vue-tsc checkUnknownComponents, inside typecheck, catches unresolved components.
