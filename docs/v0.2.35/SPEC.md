@@ -14,8 +14,8 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 | P515 | Run-script picker in the restored repo dialog | Done |
 | P516 | Reveal button on every secret field | Done |
 | P517 | Multiple worktrees per repo, agent-named branches, branch rename | Done |
-| P518 | Cancel ops via MCP and status bar running-ops widget | Pending |
-| P519 | Proof window cell editor and multi-file screenshots | Pending |
+| P518 | Cancel ops via MCP and status bar running-ops widget | Done |
+| P519 | Proof window cell editor and multi-file screenshots | Done |
 | P520 | Async MCP tools with aggregated approvals and result push | Pending |
 | P521 | Scripts MCP | Pending |
 | P522 | API MCP | Pending |
@@ -67,11 +67,13 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 
 - Ask: Agent can stop a running query via MCP, and any request listed in the ops panel. Status bar widget lists running ops with a stop action per op.
 - Plan: `plans/P518.md`.
+- Result: Done in 7 commits. `kira-db` tools `list_operations` and `cancel_operation` (ops on MCP-exposed connections plus `run:<id>` script runs; one refusal text for unknown or hidden ids; no early-cancel memory). Shared status bar running-ops widget in both apps, Stop per row (Space hides background rows, disables non-cancellable ones). Flow tests `TestDbMcpCancelOperation`, `TestDbMcpCancelScriptRun`; UI spec `running-ops-status` in both apps. Real `claude` rows not run.
 
 ### P519 Proof window cell editor and multi-file screenshots
 
 - Ask: Proof window gets the cell editor (read-only is fine). Screenshots are split into several files, not one long PNG.
 - Plan: `plans/P519.md`.
+- Result: Done as planned (D1-D6). Proof window shows a read-only cell editor under table and key-value results. Save-all writes one PNG per tab into a fresh folder; stacked copy-all dropped. Pre-existing `cell-editor.spec.ts` failures fixed (wildcard `connectionConfig:form` mock). Flow `proofflow`, UI specs `proof-window`, `proof-chart`. Real `claude` row not run.
 
 ### P520 Async MCP tools with aggregated approvals and result push
 
