@@ -7,9 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/kirathecat/kira-studio/internal/filelock"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"github.com/kirathecat/kira-studio/internal/memory"
 )
@@ -127,7 +126,7 @@ func (e *Engine) Create(a CreateArgs) (Job, error) {
 	if err := memory.CheckJobGroups(a.Groups); err != nil {
 		return Job{}, err
 	}
-	id, err := e.st.createJob(uuid.NewString(), a)
+	id, err := e.st.createJob(ids.NewID(), a)
 	if err != nil {
 		return Job{}, err
 	}

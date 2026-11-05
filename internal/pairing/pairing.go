@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/notify"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/tokenauth"
@@ -161,7 +161,7 @@ func (b *Broker[M]) Request(clientID string, meta M, onEnqueued func(Request[M])
 	now := b.cfg.Now()
 	entry := &pendingEntry[M]{
 		req: Request[M]{
-			RequestID: uuid.NewString(), ClientID: clientID, Meta: meta,
+			RequestID: ids.NewID(), ClientID: clientID, Meta: meta,
 			EnqueuedAt: now, ExpiresAt: now.Add(b.cfg.Timeout),
 		},
 		result: make(chan Outcome, 1),

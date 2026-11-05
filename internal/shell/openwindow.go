@@ -3,10 +3,10 @@ package shell
 import (
 	"log/slog"
 
-	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 )
 
@@ -124,7 +124,7 @@ func wireLifecycle(d WindowOpenerDeps, win *application.WebviewWindow, key strin
 
 // OpenNewWindow is the *New Window* (⇧⌘N) menu command (D8): a fresh workbench, ordered after
 // every existing one, cascaded from whichever window is currently focused (D10).
-func OpenNewWindow(d WindowOpenerDeps) { OpenNewWindowKeyed(d, uuid.NewString()) }
+func OpenNewWindow(d WindowOpenerDeps) { OpenNewWindowKeyed(d, ids.NewID()) }
 
 // OpenNewWindowKeyed is OpenNewWindow under a caller-chosen key, so state registered for that key
 // beforehand (files an external open brought) is there before the page boots.
@@ -159,7 +159,7 @@ func ReopenWindows(d WindowOpenerDeps) {
 		return
 	}
 	if len(records) == 0 {
-		rec := WindowRecord{Key: uuid.NewString(), Order: 0}
+		rec := WindowRecord{Key: ids.NewID(), Order: 0}
 		if err := d.Repo.Create(rec); err != nil {
 			slog.Error("create window for reopen", "scope", "window", "err", err)
 			return

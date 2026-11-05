@@ -7,8 +7,7 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	"github.com/google/uuid"
-
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/memory/memfmt"
 )
 
@@ -49,7 +48,7 @@ func (s *Service) ApplyDoc(ctx context.Context, req ApplyDocRequest) (ApplyDocRe
 	if d.Session != "" && !sessionPattern.MatchString(d.Session) {
 		return ApplyDocResult{}, invalid("doc session must be 1 to %d characters from A-Z, a-z, 0-9 and ._:-", maxSessionLen)
 	}
-	requestID := uuid.NewString()
+	requestID := ids.NewID()
 	groups := []GroupRef{{ID: d.Group, Kind: GroupDocument, Key: d.Group, Title: d.Title}, {Kind: GroupRequest, Key: requestID}}
 	if d.Session != "" {
 		groups = append(groups, GroupRef{Kind: GroupSession, Key: d.Session})

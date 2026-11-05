@@ -21,7 +21,7 @@ type Launch struct {
 	Kind     harness.LaunchKind
 	// Dir is Kira's own 0700 run dir (the ADE agent dir, automations-mcp).
 	Dir string
-	// Stem is the file name stem: the run id for a headless run, "tui-<uuid>" otherwise.
+	// Stem is the file name stem: the run id for a headless run, "tui_<id>" otherwise.
 	Stem string
 }
 

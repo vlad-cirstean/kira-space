@@ -12,9 +12,9 @@ import (
 	"sync/atomic"
 	"unicode/utf8"
 
-	"github.com/google/uuid"
 	"golang.org/x/sync/semaphore"
 
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/memory/memfmt"
 )
@@ -373,7 +373,7 @@ func (s *Service) Store(ctx context.Context, req StoreRequest) (StoreResult, err
 	}
 
 	s.progress(req, "saving")
-	requestID := uuid.NewString()
+	requestID := ids.NewID()
 	groups := requestGroups(req, requestID)
 	committed := false
 	for i := range works {

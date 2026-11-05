@@ -15,11 +15,11 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/google/uuid"
 	"golang.org/x/sync/semaphore"
 
 	"github.com/kirathecat/kira-studio/internal/filelock"
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"github.com/kirathecat/kira-studio/internal/memory"
 	"github.com/kirathecat/kira-studio/internal/memory/memfmt"
@@ -353,12 +353,12 @@ func (r *Runner) scan(id string, paths []string) {
 func (r *Runner) plan(jobID string, res ScanResult) ([]newFile, error) {
 	files := make([]newFile, 0, len(res.Files)+len(res.Skipped))
 	for _, sk := range res.Skipped {
-		files = append(files, newFile{ID: uuid.NewString(), Path: sk.Path, Rel: sk.Rel, Kind: orKind(sk.Kind), Size: sk.Size,
+		files = append(files, newFile{ID: ids.NewID(), Path: sk.Path, Rel: sk.Rel, Kind: orKind(sk.Kind), Size: sk.Size,
 			State: FileSkipped, Reason: sk.Reason})
 	}
 	first := map[string]string{}
 	for _, c := range res.Files {
-		nf := newFile{ID: uuid.NewString(), Path: c.Path, Rel: c.Rel, Kind: c.Kind, Size: c.Size, Hash: c.Hash, State: FileSkipped}
+		nf := newFile{ID: ids.NewID(), Path: c.Path, Rel: c.Rel, Kind: c.Kind, Size: c.Size, Hash: c.Hash, State: FileSkipped}
 		if other, dup := first[c.Hash]; dup {
 			nf.Reason = "same content as " + other
 			files = append(files, nf)
