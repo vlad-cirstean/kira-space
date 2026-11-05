@@ -186,6 +186,7 @@ databases under rules you set. It is off by default and enabled from Settings â†
 - Six core tools: `list_connections`, `list_children`, `describe_table`, `describe_schema`, `run_query`,
   `explain_query`. Two more let the client see and stop running work: `list_operations` lists running
   queries and script runs, and `cancel_operation` stops one by id.
+- Tool descriptions suggest the AI client read a table's schema before querying it. Nothing enforces this.
 - **Scripts, opt-in** â€” a normal script exposes itself to the AI client with an `mcp` block in its
   run file or the MCP tab of its dialog. Four tools: `list_scripts`, `run_script`, `get_script_run`
   and `get_script_logs`. A script can run straight away or wait for your approval, which shows the

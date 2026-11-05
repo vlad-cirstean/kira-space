@@ -3154,6 +3154,7 @@ One queue and one dialog per app hold every pending agent approval. Tools stay s
 - list_children replaces the fixed-name list_databases/list_schemas pair named in the M1 row of docs/HISTORY.md (v1.7), because the adapter metadata primitive is one lazy level (Adapter.Children) and levels differ per kind, so one tool returning the node's own kind carries more information.
 - list_children, describe_table and describe_schema are gated on read-mode deny, not only run_query.
 - list_connections is deliberately not gated by read-mode deny, because its job is to show a caller a connection's configured permissions before it tries any of them.
+- dbmcp.instructions and the describe_table, describe_schema, run_query and explain_query descriptions suggest inspecting the tables' schema before a query (P533); nothing enforces it.
 
 ### Kubernetes tools (P440)
 
