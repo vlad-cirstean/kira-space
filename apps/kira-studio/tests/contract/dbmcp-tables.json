@@ -1,0 +1,19 @@
+{
+  "DbMcpService.Tables": {
+    "tables": [
+      {
+        "kind": "table",
+        "ref": "notes"
+      },
+      {
+        "kind": "table",
+        "ref": "secret"
+      },
+      {
+        "kind": "view",
+        "ref": "secret_view"
+      }
+    ],
+    "truncated": false
+  }
+}
