@@ -3331,6 +3331,14 @@ Built-in `PreLimit` `expensive_query`: an agent `run_query` whose plan estimates
 - Bridge: `MaskRulesService.ReviewColumns` (live list, optional refresh) and `ReviewPending` (cached count). UI: `ConnectionMaskReview.vue` in the Privacy tab computes coverage from the unsaved draft.
 - P535 (Browse) takes `maskStateFor` like `run_query`: withheld columns leave its projection and appear in `withheldColumns`; a filter or order on one is refused with the same text. No statement scan needed.
 
+### Masked browse (P535)
+
+- Tool `browse_table`: structured read of one table or view. Kinds with a builder: postgres, mysql, mariadb, sqlite, clickhouse (`HasBrowse`, mirrored by `BROWSE_KINDS`). Args: `connectionId`, `path`, `columns`, `filters` (eq, ne, lt, lte, gt, gte, like, in, isNull, notNull), `orderBy`, `limit`, `offset`, `exemption`. Kira builds the SQL (`adapters.BuildConditionsSQL`); the agent writes none.
+- Permission `mcp.masked` (deny|allow|prompt|inherit; file key, column `connections.mcp_masked_mode`, migration 0064). Absent or inherit follows read (`modesOf`). `mcp.review.masked` is its result-review setting, backfilled from `mcp_review_results`. A read-only connection and a kind without a write console still browse; only the kind's browse support matters (`accessOf`). `list_connections` adds `access.masked`, `permissions.masked`, `browse`, `reviewResults.masked`.
+- Gate order (`browse.go`): resolve, masked verdict (deny refuses before connect), shape check, relation kind taken from the parent listing (`describeRelation`; never the path, which an agent could forge), table allow list (P532), column review (P534; a filter or order on a withheld column refuses), masked-column rule (masked columns take only isNull and notNull and no order; a view is refused only on a connection with mask rules), exemption claim, EXPLAIN on the preview SELECT (`planStatements`, P530, same `advanced.expensiveQueryRows` threshold), pre-limit check (P528), at most one approval (kind `db.query`, mode `masked`, operation class read; an exempted call raises `db.exemption`), execute on the read lane under the exec limits (P529, P531), mask, per-mode result review (P536, `reviewForMode`: read's setting never forces review on a browse), render.
+- The EXPLAIN runs on the preview with escaped literals, so it sees what the driver runs. Engines with no usable estimate (sqlite) skip the check. The refusal says to filter or order on an indexed column, or reduce scope. An exemption lifts it for that exact spec and always raises a dialog.
+- Approval payload `mode` is one of read, write, ddl, masked (`dbMcpPayloadModeSchema`). The approval card labels masked "Read masked data".
+
 ### The UI surfaces
 
 - The sections array in state/settings.ts has eight entries: Appearance, Data, Cache, Api, Scripts, Claude Code, Database MCP, Advanced.
@@ -3831,6 +3839,7 @@ Kept only while genuinely open — delete an item the moment it's resolved, neve
 place. `CLAUDE.md` states the process rule; this is the list itself.
 
 - Table allow list (P532) cannot see: postgres console `SET search_path`; triggers, rules, FK cascades and view definitions that run server-side; user-defined operators; regclass-literal built-ins such as `nextval`; mysql loadable UDFs. ClickHouse and MariaDB syntax the parser lacks is refused, so such statements cannot run under a list.
+- Masked browse (P535): a filter value containing `;` fails the statement classifier and is refused while the plan check is on. An unfiltered browse of a table past the row threshold is refused as expensive, as `run_query` is. Masking matches by column name, as everywhere. Paging is offset only.
 - Column review (P534) checks at most every 30 s: a column another client adds can reach the agent until the next connect, Refresh, MCP write or DDL, or the 30 s recheck. Matching is by name, so a renamed column counts as new and a reviewed column also withholds a new one of the same name. Scripts, ops and views over unreviewed columns are not checked. Closing the window fully needs result-column provenance from each driver.
 - **Studio approval origin names the MCP client only (P520).** The origin line shows the client name; the working directory is not sent, so it cannot be shown or verified. Delete once the CLI reports it.
 

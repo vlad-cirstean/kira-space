@@ -77,6 +77,20 @@ Known limits:
 - The plan request is one more operation and counts against the connection's throttle.
 - The statement timeout still applies to everything.
 
+## Masked browse
+
+`browse_table` reads rows of one table or view without SQL. The AI client names the table, columns, filters, order and page; Kira builds the statement. The connection dialog's MCP tab has a **Read masked data** row. Its choices are deny, allow, ask me, or the default, same as read. Use it to deny `run_query` reads and still let the AI see masked rows.
+
+Rules:
+
+- Masked columns accept only is-empty and is-not-empty filters and cannot be sorted on.
+- A view is refused on a connection that has masking rules, because Kira cannot see which columns it exposes.
+- Table allow list and column review apply as for `run_query`.
+- The expensive-query check applies. A browse whose plan estimates at least the row threshold is refused. The AI client can ask for an exemption, and you always see a dialog. SQLite gives no estimate, so it skips the check.
+- Not available for MongoDB, Redis, Kibana, Kafka, S3 and SQS.
+
+Limits: masking matches by column name. A filter value containing a semicolon is refused while the plan check is on. Paging is by offset.
+
 ## Column review
 
 Masking rules only protect columns you marked. A column added later is unmarked, so it would reach the AI client. Column review closes that gap for PostgreSQL, MySQL, MariaDB, ClickHouse and SQLite.

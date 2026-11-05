@@ -17,7 +17,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 | P532 | Table allow list per connection for DB MCP | Done |
 | P533 | Tool descriptions suggest inspecting schemas first | Done |
 | P534 | Masking validation: new columns are withheld until masking is reviewed | Done |
-| P535 | Masked-read permission and constrained browse tool as the MCP default | Pending |
+| P535 | Masked-read permission and constrained browse tool as the MCP default | Done |
 | P536 | Review MCP results before delivery to the agent | Done |
 
 ## Rows
@@ -88,6 +88,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 - Depends on P532 (allow list) and P534 (new-column gate).
 - UI: new permission toggle and note in `ConnectionMcpTab.vue`.
 - Plan: `plans/P535.md`.
+- Result: `mcp.masked` permission (inherit follows read) and `browse_table` on postgres, mysql, mariadb, sqlite, clickhouse; app-built SELECT on the read lane, masked columns take isNull/notNull only, views refused on masked connections, EXPLAIN check and exemption apply (sqlite skips). Prompts say browse first. UI: Masked row, review row, approval label. Flows `dbmcpflow/browse_test.go`, UI `connection-mcp-masked.spec.ts` pass; real `claude` case added, not run. Open: `;` in a filter value, big-table refusal.
 
 ### P536 Review MCP results before delivery to the agent
 
