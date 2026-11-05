@@ -23,7 +23,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 | P524 | Manual order for API collections and environments | Done |
 | P525 | Uniform flat design: dialogs and outline buttons | Done |
 | P526 | Standalone step library and Workflows page tabs | Done |
-| P527 | DB MCP read and write tools enforced by the database | Pending |
+| P527 | DB MCP declared query mode enforced by the database | Pending |
 
 ## Rows
 
@@ -127,8 +127,8 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 - Plan: `plans/P526.md`.
 - Result: Done in 7 code commits plus docs, no SQL migration. Step library `<home>/steps/*.yaml`, workflow references with overrides, `routes` and `prompt_extra`, diff writer, one-time migration with `.p526-backup`, Statuses/Steps/Workflows tabs, library editing (form and YAML), flow tests `TestStepLibrary*`, UI spec `ade-v2-workflow-steps`. Library edits apply to new work only.
 
-### P527 DB MCP read and write tools enforced by the database
+### P527 DB MCP declared query mode enforced by the database
 
 - Ask (user): "The db mcp tool should use dedicated read and write methods that actually enforce the permissions on db level or by using 2 connections one for read and one for write depending on the db."
-- Reading: `run_query` gives way to dedicated `run_read` and `run_write`. Read runs on a per-connection read lane (second adapter in the engine's read-only mode, optional least-privilege read user); write runs on the primary after the write gate. The tool picks gate and connection; statement classification is only an approval hint and may only tighten. Per-adapter matrix, lane lifecycle and cancel, mode mapping, back-compat in the plan. Runs after P523.
+- Scope (user decisions): one tool, `run_query`, gains a required `mode` (read, write, ddl). Read runs on a per-connection read lane (second connection, same credentials, engine session-level read-only); write and ddl run on the main connection under that mode's own permission. The classifier only refuses a statement more powerful than its mode. `list_connections` reports allowed modes and approval per mode. No second credentials; Mongo and Redis reads stay app-checked (known limit). Runs after P523.
 - Plan: `plans/P527.md`.
