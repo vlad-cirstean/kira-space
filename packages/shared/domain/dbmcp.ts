@@ -64,6 +64,28 @@ export const kubeReadPayloadSchema = /*#__PURE__*/ z.object({
 });
 export type KubeReadPayload = z.infer<typeof kubeReadPayloadSchema>;
 
+// One param or env entry of a script request. A secret's value is always empty; saved says its value
+// comes from the script's saved secret values.
+export const scriptValueSchema = /*#__PURE__*/ z.object({
+  name: z.string(),
+  value: z.string(),
+  secret: z.boolean(),
+  saved: z.boolean(),
+  fromVar: z.string(),
+});
+export type ScriptValue = z.infer<typeof scriptValueSchema>;
+
+// script.run item payload (dbmcp scriptPayload).
+export const scriptRunPayloadSchema = /*#__PURE__*/ z.object({
+  scriptId: z.string(),
+  description: z.string(),
+  command: z.string(),
+  cwd: z.string(),
+  params: z.array(scriptValueSchema),
+  env: z.array(scriptValueSchema),
+});
+export type ScriptRunPayload = z.infer<typeof scriptRunPayloadSchema>;
+
 // bridge/dbmcp.go's DbMcpPendingResponse: the exact text the AI client receives if the user sends.
 export const dbMcpPendingResponseSchema = /*#__PURE__*/ z.object({
   requestId: z.string(),

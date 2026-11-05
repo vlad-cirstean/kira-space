@@ -159,6 +159,8 @@ type ApprovalRequest struct {
 	Subject string
 	// Origin says which client asked; the tools copy it from the call's context.
 	Origin ApprovalOrigin
+	// Script is set for the script.run subject; Target is then empty.
+	Script *ApprovalScript
 }
 
 // ApprovalOrigin is what the stateless HTTP transport can tell about the caller.
@@ -206,7 +208,7 @@ func NewApprovalBroker(now func() time.Time, q *approvals.Queue) *ApprovalBroker
 		q = approvals.New(nil)
 	}
 	b := &ApprovalBroker{now: now, Queue: q, queue: notify.NewPendingQueue[*approvalEntry]()}
-	for _, kind := range []string{approvals.KindDbQuery, approvals.KindDbResponse, approvals.KindKubeRead} {
+	for _, kind := range []string{approvals.KindDbQuery, approvals.KindDbResponse, approvals.KindKubeRead, approvals.KindScriptRun} {
 		q.Register(kind, brokerOwner{b})
 	}
 	return b
@@ -337,4 +339,24 @@ type ApprovalCluster struct {
 	Namespace string // "" means all namespaces, or none for discovery
 	// Operation is the permission group: discover, list, describe or logs.
 	Operation string
+}
+
+// ApprovalValue is one param or env entry of a script request. A secret's Value is always "".
+type ApprovalValue struct {
+	Name    string
+	Value   string
+	Secret  bool
+	Saved   bool
+	FromVar string
+}
+
+// ApprovalScript names the script run a request would start.
+type ApprovalScript struct {
+	ScriptID    string
+	Name        string
+	Description string
+	Command     string
+	Cwd         string
+	Params      []ApprovalValue
+	Env         []ApprovalValue
 }

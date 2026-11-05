@@ -19,10 +19,12 @@ type OpsControl interface {
 // LiveRun is a running or waiting script run.
 type LiveRun struct {
 	ID, ScriptName, State string
-	StartedAt             *int64
+	// Trigger is what started the run; "mcp" for an agent's.
+	Trigger   string
+	StartedAt *int64
 }
 
-// ScriptRunControl lists and stops script runs, which the Operations panel shows as run:<id> rows.
+// ScriptRunControl lists and stops runs of MCP-exposed scripts, which the Operations panel shows as run:<id> rows.
 type ScriptRunControl interface {
 	Live() ([]LiveRun, error)
 	Stop(id string) error
@@ -98,7 +100,11 @@ func (s *Server) listOperations(_ context.Context, _ *mcp.CallToolRequest, _ lis
 		return nil, nil, err
 	}
 	for _, r := range runs {
-		e := opEntry{OpID: scriptRunPrefix + r.ID, Type: "scriptRun", Kind: "script", Source: "user", Name: r.ScriptName, State: r.State}
+		source := "user"
+		if r.Trigger == "mcp" {
+			source = "mcp"
+		}
+		e := opEntry{OpID: scriptRunPrefix + r.ID, Type: "scriptRun", Kind: "script", Source: source, Name: r.ScriptName, State: r.State}
 		if r.StartedAt != nil {
 			t := time.UnixMilli(*r.StartedAt)
 			e.StartedAt, e.ElapsedMs = t.UTC().Format(time.RFC3339Nano), now.Sub(t).Milliseconds()

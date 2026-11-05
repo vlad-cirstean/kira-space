@@ -1326,7 +1326,7 @@ var DbmcpInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.dbmcpInstructions.title",
 	PurposeKey: "llmPrompts.entry.dbmcpInstructions.description",
 	UsedByKey:  "llmPrompts.entry.dbmcpInstructions.usedBy.body",
-	Default:    "Read and query the databases configured in this Kira Studio app. Only connections the user exposed are visible; start with `list_connections`. Walk structure with `list_children`, passing back a `path` it returned. Levels differ per engine; do not assume a database or schema level exists. `run_query` and `explain_query` need the database's `path` on engines with several databases. `describe_schema` returns every relation's columns in one call, cheaper than one `describe_table` per table. `run_query` runs one statement through the app's SQL console path, under the connection's own permissions; results are capped and say so when truncated. Every query appears in the user's Operations panel. Each `list_connections` entry's `permissions` object names its read/write/DDL mode (deny, allow or prompt) and its `description`, when set, says what the connection is for — read both before calling `run_query`. Run `explain_query` before an expensive-looking query. `run_query` plans it anyway on connections whose owner turned auto-explain on. A connection with masked columns lists them in `list_connections`' own `maskedColumns` field, as \"table.column: kind\" — a masked cell's value is redacted (never the real value), and a trailing `#TAG` is an opaque correlation token, never a literal part of the value: equal values always share a tag, but the tag is short enough that two distinct values can rarely share one too, so treat a tag match as a strong hint toward equality, not proof of it. Kubernetes tools (`kube_*`) are read only; start with `kube_list_clusters` and read each cluster's `permissions` and `description` first. A prompt permission waits up to 10 minutes for the user. `list_operations` shows what is running; `cancel_operation` stops one, including your own long `run_query`.",
+	Default:    "Read and query the databases configured in this Kira Studio app. Only connections the user exposed are visible; start with `list_connections`. Walk structure with `list_children`, passing back a `path` it returned. Levels differ per engine; do not assume a database or schema level exists. `run_query` and `explain_query` need the database's `path` on engines with several databases. `describe_schema` returns every relation's columns in one call, cheaper than one `describe_table` per table. `run_query` runs one statement through the app's SQL console path, under the connection's own permissions; results are capped and say so when truncated. Every query appears in the user's Operations panel. Each `list_connections` entry's `permissions` object names its read/write/DDL mode (deny, allow or prompt) and its `description`, when set, says what the connection is for — read both before calling `run_query`. Run `explain_query` before an expensive-looking query. `run_query` plans it anyway on connections whose owner turned auto-explain on. A connection with masked columns lists them in `list_connections`' own `maskedColumns` field, as \"table.column: kind\" — a masked cell's value is redacted (never the real value), and a trailing `#TAG` is an opaque correlation token, never a literal part of the value: equal values always share a tag, but the tag is short enough that two distinct values can rarely share one too, so treat a tag match as a strong hint toward equality, not proof of it. Kubernetes tools (`kube_*`) are read only; start with `kube_list_clusters` and read each cluster's `permissions` and `description` first. A prompt permission waits up to 10 minutes for the user. `list_operations` shows what is running; `cancel_operation` stops one, including your own long `run_query`. `run_script` runs a `list_scripts` script; read output with `get_script_logs`.",
 }, NoVars{})
 
 // DbmcpToolListConnections describes the list_connections tool.
@@ -1464,6 +1464,48 @@ var DbmcpToolCancelOperation = define(Entry{
 }, NoVars{})
 
 var _ = arg(DbmcpToolCancelOperation.id, "opId", studioApp, NextCall, `Operation id from list_operations.`, NoVars{})
+
+// DbmcpToolListScripts describes the list_scripts tool.
+var DbmcpToolListScripts = define(Entry{
+	ID: "dbmcp.tool.list_scripts", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list_scripts",
+	Default: "List scripts exposed to MCP with description, approval mode and parameters. You can't set secret parameters.",
+}, NoVars{})
+
+// DbmcpToolRunScript describes the run_script tool.
+var DbmcpToolRunScript = define(Entry{
+	ID: "dbmcp.tool.run_script", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "run_script",
+	Default: "Run a script exposed to MCP. Returns run id, state and exit code, never output; call get_script_logs. The user may be asked to approve. A run still going after waitSeconds keeps running; poll get_script_run.",
+}, NoVars{})
+
+var (
+	_ = arg(DbmcpToolRunScript.id, "scriptId", studioApp, NextCall, `Script id from list_scripts.`, NoVars{})
+	_ = arg(DbmcpToolRunScript.id, "params", studioApp, NextCall, `Values by parameter name: a string, or a list for multiselect.`, NoVars{})
+	_ = arg(DbmcpToolRunScript.id, "waitSeconds", studioApp, NextCall, `Seconds to wait for the run to end, 0-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 25, Max: 50})
+)
+
+// DbmcpToolGetScriptRun describes the get_script_run tool.
+var DbmcpToolGetScriptRun = define(Entry{
+	ID: "dbmcp.tool.get_script_run", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "get_script_run",
+	Default: "Read a script run's state, exit code and duration, optionally waiting for it to end. No output; call get_script_logs.",
+}, NoVars{})
+
+var (
+	_ = arg(DbmcpToolGetScriptRun.id, "runId", studioApp, NextCall, `Run id from run_script.`, NoVars{})
+	_ = arg(DbmcpToolGetScriptRun.id, "waitSeconds", studioApp, NextCall, `Seconds to wait for the run to end, 0-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 25, Max: 50})
+)
+
+// DbmcpToolGetScriptLogs describes the get_script_logs tool.
+var DbmcpToolGetScriptLogs = define(Entry{
+	ID: "dbmcp.tool.get_script_logs", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "get_script_logs",
+	Default: "Read a run's stored output: tail or head, at most 500 lines, optional substring filter. Secret values are masked.",
+}, NoVars{})
+
+var (
+	_ = arg(DbmcpToolGetScriptLogs.id, "runId", studioApp, NextCall, `Run id from run_script.`, NoVars{})
+	_ = arg(DbmcpToolGetScriptLogs.id, "from", studioApp, NextCall, `tail: last lines. head: first lines. Default tail.`, NoVars{})
+	_ = arg(DbmcpToolGetScriptLogs.id, "lines", studioApp, NextCall, `Lines to return, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 100, Max: 500})
+	_ = arg(DbmcpToolGetScriptLogs.id, "contains", studioApp, NextCall, `Keep lines containing this text (case-sensitive), before the line cap.`, NoVars{})
+)
 
 // DbmcpToolKubeListClusters describes the kube_list_clusters tool.
 var DbmcpToolKubeListClusters = define(Entry{

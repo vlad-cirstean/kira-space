@@ -119,6 +119,8 @@ type Config struct {
 	// script runs to them; nil means none are listed or stoppable.
 	Ops  OpsControl
 	Runs ScriptRunControl
+	// Scripts backs the script tools; nil leaves them unregistered.
+	Scripts ScriptControl
 	// Prompts resolves the editable instruction and tool texts; nil means the registry defaults.
 	Prompts llmprompts.Source
 	// Logger receives every operational log line. A nil Logger falls back to slog.Default().
@@ -273,6 +275,9 @@ func (s *Server) buildMCPServer() *mcp.Server {
 	}
 	if s.cfg.Ops != nil {
 		s.addOpsTools(srv, src)
+	}
+	if s.cfg.Scripts != nil {
+		s.addScriptTools(srv, src)
 	}
 
 	return srv

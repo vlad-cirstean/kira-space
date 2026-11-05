@@ -1584,6 +1584,9 @@
       "dbMcpResponseNamed": {
         "title": "Review this result · {name}"
       },
+      "dbMcpScript": {
+        "title": "Run script {name}"
+      },
       "gitCredential": {
         "title": "Git needs a credential"
       },

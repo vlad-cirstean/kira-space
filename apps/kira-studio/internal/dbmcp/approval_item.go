@@ -59,6 +59,31 @@ type kubePayload struct {
 	Statement string `json:"statement"`
 }
 
+type valuePayload struct {
+	Name    string `json:"name"`
+	Value   string `json:"value"`
+	Secret  bool   `json:"secret"`
+	Saved   bool   `json:"saved"`
+	FromVar string `json:"fromVar"`
+}
+
+type scriptPayload struct {
+	ScriptID    string         `json:"scriptId"`
+	Description string         `json:"description"`
+	Command     string         `json:"command"`
+	Cwd         string         `json:"cwd"`
+	Params      []valuePayload `json:"params"`
+	Env         []valuePayload `json:"env"`
+}
+
+func valuePayloads(in []ApprovalValue) []valuePayload {
+	out := make([]valuePayload, len(in))
+	for i, v := range in {
+		out[i] = valuePayload(v)
+	}
+	return out
+}
+
 // itemOf projects a request into its approvals item. The statement text rides in the payload in full:
 // a cap that elided the middle would let a hidden clause sit inside the omitted span.
 func itemOf(r ApprovalRequest) approvals.Item {
@@ -74,6 +99,17 @@ func itemOf(r ApprovalRequest) approvals.Item {
 		it.Target = approvals.Target{Name: c.Context, Kind: "kubernetes", Location: kubeLocation(c)}
 		it.Operation = approvals.Operation{Class: "read", Tone: "neutral"}
 		it.Payload = mustJSON(kubePayload{Context: c.Context, Server: c.Server, Namespace: c.Namespace, Operation: c.Operation, Statement: r.Statement})
+	case approvals.KindScriptRun:
+		sc := r.Script
+		if sc == nil {
+			sc = &ApprovalScript{}
+		}
+		it.Target = approvals.Target{Name: sc.Name, Kind: "script", Location: sc.Cwd}
+		it.Operation = approvals.Operation{Class: "run", Tone: "caution"}
+		it.Payload = mustJSON(scriptPayload{
+			ScriptID: sc.ScriptID, Description: sc.Description, Command: sc.Command, Cwd: sc.Cwd,
+			Params: valuePayloads(sc.Params), Env: valuePayloads(sc.Env),
+		})
 	case approvals.KindDbResponse:
 		it.Reason = "preview"
 		it.Target, it.Operation = dbTarget(r)
@@ -144,6 +180,8 @@ func promptTitle(req ApprovalRequest) string {
 	named := req.ConnectionName != ""
 	response := req.Stage == ApprovalStageResponse
 	switch {
+	case req.Subject == approvals.KindScriptRun:
+		return i18n.T("backend.prompt.dbMcpScript.title", map[string]string{"name": req.ConnectionName})
 	case response && named:
 		return i18n.T("backend.prompt.dbMcpResponseNamed.title", map[string]string{"name": req.ConnectionName})
 	case response:
