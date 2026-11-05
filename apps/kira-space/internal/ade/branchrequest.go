@@ -47,6 +47,8 @@ const (
 type branchDecision struct {
 	kind     decisionKind
 	approved map[string]bool // item ids the user kept checked
+	// renameRemote is the user's choice on a rename item: also rename its remote branch.
+	renameRemote bool
 }
 
 type branchRequest struct {
@@ -151,8 +153,8 @@ func (b *TaskBoard) BranchRequest(id string) (adewire.BranchRequest, error) {
 }
 
 // ApproveBranchRequest approves the checked items, a non-empty subset of the request's items; the rest
-// are denied. resolved is false when the request is already gone.
-func (b *TaskBoard) ApproveBranchRequest(id string, itemIDs []string) (bool, error) {
+// are denied. renameRemote applies to a rename item. resolved is false when the request is already gone.
+func (b *TaskBoard) ApproveBranchRequest(id string, itemIDs []string, renameRemote bool) (bool, error) {
 	req, err := b.BranchRequest(id)
 	if err != nil {
 		return false, nil
@@ -167,7 +169,7 @@ func (b *TaskBoard) ApproveBranchRequest(id string, itemIDs []string) (bool, err
 		}
 		approved[iid] = true
 	}
-	return b.resolveBranchRequest(id, branchDecision{kind: decisionApproved, approved: approved}), nil
+	return b.resolveBranchRequest(id, branchDecision{kind: decisionApproved, approved: approved, renameRemote: renameRemote}), nil
 }
 
 // DenyBranchRequest denies every item; resolved is false when the request is already gone.

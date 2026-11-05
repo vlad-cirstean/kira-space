@@ -507,14 +507,18 @@ type Task struct {
 
 // BranchRequestItem is one branch an agent asks work for. ID is the item's key in the request. Kind 'branch':
 // a new branch named Branch from Base (” = the repo's main branch). Kind 'worktree': a worktree for the named,
-// not yet checked out Branch.
+// not yet checked out Branch. Kind 'rename': rename From to Branch; Upstream names the same-named remote branch
+// (such as origin/feat/x) the user may rename too, ” when there is none; Stacked lists the branches built on From.
 type BranchRequestItem struct {
-	ID         string `json:"id"`
-	CodeRepoID string `json:"codeRepoId"`
-	Repo       string `json:"repo"`
-	Kind       string `json:"kind"`
-	Branch     string `json:"branch"`
-	Base       string `json:"base"`
+	ID         string   `json:"id"`
+	CodeRepoID string   `json:"codeRepoId"`
+	Repo       string   `json:"repo"`
+	Kind       string   `json:"kind"`
+	Branch     string   `json:"branch"`
+	Base       string   `json:"base"`
+	From       string   `json:"from"`
+	Upstream   string   `json:"upstream"`
+	Stacked    []string `json:"stacked"`
 }
 
 // BranchRequest is an agent's open request for branches and worktrees. Source is 'run' (a headless step run),
@@ -538,6 +542,8 @@ type BranchRequestArgs struct {
 type ApproveBranchRequestArgs struct {
 	ID      string   `json:"id"`
 	ItemIDs []string `json:"itemIds"`
+	// RenameRemote also renames the remote branch of a rename item.
+	RenameRemote bool `json:"renameRemote"`
 }
 
 // BranchRequestAnswer says whether an approve or deny reached a request still open.

@@ -85,6 +85,37 @@ type RequestBranchesResult struct {
 	Branches []RequestedBranch `json:"branches"`
 }
 
+// Outcomes of rename_branch; renamed, denied, failed and timeout reuse the request_branches words.
+const BranchRenamed = "renamed"
+
+// Remote branch states after rename_branch: renamed, kept (left as it was), untracked (the branch had no
+// remote branch) or failed (the local rename stands).
+const (
+	RemoteRenamed   = "renamed"
+	RemoteKept      = "kept"
+	RemoteUntracked = "untracked"
+	RemoteFailed    = "failed"
+)
+
+// RenameBranchArgs asks to rename a branch of the task.
+type RenameBranchArgs struct {
+	Repo         string `json:"repo"`
+	From         string `json:"from"`
+	To           string `json:"to"`
+	RenameRemote bool   `json:"renameRemote,omitempty"`
+}
+
+// RenameBranchResult is rename_branch's answer.
+type RenameBranchResult struct {
+	Repo     string `json:"repo"`
+	From     string `json:"from"`
+	To       string `json:"to"`
+	Outcome  string `json:"outcome"`
+	Remote   string `json:"remote"`
+	Worktree string `json:"worktree"`
+	Next     string `json:"next"`
+}
+
 // SpaceCall identifies the caller of a Space tool: the task, and the run or stage it works for.
 type SpaceCall struct {
 	TaskID string
@@ -103,6 +134,7 @@ type SpaceTools interface {
 	DeclareRepos(ctx context.Context, taskID string, repos []string) (TaskInfo, error)
 	RequestBranches(ctx context.Context, call SpaceCall, branches []BranchSpec) (RequestBranchesResult, error)
 	BranchStatus(ctx context.Context, taskID, repo, branch string, wait time.Duration) (BranchInfo, error)
+	RenameBranch(ctx context.Context, call SpaceCall, args RenameBranchArgs) (RenameBranchResult, error)
 	ReportArtifacts(ctx context.Context, call SpaceCall, in []ArtifactInput) (ReportArtifactsResult, error)
 	// ListArtifacts lists every artifact of the task; a failing source is a gap, not an error.
 	ListArtifacts(ctx context.Context, taskID string) (TaskArtifacts, error)
@@ -261,6 +293,27 @@ func (s *Server) addSpaceTools(srv *mcp.Server) {
 			return fail("branch_status", err), BranchInfo{}, nil
 		}
 		return nil, info, nil
+	})
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "rename_branch",
+		Description: llmprompts.HeadlessToolRenameBranch.Text(s.prompts, llmprompts.NoVars{}),
+		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[RenameBranchArgs](s.prompts, llmprompts.HeadlessToolRenameBranch.ID(), nil), "repo", "from", "to"),
+	}, func(ctx context.Context, req *mcp.CallToolRequest, args RenameBranchArgs) (*mcp.CallToolResult, RenameBranchResult, error) {
+		call, bad := s.spaceTask(req)
+		if bad != nil {
+			return bad, RenameBranchResult{}, nil
+		}
+		args.From, args.To = strings.TrimSpace(args.From), strings.TrimSpace(args.To)
+		if args.From == "" || args.To == "" || args.From == args.To {
+			return toolError("from and to must be two different branch names."), RenameBranchResult{}, nil
+		}
+		ctx, done := s.callCtx(ctx, req)
+		defer done()
+		res, err := s.space.RenameBranch(ctx, call, args)
+		if err != nil {
+			return fail("rename_branch", err), RenameBranchResult{}, nil
+		}
+		return nil, res, nil
 	})
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "report_artifacts",

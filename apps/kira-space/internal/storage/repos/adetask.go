@@ -927,6 +927,60 @@ func (r *AdeTaskRepo) SetBranchName(id, name string) error {
 	return nil
 }
 
+// RenameBranch renames a created branch row and repoints the rows of its repository that stack on it
+// (by planner link or by base name), base and pending-from alike, in one transaction. Returns those rows' ids.
+func (r *AdeTaskRepo) RenameBranch(id, from, to string) ([]string, error) {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("repos: begin rename ade branch %s: %w", id, err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	var repoID string
+	if err := tx.QueryRow(`SELECT code_repo_id FROM ade_task_branches WHERE id = ? AND name = ?`, id, from).Scan(&repoID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrBranchMissing
+		}
+		return nil, fmt.Errorf("repos: rename ade branch %s: %w", id, err)
+	}
+	if _, err := tx.Exec(`UPDATE ade_task_branches SET name = ? WHERE id = ?`, to, id); err != nil {
+		if isUniqueViolation(err) {
+			return nil, ErrBranchNameTaken
+		}
+		return nil, fmt.Errorf("repos: rename ade branch %s: %w", id, err)
+	}
+	rows, err := tx.Query(`SELECT id FROM ade_task_branches WHERE id <> ? AND code_repo_id = ? AND (base_branch_id = ? OR (base_branch_id = '' AND base = ?))`,
+		id, repoID, id, from)
+	if err != nil {
+		return nil, fmt.Errorf("repos: rename ade branch %s stacked: %w", id, err)
+	}
+	var stacked []string
+	for rows.Next() {
+		var sid string
+		if err := rows.Scan(&sid); err != nil {
+			rows.Close() //nolint:errcheck
+			return nil, fmt.Errorf("repos: rename ade branch %s stacked: %w", id, err)
+		}
+		stacked = append(stacked, sid)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, fmt.Errorf("repos: rename ade branch %s stacked: %w", id, err)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("repos: rename ade branch %s stacked: %w", id, err)
+	}
+	if _, err := tx.Exec(`UPDATE ade_task_branches SET base = ? WHERE id <> ? AND code_repo_id = ? AND (base_branch_id = ? OR (base_branch_id = '' AND base = ?))`,
+		to, id, repoID, id, from); err != nil {
+		return nil, fmt.Errorf("repos: rename ade branch %s bases: %w", id, err)
+	}
+	if _, err := tx.Exec(`UPDATE ade_task_branches SET base_pending_from = ? WHERE code_repo_id = ? AND base_pending_from = ?`, to, repoID, from); err != nil {
+		return nil, fmt.Errorf("repos: rename ade branch %s pending: %w", id, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("repos: commit rename ade branch %s: %w", id, err)
+	}
+	return stacked, nil
+}
+
 // SetBranchOrigin marks who made the branch row ("" user, "agent").
 func (r *AdeTaskRepo) SetBranchOrigin(id, origin string) error {
 	res, err := r.DB.Exec(`UPDATE ade_task_branches SET origin = ? WHERE id = ?`, origin, id)

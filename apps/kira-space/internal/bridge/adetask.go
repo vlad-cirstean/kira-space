@@ -1289,7 +1289,7 @@ func (s *AdeTaskService) ApproveBranchRequest(args adewire.ApproveBranchRequestA
 	if len(args.ItemIDs) == 0 {
 		return adewire.BranchRequestAnswer{}, adeTaskInvalid("itemIds is empty")
 	}
-	resolved, err := s.Engine.ApproveBranchRequest(args.ID, args.ItemIDs)
+	resolved, err := s.Engine.ApproveBranchRequest(args.ID, args.ItemIDs, args.RenameRemote)
 	return adewire.BranchRequestAnswer{Resolved: resolved}, adeTaskError(err)
 }
 

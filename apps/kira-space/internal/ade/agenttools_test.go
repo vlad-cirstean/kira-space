@@ -84,7 +84,7 @@ func requestBranch(ctx context.Context, b *TaskBoard, taskID, repo, branch strin
 					for i, it := range req.Items {
 						ids[i] = it.ID
 					}
-					_, _ = b.ApproveBranchRequest(id, ids)
+					_, _ = b.ApproveBranchRequest(id, ids, false)
 				}
 			}
 		}

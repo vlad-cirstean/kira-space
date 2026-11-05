@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
+	"slices"
 	"strings"
 	"time"
 
@@ -263,7 +264,13 @@ func (b *TaskBoard) checkNewBranchName(ctx context.Context, rec model.CodeRepo, 
 	if !valid {
 		return fmt.Sprintf("%q is not a valid git branch name.", name), nil
 	}
-	if main := b.mainShortName(ctx, rec.ID); main != "" && name == main {
+	return b.reservedBranchText(ctx, rec.ID, name)
+}
+
+// reservedBranchText says why a branch name belongs to the repo itself (its main or an integration
+// branch), "" when it is free for a task branch.
+func (b *TaskBoard) reservedBranchText(ctx context.Context, codeRepoID, name string) (string, error) {
+	if main := b.mainShortName(ctx, codeRepoID); main != "" && name == main {
 		return fmt.Sprintf("%q is the repo's main branch. Pick a new feature branch name.", name), nil
 	}
 	cfgs, err := b.deps.RepoConfig.List()
@@ -271,13 +278,11 @@ func (b *TaskBoard) checkNewBranchName(ctx context.Context, rec model.CodeRepo, 
 		return "", err
 	}
 	for _, c := range cfgs {
-		if c.CodeRepoID != rec.ID {
+		if c.CodeRepoID != codeRepoID {
 			continue
 		}
-		for _, t := range c.IntegrationBranches {
-			if t == name {
-				return fmt.Sprintf("%q is an integration branch of the repo. Pick a new feature branch name.", name), nil
-			}
+		if slices.Contains(c.IntegrationBranches, name) {
+			return fmt.Sprintf("%q is an integration branch of the repo. Pick a new feature branch name.", name), nil
 		}
 	}
 	return "", nil

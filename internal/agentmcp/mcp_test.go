@@ -158,6 +158,11 @@ func (f *fakeSpace) BranchStatus(_ context.Context, task, repo, _ string, _ time
 	return BranchInfo{Repo: repo}, nil
 }
 
+func (f *fakeSpace) RenameBranch(_ context.Context, call SpaceCall, args RenameBranchArgs) (RenameBranchResult, error) {
+	f.rec("rename|" + call.TaskID + "|" + args.From + ">" + args.To)
+	return RenameBranchResult{Repo: args.Repo, From: args.From, To: args.To, Outcome: BranchRenamed, Remote: RemoteKept}, nil
+}
+
 func (f *fakeSpace) ReportArtifacts(_ context.Context, call SpaceCall, in []ArtifactInput) (ReportArtifactsResult, error) {
 	f.rec("report|" + call.TaskID)
 	return ReportArtifactsResult{Recorded: len(in)}, nil
@@ -218,7 +223,7 @@ func TestGrantScopes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if names := toolNames(t, sp); names["finish_step"] || !names["request_branches"] || !names["declare_repos"] || !names["task_info"] || !names["branch_status"] || !names["report_artifacts"] {
+	if names := toolNames(t, sp); names["finish_step"] || !names["request_branches"] || !names["declare_repos"] || !names["task_info"] || !names["branch_status"] || !names["rename_branch"] || !names["report_artifacts"] {
 		t.Fatalf("space-only grant tools = %v", names)
 	}
 	if res, err := sp.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": "done", "summary": "x"}}); err == nil && !res.IsError {

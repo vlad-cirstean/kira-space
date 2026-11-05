@@ -41,6 +41,11 @@ func BranchRenameArgs(from, to string) []string {
 	return []string{"branch", "-m", from, to}
 }
 
+// BranchUnsetUpstreamArgs builds `git branch --unset-upstream <name>`.
+func BranchUnsetUpstreamArgs(name string) []string {
+	return []string{"branch", "--unset-upstream", name}
+}
+
 // BranchRevParseArgs is undo-capture read #1: does the branch even still resolve, immediately
 // before a delete — this is what makes the recovery sha the one that existed right before the
 // delete, not a stale guess.

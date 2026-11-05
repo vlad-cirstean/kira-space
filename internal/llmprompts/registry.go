@@ -938,6 +938,19 @@ var (
 	_ = arg(HeadlessToolBranchStatus.id, "waitSeconds", spaceApp, NextCall, `Seconds to wait for worktree setup, 0 to {{.Max}}. Default 0.`, MaxVars{Max: 600})
 )
 
+// HeadlessToolRenameBranch describes the rename_branch tool.
+var HeadlessToolRenameBranch = define(Entry{
+	ID: "headless.tool.rename_branch", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "rename_branch",
+	Default: `Ask the user to approve renaming one of your task's branches; waits for the answer. The worktree folder stays. Never git branch -m. A pushed branch renames on the remote only if the user agrees. Outcome: renamed, denied, failed or timeout. Refused for main, integration and protected branches, open change requests and sandboxed branches.`,
+}, NoVars{})
+
+var (
+	_ = arg(HeadlessToolRenameBranch.id, "repo", spaceApp, NextCall, `Task repo: nickname, name or code repo id.`, NoVars{})
+	_ = arg(HeadlessToolRenameBranch.id, "from", spaceApp, NextCall, `Current branch name.`, NoVars{})
+	_ = arg(HeadlessToolRenameBranch.id, "to", spaceApp, NextCall, `New branch name. Must not exist yet.`, NoVars{})
+	_ = arg(HeadlessToolRenameBranch.id, "renameRemote", spaceApp, NextCall, `true proposes renaming the remote branch too. The user decides. Default false.`, NoVars{})
+)
+
 // HeadlessToolFetchRemote describes the fetch_remote tool.
 var HeadlessToolFetchRemote = define(Entry{
 	ID: "headless.tool.fetch_remote", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "fetch_remote",

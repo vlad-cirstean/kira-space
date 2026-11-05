@@ -44,6 +44,9 @@ const source = computed(() => {
 });
 
 function itemText(item: BranchRequestItem): string {
+  if (item.kind === 'rename') {
+    return t('space.ade.branchRequest.item.rename.label', { from: item.from, branch: item.branch });
+  }
   if (item.kind === 'worktree') {
     return t('space.ade.branchRequest.item.worktree.label', { branch: item.branch });
   }
@@ -51,6 +54,21 @@ function itemText(item: BranchRequestItem): string {
     ? t('space.ade.branchRequest.item.branch.label', { branch: item.branch, base: item.base })
     : t('space.ade.branchRequest.item.branchMain.label', { branch: item.branch });
 }
+
+const title = computed(() => {
+  const items = request.value?.items ?? [];
+  const key =
+    items.length > 0 && items.every((i) => i.kind === 'rename')
+      ? 'space.ade.branchRequest.renameTitle.title'
+      : 'space.ade.branchRequest.title.title';
+  return t(key, { task: request.value?.taskTitle ?? '' });
+});
+const renames = computed(() =>
+  (request.value?.items ?? []).filter((i) => i.kind === 'rename' && store.selected.includes(i.id)),
+);
+const remoteItem = computed(() => renames.value.find((i) => i.upstream !== ''));
+const stacked = computed(() => renames.value.flatMap((i) => i.stacked));
+const hasCreate = computed(() => (request.value?.items ?? []).some((i) => i.kind !== 'rename'));
 
 function hide(): void {
   store.close();
@@ -68,9 +86,7 @@ async function deny(): Promise<void> {
   <Dialog :open="open" @update:open="(v) => !v && hide()">
     <DialogContent size="md" data-testid="ade-branch-request-dialog">
       <DialogHeader>
-        <DialogTitle>{{
-          t('space.ade.branchRequest.title.title', { task: request?.taskTitle ?? '' })
-        }}</DialogTitle>
+        <DialogTitle>{{ title }}</DialogTitle>
       </DialogHeader>
       <DialogBody class="flex flex-col gap-3 text-kira-md">
         <span class="text-muted-foreground" data-testid="ade-branch-request-source">{{
@@ -94,7 +110,22 @@ async function deny(): Promise<void> {
             <span class="text-muted-foreground">{{ itemText(item) }}</span>
           </li>
         </ul>
-        <FieldDescription>{{ t('space.ade.branchRequest.naming.hint') }}</FieldDescription>
+        <div v-if="remoteItem" class="flex items-center gap-2">
+          <Checkbox
+            id="ade-branch-request-rename-remote"
+            v-model="store.renameRemote"
+            data-testid="ade-branch-request-rename-remote"
+          />
+          <Label for="ade-branch-request-rename-remote">{{
+            t('space.ade.branchRequest.renameRemote.label', { upstream: remoteItem.upstream })
+          }}</Label>
+        </div>
+        <FieldDescription v-if="stacked.length > 0" data-testid="ade-branch-request-stacked">{{
+          t('space.ade.branchRequest.stacked.hint', { branches: stacked.join(', ') })
+        }}</FieldDescription>
+        <FieldDescription v-if="hasCreate">{{
+          t('space.ade.branchRequest.naming.hint')
+        }}</FieldDescription>
         <span class="text-subtle" data-testid="ade-branch-request-expires">{{
           t('common.expiresIn.status', { seconds: remainingSeconds })
         }}</span>

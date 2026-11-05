@@ -8728,12 +8728,21 @@
           "branchMain": {
             "label": "Create {branch} from the repository’s main branch"
           },
+          "rename": {
+            "label": "Rename {from} to {branch}"
+          },
           "worktree": {
             "label": "Worktree for {branch}"
           }
         },
         "naming": {
           "hint": "The agent names each branch. Kira Space picks each worktree folder. Approving adds a repository the task does not have yet."
+        },
+        "renameRemote": {
+          "label": "Also rename {upstream} on the remote"
+        },
+        "renameTitle": {
+          "title": "Rename a branch · {task}"
         },
         "source": {
           "automation": {
@@ -8745,6 +8754,9 @@
           "session": {
             "label": "Session · {step}"
           }
+        },
+        "stacked": {
+          "hint": "The worktree folder stays. Branches built on it follow: {branches}."
         },
         "title": {
           "title": "Branches for {task}"

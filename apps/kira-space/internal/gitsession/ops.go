@@ -75,6 +75,8 @@ type OpRequest struct {
 
 	From string `json:"from,omitempty"` // branchRename
 	To   string `json:"to,omitempty"`
+	// UnsetUpstream drops the renamed branch's tracking ref after the rename; Go callers only.
+	UnsetUpstream bool `json:"-"`
 
 	Message *string `json:"message,omitempty"` // tagCreate
 
@@ -531,6 +533,9 @@ func prepareBranchRename(ctx context.Context, e *RepoEntry, _ ConnID, _ string, 
 	argv := [][]string{gitops.BranchRenameArgs(op.From, op.To)}
 	for _, child := range stackChildrenOf(config, op.From) {
 		argv = append(argv, gitops.StackConfigSetArgs(gitops.StackParentKey(child), op.To))
+	}
+	if op.UnsetUpstream {
+		argv = append(argv, gitops.BranchUnsetUpstreamArgs(op.To))
 	}
 	return prepared{
 		argvList:    argv,

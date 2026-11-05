@@ -17,6 +17,8 @@ export const useAdeBranchRequestStore = defineStore('adeBranchRequest', () => {
   const routed = ref(false);
   /** Unchecked item ids; every item starts checked. */
   const unchecked = ref<string[]>([]);
+  /** The user's choice on a rename item: also rename its remote branch. */
+  const renameRemote = ref(false);
   const query = useBranchRequest(id);
 
   const request = computed(() => query.data.value ?? null);
@@ -29,6 +31,7 @@ export const useAdeBranchRequestStore = defineStore('adeBranchRequest', () => {
     id.value = args.id;
     routed.value = args.routed ?? false;
     unchecked.value = [];
+    renameRemote.value = false;
   }
 
   function close(): void {
@@ -60,7 +63,11 @@ export const useAdeBranchRequestStore = defineStore('adeBranchRequest', () => {
   );
 
   const approval = useAsyncAction(async () => {
-    await approveM.mutateAsync({ id: id.value, itemIds: selected.value });
+    await approveM.mutateAsync({
+      id: id.value,
+      itemIds: selected.value,
+      renameRemote: renameRemote.value,
+    });
     close();
   });
   const denial = useAsyncAction(async () => {
@@ -76,6 +83,7 @@ export const useAdeBranchRequestStore = defineStore('adeBranchRequest', () => {
     routed,
     request,
     selected,
+    renameRemote,
     isOpen,
     error,
     pending,
