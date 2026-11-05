@@ -42,7 +42,7 @@ func TestStatementToolsCheckTheAllowList(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			qr := &tablerRunner{fakeQueryRunner: fakeQueryRunner{class: adapters.ClassRead}, ref: tc.ref}
-			s := &Server{cfg: Config{Conns: conns2, Query: qr, MaskRules: fakeMaskRulesNone{}, ExplainThreshold: func() int { return 1000 }}}
+			s := &Server{cfg: Config{Conns: conns2, Query: qr, MaskRules: fakeMaskRulesNone{}, ColumnReview: fakeColumnReviewNone{}, ExplainThreshold: func() int { return 1000 }}}
 			res, _, err := s.explainQuery(context.Background(), nil, explainQueryArgs{ConnectionID: "c1", SQL: "SELECT 1", Path: path})
 			if tc.block {
 				if err != nil || res == nil || !res.IsError || !strings.Contains(resultText(res), "not listed: shop.public.payroll") {

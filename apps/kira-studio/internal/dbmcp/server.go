@@ -25,6 +25,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/mask"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskreview"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/mcpauth"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/tree"
@@ -98,6 +99,18 @@ type MaskRules interface {
 	List(connectionID string) ([]model.MaskRule, error)
 }
 
+// ColumnReview is dbmcp's consumer-declared interface over *maskreview.Service (P534). A nil
+// Config.ColumnReview is a construction error for the reason MaskRules' is: silently nil would return
+// columns nobody reviewed.
+type ColumnReview interface {
+	// For is the gate's read: the withheld columns of one connection, checked inline when the last check is stale.
+	For(ctx context.Context, summary model.ConnectionSummary) maskreview.Withheld
+	// Cached is the last state without any op, for list_connections.
+	Cached(connectionID string) (maskreview.Withheld, bool)
+	// MarkStale makes the next For check again, after an MCP write or DDL statement.
+	MarkStale(connectionID string)
+}
+
 // Config is everything New needs. Zero-value Home takes the documented default; every other field
 // is required.
 type Config struct {
@@ -116,6 +129,8 @@ type Config struct {
 	Approvals *ApprovalBroker
 	// MaskRules resolves a connection's own masking rules and correlation key (M5 §4.6) — required.
 	MaskRules MaskRules
+	// ColumnReview withholds columns that are new since the user reviewed masking (P534) — required.
+	ColumnReview ColumnReview
 	// ExplainThreshold is the expensive-query row threshold (advanced.expensiveQueryRows) — read
 	// fresh on every call, never cached: a stale threshold silently mis-flags every query after the
 	// user changes it. A plain func rather than an interface, so this package keeps its existing
@@ -210,6 +225,9 @@ func New(cfg Config) (*Server, error) {
 	}
 	if cfg.MaskRules == nil {
 		return nil, fmt.Errorf("dbmcp: Config.MaskRules is required")
+	}
+	if cfg.ColumnReview == nil {
+		return nil, fmt.Errorf("dbmcp: Config.ColumnReview is required")
 	}
 	if cfg.ExplainThreshold == nil {
 		return nil, fmt.Errorf("dbmcp: Config.ExplainThreshold is required")

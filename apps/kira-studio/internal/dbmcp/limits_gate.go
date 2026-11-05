@@ -98,7 +98,7 @@ func (s *Server) limitFailure(connectionID string, cerr error) (*mcp.CallToolRes
 	if errors.As(cerr, &pce) {
 		return errResult(pce.Error())
 	}
-	if set, err := s.cfg.MaskRules.MaskSetFor(connectionID); err != nil || !set.Empty() {
+	if s.maskedConnection(connectionID) {
 		return maskedToolError(cerr)
 	}
 	return toolError(cerr)

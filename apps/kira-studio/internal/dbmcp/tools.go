@@ -60,6 +60,7 @@ func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ li
 		// listing; the render path's own refusal (§4.4) is the real safety backstop regardless.
 		set, serr := allowListOf(c)
 		view.Tables = tablesView(c)
+		view.ColumnReview = s.columnReviewViewOf(c)
 		if rules, err := s.cfg.MaskRules.List(c.ID); err == nil && serr == nil {
 			view.MaskedColumns = maskedColumnsFor(filterMaskRules(set, rules))
 		}
@@ -266,9 +267,9 @@ func (s *Server) runQuery(ctx context.Context, _ *mcp.CallToolRequest, args runQ
 func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv queryResolution, plan *queryplan.Plan, ex *claimedExemption) (res *mcp.CallToolResult, out any, err error, set maskset, executed bool) {
 	// M5 §4.3: resolved before Execute, so a key-store failure fails the call before the query runs,
 	// not after — wasted adapter work on a call that cannot be rendered anyway.
-	set, err = s.cfg.MaskRules.MaskSetFor(args.ConnectionID)
-	if err != nil {
-		return nil, nil, err, set, false
+	set, res, err = s.maskStateFor(ctx, rv.summary)
+	if res != nil || err != nil {
+		return res, nil, err, set, false
 	}
 	var mk *maskset
 	if !set.Empty() {
@@ -321,6 +322,10 @@ func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv que
 		}
 		res, out, err = toolError(err)
 		return res, out, err, set, true
+	}
+	if rv.mode != modeRead {
+		// The statement may have added a column: check again before the next result is returned.
+		s.cfg.ColumnReview.MarkStale(args.ConnectionID)
 	}
 	if len(resp.Pages) == 0 {
 		res, out, err = jsonResult(map[string]any{"kind": "empty", "rowCount": 0, "returned": 0})
@@ -377,12 +382,12 @@ func (s *Server) reviewResponse(ctx context.Context, args runQueryArgs, rv query
 		if _, rerr := s.resolveEnabled(args.ConnectionID); rerr != nil {
 			return errResult(fmt.Sprintf("query against %q ran, but its result was withheld: %s", name, rerr.Error()))
 		}
-		now, merr := s.cfg.MaskRules.MaskSetFor(args.ConnectionID)
-		if merr != nil {
+		now, refusal, merr := s.maskStateFor(ctx, rv.summary)
+		if refusal != nil || merr != nil {
 			return errResult(fmt.Sprintf("query against %q ran, but its masking rules could not be re-checked and its result was withheld", name))
 		}
 		if !now.Equal(rendered) {
-			return errResult(fmt.Sprintf("masking rules for %q changed while its result was in review; run the query again", name))
+			return errResult(fmt.Sprintf("masking rules or column review for %q changed while its result was in review; run the query again", name))
 		}
 		return res, out, err
 	case ApprovalDenied:
@@ -425,7 +430,7 @@ type queryResolution struct {
 	planErr error
 }
 
-// resolveVerdict is runQuery's resolve → check mode → gate → clamp → connect → tighten → tables pipeline.
+// resolveVerdict is runQuery's resolve → check mode → gate → clamp → connect → tighten → tables → column review pipeline.
 // done is true whenever runQuery should return (res, out, err) immediately: every gate here
 // short-circuits execution, so no EXPLAIN work or approval prompt is spent on a refused statement.
 func (s *Server) resolveVerdict(ctx context.Context, args runQueryArgs) (rv queryResolution, res *mcp.CallToolResult, out any, err error, done bool) {
@@ -484,6 +489,10 @@ func (s *Server) resolveVerdict(ctx context.Context, args runQueryArgs) (rv quer
 	}
 	// P532: table allow list, before any exemption, limit, EXPLAIN or approval.
 	if res, out, err := s.checkStatementTables(ctx, rv.summary, args.Path, args.SQL); res != nil || err != nil {
+		return rv, res, out, err, true
+	}
+	// P534: column review, before any exemption, limit, EXPLAIN or approval.
+	if res, out, err := s.checkColumnReview(ctx, rv.summary); res != nil || err != nil {
 		return rv, res, out, err, true
 	}
 	return rv, nil, nil, nil, false
@@ -735,9 +744,9 @@ func (s *Server) explainQuery(ctx context.Context, _ *mcp.CallToolRequest, args 
 	// Finding #4, M6: same masked-error scoping as run_query — a composed EXPLAIN still plans
 	// against the connection's real data, so keep the adapter's driver error value-free here too
 	// when this connection has active mask rules.
-	set, err := s.cfg.MaskRules.MaskSetFor(args.ConnectionID)
-	if err != nil {
-		return nil, nil, err
+	set, refusal, err := s.maskStateFor(ctx, summary)
+	if refusal != nil || err != nil {
+		return refusal, nil, err
 	}
 	var mk *maskset
 	if !set.Empty() {

@@ -57,7 +57,7 @@ func (s *Server) checkStatementTables(ctx context.Context, summary model.Connect
 	}
 	tr, err := tabler.StatementTables(ctx, summary.ID, path, sql)
 	if err != nil {
-		if ms, merr := s.cfg.MaskRules.MaskSetFor(summary.ID); merr != nil || !ms.Empty() {
+		if s.maskedConnection(summary.ID) {
 			return maskedToolError(err)
 		}
 		return toolError(err)

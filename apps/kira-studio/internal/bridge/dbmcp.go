@@ -80,6 +80,7 @@ func NewDbMcpService(deps appcore.Deps, installer harness.MCPInstaller, approval
 				API:              s.API,
 				APISettings:      s.apiSettings,
 				MaskRules:        s.Deps.MaskRules,
+				ColumnReview:     s.Deps.MaskReview,
 				ExplainThreshold: s.explainThreshold,
 				PreviewResponses: s.previewResponses,
 				Logger:           slog.Default(),

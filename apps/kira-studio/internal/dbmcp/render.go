@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"sort"
@@ -12,16 +13,43 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/mask"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskreview"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// maskset aliases mask.Set — dbmcp's own name for the resolved per-connection masking state at
-// call sites (renderPage's own mk parameter), kept distinct from the type's home package for
-// readability; MaskRules.MaskSetFor returns the exact same type.
-type maskset = mask.Set
+// maskset is the masking a render applies: the rules of mask.Set plus the columns withheld until the
+// user reviews them (P534). Embedding keeps RuleFor, Masker and ApplyColumn as they were.
+type maskset struct {
+	mask.Set
+	// withheld holds lowercased result column names to drop.
+	withheld map[string]bool
+}
+
+// Empty reports whether nothing is masked and nothing is withheld.
+func (m maskset) Empty() bool { return m.Set.Empty() && len(m.withheld) == 0 }
+
+// Equal reports whether o applies the same rules, key and withheld names.
+func (m maskset) Equal(o maskset) bool {
+	return m.Set.Equal(o.Set) && maps.Equal(m.withheld, o.withheld)
+}
+
+// names is every column name the guards watch: rule names and withheld names, sorted and unique.
+func (m maskset) names() []string {
+	out := make([]string, 0, len(m.Rules)+len(m.withheld))
+	for n := range m.withheld {
+		out = append(out, n)
+	}
+	for n := range m.Rules {
+		if !m.withheld[n] {
+			out = append(out, n)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
 
 // maskingRefusedError is render's own "cannot mask a document/stream page" refusal (plan §4.4) — a
 // distinct type so runQuery can tell it apart from a genuine internal render fault and surface it
@@ -148,6 +176,39 @@ type connectionView struct {
 	MaskedColumns []string `json:"maskedColumns,omitempty"`
 	// Tables is the table allow list (P532): all, or the exact tables MCP may touch.
 	Tables *allowedTablesView `json:"tables"`
+	// ColumnReview says whether new columns are withheld until the user reviews masking (P534). Omitted for
+	// kinds without column review.
+	ColumnReview *columnReviewView `json:"columnReview,omitempty"`
+}
+
+// columnReviewView is list_connections' column review summary, from cached state only.
+type columnReviewView struct {
+	On bool `json:"on"`
+	// Withheld is the columns results drop, capped at maskedColumnsMaxListed; More counts the rest.
+	Withheld   []string `json:"withheld,omitempty"`
+	More       int      `json:"more,omitempty"`
+	Incomplete bool     `json:"incomplete,omitempty"`
+}
+
+func (s *Server) columnReviewViewOf(c model.ConnectionSummary) *columnReviewView {
+	if !maskreview.Applies(c.Kind) {
+		return nil
+	}
+	v := &columnReviewView{On: c.MaskReviewOn}
+	if !v.On {
+		return v
+	}
+	w, ok := s.cfg.ColumnReview.Cached(c.ID)
+	if !ok {
+		return v
+	}
+	v.Incomplete = w.Incomplete != ""
+	v.Withheld = w.Pending
+	if len(v.Withheld) > maskedColumnsMaxListed {
+		v.More = len(v.Withheld) - maskedColumnsMaxListed
+		v.Withheld = v.Withheld[:maskedColumnsMaxListed]
+	}
+	return v
 }
 
 // maskedColumnsMaxListed is §4.5's own cap — 50 entries, then a trailing "+N more" summary rather
@@ -216,6 +277,10 @@ type tabularResult struct {
 	Returned       int             `json:"returned"`
 	TruncatedCells int             `json:"truncatedCells"`
 	Truncated      bool            `json:"truncated,omitempty"`
+	// WithheldColumns names the result columns dropped because the user has not reviewed their masking
+	// (P534). Names only, never values.
+	WithheldColumns []string `json:"withheldColumns,omitempty"`
+	WithheldNote    string   `json:"withheldNote,omitempty"`
 	planEnvelope
 }
 
@@ -328,13 +393,8 @@ func maskedColumnRenamedOrHidden(statement string, mk *maskset, columns []page.C
 		present[lower] = true
 	}
 	words := statementIdentifierWords(statement)
-	// Deterministic across calls despite map iteration order, for a stable error message.
-	names := make([]string, 0, len(mk.Rules))
-	for name := range mk.Rules {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
+	// names is sorted: the error message is stable despite map iteration order.
+	for _, name := range mk.names() {
 		if !present[name] {
 			if words[name] {
 				return name, true, false
@@ -649,6 +709,19 @@ func newMaskMentionedButAbsentRefusedError(column string) error {
 	)}
 }
 
+// newColumnUnreviewedRefusedError is the refusal for a statement that renames, transforms, filters or sorts on a
+// column the user has not reviewed for masking (P534). The column is named, no value ever.
+func newColumnUnreviewedRefusedError(column string, viaAlias bool) error {
+	use := "filtered or sorted on"
+	if viaAlias {
+		use = "renamed, transformed or reordered"
+	}
+	return &maskingRefusedError{msg: fmt.Sprintf(
+		"this connection has a column the user has not reviewed for masking: %s. It cannot be %s until the user reviews it in the connection's Privacy tab",
+		column, use,
+	)}
+}
+
 // riskyResultTypeClasses is the generic guard: a column's
 // own name matching a mask rule is not the only way a masked value reaches the client — any
 // column whose type can itself carry a whole row or several columns' worth of data bypasses
@@ -767,6 +840,9 @@ func renderPage(p page.Page, maxRows int, plan *planSummary, mk *maskset, statem
 			}
 		}
 		if name, hidden, viaAlias := maskedColumnRenamedOrHidden(statement, mk, pg.Columns); hidden {
+			if mk.withheld[name] {
+				return nil, newColumnUnreviewedRefusedError(name, viaAlias)
+			}
 			if viaAlias {
 				return nil, newMaskRenameRefusedError(name)
 			}
@@ -868,11 +944,39 @@ func columnRules(columns []page.ColumnDescriptor, mk *maskset) []*mask.Rule {
 	return rules
 }
 
+// keptColumns splits the result columns into the indexes kept and the distinct names withheld (P534).
+func keptColumns(columns []page.ColumnDescriptor, mk *maskset) (keep []int, withheld []string) {
+	keep = make([]int, 0, len(columns))
+	seen := map[string]bool{}
+	for i, c := range columns {
+		lower := strings.ToLower(c.Name)
+		if mk == nil || !mk.withheld[lower] {
+			keep = append(keep, i)
+			continue
+		}
+		if !seen[lower] {
+			seen[lower] = true
+			withheld = append(withheld, c.Name)
+		}
+	}
+	return keep, withheld
+}
+
+// withheldNoteFor is the agent-facing reason a column is missing from a result.
+func withheldNoteFor(n int) string {
+	if n == 1 {
+		return "1 column was withheld: it is new on this connection and the user has not reviewed its masking yet. The user has been notified. Do not try to read it another way."
+	}
+	return fmt.Sprintf("%d columns were withheld: they are new on this connection and the user has not reviewed their masking yet. The user has been notified. Do not try to read them another way.", n)
+}
+
 func renderTabularPage(pg page.TabularPage, maxRows int, mk *maskset) tabularResult {
 	returned := cappedReturned(pg.RowCount, maxRows)
-	columns := make([]tabularColumn, len(pg.Columns))
-	for i, c := range pg.Columns {
-		columns[i] = tabularColumn{Name: c.Name, DataType: c.DataType, TypeClass: string(c.TypeClass)}
+	keep, withheld := keptColumns(pg.Columns, mk)
+	columns := make([]tabularColumn, len(keep))
+	for k, i := range keep {
+		c := pg.Columns[i]
+		columns[k] = tabularColumn{Name: c.Name, DataType: c.DataType, TypeClass: string(c.TypeClass)}
 	}
 	rules := columnRules(pg.Columns, mk)
 	var masker *mask.Masker
@@ -884,21 +988,25 @@ func renderTabularPage(pg page.TabularPage, maxRows int, mk *maskset) tabularRes
 	}
 	rows := make([][]*string, returned)
 	for r := 0; r < returned; r++ {
-		row := make([]*string, len(pg.Chunks))
-		for c, chunk := range pg.Chunks {
-			v := cellAt(chunk, r)
+		row := make([]*string, len(keep))
+		for k, c := range keep {
+			v := cellAt(pg.Chunks[c], r)
 			if rules != nil && rules[c] != nil {
 				v = masker.MaskNullable(*rules[c], v)
 			}
-			row[c] = v
+			row[k] = v
 		}
 		rows[r] = row
 	}
-	return tabularResult{
+	res := tabularResult{
 		Kind: "tabular", Columns: columns, Rows: rows,
 		RowCount: pg.RowCount, Returned: returned, TruncatedCells: pg.TruncatedCells,
 		Truncated: returned < pg.RowCount || pg.Position.Truncated,
 	}
+	if len(withheld) > 0 {
+		res.WithheldColumns, res.WithheldNote = withheld, withheldNoteFor(len(withheld))
+	}
+	return res
 }
 
 func renderDocumentPage(pg page.DocumentPage, maxRows int) documentResult {

@@ -223,7 +223,7 @@ func TestColumnRulesResolvesOncePerColumn(t *testing.T) {
 	set := mask.Set{Masker: mask.New(nil), Rules: map[string]mask.Rule{
 		"email": {Kind: mask.KindRedact},
 	}}
-	rules := columnRules(columns, &set)
+	rules := columnRules(columns, &maskset{Set: set})
 	if len(rules) != 3 {
 		t.Fatalf("columnRules len = %d, want 3 (index-aligned with columns)", len(rules))
 	}
@@ -241,7 +241,7 @@ func TestColumnRulesResolvesOncePerColumn(t *testing.T) {
 		t.Fatalf("columnRules(nil Set) = %+v, want nil", got)
 	}
 	empty := mask.Set{}
-	if got := columnRules(columns, &empty); got != nil {
+	if got := columnRules(columns, &maskset{Set: empty}); got != nil {
 		t.Fatalf("columnRules(empty Set) = %+v, want nil", got)
 	}
 }
@@ -263,7 +263,7 @@ func TestRenderTabularPageMasksEveryRowByColumn(t *testing.T) {
 	pg := b.Finish(page.UnpagedPosition(5))
 	set := mask.Set{Masker: mask.New(nil), Rules: map[string]mask.Rule{"email": {Kind: mask.KindRedact}}}
 
-	rendered := renderTabularPage(pg, 200, &set)
+	rendered := renderTabularPage(pg, 200, &maskset{Set: set})
 	for r, row := range rendered.Rows {
 		if row[0] == nil || *row[0] != "1" {
 			t.Fatalf("row %d col 0 (unmasked) = %v, want unchanged \"1\"", r, row[0])
@@ -287,7 +287,7 @@ func TestRenderTabularPageNullPassesThroughUnmasked(t *testing.T) {
 	pg := b.Finish(page.UnpagedPosition(1))
 	set := mask.Set{Masker: mask.New(nil), Rules: map[string]mask.Rule{"email": {Kind: mask.KindRedact}}}
 
-	rendered := renderTabularPage(pg, 200, &set)
+	rendered := renderTabularPage(pg, 200, &maskset{Set: set})
 	if rendered.Rows[0][0] != nil {
 		t.Fatalf("NULL cell in a masked column rendered as %q, want nil (NULL untouched)", *rendered.Rows[0][0])
 	}
@@ -302,7 +302,7 @@ func TestRenderPageRefusesDocumentAndStreamPagesWhenRulesExist(t *testing.T) {
 	db := page.NewDocumentPageBuilder(false)
 	db.Push("id-1", `{"a":1}`)
 	doc := db.Finish(page.UnpagedPosition(1))
-	if _, err := renderPage(doc, 200, nil, &set, ""); err == nil {
+	if _, err := renderPage(doc, 200, nil, &maskset{Set: set}, ""); err == nil {
 		t.Fatal("renderPage(DocumentPage, rules exist) = nil error, want a refusal")
 	} else if !strings.Contains(err.Error(), "document") {
 		t.Fatalf("renderPage(DocumentPage) error = %q, want it to name the document page kind", err.Error())
@@ -312,7 +312,7 @@ func TestRenderPageRefusesDocumentAndStreamPagesWhenRulesExist(t *testing.T) {
 	payload := "payload"
 	sb.Push(page.StreamRow{Body: &payload})
 	stream := sb.Finish(page.UnpagedPosition(1))
-	if _, err := renderPage(stream, 200, nil, &set, ""); err == nil {
+	if _, err := renderPage(stream, 200, nil, &maskset{Set: set}, ""); err == nil {
 		t.Fatal("renderPage(StreamPage, rules exist) = nil error, want a refusal")
 	} else if !strings.Contains(err.Error(), "stream") {
 		t.Fatalf("renderPage(StreamPage) error = %q, want it to name the stream page kind", err.Error())
@@ -323,7 +323,7 @@ func TestRenderPageRefusesDocumentAndStreamPagesWhenRulesExist(t *testing.T) {
 		t.Fatalf("renderPage(DocumentPage, no rules) = %v, want no error", err)
 	}
 	empty := mask.Set{}
-	if _, err := renderPage(stream, 200, nil, &empty, ""); err != nil {
+	if _, err := renderPage(stream, 200, nil, &maskset{Set: empty}, ""); err != nil {
 		t.Fatalf("renderPage(StreamPage, empty Set) = %v, want no error", err)
 	}
 }
@@ -344,20 +344,20 @@ func TestRenderPageRefusesRenamedOrTransformedMaskedColumn(t *testing.T) {
 	}
 	pg := b.Finish(page.UnpagedPosition(1))
 
-	if _, err := renderPage(pg, 200, nil, &set, "SELECT email AS e FROM customers"); err == nil {
+	if _, err := renderPage(pg, 200, nil, &maskset{Set: set}, "SELECT email AS e FROM customers"); err == nil {
 		t.Fatal("renderPage(aliased masked column) = nil error, want a refusal")
 	} else if !strings.Contains(err.Error(), "email") {
 		t.Fatalf("renderPage error = %q, want it to name the masked column", err.Error())
 	}
 
-	if _, err := renderPage(pg, 200, nil, &set, "SELECT lower(email) AS e FROM customers"); err == nil {
+	if _, err := renderPage(pg, 200, nil, &maskset{Set: set}, "SELECT lower(email) AS e FROM customers"); err == nil {
 		t.Fatal("renderPage(masked column wrapped in an expression) = nil error, want a refusal")
 	}
 
 	// A statement that never mentions "email" at all (the query genuinely has nothing to do with
 	// the masked column) must render normally — the refusal is about a mentioned-but-hidden
 	// column, not about column e being unrecognised on its own.
-	if _, err := renderPage(pg, 200, nil, &set, "SELECT id AS e FROM customers"); err != nil {
+	if _, err := renderPage(pg, 200, nil, &maskset{Set: set}, "SELECT id AS e FROM customers"); err != nil {
 		t.Fatalf("renderPage(unrelated column, same alias) = %v, want no error", err)
 	}
 
@@ -369,7 +369,7 @@ func TestRenderPageRefusesRenamedOrTransformedMaskedColumn(t *testing.T) {
 		t.Fatalf("AppendRow: %v", err)
 	}
 	pg2 := b2.Finish(page.UnpagedPosition(1))
-	if _, err := renderPage(pg2, 200, nil, &set, "SELECT email FROM customers"); err != nil {
+	if _, err := renderPage(pg2, 200, nil, &maskset{Set: set}, "SELECT email FROM customers"); err != nil {
 		t.Fatalf("renderPage(masked column by its own name) = %v, want no error", err)
 	}
 
@@ -386,7 +386,7 @@ func TestRenderPageRefusesRenamedOrTransformedMaskedColumn(t *testing.T) {
 		t.Fatalf("AppendRow: %v", err)
 	}
 	pg3 := b3.Finish(page.UnpagedPosition(1))
-	if _, err := renderPage(pg3, 200, nil, &set, "SELECT email, email AS leak FROM customers"); err == nil {
+	if _, err := renderPage(pg3, 200, nil, &maskset{Set: set}, "SELECT email, email AS leak FROM customers"); err == nil {
 		t.Fatal("renderPage(masked column duplicated under a second alias) = nil error, want a refusal")
 	} else if !strings.Contains(err.Error(), "email") {
 		t.Fatalf("renderPage error = %q, want it to name the masked column", err.Error())
@@ -405,7 +405,7 @@ func TestRenderPageRefusesRenamedOrTransformedMaskedColumn(t *testing.T) {
 		t.Fatalf("AppendRow: %v", err)
 	}
 	pg4 := b4.Finish(page.UnpagedPosition(1))
-	if _, err := renderPage(pg4, 200, nil, &set, "SELECT *, email AS leak FROM customers"); err == nil {
+	if _, err := renderPage(pg4, 200, nil, &maskset{Set: set}, "SELECT *, email AS leak FROM customers"); err == nil {
 		t.Fatal("renderPage(SELECT *, email AS leak) = nil error, want a refusal")
 	} else if !strings.Contains(err.Error(), "email") {
 		t.Fatalf("renderPage error = %q, want it to name the masked column", err.Error())
@@ -420,7 +420,7 @@ func TestRenderPageRefusesRenamedOrTransformedMaskedColumn(t *testing.T) {
 		"SELECT email, email || '' FROM customers",
 		"SELECT email, (SELECT email FROM c2 LIMIT 1) FROM customers",
 	} {
-		if _, err := renderPage(pg3, 200, nil, &set, stmt); err == nil {
+		if _, err := renderPage(pg3, 200, nil, &maskset{Set: set}, stmt); err == nil {
 			t.Errorf("renderPage(%q) = nil error, want a refusal", stmt)
 		}
 	}
@@ -428,7 +428,7 @@ func TestRenderPageRefusesRenamedOrTransformedMaskedColumn(t *testing.T) {
 		"SELECT c.email, o.id FROM c JOIN o ON o.email = c.email",
 		`SELECT "email" FROM c ORDER BY email`,
 	} {
-		if _, err := renderPage(pg2, 200, nil, &set, stmt); err != nil {
+		if _, err := renderPage(pg2, 200, nil, &maskset{Set: set}, stmt); err != nil {
 			t.Errorf("renderPage(%q) = %v, want no error", stmt, err)
 		}
 	}
@@ -436,7 +436,7 @@ func TestRenderPageRefusesRenamedOrTransformedMaskedColumn(t *testing.T) {
 	// Filtering on the masked column's own name while also selecting it under that same name
 	// (no second alias anywhere) must still render normally — a WHERE-clause self-reference is
 	// not a second, differently-named projection.
-	if _, err := renderPage(pg2, 200, nil, &set, "SELECT email FROM customers WHERE email = 'x'"); err != nil {
+	if _, err := renderPage(pg2, 200, nil, &maskset{Set: set}, "SELECT email FROM customers WHERE email = 'x'"); err != nil {
 		t.Fatalf("renderPage(masked column selected and filtered by its own name) = %v, want no error", err)
 	}
 
@@ -451,7 +451,7 @@ func TestRenderPageRefusesRenamedOrTransformedMaskedColumn(t *testing.T) {
 		t.Fatalf("AppendRow: %v", err)
 	}
 	pg5 := b5.Finish(page.UnpagedPosition(1))
-	if _, err := renderPage(pg5, 200, nil, &set, "SELECT id FROM customers WHERE email = 'x'"); err == nil {
+	if _, err := renderPage(pg5, 200, nil, &maskset{Set: set}, "SELECT id FROM customers WHERE email = 'x'"); err == nil {
 		t.Fatal("renderPage(masked column filtered but not selected) = nil error, want a refusal")
 	} else if strings.Contains(err.Error(), "renames or transforms") {
 		t.Fatalf("renderPage error = %q, a WHERE-only mention must not claim a rename/transform it never found", err.Error())
@@ -552,7 +552,7 @@ func TestRenderKeyValuePageMasksByFieldName(t *testing.T) {
 	pg := b.Finish(page.UnpagedPosition(2))
 	set := mask.Set{Masker: mask.New(nil), Rules: map[string]mask.Rule{"email": {Kind: mask.KindRedact}}}
 
-	rendered := renderKeyValuePage(pg, 200, &set)
+	rendered := renderKeyValuePage(pg, 200, &maskset{Set: set})
 	if len(rendered.Entries) != 2 {
 		t.Fatalf("len(Entries) = %d, want 2", len(rendered.Entries))
 	}
@@ -591,7 +591,7 @@ func TestRenderPageRefusesRiskyResultColumns(t *testing.T) {
 			}
 			pg := b.Finish(page.UnpagedPosition(1))
 
-			if _, err := renderPage(pg, 200, nil, &set, "SELECT json_agg(t) FROM (SELECT * FROM customers LIMIT 10) t"); err == nil {
+			if _, err := renderPage(pg, 200, nil, &maskset{Set: set}, "SELECT json_agg(t) FROM (SELECT * FROM customers LIMIT 10) t"); err == nil {
 				t.Fatal("renderPage(risky-typed column, rules exist) = nil error, want a refusal")
 			} else if !strings.Contains(err.Error(), "json_agg") {
 				t.Fatalf("renderPage error = %q, want it to name the risky column", err.Error())
@@ -672,7 +672,7 @@ func TestRefuseRiskyStatementSyntax(t *testing.T) {
 		t.Fatalf("AppendRow: %v", err)
 	}
 	pg := b.Finish(page.UnpagedPosition(1))
-	if _, err := renderPage(pg, 200, nil, &set, `SELECT U&"\0065mail" AS x FROM customers`); err == nil {
+	if _, err := renderPage(pg, 200, nil, &maskset{Set: set}, `SELECT U&"\0065mail" AS x FROM customers`); err == nil {
 		t.Fatal(`renderPage(U&"..." identifier bypass) = nil error, want a refusal`)
 	}
 
@@ -696,7 +696,7 @@ func TestRenderPageRefusesColumnlessKeyValuePage(t *testing.T) {
 	b.Push("0", "person@example.com")
 	pg := b.Finish(page.UnpagedPosition(1))
 
-	if _, err := renderPage(pg, 200, nil, &set, "SMEMBERS emails"); err == nil {
+	if _, err := renderPage(pg, 200, nil, &maskset{Set: set}, "SMEMBERS emails"); err == nil {
 		t.Fatal("renderPage(columnless keyvalue page, rules exist) = nil error, want a refusal")
 	}
 
@@ -710,7 +710,7 @@ func TestRenderPageRefusesColumnlessKeyValuePage(t *testing.T) {
 	hb := page.NewKeyValuePageBuilder("hash", nil, nil, false)
 	hb.Push("email", "person@example.com")
 	hashPage := hb.Finish(page.UnpagedPosition(1))
-	if _, err := renderPage(hashPage, 200, nil, &set, "HGETALL user:1"); err != nil {
+	if _, err := renderPage(hashPage, 200, nil, &maskset{Set: set}, "HGETALL user:1"); err != nil {
 		t.Fatalf("renderPage(hash keyvalue page, real field names) = %v, want no error", err)
 	}
 }
@@ -718,7 +718,7 @@ func TestRenderPageRefusesColumnlessKeyValuePage(t *testing.T) {
 func TestSetOpMovesMaskedColumn(t *testing.T) {
 	cols := []page.ColumnDescriptor{{Name: "name"}, {Name: "email"}}
 	set := mask.Set{Masker: mask.New(nil), Rules: map[string]mask.Rule{"email": {Kind: mask.KindRedact}}}
-	mk := &set
+	mk := &maskset{Set: set}
 	tests := []struct {
 		name, stmt string
 		refuse     bool
@@ -740,5 +740,58 @@ func TestSetOpMovesMaskedColumn(t *testing.T) {
 				t.Fatalf("refuse = %v, want %v", hidden, tc.refuse)
 			}
 		})
+	}
+}
+
+func TestRenderPageWithheldColumns(t *testing.T) {
+	mk := &maskset{
+		Set:      mask.Set{Masker: mask.New(nil), Rules: map[string]mask.Rule{"email": {Kind: mask.KindRedact}}},
+		withheld: map[string]bool{"secret": true},
+	}
+	cols := []page.ColumnDescriptor{
+		{Name: "id", DataType: "int4", TypeClass: page.TypeClassNumber},
+		{Name: "email", DataType: "text", TypeClass: page.TypeClassText},
+		{Name: "secret", DataType: "text", TypeClass: page.TypeClassText},
+	}
+	build := func(names ...string) page.TabularPage {
+		var use []page.ColumnDescriptor
+		row := []*string{}
+		for _, n := range names {
+			for _, c := range cols {
+				if c.Name == n {
+					use = append(use, c)
+					v := "x"
+					row = append(row, &v)
+				}
+			}
+		}
+		b := page.NewTabularPageBuilder(use)
+		if err := b.AppendRow(row); err != nil {
+			t.Fatalf("AppendRow: %v", err)
+		}
+		return b.Finish(page.UnpagedPosition(1))
+	}
+
+	got, err := renderPage(build("id", "email", "secret"), 200, nil, mk, "SELECT * FROM t")
+	if err != nil {
+		t.Fatalf("renderPage(SELECT *): %v", err)
+	}
+	res := got.(tabularResult)
+	if len(res.Columns) != 2 || len(res.WithheldColumns) != 1 || res.WithheldColumns[0] != "secret" || res.WithheldNote == "" {
+		t.Fatalf("columns=%d withheld=%v note=%q, want secret dropped with a note", len(res.Columns), res.WithheldColumns, res.WithheldNote)
+	}
+	if c := res.Rows[0][1]; c != nil && *c == "x" {
+		t.Fatalf("masked column still carries its value: %v", res.Rows[0])
+	}
+
+	for _, stmt := range []string{
+		"SELECT secret AS s FROM t",
+		"SELECT upper(secret) FROM t",
+		"SELECT id FROM t WHERE secret = 'a'",
+		"SELECT id FROM t ORDER BY secret",
+	} {
+		if _, err := renderPage(build("id"), 200, nil, mk, stmt); err == nil {
+			t.Fatalf("renderPage(%q) = nil error, want a refusal", stmt)
+		}
 	}
 }

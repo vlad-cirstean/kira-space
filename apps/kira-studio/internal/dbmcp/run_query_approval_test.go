@@ -11,6 +11,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/mask"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskreview"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -74,6 +75,16 @@ func (f *fakeQueryRunner) ExecuteRead(context.Context, adapterhost.ExecuteReques
 	return adapterhost.ExecuteResponse{}, nil
 }
 
+type fakeColumnReviewNone struct{}
+
+func (fakeColumnReviewNone) For(context.Context, model.ConnectionSummary) maskreview.Withheld {
+	return maskreview.Withheld{}
+}
+func (fakeColumnReviewNone) Cached(string) (maskreview.Withheld, bool) {
+	return maskreview.Withheld{}, false
+}
+func (fakeColumnReviewNone) MarkStale(string) {}
+
 type fakeMaskRulesNone struct{}
 
 func (fakeMaskRulesNone) MaskSetFor(string) (mask.Set, error)   { return mask.Set{}, nil }
@@ -92,7 +103,7 @@ func TestRunQueryRefusesApprovedWriteAfterPermissionRevokedMidWait(t *testing.T)
 	qr := &fakeQueryRunner{class: adapters.ClassWrite}
 	approvals := NewApprovalBroker(time.Now, nil)
 	s := &Server{cfg: Config{
-		Conns: conns, Query: qr, Approvals: approvals, MaskRules: fakeMaskRulesNone{},
+		Conns: conns, Query: qr, Approvals: approvals, MaskRules: fakeMaskRulesNone{}, ColumnReview: fakeColumnReviewNone{},
 		ExplainThreshold: func() int { return 1000 },
 		PreviewResponses: func() bool { return false },
 	}}
@@ -171,7 +182,7 @@ func TestRunQueryModePicksConnection(t *testing.T) {
 		}}
 		qr := &fakeQueryRunner{class: tc.class}
 		s := &Server{cfg: Config{
-			Conns: conns, Query: qr, Approvals: NewApprovalBroker(time.Now, nil), MaskRules: fakeMaskRulesNone{},
+			Conns: conns, Query: qr, Approvals: NewApprovalBroker(time.Now, nil), MaskRules: fakeMaskRulesNone{}, ColumnReview: fakeColumnReviewNone{},
 			ExplainThreshold: func() int { return 1000 },
 			PreviewResponses: func() bool { return false },
 		}}
