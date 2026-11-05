@@ -7,7 +7,7 @@ import type { TextPart } from '@theme/varText';
 import { computed } from 'vue';
 import type { Tone } from '../board/actions';
 import { STATUS_TEXT_CLASS } from '../statusColors';
-import { TONE_SOLID_CLASS, TONE_TEXT_CLASS } from '../tones';
+import { SOLID_CLASS, TONE_TEXT_CLASS } from '../tones';
 import type { StatusColor } from '../wire';
 import type { Glyph } from './glyphs';
 
@@ -28,7 +28,7 @@ const cls = computed(() => {
   if (g.urgent) {
     return [
       'size-5 rounded-full inline-flex items-center justify-center',
-      TONE_SOLID_CLASS[props.tone ?? 'red'],
+      SOLID_CLASS[props.tone ?? 'red'],
     ];
   }
   if (props.color) return ['inline-flex', STATUS_TEXT_CLASS[props.color]];

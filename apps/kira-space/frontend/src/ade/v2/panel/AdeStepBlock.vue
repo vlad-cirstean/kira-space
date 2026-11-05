@@ -20,7 +20,7 @@ import { useReviewCode } from '../review/useReviewCode';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
-import { ACTION_CLASS, TONE_SOLID_CLASS, TONE_TEXT_CLASS } from '../tones';
+import { ACTION_CLASS, TONE_TEXT_CLASS } from '../tones';
 import AdeRow from './AdeRow.vue';
 import AdeRowDetail from './AdeRowDetail.vue';
 import AdeRunLog from './AdeRunLog.vue';
@@ -262,7 +262,7 @@ function logToggleLabel(runId: string): string {
             variant="dialog"
             size="kira"
             class="shrink-0"
-            :class="TONE_SOLID_CLASS.amber"
+            :class="ACTION_CLASS.amber"
             data-testid="ade-step-approve"
             @click="onApprove(block.step.id)"
           >
@@ -364,7 +364,7 @@ function logToggleLabel(runId: string): string {
               variant="dialog"
               size="kira"
               class="shrink-0"
-              :class="TONE_SOLID_CLASS.red"
+              :class="ACTION_CLASS.red"
               data-testid="ade-run-retry"
               @click="onRetry(rl.run.runId)"
             >

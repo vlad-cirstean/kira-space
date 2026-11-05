@@ -20,18 +20,24 @@ export const TONE_TAG_CLASS: Record<Tone, string> = {
   grey: 'bg-tone-grey-tint text-tone-grey',
 };
 
-/** Solid button (tone solid, fixed ink: a themed ink loses contrast under another theme). */
-export const TONE_SOLID_CLASS: Record<Tone, string> = {
+/** Solid indicator fill (never a button; fixed ink: a themed ink loses contrast under another theme). */
+export const SOLID_CLASS: Record<Tone | 'agent', string> = {
   amber: 'bg-tone-amber-solid text-tone-ink border-transparent',
   red: 'bg-tone-red-solid text-tone-ink border-transparent',
   green: 'bg-tone-green-solid text-tone-ink border-transparent',
   blue: 'bg-tone-blue-solid text-tone-ink border-transparent',
   purple: 'bg-tone-purple-solid text-tone-ink border-transparent',
   grey: 'bg-tone-grey-solid text-tone-ink border-transparent',
+  agent: 'bg-agent text-tone-ink border-transparent',
 };
 
-/** Solid of a task action: its tone, or the agent colour for a launch (`▶ Run`). */
+/** Outline of a task action: its tone, or the agent colour for a launch (`▶ Run`). */
 export const ACTION_CLASS: Record<TaskAction['tone'] | Tone, string> = {
-  ...TONE_SOLID_CLASS,
-  agent: 'bg-agent text-tone-ink border-transparent',
+  amber: 'border-tone-amber text-tone-amber',
+  red: 'border-error text-error',
+  green: 'border-tone-green text-tone-green',
+  blue: 'border-tone-blue text-tone-blue',
+  purple: 'border-tone-purple text-tone-purple',
+  grey: 'border-tone-grey text-tone-grey',
+  agent: 'border-agent text-agent',
 };

@@ -31,7 +31,7 @@ import AdeSessionsTab from '../sessions/AdeSessionsTab.vue';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
-import { ACTION_CLASS, TONE_SOLID_CLASS } from '../tones';
+import { ACTION_CLASS } from '../tones';
 import { useMarkTrackedSeen } from '../updates/queries';
 import { useTaskUpdates } from '../updates/useTaskUpdates';
 import type { ChangeRequest, Deployment, Integration, Run } from '../wire';
@@ -318,7 +318,7 @@ function deployNote(d: Deployment): string {
           variant="dialog"
           v-if="setupFailed"
           size="kira-lg"
-          :class="TONE_SOLID_CLASS.amber"
+          :class="ACTION_CLASS.amber"
           data-testid="ade-panel-retry-setup"
           @click="onRetrySetup"
         >
@@ -328,7 +328,7 @@ function deployNote(d: Deployment): string {
           <Button
             variant="dialog"
             size="kira-lg"
-            :class="TONE_SOLID_CLASS.amber"
+            :class="ACTION_CLASS.amber"
             data-testid="ade-panel-force-push"
             @click="forcePush = true"
           >

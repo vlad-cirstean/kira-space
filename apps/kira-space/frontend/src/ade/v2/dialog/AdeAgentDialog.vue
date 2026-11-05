@@ -326,9 +326,8 @@ async function discard(): Promise<void> {
         >
         <AdeTip v-if="view.isArchive" :text="t('space.ade.agentDialog.deleteAnyway.tooltip')">
           <Button
-            variant="dialog"
+            variant="dialog-danger"
             size="kira-lg"
-            class="border-tone-red-solid bg-transparent text-tone-red"
             :pending="sending"
             data-testid="ade-dialog-delete"
             @click="discard"
