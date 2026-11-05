@@ -641,33 +641,43 @@ type explainQueryResult struct {
 	ThresholdRows int `json:"thresholdRows"`
 }
 
+// explainPreflight runs the explain_query checks that need no connection. A non-empty msg refuses the call.
+func (s *Server) explainPreflight(args explainQueryArgs) (model.ConnectionSummary, modes, string, error) {
+	summary, err := s.resolveEnabled(args.ConnectionID)
+	if err != nil {
+		return summary, modes{}, "", err
+	}
+	if msg := needsDatabasePath(summary, args.Path); msg != "" {
+		return summary, modes{}, msg, nil
+	}
+	// §7: unsupported kinds are refused before connecting — nothing this call can do will succeed.
+	if !queryplan.Supported(summary.Kind) {
+		return summary, modes{}, fmt.Sprintf("connection %q (%s) has no EXPLAIN this app can parse", summary.Name, summary.Kind), nil
+	}
+	// §8.1: explain_query accepts only what queryplan.Explainable accepts — a DELETE/UPDATE never
+	// gets its own EXPLAIN path (ClickHouse's EXPLAIN can execute its target on some forms).
+	if !queryplan.Explainable(args.SQL) {
+		return summary, modes{}, "explain_query only accepts a SELECT or WITH statement", nil
+	}
+	m := modesOf(summary)
+	if m.read == "deny" {
+		return summary, m, fmt.Sprintf("connection %q's MCP permissions deny read statements; change them in the connection's MCP tab", summary.Name), nil
+	}
+	return summary, m, "", nil
+}
+
 // explainQuery plans one SELECT/WITH statement without running it (the gate order):
 // resolve → kind support → explainability → read-mode deny (before connecting) → connect →
 // classify-assert every composed statement as a read → verdict on the read mode (prompt
 // raises the approval, carrying the composed statement) → execute → parse → project, dropping Raw
 // unless IncludeRaw.
 func (s *Server) explainQuery(ctx context.Context, _ *mcp.CallToolRequest, args explainQueryArgs) (*mcp.CallToolResult, any, error) {
-	summary, err := s.resolveEnabled(args.ConnectionID)
+	summary, m, msg, err := s.explainPreflight(args)
 	if err != nil {
 		return errResult(err.Error())
 	}
-	if msg := needsDatabasePath(summary, args.Path); msg != "" {
+	if msg != "" {
 		return errResult(msg)
-	}
-
-	// §7: unsupported kinds are refused before connecting — nothing this call can do will succeed.
-	if !queryplan.Supported(summary.Kind) {
-		return errResult(fmt.Sprintf("connection %q (%s) has no EXPLAIN this app can parse", summary.Name, summary.Kind))
-	}
-	// §8.1: explain_query accepts only what queryplan.Explainable accepts — a DELETE/UPDATE never
-	// gets its own EXPLAIN path (ClickHouse's EXPLAIN can execute its target on some forms).
-	if !queryplan.Explainable(args.SQL) {
-		return errResult("explain_query only accepts a SELECT or WITH statement")
-	}
-
-	m := modesOf(summary)
-	if m.read == "deny" {
-		return errResult(fmt.Sprintf("connection %q's MCP permissions deny read statements; change them in the connection's MCP tab", summary.Name))
 	}
 
 	state, err := s.connectForQuery(ctx, args.ConnectionID)

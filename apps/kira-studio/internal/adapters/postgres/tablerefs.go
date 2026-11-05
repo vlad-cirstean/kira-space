@@ -116,60 +116,69 @@ func (w *pgWalker) statement(stmt map[string]any) {
 			return
 		}
 		body, _ := val.(map[string]any)
-		switch key {
-		case "ExplainStmt":
-			if q, ok := body["query"].(map[string]any); ok {
-				w.statement(q)
-			}
+		if w.statementKind(key, body) {
 			return
-		case "DropStmt":
-			if !pgRelationObjects[str(body["removeType"])] {
-				w.refuse("statement DROP " + str(body["removeType"]))
-				return
-			}
-			for _, o := range list(body["objects"]) {
-				w.nameList(o, 0)
-			}
-			return
-		case "CommentStmt":
-			switch t := str(body["objtype"]); {
-			case pgRelationObjects[t]:
-				w.nameList(body["object"], 0)
-			case t == "OBJECT_COLUMN":
-				w.nameList(body["object"], 1)
-			default:
-				w.refuse("statement COMMENT ON " + t)
-			}
-			return
-		case "AlterTableStmt":
-			if t := str(body["objtype"]); !pgRelationObjects[t] {
-				w.refuse("statement ALTER " + t)
-				return
-			}
-		case "RenameStmt":
-			t := str(body["renameType"])
-			if !pgRelationObjects[t] && t != "OBJECT_COLUMN" && t != "OBJECT_TABCONSTRAINT" {
-				w.refuse("statement RENAME " + t)
-				return
-			}
-			if pgRelationObjects[t] {
-				if rv, ok := body["relation"].(map[string]any); ok && str(body["newname"]) != "" {
-					w.addRef(str(rv["catalogname"]), str(rv["schemaname"]), str(body["newname"]))
-				}
-			}
-		case "GrantStmt":
-			if str(body["objtype"]) != "OBJECT_TABLE" || str(body["targtype"]) != "ACL_TARGET_OBJECT" {
-				w.refuse("statement GRANT on " + str(body["objtype"]))
-				return
-			}
-		case "VacuumStmt":
-			if len(list(body["rels"])) == 0 {
-				w.refuse("VACUUM or ANALYZE without table names")
-				return
-			}
 		}
 		w.walkStruct(key, body, nil)
 	}
+}
+
+// statementKind handles the kinds with relations outside RangeVars. It reports true once the statement is
+// fully handled or refused.
+func (w *pgWalker) statementKind(key string, body map[string]any) bool {
+	switch key {
+	case "ExplainStmt":
+		if q, ok := body["query"].(map[string]any); ok {
+			w.statement(q)
+		}
+		return true
+	case "DropStmt":
+		if !pgRelationObjects[str(body["removeType"])] {
+			w.refuse("statement DROP " + str(body["removeType"]))
+			return true
+		}
+		for _, o := range list(body["objects"]) {
+			w.nameList(o, 0)
+		}
+		return true
+	case "CommentStmt":
+		switch t := str(body["objtype"]); {
+		case pgRelationObjects[t]:
+			w.nameList(body["object"], 0)
+		case t == "OBJECT_COLUMN":
+			w.nameList(body["object"], 1)
+		default:
+			w.refuse("statement COMMENT ON " + t)
+		}
+		return true
+	case "AlterTableStmt":
+		if t := str(body["objtype"]); !pgRelationObjects[t] {
+			w.refuse("statement ALTER " + t)
+			return true
+		}
+	case "RenameStmt":
+		t := str(body["renameType"])
+		if !pgRelationObjects[t] && t != "OBJECT_COLUMN" && t != "OBJECT_TABCONSTRAINT" {
+			w.refuse("statement RENAME " + t)
+			return true
+		}
+		if pgRelationObjects[t] {
+			if rv, ok := body["relation"].(map[string]any); ok && str(body["newname"]) != "" {
+				w.addRef(str(rv["catalogname"]), str(rv["schemaname"]), str(body["newname"]))
+			}
+		}
+	case "GrantStmt":
+		if str(body["objtype"]) != "OBJECT_TABLE" || str(body["targtype"]) != "ACL_TARGET_OBJECT" {
+			w.refuse("statement GRANT on " + str(body["objtype"]))
+			return true
+		}
+	case "VacuumStmt":
+		if len(list(body["rels"])) == 0 {
+			w.refuse("VACUUM or ANALYZE without table names")
+			return true
+		}
+	}
+	return false
 }
 
 // nameList reads a DropStmt/CommentStmt object: a List of String parts, the last dropTail of which are not
@@ -276,27 +285,7 @@ func (w *pgWalker) walkStruct(typ string, body map[string]any, sc scope) {
 		return
 	}
 	if wc, ok := body["withClause"].(map[string]any); ok {
-		ctes := list(wc["ctes"])
-		recursive, _ := wc["recursive"].(bool)
-		var names []string
-		for _, c := range ctes {
-			if cte, ok := node(c, "CommonTableExpr"); ok {
-				names = append(names, str(cte["ctename"]))
-			}
-		}
-		all := sc.with(names...)
-		for i, c := range ctes {
-			cte, ok := node(c, "CommonTableExpr")
-			if !ok {
-				continue
-			}
-			bodySc := all
-			if !recursive {
-				bodySc = sc.with(names[:i]...)
-			}
-			w.walk(cte["ctequery"], bodySc)
-		}
-		sc = all
+		sc = w.withScope(wc, sc)
 	}
 	dml := typ == "InsertStmt" || typ == "UpdateStmt" || typ == "DeleteStmt" || typ == "MergeStmt"
 	for k, val := range body {
@@ -310,6 +299,31 @@ func (w *pgWalker) walkStruct(typ string, body map[string]any, sc scope) {
 			w.walk(val, sc)
 		}
 	}
+}
+
+// withScope walks the CTE queries of a WITH clause and returns the scope the rest of the statement sees.
+func (w *pgWalker) withScope(wc map[string]any, sc scope) scope {
+	ctes := list(wc["ctes"])
+	recursive, _ := wc["recursive"].(bool)
+	var names []string
+	for _, c := range ctes {
+		if cte, ok := node(c, "CommonTableExpr"); ok {
+			names = append(names, str(cte["ctename"]))
+		}
+	}
+	all := sc.with(names...)
+	for i, c := range ctes {
+		cte, ok := node(c, "CommonTableExpr")
+		if !ok {
+			continue
+		}
+		bodySc := all
+		if !recursive {
+			bodySc = sc.with(names[:i]...)
+		}
+		w.walk(cte["ctequery"], bodySc)
+	}
+	return all
 }
 
 func (w *pgWalker) funcCall(body map[string]any) {

@@ -137,28 +137,38 @@ func (v *myVisitor) Enter(n ast.Node) (ast.Node, bool) {
 	if p := withOf(n); p != nil && *p != nil {
 		wc := *p
 		*p = nil // visit the rest of the statement below, under the CTE scope
-		names := make([]string, len(wc.CTEs))
-		for i, c := range wc.CTEs {
-			names[i] = c.Name.L
-		}
-		all := v.extend(names...)
-		for i, c := range wc.CTEs {
-			sc := all
-			if !wc.IsRecursive {
-				sc = v.extend(names[:i]...)
-			}
-			c.Query.Accept(&myVisitor{w: v.w, scope: sc})
-		}
-		rest := all
-		switch n.(type) {
-		case *ast.UpdateStmt, *ast.DeleteStmt:
-			// The target of UPDATE/DELETE is a real table even when a CTE shares its name; a CTE used as a
-			// source is then over-checked as a real table too, which only ever refuses more.
-			rest = v.scope
-		}
-		n.Accept(&myVisitor{w: v.w, scope: rest})
+		v.enterWith(n, wc)
 		return n, true
 	}
+	v.enterNode(n)
+	return n, false
+}
+
+// enterWith visits the CTE queries under their scopes, then the rest of the statement.
+func (v *myVisitor) enterWith(n ast.Node, wc *ast.WithClause) {
+	names := make([]string, len(wc.CTEs))
+	for i, c := range wc.CTEs {
+		names[i] = c.Name.L
+	}
+	all := v.extend(names...)
+	for i, c := range wc.CTEs {
+		sc := all
+		if !wc.IsRecursive {
+			sc = v.extend(names[:i]...)
+		}
+		c.Query.Accept(&myVisitor{w: v.w, scope: sc})
+	}
+	rest := all
+	switch n.(type) {
+	case *ast.UpdateStmt, *ast.DeleteStmt:
+		// The target of UPDATE/DELETE is a real table even when a CTE shares its name; a CTE used as a
+		// source is then over-checked as a real table too, which only ever refuses more.
+		rest = v.scope
+	}
+	n.Accept(&myVisitor{w: v.w, scope: rest})
+}
+
+func (v *myVisitor) enterNode(n ast.Node) {
 	switch t := n.(type) {
 	case *ast.TableName:
 		if t.IsAlias || v.w.skip[t] {
@@ -190,7 +200,6 @@ func (v *myVisitor) Enter(n ast.Node) (ast.Node, bool) {
 			}
 		}
 	}
-	return n, false
 }
 
 func (v *myVisitor) Leave(n ast.Node) (ast.Node, bool) { return n, true }

@@ -113,20 +113,17 @@ func TestDbMcpTableAllowList(t *testing.T) {
 		t.Fatal("list_children found no database node")
 	}
 	var names []string
-	var notesPath, secretPath string
+	var notesPath string
 	for _, n := range nodes(mainPath) {
 		names = append(names, n.Name)
-		switch n.Name {
-		case "notes":
+		if n.Name == "notes" {
 			notesPath = n.Path
-		case "secret":
-			secretPath = n.Path
 		}
 	}
 	if notesPath == "" || len(names) != 1 {
 		t.Fatalf("list_children under a list = %v, want only notes", names)
 	}
-	secretPath = strings.Replace(notesPath, "notes", "secret", 1)
+	secretPath := strings.Replace(notesPath, "notes", "secret", 1)
 	if r := tool("describe_table", map[string]any{"connectionId": f.connID, "path": notesPath}); r.IsError {
 		t.Fatalf("describe_table notes = %q", text(r))
 	}
