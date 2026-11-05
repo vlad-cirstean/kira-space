@@ -67,7 +67,10 @@ export function useApprovalActions() {
         approve,
         options: Object.keys(options).length > 0 ? options : undefined,
       });
-      for (const r of results) if (r.error) store.fail(r.id, r.error);
+      for (const r of results) {
+        if (r.error) store.fail(r.id, r.error);
+        else store.done(r.id);
+      }
     } catch (e) {
       for (const id of ids) store.fail(id, errorText(e));
     }

@@ -67,6 +67,19 @@ test('contract: the item lists every branch and Approve sends the checked items'
   });
 });
 
+test('an answered item that stays listed (late call) can be approved again', async ({
+  relaunch,
+}) => {
+  const { page, control, it } = await openRequest(relaunch);
+  const dialog = page.locator(t('approvals-dialog'));
+  const approve = dialog.locator(t(`approval-approve-${it.id}`));
+  await approve.click();
+  await expect.poll(() => calls(control, IPC.approvalsAnswer)).toHaveLength(1);
+  await expect(approve).toBeEnabled();
+  await approve.click();
+  await expect.poll(() => calls(control, IPC.approvalsAnswer)).toHaveLength(2);
+});
+
 test('Deny answers the item with a denial', async ({ relaunch }) => {
   const { page, control, it } = await openRequest(relaunch);
   await page.locator(t(`approval-deny-${it.id}`)).click();

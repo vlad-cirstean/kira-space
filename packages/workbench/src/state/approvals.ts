@@ -31,6 +31,11 @@ export const useApprovalsStore = defineStore('approvals', () => {
     );
   }
 
+  // An answered item that stays listed (a partially answered branch.request) is answerable again.
+  function done(id: string): void {
+    answering.value = answering.value.filter((a) => a !== id);
+  }
+
   function fail(id: string, message: string): void {
     answering.value = answering.value.filter((a) => a !== id);
     errors.value = { ...errors.value, [id]: message };
@@ -60,6 +65,7 @@ export const useApprovalsStore = defineStore('approvals', () => {
     open,
     setOption,
     begin,
+    done,
     fail,
     prune,
   };
