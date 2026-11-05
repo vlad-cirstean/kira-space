@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/ids"
 )
@@ -68,5 +69,5 @@ func TestAdeIDs(t *testing.T) {
 		t.Fatalf("archive v4 task: %v", err)
 	}
 
-	f.app.Contract(t, "ade-ids", "AdeTaskService.Board", board(t, f.app))
+	f.app.Contract(t, "ade-ids", "AdeTaskService.Board", board(t, f.app), flowharness.Mask("addedAt", "archivedAt", "createdAt", "finishedAt", "lastCommitAt", "startedAt", "updatedAt"))
 }
