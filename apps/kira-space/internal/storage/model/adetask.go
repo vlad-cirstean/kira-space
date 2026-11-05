@@ -495,22 +495,18 @@ func LegacyCommentID(n int64) string {
 
 // UnmarshalJSON accepts strings and legacy numbers, mapping a number to its migrated id.
 func (l *CommentIDList) UnmarshalJSON(b []byte) error {
-	var raw []json.Number
-	if err := json.Unmarshal(b, &raw); err == nil {
-		*l = make(CommentIDList, len(raw))
-		for i, n := range raw {
-			if v, err := n.Int64(); err == nil && v >= 0 {
-				(*l)[i] = LegacyCommentID(v)
-			} else {
-				(*l)[i] = n.String()
-			}
-		}
+	var s []string
+	if err := json.Unmarshal(b, &s); err == nil {
+		*l = s
 		return nil
 	}
-	var s []string
-	if err := json.Unmarshal(b, &s); err != nil {
+	var raw []int64
+	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
 	}
-	*l = s
+	*l = make(CommentIDList, len(raw))
+	for i, n := range raw {
+		(*l)[i] = LegacyCommentID(n)
+	}
 	return nil
 }
