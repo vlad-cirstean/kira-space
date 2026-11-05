@@ -56,8 +56,10 @@ func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ li
 		// §4.5: cheap — one repo read per list_connections call, a human-frequency operation. A
 		// read failure degrades to "no masked columns reported" rather than failing the whole
 		// listing; the render path's own refusal (§4.4) is the real safety backstop regardless.
-		if rules, err := s.cfg.MaskRules.List(c.ID); err == nil {
-			view.MaskedColumns = maskedColumnsFor(rules)
+		set, serr := allowListOf(c)
+		view.Tables = tablesView(c)
+		if rules, err := s.cfg.MaskRules.List(c.ID); err == nil && serr == nil {
+			view.MaskedColumns = maskedColumnsFor(filterMaskRules(set, rules))
 		}
 		out = append(out, view)
 	}
@@ -113,14 +115,22 @@ type listChildrenArgs struct {
 }
 
 func (s *Server) listChildren(ctx context.Context, _ *mcp.CallToolRequest, args listChildrenArgs) (*mcp.CallToolResult, any, error) {
-	if _, res, out, err, done := s.resolveReadGated(args.ConnectionID); done {
+	summary, res, out, err, done := s.resolveReadGated(args.ConnectionID)
+	if done {
 		return res, out, err
+	}
+	set, serr := allowListOf(summary)
+	if serr != nil {
+		return badListResult(summary)
+	}
+	if msg := allowedPath(summary, set, args.Path, false); msg != "" {
+		return errResult(msg)
 	}
 	result, err := s.cfg.Tree.Children(ctx, args.ConnectionID, args.Path, args.Refresh)
 	if err != nil {
 		return toolError(err)
 	}
-	return jsonResult(result.Nodes)
+	return jsonResult(filterNodes(summary, set, result.Nodes))
 }
 
 // --- describe_table (§4.3) ---
@@ -135,8 +145,16 @@ type describeTableArgs struct {
 // it already answers E_UNSUPPORTED in its own words (kafka/s3/sqs/redis) — surfaced verbatim by
 // toolError rather than an invented message here (§4.3).
 func (s *Server) describeTable(ctx context.Context, _ *mcp.CallToolRequest, args describeTableArgs) (*mcp.CallToolResult, any, error) {
-	if _, res, out, err, done := s.resolveReadGated(args.ConnectionID); done {
+	summary, res, out, err, done := s.resolveReadGated(args.ConnectionID)
+	if done {
 		return res, out, err
+	}
+	set, serr := allowListOf(summary)
+	if serr != nil {
+		return badListResult(summary)
+	}
+	if msg := allowedPath(summary, set, args.Path, true); msg != "" {
+		return errResult(msg)
 	}
 	result, err := s.cfg.Tree.Describe(ctx, args.ConnectionID, args.Path, args.Refresh, nil)
 	if err != nil {
@@ -154,14 +172,19 @@ type describeSchemaArgs struct {
 }
 
 func (s *Server) describeSchema(ctx context.Context, _ *mcp.CallToolRequest, args describeSchemaArgs) (*mcp.CallToolResult, any, error) {
-	if _, res, out, err, done := s.resolveReadGated(args.ConnectionID); done {
+	summary, res, out, err, done := s.resolveReadGated(args.ConnectionID)
+	if done {
 		return res, out, err
+	}
+	set, serr := allowListOf(summary)
+	if serr != nil {
+		return badListResult(summary)
 	}
 	result, err := s.cfg.Tree.SchemaColumns(ctx, args.ConnectionID, args.Path, args.Refresh)
 	if err != nil {
 		return toolError(err)
 	}
-	return jsonResult(result.Relations)
+	return jsonResult(filterRelations(summary, set, args.Path, result.Relations))
 }
 
 // --- run_query (§4.5) ---
@@ -195,7 +218,7 @@ type exemptionArgs struct {
 //
 // The gate order: resolve the connection → check the declared mode → refuse before connecting when
 // the declared mode's permission denies → clamp maxRows → connect → tighten-only classifier check
-// (a statement that looks more powerful than its mode is refused, never run) → forced EXPLAIN when
+// (a statement that looks more powerful than its mode is refused, never run) → table allow list (P532) → forced EXPLAIN when
 // McpAutoExplain is on (read mode only; a nil plan or any error degrades to "no plan") → heavy
 // check → at most one approval, for a prompt verdict on the declared mode or a heavy plan →
 // execute (read on the read lane, write and ddl on the main connection) → render.
@@ -396,7 +419,7 @@ type queryResolution struct {
 	threshold int
 }
 
-// resolveVerdict is runQuery's resolve → check mode → gate → clamp → connect → tighten pipeline.
+// resolveVerdict is runQuery's resolve → check mode → gate → clamp → connect → tighten → tables pipeline.
 // done is true whenever runQuery should return (res, out, err) immediately: every gate here
 // short-circuits execution, so no EXPLAIN work or approval prompt is spent on a refused statement.
 func (s *Server) resolveVerdict(ctx context.Context, args runQueryArgs) (rv queryResolution, res *mcp.CallToolResult, out any, err error, done bool) {
@@ -451,6 +474,10 @@ func (s *Server) resolveVerdict(ctx context.Context, args runQueryArgs) (rv quer
 	rv.class = class
 	if msg := tightenByClass(rv.summary, rv.mode, class); msg != "" {
 		res, out, err = errResult(msg)
+		return rv, res, out, err, true
+	}
+	// P532: table allow list, before any exemption, limit, EXPLAIN or approval.
+	if res, out, err := s.checkStatementTables(ctx, rv.summary, args.Path, args.SQL); res != nil || err != nil {
 		return rv, res, out, err, true
 	}
 	return rv, nil, nil, nil, false
@@ -649,6 +676,9 @@ func (s *Server) explainQuery(ctx context.Context, _ *mcp.CallToolRequest, args 
 	}
 	if state.Status != "connected" {
 		return errResult(connectStateError(state))
+	}
+	if res, out, err := s.checkStatementTables(ctx, summary, args.Path, args.SQL); res != nil || err != nil {
+		return res, out, err
 	}
 
 	statements := queryplan.StatementsFor(summary.Kind, args.SQL)

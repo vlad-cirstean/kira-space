@@ -144,6 +144,8 @@ type connectionView struct {
 	// string (e.g. "[1000-10000)") as a literal value. Omitted when the connection
 	// has no rules at all.
 	MaskedColumns []string `json:"maskedColumns,omitempty"`
+	// Tables is the table allow list (P532): all, or the exact tables MCP may touch.
+	Tables *allowedTablesView `json:"tables"`
 }
 
 // maskedColumnsMaxListed is §4.5's own cap — 50 entries, then a trailing "+N more" summary rather
