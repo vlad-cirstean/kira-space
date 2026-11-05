@@ -129,7 +129,7 @@ const projectionCount = computed(() => {
               variant="toolbar"
               size="kira-icon"
               class="relative"
-              :class="{ 'bg-field text-fg': projectionOpen }"
+              :aria-expanded="projectionOpen"
               :aria-label="t('studio.common.fields.label')"
               data-testid="document-toolbar-projection"
               @click="projectionOpen = !projectionOpen"
@@ -187,7 +187,7 @@ const projectionCount = computed(() => {
       <TooltipIconButton
         :icon="ICON.search"
         :label="t('studio.common.searchPage.label')"
-        :class="{ 'bg-field text-fg': rt?.searchOpen }"
+        :pressed="!!rt?.searchOpen"
         data-testid="document-toolbar-search"
         @click="documentViewStore.toggleSearchOpen(tab.id)"
       />

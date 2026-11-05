@@ -186,7 +186,7 @@ defineExpose({
       <TooltipIconButton
         :icon="ICON.search"
         :label="t('studio.common.searchPage.label')"
-        :class="{ 'bg-field text-fg': !!rt?.searchOpen }"
+        :pressed="!!rt?.searchOpen"
         data-testid="keyvalue-search"
         @click="keyValueViewStore.toggleSearchOpen(viewKey)"
       />

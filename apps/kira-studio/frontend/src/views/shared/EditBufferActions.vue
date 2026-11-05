@@ -62,7 +62,7 @@ const resetTitle = computed<string>(
       :label="beautifyIndentedTitle"
       :aria-label="t('studio.api.common.beautify.label')"
       disabled-trigger
-      :class="{ 'bg-field text-fg': buffer.formatted.value === 'indented' }"
+      :pressed="buffer.formatted.value === 'indented'"
       :data-testid="`${testidPrefix}-beautify-indented`"
       :disabled="!buffer.canBeautify.value"
       @click="buffer.applyBeautify('indented')"
@@ -73,7 +73,7 @@ const resetTitle = computed<string>(
       :label="beautifyCompactTitle"
       :aria-label="t('studio.editBuffer.minify.label')"
       disabled-trigger
-      :class="{ 'bg-field text-fg': buffer.formatted.value === 'compact' }"
+      :pressed="buffer.formatted.value === 'compact'"
       :data-testid="`${testidPrefix}-beautify-compact`"
       :disabled="!buffer.canBeautify.value"
       @click="buffer.applyBeautify('compact')"

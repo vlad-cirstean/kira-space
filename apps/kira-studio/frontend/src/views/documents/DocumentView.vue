@@ -504,7 +504,7 @@ onUnmounted(() => {
                       :icon="ICON.edit"
                       :label="editGateFor(rows[vi.index]).label"
                       :aria-label="t('common.action.edit.label')"
-                      :class="{ 'bg-field text-fg': editingRow === rows[vi.index] }"
+                      :aria-pressed="editingRow === rows[vi.index]"
                       :disabled="!editGateFor(rows[vi.index]).editable"
                       data-testid="document-edit"
                       @click.stop="

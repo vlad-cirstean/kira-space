@@ -350,8 +350,8 @@ function onDeleteRow(): void {
               size="kira-icon"
               class="relative"
               data-testid="toolbar-columns"
-              :class="{ 'bg-field text-fg': columnsOpen }"
               :aria-label="t('studio.common.columns.label')"
+              :aria-expanded="columnsOpen"
               @click="columnsOpen = !columnsOpen"
             >
               <CodiconIcon name="list-selection" :size="13" />
@@ -407,7 +407,7 @@ function onDeleteRow(): void {
     <TooltipIconButton
       icon="search"
       :label="t('studio.common.searchPage.label')"
-      :class="{ 'bg-field text-fg': rt?.searchOpen }"
+      :pressed="!!rt?.searchOpen"
       data-testid="toolbar-search"
       @click="onToggleSearch"
     />
@@ -417,7 +417,7 @@ function onDeleteRow(): void {
       :label="maskPreviewTooltip"
       :aria-label="t('studio.grid.maskPreview.aria')"
       disabled-trigger
-      :class="{ 'bg-field text-fg is-active': rt?.maskPreview }"
+      :pressed="!!rt?.maskPreview"
       :disabled="hasPendingChanges"
       data-testid="toolbar-mask-preview"
       @click="onToggleMaskPreview"
