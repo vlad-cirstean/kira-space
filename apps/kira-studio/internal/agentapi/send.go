@@ -23,12 +23,20 @@ const (
 	httpclientMaxHop = 10
 )
 
+// ErrPlanChanged is Send's refusal when a variable changed between approval and send.
+var ErrPlanChanged = errors.New("environment changed while waiting for approval; send again")
+
 // Send re-plans in against the policy as it stands now, so a host removed or an opt-in cleared while
-// the request waited for approval blocks it, then sends it. The result is masked and capped.
-func (s *Service) Send(ctx context.Context, in Input) (Result, error) {
+// the request waited for approval blocks it, then sends it. A non-nil approved is the plan the user saw:
+// the request must still plan to the same method, URL, headers, query, body and form. The result is
+// masked and capped.
+func (s *Service) Send(ctx context.Context, in Input, approved *Planned) (Result, error) {
 	p, err := s.Plan(in)
 	if err != nil {
 		return Result{}, err
+	}
+	if approved != nil && !p.sameRequest(*approved) {
+		return Result{}, ErrPlanChanged
 	}
 	g, err := s.Globals()
 	if err != nil {

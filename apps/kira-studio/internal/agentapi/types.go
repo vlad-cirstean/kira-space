@@ -6,6 +6,7 @@ package agentapi
 
 import (
 	"context"
+	"slices"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
@@ -79,6 +80,12 @@ type Planned struct {
 	base  string
 	extra []NameValue
 	creds []credential
+}
+
+// sameRequest reports whether o would send the same method, URL, headers, query, body and form.
+func (p Planned) sameRequest(o Planned) bool {
+	return p.Method == o.Method && p.URL == o.URL && p.Body == o.Body && p.ContentType == o.ContentType &&
+		slices.Equal(p.Headers, o.Headers) && slices.Equal(p.Query, o.Query) && slices.Equal(p.Form, o.Form)
 }
 
 // HasBody reports whether the request sends a body.

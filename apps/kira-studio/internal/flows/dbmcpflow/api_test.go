@@ -252,6 +252,23 @@ func TestApiRequestDeniedAndReplanned(t *testing.T) {
 	}
 }
 
+// TestApiRequestRefusedWhenVariableChanges: a variable edited while the request waits stops it.
+func TestApiRequestRefusedWhenVariableChanges(t *testing.T) {
+	f := newFixture(t)
+	srv, sess, envID := f.apiSetup(t, "127.0.0.1", false)
+	pending := callToolAsync(sess, "api_request", apiArgs(envID, "GET", "{{base_url}}/echo"))
+	req := f.pending(t)
+	f.base = srv.URL + "/moved"
+	f.writeDev(t, "127.0.0.1", false)
+	f.answer(t, true, req.RequestID)
+	if out := wait(t, pending); !out.IsError || !strings.Contains(text(out), "environment changed") {
+		t.Fatalf("after the variable edit = %q, want an environment-changed error", text(out))
+	}
+	if len(srv.Requests()) != 0 {
+		t.Fatalf("server saw %d requests, want none", len(srv.Requests()))
+	}
+}
+
 func TestApiApprovalModes(t *testing.T) {
 	f := newFixture(t)
 	srv, sess, envID := f.apiSetup(t, "127.0.0.1", true)

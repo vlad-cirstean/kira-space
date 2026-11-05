@@ -19,8 +19,9 @@ type APIRequester interface {
 	Environments() ([]agentapi.EnvView, error)
 	// Plan checks a request against the policy without sending it.
 	Plan(in agentapi.Input) (agentapi.Planned, error)
-	// Send re-plans and sends the request; the result is masked and capped.
-	Send(ctx context.Context, in agentapi.Input) (agentapi.Result, error)
+	// Send re-plans and sends the request, refusing when approved (the plan the user saw) no longer
+	// matches; the result is masked and capped.
+	Send(ctx context.Context, in agentapi.Input, approved *agentapi.Planned) (agentapi.Result, error)
 }
 
 // APISettings is the user's switch for the API tools.
@@ -106,7 +107,7 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 			return res, nil, err
 		}
 	}
-	out, err := s.cfg.API.Send(ctx, in)
+	out, err := s.cfg.API.Send(ctx, in, &plan)
 	if err != nil {
 		return errResult(err.Error())
 	}
