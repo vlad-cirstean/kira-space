@@ -11,3 +11,8 @@ Resumable log. Env: 4 cores, CGO_ENABLED=1.
 
 - Env: `bun install --frozen-lockfile` needed (nanoid, uuid missing in node_modules); bindings regenerated (both apps) for AgentAccess. Then typecheck green, lint green, lint:dead green.
 - F3 `apps/kira-studio/tests/unit/bridge-unwrap.spec.ts` sweep: apiConfigForm maps arg 3 before unwrap, threw TypeError with string args. Fix: pass array as arg 3. Unit: 2013 pass, 0 fail (194 files).
+- Studio UI (ui + ui-clipboard, 767 tests): 4 failed first run, all fixed:
+  - F4 cell-editor.spec UUID regex expected v4; generator is v7 since P523. Spec now expects v7.
+  - F5 mask-preview.spec asserted class is-active on toolbar-mask-preview; button is shadcn with aria-pressed. Spec asserts aria-pressed.
+  - F6/F7 grid-copy-menu (ui-clipboard) env: chromium_headless_shell-1248 missing; installed with `playwright install chromium-headless-shell`. Specs pass.
+  - Rerun of cell-editor, mask-preview, grid-copy-menu: 10 passed.

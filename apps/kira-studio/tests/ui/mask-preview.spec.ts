@@ -245,7 +245,7 @@ test('grid mask preview — mark a column PII, preview masks and locks editing, 
   // per internal/mask's own maskEmail: first grapheme + length of the local part, full domain.
   const toggle = page.locator('[data-testid="toolbar-mask-preview"]');
   await expect(toggle).toBeVisible();
-  await expect(toggle).toHaveClass(/is-active/);
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   await expect(gridCell(page, 0, 'email')).toHaveText('m•••••••••••••@acme.example');
   await expect(gridCell(page, 0, 'email')).toHaveClass(/cell-masked/);
   // NULL stays NULL — masking a NULL would invent a value that is not there (§2.3).
@@ -265,7 +265,7 @@ test('grid mask preview — mark a column PII, preview masks and locks editing, 
 
   // Turn the preview off: the real value and normal editing both return.
   await toggle.click();
-  await expect(toggle).not.toHaveClass(/is-active/);
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   await expect(gridCell(page, 0, 'email')).toHaveText('maria.gonzalez@acme.example');
   await expect(gridCell(page, 0, 'email')).not.toHaveClass(/cell-masked/);
   await expect(page.locator('[data-testid="mask-preview-strip"]')).toHaveCount(0);
@@ -281,7 +281,7 @@ test('grid mask preview — mark a column PII, preview masks and locks editing, 
   // its component-scoped mask state — before this fix that reset left the remounted grid showing
   // real values while the toggle and badge still read "masked"/"read-only".
   await toggle.click();
-  await expect(toggle).toHaveClass(/is-active/);
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   await expect(gridCell(page, 0, 'email')).toHaveText('m•••••••••••••@acme.example');
 
   const customersTabId = await page
@@ -297,7 +297,7 @@ test('grid mask preview — mark a column PII, preview masks and locks editing, 
 
   await tabLocator(page, customersTabId).click();
   await expect(grid).toBeVisible();
-  await expect(toggle).toHaveClass(/is-active/);
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   await expect(gridCell(page, 0, 'email')).toHaveText('m•••••••••••••@acme.example');
   await expect(gridCell(page, 0, 'email')).toHaveClass(/cell-masked/);
   await expect(page.locator('[data-testid="grid-writable-badge"]')).toHaveText('Read-only');
@@ -418,7 +418,7 @@ test('grid mask preview — turns itself back off when the correlation key fetch
   // fetch behind it failed — and the grid must show the real value, never a half-applied mask.
   const toggle = page.locator('[data-testid="toolbar-mask-preview"]');
   await expect(toggle).toBeVisible();
-  await expect(toggle).not.toHaveClass(/is-active/);
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   await expect(gridCell(page, 0, 'email')).toHaveText('maria.gonzalez@acme.example');
   await expect(gridCell(page, 0, 'email')).not.toHaveClass(/cell-masked/);
   await expect(page.locator('[data-testid="grid-writable-badge"]')).toHaveText('Read-write');
