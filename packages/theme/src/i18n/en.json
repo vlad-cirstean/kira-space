@@ -1584,6 +1584,9 @@
         "handover": {
           "title": "{count} tasks are ready to move on"
         },
+        "masking": {
+          "title": "{count} connections need a masking review"
+        },
         "mobilePairing": {
           "title": "{count} phones ask for access"
         },
@@ -1626,6 +1629,9 @@
       },
       "handover": {
         "title": "Move {task} to the next stage"
+      },
+      "masking": {
+        "title": "New columns on {name} need a masking review"
       },
       "mobilePairing": {
         "title": "A phone asks for access"

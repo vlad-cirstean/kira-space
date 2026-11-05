@@ -19,9 +19,11 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/localauth"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskreview"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskrules"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/proof"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/approvals"
@@ -186,14 +188,18 @@ func Build(opts Options) (*Wired, error) {
 	// once Start has, below.
 	var connectionsSvc *connections.Service
 	var maskRulesSvc *maskrules.Service
+	var maskReviewSvc *maskreview.Service
 	connFiles, err := connfiles.New(connfiles.Options{
 		DB: db.DB, Dir: filepath.Join(config.KiraHome(), "connections"),
 		Secrets: &connfiles.Secrets{Store: secrets.NewStore(db.DB, opts.Cipher), DB: db.DB},
 		OnChange: func(ch connfiles.Changes) {
 			connectionsSvc.ConfigChanged(ch)
-			bridge.EmitConnectionChanges(opts.Emitter, maskRulesSvc, ch)
+			bridge.EmitConnectionChanges(opts.Emitter, maskRulesSvc, maskReviewSvc, ch)
 		},
-		OnForget: func(id string) { connectionsSvc.Removed(id) },
+		OnForget: func(id string) {
+			connectionsSvc.Removed(id)
+			maskReviewSvc.Forget(id)
+		},
 	})
 	if err != nil {
 		return nil, err
@@ -252,6 +258,20 @@ func Build(opts Options) (*Wired, error) {
 	shellForProof := &registryShell{windows: windows}
 	promptRouter := newPromptRouter(windows, repositories, opts, w.reopenWindow)
 	windows.OnChange = promptRouter.Reroute
+
+	// P534: column review. Built here because its popup needs the router; the connections folder's
+	// callbacks above reach it through the variable and run only once connFiles.Start has.
+	maskReviewSvc = maskreview.New(maskreview.Deps{
+		Conns: repositories.Connections, States: connectionsSvc, Tree: deps.Tree, Rules: maskRulesSvc,
+		Reviewed: repositories.MaskReview, Prompts: promptRouter,
+	})
+	deps.MaskReview = maskReviewSvc
+	connectionsSvc.OnMetadataInvalidated(maskReviewSvc.Connected)
+	connectionsSvc.OnStateChange(func(st model.ConnectionState) {
+		if st.Status == "disconnected" || st.Status == "error" {
+			maskReviewSvc.Forget(st.ConnectionID)
+		}
+	})
 
 	approvalQueue := approvals.New(promptRouter)
 	proofDeps := proof.Deps{

@@ -9,6 +9,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connfiles"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskreview"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskrules"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/tree"
@@ -59,4 +60,6 @@ type Deps struct {
 	// — the bridge's own Privacy-tab/header-menu surface, and (via dbmcp.Config.MaskRules) the DB
 	// MCP server's masking seam.
 	MaskRules *maskrules.Service
+	// MaskReview is P534's column review state: the MCP gate's withheld columns and the Privacy tab's live list.
+	MaskReview *maskreview.Service
 }

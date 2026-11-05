@@ -81,5 +81,11 @@ func (s *TreeService) Invalidate(args TreeInvalidateArgs) error {
 	if args.ConnectionID == "" {
 		return ipcerr.Required("connectionId")
 	}
-	return s.Deps.Tree.Invalidate(args.ConnectionID, args.Path)
+	if err := s.Deps.Tree.Invalidate(args.ConnectionID, args.Path); err != nil {
+		return err
+	}
+	if s.Deps.MaskReview != nil {
+		s.Deps.MaskReview.Refresh(args.ConnectionID)
+	}
+	return nil
 }
