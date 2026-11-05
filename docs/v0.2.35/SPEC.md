@@ -17,7 +17,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 | P518 | Cancel ops via MCP and status bar running-ops widget | Done |
 | P519 | Proof window cell editor and multi-file screenshots | Done |
 | P520 | Aggregated MCP approvals: one dialog, minimise to toast, long approval timeouts | Done |
-| P521 | Scripts MCP | Pending |
+| P521 | Scripts MCP | Done |
 | P522 | Free-form API request MCP with agent credentials | Pending |
 | P523 | Prefixed nanoid for every Kira-generated id | Pending |
 | P524 | Manual order for API collections and environments | Done |
@@ -96,6 +96,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 
 - Ask: Agents run a script and fetch its logs via MCP. Log fetch capped at a max line count; simple filter (planner picks, e.g. tail/head and substring). Per-script MCP access is explicit opt-in. Per-script choice to show an approval prompt or not. Scripts get descriptions, as connections have. Tools stay synchronous; approval prompts are an item kind in the P520 approvals surface.
 - Plan: `plans/P521.md`.
+- Result: Done in 10 commits. Opt-in `mcp` block per normal script, four tools (`list_scripts`, `run_script`, `get_script_run`, `get_script_logs`), headless `mcp` runs, filtered capped log reads, approval item `script` with masked secrets and client origin, MCP tab, Settings list, flow and UI specs. Deviation: P520 not on base, so the approval dialog has a `v-if` branch for the script subject; P520 moves it into its registry.
 
 ### P522 Free-form API request MCP with agent credentials
 

@@ -3156,9 +3156,21 @@ One queue and one dialog per app hold every pending agent approval. Tools stay s
 - Listed ops are `Host.RunningOps()`: started ops only (op:start emitted). Throttled-but-queued ops and `Host.Cancellable` stream work have no panel row and are not listed.
 - `Host.CancelRunning` cancels a listed op and keeps no early-cancel entry on a miss, unlike `CancelOp`. A guessed or stale id cannot poison a later op.
 - An op on a connection not exposed to MCP is neither listed nor cancellable. Unknown, finished and hidden ids get one identical error. Connectionless ops list by kind and time only, never command text.
-- Script runs use the panel's `run:<id>` ids. `scriptruns.Repo.Live` lists running and waiting runs; cancel maps to `Service.Stop`.
+- Script runs use the panel's `run:<id>` ids. `scriptruns.Repo.Live` lists running and waiting runs; cancel maps to `Service.Stop`. Only runs of MCP-enabled scripts (see Scripts tools, P521) are listed or stoppable; any other id reads as unknown. A run started by an agent lists with source `mcp`.
 - No approval prompt: a cancel never changes data, and a cancelled write rolls back like a user Stop.
 - Kira Space's agent MCP has no cancel tool.
+
+### Scripts tools (P521)
+
+- Opt-in per script, Studio only, normal scripts only. A run file's `mcp` block (`enabled`, `description` up to 1000 characters, `run` `prompt` (default) or `allow`, `timeout` 1m to 24h) exposes it. A smart script with `mcp.enabled` is a validation problem (`/mcp/enabled`). `config_json` is the authority; no column.
+- Tools register when `Config.Scripts` is set: `list_scripts`, `run_script`, `get_script_run`, `get_script_logs`. Gate: a script without `mcp.enabled`, a smart script and an unknown id all read as `no script "<id>" exposed to MCP`. Exposure is re-read at approval and start.
+- `run_script` takes `scriptId`, `params` and `waitSeconds` (default 25, max 50). A secret param is never settable by the agent: its saved value is used, and passing it is refused before any approval. Params validate through the same plan as the UI start.
+- A run starts headless with trigger `mcp` (migration 0058 adds it to the `script_runs` CHECK; `StartMCP`, `Service.Wait`). One run per script at a time. A run that outlives the wait returns `running` with its run id; `get_script_run` waits the same way. Restore never offers an `mcp` run.
+- Results carry state, exit code, duration and log line count, never output, `lastError` or tail. Output comes only from `get_script_logs` (`lines` 1 to 500, default 100; `from` tail or head; `contains` substring filter; reply capped at 64 KiB, dropping lines from the far end). `get_script_run` and `get_script_logs` read any run of a currently exposed script.
+- `run: prompt` raises an approval (subject `script`, class unknown): script name and description, command, folder, params, env, and the MCP client's name and version (`Origin`, from `initialize` client info, capped at 100 runes). A secret value is always empty on the wire with `saved` set. The plan hash is checked at start: a script edited while the dialog waits is refused as changed since the preview. Deny reads as `run of script "<name>" was denied by the user`.
+- Approval wire: `DbMcpApproval.subject` (`query`, `kube`, `script`), `origin`, `script`. The dialog renders the script subject with `ScriptApprovalHeader.vue` and `ScriptApprovalBody.vue`.
+- UI: the run dialog's MCP tab (Studio only, hidden for a smart script), a plug marker on exposed rows, a Settings, Database MCP scripts list with a switch that edits the file, and the trigger label "Agent run".
+- Tests: flows `TestDbMcpScriptRunAndLogs`, `TestDbMcpScriptApproval` (contract `dbmcp-approval-script.json`), `TestRunsFormStudio` (mcp keys), `TestMigration58AddsMCPTrigger`; UI `dbmcp-approval-script.spec.ts`, `automations-mcp.spec.ts`; real `claude` `TestDbMcpScriptThroughClaude`.
 
 ### Permissions and statement classification (M2)
 
@@ -3320,7 +3332,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 ### Runs config files (P472)
 
 - A run is `<home>/runs/<id>.yaml` in both apps (Studio `~/.kira-studio/runs`, Space `~/.kira-space/runs`); the file stem is the run id (`^[a-z0-9][a-z0-9_-]{0,79}$`). Another name is listed as a problem with `id` empty and never used. `AGENTS.md` beside them is generated from the schema.
-- Keys: `name`, `kind` (`script` default, `smart`), `command` (the shell command, or `prompt` for a smart run), `params`, `smart`, `schedule`, `dir` (`kira`, `fixed`), `path`, `color`, `collection` (a name), `use_ade_dir` (Space only; Studio refuses it). `internal/scripts/run.schema.json` is the base; `assembleSchema` writes every enum and bound the Go validator owns into it, so schema and `AGENTS.md` cannot drift.
+- Keys: `name`, `kind` (`script` default, `smart`), `command` (the shell command, or `prompt` for a smart run), `params`, `smart`, `schedule`, `mcp` (agent access, Studio; see Scripts tools, P521), `dir` (`kira`, `fixed`), `path`, `color`, `collection` (a name), `use_ade_dir` (Space only; Studio refuses it). `internal/scripts/run.schema.json` is the base; `assembleSchema` writes every enum and bound the Go validator owns into it, so schema and `AGENTS.md` cannot drift.
 - `scripts.Loader` owns the folder (`configfs.Folder[File]`) and the projection (`Repo.Projection`): `custom_scripts.config_json` is the last good file value. Files to DB only. Invalid file: the row keeps the last good version, a `FileProblem{file, id, line, message, lastGood}` is published, one Warn per new hash. A run with no last good version has a problem and no row. File gone: row, saved secrets and (through Delete) the kira folder go; run history stays.
 - State the file never holds, kept in the row: `sort_order`, `schedule_task_id`, `schedule_branch_id`. `Record` never writes them. The schedule target is set by `SetScheduleTarget` (Space only), apart from the file text.
 - Validation: `Validate` returns `ValidationError{Path, Key, Args}`: `Path` is a JSON pointer in the file's own vocabulary, `Key` a catalog key `backend.core.runs.*.body`. Messages render through i18n. Secrets: a `secret: true` param holds no value in the file; values live in `secret_values` (scope `script-param`, owner run id) and go through `SetSecrets`.
