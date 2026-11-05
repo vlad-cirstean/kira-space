@@ -86,6 +86,7 @@ test('contract: the routed prompt lists every branch and Approve sends the check
   expect(calls(control, IPC.adeTaskApproveBranchRequest)[0]?.args).toEqual({
     id: 'br_1',
     itemIds: [kept?.id],
+    renameRemote: false,
   });
   await expect(dialog).toBeHidden();
 });

@@ -1,0 +1,57 @@
+{
+  "AdeTaskBoard.Board.renamedBranch": {
+    "addedAt": 0,
+    "ahead": 0,
+    "base": "<masked>",
+    "baseBranchId": "",
+    "baseMissing": false,
+    "baseOwner": "",
+    "basePendingFrom": "",
+    "behind": 0,
+    "codeRepoId": "<masked>",
+    "conflictCheck": "done",
+    "conflictCheckReason": "",
+    "conflictsIfRebased": [],
+    "deployments": [],
+    "dirty": [],
+    "id": "<masked>",
+    "integration": [],
+    "kind": "mine",
+    "lastCommitAt": 1700000060000,
+    "mergedAt": null,
+    "mergedIntoMain": false,
+    "name": "feat/new",
+    "origin": "agent",
+    "owner": "",
+    "rebaseInProgress": false,
+    "setup": {},
+    "taskId": "<masked>",
+    "tip": "<masked>",
+    "upstream": "refs/remotes/origin/feat/new",
+    "upstreamAhead": 0,
+    "upstreamBehind": 0,
+    "worktree": "<masked>"
+  },
+  "AdeTaskService.BranchRequest": {
+    "createdAt": 0,
+    "expiresAt": 0,
+    "id": "<masked>",
+    "items": [
+      {
+        "base": "",
+        "branch": "feat/new",
+        "codeRepoId": "<masked>",
+        "from": "feat/old",
+        "id": "<masked>",
+        "kind": "rename",
+        "repo": "api",
+        "stacked": [],
+        "upstream": "origin/feat/old"
+      }
+    ],
+    "source": "run",
+    "stepName": "two",
+    "taskId": "<masked>",
+    "taskTitle": "Fix login"
+  }
+}
