@@ -93,6 +93,7 @@
         "mcp__kira-ade__declare_repos",
         "mcp__kira-ade__request_branches",
         "mcp__kira-ade__branch_status",
+        "mcp__kira-ade__rename_branch",
         "mcp__kira-ade__report_artifacts"
       ],
       "mcpServers": [],
@@ -140,6 +141,7 @@
         "mcp__kira-ade__declare_repos",
         "mcp__kira-ade__request_branches",
         "mcp__kira-ade__branch_status",
+        "mcp__kira-ade__rename_branch",
         "mcp__kira-ade__report_artifacts"
       ],
       "mcpServers": [],
@@ -168,6 +170,7 @@
       "mcp__kira-ade__declare_repos",
       "mcp__kira-ade__request_branches",
       "mcp__kira-ade__branch_status",
+      "mcp__kira-ade__rename_branch",
       "mcp__kira-ade__report_artifacts"
     ],
     "blocker": "",
