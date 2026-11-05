@@ -2,7 +2,13 @@
 // ancestor, and where a drop lands. Pure arithmetic over the tree list, so no store is mounted.
 import { describe, expect, test } from 'bun:test';
 import type { CollectionItemSummary } from '@shared/domain/collections';
-import { placementFor, topmost, zoneFor } from '../../frontend/src/api/collectionDrop';
+import {
+  collectionOrderFor,
+  placementFor,
+  topmost,
+  zoneFor,
+} from '../../frontend/src/api/collectionDrop';
+import { collectionStepOrder } from '../../frontend/src/api/state/collectionOrder';
 import type { CollectionRowVm } from '../../frontend/src/api/state/collections';
 
 function item(
@@ -142,5 +148,35 @@ describe('placementFor', () => {
     expect(placementFor(into('i:F'), new Set(['a', 'G']), ITEMS)).toBeNull();
     // Same parent, different order is a move.
     expect(placementFor({ key: 'i:F', zone: 'before' }, new Set(['c']), ITEMS)).not.toBeNull();
+  });
+});
+
+describe('collectionOrderFor', () => {
+  const order = ['a', 'b', 'c', 'd'];
+  test('puts the moved block before or after the target', () => {
+    expect(collectionOrderFor(order, new Set(['d']), 'a', 'before')).toEqual(['d', 'a', 'b', 'c']);
+    expect(collectionOrderFor(order, new Set(['a']), 'c', 'after')).toEqual(['b', 'c', 'a', 'd']);
+  });
+  test('a moved block keeps its list order', () => {
+    expect(collectionOrderFor(order, new Set(['d', 'b']), 'a', 'before')).toEqual([
+      'b',
+      'd',
+      'a',
+      'c',
+    ]);
+  });
+  test('a target inside the moved set, or a drop that changes nothing, is null', () => {
+    expect(collectionOrderFor(order, new Set(['b', 'c']), 'b', 'after')).toBeNull();
+    expect(collectionOrderFor(order, new Set(['b']), 'a', 'after')).toBeNull();
+    expect(collectionOrderFor(order, new Set(['a']), 'b', 'before')).toBeNull();
+  });
+});
+
+describe('collectionStepOrder', () => {
+  test('swaps one place; the ends return null', () => {
+    expect(collectionStepOrder(['a', 'b', 'c'], 'b', -1)).toEqual(['b', 'a', 'c']);
+    expect(collectionStepOrder(['a', 'b', 'c'], 'b', 1)).toEqual(['a', 'c', 'b']);
+    expect(collectionStepOrder(['a', 'b', 'c'], 'a', -1)).toBeNull();
+    expect(collectionStepOrder(['a', 'b', 'c'], 'c', 1)).toBeNull();
   });
 });

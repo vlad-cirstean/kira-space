@@ -22,6 +22,7 @@ import { computed, ref, useTemplateRef, watch } from 'vue';
 import { control } from '../bridge/control';
 import CollectionRow from './CollectionRow.vue';
 import {
+  collectionOrderFor,
   type DropTarget,
   type DropZone,
   type Placement,
@@ -31,6 +32,7 @@ import {
 } from './collectionDrop';
 import { backgroundMenu, type CollectionMenuActions, menuForRow, menuForSelection } from './menu';
 import { useApiVariablesDialogStore } from './state/apiVariablesDialog';
+import { collectionKey } from './state/collectionKeys';
 import { useCollectionSelectionStore } from './state/collectionSelection';
 import { type CollectionRowVm, useCollectionsStore } from './state/collections';
 import { useImportCurlStore } from './state/curl';
@@ -345,10 +347,14 @@ useEventListener(scrollEl, 'keydown', (e: KeyboardEvent) => {
 });
 
 // Pointer drag of the selection onto a row: before/after reorders, into a folder or collection
-// re-parents. The pressed row joins the selection when it is not in it. Collections do not drag:
-// they list by name.
-type RowDrop = { key: string; zone: DropZone; placement: Placement };
+// re-parents. The pressed row joins the selection when it is not in it. Collections drag only
+// among themselves and only while no search filters the list.
+type RowDrop = { key: string; zone: DropZone } & (
+  | { kind: 'items'; placement: Placement }
+  | { kind: 'collections'; order: string[] }
+);
 let dragIds: string[] = [];
+let dragKind: 'items' | 'collections' = 'items';
 const dragCount = ref(0);
 const pointer = ref({ x: 0, y: 0 });
 const searching = computed(() => collectionsStore.activeSearchQuery !== '');
@@ -367,7 +373,15 @@ const drag = useTreePointerDrag<RowDrop>({
     if (!key) return false;
     if (!selection.isSelected(key)) selection.selectOnly(key);
     const rows = selectedRows.value;
-    if (rows.some((r) => r.kind === 'collection')) return false;
+    const collectionRows = rows.filter((r) => r.kind === 'collection');
+    if (collectionRows.length > 0) {
+      if (collectionRows.length !== rows.length || searching.value) return false;
+      dragKind = 'collections';
+      dragIds = collectionRows.map((r) => r.id);
+      dragCount.value = dragIds.length;
+      return true;
+    }
+    dragKind = 'items';
     dragIds = topmost(rows, collectionsStore.items).map((r) => r.id);
     dragCount.value = dragIds.length;
     return dragIds.length > 0;
@@ -377,14 +391,42 @@ const drag = useTreePointerDrag<RowDrop>({
     const row = el?.dataset.key ? rowByKey.value.get(el.dataset.key) : undefined;
     if (!el || !row) return null;
     const rect = el.getBoundingClientRect();
-    const zone = zoneFor(row, (y - rect.top) / rect.height, searching.value);
+    const fraction = (y - rect.top) / rect.height;
+    if (dragKind === 'collections') return resolveCollectionDrop(row, fraction);
+    const zone = zoneFor(row, fraction, searching.value);
     if (!zone) return null;
     const target: DropTarget = { key: row.key, zone };
     const placement = placementFor(target, new Set(dragIds), collectionsStore.items);
-    return placement && { ...target, placement };
+    return placement && { ...target, kind: 'items', placement };
   },
-  onDrop: (_pressed, drop) => void collectionsStore.moveRows(dragIds, drop.placement),
+  onDrop: (_pressed, drop) =>
+    void (drop.kind === 'items'
+      ? collectionsStore.moveRows(dragIds, drop.placement)
+      : collectionsStore.reorderCollections(drop.order)),
 });
+
+// Header top half drops before its collection; anything else in a collection's block drops after
+// it, drawn at the block's last visible row.
+function resolveCollectionDrop(row: CollectionRowVm, fraction: number): RowDrop | null {
+  const edge = row.kind === 'collection' && fraction < 0.5 ? 'before' : 'after';
+  const order = collectionOrderFor(
+    collectionsStore.collections.map((c) => c.id),
+    new Set(dragIds),
+    row.collectionId,
+    edge,
+  );
+  if (!order) return null;
+  const key = edge === 'before' ? row.key : lastRowKeyOf(row.collectionId);
+  return { kind: 'collections', key, zone: edge, order };
+}
+
+function lastRowKeyOf(collectionId: string): string {
+  const rows = collectionsStore.visibleRows;
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (rows[i].collectionId === collectionId) return rows[i].key;
+  }
+  return collectionKey(collectionId);
+}
 useEventListener(document, 'pointermove', (e: PointerEvent) => {
   if (drag.dragging.value) pointer.value = { x: e.clientX, y: e.clientY };
 });

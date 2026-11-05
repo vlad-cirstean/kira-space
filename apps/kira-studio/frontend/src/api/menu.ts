@@ -251,6 +251,7 @@ export function menuForRow(row: CollectionRowVm, actions: CollectionMenuActions)
         icon: 'export',
         run: () => actions.exportCollection(row),
       },
+      ...moveItems(row, actions),
     );
   } else {
     items.push(

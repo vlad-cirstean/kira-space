@@ -43,7 +43,7 @@ import {
   refreshApiQuery,
 } from './apiQueries';
 import { collectionKey, itemKey } from './collectionKeys';
-import { itemStepBefore } from './collectionOrder';
+import { collectionStepOrder, itemStepBefore } from './collectionOrder';
 import { useCollectionSelectionStore } from './collectionSelection';
 import { useSaveRequestDialogStore } from './saveRequestDialog';
 
@@ -452,20 +452,48 @@ export const useCollectionsStore = defineStore('collections', () => {
     }
   }
 
+  const reorderCollectionsMutation = useMutation(
+    {
+      mutationKey: ['apiCollectionsTree', 'reorderCollections'],
+      mutationFn: (ids: string[]) => control.collectionsReorderCollections(ids),
+      onSuccess: afterTreeListChange,
+    },
+    queryClient,
+  );
+
+  /** Applies a whole-list collection order. Returns whether it saved. */
+  async function reorderCollections(ids: readonly string[]): Promise<boolean> {
+    try {
+      await reorderCollectionsMutation.mutateAsync([...ids]);
+      state.error = null;
+      return true;
+    } catch (err) {
+      state.error = errorText(err);
+      return false;
+    }
+  }
+
   function siblingsOfRow(row: CollectionRowVm): CollectionItemSummary[] {
     return childrenOf(row.collectionId, row.parentId);
   }
 
-  /** Whether `row` can step toward `step` within its own sibling set. Collections have no manual
-   *  order: the files list them by name. */
+  const collectionIds = (): string[] => collections.value.map((c) => c.id);
+
+  /** Whether `row` can step toward `step` within its own sibling set. */
   function canMoveStep(row: CollectionRowVm, step: -1 | 1): boolean {
-    if (row.kind === 'collection' || activeSearchQuery.value !== '') return false;
+    if (activeSearchQuery.value !== '') return false;
+    if (row.kind === 'collection')
+      return collectionStepOrder(collectionIds(), row.id, step) !== null;
     return itemStepBefore(siblingsOfRow(row), row.id, step) !== undefined;
   }
 
-  /** Moves a request or folder one place within its siblings. */
+  /** Moves a collection, request or folder one place within its siblings. */
   async function moveStep(row: CollectionRowVm, step: -1 | 1): Promise<boolean> {
     if (!canMoveStep(row, step)) return false;
+    if (row.kind === 'collection') {
+      const order = collectionStepOrder(collectionIds(), row.id, step);
+      return order ? reorderCollections(order) : false;
+    }
     const beforeId = itemStepBefore(siblingsOfRow(row), row.id, step);
     if (beforeId === undefined) return false;
     return moveRows([row.id], { collectionId: row.collectionId, parentId: row.parentId, beforeId });
@@ -874,6 +902,7 @@ export const useCollectionsStore = defineStore('collections', () => {
     cancelRename,
     renameRow,
     moveRows,
+    reorderCollections,
     canMoveStep,
     moveStep,
     moveRowsToCollection,

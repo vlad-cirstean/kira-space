@@ -134,3 +134,24 @@ export function placementFor(
   }
   return isNoop(place, moved, byId, items) ? null : place;
 }
+
+/** `order` with `moved` (kept in their `order` sequence) put before or after `targetId`. Null when
+ *  the target is itself moved or the result equals `order`. */
+export function collectionOrderFor(
+  order: readonly string[],
+  moved: ReadonlySet<string>,
+  targetId: string,
+  edge: 'before' | 'after',
+): string[] | null {
+  if (moved.has(targetId) || !order.includes(targetId)) return null;
+  const block = order.filter((id) => moved.has(id));
+  if (block.length === 0) return null;
+  const result: string[] = [];
+  for (const id of order) {
+    if (moved.has(id)) continue;
+    if (id === targetId && edge === 'before') result.push(...block);
+    result.push(id);
+    if (id === targetId && edge === 'after') result.push(...block);
+  }
+  return result.every((id, i) => id === order[i]) ? null : result;
+}
