@@ -78,7 +78,11 @@
         },
         "seconds": 0
       },
-      "status": "disconnected"
+      "status": "disconnected",
+      "tables": {
+        "all": true,
+        "names": []
+      }
     },
     {
       "access": {
@@ -115,7 +119,11 @@
         },
         "seconds": 0
       },
-      "status": "disconnected"
+      "status": "disconnected",
+      "tables": {
+        "all": true,
+        "names": []
+      }
     },
     {
       "access": {
@@ -152,7 +160,11 @@
         },
         "seconds": 10
       },
-      "status": "disconnected"
+      "status": "disconnected",
+      "tables": {
+        "all": true,
+        "names": []
+      }
     },
     {
       "access": {
@@ -189,7 +201,11 @@
         },
         "seconds": 10
       },
-      "status": "disconnected"
+      "status": "disconnected",
+      "tables": {
+        "all": true,
+        "names": []
+      }
     },
     {
       "access": {
@@ -226,7 +242,11 @@
         },
         "seconds": 10
       },
-      "status": "disconnected"
+      "status": "disconnected",
+      "tables": {
+        "all": true,
+        "names": []
+      }
     },
     {
       "access": {
@@ -263,7 +283,11 @@
         },
         "seconds": 10
       },
-      "status": "disconnected"
+      "status": "disconnected",
+      "tables": {
+        "all": true,
+        "names": []
+      }
     },
     {
       "access": {
@@ -300,7 +324,11 @@
         },
         "seconds": 10
       },
-      "status": "disconnected"
+      "status": "disconnected",
+      "tables": {
+        "all": true,
+        "names": []
+      }
     },
     {
       "access": {
@@ -337,7 +365,11 @@
         },
         "seconds": 10
       },
-      "status": "disconnected"
+      "status": "disconnected",
+      "tables": {
+        "all": true,
+        "names": []
+      }
     },
     {
       "access": {
@@ -375,7 +407,11 @@
         },
         "seconds": 10
       },
-      "status": "disconnected"
+      "status": "disconnected",
+      "tables": {
+        "all": true,
+        "names": []
+      }
     },
     {
       "access": {
@@ -413,7 +449,11 @@
         },
         "seconds": 10
       },
-      "status": "disconnected"
+      "status": "disconnected",
+      "tables": {
+        "all": true,
+        "names": []
+      }
     }
   ]
 }
