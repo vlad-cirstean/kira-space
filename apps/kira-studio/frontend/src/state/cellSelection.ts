@@ -82,7 +82,20 @@ export const useCellSelectionStore = defineStore('cellSelection', () => {
     delete state.byTab[tabId];
   }
 
-  return { ...toRefs(state), selectedCellFor, publishSelectedCell, clearSelectedCellFor };
+  /** Drops every selection whose tab id matches, e.g. a window's tabs for one finished session. */
+  function clearSelectedCellsWhere(match: (tabId: string) => boolean): void {
+    for (const tabId of Object.keys(state.byTab)) {
+      if (match(tabId)) delete state.byTab[tabId];
+    }
+  }
+
+  return {
+    ...toRefs(state),
+    selectedCellFor,
+    publishSelectedCell,
+    clearSelectedCellFor,
+    clearSelectedCellsWhere,
+  };
 });
 
 /** Stable identity of a selection, for `data-cell-key` and for change detection. */

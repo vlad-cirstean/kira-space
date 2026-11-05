@@ -8,17 +8,18 @@ import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
 import {
   bigTable,
-  copiedImageSize,
   diffClipboardImage,
   LONG_QUERY,
   openProofWindow,
   PENDING_ID,
   pendingSession,
+  pngHeight,
   proofControl,
   RESULT_VIEWPORT,
   SESSION_ID,
   session,
   sessions,
+  shotFolder,
   stepSnapshot,
   viewState,
 } from './support/proof';
@@ -240,10 +241,94 @@ test('the copied screenshot matches the screen, scroll and highlight included', 
   expect(diff.mean).toBeLessThan(6);
 });
 
-test('copy all tabs stacks every tab in order, and save writes a PNG', async ({
+const savedFiles = (log: { channel: string; args: unknown }[]) =>
+  log.filter((c) => c.channel === IPC.proofSavePngTo).map((c) => c.args as Json);
+
+test('the copied screenshot includes an open cell editor', async ({ relaunch, uiServer }) => {
+  const { window: page } = await relaunch({ control: proofControl(threeSteps()) });
+  await openProofWindow(page, uiServer.url);
+  await stepsReady(page);
+  await page
+    .locator('[data-testid="proof-step-result"] [data-testid="console-result-row"][data-row="0"]')
+    .locator('[data-testid="console-result-cell"][data-column="name"]')
+    .click();
+  await expect(page.locator('[data-testid="cell-editor"]')).toBeVisible();
+  await installClipboardSpy(page, { image: true });
+
+  await page.locator('[data-testid="proof-shot"]').click();
+  await expect.poll(() => copiedImageCount(page), { timeout: CAPTURE_MS }).toBe(1);
+
+  await page.mouse.move(0, 0);
+  const shot = await page.locator('[data-testid="proof-centre"]').screenshot();
+  const diff = await diffClipboardImage(page, shot);
+  expect(diff.over).toBeLessThan(0.02);
+  expect(diff.mean).toBeLessThan(6);
+});
+
+test('save all tabs writes one PNG per tab into the chosen folder', async ({
   relaunch,
   uiServer,
 }) => {
+  test.setTimeout(180_000);
+  const { window: page, control } = await relaunch({
+    control: proofControl([
+      ...threeSteps(),
+      { channel: IPC.proofChooseShotFolder, response: shotFolder() },
+    ]),
+  });
+  await openProofWindow(page, uiServer.url);
+  await stepsReady(page);
+
+  await page.locator('[data-testid="proof-shot-more"]').click();
+  await page.locator('[data-testid="proof-shot-save-all"]').click();
+  await expect.poll(() => savedFiles(control.log()).length, { timeout: CAPTURE_MS }).toBe(3);
+
+  const files = savedFiles(control.log());
+  expect(files.map((f) => f.filename)).toEqual([
+    '01-Orders-before.png',
+    '02-Doc-hit.png',
+    '03-Stats.png',
+  ]);
+  const centre = await page.locator('[data-testid="proof-centre"]').boundingBox();
+  const dpr = await page.evaluate(() => window.devicePixelRatio);
+  for (const f of files) {
+    expect(f.folderId).toBe('shot_test');
+    expect(f.pngBase64.startsWith('iVBORw0KGgo')).toBe(true);
+    expect(Math.abs(pngHeight(f.pngBase64) - (centre?.height ?? 0) * dpr)).toBeLessThanOrEqual(3);
+  }
+  await expect
+    .poll(() => control.log().filter((c) => c.channel === IPC.proofForgetShotFolder).length)
+    .toBe(1);
+  // The tab the user was on is active again.
+  await expect(
+    page.locator('[data-testid="proof-tabs"] [data-testid="tab"][data-active="true"]'),
+  ).toContainText('#1');
+});
+
+test('cancelling the folder picker captures nothing', async ({ relaunch, uiServer }) => {
+  const { window: page, control } = await relaunch({
+    control: proofControl([
+      ...threeSteps(),
+      {
+        channel: IPC.proofChooseShotFolder,
+        response: { canceled: true, id: '', path: '' },
+      },
+    ]),
+  });
+  await openProofWindow(page, uiServer.url);
+  await stepsReady(page);
+
+  await page.locator('[data-testid="proof-shot-more"]').click();
+  await page.locator('[data-testid="proof-shot-save-all"]').click();
+  await expect
+    .poll(() => control.log().filter((c) => c.channel === IPC.proofChooseShotFolder).length)
+    .toBe(1);
+  await page.waitForTimeout(500);
+  expect(savedFiles(control.log())).toHaveLength(0);
+  expect(control.log().filter((c) => c.channel === IPC.proofForgetShotFolder)).toHaveLength(0);
+});
+
+test('save tab writes the active tab as one PNG', async ({ relaunch, uiServer }) => {
   test.setTimeout(180_000);
   const { window: page, control } = await relaunch({
     control: proofControl([
@@ -253,20 +338,6 @@ test('copy all tabs stacks every tab in order, and save writes a PNG', async ({
   });
   await openProofWindow(page, uiServer.url);
   await stepsReady(page);
-  await installClipboardSpy(page, { image: true });
-
-  await page.locator('[data-testid="proof-shot-more"]').click();
-  await page.locator('[data-testid="proof-shot-copy-all"]').click();
-  await expect.poll(() => copiedImageCount(page), { timeout: CAPTURE_MS }).toBe(1);
-  const centre = await page.locator('[data-testid="proof-centre"]').boundingBox();
-  const size = await copiedImageSize(page);
-  expect(centre).not.toBeNull();
-  // Three panes plus two 8px gaps.
-  expect(Math.abs(size.height - ((centre?.height ?? 0) * 3 + 16))).toBeLessThanOrEqual(3);
-  // The tab the user was on is active again.
-  await expect(
-    page.locator('[data-testid="proof-tabs"] [data-testid="tab"][data-active="true"]'),
-  ).toContainText('#1');
 
   await page.locator('[data-testid="proof-shot-more"]').click();
   await page.locator('[data-testid="proof-shot-save"]').click();
@@ -280,12 +351,9 @@ test('copy all tabs stacks every tab in order, and save writes a PNG', async ({
   expect(args.pngBase64.startsWith('iVBORw0KGgo')).toBe(true);
 });
 
-test('copy all tabs does not wait on a step that failed to load', async ({
-  relaunch,
-  uiServer,
-}) => {
+test('save all does not wait on a step that failed to load', async ({ relaunch, uiServer }) => {
   test.setTimeout(180_000);
-  const { window: page } = await relaunch({
+  const { window: page, control } = await relaunch({
     control: proofControl([
       stepSnapshot(SESSION_ID, 1, 1, 'table'),
       {
@@ -294,18 +362,61 @@ test('copy all tabs does not wait on a step that failed to load', async ({
         error: { code: 'E_INTERNAL', message: 'step unreadable' },
       },
       stepSnapshot(SESSION_ID, 1, 3, 'keyvalue'),
+      { channel: IPC.proofChooseShotFolder, response: shotFolder() },
     ]),
   });
   await openProofWindow(page, uiServer.url);
   await stepsReady(page);
-  await installClipboardSpy(page, { image: true });
 
   const started = Date.now();
   await page.locator('[data-testid="proof-shot-more"]').click();
-  await page.locator('[data-testid="proof-shot-copy-all"]').click();
-  await expect.poll(() => copiedImageCount(page), { timeout: CAPTURE_MS }).toBe(1);
+  await page.locator('[data-testid="proof-shot-save-all"]').click();
+  await expect.poll(() => savedFiles(control.log()).length, { timeout: CAPTURE_MS }).toBe(3);
   // The ready timeout is 15 s; a failed step must not burn it.
   expect(Date.now() - started).toBeLessThan(14_000);
+});
+
+test('the cell editor shows a clicked cell read-only', async ({ relaunch, uiServer }) => {
+  const { window: page } = await relaunch({ control: proofControl(threeSteps()) });
+  await openProofWindow(page, uiServer.url);
+  await stepsReady(page);
+
+  const key = await page.locator('[data-testid="proof-step"]').getAttribute('data-step-key');
+  const dock = page.locator(`[data-testid="cell-editor"][data-tab-id="${key}"]`);
+  await expect(dock).toHaveCount(0);
+
+  const cell = page
+    .locator('[data-testid="proof-step-result"] [data-testid="console-result-row"][data-row="0"]')
+    .locator('[data-testid="console-result-cell"][data-column="name"]');
+  await cell.click();
+  await expect(dock).toBeVisible();
+  await expect(dock.locator('[data-testid="cell-editor-panel"]')).toHaveAttribute(
+    'data-read-only',
+    'true',
+  );
+  await expect
+    .poll(() => editorText(dock.locator('[data-testid="cell-editor-encoded"]')))
+    .toBe('alpha');
+
+  // Another tab and back: the selection is kept per step.
+  await page.locator('[data-testid="tab"]', { hasText: '#2 Doc hit' }).click();
+  await expect(page.locator('[data-testid="console-result-doc-row"]').first()).toBeVisible();
+  await expect(page.locator('[data-testid="cell-editor"]')).toHaveCount(0);
+  await page.locator('[data-testid="tab"]', { hasText: '#1 Orders before' }).click();
+  await expect(dock).toBeVisible();
+
+  // A key-value row opens it too.
+  await page.locator('[data-testid="tab"]', { hasText: '#3 Stats' }).click();
+  await page
+    .locator('[data-testid="proof-step-result"] [data-testid="console-result-kv-row"]')
+    .first()
+    .click();
+  const kvDock = page.locator('[data-testid="cell-editor"]');
+  await expect(kvDock).toBeVisible();
+  await expect(kvDock.locator('[data-testid="cell-editor-panel"]')).toHaveAttribute(
+    'data-read-only',
+    'true',
+  );
 });
 
 test('a pending edit shows the diff, compares old to new, and accepts', async ({
