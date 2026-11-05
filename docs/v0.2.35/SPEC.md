@@ -22,7 +22,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 | P523 | Prefixed nanoid for every Kira-generated id | Pending |
 | P524 | Manual order for API collections and environments | Done |
 | P525 | Uniform flat design: dialogs and outline buttons | Done |
-| P526 | Standalone step library and Workflows page tabs | Pending |
+| P526 | Standalone step library and Workflows page tabs | Done |
 
 ## Rows
 
@@ -124,3 +124,4 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 - Ask (user): "Stops should be mostly stand alone and then an workflow to be able to add stuff on top. Also the workflow page needs tabs for statuses steps and then workflows".
 - Reading: "Stops" means steps. Steps become standalone library files (`<home>/steps/<id>.yaml`); a workflow references them and adds on top (per-workflow overrides, extra prompt, its own routes, inline workflow-only steps). Workflows page gets tabs Statuses, Steps, Workflows. Existing inline steps move into the library once, with a backup. Space ADE only, no SQL migration.
 - Plan: `plans/P526.md`.
+- Result: Done in 7 code commits plus docs, no SQL migration. Step library `<home>/steps/*.yaml`, workflow references with overrides, `routes` and `prompt_extra`, diff writer, one-time migration with `.p526-backup`, Statuses/Steps/Workflows tabs, library editing (form and YAML), flow tests `TestStepLibrary*`, UI spec `ade-v2-workflow-steps`. Library edits apply to new work only.
