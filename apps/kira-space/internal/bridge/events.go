@@ -3,6 +3,7 @@ package bridge
 import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/internal/appevent"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/metrics"
 )
 
@@ -131,6 +132,14 @@ func (ev *Events) AttachOpLog(l *oplog.Log) (detach func()) {
 		ev.emit.Emit(ChannelOpBatch, rs)
 	})
 	return func() { d1(); d2() }
+}
+
+// ChannelApprovalsChanged broadcasts the full approvals list (internal/approvals).
+const ChannelApprovalsChanged = appevent.ChannelApprovalsChanged
+
+// AttachApprovals broadcasts the approvals list to every window after each change.
+func (ev *Events) AttachApprovals(q *approvals.Queue) (detach func()) {
+	return q.OnChange(func(list []approvals.Item) { ev.emit.Emit(ChannelApprovalsChanged, list) })
 }
 
 // GitEventPrefix prefixes every git event name (repo.changed, remote.progress, ...) pushed to one

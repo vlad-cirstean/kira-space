@@ -38,7 +38,7 @@ test('pairs, writes and attaches a terminal on an insecure origin', async ({ pag
   );
   expect(sent).toHaveLength(1);
   expect(sent[0]?.key).toMatch(
-    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
   );
 
   await page.goto(`${base}terminal/9ab0`);

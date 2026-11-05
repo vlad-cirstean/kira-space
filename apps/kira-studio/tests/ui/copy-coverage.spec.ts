@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
-import { emitPrompts, routed } from '@workbench/testing/ui/prompts';
+import type { ApprovalItem } from '@shared/domain/approvals';
+import { liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import {
   expectCatalogText,
   setPseudoLocale,
@@ -170,36 +171,21 @@ test('operations panel', async ({ relaunch }) => {
 });
 
 test('DB MCP approval dialog', async ({ relaunch }) => {
-  const snap = contract<{ pending: { requestId: string; statement: string } }>(
-    'dbmcp',
-    'DbMcpService.PendingApprovals',
-  );
-  const { window: page } = await relaunch({
-    control: [
-      {
-        channel: IPC.dbMcpPendingApprovals,
-        response: { ...snap, pending: { ...snap.pending, expiresAtMs: Date.now() + 60_000 } },
-      },
-    ],
-  });
+  const [item] = contract<ApprovalItem[]>('dbmcp', 'ApprovalsService.List');
+  if (!item) throw new Error('contract has no item');
+  const { window: page } = await relaunch({ control: [] });
   await setPseudoLocale(page);
-  await emitPrompts(page, [routed('dbmcp', snap.pending.requestId)]);
-  const dialog = loc(page, 'db-mcp-approval-dialog');
+  await pushApprovals(page, [liveItem(item)]);
+  const dialog = loc(page, 'approvals-dialog');
   await expect(dialog).toBeVisible();
   await expectCatalogText(dialog, { allow: ALLOW });
 });
 
 test('DB MCP response review dialog', async ({ relaunch }) => {
-  const snap = contract<{ pending: { requestId: string } }>(
-    'dbmcp-preview',
-    'DbMcpService.PendingApprovals',
-  );
+  const [item] = contract<ApprovalItem[]>('dbmcp-preview', 'ApprovalsService.List');
+  if (!item) throw new Error('contract has no item');
   const { window: page } = await relaunch({
     control: [
-      {
-        channel: IPC.dbMcpPendingApprovals,
-        response: { ...snap, pending: { ...snap.pending, expiresAtMs: Date.now() + 60_000 } },
-      },
       {
         channel: IPC.dbMcpPendingResponse,
         response: contract('dbmcp-preview', 'DbMcpService.PendingResponse'),
@@ -207,8 +193,8 @@ test('DB MCP response review dialog', async ({ relaunch }) => {
     ],
   });
   await setPseudoLocale(page);
-  await emitPrompts(page, [routed('dbmcp', snap.pending.requestId)]);
-  const dialog = loc(page, 'db-mcp-approval-dialog');
+  await pushApprovals(page, [liveItem(item)]);
+  const dialog = loc(page, 'approvals-dialog');
   await expect(loc(page, 'db-mcp-preview-table')).toBeVisible();
   await expectCatalogText(dialog, { allow: ALLOW });
 });
@@ -480,21 +466,12 @@ test('Kubernetes MCP dialog and approval use catalog text', async ({ relaunch })
 });
 
 test('Kubernetes MCP approval dialog', async ({ relaunch }) => {
-  const snap = contract<{ pending: { requestId: string; statement: string } }>(
-    'dbmcp-kube',
-    'DbMcpService.PendingApprovals',
-  );
-  const { window: page } = await relaunch({
-    control: [
-      {
-        channel: IPC.dbMcpPendingApprovals,
-        response: { ...snap, pending: { ...snap.pending, expiresAtMs: Date.now() + 60_000 } },
-      },
-    ],
-  });
+  const [item] = contract<ApprovalItem[]>('dbmcp-kube', 'ApprovalsService.List');
+  if (!item) throw new Error('contract has no item');
+  const { window: page } = await relaunch({ control: [] });
   await setPseudoLocale(page);
-  await emitPrompts(page, [routed('dbmcp', snap.pending.requestId)]);
-  const dialog = loc(page, 'db-mcp-approval-dialog');
+  await pushApprovals(page, [liveItem(item)]);
+  const dialog = loc(page, 'approvals-dialog');
   await expect(dialog).toBeVisible();
   await expectCatalogText(dialog, { allow: [...ALLOW, ...KUBE_DATA, /<kube>|kubectl/] });
 });

@@ -99,8 +99,8 @@ async function openFile(page: Page): Promise<void> {
   await expect(page.locator('[data-testid="connection-file-dialog"]')).toBeVisible();
 }
 
-const revealed = (page: Page) => page.locator('[data-testid="connection-secret-revealed"]');
-const revealButton = (page: Page) => page.locator('[data-testid="connection-secret-reveal"]');
+const field = (page: Page) => page.locator('[data-testid="connection-secret-value"]');
+const revealButton = (page: Page) => page.locator('[data-testid="connection-secret-value-reveal"]');
 
 test('opening the file does not fetch or show the secret', async ({ relaunch }) => {
   // No connectionsReveal snapshot at all: an open that fetched the plaintext would fail on the
@@ -109,7 +109,7 @@ test('opening the file does not fetch or show the secret', async ({ relaunch }) 
 
   await openFile(page);
 
-  await expect(revealed(page)).toHaveCount(0);
+  await expect(field(page)).toHaveValue('');
   await expect(revealButton(page)).toBeVisible();
   expect(control.log().filter((e) => e.channel === IPC.connectionsReveal)).toHaveLength(0);
 });
@@ -127,7 +127,7 @@ test('revealing shows the value once per press', async ({ relaunch }) => {
 
   await openFile(page);
   await revealButton(page).click();
-  await expect(revealed(page)).toHaveText('hunter2');
+  await expect(field(page)).toHaveValue('hunter2');
   expect(control.log().filter((e) => e.channel === IPC.connectionsReveal)).toHaveLength(1);
 });
 
@@ -144,7 +144,7 @@ test('a cancelled reveal shows nothing', async ({ relaunch }) => {
 
   await openFile(page);
   await revealButton(page).click();
-  await expect(revealed(page)).toHaveCount(0);
+  await expect(field(page)).toHaveValue('');
   await expect(page.locator('[data-testid="connection-secret-error"]')).toHaveCount(0);
 });
 
@@ -173,13 +173,13 @@ test('OS auth unavailable routes through the in-app confirmation', async ({ rela
     `“${CONN.name}” displays the password in plain text.`,
   );
   await cancelConfirm(page);
-  await expect(revealed(page)).toHaveCount(0);
+  await expect(field(page)).toHaveValue('');
   expect(control.log().filter((e) => e.channel === IPC.connectionsReveal)).toHaveLength(1);
 
   // Second press, confirming: the next Reveal call carries confirmed: true.
   await revealButton(page).click();
   await acceptConfirm(page);
-  await expect(revealed(page)).toHaveText('hunter2');
+  await expect(field(page)).toHaveValue('hunter2');
   const revealCalls = control.log().filter((e) => e.channel === IPC.connectionsReveal);
   expect(revealCalls).toHaveLength(3);
   expect(revealCalls[2]?.args).toEqual({ id: CONN.id, confirmed: true });
@@ -205,7 +205,7 @@ test("a reveal error renders in the section's error slot", async ({ relaunch }) 
   await expect(page.locator('[data-testid="connection-secret-error"]')).toHaveText(
     'The stored credential could not be decrypted.',
   );
-  await expect(revealed(page)).toHaveCount(0);
+  await expect(field(page)).toHaveValue('');
 });
 
 test('a URI secret reveals the URI, not a password', async ({ relaunch }) => {
@@ -226,6 +226,6 @@ test('a URI secret reveals the URI, not a password', async ({ relaunch }) => {
 
   await openFile(page);
   await revealButton(page).click();
-  await expect(revealed(page)).toHaveText('postgresql://u:hunter2@h:5432/db');
+  await expect(field(page)).toHaveValue('postgresql://u:hunter2@h:5432/db');
   expect(control.log().filter((e) => e.channel === IPC.connectionsReveal)).toHaveLength(1);
 });

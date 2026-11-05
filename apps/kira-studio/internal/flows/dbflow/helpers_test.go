@@ -3,9 +3,7 @@ package dbflow
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"path/filepath"
-	"sync/atomic"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
@@ -14,12 +12,12 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	_ "modernc.org/sqlite"
 )
 
 var (
-	ctx   = context.Background()
-	opSeq atomic.Int64
+	ctx = context.Background()
 )
 
 func ptr[T any](v T) *T { return &v }
@@ -73,7 +71,7 @@ func connect(t *testing.T, app *flowharness.App, id string) model.ConnectionStat
 func execute(t *testing.T, app *flowharness.App, connID string, stmts ...string) []page.Page {
 	t.Helper()
 	resp, err := app.W.Router.Execute(ctx, adapterhost.ExecuteRequestWire{
-		OpID: fmt.Sprintf("dbop-%d", opSeq.Add(1)), ConnectionID: connID, Statements: stmts,
+		OpID: ids.NewID(), ConnectionID: connID, Statements: stmts,
 	})
 	if err != nil {
 		t.Fatalf("Execute %v: %v", stmts, err)

@@ -118,7 +118,10 @@ func (b *TaskBoard) branchContext(tc *taskCtx, sb model.AdeTaskBranch, c *script
 		if rec == nil {
 			return fmt.Errorf("code repo %s is no longer registered", sb.CodeRepoID)
 		}
-		path, c.Pending = b.freePath(rec.Name, sb.Name), true
+		if path, err = b.worktreeDirFor(sb, rec.Name, ""); err != nil {
+			return err
+		}
+		c.Pending = true
 	}
 	c.Worktree = path
 	for name, v := range b.adeVars(tc, sb, path) {

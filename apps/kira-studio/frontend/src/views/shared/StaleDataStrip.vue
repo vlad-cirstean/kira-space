@@ -12,7 +12,7 @@ defineEmits<{ reconnect: [] }>();
     <AlertDescription>{{ t('studio.common.connectionLost.description') }}</AlertDescription>
     <AlertAction>
       <Button
-        variant="toolbar-primary"
+        variant="dialog-primary"
         size="kira"
         :data-testid="`${testid}-reconnect`"
         :pending="reconnecting"

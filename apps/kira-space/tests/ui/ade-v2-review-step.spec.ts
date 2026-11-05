@@ -95,7 +95,7 @@ reviewTest('Reopen sends review.comment.setState', async ({ relaunch }) => {
     .click();
   await expect
     .poll(async () => gitStreamParams(page, 'review.comment.setState'))
-    .toEqual([expect.objectContaining({ id: 1, state: 'open' })]);
+    .toEqual([expect.objectContaining({ id: '1', state: 'open' })]);
 });
 
 reviewTest('the Ask agent tab shows the review agent', async ({ relaunch }) => {

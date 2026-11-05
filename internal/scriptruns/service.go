@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/prompts"
@@ -88,6 +88,9 @@ type Service struct {
 	tailMu sync.Mutex
 	tails  map[string]*termTail
 
+	// waiters are the Wait calls blocked on a run, woken when it finishes.
+	waiters map[string]map[chan struct{}]struct{}
+
 	// restore is the offer to run again what the last quit or crash ended; it lives for one app session.
 	restore restoreOffer
 }
@@ -153,7 +156,7 @@ func (s *Service) Begin(scriptID, terminalID, token string) (terminal.ScriptLaun
 	}
 	now := s.now()
 	run := Run{
-		ID: uuid.NewString(), ScriptID: rec.ID, ScriptName: rec.Name, Color: rec.Color, Kind: KindScript,
+		ID: ids.NewID(), ScriptID: rec.ID, ScriptName: rec.Name, Color: rec.Color, Kind: KindScript,
 		Trigger: trigger, State: StateRunning, TerminalID: terminalID, Cwd: dir.Path, Command: command,
 		CreatedAt: now, StartedAt: &now, Params: params,
 	}
@@ -205,6 +208,7 @@ func (s *Service) finish(run *Run, err error) {
 	}
 	s.emit(*run)
 	s.purge()
+	s.wake(run.ID)
 }
 
 // Failed records that the run's session did not spawn.

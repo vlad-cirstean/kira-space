@@ -20,6 +20,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
@@ -475,7 +476,7 @@ func (b *TaskBoard) queueRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 		attempt = last.Attempt + 1 // a pass after a move starts above its history, which the watermark hides
 	}
 	run := model.AdeRun{
-		ID: b.newID(), TaskID: tc.task.ID, StepID: plan[idx].Def.ID, BranchID: branchID,
+		ID: ids.NewID(), TaskID: tc.task.ID, StepID: plan[idx].Def.ID, BranchID: branchID,
 		Attempt: attempt, State: model.AdeRunPending, Loops: opts.Loops, Launch: opts.Launch,
 	}
 	open := path != "" && (branchID == taskTarget || b.setupReady(sb, path, setups))
@@ -598,7 +599,7 @@ func (b *TaskBoard) startRun(ctx context.Context, tc *taskCtx, plan []stepView, 
 	var agent harness.Provider
 	stepN, stepOf := stepNumber(plan, idx)
 	if def.Kind == adewire.KindAgent {
-		sessionID = b.newID()
+		sessionID = ids.NewID()
 		patch.SessionID = &sessionID
 		agent, err = b.agentForStep(spec.ResumeID, def.Agent)
 		if err != nil {
@@ -749,7 +750,7 @@ func (b *TaskBoard) proposeAgentID(agent harness.Provider, resume string) string
 	if _, ok := agent.(harness.SessionLocator); ok {
 		return ""
 	}
-	return b.newID()
+	return ids.NewID()
 }
 
 // agentLaunch is what superviseAgent runs: a prompt, or a smart script's step (smart != nil).
@@ -1055,7 +1056,7 @@ func (b *TaskBoard) learnAgentSessionID(sessionID, id string, also func(string))
 func (b *TaskBoard) sessionAgentID(sessionID string) string {
 	rec, err := b.deps.Sessions.Get(sessionID)
 	if err != nil || rec == nil {
-		return b.newID()
+		return ids.NewID()
 	}
 	return rec.AgentSessionID
 }

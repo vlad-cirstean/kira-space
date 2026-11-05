@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"slices"
@@ -108,6 +109,8 @@ type AdeTaskBranch struct {
 	// ReviewCommentsJSON holds the review comments moved off the branch at archive or detach; ""
 	// = no snapshot.
 	ReviewCommentsJSON string
+	// WorktreeDir is the reserved worktree folder name (wt_<id>) under <home>/wt/<repo>; "" until first needed.
+	WorktreeDir string
 }
 
 // AdeChangeRequest is a pull or merge request stored on a branch row.
@@ -172,11 +175,11 @@ const AdeRunPurposeReview = "review"
 
 // AdeReviewSpec is a review round's plan, stored in ade_runs.spec_json.
 type AdeReviewSpec struct {
-	ReviewRunID string  `json:"reviewRunId"`
-	Round       int     `json:"round"`
-	Route       string  `json:"route"`
-	CommentIDs  []int64 `json:"commentIds"`
-	HeadBefore  string  `json:"headBefore,omitempty"`
+	ReviewRunID string        `json:"reviewRunId"`
+	Round       int           `json:"round"`
+	Route       string        `json:"route"`
+	CommentIDs  CommentIDList `json:"commentIds"`
+	HeadBefore  string        `json:"headBefore,omitempty"`
 	// HeadAfter is the worktree tip when the round ended ("" while it runs).
 	HeadAfter string `json:"headAfter,omitempty"`
 	// GitRepoID and Branch key the comments in review.db.
@@ -316,6 +319,13 @@ type AdeWorktreeSetup struct {
 type AdeRepoEnv struct {
 	Name              string
 	DeployedShaScript string
+	// DeployedShaRun runs a Run-module script instead of DeployedShaScript.
+	DeployedShaRun *ScriptRef
+}
+
+// Equal reports whether e and o configure the same environment.
+func (e AdeRepoEnv) Equal(o AdeRepoEnv) bool {
+	return e.Name == o.Name && e.DeployedShaScript == o.DeployedShaScript && e.DeployedShaRun.Equal(o.DeployedShaRun)
 }
 
 // AdeRepoConfig is a code repo joined with its import source and its repo file's nickname,
@@ -471,6 +481,32 @@ func (d AdeStatusDefaults) Validate(set []AdeTaskStatus) error {
 		if n.id != "" && !in(n.id) {
 			return fmt.Errorf("model: ade status defaults: %s names unknown status %q", n.slot, n.id)
 		}
+	}
+	return nil
+}
+
+// CommentIDList holds review comment ids. Runs stored before ids became strings hold JSON numbers.
+type CommentIDList []string
+
+// LegacyCommentID is the id migration 0007 gave the review comment that had integer id n.
+func LegacyCommentID(n int64) string {
+	return fmt.Sprintf("00000000-0000-7000-8000-%012x", n)
+}
+
+// UnmarshalJSON accepts strings and legacy numbers, mapping a number to its migrated id.
+func (l *CommentIDList) UnmarshalJSON(b []byte) error {
+	var s []string
+	if err := json.Unmarshal(b, &s); err == nil {
+		*l = s
+		return nil
+	}
+	var raw []int64
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	*l = make(CommentIDList, len(raw))
+	for i, n := range raw {
+		(*l)[i] = LegacyCommentID(n)
 	}
 	return nil
 }

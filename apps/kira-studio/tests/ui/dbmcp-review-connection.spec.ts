@@ -1,5 +1,6 @@
+import type { ApprovalItem } from '@shared/domain/approvals';
 import type { ConnectionSummary } from '@shared/domain/connection';
-import { emitPrompts, routed } from '@workbench/testing/ui/prompts';
+import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { expect, test } from './fixtures';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
@@ -10,10 +11,6 @@ import { openSettings } from './support/settings';
 // the review setting in the connection's file. A connection's review setting overrides the app switch:
 // its results are held with the app switch off.
 
-interface Snapshot {
-  pending: { requestId: string; target: { database: string } };
-  queued: number;
-}
 const ID = 'conn-review';
 const OTHER_ID = 'conn-inherit';
 
@@ -81,25 +78,22 @@ test('the settings glance flags a connection with an override and skips one that
 test('contract: a result held by a connection override opens the review dialog', async ({
   relaunch,
 }) => {
-  const snap = contract<Snapshot>('dbmcp-review-connection', 'DbMcpService.PendingApprovals');
+  const [item] = contract<ApprovalItem[]>('dbmcp-review-connection', 'ApprovalsService.List');
+  if (!item) throw new Error('contract has no item');
   const held = contract<{ requestId: string }>(
     'dbmcp-review-connection',
     'DbMcpService.PendingResponse',
   );
   const { window: page, control } = await relaunch({
     control: [
-      {
-        channel: IPC.dbMcpPendingApprovals,
-        response: { ...snap, pending: { ...snap.pending, expiresAtMs: Date.now() + 60_000 } },
-      },
       { channel: IPC.dbMcpPendingResponse, response: held },
-      { channel: IPC.dbMcpApproveQuery, response: { pending: null, queued: 0 } },
+      { channel: IPC.approvalsAnswer, response: answeredOk([item.id]) },
     ],
   });
-  await emitPrompts(page, [routed('dbmcp', snap.pending.requestId)]);
-  await expect(page.locator('[data-testid="db-mcp-preview-send"]')).toBeVisible();
-  await page.click('[data-testid="db-mcp-preview-send"]');
+  await pushApprovals(page, [liveItem(item)]);
+  await expect(page.locator(`[data-testid="approval-approve-${item.id}"]`)).toBeVisible();
+  await page.click(`[data-testid="approval-approve-${item.id}"]`);
   await expect
-    .poll(() => control.log().find((e) => e.channel === IPC.dbMcpApproveQuery)?.args)
-    .toEqual({ requestId: snap.pending.requestId });
+    .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
+    .toEqual({ ids: [item.id], approve: true, options: null });
 });

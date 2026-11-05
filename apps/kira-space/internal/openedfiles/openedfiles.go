@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filetypes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -184,7 +184,7 @@ func (s *Service) deliver(targets []Target) {
 		fresh = s.pending[key]
 		delete(s.pending, key)
 	}
-	key = WindowKeyPrefix + uuid.NewString()
+	key = WindowKeyPrefix + ids.NewID()
 	s.pending[key] = fresh
 	s.filesKey = key
 	s.mu.Unlock()

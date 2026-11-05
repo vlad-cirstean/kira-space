@@ -7,6 +7,7 @@
     "dirMode": "kira",
     "id": "ask",
     "kind": "smart",
+    "mcp": null,
     "name": "ask",
     "params": [
       {
@@ -54,6 +55,7 @@
     "dirMode": "kira",
     "id": "ask",
     "kind": "smart",
+    "mcp": null,
     "name": "ask",
     "params": [],
     "savedSecrets": [],

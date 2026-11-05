@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/catfile"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitops"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpreflight"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -75,6 +75,8 @@ type OpRequest struct {
 
 	From string `json:"from,omitempty"` // branchRename
 	To   string `json:"to,omitempty"`
+	// UnsetUpstream drops the renamed branch's tracking ref after the rename; Go callers only.
+	UnsetUpstream bool `json:"-"`
 
 	Message *string `json:"message,omitempty"` // tagCreate
 
@@ -532,6 +534,9 @@ func prepareBranchRename(ctx context.Context, e *RepoEntry, _ ConnID, _ string, 
 	for _, child := range stackChildrenOf(config, op.From) {
 		argv = append(argv, gitops.StackConfigSetArgs(gitops.StackParentKey(child), op.To))
 	}
+	if op.UnsetUpstream {
+		argv = append(argv, gitops.BranchUnsetUpstreamArgs(op.To))
+	}
 	return prepared{
 		argvList:    argv,
 		partialNote: fmt.Sprintf("Branch %s was renamed to %s; updating its stack children failed.", op.From, op.To),
@@ -988,7 +993,7 @@ func prepareSequencerVerb(
 	return prepared{argvList: [][]string{argv}}, nil
 }
 
-func newUndoID() string { return uuid.NewString() }
+func newUndoID() string { return ids.NewID() }
 
 // captureBranchDeleteUndo is undo-capture for a branch delete, captured BEFORE the
 // write: the branch's current tip sha plus every branch.<name>.* config line, replayed back in

@@ -46,7 +46,7 @@ const ttlLabel = computed(() => {
   const ttlMs = page.value?.ttlMs ?? null;
   return ttlMs === null
     ? t('studio.keyValue.noExpiry.status')
-    : t('studio.keyValue.expires.status', {
+    : t('common.expires.status', {
         time: formatCompactDuration(ttlMs, { ceil: true }),
       });
 });
@@ -186,7 +186,7 @@ defineExpose({
       <TooltipIconButton
         :icon="ICON.search"
         :label="t('studio.common.searchPage.label')"
-        :class="{ 'bg-field text-fg': !!rt?.searchOpen }"
+        :pressed="!!rt?.searchOpen"
         data-testid="keyvalue-search"
         @click="keyValueViewStore.toggleSearchOpen(viewKey)"
       />

@@ -242,6 +242,8 @@ func mapDetail(g *gqlDetailPR) githost.ChangeRequestDetail {
 			Commits: g.CommitCount.TotalCount, Files: g.ChangedFiles, Additions: g.Additions, Deletions: g.Deletions,
 		},
 	}
+	// The detail's own assignees and threads replace the sync-only counts the shared fields carry.
+	d.CommentCount, d.ChangeRequest.Assignees = nil, nil
 	d.ClosedAt = parseMillis(g.MergedAt)
 	if d.ClosedAt == 0 {
 		d.ClosedAt = parseMillis(g.ClosedAt)

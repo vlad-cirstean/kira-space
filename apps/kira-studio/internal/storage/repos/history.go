@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/google/uuid"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 )
 
@@ -149,7 +149,7 @@ func (h historyTable[T]) Record(
 		}
 	}
 
-	id := uuid.NewString()
+	id := ids.NewID()
 	var itemID *string
 	if in.ItemID != "" {
 		itemID = &in.ItemID

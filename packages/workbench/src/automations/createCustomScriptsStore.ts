@@ -1,6 +1,7 @@
 import type {
   CustomScript,
   CustomScriptFields,
+  RunFormResult,
   ScriptCollection,
   ScriptFileProblem,
   ScriptFileView,
@@ -10,6 +11,7 @@ import type {
 import type { SecretStorageStatus } from '@shared/domain/secrets';
 import { defineStore } from 'pinia';
 import { reactive, toRefs } from 'vue';
+import type { FormEdit } from '../config/configForm';
 import { hydrateThenSubscribe } from '../state/hydrateThenSubscribe';
 
 // The script store both apps define from their own `control` calls (createKeepAwakeStore's
@@ -24,6 +26,7 @@ export interface CustomScriptsControl {
   customScriptsDelete(id: string): Promise<void>;
   customScriptsFile(file: string): Promise<ScriptFileView>;
   customScriptsSaveFile(file: string, text: string, baseHash: string): Promise<ScriptFileView>;
+  customScriptsForm(file: string, text: string, edits: FormEdit[]): Promise<RunFormResult>;
   customScriptsSetSecrets(id: string, values: SecretValues): Promise<CustomScript>;
   /** Kira Space only. */
   customScriptsSetScheduleTarget?(
@@ -34,6 +37,10 @@ export interface CustomScriptsControl {
   /** collection '' is the ungrouped set. */
   customScriptsReorder(collection: string, ids: string[]): Promise<void>;
   customScriptsReorderCollections(names: string[]): Promise<void>;
+  /** collection '' ungroups; `beforeId` null appends to the target set. */
+  customScriptsMove(id: string, collection: string, beforeId: string | null): Promise<void>;
+  customScriptsRenameCollection(name: string, newName: string): Promise<void>;
+  customScriptsDeleteCollection(name: string): Promise<void>;
   onCustomScriptsChanged(cb: (snapshot: ScriptsSnapshot) => void): () => void;
 }
 
@@ -115,6 +122,10 @@ export function createCustomScriptsStore(control: CustomScriptsControl) {
       return control.customScriptsSaveFile(file, text, baseHash);
     }
 
+    function form(file: string, text: string, edits: FormEdit[]): Promise<RunFormResult> {
+      return control.customScriptsForm(file, text, edits);
+    }
+
     async function setSecrets(id: string, values: SecretValues): Promise<void> {
       await control.customScriptsSetSecrets(id, values);
     }
@@ -147,6 +158,18 @@ export function createCustomScriptsStore(control: CustomScriptsControl) {
       }
     }
 
+    async function move(id: string, collection: string, beforeId: string | null): Promise<void> {
+      await control.customScriptsMove(id, collection, beforeId);
+    }
+
+    async function renameCollection(name: string, newName: string): Promise<void> {
+      await control.customScriptsRenameCollection(name, newName);
+    }
+
+    async function removeCollection(name: string): Promise<void> {
+      await control.customScriptsDeleteCollection(name);
+    }
+
     return {
       ...toRefs(state),
       hydrateCustomScripts,
@@ -154,10 +177,14 @@ export function createCustomScriptsStore(control: CustomScriptsControl) {
       removeCustomScript,
       readFile,
       saveFile,
+      form,
       setSecrets,
       setScheduleTarget,
       reorderScripts,
       reorderCollections,
+      move,
+      renameCollection,
+      removeCollection,
     };
   });
 }

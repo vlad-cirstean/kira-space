@@ -1,95 +1,67 @@
 <script setup lang="ts">
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { Label } from '@theme/components/ui/label';
-import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
-import { errorText } from '@workbench/bridge/codedError';
 import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
+import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
+import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, useTemplateRef, watch } from 'vue';
 import { control } from '../bridge/control';
+import RepoConfigForm from './RepoConfigForm.vue';
 import { useRepoConfigFile, useSaveRepoConfigFile } from './state/repoConfigQueries';
+import { REPO_FIELDS, REPO_FORM_POINTERS } from './state/repoFields';
+import { useRepoForm } from './state/repoFormQueries';
+import type { RepoFileModel } from './state/repoFormTypes';
 
-// One repo's settings file. The draft is the source while it has unsaved edits, so a push never
-// resets it. Save sends the hash of the text the draft was edited from; a file changed elsewhere is
-// refused with Reload and Overwrite. A repo with no file shows a template, and Save creates it.
+// One repo's settings file, as a form and as YAML over one draft. Save sends the hash of the text
+// the draft was edited from; a file changed elsewhere is refused with Reload and Overwrite. A repo
+// with no file shows a template, and Save creates it.
 const props = defineProps<{ path: string; file?: string }>();
 
 const FOLDER = 'repos';
 
 const query = useRepoConfigFile(() => ({ path: props.path, file: props.file ?? '' }));
 const save = useSaveRepoConfigFile();
-
-const draft = ref('');
-const dirty = ref(false);
-const baseHash = ref('');
-const saveError = ref('');
-const conflict = ref(false);
-
 const view = computed(() => query.data.value);
 const creating = computed(() => view.value !== undefined && !view.value.exists);
-const actionable = computed(() => dirty.value && !save.isPending.value);
+const applyForm = useRepoForm(() => view.value?.file ?? props.file ?? '');
 
+const draft = useConfigFormDraft<RepoFileModel>({
+  file: () => (view.value ? { text: view.value.text, hash: view.value.hash } : undefined),
+  form: applyForm,
+  save: (text, baseHash) =>
+    save.mutateAsync({
+      path: view.value?.path ?? props.path,
+      file: view.value?.file ?? '',
+      text,
+      baseHash,
+    }),
+  refetch: async () => {
+    const fresh = (await query.refetch()).data;
+    return fresh ? { text: fresh.text, hash: fresh.hash } : undefined;
+  },
+  fields: REPO_FIELDS,
+});
+
+// The template of a repo with no file is unsaved by nature: Save creates it.
 watch(
   view,
   (v) => {
-    if (!v || dirty.value) return;
-    draft.value = v.text;
-    baseHash.value = v.hash;
+    if (v && !v.exists && !draft.dirty.value) draft.onYamlInput(v.text);
   },
   { immediate: true },
 );
 
-async function saveNow(): Promise<void> {
-  const v = view.value;
-  if (!v || !(dirty.value || creating.value)) return;
-  const text = draft.value;
-  try {
-    const next = await save.mutateAsync({
-      path: v.path,
-      file: v.file,
-      text,
-      baseHash: baseHash.value,
-    });
-    saveError.value = '';
-    conflict.value = false;
-    baseHash.value = next.hash;
-    if (draft.value === text) dirty.value = false;
-  } catch (err) {
-    saveError.value = errorText(err);
-    conflict.value = (err as { code?: string }).code === 'E_CONFLICT';
-  }
-}
-
-function resetTo(v: { text: string; hash: string } | undefined): void {
-  draft.value = v?.text ?? '';
-  baseHash.value = v?.hash ?? '';
-  dirty.value = false;
-  saveError.value = '';
-  conflict.value = false;
-}
-
-async function reload(): Promise<void> {
-  resetTo((await query.refetch()).data);
-}
-
-async function overwrite(): Promise<void> {
-  const fresh = (await query.refetch()).data;
-  if (!fresh) return;
-  baseHash.value = fresh.hash;
-  conflict.value = false;
-  dirty.value = true;
-  await saveNow();
-}
-
-function onInput(v: string | number): void {
-  draft.value = String(v);
-  dirty.value = true;
-}
+const items = computed(() => [
+  { value: 'form', label: t('common.form.label'), testid: 'repo-file-tab-form' },
+  { value: 'yaml', label: t('common.yaml.label'), testid: 'repo-file-tab-yaml' },
+]);
+const unclaimed = computed(() => draft.unmatched(REPO_FORM_POINTERS));
 
 const root = useTemplateRef<HTMLElement>('root');
-useShortcut(root, ['form.save'], () => void saveNow());
+useShortcut(root, ['form.save'], () => void draft.saveNow());
 </script>
 
 <template>
@@ -111,46 +83,85 @@ useShortcut(root, ['form.save'], () => void saveNow());
       {{ t('space.ade.context.readOnly.hint') }}
     </div>
     <template v-else>
-      <Label for="repo-file-text" class="sr-only">{{
-        t('space.repo.settingsFile.field.aria')
-      }}</Label>
-      <Textarea
-        id="repo-file-text"
-        :model-value="draft"
-        spellcheck="false"
-        class="min-h-72 resize-y font-data leading-relaxed"
+      <SecondaryTabs
+        :model-value="draft.tab.value"
+        :items="items"
+        :aria-label="t('space.repo.settingsFile.tabs.aria')"
+        @update:model-value="(v) => draft.showTab(v as 'form' | 'yaml')"
+      />
+      <template v-if="draft.tab.value === 'form'">
+        <Alert v-if="unclaimed" variant="error" data-testid="repo-form-problem">
+          <AlertDescription>{{
+            t('common.configForm.problem.status', {
+              line: unclaimed.line,
+              message: unclaimed.message,
+            })
+          }}</AlertDescription>
+          <AlertAction>
+            <Button
+              variant="link"
+              size="inline"
+              data-testid="repo-form-show-yaml"
+              @click="draft.showTab('yaml')"
+            >
+              {{ t('common.configForm.showYaml.label') }}
+            </Button>
+          </AlertAction>
+        </Alert>
+        <fieldset
+          v-if="draft.model.value"
+          :disabled="draft.formDisabled.value"
+          class="m-0 min-w-0 border-0 p-0"
+        >
+          <RepoConfigForm v-model="draft.model.value" :error-for="draft.errorFor" />
+        </fieldset>
+      </template>
+      <CodeTextEditor
+        v-else
+        :model-value="draft.draft.value"
+        language="yaml"
+        :problem="draft.problem.value"
+        :ariaLabel="t('space.repo.settingsFile.field.aria')"
+        class="h-72"
         data-testid="repo-file-text"
-        @update:model-value="onInput"
+        @update:model-value="draft.onYamlInput"
+        @save="draft.saveNow"
+        @submit="draft.saveNow"
       />
       <div class="flex flex-wrap items-center justify-end gap-2">
         <Button
           variant="dialog"
           size="kira-lg"
-          :disabled="!actionable"
+          :disabled="!draft.dirty.value"
           data-testid="repo-file-discard"
-          @click="resetTo(view)"
+          @click="draft.discard"
         >
           {{ t('common.action.discard.label') }}
         </Button>
         <Button
           variant="dialog-primary"
           size="kira-lg"
-          :disabled="!dirty && !creating"
-          :pending="save.isPending.value"
+          :disabled="!draft.canSave.value"
+          :pending="draft.saving.value"
           data-testid="repo-file-save"
-          @click="saveNow"
+          @click="draft.saveNow"
         >
           {{ creating ? t('space.repo.settingsFile.create.label') : t('common.action.save.label') }}
         </Button>
       </div>
     </template>
-    <Alert v-if="saveError" variant="error" data-testid="repo-file-save-error">
-      <AlertDescription>{{ saveError }}</AlertDescription>
-      <AlertAction v-if="conflict">
-        <Button variant="link" size="inline" data-testid="repo-file-reload" @click="reload">
+    <Alert v-if="draft.saveError.value" variant="error" data-testid="repo-file-save-error">
+      <AlertDescription>{{ draft.saveError.value }}</AlertDescription>
+      <AlertAction v-if="draft.conflict.value">
+        <Button variant="link" size="inline" data-testid="repo-file-reload" @click="draft.reload">
           {{ t('common.action.refresh.label') }}
         </Button>
-        <Button variant="link" size="inline" data-testid="repo-file-overwrite" @click="overwrite">
+        <Button
+          variant="link"
+          size="inline"
+          data-testid="repo-file-overwrite"
+          @click="draft.overwrite"
+        >
           {{ t('space.ade.workflows.conflict.overwrite.label') }}
         </Button>
       </AlertAction>

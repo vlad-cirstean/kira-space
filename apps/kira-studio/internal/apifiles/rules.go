@@ -22,6 +22,7 @@ const (
 	ruleItemUnique  = "Item ids are unique in the file."
 	ruleVarUnique   = "Variable names are unique in the file."
 	ruleVarKind     = "A variable has a value or a secret, not both."
+	ruleAgent       = "agentHosts is set only on a secret variable with agent: true, and that secret lists at least one allowed host. Each host is host, host:port or *.domain, with an optional http:// prefix."
 	ruleStemCollect = "The file name without .collection.yaml is the collection id: lowercase letters, digits and -, starting with a letter or digit, up to 64 characters. A file with another name is listed but not used."
 	ruleStemEnv     = "The file name without .environment.yaml is the environment id: lowercase letters, digits and -, starting with a letter or digit, up to 64 characters. A file with another name is listed but not used."
 )
@@ -108,6 +109,35 @@ func varKindRule[T any](vars func(T) []Variable) configfs.Rule[T] {
 	}}
 }
 
+// agentRule checks the agent keys of an environment's variables.
+func agentRule() configfs.Rule[EnvironmentFile] {
+	return configfs.Rule[EnvironmentFile]{Doc: ruleAgent, Check: func(f EnvironmentFile, _ configfs.Locator) *configfs.Problem {
+		for i, v := range f.Variables {
+			if p := agentProblem(i, v); p != nil {
+				return p
+			}
+		}
+		return nil
+	}}
+}
+
+func agentProblem(i int, v Variable) *configfs.Problem {
+	at := fmt.Sprintf("/variables/%d/agentHosts", i)
+	vars := map[string]string{"name": v.Name}
+	switch {
+	case len(v.AgentHosts) > 0 && (!v.Agent || v.Secret == ""):
+		return problem(at, "backend.studio.apiFiles.agentHostsMisplaced.body", vars)
+	case v.Agent && v.Secret != "" && len(v.AgentHosts) == 0:
+		return problem(fmt.Sprintf("/variables/%d/agent", i), "backend.studio.apiFiles.agentHostsRequired.body", vars)
+	}
+	for j, h := range v.AgentHosts {
+		if _, err := ParseHostRule(h); err != nil {
+			return problem(fmt.Sprintf("%s/%d", at, j), "backend.studio.apiFiles.agentHostInvalid.body", map[string]string{"name": v.Name, "host": h})
+		}
+	}
+	return nil
+}
+
 func collectionVars(f CollectionFile) []Variable   { return f.Variables }
 func environmentVars(f EnvironmentFile) []Variable { return f.Variables }
 
@@ -142,7 +172,7 @@ func newDecoders() (decoders, error) {
 		return d, err
 	}
 	environment, edoc, err := configfs.YAMLSchema[EnvironmentFile](envSchema,
-		varUniqueRule(environmentVars), varKindRule(environmentVars))
+		varUniqueRule(environmentVars), varKindRule(environmentVars), agentRule())
 	if err != nil {
 		return d, err
 	}

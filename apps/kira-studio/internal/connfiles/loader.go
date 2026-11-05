@@ -12,9 +12,8 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/google/uuid"
-
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
@@ -49,7 +48,7 @@ func (o Options) newID() string {
 	if o.NewID != nil {
 		return o.NewID()
 	}
-	return uuid.NewString()
+	return ids.NewID()
 }
 
 // Loader keeps the connections table in step with the files: files to the DB only. It is long-lived.

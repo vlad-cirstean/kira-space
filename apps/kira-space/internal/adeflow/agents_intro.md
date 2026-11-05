@@ -7,6 +7,8 @@ A workflow is a list of steps. A task runs the steps top to bottom. Each step is
 
 To add or change a workflow, write `<id>.yaml` in this folder with any editor, or use the Workflows page. The `id` key must equal the file name without `.yaml`; renaming the file changes the id. An edit affects new tasks only. A running task keeps the workflow it started with.
 
+A step is either inline (all its keys in the workflow) or a reference to a library step: `step: <id>` names a file in the `steps` folder next to this one (see its AGENTS.md). A reference takes the library step's values and lists only the keys it changes. It may also add `prompt_extra` text and `routes`. Editing a library step changes every workflow that references it, for new work only.
+
 Task statuses come from the Statuses list on the Workflows page. A step names one with `status`.
 
 Example:

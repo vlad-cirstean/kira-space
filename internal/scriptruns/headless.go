@@ -8,8 +8,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/linewriter"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
@@ -26,7 +26,7 @@ const headlessGrace = 2 * time.Second
 func (s *Service) newRun(p *planned, existing *Run) Run {
 	now := s.now()
 	run := Run{
-		ID: uuid.NewString(), ScriptID: p.script.ID, ScriptName: p.script.Name, Color: p.script.Color, Kind: p.script.Kind,
+		ID: ids.NewID(), ScriptID: p.script.ID, ScriptName: p.script.Name, Color: p.script.Color, Kind: p.script.Kind,
 		Trigger: runTrigger(p), State: StateRunning, Cwd: p.dir.Path, CreatedAt: now, StartedAt: &now, Params: p.params,
 	}
 	if existing != nil {
@@ -56,7 +56,7 @@ func proposedSessionID(p *planned) string {
 	if _, ok := p.agent.(harness.SessionLocator); ok {
 		return ""
 	}
-	return uuid.NewString()
+	return ids.NewID()
 }
 
 // begin stores the run as running: a new row, or the waiting row turned running. A waiting row

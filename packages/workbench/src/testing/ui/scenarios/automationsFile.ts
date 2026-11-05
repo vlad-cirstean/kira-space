@@ -1,9 +1,14 @@
 import { expect, type Page } from '@playwright/test';
 import { scriptFileViewSchema, scriptsSnapshotSchema } from '@shared/domain/scripts';
+import { codeEditorText, expectHighlighted, replaceCodeEditorText } from '../codeEditor';
 import type { ScenarioEnv } from './env';
 
 type Env = ScenarioEnv<
-  'configFilesOpen' | 'customScriptsFile' | 'customScriptsList' | 'customScriptsSaveFile'
+  | 'configFilesOpen'
+  | 'customScriptsFile'
+  | 'customScriptsForm'
+  | 'customScriptsList'
+  | 'customScriptsSaveFile'
 >;
 
 export interface Options {
@@ -22,11 +27,23 @@ export function registerFileScenarios(env: Env, options: Options): void {
     contract('runs-file', `file#${key}`, { schema: scriptFileViewSchema });
 
   const dialog = (page: Page) => page.locator('[data-testid="run-file-dialog"]');
-  const base = (list: unknown, view?: unknown) => [
+  // The form decode of a loaded file: the YAML tab is these tests' subject, the form only has to load.
+  const decoded = (view: ReturnType<typeof file>) => ({
+    text: view.text,
+    value: view.problem ? null : { name: 'Deploy' },
+    problem: view.problem,
+  });
+  const base = (list: unknown, view?: ReturnType<typeof file>) => [
     ...options.extraBase,
     { channel: IPC.customScriptsList, response: list },
-    ...(view ? [{ channel: IPC.customScriptsFile, response: view }] : []),
+    ...(view
+      ? [
+          { channel: IPC.customScriptsFile, response: view },
+          { channel: IPC.customScriptsForm, response: decoded(view) },
+        ]
+      : []),
   ];
+  const yamlTab = (page: Page) => dialog(page).locator('[data-testid="run-file-tab-yaml"]');
 
   async function openPanel(page: Page): Promise<void> {
     await options.modeTab(page).click();
@@ -66,13 +83,21 @@ export function registerFileScenarios(env: Env, options: Options): void {
     await openPanel(page);
     await page.locator('[data-testid="script-deploy"]').dblclick();
     await expect(dialog(page)).toBeVisible();
+    await yamlTab(page).click();
     await expect(dialog(page).locator('[data-testid="config-file-status"]')).toContainText(
       'Line 3',
     );
     await expect(dialog(page).locator('[data-testid="run-file-last-good"]')).toBeVisible();
-    await expect(dialog(page).locator('[data-testid="run-file-text"]')).toHaveValue(bad.text);
+    await expect
+      .poll(() => codeEditorText(dialog(page).locator('[data-testid="run-file-text"]')))
+      .toBe(bad.text);
+    await expectHighlighted(dialog(page).locator('[data-testid="run-file-text"]'), 'yaml');
 
-    await dialog(page).locator('[data-testid="run-file-text"]').fill(edited.text);
+    await replaceCodeEditorText(
+      page,
+      dialog(page).locator('[data-testid="run-file-text"]'),
+      edited.text,
+    );
     await dialog(page).locator('[data-testid="run-file-save"]').click();
     await expect
       .poll(() => control.log().find((e) => e.channel === IPC.customScriptsSaveFile)?.args)
@@ -94,7 +119,12 @@ export function registerFileScenarios(env: Env, options: Options): void {
     });
     await openPanel(page);
     await page.locator('[data-testid="script-deploy"]').dblclick();
-    await dialog(page).locator('[data-testid="run-file-text"]').fill(`${edited.text}# note\n`);
+    await yamlTab(page).click();
+    await replaceCodeEditorText(
+      page,
+      dialog(page).locator('[data-testid="run-file-text"]'),
+      `${edited.text}# note\n`,
+    );
     await dialog(page).locator('[data-testid="run-file-save"]').click();
     await expect(dialog(page).locator('[data-testid="run-file-save-error"]')).toBeVisible();
     await expect(dialog(page).locator('[data-testid="run-file-reload"]')).toBeVisible();

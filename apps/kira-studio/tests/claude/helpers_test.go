@@ -152,6 +152,7 @@ type contentBlock struct {
 	ToolUseID string          `json:"tool_use_id"`
 	Content   json.RawMessage `json:"content"`
 	IsError   bool            `json:"is_error"`
+	Input     json.RawMessage `json:"input"`
 }
 
 func parseStream(raw string) []streamMsg {

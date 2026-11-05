@@ -24,7 +24,7 @@ var (
 	// ErrShelfTarget marks a Shelve beforeID that is not on the target shelf.
 	ErrShelfTarget   = errors.New("repos: before task is not on that shelf")
 	ErrBranchOnTask  = errors.New("repos: branch is already on a task")
-	ErrRepoOnTask    = errors.New("repos: task already has a branch in that repo")
+	ErrDraftInRepo   = errors.New("repos: task already has a branch slot waiting for a name in that repo")
 	ErrReviewKind    = errors.New("repos: a task only moves between task and parked, and a review task only becomes a task")
 	ErrTaskUnnamed   = errors.New("a task needs a title or a Jira key")
 	ErrBranchMissing = errors.New("repos: branch not found")
@@ -72,7 +72,7 @@ func EstOverCap(est string) bool {
 
 const adeTaskColumns = `id, kind, title, owner, jira_key, jira_url, host_url, workflow_id, entry_step_id, since_json, workflow_json, workflow_hash, est, notes, color, created_at, archived_at, status_id, status_by, status_step`
 const adeTaskBranchInsertColumns = `id, task_id, code_repo_id, name, kind, base, base_branch_id, base_pending_from, queued_after, position, had_commits, added_at, merged_at, archived_at, origin`
-const adeTaskBranchColumns = adeTaskBranchInsertColumns + `, cr_number, cr_title, cr_state, cr_url, review_comments`
+const adeTaskBranchColumns = adeTaskBranchInsertColumns + `, cr_number, cr_title, cr_state, cr_url, review_comments, worktree_dir`
 const adeRunColumns = `id, task_id, step_id, branch_id, attempt, state, loops, note, summary, session_id, exit_code, started_at, finished_at, outcome_json, purpose, spec_json, launch_note, launch_resume_id, launch_prompt, launch_extra`
 
 // AdeTaskRepo reads and writes the v2 task store: tasks, branches, plan, runs, worktree setup and
@@ -117,7 +117,7 @@ func scanAdeTaskBranch(row rowScanner) (model.AdeTaskBranch, error) {
 	var merged, archived, crNumber sql.NullInt64
 	var crTitle, crState, crURL, comments sql.NullString
 	if err := row.Scan(&b.ID, &b.TaskID, &b.CodeRepoID, &b.Name, &b.Kind, &b.Base, &b.BaseBranchID, &b.BasePendingFrom, &b.QueuedAfter, &b.Position,
-		&had, &b.AddedAt, &merged, &archived, &b.Origin, &crNumber, &crTitle, &crState, &crURL, &comments); err != nil {
+		&had, &b.AddedAt, &merged, &archived, &b.Origin, &crNumber, &crTitle, &crState, &crURL, &comments, &b.WorktreeDir); err != nil {
 		return model.AdeTaskBranch{}, err
 	}
 	if crNumber.Valid {
@@ -439,8 +439,8 @@ func moveBranchKinds(tx *sql.Tx, id string, prev, to string) error {
 	return nil
 }
 
-// AddBranch appends b to its task after the last branch. A task holds at most one live branch per
-// repo (ErrRepoOnTask); a created branch name is unique among live branches of the repo
+// AddBranch appends b to its task after the last branch. A task holds at most one not-created
+// (draft) live branch per repo (ErrDraftInRepo); a created branch name is unique among live branches of the repo
 // (ErrBranchOnTask). b.Position is overwritten.
 func (r *AdeTaskRepo) AddBranch(b model.AdeTaskBranch) (model.AdeTaskBranch, error) {
 	tx, err := r.DB.Begin()
@@ -455,13 +455,15 @@ func (r *AdeTaskRepo) AddBranch(b model.AdeTaskBranch) (model.AdeTaskBranch, err
 	if exists == 0 {
 		return model.AdeTaskBranch{}, ErrTaskNotFound
 	}
-	var same int
-	if err := tx.QueryRow(`SELECT COUNT(*) FROM ade_task_branches WHERE task_id = ? AND code_repo_id = ? AND archived_at IS NULL`,
-		b.TaskID, b.CodeRepoID).Scan(&same); err != nil {
-		return model.AdeTaskBranch{}, fmt.Errorf("repos: check ade task repo: %w", err)
-	}
-	if same > 0 {
-		return model.AdeTaskBranch{}, ErrRepoOnTask
+	if b.Name == "" {
+		var drafts int
+		if err := tx.QueryRow(`SELECT COUNT(*) FROM ade_task_branches WHERE task_id = ? AND code_repo_id = ? AND name = '' AND archived_at IS NULL`,
+			b.TaskID, b.CodeRepoID).Scan(&drafts); err != nil {
+			return model.AdeTaskBranch{}, fmt.Errorf("repos: check ade task repo drafts: %w", err)
+		}
+		if drafts > 0 {
+			return model.AdeTaskBranch{}, ErrDraftInRepo
+		}
 	}
 	if err := tx.QueryRow(`SELECT COALESCE(MAX(position) + 1, 0) FROM ade_task_branches WHERE task_id = ?`, b.TaskID).Scan(&b.Position); err != nil {
 		return model.AdeTaskBranch{}, fmt.Errorf("repos: next ade branch position: %w", err)
@@ -540,7 +542,7 @@ func (r *AdeTaskRepo) DetachBranch(id string, replacement *model.AdeTaskBranch, 
 
 func (r *AdeTaskRepo) queryBranches(where string, args ...any) ([]model.AdeTaskBranch, error) {
 	rows, err := r.DB.Query(`SELECT b.id, b.task_id, b.code_repo_id, b.name, b.kind, b.base, b.base_branch_id, b.base_pending_from, b.queued_after, b.position,
-		b.had_commits, b.added_at, b.merged_at, b.archived_at, b.origin, b.cr_number, b.cr_title, b.cr_state, b.cr_url, b.review_comments
+		b.had_commits, b.added_at, b.merged_at, b.archived_at, b.origin, b.cr_number, b.cr_title, b.cr_state, b.cr_url, b.review_comments, b.worktree_dir
 		FROM ade_task_branches b JOIN ade_tasks t ON t.id = b.task_id WHERE `+where+` ORDER BY b.task_id, b.position, b.id`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("repos: query ade task branches: %w", err)
@@ -925,6 +927,60 @@ func (r *AdeTaskRepo) SetBranchName(id, name string) error {
 	return nil
 }
 
+// RenameBranch renames a created branch row and repoints the rows of its repository that stack on it
+// (by planner link or by base name), base and pending-from alike, in one transaction. Returns those rows' ids.
+func (r *AdeTaskRepo) RenameBranch(id, from, to string) ([]string, error) {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("repos: begin rename ade branch %s: %w", id, err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	var repoID string
+	if err := tx.QueryRow(`SELECT code_repo_id FROM ade_task_branches WHERE id = ? AND name = ?`, id, from).Scan(&repoID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrBranchMissing
+		}
+		return nil, fmt.Errorf("repos: rename ade branch %s: %w", id, err)
+	}
+	if _, err := tx.Exec(`UPDATE ade_task_branches SET name = ? WHERE id = ?`, to, id); err != nil {
+		if isUniqueViolation(err) {
+			return nil, ErrBranchNameTaken
+		}
+		return nil, fmt.Errorf("repos: rename ade branch %s: %w", id, err)
+	}
+	rows, err := tx.Query(`SELECT id FROM ade_task_branches WHERE id <> ? AND code_repo_id = ? AND (base_branch_id = ? OR (base_branch_id = '' AND base = ?))`,
+		id, repoID, id, from)
+	if err != nil {
+		return nil, fmt.Errorf("repos: rename ade branch %s stacked: %w", id, err)
+	}
+	var stacked []string
+	for rows.Next() {
+		var sid string
+		if err := rows.Scan(&sid); err != nil {
+			rows.Close() //nolint:errcheck
+			return nil, fmt.Errorf("repos: rename ade branch %s stacked: %w", id, err)
+		}
+		stacked = append(stacked, sid)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, fmt.Errorf("repos: rename ade branch %s stacked: %w", id, err)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("repos: rename ade branch %s stacked: %w", id, err)
+	}
+	if _, err := tx.Exec(`UPDATE ade_task_branches SET base = ? WHERE id <> ? AND code_repo_id = ? AND (base_branch_id = ? OR (base_branch_id = '' AND base = ?))`,
+		to, id, repoID, id, from); err != nil {
+		return nil, fmt.Errorf("repos: rename ade branch %s bases: %w", id, err)
+	}
+	if _, err := tx.Exec(`UPDATE ade_task_branches SET base_pending_from = ? WHERE code_repo_id = ? AND base_pending_from = ?`, to, repoID, from); err != nil {
+		return nil, fmt.Errorf("repos: rename ade branch %s pending: %w", id, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("repos: commit rename ade branch %s: %w", id, err)
+	}
+	return stacked, nil
+}
+
 // SetBranchOrigin marks who made the branch row ("" user, "agent").
 func (r *AdeTaskRepo) SetBranchOrigin(id, origin string) error {
 	res, err := r.DB.Exec(`UPDATE ade_task_branches SET origin = ? WHERE id = ?`, origin, id)
@@ -937,6 +993,31 @@ func (r *AdeTaskRepo) SetBranchOrigin(id, origin string) error {
 	}
 	if n == 0 {
 		return ErrBranchMissing
+	}
+	return nil
+}
+
+// ReserveWorktreeDir stores dir as the row's worktree folder when it has none and returns the stored
+// value, so the first writer wins.
+func (r *AdeTaskRepo) ReserveWorktreeDir(branchID, dir string) (string, error) {
+	if _, err := r.DB.Exec(`UPDATE ade_task_branches SET worktree_dir = ? WHERE id = ? AND worktree_dir = ''`, dir, branchID); err != nil {
+		return "", fmt.Errorf("repos: reserve ade worktree dir %s: %w", branchID, err)
+	}
+	var stored string
+	err := r.DB.QueryRow(`SELECT worktree_dir FROM ade_task_branches WHERE id = ?`, branchID).Scan(&stored)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrBranchMissing
+	}
+	if err != nil {
+		return "", fmt.Errorf("repos: read ade worktree dir %s: %w", branchID, err)
+	}
+	return stored, nil
+}
+
+// ReplaceWorktreeDir swaps the row's worktree folder from old to next; a no-op when it changed meanwhile.
+func (r *AdeTaskRepo) ReplaceWorktreeDir(branchID, old, next string) error {
+	if _, err := r.DB.Exec(`UPDATE ade_task_branches SET worktree_dir = ? WHERE id = ? AND worktree_dir = ?`, next, branchID, old); err != nil {
+		return fmt.Errorf("repos: replace ade worktree dir %s: %w", branchID, err)
 	}
 	return nil
 }

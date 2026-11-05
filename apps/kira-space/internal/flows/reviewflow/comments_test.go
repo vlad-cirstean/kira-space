@@ -24,11 +24,11 @@ func TestCommentsOrderedByFileThenLine(t *testing.T) {
 	a1First := addComment(t, gs, id, "feature", "a.txt", tip, lr(1, 1), "a line 1, first")
 	a1Second := addComment(t, gs, id, "feature", "a.txt", tip, lr(1, 1), "a line 1, second")
 
-	var got []int64
+	var got []string
 	for _, c := range listComments(t, gs, id, "feature") {
 		got = append(got, c.ID)
 	}
-	want := []int64{a1First.ID, a1Second.ID, a4.ID, b.ID}
+	want := []string{a1First.ID, a1Second.ID, a4.ID, b.ID}
 	if len(got) != len(want) {
 		t.Fatalf("ids = %v, want %v", got, want)
 	}
@@ -117,7 +117,7 @@ func TestCommentClearKeepsMarks(t *testing.T) {
 	if e := fileEntry(t, reviewFiles(t, gs, id, "feature", "main"), "a.txt"); e.Review.Kind != "full" {
 		t.Fatalf("a.txt after clear = %+v, want still full", e.Review)
 	}
-	if added := addComment(t, gs, id, "feature", "a.txt", tip, lr(3, 3), "after clear"); added.ID == 0 {
+	if added := addComment(t, gs, id, "feature", "a.txt", tip, lr(3, 3), "after clear"); added.ID == "" {
 		t.Fatal("add after clear returned no id")
 	}
 }
@@ -210,14 +210,14 @@ func TestCommentKindStateExport(t *testing.T) {
 		RepoID: id, Branch: "feature", Path: "a.txt", At: tip, Range: lr(1, 1), Body: "x", Kind: "bogus",
 	}, "kind")
 
-	set := func(cid int64, state string) bool {
+	set := func(cid string, state string) bool {
 		return call[gitrpc.ReviewCommentSetStateResult](t, gs, "review.comment.setState",
 			gitrpc.ReviewCommentSetStateParams{RepoID: id, Branch: "feature", ID: cid, State: state}).Changed
 	}
 	if !set(question.ID, "addressed") {
 		t.Fatal("setState addressed answered false")
 	}
-	if set(9999, "addressed") {
+	if set("missing", "addressed") {
 		t.Fatal("setState on a missing id answered true")
 	}
 	badRequest(t, gs, "review.comment.setState", gitrpc.ReviewCommentSetStateParams{
@@ -252,7 +252,7 @@ func TestCommentEdit(t *testing.T) {
 	before := call[gitsession.CommentListResult](t, gs, "review.comment.list", gitrpc.ReviewCommentListParams{RepoID: id, Branch: "feature"})
 	app.Contract(t, "git-review-edit", "git:review.comment.list#before", before, maskOpts...)
 
-	edit := func(cid int64, body, kind string) gitrpc.ReviewCommentEditResult {
+	edit := func(cid string, body, kind string) gitrpc.ReviewCommentEditResult {
 		return call[gitrpc.ReviewCommentEditResult](t, gs, "review.comment.edit",
 			gitrpc.ReviewCommentEditParams{RepoID: id, Branch: "feature", ID: cid, Body: body, Kind: kind})
 	}
@@ -272,10 +272,10 @@ func TestCommentEdit(t *testing.T) {
 		t.Fatalf("edited = %+v, want body %q, kind question, state open, id and range of %+v", got, "why?\nsecond", c)
 	}
 
-	if edit(9999, "x", "change").Changed {
+	if edit("missing", "x", "change").Changed {
 		t.Fatal("edit on a missing id answered changed=true")
 	}
 	badRequest(t, gs, "review.comment.edit", gitrpc.ReviewCommentEditParams{RepoID: id, Branch: "feature", ID: c.ID, Body: "  ", Kind: "change"}, "empty")
 	badRequest(t, gs, "review.comment.edit", gitrpc.ReviewCommentEditParams{RepoID: id, Branch: "feature", ID: c.ID, Body: "x", Kind: "bogus"}, "kind")
-	badRequest(t, gs, "review.comment.edit", gitrpc.ReviewCommentEditParams{RepoID: id, Branch: "feature", ID: 0, Body: "x", Kind: "change"}, "id")
+	badRequest(t, gs, "review.comment.edit", gitrpc.ReviewCommentEditParams{RepoID: id, Branch: "feature", ID: "", Body: "x", Kind: "change"}, "id")
 }

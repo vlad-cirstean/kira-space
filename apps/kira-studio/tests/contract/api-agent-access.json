@@ -1,0 +1,214 @@
+{
+  "AgentAccess": [
+    {
+      "autoApproveReads": false,
+      "color": "none",
+      "description": "",
+      "id": "<id:1>",
+      "name": "Staging",
+      "variables": [
+        {
+          "hosts": [
+            "staging.example.com"
+          ],
+          "name": "token",
+          "secret": true
+        }
+      ]
+    }
+  ],
+  "args:ApiConfigService.Form#hosts-on-plain": {
+    "edits": [],
+    "file": "staging.environment.yaml",
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n    agentHosts: [a.com]\n  - name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "args:ApiConfigService.Form#no-hosts": {
+    "edits": [
+      {
+        "path": [
+          "variables"
+        ],
+        "unset": false,
+        "value": [
+          {
+            "name": "base_url",
+            "value": "https://staging.example.com"
+          },
+          {
+            "agent": true,
+            "name": "token",
+            "secret": "${secret:staging.token}"
+          }
+        ]
+      }
+    ],
+    "file": "staging.environment.yaml",
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - agent: true\n    agentHosts:\n      - staging.example.com\n    name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "args:ApiConfigService.Form#read": {
+    "edits": [],
+    "file": "staging.environment.yaml",
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "args:ApiConfigService.Form#reads": {
+    "edits": [
+      {
+        "path": [
+          "agentAutoApproveReads"
+        ],
+        "unset": false,
+        "value": true
+      }
+    ],
+    "file": "staging.environment.yaml",
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "args:ApiConfigService.Form#share": {
+    "edits": [
+      {
+        "path": [
+          "variables"
+        ],
+        "unset": false,
+        "value": [
+          {
+            "name": "base_url",
+            "value": "https://staging.example.com"
+          },
+          {
+            "agent": true,
+            "agentHosts": [
+              "staging.example.com"
+            ],
+            "name": "token",
+            "secret": "${secret:staging.token}"
+          }
+        ]
+      }
+    ],
+    "file": "staging.environment.yaml",
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "args:ApiConfigService.Form#yaml": {
+    "edits": [],
+    "file": "staging.environment.yaml",
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n    agent: true\n  - name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "args:ApiConfigService.SaveFile": {
+    "baseHash": "<masked>",
+    "file": "staging.environment.yaml",
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - agent: true\n    agentHosts:\n      - staging.example.com\n    name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "file#read": {
+    "file": "staging.environment.yaml",
+    "hash": "<masked>",
+    "kind": "environment",
+    "lastGood": false,
+    "path": "<kira>/api/staging.environment.yaml",
+    "problem": null,
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "file#saved": {
+    "file": "staging.environment.yaml",
+    "hash": "<masked>",
+    "kind": "environment",
+    "lastGood": false,
+    "path": "<kira>/api/staging.environment.yaml",
+    "problem": null,
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - agent: true\n    agentHosts:\n      - staging.example.com\n    name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "form#hosts-on-plain": {
+    "problem": {
+      "col": 5,
+      "line": 5,
+      "message": "The variable base_url lists allowed hosts, but only a secret available to agents can. Remove them or fix the variable.",
+      "path": "/variables/0/agentHosts"
+    },
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n    agentHosts: [a.com]\n  - name: token\n    secret: ${secret:staging.token}\n",
+    "value": null
+  },
+  "form#no-hosts": {
+    "problem": {
+      "col": 5,
+      "line": 5,
+      "message": "The secret token is available to agents but lists no allowed host. Add at least one allowed host.",
+      "path": "/variables/1/agent"
+    },
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - agent: true\n    name: token\n    secret: ${secret:staging.token}\n",
+    "value": null
+  },
+  "form#read": {
+    "problem": null,
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n",
+    "value": {
+      "name": "Staging",
+      "variables": [
+        {
+          "name": "base_url",
+          "value": "https://staging.example.com"
+        },
+        {
+          "name": "token",
+          "secret": "${secret:staging.token}"
+        }
+      ]
+    }
+  },
+  "form#reads": {
+    "problem": null,
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\nagentAutoApproveReads: true\n",
+    "value": {
+      "agentAutoApproveReads": true,
+      "name": "Staging",
+      "variables": [
+        {
+          "name": "base_url",
+          "value": "https://staging.example.com"
+        },
+        {
+          "name": "token",
+          "secret": "${secret:staging.token}"
+        }
+      ]
+    }
+  },
+  "form#share": {
+    "problem": null,
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - agent: true\n    agentHosts:\n      - staging.example.com\n    name: token\n    secret: ${secret:staging.token}\n",
+    "value": {
+      "name": "Staging",
+      "variables": [
+        {
+          "name": "base_url",
+          "value": "https://staging.example.com"
+        },
+        {
+          "agent": true,
+          "agentHosts": [
+            "staging.example.com"
+          ],
+          "name": "token",
+          "secret": "${secret:staging.token}"
+        }
+      ]
+    }
+  },
+  "form#yaml": {
+    "problem": null,
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n    agent: true\n  - name: token\n    secret: ${secret:staging.token}\n",
+    "value": {
+      "name": "Staging",
+      "variables": [
+        {
+          "agent": true,
+          "name": "base_url",
+          "value": "https://staging.example.com"
+        },
+        {
+          "name": "token",
+          "secret": "${secret:staging.token}"
+        }
+      ]
+    }
+  }
+}

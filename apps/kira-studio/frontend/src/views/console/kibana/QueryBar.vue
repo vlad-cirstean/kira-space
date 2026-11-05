@@ -104,7 +104,7 @@ defineExpose({ insertText: (text: string) => editorHost.value?.insertText(text) 
     </Button>
     <Button
       v-else
-      variant="toolbar-primary"
+      variant="dialog-primary"
       size="kira"
       data-testid="kibana-run"
       :disabled="!canRun"

@@ -37,9 +37,9 @@ export interface ReviewSource {
   loadComments(): Promise<readonly ReviewComment[]>;
   mark(range: LineRange, reviewed: boolean): Promise<void>;
   addComment(range: LineRange, body: string, kind: ReviewCommentKind): Promise<void>;
-  editComment(id: number, body: string, kind: ReviewCommentKind): Promise<void>;
-  setCommentState(id: number, state: ReviewCommentState): Promise<void>;
-  removeComment(id: number): Promise<void>;
+  editComment(id: string, body: string, kind: ReviewCommentKind): Promise<void>;
+  setCommentState(id: string, state: ReviewCommentState): Promise<void>;
+  removeComment(id: string): Promise<void>;
   /** The change request a compose may post a line comment to; absent on a source that cannot. */
   hostComment?(): HostCommentTarget | null;
   /** Posts a line comment to the change request at the tab's commit. Kira keeps no copy. */

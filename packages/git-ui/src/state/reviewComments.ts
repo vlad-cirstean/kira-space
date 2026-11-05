@@ -93,7 +93,7 @@ export class ReviewCommentsState {
   /** Removes one comment — applies the server's own scoped, idempotent delete (G13 D11) and drops
    *  it from the in-memory list directly, so the pane updates from the response rather than a
    *  second `review.comment.list` round trip. */
-  async remove(id: number): Promise<void> {
+  async remove(id: string): Promise<void> {
     const target = this.#target;
     if (!target || this.pending.value) return;
     this.pending.value = true;

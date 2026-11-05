@@ -1,0 +1,224 @@
+<script setup lang="ts">
+import { EXPLAIN_SUPPORTED_KINDS } from '@shared/domain/connection';
+import type { ConnectionFileMcp, ConnectionFileModel } from '@shared/domain/connectionConfig';
+import { accessSummaryOf, enforcementOf, hasWriteConsole } from '@shared/domain/dbmcp';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
+import { Textarea } from '@theme/components/ui/textarea';
+import { type MessageKey, t } from '@theme/i18n';
+import { wrapSelectionOnType } from '@theme/wrapSelection';
+import { computed } from 'vue';
+import { useSettingsStore } from '../../state/settings';
+import CheckboxRow from './CheckboxRow.vue';
+
+// What an AI client may do through the database MCP server. A key left out takes its default.
+const props = defineProps<{ errorFor: (pointer: string) => string | undefined }>();
+const file = defineModel<ConnectionFileModel>({ required: true });
+const settingsStore = useSettingsStore();
+
+const mcp = computed(() => file.value.mcp ?? {});
+const enabled = computed(() => mcp.value.enabled ?? false);
+function setMcp(change: Partial<ConnectionFileMcp>): void {
+  file.value.mcp = { ...file.value.mcp, ...change };
+}
+
+// Disabled, never hidden, for kinds without a parseable EXPLAIN: the setting stays visible.
+const explainSupported = computed(() => EXPLAIN_SUPPORTED_KINDS.has(file.value.kind as never));
+
+// Mirrors internal/dbmcp's accessOf: what each declared run_query mode allows for this connection.
+const writeConsole = computed(() => hasWriteConsole(file.value.kind));
+const enforcement = computed(() => enforcementOf(file.value.kind));
+const ENFORCEMENT_KEYS: Record<string, MessageKey> = {
+  session: 'studio.dbMcp.approval.enforcement.session.body',
+  app: 'studio.dbMcp.approval.enforcement.app.body',
+  none: 'studio.dbMcp.approval.enforcement.none.body',
+};
+const accessSummary = computed(() =>
+  enabled.value
+    ? accessSummaryOf({
+        kind: file.value.kind,
+        readOnly: file.value.read_only ?? false,
+        read: mcp.value.read ?? 'allow',
+        write: mcp.value.write ?? 'prompt',
+        ddl: mcp.value.ddl ?? 'deny',
+      })
+    : 'none',
+);
+const writeOrDdlOpen = computed(
+  () => (mcp.value.write ?? 'prompt') !== 'deny' || (mcp.value.ddl ?? 'deny') !== 'deny',
+);
+const notes = computed(() => {
+  const list: { name: string; key: MessageKey }[] = [];
+  if (enforcement.value === 'app')
+    list.push({ name: 'limitApp', key: 'studio.project.connectionDialog.mcp.limitApp.body' });
+  if (enforcement.value === 'session')
+    list.push({ name: 'readLane', key: 'studio.project.connectionDialog.mcp.readLane.body' });
+  if (!writeConsole.value)
+    list.push({
+      name: 'noWriteConsole',
+      key: 'studio.project.connectionDialog.mcp.noWriteConsole.body',
+    });
+  else if (writeOrDdlOpen.value)
+    list.push({ name: 'limitDdl', key: 'studio.project.connectionDialog.mcp.limitDdl.body' });
+  return list;
+});
+
+const CLASSES = [
+  {
+    cls: 'read',
+    label: 'studio.project.connectionDialog.mcp.read.label',
+    note: 'studio.project.connectionDialog.mcp.readNote.label',
+    fallback: 'allow',
+  },
+  {
+    cls: 'write',
+    label: 'studio.project.connectionDialog.mcp.write.label',
+    note: 'studio.project.connectionDialog.mcp.writeNote.label',
+    fallback: 'prompt',
+  },
+  {
+    cls: 'ddl',
+    label: 'studio.project.connectionDialog.mcp.ddl.label',
+    note: 'studio.project.connectionDialog.mcp.ddlNote.label',
+    fallback: 'deny',
+  },
+] as const;
+
+// One segmented control per class; per-button testids are connection-mcp-<class>-<mode>.
+function modeOptions(cls: (typeof CLASSES)[number]['cls']) {
+  const modes = [
+    { value: 'deny', label: t('common.action.deny.label') },
+    { value: 'allow', label: t('studio.project.connectionDialog.mcp.allow.label') },
+    { value: 'prompt', label: t('studio.project.connectionDialog.mcp.prompt.label') },
+  ];
+  return modes.map((m) => ({
+    ...m,
+    testid: `connection-mcp-${cls}-${m.value}`,
+    disabled: !enabled.value || (cls !== 'read' && !writeConsole.value),
+  }));
+}
+
+// Inherit's label shows the current app setting.
+const reviewOptions = computed(() => {
+  const items = [
+    {
+      value: 'inherit',
+      label: t(
+        settingsStore.dbMcp.previewResponses
+          ? 'studio.project.connectionDialog.mcp.reviewInheritOn.option'
+          : 'studio.project.connectionDialog.mcp.reviewInheritOff.option',
+      ),
+    },
+    { value: 'review', label: t('studio.project.connectionDialog.mcp.reviewAlways.option') },
+    { value: 'send', label: t('studio.project.connectionDialog.mcp.reviewNever.option') },
+  ];
+  return items.map((i) => ({
+    ...i,
+    testid: `connection-mcp-review-${i.value}`,
+    disabled: !enabled.value,
+  }));
+});
+</script>
+
+<template>
+  <div class="flex flex-col gap-3 p-3" data-testid="connection-section-mcp">
+    <CheckboxRow
+      :model-value="enabled"
+      :label="t('studio.project.connectionDialog.mcp.expose.label')"
+      :description="t('studio.project.connectionDialog.mcp.expose.description')"
+      testid="connection-mcp-enabled"
+      @update:model-value="(v) => setMcp({ enabled: v })"
+    />
+
+    <Field class="flex-1">
+      <FieldLabel
+        >{{ t('common.field.description.label') }}
+        <span class="text-subtle"
+          >— {{ t('studio.project.connectionDialog.mcp.descriptionNote.label') }}</span
+        ></FieldLabel
+      >
+      <Textarea
+        :model-value="mcp.description ?? ''"
+        :aria-invalid="props.errorFor('/mcp/description') ? true : undefined"
+        class="font-data"
+        rows="2"
+        maxlength="1000"
+        :disabled="!enabled"
+        data-testid="connection-mcp-description"
+        @update:model-value="(v) => setMcp({ description: String(v) })"
+        @keydown="wrapSelectionOnType"
+      />
+      <FieldError v-if="props.errorFor('/mcp/description')">{{
+        props.errorFor('/mcp/description')
+      }}</FieldError>
+    </Field>
+
+    <CheckboxRow
+      :model-value="mcp.auto_explain ?? true"
+      :disabled="!enabled || !explainSupported"
+      :label="t('studio.project.connectionDialog.mcp.plan.label')"
+      :description="
+        explainSupported ? undefined : t('studio.project.connectionDialog.mcp.plan.description')
+      "
+      testid="connection-mcp-auto-explain"
+      @update:model-value="(v) => setMcp({ auto_explain: v })"
+    />
+
+    <Field v-for="c in CLASSES" :key="c.cls" class="flex-1">
+      <FieldLabel
+        >{{ t(c.label) }}
+        <span class="text-subtle">— {{ t(c.note) }}</span></FieldLabel
+      >
+      <SecondaryTabs
+        variant="segmented"
+        size="kira-lg"
+        :model-value="mcp[c.cls] ?? c.fallback"
+        :items="modeOptions(c.cls)"
+        :data-testid="`connection-mcp-${c.cls}`"
+        @update:model-value="(v) => setMcp({ [c.cls]: String(v) })"
+      />
+    </Field>
+    <FieldDescription class="w-full" data-testid="connection-mcp-access">
+      <strong>{{ t('studio.project.connectionDialog.mcp.access.label') }}</strong>
+      <span data-testid="connection-mcp-access-summary"> {{ accessSummary }}.</span>
+      <span data-testid="connection-mcp-access-enforcement">
+        {{ t(ENFORCEMENT_KEYS[enforcement] as MessageKey) }}</span
+      >
+    </FieldDescription>
+    <FieldDescription
+      v-for="n in notes"
+      :key="n.name"
+      class="w-full"
+      :data-testid="`connection-mcp-note-${n.name}`"
+    >
+      {{ t(n.key) }}
+    </FieldDescription>
+    <FieldDescription class="w-full">
+      {{
+        t('studio.project.connectionDialog.mcp.strictest.description', {
+          tab: t('common.advanced.label'),
+        })
+      }}
+    </FieldDescription>
+
+    <Field class="flex-1">
+      <FieldLabel
+        >{{ t('studio.project.connectionDialog.mcp.review.label') }}
+        <span class="text-subtle"
+          >— {{ t('studio.project.connectionDialog.mcp.reviewNote.label') }}</span
+        ></FieldLabel
+      >
+      <SecondaryTabs
+        variant="segmented"
+        size="kira-lg"
+        :model-value="mcp.review_results ?? 'inherit'"
+        :items="reviewOptions"
+        data-testid="connection-mcp-review"
+        @update:model-value="(v) => setMcp({ review_results: String(v) })"
+      />
+      <FieldDescription class="w-full">{{
+        t('studio.project.connectionDialog.mcp.review.description')
+      }}</FieldDescription>
+    </Field>
+  </div>
+</template>

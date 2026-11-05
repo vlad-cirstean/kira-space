@@ -390,7 +390,7 @@ onUnmounted(() => {
         <TooltipTrigger as-child>
           <TooltipDisabledTrigger>
             <Button
-              variant="toolbar-primary"
+              variant="dialog-primary"
               size="kira"
               data-testid="grpc-call"
               :pending="running"

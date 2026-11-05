@@ -126,6 +126,11 @@ export interface AdeBoardFx {
   [key: string]: unknown;
 }
 
+/** The library step the step-save calls answer with. */
+function libraryStep(): unknown {
+  return contract('ade-step-library', 'AdeTaskService.SaveStep#ok');
+}
+
 /** Boots straight into the ade mode with the committed board, PR, workflow and repo fixtures;
  *  `extra` snapshots replace a default of the same channel. */
 export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSnapshot[] {
@@ -150,6 +155,18 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskSaveWorkflowYaml, response: firstWorkflow() },
     { channel: IPC.adeTaskImportWorkflow, response: firstWorkflow() },
     { channel: IPC.adeTaskNewWorkflow, response: firstWorkflow() },
+    {
+      channel: IPC.adeTaskStepYaml,
+      response: contract('ade-step-library', 'AdeTaskService.StepYaml#implement'),
+    },
+    {
+      channel: IPC.adeTaskValidateStepYaml,
+      response: contract('ade-step-library', 'AdeTaskService.ValidateStepYaml#skip'),
+    },
+    { channel: IPC.adeTaskSaveStep, response: libraryStep() },
+    { channel: IPC.adeTaskSaveStepYaml, response: libraryStep() },
+    { channel: IPC.adeTaskNewStep, response: libraryStep() },
+    { channel: IPC.adeTaskDeleteStep },
     { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/repos', files: [] } },
     {
       channel: IPC.repoConfigFile,
@@ -177,6 +194,8 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskDismissHandover },
     { channel: IPC.adeTaskArtifacts, response: { artifacts: [], gaps: [] } },
     { channel: IPC.adeTaskIssue, response: NO_TRACKER_ISSUE },
+    { channel: IPC.adeTaskTrackedUpdates, response: { updates: [] } },
+    { channel: IPC.adeTaskMarkTrackedSeen },
     { channel: IPC.adeTaskAddLink, response: { filed: 'stored', kind: 'link', artifact: null } },
     { channel: IPC.adeTaskEditLink, response: { filed: 'stored', kind: 'link', artifact: null } },
     { channel: IPC.adeTaskRemoveArtifact },

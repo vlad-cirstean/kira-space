@@ -72,13 +72,13 @@ func TestKibanaDiscoverJourney(t *testing.T) {
 	}
 	app.Contract(t, "kibana-discover", "TreeService.Children#dataViews", kids)
 
-	views, err := app.W.Kibana.DataViews(ctx, model.KibanaDataViewsRequest{ConnectionID: conn.ID, OpID: "kb-views"})
+	views, err := app.W.Kibana.DataViews(ctx, model.KibanaDataViewsRequest{ConnectionID: conn.ID, OpID: "56f267ab-fc96-7c8d-878f-3998a2fe8a06"})
 	if err != nil || len(views) < 3 {
 		t.Fatalf("DataViews = %d (%v), want the seeded views", len(views), err)
 	}
 	app.Contract(t, "kibana-discover", "KibanaService.DataViews#list", views)
 
-	view, err := app.W.Kibana.DataView(ctx, model.KibanaDataViewRequest{ConnectionID: conn.ID, OpID: "kb-view", ID: testsupport.KibanaLogsView})
+	view, err := app.W.Kibana.DataView(ctx, model.KibanaDataViewRequest{ConnectionID: conn.ID, OpID: "3cdb70c3-388f-7d1b-8418-661d3b8dec8a", ID: testsupport.KibanaLogsView})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestKibanaDiscoverJourney(t *testing.T) {
 	app.Contract(t, "kibana-discover", "Execute#columns", colNames)
 
 	hist, err := app.W.Kibana.Histogram(ctx, model.KibanaHistogramRequest{
-		ConnectionID: conn.ID, OpID: "kb-hist", TabID: "tab", Request: base, Interval: "auto",
+		ConnectionID: conn.ID, OpID: "30268575-f547-762e-87e9-66fee18246e5", TabID: "tab", Request: base, Interval: "auto",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -149,7 +149,7 @@ func TestKibanaDiscoverJourney(t *testing.T) {
 	suggestReq := base
 	suggestReq.Query, suggestReq.Size = "", 0
 	sugg, err := app.W.Kibana.Suggest(ctx, model.KibanaSuggestRequest{
-		ConnectionID: conn.ID, OpID: "kb-sugg", TabID: "tab", Request: suggestReq, Field: "level",
+		ConnectionID: conn.ID, OpID: "c9041db7-0f6b-726e-8f6f-8cc1fe63ffdf", TabID: "tab", Request: suggestReq, Field: "level",
 	})
 	if err != nil || !sugg.Complete || !slices.Equal(sugg.Values, []string{"debug", "error", "info", "warn"}) {
 		t.Fatalf("Suggest = %+v (%v), want the four levels, complete", sugg, err)

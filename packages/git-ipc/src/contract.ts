@@ -1322,7 +1322,7 @@ export interface ReviewFileStatus {
 /** P499: one block of reviewed lines that left the current content. `range` is in the reviewed
  *  snapshot's line numbers; `null` with `text: null` for a non-text whole-file entry. */
 export interface ReviewRemovedEntry {
-  readonly id: number;
+  readonly id: string;
   readonly origin: 'commit' | 'working';
   readonly path: string;
   readonly reviewedAt: number; // unix millis
@@ -1377,7 +1377,7 @@ export type CommentAnchor =
 export type ReviewCommentOrigin = 'commit' | 'working';
 
 export interface ReviewComment {
-  readonly id: number;
+  readonly id: string;
   readonly path: string;
   /** In the requested revision's coordinates for `exact`/`projected`, in `anchorSha`'s own for
    *  `removed`/`stale` — which is what `anchor` is for. */
@@ -1623,7 +1623,7 @@ export type Contract = {
     };
     /** P499: hides removed entries for good; ids of another branch dismiss nothing. */
     'review.removed.dismiss': {
-      params: { repoId: string; branch: string; ids: readonly number[] };
+      params: { repoId: string; branch: string; ids: readonly string[] };
       result: { readonly dismissed: number };
     };
     /**
@@ -1719,13 +1719,13 @@ export type Contract = {
     };
     /** P286: reopens or addresses one comment. `changed` is false when the id matches nothing. */
     'review.comment.setState': {
-      params: { repoId: string; branch: string; id: number; state: ReviewCommentState };
+      params: { repoId: string; branch: string; id: string; state: ReviewCommentState };
       result: { readonly changed: boolean };
     };
     /** P413: replaces body and kind; keeps range, anchor, state and reply; clears `sentAt` (the edited
      *  text was never sent). `changed` is false when the id matches nothing. */
     'review.comment.edit': {
-      params: { repoId: string; branch: string; id: number; body: string; kind: ReviewCommentKind };
+      params: { repoId: string; branch: string; id: string; body: string; kind: ReviewCommentKind };
       result: { readonly changed: boolean };
     };
     /** G13 D11: `at` defaults to the branch tip when omitted — the resolved value is echoed back
@@ -1738,7 +1738,7 @@ export type Contract = {
      *  nothing, and a row already gone (another window deleted it) answers `false` rather than an
      *  error. */
     'review.comment.remove': {
-      params: { repoId: string; branch: string; id: number };
+      params: { repoId: string; branch: string; id: string };
       result: { readonly removed: boolean };
     };
     /** G13 D14: removes every comment for this (repo, branch) session and nothing else — never

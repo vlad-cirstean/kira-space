@@ -1,6 +1,7 @@
 package bridge
 
 import (
+	"errors"
 	"slices"
 	"strings"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskrules"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -83,6 +85,45 @@ func (s *ConnectionConfigService) SaveFile(args ConnectionSaveFileArgs) (connfil
 		return connfiles.FileDetail{}, connfiles.IPCError(err)
 	}
 	return d, nil
+}
+
+// DeleteFile removes a file that never held a valid connection. A file with a connection is refused;
+// Connections.Delete removes that one.
+func (s *ConnectionConfigService) DeleteFile(args ConnectionFileArgs) error {
+	if args.File == "" {
+		return ipcerr.Required("file")
+	}
+	if err := s.Files.DeleteFile(args.File); err != nil {
+		if errors.Is(err, connfiles.ErrExists) {
+			return ipcerr.BadRequest(err.Error())
+		}
+		return connfiles.IPCError(err)
+	}
+	s.Deps.Events.Emit(ChannelConnectionConfigChanged, struct{}{})
+	return nil
+}
+
+// ConnectionFormArgs is one form call: the draft text and the edits to apply to it.
+type ConnectionFormArgs struct {
+	File  string          `json:"file"`
+	Text  string          `json:"text"`
+	Edits []configfs.Edit `json:"edits"`
+}
+
+// Form applies the form's edits to the draft and decodes the result. Stateless: nothing is
+// written; the dialog saves the returned text with SaveFile.
+func (s *ConnectionConfigService) Form(args ConnectionFormArgs) (configfs.FormResult, error) {
+	if args.File == "" {
+		return configfs.FormResult{}, ipcerr.Required("file")
+	}
+	if len(args.Text) > configfs.MaxFileBytes {
+		return configfs.FormResult{}, ipcerr.BadRequest(configfs.ErrTooLarge.Error())
+	}
+	res := s.Files.Form(args.File, args.Text, args.Edits)
+	if len(res.Text) > configfs.MaxFileBytes {
+		return configfs.FormResult{}, ipcerr.BadRequest(configfs.ErrTooLarge.Error())
+	}
+	return res, nil
 }
 
 func validSecret(kind, name string) error {

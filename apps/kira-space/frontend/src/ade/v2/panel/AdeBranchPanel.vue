@@ -13,7 +13,7 @@ import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import Identifier from '@workbench/components/Identifier.vue';
 import { useContextMenuStore } from '@workbench/state/contextMenu';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { control } from '../../../bridge/control';
 import { useOpenHostView } from '../../../hostview/queries';
 import { useRepos } from '../../../repo/state/reposQueries';
@@ -31,7 +31,9 @@ import AdeSessionsTab from '../sessions/AdeSessionsTab.vue';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
-import { ACTION_CLASS, TONE_SOLID_CLASS } from '../tones';
+import { ACTION_CLASS } from '../tones';
+import { useMarkTrackedSeen } from '../updates/queries';
+import { useTaskUpdates } from '../updates/useTaskUpdates';
 import type { ChangeRequest, Deployment, Integration, Run } from '../wire';
 import AdePanelFrame from './AdePanelFrame.vue';
 import AdeRunOutcome from './AdeRunOutcome.vue';
@@ -156,6 +158,24 @@ const FORCE_PUSH_CMD = 'git push --force-with-lease';
 function copyLink(key: string, text: string): void {
   copiedKey.value = key;
   void copy(text);
+}
+const { pending } = useTaskUpdates();
+const markSeen = useMarkTrackedSeen();
+function markItemSeen(itemKey: string): void {
+  const taskId = props.card.task.id;
+  if (pending(taskId, itemKey)) markSeen.mutate({ taskId, itemKeys: [itemKey] });
+}
+// Opening the panel shows the branch's own changes.
+watch(
+  () => pending(props.card.task.id, `branch:${props.row.id}`),
+  (p) => {
+    if (p) markItemSeen(`branch:${props.row.id}`);
+  },
+  { immediate: true },
+);
+function viewChangeRequest(url: string): void {
+  markItemSeen(`cr:${props.row.id}`);
+  fireAndForget(openView.mutateAsync(url), 'hostView.open');
 }
 function open(url: string, e: MouseEvent): void {
   e.preventDefault();
@@ -298,7 +318,7 @@ function deployNote(d: Deployment): string {
           variant="dialog"
           v-if="setupFailed"
           size="kira-lg"
-          :class="TONE_SOLID_CLASS.amber"
+          :class="ACTION_CLASS.amber"
           data-testid="ade-panel-retry-setup"
           @click="onRetrySetup"
         >
@@ -308,7 +328,7 @@ function deployNote(d: Deployment): string {
           <Button
             variant="dialog"
             size="kira-lg"
-            :class="TONE_SOLID_CLASS.amber"
+            :class="ACTION_CLASS.amber"
             data-testid="ade-panel-force-push"
             @click="forcePush = true"
           >
@@ -411,7 +431,7 @@ function deployNote(d: Deployment): string {
               :label="t('space.ade.link.view.tooltip', { label: words.changeRequestShort })"
               class="shrink-0"
               data-testid="ade-pr-view"
-              @click="fireAndForget(openView.mutateAsync(changeRequest.url), 'hostView.open')"
+              @click="viewChangeRequest(changeRequest.url)"
             />
             <TooltipIconButton
               :icon="copied && copiedKey === 'pr' ? 'check' : 'copy'"

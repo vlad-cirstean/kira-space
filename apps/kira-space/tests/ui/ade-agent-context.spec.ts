@@ -1,3 +1,4 @@
+import { codeEditorText, replaceCodeEditorText } from '@workbench/testing/ui/codeEditor';
 import { expect, test } from './fixtures';
 import { openPlan } from './support/adeV2';
 import { calls } from './support/ipcCalls';
@@ -42,9 +43,10 @@ test('Save sends the text with the loaded hash', async ({ relaunch }) => {
   const { window: page, control } = await openContext(relaunch, {}, [
     { channel: IPC.agentContextSave, response: view({ text: 'Use spaces.\n', hash: 'h2' }) },
   ]);
-  await expect(page.locator(t('ade-context-text'))).toHaveValue('Use tabs.\n');
+  await expect.poll(() => codeEditorText(page.locator(t('ade-context-text')))).toBe('Use tabs.\n');
+  await expect(page.locator(t('ade-context-text'))).toHaveAttribute('data-language', 'markdown');
   await expect(page.locator(t('ade-context-save'))).toBeDisabled();
-  await page.locator(t('ade-context-text')).fill('Use spaces.\n');
+  await replaceCodeEditorText(page, page.locator(t('ade-context-text')), 'Use spaces.\n');
   await page.locator(t('ade-context-save')).click();
   await expect.poll(() => calls(control, IPC.agentContextSave)).toHaveLength(1);
   expect(calls(control, IPC.agentContextSave)[0]?.args).toEqual({
@@ -61,13 +63,15 @@ test('a reload after a save shows the saved text', async ({ relaunch }) => {
     // The second answer to Get is what the file holds after the save.
     { channel: IPC.agentContextGet, response: saved },
   ]);
-  await page.locator(t('ade-context-text')).fill('Use spaces.\n');
+  await replaceCodeEditorText(page, page.locator(t('ade-context-text')), 'Use spaces.\n');
   await page.locator(t('ade-context-save')).click();
   await expect(page.locator(t('ade-context-save'))).toBeDisabled();
   await page.reload();
   await page.locator(t('ade-tab-agents')).click();
   await page.locator(t('ade-agents-tab-context')).click();
-  await expect(page.locator(t('ade-context-text'))).toHaveValue('Use spaces.\n');
+  await expect
+    .poll(() => codeEditorText(page.locator(t('ade-context-text'))))
+    .toBe('Use spaces.\n');
 });
 
 test('a broken file shows its line and the last-good note', async ({ relaunch }) => {
@@ -108,7 +112,7 @@ test('a save refused for a changed file offers Reload and Overwrite', async ({ r
       error: { code: 'E_CONFLICT', message: 'The agent context changed. Refresh and retry.' },
     },
   ]);
-  await page.locator(t('ade-context-text')).fill('Other.\n');
+  await replaceCodeEditorText(page, page.locator(t('ade-context-text')), 'Other.\n');
   await page.locator(t('ade-context-save')).click();
   await expect(page.locator(t('ade-context-save-error'))).toContainText('changed');
   await page.locator(t('ade-context-overwrite')).click();

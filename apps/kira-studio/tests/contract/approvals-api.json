@@ -1,0 +1,273 @@
+{
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": {
+          "display": "Bearer {{token}}",
+          "scheme": "Bearer"
+        },
+        "body": null,
+        "credentials": [
+          {
+            "hosts": [
+              "127.0.0.1"
+            ],
+            "name": "token"
+          }
+        ],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [
+          {
+            "masked": true,
+            "name": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "host": "127.0.0.1",
+        "method": "GET",
+        "query": [],
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo",
+        "variables": [
+          {
+            "name": "base_url",
+            "secret": false,
+            "value": "http://127.0.0.1:<port>"
+          },
+          {
+            "name": "token",
+            "secret": true,
+            "value": "••••"
+          }
+        ]
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "args:ApprovalsService.Answer": {
+    "approve": true,
+    "ids": [
+      "api.request:<id:1>"
+    ],
+    "options": null
+  },
+  "item#delete": {
+    "createdAt": 0,
+    "expiresAt": 0,
+    "id": "api.request:<id:4>",
+    "kind": "api.request",
+    "operation": {
+      "class": "request",
+      "tone": "danger"
+    },
+    "origin": {
+      "client": "Claude Code 2.1.318",
+      "cwd": "<masked>",
+      "source": "",
+      "step": "",
+      "task": ""
+    },
+    "payload": {
+      "auth": null,
+      "body": null,
+      "credentials": [],
+      "environment": {
+        "color": "green",
+        "id": "<id:2>",
+        "name": "Dev"
+      },
+      "followRedirects": true,
+      "headers": [],
+      "host": "127.0.0.1",
+      "method": "DELETE",
+      "query": [
+        {
+          "name": "id",
+          "value": "7"
+        }
+      ],
+      "timeoutSeconds": 30,
+      "url": "http://127.0.0.1:<port>/echo?id=7",
+      "variables": [
+        {
+          "name": "base_url",
+          "secret": false,
+          "value": "http://127.0.0.1:<port>"
+        }
+      ]
+    },
+    "reason": "permission",
+    "target": {
+      "color": "green",
+      "kind": "http",
+      "location": "Dev",
+      "name": "127.0.0.1",
+      "readOnly": false
+    }
+  },
+  "item#form": {
+    "createdAt": 0,
+    "expiresAt": 0,
+    "id": "api.request:<id:3>",
+    "kind": "api.request",
+    "operation": {
+      "class": "request",
+      "tone": "caution"
+    },
+    "origin": {
+      "client": "Claude Code 2.1.318",
+      "cwd": "<masked>",
+      "source": "",
+      "step": "",
+      "task": ""
+    },
+    "payload": {
+      "auth": null,
+      "body": {
+        "contentType": "application/x-www-form-urlencoded",
+        "form": [
+          {
+            "name": "grant_type",
+            "value": "client_credentials"
+          },
+          {
+            "name": "scope",
+            "value": "read"
+          }
+        ],
+        "text": "",
+        "truncated": false
+      },
+      "credentials": [],
+      "environment": {
+        "color": "green",
+        "id": "<id:2>",
+        "name": "Dev"
+      },
+      "followRedirects": true,
+      "headers": [],
+      "host": "127.0.0.1",
+      "method": "POST",
+      "query": [],
+      "timeoutSeconds": 30,
+      "url": "http://127.0.0.1:<port>/echo",
+      "variables": [
+        {
+          "name": "base_url",
+          "secret": false,
+          "value": "http://127.0.0.1:<port>"
+        }
+      ]
+    },
+    "reason": "permission",
+    "target": {
+      "color": "green",
+      "kind": "http",
+      "location": "Dev",
+      "name": "127.0.0.1",
+      "readOnly": false
+    }
+  },
+  "item#json": {
+    "createdAt": 0,
+    "expiresAt": 0,
+    "id": "api.request:<id:1>",
+    "kind": "api.request",
+    "operation": {
+      "class": "request",
+      "tone": "caution"
+    },
+    "origin": {
+      "client": "Claude Code 2.1.318",
+      "cwd": "<masked>",
+      "source": "",
+      "step": "",
+      "task": ""
+    },
+    "payload": {
+      "auth": {
+        "display": "Bearer {{token}}",
+        "scheme": "Bearer"
+      },
+      "body": {
+        "contentType": "application/json",
+        "form": null,
+        "text": "{\"name\":\"kira\",\"tags\":[\"a\",\"b\"]}",
+        "truncated": false
+      },
+      "credentials": [
+        {
+          "hosts": [
+            "127.0.0.1"
+          ],
+          "name": "token"
+        }
+      ],
+      "environment": {
+        "color": "green",
+        "id": "<id:2>",
+        "name": "Dev"
+      },
+      "followRedirects": true,
+      "headers": [
+        {
+          "masked": true,
+          "name": "Authorization",
+          "value": "Bearer {{token}}"
+        }
+      ],
+      "host": "127.0.0.1",
+      "method": "POST",
+      "query": [],
+      "timeoutSeconds": 30,
+      "url": "http://127.0.0.1:<port>/echo",
+      "variables": [
+        {
+          "name": "base_url",
+          "secret": false,
+          "value": "http://127.0.0.1:<port>"
+        },
+        {
+          "name": "token",
+          "secret": true,
+          "value": "••••"
+        }
+      ]
+    },
+    "reason": "permission",
+    "target": {
+      "color": "green",
+      "kind": "http",
+      "location": "Dev",
+      "name": "127.0.0.1",
+      "readOnly": false
+    }
+  }
+}

@@ -58,6 +58,8 @@ func (r *SettingsRepo) GetAll() (model.Settings, error) {
 	appsettings.Leaf(stored, "dbMcp.serverEnabled", &result.DbMcp.ServerEnabled)
 	appsettings.Leaf(stored, "dbMcp.previewResponses", &result.DbMcp.PreviewResponses)
 	appsettings.Leaf(stored, "dbMcp.focusOnApproval", &result.DbMcp.FocusOnApproval)
+	appsettings.Leaf(stored, "dbMcp.apiRequests", &result.DbMcp.APIRequests)
+	appsettings.LeafValid(stored, "dbMcp.apiApproval", &result.DbMcp.APIApproval, model.ValidAPIApproval)
 	result.Agent = appsettings.ReadAgent(stored)
 	return result, nil
 }
@@ -127,7 +129,13 @@ func upsertDbMcpSection(tx *sql.Tx, dm *model.DbMcpPatch) error {
 	if err := appsettings.UpsertOptional(tx, "dbMcp.previewResponses", dm.PreviewResponses); err != nil {
 		return err
 	}
-	return appsettings.UpsertOptional(tx, "dbMcp.focusOnApproval", dm.FocusOnApproval)
+	if err := appsettings.UpsertOptional(tx, "dbMcp.focusOnApproval", dm.FocusOnApproval); err != nil {
+		return err
+	}
+	if err := appsettings.UpsertOptional(tx, "dbMcp.apiRequests", dm.APIRequests); err != nil {
+		return err
+	}
+	return appsettings.UpsertOptional(tx, "dbMcp.apiApproval", dm.APIApproval)
 }
 
 // Set validates the patch, writes only the leaves the caller actually patched in one transaction

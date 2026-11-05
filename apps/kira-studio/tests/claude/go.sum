@@ -187,6 +187,8 @@ github.com/lufia/plan9stats v0.0.0-20261101121723-be84dd9509a0 h1:bGmNmV0W+HWMJy
 github.com/lufia/plan9stats v0.0.0-20261101121723-be84dd9509a0/go.mod h1:autxFIvghDt3jPTLoqZ9OZ7s9qTGNAWmYCjVFWPX/zg=
 github.com/magiconair/properties v1.18.12 h1:sT9zQpvTB3B4gzrX0tmZNTEaGyg8Zw55MFYRE32Mr9I=
 github.com/magiconair/properties v1.18.12/go.mod h1:Dhd985XPs7jluiymwWYZ0G4Z61jb3vdS329zhj2hYo0=
+github.com/matoous/go-nanoid/v2 v2.1.0 h1:P64+dmq21hhWdtvZfEAofnvJULaRR1Yib0+PnU669bE=
+github.com/matoous/go-nanoid/v2 v2.1.0/go.mod h1:KlbGNQ+FhrUNIHUxZdL63t7tl4LaPkZNpUULS8H4uVM=
 github.com/mattn/go-isatty v0.0.24 h1:tGZZoVgT/KiqK1c8ocVLeDS8BSWMRd47J3Lbz7vsReI=
 github.com/mattn/go-isatty v0.0.24/go.mod h1:nMCL3Zebbrt45jsMDgnfIwz6ydEQApk5oEI3HqDio6A=
 github.com/moby/docker-image-spec v1.3.1 h1:jMKff3w6PgbfSa69GfNg+zN/XLhfXJGnEx3Nl2EsFP0=

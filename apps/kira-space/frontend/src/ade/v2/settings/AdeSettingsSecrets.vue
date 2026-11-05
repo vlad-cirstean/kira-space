@@ -11,9 +11,9 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
-import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
+import SecretInput from '@workbench/components/SecretInput.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { ref } from 'vue';
 import { useDeleteAgentSecret, useSetAgentSecret } from './queries';
@@ -134,12 +134,9 @@ const refExample = '$' + '{secret:name}';
             <FieldLabel for="ade-settings-secret-value">{{
               t('common.field.value.label')
             }}</FieldLabel>
-            <Input
+            <SecretInput
               id="ade-settings-secret-value"
               v-model="value"
-              type="password"
-              autocomplete="new-password"
-              class="font-data"
               data-testid="ade-settings-secret-value"
               @keydown.enter.prevent="submit"
             />

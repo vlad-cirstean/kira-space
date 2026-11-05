@@ -1,4 +1,5 @@
-import { emitPrompts, routed } from '@workbench/testing/ui/prompts';
+import type { ApprovalItem } from '@shared/domain/approvals';
+import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { expect, test } from './fixtures';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
@@ -70,41 +71,28 @@ test('contract: Database MCP settings list the clusters and edit one', async ({ 
   await expect(loc(page, 'kube-mcp-dialog')).toBeVisible();
 });
 
-test('contract: a Kubernetes read shows the cluster and answers by request id', async ({
+test('contract: a Kubernetes read shows the cluster and answers by item id', async ({
   relaunch,
 }) => {
-  const snap = contract<{
-    pending: {
-      requestId: string;
-      statement: string;
-      cluster: { context: string; server: string; namespace: string; operation: string };
-    };
-  }>(SCENARIO, 'DbMcpService.PendingApprovals');
-  const approve = contract<{ requestId: string }>(SCENARIO, 'args:DbMcpService.ApproveQuery');
+  const [item] = contract<ApprovalItem[]>(SCENARIO, 'ApprovalsService.List');
+  const answer = contract<{ ids: string[] }>(SCENARIO, 'args:ApprovalsService.Answer');
+  if (!item) throw new Error('contract has no item');
+  const payload = item.payload as { statement: string; namespace: string };
   const { window: page, control } = await relaunch({
-    control: [
-      {
-        channel: IPC.dbMcpPendingApprovals,
-        response: { ...snap, pending: { ...snap.pending, expiresAtMs: Date.now() + 60_000 } },
-      },
-      { channel: IPC.dbMcpApproveQuery, response: { pending: null, queued: 0 } },
-    ],
+    control: [{ channel: IPC.approvalsAnswer, response: answeredOk(answer.ids) }],
   });
 
-  await emitPrompts(page, [routed('dbmcp', snap.pending.requestId)]);
-  const { cluster } = snap.pending;
-  await expect(loc(page, 'db-mcp-approval-kube-context')).toHaveText(cluster.context);
-  await expect(loc(page, 'db-mcp-approval-kube-server')).toHaveText(cluster.server);
-  await expect(loc(page, 'db-mcp-approval-kube-namespace')).toHaveText(cluster.namespace);
-  await expect(loc(page, 'db-mcp-approval-kube-operation')).toHaveText('List');
-  await expect(loc(page, 'db-mcp-approval-target')).toHaveCount(0);
-  await expect(loc(page, 'db-mcp-approval-dialog')).toContainText('wants to list resources');
-  await expect(loc(page, 'db-mcp-approval-statement')).toContainText(snap.pending.statement);
+  await pushApprovals(page, [liveItem(item)]);
+  await expect(loc(page, 'approval-target-name')).toHaveText(item.target.name);
+  await expect(loc(page, `approval-item-${item.id}`)).toContainText(item.target.location);
+  await expect(loc(page, 'db-mcp-approval-kube-namespace')).toHaveText(payload.namespace);
+  await expect(loc(page, 'approvals-dialog')).toContainText('wants to list resources');
+  await expect(loc(page, 'db-mcp-approval-kube')).toContainText(payload.statement);
 
-  await page.click('[data-testid="db-mcp-approval-approve"]');
+  await page.click(`[data-testid="approval-approve-${item.id}"]`);
   await expect
-    .poll(() => control.log().find((e) => e.channel === IPC.dbMcpApproveQuery)?.args)
-    .toEqual(approve);
+    .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
+    .toEqual(answer);
 });
 
 test('contract: the Operations panel shows an MCP Kubernetes read', async ({ relaunch }) => {

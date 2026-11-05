@@ -139,6 +139,11 @@ type WorkflowStep struct {
 	Settings map[string]map[string]string `json:"settings"`
 	// Agent is the provider id whose agent runs the step's new conversations; "" uses the Agent setting.
 	Agent string `json:"agent"`
+	// Use is the id of the library step this step references; "" is an inline step. Every other field
+	// holds the effective value (library step plus the workflow's overrides).
+	Use string `json:"use,omitempty"`
+	// PromptExtra is the workflow's text appended to Prompt when the step runs; set on a reference only.
+	PromptExtra string `json:"promptExtra,omitempty"`
 }
 
 // StageSettingSpec is one setting the editor offers, from the provider catalog.
@@ -245,6 +250,9 @@ type WorkflowsResult struct {
 	Sandbox SandboxSupport `json:"sandbox"`
 	// StageSettings is every stage setting the registered providers take, in provider then catalog order.
 	StageSettings []StageSettingSpec `json:"stageSettings"`
+	// Steps is the step library; StepsDir is its folder.
+	Steps    []StepEntry `json:"steps"`
+	StepsDir string      `json:"stepsDir"`
 }
 
 type WorkflowYaml struct {
@@ -505,42 +513,36 @@ type Task struct {
 	BranchRequestID string `json:"branchRequestId"`
 }
 
-// BranchRequestItem is one repo an agent asks branch work for. Kind 'branch': a new branch from Base (” =
-// the repo's main branch). Kind 'worktree': a worktree for the named, not yet checked out Branch.
+// BranchRequestItem is one branch an agent asks work for. ID is the item's key in the request. Kind 'branch':
+// a new branch named Branch from Base (” = the repo's main branch). Kind 'worktree': a worktree for the named,
+// not yet checked out Branch. Kind 'rename': rename From to Branch; Upstream names the same-named remote branch
+// (such as origin/feat/x) the user may rename too, ” when there is none; Stacked lists the branches built on From.
 type BranchRequestItem struct {
-	CodeRepoID string `json:"codeRepoId"`
-	Repo       string `json:"repo"`
-	Kind       string `json:"kind"`
-	Branch     string `json:"branch"`
-	Base       string `json:"base"`
+	ID         string   `json:"id"`
+	CodeRepoID string   `json:"codeRepoId"`
+	Repo       string   `json:"repo"`
+	Kind       string   `json:"kind"`
+	Branch     string   `json:"branch"`
+	Base       string   `json:"base"`
+	From       string   `json:"from"`
+	Upstream   string   `json:"upstream"`
+	Stacked    []string `json:"stacked"`
+	// Source is 'run', 'session' or 'automation' for the call that asked; StepName names its stage, ''
+	// when unknown; Session is the Kira session record that asked, '' for a run.
+	Source   string `json:"source"`
+	StepName string `json:"stepName"`
+	Session  string `json:"session"`
 }
 
-// BranchRequest is an agent's open request for branches and worktrees. Source is 'run' (a headless step run),
-// 'session' (an interactive session) or 'automation' (a smart script); StepName names the stage, ” when unknown.
-// ExpiresAt is unix millis.
+// BranchRequest is a task's open request for branches and worktrees, merged from the agent's concurrent
+// calls; each item names its own call. ExpiresAt is unix millis.
 type BranchRequest struct {
 	ID        string              `json:"id"`
 	TaskID    string              `json:"taskId"`
 	TaskTitle string              `json:"taskTitle"`
-	Source    string              `json:"source"`
-	StepName  string              `json:"stepName"`
 	Items     []BranchRequestItem `json:"items"`
 	CreatedAt int64               `json:"createdAt"`
 	ExpiresAt int64               `json:"expiresAt"`
-}
-
-type BranchRequestArgs struct {
-	ID string `json:"id"`
-}
-
-type ApproveBranchRequestArgs struct {
-	ID          string   `json:"id"`
-	CodeRepoIDs []string `json:"codeRepoIds"`
-}
-
-// BranchRequestAnswer says whether an approve or deny reached a request still open.
-type BranchRequestAnswer struct {
-	Resolved bool `json:"resolved"`
 }
 
 // Handover is the text one stage leaves for the next. A draft (State 'draft', ToStepID empty) is open until
@@ -1379,4 +1381,26 @@ type LinkResult struct {
 type RemoveArtifactArgs struct {
 	TaskID string `json:"taskId"`
 	ID     string `json:"id"`
+}
+
+// TrackedUpdate is one tracked item with changes the user has not seen. Concepts are unfiltered:
+// the renderer applies the user's tracking settings.
+type TrackedUpdate struct {
+	TaskID    string         `json:"taskId"`
+	ItemKey   string         `json:"itemKey"`
+	Kind      string         `json:"kind"`     // changeRequest | issue | branch
+	BranchID  string         `json:"branchId"` // '' for an issue
+	Label     string         `json:"label"`    // "#12", "KIRA-12", a branch name
+	Concepts  []string       `json:"concepts"`
+	Counts    map[string]int `json:"counts"` // commentAdded -> new comments
+	ChangedAt int64          `json:"changedAt"`
+}
+
+type TrackedUpdatesResult struct {
+	Updates []TrackedUpdate `json:"updates"`
+}
+
+type MarkTrackedSeenArgs struct {
+	TaskID   string   `json:"taskId"`
+	ItemKeys []string `json:"itemKeys"` // empty = every item of the task
 }

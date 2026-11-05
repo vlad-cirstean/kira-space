@@ -133,6 +133,9 @@ func (s *Service) offered() ([]Run, error) {
 		if err != nil {
 			return nil, err
 		}
+		if run.Trigger == TriggerMCP {
+			continue // the agent that asked is gone
+		}
 		runs = append(runs, run)
 	}
 	sort.SliceStable(runs, func(i, j int) bool { return endedAt(runs[i]) > endedAt(runs[j]) })

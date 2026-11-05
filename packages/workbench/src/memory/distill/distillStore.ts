@@ -1,4 +1,5 @@
 import type { DistillMode, DistillResult, DistillStage } from '@shared/domain/memoryDistill';
+import { newUuid } from '@shared/ids';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
@@ -35,7 +36,7 @@ export const useDistillUiStore = defineStore('distillUi', () => {
 
   function begin(): AbortSignal {
     controller = new AbortController();
-    requestId.value = crypto.randomUUID();
+    requestId.value = newUuid();
     progress.value = null;
     result.value = null;
     cancelled.value = false;

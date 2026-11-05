@@ -19,6 +19,7 @@ const props = withDefaults(defineProps<{ tabId: string; readonly?: boolean }>(),
   readonly: false,
 });
 
+const emit = defineEmits<{ ready: [] }>();
 const cell = computed(() => cellSelectionStore.selectedCellFor(props.tabId));
 const pane = useLiveSize(
   () => layoutStore.panel.cellEditor.height,
@@ -46,7 +47,7 @@ const pane = useLiveSize(
       :data-tab-id="tabId"
       :style="{ flex: `0 1 ${pane.size.value}px` }"
     >
-      <CellEditorView :cell="cell" :readonly="readonly" />
+      <CellEditorView :cell="cell" :readonly="readonly" @ready="emit('ready')" />
     </div>
   </template>
 </template>

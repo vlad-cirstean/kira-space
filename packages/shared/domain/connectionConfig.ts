@@ -50,3 +50,50 @@ export interface ConnectionFileDetail {
   /** The secrets this file's effective record names. */
   secrets: ConnectionSecret[];
 }
+
+/** A connection file in its own key vocabulary (internal/connfiles File). Passwords and URIs are
+ *  `${secret:name}` references, never values. */
+export interface ConnectionFileMask {
+  table?: string;
+  column: string;
+  kind: string;
+  keep_hint?: boolean;
+  correlate?: boolean;
+}
+
+export interface ConnectionFileMcp {
+  enabled?: boolean;
+  description?: string;
+  read?: string;
+  write?: string;
+  ddl?: string;
+  auto_explain?: boolean;
+  review_results?: string;
+}
+
+export interface ConnectionFileModel {
+  name: string;
+  kind: string;
+  color?: string;
+  read_only?: boolean;
+  mode?: string;
+  host?: string;
+  port?: number;
+  database?: string;
+  username?: string;
+  password?: string;
+  uri?: string;
+  options?: Record<string, unknown>;
+  preconnect?: { command: string; sidecar?: boolean; delay_sec?: number };
+  auto_explain?: boolean;
+  throttle_per_sec?: number;
+  mcp?: ConnectionFileMcp;
+  masks?: ConnectionFileMask[];
+}
+
+/** The reply of ConnectionConfigService.Form: the edited text and what it decodes to. */
+export interface ConnectionFormResult {
+  text: string;
+  value: ConnectionFileModel | null;
+  problem: { line: number; col?: number; path?: string; message: string } | null;
+}

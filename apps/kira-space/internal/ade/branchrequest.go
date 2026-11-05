@@ -2,22 +2,27 @@ package ade
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
-	"github.com/kirathecat/kira-studio/internal/prompts"
+	"github.com/kirathecat/kira-studio/internal/approvals"
+	"github.com/kirathecat/kira-studio/internal/ids"
+	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
 // branchrequest.go: an agent asks the user to approve branches and worktrees (P408). The call blocks
-// without holding the task lock; the user answers through a routed prompt.
+// without holding the task lock. A task has one open request, one approvals item; concurrent calls for the
+// task merge their items into it and one answer settles every call (P520).
 
 const (
 	defaultBranchRequestWait = 30 * time.Minute
@@ -46,48 +51,174 @@ const (
 
 type branchDecision struct {
 	kind     decisionKind
-	approved map[string]bool // code repo ids the user kept checked
+	approved map[string]bool // item ids the user kept checked
+	// remote holds the rename items whose same-named remote branch the user also wants renamed.
+	remote map[string]bool
+}
+
+// branchCall is one request_branches or rename_branch call merged into a request. Its items carry the
+// id prefix.
+type branchCall struct {
+	prefix   string
+	deadline time.Time           // the call's own wait ends here; the request never outlives its oldest live call
+	result   chan branchDecision // buffered 1: the one resolver never blocks
 }
 
 type branchRequest struct {
-	view   adewire.BranchRequest
-	result chan branchDecision // buffered 1: the one resolver never blocks
+	view  adewire.BranchRequest
+	calls []*branchCall
+	next  int // call counter; item ids are never renumbered
 }
 
-// branchRequests holds the open requests, at most one per task. Prompts open and close under mu, so a
-// fast answer cannot close a prompt before it opened.
+// runWait counts the calls of one run waiting on the user, so the run keeps its approval note until the last.
+type runWait struct {
+	prev string
+	n    int
+}
+
+// branchRequests holds the open requests, at most one per task. Items open and close under mu, so a
+// fast answer cannot close an item before it opened.
 type branchRequests struct {
 	mu     sync.Mutex
 	byID   map[string]*branchRequest
 	byTask map[string]string
+
+	noteMu sync.Mutex
+	notes  map[string]*runWait
 }
 
-func branchRequestPromptID(id string) string { return prompts.ID(prompts.KindBranchRequest, id) }
+// requestDraft is what one call asks of the user, before it joins the task's request.
+type requestDraft struct {
+	title, source, step, session string
+	items                        []adewire.BranchRequestItem // ids are call-local, "i<k>"
+}
 
-// add stores r and raises its prompt; false when the task already has an open request.
-func (b *TaskBoard) addBranchRequest(r *branchRequest) bool {
+func branchItemID(requestID string) string { return approvals.KindBranchRequest + ":" + requestID }
+
+type branchPayload struct {
+	TaskID    string                      `json:"taskId"`
+	TaskTitle string                      `json:"taskTitle"`
+	Items     []adewire.BranchRequestItem `json:"items"`
+}
+
+// itemOfBranchRequest projects the request into its approvals item.
+func itemOfBranchRequest(v adewire.BranchRequest) approvals.Item {
+	class := "request"
+	kinds := map[string]bool{}
+	for _, it := range v.Items {
+		kinds[it.Kind] = true
+	}
+	switch {
+	case len(kinds) == 1 && kinds[branchKindRename]:
+		class = branchKindRename
+	case len(kinds) > 0 && !kinds[branchKindRename]:
+		class = "create"
+	}
+	raw, err := json.Marshal(branchPayload{TaskID: v.TaskID, TaskTitle: v.TaskTitle, Items: v.Items})
+	if err != nil {
+		// Plain strings and slices only; a failure is a programming error.
+		panic("ade: branch request payload: " + err.Error())
+	}
+	it := approvals.Item{
+		ID: branchItemID(v.ID), Kind: approvals.KindBranchRequest, CreatedAt: v.CreatedAt, ExpiresAt: v.ExpiresAt,
+		Origin:    approvals.Origin{Task: v.TaskTitle},
+		Target:    approvals.Target{Name: v.TaskTitle, Kind: "task"},
+		Operation: approvals.Operation{Class: class, Tone: "caution"},
+		Reason:    "request", Payload: raw,
+		Title: i18n.T("backend.prompt.branchRequest.title", map[string]string{"task": v.TaskTitle}),
+	}
+	if len(v.Items) > 0 {
+		it.Origin.Source, it.Origin.Step = v.Items[0].Source, v.Items[0].StepName
+	}
+	return it
+}
+
+// branchOwner answers branch.request items for the approvals queue.
+type branchOwner struct{ b *TaskBoard }
+
+// Answer approves or denies the request. Options are {itemIds, remoteItemIds, shownItemIds}; none approves
+// every item with the remote rename off. A call with an item outside shownItemIds joined after the user's
+// view rendered; it stays pending.
+func (o branchOwner) Answer(ref string, a approvals.Answer) error {
+	var opts struct {
+		ItemIDs       []string `json:"itemIds"`
+		RemoteItemIDs []string `json:"remoteItemIds"`
+		ShownItemIDs  []string `json:"shownItemIds"`
+	}
+	if len(a.Options) > 0 {
+		if err := json.Unmarshal(a.Options, &opts); err != nil {
+			return ipcerr.Contract("branch request options: %v", err)
+		}
+	}
+	if !a.Approve {
+		if !o.b.DenyBranchRequest(ref, opts.ShownItemIDs) {
+			return ipcerr.NotFoundNamed("approval")
+		}
+		return nil
+	}
+	resolved, err := o.b.ApproveBranchRequest(ref, opts.ItemIDs, opts.RemoteItemIDs, opts.ShownItemIDs)
+	switch {
+	case errors.Is(err, ErrInvalidInput):
+		return ipcerr.Contract("%s", trimInvalid(err))
+	case err != nil:
+		return err
+	case !resolved:
+		return ipcerr.NotFoundNamed("approval")
+	}
+	return nil
+}
+
+func (b *TaskBoard) putBranchRequestLocked(r *branchRequest) {
+	if b.deps.Approvals != nil {
+		b.deps.Approvals.Put(itemOfBranchRequest(r.view))
+	}
+}
+
+func (b *TaskBoard) dropBranchRequestLocked(id string) {
+	if b.deps.Approvals != nil {
+		b.deps.Approvals.Remove(branchItemID(id))
+	}
+}
+
+// joinBranchRequest adds a call's items to the task's open request, or opens one. Each call keeps its own
+// deadline; the request's expiry is the oldest live call's, and the item is re-put so the countdown follows.
+func (b *TaskBoard) joinBranchRequest(taskID string, d *requestDraft) (reqID string, bc *branchCall) {
 	q := &b.branchReqs
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if q.byID == nil {
 		q.byID, q.byTask = map[string]*branchRequest{}, map[string]string{}
 	}
-	if _, busy := q.byTask[r.view.TaskID]; busy {
-		return false
+	now := b.deps.Now()
+	r := q.byID[q.byTask[taskID]]
+	if r == nil {
+		r = &branchRequest{view: adewire.BranchRequest{ID: ids.NewID(), TaskID: taskID, TaskTitle: d.title, CreatedAt: now.UnixMilli()}}
+		q.byID[r.view.ID], q.byTask[taskID] = r, r.view.ID
 	}
-	q.byID[r.view.ID] = r
-	q.byTask[r.view.TaskID] = r.view.ID
-	if b.deps.PromptSink != nil {
-		b.deps.PromptSink.Open(prompts.Prompt{
-			ID: branchRequestPromptID(r.view.ID), Kind: prompts.KindBranchRequest, Ref: r.view.ID,
-			Title: i18n.T("backend.prompt.branchRequest.title", map[string]string{"task": r.view.TaskTitle}),
-		})
+	bc = &branchCall{prefix: fmt.Sprintf("c%d", r.next), deadline: now.Add(b.branchRequestWait()), result: make(chan branchDecision, 1)}
+	r.next++
+	for _, it := range d.items {
+		it.ID = bc.prefix + it.ID
+		it.Source, it.StepName, it.Session = d.source, d.step, d.session
+		r.view.Items = append(r.view.Items, it)
 	}
-	return true
+	r.calls = append(r.calls, bc)
+	refreshBranchExpiry(r)
+	b.putBranchRequestLocked(r)
+	return r.view.ID, bc
 }
 
-// resolveBranchRequest removes the request, closes its prompt and hands it the decision; false when it was
-// already resolved. Only the first resolver wins.
+// refreshBranchExpiry sets the request's expiry to its earliest live call deadline.
+func refreshBranchExpiry(r *branchRequest) {
+	for i, c := range r.calls {
+		if ms := c.deadline.UnixMilli(); i == 0 || ms < r.view.ExpiresAt {
+			r.view.ExpiresAt = ms
+		}
+	}
+}
+
+// resolveBranchRequest removes the request, withdraws its item and hands every merged call the decision;
+// false when it was already resolved. Only the first resolver wins.
 func (b *TaskBoard) resolveBranchRequest(id string, d branchDecision) bool {
 	q := &b.branchReqs
 	q.mu.Lock()
@@ -98,11 +229,49 @@ func (b *TaskBoard) resolveBranchRequest(id string, d branchDecision) bool {
 	}
 	delete(q.byID, id)
 	delete(q.byTask, r.view.TaskID)
-	if b.deps.PromptSink != nil {
-		b.deps.PromptSink.Close(branchRequestPromptID(id))
+	b.dropBranchRequestLocked(id)
+	for _, c := range r.calls {
+		c.result <- d
 	}
-	r.result <- d
 	return true
+}
+
+// withdrawBranchCall ends one call with kind (abandoned or timeout): its items go, the others keep waiting,
+// and the request closes with its last call. A call already answered keeps its answer.
+func (b *TaskBoard) withdrawBranchCall(id string, bc *branchCall, kind decisionKind) {
+	q := &b.branchReqs
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	r := q.byID[id]
+	if r == nil || !slices.Contains(r.calls, bc) {
+		return
+	}
+	b.removeCallsLocked(r, branchDecision{kind: kind}, func(c *branchCall) bool { return c == bc })
+}
+
+// removeCallsLocked answers the calls pick selects with d and drops their items. The request closes when no
+// call is left; otherwise its expiry follows the remaining calls.
+func (b *TaskBoard) removeCallsLocked(r *branchRequest, d branchDecision, pick func(*branchCall) bool) {
+	q := &b.branchReqs
+	var kept []*branchCall
+	for _, c := range r.calls {
+		if !pick(c) {
+			kept = append(kept, c)
+			continue
+		}
+		prefix := c.prefix + "i"
+		r.view.Items = slices.DeleteFunc(r.view.Items, func(it adewire.BranchRequestItem) bool { return strings.HasPrefix(it.ID, prefix) })
+		c.result <- d
+	}
+	r.calls = kept
+	if len(kept) == 0 {
+		delete(q.byID, r.view.ID)
+		delete(q.byTask, r.view.TaskID)
+		b.dropBranchRequestLocked(r.view.ID)
+		return
+	}
+	refreshBranchExpiry(r)
+	b.putBranchRequestLocked(r)
 }
 
 func (b *TaskBoard) abandonBranchRequests(taskID string) {
@@ -150,29 +319,90 @@ func (b *TaskBoard) BranchRequest(id string) (adewire.BranchRequest, error) {
 	return v, nil
 }
 
-// ApproveBranchRequest approves the checked repos, a non-empty subset of the request's items; the rest
-// are denied. resolved is false when the request is already gone.
-func (b *TaskBoard) ApproveBranchRequest(id string, codeRepoIDs []string) (bool, error) {
-	req, err := b.BranchRequest(id)
-	if err != nil {
+// ApproveBranchRequest approves the listed items, a non-empty subset of the request's items; nil approves
+// every shown item. The rest of the shown items are denied. remoteIDs name rename items whose remote branch
+// moves too. shownIDs are the item ids the user's view held; nil means the items open now. A call with an
+// item outside that set joined after the view rendered and stays pending. resolved is false when the
+// request is already gone.
+func (b *TaskBoard) ApproveBranchRequest(id string, itemIDs, remoteIDs, shownIDs []string) (bool, error) {
+	q := &b.branchReqs
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	r := q.byID[id]
+	if r == nil {
 		return false, nil
 	}
-	if len(codeRepoIDs) == 0 {
-		return false, invalid("approve at least one repo")
+	known := func(iid string) bool {
+		return slices.ContainsFunc(r.view.Items, func(it adewire.BranchRequestItem) bool { return it.ID == iid })
 	}
-	approved := make(map[string]bool, len(codeRepoIDs))
-	for _, cid := range codeRepoIDs {
-		if !slices.ContainsFunc(req.Items, func(it adewire.BranchRequestItem) bool { return it.CodeRepoID == cid }) {
-			return false, invalid("repo %s is not in this request", cid)
+	shown := shownSet(r, shownIDs)
+	if itemIDs == nil {
+		for _, it := range r.view.Items {
+			if shown[it.ID] {
+				itemIDs = append(itemIDs, it.ID)
+			}
 		}
-		approved[cid] = true
 	}
-	return b.resolveBranchRequest(id, branchDecision{kind: decisionApproved, approved: approved}), nil
+	if len(itemIDs) == 0 {
+		return false, invalid("approve at least one branch")
+	}
+	dec := branchDecision{kind: decisionApproved, approved: make(map[string]bool, len(itemIDs)), remote: map[string]bool{}}
+	for _, iid := range itemIDs {
+		if !known(iid) {
+			return false, invalid("item %s is not in this request", iid)
+		}
+		dec.approved[iid] = true
+	}
+	for _, iid := range remoteIDs {
+		if !known(iid) {
+			return false, invalid("item %s is not in this request", iid)
+		}
+		dec.remote[iid] = true
+	}
+	b.removeCallsLocked(r, dec, seenCalls(r, shown))
+	return true, nil
 }
 
-// DenyBranchRequest denies every item; resolved is false when the request is already gone.
-func (b *TaskBoard) DenyBranchRequest(id string) bool {
-	return b.resolveBranchRequest(id, branchDecision{kind: decisionDenied})
+// shownSet is the item ids the user's view held; nil means the items open now.
+func shownSet(r *branchRequest, shownIDs []string) map[string]bool {
+	shown := make(map[string]bool, len(r.view.Items))
+	if shownIDs == nil {
+		for _, it := range r.view.Items {
+			shown[it.ID] = true
+		}
+		return shown
+	}
+	for _, iid := range shownIDs {
+		shown[iid] = true
+	}
+	return shown
+}
+
+// seenCalls selects the calls whose items the user's view all held; a call that joined later stays pending.
+func seenCalls(r *branchRequest, shown map[string]bool) func(*branchCall) bool {
+	return func(c *branchCall) bool {
+		prefix := c.prefix + "i"
+		for _, it := range r.view.Items {
+			if strings.HasPrefix(it.ID, prefix) && !shown[it.ID] {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// DenyBranchRequest denies the calls whose items the user's view held (shownIDs; nil means the items open
+// now); resolved is false when the request is already gone.
+func (b *TaskBoard) DenyBranchRequest(id string, shownIDs []string) bool {
+	q := &b.branchReqs
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	r := q.byID[id]
+	if r == nil {
+		return false
+	}
+	b.removeCallsLocked(r, branchDecision{kind: decisionDenied}, seenCalls(r, shownSet(r, shownIDs)))
+	return true
 }
 
 func (b *TaskBoard) branchRequestWait() time.Duration {
@@ -182,13 +412,53 @@ func (b *TaskBoard) branchRequestWait() time.Duration {
 	return defaultBranchRequestWait
 }
 
-// requestSlot is one repo of a request_branches call: a final result, or an item awaiting the user.
+// holdRunNote shows the approval note on the run while any of its calls waits.
+func (b *TaskBoard) holdRunNote(runID string) bool {
+	if runID == "" {
+		return false
+	}
+	q := &b.branchReqs
+	q.noteMu.Lock()
+	defer q.noteMu.Unlock()
+	if w := q.notes[runID]; w != nil {
+		w.n++
+		return true
+	}
+	prev, ok := b.setRunNote(runID, noteBranchApproval)
+	if !ok {
+		return false
+	}
+	if q.notes == nil {
+		q.notes = map[string]*runWait{}
+	}
+	q.notes[runID] = &runWait{prev: prev, n: 1}
+	return true
+}
+
+// releaseRunNote puts the note back when the run's last waiting call ends.
+func (b *TaskBoard) releaseRunNote(taskID, runID string) {
+	q := &b.branchReqs
+	q.noteMu.Lock()
+	defer q.noteMu.Unlock()
+	w := q.notes[runID]
+	if w == nil {
+		return
+	}
+	if w.n--; w.n > 0 {
+		return
+	}
+	delete(q.notes, runID)
+	b.restoreRunNote(taskID, runID, w.prev)
+}
+
+// requestSlot is one branch of a request_branches call: a final result, or an item awaiting the user.
 type requestSlot struct {
+	id         string
 	codeRepoID string
 	nick       string
+	branch     string
 	result     *agentmcp.RequestedBranch
 	item       *adewire.BranchRequestItem
-	addRow     bool // the repo is registered but not on the task: approval adds it
 }
 
 func noBranchInfo(nick, branch, next string) agentmcp.BranchInfo {
@@ -206,39 +476,54 @@ func waitText(d time.Duration) string {
 	return fmt.Sprintf("%d seconds", int(d/time.Second))
 }
 
-// RequestBranches implements agentmcp.SpaceTools. Task or registered repos whose branch and worktree exist answer at once.
-// The rest go to the user in one prompt and the call waits for the answer, unlocked. ctx ends when the
-// caller is gone, which abandons the request.
-func (b *TaskBoard) RequestBranches(ctx context.Context, call agentmcp.SpaceCall, refs []string) (agentmcp.RequestBranchesResult, error) {
-	slots, req, err := b.planBranchRequest(ctx, call, refs)
+// RequestBranches implements agentmcp.SpaceTools. Branches whose worktree exists answer at once.
+// The rest go to the user in the task's one request and the call waits for the answer, unlocked. ctx ends
+// when the caller is gone, which withdraws this call's items.
+func (b *TaskBoard) RequestBranches(ctx context.Context, call agentmcp.SpaceCall, specs []agentmcp.BranchSpec) (agentmcp.RequestBranchesResult, error) {
+	slots, draft, err := b.planBranchRequest(ctx, call, specs)
 	if err != nil {
 		return agentmcp.RequestBranchesResult{}, err
 	}
-	if req == nil {
+	if draft == nil {
 		return b.branchResults(slots), nil
 	}
-	if !b.addBranchRequest(req) {
-		return agentmcp.RequestBranchesResult{}, agentmcp.ToolError("A branch request for this task already waits for the user. Wait for its answer, then call again.")
+	dec, prefix := b.awaitBranchRequest(ctx, call, draft)
+	for i := range slots {
+		if slots[i].item != nil {
+			slots[i].id = prefix + slots[i].id
+		}
 	}
-	prevNote, noted := b.setRunNote(call.RunID, noteBranchApproval)
+	return b.finishBranchRequest(ctx, call, slots, dec)
+}
+
+// awaitBranchRequest joins the task's request, notes the wait on the calling run and blocks, unlocked,
+// until the user decides, the wait runs out or the caller is gone. prefix is the call's item id prefix.
+func (b *TaskBoard) awaitBranchRequest(ctx context.Context, call agentmcp.SpaceCall, d *requestDraft) (dec branchDecision, prefix string) {
+	reqID, bc := b.joinBranchRequest(call.TaskID, d)
+	noted := b.holdRunNote(call.RunID)
 	b.notifyBoard()
 
 	timer := time.NewTimer(b.branchRequestWait())
 	defer timer.Stop()
-	var dec branchDecision
-	select {
-	case dec = <-req.result:
-	case <-timer.C:
-		b.resolveBranchRequest(req.view.ID, branchDecision{kind: decisionTimeout})
-		dec = <-req.result
-	case <-ctx.Done():
-		b.resolveBranchRequest(req.view.ID, branchDecision{kind: decisionAbandoned})
-		dec = <-req.result
+wait:
+	for {
+		select {
+		case dec = <-bc.result:
+			break wait
+		case <-timer.C:
+			b.withdrawBranchCall(reqID, bc, decisionTimeout)
+			dec = <-bc.result
+			break wait
+		case <-ctx.Done():
+			b.withdrawBranchCall(reqID, bc, decisionAbandoned)
+			dec = <-bc.result
+			break wait
+		}
 	}
 	if noted {
-		b.restoreRunNote(call.TaskID, call.RunID, prevNote)
+		b.releaseRunNote(call.TaskID, call.RunID)
 	}
-	return b.finishBranchRequest(ctx, call, slots, dec)
+	return dec, bc.prefix
 }
 
 func (b *TaskBoard) branchResults(slots []requestSlot) agentmcp.RequestBranchesResult {
@@ -249,8 +534,8 @@ func (b *TaskBoard) branchResults(slots []requestSlot) agentmcp.RequestBranchesR
 	return out
 }
 
-// planBranchRequest validates the call under the task lock. req is nil when no repo needs the user.
-func (b *TaskBoard) planBranchRequest(ctx context.Context, call agentmcp.SpaceCall, refs []string) ([]requestSlot, *branchRequest, error) {
+// planBranchRequest validates the call under the task lock. req is nil when no branch needs the user.
+func (b *TaskBoard) planBranchRequest(ctx context.Context, call agentmcp.SpaceCall, specs []agentmcp.BranchSpec) ([]requestSlot, *requestDraft, error) {
 	mu := b.taskMu(call.TaskID)
 	mu.Lock()
 	defer mu.Unlock()
@@ -265,98 +550,127 @@ func (b *TaskBoard) planBranchRequest(ctx context.Context, call agentmcp.SpaceCa
 	if err != nil {
 		return nil, nil, err
 	}
-	var ids []string
-	for _, ref := range refs {
-		id, err := resolveRepoRef(ref, cands, "registered")
+	slots := make([]requestSlot, 0, len(specs))
+	var items []adewire.BranchRequestItem
+	seen := map[string]bool{}
+	for i, sp := range specs {
+		id, err := resolveRepoRef(sp.Repo, cands, "registered")
 		if err != nil {
 			return nil, nil, err
 		}
-		if !slices.Contains(ids, id) {
-			ids = append(ids, id)
+		key := id + "\x00" + sp.Branch
+		if seen[key] {
+			continue
 		}
-	}
-	var slots []requestSlot
-	var items []adewire.BranchRequestItem
-	for _, id := range ids {
-		slot, err := b.planRepo(ctx, tc, id, cfgs)
+		seen[key] = true
+		slot, err := b.planItem(ctx, tc, fmt.Sprintf("i%d", i), id, sp.Branch, cfgs)
 		if err != nil {
 			return nil, nil, err
 		}
 		slots = append(slots, slot)
 		if slot.item != nil {
+			slot.item.Stacked = []string{}
 			items = append(items, *slot.item)
 		}
 	}
 	if len(items) == 0 {
 		return slots, nil, nil
 	}
-	source, stepName := b.callSource(tc, call)
-	now := b.deps.Now()
-	return slots, &branchRequest{
-		view: adewire.BranchRequest{
-			ID: b.newID(), TaskID: call.TaskID, TaskTitle: taskTitle(tc.task, tc.branches), Source: source, StepName: stepName,
-			Items: items, CreatedAt: now.UnixMilli(), ExpiresAt: now.Add(b.branchRequestWait()).UnixMilli(),
-		},
-		result: make(chan branchDecision, 1),
-	}, nil
+	return slots, b.requestDraftOf(tc, call, items), nil
 }
 
-// planRepo decides one repo: failed, already existing, or an item for the user.
-func (b *TaskBoard) planRepo(ctx context.Context, tc *taskCtx, codeRepoID string, cfgs []model.AdeRepoConfig) (requestSlot, error) {
-	var sb model.AdeTaskBranch
-	found := false
-	for _, br := range tc.branches {
-		if br.CodeRepoID == codeRepoID {
-			sb, found = br, true
+// requestDraftOf names who asks for items.
+func (b *TaskBoard) requestDraftOf(tc *taskCtx, call agentmcp.SpaceCall, items []adewire.BranchRequestItem) *requestDraft {
+	source, stepName := b.callSource(tc, call)
+	return &requestDraft{title: taskTitle(tc.task, tc.branches), source: source, step: stepName, session: call.SessionID, items: items}
+}
+
+// taskRepoRows are the task's live rows in the repo: the one named branch, and the first row of the
+// agent's own kind still waiting for a name.
+func taskRepoRows(tc *taskCtx, codeRepoID, branch string) (named, draft *model.AdeTaskBranch) {
+	for i, br := range tc.branches {
+		if br.CodeRepoID != codeRepoID {
+			continue
+		}
+		switch {
+		case br.Name == branch:
+			named = &tc.branches[i]
+		case br.Name == "" && br.Kind == model.AdeBranchKindMine && draft == nil:
+			draft = &tc.branches[i]
 		}
 	}
+	return named, draft
+}
+
+const outsideTaskText = "Branch %s exists outside this task. Pick another name or ask the user to attach it."
+
+// planItem decides one requested branch: failed, already existing, or an item for the user.
+func (b *TaskBoard) planItem(ctx context.Context, tc *taskCtx, itemID, codeRepoID, branch string, cfgs []model.AdeRepoConfig) (requestSlot, error) {
 	nick := tc.nick[codeRepoID]
-	slot := requestSlot{codeRepoID: codeRepoID, nick: nick}
-	if !found {
+	if nick == "" {
 		for _, c := range cfgs {
 			if c.CodeRepoID == codeRepoID {
-				slot.nick = cmpNonEmpty(c.Nickname, c.Name)
+				nick = cmpNonEmpty(c.Nickname, c.Name)
 			}
 		}
-		nick = slot.nick
-		sb = model.AdeTaskBranch{TaskID: tc.task.ID, CodeRepoID: codeRepoID, Kind: model.AdeBranchKindMine}
-		slot.addRow = true
 	}
-	if sb.Kind != model.AdeBranchKindMine {
-		slot.result = failedBranch(nick, sb.Name, fmt.Sprintf("The branch of %s on this task is not yours to create.", nick))
-		return slot, nil
-	}
+	slot := requestSlot{id: itemID, codeRepoID: codeRepoID, nick: nick, branch: branch}
 	rec, err := b.deps.CodeRepos.Get(codeRepoID)
 	if err != nil {
 		return slot, err
 	}
 	if rec == nil {
-		slot.result = failedBranch(nick, sb.Name, fmt.Sprintf("Repo %s is no longer registered.", nick))
+		slot.result = failedBranch(nick, branch, fmt.Sprintf("Repo %s is no longer registered.", nick))
 		return slot, nil
 	}
-	item := adewire.BranchRequestItem{CodeRepoID: codeRepoID, Repo: nick, Kind: branchKindWorktree, Branch: sb.Name}
-	if sb.Name != "" {
-		path, err := b.worktreeOf(ctx, sb)
+	named, draft := taskRepoRows(tc, codeRepoID, branch)
+	item := adewire.BranchRequestItem{ID: itemID, CodeRepoID: codeRepoID, Repo: nick, Kind: branchKindWorktree, Branch: branch}
+	if named != nil {
+		if named.Kind != model.AdeBranchKindMine {
+			slot.result = failedBranch(nick, branch, fmt.Sprintf("The branch %s of %s on this task is not yours to create.", branch, nick))
+			return slot, nil
+		}
+		path, err := b.worktreeOf(ctx, *named)
 		if err != nil {
 			return slot, err
 		}
 		if path != "" {
-			slot.result = &agentmcp.RequestedBranch{BranchInfo: b.branchInfo(sb, nick, path), Outcome: agentmcp.BranchExisting}
+			slot.result = &agentmcp.RequestedBranch{BranchInfo: b.branchInfo(*named, nick, path), Outcome: agentmcp.BranchExisting}
 			return slot, nil
 		}
 		slot.item = &item
+		return slot, nil
+	}
+	refusal, err := b.checkNewBranchName(ctx, *rec, branch)
+	if err != nil {
+		return slot, err
+	}
+	if refusal != "" {
+		slot.result = failedBranch(nick, branch, refusal)
 		return slot, nil
 	}
 	entry, err := b.openRepo(ctx, codeRepoID)
 	if err != nil {
 		return slot, err
 	}
-	_, display, refusal, err := b.newBranchBase(ctx, entry, sb)
+	inv, err := entry.BranchInventory(ctx)
+	if err != nil {
+		return slot, err
+	}
+	if branchExists(inv, branch) {
+		slot.result = failedBranch(nick, branch, fmt.Sprintf(outsideTaskText, branch))
+		return slot, nil
+	}
+	base := model.AdeTaskBranch{TaskID: tc.task.ID, CodeRepoID: codeRepoID, Kind: model.AdeBranchKindMine}
+	if draft != nil {
+		base = *draft
+	}
+	_, display, refusal, err := b.newBranchBase(ctx, entry, base)
 	if err != nil {
 		return slot, err
 	}
 	if refusal != "" {
-		slot.result = failedBranch(nick, "", "Cannot create a branch here: "+refusal+".")
+		slot.result = failedBranch(nick, branch, "Cannot create a branch here: "+refusal+".")
 		return slot, nil
 	}
 	item.Kind, item.Base = branchKindBranch, display
@@ -433,12 +747,12 @@ func (b *TaskBoard) finishBranchRequest(ctx context.Context, call agentmcp.Space
 		defer mu.Unlock()
 		tc, err := b.spaceCtx(call.TaskID)
 		apply = func(s *requestSlot) {
-			if !dec.approved[s.codeRepoID] {
+			if !dec.approved[s.id] {
 				s.result = outcomeBranch(s, agentmcp.BranchDenied, deniedText)
 				return
 			}
 			if err != nil {
-				s.result = failedBranch(s.nick, "", toolMessage(err))
+				s.result = failedBranch(s.nick, s.branch, toolMessage(err))
 				return
 			}
 			s.result = b.createApproved(ctx, tc, s)
@@ -467,34 +781,31 @@ func toolMessage(err error) string {
 	return "Kira Space could not create this branch."
 }
 
-// createApproved re-reads the branch row, since the task may have changed during the wait, and creates it.
+// createApproved re-reads the task rows, since the task may have changed during the wait, and creates the
+// branch: in the repo's waiting row when it has one, else in a new row.
 func (b *TaskBoard) createApproved(ctx context.Context, tc *taskCtx, s *requestSlot) *agentmcp.RequestedBranch {
-	var sb model.AdeTaskBranch
-	found := false
-	for _, br := range tc.branches {
-		if br.CodeRepoID == s.codeRepoID {
-			sb, found = br, true
-		}
+	named, draft := taskRepoRows(tc, s.codeRepoID, s.branch)
+	switch {
+	case named != nil:
+		return b.createFor(ctx, s, *named)
+	case s.item.Kind == branchKindWorktree:
+		return failedBranch(s.nick, s.branch, fmt.Sprintf("Branch %s is no longer on this task.", s.branch))
+	case draft != nil:
+		return b.createFor(ctx, s, *draft)
 	}
-	if !found && s.addRow {
-		sb, err := b.deps.Tasks.AddBranch(model.AdeTaskBranch{
-			ID: b.newID(), TaskID: tc.task.ID, CodeRepoID: s.codeRepoID, Kind: model.AdeBranchKindMine,
-			AddedAt: b.deps.Now().UnixMilli(), Origin: model.AdeBranchOriginAgent,
-		})
-		if err != nil {
-			slog.Warn("ade: add requested repo", "scope", "ade", "repo", s.codeRepoID, "err", err)
-			return failedBranch(s.nick, "", "Kira Space could not add this repo to the task.")
-		}
-		return b.createFor(ctx, s, sb)
-	}
-	if !found {
-		return failedBranch(s.nick, "", fmt.Sprintf("Repo %s is no longer on this task.", s.nick))
+	sb, err := b.deps.Tasks.AddBranch(model.AdeTaskBranch{
+		ID: ids.NewID(), TaskID: tc.task.ID, CodeRepoID: s.codeRepoID, Kind: model.AdeBranchKindMine,
+		AddedAt: b.deps.Now().UnixMilli(), Origin: model.AdeBranchOriginAgent,
+	})
+	if err != nil {
+		slog.Warn("ade: add requested branch", "scope", "ade", "repo", s.codeRepoID, "err", err)
+		return failedBranch(s.nick, s.branch, "Kira Space could not add this branch to the task.")
 	}
 	return b.createFor(ctx, s, sb)
 }
 
 func (b *TaskBoard) createFor(ctx context.Context, s *requestSlot, sb model.AdeTaskBranch) *agentmcp.RequestedBranch {
-	rb, err := b.createBranch(ctx, sb, s.nick)
+	rb, err := b.createBranch(ctx, sb, s.nick, s.branch)
 	if err != nil {
 		var te agentmcp.ToolError
 		if errors.As(err, &te) {

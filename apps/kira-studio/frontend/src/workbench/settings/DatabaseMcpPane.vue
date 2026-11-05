@@ -8,11 +8,13 @@ import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { Field, FieldContent, FieldDescription, FieldLegend } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
+import { NativeSelect } from '@theme/components/ui/native-select';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { formatDateTime } from '@workbench/behaviour/format';
 import { computed, ref, useId } from 'vue';
+import { useApiAgentAccess } from '../../api/state/apiConfig';
 import ClusterMcpDialog from '../../kubernetes/components/ClusterMcpDialog.vue';
 import { useClusters } from '../../kubernetes/queries';
 import { useConnectionDialogStore } from '../../state/connectionDialogs';
@@ -20,6 +22,7 @@ import { useConnectionsStore } from '../../state/connections';
 import { useDbMcpStore } from '../../state/dbmcp';
 import { loadMaskRuleCounts, maskRuleCountsQueryKey } from '../../state/maskRules';
 import { useSettingsStore } from '../../state/settings';
+import ScriptsMcpSection from './ScriptsMcpSection.vue';
 import type { SettingsPaneProps } from './types';
 
 // P103 Part 2 (§5.5): extracted verbatim from workbench/SettingsDialog.vue's own
@@ -51,6 +54,12 @@ const preview = useAsyncAction((enabled: boolean) =>
 const focus = useAsyncAction((enabled: boolean) =>
   settingsStore.patchSettings({ dbMcp: { focusOnApproval: enabled } }),
 );
+const apiRequests = useAsyncAction((enabled: boolean) =>
+  settingsStore.patchSettings({ dbMcp: { apiRequests: enabled } }),
+);
+const apiApproval = useAsyncAction((mode: 'always' | 'never') =>
+  settingsStore.patchSettings({ dbMcp: { apiApproval: mode } }),
+);
 const regenerate = useAsyncAction(() => dbMcpStore.regenerateDbMcpToken());
 const install = useAsyncAction(() => dbMcpStore.installDbMcpAgent());
 const dbMcpToggling = toggle.pending;
@@ -61,6 +70,8 @@ const actionError = computed(
     toggle.error.value ??
     preview.error.value ??
     focus.error.value ??
+    apiRequests.error.value ??
+    apiApproval.error.value ??
     regenerate.error.value ??
     install.error.value,
 );
@@ -68,6 +79,8 @@ function clearActionErrors(): void {
   toggle.error.value = null;
   preview.error.value = null;
   focus.error.value = null;
+  apiRequests.error.value = null;
+  apiApproval.error.value = null;
   regenerate.error.value = null;
   install.error.value = null;
 }
@@ -83,6 +96,18 @@ async function onToggleFocusOnApproval(enabled: boolean): Promise<void> {
   clearActionErrors();
   await focus.run(enabled);
 }
+async function onToggleApiRequests(enabled: boolean): Promise<void> {
+  clearActionErrors();
+  await apiRequests.run(enabled);
+}
+async function onApiApprovalChange(value: unknown): Promise<void> {
+  clearActionErrors();
+  await apiApproval.run(value === 'never' ? 'never' : 'always');
+}
+const agentAccess = useApiAgentAccess();
+const sharedVariableCount = computed(() =>
+  (agentAccess.data.value ?? []).reduce((n, env) => n + env.variables.length, 0),
+);
 async function onRegenerateDbMcpToken(): Promise<void> {
   clearActionErrors();
   await regenerate.run();
@@ -132,6 +157,8 @@ const kubeEditOpen = computed({
 const dbMcpEnabledId = useId();
 const dbMcpPreviewId = useId();
 const dbMcpFocusId = useId();
+const dbMcpApiId = useId();
+const dbMcpApiApprovalId = useId();
 </script>
 
 <template>
@@ -181,6 +208,49 @@ const dbMcpFocusId = useId();
         <Label :for="dbMcpFocusId">{{ t('studio.settings.dbMcp.focus.label') }}</Label>
         <FieldDescription>{{ t('studio.settings.dbMcp.focus.description') }}</FieldDescription>
       </FieldContent>
+    </Field>
+
+    <Field orientation="horizontal" class="items-start">
+      <Switch
+        :id="dbMcpApiId"
+        :model-value="settingsStore.dbMcp.apiRequests"
+        :disabled="apiRequests.pending.value"
+        data-testid="settings-db-mcp-api"
+        @update:model-value="(v) => onToggleApiRequests(v === true)"
+      />
+      <FieldContent>
+        <Label :for="dbMcpApiId">{{ t('studio.settings.dbMcp.api.label') }}</Label>
+        <FieldDescription>{{ t('studio.settings.dbMcp.api.description') }}</FieldDescription>
+        <FieldDescription data-testid="settings-db-mcp-api-count">{{
+          t('studio.settings.dbMcp.api.count.status', {
+            count: sharedVariableCount,
+            environments: (agentAccess.data.value ?? []).length,
+          })
+        }}</FieldDescription>
+      </FieldContent>
+    </Field>
+    <Field v-if="settingsStore.dbMcp.apiRequests">
+      <Label :for="dbMcpApiApprovalId">{{ t('studio.settings.dbMcp.apiApproval.label') }}</Label>
+      <NativeSelect
+        :id="dbMcpApiApprovalId"
+        variant="bordered"
+        size="kira-lg"
+        class="self-start"
+        data-testid="settings-db-mcp-api-approval"
+        :model-value="settingsStore.dbMcp.apiApproval"
+        :disabled="apiApproval.pending.value"
+        @update:model-value="onApiApprovalChange"
+      >
+        <option value="always">{{ t('studio.settings.dbMcp.apiApproval.always.option') }}</option>
+        <option value="never">{{ t('studio.settings.dbMcp.apiApproval.never.option') }}</option>
+      </NativeSelect>
+      <Alert
+        v-if="settingsStore.dbMcp.apiApproval === 'never'"
+        variant="warn"
+        data-testid="settings-db-mcp-api-never-warning"
+      >
+        <AlertDescription>{{ t('studio.settings.dbMcp.apiApproval.never.body') }}</AlertDescription>
+      </Alert>
     </Field>
 
     <template v-if="settingsStore.dbMcp.serverEnabled">
@@ -363,6 +433,8 @@ const dbMcpFocusId = useId();
       {{ t('studio.settings.dbMcp.kube.empty.empty') }}
     </FieldDescription>
     <ClusterMcpDialog v-if="kubeEditId" v-model:open="kubeEditOpen" :cluster-id="kubeEditId" />
+
+    <ScriptsMcpSection />
 
     <Alert v-if="actionError" variant="error" data-testid="settings-action-error">
       <AlertDescription>{{ actionError }}</AlertDescription>

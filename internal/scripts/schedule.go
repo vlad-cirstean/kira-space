@@ -126,8 +126,7 @@ func validScheduleTimeout(s *Schedule, kind string) error {
 	if s.Timeout == "" {
 		s.Timeout = DefaultScheduleTimeout
 	}
-	d, err := time.ParseDuration(s.Timeout)
-	if err != nil || d < MinScheduleTimeout || d > MaxScheduleTimeout {
+	if !checkTimeoutText(s.Timeout) {
 		return invalid("/schedule/timeout", "backend.core.runs.scheduleTimeout.body")
 	}
 	return nil

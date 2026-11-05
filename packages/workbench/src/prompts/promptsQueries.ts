@@ -51,6 +51,8 @@ export function usePrompts() {
 export const usePromptVisibility = createSharedComposable(() => {
   const hidden = ref<string[]>([]);
   const revealed = ref<string | null>(null);
+  // Set by PromptHost: a prompt is on screen in this window.
+  const shown = ref(false);
 
   function hide(id: string): void {
     if (!hidden.value.includes(id)) hidden.value = [...hidden.value, id];
@@ -67,7 +69,7 @@ export const usePromptVisibility = createSharedComposable(() => {
     if (revealed.value && !live.includes(revealed.value)) revealed.value = null;
   }
 
-  return { hidden, revealed, hide, reveal, prune };
+  return { hidden, revealed, shown, hide, reveal, prune };
 });
 
 /** Moves a prompt to this window and shows it, even after Escape hid it here. */

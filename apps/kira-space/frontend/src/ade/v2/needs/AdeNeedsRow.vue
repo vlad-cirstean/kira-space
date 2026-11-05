@@ -6,7 +6,7 @@ import { computed, ref } from 'vue';
 import type { Tone } from '../board/actions';
 import { type NeedsItem, needsActionLabel, needsKindLabel } from '../board/needsYou';
 import AdeRunLog from '../panel/AdeRunLog.vue';
-import { ACTION_CLASS, TONE_SOLID_CLASS, TONE_TAG_CLASS } from '../tones';
+import { ACTION_CLASS, TONE_TAG_CLASS } from '../tones';
 import { useNeedsAction } from './useNeedsAction';
 
 // One needs-you item (mockup `needs`): kind chip, age, its one action, scope, what, over the task.
@@ -22,7 +22,7 @@ const hasLog = computed(
 const buttonClass = computed(() => {
   if (props.item.action === 'Take over' || props.item.action === 'Resume')
     return ACTION_CLASS.agent;
-  return props.item.tone === 'grey' ? 'bg-border text-fg' : TONE_SOLID_CLASS[props.item.tone];
+  return ACTION_CLASS[props.item.tone];
 });
 const ROW_BG_CLASS: Record<Tone, string> = {
   amber: '',

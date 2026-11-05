@@ -173,25 +173,11 @@ const send = sending.run;
   <Dialog :open="open" @update:open="(v) => !v && close()">
     <DialogContent size="lg" :dirty="dirty" data-testid="ade-run-dialog">
       <DialogHeader>
-        <DialogTitle class="flex items-center gap-2">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke-width="2.2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-            class="stroke-agent"
-          >
-            <rect x="3" y="4" width="18" height="16" rx="3" />
-            <path d="M7 10l3 2-3 2M12 15h5" />
-          </svg>
+        <DialogTitle>
           {{ t('space.ade.runDialog.title.title', { step: step?.name ?? '' }) }}
         </DialogTitle>
       </DialogHeader>
-      <DialogBody class="flex flex-col gap-3 text-kira-md">
+      <DialogBody>
         <FieldDescription v-if="noRepo" data-testid="ade-run-no-repo">{{
           t('space.ade.runDialog.noRepo.hint')
         }}</FieldDescription>

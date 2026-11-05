@@ -127,47 +127,68 @@ func (s *Store) syncLocked() ([]configfs.Entry[CollectionFile], []configfs.Entry
 // pruneOrphans drops projected rows whose file is gone.
 func (s *Store) pruneOrphans(ce []configfs.Entry[CollectionFile], ee []configfs.Entry[EnvironmentFile]) error {
 	return s.tx(func(tx *sql.Tx, ch *Changes) error {
-		for _, t := range []struct {
-			table, ext string
-			files      []string
-			scope      string
-			changed    *bool
-		}{
+		for _, t := range []pruneTarget{
 			{"api_collections", CollectionExt, collectionFiles(ce), OwnerCollection, &ch.Tree},
 			{"api_environments", EnvironmentExt, environmentFiles(ee), OwnerEnvironment, &ch.Environments},
 		} {
-			present := map[string]bool{}
-			for _, f := range t.files {
-				if stem, ok := StemOf(f, t.ext); ok {
-					present[stem] = true
-				}
-			}
-			rows, err := tx.Query(`SELECT id, stem FROM ` + t.table + ` WHERE stem IS NOT NULL`)
-			if err != nil {
+			if err := pruneTable(tx, ch, t); err != nil {
 				return err
-			}
-			var gone []string
-			for rows.Next() {
-				var id, stem string
-				if err := rows.Scan(&id, &stem); err != nil {
-					rows.Close()
-					return err
-				}
-				if !present[stem] {
-					gone = append(gone, id)
-				}
-			}
-			rows.Close()
-			for _, id := range gone {
-				if _, err := tx.Exec(`DELETE FROM `+t.table+` WHERE id = ?`, id); err != nil {
-					return err
-				}
-				*t.changed = true
-				ch.variables(t.scope, id)
 			}
 		}
 		return nil
 	})
+}
+
+type pruneTarget struct {
+	table, ext string
+	files      []string
+	scope      string
+	changed    *bool
+}
+
+// pruneTable deletes rows of one table whose stem has no file, then reindexes.
+func pruneTable(tx *sql.Tx, ch *Changes, t pruneTarget) error {
+	present := map[string]bool{}
+	for _, f := range t.files {
+		if stem, ok := StemOf(f, t.ext); ok {
+			present[stem] = true
+		}
+	}
+	gone, err := orphanIDs(tx, t.table, present)
+	if err != nil {
+		return err
+	}
+	for _, id := range gone {
+		if _, err := tx.Exec(`DELETE FROM `+t.table+` WHERE id = ?`, id); err != nil {
+			return err
+		}
+		*t.changed = true
+		ch.variables(t.scope, id)
+	}
+	if len(gone) > 0 {
+		return reindex(tx, t.table)
+	}
+	return nil
+}
+
+// orphanIDs returns ids of rows whose stem is not in present.
+func orphanIDs(tx *sql.Tx, table string, present map[string]bool) ([]string, error) {
+	rows, err := tx.Query(`SELECT id, stem FROM ` + table + ` WHERE stem IS NOT NULL`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var gone []string
+	for rows.Next() {
+		var id, stem string
+		if err := rows.Scan(&id, &stem); err != nil {
+			return nil, err
+		}
+		if !present[stem] {
+			gone = append(gone, id)
+		}
+	}
+	return gone, rows.Err()
 }
 
 func collectionFiles(es []configfs.Entry[CollectionFile]) []string {

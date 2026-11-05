@@ -135,17 +135,17 @@ func TestTargetRouting(t *testing.T) {
 	if got := targetOf(g, "schedule:q"); got != "z" {
 		t.Fatalf("target %q, want lowest order z (not smallest key, never ephemeral)", got)
 	}
-	g.open(prompts.KindDbMcp, "o", "a")
-	if got := targetOf(g, "dbmcp:o"); got != "a" {
+	g.open(prompts.KindApproval, "o", "a")
+	if got := targetOf(g, "approval:o"); got != "a" {
 		t.Fatalf("origin alive: target %q, want a", got)
 	}
-	g.open(prompts.KindDbMcp, "e", "eph")
-	if got := targetOf(g, "dbmcp:e"); got != "eph" {
+	g.open(prompts.KindApproval, "e", "eph")
+	if got := targetOf(g, "approval:e"); got != "eph" {
 		t.Fatalf("ephemeral origin: target %q, want eph", got)
 	}
 	g.w.drop("a")
 	g.r.Reroute()
-	if got := targetOf(g, "dbmcp:o"); got != "z" {
+	if got := targetOf(g, "approval:o"); got != "z" {
 		t.Fatalf("origin gone: target %q, want main z", got)
 	}
 	if err := g.r.Claim("schedule:q", "a"); err != nil {
@@ -162,7 +162,7 @@ func TestTargetRouting(t *testing.T) {
 	g.w.drop("z")
 	g.r.Reroute()
 	g.r.Close("schedule:q")
-	if got := targetOf(g, "dbmcp:o"); got != "a" {
+	if got := targetOf(g, "approval:o"); got != "a" {
 		t.Fatalf("main closed: target %q, want next order a", got)
 	}
 	if err := g.r.Claim("nope", "a"); err == nil {
@@ -173,23 +173,23 @@ func TestTargetRouting(t *testing.T) {
 func TestNotificationsCoalescePerKind(t *testing.T) {
 	g := newRig(t)
 	g.w.add("a", 0)
-	g.open(prompts.KindDbMcp, "1", "")
-	g.open(prompts.KindDbMcp, "1", "")
-	g.open(prompts.KindDbMcp, "2", "")
+	g.open(prompts.KindApproval, "1", "")
+	g.open(prompts.KindApproval, "1", "")
+	g.open(prompts.KindApproval, "2", "")
 	g.open(prompts.KindSchedule, "s", "")
 	if len(g.sink.sent) != 3 {
 		t.Fatalf("sent %d notes, want 3 (one dbmcp, its count update, one schedule)", len(g.sink.sent))
 	}
-	if g.sink.sent[0].ID != "prompt:dbmcp" || g.sink.sent[1].ID != "prompt:dbmcp" || g.sink.sent[1].Title != "2 queries wait for approval" {
+	if g.sink.sent[0].ID != "prompt:approval" || g.sink.sent[1].ID != "prompt:approval" || g.sink.sent[1].Title != "2 things await your approval" {
 		t.Fatalf("notes %+v", g.sink.sent)
 	}
-	g.r.Close("dbmcp:1")
+	g.r.Close("approval:1")
 	if n := g.sink.sent[len(g.sink.sent)-1]; n.Title != "T 2" {
 		t.Fatalf("one left: title %q, want the single title", n.Title)
 	}
-	g.r.Close("dbmcp:2")
-	if len(g.sink.removed) != 1 || g.sink.removed[0] != "prompt:dbmcp" {
-		t.Fatalf("removed %v, want prompt:dbmcp", g.sink.removed)
+	g.r.Close("approval:2")
+	if len(g.sink.removed) != 1 || g.sink.removed[0] != "prompt:approval" {
+		t.Fatalf("removed %v, want prompt:approval", g.sink.removed)
 	}
 }
 
@@ -197,17 +197,17 @@ func TestNotificationSuppression(t *testing.T) {
 	g := newRig(t)
 	g.w.add("a", 0)
 	g.w.focused = "a"
-	g.open(prompts.KindDbMcp, "1", "")
+	g.open(prompts.KindApproval, "1", "")
 	if len(g.sink.sent) != 0 {
 		t.Fatal("note posted for a focused target")
 	}
-	g.r.Close("dbmcp:1")
+	g.r.Close("approval:1")
 	if len(g.sink.removed) != 0 {
 		t.Fatal("removed a note that was never shown")
 	}
 	g.w.focused = ""
 	g.enabled = false
-	g.open(prompts.KindDbMcp, "2", "")
+	g.open(prompts.KindApproval, "2", "")
 	if len(g.sink.sent) != 0 {
 		t.Fatal("note posted with notifyPrompts off")
 	}
@@ -234,7 +234,7 @@ func TestRevealKind(t *testing.T) {
 	if len(g.w.focus) != 1 || g.w.focus[0] != "reopened" {
 		t.Fatalf("focus %v", g.w.focus)
 	}
-	g.r.RevealKind(prompts.KindDbMcp)
+	g.r.RevealKind(prompts.KindApproval)
 	if len(g.reveals) != 1 {
 		t.Fatal("revealed a kind with no prompt")
 	}
@@ -249,10 +249,10 @@ func TestConcurrentOpenCloseReroute(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			ref := string(rune('A' + i%8))
-			g.open(prompts.KindDbMcp, ref, "")
+			g.open(prompts.KindApproval, ref, "")
 			g.r.Reroute()
 			if i%2 == 0 {
-				g.r.Close(prompts.ID(prompts.KindDbMcp, ref))
+				g.r.Close(prompts.ID(prompts.KindApproval, ref))
 			}
 		}()
 	}

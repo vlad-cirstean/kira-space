@@ -18,6 +18,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
 )
@@ -219,7 +220,9 @@ func (b *TaskBoard) planRebase(ctx context.Context, tc *taskCtx, args adewire.On
 			paths[i] = row.WorktreePath
 		}
 		if paths[i] == "" {
-			p.predicted[n.sb.ID] = b.freePath(rec.Name, n.sb.Name)
+			if p.predicted[n.sb.ID], err = b.worktreeDirFor(n.sb, rec.Name, ""); err != nil {
+				return nil, err
+			}
 		}
 	}
 	if commit {
@@ -458,7 +461,7 @@ func (b *TaskBoard) Rebase(ctx context.Context, args adewire.RebaseArgs) (adewir
 		return adewire.RebaseStart{}, err
 	}
 	run := model.AdeRun{
-		ID: b.newID(), TaskID: tc.task.ID, StepID: rebaseStepID, BranchID: p.root.ID, Attempt: n + 1,
+		ID: ids.NewID(), TaskID: tc.task.ID, StepID: rebaseStepID, BranchID: p.root.ID, Attempt: n + 1,
 		State: model.AdeRunPending, Purpose: model.AdeRunPurposeRebase, SpecJSON: string(raw),
 	}
 	if err := b.deps.Tasks.InsertRun(run); err != nil {
@@ -524,7 +527,7 @@ func (b *TaskBoard) startRebase(run model.AdeRun, spec model.AdeRebaseSpec, prom
 		}
 	}()
 	now := b.deps.Now().UnixMilli()
-	sessionID, agentSessionID := b.newID(), b.newID()
+	sessionID, agentSessionID := ids.NewID(), ids.NewID()
 	agent := b.deps.Agent.Active()
 	if err := b.deps.Sessions.InsertHeadless(model.AdeSession{
 		ID: sessionID, Mode: model.AdeSessionModeHeadless, TaskID: run.TaskID, BranchID: run.BranchID, StepID: rebaseStepID,

@@ -2,7 +2,7 @@
   "PromptsService.List#approval": {
     "createdAt": 0,
     "id": "<masked>",
-    "kind": "dbmcp",
+    "kind": "approval",
     "origin": "",
     "ref": "<masked>",
     "target": "w1",

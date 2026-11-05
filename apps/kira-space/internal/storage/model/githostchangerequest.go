@@ -2,7 +2,7 @@ package model
 
 // GitHostSchemaVersion is the layout of the persisted change request index; a lower stored value
 // drops the repo's rows and syncs them again.
-const GitHostSchemaVersion = 1
+const GitHostSchemaVersion = 2
 
 // GitHostChangeRequest is one cached change request of a code host repository. State is
 // open|closed|merged; a draft is an open one with Draft set. Times are Unix milliseconds.
@@ -19,8 +19,11 @@ type GitHostChangeRequest struct {
 	URL            string
 	ReviewDecision string
 	ChecksState    string
-	UpdatedAt      int64
-	SyncedAt       int64
+	// CommentCount and Assignees are nil when the host does not say.
+	CommentCount *int
+	Assignees    []string
+	UpdatedAt    int64
+	SyncedAt     int64
 }
 
 // GitHostSyncState is where one repository's sync stands. Times are Unix milliseconds.

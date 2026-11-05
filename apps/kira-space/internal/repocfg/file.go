@@ -38,15 +38,17 @@ type File struct {
 
 // Environment is one deploy target.
 type Environment struct {
-	Name              string `json:"name"`
-	DeployedSHAScript string `json:"deployed_sha_script"`
+	Name              string           `json:"name"`
+	DeployedSHAScript string           `json:"deployed_sha_script,omitempty"`
+	DeployedSHARun    *model.ScriptRef `json:"deployed_sha_run,omitempty"`
 }
 
 // Worktree holds the worktree leaves.
 type Worktree struct {
-	PrepareScript  *string `json:"prepare_script,omitempty"`
-	PrepareTimeout *string `json:"prepare_timeout,omitempty"`
-	BasePath       *string `json:"base_path,omitempty"`
+	PrepareScript  *string          `json:"prepare_script,omitempty"`
+	PrepareRun     *model.ScriptRef `json:"prepare_run,omitempty"`
+	PrepareTimeout *string          `json:"prepare_timeout,omitempty"`
+	BasePath       *string          `json:"base_path,omitempty"`
 }
 
 // Graph holds the commit graph leaves.
@@ -112,11 +114,12 @@ func (f File) Config() Config {
 		c.IntegrationBranches = append(c.IntegrationBranches, strings.TrimSpace(b))
 	}
 	for _, e := range f.Environments {
-		c.Environments = append(c.Environments, model.AdeRepoEnv{Name: e.Name, DeployedShaScript: e.DeployedSHAScript})
+		c.Environments = append(c.Environments, model.AdeRepoEnv{Name: e.Name, DeployedShaScript: e.DeployedSHAScript, DeployedShaRun: e.DeployedSHARun.Clone()})
 	}
 	s := &c.Settings
 	if w := f.Worktree; w != nil {
 		set(&s.WorktreePrepareScript, w.PrepareScript)
+		s.WorktreePrepareRun = w.PrepareRun.Clone()
 		set(&s.WorktreePrepareTimeout, w.PrepareTimeout)
 		if w.BasePath != nil && *w.BasePath != "" {
 			s.WorktreeBasePath = Key(*w.BasePath)
@@ -155,12 +158,13 @@ func set[T any](dst *T, v *T) {
 func FileOf(c Config) File {
 	f := File{Path: c.Path, Nickname: c.Nickname, IntegrationBranches: c.IntegrationBranches}
 	for _, e := range c.Environments {
-		f.Environments = append(f.Environments, Environment{Name: e.Name, DeployedSHAScript: e.DeployedShaScript})
+		f.Environments = append(f.Environments, Environment{Name: e.Name, DeployedSHAScript: e.DeployedShaScript, DeployedSHARun: e.DeployedShaRun.Clone()})
 	}
 	d, s := model.DefaultGitRepoSettings(), c.Settings
-	if s.WorktreePrepareScript != d.WorktreePrepareScript || s.WorktreePrepareTimeout != d.WorktreePrepareTimeout || s.WorktreeBasePath != d.WorktreeBasePath {
+	if s.WorktreePrepareScript != d.WorktreePrepareScript || s.WorktreePrepareRun != nil || s.WorktreePrepareTimeout != d.WorktreePrepareTimeout || s.WorktreeBasePath != d.WorktreeBasePath {
 		w := &Worktree{}
 		diff(&w.PrepareScript, s.WorktreePrepareScript, d.WorktreePrepareScript)
+		w.PrepareRun = s.WorktreePrepareRun.Clone()
 		diff(&w.PrepareTimeout, s.WorktreePrepareTimeout, d.WorktreePrepareTimeout)
 		diff(&w.BasePath, s.WorktreeBasePath, d.WorktreeBasePath)
 		f.Worktree = w

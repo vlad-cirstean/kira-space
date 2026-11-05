@@ -7,6 +7,7 @@ import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { t } from '@theme/i18n';
+import SecretInput from '@workbench/components/SecretInput.vue';
 import { useId } from 'vue';
 
 const values = defineModel<Record<string, string[]>>({ required: true });
@@ -47,13 +48,19 @@ function toggle(p: ScriptParam, option: string, on: boolean): void {
           *<span class="sr-only"> {{ t('common.required.label') }}</span></span
         >
       </FieldLabel>
-      <Input
-        v-if="p.type === 'text'"
+      <SecretInput
+        v-if="p.type === 'text' && p.secret"
         :id="`${idBase}-${p.name}`"
-        :type="p.secret ? 'password' : 'text'"
         :model-value="values[p.name]?.[0] ?? ''"
-        :autocomplete="p.secret ? 'off' : undefined"
+        :set="isSaved(p) ? true : undefined"
         :placeholder="isSaved(p) ? t('automations.run.secretSaved.placeholder') : undefined"
+        :data-testid="`run-param-input-${p.name}`"
+        @update:model-value="(v) => set(p.name, v === '' ? [] : [v])"
+      />
+      <Input
+        v-else-if="p.type === 'text'"
+        :id="`${idBase}-${p.name}`"
+        :model-value="values[p.name]?.[0] ?? ''"
         :data-testid="`run-param-input-${p.name}`"
         @update:model-value="(v) => set(p.name, String(v) === '' ? [] : [String(v)])"
       />

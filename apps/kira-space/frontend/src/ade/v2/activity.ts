@@ -1,4 +1,5 @@
 import type { AgentActivity } from '@shared/domain/agent';
+import { idBody, isUuid } from '@shared/ids';
 import { type MessageKey, messageDefaults, t } from '@theme/i18n';
 import type { Session } from './wire';
 
@@ -23,13 +24,13 @@ export const ACTIVITY_RANK: Record<ActivityKind, number> = {
   stopped: 4,
 };
 
-/** First four characters of the record id: the `claude 9ab0` / `TUI · 9ab0` label. */
+/** Last four characters of a UUID (a v7 head is a timestamp), else the first four of a prefixed id's body. */
 /** `Claude 9ab0`: the agent's name and a short session id. */
 export const agentSessionName = (shortSessionId: string): string =>
   `${messageDefaults().agent} ${shortSessionId}`;
 
 export function shortId(id: string): string {
-  return id.slice(0, 4);
+  return isUuid(id) ? id.slice(-4) : idBody(id).slice(0, 4);
 }
 
 const PHASE: Record<AgentActivity['phase'], Session['activity']> = {

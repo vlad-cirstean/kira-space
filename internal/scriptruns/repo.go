@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
@@ -102,6 +103,15 @@ func (r *Repo) Get(id string) (Run, error) {
 // List returns the newest runs first.
 func (r *Repo) List(limit int) ([]Run, error) {
 	rows, err := r.DB.Query(`SELECT `+columns+` FROM script_runs ORDER BY created_at DESC, id DESC LIMIT ?`, limit)
+	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (Run, bool, error) {
+		run, err := scan(rows)
+		return run, true, err
+	})
+}
+
+// Live returns the running and waiting runs, newest first.
+func (r *Repo) Live() ([]Run, error) {
+	rows, err := r.DB.Query(`SELECT ` + columns + ` FROM script_runs WHERE state IN ('running', 'waiting') ORDER BY created_at DESC, id DESC`)
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (Run, bool, error) {
 		run, err := scan(rows)
 		return run, true, err
@@ -380,6 +390,65 @@ type LogPage struct {
 	Chunks []LogChunk `json:"chunks"`
 	// Truncated is true when older lines were dropped.
 	Truncated bool `json:"truncated"`
+}
+
+// LogQuery picks lines of one run: FromEnd takes the newest Limit lines (tail), else the oldest (head);
+// a non-empty Contains keeps lines holding it as a case-sensitive substring.
+type LogQuery struct {
+	FromEnd  bool
+	Limit    int
+	Contains string
+}
+
+// LogSlice is what QueryLog answers: the picked lines oldest first, how many lines matched before
+// the limit, and whether older lines were dropped from the store.
+type LogSlice struct {
+	Chunks    []LogChunk
+	Matched   int
+	Truncated bool
+}
+
+// logFilter is the WHERE clause and arguments of a log query.
+func logFilter(runID, contains string) (string, []any) {
+	if contains == "" {
+		return `run_id = ?`, []any{runID}
+	}
+	return `run_id = ? AND instr(text, ?) > 0`, []any{runID, contains}
+}
+
+// QueryLog returns up to q.Limit stored lines of a run, filtered, oldest first.
+func (r *Repo) QueryLog(runID string, q LogQuery) (LogSlice, error) {
+	where, args := logFilter(runID, q.Contains)
+	var out LogSlice
+	if err := r.DB.QueryRow(`SELECT COUNT(*) FROM script_run_logs WHERE `+where, args...).Scan(&out.Matched); err != nil {
+		return LogSlice{}, fmt.Errorf("scriptruns: count log %s: %w", runID, err)
+	}
+	order := "ASC"
+	if q.FromEnd {
+		order = "DESC"
+	}
+	rows, err := r.DB.Query(`SELECT seq, stream, text FROM script_run_logs WHERE `+where+` ORDER BY seq `+order+` LIMIT ?`, append(args, q.Limit)...)
+	chunks, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (LogChunk, bool, error) {
+		var c LogChunk
+		err := rows.Scan(&c.Seq, &c.Stream, &c.Text)
+		return c, true, err
+	})
+	if err != nil {
+		return LogSlice{}, fmt.Errorf("scriptruns: query log %s: %w", runID, err)
+	}
+	if q.FromEnd {
+		slices.Reverse(chunks)
+	}
+	out.Chunks = chunks
+	if out.Chunks == nil {
+		out.Chunks = []LogChunk{}
+	}
+	var first sql.NullInt64
+	if err := r.DB.QueryRow(`SELECT MIN(seq) FROM script_run_logs WHERE run_id = ?`, runID).Scan(&first); err != nil {
+		return LogSlice{}, fmt.Errorf("scriptruns: query log %s: %w", runID, err)
+	}
+	out.Truncated = first.Valid && first.Int64 > 1
+	return out, nil
 }
 
 // ReadLog returns the lines of a run after afterSeq, oldest first.

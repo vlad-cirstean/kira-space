@@ -1,0 +1,99 @@
+{
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "branch.request:<id:1>",
+      "kind": "branch.request",
+      "operation": {
+        "class": "request",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "run",
+        "step": "two",
+        "task": "Fix login"
+      },
+      "payload": {
+        "items": [
+          {
+            "base": "",
+            "branch": "feat/b",
+            "codeRepoId": "<masked>",
+            "from": "",
+            "id": "c0i0",
+            "kind": "branch",
+            "repo": "web",
+            "session": "",
+            "source": "run",
+            "stacked": [],
+            "stepName": "two",
+            "upstream": ""
+          },
+          {
+            "base": "",
+            "branch": "feat/c",
+            "codeRepoId": "<masked>",
+            "from": "",
+            "id": "c1i0",
+            "kind": "branch",
+            "repo": "web",
+            "session": "",
+            "source": "run",
+            "stacked": [],
+            "stepName": "two",
+            "upstream": ""
+          },
+          {
+            "base": "",
+            "branch": "feat/new",
+            "codeRepoId": "<masked>",
+            "from": "feat/old",
+            "id": "c2i0",
+            "kind": "rename",
+            "repo": "api",
+            "session": "",
+            "source": "run",
+            "stacked": [],
+            "stepName": "two",
+            "upstream": "origin/feat/old"
+          }
+        ],
+        "taskId": "<masked>",
+        "taskTitle": "Fix login"
+      },
+      "reason": "request",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "Fix login",
+        "readOnly": false
+      }
+    }
+  ],
+  "args:ApprovalsService.Answer": {
+    "approve": true,
+    "ids": [
+      "branch.request:<id:1>"
+    ],
+    "options": {
+      "branch.request:<id:1>": {
+        "itemIds": [
+          "c0i0",
+          "c2i0"
+        ],
+        "remoteItemIds": [
+          "c2i0"
+        ],
+        "shownItemIds": [
+          "c0i0",
+          "c1i0",
+          "c2i0"
+        ]
+      }
+    }
+  }
+}

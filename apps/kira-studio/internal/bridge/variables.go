@@ -9,9 +9,9 @@ import (
 )
 
 // VariablesService reads environments and variables from the rows the api config files project to,
-// switches the active environment (app state, not config) and creates an environment file. Names,
-// order and plain values are edited in the files. Reveal/RevealHistory need the Authorizer gate, so
-// they go through Deps.ApiVars.
+// switches the active environment (app state, not config) and creates an environment file. Names
+// and plain values are edited in the files; the environment order is app state.
+// Reveal/RevealHistory need the Authorizer gate, so they go through Deps.ApiVars.
 type VariablesService struct {
 	Deps  appcore.Deps
 	Files *apifiles.Store
@@ -59,6 +59,50 @@ func (s *VariablesService) CreateEnvironment(args VariablesCreateEnvironmentArgs
 
 type VariablesEnvironmentIDArgs struct {
 	ID string `json:"id"`
+}
+
+// DeleteEnvironment removes the environment's file.
+func (s *VariablesService) DeleteEnvironment(args VariablesEnvironmentIDArgs) error {
+	if args.ID == "" {
+		return ipcerr.Required("id")
+	}
+	return apiFilesErr(s.Files.DeleteEnvironment(args.ID))
+}
+
+type VariablesReorderEnvironmentsArgs struct {
+	IDs []string `json:"ids"`
+}
+
+// ReorderEnvironments puts the listed environments first, in that order; ids left out keep their order after.
+func (s *VariablesService) ReorderEnvironments(args VariablesReorderEnvironmentsArgs) error {
+	if len(args.IDs) == 0 {
+		return ipcerr.Required("ids")
+	}
+	if err := s.Files.ReorderEnvironments(args.IDs); err != nil {
+		return apiFilesErr(err)
+	}
+	return nil
+}
+
+// DuplicateEnvironment copies the environment file under a free name.
+func (s *VariablesService) DuplicateEnvironment(args VariablesEnvironmentIDArgs) (model.Environment, error) {
+	if args.ID == "" {
+		return model.Environment{}, ipcerr.Required("id")
+	}
+	id, err := s.Files.DuplicateEnvironment(args.ID)
+	if err != nil {
+		return model.Environment{}, apiFilesErr(err)
+	}
+	envs, err := s.Deps.Repos.Variables.ListEnvironments()
+	if err != nil {
+		return model.Environment{}, ipcerr.InternalErr(err)
+	}
+	for _, e := range envs {
+		if e.ID == id {
+			return e, nil
+		}
+	}
+	return model.Environment{}, ipcerr.NotFound("environment " + id + " does not exist")
 }
 
 // SetActiveEnvironment's id may be "" — D3: that selects "No environment", the first half of the

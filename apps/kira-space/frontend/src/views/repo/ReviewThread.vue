@@ -218,7 +218,8 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
             {{ t('common.action.close.label') }}
           </Button>
           <Button
-            variant="danger"
+            variant="toolbar"
+            data-tone="error"
             size="kira"
             :pending="pending"
             @click="act(() => props.onDelete?.())"
@@ -288,7 +289,7 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
             }}</Button
           >
           <Button
-            variant="toolbar-primary"
+            variant="dialog-primary"
             size="kira"
             :pending="pending"
             :disabled="draft.trim() === '' || hostBlocked !== ''"

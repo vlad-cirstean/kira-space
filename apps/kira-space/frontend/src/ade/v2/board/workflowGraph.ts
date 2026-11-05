@@ -467,12 +467,18 @@ export function addStep(
   kind: StepKind,
   afterStepId?: string,
 ): { wf: Workflow; stepId: string } {
+  return insertStep(wf, (taken) => newStep(kind, taken), afterStepId);
+}
+
+/** The step `make` builds (given the taken ids) at the end of the workflow, or right after `afterStepId`. */
+export function insertStep(
+  wf: Workflow,
+  make: (taken: readonly string[]) => WorkflowStep,
+  afterStepId?: string,
+): { wf: Workflow; stepId: string } {
   let stepId = '';
   const next = mapSteps(wf, (steps) => {
-    const fresh = newStep(
-      kind,
-      steps.map((s) => s.id),
-    );
+    const fresh = make(steps.map((s) => s.id));
     stepId = fresh.id;
     const at = afterStepId ? steps.findIndex((s) => s.id === afterStepId) + 1 : steps.length;
     steps.splice(at, 0, fresh);

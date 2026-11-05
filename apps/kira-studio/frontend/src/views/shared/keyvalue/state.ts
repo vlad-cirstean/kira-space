@@ -142,8 +142,8 @@ export const useKeyValueViewStore = defineStore('keyValueView', () => {
     if (!host?.connectionId) return;
     const connectionId = host.connectionId;
     const rt = ensureRuntime(viewKey);
-    await runPagedCount(rt, (opId, refresh) =>
-      data.count({ opId, tabId: viewKey, connectionId, path: host.path, filter: null, refresh }),
+    await runPagedCount(rt, (refresh) =>
+      data.count({ tabId: viewKey, connectionId, path: host.path, filter: null, refresh }),
     );
   }
 

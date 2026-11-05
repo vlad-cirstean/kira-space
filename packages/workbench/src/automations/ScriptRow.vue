@@ -61,6 +61,17 @@ function firstLine(command: string): string {
           <span class="flex min-w-0 items-center gap-1">
             <SmartBadge v-if="script.kind === 'smart'" />
             <span class="truncate">{{ script.name }}</span>
+            <Tooltip v-if="script.mcp?.enabled">
+              <TooltipTrigger as-child>
+                <CodiconIcon
+                  name="plug"
+                  :size="12"
+                  class="shrink-0 text-subtle"
+                  data-testid="script-mcp-badge"
+                />
+              </TooltipTrigger>
+              <TooltipContent>{{ t('automations.script.mcp.tooltip') }}</TooltipContent>
+            </Tooltip>
             <Tooltip v-if="problem">
               <TooltipTrigger as-child>
                 <CodiconIcon

@@ -64,7 +64,6 @@ export async function addKey(
     throw new Error(t('studio.common.connectionLost.error'));
   }
   await data.mutate({
-    opId: crypto.randomUUID(),
     tabId: viewKey,
     connectionId: host.connectionId,
     path: host.path,

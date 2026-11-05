@@ -124,9 +124,8 @@ export const useDocumentViewStore = defineStore('documentView', () => {
     if (!tab?.connectionId) return;
     const connectionId = tab.connectionId;
     const rt = ensureRuntime(tabId);
-    await runPagedCount(rt, (opId, refresh) =>
+    await runPagedCount(rt, (refresh) =>
       data.count({
-        opId,
         tabId,
         connectionId,
         path: tab.path,

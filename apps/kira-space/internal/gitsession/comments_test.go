@@ -56,7 +56,7 @@ func TestAnchorOne_ExactAfterUnrelatedCommits(t *testing.T) {
 	}
 	got := result.Comments[0]
 	if got.ID != added.ID {
-		t.Fatalf("ID = %d, want %d", got.ID, added.ID)
+		t.Fatalf("ID = %s, want %s", got.ID, added.ID)
 	}
 	if got.Anchor != gitreview.AnchorExact {
 		t.Fatalf("Anchor = %q, want exact", got.Anchor)

@@ -61,7 +61,7 @@ func (b *TaskBoard) RepoConfigChanged(changes []repocfg.Change) {
 		if err := b.pruneRemoved(id, ch); err != nil {
 			slog.Warn("ade: prune removed targets", "scope", "ade", "repo", id, "err", err)
 		}
-		if !slices.Equal(ch.Old.Environments, ch.New.Environments) {
+		if !slices.EqualFunc(ch.Old.Environments, ch.New.Environments, model.AdeRepoEnv.Equal) {
 			b.goTracked(func() { b.refreshEnvScripts(id) })
 		}
 	}
@@ -81,7 +81,7 @@ func (b *TaskBoard) pruneRemoved(id string, ch repocfg.Change) error {
 			return err
 		}
 	}
-	if !slices.Equal(ch.Old.Environments, ch.New.Environments) {
+	if !slices.EqualFunc(ch.Old.Environments, ch.New.Environments, model.AdeRepoEnv.Equal) {
 		names := make([]string, len(ch.New.Environments))
 		for i, e := range ch.New.Environments {
 			names[i] = e.Name

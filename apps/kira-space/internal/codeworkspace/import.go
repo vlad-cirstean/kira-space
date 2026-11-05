@@ -5,11 +5,10 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/google/uuid"
-
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 )
 
@@ -78,7 +77,7 @@ func Import(ctx context.Context, store RepoStore, runner gitclient.Runner, gitPa
 	}
 	name := filepath.Base(summary.Root)
 	rec, err := store.Create(model.CodeRepo{
-		ID:        uuid.NewString(),
+		ID:        ids.NewID(),
 		Name:      name,
 		Root:      summary.Root,
 		RepoID:    summary.RepoID,

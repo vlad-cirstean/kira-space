@@ -31,6 +31,9 @@ type PR struct {
 	Draft          bool   `json:"draft,omitempty"`
 	ReviewDecision string `json:"reviewDecision,omitempty"`
 	ChecksState    string `json:"checksState,omitempty"`
+	// CommentCount and Assignees are read by the sync queries only.
+	CommentCount *int     `json:"commentCount,omitempty"`
+	Assignees    []string `json:"assignees,omitempty"`
 }
 
 // rawPull is the GitHub REST response shape, decoded exactly as the API sends it — never exported,

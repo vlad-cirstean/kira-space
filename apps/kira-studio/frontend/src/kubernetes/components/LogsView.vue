@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { newUuid } from '@shared/ids';
 import HighlightedText from '@theme/components/HighlightedText.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import { Button } from '@theme/components/ui/button';
@@ -92,7 +93,7 @@ async function open(): Promise<void> {
   lines.value = [];
   ended.value = false;
   failure.value = '';
-  const id = `kube-logs:${crypto.randomUUID()}`;
+  const id = `kube-logs:${newUuid()}`;
   streamId = id;
   off = kubeControl.onLogs((e) => {
     if (e.streamId !== id) return;

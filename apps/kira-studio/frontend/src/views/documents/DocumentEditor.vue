@@ -43,7 +43,7 @@ useShortcut(rootEl, ['form.save'], () => {
         <TooltipTrigger as-child>
           <TooltipDisabledTrigger>
             <Button
-              variant="toolbar-primary"
+              variant="dialog-primary"
               size="kira"
               :pending="saving"
               :disabled="!!saveDisabledReason"

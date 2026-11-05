@@ -322,7 +322,7 @@ function onCloseSearch(): void {
             "
             :aria-label="t('studio.grid.commitPending.label')"
             disabled-trigger
-            variant="toolbar-primary"
+            variant="dialog-primary"
             data-testid="toolbar-commit-changes"
             :disabled="!isWritable || committing || stale"
             @click="onCommit"

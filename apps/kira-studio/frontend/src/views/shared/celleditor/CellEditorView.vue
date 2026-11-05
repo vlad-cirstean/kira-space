@@ -49,6 +49,7 @@ import { readOnlyChipText, readOnlyChipTitle } from './readOnlyChip';
 import { useCellEditorFormatStore } from './state';
 import TimestampPane from './TimestampPane.vue';
 import { useCellDiff } from './useCellDiff';
+import { useDockReady } from './useDockReady';
 import { validateFormat } from './validate';
 
 const cellEditorFormatStore = useCellEditorFormatStore();
@@ -61,6 +62,7 @@ const statusEncoder = new TextEncoder();
 const props = withDefaults(defineProps<{ cell: SelectedCell; readonly?: boolean }>(), {
   readonly: false,
 });
+const emit = defineEmits<{ ready: [] }>();
 const selectedCell = computed(() => props.cell);
 const viewerMode = computed(() => props.readonly === true);
 
@@ -271,6 +273,10 @@ const {
   toggle: toggleDiff,
   close: closeDiff,
 } = useCellDiff(() => selectedCell.value, doc, isDirty);
+
+const { markMainReady, markDecodedReady } = useDockReady(diffShown, showDecodedPane, () =>
+  emit('ready'),
+);
 
 // Find targets the main editor, absent in the diff view, so the two are exclusive.
 const findOpen = ref(false);
@@ -516,6 +522,7 @@ const statusLine = computed(() => {
             :lint-source="cellLintSource"
             :range-highlights="docHighlights"
             @update:doc="onMainDocInput"
+            @ready="markMainReady"
           />
         </div>
 
@@ -538,6 +545,7 @@ const statusLine = computed(() => {
               language="plain"
               :readonly="!isEditable"
               @update:doc="onDecodedInput"
+              @ready="markDecodedReady"
             />
           </div>
           <Alert

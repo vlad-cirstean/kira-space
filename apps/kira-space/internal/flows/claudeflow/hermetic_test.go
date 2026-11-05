@@ -159,7 +159,7 @@ func TestHermeticClaude(t *testing.T) {
 		testx.WaitUntil(t, waitFor, func() bool {
 			var left []string
 			_ = filepath.WalkDir(app.SpaceHome, func(p string, d fs.DirEntry, err error) error {
-				if err == nil && !d.IsDir() && strings.HasSuffix(p, "-app.mcp.json") && !strings.HasPrefix(filepath.Base(p), "tui-") {
+				if err == nil && !d.IsDir() && strings.HasSuffix(p, "-app.mcp.json") && !strings.HasPrefix(filepath.Base(p), "tui_") {
 					left = append(left, p)
 				}
 				return nil

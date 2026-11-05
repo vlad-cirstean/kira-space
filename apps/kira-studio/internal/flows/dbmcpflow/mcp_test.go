@@ -19,6 +19,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/mcpauth"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/claude"
@@ -37,6 +38,7 @@ type bearer struct{ token string }
 func (b bearer) RoundTrip(r *http.Request) (*http.Response, error) {
 	r = r.Clone(r.Context())
 	r.Header.Set("Authorization", "Bearer "+b.token)
+	r.Header.Set("User-Agent", "claude-code/2.1.318 (cli)")
 	return http.DefaultTransport.RoundTrip(r)
 }
 
@@ -47,6 +49,8 @@ type fixture struct {
 	url    string
 	connID string
 	dbPath string
+	// base is the API tests' target server URL.
+	base string
 }
 
 func newFixture(t *testing.T, opts ...flowharness.Opt) *fixture {
@@ -107,9 +111,20 @@ func text(res *mcp.CallToolResult) string {
 	return b.String()
 }
 
+// modeOf declares the least powerful mode a test statement needs.
+func modeOf(sqlText string) string {
+	switch first, _, _ := strings.Cut(strings.ToLower(strings.TrimSpace(sqlText)), " "); first {
+	case "select", "with":
+		return "read"
+	case "insert", "update", "delete":
+		return "write"
+	}
+	return "ddl"
+}
+
 func runQuery(t *testing.T, sess *mcp.ClientSession, connID, sqlText string) *mcp.CallToolResult {
 	t.Helper()
-	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "run_query", Arguments: map[string]any{"connectionId": connID, "sql": sqlText, "path": ""}})
+	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "run_query", Arguments: map[string]any{"connectionId": connID, "sql": sqlText, "path": "", "mode": modeOf(sqlText)}})
 	if err != nil {
 		t.Fatalf("run_query %q: %v", sqlText, err)
 	}
@@ -128,16 +143,6 @@ func (f *fixture) noteCount(t *testing.T) int {
 		t.Fatal(err)
 	}
 	return n
-}
-
-func (f *fixture) pending(t *testing.T) bridge.DbMcpApprovalRequest {
-	t.Helper()
-	var req *bridge.DbMcpApprovalRequest
-	testx.WaitUntil(t, 10*time.Second, func() bool {
-		req = f.app.W.DbMcp.PendingApprovals().Pending
-		return req != nil
-	})
-	return *req
 }
 
 func TestDbMcpApprovalFlow(t *testing.T) {
@@ -159,8 +164,8 @@ func TestDbMcpApprovalFlow(t *testing.T) {
 	if err != nil || !noPath.IsError || !strings.Contains(text(noPath), "missing properties") || !strings.Contains(text(noPath), `"path"`) {
 		t.Fatalf("run_query without path = %q (%v), want a schema rejection naming path", text(noPath), err)
 	}
-	if snap := f.app.W.DbMcp.PendingApprovals(); snap.Pending != nil {
-		t.Fatalf("a read queued an approval: %+v", snap)
+	if n := f.queueLen(t); n != 0 {
+		t.Fatalf("a read queued %d approvals", n)
 	}
 
 	const write = "insert into notes (body) values ('three')"
@@ -171,7 +176,7 @@ func TestDbMcpApprovalFlow(t *testing.T) {
 	call := func() chan outcome {
 		ch := make(chan outcome, 1)
 		go func() {
-			res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "run_query", Arguments: map[string]any{"connectionId": f.connID, "sql": write, "path": ""}})
+			res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "run_query", Arguments: map[string]any{"connectionId": f.connID, "sql": write, "path": "", "mode": "write"}})
 			ch <- outcome{res, err}
 		}()
 		return ch
@@ -180,17 +185,18 @@ func TestDbMcpApprovalFlow(t *testing.T) {
 	denied := call()
 	req := f.pending(t)
 	// Contract dbmcp: tests/ui/dbmcp-approval.spec.ts renders this request in the approval dialog.
-	f.app.Contract(t, "dbmcp", "DbMcpService.PendingApprovals", bridge.DbMcpApprovalSnapshot{Pending: &req}, flowharness.Mask("expiresAtMs"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
-	f.app.Contract(t, "dbmcp", "args:DbMcpService.ApproveQuery", bridge.DbMcpApprovalArgs{RequestID: req.RequestID})
+	f.app.Contract(t, "dbmcp", "ApprovalsService.List", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.Contract(t, "dbmcp", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
 	if req.Statement != write || req.ConnectionID != f.connID || req.Class == "" {
 		t.Fatalf("pending approval = %+v, want the write statement on the connection", req)
 	}
-	if tg := req.Target; tg.Color != "teal" || tg.ReadOnly || tg.Database != f.dbPath || tg.Host != "" || len(tg.Path) != 0 {
-		t.Fatalf("approval target = %+v, want teal, writable, the fixture file, no host, no path", tg)
+	if tg := req.Item.Target; tg.Color != "teal" || tg.ReadOnly || tg.Location != f.dbPath || tg.Name != "notes db" || tg.Kind != "sqlite" {
+		t.Fatalf("approval target = %+v, want teal, writable, the fixture file", tg)
 	}
-	if _, err := f.app.W.DbMcp.DenyQuery(bridge.DbMcpApprovalArgs{RequestID: req.RequestID}); err != nil {
-		t.Fatal(err)
+	if req.Item.Origin.Client != "Claude Code 2.1.318" {
+		t.Fatalf("origin = %+v, want the client from the User-Agent", req.Item.Origin)
 	}
+	f.answerItems(t, false, req.Item.ID)
 	out := <-denied
 	if out.err != nil || out.res == nil || !out.res.IsError {
 		t.Fatalf("denied write = %+v, want a tool error", out)
@@ -201,9 +207,7 @@ func TestDbMcpApprovalFlow(t *testing.T) {
 
 	approved := call()
 	req = f.pending(t)
-	if _, err := f.app.W.DbMcp.ApproveQuery(bridge.DbMcpApprovalArgs{RequestID: req.RequestID}); err != nil {
-		t.Fatal(err)
-	}
+	f.answerItems(t, true, req.Item.ID)
 	out = <-approved
 	if out.err != nil || out.res == nil || out.res.IsError {
 		t.Fatalf("approved write = %+v (%s), want success", out, text(out.res))
@@ -211,8 +215,8 @@ func TestDbMcpApprovalFlow(t *testing.T) {
 	if n := f.noteCount(t); n != 3 {
 		t.Fatalf("approved write left %d rows, want 3", n)
 	}
-	if snap := f.app.W.DbMcp.PendingApprovals(); snap.Pending != nil || snap.Queued != 0 {
-		t.Fatalf("approvals left behind: %+v", snap)
+	if n := f.queueLen(t); n != 0 {
+		t.Fatalf("%d approvals left behind", n)
 	}
 
 	if ddl := runQuery(t, sess, f.connID, "drop table notes"); !ddl.IsError {
@@ -311,6 +315,9 @@ func TestInstallAgentWithoutCli(t *testing.T) {
 	if st.AgentAvailable || len(st.Probed) == 0 || !strings.Contains(st.Command, "claude mcp add-json") {
 		t.Fatalf("Status = %+v, want claude unavailable, the probed paths and a copyable command", st)
 	}
+	if !strings.Contains(st.Command, `"timeout":2100000`) {
+		t.Fatalf("Status.Command = %q, want the 35 minute server timeout", st.Command)
+	}
 	res := app.W.DbMcp.InstallAgent(ctx)
 	if res.Outcome != harness.OutcomeNotFound || len(res.Probed) == 0 {
 		t.Fatalf("InstallAgent = %+v, want notFound with the probed paths", res)
@@ -343,7 +350,7 @@ type callOutcome struct {
 func callAsync(sess *mcp.ClientSession, connID, sqlText string) chan callOutcome {
 	ch := make(chan callOutcome, 1)
 	go func() {
-		res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "run_query", Arguments: map[string]any{"connectionId": connID, "sql": sqlText, "path": ""}})
+		res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "run_query", Arguments: map[string]any{"connectionId": connID, "sql": sqlText, "path": "", "mode": modeOf(sqlText)}})
 		ch <- callOutcome{res, err}
 	}()
 	return ch
@@ -361,20 +368,6 @@ func (f *fixture) setPreview(t *testing.T, on bool) bridge.SettingsSetArgs {
 func (f *fixture) maskColumn(t *testing.T, column string) {
 	t.Helper()
 	_, err := f.app.W.MaskRules.Upsert(bridge.MaskRulesUpsertArgs{ConnectionID: f.connID, Fields: model.MaskRuleFields{TableName: "notes", ColumnName: column, Kind: "redact"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func (f *fixture) answer(t *testing.T, approve bool, id string) {
-	t.Helper()
-	args := bridge.DbMcpApprovalArgs{RequestID: id}
-	var err error
-	if approve {
-		_, err = f.app.W.DbMcp.ApproveQuery(args)
-	} else {
-		_, err = f.app.W.DbMcp.DenyQuery(args)
-	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -411,20 +404,20 @@ func TestDbMcpResponsePreview(t *testing.T) {
 
 	done := callAsync(sess, f.connID, read)
 	req := f.pending(t)
-	if req.Stage != "response" || req.Response == nil || req.Class != "read" || req.Statement != read {
+	if req.Stage != "response" || req.Class != "read" || req.Statement != read {
 		t.Fatalf("pending = %+v, want a response-stage read of the statement", req)
 	}
 	held, err := f.app.W.DbMcp.PendingResponse(bridge.DbMcpApprovalArgs{RequestID: req.RequestID})
-	if err != nil || held.IsError || req.Response.Bytes != len(held.Text) {
-		t.Fatalf("PendingResponse = %+v (%v), want the %d held bytes", held, err, req.Response.Bytes)
+	if err != nil || held.IsError || req.Bytes != len(held.Text) {
+		t.Fatalf("PendingResponse = %+v (%v), want the %d held bytes", held, err, req.Bytes)
 	}
 	if strings.Contains(held.Text, "one") || strings.Contains(held.Text, "two") || !strings.Contains(held.Text, "[redacted]") {
 		t.Fatalf("held text = %q, want the masked rows", held.Text)
 	}
 	replace := flowharness.Replace(f.dbPath, "/data/mcp.db")
-	f.app.Contract(t, "dbmcp-preview", "DbMcpService.PendingApprovals", bridge.DbMcpApprovalSnapshot{Pending: &req}, flowharness.Mask("expiresAtMs"), replace)
+	f.app.Contract(t, "dbmcp-preview", "ApprovalsService.List", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), replace)
 	f.app.Contract(t, "dbmcp-preview", "DbMcpService.PendingResponse", held)
-	f.app.Contract(t, "dbmcp-preview", "args:DbMcpService.ApproveQuery", bridge.DbMcpApprovalArgs{RequestID: req.RequestID})
+	f.app.Contract(t, "dbmcp-preview", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
 	f.answer(t, true, req.RequestID)
 	if sent := wait(t, done); sent.IsError || text(sent) != held.Text {
 		t.Fatalf("sent = %q, want the held bytes %q", text(sent), held.Text)
@@ -446,10 +439,7 @@ func TestDbMcpResponsePreview(t *testing.T) {
 	} else {
 		f.answer(t, true, q.RequestID)
 	}
-	testx.WaitUntil(t, 10*time.Second, func() bool {
-		p := f.app.W.DbMcp.PendingApprovals().Pending
-		return p != nil && p.Stage == "response"
-	})
+	testx.WaitUntil(t, 10*time.Second, func() bool { return f.stageNow(t) == "response" })
 	f.answer(t, false, f.pending(t).RequestID)
 	if w := wait(t, done); !w.IsError || !strings.Contains(text(w), "ran") {
 		t.Fatalf("withheld write = %q, want an error saying it ran", text(w))
@@ -470,8 +460,8 @@ func TestDbMcpResponsePreview(t *testing.T) {
 	if live := runQuery(t, sess, f.connID, read); live.IsError || !strings.Contains(text(live), "[redacted]") {
 		t.Fatalf("read with preview off = %q, want rows straight away", text(live))
 	}
-	if snap := f.app.W.DbMcp.PendingApprovals(); snap.Pending != nil {
-		t.Fatalf("preview off still queued %+v", snap.Pending)
+	if n := f.queueLen(t); n != 0 {
+		t.Fatalf("preview off still queued %d", n)
 	}
 }
 
@@ -515,14 +505,14 @@ func TestDbMcpReviewPerConnection(t *testing.T) {
 
 	done := callAsync(sess, f.connID, read)
 	req := f.pending(t)
-	if req.Stage != "response" || req.Response == nil {
+	if req.Stage != "response" {
 		t.Fatalf("pending = %+v, want a response-stage hold with the app setting off", req)
 	}
 	held, err := f.app.W.DbMcp.PendingResponse(bridge.DbMcpApprovalArgs{RequestID: req.RequestID})
 	if err != nil || held.IsError {
 		t.Fatalf("PendingResponse = %+v (%v)", held, err)
 	}
-	f.app.Contract(t, "dbmcp-review-connection", "DbMcpService.PendingApprovals", bridge.DbMcpApprovalSnapshot{Pending: &req}, flowharness.Mask("expiresAtMs"), replace)
+	f.app.Contract(t, "dbmcp-review-connection", "ApprovalsService.List", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), replace)
 	f.app.Contract(t, "dbmcp-review-connection", "DbMcpService.PendingResponse", held)
 	f.answer(t, true, req.RequestID)
 	if sent := wait(t, done); sent.IsError || text(sent) != held.Text {
@@ -536,8 +526,8 @@ func TestDbMcpReviewPerConnection(t *testing.T) {
 	if live := runQuery(t, sess, f.connID, read); live.IsError || !strings.Contains(text(live), "two") {
 		t.Fatalf("read with send = %q, want rows straight away", text(live))
 	}
-	if snap := f.app.W.DbMcp.PendingApprovals(); snap.Pending != nil {
-		t.Fatalf("send still queued %+v", snap.Pending)
+	if n := f.queueLen(t); n != 0 {
+		t.Fatalf("send still queued %d", n)
 	}
 
 	if got, err = setReview("inherit"); err != nil || got.McpReviewResults != "inherit" {

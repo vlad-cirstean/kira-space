@@ -245,6 +245,7 @@ func TestSandboxTools(t *testing.T) {
 }
 
 func TestSandboxReviewRound(t *testing.T) {
+	seqCommentIDs(t)
 	gate := filepath.Join(t.TempDir(), "gate")
 	steps := agentStep("implement", "") +
 		"  - id: review\n    name: review\n    kind: review\n    runs_on: each repo\n    timeout: 1m\n" +
@@ -253,7 +254,7 @@ func TestSandboxReviewRound(t *testing.T) {
 		"    results:\n      - id: approved\n        ok: true\n"
 	f := &reviewFx{runFixture: newRunFixtureWith(t, []fakeagent.Action{
 		{Name: "done", Sh: rvImplement},
-		{Sh: "echo fixed >> r.txt && git commit -q -am fix", MCP: []fakeagent.MCPCall{rvReply(1, "renamed")}, WaitFile: gate, Name: "done"},
+		{Sh: "echo fixed >> r.txt && git commit -q -am fix", MCP: []fakeagent.MCPCall{rvReply("1", "renamed")}, WaitFile: gate, Name: "done"},
 	}, steps, flowharness.WithSandbox(&sandboxtest.Fake{Dir: t.TempDir()}))}
 	f.toReview(t, "feat/api-sb")
 	f.window(t)

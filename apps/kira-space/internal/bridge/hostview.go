@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
@@ -298,7 +298,7 @@ func (s *HostViewService) openTarget(id string, target HostViewTarget, title str
 			order = r.Order + 1
 		}
 	}
-	key := HostWindowKeyPrefix + uuid.NewString()
+	key := HostWindowKeyPrefix + ids.NewID()
 	if err := s.Windows.Create(model.WindowRecord{Key: key, Order: order}); err != nil {
 		return HostViewOpen{}, ipcerr.InternalErr(err)
 	}

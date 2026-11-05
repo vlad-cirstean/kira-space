@@ -2,7 +2,6 @@ package oplog
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"io/fs"
 	"log/slog"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/internal/filelock"
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 // ModuleMemory is the module of memory MCP server ops, written by a process the app does not own.
@@ -52,7 +52,7 @@ func ClaimOwner(dir string) (*Owner, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
-	token := rand.Text()
+	token := ids.NewID()
 	path := filepath.Join(dir, token+".lock")
 	f, ok, err := filelock.TryLock(path)
 	if err != nil {
@@ -77,7 +77,7 @@ func (o *Owner) Release() {
 	o.file = nil
 }
 
-// OwnerToken returns the owner token of a foreign row id. rand.Text is base32, so a '.' marks one.
+// OwnerToken returns the owner token of a foreign row id. Owner tokens are UUIDs (older ones base32), so a '.' marks one.
 func OwnerToken(id string) (string, bool) {
 	t, _, ok := strings.Cut(id, ".")
 	return t, ok && t != ""

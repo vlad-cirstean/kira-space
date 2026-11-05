@@ -45,6 +45,10 @@ func Connect(ctx context.Context, cfg model.ResolvedConnectionConfig, log func(l
 		SetServerSelectionTimeout(connectTimeout).
 		SetDriverInfo(&options.DriverInfo{Name: "kira-studio"})
 
+	if adapters.IsLaneConfig(cfg.Options) {
+		clientOpts.SetMaxPoolSize(adapters.LanePoolSize)
+	}
+
 	sslmode, sslEnabled, err := adapters.ParseSSLMode(cfg.Options, "mongodb", "require", "prefer", "verify-full", "verify-none", "insecure")
 	if err != nil {
 		return nil, err

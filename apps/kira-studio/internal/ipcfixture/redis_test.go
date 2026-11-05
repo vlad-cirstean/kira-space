@@ -196,7 +196,7 @@ func TestFixture_Redis(t *testing.T) {
 		OpID: "be-read-hash", ConnectionID: cfg.ID, Path: hashKeyNode.Path,
 		PageSize: 100, Cursor: model.PageCursor{Mode: "offset", Offset: 0},
 	}
-	hashResp, err := app.Dispatcher.Read(context.Background(), hashReq)
+	hashResp, err := app.Dispatcher.Read(context.Background(), WireRead(hashReq))
 	if err != nil {
 		t.Fatalf("read hash: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestFixture_Redis(t *testing.T) {
 		OpID: "be-read-bighash-1", ConnectionID: cfg.ID, Path: bigHashKeyNode.Path,
 		PageSize: 100, Cursor: model.PageCursor{Mode: "offset", Offset: 0},
 	}
-	bigHashResp1, err := app.Dispatcher.Read(context.Background(), bigHashBaseReq)
+	bigHashResp1, err := app.Dispatcher.Read(context.Background(), WireRead(bigHashBaseReq))
 	if err != nil {
 		t.Fatalf("read bighash page 1: %v", err)
 	}
@@ -251,7 +251,7 @@ func TestFixture_Redis(t *testing.T) {
 	bigHashReq2 := bigHashBaseReq
 	bigHashReq2.OpID = "be-read-bighash-2"
 	bigHashReq2.Cursor = model.PageCursor{Mode: "after", Token: *bigHashKV1.Position.NextToken}
-	bigHashResp2, err := app.Dispatcher.Read(context.Background(), bigHashReq2)
+	bigHashResp2, err := app.Dispatcher.Read(context.Background(), WireRead(bigHashReq2))
 	if err != nil {
 		t.Fatalf("read bighash page 2: %v", err)
 	}
@@ -311,7 +311,7 @@ func TestFixture_Redis(t *testing.T) {
 		OpID: "be-read-ttl", ConnectionID: cfg.ID, Path: ttlKeyNode.Path,
 		PageSize: 100, Cursor: model.PageCursor{Mode: "offset", Offset: 0},
 	}
-	ttlResp, err := app.Dispatcher.Read(context.Background(), ttlReq)
+	ttlResp, err := app.Dispatcher.Read(context.Background(), WireRead(ttlReq))
 	if err != nil {
 		t.Fatalf("read ttl key: %v", err)
 	}

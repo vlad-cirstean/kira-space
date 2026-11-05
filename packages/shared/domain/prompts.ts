@@ -4,14 +4,13 @@ import { z } from 'zod';
 // the owning store holds the content and the answer. `target` "" means queued until a window opens.
 export const promptKindSchema = /*#__PURE__*/ z.enum([
   'schedule',
-  'dbmcp',
   'git-credential',
   'mobile-pairing',
   'update',
   'quit',
   'handover',
-  'branch-request',
   'proof',
+  'approval',
 ]);
 export type PromptKind = z.infer<typeof promptKindSchema>;
 

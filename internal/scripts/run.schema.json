@@ -135,6 +135,32 @@
         }
       }
     },
+    "mcp": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Let agents run this script through the Kira database MCP server. A normal script only.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Agents see and can run this script."
+        },
+        "description": {
+          "type": "string",
+          "description": "What the script does. Agents read it before a run."
+        },
+        "run": {
+          "type": "string",
+          "enum": ["prompt", "allow"],
+          "default": "prompt",
+          "description": "prompt asks the user before each agent run. allow runs at once."
+        },
+        "timeout": {
+          "type": "string",
+          "description": "Duration limit of an agent run, like 30m. Default 30m."
+        }
+      }
+    },
     "schedule": {
       "type": "object",
       "additionalProperties": false,

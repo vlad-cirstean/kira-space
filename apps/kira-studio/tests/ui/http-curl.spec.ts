@@ -267,6 +267,15 @@ test('copy as curl with a secret: masked by default, revealed by one gated actio
   await expect(strip).toContainText('real secret values');
   expect(control.log().filter((e) => e.channel === IPC.variablesReveal)).toHaveLength(1);
 
+  // Hide re-masks the command and the strip; the reveal button is back.
+  await page.click('[data-testid="copy-as-curl-hide"]');
+  await expect(command).toHaveValue(/\{\{apiKey\}\}/);
+  await expect(command).not.toHaveValue(/s3cr3t-key/);
+  await expect(strip).toContainText('1 secret value is not shown');
+  await expect(page.locator('[data-testid="copy-as-curl-hide"]')).toHaveCount(0);
+  await page.click('[data-testid="copy-as-curl-reveal"]');
+  await expect(command).toHaveValue(/s3cr3t-key/);
+
   expect(control.log().filter((e) => e.channel === IPC.httpSend)).toHaveLength(0);
   for (const entry of control.log().filter((e) => e.channel === IPC.tabsSave)) {
     expect(JSON.stringify(entry)).not.toContain('s3cr3t-key');

@@ -1,4 +1,9 @@
 import type { Page } from '@playwright/test';
+import {
+  codeEditorText,
+  expectHighlighted,
+  replaceCodeEditorText,
+} from '@workbench/testing/ui/codeEditor';
 import { previewText } from './adePromptPreview';
 import { expect, test } from './fixtures';
 import { adeFixture, openAdvanced, openWorkflows, SCRIPTS, saved } from './support/adeV2';
@@ -43,6 +48,7 @@ const menuItem = async (page: Page, step: string, item: string): Promise<void> =
 async function openYaml(page: Page): Promise<void> {
   await page.locator(t('ade-wf-mode-yaml')).click();
   await expect(page.locator(t('ade-wf-yaml'))).toBeVisible();
+  await expectHighlighted(page.locator(t('ade-wf-yaml')), 'yaml');
 }
 
 test('an empty folder shows the explanation', async ({ relaunch }) => {
@@ -131,7 +137,7 @@ test('a new step gets a fresh id and Allowed tools becomes allowedTools', async 
   await page.locator(t('ade-wf-add-step')).click();
   await page.locator(t('ade-wf-add-step-agent')).click();
   const added = await saved<SavedWorkflow>(page, control, 1);
-  expect(added.workflow.steps.at(-1)?.id).toMatch(/^step-[0-9a-f]{8}$/);
+  expect(added.workflow.steps.at(-1)?.id).toMatch(/^stp_[0-9a-hjkmnp-tv-z]{12}$/);
   expect(added.workflow.steps.at(-1)?.kind).toBe('agent');
 
   await node(page, 'plan').click();
@@ -166,7 +172,7 @@ test('a kind switch on an empty step needs no confirmation', async ({ relaunch }
   const { window: page } = await openWorkflows(relaunch);
   await page.locator(t('ade-wf-add-step')).click();
   await page.locator(t('ade-wf-add-step-agent')).click();
-  const fresh = page.locator(`${t('ade-wf-node')}[data-step-id^="step-"]`);
+  const fresh = page.locator(`${t('ade-wf-node')}[data-step-id^="stp_"]`);
   await fresh.click();
   await page.locator(t('ade-wf-step-kind-script')).click();
   await expect(page.locator(t('confirm-dialog'))).toHaveCount(0);
@@ -378,7 +384,7 @@ test('YAML mode validates while typing and saves the text on Save', async ({ rel
   ]);
   await openYaml(page);
   const area = page.locator(t('ade-wf-yaml'));
-  await area.fill(`${await area.inputValue()}\n# note\n`);
+  await replaceCodeEditorText(page, area, `${await codeEditorText(area)}\n# note\n`);
   await expect(page.locator(t('ade-wf-yaml-msg'))).toContainText(
     '✓ Valid, the form and the plan use this file',
   );
@@ -399,7 +405,7 @@ test('a YAML save refused for a changed file offers Reload and Overwrite', async
   ]);
   await openYaml(page);
   const area = page.locator(t('ade-wf-yaml'));
-  await area.fill(`${await area.inputValue()}\n# note\n`);
+  await replaceCodeEditorText(page, area, `${await codeEditorText(area)}\n# note\n`);
   await page.locator(t('ade-wf-save')).click();
   await expect.poll(() => calls(control, IPC.adeTaskSaveWorkflowYaml)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskSaveWorkflowYaml)[0]?.args).toMatchObject({
@@ -427,7 +433,7 @@ test('an invalid YAML shows its line and keeps the last valid version', async ({
     },
   ]);
   await openYaml(page);
-  await page.locator(t('ade-wf-yaml')).fill('id: x\n');
+  await replaceCodeEditorText(page, page.locator(t('ade-wf-yaml')), 'id: x\n');
   await expect(page.locator(t('ade-wf-yaml-msg'))).toContainText(
     '✕ Line 7: kind must be agent, script, review or manual (the last valid version stays in use)',
   );
@@ -444,7 +450,7 @@ test('line 0 shows the message alone', async ({ relaunch }) => {
     },
   ]);
   await openYaml(page);
-  await page.locator(t('ade-wf-yaml')).fill('id: x\n');
+  await replaceCodeEditorText(page, page.locator(t('ade-wf-yaml')), 'id: x\n');
   await expect(page.locator(t('ade-wf-yaml-msg'))).toContainText(
     '✕ step 4: kind must be agent, script, review or manual',
   );
@@ -664,7 +670,7 @@ test('contract: a YAML return to a manual step shows the parser error', async ({
     { channel: IPC.adeTaskValidateWorkflowYaml, response: refused },
   ]);
   await openYaml(page);
-  await page.locator(t('ade-wf-yaml')).fill('id: x\n');
+  await replaceCodeEditorText(page, page.locator(t('ade-wf-yaml')), 'id: x\n');
   await expect(page.locator(t('ade-wf-yaml-msg'))).toHaveText(
     `✕ Line ${refused.error.line}: ${refused.error.message} (the last valid version stays in use).`,
   );

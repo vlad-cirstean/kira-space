@@ -166,6 +166,14 @@ export const proofSavePngResultSchema = /*#__PURE__*/ z.object({
   saved: z.boolean(),
   path: z.string().nullable(),
 });
+export const proofShotFolderResultSchema = /*#__PURE__*/ z.object({
+  canceled: z.boolean(),
+  id: z.string(),
+  path: z.string(),
+});
+export const proofSavePngToResultSchema = /*#__PURE__*/ z.object({ path: z.string() });
+export type ProofShotFolderResult = z.infer<typeof proofShotFolderResultSchema>;
+export type ProofSavePngToResult = z.infer<typeof proofSavePngToResultSchema>;
 export type ProofOpenResult = z.infer<typeof proofOpenResultSchema>;
 export type ProofWindowTarget = z.infer<typeof proofWindowTargetSchema>;
 export type ProofSavePngResult = z.infer<typeof proofSavePngResultSchema>;
@@ -175,3 +183,13 @@ export const proofChangedSchema = /*#__PURE__*/ z.object({ sessionId: z.string()
 export const proofSelectSchema = /*#__PURE__*/ z.object({ sessionId: z.string() });
 export type ProofChanged = z.infer<typeof proofChangedSchema>;
 export type ProofSelect = z.infer<typeof proofSelectSchema>;
+
+// P520: payload of a proof.review approval item (internal/proof putReview).
+export const proofReviewPayloadSchema = /*#__PURE__*/ z.object({
+  sessionId: z.string(),
+  name: z.string(),
+  revision: z.number(),
+  reason: z.string(),
+  steps: z.array(z.object({ ordinal: z.number(), description: z.string(), diff: z.string() })),
+});
+export type ProofReviewPayload = z.infer<typeof proofReviewPayloadSchema>;

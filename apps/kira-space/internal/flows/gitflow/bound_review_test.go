@@ -114,7 +114,7 @@ func TestGitServiceBoundReview(t *testing.T) {
 	if listed.Entries == nil || len(listed.Entries) != 0 {
 		t.Fatalf("ReviewRemovedList = %+v, want an empty list", listed)
 	}
-	dismissed, err := svc.ReviewRemovedDismiss(ctx, bridge.GitReviewRemovedDismissArgs{WindowKey: "w1", Params: gitrpc.ReviewRemovedDismissParams{RepoID: id, Branch: "feat", IDs: []int64{1}}})
+	dismissed, err := svc.ReviewRemovedDismiss(ctx, bridge.GitReviewRemovedDismissArgs{WindowKey: "w1", Params: gitrpc.ReviewRemovedDismissParams{RepoID: id, Branch: "feat", IDs: []string{"00000000-0000-7000-8000-000000000001"}}})
 	chk(err)
 	if dismissed.Dismissed != 0 {
 		t.Fatalf("ReviewRemovedDismiss = %+v, want 0", dismissed)

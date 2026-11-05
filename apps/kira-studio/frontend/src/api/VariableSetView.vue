@@ -5,6 +5,7 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Button } from '@theme/components/ui/button';
 import { tableHeadClass, tableHeadRowClass } from '@theme/components/ui/table';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
@@ -21,6 +22,7 @@ import { useRunState } from '../state/runState';
 import type { VariableSetTabRecord } from '../state/tabDomain';
 import { useApiConfig } from './state/apiConfig';
 import { useVariableRows } from './state/apiQueries';
+import { useApiVariablesDialogStore } from './state/apiVariablesDialog';
 import { useCollectionsStore } from './state/collections';
 import { useVariableSetStore, useVariablesStore } from './state/variables';
 import VariableRow from './VariableRow.vue';
@@ -38,6 +40,7 @@ const variablesStore = useVariablesStore();
 const variableSetStore = useVariableSetStore();
 const connectionsStore = useConnectionsStore();
 const config = useApiConfig();
+const variablesDialogStore = useApiVariablesDialogStore();
 
 const scope = computed(() => props.tab.state.scope);
 const ownerId = computed(() => props.tab.state.ownerId);
@@ -133,6 +136,15 @@ function onHistoryClickFor(row: ApiVariable): void {
       >
       <span class="ml-auto" />
       <RunState :state="runState" />
+      <Button
+        v-if="ownerExists && fileName"
+        variant="toolbar"
+        size="kira"
+        data-testid="variables-edit"
+        @click="variablesDialogStore.open(fileName)"
+      >
+        {{ t('common.action.edit.label') }}
+      </Button>
     </ViewToolbar>
 
     <EmptyState

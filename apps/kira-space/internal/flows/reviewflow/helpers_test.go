@@ -64,7 +64,7 @@ func listComments(t *testing.T, gs *flowharness.GitStream, id, branch string) []
 	return call[gitsession.CommentListResult](t, gs, "review.comment.list", gitrpc.ReviewCommentListParams{RepoID: id, Branch: branch}).Comments
 }
 
-func removeComment(t *testing.T, gs *flowharness.GitStream, id, branch string, commentID int64) bool {
+func removeComment(t *testing.T, gs *flowharness.GitStream, id, branch string, commentID string) bool {
 	t.Helper()
 	return call[gitrpc.ReviewCommentRemoveResult](t, gs, "review.comment.remove", gitrpc.ReviewCommentRemoveParams{RepoID: id, Branch: branch, ID: commentID}).Removed
 }

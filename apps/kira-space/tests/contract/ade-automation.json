@@ -28,6 +28,7 @@
     "dirMode": "kira",
     "id": "audit",
     "kind": "smart",
+    "mcp": null,
     "name": "audit",
     "params": [],
     "savedSecrets": [],
@@ -56,7 +57,7 @@
     "color": "blue",
     "command": "",
     "createdAt": 0,
-    "cwd": "<home>/wt/api/api-login",
+    "cwd": "<home>/wt/api/<wt>",
     "finishedAt": 0,
     "id": "<id:3>",
     "kind": "smart",
@@ -70,7 +71,7 @@
       "summary": "summary-done"
     },
     "params": [],
-    "prompt": "Audit feat/api-login on main in <home>/wt/api/api-login for Fix login\n\nKira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every repo you need; the user approves it. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.\n\nWhen finished, call finish_step with status \"done\" and a one-line summary. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
+    "prompt": "Audit feat/api-login on main in <home>/wt/api/<wt> for Fix login\n\nKira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every branch; you name each, the user approves. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.\n\nWhen finished, call finish_step with status \"done\" and a one-line summary. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
     "provider": "claude",
     "resumable": false,
     "resumedFrom": "",
@@ -93,7 +94,10 @@
         "mcp__kira-ade__declare_repos",
         "mcp__kira-ade__request_branches",
         "mcp__kira-ade__branch_status",
-        "mcp__kira-ade__report_artifacts"
+        "mcp__kira-ade__rename_branch",
+        "mcp__kira-ade__report_artifacts",
+        "mcp__kira-ade__list_operations",
+        "mcp__kira-ade__cancel_operation"
       ],
       "mcpServers": [],
       "tools": [
@@ -110,14 +114,14 @@
     "color": "blue",
     "command": "",
     "createdAt": 0,
-    "cwd": "<home>/wt/api/api-login",
+    "cwd": "<home>/wt/api/<wt>",
     "finishedAt": null,
     "id": "<id:3>",
     "kind": "smart",
     "model": "sonnet",
     "outcome": null,
     "params": [],
-    "prompt": "Audit feat/api-login on main in <home>/wt/api/api-login for Fix login\n\nKira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every repo you need; the user approves it. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.\n\nWhen finished, call finish_step with status \"done\" and a one-line summary. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
+    "prompt": "Audit feat/api-login on main in <home>/wt/api/<wt> for Fix login\n\nKira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every branch; you name each, the user approves. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.\n\nWhen finished, call finish_step with status \"done\" and a one-line summary. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
     "provider": "claude",
     "resumable": false,
     "resumedFrom": "",
@@ -140,7 +144,10 @@
         "mcp__kira-ade__declare_repos",
         "mcp__kira-ade__request_branches",
         "mcp__kira-ade__branch_status",
-        "mcp__kira-ade__report_artifacts"
+        "mcp__kira-ade__rename_branch",
+        "mcp__kira-ade__report_artifacts",
+        "mcp__kira-ade__list_operations",
+        "mcp__kira-ade__cancel_operation"
       ],
       "mcpServers": [],
       "tools": [
@@ -168,7 +175,10 @@
       "mcp__kira-ade__declare_repos",
       "mcp__kira-ade__request_branches",
       "mcp__kira-ade__branch_status",
-      "mcp__kira-ade__report_artifacts"
+      "mcp__kira-ade__rename_branch",
+      "mcp__kira-ade__report_artifacts",
+      "mcp__kira-ade__list_operations",
+      "mcp__kira-ade__cancel_operation"
     ],
     "blocker": "",
     "body": "Audit {branch} on {base} in {worktree} for {task}",
@@ -178,7 +188,7 @@
       "blocker": "",
       "branch": "api · feat/api-login",
       "mode": "worktree",
-      "path": "<home>/wt/api/api-login",
+      "path": "<home>/wt/api/<wt>",
       "pending": false
     },
     "env": [
@@ -222,7 +232,7 @@
         "name": "KIRA_WORKTREE",
         "saved": false,
         "secret": false,
-        "value": "<home>/wt/api/api-login"
+        "value": "<home>/wt/api/<wt>"
       }
     ],
     "hash": "<masked>",
@@ -263,7 +273,7 @@
       },
       {
         "text": "",
-        "value": "<home>/wt/api/api-login",
+        "value": "<home>/wt/api/<wt>",
         "var": "worktree"
       },
       {
@@ -278,7 +288,7 @@
       }
     ],
     "secretIssue": "",
-    "suffix": "Kira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every repo you need; the user approves it. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.\n\nWhen finished, call finish_step with status \"done\" and a one-line summary. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
+    "suffix": "Kira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every branch; you name each, the user approves. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.\n\nWhen finished, call finish_step with status \"done\" and a one-line summary. If you could not finish, call it with status \"failed\" and the reason. If you need a decision, call it with status \"needs_input\" and your question.",
     "timeout": "15m",
     "tools": [
       "Read",

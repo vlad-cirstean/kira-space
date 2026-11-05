@@ -38,7 +38,7 @@ function numbered(entry: ReviewRemovedEntry): { n: number; text: string }[] {
 
 const rows = computed(() => entries.value.map((entry) => ({ entry, lines: numbered(entry) })));
 
-function isDismissing(id: number): boolean {
+function isDismissing(id: string): boolean {
   return dismiss.isPending.value && dismiss.variables.value?.includes(id) === true;
 }
 

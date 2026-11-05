@@ -1,7 +1,7 @@
 {
   "AdeTaskService.RestartSession": {
     "command": "<masked>",
-    "cwd": "<home>/wt/api/api-work",
+    "cwd": "<home>/wt/api/<wt>",
     "sessionId": "<masked>",
     "terminalId": "<masked>"
   }

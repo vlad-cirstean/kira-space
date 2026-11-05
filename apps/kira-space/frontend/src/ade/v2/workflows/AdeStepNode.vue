@@ -133,6 +133,14 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
         :tone="KIND_TONE[step.kind]"
         data-testid="ade-wf-node-kind"
       />
+      <AdeTip
+        v-if="step.use"
+        :text="t('space.ade.workflows.stepNode.library.tooltip', { id: step.use })"
+      >
+        <span class="shrink-0 text-info" data-testid="ade-wf-node-library">{{
+          t('space.ade.workflows.stepNode.library.label')
+        }}</span>
+      </AdeTip>
       <span
         v-if="step.before === 'approval'"
         class="shrink-0 text-warn-text"
@@ -141,9 +149,7 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
           t('space.ade.needs.kind.approval.label')
         }}</span
       >
-      <span v-if="step.smartScript" class="shrink-0 text-info">{{
-        t('space.ade.workflows.stepNode.smart.label')
-      }}</span>
+      <span v-if="step.smartScript" class="shrink-0 text-info">{{ t('common.smart.label') }}</span>
       <span
         v-if="step.outsideRepo"
         class="shrink-0 text-muted-foreground"

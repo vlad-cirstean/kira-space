@@ -11,6 +11,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/oplog"
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 // fakeAdapter overrides only the methods a test needs; every other adapters.Adapter method panics
@@ -36,7 +37,7 @@ func TestRunOp_RefusesDuplicateOpID(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_, _, _ = h.RunOp(context.Background(), OpSpec{OpID: "op-1", Kind: "read"},
+		_, _, _ = h.RunOp(context.Background(), OpSpec{OpID: "35aa4fd1-8a08-76b1-8044-5e6cf39f36fa", Kind: "read"},
 			func(ctx context.Context, op *adapters.OpCtx) (any, error) {
 				close(started)
 				<-release
@@ -45,7 +46,7 @@ func TestRunOp_RefusesDuplicateOpID(t *testing.T) {
 	}()
 	<-started
 
-	_, _, err := h.RunOp(context.Background(), OpSpec{OpID: "op-1", Kind: "read"},
+	_, _, err := h.RunOp(context.Background(), OpSpec{OpID: "35aa4fd1-8a08-76b1-8044-5e6cf39f36fa", Kind: "read"},
 		func(ctx context.Context, op *adapters.OpCtx) (any, error) {
 			t.Fatal("the duplicate call's fn must never run")
 			return nil, nil
@@ -57,7 +58,7 @@ func TestRunOp_RefusesDuplicateOpID(t *testing.T) {
 	if !errors.As(err, &ae) || ae.Code != adapters.CodeQuery {
 		t.Fatalf("got %v, want an E_QUERY *adapters.Error", err)
 	}
-	if ae.Message != "duplicate operation id: op-1" {
+	if ae.Message != "duplicate operation id: 35aa4fd1-8a08-76b1-8044-5e6cf39f36fa" {
 		t.Errorf("message = %q", ae.Message)
 	}
 
@@ -71,7 +72,7 @@ func TestRunOp_RefusesDuplicateOpID(t *testing.T) {
 // presenting the query error as an internal one.
 func TestRunOp_PreservesAnAdaptersErrorCodeAcrossAPanic(t *testing.T) {
 	h := NewHost(adapters.Deps{}, nil)
-	_, _, err := h.RunOp(context.Background(), OpSpec{OpID: "op-panic-typed", Kind: "read"},
+	_, _, err := h.RunOp(context.Background(), OpSpec{OpID: "ba787b76-f835-7399-85c0-9b175a38cffe", Kind: "read"},
 		func(ctx context.Context, op *adapters.OpCtx) (any, error) {
 			panic(adapters.New(adapters.CodeQuery, "identifier contains a NUL byte", nil))
 		})
@@ -88,7 +89,7 @@ func TestRunOp_PreservesAnAdaptersErrorCodeAcrossAPanic(t *testing.T) {
 // E_INTERNAL — the fix above only special-cases a panicked *adapters.Error.
 func TestRunOp_UntypedPanicStillBecomesInternalError(t *testing.T) {
 	h := NewHost(adapters.Deps{}, nil)
-	_, _, err := h.RunOp(context.Background(), OpSpec{OpID: "op-panic-untyped", Kind: "read"},
+	_, _, err := h.RunOp(context.Background(), OpSpec{OpID: "60bb84ae-9935-7f6a-8d19-95976ae61a7f", Kind: "read"},
 		func(ctx context.Context, op *adapters.OpCtx) (any, error) {
 			panic("boom")
 		})
@@ -118,7 +119,7 @@ func TestCancelOp_LocalAbortThenAdapterCancel(t *testing.T) {
 	opDone := make(chan struct{})
 	var derivedCtx context.Context
 	go func() {
-		_, _, _ = h.RunOp(context.Background(), OpSpec{OpID: "op-2", Kind: "read", ConnectionID: strp(connID)},
+		_, _, _ = h.RunOp(context.Background(), OpSpec{OpID: "a0b1e93b-9743-700a-8bd9-36410af20fd8", Kind: "read", ConnectionID: strp(connID)},
 			func(ctx context.Context, op *adapters.OpCtx) (any, error) {
 				derivedCtx = ctx
 				close(opStarted)
@@ -129,7 +130,7 @@ func TestCancelOp_LocalAbortThenAdapterCancel(t *testing.T) {
 	}()
 	<-opStarted
 
-	ok, err := h.CancelOp(context.Background(), "op-2")
+	ok, err := h.CancelOp(context.Background(), "a0b1e93b-9743-700a-8bd9-36410af20fd8")
 	if err != nil || !ok {
 		t.Fatalf("CancelOp = %v, %v, want true, nil", ok, err)
 	}
@@ -142,7 +143,7 @@ func TestCancelOp_LocalAbortThenAdapterCancel(t *testing.T) {
 
 	select {
 	case opID := <-cancelCalled:
-		if opID != "op-2" {
+		if opID != "a0b1e93b-9743-700a-8bd9-36410af20fd8" {
 			t.Errorf("adapter.Cancel called with opID %q, want op-2", opID)
 		}
 	case <-time.After(time.Second):
@@ -152,7 +153,7 @@ func TestCancelOp_LocalAbortThenAdapterCancel(t *testing.T) {
 
 	// A second cancel of the same, now-finished op is a no-op — cancel() "never throws for
 	// already finished".
-	ok2, err2 := h.CancelOp(context.Background(), "op-2")
+	ok2, err2 := h.CancelOp(context.Background(), "a0b1e93b-9743-700a-8bd9-36410af20fd8")
 	if err2 != nil || ok2 {
 		t.Fatalf("second CancelOp = %v, %v, want false, nil", ok2, err2)
 	}
@@ -218,10 +219,10 @@ func strp(s string) *string { return &s }
 
 func TestCancelOp_BeforeRunOpCancelsTheLaterRun(t *testing.T) {
 	h := NewHost(adapters.Deps{}, nil)
-	if ok, err := h.CancelOp(context.Background(), "early"); ok || err != nil {
+	if ok, err := h.CancelOp(context.Background(), "818743b9-67a1-7dbf-852b-beef8fb9d62f"); ok || err != nil {
 		t.Fatalf("CancelOp = %v, %v", ok, err)
 	}
-	_, _, err := h.RunOp(context.Background(), OpSpec{OpID: "early", Kind: "read"},
+	_, _, err := h.RunOp(context.Background(), OpSpec{OpID: "818743b9-67a1-7dbf-852b-beef8fb9d62f", Kind: "read"},
 		func(context.Context, *adapters.OpCtx) (any, error) {
 			t.Fatal("a pre-cancelled op must not run")
 			return nil, nil
@@ -232,17 +233,17 @@ func TestCancelOp_BeforeRunOpCancelsTheLaterRun(t *testing.T) {
 	}
 
 	h.earlyTTL = time.Millisecond
-	_, _ = h.CancelOp(context.Background(), "stale")
+	_, _ = h.CancelOp(context.Background(), "a4e976a3-d3fc-7d0b-8045-3de216fbbe2e")
 	time.Sleep(5 * time.Millisecond)
 	ran := false
-	_, _, err = h.RunOp(context.Background(), OpSpec{OpID: "stale", Kind: "read"},
+	_, _, err = h.RunOp(context.Background(), OpSpec{OpID: "a4e976a3-d3fc-7d0b-8045-3de216fbbe2e", Kind: "read"},
 		func(context.Context, *adapters.OpCtx) (any, error) { ran = true; return nil, nil })
 	if err != nil || !ran {
 		t.Fatalf("expired early cancel blocked a later run: ran=%v err=%v", ran, err)
 	}
 
-	for i := range maxEarlyCancels + 10 {
-		_, _ = h.CancelOp(context.Background(), "flood-"+strconv.Itoa(i))
+	for range maxEarlyCancels + 10 {
+		_, _ = h.CancelOp(context.Background(), ids.NewID())
 	}
 	if n := len(h.earlyCancels); n > maxEarlyCancels {
 		t.Fatalf("earlyCancels grew to %d", n)

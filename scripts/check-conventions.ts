@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Code convention guard N1-N7 and N8-N12.
+ * Code convention guard N1-N7 and N8-N14.
  *
  * N1 file names (.ts camelCase, .vue PascalCase), N2 no `.test.ts`, N3 no util/utils/helpers
  * folder, N4 Pinia id = export name without `use`/`create` and `Store`, N5 event names
@@ -32,7 +32,9 @@ export type Rule =
   | 'N9'
   | 'N10'
   | 'N11'
-  | 'N12';
+  | 'N12'
+  | 'N13'
+  | 'N14';
 export interface Hit {
   rule: Rule;
   path: string;
@@ -59,6 +61,8 @@ const EVENT_FILES = [
 ];
 const GO_CODES_PATH = 'internal/ipcerr/codes.go';
 const TS_CODES_PATH = 'packages/shared/domain/errorCodes.ts';
+const GO_IDS_PATH = 'internal/ids/prefixes.go';
+const TS_IDS_PATH = 'packages/shared/ids.ts';
 const EVENT_NAME = /^kira:[a-z][a-zA-Z]*:[a-z][a-zA-Z]*$/;
 const MIGRATION_SETS: ReadonlyArray<{ dir: string; baseline: number }> = [
   { dir: 'apps/kira-space/internal/gitreview/migrations', baseline: 3 },
@@ -191,6 +195,45 @@ export function codeParityHits(goSource: string, tsSource: string): Hit[] {
       path: TS_CODES_PATH,
       message: 'retired-code registry (Go `Legacy` or TS `LEGACY_ERROR_CODES`); delete it',
     });
+  }
+  return hits;
+}
+
+/** N13: the Go nanoid prefix registry equals the TS `PREFIXES` (same prefixes, same body lengths). */
+export function idRegistryHits(goSource: string, tsSource: string): Hit[] {
+  const names = new Map(
+    [...goSource.matchAll(/^\s*(\w+)\s+Prefix\s*=\s*"([a-z]+)"/gm)].map(
+      (m) => [m[1] ?? '', m[2] ?? ''] as const,
+    ),
+  );
+  const go = new Map<string, number>();
+  const sizes = goSource.match(/var sizes = map\[Prefix\]int\{([\s\S]*?)\n\}/)?.[1] ?? '';
+  for (const m of sizes.matchAll(/(\w+):\s*(\d+)/g)) {
+    go.set(names.get(m[1] ?? '') ?? `?${m[1]}`, Number(m[2]));
+  }
+  const ts = new Map<string, number>();
+  const body = tsSource.match(/export const PREFIXES = \{([\s\S]*?)\} as const/)?.[1] ?? '';
+  for (const m of body.matchAll(/(\w+):\s*(\d+)/g)) ts.set(m[1] ?? '', Number(m[2]));
+  const diff: string[] = [];
+  for (const [p, n] of go)
+    if (ts.get(p) !== n) diff.push(`${p}: Go ${n}, TS ${ts.get(p) ?? 'missing'}`);
+  for (const p of ts.keys()) if (!go.has(p)) diff.push(`${p}: only in TS`);
+  if (diff.length === 0) return [];
+  return [{ rule: 'N13', path: TS_IDS_PATH, message: `id registry differs (${diff.join('; ')})` }];
+}
+
+/** N14: ids come from `@shared/ids`; no raw `randomUUID`, `Math.random().toString(36)`, `nanoid` or `uuid` import elsewhere. */
+export function rawIdHits(path: string, source: string): Hit[] {
+  if (path === TS_IDS_PATH) return [];
+  const hits: Hit[] = [];
+  if (/\bcrypto\.randomUUID\s*\(|\brandomUUID\s*\(/.test(source)) {
+    hits.push({ rule: 'N14', path, message: 'randomUUID; use newUuid from @shared/ids' });
+  }
+  if (/from\s+['"](?:nanoid|uuid)(?:\/[^'"]*)?['"]/.test(source)) {
+    hits.push({ rule: 'N14', path, message: 'imports nanoid or uuid; use @shared/ids' });
+  }
+  if (/Math\.random\(\)\.toString\(36\)/.test(source)) {
+    hits.push({ rule: 'N14', path, message: 'Math.random().toString(36); use @shared/ids' });
   }
   return hits;
 }
@@ -440,6 +483,7 @@ function fileHits(path: string, dirs: Set<string>): Hit[] {
   for (const h of folderHits(path)) dirs.add(JSON.stringify(h));
   if (path.endsWith('.ts') && !/\.(?:spec|test)\.ts$/.test(path))
     hits.push(...piniaHits(path, read()));
+  if (!/\.(?:spec|test)\.ts$/.test(path)) hits.push(...rawIdHits(path, read()));
   return hits;
 }
 
@@ -469,6 +513,12 @@ function collectHits(): Hit[] {
       readFileSync(join(REPO_ROOT, TS_CODES_PATH), 'utf8'),
     ),
   );
+  hits.push(
+    ...idRegistryHits(
+      readFileSync(join(REPO_ROOT, GO_IDS_PATH), 'utf8'),
+      readFileSync(join(REPO_ROOT, TS_IDS_PATH), 'utf8'),
+    ),
+  );
   for (const { dir, baseline } of MIGRATION_SETS) {
     const files = new Map<string, string>();
     for (const name of readdirSync(join(REPO_ROOT, dir)).filter((n) => n.endsWith('.sql'))) {
@@ -488,7 +538,7 @@ function main(): number {
     );
     return 1;
   }
-  console.log('check-conventions: every convention holds (N1-N12).');
+  console.log('check-conventions: every convention holds (N1-N14).');
   return 0;
 }
 

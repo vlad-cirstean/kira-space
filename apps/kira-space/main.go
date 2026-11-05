@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appshell"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appwire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
@@ -21,6 +20,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/keepawake"
 	"github.com/kirathecat/kira-studio/internal/logging"
 	"github.com/kirathecat/kira-studio/internal/secrets"
@@ -213,7 +213,7 @@ func main() {
 		reporter.Fatal(startupfail.StepWindowList, err)
 	}
 	if len(records) == 0 {
-		rec := model.WindowRecord{Key: uuid.NewString(), Order: 0}
+		rec := model.WindowRecord{Key: ids.NewID(), Order: 0}
 		if err := repositories.Windows.Create(rec); err != nil {
 			reporter.Fatal(startupfail.StepWindowCreate, err)
 		}

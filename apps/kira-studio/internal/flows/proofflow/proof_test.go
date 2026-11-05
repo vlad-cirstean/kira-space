@@ -12,6 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/proof"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 )
 
 var maskIDs = flowharness.Mask("id", "closedAt", "createdAt")
@@ -56,6 +57,10 @@ func TestProofCloseAndRead(t *testing.T) {
 	st, _ := f.app.W.Proof.Step(bridge.ProofStepArgs{SessionID: list[0].ID, Rev: det.Current.Rev, Ordinal: 1})
 	if !bytes.Contains(st.Data, []byte("9007199254740993")) {
 		t.Fatalf("integer precision lost: %s", st.Data)
+	}
+	// The proof window's cell editor shows this cell (tests/ui/proof-window.spec.ts).
+	if !bytes.Contains(st.Data, []byte(`"alpha"`)) {
+		t.Fatalf("first-row name missing: %s", st.Data)
 	}
 
 	if ps := proofPrompts(t, f.app); len(ps) != 1 || ps[0].Ref != list[0].ID {
@@ -113,8 +118,16 @@ func TestProofEditFlow(t *testing.T) {
 	}
 	f.app.Contract(t, "proof-pending", "ProofService.Session", det, maskIDs)
 
-	if err := f.app.W.Proof.AcceptEdit(bridge.ProofSessionArgs{SessionID: id}); err != nil {
-		t.Fatal(err)
+	// The closed edit waits in the approvals queue; approving it accepts the revision.
+	review := reviewItems(t, f.app)
+	if len(review) != 1 || review[0].ID != "proof.review:"+id || review[0].Target.Name != "Edit me" {
+		t.Fatalf("review items = %+v, want the pending edit", review)
+	}
+	if res, err := f.app.W.ApprovalsSvc.Answer(approvals.AnswerArgs{IDs: []string{review[0].ID}, Approve: true}); err != nil || len(res) != 1 || res[0].Error != "" {
+		t.Fatalf("approve edit = %+v (%v)", res, err)
+	}
+	if left := reviewItems(t, f.app); len(left) != 0 {
+		t.Fatalf("answered edit still queued: %+v", left)
 	}
 	det = session(t, f.app, id)
 	if det.Pending != nil || len(det.Current.Steps) != 3 {
@@ -129,11 +142,31 @@ func TestProofEditFlow(t *testing.T) {
 	f.call(t, "proof_edit_session", map[string]any{"name": "Edit me", "reason": "again"}, &ed)
 	f.addStep(t, ed.DraftID, map[string]any{"keepOrdinal": 1})
 	f.closeDraft(t, ed.DraftID)
-	if err := f.app.W.Proof.RejectEdit(bridge.ProofSessionArgs{SessionID: id}); err != nil {
-		t.Fatal(err)
+	if len(reviewItems(t, f.app)) != 1 {
+		t.Fatal("second edit not queued for review")
+	}
+	if res, err := f.app.W.ApprovalsSvc.Answer(approvals.AnswerArgs{IDs: []string{"proof.review:" + id}, Approve: false}); err != nil || len(res) != 1 || res[0].Error != "" {
+		t.Fatalf("deny edit = %+v (%v)", res, err)
 	}
 	if det = session(t, f.app, id); det.Pending != nil || len(det.Current.Steps) != 3 {
 		t.Fatalf("after reject = %+v", det)
+	}
+
+	// The bound methods still work on their own.
+	f.call(t, "proof_edit_session", map[string]any{"name": "Edit me", "reason": "direct"}, &ed)
+	f.addStep(t, ed.DraftID, map[string]any{"keepOrdinal": 1})
+	f.closeDraft(t, ed.DraftID)
+	if err := f.app.W.Proof.RejectEdit(bridge.ProofSessionArgs{SessionID: id}); err != nil {
+		t.Fatal(err)
+	}
+	if left := reviewItems(t, f.app); len(left) != 0 {
+		t.Fatalf("rejected edit still queued: %+v", left)
+	}
+	f.call(t, "proof_edit_session", map[string]any{"name": "Edit me", "reason": "direct accept"}, &ed)
+	f.addStep(t, ed.DraftID, map[string]any{"keepOrdinal": 1})
+	f.closeDraft(t, ed.DraftID)
+	if err := f.app.W.Proof.AcceptEdit(bridge.ProofSessionArgs{SessionID: id}); err != nil {
+		t.Fatal(err)
 	}
 }
 

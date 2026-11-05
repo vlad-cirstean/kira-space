@@ -107,7 +107,7 @@ test('an edit lays the graph out again', async ({ relaunch }) => {
   const end = page.locator(t('ade-wf-end-node')).first();
   await page.locator(t('ade-wf-add-step')).click();
   await page.locator(t('ade-wf-add-step-agent')).click();
-  const fresh = page.locator(`${t('ade-wf-node')}[data-step-id^="step-"]`);
+  const fresh = page.locator(`${t('ade-wf-node')}[data-step-id^="stp_"]`);
   await expect(fresh).toHaveCount(1);
   const last = await box(node(page, 'release'));
   const added = await box(fresh);

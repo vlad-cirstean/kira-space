@@ -1,0 +1,82 @@
+{
+  "AdeTaskBoard.Board.renamedBranch": {
+    "addedAt": 0,
+    "ahead": 0,
+    "base": "<masked>",
+    "baseBranchId": "",
+    "baseMissing": false,
+    "baseOwner": "",
+    "basePendingFrom": "",
+    "behind": 0,
+    "codeRepoId": "<masked>",
+    "conflictCheck": "done",
+    "conflictCheckReason": "",
+    "conflictsIfRebased": [],
+    "deployments": [],
+    "dirty": [],
+    "id": "<masked>",
+    "integration": [],
+    "kind": "mine",
+    "lastCommitAt": 1700000060000,
+    "mergedAt": null,
+    "mergedIntoMain": false,
+    "name": "feat/new",
+    "origin": "agent",
+    "owner": "",
+    "rebaseInProgress": false,
+    "setup": {},
+    "taskId": "<masked>",
+    "tip": "<masked>",
+    "upstream": "refs/remotes/origin/feat/new",
+    "upstreamAhead": 0,
+    "upstreamBehind": 0,
+    "worktree": "<masked>"
+  },
+  "ApprovalsService.List#branch": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "branch.request:<id:1>",
+      "kind": "branch.request",
+      "operation": {
+        "class": "rename",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "run",
+        "step": "two",
+        "task": "Fix login"
+      },
+      "payload": {
+        "items": [
+          {
+            "base": "",
+            "branch": "feat/new",
+            "codeRepoId": "<masked>",
+            "from": "feat/old",
+            "id": "c0i0",
+            "kind": "rename",
+            "repo": "api",
+            "session": "<id:2>",
+            "source": "run",
+            "stacked": [],
+            "stepName": "two",
+            "upstream": "origin/feat/old"
+          }
+        ],
+        "taskId": "<masked>",
+        "taskTitle": "Fix login"
+      },
+      "reason": "request",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "Fix login",
+        "readOnly": false
+      }
+    }
+  ]
+}

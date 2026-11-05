@@ -2,11 +2,16 @@ import type { ApiConfigView } from '@shared/domain/apiConfig';
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import { queryClient } from '@workbench/state/queryClient';
 import { control } from '../../bridge/control';
-import { apiConfigKey, apiConfigQueryOptions } from './apiQueries';
+import { apiAgentAccessQueryOptions, apiConfigKey, apiConfigQueryOptions } from './apiQueries';
 
 // The Api config files' validity and the secret names they reference. Never carries a value.
 export function useApiConfig() {
   return useQuery(apiConfigQueryOptions(), queryClient);
+}
+
+// The environments that share variables with agents: names and allowed hosts, never a value.
+export function useApiAgentAccess() {
+  return useQuery(apiAgentAccessQueryOptions(), queryClient);
 }
 
 export function useSetApiSecret() {

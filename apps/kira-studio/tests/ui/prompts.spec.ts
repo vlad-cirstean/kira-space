@@ -1,4 +1,6 @@
+import type { ApprovalItem } from '@shared/domain/approvals';
 import type { RoutedPrompt } from '@shared/domain/prompts';
+import { liveItem } from '@workbench/testing/ui/approvals';
 import { emitPrompts, routed } from '@workbench/testing/ui/prompts';
 import { expect, test } from './fixtures';
 import { contract } from './support/contract';
@@ -8,26 +10,18 @@ import { emitWailsEvent } from './support/mockRuntime';
 // P246: the window shows the popup the Go router targeted at it, one at a time. The Go half is
 // flows/promptflow; here the router's pushes are mocked.
 
-const approval = (requestId: string) => ({
-  requestId,
-  connectionId: 'c1',
-  connectionName: 'Prod',
-  kind: 'postgres',
-  class: 'write',
-  statement: 'DELETE FROM t',
-  expiresAtMs: Date.now() + 60_000,
-  reason: 'permission',
-  plan: null,
-  target: { color: 'none', readOnly: false, host: '', database: '', path: [] },
-  stage: 'query',
-  response: null,
-});
+const approvalItem = (): ApprovalItem => {
+  const [item] = contract<ApprovalItem[]>('dbmcp', 'ApprovalsService.List');
+  if (!item) throw new Error('contract has no item');
+  return liveItem(item);
+};
 
 // The router's approval entry (flows/dbmcpflow TestDbMcpApprovalRoutes, contract dbmcp-route), with
-// this spec's request id and the window key of the UI suite.
+// this spec's item id and the window key of the UI suite.
 function approvalEntry(over: Partial<RoutedPrompt> = {}): RoutedPrompt {
   const entry = contract<RoutedPrompt>('dbmcp-route', 'PromptsService.List#approval');
-  return { ...entry, id: 'dbmcp:req-1', ref: 'req-1', target: 'main', ...over };
+  const { id } = approvalItem();
+  return { ...entry, id: `approval:${id}`, ref: id, target: 'main', ...over };
 }
 
 const UPDATE = {
@@ -42,8 +36,8 @@ const UPDATE = {
 
 test('contract: an MCP approval shows only in the window the router targets', async ({ kira }) => {
   const { window } = kira;
-  const dialog = window.locator('[data-testid="db-mcp-approval-dialog"]');
-  await emitWailsEvent(window, IPC.dbMcpApproval, { pending: approval('req-1'), queued: 1 });
+  const dialog = window.locator('[data-testid="approvals-dialog"]');
+  await emitWailsEvent(window, IPC.approvalsChanged, [approvalItem()]);
 
   await emitPrompts(window, [approvalEntry({ target: 'other-window' })]);
   await expect(dialog).toHaveCount(0);
@@ -53,27 +47,25 @@ test('contract: an MCP approval shows only in the window the router targets', as
   await expect(dialog).toHaveCount(0);
 });
 
-test('contract: the oldest prompt shows first with a count; a reveal push shows another', async ({
+test('contract: a prompt on screen turns the approvals dialog into the toast', async ({
   relaunch,
 }) => {
   const { window } = await relaunch({ control: [UPDATE] });
-  const approvalDialog = window.locator('[data-testid="db-mcp-approval-dialog"]');
+  const approvals = window.locator('[data-testid="approvals-dialog"]');
+  const toast = window.locator('[data-testid="approvals-toast"]');
   const updateDialog = window.locator('[data-testid="update-dialog"]');
-  await emitWailsEvent(window, IPC.dbMcpApproval, { pending: approval('req-1'), queued: 1 });
-  await emitPrompts(window, [
-    approvalEntry({ createdAt: 1 }),
-    routed('update', '1.3.0', { createdAt: 2 }),
-  ]);
+  await emitWailsEvent(window, IPC.approvalsChanged, [approvalItem()]);
+  await emitPrompts(window, [approvalEntry({ createdAt: 1 })]);
+  await expect(approvals).toBeVisible({ timeout: 15_000 });
 
-  await expect(approvalDialog).toBeVisible({ timeout: 15_000 });
-  await expect(window.locator('[data-testid="db-mcp-approval-queue-count"]')).toHaveText(
-    '1 more waiting',
-  );
-  await expect(updateDialog).toHaveCount(0);
-
-  await emitWailsEvent(window, IPC.promptsReveal, { id: 'update:1.3.0' });
+  await emitPrompts(window, [approvalEntry({ createdAt: 1 }), routed('update', '1.3.0')]);
   await expect(updateDialog).toBeVisible({ timeout: 15_000 });
-  await expect(approvalDialog).toHaveCount(0);
+  await expect(approvals).toHaveCount(0);
+  await expect(toast).toBeVisible();
+
+  await emitPrompts(window, [approvalEntry({ createdAt: 1 })]);
+  await expect(approvals).toBeVisible();
+  await expect(toast).toHaveCount(0);
 });
 
 test('Send test notification calls the bound method', async ({ kira }) => {

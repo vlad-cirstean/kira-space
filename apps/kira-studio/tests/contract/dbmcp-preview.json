@@ -1,38 +1,49 @@
 {
-  "DbMcpService.PendingApprovals": {
-    "pending": {
-      "class": "read",
-      "cluster": null,
-      "connectionId": "<id:1>",
-      "connectionName": "notes db",
-      "expiresAtMs": 0,
-      "kind": "sqlite",
-      "plan": null,
-      "reason": "permission",
-      "requestId": "<id:2>",
-      "response": {
-        "bytes": 231,
-        "isError": false
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.response:<id:1>",
+      "kind": "db.response",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
       },
-      "stage": "response",
-      "statement": "select id, body from notes order by id",
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "alreadyRan": false,
+        "bytes": 231,
+        "connectionId": "<id:2>",
+        "isError": false,
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "preview",
       "target": {
         "color": "teal",
-        "database": "/data/mcp.db",
-        "host": "",
-        "path": [],
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
         "readOnly": false
       }
-    },
-    "queued": 0
-  },
+    }
+  ],
   "DbMcpService.PendingResponse": {
     "isError": false,
-    "requestId": "<id:2>",
+    "requestId": "<id:1>",
     "text": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"[redacted]\"],[\"2\",\"[redacted]\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}"
   },
-  "args:DbMcpService.ApproveQuery": {
-    "requestId": "<id:2>"
+  "args:ApprovalsService.Answer": {
+    "approve": true,
+    "ids": [
+      "db.response:<id:1>"
+    ],
+    "options": null
   },
   "args:SettingsService.Set": {
     "patch": {

@@ -14,6 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 // launches.go starts interactive Claude Code sessions for a task: Take over a run's session,
@@ -425,13 +426,13 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 		}
 	}()
 	if pa.Resume == "" && pa.RecordID == "" {
-		pa.RecordID = b.newID()
+		pa.RecordID = ids.NewID()
 	}
 	grant := agentmcp.Grant{RunID: runID, TaskID: tc.task.ID, SessionID: cmpNonEmpty(pa.Resume, pa.RecordID), Space: true, Agent: agent}
-	var ids []harness.MCPTool
+	var tools []harness.MCPTool
 	if runID != "" {
 		grant.Results = resultSpecs(stepResultsOf(tc, pa.StepID))
-		ids = append(ids, agentmcp.FinishStep)
+		tools = append(tools, agentmcp.FinishStep)
 	} else {
 		grant.StepID = grantStep
 	}
@@ -439,13 +440,13 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 	if err != nil {
 		return adewire.Launch{}, err
 	}
-	ids = append(ids, agentmcp.RunOutcome)
+	tools = append(tools, agentmcp.RunOutcome)
 	if runID == "" {
-		ids = append(ids, agentmcp.Handover)
+		tools = append(tools, agentmcp.Handover)
 	}
-	ids = append(ids, agentmcp.SpaceToolIDs...)
-	pa.MCPConfig, pa.AllowedTools = cfg, harness.ToolNames(agent, ids...)
-	stem := "tui-" + b.newID()
+	tools = append(tools, agentmcp.SpaceToolIDs...)
+	pa.MCPConfig, pa.AllowedTools = cfg, harness.ToolNames(agent, tools...)
+	stem := ids.New(ids.TUI)
 	prep, err := b.prepareApp(ctx, agentcfg.Launch{Provider: agent, Kind: harness.LaunchInteractive, Dir: b.deps.AgentDir, Stem: stem})
 	if err != nil {
 		release()

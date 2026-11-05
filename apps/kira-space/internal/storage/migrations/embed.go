@@ -85,6 +85,8 @@ var names = []sqlitex.MigrationSource{
 	{Version: 67, Name: "p509_artifact_branch_kind", File: "0067_p509_artifact_branch_kind.sql"},
 	{Version: 68, Name: "p510_script_step_sandbox", File: "0068_p510_script_step_sandbox.sql"},
 	{Version: 69, Name: "p511_manual_step_sandbox", File: "0069_p511_manual_step_sandbox.sql"},
+	{Version: 70, Name: "p512_tracked_updates", File: "0070_p512_tracked_updates.sql"},
+	{Version: 75, Name: "p517_worktree_dir", File: "0075_p517_worktree_dir.sql"},
 }
 
 // All returns every migration in ascending version order.

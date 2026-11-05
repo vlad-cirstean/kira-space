@@ -1,3 +1,4 @@
+import { newUuid } from '@shared/ids';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { reactive } from 'vue';
@@ -103,11 +104,11 @@ interface OpPreambleRuntime {
   actionError: string | null;
 }
 
-// P48 F14: the op-start preamble — status/opId/error/actionError, after a crypto.randomUUID() —
+// P48 F14: the op-start preamble — status/opId/error/actionError, after a newUuid() —
 // byte-identical across grid/documents/keyvalue/stream's state.ts. Returns the op id it stamped,
 // for the caller's own request and its `if (rt.opId !== opId) return` supersession checks.
 export function beginOp(rt: OpPreambleRuntime): string {
-  const opId = crypto.randomUUID();
+  const opId = newUuid();
   rt.status = 'loading';
   rt.opId = opId;
   rt.error = null;
@@ -229,31 +230,30 @@ interface CountRuntime {
   countError: string | null;
 }
 
+let countStamp = 0;
+
 // The countOpId-stamp/guard/assign skeleton — byte-identical across documents/grid/
 // keyvalue/stream's state.ts runCount(). What genuinely differs per view (the request's own
 // filter, which each caller derives its own way) stays with the caller: fetchCount closes over it
 // and gets `refresh` (an already-fresh count stays an L3 hit) handed in, ready to forward.
 export async function runPagedCount(
   rt: CountRuntime,
-  fetchCount: (
-    opId: string,
-    refresh: boolean,
-  ) => Promise<{ value: number; exact: boolean; stale: boolean }>,
+  fetchCount: (refresh: boolean) => Promise<{ value: number; exact: boolean; stale: boolean }>,
 ): Promise<void> {
-  const opId = crypto.randomUUID();
-  rt.countOpId = opId;
+  const stamp = String(++countStamp);
+  rt.countOpId = stamp;
   try {
-    const response = await fetchCount(opId, rt.count?.stale === true);
+    const response = await fetchCount(rt.count?.stale === true);
     // A filter/refresh change since this count started already stamped a newer countOpId (or
     // cleared it) — an answer to the previous request landing now would resurrect a stale total.
-    if (rt.countOpId !== opId) return;
+    if (rt.countOpId !== stamp) return;
     rt.count = { value: response.value, exact: response.exact, stale: response.stale };
     rt.countError = null;
   } catch (err) {
     // A filter/refresh change since this count started already stamped a newer countOpId (or
     // cleared it) — same supersede guard as the success path above, so a stale failure can't
     // overwrite an error (or a clear) that belongs to a newer request.
-    if (rt.countOpId !== opId) return;
+    if (rt.countOpId !== stamp) return;
     // Leave the previous count (if any) rather than blanking it on a failed refresh.
     rt.countError = classifyLoadError(err).message;
   }

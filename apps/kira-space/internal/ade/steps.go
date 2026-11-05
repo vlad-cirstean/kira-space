@@ -51,6 +51,9 @@ func workflowSteps(wf adewire.Workflow) []stepDef {
 			results = adewire.DefaultResults()
 		}
 		prompt := s.Prompt
+		if s.PromptExtra != "" {
+			prompt += "\n\n" + s.PromptExtra
+		}
 		if s.Kind == adewire.KindScript {
 			prompt = s.Command
 		}

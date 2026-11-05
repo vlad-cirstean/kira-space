@@ -1,4 +1,5 @@
 import * as AgentService from '@bindings/agentservice.js';
+import * as ApprovalsService from '@bindings/approvalsservice.js';
 import * as AppService from '@bindings/appservice.js';
 import * as ConfigFilesService from '@bindings/configfilesservice.js';
 import * as ConnectionConfigService from '@bindings/connectionconfigservice.js';
@@ -37,15 +38,11 @@ import type {
 import type {
   ConnectionConfigView,
   ConnectionFileDetail,
+  ConnectionFormResult,
   ConnectionSecretKind,
 } from '@shared/domain/connectionConfig';
 import type { DataGripPreview, DataGripReport } from '@shared/domain/datagrip';
-import type {
-  DbMcpApprovalSnapshot,
-  DbMcpInstallResult,
-  DbMcpPendingResponse,
-  DbMcpStatus,
-} from '@shared/domain/dbmcp';
+import type { DbMcpInstallResult, DbMcpPendingResponse, DbMcpStatus } from '@shared/domain/dbmcp';
 import type { ObjectDefinition } from '@shared/domain/definition';
 import {
   type KibanaDataView,
@@ -67,7 +64,9 @@ import type {
   ProofDetail,
   ProofOpenResult,
   ProofSavePngResult,
+  ProofSavePngToResult,
   ProofSelect,
+  ProofShotFolderResult,
   ProofStepDetail,
   ProofSummary,
   ProofViewState,
@@ -101,8 +100,10 @@ import type {
 import type {
   CustomScript,
   CustomScriptFields,
+  RunFormResult,
   ScriptDir,
   ScriptFileView,
+  ScriptMcpServerList,
   ScriptsSnapshot,
   SecretValues,
 } from '@shared/domain/scripts';
@@ -120,6 +121,7 @@ import { createCoreControl } from '@workbench/bridge/createCoreControl';
 import { logWarn } from '@workbench/bridge/log';
 import { createOpenExternal } from '@workbench/bridge/openExternal';
 import { on, trust, unwrap, windowKey } from '@workbench/bridge/rpc';
+import type { FormEdit } from '@workbench/config/configForm';
 import type { Settings, SettingsPatch } from '../state/settingsDomain';
 import type { TabRecord } from '../state/tabDomain';
 import { apiControl } from './apiControl';
@@ -229,6 +231,20 @@ const studioControl = {
     unwrap(ConnectionConfigService.SaveFile({ file, text, baseHash })).then((r) =>
       trust<ConnectionFileDetail>(r),
     ),
+  connectionConfigForm: (
+    file: string,
+    text: string,
+    edits: FormEdit[],
+  ): Promise<ConnectionFormResult> =>
+    unwrap(
+      ConnectionConfigService.Form({
+        file,
+        text,
+        edits: edits.map((e) => ({ path: e.path, value: e.value ?? null, unset: e.unset })),
+      }),
+    ).then((r) => trust<ConnectionFormResult>(r)),
+  connectionConfigDeleteFile: (file: string): Promise<void> =>
+    unwrap(ConnectionConfigService.DeleteFile({ file })),
   connectionConfigSetSecret: (
     kind: ConnectionSecretKind,
     name: string,
@@ -391,16 +407,8 @@ const studioControl = {
     unwrap(DbMcpService.Regenerate()).then((r) => trust<DbMcpStatus>(r)),
   dbMcpInstallAgent: (): Promise<DbMcpInstallResult> =>
     unwrap(DbMcpService.InstallAgent()).then((r) => trust<DbMcpInstallResult>(r)),
-  dbMcpPendingApprovals: (): Promise<DbMcpApprovalSnapshot> =>
-    unwrap(DbMcpService.PendingApprovals()).then((r) => trust<DbMcpApprovalSnapshot>(r)),
   dbMcpPendingResponse: (requestId: string): Promise<DbMcpPendingResponse> =>
     unwrap(DbMcpService.PendingResponse({ requestId })).then((r) => trust<DbMcpPendingResponse>(r)),
-  dbMcpApproveQuery: (requestId: string): Promise<DbMcpApprovalSnapshot> =>
-    unwrap(DbMcpService.ApproveQuery({ requestId })).then((r) => trust<DbMcpApprovalSnapshot>(r)),
-  dbMcpDenyQuery: (requestId: string): Promise<DbMcpApprovalSnapshot> =>
-    unwrap(DbMcpService.DenyQuery({ requestId })).then((r) => trust<DbMcpApprovalSnapshot>(r)),
-  onDbMcpApprovalChanged: (cb: (snap: DbMcpApprovalSnapshot) => void): (() => void) =>
-    on(CHANNEL.dbMcpApproval, cb),
 
   proofSessions: (): Promise<ProofSummary[]> =>
     unwrap(ProofService.Sessions()).then((r) => trust<ProofSummary[]>(r ?? [])),
@@ -430,6 +438,20 @@ const studioControl = {
     unwrap(ProofService.WindowTarget({ key: windowKey })).then((r) => trust<ProofWindowTarget>(r)),
   proofSavePng: (filename: string, pngBase64: string): Promise<ProofSavePngResult> =>
     unwrap(ProofService.SavePng({ filename, pngBase64 })).then((r) => trust<ProofSavePngResult>(r)),
+  proofChooseShotFolder: (sessionName: string): Promise<ProofShotFolderResult> =>
+    unwrap(ProofService.ChooseShotFolder({ sessionName })).then((r) =>
+      trust<ProofShotFolderResult>(r),
+    ),
+  proofSavePngTo: (
+    folderId: string,
+    filename: string,
+    pngBase64: string,
+  ): Promise<ProofSavePngToResult> =>
+    unwrap(ProofService.SavePngTo({ folderId, filename, pngBase64 })).then((r) =>
+      trust<ProofSavePngToResult>(r),
+    ),
+  proofForgetShotFolder: (folderId: string): Promise<void> =>
+    unwrap(ProofService.ForgetShotFolder({ folderId })),
   onProofChanged: (cb: (event: ProofChanged) => void): (() => void) => on(CHANNEL.proofChanged, cb),
   onProofSelect: (cb: (event: ProofSelect) => void): (() => void) => on(CHANNEL.proofSelect, cb),
 
@@ -516,12 +538,12 @@ const studioControl = {
     on(CHANNEL.schemaChanged, cb),
 
   // P424: Discover reads beyond execute(). The wire shapes are zod-parsed, not trusted.
-  kibanaDataViews: (connectionId: string, opId: string): Promise<KibanaDataView[]> =>
-    unwrap(KibanaService.DataViews({ connectionId, opId })).then((r) =>
+  kibanaDataViews: (connectionId: string): Promise<KibanaDataView[]> =>
+    unwrap(KibanaService.DataViews({ connectionId, opId: '' })).then((r) =>
       kibanaDataViewSchema.array().parse(r ?? []),
     ),
-  kibanaDataView: (connectionId: string, opId: string, id: string): Promise<KibanaDataView> =>
-    unwrap(KibanaService.DataView({ connectionId, opId, id })).then((r) =>
+  kibanaDataView: (connectionId: string, id: string): Promise<KibanaDataView> =>
+    unwrap(KibanaService.DataView({ connectionId, opId: '', id })).then((r) =>
       kibanaDataViewSchema.parse(r),
     ),
   kibanaHistogram: (args: {
@@ -564,12 +586,26 @@ const studioControl = {
     unwrap(CustomScriptsService.SaveFile({ file, text, baseHash })).then((r) =>
       trust<ScriptFileView>(r),
     ),
+  customScriptsForm: (file: string, text: string, edits: FormEdit[]): Promise<RunFormResult> =>
+    unwrap(
+      CustomScriptsService.Form({
+        file,
+        text,
+        edits: edits.map((e) => ({ path: e.path, value: e.value ?? null, unset: e.unset })),
+      }),
+    ).then((r) => trust<RunFormResult>(r)),
   customScriptsSetSecrets: (id: string, values: SecretValues): Promise<CustomScript> =>
     unwrap(CustomScriptsService.SetSecrets({ id, values })).then((r) => trust<CustomScript>(r)),
   customScriptsReorder: (collection: string, ids: string[]): Promise<void> =>
     unwrap(CustomScriptsService.Reorder({ collection, ids })),
   customScriptsReorderCollections: (names: string[]): Promise<void> =>
     unwrap(CustomScriptsService.ReorderCollections({ names })),
+  customScriptsMove: (id: string, collection: string, beforeId: string | null): Promise<void> =>
+    unwrap(CustomScriptsService.Move({ id, collection, beforeId })),
+  customScriptsRenameCollection: (name: string, newName: string): Promise<void> =>
+    unwrap(CustomScriptsService.RenameCollection({ name, newName })),
+  customScriptsDeleteCollection: (name: string): Promise<void> =>
+    unwrap(CustomScriptsService.DeleteCollection({ name })),
   onCustomScriptsChanged: (cb: (snapshot: ScriptsSnapshot) => void): (() => void) =>
     on(CHANNEL.customScriptsChanged, (r) => cb(scriptsSnapshotOf(r))),
 
@@ -584,6 +620,8 @@ const studioControl = {
   scriptRunsStop: (id: string): Promise<void> => unwrap(ScriptRunsService.Stop({ id })),
   scriptRunsResolveDir: (scriptId: string): Promise<ScriptDir> =>
     unwrap(ScriptRunsService.ResolveDir({ scriptId })).then((r) => trust<ScriptDir>(r)),
+  scriptRunsMcpServers: (): Promise<ScriptMcpServerList> =>
+    unwrap(ScriptRunsService.McpServers()).then((r) => trust<ScriptMcpServerList>(r)),
   onScriptRunsChanged: (cb: (run: ScriptRun) => void): (() => void) =>
     on(CHANNEL.scriptRunsChanged, (r) => cb(trust<ScriptRun>(r))),
   scriptRunsPreview: (args: ScriptRunArgs): Promise<ScriptRunPreview> =>
@@ -657,6 +695,7 @@ export const control = {
     keepAwake: KeepAwakeService,
     update: UpdateService,
     prompts: PromptsService,
+    approvals: ApprovalsService,
     llmPrompts: LlmPromptsService,
     agent: AgentService,
   }),

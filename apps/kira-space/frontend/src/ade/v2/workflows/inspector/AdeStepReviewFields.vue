@@ -4,9 +4,11 @@ import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import type { ReviewStepConfig, WorkflowStep } from '../../wire';
+import { useStepScope } from '../stepScope';
 import AdeInspectorRow from './AdeInspectorRow.vue';
 
 const props = defineProps<{ step: WorkflowStep; steps: WorkflowStep[] }>();
+const library = useStepScope() === 'library';
 const emit = defineEmits<{ patch: [p: Partial<WorkflowStep>] }>();
 // Earlier steps whose session can take the comments: agent steps with a prompt.
 const implementers = computed(() => {
@@ -40,7 +42,7 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
       </NativeSelect>
     </AdeInspectorRow>
     <AdeInspectorRow
-      v-if="step.review.sendTo === 'implementer'"
+      v-if="!library && step.review.sendTo === 'implementer'"
       :label="t('space.ade.workflows.stepInspector.reviewImplementer.label')"
       :for="id('review-implementer')"
     >

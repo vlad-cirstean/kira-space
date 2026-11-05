@@ -35,6 +35,9 @@ type Options struct {
 	// find it. httpclient never sees apivars.UsedSecret directly — only this already-built stdlib
 	// Replacer — so this package takes on no dependency on apivars. Never populated from IPC JSON.
 	WireMask *strings.Replacer `json:"-"`
+	// RedirectGuard vets each redirect target before it is followed; an error stops the chain and
+	// fails the send. Only the agent request path sets it. Never populated from IPC JSON.
+	RedirectGuard func(next *url.URL) error `json:"-"`
 }
 
 // resolved is Options with every field decided and clamped. Nothing below this line reads Options.
@@ -47,6 +50,7 @@ type resolved struct {
 	maxRedirects     int
 	useJar           bool
 	ephemeral        bool
+	redirectGuard    func(next *url.URL) error
 }
 
 // normalize resolves every field to a concrete value, clamping to the same bounds
@@ -68,6 +72,7 @@ func (o Options) normalize() resolved {
 		maxRedirects:     10,
 		useJar:           false,
 		ephemeral:        o.Ephemeral,
+		redirectGuard:    o.RedirectGuard,
 	}
 	if o.HTTPVersion != nil {
 		r.http1 = *o.HTTPVersion == "1.1"
@@ -165,6 +170,11 @@ func checkRedirectFor(r resolved) func(*http.Request, []*http.Request) error {
 		}
 		if len(via) >= r.maxRedirects {
 			return fmt.Errorf("httpclient: stopped after %d redirects", r.maxRedirects)
+		}
+		if r.redirectGuard != nil {
+			if err := r.redirectGuard(req.URL); err != nil {
+				return err
+			}
 		}
 		if tl, _ := req.Context().Value(timelineCtxKey{}).(*timeline); tl != nil && req.Response != nil {
 			// F13: the hop's own method, status text and headers are all readable here and nowhere

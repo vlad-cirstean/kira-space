@@ -9,10 +9,11 @@ import {
   chartPendingSession,
   chartStep,
   chartViewStates,
-  copiedImageSize,
   diffClipboardImage,
   openProofWindow,
   PENDING_ID,
+  pngHeight,
+  shotFolder,
 } from './support/proof';
 
 // UI half of the proof-chart scenario; the Go half is proofflow TestProofCharts. Every answer is
@@ -178,8 +179,9 @@ test('contract: the copied screenshot holds the chart and never a tooltip', asyn
   uiServer,
 }) => {
   test.setTimeout(180_000);
-  const { window: page } = await open(relaunch, uiServer.url, [
+  const { window: page, control } = await open(relaunch, uiServer.url, [
     { channel: IPC.proofViewState, response: chartViewStates() },
+    { channel: IPC.proofChooseShotFolder, response: shotFolder() },
   ]);
   await tab(page, 2).click();
   await expect(chart(page)).toHaveAttribute('data-selected', '0:1');
@@ -204,11 +206,18 @@ test('contract: the copied screenshot holds the chart and never a tooltip', asyn
   expect(diff.mean).toBeLessThan(6);
 
   await page.locator('[data-testid="proof-shot-more"]').click();
-  await page.locator('[data-testid="proof-shot-copy-all"]').click();
-  await expect.poll(() => copiedImageCount(page), { timeout: CAPTURE_MS }).toBe(2);
+  await page.locator('[data-testid="proof-shot-save-all"]').click();
+  await expect
+    .poll(() => control.log().filter((c) => c.channel === IPC.proofSavePngTo).length, {
+      timeout: CAPTURE_MS,
+    })
+    .toBe(6);
   const centre = await page.locator('[data-testid="proof-centre"]').boundingBox();
-  const size = await copiedImageSize(page, 1);
-  expect(Math.abs(size.height - ((centre?.height ?? 0) * 6 + 5 * 8))).toBeLessThanOrEqual(6);
+  const dpr = await page.evaluate(() => window.devicePixelRatio);
+  for (const c of control.log().filter((c) => c.channel === IPC.proofSavePngTo)) {
+    const height = pngHeight((c.args as Json).pngBase64);
+    expect(Math.abs(height - (centre?.height ?? 0) * dpr)).toBeLessThanOrEqual(3);
+  }
 });
 
 test('contract: a pending edit compares the old and new chart', async ({ relaunch, uiServer }) => {

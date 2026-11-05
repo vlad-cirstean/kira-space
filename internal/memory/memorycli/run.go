@@ -11,9 +11,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/google/uuid"
-
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/mcpcall"
 	"github.com/kirathecat/kira-studio/internal/memory"
@@ -36,7 +35,7 @@ func Run(args []string, promptsPath string, agents harness.Selector, models memo
 		return 2
 	}
 	if *importRef != "" {
-		if _, err := uuid.Parse(*importRef); err != nil {
+		if !ids.IsUUID(*importRef) {
 			fmt.Fprintln(os.Stderr, "kira-memory: --import-ref must be a UUID")
 			return 2
 		}

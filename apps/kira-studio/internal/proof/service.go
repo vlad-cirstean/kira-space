@@ -7,8 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/approvals"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -29,6 +30,8 @@ type Deps struct {
 	Repo *repos.ProofRepo
 	// Prompts receives the "ready to review" popup; nil drops it.
 	Prompts prompts.Sink
+	// Approvals receives a pending edit for review; nil drops it.
+	Approvals *approvals.Queue
 	// Emit broadcasts an app-wide event; nil drops it.
 	Emit func(channel string, payload any)
 	Now  func() time.Time
@@ -42,7 +45,21 @@ func New(d Deps) *Service {
 	if d.Now == nil {
 		d.Now = time.Now
 	}
-	return &Service{d: d}
+	s := &Service{d: d}
+	if d.Approvals != nil {
+		d.Approvals.Register(approvals.KindProofReview, reviewOwner{s})
+	}
+	return s
+}
+
+// reviewOwner answers proof.review items: approve accepts the agent's edit, deny rejects it.
+type reviewOwner struct{ s *Service }
+
+func (o reviewOwner) Answer(ref string, a approvals.Answer) error {
+	if a.Approve {
+		return o.s.AcceptEdit(ref)
+	}
+	return o.s.RejectEdit(ref)
 }
 
 // Changed is the kira:proof:changed payload; SessionID is empty when several sessions changed.
@@ -58,23 +75,71 @@ func (s *Service) emit(sessionID string) {
 
 func promptID(sessionID string) string { return prompts.ID(prompts.KindProof, sessionID) }
 
+func reviewID(sessionID string) string { return approvals.KindProofReview + ":" + sessionID }
+
+// closePrompt withdraws the session's ready popup and any pending edit review.
 func (s *Service) closePrompt(sessionID string) {
 	if s.d.Prompts != nil {
 		s.d.Prompts.Close(promptID(sessionID))
 	}
+	if s.d.Approvals != nil {
+		s.d.Approvals.Remove(reviewID(sessionID))
+	}
 }
 
+// openPrompt raises the ready popup of a new session, or the review item of a pending edit.
 func (s *Service) openPrompt(id, name string, edit bool) {
+	if edit {
+		s.putReview(id, name)
+		return
+	}
 	if s.d.Prompts == nil {
 		return
 	}
-	title := i18n.T("backend.prompt.proof.title", map[string]string{"name": name})
-	if edit {
-		title = i18n.T("backend.prompt.proofEdit.title", map[string]string{"name": name})
-	}
 	s.d.Prompts.Open(prompts.Prompt{
 		ID: promptID(id), Kind: prompts.KindProof, Ref: id,
-		Title: title,
+		Title: i18n.T("backend.prompt.proof.title", map[string]string{"name": name}),
+	})
+}
+
+type reviewStep struct {
+	Ordinal     int    `json:"ordinal"`
+	Description string `json:"description"`
+	Diff        string `json:"diff"`
+}
+
+type reviewPayload struct {
+	SessionID string       `json:"sessionId"`
+	Name      string       `json:"name"`
+	Revision  int          `json:"revision"`
+	Reason    string       `json:"reason"`
+	Steps     []reviewStep `json:"steps"`
+}
+
+func (s *Service) putReview(id, name string) {
+	if s.d.Approvals == nil {
+		return
+	}
+	pl := reviewPayload{SessionID: id, Name: name, Steps: []reviewStep{}}
+	if d, err := s.Session(id); err == nil && d.Pending != nil {
+		pl.Revision, pl.Reason = d.Pending.Rev, d.Pending.Reason
+		for _, st := range d.Pending.Steps {
+			pl.Steps = append(pl.Steps, reviewStep{Ordinal: st.Ordinal, Description: st.Description, Diff: st.Diff})
+		}
+	} else if err != nil {
+		slog.Warn("proof: read pending edit", "scope", "proof", "session", id, "err", err)
+	}
+	raw, err := json.Marshal(pl)
+	if err != nil {
+		slog.Warn("proof: encode pending edit", "scope", "proof", "session", id, "err", err)
+		return
+	}
+	s.d.Approvals.Put(approvals.Item{
+		ID: reviewID(id), Kind: approvals.KindProofReview, CreatedAt: s.d.Now().UnixMilli(),
+		Target:    approvals.Target{Name: name, Kind: "proof"},
+		Operation: approvals.Operation{Class: "review", Tone: "caution"},
+		Reason:    "review", Payload: raw,
+		Title: i18n.T("backend.prompt.proofEdit.title", map[string]string{"name": name}),
 	})
 }
 
@@ -122,8 +187,8 @@ func (s *Service) StartSession(name, summary string) (StartResult, error) {
 		return StartResult{}, err
 	}
 	s.PurgeStale()
-	draft := uuid.NewString()
-	if err := s.d.Repo.CreateSessionDraft(uuid.NewString(), clean, key, strings.TrimSpace(summary), draft, s.d.Now()); err != nil {
+	draft := ids.NewID()
+	if err := s.d.Repo.CreateSessionDraft(ids.NewID(), clean, key, strings.TrimSpace(summary), draft, s.d.Now()); err != nil {
 		return StartResult{}, err
 	}
 	return StartResult{DraftID: draft, Name: clean}, nil
@@ -139,7 +204,7 @@ func (s *Service) EditSession(name, reason string) (StartResult, error) {
 		return StartResult{}, err
 	}
 	s.PurgeStale()
-	draft := uuid.NewString()
+	draft := ids.NewID()
 	sess, steps, err := s.d.Repo.CreateEditDraft(key, draft, strings.TrimSpace(reason), s.d.Now())
 	if err != nil {
 		return StartResult{}, err

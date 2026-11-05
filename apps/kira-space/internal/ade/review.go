@@ -11,6 +11,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 // review.go: review windows (P150). One ephemeral window per task branch reviews only that branch.
@@ -179,7 +180,7 @@ func (b *TaskBoard) OpenReviewWindow(ctx context.Context, branchID string) (Revi
 			order = r.Order + 1
 		}
 	}
-	key := b.newID()
+	key := ids.NewID()
 	if err := b.deps.Windows.Create(model.WindowRecord{Key: key, Order: order}); err != nil {
 		return ReviewWindowOpen{}, err
 	}

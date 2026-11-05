@@ -11,15 +11,18 @@ import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { useAdeWorkflowDraftStore } from '../../state/adeWorkflowDraft';
 import type { WorkflowStep } from '../../wire';
+import { useStepScope } from '../stepScope';
 
 // The results a step can end with, each with where it goes. The route selects are the keyboard path
 // for everything a connection drag does on the canvas.
 const props = defineProps<{ step: WorkflowStep; steps: WorkflowStep[]; fixed?: boolean }>();
 const draft = useAdeWorkflowDraftStore();
+const library = useStepScope() === 'library';
 const id = (k: string, rid: string): string => `ade-wf-result-${k}-${props.step.id}-${rid}`;
 // A return needs a step that runs: manual and skipped steps up to this one are not offered, the
 // current pick excepted so the select keeps showing it.
 const targets = (next: string): WorkflowStep[] => {
+  if (library) return [];
   const at = props.steps.findIndex((s) => s.id === props.step.id);
   return props.steps.filter(
     (s, i) => s.id === next || !(i <= at && (s.kind === 'manual' || s.skip)),

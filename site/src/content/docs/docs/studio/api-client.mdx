@@ -28,15 +28,16 @@ Unary and server-streaming calls. Stop ends a stream. Client-streaming and bidir
 
 ## Collections
 
-A collection is a tree of requests and folders. Import and export use the Postman collection format. Export skips gRPC requests. Move a request or folder to another collection.
+A collection is a tree of requests and folders. Import and export use the Postman collection format. Export skips gRPC requests. Rename, duplicate, delete and move rows from the row menu. F2 renames. Drag moves a request or folder. **Move to collection** moves it to another collection. A move to another collection keeps request history.
 
-Collections, environments and variables are files in `~/.kira-studio/api`. Use **Open file** or **Reveal file** in the row menu, and edit in your editor. The order of `items` in a file is the order in the tree. A bad edit shows its line above the tree; the app keeps the last good version until the file is valid. `AGENTS.md` in that folder lists every option.
+Collections, environments and variables are files in `~/.kira-studio/api`. Use **Edit variables** or **Edit environment** to edit a file as a form or YAML, or **Open file** and **Reveal file** to use your editor. The order of `items` in a file is the order in the tree. A bad edit shows its line above the tree; the app keeps the last good version until the file is valid. `AGENTS.md` in that folder lists every option.
 
 **Export collection…** does not write secret values to the file.
 
 ## Environments and variables
 
-- Variables belong to a collection or an environment. Edit them in the file; the Variables tab shows them read-only.
+- Variables belong to a collection or an environment. Edit them in the variables dialog, in the file, or in your editor.
+- **Duplicate** on an environment copies its file as `<name> copy`; the copy shares the secret values. **Delete** asks first and removes the file.
 - A secret variable is written `secret: ${secret:<name>}`. Set its value under Environments, Secrets. The file never holds it.
 - Environments carry a colour.
 - Dynamic values come from Faker.

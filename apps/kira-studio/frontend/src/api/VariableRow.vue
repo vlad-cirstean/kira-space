@@ -41,7 +41,7 @@ const masked = () => props.row.isSecret && (notYetRevealed() || !visible.value);
 
 function valueToggleLabel(): string {
   if (notYetRevealed()) return t('common.action.reveal.label');
-  return visible.value ? t('common.hideValue.label') : t('studio.api.variables.showValue.label');
+  return visible.value ? t('common.hideValue.label') : t('common.secret.show.label');
 }
 
 function onEyeClick(): void {

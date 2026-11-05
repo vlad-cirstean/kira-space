@@ -193,7 +193,7 @@ func TestRecordGrpcHistory_NeverPersistsResolvedSecrets(t *testing.T) {
 	// The call args as the bridge's own RunOp closure builds them before ever resolving anything —
 	// still spelled {{token}}.
 	args := GrpcCallArgs{
-		OpID: "op1", TabID: "tab1", Streaming: false,
+		OpID: "7d836f4b-efca-7bda-8e8a-bb1f7bd93345", TabID: "tab1", Streaming: false,
 		DescriptorMode: "reflection", Target: "api.example.com:443",
 		Service: "kira.probe.v1.Echo", Method: "Unary",
 		MessageJSON:  `{"token":"{{token}}"}`,
@@ -256,7 +256,7 @@ func TestResolveGrpcCallSource_ResolvesTargetAndMetadataInProtoDescriptorMode(t 
 	collectionID := seedProbes(map[string]string{"host": secretHost, "token": secretToken})
 
 	args := GrpcCallArgs{
-		OpID: "op1", TabID: "tab1", DescriptorMode: "proto",
+		OpID: "7d836f4b-efca-7bda-8e8a-bb1f7bd93345", TabID: "tab1", DescriptorMode: "proto",
 		Target:    "{{host}}:443",
 		ProtoPath: "/tmp/probe.proto",
 		Metadata:  []grpcclient.MetaPair{{Name: "authorization", Value: "Bearer {{token}}"}},
@@ -366,7 +366,7 @@ func TestRunServerStream_MasksDialTargetSecretBeforeEmittingErrorEvent(t *testin
 		FullMethod:  "/kira.probe.v1.Echo/ServerStream",
 		MessageJSON: `{"text":"hi"}`,
 	}
-	args := GrpcCallArgs{OpID: "call-1", WindowKey: "win-1"}
+	args := GrpcCallArgs{OpID: "60064fdb-8c05-783a-834e-6fa252dd2b45", WindowKey: "win-1"}
 
 	_, err := svc.runServerStream(context.Background(), args, req, used)
 	if err == nil {
@@ -445,7 +445,7 @@ func TestRunServerStream_RecordsHistoryBeforeEmittingTerminalEvent(t *testing.T)
 	svc.Deps.Events = emitter
 
 	args := GrpcCallArgs{
-		OpID: "op1", TabID: "tab1", WindowKey: "win-1", Streaming: true,
+		OpID: "7d836f4b-efca-7bda-8e8a-bb1f7bd93345", TabID: "tab1", WindowKey: "win-1", Streaming: true,
 		DescriptorMode: "reflection", Target: "api.example.com:443",
 		Service: "kira.probe.v1.Echo", Method: "ServerStream",
 	}

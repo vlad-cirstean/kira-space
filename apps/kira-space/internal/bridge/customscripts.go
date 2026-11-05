@@ -1,6 +1,7 @@
 package bridge
 
 import (
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 )
 
@@ -14,11 +15,15 @@ type (
 	CustomScriptsCreateArgs             = scripts.CreateArgs
 	CustomScriptsDeleteArgs             = scripts.DeleteArgs
 	CustomScriptsFileArgs               = scripts.FileArgs
+	CustomScriptsFormArgs               = scripts.FormArgs
 	CustomScriptsSaveFileArgs           = scripts.SaveFileArgs
 	CustomScriptsSetSecretsArgs         = scripts.SetSecretsArgs
 	CustomScriptsSetScheduleTargetArgs  = scripts.SetScheduleTargetArgs
 	CustomScriptsReorderArgs            = scripts.ReorderArgs
 	CustomScriptsReorderCollectionsArgs = scripts.ReorderCollectionsArgs
+	CustomScriptsMoveArgs               = scripts.MoveArgs
+	CustomScriptsRenameCollectionArgs   = scripts.RenameCollectionArgs
+	CustomScriptsDeleteCollectionArgs   = scripts.DeleteCollectionArgs
 )
 
 func (s *CustomScriptsService) List() (scripts.Snapshot, error) {
@@ -55,4 +60,20 @@ func (s *CustomScriptsService) Reorder(args CustomScriptsReorderArgs) error {
 
 func (s *CustomScriptsService) ReorderCollections(args CustomScriptsReorderCollectionsArgs) error {
 	return s.Svc.ReorderCollections(args)
+}
+
+func (s *CustomScriptsService) Form(args CustomScriptsFormArgs) (configfs.FormResult, error) {
+	return s.Svc.Form(args)
+}
+
+func (s *CustomScriptsService) Move(args CustomScriptsMoveArgs) error {
+	return s.Svc.Move(args)
+}
+
+func (s *CustomScriptsService) RenameCollection(args CustomScriptsRenameCollectionArgs) error {
+	return s.Svc.RenameCollection(args)
+}
+
+func (s *CustomScriptsService) DeleteCollection(args CustomScriptsDeleteCollectionArgs) error {
+	return s.Svc.DeleteCollection(args)
 }

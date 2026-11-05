@@ -2,6 +2,8 @@ import type { Page } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, PortSnapshot } from '../ipc/support/types';
 import { expect } from '../ui/fixtures';
+import { createConnection } from '../ui/support/connect';
+import { mongoCreateArgs } from '../ui/support/connectionArgs';
 import { IPC } from '../ui/support/ipcChannels';
 import {
   DB_PATH,
@@ -21,24 +23,7 @@ export const CONTROL: ControlSnapshot[] = [
   { channel: IPC.connectionsList, response: [] },
   {
     channel: IPC.connectionsCreate,
-    args: {
-      name: 'Mongo Perf',
-      kind: 'mongodb',
-      color: 'red',
-      mode: 'fields',
-      readOnly: false,
-      host: '127.0.0.1',
-      port: 27017,
-      database: 'kira_test',
-      username: 'kira',
-      password: null,
-      uri: null,
-      options: {},
-      preconnect: null,
-      preconnectSidecar: false,
-      autoExplain: false,
-      throttlePerSec: 0,
-    },
+    args: mongoCreateArgs('Mongo Perf'),
     response: SUMMARY,
   },
   ...FIXTURE.control,
@@ -97,18 +82,9 @@ export function readSnapshot(
   };
 }
 
-/** Creates and connects the Mongo perf connection and expands to the database node. */
+/** Creates the Mongo perf connection through the new-connection dialog, connects it and expands to the database node. */
 export async function connectMongo(page: Page): Promise<void> {
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-mongodb"]');
-  await page.fill('[data-testid="connection-name"]', 'Mongo Perf');
-  await page.fill('[data-testid="connection-host"]', '127.0.0.1');
-  await page.fill('[data-testid="connection-port"]', '27017');
-  await page.fill('[data-testid="connection-database"]', 'kira_test');
-  await page.fill('[data-testid="connection-username"]', 'kira');
-  await page.click('[data-testid="color-red"]');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(page, 'mongodb', 'Mongo Perf');
   const connRow = connectionRow(page);
   await openRowMenu(page, '');
   await page.click('[data-testid="menu-item-connect"]');

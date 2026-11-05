@@ -342,7 +342,7 @@ func TestHttpSendFailure_OpLogErrorNeverContainsSecret(t *testing.T) {
 	defer wiring.Stop()
 
 	tabID := "tab1"
-	spec := adapterhost.OpSpec{OpID: "op-http-fail", Kind: "http", TabID: &tabID}
+	spec := adapterhost.OpSpec{OpID: "77836346-c554-7005-86e5-b4e461e0b2f8", Kind: "http", TabID: &tabID}
 	_, _, runErr := host.RunOp(context.Background(), spec,
 		func(ctx context.Context, op *adapters.OpCtx) (any, error) {
 			// The exact shape bridge/http.go's Send closure produces for a transport failure whose
@@ -381,7 +381,7 @@ func TestHttpSendFailure_OpLogErrorNeverContainsSecret(t *testing.T) {
 	}
 
 	var rawError string
-	if err := db.DB.QueryRow(`SELECT error FROM op_log WHERE id = ?`, "op-http-fail").Scan(&rawError); err != nil {
+	if err := db.DB.QueryRow(`SELECT error FROM op_log WHERE id = ?`, "77836346-c554-7005-86e5-b4e461e0b2f8").Scan(&rawError); err != nil {
 		t.Fatalf("query op_log.error: %v", err)
 	}
 	if strings.Contains(rawError, secret) {
@@ -389,7 +389,7 @@ func TestHttpSendFailure_OpLogErrorNeverContainsSecret(t *testing.T) {
 	}
 }
 
-// TestMaskSecrets_MasksURLEncodedBodyDespiteQueryEscape: secretReplacer used to build
+// TestMaskSecrets_MasksURLEncodedBodyDespiteQueryEscape: apivars.Replacer used to build
 // its strings.Replacer over each secret's own *plaintext*, but a urlencoded body's rendered wire
 // text (resp.Wire.Request) is the *url.QueryEscape'd* form buildURLEncoded/encodeURLEncodedFields
 // produced — url.QueryEscape rewrites space, '+', '@' (among others), so a secret value
@@ -596,7 +596,7 @@ func TestMaskSecrets_MasksBothPlainAndPipedFormsOfOneSecret(t *testing.T) {
 // long one, leaking its own tail in plaintext right next to a masked placeholder.
 func TestSecretReplacer_LongerRenderedFormIsNotShadowedByAShorterOne(t *testing.T) {
 	// "AB" is a prefix of "ABCDEF" — listed in *ascending* length order here, on purpose, so the
-	// test actually exercises secretReplacer's own sort rather than happening to pass because the
+	// test actually exercises Replacer's own sort rather than happening to pass because the
 	// caller already listed them safely.
 	usedSecrets := []apivars.UsedSecret{
 		{Name: "short", Rendered: "AB", Placeholder: "{{short}}"},

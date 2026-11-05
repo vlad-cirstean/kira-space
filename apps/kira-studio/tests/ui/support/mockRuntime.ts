@@ -116,18 +116,31 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   collectionsSaveRequest: 'CollectionsService.SaveRequest',
   collectionsCreateCollection: 'CollectionsService.CreateCollection',
   collectionsCreateItem: 'CollectionsService.CreateItem',
+  collectionsRename: 'CollectionsService.Rename',
+  collectionsDeleteMany: 'CollectionsService.DeleteMany',
+  collectionsMoveItems: 'CollectionsService.MoveItems',
+  collectionsReorderCollections: 'CollectionsService.ReorderCollections',
   collectionsImport: 'CollectionsService.Import',
   collectionsExport: 'CollectionsService.Export',
   apiConfigView: 'ApiConfigService.View',
   apiConfigSetSecret: 'ApiConfigService.SetSecret',
   apiConfigDeleteSecret: 'ApiConfigService.DeleteSecret',
+  apiConfigFile: 'ApiConfigService.File',
+  apiConfigSaveFile: 'ApiConfigService.SaveFile',
+  apiConfigForm: 'ApiConfigService.Form',
+  apiConfigAgentAccess: 'ApiConfigService.AgentAccess',
   connectionConfigView: 'ConnectionConfigService.View',
   connectionConfigFile: 'ConnectionConfigService.File',
   connectionConfigSaveFile: 'ConnectionConfigService.SaveFile',
+  connectionConfigForm: 'ConnectionConfigService.Form',
+  connectionConfigDeleteFile: 'ConnectionConfigService.DeleteFile',
   connectionConfigSetSecret: 'ConnectionConfigService.SetSecret',
   connectionConfigDeleteSecret: 'ConnectionConfigService.DeleteSecret',
   variablesListEnvironments: 'VariablesService.ListEnvironments',
   variablesCreateEnvironment: 'VariablesService.CreateEnvironment',
+  variablesDeleteEnvironment: 'VariablesService.DeleteEnvironment',
+  variablesDuplicateEnvironment: 'VariablesService.DuplicateEnvironment',
+  variablesReorderEnvironments: 'VariablesService.ReorderEnvironments',
   variablesSetActiveEnvironment: 'VariablesService.SetActiveEnvironment',
   variablesList: 'VariablesService.List',
   variablesHistory: 'VariablesService.History',
@@ -154,10 +167,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   dbMcpSetEnabled: 'DbMcpService.SetEnabled',
   dbMcpRegenerate: 'DbMcpService.Regenerate',
   dbMcpInstallAgent: 'DbMcpService.InstallAgent',
-  dbMcpPendingApprovals: 'DbMcpService.PendingApprovals',
   dbMcpPendingResponse: 'DbMcpService.PendingResponse',
-  dbMcpApproveQuery: 'DbMcpService.ApproveQuery',
-  dbMcpDenyQuery: 'DbMcpService.DenyQuery',
 
   updateStatus: 'UpdateService.Status',
   updateCheck: 'UpdateService.Check',
@@ -177,9 +187,13 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   customScriptsDelete: 'CustomScriptsService.Delete',
   customScriptsFile: 'CustomScriptsService.File',
   customScriptsSaveFile: 'CustomScriptsService.SaveFile',
+  customScriptsForm: 'CustomScriptsService.Form',
   customScriptsSetSecrets: 'CustomScriptsService.SetSecrets',
   customScriptsReorder: 'CustomScriptsService.Reorder',
   customScriptsReorderCollections: 'CustomScriptsService.ReorderCollections',
+  customScriptsMove: 'CustomScriptsService.Move',
+  customScriptsRenameCollection: 'CustomScriptsService.RenameCollection',
+  customScriptsDeleteCollection: 'CustomScriptsService.DeleteCollection',
   scriptRunsList: 'ScriptRunsService.List',
   scriptRunsNextFires: 'ScriptRunsService.NextFires',
   scriptRunsMcpServers: 'ScriptRunsService.McpServers',
@@ -187,6 +201,8 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   scriptRunsRunScheduleNow: 'ScriptRunsService.RunScheduleNow',
   scriptRunsConfirmAccept: 'ScriptRunsService.ConfirmAccept',
   scriptRunsConfirmDecline: 'ScriptRunsService.ConfirmDecline',
+  approvalsList: 'ApprovalsService.List',
+  approvalsAnswer: 'ApprovalsService.Answer',
   promptsList: 'PromptsService.List',
   promptsMainWindow: 'PromptsService.MainWindow',
   promptsClaim: 'PromptsService.Claim',
@@ -211,6 +227,9 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   proofOpenWindow: 'ProofService.OpenWindow',
   proofWindowTarget: 'ProofService.WindowTarget',
   proofSavePng: 'ProofService.SavePng',
+  proofChooseShotFolder: 'ProofService.ChooseShotFolder',
+  proofSavePngTo: 'ProofService.SavePngTo',
+  proofForgetShotFolder: 'ProofService.ForgetShotFolder',
   scriptRunsGet: 'ScriptRunsService.Get',
   scriptRunsStop: 'ScriptRunsService.Stop',
   scriptRunsResume: 'ScriptRunsService.Resume',
@@ -358,6 +377,9 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
     editable: true,
     secrets: [],
   }),
+  // The connection file dialog applies its draft text through the form call; an empty file has no
+  // model and no problem unless a spec says so.
+  [IPC.connectionConfigForm]: JSON.stringify({ text: '', value: null, problem: null }),
   // Every SQL console loads its connection's own DDL document on mount
   // (state/schemas.ts's ensureDdl) — a spec with no Schema (DDL)… of its own gets the same
   // "absent until the user writes one" empty document a fresh connection gets, not a fixture
@@ -392,6 +414,9 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   [IPC.proofOpenWindow]: '{"key":"proof-1","opened":true}',
   [IPC.proofWindowTarget]: '{"sessionId":null}',
   [IPC.proofSavePng]: '{"saved":false,"path":null}',
+  [IPC.proofChooseShotFolder]: '{"canceled":true,"id":"","path":""}',
+  [IPC.proofSavePngTo]: '{"path":""}',
+  [IPC.proofForgetShotFolder]: 'null',
   [IPC.tabsSave]: 'null',
   [IPC.layoutSet]: JSON.stringify(defaultLayout),
   [IPC.settingsSet]: JSON.stringify(defaultSettings),
@@ -436,13 +461,10 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   // at all — ResponsePane.vue's History segment fetches on mount, so "no history yet for a request
   // never seen before" is the right default rather than a fixture miss.
   [IPC.historyList]: '[]',
-  // hydrateDbMcpApprovals() joins the same unconditional-every-boot Promise.all every other
-  // hydrate* call in main.ts's bootstrap() does — nothing in tests/ui/ exercises a prompt-mode
-  // approval queue, so "nothing pending" is the correct empty answer for a spec with no fixture of
-  // its own, the same reasoning every other unawaited-by-a-spec boot call above already gets.
-  [IPC.dbMcpPendingApprovals]: JSON.stringify({ pending: null, queued: 0 }),
-  // M1 §6.2: hydrateDbMcp() joins the same unconditional-every-boot Promise.all as
-  // dbMcpPendingApprovals above, same reasoning — nothing in tests/ui/ seeds a dbmcp fixture, so
+  // P520: nothing pending unless a spec pushes the queue (pushApprovals).
+  [IPC.approvalsList]: '[]',
+  // M1 §6.2: hydrateDbMcp() joins the same unconditional-every-boot Promise.all, same
+  // reasoning — nothing in tests/ui/ seeds a dbmcp fixture, so
   // "off, nothing running" is the honest default for a dev-server run under Playwright.
   [IPC.dbMcpStatus]: JSON.stringify({
     running: false,

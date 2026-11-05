@@ -2,8 +2,8 @@
   "args:git:review.removed.dismiss": {
     "branch": "feat",
     "ids": [
-      1,
-      2
+      "<id:1>",
+      "<id:2>"
     ],
     "repoId": "<work>/proj"
   },
@@ -22,7 +22,7 @@
     "entries": [
       {
         "contentKind": "text",
-        "id": 1,
+        "id": "<id:1>",
         "origin": "commit",
         "path": "a.txt",
         "range": {
@@ -37,7 +37,7 @@
       },
       {
         "contentKind": "text",
-        "id": 2,
+        "id": "<id:2>",
         "origin": "commit",
         "path": "new.txt",
         "range": {

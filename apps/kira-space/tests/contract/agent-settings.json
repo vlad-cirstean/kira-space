@@ -73,7 +73,7 @@
         "files": [
           {
             "name": "config.json",
-            "text": "{\n  \"Env\": {\n    \"P453_MARK\": \"${secret:gh-token}\"\n  },\n  \"MCP\": [\n    {\n      \"Name\": \"gh\",\n      \"URL\": \"http://127.0.0.1:9/mcp\",\n      \"Headers\": {\n        \"Authorization\": \"Bearer ${secret:gh-token}\"\n      },\n      \"Command\": \"\",\n      \"Args\": null,\n      \"Env\": null\n    }\n  ],\n  \"Allow\": null,\n  \"Deny\": null,\n  \"Hooks\": [\n    {\n      \"Name\": \"mark\",\n      \"Matcher\": \"\",\n      \"Command\": \"echo mark\",\n      \"Event\": \"SessionStart\",\n      \"TimeoutSec\": 60\n    }\n  ],\n  \"Section\": null\n}"
+            "text": "{\n  \"Env\": {\n    \"P453_MARK\": \"${secret:gh-token}\"\n  },\n  \"MCP\": [\n    {\n      \"Name\": \"gh\",\n      \"URL\": \"http://127.0.0.1:9/mcp\",\n      \"Headers\": {\n        \"Authorization\": \"Bearer ${secret:gh-token}\"\n      },\n      \"Command\": \"\",\n      \"Args\": null,\n      \"Env\": null,\n      \"Timeout\": 0\n    }\n  ],\n  \"Allow\": null,\n  \"Deny\": null,\n  \"Hooks\": [\n    {\n      \"Name\": \"mark\",\n      \"Matcher\": \"\",\n      \"Command\": \"echo mark\",\n      \"Event\": \"SessionStart\",\n      \"TimeoutSec\": 60\n    }\n  ],\n  \"Section\": null\n}"
           }
         ],
         "id": "fake",

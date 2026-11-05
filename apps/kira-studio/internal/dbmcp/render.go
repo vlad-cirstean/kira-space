@@ -133,6 +133,10 @@ type connectionView struct {
 	Description string `json:"description,omitempty"`
 	// Permissions is M2's per-operation MCP mode, always present.
 	Permissions connectionPermissions `json:"permissions"`
+	// Access is what each declared run_query mode allows (accessOf); Enforcement says what backs
+	// mode read: session, app or none.
+	Access      connectionAccess `json:"access"`
+	Enforcement string           `json:"enforcement"`
 	// MaskedColumns is "table.column: kind" per rule, sorted, capped at 50 with a trailing
 	// "+N more" entry — so a client that does not know a column is masked does not misread a bucket
 	// string (e.g. "[1000-10000)") as a literal value. Omitted when the connection

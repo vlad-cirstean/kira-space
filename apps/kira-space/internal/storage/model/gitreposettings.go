@@ -28,6 +28,9 @@ type GitRepoSettings struct {
 	// single highest-value safety property in the whole feature). Deliberately NOT validated
 	// beyond being a string: it is shell text the user wrote, not a value this app parses.
 	WorktreePrepareScript string `json:"worktreePrepareScript"`
+	// WorktreePrepareRun runs a Run-module script instead of WorktreePrepareScript. Repo file only;
+	// not on the git-ui wire.
+	WorktreePrepareRun *ScriptRef `json:"worktreePrepareRun,omitempty"`
 	// WorktreePrepareTimeout is P145 F2's per-repo hard cap for that script (a Go duration, default
 	// 15m, max 2h), shared by git-ui's worktree add and ade. Not on the git-ui wire.
 	WorktreePrepareTimeout string `json:"worktreePrepareTimeout"`

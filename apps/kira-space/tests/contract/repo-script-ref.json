@@ -1,0 +1,22 @@
+{
+  "RepoConfigService.File#env-both": {
+    "line": 3,
+    "message": "An environment needs exactly one of deployed_sha_script and deployed_sha_run."
+  },
+  "RepoConfigService.File#env-neither": {
+    "line": 3,
+    "message": "An environment needs exactly one of deployed_sha_script and deployed_sha_run."
+  },
+  "RepoConfigService.File#param-name": {
+    "line": 3,
+    "message": "A param name is lowercase letters, digits and underscores, starting with a letter, at most 32 characters."
+  },
+  "RepoConfigService.File#prepare-both": {
+    "line": 4,
+    "message": "Set one of prepare_script and prepare_run, not both."
+  },
+  "RepoConfigService.File#script-blank": {
+    "line": 3,
+    "message": "A script reference needs a script name on one line, at most 200 characters."
+  }
+}

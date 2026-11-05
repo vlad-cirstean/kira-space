@@ -111,7 +111,7 @@ async function dismiss(): Promise<void> {
       <DialogHeader>
         <DialogTitle>{{ t('memory.import.documents.label') }}</DialogTitle>
       </DialogHeader>
-      <DialogBody class="text-kira-md">
+      <DialogBody>
         <Alert v-if="actError" variant="error" data-testid="import-confirm-error">
           <AlertDescription>{{ actError }}</AlertDescription>
         </Alert>

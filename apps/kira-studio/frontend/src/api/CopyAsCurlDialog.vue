@@ -87,8 +87,18 @@ function close(): void {
           data-testid="copy-as-curl-strip"
         >
           <AlertDescription>{{ stripText }}</AlertDescription>
-          <AlertAction v-if="maskedNames.length > 0">
+          <AlertAction v-if="maskedNames.length > 0 || hasRevealedAny">
             <Button
+              v-if="hasRevealedAny"
+              variant="dialog"
+              size="kira"
+              data-testid="copy-as-curl-hide"
+              @click="copyAsCurlStore.hideSecretValues()"
+            >
+              {{ t('studio.api.copyAsCurl.hide.label') }}
+            </Button>
+            <Button
+              v-if="maskedNames.length > 0"
               variant="dialog"
               size="kira"
               :pending="reveal.pending.value"

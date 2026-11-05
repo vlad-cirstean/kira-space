@@ -1,5 +1,6 @@
 import type { ConnectionKind } from '@shared/domain/connection';
 import type { KibanaConsoleState } from '@shared/domain/kibana';
+import { newUuid } from '@shared/ids';
 import type { Page } from '@shared/protocol/page';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
@@ -260,7 +261,7 @@ async function runAutoExplainGate(
   statements: string[],
   isTabOpen: () => boolean,
 ): Promise<'proceed' | 'stop'> {
-  const explainOpId = crypto.randomUUID();
+  const explainOpId = newUuid();
   rt.explainOpId = explainOpId;
   let autoExplainResult: AutoExplainState | null;
   try {
@@ -470,7 +471,7 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
     const tab = useTabsStore().findConsoleTab(tabId);
     if (!tab?.connectionId) return;
     const rt = ensureRuntime(tabId);
-    const opId = crypto.randomUUID();
+    const opId = newUuid();
     rt.status = 'running';
     rt.opId = opId;
     rt.lastStatements = statements;
@@ -599,7 +600,7 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
     // deliberately left untouched either way (see the docstring above): a failure here is reported
     // through this function's own return value, not the shared error strip.
     const rt = ensureRuntime(tabId);
-    const opId = crypto.randomUUID();
+    const opId = newUuid();
     rt.status = 'running';
     rt.opId = opId;
 

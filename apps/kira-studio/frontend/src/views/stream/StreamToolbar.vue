@@ -251,9 +251,8 @@ async function onDeleteMessage(): Promise<void> {
       <Tooltip v-if="isBatch">
         <TooltipTrigger as-child>
           <Button
-            variant="toolbar"
+            variant="dialog-primary"
             size="kira"
-            class="bg-field text-fg"
             data-testid="stream-poll"
             :disabled="isReadOnlyBatch && !visibilityValid"
             @click="onPoll"
@@ -338,7 +337,7 @@ async function onDeleteMessage(): Promise<void> {
       <TooltipIconButton
         :icon="ICON.search"
         :label="t('studio.common.searchPage.label')"
-        :class="{ 'bg-field text-fg': rt?.searchOpen }"
+        :pressed="!!rt?.searchOpen"
         data-testid="stream-search-toggle"
         @click="streamViewStore.toggleSearchOpen(tab.id)"
       />

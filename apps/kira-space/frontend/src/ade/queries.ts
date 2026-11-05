@@ -12,11 +12,13 @@ import {
   handoversPrefix,
   issuePrefix,
   reviewStepPrefix,
+  stepYamlKey,
   workflowYamlKey,
 } from './v2/queries';
 import { installAdeReadSignals } from './v2/readSignals';
 import { agentSettingsKey } from './v2/settings/queries';
 import { useAdeBoardUiStore } from './v2/state/adeBoardUi';
+import { trackedUpdatesKey } from './v2/updates/queries';
 
 const reviewAgentPrefix = ['adetask', 'reviewAgent'] as const;
 
@@ -49,6 +51,7 @@ export function installAdeSignals(
   // Desktop-only extras on top of the shared read upkeep.
   control.onAdeTaskWorkflows(() => {
     void queryClient.invalidateQueries({ queryKey: workflowYamlKey });
+    void queryClient.invalidateQueries({ queryKey: stepYamlKey });
   });
   control.onAdeTaskSessions(() => {
     void queryClient.invalidateQueries({ queryKey: reviewAgentPrefix });
@@ -75,6 +78,9 @@ export function installAdeSignals(
     void queryClient.invalidateQueries({ queryKey: issuePrefix });
   });
   control.onAdeTaskRuns(refreshReviewStep);
+  control.onAdeTaskUpdates(() => {
+    void queryClient.invalidateQueries({ queryKey: trackedUpdatesKey, exact: true });
+  });
   control.onAdeTaskOpenSession((event) => {
     useAdeBoardUiStore().openSession(event);
   });

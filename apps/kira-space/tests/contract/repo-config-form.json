@@ -1,0 +1,351 @@
+{
+  "args:RepoConfigService.Form#bad": {
+    "edits": [],
+    "file": "proj.yaml",
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_run:\n    script: Install deps\nenvironments:\n  - name: staging\n    deployed_sha_run:\n      script: Staging sha\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nintegration_branches: [develop]\n  broken: [\n"
+  },
+  "args:RepoConfigService.Form#edited": {
+    "edits": [
+      {
+        "path": [
+          "nickname"
+        ],
+        "unset": false,
+        "value": "Web app"
+      },
+      {
+        "path": [
+          "worktree",
+          "prepare_script"
+        ],
+        "unset": false,
+        "value": "bun install"
+      },
+      {
+        "path": [
+          "worktree",
+          "prepare_run"
+        ],
+        "unset": true,
+        "value": null
+      },
+      {
+        "path": [
+          "environments"
+        ],
+        "unset": false,
+        "value": [
+          {
+            "deployed_sha_script": "curl -fsS https://staging.example.com/version",
+            "name": "staging"
+          },
+          {
+            "deployed_sha_run": {
+              "script": "Prod sha"
+            },
+            "name": "prod"
+          }
+        ]
+      },
+      {
+        "path": [
+          "integration_branches"
+        ],
+        "unset": true,
+        "value": null
+      }
+    ],
+    "file": "proj.yaml",
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_run:\n    script: Install deps\nenvironments:\n  - name: staging\n    deployed_sha_run:\n      script: Staging sha\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nintegration_branches: [develop]\n"
+  },
+  "args:RepoConfigService.Form#env": {
+    "edits": [
+      {
+        "path": [
+          "environments"
+        ],
+        "unset": false,
+        "value": [
+          {
+            "deployed_sha_script": "curl -fsS https://staging.example.com/version",
+            "name": "staging"
+          },
+          {
+            "deployed_sha_run": {
+              "script": "Prod sha"
+            },
+            "name": "prod"
+          }
+        ]
+      }
+    ],
+    "file": "proj.yaml",
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_run:\n    script: Install deps\nenvironments:\n  - name: staging\n    deployed_sha_run:\n      script: Staging sha\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nintegration_branches: [develop]\n"
+  },
+  "args:RepoConfigService.Form#read": {
+    "edits": [],
+    "file": "proj.yaml",
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_run:\n    script: Install deps\nenvironments:\n  - name: staging\n    deployed_sha_run:\n      script: Staging sha\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nintegration_branches: [develop]\n"
+  },
+  "args:RepoConfigService.Form#rename": {
+    "edits": [
+      {
+        "path": [
+          "nickname"
+        ],
+        "unset": false,
+        "value": "Web app"
+      }
+    ],
+    "file": "proj.yaml",
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_run:\n    script: Install deps\nenvironments:\n  - name: staging\n    deployed_sha_run:\n      script: Staging sha\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nintegration_branches: [develop]\n"
+  },
+  "args:RepoConfigService.Form#seam": {
+    "edits": [
+      {
+        "path": [
+          "worktree",
+          "prepare_script"
+        ],
+        "unset": false,
+        "value": "bun install"
+      },
+      {
+        "path": [
+          "worktree",
+          "prepare_run"
+        ],
+        "unset": true,
+        "value": null
+      },
+      {
+        "path": [
+          "worktree",
+          "prepare_run"
+        ],
+        "unset": true,
+        "value": null
+      }
+    ],
+    "file": "proj.yaml",
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_run:\n    script: Install deps\nenvironments:\n  - name: staging\n    deployed_sha_run:\n      script: Staging sha\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nintegration_branches: [develop]\n"
+  },
+  "args:RepoConfigService.Form#yaml": {
+    "edits": [],
+    "file": "proj.yaml",
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Shop # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_run:\n    script: Install deps\nenvironments:\n  - name: staging\n    deployed_sha_run:\n      script: Staging sha\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nintegration_branches: [develop]\n"
+  },
+  "args:RepoConfigService.SaveFile": {
+    "baseHash": "<masked>",
+    "file": "proj.yaml",
+    "path": "",
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web app # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_script: bun install\nenvironments:\n  - deployed_sha_script: curl -fsS https://staging.example.com/version\n    name: staging\n  - deployed_sha_run:\n      script: Prod sha\n    name: prod\n"
+  },
+  "file#read": {
+    "editable": true,
+    "exists": true,
+    "file": "proj.yaml",
+    "filePath": "<masked>",
+    "hash": "<masked>",
+    "lastGood": false,
+    "path": "<work>/proj",
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_run:\n    script: Install deps\nenvironments:\n  - name: staging\n    deployed_sha_run:\n      script: Staging sha\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nintegration_branches: [develop]\n"
+  },
+  "file#saved": {
+    "editable": true,
+    "exists": true,
+    "file": "proj.yaml",
+    "filePath": "<masked>",
+    "hash": "<masked>",
+    "lastGood": false,
+    "path": "<work>/proj",
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web app # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_script: bun install\nenvironments:\n  - deployed_sha_script: curl -fsS https://staging.example.com/version\n    name: staging\n  - deployed_sha_run:\n      script: Prod sha\n    name: prod\n"
+  },
+  "form#bad": {
+    "problem": {
+      "col": 0,
+      "line": 1,
+      "message": "Invalid YAML syntax: did not find expected key.",
+      "path": ""
+    },
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_run:\n    script: Install deps\nenvironments:\n  - name: staging\n    deployed_sha_run:\n      script: Staging sha\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nintegration_branches: [develop]\n  broken: [\n",
+    "value": null
+  },
+  "form#edited": {
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web app # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_script: bun install\nenvironments:\n  - deployed_sha_script: curl -fsS https://staging.example.com/version\n    name: staging\n  - deployed_sha_run:\n      script: Prod sha\n    name: prod\n",
+    "value": {
+      "environments": [
+        {
+          "deployed_sha_script": "curl -fsS https://staging.example.com/version",
+          "name": "staging"
+        },
+        {
+          "deployed_sha_run": {
+            "script": "Prod sha"
+          },
+          "name": "prod"
+        }
+      ],
+      "nickname": "Web app",
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_script": "bun install",
+        "prepare_timeout": "15m"
+      }
+    }
+  },
+  "form#env": {
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_run:\n    script: Install deps\nenvironments:\n  - deployed_sha_script: curl -fsS https://staging.example.com/version\n    name: staging\n  - deployed_sha_run:\n      script: Prod sha\n    name: prod\nintegration_branches: [develop]\n",
+    "value": {
+      "environments": [
+        {
+          "deployed_sha_script": "curl -fsS https://staging.example.com/version",
+          "name": "staging"
+        },
+        {
+          "deployed_sha_run": {
+            "script": "Prod sha"
+          },
+          "name": "prod"
+        }
+      ],
+      "integration_branches": [
+        "develop"
+      ],
+      "nickname": "Web",
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_run": {
+          "script": "Install deps"
+        },
+        "prepare_timeout": "15m"
+      }
+    }
+  },
+  "form#read": {
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_run:\n    script: Install deps\nenvironments:\n  - name: staging\n    deployed_sha_run:\n      script: Staging sha\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nintegration_branches: [develop]\n",
+    "value": {
+      "environments": [
+        {
+          "deployed_sha_run": {
+            "script": "Staging sha"
+          },
+          "name": "staging"
+        },
+        {
+          "deployed_sha_run": {
+            "script": "Prod sha"
+          },
+          "name": "prod"
+        }
+      ],
+      "integration_branches": [
+        "develop"
+      ],
+      "nickname": "Web",
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_run": {
+          "script": "Install deps"
+        },
+        "prepare_timeout": "15m"
+      }
+    }
+  },
+  "form#rename": {
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web app # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_run:\n    script: Install deps\nenvironments:\n  - name: staging\n    deployed_sha_run:\n      script: Staging sha\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nintegration_branches: [develop]\n",
+    "value": {
+      "environments": [
+        {
+          "deployed_sha_run": {
+            "script": "Staging sha"
+          },
+          "name": "staging"
+        },
+        {
+          "deployed_sha_run": {
+            "script": "Prod sha"
+          },
+          "name": "prod"
+        }
+      ],
+      "integration_branches": [
+        "develop"
+      ],
+      "nickname": "Web app",
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_run": {
+          "script": "Install deps"
+        },
+        "prepare_timeout": "15m"
+      }
+    }
+  },
+  "form#seam": {
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_script: bun install\nenvironments:\n  - name: staging\n    deployed_sha_run:\n      script: Staging sha\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nintegration_branches: [develop]\n",
+    "value": {
+      "environments": [
+        {
+          "deployed_sha_run": {
+            "script": "Staging sha"
+          },
+          "name": "staging"
+        },
+        {
+          "deployed_sha_run": {
+            "script": "Prod sha"
+          },
+          "name": "prod"
+        }
+      ],
+      "integration_branches": [
+        "develop"
+      ],
+      "nickname": "Web",
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_script": "bun install",
+        "prepare_timeout": "15m"
+      }
+    }
+  },
+  "form#yaml": {
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Shop # shown in the board\nworktree:\n  prepare_timeout: 15m\n  prepare_run:\n    script: Install deps\nenvironments:\n  - name: staging\n    deployed_sha_run:\n      script: Staging sha\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nintegration_branches: [develop]\n",
+    "value": {
+      "environments": [
+        {
+          "deployed_sha_run": {
+            "script": "Staging sha"
+          },
+          "name": "staging"
+        },
+        {
+          "deployed_sha_run": {
+            "script": "Prod sha"
+          },
+          "name": "prod"
+        }
+      ],
+      "integration_branches": [
+        "develop"
+      ],
+      "nickname": "Shop",
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_run": {
+          "script": "Install deps"
+        },
+        "prepare_timeout": "15m"
+      }
+    }
+  }
+}

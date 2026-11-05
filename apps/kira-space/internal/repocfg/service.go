@@ -16,8 +16,11 @@ const template = `# nickname: ""
 # environments:
 #   - name: staging
 #     deployed_sha_script: curl -fsS https://staging.example.com/version
+#   - name: prod
+#     deployed_sha_run: { script: Prod sha }
 # worktree:
 #   prepare_script: bun install
+#   # or a Run script: prepare_run: { script: Install deps, params: { mode: ci } }
 #   prepare_timeout: 15m
 #   base_path: ""
 # graph:

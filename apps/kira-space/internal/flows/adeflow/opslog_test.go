@@ -96,10 +96,10 @@ func TestOpsAde(t *testing.T) {
 	})
 
 	t.Run("mcp request_branches", func(t *testing.T) {
-		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall("api")}, Name: "done"}}, onceStepYML, false)
+		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/ops"})}, Name: "done"}}, onceStepYML, false)
 		f.startRun(t)
 		req := f.waitRequest(t)
-		if _, err := f.app.W.AdeTask.ApproveBranchRequest(adewire.ApproveBranchRequestArgs{ID: req.ID, CodeRepoIDs: []string{f.api}}); err != nil {
+		if _, err := approveBR(f.app, req.ID, []string{req.Items[0].ID}, nil); err != nil {
 			t.Fatal(err)
 		}
 		waitRun(t, f.app, f.task.ID, "one", "done")
@@ -124,16 +124,12 @@ func TestOpsAde(t *testing.T) {
 		if child.Kind != "worktreeAdd" || child.Module != oplog.ModuleADE || len(child.Steps) == 0 || child.Command == nil {
 			t.Fatalf("child op = %+v, want an ade worktreeAdd with steps", child)
 		}
-		slug := regexp.MustCompile(`kira/(\w+)`).FindStringSubmatch(*child.Command)
-		if slug == nil {
-			t.Fatalf("no kira/<id> branch in %q", *child.Command)
-		}
 		folder := regexp.MustCompile(`/wt/api/(\w+)`).FindStringSubmatch(*child.Command)
 		if folder == nil {
 			t.Fatalf("no wt/api/<folder> worktree in %q", *child.Command)
 		}
 		f.app.Contract(t, opsScenario, "record#child", child, flowharness.Mask("id", "startedAt", "durationMs", "parentId", "taskId"),
-			flowharness.Replace(f.app.Work, "<work>"), flowharness.Replace(folder[1], "<folder-id>"), flowharness.Replace(slug[1], "<branch-id>"))
+			flowharness.Replace(f.app.Work, "<work>"), flowharness.Replace(folder[1], "<folder-id>"))
 		f.app.Contract(t, opsScenario, "record#mcp", call, opMask)
 		noAppModule(t, opsNow(t, f.app))
 	})

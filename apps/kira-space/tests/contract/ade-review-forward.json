@@ -3,7 +3,7 @@
     "count": 2
   },
   "AdeTaskService.ReviewForwardText": {
-    "text": "My review comments on api feat/api-review-forward (base origin/main):\n#1 change r.txt:1\nrename this\n#2 question r.txt:3\nwhy twice?\nAnswer each question. Make the change a change comment asks for."
+    "text": "My review comments on api feat/api-review-forward (base origin/main):\nid 1 change r.txt:1\nrename this\nid 2 question r.txt:3\nwhy twice?\nAnswer each question. Make the change a change comment asks for."
   },
   "args:AdeTaskService.ForwardReviewComments": {
     "branchId": "<id:1>"
@@ -16,7 +16,7 @@
         "anchorSha": "<masked>",
         "body": "already handled",
         "createdAt": 0,
-        "id": 3,
+        "id": "3",
         "kind": "change",
         "origin": "commit",
         "path": "r.txt",

@@ -35,6 +35,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/appevent"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/memory"
 	memembed "github.com/kirathecat/kira-studio/internal/memory/embed"
@@ -201,8 +202,8 @@ func closeTaskReviewWindows(repositories *repos.Repos, closeWindow func(key stri
 func wireAdeTask(
 	repositories *repos.Repos, events *bridge.Events, git gitWired, tracker *ade.Tracker, closeTerminal func(string) error,
 	closeReviewWindows func(taskID string), credentials *gitcred.Relay, keepAwake *bridge.KeepAwakeService,
-	notifier *agentnotify.Notifier, usage *agentusage.Service, rebaseTimeout, branchRequestWait time.Duration, runs *scriptruns.Service,
-	agents harness.Selector, promptSink prompts.Sink, repoFiles *repocfg.Store,
+	notifier *agentnotify.Notifier, usage *agentusage.Service, rebaseTimeout, branchRequestWait time.Duration, updates ade.UpdatesConfig, runs *scriptruns.Service,
+	agents harness.Selector, promptSink prompts.Sink, approvalQueue *approvals.Queue, repoFiles *repocfg.Store,
 ) *ade.TaskBoard {
 	userHome, err := os.UserHomeDir()
 	if err != nil {
@@ -214,15 +215,18 @@ func wireAdeTask(
 		ContextFile: runs.ContextFile,
 		AgentConfig: runs.AgentConfig, Servers: runs.Servers,
 		Ops:     git.opLog,
-		Prompts: runs.LlmPrompts, PromptSink: promptSink,
+		Prompts: runs.LlmPrompts, PromptSink: promptSink, Approvals: approvalQueue,
 		Tasks: repositories.AdeTasks, Statuses: repositories.AdeStatuses, RepoConfig: repositories.AdeRepoConfig,
 		CodeRepos: repositories.CodeRepos, GitRepoSettings: repoFiles.Settings, RepoFile: repoFile(repoFiles),
-		Registry:    git.registry,
-		Trackers:    git.trackers,
-		GitStatus:   func(ctx context.Context) gitclient.GitStatus { return git.discovery.Status(ctx, gitPath()) },
-		Askpass:     git.askpassBroker,
-		Workflows:   &adeflow.Reader{Dir: adeflow.Dir(config.KiraSpaceHome()), Store: repositories.AdeTasks},
-		OnBoard:     func() { bridge.AdeTaskBoardChanged(events) },
+		Registry:  git.registry,
+		Trackers:  git.trackers,
+		GitStatus: func(ctx context.Context) gitclient.GitStatus { return git.discovery.Status(ctx, gitPath()) },
+		Askpass:   git.askpassBroker,
+		Workflows: &adeflow.Reader{Dir: adeflow.Dir(config.KiraSpaceHome()), Store: repositories.AdeTasks,
+			Steps: &adeflow.StepLibrary{Dir: adeflow.StepsDir(config.KiraSpaceHome()), DB: repositories.CustomScripts.DB}},
+		OnBoard:      func() { bridge.AdeTaskBoardChanged(events) },
+		OnUpdates:    func() { bridge.AdeTaskUpdatesChanged(events) },
+		TrackedItems: repositories.AdeTrackedItems, Updates: updates,
 		OnWorkflows: func() { bridge.AdeTaskWorkflowsChanged(events) },
 		OnRepos:     func() { bridge.AdeTaskReposChanged(events) },
 		Facts:       repositories.AdeFacts,

@@ -51,27 +51,57 @@ func (s *Secrets) Reveal(name string) (string, error) {
 	return s.Snapshot().Secret(context.Background(), "", name)
 }
 
-// Snapshot resolves ${secret:name} for one send: the first reference decrypts every Api secret once and
-// later references read that copy.
-func (s *Secrets) Snapshot() configfs.SecretSource {
-	var (
-		once       sync.Once
-		vals       map[string]string
-		unreadable map[string]error
-		err        error
-	)
+// Opened is every Api secret decrypted once: the values, and the names that cannot be read.
+type Opened struct {
+	vals       map[string]string
+	unreadable map[string]error
+}
+
+// OpenAll decrypts every Api secret once.
+func (s *Secrets) OpenAll() (*Opened, error) {
+	vals, unreadable, err := s.Store.Open(secrets.ScopeVariable, SecretOwner)
+	if err != nil {
+		return nil, err
+	}
+	return &Opened{vals: vals, unreadable: unreadable}, nil
+}
+
+// Values lists every readable value, for masking.
+func (o *Opened) Values() []string {
+	out := make([]string, 0, len(o.vals))
+	for _, v := range o.vals {
+		out = append(out, v)
+	}
+	return out
+}
+
+// Source resolves ${secret:name} from the opened copy.
+func (o *Opened) Source() configfs.SecretSource {
 	return configfs.SecretSourceFunc(func(_ context.Context, _, name string) (string, error) {
-		once.Do(func() { vals, unreadable, err = s.Store.Open(secrets.ScopeVariable, SecretOwner) })
-		if err != nil {
-			return "", err
-		}
-		if bad, ok := unreadable[name]; ok {
+		if bad, ok := o.unreadable[name]; ok {
 			return "", fmt.Errorf("%w: %w", ErrSecretUnreadable, bad)
 		}
-		v, ok := vals[name]
+		v, ok := o.vals[name]
 		if !ok {
 			return "", configfs.ErrSecretMissing
 		}
 		return v, nil
+	})
+}
+
+// Snapshot resolves ${secret:name} for one send: the first reference decrypts every Api secret once and
+// later references read that copy.
+func (s *Secrets) Snapshot() configfs.SecretSource {
+	var (
+		once   sync.Once
+		opened *Opened
+		err    error
+	)
+	return configfs.SecretSourceFunc(func(ctx context.Context, ns, name string) (string, error) {
+		once.Do(func() { opened, err = s.OpenAll() })
+		if err != nil {
+			return "", err
+		}
+		return opened.Source().Secret(ctx, ns, name)
 	})
 }

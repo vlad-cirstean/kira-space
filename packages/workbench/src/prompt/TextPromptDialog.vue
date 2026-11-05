@@ -3,6 +3,7 @@ import { Button } from '@theme/components/ui/button';
 import { dialogBodyClass, dialogFooterClass, dialogHeaderClass } from '@theme/components/ui/dialog';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
+import { floatingSurface } from '@theme/lib/frames';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
 import { useEventListener } from '@vueuse/core';
 import { FocusScope } from 'reka-ui';
@@ -53,7 +54,10 @@ useEventListener(scrimEl, 'click', (e) => e.stopPropagation());
         role="dialog"
         aria-modal="true"
         :aria-labelledby="titleId"
-        class="mx-4 w-100 max-w-full flex flex-col overflow-hidden rounded-kira bg-elevated text-fg text-kira-md border border-border"
+        :class="[
+          floatingSurface,
+          'mx-4 w-100 max-w-full flex flex-col overflow-hidden text-kira-md',
+        ]"
       >
         <div :class="dialogHeaderClass">
           <div :id="titleId" class="text-kira-lg">{{ title }}</div>

@@ -120,6 +120,11 @@ func (e restoreEnv) kill(t *testing.T, ids ...string) {
 		if _, err := e.d.Cli.ContainerKill(context.Background(), id, client.ContainerKillOptions{Signal: "KILL"}); err != nil {
 			t.Fatal(err)
 		}
+		// Kill returns once the signal is sent; a tick that still sees the container running swallows the boot change.
+		waitUntil(t, "killed container to stop", func() bool {
+			res, err := e.d.Cli.ContainerInspect(context.Background(), id, client.ContainerInspectOptions{})
+			return err == nil && res.Container.State != nil && !res.Container.State.Running
+		})
 	}
 }
 

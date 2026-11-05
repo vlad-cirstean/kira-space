@@ -17,7 +17,7 @@ type rowScanner interface {
 	Scan(dest ...any) error
 }
 
-const selectColumns = `id, name, command, working_dir, dir_mode, color, collection, sort_order, created_at, updated_at, kind, params_json, smart_json, use_ade_dir, schedule_json, schedule_task_id, schedule_branch_id`
+const selectColumns = `id, name, command, working_dir, dir_mode, color, collection, sort_order, created_at, updated_at, kind, params_json, smart_json, use_ade_dir, schedule_json, schedule_task_id, schedule_branch_id, config_json`
 
 // Repo reads and writes the `custom_scripts` table: the projection of the run files plus the state
 // columns (order, schedule target). List is ordered deterministically.
@@ -39,10 +39,10 @@ func (r *Repo) models() harness.Catalog {
 func scanRow(row rowScanner) (CustomScript, error) {
 	var s CustomScript
 	var created, updated int64
-	var paramsJSON, smartJSON, scheduleJSON, taskID, branchID string
+	var paramsJSON, smartJSON, scheduleJSON, taskID, branchID, configJSON string
 	if err := row.Scan(
 		&s.ID, &s.Name, &s.Command, &s.WorkingDir, &s.DirMode, &s.Color, &s.Collection, &s.SortOrder, &created, &updated,
-		&s.Kind, &paramsJSON, &smartJSON, &s.UseAdeDir, &scheduleJSON, &taskID, &branchID,
+		&s.Kind, &paramsJSON, &smartJSON, &s.UseAdeDir, &scheduleJSON, &taskID, &branchID, &configJSON,
 	); err != nil {
 		return CustomScript{}, err
 	}
@@ -63,6 +63,15 @@ func scanRow(row rowScanner) (CustomScript, error) {
 			return CustomScript{}, fmt.Errorf("scripts: decode schedule of %s: %w", s.ID, err)
 		}
 		s.Schedule.TaskID, s.Schedule.BranchID = taskID, branchID
+	}
+	if configJSON != "" {
+		f, err := DecodeJSON(configJSON)
+		if err != nil {
+			return CustomScript{}, fmt.Errorf("scripts: decode config of %s: %w", s.ID, err)
+		}
+		if s.MCP = f.Fields().MCP; s.MCP != nil && s.MCP.Run == "" {
+			s.MCP.Run = MCPRunPrompt
+		}
 	}
 	return s, nil
 }

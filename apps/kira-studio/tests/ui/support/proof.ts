@@ -16,6 +16,19 @@ type Json = Record<string, any>;
 const fixture = (name: 'proof' | 'proof-pending' | 'proof-chart', key: string): Json =>
   contract(name, key) as Json;
 
+/** A fresh folder from ChooseShotFolder (tests/contract/proof.json) with its masked fields filled. */
+export const shotFolder = (): Json => ({
+  ...fixture('proof', 'ProofService.ChooseShotFolder'),
+  id: 'shot_test',
+  path: '/tmp/test/Checkout fix',
+});
+
+/** Height in pixels from a PNG's IHDR chunk (bytes 20-24), given its base64. */
+export function pngHeight(pngBase64: string): number {
+  const bytes = Buffer.from(pngBase64.slice(0, 44), 'base64');
+  return bytes.readUInt32BE(20);
+}
+
 export const CLOSED_AT = Date.UTC(2026, 0, 2, 3, 4, 5);
 
 export const session = (): Json => ({
@@ -202,16 +215,4 @@ export async function diffClipboardImage(
     },
     { b64: shot.toString('base64'), index },
   );
-}
-
-export async function copiedImageSize(
-  page: Page,
-  index = 0,
-): Promise<{ width: number; height: number }> {
-  return page.evaluate(async (i) => {
-    const clip = (window as unknown as { __clipboardImages: Blob[] }).__clipboardImages[i];
-    if (!clip) throw new Error('no copied image');
-    const bmp = await createImageBitmap(clip);
-    return { width: bmp.width, height: bmp.height };
-  }, index);
 }

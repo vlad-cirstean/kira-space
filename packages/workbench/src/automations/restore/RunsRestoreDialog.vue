@@ -32,6 +32,7 @@ function badges(it: ScriptRunRestoreItem): string[] {
   if (it.kind === 'smart') out.push(t('common.smartScript.label'));
   if (it.model) out.push(it.model);
   if (it.trigger === 'scheduled') out.push(t('automations.run.triggerScheduled.label'));
+  if (it.trigger === 'mcp') out.push(t('automations.run.triggerMcp.label'));
   if (it.taskTitle)
     out.push(
       it.branchLabel
@@ -122,7 +123,6 @@ async function dismissAll(): Promise<void> {
     v-model:excluded="excluded"
     :title="t('automations.restore.dialog.title')"
     :description="t('automations.restore.dialog.description', { app: app?.appName ?? '' })"
-    icon="run-all"
     :rows="rows"
     :pending="restore.isPending.value"
     :dismissing="dismiss.isPending.value"

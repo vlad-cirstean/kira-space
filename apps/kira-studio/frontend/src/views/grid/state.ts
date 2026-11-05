@@ -241,8 +241,8 @@ export const useGridViewStore = defineStore('gridView', () => {
     if (!tab?.connectionId) return;
     const connectionId = tab.connectionId;
     const rt = ensureRuntime(tabId);
-    await runPagedCount(rt, (opId, refresh) =>
-      data.count({ opId, tabId, connectionId, path: tab.path, filter: tab.state.filter, refresh }),
+    await runPagedCount(rt, (refresh) =>
+      data.count({ tabId, connectionId, path: tab.path, filter: tab.state.filter, refresh }),
     );
   }
 

@@ -1,0 +1,565 @@
+{
+  "args:RepoConfigService.Form#back-to-command": {
+    "edits": [
+      {
+        "path": [
+          "worktree",
+          "prepare_script"
+        ],
+        "unset": false,
+        "value": "pnpm i"
+      },
+      {
+        "path": [
+          "worktree",
+          "prepare_run"
+        ],
+        "unset": true,
+        "value": null
+      },
+      {
+        "path": [
+          "worktree",
+          "prepare_run"
+        ],
+        "unset": true,
+        "value": null
+      }
+    ],
+    "file": "proj.yaml",
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nenvironments:\n  - name: staging\n    deployed_sha_script: curl -fsS https://staging.example.com/version\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nworktree:\n  prepare_run:\n    params:\n      flags:\n        - a\n        - b\n      mode: ci\n    script: Install deps\n"
+  },
+  "args:RepoConfigService.Form#drop-unknown": {
+    "edits": [
+      {
+        "path": [
+          "worktree",
+          "prepare_run"
+        ],
+        "unset": false,
+        "value": {
+          "params": {
+            "mode": "ci"
+          },
+          "script": "Install deps"
+        }
+      },
+      {
+        "path": [
+          "worktree",
+          "prepare_script"
+        ],
+        "unset": true,
+        "value": null
+      }
+    ],
+    "file": "proj.yaml",
+    "text": "path: <work>/proj\nworktree:\n  prepare_run:\n    script: Install deps\n    params:\n      mode: ci\n      zzz: x\n"
+  },
+  "args:RepoConfigService.Form#missing-read": {
+    "edits": [],
+    "file": "proj.yaml",
+    "text": "path: <work>/proj\nworktree:\n  prepare_run:\n    script: Nope\n"
+  },
+  "args:RepoConfigService.Form#params": {
+    "edits": [
+      {
+        "path": [
+          "worktree",
+          "prepare_run"
+        ],
+        "unset": false,
+        "value": {
+          "params": {
+            "flags": [
+              "a",
+              "b"
+            ],
+            "mode": "ci"
+          },
+          "script": "Install deps"
+        }
+      },
+      {
+        "path": [
+          "worktree",
+          "prepare_script"
+        ],
+        "unset": true,
+        "value": null
+      }
+    ],
+    "file": "proj.yaml",
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nenvironments:\n  - name: staging\n    deployed_sha_script: curl -fsS https://staging.example.com/version\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nworktree:\n  prepare_run:\n    script: Install deps\n"
+  },
+  "args:RepoConfigService.Form#params-view": {
+    "edits": [],
+    "file": "proj.yaml",
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nenvironments:\n  - name: staging\n    deployed_sha_script: curl -fsS https://staging.example.com/version\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nworktree:\n  prepare_run:\n    params:\n      flags:\n        - a\n        - b\n      mode: ci\n    script: Install deps\n"
+  },
+  "args:RepoConfigService.Form#pick-env": {
+    "edits": [
+      {
+        "path": [
+          "environments"
+        ],
+        "unset": false,
+        "value": [
+          {
+            "deployed_sha_run": {
+              "script": "Staging sha"
+            },
+            "name": "staging"
+          },
+          {
+            "deployed_sha_run": {
+              "script": "Prod sha"
+            },
+            "name": "prod"
+          }
+        ]
+      }
+    ],
+    "file": "proj.yaml",
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_script: pnpm install\nenvironments:\n  - name: staging\n    deployed_sha_script: curl -fsS https://staging.example.com/version\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\n"
+  },
+  "args:RepoConfigService.Form#pick-prepare": {
+    "edits": [
+      {
+        "path": [
+          "worktree",
+          "prepare_script"
+        ],
+        "unset": true,
+        "value": null
+      },
+      {
+        "path": [
+          "worktree",
+          "prepare_run"
+        ],
+        "unset": false,
+        "value": {
+          "script": "Install deps"
+        }
+      },
+      {
+        "path": [
+          "worktree",
+          "prepare_script"
+        ],
+        "unset": true,
+        "value": null
+      }
+    ],
+    "file": "proj.yaml",
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_script: pnpm install\nenvironments:\n  - name: staging\n    deployed_sha_script: curl -fsS https://staging.example.com/version\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\n"
+  },
+  "args:RepoConfigService.Form#pick-prepare-view": {
+    "edits": [],
+    "file": "proj.yaml",
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nenvironments:\n  - name: staging\n    deployed_sha_script: curl -fsS https://staging.example.com/version\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nworktree:\n  prepare_run:\n    script: Install deps\n"
+  },
+  "args:RepoConfigService.Form#read": {
+    "edits": [],
+    "file": "proj.yaml",
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_script: pnpm install\nenvironments:\n  - name: staging\n    deployed_sha_script: curl -fsS https://staging.example.com/version\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\n"
+  },
+  "args:RepoConfigService.Form#smart-read": {
+    "edits": [],
+    "file": "proj.yaml",
+    "text": "path: <work>/proj\nworktree:\n  prepare_run:\n    script: Review\n"
+  },
+  "args:RepoConfigService.Form#unknown-read": {
+    "edits": [],
+    "file": "proj.yaml",
+    "text": "path: <work>/proj\nworktree:\n  prepare_run:\n    script: Install deps\n    params:\n      mode: ci\n      zzz: x\n"
+  },
+  "args:RepoConfigService.SaveFile#saved": {
+    "baseHash": "<masked>",
+    "file": "proj.yaml",
+    "path": "",
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_script: pnpm install\nenvironments:\n  - deployed_sha_run:\n      script: Staging sha\n    name: staging\n  - deployed_sha_run:\n      script: Prod sha\n    name: prod\n"
+  },
+  "file#read": {
+    "editable": true,
+    "exists": true,
+    "file": "proj.yaml",
+    "filePath": "<masked>",
+    "hash": "<masked>",
+    "lastGood": false,
+    "path": "<work>/proj",
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_script: pnpm install\nenvironments:\n  - name: staging\n    deployed_sha_script: curl -fsS https://staging.example.com/version\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\n"
+  },
+  "file#saved": {
+    "editable": true,
+    "exists": true,
+    "file": "proj.yaml",
+    "filePath": "<masked>",
+    "hash": "<masked>",
+    "lastGood": false,
+    "path": "<work>/proj",
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_script: pnpm install\nenvironments:\n  - deployed_sha_run:\n      script: Staging sha\n    name: staging\n  - deployed_sha_run:\n      script: Prod sha\n    name: prod\n"
+  },
+  "form#back-to-command": {
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nenvironments:\n  - name: staging\n    deployed_sha_script: curl -fsS https://staging.example.com/version\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nworktree:\n  prepare_script: pnpm i\n",
+    "value": {
+      "environments": [
+        {
+          "deployed_sha_script": "curl -fsS https://staging.example.com/version",
+          "name": "staging"
+        },
+        {
+          "deployed_sha_run": {
+            "script": "Prod sha"
+          },
+          "name": "prod"
+        }
+      ],
+      "nickname": "Web",
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_script": "pnpm i"
+      }
+    }
+  },
+  "form#drop-unknown": {
+    "problem": null,
+    "text": "path: <work>/proj\nworktree:\n  prepare_run:\n    params:\n      mode: ci\n    script: Install deps\n",
+    "value": {
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_run": {
+          "params": {
+            "mode": "ci"
+          },
+          "script": "Install deps"
+        }
+      }
+    }
+  },
+  "form#missing-read": {
+    "problem": null,
+    "text": "path: <work>/proj\nworktree:\n  prepare_run:\n    script: Nope\n",
+    "value": {
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_run": {
+          "script": "Nope"
+        }
+      }
+    }
+  },
+  "form#params": {
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nenvironments:\n  - name: staging\n    deployed_sha_script: curl -fsS https://staging.example.com/version\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nworktree:\n  prepare_run:\n    params:\n      flags:\n        - a\n        - b\n      mode: ci\n    script: Install deps\n",
+    "value": {
+      "environments": [
+        {
+          "deployed_sha_script": "curl -fsS https://staging.example.com/version",
+          "name": "staging"
+        },
+        {
+          "deployed_sha_run": {
+            "script": "Prod sha"
+          },
+          "name": "prod"
+        }
+      ],
+      "nickname": "Web",
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_run": {
+          "params": {
+            "flags": [
+              "a",
+              "b"
+            ],
+            "mode": "ci"
+          },
+          "script": "Install deps"
+        }
+      }
+    }
+  },
+  "form#params-view": {
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nenvironments:\n  - name: staging\n    deployed_sha_script: curl -fsS https://staging.example.com/version\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nworktree:\n  prepare_run:\n    params:\n      flags:\n        - a\n        - b\n      mode: ci\n    script: Install deps\n",
+    "value": {
+      "environments": [
+        {
+          "deployed_sha_script": "curl -fsS https://staging.example.com/version",
+          "name": "staging"
+        },
+        {
+          "deployed_sha_run": {
+            "script": "Prod sha"
+          },
+          "name": "prod"
+        }
+      ],
+      "nickname": "Web",
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_run": {
+          "params": {
+            "flags": [
+              "a",
+              "b"
+            ],
+            "mode": "ci"
+          },
+          "script": "Install deps"
+        }
+      }
+    }
+  },
+  "form#pick-env": {
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_script: pnpm install\nenvironments:\n  - deployed_sha_run:\n      script: Staging sha\n    name: staging\n  - deployed_sha_run:\n      script: Prod sha\n    name: prod\n",
+    "value": {
+      "environments": [
+        {
+          "deployed_sha_run": {
+            "script": "Staging sha"
+          },
+          "name": "staging"
+        },
+        {
+          "deployed_sha_run": {
+            "script": "Prod sha"
+          },
+          "name": "prod"
+        }
+      ],
+      "nickname": "Web",
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_script": "pnpm install"
+      }
+    }
+  },
+  "form#pick-prepare": {
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nenvironments:\n  - name: staging\n    deployed_sha_script: curl -fsS https://staging.example.com/version\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nworktree:\n  prepare_run:\n    script: Install deps\n",
+    "value": {
+      "environments": [
+        {
+          "deployed_sha_script": "curl -fsS https://staging.example.com/version",
+          "name": "staging"
+        },
+        {
+          "deployed_sha_run": {
+            "script": "Prod sha"
+          },
+          "name": "prod"
+        }
+      ],
+      "nickname": "Web",
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_run": {
+          "script": "Install deps"
+        }
+      }
+    }
+  },
+  "form#pick-prepare-view": {
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nenvironments:\n  - name: staging\n    deployed_sha_script: curl -fsS https://staging.example.com/version\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\nworktree:\n  prepare_run:\n    script: Install deps\n",
+    "value": {
+      "environments": [
+        {
+          "deployed_sha_script": "curl -fsS https://staging.example.com/version",
+          "name": "staging"
+        },
+        {
+          "deployed_sha_run": {
+            "script": "Prod sha"
+          },
+          "name": "prod"
+        }
+      ],
+      "nickname": "Web",
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_run": {
+          "script": "Install deps"
+        }
+      }
+    }
+  },
+  "form#read": {
+    "problem": null,
+    "text": "# Settings of the web repo.\npath: <work>/proj\nnickname: Web # shown in the board\nworktree:\n  prepare_script: pnpm install\nenvironments:\n  - name: staging\n    deployed_sha_script: curl -fsS https://staging.example.com/version\n  - name: prod\n    deployed_sha_run:\n      script: Prod sha\n",
+    "value": {
+      "environments": [
+        {
+          "deployed_sha_script": "curl -fsS https://staging.example.com/version",
+          "name": "staging"
+        },
+        {
+          "deployed_sha_run": {
+            "script": "Prod sha"
+          },
+          "name": "prod"
+        }
+      ],
+      "nickname": "Web",
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_script": "pnpm install"
+      }
+    }
+  },
+  "form#smart-read": {
+    "problem": null,
+    "text": "path: <work>/proj\nworktree:\n  prepare_run:\n    script: Review\n",
+    "value": {
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_run": {
+          "script": "Review"
+        }
+      }
+    }
+  },
+  "form#unknown-read": {
+    "problem": null,
+    "text": "path: <work>/proj\nworktree:\n  prepare_run:\n    script: Install deps\n    params:\n      mode: ci\n      zzz: x\n",
+    "value": {
+      "path": "<work>/proj",
+      "worktree": {
+        "prepare_run": {
+          "params": {
+            "mode": "ci",
+            "zzz": "x"
+          },
+          "script": "Install deps"
+        }
+      }
+    }
+  },
+  "scripts#list": {
+    "collections": [
+      {
+        "name": "Deploy",
+        "sortOrder": 0
+      }
+    ],
+    "dir": "<space>/runs",
+    "problems": [],
+    "scripts": [
+      {
+        "collection": "",
+        "color": "blue",
+        "command": "echo install",
+        "createdAt": "<masked>",
+        "dirMode": "kira",
+        "id": "<masked>",
+        "kind": "script",
+        "mcp": null,
+        "name": "Install deps",
+        "params": [
+          {
+            "default": [],
+            "name": "mode",
+            "options": [
+              "ci",
+              "dev"
+            ],
+            "required": true,
+            "secret": false,
+            "type": "select"
+          },
+          {
+            "default": [],
+            "name": "flags",
+            "options": [
+              "a",
+              "b",
+              "c"
+            ],
+            "required": false,
+            "secret": false,
+            "type": "multiselect"
+          },
+          {
+            "default": [],
+            "name": "token",
+            "options": [],
+            "required": false,
+            "secret": true,
+            "type": "text"
+          }
+        ],
+        "savedSecrets": [
+          "token"
+        ],
+        "schedule": null,
+        "smart": null,
+        "sortOrder": 0,
+        "updatedAt": "<masked>",
+        "useAdeDir": true,
+        "workingDir": ""
+      },
+      {
+        "collection": "Deploy",
+        "color": "blue",
+        "command": "echo abc",
+        "createdAt": "<masked>",
+        "dirMode": "kira",
+        "id": "<masked>",
+        "kind": "script",
+        "mcp": null,
+        "name": "Staging sha",
+        "params": [],
+        "savedSecrets": [],
+        "schedule": null,
+        "smart": null,
+        "sortOrder": 0,
+        "updatedAt": "<masked>",
+        "useAdeDir": false,
+        "workingDir": ""
+      },
+      {
+        "collection": "",
+        "color": "blue",
+        "command": "Review it",
+        "createdAt": "<masked>",
+        "dirMode": "kira",
+        "id": "<masked>",
+        "kind": "smart",
+        "mcp": null,
+        "name": "Review",
+        "params": [],
+        "savedSecrets": [],
+        "schedule": null,
+        "smart": {
+          "bashPatterns": [],
+          "maxBudgetUsd": 0.5,
+          "mcp": [],
+          "model": "opus",
+          "noCostCap": false,
+          "timeout": "5m",
+          "tools": [
+            "Read"
+          ]
+        },
+        "sortOrder": 1,
+        "updatedAt": "<masked>",
+        "useAdeDir": true,
+        "workingDir": ""
+      }
+    ],
+    "secretStorage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    }
+  }
+}

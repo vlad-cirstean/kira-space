@@ -6,6 +6,7 @@ import {
   logLevelSchema,
 } from '@shared/domain/settings';
 import { z } from 'zod';
+import { TRACKED_KINDS, type TrackedKind, trackingDefaults } from './trackingConcepts';
 
 // This app's own three-section settingsSchema/settingsPatchSchema/defaultSettings — this store used
 // to carry Kira Studio's own data/cache/api/dbMcp sections dead (never populated by this
@@ -150,6 +151,20 @@ const memorySettingsSchema = /*#__PURE__*/ z.object({
   models: z.record(z.string(), z.string()).default({}),
 });
 
+// P512: per item kind, whether each concept counts as a meaningful update. One boolean per concept
+// in state/trackingConcepts.ts; an unknown stored key drops, a missing one reads its default.
+function trackingKindSchema(kind: TrackedKind) {
+  const entry = TRACKED_KINDS.find((k) => k.kind === kind);
+  const shape: Record<string, z.ZodDefault<z.ZodBoolean>> = {};
+  for (const c of entry?.concepts ?? []) shape[c.id] = z.boolean().default(c.default);
+  return z.object(shape).default(trackingDefaults(kind));
+}
+const trackingSettingsSchema = /*#__PURE__*/ z.object({
+  changeRequest: trackingKindSchema('changeRequest'),
+  issue: trackingKindSchema('issue'),
+  branch: trackingKindSchema('branch'),
+});
+
 // `.default(...)` on every section is load-bearing: an older kira-space.sqlite has a settings row
 // with no `advanced`/`git`/`ade`/`agent` keys, and that row must still parse on next launch.
 const settingsSchema = /*#__PURE__*/ z.object({
@@ -187,6 +202,11 @@ const settingsSchema = /*#__PURE__*/ z.object({
   }),
   capture: captureSettingsSchema.default({ enabled: true, hotkey: DEFAULT_CAPTURE_HOTKEY }),
   memory: memorySettingsSchema.default({ models: {} }),
+  tracking: trackingSettingsSchema.default({
+    changeRequest: trackingDefaults('changeRequest'),
+    issue: trackingDefaults('issue'),
+    branch: trackingDefaults('branch'),
+  }),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -198,6 +218,7 @@ const settingsPatchSchema = /*#__PURE__*/ z.object({
   mobile: mobileSettingsSchema.partial().optional(),
   capture: captureSettingsSchema.partial().optional(),
   memory: memorySettingsSchema.partial().optional(),
+  tracking: trackingSettingsSchema.partial().optional(),
   agent: appAgentSettingsSchema.partial().optional(),
 });
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
@@ -252,5 +273,10 @@ export const defaultSettings: Settings = {
   },
   memory: {
     models: {},
+  },
+  tracking: {
+    changeRequest: trackingDefaults('changeRequest'),
+    issue: trackingDefaults('issue'),
+    branch: trackingDefaults('branch'),
   },
 };

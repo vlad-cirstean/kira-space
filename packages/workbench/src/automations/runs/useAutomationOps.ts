@@ -15,6 +15,20 @@ import { type AutomationOp, automationOp, isLiveRun } from './runOps';
 import { useResumeScriptRun, useScriptRuns, useStopScriptRun } from './runsQueries';
 import { runReportText, stateLabel } from './runText';
 
+export function canStopRun(run: ScriptRun): boolean {
+  return isLiveRun(run);
+}
+
+/** Stops a live run: a waiting one is declined, a running one is stopped. */
+export function useStopAutomationRun(): (run: ScriptRun) => void {
+  const ctx = useAutomationsModule();
+  const stop = useStopScriptRun();
+  return (run) => {
+    if (run.state === 'waiting') void ctx.runs.confirmDecline(run.id);
+    else if (run.state === 'running') stop.mutate(run.id);
+  };
+}
+
 /** The slice of an op store this reads; a Pinia store satisfies it. */
 export interface OpFilterState {
   filterText: string;
@@ -28,6 +42,8 @@ export function triggerLabel(run: ScriptRun): string {
       return t('automations.run.triggerAde.label', { task: run.taskTitle });
     case 'scheduled':
       return t('automations.run.triggerScheduled.label');
+    case 'mcp':
+      return t('automations.run.triggerMcp.label');
     case 'manual':
       return t('automations.ops.triggerManual.label');
     default:
@@ -81,7 +97,7 @@ export interface AutomationOps {
 export function useAutomationOps(filters: OpFilterState): AutomationOps {
   const ctx = useAutomationsModule();
   const { data } = useScriptRuns();
-  const stop = useStopScriptRun();
+  const stopRun = useStopAutomationRun();
   const resume = useResumeScriptRun();
   const rerun = useRerun();
   const tabs = useScriptTabs();
@@ -113,11 +129,10 @@ export function useAutomationOps(filters: OpFilterState): AutomationOps {
   }
 
   function canCancel(op: AutomationOp): boolean {
-    return isLiveRun(op.run);
+    return canStopRun(op.run);
   }
   function cancel(op: AutomationOp): void {
-    if (op.run.state === 'waiting') void ctx.runs.confirmDecline(op.run.id);
-    else if (op.run.state === 'running') stop.mutate(op.run.id);
+    stopRun(op.run);
   }
 
   function menuFor(op: AutomationOp): MenuItem[] {

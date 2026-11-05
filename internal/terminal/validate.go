@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -44,6 +45,9 @@ const MaxLaunchTokenBytes = 64
 func ValidateOpen(args OpenArgs) error {
 	if args.TerminalID == "" {
 		return ipcerr.Required("terminalId")
+	}
+	if !ids.IsClientID(args.TerminalID) {
+		return ipcerr.Contract("terminalId must be 1 to 64 characters of letters, digits, _ : -")
 	}
 	if args.WindowKey == "" {
 		return ipcerr.Required("windowKey")

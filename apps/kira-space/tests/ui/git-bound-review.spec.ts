@@ -73,7 +73,7 @@ reviewTest(
       .click();
     await expect
       .poll(() => gitStreamParams(page, 'review.comment.setState'))
-      .toEqual([expect.objectContaining({ id: 1, state: 'open' })]);
+      .toEqual([expect.objectContaining({ id: '1', state: 'open' })]);
     await expect.poll(() => count(page, 'review.comment.list')).toBeGreaterThan(listed);
   },
 );

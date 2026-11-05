@@ -14,7 +14,7 @@ const syncPageSize = 100
 // checksBatch is how many node ids one Checks call reads.
 const checksBatch = 50
 
-const syncPRFields = `id number title url state isDraft reviewDecision updatedAt headRefName headRefOid baseRefName headRepositoryOwner{login} commits(last:1){nodes{commit{statusCheckRollup{state}}}}`
+const syncPRFields = `id number title url state isDraft reviewDecision updatedAt headRefName headRefOid baseRefName headRepositoryOwner{login} comments{totalCount} reviews{totalCount} assignees(first:10){nodes{login}} commits(last:1){nodes{commit{statusCheckRollup{state}}}}`
 
 const syncPageQuery = `query($owner:String!,$name:String!,$first:Int!,$after:String){repository(owner:$owner,name:$name){pullRequests(states:[OPEN,CLOSED,MERGED],orderBy:{field:UPDATED_AT,direction:DESC},first:$first,after:$after){pageInfo{endCursor hasNextPage} nodes{` + syncPRFields + `}}} rateLimit{remaining resetAt cost}}`
 
@@ -35,6 +35,17 @@ type gqlPR struct {
 	HeadOwner      *struct {
 		Login string `json:"login"`
 	} `json:"headRepositoryOwner"`
+	Comments struct {
+		TotalCount int `json:"totalCount"`
+	} `json:"comments"`
+	Reviews struct {
+		TotalCount int `json:"totalCount"`
+	} `json:"reviews"`
+	Assignees struct {
+		Nodes []struct {
+			Login string `json:"login"`
+		} `json:"nodes"`
+	} `json:"assignees"`
 	Commits struct {
 		Nodes []struct {
 			Commit struct {
@@ -63,6 +74,12 @@ func (g gqlPR) toPR() PR {
 	}
 	if g.HeadOwner != nil {
 		pr.HeadRepoOwner = g.HeadOwner.Login
+	}
+	count := g.Comments.TotalCount + g.Reviews.TotalCount
+	pr.CommentCount = &count
+	pr.Assignees = make([]string, 0, len(g.Assignees.Nodes))
+	for _, a := range g.Assignees.Nodes {
+		pr.Assignees = append(pr.Assignees, a.Login)
 	}
 	switch g.State {
 	case "MERGED":

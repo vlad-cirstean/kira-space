@@ -5,6 +5,7 @@ import type {
   GrpcMessageWire,
   GrpcSchemaWire,
 } from '@shared/domain/grpc';
+import { newUuid } from '@shared/ids';
 import { t } from '@theme/i18n';
 import { queryClient } from '@workbench/state/queryClient';
 import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
@@ -201,7 +202,7 @@ export const useGrpcRequestViewStore = defineStore('grpcRequestView', () => {
     }
     const streaming = method.serverStreaming;
 
-    const opId = crypto.randomUUID();
+    const opId = newUuid();
     rt.status = 'running';
     rt.opId = opId;
     rt.lastCallId = opId;

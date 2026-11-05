@@ -116,7 +116,8 @@ const PATH_DISPLAY_CAP = 20;
       </Button>
       <Button
         v-if="inProgress.canAbort"
-        variant="danger"
+        variant="toolbar"
+        data-tone="error"
         size="kira"
         :pending="activeAction === 'abort'"
         :disabled="activeAction === 'continue' || activeAction === 'skip'"

@@ -3,11 +3,11 @@ Review of task Add login form
 Repo kira-space, branch feat/login (base main), worktree /work/kira-space/feat-login.
 PR https://github.com/acme/kira-space/pull/42
 Read the branch diff against the base first. The reviewer left these comments:
-#3 change src/login.ts:12-14
+id 3 change src/login.ts:12-14
 Rename this to isValid.
-#4 question src/login.ts:30
+id 4 question src/login.ts:30
 Why retry twice?
-#5 change src/login.ts:41 (uncommitted)
+id 5 change src/login.ts:41 (uncommitted)
 Drop this log line.
 Per comment, call reply_review_comment once.
 change: make the change, commit it, reply what changed, resolved true.

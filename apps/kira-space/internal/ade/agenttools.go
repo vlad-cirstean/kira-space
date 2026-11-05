@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 // maxBranchNameBytes is git's ref name limit on common file systems.
@@ -73,11 +76,11 @@ func resolveRepoRef(ref string, cands []repoCandidate, kind string) (string, err
 			case 1:
 				return hits[0].id, nil
 			default:
-				ids := make([]string, len(hits))
+				matches := make([]string, len(hits))
 				for i, h := range hits {
-					ids[i] = h.id
+					matches[i] = h.id
 				}
-				return "", agentmcp.ToolError(fmt.Sprintf("%q matches several repos. Use a code repo id: %s.", ref, strings.Join(ids, ", ")))
+				return "", agentmcp.ToolError(fmt.Sprintf("%q matches several repos. Use a code repo id: %s.", ref, strings.Join(matches, ", ")))
 			}
 		}
 	}
@@ -205,26 +208,26 @@ func (b *TaskBoard) DeclareRepos(ctx context.Context, taskID string, refs []stri
 	if err != nil {
 		return agentmcp.TaskInfo{}, err
 	}
-	ids := make([]string, 0, len(refs))
+	repoIDs := make([]string, 0, len(refs))
 	for _, ref := range refs {
 		id, err := resolveRepoRef(ref, cands, "registered")
 		if err != nil {
 			return agentmcp.TaskInfo{}, err
 		}
-		ids = append(ids, id)
+		repoIDs = append(repoIDs, id)
 	}
 	on := map[string]bool{}
 	for _, br := range tc.branches {
 		on[br.CodeRepoID] = true
 	}
 	added := false
-	for _, id := range ids {
+	for _, id := range repoIDs {
 		if on[id] {
 			continue
 		}
 		on[id] = true
 		if _, err := b.deps.Tasks.AddBranch(model.AdeTaskBranch{
-			ID: b.newID(), TaskID: taskID, CodeRepoID: id, Kind: model.AdeBranchKindMine,
+			ID: ids.NewID(), TaskID: taskID, CodeRepoID: id, Kind: model.AdeBranchKindMine,
 			AddedAt: b.deps.Now().UnixMilli(), Origin: model.AdeBranchOriginAgent,
 		}); err != nil {
 			return agentmcp.TaskInfo{}, toolErr(err)
@@ -263,7 +266,13 @@ func (b *TaskBoard) checkNewBranchName(ctx context.Context, rec model.CodeRepo, 
 	if !valid {
 		return fmt.Sprintf("%q is not a valid git branch name.", name), nil
 	}
-	if main := b.mainShortName(ctx, rec.ID); main != "" && name == main {
+	return b.reservedBranchText(ctx, rec.ID, name)
+}
+
+// reservedBranchText says why a branch name belongs to the repo itself (its main or an integration
+// branch), "" when it is free for a task branch.
+func (b *TaskBoard) reservedBranchText(ctx context.Context, codeRepoID, name string) (string, error) {
+	if main := b.mainShortName(ctx, codeRepoID); main != "" && name == main {
 		return fmt.Sprintf("%q is the repo's main branch. Pick a new feature branch name.", name), nil
 	}
 	cfgs, err := b.deps.RepoConfig.List()
@@ -271,21 +280,19 @@ func (b *TaskBoard) checkNewBranchName(ctx context.Context, rec model.CodeRepo, 
 		return "", err
 	}
 	for _, c := range cfgs {
-		if c.CodeRepoID != rec.ID {
+		if c.CodeRepoID != codeRepoID {
 			continue
 		}
-		for _, t := range c.IntegrationBranches {
-			if t == name {
-				return fmt.Sprintf("%q is an integration branch of the repo. Pick a new feature branch name.", name), nil
-			}
+		if slices.Contains(c.IntegrationBranches, name) {
+			return fmt.Sprintf("%q is an integration branch of the repo. Pick a new feature branch name.", name), nil
 		}
 	}
 	return "", nil
 }
 
-// createBranch makes one repo's branch under a generated name and its worktree in a nanoid folder. A ToolError is a failure
-// of this repo alone.
-func (b *TaskBoard) createBranch(ctx context.Context, sb model.AdeTaskBranch, nick string) (agentmcp.RequestedBranch, error) {
+// createBranch makes one branch under the agent's name and its worktree. A ToolError is a failure
+// of this branch alone.
+func (b *TaskBoard) createBranch(ctx context.Context, sb model.AdeTaskBranch, nick, wanted string) (agentmcp.RequestedBranch, error) {
 	if sb.Kind != model.AdeBranchKindMine {
 		return agentmcp.RequestedBranch{}, agentmcp.ToolError(fmt.Sprintf("The branch of %s on this task is not yours to create.", nick))
 	}
@@ -297,7 +304,7 @@ func (b *TaskBoard) createBranch(ctx context.Context, sb model.AdeTaskBranch, ni
 		return agentmcp.RequestedBranch{}, agentmcp.ToolError(fmt.Sprintf("Repo %s is no longer registered.", nick))
 	}
 	fresh := sb.Name == ""
-	res, err := b.ensureWorktree(ctx, *rec, sb, newBranchName{generated: true, idFolder: true})
+	res, err := b.ensureWorktree(ctx, *rec, sb, newBranchName{wanted: wanted})
 	if err != nil {
 		return agentmcp.RequestedBranch{}, toolErr(err)
 	}
@@ -335,15 +342,12 @@ func (b *TaskBoard) branchInfo(sb model.AdeTaskBranch, nick, worktree string) ag
 	return info
 }
 
-// BranchStatus implements agentmcp.SpaceTools: the state of the repo's worktree, waiting up to wait
+// BranchStatus implements agentmcp.SpaceTools: the state of the branch's worktree, waiting up to wait
 // for a running setup to finish.
-func (b *TaskBoard) BranchStatus(ctx context.Context, taskID, ref string, wait time.Duration) (agentmcp.BranchInfo, error) {
-	br, nick, early, err := b.taskBranch(taskID, ref)
+func (b *TaskBoard) BranchStatus(ctx context.Context, taskID, repo, branch string, wait time.Duration) (agentmcp.BranchInfo, error) {
+	br, nick, err := b.taskBranch(taskID, repo, branch)
 	if err != nil {
 		return agentmcp.BranchInfo{}, err
-	}
-	if early != nil {
-		return *early, nil
 	}
 	deadline := time.Now().Add(wait)
 	for b.setupRunning(br) && time.Now().Before(deadline) {
@@ -361,31 +365,26 @@ func (b *TaskBoard) setupRunning(sb model.AdeTaskBranch) bool {
 	return err == nil && row != nil && row.State == model.AdeSetupRunning
 }
 
-// taskBranch resolves ref to the task's branch row; early answers a repo with no branch yet.
-func (b *TaskBoard) taskBranch(taskID, ref string) (br model.AdeTaskBranch, nick string, early *agentmcp.BranchInfo, err error) {
+// taskBranch resolves repo and branch to the task's live branch row.
+func (b *TaskBoard) taskBranch(taskID, repo, branch string) (br model.AdeTaskBranch, nick string, err error) {
 	tc, err := b.spaceCtx(taskID)
 	if err != nil {
-		return br, "", nil, err
+		return br, "", err
 	}
 	_, cfgs, err := b.registeredCandidates()
 	if err != nil {
-		return br, "", nil, err
+		return br, "", err
 	}
-	id, err := resolveRepoRef(ref, b.taskCandidates(tc, cfgs), "task")
+	id, err := resolveRepoRef(repo, b.taskCandidates(tc, cfgs), "task")
 	if err != nil {
-		return br, "", nil, err
+		return br, "", err
 	}
 	for _, br := range tc.branches {
-		if br.CodeRepoID != id {
-			continue
+		if br.CodeRepoID == id && br.Name == branch {
+			return br, tc.nick[id], nil
 		}
-		if br.Name == "" {
-			return br, "", &agentmcp.BranchInfo{Repo: tc.nick[id], Setup: agentmcp.SetupInfo{State: "none"},
-				Next: "No branch yet. Call request_branches."}, nil
-		}
-		return br, tc.nick[id], nil, nil
 	}
-	return br, "", nil, agentmcp.ToolError("Repo is not on this task.")
+	return br, "", agentmcp.ToolError(fmt.Sprintf("Branch %q is not on this task in that repo. Call request_branches.", branch))
 }
 
 // RunOutcomes is the run_outcome tool's read: the task's runs, newest first, filtered by q.
@@ -477,4 +476,38 @@ func (b *TaskBoard) RunGit(ctx context.Context, dir string, argv []string) (stri
 		return "", 0, err
 	}
 	return string(res.Stdout) + string(res.Stderr), res.ExitCode, nil
+}
+
+// ListOperations implements agentmcp.SpaceTools: the task's running git operations that accept a cancel.
+// Sessions, runs and MCP calls are the user's to stop, so they stay out.
+func (b *TaskBoard) ListOperations(_ context.Context, taskID string) ([]agentmcp.OperationInfo, error) {
+	now := time.Now()
+	var out []agentmcp.OperationInfo
+	for _, r := range b.deps.Ops.CancellableRunning(taskID) {
+		if r.Category != oplog.CategoryGit {
+			continue
+		}
+		info := agentmcp.OperationInfo{OpID: r.ID, Kind: r.Kind, Subject: r.Subject, StartedAt: r.StartedAt}
+		if t, err := time.Parse(time.RFC3339Nano, r.StartedAt); err == nil {
+			info.ElapsedMs = now.Sub(t).Milliseconds()
+		}
+		out = append(out, info)
+	}
+	return out, nil
+}
+
+// CancelOperation implements agentmcp.SpaceTools. An id that is not one of the task's listed operations
+// reads as unknown, so another task's operations never leak.
+func (b *TaskBoard) CancelOperation(ctx context.Context, taskID, opID string) (agentmcp.CancelOperationResult, error) {
+	ops, _ := b.ListOperations(ctx, taskID)
+	for _, op := range ops {
+		if op.OpID != opID {
+			continue
+		}
+		if b.deps.Ops.Cancel(opID) {
+			return agentmcp.CancelOperationResult{OpID: opID, Kind: op.Kind, Cancelled: true}, nil
+		}
+		break
+	}
+	return agentmcp.CancelOperationResult{}, agentmcp.ToolError(fmt.Sprintf("No running operation with id %q; it may have finished. Call list_operations for current ids.", opID))
 }

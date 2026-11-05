@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
@@ -139,7 +139,7 @@ func (s *Service) skip(rec scripts.CustomScript, due time.Time, reason string) {
 	o := runoutcome.Skipped(reason, runoutcome.SourceSchedule)
 	now := s.now()
 	s.record(Run{
-		ID: uuid.NewString(), ScriptID: rec.ID, ScriptName: rec.Name, Color: rec.Color, Kind: rec.Kind,
+		ID: ids.NewID(), ScriptID: rec.ID, ScriptName: rec.Name, Color: rec.Color, Kind: rec.Kind,
 		Trigger: TriggerScheduled, State: string(o.Status), CreatedAt: due.UnixMilli(), FinishedAt: &now, Outcome: &o,
 	})
 }

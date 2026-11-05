@@ -8,9 +8,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/uuid"
-
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
@@ -241,7 +240,7 @@ func syncMasks(tx *sql.Tx, id string, masks []Mask, now string) error {
 		}
 		if _, err := tx.Exec(`INSERT INTO connection_mask_rules (id, connection_id, table_name, column_name, mask_kind, keep_hint, correlate, created_at, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			uuid.NewString(), id, mf.TableName, mf.ColumnName, string(mf.Kind), b2i(mf.KeepHint), b2i(mf.Correlate), now, now); err != nil {
+			ids.NewID(), id, mf.TableName, mf.ColumnName, string(mf.Kind), b2i(mf.KeepHint), b2i(mf.Correlate), now, now); err != nil {
 			return fmt.Errorf("connfiles: insert mask: %w", err)
 		}
 	}

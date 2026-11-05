@@ -74,7 +74,7 @@ func TestReviewRemovedSinceReview(t *testing.T) {
 		t.Fatalf("second list = %+v, want the same entries %+v", again, got)
 	}
 
-	dismiss := gitrpc.ReviewRemovedDismissParams{RepoID: id, Branch: "feat", IDs: []int64{a.ID, n.ID}}
+	dismiss := gitrpc.ReviewRemovedDismissParams{RepoID: id, Branch: "feat", IDs: []string{a.ID, n.ID}}
 	done := call[gitrpc.ReviewRemovedDismissResult](t, gs, "review.removed.dismiss", dismiss)
 	if done.Dismissed != 2 {
 		t.Fatalf("dismissed = %d, want 2", done.Dismissed)
@@ -96,7 +96,7 @@ func TestReviewRemovedSinceReview(t *testing.T) {
 	if code := wireErrCode(gs, "review.removed.dismiss", gitrpc.ReviewRemovedDismissParams{RepoID: id, Branch: "feat"}); code != "E_CONTRACT" {
 		t.Fatalf("empty ids = %q, want E_CONTRACT", code)
 	}
-	if code := wireErrCode(gs, "review.removed.dismiss", gitrpc.ReviewRemovedDismissParams{RepoID: id, Branch: "feat", IDs: []int64{0}}); code != "E_CONTRACT" {
+	if code := wireErrCode(gs, "review.removed.dismiss", gitrpc.ReviewRemovedDismissParams{RepoID: id, Branch: "feat", IDs: []string{"0"}}); code != "E_CONTRACT" {
 		t.Fatalf("zero id = %q, want E_CONTRACT", code)
 	}
 }

@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/google/renameio/v2"
@@ -129,7 +130,7 @@ func (s *Server) Status() harness.HookStatus {
 
 // MCPToolTimeoutEnv lifts the CLI's 60 s limit on one MCP tool call: a tool that waits for the user, such
 // as Kira Space's request_branches, holds its call open for up to 30 minutes.
-const MCPToolTimeoutEnv = "MCP_TOOL_TIMEOUT=2100000"
+var MCPToolTimeoutEnv = "MCP_TOOL_TIMEOUT=" + strconv.FormatInt(harness.MCPCallTimeout.Milliseconds(), 10)
 
 // Compose returns command with " --settings '<hooks.json>'" appended and the hook env vars a
 // launch's shell needs (Env). With the statusline option on, the settings file is per terminal. The

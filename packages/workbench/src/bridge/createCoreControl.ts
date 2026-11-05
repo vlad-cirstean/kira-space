@@ -4,6 +4,13 @@ import {
   agentEntrySchema,
   agentInfoSchema,
 } from '@shared/domain/agent';
+import {
+  type ApprovalAnswerArgs,
+  type ApprovalItem,
+  type ApprovalResult,
+  approvalItemSchema,
+  approvalResultSchema,
+} from '@shared/domain/approvals';
 import type { LayoutPatch } from '@shared/domain/layout';
 import {
   type LlmPromptChange,
@@ -121,6 +128,14 @@ export interface CoreBindings {
     List(): Promise<unknown>;
     Save(a: { changes: LlmPromptChange[] }): Promise<unknown>;
     Preview(a: { id: string; text?: string; vars?: unknown }): Promise<unknown>;
+  };
+  approvals: {
+    List(): Promise<unknown>;
+    Answer(a: {
+      ids: string[];
+      approve: boolean;
+      options: Record<string, unknown> | null;
+    }): Promise<unknown>;
   };
   prompts: {
     List(): Promise<unknown>;
@@ -246,6 +261,10 @@ export interface CoreControl<S, L, T, P, M> {
   quitCancel: () => Promise<void>;
   onPromptsChanged: (cb: (prompts: RoutedPrompt[]) => void) => () => void;
   onPromptsReveal: (cb: (event: { id: string }) => void) => () => void;
+  // The shared approvals queue (internal/approvals) — see approvals/approvalsQueries.ts.
+  approvalsList: () => Promise<ApprovalItem[]>;
+  approvalsAnswer: (args: ApprovalAnswerArgs) => Promise<ApprovalResult[]>;
+  onApprovalsChanged: (cb: (items: ApprovalItem[]) => void) => () => void;
   // The editable LLM prompt registry (internal/llmprompts) — see llmPrompts/queries.ts.
   llmPromptsList: () => Promise<LlmPromptList>;
   llmPromptsSave: (changes: LlmPromptChange[]) => Promise<LlmPromptList>;
@@ -371,6 +390,15 @@ export function createCoreControl<S, L, T, P, M>(b: CoreBindings): CoreControl<S
       on(CHANNEL.promptsChanged, (p) => cb(trust<RoutedPrompt[]>(p ?? []))),
     onPromptsReveal: (cb: (event: { id: string }) => void): (() => void) =>
       on(CHANNEL.promptsReveal, (e) => cb(trust<{ id: string }>(e))),
+
+    approvalsList: (): Promise<ApprovalItem[]> =>
+      unwrap(b.approvals.List()).then((r) => approvalItemSchema.array().parse(r ?? [])),
+    approvalsAnswer: ({ ids, approve, options }: ApprovalAnswerArgs): Promise<ApprovalResult[]> =>
+      unwrap(b.approvals.Answer({ ids, approve, options: options ?? null })).then((r) =>
+        approvalResultSchema.array().parse(r ?? []),
+      ),
+    onApprovalsChanged: (cb: (items: ApprovalItem[]) => void): (() => void) =>
+      on(CHANNEL.approvalsChanged, (p) => cb(approvalItemSchema.array().parse(p ?? []))),
 
     llmPromptsList: (): Promise<LlmPromptList> =>
       unwrap(b.llmPrompts.List()).then((r) => llmPromptListSchema.parse(r)),

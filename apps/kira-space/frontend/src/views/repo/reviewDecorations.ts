@@ -118,7 +118,7 @@ export function attachReviewDecorations(
   const addGlyphCollection = modifiedEditor.createDecorationsCollection([]);
 
   let hoverLine: number | null = null;
-  let openThreadCommentId: number | null = null;
+  let openThreadCommentId: string | null = null;
   let closeThread: (() => void) | null = null;
   // The open thread's comment; a repaint swaps in the stored copy so a saved edit shows at once.
   const openComment = shallowRef<ReviewComment | undefined>();

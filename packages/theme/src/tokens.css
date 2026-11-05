@@ -11,7 +11,7 @@
      copy. 5.29:1 on --kira-bg, 4.94:1 on --kira-bg-elevated. */
   --kira-fg-subtle: #8e8e97;
   --kira-border: #323237; /* the one line: input edge, secondary button, floating edge, grid cell, resize, menu separator */
-  --kira-focus: #5a8ae6; /* lighter than the accent fill so the ring reads on the primary button */
+  --kira-focus: #5a8ae6; /* lighter than the accent so the ring reads on dark surfaces */
   --kira-accent: #3b6ed1; /* primary action, selection, focus only */
   --kira-accent-fg: #ffffff;
   --kira-accent-hover: #355dad;

@@ -1,33 +1,38 @@
 {
-  "DbMcpService.PendingApprovals": {
-    "pending": {
-      "class": "read",
-      "cluster": {
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "kube.read:<id:1>",
+      "kind": "kube.read",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
         "context": "kind-dev",
         "namespace": "default",
         "operation": "list",
-        "server": "<kube>"
+        "server": "<kube>",
+        "statement": "kubectl get pods -n default --context kind-dev"
       },
-      "connectionId": "<masked>",
-      "connectionName": "kind-dev",
-      "expiresAtMs": 0,
-      "kind": "kubernetes",
-      "plan": null,
       "reason": "permission",
-      "requestId": "<masked>",
-      "response": null,
-      "stage": "query",
-      "statement": "kubectl get pods -n default --context kind-dev",
       "target": {
         "color": "",
-        "database": "",
-        "host": "",
-        "path": [],
+        "kind": "kubernetes",
+        "location": "<kube> · default",
+        "name": "kind-dev",
         "readOnly": false
       }
-    },
-    "queued": 0
-  },
+    }
+  ],
   "KubernetesService.Clusters": {
     "clusters": [
       {
@@ -131,8 +136,12 @@
       "tabId": null
     }
   ],
-  "args:DbMcpService.ApproveQuery": {
-    "requestId": "<masked>"
+  "args:ApprovalsService.Answer": {
+    "approve": true,
+    "ids": [
+      "kube.read:<id:1>"
+    ],
+    "options": null
   },
   "args:KubernetesService.SetMcp": {
     "clusterId": "<masked>",

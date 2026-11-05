@@ -13,7 +13,9 @@ import { errorText } from '@workbench/bridge/codedError';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import MonacoHost from '../editor/MonacoHost.vue';
+import { useCellSelectionStore } from '../state/cellSelection';
 import ConsoleResultGrid from '../views/console/ConsoleResultGrid.vue';
+import CellEditorDock from '../views/shared/celleditor/CellEditorDock.vue';
 import ProofChart from './ProofChart.vue';
 import { buildProofPage, mountProofPage, proofPageKey, releaseProofPage } from './pages';
 import { useProofStep } from './queries';
@@ -26,6 +28,7 @@ import { proofViewIcon } from './viewIcon';
 const props = defineProps<{ sessionId: string; rev: number; ordinal: number }>();
 
 const store = useProofWindowStore();
+const cellSelection = useCellSelectionStore();
 const key = proofPageKey(props.sessionId, props.rev, props.ordinal);
 const step = useProofStep(
   () => props.sessionId,
@@ -50,6 +53,12 @@ const language = computed(() => LANGUAGES[step.data.value?.language ?? 'text']);
 const queryHeight = ref(QUERY_MAX_HEIGHT);
 const queryReady = ref(false);
 const resultReady = ref(false);
+// A capture waits for the cell editor too, but only while a cell is selected.
+const dockReady = ref(false);
+const hasCell = computed(() => cellSelection.selectedCellFor(key) !== null);
+watch(hasCell, (open) => {
+  if (open) dockReady.value = false;
+});
 
 const pageError = shallowRef<string | null>(null);
 const pageMounted = ref(false);
@@ -74,9 +83,11 @@ watch(
 );
 
 watch(
-  () => (resultReady.value && (!query.value || queryReady.value) ? true : null),
-  (ok) => {
+  () =>
+    resultReady.value && (!query.value || queryReady.value) && (!hasCell.value || dockReady.value),
+  (ok, prev) => {
     if (ok) store.markReady(key);
+    else if (prev) store.unmarkReady(key);
   },
   { immediate: true },
 );
@@ -176,6 +187,7 @@ onBeforeUnmount(() => {
               @ready="resultReady = true"
             />
           </div>
+          <CellEditorDock :tab-id="key" readonly @ready="dockReady = true" />
         </template>
       </template>
     </QueryState>

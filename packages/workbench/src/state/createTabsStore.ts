@@ -1,3 +1,4 @@
+import { newUuid } from '@shared/ids';
 import { t } from '@theme/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { defineStore } from 'pinia';
@@ -385,7 +386,7 @@ export function createTabsStore<
       const reused = reuseExistingTab(kind, connectionId, path, workspaceId, workspaceKey, opts);
       if (reused) return reused;
 
-      const id = crypto.randomUUID();
+      const id = newUuid();
       const record = {
         id,
         connectionId,
@@ -416,7 +417,7 @@ export function createTabsStore<
       if (!source) return id;
       if (host.kinds[source.kind]?.pinned) return id; // §6.1: a pinned tab is never duplicated.
 
-      const newId = crypto.randomUUID();
+      const newId = newUuid();
       const def = host.kinds[source.kind];
       const record = {
         id: newId,

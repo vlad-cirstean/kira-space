@@ -38,7 +38,11 @@ Each exposed connection has three modes: read, write and DDL. Each mode is allow
 | Write | prompt | you approve each statement | inserts, updates, deletes |
 | DDL | deny | you approve each statement | schema changes |
 
-A statement the app cannot classify gets the strictest mode.
+The AI client declares one mode per `run_query` call: `read`, `write` or `ddl`. The declared mode picks the permission that applies. The app's statement check can only refuse: a statement more powerful than the declared mode is rejected, and an unclassifiable statement runs only under `ddl`.
+
+A `read` call runs on a separate read-only connection with the same credentials, so the database refuses writes itself. This holds for PostgreSQL, MySQL, MariaDB, SQLite and ClickHouse. MongoDB and Redis have no read-only session, so the app checks `read` itself; use a database user with read-only rights for a hard guarantee. Some engines still allow side-effecting functions in a read-only session, such as `pg_terminate_backend`. The database cannot tell write from DDL on one connection, so a misclassified DDL statement would run under the write permission. Write and DDL are not available for read-only connections or for Kibana, Kafka, S3 and SQS.
+
+The connection dialog's MCP tab shows which modes the client may use and what backs `read`.
 
 ## Approvals
 

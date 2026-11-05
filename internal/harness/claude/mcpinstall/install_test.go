@@ -47,7 +47,7 @@ func TestCommandRoundTripsThroughShell(t *testing.T) {
 		if err != nil {
 			t.Fatalf("sh rejected %q: %v", cmd, err)
 		}
-		payload, _ := json.Marshal(serverJSON{Type: "http", URL: "http://127.0.0.1:8766/mcp", HeadersHelper: loginshell.Quote(helperPath)})
+		payload, _ := json.Marshal(httpServer("http://127.0.0.1:8766/mcp", helperPath))
 		want := "mcp\nremove\n--scope\nuser\nkira-db\nmcp\nadd-json\n--scope\nuser\nkira-db\n" + string(payload) + "\n"
 		if string(out) != want {
 			t.Errorf("helper %q: shell argv = %q, want %q", helperPath, out, want)

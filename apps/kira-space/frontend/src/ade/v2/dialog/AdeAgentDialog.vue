@@ -135,21 +135,7 @@ async function discard(): Promise<void> {
   <Dialog v-if="view" :open="true" @update:open="(v) => !v && dialogs.close()">
     <DialogContent size="lg" :dirty="view.edited" data-testid="ade-dialog">
       <DialogHeader>
-        <DialogTitle class="flex items-center gap-2">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke-width="2.2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-            class="stroke-agent"
-          >
-            <rect x="3" y="4" width="18" height="16" rx="3" />
-            <path d="M7 10l3 2-3 2M12 15h5" />
-          </svg>
+        <DialogTitle>
           <span class="text-kira-lg font-medium" data-testid="ade-dialog-title">{{
             view.title
           }}</span>
@@ -326,9 +312,8 @@ async function discard(): Promise<void> {
         >
         <AdeTip v-if="view.isArchive" :text="t('space.ade.agentDialog.deleteAnyway.tooltip')">
           <Button
-            variant="dialog"
+            variant="dialog-danger"
             size="kira-lg"
-            class="border-tone-red-solid bg-transparent text-tone-red"
             :pending="sending"
             data-testid="ade-dialog-delete"
             @click="discard"

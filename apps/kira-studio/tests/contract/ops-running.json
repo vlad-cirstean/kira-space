@@ -1,0 +1,19 @@
+{
+  "OpsService.Recent": [
+    {
+      "command": null,
+      "commandTruncated": false,
+      "connectionId": "<masked>",
+      "durationMs": null,
+      "error": null,
+      "id": "<masked>",
+      "kind": "execute",
+      "path": null,
+      "rows": null,
+      "source": "mcp",
+      "startedAt": "<masked>",
+      "status": "running",
+      "tabId": null
+    }
+  ]
+}

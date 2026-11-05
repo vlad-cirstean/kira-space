@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"regexp"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/updates"
 	"github.com/kirathecat/kira-studio/internal/appsettings"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/shell"
@@ -136,6 +137,44 @@ type MemorySettings struct {
 	Models map[string]string `json:"models"`
 }
 
+// TrackingSettings is P512's tracked-update leaf: per item kind, whether each concept counts as a
+// meaningful change. A concept missing from a map reads its catalog default.
+type TrackingSettings struct {
+	ChangeRequest map[string]bool `json:"changeRequest"`
+	Issue         map[string]bool `json:"issue"`
+	Branch        map[string]bool `json:"branch"`
+}
+
+// DefaultTrackingSettings builds every concept's default from updates.Catalog.
+func DefaultTrackingSettings() TrackingSettings {
+	return TrackingSettings{
+		ChangeRequest: trackingDefaults(updates.KindChangeRequest),
+		Issue:         trackingDefaults(updates.KindIssue),
+		Branch:        trackingDefaults(updates.KindBranch),
+	}
+}
+
+func trackingDefaults(kind string) map[string]bool {
+	cs := updates.Concepts(kind)
+	out := make(map[string]bool, len(cs))
+	for _, c := range cs {
+		out[c.ID] = c.Default
+	}
+	return out
+}
+
+// OverlayTracking returns the catalog defaults of kind with the known keys of stored on top;
+// unknown stored keys drop.
+func OverlayTracking(kind string, stored map[string]bool) map[string]bool {
+	out := trackingDefaults(kind)
+	for id, v := range stored {
+		if _, ok := out[id]; ok {
+			out[id] = v
+		}
+	}
+	return out
+}
+
 type Settings struct {
 	Appearance Appearance       `json:"appearance"`
 	Advanced   AdvancedSettings `json:"advanced"`
@@ -145,6 +184,7 @@ type Settings struct {
 	Capture    CaptureSettings  `json:"capture"`
 	Memory     MemorySettings   `json:"memory"`
 	Agent      AgentSettings    `json:"agent"`
+	Tracking   TrackingSettings `json:"tracking"`
 }
 
 // DefaultMobileSettings mirrors settingsDomain.ts's mobileSettingsSchema defaults.
@@ -192,6 +232,7 @@ func DefaultSettings() Settings {
 		Capture:  DefaultCaptureSettings(),
 		Memory:   MemorySettings{Models: map[string]string{}},
 		Agent:    DefaultAgentSettings(),
+		Tracking: DefaultTrackingSettings(),
 	}
 }
 
@@ -265,6 +306,13 @@ type MemoryPatch struct {
 	Models *map[string]string `json:"models,omitempty"`
 }
 
+// TrackingPatch mirrors TrackingSettings' own `.partial()` shape; each map replaces its whole leaf.
+type TrackingPatch struct {
+	ChangeRequest *map[string]bool `json:"changeRequest,omitempty"`
+	Issue         *map[string]bool `json:"issue,omitempty"`
+	Branch        *map[string]bool `json:"branch,omitempty"`
+}
+
 type SettingsPatch struct {
 	Appearance *AppearancePatch `json:"appearance,omitempty"`
 	Advanced   *AdvancedPatch   `json:"advanced,omitempty"`
@@ -274,6 +322,7 @@ type SettingsPatch struct {
 	Capture    *CapturePatch    `json:"capture,omitempty"`
 	Memory     *MemoryPatch     `json:"memory,omitempty"`
 	Agent      *AgentPatch      `json:"agent,omitempty"`
+	Tracking   *TrackingPatch   `json:"tracking,omitempty"`
 }
 
 // validateAppearanceSection mirrors upsertAppearance's own leaf list (repos/settings.go).
@@ -437,6 +486,26 @@ func validateMemorySection(m *MemoryPatch) error {
 	return nil
 }
 
+func validateTrackingSection(t *TrackingPatch) error {
+	if t == nil {
+		return nil
+	}
+	for _, leaf := range []struct {
+		kind string
+		m    *map[string]bool
+	}{{updates.KindChangeRequest, t.ChangeRequest}, {updates.KindIssue, t.Issue}, {updates.KindBranch, t.Branch}} {
+		if leaf.m == nil {
+			continue
+		}
+		for id := range *leaf.m {
+			if !updates.Known(leaf.kind, id) {
+				return fmt.Errorf("model: tracking.%s: unknown concept %q", leaf.kind, id)
+			}
+		}
+	}
+	return nil
+}
+
 // CheckModels checks every patched alias against the catalog of its provider registered in reg.
 func (m *MemoryPatch) CheckModels(reg *harness.Registry) error {
 	if m == nil || m.Models == nil {
@@ -473,6 +542,9 @@ func (p SettingsPatch) Validate() error {
 		return err
 	}
 	if err := validateMemorySection(p.Memory); err != nil {
+		return err
+	}
+	if err := validateTrackingSection(p.Tracking); err != nil {
 		return err
 	}
 	if p.Agent == nil {

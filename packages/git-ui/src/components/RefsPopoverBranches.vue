@@ -253,7 +253,7 @@ async function submitRename(from: string, to: string): Promise<void> {
         t('git.common.forceDelete.body', { name: forceDeleteCandidate })
       }}</AlertDescription>
       <div class="flex items-center gap-1">
-        <Button variant="danger" size="kira" @click="confirmForceDelete">{{
+        <Button variant="dialog-danger" size="kira" @click="confirmForceDelete">{{
           t('git.common.forceDelete.confirm')
         }}</Button>
         <Button variant="toolbar" size="kira" @click="forceDeleteCandidate = undefined">{{

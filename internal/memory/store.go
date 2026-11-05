@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"github.com/kirathecat/kira-studio/internal/memory/memfmt"
 	"github.com/kirathecat/kira-studio/internal/memory/migrations"
@@ -674,10 +675,7 @@ func commitAdd(ctx context.Context, tx *sql.Tx, in commitInput, now string) (com
 	for attempt := 0; ; attempt++ {
 		id := in.FactID
 		if id == "" {
-			var err error
-			if id, err = newFactID(); err != nil {
-				return commitResult{}, fmt.Errorf("memory: new id: %w", err)
-			}
+			id = ids.New(ids.Fact)
 		}
 		res := commitResult{ID: versionID(id, 1), LineageID: id, Version: 1}
 		err := insertMemory(ctx, tx, res, in, "", now)
@@ -737,9 +735,7 @@ func joinGroup(ctx context.Context, tx *sql.Tx, g GroupRef, lineage string, ms i
 	}
 	if errors.Is(err, sql.ErrNoRows) {
 		if id = g.ID; id == "" {
-			if id, err = newGroupID(); err != nil {
-				return fmt.Errorf("memory: new group id: %w", err)
-			}
+			id = ids.New(ids.Group)
 		}
 		_, err = tx.ExecContext(ctx, `INSERT INTO memory_groups (id, kind, key, title, created_at) VALUES (?, ?, ?, ?, ?)`,
 			id, g.Kind, g.Key, g.Title, ms)

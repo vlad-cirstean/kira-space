@@ -6,6 +6,7 @@ import TruncatedText from '@theme/components/TruncatedText.vue';
 import { PopoverContent } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import { formatRelative } from '@workbench/behaviour/format';
+import { reactive } from 'vue';
 import { useVariableSetStore } from './state/variables';
 
 const variableSetStore = useVariableSetStore();
@@ -16,15 +17,29 @@ const variableSetStore = useVariableSetStore();
 // relative recorded time, its value (masked for a secret, with its own gated eye — a secret's old
 // value is exactly as sensitive as its current one). Read-only: a file edit is the way back.
 
+// Client-side re-mask of an already revealed entry: no IPC, no prompt.
+const hidden = reactive(new Set<string>());
+
 function displayValue(entry: ApiVariableHistoryEntry): string {
   return entry.isSecret ? (variableSetStore.revealedHistoryValues[entry.id] ?? '') : entry.value;
 }
-function notYetRevealed(entry: ApiVariableHistoryEntry): boolean {
-  return entry.isSecret && variableSetStore.revealedHistoryValues[entry.id] === undefined;
+function isMasked(entry: ApiVariableHistoryEntry): boolean {
+  return (
+    entry.isSecret &&
+    (variableSetStore.revealedHistoryValues[entry.id] === undefined || hidden.has(entry.id))
+  );
+}
+function canToggle(entry: ApiVariableHistoryEntry): boolean {
+  return entry.isSecret;
 }
 
-function onReveal(id: string): void {
-  void variableSetStore.revealHistoryEntry(id);
+function onEye(entry: ApiVariableHistoryEntry): void {
+  if (variableSetStore.revealedHistoryValues[entry.id] === undefined) {
+    hidden.delete(entry.id);
+    void variableSetStore.revealHistoryEntry(entry.id);
+    return;
+  }
+  if (!hidden.delete(entry.id)) hidden.add(entry.id);
 }
 </script>
 
@@ -50,7 +65,7 @@ function onReveal(id: string): void {
           <!-- tracking-widest (0.1em) is the widest step Tailwind's default scale has; at this
                span's inherited font-size (text-kira-md, 12px) that is 1.2px. -->
           <span
-            v-if="notYetRevealed(entry)"
+            v-if="isMasked(entry)"
             class="truncate text-subtle tracking-widest"
             data-testid="variable-history-masked"
           >
@@ -61,11 +76,12 @@ function onReveal(id: string): void {
           >
         </div>
         <TooltipIconButton
-          v-if="notYetRevealed(entry)"
-          icon="eye"
-          :label="t('common.action.reveal.label')"
+          v-if="canToggle(entry)"
+          :icon="isMasked(entry) ? 'eye' : 'eye-closed'"
+          :label="isMasked(entry) ? t('common.action.reveal.label') : t('common.action.hide.label')"
+          :pressed="!isMasked(entry)"
           data-testid="variable-history-reveal"
-          @click="onReveal(entry.id)"
+          @click="onEye(entry)"
         />
       </div>
     </div>

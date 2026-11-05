@@ -125,7 +125,7 @@ func TestFixture_MariaDB(t *testing.T) {
 	if countFirst.Value != 3 || countFirst.Source != "server" {
 		t.Fatalf("count order_items (first) = %+v, want value=3 source=server", countFirst)
 	}
-	countSecond, err := app.Dispatcher.Count(context.Background(), countReq)
+	countSecond, err := app.Dispatcher.Count(context.Background(), WireCount(countReq))
 	if err != nil {
 		t.Fatalf("count order_items (second): %v", err)
 	}
@@ -156,7 +156,7 @@ func TestFixture_MariaDB(t *testing.T) {
 	slowReq.Filter = strp("id != 1 OR (SELECT SLEEP(2)) IS NOT NULL")
 	inFlight := make(chan error, 1)
 	go func() {
-		_, err := app.Dispatcher.Read(context.Background(), slowReq)
+		_, err := app.Dispatcher.Read(context.Background(), WireRead(slowReq))
 		inFlight <- err
 	}()
 	time.Sleep(100 * time.Millisecond)

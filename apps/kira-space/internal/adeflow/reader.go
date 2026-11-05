@@ -28,6 +28,8 @@ type Reader struct {
 	Dir   string
 	Store Store
 	Now   func() time.Time
+	// Steps is the step library that `step:` items resolve against; nil refuses every reference.
+	Steps *StepLibrary
 
 	wmu  sync.Mutex // serializes the writer methods
 	once sync.Once
@@ -48,7 +50,7 @@ func (r *Reader) folder() *configfs.Folder[adewire.Workflow] {
 			Dir:        r.Dir,
 			Ext:        ".yaml",
 			Name:       fileNamePattern,
-			Decode:     decodeWorkflow,
+			Decode:     r.decode,
 			Projection: projection{r.Store},
 			Now:        r.Now,
 		}
@@ -56,8 +58,15 @@ func (r *Reader) folder() *configfs.Folder[adewire.Workflow] {
 	return r.f
 }
 
-func decodeWorkflow(file string, src []byte) (adewire.Workflow, *configfs.Problem) {
-	wf, werr := Parse(src)
+// lookup is the StepLookup of the Reader's library; nil without one.
+func (r *Reader) lookup() StepLookup { return r.Steps.lookup() }
+
+func (r *Reader) decode(file string, src []byte) (adewire.Workflow, *configfs.Problem) {
+	return decodeWorkflow(file, src, r.lookup())
+}
+
+func decodeWorkflow(file string, src []byte, lookup StepLookup) (adewire.Workflow, *configfs.Problem) {
+	wf, werr := ParseWith(src, lookup)
 	if werr == nil && wf.ID != strings.TrimSuffix(file, ".yaml") {
 		werr = &adewire.WorkflowError{Message: i18n.T("backend.space.ade.workflowIdMismatch.body", nil)}
 	}
@@ -109,3 +118,12 @@ func (r *Reader) Get(id string) (adewire.Workflow, bool) {
 
 // WriteDocs writes the folder's AGENTS.md, creating the folder when missing.
 func (r *Reader) WriteDocs() error { return r.folder().WriteDocs(DocModel()) }
+
+// Validate parses src as the Reader does, resolving library references.
+func (r *Reader) Validate(src string) adewire.WorkflowValidation {
+	wf, werr := ParseWith([]byte(src), r.lookup())
+	if werr != nil {
+		return adewire.WorkflowValidation{Error: werr}
+	}
+	return adewire.WorkflowValidation{Workflow: &wf}
+}

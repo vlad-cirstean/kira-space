@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -120,7 +120,7 @@ func (s *Server) idempotent(rt route, next deviceHandler) deviceHandler {
 	routeID := rt.method + " " + rt.path
 	return func(w http.ResponseWriter, r *http.Request, dev repos.MobileDeviceRow) {
 		key := r.Header.Get(idemKeyHeader)
-		if _, err := uuid.Parse(key); err != nil || len(key) != 36 {
+		if !ids.IsUUID(key) {
 			writeErrorT(w, http.StatusBadRequest, string(ipcerr.CodeIdempotencyKey), "backend.space.mobileweb.idempotencyKey.body")
 			return
 		}

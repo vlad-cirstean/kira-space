@@ -39,7 +39,7 @@
         "upstream": "refs/remotes/origin/main",
         "upstreamAhead": 0,
         "upstreamBehind": 0,
-        "worktree": "<home>/wt/api/api-work"
+        "worktree": "<home>/wt/api/<wt>"
       }
     ],
     "history": [],

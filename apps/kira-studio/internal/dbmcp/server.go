@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/config"
@@ -63,10 +64,24 @@ type MetadataReader interface {
 // console's own run() uses.
 type QueryRunner interface {
 	Execute(ctx context.Context, req adapterhost.ExecuteRequestWire) (adapterhost.ExecuteResponse, error)
+	// ExecuteRead runs a read-mode request on the connection's read lane: a second adapter on the
+	// engine's read-only session. It never falls back to the main adapter.
+	ExecuteRead(ctx context.Context, req adapterhost.ExecuteRequestWire) (adapterhost.ExecuteResponse, error)
 	// ClassifyStatement answers what one statement would do (M2's permission gate) — an adapter
 	// error (or one that does not implement adapters.StatementClassifier) yields ClassUnknown, never
 	// a fatal error the caller must special-case.
 	ClassifyStatement(ctx context.Context, connectionID, statement string) (adapters.OpClass, error)
+}
+
+// laneCloser is the optional QueryRunner half that owns read lanes (*adapterhost.Router).
+type laneCloser interface {
+	CloseReadLane(ctx context.Context, connectionID string)
+	CloseReadLanes(ctx context.Context)
+}
+
+// listWatcher is the optional ConnectionsReader half that reports list changes (*connections.Service).
+type listWatcher interface {
+	OnListChanged(fn func([]model.ConnectionSummary)) (unsubscribe func())
 }
 
 // MaskRules is dbmcp's own consumer-declared interface over *maskrules.Service. A nil
@@ -115,6 +130,16 @@ type Config struct {
 	Proof ProofStore
 	// Kube backs the kube_* tools; its calls record their own op-log rows. Nil leaves them unregistered.
 	Kube KubeReader
+	// Ops backs list_operations and cancel_operation; nil leaves both unregistered. Runs adds
+	// script runs to them; nil means none are listed or stoppable.
+	Ops  OpsControl
+	Runs ScriptRunControl
+	// Scripts backs the script tools; nil leaves them unregistered.
+	Scripts ScriptControl
+	// API backs the api_* tools; nil leaves them unregistered. APISettings is read fresh per call and
+	// decides whether the tools are listed and whether a request waits for the user.
+	API         APIRequester
+	APISettings func() APISettings
 	// Prompts resolves the editable instruction and tool texts; nil means the registry defaults.
 	Prompts llmprompts.Source
 	// Logger receives every operational log line. A nil Logger falls back to slog.Default().
@@ -142,8 +167,12 @@ type Server struct {
 	mcpMu  sync.Mutex
 	mcp    *mcp.Server
 	mcpRev uint64
+	mcpAPI bool
 
 	httpState // http.go's own fields (listener, *http.Server)
+
+	// unwatchList stops the exposure watcher that closes read lanes of un-exposed connections.
+	unwatchList func()
 
 	closeOnce sync.Once
 }
@@ -152,7 +181,7 @@ type Server struct {
 // phase alone.
 const serverVersion = "0.0.0"
 
-// New resolves cfg, mints or loads this instance's own token, builds the five-tool mcp.Server, and
+// New resolves cfg, mints or loads this instance's own token, builds the mcp.Server, and
 // binds the HTTP listener (§3.2, DefaultPort only — see bindHTTP/F11) — but does not yet accept
 // connections; call Serve for that.
 func New(cfg Config) (*Server, error) {
@@ -195,12 +224,29 @@ func New(cfg Config) (*Server, error) {
 		log:   log,
 		token: tokenRec,
 	}
-	s.mcp, s.mcpRev = s.buildMCPServer(), s.prompts().Revision()
+	s.mcp, s.mcpRev, s.mcpAPI = s.buildMCPServer(), s.prompts().Revision(), s.apiEnabled()
 
 	if err := s.bindHTTP(); err != nil {
 		return nil, err
 	}
+	s.watchExposure()
 	return s, nil
+}
+
+// watchExposure closes the read lane of a connection the user stops exposing to MCP.
+func (s *Server) watchExposure() {
+	lanes, ok := s.cfg.Query.(laneCloser)
+	watcher, watchable := s.cfg.Conns.(listWatcher)
+	if !ok || !watchable {
+		return
+	}
+	s.unwatchList = watcher.OnListChanged(func(list []model.ConnectionSummary) {
+		for _, c := range list {
+			if !c.McpEnabled {
+				lanes.CloseReadLane(context.Background(), c.ID)
+			}
+		}
+	})
 }
 
 // prompts is the source of the server's instruction and tool texts.
@@ -211,18 +257,18 @@ func (s *Server) prompts() llmprompts.Source {
 	return s.cfg.Prompts
 }
 
-// server returns the tool set, rebuilt when a prompt edit moved the revision: the HTTP transport is
+// server returns the tool set, rebuilt when a prompt edit moved the revision or the API tools were toggled: the HTTP transport is
 // stateless, so the next request already sees the new texts.
 func (s *Server) server() *mcp.Server {
 	s.mcpMu.Lock()
 	defer s.mcpMu.Unlock()
-	if rev := s.prompts().Revision(); rev != s.mcpRev {
-		s.mcp, s.mcpRev = s.buildMCPServer(), rev
+	if rev, api := s.prompts().Revision(), s.apiEnabled(); rev != s.mcpRev || api != s.mcpAPI {
+		s.mcp, s.mcpRev, s.mcpAPI = s.buildMCPServer(), rev, api
 	}
 	return s.mcp
 }
 
-// buildMCPServer constructs the five-tool mcp.Server (§4) — pure registration, no I/O of its own;
+// buildMCPServer constructs the mcp.Server (§4) — pure registration, no I/O of its own;
 // every handler closes over s and calls into s.cfg.Conns/Tree/Query through access.go's gates.
 func (s *Server) buildMCPServer() *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{
@@ -254,7 +300,7 @@ func (s *Server) buildMCPServer() *mcp.Server {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "run_query",
 		Description: llmprompts.DbmcpToolRunQuery.Text(src, llmprompts.NoVars{}),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[runQueryArgs](src, llmprompts.DbmcpToolRunQuery.ID(), map[string]any{"maxRows": llmprompts.LimitVars{Default: runQueryDefaultMaxRows, Max: runQueryMaxMaxRows}}), "connectionId", "sql"),
+		InputSchema: runQuerySchema(src),
 	}, withPanicRecovery(s, "run_query", s.runQuery))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "explain_query",
@@ -267,8 +313,25 @@ func (s *Server) buildMCPServer() *mcp.Server {
 	if s.cfg.Kube != nil {
 		s.addKubeTools(srv, src)
 	}
+	if s.cfg.Ops != nil {
+		s.addOpsTools(srv, src)
+	}
+	if s.cfg.Scripts != nil {
+		s.addScriptTools(srv, src)
+	}
+	if s.apiEnabled() {
+		s.addAPITools(srv, src)
+	}
 
 	return srv
+}
+
+// runQuerySchema is run_query's input schema: mode is required and limited to the three declared modes.
+func runQuerySchema(src llmprompts.Source) *jsonschema.Schema {
+	sch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[runQueryArgs](src, llmprompts.DbmcpToolRunQuery.ID(),
+		map[string]any{"maxRows": llmprompts.LimitVars{Default: runQueryDefaultMaxRows, Max: runQueryMaxMaxRows}}), "connectionId", "sql", "mode")
+	sch.Properties["mode"].Enum = []any{modeRead, modeWrite, modeDDL}
+	return sch
 }
 
 // withPanicRecovery wraps every MCP tool handler mcp.AddTool registers: go-sdk v1.8.0 runs
@@ -328,6 +391,12 @@ func (s *Server) Close() error {
 	var err error
 	s.closeOnce.Do(func() {
 		err = s.closeHTTP()
+		if s.unwatchList != nil {
+			s.unwatchList()
+		}
+		if lanes, ok := s.cfg.Query.(laneCloser); ok {
+			lanes.CloseReadLanes(context.Background())
+		}
 	})
 	return err
 }

@@ -235,6 +235,86 @@ func (s *CollectionsService) createItem(collectionID string, parentID *string, n
 	return readErr(s.Deps.Repos.Collections.GetItem(id))
 }
 
+// CollectionsTargetArgs names a row in either table, 'collection' or 'item', so the renderer never has
+// to know which one a tree row lives in.
+type CollectionsTargetArgs struct {
+	ID     string `json:"id"`
+	Target string `json:"target"`
+	Name   string `json:"name,omitempty"`
+}
+
+// Rename sets the name of a collection or an item in its file; the file stem stays.
+func (s *CollectionsService) Rename(args CollectionsTargetArgs) error {
+	if args.ID == "" {
+		return ipcerr.Required("id")
+	}
+	if args.Target != "collection" && args.Target != "item" {
+		return ipcerr.Contract("target must be 'collection' or 'item'")
+	}
+	if args.Name == "" {
+		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.validation.nameRequired.body", nil)
+	}
+	var err error
+	if args.Target == "collection" {
+		err = s.Files.RenameCollection(args.ID, args.Name)
+	} else {
+		err = s.Files.RenameItem(args.ID, args.Name)
+	}
+	return apiFilesErr(err)
+}
+
+type CollectionsDeleteManyArgs struct {
+	CollectionIDs []string `json:"collectionIds"`
+	ItemIDs       []string `json:"itemIds"`
+}
+
+// DeleteMany deletes collection files and items, each with its subtree.
+func (s *CollectionsService) DeleteMany(args CollectionsDeleteManyArgs) error {
+	if len(args.CollectionIDs) == 0 && len(args.ItemIDs) == 0 {
+		return ipcerr.Required("collectionIds or itemIds")
+	}
+	return apiFilesErr(s.Files.DeleteItems(args.CollectionIDs, args.ItemIDs))
+}
+
+type CollectionsMoveItemsArgs struct {
+	ItemIDs      []string `json:"itemIds"`
+	CollectionID string   `json:"collectionId"`
+	ParentID     *string  `json:"parentId"`
+	BeforeID     *string  `json:"beforeId"`
+}
+
+// MoveItems moves requests and folders, each with its subtree, under parentId (null is the collection
+// root) of collectionId, before beforeId or last when null. It answers with each moved row id and the
+// row id it has now: a move into another collection file makes new rows.
+func (s *CollectionsService) MoveItems(args CollectionsMoveItemsArgs) (map[string]string, error) {
+	if len(args.ItemIDs) == 0 {
+		return nil, ipcerr.Required("itemIds")
+	}
+	if args.CollectionID == "" {
+		return nil, ipcerr.Required("collectionId")
+	}
+	moved, err := s.Files.MoveItems(args.ItemIDs, args.CollectionID, args.ParentID, args.BeforeID)
+	if err != nil {
+		return nil, apiFilesErr(err)
+	}
+	return moved, nil
+}
+
+type CollectionsReorderCollectionsArgs struct {
+	IDs []string `json:"ids"`
+}
+
+// ReorderCollections puts the listed collections first, in that order; ids left out keep their order after.
+func (s *CollectionsService) ReorderCollections(args CollectionsReorderCollectionsArgs) error {
+	if len(args.IDs) == 0 {
+		return ipcerr.Required("ids")
+	}
+	if err := s.Files.ReorderCollections(args.IDs); err != nil {
+		return apiFilesErr(err)
+	}
+	return nil
+}
+
 // apiFilesErr maps a config file write failure: a missing row or item is E_NOT_FOUND, a broken or
 // refused file E_BAD_REQUEST, a file changed twice during the write E_CONFLICT.
 func apiFilesErr(err error) error {
@@ -248,6 +328,10 @@ func apiFilesErr(err error) error {
 		return ipcerr.BadRequest(invalid.Problem.Message)
 	case errors.Is(err, apifiles.ErrNotFound), errors.Is(err, apifiles.ErrItemGone):
 		return ipcerr.T(ipcerr.CodeNotFound, "backend.studio.apiFiles.notFound.body", nil)
+	case errors.Is(err, apifiles.ErrInvalidMove):
+		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.collection.invalidMove.body", nil)
+	case errors.Is(err, apifiles.ErrInvalidOrder):
+		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.collection.invalidOrder.body", nil)
 	case errors.Is(err, apifiles.ErrNotFolder), errors.Is(err, apifiles.ErrProtocol), errors.Is(err, configfs.ErrInvalid):
 		return ipcerr.BadRequest(err.Error())
 	case errors.Is(err, configfs.ErrConflict):

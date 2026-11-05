@@ -130,6 +130,9 @@ const dbMcpSettingsSchema = /*#__PURE__*/ z.object({
   // Hold each run_query result for the user's review before the AI client gets it.
   previewResponses: z.boolean().default(false),
   focusOnApproval: z.boolean().default(true),
+  // Let agents send API requests with the variables an environment shares with them.
+  apiRequests: z.boolean().default(false),
+  apiApproval: z.enum(['always', 'never']).default('always'),
 });
 
 // `.default(...)` on every new section is load-bearing: an older kira.db has a settings
@@ -158,6 +161,8 @@ const settingsSchema = /*#__PURE__*/ z.object({
     serverEnabled: false,
     previewResponses: false,
     focusOnApproval: true,
+    apiRequests: false,
+    apiApproval: 'always',
   }),
   agent: agentSettingsSchema.default({ provider: DEFAULT_AGENT_PROVIDER, hermetic: true }),
 });
@@ -207,6 +212,8 @@ export const defaultSettings: Settings = {
     serverEnabled: false,
     previewResponses: false,
     focusOnApproval: true,
+    apiRequests: false,
+    apiApproval: 'always',
   },
   agent: {
     provider: DEFAULT_AGENT_PROVIDER,

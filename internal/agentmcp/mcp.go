@@ -446,7 +446,7 @@ func (s *Server) Register(g Grant) (configPath string, release func(), err error
 	s.tokens = append(s.tokens, registration{id: id, grant: g, hash: hash, salt: salt, server: perRun, ctx: regCtx, cancel: cancel})
 	s.mu.Unlock()
 
-	cfg, err := g.Agent.MCPConfig([]harness.MCPServer{{Name: ServerName, URL: url, Headers: map[string]string{"Authorization": "Bearer " + plain}}})
+	cfg, err := g.Agent.MCPConfig([]harness.MCPServer{{Name: ServerName, URL: url, Headers: map[string]string{"Authorization": "Bearer " + plain}, Timeout: harness.MCPCallTimeout}})
 	name := g.RunID
 	if name == "" {
 		name = "task-" + g.TaskID

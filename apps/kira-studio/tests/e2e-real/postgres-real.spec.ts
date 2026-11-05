@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { assertTooltipShows } from '../ui/support/tooltip';
 import { expect, test } from './fixtures';
+import { createConnection } from './support/connections';
 import { installPassthrough } from './support/passthrough';
 import {
   DOCKER_UNAVAILABLE_MESSAGE,
@@ -47,17 +48,15 @@ test('real Postgres container round-trips through the real Go bridge', async ({
   // empty allowlist — proves the passthrough route stays out of the way when nothing needs faking.
   await installPassthrough(page);
 
-  await page.click('[data-testid="add-connection"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toBeVisible();
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Real Postgres');
-  await page.fill('[data-testid="connection-host"]', pg.config.host ?? '');
-  await page.fill('[data-testid="connection-port"]', String(pg.config.port));
-  await page.fill('[data-testid="connection-database"]', pg.config.database ?? '');
-  await page.fill('[data-testid="connection-username"]', pg.config.username ?? '');
-  await page.fill('[data-testid="connection-password"]', pg.config.password ?? '');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(kira, {
+    name: 'Real Postgres',
+    kind: 'postgres',
+    host: pg.config.host ?? '',
+    port: pg.config.port,
+    database: pg.config.database ?? '',
+    username: pg.config.username ?? '',
+    password: pg.config.password ?? '',
+  });
 
   // §5: the same non-idempotent optimistic-update finding E1 works around — a reload re-hydrates
   // from a real ConnectionsService.List call instead of relying on the duplicated tree row the
@@ -127,16 +126,15 @@ test('real Postgres: keyset paging over app.big_rows, forward then back', async 
   const { window: page } = kira;
   await installPassthrough(page);
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-postgres"]');
-  await page.fill('[data-testid="connection-name"]', 'Real Postgres Paging');
-  await page.fill('[data-testid="connection-host"]', pg.config.host ?? '');
-  await page.fill('[data-testid="connection-port"]', String(pg.config.port));
-  await page.fill('[data-testid="connection-database"]', pg.config.database ?? '');
-  await page.fill('[data-testid="connection-username"]', pg.config.username ?? '');
-  await page.fill('[data-testid="connection-password"]', pg.config.password ?? '');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(kira, {
+    name: 'Real Postgres Paging',
+    kind: 'postgres',
+    host: pg.config.host ?? '',
+    port: pg.config.port,
+    database: pg.config.database ?? '',
+    username: pg.config.username ?? '',
+    password: pg.config.password ?? '',
+  });
   await page.reload();
   await page.waitForSelector('[data-testid="status-bar"]');
 

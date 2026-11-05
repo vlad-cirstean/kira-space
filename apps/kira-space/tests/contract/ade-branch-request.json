@@ -32,29 +32,65 @@
     "upstreamBehind": 0,
     "worktree": "<masked>"
   },
-  "AdeTaskService.BranchRequest": {
-    "createdAt": 0,
-    "expiresAt": 0,
-    "id": "<masked>",
-    "items": [
-      {
-        "base": "",
-        "branch": "",
-        "codeRepoId": "<masked>",
-        "kind": "branch",
-        "repo": "api"
+  "ApprovalsService.List#branch": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "branch.request:<id:1>",
+      "kind": "branch.request",
+      "operation": {
+        "class": "create",
+        "tone": "caution"
       },
-      {
-        "base": "",
-        "branch": "",
-        "codeRepoId": "<masked>",
-        "kind": "branch",
-        "repo": "web"
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "run",
+        "step": "one",
+        "task": "Fix login"
+      },
+      "payload": {
+        "items": [
+          {
+            "base": "",
+            "branch": "feat/login",
+            "codeRepoId": "<masked>",
+            "from": "",
+            "id": "c0i0",
+            "kind": "branch",
+            "repo": "api",
+            "session": "<id:2>",
+            "source": "run",
+            "stacked": [],
+            "stepName": "one",
+            "upstream": ""
+          },
+          {
+            "base": "",
+            "branch": "feat/login-web",
+            "codeRepoId": "<masked>",
+            "from": "",
+            "id": "c0i1",
+            "kind": "branch",
+            "repo": "web",
+            "session": "<id:2>",
+            "source": "run",
+            "stacked": [],
+            "stepName": "one",
+            "upstream": ""
+          }
+        ],
+        "taskId": "<masked>",
+        "taskTitle": "Fix login"
+      },
+      "reason": "request",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "Fix login",
+        "readOnly": false
       }
-    ],
-    "source": "run",
-    "stepName": "one",
-    "taskId": "<masked>",
-    "taskTitle": "Fix login"
-  }
+    }
+  ]
 }

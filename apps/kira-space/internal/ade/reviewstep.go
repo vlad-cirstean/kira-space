@@ -13,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
@@ -479,7 +480,7 @@ func (b *TaskBoard) SendReview(ctx context.Context, args adewire.SendReviewArgs)
 	}
 	spec := model.AdeReviewSpec{
 		ReviewRunID: rc.run.ID, Route: route, GitRepoID: tgt.GitRepoID, Branch: tgt.Branch,
-		CommentIDs: make([]int64, len(open)),
+		CommentIDs: make([]string, len(open)),
 	}
 	for i, c := range open {
 		spec.CommentIDs[i] = c.ID
@@ -574,7 +575,7 @@ func (b *TaskBoard) queueRound(ctx context.Context, tc *taskCtx, sb model.AdeTas
 		return model.AdeRun{}, err
 	}
 	run := model.AdeRun{
-		ID: b.newID(), TaskID: tc.task.ID, StepID: rv.StepID, BranchID: rv.BranchID, Attempt: attempt,
+		ID: ids.NewID(), TaskID: tc.task.ID, StepID: rv.StepID, BranchID: rv.BranchID, Attempt: attempt,
 		State: model.AdeRunPending, Purpose: model.AdeRunPurposeReview, SpecJSON: string(raw), Launch: launch,
 	}
 	if err := b.deps.Tasks.InsertRun(run); err != nil {
@@ -636,7 +637,7 @@ func (b *TaskBoard) startRound(ctx context.Context, tc *taskCtx, run model.AdeRu
 	}()
 	now := b.deps.Now().UnixMilli()
 	launch := run.Launch
-	sessionID := b.newID()
+	sessionID := ids.NewID()
 	agent, err := b.agentForStep(launch.ResumeID, stepAgentOf(tc, run.StepID))
 	if err != nil {
 		return run, err
@@ -887,7 +888,7 @@ func (b *TaskBoard) resumeReviewRound(ctx context.Context, run model.AdeRun) err
 // --- reply and finish ----------------------------------------------------------------------------
 
 // Reply stores an agent's answer to one comment of its round (agentmcp.ReviewReplier).
-func (b *TaskBoard) Reply(runID string, id int64, reply string, resolved bool) error {
+func (b *TaskBoard) Reply(runID string, id string, reply string, resolved bool) error {
 	run, err := b.deps.Tasks.GetRun(runID)
 	if err != nil {
 		return err
@@ -900,7 +901,7 @@ func (b *TaskBoard) Reply(runID string, id int64, reply string, resolved bool) e
 		return err
 	}
 	if !slices.Contains(spec.CommentIDs, id) {
-		return fmt.Errorf("comment %d was not sent to you", id)
+		return fmt.Errorf("comment %s was not sent to you", id)
 	}
 	store, err := b.reviewStore()
 	if err != nil {
@@ -911,7 +912,7 @@ func (b *TaskBoard) Reply(runID string, id int64, reply string, resolved bool) e
 		return err
 	}
 	if !ok {
-		return fmt.Errorf("comment %d no longer exists", id)
+		return fmt.Errorf("comment %s no longer exists", id)
 	}
 	b.emitReview(run.TaskID, run.BranchID)
 	return nil

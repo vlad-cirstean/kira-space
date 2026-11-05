@@ -1,5 +1,10 @@
 {
   "automations": {
+    "collection": {
+      "deleteConfirm": {
+        "body": "Delete “{name}” and everything inside it."
+      }
+    },
     "dialog": {
       "run": {
         "editPrompt": {
@@ -23,8 +28,24 @@
         }
       },
       "script": {
+        "chooseFolder": {
+          "label": "Choose folder…",
+          "title": "Choose a run folder"
+        },
+        "nameExample": {
+          "example": "Build"
+        },
         "noCollection": {
           "option": "No collection"
+        },
+        "noFolder": {
+          "status": "No folder chosen"
+        },
+        "runFolder": {
+          "label": "Run folder"
+        },
+        "useAdeDir": {
+          "label": "Run in the task’s worktree when started from ADE"
         }
       }
     },
@@ -40,8 +61,38 @@
       }
     },
     "error": {
+      "budget": {
+        "error": "Budget must be above 0."
+      },
+      "commandRequired": {
+        "error": "Command is required."
+      },
+      "folderRequired": {
+        "error": "Choose a folder."
+      },
+      "nameRequired": {
+        "error": "Name is required."
+      },
       "nothingToRun": {
         "error": "Nothing to run yet."
+      },
+      "paramName": {
+        "error": "Use lowercase letters, digits and underscores, starting with a letter, 32 characters at most."
+      },
+      "paramOption": {
+        "error": "Add at least one option."
+      },
+      "paramReserved": {
+        "error": "“{name}” is reserved."
+      },
+      "paramTwice": {
+        "error": "“{name}” is listed twice."
+      },
+      "promptRequired": {
+        "error": "Prompt is required."
+      },
+      "repeatRequired": {
+        "error": "Repeat is required."
       }
     },
     "file": {
@@ -58,6 +109,38 @@
         "hint": "Saved in the keychain. The file lists only the parameter name.",
         "title": "Secret values"
       }
+    },
+    "form": {
+      "collection": {
+        "placeholder": "No collection (type a name for a new one)"
+      },
+      "folder": {
+        "label": "Folder"
+      },
+      "mcp": {
+        "allow": {
+          "label": "Run straight away"
+        },
+        "description": {
+          "hint": "The agent reads this to choose the script. Up to 1000 characters.",
+          "placeholder": "What this script does and when to run it"
+        },
+        "enable": {
+          "hint": "An agent on the database MCP server can list this script and start it. It gets the run result, never the output; logs come from a separate, size-capped read.",
+          "label": "Let agents run this script"
+        },
+        "prompt": {
+          "label": "Ask me first"
+        },
+        "run": {
+          "label": "When an agent runs it"
+        }
+      },
+      "smart": {},
+      "tabs": {
+        "aria": "Run settings"
+      },
+      "yaml": {}
     },
     "ops": {
       "openRun": {
@@ -77,14 +160,43 @@
       }
     },
     "params": {
+      "add": {
+        "label": "Add parameter"
+      },
+      "addOption": {
+        "label": "Add option"
+      },
+      "default": {
+        "aria": "Default {option}"
+      },
+      "multiselect": {
+        "option": "Multiselect"
+      },
+      "option": {
+        "placeholder": "Option"
+      },
+      "remove": {
+        "tooltip": "Remove parameter {name}"
+      },
+      "removeOption": {
+        "tooltip": "Remove option"
+      },
+      "scriptHint": {
+        "description": "Parameters reach the command as {variable}."
+      },
       "secretValue": {
         "saved": {
-          "placeholder": "Saved, type to replace",
           "status": "Value saved"
         },
         "storageOff": {
           "description": "The keychain is unavailable, so a secret can’t be saved. Each run asks for it."
         }
+      },
+      "smartHint": {
+        "description": "Use {token} in the prompt. A secret reaches the run as {variable} only, never in the prompt."
+      },
+      "title": {
+        "label": "Parameters"
       }
     },
     "restore": {
@@ -226,6 +338,9 @@
       "triggerAde": {
         "label": "ADE · {task}"
       },
+      "triggerMcp": {
+        "label": "Agent run"
+      },
       "triggerScheduled": {
         "label": "Scheduled"
       },
@@ -245,8 +360,26 @@
       }
     },
     "schedule": {
+      "askEach": {
+        "hint": "A popup asks before each run."
+      },
+      "askLocked": {
+        "hint": "Needs your answer each time. A required secret parameter has no saved value."
+      },
+      "cronExample": {
+        "example": "0 9 * * 1-5"
+      },
+      "cronHint": {
+        "hint": "Minute hour day month weekday."
+      },
       "due": {
         "status": "Due {time}"
+      },
+      "enable": {
+        "label": "Run on a schedule"
+      },
+      "enabled": {
+        "label": "Enabled"
       },
       "everyDay": {
         "option": "Every day {time}"
@@ -257,11 +390,45 @@
       "everyMinutes": {
         "option": "Every {count} minute | Every {count} minutes"
       },
+      "findTimezone": {
+        "placeholder": "Find a timezone"
+      },
       "mondays": {
         "option": "Mondays {time}"
       },
       "next": {
         "label": "Next: {times}"
+      },
+      "noTimezone": {
+        "empty": "No timezone"
+      },
+      "note": {
+        "hint": "Runs only while {app} is open. Missed runs are skipped. A run still going, or still waiting for your answer, makes the next one skip."
+      },
+      "presets": {
+        "aria": "Presets",
+        "option": "Choose preset…"
+      },
+      "quiet": {
+        "label": "Run without asking"
+      },
+      "quietWhy": {
+        "hint": "Runs as soon as it is due, with no popup."
+      },
+      "repeat": {
+        "label": "Repeat"
+      },
+      "timeoutExample": {
+        "example": "30m"
+      },
+      "timeoutRange": {
+        "hint": "Between 1m and 24h. A run still going at the limit is stopped."
+      },
+      "timezone": {
+        "label": "Timezone"
+      },
+      "title": {
+        "label": "Schedule"
       },
       "weekdays": {
         "option": "Weekdays {time}"
@@ -292,6 +459,12 @@
       "gone": {
         "error": "This script no longer exists."
       },
+      "insertHint": {
+        "hint": "Use {token} to insert a parameter. Press {chord} to save."
+      },
+      "mcp": {
+        "tooltip": "Agents can run this script"
+      },
       "new": {
         "label": "New script"
       },
@@ -314,6 +487,9 @@
       "secretInPrompt": {
         "error": "A secret can’t be used in the prompt."
       },
+      "shellHint": {
+        "hint": "Runs in your login shell; lines run in order. Press {chord} to save."
+      },
       "showRun": {
         "tooltip": "Show run"
       },
@@ -325,8 +501,71 @@
       }
     },
     "smart": {
+      "addPattern": {
+        "aria": "Add pattern"
+      },
+      "addTool": {
+        "placeholder": "Add tool by name"
+      },
       "badge": {
         "tooltip": "Smart script that runs {agent} headless"
+      },
+      "bashExample": {
+        "example": "git status:*"
+      },
+      "bashHint": {
+        "hint": "Bash commands the script may run, such as {example}. Empty allows any."
+      },
+      "budget": {
+        "label": "Budget in dollars"
+      },
+      "defaultTools": {
+        "label": "Default tools"
+      },
+      "mcp": {
+        "label": "MCP tools"
+      },
+      "mcpAllTools": {
+        "label": "All tools"
+      },
+      "mcpHint": {
+        "hint": "Servers {agent} reports for your user config. A run that uses one loads your {agent} settings."
+      },
+      "mcpHintApp": {
+        "hint": "Servers from Kira’s own agent settings, not your CLI config."
+      },
+      "mcpNone": {
+        "emptyHint": "No MCP servers."
+      },
+      "mcpStatusConnected": {
+        "status": "Online"
+      },
+      "mcpStatusFailed": {
+        "status": "Unreachable"
+      },
+      "mcpStatusNeedsAuth": {
+        "status": "Needs sign-in"
+      },
+      "mcpStatusPending": {
+        "status": "Connecting"
+      },
+      "mcpStatusUnknown": {
+        "status": "Status unknown"
+      },
+      "model": {
+        "label": "Model"
+      },
+      "noCostCap": {
+        "label": "No cost cap"
+      },
+      "remove": {
+        "tooltip": "Remove {name}"
+      },
+      "timeoutExample": {
+        "example": "15m"
+      },
+      "tools": {
+        "label": "Tools"
       }
     },
     "start": {
@@ -821,6 +1060,18 @@
         "kindInvalid": {
           "body": "The kind must be script or smart."
         },
+        "mcpDescriptionLong": {
+          "body": "The MCP description is at most {max} characters."
+        },
+        "mcpRun": {
+          "body": "The MCP approval is prompt or allow."
+        },
+        "mcpSmart": {
+          "body": "A smart run can’t be exposed to MCP."
+        },
+        "mcpTimeout": {
+          "body": "The MCP timeout must be between 1m and 24h."
+        },
         "nameRequired": {
           "body": "The name is required."
         },
@@ -980,6 +1231,12 @@
         },
         "fillIn": {
           "body": "Fill in {names}."
+        },
+        "mcpSecret": {
+          "body": "An agent can’t set the secret parameter {name}. Save its value in Kira."
+        },
+        "mcpSmart": {
+          "body": "A smart run can’t be started by an agent."
         },
         "noSchedule": {
           "body": "This script has no schedule."
@@ -1318,11 +1575,8 @@
         "title": "Approve branches · {task}"
       },
       "count": {
-        "branchRequest": {
-          "title": "{count} branch requests wait for approval"
-        },
-        "dbMcp": {
-          "title": "{count} queries wait for approval"
+        "approval": {
+          "title": "{count} things await your approval"
         },
         "gitCredential": {
           "title": "{count} Git credential requests wait"
@@ -1346,6 +1600,9 @@
       "dbMcp": {
         "title": "Approve this query"
       },
+      "dbMcpAPI": {
+        "title": "Send {method} request to {host}"
+      },
       "dbMcpNamed": {
         "title": "Approve this query · {name}"
       },
@@ -1354,6 +1611,9 @@
       },
       "dbMcpResponseNamed": {
         "title": "Review this result · {name}"
+      },
+      "dbMcpScript": {
+        "title": "Run script {name}"
       },
       "gitCredential": {
         "title": "Git needs a credential"
@@ -1423,6 +1683,9 @@
         "branchRequestGone": {
           "body": "This branch request was already answered."
         },
+        "draftInRepo": {
+          "body": "This task already has a branch slot waiting for a name in that repository."
+        },
         "estimateInvalid": {
           "body": "Enter an estimate like 2h or 3d."
         },
@@ -1452,9 +1715,6 @@
         },
         "notesTooLong": {
           "body": "The notes are too long."
-        },
-        "repoOnTask": {
-          "body": "This task already has a branch in that repository."
         },
         "resumeCwdNotDir": {
           "body": "The folder to resume in is a file, not a folder."
@@ -1888,8 +2148,8 @@
         "envDuplicate": {
           "body": "An environment name is listed twice."
         },
-        "envScriptBlank": {
-          "body": "An environment needs a script."
+        "envScriptOne": {
+          "body": "An environment needs exactly one of deployed_sha_script and deployed_sha_run."
         },
         "fileBroken": {
           "body": "{file} has an error on line {line}. Fix it in the file first."
@@ -1917,6 +2177,15 @@
         },
         "pathTaken": {
           "body": "Another file already configures this repository."
+        },
+        "prepareBoth": {
+          "body": "Set one of prepare_script and prepare_run, not both."
+        },
+        "refParamName": {
+          "body": "A param name is lowercase letters, digits and underscores, starting with a letter, at most 32 characters."
+        },
+        "refScriptBlank": {
+          "body": "A script reference needs a script name on one line, at most 200 characters."
         },
         "timeoutInvalid": {
           "body": "The prepare timeout must be a duration such as 15m, above 0 and at most 2h."
@@ -1969,6 +2238,9 @@
         },
         "insertNotAcknowledged": {
           "body": "The server didn’t acknowledge the insert."
+        },
+        "invalidOperationId": {
+          "body": "The operation ID is not valid."
         },
         "kafkaForwardOnly": {
           "body": "Kafka offset-window pagination is forward-only. There is no previous page."
@@ -2035,6 +2307,9 @@
         },
         "kibanaUriScheme": {
           "body": "Kibana URL must start with http:// or https://."
+        },
+        "laneConnectionChanged": {
+          "body": "The connection changed while its read connection opened. Retry."
         },
         "literalInvalid": {
           "body": "Invalid {type} “{value}” at position {position}."
@@ -2161,6 +2436,15 @@
         }
       },
       "apiFiles": {
+        "agentHostInvalid": {
+          "body": "The allowed host {host} of {name} isn’t valid. Use a host name, optionally with a port or a wildcard subdomain."
+        },
+        "agentHostsMisplaced": {
+          "body": "The variable {name} lists allowed hosts, but only a secret available to agents can. Remove them or fix the variable."
+        },
+        "agentHostsRequired": {
+          "body": "The secret {name} is available to agents but lists no allowed host. Add at least one allowed host."
+        },
         "changed": {
           "body": "The file changed while Kira saved. Retry."
         },
@@ -2242,6 +2526,9 @@
           "variablesInert": {
             "body": "{count} folder- or item-level variables were kept but are not resolved yet. A secret-typed one has its value stripped."
           }
+        },
+        "invalidOrder": {
+          "body": "That order no longer matches the list. Retry."
         },
         "writeFailed": {
           "error": "Couldn’t write {path}: {detail}"
@@ -2434,6 +2721,18 @@
       "proof": {
         "notPng": {
           "body": "The screenshot is not a PNG image."
+        },
+        "shotExists": {
+          "body": "A screenshot with that name is already in the folder."
+        },
+        "shotFolder": {
+          "title": "Choose where to save the screenshots"
+        },
+        "shotFolderGone": {
+          "body": "The screenshot folder is no longer available. Save again."
+        },
+        "shotFolderTaken": {
+          "body": "Too many folders with that name exist. Choose another location."
         },
         "tooLarge": {
           "body": "The screenshot is too large to save."
@@ -2672,6 +2971,9 @@
       "search": {
         "label": "Search"
       },
+      "select": {
+        "label": "Select"
+      },
       "selectAll": {
         "label": "Select all"
       },
@@ -2831,6 +3133,14 @@
         "status": "✓ Valid"
       }
     },
+    "configForm": {
+      "problem": {
+        "status": "Line {line}: {message}"
+      },
+      "showYaml": {
+        "label": "Show in YAML"
+      }
+    },
     "confirm": {
       "irreversible": {
         "body": "This can’t be undone."
@@ -2880,6 +3190,9 @@
     "dashPair": {
       "label": "{first} — {second}"
     },
+    "deleteCollectionConfirm": {
+      "title": "Delete collection?"
+    },
     "details": {
       "title": "Details"
     },
@@ -2910,6 +3223,9 @@
     "enterWholeNumber": {
       "error": "Enter a whole number."
     },
+    "environmentName": {
+      "aria": "Environment name"
+    },
     "error": {
       "contract": {
         "body": "Something went wrong inside Kira ({detail})."
@@ -2917,6 +3233,9 @@
       "openLink": {
         "announce": "Couldn’t open the link"
       }
+    },
+    "expires": {
+      "status": "Expires in {time}"
     },
     "expiresIn": {
       "status": "Expires in {seconds}s"
@@ -3003,6 +3322,9 @@
     },
     "forcePush": {
       "label": "Force push"
+    },
+    "form": {
+      "label": "Form"
     },
     "gitHost": {
       "changeRequest": {
@@ -3259,7 +3581,16 @@
       "aria": "Search results"
     },
     "secret": {
-      "label": "Secret"
+      "label": "Secret",
+      "notRevealable": {
+        "tooltip": "Saved values can’t be shown. Type a new value to replace it"
+      },
+      "saved": {
+        "placeholder": "Saved, type to replace"
+      },
+      "show": {
+        "label": "Show value"
+      }
     },
     "sendTest": {
       "label": "Send test notification"
@@ -3272,6 +3603,9 @@
     },
     "skipped": {
       "status": "Skipped"
+    },
+    "smart": {
+      "label": "Smart"
     },
     "smartScript": {
       "label": "Smart script"
@@ -3343,6 +3677,9 @@
     },
     "worktree": {
       "label": "Worktree"
+    },
+    "yaml": {
+      "label": "YAML"
     }
   },
   "docker": {
@@ -8460,22 +8797,25 @@
         }
       },
       "branchRequest": {
-        "approve": {
-          "label": "Approve ({count})"
-        },
         "item": {
           "branch": {
-            "label": "New branch from {base}"
+            "label": "Create {branch} from {base}"
           },
           "branchMain": {
-            "label": "New branch from the repository’s main branch"
+            "label": "Create {branch} from the repository’s main branch"
+          },
+          "rename": {
+            "label": "Rename {from} to {branch}"
           },
           "worktree": {
             "label": "Worktree for {branch}"
           }
         },
         "naming": {
-          "hint": "Kira Space names new branches kira/ plus a random ID, and each worktree folder a random ID. Approving adds a repository the task does not have yet."
+          "hint": "The agent names each branch. Kira Space picks each worktree folder. Approving adds a repository the task does not have yet."
+        },
+        "renameRemote": {
+          "label": "Also rename {upstream} on the remote"
         },
         "source": {
           "automation": {
@@ -8488,8 +8828,8 @@
             "label": "Session · {step}"
           }
         },
-        "title": {
-          "title": "Branches for {task}"
+        "stacked": {
+          "hint": "The worktree folder stays. Branches built on it follow: {branches}."
         }
       },
       "changes": {
@@ -9836,6 +10176,28 @@
           "tooltip": "Next step"
         }
       },
+      "steps": {
+        "delete": {
+          "body": "Delete the library step “{name}”? The file is removed.",
+          "title": "Delete step"
+        },
+        "empty": {
+          "emptyHint": "No library steps yet. Library steps are YAML files in {dir}."
+        },
+        "intro": {
+          "body": "A library step is a step that many workflows share. Edit it once and every workflow that uses it changes. Tasks already started keep the steps they began with."
+        },
+        "mode": {
+          "aria": "Step editor mode"
+        },
+        "noValid": {
+          "body": "This step file has no valid version yet."
+        },
+        "usedBy": {
+          "hint": "Used by {workflows}. Detach the step there before deleting it.",
+          "label": "Used by {count} workflow | Used by {count} workflows"
+        }
+      },
       "takeOverConfirm": {
         "body": "“{step}” is still running on {branch}. Taking over stops it, marks it stuck and continues it in {product}."
       },
@@ -9950,6 +10312,104 @@
           "label": "Interactive · {activity} · {ago}"
         }
       },
+      "updates": {
+        "branch": {
+          "baseMoved": {
+            "status": "Base branch moved"
+          },
+          "conflicts": {
+            "status": "Branch conflicts"
+          },
+          "deploymentChanged": {
+            "status": "Deploy status changed"
+          },
+          "localCommits": {
+            "status": "Local commits added"
+          },
+          "merged": {
+            "status": "Branch merged"
+          },
+          "remoteCommits": {
+            "status": "New commits on remote"
+          }
+        },
+        "changeRequest": {
+          "approved": {
+            "status": "Approval received"
+          },
+          "assigneeChanged": {
+            "status": "Request reassigned"
+          },
+          "changesRequested": {
+            "status": "Request changes asked"
+          },
+          "checksFailed": {
+            "status": "Request checks failing"
+          },
+          "checksPassed": {
+            "status": "Request checks passing"
+          },
+          "closed": {
+            "status": "Closed unmerged"
+          },
+          "commentAdded": {
+            "status": "{count} new request comment | {count} new request comments"
+          },
+          "merged": {
+            "status": "Merge completed"
+          },
+          "newCommits": {
+            "status": "Request has new commits"
+          },
+          "opened": {
+            "status": "Request opened"
+          },
+          "readyForReview": {
+            "status": "Request ready for review"
+          },
+          "reopened": {
+            "status": "Request reopened"
+          },
+          "titleChanged": {
+            "status": "Request retitled"
+          }
+        },
+        "dot": {
+          "aria": "Unseen updates"
+        },
+        "issue": {
+          "assigneeChanged": {
+            "status": "Issue reassigned"
+          },
+          "commentAdded": {
+            "status": "{count} new issue comment | {count} new issue comments"
+          },
+          "linkedChangeRequests": {
+            "status": "Issue link count changed"
+          },
+          "priorityChanged": {
+            "status": "Issue priority changed"
+          },
+          "statusChanged": {
+            "status": "Issue status changed"
+          },
+          "titleChanged": {
+            "status": "Issue retitled"
+          }
+        },
+        "line": {
+          "label": "{subject} updated: {changes}"
+        },
+        "markAllSeen": {
+          "label": "Mark all seen"
+        },
+        "markSeen": {
+          "label": "Mark seen"
+        },
+        "strip": {
+          "title": "Since you last looked"
+        }
+      },
       "view": {
         "empty": {
           "hint": "Add repositories from the Git module to start planning agent work.",
@@ -9990,9 +10450,7 @@
           "mode": {
             "aria": "Editor mode"
           },
-          "yaml": {
-            "label": "YAML"
-          }
+          "yaml": {}
         },
         "field": {
           "runsOn": {
@@ -10052,6 +10510,33 @@
           },
           "script": {
             "option": "Script step"
+          }
+        },
+        "library": {
+          "add": {
+            "label": "From library"
+          },
+          "detach": {
+            "label": "Detach from library"
+          },
+          "edit": {
+            "label": "Edit in the library"
+          },
+          "extraPrompt": {
+            "hint": "Appended to the library prompt. Only this workflow gets it.",
+            "label": "Extra prompt (this workflow)"
+          },
+          "from": {
+            "label": "From library: {name}"
+          },
+          "overridden": {
+            "label": "Overridden"
+          },
+          "reset": {
+            "aria": "Reset {field} to the library value"
+          },
+          "save": {
+            "label": "Save to library"
           }
         },
         "page": {
@@ -10304,6 +10789,10 @@
           }
         },
         "stepNode": {
+          "library": {
+            "label": "Library",
+            "tooltip": "Library step {id}"
+          },
           "manual": {
             "label": "Your own work"
           },
@@ -10334,8 +10823,15 @@
           "session": {
             "label": "Interactive {product} session"
           },
-          "smart": {
-            "label": "Smart"
+          "smart": {}
+        },
+        "tabs": {
+          "aria": "Workflows sections",
+          "statuses": {
+            "label": "Statuses"
+          },
+          "steps": {
+            "label": "Steps"
           }
         },
         "yaml": {
@@ -10794,8 +11290,72 @@
         }
       },
       "config": {
+        "basePath": {
+          "chooseTitle": {
+            "title": "Choose worktree base path"
+          },
+          "description": "Pre-fills the path of new worktrees. Empty uses the default.",
+          "label": "Worktree base path",
+          "placeholder": "Default location"
+        },
+        "environments": {
+          "intro": {
+            "hint": "Track which commit each environment runs. For each one, give a command that prints the deployed commit SHA, for example {command}. Kira Space runs it in the repository root when the board refreshes and marks branches deployed there."
+          },
+          "title": "Deployment environments"
+        },
+        "nickname": {
+          "description": "Shown everywhere instead of the repository name.",
+          "label": "Nickname"
+        },
+        "prepare": {
+          "description": "Setup script. Runs in the root of every new worktree of this repository, before any agent starts, for example {command}. A non-zero exit marks setup as failed.",
+          "label": "Prepare worktree"
+        },
         "repository": {
           "label": "Repository"
+        },
+        "scriptRef": {
+          "defaults": {
+            "hint": "Empty uses the script’s default."
+          },
+          "dirOwn": {
+            "hint": "Runs in the script’s own folder. {variable} points at the worktree."
+          },
+          "dirRepo": {
+            "hint": "Runs in the repository folder."
+          },
+          "dirWorktree": {
+            "hint": "Runs in the worktree."
+          },
+          "duplicate": {
+            "error": "{count} run scripts are named “{script}”. Rename all but one."
+          },
+          "empty": "No run scripts yet",
+          "missing": {
+            "error": "No run script named “{script}”."
+          },
+          "mode": {
+            "aria": "Script source"
+          },
+          "script": {
+            "label": "Script to run"
+          },
+          "secretGiven": {
+            "error": "A secret param takes the value saved in the script, not one in the repository file: {names}."
+          },
+          "secretParams": {
+            "hint": "Saved with the script: {names}."
+          },
+          "secretUnsaved": {
+            "hint": "No value saved yet for {names}."
+          },
+          "smart": {
+            "error": "A repository file runs a normal script, not the smart script “{script}”."
+          },
+          "unknownParams": {
+            "error": "Not params of “{script}”: {names}."
+          }
         },
         "source": {
           "added": {
@@ -10810,6 +11370,11 @@
           "usedOnPlan": {
             "status": "Used by tasks on the plan"
           }
+        },
+        "targets": {
+          "description": "Besides main. Branches are checked for being merged or stale in these.",
+          "example": "develop, staging",
+          "label": "Integration branches"
         }
       },
       "dialog": {
@@ -10867,6 +11432,21 @@
         },
         "show": {
           "tooltip": "Show in Git panel"
+        }
+      },
+      "env": {
+        "add": {
+          "label": "Add environment"
+        },
+        "name": {
+          "example": "staging"
+        },
+        "remove": {
+          "tooltip": "Remove environment"
+        },
+        "script": {
+          "aria": "Deployed SHA script",
+          "example": "curl -s https://…/version"
         }
       },
       "file": {
@@ -10993,6 +11573,9 @@
         },
         "problem": {
           "aria": "Settings file has an error"
+        },
+        "tabs": {
+          "aria": "Settings file view"
         }
       },
       "tree": {
@@ -11405,6 +11988,126 @@
         },
         "mobileAccess": {
           "label": "Mobile access"
+        },
+        "updates": {
+          "label": "Updates"
+        }
+      },
+      "updates": {
+        "branch": {
+          "baseMoved": {
+            "description": "The base branch gets new commits.",
+            "label": "Base moved"
+          },
+          "conflicts": {
+            "description": "Rebasing the branch would now conflict.",
+            "label": "Conflicts"
+          },
+          "deploymentChanged": {
+            "description": "An environment’s deploy status of the branch changes.",
+            "label": "Deployment changed"
+          },
+          "description": "The branches of a task.",
+          "localCommits": {
+            "description": "The branch’s tip moves, including by your own commits.",
+            "label": "Local commits"
+          },
+          "merged": {
+            "description": "The branch lands in the main branch.",
+            "label": "Merged into main"
+          },
+          "remoteCommits": {
+            "description": "Someone pushes to the branch.",
+            "label": "New commits on the remote"
+          },
+          "title": "Task branches"
+        },
+        "changeRequest": {
+          "approved": {
+            "description": "The request is approved.",
+            "label": "Request approved"
+          },
+          "assigneeChanged": {
+            "description": "The request’s assignees change. Azure reports none.",
+            "label": "Assignee changed"
+          },
+          "changesRequested": {
+            "description": "A reviewer asks for changes.",
+            "label": "Reviewer wants changes"
+          },
+          "checksFailed": {
+            "description": "The checks on the request start failing.",
+            "label": "Checks start failing"
+          },
+          "checksPassed": {
+            "description": "The checks on the request pass.",
+            "label": "Checks start passing"
+          },
+          "closed": {
+            "description": "The request is closed without a merge.",
+            "label": "Request closed"
+          },
+          "commentAdded": {
+            "description": "Someone comments on the request or submits a review.",
+            "label": "New comments"
+          },
+          "description": "The pull or merge request of each branch a task tracks. Azure reports no comment count and no assignees, so those two never fire there.",
+          "merged": {
+            "description": "The request is merged.",
+            "label": "Request merged"
+          },
+          "newCommits": {
+            "description": "The request’s head moves to a new commit.",
+            "label": "New commits"
+          },
+          "opened": {
+            "description": "A pull request or merge request appears for a branch you track.",
+            "label": "Opened"
+          },
+          "readyForReview": {
+            "description": "A draft request is marked ready.",
+            "label": "Ready for review"
+          },
+          "reopened": {
+            "description": "A merged or closed request is open again.",
+            "label": "Reopened"
+          },
+          "title": "Pull and merge requests",
+          "titleChanged": {
+            "description": "The request is renamed.",
+            "label": "Title changed"
+          }
+        },
+        "intro": {
+          "description": "Choose which changes to a tracked item count as an update. A dot marks tasks and branches with unseen updates. Mark them seen to clear the dot."
+        },
+        "issue": {
+          "assigneeChanged": {
+            "description": "The issue is assigned to someone else.",
+            "label": "Issue assignee changed"
+          },
+          "commentAdded": {
+            "description": "Someone comments on the issue.",
+            "label": "New issue comments"
+          },
+          "description": "The issue a task links.",
+          "linkedChangeRequests": {
+            "description": "The number of pull requests linked to the issue changes.",
+            "label": "Linked pull requests"
+          },
+          "priorityChanged": {
+            "description": "The issue’s priority changes.",
+            "label": "Priority changed"
+          },
+          "statusChanged": {
+            "description": "The issue moves to another status.",
+            "label": "Status changed"
+          },
+          "title": "Issues",
+          "titleChanged": {
+            "description": "The issue is renamed.",
+            "label": "Issue title changed"
+          }
         }
       }
     },
@@ -11444,7 +12147,68 @@
   },
   "studio": {
     "api": {
+      "agentAccess": {
+        "autoApproveReads": {
+          "label": "Auto-approve read requests from agents"
+        },
+        "autoReads": {
+          "status": "Reads auto-approved"
+        },
+        "available": {
+          "aria": "Make {name} available to agents"
+        },
+        "hosts": {
+          "aria": "Hosts {name} may be sent to",
+          "hint": "Use a host name, optionally with a port or a wildcard subdomain.",
+          "placeholder": "Add a host, then press Enter"
+        },
+        "hostsRequired": {
+          "error": "Add at least one allowed host."
+        },
+        "intro": {
+          "body": "Choose which variables an agent can reference by name in a request. A secret also needs the hosts it may be sent to."
+        },
+        "none": {
+          "hint": "No variables are available to agents."
+        },
+        "overview": {
+          "body": "Variables that AI agents can use in API requests through the database MCP server. Agents see names, never values."
+        },
+        "tab": {}
+      },
       "collections": {
+        "copyName": {
+          "label": "{name} copy"
+        },
+        "deleteFolderConfirm": {
+          "title": "Delete folder?"
+        },
+        "deleteMany": {
+          "label": "Delete {count} item | Delete {count} items"
+        },
+        "deleteManyConfirm": {
+          "body": "Deletes {list}.",
+          "collections": {
+            "label": "{count} collection | {count} collections"
+          },
+          "nested": {
+            "body": "Everything inside folders and collections goes too."
+          },
+          "openTabs": {
+            "body": "Open tabs for deleted requests stay open as unsaved."
+          },
+          "title": "Delete {count} items?"
+        },
+        "deleteRequestConfirm": {
+          "body": "“{name}” will be deleted.",
+          "title": "Delete request?"
+        },
+        "deleteTreeConfirm": {
+          "body": "“{name}” and everything inside it will be deleted."
+        },
+        "dragCount": {
+          "aria": "Moving {count} items"
+        },
         "empty": "No collections yet",
         "emptyHint": "Create one from the + button above, or import a Postman collection.",
         "export": {
@@ -11464,6 +12228,9 @@
         },
         "postmanFilter": {
           "label": "Postman export"
+        },
+        "requestGone": {
+          "error": "This request no longer exists."
         },
         "title": "Collections",
         "tree": {
@@ -11574,6 +12341,9 @@
         }
       },
       "copyAsCurl": {
+        "hide": {
+          "label": "Hide secret values"
+        },
         "reveal": {
           "label": "Show secret values"
         },
@@ -11637,8 +12407,15 @@
         "activeGroup": {
           "aria": "Active environment"
         },
+        "deleteConfirm": {
+          "body": "“{name}” and its variables will be deleted.",
+          "title": "Delete environment?"
+        },
         "editVariables": {
           "label": "Edit variables"
+        },
+        "grip": {
+          "aria": "Drag to reorder environment"
         },
         "manage": {
           "label": "Manage environments"
@@ -11648,6 +12425,9 @@
         },
         "none": {
           "option": "No environment"
+        },
+        "reorderBlocked": {
+          "hint": "Clear the filter to reorder."
         }
       },
       "hover": {
@@ -11767,9 +12547,48 @@
           "empty": "This variable set no longer exists"
         }
       },
-      "variables": {
-        "showValue": {
-          "label": "Show value"
+      "variablesDialog": {
+        "bulk": {
+          "hint": "One name=value per line. A comment line above a variable is its description. A secret keeps its bare name= line; enter its value in the list.",
+          "secretValue": {
+            "error": "{name} is a secret. Enter its value in the variables list, not in text."
+          },
+          "summary": {
+            "status": "{added} added · {updated} updated · {removed} removed"
+          },
+          "toggle": {
+            "label": "Edit as dotenv text"
+          }
+        },
+        "colour": {
+          "aria": "Environment colour"
+        },
+        "description": {
+          "aria": "Variable description"
+        },
+        "duplicate": {
+          "status": "Duplicate name"
+        },
+        "editEnvironment": {
+          "label": "Edit environment"
+        },
+        "file": {
+          "aria": "Variables file"
+        },
+        "name": {
+          "aria": "Variable name"
+        },
+        "secret": {
+          "value": {
+            "aria": "Secret value of {name}"
+          }
+        },
+        "tabs": {
+          "aria": "Variables file sections"
+        },
+        "title": "Variables of {name}",
+        "value": {
+          "aria": "Variable value"
         }
       },
       "variablesOverview": {
@@ -12177,6 +12996,9 @@
       },
       "refreshFailed": {
         "error": "Saved, but refresh failed: {errors}"
+      },
+      "regenerate": {
+        "label": "Regenerate"
       },
       "resizeList": {
         "aria": "Resize list"
@@ -12704,11 +13526,61 @@
     },
     "dbMcp": {
       "approval": {
+        "api": {
+          "body": {
+            "label": "Body {type}"
+          },
+          "credential": {
+            "label": "Uses credential {name} (hosts: {hosts})"
+          },
+          "dontSend": {
+            "label": "Don’t send"
+          },
+          "form": {
+            "label": "Form fields"
+          },
+          "headers": {},
+          "noEnvironment": {},
+          "options": {
+            "label": "{redirects}, timeout {seconds} s"
+          },
+          "query": {},
+          "redirectsOff": {
+            "option": "Redirects not followed"
+          },
+          "redirectsOn": {
+            "option": "Redirects followed"
+          },
+          "send": {},
+          "truncated": {
+            "status": "Body truncated for display"
+          },
+          "variables": {
+            "label": "Variables used"
+          }
+        },
         "asSent": {
           "option": "As sent"
         },
         "ddl": {
           "body": "{connection} ({kind}) wants to run a schema-changing (DDL) statement through the database MCP server."
+        },
+        "declaredHigher": {
+          "body": "Declared {declared}, looks like a {detected}. Mode read would run it read-only."
+        },
+        "detected": {
+          "label": "Looks like {class}"
+        },
+        "enforcement": {
+          "app": {
+            "body": "Reads are checked by Kira. This engine has no read-only session."
+          },
+          "none": {
+            "body": "Reads are not enforced beyond the permission."
+          },
+          "session": {
+            "body": "Reads are enforced by the database."
+          }
         },
         "estimate": {
           "body": "Estimated {count} row read, threshold {threshold}. | Estimated {count} rows read, threshold {threshold}."
@@ -12731,9 +13603,6 @@
           },
           "logs": {
             "body": "An MCP client wants to read pod logs in {cluster} through the database MCP server."
-          },
-          "target": {
-            "aria": "Target cluster"
           }
         },
         "other": {
@@ -12742,14 +13611,27 @@
         "read": {
           "body": "{connection} ({kind}) wants to run a read statement through the database MCP server."
         },
+        "script": {
+          "folder": {
+            "label": "Runs in {folder}"
+          },
+          "lede": {
+            "body": "An MCP client wants to run this script on your computer. It sees the output only if it asks for the logs."
+          },
+          "operation": {
+            "label": "Agent run request"
+          },
+          "secretSaved": {
+            "status": "Saved value, not shown"
+          },
+          "secretUnset": {
+            "status": "No saved value"
+          }
+        },
         "statementView": {
           "aria": "Statement view"
         },
         "target": {
-          "aria": "Target database",
-          "defaultDatabase": {
-            "label": "Default database"
-          },
           "unclassified": {
             "label": "Unclassified"
           }
@@ -12760,12 +13642,6 @@
         "write": {
           "body": "{connection} ({kind}) wants to run a write statement through the database MCP server."
         }
-      },
-      "approveConfirm": {
-        "title": "Approve this query?"
-      },
-      "heavyConfirm": {
-        "title": "Run this heavy query?"
       },
       "preview": {
         "lede": {
@@ -12804,9 +13680,6 @@
         "withhold": {
           "label": "Withhold"
         }
-      },
-      "responseReview": {
-        "title": "Review result before sending"
       }
     },
     "definition": {
@@ -13912,9 +14785,6 @@
       "editValue": {
         "label": "Edit value"
       },
-      "expires": {
-        "status": "Expires in {time}"
-      },
       "memoryUnknown": {
         "status": "Size unknown"
       },
@@ -14234,6 +15104,9 @@
           "option": "{field}, newest first"
         }
       },
+      "space": {
+        "label": "Space"
+      },
       "tab": {
         "title": "Discover"
       },
@@ -14342,11 +15215,24 @@
     },
     "project": {
       "connectionDialog": {
+        "autoExplain": {
+          "description": "Runs the database’s own EXPLAIN before each SELECT this connection issues from a query console, and warns when a query is estimated to read more than the configured row threshold. EXPLAIN only plans the query and never runs it, so this costs one extra planning round trip, not a second execution.",
+          "label": "Auto-explain SELECT queries"
+        },
+        "awsProfile": {
+          "label": "AWS profile (optional)"
+        },
         "changeEngine": {
           "title": "Change engine"
         },
+        "colour": {
+          "aria": "Connection colour"
+        },
         "column": {
           "placeholder": "Column"
+        },
+        "correlate": {
+          "label": "Correlate"
         },
         "database": {
           "label": "Database"
@@ -14366,18 +15252,75 @@
         "host": {
           "label": "Host"
         },
+        "keep": {
+          "domain": {
+            "label": "Keep domain"
+          },
+          "initials": {
+            "label": "Keep initials"
+          },
+          "year": {
+            "label": "Keep year"
+          }
+        },
         "kind": {
           "aria": "Connection kind",
           "unsupported": {
             "tooltip": "{kind} isn’t supported yet"
           }
         },
+        "maskKind": {
+          "date": {
+            "description": "Keeps the year and destroys the month, day and time."
+          },
+          "email": {
+            "description": "Keeps the domain and the local part’s first letter and length."
+          },
+          "name": {
+            "description": "Keeps initials and word lengths, with the remaining letters replaced by dots."
+          },
+          "number": {
+            "description": "Shows an order of magnitude, never a joinable key. For a value that must join, use a text or redact rule, or mark a numeric identifier column with a kind other than number."
+          },
+          "redact": {
+            "description": "Keeps nothing at all. The right default when unsure, or when the shape itself is sensitive."
+          },
+          "text": {
+            "description": "Keeps nothing but a bucketed length, with no first character and no exact length."
+          }
+        },
         "mcp": {
+          "access": {
+            "label": "Agent access"
+          },
           "allow": {
             "label": "Allow"
           },
           "ddl": {
             "label": "DDL"
+          },
+          "ddlNote": {
+            "label": "CREATE, ALTER, DROP, TRUNCATE and equivalents, SQL engines only"
+          },
+          "descriptionNote": {
+            "label": "What this database is for, read verbatim by MCP clients"
+          },
+          "expose": {
+            "description": "Nothing is exposed by default. The same switch lives in the database MCP section of settings; either one toggles the other.",
+            "label": "Expose to the database MCP server"
+          },
+          "limitApp": {
+            "body": "Read mode is checked by Kira, not by the database. Use a database user with read-only rights for a hard guarantee."
+          },
+          "limitDdl": {
+            "body": "The database can’t tell write from DDL on one session. Kira refuses statements more powerful than the declared mode, but a misclassified DDL would run under the write permission."
+          },
+          "noWriteConsole": {
+            "body": "Write and DDL modes are not available for this connection kind."
+          },
+          "plan": {
+            "description": "This engine has no query plan this app can read.",
+            "label": "Plan queries before running them"
           },
           "prompt": {
             "label": "Ask me"
@@ -14385,8 +15328,44 @@
           "read": {
             "label": "Read"
           },
+          "readLane": {
+            "body": "Reads run on a separate read-only connection with the same credentials. Some engines still allow side-effecting functions in a read-only session (for example pg_terminate_backend, or a locking function)."
+          },
+          "readNote": {
+            "label": "SELECT and its engine equivalents"
+          },
+          "review": {
+            "description": "The app setting lives in the database MCP section of settings. A write has already run when its result shows.",
+            "label": "Review results"
+          },
+          "reviewAlways": {
+            "option": "Always"
+          },
+          "reviewInheritOff": {
+            "option": "App setting (off)"
+          },
+          "reviewInheritOn": {
+            "option": "App setting (on)"
+          },
+          "reviewNever": {
+            "option": "Never"
+          },
+          "reviewNote": {
+            "label": "Hold each query result for you to check before the AI gets it"
+          },
+          "strictest": {
+            "description": "A statement this app can’t classify is treated as whichever of the three is strictest. These settings govern the MCP server only. The read-only flag on the {tab} tab governs this app’s own console."
+          },
           "write": {
             "label": "Write"
+          },
+          "writeNote": {
+            "label": "INSERT, UPDATE, DELETE and equivalents"
+          }
+        },
+        "mode": {
+          "uri": {
+            "label": "Connection URI"
           }
         },
         "newConnection": {
@@ -14398,20 +15377,89 @@
         "password": {
           "label": "Password"
         },
+        "preconnect": {
+          "description": "Runs in your shell before connecting, for example a port-forward or a single sign-on session keeper.",
+          "label": "Pre-connect command",
+          "warning": {
+            "body": "This command runs on your machine with your permissions every time this connection connects."
+          }
+        },
+        "preconnectDelay": {
+          "description": "Seconds to wait after the command starts before the first connect attempt. 0 (default) connects as soon as the command is ready. Cancel it while it runs from the operations list.",
+          "label": "Wait before connecting (seconds)",
+          "range": {
+            "status": "Whole seconds, {min}–{max}"
+          }
+        },
+        "privacy": {
+          "intro": {
+            "description": "Rules redact values for the MCP clients of this connection and for the masking preview of the data viewer. They never change stored data."
+          },
+          "keyFallback": {
+            "body": "Development fallback. The correlation key is obfuscated with a built-in key on this platform, not a real keychain, so an attacker with filesystem access could recover it. The redaction itself is unaffected and stays uninvertible."
+          },
+          "noRules": {
+            "emptyHint": "No masking rules yet on this connection."
+          },
+          "saveFirst": {
+            "hint": "Save this connection first to manage masking rules."
+          }
+        },
+        "readOnly": {
+          "description": "Blocks every mutation path for this connection. That covers grid edits, DDL and console writes."
+        },
         "redact": {
           "label": "Redact"
+        },
+        "regenerate": {
+          "label": "Regenerate correlation key"
+        },
+        "regenerateConfirm": {
+          "body": "Regenerating the correlation key changes every masked correlation tag for this connection. Masked results already given to a client, or saved anywhere outside this app, will no longer correlate with results produced after the change. The real values are not affected.",
+          "title": "Regenerate correlation key?"
         },
         "region": {
           "label": "Region"
         },
+        "removeRule": {
+          "tooltip": "Remove rule"
+        },
+        "saveFirst": {
+          "hint": "Save first to duplicate."
+        },
         "showPassword": {
           "label": "Show password"
+        },
+        "sidecar": {
+          "description": "When on, the command stays alive for the whole session, for example a port-forward, and this connection drops the moment it exits. When off (default), a fresh instance runs each time you connect and its exit is never monitored, which suits a one-off prep script.",
+          "label": "Keep it running, disconnect if it dies"
         },
         "sqliteFilter": {
           "label": "SQLite database"
         },
+        "tab": {
+          "general": {
+            "label": "General"
+          },
+          "preconnect": {
+            "label": "Pre-connect"
+          },
+          "privacy": {
+            "label": "Privacy"
+          }
+        },
+        "tabs": {
+          "aria": "Connection detail tabs"
+        },
         "test": {
           "label": "Test connection"
+        },
+        "throttle": {
+          "description": "A value of 0 disables the limit. Reads served from cache are never throttled, and connecting is never throttled. Applies immediately to a connected connection.",
+          "label": "Throttle commands",
+          "range": {
+            "status": "Unlimited (0), or {min}–{max}"
+          }
         }
       },
       "connectionScope": {
@@ -14823,6 +15871,9 @@
         "current": {
           "label": "Current"
         },
+        "openWindow": {
+          "label": "Open in proof window"
+        },
         "proposed": {
           "label": "Proposed"
         },
@@ -14893,9 +15944,6 @@
           "label": "Copy screenshot",
           "tooltip": "Copy a screenshot of this tab"
         },
-        "copyAll": {
-          "label": "Copy all tabs"
-        },
         "failed": {
           "error": "Couldn’t take the screenshot: {error}"
         },
@@ -14909,10 +15957,16 @@
           "label": "Save tab as PNG…"
         },
         "saveAll": {
-          "label": "Save all tabs as PNG…"
+          "label": "Save all tabs to folder…"
         },
         "saved": {
           "announce": "Saved to {path}"
+        },
+        "savedAll": {
+          "announce": "Saved {count} screenshots to {path}"
+        },
+        "savedPartial": {
+          "error": "Saved {count} of {total} screenshots before failing: {error}"
         }
       },
       "tabs": {
@@ -15021,6 +16075,23 @@
         }
       },
       "dbMcp": {
+        "api": {
+          "count": {
+            "status": "{count} variables shared from {environments} environments"
+          },
+          "description": "Adds the api_request tool to the database MCP server. Agents can use only the variables you share per environment.",
+          "label": "Let agents send API requests"
+        },
+        "apiApproval": {
+          "always": {
+            "option": "Ask me for every request"
+          },
+          "label": "API request approval",
+          "never": {
+            "body": "Agents send requests with your shared credentials without asking. Only turn this on for hosts and variables you trust.",
+            "option": "Send without asking"
+          }
+        },
         "copyCommandAbove": {
           "label": "Copy command above"
         },
@@ -15081,6 +16152,23 @@
         },
         "reviewNever": {
           "status": "Results sent without review"
+        },
+        "scripts": {
+          "allow": {
+            "status": "Runs straight away"
+          },
+          "intro": {
+            "description": "Normal scripts an agent can list and run. A smart script is never exposed. Edit the description and approval mode in the script’s MCP tab."
+          },
+          "legend": {
+            "label": "Scripts"
+          },
+          "prompt": {
+            "status": "Asks before each run"
+          },
+          "toggle": {
+            "aria": "Expose script {name} to agents"
+          }
         },
         "tokenExpired": {
           "body": "Token expired. Regenerate it above."
@@ -15765,6 +16853,34 @@
         "body": "{flag} ‘{value}’ contains a {reference} reference. Base64-encoding it here would destroy the reference, so the header was left unencoded. Base64-encode “{example}” before sending, or reference a secret variable through its own {pipe} pipe."
       }
     },
+    "approvals": {
+      "approveAll": {
+        "label": "Approve all ({count})"
+      },
+      "denyAll": {
+        "label": "Deny all ({count})"
+      },
+      "dialog": {
+        "title": "Awaiting your approval"
+      },
+      "expired": {
+        "status": "Expired"
+      },
+      "origin": {
+        "status": "Requested by {origin}"
+      },
+      "toast": {
+        "count": {
+          "status": "{count} thing awaiting your approval | {count} things awaiting your approval"
+        },
+        "expires": {
+          "status": "Next expires in {time}"
+        }
+      },
+      "unsupported": {
+        "body": "This version can’t show this request. Deny it."
+      }
+    },
     "bootFailure": {
       "title": "{product} couldn’t start"
     },
@@ -15929,6 +17045,18 @@
           "label": "Processes"
         },
         "tooltip": "{app} resource use"
+      },
+      "ops": {
+        "notStoppable": {
+          "tooltip": "This operation can’t be stopped"
+        },
+        "open": {
+          "label": "Show operations"
+        },
+        "stop": {
+          "tooltip": "Stop {name}"
+        },
+        "title": "Running operations"
       },
       "runs": {
         "open": {

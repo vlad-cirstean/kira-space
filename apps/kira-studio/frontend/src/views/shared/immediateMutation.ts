@@ -27,7 +27,6 @@ export function createImmediateMutator<
     if (!tab?.connectionId) return;
     if (opts.isStale(tabId)) throw new Error(t('studio.common.connectionLost.error'));
     await data.mutate({
-      opId: crypto.randomUUID(),
       tabId,
       connectionId: tab.connectionId,
       path: tab.path,

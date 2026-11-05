@@ -1,6 +1,6 @@
 import type { EditorLanguageId } from '@shared/domain/editor';
 
-// The six `EditorLanguageId` values -> Monaco's own registered language ids. `json`,
+// The `EditorLanguageId` values -> Monaco's own registered language ids. `json`,
 // `xml`, `sql` are already registered Monarch languages (`monacoEntry.ts`); `plain` maps to
 // Monaco's built-in `plaintext`; `mongo`/`redis` are this app's own two Monarch definitions,
 // registered under `kira-mongo`/`kira-redis` so they never collide with a future upstream
@@ -13,6 +13,10 @@ export function monacoLanguageIdFor(id: EditorLanguageId): string {
       return 'xml';
     case 'sql':
       return 'sql';
+    case 'yaml':
+      return 'yaml';
+    case 'markdown':
+      return 'markdown';
     case 'plain':
       return 'plaintext';
     case 'mongo':

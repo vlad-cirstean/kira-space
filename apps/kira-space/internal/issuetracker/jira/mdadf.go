@@ -6,12 +6,13 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	extast "github.com/yuin/goldmark/extension/ast"
 	mdtext "github.com/yuin/goldmark/text"
+
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 // Hand-written walk over goldmark's tree: no Go Markdown-to-ADF converter escapes text and filters
@@ -148,7 +149,7 @@ func mdList(l *ast.List, src []byte, task bool) adfDoc {
 	switch {
 	case task:
 		tl := mdNode("taskList", items)
-		tl["attrs"] = adfDoc{"localId": uuid.NewString()}
+		tl["attrs"] = adfDoc{"localId": ids.NewID()}
 		return tl
 	case l.IsOrdered():
 		ol := mdNode("orderedList", items)
@@ -184,7 +185,7 @@ func mdTaskItems(item ast.Node, src []byte) []adfDoc {
 		}
 	}
 	ti := mdNode("taskItem", inline)
-	ti["attrs"] = adfDoc{"localId": uuid.NewString(), "state": state}
+	ti["attrs"] = adfDoc{"localId": ids.NewID(), "state": state}
 	return append([]adfDoc{ti}, nested...)
 }
 

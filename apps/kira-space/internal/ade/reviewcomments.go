@@ -164,7 +164,7 @@ func (b *TaskBoard) restoreRowComments(ctx context.Context, store *gitreview.Sto
 			return err
 		}
 		if sc.SentAt != nil {
-			if err := store.MarkSent(ctx, repoID, branch, []int64{added.ID}, time.UnixMilli(*sc.SentAt)); err != nil {
+			if err := store.MarkSent(ctx, repoID, branch, []string{added.ID}, time.UnixMilli(*sc.SentAt)); err != nil {
 				return err
 			}
 		}

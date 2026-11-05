@@ -1212,7 +1212,7 @@ const longComment = (extra: object = {}) => ({
 });
 
 const ADDED = {
-  comment: { ...HUNK_COMMENT, id: 2, range: { start: 100, end: 100 }, body: 'x' },
+  comment: { ...HUNK_COMMENT, id: '2', range: { start: 100, end: 100 }, body: 'x' },
 };
 
 /** The gutter route: hover the line, click the add mark that replaces its number. */

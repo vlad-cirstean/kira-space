@@ -4,13 +4,18 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { useAdeBoardUiStore } from './adeBoardUi';
 
+export type WorkflowsTab = 'statuses' | 'steps' | 'workflows';
+
 // Workflows page state, in memory only.
 export const useAdeWorkflowsUiStore = defineStore('adeWorkflowsUi', () => {
   /** Selected file name (`null` = first listed). */
   const workflowFile = ref<string | null>(null);
   const workflowMode = ref<'graph' | 'yaml'>('graph');
-  /** What the right pane shows: the selected workflow or the task statuses editor. */
-  const pane = ref<'workflow' | 'statuses'>('workflow');
+  /** Selected library step file name (`null` = first listed). */
+  const stepFile = ref<string | null>(null);
+  const stepMode = ref<'form' | 'yaml'>('form');
+  /** Active tab of the Workflows page. */
+  const tab = ref<WorkflowsTab>('workflows');
   /** The open editor holds edits that are not saved. */
   const dirty = ref(false);
 
@@ -29,18 +34,46 @@ export const useAdeWorkflowsUiStore = defineStore('adeWorkflowsUi', () => {
 
   /** Opens the Workflows page on `fileName`. */
   function openWorkflow(fileName: string | null): void {
-    pane.value = 'workflow';
+    tab.value = 'workflows';
     workflowFile.value = fileName;
     useAdeBoardUiStore().view = 'workflows';
+  }
+
+  /** Opens the Steps tab on library step `fileName`. */
+  function openStep(fileName: string | null): void {
+    tab.value = 'steps';
+    stepFile.value = fileName;
+    stepMode.value = 'form';
+    useAdeBoardUiStore().view = 'workflows';
+  }
+
+  /** Switches tab; false when the user kept unsaved edits. */
+  async function setTab(next: WorkflowsTab): Promise<boolean> {
+    if (next === tab.value) return true;
+    if (!(await leave())) return false;
+    tab.value = next;
+    return true;
   }
 
   /** Opens the Workflows page on the task statuses editor; false when the user kept unsaved edits. */
   async function openStatuses(): Promise<boolean> {
     if (!(await leave())) return false;
-    pane.value = 'statuses';
+    tab.value = 'statuses';
     useAdeBoardUiStore().view = 'workflows';
     return true;
   }
 
-  return { workflowFile, workflowMode, pane, dirty, leave, openWorkflow, openStatuses };
+  return {
+    workflowFile,
+    workflowMode,
+    stepFile,
+    stepMode,
+    tab,
+    dirty,
+    leave,
+    openWorkflow,
+    openStep,
+    setTab,
+    openStatuses,
+  };
 });

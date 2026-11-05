@@ -7,6 +7,7 @@
     "dirMode": "fixed",
     "id": "job-2",
     "kind": "script",
+    "mcp": null,
     "name": "job",
     "params": [],
     "savedSecrets": [],

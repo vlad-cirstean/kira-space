@@ -4,7 +4,7 @@ import { t } from '@theme/i18n';
 import AdeTip from '../AdeTip.vue';
 import type { NeedsItem } from '../board/needsYou';
 import { useNeedsAction } from '../needs/useNeedsAction';
-import { TONE_SOLID_CLASS } from '../tones';
+import { SOLID_CLASS } from '../tones';
 
 // The `!` circle: something here needs you. Click does the item's action: Take over a stuck run,
 // open the waiting session.
@@ -24,7 +24,7 @@ function onClick(): void {
       variant="toolbar"
       :aria-label="t('common.needsYou.status')"
       class="size-4.5 rounded-full border-0 p-0 text-kira-sm font-medium"
-      :class="TONE_SOLID_CLASS.amber"
+      :class="SOLID_CLASS.amber"
       :pending="busy"
       data-testid="ade-attention"
       @click.stop="onClick"

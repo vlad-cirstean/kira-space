@@ -23,6 +23,8 @@ import { useReviewCode } from '../review/useReviewCode';
 import AdeTaskActionButton from '../run/AdeTaskActionButton.vue';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
+import AdeUpdatesDot from '../updates/AdeUpdatesDot.vue';
+import { useTaskUpdates } from '../updates/useTaskUpdates';
 import AdeAttention from './AdeAttention.vue';
 import AdeBranchRow from './AdeBranchRow.vue';
 import AdeTagIcon from './AdeTagIcon.vue';
@@ -37,6 +39,8 @@ const emit = defineEmits<{ select: []; forcePush: [row: BranchRowModel] }>();
 const ui = useAdeBoardUiStore();
 const dialogs = useAdeDialogsStore();
 const { model } = usePlanModel();
+const { byTask, describe } = useTaskUpdates();
+const taskUpdates = computed(() => byTask.value.get(props.card.task.id) ?? []);
 const taskMenu = useTaskMenu(() => props.card);
 const reviewCode = useReviewCode();
 const choices = computed(() => reviewCode.choicesOf(props.card));
@@ -161,6 +165,11 @@ const boxClass = computed(() => {
           <AdeTaskSessions v-if="card.sessions" :task-id="card.task.id" :sessions="card.sessions" />
           <AdeAttention v-if="card.attention" :tip="card.attention" :item="card.attentionItem" />
           <AdeAutomationChip :task-id="card.task.id" />
+          <AdeUpdatesDot
+            v-if="taskUpdates.length"
+            :tip="taskUpdates.map(describe).join('; ')"
+            testid="ade-task-updated"
+          />
           <AdeTip :text="card.meta">
             <span
               class="min-w-0 flex-1 truncate text-kira-sm leading-3.5 text-subtle"

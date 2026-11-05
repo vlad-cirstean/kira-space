@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,7 +17,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
-	"github.com/kirathecat/kira-studio/internal/shortid"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
 // setup.go creates the worktrees a run needs and runs each repo's prepare script in a new one. The
@@ -72,25 +71,6 @@ func taskTitle(t model.AdeTask, branches []model.AdeTaskBranch) string {
 		}
 	}
 	return "New task"
-}
-
-func lastSegment(branch string) string {
-	if i := strings.LastIndexByte(branch, '/'); i >= 0 && i < len(branch)-1 {
-		return branch[i+1:]
-	}
-	return branch
-}
-
-// freePath returns <home>/wt/<repo>/<branch last segment>, with -2, -3... if the path exists.
-func (b *TaskBoard) freePath(repoName, branch string) string {
-	base := filepath.Join(b.deps.HomeDir, "wt", safeSegment(repoName), safeSegment(lastSegment(branch)))
-	path := base
-	for n := 2; ; n++ {
-		if _, err := os.Lstat(path); os.IsNotExist(err) {
-			return path
-		}
-		path = fmt.Sprintf("%s-%d", base, n)
-	}
 }
 
 func localBranch(inv []porcelain.InventoryRef, short string) (porcelain.InventoryRef, bool) {
@@ -153,7 +133,7 @@ func (b *TaskBoard) ensureWorktree(ctx context.Context, rec model.CodeRepo, sb m
 		if row, ok := localBranch(inv, sb.Name); ok && row.WorktreePath != "" {
 			return worktreeResult{Path: row.WorktreePath, Name: sb.Name}, nil
 		}
-		path, err := b.worktreeDir(rec.Name, sb.Name, naming)
+		path, err := b.worktreeDirFor(sb, rec.Name, "")
 		if err != nil {
 			return worktreeResult{}, err
 		}
@@ -178,7 +158,7 @@ func (b *TaskBoard) ensureWorktree(ctx context.Context, rec model.CodeRepo, sb m
 	if err != nil {
 		return worktreeResult{}, err
 	}
-	path, err := b.worktreeDir(rec.Name, name, naming)
+	path, err := b.worktreeDirFor(sb, rec.Name, "")
 	if err == nil {
 		req := gitsession.OpRequest{Kind: "worktreeAdd", Mode: "newBranch", Path: path, Branch: name, StartPoint: start}
 		err = b.addWorktree(ctx, entry, req)
@@ -192,47 +172,11 @@ func (b *TaskBoard) ensureWorktree(ctx context.Context, rec model.CodeRepo, sb m
 	return worktreeResult{Path: path, Name: name, Fresh: true}, nil
 }
 
-const (
-	agentBranchPrefix     = "kira/"
-	agentBranchIDLen      = 10
-	maxGeneratedNameTries = 5
-)
-
-// newBranchName is how a not-created branch gets its name: wanted as given, generated, else derived from title.
-// idFolder puts its worktree in a nanoid folder instead of one named after the branch.
-type newBranchName struct {
-	title, wanted string
-	generated     bool
-	idFolder      bool
-}
-
-// idPath returns <home>/wt/<repo>/<nanoid>, redrawing while the path exists.
-func (b *TaskBoard) idPath(repoName string) (string, error) {
-	dir := filepath.Join(b.deps.HomeDir, "wt", safeSegment(repoName))
-	for range maxGeneratedNameTries {
-		id, err := shortid.New(agentBranchIDLen)
-		if err != nil {
-			return "", err
-		}
-		path := filepath.Join(dir, id)
-		if _, err := os.Lstat(path); os.IsNotExist(err) {
-			return path, nil
-		}
-	}
-	return "", fmt.Errorf("ade: no free worktree folder after %d tries", maxGeneratedNameTries)
-}
-
-// worktreeDir picks the worktree folder: a nanoid when n.idFolder, else named after the branch.
-func (b *TaskBoard) worktreeDir(repoName, branch string, n newBranchName) (string, error) {
-	if n.idFolder {
-		return b.idPath(repoName)
-	}
-	return b.freePath(repoName, branch), nil
-}
+// newBranchName is how a not-created branch gets its name: wanted as given, else derived from title.
+type newBranchName struct{ title, wanted string }
 
 // claimBranchName stores the branch's name before git runs, so the board shows it. An explicit name
-// that already exists is refused; a generated one is kira/<nanoid>; a derived one gets -2, -3...
-// until free.
+// that already exists is refused; a derived one gets -2, -3... until free.
 func (b *TaskBoard) claimBranchName(sb model.AdeTaskBranch, n newBranchName, inv []porcelain.InventoryRef) (string, error) {
 	if n.wanted != "" {
 		if branchExists(inv, n.wanted) {
@@ -242,26 +186,6 @@ func (b *TaskBoard) claimBranchName(sb model.AdeTaskBranch, n newBranchName, inv
 			return "", branchNameErr(err, n.wanted)
 		}
 		return n.wanted, nil
-	}
-	if n.generated {
-		for range maxGeneratedNameTries {
-			id, err := shortid.New(agentBranchIDLen)
-			if err != nil {
-				return "", err
-			}
-			name := agentBranchPrefix + id
-			if branchExists(inv, name) {
-				continue
-			}
-			err = b.deps.Tasks.SetBranchName(sb.ID, name)
-			if err == nil {
-				return name, nil
-			}
-			if !errors.Is(err, repos.ErrBranchNameTaken) {
-				return "", err
-			}
-		}
-		return "", fmt.Errorf("ade: no free generated branch name after %d tries", maxGeneratedNameTries)
 	}
 	base := "feat/" + slug(n.title)
 	for i := 1; ; i++ {
@@ -379,7 +303,8 @@ func (b *TaskBoard) startSetup(rec model.CodeRepo, sb model.AdeTaskBranch, name,
 	if err != nil {
 		return err
 	}
-	if settings.WorktreePrepareScript == "" {
+	ref := settings.WorktreePrepareRun
+	if settings.WorktreePrepareScript == "" && ref == nil {
 		if err := b.deps.Logs.Reset(repos.AdeLogSetup, sb.ID, sb.TaskID); err != nil {
 			return err
 		}
@@ -395,6 +320,15 @@ func (b *TaskBoard) startSetup(rec model.CodeRepo, sb model.AdeTaskBranch, name,
 	sctx, endSetup, ok := b.claimSetup(sb.ID)
 	if !ok {
 		return invalid("a setup is already running for this branch")
+	}
+	script := setupScript{command: settings.WorktreePrepareScript, dir: path, label: settings.WorktreePrepareScript}
+	if ref != nil {
+		var err error
+		if script, err = b.refSetupScript(sb, path, ref); err != nil {
+			endSetup()
+			b.recordSetupFailure(sb, err.Error())
+			return nil
+		}
 	}
 	if err := b.deps.Logs.Reset(repos.AdeLogSetup, sb.ID, sb.TaskID); err != nil {
 		endSetup()
@@ -416,7 +350,7 @@ func (b *TaskBoard) startSetup(rec model.CodeRepo, sb model.AdeTaskBranch, name,
 	go func() {
 		defer b.wg.Done()
 		defer endSetup()
-		b.runSetup(sctx, rec, sb, name, path, settings.WorktreePrepareScript, timeout, timeoutText, sink, now, onReady)
+		b.runSetup(sctx, rec, sb, name, path, script, timeout, timeoutText, sink, now, onReady)
 	}()
 	return nil
 }
@@ -432,8 +366,43 @@ func (b *TaskBoard) claimSetup(branchID string) (context.Context, func(), bool) 
 	return ctx, end, true
 }
 
-func (b *TaskBoard) runSetup(ctx context.Context, rec model.CodeRepo, sb model.AdeTaskBranch, name, path, script string, timeout time.Duration, timeoutText string, sink *logSink, startedAt int64, onReady func(string)) {
-	op := b.startSessionOp(ctx, opSetup, sb.TaskID, "", script)
+// setupScript is what a setup runs: the shell text, the folder, the extra env and the mask of a
+// referenced Run script's secret values.
+type setupScript struct {
+	command, dir, label, ref string
+	env                      []string
+	mask                     *secrets.Masker
+}
+
+// refSetupScript resolves the Run script a repo file names as the prepare hook. The error text is
+// the failed setup's note.
+func (b *TaskBoard) refSetupScript(sb model.AdeTaskBranch, path string, ref *model.ScriptRef) (setupScript, error) {
+	fail := func(reason string) (setupScript, error) {
+		return setupScript{}, fmt.Errorf("Run script %q: %s", ref.Script, reason)
+	}
+	tc, err := b.loadTaskCtx(sb.TaskID)
+	if err != nil {
+		return fail(err.Error())
+	}
+	all, err := b.listScripts()
+	if err != nil {
+		return fail(err.Error())
+	}
+	res, err := b.resolveScriptRef(all, repoFileUse, ref.Script, ref.Values(), b.adeVars(tc, sb, path), path)
+	if err != nil {
+		return fail(err.Error())
+	}
+	return setupScript{command: res.script.Command, dir: res.dir, label: res.script.Command, env: res.env, mask: secrets.NewMasker(res.secrets...), ref: ref.Script}, nil
+}
+
+func (b *TaskBoard) runSetup(ctx context.Context, rec model.CodeRepo, sb model.AdeTaskBranch, name, path string, script setupScript, timeout time.Duration, timeoutText string, sink *logSink, startedAt int64, onReady func(string)) {
+	if script.mask != nil {
+		sink.setMask(script.mask)
+	}
+	if script.ref != "" {
+		sink.add(logEvent, fmt.Sprintf("running Run script %q", script.ref))
+	}
+	op := b.startSessionOp(ctx, opSetup, sb.TaskID, "", script.label)
 	op.SetCancel(func() bool { return b.cancelLive(b.setupLive, sb.ID, errStopped) != nil })
 	commonDir := rec.Root
 	if entry, err := b.openRepo(ctx, sb.CodeRepoID); err == nil {
@@ -441,8 +410,8 @@ func (b *TaskBoard) runSetup(ctx context.Context, rec model.CodeRepo, sb model.A
 	}
 	shell, login := loginshell.ResolveShell(os.Getenv, loginshell.IsExecutableFile)
 	res, err := b.scriptRunner().Run(ctx, gitprepare.Spec{
-		Shell: shell, LoginShell: login, Script: script, Dir: path, Timeout: timeout,
-		Env: gitprepare.BuildEnv(os.Environ(), gitprepare.Vars{WorktreePath: path, WorktreeBranch: name, RepoRoot: rec.Root, RepoCommonDir: commonDir}),
+		Shell: shell, LoginShell: login, Script: script.command, Dir: script.dir, Timeout: timeout,
+		Env: append(gitprepare.BuildEnv(os.Environ(), gitprepare.Vars{WorktreePath: path, WorktreeBranch: name, RepoRoot: rec.Root, RepoCommonDir: commonDir}), script.env...),
 		OnBatch: func(lines []gitprepare.Line) {
 			for _, l := range lines {
 				sink.add(l.Stream, l.Text)

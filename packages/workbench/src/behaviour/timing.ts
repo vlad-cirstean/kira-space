@@ -29,6 +29,10 @@ export const TIMING = {
   hoverInfo: 400,
   pollFast: 5000,
   pollSlow: 60000,
+  /** Mirrors internal/localauth.GraceWindow: the reveal gate's own grace is fixed, not sliding, so a
+   *  long editing session cannot hold one authentication open. Keep in sync by hand; a Go
+   *  time.Duration has no shared constant. A revealed plaintext re-masks once it expires. */
+  revealGrace: 5 * 60 * 1000,
   /** Hourly refresh (update checks, slow caches). */
   pollHourly: 3_600_000,
   /** Elapsed-time display tick of a running operation. */

@@ -1,5 +1,6 @@
 import { assertTooltipShows } from '../ui/support/tooltip';
 import { expect, test } from './fixtures';
+import { createConnection } from './support/connections';
 import { installPassthrough } from './support/passthrough';
 import {
   SQLITE_UNAVAILABLE_MESSAGE,
@@ -47,13 +48,7 @@ test('real backend through a plain browser tab: connect, tree, rows', async ({
   // passthrough route for real, proving it stays out of the way when a spec has nothing to fake.
   await installPassthrough(page);
 
-  await page.click('[data-testid="add-connection"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toBeVisible();
-  await page.click('[data-testid="connection-kind-sqlite"]');
-  await page.fill('[data-testid="connection-name"]', 'Real SQLite');
-  await page.fill('[data-testid="connection-database"]', sqlite.path);
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(kira, { name: 'Real SQLite', kind: 'sqlite', database: sqlite.path });
 
   // Server mode delivers the create-connection event on an independent WebSocket, which can
   // (and here does) land before the create call's own HTTP response resolves — the renderer's

@@ -1,5 +1,6 @@
 import { loadDynamicGenerator } from '@kira/api-core';
 import type { GrpcMetadataState, GrpcMetaPairWire, GrpcSchemaWire } from '@shared/domain/grpc';
+import { newUuid } from '@shared/ids';
 import { useQuery } from '@tanstack/vue-query';
 import { refDebounced } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
@@ -104,7 +105,7 @@ async function describeSchema(
   }
   // A listener added after an abort never fires, so bail out before dialling.
   signal?.throwIfAborted();
-  const opId = crypto.randomUUID();
+  const opId = newUuid();
   signal?.addEventListener(
     'abort',
     () => fireAndForget(control.opsCancel(opId), 'cancelSchemaQuery'),

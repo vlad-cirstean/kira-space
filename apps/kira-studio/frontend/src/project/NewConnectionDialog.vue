@@ -20,9 +20,8 @@ import { computed, ref } from 'vue';
 import { control } from '../bridge/control';
 import { useConnectionDialogStore } from '../state/connectionDialogs';
 import { useConnectionsStore } from '../state/connections';
-import EngineIcon from '../theme/EngineIcon.vue';
 import ConnectionEnginePicker from './connection/ConnectionEnginePicker.vue';
-import { KIND_ACCENT_CLASS, KIND_LABEL, SUPPORTED_KINDS } from './connection/kinds';
+import { KIND_LABEL, SUPPORTED_KINDS } from './connection/kinds';
 
 // A new connection: pick the engine, name it, and the file is written with the engine's defaults.
 // Everything else is edited in the file, which opens next.
@@ -110,9 +109,6 @@ async function browse(): Promise<void> {
     <DialogContent size="2xl" fixed-height :dirty="name !== ''" data-testid="new-connection-dialog">
       <DialogHeader close-testid="new-connection-close">
         <template v-if="step === 'details'">
-          <span class="flex shrink-0" :class="KIND_ACCENT_CLASS[kind]">
-            <EngineIcon :kind="kind" :size="13" />
-          </span>
           <DialogTitle>{{
             t('studio.project.connectionDialog.newKindTitle.title', { kind: KIND_LABEL[kind] })
           }}</DialogTitle>

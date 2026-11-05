@@ -7,6 +7,7 @@ import {
   kibanaDiscoverRequestSchema,
 } from '@shared/domain/kibana';
 import type { SavedDiscoverQuery } from '@shared/domain/queries';
+import { newUuid } from '@shared/ids';
 import { useQuery } from '@tanstack/vue-query';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { KEEP_WHILE_OPEN, queryClient } from '@workbench/state/queryClient';
@@ -55,8 +56,7 @@ export function useDiscover(tab: Ref<ConsoleTabRecord>, connected: Ref<boolean>)
 
   const dataViewQuery = useQuery(() => ({
     queryKey: dataViewQueryKey(connectionId.value, state.value.dataViewId ?? ''),
-    queryFn: () =>
-      control.kibanaDataView(connectionId.value, crypto.randomUUID(), state.value.dataViewId ?? ''),
+    queryFn: () => control.kibanaDataView(connectionId.value, state.value.dataViewId ?? ''),
     enabled: connected.value && !!connectionId.value && !!state.value.dataViewId,
     staleTime: 5 * 60_000,
   }));
@@ -113,7 +113,7 @@ export function useDiscover(tab: Ref<ConsoleTabRecord>, connected: Ref<boolean>)
       state.value.interval,
     ] as const,
     queryFn: ({ signal }: { signal: AbortSignal }) => {
-      const opId = crypto.randomUUID();
+      const opId = newUuid();
       signal.addEventListener(
         'abort',
         () => fireAndForget(control.opsCancel(opId), 'kibana.histogram'),
@@ -241,7 +241,7 @@ export function useDiscover(tab: Ref<ConsoleTabRecord>, connected: Ref<boolean>)
   async function suggestValues(field: string): Promise<string[]> {
     const r = await control.kibanaSuggest({
       connectionId: connectionId.value,
-      opId: crypto.randomUUID(),
+      opId: '',
       tabId: tab.value.id,
       request: { ...searchRequest(''), size: SUGGEST_LIMIT },
       field,

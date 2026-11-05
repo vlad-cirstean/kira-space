@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { Label } from '@theme/components/ui/label';
-import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import ConfigFileBar from '@workbench/config/ConfigFileBar.vue';
+import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { useTemplateRef } from 'vue';
 import { control } from '../../../bridge/control';
@@ -70,16 +69,15 @@ useShortcut(root, ['form.save'], () => void saveNow());
           {{ t('space.ade.context.readOnly.hint') }}
         </div>
         <template v-else>
-          <Label for="ade-settings-text" class="sr-only">{{
-            t('space.ade.settings.field.aria')
-          }}</Label>
-          <Textarea
-            id="ade-settings-text"
+          <CodeTextEditor
             :model-value="draft"
-            spellcheck="false"
-            class="min-h-64 resize-y font-data leading-relaxed"
+            language="yaml"
+            :ariaLabel="t('space.ade.settings.field.aria')"
+            class="h-64"
             data-testid="ade-settings-text"
             @update:model-value="onInput"
+            @save="saveNow"
+            @submit="saveNow"
           />
           <div class="flex flex-wrap items-center gap-2">
             <span

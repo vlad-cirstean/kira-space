@@ -66,6 +66,9 @@ type inFlightOp struct {
 	delayMs int
 	// source is P328: "user" or "mcp", carried onto every record of the op.
 	source string
+	// appendFailed is set when Append failed (a reused op id): handleOpEnd and finishInFlight skip Finish,
+	// so the earlier op's row cannot be overwritten. The live record still shows.
+	appendFailed bool
 }
 
 // Wiring is the Go analogue of oplog.ts's wireOplog, split into New/Start/Stop (P54 D14): New
@@ -187,7 +190,6 @@ func (w *Wiring) handleOpStart(payload json.RawMessage, inFlight map[string]inFl
 		connectionID: evt.ConnectionID, tabID: evt.TabID, kind: evt.Kind, startedAt: evt.StartedAt,
 		incognito: evt.Incognito, delayMs: evt.DelayMs, source: evt.Source,
 	}
-	inFlight[evt.OpID] = rec
 
 	// P71 §4.3: an incognito op is never Appended — nothing about it reaches op_log — but the
 	// live Operations-panel update below still fires, so a running incognito op is visible while
@@ -197,9 +199,10 @@ func (w *Wiring) handleOpStart(payload json.RawMessage, inFlight map[string]inFl
 			ID: evt.OpID, ConnectionID: rec.connectionID, TabID: rec.tabID, Kind: rec.kind, StartedAt: rec.startedAt, Source: rec.source,
 		}); err != nil {
 			slog.Warn("append failed", "scope", "oplog", "opId", evt.OpID, "err", err)
-			return
+			rec.appendFailed = true
 		}
 	}
+	inFlight[evt.OpID] = rec
 
 	w.updates.Emit(model.OpRecord{
 		ID: evt.OpID, ConnectionID: rec.connectionID, TabID: rec.tabID, StartedAt: rec.startedAt,
@@ -242,7 +245,7 @@ func (w *Wiring) handleOpEnd(payload json.RawMessage, inFlight map[string]inFlig
 	delete(inFlight, evt.OpID)
 
 	var commandTruncated bool
-	if ok && started.incognito {
+	if ok && (started.incognito || started.appendFailed) {
 		// patch.Command/patch.Error stay exactly as the event carried them — Finish is the only
 		// thing that truncates them in place, and this op's live record is in-memory only, never
 		// written to op_log, so there is nothing to truncate for.
@@ -292,7 +295,7 @@ func (w *Wiring) finishInFlight(inFlight map[string]inFlightOp, message string) 
 		// P71 §4.3: an incognito op still running at shutdown was never Appended, so there is no
 		// row to Finish — skip it rather than writing a fresh "app exited" row for an op that
 		// never reached op_log at all.
-		if rec.incognito {
+		if rec.incognito || rec.appendFailed {
 			continue
 		}
 

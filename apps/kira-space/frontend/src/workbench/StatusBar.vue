@@ -2,17 +2,21 @@
 import TooltipDetails from '@theme/components/TooltipDetails.vue';
 import { t } from '@theme/i18n';
 import { useAgentInfo } from '@workbench/agent/agentInfo';
+import { useAutomationsModule } from '@workbench/automations/module';
 import RunsStatusItem from '@workbench/automations/runs/RunsStatusItem.vue';
 import AppMetricsItem from '@workbench/components/AppMetricsItem.vue';
+import RunningOpsStatusItem from '@workbench/components/RunningOpsStatusItem.vue';
 import StatusBarBase from '@workbench/components/StatusBar.vue';
 import StatusBarItem from '@workbench/components/StatusBarItem.vue';
 import UpdateAvailableItem from '@workbench/components/UpdateAvailableItem.vue';
+import { type RunningOpItem, useRunningAutomationItems } from '@workbench/state/runningOps';
 import { computed } from 'vue';
 import AdeAgentsStatusItem from '../ade/v2/status/AdeAgentsStatusItem.vue';
 import { useAppMetricsStore } from '../state/appMetrics';
 import { useAppUpdateStore } from '../state/appUpdate';
 import { useBlameStatusStore } from '../state/blameStatus';
 import { useModeStore } from '../state/mode';
+import { useOpsStore } from '../state/ops';
 import { useSettingsStore } from '../state/settings';
 import { blameLineText, blameLineTooltip } from '../views/repo/blameLine';
 import AgentUsageItem from './AgentUsageItem.vue';
@@ -28,6 +32,24 @@ const appUpdateStore = useAppUpdateStore();
 const modeStore = useModeStore();
 const settingsStore = useSettingsStore();
 const { info: agentInfo } = useAgentInfo();
+const opsStore = useOpsStore();
+const automations = useAutomationsModule();
+const automationItems = useRunningAutomationItems();
+
+// Background rows are sub-second tracker reads the panel hides by default; the widget skips them too.
+const opItems = computed<RunningOpItem[]>(() =>
+  opsStore.records
+    .filter((r) => r.status === 'running' && !r.background)
+    .map((r) => ({
+      id: r.id,
+      label: r.kind,
+      detail: r.subject || r.repoName,
+      startedAt: Date.parse(r.startedAt),
+      canStop: r.cancellable,
+      stop: () => void opsStore.cancelOp(r.id),
+    })),
+);
+const items = computed(() => [...opItems.value, ...automationItems.value]);
 
 // P76 §5.2: 'none' and 'uncommitted' both render nothing — an always-present "Uncommitted" readout
 // is the extension's own choice; this bar hides items with nothing to say instead.
@@ -73,6 +95,7 @@ function onRevealBlameCommit(): void {
     </template>
     <template #right>
       <AdeAgentsStatusItem />
+      <RunningOpsStatusItem :items="items" @open="automations.showOperations()" />
       <RunsStatusItem />
       <UpdateAvailableItem
         v-if="appUpdateStore.available"

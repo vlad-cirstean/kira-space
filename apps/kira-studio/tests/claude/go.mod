@@ -78,6 +78,7 @@ require (
 	github.com/keybase/go-keychain v0.0.1 // indirect
 	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/lufia/plan9stats v0.0.0-20261101121723-be84dd9509a0 // indirect
+	github.com/matoous/go-nanoid/v2 v2.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/moby/api v1.56.1 // indirect

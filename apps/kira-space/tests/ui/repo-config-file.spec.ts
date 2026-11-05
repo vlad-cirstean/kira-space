@@ -1,3 +1,8 @@
+import {
+  codeEditorText,
+  expectHighlighted,
+  replaceCodeEditorText,
+} from '@workbench/testing/ui/codeEditor';
 import { expect, test } from './fixtures';
 import { adeV2Control, type openPlan } from './support/adeV2';
 import { contract } from './support/contract';
@@ -39,6 +44,7 @@ async function open(relaunch: Parameters<typeof openPlan>[0], extra: ControlSnap
   await app.window.locator(t('manage-repos')).click();
   await app.window.locator(t('repos-dialog')).waitFor();
   await app.window.locator(t('repo-file')).waitFor();
+  await app.window.locator(t('repo-file-tab-yaml')).click();
   return app;
 }
 
@@ -49,15 +55,20 @@ test('contract: the pane shows the file and Save sends the hash it loaded', asyn
   const { window: page, control } = await open(relaunch, [
     { channel: IPC.repoConfigFile, response: fx },
   ]);
-  await expect(page.locator(t('repo-file-text'))).toHaveValue(fx.text);
+  await expect.poll(() => codeEditorText(page.locator(t('repo-file-text')))).toBe(fx.text);
   await expect(page.locator(t('config-file-bar'))).toContainText('proj.yaml');
+  await expectHighlighted(page.locator(t('repo-file-text')), 'yaml');
   await expect(page.locator(t('repo-file-save'))).toBeDisabled();
   expect(calls(control, IPC.repoConfigFile)[0]?.args).toEqual({
     path: '/tmp/acme-customer-dashboard-web-frontend',
     file: '',
   });
 
-  await page.locator(t('repo-file-text')).fill('path: x\nnickname: Edited\n');
+  await replaceCodeEditorText(
+    page,
+    page.locator(t('repo-file-text')),
+    'path: x\nnickname: Edited\n',
+  );
   await page.locator(t('repo-file-save')).click();
   await expect.poll(() => calls(control, IPC.repoConfigSaveFile)).toHaveLength(1);
   expect(calls(control, IPC.repoConfigSaveFile)[0]?.args).toEqual({
@@ -76,7 +87,7 @@ test('contract: a repo without a file shows the template and Save creates it', a
     { channel: IPC.repoConfigFile, response: fx },
   ]);
   await expect(page.locator(t('repo-file-none'))).toBeVisible();
-  await expect(page.locator(t('repo-file-text'))).toHaveValue(fx.text);
+  await expect.poll(() => codeEditorText(page.locator(t('repo-file-text')))).toBe(fx.text);
   await expect(page.locator(t('config-file-bar'))).toHaveCount(0);
   await expect(page.locator(t('repo-file-save'))).toHaveText('Create settings file');
   await page.locator(t('repo-file-save')).click();
@@ -94,7 +105,7 @@ test('contract: a broken file shows its line and the last-good note', async ({ r
   const { window: page } = await open(relaunch, [{ channel: IPC.repoConfigFile, response: fx }]);
   await expect(page.locator(t('config-file-status'))).toContainText(String(fx.problem?.line));
   await expect(page.locator(t('repo-file-last-good'))).toBeVisible();
-  await expect(page.locator(t('repo-file-text'))).toHaveValue(fx.text);
+  await expect.poll(() => codeEditorText(page.locator(t('repo-file-text')))).toBe(fx.text);
 });
 
 test('a save refused for a changed file offers Reload and Overwrite', async ({ relaunch }) => {
@@ -107,7 +118,7 @@ test('a save refused for a changed file offers Reload and Overwrite', async ({ r
       },
     },
   ]);
-  await page.locator(t('repo-file-text')).fill('path: x\n');
+  await replaceCodeEditorText(page, page.locator(t('repo-file-text')), 'path: x\n');
   await page.locator(t('repo-file-save')).click();
   await expect(page.locator(t('repo-file-save-error'))).toContainText('changed');
   await page.locator(t('repo-file-overwrite')).click();

@@ -7616,3 +7616,58 @@ Manual session steps get a per-step sandbox. Manual steps with a session take a 
 
 Full run once after P511: Go `test:go:rest` 139 ok, containers 15 ok (Docker tests self-skipped), Studio UI 674, Space UI 1078, `test:unit` 1993, Space mobile 83 plus 1 skipped, ipc-frontend 7. Visual baselines re-recorded once, 53 images. Fixes: i18n catalog exemption, step card `-mx-px`, Workflows header padding, automations tab test race. Review round 1: 6 findings (M1, M2, L1 to L4), all fixed. Not run: Docker-backed tests, `e2e-real`, `ui-timing`, `test:claude*`, proto/perf, real macOS Seatbelt check.
 <!-- /chapter v0.2.34 -->
+
+<!-- chapter v0.2.35 -->
+## v0.2.35
+Source: docs/v0.2.35/ at 9ad625fdc. 16 phases.
+
+### v0.2.35 P512 (Done)
+Tracked-item update indicators with per-concept settings. Githost sync fields and snapshots with diff, watcher and bridge; per-concept Settings toggles per trackable kind; ADE indicators; flow and UI specs. `CHANNEL.adeTaskUpdates` added. Real-hardware GitHub sync not run; comment and assignee fields covered by fakehost only.
+
+### v0.2.35 P513 (Done)
+Repo scripts reference run-module scripts (backend, YAML). Keys `worktree.prepare_run` and `environments[].deployed_sha_run`, `model.ScriptRef`, shared `resolveScriptRef`. Smart scripts refused for repo use.
+
+### v0.2.35 P514 (Done)
+YAML syntax highlighting and restored config dialogs. Monaco YAML highlighting on every config editor; `configfs.Form` with `useConfigFormDraft` so form and YAML edit one file; restored run, repo, connection and API dialogs with lifecycle actions (duplicate, delete, rename, move). Collections listed by name (order came back in P524). Duplicate environment shares secret refs.
+
+### v0.2.35 P515 (Done)
+Run-script picker in the restored repo dialog. `RunScriptRefPicker` and `RepoScriptField` (Command and Script tabs) for prepare and deployed-SHA hooks; `ParamValues.MarshalJSON` keeps one-or-list shape. Flow `TestRepoScriptPicker`, UI spec `repo-script-picker`.
+
+### v0.2.35 P516 (Done)
+Reveal button on every secret field. Shared `SecretInput` with eye toggle at every secret entry and display; no Go change; revealed value drops when `set` changes. Known flag: the API variables .env editor refuses typed secret values, so it has no reveal toggle.
+
+### v0.2.35 P517 (Done)
+Multiple worktrees per repo, agent-named branches, branch rename. Several worktrees per repo (`wt_` nanoid dirs, migration 0075); `request_branches` takes agent-chosen names (breaking); `rename_branch` MCP tool behind an approval dialog. Real `claude` test not run.
+
+### v0.2.35 P518 (Done)
+Cancel ops via MCP and status bar running-ops widget. `kira-db` tools `list_operations` and `cancel_operation` (MCP-exposed connections plus `run:<id>` script runs; one refusal text for unknown or hidden ids). Shared status bar widget in both apps with Stop per row. Cancel tool also exposed on Space tools. Real `claude` rows not run.
+
+### v0.2.35 P519 (Done)
+Proof window cell editor and multi-file screenshots. Read-only cell editor under table and key-value results; save-all writes one PNG per tab into a fresh folder. "Copy all tabs" removed. Pre-existing `cell-editor.spec.ts` failures fixed. Real `claude` row not run.
+
+### v0.2.35 P520 (Done)
+Aggregated MCP approvals: one dialog, minimise to toast, long approval timeouts. Shared `internal/approvals` queue and frontend in `packages/workbench/src/approvals/`; X or Escape minimises to a top-right toast and never denies; Approve all and Deny all. Studio approval timeout 10 min with per-server MCP `timeout` written by install and `agentmcp`; Space merges concurrent branch calls into one item. Real `claude` test not run.
+
+### v0.2.35 P521 (Done)
+Scripts MCP. Opt-in `mcp` block per normal script; tools `list_scripts`, `run_script`, `get_script_run`, `get_script_logs`; filtered, capped log reads; approval kind `script.run` with masked secrets.
+
+### v0.2.35 P522 (Done)
+Free-form API request MCP with agent credentials. `api_list_environments` and `api_request`, off by default; `api.request` approval kind with masked body; per-host credential enforcement with redirect guard; environment keys `agent`, `agentHosts`, `agentAutoApproveReads`; masked op log. Defaults chosen without a user answer. Real `claude` test not run.
+
+### v0.2.35 P523 (Done)
+Prefixed nanoid for every Kira-generated id. Keys are UUIDv7 (`internal/ids`, `packages/shared/ids.ts`); handles use prefixed nanoid; guards G6 and N14 flag raw generators; legacy v4 ids stay valid. `review_comment` id is a UUIDv7 string (migration 0007), `review_removed` and comment ids UUIDv7, legacy numeric ids mapped on decode. Mobile pairing and shared idempotency LRU out of scope.
+
+### v0.2.35 P524 (Done)
+Manual order for API collections and environments. Order lives in `sort_order`, no migration; `ReorderCollections` and `ReorderEnvironments` restored; drag, Move up/down and Alt+Arrow. Flow `TestApiOrder`, UI spec `api-order`.
+
+### v0.2.35 P525 (Done)
+Uniform flat design: dialogs and outline buttons. No filled button remains; `dialog-primary` is the accent outline; one `floatingSurface` recipe; no header icons. Guards U106 to U108. Visual baselines re-recorded.
+
+### v0.2.35 P526 (Done)
+Standalone step library and Workflows page tabs. Steps live in `<home>/steps/*.yaml`; workflows reference them with overrides, `routes` and `prompt_extra`; one-time migration with `.p526-backup`; Statuses, Steps and Workflows tabs. Library edits apply to new work only.
+
+### v0.2.35 P527 (Done)
+DB MCP declared query mode enforced by the database. `run_query` takes required `mode` (read|write|ddl); read runs on a per-connection read lane (second adapter, same credentials; engine session-enforced on postgres, mysql, mariadb, sqlite, clickhouse; app-checked on mongodb and redis). Lane fails closed and closes on idle. `list_connections` reports `access` and `enforcement`. Known limits: Mongo and Redis reads app-checked.
+
+Full suite run once after P527: Go rest 142 packages, Studio unit 2013, Studio UI 767, Space UI 1139, mobile 83 plus 1 skipped, ipc-frontend, visual baselines re-recorded, e2e-real fixed. Failures F1 to F11 fixed. Two ui-timing budget failures (budgets, perf) documented as a Known open item, not fixed. 2 code review rounds, all findings fixed.
+<!-- /chapter v0.2.35 -->

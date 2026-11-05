@@ -19,6 +19,7 @@ import FileTypesPane from './settings/FileTypesPane.vue';
 import GitPane from './settings/GitPane.vue';
 import MemoryPane from './settings/MemoryPane.vue';
 import MobileAccessPane from './settings/MobileAccessPane.vue';
+import UpdatesPane from './settings/UpdatesPane.vue';
 
 // Kira Studio's own workbench/SettingsDialog.vue — only the sections still relevant to a repo-only
 // workbench (state/settings.ts's own `sections`).
@@ -40,6 +41,7 @@ const sectionLabels = computed<Record<Section, string>>(() => ({
   'CLI tools': t('space.settings.nav.cliTools.label'),
   'File types': t('space.settings.nav.fileTypes.label'),
   Capture: t('space.settings.nav.capture.label'),
+  Updates: t('space.settings.nav.updates.label'),
   'Mobile access': t('space.settings.nav.mobileAccess.label'),
   Agent: agentInfo.value.productLabel,
   Memory: t('common.module.memory.label'),
@@ -68,6 +70,7 @@ async function save(patch: SettingsPatch): Promise<void> {
       agent: defaultSettings.agent,
       memory: defaultSettings.memory,
       capture: defaultSettings.capture,
+      tracking: defaultSettings.tracking,
       ade: {
         headlessSettingSources: defaultSettings.ade.headlessSettingSources,
       },
@@ -79,6 +82,7 @@ async function save(patch: SettingsPatch): Promise<void> {
       agent: settingsStore.agent,
       memory: settingsStore.memory,
       capture: settingsStore.capture,
+      tracking: settingsStore.tracking,
       ade: {
         headlessSettingSources: settingsStore.ade.headlessSettingSources,
       },
@@ -118,6 +122,13 @@ async function save(patch: SettingsPatch): Promise<void> {
       />
       <CapturePane
         :active="s.activeSection === 'Capture'"
+        :draft="s.draft"
+        :is-at-default="s.isAtDefault"
+        :reset-leaf="s.resetLeaf"
+        :register-field-error="s.registerFieldError"
+      />
+      <UpdatesPane
+        :active="s.activeSection === 'Updates'"
         :draft="s.draft"
         :is-at-default="s.isAtDefault"
         :reset-leaf="s.resetLeaf"

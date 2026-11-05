@@ -2,8 +2,6 @@ package docker
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"maps"
@@ -15,6 +13,7 @@ import (
 	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/mount"
@@ -459,12 +458,6 @@ func subtractDefaults(cfg *container.Config, old *imageDefaults) {
 	}
 }
 
-func randHex() string {
-	b := make([]byte, 3)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)
-}
-
 type leftover struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -594,7 +587,7 @@ func (m *Manager) recreateContainer(args RecreateArgs) (RecreateResult, error) {
 
 	x := &recreateRun{
 		m: m, cli: cli, ep: ep, oldID: r.ID, oldName: cur.InPlace.Name, wasRunning: r.State != nil && r.State.Running,
-		oldTmp: cur.InPlace.Name + "-kira-old-" + randHex(), newTmp: cur.InPlace.Name + "-kira-new-" + randHex(),
+		oldTmp: cur.InPlace.Name + "-kira-old-" + ids.New(ids.DockerTemp), newTmp: cur.InPlace.Name + "-kira-new-" + ids.New(ids.DockerTemp),
 	}
 	created, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{Name: x.newTmp, Config: b.Config, HostConfig: b.Host, NetworkingConfig: b.Net})
 	if err != nil {

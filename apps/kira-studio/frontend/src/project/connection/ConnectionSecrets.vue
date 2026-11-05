@@ -1,20 +1,19 @@
 <script setup lang="ts">
 import type { ConnectionSecret } from '@shared/domain/connectionConfig';
-import CodeBlock from '@theme/components/CodeBlock.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
-import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
+import SecretInput from '@workbench/components/SecretInput.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { ref } from 'vue';
 import { useDeleteConnectionSecret, useSetConnectionSecret } from '../../state/connectionConfig';
 import { revealConnectionSecret } from '../state/connectionReveal';
 
 // The secrets one connection file names. A value goes in once and is never shown unless the gated
-// reveal asks for it; no call but Reveal returns it.
+// reveal (the eye on its field) asks for it; no call but Reveal returns it.
 const props = defineProps<{
   connectionId: string;
   connectionName: string;
@@ -28,7 +27,6 @@ const deleteSecret = useDeleteConnectionSecret();
 const key = (row: ConnectionSecret): string => `${row.kind}:${row.name}`;
 
 const drafts = ref<Record<string, string>>({});
-const revealed = ref<Record<string, string>>({});
 const error = ref('');
 
 async function save(row: ConnectionSecret): Promise<void> {
@@ -37,7 +35,6 @@ async function save(row: ConnectionSecret): Promise<void> {
   try {
     await setSecret.mutateAsync({ kind: row.kind, name: row.name, value });
     drafts.value[key(row)] = '';
-    delete revealed.value[key(row)];
     error.value = '';
   } catch (err) {
     error.value = errorText(err);
@@ -54,27 +51,26 @@ async function clear(row: ConnectionSecret): Promise<void> {
   if (!ok) return;
   try {
     await deleteSecret.mutateAsync({ kind: row.kind, name: row.name });
-    delete revealed.value[key(row)];
     error.value = '';
   } catch (err) {
     error.value = errorText(err);
   }
 }
 
-async function reveal(row: ConnectionSecret): Promise<void> {
+async function reveal(row: ConnectionSecret): Promise<string | undefined> {
   const result = await revealConnectionSecret(
     props.connectionId,
     props.connectionName,
     row.kind === 'uri' ? 'uri' : 'fields',
     () => true,
   );
-  if (!result) return;
+  if (!result) return undefined;
   if (result.outcome === 'error') {
     error.value = result.error;
-    return;
+    return undefined;
   }
-  revealed.value[key(row)] = (row.kind === 'uri' ? result.uri : result.password) ?? '';
   error.value = '';
+  return (row.kind === 'uri' ? result.uri : result.password) ?? '';
 }
 </script>
 
@@ -108,11 +104,11 @@ async function reveal(row: ConnectionSecret): Promise<void> {
           }}</Badge>
         </div>
         <div class="flex items-center gap-2">
-          <Input
+          <SecretInput
             v-model="drafts[key(row)]"
-            type="password"
-            autocomplete="new-password"
-            class="min-w-0 flex-1 font-data"
+            :set="row.set"
+            :reveal="() => reveal(row)"
+            class="min-w-0 flex-1"
             :disabled="!storageAvailable"
             :aria-label="t('studio.connections.file.secrets.value.aria', { name: row.name })"
             data-testid="connection-secret-value"
@@ -132,29 +128,12 @@ async function reveal(row: ConnectionSecret): Promise<void> {
             v-if="row.set"
             variant="dialog"
             size="kira-lg"
-            data-testid="connection-secret-reveal"
-            @click="reveal(row)"
-          >
-            {{ t('common.action.reveal.label') }}
-          </Button>
-          <Button
-            v-if="row.set"
-            variant="dialog"
-            size="kira-lg"
             data-testid="connection-secret-clear"
             @click="clear(row)"
           >
             {{ t('common.action.clear.label') }}
           </Button>
         </div>
-        <CodeBlock
-          v-if="revealed[key(row)] !== undefined"
-          class="select-all"
-          data-testid="connection-secret-revealed"
-          >{{
-            revealed[key(row)]
-          }}</CodeBlock
-        >
       </li>
     </ul>
     <Alert v-if="error" variant="error" data-testid="connection-secret-error">

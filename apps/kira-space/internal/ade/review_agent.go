@@ -190,7 +190,7 @@ func (b *TaskBoard) ForwardReviewComments(ctx context.Context, branchID string) 
 	if err := tr.Send(row.ID, message); err != nil {
 		return 0, err
 	}
-	ids := make([]int64, len(open))
+	ids := make([]string, len(open))
 	for i, c := range open {
 		ids[i] = c.ID
 	}

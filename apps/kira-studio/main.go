@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appshell"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appwire"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/bridge"
@@ -17,6 +16,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/keepawake"
 	"github.com/kirathecat/kira-studio/internal/logging"
 	"github.com/kirathecat/kira-studio/internal/secrets"
@@ -221,7 +221,7 @@ func wireWindowsAndMenu(d postAppDeps) {
 		d.reporter.Fatal(startupfail.StepWindowList, err)
 	}
 	if len(records) == 0 {
-		rec := model.WindowRecord{Key: uuid.NewString(), Order: 0}
+		rec := model.WindowRecord{Key: ids.NewID(), Order: 0}
 		if err := d.w.Repos.Windows.Create(rec); err != nil {
 			d.reporter.Fatal(startupfail.StepWindowCreate, err)
 		}

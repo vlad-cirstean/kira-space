@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { newUuid } from '@shared/ids';
 import HighlightedText from '@theme/components/HighlightedText.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
@@ -129,7 +130,7 @@ async function open(): Promise<void> {
   ended.value = false;
   failure.value = '';
   streamError.value = '';
-  const id = `docker-logs:${crypto.randomUUID()}`;
+  const id = `docker-logs:${newUuid()}`;
   streamId = id;
   off = control.onLogs((e) => {
     if (e.streamId !== id) return;

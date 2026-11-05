@@ -5,6 +5,7 @@ import * as AgentPortService from '@bindings/agentportservice.js';
 import * as AgentService from '@bindings/agentservice.js';
 import * as AgentSettingsService from '@bindings/agentsettingsservice.js';
 import * as AgentUsageService from '@bindings/agentusageservice.js';
+import * as ApprovalsService from '@bindings/approvalsservice.js';
 import * as CaptureService from '@bindings/captureservice.js';
 import * as CodeWorkspaceService from '@bindings/codeworkspaceservice.js';
 import * as ConfigFilesService from '@bindings/configfilesservice.js';
@@ -76,8 +77,10 @@ import type {
 import type {
   CustomScript,
   CustomScriptFields,
+  RunFormResult,
   ScriptDir,
   ScriptFileView,
+  ScriptMcpServerList,
   ScriptsSnapshot,
   SecretValues,
 } from '@shared/domain/scripts';
@@ -86,6 +89,7 @@ import { scriptsSnapshotOf } from '@workbench/automations/createCustomScriptsSto
 import { createCoreControl } from '@workbench/bridge/createCoreControl';
 import { createOpenExternal } from '@workbench/bridge/openExternal';
 import { on, trust, unwrap, windowKey } from '@workbench/bridge/rpc';
+import type { FormEdit } from '@workbench/config/configForm';
 import type { AgentContextSaveArgs, AgentContextView } from '../ade/v2/context/types';
 import type {
   ExportApplyArgs,
@@ -117,6 +121,7 @@ import type {
   RepoConfigList,
   RepoConfigSaveArgs,
 } from '../repo/state/repoConfigTypes';
+import type { RepoFormArgs, RepoFormResult } from '../repo/state/repoFormTypes';
 import type { CliToolsResult, IssueTrackers } from '../state/cliToolsDomain';
 import type { SpaceMode } from '../state/modeDomain';
 import type { SpaceOpRecord } from '../state/opsDomain';
@@ -153,6 +158,14 @@ const spaceControl = {
     unwrap(CustomScriptsService.SaveFile({ file, text, baseHash })).then((r) =>
       trust<ScriptFileView>(r),
     ),
+  customScriptsForm: (file: string, text: string, edits: FormEdit[]): Promise<RunFormResult> =>
+    unwrap(
+      CustomScriptsService.Form({
+        file,
+        text,
+        edits: edits.map((e) => ({ path: e.path, value: e.value ?? null, unset: e.unset })),
+      }),
+    ).then((r) => trust<RunFormResult>(r)),
   customScriptsSetSecrets: (id: string, values: SecretValues): Promise<CustomScript> =>
     unwrap(CustomScriptsService.SetSecrets({ id, values })).then((r) => trust<CustomScript>(r)),
   customScriptsSetScheduleTarget: (
@@ -167,6 +180,12 @@ const spaceControl = {
     unwrap(CustomScriptsService.Reorder({ collection, ids })),
   customScriptsReorderCollections: (names: string[]): Promise<void> =>
     unwrap(CustomScriptsService.ReorderCollections({ names })),
+  customScriptsMove: (id: string, collection: string, beforeId: string | null): Promise<void> =>
+    unwrap(CustomScriptsService.Move({ id, collection, beforeId })),
+  customScriptsRenameCollection: (name: string, newName: string): Promise<void> =>
+    unwrap(CustomScriptsService.RenameCollection({ name, newName })),
+  customScriptsDeleteCollection: (name: string): Promise<void> =>
+    unwrap(CustomScriptsService.DeleteCollection({ name })),
   onCustomScriptsChanged: (cb: (snapshot: ScriptsSnapshot) => void): (() => void) =>
     on(CHANNEL.customScriptsChanged, (r) => cb(scriptsSnapshotOf(r))),
 
@@ -181,6 +200,8 @@ const spaceControl = {
   scriptRunsStop: (id: string): Promise<void> => unwrap(ScriptRunsService.Stop({ id })),
   scriptRunsResolveDir: (scriptId: string): Promise<ScriptDir> =>
     unwrap(ScriptRunsService.ResolveDir({ scriptId })).then((r) => trust<ScriptDir>(r)),
+  scriptRunsMcpServers: (): Promise<ScriptMcpServerList> =>
+    unwrap(ScriptRunsService.McpServers()).then((r) => trust<ScriptMcpServerList>(r)),
   onScriptRunsChanged: (cb: (run: ScriptRun) => void): (() => void) =>
     on(CHANNEL.scriptRunsChanged, (r) => cb(trust<ScriptRun>(r))),
   scriptRunsPreview: (args: ScriptRunArgs): Promise<ScriptRunPreview> =>
@@ -498,6 +519,14 @@ const spaceControl = {
     unwrap(RepoConfigService.File(args)).then((r) => trust<RepoConfigFile>(r)),
   repoConfigSaveFile: (args: RepoConfigSaveArgs): Promise<RepoConfigFile> =>
     unwrap(RepoConfigService.SaveFile(args)).then((r) => trust<RepoConfigFile>(r)),
+  repoConfigForm: (args: RepoFormArgs): Promise<RepoFormResult> =>
+    unwrap(
+      RepoConfigService.Form({
+        file: args.file,
+        text: args.text,
+        edits: args.edits.map((e) => ({ path: e.path, value: e.value ?? null, unset: e.unset })),
+      }),
+    ).then((r) => trust<RepoFormResult>(r)),
   onRepoConfigChanged: (cb: () => void): (() => void) => on(CHANNEL.repoConfigChanged, cb),
   agentContextGet: (): Promise<AgentContextView> =>
     unwrap(AgentContextService.Get()).then((r) => trust<AgentContextView>(r)),
@@ -543,6 +572,18 @@ const spaceControl = {
     unwrap(AdeTaskService.ImportWorkflow(args)).then((r) => trust<V2.WorkflowEntry>(r)),
   adeTaskNewWorkflow: (args: V2.NewWorkflowArgs): Promise<V2.WorkflowEntry> =>
     unwrap(AdeTaskService.NewWorkflow(args)).then((r) => trust<V2.WorkflowEntry>(r)),
+  adeTaskStepYaml: (args: V2.FileNameArgs): Promise<V2.StepYaml> =>
+    unwrap(AdeTaskService.StepYaml(args)).then((r) => trust<V2.StepYaml>(r)),
+  adeTaskValidateStepYaml: (args: V2.ValidateStepYamlArgs): Promise<V2.StepValidation> =>
+    unwrap(AdeTaskService.ValidateStepYaml(args)).then((r) => trust<V2.StepValidation>(r)),
+  adeTaskSaveStep: (args: V2.SaveStepArgs): Promise<V2.StepEntry> =>
+    unwrap(AdeTaskService.SaveStep(args)).then((r) => trust<V2.StepEntry>(r)),
+  adeTaskSaveStepYaml: (args: V2.SaveStepYamlArgs): Promise<V2.StepEntry> =>
+    unwrap(AdeTaskService.SaveStepYaml(args)).then((r) => trust<V2.StepEntry>(r)),
+  adeTaskNewStep: (args: V2.NewStepArgs): Promise<V2.StepEntry> =>
+    unwrap(AdeTaskService.NewStep(args)).then((r) => trust<V2.StepEntry>(r)),
+  adeTaskDeleteStep: (args: V2.DeleteStepArgs): Promise<void> =>
+    unwrap(AdeTaskService.DeleteStep(args)),
   adeTaskAddFolder: (args: V2.FolderArgs): Promise<V2.FolderImportResult> =>
     unwrap(AdeTaskService.AddFolder(args)).then((r) => trust<V2.FolderImportResult>(r)),
   adeTaskSetFolderWatch: (args: V2.FolderArgs): Promise<V2.Folder> =>
@@ -572,6 +613,11 @@ const spaceControl = {
     unwrap(AdeTaskService.Artifacts(args)).then((r) => trust<V2.ArtifactsResult>(r)),
   adeTaskIssue: (args: V2.TaskArgs): Promise<V2.TaskIssue> =>
     unwrap(IssueTrackerService.TaskIssue(args)).then((r) => trust<V2.TaskIssue>(r)),
+  adeTaskTrackedUpdates: (): Promise<V2.TrackedUpdatesResult> =>
+    unwrap(AdeTaskService.TrackedUpdates()).then((r) => trust<V2.TrackedUpdatesResult>(r)),
+  adeTaskMarkTrackedSeen: (args: V2.MarkTrackedSeenArgs): Promise<void> =>
+    unwrap(AdeTaskService.MarkTrackedSeen(args)),
+  onAdeTaskUpdates: (cb: () => void): (() => void) => on(CHANNEL.adeTaskUpdates, cb),
   cliTools: (refresh: boolean): Promise<CliToolsResult> =>
     unwrap(IssueTrackerService.Tools({ refresh })).then((r) => trust<CliToolsResult>(r)),
   issueTrackers: (): Promise<IssueTrackers> =>
@@ -670,14 +716,6 @@ const spaceControl = {
     unwrap(AdeTaskService.ArchiveTask(args)),
   adeTaskArchivedTask: (args: V2.TaskArgs): Promise<V2.ArchivedTask> =>
     unwrap(AdeTaskService.ArchivedTask(args)).then((r) => trust<V2.ArchivedTask>(r)),
-  adeTaskBranchRequest: (args: V2.BranchRequestArgs): Promise<V2.BranchRequest> =>
-    unwrap(AdeTaskService.BranchRequest(args)).then((r) => trust<V2.BranchRequest>(r)),
-  adeTaskApproveBranchRequest: (
-    args: V2.ApproveBranchRequestArgs,
-  ): Promise<V2.BranchRequestAnswer> =>
-    unwrap(AdeTaskService.ApproveBranchRequest(args)).then((r) => trust<V2.BranchRequestAnswer>(r)),
-  adeTaskDenyBranchRequest: (args: V2.BranchRequestArgs): Promise<V2.BranchRequestAnswer> =>
-    unwrap(AdeTaskService.DenyBranchRequest(args)).then((r) => trust<V2.BranchRequestAnswer>(r)),
   adeTaskRestoreTask: (args: V2.TaskArgs): Promise<V2.Task> =>
     unwrap(AdeTaskService.RestoreTask(args)).then((r) => trust<V2.Task>(r)),
   onAdeTaskBoard: (cb: () => void): (() => void) => on(CHANNEL.adeTaskBoard, cb),
@@ -750,6 +788,7 @@ export const control = {
     keepAwake: KeepAwakeService,
     update: UpdateService,
     prompts: PromptsService,
+    approvals: ApprovalsService,
     llmPrompts: LlmPromptsService,
     agent: AgentService,
   }),

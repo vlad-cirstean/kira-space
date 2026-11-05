@@ -9,9 +9,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/scripts"
@@ -154,7 +154,7 @@ func (s *Service) ResumeCommand(id string) (ResumeLaunch, error) {
 	if err != nil {
 		return ResumeLaunch{}, ipcerr.InternalErr(err)
 	}
-	stem := "tui-" + uuid.NewString()
+	stem := ids.New(ids.TUI)
 	prep, err := s.prepareApp(prov, stem)
 	if err != nil {
 		return ResumeLaunch{}, ipcerr.BadRequest(err.Error())

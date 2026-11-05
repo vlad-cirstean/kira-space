@@ -55,3 +55,28 @@ test('an empty relay snapshot closes a stale dialog', async ({ kira }) => {
   await emitPrompts(window, []);
   await expect(dialog).toHaveCount(0);
 });
+
+test('a masked prompt has a focused field and an eye; an unmasked one has no eye', async ({
+  kira,
+}) => {
+  const { window } = kira;
+  const input = window.locator('[data-testid="git-credential-input"]');
+  const eye = window.locator('[data-testid="git-credential-input-reveal"]');
+
+  await emitWailsEvent(window, IPC.gitCredential, [prompt]);
+  await emitPrompts(window, [routed('git-credential', 'req-1')]);
+  await expect(input).toBeFocused();
+  await expect(input).toHaveAttribute('type', 'password');
+  await input.fill('hunter2');
+  await eye.click();
+  await expect(input).toHaveAttribute('type', 'text');
+  await eye.click();
+  await expect(input).toHaveAttribute('type', 'password');
+
+  await emitWailsEvent(window, IPC.gitCredential, [
+    { ...prompt, requestId: 'req-2', masked: false },
+  ]);
+  await emitPrompts(window, [routed('git-credential', 'req-2')]);
+  await expect(input).not.toHaveAttribute('type', 'password');
+  await expect(eye).toHaveCount(0);
+});

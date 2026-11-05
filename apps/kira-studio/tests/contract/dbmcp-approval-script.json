@@ -1,0 +1,74 @@
+{
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "script.run:<id:1>",
+      "kind": "script.run",
+      "operation": {
+        "class": "run",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "command": "echo \"region=$KIRA_PARAM_REGION token=$KIRA_PARAM_TOKEN\"",
+        "cwd": "<masked>",
+        "description": "Echoes the region and a token.",
+        "env": [
+          {
+            "fromVar": "region",
+            "name": "KIRA_PARAM_REGION",
+            "saved": false,
+            "secret": false,
+            "value": "eu"
+          },
+          {
+            "fromVar": "token",
+            "name": "KIRA_PARAM_TOKEN",
+            "saved": true,
+            "secret": true,
+            "value": ""
+          }
+        ],
+        "params": [
+          {
+            "fromVar": "region",
+            "name": "region",
+            "saved": false,
+            "secret": false,
+            "value": "eu"
+          },
+          {
+            "fromVar": "token",
+            "name": "token",
+            "saved": true,
+            "secret": true,
+            "value": ""
+          }
+        ],
+        "scriptId": "ask"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "",
+        "kind": "script",
+        "location": "<masked>",
+        "name": "ask",
+        "readOnly": false
+      }
+    }
+  ],
+  "args:ApprovalsService.Answer": {
+    "approve": false,
+    "ids": [
+      "script.run:<id:1>"
+    ],
+    "options": null
+  }
+}

@@ -12,6 +12,7 @@ import {
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
 import { useFocusOnMount } from '@workbench/behaviour/focus';
+import SecretInput from '@workbench/components/SecretInput.vue';
 import { type ComponentPublicInstance, computed, ref, useTemplateRef } from 'vue';
 import { useGitCredentialStore } from '../state/gitCredential';
 
@@ -25,9 +26,10 @@ const store = useGitCredentialStore();
 const prompt = computed(() => store.prompts.find((p) => p.requestId === props.entry.ref) ?? null);
 
 const value = ref('');
-const inputField = useTemplateRef<ComponentPublicInstance>('inputField');
+const secretField = useTemplateRef<{ input?: HTMLInputElement }>('secretField');
+const plainField = useTemplateRef<ComponentPublicInstance>('plainField');
 
-useFocusOnMount(inputField);
+useFocusOnMount(computed(() => secretField.value?.input ?? plainField.value));
 
 function onSubmit(): void {
   if (!prompt.value) return;
@@ -57,10 +59,17 @@ function onCancel(): void {
         <p class="m-0 font-data whitespace-pre-wrap" data-testid="git-credential-prompt">
           {{ prompt.prompt }}
         </p>
-        <Input
-          ref="inputField"
+        <SecretInput
+          v-if="prompt.masked"
+          ref="secretField"
           v-model="value"
-          :type="prompt.masked ? 'password' : 'text'"
+          data-testid="git-credential-input"
+          @keydown.enter="onSubmit"
+        />
+        <Input
+          v-else
+          ref="plainField"
+          v-model="value"
           class="w-full font-data"
           data-testid="git-credential-input"
           @keydown.enter="onSubmit"

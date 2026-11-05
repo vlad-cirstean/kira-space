@@ -68,7 +68,6 @@ export const useObjectStoreStore = defineStore('objectStore', () => {
     const chosen = await control.filesChooseSave(tail.name);
     if (chosen.canceled || !chosen.filePath) return null;
     await data.objectDownload({
-      opId: crypto.randomUUID(),
       tabId,
       connectionId,
       path,
@@ -86,7 +85,6 @@ export const useObjectStoreStore = defineStore('objectStore', () => {
     const tail = pathTail(path);
     if (tail?.kind !== 'object') return false;
     await data.mutate({
-      opId: crypto.randomUUID(),
       tabId,
       connectionId,
       path,
@@ -105,7 +103,6 @@ export const useObjectStoreStore = defineStore('objectStore', () => {
     tabId: string | null;
   }): Promise<string> {
     await data.mutate({
-      opId: crypto.randomUUID(),
       tabId: args.tabId,
       connectionId: args.connectionId,
       path: args.containerPath,

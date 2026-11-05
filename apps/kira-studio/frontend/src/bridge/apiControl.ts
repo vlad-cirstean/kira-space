@@ -10,7 +10,12 @@ import * as VariablesService from '@bindings/variablesservice.js';
 // args/results reference it rather than restating it, so the renderer types against it through
 // vite.config.ts's existing @bindings-internal alias.
 import type * as WailsStorageModels from '@bindings-internal/storage/model/models.js';
-import type { ApiConfigView } from '@shared/domain/apiConfig';
+import type {
+  ApiAgentEnvironment,
+  ApiConfigView,
+  ApiFileDetail,
+  ApiFormResult,
+} from '@shared/domain/apiConfig';
 import type { ImportResult } from '@shared/domain/collections';
 import type { PaletteColor } from '@shared/domain/color';
 import type {
@@ -38,6 +43,7 @@ import type {
 import type { ApiDataChangedEvent } from '@shared/protocol/events';
 import { CHANNEL } from '@shared/protocol/events';
 import { on, trust, unwrap, windowKey } from '@workbench/bridge/rpc';
+import type { FormEdit } from '@workbench/config/configForm';
 
 // The module's own binding surface — the 39 of 106 methods whose prefix is httpSend, grpc*,
 // onGrpcCall, collections*, variables*, history* or grpcHistory*. Every call site is unchanged
@@ -217,6 +223,21 @@ export const apiControl = {
     name: string;
   }): Promise<WailsModels.ItemSummary> =>
     unwrap(CollectionsService.CreateGrpcItem({ ...args, request: args.request ?? null })),
+  collectionsRename: (id: string, target: 'collection' | 'item', name: string): Promise<void> =>
+    unwrap(CollectionsService.Rename({ id, target, name })),
+  collectionsDeleteMany: (args: { collectionIds: string[]; itemIds: string[] }): Promise<void> =>
+    unwrap(CollectionsService.DeleteMany(args)),
+  /** Answers each moved row id with the row id it has now: a move into another file makes new rows. */
+  collectionsMoveItems: (args: {
+    itemIds: string[];
+    collectionId: string;
+    parentId: string | null;
+    beforeId: string | null;
+  }): Promise<Record<string, string>> =>
+    unwrap(CollectionsService.MoveItems(args)).then((r) => trust<Record<string, string>>(r ?? {})),
+  /** Puts the listed collections first, in that order. */
+  collectionsReorderCollections: (ids: string[]): Promise<void> =>
+    unwrap(CollectionsService.ReorderCollections({ ids })),
   collectionsImport: (paths: string[]): Promise<ImportResult> =>
     unwrap(CollectionsService.Import({ paths })).then((r) => trust<ImportResult>(r)),
   // P5 D16: ExportReport.secretCount is what lets the panel say "N secret values were not
@@ -231,6 +252,22 @@ export const apiControl = {
     unwrap(ApiConfigService.SetSecret({ name, value })).then((r) => trust<ApiConfigView>(r)),
   apiConfigDeleteSecret: (name: string): Promise<ApiConfigView> =>
     unwrap(ApiConfigService.DeleteSecret({ name })).then((r) => trust<ApiConfigView>(r)),
+  apiConfigAgentAccess: (): Promise<ApiAgentEnvironment[]> =>
+    unwrap(ApiConfigService.AgentAccess()).then((r) => trust<ApiAgentEnvironment[]>(r ?? [])),
+  apiConfigFile: (file: string): Promise<ApiFileDetail> =>
+    unwrap(ApiConfigService.File({ file })).then((r) => trust<ApiFileDetail>(r)),
+  apiConfigSaveFile: (file: string, text: string, baseHash: string): Promise<ApiFileDetail> =>
+    unwrap(ApiConfigService.SaveFile({ file, text, baseHash })).then((r) =>
+      trust<ApiFileDetail>(r),
+    ),
+  apiConfigForm: (file: string, text: string, edits: FormEdit[]): Promise<ApiFormResult> =>
+    unwrap(
+      ApiConfigService.Form({
+        file,
+        text,
+        edits: edits.map((e) => ({ path: e.path, value: e.value ?? null, unset: e.unset })),
+      }),
+    ).then((r) => trust<ApiFormResult>(r)),
 
   // Wrappers over VariablesService — typed against the shared domain mirrors
   // rather than the generated models directly, the one difference from collectionsList's
@@ -246,6 +283,12 @@ export const apiControl = {
     unwrap(VariablesService.CreateEnvironment({ name, description, color })).then((r) =>
       trust<ApiEnvironment>(r),
     ),
+  variablesDeleteEnvironment: (id: string): Promise<void> =>
+    unwrap(VariablesService.DeleteEnvironment({ id })),
+  variablesReorderEnvironments: (ids: string[]): Promise<void> =>
+    unwrap(VariablesService.ReorderEnvironments({ ids })),
+  variablesDuplicateEnvironment: (id: string): Promise<ApiEnvironment> =>
+    unwrap(VariablesService.DuplicateEnvironment({ id })).then((r) => trust<ApiEnvironment>(r)),
   // id: '' selects "No environment" (D3).
   variablesSetActiveEnvironment: (id: string): Promise<void> =>
     unwrap(VariablesService.SetActiveEnvironment({ id })),

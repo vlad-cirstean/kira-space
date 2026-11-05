@@ -1,0 +1,25 @@
+{
+  "record#cancelled": {
+    "background": false,
+    "cancellable": false,
+    "category": "git",
+    "command": null,
+    "durationMs": 0,
+    "error": null,
+    "id": "<masked>",
+    "kind": "fetch",
+    "module": "ade",
+    "parentId": "<masked>",
+    "repeat": 1,
+    "repoName": "",
+    "repoRoot": "",
+    "source": "",
+    "startedAt": "<masked>",
+    "status": "cancelled",
+    "steps": [],
+    "stepsDropped": 0,
+    "subject": "origin",
+    "taskId": "<masked>",
+    "trigger": "mcp"
+  }
+}

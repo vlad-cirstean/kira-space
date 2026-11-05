@@ -24,7 +24,7 @@ import {
   useStopRun,
 } from '../queries';
 import { reviewPhaseLabel } from '../runState';
-import { TONE_SOLID_CLASS } from '../tones';
+import { ACTION_CLASS } from '../tones';
 import type { ReviewPhase, ReviewWindowTarget } from '../wire';
 import { useReviewComments } from './useReviewComments';
 
@@ -296,7 +296,7 @@ const stateLabel = (c: ReviewComment): string =>
           <Button
             variant="dialog"
             size="kira"
-            class="bg-agent text-tone-ink border-transparent"
+            :class="ACTION_CLASS.agent"
             :disabled="sendTip !== ''"
             :pending="send.isPending.value"
             data-testid="ade-review-send-agent"
@@ -367,7 +367,7 @@ const stateLabel = (c: ReviewComment): string =>
           :key="r.id"
           variant="dialog"
           size="kira"
-          :class="TONE_SOLID_CLASS[r.ok ? 'green' : 'amber']"
+          :class="ACTION_CLASS[r.ok ? 'green' : 'amber']"
           :disabled="live || !waiting"
           :pending="finish.isPending.value"
           :data-testid="`ade-review-finish-${r.id}`"

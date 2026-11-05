@@ -24,3 +24,29 @@ func TestEditYAML(t *testing.T) {
 		t.Errorf("scalar parent: err = %v, want ErrNotMapping", err)
 	}
 }
+
+func TestEditYAMLUnset(t *testing.T) {
+	cases := []struct {
+		name, src, want string
+		path            []string
+	}{
+		{"leaf", "a: 1\nb: 2 # keep\n", "b: 2 # keep\n", []string{"a"}},
+		{"nested prunes empty parents", "x: 1\nw:\n  p:\n    q: 1\n", "x: 1\n", []string{"w", "p", "q"}},
+		{"sibling keeps parent", "w:\n  p: 1\n  q: 2\n", "w:\n  q: 2\n", []string{"w", "p"}},
+		{"parent with head comment stays", "# why\nw:\n  p: 1\n", "# why\nw: {}\n", []string{"w", "p"}},
+		{"file header moves to the next key", "# top\na: 1\nb: 2\n", "# top\nb: 2\n", []string{"a"}},
+		{"missing path is a no-op", "a: 1\n", "a: 1\n", []string{"w", "p"}},
+		{"path through a scalar is a no-op", "a: 1\n", "a: 1\n", []string{"a", "b"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := EditYAML([]byte(c.src), []NodeSet{{Path: c.path, Unset: true}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != c.want {
+				t.Errorf("got:\n%s\nwant:\n%s", got, c.want)
+			}
+		})
+	}
+}

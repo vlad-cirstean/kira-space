@@ -15,7 +15,7 @@
 //   - Imperative code after an `await` (a mutation continuing on, send(), the reconcilers below)
 //     reads `queryClient.getQueryData(key)` or awaits a `load*()` reader — never the observer ref.
 
-import type { ApiConfigView } from '@shared/domain/apiConfig';
+import type { ApiAgentEnvironment, ApiConfigView } from '@shared/domain/apiConfig';
 import type {
   CollectionItemSummary,
   CollectionSummary,
@@ -44,6 +44,7 @@ export function apiSavedGrpcRequestKey(itemId: string) {
 }
 export const apiEnvironmentsKey = ['apiEnvironments'] as const;
 export const apiConfigKey = ['apiConfig'] as const;
+const apiAgentAccessKey = ['apiAgentAccess'] as const;
 export function apiVariablesKey(scope: VariableScope, ownerId: string) {
   return ['apiVariables', scope, ownerId] as const;
 }
@@ -117,6 +118,14 @@ export function apiConfigQueryOptions() {
     queryKey: apiConfigKey,
     gcTime: KEEP_WHILE_OPEN,
     queryFn: (): Promise<ApiConfigView> => control.apiConfigView(),
+  };
+}
+
+export function apiAgentAccessQueryOptions() {
+  return {
+    queryKey: apiAgentAccessKey,
+    gcTime: KEEP_WHILE_OPEN,
+    queryFn: (): Promise<ApiAgentEnvironment[]> => control.apiConfigAgentAccess(),
   };
 }
 
@@ -256,11 +265,11 @@ async function handleApiDataChange(change: ApiDataChange): Promise<void> {
       await queryClient.invalidateQueries({ queryKey: ['grpcSchema', 'reflection'] });
       return;
     case 'environments':
-      await refreshApiQuery(apiEnvironmentsKey);
+      await Promise.all([refreshApiQuery(apiEnvironmentsKey), refreshApiQuery(apiAgentAccessKey)]);
       reconcileEnvironments();
       return;
     case 'config':
-      await refreshApiQuery(apiConfigKey);
+      await Promise.all([refreshApiQuery(apiConfigKey), refreshApiQuery(apiAgentAccessKey)]);
       return;
   }
 }

@@ -24,6 +24,8 @@
         "providerLabel": "Claude"
       }
     ],
+    "steps": [],
+    "stepsDir": "<space>/steps",
     "workflows": [
       {
         "error": null,

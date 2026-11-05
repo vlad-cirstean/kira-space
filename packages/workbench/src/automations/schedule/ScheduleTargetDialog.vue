@@ -57,7 +57,7 @@ async function save(): Promise<void> {
       <DialogHeader close-testid="schedule-target-close">
         <DialogTitle>{{ t('automations.target.title', { name: script.name }) }}</DialogTitle>
       </DialogHeader>
-      <DialogBody class="flex flex-col gap-3">
+      <DialogBody>
         <FieldDescription>{{ t('automations.target.hint') }}</FieldDescription>
         <AdeContextFields
           v-if="pv"

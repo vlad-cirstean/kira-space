@@ -71,10 +71,7 @@ func TestDbMcpApprovalFocus(t *testing.T) {
 	raised(2)
 	away()
 	f.answer(t, true, f.pending(t).RequestID)
-	testx.WaitUntil(t, 10*time.Second, func() bool {
-		p := f.app.W.DbMcp.PendingApprovals().Pending
-		return p != nil && p.Stage == "response"
-	})
+	testx.WaitUntil(t, 10*time.Second, func() bool { return f.stageNow(t) == "response" })
 	raised(3)
 	f.answer(t, true, f.pending(t).RequestID)
 	wait(t, third)
@@ -89,7 +86,7 @@ func TestDbMcpApprovalFocus(t *testing.T) {
 	away()
 	fourth := callAsync(sess, f.connID, write)
 	f.dbmcpEntries(t, 1)
-	testx.WaitUntil(t, 10*time.Second, func() bool { _, ok := sink.Shown("prompt:dbmcp"); return ok })
+	testx.WaitUntil(t, 10*time.Second, func() bool { _, ok := sink.Shown("prompt:approval"); return ok })
 	// Nothing to wait on for a call that must not happen; give a stray goroutine time to show itself.
 	time.Sleep(300 * time.Millisecond)
 	if keys := f.app.Focus.Keys(); len(keys) != 3 {

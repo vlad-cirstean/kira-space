@@ -17,6 +17,9 @@ import type { CardModel } from '../plan/usePlanModel';
 import { useAddTaskRepo, useChangeRequests } from '../queries';
 import { useAdeAddUiStore } from '../state/adeAddUi';
 import { TONE_TEXT_CLASS } from '../tones';
+import AdeUpdatesDot from '../updates/AdeUpdatesDot.vue';
+import { useMarkTrackedSeen } from '../updates/queries';
+import { useTaskUpdates } from '../updates/useTaskUpdates';
 import AdeRow from './AdeRow.vue';
 import AdeTaskBranchMenu from './AdeTaskBranchMenu.vue';
 import { PR_TONE, prStateLabel } from './prState';
@@ -32,15 +35,32 @@ const openView = useOpenHostView();
 
 const lines = computed(() => {
   const byBranch = changeRequests.data.value?.branches ?? {};
-  return props.card.rows.map((row) => ({ row, pr: byBranch[row.id] }));
+  const groups = new Map<string, typeof props.card.rows>();
+  for (const row of props.card.rows) {
+    const group = groups.get(row.branch.codeRepoId) ?? [];
+    group.push(row);
+    groups.set(row.branch.codeRepoId, group);
+  }
+  return [...groups.values()].flat().map((row) => ({ row, pr: byBranch[row.id] }));
 });
+const { byBranch, describe, pending } = useTaskUpdates();
+const markSeen = useMarkTrackedSeen();
+
+function openPr(branchId: string, url: string): void {
+  const taskId = props.card.task.id;
+  const itemKey = `cr:${branchId}`;
+  if (pending(taskId, itemKey)) markSeen.mutate({ taskId, itemKeys: [itemKey] });
+  fireAndForget(openView.mutateAsync(url), 'hostView.open');
+}
 const forcePushTarget = ref<{ branchId: string; branchName: string; repo: string } | null>(null);
 
 const task = computed(() => props.card.task);
 const review = computed(() => props.card.review);
 
-const usedRepoIds = computed(() => props.card.rows.map((r) => r.branch.codeRepoId));
-const addProjects = useProjectOptions(usedRepoIds);
+const draftRepoIds = computed(() =>
+  props.card.rows.filter((r) => r.branch.name === '').map((r) => r.branch.codeRepoId),
+);
+const addProjects = useProjectOptions(draftRepoIds);
 const addRepoValue = ref<string | null>(null);
 async function onAddRepo(id: string): Promise<void> {
   addRepoValue.value = null;
@@ -93,10 +113,15 @@ async function onAddRepo(id: string): Promise<void> {
         testid="ade-task-branch"
         @force-push="forcePushTarget = { branchId: row.id, branchName: row.name, repo: row.repo }"
       >
+        <AdeUpdatesDot
+          v-if="byBranch.has(row.id)"
+          :tip="(byBranch.get(row.id) ?? []).map(describe).join('; ')"
+          :testid="`ade-branch-updated-${row.id}`"
+        />
         <AdeTaskBranchMenu
           v-if="!review"
           :row="row"
-          :used-repo-ids="usedRepoIds"
+          :draft-repo-ids="draftRepoIds"
           @error="(m: string) => emit('error', m)"
         />
       </AdeBranchRow>
@@ -120,7 +145,7 @@ async function onAddRepo(id: string): Promise<void> {
         <a
           :href="pr.url"
           class="min-w-0 truncate text-info"
-          @click.prevent="fireAndForget(openView.mutateAsync(pr.url), 'hostView.open')"
+          @click.prevent="openPr(row.id, pr.url)"
           >{{
             pr.title
           }}</a

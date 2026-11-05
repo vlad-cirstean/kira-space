@@ -59,9 +59,6 @@ type ReadRequestWire struct {
 }
 
 func (r ReadRequestWire) Validate() error {
-	if r.OpID == "" {
-		return fmt.Errorf("opId is required")
-	}
 	if r.ConnectionID == "" {
 		return fmt.Errorf("connectionId is required")
 	}
@@ -91,9 +88,6 @@ type CountRequestWire struct {
 }
 
 func (r CountRequestWire) Validate() error {
-	if r.OpID == "" {
-		return fmt.Errorf("opId is required")
-	}
 	if r.ConnectionID == "" {
 		return fmt.Errorf("connectionId is required")
 	}
@@ -158,9 +152,6 @@ type MutateRequestWire struct {
 }
 
 func (r MutateRequestWire) Validate() error {
-	if r.OpID == "" {
-		return fmt.Errorf("opId is required")
-	}
 	if r.ConnectionID == "" {
 		return fmt.Errorf("connectionId is required")
 	}
@@ -215,9 +206,6 @@ type ObjectDownloadRequestWire struct {
 }
 
 func (r ObjectDownloadRequestWire) Validate() error {
-	if r.OpID == "" {
-		return fmt.Errorf("opId is required")
-	}
 	if r.ConnectionID == "" {
 		return fmt.Errorf("connectionId is required")
 	}

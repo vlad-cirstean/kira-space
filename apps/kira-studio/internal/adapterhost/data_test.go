@@ -2,11 +2,14 @@ package adapterhost
 
 import (
 	"context"
+	"encoding/json"
 	"sync/atomic"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/enginecache"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 )
@@ -49,7 +52,7 @@ const testConnID = "conn-read"
 
 func readReq(pageSize int) ReadRequestWire {
 	return ReadRequestWire{
-		OpID: "op-r1", ConnectionID: testConnID, Path: "database:app/table:t",
+		OpID: "ff6ba664-c8f9-7f08-844d-90db1fa6759e", ConnectionID: testConnID, Path: "database:app/table:t",
 		PageSize: pageSize, Cursor: model.PageCursor{Mode: "offset", Offset: 0},
 	}
 }
@@ -119,7 +122,7 @@ func TestDispatcher_Mutate_InvalidatesEvenOnFailure(t *testing.T) {
 	d.cache.StorePage(key, label, enginecache.ReadRequest{ConnectionID: req.ConnectionID, Path: req.Path, PageSize: req.PageSize, Cursor: req.Cursor}, page.TabularPage{ByteSize: 10})
 
 	_, err := d.Mutate(context.Background(), MutateRequestWire{
-		OpID: "op-m1", ConnectionID: testConnID, Path: req.Path,
+		OpID: "2cd6ccfb-07e4-75b8-88ad-2b0969075511", ConnectionID: testConnID, Path: req.Path,
 		Ops: []model.MutationRowOp{{Kind: "delete", Key: model.RowValues{{Name: "id", Value: strp("1")}}}},
 	})
 	if err == nil {
@@ -151,7 +154,7 @@ func TestDispatcher_Read_DoesNotCacheStaleResultRacingConcurrentInvalidate(t *te
 	defer adapters.DeleteLiveAdapter(connID)
 
 	req := ReadRequestWire{
-		OpID: "op-race", ConnectionID: connID, Path: path, PageSize: 10,
+		OpID: "97344332-9e99-7dad-8342-8cf8696c9c6e", ConnectionID: connID, Path: path, PageSize: 10,
 		Cursor: model.PageCursor{Mode: "offset", Offset: 0},
 	}
 
@@ -209,5 +212,49 @@ func TestDispatcher_Invalidate_ScopeRouting(t *testing.T) {
 	}
 	if _, ok := d.cache.Count(connID, path, &filter); ok {
 		t.Error("the default scope must drop the count too")
+	}
+}
+
+type opIDFake struct{ dataFakeAdapter }
+
+func (*opIDFake) Count(context.Context, adapters.CountRequest, *adapters.OpCtx) (adapters.CountResult, error) {
+	return adapters.CountResult{Value: 1, Exact: true}, nil
+}
+
+func (*opIDFake) DownloadObject(context.Context, model.ObjectDownloadRequest, *adapters.OpCtx) (model.ObjectTransferResult, error) {
+	return model.ObjectTransferResult{Bytes: 1}, nil
+}
+
+// Count, Mutate and ObjectDownload take no opId from the renderer: Go mints a UUIDv7 for each.
+func TestDispatcher_EmptyOpIDMinted(t *testing.T) {
+	d, host := newDispatcher()
+	fake := &opIDFake{dataFakeAdapter{mutateFn: func() (model.MutationResult, error) { return model.MutationResult{}, nil }}}
+	adapters.SetLiveAdapter(testConnID, fake)
+	defer adapters.DeleteLiveAdapter(testConnID)
+	events, unsubscribe := host.Subscribe()
+	defer unsubscribe()
+
+	ctx := context.Background()
+	path := readReq(10).Path
+	if _, err := d.Count(ctx, CountRequestWire{ConnectionID: testConnID, Path: path, Refresh: true}); err != nil {
+		t.Fatalf("Count: %v", err)
+	}
+	del := []model.MutationRowOp{{Kind: "delete", Key: model.RowValues{{Name: "id", Value: strp("1")}}}}
+	if _, err := d.Mutate(ctx, MutateRequestWire{ConnectionID: testConnID, Path: path, Ops: del}); err != nil {
+		t.Fatalf("Mutate: %v", err)
+	}
+	if _, err := d.ObjectDownload(ctx, ObjectDownloadRequestWire{ConnectionID: testConnID, Path: path, DestPath: "/tmp/x"}); err != nil {
+		t.Fatalf("ObjectDownload: %v", err)
+	}
+	for _, kind := range []string{"count", "mutate", "transfer"} {
+		e := <-events
+		var p opStartPayload
+		if err := json.Unmarshal(e.Payload, &p); err != nil || e.Topic != oplog.EventOpStart || p.Kind != kind {
+			t.Fatalf("event %+v (%v), want op:start for %s", e, err, kind)
+		}
+		if u, err := uuid.Parse(p.OpID); err != nil || u.Version() != 7 {
+			t.Errorf("%s op id %q is not a v7 UUID", kind, p.OpID)
+		}
+		<-events // op:end
 	}
 }

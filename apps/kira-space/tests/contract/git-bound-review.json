@@ -4,6 +4,7 @@
       {
         "changeRequest": {
           "baseRef": "main",
+          "commentCount": 0,
           "headRef": "feat",
           "headSha": "<masked>",
           "number": 7,
@@ -83,7 +84,7 @@
         "anchorSha": "<masked>",
         "body": "tighten more",
         "createdAt": 0,
-        "id": 0,
+        "id": "<masked>",
         "kind": "change",
         "origin": "commit",
         "path": "a.txt",

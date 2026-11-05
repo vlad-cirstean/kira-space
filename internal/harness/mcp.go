@@ -3,7 +3,13 @@ package harness
 import (
 	"context"
 	"encoding/json"
+	"time"
 )
+
+// MCPCallTimeout is the longest wait any Kira MCP tool holds one call: a Space branch request (30 min)
+// plus margin, or a Studio query, run and result approval (two 10 min waits plus the run). It lifts the
+// agent CLI's 60 s default through each server entry's timeout and MCP_TOOL_TIMEOUT.
+const MCPCallTimeout = 35 * time.Minute
 
 // MCPHost renders MCP wiring in the provider's formats and lists the user's own MCP servers.
 type MCPHost interface {
@@ -30,6 +36,8 @@ type MCPServer struct {
 	Command string
 	Args    []string
 	Env     map[string]string
+	// Timeout caps one tool call; 0 leaves the agent's default.
+	Timeout time.Duration
 }
 
 // MCPTool names one tool of an MCP server.

@@ -8,12 +8,7 @@
 // expiry at all — inherit the same grace instead of re-deriving it by hand.
 
 import { useTimeoutFn } from '@vueuse/core';
-
-/** Mirrors internal/localauth.GraceWindow: the reveal gate's own grace is fixed rather than
- *  sliding "so a long editing session can't hold one authentication open indefinitely". Keep in
- *  sync with GraceWindow by hand; there is no shared constant to import across the Go/TS boundary
- *  for a time.Duration. */
-const REVEAL_GRACE_WINDOW_MS = 5 * 60 * 1000;
+import { TIMING } from '@workbench/behaviour/timing';
 
 /** A keyed expiry scheduler over one reactive `Record<string, string>` map: `schedule(key)` arms
  *  (or re-arms) a timer that deletes `map[key]` after the grace window; `clear(key)` cancels one
@@ -39,7 +34,7 @@ export function createRevealExpiry(map: Record<string, string>) {
         delete timers[key];
         delete map[key];
       },
-      REVEAL_GRACE_WINDOW_MS,
+      TIMING.revealGrace,
       { immediate: false },
     );
     timers[key] = timer;

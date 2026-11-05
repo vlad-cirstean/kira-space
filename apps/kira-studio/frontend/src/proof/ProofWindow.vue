@@ -8,6 +8,7 @@ import { usePersistedState } from '@workbench/behaviour/persisted';
 import QueryState from '@workbench/components/QueryState.vue';
 import TabStrip from '@workbench/components/TabStrip.vue';
 import { computed, useTemplateRef, watch } from 'vue';
+import { useCellSelectionStore } from '../state/cellSelection';
 import ProofChangePanel from './ProofChangePanel.vue';
 import ProofCompare from './ProofCompare.vue';
 import ProofHeader from './ProofHeader.vue';
@@ -20,11 +21,20 @@ import { createProofTabHost, type ProofTab, proofTabId } from './tabHost';
 
 // Three panes like the Kira Space review window: sessions (left) and the step tabs (centre).
 const store = useProofWindowStore();
+const cellSelection = useCellSelectionStore();
 const centre = useTemplateRef<HTMLElement>('centre');
 useProofSync();
 const sessions = useProofSessions();
 const session = useProofSession(() => store.sessionId);
 const detail = computed(() => session.data.value ?? null);
+
+// Selections belong to the steps of one session; a switch drops the old session's.
+watch(
+  () => store.sessionId,
+  (_, old) => {
+    if (old) cellSelection.clearSelectedCellsWhere((id) => id.startsWith(`proof:${old}:`));
+  },
+);
 
 // A deleted or evicted session leaves the selection; fall back to the newest.
 watch(

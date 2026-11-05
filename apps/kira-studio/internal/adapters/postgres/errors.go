@@ -32,6 +32,8 @@ func mapError(err error) *adapters.Error {
 			return adapters.New(adapters.CodeAuth, message, err)
 		case "57014":
 			return adapters.New(adapters.CodeCancelled, message, err)
+		case "25006":
+			return adapters.New(adapters.CodeQuery, message, adapters.RefusedWrite(err))
 		}
 		return adapters.New(adapters.CodeQuery, message, err)
 	}

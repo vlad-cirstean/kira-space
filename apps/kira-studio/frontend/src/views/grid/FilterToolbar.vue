@@ -163,7 +163,7 @@ function applyFromHistory(where: string | null, orderBy: SortSpec | null): void 
       :icon="ICON.history"
       :label="t('studio.common.savedAndRecentFilters.label')"
       ref="historyTriggerEl"
-      :class="{ 'bg-field text-fg': historyOpen }"
+      :pressed="historyOpen"
       data-testid="filter-history-button"
       @click="historyOpen = !historyOpen"
     />

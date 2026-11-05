@@ -58,7 +58,8 @@ if [ -n "$DIRS" ]; then
   # shellcheck disable=SC2086
   TESTDIRS="$(echo $DIRS | tr ' ' '\n' | grep -Ev '/internal/adapters/|/internal/ipcfixture|/flows/dockerflow|/flows/dbflow' || true)"
   # shellcheck disable=SC2086
-  [ -z "$TESTDIRS" ] || go test $TESTDIRS
+  # -p 1: flow packages bind dbmcp fixed port 8766; parallel packages collide.
+  [ -z "$TESTDIRS" ] || go test -p 1 $TESTDIRS
 fi
 # Nested modules (apps/*/tests/claude) lint on their own; their tests are opt-in and cost tokens.
 NESTED="$(nested_go_mods "$FILES" | while read -r m; do if [ -d "$m" ]; then echo "$m"; fi; done)"

@@ -83,6 +83,7 @@ test('the header + writes a new run file and opens it', async ({ relaunch }) => 
         kind: 'script',
         params: [],
         smart: null,
+        mcp: null,
         schedule: null,
         dirMode: 'kira',
         useAdeDir: false,

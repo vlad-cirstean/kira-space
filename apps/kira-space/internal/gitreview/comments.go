@@ -9,12 +9,14 @@ import (
 	"io"
 	"strings"
 	"time"
+
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 // Comment is one review_comment row. Ranges are in AnchorSHA's own coordinates (D6's invariant)
 // and are never rewritten — projection happens on read, in gitsession.
 type Comment struct {
-	ID            int64
+	ID            string
 	Path          string
 	Range         LineRange
 	Body          string
@@ -44,9 +46,11 @@ const MaxCommentBytes = 8 << 10
 
 // AddComment inserts one comment, creating (repoID, branch)'s review_session row if this is the
 // first thing ever recorded for it and bumping last_used_at either way. Returns the row with
-// its assigned id — AUTOINCREMENT guarantees that id is never reused by a later insert even after
-// this row is deleted, which is what makes it safe for a client to hold across a
+// its assigned id — a UUIDv7 is never reused, which makes it safe for a client to hold across a
 // remove.
+// NewCommentID mints a comment id; flow tests swap it for a counter their fake agent can name.
+var NewCommentID = ids.NewID
+
 func (s *Store) AddComment(ctx context.Context, repoID, branch string, c Comment) (Comment, error) {
 	db, err := s.conn()
 	if err != nil {
@@ -77,18 +81,15 @@ func (s *Store) AddComment(ctx context.Context, repoID, branch string, c Comment
 		}
 	}
 	c.State = CommentStateOpen
-	res, err := tx.ExecContext(ctx, `
+	id := NewCommentID()
+	_, err = tx.ExecContext(ctx, `
 		INSERT INTO review_comment
-			(session_id, path, start_line, end_line, body, anchor_sha, anchor_blob_oid, created_at, kind, origin, anchor_content)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, sessionID, c.Path, c.Range.Start, c.Range.End, c.Body, c.AnchorSHA, c.AnchorBlobOID,
+			(id, session_id, path, start_line, end_line, body, anchor_sha, anchor_blob_oid, created_at, kind, origin, anchor_content)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, id, sessionID, c.Path, c.Range.Start, c.Range.End, c.Body, c.AnchorSHA, c.AnchorBlobOID,
 		c.CreatedAt.UnixMilli(), c.Kind, c.Origin, anchorContent)
 	if err != nil {
 		return Comment{}, fmt.Errorf("gitreview: insert review_comment: %w", err)
-	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return Comment{}, fmt.Errorf("gitreview: read review_comment id: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -183,18 +184,18 @@ func queryComments(ctx context.Context, db *sql.DB, sessionID int64, openOnly bo
 
 // SetCommentState reopens or addresses one comment. false when the id matches nothing in this
 // session.
-func (s *Store) SetCommentState(ctx context.Context, repoID, branch string, id int64, state string) (bool, error) {
+func (s *Store) SetCommentState(ctx context.Context, repoID, branch string, id, state string) (bool, error) {
 	return s.updateComment(ctx, repoID, branch, `state = ?`, []any{state}, id)
 }
 
 // EditComment replaces body and kind. Range, anchor, state and reply stay; sent_at clears, since the
 // edited text was never sent.
-func (s *Store) EditComment(ctx context.Context, repoID, branch string, id int64, body, kind string) (bool, error) {
+func (s *Store) EditComment(ctx context.Context, repoID, branch string, id, body, kind string) (bool, error) {
 	return s.updateComment(ctx, repoID, branch, `body = ?, kind = ?, sent_at = NULL`, []any{body, kind}, id)
 }
 
 // ReplyComment stores an agent reply; resolved moves the comment to addressed, otherwise it stays open.
-func (s *Store) ReplyComment(ctx context.Context, repoID, branch string, id int64, reply string, resolved bool, at time.Time) (bool, error) {
+func (s *Store) ReplyComment(ctx context.Context, repoID, branch string, id, reply string, resolved bool, at time.Time) (bool, error) {
 	state := CommentStateOpen
 	if resolved {
 		state = CommentStateAddressed
@@ -204,7 +205,7 @@ func (s *Store) ReplyComment(ctx context.Context, repoID, branch string, id int6
 }
 
 // MarkSent stamps sent_at on the given comments of this session with one update and one notify.
-func (s *Store) MarkSent(ctx context.Context, repoID, branch string, ids []int64, at time.Time) error {
+func (s *Store) MarkSent(ctx context.Context, repoID, branch string, ids []string, at time.Time) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -212,11 +213,11 @@ func (s *Store) MarkSent(ctx context.Context, repoID, branch string, ids []int64
 	return err
 }
 
-func (s *Store) updateComment(ctx context.Context, repoID, branch, set string, args []any, id int64) (bool, error) {
-	return s.updateComments(ctx, repoID, branch, set, args, []int64{id})
+func (s *Store) updateComment(ctx context.Context, repoID, branch, set string, args []any, id string) (bool, error) {
+	return s.updateComments(ctx, repoID, branch, set, args, []string{id})
 }
 
-func (s *Store) updateComments(ctx context.Context, repoID, branch, set string, args []any, ids []int64) (bool, error) {
+func (s *Store) updateComments(ctx context.Context, repoID, branch, set string, args []any, ids []string) (bool, error) {
 	db, err := s.conn()
 	if err != nil {
 		return false, err
@@ -243,7 +244,7 @@ func (s *Store) updateComments(ctx context.Context, repoID, branch, set string, 
 // RemoveComment deletes one comment, scoped to (repoID, branch)'s own session so an id belonging
 // to another session matches nothing. false (not an error) when the row is already gone (D11) —
 // two windows sharing one session is the designed state, not a client mistake.
-func (s *Store) RemoveComment(ctx context.Context, repoID, branch string, id int64) (bool, error) {
+func (s *Store) RemoveComment(ctx context.Context, repoID, branch string, id string) (bool, error) {
 	db, err := s.conn()
 	if err != nil {
 		return false, err
@@ -265,7 +266,7 @@ func (s *Store) RemoveComment(ctx context.Context, repoID, branch string, id int
 
 // RemoveComments deletes the given comments of this session with one statement. Returns how many
 // it removed.
-func (s *Store) RemoveComments(ctx context.Context, repoID, branch string, ids []int64) (int, error) {
+func (s *Store) RemoveComments(ctx context.Context, repoID, branch string, ids []string) (int, error) {
 	if len(ids) == 0 {
 		return 0, nil
 	}

@@ -305,16 +305,13 @@ const secondText = computed<string>({
             v-for="cell in days"
             :key="`${cell.year}-${cell.month}-${cell.day}`"
             type="button"
-            :variant="cell.isSelected ? 'toolbar-primary' : 'toolbar'"
+            variant="toolbar"
             size="kira"
-            class="h-5.5 w-full p-0 font-normal"
+            class="h-5.5 w-full p-0 font-normal data-[selected=true]:bg-select data-[selected=true]:text-fg"
             data-testid="datetime-picker-day"
             :data-in-month="cell.inMonth"
             :data-selected="cell.isSelected"
-            :class="[
-              cell.isSelected ? '' : cell.inMonth ? 'text-fg' : 'text-subtle',
-              cell.isToday ? 'border-border' : '',
-            ]"
+            :class="[cell.inMonth ? 'text-fg' : 'text-subtle', cell.isToday ? 'border-border' : '']"
             @click="pickDay(cell)"
           >
             {{ cell.day }}
@@ -328,9 +325,9 @@ const secondText = computed<string>({
           v-for="(_name, i) in monthNames"
           :key="i"
           type="button"
-          :variant="i === viewMonth ? 'toolbar-primary' : 'toolbar'"
+          variant="toolbar"
           size="kira"
-          class="h-5.5 w-full p-0 font-normal"
+          class="h-5.5 w-full p-0 font-normal data-[selected=true]:bg-select data-[selected=true]:text-fg"
           data-testid="datetime-picker-month-cell"
           :data-selected="i === viewMonth"
           @click="pickMonth(i)"
@@ -343,9 +340,9 @@ const secondText = computed<string>({
           v-for="y in yearBlock"
           :key="y"
           type="button"
-          :variant="y === viewYear ? 'toolbar-primary' : 'toolbar'"
+          variant="toolbar"
           size="kira"
-          class="h-5.5 w-full p-0 font-normal"
+          class="h-5.5 w-full p-0 font-normal data-[selected=true]:bg-select data-[selected=true]:text-fg"
           data-testid="datetime-picker-year-cell"
           :data-selected="y === viewYear"
           @click="pickYear(y)"

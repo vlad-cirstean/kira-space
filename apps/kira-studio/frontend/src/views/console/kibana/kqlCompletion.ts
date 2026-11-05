@@ -4,6 +4,7 @@ import type {
   KibanaField,
   KibanaLanguage,
 } from '@shared/domain/kibana';
+import { newUuid } from '@shared/ids';
 import { t } from '@theme/i18n';
 import { promiseTimeout } from '@vueuse/core';
 import { matchesQuery } from '@workbench/behaviour/match';
@@ -204,7 +205,7 @@ function kqlValueSource(deps: KqlCompletionDeps): EditorAsyncCompletionSource {
         // The query's own signal aborts only once every sharer is gone; a caller's signal would
         // cancel the op under later callers that joined the same in-flight fetch.
         queryFn: ({ signal: querySignal }) => {
-          const opId = crypto.randomUUID();
+          const opId = newUuid();
           const cancel = () => fireAndForget(control.opsCancel(opId), 'kibana.suggest');
           if (querySignal.aborted) return Promise.reject(querySignal.reason);
           querySignal.addEventListener('abort', cancel, { once: true });

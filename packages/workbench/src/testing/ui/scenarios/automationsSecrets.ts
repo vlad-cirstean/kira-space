@@ -109,6 +109,7 @@ export function registerSecretScenarios(env: Env): void {
     await page.locator('[data-testid="script-s1"]').click({ button: 'right' });
     await page.locator('[data-testid="menu-item-edit-file"]').click();
     await expect(dialog(page)).toBeVisible();
+    await dialog(page).locator('[data-testid="run-file-tab-yaml"]').click();
   }
 
   test('a saved secret is write-only: empty password field, Saved badge, Clear sends null', async ({
@@ -122,6 +123,15 @@ export function registerSecretScenarios(env: Env): void {
     await expect(field).toHaveAttribute('type', 'password');
     await expect(field).toHaveValue('');
     await expect(dialog(page).locator('[data-testid="run-secret-saved-token"]')).toBeVisible();
+    const eye = dialog(page).locator('[data-testid="run-secret-value-token-reveal"]');
+    await expect(eye).toBeDisabled();
+    await field.fill('typed');
+    await expect(eye).toBeEnabled();
+    await eye.click();
+    await expect(field).toHaveAttribute('type', 'text');
+    await eye.click();
+    await expect(field).toHaveAttribute('type', 'password');
+    await field.fill('');
 
     await dialog(page).locator('[data-testid="run-secret-clear-token"]').click();
     await expect
@@ -162,6 +172,14 @@ export function registerSecretScenarios(env: Env): void {
     const input = page.locator('[data-testid="run-param-input-token"]');
     await expect(input).toHaveValue('');
     await expect(input).toHaveAttribute('placeholder', /Saved/);
+    const eye = page.locator('[data-testid="run-param-input-token-reveal"]');
+    await expect(eye).toBeDisabled();
+    await input.fill('typed');
+    await eye.click();
+    await expect(input).toHaveAttribute('type', 'text');
+    await eye.click();
+    await expect(input).toHaveAttribute('type', 'password');
+    await input.fill('');
     await expect(page.locator('[data-testid="run-env-row"]')).toContainText('••••');
     await expect(page.locator('[data-testid="run-start"]')).toBeEnabled();
     await page.locator('[data-testid="run-start"]').click();

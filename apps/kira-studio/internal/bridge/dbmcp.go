@@ -39,6 +39,12 @@ type DbMcpService struct {
 	Proof dbmcp.ProofStore
 	// Kube backs the kube_* tools (P440).
 	Kube dbmcp.KubeReader
+	// Runs backs the script-run half of the operations tools.
+	Runs dbmcp.ScriptRunControl
+	// Scripts backs the script tools.
+	Scripts dbmcp.ScriptControl
+	// API backs the API request tools; nil leaves them unregistered.
+	API dbmcp.APIRequester
 
 	embedded embedded.Service[*dbmcp.Server, DbMcpStatus]
 }
@@ -65,6 +71,11 @@ func NewDbMcpService(deps appcore.Deps, installer harness.MCPInstaller, approval
 				Approvals:        s.Approvals,
 				Proof:            s.Proof,
 				Kube:             s.Kube,
+				Ops:              s.Deps.Router,
+				Runs:             s.Runs,
+				Scripts:          s.Scripts,
+				API:              s.API,
+				APISettings:      s.apiSettings,
 				MaskRules:        s.Deps.MaskRules,
 				ExplainThreshold: s.explainThreshold,
 				PreviewResponses: s.previewResponses,
@@ -354,174 +365,9 @@ func (s *DbMcpService) InstallAgent(ctx context.Context) DbMcpInstallResult {
 	return toWireDbMcpInstallResult(s.Installer.Install(ctx, dbMcpServerName, url, helperPath))
 }
 
-// dbMcpApprovalPlanIssuesCap bounds DbMcpApprovalPlan.Issues on the wire — the dbmcp package's own
-// approvalPlanFrom already caps at this same figure, so this is a defense-in-depth
-// re-application at the wire boundary. Unlike the statement text below it, eliding some of these
-// issues never hides part of the statement itself from the human approving it.
-const dbMcpApprovalPlanIssuesCap = 10
-
-// DbMcpApprovalPlanIssue is dbmcp.ApprovalPlanIssue's wire projection.
-type DbMcpApprovalPlanIssue struct {
-	Severity string `json:"severity"`
-	Code     string `json:"code"`
-	Message  string `json:"message"`
-}
-
-// DbMcpApprovalPlan is dbmcp.ApprovalPlan's wire projection — M3's own plan evidence the approval
-// dialog renders, present only on a request that carries one.
-type DbMcpApprovalPlan struct {
-	EstimatedRowsRead *float64                 `json:"estimatedRowsRead"`
-	ThresholdRows     int                      `json:"thresholdRows"`
-	OverThreshold     bool                     `json:"overThreshold"`
-	Issues            []DbMcpApprovalPlanIssue `json:"issues"`
-	IssuesOmitted     int                      `json:"issuesOmitted"`
-}
-
-func toWireApprovalPlan(p *dbmcp.ApprovalPlan) *DbMcpApprovalPlan {
-	if p == nil {
-		return nil
-	}
-	issues := p.Issues
-	omitted := p.IssuesOmitted
-	if len(issues) > dbMcpApprovalPlanIssuesCap {
-		omitted += len(issues) - dbMcpApprovalPlanIssuesCap
-		issues = issues[:dbMcpApprovalPlanIssuesCap]
-	}
-	wireIssues := make([]DbMcpApprovalPlanIssue, len(issues))
-	for i, iss := range issues {
-		wireIssues[i] = DbMcpApprovalPlanIssue(iss)
-	}
-	return &DbMcpApprovalPlan{
-		EstimatedRowsRead: p.EstimatedRowsRead, ThresholdRows: p.ThresholdRows,
-		OverThreshold: p.OverThreshold, Issues: wireIssues, IssuesOmitted: omitted,
-	}
-}
-
-// DbMcpApprovalTarget is dbmcp.ApprovalTarget's wire projection; Path is never nil.
-type DbMcpApprovalTarget struct {
-	Color    string              `json:"color"`
-	ReadOnly bool                `json:"readOnly"`
-	Host     string              `json:"host"`
-	Database string              `json:"database"`
-	Path     []model.PathSegment `json:"path"`
-}
-
-func toWireApprovalTarget(t dbmcp.ApprovalTarget) DbMcpApprovalTarget {
-	path := t.Path
-	if path == nil {
-		path = []model.PathSegment{}
-	}
-	return DbMcpApprovalTarget{Color: t.Color, ReadOnly: t.ReadOnly, Host: t.Host, Database: t.Database, Path: path}
-}
-
-// DbMcpApprovalCluster is dbmcp.ApprovalCluster's wire projection.
-type DbMcpApprovalCluster struct {
-	Context   string `json:"context"`
-	Server    string `json:"server"`
-	Namespace string `json:"namespace"`
-	Operation string `json:"operation"`
-}
-
-func toWireApprovalCluster(c *dbmcp.ApprovalCluster) *DbMcpApprovalCluster {
-	if c == nil {
-		return nil
-	}
-	return &DbMcpApprovalCluster{Context: c.Context, Server: c.Server, Namespace: c.Namespace, Operation: c.Operation}
-}
-
-// DbMcpApprovalResponse is the held result's metadata.
-type DbMcpApprovalResponse struct {
-	IsError bool `json:"isError"`
-	Bytes   int  `json:"bytes"`
-}
-
-// DbMcpApprovalRequest is dbmcp.ApprovalRequest's wire projection — an absolute deadline (epoch
-// ms) instead of a time.Time, so a client-side countdown never drifts from the server's own clock.
-type DbMcpApprovalRequest struct {
-	RequestID      string `json:"requestId"`
-	ConnectionID   string `json:"connectionId"`
-	ConnectionName string `json:"connectionName"`
-	Kind           string `json:"kind"`
-	Class          string `json:"class"`
-	Statement      string `json:"statement"`
-	ExpiresAtMs    int64  `json:"expiresAtMs"`
-	// Reason is M3's own "permission" | "heavy" — every M2-era request is "permission" (M3 §6.2).
-	Reason string              `json:"reason"`
-	Plan   *DbMcpApprovalPlan  `json:"plan"`
-	Target DbMcpApprovalTarget `json:"target"`
-	// Stage is "query" (may this statement run) or "response" (may its result go to the client).
-	Stage string `json:"stage"`
-	// Response is set only for stage "response". It carries metadata only: the result text can be
-	// MB-sized and snapshots fan out to every window, so PendingResponse serves the text.
-	Response *DbMcpApprovalResponse `json:"response"`
-	// Cluster is set for a Kubernetes read (Target is then empty), null for a database request.
-	Cluster *DbMcpApprovalCluster `json:"cluster"`
-}
-
-// DbMcpApprovalSnapshot is dbmcp.ApprovalSnapshot's wire projection.
-type DbMcpApprovalSnapshot struct {
-	Pending *DbMcpApprovalRequest `json:"pending"`
-	Queued  int                   `json:"queued"`
-}
-
-func toWireApprovalResponse(r *dbmcp.ApprovalResponse) *DbMcpApprovalResponse {
-	if r == nil {
-		return nil
-	}
-	return &DbMcpApprovalResponse{IsError: r.IsError, Bytes: r.Bytes}
-}
-
-func toWireApprovalSnapshot(snap dbmcp.ApprovalSnapshot) DbMcpApprovalSnapshot {
-	out := DbMcpApprovalSnapshot{Queued: snap.Queued}
-	if snap.Pending != nil {
-		out.Pending = &DbMcpApprovalRequest{
-			RequestID: snap.Pending.RequestID, ConnectionID: snap.Pending.ConnectionID,
-			ConnectionName: snap.Pending.ConnectionName, Kind: snap.Pending.Kind,
-			// Statement carries the full text, uncapped (a byte cap that elided the middle let a
-			// hidden clause sit entirely inside the omitted span; the dialog's read-only editor
-			// (ApprovalStatement.vue) scrolls and wraps, so nothing here bounds the DOM by hiding
-			// text a human is being asked to approve).
-			Class: string(snap.Pending.Class), Statement: snap.Pending.Statement,
-			ExpiresAtMs: snap.Pending.ExpiresAt.UnixMilli(),
-			Reason:      string(snap.Pending.Reason),
-			Plan:        toWireApprovalPlan(snap.Pending.Plan),
-			Target:      toWireApprovalTarget(snap.Pending.Target),
-			Stage:       string(snap.Pending.Stage),
-			Response:    toWireApprovalResponse(snap.Pending.Response),
-			Cluster:     toWireApprovalCluster(snap.Pending.Cluster),
-		}
-	}
-	return out
-}
-
-// PendingApprovals is the snapshot a newly opened window fetches on mount, the same boot-time
-// hydration this app's other push-backed state applies to the approval queue.
-func (s *DbMcpService) PendingApprovals() DbMcpApprovalSnapshot {
-	return toWireApprovalSnapshot(s.Approvals.Pending())
-}
-
-// DbMcpApprovalArgs is shared by ApproveQuery/DenyQuery — nothing but the request id.
+// DbMcpApprovalArgs names one held run_query result.
 type DbMcpApprovalArgs struct {
 	RequestID string `json:"requestId"`
-}
-
-// ApproveQuery and DenyQuery never return a Go error — a decision is a value — and return the
-// current snapshot rather than an action-result enum, so the clicking window updates immediately
-// instead of waiting for its own broadcast to arrive.
-func (s *DbMcpService) ApproveQuery(args DbMcpApprovalArgs) (DbMcpApprovalSnapshot, error) {
-	if args.RequestID == "" {
-		return DbMcpApprovalSnapshot{}, ipcerr.Required("requestId")
-	}
-	s.Approvals.Approve(args.RequestID)
-	return toWireApprovalSnapshot(s.Approvals.Pending()), nil
-}
-
-func (s *DbMcpService) DenyQuery(args DbMcpApprovalArgs) (DbMcpApprovalSnapshot, error) {
-	if args.RequestID == "" {
-		return DbMcpApprovalSnapshot{}, ipcerr.Required("requestId")
-	}
-	s.Approvals.Deny(args.RequestID)
-	return toWireApprovalSnapshot(s.Approvals.Pending()), nil
 }
 
 // DbMcpPendingResponse is the held run_query result a response-stage request asks about.

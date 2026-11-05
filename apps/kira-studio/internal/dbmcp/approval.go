@@ -6,17 +6,26 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/agentapi"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/approvals"
+	"github.com/kirathecat/kira-studio/internal/ids"
+	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/notify"
-	"github.com/kirathecat/kira-studio/internal/prompts"
-	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
 // ApprovalTimeout bounds how long a prompt-mode query waits for a human answer before giving up.
-const ApprovalTimeout = 120 * time.Second
+const ApprovalTimeout = 10 * time.Minute
+
+// approvalWindow renders ApprovalTimeout for tool error texts.
+func approvalWindow() string {
+	m := int(ApprovalTimeout / time.Minute)
+	if m == 1 {
+		return "1 minute"
+	}
+	return strconv.Itoa(m) + " minutes"
+}
 
 // maxPendingApprovals caps the queue: an MCP client is a program and can call in a loop, and
 // nothing else bounds how many run_query calls can be in-flight at once.
@@ -128,9 +137,14 @@ type ApprovalRequest struct {
 	ConnectionID   string
 	ConnectionName string
 	Kind           string
-	Class          adapters.OpClass
-	Statement      string
-	Target         ApprovalTarget
+	// Class is what the statement looks like (the detected class); Mode is what the caller declared
+	// (read, write or ddl) and decides the connection and the permission gate.
+	Class adapters.OpClass
+	Mode  string
+	// Enforcement says what backs mode read on this kind: session, app or none. Read items only.
+	Enforcement string
+	Statement   string
+	Target      ApprovalTarget
 	// Stage defaults to ApprovalStageQuery when empty.
 	Stage ApprovalStage
 	// Response is set only for ApprovalStageResponse.
@@ -145,59 +159,80 @@ type ApprovalRequest struct {
 	Plan *ApprovalPlan
 	// Cluster is set for a Kubernetes read; Target is then empty.
 	Cluster *ApprovalCluster
+	// Subject is the approvals kind key. Empty derives it: kube.read with a Cluster, db.response
+	// at the response stage, else db.query.
+	Subject string
+	// Origin says which client asked; the tools copy it from the call's context.
+	Origin ApprovalOrigin
+	// Script is set for the script.run subject; Target is then empty.
+	Script *ApprovalScript
+	// API is set for the api.request subject; Target is then empty.
+	API *agentapi.Planned
 }
 
-// ApprovalSnapshot is emitted on every queue change: the head request (nil when empty) plus how
-// many are waiting behind it.
-type ApprovalSnapshot struct {
-	Pending *ApprovalRequest
-	Queued  int
+// ApprovalOrigin is what the stateless HTTP transport can tell about the caller.
+type ApprovalOrigin struct {
+	Client string
+	Cwd    string
 }
+
+func (r ApprovalRequest) subject() string {
+	switch {
+	case r.Subject != "":
+		return r.Subject
+	case r.Cluster != nil:
+		return approvals.KindKubeRead
+	case r.Stage == ApprovalStageResponse:
+		return approvals.KindDbResponse
+	}
+	return approvals.KindDbQuery
+}
+
+func (r ApprovalRequest) itemID() string { return r.subject() + ":" + r.RequestID }
 
 type approvalEntry struct {
 	req    ApprovalRequest
 	result chan ApprovalOutcome // buffered 1; exactly one send over the entry's lifetime.
 }
 
-// ApprovalBroker implements the queue/deadline/injected-clock state machine: a FIFO of
-// pending requests (at most one "presented", always the head) and a
-// notify.OrderedEmitter[ApprovalSnapshot] fanning out every change (the queue and the
-// ordered-emit guard both come from the shared repo-root internal/notify package). Request selects
-// on the MCP request's own ctx as well as its deadline, so a disconnected client stops the query
-// without any external expiry ticker.
+// ApprovalBroker is the queue/deadline/injected-clock state machine for prompt-mode requests. Every
+// pending request is one approvals.Item at once; Request blocks its own caller only and returns on its
+// own answer, its deadline, or its ctx. The shared Queue (internal/approvals) carries the items to the
+// windows and routes answers back through brokerOwner.
 type ApprovalBroker struct {
 	now func() time.Time
-	// Prompts routes each pending request to a window and an OS notification (P246); nil routes none.
-	Prompts prompts.Sink
+	// Queue is the app's approvals queue.
+	Queue *approvals.Queue
 
 	mu    sync.Mutex
 	queue *notify.PendingQueue[*approvalEntry]
-
-	emitter notify.OrderedEmitter[ApprovalSnapshot]
 }
 
-func NewApprovalBroker(now func() time.Time) *ApprovalBroker {
-	return &ApprovalBroker{now: now, queue: notify.NewPendingQueue[*approvalEntry]()}
-}
-
-func (b *ApprovalBroker) OnApprovalChange(fn func(ApprovalSnapshot)) (unsubscribe func()) {
-	return b.emitter.Subscribe(fn)
-}
-
-// Pending is the snapshot a newly opened window fetches on mount.
-func (b *ApprovalBroker) Pending() ApprovalSnapshot {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return b.snapshotLocked()
-}
-
-func (b *ApprovalBroker) snapshotLocked() ApprovalSnapshot {
-	items := b.queue.Snapshot()
-	if len(items) == 0 {
-		return ApprovalSnapshot{}
+// NewApprovalBroker builds a broker over q and registers it as owner of its kinds; a nil q gets a
+// private queue (tests).
+func NewApprovalBroker(now func() time.Time, q *approvals.Queue) *ApprovalBroker {
+	if q == nil {
+		q = approvals.New(nil)
 	}
-	head := items[0].req
-	return ApprovalSnapshot{Pending: &head, Queued: len(items)}
+	b := &ApprovalBroker{now: now, Queue: q, queue: notify.NewPendingQueue[*approvalEntry]()}
+	for _, kind := range []string{approvals.KindDbQuery, approvals.KindDbResponse, approvals.KindKubeRead, approvals.KindScriptRun, approvals.KindAPIRequest} {
+		q.Register(kind, brokerOwner{b})
+	}
+	return b
+}
+
+// brokerOwner answers the broker's items.
+type brokerOwner struct{ b *ApprovalBroker }
+
+func (o brokerOwner) Answer(ref string, a approvals.Answer) error {
+	outcome := ApprovalDenied
+	if a.Approve {
+		outcome = ApprovalApproved
+	}
+	if o.b.resolve(ref, outcome) == ApprovalActionAlreadyResolved {
+		return ipcerr.NotFoundNamed("approval")
+	}
+	return nil
 }
 
 // Request enqueues req (minting its RequestID, EnqueuedAt and ExpiresAt) and blocks the calling
@@ -213,21 +248,14 @@ func (b *ApprovalBroker) Request(ctx context.Context, req ApprovalRequest) Appro
 	if req.Stage == "" {
 		req.Stage = ApprovalStageQuery
 	}
-	req.RequestID = uuid.NewString()
+	req.RequestID = ids.NewID()
 	req.EnqueuedAt = now
 	req.ExpiresAt = now.Add(ApprovalTimeout)
 	entry := &approvalEntry{req: req, result: make(chan ApprovalOutcome, 1)}
 	b.queue.Add(entry.req.RequestID, entry)
-	// Under mu so a fast answer cannot Close before this Open.
-	b.openPrompt(entry.req)
-	snap := b.snapshotLocked()
-	seq := b.emitter.NextSeq()
+	// Under mu so a fast answer cannot Remove before this Put.
+	b.Queue.Put(itemOf(entry.req))
 	b.mu.Unlock()
-
-	// Every enqueue emits: a second/third request queueing behind an already-presented head still
-	// changes Queued, and any subscriber's "N waiting" line must track that even though the
-	// presented head is unchanged.
-	b.emitter.Emit(seq, snap)
 
 	timer := time.NewTimer(time.Until(entry.req.ExpiresAt))
 	defer timer.Stop()
@@ -287,13 +315,10 @@ func (b *ApprovalBroker) resolve(requestID string, outcome ApprovalOutcome) Appr
 		b.mu.Unlock()
 		return ApprovalActionAlreadyResolved
 	}
-	b.closePrompt(requestID)
-	snap := b.snapshotLocked()
-	seq := b.emitter.NextSeq()
+	b.Queue.Remove(entry.req.itemID())
 	b.mu.Unlock()
 
 	entry.result <- outcome
-	b.emitter.Emit(seq, snap)
 	return ApprovalActionResolved
 }
 
@@ -305,47 +330,12 @@ func (b *ApprovalBroker) AbandonAll() {
 	b.mu.Lock()
 	entries := b.queue.Clear()
 	for _, entry := range entries {
-		b.closePrompt(entry.req.RequestID)
+		b.Queue.Remove(entry.req.itemID())
 	}
-	snap := b.snapshotLocked()
-	seq := b.emitter.NextSeq()
 	b.mu.Unlock()
 
 	for _, entry := range entries {
 		entry.result <- ApprovalAbandoned
-	}
-	if len(entries) > 0 {
-		b.emitter.Emit(seq, snap)
-	}
-}
-
-// openPrompt registers the request with the router. The title never carries the statement.
-func (b *ApprovalBroker) openPrompt(req ApprovalRequest) {
-	if b.Prompts == nil {
-		return
-	}
-	named := req.ConnectionName != ""
-	response := req.Stage == ApprovalStageResponse
-	var title string
-	switch {
-	case response && named:
-		title = i18n.T("backend.prompt.dbMcpResponseNamed.title", map[string]string{"name": req.ConnectionName})
-	case response:
-		title = i18n.T("backend.prompt.dbMcpResponse.title", nil)
-	case named:
-		title = i18n.T("backend.prompt.dbMcpNamed.title", map[string]string{"name": req.ConnectionName})
-	default:
-		title = i18n.T("backend.prompt.dbMcp.title", nil)
-	}
-	b.Prompts.Open(prompts.Prompt{
-		ID: prompts.ID(prompts.KindDbMcp, req.RequestID), Kind: prompts.KindDbMcp, Ref: req.RequestID,
-		Title: title, CreatedAt: req.EnqueuedAt.UnixMilli(),
-	})
-}
-
-func (b *ApprovalBroker) closePrompt(requestID string) {
-	if b.Prompts != nil {
-		b.Prompts.Close(prompts.ID(prompts.KindDbMcp, requestID))
 	}
 }
 
@@ -356,4 +346,24 @@ type ApprovalCluster struct {
 	Namespace string // "" means all namespaces, or none for discovery
 	// Operation is the permission group: discover, list, describe or logs.
 	Operation string
+}
+
+// ApprovalValue is one param or env entry of a script request. A secret's Value is always "".
+type ApprovalValue struct {
+	Name    string
+	Value   string
+	Secret  bool
+	Saved   bool
+	FromVar string
+}
+
+// ApprovalScript names the script run a request would start.
+type ApprovalScript struct {
+	ScriptID    string
+	Name        string
+	Description string
+	Command     string
+	Cwd         string
+	Params      []ApprovalValue
+	Env         []ApprovalValue
 }

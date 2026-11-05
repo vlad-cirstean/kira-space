@@ -6,6 +6,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -54,8 +55,8 @@ func (r *Router) handleReviewRemovedDismiss(ctx context.Context, c *gitsession.C
 				return "", ipcerr.Contract("gitrpc: review.removed.dismiss: ids must hold 1 to 1000 entries")
 			}
 			for _, id := range p.IDs {
-				if id <= 0 {
-					return "", ipcerr.Contract("gitrpc: review.removed.dismiss: every id must be positive")
+				if !ids.IsUUID(id) {
+					return "", ipcerr.Contract("gitrpc: review.removed.dismiss: every id must be a UUID")
 				}
 			}
 			return p.RepoID, nil

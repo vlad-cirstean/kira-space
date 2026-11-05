@@ -29,6 +29,7 @@ type connectFields struct {
 	username  string
 	password  string
 	tlsConfig *tls.Config // nil means no TLS
+	poolSize  int         // 0 means the go-redis default
 }
 
 // resolveFields is client.ts's resolveFields.
@@ -105,7 +106,11 @@ func resolveFields(cfg model.ResolvedConnectionConfig, log func(level, message s
 		}
 	}
 
-	return connectFields{host: host, port: port, username: username, password: password, tlsConfig: tlsConfig}, defaultDbIndex, nil
+	fields := connectFields{host: host, port: port, username: username, password: password, tlsConfig: tlsConfig}
+	if adapters.IsLaneConfig(cfg.Options) {
+		fields.poolSize = adapters.LanePoolSize
+	}
+	return fields, defaultDbIndex, nil
 }
 
 // dbConnectionSet mirrors client.ts's DbConnectionSet exactly, keyed by logical db index instead
@@ -212,6 +217,7 @@ func (s *dbConnectionSet) dial(ctx context.Context, dbIndex int) (*clientEntry, 
 		// friends return a flat array under RESP2 and a map under RESP3, and this adapter's
 		// generic per-type readers are written against the RESP2 array shape.
 		Protocol: 2,
+		PoolSize: s.fields.poolSize,
 	}
 	if s.fields.tlsConfig != nil {
 		opts.TLSConfig = s.fields.tlsConfig

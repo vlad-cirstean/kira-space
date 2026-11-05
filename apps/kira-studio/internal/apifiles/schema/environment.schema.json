@@ -10,7 +10,10 @@
       "maxLength": 200,
       "description": "Environment name shown in the environment picker."
     },
-    "description": { "type": "string", "description": "Free text." },
+    "description": {
+      "type": "string",
+      "description": "Free text."
+    },
     "color": {
       "type": "string",
       "default": "none",
@@ -19,7 +22,14 @@
     "variables": {
       "type": "array",
       "description": "Environment variables, used as {{name}} in requests. They win over collection variables.",
-      "items": { "$ref": "#/$defs/variable" }
+      "items": {
+        "$ref": "#/$defs/variable"
+      }
+    },
+    "agentAutoApproveReads": {
+      "type": "boolean",
+      "default": false,
+      "description": "Skip the approval for GET, HEAD and OPTIONS requests without a body that an agent sends in this environment. Off by default."
     }
   },
   "$defs": {
@@ -34,13 +44,34 @@
           "maxLength": 200,
           "description": "Name used as {{name}}."
         },
-        "value": { "type": "string", "description": "Plain value. Never a secret." },
+        "value": {
+          "type": "string",
+          "description": "Plain value. Never a secret."
+        },
         "secret": {
           "type": "string",
           "x-kira-secret": true,
           "description": "Secret reference ${secret:name}. Set the value in Kira, under Api, Environments, Secrets."
         },
-        "description": { "type": "string", "description": "Free text." }
+        "description": {
+          "type": "string",
+          "description": "Free text."
+        },
+        "agent": {
+          "type": "boolean",
+          "default": false,
+          "description": "Let agents use this variable by name in API requests they send. Off by default. An agent never sees the value."
+        },
+        "agentHosts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(http://)?(\\*\\.)?[^\\s/?#@]+$"
+          },
+          "description": "Hosts an agent may send this secret to. Required on a secret with agent: true. Entries are host, host:port or *.example.com for subdomains; prefix http:// to allow plain HTTP. A request or redirect to another host is blocked."
+        }
       }
     }
   }

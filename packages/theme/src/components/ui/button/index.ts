@@ -15,14 +15,10 @@ export const buttonVariants = cva(
         // Geometry stays on the `kira`/`kira-lg`/`kira-icon` sizes below (design-system tokens,
         // runtime-adjustable via @theme's --spacing-control* -- see base.css).
         toolbar:
-          'text-muted-foreground hover:bg-field hover:text-fg aria-pressed:bg-field aria-pressed:text-fg data-[tone=error]:text-error data-[tone=error]:hover:text-error data-[tone=ok]:text-ok data-[tone=ok]:hover:text-ok',
-        'toolbar-primary':
-          'border-primary bg-primary text-primary-foreground hover:border-primary-hover hover:bg-primary-hover',
+          'text-muted-foreground hover:bg-field hover:text-fg aria-pressed:bg-field aria-pressed:text-fg aria-expanded:bg-field aria-expanded:text-fg data-[tone=error]:text-error data-[tone=error]:hover:text-error data-[tone=ok]:text-ok data-[tone=ok]:hover:text-ok',
         dialog: 'justify-center border-border bg-transparent text-fg hover:bg-field',
-        'dialog-primary':
-          'justify-center border-primary bg-primary text-primary-foreground hover:border-primary-hover hover:bg-primary-hover',
-        'dialog-danger': 'justify-center border-error bg-transparent text-error hover:bg-error/15',
-        danger: 'text-error hover:bg-field',
+        'dialog-primary': 'justify-center border-primary bg-transparent text-fg hover:bg-field',
+        'dialog-danger': 'justify-center border-error bg-transparent text-error hover:bg-field',
         // P110 B13: TitleBar.vue's own action row -- `aria-pressed` replaces `.is-on`'s own class
         // toggle, fixing the state's previously unexposed accessibility gap.
         title:

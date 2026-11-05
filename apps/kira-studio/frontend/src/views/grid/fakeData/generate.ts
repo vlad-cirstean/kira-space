@@ -1,5 +1,6 @@
 import type { Caps } from '@shared/caps';
 import type { MutationRowOp } from '@shared/domain/mutations';
+import { newUuid } from '@shared/ids';
 import { errorText } from '@workbench/bridge/codedError';
 import { data } from '../../../bridge/data';
 import type { SqlDialect } from '../../shared/sqlIdent';
@@ -332,7 +333,7 @@ export async function runGeneration(args: RunGenerationArgs): Promise<void> {
     if (args.signal.aborted) return;
     const count = Math.min(BATCH_SIZE, args.total - committed);
     const ops = generateBatch(generators, committed, count);
-    const opId = crypto.randomUUID();
+    const opId = newUuid();
     args.onBatchStart(opId);
     try {
       await data.mutate({

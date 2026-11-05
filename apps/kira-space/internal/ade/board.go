@@ -28,6 +28,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/prompts"
@@ -52,6 +53,8 @@ type TaskBoardDeps struct {
 	Tasks *repos.AdeTaskRepo
 	// PromptSink receives the "move to next stage" prompt a finished handover raises; nil drops it.
 	PromptSink prompts.Sink
+	// Approvals holds the branch requests agents raise; nil drops them (the call then times out).
+	Approvals  *approvals.Queue
 	Statuses   *repos.AdeStatusRepo
 	RepoConfig *repos.AdeRepoConfigRepo
 	Facts      *repos.AdeFactsRepo
@@ -129,8 +132,14 @@ type TaskBoardDeps struct {
 	// RebaseTimeout bounds a rebase run; 0 = defaultRebaseTimeout.
 	RebaseTimeout time.Duration
 	// RepoFile names the repo file that applies to a repo (its stem, "" for none) and its error, if any.
-	RepoFile    func(repoID string) (stem string, problem *adewire.RepoProblem)
-	OnBoard     func()
+	RepoFile func(repoID string) (stem string, problem *adewire.RepoProblem)
+	OnBoard  func()
+	// OnUpdates pushes a change of the tracked item updates on kira:adetask:updates.
+	OnUpdates func()
+	// TrackedItems stores the tracked item snapshots; nil turns the update watcher off.
+	TrackedItems *repos.AdeTrackedItemsRepo
+	// Updates tunes the update watcher.
+	Updates     UpdatesConfig
 	OnWorkflows func()
 	OnRepos     func()
 	// Credentials receives the remote ops' credential prompts, shown in Kira Space's windows.
@@ -157,6 +166,7 @@ type TaskBoard struct {
 	folderWMu   sync.Mutex
 	folderW     map[string]*folderWatcher
 	stopFlowW   func()
+	stopStepsW  func()
 	wfTimer     *time.Timer
 	startOnce   sync.Once
 
@@ -169,6 +179,7 @@ type TaskBoard struct {
 	caches         map[string]*repoCaches
 	rebase         map[string]*rebaseCache
 	boardTimer     *time.Timer
+	updates        *updateWatcher
 
 	runMu            sync.Mutex                 // guards live, setupLive, archiving, taskMus, finishes, stepMsgs
 	live             map[string]*liveRun        // run id -> its process
@@ -209,6 +220,9 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 		caches: map[string]*repoCaches{}, rebase: map[string]*rebaseCache{}, live: map[string]*liveRun{}, tuiGrants: map[string]tuiBinding{}, tuiSandbox: map[string]*liveTUISandbox{}, setupLive: map[string]*liveRun{},
 		taskMus: map[string]*sync.Mutex{}, archiving: map[string]int{}, finishes: map[string]agentmcp.Finish{}, claims: map[string]string{}, stepMsgs: map[string]string{},
 	}
+	if deps.Approvals != nil {
+		deps.Approvals.Register(approvals.KindBranchRequest, branchOwner{b})
+	}
 	b.agent = agentmcp.NewServer(agentmcp.Options{Dir: deps.AgentDir, OnFinish: b.recordFinish, Space: b, Outcomes: b, Review: b, SandboxGit: b, Git: b, Handover: b, Prompts: b.prompts(), OnToolCall: b.mcpRecorder})
 	if deps.Tracker != nil {
 		deps.Tracker.deps.Ops, deps.Tracker.deps.OpSubject = deps.Ops, b.opSubject
@@ -219,6 +233,7 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 		return deps.Credentials.Ask(ctx, boardConnLabel, req)
 	})
 	b.checker = newRebaseChecker(ctx, deps.GitStatus, b.scheduleBoard)
+	b.updates = newUpdateWatcher(b, deps.Updates)
 	return b
 }
 
@@ -273,6 +288,7 @@ func (b *TaskBoard) Close() {
 	}
 	b.mu.Unlock()
 	b.stopWatchers()
+	b.updates.close()
 	b.checker.close()
 	b.wg.Wait()
 	b.conn.Close()
@@ -301,6 +317,7 @@ func (b *TaskBoard) notifyBoard() {
 	if b.deps.OnBoard != nil {
 		b.deps.OnBoard()
 	}
+	b.updates.boardChanged()
 }
 
 func (b *TaskBoard) repoMutex(codeRepoID string) *sync.Mutex {
@@ -728,6 +745,7 @@ func (b *TaskBoard) Refresh(ctx context.Context, codeRepoIDs []string) (adewire.
 	}
 	_ = g.Wait() // refreshRepo reports failures per repo
 	b.notifyBoard()
+	b.updates.run(ctx, true)
 	return adewire.RefreshResult{Repos: rows}, nil
 }
 

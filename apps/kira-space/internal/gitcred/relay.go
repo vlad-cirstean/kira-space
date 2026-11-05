@@ -4,11 +4,10 @@ package gitcred
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"sync"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitaskpass"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/notify"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
@@ -69,12 +68,6 @@ func (r *Relay) snapshotLocked() Snapshot {
 	return out
 }
 
-func newRequestID() string {
-	buf := make([]byte, 16)
-	_, _ = rand.Read(buf) // crypto/rand.Read never errors on a Reader that never fails to fill.
-	return hex.EncodeToString(buf)
-}
-
 // Ask is AskFrom for a prompt with no origin window.
 func (r *Relay) Ask(ctx context.Context, source string, req gitaskpass.Request) (string, bool) {
 	return r.AskFrom(ctx, "", source, req)
@@ -87,7 +80,7 @@ func (r *Relay) Ask(ctx context.Context, source string, req gitaskpass.Request) 
 func (r *Relay) AskFrom(ctx context.Context, origin, source string, req gitaskpass.Request) (string, bool) {
 	e := &entry{
 		prompt: Prompt{
-			RequestID: newRequestID(), Source: source, RepoLabel: req.RepoLabel,
+			RequestID: ids.NewID(), Source: source, RepoLabel: req.RepoLabel,
 			Prompt: req.Prompt, Masked: req.Masked, Origin: origin,
 		},
 		answer: make(chan string, 1),

@@ -36,6 +36,9 @@ type Router struct {
 	// connects tracks per-id Connect activity so a slow Disconnect can tell a newer connection
 	// started while it ran (F2, P168 Part 5), guarded by teardown.lock.
 	connects map[string]*connectState
+
+	// lanes holds the DB MCP read lanes and the resolved config each was derived from (readlane.go).
+	lanes *readLanes
 }
 
 // connectState: epoch bumps when a Connect begins and ends; active counts Connects in flight.
@@ -49,7 +52,7 @@ type connectState struct {
 func NewRouter(deps adapters.Deps, cache *enginecache.Cache) *Router {
 	deps = withDefaultLog(deps)
 	host := NewHost(deps, cache)
-	return &Router{deps: deps, host: host, dispatcher: NewDispatcher(host, cache), cache: cache, teardown: newKeyedMutex(), connects: make(map[string]*connectState)}
+	return &Router{deps: deps, host: host, dispatcher: NewDispatcher(host, cache), cache: cache, teardown: newKeyedMutex(), connects: make(map[string]*connectState), lanes: newReadLanes()}
 }
 
 // keyedMutex is a per-key mutex, used by Router to serialize the check-and-swap step per
@@ -192,6 +195,7 @@ func (r *Router) Connect(ctx context.Context, cfg model.ResolvedConnectionConfig
 	// with no bound of their own. Safe to call even when nothing is live for this id (a fresh
 	// connect, not a reconnect) — it finds nothing to cancel.
 	r.host.CancelOpsForConnection(cfg.ID, "")
+	r.CloseReadLane(ctx, cfg.ID)
 	defer r.beginConnect(cfg.ID)()
 	// takeLiveAdapterForTeardown is the compare-and-delete that replaces the old bare
 	// GetLiveAdapter+DeleteLiveAdapter pair — a concurrent Disconnect racing this same reconnect
@@ -203,6 +207,8 @@ func (r *Router) Connect(ctx context.Context, cfg model.ResolvedConnectionConfig
 	if existing, ok := r.takeLiveAdapterForTeardown(cfg.ID); ok {
 		// F3 (P168 Part 5): drop before the slow teardown so cache hits stop serving a dying session.
 		r.cache.DropConnection(cfg.ID)
+		r.lanes.forgetConfig(cfg.ID)
+		r.CloseReadLane(ctx, cfg.ID)
 		r.disconnectAdapter(ctx, cfg.ID, existing)
 		// Mirrors Disconnect's own DropConnection call below — a reconnect that races
 		// ahead of onPreconnectExit's own async Disconnect (connections/service.go) lands here,
@@ -236,6 +242,7 @@ func (r *Router) Connect(ctx context.Context, cfg model.ResolvedConnectionConfig
 		cancelCleanup()
 		return connections.ConnectResult{}, err
 	}
+	r.lanes.setConfig(cfg)
 	adapters.SetLiveAdapter(cfg.ID, adapter)
 	info := value.(adapters.ConnectInfo)
 	return connections.ConnectResult{ServerVersion: info.ServerVersion, Caps: adapter.Caps()}, nil
@@ -287,6 +294,7 @@ func (r *Router) RunPreconnect(ctx context.Context, connectionID *string, comman
 func (r *Router) Disconnect(ctx context.Context, connectionID string) error {
 	// F1: see Connect's reconnect branch for why this runs first.
 	r.host.CancelOpsForConnection(connectionID, "")
+	r.CloseReadLane(ctx, connectionID)
 	// takeLiveAdapterForTeardown, not a bare GetLiveAdapter+DeleteLiveAdapter — a concurrent
 	// reconnect (Router.Connect) racing this same id can otherwise install a newer adapter that
 	// this call's own delete-by-id would then remove out from under it (the adapter leaks, never
@@ -300,6 +308,7 @@ func (r *Router) Disconnect(ctx context.Context, connectionID string) error {
 	}
 	// F3 (P168 Part 5): drop before the slow teardown so cache hits stop serving a dying session.
 	r.cache.DropConnection(connectionID)
+	r.CloseReadLane(ctx, connectionID)
 	// Always attempted below, even on disconnectAdapter's own internal error (it only logs) —
 	// this call already exclusively owns tearing this adapter down by the time we reach here, so
 	// there is no error path left that could skip the cache/throttle cleanup a partial-then-return
@@ -309,6 +318,7 @@ func (r *Router) Disconnect(ctx context.Context, connectionID string) error {
 	if r.supersededSince(connectionID, epoch) {
 		return nil
 	}
+	r.lanes.forgetConfig(connectionID)
 	// Disconnecting releases the connection's driver state; its pages already dropped above.
 	// A limiter's lifetime matches the live adapter's — cleared alongside it, covering
 	// every disconnect path (Remove, onPreconnectExit, an explicit Disconnect) with no second call
@@ -476,4 +486,12 @@ func (r *Router) ClassifyStatement(ctx context.Context, connectionID, statement 
 // Phase 4 deleted the Node engine child it used to fall back to.
 func (r *Router) Cancel(ctx context.Context, opID string) (bool, error) {
 	return r.host.CancelOp(ctx, opID)
+}
+
+// RunningOps lists started ops (see Host.RunningOps).
+func (r *Router) RunningOps() []RunningOp { return r.host.RunningOps() }
+
+// CancelRunning cancels a started op without early-cancel memory (see Host.CancelRunning).
+func (r *Router) CancelRunning(ctx context.Context, opID string) (bool, error) {
+	return r.host.CancelRunning(ctx, opID)
 }

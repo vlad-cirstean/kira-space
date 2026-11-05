@@ -13,6 +13,7 @@ export const sections = [
   'CLI tools',
   'File types',
   'Capture',
+  'Updates',
   'Mobile access',
   'Agent',
   'Memory',

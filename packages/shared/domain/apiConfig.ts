@@ -34,3 +34,58 @@ export interface ApiConfigView {
     reason: string | null;
   };
 }
+
+/** Mirrors apifiles.FileDetail: one collection or environment file as the variables dialog edits it. */
+export interface ApiFileDetail {
+  file: string;
+  kind: 'collection' | 'environment';
+  path: string;
+  text: string;
+  hash: string;
+  problem: ApiFileProblem | null;
+  lastGood: boolean;
+}
+
+/** One variable in a file: a value or a `${secret:name}` reference, never both. */
+export interface ApiFileVariable {
+  name: string;
+  value?: string;
+  secret?: string;
+  description?: string;
+  /** Shared with agents through the API request tools. */
+  agent?: boolean;
+  /** The hosts an agent may send a secret to; required for a secret that is shared. */
+  agentHosts?: string[];
+}
+
+export interface ApiEnvironmentFileModel {
+  name: string;
+  description?: string;
+  color?: string;
+  agentAutoApproveReads?: boolean;
+  variables?: ApiFileVariable[];
+}
+
+/** One environment in ApiConfigService.AgentAccess: names and hosts, never a value. */
+export interface ApiAgentEnvironment {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  autoApproveReads: boolean;
+  variables: { name: string; secret: boolean; hosts?: string[] }[];
+}
+
+/** A collection file as the dialog sees it: only `variables` is edited; items stay in the file. */
+export interface ApiCollectionFileModel {
+  name: string;
+  variables?: ApiFileVariable[];
+  items?: unknown[];
+}
+
+/** The reply of ApiConfigService.Form: the edited text and what it decodes to. */
+export interface ApiFormResult {
+  text: string;
+  value: ApiEnvironmentFileModel | ApiCollectionFileModel | null;
+  problem: { line: number; col?: number; path?: string; message: string } | null;
+}

@@ -1,10 +1,12 @@
 import type {
   ConnectionConfigView,
   ConnectionFileDetail,
+  ConnectionFormResult,
   ConnectionSecretKind,
 } from '@shared/domain/connectionConfig';
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import type { FormEdit } from '@workbench/config/configForm';
 import { KEEP_WHILE_OPEN, queryClient } from '@workbench/state/queryClient';
 import { type MaybeRefOrGetter, toValue } from 'vue';
 import { control } from '../bridge/control';
@@ -44,6 +46,29 @@ export function useSaveConnectionFile() {
         queryClient.setQueryData(connectionFileKey(detail.file), detail);
         return queryClient.invalidateQueries({ queryKey: connectionConfigKey });
       },
+    },
+    queryClient,
+  );
+}
+
+/** Applies form edits to a draft text and decodes it; a stateless call, nothing is written. */
+export function useConnectionForm(file: MaybeRefOrGetter<string>) {
+  const mutation = useMutation(
+    {
+      mutationFn: (args: { text: string; edits: FormEdit[] }): Promise<ConnectionFormResult> =>
+        control.connectionConfigForm(toValue(file), args.text, args.edits),
+    },
+    queryClient,
+  );
+  return (text: string, edits: FormEdit[]) => mutation.mutateAsync({ text, edits });
+}
+
+/** Removes a file that never held a connection. A connection is deleted through its store. */
+export function useDeleteConnectionFile() {
+  return useMutation(
+    {
+      mutationFn: (file: string) => control.connectionConfigDeleteFile(file),
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['connectionConfig'] }),
     },
     queryClient,
   );

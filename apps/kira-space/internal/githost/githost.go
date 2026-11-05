@@ -34,6 +34,10 @@ type ChangeRequest struct {
 	ReviewDecision string `json:"reviewDecision,omitempty"`
 	// ChecksState is "" | SUCCESS | FAILURE | PENDING | ERROR | EXPECTED.
 	ChecksState string `json:"checksState,omitempty"`
+	// CommentCount is the host's count of conversation comments and reviews; nil when unknown.
+	CommentCount *int `json:"commentCount,omitempty"`
+	// Assignees are the assigned logins; nil when the host does not say.
+	Assignees []string `json:"assignees,omitempty"`
 }
 
 // Status kinds.

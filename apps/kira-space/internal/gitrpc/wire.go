@@ -422,9 +422,9 @@ type ReviewRemovedListParams struct {
 
 // ReviewRemovedDismissParams is review.removed.dismiss's own request.
 type ReviewRemovedDismissParams struct {
-	RepoID string  `json:"repoId"`
-	Branch string  `json:"branch"`
-	IDs    []int64 `json:"ids"`
+	RepoID string   `json:"repoId"`
+	Branch string   `json:"branch"`
+	IDs    []string `json:"ids"`
 }
 
 // ReviewRemovedDismissResult carries the number of entries dismissed.
@@ -509,7 +509,7 @@ type ReviewCommentAddParams struct {
 type ReviewCommentSetStateParams struct {
 	RepoID string `json:"repoId"`
 	Branch string `json:"branch"`
-	ID     int64  `json:"id"`
+	ID     string `json:"id"`
 	State  string `json:"state"` // open | addressed
 }
 
@@ -522,7 +522,7 @@ type ReviewCommentSetStateResult struct {
 type ReviewCommentEditParams struct {
 	RepoID string `json:"repoId"`
 	Branch string `json:"branch"`
-	ID     int64  `json:"id"`
+	ID     string `json:"id"`
 	Body   string `json:"body"`
 	Kind   string `json:"kind"` // change | question
 }
@@ -550,7 +550,7 @@ type ReviewCommentListParams struct {
 type ReviewCommentRemoveParams struct {
 	RepoID string `json:"repoId"`
 	Branch string `json:"branch"`
-	ID     int64  `json:"id"`
+	ID     string `json:"id"`
 }
 
 // ReviewCommentRemoveResult is `false`, not an error, for a row already gone (D11) — two windows
@@ -688,6 +688,9 @@ type ChangeRequestRecord struct {
 	Draft          bool   `json:"draft,omitempty"`
 	ReviewDecision string `json:"reviewDecision,omitempty"`
 	ChecksState    string `json:"checksState,omitempty"`
+	// CommentCount and Assignees are nil when the host does not say.
+	CommentCount *int     `json:"commentCount,omitempty"`
+	Assignees    []string `json:"assignees,omitempty"`
 }
 
 func changeRequestRecordFrom(p githost.ChangeRequest) ChangeRequestRecord {
@@ -695,6 +698,7 @@ func changeRequestRecordFrom(p githost.ChangeRequest) ChangeRequestRecord {
 		Number: p.Number, Title: p.Title, URL: p.URL, State: p.State,
 		HeadRef: p.HeadRef, HeadSha: p.HeadSha, BaseRef: p.BaseRef, UpdatedAt: p.UpdatedAt,
 		Draft: p.Draft, ReviewDecision: p.ReviewDecision, ChecksState: p.ChecksState,
+		CommentCount: p.CommentCount, Assignees: p.Assignees,
 	}
 }
 

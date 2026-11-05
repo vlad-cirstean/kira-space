@@ -53,16 +53,24 @@ func (f *fakeConnsMutable) setReadMode(mode string) {
 type fakeQueryRunner struct {
 	class    adapters.OpClass
 	executed atomic.Int32
-	readOnly atomic.Bool
+	// lane counts ExecuteRead calls (the read lane); main counts Execute calls.
+	lane atomic.Int32
+	main atomic.Int32
 }
 
 func (f *fakeQueryRunner) ClassifyStatement(context.Context, string, string) (adapters.OpClass, error) {
 	return f.class, nil
 }
 
-func (f *fakeQueryRunner) Execute(_ context.Context, req adapterhost.ExecuteRequestWire) (adapterhost.ExecuteResponse, error) {
+func (f *fakeQueryRunner) Execute(context.Context, adapterhost.ExecuteRequestWire) (adapterhost.ExecuteResponse, error) {
 	f.executed.Add(1)
-	f.readOnly.Store(req.ReadOnly)
+	f.main.Add(1)
+	return adapterhost.ExecuteResponse{}, nil
+}
+
+func (f *fakeQueryRunner) ExecuteRead(context.Context, adapterhost.ExecuteRequestWire) (adapterhost.ExecuteResponse, error) {
+	f.executed.Add(1)
+	f.lane.Add(1)
 	return adapterhost.ExecuteResponse{}, nil
 }
 
@@ -78,11 +86,11 @@ func (fakeMaskRulesNone) List(string) ([]model.MaskRule, error) { return nil, ni
 // prompt, must not run the statement anyway.
 func TestRunQueryRefusesApprovedWriteAfterPermissionRevokedMidWait(t *testing.T) {
 	conns := &fakeConnsMutable{summary: model.ConnectionSummary{
-		ID: "c1", Name: "conn", McpEnabled: true,
+		ID: "c1", Name: "conn", Kind: "sqlite", McpEnabled: true,
 		McpReadMode: "deny", McpWriteMode: "prompt", McpDdlMode: "deny",
 	}}
 	qr := &fakeQueryRunner{class: adapters.ClassWrite}
-	approvals := NewApprovalBroker(time.Now)
+	approvals := NewApprovalBroker(time.Now, nil)
 	s := &Server{cfg: Config{
 		Conns: conns, Query: qr, Approvals: approvals, MaskRules: fakeMaskRulesNone{},
 		ExplainThreshold: func() int { return 1000 },
@@ -95,7 +103,7 @@ func TestRunQueryRefusesApprovedWriteAfterPermissionRevokedMidWait(t *testing.T)
 	}
 	resCh := make(chan outcome, 1)
 	go func() {
-		res, _, _ := s.runQuery(context.Background(), nil, runQueryArgs{ConnectionID: "c1", SQL: "UPDATE t SET x = 1"})
+		res, _, _ := s.runQuery(context.Background(), nil, runQueryArgs{ConnectionID: "c1", SQL: "UPDATE t SET x = 1", Mode: modeWrite})
 		if res == nil || !res.IsError || len(res.Content) == 0 {
 			resCh <- outcome{isErr: res != nil && res.IsError}
 			return
@@ -117,8 +125,8 @@ func TestRunQueryRefusesApprovedWriteAfterPermissionRevokedMidWait(t *testing.T)
 			t.Fatal("run_query never raised an approval request")
 		default:
 		}
-		if snap := approvals.Pending(); snap.Pending != nil {
-			requestID = snap.Pending.RequestID
+		if items := approvals.Queue.List(); len(items) > 0 {
+			requestID = strings.TrimPrefix(items[0].ID, items[0].Kind+":")
 		} else {
 			time.Sleep(time.Millisecond)
 		}
@@ -133,7 +141,7 @@ func TestRunQueryRefusesApprovedWriteAfterPermissionRevokedMidWait(t *testing.T)
 		if !out.isErr {
 			t.Fatal("runQuery succeeded after the write mode was revoked mid-approval, want a refusal")
 		}
-		if !strings.Contains(out.errText, "now deny") {
+		if !strings.Contains(out.errText, "now denies") {
 			t.Fatalf("error text = %q, want it to mention the permissions now denying the statement", out.errText)
 		}
 	case <-time.After(2 * time.Second):
@@ -145,26 +153,33 @@ func TestRunQueryRefusesApprovedWriteAfterPermissionRevokedMidWait(t *testing.T)
 	}
 }
 
-func TestRunQueryReadVerdictRequestsReadOnlyUnlessWritesAllowed(t *testing.T) {
+// The declared mode picks the connection: read runs on the read lane whatever the write permission,
+// write runs on the main connection.
+func TestRunQueryModePicksConnection(t *testing.T) {
 	for _, tc := range []struct {
-		write string
-		want  bool
-	}{{"prompt", true}, {"deny", true}, {"allow", false}} {
+		mode       string
+		class      adapters.OpClass
+		lane, main int32
+	}{
+		{modeRead, adapters.ClassRead, 1, 0},
+		{modeWrite, adapters.ClassWrite, 0, 1},
+		{modeWrite, adapters.ClassRead, 0, 1},
+	} {
 		conns := &fakeConnsMutable{summary: model.ConnectionSummary{
-			ID: "c1", Name: "conn", McpEnabled: true,
-			McpReadMode: "allow", McpWriteMode: tc.write, McpDdlMode: "deny",
+			ID: "c1", Name: "conn", Kind: "sqlite", McpEnabled: true,
+			McpReadMode: "allow", McpWriteMode: "allow", McpDdlMode: "deny",
 		}}
-		qr := &fakeQueryRunner{class: adapters.ClassRead}
+		qr := &fakeQueryRunner{class: tc.class}
 		s := &Server{cfg: Config{
-			Conns: conns, Query: qr, Approvals: NewApprovalBroker(time.Now), MaskRules: fakeMaskRulesNone{},
+			Conns: conns, Query: qr, Approvals: NewApprovalBroker(time.Now, nil), MaskRules: fakeMaskRulesNone{},
 			ExplainThreshold: func() int { return 1000 },
 			PreviewResponses: func() bool { return false },
 		}}
-		if _, _, err := s.runQuery(context.Background(), nil, runQueryArgs{ConnectionID: "c1", SQL: "SELECT 1"}); err != nil {
-			t.Fatalf("write=%s: %v", tc.write, err)
+		if _, _, err := s.runQuery(context.Background(), nil, runQueryArgs{ConnectionID: "c1", SQL: "SELECT 1", Mode: tc.mode}); err != nil {
+			t.Fatalf("mode=%s class=%s: %v", tc.mode, tc.class, err)
 		}
-		if qr.executed.Load() != 1 || qr.readOnly.Load() != tc.want {
-			t.Errorf("write=%s: executed=%d readOnly=%v, want 1/%v", tc.write, qr.executed.Load(), qr.readOnly.Load(), tc.want)
+		if qr.lane.Load() != tc.lane || qr.main.Load() != tc.main {
+			t.Errorf("mode=%s class=%s: lane=%d main=%d, want %d/%d", tc.mode, tc.class, qr.lane.Load(), qr.main.Load(), tc.lane, tc.main)
 		}
 	}
 }

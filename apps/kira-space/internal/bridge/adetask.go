@@ -57,6 +57,9 @@ func AdeTaskOpenSession(e appcore.Emitter, windowKey string, payload adewire.Ope
 // AdeTaskBoardChanged is TaskBoard.OnBoard's target: payload-free, every window re-fetches Board.
 func AdeTaskBoardChanged(ev *Events) { ev.Broadcast(adewire.ChannelBoard) }
 
+// AdeTaskUpdatesChanged is TaskBoard.OnUpdates' target: payload-free, every window re-fetches TrackedUpdates.
+func AdeTaskUpdatesChanged(ev *Events) { ev.Broadcast(adewire.ChannelUpdates) }
+
 // AdeTaskRunsChanged is TaskBoard.OnRuns' target: the changed runs ride the event.
 func AdeTaskRunsChanged(ev *Events, payload adewire.RunsChangedEvent) {
 	ev.emit.Emit(adewire.ChannelRuns, payload)
@@ -99,7 +102,7 @@ var adeTaskCatalog = []struct {
 	{ade.ErrWorkflowChanged, ipcerr.CodeConflict, "backend.space.ade.workflowChanged.body"},
 	{ade.ErrSetupPending, ipcerr.CodePreparing, "backend.space.ade.setupPending.body"},
 	{repos.ErrBranchOnTask, ipcerr.CodeConflict, "backend.space.ade.branchOnTask.body"},
-	{repos.ErrRepoOnTask, ipcerr.CodeConflict, "backend.space.ade.repoOnTask.body"},
+	{repos.ErrDraftInRepo, ipcerr.CodeConflict, "backend.space.ade.draftInRepo.body"},
 	{ade.ErrSessionRunning, ipcerr.CodeConflict, "backend.space.ade.sessionRunning.body"},
 	{ade.ErrSessionNotRunning, ipcerr.CodeConflict, "backend.space.ade.sessionNotRunning.body"},
 	{ade.ErrResumeCwdNotDir, ipcerr.CodeConflict, "backend.space.ade.resumeCwdNotDir.body"},
@@ -137,6 +140,10 @@ func adeTaskError(err error) error {
 	}
 	return ipcerr.Wrap(err)
 }
+
+const adeTaskMaxItemKeys = 64
+
+var adeTrackedItemKeyRe = regexp.MustCompile(`^(issue|cr:[A-Za-z0-9_-]{1,64}|branch:[A-Za-z0-9_-]{1,64})$`)
 
 var adeWorkflowIDRe = regexp.MustCompile(`^[a-z0-9_-]{1,64}$`)
 
@@ -339,6 +346,28 @@ func (s *AdeTaskService) ChangeRequests(ctx context.Context) (adewire.ChangeRequ
 	ctx = adeUserCtx(ctx)
 	r, err := s.Engine.ChangeRequests(ctx)
 	return r, adeTaskError(err)
+}
+
+func (s *AdeTaskService) TrackedUpdates(ctx context.Context) (adewire.TrackedUpdatesResult, error) {
+	ctx = adeUserCtx(ctx)
+	r, err := s.Engine.TrackedUpdates(ctx)
+	return r, adeTaskError(err)
+}
+
+func (s *AdeTaskService) MarkTrackedSeen(ctx context.Context, args adewire.MarkTrackedSeenArgs) error {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return err
+	}
+	if len(args.ItemKeys) > adeTaskMaxItemKeys {
+		return adeTaskInvalid("itemKeys: too many")
+	}
+	for _, k := range args.ItemKeys {
+		if !adeTrackedItemKeyRe.MatchString(k) {
+			return adeTaskInvalid("itemKeys: invalid key")
+		}
+	}
+	return adeTaskError(s.Engine.MarkTrackedSeen(ctx, args))
 }
 
 func (s *AdeTaskService) Refresh(ctx context.Context, args adewire.RefreshArgs) (adewire.RefreshResult, error) {
@@ -1241,38 +1270,6 @@ func (s *AdeTaskService) ArchiveTask(ctx context.Context, args adewire.TaskArgs)
 		return err
 	}
 	return adeTaskError(s.Engine.ArchiveTask(ctx, args.TaskID))
-}
-
-// BranchRequest reads an agent's open branch request; E_NOT_FOUND once it is answered.
-func (s *AdeTaskService) BranchRequest(args adewire.BranchRequestArgs) (adewire.BranchRequest, error) {
-	if err := validateAdeItemID(args.ID, "id"); err != nil {
-		return adewire.BranchRequest{}, err
-	}
-	r, err := s.Engine.BranchRequest(args.ID)
-	return r, adeTaskError(err)
-}
-
-// ApproveBranchRequest approves the checked repos of a request and denies the rest.
-func (s *AdeTaskService) ApproveBranchRequest(args adewire.ApproveBranchRequestArgs) (adewire.BranchRequestAnswer, error) {
-	if err := validateAdeItemID(args.ID, "id"); err != nil {
-		return adewire.BranchRequestAnswer{}, err
-	}
-	if len(args.CodeRepoIDs) == 0 {
-		return adewire.BranchRequestAnswer{}, adeTaskInvalid("codeRepoIds is empty")
-	}
-	if err := validateAdeTaskRepoIDs(args.CodeRepoIDs); err != nil {
-		return adewire.BranchRequestAnswer{}, err
-	}
-	resolved, err := s.Engine.ApproveBranchRequest(args.ID, args.CodeRepoIDs)
-	return adewire.BranchRequestAnswer{Resolved: resolved}, adeTaskError(err)
-}
-
-// DenyBranchRequest denies every repo of a request.
-func (s *AdeTaskService) DenyBranchRequest(args adewire.BranchRequestArgs) (adewire.BranchRequestAnswer, error) {
-	if err := validateAdeItemID(args.ID, "id"); err != nil {
-		return adewire.BranchRequestAnswer{}, err
-	}
-	return adewire.BranchRequestAnswer{Resolved: s.Engine.DenyBranchRequest(args.ID)}, nil
 }
 
 // ArchivedTask reads an archived task with everything it kept.

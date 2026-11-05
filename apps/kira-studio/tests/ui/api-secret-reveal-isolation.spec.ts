@@ -174,7 +174,7 @@ test("switching the history popover to a different row clears the previous row's
       response: { value: 'old-a-secret', error: null, outcome: 'revealed' },
     },
   ];
-  const { window: page } = await relaunch({ control: CONTROL });
+  const { window: page, control } = await relaunch({ control: CONTROL });
 
   await openHttpMode(page);
   await collectionRow(page, 'col-1').click({ button: 'right' });
@@ -186,6 +186,14 @@ test("switching the history popover to a different row clears the previous row's
   await expect(page.locator('[data-testid="variable-history-entry"]')).toBeVisible();
   await page.click('[data-testid="variable-history-reveal"]');
   await expect(page.locator('[data-testid="variable-history-value"]')).toHaveText('old-a-secret');
+
+  // The eye stays and re-masks client-side: no second reveal call, no prompt.
+  await page.click('[data-testid="variable-history-reveal"]');
+  await expect(page.locator('[data-testid="variable-history-masked"]')).toBeVisible();
+  await expect(page.locator('[data-testid="variable-history-value"]')).toHaveCount(0);
+  await page.click('[data-testid="variable-history-reveal"]');
+  await expect(page.locator('[data-testid="variable-history-value"]')).toHaveText('old-a-secret');
+  expect(control.log().filter((e) => e.channel === IPC.variablesRevealHistory)).toHaveLength(1);
 
   // Switch straight to row B's popover — row A's own is unmounted by `v-if`, with no `@close`.
   // reka Popover's dismissable layer treats a pointer click outside as close-this-one-first, not

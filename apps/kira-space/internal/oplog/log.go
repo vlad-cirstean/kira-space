@@ -5,12 +5,12 @@ package oplog
 
 import (
 	"context"
-	"crypto/rand"
 	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"github.com/kirathecat/kira-studio/internal/notify"
 )
@@ -165,7 +165,7 @@ func (l *Log) Start(ctx context.Context, m Meta) *Op {
 		source = o.Label
 	}
 	rec := &Record{
-		ID:         l.idPrefix + rand.Text(),
+		ID:         l.idPrefix + ids.NewID(),
 		StartedAt:  kiratime.NowISO(),
 		Category:   cat,
 		Kind:       m.Kind,
@@ -230,6 +230,22 @@ func (l *Log) Recent(limit int) []Record {
 		} else {
 			out = append(out, bg[j].clone())
 			j++
+		}
+	}
+	return out
+}
+
+// CancellableRunning returns the running foreground rows of taskID that accept a cancel, newest first.
+func (l *Log) CancellableRunning(taskID string) []Record {
+	if l == nil {
+		return nil
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	var out []Record
+	for _, r := range l.fg {
+		if r.TaskID == taskID && r.Status == StatusRunning && r.Cancellable {
+			out = append(out, r.clone())
 		}
 	}
 	return out

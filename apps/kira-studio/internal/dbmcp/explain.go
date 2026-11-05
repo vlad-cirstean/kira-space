@@ -6,11 +6,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/queryplan"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 // approvalPlanIssuesCap bounds ApprovalPlan.Issues on the wire — a rolled-up plan can carry many,
@@ -168,8 +168,8 @@ func (s *Server) planFor(ctx context.Context, summary model.ConnectionSummary, s
 		return nil, err
 	}
 
-	resp, err := s.cfg.Query.Execute(ctx, adapterhost.ExecuteRequestWire{
-		OpID: uuid.NewString(), ConnectionID: summary.ID, Path: path, Statements: statements,
+	resp, err := s.cfg.Query.ExecuteRead(ctx, adapterhost.ExecuteRequestWire{
+		OpID: ids.NewID(), ConnectionID: summary.ID, Path: path, Statements: statements,
 	})
 	if err != nil {
 		return nil, err

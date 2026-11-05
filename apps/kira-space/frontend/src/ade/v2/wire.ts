@@ -115,6 +115,10 @@ export interface WorkflowStep {
   agent: string;
   /** Per provider id, setting key to value; `{}` = provider defaults. */
   settings: Record<string, Record<string, string>>;
+  /** Library step this step references; absent on an inline step. Other fields hold the effective values. */
+  use?: string;
+  /** The workflow's text appended to `prompt` when the step runs (references only). */
+  promptExtra?: string;
 }
 /** One setting the editor offers, from the provider catalog. */
 export interface StageSettingSpec {
@@ -164,7 +168,29 @@ export interface WorkflowsResult {
   workflows: WorkflowEntry[];
   sandbox: SandboxSupport;
   stageSettings: StageSettingSpec[];
+  /** The step library. */
+  steps: StepEntry[];
+  stepsDir: string;
 }
+export interface StepEntry {
+  fileName: string;
+  path: string;
+  step: WorkflowStep | null /* last valid version; null if never valid */;
+  error: WorkflowError | null;
+  /** Ids of the workflows that reference the step. */
+  usedBy: string[];
+  hash: string;
+}
+export interface StepYaml {
+  fileName: string;
+  path: string;
+  yaml: string;
+  hash: string;
+}
+export interface StepValidation {
+  step: WorkflowStep | null;
+  error: WorkflowError | null;
+} // exactly one non-null
 export interface WorkflowYaml {
   fileName: string;
   path: string;
@@ -1046,6 +1072,28 @@ export interface ImportWorkflowArgs {
 export interface NewWorkflowArgs {
   name: string;
 }
+export interface SaveStepArgs {
+  fileName: string;
+  step: WorkflowStep;
+  baseHash: string;
+}
+export interface SaveStepYamlArgs {
+  fileName: string;
+  yaml: string;
+  baseHash: string;
+}
+export interface ValidateStepYamlArgs {
+  yaml: string;
+}
+/** `from` set: save that inline step to the library under a new file. */
+export interface NewStepArgs {
+  name: string;
+  kind: StepKind;
+  from: WorkflowStep | null;
+}
+export interface DeleteStepArgs {
+  fileName: string;
+}
 export interface FolderArgs {
   path: string;
   watch: boolean;
@@ -1079,36 +1127,6 @@ export interface SessionSandboxArgs {
 }
 export interface TaskArgs {
   taskId: string;
-}
-/** One repo an agent asks branch work for: a new `branch` from `base` ('' = main), or a `worktree` for `branch`. */
-export interface BranchRequestItem {
-  codeRepoId: string;
-  repo: string;
-  kind: 'branch' | 'worktree';
-  branch: string;
-  base: string;
-}
-/** An agent's open request for branches and worktrees. `expiresAt` is unix millis. */
-export interface BranchRequest {
-  id: string;
-  taskId: string;
-  taskTitle: string;
-  source: 'run' | 'session' | 'automation';
-  stepName: string;
-  items: BranchRequestItem[];
-  createdAt: number;
-  expiresAt: number;
-}
-export interface BranchRequestArgs {
-  id: string;
-}
-export interface ApproveBranchRequestArgs {
-  id: string;
-  codeRepoIds: string[];
-}
-/** `resolved` is false when the request was already answered. */
-export interface BranchRequestAnswer {
-  resolved: boolean;
 }
 export interface ReadLogArgs {
   kind: LogKind;
@@ -1158,4 +1176,28 @@ export interface SendArgs {
 export interface FocusSessionArgs {
   sessionId: string;
   taskId: string;
+}
+
+/** A tracked item with changes the user has not seen. Concepts are unfiltered; the renderer applies
+ *  the tracking settings. */
+export interface TrackedUpdate {
+  taskId: string;
+  /** `issue`, `cr:<branchId>` or `branch:<branchId>`. */
+  itemKey: string;
+  kind: 'changeRequest' | 'issue' | 'branch';
+  /** '' for an issue. */
+  branchId: string;
+  label: string;
+  concepts: string[];
+  /** commentAdded -> new comments. */
+  counts: Record<string, number>;
+  changedAt: number;
+}
+export interface TrackedUpdatesResult {
+  updates: TrackedUpdate[];
+}
+export interface MarkTrackedSeenArgs {
+  taskId: string;
+  /** Empty = every item of the task. */
+  itemKeys: string[];
 }

@@ -7,13 +7,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/appevent"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/palette"
 	"golang.org/x/sync/errgroup"
@@ -688,7 +688,7 @@ func (s *CodeWorkspaceService) StartSearch(ctx context.Context, args CodeWorkspa
 		return CodeWorkspaceSearchHandle{}, err
 	}
 
-	searchID := uuid.NewString()
+	searchID := ids.NewID()
 	coalescer := newSearchCoalescer(s.Deps.Events, args.WindowKey, searchID)
 	// sess.BeginSearch(), not ctx: this bound call returns long before a full-worktree scan
 	// finishes, so the search must outlive it — CancelSearch/Session.Close are the only two ways

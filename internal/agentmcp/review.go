@@ -16,16 +16,16 @@ const MaxReviewReplyBytes = 8 << 10
 
 // ReviewGrant names the review comments one round run may answer.
 type ReviewGrant struct {
-	CommentIDs []int64
+	CommentIDs []string
 }
 
 // ReviewReplier stores an agent's answer to one review comment; *ade.TaskBoard implements it.
 type ReviewReplier interface {
-	Reply(runID string, id int64, reply string, resolved bool) error
+	Reply(runID string, id string, reply string, resolved bool) error
 }
 
 type reviewReplyArgs struct {
-	ID       int64  `json:"id"`
+	ID       string `json:"id"`
 	Reply    string `json:"reply"`
 	Resolved bool   `json:"resolved"`
 }
@@ -44,8 +44,9 @@ func (s *Server) addReviewTool(srv *mcp.Server) {
 		if !ok || g.RunID == "" || g.Review == nil {
 			return toolError("reply_review_comment is not available for this session."), nil, nil
 		}
+		args.ID = strings.TrimPrefix(strings.TrimSpace(args.ID), "#")
 		if !slices.Contains(g.Review.CommentIDs, args.ID) {
-			return toolError(fmt.Sprintf("comment %d was not sent to you", args.ID)), nil, nil
+			return toolError(fmt.Sprintf("comment %s was not sent to you", args.ID)), nil, nil
 		}
 		reply := strings.TrimSpace(args.Reply)
 		if reply == "" {

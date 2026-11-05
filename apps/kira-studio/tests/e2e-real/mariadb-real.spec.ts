@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { assertTooltipShows } from '../ui/support/tooltip';
 import { expect, test } from './fixtures';
+import { createConnection } from './support/connections';
 import { type KafkaFixture, startKafka } from './support/kafka';
 import {
   isDockerAvailable as isMariadbDockerAvailable,
@@ -57,17 +58,15 @@ test('C1b: real MariaDB (native), end to end, keyset paging over big_rows', asyn
   const { window: page } = kira;
   await installPassthrough(page);
 
-  await page.click('[data-testid="add-connection"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toBeVisible();
-  await page.click('[data-testid="connection-kind-mariadb"]');
-  await page.fill('[data-testid="connection-name"]', 'Real MariaDB');
-  await page.fill('[data-testid="connection-host"]', maria.config.host ?? '');
-  await page.fill('[data-testid="connection-port"]', String(maria.config.port));
-  await page.fill('[data-testid="connection-database"]', maria.config.database ?? '');
-  await page.fill('[data-testid="connection-username"]', maria.config.username ?? '');
-  await page.fill('[data-testid="connection-password"]', maria.config.password ?? '');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(kira, {
+    name: 'Real MariaDB',
+    kind: 'mariadb',
+    host: maria.config.host ?? '',
+    port: maria.config.port,
+    database: maria.config.database ?? '',
+    username: maria.config.username ?? '',
+    password: maria.config.password ?? '',
+  });
 
   // §5: the same non-idempotent optimistic-update finding E1/E2 already work around.
   await page.reload();
@@ -148,16 +147,15 @@ test('two native kinds in one session: both survive a reload and serve a real re
   const { window: page } = kira;
   await installPassthrough(page);
 
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-mariadb"]');
-  await page.fill('[data-testid="connection-name"]', 'Survive MariaDB');
-  await page.fill('[data-testid="connection-host"]', maria.config.host ?? '');
-  await page.fill('[data-testid="connection-port"]', String(maria.config.port));
-  await page.fill('[data-testid="connection-database"]', maria.config.database ?? '');
-  await page.fill('[data-testid="connection-username"]', maria.config.username ?? '');
-  await page.fill('[data-testid="connection-password"]', maria.config.password ?? '');
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(kira, {
+    name: 'Survive MariaDB',
+    kind: 'mariadb',
+    host: maria.config.host ?? '',
+    port: maria.config.port,
+    database: maria.config.database ?? '',
+    username: maria.config.username ?? '',
+    password: maria.config.password ?? '',
+  });
   await page.reload();
   await page.waitForSelector('[data-testid="status-bar"]');
 
@@ -173,13 +171,12 @@ test('two native kinds in one session: both survive a reload and serve a real re
   // Kafka, in the same session — Kafka has no database:/schema: levels at all, topics sit directly
   // under the connection root, so there is no `kira_test`-named node collision with MariaDB's own
   // tree to sidestep.
-  await page.click('[data-testid="add-connection"]');
-  await page.click('[data-testid="connection-kind-kafka"]');
-  await page.fill('[data-testid="connection-name"]', 'Survive Kafka');
-  await page.fill('[data-testid="connection-host"]', kafka.host);
-  await page.fill('[data-testid="connection-port"]', String(kafka.port));
-  await page.click('[data-testid="connection-save"]');
-  await expect(page.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(kira, {
+    name: 'Survive Kafka',
+    kind: 'kafka',
+    host: kafka.host,
+    port: kafka.port,
+  });
   await page.reload();
   await page.waitForSelector('[data-testid="status-bar"]');
 

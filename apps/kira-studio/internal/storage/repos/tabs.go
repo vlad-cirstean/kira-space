@@ -82,7 +82,7 @@ func (r *TabsRepo) List(windowKey string) ([]model.TabRecord, error) {
 // every record regardless of what changed — tabs.ts's saveDebounced() calls this once a second
 // while someone types in a console tab, so an unchanged 1 MB `state_json` for nine untouched tabs
 // was rewritten every second purely because a tenth tab's own text changed. `id` is the table's
-// own PRIMARY KEY (globally unique — every tab id is a crypto.randomUUID(), and the original code
+// own PRIMARY KEY (globally unique — every tab id is a UUID, and the original code
 // already assumed as much: an INSERT colliding with a row under a *different* window_key would
 // have failed outright before this fix, same as it would now), so `ON CONFLICT(id) DO UPDATE`
 // rewrites only the row for the record it was asked to write, and SQLite skips
@@ -103,7 +103,7 @@ func (r *TabsRepo) Save(windowKey string, records []model.TabRecord) error {
 
 	return appstorage.ReplaceKeyed(r.DB, "tabs", "window_key", windowKey, keep, func(tx *sql.Tx) error {
 		for i, rec := range records {
-			if _, err := tx.Exec(
+			res, err := tx.Exec(
 				`INSERT INTO tabs (id, connection_id, path, kind, state_json, "order", active, window_key, workspace_id)
 				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 				 ON CONFLICT(id) DO UPDATE SET
@@ -113,11 +113,18 @@ func (r *TabsRepo) Save(windowKey string, records []model.TabRecord) error {
 				   state_json    = excluded.state_json,
 				   "order"       = excluded."order",
 				   active        = excluded.active,
-				   window_key    = excluded.window_key,
-				   workspace_id  = excluded.workspace_id`,
+				   workspace_id  = excluded.workspace_id
+				 WHERE tabs.window_key = excluded.window_key`,
 				rec.ID, rec.ConnectionID, rec.Path, rec.Kind, string(rec.State), i, rec.Active, windowKey, rec.WorkspaceID,
-			); err != nil {
+			)
+			if err != nil {
 				return fmt.Errorf("repos/tabs: upsert %s: %w", rec.ID, err)
+			}
+			// 0 rows: the id conflicts with a row of another window, which the WHERE leaves untouched.
+			if n, err := res.RowsAffected(); err != nil {
+				return fmt.Errorf("repos/tabs: upsert %s: %w", rec.ID, err)
+			} else if n == 0 {
+				return fmt.Errorf("repos/tabs: tab %s: %w", rec.ID, appstorage.ErrTabOwnedElsewhere)
 			}
 		}
 		return nil

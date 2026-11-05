@@ -106,6 +106,7 @@ U62 apps/kira-studio/frontend/src/views/console/ConsoleView.vue # Monaco host ex
 U47 apps/kira-studio/frontend/src/views/shared/fields/FieldRowsTable.vue # 2D arrow navigation between text inputs; useListNavigation ignores text fields
 U62 apps/kira-studio/frontend/src/views/shared/fields/FieldRowsTable.vue # moves focus between sibling inputs and sets the caret
 # B (apps/kira-space, W/memory)
+U101 packages/workbench/src/approvals/ApprovalsDialog.vue # count marks approvals awaiting the person
 U101 apps/kira-space/frontend/src/ade/v2/shell/AdeShell.vue # count badge marks sessions needing attention, not a tab count
 U101 apps/kira-space/frontend/src/ade/v2/sessions/AdeSessionsMenu.vue # ADE tab count badge (P466)
 U101 packages/theme/src/components/SecondaryTabs.vue # countBadge opt-in renders the ADE tab count badge (P466)
@@ -116,12 +117,12 @@ U34 apps/kira-space/frontend/src/workbench/settings/MobileQr.vue # QR needs a wh
 U37 apps/kira-space/frontend/src/ade/v2/plan/AdeTaskCard.vue # plan board task card selected fill, P129 board visual exempt per P263 §2.10
 U37 apps/kira-space/frontend/src/ade/v2/plan/AdeBranchRow.vue # plan board branch row selected fill, board visual exempt per P263 §2.10
 U37 apps/kira-space/frontend/src/ade/v2/plan/AdeDayBand.vue # plan board history and span row selected fill, board visual exempt per P263 §2.10
+U37 apps/kira-studio/frontend/src/views/shared/DateTimePicker.vue # picker cell selection fill, not a list row (P525 rule 7)
 U62 apps/kira-space/frontend/src/views/repo/useReadonlyFileViewer.ts # Monaco editor.focus(), not DOM focus
 U62 apps/kira-space/frontend/src/views/repo/RepoDiffView.vue # Monaco editor.focus(), not DOM focus
 U62 apps/kira-space/frontend/src/views/repo/useFileEdit.ts # Monaco editor.focus(), not DOM focus
 U60 apps/kira-space/frontend/src/ade/v2/plan/AdeDayBand.vue # drags cards between day lists with sort off; useSortableReorder only reorders within one list
 U62 apps/kira-space/frontend/src/ade/v2/notes/AdeNotesEditor.vue # TipTap chain().focus() commands, not DOM focus
-U82 apps/kira-space/frontend/mobile/state/useAdeWrites.ts # slices a UUID into its 8-4-4-4-12 groups, not a commit sha
 # C (rest)
 U91 packages/git-ui/src/components/UncommittedChangesStrip.vue # tooltip text differs from the visible label
 U11 packages/docker-ui/src/components/LogsView.vue # ANSI bold is log data, not UI chrome
@@ -147,7 +148,7 @@ U3@@v@@TextPromptDialog.vue@@role="dialog" outside TextPromptDialog.vue@@role="d
 U4@@v@@SecondaryTabs.vue@@<ToggleGroup/<ToggleGroupItem outside SecondaryTabs (use <SecondaryTabs>)@@<ToggleGroup(?:Item)?\b
 U5@@v@@AdeShell.vue@@<TabsList/<TabsTrigger outside AdeShell.vue (use <SecondaryTabs>)@@<Tabs(?:List|Trigger)\b
 U6@@vt@@TabStrip.vue|ModeSwitcher.vue|AdeShell.vue|ConsoleResultStrip.vue|ExecView.vue|AdeSessionStrip.vue@@tabChipVariants( outside primary tab bars@@tabChipVariants\(
-U7@@v@@@@<Button without variant, or retired variant default/secondary/outline/destructive@@<Button\b(?:(?!(?&t)\s:?variant=)|(?&t)\svariant="(?:default|secondary|outline|destructive)")
+U7@@v@@@@<Button without variant, or retired variant default/secondary/outline/destructive/toolbar-primary/danger@@<Button\b(?:(?!(?&t)\s:?variant=)|(?&t)\svariant="(?:default|secondary|outline|destructive|toolbar-primary|danger)")
 U8@@v@@@@<Button without size, or retired size default/xs/sm/lg/icon/icon-xs/icon-lg/icon-sm@@<Button\b(?:(?!(?&t)\s:?size=)|(?&t)\ssize="(?:default|xs|sm|lg|icon|icon-xs|icon-lg|icon-sm)")
 U9@@v@@NumberStepperInput.vue@@Input/NativeSelect/Textarea/InputGroup with size="default" or h-/rounded-/bg-/border-/px-/py- class@@<(?:Input|NativeSelect|Textarea|InputGroup)\b(?:(?&t)\ssize="default"|(?&t)\s:?class="[^"]*${TOK}(?:h|rounded|bg|border|px|py)-)
 U10@@v@@@@raw <label>/<select> (use FieldLabel/Label, NativeSelect)@@<(?:label|select)\b
@@ -244,6 +245,9 @@ U103@@vt@@@@bare .sort() (end on a stable key)@@\.sort\(\)
 U104@@v@@@@toolbar divider must use ToolbarSeparator (P351)@@class="[^"]*(?:\bw-px\b[^"]*\bh-3\.5\b|\bh-3\.5\b[^"]*\bw-px\b)
 U104@@v@@ToolbarSeparator.vue@@toolbar divider must use ToolbarSeparator (P351)@@<Separator\b(?&t)\sorientation="vertical"
 U105@@vt@@AdeDayBand.vue@@repeating gradient texture (surfaces are flat tokens)@@repeating-(?:linear|radial|conic)-gradient
+U106@@v@@@@filled button (outline or toolbar; see P525 rules)@@<(?:Button|TooltipIconButton|SplitButton)\b(?&t)\s:?class="[^"]*${TOK}bg-(?:primary|agent|tone-[a-z]+-solid|ok|warn|error|info)(?![\w/-])
+U107@@v@@@@icon in a dialog header (title, description and actions only)@@(?s)<DialogHeader\b(?&t)>(?:(?!</DialogHeader>|<Button\b|<TooltipIconButton\b).)*?<(?:CodiconIcon|EngineIcon|svg)\b
+U108@@v@@@@toolbar pressed look by class (use aria-pressed / aria-expanded; the toolbar variant draws it)@@<(?:Button|TooltipIconButton)\b(?&t)\s:class="[^"]*'bg-field
 GUARDS
 
 # hits: "U<n> path"

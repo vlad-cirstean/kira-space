@@ -15,7 +15,11 @@ import { computed, reactive, toRefs, watch } from 'vue';
 import { control } from '../../bridge/control';
 import { useTabIncognitoStore } from '../../state/tabIncognito';
 import { runReveal } from '../reveal';
-import { openEnvironmentsTab, syncVariableSetTabNames } from '../tabs';
+import {
+  closeVariableSetTabsForOwner,
+  openEnvironmentsTab,
+  syncVariableSetTabNames,
+} from '../tabs';
 import {
   apiEnvironmentsKey,
   apiEnvironmentsQueryOptions,
@@ -188,6 +192,69 @@ export const useVariablesStore = defineStore('variables', () => {
     }
   }
 
+  const reorderEnvironmentsMutation = useMutation(
+    {
+      mutationKey: ['apiEnvironments', 'reorder'],
+      mutationFn: (ids: string[]) => control.variablesReorderEnvironments(ids),
+      onSuccess: afterEnvironmentsListChange,
+    },
+    queryClient,
+  );
+
+  /** Applies a whole-list environment order. Returns whether it saved. */
+  async function reorderEnvironments(ids: readonly string[]): Promise<boolean> {
+    try {
+      await reorderEnvironmentsMutation.mutateAsync([...ids]);
+      state.error = null;
+      return true;
+    } catch (err) {
+      state.error = errorText(err);
+      return false;
+    }
+  }
+
+  const deleteEnvironmentMutation = useMutation(
+    {
+      mutationKey: ['apiEnvironments', 'delete'],
+      mutationFn: (id: string) => control.variablesDeleteEnvironment(id),
+      onSuccess: afterEnvironmentsListChange,
+    },
+    queryClient,
+  );
+
+  /** Removes the environment's file. Deleting the active one leaves none active, and its open
+   *  variable-set tab closes: it has no state worth keeping once its owner is gone. */
+  async function deleteEnvironment(id: string): Promise<void> {
+    try {
+      await deleteEnvironmentMutation.mutateAsync(id);
+      closeVariableSetTabsForOwner('environment', id);
+      state.error = null;
+    } catch (err) {
+      state.error = errorText(err);
+    }
+  }
+
+  const duplicateEnvironmentMutation = useMutation(
+    {
+      mutationKey: ['apiEnvironments', 'duplicate'],
+      mutationFn: (id: string) => control.variablesDuplicateEnvironment(id),
+      onSuccess: afterEnvironmentsListChange,
+    },
+    queryClient,
+  );
+
+  /** Copies the environment file under a free name; the copy is never active. */
+  async function duplicateEnvironment(id: string): Promise<ApiEnvironment | undefined> {
+    try {
+      const env = await duplicateEnvironmentMutation.mutateAsync(id);
+      state.error = null;
+      return env;
+    } catch (err) {
+      state.error = errorText(err);
+      return undefined;
+    }
+  }
+
   // ---- the environments surface ----
   //
   // The dialog flag and its open/close pair are gone. `openEnvironments()` is the one entry point
@@ -211,6 +278,9 @@ export const useVariablesStore = defineStore('variables', () => {
     environmentColorForTab,
     selectEnvironmentForTab,
     createEnvironment,
+    reorderEnvironments,
+    deleteEnvironment,
+    duplicateEnvironment,
     openEnvironments,
   };
 });

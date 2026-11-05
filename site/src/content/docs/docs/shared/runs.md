@@ -20,8 +20,8 @@ Runs exist in both apps. A run is a YAML file. Scripts group in collections. Eac
 
 A run lives in `<id>.yaml` in the `runs` folder of the app home: `~/.kira-studio/runs` in Kira Studio, `~/.kira-space/runs` in Kira Space. The file name without `.yaml` is the run id. Use lowercase letters, digits, `-` and `_`.
 
-- **New script** and **New smart script** write a small valid file and open it as text.
-- Double-click a row, or choose **Edit file**, to edit the text. **Open** opens the file in your editor. **Reveal** and **Copy path** work as in other config files.
+- **New script** and **New smart script** write a small valid file and open it.
+- Double-click a row, or choose **Edit file**, to edit it as a form or as YAML. Both tabs edit the same text; **Save** writes the file. A form edit keeps your comments and key order. **Open** opens the file in your editor. **Reveal** and **Copy path** work as in other config files.
 - A change in your editor shows in the panel after a moment. Kira checks the file on every change.
 - A file with an error shows the line and the message. A run that was valid before keeps running its last good version, and its row shows a warning mark.
 - A file that was never valid is listed as a broken row. Open it to fix it.
@@ -38,7 +38,8 @@ Keys include `name`, `kind`, `command` (or `prompt` for a smart run), `params`, 
 - Start a script with its play button. Click a row to select it; double-click to edit its file.
 - Running a script again reuses its tab. While it runs, the play button shows the running tab.
 - Drag scripts to reorder them inside their collection. Drag a collection header to reorder collections. **Move up** and **Move down** in the row menu, or Alt+Up and Alt+Down, do the same. A search pauses reordering.
-- To move a run to another collection, change `collection` in its file.
+- Drag a run into another collection, or use **Move to collection** and **Move to new collection** in the row menu. Both set `collection` in its file.
+- A collection header menu has **Rename** and **Delete**. Rename edits every run file in it and refuses a name another collection uses. Delete removes every run in it, files and saved secret values included.
 
 ## Secret parameters
 

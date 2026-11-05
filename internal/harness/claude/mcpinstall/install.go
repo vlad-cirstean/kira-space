@@ -92,6 +92,12 @@ type serverJSON struct {
 	Type          string `json:"type"`
 	URL           string `json:"url"`
 	HeadersHelper string `json:"headersHelper"`
+	// Timeout is the per-call limit in ms; without it claude cuts an MCP call at 60 s.
+	Timeout int64 `json:"timeout,omitempty"`
+}
+
+func httpServer(url, helperPath string) serverJSON {
+	return serverJSON{Type: "http", URL: url, HeadersHelper: loginshell.Quote(helperPath), Timeout: harness.MCPCallTimeout.Milliseconds()}
 }
 
 // Command renders the exact two-step argv Install spawns (F3: remove, ignoring "not registered",
@@ -106,7 +112,7 @@ type serverJSON struct {
 // words once Claude Code later runs the stored headersHelper string through a shell of its own,
 // silently sending no Authorization header and failing every call with an unexplained 401.
 func (*Installer) Command(name, url, helperPath string) string {
-	payload, _ := json.Marshal(serverJSON{Type: "http", URL: url, HeadersHelper: loginshell.Quote(helperPath)})
+	payload, _ := json.Marshal(httpServer(url, helperPath))
 	return "claude mcp remove --scope user " + loginshell.Quote(name) + " 2>/dev/null; claude mcp add-json --scope user " +
 		loginshell.Quote(name) + " " + loginshell.Quote(string(payload))
 }
@@ -155,7 +161,7 @@ func (i *Installer) Install(ctx context.Context, name, url, helperPath string) h
 	// splits into more than one word there, so no Authorization header is ever sent and every call
 	// gets a 401 with no hint why. Single-quoting here is the fix; EnsureHeaderHelperScript already
 	// quotes the token path the same way for the same reason, one level down.
-	return i.register(ctx, name, serverJSON{Type: "http", URL: url, HeadersHelper: loginshell.Quote(helperPath)}, nil)
+	return i.register(ctx, name, httpServer(url, helperPath), nil)
 }
 
 // stdioServerJSON is add-json's shape for a stdio server: a command and its argv.

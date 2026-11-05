@@ -183,12 +183,21 @@ An optional local [MCP](https://modelcontextprotocol.io) server lets an AI clien
 databases under rules you set. It is off by default and enabled from Settings → Database MCP.
 
 - Loopback only, on port 8766, with its own bearer token.
-- Six tools: `list_connections`, `list_children`, `describe_table`, `describe_schema`, `run_query`,
-  `explain_query`.
+- Six core tools: `list_connections`, `list_children`, `describe_table`, `describe_schema`, `run_query`,
+  `explain_query`. Two more let the client see and stop running work: `list_operations` lists running
+  queries and script runs, and `cancel_operation` stops one by id.
+- **Scripts, opt-in** — a normal script exposes itself to the AI client with an `mcp` block in its
+  run file or the MCP tab of its dialog. Four tools: `list_scripts`, `run_script`, `get_script_run`
+  and `get_script_logs`. A script can run straight away or wait for your approval, which shows the
+  command, parameters and which client asked. A run result never holds output; the client reads
+  a size-limited, filterable log with `get_script_logs`. A secret parameter keeps its saved value
+  and the client can't set it.
 - **Deny by default** — a connection stays invisible to the AI client until you expose it.
 - **Per-connection permissions** — read, write and DDL are each *allow*, *deny* or *prompt*
   (defaults: read allow, write prompt, DDL deny). *Prompt* waits for you to approve the exact
-  statement. A statement that can't be classified gets the strictest mode.
+  statement. The AI client declares a mode on every `run_query`; a `read` call runs on a separate
+  read-only database connection, so the database itself refuses writes on PostgreSQL, MySQL,
+  MariaDB, SQLite and ClickHouse. MongoDB and Redis reads are checked by Kira.
 - Queries estimated above the expensive-query threshold pause for approval when auto-explain is on.
 - PII masking rules apply to results before the AI client sees them.
 

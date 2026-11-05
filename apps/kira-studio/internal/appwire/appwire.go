@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/agentapi"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appcore"
@@ -23,6 +24,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/appevent"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/appupdate"
 	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 	"github.com/kirathecat/kira-studio/internal/docker"
@@ -140,6 +142,7 @@ type Wired struct {
 	Update          *bridge.UpdateService
 	Lifecycle       *bridge.LifecycleService
 	PromptsSvc      *bridge.PromptsService
+	ApprovalsSvc    *bridge.ApprovalsService
 	LlmPromptsSvc   *bridge.LlmPromptsService
 	Proof           *bridge.ProofService
 	// ProofStore is the validation-proof store behind Proof and the DB MCP proof tools.
@@ -250,8 +253,9 @@ func Build(opts Options) (*Wired, error) {
 	promptRouter := newPromptRouter(windows, repositories, opts, w.reopenWindow)
 	windows.OnChange = promptRouter.Reroute
 
+	approvalQueue := approvals.New(promptRouter)
 	proofDeps := proof.Deps{
-		Repo: repositories.Proof, Prompts: promptRouter,
+		Repo: repositories.Proof, Prompts: promptRouter, Approvals: approvalQueue,
 		Emit: func(channel string, payload any) { opts.Emitter.Emit(channel, payload) },
 	}
 	if opts.Clock != nil {
@@ -266,7 +270,8 @@ func Build(opts Options) (*Wired, error) {
 	if installer == nil {
 		installer = harness.ActiveInstaller(agents)
 	}
-	embedded := wireEmbeddedServices(deps, installer, opts.KeepAwakeDriver, connectionsSvc, oplogWiring, metricsTicker, promptRouter, agents, proofSvc, opts)
+	agentAPI := &agentapi.Service{Envs: apiFiles, Secrets: apiSecrets, Ops: router.Host(), Globals: bridge.AgentAPIGlobals(repositories.Settings)}
+	embedded := wireEmbeddedServices(deps, installer, approvalQueue, opts.KeepAwakeDriver, connectionsSvc, oplogWiring, metricsTicker, promptRouter, agents, proofSvc, agentAPI, opts)
 	lifecycle := wireLifecycle(windows, embedded.events, embedded.eventsDetach, metricsTicker, oplogWiring, connectionsSvc,
 		embedded.dbMcpSvc, embedded.keepAwakeSvc, embedded.terminalSvc, embedded.dockerSvc, embedded.kubeSvc, updateInstaller, embedded.runs, embedded.closeAgent, embedded.sched, embedded.runLoader, apiFiles, connFiles, repositories, db)
 	embedded.sched.Start()
@@ -280,8 +285,9 @@ func Build(opts Options) (*Wired, error) {
 	connFiles.Start()
 
 	*w = Wired{
-		Prompts:    promptRouter,
-		PromptsSvc: &bridge.PromptsService{Bound: &prompts.Bound{R: promptRouter}},
+		Prompts:      promptRouter,
+		PromptsSvc:   &bridge.PromptsService{Bound: &prompts.Bound{R: promptRouter}},
+		ApprovalsSvc: &bridge.ApprovalsService{Service: &approvals.Service{Q: approvalQueue}},
 		LlmPromptsSvc: &bridge.LlmPromptsService{Bound: &llmprompts.Bound{
 			Store: promptStore, App: llmprompts.Studio,
 			Changed: func(rev uint64) {
@@ -317,7 +323,7 @@ func Build(opts Options) (*Wired, error) {
 		Grpc:             &bridge.GrpcService{Deps: deps},
 		Collections:      &bridge.CollectionsService{Deps: deps, Files: apiFiles},
 		Variables:        &bridge.VariablesService{Deps: deps, Files: apiFiles},
-		ApiConfig:        &bridge.ApiConfigService{Deps: deps, Files: apiFiles},
+		ApiConfig:        &bridge.ApiConfigService{Deps: deps, Files: apiFiles, Agent: agentAPI},
 		ApiFiles:         apiFiles,
 		ResponseHistory:  &bridge.ResponseHistoryService{Deps: deps},
 		GrpcHistory:      &bridge.GrpcHistoryService{Deps: deps},
@@ -380,7 +386,7 @@ func (w *Wired) reopenWindow() {
 	}
 }
 
-// Bound returns the 38 bound services in registration order.
+// Bound returns the 39 bound services in registration order.
 func (w *Wired) Bound() []application.Service {
 	return []application.Service{
 		application.NewService(w.App), application.NewService(w.Settings), application.NewService(w.Layout),
@@ -392,7 +398,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.ResponseHistory), application.NewService(w.GrpcHistory),
 		application.NewService(w.DataGrip), application.NewService(w.DbMcp), application.NewService(w.KeepAwake),
 		application.NewService(w.Terminal), application.NewService(w.CustomScripts), application.NewService(w.ScriptRuns), application.NewService(w.Docker), application.NewService(w.Kubernetes), application.NewService(w.Link),
-		application.NewService(w.Update), application.NewService(w.Lifecycle), application.NewService(w.PromptsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.Proof), application.NewService(w.ConfigFiles),
+		application.NewService(w.Update), application.NewService(w.Lifecycle), application.NewService(w.PromptsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.Proof), application.NewService(w.ConfigFiles), application.NewService(w.ApprovalsSvc),
 	}
 }
 

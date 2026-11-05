@@ -270,6 +270,10 @@ func (s *Store) duplicateProblem(file, winner string) *configfs.Problem {
 func (c Config) clone() Config {
 	c.IntegrationBranches = slices.Clone(c.IntegrationBranches)
 	c.Environments = slices.Clone(c.Environments)
+	for i := range c.Environments {
+		c.Environments[i].DeployedShaRun = c.Environments[i].DeployedShaRun.Clone()
+	}
+	c.Settings.WorktreePrepareRun = c.Settings.WorktreePrepareRun.Clone()
 	c.Settings.ReviewBaseCandidates = slices.Clone(c.Settings.ReviewBaseCandidates)
 	return c
 }

@@ -753,5 +753,7 @@
       "provider": "claude",
       "providerLabel": "Claude"
     }
-  ]
+  ],
+  "steps": [],
+  "stepsDir": "/home/user/.kira-space/steps"
 }

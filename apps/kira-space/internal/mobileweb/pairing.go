@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/pairing"
 	"github.com/kirathecat/kira-studio/internal/prompts"
@@ -141,7 +141,7 @@ func (s *Server) finishPairing(w http.ResponseWriter, requestID string, meta Mob
 	}
 	now := s.cfg.Now().UnixMilli()
 	row := repos.MobileDeviceRow{
-		ID: uuid.NewString(), Label: meta.Label, UserAgent: meta.UserAgent,
+		ID: ids.NewID(), Label: meta.Label, UserAgent: meta.UserAgent,
 		TokenHash: tok.Hash, TokenSalt: tok.Salt, CreatedAt: now, LastSeenAt: now, LastIP: meta.RemoteIP,
 		CanWrite: true, ExpiresAt: now + deviceTTL.Milliseconds(),
 	}

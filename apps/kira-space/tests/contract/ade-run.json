@@ -83,7 +83,7 @@
     "errors": [],
     "parts": [
       {
-        "text": "Kira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every repo you need; the user approves it. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.",
+        "text": "Kira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every branch; you name each, the user approves. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.",
         "value": "",
         "var": ""
       }
@@ -173,7 +173,7 @@
         "var": "StepPrompt"
       },
       {
-        "text": "\n\nKira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every repo you need; the user approves it. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.\n\nWhen this step is done, call finish_step with status \"done\" and a one-line summary. If it failed, call it with status \"failed\", what failed and the reason. If you need a decision from me, call it with status \"needs_input\" and your question.\n",
+        "text": "\n\nKira Space tools: task_info, declare_repos, request_branches, branch_status. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with request_branches, one call for every branch; you name each, the user approves. Never git branch, git worktree or git checkout -b. Then work in the returned worktrees.\n\nWhen this step is done, call finish_step with status \"done\" and a one-line summary. If it failed, call it with status \"failed\", what failed and the reason. If you need a decision from me, call it with status \"needs_input\" and your question.\n",
         "value": "",
         "var": ""
       }

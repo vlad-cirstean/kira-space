@@ -1,8 +1,6 @@
 import { domToCanvas } from 'modern-screenshot';
 import { TOOLTIP_CLASS } from './chartOption';
 
-const SEPARATOR_PX = 8;
-
 /** Every real CSS property, none of the custom ones. The page defines thousands of `--kira-*` and
  *  `--tw-*` properties that every element inherits; copying them into each clone made a capture
  *  take minutes, and the resolved values are already on the real properties. */
@@ -23,27 +21,6 @@ export function captureElement(el: HTMLElement): Promise<HTMLCanvasElement> {
     features: { restoreScrollPosition: true },
     filter: (node) => !(node instanceof Element && node.classList.contains(TOOLTIP_CLASS)),
   });
-}
-
-/** Stacks captures top to bottom, a themed gap between each. */
-export function stackCanvases(canvases: HTMLCanvasElement[], gapColor: string): HTMLCanvasElement {
-  const scale = window.devicePixelRatio || 1;
-  const gap = Math.round(SEPARATOR_PX * scale);
-  const width = Math.max(...canvases.map((c) => c.width));
-  const height = canvases.reduce((sum, c) => sum + c.height, 0) + gap * (canvases.length - 1);
-  const out = document.createElement('canvas');
-  out.width = width;
-  out.height = height;
-  const ctx = out.getContext('2d');
-  if (!ctx) throw new Error('stackCanvases: no 2d context');
-  ctx.fillStyle = gapColor;
-  ctx.fillRect(0, 0, width, height);
-  let y = 0;
-  for (const c of canvases) {
-    ctx.drawImage(c, 0, y);
-    y += c.height + gap;
-  }
-  return out;
 }
 
 export function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
@@ -73,4 +50,10 @@ export function fileSlug(name: string): string {
       .replace(/^-+|-+$/g, '')
       .slice(0, 80) || 'proof'
   );
+}
+
+/** `NN-step-name.png` for the tab at 1-based `pos`, zero-padded to the tab count's width. */
+export function shotFileName(pos: number, total: number, description: string): string {
+  const width = Math.max(2, String(total).length);
+  return `${String(pos).padStart(width, '0')}-${fileSlug(description)}.png`;
 }

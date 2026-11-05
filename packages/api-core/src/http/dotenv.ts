@@ -74,7 +74,7 @@ export interface EnvDiff {
 // parse and dropped rather than becoming part of the next pair's description (never round-tripped
 // as text a user typed, since the renderer never has a secret's plaintext to compare against, F3).
 export const SECRET_MARKER =
-  '# secret — the value is not shown here and is left unchanged unless you type one';
+  '# secret — the value is not shown here and is left unchanged; enter it in the variables list';
 
 function needsQuoting(value: string): boolean {
   if (value === '') return true; // empty-but-not-secret — a bare `KEY=` would parse as hasValue: false

@@ -32,6 +32,8 @@ type Forge struct {
 	calls []string
 	// rev changes whenever the listing a Probe sees changes: every mutation but a checks state.
 	rev      int
+	extra    map[int]int
+	assigned map[int][]string
 	account  string
 	limited  time.Time
 	offline  bool
@@ -57,7 +59,7 @@ var (
 // New returns an empty fake host.
 func New() *Forge {
 	return &Forge{
-		account: "forger", authors: map[int]string{}, reviews: map[int][]githost.Review{}, comments: map[int][]string{},
+		account: "forger", extra: map[int]int{}, assigned: map[int][]string{}, authors: map[int]string{}, reviews: map[int][]githost.Review{}, comments: map[int][]string{},
 		details: map[int]githost.ChangeRequestDetail{}, posted: map[int][]PostedComment{},
 		lines: map[int][]githost.LineComment{},
 	}
@@ -101,6 +103,37 @@ func (f *Forge) SetChecksState(number int, state string) {
 	for i := range f.crs {
 		if f.crs[i].Number == number {
 			f.crs[i].ChecksState = state
+		}
+	}
+}
+
+// AddComments adds n comments to merge request number, an update on the host like a real one.
+func (f *Forge) AddComments(number, n int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.bumpComments(number, n)
+}
+
+// SetAssignees replaces the assignees of merge request number, an update on the host.
+func (f *Forge) SetAssignees(number int, logins ...string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.assigned[number] = slices.Clone(logins)
+	f.touch(number)
+}
+
+// bumpComments adds n comments and marks the listing changed. Callers hold f.mu.
+func (f *Forge) bumpComments(number, n int) {
+	f.extra[number] += n
+	f.touch(number)
+}
+
+// touch marks merge request number updated, so a delta sync sees it. Callers hold f.mu.
+func (f *Forge) touch(number int) {
+	f.rev++
+	for i := range f.crs {
+		if f.crs[i].Number == number {
+			f.crs[i].UpdatedAt = max(f.crs[i].UpdatedAt+1, time.Now().UnixMilli())
 		}
 	}
 }
@@ -275,10 +308,16 @@ func (f *Forge) rateLimit() (githost.Status, bool) {
 
 func nodeID(number int) string { return fmt.Sprintf("MR_%d", number) }
 
-// withSyncFields fills the fields a sync read carries.
-func withSyncFields(cr githost.ChangeRequest) githost.ChangeRequest {
+// withSyncFields fills the fields a sync read carries. Callers hold f.mu.
+func (f *Forge) withSyncFields(cr githost.ChangeRequest) githost.ChangeRequest {
 	cr.NodeID = nodeID(cr.Number)
 	cr.Draft = cr.State == "draft"
+	count := f.extra[cr.Number]
+	cr.CommentCount = &count
+	cr.Assignees = slices.Clone(f.assigned[cr.Number])
+	if cr.Assignees == nil {
+		cr.Assignees = []string{}
+	}
 	return cr
 }
 
@@ -301,7 +340,7 @@ func (f *Forge) Page(_ context.Context, _ githost.Repo, cursor string, first int
 	end := min(start+max(first, 1), len(sorted))
 	page := githost.ChangeRequestPage{EndCursor: strconv.Itoa(end), HasNext: end < len(sorted)}
 	for _, cr := range sorted[start:end] {
-		page.Items = append(page.Items, withSyncFields(cr))
+		page.Items = append(page.Items, f.withSyncFields(cr))
 	}
 	return page, githost.Status{Kind: githost.KindOK, Host: Host}
 }
@@ -332,7 +371,7 @@ func (f *Forge) Checks(_ context.Context, _ githost.Repo, nodeIDs []string) ([]g
 	var out []githost.ChangeRequest
 	for _, cr := range f.crs {
 		if slices.Contains(nodeIDs, nodeID(cr.Number)) {
-			out = append(out, withSyncFields(cr))
+			out = append(out, f.withSyncFields(cr))
 		}
 	}
 	return out, githost.Status{Kind: githost.KindOK, Host: Host}
@@ -438,6 +477,7 @@ func (f *Forge) Comment(_ context.Context, _ githost.Repo, number int, body stri
 		return f.goneStatus()
 	}
 	f.comments[number] = append(f.comments[number], body)
+	f.bumpComments(number, 1)
 	return githost.Status{Kind: githost.KindOK, Host: Host}
 }
 
@@ -557,5 +597,6 @@ func (f *Forge) PostChangeRequestComment(_ context.Context, _ githost.Repo, numb
 		d.Threads = append(d.Threads, githost.Thread{ID: id, Kind: githost.ThreadComment, Comments: []githost.Comment{comment}})
 	}
 	f.details[number] = d
+	f.bumpComments(number, 1)
 	return githost.Status{Kind: githost.KindOK, Host: Host}
 }

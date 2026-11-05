@@ -8,14 +8,14 @@ type Kind string
 
 const (
 	KindSchedule      Kind = "schedule"
-	KindBranchRequest Kind = "branch-request"
-	KindDbMcp         Kind = "dbmcp"
 	KindGitCredential Kind = "git-credential"
 	KindHandover      Kind = "handover"
 	KindMobilePairing Kind = "mobile-pairing"
 	KindUpdate        Kind = "update"
 	KindQuit          Kind = "quit"
 	KindProof         Kind = "proof"
+	// KindApproval is one pending agent approval (internal/approvals); Ref is the item id.
+	KindApproval Kind = "approval"
 )
 
 // Prompt is one popup. It never carries a statement, git prompt text, pairing code or params.

@@ -43,7 +43,7 @@ func mapError(err error) error {
 		case busy, locked:
 			return adapters.New(adapters.CodeTimeout, se.Error(), err)
 		case readOnly:
-			return adapters.New(adapters.CodeUnsupported, se.Error(), err)
+			return adapters.New(adapters.CodeUnsupported, se.Error(), adapters.RefusedWrite(err))
 		}
 		return adapters.New(adapters.CodeQuery, se.Error(), err)
 	}
