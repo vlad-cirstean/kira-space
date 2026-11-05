@@ -18,6 +18,8 @@ type Env = ScenarioEnv<
 export interface Options {
   extraBase: readonly { channel: string; response?: unknown }[];
   modeTab: (page: Page) => ReturnType<Page['locator']>;
+  /** The app lets agents run scripts: the dialog has an MCP tab. */
+  mcp: boolean;
 }
 
 // A run file as a form and as YAML over the same draft. Backend half: termflow TestRunsForm
@@ -80,6 +82,15 @@ export function registerFormScenarios(env: Env, options: Options): void {
     expect(form('renamed').text).toContain('# Ship the build.');
     expect(form('renamed').text).toContain('# shown in the panel');
     await expectHighlighted(editor(page), 'yaml');
+  });
+
+  test('the MCP tab shows only where agents can run scripts', async ({ relaunch }) => {
+    const { window: page } = await relaunch({ control: base() });
+    await openDialog(page);
+    await expect(dialog(page).locator('[data-testid="run-file-tab-script"]')).toBeVisible();
+    await expect(dialog(page).locator('[data-testid="run-file-tab-mcp"]')).toHaveCount(
+      options.mcp ? 1 : 0,
+    );
   });
 
   test('contract: a YAML edit shows in the form', async ({ relaunch }) => {

@@ -9,5 +9,5 @@ import { IPC } from './support/ipcChannels';
 
 registerFormScenarios(
   { test, contract, ipc: IPC },
-  { extraBase: [], modeTab: (page) => modeTab(page, 'automations') },
+  { extraBase: [], modeTab: (page) => modeTab(page, 'automations'), mcp: true },
 );
