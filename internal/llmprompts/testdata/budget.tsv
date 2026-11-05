@@ -135,7 +135,7 @@ ade.rebase.contextLine	95
 ade.sendBack.line	63
 run.resume.line	261
 dbmcp.instructions	2197
-dbmcp.tool.list_connections	715
+dbmcp.tool.list_connections	857
 dbmcp.tool.list_operations	190
 dbmcp.tool.cancel_operation	150
 dbmcp.tool.cancel_operation.arg.opId	50
