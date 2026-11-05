@@ -8,7 +8,7 @@
     "entries": [
       {
         "contentKind": "text",
-        "id": 1,
+        "id": "<id:1>",
         "origin": "working",
         "path": "c.txt",
         "range": {
@@ -23,7 +23,7 @@
       },
       {
         "contentKind": "text",
-        "id": 3,
+        "id": "<id:2>",
         "origin": "working",
         "path": "c.txt",
         "range": {
@@ -38,7 +38,7 @@
       },
       {
         "contentKind": "text",
-        "id": 2,
+        "id": "<id:3>",
         "origin": "working",
         "path": "d.txt",
         "range": {

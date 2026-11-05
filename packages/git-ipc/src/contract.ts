@@ -1322,7 +1322,7 @@ export interface ReviewFileStatus {
 /** P499: one block of reviewed lines that left the current content. `range` is in the reviewed
  *  snapshot's line numbers; `null` with `text: null` for a non-text whole-file entry. */
 export interface ReviewRemovedEntry {
-  readonly id: number;
+  readonly id: string;
   readonly origin: 'commit' | 'working';
   readonly path: string;
   readonly reviewedAt: number; // unix millis
@@ -1623,7 +1623,7 @@ export type Contract = {
     };
     /** P499: hides removed entries for good; ids of another branch dismiss nothing. */
     'review.removed.dismiss': {
-      params: { repoId: string; branch: string; ids: readonly number[] };
+      params: { repoId: string; branch: string; ids: readonly string[] };
       result: { readonly dismissed: number };
     };
     /**

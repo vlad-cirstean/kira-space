@@ -63,7 +63,7 @@ export function useReviewRemoved(target: () => ReviewWindowTarget) {
   );
 
   const dismiss = useMutation({
-    mutationFn: async (ids: readonly number[]) => {
+    mutationFn: async (ids: readonly string[]) => {
       const tg = target();
       await hold.ready();
       return gitCall('review.removed.dismiss', {

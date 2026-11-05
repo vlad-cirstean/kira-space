@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 // RemovedSource identifies the review record (one review event) a removed block came from.
@@ -22,7 +24,7 @@ type RemovedSource struct {
 // Removed is one stored block of reviewed lines that left the current content. Range is nil for a
 // non-text whole-file row.
 type Removed struct {
-	ID            int64
+	ID            string
 	Origin        string
 	Path          string
 	ReviewedAtSHA string
@@ -147,10 +149,10 @@ func (s *Store) captureRemoved(ctx context.Context, repoID, branch string, src R
 		}
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO review_removed
-				(session_id, origin, path, reviewed_at, reviewed_at_sha, snapshot_key, content_kind,
+				(id, session_id, origin, path, reviewed_at, reviewed_at_sha, snapshot_key, content_kind,
 				 start_line, end_line, content_bytes, content, removed_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			id, src.Origin, src.Path, src.ReviewedAt.UnixMilli(), src.ReviewedAtSHA, src.SnapshotKey,
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			ids.NewID(), id, src.Origin, src.Path, src.ReviewedAt.UnixMilli(), src.ReviewedAtSHA, src.SnapshotKey,
 			string(src.ContentKind), row.r.Start, row.r.End, row.bytes, content, now); err != nil {
 			return 0, fmt.Errorf("gitreview: insert review_removed: %w", err)
 		}
@@ -214,10 +216,10 @@ func (s *Store) Removed(ctx context.Context, repoID, branch string) ([]Removed, 
 	return out, nil
 }
 
-// DismissRemoved hides ids of this session for good and drops their text. Ids of other sessions
+// DismissRemoved hides removedIDs of this session for good and drops their text. Ids of other sessions
 // match nothing. Returns the rows dismissed.
-func (s *Store) DismissRemoved(ctx context.Context, repoID, branch string, ids []int64) (int, error) {
-	if len(ids) == 0 {
+func (s *Store) DismissRemoved(ctx context.Context, repoID, branch string, removedIDs []string) (int, error) {
+	if len(removedIDs) == 0 {
 		return 0, nil
 	}
 	db, err := s.conn()
@@ -229,12 +231,12 @@ func (s *Store) DismissRemoved(ctx context.Context, repoID, branch string, ids [
 		return 0, err
 	}
 	args := []any{time.Now().UnixMilli(), id}
-	for _, v := range ids {
+	for _, v := range removedIDs {
 		args = append(args, v)
 	}
 	res, err := db.ExecContext(ctx,
 		`UPDATE review_removed SET dismissed_at = ?, content = NULL, content_bytes = 0
-		 WHERE session_id = ? AND dismissed_at IS NULL AND id IN (`+strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",")+`)`,
+		 WHERE session_id = ? AND dismissed_at IS NULL AND id IN (`+strings.TrimSuffix(strings.Repeat("?,", len(removedIDs)), ",")+`)`,
 		args...)
 	if err != nil {
 		return 0, fmt.Errorf("gitreview: dismiss review_removed: %w", err)

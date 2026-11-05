@@ -11,11 +11,10 @@ const committed = contract<{ entries: ReviewRemovedEntry[] }>(
   'git-review-removed',
   'git:review.removed.list#removed',
 ).entries;
-// Separate review databases number their rows alike; the spec makes the ids unique.
 const uncommitted = contract<{ entries: ReviewRemovedEntry[] }>(
   'git-review-removed-working',
   'git:review.removed.list#working',
-).entries.map((e) => ({ ...e, id: e.id + 100 }));
+).entries;
 const all = [...committed, ...uncommitted];
 const first = committed[0];
 
@@ -69,7 +68,7 @@ reviewTest('dismissing an entry hides it and keeps the rest', async ({ relaunch 
   await expect(entries.filter({ hasText: first.path })).toHaveCount(0);
   const calls = (await gitStreamParams(page, 'review.removed.dismiss')) as {
     repoId: string;
-    ids: number[];
+    ids: string[];
   }[];
   expect(calls).toHaveLength(1);
   expect(calls[0]).toMatchObject({ repoId: target.gitRepoId, ids: [first.id] });

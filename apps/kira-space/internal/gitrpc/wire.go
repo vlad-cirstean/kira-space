@@ -422,9 +422,9 @@ type ReviewRemovedListParams struct {
 
 // ReviewRemovedDismissParams is review.removed.dismiss's own request.
 type ReviewRemovedDismissParams struct {
-	RepoID string  `json:"repoId"`
-	Branch string  `json:"branch"`
-	IDs    []int64 `json:"ids"`
+	RepoID string   `json:"repoId"`
+	Branch string   `json:"branch"`
+	IDs    []string `json:"ids"`
 }
 
 // ReviewRemovedDismissResult carries the number of entries dismissed.

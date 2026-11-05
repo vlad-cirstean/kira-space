@@ -28,7 +28,7 @@ const absentKey = "absent"
 // ReviewRemovedEntry is one removed block on the wire. Range is nil and Text nil for a non-text
 // whole-file entry.
 type ReviewRemovedEntry struct {
-	ID            int64                `json:"id"`
+	ID            string               `json:"id"`
 	Origin        string               `json:"origin"`
 	Path          string               `json:"path"`
 	ReviewedAt    int64                `json:"reviewedAt"`
@@ -112,7 +112,7 @@ func (e *RepoEntry) captureWorking(ctx context.Context, branch string, rec gitre
 }
 
 // DismissRemoved hides removed entries of branch for good.
-func (e *RepoEntry) DismissRemoved(ctx context.Context, branch string, ids []int64) (int, error) {
+func (e *RepoEntry) DismissRemoved(ctx context.Context, branch string, ids []string) (int, error) {
 	return e.review.DismissRemoved(ctx, e.Summary.RepoID, branch, ids)
 }
 
