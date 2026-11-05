@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
@@ -176,6 +177,13 @@ type runQueryArgs struct {
 	Path         string `json:"path"`
 	Mode         string `json:"mode"`
 	MaxRows      int    `json:"maxRows,omitempty"`
+	// Exemption asks the user to lift the limits of an earlier refusal for this exact call.
+	Exemption *exemptionArgs `json:"exemption,omitempty"`
+}
+
+type exemptionArgs struct {
+	ID     string `json:"id"`
+	Reason string `json:"reason"`
 }
 
 // runQuery builds an adapterhost.ExecuteRequestWire and calls Query.Execute — literally the method
@@ -191,19 +199,36 @@ type runQueryArgs struct {
 // McpAutoExplain is on (read mode only; a nil plan or any error degrades to "no plan") → heavy
 // check → at most one approval, for a prompt verdict on the declared mode or a heavy plan →
 // execute (read on the read lane, write and ddl on the main connection) → render.
+//
+// Limits (limits.go) slot in after tighten: a presented exemption id is claimed, every pre-limit not
+// exempted is checked (a hit refuses before any approval), and an exempted call raises exactly one
+// db.exemption approval in place of the db.query one, whatever the mode's verdict. Exec limits wrap the
+// execute step; one that trips refuses with a fresh id.
 func (s *Server) runQuery(ctx context.Context, _ *mcp.CallToolRequest, args runQueryArgs) (*mcp.CallToolResult, any, error) {
 	rv, res, out, err, done := s.resolveVerdict(ctx, args)
 	if done {
 		return res, out, err
 	}
 
-	plan, heavy := s.maybeExplain(ctx, rv.summary, args)
-
-	if res, out, err, done := s.awaitApproval(ctx, args, rv, heavy, plan); done {
+	ex, res, out, err, done := s.claimExemption(args, rv)
+	if done {
+		return res, out, err
+	}
+	if res, out, err, done := s.checkLimits(ctx, args, rv, ex); done {
 		return res, out, err
 	}
 
-	res, out, err, set, executed := s.executeAndRender(ctx, args, rv, plan)
+	plan, heavy := s.maybeExplain(ctx, rv.summary, args)
+
+	if ex != nil {
+		if res, out, err, done := s.awaitExemption(ctx, args, rv, ex, plan); done {
+			return res, out, err
+		}
+	} else if res, out, err, done := s.awaitApproval(ctx, args, rv, heavy, plan); done {
+		return res, out, err
+	}
+
+	res, out, err, set, executed := s.executeAndRender(ctx, args, rv, plan, ex)
 	if !executed || !s.reviewResults(rv.summary) {
 		return res, out, err
 	}
@@ -213,7 +238,7 @@ func (s *Server) runQuery(ctx context.Context, _ *mcp.CallToolRequest, args runQ
 // executeAndRender masks, executes and renders. executed is false when the call failed before
 // Execute ran (no data was fetched, so nothing is held for review); set is the mask set the render
 // used.
-func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv queryResolution, plan *queryplan.Plan) (res *mcp.CallToolResult, out any, err error, set maskset, executed bool) {
+func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv queryResolution, plan *queryplan.Plan, ex *claimedExemption) (res *mcp.CallToolResult, out any, err error, set maskset, executed bool) {
 	// M5 §4.3: resolved before Execute, so a key-store failure fails the call before the query runs,
 	// not after — wasted adapter work on a call that cannot be rendered anyway.
 	set, err = s.cfg.MaskRules.MaskSetFor(args.ConnectionID)
@@ -232,15 +257,30 @@ func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv que
 		Statements:   []string{args.SQL},
 		Cap:          page.ResultCap{Rows: rv.maxRows},
 	}
+	// Exec limits shape the request and ctx for every call; an exempted one sees Exempt and relaxes.
+	for _, l := range s.limits {
+		el, ok := l.(ExecLimit)
+		if !ok {
+			continue
+		}
+		var done func()
+		ctx, done = el.Apply(ctx, s.limitCall(args, rv, ex.covers(l.Name())), &req)
+		defer done()
+	}
 	// The declared mode picks the connection: read runs on the read lane, where the engine
 	// refuses writes; write and ddl run on the main connection.
 	var resp adapterhost.ExecuteResponse
+	started := time.Now()
 	if rv.mode == modeRead {
 		resp, err = s.cfg.Query.ExecuteRead(ctx, req)
 	} else {
 		resp, err = s.cfg.Query.Execute(ctx, req)
 	}
 	if err != nil {
+		if hits := s.execHits(args, rv, ex, err, time.Since(started)); len(hits) > 0 {
+			res, out, err = s.refuseByLimits(rv.summary, ex, hits, args)
+			return res, out, err, set, false
+		}
 		if rv.mode == modeRead && isReadOnlyRefusal(err) {
 			res, out, err = s.readOnlyRefusal(rv.summary, err, mk != nil)
 			return res, out, err, set, true
@@ -505,20 +545,26 @@ func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv queryR
 		// rv.summary was resolved before this (up to ApprovalTimeout) wait. If the user reacted to
 		// the prompt by revoking the connection's MCP exposure or denying this mode, an Approve
 		// landing after that must not run the statement under permissions that no longer hold.
-		resummary, rerr := s.resolveEnabled(args.ConnectionID)
-		if rerr != nil {
-			res, out, err = errResult(rerr.Error())
-			return res, out, err, true
-		}
-		if v := modeVerdict(resummary, rv.mode); v == "deny" {
-			res, out, err = errResult(fmt.Sprintf("connection %q now denies %s over MCP. Allowed: %s", resummary.Name, rv.mode, accessOf(resummary).Summary))
-			return res, out, err, true
-		}
-		return nil, nil, nil, false
+		return s.recheckAfterApproval(args, rv)
 	default:
 		res, out, err = approvalOutcomeError(outcome, fmt.Sprintf("query against %q", rv.summary.Name))
 		return res, out, err, true
 	}
+}
+
+// recheckAfterApproval refuses when the connection lost exposure or the mode became denied while the
+// approval was pending.
+func (s *Server) recheckAfterApproval(args runQueryArgs, rv queryResolution) (res *mcp.CallToolResult, out any, err error, done bool) {
+	resummary, rerr := s.resolveEnabled(args.ConnectionID)
+	if rerr != nil {
+		res, out, err = errResult(rerr.Error())
+		return res, out, err, true
+	}
+	if v := modeVerdict(resummary, rv.mode); v == "deny" {
+		res, out, err = errResult(fmt.Sprintf("connection %q now denies %s over MCP. Allowed: %s", resummary.Name, rv.mode, accessOf(resummary).Summary))
+		return res, out, err, true
+	}
+	return nil, nil, nil, false
 }
 
 // enforcementFor is the enforcement label the approval shows for a read item; other modes carry none.

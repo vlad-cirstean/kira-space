@@ -140,6 +140,8 @@ type Config struct {
 	// decides whether the tools are listed and whether a request waits for the user.
 	API         APIRequester
 	APISettings func() APISettings
+	// Limits are the limits the server enforces on run_query, beside its built-ins. Nil means none.
+	Limits []Limit
 	// Prompts resolves the editable instruction and tool texts; nil means the registry defaults.
 	Prompts llmprompts.Source
 	// Logger receives every operational log line. A nil Logger falls back to slog.Default().
@@ -162,6 +164,11 @@ type Server struct {
 	// that stayed false, wrongly, across every restart within the token's own TTL.
 	tokenMu sync.RWMutex
 	token   mcpauth.Record
+
+	// limits are the enforced run_query limits: built-ins, then cfg.Limits.
+	limits []Limit
+	// exemptions holds the ids limit refusals mint; it lives here so a prompt-edit rebuild keeps them.
+	exemptions *exemptionStore
 
 	// mcp is the tool set for revision mcpRev of the prompts; a prompt edit rebuilds it (server()).
 	mcpMu  sync.Mutex
@@ -219,10 +226,16 @@ func New(cfg Config) (*Server, error) {
 		return nil, fmt.Errorf("dbmcp: resolve token: %w", err)
 	}
 
+	limits, err := validateLimits(cfg.Limits)
+	if err != nil {
+		return nil, err
+	}
 	s := &Server{
-		cfg:   cfg,
-		log:   log,
-		token: tokenRec,
+		cfg:        cfg,
+		log:        log,
+		token:      tokenRec,
+		limits:     limits,
+		exemptions: newExemptionStore(cfg.Approvals.now),
 	}
 	s.mcp, s.mcpRev, s.mcpAPI = s.buildMCPServer(), s.prompts().Revision(), s.apiEnabled()
 
@@ -231,6 +244,26 @@ func New(cfg Config) (*Server, error) {
 	}
 	s.watchExposure()
 	return s, nil
+}
+
+// validateLimits rejects a limit with no name, a duplicate name, or neither PreLimit nor ExecLimit.
+func validateLimits(in []Limit) ([]Limit, error) {
+	seen := map[string]bool{}
+	for _, l := range in {
+		name := l.Name()
+		_, pre := l.(PreLimit)
+		_, exec := l.(ExecLimit)
+		switch {
+		case name == "":
+			return nil, fmt.Errorf("dbmcp: a limit has an empty name")
+		case seen[name]:
+			return nil, fmt.Errorf("dbmcp: duplicate limit %q", name)
+		case !pre && !exec:
+			return nil, fmt.Errorf("dbmcp: limit %q implements neither PreLimit nor ExecLimit", name)
+		}
+		seen[name] = true
+	}
+	return append([]Limit(nil), in...), nil
 }
 
 // watchExposure closes the read lane of a connection the user stops exposing to MCP.
@@ -331,6 +364,10 @@ func runQuerySchema(src llmprompts.Source) *jsonschema.Schema {
 	sch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[runQueryArgs](src, llmprompts.DbmcpToolRunQuery.ID(),
 		map[string]any{"maxRows": llmprompts.LimitVars{Default: runQueryDefaultMaxRows, Max: runQueryMaxMaxRows}}), "connectionId", "sql", "mode")
 	sch.Properties["mode"].Enum = []any{modeRead, modeWrite, modeDDL}
+	ex := sch.Properties["exemption"]
+	ex.Properties["id"].MinLength = jsonschema.Ptr(1)
+	ex.Properties["reason"].MinLength = jsonschema.Ptr(1)
+	ex.Properties["reason"].MaxLength = jsonschema.Ptr(maxExemptionReasonRunes)
 	return sch
 }
 

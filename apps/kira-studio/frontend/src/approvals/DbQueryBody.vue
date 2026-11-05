@@ -5,6 +5,7 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { type MessageKey, t } from '@theme/i18n';
 import { formatCount } from '@workbench/behaviour/format';
 import { computed } from 'vue';
+import ApprovalPlanEvidence from './ApprovalPlanEvidence.vue';
 import ApprovalStatement from './ApprovalStatement.vue';
 
 const props = defineProps<{ item: ApprovalItem }>();
@@ -68,28 +69,6 @@ const lede = computed(() => {
     <FieldDescription data-testid="db-mcp-approval-detected">
       {{ t('studio.dbMcp.approval.detected.label', { class: payload.detected }) }}
     </FieldDescription>
-    <div v-if="payload.plan" class="flex flex-col gap-1" data-testid="db-mcp-approval-plan">
-      <FieldDescription data-testid="db-mcp-approval-plan-rows">
-        <template v-if="payload.plan.estimatedRowsRead !== null">
-          {{
-            t('studio.dbMcp.approval.estimate.body', {
-              count: payload.plan.estimatedRowsRead,
-              threshold: formatCount(payload.plan.thresholdRows),
-            })
-          }}
-        </template>
-        <template v-else>{{ t('studio.console.plan.noEstimate.body') }}</template>
-      </FieldDescription>
-      <FieldDescription
-        v-for="(issue, i) in payload.plan.issues"
-        :key="i"
-        data-testid="db-mcp-approval-plan-issue"
-      >
-        <strong>{{ issue.severity }}</strong> {{ issue.message }}
-      </FieldDescription>
-      <FieldDescription v-if="payload.plan.issuesOmitted > 0">
-        {{ t('common.more.label', { count: payload.plan.issuesOmitted }) }}
-      </FieldDescription>
-    </div>
+    <ApprovalPlanEvidence v-if="payload.plan" :plan="payload.plan" />
   </div>
 </template>

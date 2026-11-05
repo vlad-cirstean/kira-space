@@ -59,6 +59,8 @@ type ApprovalReason string
 const (
 	ApprovalReasonPermission ApprovalReason = "permission"
 	ApprovalReasonHeavy      ApprovalReason = "heavy"
+	// ApprovalReasonExemption is an agent asking to lift limits for one statement.
+	ApprovalReasonExemption ApprovalReason = "exemption"
 )
 
 // ApprovalStage says what the human is asked: whether a statement may run (query) or whether the
@@ -168,6 +170,15 @@ type ApprovalRequest struct {
 	Script *ApprovalScript
 	// API is set for the api.request subject; Target is then empty.
 	API *agentapi.Planned
+	// Exemption is set for the db.exemption subject.
+	Exemption *ApprovalExemption
+}
+
+// ApprovalExemption is what an exemption request adds: the agent's reason and every limit the
+// user is asked to lift for the one statement.
+type ApprovalExemption struct {
+	Reason string
+	Hits   []LimitHit
 }
 
 // ApprovalOrigin is what the stateless HTTP transport can tell about the caller.
@@ -215,7 +226,7 @@ func NewApprovalBroker(now func() time.Time, q *approvals.Queue) *ApprovalBroker
 		q = approvals.New(nil)
 	}
 	b := &ApprovalBroker{now: now, Queue: q, queue: notify.NewPendingQueue[*approvalEntry]()}
-	for _, kind := range []string{approvals.KindDbQuery, approvals.KindDbResponse, approvals.KindKubeRead, approvals.KindScriptRun, approvals.KindAPIRequest} {
+	for _, kind := range []string{approvals.KindDbQuery, approvals.KindDbResponse, approvals.KindDbExemption, approvals.KindKubeRead, approvals.KindScriptRun, approvals.KindAPIRequest} {
 		q.Register(kind, brokerOwner{b})
 	}
 	return b

@@ -95,6 +95,26 @@ export const dbQueryPayloadSchema = /*#__PURE__*/ z.object({
 });
 export type DbQueryPayload = z.infer<typeof dbQueryPayloadSchema>;
 
+export const dbMcpLimitHitSchema = /*#__PURE__*/ z.object({
+  limit: z.string(),
+  measured: z.number(),
+  max: z.number(),
+  unit: z.enum(['ms', 'rows']),
+});
+export type DbMcpLimitHit = z.infer<typeof dbMcpLimitHitSchema>;
+
+export const dbExemptionPayloadSchema = /*#__PURE__*/ z.object({
+  connectionId: z.string(),
+  statement: z.string(),
+  mode: dbMcpModeSchema,
+  detected: z.string(),
+  enforcement: z.string(),
+  reason: z.string(),
+  limits: z.array(dbMcpLimitHitSchema).min(1),
+  plan: dbMcpApprovalPlanSchema.nullable(),
+});
+export type DbExemptionPayload = z.infer<typeof dbExemptionPayloadSchema>;
+
 export const dbResponsePayloadSchema = /*#__PURE__*/ z.object({
   connectionId: z.string(),
   statement: z.string(),

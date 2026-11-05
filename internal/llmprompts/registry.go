@@ -1388,7 +1388,7 @@ var (
 // DbmcpToolRunQuery describes the run_query tool.
 var DbmcpToolRunQuery = define(Entry{
 	ID: "dbmcp.tool.run_query", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "run_query",
-	Default: "Run one statement per call, not a script. Declare `mode`: read runs on a separate read-only connection (where list_connections reports enforcement session, the database itself refuses writes, including writes hidden in functions); write and ddl run on the normal connection. The connection's permission for the declared mode applies: a denied mode is refused, an approval mode waits up to 10 minutes for the user. list_connections' `access` shows which modes each connection allows and which need approval. A statement that looks more powerful than its mode is refused with the mode to use. Reading stops at maxRows: rowCount is rows fetched, a lower bound when truncated is true. With auto-explain on, an expensive read pauses for approval. On a kibana connection, `sql` is one Discover request as a JSON object (see the `sql` argument); mode read only.",
+	Default: "Run one statement per call, not a script. Declare `mode`: read runs on a separate read-only connection (where list_connections reports enforcement session, the database itself refuses writes, including writes hidden in functions); write and ddl run on the normal connection. The connection's permission for the declared mode applies: a denied mode is refused, an approval mode waits up to 10 minutes for the user. list_connections' `access` shows which modes each connection allows and which need approval. A statement that looks more powerful than its mode is refused with the mode to use. Reading stops at maxRows: rowCount is rows fetched, a lower bound when truncated is true. With auto-explain on, an expensive read pauses for approval. On a kibana connection, `sql` is one Discover request as a JSON object (see the `sql` argument); mode read only. A call over a limit is refused with an exemption id: improve the statement, or repeat the exact call with `exemption` to ask the user to lift that limit once. The user always decides.",
 }, NoVars{})
 
 var (
@@ -1397,6 +1397,9 @@ var (
 	_ = arg(DbmcpToolRunQuery.id, "path", studioApp, NextCall, `Encoded database path from list_children. Required on postgres, mysql, mariadb and mongodb; pass "" on other engines.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "mode", studioApp, NextCall, `read, write or ddl: read for SELECT-like statements, write for data changes, ddl for schema changes. Must be allowed for the connection (see list_connections access).`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "maxRows", studioApp, NextCall, `Rows to return, 1-{{.Max}}. Default {{.Default}}. Reading stops at this many rows; rowCount is then a lower bound.`, LimitVars{Default: 200, Max: 2000})
+	_ = arg(DbmcpToolRunQuery.id, "exemption", studioApp, NextCall, `Only after a limit refusal: asks the user to lift that limit for this exact call. Same connectionId, sql, path and mode as the refused call.`, NoVars{})
+	_ = arg(DbmcpToolRunQuery.id, "exemption.id", studioApp, NextCall, `Exemption id from the refusal. Works once; expires in 10 minutes.`, NoVars{})
+	_ = arg(DbmcpToolRunQuery.id, "exemption.reason", studioApp, NextCall, `One sentence for the user: why this statement needs the limit lifted. Max 300 characters.`, NoVars{})
 )
 
 // DbmcpToolExplainQuery describes the explain_query tool.

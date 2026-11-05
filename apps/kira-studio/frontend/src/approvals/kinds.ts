@@ -5,6 +5,7 @@ import type { ApprovalKinds } from '@workbench/approvals/registry';
 import { markRaw } from 'vue';
 import ApiRequestBody from './ApiRequestBody.vue';
 import ConnectionHeader from './ConnectionHeader.vue';
+import DbExemptionBody from './DbExemptionBody.vue';
 import DbQueryBody from './DbQueryBody.vue';
 import DbResponseBody from './DbResponseBody.vue';
 import KubeReadBody from './KubeReadBody.vue';
@@ -38,6 +39,16 @@ export function studioApprovalKinds(): ApprovalKinds {
       header: markRaw(ConnectionHeader),
       body: markRaw(DbQueryBody),
       operation: dbOperation,
+    },
+    'db.exemption': {
+      header: markRaw(ConnectionHeader),
+      body: markRaw(DbExemptionBody),
+      operation: dbOperation,
+      individualOnly: true,
+      labels: () => ({
+        approve: t('studio.dbMcp.approval.exemption.approve.label'),
+        deny: t('studio.dbMcp.approval.exemption.deny.label'),
+      }),
     },
     'db.response': {
       header: markRaw(ConnectionHeader),

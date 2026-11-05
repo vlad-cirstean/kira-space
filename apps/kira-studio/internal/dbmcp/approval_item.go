@@ -48,6 +48,39 @@ type queryPayload struct {
 	Plan        *planPayload `json:"plan"`
 }
 
+type limitHitPayload struct {
+	Limit    string  `json:"limit"`
+	Measured float64 `json:"measured"`
+	Max      float64 `json:"max"`
+	Unit     string  `json:"unit"`
+}
+
+type exemptionPayload struct {
+	ConnectionID string            `json:"connectionId"`
+	Statement    string            `json:"statement"`
+	Mode         string            `json:"mode"`
+	Detected     string            `json:"detected"`
+	Enforcement  string            `json:"enforcement"`
+	Reason       string            `json:"reason"`
+	Limits       []limitHitPayload `json:"limits"`
+	Plan         *planPayload      `json:"plan"`
+}
+
+func exemptionPayloadOf(r ApprovalRequest) exemptionPayload {
+	ex := r.Exemption
+	if ex == nil {
+		ex = &ApprovalExemption{}
+	}
+	limits := make([]limitHitPayload, len(ex.Hits))
+	for i, h := range ex.Hits {
+		limits[i] = limitHitPayload(h)
+	}
+	return exemptionPayload{
+		ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
+		Enforcement: r.Enforcement, Reason: ex.Reason, Limits: limits, Plan: planPayloadOf(r.Plan),
+	}
+}
+
 type responsePayload struct {
 	ConnectionID string `json:"connectionId"`
 	Statement    string `json:"statement"`
@@ -117,6 +150,9 @@ func itemOf(r ApprovalRequest) approvals.Item {
 		})
 	case approvals.KindAPIRequest:
 		it.Target, it.Operation, it.Payload = apiItemParts(r.API)
+	case approvals.KindDbExemption:
+		it.Target, it.Operation = dbTarget(r)
+		it.Payload = mustJSON(exemptionPayloadOf(r))
 	case approvals.KindDbResponse:
 		it.Reason = "preview"
 		it.Target, it.Operation = dbTarget(r)
@@ -202,6 +238,8 @@ func promptTitle(req ApprovalRequest) string {
 		return i18n.T("backend.prompt.dbMcpAPI.title", map[string]string{"method": req.API.Method, "host": req.API.Host})
 	case req.Subject == approvals.KindScriptRun:
 		return i18n.T("backend.prompt.dbMcpScript.title", map[string]string{"name": req.ConnectionName})
+	case req.Subject == approvals.KindDbExemption:
+		return i18n.T("backend.prompt.dbMcpExemption.title", map[string]string{"name": req.ConnectionName})
 	case response && named:
 		return i18n.T("backend.prompt.dbMcpResponseNamed.title", map[string]string{"name": req.ConnectionName})
 	case response:

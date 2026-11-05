@@ -45,6 +45,9 @@ type DbMcpService struct {
 	Scripts dbmcp.ScriptControl
 	// API backs the API request tools; nil leaves them unregistered.
 	API dbmcp.APIRequester
+	// Limits are extra run_query limits for the embedded server (flow tests); production adds its limits
+	// inside dbmcp.
+	Limits []dbmcp.Limit
 
 	embedded embedded.Service[*dbmcp.Server, DbMcpStatus]
 }
@@ -81,6 +84,7 @@ func NewDbMcpService(deps appcore.Deps, installer harness.MCPInstaller, approval
 				PreviewResponses: s.previewResponses,
 				Logger:           slog.Default(),
 				Prompts:          s.Deps.Prompts,
+				Limits:           s.Limits,
 			})
 			if err != nil {
 				return nil, err

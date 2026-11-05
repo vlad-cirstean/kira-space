@@ -27,6 +27,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appwire"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/config"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage"
@@ -59,6 +60,7 @@ type options struct {
 	dockerHubAPI    string
 	dockerExtra     []docker.Option
 	kubeExtra       []kubernetes.Option
+	dbMcpLimits     []dbmcp.Limit
 }
 
 // WithoutSecretStore boots without KIRA_INSECURE_SECRETS, so the cipher is unavailable on Linux.
@@ -87,6 +89,12 @@ func WithDockerOptions(opts ...docker.Option) Opt {
 // WithKubernetesOptions appends options to the Kubernetes service (list limits, environment).
 func WithKubernetesOptions(opts ...kubernetes.Option) Opt {
 	return func(o *options) { o.kubeExtra = append(o.kubeExtra, opts...) }
+}
+
+// WithDbMcpLimits adds limits to the DB MCP server's run_query, for tests that need a limit no real
+// engine trips deterministically.
+func WithDbMcpLimits(ls ...dbmcp.Limit) Opt {
+	return func(o *options) { o.dbMcpLimits = append(o.dbMcpLimits, ls...) }
 }
 
 // kubeEnv hands the Kubernetes service the test process environment instead of probing the user's
@@ -213,6 +221,7 @@ func (a *App) build() {
 	if err != nil {
 		a.t.Fatalf("appwire.Build: %v", err)
 	}
+	w.DbMcp.Limits = append(w.DbMcp.Limits, a.opts.dbMcpLimits...)
 	w.Proof.Shell = a.ProofWindows
 	w.WindowsSvc.OpenNewWindow = func() {
 		a.mu.Lock()

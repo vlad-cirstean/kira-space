@@ -1603,6 +1603,9 @@
       "dbMcpAPI": {
         "title": "Send {method} request to {host}"
       },
+      "dbMcpExemption": {
+        "title": "Lift a limit for one query · {name}"
+      },
       "dbMcpNamed": {
         "title": "Approve this query · {name}"
       },
@@ -13590,6 +13593,29 @@
         },
         "estimate": {
           "body": "Estimated {count} row read, threshold {threshold}. | Estimated {count} rows read, threshold {threshold}."
+        },
+        "exemption": {
+          "approve": {
+            "label": "Lift for this query"
+          },
+          "deny": {
+            "label": "Keep the limit"
+          },
+          "expensiveQuery": {
+            "label": "Estimated rows read"
+          },
+          "lede": {
+            "body": "{connection} ({kind}) asks to run one statement past a limit. Approving runs this statement once; the limit stays for every other call."
+          },
+          "limit": {
+            "label": "{label}: {measured}, limit {max}"
+          },
+          "reason": {
+            "label": "Agent’s reason"
+          },
+          "statementTimeout": {
+            "label": "Statement timeout"
+          }
         },
         "formatted": {
           "option": "Formatted"
