@@ -1,10 +1,10 @@
 # v0.2.35
 
-Branch `chapter/v0.2.35`, based on `chapter/v0.2.34` (v0.2.34 not yet merged to main). First `P` is 512 (highest in v0.2.34 is P511), last is P526.
+Branch `chapter/v0.2.35`, based on `chapter/v0.2.34` (v0.2.34 not yet merged to main). First `P` is 512 (highest in v0.2.34 is P511), last is P527.
 
-Source: user request. Fifteen phases. Close duty after the last phase lands: one full suite run, 2 code review rounds (user ask), hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
+Source: user request. Sixteen phases. Close duty after the last phase lands: one full suite run, 2 code review rounds (user ask), hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
 
-Parallelism (user ask): up to 3 phases run at once as named streams, each in its own worktree off the same base, zero file overlap. P512 to P517 landed. Remaining waves: P518 + P519 + P524 in parallel, then P520 alone (touches every approval owner), then P521, then P522 (sequential: both edit the Studio MCP server, settings and prompt registry), then P523 alone (touches every id generator). P525 ran ahead of P520 by user direction (frontend-only). P520 implementation starts after P526 lands. From P512 on, new Kira-generated ids follow the P523 convention where cheap.
+Parallelism (user ask): up to 3 phases run at once as named streams, each in its own worktree off the same base, zero file overlap. P512 to P517 landed. Remaining waves: P518 + P519 + P524 in parallel, then P520 alone (touches every approval owner), then P521, then P522 (sequential: both edit the Studio MCP server, settings and prompt registry), then P523 alone (touches every id generator), then P527 alone (DB MCP tools, adapterhost and adapters; after P520 to P523). P525 ran ahead of P520 by user direction (frontend-only). P520 implementation starts after P526 lands. From P512 on, new Kira-generated ids follow the P523 convention where cheap.
 
 | Phase | Title | Status |
 |---|---|---|
@@ -23,6 +23,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 | P524 | Manual order for API collections and environments | Done |
 | P525 | Uniform flat design: dialogs and outline buttons | Done |
 | P526 | Standalone step library and Workflows page tabs | Done |
+| P527 | DB MCP read and write tools enforced by the database | Pending |
 
 ## Rows
 
@@ -125,3 +126,9 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 - Reading: "Stops" means steps. Steps become standalone library files (`<home>/steps/<id>.yaml`); a workflow references them and adds on top (per-workflow overrides, extra prompt, its own routes, inline workflow-only steps). Workflows page gets tabs Statuses, Steps, Workflows. Existing inline steps move into the library once, with a backup. Space ADE only, no SQL migration.
 - Plan: `plans/P526.md`.
 - Result: Done in 7 code commits plus docs, no SQL migration. Step library `<home>/steps/*.yaml`, workflow references with overrides, `routes` and `prompt_extra`, diff writer, one-time migration with `.p526-backup`, Statuses/Steps/Workflows tabs, library editing (form and YAML), flow tests `TestStepLibrary*`, UI spec `ade-v2-workflow-steps`. Library edits apply to new work only.
+
+### P527 DB MCP read and write tools enforced by the database
+
+- Ask (user): "The db mcp tool should use dedicated read and write methods that actually enforce the permissions on db level or by using 2 connections one for read and one for write depending on the db."
+- Reading: `run_query` gives way to dedicated `run_read` and `run_write`. Read runs on a per-connection read lane (second adapter in the engine's read-only mode, optional least-privilege read user); write runs on the primary after the write gate. The tool picks gate and connection; statement classification is only an approval hint and may only tighten. Per-adapter matrix, lane lifecycle and cancel, mode mapping, back-compat in the plan. Runs after P523.
+- Plan: `plans/P527.md`.
