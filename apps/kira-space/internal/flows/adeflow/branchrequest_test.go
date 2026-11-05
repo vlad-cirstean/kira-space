@@ -365,6 +365,36 @@ func TestBranchRequest(t *testing.T) {
 		}
 	})
 
+	t.Run("denial leaves a call that joined after the view rendered pending", func(t *testing.T) {
+		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/a"})}, Name: "done"}}, onceStepYML, true)
+		f.startRun(t)
+		req := f.waitRequest(t)
+		joined, cancel := context.WithCancel(ctx)
+		defer cancel()
+		done := make(chan error, 1)
+		go func() {
+			_, err := f.app.W.AdeBoard.RequestBranches(joined, agentmcp.SpaceCall{TaskID: f.task.ID}, []agentmcp.BranchSpec{{Repo: "web", Branch: "feat/w"}})
+			done <- err
+		}()
+		f.waitItems(t, 2)
+		if ans, err := answerBR(f.app, req.ID, false, brOptions{ShownItemIDs: []string{"c0i0"}}); err != nil || !ans.Resolved {
+			t.Fatalf("Deny = %+v, %v", ans, err)
+		}
+		left, err := branchRequest(f.app, req.ID)
+		if err != nil || len(left.Items) != 1 || left.Items[0].ID != "c1i0" {
+			t.Fatalf("after denial: %+v, %v, want the late call's item still open", left, err)
+		}
+		select {
+		case err := <-done:
+			t.Fatalf("late call answered early: %v", err)
+		default:
+		}
+		mustDeny(t, f.app, req.ID)
+		if err := <-done; err != nil {
+			t.Fatalf("late call: %v", err)
+		}
+	})
+
 	t.Run("stopping the session abandons the request", func(t *testing.T) {
 		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/a"})}, WaitFile: filepath.Join(t.TempDir(), "never")}},
 			"  - id: work\n    name: Work\n    kind: manual\n    session: true\n", false, flowharness.WithTrackerGrace(time.Second))

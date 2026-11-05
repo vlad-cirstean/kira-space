@@ -136,16 +136,10 @@ func itemOfBranchRequest(v adewire.BranchRequest) approvals.Item {
 // branchOwner answers branch.request items for the approvals queue.
 type branchOwner struct{ b *TaskBoard }
 
-// Answer approves or denies the request. Approve options are {itemIds, remoteItemIds, shownItemIds}; none
-// approves every item with the remote rename off. A call with an item outside shownItemIds joined after the
-// user's view rendered; it stays pending.
+// Answer approves or denies the request. Options are {itemIds, remoteItemIds, shownItemIds}; none approves
+// every item with the remote rename off. A call with an item outside shownItemIds joined after the user's
+// view rendered; it stays pending.
 func (o branchOwner) Answer(ref string, a approvals.Answer) error {
-	if !a.Approve {
-		if !o.b.DenyBranchRequest(ref) {
-			return ipcerr.NotFoundNamed("approval")
-		}
-		return nil
-	}
 	var opts struct {
 		ItemIDs       []string `json:"itemIds"`
 		RemoteItemIDs []string `json:"remoteItemIds"`
@@ -155,6 +149,12 @@ func (o branchOwner) Answer(ref string, a approvals.Answer) error {
 		if err := json.Unmarshal(a.Options, &opts); err != nil {
 			return ipcerr.Contract("branch request options: %v", err)
 		}
+	}
+	if !a.Approve {
+		if !o.b.DenyBranchRequest(ref, opts.ShownItemIDs) {
+			return ipcerr.NotFoundNamed("approval")
+		}
+		return nil
 	}
 	resolved, err := o.b.ApproveBranchRequest(ref, opts.ItemIDs, opts.RemoteItemIDs, opts.ShownItemIDs)
 	switch {
@@ -335,16 +335,7 @@ func (b *TaskBoard) ApproveBranchRequest(id string, itemIDs, remoteIDs, shownIDs
 	known := func(iid string) bool {
 		return slices.ContainsFunc(r.view.Items, func(it adewire.BranchRequestItem) bool { return it.ID == iid })
 	}
-	shown := make(map[string]bool, len(r.view.Items))
-	if shownIDs == nil {
-		for _, it := range r.view.Items {
-			shown[it.ID] = true
-		}
-	} else {
-		for _, iid := range shownIDs {
-			shown[iid] = true
-		}
-	}
+	shown := shownSet(r, shownIDs)
 	if itemIDs == nil {
 		for _, it := range r.view.Items {
 			if shown[it.ID] {
@@ -368,7 +359,28 @@ func (b *TaskBoard) ApproveBranchRequest(id string, itemIDs, remoteIDs, shownIDs
 		}
 		dec.remote[iid] = true
 	}
-	b.removeCallsLocked(r, dec, func(c *branchCall) bool {
+	b.removeCallsLocked(r, dec, seenCalls(r, shown))
+	return true, nil
+}
+
+// shownSet is the item ids the user's view held; nil means the items open now.
+func shownSet(r *branchRequest, shownIDs []string) map[string]bool {
+	shown := make(map[string]bool, len(r.view.Items))
+	if shownIDs == nil {
+		for _, it := range r.view.Items {
+			shown[it.ID] = true
+		}
+		return shown
+	}
+	for _, iid := range shownIDs {
+		shown[iid] = true
+	}
+	return shown
+}
+
+// seenCalls selects the calls whose items the user's view all held; a call that joined later stays pending.
+func seenCalls(r *branchRequest, shown map[string]bool) func(*branchCall) bool {
+	return func(c *branchCall) bool {
 		prefix := c.prefix + "i"
 		for _, it := range r.view.Items {
 			if strings.HasPrefix(it.ID, prefix) && !shown[it.ID] {
@@ -376,13 +388,21 @@ func (b *TaskBoard) ApproveBranchRequest(id string, itemIDs, remoteIDs, shownIDs
 			}
 		}
 		return true
-	})
-	return true, nil
+	}
 }
 
-// DenyBranchRequest denies every item; resolved is false when the request is already gone.
-func (b *TaskBoard) DenyBranchRequest(id string) bool {
-	return b.resolveBranchRequest(id, branchDecision{kind: decisionDenied})
+// DenyBranchRequest denies the calls whose items the user's view held (shownIDs; nil means the items open
+// now); resolved is false when the request is already gone.
+func (b *TaskBoard) DenyBranchRequest(id string, shownIDs []string) bool {
+	q := &b.branchReqs
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	r := q.byID[id]
+	if r == nil {
+		return false
+	}
+	b.removeCallsLocked(r, branchDecision{kind: decisionDenied}, seenCalls(r, shownSet(r, shownIDs)))
+	return true
 }
 
 func (b *TaskBoard) branchRequestWait() time.Duration {
