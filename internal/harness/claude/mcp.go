@@ -18,7 +18,9 @@ func (*Provider) MCPConfig(servers []harness.MCPServer) ([]byte, error) {
 	m := make(map[string]any, len(servers))
 	for _, s := range servers {
 		if s.URL != "" {
-			m[s.Name] = map[string]any{"type": "http", "url": s.URL, "headers": s.Headers}
+			doc := map[string]any{"type": "http", "url": s.URL, "headers": s.Headers}
+			setTimeout(doc, s)
+			m[s.Name] = doc
 			continue
 		}
 		// claude rejects null args and env, so each is left out when empty.
@@ -29,9 +31,17 @@ func (*Provider) MCPConfig(servers []harness.MCPServer) ([]byte, error) {
 		if len(s.Env) > 0 {
 			doc["env"] = s.Env
 		}
+		setTimeout(doc, s)
 		m[s.Name] = doc
 	}
 	return json.Marshal(map[string]any{"mcpServers": m})
+}
+
+// setTimeout writes the per-server call timeout in ms; claude ignores values under 1000.
+func setTimeout(doc map[string]any, s harness.MCPServer) {
+	if s.Timeout > 0 {
+		doc["timeout"] = s.Timeout.Milliseconds()
+	}
 }
 
 // ToolArgs returns the --tools list (the ticked built-ins) and the exact --allowedTools list: the

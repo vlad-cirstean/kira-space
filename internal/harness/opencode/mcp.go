@@ -13,7 +13,8 @@ func (*Provider) MCPToolName(t harness.MCPTool) string {
 }
 
 // MCPConfig is the config document of the servers (V6, verified): remote servers carry url and
-// headers, local ones a command array and environment. A resolved value holding a substitution mark
+// headers, local ones a command array and environment. MCPServer.Timeout is dropped: OpenCode's remote
+// `timeout` key bounds the tool-list fetch, not a call. A resolved value holding a substitution mark
 // is refused: OpenCode would expand it in the file too.
 func (*Provider) MCPConfig(servers []harness.MCPServer) ([]byte, error) {
 	b, err := json.Marshal(map[string]any{"mcp": mcpEntries(servers)})

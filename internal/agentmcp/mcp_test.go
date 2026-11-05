@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -73,6 +74,9 @@ func TestFinishStepServer(t *testing.T) {
 
 	if info, err := os.Stat(cfgA); err != nil || info.Mode().Perm() != 0o600 {
 		t.Fatalf("config file mode = %v, %v; want 0600", info, err)
+	}
+	if raw, err := os.ReadFile(cfgA); err != nil || !strings.Contains(string(raw), `"timeout":2100000`) {
+		t.Fatalf("grant config = %s (%v), want the 35 minute server timeout", raw, err)
 	}
 	if _, err := connect(t, cfgA, "not-a-valid-token"); err == nil {
 		t.Fatal("a wrong bearer token connected")

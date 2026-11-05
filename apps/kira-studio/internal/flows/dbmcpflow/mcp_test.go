@@ -311,6 +311,9 @@ func TestInstallAgentWithoutCli(t *testing.T) {
 	if st.AgentAvailable || len(st.Probed) == 0 || !strings.Contains(st.Command, "claude mcp add-json") {
 		t.Fatalf("Status = %+v, want claude unavailable, the probed paths and a copyable command", st)
 	}
+	if !strings.Contains(st.Command, `"timeout":2100000`) {
+		t.Fatalf("Status.Command = %q, want the 35 minute server timeout", st.Command)
+	}
 	res := app.W.DbMcp.InstallAgent(ctx)
 	if res.Outcome != harness.OutcomeNotFound || len(res.Probed) == 0 {
 		t.Fatalf("InstallAgent = %+v, want notFound with the probed paths", res)
