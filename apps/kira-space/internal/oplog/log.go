@@ -5,12 +5,12 @@ package oplog
 
 import (
 	"context"
-	"crypto/rand"
 	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"github.com/kirathecat/kira-studio/internal/notify"
 )
@@ -165,7 +165,7 @@ func (l *Log) Start(ctx context.Context, m Meta) *Op {
 		source = o.Label
 	}
 	rec := &Record{
-		ID:         l.idPrefix + rand.Text(),
+		ID:         l.idPrefix + ids.NewID(),
 		StartedAt:  kiratime.NowISO(),
 		Category:   cat,
 		Kind:       m.Kind,

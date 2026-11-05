@@ -9,10 +9,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
@@ -295,7 +295,7 @@ func captureTrigger(s *CaptureService) {
 			order = r.Order + 1
 		}
 	}
-	key := CaptureWindowKeyPrefix + uuid.NewString()
+	key := CaptureWindowKeyPrefix + ids.NewID()
 	if err := s.Windows.Create(model.WindowRecord{Key: key, Order: order}); err != nil {
 		slog.Warn("capture: create window row", "scope", "capture", "err", err)
 		return
@@ -309,7 +309,7 @@ func captureTrigger(s *CaptureService) {
 // text; nothing shows the empty state.
 func (s *CaptureService) classify(ctx context.Context, raw string, ok bool) captureEntry {
 	text := strings.TrimSpace(raw)
-	item := CaptureItem{ID: uuid.NewString(), Kind: CaptureKindEmpty}
+	item := CaptureItem{ID: ids.NewID(), Kind: CaptureKindEmpty}
 	if !ok || text == "" {
 		return captureEntry{item: item}
 	}

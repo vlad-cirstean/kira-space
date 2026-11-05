@@ -2,8 +2,6 @@ package bridge
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -16,6 +14,7 @@ import (
 	"github.com/google/renameio/v2"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/memory"
 	"github.com/kirathecat/kira-studio/internal/memory/importer"
@@ -250,10 +249,6 @@ func writeDistilled(doc string) (string, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
-	var salt [2]byte
-	if _, err := rand.Read(salt[:]); err != nil {
-		return "", err
-	}
-	path := filepath.Join(dir, "distilled-"+time.Now().UTC().Format("20060102-150405")+"-"+hex.EncodeToString(salt[:])+".md")
+	path := filepath.Join(dir, "distilled-"+time.Now().UTC().Format("20060102-150405")+"-"+ids.New(ids.Distill)+".md")
 	return path, renameio.WriteFile(path, []byte(doc), 0o600)
 }

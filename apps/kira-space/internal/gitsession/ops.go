@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/catfile"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitops"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpreflight"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -993,7 +993,7 @@ func prepareSequencerVerb(
 	return prepared{argvList: [][]string{argv}}, nil
 }
 
-func newUndoID() string { return uuid.NewString() }
+func newUndoID() string { return ids.NewID() }
 
 // captureBranchDeleteUndo is undo-capture for a branch delete, captured BEFORE the
 // write: the branch's current tip sha plus every branch.<name>.* config line, replayed back in
