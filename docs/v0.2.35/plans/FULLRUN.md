@@ -22,3 +22,4 @@ Resumable log. Env: 4 cores, CGO_ENABLED=1.
   - F8 Studio visual settings-database-mcp: pane gained 'Bring Kira Studio forward for approvals' and 'Let agents send API requests' (P520). Re-recorded.
   - F9 Space visual workflow-graph x5 (review, graph, branches, manual, script): step panel gained 'Save to library' (P526). Re-recorded. Fonts: fc-match sans-serif = Inter.
   - Rerun without update: all pass (Studio settings, Space visual 27).
+- Space e2e-real (4): prompts-two-windows-real failed; F10 spec used pre-file-dialog testids (script-dialog, script-dialog-tab-schedule, script-dialog-save) and expected Save to close the dialog; now run-file-dialog, run-file-tab-schedule, run-file-save, then Close. Fixed in both apps' copies. Space rerun passes; other 3 passed first run.
