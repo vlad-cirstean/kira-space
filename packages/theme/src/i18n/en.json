@@ -13616,6 +13616,9 @@
           "limit": {
             "label": "{label}: {measured}, limit {max}"
           },
+          "noTimeout": {
+            "body": "Approving runs this statement with no time limit. Stop it from the operations panel if needed."
+          },
           "reason": {
             "label": "Agent’s reason"
           },
@@ -15417,6 +15420,36 @@
           },
           "throttleOff": {
             "body": "MCP calls are not throttled on this connection (throttle 0, {tab} tab)."
+          },
+          "timeoutByApp": {
+            "body": "The database has no statement timeout here. This app stops the statement with its cancel path."
+          },
+          "timeoutByEngine": {
+            "body": "The database stops the statement itself."
+          },
+          "timeoutDescription": {
+            "body": "Every statement an agent runs here is stopped after this many seconds, in any mode. 0 turns the timeout off. Default {default} s."
+          },
+          "timeoutHit": {
+            "body": "A stopped statement refuses the call. The agent may ask for an exemption. You always approve it in a dialog, and it runs with no limit. Time queued behind other ops does not count."
+          },
+          "timeoutLabel": {
+            "label": "Statement timeout (seconds)"
+          },
+          "timeoutNone": {
+            "body": "This kind has no console, so agents run no statements here."
+          },
+          "timeoutOff": {
+            "body": "No timeout. An agent’s statement runs until it ends or you stop it."
+          },
+          "timeoutRange": {
+            "status": "Enter 0 to turn it off, or a whole number from 1 to {max}"
+          },
+          "timeoutSplit": {
+            "body": "The database stops {engine} statements. This app stops {app} statements with its cancel path."
+          },
+          "timeoutThrottle": {
+            "body": "This connection is throttled and runs one op at a time. A long agent statement can make your own ops wait past their 30 s limit."
           },
           "write": {
             "label": "Write"

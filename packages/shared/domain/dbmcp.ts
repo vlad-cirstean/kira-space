@@ -64,6 +64,33 @@ export function enforcementOf(kind: string): DbMcpEnforcement {
   return 'none';
 }
 
+// Mirror of internal/dbmcp/timeout.go timeoutEnforcementOf: what stops a statement past the
+// connection's statement timeout, per mode. The flow test's list_connections contract pins both sides.
+export function statementTimeoutEnforcementOf(kind: string): Record<DbMcpMode, DbMcpEnforcement> {
+  const all = (e: DbMcpEnforcement): Record<DbMcpMode, DbMcpEnforcement> => ({
+    read: e,
+    write: e,
+    ddl: e,
+  });
+  switch (kind) {
+    case 'postgres':
+      return all('session');
+    case 'mysql':
+    case 'clickhouse':
+      return { read: 'session', write: 'app', ddl: 'app' };
+    case 'mariadb':
+      return { read: 'session', write: 'session', ddl: 'app' };
+    case 'sqlite':
+    case 'mongodb':
+    case 'redis':
+      return all('app');
+    case 'kibana':
+      return { read: 'app', write: 'none', ddl: 'none' };
+    default:
+      return all('none');
+  }
+}
+
 export interface DbMcpAccessInput {
   kind: string;
   readOnly: boolean;

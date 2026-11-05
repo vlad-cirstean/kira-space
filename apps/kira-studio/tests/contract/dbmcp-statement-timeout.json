@@ -1,0 +1,419 @@
+{
+  "item": {
+    "createdAt": 0,
+    "expiresAt": 0,
+    "id": "db.exemption:<id:1>",
+    "kind": "db.exemption",
+    "operation": {
+      "class": "read",
+      "tone": "neutral"
+    },
+    "origin": {
+      "client": "Claude Code 2.1.318",
+      "cwd": "",
+      "source": "",
+      "step": "",
+      "task": ""
+    },
+    "payload": {
+      "connectionId": "<id:2>",
+      "detected": "read",
+      "enforcement": "session",
+      "limits": [
+        {
+          "limit": "statement_timeout",
+          "max": 1000,
+          "measured": 0,
+          "unit": "ms"
+        }
+      ],
+      "mode": "read",
+      "plan": null,
+      "reason": "the count is needed",
+      "statement": "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM c) SELECT count(*) FROM (SELECT x FROM c LIMIT 8000000)"
+    },
+    "reason": "exemption",
+    "target": {
+      "color": "teal",
+      "kind": "sqlite",
+      "location": "/data/mcp.db",
+      "name": "timeout db",
+      "readOnly": false
+    }
+  },
+  "list_connections": [
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "description": "scratch notes",
+      "enforcement": "session",
+      "id": "<masked>",
+      "kind": "sqlite",
+      "name": "notes db",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "app",
+          "write": "app"
+        },
+        "seconds": 0
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "enforcement": "session",
+      "id": "<masked>",
+      "kind": "postgres",
+      "name": "t-postgres",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "session",
+          "read": "session",
+          "write": "session"
+        },
+        "seconds": 0
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "enforcement": "session",
+      "id": "<masked>",
+      "kind": "mysql",
+      "name": "t-mysql",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "session",
+          "write": "app"
+        },
+        "seconds": 10
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "enforcement": "session",
+      "id": "<masked>",
+      "kind": "mariadb",
+      "name": "t-mariadb",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "session",
+          "write": "session"
+        },
+        "seconds": 10
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "enforcement": "session",
+      "id": "<masked>",
+      "kind": "clickhouse",
+      "name": "t-clickhouse",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "session",
+          "write": "app"
+        },
+        "seconds": 10
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "enforcement": "session",
+      "id": "<masked>",
+      "kind": "sqlite",
+      "name": "t-sqlite",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "app",
+          "write": "app"
+        },
+        "seconds": 10
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "enforcement": "app",
+      "id": "<masked>",
+      "kind": "mongodb",
+      "name": "t-mongodb",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "app",
+          "write": "app"
+        },
+        "seconds": 10
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "enforcement": "app",
+      "id": "<masked>",
+      "kind": "redis",
+      "name": "t-redis",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "app",
+          "write": "app"
+        },
+        "seconds": 10
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "no write console"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read",
+        "write": {
+          "allowed": false,
+          "approval": false,
+          "reason": "no write console"
+        }
+      },
+      "enforcement": "none",
+      "id": "<masked>",
+      "kind": "kibana",
+      "name": "t-kibana",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "none",
+          "read": "app",
+          "write": "none"
+        },
+        "seconds": 10
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "no write console"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read",
+        "write": {
+          "allowed": false,
+          "approval": false,
+          "reason": "no write console"
+        }
+      },
+      "enforcement": "none",
+      "id": "<masked>",
+      "kind": "kafka",
+      "name": "t-kafka",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "none",
+          "read": "none",
+          "write": "none"
+        },
+        "seconds": 10
+      },
+      "status": "disconnected"
+    }
+  ]
+}

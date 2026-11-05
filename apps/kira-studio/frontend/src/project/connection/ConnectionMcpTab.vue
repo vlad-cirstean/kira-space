@@ -1,11 +1,20 @@
 <script setup lang="ts">
-import { EXPLAIN_SUPPORTED_KINDS } from '@shared/domain/connection';
+import {
+  CONNECTION_MCP_STATEMENT_TIMEOUT,
+  EXPLAIN_SUPPORTED_KINDS,
+} from '@shared/domain/connection';
 import type { ConnectionFileMcp, ConnectionFileModel } from '@shared/domain/connectionConfig';
-import { accessSummaryOf, enforcementOf, hasWriteConsole } from '@shared/domain/dbmcp';
+import {
+  accessSummaryOf,
+  enforcementOf,
+  hasWriteConsole,
+  statementTimeoutEnforcementOf,
+} from '@shared/domain/dbmcp';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { type MessageKey, t } from '@theme/i18n';
+import NumberStepperInput from '@theme/NumberStepperInput.vue';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
 import { computed } from 'vue';
 import { useSettingsStore } from '../../state/settings';
@@ -121,6 +130,46 @@ const throttleLead = computed(() => {
     ? t('studio.project.connectionDialog.mcp.throttle.body', { rate: String(perSec), tab })
     : t('studio.project.connectionDialog.mcp.throttleOff.body', { tab });
 });
+
+// Mirrors statementTimeoutEnforcementOf: who stops a statement past the timeout, per mode.
+const timeoutValue = computed(
+  () => mcp.value.statement_timeout_sec ?? CONNECTION_MCP_STATEMENT_TIMEOUT.default,
+);
+function setTimeoutSec(value: string): void {
+  const n = Number.parseFloat(value);
+  setMcp({
+    statement_timeout_sec: Number.isNaN(n) ? CONNECTION_MCP_STATEMENT_TIMEOUT.default : n,
+  });
+}
+const timeoutError = computed(() => {
+  const v = timeoutValue.value;
+  if (!Number.isInteger(v) || v < 0 || v > CONNECTION_MCP_STATEMENT_TIMEOUT.max) {
+    return t('studio.project.connectionDialog.mcp.timeoutRange.status', {
+      max: CONNECTION_MCP_STATEMENT_TIMEOUT.max,
+    });
+  }
+  return props.errorFor('/mcp/statement_timeout_sec');
+});
+const timeoutEnforcement = computed(() => {
+  if (timeoutValue.value === 0) return t('studio.project.connectionDialog.mcp.timeoutOff.body');
+  const by = statementTimeoutEnforcementOf(file.value.kind);
+  const modes = ['read', 'write', 'ddl'] as const;
+  const engine = modes.filter((m) => by[m] === 'session');
+  const app = modes.filter((m) => by[m] === 'app');
+  if (engine.length === 0 && app.length === 0)
+    return t('studio.project.connectionDialog.mcp.timeoutNone.body');
+  if (app.length === 0) return t('studio.project.connectionDialog.mcp.timeoutByEngine.body');
+  if (engine.length === 0) return t('studio.project.connectionDialog.mcp.timeoutByApp.body');
+  return t('studio.project.connectionDialog.mcp.timeoutSplit.body', {
+    engine: engine.join(', '),
+    app: app.join(', '),
+  });
+});
+const timeoutThrottled = computed(
+  () =>
+    (file.value.throttle_per_sec ?? 0) > 0 &&
+    (timeoutValue.value === 0 || timeoutValue.value >= 28),
+);
 </script>
 
 <template>
@@ -237,6 +286,47 @@ const throttleLead = computed(() => {
         {{ t('studio.project.connectionDialog.mcp.enforceMasking.body') }}
       </FieldDescription>
     </template>
+
+    <Field class="flex-1">
+      <FieldLabel>{{ t('studio.project.connectionDialog.mcp.timeoutLabel.label') }}</FieldLabel>
+      <div class="w-24">
+        <NumberStepperInput
+          :min="0"
+          :max="CONNECTION_MCP_STATEMENT_TIMEOUT.max"
+          step="1"
+          :disabled="!enabled"
+          :aria-invalid="timeoutError ? true : undefined"
+          data-testid="connection-mcp-timeout"
+          :model-value="String(timeoutValue)"
+          @update:model-value="(v: string | number) => setTimeoutSec(String(v))"
+        />
+      </div>
+      <FieldError v-if="timeoutError" data-testid="connection-mcp-timeout-error">
+        {{ timeoutError }}
+      </FieldError>
+      <template v-else>
+        <FieldDescription class="w-full" data-testid="connection-mcp-timeout-description">
+          {{
+            t('studio.project.connectionDialog.mcp.timeoutDescription.body', {
+              default: CONNECTION_MCP_STATEMENT_TIMEOUT.default,
+            })
+          }}
+        </FieldDescription>
+        <FieldDescription class="w-full" data-testid="connection-mcp-timeout-enforcement">
+          {{ timeoutEnforcement }}
+          <span v-if="timeoutValue > 0">{{
+            t('studio.project.connectionDialog.mcp.timeoutHit.body')
+          }}</span>
+        </FieldDescription>
+        <FieldDescription
+          v-if="timeoutThrottled"
+          class="w-full"
+          data-testid="connection-mcp-timeout-throttle"
+        >
+          {{ t('studio.project.connectionDialog.mcp.timeoutThrottle.body') }}
+        </FieldDescription>
+      </template>
+    </Field>
 
     <Field class="flex-1">
       <FieldLabel

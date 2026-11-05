@@ -31,6 +31,7 @@ const lede = computed(() =>
 const enforcement = computed(() =>
   payload.value.mode === 'read' ? ENFORCEMENT_KEYS[payload.value.enforcement] : undefined,
 );
+const noTimeout = computed(() => payload.value.limits.some((l) => l.limit === 'statement_timeout'));
 const limits = computed(() =>
   payload.value.limits.map((l) => {
     const show = l.unit === 'ms' ? formatDuration : formatCount;
@@ -57,6 +58,9 @@ const limits = computed(() =>
       data-testid="db-mcp-exemption-limit"
     >
       {{ l.text }}
+    </FieldDescription>
+    <FieldDescription v-if="noTimeout" data-testid="db-mcp-exemption-no-timeout">
+      {{ t('studio.dbMcp.approval.exemption.noTimeout.body') }}
     </FieldDescription>
     <div class="flex flex-col gap-1" data-testid="db-mcp-exemption-reason">
       <FieldDescription>{{ t('studio.dbMcp.approval.exemption.reason.label') }}</FieldDescription>
