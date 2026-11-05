@@ -135,7 +135,7 @@ ade.rebase.contextLine	95
 ade.sendBack.line	63
 run.resume.line	261
 dbmcp.instructions	2197
-dbmcp.tool.list_connections	857
+dbmcp.tool.list_connections	944
 dbmcp.tool.list_operations	190
 dbmcp.tool.cancel_operation	150
 dbmcp.tool.cancel_operation.arg.opId	50
@@ -183,7 +183,7 @@ dbmcp.tool.describe_schema	165
 dbmcp.tool.describe_schema.arg.connectionId	36
 dbmcp.tool.describe_schema.arg.path	52
 dbmcp.tool.describe_schema.arg.refresh	60
-dbmcp.tool.run_query	1263
+dbmcp.tool.run_query	1329
 dbmcp.tool.run_query.arg.connectionId	36
 dbmcp.tool.run_query.arg.sql	481
 dbmcp.tool.run_query.arg.path	121
