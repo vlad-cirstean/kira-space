@@ -67,6 +67,8 @@ var opKinds = map[string]bool{
 	"schemaColumns": true, "keyTypes": true,
 	// P307: the pre-connect script's startup wait (Router.RunPreconnect).
 	"preconnect": true,
+	// P532: the table allow list's catalog probe (Router.StatementTables).
+	"tables": true,
 }
 
 var opStatuses = map[string]bool{
