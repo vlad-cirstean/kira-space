@@ -3,11 +3,19 @@ package appstorage
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
+
+// ErrInvalidTab marks a tab record ValidateTab refused; SaveWindowTabs reports it as E_CONTRACT.
+var ErrInvalidTab = errors.New("invalid tab")
+
+// ErrTabOwnedElsewhere means a save named a tab id that another window owns.
+var ErrTabOwnedElsewhere = errors.New("appstorage: tab id belongs to another window")
 
 // IsJSONObject reports whether raw is valid JSON whose top-level value is an object — both apps'
 // own storage/model.TabRecord require their own `state` column to round-trip a Record<...>-shaped
@@ -38,8 +46,18 @@ type TabFields struct {
 // whether that kind needs a non-empty WorkspaceID — Kira Studio requires it only for "terminal",
 // Kira Space for every kind.
 func ValidateTab(t TabFields, isRenderable, requireWorkspace func(kind string) bool) error {
+	if err := validateTab(t, isRenderable, requireWorkspace); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidTab, err)
+	}
+	return nil
+}
+
+func validateTab(t TabFields, isRenderable, requireWorkspace func(kind string) bool) error {
 	if t.ID == "" {
 		return fmt.Errorf("model: tab: id is required")
+	}
+	if !ids.IsClientID(t.ID) {
+		return fmt.Errorf("model: tab: id must be 1 to %d characters of letters, digits, _ : -", ids.MaxClientIDBytes)
 	}
 	if t.Path == "" {
 		return fmt.Errorf("model: tab %q: path is required", t.ID)
@@ -138,6 +156,12 @@ func SaveWindowTabs[T any](windows WindowExistsChecker, tabs TabsSaver[T], windo
 		return err
 	}
 	if err := tabs.Save(windowKey, records); err != nil {
+		if errors.Is(err, ErrTabOwnedElsewhere) {
+			return ipcerr.Contract("tab id belongs to another window")
+		}
+		if errors.Is(err, ErrInvalidTab) {
+			return ipcerr.Contract("%s", err.Error())
+		}
 		return ipcerr.Internal(err.Error())
 	}
 	return nil

@@ -45,6 +45,24 @@ func Body(s string) string {
 	return body
 }
 
+// MaxClientIDBytes bounds a client-minted opaque id (tab and terminal ids).
+const MaxClientIDBytes = 64
+
+// IsClientID reports whether s is a safe client-minted opaque id: 1 to 64 bytes of [A-Za-z0-9_:-].
+func IsClientID(s string) bool {
+	if s == "" || len(s) > MaxClientIDBytes {
+		return false
+	}
+	for i := range len(s) {
+		c := s[i]
+		ok := c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '_' || c == ':' || c == '-'
+		if !ok {
+			return false
+		}
+	}
+	return true
+}
+
 // Pattern is regexp source matching any registered nanoid inside text.
 var Pattern = buildPattern()
 
