@@ -1346,13 +1346,13 @@ var DbmcpInstructions = define(Entry{
 // DbmcpToolListConnections describes the list_connections tool.
 var DbmcpToolListConnections = define(Entry{
 	ID: "dbmcp.tool.list_connections", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list_connections",
-	Default: "List every database connection exposed to MCP, with kind, read-only flag, live status and, once connected, capabilities. `access` lists the modes run_query may use and which need approval. `enforcement` says what backs mode read: session (the database refuses writes), app (Kira checks; the engine has no read-only session) or none. `statementTimeout` is the seconds a statement may run (0 off) and per mode what stops it: session (the database) or app (Kira cancels it).",
+	Default: "List every database connection exposed to MCP, with kind, read-only flag, live status and, once connected, capabilities. `access` lists the modes run_query may use and which need approval. `enforcement` says what backs mode read: session (the database refuses writes), app (Kira checks; the engine has no read-only session) or none. `statementTimeout` is the seconds a statement may run (0 off) and per mode what stops it: session (the database) or app (Kira cancels it). `tables` is all, or the only tables MCP may touch; a statement on another table, or one the list cannot check, is refused.",
 }, NoVars{})
 
 // DbmcpToolListChildren describes the list_children tool.
 var DbmcpToolListChildren = define(Entry{
 	ID: "dbmcp.tool.list_children", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list_children",
-	Default: "List one container's own children: databases, schemas, tables, keys, topics, buckets, whatever this connection's engine has at that level. Omit path for the top level.",
+	Default: "List one container's own children: databases, schemas, tables, keys, topics, buckets, whatever this connection's engine has at that level. Omit path for the top level. Tables outside the connection's allow list are hidden.",
 }, NoVars{})
 
 var (

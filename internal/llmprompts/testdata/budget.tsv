@@ -135,7 +135,7 @@ ade.rebase.contextLine	95
 ade.sendBack.line	63
 run.resume.line	261
 dbmcp.instructions	2151
-dbmcp.tool.list_connections	471
+dbmcp.tool.list_connections	594
 dbmcp.tool.list_operations	190
 dbmcp.tool.cancel_operation	150
 dbmcp.tool.cancel_operation.arg.opId	50
@@ -171,7 +171,7 @@ dbmcp.tool.api_request.arg.form.value	70
 dbmcp.tool.api_request.arg.timeoutSeconds	70
 dbmcp.tool.api_request.arg.maxResponseBytes	90
 dbmcp.tool.api_request.arg.followRedirects	140
-dbmcp.tool.list_children	167
+dbmcp.tool.list_children	222
 dbmcp.tool.list_children.arg.connectionId	36
 dbmcp.tool.list_children.arg.path	85
 dbmcp.tool.list_children.arg.refresh	60
