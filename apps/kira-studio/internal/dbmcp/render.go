@@ -139,6 +139,8 @@ type connectionView struct {
 	Enforcement string           `json:"enforcement"`
 	// StatementTimeout is the run_query timeout: seconds (0 off) and what stops a statement per mode.
 	StatementTimeout statementTimeoutView `json:"statementTimeout"`
+	// ExpensiveQuery is the run_query row-estimate check: the app-wide threshold and whether this connection is checked.
+	ExpensiveQuery expensiveQueryView `json:"expensiveQuery"`
 	// MaskedColumns is "table.column: kind" per rule, sorted, capped at 50 with a trailing
 	// "+N more" entry — so a client that does not know a column is masked does not misread a bucket
 	// string (e.g. "[1000-10000)") as a literal value. Omitted when the connection

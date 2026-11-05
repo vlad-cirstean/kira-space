@@ -13638,9 +13638,6 @@
         "formatted": {
           "option": "Formatted"
         },
-        "heavy": {
-          "body": "{connection} ({kind}) wants to run a query estimated to read {count} row, over your threshold of {threshold}. | {connection} ({kind}) wants to run a query estimated to read {count} rows, over your threshold of {threshold}."
-        },
         "kube": {
           "describe": {
             "body": "An MCP client wants to describe an object in {cluster} through the database MCP server."

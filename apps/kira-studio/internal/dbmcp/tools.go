@@ -35,6 +35,7 @@ func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ li
 	if err != nil {
 		return nil, nil, err
 	}
+	threshold := s.cfg.ExplainThreshold()
 	out := make([]connectionView, 0, len(conns))
 	for _, c := range conns {
 		if !c.McpEnabled {
@@ -46,6 +47,7 @@ func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ li
 			Description: c.McpDescription,
 			Permissions: connectionPermissions{Read: c.McpReadMode, Write: c.McpWriteMode, DDL: c.McpDdlMode},
 			Access:      accessOf(c), Enforcement: enforcementOf(c.Kind), StatementTimeout: timeoutViewOf(c),
+			ExpensiveQuery: expensiveQueryView{RowsThreshold: threshold, Check: expensiveCheckOf(c)},
 		}
 		if state.ServerVersion != nil {
 			view.ServerVersion = state.ServerVersion
@@ -218,13 +220,14 @@ type exemptionArgs struct {
 //
 // The gate order: resolve the connection → check the declared mode → refuse before connecting when
 // the declared mode's permission denies → clamp maxRows → connect → tighten-only classifier check
-// (a statement that looks more powerful than its mode is refused, never run) → table allow list (P532) → forced EXPLAIN when
-// McpAutoExplain is on (read mode only; a nil plan or any error degrades to "no plan") → heavy
-// check → at most one approval, for a prompt verdict on the declared mode or a heavy plan →
+// (a statement that looks more powerful than its mode is refused, never run) → table allow list (P532)
+// → claim an exemption → the one EXPLAIN when McpAutoExplain is on and the classifier says read →
+// pre-limits (a hit refuses before any approval) → at most one approval, for a prompt verdict on the
+// declared mode →
 // execute (read on the read lane, write and ddl on the main connection) → render.
 //
-// Limits (limits.go) slot in after tighten: a presented exemption id is claimed, every pre-limit not
-// exempted is checked (a hit refuses before any approval), and an exempted call raises exactly one
+// Limits (limits.go): a presented exemption id is claimed, every pre-limit not
+// exempted is checked, and an exempted call raises exactly one
 // db.exemption approval in place of the db.query one, whatever the mode's verdict. Exec limits wrap the
 // execute step; one that trips refuses with a fresh id.
 func (s *Server) runQuery(ctx context.Context, _ *mcp.CallToolRequest, args runQueryArgs) (*mcp.CallToolResult, any, error) {
@@ -237,21 +240,20 @@ func (s *Server) runQuery(ctx context.Context, _ *mcp.CallToolRequest, args runQ
 	if done {
 		return res, out, err
 	}
+	s.planForCall(ctx, args, &rv, ex)
 	if res, out, err, done := s.checkLimits(ctx, args, rv, ex); done {
 		return res, out, err
 	}
 
-	plan, heavy := s.maybeExplain(ctx, rv.summary, args)
-
 	if ex != nil {
-		if res, out, err, done := s.awaitExemption(ctx, args, &rv, ex, plan); done {
+		if res, out, err, done := s.awaitExemption(ctx, args, &rv, ex, rv.plan); done {
 			return res, out, err
 		}
-	} else if res, out, err, done := s.awaitApproval(ctx, args, &rv, heavy, plan); done {
+	} else if res, out, err, done := s.awaitApproval(ctx, args, &rv, rv.plan); done {
 		return res, out, err
 	}
 
-	res, out, err, set, executed := s.executeAndRender(ctx, args, rv, plan, ex)
+	res, out, err, set, executed := s.executeAndRender(ctx, args, rv, rv.plan, ex)
 	if !executed || !s.reviewResults(rv.summary) {
 		return res, out, err
 	}
@@ -408,7 +410,7 @@ func resultText(res *mcp.CallToolResult) string {
 }
 
 // queryResolution is resolveVerdict's own bundle: everything runQuery needs from the
-// resolve/check/gate/clamp/connect/tighten pipeline to proceed into maybeExplain/awaitApproval.
+// resolve/check/gate/clamp/connect/tighten pipeline to proceed into planForCall/awaitApproval.
 type queryResolution struct {
 	summary model.ConnectionSummary
 	// mode is the declared mode; verdict is its permission (allow or prompt once resolveVerdict passes).
@@ -417,6 +419,10 @@ type queryResolution struct {
 	verdict   string
 	maxRows   int
 	threshold int
+	// plan and planErr are planForCall's one EXPLAIN: it feeds the limit, the approval evidence and the
+	// result's plan summary.
+	plan    *queryplan.Plan
+	planErr error
 }
 
 // resolveVerdict is runQuery's resolve → check mode → gate → clamp → connect → tighten → tables pipeline.
@@ -528,42 +534,35 @@ func (s *Server) readOnlyRefusal(summary model.ConnectionSummary, err error, mas
 	return errResult(fmt.Sprintf("the database refused a write on the read-only connection: %s. Use mode=write or mode=ddl. Connection %q allows: %s", err.Error(), summary.Name, allowed))
 }
 
-// maybeExplain runs auto-force-explain (a plan-only EXPLAIN, never ANALYZE) when the connection
-// has McpAutoExplain on — the minimum information needed to tell the human what they are approving
-// before a "prompt" verdict asks them. Any failure degrades to "no plan"; a run_query call
-// must not start failing because a plan could not be parsed. heavy is the flag,
-// overThreshold only, never "any warn issue" — SQLite reports no row estimate at all, so borrowing
-// the console's isFlaggedPlan rule would raise a modal on nearly every SQLite query.
-func (s *Server) maybeExplain(ctx context.Context, summary model.ConnectionSummary, args runQueryArgs) (plan *queryplan.Plan, heavy bool) {
-	if summary.McpAutoExplain && args.Mode == modeRead {
-		p, planErr := s.planFor(ctx, summary, args.SQL, args.Path)
-		if planErr != nil {
-			s.log.Warn("dbmcp: run_query: auto-force-explain failed, running without a plan", "connectionId", args.ConnectionID, "err", planErr)
-		} else {
-			plan = p
-		}
+// planForCall makes the call's one EXPLAIN when the connection has McpAutoExplain on and the classifier
+// says the statement is a read. Class, not the declared mode: a SELECT declared write would otherwise
+// skip the check. It runs before checkLimits so one plan feeds the limit, the dialog and the result.
+// A failure is kept in rv.planErr and the expensive_query limit fails closed on it; a call exempted from
+// expensive_query is being approved anyway, so its failure degrades to no plan.
+func (s *Server) planForCall(ctx context.Context, args runQueryArgs, rv *queryResolution, ex *claimedExemption) {
+	if !rv.summary.McpAutoExplain || rv.class != adapters.ClassRead {
+		return
 	}
-	return plan, plan != nil && plan.OverThreshold
+	plan, err := s.planFor(ctx, rv.summary, args.SQL, args.Path, rv.threshold)
+	if err != nil && ex.covers(LimitExpensiveQuery) {
+		s.log.Warn("dbmcp: run_query: EXPLAIN failed on an exempted call, approving without a plan", "connectionId", args.ConnectionID, "err", err)
+		return
+	}
+	rv.plan, rv.planErr = plan, err
 }
 
-// awaitApproval is the "at most one approval prompt per call" gate: when both a
-// permission-prompt and a heavy plan apply, one request carries Reason: ApprovalReasonPermission
-// (the stricter reason — the user said "ask me about every write") with the plan evidence riding
-// along. A no-op (done false) when neither verdict == "prompt" nor heavy applies. done is true
-// whenever runQuery should return (res, out, err) immediately.
-func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv *queryResolution, heavy bool, plan *queryplan.Plan) (res *mcp.CallToolResult, out any, err error, done bool) {
-	if rv.verdict != "prompt" && !heavy {
+// awaitApproval is the "at most one approval prompt per call" gate: a prompt verdict on the declared
+// mode asks once, with the plan evidence when a plan exists. A no-op (done false) for any other verdict.
+// done is true whenever runQuery should return (res, out, err) immediately.
+func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv *queryResolution, plan *queryplan.Plan) (res *mcp.CallToolResult, out any, err error, done bool) {
+	if rv.verdict != "prompt" {
 		return nil, nil, nil, false
 	}
 
-	reason := ApprovalReasonHeavy
-	if rv.verdict == "prompt" {
-		reason = ApprovalReasonPermission
-	}
 	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
 		ConnectionID: args.ConnectionID, ConnectionName: rv.summary.Name, Kind: rv.summary.Kind,
 		Class: rv.class, Mode: rv.mode, Enforcement: enforcementFor(rv.summary, rv.mode),
-		Statement: args.SQL, Reason: reason,
+		Statement: args.SQL, Reason: ApprovalReasonPermission,
 		Target: targetOf(rv.summary, args.Path),
 		Plan:   approvalPlanFrom(plan, rv.threshold), Origin: originFrom(ctx),
 	})

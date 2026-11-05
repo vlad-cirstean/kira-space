@@ -2,6 +2,7 @@ package dbmcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -59,7 +60,10 @@ func (s *Server) claimExemption(args runQueryArgs, rv queryResolution) (ex *clai
 }
 
 func (s *Server) limitCall(args runQueryArgs, rv queryResolution, exempt bool) LimitCall {
-	return LimitCall{Summary: rv.summary, Mode: rv.mode, Class: rv.class, SQL: args.SQL, Path: args.Path, Exempt: exempt}
+	return LimitCall{
+		Summary: rv.summary, Mode: rv.mode, Class: rv.class, SQL: args.SQL, Path: args.Path, Exempt: exempt,
+		Plan: rv.plan, PlanErr: rv.planErr, Threshold: rv.threshold,
+	}
 }
 
 // checkLimits runs every pre-limit the exemption does not cover. A hit refuses before any approval is
@@ -90,6 +94,10 @@ func (s *Server) checkLimits(ctx context.Context, args runQueryArgs, rv queryRes
 // limitFailure fails the call for a limit's own error, withholding the text on a masked connection like
 // any driver error.
 func (s *Server) limitFailure(connectionID string, cerr error) (*mcp.CallToolResult, any, error) {
+	var pce *planCheckError
+	if errors.As(cerr, &pce) {
+		return errResult(pce.Error())
+	}
 	if set, err := s.cfg.MaskRules.MaskSetFor(connectionID); err != nil || !set.Empty() {
 		return maskedToolError(cerr)
 	}

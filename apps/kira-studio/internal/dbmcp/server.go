@@ -247,7 +247,7 @@ func New(cfg Config) (*Server, error) {
 }
 
 // builtinLimits are the limits every server enforces, ahead of Config.Limits.
-func builtinLimits() []Limit { return []Limit{statementTimeoutLimit{}} }
+func builtinLimits() []Limit { return []Limit{statementTimeoutLimit{}, expensiveQueryLimit{}} }
 
 // validateLimits rejects a limit with no name, a duplicate name inside in, or neither PreLimit nor
 // ExecLimit. It returns the built-ins followed by in; an entry named like a built-in replaces it
@@ -268,7 +268,7 @@ func validateLimits(in []Limit) ([]Limit, error) {
 		}
 		seen[name] = true
 	}
-	out := make([]Limit, 0, len(in)+1)
+	out := make([]Limit, 0, len(in)+2)
 	for _, b := range builtinLimits() {
 		if !seen[b.Name()] {
 			out = append(out, b)

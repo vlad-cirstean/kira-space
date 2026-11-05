@@ -51,14 +51,13 @@ const (
 	ApprovalActionAlreadyResolved
 )
 
-// ApprovalReason is why this request was raised — M2's permission gate, or M3's heavy-plan flag.
+// ApprovalReason is why this request was raised — M2's permission gate, or an agent's exemption request.
 // Both are the same question ("should this run?") asked for different reasons, so they share one
 // queue and one dialog rather than competing for the user's attention (M3 §6.2).
 type ApprovalReason string
 
 const (
 	ApprovalReasonPermission ApprovalReason = "permission"
-	ApprovalReasonHeavy      ApprovalReason = "heavy"
 	// ApprovalReasonExemption is an agent asking to lift limits for one statement.
 	ApprovalReasonExemption ApprovalReason = "exemption"
 )
@@ -153,11 +152,10 @@ type ApprovalRequest struct {
 	Response   *ApprovalResponse
 	EnqueuedAt time.Time
 	ExpiresAt  time.Time
-	// Reason is M2's own "permission" for every M2-era call site — M3's runQuery/explainQuery are
-	// the first callers to pass ApprovalReasonHeavy or a non-nil Plan.
+	// Reason is "permission" for a mode's prompt verdict, "exemption" for a limit exemption request.
 	Reason ApprovalReason
-	// Plan is the heavy-query evidence (M3 §6.1/§6.2), nil for an ordinary permission prompt with
-	// no plan attached (auto-force-explain off, or the statement was not explainable).
+	// Plan is the query-plan evidence (M3 §6.1/§6.2), nil when no plan was made (the check is off, or
+	// the statement was not explainable).
 	Plan *ApprovalPlan
 	// Cluster is set for a Kubernetes read; Target is then empty.
 	Cluster *ApprovalCluster

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { type ConnectionKind, ROW_ESTIMATE_KINDS } from './connection';
 
 // M1 §6.2: the Database MCP section's own domain — bridge/dbmcp.go's DbMcpStatus/
 // DbMcpInstallResult wire projections. command is the copy-paste registration text naming the
@@ -89,6 +90,15 @@ export function statementTimeoutEnforcementOf(kind: string): Record<DbMcpMode, D
     default:
       return all('none');
   }
+}
+
+export type ExpensiveQueryCheck = 'plan' | 'off' | 'none';
+
+// Mirror of internal/dbmcp/expensive.go expensiveCheckOf: none (no row estimate), off (the connection's
+// MCP auto_explain switch is off) or plan. The flow test's list_connections contract pins both sides.
+export function expensiveQueryCheckOf(kind: string, autoExplain: boolean): ExpensiveQueryCheck {
+  if (!ROW_ESTIMATE_KINDS.has(kind as ConnectionKind)) return 'none';
+  return autoExplain ? 'plan' : 'off';
 }
 
 export interface DbMcpAccessInput {

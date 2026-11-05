@@ -9,6 +9,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/queryplan"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 )
 
@@ -41,6 +42,11 @@ type LimitCall struct {
 	SQL     string
 	Path    string
 	Exempt  bool
+	// Plan, PlanErr and Threshold are filled once per call by the server; limits never run statements.
+	// Plan is nil when the call was not planned or the plan has no estimate source.
+	Plan      *queryplan.Plan
+	PlanErr   error
+	Threshold int
 }
 
 // Limit is one enforced run_query limit. Implement PreLimit, ExecLimit or both.
@@ -91,6 +97,9 @@ func (e *LimitError) Error() string {
 			parts[i] = h.Limit + ": " + h.describe()
 		}
 		fmt.Fprintf(&b, "refused by limits %s on %q: %s", strings.Join(names, ", "), e.ConnectionName, strings.Join(parts, "; "))
+	}
+	if hasLimit(e.Hits, LimitExpensiveQuery) {
+		b.WriteString(". expensive_query is the query plan's estimated rows read, not rows returned; explain_query shows which scan. Filter on an indexed column or narrow the join")
 	}
 	fmt.Fprintf(&b, `. Improve the statement, or ask the user to lift the limit for this statement only: repeat this exact call with exemption {"id":%q,"reason":"<one sentence why>"}. The id works once and expires in %s.`, e.ExemptionID, approvalWindow())
 	return b.String()

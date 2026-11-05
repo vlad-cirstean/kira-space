@@ -207,6 +207,15 @@ export const EXPLAIN_SUPPORTED_KINDS: ReadonlySet<ConnectionKind> = new Set([
   'clickhouse',
 ]);
 
+// Kinds whose plan carries an estimated rows read: EXPLAIN_SUPPORTED_KINDS minus sqlite, whose
+// EXPLAIN QUERY PLAN has none. Mirror of internal/queryplan/statements.go HasRowEstimate.
+export const ROW_ESTIMATE_KINDS: ReadonlySet<ConnectionKind> = new Set([
+  'postgres',
+  'mysql',
+  'mariadb',
+  'clickhouse',
+]);
+
 export const connectionInputSchema = connectionFieldsSchema.superRefine((input, ctx) => {
   if (input.mode === 'fields') {
     if (FILE_KINDS.has(input.kind)) {

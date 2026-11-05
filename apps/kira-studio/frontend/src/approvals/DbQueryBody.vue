@@ -3,7 +3,6 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import { dbQueryPayloadSchema } from '@shared/domain/dbmcp';
 import { FieldDescription } from '@theme/components/ui/field';
 import { type MessageKey, t } from '@theme/i18n';
-import { formatCount } from '@workbench/behaviour/format';
 import { computed } from 'vue';
 import ApprovalPlanEvidence from './ApprovalPlanEvidence.vue';
 import ApprovalStatement from './ApprovalStatement.vue';
@@ -35,15 +34,7 @@ const enforcement = computed(() =>
 );
 
 const lede = computed(() => {
-  const { plan } = payload.value;
   const params = { connection: props.item.target.name, kind: props.item.target.kind };
-  if (props.item.reason === 'heavy' && plan && plan.estimatedRowsRead !== null) {
-    return t('studio.dbMcp.approval.heavy.body', {
-      ...params,
-      count: plan.estimatedRowsRead,
-      threshold: formatCount(plan.thresholdRows),
-    });
-  }
   return t(
     CLASS_BODY_KEYS[props.item.operation.class] ?? 'studio.dbMcp.approval.other.body',
     params,
