@@ -13482,6 +13482,23 @@
         "ddl": {
           "body": "{connection} ({kind}) wants to run a schema-changing (DDL) statement through the database MCP server."
         },
+        "declaredHigher": {
+          "body": "Declared {declared}, looks like a {detected}. Mode read would run it read-only."
+        },
+        "detected": {
+          "label": "Looks like {class}"
+        },
+        "enforcement": {
+          "app": {
+            "body": "Reads are checked by Kira. This engine has no read-only session."
+          },
+          "none": {
+            "body": "Reads are not enforced beyond the permission."
+          },
+          "session": {
+            "body": "Reads are enforced by the database."
+          }
+        },
         "estimate": {
           "body": "Estimated {count} row read, threshold {threshold}. | Estimated {count} rows read, threshold {threshold}."
         },
@@ -15190,6 +15207,9 @@
           }
         },
         "mcp": {
+          "access": {
+            "label": "Agent access"
+          },
           "allow": {
             "label": "Allow"
           },
@@ -15206,6 +15226,15 @@
             "description": "Nothing is exposed by default. The same switch lives in the database MCP section of settings; either one toggles the other.",
             "label": "Expose to the database MCP server"
           },
+          "limitApp": {
+            "body": "Read mode is checked by Kira, not by the database. Use a database user with read-only rights for a hard guarantee."
+          },
+          "limitDdl": {
+            "body": "The database can’t tell write from DDL on one session. Kira refuses statements more powerful than the declared mode, but a misclassified DDL would run under the write permission."
+          },
+          "noWriteConsole": {
+            "body": "Write and DDL modes are not available for this connection kind."
+          },
           "plan": {
             "description": "This engine has no query plan this app can read.",
             "label": "Plan queries before running them"
@@ -15215,6 +15244,9 @@
           },
           "read": {
             "label": "Read"
+          },
+          "readLane": {
+            "body": "Reads run on a separate read-only connection with the same credentials. Some engines still allow side-effecting functions in a read-only session (for example pg_terminate_backend, or a locking function)."
           },
           "readNote": {
             "label": "SELECT and its engine equivalents"

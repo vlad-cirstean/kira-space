@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { EXPLAIN_SUPPORTED_KINDS } from '@shared/domain/connection';
 import type { ConnectionFileMcp, ConnectionFileModel } from '@shared/domain/connectionConfig';
+import { accessSummaryOf, enforcementOf, hasWriteConsole } from '@shared/domain/dbmcp';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
-import { t } from '@theme/i18n';
+import { type MessageKey, t } from '@theme/i18n';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
 import { computed } from 'vue';
 import { useSettingsStore } from '../../state/settings';
@@ -23,6 +24,44 @@ function setMcp(change: Partial<ConnectionFileMcp>): void {
 
 // Disabled, never hidden, for kinds without a parseable EXPLAIN: the setting stays visible.
 const explainSupported = computed(() => EXPLAIN_SUPPORTED_KINDS.has(file.value.kind as never));
+
+// Mirrors internal/dbmcp's accessOf: what each declared run_query mode allows for this connection.
+const writeConsole = computed(() => hasWriteConsole(file.value.kind));
+const enforcement = computed(() => enforcementOf(file.value.kind));
+const ENFORCEMENT_KEYS: Record<string, MessageKey> = {
+  session: 'studio.dbMcp.approval.enforcement.session.body',
+  app: 'studio.dbMcp.approval.enforcement.app.body',
+  none: 'studio.dbMcp.approval.enforcement.none.body',
+};
+const accessSummary = computed(() =>
+  enabled.value
+    ? accessSummaryOf({
+        kind: file.value.kind,
+        readOnly: file.value.read_only ?? false,
+        read: mcp.value.read ?? 'allow',
+        write: mcp.value.write ?? 'prompt',
+        ddl: mcp.value.ddl ?? 'deny',
+      })
+    : 'none',
+);
+const writeOrDdlOpen = computed(
+  () => (mcp.value.write ?? 'prompt') !== 'deny' || (mcp.value.ddl ?? 'deny') !== 'deny',
+);
+const notes = computed(() => {
+  const list: { name: string; key: MessageKey }[] = [];
+  if (enforcement.value === 'app')
+    list.push({ name: 'limitApp', key: 'studio.project.connectionDialog.mcp.limitApp.body' });
+  if (enforcement.value === 'session')
+    list.push({ name: 'readLane', key: 'studio.project.connectionDialog.mcp.readLane.body' });
+  if (!writeConsole.value)
+    list.push({
+      name: 'noWriteConsole',
+      key: 'studio.project.connectionDialog.mcp.noWriteConsole.body',
+    });
+  else if (writeOrDdlOpen.value)
+    list.push({ name: 'limitDdl', key: 'studio.project.connectionDialog.mcp.limitDdl.body' });
+  return list;
+});
 
 const CLASSES = [
   {
@@ -55,7 +94,7 @@ function modeOptions(cls: (typeof CLASSES)[number]['cls']) {
   return modes.map((m) => ({
     ...m,
     testid: `connection-mcp-${cls}-${m.value}`,
-    disabled: !enabled.value,
+    disabled: !enabled.value || (cls !== 'read' && !writeConsole.value),
   }));
 }
 
@@ -139,6 +178,21 @@ const reviewOptions = computed(() => {
         @update:model-value="(v) => setMcp({ [c.cls]: String(v) })"
       />
     </Field>
+    <FieldDescription class="w-full" data-testid="connection-mcp-access">
+      <strong>{{ t('studio.project.connectionDialog.mcp.access.label') }}</strong>
+      <span data-testid="connection-mcp-access-summary"> {{ accessSummary }}.</span>
+      <span data-testid="connection-mcp-access-enforcement">
+        {{ t(ENFORCEMENT_KEYS[enforcement] as MessageKey) }}</span
+      >
+    </FieldDescription>
+    <FieldDescription
+      v-for="n in notes"
+      :key="n.name"
+      class="w-full"
+      :data-testid="`connection-mcp-note-${n.name}`"
+    >
+      {{ t(n.key) }}
+    </FieldDescription>
     <FieldDescription class="w-full">
       {{
         t('studio.project.connectionDialog.mcp.strictest.description', {

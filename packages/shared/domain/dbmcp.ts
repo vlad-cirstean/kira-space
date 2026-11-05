@@ -39,9 +39,58 @@ export const dbMcpApprovalPlanSchema = /*#__PURE__*/ z.object({
 });
 export type DbMcpApprovalPlan = z.infer<typeof dbMcpApprovalPlanSchema>;
 
+export const dbMcpModeSchema = /*#__PURE__*/ z.enum(['read', 'write', 'ddl']);
+export type DbMcpMode = z.infer<typeof dbMcpModeSchema>;
+export type DbMcpEnforcement = 'session' | 'app' | 'none';
+
+// Mirror of internal/dbmcp/permissions.go: writeConsoleKinds, enforcementOf and accessOf. The flow
+// test's list_connections contract pins both sides.
+const WRITE_CONSOLE_KINDS: ReadonlySet<string> = /*#__PURE__*/ new Set([
+  'postgres',
+  'mysql',
+  'mariadb',
+  'sqlite',
+  'clickhouse',
+  'mongodb',
+  'redis',
+]);
+export function hasWriteConsole(kind: string): boolean {
+  return WRITE_CONSOLE_KINDS.has(kind);
+}
+
+export function enforcementOf(kind: string): DbMcpEnforcement {
+  if (['postgres', 'mysql', 'mariadb', 'sqlite', 'clickhouse'].includes(kind)) return 'session';
+  if (kind === 'mongodb' || kind === 'redis') return 'app';
+  return 'none';
+}
+
+export interface DbMcpAccessInput {
+  kind: string;
+  readOnly: boolean;
+  read: string;
+  write: string;
+  ddl: string;
+}
+
+// The summary, e.g. "read, write (approval)", or "none".
+export function accessSummaryOf(c: DbMcpAccessInput): string {
+  const parts: string[] = [];
+  for (const mode of dbMcpModeSchema.options) {
+    const configured = c[mode];
+    const blocked = mode !== 'read' && (c.readOnly || !hasWriteConsole(c.kind));
+    if (blocked || (configured !== 'allow' && configured !== 'prompt')) continue;
+    parts.push(configured === 'prompt' ? `${mode} (approval)` : mode);
+  }
+  return parts.length > 0 ? parts.join(', ') : 'none';
+}
+
 export const dbQueryPayloadSchema = /*#__PURE__*/ z.object({
   connectionId: z.string(),
   statement: z.string(),
+  // Declared mode, what the statement looks like, and (read items) what backs mode read.
+  mode: dbMcpModeSchema,
+  detected: z.string(),
+  enforcement: z.string(),
   plan: dbMcpApprovalPlanSchema.nullable(),
 });
 export type DbQueryPayload = z.infer<typeof dbQueryPayloadSchema>;
