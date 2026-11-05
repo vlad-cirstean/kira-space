@@ -519,7 +519,7 @@ func (s *GrpcService) runServerStream(ctx context.Context, args GrpcCallArgs, re
 
 // maskGrpcError masks a *grpcclient.Error's own Message (and, for a partial stream result, its
 // StatusMessage/Header/Trailer values) back to {{name}} form before it ever reaches mapGrpcError —
-// the same strings.Replacer shape bridge/http.go's secretReplacer builds, a second consumer of the
+// the same strings.Replacer shape apivars.Replacer builds, a second consumer of the
 // one unexported helper this package already has. A no-op for any error that
 // is not a *grpcclient.Error, or when nothing was substituted.
 func maskGrpcError(err error, used []apivars.UsedSecret) {
@@ -527,7 +527,7 @@ func maskGrpcError(err error, used []apivars.UsedSecret) {
 	if !errors.As(err, &gerr) {
 		return
 	}
-	replacer := secretReplacer(used)
+	replacer := apivars.Replacer(used)
 	if replacer == nil {
 		return
 	}
@@ -551,7 +551,7 @@ func maskGrpcError(err error, used []apivars.UsedSecret) {
 // gRPC's success path had no equivalent. A no-op when nothing was substituted,
 // same as maskGrpcError.
 func maskGrpcResult(result *grpcclient.CallResult, used []apivars.UsedSecret) {
-	replacer := secretReplacer(used)
+	replacer := apivars.Replacer(used)
 	if replacer == nil {
 		return
 	}

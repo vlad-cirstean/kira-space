@@ -389,7 +389,7 @@ func TestHttpSendFailure_OpLogErrorNeverContainsSecret(t *testing.T) {
 	}
 }
 
-// TestMaskSecrets_MasksURLEncodedBodyDespiteQueryEscape: secretReplacer used to build
+// TestMaskSecrets_MasksURLEncodedBodyDespiteQueryEscape: apivars.Replacer used to build
 // its strings.Replacer over each secret's own *plaintext*, but a urlencoded body's rendered wire
 // text (resp.Wire.Request) is the *url.QueryEscape'd* form buildURLEncoded/encodeURLEncodedFields
 // produced — url.QueryEscape rewrites space, '+', '@' (among others), so a secret value
@@ -596,7 +596,7 @@ func TestMaskSecrets_MasksBothPlainAndPipedFormsOfOneSecret(t *testing.T) {
 // long one, leaking its own tail in plaintext right next to a masked placeholder.
 func TestSecretReplacer_LongerRenderedFormIsNotShadowedByAShorterOne(t *testing.T) {
 	// "AB" is a prefix of "ABCDEF" — listed in *ascending* length order here, on purpose, so the
-	// test actually exercises secretReplacer's own sort rather than happening to pass because the
+	// test actually exercises Replacer's own sort rather than happening to pass because the
 	// caller already listed them safely.
 	usedSecrets := []apivars.UsedSecret{
 		{Name: "short", Rendered: "AB", Placeholder: "{{short}}"},

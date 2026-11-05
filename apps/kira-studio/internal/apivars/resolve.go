@@ -467,7 +467,7 @@ func (r *Resolver) text(text string, sanitize func(string) string) string {
 }
 
 // Used is every secret span substituted so far, one entry per distinct (Name,
-// Placeholder) pair — what a caller's own masking replacer (bridge/http.go's secretReplacer,
+// Placeholder) pair — what a caller's own masking replacer (apivars.Replacer,
 // shared unchanged by bridge/grpc.go) is built from, so a secret's plaintext or any
 // transformed form of it a pipe produced is never left in a copyable surface unmasked.
 // nil when nothing was substituted, matching ResolveRequest's own pre-extraction contract.

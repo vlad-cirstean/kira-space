@@ -218,7 +218,7 @@ func TestResolveRequestReturnsExactlyTheSecretsItSubstituted(t *testing.T) {
 	})
 
 	// A piped secret's UsedSecret.Rendered is the *transformed* form, not the
-	// plaintext — the property bridge/http.go's secretReplacer is built on. This is the Go-level
+	// plaintext — the property apivars.Replacer is built on. This is the Go-level
 	// proof that the resolver itself hands out the right text; bridge/http_test.go proves the
 	// masking replacer built from it.
 	t.Run("a piped secret's Rendered is the transformed form, not the plaintext", func(t *testing.T) {
