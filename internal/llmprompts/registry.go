@@ -885,7 +885,7 @@ var HeadlessToolReplyReviewComment = define(Entry{
 }, NoVars{})
 
 var (
-	_ = arg(HeadlessToolReplyReviewComment.id, "id", spaceApp, NextCall, `The comment number, from the list.`, NoVars{})
+	_ = arg(HeadlessToolReplyReviewComment.id, "id", spaceApp, NextCall, `The comment id from the list.`, NoVars{})
 	_ = arg(HeadlessToolReplyReviewComment.id, "reply", spaceApp, NextCall, `What you changed, or the answer. Plain text.`, NoVars{})
 	_ = arg(HeadlessToolReplyReviewComment.id, "resolved", spaceApp, NextCall, `true when done or answered; false when you could not.`, NoVars{})
 )
@@ -1202,7 +1202,7 @@ var AdeReviewComments = define(Entry{
 	TitleKey:   "llmPrompts.entry.adeReviewComments.title",
 	PurposeKey: "llmPrompts.entry.adeReviewComments.description",
 	UsedByKey:  "llmPrompts.entry.adeReviewComments.usedBy.body",
-	Default: `{{range .Comments}}#{{.ID}} {{.Kind}} {{.Path}}:{{.Lines}}{{if .Uncommitted}} (uncommitted){{end}}
+	Default: `{{range .Comments}}id {{.ID}} {{.Kind}} {{.Path}}:{{.Lines}}{{if .Uncommitted}} (uncommitted){{end}}
 {{.Body}}
 {{end}}Per comment, call reply_review_comment once.
 change: make the change, commit it, reply what changed, resolved true.
@@ -1243,7 +1243,7 @@ var AdeReviewForwardMessage = define(Entry{
 	PurposeKey: "llmPrompts.entry.adeReviewForwardMessage.description",
 	UsedByKey:  "llmPrompts.entry.adeReviewForwardMessage.usedBy.body",
 	Default: `My review comments on {{.Repo}} {{.Branch}} (base {{.Base}}):
-{{range .Comments}}#{{.ID}} {{.Kind}} {{.Path}}:{{.Lines}}{{if .Uncommitted}} (uncommitted){{end}}
+{{range .Comments}}id {{.ID}} {{.Kind}} {{.Path}}:{{.Lines}}{{if .Uncommitted}} (uncommitted){{end}}
 {{.Body}}
 {{end}}Answer each question. Make the change a change comment asks for.`,
 }, reviewRoundExample)

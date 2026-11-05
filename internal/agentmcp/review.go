@@ -44,6 +44,7 @@ func (s *Server) addReviewTool(srv *mcp.Server) {
 		if !ok || g.RunID == "" || g.Review == nil {
 			return toolError("reply_review_comment is not available for this session."), nil, nil
 		}
+		args.ID = strings.TrimPrefix(strings.TrimSpace(args.ID), "#")
 		if !slices.Contains(g.Review.CommentIDs, args.ID) {
 			return toolError(fmt.Sprintf("comment %s was not sent to you", args.ID)), nil, nil
 		}

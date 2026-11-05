@@ -250,7 +250,7 @@ func TestReviewSendImplementer(t *testing.T) {
 		t.Fatalf("round args lack %s:\n%s", toolName(agentmcp.ReviewReply), args)
 	}
 	prompt := fakeFile(t, f.app, "api-2.prompt")
-	for _, want := range []string{"#1 change r.txt:1", "rename this", "#2 question r.txt:3", "why twice?", "reply_review_comment", "finish_step"} {
+	for _, want := range []string{"id 1 change r.txt:1", "rename this", "id 2 question r.txt:3", "why twice?", "reply_review_comment", "finish_step"} {
 		if !strings.Contains(prompt, want) {
 			t.Fatalf("round prompt lacks %q:\n%s", want, prompt)
 		}
@@ -286,7 +286,7 @@ func TestReviewSendNew(t *testing.T) {
 	if dedicated == "" || strings.Contains(first, "--resume") {
 		t.Fatalf("round 1 args want a fresh --session-id:\n%s", first)
 	}
-	if p := fakeFile(t, f.app, "api-2.prompt"); !strings.Contains(p, "Read the branch diff against the base first") || !strings.Contains(p, "#1 change r.txt:1") {
+	if p := fakeFile(t, f.app, "api-2.prompt"); !strings.Contains(p, "Read the branch diff against the base first") || !strings.Contains(p, "id 1 change r.txt:1") {
 		t.Fatalf("round 1 prompt is not the dedicated agent's message:\n%s", p)
 	}
 	if got := f.comments(t); len(got) != 1 || got[0].State != "addressed" {
