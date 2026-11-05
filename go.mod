@@ -3,6 +3,7 @@ module github.com/kirathecat/kira-studio
 go 1.27.3
 
 require (
+	github.com/AfterShip/clickhouse-sql-parser v0.5.6
 	github.com/adhocore/gronx v1.20.5
 	github.com/aws/aws-sdk-go-v2 v1.47.5
 	github.com/aws/aws-sdk-go-v2/config v1.33.13
@@ -38,6 +39,7 @@ require (
 	github.com/pingcap/tidb/pkg/parser v0.0.0-20261105154121-adee1920e108
 	github.com/redis/go-redis/v9 v9.23.0
 	github.com/rivo/uniseg v0.4.7
+	github.com/rqlite/sql v0.0.0-20261016220845-5c0832fea6e1
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	github.com/shirou/gopsutil/v4 v4.26.10
 	github.com/tailscale/hujson v0.0.0-20260727124030-b80ff77dac4f
