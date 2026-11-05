@@ -178,7 +178,7 @@ test('mutations — edit, add, delete, preview, commit, discard, read-only guard
   // Seven scenarios and two connection setups in one test: ~13s unloaded, but it ran into the 60s
   // default on a CPU-starved runner (parallel suites).
   test.setTimeout(180_000);
-  const { window: page } = await relaunch({ control: CONTROL, stream: PORT });
+  const { window: page, stream } = await relaunch({ control: CONTROL, stream: PORT });
 
   await createConnection(page, 'postgres', 'Mutations DB');
 
@@ -301,6 +301,13 @@ test('mutations — edit, add, delete, preview, commit, discard, read-only guard
     .locator('[data-testid="grid-cell"][data-column="name"]')
     .allInnerTexts();
   expect(remainingNames).not.toContain(deletedRowName);
+
+  // Go mints the op id for a count and a mutate: the renderer sends none.
+  const minted = (await stream.ops()).filter(
+    (o) => o.op === DATA_OP.count || o.op === DATA_OP.mutate,
+  );
+  expect(minted.length).toBeGreaterThan(0);
+  expect(minted.every((o) => o.opId === undefined)).toBe(true);
 
   // §7/F21/D18: a local mutation greys the count instead of blanking it.
   await hoverCount();
