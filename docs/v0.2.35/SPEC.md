@@ -1,8 +1,8 @@
 # v0.2.35
 
-Branch `chapter/v0.2.35`, based on `chapter/v0.2.34` (v0.2.34 not yet merged to main). First `P` is 512 (highest in v0.2.34 is P511), last is P525.
+Branch `chapter/v0.2.35`, based on `chapter/v0.2.34` (v0.2.34 not yet merged to main). First `P` is 512 (highest in v0.2.34 is P511), last is P526.
 
-Source: user request. Fourteen phases. Close duty after the last phase lands: one full suite run, 2 code review rounds (user ask), hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
+Source: user request. Fifteen phases. Close duty after the last phase lands: one full suite run, 2 code review rounds (user ask), hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
 
 Parallelism (user ask): up to 3 phases run at once as named streams, each in its own worktree off the same base, zero file overlap. P512 to P517 landed. Remaining waves: P518 + P519 + P524 in parallel, then P520 alone (async touches every MCP tool), then P521 + P522 (planner may force sequential on overlap in the shared MCP access settings), then P523 alone (touches every id generator). P525 runs now, by user direction, ahead of P520, because it is frontend-only; P520 is on hold. From P512 on, new Kira-generated ids follow the P523 convention where cheap.
 
@@ -22,6 +22,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 | P523 | Prefixed nanoid for every Kira-generated id | Pending |
 | P524 | Manual order for API collections and environments | Done |
 | P525 | Uniform flat design: dialogs and outline buttons | Pending |
+| P526 | Standalone step library and Workflows page tabs | Pending |
 
 ## Rows
 
@@ -109,3 +110,9 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 - Ask: Dialogs adopt the flat design. Filled buttons become the outline (or toolbar) style used overall. Fix any other design inconsistency found (radius, borders, shadows, spacing, header/footer layout, icon buttons, destructive styling, inputs, tokens). Both apps and shared packages.
 - Runs before P520 (user direction, frontend-only). P520 to P522 UI adopts the P525 rules.
 - Plan: `plans/P525.md`.
+
+### P526 Standalone step library and Workflows page tabs
+
+- Ask (user): "Stops should be mostly stand alone and then an workflow to be able to add stuff on top. Also the workflow page needs tabs for statuses steps and then workflows".
+- Reading: "Stops" means steps. Steps become standalone library files (`<home>/steps/<id>.yaml`); a workflow references them and adds on top (per-workflow overrides, extra prompt, its own routes, inline workflow-only steps). Workflows page gets tabs Statuses, Steps, Workflows. Existing inline steps move into the library once, with a backup. Space ADE only, no SQL migration.
+- Plan: `plans/P526.md`.
