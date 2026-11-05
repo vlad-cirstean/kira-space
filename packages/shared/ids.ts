@@ -3,7 +3,7 @@
  * for handles the user touches. Mirrors internal/ids (check-conventions N13 keeps the registry equal).
  */
 import { customAlphabet } from 'nanoid';
-import { v7 } from 'uuid';
+import { v4, v7 } from 'uuid';
 
 /** Crockford base32 lowercase: no i, l, o, u look-alikes. */
 const ALPHABET = '0123456789abcdefghjkmnpqrstvwxyz';
@@ -32,6 +32,11 @@ const generators = new Map<IdPrefix, () => string>();
 /** A UUIDv7 string. Works on a plain-HTTP origin, where `crypto.randomUUID` is missing. */
 export function newUuid(): string {
   return v7();
+}
+
+/** A random UUIDv4 for values written into user data (cell editor generator); no embedded time. */
+export function newUserUuidV4(): string {
+  return v4();
 }
 
 /** True for a canonical UUID of any version, so legacy v4 ids pass. */

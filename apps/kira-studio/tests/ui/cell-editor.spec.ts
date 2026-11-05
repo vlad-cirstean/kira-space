@@ -874,7 +874,7 @@ test('cell editor — UUID generate, timestamp translate pane, hex/base64 decode
   await generateTrigger.click();
   await page.click('[data-testid="cell-editor-generate-uuid"]');
   expect(await editorText(page)).toMatch(
-    /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
   );
   // One-shot, like Ctrl+Enter — stages immediately, with no blur needed first.
   await expect(plainTextCell).toHaveClass(/pending-edit/);
