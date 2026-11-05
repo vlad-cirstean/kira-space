@@ -4,6 +4,7 @@ import DialogResizeHandles from '@theme/components/ui/dialog/DialogResizeHandles
 import { CONFIRM_DISCARD_KEY, DIALOG_REQUEST_CLOSE_KEY } from '@theme/components/ui/dialog/discard';
 import type { DialogSize } from '@theme/components/ui/dialog/resizeSize';
 import { t } from '@theme/i18n';
+import { floatingSurface } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
 import { reactiveOmit } from '@vueuse/core';
 import type { DialogContentEmits, DialogContentProps } from 'reka-ui';
@@ -118,7 +119,8 @@ const sizeStyle = computed(() =>
 
 const contentClass = computed(() =>
   cn(
-    'bg-elevated text-fg data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 border-border rounded-kira text-kira-md border duration-100 fixed top-1/2 left-1/2 z-(--kira-z-dialog) shadow-kira -translate-x-1/2 -translate-y-1/2 outline-none',
+    floatingSurface,
+    'data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 text-kira-md duration-100 fixed top-1/2 left-1/2 z-(--kira-z-dialog) -translate-x-1/2 -translate-y-1/2 outline-none',
     dialogContentSizeVariants({ size: props.size, fixedHeight: props.fixedHeight }),
     props.class,
   ),

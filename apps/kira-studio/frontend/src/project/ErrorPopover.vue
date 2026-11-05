@@ -40,7 +40,7 @@ function onCopy(): void {
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        class="w-96 max-h-60 gap-0 overflow-hidden p-0 shadow-kira"
+        class="w-96 max-h-60 gap-0 overflow-hidden p-0"
         data-testid="error-popover"
       >
         <FieldError
