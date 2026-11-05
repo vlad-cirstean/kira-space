@@ -50,6 +50,8 @@ A prompt waits for you to approve the exact statement. The dialog names the conn
 
 When auto-explain is on, a query estimated above your expensive-query threshold pauses for approval. The dialog shows the estimate and the threshold.
 
+When a limit rejects a statement, the AI client can ask you to lift that limit for that one statement. You always get a dialog, even for modes that need no approval. It shows the limit, the measured value, the limit value, the client's reason and the statement. Approving covers that one run; the limit stays for every other call. With several requests waiting, "Approve all" skips these. Approve each one on its own.
+
 You can also review each query result before the AI client gets it. The app-wide switch is in Settings, under Database MCP. A connection's MCP tab can override it with Always or Never. A write has already run when its result shows, so withholding hides the result and does not undo the change.
 
 ## Masking

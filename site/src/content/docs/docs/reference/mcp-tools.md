@@ -86,7 +86,8 @@ Server name `kira-db`. See [Database MCP server](../../studio/database-mcp/).
 - `list_children`: the children of one container. Arguments: `connectionId`, `path`, `refresh`.
 - `describe_table`: columns, primary key, foreign keys, indexes and row estimate. Arguments: `connectionId`, `path`, `refresh`.
 - `describe_schema`: every table and view in one database or schema. Arguments: `connectionId`, `path`, `refresh`.
-- `run_query`: one statement per call. Arguments: `connectionId`, `sql`, `path`, `mode` (`read`, `write` or `ddl`, required), `maxRows` (default 200, maximum 2000).
+- `run_query`: one statement per call. Arguments: `connectionId`, `sql`, `path`, `mode` (`read`, `write` or `ddl`, required), `maxRows` (default 200, maximum 2000), `exemption`.
+- `exemption` on `run_query`: after a limit refusal, ask the user to lift that limit for this exact call. Fields `id` and `reason`. The id works once and expires in 10 minutes.
 - `explain_query`: a plan for one SELECT or WITH statement, without running it. Arguments: `connectionId`, `sql`, `path`, `includeRaw`. Not available on MongoDB, Redis, Kafka, S3 or SQS.
 
 ## Agent tools (Kira Space)

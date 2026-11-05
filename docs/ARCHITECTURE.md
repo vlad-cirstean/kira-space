@@ -206,7 +206,7 @@ whatever sandbox a session happens to be in),
 ## Ids
 
 - Keys and machine ids are UUIDv7: `ids.NewID()` (`internal/ids`, google/uuid) in Go, `newUuid()` (`packages/shared/ids.ts`, `uuid`) in TS. Never `uuid.New*`, `crypto.randomUUID` or `crypto/rand` for an id; guards G6 (Go) and N14 (TS) enforce it.
-- A user-touched handle that is not a key (worktree dir, temp dir, flow run, TUI stem, sandbox, distill) is a prefixed Crockford-base32 nanoid: `ids.New(ids.Prefix)` / `newId(prefix)`, body 10 or 12 chars. The registry is `internal/ids/prefixes.go`, equal to `PREFIXES` in `packages/shared/ids.ts` (N13).
+- A user-touched handle that is not a key (worktree dir, temp dir, flow run, TUI stem, sandbox, distill) is a prefixed Crockford-base32 nanoid: `ids.New(ids.Prefix)` / `newId(prefix)`, body 10 or 12 chars (`exm`: DB MCP limit exemption ids, P528). The registry is `internal/ids/prefixes.go`, equal to `PREFIXES` in `packages/shared/ids.ts` (N13).
 - A v7 head is a timestamp: never slice its first characters. `shortId` shows the last 4.
 - `ids.IsClientID` (1-64 bytes of `[A-Za-z0-9_:-]`) bounds client-supplied tab and terminal ids. Tab upserts are scoped to the owning window key (`ErrTabOwnedElsewhere`, `ErrInvalidTab`, both `E_CONTRACT`).
 - Op ids: `adapterhost.Host` refuses a non-UUID id (`E_QUERY`, "The operation ID is not valid."). Read, Count, Mutate and ObjectDownload take an optional `opId`; an empty one is minted in Go. A reused op id fails its history write and cannot overwrite the first row.
@@ -3122,7 +3122,7 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 
 One queue and one dialog per app hold every pending agent approval. Tools stay synchronous; each call returns when its own item is answered.
 
-- Go: `internal/approvals` is the shared queue. An `Item` has `Kind`, `Target` (name, kind, colour, read-only), `Operation` (class, tone), `Origin` (client, task, step, source), `CreatedAt`, `ExpiresAt` and an opaque `Payload`. Kinds: `db.query`, `db.response`, `kube.read`, `script.run`, `api.request`, `proof.review` (Studio), `branch.request` (Space). `Kind` is the subject; an optional `Subject` refines it.
+- Go: `internal/approvals` is the shared queue. An `Item` has `Kind`, `Target` (name, kind, colour, read-only), `Operation` (class, tone), `Origin` (client, task, step, source), `CreatedAt`, `ExpiresAt` and an opaque `Payload`. Kinds: `db.query`, `db.response`, `db.exemption`, `kube.read`, `script.run`, `api.request`, `proof.review` (Studio), `branch.request` (Space). `Kind` is the subject; an optional `Subject` refines it.
 - Item id is `<kind>:<request id>`. Each item opens router prompt `approval:<item id>` (kind `approval`, ref = item id), so the router picks the window.
 - Bound as `ApprovalsService`: `List` and `Answer({IDs, Approve, Options})`. `Options` maps item id to owner-specific JSON (branch request choices). `Answer` returns one `{id, code, error}` per id. The push `kira:approvals:changed` carries the whole list.
 - Each owner registers a resolver; expiry is the owner's (`ApprovalTimeout` 10 min for DB MCP), and the item leaves the queue on answer, expiry or caller disconnect.
@@ -3130,7 +3130,7 @@ One queue and one dialog per app hold every pending agent approval. Tools stay s
 - `ApprovalsDialog` lists items as cards with their own countdown, Approve and Deny, and the origin line; "Approve all" and "Deny all" appear above one item. The X and Escape call `minimise`, which never answers; the dialog becomes `ApprovalsToast` ("N things awaiting your approval") with Review to reopen. A prompt shown by `PromptHost` also turns the dialog into the toast so two modals never stack.
 - State: Pinia `state/approvals.ts` (minimised, focus, in-flight, errors, options). Server state: TanStack Query key `approvals`, replaced by each push.
 - The countdown (`useCountdown`) only displays; the backend decides expiry.
-- `script.run` (P521) and `api.request` (P522) are kinds of this shape: a Go owner plus a registered body. Nothing else changes.
+- `script.run` (P521), `api.request` (P522) and `db.exemption` (P528) are kinds of this shape: a Go owner plus a registered body. Nothing else changes, except that a kind def may set `individualOnly`: "Approve all" skips it (its count excludes it) and only a click on the item approves it. "Deny all" still covers it. `db.exemption` sets it.
 
 ## Database MCP server (v1.7)
 
@@ -3207,7 +3207,7 @@ One queue and one dialog per app hold every pending agent approval. Tools stay s
 - Discover-style engines implement the optional `adapters.Discoverer` interface (`Histogram`, `Suggest`; adapters/discover.go), type-asserted by the Router like `StatementClassifier`. Only kibana implements it.
 - ClassifySQL is shared by the five SQL kinds: postgres, mysql, mariadb, sqlite and clickhouse. Mongo and Redis reuse their own existing statement/command inspection.
 - Kafka, S3 and SQS implement no classifier, so calls against them resolve to unknown with no error.
-- run_query gate order (tools.go, P527): resolve, check mode (schema requires `mode` read|write|ddl; read-only connection or kind without write console denies write/ddl), refuse before connecting if the declared mode's permission is deny, clamp maxRows, connect, classify, tighten-only check (class rank above the declared mode refuses; unknown passes only under ddl), forced EXPLAIN (mode read only) when mcp_auto_explain is on, heavy check, at most one approval, re-check the mode verdict, execute, render. `modeVerdict`/`accessOf` (permissions.go) are the one source for the gate, `list_connections` `access` and the refusal texts.
+- run_query gate order (tools.go, P527): resolve, check mode (schema requires `mode` read|write|ddl; read-only connection or kind without write console denies write/ddl), refuse before connecting if the declared mode's permission is deny, clamp maxRows, connect, classify, tighten-only check (class rank above the declared mode refuses; unknown passes only under ddl), exemption claim and pre-limit check (P528, see Limit exemptions), forced EXPLAIN (mode read only) when mcp_auto_explain is on, heavy check, at most one approval (an exempted call raises one `db.exemption` item instead), re-check the mode verdict, execute under the exec limits, render. `modeVerdict`/`accessOf` (permissions.go) are the one source for the gate, `list_connections` `access` and the refusal texts.
 - Declared mode picks the connection: read runs on the read lane (adapterhost/readlane.go), write and ddl on the main connection under the connection's own permission. The text classifier never loosens a declared mode.
 - Read lane: Router-owned second adapter per connection, same credentials, opened with `adapters.LaneConfig` (ReadOnly + `kiraReadLane` option, pool cap `LanePoolSize`). Kinds with a lane: postgres, mysql, mariadb, sqlite, clickhouse, mongodb, redis; others run read on the main adapter. Fail closed: a lane that cannot open returns its error, never falls back to the main adapter. Closed on connect, disconnect, exposure off, app quit and after 10 idle minutes; a lane built on a replaced primary is discarded. Cancel reaches the lane through `OpSpec.Adapter`.
 - Enforcement label in `list_connections`: `session` (postgres, mysql, mariadb, sqlite, clickhouse: the engine refuses writes), `app` (mongodb, redis: Kira checks the command), `none`. The Studio mirror (`packages/shared/domain/dbmcp.ts`) is pinned by the `dbmcp-list-access` contract.
@@ -3220,14 +3220,14 @@ One queue and one dialog per app hold every pending agent approval. Tools stay s
 
 - The Database MCP server's ApprovalBroker in internal/dbmcp/approval.go is modeled on the FIFO queue of internal/pairing.Broker; its ApprovalTimeout and maxPendingApprovals reuse that broker's bounds.
 - A client disconnect stops the approval wait via ctx, with no external expiry ticker.
-- The approval UI is the shared approvals dialog (see "Approvals surface (P520)"). Studio supplies the item bodies under frontend/src/approvals/ (DbQueryBody, DbResponseBody, KubeReadBody, ProofReviewBody).
+- The approval UI is the shared approvals dialog (see "Approvals surface (P520)"). Studio supplies the item bodies under frontend/src/approvals/ (DbQueryBody, DbResponseBody, DbExemptionBody, KubeReadBody, ProofReviewBody). DbQueryBody and DbExemptionBody share the plan block ApprovalPlanEvidence.vue.
 - A query body shows the statement in a read-only MonacoHost (ApprovalStatement.vue), formatted by formatConsoleText, with an "As sent" toggle for the verbatim text. Word wrap is always on, so no clause sits off screen.
 - An approval prompt's Reason is either "permission" or "heavy". At most one prompt is raised per call when both apply; the stricter reason (permission) wins the label, and the plan evidence rides along.
 - Every approval request carries a Target (ApprovalTarget): connection colour, read-only flag, host, configured database (SQLite: the file), and the decoded run_query/explain_query path. The item header (ConnectionHeader.vue) sits above the lede and statement, so the human sees which database the call acts on.
 - A request has a Stage: "query" (may the statement run) or "response" (it ran; may its result reach the AI client). Both share one FIFO queue, one timeout and one dialog, and the title names the stage.
 - Setting dbMcp.previewResponses (default off, Settings > Database MCP) raises a response-stage request after run_query executes. The handler goroutine holds the final result, so the AI client stays blocked, and only Send returns that same result value untouched.
 - The preview runs after execution, never before approval, for three reasons: a pre-run would defeat the query gate, a heavy read would pay its cost twice, and a rollback transaction held across a human wait would keep database locks for up to 10 min (Redis, Kafka, SQS and S3 have no rollback at all). A write has therefore already run when its result shows; Withhold hides the result, it does not undo the change, and the dialog says so.
-- Every exit after Execute is reviewed: success, empty, adapter error, masked error, masking refusal, internal Go error. Exits before Execute carry only app-authored text and are not.
+- Every exit after Execute is reviewed: success, empty, adapter error, masked error, masking refusal, internal Go error. Exits before Execute carry only app-authored text and are not; neither is a limit refusal after Execute (app-authored, no data).
 - The held bytes are the TextContent of the result the client would get. Masking happens once, in render.go. The UI parses those bytes into a table (PendingResponse.vue) and shows them verbatim on the As sent tab. It never re-renders or re-masks.
 - The text stays out of queue snapshots, which fan out to every window and can be MB-sized. Snapshots carry only isError and bytes; DbMcpService.PendingResponse(requestId) serves the text while the request is queued.
 - Withhold, timeout, abandon and a full queue return an app-authored error with no row data. Approve first re-checks MCP exposure and compares the current mask set with the one used to render (mask.Set.Equal); a change withholds the result so a rule added during review cannot be bypassed.
@@ -3236,6 +3236,18 @@ One queue and one dialog per app hold every pending agent approval. Tools stay s
 - Only run_query is reviewed, as the only tool that returns row data. explain_query, describe_* and list_* are unchanged. There is no undo for a withheld write and no editing of the result before sending.
 - Both stages and heavy-read prompts raise the Studio window when it is not focused (P338), gated by dbMcp.focusOnApproval (default on, read fresh per open; a read error raises). A stray key landing after the raise can only deny: the dialog focuses Deny on mount. Escape minimises and never denies.
 - Two stages can hold one call for up to 20 minutes. A client with a shorter MCP tool timeout ends the call as abandoned and the result is discarded. Studio's install and `agentmcp` write a per-server `timeout` so the CLI's 60 s default never cuts a call.
+
+### Limit exemptions (P528)
+
+A limit rejects a `run_query` call with a clear reason. The agent may retry with a better statement or ask for an exemption. Shared by the statement timeout (P529) and the EXPLAIN threshold (P530).
+
+- `limits.go`: `Limit` (`Name`), `PreLimit.Check` (before any approval or execution), `ExecLimit.Apply`/`Hit` (around Execute), `LimitHit` (limit, measured, max, unit `ms` or `rows`), `LimitCall`, `LimitError`. Names: `statement_timeout`, `expensive_query`. A limit returns hits only; the server owns the refusal text, ids, claim, dialog and union. `Config.Limits` adds limits beside built-ins; `New` rejects an empty or duplicate name, or a limit with neither half.
+- A refusal mints an exemption id `exm_<12>` (`exemptions.go`, in memory on `Server`, TTL `ApprovalTimeout`, cap 256, oldest evicted) bound to connectionId, mode, path and the exact sql. The text names the field: `repeat this exact call with exemption {"id":"exm_…","reason":"…"}`. `run_query` takes `exemption: {id, reason}` (reason at most 300 characters). It is a field, not a tool: the exempted call goes through the same gates, lane, masking, review and op log.
+- The id is single use on first presentation, whatever the outcome (mismatch, deny, approve). A mismatch refuses and spends it. Claim happens after `resolveVerdict`, so deny, exposure, path and tighten refusals leave it unclaimed.
+- An exempted call always raises one `db.exemption` approval before execution, whatever the mode verdict or review setting: no code path reads a setting to decide. It replaces the `db.query` item and carries mode, detected class, enforcement, plan, the agent's reason and every lifted limit. Approve re-checks exposure and mode. Deny returns `the user kept limit <names> for this statement ...; it did not run`. Timeout, abandon and a full queue use the P520 texts.
+- Exemption covers exactly the limits in the record for that one call. Nothing is remembered per session, connection or statement. A second limit tripping after the first is lifted refuses with a fresh id covering the union, so the next dialog lists all. Result review still applies after an exempted run; a limit refusal itself is app-authored and not reviewed.
+- Payload (`approval_item.go`, zod `dbExemptionPayloadSchema`): connectionId, statement, mode, detected, enforcement, reason, limits `[{limit, measured, max, unit}]`, plan. Title `backend.prompt.dbMcpExemption.title`. Body `DbExemptionBody.vue`; the agent's reason renders as escaped plain text.
+- Tests: dbmcpflow `exemption_test.go` (fake limits through `flowharness.WithDbMcpLimits`; contract `approvals-exemption`), `exemptions_test.go` (store), UI `approvals-exemption.spec.ts`. P529/P530 add their real limits and flow cases beside these.
 
 ### EXPLAIN (M3)
 
@@ -3277,7 +3289,7 @@ One queue and one dialog per app hold every pending agent approval. Tools stay s
 ## App prompts (P271)
 
 - internal/llmprompts holds every LLM prompt and LLM-facing instruction both apps send; internal/prompts is the P246 popup router, not this package.
-- registry.go is the only file with prompt text; it has 244 entries, accessed via typed handle Prompt[V] with Text(src, vars), and NoVars for entries without variables.
+- registry.go is the only file with prompt text; it has 247 entries, accessed via typed handle Prompt[V] with Text(src, vars), and NoVars for entries without variables.
 - User-authored text (smart-script bodies, workflow step prompts), tool and server names, tool error strings and result data formatting are kept out of the prompt registry.
 - Prompt kinds are system, message, suffix, instructions, tool, argument (one MCP tool property description, with Parent tool and Field), toolResult, and fragment (included via {{template}}).
 - InputSchema[T] sets each tool property's description from its argument entry, a mismatch panics at server build, and jsonschema tags are not used.
