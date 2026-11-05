@@ -449,15 +449,7 @@ func tightenByClass(summary model.ConnectionSummary, mode string, class adapters
 
 // isReadOnlyRefusal reports whether err is the engine (or, on app lanes, Kira's own check) refusing
 // a write on the read lane: postgres 25006, mysql 1792/1290, sqlite readonly (8), clickhouse 164.
-func isReadOnlyRefusal(err error) bool {
-	msg := strings.ToLower(err.Error())
-	for _, marker := range []string{"25006", "read-only", "read only", "readonly", "1792", "1290", "code: 164", "(164)"} {
-		if strings.Contains(msg, marker) {
-			return true
-		}
-	}
-	return false
-}
+func isReadOnlyRefusal(err error) bool { return adapters.IsReadOnlyRefusal(err) }
 
 // readOnlyRefusal words a lane refusal for the agent. On a masked connection the engine text is
 // withheld like any masked driver error.

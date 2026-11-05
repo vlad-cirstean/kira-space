@@ -55,7 +55,9 @@ func mapCode(code, message string) error {
 		return adapters.New(adapters.CodeNotFound, message, nil)
 	case timeoutExceeded, socketTimeout:
 		return adapters.New(adapters.CodeTimeout, message, nil)
-	case readonlyCode, tableIsReadOnly:
+	case readonlyCode:
+		return adapters.New(adapters.CodeUnsupported, message, adapters.RefusedWrite(nil))
+	case tableIsReadOnly:
 		return adapters.New(adapters.CodeUnsupported, message, nil)
 	case unknownUser, wrongPassword, requiredPassword, authenticationFail, ipAddressNotAllow,
 		databaseAccessDeny, accessDenied:

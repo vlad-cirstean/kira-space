@@ -3,6 +3,7 @@ package adapters
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"regexp"
 	"strings"
@@ -31,6 +32,21 @@ const (
 	CodeInternal    = ErrorCode(ipcerr.CodeInternal)
 	CodeContract    = ErrorCode(ipcerr.CodeContract)
 )
+
+// ErrReadOnlyRefused marks, via the cause chain, an error where the engine (or Kira's own app-lane
+// check) refused a write on a read-only session. Match with IsReadOnlyRefusal, never on message text.
+var ErrReadOnlyRefused = errors.New("read-only refusal")
+
+// IsReadOnlyRefusal reports whether err carries ErrReadOnlyRefused.
+func IsReadOnlyRefusal(err error) bool { return errors.Is(err, ErrReadOnlyRefused) }
+
+// RefusedWrite wraps cause (may be nil) so IsReadOnlyRefusal matches.
+func RefusedWrite(cause error) error {
+	if cause == nil {
+		return ErrReadOnlyRefused
+	}
+	return fmt.Errorf("%w: %w", cause, ErrReadOnlyRefused)
+}
 
 // Error is the Go analogue of errors.ts's AdapterError (named Error, not AdapterError, per A1 —
 // adapters.AdapterError would stutter at every call site). Message is the server's own message
@@ -91,7 +107,7 @@ func NoQueryConsole(kind string) error {
 // AssertWritable is errors.ts's assertWritable(readOnly) — P39 iter2 F15's shared read-only guard.
 func AssertWritable(readOnly bool) error {
 	if readOnly {
-		return T(CodeUnsupported, "backend.studio.adapter.readOnly.body", nil, nil)
+		return T(CodeUnsupported, "backend.studio.adapter.readOnly.body", nil, RefusedWrite(nil))
 	}
 	return nil
 }
@@ -100,9 +116,9 @@ func AssertWritable(readOnly bool) error {
 // read-only mode, or a per-request one (an MCP read on a writable connection).
 func ReadOnlyViolation(connReadOnly bool) error {
 	if connReadOnly {
-		return T(CodeUnsupported, "backend.studio.adapter.readOnly.body", nil, nil)
+		return T(CodeUnsupported, "backend.studio.adapter.readOnly.body", nil, RefusedWrite(nil))
 	}
-	return T(CodeUnsupported, "backend.studio.adapter.readOnlyRequest.body", nil, nil)
+	return T(CodeUnsupported, "backend.studio.adapter.readOnlyRequest.body", nil, RefusedWrite(nil))
 }
 
 // OpenTransaction is the refusal of a per-request read-only wrap while the shared connection holds
