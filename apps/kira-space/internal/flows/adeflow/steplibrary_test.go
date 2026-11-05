@@ -1,6 +1,7 @@
 package adeflow_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -269,5 +270,5 @@ func TestStepLibraryMigration(t *testing.T) {
 func sameWorkflow(a, b adewire.Workflow) bool {
 	x, _ := json.Marshal(a)
 	y, _ := json.Marshal(b)
-	return string(x) == string(y)
+	return bytes.Equal(x, y)
 }

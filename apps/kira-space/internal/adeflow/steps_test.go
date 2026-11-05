@@ -1,6 +1,7 @@
 package adeflow
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -249,5 +250,5 @@ func yamlFences(doc string) []string {
 func equalJSON(a, b adewire.Workflow) bool {
 	x, _ := json.Marshal(a)
 	y, _ := json.Marshal(b)
-	return string(x) == string(y)
+	return bytes.Equal(x, y)
 }
