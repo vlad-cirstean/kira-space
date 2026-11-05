@@ -152,6 +152,9 @@ func (b *TaskBoard) NewWorkflow(_ context.Context, args adewire.NewWorkflowArgs)
 func (b *TaskBoard) Start() {
 	b.startOnce.Do(func() {
 		if b.deps.Workflows != nil {
+			if err := b.deps.Workflows.MigrateInlineSteps(); err != nil {
+				slog.Warn("ade workflows: move inline steps into the library", "scope", "ade", "err", err)
+			}
 			if err := b.deps.Workflows.WriteDocs(); err != nil {
 				slog.Warn("ade workflows: write AGENTS.md", "scope", "ade", "err", err)
 			}

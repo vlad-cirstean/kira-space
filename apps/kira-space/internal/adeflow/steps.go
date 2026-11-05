@@ -336,6 +336,25 @@ func libraryForm(st adewire.WorkflowStep) adewire.WorkflowStep {
 	return st
 }
 
+// create writes a new library file for st under id; an existing file is refused.
+func (l *StepLibrary) create(id string, st adewire.WorkflowStep) error {
+	p, err := l.path(id + ".yaml")
+	if err != nil {
+		return err
+	}
+	l.wmu.Lock()
+	defer l.wmu.Unlock()
+	if _, err := os.Lstat(p); err == nil {
+		return invalidf("step %s.yaml already exists", id)
+	}
+	st.ID = id
+	out, err := encodeStep(&yaml.Node{}, st)
+	if err != nil {
+		return err
+	}
+	return configfs.WriteAtomic(p, out, 0o644)
+}
+
 // Delete removes one library file. The caller checks that no workflow uses it.
 func (l *StepLibrary) Delete(file string) error {
 	p, err := l.path(file)
