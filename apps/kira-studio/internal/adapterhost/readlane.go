@@ -2,7 +2,7 @@ package adapterhost
 
 import (
 	"context"
-		"sync"
+	"sync"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
