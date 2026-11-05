@@ -4,7 +4,7 @@ Branch `chapter/v0.2.35`, based on `chapter/v0.2.34` (v0.2.34 not yet merged to 
 
 Source: user request. Fifteen phases. Close duty after the last phase lands: one full suite run, 2 code review rounds (user ask), hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
 
-Parallelism (user ask): up to 3 phases run at once as named streams, each in its own worktree off the same base, zero file overlap. P512 to P517 landed. Remaining waves: P518 + P519 + P524 in parallel, then P520 alone (touches every approval owner), then P521 + P522 (planner may force sequential on overlap in the shared MCP access settings), then P523 alone (touches every id generator). P525 ran ahead of P520 by user direction (frontend-only). P520 implementation starts after P526 lands. From P512 on, new Kira-generated ids follow the P523 convention where cheap.
+Parallelism (user ask): up to 3 phases run at once as named streams, each in its own worktree off the same base, zero file overlap. P512 to P517 landed. Remaining waves: P518 + P519 + P524 in parallel, then P520 alone (touches every approval owner), then P521, then P522 (sequential: both edit the Studio MCP server, settings and prompt registry), then P523 alone (touches every id generator). P525 ran ahead of P520 by user direction (frontend-only). P520 implementation starts after P526 lands. From P512 on, new Kira-generated ids follow the P523 convention where cheap.
 
 | Phase | Title | Status |
 |---|---|---|
@@ -18,7 +18,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 | P519 | Proof window cell editor and multi-file screenshots | Done |
 | P520 | Aggregated MCP approvals: one dialog, minimise to toast, long approval timeouts | Pending |
 | P521 | Scripts MCP | Pending |
-| P522 | API MCP | Pending |
+| P522 | Free-form API request MCP with agent credentials | Pending |
 | P523 | Prefixed nanoid for every Kira-generated id | Pending |
 | P524 | Manual order for API collections and environments | Done |
 | P525 | Uniform flat design: dialogs and outline buttons | Done |
@@ -91,9 +91,12 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 - Ask: Agents run a script and fetch its logs via MCP. Log fetch capped at a max line count; simple filter (planner picks, e.g. tail/head and substring). Per-script MCP access is explicit opt-in. Per-script choice to show an approval prompt or not. Scripts get descriptions, as connections have. Tools stay synchronous; approval prompts are an item kind in the P520 approvals surface.
 - Plan: `plans/P521.md`.
 
-### P522 API MCP
+### P522 Free-form API request MCP with agent credentials
 
-- Ask: Agents call saved API requests via MCP. Same access model as P521: explicit opt-in per item, prompt on or off, description field. Tools stay synchronous; approval prompts are an item kind in the P520 approvals surface, request parsed per P520 (method, URL, headers, query, body, masked auth, variables).
+- Ask (user, revised): One free-form request tool, no access to saved requests (no list, get or save). The agent builds method, URL, headers, query and body, and may reference environment variables by name (`{{base_url}}`). The user approves each request in the P520 approvals surface, item kind `api.request`: method and URL prominent, environment, host, headers and params, body formatted by content type, masked auth, "uses credential: NAME" lines, tone by method risk. Tools stay synchronous.
+- Credentials (user-approved design): a variable is usable by agents only when marked available, per environment, in the environment file (default off); agents see names, never values. Each opted-in secret has an allowed-host list (default from the environment's base-URL variable), enforced per host. A credential bound for an unlisted host, directly or by redirect, is blocked with an error, never a prompt. Responses and echoes are masked (`secrets.Masker`) and size-capped before they reach the agent. No reveal path. Managed in the Environments view beside Secrets, form and YAML over one file (P514).
+- Global opt-in and approval mode in Settings, Database MCP; tool descriptions editable in Settings, Prompts. Covers timeouts, size caps, TLS, no cookie sharing between calls, masked op log.
+- Runs after P521 (shared MCP server, settings and prompt files).
 - Plan: `plans/P522.md`.
 
 ### P523 Prefixed nanoid for every Kira-generated id
