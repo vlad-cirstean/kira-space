@@ -10,6 +10,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/flowharness"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/terminal"
@@ -248,29 +249,38 @@ func TestDbMcpScriptApproval(t *testing.T) {
 	if res := callTool(t, sess, "run_script", map[string]any{"scriptId": "ask", "params": map[string]any{"token": "x"}}); !res.IsError || !strings.Contains(text(res), "token") {
 		t.Fatalf("run_script with a secret param = %q, want a refusal naming it", text(res))
 	}
-	if f.app.W.DbMcp.PendingApprovals().Pending != nil {
+	if len(f.list(t)) != 0 {
 		t.Fatal("a refused secret param raised an approval")
 	}
 
 	pending := callToolAsync(sess, "run_script", args)
 	req := f.pending(t)
-	if req.Subject != "script" || req.Script == nil || req.Origin == nil || req.Origin.Client != "flow-client" || req.Origin.Version != "1" {
-		t.Fatalf("pending = %+v, want a script item from flow-client 1", req)
+	it := req.Item
+	if it.Kind != approvals.KindScriptRun || it.Origin.Client != "Claude Code 2.1.318" || it.Target.Name != "ask" {
+		t.Fatalf("pending = %+v, want a script.run item from Claude Code 2.1.318", it)
 	}
-	var token *bridge.DbMcpApprovalValue
-	for i, e := range req.Script.Env {
-		if e.Name == "KIRA_PARAM_TOKEN" {
-			token = &req.Script.Env[i]
+	var pl struct {
+		Command string
+		Env     []struct {
+			Name, Value   string
+			Secret, Saved bool
 		}
 	}
-	if !strings.Contains(req.Script.Command, "KIRA_PARAM_REGION") || token == nil || !token.Secret || !token.Saved || token.Value != "" {
-		t.Fatalf("script payload = %+v, want the command and a masked saved token", req.Script)
+	if err := json.Unmarshal(it.Payload, &pl); err != nil {
+		t.Fatal(err)
+	}
+	var tokenOK bool
+	for _, e := range pl.Env {
+		if e.Name == "KIRA_PARAM_TOKEN" {
+			tokenOK = e.Secret && e.Saved && e.Value == ""
+		}
+	}
+	if !strings.Contains(pl.Command, "KIRA_PARAM_REGION") || !tokenOK {
+		t.Fatalf("script payload = %s, want the command and a masked saved token", it.Payload)
 	}
 	// Contract dbmcp-approval-script: tests/ui/dbmcp-approval-script.spec.ts renders this item.
-	f.app.Contract(t, "dbmcp-approval-script", "DbMcpService.PendingApprovals", bridge.DbMcpApprovalSnapshot{Pending: &req},
-		flowharness.Mask("expiresAtMs", "requestId", "cwd"))
-	f.app.Contract(t, "dbmcp-approval-script", "args:DbMcpService.ApproveQuery", bridge.DbMcpApprovalArgs{RequestID: req.RequestID}, flowharness.Mask("requestId"))
-	f.app.Contract(t, "dbmcp-approval-script", "args:DbMcpService.DenyQuery", bridge.DbMcpApprovalArgs{RequestID: req.RequestID}, flowharness.Mask("requestId"))
+	f.app.Contract(t, "dbmcp-approval-script", "ApprovalsService.List", []approvals.Item{it}, flowharness.Mask("createdAt", "expiresAt", "cwd", "location"))
+	f.app.Contract(t, "dbmcp-approval-script", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{it.ID}, Approve: false})
 
 	f.answer(t, false, req.RequestID)
 	out := wait(t, pending)

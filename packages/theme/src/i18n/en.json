@@ -13521,9 +13521,6 @@
           "operation": {
             "label": "Agent run request"
           },
-          "origin": {
-            "label": "Asked by {client} {version}"
-          },
           "secretSaved": {
             "status": "Saved value, not shown"
           },

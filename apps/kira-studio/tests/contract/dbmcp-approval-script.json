@@ -1,21 +1,22 @@
 {
-  "DbMcpService.PendingApprovals": {
-    "pending": {
-      "class": "unknown",
-      "cluster": null,
-      "connectionId": "ask",
-      "connectionName": "ask",
-      "expiresAtMs": 0,
-      "kind": "script",
-      "origin": {
-        "client": "flow-client",
-        "version": "1"
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "script.run:<id:1>",
+      "kind": "script.run",
+      "operation": {
+        "class": "run",
+        "tone": "caution"
       },
-      "plan": null,
-      "reason": "permission",
-      "requestId": "<masked>",
-      "response": null,
-      "script": {
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
         "command": "echo \"region=$KIRA_PARAM_REGION token=$KIRA_PARAM_TOKEN\"",
         "cwd": "<masked>",
         "description": "Echoes the region and a token.",
@@ -35,7 +36,6 @@
             "value": ""
           }
         ],
-        "name": "ask",
         "params": [
           {
             "fromVar": "region",
@@ -54,23 +54,21 @@
         ],
         "scriptId": "ask"
       },
-      "stage": "query",
-      "statement": "echo \"region=$KIRA_PARAM_REGION token=$KIRA_PARAM_TOKEN\"",
-      "subject": "script",
+      "reason": "permission",
       "target": {
         "color": "",
-        "database": "",
-        "host": "",
-        "path": [],
+        "kind": "script",
+        "location": "<masked>",
+        "name": "ask",
         "readOnly": false
       }
-    },
-    "queued": 0
-  },
-  "args:DbMcpService.ApproveQuery": {
-    "requestId": "<masked>"
-  },
-  "args:DbMcpService.DenyQuery": {
-    "requestId": "<masked>"
+    }
+  ],
+  "args:ApprovalsService.Answer": {
+    "approve": false,
+    "ids": [
+      "script.run:<id:1>"
+    ],
+    "options": null
   }
 }
