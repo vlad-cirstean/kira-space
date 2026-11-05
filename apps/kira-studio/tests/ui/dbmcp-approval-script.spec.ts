@@ -46,9 +46,7 @@ test('contract: a script request shows the script, who asked and the masked secr
   await expect(card.locator('[data-testid="db-mcp-approval-statement"]')).toHaveCount(0);
 });
 
-test('contract: Deny is focused first and denies by item id; Approve answers it too', async ({
-  relaunch,
-}) => {
+test('contract: Deny is focused first and denies by item id', async ({ relaunch }) => {
   const { item, answer } = setup();
   const { window: page, control } = await relaunch({
     control: [{ channel: IPC.approvalsAnswer, response: answeredOk(answer.ids) }],
@@ -60,10 +58,17 @@ test('contract: Deny is focused first and denies by item id; Approve answers it 
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
     .toEqual({ ids: [item.id], approve: false, options: null });
+});
+
+test('contract: Approve answers the item id', async ({ relaunch }) => {
+  const { item, answer } = setup();
+  const { window: page, control } = await relaunch({
+    control: [{ channel: IPC.approvalsAnswer, response: answeredOk(answer.ids) }],
+  });
 
   await pushApprovals(page, [liveItem(item)]);
   await page.click(`[data-testid="approval-approve-${item.id}"]`);
   await expect
-    .poll(() => control.log().filter((e) => e.channel === IPC.approvalsAnswer).length)
-    .toBe(2);
+    .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
+    .toEqual({ ids: [item.id], approve: true, options: null });
 });
