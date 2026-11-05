@@ -108,6 +108,15 @@ func (r *Repo) List(limit int) ([]Run, error) {
 	})
 }
 
+// Live returns the running and waiting runs, newest first.
+func (r *Repo) Live() ([]Run, error) {
+	rows, err := r.DB.Query(`SELECT ` + columns + ` FROM script_runs WHERE state IN ('running', 'waiting') ORDER BY created_at DESC, id DESC`)
+	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (Run, bool, error) {
+		run, err := scan(rows)
+		return run, true, err
+	})
+}
+
 // ListByTask returns the newest runs started for a task first.
 func (r *Repo) ListByTask(taskID string, limit int) ([]Run, error) {
 	rows, err := r.DB.Query(`SELECT `+columns+` FROM script_runs WHERE task_id = ? ORDER BY created_at DESC, id DESC LIMIT ?`, taskID, limit)
