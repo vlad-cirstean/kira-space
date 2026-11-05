@@ -21,7 +21,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 | P522 | API MCP | Pending |
 | P523 | Prefixed nanoid for every Kira-generated id | Pending |
 | P524 | Manual order for API collections and environments | Done |
-| P525 | Uniform flat design: dialogs and outline buttons | Pending |
+| P525 | Uniform flat design: dialogs and outline buttons | Done |
 | P526 | Standalone step library and Workflows page tabs | Pending |
 
 ## Rows
@@ -110,6 +110,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 - Ask: Dialogs adopt the flat design. Filled buttons become the outline (or toolbar) style used overall. Fix any other design inconsistency found (radius, borders, shadows, spacing, header/footer layout, icon buttons, destructive styling, inputs, tokens). Both apps and shared packages.
 - Runs before P520 (user direction, frontend-only). P520 to P522 UI adopts the P525 rules.
 - Plan: `plans/P525.md`.
+- Result: Done in 8 commits. No filled button remains: `dialog-primary` is the accent outline, `toolbar-primary` and `danger` removed, ADE actions use tone outlines (`ACTION_CLASS`), indicators use `SOLID_CLASS`. One `floatingSurface` recipe, no header icons, toggle state via aria. Guards U106 to U108. Visual baselines re-recorded.
 
 ### P526 Standalone step library and Workflows page tabs
 
