@@ -103,7 +103,12 @@ func TestBranchRequestMerge(t *testing.T) {
 	f.app.Contract(t, mergeScenario, "ApprovalsService.List", []approvals.Item{stored}, mergeMask)
 
 	rename, keep, drop := byBranch["feat/new"], byBranch["feat/b"], byBranch["feat/c"]
-	picked, err := json.Marshal(brOptions{ItemIDs: []string{stable[keep.ID], stable[rename.ID]}, RemoteItemIDs: []string{stable[rename.ID]}})
+	shown := make([]string, len(sorted.Items))
+	for i, it := range sorted.Items {
+		shown[i] = stable[it.ID]
+	}
+	slices.Sort(shown) // the rendered call order
+	picked, err := json.Marshal(brOptions{ItemIDs: []string{stable[keep.ID], stable[rename.ID]}, RemoteItemIDs: []string{stable[rename.ID]}, ShownItemIDs: shown})
 	if err != nil {
 		t.Fatal(err)
 	}

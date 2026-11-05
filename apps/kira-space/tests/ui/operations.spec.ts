@@ -8,7 +8,8 @@ import type { ControlSnapshot } from './support/types';
 // P415: the Operations dock — Kira Space's op log (git spawns, agent sessions, MCP calls) — over
 // the shared OpLogPanel. Records are seeded through `opsRecent`, patched through `kira:op:update`
 // and background reads arrive on `kira:op:batch`. Backend halves: appflow TestOpsEveryGitSpawn
-// (space-ops) and adeflow TestOpsAde (space-ops-ade).
+// (space-ops), adeflow TestOpsAde (space-ops-ade) and adeflow TestAgentCancelsTaskOperation
+// (space-ops-agent-cancel).
 
 const NOW = '2026-01-01T00:00:00.000Z';
 
@@ -356,6 +357,22 @@ test('a running session op shows Cancel and sends its id', async ({ relaunch }) 
   await expect
     .poll(() => control.log().filter((e) => e.channel === IPC.opsCancel))
     .toEqual([{ channel: IPC.opsCancel, args: { opId: 'op-session' } }]);
+});
+
+test('contract: a git op an agent cancelled renders cancelled with no Cancel button', async ({
+  relaunch,
+}) => {
+  const cancelled = {
+    ...contract<ContractJson>('space-ops-agent-cancel', 'record#cancelled'),
+    id: 'op-agent-cancelled',
+    startedAt: NOW,
+  };
+  const { window } = await openDock(relaunch, [cancelled]);
+  const row = window.locator('[data-testid="op-row"]');
+  await expect(row).toHaveCount(1);
+  await expect(row).toHaveAttribute('data-status', 'cancelled');
+  await expect(row).toContainText('fetch');
+  await expect(window.getByRole('button', { name: 'Cancel operation' })).toHaveCount(0);
 });
 
 test('contract: a child op renders under its MCP parent, indented', async ({ relaunch }) => {

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 )
@@ -195,34 +194,5 @@ func TestSpaceTools_startRunCreatesNoBranch(t *testing.T) {
 	info, err := requestBranch(context.Background(), e.board, id, "api", "feat/api-one")
 	if err != nil || info.Branch != "feat/api-one" {
 		t.Fatalf("request_branches after start: %+v, %v", info, err)
-	}
-}
-
-func TestSpaceTools_operationsAreTaskScopedAndGitOnly(t *testing.T) {
-	e := newEngine(t, nil)
-	e.board.deps.Ops = oplog.New()
-	ctx := context.Background()
-	start := func(taskID, category string) (*oplog.Op, *bool) {
-		cancelled := new(bool)
-		op := e.board.deps.Ops.Start(oplog.WithOrigin(ctx, oplog.Origin{Module: oplog.ModuleADE, Trigger: oplog.TriggerMCP, TaskID: taskID}),
-			oplog.Meta{Category: category, Kind: "fetch"})
-		op.SetCancel(func() bool { *cancelled = true; return true })
-		return op, cancelled
-	}
-	mine, mineCancelled := start("t1", oplog.CategoryGit)
-	_, otherCancelled := start("t2", oplog.CategoryGit)
-	session, _ := start("t1", oplog.CategorySession)
-
-	ops, err := e.board.ListOperations(ctx, "t1")
-	if err != nil || len(ops) != 1 || ops[0].OpID != mine.ID() {
-		t.Fatalf("ListOperations = %+v, %v; want only the task's git op", ops, err)
-	}
-	for _, id := range []string{session.ID(), "unknown"} {
-		if _, err := e.board.CancelOperation(ctx, "t1", id); !strings.Contains(toolErrText(t, err), "No running operation") {
-			t.Fatalf("cancel %s: %v", id, err)
-		}
-	}
-	if _, err := e.board.CancelOperation(ctx, "t1", mine.ID()); err != nil || !*mineCancelled || *otherCancelled {
-		t.Fatalf("cancel own op: err=%v mine=%v other=%v", err, *mineCancelled, *otherCancelled)
 	}
 }

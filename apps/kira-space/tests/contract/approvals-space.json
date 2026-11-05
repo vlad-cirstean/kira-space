@@ -87,6 +87,11 @@
         ],
         "remoteItemIds": [
           "c2i0"
+        ],
+        "shownItemIds": [
+          "c0i0",
+          "c1i0",
+          "c2i0"
         ]
       }
     }
