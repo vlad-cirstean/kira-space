@@ -20,6 +20,18 @@ func workflowHash(js []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// snapshotJSON is the canonical JSON of wf as hashed and stored: the library reference is cleared, so
+// moving a step into the library changes nothing a started task compares.
+func snapshotJSON(wf adewire.Workflow) ([]byte, error) {
+	steps := make([]adewire.WorkflowStep, len(wf.Steps))
+	for i, s := range wf.Steps {
+		s.Use = ""
+		steps[i] = s
+	}
+	wf.Steps = steps
+	return json.Marshal(wf)
+}
+
 // taskWorkflow returns the workflow a task runs: its snapshot when it has started, else the live file.
 func (b *TaskBoard) taskWorkflow(t model.AdeTask) (adewire.Workflow, bool) {
 	if t.WorkflowJSON != "" {
@@ -45,7 +57,7 @@ func (b *TaskBoard) snapshotWorkflow(t *model.AdeTask) error {
 	if !ok {
 		return invalid("workflow %q is not available", t.WorkflowID)
 	}
-	js, err := json.Marshal(wf)
+	js, err := snapshotJSON(wf)
 	if err != nil {
 		return err
 	}
@@ -89,7 +101,7 @@ func decorateTask(out *adewire.Task, t model.AdeTask, live func(id string) liveI
 		// Compare the re-marshalled snapshot, so a wire field added since the task started does not
 		// read as an edit of the live file.
 		hash := t.WorkflowHash
-		if js, err := json.Marshal(wf); err == nil {
+		if js, err := snapshotJSON(wf); err == nil {
 			hash = workflowHash(js)
 		}
 		out.WorkflowOutdated = li.hash != hash
@@ -106,7 +118,7 @@ func (b *TaskBoard) liveWorkflows() func(id string) liveInfo {
 		var e liveInfo
 		if b.deps.Workflows != nil && id != "" {
 			if wf, ok := b.deps.Workflows.Get(id); ok {
-				if js, err := json.Marshal(wf); err == nil {
+				if js, err := snapshotJSON(wf); err == nil {
 					e = liveInfo{hash: workflowHash(js), ok: true}
 					if i, has := firstStep(wf); has {
 						e.first = wf.Steps[i].ID

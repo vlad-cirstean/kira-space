@@ -617,6 +617,10 @@ func (b *TaskBoard) Workflows(_ context.Context) (adewire.WorkflowsResult, error
 		return adewire.WorkflowsResult{}, err
 	}
 	res := b.deps.Workflows.List(usedBy)
+	res.Steps = b.stepList()
+	if b.deps.Workflows.Steps != nil {
+		res.StepsDir = b.deps.Workflows.Steps.Dir
+	}
 	res.Sandbox = b.sandboxSupport()
 	res.StageSettings = stageCatalog()
 	return res, nil

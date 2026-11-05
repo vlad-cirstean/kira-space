@@ -77,6 +77,13 @@ func (b *TaskBoard) workflowsFileChanged() {
 	b.scheduleWorkflows()
 }
 
+// stepsFileChanged is the library watcher callback: a library edit changes the workflows that
+// reference the step, so both folders are re-read before the channel fires.
+func (b *TaskBoard) stepsFileChanged() {
+	b.deps.Workflows.Steps.List(nil)
+	b.workflowsFileChanged()
+}
+
 // WorkflowYaml returns one workflow file's raw text.
 func (b *TaskBoard) WorkflowYaml(_ context.Context, file string) (adewire.WorkflowYaml, error) {
 	y, err := b.deps.Workflows.ReadYaml(file)
@@ -85,7 +92,7 @@ func (b *TaskBoard) WorkflowYaml(_ context.Context, file string) (adewire.Workfl
 
 // ValidateWorkflowYaml parses text without touching disk.
 func (b *TaskBoard) ValidateWorkflowYaml(_ context.Context, src string) adewire.WorkflowValidation {
-	v := adeflow.ValidateYaml(src)
+	v := b.deps.Workflows.Validate(src)
 	if step, param := b.workflowSecretParam(v.Workflow); param != "" {
 		return adewire.WorkflowValidation{Error: &adewire.WorkflowError{Line: 1, Message: secretParamMsg(step, param)}}
 	}
@@ -156,6 +163,7 @@ func (b *TaskBoard) Start() {
 				b.stopFlowW = stop
 				b.folderWMu.Unlock()
 			}
+			b.startStepLibrary()
 		}
 		if len(b.recoveredRebases) > 0 {
 			recovered := b.recoveredRebases
@@ -180,13 +188,16 @@ func (b *TaskBoard) Start() {
 
 func (b *TaskBoard) stopWatchers() {
 	b.folderWMu.Lock()
-	stopFlow := b.stopFlowW
-	b.stopFlowW = nil
+	stopFlow, stopSteps := b.stopFlowW, b.stopStepsW
+	b.stopFlowW, b.stopStepsW = nil, nil
 	watchers := b.folderW
 	b.folderW = map[string]*folderWatcher{}
 	b.folderWMu.Unlock()
 	if stopFlow != nil {
 		stopFlow()
+	}
+	if stopSteps != nil {
+		stopSteps()
 	}
 	for _, w := range watchers {
 		w.stop()

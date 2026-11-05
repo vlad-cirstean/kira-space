@@ -163,6 +163,7 @@ type TaskBoard struct {
 	folderWMu   sync.Mutex
 	folderW     map[string]*folderWatcher
 	stopFlowW   func()
+	stopStepsW  func()
 	wfTimer     *time.Timer
 	startOnce   sync.Once
 
