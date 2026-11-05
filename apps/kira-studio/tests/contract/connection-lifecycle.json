@@ -21,6 +21,7 @@
     "mcpReadMode": "deny",
     "mcpReviewResults": "inherit",
     "mcpStatementTimeoutSec": 0,
+    "mcpTables": null,
     "mcpWriteMode": "deny",
     "mode": "fields",
     "name": "Pg copy",

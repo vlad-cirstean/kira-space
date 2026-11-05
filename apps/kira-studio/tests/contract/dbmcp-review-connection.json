@@ -49,6 +49,7 @@
     "mcpReadMode": "allow",
     "mcpReviewResults": "review",
     "mcpStatementTimeoutSec": 0,
+    "mcpTables": null,
     "mcpWriteMode": "prompt",
     "mode": "fields",
     "name": "notes db",
