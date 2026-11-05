@@ -148,25 +148,45 @@ func (m *migration) workflow(name string) error {
 		}
 		refs[i].Use = libID
 	}
+	var written []string
+	// rollback removes the library files this workflow added, so a skipped workflow leaves no orphans
+	// and later workflows cannot reference them.
+	rollback := func() {
+		for _, id := range written {
+			_ = m.r.Steps.Delete(id + ".yaml")
+		}
+		for id := range created {
+			delete(m.taken, id)
+		}
+	}
 	for id, st := range created {
 		if err := m.r.Steps.create(id, st); err != nil {
+			rollback()
 			return err
 		}
+		written = append(written, id)
 	}
 	var doc yaml.Node
 	if err := yaml.Unmarshal(src, &doc); err != nil {
+		rollback()
 		return err
 	}
 	wf.Steps = refs
 	out, err := encodeWorkflow(&doc, wf, m.r.Steps)
 	if err != nil {
+		rollback()
 		return err
 	}
 	after, err := parseResolved(out, m.r)
 	if err != nil || after != before {
+		rollback()
 		return fmt.Errorf("the migrated file does not resolve to the original workflow: %v", err)
 	}
-	return configfs.WriteAtomic(p, out, 0o644)
+	if err := configfs.WriteAtomic(p, out, 0o644); err != nil {
+		rollback()
+		return err
+	}
+	return nil
 }
 
 // libraryID picks the library id for a step: its own id when free or already holding the same body,
