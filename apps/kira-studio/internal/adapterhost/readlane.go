@@ -170,7 +170,8 @@ func (r *Router) openLane(ctx context.Context, connectionID string, primary adap
 		return nil, err
 	}
 	id := connectionID
-	if _, _, err := r.host.RunOp(ctx, OpSpec{ConnectionID: &id, Kind: "connect", Adapter: adapter},
+	// The lane is the agent's, never a user connect: label its ops as MCP.
+	if _, _, err := r.host.RunOp(WithOpSource(ctx, OpSourceMCP), OpSpec{ConnectionID: &id, Kind: "connect", Adapter: adapter},
 		func(ctx context.Context, op *adapters.OpCtx) (any, error) {
 			return adapter.Connect(ctx, adapters.LaneConfig(cfg), op)
 		}); err != nil {
@@ -218,7 +219,7 @@ func (l *readLanes) discard(connectionID string, lane *readLane) bool {
 func (r *Router) teardownLane(ctx context.Context, connectionID string, lane *readLane) {
 	r.lanes.stopIdle(lane)
 	r.host.CancelOpsOnAdapter(lane.adapter)
-	r.disconnectAdapter(ctx, connectionID, lane.adapter)
+	r.disconnectAdapter(WithOpSource(ctx, OpSourceMCP), connectionID, lane.adapter)
 }
 
 func (r *Router) closeIdleLane(connectionID string, lane *readLane) {
