@@ -80,6 +80,17 @@ export const scriptScheduleSchema = /*#__PURE__*/ z.object({
 });
 export type ScriptSchedule = z.infer<typeof scriptScheduleSchema>;
 
+// Mirrors scripts.MCPAccess: opts a normal script into the Database MCP server.
+export const mcpAccessSchema = /*#__PURE__*/ z.object({
+  enabled: z.boolean(),
+  description: z.string(),
+  // 'prompt' asks before each agent run.
+  run: /*#__PURE__*/ z.enum(['prompt', 'allow']),
+  // An agent run's limit; '' = the default.
+  timeout: z.string(),
+});
+export type McpAccess = z.infer<typeof mcpAccessSchema>;
+
 // customScriptSchema mirrors scripts.CustomScript — one run: its run file's config plus state. The
 // file is the authority; the Go validator checks it.
 export const customScriptSchema = /*#__PURE__*/ z.object({
@@ -93,6 +104,8 @@ export const customScriptSchema = /*#__PURE__*/ z.object({
   smart: smartSettingsSchema.nullable(),
   // null for a script that is not recurring.
   schedule: scriptScheduleSchema.nullable(),
+  // null for a script without the mcp block (hidden from agents).
+  mcp: mcpAccessSchema.nullable().default(null),
   dirMode: scriptDirModeSchema,
   // The picked folder when dirMode is 'fixed'; '' otherwise.
   workingDir: z.string(),
@@ -217,6 +230,14 @@ export const runFileSchema = /*#__PURE__*/ z.object({
       confirm: z.boolean(),
       timeout: z.string().optional(),
       params: z.record(z.string(), runFileStringsSchema).optional(),
+    })
+    .optional(),
+  mcp: z
+    .object({
+      enabled: z.boolean().optional(),
+      description: z.string().optional(),
+      run: z.enum(['prompt', 'allow']).optional(),
+      timeout: z.string().optional(),
     })
     .optional(),
 });

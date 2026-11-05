@@ -56,6 +56,7 @@ func assembleSchema(models harness.Catalog, spaceKeys bool) ([]byte, error) {
 	sub(smart, "tools", "items")["enum"] = strs(BuiltinTools)
 	sub(smart, "bash_patterns")["maxItems"] = MaxPatterns
 	sub(smart, "bash_patterns", "items")["maxLength"] = MaxPatternRunes
+	sub(props, "mcp", "properties", "description")["maxLength"] = MaxMCPDescriptionRunes
 	mcp := sub(smart, "mcp")
 	mcp["maxItems"] = MaxMCPServers
 	sub(mcp, "items", "properties", "tools")["maxItems"] = MaxMCPTools
@@ -97,6 +98,8 @@ func ruleOwners() []ruleOwner {
 			func(k string) bool {
 				return keyPrefix("cron")(k) || keyPrefix("timezone")(k) || keyPrefix("schedule")(k)
 			}},
+		{"mcp.run is prompt or allow. mcp.description is at most 1000 characters. mcp.timeout is between 1m and 24h. A smart run cannot set mcp.enabled.",
+			keyPrefix("mcp")},
 	}
 }
 

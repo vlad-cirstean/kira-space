@@ -80,6 +80,8 @@ type CustomScript struct {
 	UseAdeDir bool `json:"useAdeDir"`
 	// Schedule is nil for a script that is not recurring.
 	Schedule *Schedule `json:"schedule"`
+	// MCP is nil for a script without the mcp block (hidden from agents).
+	MCP *MCPAccess `json:"mcp"`
 	// SavedSecrets names the secret params with a saved value; never the value.
 	SavedSecrets []string `json:"savedSecrets"`
 }
@@ -131,6 +133,8 @@ type CustomScriptFields struct {
 	UseAdeDir bool `json:"useAdeDir"`
 	// Schedule: see CustomScript.
 	Schedule *Schedule `json:"schedule"`
+	// MCP: see CustomScript.
+	MCP *MCPAccess `json:"mcp"`
 }
 
 // Validate is the complete rule set, used for a Create and as the file rule. A pointer receiver:
@@ -178,6 +182,11 @@ func (f *CustomScriptFields) Validate(models harness.Catalog) error {
 	f.Params = params
 	if f.Schedule != nil {
 		if err := validSchedule(f.Schedule, f.Kind, f.Params); err != nil {
+			return err
+		}
+	}
+	if f.MCP != nil {
+		if err := validMCPAccess(f.MCP, f.Kind); err != nil {
 			return err
 		}
 	}

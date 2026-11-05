@@ -1035,6 +1035,18 @@
         "kindInvalid": {
           "body": "The kind must be script or smart."
         },
+        "mcpDescriptionLong": {
+          "body": "The MCP description is at most {max} characters."
+        },
+        "mcpRun": {
+          "body": "The MCP approval is prompt or allow."
+        },
+        "mcpSmart": {
+          "body": "A smart run can’t be exposed to MCP."
+        },
+        "mcpTimeout": {
+          "body": "The MCP timeout must be between 1m and 24h."
+        },
         "nameRequired": {
           "body": "The name is required."
         },

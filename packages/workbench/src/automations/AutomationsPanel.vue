@@ -209,6 +209,7 @@ async function createScript(kind: ScriptKind, collection = ''): Promise<void> {
       params: [],
       smart: smart ? defaultSmart(agentInfo.value.defaultModel) : null,
       schedule: null,
+      mcp: null,
       dirMode: 'kira',
       workingDir: '',
       color: 'none',

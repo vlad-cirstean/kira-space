@@ -51,18 +51,27 @@ func (l StringList) MarshalJSON() ([]byte, error) {
 
 // File is a run file: the config of one run, snake_case in YAML. Id is the file stem.
 type File struct {
-	Name       string        `json:"name"`
-	Kind       string        `json:"kind,omitempty"`
-	Command    string        `json:"command,omitempty"`
-	Prompt     string        `json:"prompt,omitempty"`
-	Collection string        `json:"collection,omitempty"`
-	Color      string        `json:"color,omitempty"`
-	Dir        string        `json:"dir,omitempty"`
-	Path       string        `json:"path,omitempty"`
-	UseAdeDir  bool          `json:"use_ade_dir,omitempty"`
-	Params     []FileParam   `json:"params,omitempty"`
-	Smart      *FileSmart    `json:"smart,omitempty"`
-	Schedule   *FileSchedule `json:"schedule,omitempty"`
+	Name       string         `json:"name"`
+	Kind       string         `json:"kind,omitempty"`
+	Command    string         `json:"command,omitempty"`
+	Prompt     string         `json:"prompt,omitempty"`
+	Collection string         `json:"collection,omitempty"`
+	Color      string         `json:"color,omitempty"`
+	Dir        string         `json:"dir,omitempty"`
+	Path       string         `json:"path,omitempty"`
+	UseAdeDir  bool           `json:"use_ade_dir,omitempty"`
+	Params     []FileParam    `json:"params,omitempty"`
+	Smart      *FileSmart     `json:"smart,omitempty"`
+	Schedule   *FileSchedule  `json:"schedule,omitempty"`
+	MCP        *FileMCPAccess `json:"mcp,omitempty"`
+}
+
+// FileMCPAccess is the MCP access block in a file.
+type FileMCPAccess struct {
+	Enabled     bool   `json:"enabled,omitempty"`
+	Description string `json:"description,omitempty"`
+	Run         string `json:"run,omitempty"`
+	Timeout     string `json:"timeout,omitempty"`
 }
 
 // FileParam is one param in a file.
@@ -137,6 +146,9 @@ func (f File) Fields() CustomScriptFields {
 		}
 		out.Schedule = sc
 	}
+	if f.MCP != nil {
+		out.MCP = &MCPAccess{Enabled: f.MCP.Enabled, Description: f.MCP.Description, Run: f.MCP.Run, Timeout: f.MCP.Timeout}
+	}
 	return out
 }
 
@@ -178,6 +190,12 @@ func FileOf(f CustomScriptFields) File {
 			sc.Params[k] = v
 		}
 		out.Schedule = sc
+	}
+	if f.MCP != nil && !f.MCP.isZero() {
+		out.MCP = &FileMCPAccess{Enabled: f.MCP.Enabled, Description: f.MCP.Description, Run: f.MCP.Run, Timeout: f.MCP.Timeout}
+		if out.MCP.Run == MCPRunPrompt {
+			out.MCP.Run = ""
+		}
 	}
 	return out
 }
