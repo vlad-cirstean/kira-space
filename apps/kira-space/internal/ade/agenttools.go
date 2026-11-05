@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"slices"
 	"strings"
 	"time"
@@ -475,4 +476,38 @@ func (b *TaskBoard) RunGit(ctx context.Context, dir string, argv []string) (stri
 		return "", 0, err
 	}
 	return string(res.Stdout) + string(res.Stderr), res.ExitCode, nil
+}
+
+// ListOperations implements agentmcp.SpaceTools: the task's running git operations that accept a cancel.
+// Sessions, runs and MCP calls are the user's to stop, so they stay out.
+func (b *TaskBoard) ListOperations(_ context.Context, taskID string) ([]agentmcp.OperationInfo, error) {
+	now := time.Now()
+	var out []agentmcp.OperationInfo
+	for _, r := range b.deps.Ops.CancellableRunning(taskID) {
+		if r.Category != oplog.CategoryGit {
+			continue
+		}
+		info := agentmcp.OperationInfo{OpID: r.ID, Kind: r.Kind, Subject: r.Subject, StartedAt: r.StartedAt}
+		if t, err := time.Parse(time.RFC3339Nano, r.StartedAt); err == nil {
+			info.ElapsedMs = now.Sub(t).Milliseconds()
+		}
+		out = append(out, info)
+	}
+	return out, nil
+}
+
+// CancelOperation implements agentmcp.SpaceTools. An id that is not one of the task's listed operations
+// reads as unknown, so another task's operations never leak.
+func (b *TaskBoard) CancelOperation(ctx context.Context, taskID, opID string) (agentmcp.CancelOperationResult, error) {
+	ops, _ := b.ListOperations(ctx, taskID)
+	for _, op := range ops {
+		if op.OpID != opID {
+			continue
+		}
+		if b.deps.Ops.Cancel(opID) {
+			return agentmcp.CancelOperationResult{OpID: opID, Kind: op.Kind, Cancelled: true}, nil
+		}
+		break
+	}
+	return agentmcp.CancelOperationResult{}, agentmcp.ToolError(fmt.Sprintf("No running operation with id %q; it may have finished. Call list_operations for current ids.", opID))
 }

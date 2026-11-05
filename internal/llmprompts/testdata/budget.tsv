@@ -93,6 +93,9 @@ headless.tool.rename_branch.arg.repo	42
 headless.tool.rename_branch.arg.from	20
 headless.tool.rename_branch.arg.to	36
 headless.tool.rename_branch.arg.renameRemote	78
+headless.tool.list_operations	130
+headless.tool.cancel_operation	150
+headless.tool.cancel_operation.arg.opId	50
 headless.tool.fetch_remote	63
 headless.tool.fetch_remote.arg.remote	28
 headless.tool.push_branch	60

@@ -167,6 +167,16 @@ func (f *fakeSpace) RenameBranch(_ context.Context, call SpaceCall, args RenameB
 	return RenameBranchResult{Repo: args.Repo, From: args.From, To: args.To, Outcome: BranchRenamed, Remote: RemoteKept}, nil
 }
 
+func (f *fakeSpace) ListOperations(_ context.Context, task string) ([]OperationInfo, error) {
+	f.rec("ops|" + task)
+	return nil, nil
+}
+
+func (f *fakeSpace) CancelOperation(_ context.Context, task, opID string) (CancelOperationResult, error) {
+	f.rec("cancelop|" + task + "|" + opID)
+	return CancelOperationResult{OpID: opID, Cancelled: true}, nil
+}
+
 func (f *fakeSpace) ReportArtifacts(_ context.Context, call SpaceCall, in []ArtifactInput) (ReportArtifactsResult, error) {
 	f.rec("report|" + call.TaskID)
 	return ReportArtifactsResult{Recorded: len(in)}, nil

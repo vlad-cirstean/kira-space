@@ -60,8 +60,8 @@ type branchDecision struct {
 // id prefix.
 type branchCall struct {
 	prefix   string
-	deadline time.Time // the call's own wait ends here; the request never outlives its oldest live call
-	result chan branchDecision // buffered 1: the one resolver never blocks
+	deadline time.Time           // the call's own wait ends here; the request never outlives its oldest live call
+	result   chan branchDecision // buffered 1: the one resolver never blocks
 }
 
 type branchRequest struct {

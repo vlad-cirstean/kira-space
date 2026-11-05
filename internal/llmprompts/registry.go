@@ -938,6 +938,20 @@ var (
 	_ = arg(HeadlessToolBranchStatus.id, "waitSeconds", spaceApp, NextCall, `Seconds to wait for worktree setup, 0 to {{.Max}}. Default 0.`, MaxVars{Max: 600})
 )
 
+// HeadlessToolListOperations describes the list_operations tool.
+var HeadlessToolListOperations = define(Entry{
+	ID: "headless.tool.list_operations", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "list_operations",
+	Default: `List this task's running operations that can be stopped, such as a slow git fetch or push. Ids feed cancel_operation.`,
+}, NoVars{})
+
+// HeadlessToolCancelOperation describes the cancel_operation tool.
+var HeadlessToolCancelOperation = define(Entry{
+	ID: "headless.tool.cancel_operation", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "cancel_operation",
+	Default: `Stop one running operation of this task by id from list_operations. The caller of a stopped operation gets a cancelled error.`,
+}, NoVars{})
+
+var _ = arg(HeadlessToolCancelOperation.id, "opId", spaceApp, NextCall, `Operation id from list_operations.`, NoVars{})
+
 // HeadlessToolRenameBranch describes the rename_branch tool.
 var HeadlessToolRenameBranch = define(Entry{
 	ID: "headless.tool.rename_branch", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "rename_branch",

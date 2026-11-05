@@ -116,6 +116,32 @@ type RenameBranchResult struct {
 	Next     string `json:"next"`
 }
 
+// OperationInfo is one running operation of the task that an agent may stop.
+type OperationInfo struct {
+	OpID      string `json:"opId"`
+	Kind      string `json:"kind"`
+	Subject   string `json:"subject,omitempty"`
+	StartedAt string `json:"startedAt"`
+	ElapsedMs int64  `json:"elapsedMs"`
+}
+
+// ListOperationsResult is list_operations' answer.
+type ListOperationsResult struct {
+	Operations []OperationInfo `json:"operations"`
+}
+
+// CancelOperationArgs is cancel_operation's input.
+type CancelOperationArgs struct {
+	OpID string `json:"opId"`
+}
+
+// CancelOperationResult is cancel_operation's answer.
+type CancelOperationResult struct {
+	OpID      string `json:"opId"`
+	Kind      string `json:"kind"`
+	Cancelled bool   `json:"cancelled"`
+}
+
 // SpaceCall identifies the caller of a Space tool: the task, and the run or stage it works for.
 type SpaceCall struct {
 	TaskID string
@@ -138,6 +164,10 @@ type SpaceTools interface {
 	ReportArtifacts(ctx context.Context, call SpaceCall, in []ArtifactInput) (ReportArtifactsResult, error)
 	// ListArtifacts lists every artifact of the task; a failing source is a gap, not an error.
 	ListArtifacts(ctx context.Context, taskID string) (TaskArtifacts, error)
+	// ListOperations lists the task's running operations that can be stopped; background rows stay out.
+	ListOperations(ctx context.Context, taskID string) ([]OperationInfo, error)
+	// CancelOperation stops one of them; an unknown or finished id is a ToolError.
+	CancelOperation(ctx context.Context, taskID, opID string) (CancelOperationResult, error)
 }
 
 type declareArgs struct {
@@ -217,6 +247,50 @@ func (s *Server) addSpaceTools(srv *mcp.Server) {
 	s.addBranchStatusTool(srv)
 	s.addRenameBranchTool(srv)
 	s.addReportArtifactsTool(srv)
+	s.addOperationTools(srv)
+}
+
+func (s *Server) addOperationTools(srv *mcp.Server) {
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_operations",
+		Description: llmprompts.HeadlessToolListOperations.Text(s.prompts, llmprompts.NoVars{}),
+	}, func(ctx context.Context, req *mcp.CallToolRequest, _ noArgs) (*mcp.CallToolResult, ListOperationsResult, error) {
+		call, bad := s.spaceTask(req)
+		if bad != nil {
+			return bad, ListOperationsResult{}, nil
+		}
+		ctx, done := s.callCtx(ctx, req)
+		defer done()
+		ops, err := s.space.ListOperations(ctx, call.TaskID)
+		if err != nil {
+			return fail("list_operations", err), ListOperationsResult{}, nil
+		}
+		if ops == nil {
+			ops = []OperationInfo{}
+		}
+		return nil, ListOperationsResult{Operations: ops}, nil
+	})
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "cancel_operation",
+		Description: llmprompts.HeadlessToolCancelOperation.Text(s.prompts, llmprompts.NoVars{}),
+		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[CancelOperationArgs](s.prompts, llmprompts.HeadlessToolCancelOperation.ID(), nil), "opId"),
+	}, func(ctx context.Context, req *mcp.CallToolRequest, args CancelOperationArgs) (*mcp.CallToolResult, CancelOperationResult, error) {
+		call, bad := s.spaceTask(req)
+		if bad != nil {
+			return bad, CancelOperationResult{}, nil
+		}
+		opID := strings.TrimSpace(args.OpID)
+		if opID == "" {
+			return toolError("opId is required."), CancelOperationResult{}, nil
+		}
+		ctx, done := s.callCtx(ctx, req)
+		defer done()
+		res, err := s.space.CancelOperation(ctx, call.TaskID, opID)
+		if err != nil {
+			return fail("cancel_operation", err), CancelOperationResult{}, nil
+		}
+		return nil, res, nil
+	})
 }
 
 func (s *Server) addTaskInfoTool(srv *mcp.Server) {

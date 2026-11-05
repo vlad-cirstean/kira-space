@@ -235,6 +235,22 @@ func (l *Log) Recent(limit int) []Record {
 	return out
 }
 
+// CancellableRunning returns the running foreground rows of taskID that accept a cancel, newest first.
+func (l *Log) CancellableRunning(taskID string) []Record {
+	if l == nil {
+		return nil
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	var out []Record
+	for _, r := range l.fg {
+		if r.TaskID == taskID && r.Status == StatusRunning && r.Cancellable {
+			out = append(out, r.clone())
+		}
+	}
+	return out
+}
+
 // Cancel calls the registered cancel func under the log lock, so an op that unregistered
 // before releasing its slot is never cancelled after the slot changes hands. It reports
 // whether a func was registered and accepted the cancel. A cancel func must only signal; it
