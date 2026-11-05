@@ -1118,3 +1118,23 @@ func TestSqlite(t *testing.T) {
 		}
 	})
 }
+
+// DB MCP read lane: the file is opened read-only, so the engine refuses the write.
+func TestSqlite_ReadLane(t *testing.T) {
+	fixture := testsupport.StartSqlite(t)
+	cfg := fixture.Config
+	path := nodePath(cfg.ID, seg("database", "main"))
+	unchanged := func(t *testing.T, main adapters.Adapter) {
+		t.Helper()
+		if got := testsupport.FirstCell(t, main, path, "SELECT count(*) FROM kira_lane_log"); got != "0" {
+			t.Errorf("kira_lane_log rows = %s, want 0", got)
+		}
+	}
+	testsupport.RunScenarios(t, connectedAdapter(t, cfg), cfg,
+		testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
+			Path: path, Setup: []string{"CREATE TABLE kira_lane_log (id int)"}, Write: "INSERT INTO kira_lane_log VALUES (1)",
+			WantErr: "readonly", Unchanged: unchanged, Teardown: []string{"DROP TABLE kira_lane_log"},
+		}),
+		testsupport.LaneCancel(path, "WITH RECURSIVE s(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM s WHERE n < 2000000000) SELECT count(*) FROM s"),
+	)
+}

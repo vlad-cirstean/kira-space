@@ -799,3 +799,24 @@ func waitForProcessesClean(t *testing.T, side adapters.Adapter, queryID string, 
 		time.Sleep(100 * time.Millisecond)
 	}
 }
+
+// DB MCP read lane: readonly=2 on every request makes the server refuse the write.
+func TestClickHouse_ReadLane(t *testing.T) {
+	fixture := testsupport.StartClickHouse(t)
+	testsupport.ClickHouseRun(t, fixture)
+	cfg := fixture.Config
+	path := nodePath(cfg.ID)
+	unchanged := func(t *testing.T, main adapters.Adapter) {
+		t.Helper()
+		if got := testsupport.FirstCell(t, main, path, "SELECT count() FROM kira_lane_log"); got != "0" {
+			t.Errorf("kira_lane_log rows = %s, want 0", got)
+		}
+	}
+	testsupport.RunScenarios(t, connectedAdapter(t, cfg), cfg,
+		testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
+			Path: path, Setup: []string{"CREATE TABLE kira_lane_log (id UInt8) ENGINE = Memory"}, Write: "INSERT INTO kira_lane_log VALUES (1)",
+			WantErr: "164", Unchanged: unchanged, Teardown: []string{"DROP TABLE kira_lane_log"},
+		}),
+		testsupport.LaneCancel(path, "SELECT sleepEachRow(1) FROM numbers(30) SETTINGS max_block_size = 1"),
+	)
+}

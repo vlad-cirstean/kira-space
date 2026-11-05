@@ -1636,3 +1636,31 @@ func TestPostgres_ExecuteFailingStatementRejectsBatch(t *testing.T) {
 		t.Fatal("expected the second (invalid) statement to fail the whole call")
 	}
 }
+
+// DB MCP read lane: the engine refuses writes, including one hidden in a function, and cancel
+// reaches the lane's own backend.
+func TestPostgres_ReadLane(t *testing.T) {
+	fixture := testsupport.StartPostgres(t)
+	path := nodePath(fixture, seg("database", "kira_test"))
+	a := connectedAdapter(t, fixture)
+	unchanged := func(t *testing.T, main adapters.Adapter) {
+		t.Helper()
+		if got := testsupport.FirstCell(t, main, path, "SELECT count(*) FROM app.kira_lane_log"); got != "0" {
+			t.Errorf("kira_lane_log rows = %s, want 0", got)
+		}
+	}
+	setup := []string{
+		"CREATE TABLE app.kira_lane_log (id int)",
+		"CREATE FUNCTION app.kira_write_fn() RETURNS int LANGUAGE sql AS 'INSERT INTO app.kira_lane_log VALUES (1) RETURNING id'",
+	}
+	teardown := []string{"DROP FUNCTION app.kira_write_fn()", "DROP TABLE app.kira_lane_log"}
+	testsupport.RunScenarios(t, a, fixture.Config,
+		testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
+			Path: path, Setup: setup, Write: "SELECT app.kira_write_fn()", WantErr: "25006", Unchanged: unchanged, Teardown: teardown,
+		}),
+		testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
+			Path: path, Setup: setup, Write: "INSERT INTO app.kira_lane_log VALUES (2)", WantErr: "25006", Unchanged: unchanged, Teardown: teardown,
+		}),
+		testsupport.LaneCancel(path, "SELECT pg_sleep(30)"),
+	)
+}

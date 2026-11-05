@@ -950,3 +950,13 @@ func TestRedis_Connect_CancelledCtxReturns(t *testing.T) {
 	proxy := testsupport.StartPausableProxy(t, fixture.Config)
 	testsupport.ConnectCancelScenario(t, newAdapter(t), proxy.Config(), proxy)
 }
+
+// DB MCP read lane: redis has no read-only session, so the lane relies on Kira's own COMMAND-flag check.
+func TestRedis_ReadLane(t *testing.T) {
+	fixture := testsupport.StartRedis(t)
+	testsupport.RunScenarios(t, connectedAdapter(t, fixture), fixture.Config,
+		testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
+			Path: nodePath(fixture), Write: "SET kira_lane_probe 1", WantErr: "read-only",
+		}),
+	)
+}

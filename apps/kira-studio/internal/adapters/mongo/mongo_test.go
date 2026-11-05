@@ -1181,3 +1181,28 @@ func TestMongo_Connect_CancelledCtxReturns(t *testing.T) {
 	proxy := testsupport.StartPausableProxy(t, fixture.Config)
 	testsupport.ConnectCancelScenario(t, newAdapter(t), proxy.Config(), proxy)
 }
+
+// DB MCP read lane: mongo has no read-only session, so the lane relies on Kira's own method check.
+func TestMongo_ReadLane(t *testing.T) {
+	fixture := testsupport.StartMongo(t)
+	a := connectedAdapter(t, fixture)
+	path := nodePath(fixture, seg("database", testsupport.MongoDatabase))
+	testsupport.RunScenarios(t, a, fixture.Config,
+		testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
+			Path: path, Write: `db.lane_probe.insertOne({ n: 1 })`, WantErr: "read-only",
+			Unchanged: func(t *testing.T, main adapters.Adapter) {
+				t.Helper()
+				pages, err := main.Execute(context.Background(), model.ConsoleRequest{
+					Path: path, Statements: []string{`db.lane_probe.countDocuments({})`},
+				}, adapters.NewOpCtx("lane-verify"))
+				if err != nil {
+					t.Fatalf("countDocuments: %v", err)
+				}
+				body := docBodyAt(t, pages[0].(page.DocumentPage), 0)
+				if body == nil || !strings.Contains(*body, `"$numberLong":"0"`) {
+					t.Errorf("lane_probe count body = %v, want 0", derefStr(body))
+				}
+			},
+		}),
+	)
+}

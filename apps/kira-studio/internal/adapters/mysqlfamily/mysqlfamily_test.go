@@ -594,6 +594,28 @@ func runFamilySuite(t *testing.T, kind string, cfg model.ResolvedConnectionConfi
 		}),
 	)
 
+	lanePath := nodePath(cfg.ID, seg("database", "kira_test"))
+	laneUnchanged := func(t *testing.T, main adapters.Adapter) {
+		t.Helper()
+		if got := testsupport.FirstCell(t, main, lanePath, "SELECT count(*) FROM kira_lane_log"); got != "0" {
+			t.Errorf("kira_lane_log rows = %s, want 0", got)
+		}
+	}
+	laneSetup := []string{
+		"CREATE TABLE kira_lane_log (id int)",
+		"CREATE FUNCTION kira_write_fn() RETURNS int MODIFIES SQL DATA BEGIN INSERT INTO kira_lane_log VALUES (1); RETURN 1; END",
+	}
+	laneTeardown := []string{"DROP FUNCTION IF EXISTS kira_write_fn", "DROP TABLE IF EXISTS kira_lane_log"}
+	testsupport.RunScenarios(t, connectedAdapter(t, kind, cfg), cfg,
+		testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
+			Path: lanePath, Setup: laneSetup, Write: "SELECT kira_write_fn()", WantErr: "read only transaction", Unchanged: laneUnchanged, Teardown: laneTeardown,
+		}),
+		testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
+			Path: lanePath, Setup: laneSetup, Write: "INSERT INTO kira_lane_log VALUES (2)", WantErr: "read only transaction", Unchanged: laneUnchanged, Teardown: laneTeardown,
+		}),
+		testsupport.LaneCancel(lanePath, "SELECT SLEEP(30)"),
+	)
+
 	t.Run("count", func(t *testing.T) {
 		a := connectedAdapter(t, kind, cfg)
 		result, err := a.Count(context.Background(), adapters.CountRequest{
