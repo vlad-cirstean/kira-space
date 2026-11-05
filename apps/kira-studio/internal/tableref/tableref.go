@@ -73,6 +73,46 @@ func Format(kind string, r Ref) string {
 	return strings.Join(parts, ".")
 }
 
+// scanQuoted reads a quoted segment starting at the opening quote; returns the text and the index after it.
+func scanQuoted(rs []rune, i int) (string, int, error) {
+	var b strings.Builder
+	i++
+	for i < len(rs) {
+		if rs[i] != '"' {
+			b.WriteRune(rs[i])
+			i++
+			continue
+		}
+		if i+1 < len(rs) && rs[i+1] == '"' {
+			b.WriteRune('"')
+			i += 2
+			continue
+		}
+		i++
+		if i < len(rs) && rs[i] != '.' {
+			return "", 0, errors.New("text after closing quote")
+		}
+		return b.String(), i, nil
+	}
+	return "", 0, errors.New("unterminated quote")
+}
+
+// scanBare reads an unquoted segment up to the next '.'; returns the text and the index after it.
+func scanBare(rs []rune, i int) (string, int, error) {
+	start := i
+	for i < len(rs) && rs[i] != '.' {
+		if rs[i] == '"' {
+			return "", 0, errors.New("quote inside unquoted part")
+		}
+		i++
+	}
+	seg := string(rs[start:i])
+	if seg != strings.TrimSpace(seg) {
+		return "", 0, errors.New("leading or trailing space needs quotes")
+	}
+	return seg, i, nil
+}
+
 // Parse reads one entry. Quoted segments may hold '.', '"' (doubled) and spaces.
 func Parse(kind, entry string) (Ref, error) {
 	want := Levels(kind)
@@ -81,51 +121,24 @@ func Parse(kind, entry string) (Ref, error) {
 	}
 	var parts []string
 	rs := []rune(entry)
-	for i := 0; ; {
-		var b strings.Builder
+	for i := 0; ; i++ { // i++ skips the '.'
+		var seg string
+		var err error
 		if i < len(rs) && rs[i] == '"' {
-			i++
-			closed := false
-			for i < len(rs) {
-				if rs[i] == '"' {
-					if i+1 < len(rs) && rs[i+1] == '"' {
-						b.WriteRune('"')
-						i += 2
-						continue
-					}
-					i++
-					closed = true
-					break
-				}
-				b.WriteRune(rs[i])
-				i++
-			}
-			if !closed {
-				return Ref{}, errors.New("unterminated quote")
-			}
-			if i < len(rs) && rs[i] != '.' {
-				return Ref{}, errors.New("text after closing quote")
-			}
+			seg, i, err = scanQuoted(rs, i)
 		} else {
-			for i < len(rs) && rs[i] != '.' {
-				if rs[i] == '"' {
-					return Ref{}, errors.New("quote inside unquoted part")
-				}
-				b.WriteRune(rs[i])
-				i++
-			}
-			if s := b.String(); s != strings.TrimSpace(s) {
-				return Ref{}, errors.New("leading or trailing space needs quotes")
-			}
+			seg, i, err = scanBare(rs, i)
 		}
-		if b.Len() == 0 {
+		if err != nil {
+			return Ref{}, err
+		}
+		if seg == "" {
 			return Ref{}, errors.New("empty part")
 		}
-		parts = append(parts, b.String())
+		parts = append(parts, seg)
 		if i >= len(rs) {
 			break
 		}
-		i++ // the '.'
 	}
 	if len(parts) != want {
 		return Ref{}, fmt.Errorf("want %d parts for %s, got %d", want, kind, len(parts))
