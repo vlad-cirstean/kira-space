@@ -2207,7 +2207,7 @@
           "body": "The operation was cancelled before it started."
         },
         "cancelledWaitingForRateLimit": {
-          "body": "The operation was cancelled while waiting for the connection’s rate limit."
+          "body": "The operation was cancelled while waiting for its turn under the connection’s throttle."
         },
         "closingQuoteFollow": {
           "body": "A closing quote must be followed by a space or the end of the line."
@@ -2415,6 +2415,12 @@
         },
         "stringUnterminated": {
           "body": "Unterminated string literal."
+        },
+        "throttleBusyTimeout": {
+          "body": "Waited {seconds} s for another operation on this connection to finish. A throttled connection runs one operation at a time. Retry, or raise or turn off the throttle in the connection settings."
+        },
+        "throttleRateTimeout": {
+          "body": "Waited {seconds} s for the connection’s throttle ({rate} ops per second). Retry, or raise the throttle in the connection settings."
         },
         "trailingContentLiteral": {
           "body": "Unexpected trailing content after the literal."
@@ -15455,7 +15461,7 @@
           "label": "Test connection"
         },
         "throttle": {
-          "description": "A value of 0 disables the limit. Reads served from cache are never throttled, and connecting is never throttled. Applies immediately to a connected connection.",
+          "description": "Ops per second this app admits to the database for this connection, from every window and from MCP. Ops run one at a time, so a slow or blocking query makes the ops after it wait; an op that waits more than 30 s fails. 0 turns the throttle off, so ops run at once, side by side. Cache hits, connecting and cancelling are never throttled. Changes apply immediately.",
           "label": "Throttle commands",
           "range": {
             "status": "Unlimited (0), or {min}–{max}"

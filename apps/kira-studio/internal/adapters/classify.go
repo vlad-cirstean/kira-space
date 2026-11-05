@@ -28,6 +28,13 @@ type StatementClassifier interface {
 	ClassifyStatement(ctx context.Context, statement string) (OpClass, error)
 }
 
+// RemoteClassifier is optional on a StatementClassifier: it reports that classifying can issue
+// server round trips (redis fetches its COMMAND table on a cache miss). The router then takes the
+// connection's throttle turn for the call; pure-parse classifiers stay free.
+type RemoteClassifier interface {
+	ClassifiesRemotely() bool
+}
+
 // sqlWriteKeywords is ClassifySQL's write vocabulary, matched against the statement's leading
 // keyword only.
 var sqlWriteKeywords = map[string]bool{

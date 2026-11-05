@@ -465,9 +465,9 @@ func (r *Router) Execute(ctx context.Context, req ExecuteRequestWire) (ExecuteRe
 }
 
 // ClassifyStatement answers what one console statement would do on connectionID's live adapter —
-// dbmcp's own permission gate. Deliberately outside RunOp: it issues no server work of its
-// own (redis's COMMAND table is fetched once per connection set and cached), and the Execute it
-// gates is the op that belongs in the op-log.
+// dbmcp's own permission gate. Deliberately outside RunOp: the Execute it gates is the op that
+// belongs in the op-log. A classifier that reaches the server (redis fetches COMMAND and COMMAND
+// INFO on a cache miss) still takes the connection's throttle turn, so it cannot bypass the gate.
 func (r *Router) ClassifyStatement(ctx context.Context, connectionID, statement string) (adapters.OpClass, error) {
 	adapter, err := requireLiveAdapter(connectionID)
 	if err != nil {
@@ -476,6 +476,14 @@ func (r *Router) ClassifyStatement(ctx context.Context, connectionID, statement 
 	classifier, ok := adapter.(adapters.StatementClassifier)
 	if !ok {
 		return adapters.ClassUnknown, nil
+	}
+	if remote, ok := adapter.(adapters.RemoteClassifier); ok && remote.ClassifiesRemotely() {
+		gated, release, err := r.host.admit(ctx, connectionID)
+		if err != nil {
+			return adapters.ClassUnknown, err
+		}
+		defer release()
+		ctx = gated
 	}
 	return classifier.ClassifyStatement(ctx, statement)
 }

@@ -159,7 +159,9 @@ type Host struct {
 	earlyCancels map[string]time.Time
 	earlyTTL     time.Duration
 
-	throttles *throttleRegistry
+	// throttleWait bounds one op's wait for its connection's slot and token (throttleMaxWait).
+	throttleWait time.Duration
+	throttles    *throttleRegistry
 }
 
 const (
@@ -181,7 +183,7 @@ const (
 func NewHost(deps adapters.Deps, cache *enginecache.Cache) *Host {
 	deps = withDefaultLog(deps)
 	return &Host{deps: deps, cache: cache, running: make(map[string]runningOp),
-		earlyCancels: make(map[string]time.Time), earlyTTL: earlyCancelTTL, throttles: newThrottleRegistry()}
+		earlyCancels: make(map[string]time.Time), earlyTTL: earlyCancelTTL, throttleWait: throttleMaxWait, throttles: newThrottleRegistry()}
 }
 
 // withDefaultLog substitutes a no-op for a nil deps.Log, so nothing downstream needs to nil-check
@@ -259,24 +261,19 @@ func (h *Host) RunOp(ctx context.Context, spec OpSpec, fn func(context.Context, 
 
 	// The throttle gate sits here — after registration (so a queued op is cancellable
 	// via CancelOp/the deferred cancel() above) but before op:start (so startedAt/DurationMs stay
-	// the adapter's own numbers, never counting client-side queue time). connect/disconnect/test
-	// are never in throttledKinds, so a misconfigured throttle can never lock a user out of fixing
-	// it. An op cancelled or timed out while queued returns here with neither op:start nor op:end
-	// ever emitted — it never touched the database, so it is not a database operation.
-	if spec.ConnectionID != nil && throttledKinds[spec.Kind] {
-		if limiter := h.throttles.limiterFor(*spec.ConnectionID); limiter != nil {
-			waitCtx, waitCancel := context.WithTimeout(derived, throttleMaxWait)
-			waitErr := limiter.Wait(waitCtx)
-			waitCancel()
-			if waitErr != nil {
-				if derived.Err() == context.Canceled {
-					return "", nil, adapters.T(adapters.CodeCancelled, "backend.studio.adapter.cancelledWaitingForRateLimit.body", nil, waitErr)
-				}
-				msg := fmt.Sprintf("timed out after %s waiting for the connection's rate limit (%.4g/s)", throttleMaxWait, float64(limiter.Limit()))
-				return "", nil, adapters.New(adapters.CodeTimeout, msg, waitErr)
-			}
+	// the adapter's own numbers, never counting client-side queue time). Exempt kinds
+	// (throttleExemptKinds) skip it, so a misconfigured throttle can never lock a user out of
+	// fixing it. An op cancelled or timed out while queued returns here with neither op:start nor
+	// op:end ever emitted — it never touched the database, so it is not a database operation.
+	releaseSlot := func() {}
+	if spec.ConnectionID != nil && !throttleExemptKinds[spec.Kind] {
+		gated, release, err := h.admit(derived, *spec.ConnectionID)
+		if err != nil {
+			return "", nil, err
 		}
+		derived, releaseSlot = gated, release
 	}
+	defer releaseSlot()
 
 	startedAt := kiratime.NowISO()
 	h.mu.Lock()
@@ -294,6 +291,7 @@ func (h *Host) RunOp(ctx context.Context, spec OpSpec, fn func(context.Context, 
 	start := time.Now()
 	value, err := h.safeRun(derived, op, fn)
 	durationMs := int(time.Since(start).Milliseconds())
+	releaseSlot() // before op:end so the next queued op is not held by event emission
 
 	status := "ok"
 	var errMsg *string
