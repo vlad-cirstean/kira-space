@@ -10121,6 +10121,28 @@
           "tooltip": "Next step"
         }
       },
+      "steps": {
+        "delete": {
+          "body": "Delete the library step “{name}”? The file is removed.",
+          "title": "Delete step"
+        },
+        "empty": {
+          "emptyHint": "No library steps yet. Library steps are YAML files in {dir}."
+        },
+        "intro": {
+          "body": "A library step is a step that many workflows share. Edit it once and every workflow that uses it changes. Tasks already started keep the steps they began with."
+        },
+        "mode": {
+          "aria": "Step editor mode"
+        },
+        "noValid": {
+          "body": "This step file has no valid version yet."
+        },
+        "usedBy": {
+          "hint": "Used by {workflows}. Detach the step there before deleting it.",
+          "label": "Used by {count} workflow | Used by {count} workflows"
+        }
+      },
       "takeOverConfirm": {
         "body": "“{step}” is still running on {branch}. Taking over stops it, marks it stuck and continues it in {product}."
       },
@@ -10435,6 +10457,33 @@
             "option": "Script step"
           }
         },
+        "library": {
+          "add": {
+            "label": "From library"
+          },
+          "detach": {
+            "label": "Detach from library"
+          },
+          "edit": {
+            "label": "Edit in the library"
+          },
+          "extraPrompt": {
+            "hint": "Appended to the library prompt. Only this workflow gets it.",
+            "label": "Extra prompt (this workflow)"
+          },
+          "from": {
+            "label": "From library: {name}"
+          },
+          "overridden": {
+            "label": "Overridden"
+          },
+          "reset": {
+            "aria": "Reset {field} to the library value"
+          },
+          "save": {
+            "label": "Save to library"
+          }
+        },
         "page": {
           "empty": {
             "emptyHint": "No workflows yet. Workflows are YAML files in {dir}."
@@ -10685,6 +10734,10 @@
           }
         },
         "stepNode": {
+          "library": {
+            "label": "Library",
+            "tooltip": "Library step {id}"
+          },
           "manual": {
             "label": "Your own work"
           },
@@ -10716,6 +10769,15 @@
             "label": "Interactive {product} session"
           },
           "smart": {}
+        },
+        "tabs": {
+          "aria": "Workflows sections",
+          "statuses": {
+            "label": "Statuses"
+          },
+          "steps": {
+            "label": "Steps"
+          }
         },
         "yaml": {
           "field": {

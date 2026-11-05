@@ -133,6 +133,14 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
         :tone="KIND_TONE[step.kind]"
         data-testid="ade-wf-node-kind"
       />
+      <AdeTip
+        v-if="step.use"
+        :text="t('space.ade.workflows.stepNode.library.tooltip', { id: step.use })"
+      >
+        <span class="shrink-0 text-info" data-testid="ade-wf-node-library">{{
+          t('space.ade.workflows.stepNode.library.label')
+        }}</span>
+      </AdeTip>
       <span
         v-if="step.before === 'approval'"
         class="shrink-0 text-warn-text"

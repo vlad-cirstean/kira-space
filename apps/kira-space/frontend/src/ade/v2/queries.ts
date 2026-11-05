@@ -18,6 +18,7 @@ import type {
   CaptureTaskArgs,
   CloseSessionArgs,
   CreateTaskArgs,
+  DeleteStepArgs,
   EditLinkArgs,
   FinishReviewArgs,
   FocusSessionArgs,
@@ -25,6 +26,7 @@ import type {
   HostLinkArgs,
   ImportWorkflowArgs,
   LaunchStepArgs,
+  NewStepArgs,
   NewWorkflowArgs,
   OntoArgs,
   RebaseArgs,
@@ -42,6 +44,8 @@ import type {
   RunArgs,
   SaveStatusesArgs,
   SaveStatusesResult,
+  SaveStepArgs,
+  SaveStepYamlArgs,
   SaveWorkflowArgs,
   SaveWorkflowYamlArgs,
   SendArgs,
@@ -63,6 +67,7 @@ import type {
   UpdateHandoverArgs,
   UpdateTaskArgs,
   UpdateTaskRepoArgs,
+  ValidateStepYamlArgs,
   ValidateWorkflowYamlArgs,
 } from './wire';
 
@@ -80,6 +85,7 @@ export {
 // popover opens on demand) and a failed optimistic write.
 
 export const workflowYamlKey = ['adetask', 'workflowYaml'] as const;
+export const stepYamlKey = ['adetask', 'stepYaml'] as const;
 const candidatesKey = (codeRepoId: string) => ['adetask', 'candidates', codeRepoId] as const;
 export const reviewStepPrefix = ['adetask', 'reviewStep'] as const;
 export const handoversPrefix = ['adetask', 'handovers'] as const;
@@ -311,6 +317,8 @@ export function useValidateWorkflowYaml() {
  *  older text landing last would be pushed back into the editor. */
 const workflowSaveScope = { id: 'ade-workflow-save' } as const;
 
+const stepSaveScope = { id: 'ade-step-save' } as const;
+
 export function useSaveWorkflow() {
   return useMutation({
     mutationFn: (args: SaveWorkflowArgs) => control.adeTaskSaveWorkflow(args),
@@ -323,6 +331,43 @@ export function useSaveWorkflowYaml() {
     mutationFn: (args: SaveWorkflowYamlArgs) => control.adeTaskSaveWorkflowYaml(args),
     scope: workflowSaveScope,
   });
+}
+
+export function useStepYaml(fileName: MaybeRefOrGetter<string>) {
+  return useQuery(() => ({
+    queryKey: [...stepYamlKey, toValue(fileName)] as const,
+    queryFn: () => control.adeTaskStepYaml({ fileName: toValue(fileName) }),
+    enabled: toValue(fileName) !== '',
+  }));
+}
+
+export function useValidateStepYaml() {
+  return useMutation({
+    mutationFn: (args: ValidateStepYamlArgs) => control.adeTaskValidateStepYaml(args),
+  });
+}
+
+export function useSaveStep() {
+  return useMutation({
+    mutationFn: (args: SaveStepArgs) => control.adeTaskSaveStep(args),
+    scope: stepSaveScope,
+  });
+}
+
+export function useSaveStepYaml() {
+  return useMutation({
+    mutationFn: (args: SaveStepYamlArgs) => control.adeTaskSaveStepYaml(args),
+    scope: stepSaveScope,
+  });
+}
+
+/** Creates a library step, or saves `from` (an inline workflow step) to the library. */
+export function useNewStep() {
+  return useMutation({ mutationFn: (args: NewStepArgs) => control.adeTaskNewStep(args) });
+}
+
+export function useDeleteStep() {
+  return useMutation({ mutationFn: (args: DeleteStepArgs) => control.adeTaskDeleteStep(args) });
 }
 
 export function useImportWorkflow() {

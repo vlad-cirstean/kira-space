@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue';
 import { formatTools, parseTools } from '../../board/workflowForm';
 import { useAdeWorkflowDraftStore } from '../../state/adeWorkflowDraft';
 import type { WorkflowStep } from '../../wire';
+import { useStepScope } from '../stepScope';
 import AdeInspectorRow from './AdeInspectorRow.vue';
 import AdeStepAgentPick from './AdeStepAgentPick.vue';
 import AdeStepSettings from './AdeStepSettings.vue';
@@ -15,6 +16,7 @@ import AdeStepStatus from './AdeStepStatus.vue';
 const props = defineProps<{ step: WorkflowStep }>();
 const emit = defineEmits<{ patch: [p: Partial<WorkflowStep>] }>();
 const draft = useAdeWorkflowDraftStore();
+const library = useStepScope() === 'library';
 const hasSession = computed(
   () =>
     props.step.kind === 'agent' ||
@@ -64,7 +66,11 @@ function onTools(v: string | number): void {
     :step-id="step.id"
     @patch="(settings) => emit('patch', { settings })"
   />
-  <AdeInspectorRow :label="t('space.ade.stepBlock.skipThis.label')" :for="id('skip')">
+  <AdeInspectorRow
+    v-if="!library"
+    :label="t('space.ade.stepBlock.skipThis.label')"
+    :for="id('skip')"
+  >
     <Checkbox
       :id="id('skip')"
       :model-value="step.skip"

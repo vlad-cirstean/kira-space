@@ -1,11 +1,13 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { cloneWorkflow, runnableSteps } from '../board/workflowForm';
+import { detachedStep, type Overridable, referenceStep, resetKey } from '../board/stepLibrary';
+import { cloneWorkflow, newId, runnableSteps } from '../board/workflowForm';
 import {
   addResult,
   addStep,
   clearRoute,
   clearStaleImplementers,
+  insertStep,
   moveStep,
   patchResult,
   removeResult,
@@ -99,6 +101,25 @@ export const useAdeWorkflowDraftStore = defineStore('adeWorkflowDraft', () => {
     edit(r.wf);
     selection.value = { stepId: r.stepId };
   }
+  /** A reference to library step `lib` at the end, or right after `afterId`; it becomes the selection. */
+  function createFromLibrary(lib: WorkflowStep, afterId?: string): void {
+    const w = wf();
+    if (!w) return;
+    const r = insertStep(w, (taken) => referenceStep(lib, taken, newId(taken)), afterId);
+    edit(r.wf);
+    selection.value = { stepId: r.stepId };
+  }
+  /** The step turned into an inline copy of what it is now. */
+  function detach(stepId: string): void {
+    const w = wf();
+    const s = w?.steps.find((x) => x.id === stepId);
+    if (s) replaceStep(detachedStep(s));
+  }
+  /** One overridden field of a reference back at the library step's value. */
+  function resetField(stepId: string, lib: WorkflowStep, key: Overridable): void {
+    const s = wf()?.steps.find((x) => x.id === stepId);
+    if (s) replaceStep(resetKey(s, lib, key));
+  }
   function deleteStep(stepId: string): void {
     const w = wf();
     if (w) edit(removeStep(w, stepId));
@@ -155,6 +176,9 @@ export const useAdeWorkflowDraftStore = defineStore('adeWorkflowDraft', () => {
     patchStep,
     replaceStep,
     createStep,
+    createFromLibrary,
+    detach,
+    resetField,
     moveStepBy,
     deleteStep,
     makeStart,

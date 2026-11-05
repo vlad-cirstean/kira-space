@@ -42,7 +42,7 @@ const ID_SUFFIX_LENGTH = 8;
 
 /** `step-<8 hex>`, never in `taken`. Runs are keyed by these ids, so a removed id must not come
  *  back: the lowest free `step-N` would hand a new step the old one's runs. */
-function nextId(taken: readonly string[]): string {
+export function newId(taken: readonly string[]): string {
   const used = new Set(taken);
   let id: string;
   do id = `step-${crypto.randomUUID().slice(0, ID_SUFFIX_LENGTH)}`;
@@ -92,7 +92,7 @@ function kindDefaults(kind: StepKind): Omit<WorkflowStep, 'id' | 'name'> {
 
 export function newStep(kind: StepKind, taken: readonly string[]): WorkflowStep {
   return {
-    id: nextId(taken),
+    id: newId(taken),
     name: t('space.ade.workflows.step.defaultName.label'),
     ...kindDefaults(kind),
   };

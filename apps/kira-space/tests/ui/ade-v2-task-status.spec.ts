@@ -34,7 +34,7 @@ interface SaveArgs extends Saved {
 async function openEditor(page: Page): Promise<void> {
   await page.locator(t('ade-tab-workflows')).click();
   await page.locator(t('ade-workflows')).waitFor();
-  await page.locator(t('ade-wf-statuses-row')).click();
+  await page.locator(t('ade-wf-tab-statuses')).click();
   await expect(page.locator(t('ade-status-list'))).toBeVisible();
 }
 

@@ -13,6 +13,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { Input } from '@theme/components/ui/input';
@@ -32,6 +34,7 @@ import {
   type StepNodeData,
 } from '../board/workflowGraph';
 import { useSaveWorkflow } from '../queries';
+import { useWorkflows } from '../readQueries';
 import { useAdeWorkflowDraftStore } from '../state/adeWorkflowDraft';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
 import type { Workflow, WorkflowEntry } from '../wire';
@@ -49,6 +52,10 @@ const props = defineProps<{ entry: WorkflowEntry }>();
 const wfUi = useAdeWorkflowsUiStore();
 const draft = useAdeWorkflowDraftStore();
 const save = useSaveWorkflow();
+const workflows = useWorkflows();
+const library = computed(() =>
+  (workflows.data.value?.steps ?? []).flatMap((e) => (e.step ? [e.step] : [])),
+);
 const { confirmRemoveStep } = useStepRemoval();
 const { setViewport } = useVueFlow();
 
@@ -330,6 +337,20 @@ onBeforeUnmount(() => {
                 >
                   {{ kindLabel(k) }}
                 </DropdownMenuItem>
+                <template v-if="library.length">
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>{{
+                    t('space.ade.workflows.library.add.label')
+                  }}</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    v-for="s in library"
+                    :key="s.id"
+                    :data-testid="`ade-wf-add-library-${s.id}`"
+                    @select="draft.createFromLibrary(s)"
+                  >
+                    {{ s.name }}
+                  </DropdownMenuItem>
+                </template>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

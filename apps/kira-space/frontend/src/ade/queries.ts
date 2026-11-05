@@ -12,6 +12,7 @@ import {
   handoversPrefix,
   issuePrefix,
   reviewStepPrefix,
+  stepYamlKey,
   workflowYamlKey,
 } from './v2/queries';
 import { installAdeReadSignals } from './v2/readSignals';
@@ -50,6 +51,7 @@ export function installAdeSignals(
   // Desktop-only extras on top of the shared read upkeep.
   control.onAdeTaskWorkflows(() => {
     void queryClient.invalidateQueries({ queryKey: workflowYamlKey });
+    void queryClient.invalidateQueries({ queryKey: stepYamlKey });
   });
   control.onAdeTaskSessions(() => {
     void queryClient.invalidateQueries({ queryKey: reviewAgentPrefix });
