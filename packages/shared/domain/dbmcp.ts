@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { nodeKindSchema } from './tree';
 
 // M1 §6.2: the Database MCP section's own domain — bridge/dbmcp.go's DbMcpStatus/
 // DbMcpInstallResult wire projections. command is the copy-paste registration text naming the
@@ -24,10 +23,8 @@ export const dbMcpInstallResultSchema = /*#__PURE__*/ z.object({
 });
 export type DbMcpInstallResult = z.infer<typeof dbMcpInstallResultSchema>;
 
-// The plan evidence an approval request can carry — dbmcp.ApprovalPlan's wire
-// projection (bridge/dbmcp.go's DbMcpApprovalPlan). Issues are capped at 10 server-side
-// (warn-severity first), with issuesOmitted carrying the remainder — the same unbounded-render
-// hazard the statement text's own 4000-character cap guards for.
+// P520: the payloads of the dbmcp approval kinds (internal/dbmcp/approval_item.go). The common item
+// fields (target, operation, origin) are approvals.ts's.
 export const dbMcpApprovalPlanIssueSchema = /*#__PURE__*/ z.object({
   severity: /*#__PURE__*/ z.enum(['warn', 'info']),
   code: z.string(),
@@ -42,55 +39,30 @@ export const dbMcpApprovalPlanSchema = /*#__PURE__*/ z.object({
 });
 export type DbMcpApprovalPlan = z.infer<typeof dbMcpApprovalPlanSchema>;
 
-// The prompt-mode approval queue — bridge/dbmcp.go's DbMcpApprovalRequest/
-// DbMcpApprovalSnapshot, gitPairingRequestSchema/gitPairingSnapshotSchema's own shape. statement
-// is sent uncapped.
-// reason distinguishes the permission prompt from the heavy-plan flag — both raise
-// the same dialog, one queue, one question ("should this run?"); plan carries the evidence for
-// either, null for an ordinary permission prompt with no plan attached.
-// The database a request acts on — dbmcp.ApprovalTarget's wire projection. path is the decoded
-// run_query/explain_query path (empty when none); database is the configured one (SQLite: the file).
-export const dbMcpApprovalTargetSchema = /*#__PURE__*/ z.object({
-  color: z.string(),
-  readOnly: z.boolean(),
-  host: z.string(),
-  database: z.string(),
-  path: /*#__PURE__*/ z.array(/*#__PURE__*/ z.object({ kind: nodeKindSchema, name: z.string() })),
-});
-export type DbMcpApprovalTarget = z.infer<typeof dbMcpApprovalTargetSchema>;
-
-export const dbMcpApprovalSchema = /*#__PURE__*/ z.object({
-  requestId: z.string(),
+export const dbQueryPayloadSchema = /*#__PURE__*/ z.object({
   connectionId: z.string(),
-  connectionName: z.string(),
-  kind: z.string(),
-  class: /*#__PURE__*/ z.enum(['read', 'write', 'ddl', 'unknown']),
   statement: z.string(),
-  expiresAtMs: z.number(),
-  reason: /*#__PURE__*/ z.enum(['permission', 'heavy']),
   plan: dbMcpApprovalPlanSchema.nullable(),
-  target: dbMcpApprovalTargetSchema,
-  // query: may the statement run. response: it already ran; may its result go to the AI client.
-  // The result text itself comes from dbMcpPendingResponseSchema, never the snapshot.
-  stage: /*#__PURE__*/ z.enum(['query', 'response']),
-  response: /*#__PURE__*/ z.object({ isError: z.boolean(), bytes: z.number() }).nullable(),
-  // P440: set for a Kubernetes read (target is then empty), null for a database request.
-  cluster: /*#__PURE__*/ z
-    .object({
-      context: z.string(),
-      server: z.string(),
-      namespace: z.string(),
-      operation: z.enum(['discover', 'list', 'describe', 'logs']),
-    })
-    .nullable(),
 });
-export type DbMcpApproval = z.infer<typeof dbMcpApprovalSchema>;
+export type DbQueryPayload = z.infer<typeof dbQueryPayloadSchema>;
 
-export const dbMcpApprovalSnapshotSchema = /*#__PURE__*/ z.object({
-  pending: dbMcpApprovalSchema.nullable(),
-  queued: z.number(),
+export const dbResponsePayloadSchema = /*#__PURE__*/ z.object({
+  connectionId: z.string(),
+  statement: z.string(),
+  isError: z.boolean(),
+  bytes: z.number(),
+  alreadyRan: z.boolean(),
 });
-export type DbMcpApprovalSnapshot = z.infer<typeof dbMcpApprovalSnapshotSchema>;
+export type DbResponsePayload = z.infer<typeof dbResponsePayloadSchema>;
+
+export const kubeReadPayloadSchema = /*#__PURE__*/ z.object({
+  context: z.string(),
+  server: z.string(),
+  namespace: z.string(),
+  operation: z.enum(['discover', 'list', 'describe', 'logs']),
+  statement: z.string(),
+});
+export type KubeReadPayload = z.infer<typeof kubeReadPayloadSchema>;
 
 // bridge/dbmcp.go's DbMcpPendingResponse: the exact text the AI client receives if the user sends.
 export const dbMcpPendingResponseSchema = /*#__PURE__*/ z.object({

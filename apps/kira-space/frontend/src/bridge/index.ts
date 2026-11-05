@@ -5,6 +5,7 @@ import * as AgentPortService from '@bindings/agentportservice.js';
 import * as AgentService from '@bindings/agentservice.js';
 import * as AgentSettingsService from '@bindings/agentsettingsservice.js';
 import * as AgentUsageService from '@bindings/agentusageservice.js';
+import * as ApprovalsService from '@bindings/approvalsservice.js';
 import * as CaptureService from '@bindings/captureservice.js';
 import * as CodeWorkspaceService from '@bindings/codeworkspaceservice.js';
 import * as ConfigFilesService from '@bindings/configfilesservice.js';
@@ -715,14 +716,6 @@ const spaceControl = {
     unwrap(AdeTaskService.ArchiveTask(args)),
   adeTaskArchivedTask: (args: V2.TaskArgs): Promise<V2.ArchivedTask> =>
     unwrap(AdeTaskService.ArchivedTask(args)).then((r) => trust<V2.ArchivedTask>(r)),
-  adeTaskBranchRequest: (args: V2.BranchRequestArgs): Promise<V2.BranchRequest> =>
-    unwrap(AdeTaskService.BranchRequest(args)).then((r) => trust<V2.BranchRequest>(r)),
-  adeTaskApproveBranchRequest: (
-    args: V2.ApproveBranchRequestArgs,
-  ): Promise<V2.BranchRequestAnswer> =>
-    unwrap(AdeTaskService.ApproveBranchRequest(args)).then((r) => trust<V2.BranchRequestAnswer>(r)),
-  adeTaskDenyBranchRequest: (args: V2.BranchRequestArgs): Promise<V2.BranchRequestAnswer> =>
-    unwrap(AdeTaskService.DenyBranchRequest(args)).then((r) => trust<V2.BranchRequestAnswer>(r)),
   adeTaskRestoreTask: (args: V2.TaskArgs): Promise<V2.Task> =>
     unwrap(AdeTaskService.RestoreTask(args)).then((r) => trust<V2.Task>(r)),
   onAdeTaskBoard: (cb: () => void): (() => void) => on(CHANNEL.adeTaskBoard, cb),
@@ -795,6 +788,7 @@ export const control = {
     keepAwake: KeepAwakeService,
     update: UpdateService,
     prompts: PromptsService,
+    approvals: ApprovalsService,
     llmPrompts: LlmPromptsService,
     agent: AgentService,
   }),

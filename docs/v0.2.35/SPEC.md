@@ -16,7 +16,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 | P517 | Multiple worktrees per repo, agent-named branches, branch rename | Done |
 | P518 | Cancel ops via MCP and status bar running-ops widget | Done |
 | P519 | Proof window cell editor and multi-file screenshots | Done |
-| P520 | Aggregated MCP approvals: one dialog, minimise to toast, long approval timeouts | Pending |
+| P520 | Aggregated MCP approvals: one dialog, minimise to toast, long approval timeouts | Done |
 | P521 | Scripts MCP | Pending |
 | P522 | Free-form API request MCP with agent credentials | Pending |
 | P523 | Prefixed nanoid for every Kira-generated id | Pending |
@@ -86,6 +86,11 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 - Space: concurrent `request_branches`/`rename_branch` calls for one task merge into one open request (unique item ids, per-item remote rename, per-call origin).
 - P525 rules apply (outline buttons, no header icons). Async research kept as record: `plans/P520-async-research.md`.
 - Plan: `plans/P520.md`.
+- Result: Done. Shared `internal/approvals` queue (kinds `db.query`, `db.response`, `kube.read`, `proof.review`, `branch.request`; `Kind` is the subject plus an optional `Subject`), bound as `ApprovalsService`, one routed prompt `approval:<id>` per item. Shared frontend in `packages/workbench/src/approvals/`: kind registry, per-item cards with countdown, Approve and Deny, origin line, app-wide dialog, X or Escape minimises to the top-right toast and never denies, Approve all and Deny all. Studio renderers for the four kinds; Space `BranchRequestBody`. DB MCP `ApprovalTimeout` 10 min with client origin; per-server MCP `timeout` in Studio install and `agentmcp`; Space merges concurrent branch calls into one item (`c<call>i<k>` ids, per-item remote rename). Flow tests record `approvals-studio`, `approvals-space` and the reworked dbmcp and ade contracts; UI specs `approvals` in both apps, rewritten dbmcp, kubernetes-mcp, prompts, copy-coverage and ade-branch specs; Studio visual baselines for dialog and toast.
+- Deviations: no cwd in the origin header (the client sends none; Known open items). Hook-coupled frontend and backend commits grouped, since the typecheck hook fails any split. No fake-clock expiry flow: the 10 min bound is asserted as `ExpiresAt - CreatedAt` plus a unit test with an injected clock. The adeflow timeout assertion stays in the `agentmcp` unit test. Frontend kinds have no `title` hook (Go `Item.Title` is the prompt title). `useCountdown` replaces `usePendingDecision`, which steals focus. Toast pulse dropped (U23). Space specs seed the list answers instead of pushing, since the first fetch raced the push.
+- Pre-existing failures fixed in passing: llmprompts counts and contract, gitflow `commentCount` contract, G4 in `adeflow/migrate.go`, G1 in `scripts/lifecycle.go`. `apps/kira-space` Go build needs `frontend/dist-mobile`, absent in this sandbox.
+- Checks: lint, typecheck, knip, check-catalog, Studio and Space UI specs (Space full suite 1135 passed), Go flows for touched packages. Real `claude` row not run.
+
 
 ### P521 Scripts MCP
 

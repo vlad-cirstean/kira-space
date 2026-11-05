@@ -85,6 +85,8 @@ const (
 	// P246: the routed popup list (broadcast) and a reveal for one window.
 	ChannelPromptsChanged = "kira:prompts:changed"
 	ChannelPromptsReveal  = "kira:prompts:reveal"
+	// ChannelApprovalsChanged broadcasts the full pending approvals list (internal/approvals).
+	ChannelApprovalsChanged = "kira:approvals:changed"
 	// ChannelLlmPromptsChanged broadcasts {revision} after the prompt overrides file changed.
 	ChannelLlmPromptsChanged = "kira:llmPrompts:changed"
 )

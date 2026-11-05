@@ -83,11 +83,11 @@ func TestRepolessWorkflow(t *testing.T) {
 			id = taskOf(t, board(t, f.app), f.task.ID).BranchRequestID
 			return id != ""
 		})
-		req, err := f.app.W.AdeTask.BranchRequest(adewire.BranchRequestArgs{ID: id})
+		req, err := branchRequest(f.app, id)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := f.app.W.AdeTask.ApproveBranchRequest(adewire.ApproveBranchRequestArgs{ID: id, ItemIDs: []string{req.Items[0].ID}}); err != nil {
+		if _, err := approveBR(f.app, id, []string{req.Items[0].ID}, nil); err != nil {
 			t.Fatal(err)
 		}
 		waitRun(t, f.app, f.task.ID, "one", "done")

@@ -82,7 +82,7 @@ func TestRunQueryRefusesApprovedWriteAfterPermissionRevokedMidWait(t *testing.T)
 		McpReadMode: "deny", McpWriteMode: "prompt", McpDdlMode: "deny",
 	}}
 	qr := &fakeQueryRunner{class: adapters.ClassWrite}
-	approvals := NewApprovalBroker(time.Now)
+	approvals := NewApprovalBroker(time.Now, nil)
 	s := &Server{cfg: Config{
 		Conns: conns, Query: qr, Approvals: approvals, MaskRules: fakeMaskRulesNone{},
 		ExplainThreshold: func() int { return 1000 },
@@ -117,8 +117,8 @@ func TestRunQueryRefusesApprovedWriteAfterPermissionRevokedMidWait(t *testing.T)
 			t.Fatal("run_query never raised an approval request")
 		default:
 		}
-		if snap := approvals.Pending(); snap.Pending != nil {
-			requestID = snap.Pending.RequestID
+		if items := approvals.Queue.List(); len(items) > 0 {
+			requestID = strings.TrimPrefix(items[0].ID, items[0].Kind+":")
 		} else {
 			time.Sleep(time.Millisecond)
 		}
@@ -156,7 +156,7 @@ func TestRunQueryReadVerdictRequestsReadOnlyUnlessWritesAllowed(t *testing.T) {
 		}}
 		qr := &fakeQueryRunner{class: adapters.ClassRead}
 		s := &Server{cfg: Config{
-			Conns: conns, Query: qr, Approvals: NewApprovalBroker(time.Now), MaskRules: fakeMaskRulesNone{},
+			Conns: conns, Query: qr, Approvals: NewApprovalBroker(time.Now, nil), MaskRules: fakeMaskRulesNone{},
 			ExplainThreshold: func() int { return 1000 },
 			PreviewResponses: func() bool { return false },
 		}}

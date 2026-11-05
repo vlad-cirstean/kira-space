@@ -27,12 +27,12 @@ type renameFacts struct {
 	trackedOther bool
 }
 
-// renamePlan is a validated rename: the row, the request waiting for the user and the remote facts.
+// renamePlan is a validated rename: the row, the draft waiting for the user and the remote facts.
 type renamePlan struct {
 	sb      model.AdeTaskBranch
 	nick    string
 	facts   renameFacts
-	req     *branchRequest
+	draft   *requestDraft
 	refusal string
 }
 
@@ -52,10 +52,8 @@ func (b *TaskBoard) RenameBranch(ctx context.Context, call agentmcp.SpaceCall, a
 	if plan.refusal != "" {
 		return renameResult(args, plan.nick, agentmcp.BranchFailed, plan.refusal), nil
 	}
-	dec, err := b.awaitBranchRequest(ctx, call, plan.req)
-	if err != nil {
-		return agentmcp.RenameBranchResult{}, err
-	}
+	dec, prefix := b.awaitBranchRequest(ctx, call, plan.draft)
+	itemID := prefix + "i0"
 	if err := ctx.Err(); err != nil {
 		return agentmcp.RenameBranchResult{}, err // the caller is gone: nothing is renamed for it
 	}
@@ -65,10 +63,10 @@ func (b *TaskBoard) RenameBranch(ctx context.Context, call agentmcp.SpaceCall, a
 	case dec.kind == decisionTimeout:
 		next := fmt.Sprintf("No answer from the user in %s; nothing was renamed. Call rename_branch again later or ask the user.", waitText(b.branchRequestWait()))
 		return renameResult(args, plan.nick, agentmcp.BranchTimeout, next), nil
-	case dec.kind == decisionDenied || !dec.approved[plan.req.view.Items[0].ID]:
+	case dec.kind == decisionDenied || !dec.approved[itemID]:
 		return renameResult(args, plan.nick, agentmcp.BranchDenied, "The user declined this rename. Do not rename it with git; keep the branch name or ask the user."), nil
 	}
-	return b.applyRename(ctx, call, args, dec.renameRemote)
+	return b.applyRename(ctx, call, args, dec.remote[itemID])
 }
 
 // planRename validates the rename under the task lock and builds the request.
@@ -91,15 +89,7 @@ func (b *TaskBoard) planRename(ctx context.Context, call agentmcp.SpaceCall, arg
 	if plan.facts.remote != "" {
 		item.Upstream = plan.facts.remote + "/" + args.From
 	}
-	source, stepName := b.callSource(tc, call)
-	now := b.deps.Now()
-	plan.req = &branchRequest{
-		view: adewire.BranchRequest{
-			ID: b.newID(), TaskID: call.TaskID, TaskTitle: taskTitle(tc.task, tc.branches), Source: source, StepName: stepName,
-			Items: []adewire.BranchRequestItem{item}, CreatedAt: now.UnixMilli(), ExpiresAt: now.Add(b.branchRequestWait()).UnixMilli(),
-		},
-		result: make(chan branchDecision, 1),
-	}
+	plan.draft = b.requestDraftOf(tc, call, []adewire.BranchRequestItem{item})
 	return plan, nil
 }
 

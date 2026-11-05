@@ -1,4 +1,5 @@
-import { emitPrompts, routed } from '@workbench/testing/ui/prompts';
+import type { ApprovalItem } from '@shared/domain/approvals';
+import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { defaultSettings } from '../../frontend/src/state/settingsDomain';
 import { expect, test } from './fixtures';
 import { contract } from './support/contract';
@@ -9,10 +10,6 @@ import { openSettings } from './support/settings';
 // Contract dbmcp-preview. Backend half: dbmcpflow TestDbMcpResponsePreview. With the setting on, a
 // run_query result that already ran waits in a review dialog; Send releases the held bytes.
 
-interface Snapshot {
-  pending: { requestId: string; class: string; target: { database: string } };
-  queued: number;
-}
 interface Held {
   requestId: string;
   text: string;
@@ -22,43 +19,36 @@ interface Tabular {
   rows: (string | null)[][];
 }
 
-const snapshot = () => contract<Snapshot>('dbmcp-preview', 'DbMcpService.PendingApprovals');
+const items = () => contract<ApprovalItem[]>('dbmcp-preview', 'ApprovalsService.List');
 const held = () => contract<Held>('dbmcp-preview', 'DbMcpService.PendingResponse');
 
-function mocks(pendingClass?: string) {
-  const snap = snapshot();
+function first(alreadyRan?: boolean): ApprovalItem {
+  const [item] = items();
+  if (!item) throw new Error('contract has no item');
+  const live = liveItem(item);
+  return alreadyRan === undefined
+    ? live
+    : { ...live, payload: { ...(live.payload as object), alreadyRan } };
+}
+
+function mocks(id: string) {
   return [
-    {
-      channel: IPC.dbMcpPendingApprovals,
-      response: {
-        ...snap,
-        pending: {
-          ...snap.pending,
-          class: pendingClass ?? snap.pending.class,
-          expiresAtMs: Date.now() + 60_000,
-        },
-      },
-    },
     { channel: IPC.dbMcpPendingResponse, response: held() },
-    { channel: IPC.dbMcpApproveQuery, response: { pending: null, queued: 0 } },
-    { channel: IPC.dbMcpDenyQuery, response: { pending: null, queued: 0 } },
+    { channel: IPC.approvalsAnswer, response: answeredOk([id]) },
   ];
 }
 
-test('contract: the held result shows as a table and Send answers by request id', async ({
+test('contract: the held result shows as a table and Send answers by item id', async ({
   relaunch,
 }) => {
-  const snap = snapshot();
+  const item = first();
   const result = JSON.parse(held().text) as Tabular;
-  const approve = contract<{ requestId: string }>(
-    'dbmcp-preview',
-    'args:DbMcpService.ApproveQuery',
-  );
-  const { window: page, control } = await relaunch({ control: mocks() });
+  const answer = contract<{ ids: string[] }>('dbmcp-preview', 'args:ApprovalsService.Answer');
+  const { window: page, control } = await relaunch({ control: mocks(item.id) });
 
-  await emitPrompts(page, [routed('dbmcp', snap.pending.requestId)]);
-  await expect(page.locator('[data-testid="db-mcp-approval-target-database"]')).toHaveText(
-    snap.pending.target.database,
+  await pushApprovals(page, [item]);
+  await expect(page.locator('[data-testid="approval-operation"]')).toHaveText(
+    new RegExp(`^${item.operation.class}$`, 'i'),
   );
   const headers = page.locator('[data-testid="db-mcp-preview-column"]');
   await expect(headers).toHaveText(result.columns.map((c) => c.name));
@@ -74,29 +64,29 @@ test('contract: the held result shows as a table and Send answers by request id'
     .poll(() => editorText(page.locator('[data-testid="db-mcp-preview-raw"]')))
     .toBe(held().text);
 
-  await page.click('[data-testid="db-mcp-preview-send"]');
+  await page.click(`[data-testid="approval-approve-${item.id}"]`);
   await expect
-    .poll(() => control.log().find((e) => e.channel === IPC.dbMcpApproveQuery)?.args)
-    .toEqual(approve);
+    .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
+    .toEqual({ ...answer, options: null });
 });
 
-test('contract: Escape withholds the held result', async ({ relaunch }) => {
-  const snap = snapshot();
-  const { window: page, control } = await relaunch({ control: mocks() });
-  await emitPrompts(page, [routed('dbmcp', snap.pending.requestId)]);
-  await expect(page.locator('[data-testid="db-mcp-preview-withhold"]')).toBeFocused();
-  await page.keyboard.press('Escape');
+test('contract: Withhold denies the held result', async ({ relaunch }) => {
+  const item = first();
+  const { window: page, control } = await relaunch({ control: mocks(item.id) });
+  await pushApprovals(page, [item]);
+  await expect(page.locator(`[data-testid="approval-deny-${item.id}"]`)).toHaveText('Withhold');
+  await page.click(`[data-testid="approval-deny-${item.id}"]`);
   await expect
-    .poll(() => control.log().find((e) => e.channel === IPC.dbMcpDenyQuery)?.args)
-    .toEqual({ requestId: snap.pending.requestId });
+    .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
+    .toEqual({ ids: [item.id], approve: false, options: null });
 });
 
 test('contract: a write that already ran warns that withholding does not undo it', async ({
   relaunch,
 }) => {
-  const snap = snapshot();
-  const { window: page } = await relaunch({ control: mocks('write') });
-  await emitPrompts(page, [routed('dbmcp', snap.pending.requestId)]);
+  const item = first(true);
+  const { window: page } = await relaunch({ control: mocks(item.id) });
+  await pushApprovals(page, [item]);
   await expect(page.locator('[data-testid="db-mcp-preview-ran"]')).toBeVisible();
 });
 

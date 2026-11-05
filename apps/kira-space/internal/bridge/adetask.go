@@ -1272,35 +1272,6 @@ func (s *AdeTaskService) ArchiveTask(ctx context.Context, args adewire.TaskArgs)
 	return adeTaskError(s.Engine.ArchiveTask(ctx, args.TaskID))
 }
 
-// BranchRequest reads an agent's open branch request; E_NOT_FOUND once it is answered.
-func (s *AdeTaskService) BranchRequest(args adewire.BranchRequestArgs) (adewire.BranchRequest, error) {
-	if err := validateAdeItemID(args.ID, "id"); err != nil {
-		return adewire.BranchRequest{}, err
-	}
-	r, err := s.Engine.BranchRequest(args.ID)
-	return r, adeTaskError(err)
-}
-
-// ApproveBranchRequest approves the checked items of a request and denies the rest.
-func (s *AdeTaskService) ApproveBranchRequest(args adewire.ApproveBranchRequestArgs) (adewire.BranchRequestAnswer, error) {
-	if err := validateAdeItemID(args.ID, "id"); err != nil {
-		return adewire.BranchRequestAnswer{}, err
-	}
-	if len(args.ItemIDs) == 0 {
-		return adewire.BranchRequestAnswer{}, adeTaskInvalid("itemIds is empty")
-	}
-	resolved, err := s.Engine.ApproveBranchRequest(args.ID, args.ItemIDs, args.RenameRemote)
-	return adewire.BranchRequestAnswer{Resolved: resolved}, adeTaskError(err)
-}
-
-// DenyBranchRequest denies every repo of a request.
-func (s *AdeTaskService) DenyBranchRequest(args adewire.BranchRequestArgs) (adewire.BranchRequestAnswer, error) {
-	if err := validateAdeItemID(args.ID, "id"); err != nil {
-		return adewire.BranchRequestAnswer{}, err
-	}
-	return adewire.BranchRequestAnswer{Resolved: s.Engine.DenyBranchRequest(args.ID)}, nil
-}
-
 // ArchivedTask reads an archived task with everything it kept.
 func (s *AdeTaskService) ArchivedTask(ctx context.Context, args adewire.TaskArgs) (adewire.ArchivedTask, error) {
 	ctx = adeUserCtx(ctx)

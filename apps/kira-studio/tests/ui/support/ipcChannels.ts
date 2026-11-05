@@ -160,10 +160,7 @@ export const IPC = {
   dbMcpSetEnabled: 'kira:dbmcp:setEnabled',
   dbMcpRegenerate: 'kira:dbmcp:regenerate',
   dbMcpInstallAgent: 'kira:dbmcp:installAgent',
-  dbMcpPendingApprovals: 'kira:dbmcp:approval:pending',
   dbMcpPendingResponse: 'kira:dbmcp:approval:response',
-  dbMcpApproveQuery: 'kira:dbmcp:approval:approve',
-  dbMcpDenyQuery: 'kira:dbmcp:approval:deny',
 
   updateStatus: 'kira:update:status',
   updateCheck: 'kira:update:check',
@@ -255,7 +252,7 @@ export const IPC = {
   schemaChanged: 'kira:schema:changed',
   opUpdate: 'kira:op:update',
   appMetrics: 'kira:app:metrics',
-  dbMcpApproval: 'kira:dbmcp:approval',
+  approvalsChanged: 'kira:approvals:changed',
   // One terminal's coalesced output and its exit, EmitTo'd to one window — grpcCall's
   // own shape, restated for a byte payload. No FQN_SUFFIX_BY_IPC_KEY entry (it's a push channel,
   // never a bound call) — driven by emitWailsEvent(page, IPC.terminal, …), grpcCall's own
@@ -275,6 +272,8 @@ export const IPC = {
   scriptRunsConfirmDecline: 'kira:scriptRuns:confirmDecline',
   promptsChanged: 'kira:prompts:changed',
   promptsReveal: 'kira:prompts:reveal',
+  approvalsList: 'kira:approvals:list',
+  approvalsAnswer: 'kira:approvals:answer',
   promptsList: 'kira:prompts:list',
   promptsMainWindow: 'kira:prompts:mainWindow',
   promptsClaim: 'kira:prompts:claim',

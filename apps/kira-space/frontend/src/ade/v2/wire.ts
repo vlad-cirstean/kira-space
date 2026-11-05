@@ -1128,46 +1128,6 @@ export interface SessionSandboxArgs {
 export interface TaskArgs {
   taskId: string;
 }
-/**
- * One branch an agent asks work for: a new `branch` from `base` ('' = main), a `worktree` for `branch`, or a
- * `rename` of `from` to `branch`. A rename's `upstream` (such as origin/feat/x) is the same-named remote branch
- * the user may rename too, '' when none; `stacked` lists the branches built on `from`.
- */
-export interface BranchRequestItem {
-  id: string;
-  codeRepoId: string;
-  repo: string;
-  kind: 'branch' | 'worktree' | 'rename';
-  branch: string;
-  base: string;
-  from: string;
-  upstream: string;
-  stacked: string[];
-}
-/** An agent's open request for branches and worktrees. `expiresAt` is unix millis. */
-export interface BranchRequest {
-  id: string;
-  taskId: string;
-  taskTitle: string;
-  source: 'run' | 'session' | 'automation';
-  stepName: string;
-  items: BranchRequestItem[];
-  createdAt: number;
-  expiresAt: number;
-}
-export interface BranchRequestArgs {
-  id: string;
-}
-export interface ApproveBranchRequestArgs {
-  id: string;
-  itemIds: string[];
-  /** Also rename the remote branch of a rename item. */
-  renameRemote: boolean;
-}
-/** `resolved` is false when the request was already answered. */
-export interface BranchRequestAnswer {
-  resolved: boolean;
-}
 export interface ReadLogArgs {
   kind: LogKind;
   id: string;

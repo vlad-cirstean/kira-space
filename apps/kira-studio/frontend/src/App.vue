@@ -4,6 +4,9 @@
 import { TooltipProvider } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { agentControlKey, useAgentMessageDefaults } from '@workbench/agent/agentInfo';
+import ApprovalsSurface from '@workbench/approvals/ApprovalsSurface.vue';
+import { approvalsControlKey } from '@workbench/approvals/approvalsQueries';
+import { provideApprovalKinds } from '@workbench/approvals/registry';
 import { automationsModuleKey } from '@workbench/automations/module';
 import ScheduleConfirmPrompt from '@workbench/automations/schedule/ScheduleConfirmPrompt.vue';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
@@ -26,6 +29,7 @@ import { getCurrentInstance, markRaw, onMounted, onUnmounted, provide } from 'vu
 import ApiDialogs from './api/ApiDialogs.vue';
 import { useCollectionsStore } from './api/state/collections';
 import { openApiRequestTab } from './api/tabs';
+import { studioApprovalKinds } from './approvals/kinds';
 import { control } from './bridge/control';
 import ConnectionFileDialog from './project/ConnectionFileDialog.vue';
 import DataGripImportDialog from './project/DataGripImportDialog.vue';
@@ -42,7 +46,6 @@ import { useModeStore } from './state/mode';
 import { useObjectStoreStore } from './state/objectStore';
 import { useSettingsStore } from './state/settings';
 import { createAutomationsModule } from './workbench/automationsModule';
-import DbMcpApprovalDialog from './workbench/DbMcpApprovalDialog.vue';
 import GenerateDataDialog from './workbench/GenerateDataDialog.vue';
 import { createWorkbenchHost } from './workbench/host';
 import { MODE_ORDER, MODES } from './workbench/modes';
@@ -57,6 +60,8 @@ provide(workbenchHostKey, createWorkbenchHost());
 // AutomationsNewTab.vue/TerminalTabView.vue (all shared with Kira Space) to inject.
 provide(automationsModuleKey, createAutomationsModule());
 provide(promptsControlKey, control);
+provide(approvalsControlKey, control);
+provideApprovalKinds(studioApprovalKinds());
 provide(llmPromptsControlKey, control);
 // App level, not component level: Pinia stores and composables outside the tree inject it too.
 getCurrentInstance()?.appContext.app.provide(agentControlKey, control);
@@ -66,7 +71,6 @@ provide(appUpdateStoreKey, appUpdateStore);
 // P246: one dialog per routed popup kind; PromptHost shows the one the router targeted here.
 const promptKinds = {
   schedule: markRaw(ScheduleConfirmPrompt),
-  dbmcp: markRaw(DbMcpApprovalDialog),
   update: markRaw(UpdatePrompt),
   quit: markRaw(QuitPrompt),
   proof: markRaw(ProofReadyPrompt),
@@ -175,6 +179,7 @@ onUnmounted(() => {
     <UploadObjectDialog v-if="objectStoreStore.open" />
     <GenerateDataDialog v-if="fakeDataStore.open" />
     <PromptHost :kinds="promptKinds" />
+    <ApprovalsSurface />
     <ConfirmDialog />
     <AppLiveRegion />
     <UpdateDialog v-if="appUpdateStore.dialogOpen" :store="appUpdateStore" />

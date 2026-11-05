@@ -141,6 +141,8 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   scriptRunsRunScheduleNow: 'ScriptRunsService.RunScheduleNow',
   scriptRunsConfirmAccept: 'ScriptRunsService.ConfirmAccept',
   scriptRunsConfirmDecline: 'ScriptRunsService.ConfirmDecline',
+  approvalsList: 'ApprovalsService.List',
+  approvalsAnswer: 'ApprovalsService.Answer',
   promptsList: 'PromptsService.List',
   promptsMainWindow: 'PromptsService.MainWindow',
   promptsClaim: 'PromptsService.Claim',
@@ -275,9 +277,6 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskArchiveRisk: 'AdeTaskService.ArchiveRisk',
   adeTaskArchiveTask: 'AdeTaskService.ArchiveTask',
   adeTaskArchivedTask: 'AdeTaskService.ArchivedTask',
-  adeTaskBranchRequest: 'AdeTaskService.BranchRequest',
-  adeTaskApproveBranchRequest: 'AdeTaskService.ApproveBranchRequest',
-  adeTaskDenyBranchRequest: 'AdeTaskService.DenyBranchRequest',
   adeTaskRestoreTask: 'AdeTaskService.RestoreTask',
   adeTaskRecordMerge: 'AdeTaskService.RecordMerge',
   adeTaskSetQueuedAfter: 'AdeTaskService.SetQueuedAfter',
@@ -351,6 +350,8 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   [IPC.openedFilesTerminalOpen]: 'null',
   [IPC.windowsEnsure]: JSON.stringify({ mode: 'git' }),
   [IPC.windowsSetMode]: 'null',
+  // P520: nothing pending unless a spec pushes the queue (pushApprovals).
+  [IPC.approvalsList]: '[]',
   // P246: the prompt router's calls; a spec drives the list through IPC.promptsChanged pushes.
   [IPC.promptsList]: '[]',
   [IPC.promptsClaim]: 'null',

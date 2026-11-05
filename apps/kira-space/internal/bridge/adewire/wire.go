@@ -527,36 +527,22 @@ type BranchRequestItem struct {
 	From       string   `json:"from"`
 	Upstream   string   `json:"upstream"`
 	Stacked    []string `json:"stacked"`
+	// Source is 'run', 'session' or 'automation' for the call that asked; StepName names its stage, ''
+	// when unknown; Session is the Kira session record that asked, '' for a run.
+	Source   string `json:"source"`
+	StepName string `json:"stepName"`
+	Session  string `json:"session"`
 }
 
-// BranchRequest is an agent's open request for branches and worktrees. Source is 'run' (a headless step run),
-// 'session' (an interactive session) or 'automation' (a smart script); StepName names the stage, ” when unknown.
-// ExpiresAt is unix millis.
+// BranchRequest is a task's open request for branches and worktrees, merged from the agent's concurrent
+// calls; each item names its own call. ExpiresAt is unix millis.
 type BranchRequest struct {
 	ID        string              `json:"id"`
 	TaskID    string              `json:"taskId"`
 	TaskTitle string              `json:"taskTitle"`
-	Source    string              `json:"source"`
-	StepName  string              `json:"stepName"`
 	Items     []BranchRequestItem `json:"items"`
 	CreatedAt int64               `json:"createdAt"`
 	ExpiresAt int64               `json:"expiresAt"`
-}
-
-type BranchRequestArgs struct {
-	ID string `json:"id"`
-}
-
-type ApproveBranchRequestArgs struct {
-	ID      string   `json:"id"`
-	ItemIDs []string `json:"itemIds"`
-	// RenameRemote also renames the remote branch of a rename item.
-	RenameRemote bool `json:"renameRemote"`
-}
-
-// BranchRequestAnswer says whether an approve or deny reached a request still open.
-type BranchRequestAnswer struct {
-	Resolved bool `json:"resolved"`
 }
 
 // Handover is the text one stage leaves for the next. A draft (State 'draft', ToStepID empty) is open until

@@ -13,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -219,19 +220,18 @@ func TestKubeMcp(t *testing.T) {
 		rowsBefore := stmtRows()
 		pending := k.callAsync("kube_list_resources", k.listPods("default", nil))
 		req := k.pending(t)
-		if req.Kind != "kubernetes" || req.Statement != stmt || req.Cluster == nil ||
-			*req.Cluster != (bridge.DbMcpApprovalCluster{Context: "kind-dev", Server: k.fake.URL, Namespace: "default", Operation: "list"}) {
+		if req.Item.Kind != approvals.KindKubeRead || req.Statement != stmt || req.Cluster == nil ||
+			*req.Cluster != (kubeCluster{Context: "kind-dev", Server: k.fake.URL, Namespace: "default", Operation: "list"}) {
 			t.Fatalf("pending approval = %+v (cluster %+v)", req, req.Cluster)
 		}
 		if k.podRequests() != before {
 			t.Fatal("the list ran before approval")
 		}
 		// Contract dbmcp-kube: tests/ui/kubernetes-mcp.spec.ts renders this request in the approval dialog.
-		k.contract(t, "DbMcpService.PendingApprovals", bridge.DbMcpApprovalSnapshot{Pending: &req})
-		k.contract(t, "args:DbMcpService.ApproveQuery", bridge.DbMcpApprovalArgs{RequestID: req.RequestID})
-		if _, err := k.app.W.DbMcp.ApproveQuery(bridge.DbMcpApprovalArgs{RequestID: req.RequestID}); err != nil {
-			t.Fatal(err)
-		}
+		// The item id stays a stable placeholder so the UI spec answers the id it rendered.
+		k.app.Contract(t, kubeScenario, "ApprovalsService.List", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(k.fake.URL, "<kube>"))
+		k.app.Contract(t, kubeScenario, "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
+		k.answerItems(t, true, req.Item.ID)
 		out := <-pending
 		if out.err != nil || out.res.IsError || !strings.Contains(text(out.res), "web-1") {
 			t.Fatalf("approved list = %+v (%s)", out, text(out.res))
@@ -263,9 +263,7 @@ func TestKubeMcp(t *testing.T) {
 		before = k.podRequests()
 		denied := k.callAsync("kube_list_resources", k.listPods("default", nil))
 		req = k.pending(t)
-		if _, err := k.app.W.DbMcp.DenyQuery(bridge.DbMcpApprovalArgs{RequestID: req.RequestID}); err != nil {
-			t.Fatal(err)
-		}
+		k.answerItems(t, false, req.Item.ID)
 		out = <-denied
 		if out.err != nil {
 			t.Fatal(out.err)
@@ -278,9 +276,7 @@ func TestKubeMcp(t *testing.T) {
 		tightened := k.callAsync("kube_list_resources", k.listPods("default", nil))
 		req = k.pending(t)
 		k.setMcp(t, "kind-dev", kubernetes.McpSettings{Discover: "allow", List: "deny", Describe: "allow", Logs: "allow"})
-		if _, err := k.app.W.DbMcp.ApproveQuery(bridge.DbMcpApprovalArgs{RequestID: req.RequestID}); err != nil {
-			t.Fatal(err)
-		}
+		k.answerItems(t, true, req.Item.ID)
 		out = <-tightened
 		if out.err != nil {
 			t.Fatal(out.err)

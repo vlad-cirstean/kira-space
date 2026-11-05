@@ -6,12 +6,12 @@ import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { errorText } from '@workbench/bridge/codedError';
+import { useApprovalsStore } from '@workbench/state/approvals';
 import { computed, ref } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import { statusWhy, taskPatch } from '../board/panelFacts';
 import type { CardModel } from '../plan/usePlanModel';
 import { useUpdateTask } from '../queries';
-import { useAdeBranchRequestStore } from '../state/adeBranchRequest';
 import AdeTaskUpdates from '../updates/AdeTaskUpdates.vue';
 import type { TaskPatch } from '../wire';
 import AdeEstimateField from './AdeEstimateField.vue';
@@ -24,7 +24,7 @@ import AdeWorkflowBlock from './AdeWorkflowBlock.vue';
 // Main tab: the editable fields, the branches, then the workflow.
 const props = defineProps<{ card: CardModel }>();
 
-const requestStore = useAdeBranchRequestStore();
+const approvalsStore = useApprovalsStore();
 const update = useUpdateTask();
 
 const task = computed(() => props.card.task);
@@ -89,7 +89,7 @@ const spanDays = computed(() => props.card.entry.span);
             variant="dialog"
             size="kira"
             data-testid="ade-task-branch-request-open"
-            @click="requestStore.open({ id: task.branchRequestId })"
+            @click="approvalsStore.open(`branch.request:${task.branchRequestId}`)"
             >{{
               t('space.ade.board.branchTag.review.label')
             }}</Button

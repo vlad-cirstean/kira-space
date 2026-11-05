@@ -1,29 +1,41 @@
 {
-  "DbMcpService.PendingApprovals": {
-    "pending": {
-      "class": "write",
-      "cluster": null,
-      "connectionId": "<id:1>",
-      "connectionName": "notes db",
-      "expiresAtMs": 0,
-      "kind": "sqlite",
-      "plan": null,
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:1>",
+      "kind": "db.query",
+      "operation": {
+        "class": "write",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "plan": null,
+        "statement": "insert into notes (body) values ('three')"
+      },
       "reason": "permission",
-      "requestId": "<id:2>",
-      "response": null,
-      "stage": "query",
-      "statement": "insert into notes (body) values ('three')",
       "target": {
         "color": "teal",
-        "database": "/data/mcp.db",
-        "host": "",
-        "path": [],
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
         "readOnly": false
       }
-    },
-    "queued": 0
-  },
-  "args:DbMcpService.ApproveQuery": {
-    "requestId": "<id:2>"
+    }
+  ],
+  "args:ApprovalsService.Answer": {
+    "approve": true,
+    "ids": [
+      "db.query:<id:1>"
+    ],
+    "options": null
   }
 }

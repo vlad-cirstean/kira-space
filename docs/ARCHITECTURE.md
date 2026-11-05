@@ -2609,12 +2609,11 @@ answers. Bound as `PromptsService` (`List`, `MainWindow`, `Claim`, `Raise`, `Dis
 | Kind | Owner | Origin |
 |---|---|---|
 | `schedule` | `scriptruns` waiting insert (cron confirm) | none |
-| `dbmcp` | `dbmcp.ApprovalBroker` (Studio) | none |
+| `approval` | `approvals.Service` (ref = item id) | none |
 | `git-credential` | `gitcred.Relay` (Space) | stream window key, else none |
 | `mobile-pairing` | `pairing.Broker` (Space) | none |
 | `update` | renderer, through `Raise` and `Dismiss` | the raising window |
 | `handover` | `ade.TaskBoard` (ref = task id) | none |
-| `branch-request` | `ade.TaskBoard` (ref = request id) | none |
 
 - A prompt's routing target is the claimed window if still registered, else the origin window if registered, else the main window, else "" (queued).
 - The main window is shell.Registry.MainKey: the lowest open order, ties broken by key, never an ephemeral window.
@@ -2795,9 +2794,9 @@ An agent asks the user to approve branches and worktrees. `request_branches` blo
 | Archive, app close | abandoned |
 
 - Phase 3 re-locks, reloads the task and creates the approved branches (`createBranch`, origin `agent`, `startSetup`), since the task may have changed during the wait. An `addRow` repo gets its task row (origin `agent`) here, so it shows in Branches; deny, timeout and abandon add nothing. Existing worktrees stay where they are.
-- Prompt: routed kind `branch-request` (ref = request id), opened and closed under the broker mutex so a fast answer cannot close it before it opens. While a run waits its note reads "waiting for branch approval". `Task.branchRequestId` shows the open request on the board.
+- Prompt: an approvals item `branch.request:<request id>` (routed kind `approval`), opened and closed under the broker mutex so a fast answer cannot close it before it opens. Concurrent calls of one task merge into the open request: item ids are `c<call>i<k>`, each call keeps its origin, and the answer carries `{itemIds, remoteItemIds}` (the per-item remote rename) through `ApprovalsService.Answer` options. Approving nothing is refused inline. While a run waits its note reads "waiting for branch approval". `Task.branchRequestId` shows the open request on the board.
 - The CLI cuts an MCP call at 60 s. Every `claude` launch sets `MCP_TOOL_TIMEOUT` to 35 minutes (headless env in `harness/claude/headless.go`, TUI env in `hooks.Server.Env`). `TestAdeBranchRequest` holds a request 65 s to guard it.
-- Desktop only: the answer comes from the dialog (`AdeBranchRequestDialog`, store `adeBranchRequest`), the routed prompt or the Main tab row. Escape hides the dialog and never answers. Mobile has no approval surface.
+- Desktop only: the answer comes from the shared approvals dialog (`BranchRequestBody`) or the Main tab row, which reopens it. Minimising never answers. Mobile has no approval surface.
 - Bridge: `AdeTaskService.BranchRequest`, `ApproveBranchRequest` (non-empty subset, rest denied), `DenyBranchRequest`; `resolved` is false when the request is already gone.
 - Tests: flows/adeflow `TestBranchRequest` (contract `ade-branch-request`) and tests/ui/ade-v2-branch-request.spec.ts.
 
@@ -3106,6 +3105,20 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 - P485: user cluster order in `kube_clusters.sort_order` (migration 0057; NULL until first reorder, NULL rows last by current-then-name). `Service.Reorder` runs `sqlitex.ReorderSortOrder`; not an op (setting write). Drag uses `useTreePointerDrag` plus `list.moveUp`/`list.moveDown` and the menu; kept `useTreePointerDrag` after P486 flattened the list: same drop line, keyboard and menu path. `kira:kubernetes:clusters` tells other windows to refetch after `Reorder` and `SetMcp`.
 - P486: the sidebar is a flat cluster list (no kind rows). A cluster opens on its pods. A kind bar shows Pods plus up to 3 recent kinds; a searchable picker lists all kinds by category. The resources pane sits beside a tab pane. Click previews a resource tab; double-click, Enter or the row menu keeps it. A tab mounts on first activation and stays mounted until closed, so each pod's log stream runs per tab and ends on close. Studio's `createTabsStore` was declined: it persists every tab through Go's `RenderableTabKinds`, and a restored pod tab mostly names a deleted pod. `tab-next`, `tab-prev` and `tab-close` route to the module in Kubernetes mode.
 
+## Approvals surface (P520)
+
+One queue and one dialog per app hold every pending agent approval. Tools stay synchronous; each call returns when its own item is answered.
+
+- Go: `internal/approvals` is the shared queue. An `Item` has `Kind`, `Target` (name, kind, colour, read-only), `Operation` (class, tone), `Origin` (client, task, step, source), `CreatedAt`, `ExpiresAt` and an opaque `Payload`. Kinds: `db.query`, `db.response`, `kube.read`, `proof.review` (Studio), `branch.request` (Space). `Kind` is the subject; an optional `Subject` refines it.
+- Item id is `<kind>:<request id>`. Each item opens router prompt `approval:<item id>` (kind `approval`, ref = item id), so the router picks the window.
+- Bound as `ApprovalsService`: `List` and `Answer({IDs, Approve, Options})`. `Options` maps item id to owner-specific JSON (branch request choices). `Answer` returns one `{id, code, error}` per id. The push `kira:approvals:changed` carries the whole list.
+- Each owner registers a resolver; expiry is the owner's (`ApprovalTimeout` 10 min for DB MCP), and the item leaves the queue on answer, expiry or caller disconnect.
+- Frontend: `packages/workbench/src/approvals/`. `ApprovalsSurface` is mounted once per `App.vue` and shows the items routed to its window. Apps register renderers with `provideApprovalKinds`: `body`, optional `header`, `operation` and `labels`. An unregistered kind shows an unsupported note and Deny only.
+- `ApprovalsDialog` lists items as cards with their own countdown, Approve and Deny, and the origin line; "Approve all" and "Deny all" appear above one item. The X and Escape call `minimise`, which never answers; the dialog becomes `ApprovalsToast` ("N things awaiting your approval") with Review to reopen. A prompt shown by `PromptHost` also turns the dialog into the toast so two modals never stack.
+- State: Pinia `state/approvals.ts` (minimised, focus, in-flight, errors, options). Server state: TanStack Query key `approvals`, replaced by each push.
+- The countdown (`useCountdown`) only displays; the backend decides expiry.
+- P521 adds `script.run` and P522 adds `api.request` as kinds: a Go owner plus a registered body. Nothing else changes.
+
 ## Database MCP server (v1.7)
 
 ### The server (M1)
@@ -3165,23 +3178,22 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 
 - The Database MCP server's ApprovalBroker in internal/dbmcp/approval.go is modeled on the FIFO queue of internal/pairing.Broker; its ApprovalTimeout and maxPendingApprovals reuse that broker's bounds.
 - A client disconnect stops the approval wait via ctx, with no external expiry ticker.
-- The approval UI is workbench/DbMcpApprovalDialog.vue, an always-mounted modal at App.vue's root, beside Studio's other always-mounted dialogs such as ConnectionDialog, DataGripImportDialog, ApiDialogs and ConfirmDialog.
-- The shared packages/workbench/src/components/ConfirmDialog.vue cites DbMcpApprovalDialog's teleport-ordering precedent in its own comment.
-- The dialog shows the statement in a read-only MonacoHost (ApprovalStatement.vue), formatted by formatConsoleText, with an "As sent" toggle for the verbatim text. Word wrap is always on, so no clause sits off screen.
+- The approval UI is the shared approvals dialog (see "Approvals surface (P520)"). Studio supplies the item bodies under frontend/src/approvals/ (DbQueryBody, DbResponseBody, KubeReadBody, ProofReviewBody).
+- A query body shows the statement in a read-only MonacoHost (ApprovalStatement.vue), formatted by formatConsoleText, with an "As sent" toggle for the verbatim text. Word wrap is always on, so no clause sits off screen.
 - An approval prompt's Reason is either "permission" or "heavy". At most one prompt is raised per call when both apply; the stricter reason (permission) wins the label, and the plan evidence rides along.
-- Every approval request carries a Target (ApprovalTarget): connection colour, read-only flag, host, configured database (SQLite: the file), and the decoded run_query/explain_query path. The dialog opens with ApprovalTarget.vue, a banner above the lede and statement, so the human sees which database the call acts on.
+- Every approval request carries a Target (ApprovalTarget): connection colour, read-only flag, host, configured database (SQLite: the file), and the decoded run_query/explain_query path. The item header (ConnectionHeader.vue) sits above the lede and statement, so the human sees which database the call acts on.
 - A request has a Stage: "query" (may the statement run) or "response" (it ran; may its result reach the AI client). Both share one FIFO queue, one timeout and one dialog, and the title names the stage.
 - Setting dbMcp.previewResponses (default off, Settings > Database MCP) raises a response-stage request after run_query executes. The handler goroutine holds the final result, so the AI client stays blocked, and only Send returns that same result value untouched.
-- The preview runs after execution, never before approval, for three reasons: a pre-run would defeat the query gate, a heavy read would pay its cost twice, and a rollback transaction held across a human wait would keep database locks for up to 120 s (Redis, Kafka, SQS and S3 have no rollback at all). A write has therefore already run when its result shows; Withhold hides the result, it does not undo the change, and the dialog says so.
+- The preview runs after execution, never before approval, for three reasons: a pre-run would defeat the query gate, a heavy read would pay its cost twice, and a rollback transaction held across a human wait would keep database locks for up to 10 min (Redis, Kafka, SQS and S3 have no rollback at all). A write has therefore already run when its result shows; Withhold hides the result, it does not undo the change, and the dialog says so.
 - Every exit after Execute is reviewed: success, empty, adapter error, masked error, masking refusal, internal Go error. Exits before Execute carry only app-authored text and are not.
-- The held bytes are the TextContent of the result the client would get. Masking happens once, in render.go. The UI parses those bytes into a table (ApprovalResponse.vue) and shows them verbatim on the As sent tab. It never re-renders or re-masks.
+- The held bytes are the TextContent of the result the client would get. Masking happens once, in render.go. The UI parses those bytes into a table (PendingResponse.vue) and shows them verbatim on the As sent tab. It never re-renders or re-masks.
 - The text stays out of queue snapshots, which fan out to every window and can be MB-sized. Snapshots carry only isError and bytes; DbMcpService.PendingResponse(requestId) serves the text while the request is queued.
 - Withhold, timeout, abandon and a full queue return an app-authored error with no row data. Approve first re-checks MCP exposure and compares the current mask set with the one used to render (mask.Set.Equal); a change withholds the result so a rule added during review cannot be bypassed.
 - Each connection has mcp_review_results (migration 0045, P382): inherit (default), review or send. Inherit reads dbMcp.previewResponses fresh per call (bridge previewResponses); review and send skip that read. A read failure fails closed (review on), since sending unreviewed data is the unsafe direction. A stored value outside the three coerces to review on scan.
 - go-sdk v1.8.0 (mcp/server.go toolForErr) wraps a regular handler error as an IsError text result carrying err.Error(); only a *jsonrpc.Error becomes a protocol error. A bare Go error from run_query therefore reaches the client as that text, and the preview shows the same text.
 - Only run_query is reviewed, as the only tool that returns row data. explain_query, describe_* and list_* are unchanged. There is no undo for a withheld write and no editing of the result before sending.
-- Both stages and heavy-read prompts raise the Studio window when it is not focused (P338), gated by dbMcp.focusOnApproval (default on, read fresh per open; a read error raises). A stray key landing after the raise can only deny: the dialog focuses Deny on mount and Escape denies.
-- Two stages can hold one call for up to 4 minutes. A client with a shorter MCP tool timeout ends the call as abandoned and the result is discarded.
+- Both stages and heavy-read prompts raise the Studio window when it is not focused (P338), gated by dbMcp.focusOnApproval (default on, read fresh per open; a read error raises). A stray key landing after the raise can only deny: the dialog focuses Deny on mount. Escape minimises and never denies.
+- Two stages can hold one call for up to 20 minutes. A client with a shorter MCP tool timeout ends the call as abandoned and the result is discarded. Studio's install and `agentmcp` write a per-server `timeout` so the CLI's 60 s default never cuts a call.
 
 ### EXPLAIN (M3)
 
@@ -3706,6 +3718,8 @@ config, project files.
 
 Kept only while genuinely open — delete an item the moment it's resolved, never mark it done in
 place. `CLAUDE.md` states the process rule; this is the list itself.
+
+- **Studio approval origin names the MCP client only (P520).** The origin line shows the client name; the working directory is not sent, so it cannot be shown or verified. Delete once the CLI reports it.
 
 - **Branch rename does not migrate `review_session` rows or stored artifact URLs (P517).** They keep the old branch name; orphaned review sessions clear at the next review start. Delete once rename rewrites both.
 

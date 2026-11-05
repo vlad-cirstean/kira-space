@@ -2,9 +2,9 @@ package bridge
 
 import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appcore"
-	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/appevent"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/metrics"
 )
 
@@ -53,9 +53,8 @@ const (
 	// (the RunOp closure calling grpcclient.ServerStream), not a startup-wired long-lived source,
 	// so it needs no Sources entry and no Attach subscription.
 	ChannelGrpcCall = "kira:grpc:call"
-	// ChannelDbMcpApproval is M2 §7.1's own push channel — the prompt-mode approval queue's live
-	// snapshot: one FIFO of pending approvals, one presented at a time, each with its own timeout.
-	ChannelDbMcpApproval = "kira:dbmcp:approval"
+	// ChannelApprovalsChanged broadcasts the full approvals list (internal/approvals).
+	ChannelApprovalsChanged = appevent.ChannelApprovalsChanged
 	// ChannelTerminal is P83's own push channel — one terminal's output and its exit, EmitTo'd to
 	// the one window that opened it, flushed on the same 60ms/256-batch/terminal-event shape as
 	// ChannelGrpcCall above (internal/bridge/terminal.go's own coalescer).
@@ -111,8 +110,8 @@ type Sources struct {
 	Metrics interface {
 		OnSample(func(metrics.Sample)) func()
 	}
-	DbMcp interface {
-		OnApprovalChange(func(dbmcp.ApprovalSnapshot)) func()
+	Approvals interface {
+		OnChange(func([]approvals.Item)) func()
 	}
 }
 
@@ -149,8 +148,8 @@ func (ev *Events) Attach(s Sources) (detach func()) {
 	unsubMetrics := s.Metrics.OnSample(func(sample metrics.Sample) {
 		ev.emit.Emit(ChannelAppMetrics, sample)
 	})
-	unsubDbMcpApproval := s.DbMcp.OnApprovalChange(func(snap dbmcp.ApprovalSnapshot) {
-		ev.emit.Emit(ChannelDbMcpApproval, toWireApprovalSnapshot(snap))
+	unsubApprovals := s.Approvals.OnChange(func(list []approvals.Item) {
+		ev.emit.Emit(ChannelApprovalsChanged, list)
 	})
 
 	return func() {
@@ -159,7 +158,7 @@ func (ev *Events) Attach(s Sources) (detach func()) {
 		unsubList()
 		unsubOplog()
 		unsubMetrics()
-		unsubDbMcpApproval()
+		unsubApprovals()
 	}
 }
 

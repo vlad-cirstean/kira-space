@@ -99,7 +99,7 @@ func TestOpsAde(t *testing.T) {
 		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/ops"})}, Name: "done"}}, onceStepYML, false)
 		f.startRun(t)
 		req := f.waitRequest(t)
-		if _, err := f.app.W.AdeTask.ApproveBranchRequest(adewire.ApproveBranchRequestArgs{ID: req.ID, ItemIDs: []string{req.Items[0].ID}}); err != nil {
+		if _, err := approveBR(f.app, req.ID, []string{req.Items[0].ID}, nil); err != nil {
 			t.Fatal(err)
 		}
 		waitRun(t, f.app, f.task.ID, "one", "done")

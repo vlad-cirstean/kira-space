@@ -106,6 +106,7 @@ U62 apps/kira-studio/frontend/src/views/console/ConsoleView.vue # Monaco host ex
 U47 apps/kira-studio/frontend/src/views/shared/fields/FieldRowsTable.vue # 2D arrow navigation between text inputs; useListNavigation ignores text fields
 U62 apps/kira-studio/frontend/src/views/shared/fields/FieldRowsTable.vue # moves focus between sibling inputs and sets the caret
 # B (apps/kira-space, W/memory)
+U101 packages/workbench/src/approvals/ApprovalsDialog.vue # count marks approvals awaiting the person
 U101 apps/kira-space/frontend/src/ade/v2/shell/AdeShell.vue # count badge marks sessions needing attention, not a tab count
 U101 apps/kira-space/frontend/src/ade/v2/sessions/AdeSessionsMenu.vue # ADE tab count badge (P466)
 U101 packages/theme/src/components/SecondaryTabs.vue # countBadge opt-in renders the ADE tab count badge (P466)

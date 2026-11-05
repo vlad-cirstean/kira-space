@@ -53,8 +53,8 @@ export const CHANNEL = {
   // C7 D7: a repository-wide search's coalesced file groups, delivered via EmitTo (one window
   // only) — grpcCall's own shape, restated for a payload that shares no field with it.
   codeSearch: 'kira:code:search',
-  // M2 §7.1: the prompt-mode approval queue's live snapshot.
-  dbMcpApproval: 'kira:dbmcp:approval',
+  // P520: the pending agent approvals list (internal/approvals), Emit app-wide.
+  approvalsChanged: 'kira:approvals:changed',
   // P83 §3.2: one terminal's coalesced output and its exit, delivered via EmitTo (one window
   // only) — codeSearch's own shape, restated for a byte payload.
   terminal: 'kira:terminal:data',

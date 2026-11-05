@@ -158,11 +158,12 @@ func (s *Server) kubeRun(ctx context.Context, clusterID, group, namespace string
 			ConnectionID: c.ID, ConnectionName: c.Context, Kind: "kubernetes",
 			Class: adapters.ClassRead, Statement: stmt, Reason: ApprovalReasonPermission,
 			Cluster: &ApprovalCluster{Context: c.Context, Server: c.Server, Namespace: namespace, Operation: group},
+			Origin:  originFrom(ctx),
 		})
 		if outcome != ApprovalApproved {
 			return approvalOutcomeError(outcome, fmt.Sprintf("Kubernetes read on %q", c.Context))
 		}
-		// The wait can last two minutes: a tightened mode or a hidden cluster wins.
+		// The wait can last up to ApprovalTimeout: a tightened mode or a hidden cluster wins.
 		c, found, err = s.resolveCluster(ctx, clusterID)
 		if err != nil {
 			return toolError(err)

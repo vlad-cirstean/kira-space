@@ -62,7 +62,7 @@ func checkCollectionName(name string) (string, error) {
 		return "", ipcerr.Required("collection")
 	}
 	if utf8.RuneCountInString(name) > MaxCollectionRunes {
-		return "", ipcerr.BadRequest(fmt.Sprintf("collection name is longer than %d characters", MaxCollectionRunes))
+		return "", ipcerr.Contract("collection name is longer than %d characters", MaxCollectionRunes)
 	}
 	return name, nil
 }

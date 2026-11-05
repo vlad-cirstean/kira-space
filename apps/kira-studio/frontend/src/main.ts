@@ -350,7 +350,6 @@ async function mountShell(): Promise<void> {
     customScriptsStore.hydrateCustomScripts(),
     terminalsStore.hydrateTerminalDefaults(),
     dbMcpStore.hydrateDbMcp(),
-    dbMcpStore.hydrateDbMcpApprovals(),
     keepAwakeStore.initKeepAwake(),
     opsStore.hydrateOps(),
     tabsStore.hydrateTabs(),

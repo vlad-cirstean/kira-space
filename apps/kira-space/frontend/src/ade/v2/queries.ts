@@ -11,10 +11,8 @@ import type {
   AddExistingBranchArgs,
   AddLinkArgs,
   AddTaskRepoArgs,
-  ApproveBranchRequestArgs,
   Board,
   BranchArgs,
-  BranchRequestArgs,
   CaptureTaskArgs,
   CloseSessionArgs,
   CreateTaskArgs,
@@ -563,27 +561,6 @@ export function useUpdateHandover() {
 
 export function useDismissHandover() {
   return useMutation({ mutationFn: (args: TaskArgs) => control.adeTaskDismissHandover(args) });
-}
-
-/** An agent's open branch request; E_NOT_FOUND means it was answered. */
-export function useBranchRequest(id: MaybeRefOrGetter<string>) {
-  return useQuery(() => ({
-    queryKey: ['adetask', 'branchRequest', toValue(id)] as const,
-    queryFn: () => control.adeTaskBranchRequest({ id: toValue(id) }),
-    enabled: toValue(id) !== '',
-  }));
-}
-
-export function useApproveBranchRequest() {
-  return useMutation({
-    mutationFn: (args: ApproveBranchRequestArgs) => control.adeTaskApproveBranchRequest(args),
-  });
-}
-
-export function useDenyBranchRequest() {
-  return useMutation({
-    mutationFn: (args: BranchRequestArgs) => control.adeTaskDenyBranchRequest(args),
-  });
 }
 
 /** A branch's review step for its review window; the review, board and runs pushes refetch it. */

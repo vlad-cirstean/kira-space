@@ -1,4 +1,38 @@
 {
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.response:<id:2>",
+      "kind": "db.response",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "alreadyRan": false,
+        "bytes": 217,
+        "connectionId": "<id:1>",
+        "isError": false,
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
   "ConnectionsService.List#review": {
     "autoExplain": false,
     "color": "teal",
@@ -28,33 +62,6 @@
     "updatedAt": "<masked>",
     "uri": null,
     "username": null
-  },
-  "DbMcpService.PendingApprovals": {
-    "pending": {
-      "class": "read",
-      "cluster": null,
-      "connectionId": "<id:1>",
-      "connectionName": "notes db",
-      "expiresAtMs": 0,
-      "kind": "sqlite",
-      "plan": null,
-      "reason": "permission",
-      "requestId": "<id:2>",
-      "response": {
-        "bytes": 217,
-        "isError": false
-      },
-      "stage": "response",
-      "statement": "select id, body from notes order by id",
-      "target": {
-        "color": "teal",
-        "database": "/data/mcp.db",
-        "host": "",
-        "path": [],
-        "readOnly": false
-      }
-    },
-    "queued": 0
   },
   "DbMcpService.PendingResponse": {
     "isError": false,

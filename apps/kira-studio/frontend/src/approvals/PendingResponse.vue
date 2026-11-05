@@ -140,7 +140,7 @@ const padBottom = computed(() => {
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col gap-1.5" data-testid="db-mcp-preview">
+  <div class="flex h-72 flex-col gap-1.5" data-testid="db-mcp-preview">
     <QueryState :query="response" variant="inline" :is-empty="() => false">
       <Alert v-if="isError" variant="error" data-testid="db-mcp-preview-error">
         <AlertDescription class="whitespace-pre-wrap">{{ text }}</AlertDescription>

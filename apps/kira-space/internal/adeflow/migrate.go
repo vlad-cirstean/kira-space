@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/google/renameio/v2"
 	"go.yaml.in/yaml/v3"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
@@ -84,7 +85,7 @@ func backupFiles(dir, backup string, names []string) error {
 		if err != nil {
 			return fmt.Errorf("adeflow: backup %s: %w", name, err)
 		}
-		if err := os.WriteFile(filepath.Join(tmp, name), src, 0o644); err != nil {
+		if err := renameio.WriteFile(filepath.Join(tmp, name), src, 0o644); err != nil {
 			return fmt.Errorf("adeflow: backup %s: %w", name, err)
 		}
 	}

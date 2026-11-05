@@ -15,6 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/mcpauth"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/proof"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 )
 
@@ -165,6 +166,21 @@ func proofPrompts(t *testing.T, app *flowharness.App) []prompts.Routed {
 	for _, p := range all {
 		if p.Kind == prompts.KindProof {
 			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func reviewItems(t *testing.T, app *flowharness.App) []approvals.Item {
+	t.Helper()
+	all, err := app.W.ApprovalsSvc.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []approvals.Item
+	for _, it := range all {
+		if it.Kind == approvals.KindProofReview {
+			out = append(out, it)
 		}
 	}
 	return out

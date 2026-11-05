@@ -183,3 +183,13 @@ export const proofChangedSchema = /*#__PURE__*/ z.object({ sessionId: z.string()
 export const proofSelectSchema = /*#__PURE__*/ z.object({ sessionId: z.string() });
 export type ProofChanged = z.infer<typeof proofChangedSchema>;
 export type ProofSelect = z.infer<typeof proofSelectSchema>;
+
+// P520: payload of a proof.review approval item (internal/proof putReview).
+export const proofReviewPayloadSchema = /*#__PURE__*/ z.object({
+  sessionId: z.string(),
+  name: z.string(),
+  revision: z.number(),
+  reason: z.string(),
+  steps: z.array(z.object({ ordinal: z.number(), description: z.string(), diff: z.string() })),
+});
+export type ProofReviewPayload = z.infer<typeof proofReviewPayloadSchema>;

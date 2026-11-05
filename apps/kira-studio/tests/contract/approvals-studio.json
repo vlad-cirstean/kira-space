@@ -1,0 +1,101 @@
+{
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:1>",
+      "kind": "db.query",
+      "operation": {
+        "class": "write",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "plan": null,
+        "statement": "insert into notes (body) values ('a')"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    },
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:3>",
+      "kind": "db.query",
+      "operation": {
+        "class": "write",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "plan": null,
+        "statement": "insert into notes (body) values ('b')"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    },
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:4>",
+      "kind": "db.query",
+      "operation": {
+        "class": "write",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "plan": null,
+        "statement": "insert into notes (body) values ('c')"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "args:ApprovalsService.Answer": {
+    "approve": false,
+    "ids": [
+      "db.query:<id:3>"
+    ],
+    "options": null
+  }
+}

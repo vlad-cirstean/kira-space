@@ -2,7 +2,7 @@
 import type { PromptKind, RoutedPrompt } from '@shared/domain/prompts';
 import { compareNatural } from '@workbench/behaviour/match';
 import { windowKey } from '@workbench/lib/window';
-import { type Component, computed, onScopeDispose, watch } from 'vue';
+import { type Component, computed, onScopeDispose, watch, watchEffect } from 'vue';
 import { usePrompts, usePromptsControl, usePromptVisibility } from './promptsQueries';
 
 // Shows the popup the router targeted at this window: the oldest, or the one a notification click
@@ -11,7 +11,7 @@ const props = defineProps<{ kinds: Partial<Record<PromptKind, Component>> }>();
 
 const control = usePromptsControl();
 const { data } = usePrompts();
-const { hidden, revealed, hide, reveal, prune } = usePromptVisibility();
+const { hidden, revealed, shown, hide, reveal, prune } = usePromptVisibility();
 onScopeDispose(control.onPromptsReveal(({ id }) => reveal(id)));
 
 watch(
@@ -25,6 +25,12 @@ const visible = computed<RoutedPrompt[]>(() =>
     .sort((a, b) => a.createdAt - b.createdAt || compareNatural(a.id, b.id)),
 );
 const head = computed(() => visible.value.find((p) => p.id === revealed.value) ?? visible.value[0]);
+watchEffect(() => {
+  shown.value = !!head.value;
+});
+onScopeDispose(() => {
+  shown.value = false;
+});
 const more = computed(() => Math.max(0, visible.value.length - 1));
 </script>
 

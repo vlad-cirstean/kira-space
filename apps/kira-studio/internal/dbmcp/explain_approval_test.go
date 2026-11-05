@@ -21,7 +21,7 @@ func TestExplainQueryRefusesApprovedReadAfterReadModeDeniedMidWait(t *testing.T)
 		McpReadMode: "prompt", McpWriteMode: "deny", McpDdlMode: "deny",
 	}}
 	qr := &fakeQueryRunner{class: adapters.ClassRead}
-	approvals := NewApprovalBroker(time.Now)
+	approvals := NewApprovalBroker(time.Now, nil)
 	s := &Server{cfg: Config{
 		Conns: conns, Query: qr, Approvals: approvals, MaskRules: fakeMaskRulesNone{},
 		ExplainThreshold: func() int { return 1000 },
@@ -54,8 +54,8 @@ func TestExplainQueryRefusesApprovedReadAfterReadModeDeniedMidWait(t *testing.T)
 			t.Fatal("explain_query never raised an approval request")
 		default:
 		}
-		if snap := approvals.Pending(); snap.Pending != nil {
-			requestID = snap.Pending.RequestID
+		if items := approvals.Queue.List(); len(items) > 0 {
+			requestID = strings.TrimPrefix(items[0].ID, items[0].Kind+":")
 		} else {
 			time.Sleep(time.Millisecond)
 		}

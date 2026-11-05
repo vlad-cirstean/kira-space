@@ -1,6 +1,7 @@
 package adeflow_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/shell"
@@ -24,7 +26,9 @@ import (
 const brScenario = "ade-branch-request"
 
 var (
-	brMask      = flowharness.Mask("id", "taskId", "createdAt", "expiresAt", "codeRepoId")
+	brMask = flowharness.Mask("id", "taskId", "createdAt", "expiresAt", "codeRepoId")
+	// The approvals item keeps its ids: the UI spec renders and answers them.
+	brListMask  = flowharness.Mask("taskId", "createdAt", "expiresAt", "codeRepoId")
 	nanoFolder  = regexp.MustCompile(`^wt_[0-9a-hjkmnp-tv-z]{10}$`)
 	onceStepYML = "  - id: one\n    name: one\n    kind: agent\n    runs_on: once\n    timeout: 1m\n    prompt: ask for branches\n"
 )
@@ -67,7 +71,7 @@ func (f *brFixture) waitRequest(t *testing.T) adewire.BranchRequest {
 		id = taskOf(t, board(t, f.app), f.task.ID).BranchRequestID
 		return id != ""
 	})
-	req, err := f.app.W.AdeTask.BranchRequest(adewire.BranchRequestArgs{ID: id})
+	req, err := branchRequest(f.app, id)
 	if err != nil {
 		t.Fatalf("BranchRequest: %v", err)
 	}
@@ -82,7 +86,7 @@ func (f *brFixture) requestPrompts(t *testing.T) []prompts.Routed {
 	}
 	var out []prompts.Routed
 	for _, p := range all {
-		if p.Kind == prompts.KindBranchRequest {
+		if p.Kind == prompts.KindApproval && strings.HasPrefix(p.Ref, branchItemPrefix) {
 			out = append(out, p)
 		}
 	}
@@ -119,11 +123,11 @@ func TestBranchRequest(t *testing.T) {
 		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/login"}, [2]string{"web", "feat/login-web"})}, Name: "done"}}, onceStepYML, true)
 		f.startRun(t)
 		req := f.waitRequest(t)
-		if len(req.Items) != 2 || req.Source != "run" || req.Items[0].Kind != "branch" || req.TaskTitle == "" {
+		if len(req.Items) != 2 || req.Items[0].Source != "run" || req.Items[0].Kind != "branch" || req.TaskTitle == "" {
 			t.Fatalf("request = %+v, want two new-branch items from a run", req)
 		}
-		f.app.Contract(t, brScenario, "AdeTaskService.BranchRequest", req, brMask)
-		if ps := f.requestPrompts(t); len(ps) != 1 || ps[0].Ref != req.ID {
+		f.app.Contract(t, brScenario, "ApprovalsService.List#branch", []approvals.Item{*branchItem(f.app, req.ID)}, brListMask)
+		if ps := f.requestPrompts(t); len(ps) != 1 || ps[0].Ref != branchItemPrefix+req.ID {
 			t.Fatalf("prompts = %+v, want one for the request", ps)
 		}
 		run, _ := latestRun(t, f.app, f.task.ID, "one")
@@ -131,7 +135,7 @@ func TestBranchRequest(t *testing.T) {
 			t.Fatalf("run note = %q, want the approval note while it waits", run.Note)
 		}
 
-		ans, err := f.app.W.AdeTask.ApproveBranchRequest(adewire.ApproveBranchRequestArgs{ID: req.ID, ItemIDs: []string{req.Items[0].ID}})
+		ans, err := approveBR(f.app, req.ID, []string{req.Items[0].ID}, nil)
 		if err != nil || !ans.Resolved {
 			t.Fatalf("Approve = %+v, %v", ans, err)
 		}
@@ -156,10 +160,10 @@ func TestBranchRequest(t *testing.T) {
 		if run, _ = latestRun(t, f.app, f.task.ID, "one"); run.Note != "" {
 			t.Fatalf("run note after answer = %q, want it cleared", run.Note)
 		}
-		if _, err := f.app.W.AdeTask.BranchRequest(adewire.BranchRequestArgs{ID: req.ID}); errCode(err) != "E_NOT_FOUND" {
+		if _, err := branchRequest(f.app, req.ID); errCode(err) != "E_NOT_FOUND" {
 			t.Fatalf("BranchRequest after answer: %v, want E_NOT_FOUND", err)
 		}
-		if ans, err := f.app.W.AdeTask.DenyBranchRequest(adewire.BranchRequestArgs{ID: req.ID}); err != nil || ans.Resolved {
+		if ans, err := denyBR(f.app, req.ID); err != nil || ans.Resolved {
 			t.Fatalf("Deny after answer = %+v, %v, want resolved=false", ans, err)
 		}
 	})
@@ -186,7 +190,7 @@ func TestBranchRequest(t *testing.T) {
 		if n := len(taskOf(t, board(t, f.app), f.task.ID).BranchIDs); n != 1 {
 			t.Fatalf("branch rows before approval = %d, want 1", n)
 		}
-		if _, err := f.app.W.AdeTask.ApproveBranchRequest(adewire.ApproveBranchRequestArgs{ID: req.ID, ItemIDs: []string{req.Items[0].ID}}); err != nil {
+		if _, err := approveBR(f.app, req.ID, []string{req.Items[0].ID}, nil); err != nil {
 			t.Fatal(err)
 		}
 		waitRun(t, f.app, f.task.ID, "one", "done")
@@ -205,7 +209,7 @@ func TestBranchRequest(t *testing.T) {
 		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"web", "feat/web-x"})}, Name: "done"}}, onceStepYML, false)
 		f.startRun(t)
 		req := f.waitRequest(t)
-		if _, err := f.app.W.AdeTask.DenyBranchRequest(adewire.BranchRequestArgs{ID: req.ID}); err != nil {
+		if _, err := denyBR(f.app, req.ID); err != nil {
 			t.Fatal(err)
 		}
 		waitRun(t, f.app, f.task.ID, "one", "done")
@@ -221,7 +225,7 @@ func TestBranchRequest(t *testing.T) {
 		}}, onceStepYML, true)
 		f.startRun(t)
 		first := f.waitRequest(t)
-		if _, err := f.app.W.AdeTask.ApproveBranchRequest(adewire.ApproveBranchRequestArgs{ID: first.ID, ItemIDs: []string{first.Items[0].ID}}); err != nil {
+		if _, err := approveBR(f.app, first.ID, []string{first.Items[0].ID}, nil); err != nil {
 			t.Fatal(err)
 		}
 		var second adewire.BranchRequest
@@ -230,13 +234,13 @@ func TestBranchRequest(t *testing.T) {
 			if id == "" || id == first.ID {
 				return false
 			}
-			second, _ = f.app.W.AdeTask.BranchRequest(adewire.BranchRequestArgs{ID: id})
+			second, _ = branchRequest(f.app, id)
 			return second.ID != ""
 		})
 		if len(second.Items) != 1 || second.Items[0].CodeRepoID != f.web {
 			t.Fatalf("second request = %+v, want web only", second)
 		}
-		if ans, err := f.app.W.AdeTask.DenyBranchRequest(adewire.BranchRequestArgs{ID: second.ID}); err != nil || !ans.Resolved {
+		if ans, err := denyBR(f.app, second.ID); err != nil || !ans.Resolved {
 			t.Fatalf("Deny = %+v, %v", ans, err)
 		}
 		waitRun(t, f.app, f.task.ID, "one", "done")
@@ -263,17 +267,34 @@ func TestBranchRequest(t *testing.T) {
 		}
 	})
 
-	t.Run("one request waits per task", func(t *testing.T) {
+	t.Run("a second call joins the open request and leaves alone", func(t *testing.T) {
 		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/a"})}, Name: "done"}}, onceStepYML, true)
 		f.startRun(t)
 		req := f.waitRequest(t)
-		_, err := f.app.W.AdeBoard.RequestBranches(ctx, agentmcp.SpaceCall{TaskID: f.task.ID}, []agentmcp.BranchSpec{{Repo: "web", Branch: "feat/w"}})
-		if err == nil || !strings.Contains(err.Error(), "already waits") {
-			t.Fatalf("second request: %v, want the already-waits refusal", err)
+		type answer struct {
+			res agentmcp.RequestBranchesResult
+			err error
 		}
-		if _, err := f.app.W.AdeTask.DenyBranchRequest(adewire.BranchRequestArgs{ID: req.ID}); err != nil {
-			t.Fatal(err)
+		joined, cancel := context.WithCancel(ctx)
+		defer cancel()
+		done := make(chan answer, 1)
+		go func() {
+			res, err := f.app.W.AdeBoard.RequestBranches(joined, agentmcp.SpaceCall{TaskID: f.task.ID}, []agentmcp.BranchSpec{{Repo: "web", Branch: "feat/w"}})
+			done <- answer{res, err}
+		}()
+		merged := f.waitItems(t, 2)
+		if merged.ID != req.ID || merged.Items[0].ID != "c0i0" || merged.Items[1].ID != "c1i0" {
+			t.Fatalf("merged = %+v, want the same request with items c0i0 and c1i0", merged)
 		}
+		// The joined caller leaving takes only its own item.
+		cancel()
+		if a := <-done; a.err == nil {
+			t.Fatalf("cancelled call = %+v, want an error", a.res)
+		}
+		if left := f.waitItems(t, 1); left.Items[0].ID != "c0i0" {
+			t.Fatalf("after leaving: %+v, want the first call's item", left.Items)
+		}
+		mustDeny(t, f.app, req.ID)
 		waitRun(t, f.app, f.task.ID, "one", "done")
 	})
 
@@ -287,7 +308,7 @@ func TestBranchRequest(t *testing.T) {
 		}
 		openLaunch(t, f.app, launch)
 		req := f.waitRequest(t)
-		if req.Source != "session" || req.StepName != "Work" {
+		if req.Items[0].Source != "session" || req.Items[0].StepName != "Work" {
 			t.Fatalf("request = %+v, want a session request from Work", req)
 		}
 		if err := f.app.W.Terminal.Close(terminal.CloseArgs{TerminalID: launch.TerminalID}); err != nil {
@@ -297,7 +318,7 @@ func TestBranchRequest(t *testing.T) {
 		if ps := f.requestPrompts(t); len(ps) != 0 {
 			t.Fatalf("prompts after stop = %+v", ps)
 		}
-		if _, err := f.app.W.AdeTask.BranchRequest(adewire.BranchRequestArgs{ID: req.ID}); errCode(err) != "E_NOT_FOUND" {
+		if _, err := branchRequest(f.app, req.ID); errCode(err) != "E_NOT_FOUND" {
 			t.Fatalf("BranchRequest after stop: %v, want E_NOT_FOUND", err)
 		}
 		if name := f.branchName(t, f.api); name != "" {

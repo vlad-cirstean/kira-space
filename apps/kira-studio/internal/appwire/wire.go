@@ -38,6 +38,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/tree"
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentctx"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/appupdate"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/docker"
@@ -153,14 +154,13 @@ type embeddedWired struct {
 // event bus, attached to every producer built so far. deps is taken by value, since every call
 // site here is at or after the point main's own deps.Events assignment (the emitter) has already
 // run.
-func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, keepAwakeDriver keepawake.Driver, connectionsSvc *connections.Service, oplogWiring *oplog.Wiring, metricsTicker *metrics.Ticker, promptRouter *prompts.Router, agents harness.Selector, proofSvc *proof.Service, opts Options) embeddedWired {
+func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, approvalQueue *approvals.Queue, keepAwakeDriver keepawake.Driver, connectionsSvc *connections.Service, oplogWiring *oplog.Wiring, metricsTicker *metrics.Ticker, promptRouter *prompts.Router, agents harness.Selector, proofSvc *proof.Service, opts Options) embeddedWired {
 	// The DB MCP server's embedded instance — owned by this app's own lifecycle.
 	// StartIfEnabled's own failure (a bind conflict) is logged, never fatal.
 	// The approval broker outlives the server's own start/stop (constructed here, not
 	// inside DbMcpService.startLocked), so the event subscription wired below stays valid across a
 	// restart of the embedded server within one app run.
-	dbMcpApprovals := dbmcp.NewApprovalBroker(time.Now)
-	dbMcpApprovals.Prompts = promptRouter
+	dbMcpApprovals := dbmcp.NewApprovalBroker(time.Now, approvalQueue)
 	kubeSvc := &bridge.KubernetesService{BoundService: kubernetes.NewBoundService(deps.Repos.KubeClusters, deps.Events, append([]kubernetes.Option{kubernetes.WithRecorder(bridge.KubeRecorder{Host: deps.Router.Host()})}, opts.KubernetesExtra...)...)}
 	dbMcpSvc := bridge.NewDbMcpService(deps, installer, dbMcpApprovals, proofSvc, kubernetes.ServiceOf(kubeSvc.BoundService))
 
@@ -224,7 +224,7 @@ func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, kee
 	dockerSvc := &bridge.DockerService{BoundService: docker.NewBoundService(deps.Events, dockerOptions(opts, deps.Repos.DockerRestore)...)}
 	docker.StartRestoreBound(dockerSvc.BoundService)
 	events := bridge.NewEvents(deps.Events)
-	eventsDetach := events.Attach(bridge.Sources{Connections: connectionsSvc, Oplog: oplogWiring, Metrics: metricsTicker, DbMcp: dbMcpApprovals})
+	eventsDetach := events.Attach(bridge.Sources{Connections: connectionsSvc, Oplog: oplogWiring, Metrics: metricsTicker, Approvals: approvalQueue})
 
 	return embeddedWired{
 		dbMcpSvc: dbMcpSvc, keepAwakeSvc: keepAwakeSvc,
@@ -324,7 +324,7 @@ func newPromptRouter(windows *shell.WindowRegistry, repositories *repos.Repos, o
 		},
 		// A read error raises: showing the approval is the harmless direction.
 		RaiseOnOpen: func(k prompts.Kind) bool {
-			if k != prompts.KindDbMcp {
+			if k != prompts.KindApproval {
 				return false
 			}
 			s, err := repositories.Settings.GetAll()

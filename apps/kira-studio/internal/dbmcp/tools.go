@@ -294,11 +294,11 @@ func (s *Server) reviewResponse(ctx context.Context, args runQueryArgs, rv query
 	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
 		ConnectionID: args.ConnectionID, ConnectionName: name, Kind: rv.summary.Kind,
 		Class: rv.class, Statement: args.SQL, Reason: ApprovalReasonPermission,
-		Target: targetOf(rv.summary, args.Path), Stage: ApprovalStageResponse, Response: &held,
+		Target: targetOf(rv.summary, args.Path), Stage: ApprovalStageResponse, Response: &held, Origin: originFrom(ctx),
 	})
 	switch outcome {
 	case ApprovalApproved:
-		// The review can take up to 2 minutes: exposure or masking rules may have changed since the
+		// The review can take up to ApprovalTimeout: exposure or masking rules may have changed since the
 		// result was rendered.
 		if _, rerr := s.resolveEnabled(args.ConnectionID); rerr != nil {
 			return errResult(fmt.Sprintf("query against %q ran, but its result was withheld: %s", name, rerr.Error()))
@@ -314,7 +314,7 @@ func (s *Server) reviewResponse(ctx context.Context, args runQueryArgs, rv query
 	case ApprovalDenied:
 		return errResult(fmt.Sprintf("query against %q ran, but the user withheld its result", name))
 	case ApprovalTimedOut:
-		return errResult(fmt.Sprintf("query against %q ran, but its result got no review within 2 minutes and was withheld", name))
+		return errResult(fmt.Sprintf("query against %q ran, but its result got no review within %s and was withheld", name, approvalWindow()))
 	case ApprovalAbandoned:
 		return errResult(fmt.Sprintf("the database MCP server stopped before the result of the query against %q was reviewed", name))
 	case ApprovalQueueFull:
@@ -454,11 +454,11 @@ func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, summary m
 		ConnectionID: args.ConnectionID, ConnectionName: summary.Name, Kind: summary.Kind,
 		Class: class, Statement: args.SQL, Reason: reason,
 		Target: targetOf(summary, args.Path),
-		Plan:   approvalPlanFrom(plan, threshold),
+		Plan:   approvalPlanFrom(plan, threshold), Origin: originFrom(ctx),
 	})
 	switch outcome {
 	case ApprovalApproved:
-		// summary/m/verdict above were resolved before this (up to 2-minute) wait.
+		// summary/m/verdict above were resolved before this (up to ApprovalTimeout) wait.
 		// If the user reacted to the prompt by revoking the connection's MCP exposure or
 		// tightening this class's mode to deny, an Approve landing after that must not run the
 		// statement under permissions that no longer hold — re-resolve both, the same posture
@@ -488,7 +488,7 @@ func approvalOutcomeError(outcome ApprovalOutcome, subject string) (*mcp.CallToo
 	case ApprovalDenied:
 		return errResult(subject + " was denied by the user")
 	case ApprovalTimedOut:
-		return errResult(subject + " got no answer within 2 minutes")
+		return errResult(subject + " got no answer within " + approvalWindow())
 	case ApprovalAbandoned:
 		return errResult("the database MCP server stopped before the " + subject + " was answered")
 	case ApprovalQueueFull:
@@ -568,12 +568,12 @@ func (s *Server) explainQuery(ctx context.Context, _ *mcp.CallToolRequest, args 
 		outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
 			ConnectionID: args.ConnectionID, ConnectionName: summary.Name, Kind: summary.Kind,
 			Class: adapters.ClassRead, Statement: strings.Join(statements, "\n"),
-			Reason: ApprovalReasonPermission,
+			Reason: ApprovalReasonPermission, Origin: originFrom(ctx),
 		})
 		switch outcome {
 		case ApprovalApproved:
 			// F6: mirror runQuery's own awaitApproval re-check — summary/m above were resolved
-			// before this (up to 2-minute) wait, so an Approve landing after the user revoked MCP
+			// before this (up to ApprovalTimeout) wait, so an Approve landing after the user revoked MCP
 			// exposure or tightened read mode to deny must not still run the composed EXPLAIN.
 			resummary, rerr := s.resolveEnabled(args.ConnectionID)
 			if rerr != nil {

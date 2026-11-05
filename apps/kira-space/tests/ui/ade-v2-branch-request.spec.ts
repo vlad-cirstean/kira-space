@@ -1,157 +1,115 @@
-import { emitPrompts, routed } from '@workbench/testing/ui/prompts';
+import type { ApprovalItem } from '@shared/domain/approvals';
+import { answeredOk, liveItem } from '@workbench/testing/ui/approvals';
 import { expect, test } from './fixtures';
-import { adeBoard, openPlan, openTask } from './support/adeV2';
+import { adeBoard, FIXED_NOW, openPlan, openTask } from './support/adeV2';
+import { seedApprovals } from './support/approvals';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
-import type { ControlSnapshot } from './support/types';
 
-// An agent's branch request: the routed prompt, the dialog and the Task tab row.
+// An agent's branch request as an approvals item, and the Task tab row that reopens it.
 // Contract ade-branch-request; backend half: flows/adeflow TestBranchRequest (branchrequest_test.go).
 
 const t = (id: string) => `[data-testid="${id}"]`;
 
-interface RequestFx {
-  id: string;
-  taskId: string;
-  taskTitle: string;
-  source: string;
-  stepName: string;
-  items: {
-    id: string;
-    codeRepoId: string;
-    repo: string;
-    kind: string;
-    branch: string;
-    base: string;
-  }[];
-  createdAt: number;
-  expiresAt: number;
+interface Pl {
+  items: { id: string; branch: string }[];
 }
 
-/** The recorded request, with stable item and repo ids and an expiry far enough ahead to stay open. */
-function request(): RequestFx {
-  const r = contract<RequestFx>('ade-branch-request', 'AdeTaskService.BranchRequest');
-  return {
-    ...r,
-    id: 'br_1',
-    taskId: 'T_alerts',
-    expiresAt: Date.now() + 30 * 60_000,
-    items: r.items.map((item, n) => ({ ...item, id: `i${n}`, codeRepoId: `R_${item.repo}` })),
-  };
+function item(): ApprovalItem {
+  const [it] = contract<ApprovalItem[]>('ade-branch-request', 'ApprovalsService.List#branch');
+  if (!it) throw new Error('contract has no item');
+  return liveItem(it, 1800, FIXED_NOW);
 }
 
-function snapshots(extra: ControlSnapshot[] = []): ControlSnapshot[] {
-  return [
-    { channel: IPC.adeTaskBranchRequest, response: request() },
-    { channel: IPC.adeTaskApproveBranchRequest, response: { resolved: true } },
-    { channel: IPC.adeTaskDenyBranchRequest, response: { resolved: true } },
-    ...extra,
-  ];
-}
+const payload = () => item().payload as Pl;
 
-async function openRouted(relaunch: Parameters<typeof openPlan>[0], extra?: ControlSnapshot[]) {
-  const entry = routed('branch-request', 'br_1');
+async function openRequest(relaunch: Parameters<typeof openPlan>[0]) {
+  const it = item();
   const { window: page, control } = await openPlan(relaunch, [
-    ...snapshots(extra),
-    { channel: IPC.promptsList, response: [entry] },
+    ...seedApprovals([it]),
+    { channel: IPC.approvalsAnswer, response: answeredOk([it.id]) },
   ]);
-  await emitPrompts(page, [entry]);
-  await expect(page.locator(t('ade-branch-request-dialog'))).toBeVisible();
-  return { page, control };
+  await expect(page.locator(t('approvals-dialog'))).toBeVisible();
+  return { page, control, it };
 }
 
-test('contract: the routed prompt lists every branch and Approve sends the checked items', async ({
+test('contract: the item lists every branch and Approve sends the checked items', async ({
   relaunch,
 }) => {
-  const req = request();
-  const { page, control } = await openRouted(relaunch);
-  const dialog = page.locator(t('ade-branch-request-dialog'));
-  await expect(dialog.locator(t('ade-branch-request-source'))).toContainText(req.stepName);
-  for (const item of req.items) {
-    await expect(dialog.locator(t(`ade-branch-request-item-${item.id}`))).toBeVisible();
-    await expect(dialog.locator(t(`ade-branch-request-item-${item.id}`))).toContainText(
-      item.branch,
-    );
+  const { page, control, it } = await openRequest(relaunch);
+  const dialog = page.locator(t('approvals-dialog'));
+  await expect(dialog.locator(t('ade-branch-request-source')).first()).toContainText(
+    (it.origin.step || 'run').toString(),
+  );
+  const { items } = payload();
+  expect(items).toHaveLength(2);
+  for (const row of items) {
+    await expect(dialog.locator(t(`ade-branch-request-item-${row.id}`))).toContainText(row.branch);
   }
-  expect(req.items).toHaveLength(2);
-  const [kept, dropped] = req.items;
+  const [kept, dropped] = items;
   await dialog
     .locator(t(`ade-branch-request-item-${dropped?.id}`))
     .getByRole('checkbox')
     .click();
-  await expect(dialog.locator(t('ade-branch-request-approve'))).toContainText('(1)');
-  await dialog.locator(t('ade-branch-request-approve')).click();
-  await expect.poll(() => calls(control, IPC.adeTaskApproveBranchRequest)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskApproveBranchRequest)[0]?.args).toEqual({
-    id: 'br_1',
-    itemIds: [kept?.id],
-    renameRemote: false,
+  await dialog.locator(t(`approval-approve-${it.id}`)).click();
+  await expect.poll(() => calls(control, IPC.approvalsAnswer)).toHaveLength(1);
+  expect(calls(control, IPC.approvalsAnswer)[0]?.args).toEqual({
+    ids: [it.id],
+    approve: true,
+    options: { [it.id]: { itemIds: [kept?.id], remoteItemIds: [] } },
   });
-  await expect(dialog).toBeHidden();
 });
 
-test('Deny sends DenyBranchRequest', async ({ relaunch }) => {
-  const { page, control } = await openRouted(relaunch);
-  await page.locator(t('ade-branch-request-deny')).click();
-  await expect.poll(() => calls(control, IPC.adeTaskDenyBranchRequest)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskDenyBranchRequest)[0]?.args).toEqual({
-    id: 'br_1',
+test('Deny answers the item with a denial', async ({ relaunch }) => {
+  const { page, control, it } = await openRequest(relaunch);
+  await page.locator(t(`approval-deny-${it.id}`)).click();
+  await expect.poll(() => calls(control, IPC.approvalsAnswer)).toHaveLength(1);
+  expect(calls(control, IPC.approvalsAnswer)[0]?.args).toMatchObject({
+    ids: [it.id],
+    approve: false,
   });
-  expect(calls(control, IPC.adeTaskApproveBranchRequest)).toHaveLength(0);
 });
 
-test('Approve is disabled with nothing checked', async ({ relaunch }) => {
-  const { page } = await openRouted(relaunch);
-  const dialog = page.locator(t('ade-branch-request-dialog'));
-  for (const item of request().items) {
+test('approving with nothing checked shows the refusal inline', async ({ relaunch }) => {
+  const it = item();
+  const { window: page } = await openPlan(relaunch, [
+    ...seedApprovals([it]),
+    {
+      channel: IPC.approvalsAnswer,
+      response: [{ id: it.id, code: 'E_CONTRACT', error: 'approve at least one branch' }],
+    },
+  ]);
+  const dialog = page.locator(t('approvals-dialog'));
+  for (const row of payload().items) {
     await dialog
-      .locator(t(`ade-branch-request-item-${item.id}`))
+      .locator(t(`ade-branch-request-item-${row.id}`))
       .getByRole('checkbox')
       .click();
   }
-  await expect(dialog.locator(t('ade-branch-request-approve'))).toBeDisabled();
+  await dialog.locator(t(`approval-approve-${it.id}`)).click();
+  await expect(dialog.locator(t('approval-error'))).toHaveText('approve at least one branch');
 });
 
-test('Escape hides the dialog without answering the agent', async ({ relaunch }) => {
-  const { page, control } = await openRouted(relaunch);
-  await page.keyboard.press('Escape');
-  await expect(page.locator(t('ade-branch-request-dialog'))).toBeHidden();
-  expect(calls(control, IPC.adeTaskApproveBranchRequest)).toHaveLength(0);
-  expect(calls(control, IPC.adeTaskDenyBranchRequest)).toHaveLength(0);
-});
-
-test('the Task tab row opens the dialog', async ({ relaunch }) => {
+test('the Task tab row reopens the item after it was minimised', async ({ relaunch }) => {
+  const it = item();
   const { window: page } = await openPlan(relaunch, [
-    ...snapshots(),
+    ...seedApprovals([it]),
     {
       channel: IPC.adeTaskBoard,
       response: adeBoard((b) => {
         const task = b.tasks.find((x) => x.id === 'T_alerts');
         if (!task) throw new Error('T_alerts missing');
-        task.branchRequestId = 'br_1';
+        task.branchRequestId = it.id.slice('branch.request:'.length);
       }),
     },
   ]);
+  await expect(page.locator(t('approvals-dialog'))).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator(t('approvals-dialog'))).toHaveCount(0);
   await openTask(page, 'T_alerts');
   await page.locator(t('ade-task-branch-request-open')).click();
-  await expect(page.locator(t('ade-branch-request-dialog'))).toBeVisible();
-});
-
-test('a request that is already answered closes the dialog quietly', async ({ relaunch }) => {
-  const entry = routed('branch-request', 'br_1');
-  const { window: page } = await openPlan(relaunch, [
-    {
-      channel: IPC.adeTaskBranchRequest,
-      error: {
-        code: 'E_NOT_FOUND',
-        message: 'This branch request was already answered.',
-      },
-    },
-    { channel: IPC.promptsList, response: [entry] },
-  ]);
-  await emitPrompts(page, [entry]);
-  await expect(page.locator(t('ade-branch-request-dialog'))).toBeHidden();
+  await expect(page.locator(t('approvals-dialog'))).toBeVisible();
 });
 
 test('a repo added by an approved request shows in the task Branches', async ({ relaunch }) => {

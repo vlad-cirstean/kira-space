@@ -1,4 +1,5 @@
 import * as AgentService from '@bindings/agentservice.js';
+import * as ApprovalsService from '@bindings/approvalsservice.js';
 import * as AppService from '@bindings/appservice.js';
 import * as ConfigFilesService from '@bindings/configfilesservice.js';
 import * as ConnectionConfigService from '@bindings/connectionconfigservice.js';
@@ -41,12 +42,7 @@ import type {
   ConnectionSecretKind,
 } from '@shared/domain/connectionConfig';
 import type { DataGripPreview, DataGripReport } from '@shared/domain/datagrip';
-import type {
-  DbMcpApprovalSnapshot,
-  DbMcpInstallResult,
-  DbMcpPendingResponse,
-  DbMcpStatus,
-} from '@shared/domain/dbmcp';
+import type { DbMcpInstallResult, DbMcpPendingResponse, DbMcpStatus } from '@shared/domain/dbmcp';
 import type { ObjectDefinition } from '@shared/domain/definition';
 import {
   type KibanaDataView,
@@ -411,16 +407,8 @@ const studioControl = {
     unwrap(DbMcpService.Regenerate()).then((r) => trust<DbMcpStatus>(r)),
   dbMcpInstallAgent: (): Promise<DbMcpInstallResult> =>
     unwrap(DbMcpService.InstallAgent()).then((r) => trust<DbMcpInstallResult>(r)),
-  dbMcpPendingApprovals: (): Promise<DbMcpApprovalSnapshot> =>
-    unwrap(DbMcpService.PendingApprovals()).then((r) => trust<DbMcpApprovalSnapshot>(r)),
   dbMcpPendingResponse: (requestId: string): Promise<DbMcpPendingResponse> =>
     unwrap(DbMcpService.PendingResponse({ requestId })).then((r) => trust<DbMcpPendingResponse>(r)),
-  dbMcpApproveQuery: (requestId: string): Promise<DbMcpApprovalSnapshot> =>
-    unwrap(DbMcpService.ApproveQuery({ requestId })).then((r) => trust<DbMcpApprovalSnapshot>(r)),
-  dbMcpDenyQuery: (requestId: string): Promise<DbMcpApprovalSnapshot> =>
-    unwrap(DbMcpService.DenyQuery({ requestId })).then((r) => trust<DbMcpApprovalSnapshot>(r)),
-  onDbMcpApprovalChanged: (cb: (snap: DbMcpApprovalSnapshot) => void): (() => void) =>
-    on(CHANNEL.dbMcpApproval, cb),
 
   proofSessions: (): Promise<ProofSummary[]> =>
     unwrap(ProofService.Sessions()).then((r) => trust<ProofSummary[]>(r ?? [])),
@@ -707,6 +695,7 @@ export const control = {
     keepAwake: KeepAwakeService,
     update: UpdateService,
     prompts: PromptsService,
+    approvals: ApprovalsService,
     llmPrompts: LlmPromptsService,
     agent: AgentService,
   }),

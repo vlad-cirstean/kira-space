@@ -1,6 +1,8 @@
 package claude
 
 import (
+	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -9,6 +11,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -17,6 +20,23 @@ import (
 const branchHold = 65 * time.Second
 
 var nanoFolder = regexp.MustCompile(`^wt_[0-9a-hjkmnp-tv-z]{10}$`)
+
+// openBranchRequest reads the task's open request from its approvals item.
+func openBranchRequest(f *adeFixture, id string) (adewire.BranchRequest, error) {
+	items, err := f.W.ApprovalsSvc.List()
+	if err != nil {
+		return adewire.BranchRequest{}, err
+	}
+	for _, it := range items {
+		if it.ID != "branch.request:"+id {
+			continue
+		}
+		req := adewire.BranchRequest{ID: id}
+		err := json.Unmarshal(it.Payload, &req)
+		return req, err
+	}
+	return adewire.BranchRequest{}, errors.New("branch request is not open")
+}
 
 // TestAdeBranchRequest runs a headless step on a task with no branch. The agent must ask for one through
 // request_branches, wait for the approval, then work in the returned worktree.
@@ -41,7 +61,7 @@ func TestAdeBranchRequest(t *testing.T) {
 		}
 		for _, tk := range b.Tasks {
 			if tk.ID == task.ID && tk.BranchRequestID != "" {
-				req, err = f.W.AdeTask.BranchRequest(adewire.BranchRequestArgs{ID: tk.BranchRequestID})
+				req, err = openBranchRequest(f, tk.BranchRequestID)
 				return err == nil
 			}
 		}
@@ -52,9 +72,14 @@ func TestAdeBranchRequest(t *testing.T) {
 		t.Fatalf("request = %+v, want one new branch in api", req)
 	}
 	time.Sleep(branchHold)
-	ans, err := f.W.AdeTask.ApproveBranchRequest(adewire.ApproveBranchRequestArgs{ID: req.ID, ItemIDs: []string{req.Items[0].ID}})
-	if err != nil || !ans.Resolved {
-		t.Fatalf("Approve after %s = %+v, %v; the CLI dropped the call before the answer", time.Since(asked).Round(time.Second), ans, err)
+	opts, err := json.Marshal(map[string][]string{"itemIds": {req.Items[0].ID}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := "branch.request:" + req.ID
+	res, err := f.W.ApprovalsSvc.Answer(approvals.AnswerArgs{IDs: []string{id}, Approve: true, Options: map[string]json.RawMessage{id: opts}})
+	if err != nil || len(res) != 1 || res[0].Error != "" {
+		t.Fatalf("Approve after %s = %+v, %v; the CLI dropped the call before the answer", time.Since(asked).Round(time.Second), res, err)
 	}
 
 	var run adewire.Run

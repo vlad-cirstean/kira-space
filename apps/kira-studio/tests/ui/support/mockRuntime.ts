@@ -166,10 +166,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   dbMcpSetEnabled: 'DbMcpService.SetEnabled',
   dbMcpRegenerate: 'DbMcpService.Regenerate',
   dbMcpInstallAgent: 'DbMcpService.InstallAgent',
-  dbMcpPendingApprovals: 'DbMcpService.PendingApprovals',
   dbMcpPendingResponse: 'DbMcpService.PendingResponse',
-  dbMcpApproveQuery: 'DbMcpService.ApproveQuery',
-  dbMcpDenyQuery: 'DbMcpService.DenyQuery',
 
   updateStatus: 'UpdateService.Status',
   updateCheck: 'UpdateService.Check',
@@ -203,6 +200,8 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   scriptRunsRunScheduleNow: 'ScriptRunsService.RunScheduleNow',
   scriptRunsConfirmAccept: 'ScriptRunsService.ConfirmAccept',
   scriptRunsConfirmDecline: 'ScriptRunsService.ConfirmDecline',
+  approvalsList: 'ApprovalsService.List',
+  approvalsAnswer: 'ApprovalsService.Answer',
   promptsList: 'PromptsService.List',
   promptsMainWindow: 'PromptsService.MainWindow',
   promptsClaim: 'PromptsService.Claim',
@@ -461,13 +460,10 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   // at all — ResponsePane.vue's History segment fetches on mount, so "no history yet for a request
   // never seen before" is the right default rather than a fixture miss.
   [IPC.historyList]: '[]',
-  // hydrateDbMcpApprovals() joins the same unconditional-every-boot Promise.all every other
-  // hydrate* call in main.ts's bootstrap() does — nothing in tests/ui/ exercises a prompt-mode
-  // approval queue, so "nothing pending" is the correct empty answer for a spec with no fixture of
-  // its own, the same reasoning every other unawaited-by-a-spec boot call above already gets.
-  [IPC.dbMcpPendingApprovals]: JSON.stringify({ pending: null, queued: 0 }),
-  // M1 §6.2: hydrateDbMcp() joins the same unconditional-every-boot Promise.all as
-  // dbMcpPendingApprovals above, same reasoning — nothing in tests/ui/ seeds a dbmcp fixture, so
+  // P520: nothing pending unless a spec pushes the queue (pushApprovals).
+  [IPC.approvalsList]: '[]',
+  // M1 §6.2: hydrateDbMcp() joins the same unconditional-every-boot Promise.all, same
+  // reasoning — nothing in tests/ui/ seeds a dbmcp fixture, so
   // "off, nothing running" is the honest default for a dev-server run under Playwright.
   [IPC.dbMcpStatus]: JSON.stringify({
     running: false,

@@ -46,6 +46,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/agentport"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/appevent"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/appupdate"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
@@ -199,6 +200,8 @@ type Wired struct {
 	WindowsSvc      *bridge.WindowsService
 	ConfigFiles     *bridge.ConfigFilesService
 	PromptsSvc      *bridge.PromptsService
+	ApprovalsSvc    *bridge.ApprovalsService
+	Approvals       *approvals.Queue
 	LlmPromptsSvc   *bridge.LlmPromptsService
 	Update          *bridge.UpdateService
 	CodeWorkspace   *bridge.CodeWorkspaceService
@@ -229,6 +232,7 @@ type Wired struct {
 	appFocused       atomic.Pointer[func() bool]
 	detachMetrics    func()
 	detachOpLog      func()
+	detachApprovals  func()
 	detachGitCred    func()
 	stopAgentContext func()
 	stopAgentConfig  func()
@@ -285,6 +289,9 @@ func Build(opts Options) *Wired {
 	w.Windows.OnChange = w.Prompts.Reroute
 	credentialRelay.Prompts = w.Prompts
 	w.PromptsSvc = &bridge.PromptsService{Bound: &prompts.Bound{R: w.Prompts}}
+	w.Approvals = approvals.New(w.Prompts)
+	w.ApprovalsSvc = &bridge.ApprovalsService{Service: &approvals.Service{Q: w.Approvals}}
+	w.detachApprovals = events.AttachApprovals(w.Approvals)
 	w.LlmPromptsSvc = &bridge.LlmPromptsService{Bound: &llmprompts.Bound{
 		Store: promptStore, App: llmprompts.Space,
 		Changed: func(rev uint64) { emitter.Emit(bridge.ChannelLlmPromptsChanged, map[string]uint64{"revision": rev}) },
@@ -423,7 +430,7 @@ func Build(opts Options) *Wired {
 				return w.AdeTask.CloseWindow(key)
 			}
 			return w.Windows.Close(key)
-		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.RepoConfig)
+		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig)
 	runs.ADE = w.AdeBoard
 	w.watchRepoConfig(events)
 	w.sched = &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
@@ -563,7 +570,7 @@ func (w *Wired) reopenWindow() {
 // StartMobile starts the phone server when settings enable it; call after the shell is up.
 func (w *Wired) StartMobile() { bridge.StartMobileIfEnabled(w.Mobile) }
 
-// Bound returns the 37 bound services in registration order.
+// Bound returns the 38 bound services in registration order.
 func (w *Wired) Bound() []application.Service {
 	return []application.Service{
 		application.NewService(w.GitCredential),
@@ -574,7 +581,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.KeepAwake), application.NewService(w.Mobile), application.NewService(w.Memory),
 		application.NewService(w.MemoryImport), application.NewService(w.MemoryDistill), application.NewService(w.WindowsSvc), application.NewService(w.Update),
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),
-		application.NewService(w.PromptsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc),
+		application.NewService(w.PromptsSvc), application.NewService(w.ApprovalsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc),
 		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc), application.NewService(w.RepoConfigSvc), application.NewService(w.GitSvc),
 	}
 }
@@ -594,6 +601,7 @@ func (w *Wired) teardown(db io.Closer) {
 	w.OpenedFiles.Close()
 	w.detachMetrics()
 	w.detachOpLog()
+	w.detachApprovals()
 	// P87 §4: killing the assertion early keeps the window between "app is quitting" and
 	// "caffeinate is dead" as short as possible.
 	w.KeepAwakeCtl.Close()

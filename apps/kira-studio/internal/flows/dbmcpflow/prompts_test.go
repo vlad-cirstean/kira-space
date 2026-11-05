@@ -8,7 +8,6 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/flowtest/notifysink"
 	"github.com/kirathecat/kira-studio/internal/prompts"
@@ -25,7 +24,7 @@ func (f *fixture) dbmcpEntries(t *testing.T, n int) []prompts.Routed {
 			t.Fatal(err)
 		}
 		for _, p := range all {
-			if p.Kind == prompts.KindDbMcp {
+			if p.Kind == prompts.KindApproval {
 				got = append(got, p)
 			}
 		}
@@ -55,26 +54,24 @@ func TestDbMcpApprovalRoutes(t *testing.T) {
 
 	req := f.pending(t)
 	e := f.dbmcpEntries(t, 1)[0]
-	if e.Ref != req.RequestID || e.Target != "w1" || e.Origin != "" {
-		t.Fatalf("entry = %+v, want ref %s targeted at w1", e, req.RequestID)
+	if e.Ref != req.Item.ID || e.Target != "w1" || e.Origin != "" {
+		t.Fatalf("entry = %+v, want ref %s targeted at w1", e, req.Item.ID)
 	}
 	if strings.Contains(e.Title, "insert") || !strings.Contains(e.Title, "notes db") {
 		t.Fatalf("title %q must name the connection and never the statement", e.Title)
 	}
 	f.app.Contract(t, "dbmcp-route", "PromptsService.List#approval", e, flowharness.Mask("createdAt", "id", "ref"))
-	note, ok := sink.Shown("prompt:dbmcp")
+	note, ok := sink.Shown("prompt:approval")
 	if !ok || strings.Contains(note.Title+note.Body, "insert") {
 		t.Fatalf("note = %+v, %v; want one without the statement", note, ok)
 	}
 
-	if _, err := f.app.W.DbMcp.DenyQuery(bridge.DbMcpApprovalArgs{RequestID: req.RequestID}); err != nil {
-		t.Fatal(err)
-	}
+	f.answerItems(t, false, req.Item.ID)
 	if res := <-done; res == nil || !res.IsError {
 		t.Fatalf("denied write = %+v, want a tool error", res)
 	}
 	f.dbmcpEntries(t, 0)
-	testx.WaitUntil(t, 10*time.Second, func() bool { _, ok := sink.Shown("prompt:dbmcp"); return !ok })
+	testx.WaitUntil(t, 10*time.Second, func() bool { _, ok := sink.Shown("prompt:approval"); return !ok })
 
 	// A request abandoned by its client withdraws the popup too.
 	abandon, cancel := context.WithCancel(ctx)

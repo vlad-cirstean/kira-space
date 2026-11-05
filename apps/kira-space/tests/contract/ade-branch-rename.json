@@ -32,26 +32,51 @@
     "upstreamBehind": 0,
     "worktree": "<masked>"
   },
-  "AdeTaskService.BranchRequest": {
-    "createdAt": 0,
-    "expiresAt": 0,
-    "id": "<masked>",
-    "items": [
-      {
-        "base": "",
-        "branch": "feat/new",
-        "codeRepoId": "<masked>",
-        "from": "feat/old",
-        "id": "<masked>",
-        "kind": "rename",
-        "repo": "api",
-        "stacked": [],
-        "upstream": "origin/feat/old"
+  "ApprovalsService.List#branch": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "branch.request:<id:1>",
+      "kind": "branch.request",
+      "operation": {
+        "class": "rename",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "run",
+        "step": "two",
+        "task": "Fix login"
+      },
+      "payload": {
+        "items": [
+          {
+            "base": "",
+            "branch": "feat/new",
+            "codeRepoId": "<masked>",
+            "from": "feat/old",
+            "id": "c0i0",
+            "kind": "rename",
+            "repo": "api",
+            "session": "<id:2>",
+            "source": "run",
+            "stacked": [],
+            "stepName": "two",
+            "upstream": "origin/feat/old"
+          }
+        ],
+        "taskId": "<masked>",
+        "taskTitle": "Fix login"
+      },
+      "reason": "request",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "Fix login",
+        "readOnly": false
       }
-    ],
-    "source": "run",
-    "stepName": "two",
-    "taskId": "<masked>",
-    "taskTitle": "Fix login"
-  }
+    }
+  ]
 }

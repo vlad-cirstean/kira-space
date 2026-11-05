@@ -4,6 +4,9 @@
 import { TooltipProvider } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { agentControlKey, useAgentMessageDefaults } from '@workbench/agent/agentInfo';
+import ApprovalsSurface from '@workbench/approvals/ApprovalsSurface.vue';
+import { approvalsControlKey } from '@workbench/approvals/approvalsQueries';
+import { provideApprovalKinds } from '@workbench/approvals/registry';
 import { automationsModuleKey } from '@workbench/automations/module';
 import ScheduleConfirmPrompt from '@workbench/automations/schedule/ScheduleConfirmPrompt.vue';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
@@ -24,7 +27,7 @@ import { runCommand } from '@workbench/shortcuts/commands';
 import { providePaletteCommands, usePaletteStore } from '@workbench/shortcuts/palette';
 import { appUpdateStoreKey } from '@workbench/state/createAppUpdateStore';
 import { getCurrentInstance, markRaw, onMounted, onUnmounted, provide } from 'vue';
-import AdeBranchRequestPrompt from './ade/v2/request/AdeBranchRequestPrompt.vue';
+import { spaceApprovalKinds } from './ade/v2/request/kinds';
 import AdeReviewWindow from './ade/v2/review/AdeReviewWindow.vue';
 import AdeHandoverPrompt from './ade/v2/stage/AdeHandoverPrompt.vue';
 import { useAdeAgentsUiStore } from './ade/v2/state/adeAgentsUi';
@@ -60,6 +63,8 @@ provide(workbenchHostKey, createWorkbenchHost());
 provide(automationsModuleKey, createAutomationsModule());
 provide(memoryModuleKey, createMemoryModule());
 provide(promptsControlKey, control);
+provide(approvalsControlKey, control);
+provideApprovalKinds(spaceApprovalKinds());
 provide(llmPromptsControlKey, control);
 // App level, not component level: Pinia stores and composables outside the tree inject it too.
 getCurrentInstance()?.appContext.app.provide(agentControlKey, control);
@@ -84,7 +89,6 @@ const promptKinds = {
   update: markRaw(UpdatePrompt),
   quit: markRaw(QuitPrompt),
   handover: markRaw(AdeHandoverPrompt),
-  'branch-request': markRaw(AdeBranchRequestPrompt),
 };
 const reviewWindow = useAdeReviewWindowStore();
 const hostView = useHostViewWindowStore();
@@ -175,6 +179,7 @@ function onToggleKeepAwake(): void {
       <WorkbenchShell />
     </div>
     <PromptHost :kinds="promptKinds" />
+    <ApprovalsSurface />
     <ConfirmDialog />
     <AppLiveRegion />
     <UpdateDialog v-if="appUpdateStore.dialogOpen" :store="appUpdateStore" />

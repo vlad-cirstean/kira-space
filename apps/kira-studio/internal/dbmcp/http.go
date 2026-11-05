@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/mcpauth"
@@ -43,8 +44,46 @@ var requestContextKey requestContextKeyType
 // the detach.
 func withRequestContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), requestContextKey, r.Context())))
+		ctx := context.WithValue(r.Context(), requestContextKey, r.Context())
+		ctx = context.WithValue(ctx, originContextKey, ApprovalOrigin{Client: clientFromUserAgent(r.UserAgent())})
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+type originContextKeyType struct{}
+
+var originContextKey originContextKeyType
+
+// originFrom is the caller identity withRequestContext stored; zero outside an HTTP request.
+func originFrom(ctx context.Context) ApprovalOrigin {
+	o, _ := ctx.Value(originContextKey).(ApprovalOrigin)
+	return o
+}
+
+const maxClientBytes = 64
+
+// clientFromUserAgent turns "claude-code/2.1.318 (cli)" into "Claude Code 2.1.318": the first product
+// token only, printable ASCII, at most 64 bytes. The header is client-controlled text and not proof of
+// identity.
+func clientFromUserAgent(ua string) string {
+	product, _, _ := strings.Cut(strings.TrimSpace(ua), " ")
+	name, version, _ := strings.Cut(product, "/")
+	if name == "claude-code" {
+		name = "Claude Code"
+	}
+	out := strings.TrimSpace(name + " " + version)
+	var b strings.Builder
+	for _, r := range out {
+		if r < 0x20 || r > 0x7e {
+			continue
+		}
+		b.WriteRune(r)
+	}
+	out = b.String()
+	if len(out) > maxClientBytes {
+		out = out[:maxClientBytes]
+	}
+	return out
 }
 
 // maxRequestBytes caps one MCP request body: a proof step carries up to 4 MiB of data plus the

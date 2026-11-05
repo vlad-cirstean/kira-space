@@ -4,6 +4,7 @@
       {
         "changeRequest": {
           "baseRef": "main",
+          "commentCount": 0,
           "headRef": "feat",
           "headSha": "<masked>",
           "number": 7,

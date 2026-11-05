@@ -2,8 +2,12 @@ package dbmcp
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/kirathecat/kira-studio/internal/approvals"
+	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 func recvApprovalOrTimeout(t *testing.T, ch chan ApprovalOutcome) ApprovalOutcome {
@@ -17,119 +21,71 @@ func recvApprovalOrTimeout(t *testing.T, ch chan ApprovalOutcome) ApprovalOutcom
 	}
 }
 
-func TestApprovalBroker_FIFOOrder_OnlyHeadPresented(t *testing.T) {
+// waitItems blocks until the broker's queue holds n items and returns them, oldest first.
+func waitItems(t *testing.T, b *ApprovalBroker, n int) []approvals.Item {
+	t.Helper()
+	var items []approvals.Item
+	testx.WaitUntil(t, 5*time.Second, func() bool {
+		items = b.Queue.List()
+		return len(items) == n
+	})
+	return items
+}
+
+func requestAsync(b *ApprovalBroker, ctx context.Context, connectionID string) chan ApprovalOutcome {
+	done := make(chan ApprovalOutcome, 1)
+	go func() { done <- b.Request(ctx, ApprovalRequest{ConnectionID: connectionID}) }()
+	return done
+}
+
+func requestID(it approvals.Item) string { return strings.TrimPrefix(it.ID, it.Kind+":") }
+
+// Every pending request is an item at once, and each answer reaches only its own caller.
+func TestApprovalBroker_AnswersEachItemIndependently(t *testing.T) {
 	t.Parallel()
-	b := NewApprovalBroker(time.Now)
+	b := NewApprovalBroker(time.Now, nil)
 
-	events := make(chan ApprovalSnapshot, 16)
-	unsub := b.OnApprovalChange(func(snap ApprovalSnapshot) { events <- snap })
-	defer unsub()
+	doneA := requestAsync(b, context.Background(), "a")
+	waitItems(t, b, 1)
+	doneB := requestAsync(b, context.Background(), "b")
+	waitItems(t, b, 2)
+	doneC := requestAsync(b, context.Background(), "c")
+	items := waitItems(t, b, 3)
 
-	ids := []string{"a", "b", "c"}
-	results := make([]chan ApprovalOutcome, 0, 3)
-	for _, id := range ids {
-		done := make(chan ApprovalOutcome, 1)
-		go func(id string) {
-			done <- b.Request(context.Background(), ApprovalRequest{ConnectionID: id})
-		}(id)
-		snap := <-events
-		if snap.Pending == nil {
-			t.Fatalf("enqueue %s: snapshot has no pending head", id)
+	res := b.Queue.Answer([]string{items[1].ID}, false, nil)
+	if len(res) != 1 || res[0].Error != "" {
+		t.Fatalf("deny b: %+v", res)
+	}
+	if out := recvApprovalOrTimeout(t, doneB); out != ApprovalDenied {
+		t.Fatalf("b outcome: got %v, want denied", out)
+	}
+	for name, ch := range map[string]chan ApprovalOutcome{"a": doneA, "c": doneC} {
+		select {
+		case out := <-ch:
+			t.Fatalf("%s returned %v before its own answer", name, out)
+		default:
 		}
-		results = append(results, done)
 	}
 
-	snap := b.Pending()
-	if snap.Pending == nil || snap.Pending.ConnectionID != "a" || snap.Queued != 3 {
-		t.Fatalf("got %+v, want head=a queued=3", snap)
+	b.Queue.Answer([]string{items[0].ID}, true, nil)
+	if out := recvApprovalOrTimeout(t, doneA); out != ApprovalApproved {
+		t.Fatalf("a outcome: got %v, want approved", out)
 	}
-
-	if got := b.Approve(snap.Pending.RequestID); got != ApprovalActionResolved {
-		t.Fatalf("approve a: got %v", got)
+	if rest := b.Queue.List(); len(rest) != 1 || rest[0].ID != items[2].ID {
+		t.Fatalf("queue = %+v, want only c", rest)
 	}
-	if out := <-results[0]; out != ApprovalApproved {
-		t.Fatalf("a outcome: got %v", out)
-	}
-	<-events // resolution snapshot
-
-	snap = b.Pending()
-	if snap.Pending == nil || snap.Pending.ConnectionID != "b" || snap.Queued != 2 {
-		t.Fatalf("after resolving a: got %+v, want head=b queued=2", snap)
-	}
-	if got := b.Deny(snap.Pending.RequestID); got != ApprovalActionResolved {
-		t.Fatalf("deny b: got %v", got)
-	}
-	if out := <-results[1]; out != ApprovalDenied {
-		t.Fatalf("b outcome: got %v", out)
-	}
-	<-events
-
-	snap = b.Pending()
-	if snap.Pending == nil || snap.Pending.ConnectionID != "c" || snap.Queued != 1 {
-		t.Fatalf("after resolving b: got %+v, want head=c queued=1", snap)
-	}
-	b.Approve(snap.Pending.RequestID)
-	if out := <-results[2]; out != ApprovalApproved {
+	b.Queue.Answer([]string{items[2].ID}, true, nil)
+	if out := recvApprovalOrTimeout(t, doneC); out != ApprovalApproved {
 		t.Fatalf("c outcome: got %v", out)
 	}
 }
 
-// TestApprovalBroker_EmitsOnEveryEnqueueAndResolution pins the contract: an enqueue behind an
-// already-presented head, or a resolution of either entry, must always emit a fresh snapshot with
-// the right Queued — never only on a head change.
-func TestApprovalBroker_EmitsOnEveryEnqueueAndResolution(t *testing.T) {
-	t.Parallel()
-	b := NewApprovalBroker(time.Now)
-
-	events := make(chan ApprovalSnapshot, 16)
-	unsub := b.OnApprovalChange(func(snap ApprovalSnapshot) { events <- snap })
-	defer unsub()
-
-	doneA := make(chan ApprovalOutcome, 1)
-	go func() { doneA <- b.Request(context.Background(), ApprovalRequest{ConnectionID: "a"}) }()
-	snapA := <-events
-	if snapA.Queued != 1 {
-		t.Fatalf("after enqueueing a: Queued = %d, want 1", snapA.Queued)
-	}
-
-	doneB := make(chan ApprovalOutcome, 1)
-	go func() { doneB <- b.Request(context.Background(), ApprovalRequest{ConnectionID: "b"}) }()
-	snapB := <-events
-	if snapB.Queued != 2 {
-		t.Fatalf("after enqueueing b behind a: Queued = %d, want 2 — a queued-behind-head enqueue must still emit", snapB.Queued)
-	}
-
-	b.Approve(snapA.Pending.RequestID)
-	<-doneA
-	snapAfterApprove := <-events
-	if snapAfterApprove.Queued != 1 || snapAfterApprove.Pending == nil || snapAfterApprove.Pending.ConnectionID != "b" {
-		t.Fatalf("after resolving a: got %+v, want head=b queued=1", snapAfterApprove)
-	}
-
-	b.Deny(snapAfterApprove.Pending.RequestID)
-	<-doneB
-	snapAfterDeny := <-events
-	if snapAfterDeny.Queued != 0 || snapAfterDeny.Pending != nil {
-		t.Fatalf("after resolving b: got %+v, want empty", snapAfterDeny)
-	}
-}
-
-// The emitOrdered stale-snapshot-drop guarantee (M7 finding) is now OrderedEmitter's own,
-// hoisted with the rest of the queue/emit machinery to internal/notify (P107 T2-8) — see
-// notify.TestOrderedEmitter_DropsStaleEmit, the one authoritative test for it.
-
 func TestApprovalBroker_DoubleApprove_ReportsAlreadyResolved(t *testing.T) {
 	t.Parallel()
-	b := NewApprovalBroker(time.Now)
+	b := NewApprovalBroker(time.Now, nil)
 
-	events := make(chan ApprovalSnapshot, 4)
-	unsub := b.OnApprovalChange(func(snap ApprovalSnapshot) { events <- snap })
-	defer unsub()
-
-	done := make(chan ApprovalOutcome, 1)
-	go func() { done <- b.Request(context.Background(), ApprovalRequest{ConnectionID: "a"}) }()
-	snap := <-events
-	id := snap.Pending.RequestID
+	done := requestAsync(b, context.Background(), "a")
+	id := requestID(waitItems(t, b, 1)[0])
 
 	if got := b.Approve(id); got != ApprovalActionResolved {
 		t.Fatalf("first approve: got %v", got)
@@ -137,166 +93,111 @@ func TestApprovalBroker_DoubleApprove_ReportsAlreadyResolved(t *testing.T) {
 	if out := <-done; out != ApprovalApproved {
 		t.Fatalf("outcome: got %v", out)
 	}
-	<-events // resolution snapshot
-
 	if got := b.Approve(id); got != ApprovalActionAlreadyResolved {
 		t.Fatalf("second approve: got %v, want AlreadyResolved", got)
 	}
 	if got := b.Deny(id); got != ApprovalActionAlreadyResolved {
 		t.Fatalf("deny after approve: got %v, want AlreadyResolved", got)
 	}
-
-	// Neither the second Approve nor the Deny must have emitted again, or double-pumped the queue.
-	select {
-	case snap := <-events:
-		t.Fatalf("an already-resolved id must not re-emit, got %+v", snap)
-	default:
-	}
-	if snap := b.Pending(); snap.Pending != nil || snap.Queued != 0 {
-		t.Fatalf("queue must stay empty, got %+v", snap)
+	if left := b.Queue.List(); len(left) != 0 {
+		t.Fatalf("queue must stay empty, got %+v", left)
 	}
 }
 
-// TestApprovalBroker_CtxCancel_NonHeadEntry_LeavesHeadPresented proves Request selects on the
-// caller's own ctx, so a disconnected MCP client's queued-but-not-yet-presented request resolves
-// as abandoned without disturbing the head.
-func TestApprovalBroker_CtxCancel_NonHeadEntry_LeavesHeadPresented(t *testing.T) {
+// Request selects on the caller's own ctx, so a disconnected MCP client's request resolves as
+// abandoned without disturbing the others.
+func TestApprovalBroker_CtxCancelLeavesOtherItems(t *testing.T) {
 	t.Parallel()
-	b := NewApprovalBroker(time.Now)
+	b := NewApprovalBroker(time.Now, nil)
 
-	events := make(chan ApprovalSnapshot, 16)
-	unsub := b.OnApprovalChange(func(snap ApprovalSnapshot) { events <- snap })
-	defer unsub()
-
-	doneA := make(chan ApprovalOutcome, 1)
-	go func() { doneA <- b.Request(context.Background(), ApprovalRequest{ConnectionID: "a"}) }()
-	snapA := <-events
-	headID := snapA.Pending.RequestID
+	doneA := requestAsync(b, context.Background(), "a")
+	first := waitItems(t, b, 1)[0]
 
 	ctxB, cancelB := context.WithCancel(context.Background())
-	doneB := make(chan ApprovalOutcome, 1)
-	go func() { doneB <- b.Request(ctxB, ApprovalRequest{ConnectionID: "b"}) }()
-	<-events // b enqueued, still behind a
+	doneB := requestAsync(b, ctxB, "b")
+	waitItems(t, b, 2)
 
 	cancelB()
 	if out := recvApprovalOrTimeout(t, doneB); out != ApprovalAbandoned {
 		t.Fatalf("b outcome: got %v, want ApprovalAbandoned", out)
 	}
-	snapAfterCancel := <-events
-	if snapAfterCancel.Pending == nil || snapAfterCancel.Pending.RequestID != headID || snapAfterCancel.Queued != 1 {
-		t.Fatalf("after cancelling b: got %+v, want head still a (id %s) queued=1", snapAfterCancel, headID)
+	if left := b.Queue.List(); len(left) != 1 || left[0].ID != first.ID {
+		t.Fatalf("after cancelling b: %+v, want only a", left)
 	}
 
-	// a is unaffected by b's cancellation and still resolvable.
-	b.Approve(headID)
+	b.Approve(requestID(first))
 	if out := recvApprovalOrTimeout(t, doneA); out != ApprovalApproved {
 		t.Fatalf("a outcome: got %v", out)
 	}
 }
 
-// TestApprovalBroker_DeadlineExpiresWithInjectedClock uses a "now" frozen far in the past so the
-// minted ExpiresAt is already elapsed by real wall-clock time — the select's timer branch fires
-// immediately, exercising the 120s deadline with no real sleep.
+// A "now" frozen far in the past makes the minted ExpiresAt already elapsed, so the timer branch
+// fires at once with no real sleep.
 func TestApprovalBroker_DeadlineExpiresWithInjectedClock(t *testing.T) {
 	t.Parallel()
 	longAgo := time.Unix(0, 0)
-	b := NewApprovalBroker(func() time.Time { return longAgo })
+	b := NewApprovalBroker(func() time.Time { return longAgo }, nil)
 
-	done := make(chan ApprovalOutcome, 1)
-	go func() { done <- b.Request(context.Background(), ApprovalRequest{ConnectionID: "a"}) }()
-
+	done := requestAsync(b, context.Background(), "a")
 	if out := recvApprovalOrTimeout(t, done); out != ApprovalTimedOut {
 		t.Fatalf("got %v, want ApprovalTimedOut", out)
 	}
-	if snap := b.Pending(); snap.Pending != nil || snap.Queued != 0 {
-		t.Fatalf("after timeout: got %+v, want empty", snap)
+	if left := b.Queue.List(); len(left) != 0 {
+		t.Fatalf("after timeout: %+v, want empty", left)
 	}
 }
 
-// TestApprovalBroker_QueueBoundedAgainstUnlimitedEnqueue covers maxPendingApprovals: an MCP client
-// is a program and can call run_query in a loop, so the broker must deny immediately past its cap
-// rather than grow without bound.
+// An MCP client is a program and can call run_query in a loop, so the broker denies immediately past
+// its cap rather than grow without bound.
 func TestApprovalBroker_QueueBoundedAgainstUnlimitedEnqueue(t *testing.T) {
 	t.Parallel()
-	b := NewApprovalBroker(time.Now)
-
-	events := make(chan ApprovalSnapshot, maxPendingApprovals+4)
-	unsub := b.OnApprovalChange(func(snap ApprovalSnapshot) { events <- snap })
-	defer unsub()
+	b := NewApprovalBroker(time.Now, nil)
 
 	results := make([]chan ApprovalOutcome, 0, maxPendingApprovals)
 	for i := 0; i < maxPendingApprovals; i++ {
-		done := make(chan ApprovalOutcome, 1)
-		go func() {
-			done <- b.Request(context.Background(), ApprovalRequest{ConnectionID: "c"})
-		}()
-		<-events
-		results = append(results, done)
-	}
-	if snap := b.Pending(); snap.Queued != maxPendingApprovals {
-		t.Fatalf("Queued = %d, want %d", snap.Queued, maxPendingApprovals)
+		results = append(results, requestAsync(b, context.Background(), "c"))
+		waitItems(t, b, i+1)
 	}
 
-	out := b.Request(context.Background(), ApprovalRequest{ConnectionID: "over-cap"})
-	if out != ApprovalQueueFull {
+	if out := b.Request(context.Background(), ApprovalRequest{ConnectionID: "over-cap"}); out != ApprovalQueueFull {
 		t.Fatalf("over-cap outcome: got %v, want ApprovalQueueFull", out)
 	}
-	if snap := b.Pending(); snap.Queued != maxPendingApprovals {
-		t.Fatalf("Queued after the over-cap attempt = %d, want unchanged %d", snap.Queued, maxPendingApprovals)
+	if n := len(b.Queue.List()); n != maxPendingApprovals {
+		t.Fatalf("queue = %d, want unchanged %d", n, maxPendingApprovals)
 	}
-	select {
-	case snap := <-events:
-		t.Fatalf("an over-cap Request must not enqueue or emit, got %+v", snap)
-	default:
-	}
-
 	for _, done := range results {
 		select {
 		case <-done:
-			t.Fatal("an already-queued request resolved on its own — it should still be pending")
+			t.Fatal("an already-queued request resolved on its own")
 		default:
 		}
 	}
 }
 
-// TestApprovalBroker_AbandonAll_ReleasesAndStaysUsable is the M2 §5.3 contract: the app quitting
-// or the server toggling off must not leave any run_query call blocked forever, and the broker
-// must still work if the server is toggled back on within the same app run.
+// The app quitting or the server toggling off must not leave any run_query call blocked forever, and
+// the broker must still work if the server is toggled back on within the same app run.
 func TestApprovalBroker_AbandonAll_ReleasesAndStaysUsable(t *testing.T) {
 	t.Parallel()
-	b := NewApprovalBroker(time.Now)
+	b := NewApprovalBroker(time.Now, nil)
 
-	events := make(chan ApprovalSnapshot, 16)
-	unsub := b.OnApprovalChange(func(snap ApprovalSnapshot) { events <- snap })
-	defer unsub()
-
-	doneA := make(chan ApprovalOutcome, 1)
-	go func() { doneA <- b.Request(context.Background(), ApprovalRequest{ConnectionID: "a"}) }()
-	<-events
-	doneB := make(chan ApprovalOutcome, 1)
-	go func() { doneB <- b.Request(context.Background(), ApprovalRequest{ConnectionID: "b"}) }()
-	<-events
+	doneA := requestAsync(b, context.Background(), "a")
+	waitItems(t, b, 1)
+	doneB := requestAsync(b, context.Background(), "b")
+	waitItems(t, b, 2)
 
 	b.AbandonAll()
-	if out := recvApprovalOrTimeout(t, doneA); out != ApprovalAbandoned {
-		t.Fatalf("a outcome: got %v, want ApprovalAbandoned", out)
+	for name, ch := range map[string]chan ApprovalOutcome{"a": doneA, "b": doneB} {
+		if out := recvApprovalOrTimeout(t, ch); out != ApprovalAbandoned {
+			t.Fatalf("%s outcome: got %v, want ApprovalAbandoned", name, out)
+		}
 	}
-	if out := recvApprovalOrTimeout(t, doneB); out != ApprovalAbandoned {
-		t.Fatalf("b outcome: got %v, want ApprovalAbandoned", out)
-	}
-	<-events // AbandonAll's own (empty) snapshot
-	if snap := b.Pending(); snap.Pending != nil || snap.Queued != 0 {
-		t.Fatalf("after AbandonAll: got %+v, want empty", snap)
+	if left := b.Queue.List(); len(left) != 0 {
+		t.Fatalf("after AbandonAll: %+v, want empty", left)
 	}
 
-	// The broker stays usable: a fresh Request enqueues and resolves normally.
-	doneC := make(chan ApprovalOutcome, 1)
-	go func() { doneC <- b.Request(context.Background(), ApprovalRequest{ConnectionID: "c"}) }()
-	snapC := <-events
-	if snapC.Pending == nil || snapC.Pending.ConnectionID != "c" {
-		t.Fatalf("after AbandonAll, a new request did not enqueue: got %+v", snapC)
-	}
-	b.Approve(snapC.Pending.RequestID)
+	doneC := requestAsync(b, context.Background(), "c")
+	c := waitItems(t, b, 1)[0]
+	b.Approve(requestID(c))
 	if out := recvApprovalOrTimeout(t, doneC); out != ApprovalApproved {
 		t.Fatalf("c outcome: got %v", out)
 	}

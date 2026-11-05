@@ -9,6 +9,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -50,7 +51,7 @@ func (f *brFixture) answerCreate(t *testing.T, repo *flowharness.Repo) adewire.B
 	t.Helper()
 	f.startRun(t)
 	first := f.waitRequest(t)
-	if _, err := f.app.W.AdeTask.ApproveBranchRequest(adewire.ApproveBranchRequestArgs{ID: first.ID, ItemIDs: []string{first.Items[0].ID}}); err != nil {
+	if _, err := approveBR(f.app, first.ID, []string{first.Items[0].ID}, nil); err != nil {
 		t.Fatal(err)
 	}
 	waitRun(t, f.app, f.task.ID, "one", "done")
@@ -83,8 +84,8 @@ func TestBranchRename(t *testing.T) {
 		if item.Kind != "rename" || item.From != "feat/old" || item.Branch != "feat/new" || item.Upstream != "origin/feat/old" {
 			t.Fatalf("rename item = %+v, want feat/old to feat/new tracking origin/feat/old", item)
 		}
-		f.app.Contract(t, renameScenario, "AdeTaskService.BranchRequest", req, brMask)
-		if _, err := f.app.W.AdeTask.ApproveBranchRequest(adewire.ApproveBranchRequestArgs{ID: req.ID, ItemIDs: []string{item.ID}, RenameRemote: true}); err != nil {
+		f.app.Contract(t, renameScenario, "ApprovalsService.List#branch", []approvals.Item{*branchItem(f.app, req.ID)}, brListMask)
+		if _, err := approveBR(f.app, req.ID, []string{item.ID}, []string{item.ID}); err != nil {
 			t.Fatal(err)
 		}
 		got := f.renameResult(t)
@@ -105,7 +106,7 @@ func TestBranchRename(t *testing.T) {
 	t.Run("local rename leaves the remote branch and drops tracking", func(t *testing.T) {
 		f, bare, repo := newRenameFixture(t, renameCall("feat/old", "feat/new", false), noSandbox)
 		req := f.answerCreate(t, repo)
-		if _, err := f.app.W.AdeTask.ApproveBranchRequest(adewire.ApproveBranchRequestArgs{ID: req.ID, ItemIDs: []string{req.Items[0].ID}}); err != nil {
+		if _, err := approveBR(f.app, req.ID, []string{req.Items[0].ID}, nil); err != nil {
 			t.Fatal(err)
 		}
 		if got := f.renameResult(t); !strings.Contains(got, `"outcome":"renamed"`) || !strings.Contains(got, `"remote":"kept"`) {
@@ -122,7 +123,7 @@ func TestBranchRename(t *testing.T) {
 	t.Run("deny keeps the name", func(t *testing.T) {
 		f, _, _ := newRenameFixture(t, renameCall("feat/old", "feat/new", false), noSandbox)
 		req := f.answerCreate(t, nil)
-		if _, err := f.app.W.AdeTask.DenyBranchRequest(adewire.BranchRequestArgs{ID: req.ID}); err != nil {
+		if _, err := denyBR(f.app, req.ID); err != nil {
 			t.Fatal(err)
 		}
 		if got := f.renameResult(t); !strings.Contains(got, `"outcome":"denied"`) {
@@ -137,7 +138,7 @@ func TestBranchRename(t *testing.T) {
 		f, _, _ := newRenameFixture(t, renameCall("feat/old", "main", false), noSandbox)
 		f.startRun(t)
 		first := f.waitRequest(t)
-		if _, err := f.app.W.AdeTask.ApproveBranchRequest(adewire.ApproveBranchRequestArgs{ID: first.ID, ItemIDs: []string{first.Items[0].ID}}); err != nil {
+		if _, err := approveBR(f.app, first.ID, []string{first.Items[0].ID}, nil); err != nil {
 			t.Fatal(err)
 		}
 		waitRun(t, f.app, f.task.ID, "one", "done")
@@ -156,7 +157,7 @@ func TestBranchRename(t *testing.T) {
 		f, _, _ := newRenameFixture(t, renameCall("feat/old", "feat/new", false), "")
 		f.startRun(t)
 		first := f.waitRequest(t)
-		if _, err := f.app.W.AdeTask.ApproveBranchRequest(adewire.ApproveBranchRequestArgs{ID: first.ID, ItemIDs: []string{first.Items[0].ID}}); err != nil {
+		if _, err := approveBR(f.app, first.ID, []string{first.Items[0].ID}, nil); err != nil {
 			t.Fatal(err)
 		}
 		waitRun(t, f.app, f.task.ID, "one", "done")

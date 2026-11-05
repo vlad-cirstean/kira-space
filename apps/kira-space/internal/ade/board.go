@@ -28,6 +28,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/prompts"
@@ -52,6 +53,8 @@ type TaskBoardDeps struct {
 	Tasks *repos.AdeTaskRepo
 	// PromptSink receives the "move to next stage" prompt a finished handover raises; nil drops it.
 	PromptSink prompts.Sink
+	// Approvals holds the branch requests agents raise; nil drops them (the call then times out).
+	Approvals  *approvals.Queue
 	Statuses   *repos.AdeStatusRepo
 	RepoConfig *repos.AdeRepoConfigRepo
 	Facts      *repos.AdeFactsRepo
@@ -216,6 +219,9 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 		repoMus: map[string]*sync.Mutex{}, byGitRepoID: map[string]string{}, gitRepoIDOf: map[string]string{},
 		caches: map[string]*repoCaches{}, rebase: map[string]*rebaseCache{}, live: map[string]*liveRun{}, tuiGrants: map[string]tuiBinding{}, tuiSandbox: map[string]*liveTUISandbox{}, setupLive: map[string]*liveRun{},
 		taskMus: map[string]*sync.Mutex{}, archiving: map[string]int{}, finishes: map[string]agentmcp.Finish{}, claims: map[string]string{}, stepMsgs: map[string]string{},
+	}
+	if deps.Approvals != nil {
+		deps.Approvals.Register(approvals.KindBranchRequest, branchOwner{b})
 	}
 	b.agent = agentmcp.NewServer(agentmcp.Options{Dir: deps.AgentDir, OnFinish: b.recordFinish, Space: b, Outcomes: b, Review: b, SandboxGit: b, Git: b, Handover: b, Prompts: b.prompts(), OnToolCall: b.mcpRecorder})
 	if deps.Tracker != nil {

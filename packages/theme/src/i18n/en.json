@@ -1535,12 +1535,6 @@
         "approval": {
           "title": "{count} things await your approval"
         },
-        "branchRequest": {
-          "title": "{count} branch requests wait for approval"
-        },
-        "dbMcp": {
-          "title": "{count} queries wait for approval"
-        },
         "gitCredential": {
           "title": "{count} Git credential requests wait"
         },
@@ -3175,6 +3169,9 @@
       "openLink": {
         "announce": "Couldn’t open the link"
       }
+    },
+    "expires": {
+      "status": "Expires in {time}"
     },
     "expiresIn": {
       "status": "Expires in {seconds}s"
@@ -8736,9 +8733,6 @@
         }
       },
       "branchRequest": {
-        "approve": {
-          "label": "Approve ({count})"
-        },
         "item": {
           "branch": {
             "label": "Create {branch} from {base}"
@@ -8759,9 +8753,6 @@
         "renameRemote": {
           "label": "Also rename {upstream} on the remote"
         },
-        "renameTitle": {
-          "title": "Rename a branch · {task}"
-        },
         "source": {
           "automation": {
             "label": "Script run"
@@ -8775,9 +8766,6 @@
         },
         "stacked": {
           "hint": "The worktree folder stays. Branches built on it follow: {branches}."
-        },
-        "title": {
-          "title": "Branches for {task}"
         }
       },
       "changes": {
@@ -13469,9 +13457,6 @@
           },
           "logs": {
             "body": "An MCP client wants to read pod logs in {cluster} through the database MCP server."
-          },
-          "target": {
-            "aria": "Target cluster"
           }
         },
         "other": {
@@ -13484,10 +13469,6 @@
           "aria": "Statement view"
         },
         "target": {
-          "aria": "Target database",
-          "defaultDatabase": {
-            "label": "Default database"
-          },
           "unclassified": {
             "label": "Unclassified"
           }
@@ -13498,12 +13479,6 @@
         "write": {
           "body": "{connection} ({kind}) wants to run a write statement through the database MCP server."
         }
-      },
-      "approveConfirm": {
-        "title": "Approve this query?"
-      },
-      "heavyConfirm": {
-        "title": "Run this heavy query?"
       },
       "preview": {
         "lede": {
@@ -13542,9 +13517,6 @@
         "withhold": {
           "label": "Withhold"
         }
-      },
-      "responseReview": {
-        "title": "Review result before sending"
       }
     },
     "definition": {
@@ -14650,9 +14622,6 @@
       "editValue": {
         "label": "Edit value"
       },
-      "expires": {
-        "status": "Expires in {time}"
-      },
       "memoryUnknown": {
         "status": "Size unknown"
       },
@@ -15724,6 +15693,9 @@
         "current": {
           "label": "Current"
         },
+        "openWindow": {
+          "label": "Open in proof window"
+        },
         "proposed": {
           "label": "Proposed"
         },
@@ -16667,6 +16639,34 @@
       },
       "userVariable": {
         "body": "{flag} ‘{value}’ contains a {reference} reference. Base64-encoding it here would destroy the reference, so the header was left unencoded. Base64-encode “{example}” before sending, or reference a secret variable through its own {pipe} pipe."
+      }
+    },
+    "approvals": {
+      "approveAll": {
+        "label": "Approve all ({count})"
+      },
+      "denyAll": {
+        "label": "Deny all ({count})"
+      },
+      "dialog": {
+        "title": "Awaiting your approval"
+      },
+      "expired": {
+        "status": "Expired"
+      },
+      "origin": {
+        "status": "Requested by {origin}"
+      },
+      "toast": {
+        "count": {
+          "status": "{count} thing awaiting your approval | {count} things awaiting your approval"
+        },
+        "expires": {
+          "status": "Next expires in {time}"
+        }
+      },
+      "unsupported": {
+        "body": "This version can’t show this request. Deny it."
       }
     },
     "bootFailure": {

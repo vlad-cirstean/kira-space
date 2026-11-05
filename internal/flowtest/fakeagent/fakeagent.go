@@ -34,6 +34,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/renameio/v2"
@@ -83,6 +84,8 @@ type Action struct {
 	Sh string `json:"sh,omitempty"`
 	// MCP calls tools on servers from the --mcp-config file.
 	MCP []MCPCall `json:"mcp,omitempty"`
+	// Parallel runs the MCP calls at once, waits for all and records the results in call order.
+	Parallel bool `json:"parallel,omitempty"`
 	// Emit prints the file to stdout.
 	Emit string `json:"emit,omitempty"`
 	// WaitFile blocks until the path exists.
@@ -322,17 +325,8 @@ func runSideEffects(action Action, dir, cwd string, args []string) (code int, do
 			return 4, true
 		}
 	}
-	for _, c := range action.MCP {
-		res, err := callTool(argsAfter(args, "--mcp-config"), args, c.Server, c.Tool, c.Args)
-		if err != nil && res != nil && c.Tolerate {
-			recordMCPResult(dir, c.Tool, res)
-			continue
-		}
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "mcp:", err)
-			return 3, true
-		}
-		recordMCPResult(dir, c.Tool, res)
+	if code, done := runMCPCalls(action, dir, args); done {
+		return code, true
 	}
 	if action.Emit != "" {
 		raw, err := os.ReadFile(action.Emit)
@@ -352,6 +346,44 @@ func runSideEffects(action Action, dir, cwd string, args []string) (code int, do
 	}
 	if action.Exit != nil {
 		return *action.Exit, true
+	}
+	return 0, false
+}
+
+// runMCPCalls plays the action's MCP calls, one after another or all at once for a Parallel action.
+func runMCPCalls(action Action, dir string, args []string) (code int, done bool) {
+	type outcome struct {
+		res *mcp.CallToolResult
+		err error
+	}
+	cfg := argsAfter(args, "--mcp-config")
+	outs := make([]outcome, len(action.MCP))
+	play := func(i int) {
+		c := action.MCP[i]
+		outs[i].res, outs[i].err = callTool(cfg, args, c.Server, c.Tool, c.Args)
+	}
+	if action.Parallel {
+		var wg sync.WaitGroup
+		for i := range action.MCP {
+			wg.Add(1)
+			go func() { defer wg.Done(); play(i) }()
+		}
+		wg.Wait()
+	}
+	for i, c := range action.MCP {
+		if !action.Parallel {
+			play(i)
+		}
+		o := outs[i]
+		if o.err != nil && o.res != nil && c.Tolerate {
+			recordMCPResult(dir, c.Tool, o.res)
+			continue
+		}
+		if o.err != nil {
+			fmt.Fprintln(os.Stderr, "mcp:", o.err)
+			return 3, true
+		}
+		recordMCPResult(dir, c.Tool, o.res)
 	}
 	return 0, false
 }
