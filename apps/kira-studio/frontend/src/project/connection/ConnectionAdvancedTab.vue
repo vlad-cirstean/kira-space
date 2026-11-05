@@ -68,7 +68,7 @@ function setThrottle(value: string): void {
       <FieldError v-if="throttleError" data-testid="connection-throttle-error">
         {{ throttleError }}
       </FieldError>
-      <FieldDescription v-else class="w-full">
+      <FieldDescription v-else class="w-full" data-testid="connection-throttle-description">
         {{ t('studio.project.connectionDialog.throttle.description') }}
       </FieldDescription>
     </Field>

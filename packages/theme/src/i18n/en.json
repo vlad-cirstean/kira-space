@@ -15362,6 +15362,12 @@
           "strictest": {
             "description": "A statement this app can’t classify is treated as whichever of the three is strictest. These settings govern the MCP server only. The read-only flag on the {tab} tab governs this app’s own console."
           },
+          "throttle": {
+            "body": "MCP calls share this connection’s throttle of {rate} ops per second with your own ops ({tab} tab)."
+          },
+          "throttleOff": {
+            "body": "MCP calls are not throttled on this connection (throttle 0, {tab} tab)."
+          },
           "write": {
             "label": "Write"
           },

@@ -118,6 +118,14 @@ const reviewOptions = computed(() => {
     disabled: !enabled.value,
   }));
 });
+
+const throttleLead = computed(() => {
+  const perSec = file.value.throttle_per_sec ?? 0;
+  const tab = t('common.advanced.label');
+  return perSec > 0
+    ? t('studio.project.connectionDialog.mcp.throttle.body', { rate: String(perSec), tab })
+    : t('studio.project.connectionDialog.mcp.throttleOff.body', { tab });
+});
 </script>
 
 <template>
@@ -199,6 +207,10 @@ const reviewOptions = computed(() => {
           tab: t('common.advanced.label'),
         })
       }}
+    </FieldDescription>
+    <FieldDescription v-if="enabled" class="w-full" data-testid="connection-mcp-throttle">
+      {{ throttleLead }}
+      {{ t('studio.project.connectionDialog.throttle.description') }}
     </FieldDescription>
 
     <Field class="flex-1">
