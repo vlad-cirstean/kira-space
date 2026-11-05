@@ -11,8 +11,8 @@ import (
 	"sync"
 
 	"github.com/google/renameio/v2"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
-	"github.com/kirathecat/kira-studio/internal/shortid"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -28,12 +28,8 @@ type proofShotFolders struct {
 	order []string
 }
 
-func (p *proofShotFolders) add(path string) (string, error) {
-	n, err := shortid.New(12)
-	if err != nil {
-		return "", err
-	}
-	id := "shot_" + n
+func (p *proofShotFolders) add(path string) string {
+	id := ids.New(ids.Shot)
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.paths == nil {
@@ -45,7 +41,7 @@ func (p *proofShotFolders) add(path string) (string, error) {
 		delete(p.paths, p.order[0])
 		p.order = p.order[1:]
 	}
-	return id, nil
+	return id
 }
 
 func (p *proofShotFolders) get(id string) (string, bool) {
@@ -109,10 +105,7 @@ func (s *ProofService) ChooseShotFolder(args ProofChooseShotFolderArgs) (ProofSh
 	if err != nil {
 		return ProofShotFolderResult{}, err
 	}
-	id, err := s.shots.add(path)
-	if err != nil {
-		return ProofShotFolderResult{}, ipcerr.InternalErr(err)
-	}
+	id := s.shots.add(path)
 	return ProofShotFolderResult{ID: id, Path: path}, nil
 }
 

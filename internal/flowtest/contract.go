@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 // EnvContract set to "write" rewrites contract fixtures instead of comparing against them.
@@ -20,7 +22,7 @@ const EnvContract = "KIRA_CONTRACT"
 
 var (
 	uuidRe = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
-	nanoRe = regexp.MustCompile(`\bk[mg]_[0-9a-hjkmnp-tv-z]{12}\b`)
+	nanoRe = regexp.MustCompile(ids.Pattern)
 	wtRe   = regexp.MustCompile(`\bwt_[0-9a-hjkmnp-tv-z]{10}\b`)
 	timeRe = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})`)
 
