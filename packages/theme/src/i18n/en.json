@@ -2416,6 +2416,9 @@
         "sqsVisibilityTimeout": {
           "body": "The visibility timeout must be a whole number of seconds from 1 to 43200."
         },
+        "statementTimeout": {
+          "body": "The statement ran longer than its {seconds} s timeout and was stopped."
+        },
         "stringUnterminated": {
           "body": "Unterminated string literal."
         },

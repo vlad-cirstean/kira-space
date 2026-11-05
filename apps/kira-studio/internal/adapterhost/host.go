@@ -8,12 +8,14 @@ package adapterhost
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"runtime/debug"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
@@ -39,7 +41,14 @@ type OpSpec struct {
 	// Adapter is the adapter running the op when it is not the connection's live one (a read
 	// lane); Cancel then reaches that adapter instead.
 	Adapter adapters.Adapter
+	// Timeout is the statement timeout (dbmcp, Go-only): zero means none. The host stops the op
+	// through the Stop path once Timeout+TimeoutGrace of run time has passed. TimeoutGrace is
+	// nonzero when the engine enforces the limit too, so its own typed error wins the race.
+	Timeout, TimeoutGrace time.Duration
 }
+
+// statementTimeoutGrace is how long the host backstop waits past an engine-enforced limit.
+const statementTimeoutGrace = 2 * time.Second
 
 type runningOp struct {
 	cancel       context.CancelFunc
@@ -289,15 +298,45 @@ func (h *Host) RunOp(ctx context.Context, spec OpSpec, fn func(context.Context, 
 
 	op := adapters.NewOpCtx(opID)
 	start := time.Now()
+	// Armed here, after admit and op:start, so throttle queue wait never counts against the limit.
+	var timedOut atomic.Bool
+	var timer *time.Timer
+	if spec.Timeout > 0 {
+		timer = time.AfterFunc(spec.Timeout+spec.TimeoutGrace, func() {
+			h.mu.Lock()
+			cur, ok := h.running[opID]
+			h.mu.Unlock()
+			if ok {
+				timedOut.Store(true)
+				h.stopOp(context.Background(), opID, cur)
+			}
+		})
+	}
 	value, err := h.safeRun(derived, op, fn)
-	durationMs := int(time.Since(start).Milliseconds())
+	if timer != nil {
+		timer.Stop()
+	}
+	elapsed := time.Since(start)
+	durationMs := int(elapsed.Milliseconds())
 	releaseSlot() // before op:end so the next queued op is not held by event emission
+
+	var detail *adapters.TimeoutDetail
+	switch {
+	case err == nil:
+	case errors.As(err, &detail):
+		if detail.Elapsed == 0 {
+			detail.Elapsed = elapsed
+		}
+	case timedOut.Load():
+		err = adapters.StatementTimeout(spec.Timeout, elapsed, err)
+		errors.As(err, &detail)
+	}
 
 	status := "ok"
 	var errMsg *string
 	if err != nil {
 		status = "error"
-		if derived.Err() == context.Canceled {
+		if derived.Err() == context.Canceled && detail == nil {
 			status = "cancelled"
 		}
 		m := err.Error()

@@ -1,6 +1,10 @@
 package model
 
-import "github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
+import (
+	"time"
+
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
+)
 
 // ConsoleRequest is domain/console.ts's ConsoleRequest — one execute() batch: path binds it to a
 // connection and, optionally, a default database/schema; Statements is the pre-split list from
@@ -14,6 +18,9 @@ type ConsoleRequest struct {
 	// ReadOnly forces the adapter's read-only wrap even when the connection is not read-only. Set
 	// by the DB MCP read lane (defence in depth; the lane's connection is read-only already).
 	ReadOnly bool
+	// StatementTimeout is set by Go callers only (dbmcp); zero means none. The adapter applies the
+	// engine's own timeout to this request only, where it has one.
+	StatementTimeout time.Duration
 }
 
 // MongoConsoleMethods mirrors domain/console.ts's MONGO_CONSOLE_METHODS — the ten shell methods

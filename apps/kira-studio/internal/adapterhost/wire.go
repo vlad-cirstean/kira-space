@@ -2,6 +2,7 @@ package adapterhost
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
@@ -174,6 +175,11 @@ type ExecuteRequestWire struct {
 	Cap page.ResultCap `json:"-"`
 	// ReadOnly is set by Go callers only (dbmcp); see model.ConsoleRequest.ReadOnly.
 	ReadOnly bool `json:"-"`
+	// StatementTimeout is set by Go callers only (dbmcp); zero means none. See model.ConsoleRequest.
+	StatementTimeout time.Duration `json:"-"`
+	// TimeoutByEngine is set with StatementTimeout when the engine enforces it too: the host timer
+	// then fires after a grace period instead of at the limit.
+	TimeoutByEngine bool `json:"-"`
 }
 
 func (r ExecuteRequestWire) Validate() error {

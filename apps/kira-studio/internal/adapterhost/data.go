@@ -215,13 +215,17 @@ func (d *Dispatcher) executeOn(ctx context.Context, adapter, lane adapters.Adapt
 	}
 
 	connID := req.ConnectionID
-	_, value, err := d.host.RunOp(ctx, OpSpec{ConnectionID: &connID, Kind: "execute", OpID: req.OpID, TabID: req.TabID, Adapter: lane},
+	spec := OpSpec{ConnectionID: &connID, Kind: "execute", OpID: req.OpID, TabID: req.TabID, Adapter: lane, Timeout: req.StatementTimeout}
+	if req.TimeoutByEngine {
+		spec.TimeoutGrace = statementTimeoutGrace
+	}
+	_, value, err := d.host.RunOp(ctx, spec,
 		func(ctx context.Context, op *adapters.OpCtx) (any, error) {
 			// P108 Part 11 F5: req.Path is already the encoded string tabs.ts's own openConsoleTab
 			// takes — recorded as-is so a re-run can reopen at the exact same path, no NodePath
 			// round-trip needed.
 			op.SetPath(req.Path)
-			pages, err := adapter.Execute(ctx, model.ConsoleRequest{Path: path, Statements: req.Statements, Cap: req.Cap, ReadOnly: req.ReadOnly}, op)
+			pages, err := adapter.Execute(ctx, model.ConsoleRequest{Path: path, Statements: req.Statements, Cap: req.Cap, ReadOnly: req.ReadOnly, StatementTimeout: req.StatementTimeout}, op)
 			if err != nil {
 				return nil, err
 			}
