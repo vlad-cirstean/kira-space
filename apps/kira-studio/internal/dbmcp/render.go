@@ -146,6 +146,14 @@ type connectionPermissions struct {
 	Read  string `json:"read"`
 	Write string `json:"write"`
 	DDL   string `json:"ddl"`
+	// Masked is the stored browse_table setting: inherit, deny, allow or prompt.
+	Masked string `json:"masked"`
+}
+
+// browseView is list_connections' browse: whether browse_table works on the kind, and its row cap.
+type browseView struct {
+	Supported bool `json:"supported"`
+	MaxRows   int  `json:"maxRows"`
 }
 
 // connectionView is list_connections' own per-connection element.
@@ -164,6 +172,7 @@ type connectionView struct {
 	// Access is what each declared run_query mode allows (accessOf); Enforcement says what backs
 	// mode read: session, app or none.
 	Access      connectionAccess `json:"access"`
+	Browse      browseView       `json:"browse"`
 	Enforcement string           `json:"enforcement"`
 	// StatementTimeout is the run_query timeout: seconds (0 off) and what stops a statement per mode.
 	StatementTimeout statementTimeoutView `json:"statementTimeout"`
@@ -1007,6 +1016,32 @@ func renderTabularPage(pg page.TabularPage, maxRows int, mk *maskset) tabularRes
 	}
 	if len(withheld) > 0 {
 		res.WithheldColumns, res.WithheldNote = withheld, withheldNoteFor(len(withheld))
+	}
+	return res
+}
+
+// browseResult is browse_table's answer: the run_query tabular shape plus where the page sits.
+type browseResult struct {
+	tabularResult
+	Offset     int  `json:"offset"`
+	HasMore    bool `json:"hasMore"`
+	NextOffset *int `json:"nextOffset,omitempty"`
+}
+
+// renderBrowsePage renders one browse page. No statement-text guard runs: the statement is app-built from
+// exact catalog names, so a masked column cannot be renamed or wrapped, and a JSON column is a stored one.
+// Columns left out of the projection as withheld are named from the plan.
+func renderBrowsePage(pg page.TabularPage, p browsePlan, mk *maskset, plan *planSummary) browseResult {
+	t := renderTabularPage(pg, p.limit, mk)
+	t.Plan = plan
+	if len(p.withheld) > 0 {
+		t.WithheldColumns = append(append([]string(nil), p.withheld...), t.WithheldColumns...)
+		t.WithheldNote = withheldNoteFor(len(t.WithheldColumns))
+	}
+	res := browseResult{tabularResult: t, Offset: p.offset, HasMore: pg.Position.HasMore}
+	if res.HasMore {
+		next := p.offset + pg.RowCount
+		res.NextOffset = &next
 	}
 	return res
 }

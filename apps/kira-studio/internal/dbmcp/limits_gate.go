@@ -54,6 +54,9 @@ func (s *Server) claimExemption(args runQueryArgs, rv queryResolution) (ex *clai
 		return refuse(fmt.Sprintf("exemption %s is unknown, used or expired. Run the statement without exemption; a limit refusal gives a new id.", id))
 	}
 	if rec.connectionID != args.ConnectionID || rec.mode != rv.mode || rec.path != args.Path || rec.sql != args.SQL {
+		if args.Mode == modeMasked {
+			return refuse(fmt.Sprintf("exemption %s was issued for a different call. Repeat the refused call exactly: same connectionId, path, columns, filters, order, limit and offset.", id))
+		}
 		return refuse(fmt.Sprintf("exemption %s was issued for a different call. Repeat the refused call exactly: same connectionId, sql, path and mode.", id))
 	}
 	return &claimedExemption{hits: rec.hits, reason: reason}, nil, nil, nil, false
@@ -129,7 +132,7 @@ func (s *Server) refuseByLimits(summary model.ConnectionSummary, ex *claimedExem
 	id := s.exemptions.mint(exemptionRecord{
 		connectionID: args.ConnectionID, mode: args.Mode, path: args.Path, sql: args.SQL, hits: hits,
 	})
-	return errResult((&LimitError{ConnectionName: summary.Name, Hits: hits, ExemptionID: id}).Error())
+	return errResult((&LimitError{ConnectionName: summary.Name, Hits: hits, ExemptionID: id, Browse: args.Mode == modeMasked}).Error())
 }
 
 // awaitExemption raises the one db.exemption approval of an exempted call. It never reads the mode's

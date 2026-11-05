@@ -162,8 +162,12 @@ func (s *Server) planFor(ctx context.Context, summary model.ConnectionSummary, s
 	if !queryplan.Supported(summary.Kind) || !queryplan.Explainable(sql) {
 		return nil, nil
 	}
+	return s.planStatements(ctx, summary, queryplan.StatementsFor(summary.Kind, sql), path, threshold)
+}
 
-	statements := queryplan.StatementsFor(summary.Kind, sql)
+// planStatements runs and parses already-composed EXPLAIN statements. The caller owns the composition and
+// the Explainable check: browse_table composes from a spec whose literals may hold ";".
+func (s *Server) planStatements(ctx context.Context, summary model.ConnectionSummary, statements []string, path string, threshold int) (*queryplan.Plan, error) {
 	if err := s.assertComposedStatementsAreReads(ctx, summary.ID, statements); err != nil {
 		s.log.Warn("dbmcp: expensive_query: composed EXPLAIN refused", "connectionId", summary.ID, "err", err)
 		return nil, &planCheckError{msg: fmt.Sprintf("expensive_query check could not plan this statement on %q; it did not run.", summary.Name)}

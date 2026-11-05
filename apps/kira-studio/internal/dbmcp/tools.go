@@ -45,8 +45,8 @@ func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ li
 		view := connectionView{
 			ID: c.ID, Name: c.Name, Kind: c.Kind, ReadOnly: c.ReadOnly, Status: state.Status,
 			Description: c.McpDescription,
-			Permissions: connectionPermissions{Read: c.McpReadMode, Write: c.McpWriteMode, DDL: c.McpDdlMode},
-			Access:      accessOf(c), Enforcement: enforcementOf(c.Kind), StatementTimeout: timeoutViewOf(c),
+			Permissions: connectionPermissions{Read: c.McpReadMode, Write: c.McpWriteMode, DDL: c.McpDdlMode, Masked: maskedModeOf(c)},
+			Access:      accessOf(c), Browse: browseView{Supported: HasBrowse(c.Kind), MaxRows: browseMaxRows}, Enforcement: enforcementOf(c.Kind), StatementTimeout: timeoutViewOf(c),
 			ExpensiveQuery: expensiveQueryView{RowsThreshold: threshold, Check: expensiveCheckOf(c)},
 			ReviewResults:  s.reviewViewOf(c),
 		}
@@ -74,8 +74,8 @@ func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ li
 // resolve the connection, then refuse if read mode denies. done is true whenever the caller should
 // return (res, out, err) immediately, same convention as resolveVerdict/awaitApproval below.
 //
-// Schema-browsing tools are gated at read-mode's own minimum bar — deny refuses,
-// same as every other read here. Not extended to prompt's own approval dialog: unlike run_query/
+// Schema-browsing tools are gated at read-mode's own minimum bar — deny refuses, same as every other
+// read here — except that an open masked read passes too: browse_table needs the columns. Not extended to prompt's own approval dialog: unlike run_query/
 // explain_query, none of these run caller-supplied SQL against the connection, so there is no
 // statement to show the human in an approval request.
 func (s *Server) resolveReadGated(connectionID string) (summary model.ConnectionSummary, res *mcp.CallToolResult, out any, err error, done bool) {
@@ -84,8 +84,8 @@ func (s *Server) resolveReadGated(connectionID string) (summary model.Connection
 		res, out, err = errResult(err.Error())
 		return summary, res, out, err, true
 	}
-	if m := modesOf(summary); m.read == "deny" {
-		res, out, err = errResult(fmt.Sprintf("connection %q's MCP permissions deny read statements; change them in the connection's MCP tab", summary.Name))
+	if m := modesOf(summary); m.read == "deny" && !accessOf(summary).Masked.Allowed {
+		res, out, err = errResult(fmt.Sprintf("connection %q's MCP permissions deny read statements and masked reads; change them in the connection's MCP tab", summary.Name))
 		return summary, res, out, err, true
 	}
 	return summary, nil, nil, nil, false
@@ -545,7 +545,11 @@ func checkMode(summary model.ConnectionSummary, mode string) string {
 func gateMode(summary model.ConnectionSummary, mode string) (verdict, refusal string) {
 	verdict = modeVerdict(summary, mode)
 	if verdict == "deny" {
-		return verdict, fmt.Sprintf("connection %q does not allow %s over MCP. Allowed: %s", summary.Name, mode, accessOf(summary).Summary)
+		msg := fmt.Sprintf("connection %q does not allow %s over MCP. Allowed: %s", summary.Name, mode, accessOf(summary).Summary)
+		if mode == modeRead && accessOf(summary).Masked.Allowed {
+			msg += ". Rows can still be read with browse_table (masked)"
+		}
+		return verdict, msg
 	}
 	return verdict, ""
 }
@@ -642,7 +646,7 @@ func (s *Server) recheckAfterApproval(args runQueryArgs, rv *queryResolution) (r
 
 // enforcementFor is the enforcement label the approval shows for a read item; other modes carry none.
 func enforcementFor(summary model.ConnectionSummary, mode string) string {
-	if mode != modeRead {
+	if mode != modeRead && mode != modeMasked {
 		return ""
 	}
 	return enforcementOf(summary.Kind)

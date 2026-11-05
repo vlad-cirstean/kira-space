@@ -73,6 +73,8 @@ type LimitError struct {
 	ConnectionName string
 	Hits           []LimitHit
 	ExemptionID    string
+	// Browse words the hints for a browse_table call.
+	Browse bool
 }
 
 func (h LimitHit) describe() string {
@@ -98,8 +100,14 @@ func (e *LimitError) Error() string {
 		}
 		fmt.Fprintf(&b, "refused by limits %s on %q: %s", strings.Join(names, ", "), e.ConnectionName, strings.Join(parts, "; "))
 	}
-	if hasLimit(e.Hits, LimitExpensiveQuery) {
+	if hasLimit(e.Hits, LimitExpensiveQuery) && e.Browse {
+		b.WriteString(". expensive_query is the query plan's estimated rows read, not rows returned. Filter or order on an indexed column, or reduce scope")
+	} else if hasLimit(e.Hits, LimitExpensiveQuery) {
 		b.WriteString(". expensive_query is the query plan's estimated rows read, not rows returned; explain_query shows which scan. Filter on an indexed column or narrow the join")
+	}
+	if e.Browse {
+		fmt.Fprintf(&b, `. Improve the call, or ask the user to lift the limit for this call only: repeat this exact browse_table call with exemption {"id":%q,"reason":"<one sentence why>"}. The id works once and expires in %s.`, e.ExemptionID, approvalWindow())
+		return b.String()
 	}
 	fmt.Fprintf(&b, `. Improve the statement, or ask the user to lift the limit for this statement only: repeat this exact call with exemption {"id":%q,"reason":"<one sentence why>"}. The id works once and expires in %s.`, e.ExemptionID, approvalWindow())
 	return b.String()

@@ -216,7 +216,7 @@ func operationClass(r ApprovalRequest) string {
 
 func toneOf(class string) string {
 	switch class {
-	case string(adapters.ClassRead):
+	case string(adapters.ClassRead), modeMasked:
 		return "neutral"
 	case string(adapters.ClassWrite):
 		return "caution"

@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime/debug"
+	"sort"
 	"sync"
 	"time"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/mask"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskreview"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/mcpauth"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/tree"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
@@ -68,6 +70,8 @@ type QueryRunner interface {
 	// ExecuteRead runs a read-mode request on the connection's read lane: a second adapter on the
 	// engine's read-only session. It never falls back to the main adapter.
 	ExecuteRead(ctx context.Context, req adapterhost.ExecuteRequestWire) (adapterhost.ExecuteResponse, error)
+	// Browse reads one structured page on the read lane (browse_table); it never writes.
+	Browse(ctx context.Context, req adapterhost.BrowseRequest) (page.Page, error)
 	// ClassifyStatement answers what one statement would do (M2's permission gate) — an adapter
 	// error (or one that does not implement adapters.StatementClassifier) yields ClassUnknown, never
 	// a fatal error the caller must special-case.
@@ -360,6 +364,11 @@ func (s *Server) buildMCPServer() *mcp.Server {
 		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[describeSchemaArgs](src, llmprompts.DbmcpToolDescribeSchema.ID(), nil), "connectionId", "path"),
 	}, withPanicRecovery(s, "describe_schema", s.describeSchema))
 	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "browse_table",
+		Description: llmprompts.DbmcpToolBrowseTable.Text(src, llmprompts.NoVars{}),
+		InputSchema: browseTableSchema(src),
+	}, withPanicRecovery(s, "browse_table", s.browseTable))
+	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "run_query",
 		Description: llmprompts.DbmcpToolRunQuery.Text(src, llmprompts.NoVars{}),
 		InputSchema: runQuerySchema(src),
@@ -393,6 +402,46 @@ func runQuerySchema(src llmprompts.Source) *jsonschema.Schema {
 	sch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[runQueryArgs](src, llmprompts.DbmcpToolRunQuery.ID(),
 		map[string]any{"maxRows": llmprompts.LimitVars{Default: runQueryDefaultMaxRows, Max: runQueryMaxMaxRows}}), "connectionId", "sql", "mode")
 	sch.Properties["mode"].Enum = []any{modeRead, modeWrite, modeDDL}
+	ex := sch.Properties["exemption"]
+	ex.Properties["id"].MinLength = jsonschema.Ptr(1)
+	ex.Properties["reason"].MinLength = jsonschema.Ptr(1)
+	ex.Properties["reason"].MaxLength = jsonschema.Ptr(maxExemptionReasonRunes)
+	return sch
+}
+
+// browseScalarSchema is the schema of one filter value: a string, number or boolean.
+func browseScalarSchema(desc string) *jsonschema.Schema {
+	return &jsonschema.Schema{Types: []string{"string", "number", "boolean"}, Description: desc}
+}
+
+// browseTableSchema is browse_table's input schema: the ops and directions are enums, the counts are
+// bounded, and a filter value is a scalar.
+func browseTableSchema(src llmprompts.Source) *jsonschema.Schema {
+	sch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[browseTableArgs](src, llmprompts.DbmcpToolBrowseTable.ID(),
+		map[string]any{"limit": llmprompts.LimitVars{Default: browseDefaultRows, Max: browseMaxRows}}), "connectionId", "path")
+	sch.Properties["limit"].Minimum = jsonschema.Ptr(1.0)
+	sch.Properties["limit"].Maximum = jsonschema.Ptr(float64(browseMaxRows))
+	sch.Properties["offset"].Minimum = jsonschema.Ptr(0.0)
+	sch.Properties["offset"].Maximum = jsonschema.Ptr(float64(browseMaxOffset))
+	cols := sch.Properties["columns"]
+	cols.MaxItems = jsonschema.Ptr(browseMaxColumns)
+	filters := sch.Properties["filters"]
+	filters.MaxItems = jsonschema.Ptr(browseMaxFilters)
+	fi := filters.Items
+	ops := make([]any, 0, len(browseOps))
+	for op := range browseOps {
+		ops = append(ops, op)
+	}
+	sort.Slice(ops, func(i, j int) bool { return ops[i].(string) < ops[j].(string) })
+	fi.Properties["op"].Enum = ops
+	fi.Properties["column"].MinLength = jsonschema.Ptr(1)
+	fi.Properties["value"] = browseScalarSchema(fi.Properties["value"].Description)
+	fi.Properties["values"].Items = browseScalarSchema("")
+	fi.Properties["values"].MaxItems = jsonschema.Ptr(browseMaxInValues)
+	order := sch.Properties["order"]
+	order.MaxItems = jsonschema.Ptr(browseMaxOrder)
+	order.Items.Properties["direction"].Enum = []any{"asc", "desc"}
+	order.Items.Properties["column"].MinLength = jsonschema.Ptr(1)
 	ex := sch.Properties["exemption"]
 	ex.Properties["id"].MinLength = jsonschema.Ptr(1)
 	ex.Properties["reason"].MinLength = jsonschema.Ptr(1)

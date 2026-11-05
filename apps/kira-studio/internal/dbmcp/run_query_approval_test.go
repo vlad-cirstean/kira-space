@@ -12,6 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/mask"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskreview"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -67,6 +68,12 @@ func (f *fakeQueryRunner) Execute(context.Context, adapterhost.ExecuteRequestWir
 	f.executed.Add(1)
 	f.main.Add(1)
 	return adapterhost.ExecuteResponse{}, nil
+}
+
+func (f *fakeQueryRunner) Browse(context.Context, adapterhost.BrowseRequest) (page.Page, error) {
+	f.executed.Add(1)
+	f.lane.Add(1)
+	return nil, nil
 }
 
 func (f *fakeQueryRunner) ExecuteRead(context.Context, adapterhost.ExecuteRequestWire) (adapterhost.ExecuteResponse, error) {

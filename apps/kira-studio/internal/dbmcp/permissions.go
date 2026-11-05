@@ -7,8 +7,9 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 )
 
-// modes is one connection's three MCP permission words (M2 §4.1), each one of deny/allow/prompt.
-type modes struct{ read, write, ddl string }
+// modes is one connection's MCP permission words (M2 §4.1), each one of deny/allow/prompt. masked is
+// browse_table's, with inherit already resolved to read's value.
+type modes struct{ read, write, ddl, masked string }
 
 // reviewResolver maps a review setting to held or not. inherit follows the app setting, read at most
 // once per resolver.
@@ -33,6 +34,9 @@ func (s *Server) reviewResolver() func(string) bool {
 // skips review (tightenByClass accepts a weaker statement than its mode). An unknown class holds when
 // any mode does.
 func (s *Server) reviewFor(c model.ConnectionSummary, mode string, class adapters.OpClass) bool {
+	if mode == modeMasked {
+		return s.reviewForMode(c, mode)
+	}
 	held := s.reviewResolver()
 	if held(c.McpReview.For(mode)) {
 		return true
@@ -43,21 +47,36 @@ func (s *Server) reviewFor(c model.ConnectionSummary, mode string, class adapter
 	return held(c.McpReview.For(classMode(class)))
 }
 
+// reviewForMode reports whether mode's own setting holds its results. browse_table uses it alone: it has
+// no agent SQL that could look stronger than its mode, so read's setting never forces review on it.
+func (s *Server) reviewForMode(c model.ConnectionSummary, mode string) bool {
+	return s.reviewResolver()(c.McpReview.For(mode))
+}
+
 // reviewView is list_connections' reviewResults: which modes hold their results for the user.
 type reviewView struct {
 	Read  bool `json:"read"`
 	Write bool `json:"write"`
 	DDL   bool `json:"ddl"`
+	// Masked is browse_table's.
+	Masked bool `json:"masked"`
 }
 
 func (s *Server) reviewViewOf(c model.ConnectionSummary) reviewView {
 	held := s.reviewResolver()
-	return reviewView{Read: held(c.McpReview.Read), Write: held(c.McpReview.Write), DDL: held(c.McpReview.Ddl)}
+	return reviewView{
+		Read: held(c.McpReview.Read), Write: held(c.McpReview.Write), DDL: held(c.McpReview.Ddl),
+		Masked: held(c.McpReview.Masked),
+	}
 }
 
-// modesOf reads c's own MCP permission fields.
+// modesOf reads c's own MCP permission fields. An inherit masked value follows read.
 func modesOf(c model.ConnectionSummary) modes {
-	return modes{read: c.McpReadMode, write: c.McpWriteMode, ddl: c.McpDdlMode}
+	m := modes{read: c.McpReadMode, write: c.McpWriteMode, ddl: c.McpDdlMode, masked: c.McpMaskedMode}
+	if m.masked == "" || m.masked == model.McpMaskedInherit {
+		m.masked = m.read
+	}
+	return m
 }
 
 // strictnessRank orders the three modes from least to most permissive: deny beats prompt beats
@@ -91,12 +110,21 @@ func verdictFor(m modes, class adapters.OpClass) string {
 	}
 }
 
-// Declared run_query modes.
+// Declared run_query modes, plus browse_table's masked read. masked is no run_query mode or statement
+// class: it gates only browse_table.
 const (
-	modeRead  = "read"
-	modeWrite = "write"
-	modeDDL   = "ddl"
+	modeRead   = "read"
+	modeWrite  = "write"
+	modeDDL    = "ddl"
+	modeMasked = "masked"
 )
+
+// browseKinds have a structured browse: the shared relational builder plus ClickHouse's. Mirrors
+// BROWSE_KINDS in packages/shared/domain/dbmcp.ts.
+var browseKinds = map[string]bool{"postgres": true, "mysql": true, "mariadb": true, "sqlite": true, "clickhouse": true}
+
+// HasBrowse reports whether kind supports browse_table.
+func HasBrowse(kind string) bool { return browseKinds[kind] }
 
 var queryModes = []string{modeRead, modeWrite, modeDDL}
 
@@ -160,9 +188,11 @@ type modeAccess struct {
 
 // connectionAccess is what a connection lets an MCP client do per declared mode.
 type connectionAccess struct {
-	Read    modeAccess `json:"read"`
-	Write   modeAccess `json:"write"`
-	DDL     modeAccess `json:"ddl"`
+	Read  modeAccess `json:"read"`
+	Write modeAccess `json:"write"`
+	DDL   modeAccess `json:"ddl"`
+	// Masked is browse_table's access; Summary lists run_query modes only.
+	Masked  modeAccess `json:"masked"`
 	Summary string     `json:"summary"`
 }
 
@@ -172,6 +202,8 @@ func (a connectionAccess) of(mode string) modeAccess {
 		return a.Write
 	case modeDDL:
 		return a.DDL
+	case modeMasked:
+		return a.Masked
 	}
 	return a.Read
 }
@@ -196,6 +228,12 @@ func accessOf(c model.ConnectionSummary) connectionAccess {
 		return modeAccess{Reason: "permission denied"}
 	}
 	a := connectionAccess{Read: one(modeRead, m.read), Write: one(modeWrite, m.write), DDL: one(modeDDL, m.ddl)}
+	// A read: neither read_only nor the write console matters. Only the kind's browse support does.
+	if HasBrowse(c.Kind) {
+		a.Masked = one(modeRead, m.masked)
+	} else {
+		a.Masked = modeAccess{Reason: "no structured browse"}
+	}
 	var parts []string
 	for _, mode := range queryModes {
 		ma := a.of(mode)
@@ -224,4 +262,12 @@ func modeVerdict(c model.ConnectionSummary, mode string) string {
 		return "prompt"
 	}
 	return "allow"
+}
+
+// maskedModeOf is the stored browse_table setting, inherit when unset.
+func maskedModeOf(c model.ConnectionSummary) string {
+	if c.McpMaskedMode == "" {
+		return model.McpMaskedInherit
+	}
+	return c.McpMaskedMode
 }

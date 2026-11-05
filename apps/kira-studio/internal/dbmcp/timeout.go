@@ -68,7 +68,7 @@ func timeoutEnforcementOf(kind, mode string) string {
 		read = "app"
 	}
 	switch mode {
-	case modeRead:
+	case modeRead, modeMasked:
 		return read
 	case modeWrite:
 		return write
