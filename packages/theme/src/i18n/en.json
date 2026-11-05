@@ -1532,6 +1532,9 @@
         "title": "Approve branches · {task}"
       },
       "count": {
+        "approval": {
+          "title": "{count} things await your approval"
+        },
         "branchRequest": {
           "title": "{count} branch requests wait for approval"
         },

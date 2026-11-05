@@ -140,6 +140,8 @@ func countTitle(k Kind, n int) string {
 	switch k {
 	case KindSchedule:
 		return i18n.T("backend.prompt.count.schedule.title", map[string]string{"count": count})
+	case KindApproval:
+		return i18n.T("backend.prompt.count.approval.title", map[string]string{"count": count})
 	case KindDbMcp:
 		return i18n.T("backend.prompt.count.dbMcp.title", map[string]string{"count": count})
 	case KindGitCredential:
