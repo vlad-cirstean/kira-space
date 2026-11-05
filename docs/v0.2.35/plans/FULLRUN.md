@@ -16,3 +16,9 @@ Resumable log. Env: 4 cores, CGO_ENABLED=1.
   - F5 mask-preview.spec asserted class is-active on toolbar-mask-preview; button is shadcn with aria-pressed. Spec asserts aria-pressed.
   - F6/F7 grid-copy-menu (ui-clipboard) env: chromium_headless_shell-1248 missing; installed with `playwright install chromium-headless-shell`. Specs pass.
   - Rerun of cell-editor, mask-preview, grid-copy-menu: 10 passed.
+- Space UI (ui, 1139 tests): all passed first run (31.4m).
+- Mobile (mobile-ios + mobile-android, 84): 83 passed, 1 skipped.
+- Studio ipc-frontend (+visual): ipc-frontend all pass. Visual baselines stale from this chapter's intended UI:
+  - F8 Studio visual settings-database-mcp: pane gained 'Bring Kira Studio forward for approvals' and 'Let agents send API requests' (P520). Re-recorded.
+  - F9 Space visual workflow-graph x5 (review, graph, branches, manual, script): step panel gained 'Save to library' (P526). Re-recorded. Fonts: fc-match sans-serif = Inter.
+  - Rerun without update: all pass (Studio settings, Space visual 27).
