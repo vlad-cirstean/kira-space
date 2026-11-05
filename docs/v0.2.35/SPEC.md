@@ -1,10 +1,10 @@
 # v0.2.35
 
-Branch `chapter/v0.2.35`, based on `chapter/v0.2.34` (v0.2.34 not yet merged to main). First `P` is 512 (highest in v0.2.34 is P511), last is P524.
+Branch `chapter/v0.2.35`, based on `chapter/v0.2.34` (v0.2.34 not yet merged to main). First `P` is 512 (highest in v0.2.34 is P511), last is P525.
 
-Source: user request. Thirteen phases. P524 is the last implementation phase. Close duty after P524: one full suite run, 2 code review rounds (user ask), hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
+Source: user request. Fourteen phases. Close duty after the last phase lands: one full suite run, 2 code review rounds (user ask), hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
 
-Parallelism (user ask): up to 3 phases run at once as named streams, each in its own worktree off the same base, zero file overlap. P512 to P517 landed. Remaining waves: P518 + P519 + P524 in parallel, then P520 alone (async touches every MCP tool), then P521 + P522 (planner may force sequential on overlap in the shared MCP access settings), then P523 alone (touches every id generator). From P512 on, new Kira-generated ids follow the P523 convention where cheap.
+Parallelism (user ask): up to 3 phases run at once as named streams, each in its own worktree off the same base, zero file overlap. P512 to P517 landed. Remaining waves: P518 + P519 + P524 in parallel, then P520 alone (async touches every MCP tool), then P521 + P522 (planner may force sequential on overlap in the shared MCP access settings), then P523 alone (touches every id generator). P525 runs now, by user direction, ahead of P520, because it is frontend-only; P520 is on hold. From P512 on, new Kira-generated ids follow the P523 convention where cheap.
 
 | Phase | Title | Status |
 |---|---|---|
@@ -21,6 +21,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 | P522 | API MCP | Pending |
 | P523 | Prefixed nanoid for every Kira-generated id | Pending |
 | P524 | Manual order for API collections and environments | Done |
+| P525 | Uniform flat design: dialogs and outline buttons | Pending |
 
 ## Rows
 
@@ -102,3 +103,9 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 - Order persists. Backend order field plus migration in `apifiles` if needed. UI drag and drop. Paired Go flow test and UI spec.
 - Plan: `plans/P524.md`.
 - Result: Done in 7 commits, no migration. Order is app state in `sort_order`: new rows append, rename keeps the place, forget reindexes. `ReorderCollections` and `ReorderEnvironments` restored (`apifiles.Store`). Collection drag, Move up/down and Alt+Arrow in the tree; grip drag and keyboard reorder for environments. Flow `TestApiOrder`, UI spec `api-order`. `api-lifecycle` contract regenerated, diff is collection order only.
+
+### P525 Uniform flat design: dialogs and outline buttons
+
+- Ask: Dialogs adopt the flat design. Filled buttons become the outline (or toolbar) style used overall. Fix any other design inconsistency found (radius, borders, shadows, spacing, header/footer layout, icon buttons, destructive styling, inputs, tokens). Both apps and shared packages.
+- Runs before P520 (user direction, frontend-only). P520 to P522 UI adopts the P525 rules.
+- Plan: `plans/P525.md`.
