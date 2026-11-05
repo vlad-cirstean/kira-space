@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"bytes"
 	"encoding/json"
 	"strconv"
 	"strings"
@@ -90,5 +91,5 @@ func equalParam(a, b any) bool {
 		return a == b
 	}
 	bb, _ := b.([]byte)
-	return string(ab) == string(bb)
+	return bytes.Equal(ab, bb)
 }
