@@ -52,6 +52,14 @@ The database enforces it where it can: PostgreSQL, MySQL (reads only), MariaDB a
 
 A timed-out statement is refused, and the AI client can ask for an exemption. You always approve it in a dialog. An exempted statement runs with no time limit, so you can stop it from the Operations panel.
 
+## Table allow list
+
+By default an exposed connection shows every table, including tables created later. In the MCP tab, untick **All tables** to choose which tables, views and collections the client may touch. The choice is saved in the connection file as `mcp.tables`: leave the key out for all tables, `[]` for none.
+
+The app parses every `run_query` and `explain_query` statement before it runs. A statement that touches an unlisted table is refused, in every mode, and no approval or exemption applies. A statement the app cannot parse is refused too. So are `CALL`, `SET`, `USE`, `PRAGMA`, calls to your own functions, and engine features that read other tables. `list_children` and `describe_schema` hide unlisted tables, and `describe_table` refuses them.
+
+Limits: a view is checked by its own name, so listing a view grants what it shows. Scripts and operations are not checked. Kafka, S3, SQS and Redis have no tables, so the list does not apply. Triggers, rules and other code that runs inside the database can still reach unlisted tables; use database permissions for a hard guarantee.
+
 ## Approvals
 
 A prompt waits for you to approve the exact statement. The dialog names the connection and the statement class.

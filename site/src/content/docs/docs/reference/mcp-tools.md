@@ -82,8 +82,8 @@ Run `/mcp__kira-memory__remember` to store durable facts from given text or the 
 
 Server name `kira-db`. See [Database MCP server](../../studio/database-mcp/).
 
-- `list_connections`: every exposed connection with its kind, read-only flag, status, `access` per mode, `enforcement` and masked columns. `statementTimeout` gives the seconds (0 for off) and who enforces it per mode.
-- `list_children`: the children of one container. Arguments: `connectionId`, `path`, `refresh`.
+- `list_connections`: every exposed connection with its kind, read-only flag, status, `access` per mode, `enforcement`, `tables` and masked columns. `statementTimeout` gives the seconds (0 for off) and who enforces it per mode. `tables` is all, or the only tables MCP may touch.
+- `list_children`: the children of one container; tables outside the connection's allow list are hidden. Arguments: `connectionId`, `path`, `refresh`.
 - `describe_table`: columns, primary key, foreign keys, indexes and row estimate. Arguments: `connectionId`, `path`, `refresh`.
 - `describe_schema`: every table and view in one database or schema. Arguments: `connectionId`, `path`, `refresh`.
 - `run_query`: one statement per call. Arguments: `connectionId`, `sql`, `path`, `mode` (`read`, `write` or `ddl`, required), `maxRows` (default 200, maximum 2000), `exemption`.
