@@ -240,16 +240,3 @@ func (s *ConnSet[K, C]) CloseAll(ctx context.Context) {
 		s.opts.Close(ctx, e)
 	}
 }
-
-// LaneOption marks a config opened as a DB MCP read lane (Options key): drivers that pool on
-// their own cap the pool, since a lane serves one agent call at a time.
-const LaneOption = "kiraReadLane"
-
-// LanePoolSize is the pool cap for a lane on a driver that pools on its own.
-const LanePoolSize = 2
-
-// IsLaneConfig reports whether options open a read lane.
-func IsLaneConfig(options map[string]any) bool {
-	lane, _ := options[LaneOption].(bool)
-	return lane
-}

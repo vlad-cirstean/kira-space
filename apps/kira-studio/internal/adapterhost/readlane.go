@@ -2,8 +2,7 @@ package adapterhost
 
 import (
 	"context"
-	"maps"
-	"sync"
+		"sync"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
@@ -43,18 +42,6 @@ func newReadLanes() *readLanes {
 		byID: make(map[string]*readLane), cfgs: make(map[string]model.ResolvedConnectionConfig),
 		open: newKeyedMutex(), idleAfter: laneIdleTimeout,
 	}
-}
-
-// laneConfig is cfg with the read-only switch on and the pool cap marker: same credentials.
-func laneConfig(cfg model.ResolvedConnectionConfig) model.ResolvedConnectionConfig {
-	lane := cfg
-	lane.ReadOnly = true
-	lane.Options = maps.Clone(cfg.Options)
-	if lane.Options == nil {
-		lane.Options = make(map[string]any, 1)
-	}
-	lane.Options[adapters.LaneOption] = true
-	return lane
 }
 
 func (l *readLanes) setConfig(cfg model.ResolvedConnectionConfig) {
@@ -176,7 +163,7 @@ func (r *Router) acquireLane(ctx context.Context, connectionID string, primary a
 	return r.openLane(ctx, connectionID, primary, cfg)
 }
 
-// openLane connects a fresh adapter with laneConfig(cfg) and registers it, counted as in use.
+// openLane connects a fresh adapter with adapters.LaneConfig(cfg) and registers it, counted as in use.
 func (r *Router) openLane(ctx context.Context, connectionID string, primary adapters.Adapter, cfg model.ResolvedConnectionConfig) (*readLane, error) {
 	adapter, err := adapters.CreateAdapter(cfg.Kind, r.deps)
 	if err != nil {
@@ -185,7 +172,7 @@ func (r *Router) openLane(ctx context.Context, connectionID string, primary adap
 	id := connectionID
 	if _, _, err := r.host.RunOp(ctx, OpSpec{ConnectionID: &id, Kind: "connect", Adapter: adapter},
 		func(ctx context.Context, op *adapters.OpCtx) (any, error) {
-			return adapter.Connect(ctx, laneConfig(cfg), op)
+			return adapter.Connect(ctx, adapters.LaneConfig(cfg), op)
 		}); err != nil {
 		boundedCleanup, cancel := context.WithTimeout(context.Background(), disconnectTimeout)
 		_ = adapter.Disconnect(boundedCleanup)
