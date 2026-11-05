@@ -377,6 +377,9 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
     editable: true,
     secrets: [],
   }),
+  // The connection file dialog applies its draft text through the form call; an empty file has no
+  // model and no problem unless a spec says so.
+  [IPC.connectionConfigForm]: JSON.stringify({ text: '', value: null, problem: null }),
   // Every SQL console loads its connection's own DDL document on mount
   // (state/schemas.ts's ensureDdl) — a spec with no Schema (DDL)… of its own gets the same
   // "absent until the user writes one" empty document a fresh connection gets, not a fixture
