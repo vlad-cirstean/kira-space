@@ -488,13 +488,22 @@ func (d AdeStatusDefaults) Validate(set []AdeTaskStatus) error {
 // CommentIDList holds review comment ids. Runs stored before ids became strings hold JSON numbers.
 type CommentIDList []string
 
-// UnmarshalJSON accepts strings and legacy numbers.
+// LegacyCommentID is the id migration 0007 gave the review comment that had integer id n.
+func LegacyCommentID(n int64) string {
+	return fmt.Sprintf("00000000-0000-7000-8000-%012x", n)
+}
+
+// UnmarshalJSON accepts strings and legacy numbers, mapping a number to its migrated id.
 func (l *CommentIDList) UnmarshalJSON(b []byte) error {
 	var raw []json.Number
 	if err := json.Unmarshal(b, &raw); err == nil {
 		*l = make(CommentIDList, len(raw))
 		for i, n := range raw {
-			(*l)[i] = n.String()
+			if v, err := n.Int64(); err == nil && v >= 0 {
+				(*l)[i] = LegacyCommentID(v)
+			} else {
+				(*l)[i] = n.String()
+			}
 		}
 		return nil
 	}

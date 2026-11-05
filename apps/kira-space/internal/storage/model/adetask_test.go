@@ -9,7 +9,7 @@ import (
 // Guards review rounds stored before comment ids became strings: their spec_json holds numbers.
 func TestAdeReviewSpecReadsLegacyNumericCommentIDs(t *testing.T) {
 	for in, want := range map[string][]string{
-		`{"commentIds":[1,22]}`:           {"1", "22"},
+		`{"commentIds":[1,22]}`:           {LegacyCommentID(1), LegacyCommentID(22)},
 		`{"commentIds":["a","b"]}`:        {"a", "b"},
 		`{"commentIds":[]}`:               {},
 		`{"commentIds":["0190-aa", "7"]}`: {"0190-aa", "7"},

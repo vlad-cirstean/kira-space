@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitreview/migrations"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
@@ -48,7 +49,7 @@ func TestMigration0004DefaultsOldComments(t *testing.T) {
 	}
 }
 
-// Guards 0007: integer comment ids become UUIDv7 strings that still sort in creation order.
+// Guards 0007: integer comment ids become UUIDv7 strings that model.LegacyCommentID recomputes.
 func TestMigration0007ConvertsCommentIDs(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "review.db")
 	db, err := sqlitex.Open(path)
@@ -82,14 +83,9 @@ func TestMigration0007ConvertsCommentIDs(t *testing.T) {
 	if err != nil || len(got) != 3 {
 		t.Fatalf("Comments = %v, %v", got, err)
 	}
-	seen := map[string]bool{}
-	for _, c := range got {
-		if !ids.IsUUID(c.ID) || c.ID[14] != '7' || seen[c.ID] {
-			t.Fatalf("id %q is not a distinct UUIDv7", c.ID)
+	for i, c := range got {
+		if want := model.LegacyCommentID(int64(i + 1)); c.ID != want || !ids.IsUUID(c.ID) || c.ID[14] != '7' {
+			t.Fatalf("id %q, want v7 %q", c.ID, want)
 		}
-		seen[c.ID] = true
-	}
-	if got[2].ID[:13] <= got[0].ID[:13] {
-		t.Fatalf("ids %q, %q do not follow created_at", got[0].ID, got[2].ID)
 	}
 }
