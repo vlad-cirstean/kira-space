@@ -133,6 +133,8 @@ export interface AutomationsModuleContext {
   showOperations(): void;
   /** Kira Space: scripts can run for an ADE task. */
   ade: boolean;
+  /** Kira Studio: a normal script can be exposed to agents on the Database MCP server. */
+  mcp?: boolean;
 }
 
 export const automationsModuleKey: InjectionKey<AutomationsModuleContext> =

@@ -117,6 +117,25 @@
       "folder": {
         "label": "Folder"
       },
+      "mcp": {
+        "allow": {
+          "label": "Run straight away"
+        },
+        "description": {
+          "hint": "The agent reads this to choose the script. Up to 1000 characters.",
+          "placeholder": "What this script does and when to run it"
+        },
+        "enable": {
+          "hint": "An agent on the database MCP server can list this script and start it. It gets the run result, never the output; logs come from a separate, size-capped read.",
+          "label": "Let agents run this script"
+        },
+        "prompt": {
+          "label": "Ask me first"
+        },
+        "run": {
+          "label": "When an agent runs it"
+        }
+      },
       "smart": {},
       "tabs": {
         "aria": "Run settings"
@@ -319,6 +338,9 @@
       "triggerAde": {
         "label": "ADE · {task}"
       },
+      "triggerMcp": {
+        "label": "Agent run"
+      },
       "triggerScheduled": {
         "label": "Scheduled"
       },
@@ -439,6 +461,9 @@
       },
       "insertHint": {
         "hint": "Use {token} to insert a parameter. Press {chord} to save."
+      },
+      "mcp": {
+        "tooltip": "Agents can run this script"
       },
       "new": {
         "label": "New script"
@@ -15978,6 +16003,23 @@
         },
         "reviewNever": {
           "status": "Results sent without review"
+        },
+        "scripts": {
+          "allow": {
+            "status": "Runs straight away"
+          },
+          "intro": {
+            "description": "Normal scripts an agent can list and run. A smart script is never exposed. Edit the description and approval mode in the script’s MCP tab."
+          },
+          "legend": {
+            "label": "Scripts"
+          },
+          "prompt": {
+            "status": "Asks before each run"
+          },
+          "toggle": {
+            "aria": "Expose script {name} to agents"
+          }
         },
         "tokenExpired": {
           "body": "Token expired. Regenerate it above."

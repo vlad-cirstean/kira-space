@@ -42,6 +42,8 @@ export function triggerLabel(run: ScriptRun): string {
       return t('automations.run.triggerAde.label', { task: run.taskTitle });
     case 'scheduled':
       return t('automations.run.triggerScheduled.label');
+    case 'mcp':
+      return t('automations.run.triggerMcp.label');
     case 'manual':
       return t('automations.ops.triggerManual.label');
     default:

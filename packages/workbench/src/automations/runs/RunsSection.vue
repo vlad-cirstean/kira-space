@@ -93,6 +93,13 @@ function show(run: ScriptRun): void {
               >
                 · {{ t('automations.run.triggerScheduled.label') }}
               </span>
+              <span
+                v-else-if="run.trigger === 'mcp'"
+                class="text-muted-foreground"
+                data-testid="run-trigger"
+              >
+                · {{ t('automations.run.triggerMcp.label') }}
+              </span>
             </span>
             <RunElapsed :run="run" class="text-kira-sm text-muted-foreground" />
           </button>

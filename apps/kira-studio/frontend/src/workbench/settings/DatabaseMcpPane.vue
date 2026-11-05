@@ -20,6 +20,7 @@ import { useConnectionsStore } from '../../state/connections';
 import { useDbMcpStore } from '../../state/dbmcp';
 import { loadMaskRuleCounts, maskRuleCountsQueryKey } from '../../state/maskRules';
 import { useSettingsStore } from '../../state/settings';
+import ScriptsMcpSection from './ScriptsMcpSection.vue';
 import type { SettingsPaneProps } from './types';
 
 // P103 Part 2 (§5.5): extracted verbatim from workbench/SettingsDialog.vue's own
@@ -363,6 +364,8 @@ const dbMcpFocusId = useId();
       {{ t('studio.settings.dbMcp.kube.empty.empty') }}
     </FieldDescription>
     <ClusterMcpDialog v-if="kubeEditId" v-model:open="kubeEditOpen" :cluster-id="kubeEditId" />
+
+    <ScriptsMcpSection />
 
     <Alert v-if="actionError" variant="error" data-testid="settings-action-error">
       <AlertDescription>{{ actionError }}</AlertDescription>

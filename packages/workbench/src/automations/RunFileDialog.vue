@@ -28,6 +28,7 @@ import { useConfigFormDraft } from '../config/useConfigFormDraft';
 import McpToolsField from './form/McpToolsField.vue';
 import ParamsEditor from './form/ParamsEditor.vue';
 import RunFolderTab from './form/RunFolderTab.vue';
+import RunMcpTab from './form/RunMcpTab.vue';
 import RunScriptTab from './form/RunScriptTab.vue';
 import {
   fileParamsOf,
@@ -56,7 +57,7 @@ import { defaultSmart } from './smart/smartSettings';
 const props = defineProps<{ file: string }>();
 const emit = defineEmits<{ close: [] }>();
 
-type Section = EditorTab | 'smart' | 'folder' | 'yaml';
+type Section = EditorTab | 'smart' | 'folder' | 'mcp' | 'yaml';
 
 const ctx = useAutomationsModule();
 const { info: agentInfo } = useAgentInfo();
@@ -124,6 +125,7 @@ const sections = computed<Section[]>(() => [
   'folder',
   'schedule',
   'params',
+  ...(ctx.mcp && !isSmart.value ? (['mcp'] as const) : []),
   'yaml',
 ]);
 const LABEL = {
@@ -132,6 +134,7 @@ const LABEL = {
   folder: () => t('automations.form.folder.label'),
   schedule: () => t('automations.schedule.title.label'),
   params: () => t('automations.params.title.label'),
+  mcp: () => t('common.mcp.label'),
   yaml: () => t('common.yaml.label'),
 } as const satisfies Record<Section, () => string>;
 
@@ -204,6 +207,7 @@ function errorCount(s: Section): number {
   if (s === 'smart') return e?.budget ? 1 : 0;
   if (s === 'folder') return ['/dir', '/path'].some((p) => draft.errorFor(p)) ? 1 : 0;
   if (s === 'script') return serverCount('script');
+  if (s === 'mcp') return serverCount('mcp');
   if (s === 'params') return (e ? tabErrorCount(e, 'params') : 0) + serverCount('params');
   return (e ? tabErrorCount(e, 'schedule') : 0) + serverCount('schedule');
 }
@@ -328,6 +332,12 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
                   v-show="section === 'folder'"
                   v-model="draft.model.value"
                   :id="view.id"
+                  :error-for="draft.errorFor"
+                />
+                <RunMcpTab
+                  v-if="ctx.mcp && !isSmart"
+                  v-show="section === 'mcp'"
+                  v-model="draft.model.value"
                   :error-for="draft.errorFor"
                 />
                 <div v-show="section === 'schedule'" class="flex flex-col gap-3">

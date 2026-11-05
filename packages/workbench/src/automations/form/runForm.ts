@@ -27,6 +27,11 @@ export const RUN_FIELDS: readonly FieldSpec[] = [
   { path: ['smart', 'tools'] },
   { path: ['smart', 'bash_patterns'], unsetWhenEmpty: true },
   { path: ['smart', 'mcp'], unsetWhenEmpty: true },
+  { path: ['mcp'], presence: true },
+  { path: ['mcp', 'enabled'], unsetWhen: false },
+  { path: ['mcp', 'description'], unsetWhenEmpty: true },
+  { path: ['mcp', 'run'], unsetWhen: 'prompt' },
+  { path: ['mcp', 'timeout'], unsetWhenEmpty: true },
   { path: ['schedule'], presence: true },
   { path: ['schedule', 'cron'] },
   { path: ['schedule', 'timezone'], unsetWhenEmpty: true },
@@ -36,7 +41,7 @@ export const RUN_FIELDS: readonly FieldSpec[] = [
   { path: ['schedule', 'params'], unsetWhenEmpty: true },
 ];
 
-/** Pointers the Script, Params and Schedule tabs claim; a problem outside them shows on top. */
+/** Pointers the Script, Params, Schedule and MCP tabs claim; a problem outside them shows on top. */
 export const RUN_TAB_POINTERS = {
   script: [
     '/name',
@@ -52,6 +57,7 @@ export const RUN_TAB_POINTERS = {
   ],
   params: ['/params'],
   schedule: ['/schedule'],
+  mcp: ['/mcp'],
 } as const;
 
 export function paramsOf(file: RunFile): ScriptParam[] {
