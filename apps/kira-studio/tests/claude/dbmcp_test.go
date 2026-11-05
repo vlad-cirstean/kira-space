@@ -13,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/claude/mcpinstall"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
+	"github.com/kirathecat/kira-studio/internal/scripts"
 )
 
 const dbServer = "kira-db"
@@ -83,6 +84,50 @@ func TestDbMcpThroughClaude(t *testing.T) {
 	}
 	if res := resultMsg(t, msgs); res.IsError {
 		t.Fatalf("claude run ended in error: %+v", res)
+	}
+}
+
+// TestDbMcpScriptThroughClaude has the real claude run an allow-mode script over MCP, then read
+// its output with get_script_logs: the run result itself carries no output. The filter is the
+// model's choice, so the flow test covers it.
+func TestDbMcpScriptThroughClaude(t *testing.T) {
+	app := newRealApp(t)
+	_, url, helper := enableDbMcp(t, app)
+	if _, err := app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
+		Name: "probe", Command: "printf 'alpha\\nbeta-marker\\ngamma\\n'",
+		MCP: &scripts.MCPAccess{Enabled: true, Run: scripts.MCPRunAllow, Description: "Prints three lines."},
+	}}); err != nil {
+		t.Fatalf("CustomScripts.Create: %v", err)
+	}
+	cfg := filepath.Join(t.TempDir(), "mcp.json")
+	raw, err := json.Marshal(map[string]any{"mcpServers": map[string]any{
+		dbServer: map[string]any{"type": "http", "url": url, "headersHelper": loginshell.Quote(helper)},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfg, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	out := app.claudeP(t, t.TempDir(),
+		"You must use the kira-db MCP tools, loading them with ToolSearch if they are deferred. Call list_scripts, then run_script for the script probe with waitSeconds 20, then call get_script_logs for that run with contains set to marker. Reply with the matching line.",
+		"--strict-mcp-config", "--mcp-config", cfg,
+		"--allowedTools", "ToolSearch,mcp__"+dbServer+"__list_scripts,mcp__"+dbServer+"__run_script,mcp__"+dbServer+"__get_script_logs",
+		"--output-format", "stream-json", "--verbose")
+	msgs := parseStream(out)
+	runs := toolUses(msgs, "mcp__"+dbServer+"__run_script")
+	logs := toolUses(msgs, "mcp__"+dbServer+"__get_script_logs")
+	if len(runs) == 0 || len(logs) == 0 {
+		t.Fatalf("run_script uses %d, get_script_logs uses %d, want both:\n%s", len(runs), len(logs), tail(out, 1500))
+	}
+	runText, isErr, ok := toolResult(msgs, runs[0].ID)
+	if !ok || isErr || strings.Contains(runText, "beta-marker") {
+		t.Fatalf("run_script result missing, an error or holding output (ok=%v, text=%q)", ok, runText)
+	}
+	logText, isErr, ok := toolResult(msgs, logs[0].ID)
+	if !ok || isErr || !strings.Contains(logText, "beta-marker") {
+		t.Fatalf("get_script_logs result = %q (ok=%v, err=%v), want the marker line", logText, ok, isErr)
 	}
 }
 
