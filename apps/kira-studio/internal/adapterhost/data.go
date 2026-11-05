@@ -204,13 +204,18 @@ func (d *Dispatcher) Execute(ctx context.Context, req ExecuteRequestWire) (Execu
 	if err != nil {
 		return ExecuteResponse{}, err
 	}
+	return d.executeOn(ctx, adapter, nil, req)
+}
+
+// executeOn runs req on adapter; lane is non-nil when adapter is a read lane, so Cancel reaches it.
+func (d *Dispatcher) executeOn(ctx context.Context, adapter, lane adapters.Adapter, req ExecuteRequestWire) (ExecuteResponse, error) {
 	path, err := decodePath(req.ConnectionID, req.Path)
 	if err != nil {
 		return ExecuteResponse{}, err
 	}
 
 	connID := req.ConnectionID
-	_, value, err := d.host.RunOp(ctx, OpSpec{ConnectionID: &connID, Kind: "execute", OpID: req.OpID, TabID: req.TabID},
+	_, value, err := d.host.RunOp(ctx, OpSpec{ConnectionID: &connID, Kind: "execute", OpID: req.OpID, TabID: req.TabID, Adapter: lane},
 		func(ctx context.Context, op *adapters.OpCtx) (any, error) {
 			// P108 Part 11 F5: req.Path is already the encoded string tabs.ts's own openConsoleTab
 			// takes — recorded as-is so a re-run can reopen at the exact same path, no NodePath

@@ -36,6 +36,9 @@ type OpSpec struct {
 	Incognito bool
 	// DelayMs is preconnect only: the configured wait, so the panel can count it down.
 	DelayMs int
+	// Adapter is the adapter running the op when it is not the connection's live one (a read
+	// lane); Cancel then reaches that adapter instead.
+	Adapter adapters.Adapter
 }
 
 type runningOp struct {
@@ -44,6 +47,7 @@ type runningOp struct {
 	kind         string
 	source       string
 	startedAt    string
+	adapter      adapters.Adapter
 	// listed is set once op:start is emitted: only then does the op have a panel row.
 	listed bool
 }
@@ -242,7 +246,7 @@ func (h *Host) RunOp(ctx context.Context, spec OpSpec, fn func(context.Context, 
 		}
 	}
 	derived, cancel := context.WithCancel(ctx)
-	h.running[opID] = runningOp{cancel: cancel, connectionID: spec.ConnectionID, kind: spec.Kind, source: OpSourceOf(ctx)}
+	h.running[opID] = runningOp{cancel: cancel, connectionID: spec.ConnectionID, kind: spec.Kind, source: OpSourceOf(ctx), adapter: spec.Adapter}
 	h.mu.Unlock()
 	defer func() {
 		h.mu.Lock()
@@ -412,13 +416,15 @@ func (h *Host) CancelOp(ctx context.Context, opID string) (bool, error) {
 // stopOp is the shared tail of CancelOp and CancelRunning.
 func (h *Host) stopOp(ctx context.Context, opID string, op runningOp) {
 	op.cancel()
-	if op.connectionID != nil {
-		if adapter, ok := adapters.GetLiveAdapter(*op.connectionID); ok {
-			// F1 (P168 Part 5): a stalled engine must not park the Cancel call forever.
-			cancelCtx, stop := context.WithTimeout(ctx, disconnectTimeout)
-			_, _ = adapter.Cancel(cancelCtx, opID)
-			stop()
-		}
+	adapter := op.adapter
+	if adapter == nil && op.connectionID != nil {
+		adapter, _ = adapters.GetLiveAdapter(*op.connectionID)
+	}
+	if adapter != nil {
+		// F1 (P168 Part 5): a stalled engine must not park the Cancel call forever.
+		cancelCtx, stop := context.WithTimeout(ctx, disconnectTimeout)
+		_, _ = adapter.Cancel(cancelCtx, opID)
+		stop()
 	}
 }
 
@@ -470,6 +476,21 @@ func (h *Host) CancelOpsForConnection(connectionID, exceptOpID string) {
 			continue
 		}
 		toCancel = append(toCancel, op.cancel)
+	}
+	h.mu.Unlock()
+	for _, cancel := range toCancel {
+		cancel()
+	}
+}
+
+// CancelOpsOnAdapter locally cancels every running op that runs on adapter (a read lane).
+func (h *Host) CancelOpsOnAdapter(adapter adapters.Adapter) {
+	h.mu.Lock()
+	var toCancel []context.CancelFunc
+	for _, op := range h.running {
+		if op.adapter == adapter {
+			toCancel = append(toCancel, op.cancel)
+		}
 	}
 	h.mu.Unlock()
 	for _, cancel := range toCancel {
