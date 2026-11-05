@@ -14,6 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
+	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
 const (
@@ -106,7 +107,7 @@ func (s *Store) recordCollection(tx *sql.Tx, stem, valueJSON string, ch *Changes
 	case errors.Is(err, sql.ErrNoRows):
 		id = uuid.NewString()
 		if _, err := tx.Exec(`INSERT INTO api_collections (id, name, sort_order, origin_json, created_at, updated_at, variables_promoted, stem)
-			VALUES (?, ?, 0, ?, ?, ?, 1, ?)`, id, f.Name, s.takeOrigin(stem, ""), now, now, stem); err != nil {
+			VALUES (?, ?, (SELECT COALESCE(MAX(sort_order) + 1, 0) FROM api_collections), ?, ?, ?, 1, ?)`, id, f.Name, s.takeOrigin(stem, ""), now, now, stem); err != nil {
 			return fmt.Errorf("apifiles: insert collection %s: %w", stem, err)
 		}
 		ch.Tree = true
@@ -124,7 +125,7 @@ func (s *Store) recordCollection(tx *sql.Tx, stem, valueJSON string, ch *Changes
 	if err := syncVariables(tx, OwnerCollection, id, f.Variables, ch); err != nil {
 		return err
 	}
-	return reorder(tx, "api_collections", &ch.Tree)
+	return nil
 }
 
 func (s *Store) forgetCollection(tx *sql.Tx, stem string, ch *Changes) error {
@@ -141,7 +142,7 @@ func (s *Store) forgetCollection(tx *sql.Tx, stem string, ch *Changes) error {
 	}
 	ch.Tree = true
 	ch.variables(OwnerCollection, id)
-	return reorder(tx, "api_collections", &ch.Tree)
+	return reindex(tx, "api_collections")
 }
 
 type flatItem struct {
@@ -359,7 +360,7 @@ func (s *Store) recordEnvironment(tx *sql.Tx, stem, valueJSON string, ch *Change
 	case errors.Is(err, sql.ErrNoRows):
 		id = uuid.NewString()
 		if _, err := tx.Exec(`INSERT INTO api_environments (id, name, sort_order, is_active, description, color, created_at, updated_at, stem)
-			VALUES (?, ?, 0, 0, ?, ?, ?, ?, ?)`, id, f.Name, f.Description, color, now, now, stem); err != nil {
+			VALUES (?, ?, (SELECT COALESCE(MAX(sort_order) + 1, 0) FROM api_environments), 0, ?, ?, ?, ?, ?)`, id, f.Name, f.Description, color, now, now, stem); err != nil {
 			return fmt.Errorf("apifiles: insert environment %s: %w", stem, err)
 		}
 		ch.Environments = true
@@ -375,7 +376,7 @@ func (s *Store) recordEnvironment(tx *sql.Tx, stem, valueJSON string, ch *Change
 	if err := syncVariables(tx, OwnerEnvironment, id, f.Variables, ch); err != nil {
 		return err
 	}
-	return reorder(tx, "api_environments", &ch.Environments)
+	return nil
 }
 
 func (s *Store) forgetEnvironment(tx *sql.Tx, stem string, ch *Changes) error {
@@ -392,43 +393,13 @@ func (s *Store) forgetEnvironment(tx *sql.Tx, stem string, ch *Changes) error {
 	}
 	ch.Environments = true
 	ch.variables(OwnerEnvironment, id)
-	return reorder(tx, "api_environments", &ch.Environments)
+	return reindex(tx, "api_environments")
 }
 
-// reorder numbers the rows of table by name, ignoring case. changed is set when a row moved.
-func reorder(tx *sql.Tx, table string, changed *bool) error {
-	rows, err := tx.Query(`SELECT id, sort_order FROM ` + table + ` ORDER BY name COLLATE NOCASE, stem`)
-	if err != nil {
-		return fmt.Errorf("apifiles: read order of %s: %w", table, err)
-	}
-	type pos struct {
-		id    string
-		order int
-	}
-	var all []pos
-	for rows.Next() {
-		var p pos
-		if err := rows.Scan(&p.id, &p.order); err != nil {
-			rows.Close()
-			return fmt.Errorf("apifiles: scan order of %s: %w", table, err)
-		}
-		all = append(all, p)
-	}
-	if err := rows.Err(); err != nil {
-		rows.Close()
-		return fmt.Errorf("apifiles: order of %s: %w", table, err)
-	}
-	rows.Close()
-	for i, p := range all {
-		if p.order == i {
-			continue
-		}
-		if _, err := tx.Exec(`UPDATE `+table+` SET sort_order = ? WHERE id = ?`, i, p.id); err != nil {
-			return fmt.Errorf("apifiles: order %s: %w", table, err)
-		}
-		*changed = true
-	}
-	return nil
+// reindex keeps table's sort_order dense after a delete, in the order the rows already have.
+func reindex(tx *sql.Tx, table string) error {
+	return sqlitex.ReindexSortOrder(tx, `SELECT id FROM `+table+` ORDER BY sort_order, name, stem`,
+		`UPDATE `+table+` SET sort_order = ? WHERE id = ?`)
 }
 
 // ---- variables ----

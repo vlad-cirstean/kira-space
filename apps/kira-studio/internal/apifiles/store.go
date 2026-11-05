@@ -165,6 +165,11 @@ func (s *Store) pruneOrphans(ce []configfs.Entry[CollectionFile], ee []configfs.
 				*t.changed = true
 				ch.variables(t.scope, id)
 			}
+			if len(gone) > 0 {
+				if err := reindex(tx, t.table); err != nil {
+					return err
+				}
+			}
 		}
 		return nil
 	})
