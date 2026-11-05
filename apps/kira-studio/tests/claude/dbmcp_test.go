@@ -87,6 +87,44 @@ func TestDbMcpThroughClaude(t *testing.T) {
 	}
 }
 
+// TestDbMcpRunQueryModeThroughClaude has the real claude declare a mode on run_query (P527): the
+// schema requires it, and a read runs on the read lane.
+func TestDbMcpRunQueryModeThroughClaude(t *testing.T) {
+	app := newRealApp(t)
+	connName, url, helper := enableDbMcp(t, app)
+	cfg := filepath.Join(t.TempDir(), "mcp.json")
+	raw, err := json.Marshal(map[string]any{"mcpServers": map[string]any{
+		dbServer: map[string]any{"type": "http", "url": url, "headersHelper": loginshell.Quote(helper)},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfg, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	tool := "mcp__" + dbServer + "__run_query"
+	out := app.claudeP(t, t.TempDir(),
+		"Call list_connections, then call run_query once on the connection named "+connName+" with sql \"SELECT 1 AS n\" and an empty path. Declare the least powerful mode that fits. Then reply with the word done.",
+		"--strict-mcp-config", "--mcp-config", cfg,
+		"--allowedTools", "mcp__"+dbServer+"__list_connections,"+tool,
+		"--output-format", "stream-json", "--verbose")
+	msgs := parseStream(out)
+	uses := toolUses(msgs, tool)
+	if len(uses) == 0 {
+		t.Fatalf("no run_query tool use in the stream:\n%s", tail(out, 1500))
+	}
+	var in struct {
+		Mode string `json:"mode"`
+	}
+	if err := json.Unmarshal(uses[len(uses)-1].Input, &in); err != nil || in.Mode != "read" {
+		t.Fatalf("run_query input = %s (%v), want mode read", uses[len(uses)-1].Input, err)
+	}
+	text, isErr, ok := toolResult(msgs, uses[len(uses)-1].ID)
+	if !ok || isErr || !strings.Contains(text, "\"n\"") {
+		t.Fatalf("run_query result = %q (ok=%v, error=%v), want the n column", text, ok, isErr)
+	}
+}
+
 // TestDbMcpScriptThroughClaude has the real claude run an allow-mode script over MCP, then read
 // its output with get_script_logs: the run result itself carries no output. The filter is the
 // model's choice, so the flow test covers it.
