@@ -16,7 +16,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 | P531 | Ops throttle covers every op from every session, with explanation | Done |
 | P532 | Table allow list per connection for DB MCP | Done |
 | P533 | Tool descriptions suggest inspecting schemas first | Done |
-| P534 | Masking validation: new columns are withheld until masking is reviewed | Pending |
+| P534 | Masking validation: new columns are withheld until masking is reviewed | Done |
 | P535 | Masked-read permission and constrained browse tool as the MCP default | Pending |
 | P536 | Review MCP results before delivery to the agent | Pending |
 
@@ -78,6 +78,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 - Needs a stored snapshot of the reviewed columns per connection (user confirms it), a diff against the live schema on connect and refresh, and enforcement in the MCP result path (the new column is dropped from results or the query refused; plan decides, the agent is told why).
 - Notification uses the existing notification mechanism; a link opens the masking editor.
 - Plan: `plans/P534.md`.
+- Result: file key `mask_review` (absent = off) with projection and validation; `internal/maskreview` diffs live columns against rules and the reviewed list on connect, Refresh, file edit, MCP write/DDL and a 30 s recheck, scoped to the P532 list; MCP results drop unreviewed columns (`withheldColumns`) and refuse alias, filter, sort or an incomplete check, never exemptable; prompt kind `masking` opens the Privacy tab, where `ConnectionMaskReview.vue` lists columns. Unit, flow `dbmcpflow/maskreview_test.go`, UI `connection-mask-review.spec.ts` and the real `claude` suite pass. P535 hand-off in the plan.
 
 ### P535 Masked-read permission and constrained browse tool as the MCP default
 
