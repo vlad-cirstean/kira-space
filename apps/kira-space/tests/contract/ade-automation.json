@@ -28,6 +28,7 @@
     "dirMode": "kira",
     "id": "audit",
     "kind": "smart",
+    "mcp": null,
     "name": "audit",
     "params": [],
     "savedSecrets": [],

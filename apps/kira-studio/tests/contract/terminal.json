@@ -7,6 +7,7 @@
     "dirMode": "fixed",
     "id": "list",
     "kind": "script",
+    "mcp": null,
     "name": "list",
     "params": [],
     "savedSecrets": [],

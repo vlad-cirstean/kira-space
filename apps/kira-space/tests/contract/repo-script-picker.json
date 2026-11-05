@@ -461,6 +461,7 @@
         "dirMode": "kira",
         "id": "<masked>",
         "kind": "script",
+        "mcp": null,
         "name": "Install deps",
         "params": [
           {
@@ -513,6 +514,7 @@
         "dirMode": "kira",
         "id": "<masked>",
         "kind": "script",
+        "mcp": null,
         "name": "Staging sha",
         "params": [],
         "savedSecrets": [],
@@ -531,6 +533,7 @@
         "dirMode": "kira",
         "id": "<masked>",
         "kind": "smart",
+        "mcp": null,
         "name": "Review",
         "params": [],
         "savedSecrets": [],

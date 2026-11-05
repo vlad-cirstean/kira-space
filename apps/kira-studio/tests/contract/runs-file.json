@@ -48,6 +48,7 @@
         "dirMode": "kira",
         "id": "deploy",
         "kind": "script",
+        "mcp": null,
         "name": "Ship",
         "params": [
           {
@@ -98,6 +99,7 @@
         "dirMode": "kira",
         "id": "deploy",
         "kind": "script",
+        "mcp": null,
         "name": "Ship",
         "params": [
           {
@@ -148,6 +150,7 @@
         "dirMode": "kira",
         "id": "deploy",
         "kind": "script",
+        "mcp": null,
         "name": "Deploy",
         "params": [
           {
