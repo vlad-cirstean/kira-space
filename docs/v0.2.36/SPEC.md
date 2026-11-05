@@ -10,7 +10,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 
 | Phase | Title | Status |
 |---|---|---|
-| P528 | DB MCP limit exemptions: agent asks, user always approves | Pending |
+| P528 | DB MCP limit exemptions: agent asks, user always approves | Done |
 | P529 | Statement timeout per connection, enforced by the engine | Pending |
 | P530 | Expensive-query (EXPLAIN) threshold enforced for MCP, with explanation | Pending |
 | P531 | Ops throttle covers every op from every session, with explanation | Done |
@@ -29,6 +29,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 - Rules: an exemption covers that one statement only, never the session. The agent passes an exemption request plus a short reason on `run_query`, never a way to skip the dialog. A denied exemption returns a clear refusal.
 - Decide in plan: whether the exemption is a `run_query` field or a separate tool; how the rejected call tells the agent the exemption path exists (rejection text names the field).
 - Plan: `plans/P528.md`.
+- Result: `run_query` takes `exemption: {id, reason}`; a limit refusal mints a single-use `exm_` id; an exempted call always raises one `db.exemption` approval (also on `allow` modes) that "Approve all" skips. `Limit`/`PreLimit`/`ExecLimit` seams in `dbmcp/limits.go` and `flowharness.WithDbMcpLimits` ready for P529/P530. Five flow tests, a store unit test and a UI spec pass.
 
 ### P529 Statement timeout per connection, enforced by the engine
 
