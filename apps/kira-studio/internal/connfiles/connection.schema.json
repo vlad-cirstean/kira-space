@@ -190,6 +190,20 @@
         }
       }
     },
+    "mask_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["columns"],
+      "description": "Column review for masking. Absent turns it off. Present, a column that no mask rule covers and that is not listed here is withheld from MCP results until the user reviews it. Not for mongodb, redis, kafka, s3, sqs or kibana.",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "maxItems": 100000,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Columns the user reviewed. Entry format: the table entry of the kind plus the column, for example postgres database.schema.table.column; mysql, mariadb, clickhouse database.table.column; sqlite table.column. Wrap a part in double quotes when it holds a dot."
+        }
+      }
+    },
     "tree": {
       "type": "object",
       "additionalProperties": false,

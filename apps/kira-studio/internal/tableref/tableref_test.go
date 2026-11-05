@@ -109,3 +109,34 @@ func TestFromPath(t *testing.T) {
 		}
 	}
 }
+
+func TestColumnEntries(t *testing.T) {
+	ok := []struct {
+		kind, entry string
+		want        ColumnRef
+	}{
+		{"postgres", `shop.public.t."a.b"`, ColumnRef{Ref{"shop", "public", "t"}, "a.b"}},
+		{"mysql", `db."t.x"."c""d"`, ColumnRef{Ref{Database: "db", Name: "t.x"}, `c"d`}},
+		{"sqlite", "notes.Body", ColumnRef{Ref{Name: "notes"}, "Body"}},
+	}
+	for _, c := range ok {
+		got, err := ParseColumn(c.kind, c.entry)
+		if err != nil || got != c.want {
+			t.Fatalf("ParseColumn(%s, %q) = %+v, %v; want %+v", c.kind, c.entry, got, err, c.want)
+		}
+		if f := FormatColumn(c.kind, got); f != c.entry {
+			t.Fatalf("FormatColumn = %q; want %q", f, c.entry)
+		}
+	}
+	for _, c := range []struct{ kind, entry string }{
+		{"postgres", "shop.public.t"}, {"mysql", "db.t.c.d"}, {"sqlite", "notes"}, {"redis", "a.b"},
+	} {
+		if _, err := ParseColumn(c.kind, c.entry); err == nil {
+			t.Fatalf("ParseColumn(%s, %q) accepted", c.kind, c.entry)
+		}
+	}
+	a := ColumnRef{Ref{Name: "Notes"}, "Body"}
+	if ColumnKey("sqlite", a) != "notes.body" || ColumnKey("mysql", ColumnRef{Ref{Database: "d", Name: "N"}, "B"}) != "d.N.B" {
+		t.Fatal("only sqlite column keys fold case")
+	}
+}

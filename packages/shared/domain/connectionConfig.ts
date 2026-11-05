@@ -74,6 +74,11 @@ export interface ConnectionFileMcp {
   tables?: string[];
 }
 
+// Column review (P534). Absent = off; columns are tableref column entries.
+export interface ConnectionFileMaskReview {
+  columns: string[];
+}
+
 export interface ConnectionFileModel {
   name: string;
   kind: string;
@@ -92,6 +97,7 @@ export interface ConnectionFileModel {
   throttle_per_sec?: number;
   mcp?: ConnectionFileMcp;
   masks?: ConnectionFileMask[];
+  mask_review?: ConnectionFileMaskReview;
 }
 
 /** The reply of ConnectionConfigService.Form: the edited text and what it decodes to. */

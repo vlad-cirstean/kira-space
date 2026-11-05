@@ -592,6 +592,7 @@ func zeroExemptFields(f *model.ConnectionFields) {
 	f.McpReviewResults = ""
 	f.McpStatementTimeoutSec = 0
 	f.McpTables = nil
+	f.MaskReviewOn = false
 }
 
 // Test never errors: it tests the saved file, resolves its secret server-side and never displays it

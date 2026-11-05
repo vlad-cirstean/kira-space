@@ -68,7 +68,7 @@ func FileKind(kind string) bool { return fileKinds[kind] }
 // Validate runs every rule on the file. The decoder runs it as the file's cross-field rule, and Create
 // runs it before it writes a file.
 func (f File) Validate() *ValidationError {
-	for _, check := range []func() *ValidationError{f.checkIdentity, f.checkLimits, f.checkMCP, f.checkMode, f.checkMasks, f.checkTree} {
+	for _, check := range []func() *ValidationError{f.checkIdentity, f.checkLimits, f.checkMCP, f.checkMode, f.checkMasks, f.checkMaskReview, f.checkTree} {
 		if err := check(); err != nil {
 			return err
 		}
@@ -243,6 +243,28 @@ func (f File) checkMasks() *ValidationError {
 			return bad(at+"/column", "backend.studio.connectionFiles.maskDuplicate.body", map[string]string{"column": m.Column})
 		}
 		seen[key] = true
+	}
+	return nil
+}
+
+// MaskReviewMax caps the entries of mask_review.columns.
+const MaskReviewMax = 100000
+
+func (f File) checkMaskReview() *ValidationError {
+	r := f.MaskReview
+	if r == nil {
+		return nil
+	}
+	if !tableref.Applies(f.Kind) || f.Kind == "mongodb" || f.Kind == "kibana" {
+		return bad("/mask_review", "backend.studio.connection.maskReviewKind.body", nil)
+	}
+	if len(r.Columns) > MaskReviewMax {
+		return bad("/mask_review", "backend.studio.connection.maskReviewMax.body", map[string]string{"max": strconv.Itoa(MaskReviewMax)})
+	}
+	for i, e := range r.Columns {
+		if _, err := tableref.ParseColumn(f.Kind, e); err != nil {
+			return bad(fmt.Sprintf("/mask_review/columns/%d", i), "backend.studio.connection.maskReviewEntry.body", nil)
+		}
 	}
 	return nil
 }

@@ -39,6 +39,7 @@ const BASE: Omit<ConnectionSummary, 'id' | 'name' | 'kind' | 'mode' | 'sortOrder
   mcpReviewResults: 'inherit',
   mcpStatementTimeoutSec: 10,
   mcpTables: null,
+  maskReviewOn: false,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 };

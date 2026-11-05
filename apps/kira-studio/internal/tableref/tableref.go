@@ -119,6 +119,18 @@ func Parse(kind, entry string) (Ref, error) {
 	if want == 0 {
 		return Ref{}, fmt.Errorf("table list does not apply to %q", kind)
 	}
+	parts, err := splitParts(entry)
+	if err != nil {
+		return Ref{}, err
+	}
+	if len(parts) != want {
+		return Ref{}, fmt.Errorf("want %d parts for %s, got %d", want, kind, len(parts))
+	}
+	return fromParts(kind, parts), nil
+}
+
+// splitParts splits an entry on unquoted dots.
+func splitParts(entry string) ([]string, error) {
 	var parts []string
 	rs := []rune(entry)
 	for i := 0; ; i++ { // i++ skips the '.'
@@ -130,20 +142,56 @@ func Parse(kind, entry string) (Ref, error) {
 			seg, i, err = scanBare(rs, i)
 		}
 		if err != nil {
-			return Ref{}, err
+			return nil, err
 		}
 		if seg == "" {
-			return Ref{}, errors.New("empty part")
+			return nil, errors.New("empty part")
 		}
 		parts = append(parts, seg)
 		if i >= len(rs) {
-			break
+			return parts, nil
 		}
 	}
-	if len(parts) != want {
-		return Ref{}, fmt.Errorf("want %d parts for %s, got %d", want, kind, len(parts))
+}
+
+// ColumnRef is one column of a Ref.
+type ColumnRef struct {
+	Ref
+	Column string
+}
+
+// FormatColumn writes the canonical column entry: the table entry plus a column segment.
+func FormatColumn(kind string, c ColumnRef) string {
+	t := Format(kind, c.Ref)
+	if t == "" {
+		return quote(c.Column)
 	}
-	return fromParts(kind, parts), nil
+	return t + "." + quote(c.Column)
+}
+
+// ParseColumn reads one column entry: Levels(kind)+1 parts.
+func ParseColumn(kind, entry string) (ColumnRef, error) {
+	want := Levels(kind)
+	if want == 0 {
+		return ColumnRef{}, fmt.Errorf("table list does not apply to %q", kind)
+	}
+	parts, err := splitParts(entry)
+	if err != nil {
+		return ColumnRef{}, err
+	}
+	if len(parts) != want+1 {
+		return ColumnRef{}, fmt.Errorf("want %d parts for %s, got %d", want+1, kind, len(parts))
+	}
+	return ColumnRef{Ref: fromParts(kind, parts[:want]), Column: parts[want]}, nil
+}
+
+// ColumnKey is the match key of a column: FormatColumn, ASCII-lowercased for sqlite.
+func ColumnKey(kind string, c ColumnRef) string {
+	k := FormatColumn(kind, c)
+	if kind == "sqlite" {
+		return asciiLower(k)
+	}
+	return k
 }
 
 func asciiLower(s string) string {

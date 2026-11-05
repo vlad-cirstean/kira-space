@@ -29,6 +29,7 @@ export function baseConnectionConfig(
     mcpReviewResults: 'inherit',
     mcpStatementTimeoutSec: 10,
     mcpTables: null,
+    maskReviewOn: false,
     ...overrides,
   };
 }

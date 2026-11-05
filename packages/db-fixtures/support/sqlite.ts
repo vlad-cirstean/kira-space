@@ -106,6 +106,7 @@ async function start(opts?: { seedBigTable?: boolean }): Promise<SqliteFixture> 
     mcpReviewResults: 'inherit',
     mcpStatementTimeoutSec: 10,
     mcpTables: null,
+    maskReviewOn: false,
     password: null,
   };
 

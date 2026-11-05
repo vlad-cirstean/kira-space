@@ -2556,6 +2556,15 @@
         "hostRequired": {
           "body": "Host is required."
         },
+        "maskReviewEntry": {
+          "body": "A column in the masking review list is not valid for this connection kind."
+        },
+        "maskReviewKind": {
+          "body": "Masking column review does not apply to this connection kind."
+        },
+        "maskReviewMax": {
+          "body": "The masking review list holds at most {max} columns."
+        },
         "mcpDescriptionLength": {
           "body": "MCP description must be at most 1000 characters."
         },

@@ -56,6 +56,9 @@ type ConnectionFields struct {
 	// including ones created later; non-nil (maybe empty) = exactly those. Not applicable to redis, kafka,
 	// s3 or sqs.
 	McpTables []string `json:"mcpTables"`
+	// P534: column review for masking is on. Columns no rule masks and the user has not reviewed are
+	// withheld from MCP results. The reviewed list itself lives in repos.MaskReviewRepo.
+	MaskReviewOn bool `json:"maskReviewOn"`
 }
 
 // ConnectionSummary mirrors packages/shared/domain/connection.ts's connectionSummarySchema.

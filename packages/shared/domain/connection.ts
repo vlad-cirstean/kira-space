@@ -174,6 +174,8 @@ const connectionFieldsSchema = /*#__PURE__*/ z.object({
     .default(CONNECTION_MCP_STATEMENT_TIMEOUT.default),
   // P532: tables MCP statements may touch (tableref entries). null = all, including later ones; [] = none.
   mcpTables: z.array(z.string()).nullable().default(null),
+  // P534: column review for masking is on; the reviewed list lives in the connection file.
+  maskReviewOn: z.boolean().default(false),
   // M2: free-text "what this DB is for", passed to an AI client as connection metadata
   // (list_connections). Never interpreted by this app.
   mcpDescription: z.string().max(1000).default(''),

@@ -40,6 +40,7 @@ function summary(over: Partial<ConnectionSummary> & Pick<ConnectionSummary, 'id'
     mcpReviewResults: 'inherit',
     mcpStatementTimeoutSec: 10,
     mcpTables: null,
+    maskReviewOn: false,
     sortOrder: 0,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',

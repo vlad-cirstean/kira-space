@@ -24,6 +24,9 @@ type Change struct {
 // Masks reports whether the mask rules differ between the two sides.
 func (c Change) Masks() bool { return !sameJSON(masksOf(c.Old), masksOf(c.New)) }
 
+// MaskReview reports whether column review (on flag or reviewed list) differs.
+func (c Change) MaskReview() bool { return !sameJSON(reviewOf(c.Old), reviewOf(c.New)) }
+
 // DDL reports whether the schema DDL differs.
 func (c Change) DDL() bool { return ddlOf(c.Old) != ddlOf(c.New) }
 
@@ -35,6 +38,13 @@ func masksOf(f *File) []Mask {
 		return nil
 	}
 	return f.Masks
+}
+
+func reviewOf(f *File) *MaskReview {
+	if f == nil {
+		return nil
+	}
+	return f.MaskReview
 }
 
 func ddlOf(f *File) string {
@@ -134,7 +144,7 @@ const configColumns = `name = ?, kind = ?, color = ?, mode = ?, read_only = ?, h
 	database = ?, username = ?, options_json = ?, preconnect = ?,
 	preconnect_sidecar = ?, preconnect_delay_sec = ?, auto_explain = ?, throttle_per_sec = ?,
 	mcp_enabled = ?, mcp_description = ?, mcp_read_mode = ?, mcp_write_mode = ?, mcp_ddl_mode = ?,
-	mcp_auto_explain = ?, mcp_review_results = ?, mcp_statement_timeout_sec = ?, mcp_tables_json = ?`
+	mcp_auto_explain = ?, mcp_review_results = ?, mcp_statement_timeout_sec = ?, mcp_tables_json = ?, mask_review_on = ?`
 
 func b2i(b bool) int {
 	if b {
@@ -160,7 +170,7 @@ func configArgs(c model.ConnectionFields) ([]any, error) {
 		c.Name, c.Kind, c.Color, c.Mode, b2i(c.ReadOnly), c.Host, c.Port, c.Database, c.Username, string(opts),
 		c.Preconnect, b2i(c.PreconnectSidecar), c.PreconnectDelaySec, b2i(c.AutoExplain), c.ThrottlePerSec,
 		b2i(c.McpEnabled), c.McpDescription, c.McpReadMode, c.McpWriteMode, c.McpDdlMode, b2i(c.McpAutoExplain),
-		c.McpReviewResults, c.McpStatementTimeoutSec, tables,
+		c.McpReviewResults, c.McpStatementTimeoutSec, tables, b2i(c.MaskReviewOn),
 	}, nil
 }
 
@@ -186,9 +196,9 @@ func (l *Loader) upsert(tx *sql.Tx, stem string, f File, valueJSON string) (stri
 		}
 		if _, err := tx.Exec(`INSERT INTO connections (id, name, kind, color, mode, read_only, host, port, database, username,
 			options_json, preconnect, preconnect_sidecar, preconnect_delay_sec, auto_explain, throttle_per_sec, mcp_enabled,
-			mcp_description, mcp_read_mode, mcp_write_mode, mcp_ddl_mode, mcp_auto_explain, mcp_review_results, mcp_statement_timeout_sec, mcp_tables_json,
+			mcp_description, mcp_read_mode, mcp_write_mode, mcp_ddl_mode, mcp_auto_explain, mcp_review_results, mcp_statement_timeout_sec, mcp_tables_json, mask_review_on,
 			created_at, updated_at, sort_order, stem, config_json)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			append(append([]any{id}, args...), now, now, order, stem, valueJSON)...); err != nil {
 			return "", nil, fmt.Errorf("connfiles: insert %s: %w", stem, err)
 		}
@@ -207,7 +217,50 @@ func (l *Loader) upsert(tx *sql.Tx, stem string, f File, valueJSON string) (stri
 	if err := syncMasks(tx, id, f.Masks, now); err != nil {
 		return "", nil, err
 	}
+	if err := syncReviewed(tx, id, f.ReviewedColumns()); err != nil {
+		return "", nil, err
+	}
 	return id, old, nil
+}
+
+// syncReviewed makes the reviewed column rows of connection id equal want, touching only the difference.
+func syncReviewed(tx *sql.Tx, id string, want []string) error {
+	rows, err := tx.Query(`SELECT column_ref FROM connection_mask_reviewed WHERE connection_id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("connfiles: read reviewed columns: %w", err)
+	}
+	have := map[string]bool{}
+	for rows.Next() {
+		var ref string
+		if err := rows.Scan(&ref); err != nil {
+			rows.Close()
+			return fmt.Errorf("connfiles: scan reviewed columns: %w", err)
+		}
+		have[ref] = true
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+	keep := make(map[string]bool, len(want))
+	for _, ref := range want {
+		keep[ref] = true
+		if have[ref] {
+			continue
+		}
+		if _, err := tx.Exec(`INSERT INTO connection_mask_reviewed (connection_id, column_ref) VALUES (?, ?)`, id, ref); err != nil {
+			return fmt.Errorf("connfiles: insert reviewed column: %w", err)
+		}
+	}
+	for ref := range have {
+		if !keep[ref] {
+			if _, err := tx.Exec(`DELETE FROM connection_mask_reviewed WHERE connection_id = ? AND column_ref = ?`, id, ref); err != nil {
+				return fmt.Errorf("connfiles: delete reviewed column: %w", err)
+			}
+		}
+	}
+	return nil
 }
 
 type maskRow struct{ id, createdAt string }

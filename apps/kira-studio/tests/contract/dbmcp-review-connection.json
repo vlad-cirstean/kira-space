@@ -42,6 +42,7 @@
     "host": null,
     "id": "<id:1>",
     "kind": "sqlite",
+    "maskReviewOn": false,
     "mcpAutoExplain": false,
     "mcpDdlMode": "deny",
     "mcpDescription": "scratch notes",

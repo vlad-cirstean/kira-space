@@ -62,6 +62,7 @@ type File struct {
 	ThrottlePerSec float64        `json:"throttle_per_sec,omitempty"`
 	MCP            *MCP           `json:"mcp,omitempty"`
 	Masks          []Mask         `json:"masks,omitempty"`
+	MaskReview     *MaskReview    `json:"mask_review,omitempty"`
 	Tree           *Tree          `json:"tree,omitempty"`
 	SchemaDDL      string         `json:"schema_ddl,omitempty"`
 }
@@ -86,6 +87,12 @@ type MCP struct {
 	StatementTimeoutSec *int `json:"statement_timeout_sec,omitempty"`
 	// Tables lists the tables MCP statements may touch. Absent = all; a pointer so an empty list survives omitempty.
 	Tables *[]string `json:"tables,omitempty"`
+}
+
+// MaskReview turns on column review (P534): columns no rule masks and not listed here are withheld from MCP
+// results. Columns holds tableref column entries; no omitempty so an empty list (on, nothing reviewed) survives.
+type MaskReview struct {
+	Columns []string `json:"columns"`
 }
 
 // Mask hides one column's values from the DB MCP server. KeepHint and Correlate default to true.
@@ -186,7 +193,16 @@ func (f File) Fields() model.ConnectionFields {
 			out.McpTables = dedupe(*m.Tables)
 		}
 	}
+	out.MaskReviewOn = f.MaskReview != nil
 	return out
+}
+
+// ReviewedColumns is the file's reviewed column entries, deduplicated and never nil.
+func (f File) ReviewedColumns() []string {
+	if f.MaskReview == nil {
+		return []string{}
+	}
+	return dedupe(f.MaskReview.Columns)
 }
 
 // MaskFields is the mask as a rule row's fields.
