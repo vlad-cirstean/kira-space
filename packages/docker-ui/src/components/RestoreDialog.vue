@@ -106,7 +106,6 @@ async function dismissAll(): Promise<void> {
     v-model:excluded="excluded"
     :title="t('docker.restore.dialog.title')"
     :description="t('docker.restore.dialog.description')"
-    icon="vm"
     :rows="rows"
     :pending="restore.isPending.value"
     :dismissing="dismiss.isPending.value"

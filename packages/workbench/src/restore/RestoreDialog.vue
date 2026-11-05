@@ -26,8 +26,6 @@ import type { RestoreRow } from './types';
 const props = defineProps<{
   title: string;
   description: string;
-  /** Codicon name. */
-  icon: string;
   rows: RestoreRow[];
   pending: boolean;
   dismissing: boolean;
@@ -57,16 +55,9 @@ function toggle(id: string, on: boolean): void {
   <Dialog :open="true" @update:open="(v) => !v && emit('close')">
     <DialogContent size="lg" data-testid="restore-dialog">
       <DialogHeader>
-        <span
-          class="grid size-7 shrink-0 place-items-center rounded-kira bg-field text-muted-foreground"
-        >
-          <CodiconIcon :name="icon" :size="16" />
-        </span>
         <div class="flex min-w-0 flex-col gap-0.5">
           <DialogTitle>{{ title }}</DialogTitle>
-          <DialogDescription class="text-kira-sm text-muted-foreground">{{
-            description
-          }}</DialogDescription>
+          <DialogDescription>{{ description }}</DialogDescription>
         </div>
       </DialogHeader>
 

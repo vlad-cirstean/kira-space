@@ -60,7 +60,7 @@ async function move(): Promise<void> {
           t('space.ade.stageDialog.title.title', { task: store.card?.title ?? '' })
         }}</DialogTitle>
       </DialogHeader>
-      <DialogBody class="flex flex-col gap-3 text-kira-md">
+      <DialogBody>
         <div class="flex items-center gap-2">
           <span class="text-muted-foreground" data-testid="ade-stage-from">{{
             t('space.ade.stageDialog.from.label', { stage: fromName })

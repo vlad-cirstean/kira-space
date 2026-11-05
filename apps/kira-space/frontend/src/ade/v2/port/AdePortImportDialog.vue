@@ -137,7 +137,7 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
           t('space.ade.port.importDialog.title', { agent: provider.label })
         }}</DialogTitle>
       </DialogHeader>
-      <DialogBody class="min-h-0">
+      <DialogBody>
         <AdePortResult v-if="result" :result="result" />
         <template v-else>
           <FieldDescription>{{ t('space.ade.port.importDialog.hint') }}</FieldDescription>

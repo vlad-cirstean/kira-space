@@ -122,7 +122,6 @@ async function dismissAll(): Promise<void> {
     v-model:excluded="excluded"
     :title="t('automations.restore.dialog.title')"
     :description="t('automations.restore.dialog.description', { app: app?.appName ?? '' })"
-    icon="run-all"
     :rows="rows"
     :pending="restore.isPending.value"
     :dismissing="dismiss.isPending.value"

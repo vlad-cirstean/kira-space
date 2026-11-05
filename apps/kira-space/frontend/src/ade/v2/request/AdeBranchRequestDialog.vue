@@ -88,7 +88,7 @@ async function deny(): Promise<void> {
       <DialogHeader>
         <DialogTitle>{{ title }}</DialogTitle>
       </DialogHeader>
-      <DialogBody class="flex flex-col gap-3 text-kira-md">
+      <DialogBody>
         <span class="text-muted-foreground" data-testid="ade-branch-request-source">{{
           source
         }}</span>
