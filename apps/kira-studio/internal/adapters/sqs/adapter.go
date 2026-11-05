@@ -177,6 +177,9 @@ func (a *Adapter) Definition(ctx context.Context, path model.NodePath, op *adapt
 
 // Read is index.ts's read.
 func (a *Adapter) Read(ctx context.Context, req adapters.ReadRequest, op *adapters.OpCtx) (page.Page, error) {
+	if err := adapters.RejectConditions("sqs", req.Conditions); err != nil {
+		return nil, err
+	}
 	browseSeconds, err := parseStreamFilter(req.Filter)
 	if err != nil {
 		return nil, err

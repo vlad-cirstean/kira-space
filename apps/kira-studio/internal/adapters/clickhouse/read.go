@@ -148,7 +148,7 @@ type readReq = adapters.ReadReq
 // after/before mode is refused outright rather than silently falling back to offset, since a
 // silent strategy switch out from under a caller expecting keyset semantics would be its own kind
 // of dishonesty.
-func readPage(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx, track TrackQuery, target ReadTarget, req readReq) (page.TabularPage, error) {
+func readPage(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx, track TrackQuery, target ReadTarget, req readReq, settings map[string]string) (page.TabularPage, error) {
 	if req.Cursor.Mode != "offset" {
 		return page.TabularPage{}, adapters.New(adapters.CodeUnsupported, noKeysetMessage, nil)
 	}
@@ -183,7 +183,10 @@ func readPage(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx
 		}
 	}
 	selectList := strings.Join(selectItems, ", ")
-	whereSQL := adapters.WhereClause(req.Filter)
+	whereSQL, params, err := conditionsWhere(adapters.WhereClause(req.Filter), req.Conditions, target.Columns)
+	if err != nil {
+		return page.TabularPage{}, err
+	}
 	orderBySQL, err := computeOrderBySql(req.Sort, target)
 	if err != nil {
 		return page.TabularPage{}, err
@@ -211,7 +214,7 @@ func readPage(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx
 	builder := page.NewTabularPageBuilder(columns)
 	rowCount := 0
 	hasMore := false
-	err = StreamQuery(ctx, h, queryID, sql, op, track, nil, func(names, types []string) {}, func(values []*string) bool {
+	err = StreamQuery(ctx, h, queryID, sql, op, track, settings, params, func(names, types []string) {}, func(values []*string) bool {
 		if rowCount >= req.PageSize {
 			hasMore = true
 			return true
@@ -239,6 +242,47 @@ func readPage(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx
 		NextToken: nil, PrevToken: nil, Strategy: "offset",
 	}
 	return builder.Finish(position), nil
+}
+
+// conditionsWhere ANDs the structured conditions onto whereSQL. Values travel as `param_pN` query
+// parameters typed after the column, never in the statement text.
+func conditionsWhere(whereSQL string, conds []model.Condition, columns []model.ColumnMeta) (string, map[string]string, error) {
+	if len(conds) == 0 {
+		return whereSQL, nil, nil
+	}
+	byName := make(map[string]model.ColumnMeta, len(columns))
+	for _, c := range columns {
+		byName[c.Name] = c
+	}
+	params := map[string]string{}
+	addParam := func(v any) int {
+		n := len(params) + 1
+		if b, ok := v.(bool); ok {
+			params["p"+strconv.Itoa(n)] = strconv.FormatBool(b)
+		} else {
+			params["p"+strconv.Itoa(n)] = v.(string)
+		}
+		return n
+	}
+	placeholder := func(idx int, col model.ColumnMeta) string {
+		return "{p" + strconv.Itoa(idx) + ":" + paramType(col.DataType) + "}"
+	}
+	extra, err := adapters.BuildConditionsSQL(conds, byName, quoteIdent, placeholder, addParam, func(string) bool { return false })
+	if err != nil {
+		return "", nil, err
+	}
+	return adapters.AppendWhere(whereSQL, extra), params, nil
+}
+
+// paramType is the declared type a bound value parses as: the column's own, wrappers removed. Enum and
+// FixedString take String so a LIKE pattern or a short value still parses.
+func paramType(declared string) string {
+	inner, _ := unwrapType(declared)
+	switch baseTypeName(inner) {
+	case "Enum8", "Enum16", "FixedString":
+		return "String"
+	}
+	return inner
 }
 
 // countRows is read.ts's own.

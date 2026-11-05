@@ -490,6 +490,15 @@ func TestSqlite(t *testing.T) {
 			nodePath(cfg.ID, seg("database", "main"), seg("table", "customers")),
 			[]string{"name"},
 		),
+		testsupport.ReadConditions(testsupport.ConditionsCase{
+			Name: "sqlite", Database: nodePath(cfg.ID, seg("database", "main")),
+			Table: nodePath(cfg.ID, seg("database", "main"), seg("table", "p535_cond")), Binary: true,
+			Setup: []string{
+				"CREATE TABLE p535_cond (id INTEGER PRIMARY KEY, name TEXT, note TEXT, bin BLOB)",
+				"INSERT INTO p535_cond VALUES (1,'Alice','x',X'0102'),(2,'O''Brien',NULL,X'0304'),(3,'Bob','y',X'0506'),(4,'alina',NULL,NULL)",
+			},
+			Teardown: []string{"DROP TABLE p535_cond"},
+		}),
 		testsupport.ConsoleResultCap(nodePath(cfg.ID, seg("database", "main")), func(n int) string {
 			return fmt.Sprintf("WITH RECURSIVE s(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM s WHERE n < %d) SELECT n FROM s", n)
 		}),

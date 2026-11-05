@@ -247,3 +247,25 @@ func (b DiscoverBody) Validate() error {
 	}
 	return nil
 }
+
+// Condition ops (P535); the structured filter of an MCP browse. Mirrors packages/shared/domain/dbmcp.ts.
+const (
+	CondEq      = "eq"
+	CondNe      = "ne"
+	CondLt      = "lt"
+	CondLte     = "lte"
+	CondGt      = "gt"
+	CondGte     = "gte"
+	CondIn      = "in"
+	CondLike    = "like"
+	CondIsNull  = "isNull"
+	CondNotNull = "notNull"
+)
+
+// Condition is one structured comparison on a column. Values hold string, bool or json.Number entries:
+// none for isNull and notNull, several for in, one otherwise. Adapters bind them as parameters.
+type Condition struct {
+	Column string
+	Op     string
+	Values []any
+}

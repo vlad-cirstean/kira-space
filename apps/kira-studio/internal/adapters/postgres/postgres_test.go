@@ -1611,6 +1611,22 @@ func TestPostgres_ExecuteStopsAtResultCap(t *testing.T) {
 	)
 }
 
+// Structured conditions bind as parameters and filter on real Postgres.
+func TestPostgres_ReadConditions(t *testing.T) {
+	fixture := testsupport.StartPostgres(t)
+	testsupport.RunScenarios(t, connectedAdapter(t, fixture), fixture.Config,
+		testsupport.ReadConditions(testsupport.ConditionsCase{
+			Name: "postgres", Database: nodePath(fixture, seg("database", "kira_test")),
+			Table: nodePath(fixture, seg("database", "kira_test"), seg("schema", "app"), seg("table", "p535_cond")), Binary: true,
+			Setup: []string{
+				"CREATE TABLE app.p535_cond (id integer PRIMARY KEY, name text, note text, bin bytea)",
+				`INSERT INTO app.p535_cond VALUES (1,'Alice','x','\x0102'),(2,'O''Brien',NULL,'\x0304'),(3,'Bob','y','\x0506'),(4,'alina',NULL,NULL)`,
+			},
+			Teardown: []string{"DROP TABLE app.p535_cond"},
+		}),
+	)
+}
+
 // MCP read verdicts run read-only even on a writable connection.
 func TestPostgres_ExecuteReadOnlyRequestRefusesWrite(t *testing.T) {
 	fixture := testsupport.StartPostgres(t)

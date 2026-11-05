@@ -821,6 +821,24 @@ func TestClickHouse_ReadLane(t *testing.T) {
 	)
 }
 
+// Structured conditions travel as typed query parameters and filter on real ClickHouse.
+func TestClickHouse_ReadConditions(t *testing.T) {
+	fixture := testsupport.StartClickHouse(t)
+	testsupport.ClickHouseRun(t, fixture)
+	cfg := fixture.Config
+	testsupport.RunScenarios(t, connectedAdapter(t, cfg), cfg,
+		testsupport.ReadConditions(testsupport.ConditionsCase{
+			Name: "clickhouse", Database: nodePath(cfg.ID),
+			Table: nodePath(cfg.ID, seg("database", "kira_test"), seg("table", "p535_cond")),
+			Setup: []string{
+				"CREATE TABLE p535_cond (id UInt32, name String, note Nullable(String)) ENGINE = MergeTree ORDER BY id",
+				`INSERT INTO p535_cond VALUES (1,'Alice','x'),(2,'O\'Brien',NULL),(3,'Bob','y'),(4,'alina',NULL)`,
+			},
+			Teardown: []string{"DROP TABLE p535_cond"},
+		}),
+	)
+}
+
 // DB MCP statement timeout: max_execution_time with timeout_overflow_mode=throw stops the read on the
 // lane (server code 159), and the next request carries no leftover setting.
 func TestClickHouse_StatementTimeout(t *testing.T) {

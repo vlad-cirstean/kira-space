@@ -23,6 +23,7 @@ package adapters
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
@@ -117,6 +118,10 @@ type ReadRequest struct {
 	Sort       *model.SortSpec
 	PageSize   int // already validated <= page.MaxPageSize at the dispatcher boundary
 	Cursor     model.PageCursor
+	// Conditions are ANDed after Filter. Values bind as parameters, never as SQL text (P535).
+	Conditions []model.Condition
+	// StatementTimeout bounds the read on engines with a session mechanism; zero means none (P529 semantics).
+	StatementTimeout time.Duration
 }
 
 // CountRequest is the Go analogue of adapter.ts's CountRequest.

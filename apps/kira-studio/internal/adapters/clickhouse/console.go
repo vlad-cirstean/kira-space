@@ -107,7 +107,7 @@ func runRowReturning(ctx context.Context, h *Handle, queryID string, op *adapter
 	var columns []page.ColumnDescriptor
 	var builder *page.TabularPageBuilder
 	truncated := false
-	err := StreamQuery(ctx, h, queryID, sql, op, track, mergeSettings(cancelOnCloseSettings, extra), func(names, types []string) {
+	err := StreamQuery(ctx, h, queryID, sql, op, track, mergeSettings(cancelOnCloseSettings, extra), nil, func(names, types []string) {
 		// §8.14's console never consults the catalog — nullability/PK-ness are unknowable here;
 		// console results are always read-only regardless (mirrors mysql-family/console.go).
 		columns = make([]page.ColumnDescriptor, len(names))

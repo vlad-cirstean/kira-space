@@ -273,10 +273,16 @@ func (a *Adapter) Read(ctx context.Context, req adapters.ReadRequest, op *adapte
 	if err != nil {
 		return nil, err
 	}
-	result, err := readPage(ctx, handle, seq.next(a), op, track, target, readReq{
-		Projection: req.Projection, Filter: req.Filter, Sort: req.Sort, PageSize: req.PageSize, Cursor: req.Cursor,
+	result, err := withEngineTimeout(handle, req.StatementTimeout, a.deps.Log, func(extra map[string]string) (page.TabularPage, error) {
+		return readPage(ctx, handle, seq.next(a), op, track, target, readReq{
+			Projection: req.Projection, Filter: req.Filter, Sort: req.Sort, PageSize: req.PageSize, Cursor: req.Cursor,
+			Conditions: req.Conditions,
+		}, extra)
 	})
 	if err != nil {
+		if req.StatementTimeout > 0 && ctx.Err() == nil && codeOf(err) == timeoutExceeded {
+			err = adapters.StatementTimeout(req.StatementTimeout, 0, err)
+		}
 		return nil, err
 	}
 	return result, nil

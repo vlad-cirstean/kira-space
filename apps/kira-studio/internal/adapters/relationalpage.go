@@ -117,6 +117,8 @@ type RelationalFingerprint[P any] struct {
 	Filter     *string         `json:"filter"`
 	Sort       *model.SortSpec `json:"sort"`
 	PageSize   int             `json:"pageSize"`
+	// Conditions keeps a conditioned page out of an unconditioned one's token space (P535).
+	Conditions []model.Condition `json:"conditions,omitempty"`
 }
 
 // KeysetPageCollector is readPage's post-stream bookkeeping, byte-identical across all three

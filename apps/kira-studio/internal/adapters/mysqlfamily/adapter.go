@@ -312,9 +312,21 @@ func (a *Adapter) Read(ctx context.Context, req adapters.ReadRequest, op *adapte
 	if err != nil {
 		return nil, err
 	}
-	return readPage(ctx, entry, op, a.trackerFor(op.OpID), target, readReq{
+	if req.StatementTimeout > 0 {
+		restore, err := setSessionTimeout(ctx, entry, req.StatementTimeout, a.mariadbServer.Load())
+		if err != nil {
+			return nil, err
+		}
+		defer restore()
+	}
+	result, err := readPage(ctx, entry, op, a.trackerFor(op.OpID), target, readReq{
 		Projection: req.Projection, Filter: req.Filter, Sort: req.Sort, PageSize: req.PageSize, Cursor: req.Cursor,
+		Conditions: req.Conditions,
 	})
+	if err != nil {
+		return nil, timeoutError(ctx, req.StatementTimeout, err)
+	}
+	return result, nil
 }
 
 // Count is index.ts's count.

@@ -176,13 +176,13 @@ func streamRows(resp *http.Response, onHeader func(names, types []string), onRow
 // StreamQuery is query.ts's streamQuery — registers with track but never calls op.SetCommand():
 // console.go's execute() calls it once for the whole batch (P5 D9's precedent) and read.go calls
 // it itself before this runs.
-func StreamQuery(ctx context.Context, h *Handle, queryID string, sql string, op *adapters.OpCtx, track TrackQuery, settings map[string]string, onHeader func(names, types []string), onRow func(values []*string) bool) error {
+func StreamQuery(ctx context.Context, h *Handle, queryID string, sql string, op *adapters.OpCtx, track TrackQuery, settings, params map[string]string, onHeader func(names, types []string), onRow func(values []*string) bool) error {
 	if err := adapters.CheckNotStarted(ctx); err != nil {
 		return err
 	}
 	release := track(RunningQuery{QueryID: queryID})
 	_, err := adapters.RunWithAbortRace(ctx, release, func(reqCtx context.Context) (struct{}, error) {
-		resp, err := doRequest(reqCtx, h, sql, queryID, settings, nil, h.ReadOnly)
+		resp, err := doRequest(reqCtx, h, sql, queryID, settings, params, h.ReadOnly)
 		if err != nil {
 			return struct{}{}, err
 		}

@@ -594,6 +594,18 @@ func runFamilySuite(t *testing.T, kind string, cfg model.ResolvedConnectionConfi
 		}),
 	)
 
+	testsupport.RunScenarios(t, connectedAdapter(t, kind, cfg), cfg,
+		testsupport.ReadConditions(testsupport.ConditionsCase{
+			Name: kind, Database: nodePath(cfg.ID, seg("database", "kira_test")),
+			Table: nodePath(cfg.ID, seg("database", "kira_test"), seg("table", "p535_cond")), Binary: true,
+			Setup: []string{
+				"CREATE TABLE p535_cond (id INT PRIMARY KEY, name VARCHAR(50), note VARCHAR(50) NULL, bin VARBINARY(8) NULL)",
+				"INSERT INTO p535_cond VALUES (1,'Alice','x',X'0102'),(2,'O''Brien',NULL,X'0304'),(3,'Bob','y',X'0506'),(4,'alina',NULL,NULL)",
+			},
+			Teardown: []string{"DROP TABLE IF EXISTS p535_cond"},
+		}),
+	)
+
 	lanePath := nodePath(cfg.ID, seg("database", "kira_test"))
 	laneUnchanged := func(t *testing.T, main adapters.Adapter) {
 		t.Helper()

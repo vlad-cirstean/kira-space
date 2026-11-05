@@ -180,6 +180,9 @@ func (a *Adapter) resolveKeyTarget(path model.NodePath) (dbIndex int, key string
 
 // Read is index.ts's read.
 func (a *Adapter) Read(ctx context.Context, req adapters.ReadRequest, op *adapters.OpCtx) (page.Page, error) {
+	if err := adapters.RejectConditions("redis", req.Conditions); err != nil {
+		return nil, err
+	}
 	set, err := a.requireSet()
 	if err != nil {
 		return nil, err
