@@ -1,7 +1,7 @@
 {
   "args:CollectionsService.DeleteMany#collection": {
     "collectionIds": [
-      "<id:2>"
+      "<id:1>"
     ],
     "itemIds": [
       "<id:7>"
@@ -17,7 +17,7 @@
   },
   "args:CollectionsService.MoveItems#across": {
     "beforeId": null,
-    "collectionId": "<id:1>",
+    "collectionId": "<id:2>",
     "itemIds": [
       "<id:6>"
     ],
@@ -25,7 +25,7 @@
   },
   "args:CollectionsService.MoveItems#before": {
     "beforeId": "<id:5>",
-    "collectionId": "<id:2>",
+    "collectionId": "<id:1>",
     "itemIds": [
       "<id:7>"
     ],
@@ -33,14 +33,14 @@
   },
   "args:CollectionsService.MoveItems#into": {
     "beforeId": null,
-    "collectionId": "<id:2>",
+    "collectionId": "<id:1>",
     "itemIds": [
       "<id:5>"
     ],
     "parentId": "<id:6>"
   },
   "args:CollectionsService.Rename#collection": {
-    "id": "<id:2>",
+    "id": "<id:1>",
     "name": "Orders v2",
     "target": "collection"
   },
@@ -109,7 +109,7 @@
       {
         "createdAt": "<time>",
         "file": "billing.collection.yaml",
-        "id": "<id:1>",
+        "id": "<id:2>",
         "name": "Billing",
         "sortOrder": 0,
         "updatedAt": "<time>"
@@ -117,7 +117,7 @@
     ],
     "items": [
       {
-        "collectionId": "<id:1>",
+        "collectionId": "<id:2>",
         "createdAt": "<time>",
         "id": "<id:3>",
         "kind": "request",
@@ -135,24 +135,24 @@
     "collections": [
       {
         "createdAt": "<time>",
-        "file": "billing.collection.yaml",
+        "file": "orders.collection.yaml",
         "id": "<id:1>",
-        "name": "Billing",
+        "name": "Orders v2",
         "sortOrder": 0,
         "updatedAt": "<time>"
       },
       {
         "createdAt": "<time>",
-        "file": "orders.collection.yaml",
+        "file": "billing.collection.yaml",
         "id": "<id:2>",
-        "name": "Orders v2",
+        "name": "Billing",
         "sortOrder": 1,
         "updatedAt": "<time>"
       }
     ],
     "items": [
       {
-        "collectionId": "<id:1>",
+        "collectionId": "<id:2>",
         "createdAt": "<time>",
         "id": "<id:3>",
         "kind": "request",
@@ -165,7 +165,7 @@
         "url": "<http>/echo?invoices=1"
       },
       {
-        "collectionId": "<id:1>",
+        "collectionId": "<id:2>",
         "createdAt": "<time>",
         "id": "<id:4>",
         "kind": "folder",
@@ -178,7 +178,7 @@
         "url": ""
       },
       {
-        "collectionId": "<id:1>",
+        "collectionId": "<id:2>",
         "createdAt": "<time>",
         "id": "<id:9>",
         "kind": "folder",
@@ -191,7 +191,7 @@
         "url": ""
       },
       {
-        "collectionId": "<id:1>",
+        "collectionId": "<id:2>",
         "createdAt": "<time>",
         "id": "<id:10>",
         "kind": "request",
@@ -204,7 +204,7 @@
         "url": "<http>/echo?purge=1"
       },
       {
-        "collectionId": "<id:1>",
+        "collectionId": "<id:2>",
         "createdAt": "<time>",
         "id": "<id:11>",
         "kind": "request",
@@ -217,7 +217,7 @@
         "url": "<http>/echo?list=1"
       },
       {
-        "collectionId": "<id:2>",
+        "collectionId": "<id:1>",
         "createdAt": "<time>",
         "id": "<id:7>",
         "kind": "request",
@@ -235,24 +235,24 @@
     "collections": [
       {
         "createdAt": "<time>",
-        "file": "billing.collection.yaml",
+        "file": "orders.collection.yaml",
         "id": "<id:1>",
-        "name": "Billing",
+        "name": "Orders v2",
         "sortOrder": 0,
         "updatedAt": "<time>"
       },
       {
         "createdAt": "<time>",
-        "file": "orders.collection.yaml",
+        "file": "billing.collection.yaml",
         "id": "<id:2>",
-        "name": "Orders v2",
+        "name": "Billing",
         "sortOrder": 1,
         "updatedAt": "<time>"
       }
     ],
     "items": [
       {
-        "collectionId": "<id:1>",
+        "collectionId": "<id:2>",
         "createdAt": "<time>",
         "id": "<id:3>",
         "kind": "request",
@@ -265,7 +265,7 @@
         "url": "<http>/echo?invoices=1"
       },
       {
-        "collectionId": "<id:1>",
+        "collectionId": "<id:2>",
         "createdAt": "<time>",
         "id": "<id:4>",
         "kind": "folder",
@@ -278,7 +278,7 @@
         "url": ""
       },
       {
-        "collectionId": "<id:2>",
+        "collectionId": "<id:1>",
         "createdAt": "<time>",
         "id": "<id:7>",
         "kind": "request",
@@ -291,7 +291,7 @@
         "url": "<http>/echo?get=1"
       },
       {
-        "collectionId": "<id:2>",
+        "collectionId": "<id:1>",
         "createdAt": "<time>",
         "id": "<id:6>",
         "kind": "folder",
@@ -304,7 +304,7 @@
         "url": ""
       },
       {
-        "collectionId": "<id:2>",
+        "collectionId": "<id:1>",
         "createdAt": "<time>",
         "id": "<id:8>",
         "kind": "request",
@@ -317,7 +317,7 @@
         "url": "<http>/echo?purge=1"
       },
       {
-        "collectionId": "<id:2>",
+        "collectionId": "<id:1>",
         "createdAt": "<time>",
         "id": "<id:5>",
         "kind": "request",
@@ -335,24 +335,24 @@
     "collections": [
       {
         "createdAt": "<time>",
-        "file": "billing.collection.yaml",
+        "file": "orders.collection.yaml",
         "id": "<id:1>",
-        "name": "Billing",
+        "name": "Orders",
         "sortOrder": 0,
         "updatedAt": "<time>"
       },
       {
         "createdAt": "<time>",
-        "file": "orders.collection.yaml",
+        "file": "billing.collection.yaml",
         "id": "<id:2>",
-        "name": "Orders",
+        "name": "Billing",
         "sortOrder": 1,
         "updatedAt": "<time>"
       }
     ],
     "items": [
       {
-        "collectionId": "<id:1>",
+        "collectionId": "<id:2>",
         "createdAt": "<time>",
         "id": "<id:3>",
         "kind": "request",
@@ -365,7 +365,7 @@
         "url": "<http>/echo?invoices=1"
       },
       {
-        "collectionId": "<id:1>",
+        "collectionId": "<id:2>",
         "createdAt": "<time>",
         "id": "<id:4>",
         "kind": "folder",
@@ -378,7 +378,7 @@
         "url": ""
       },
       {
-        "collectionId": "<id:2>",
+        "collectionId": "<id:1>",
         "createdAt": "<time>",
         "id": "<id:5>",
         "kind": "request",
@@ -391,7 +391,7 @@
         "url": "<http>/echo?list=1"
       },
       {
-        "collectionId": "<id:2>",
+        "collectionId": "<id:1>",
         "createdAt": "<time>",
         "id": "<id:6>",
         "kind": "folder",
@@ -404,7 +404,7 @@
         "url": ""
       },
       {
-        "collectionId": "<id:2>",
+        "collectionId": "<id:1>",
         "createdAt": "<time>",
         "id": "<id:7>",
         "kind": "request",
@@ -417,7 +417,7 @@
         "url": "<http>/echo?get=1"
       },
       {
-        "collectionId": "<id:2>",
+        "collectionId": "<id:1>",
         "createdAt": "<time>",
         "id": "<id:8>",
         "kind": "request",
