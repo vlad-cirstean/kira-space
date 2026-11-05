@@ -4,7 +4,7 @@ Branch `chapter/v0.2.35`, based on `chapter/v0.2.34` (v0.2.34 not yet merged to 
 
 Source: user request. Fifteen phases. Close duty after the last phase lands: one full suite run, 2 code review rounds (user ask), hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
 
-Parallelism (user ask): up to 3 phases run at once as named streams, each in its own worktree off the same base, zero file overlap. P512 to P517 landed. Remaining waves: P518 + P519 + P524 in parallel, then P520 alone (async touches every MCP tool), then P521 + P522 (planner may force sequential on overlap in the shared MCP access settings), then P523 alone (touches every id generator). P525 runs now, by user direction, ahead of P520, because it is frontend-only; P520 is on hold. From P512 on, new Kira-generated ids follow the P523 convention where cheap.
+Parallelism (user ask): up to 3 phases run at once as named streams, each in its own worktree off the same base, zero file overlap. P512 to P517 landed. Remaining waves: P518 + P519 + P524 in parallel, then P520 alone (touches every approval owner), then P521 + P522 (planner may force sequential on overlap in the shared MCP access settings), then P523 alone (touches every id generator). P525 ran ahead of P520 by user direction (frontend-only). P520 implementation starts after P526 lands. From P512 on, new Kira-generated ids follow the P523 convention where cheap.
 
 | Phase | Title | Status |
 |---|---|---|
@@ -16,7 +16,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 | P517 | Multiple worktrees per repo, agent-named branches, branch rename | Done |
 | P518 | Cancel ops via MCP and status bar running-ops widget | Done |
 | P519 | Proof window cell editor and multi-file screenshots | Done |
-| P520 | Async MCP tools with aggregated approvals and result push | Pending |
+| P520 | Aggregated MCP approvals: one dialog, minimise to toast, long approval timeouts | Pending |
 | P521 | Scripts MCP | Pending |
 | P522 | API MCP | Pending |
 | P523 | Prefixed nanoid for every Kira-generated id | Pending |
@@ -77,19 +77,23 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 - Plan: `plans/P519.md`.
 - Result: Done as planned (D1-D6). Proof window shows a read-only cell editor under table and key-value results. Save-all writes one PNG per tab into a fresh folder; stacked copy-all dropped. Pre-existing `cell-editor.spec.ts` failures fixed (wildcard `connectionConfig:form` mock). Flow `proofflow`, UI specs `proof-window`, `proof-chart`. Real `claude` row not run.
 
-### P520 Async MCP tools with aggregated approvals and result push
+### P520 Aggregated MCP approvals: one dialog, minimise to toast, long approval timeouts
 
-- Ask: Every MCP tool is async: call returns at once, result is pushed to the agent when done. Pending approvals accumulate in one dialog (agent launches 3 requests: one dialog, accept or deny each). Results push only after the last pending approval is answered. Same for endpoints with result preview enabled.
+- Ask (user, revised): Tools stay synchronous; async dropped (no handles, Tasks, stdin injection). One approvals dialog per app holds every pending agent approval: Studio DB MCP statements, result previews, Kubernetes reads, proof edits; Space branch requests and renames; later P521 scripts and P522 API requests as new item kinds. Shown by default. Close does not deny: it minimises to a top-right toast ("N things awaiting your approval", countdown, reopen button) that updates as items come and go and disappears when empty. Per-item approve or deny, plus approve all and deny all over visible items. Each call returns as soon as its own item is answered.
+- Item presentation: target (name, kind, colour), operation type with tone, agent or session origin, then payload. SQL stays formatted. API items (P522) parse like SQL: method and URL, headers, query, body by content type, masked auth, resolved variables.
+- Studio approval timeout 120 s to 10 min; Kira's `MCP_TOOL_TIMEOUT` kept consistent; per-server MCP `timeout` written by Studio's install and `agentmcp`'s per-run config, so Claude's 60 s default cut no longer applies.
+- Space: concurrent `request_branches`/`rename_branch` calls for one task merge into one open request (unique item ids, per-item remote rename, per-call origin).
+- P525 rules apply (outline buttons, no header icons). Async research kept as record: `plans/P520-async-research.md`.
 - Plan: `plans/P520.md`.
 
 ### P521 Scripts MCP
 
-- Ask: Agents run a script and fetch its logs via MCP. Log fetch capped at a max line count; simple filter (planner picks, e.g. tail/head and substring). Per-script MCP access is explicit opt-in. Per-script choice to show an approval prompt or not. Scripts get descriptions, as connections have. Tools are async per P520.
+- Ask: Agents run a script and fetch its logs via MCP. Log fetch capped at a max line count; simple filter (planner picks, e.g. tail/head and substring). Per-script MCP access is explicit opt-in. Per-script choice to show an approval prompt or not. Scripts get descriptions, as connections have. Tools stay synchronous; approval prompts are an item kind in the P520 approvals surface.
 - Plan: `plans/P521.md`.
 
 ### P522 API MCP
 
-- Ask: Agents call saved API requests via MCP. Same access model as P521: explicit opt-in per item, prompt on or off, description field. Tools are async per P520.
+- Ask: Agents call saved API requests via MCP. Same access model as P521: explicit opt-in per item, prompt on or off, description field. Tools stay synchronous; approval prompts are an item kind in the P520 approvals surface, request parsed per P520 (method, URL, headers, query, body, masked auth, variables).
 - Plan: `plans/P522.md`.
 
 ### P523 Prefixed nanoid for every Kira-generated id
