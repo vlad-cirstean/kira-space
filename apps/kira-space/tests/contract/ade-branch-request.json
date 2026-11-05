@@ -41,17 +41,23 @@
         "base": "",
         "branch": "feat/login",
         "codeRepoId": "<masked>",
+        "from": "",
         "id": "<masked>",
         "kind": "branch",
-        "repo": "api"
+        "repo": "api",
+        "stacked": [],
+        "upstream": ""
       },
       {
         "base": "",
         "branch": "feat/login-web",
         "codeRepoId": "<masked>",
+        "from": "",
         "id": "<masked>",
         "kind": "branch",
-        "repo": "web"
+        "repo": "web",
+        "stacked": [],
+        "upstream": ""
       }
     ],
     "source": "run",

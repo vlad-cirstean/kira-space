@@ -297,6 +297,7 @@ func (b *TaskBoard) planBranchRequest(ctx context.Context, call agentmcp.SpaceCa
 		}
 		slots = append(slots, slot)
 		if slot.item != nil {
+			slot.item.Stacked = []string{}
 			items = append(items, *slot.item)
 		}
 	}

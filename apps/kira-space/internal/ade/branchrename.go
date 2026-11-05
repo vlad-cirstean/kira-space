@@ -81,6 +81,9 @@ func (b *TaskBoard) planRename(ctx context.Context, call agentmcp.SpaceCall, arg
 		return plan, err
 	}
 	stacked := stackedOn(tc, plan.sb)
+	if stacked == nil {
+		stacked = []string{}
+	}
 	item := adewire.BranchRequestItem{
 		ID: "i0", CodeRepoID: plan.sb.CodeRepoID, Repo: plan.nick, Kind: branchKindRename,
 		Branch: args.To, From: args.From, Stacked: stacked,
