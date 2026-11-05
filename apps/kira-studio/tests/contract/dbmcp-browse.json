@@ -1,0 +1,78 @@
+{
+  "ApprovalsService.List#browse": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:2>",
+      "kind": "db.query",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:1>",
+        "detected": "read",
+        "enforcement": "session",
+        "mode": "masked",
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
+        "statement": "SELECT \"id\", \"name\" FROM \"people\" WHERE \"name\" = 'O''Brien' ORDER BY \"id\" DESC LIMIT 10 OFFSET 0"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "main / people",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "ConnectionsService.List#masked": {
+    "autoExplain": false,
+    "color": "teal",
+    "createdAt": "<masked>",
+    "database": "/data/mcp.db",
+    "file": "notes-db.yaml",
+    "host": null,
+    "id": "<id:1>",
+    "kind": "sqlite",
+    "maskReviewOn": false,
+    "mcpAutoExplain": false,
+    "mcpDdlMode": "deny",
+    "mcpDescription": "scratch notes",
+    "mcpEnabled": true,
+    "mcpMaskedMode": "prompt",
+    "mcpReadMode": "allow",
+    "mcpReview": {
+      "ddl": "inherit",
+      "masked": "inherit",
+      "read": "inherit",
+      "write": "inherit"
+    },
+    "mcpStatementTimeoutSec": 0,
+    "mcpTables": null,
+    "mcpWriteMode": "prompt",
+    "mode": "fields",
+    "name": "notes db",
+    "options": {},
+    "port": null,
+    "preconnect": null,
+    "preconnectDelaySec": 0,
+    "preconnectSidecar": false,
+    "readOnly": false,
+    "sortOrder": 0,
+    "throttlePerSec": 0,
+    "updatedAt": "<masked>",
+    "uri": null,
+    "username": null
+  }
+}

@@ -51,6 +51,10 @@
           "approval": false,
           "reason": "permission denied"
         },
+        "masked": {
+          "allowed": true,
+          "approval": false
+        },
         "read": {
           "allowed": true,
           "approval": false
@@ -60,6 +64,10 @@
           "allowed": true,
           "approval": true
         }
+      },
+      "browse": {
+        "maxRows": 100,
+        "supported": true
       },
       "columnReview": {
         "on": false
@@ -75,12 +83,14 @@
       "name": "notes db",
       "permissions": {
         "ddl": "deny",
+        "masked": "inherit",
         "read": "allow",
         "write": "prompt"
       },
       "readOnly": false,
       "reviewResults": {
         "ddl": false,
+        "masked": false,
         "read": false,
         "write": false
       },
@@ -105,6 +115,10 @@
           "approval": false,
           "reason": "permission denied"
         },
+        "masked": {
+          "allowed": true,
+          "approval": false
+        },
         "read": {
           "allowed": true,
           "approval": false
@@ -114,6 +128,10 @@
           "allowed": true,
           "approval": true
         }
+      },
+      "browse": {
+        "maxRows": 100,
+        "supported": true
       },
       "columnReview": {
         "on": false
@@ -128,12 +146,14 @@
       "name": "t-postgres",
       "permissions": {
         "ddl": "deny",
+        "masked": "inherit",
         "read": "allow",
         "write": "prompt"
       },
       "readOnly": false,
       "reviewResults": {
         "ddl": false,
+        "masked": false,
         "read": false,
         "write": false
       },
@@ -158,6 +178,10 @@
           "approval": false,
           "reason": "permission denied"
         },
+        "masked": {
+          "allowed": true,
+          "approval": false
+        },
         "read": {
           "allowed": true,
           "approval": false
@@ -167,6 +191,10 @@
           "allowed": true,
           "approval": true
         }
+      },
+      "browse": {
+        "maxRows": 100,
+        "supported": true
       },
       "columnReview": {
         "on": false
@@ -181,12 +209,14 @@
       "name": "t-mysql",
       "permissions": {
         "ddl": "deny",
+        "masked": "inherit",
         "read": "allow",
         "write": "prompt"
       },
       "readOnly": false,
       "reviewResults": {
         "ddl": false,
+        "masked": false,
         "read": false,
         "write": false
       },
@@ -211,6 +241,10 @@
           "approval": false,
           "reason": "permission denied"
         },
+        "masked": {
+          "allowed": true,
+          "approval": false
+        },
         "read": {
           "allowed": true,
           "approval": false
@@ -220,6 +254,10 @@
           "allowed": true,
           "approval": true
         }
+      },
+      "browse": {
+        "maxRows": 100,
+        "supported": true
       },
       "columnReview": {
         "on": false
@@ -234,12 +272,14 @@
       "name": "t-mariadb",
       "permissions": {
         "ddl": "deny",
+        "masked": "inherit",
         "read": "allow",
         "write": "prompt"
       },
       "readOnly": false,
       "reviewResults": {
         "ddl": false,
+        "masked": false,
         "read": false,
         "write": false
       },
@@ -264,6 +304,10 @@
           "approval": false,
           "reason": "permission denied"
         },
+        "masked": {
+          "allowed": true,
+          "approval": false
+        },
         "read": {
           "allowed": true,
           "approval": false
@@ -273,6 +317,10 @@
           "allowed": true,
           "approval": true
         }
+      },
+      "browse": {
+        "maxRows": 100,
+        "supported": true
       },
       "columnReview": {
         "on": false
@@ -287,12 +335,14 @@
       "name": "t-clickhouse",
       "permissions": {
         "ddl": "deny",
+        "masked": "inherit",
         "read": "allow",
         "write": "prompt"
       },
       "readOnly": false,
       "reviewResults": {
         "ddl": false,
+        "masked": false,
         "read": false,
         "write": false
       },
@@ -317,6 +367,10 @@
           "approval": false,
           "reason": "permission denied"
         },
+        "masked": {
+          "allowed": true,
+          "approval": false
+        },
         "read": {
           "allowed": true,
           "approval": false
@@ -326,6 +380,10 @@
           "allowed": true,
           "approval": true
         }
+      },
+      "browse": {
+        "maxRows": 100,
+        "supported": true
       },
       "columnReview": {
         "on": false
@@ -340,12 +398,14 @@
       "name": "t-sqlite",
       "permissions": {
         "ddl": "deny",
+        "masked": "inherit",
         "read": "allow",
         "write": "prompt"
       },
       "readOnly": false,
       "reviewResults": {
         "ddl": false,
+        "masked": false,
         "read": false,
         "write": false
       },
@@ -370,6 +430,11 @@
           "approval": false,
           "reason": "permission denied"
         },
+        "masked": {
+          "allowed": false,
+          "approval": false,
+          "reason": "no structured browse"
+        },
         "read": {
           "allowed": true,
           "approval": false
@@ -379,6 +444,10 @@
           "allowed": true,
           "approval": true
         }
+      },
+      "browse": {
+        "maxRows": 100,
+        "supported": false
       },
       "enforcement": "app",
       "expensiveQuery": {
@@ -390,12 +459,14 @@
       "name": "t-mongodb",
       "permissions": {
         "ddl": "deny",
+        "masked": "inherit",
         "read": "allow",
         "write": "prompt"
       },
       "readOnly": false,
       "reviewResults": {
         "ddl": false,
+        "masked": false,
         "read": false,
         "write": false
       },
@@ -420,6 +491,11 @@
           "approval": false,
           "reason": "permission denied"
         },
+        "masked": {
+          "allowed": false,
+          "approval": false,
+          "reason": "no structured browse"
+        },
         "read": {
           "allowed": true,
           "approval": false
@@ -429,6 +505,10 @@
           "allowed": true,
           "approval": true
         }
+      },
+      "browse": {
+        "maxRows": 100,
+        "supported": false
       },
       "enforcement": "app",
       "expensiveQuery": {
@@ -440,12 +520,14 @@
       "name": "t-redis",
       "permissions": {
         "ddl": "deny",
+        "masked": "inherit",
         "read": "allow",
         "write": "prompt"
       },
       "readOnly": false,
       "reviewResults": {
         "ddl": false,
+        "masked": false,
         "read": false,
         "write": false
       },
@@ -469,6 +551,11 @@
           "allowed": false,
           "approval": false,
           "reason": "no write console"
+        },
+        "masked": {
+          "allowed": false,
+          "approval": false,
+          "reason": "no structured browse"
         },
         "read": {
           "allowed": true,
@@ -481,6 +568,10 @@
           "reason": "no write console"
         }
       },
+      "browse": {
+        "maxRows": 100,
+        "supported": false
+      },
       "enforcement": "none",
       "expensiveQuery": {
         "check": "none",
@@ -491,12 +582,14 @@
       "name": "t-kibana",
       "permissions": {
         "ddl": "deny",
+        "masked": "inherit",
         "read": "allow",
         "write": "prompt"
       },
       "readOnly": false,
       "reviewResults": {
         "ddl": false,
+        "masked": false,
         "read": false,
         "write": false
       },
@@ -521,6 +614,11 @@
           "approval": false,
           "reason": "no write console"
         },
+        "masked": {
+          "allowed": false,
+          "approval": false,
+          "reason": "no structured browse"
+        },
         "read": {
           "allowed": true,
           "approval": false
@@ -532,6 +630,10 @@
           "reason": "no write console"
         }
       },
+      "browse": {
+        "maxRows": 100,
+        "supported": false
+      },
       "enforcement": "none",
       "expensiveQuery": {
         "check": "none",
@@ -542,12 +644,14 @@
       "name": "t-kafka",
       "permissions": {
         "ddl": "deny",
+        "masked": "inherit",
         "read": "allow",
         "write": "prompt"
       },
       "readOnly": false,
       "reviewResults": {
         "ddl": false,
+        "masked": false,
         "read": false,
         "write": false
       },
