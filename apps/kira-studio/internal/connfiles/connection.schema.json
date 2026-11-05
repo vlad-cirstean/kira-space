@@ -132,6 +132,12 @@
           "default": "deny",
           "description": "Schema statements."
         },
+        "masked": {
+          "type": "string",
+          "enum": ["inherit", "deny", "allow", "prompt"],
+          "default": "inherit",
+          "description": "The browse_table tool: one table, filters, order, at most 100 rows, masking always applied. inherit follows read."
+        },
         "auto_explain": {
           "type": "boolean",
           "default": true,
@@ -165,6 +171,12 @@
               "enum": ["inherit", "review", "send"],
               "default": "inherit",
               "description": "Schema statements."
+            },
+            "masked": {
+              "type": "string",
+              "enum": ["inherit", "review", "send"],
+              "default": "inherit",
+              "description": "browse_table results."
             }
           }
         },

@@ -143,8 +143,8 @@ func (p *projection) Forget(file string) error {
 const configColumns = `name = ?, kind = ?, color = ?, mode = ?, read_only = ?, host = ?, port = ?,
 	database = ?, username = ?, options_json = ?, preconnect = ?,
 	preconnect_sidecar = ?, preconnect_delay_sec = ?, auto_explain = ?, throttle_per_sec = ?,
-	mcp_enabled = ?, mcp_description = ?, mcp_read_mode = ?, mcp_write_mode = ?, mcp_ddl_mode = ?,
-	mcp_auto_explain = ?, mcp_review_read = ?, mcp_review_write = ?, mcp_review_ddl = ?, mcp_statement_timeout_sec = ?, mcp_tables_json = ?, mask_review_on = ?`
+	mcp_enabled = ?, mcp_description = ?, mcp_read_mode = ?, mcp_write_mode = ?, mcp_ddl_mode = ?, mcp_masked_mode = ?,
+	mcp_auto_explain = ?, mcp_review_read = ?, mcp_review_write = ?, mcp_review_ddl = ?, mcp_review_masked = ?, mcp_statement_timeout_sec = ?, mcp_tables_json = ?, mask_review_on = ?`
 
 func b2i(b bool) int {
 	if b {
@@ -169,8 +169,8 @@ func configArgs(c model.ConnectionFields) ([]any, error) {
 	return []any{
 		c.Name, c.Kind, c.Color, c.Mode, b2i(c.ReadOnly), c.Host, c.Port, c.Database, c.Username, string(opts),
 		c.Preconnect, b2i(c.PreconnectSidecar), c.PreconnectDelaySec, b2i(c.AutoExplain), c.ThrottlePerSec,
-		b2i(c.McpEnabled), c.McpDescription, c.McpReadMode, c.McpWriteMode, c.McpDdlMode, b2i(c.McpAutoExplain),
-		c.McpReview.Read, c.McpReview.Write, c.McpReview.Ddl, c.McpStatementTimeoutSec, tables, b2i(c.MaskReviewOn),
+		b2i(c.McpEnabled), c.McpDescription, c.McpReadMode, c.McpWriteMode, c.McpDdlMode, c.McpMaskedMode, b2i(c.McpAutoExplain),
+		c.McpReview.Read, c.McpReview.Write, c.McpReview.Ddl, c.McpReview.Masked, c.McpStatementTimeoutSec, tables, b2i(c.MaskReviewOn),
 	}, nil
 }
 
@@ -196,9 +196,9 @@ func (l *Loader) upsert(tx *sql.Tx, stem string, f File, valueJSON string) (stri
 		}
 		if _, err := tx.Exec(`INSERT INTO connections (id, name, kind, color, mode, read_only, host, port, database, username,
 			options_json, preconnect, preconnect_sidecar, preconnect_delay_sec, auto_explain, throttle_per_sec, mcp_enabled,
-			mcp_description, mcp_read_mode, mcp_write_mode, mcp_ddl_mode, mcp_auto_explain, mcp_review_read, mcp_review_write, mcp_review_ddl, mcp_statement_timeout_sec, mcp_tables_json, mask_review_on,
+			mcp_description, mcp_read_mode, mcp_write_mode, mcp_ddl_mode, mcp_masked_mode, mcp_auto_explain, mcp_review_read, mcp_review_write, mcp_review_ddl, mcp_review_masked, mcp_statement_timeout_sec, mcp_tables_json, mask_review_on,
 			created_at, updated_at, sort_order, stem, config_json)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			append(append([]any{id}, args...), now, now, order, stem, valueJSON)...); err != nil {
 			return "", nil, fmt.Errorf("connfiles: insert %s: %w", stem, err)
 		}

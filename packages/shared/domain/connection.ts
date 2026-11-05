@@ -100,6 +100,10 @@ export type ConnectionMode = z.infer<typeof connectionModeSchema>;
 export const mcpPermissionModeSchema = /*#__PURE__*/ z.enum(['deny', 'allow', 'prompt']);
 export type McpPermissionMode = z.infer<typeof mcpPermissionModeSchema>;
 
+// mirrors model.ValidMcpMaskedMode (P535)
+export const mcpMaskedModeSchema = /*#__PURE__*/ z.enum(['inherit', 'deny', 'allow', 'prompt']);
+export type McpMaskedMode = z.infer<typeof mcpMaskedModeSchema>;
+
 // mirrors model.ValidMcpReviewResults
 export const mcpReviewResultsSchema = /*#__PURE__*/ z.enum(['inherit', 'review', 'send']);
 export type McpReviewResults = z.infer<typeof mcpReviewResultsSchema>;
@@ -170,8 +174,10 @@ const connectionFieldsSchema = /*#__PURE__*/ z.object({
       read: mcpReviewResultsSchema,
       write: mcpReviewResultsSchema,
       ddl: mcpReviewResultsSchema,
+      // P535: browse_table's review.
+      masked: mcpReviewResultsSchema.default('inherit'),
     })
-    .default({ read: 'inherit', write: 'inherit', ddl: 'inherit' }),
+    .default({ read: 'inherit', write: 'inherit', ddl: 'inherit', masked: 'inherit' }),
   // P529: seconds each agent statement may run, 0 off. Default is load-bearing for older rows.
   mcpStatementTimeoutSec: z
     .number()
@@ -193,6 +199,8 @@ const connectionFieldsSchema = /*#__PURE__*/ z.object({
   mcpReadMode: mcpPermissionModeSchema.default('allow'),
   mcpWriteMode: mcpPermissionModeSchema.default('prompt'),
   mcpDdlMode: mcpPermissionModeSchema.default('deny'),
+  // P535: browse_table permission; inherit follows mcpReadMode.
+  mcpMaskedMode: mcpMaskedModeSchema.default('inherit'),
 });
 
 // SQS and S3 have no host/port at all (P10's D8, P17's own D8/D9 mirror) — fields mode repurposes

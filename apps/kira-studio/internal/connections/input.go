@@ -45,18 +45,21 @@ func (in Input) file(stem string) connfiles.File {
 }
 
 // normalized drops what the mode does not own: fields mode never carries a URI, URI mode derives its
-// options from the URI in Go, so a stale draft leftover cannot reach a file. An unset McpReview mode
-// becomes inherit.
+// options from the URI in Go, so a stale draft leftover cannot reach a file. An unset McpReview mode or
+// McpMaskedMode becomes inherit.
 func (in Input) normalized() Input {
 	if in.Mode == "uri" {
 		in.Options = map[string]any{}
 	} else {
 		in.URI = nil
 	}
-	for _, v := range []*string{&in.McpReview.Read, &in.McpReview.Write, &in.McpReview.Ddl} {
+	for _, v := range []*string{&in.McpReview.Read, &in.McpReview.Write, &in.McpReview.Ddl, &in.McpReview.Masked} {
 		if *v == "" {
 			*v = "inherit"
 		}
+	}
+	if in.McpMaskedMode == "" {
+		in.McpMaskedMode = "inherit"
 	}
 	return in
 }

@@ -20,7 +20,8 @@ const reviewed = () =>
 const inheriting = (): ConnectionSummary => ({
   ...reviewed(),
   id: ID,
-  mcpReview: { read: 'inherit', write: 'inherit', ddl: 'inherit' },
+  mcpReview: { read: 'inherit', write: 'inherit', ddl: 'inherit', masked: 'inherit' },
+  mcpMaskedMode: 'inherit',
   mcpStatementTimeoutSec: 10,
   mcpTables: null,
   maskReviewOn: false,

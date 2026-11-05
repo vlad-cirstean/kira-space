@@ -498,7 +498,7 @@ func TestDbMcpReviewPerConnection(t *testing.T) {
 	replace := flowharness.Replace(f.dbPath, "/data/mcp.db")
 
 	got, err := setReview("review")
-	if err != nil || got.McpReview != (model.McpReview{Read: "review", Write: "review", Ddl: "review"}) {
+	if err != nil || got.McpReview != (model.McpReview{Read: "review", Write: "review", Ddl: "review", Masked: "review"}) {
 		t.Fatalf("file edit = %+v (%v), want review", got, err)
 	}
 	f.app.Contract(t, "dbmcp-review-connection", "ConnectionsService.List#review", got, flowharness.Mask("createdAt", "updatedAt"), replace)
@@ -520,7 +520,7 @@ func TestDbMcpReviewPerConnection(t *testing.T) {
 	}
 
 	f.setPreview(t, true)
-	if got, err = setReview("send"); err != nil || got.McpReview != (model.McpReview{Read: "send", Write: "send", Ddl: "send"}) {
+	if got, err = setReview("send"); err != nil || got.McpReview != (model.McpReview{Read: "send", Write: "send", Ddl: "send", Masked: "send"}) {
 		t.Fatalf("file edit = %+v (%v), want send", got, err)
 	}
 	if live := runQuery(t, sess, f.connID, read); live.IsError || !strings.Contains(text(live), "two") {
@@ -530,7 +530,7 @@ func TestDbMcpReviewPerConnection(t *testing.T) {
 		t.Fatalf("send still queued %d", n)
 	}
 
-	if got, err = setReview("inherit"); err != nil || got.McpReview != (model.McpReview{Read: "inherit", Write: "inherit", Ddl: "inherit"}) {
+	if got, err = setReview("inherit"); err != nil || got.McpReview != (model.McpReview{Read: "inherit", Write: "inherit", Ddl: "inherit", Masked: "inherit"}) {
 		t.Fatalf("file edit = %+v (%v), want inherit", got, err)
 	}
 	done = callAsync(sess, f.connID, read)
@@ -545,7 +545,7 @@ func TestDbMcpReviewPerConnection(t *testing.T) {
 	if _, err := setReview("maybe"); err == nil {
 		t.Fatal("file edit accepted an invalid review setting")
 	}
-	if cur := current(); cur.McpReview != (model.McpReview{Read: "inherit", Write: "inherit", Ddl: "inherit"}) {
+	if cur := current(); cur.McpReview != (model.McpReview{Read: "inherit", Write: "inherit", Ddl: "inherit", Masked: "inherit"}) {
 		t.Fatalf("review setting after a refused file edit = %q, want inherit", cur.McpReview.Read)
 	}
 }

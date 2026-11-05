@@ -42,6 +42,8 @@ type ConnectionFields struct {
 	McpReadMode  string `json:"mcpReadMode"`
 	McpWriteMode string `json:"mcpWriteMode"`
 	McpDdlMode   string `json:"mcpDdlMode"`
+	// P535: permission for browse_table, one of inherit/deny/allow/prompt; inherit follows McpReadMode.
+	McpMaskedMode string `json:"mcpMaskedMode"`
 	// Runs this connection's own EXPLAIN before every explainable run_query on the DB MCP path,
 	// and pauses the query for a human decision when the plan crosses the expensive-query row
 	// threshold. Separate from AutoExplain, which governs this app's own console — see the
@@ -134,6 +136,12 @@ var mcpPermissionModes = map[string]bool{"deny": true, "allow": true, "prompt": 
 // ValidMcpPermissionMode mirrors connection.ts's mcpPermissionModeSchema (M2).
 func ValidMcpPermissionMode(v string) bool { return mcpPermissionModes[v] }
 
+// McpMaskedInherit is the masked-read value that follows the read permission.
+const McpMaskedInherit = "inherit"
+
+// ValidMcpMaskedMode reports whether v is a masked-read permission (P535): a permission word or inherit.
+func ValidMcpMaskedMode(v string) bool { return v == McpMaskedInherit || mcpPermissionModes[v] }
+
 // Statement timeout bounds (P529); mirrors connection.ts's CONNECTION_MCP_STATEMENT_TIMEOUT.
 const (
 	McpStatementTimeoutDefault = 10
@@ -151,9 +159,11 @@ type McpReview struct {
 	Read  string `json:"read"`
 	Write string `json:"write"`
 	Ddl   string `json:"ddl"`
+	// Masked is browse_table's review (P535).
+	Masked string `json:"masked"`
 }
 
-// For returns the setting of mode (read, write or ddl); an unknown mode is inherit.
+// For returns the setting of mode (read, write, ddl or masked); an unknown mode is inherit.
 func (r McpReview) For(mode string) string {
 	switch mode {
 	case "read":
@@ -162,6 +172,8 @@ func (r McpReview) For(mode string) string {
 		return r.Write
 	case "ddl":
 		return r.Ddl
+	case "masked":
+		return r.Masked
 	}
 	return "inherit"
 }

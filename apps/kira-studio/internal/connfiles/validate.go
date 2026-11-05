@@ -128,11 +128,14 @@ func (f File) checkMCP() *ValidationError {
 	if m.DDL != "" && !model.ValidMcpPermissionMode(m.DDL) {
 		return invalid("/mcp/ddl")
 	}
+	if m.Masked != "" && !model.ValidMcpMaskedMode(m.Masked) {
+		return invalid("/mcp/masked")
+	}
 	if m.ReviewResults != "" && !model.ValidMcpReviewResults(m.ReviewResults) {
 		return invalid("/mcp/review_results")
 	}
 	if r := m.Review; r != nil {
-		for path, v := range map[string]string{"/mcp/review/read": r.Read, "/mcp/review/write": r.Write, "/mcp/review/ddl": r.DDL} {
+		for path, v := range map[string]string{"/mcp/review/read": r.Read, "/mcp/review/write": r.Write, "/mcp/review/ddl": r.DDL, "/mcp/review/masked": r.Masked} {
 			if v != "" && !model.ValidMcpReviewResults(v) {
 				return invalid(path)
 			}

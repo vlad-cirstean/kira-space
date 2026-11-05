@@ -55,9 +55,11 @@
       "mcpDdlMode": "deny",
       "mcpDescription": "",
       "mcpEnabled": false,
+      "mcpMaskedMode": "inherit",
       "mcpReadMode": "deny",
       "mcpReview": {
         "ddl": "inherit",
+        "masked": "inherit",
         "read": "inherit",
         "write": "inherit"
       },
@@ -94,9 +96,11 @@
       "mcpDdlMode": "deny",
       "mcpDescription": "",
       "mcpEnabled": false,
+      "mcpMaskedMode": "inherit",
       "mcpReadMode": "deny",
       "mcpReview": {
         "ddl": "inherit",
+        "masked": "inherit",
         "read": "inherit",
         "write": "inherit"
       },

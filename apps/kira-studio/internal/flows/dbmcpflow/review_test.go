@@ -122,7 +122,7 @@ func TestDbMcpReviewPerMode(t *testing.T) {
 	sess := f.session(t)
 	f.mcpSet(t, map[string]string{"write": "allow", "review.read": "review", "review.write": "send"})
 	got := f.summary(t)
-	if got.McpReview != (model.McpReview{Read: "review", Write: "send", Ddl: "inherit"}) {
+	if got.McpReview != (model.McpReview{Read: "review", Write: "send", Ddl: "inherit", Masked: "inherit"}) {
 		t.Fatalf("review = %+v", got.McpReview)
 	}
 	replace := flowharness.Replace(f.dbPath, "/data/mcp.db")
@@ -404,7 +404,7 @@ func TestDbMcpReviewLegacyKey(t *testing.T) {
 	sess := f.session(t)
 	f.mcpSet(t, map[string]string{"review_results": "review"})
 	got := f.summary(t)
-	if want := (model.McpReview{Read: "review", Write: "review", Ddl: "review"}); got.McpReview != want {
+	if want := (model.McpReview{Read: "review", Write: "review", Ddl: "review", Masked: "review"}); got.McpReview != want {
 		t.Fatalf("review = %+v, want %+v", got.McpReview, want)
 	}
 	if rr := f.listReviewResults(t, sess); !rr["read"] || !rr["write"] || !rr["ddl"] {

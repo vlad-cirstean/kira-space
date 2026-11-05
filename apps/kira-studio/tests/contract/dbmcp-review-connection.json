@@ -49,9 +49,11 @@
     "mcpDdlMode": "deny",
     "mcpDescription": "scratch notes",
     "mcpEnabled": true,
+    "mcpMaskedMode": "inherit",
     "mcpReadMode": "allow",
     "mcpReview": {
       "ddl": "review",
+      "masked": "review",
       "read": "review",
       "write": "review"
     },
