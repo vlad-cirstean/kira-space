@@ -1,4 +1,9 @@
 {
+  "ProofService.ChooseShotFolder": {
+    "canceled": false,
+    "id": "<masked>",
+    "path": "<masked>"
+  },
   "ProofService.Session": {
     "closedAt": 0,
     "current": {

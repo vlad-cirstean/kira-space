@@ -88,6 +88,7 @@ type ProofService struct {
 	Shell ProofShell
 
 	openMu sync.Mutex
+	shots  proofShotFolders
 }
 
 // ProofSessionArgs names one session.

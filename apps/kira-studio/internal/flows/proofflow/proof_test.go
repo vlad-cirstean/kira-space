@@ -57,6 +57,10 @@ func TestProofCloseAndRead(t *testing.T) {
 	if !bytes.Contains(st.Data, []byte("9007199254740993")) {
 		t.Fatalf("integer precision lost: %s", st.Data)
 	}
+	// The proof window's cell editor shows this cell (tests/ui/proof-window.spec.ts).
+	if !bytes.Contains(st.Data, []byte(`"alpha"`)) {
+		t.Fatalf("first-row name missing: %s", st.Data)
+	}
 
 	if ps := proofPrompts(t, f.app); len(ps) != 1 || ps[0].Ref != list[0].ID {
 		t.Fatalf("prompts = %+v, want one for %s", ps, list[0].ID)
