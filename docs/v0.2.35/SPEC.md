@@ -18,7 +18,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 | P519 | Proof window cell editor and multi-file screenshots | Done |
 | P520 | Aggregated MCP approvals: one dialog, minimise to toast, long approval timeouts | Done |
 | P521 | Scripts MCP | Done |
-| P522 | Free-form API request MCP with agent credentials | Pending |
+| P522 | Free-form API request MCP with agent credentials | Done |
 | P523 | Prefixed nanoid for every Kira-generated id | Pending |
 | P524 | Manual order for API collections and environments | Done |
 | P525 | Uniform flat design: dialogs and outline buttons | Done |
@@ -105,6 +105,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 - Global opt-in and approval mode in Settings, Database MCP; tool descriptions editable in Settings, Prompts. Covers timeouts, size caps, TLS, no cookie sharing between calls, masked op log.
 - Runs after P521 (shared MCP server, settings and prompt files).
 - Plan: `plans/P522.md`.
+- Result: Done in 7 commits, rebased after P527. `api_list_environments` and `api_request` (Settings, Database MCP switch, default off), `api.request` approval kind with masked body, per-host credential enforcement with redirect guard, environment keys `agent`, `agentHosts`, `agentAutoApproveReads`, Agent access tab and overview, masked op log, flow and UI specs. Kept both the `never` approval mode and the read auto-approve, off by default. Real `claude` test not run.
 
 ### P523 Prefixed nanoid for every Kira-generated id
 

@@ -3109,7 +3109,7 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 
 One queue and one dialog per app hold every pending agent approval. Tools stay synchronous; each call returns when its own item is answered.
 
-- Go: `internal/approvals` is the shared queue. An `Item` has `Kind`, `Target` (name, kind, colour, read-only), `Operation` (class, tone), `Origin` (client, task, step, source), `CreatedAt`, `ExpiresAt` and an opaque `Payload`. Kinds: `db.query`, `db.response`, `kube.read`, `proof.review` (Studio), `branch.request` (Space). `Kind` is the subject; an optional `Subject` refines it.
+- Go: `internal/approvals` is the shared queue. An `Item` has `Kind`, `Target` (name, kind, colour, read-only), `Operation` (class, tone), `Origin` (client, task, step, source), `CreatedAt`, `ExpiresAt` and an opaque `Payload`. Kinds: `db.query`, `db.response`, `kube.read`, `script.run`, `api.request`, `proof.review` (Studio), `branch.request` (Space). `Kind` is the subject; an optional `Subject` refines it.
 - Item id is `<kind>:<request id>`. Each item opens router prompt `approval:<item id>` (kind `approval`, ref = item id), so the router picks the window.
 - Bound as `ApprovalsService`: `List` and `Answer({IDs, Approve, Options})`. `Options` maps item id to owner-specific JSON (branch request choices). `Answer` returns one `{id, code, error}` per id. The push `kira:approvals:changed` carries the whole list.
 - Each owner registers a resolver; expiry is the owner's (`ApprovalTimeout` 10 min for DB MCP), and the item leaves the queue on answer, expiry or caller disconnect.
@@ -3117,7 +3117,7 @@ One queue and one dialog per app hold every pending agent approval. Tools stay s
 - `ApprovalsDialog` lists items as cards with their own countdown, Approve and Deny, and the origin line; "Approve all" and "Deny all" appear above one item. The X and Escape call `minimise`, which never answers; the dialog becomes `ApprovalsToast` ("N things awaiting your approval") with Review to reopen. A prompt shown by `PromptHost` also turns the dialog into the toast so two modals never stack.
 - State: Pinia `state/approvals.ts` (minimised, focus, in-flight, errors, options). Server state: TanStack Query key `approvals`, replaced by each push.
 - The countdown (`useCountdown`) only displays; the backend decides expiry.
-- P521 adds `script.run` and P522 adds `api.request` as kinds: a Go owner plus a registered body. Nothing else changes.
+- `script.run` (P521) and `api.request` (P522) are kinds of this shape: a Go owner plus a registered body. Nothing else changes.
 
 ## Database MCP server (v1.7)
 
@@ -3171,6 +3171,20 @@ One queue and one dialog per app hold every pending agent approval. Tools stay s
 - Approval item: kind `script.run`, payload `scriptId`, `description`, `command`, `cwd`, `params`, `env` (`scriptRunPayloadSchema`). Studio registers `ScriptRunBody.vue` in `studioApprovalKinds()`; the header is `ConnectionHeader.vue`.
 - UI: the run dialog's MCP tab (Studio only, hidden for a smart script), a plug marker on exposed rows, a Settings, Database MCP scripts list with a switch that edits the file, and the trigger label "Agent run".
 - Tests: flows `TestDbMcpScriptRunAndLogs`, `TestDbMcpScriptApproval` (contract `dbmcp-approval-script.json`), `TestRunsFormStudio` (mcp keys), `TestMigration58AddsMCPTrigger`; UI `dbmcp-approval-script.spec.ts`, `automations-mcp.spec.ts`; real `claude` `TestDbMcpScriptThroughClaude`.
+
+### API request tools (P522)
+
+- Tools `api_list_environments` and `api_request` register in `addAPITools` (`dbmcp/api_tools.go`) when `Config.API` is set and Settings, Database MCP, `apiRequests` is on (default off). The toggle applies without a restart: the server rebuilds when it changes. Studio only. `apiApproval` is `always` (default) or `never`.
+- `api_request` takes method, url, headers, query, body or form, contentType, timeoutSeconds (default 30, max 300), maxResponseBytes (default 64 KiB, max 512 KiB), followRedirects. No access to saved requests. Dynamic values (`{{$uuid}}`) are refused.
+- Gate order: tools on, plan (`agentapi.Service.Plan`: names, host rules, credentials), approval, send (re-plans, so an edit made while the item waits is enforced). A failure at plan returns an error, never an item.
+- Package `internal/agentapi`: `Plan` resolves plain variables and keeps secrets as `{{name}}`; `Send` opens the secrets, builds the request through `apivars.NewResolverFor` and sends through `httpclient.Send` as a logged `http` op.
+- Environment file keys (environment files only; a collection file with them is a schema problem): per variable `agent: bool`, per secret `agentHosts: []string`, top level `agentAutoApproveReads: bool` (default false: a body-less GET, HEAD or OPTIONS skips the approval). A secret with `agent: true` and no hosts is a file problem. Hosts: `host`, `host:port`, `*.domain`, bracketed IPv6, an `http://` prefix for plain HTTP (`apifiles.HostRule`). Plain variables have no host list.
+- An unavailable and a nonexistent variable give the same error text. `api_list_environments` lists environments with an available variable: names, secret flag, hosts, never a value.
+- Per-host enforcement: a secret is refused for a host outside its list, at plan and at send. A redirect to such a host is blocked (`httpclient.Options.RedirectGuard`) and only the first hop reaches the server. Without a credential a redirect follows. TLS is always verified. Each call has its own ephemeral cookie jar and records no response history.
+- Masking: `apivars.Replacer` turns rendered secret forms back into `{{name}}`, then `secrets.Masker` masks every Api secret, over status text, headers, URLs, redirects and body. A body cut by the client's own cap loses its tail so a split secret cannot leak. The op log command is the plan URL with secrets as `{{name}}`.
+- `api.request` approval item: operation class `request`, tone neutral for GET, HEAD, OPTIONS, caution for other methods, danger for DELETE. Payload (`apiRequestPayloadSchema`): `method`, `url`, `host`, `environment`, `query`, `headers` (`masked`), `auth`, `body` (`contentType`, `text` capped at 64 KiB, `truncated`, `form`), `variables` (secret value `••••`), `credentials`, `followRedirects`, `timeoutSeconds`. Studio registers `ApiRequestBody.vue` with labels Send and Don't send.
+- UI: the Environments view lists `ApiConfigService.AgentAccess` above Secrets (`ApiAgentAccess.vue`); the variables dialog has an Agent access tab (`ApiAgentAccessForm.vue`, `TagsInput` for hosts) over the same draft as the YAML tab; Settings, Database MCP holds the switch, approval mode and a warning for `never`.
+- Tests: flows `TestApiRequestApproved` (contract `approvals-api.json`), `TestApiRequestBodies`, `TestApiApprovalModes`, `TestApiToolsToggle` (contract `dbmcp-api-settings.json`), `TestApiAgentAccess` (contract `api-agent-access.json`), blocked host, redirect, unavailable, caps; UI `approvals-api.spec.ts`, `api-agent-access.spec.ts`, `dbmcp-api-settings.spec.ts`.
 
 ### Permissions and statement classification (M2)
 
@@ -3250,7 +3264,7 @@ One queue and one dialog per app hold every pending agent approval. Tools stay s
 ## App prompts (P271)
 
 - internal/llmprompts holds every LLM prompt and LLM-facing instruction both apps send; internal/prompts is the P246 popup router, not this package.
-- registry.go is the only file with prompt text; it has 139 entries (Space 115, Studio 34), accessed via typed handle Prompt[V] with Text(src, vars), and NoVars for entries without variables.
+- registry.go is the only file with prompt text; it has 244 entries, accessed via typed handle Prompt[V] with Text(src, vars), and NoVars for entries without variables.
 - User-authored text (smart-script bodies, workflow step prompts), tool and server names, tool error strings and result data formatting are kept out of the prompt registry.
 - Prompt kinds are system, message, suffix, instructions, tool, argument (one MCP tool property description, with Parent tool and Field), toolResult, and fragment (included via {{template}}).
 - InputSchema[T] sets each tool property's description from its argument entry, a mismatch panics at server build, and jsonschema tags are not used.
@@ -3351,6 +3365,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - Package `apps/kira-studio/internal/apifiles`: `Store` owns the folder, the load path and every write to `api_*`. Files to DB only. Invalid file: rows keep the last good version, a `Problem` with line is published, one Warn per new hash. File gone: rows go (history cascades).
 - Projection: `api_collections`, `api_items`, `api_environments`, `api_variables` are derived from the files. Surrogate uuid ids stay; new columns `stem`, `item_key`, `secret_ref` bind them to file ids. Renaming a file or item `id` is a delete plus a create; changing `name` keeps history. State kept in the DB: `is_active` (only `SetActiveEnvironment` writes it), response and call history, variable history, tab state.
 - Order: item order is file order (`items` order is the tree order). Collection and environment order is app state in `sort_order`, set by `ReorderCollections` and `ReorderEnvironments` (`apifiles.Store`, `sqlitex.ReorderSortOrder`; no file write). New rows append, a rename keeps the place, a file renamed on disk (new stem) moves to the end, a fresh DB starts from file-load order.
+- Agent keys (P522, environment files only): per variable `agent`, per secret `agentHosts`, top level `agentAutoApproveReads`; see "API request tools (P522)". `ApiConfigService.AgentAccess` lists them without values.
 - Secrets: a secret variable is `secret: ${secret:<name>}`; the value lives in `secret_values` (scope `variable`, owner `api`). `ApiConfigService.SetSecret` and `DeleteSecret` are write-only. No value reaches a file, a log or a problem message. `apivars` two-stage substitution is unchanged.
 - App writes: Save of a request rewrites only that node through yaml.v3 node edits (`apifiles/edit.go`), so comments elsewhere stay, with a `baseHash` check. Create collection, item and gRPC item, and Import (Postman) write files. Export is unchanged and skips secret values.
 - Bound surface kept: Collections `List`, `GetRequest`, `GetGrpcRequest`, `SaveRequest`, `SaveGrpcRequest`, `CreateCollection`, `CreateItem`, `CreateGrpcItem`, `Import`, `Export`; Variables `ListEnvironments`, `CreateEnvironment`, `SetActiveEnvironment`, `List`, `History`, `Reveal`, `RevealHistory`; `ApiConfigService` `View`, `SetSecret`, `DeleteSecret`. Rename, delete, duplicate, move, reorder, variable CRUD and bulk edit are removed; edit the file.
