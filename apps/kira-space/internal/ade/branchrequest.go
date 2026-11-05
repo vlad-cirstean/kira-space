@@ -59,7 +59,8 @@ type branchDecision struct {
 // branchCall is one request_branches or rename_branch call merged into a request. Its items carry the
 // id prefix.
 type branchCall struct {
-	prefix string
+	prefix   string
+	deadline time.Time // the call's own wait ends here; the request never outlives its oldest live call
 	result chan branchDecision // buffered 1: the one resolver never blocks
 }
 
@@ -135,8 +136,9 @@ func itemOfBranchRequest(v adewire.BranchRequest) approvals.Item {
 // branchOwner answers branch.request items for the approvals queue.
 type branchOwner struct{ b *TaskBoard }
 
-// Answer approves or denies the whole request. Approve options are {itemIds, remoteItemIds}; none approves
-// every item with the remote rename off.
+// Answer approves or denies the request. Approve options are {itemIds, remoteItemIds, shownItemIds}; none
+// approves every item with the remote rename off. A call with an item outside shownItemIds joined after the
+// user's view rendered; it stays pending.
 func (o branchOwner) Answer(ref string, a approvals.Answer) error {
 	if !a.Approve {
 		if !o.b.DenyBranchRequest(ref) {
@@ -147,13 +149,14 @@ func (o branchOwner) Answer(ref string, a approvals.Answer) error {
 	var opts struct {
 		ItemIDs       []string `json:"itemIds"`
 		RemoteItemIDs []string `json:"remoteItemIds"`
+		ShownItemIDs  []string `json:"shownItemIds"`
 	}
 	if len(a.Options) > 0 {
 		if err := json.Unmarshal(a.Options, &opts); err != nil {
 			return ipcerr.Contract("branch request options: %v", err)
 		}
 	}
-	resolved, err := o.b.ApproveBranchRequest(ref, opts.ItemIDs, opts.RemoteItemIDs)
+	resolved, err := o.b.ApproveBranchRequest(ref, opts.ItemIDs, opts.RemoteItemIDs, opts.ShownItemIDs)
 	switch {
 	case errors.Is(err, ErrInvalidInput):
 		return ipcerr.Contract("%s", trimInvalid(err))
@@ -177,8 +180,8 @@ func (b *TaskBoard) dropBranchRequestLocked(id string) {
 	}
 }
 
-// joinBranchRequest adds a call's items to the task's open request, or opens one. A join resets the
-// request's wait and re-puts the item so the countdown follows.
+// joinBranchRequest adds a call's items to the task's open request, or opens one. Each call keeps its own
+// deadline; the request's expiry is the oldest live call's, and the item is re-put so the countdown follows.
 func (b *TaskBoard) joinBranchRequest(taskID string, d *requestDraft) (reqID string, bc *branchCall) {
 	q := &b.branchReqs
 	q.mu.Lock()
@@ -192,7 +195,7 @@ func (b *TaskBoard) joinBranchRequest(taskID string, d *requestDraft) (reqID str
 		r = &branchRequest{view: adewire.BranchRequest{ID: ids.NewID(), TaskID: taskID, TaskTitle: d.title, CreatedAt: now.UnixMilli()}}
 		q.byID[r.view.ID], q.byTask[taskID] = r, r.view.ID
 	}
-	bc = &branchCall{prefix: fmt.Sprintf("c%d", r.next), result: make(chan branchDecision, 1)}
+	bc = &branchCall{prefix: fmt.Sprintf("c%d", r.next), deadline: now.Add(b.branchRequestWait()), result: make(chan branchDecision, 1)}
 	r.next++
 	for _, it := range d.items {
 		it.ID = bc.prefix + it.ID
@@ -200,9 +203,18 @@ func (b *TaskBoard) joinBranchRequest(taskID string, d *requestDraft) (reqID str
 		r.view.Items = append(r.view.Items, it)
 	}
 	r.calls = append(r.calls, bc)
-	r.view.ExpiresAt = now.Add(b.branchRequestWait()).UnixMilli()
+	refreshBranchExpiry(r)
 	b.putBranchRequestLocked(r)
 	return r.view.ID, bc
+}
+
+// refreshBranchExpiry sets the request's expiry to its earliest live call deadline.
+func refreshBranchExpiry(r *branchRequest) {
+	for i, c := range r.calls {
+		if ms := c.deadline.UnixMilli(); i == 0 || ms < r.view.ExpiresAt {
+			r.view.ExpiresAt = ms
+		}
+	}
 }
 
 // resolveBranchRequest removes the request, withdraws its item and hands every merged call the decision;
@@ -224,38 +236,42 @@ func (b *TaskBoard) resolveBranchRequest(id string, d branchDecision) bool {
 	return true
 }
 
-// leaveBranchRequest abandons one call: its items go, the others keep waiting, and the request closes with
-// its last call. A request already resolved has already answered the call.
-func (b *TaskBoard) leaveBranchRequest(id string, bc *branchCall) {
+// withdrawBranchCall ends one call with kind (abandoned or timeout): its items go, the others keep waiting,
+// and the request closes with its last call. A call already answered keeps its answer.
+func (b *TaskBoard) withdrawBranchCall(id string, bc *branchCall, kind decisionKind) {
 	q := &b.branchReqs
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	r := q.byID[id]
-	if r == nil {
+	if r == nil || !slices.Contains(r.calls, bc) {
 		return
 	}
-	r.calls = slices.DeleteFunc(r.calls, func(c *branchCall) bool { return c == bc })
-	r.view.Items = slices.DeleteFunc(r.view.Items, func(it adewire.BranchRequestItem) bool { return strings.HasPrefix(it.ID, bc.prefix+"i") })
-	bc.result <- branchDecision{kind: decisionAbandoned}
-	if len(r.calls) == 0 {
-		delete(q.byID, id)
-		delete(q.byTask, r.view.TaskID)
-		b.dropBranchRequestLocked(id)
-		return
-	}
-	b.putBranchRequestLocked(r)
+	b.removeCallsLocked(r, branchDecision{kind: kind}, func(c *branchCall) bool { return c == bc })
 }
 
-// branchRequestRemaining is the time left on the request's wait; 0 when it is gone or out.
-func (b *TaskBoard) branchRequestRemaining(id string) time.Duration {
+// removeCallsLocked answers the calls pick selects with d and drops their items. The request closes when no
+// call is left; otherwise its expiry follows the remaining calls.
+func (b *TaskBoard) removeCallsLocked(r *branchRequest, d branchDecision, pick func(*branchCall) bool) {
 	q := &b.branchReqs
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	r := q.byID[id]
-	if r == nil {
-		return 0
+	var kept []*branchCall
+	for _, c := range r.calls {
+		if !pick(c) {
+			kept = append(kept, c)
+			continue
+		}
+		prefix := c.prefix + "i"
+		r.view.Items = slices.DeleteFunc(r.view.Items, func(it adewire.BranchRequestItem) bool { return strings.HasPrefix(it.ID, prefix) })
+		c.result <- d
 	}
-	return max(0, time.Until(time.UnixMilli(r.view.ExpiresAt)))
+	r.calls = kept
+	if len(kept) == 0 {
+		delete(q.byID, r.view.ID)
+		delete(q.byTask, r.view.TaskID)
+		b.dropBranchRequestLocked(r.view.ID)
+		return
+	}
+	refreshBranchExpiry(r)
+	b.putBranchRequestLocked(r)
 }
 
 func (b *TaskBoard) abandonBranchRequests(taskID string) {
@@ -304,23 +320,40 @@ func (b *TaskBoard) BranchRequest(id string) (adewire.BranchRequest, error) {
 }
 
 // ApproveBranchRequest approves the listed items, a non-empty subset of the request's items; nil approves
-// every item. The rest are denied. remoteIDs name rename items whose remote branch moves too. resolved is
-// false when the request is already gone.
-func (b *TaskBoard) ApproveBranchRequest(id string, itemIDs, remoteIDs []string) (bool, error) {
-	req, err := b.BranchRequest(id)
-	if err != nil {
+// every shown item. The rest of the shown items are denied. remoteIDs name rename items whose remote branch
+// moves too. shownIDs are the item ids the user's view held; nil means the items open now. A call with an
+// item outside that set joined after the view rendered and stays pending. resolved is false when the
+// request is already gone.
+func (b *TaskBoard) ApproveBranchRequest(id string, itemIDs, remoteIDs, shownIDs []string) (bool, error) {
+	q := &b.branchReqs
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	r := q.byID[id]
+	if r == nil {
 		return false, nil
 	}
+	known := func(iid string) bool {
+		return slices.ContainsFunc(r.view.Items, func(it adewire.BranchRequestItem) bool { return it.ID == iid })
+	}
+	shown := make(map[string]bool, len(r.view.Items))
+	if shownIDs == nil {
+		for _, it := range r.view.Items {
+			shown[it.ID] = true
+		}
+	} else {
+		for _, iid := range shownIDs {
+			shown[iid] = true
+		}
+	}
 	if itemIDs == nil {
-		for _, it := range req.Items {
-			itemIDs = append(itemIDs, it.ID)
+		for _, it := range r.view.Items {
+			if shown[it.ID] {
+				itemIDs = append(itemIDs, it.ID)
+			}
 		}
 	}
 	if len(itemIDs) == 0 {
 		return false, invalid("approve at least one branch")
-	}
-	known := func(iid string) bool {
-		return slices.ContainsFunc(req.Items, func(it adewire.BranchRequestItem) bool { return it.ID == iid })
 	}
 	dec := branchDecision{kind: decisionApproved, approved: make(map[string]bool, len(itemIDs)), remote: map[string]bool{}}
 	for _, iid := range itemIDs {
@@ -335,7 +368,16 @@ func (b *TaskBoard) ApproveBranchRequest(id string, itemIDs, remoteIDs []string)
 		}
 		dec.remote[iid] = true
 	}
-	return b.resolveBranchRequest(id, dec), nil
+	b.removeCallsLocked(r, dec, func(c *branchCall) bool {
+		prefix := c.prefix + "i"
+		for _, it := range r.view.Items {
+			if strings.HasPrefix(it.ID, prefix) && !shown[it.ID] {
+				return false
+			}
+		}
+		return true
+	})
+	return true, nil
 }
 
 // DenyBranchRequest denies every item; resolved is false when the request is already gone.
@@ -441,7 +483,7 @@ func (b *TaskBoard) awaitBranchRequest(ctx context.Context, call agentmcp.SpaceC
 	noted := b.holdRunNote(call.RunID)
 	b.notifyBoard()
 
-	timer := time.NewTimer(b.branchRequestRemaining(reqID))
+	timer := time.NewTimer(b.branchRequestWait())
 	defer timer.Stop()
 wait:
 	for {
@@ -449,15 +491,11 @@ wait:
 		case dec = <-bc.result:
 			break wait
 		case <-timer.C:
-			if left := b.branchRequestRemaining(reqID); left > 0 {
-				timer.Reset(left) // a later call merged in and extended the wait
-				continue
-			}
-			b.resolveBranchRequest(reqID, branchDecision{kind: decisionTimeout})
+			b.withdrawBranchCall(reqID, bc, decisionTimeout)
 			dec = <-bc.result
 			break wait
 		case <-ctx.Done():
-			b.leaveBranchRequest(reqID, bc)
+			b.withdrawBranchCall(reqID, bc, decisionAbandoned)
 			dec = <-bc.result
 			break wait
 		}

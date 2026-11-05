@@ -10,7 +10,9 @@ import { type BranchRequestItem, branchRequestPayloadSchema } from './payload';
 // One approvals item for a task's branch calls. Concurrent calls merge into it, so the items group by
 // call (ids are c<call>i<k>). Unchecking every item of a call denies that call.
 const props = defineProps<{ item: ApprovalItem }>();
-const emit = defineEmits<{ options: [{ itemIds: string[]; remoteItemIds: string[] }] }>();
+const emit = defineEmits<{
+  options: [{ itemIds: string[]; remoteItemIds: string[]; shownItemIds: string[] }];
+}>();
 
 const payload = computed(() => branchRequestPayloadSchema.parse(props.item.payload));
 
@@ -35,6 +37,7 @@ watch(
     emit('options', {
       itemIds: selected.value,
       remoteItemIds: remote.value.filter((id) => selected.value.includes(id)),
+      shownItemIds: payload.value.items.map((i) => i.id),
     }),
   { immediate: true },
 );

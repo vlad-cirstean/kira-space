@@ -62,7 +62,7 @@ test('contract: the item names both branches and Approve carries the remote choi
   expect(calls(control, IPC.approvalsAnswer)[0]?.args).toEqual({
     ids: [it.id],
     approve: true,
-    options: { [it.id]: { itemIds: [row.id], remoteItemIds: [row.id] } },
+    options: { [it.id]: { itemIds: [row.id], remoteItemIds: [row.id], shownItemIds: [row.id] } },
   });
 });
 

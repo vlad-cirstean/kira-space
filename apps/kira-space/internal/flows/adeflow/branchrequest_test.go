@@ -298,6 +298,73 @@ func TestBranchRequest(t *testing.T) {
 		waitRun(t, f.app, f.task.ID, "one", "done")
 	})
 
+	t.Run("each call times out on its own clock", func(t *testing.T) {
+		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/a"})}, Name: "done"}}, onceStepYML, true,
+			flowharness.WithBranchRequestWait(2*time.Second))
+		f.startRun(t)
+		req := f.waitRequest(t)
+		time.Sleep(1200 * time.Millisecond)
+		type answer struct {
+			res agentmcp.RequestBranchesResult
+			err error
+		}
+		done := make(chan answer, 1)
+		go func() {
+			res, err := f.app.W.AdeBoard.RequestBranches(ctx, agentmcp.SpaceCall{TaskID: f.task.ID}, []agentmcp.BranchSpec{{Repo: "web", Branch: "feat/w"}})
+			done <- answer{res, err}
+		}()
+		f.waitItems(t, 2)
+		// The first call ends at its own 2 s; the joined call keeps waiting in the same request.
+		waitRun(t, f.app, f.task.ID, "one", "done")
+		if got := f.result(t, 1); !strings.Contains(got, "timeout") {
+			t.Fatalf("first call result = %s, want timeout", got)
+		}
+		left, err := branchRequest(f.app, req.ID)
+		if err != nil || len(left.Items) != 1 || left.Items[0].ID != "c1i0" {
+			t.Fatalf("after the first call timed out: %+v, %v, want only c1i0", left, err)
+		}
+		select {
+		case a := <-done:
+			if a.err != nil || len(a.res.Branches) != 1 || a.res.Branches[0].Outcome == "" {
+				t.Fatalf("joined call = %+v, %v", a.res, a.err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("joined call never timed out")
+		}
+	})
+
+	t.Run("approval leaves a call that joined after the view rendered pending", func(t *testing.T) {
+		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/a"})}, Name: "done"}}, onceStepYML, true)
+		f.startRun(t)
+		req := f.waitRequest(t)
+		joined, cancel := context.WithCancel(ctx)
+		defer cancel()
+		done := make(chan error, 1)
+		go func() {
+			_, err := f.app.W.AdeBoard.RequestBranches(joined, agentmcp.SpaceCall{TaskID: f.task.ID}, []agentmcp.BranchSpec{{Repo: "web", Branch: "feat/w"}})
+			done <- err
+		}()
+		f.waitItems(t, 2)
+		// The user's view held only the first call's item.
+		if ans, err := answerBR(f.app, req.ID, true, brOptions{ItemIDs: []string{"c0i0"}, ShownItemIDs: []string{"c0i0"}}); err != nil || !ans.Resolved {
+			t.Fatalf("Approve = %+v, %v", ans, err)
+		}
+		waitRun(t, f.app, f.task.ID, "one", "done")
+		left, err := branchRequest(f.app, req.ID)
+		if err != nil || len(left.Items) != 1 || left.Items[0].ID != "c1i0" {
+			t.Fatalf("after approval: %+v, %v, want the late call's item still open", left, err)
+		}
+		select {
+		case err := <-done:
+			t.Fatalf("late call answered early: %v", err)
+		default:
+		}
+		mustDeny(t, f.app, req.ID)
+		if err := <-done; err != nil {
+			t.Fatalf("late call: %v", err)
+		}
+	})
+
 	t.Run("stopping the session abandons the request", func(t *testing.T) {
 		f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/a"})}, WaitFile: filepath.Join(t.TempDir(), "never")}},
 			"  - id: work\n    name: Work\n    kind: manual\n    session: true\n", false, flowharness.WithTrackerGrace(time.Second))

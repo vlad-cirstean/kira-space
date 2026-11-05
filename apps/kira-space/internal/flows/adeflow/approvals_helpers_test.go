@@ -74,6 +74,7 @@ func answerBR(app *flowharness.App, id string, approve bool, opts any) (brAnswer
 type brOptions struct {
 	ItemIDs       []string `json:"itemIds"`
 	RemoteItemIDs []string `json:"remoteItemIds"`
+	ShownItemIDs  []string `json:"shownItemIds,omitempty"`
 }
 
 func approveBR(app *flowharness.App, id string, itemIDs, remoteIDs []string) (brAnswer, error) {

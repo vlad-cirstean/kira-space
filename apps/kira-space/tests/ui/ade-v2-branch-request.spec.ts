@@ -57,7 +57,13 @@ test('contract: the item lists every branch and Approve sends the checked items'
   expect(calls(control, IPC.approvalsAnswer)[0]?.args).toEqual({
     ids: [it.id],
     approve: true,
-    options: { [it.id]: { itemIds: [kept?.id], remoteItemIds: [] } },
+    options: {
+      [it.id]: {
+        itemIds: [kept?.id],
+        remoteItemIds: [],
+        shownItemIds: items.map((row) => row.id),
+      },
+    },
   });
 });
 
