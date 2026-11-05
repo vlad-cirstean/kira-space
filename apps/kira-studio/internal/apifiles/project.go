@@ -419,6 +419,9 @@ func secretRef(ref string) string {
 	return refs[0].Name
 }
 
+// SecretNameOf is the secret name of a variable's `${secret:name}` reference, "" for none.
+func SecretNameOf(ref string) string { return secretRef(ref) }
+
 func syncVariables(tx *sql.Tx, scope, ownerID string, vars []Variable, ch *Changes) error {
 	column := "collection_id"
 	if scope == OwnerEnvironment {

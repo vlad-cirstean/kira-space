@@ -399,6 +399,12 @@ func (s *Service) NewResolver(collectionID, environmentID string) (*Resolver, er
 	return &Resolver{refs: refs, src: s.deps.Secrets.Snapshot(), secretValues: map[string]string{}, usedSeen: map[string]bool{}}, nil
 }
 
+// NewResolverFor is NewResolver over an explicit variable-name to secret-name map and secret source,
+// for a caller whose variables do not come from the api_variables rows.
+func NewResolverFor(refs map[string]string, src configfs.SecretSource) *Resolver {
+	return &Resolver{refs: refs, src: src, secretValues: map[string]string{}, usedSeen: map[string]bool{}}
+}
+
 // Any reports whether this scope has any secret at all — false means there is nothing this
 // resolver could ever substitute, so a caller can skip walking its own fields entirely.
 func (r *Resolver) Any() bool {
