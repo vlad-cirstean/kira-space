@@ -134,7 +134,7 @@ ade.jiraLine	55
 ade.rebase.contextLine	95
 ade.sendBack.line	63
 run.resume.line	261
-dbmcp.instructions	2150
+dbmcp.instructions	2151
 dbmcp.tool.list_connections	471
 dbmcp.tool.list_operations	190
 dbmcp.tool.cancel_operation	150
@@ -175,15 +175,15 @@ dbmcp.tool.list_children	167
 dbmcp.tool.list_children.arg.connectionId	36
 dbmcp.tool.list_children.arg.path	85
 dbmcp.tool.list_children.arg.refresh	60
-dbmcp.tool.describe_table	106
+dbmcp.tool.describe_table	142
 dbmcp.tool.describe_table.arg.connectionId	36
 dbmcp.tool.describe_table.arg.path	59
 dbmcp.tool.describe_table.arg.refresh	60
-dbmcp.tool.describe_schema	127
+dbmcp.tool.describe_schema	165
 dbmcp.tool.describe_schema.arg.connectionId	36
 dbmcp.tool.describe_schema.arg.path	52
 dbmcp.tool.describe_schema.arg.refresh	60
-dbmcp.tool.run_query	1083
+dbmcp.tool.run_query	1204
 dbmcp.tool.run_query.arg.connectionId	36
 dbmcp.tool.run_query.arg.sql	481
 dbmcp.tool.run_query.arg.path	121
@@ -192,7 +192,7 @@ dbmcp.tool.run_query.arg.maxRows	101
 dbmcp.tool.run_query.arg.exemption	140
 dbmcp.tool.run_query.arg.exemption.id	65
 dbmcp.tool.run_query.arg.exemption.reason	89
-dbmcp.tool.explain_query	365
+dbmcp.tool.explain_query	430
 dbmcp.tool.explain_query.arg.connectionId	36
 dbmcp.tool.explain_query.arg.sql	80
 dbmcp.tool.explain_query.arg.path	121
