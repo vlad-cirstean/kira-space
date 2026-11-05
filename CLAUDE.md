@@ -178,6 +178,7 @@ duplicated here; this file only points at them.
   heading per `SPEC.md` row in table order, distilled from each row's Result. Fix links to the chapter
   by hand. Commit. Then `git rm -r docs/<ch>/` (and `docs/history-runs/` if it exists) and commit.
   Push, then open the PR from `chapter/v<version>` to `main` (command in `docs/DEV_ENVIRONMENT.md`). It auto-merges once CI passes. Opening the PR is part of closing, unless changes are still pending (uncommitted, unpushed or unfinished work) — then report them and hold the PR. After opening it, subscribe to it (`subscribe_pr_activity`) and watch it: when a check fails, reproduce the failure, fix it on the chapter branch, rerun that check, push. Repeat until CI is green and the PR merges. Never skip, disable or quarantine a test to get green.
+  A chapter started from another chapter's branch rebases onto `main` before its PR opens. If the previous chapter's PR has not merged, even after trying to fix its CI, do not open the dependent PR. Continue with the next chapters, finish every other step (suite run, reviews, close, push), and report the PR as held.
   Between chapters no `docs/v*/` exists. Open the next with `docs/v<new>/SPEC.md`
   (intro: first `P` is highest plus one, branch `chapter/v<new>`) and `plans/`.
   Data a test or script reads at runtime never lives under `docs/v*/`; it goes in its reader's `testdata/`.
