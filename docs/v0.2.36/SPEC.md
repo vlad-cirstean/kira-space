@@ -13,7 +13,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 | P528 | DB MCP limit exemptions: agent asks, user always approves | Pending |
 | P529 | Statement timeout per connection, enforced by the engine | Pending |
 | P530 | Expensive-query (EXPLAIN) threshold enforced for MCP, with explanation | Pending |
-| P531 | Ops throttle covers every op from every session, with explanation | Pending |
+| P531 | Ops throttle covers every op from every session, with explanation | Done |
 | P532 | Table allow list per connection for DB MCP | Pending |
 | P533 | Tool descriptions suggest inspecting schemas first | Pending |
 | P534 | Masking validation: new columns are withheld until masking is reviewed | Pending |
@@ -51,6 +51,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 - Add an explanation to the setting: what the value means (ops per second admitted to the database for that connection), that ops run one at a time, so a slow or blocking query makes the following ops wait, and what happens at 0 (off). Same text in the connection dialog and the MCP tab where it matters.
 - Plan must state the real current semantics first (read the limiter, state whether it is serial and per connection or per session), then the change.
 - Plan: `plans/P531.md`.
+- Result: one serial, paced gate per connection id (`Host.admit`, exempt-list kinds, live rate change keeps the slot, redis classify gated), app-wide across windows, MCP and the read lane. Explained in the Advanced and MCP tabs. Flow test `dbmcpflow/throttle_test.go` and `tests/ui/connection-throttle.spec.ts` pass.
 
 ### P532 Table allow list per connection for DB MCP
 
