@@ -13,10 +13,11 @@ import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import RunState from '@theme/RunState.vue';
 import { matchesQuery } from '@workbench/behaviour/match';
+import { moveId, useSortableReorder } from '@workbench/behaviour/sortableReorder';
 import { errorText } from '@workbench/bridge/codedError';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
-import { computed } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 import { control } from '../bridge/control';
 import { useConnectionsStore } from '../state/connections';
 import { useRunState } from '../state/runState';
@@ -38,7 +39,7 @@ const config = useApiConfig();
 // The environment list, re-hosted in a tab. Environments are config files (P473): a row picks the
 // active one, opens its variables or its file, and shows whether the file is valid. Creating or
 // duplicating one writes a new file, deleting one removes it; renaming and coloring are done in the
-// file or its dialog.
+// file or its dialog. The order is app state: drag a row by its grip.
 //
 // ViewChrome/ViewHeader/RunState inlined at this call site (no library counterpart).
 const props = defineProps<{ tab: EnvironmentsTabRecord }>();
@@ -54,6 +55,26 @@ const filterQuery = computed({
 const isFiltered = computed(() => filterQuery.value.trim() !== '');
 const displayEnvironments = computed(() =>
   variablesStore.environments.filter((env) => matchesQuery(env.name, filterQuery.value)),
+);
+
+// Drag by the grip, or Alt+Arrow on a focused grip: rows hold a radio and buttons, which a whole-row
+// drag would start from. The radio group owns the arrow keys, hence the keyboard handle.
+const listEl = useTemplateRef<HTMLElement>('listEl');
+useSortableReorder(
+  listEl,
+  () => displayEnvironments.value.map((env) => env.id),
+  (from, to) => {
+    const ids = variablesStore.environments.map((env) => env.id);
+    void variablesStore.reorderEnvironments(moveId(ids, from, to));
+  },
+  {
+    draggable: '[data-testid="environment-row"]',
+    handle: '[data-testid="environment-grip"]',
+    direction: 'vertical',
+    disabled: () => isFiltered.value,
+    keyboard: true,
+    keyboardHandle: '[data-testid="environment-grip"]',
+  },
 );
 
 const brokenFiles = computed(
@@ -161,7 +182,7 @@ async function onSetActive(id: string): Promise<void> {
         :model-value="activeEnvironmentId"
         @update:model-value="(id) => onSetActive(String(id))"
       >
-        <div class="flex flex-col gap-0.5 p-1">
+        <div ref="listEl" class="flex flex-col gap-0.5 p-1">
           <div
             v-for="env in displayEnvironments"
             :key="env.id"
@@ -170,6 +191,29 @@ async function onSetActive(id: string): Promise<void> {
             :data-id="env.id"
           >
             <span :class="colorMarkClass('dot', env.color)" data-testid="environment-color-dot" />
+            <Tooltip v-if="isFiltered">
+              <TooltipTrigger as-child>
+                <span
+                  class="flex cursor-grab items-center text-subtle"
+                  aria-hidden="true"
+                  data-testid="environment-grip"
+                >
+                  <CodiconIcon name="gripper" :size="13" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{{
+                t('studio.api.environments.reorderBlocked.hint')
+              }}</TooltipContent>
+            </Tooltip>
+            <button
+              v-else
+              type="button"
+              class="flex cursor-grab items-center text-subtle"
+              :aria-label="t('studio.api.environments.grip.aria')"
+              data-testid="environment-grip"
+            >
+              <CodiconIcon name="gripper" :size="13" />
+            </button>
             <Tooltip>
               <TooltipTrigger as-child>
                 <RadioGroupItem

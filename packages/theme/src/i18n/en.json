@@ -12256,6 +12256,9 @@
         "editVariables": {
           "label": "Edit variables"
         },
+        "grip": {
+          "aria": "Drag to reorder environment"
+        },
         "manage": {
           "label": "Manage environments"
         },
@@ -12264,6 +12267,9 @@
         },
         "none": {
           "option": "No environment"
+        },
+        "reorderBlocked": {
+          "hint": "Clear the filter to reorder."
         }
       },
       "hover": {

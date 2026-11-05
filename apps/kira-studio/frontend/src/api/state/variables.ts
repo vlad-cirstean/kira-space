@@ -192,6 +192,27 @@ export const useVariablesStore = defineStore('variables', () => {
     }
   }
 
+  const reorderEnvironmentsMutation = useMutation(
+    {
+      mutationKey: ['apiEnvironments', 'reorder'],
+      mutationFn: (ids: string[]) => control.variablesReorderEnvironments(ids),
+      onSuccess: afterEnvironmentsListChange,
+    },
+    queryClient,
+  );
+
+  /** Applies a whole-list environment order. Returns whether it saved. */
+  async function reorderEnvironments(ids: readonly string[]): Promise<boolean> {
+    try {
+      await reorderEnvironmentsMutation.mutateAsync([...ids]);
+      state.error = null;
+      return true;
+    } catch (err) {
+      state.error = errorText(err);
+      return false;
+    }
+  }
+
   const deleteEnvironmentMutation = useMutation(
     {
       mutationKey: ['apiEnvironments', 'delete'],
@@ -257,6 +278,7 @@ export const useVariablesStore = defineStore('variables', () => {
     environmentColorForTab,
     selectEnvironmentForTab,
     createEnvironment,
+    reorderEnvironments,
     deleteEnvironment,
     duplicateEnvironment,
     openEnvironments,
