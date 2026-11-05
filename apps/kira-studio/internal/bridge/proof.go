@@ -10,11 +10,11 @@ import (
 	"sync"
 
 	"github.com/google/renameio/v2"
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/proof"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
@@ -290,7 +290,7 @@ func (s *ProofService) OpenWindow(args ProofOpenArgs) (ProofOpenResult, error) {
 			order = r.Order + 1
 		}
 	}
-	key := proof.WindowKeyPrefix + uuid.NewString()
+	key := proof.WindowKeyPrefix + ids.NewID()
 	if err := s.Windows.Create(model.WindowRecord{Key: key, Order: order}); err != nil {
 		return ProofOpenResult{}, ipcerr.InternalErr(err)
 	}

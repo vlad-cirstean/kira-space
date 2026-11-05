@@ -190,7 +190,7 @@ func (r *Router) openLane(ctx context.Context, connectionID string, primary adap
 		if r.lanes.discard(connectionID, lane) {
 			r.teardownLane(ctx, connectionID, lane)
 		}
-		return nil, adapters.New(adapters.CodeEngineDown, "the connection changed while its read connection opened; retry", nil)
+		return nil, adapters.T(adapters.CodeEngineDown, "backend.studio.adapter.laneConnectionChanged.body", nil, nil)
 	}
 	return lane, nil
 }

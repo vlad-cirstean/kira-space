@@ -14,13 +14,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/preconnect"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/notify"
 	"github.com/kirathecat/kira-studio/internal/secrets"
@@ -602,7 +602,7 @@ func (s *Service) Test(id string) TestResult {
 	}
 	// A fresh id per call: Preconnect.Start keys its sidecar on the id and kills what is tracked under
 	// it, so a test sharing the live connection's id would kill its tunnel.
-	r.config.ID = "test:" + uuid.NewString()
+	r.config.ID = "test:" + ids.NewID()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	run := &attempt{done: make(chan struct{}), cancel: cancel}

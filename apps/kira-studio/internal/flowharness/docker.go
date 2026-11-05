@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 
 	"github.com/kirathecat/kira-studio/internal/docker"
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 const (
@@ -33,7 +33,7 @@ const (
 )
 
 var (
-	runID = uuid.NewString()[:8]
+	runID = ids.New(ids.FlowRun)
 
 	// dockerHost is the engine endpoint resolved once in Main, before any test swaps HOME.
 	dockerHost string

@@ -8,11 +8,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/google/uuid"
-
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/postman"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
@@ -105,7 +104,7 @@ func (s *Store) recordCollection(tx *sql.Tx, stem, valueJSON string, ch *Changes
 	err := tx.QueryRow(`SELECT id, name FROM api_collections WHERE stem = ?`, stem).Scan(&id, &name)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
-		id = uuid.NewString()
+		id = ids.NewID()
 		if _, err := tx.Exec(`INSERT INTO api_collections (id, name, sort_order, origin_json, created_at, updated_at, variables_promoted, stem)
 			VALUES (?, ?, (SELECT COALESCE(MAX(sort_order) + 1, 0) FROM api_collections), ?, ?, ?, 1, ?)`, id, f.Name, s.takeOrigin(stem, ""), now, now, stem); err != nil {
 			return fmt.Errorf("apifiles: insert collection %s: %w", stem, err)
@@ -287,7 +286,7 @@ func nullable(s string) any {
 }
 
 func (s *Store) insertItem(tx *sql.Tx, collectionID, stem, parent string, f flatItem, now string, ch *Changes) (string, error) {
-	id := uuid.NewString()
+	id := ids.NewID()
 	kind := itemKind(f)
 	if _, err := tx.Exec(`INSERT INTO api_items (id, collection_id, parent_id, kind, name, sort_order, method, url, protocol, request_json, origin_json, created_at, updated_at, item_key)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -358,7 +357,7 @@ func (s *Store) recordEnvironment(tx *sql.Tx, stem, valueJSON string, ch *Change
 	err := tx.QueryRow(`SELECT id, name, description, color FROM api_environments WHERE stem = ?`, stem).Scan(&id, &name, &description, &oldColor)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
-		id = uuid.NewString()
+		id = ids.NewID()
 		if _, err := tx.Exec(`INSERT INTO api_environments (id, name, sort_order, is_active, description, color, created_at, updated_at, stem)
 			VALUES (?, ?, (SELECT COALESCE(MAX(sort_order) + 1, 0) FROM api_environments), 0, ?, ?, ?, ?, ?)`, id, f.Name, f.Description, color, now, now, stem); err != nil {
 			return fmt.Errorf("apifiles: insert environment %s: %w", stem, err)
@@ -449,7 +448,7 @@ func syncVariables(tx *sql.Tx, scope, ownerID string, vars []Variable, ch *Chang
 		if !found {
 			if _, err := tx.Exec(`INSERT INTO api_variables (id, `+column+`, name, value, is_secret, secret_value, sort_order, description, secret_ref, created_at, updated_at)
 				VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)`,
-				uuid.NewString(), ownerID, v.Name, value, boolInt(secret), i, v.Description, refArg, now, now); err != nil {
+				ids.NewID(), ownerID, v.Name, value, boolInt(secret), i, v.Description, refArg, now, now); err != nil {
 				return fmt.Errorf("apifiles: insert variable: %w", err)
 			}
 			changed = true
@@ -536,7 +535,7 @@ func boolInt(b bool) int {
 // recordHistory keeps the value a plain variable had before an edit, then trims to the limit.
 func recordHistory(tx *sql.Tx, variableID, old, now string) error {
 	if _, err := tx.Exec(`INSERT INTO api_variable_history (id, variable_id, value, is_secret, secret_value, recorded_at) VALUES (?, ?, ?, 0, NULL, ?)`,
-		uuid.NewString(), variableID, old, now); err != nil {
+		ids.NewID(), variableID, old, now); err != nil {
 		return fmt.Errorf("apifiles: insert history: %w", err)
 	}
 	if _, err := tx.Exec(`DELETE FROM api_variable_history WHERE variable_id = ? AND id NOT IN (

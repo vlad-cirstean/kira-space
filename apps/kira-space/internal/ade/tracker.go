@@ -14,12 +14,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
@@ -314,8 +313,8 @@ func (t *Tracker) Prepare(args PrepareArgs) (PrepareResult, error) {
 
 	var recordID, agentSessionID, cwd string
 	if args.Resume == "" {
-		recordID = cmpNonEmpty(args.RecordID, uuid.NewString())
-		agentSessionID = uuid.NewString()
+		recordID = cmpNonEmpty(args.RecordID, ids.NewID())
+		agentSessionID = ids.NewID()
 		if args.Resumes != "" {
 			agentSessionID = args.Resumes
 		}
@@ -354,7 +353,7 @@ func (t *Tracker) Prepare(args PrepareArgs) (PrepareResult, error) {
 	launch.Env = append(launch.Env, args.Env...)
 	command, agentSessionID := launch.Command, launch.SessionID
 
-	terminalID := uuid.NewString()
+	terminalID := ids.NewID()
 	intent := pendingIntent{
 		RecordID: recordID, AgentSessionID: agentSessionID, Env: launch.Env, ConfigFile: launch.ConfigFile, Cwd: cwd, Command: command, Message: args.Message,
 		Resume: args.Resume != "", CreatedAt: now,

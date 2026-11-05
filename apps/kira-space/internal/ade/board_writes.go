@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
@@ -18,6 +17,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 // ErrInvalidInput marks a caller mistake (bad id, bad value); the bridge maps it to E_BAD_REQUEST.
@@ -39,8 +39,6 @@ func invalid(format string, args ...any) error {
 func trimInvalid(err error) string {
 	return strings.TrimPrefix(err.Error(), ErrInvalidInput.Error()+": ")
 }
-
-func (b *TaskBoard) newID() string { return uuid.NewString() }
 
 // --- helpers -----------------------------------------------------------------------------------
 
@@ -134,7 +132,7 @@ func (b *TaskBoard) CreateTask(ctx context.Context, args adewire.CreateTaskArgs)
 		return adewire.Task{}, err
 	}
 	task := model.AdeTask{
-		ID: b.newID(), Kind: model.AdeTaskKindTask, Title: title, JiraKey: jiraKey, JiraURL: jiraURL,
+		ID: ids.NewID(), Kind: model.AdeTaskKindTask, Title: title, JiraKey: jiraKey, JiraURL: jiraURL,
 		HostURL: args.HostURL, Notes: args.Notes, CreatedAt: b.deps.Now().UnixMilli(),
 	}
 	if args.WorkflowID != "" {
@@ -159,7 +157,7 @@ func (b *TaskBoard) CreateTask(ctx context.Context, args adewire.CreateTaskArgs)
 			return adewire.Task{}, err
 		}
 		branches[i] = model.AdeTaskBranch{
-			ID: b.newID(), TaskID: task.ID, CodeRepoID: repoID, Kind: model.AdeBranchKindMine,
+			ID: ids.NewID(), TaskID: task.ID, CodeRepoID: repoID, Kind: model.AdeBranchKindMine,
 			Position: i, AddedAt: task.CreatedAt, Base: base, BaseBranchID: baseBranchID,
 		}
 	}
@@ -233,7 +231,7 @@ func (b *TaskBoard) AddTaskRepo(ctx context.Context, args adewire.AddTaskRepoArg
 		}
 	}
 	sb, err := b.deps.Tasks.AddBranch(model.AdeTaskBranch{
-		ID: b.newID(), TaskID: args.TaskID, CodeRepoID: args.CodeRepoID, Kind: model.AdeBranchKindMine,
+		ID: ids.NewID(), TaskID: args.TaskID, CodeRepoID: args.CodeRepoID, Kind: model.AdeBranchKindMine,
 		AddedAt: b.deps.Now().UnixMilli(), Base: base, BaseBranchID: baseBranchID,
 	})
 	if err != nil {
@@ -459,16 +457,16 @@ func (b *TaskBoard) attachExistingBranch(ctx context.Context, args adewire.AddEx
 	now := b.deps.Now().UnixMilli()
 	var sb model.AdeTaskBranch
 	if args.TaskID == "" {
-		task = model.AdeTask{ID: b.newID(), Kind: model.AdeTaskKindTask, CreatedAt: now, Title: nf.Title, HostURL: nf.HostURL}
+		task = model.AdeTask{ID: ids.NewID(), Kind: model.AdeTaskKindTask, CreatedAt: now, Title: nf.Title, HostURL: nf.HostURL}
 		if target.kind == model.AdeBranchKindReview {
 			task.Kind, task.Owner = model.AdeTaskKindReview, target.row.AuthorName
 		}
-		sb = model.AdeTaskBranch{ID: b.newID(), TaskID: task.ID, CodeRepoID: args.CodeRepoID, Name: args.Name, Kind: target.kind, AddedAt: now}
+		sb = model.AdeTaskBranch{ID: ids.NewID(), TaskID: task.ID, CodeRepoID: args.CodeRepoID, Name: args.Name, Kind: target.kind, AddedAt: now}
 		if task, err = b.deps.Tasks.CreateTask(task, []model.AdeTaskBranch{sb}, nil); err != nil {
 			return adewire.AddExistingBranchResult{}, err
 		}
 	} else {
-		sb = model.AdeTaskBranch{ID: b.newID(), TaskID: task.ID, CodeRepoID: args.CodeRepoID, Name: args.Name, Kind: target.kind, AddedAt: now}
+		sb = model.AdeTaskBranch{ID: ids.NewID(), TaskID: task.ID, CodeRepoID: args.CodeRepoID, Name: args.Name, Kind: target.kind, AddedAt: now}
 		draft, err := b.draftOf(task.ID, args.CodeRepoID)
 		if err != nil {
 			return adewire.AddExistingBranchResult{}, err
@@ -564,7 +562,7 @@ func (b *TaskBoard) CaptureTask(_ context.Context, args adewire.CaptureTaskArgs)
 		return adewire.Task{}, invalid("title is required")
 	}
 	task, err := b.deps.Tasks.CaptureTask(model.AdeTask{
-		ID: b.newID(), Kind: model.AdeTaskKindTask, Title: title, CreatedAt: b.deps.Now().UnixMilli(),
+		ID: ids.NewID(), Kind: model.AdeTaskKindTask, Title: title, CreatedAt: b.deps.Now().UnixMilli(),
 	}, args.Day)
 	if err != nil {
 		return adewire.Task{}, err

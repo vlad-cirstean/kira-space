@@ -13,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
@@ -574,7 +575,7 @@ func (b *TaskBoard) queueRound(ctx context.Context, tc *taskCtx, sb model.AdeTas
 		return model.AdeRun{}, err
 	}
 	run := model.AdeRun{
-		ID: b.newID(), TaskID: tc.task.ID, StepID: rv.StepID, BranchID: rv.BranchID, Attempt: attempt,
+		ID: ids.NewID(), TaskID: tc.task.ID, StepID: rv.StepID, BranchID: rv.BranchID, Attempt: attempt,
 		State: model.AdeRunPending, Purpose: model.AdeRunPurposeReview, SpecJSON: string(raw), Launch: launch,
 	}
 	if err := b.deps.Tasks.InsertRun(run); err != nil {
@@ -636,7 +637,7 @@ func (b *TaskBoard) startRound(ctx context.Context, tc *taskCtx, run model.AdeRu
 	}()
 	now := b.deps.Now().UnixMilli()
 	launch := run.Launch
-	sessionID := b.newID()
+	sessionID := ids.NewID()
 	agent, err := b.agentForStep(launch.ResumeID, stepAgentOf(tc, run.StepID))
 	if err != nil {
 		return run, err

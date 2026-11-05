@@ -6,12 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/agentapi"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/approvals"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/notify"
 )
@@ -249,7 +248,7 @@ func (b *ApprovalBroker) Request(ctx context.Context, req ApprovalRequest) Appro
 	if req.Stage == "" {
 		req.Stage = ApprovalStageQuery
 	}
-	req.RequestID = uuid.NewString()
+	req.RequestID = ids.NewID()
 	req.EnqueuedAt = now
 	req.ExpiresAt = now.Add(ApprovalTimeout)
 	entry := &approvalEntry{req: req, result: make(chan ApprovalOutcome, 1)}

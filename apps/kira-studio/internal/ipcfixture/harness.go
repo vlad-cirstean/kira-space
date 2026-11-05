@@ -7,8 +7,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/google/uuid"
-
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appcore"
@@ -22,6 +20,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/tree"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
@@ -67,7 +66,7 @@ func (a *App) mintID() string {
 		a.nextID = ""
 		return id
 	}
-	return uuid.NewString()
+	return ids.NewID()
 }
 
 // trackConnected records id as a connection this harness successfully connected — F9's own

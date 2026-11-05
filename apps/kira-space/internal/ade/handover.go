@@ -10,6 +10,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -75,7 +76,7 @@ func (b *TaskBoard) RecordHandover(_ context.Context, taskID, stepID, sessionID,
 		return agentmcp.ToolError(fmt.Sprintf("The task moved on to %s; nothing was recorded. Tell the user.", cmpNonEmpty(stepName(tc, cur), cur)))
 	}
 	if _, err := b.deps.Tasks.UpsertHandoverDraft(model.AdeHandover{
-		ID: b.newID(), TaskID: taskID, FromStepID: cur, FromStepName: stepName(tc, cur),
+		ID: ids.NewID(), TaskID: taskID, FromStepID: cur, FromStepName: stepName(tc, cur),
 		Body: notes, Finished: finished, SessionID: sessionID, UpdatedAt: b.deps.Now().UnixMilli(),
 	}); err != nil {
 		return err
@@ -92,7 +93,7 @@ func (b *TaskBoard) RecordHandover(_ context.Context, taskID, stepID, sessionID,
 // handoffFor is the handover a stage move from -> to carries. notes nil keeps the stage's draft.
 func (b *TaskBoard) handoffFor(tc *taskCtx, from, to string, notes *string) *model.AdeHandoff {
 	return &model.AdeHandoff{
-		ID: b.newID(), FromStepID: from, FromStepName: stepName(tc, from), ToStepID: to, ToStepName: stepName(tc, to),
+		ID: ids.NewID(), FromStepID: from, FromStepName: stepName(tc, from), ToStepID: to, ToStepName: stepName(tc, to),
 		Notes: notes, Source: model.AdeHandoverSourceUser, Now: b.deps.Now().UnixMilli(),
 	}
 }

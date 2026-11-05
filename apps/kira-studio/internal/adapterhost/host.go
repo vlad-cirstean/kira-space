@@ -319,7 +319,7 @@ func (h *Host) RunOp(ctx context.Context, spec OpSpec, fn func(context.Context, 
 
 // errInvalidOpID never echoes the id: it is client text that reaches logs and engines.
 func errInvalidOpID() error {
-	return adapters.New(adapters.CodeQuery, "invalid operation id", nil)
+	return adapters.T(adapters.CodeQuery, "backend.studio.adapter.invalidOperationId.body", nil, nil)
 }
 
 // Cancellable registers opID so CancelOp cancels the returned context, without emitting op events

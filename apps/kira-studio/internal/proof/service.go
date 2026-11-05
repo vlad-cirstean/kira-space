@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/approvals"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -187,8 +187,8 @@ func (s *Service) StartSession(name, summary string) (StartResult, error) {
 		return StartResult{}, err
 	}
 	s.PurgeStale()
-	draft := uuid.NewString()
-	if err := s.d.Repo.CreateSessionDraft(uuid.NewString(), clean, key, strings.TrimSpace(summary), draft, s.d.Now()); err != nil {
+	draft := ids.NewID()
+	if err := s.d.Repo.CreateSessionDraft(ids.NewID(), clean, key, strings.TrimSpace(summary), draft, s.d.Now()); err != nil {
 		return StartResult{}, err
 	}
 	return StartResult{DraftID: draft, Name: clean}, nil
@@ -204,7 +204,7 @@ func (s *Service) EditSession(name, reason string) (StartResult, error) {
 		return StartResult{}, err
 	}
 	s.PurgeStale()
-	draft := uuid.NewString()
+	draft := ids.NewID()
 	sess, steps, err := s.d.Repo.CreateEditDraft(key, draft, strings.TrimSpace(reason), s.d.Now())
 	if err != nil {
 		return StartResult{}, err

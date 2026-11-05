@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"log/slog"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 )
 
@@ -150,7 +150,7 @@ func (r *SavedQueriesRepo) insert(connectionID, path, name, kind string, body []
 		return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: %w", err)
 	}
 	name = strings.TrimSpace(name)
-	newID := uuid.NewString()
+	newID := ids.NewID()
 	now := kiratime.NowISO()
 	if _, err := r.DB.Exec(
 		`INSERT INTO saved_queries (id, connection_id, path, name, kind, body, pinned, created_at, used_at)

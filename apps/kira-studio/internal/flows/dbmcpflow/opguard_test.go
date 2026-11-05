@@ -28,8 +28,8 @@ func TestOpIDGuard(t *testing.T) {
 	for _, bad := range []string{"not-a-uuid", "0123\nforged log line", strings.Repeat("a", 37)} {
 		err := f.exec(bad, "select 1")
 		var ae *adapters.Error
-		if !errors.As(err, &ae) || ae.Code != adapters.CodeQuery || ae.Message != "invalid operation id" {
-			t.Fatalf("Execute(%q) = %v, want E_QUERY invalid operation id", bad, err)
+		if !errors.As(err, &ae) || ae.Code != adapters.CodeQuery || ae.Message != "The operation ID is not valid." {
+			t.Fatalf("Execute(%q) = %v, want E_QUERY, operation id is not valid", bad, err)
 		}
 		if strings.Contains(err.Error(), strings.TrimSpace(bad)) {
 			t.Fatalf("error echoes the id: %v", err)

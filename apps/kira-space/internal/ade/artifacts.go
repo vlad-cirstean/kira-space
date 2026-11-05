@@ -16,6 +16,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 // artifacts.go lists everything a task produced or points at (P409). Detected artifacts come from
@@ -454,7 +455,7 @@ func (b *TaskBoard) storeCleanLocked(tc *taskCtx, source, stepID, runID, session
 	out := make([]model.AdeTaskArtifact, 0, len(clean))
 	for _, c := range clean {
 		row, err := b.deps.Tasks.UpsertArtifact(model.AdeTaskArtifact{
-			ID: b.newID(), TaskID: taskID, Kind: c.Kind, Title: c.Title, URL: c.URL, Ref: c.Ref, Source: source,
+			ID: ids.NewID(), TaskID: taskID, Kind: c.Kind, Title: c.Title, URL: c.URL, Ref: c.Ref, Source: source,
 			StepID: stepID, RunID: runID, SessionID: sessionID, CreatedAt: now, UpdatedAt: now,
 		})
 		if err != nil {

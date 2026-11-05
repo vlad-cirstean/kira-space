@@ -15,6 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 )
 
@@ -132,7 +133,7 @@ func (b *TaskBoard) prepareTUISandbox(ctx context.Context, recordID string, agen
 	in := agentsandbox.Input{
 		RunID: recordID, Access: agentsandbox.Access(sd.Access), Read: sd.Read, Allow: slices.Clone(sd.Allow), Network: sd.Network,
 		Worktrees: plan.in.worktrees, ReadWorktrees: plan.in.read, RunDir: plan.in.runDir, Branch: plan.in.branch,
-		Scratch: filepath.Join(b.deps.AgentDir, "sandbox", recordID+"-"+b.newID()), Cache: filepath.Join(b.deps.AgentDir, "sandbox-cache"),
+		Scratch: filepath.Join(b.deps.AgentDir, "sandbox", recordID+"-"+ids.New(ids.Sandbox)), Cache: filepath.Join(b.deps.AgentDir, "sandbox-cache"),
 		Ports: []int{b.agent.Port()}, ReadFiles: files.read,
 	}
 	if files.isolation != "" {

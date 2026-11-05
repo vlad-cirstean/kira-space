@@ -7,11 +7,11 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/google/uuid"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 // downloadObject is transfer.ts's downloadObject — the only code that writes to a user's
@@ -44,7 +44,7 @@ func downloadObject(ctx context.Context, client *s3.Client, bucket, key, destPat
 		return model.ObjectTransferResult{}, mapError(err)
 	}
 
-	tmpPath := destPath + ".kira-partial-" + uuid.NewString()
+	tmpPath := destPath + ".kira-partial-" + ids.New(ids.Temp)
 	f, err := os.Create(tmpPath)
 	if err != nil {
 		return model.ObjectTransferResult{}, mapError(err)

@@ -15,6 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/approvals"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -188,7 +189,7 @@ func (b *TaskBoard) joinBranchRequest(taskID string, d *requestDraft) (reqID str
 	now := b.deps.Now()
 	r := q.byID[q.byTask[taskID]]
 	if r == nil {
-		r = &branchRequest{view: adewire.BranchRequest{ID: b.newID(), TaskID: taskID, TaskTitle: d.title, CreatedAt: now.UnixMilli()}}
+		r = &branchRequest{view: adewire.BranchRequest{ID: ids.NewID(), TaskID: taskID, TaskTitle: d.title, CreatedAt: now.UnixMilli()}}
 		q.byID[r.view.ID], q.byTask[taskID] = r, r.view.ID
 	}
 	bc = &branchCall{prefix: fmt.Sprintf("c%d", r.next), result: make(chan branchDecision, 1)}
@@ -735,7 +736,7 @@ func (b *TaskBoard) createApproved(ctx context.Context, tc *taskCtx, s *requestS
 		return b.createFor(ctx, s, *draft)
 	}
 	sb, err := b.deps.Tasks.AddBranch(model.AdeTaskBranch{
-		ID: b.newID(), TaskID: tc.task.ID, CodeRepoID: s.codeRepoID, Kind: model.AdeBranchKindMine,
+		ID: ids.NewID(), TaskID: tc.task.ID, CodeRepoID: s.codeRepoID, Kind: model.AdeBranchKindMine,
 		AddedAt: b.deps.Now().UnixMilli(), Origin: model.AdeBranchOriginAgent,
 	})
 	if err != nil {

@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/queryplan"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -226,7 +226,7 @@ func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv que
 	}
 
 	req := adapterhost.ExecuteRequestWire{
-		OpID:         uuid.NewString(),
+		OpID:         ids.NewID(),
 		ConnectionID: args.ConnectionID,
 		Path:         args.Path,
 		Statements:   []string{args.SQL},
@@ -666,7 +666,7 @@ func (s *Server) explainQuery(ctx context.Context, _ *mcp.CallToolRequest, args 
 	}
 
 	resp, err := s.cfg.Query.ExecuteRead(ctx, adapterhost.ExecuteRequestWire{
-		OpID:         uuid.NewString(),
+		OpID:         ids.NewID(),
 		ConnectionID: args.ConnectionID,
 		Path:         args.Path,
 		Statements:   statements,

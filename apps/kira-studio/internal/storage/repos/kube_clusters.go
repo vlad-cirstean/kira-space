@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/kubernetes"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -27,7 +27,7 @@ func (r *KubeClustersRepo) Ensure(context, server string, now time.Time) (kubern
 		`INSERT INTO kube_clusters (id, context, server, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?)
 		 ON CONFLICT(context, server) DO UPDATE SET last_seen_at = excluded.last_seen_at
 		 RETURNING `+kubeClusterCols,
-		uuid.NewString(), context, server, ts, ts)
+		ids.NewID(), context, server, ts, ts)
 	return scanKubeCluster(row)
 }
 

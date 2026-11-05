@@ -12,6 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 // maxBranchNameBytes is git's ref name limit on common file systems.
@@ -74,11 +75,11 @@ func resolveRepoRef(ref string, cands []repoCandidate, kind string) (string, err
 			case 1:
 				return hits[0].id, nil
 			default:
-				ids := make([]string, len(hits))
+				matches := make([]string, len(hits))
 				for i, h := range hits {
-					ids[i] = h.id
+					matches[i] = h.id
 				}
-				return "", agentmcp.ToolError(fmt.Sprintf("%q matches several repos. Use a code repo id: %s.", ref, strings.Join(ids, ", ")))
+				return "", agentmcp.ToolError(fmt.Sprintf("%q matches several repos. Use a code repo id: %s.", ref, strings.Join(matches, ", ")))
 			}
 		}
 	}
@@ -206,26 +207,26 @@ func (b *TaskBoard) DeclareRepos(ctx context.Context, taskID string, refs []stri
 	if err != nil {
 		return agentmcp.TaskInfo{}, err
 	}
-	ids := make([]string, 0, len(refs))
+	repoIDs := make([]string, 0, len(refs))
 	for _, ref := range refs {
 		id, err := resolveRepoRef(ref, cands, "registered")
 		if err != nil {
 			return agentmcp.TaskInfo{}, err
 		}
-		ids = append(ids, id)
+		repoIDs = append(repoIDs, id)
 	}
 	on := map[string]bool{}
 	for _, br := range tc.branches {
 		on[br.CodeRepoID] = true
 	}
 	added := false
-	for _, id := range ids {
+	for _, id := range repoIDs {
 		if on[id] {
 			continue
 		}
 		on[id] = true
 		if _, err := b.deps.Tasks.AddBranch(model.AdeTaskBranch{
-			ID: b.newID(), TaskID: taskID, CodeRepoID: id, Kind: model.AdeBranchKindMine,
+			ID: ids.NewID(), TaskID: taskID, CodeRepoID: id, Kind: model.AdeBranchKindMine,
 			AddedAt: b.deps.Now().UnixMilli(), Origin: model.AdeBranchOriginAgent,
 		}); err != nil {
 			return agentmcp.TaskInfo{}, toolErr(err)

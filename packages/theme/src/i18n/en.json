@@ -2239,6 +2239,9 @@
         "insertNotAcknowledged": {
           "body": "The server didn’t acknowledge the insert."
         },
+        "invalidOperationId": {
+          "body": "The operation ID is not valid."
+        },
         "kafkaForwardOnly": {
           "body": "Kafka offset-window pagination is forward-only. There is no previous page."
         },
@@ -2304,6 +2307,9 @@
         },
         "kibanaUriScheme": {
           "body": "Kibana URL must start with http:// or https://."
+        },
+        "laneConnectionChanged": {
+          "body": "The connection changed while its read connection opened. Retry."
         },
         "literalInvalid": {
           "body": "Invalid {type} “{value}” at position {position}."
