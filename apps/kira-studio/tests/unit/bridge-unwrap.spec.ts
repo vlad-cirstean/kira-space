@@ -97,7 +97,8 @@ describe('apps/kira-studio/frontend/src/bridge/control.ts — unwrap (P57 D5)', 
       // createOpenExternal swallows failures by design (announces, never throws).
       if (name === 'openExternal') continue;
       if (leakProne.has(name)) continue;
-      const result = (member as (...args: unknown[]) => unknown)('a', 'b', 'c', 'd');
+      // Third arg is an array: apiConfigForm maps it before unwrap runs.
+      const result = (member as (...args: unknown[]) => unknown)('a', 'b', [], 'd');
       if (!result || typeof (result as Promise<unknown>).then !== 'function') continue;
       checked += 1;
       await expect(result).rejects.toMatchObject({ code: 'E_QUERY' });
