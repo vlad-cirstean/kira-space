@@ -13,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/terminal"
@@ -145,7 +146,7 @@ func TestDbMcpCancelOperation(t *testing.T) {
 	if _, err := f.app.W.Connections.Connect(bridge.ConnectionsIDArgs{ID: hidden.ID}); err != nil {
 		t.Fatal(err)
 	}
-	const hiddenOp = "hidden-op"
+	hiddenOp := ids.NewID()
 	done := make(chan error, 1)
 	go func() {
 		_, err := f.app.W.Router.Execute(ctx, adapterhost.ExecuteRequestWire{OpID: hiddenOp, ConnectionID: hidden.ID, Statements: []string{longQuery}})

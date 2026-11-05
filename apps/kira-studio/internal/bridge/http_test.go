@@ -342,7 +342,7 @@ func TestHttpSendFailure_OpLogErrorNeverContainsSecret(t *testing.T) {
 	defer wiring.Stop()
 
 	tabID := "tab1"
-	spec := adapterhost.OpSpec{OpID: "op-http-fail", Kind: "http", TabID: &tabID}
+	spec := adapterhost.OpSpec{OpID: "77836346-c554-7005-86e5-b4e461e0b2f8", Kind: "http", TabID: &tabID}
 	_, _, runErr := host.RunOp(context.Background(), spec,
 		func(ctx context.Context, op *adapters.OpCtx) (any, error) {
 			// The exact shape bridge/http.go's Send closure produces for a transport failure whose
@@ -381,7 +381,7 @@ func TestHttpSendFailure_OpLogErrorNeverContainsSecret(t *testing.T) {
 	}
 
 	var rawError string
-	if err := db.DB.QueryRow(`SELECT error FROM op_log WHERE id = ?`, "op-http-fail").Scan(&rawError); err != nil {
+	if err := db.DB.QueryRow(`SELECT error FROM op_log WHERE id = ?`, "77836346-c554-7005-86e5-b4e461e0b2f8").Scan(&rawError); err != nil {
 		t.Fatalf("query op_log.error: %v", err)
 	}
 	if strings.Contains(rawError, secret) {

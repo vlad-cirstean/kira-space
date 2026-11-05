@@ -1,0 +1,19 @@
+{
+  "OpsService.Recent": [
+    {
+      "command": "select 1 as first",
+      "commandTruncated": false,
+      "connectionId": "<masked>",
+      "durationMs": 0,
+      "error": null,
+      "id": "<id:1>",
+      "kind": "execute",
+      "path": "",
+      "rows": 1,
+      "source": "user",
+      "startedAt": "<masked>",
+      "status": "ok",
+      "tabId": null
+    }
+  ]
+}

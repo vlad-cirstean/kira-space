@@ -35,7 +35,7 @@ export type PageCursor =
 
 /** The wire form: `path` is the encoded string (P1 D6). engine/data.ts decodes it. */
 export interface ReadRequestWire {
-  opId: string; // renderer-generated (D2)
+  opId?: string; // client-minted only when Stop must cancel it; Go mints the rest
   tabId: string | null;
   connectionId: string;
   path: string;
@@ -47,7 +47,7 @@ export interface ReadRequestWire {
 }
 
 export interface CountRequestWire {
-  opId: string;
+  opId?: string;
   tabId: string | null;
   connectionId: string;
   path: string;
@@ -89,7 +89,7 @@ export interface PreviewResponse {
 }
 
 export interface MutateRequestWire {
-  opId: string;
+  opId?: string;
   tabId: string | null;
   connectionId: string;
   path: string;
@@ -113,7 +113,7 @@ export interface ExecuteResponse {
 }
 
 export interface ObjectDownloadRequestWire {
-  opId: string;
+  opId?: string;
   tabId: string | null;
   connectionId: string;
   path: string;

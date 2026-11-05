@@ -5,10 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -16,17 +14,17 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
 var (
-	ctx   = context.Background()
-	opSeq atomic.Int64
+	ctx = context.Background()
 )
 
 func ptr[T any](v T) *T { return &v }
 
-func newOp() string { return fmt.Sprintf("op-%d", opSeq.Add(1)) }
+func newOp() string { return ids.NewID() }
 
 // get builds a GET send on the scratch tab.
 func get(url string) bridge.HttpSendArgs {

@@ -20,7 +20,7 @@ func TestRouter_Cancel_FindsInProcessOp(t *testing.T) {
 	started := make(chan struct{})
 	done := make(chan struct{})
 	go func() {
-		_, _, _ = r.host.RunOp(context.Background(), OpSpec{OpID: "op-x", Kind: "read"},
+		_, _, _ = r.host.RunOp(context.Background(), OpSpec{OpID: "7151ae70-f947-7c7b-8319-be012b23b17b", Kind: "read"},
 			func(ctx context.Context, op *adapters.OpCtx) (any, error) {
 				close(started)
 				<-ctx.Done()
@@ -30,7 +30,7 @@ func TestRouter_Cancel_FindsInProcessOp(t *testing.T) {
 	}()
 	<-started
 
-	ok, err := r.Cancel(context.Background(), "op-x")
+	ok, err := r.Cancel(context.Background(), "7151ae70-f947-7c7b-8319-be012b23b17b")
 	if err != nil || !ok {
 		t.Fatalf("Cancel = %v, %v, want true, nil", ok, err)
 	}
@@ -41,20 +41,20 @@ func TestRouter_Cancel_FindsInProcessOp(t *testing.T) {
 func TestRouter_CancelRunning(t *testing.T) {
 	r := NewRouter(adapters.Deps{}, enginecache.NewCache(enginecache.DefaultPageBudgetBytes, nil))
 	ctx := context.Background()
-	if ok, _ := r.CancelRunning(ctx, "op-y"); ok {
+	if ok, _ := r.CancelRunning(ctx, "e2494bee-5f55-76bb-881f-852d4507fee7"); ok {
 		t.Fatal("CancelRunning on unknown id = true")
 	}
-	if _, _, err := r.host.RunOp(ctx, OpSpec{OpID: "op-y", Kind: "read"},
+	if _, _, err := r.host.RunOp(ctx, OpSpec{OpID: "e2494bee-5f55-76bb-881f-852d4507fee7", Kind: "read"},
 		func(context.Context, *adapters.OpCtx) (any, error) { return nil, nil }); err != nil {
 		t.Fatalf("op after missed CancelRunning: %v", err)
 	}
 
-	_, release, err := r.host.Cancellable(ctx, "stream-1")
+	_, release, err := r.host.Cancellable(ctx, "0268031b-c591-7d20-83a9-540ab9658bd6")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer release()
-	if ok, _ := r.CancelRunning(ctx, "stream-1"); ok || len(r.RunningOps()) != 0 {
+	if ok, _ := r.CancelRunning(ctx, "0268031b-c591-7d20-83a9-540ab9658bd6"); ok || len(r.RunningOps()) != 0 {
 		t.Fatal("Cancellable id must be neither cancellable nor listed")
 	}
 
@@ -62,7 +62,7 @@ func TestRouter_CancelRunning(t *testing.T) {
 	var runErr error
 	done := make(chan struct{})
 	go func() {
-		_, _, runErr = r.host.RunOp(ctx, OpSpec{OpID: "op-z", Kind: "execute"},
+		_, _, runErr = r.host.RunOp(ctx, OpSpec{OpID: "f2496cb9-9e25-7601-8d37-1ca42becacb8", Kind: "execute"},
 			func(c context.Context, _ *adapters.OpCtx) (any, error) {
 				close(started)
 				<-c.Done()
@@ -72,10 +72,10 @@ func TestRouter_CancelRunning(t *testing.T) {
 	}()
 	<-started
 	ops := r.RunningOps()
-	if len(ops) != 1 || ops[0].OpID != "op-z" || ops[0].Kind != "execute" {
+	if len(ops) != 1 || ops[0].OpID != "f2496cb9-9e25-7601-8d37-1ca42becacb8" || ops[0].Kind != "execute" {
 		t.Fatalf("RunningOps = %+v", ops)
 	}
-	if ok, err := r.CancelRunning(ctx, "op-z"); !ok || err != nil {
+	if ok, err := r.CancelRunning(ctx, "f2496cb9-9e25-7601-8d37-1ca42becacb8"); !ok || err != nil {
 		t.Fatalf("CancelRunning = %v, %v", ok, err)
 	}
 	<-done

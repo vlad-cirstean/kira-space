@@ -89,7 +89,7 @@ func TestHandleDataFrame_NativeRead_RespondsLocally(t *testing.T) {
 	frame := mustFrame(t, map[string]any{
 		"kind": "req", "id": 1, "op": "data:read",
 		"payload": map[string]any{
-			"opId": "op-1", "tabId": nil, "connectionId": "conn-1", "path": "database:app/table:t",
+			"opId": "35aa4fd1-8a08-76b1-8044-5e6cf39f36fa", "tabId": nil, "connectionId": "conn-1", "path": "database:app/table:t",
 			"projection": nil, "filter": nil, "sort": nil, "pageSize": 10,
 			"cursor": map[string]any{"mode": "offset", "offset": 0},
 		},

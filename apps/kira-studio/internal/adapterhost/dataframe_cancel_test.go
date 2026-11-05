@@ -3,12 +3,12 @@ package adapterhost
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 func readFrame(t *testing.T, id int, connID, opID string) []byte {
@@ -45,7 +45,7 @@ func TestHandleDataFrame_SessionClose_CancelsInFlightOp(t *testing.T) {
 	conn := newFakeConn()
 	session, detach := r.AttachStream(conn)
 
-	go r.HandleDataFrame(session, readFrame(t, 1, "conn-cancel", "op-cancel"))
+	go r.HandleDataFrame(session, readFrame(t, 1, "conn-cancel", "3a2f8037-8838-7c1b-8cc6-619da3f0bb5b"))
 
 	select {
 	case <-started:
@@ -96,7 +96,7 @@ func TestHandleDataFrameAsync_BoundsConcurrentOps(t *testing.T) {
 	// Saturate every concurrency slot. Each call acquires its slot synchronously before returning
 	// (acquireSlot has capacity to spare for all of these), so this loop itself never blocks.
 	for i := 0; i < sessionMaxInFlightOps; i++ {
-		r.HandleDataFrameAsync(session, readFrame(t, i, "conn-bound", fmt.Sprintf("op-%d", i)))
+		r.HandleDataFrameAsync(session, readFrame(t, i, "conn-bound", ids.NewID()))
 	}
 	for i := 0; i < sessionMaxInFlightOps; i++ {
 		select {
@@ -110,7 +110,7 @@ func TestHandleDataFrameAsync_BoundsConcurrentOps(t *testing.T) {
 	// HandleDataFrameAsync itself must not yet have returned.
 	extraDone := make(chan struct{})
 	go func() {
-		r.HandleDataFrameAsync(session, readFrame(t, sessionMaxInFlightOps, "conn-bound", "op-extra"))
+		r.HandleDataFrameAsync(session, readFrame(t, sessionMaxInFlightOps, "conn-bound", "60a74230-8ce5-70eb-8ba4-908258f84e1f"))
 		close(extraDone)
 	}()
 

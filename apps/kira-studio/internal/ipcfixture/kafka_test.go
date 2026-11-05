@@ -127,7 +127,7 @@ func TestFixture_Kafka(t *testing.T) {
 		OpID: "be-read-orders", ConnectionID: cfg.ID, Path: ordersTopicNode.Path,
 		PageSize: 100, Cursor: model.PageCursor{Mode: "offset", Offset: 0},
 	}
-	readResp, err := app.Dispatcher.Read(context.Background(), readReq)
+	readResp, err := app.Dispatcher.Read(context.Background(), WireRead(readReq))
 	if err != nil {
 		t.Fatalf("read orders topic: %v", err)
 	}

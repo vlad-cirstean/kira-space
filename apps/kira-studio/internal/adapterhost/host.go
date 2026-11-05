@@ -9,13 +9,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"runtime/debug"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/enginecache"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/oplog"
@@ -230,7 +230,9 @@ type opEndPayload struct {
 func (h *Host) RunOp(ctx context.Context, spec OpSpec, fn func(context.Context, *adapters.OpCtx) (any, error)) (string, any, error) {
 	opID := spec.OpID
 	if opID == "" {
-		opID = uuid.NewString()
+		opID = ids.NewID()
+	} else if !ids.IsUUID(opID) {
+		return "", nil, errInvalidOpID()
 	}
 
 	h.mu.Lock()
@@ -315,10 +317,18 @@ func (h *Host) RunOp(ctx context.Context, spec OpSpec, fn func(context.Context, 
 	return opID, value, err
 }
 
+// errInvalidOpID never echoes the id: it is client text that reaches logs and engines.
+func errInvalidOpID() error {
+	return adapters.New(adapters.CodeQuery, "invalid operation id", nil)
+}
+
 // Cancellable registers opID so CancelOp cancels the returned context, without emitting op events
 // (no Operations panel row, no op log). release must be called when the work ends. A duplicate id
 // is refused; an earlier Stop for opID returns an already-cancelled context.
 func (h *Host) Cancellable(ctx context.Context, opID string) (context.Context, func(), error) {
+	if opID != "" && !ids.IsUUID(opID) {
+		return nil, nil, errInvalidOpID()
+	}
 	h.mu.Lock()
 	if _, exists := h.running[opID]; exists {
 		h.mu.Unlock()
@@ -400,6 +410,9 @@ func (h *Host) rememberEarlyCancelLocked(opID string) {
 // adapter that has already gone, is not an error, matching cancel()'s own
 // "never throws for already finished" contract.
 func (h *Host) CancelOp(ctx context.Context, opID string) (bool, error) {
+	if !ids.IsUUID(opID) {
+		return false, nil
+	}
 	h.mu.Lock()
 	op, ok := h.running[opID]
 	if !ok {

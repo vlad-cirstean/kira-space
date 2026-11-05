@@ -24,7 +24,7 @@ func TestHarnessBootsAndSends(t *testing.T) {
 	}
 	srv := flowharness.HTTP(t)
 	res, err := app.W.Http.Send(context.Background(), bridge.HttpSendArgs{
-		Method: "GET", URL: srv.URL + "/echo", OpID: "op-1", TabID: "tab-1",
+		Method: "GET", URL: srv.URL + "/echo", OpID: "35aa4fd1-8a08-76b1-8044-5e6cf39f36fa", TabID: "tab-1",
 	})
 	if err != nil {
 		t.Fatal(err)

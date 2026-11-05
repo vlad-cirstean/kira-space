@@ -333,7 +333,7 @@ func (r *Recorder) TreeDefinition(t *testing.T, connectionID, path string, refre
 // regenerated fixture does not gratuitously diff read-mode's own committed file.
 func (r *Recorder) OpsCancel(t *testing.T, opID string) bool {
 	t.Helper()
-	cancelled, err := r.App.Router.Cancel(context.Background(), opID)
+	cancelled, err := r.App.Router.Cancel(context.Background(), WireOpID(opID))
 	if err != nil {
 		t.Fatalf("ipcfixture: cancel %s: %v", opID, err)
 	}
@@ -345,7 +345,7 @@ func (r *Recorder) OpsCancel(t *testing.T, opID string) bool {
 // wrapped the same way every backend.spec.ts wraps it: {kind: 'read', page, source}.
 func (r *Recorder) DataRead(t *testing.T, req adapterhost.ReadRequestWire, delayMs *int) adapterhost.ReadResponse {
 	t.Helper()
-	resp, err := r.App.Dispatcher.Read(context.Background(), req)
+	resp, err := r.App.Dispatcher.Read(context.Background(), WireRead(req))
 	if err != nil {
 		t.Fatalf("ipcfixture: data read %s: %v", req.OpID, err)
 	}
@@ -366,7 +366,7 @@ func (r *Recorder) DataRead(t *testing.T, req adapterhost.ReadRequestWire, delay
 // stale, source} the same way every backend.spec.ts wraps it.
 func (r *Recorder) DataCount(t *testing.T, req adapterhost.CountRequestWire) adapterhost.CountResponse {
 	t.Helper()
-	resp, err := r.App.Dispatcher.Count(context.Background(), req)
+	resp, err := r.App.Dispatcher.Count(context.Background(), WireCount(req))
 	if err != nil {
 		t.Fatalf("ipcfixture: data count %s: %v", req.OpID, err)
 	}
@@ -385,7 +385,7 @@ func (r *Recorder) DataCount(t *testing.T, req adapterhost.CountRequestWire) ada
 // wrapped {kind: 'execute', pages} the same way every backend.spec.ts wraps it.
 func (r *Recorder) DataExecute(t *testing.T, req adapterhost.ExecuteRequestWire) adapterhost.ExecuteResponse {
 	t.Helper()
-	resp, err := r.App.Dispatcher.Execute(context.Background(), req)
+	resp, err := r.App.Dispatcher.Execute(context.Background(), WireExecute(req))
 	if err != nil {
 		t.Fatalf("ipcfixture: data execute %s: %v", req.OpID, err)
 	}
@@ -409,7 +409,7 @@ func (r *Recorder) DataExecute(t *testing.T, req adapterhost.ExecuteRequestWire)
 // affectedRows} the same way every backend.spec.ts wraps it.
 func (r *Recorder) DataMutate(t *testing.T, req adapterhost.MutateRequestWire) adapterhost.MutateResponse {
 	t.Helper()
-	resp, err := r.App.Dispatcher.Mutate(context.Background(), req)
+	resp, err := r.App.Dispatcher.Mutate(context.Background(), WireMutate(req))
 	if err != nil {
 		t.Fatalf("ipcfixture: data mutate %s: %v", req.OpID, err)
 	}

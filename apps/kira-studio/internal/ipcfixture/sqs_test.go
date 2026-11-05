@@ -64,7 +64,7 @@ func TestFixture_SQS(t *testing.T) {
 		OpID: "be-poll-orders", ConnectionID: cfg.ID, Path: ordersQueueNode.Path,
 		PageSize: 100, Cursor: model.PageCursor{Mode: "offset", Offset: 0},
 	}
-	pollResp, err := app.Dispatcher.Read(context.Background(), pollReq)
+	pollResp, err := app.Dispatcher.Read(context.Background(), WireRead(pollReq))
 	if err != nil {
 		t.Fatalf("poll orders queue: %v", err)
 	}

@@ -49,7 +49,7 @@ const testConnID = "conn-read"
 
 func readReq(pageSize int) ReadRequestWire {
 	return ReadRequestWire{
-		OpID: "op-r1", ConnectionID: testConnID, Path: "database:app/table:t",
+		OpID: "ff6ba664-c8f9-7f08-844d-90db1fa6759e", ConnectionID: testConnID, Path: "database:app/table:t",
 		PageSize: pageSize, Cursor: model.PageCursor{Mode: "offset", Offset: 0},
 	}
 }
@@ -119,7 +119,7 @@ func TestDispatcher_Mutate_InvalidatesEvenOnFailure(t *testing.T) {
 	d.cache.StorePage(key, label, enginecache.ReadRequest{ConnectionID: req.ConnectionID, Path: req.Path, PageSize: req.PageSize, Cursor: req.Cursor}, page.TabularPage{ByteSize: 10})
 
 	_, err := d.Mutate(context.Background(), MutateRequestWire{
-		OpID: "op-m1", ConnectionID: testConnID, Path: req.Path,
+		OpID: "2cd6ccfb-07e4-75b8-88ad-2b0969075511", ConnectionID: testConnID, Path: req.Path,
 		Ops: []model.MutationRowOp{{Kind: "delete", Key: model.RowValues{{Name: "id", Value: strp("1")}}}},
 	})
 	if err == nil {
@@ -151,7 +151,7 @@ func TestDispatcher_Read_DoesNotCacheStaleResultRacingConcurrentInvalidate(t *te
 	defer adapters.DeleteLiveAdapter(connID)
 
 	req := ReadRequestWire{
-		OpID: "op-race", ConnectionID: connID, Path: path, PageSize: 10,
+		OpID: "97344332-9e99-7dad-8342-8cf8696c9c6e", ConnectionID: connID, Path: path, PageSize: 10,
 		Cursor: model.PageCursor{Mode: "offset", Offset: 0},
 	}
 

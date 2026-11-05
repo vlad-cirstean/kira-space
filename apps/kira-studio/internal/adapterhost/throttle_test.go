@@ -107,7 +107,7 @@ func TestThrottle_CancelledWhileQueued_NoEvents(t *testing.T) {
 	events, unsubscribe := h.Subscribe()
 	defer unsubscribe()
 
-	const opID = "op-queued"
+	const opID = "f68af556-603f-7570-88ee-42694eace76f"
 	done := make(chan error, 1)
 	go func() {
 		_, _, err := h.RunOp(context.Background(), OpSpec{OpID: opID, Kind: "read", ConnectionID: strp(connID)}, noopFn)
