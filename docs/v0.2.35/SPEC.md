@@ -19,7 +19,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 | P520 | Aggregated MCP approvals: one dialog, minimise to toast, long approval timeouts | Done |
 | P521 | Scripts MCP | Done |
 | P522 | Free-form API request MCP with agent credentials | Done |
-| P523 | Prefixed nanoid for every Kira-generated id | Pending |
+| P523 | Prefixed nanoid for every Kira-generated id | Done |
 | P524 | Manual order for API collections and environments | Done |
 | P525 | Uniform flat design: dialogs and outline buttons | Done |
 | P526 | Standalone step library and Workflows page tabs | Done |
@@ -112,6 +112,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 - Ask: Every id Kira generates, of any kind, in the Kira apps is a nanoid with a short prefix. The prefix names the feature the id belongs to. External ids (GitHub, Jira, Docker, etc.) stay unaltered.
 - Plan decides: inventory of all generators (uuid, ulid, autoincrement-as-id, hand-rolled), one shared id helper and prefix registry per language, handling of stored existing ids (migrate or leave, with reasoning), lint guard against new unprefixed generators. Uses an existing nanoid library.
 - Plan: `plans/P523.md`.
+- Result: Done in 16 commits plus review fixes. Kira-generated keys are UUIDv7 (`internal/ids`, `packages/shared/ids.ts`); handles use prefixed nanoid (`wt_`, `stp_`, ...); Studio op ids gated, tab ids scoped and bounded; legacy v4 ids stay valid. Guards G6 and N14 flag raw generators. Flows `TestAdeIDs`, `TestOpIDs`, `TestPhoneIdempotencyKeys`; UI specs `ade-ids`, `op-ids`, `op-id-guard`, `tabs-scope`. D1 (review comment id): integer replaced by a UUIDv7 string, migration 0007 rebuilds `review_comment`, legacy numeric `commentIds` in stored round specs still decode. User-data generators (cell editor UUID v4/v7, ULID, token) unchanged.
 
 ### P524 Manual order for API collections and environments
 
