@@ -815,7 +815,7 @@ func TestClickHouse_ReadLane(t *testing.T) {
 	testsupport.RunScenarios(t, connectedAdapter(t, cfg), cfg,
 		testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
 			Path: path, Setup: []string{"CREATE TABLE kira_lane_log (id UInt8) ENGINE = Memory"}, Write: "INSERT INTO kira_lane_log VALUES (1)",
-			WantErr: "164", Unchanged: unchanged, Teardown: []string{"DROP TABLE kira_lane_log"},
+			WantErr: "readonly mode", Unchanged: unchanged, Teardown: []string{"DROP TABLE kira_lane_log"},
 		}),
 		testsupport.LaneCancel(path, "SELECT sleepEachRow(1) FROM numbers(30) SETTINGS max_block_size = 1"),
 	)

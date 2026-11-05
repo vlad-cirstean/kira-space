@@ -603,15 +603,15 @@ func runFamilySuite(t *testing.T, kind string, cfg model.ResolvedConnectionConfi
 	}
 	laneSetup := []string{
 		"CREATE TABLE kira_lane_log (id int)",
-		"CREATE FUNCTION kira_write_fn() RETURNS int MODIFIES SQL DATA BEGIN INSERT INTO kira_lane_log VALUES (1); RETURN 1; END",
+		"CREATE PROCEDURE kira_write_proc() BEGIN INSERT INTO kira_lane_log VALUES (1); END",
 	}
-	laneTeardown := []string{"DROP FUNCTION IF EXISTS kira_write_fn", "DROP TABLE IF EXISTS kira_lane_log"}
+	laneTeardown := []string{"DROP PROCEDURE IF EXISTS kira_write_proc", "DROP TABLE IF EXISTS kira_lane_log"}
 	testsupport.RunScenarios(t, connectedAdapter(t, kind, cfg), cfg,
 		testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
-			Path: lanePath, Setup: laneSetup, Write: "SELECT kira_write_fn()", WantErr: "read only transaction", Unchanged: laneUnchanged, Teardown: laneTeardown,
+			Path: lanePath, Setup: laneSetup, Write: "CALL kira_write_proc()", WantErr: "1792", Unchanged: laneUnchanged, Teardown: laneTeardown,
 		}),
 		testsupport.ReadLaneRefusesWrite(testsupport.ReadLaneCase{
-			Path: lanePath, Setup: laneSetup, Write: "INSERT INTO kira_lane_log VALUES (2)", WantErr: "read only transaction", Unchanged: laneUnchanged, Teardown: laneTeardown,
+			Path: lanePath, Setup: laneSetup, Write: "INSERT INTO kira_lane_log VALUES (2)", WantErr: "1792", Unchanged: laneUnchanged, Teardown: laneTeardown,
 		}),
 		testsupport.LaneCancel(lanePath, "SELECT SLEEP(30)"),
 	)

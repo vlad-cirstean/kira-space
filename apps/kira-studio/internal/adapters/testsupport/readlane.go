@@ -110,10 +110,8 @@ func LaneCancel(path model.NodePath, longSQL string) Scenario {
 				t.Fatalf("lane Cancel: %v", err)
 			}
 			select {
-			case err := <-errc:
-				if err == nil {
-					t.Fatal("lane query: want an error after cancel, got nil")
-				}
+			case <-errc:
+				// Some engines end a killed query with a result (MySQL SLEEP returns 1), not an error.
 			case <-time.After(8 * time.Second):
 				t.Fatal("lane query still running 8s after Cancel")
 			}
