@@ -71,6 +71,9 @@
           "approval": true
         }
       },
+      "columnReview": {
+        "on": false
+      },
       "description": "scratch notes",
       "enforcement": "session",
       "expensiveQuery": {
@@ -117,6 +120,9 @@
           "approval": true
         }
       },
+      "columnReview": {
+        "on": false
+      },
       "enforcement": "session",
       "expensiveQuery": {
         "check": "plan",
@@ -161,6 +167,9 @@
           "allowed": true,
           "approval": true
         }
+      },
+      "columnReview": {
+        "on": false
       },
       "enforcement": "session",
       "expensiveQuery": {
@@ -207,6 +216,9 @@
           "approval": true
         }
       },
+      "columnReview": {
+        "on": false
+      },
       "enforcement": "session",
       "expensiveQuery": {
         "check": "plan",
@@ -251,6 +263,9 @@
           "allowed": true,
           "approval": true
         }
+      },
+      "columnReview": {
+        "on": false
       },
       "enforcement": "session",
       "expensiveQuery": {
@@ -297,6 +312,9 @@
           "approval": true
         }
       },
+      "columnReview": {
+        "on": false
+      },
       "enforcement": "session",
       "expensiveQuery": {
         "check": "plan",
@@ -341,6 +359,9 @@
           "allowed": true,
           "approval": true
         }
+      },
+      "columnReview": {
+        "on": false
       },
       "enforcement": "session",
       "expensiveQuery": {
