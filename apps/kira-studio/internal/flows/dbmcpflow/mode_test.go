@@ -17,6 +17,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 // addConn creates an exposed SQLite connection on the fixture's file with the given permissions.
@@ -323,4 +324,36 @@ func TestDbMcpReadLanePostgres(t *testing.T) {
 	if r := call(t, sess, count); r.IsError || !strings.Contains(text(r), "0") {
 		t.Fatalf("row count = %q, want 0 (the write must not have run)", text(r))
 	}
+}
+
+// Turning MCP exposure off in the connection file closes the connection's read lane.
+func TestDbMcpExposureOffClosesLane(t *testing.T) {
+	f := newFixture(t)
+	sess := f.session(t)
+	if res := call(t, sess, withMode(f.connID, "select 1", "read")); res.IsError {
+		t.Fatalf("read = %q", text(res))
+	}
+	if !f.app.W.Router.ReadLaneOpen(f.connID) {
+		t.Fatal("no lane after a read")
+	}
+	cfg := f.app.W.ConnectionConfig
+	list, err := f.app.W.Connections.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var file string
+	for _, c := range list {
+		if c.ID == f.connID {
+			file = c.File
+		}
+	}
+	detail, err := cfg.File(bridge.ConnectionFileArgs{File: file})
+	if err != nil || !strings.Contains(detail.Text, "enabled: true") {
+		t.Fatalf("File = %+v (%v), want an exposed connection file", detail, err)
+	}
+	off := strings.Replace(detail.Text, "enabled: true", "enabled: false", 1)
+	if saved, err := cfg.SaveFile(bridge.ConnectionSaveFileArgs{File: file, Text: off, BaseHash: detail.Hash}); err != nil || saved.Problem != nil {
+		t.Fatalf("SaveFile = %+v (%v)", saved, err)
+	}
+	testx.WaitUntil(t, 10*time.Second, func() bool { return !f.app.W.Router.ReadLaneOpen(f.connID) })
 }
