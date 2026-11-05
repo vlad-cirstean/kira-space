@@ -61,6 +61,10 @@
       },
       "description": "scratch notes",
       "enforcement": "session",
+      "expensiveQuery": {
+        "check": "none",
+        "rowsThreshold": 100000
+      },
       "id": "<masked>",
       "kind": "sqlite",
       "name": "notes db",
@@ -102,6 +106,10 @@
         }
       },
       "enforcement": "session",
+      "expensiveQuery": {
+        "check": "off",
+        "rowsThreshold": 100000
+      },
       "id": "<masked>",
       "kind": "postgres",
       "name": "t-postgres",
@@ -143,6 +151,10 @@
         }
       },
       "enforcement": "session",
+      "expensiveQuery": {
+        "check": "off",
+        "rowsThreshold": 100000
+      },
       "id": "<masked>",
       "kind": "mysql",
       "name": "t-mysql",
@@ -184,6 +196,10 @@
         }
       },
       "enforcement": "session",
+      "expensiveQuery": {
+        "check": "off",
+        "rowsThreshold": 100000
+      },
       "id": "<masked>",
       "kind": "mariadb",
       "name": "t-mariadb",
@@ -225,6 +241,10 @@
         }
       },
       "enforcement": "session",
+      "expensiveQuery": {
+        "check": "off",
+        "rowsThreshold": 100000
+      },
       "id": "<masked>",
       "kind": "clickhouse",
       "name": "t-clickhouse",
@@ -266,6 +286,10 @@
         }
       },
       "enforcement": "session",
+      "expensiveQuery": {
+        "check": "none",
+        "rowsThreshold": 100000
+      },
       "id": "<masked>",
       "kind": "sqlite",
       "name": "t-sqlite",
@@ -307,6 +331,10 @@
         }
       },
       "enforcement": "app",
+      "expensiveQuery": {
+        "check": "none",
+        "rowsThreshold": 100000
+      },
       "id": "<masked>",
       "kind": "mongodb",
       "name": "t-mongodb",
@@ -348,6 +376,10 @@
         }
       },
       "enforcement": "app",
+      "expensiveQuery": {
+        "check": "none",
+        "rowsThreshold": 100000
+      },
       "id": "<masked>",
       "kind": "redis",
       "name": "t-redis",
@@ -390,6 +422,10 @@
         }
       },
       "enforcement": "none",
+      "expensiveQuery": {
+        "check": "none",
+        "rowsThreshold": 100000
+      },
       "id": "<masked>",
       "kind": "kibana",
       "name": "t-kibana",
@@ -432,6 +468,10 @@
         }
       },
       "enforcement": "none",
+      "expensiveQuery": {
+        "check": "none",
+        "rowsThreshold": 100000
+      },
       "id": "<masked>",
       "kind": "kafka",
       "name": "t-kafka",

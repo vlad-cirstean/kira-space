@@ -1,0 +1,470 @@
+{
+  "item": {
+    "createdAt": 0,
+    "expiresAt": 0,
+    "id": "db.exemption:<id:1>",
+    "kind": "db.exemption",
+    "operation": {
+      "class": "read",
+      "tone": "neutral"
+    },
+    "origin": {
+      "client": "Claude Code 2.1.318",
+      "cwd": "",
+      "source": "",
+      "step": "",
+      "task": ""
+    },
+    "payload": {
+      "connectionId": "<id:2>",
+      "detected": "read",
+      "enforcement": "session",
+      "limits": [
+        {
+          "limit": "expensive_query",
+          "max": 1000,
+          "measured": 5000,
+          "unit": "rows"
+        }
+      ],
+      "mode": "read",
+      "plan": {
+        "estimatedRowsRead": 5000,
+        "issues": [
+          {
+            "code": "wide-scan",
+            "message": "Seq Scan on big is estimated to read 5,000 rows.",
+            "severity": "warn"
+          }
+        ],
+        "issuesOmitted": 0,
+        "overThreshold": true,
+        "thresholdRows": 1000
+      },
+      "reason": "the report needs the whole table",
+      "statement": "select * from app.big"
+    },
+    "reason": "exemption",
+    "target": {
+      "color": "indigo",
+      "kind": "postgres",
+      "location": "localhost:5432 · flowdb",
+      "name": "flow pg",
+      "readOnly": false
+    }
+  },
+  "list_connections": [
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "description": "scratch notes",
+      "enforcement": "session",
+      "expensiveQuery": {
+        "check": "none",
+        "rowsThreshold": 1000
+      },
+      "id": "<masked>",
+      "kind": "sqlite",
+      "name": "notes db",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "app",
+          "write": "app"
+        },
+        "seconds": 0
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "enforcement": "session",
+      "expensiveQuery": {
+        "check": "plan",
+        "rowsThreshold": 1000
+      },
+      "id": "<masked>",
+      "kind": "postgres",
+      "name": "e-postgres",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "session",
+          "read": "session",
+          "write": "session"
+        },
+        "seconds": 0
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "enforcement": "session",
+      "expensiveQuery": {
+        "check": "off",
+        "rowsThreshold": 1000
+      },
+      "id": "<masked>",
+      "kind": "postgres",
+      "name": "e-postgres-off",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "session",
+          "read": "session",
+          "write": "session"
+        },
+        "seconds": 0
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "enforcement": "session",
+      "expensiveQuery": {
+        "check": "plan",
+        "rowsThreshold": 1000
+      },
+      "id": "<masked>",
+      "kind": "mysql",
+      "name": "e-mysql",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "session",
+          "write": "app"
+        },
+        "seconds": 0
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "enforcement": "session",
+      "expensiveQuery": {
+        "check": "plan",
+        "rowsThreshold": 1000
+      },
+      "id": "<masked>",
+      "kind": "mariadb",
+      "name": "e-mariadb",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "session",
+          "write": "session"
+        },
+        "seconds": 0
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "enforcement": "session",
+      "expensiveQuery": {
+        "check": "plan",
+        "rowsThreshold": 1000
+      },
+      "id": "<masked>",
+      "kind": "clickhouse",
+      "name": "e-clickhouse",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "session",
+          "write": "app"
+        },
+        "seconds": 0
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "enforcement": "session",
+      "expensiveQuery": {
+        "check": "none",
+        "rowsThreshold": 1000
+      },
+      "id": "<masked>",
+      "kind": "sqlite",
+      "name": "e-sqlite",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "app",
+          "write": "app"
+        },
+        "seconds": 0
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "enforcement": "app",
+      "expensiveQuery": {
+        "check": "none",
+        "rowsThreshold": 1000
+      },
+      "id": "<masked>",
+      "kind": "mongodb",
+      "name": "e-mongodb",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "app",
+          "write": "app"
+        },
+        "seconds": 0
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "permission denied"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read, write (approval)",
+        "write": {
+          "allowed": true,
+          "approval": true
+        }
+      },
+      "enforcement": "app",
+      "expensiveQuery": {
+        "check": "none",
+        "rowsThreshold": 1000
+      },
+      "id": "<masked>",
+      "kind": "redis",
+      "name": "e-redis",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "app",
+          "write": "app"
+        },
+        "seconds": 0
+      },
+      "status": "disconnected"
+    },
+    {
+      "access": {
+        "ddl": {
+          "allowed": false,
+          "approval": false,
+          "reason": "no write console"
+        },
+        "read": {
+          "allowed": true,
+          "approval": false
+        },
+        "summary": "read",
+        "write": {
+          "allowed": false,
+          "approval": false,
+          "reason": "no write console"
+        }
+      },
+      "enforcement": "none",
+      "expensiveQuery": {
+        "check": "none",
+        "rowsThreshold": 1000
+      },
+      "id": "<masked>",
+      "kind": "kafka",
+      "name": "e-kafka",
+      "permissions": {
+        "ddl": "deny",
+        "read": "allow",
+        "write": "prompt"
+      },
+      "readOnly": false,
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "none",
+          "read": "none",
+          "write": "none"
+        },
+        "seconds": 0
+      },
+      "status": "disconnected"
+    }
+  ]
+}
