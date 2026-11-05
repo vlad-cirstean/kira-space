@@ -14,7 +14,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 | P529 | Statement timeout per connection, enforced by the engine | Done |
 | P530 | Expensive-query (EXPLAIN) threshold enforced for MCP, with explanation | Pending |
 | P531 | Ops throttle covers every op from every session, with explanation | Done |
-| P532 | Table allow list per connection for DB MCP | Pending |
+| P532 | Table allow list per connection for DB MCP | Done |
 | P533 | Tool descriptions suggest inspecting schemas first | Done |
 | P534 | Masking validation: new columns are withheld until masking is reviewed | Pending |
 | P535 | Masked-read permission and constrained browse tool as the MCP default | Pending |
@@ -62,6 +62,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 - Default for existing connections decided in plan (all allowed, so nothing changes silently).
 - UI: list in `ConnectionMcpTab.vue` with search and the select-all checkbox.
 - Plan: `plans/P532.md`.
+- Result: file key `mcp.tables` (absent = all, `[]` = none), per-dialect cgo-free table extraction, fail-closed gate as the last step of `resolveVerdict` plus explain_query, list_children, describe_table, describe_schema and list_connections, live catalog probe as throttled op kind `tables`, MCP tab list with enforcement lines. Flow test `dbmcpflow/tables_test.go`, `tests/ui/connection-mcp-tables.spec.ts`, adapter probes and the real `claude` suite pass.
 
 ### P533 Tool descriptions suggest inspecting schemas first
 
