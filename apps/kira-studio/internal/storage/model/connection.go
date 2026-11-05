@@ -47,8 +47,8 @@ type ConnectionFields struct {
 	// threshold. Separate from AutoExplain, which governs this app's own console — see the
 	// migration's own comment for why one switch cannot mean both.
 	McpAutoExplain bool `json:"mcpAutoExplain"`
-	// Result review on the DB MCP path: inherit (app setting), review (always hold), send (never).
-	McpReviewResults string `json:"mcpReviewResults"`
+	// Result review on the DB MCP path (P536), per mode: inherit (app setting), review (always hold), send (never).
+	McpReview McpReview `json:"mcpReview"`
 	// McpStatementTimeoutSec bounds each statement an agent runs (P529): seconds, 0 off. A first-class
 	// column, never options: a safety limit must not be settable through options or a URI.
 	McpStatementTimeoutSec int `json:"mcpStatementTimeoutSec"`
@@ -145,6 +145,26 @@ func ValidMcpStatementTimeout(v int) bool { return v >= 0 && v <= McpStatementTi
 
 // mcpReviewResultsValues mirrors connection.ts's mcpReviewResultsSchema.
 var mcpReviewResultsValues = map[string]bool{"inherit": true, "review": true, "send": true}
+
+// McpReview is the result review setting of each MCP mode.
+type McpReview struct {
+	Read  string `json:"read"`
+	Write string `json:"write"`
+	Ddl   string `json:"ddl"`
+}
+
+// For returns the setting of mode (read, write or ddl); an unknown mode is inherit.
+func (r McpReview) For(mode string) string {
+	switch mode {
+	case "read":
+		return r.Read
+	case "write":
+		return r.Write
+	case "ddl":
+		return r.Ddl
+	}
+	return "inherit"
+}
 
 // ValidMcpReviewResults mirrors connection.ts's mcpReviewResultsSchema (P382).
 func ValidMcpReviewResults(v string) bool { return mcpReviewResultsValues[v] }

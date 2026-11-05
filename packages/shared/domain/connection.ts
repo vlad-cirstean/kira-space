@@ -163,8 +163,15 @@ const connectionFieldsSchema = /*#__PURE__*/ z.object({
   // has no such key. Separate from autoExplain (above), which governs this app's own console — see
   // the migration's own comment for why one switch cannot mean both.
   mcpAutoExplain: z.boolean().default(true),
-  // P382: result review override; inherit follows dbMcp.previewResponses. Default is load-bearing for older rows.
-  mcpReviewResults: mcpReviewResultsSchema.default('inherit'),
+  // P536: result review override per mode; inherit follows dbMcp.previewResponses. Default is load-bearing
+  // for older payloads.
+  mcpReview: z
+    .object({
+      read: mcpReviewResultsSchema,
+      write: mcpReviewResultsSchema,
+      ddl: mcpReviewResultsSchema,
+    })
+    .default({ read: 'inherit', write: 'inherit', ddl: 'inherit' }),
   // P529: seconds each agent statement may run, 0 off. Default is load-bearing for older rows.
   mcpStatementTimeoutSec: z
     .number()

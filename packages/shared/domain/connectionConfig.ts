@@ -68,7 +68,9 @@ export interface ConnectionFileMcp {
   write?: string;
   ddl?: string;
   auto_explain?: boolean;
+  /** Legacy single value for every mode `review` leaves unset. */
   review_results?: string;
+  review?: { read?: string; write?: string; ddl?: string };
   statement_timeout_sec?: number;
   // Absent = all tables; [] = none.
   tables?: string[];

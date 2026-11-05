@@ -48,7 +48,11 @@
     "mcpDescription": "scratch notes",
     "mcpEnabled": true,
     "mcpReadMode": "allow",
-    "mcpReviewResults": "review",
+    "mcpReview": {
+      "ddl": "review",
+      "read": "review",
+      "write": "review"
+    },
     "mcpStatementTimeoutSec": 0,
     "mcpTables": null,
     "mcpWriteMode": "prompt",

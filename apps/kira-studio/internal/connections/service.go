@@ -572,7 +572,7 @@ func destinationUnchanged(a, b connfiles.File) bool {
 // gates whether this connection is exposed to the DB MCP server, never what it connects to.
 // McpDescription is free-text metadata, never interpreted; McpReadMode/McpWriteMode/McpDdlMode
 // gate DB-MCP-path permissions, not the destination. McpAutoExplain gates DB-MCP-path plan-first
-// behaviour, the same non-destination footing as AutoExplain. McpReviewResults gates DB-MCP-path
+// behaviour, the same non-destination footing as AutoExplain. McpReview gates DB-MCP-path
 // result review, never the destination. McpStatementTimeoutSec bounds DB-MCP statements and McpTables
 // the DB-MCP table set, never the destination. PreconnectDelaySec is timing only,
 // never the destination.
@@ -589,7 +589,7 @@ func zeroExemptFields(f *model.ConnectionFields) {
 	f.McpWriteMode = ""
 	f.McpDdlMode = ""
 	f.McpAutoExplain = false
-	f.McpReviewResults = ""
+	f.McpReview = model.McpReview{}
 	f.McpStatementTimeoutSec = 0
 	f.McpTables = nil
 	f.MaskReviewOn = false

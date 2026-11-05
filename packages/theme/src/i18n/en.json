@@ -16401,6 +16401,9 @@
         "reviewAlways": {
           "status": "Results always reviewed"
         },
+        "reviewMixed": {
+          "status": "Results reviewed per mode"
+        },
         "reviewNever": {
           "status": "Results sent without review"
         },

@@ -20,7 +20,11 @@
     "mcpDescription": "",
     "mcpEnabled": false,
     "mcpReadMode": "deny",
-    "mcpReviewResults": "inherit",
+    "mcpReview": {
+      "ddl": "inherit",
+      "read": "inherit",
+      "write": "inherit"
+    },
     "mcpStatementTimeoutSec": 0,
     "mcpTables": null,
     "mcpWriteMode": "deny",

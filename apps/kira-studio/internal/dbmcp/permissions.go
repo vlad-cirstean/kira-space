@@ -10,16 +10,31 @@ import (
 // modes is one connection's three MCP permission words (M2 §4.1), each one of deny/allow/prompt.
 type modes struct{ read, write, ddl string }
 
-// reviewResults resolves a connection's result review: its own override, else the app setting.
-func (s *Server) reviewResults(c model.ConnectionSummary) bool {
-	switch c.McpReviewResults {
-	case "review":
-		return true
-	case "send":
-		return false
-	default:
-		return s.cfg.PreviewResponses()
+// reviewFor reports whether a call's result is held: the setting of the declared mode or of the
+// detected class. Either one holds, so declaring a weaker mode than the statement looks like never
+// skips review (tightenByClass accepts a weaker statement than its mode). An unknown class holds when
+// any mode does. inherit follows the app setting, read once per call.
+func (s *Server) reviewFor(c model.ConnectionSummary, mode string, class adapters.OpClass) bool {
+	app, read := false, false
+	resolve := func(v string) bool {
+		switch v {
+		case "review":
+			return true
+		case "send":
+			return false
+		}
+		if !read {
+			app, read = s.cfg.PreviewResponses(), true
+		}
+		return app
 	}
+	if resolve(c.McpReview.For(mode)) {
+		return true
+	}
+	if class == adapters.ClassUnknown {
+		return resolve(c.McpReview.Read) || resolve(c.McpReview.Write) || resolve(c.McpReview.Ddl)
+	}
+	return resolve(c.McpReview.For(classMode(class)))
 }
 
 // modesOf reads c's own MCP permission fields.

@@ -137,6 +137,17 @@ const dbMcpTokenExpired = computed(() => tokenExpired(dbMcpStore.status.expiresA
 // Exposure and the three permission modes live in the connection's file; this list is a glance plus
 // the way into the file.
 // M2 §7.3: the row's own description glance — first line only, "" when unset.
+/** Status line of a connection's result review; empty while every mode follows the app setting. */
+function reviewStatus(conn: ConnectionSummary): string {
+  const { read, write, ddl } = conn.mcpReview;
+  if (read === 'inherit' && write === 'inherit' && ddl === 'inherit') return '';
+  if (read === 'review' && write === 'review' && ddl === 'review')
+    return t('studio.settings.dbMcp.reviewAlways.status');
+  if (read === 'send' && write === 'send' && ddl === 'send')
+    return t('studio.settings.dbMcp.reviewNever.status');
+  return t('studio.settings.dbMcp.reviewMixed.status');
+}
+
 function mcpDescriptionFirstLine(conn: ConnectionSummary): string {
   return conn.mcpDescription.split('\n', 1)[0] ?? '';
 }
@@ -340,14 +351,10 @@ const dbMcpApiApprovalId = useId();
               )
             }}</FieldDescription>
             <FieldDescription
-              v-if="conn.mcpReviewResults !== 'inherit'"
+              v-if="reviewStatus(conn)"
               :data-testid="`db-mcp-connection-review-${conn.id}`"
               >{{
-                t(
-                  conn.mcpReviewResults === 'review'
-                    ? 'studio.settings.dbMcp.reviewAlways.status'
-                    : 'studio.settings.dbMcp.reviewNever.status',
-                )
+                reviewStatus(conn)
               }}</FieldDescription
             >
             <FieldDescription v-if="mcpDescriptionFirstLine(conn)">{{

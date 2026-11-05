@@ -20,7 +20,7 @@ const reviewed = () =>
 const inheriting = (): ConnectionSummary => ({
   ...reviewed(),
   id: ID,
-  mcpReviewResults: 'inherit',
+  mcpReview: { read: 'inherit', write: 'inherit', ddl: 'inherit' },
   mcpStatementTimeoutSec: 10,
   mcpTables: null,
   maskReviewOn: false,
@@ -66,7 +66,10 @@ test('the settings glance flags a connection with an override and skips one that
     control: [
       {
         channel: IPC.connectionsList,
-        response: [{ ...inheriting(), mcpReviewResults: 'review' }, other()],
+        response: [
+          { ...inheriting(), mcpReview: { read: 'review', write: 'review', ddl: 'review' } },
+          other(),
+        ],
       },
     ],
   });

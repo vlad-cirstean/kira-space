@@ -141,7 +141,32 @@
           "type": "string",
           "enum": ["inherit", "review", "send"],
           "default": "inherit",
-          "description": "inherit follows the app setting; review always holds results for a look; send never holds them."
+          "description": "Legacy: applies to every mode that review leaves unset. inherit follows the app setting; review always holds results for a look; send never holds them."
+        },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Result review per mode. An unset mode follows review_results, else inherit. inherit follows the app setting; review always holds results for a look; send never holds them.",
+          "properties": {
+            "read": {
+              "type": "string",
+              "enum": ["inherit", "review", "send"],
+              "default": "inherit",
+              "description": "Reads."
+            },
+            "write": {
+              "type": "string",
+              "enum": ["inherit", "review", "send"],
+              "default": "inherit",
+              "description": "Writes."
+            },
+            "ddl": {
+              "type": "string",
+              "enum": ["inherit", "review", "send"],
+              "default": "inherit",
+              "description": "Schema statements."
+            }
+          }
         },
         "statement_timeout_sec": {
           "type": "integer",
