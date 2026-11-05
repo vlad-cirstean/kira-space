@@ -246,47 +246,16 @@ func verifyReadOnlyWrap(ctx context.Context, conn *trackedConn, op *adapters.OpC
 // AssertNoTransactionEscalation rejects outright before anything runs.
 func execute(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track TrackQuery, readOnly, connReadOnly bool, statements []string, limit page.ResultCap, timeout time.Duration) (pages []page.Page, err error) {
 	defer func() { err = timeoutError(ctx, timeout, err) }()
-	if len(statements) == 0 {
-		return nil, adapters.T(adapters.CodeQuery, "backend.studio.adapter.noStatements.body", nil, nil)
-	}
-	if readOnly && connReadOnly {
-		if err := adapters.AssertNoTransactionEscalation(statements, adapters.PostgresDialect); err != nil {
-			return nil, err
-		}
-	}
-	// A per-request wrap on a writable connection would run inside, then roll back, a user transaction.
-	if readOnly && !connReadOnly && conn.PgConn().TxStatus() != 'I' {
-		return nil, adapters.OpenTransaction()
+	if err := checkExecutable(conn, readOnly, connReadOnly, statements); err != nil {
+		return nil, err
 	}
 	op.SetCommand(adapters.JoinConsoleStatements(statements, "--"))
 
-	if readOnly {
-		// P113 G1: adapters.BeginReadOnlyConsole carries the shared BEGIN/COMMIT wrap postgres and
-		// mysqlfamily hand-rolled identically. Confirmed empirically that Postgres ends an
-		// already-aborted transaction's COMMIT with a ROLLBACK command tag, not an error — safe to
-		// call unconditionally. F2: waitInFlight blocks on every RunWithAbortRace goroutine this
-		// batch spawned still touching conn (the same non-concurrency-safe *pgx.Conn) before COMMIT.
-		cleanup, err := adapters.BeginReadOnlyConsole(ctx, "BEGIN READ ONLY", func(ctx context.Context, sql string) error {
-			_, err := conn.Exec(ctx, sql)
-			return err
-		}, conn.waitInFlight, func(err error) error { return mapError(err) })
-		if err != nil {
-			return nil, err
-		}
-		defer cleanup()
-		if timeout > 0 {
-			// SET LOCAL reverts at the wrap's COMMIT, which runs on every exit: nothing to restore.
-			if _, err := conn.Exec(ctx, "SET LOCAL statement_timeout = "+strconv.FormatInt(timeout.Milliseconds(), 10)); err != nil {
-				return nil, mapError(err)
-			}
-		}
-	} else if timeout > 0 {
-		restore, err := setSessionTimeout(ctx, conn, op, track, timeout)
-		if err != nil {
-			return nil, err
-		}
-		defer restore()
+	end, err := beginBatch(ctx, conn, op, track, readOnly, timeout)
+	if err != nil {
+		return nil, err
 	}
+	defer end()
 
 	results := make([]rawResult, 0, len(statements))
 	for _, sql := range statements {
@@ -306,30 +275,80 @@ func execute(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track T
 		}
 	}
 
+	typeMeta, err := resultTypeMeta(ctx, conn, op, track, results)
+	if err != nil {
+		return nil, err
+	}
+	pages = make([]page.Page, len(results))
+	for i, r := range results {
+		pages[i] = buildPage(r, typeMeta)
+	}
+	return pages, nil
+}
+
+// checkExecutable runs the pre-flight guards before any statement touches conn.
+func checkExecutable(conn *trackedConn, readOnly, connReadOnly bool, statements []string) error {
+	if len(statements) == 0 {
+		return adapters.T(adapters.CodeQuery, "backend.studio.adapter.noStatements.body", nil, nil)
+	}
+	if readOnly && connReadOnly {
+		if err := adapters.AssertNoTransactionEscalation(statements, adapters.PostgresDialect); err != nil {
+			return err
+		}
+	}
+	// A per-request wrap on a writable connection would run inside, then roll back, a user transaction.
+	if readOnly && !connReadOnly && conn.PgConn().TxStatus() != 'I' {
+		return adapters.OpenTransaction()
+	}
+	return nil
+}
+
+// beginBatch opens the read-only wrap and/or applies the statement timeout. The returned func ends both.
+func beginBatch(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track TrackQuery, readOnly bool, timeout time.Duration) (func(), error) {
+	if !readOnly {
+		if timeout <= 0 {
+			return func() {}, nil
+		}
+		return setSessionTimeout(ctx, conn, op, track, timeout)
+	}
+	// P113 G1: adapters.BeginReadOnlyConsole carries the shared BEGIN/COMMIT wrap postgres and
+	// mysqlfamily hand-rolled identically. Confirmed empirically that Postgres ends an
+	// already-aborted transaction's COMMIT with a ROLLBACK command tag, not an error — safe to
+	// call unconditionally. F2: waitInFlight blocks on every RunWithAbortRace goroutine this
+	// batch spawned still touching conn (the same non-concurrency-safe *pgx.Conn) before COMMIT.
+	cleanup, err := adapters.BeginReadOnlyConsole(ctx, "BEGIN READ ONLY", func(ctx context.Context, sql string) error {
+		_, err := conn.Exec(ctx, sql)
+		return err
+	}, conn.waitInFlight, func(err error) error { return mapError(err) })
+	if err != nil {
+		return nil, err
+	}
+	if timeout > 0 {
+		// SET LOCAL reverts at the wrap's COMMIT, which runs on every exit: nothing to restore.
+		if _, err := conn.Exec(ctx, "SET LOCAL statement_timeout = "+strconv.FormatInt(timeout.Milliseconds(), 10)); err != nil {
+			cleanup()
+			return nil, mapError(err)
+		}
+	}
+	return cleanup, nil
+}
+
+// resultTypeMeta resolves type names for every column OID across results.
+func resultTypeMeta(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track TrackQuery, results []rawResult) (map[uint32]pgTypeMeta, error) {
 	oidSet := map[uint32]struct{}{}
 	for _, r := range results {
 		for _, f := range r.fields {
 			oidSet[f.dataTypeOID] = struct{}{}
 		}
 	}
-	typeMeta := map[uint32]pgTypeMeta{}
-	if len(oidSet) > 0 {
-		oids := make([]uint32, 0, len(oidSet))
-		for o := range oidSet {
-			oids = append(oids, o)
-		}
-		meta, err := lookupTypeNames(ctx, conn, op, track, oids)
-		if err != nil {
-			return nil, err
-		}
-		typeMeta = meta
+	if len(oidSet) == 0 {
+		return map[uint32]pgTypeMeta{}, nil
 	}
-
-	pages = make([]page.Page, len(results))
-	for i, r := range results {
-		pages[i] = buildPage(r, typeMeta)
+	oids := make([]uint32, 0, len(oidSet))
+	for o := range oidSet {
+		oids = append(oids, o)
 	}
-	return pages, nil
+	return lookupTypeNames(ctx, conn, op, track, oids)
 }
 
 // setSessionTimeout applies timeout for the rest of this batch on the pinned connection and returns
