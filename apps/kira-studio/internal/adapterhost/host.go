@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"runtime/debug"
+	"sort"
 	"sync"
 	"time"
 
@@ -40,6 +41,20 @@ type OpSpec struct {
 type runningOp struct {
 	cancel       context.CancelFunc
 	connectionID *string
+	kind         string
+	source       string
+	startedAt    string
+	// listed is set once op:start is emitted: only then does the op have a panel row.
+	listed bool
+}
+
+// RunningOp is one started op, as RunningOps lists it.
+type RunningOp struct {
+	OpID         string
+	Kind         string
+	Source       string
+	StartedAt    string
+	ConnectionID *string
 }
 
 // eventSub is the lossless delivery queue for exactly one Subscribe()r. Delivery used to be a
@@ -227,7 +242,7 @@ func (h *Host) RunOp(ctx context.Context, spec OpSpec, fn func(context.Context, 
 		}
 	}
 	derived, cancel := context.WithCancel(ctx)
-	h.running[opID] = runningOp{cancel: cancel, connectionID: spec.ConnectionID}
+	h.running[opID] = runningOp{cancel: cancel, connectionID: spec.ConnectionID, kind: spec.Kind, source: OpSourceOf(ctx)}
 	h.mu.Unlock()
 	defer func() {
 		h.mu.Lock()
@@ -258,6 +273,12 @@ func (h *Host) RunOp(ctx context.Context, spec OpSpec, fn func(context.Context, 
 	}
 
 	startedAt := kiratime.NowISO()
+	h.mu.Lock()
+	if cur, ok := h.running[opID]; ok {
+		cur.startedAt, cur.listed = startedAt, true
+		h.running[opID] = cur
+	}
+	h.mu.Unlock()
 	h.emitJSON(oplog.EventOpStart, opStartPayload{
 		OpID: opID, ConnectionID: spec.ConnectionID, TabID: spec.TabID, Kind: spec.Kind, StartedAt: startedAt,
 		Incognito: spec.Incognito, DelayMs: spec.DelayMs, Source: OpSourceOf(ctx),
@@ -384,8 +405,13 @@ func (h *Host) CancelOp(ctx context.Context, opID string) (bool, error) {
 	if !ok {
 		return false, nil
 	}
-	op.cancel()
+	h.stopOp(ctx, opID, op)
+	return true, nil
+}
 
+// stopOp is the shared tail of CancelOp and CancelRunning.
+func (h *Host) stopOp(ctx context.Context, opID string, op runningOp) {
+	op.cancel()
 	if op.connectionID != nil {
 		if adapter, ok := adapters.GetLiveAdapter(*op.connectionID); ok {
 			// F1 (P168 Part 5): a stalled engine must not park the Cancel call forever.
@@ -394,6 +420,37 @@ func (h *Host) CancelOp(ctx context.Context, opID string) (bool, error) {
 			stop()
 		}
 	}
+}
+
+// RunningOps snapshots ops that have a panel row (op:start emitted), oldest first.
+func (h *Host) RunningOps() []RunningOp {
+	h.mu.Lock()
+	out := make([]RunningOp, 0, len(h.running))
+	for id, op := range h.running {
+		if op.listed {
+			out = append(out, RunningOp{OpID: id, Kind: op.kind, Source: op.source, StartedAt: op.startedAt, ConnectionID: op.connectionID})
+		}
+	}
+	h.mu.Unlock()
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].StartedAt != out[j].StartedAt {
+			return out[i].StartedAt < out[j].StartedAt
+		}
+		return out[i].OpID < out[j].OpID
+	})
+	return out
+}
+
+// CancelRunning cancels a listed op. Unlike CancelOp, a miss leaves no early-cancel entry, so a
+// guessed or stale id cannot poison a later op.
+func (h *Host) CancelRunning(ctx context.Context, opID string) (bool, error) {
+	h.mu.Lock()
+	op, ok := h.running[opID]
+	h.mu.Unlock()
+	if !ok || !op.listed {
+		return false, nil
+	}
+	h.stopOp(ctx, opID, op)
 	return true, nil
 }
 

@@ -477,3 +477,11 @@ func (r *Router) ClassifyStatement(ctx context.Context, connectionID, statement 
 func (r *Router) Cancel(ctx context.Context, opID string) (bool, error) {
 	return r.host.CancelOp(ctx, opID)
 }
+
+// RunningOps lists started ops (see Host.RunningOps).
+func (r *Router) RunningOps() []RunningOp { return r.host.RunningOps() }
+
+// CancelRunning cancels a started op without early-cancel memory (see Host.CancelRunning).
+func (r *Router) CancelRunning(ctx context.Context, opID string) (bool, error) {
+	return r.host.CancelRunning(ctx, opID)
+}

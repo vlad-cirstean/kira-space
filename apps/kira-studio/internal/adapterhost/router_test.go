@@ -37,6 +37,53 @@ func TestRouter_Cancel_FindsInProcessOp(t *testing.T) {
 	<-done
 }
 
+// CancelRunning must not remember a miss, must refuse a Cancellable id, and must cancel a listed op.
+func TestRouter_CancelRunning(t *testing.T) {
+	r := NewRouter(adapters.Deps{}, enginecache.NewCache(enginecache.DefaultPageBudgetBytes, nil))
+	ctx := context.Background()
+	if ok, _ := r.CancelRunning(ctx, "op-y"); ok {
+		t.Fatal("CancelRunning on unknown id = true")
+	}
+	if _, _, err := r.host.RunOp(ctx, OpSpec{OpID: "op-y", Kind: "read"},
+		func(context.Context, *adapters.OpCtx) (any, error) { return nil, nil }); err != nil {
+		t.Fatalf("op after missed CancelRunning: %v", err)
+	}
+
+	_, release, err := r.host.Cancellable(ctx, "stream-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	if ok, _ := r.CancelRunning(ctx, "stream-1"); ok || len(r.RunningOps()) != 0 {
+		t.Fatal("Cancellable id must be neither cancellable nor listed")
+	}
+
+	started := make(chan struct{})
+	var runErr error
+	done := make(chan struct{})
+	go func() {
+		_, _, runErr = r.host.RunOp(ctx, OpSpec{OpID: "op-z", Kind: "execute"},
+			func(c context.Context, _ *adapters.OpCtx) (any, error) {
+				close(started)
+				<-c.Done()
+				return nil, c.Err()
+			})
+		close(done)
+	}()
+	<-started
+	ops := r.RunningOps()
+	if len(ops) != 1 || ops[0].OpID != "op-z" || ops[0].Kind != "execute" {
+		t.Fatalf("RunningOps = %+v", ops)
+	}
+	if ok, err := r.CancelRunning(ctx, "op-z"); !ok || err != nil {
+		t.Fatalf("CancelRunning = %v, %v", ok, err)
+	}
+	<-done
+	if runErr == nil {
+		t.Fatal("cancelled op returned no error")
+	}
+}
+
 // childrenNilAdapter returns a nil Nodes slice, the idiomatic-Go shape (`var result
 // []model.TreeNode`, never appended to) that json.Marshal renders as `null`.
 type childrenNilAdapter struct {
