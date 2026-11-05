@@ -31,7 +31,9 @@ const lede = computed(() =>
   }),
 );
 const enforcement = computed(() =>
-  payload.value.mode === 'read' ? ENFORCEMENT_KEYS[payload.value.enforcement] : undefined,
+  payload.value.mode === 'read' || payload.value.mode === 'masked'
+    ? ENFORCEMENT_KEYS[payload.value.enforcement]
+    : undefined,
 );
 const noTimeout = computed(() => payload.value.limits.some((l) => l.limit === 'statement_timeout'));
 const limits = computed(() =>

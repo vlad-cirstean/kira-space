@@ -15404,6 +15404,27 @@
           "limitDdl": {
             "body": "The database can’t tell write from DDL on one session. Kira refuses statements more powerful than the declared mode, but a misclassified DDL would run under the write permission."
           },
+          "masked": {
+            "label": "Read masked data"
+          },
+          "maskedEnforceHit": {
+            "body": "A filter or sort on a masked column, a column not yet reviewed, a table off the allow list, or a view on a masked connection is refused with the reason. Masked columns only take is-empty filters. A browse over the row estimate or the statement timeout is refused; the agent may ask you to lift that limit once."
+          },
+          "maskedEnforceLimits": {
+            "body": "Masking still matches by column name. The row-estimate check plans the statement Kira builds; engines with no estimate (SQLite) skip it, and a filter value containing a semicolon can’t be planned, so it is refused while the check is on. The throttle applies. Engines without tables (MongoDB, Redis, Kafka, S3, SQS, Kibana) can’t browse."
+          },
+          "maskedEnforceWho": {
+            "body": "Kira’s MCP server builds every browse statement itself from the agent’s choices and runs it read-only. The agent never sends SQL here."
+          },
+          "maskedInherit": {
+            "option": "Same as read ({mode})"
+          },
+          "maskedNa": {
+            "body": "This engine has no structured browse. The agent can only read through run_query."
+          },
+          "maskedNote": {
+            "label": "One table, with chosen columns, filters and order; up to 100 rows"
+          },
           "noWriteConsole": {
             "body": "Write and DDL modes are not available for this connection kind."
           },
@@ -15433,7 +15454,7 @@
             "body": "Withhold, no answer in 10 minutes, or the agent cancelling returns an error with no rows. The agent never sees a withheld result."
           },
           "reviewEnforceLimits": {
-            "body": "Withhold does not undo a write. The agent still learns that the query ran. A statement is reviewed when its mode, or the mode it looks like, holds results. Only run_query results are reviewed."
+            "body": "Withhold does not undo a write. The agent still learns that the query ran. A statement is reviewed when its mode, or the mode it looks like, holds results. Only run_query and browse_table results are reviewed. A browse follows its own masked setting."
           },
           "reviewEnforceMemory": {
             "body": "A held result lives only in memory. It is never logged, saved or shown in a notification. A result over 8 MB is withheld unseen."

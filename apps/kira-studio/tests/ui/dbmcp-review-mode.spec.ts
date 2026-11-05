@@ -110,7 +110,7 @@ test('the enforcement lines state who enforces, what denial does and the limits'
   await expect(enforce).toContainText('only in memory');
   await expect(enforce).toContainText('over 8 MB is withheld unseen');
   await expect(enforce).toContainText('Withhold does not undo a write');
-  await expect(enforce).toContainText('Only run_query results are reviewed');
+  await expect(enforce).toContainText('Only run_query and browse_table results are reviewed');
   await expect(enforce).toContainText('cover the query, not your review');
 });
 

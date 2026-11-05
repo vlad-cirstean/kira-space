@@ -31,8 +31,11 @@ const ENFORCEMENT_KEYS: Record<string, MessageKey> = {
 const declaredHigher = computed(
   () => (RANK[payload.value.detected] ?? Infinity) < RANK[payload.value.mode],
 );
+const masked = computed(() => payload.value.mode === 'masked');
 const enforcement = computed(() =>
-  payload.value.mode === 'read' ? ENFORCEMENT_KEYS[payload.value.enforcement] : undefined,
+  payload.value.mode === 'read' || masked.value
+    ? ENFORCEMENT_KEYS[payload.value.enforcement]
+    : undefined,
 );
 
 const lede = computed(() => {
@@ -47,6 +50,9 @@ const lede = computed(() => {
 <template>
   <div class="flex flex-col gap-2" data-testid="db-mcp-approval-body">
     <p class="m-0 whitespace-pre-wrap">{{ lede }}</p>
+    <FieldDescription v-if="masked" data-testid="db-mcp-approval-mode-masked">
+      {{ t('studio.project.connectionDialog.mcp.masked.label') }}
+    </FieldDescription>
     <FieldDescription v-if="declaredHigher" data-testid="db-mcp-approval-declared-higher">
       {{
         t('studio.dbMcp.approval.declaredHigher.body', {

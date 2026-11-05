@@ -42,6 +42,8 @@ export type DbMcpApprovalPlan = z.infer<typeof dbMcpApprovalPlanSchema>;
 
 export const dbMcpModeSchema = /*#__PURE__*/ z.enum(['read', 'write', 'ddl']);
 export type DbMcpMode = z.infer<typeof dbMcpModeSchema>;
+// The mode an approval payload names: a run_query mode, or masked for a browse_table read.
+export const dbMcpPayloadModeSchema = /*#__PURE__*/ z.enum(['read', 'write', 'ddl', 'masked']);
 export type DbMcpEnforcement = 'session' | 'app' | 'none';
 
 // Mirror of internal/dbmcp/permissions.go: writeConsoleKinds, enforcementOf and accessOf. The flow
@@ -125,7 +127,7 @@ export const dbQueryPayloadSchema = /*#__PURE__*/ z.object({
   connectionId: z.string(),
   statement: z.string(),
   // Declared mode, what the statement looks like, and (read items) what backs mode read.
-  mode: dbMcpModeSchema,
+  mode: dbMcpPayloadModeSchema,
   detected: z.string(),
   enforcement: z.string(),
   plan: dbMcpApprovalPlanSchema.nullable(),
@@ -146,7 +148,7 @@ export type DbMcpLimitHit = z.infer<typeof dbMcpLimitHitSchema>;
 export const dbExemptionPayloadSchema = /*#__PURE__*/ z.object({
   connectionId: z.string(),
   statement: z.string(),
-  mode: dbMcpModeSchema,
+  mode: dbMcpPayloadModeSchema,
   detected: z.string(),
   enforcement: z.string(),
   reason: z.string(),
@@ -164,7 +166,7 @@ export const dbResponsePayloadSchema = /*#__PURE__*/ z.object({
   bytes: z.number(),
   alreadyRan: z.boolean(),
   // The declared mode; requested says the approver asked for this review rather than a setting.
-  mode: dbMcpModeSchema.optional(),
+  mode: dbMcpPayloadModeSchema.optional(),
   requested: z.boolean().default(false),
 });
 export type DbResponsePayload = z.infer<typeof dbResponsePayloadSchema>;
@@ -283,6 +285,15 @@ export const dbMcpRunQueryResultSchema = /*#__PURE__*/ z.discriminatedUnion('kin
   z.object({ ...runQueryEnvelope, kind: z.literal('empty') }),
 ]);
 export type DbMcpRunQueryResult = z.infer<typeof dbMcpRunQueryResultSchema>;
+
+// P535: kinds with a structured browse (internal/dbmcp browseKinds).
+export const BROWSE_KINDS: ReadonlySet<string> = /*#__PURE__*/ new Set([
+  'postgres',
+  'mysql',
+  'mariadb',
+  'sqlite',
+  'clickhouse',
+]);
 
 // P532: kinds the per-connection table allow list applies to (internal/tableref Levels > 0).
 export const TABLE_LIST_KINDS: ReadonlySet<string> = /*#__PURE__*/ new Set([
