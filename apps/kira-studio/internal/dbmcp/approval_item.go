@@ -206,9 +206,10 @@ func dbTarget(r ApprovalRequest) (approvals.Target, approvals.Operation) {
 		approvals.Operation{Class: operationClass(r), Tone: toneOf(operationClass(r))}
 }
 
-// operationClass is the declared mode, or the detected class for an item that carries no mode.
+// operationClass is the declared mode, or the detected class for an item that carries no mode. A masked
+// browse is a read: the payload's mode names it, the class does not.
 func operationClass(r ApprovalRequest) string {
-	if r.Mode != "" {
+	if r.Mode != "" && r.Mode != modeMasked {
 		return r.Mode
 	}
 	return string(r.Class)
@@ -216,7 +217,7 @@ func operationClass(r ApprovalRequest) string {
 
 func toneOf(class string) string {
 	switch class {
-	case string(adapters.ClassRead), modeMasked:
+	case string(adapters.ClassRead):
 		return "neutral"
 	case string(adapters.ClassWrite):
 		return "caution"

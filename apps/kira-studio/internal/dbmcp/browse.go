@@ -417,7 +417,7 @@ func (s *Server) browseTable(ctx context.Context, _ *mcp.CallToolRequest, args b
 	if state.Status != "connected" {
 		return errResult(connectStateError(state))
 	}
-	desc, derr := s.cfg.Tree.Describe(ctx, args.ConnectionID, args.Path, false, nil)
+	meta, derr := s.describeRelation(ctx, rv.summary, args.Path)
 	if derr != nil {
 		return toolError(derr)
 	}
@@ -425,7 +425,7 @@ func (s *Server) browseTable(ctx context.Context, _ *mcp.CallToolRequest, args b
 	if refusal != nil || merr != nil {
 		return refusal, nil, merr
 	}
-	plan, msg := planBrowse(rv.summary, sh, desc.Meta, args, mk)
+	plan, msg := planBrowse(rv.summary, sh, meta, args, mk)
 	if msg != "" {
 		return errResult(msg)
 	}
@@ -497,6 +497,34 @@ func (s *Server) resolveBrowse(args browseTableArgs) (rv queryResolution, sh bro
 	return rv, sh, nil, nil, nil, false
 }
 
+// describeRelation is the table's columns with its real kind. Describe reports the kind the path names, which
+// the agent chose, so the kind comes from the parent's listing: a view reached through a "table" path is
+// still a view.
+func (s *Server) describeRelation(ctx context.Context, summary model.ConnectionSummary, path string) (model.ObjectMeta, error) {
+	desc, err := s.cfg.Tree.Describe(ctx, summary.ID, path, false, nil)
+	if err != nil {
+		return model.ObjectMeta{}, err
+	}
+	meta := desc.Meta
+	p, err := model.DecodePath(summary.ID, path)
+	if err != nil || len(p.Segments) == 0 {
+		return meta, adapters.Contract("browse_table needs a table path from list_children", err)
+	}
+	parent := model.EncodePath(p.Segments[:len(p.Segments)-1])
+	name := p.Segments[len(p.Segments)-1].Name
+	children, err := s.cfg.Tree.Children(ctx, summary.ID, parent, false)
+	if err != nil {
+		return meta, err
+	}
+	for _, n := range children.Nodes {
+		if n.Name == name && tableref.IsRelationKind(n.Kind) {
+			meta.Kind = n.Kind
+			return meta, nil
+		}
+	}
+	return meta, adapters.New(adapters.CodeNotFound, "table "+name+" is not listed under its schema", nil)
+}
+
 // planBrowseCall makes the call's one EXPLAIN of the preview when the connection checks plans and the engine
 // has a row estimate. Engines with none (sqlite) skip, as run_query does for the expensive_query limit.
 func (s *Server) planBrowseCall(ctx context.Context, rv *queryResolution, preview, path string, ex *claimedExemption) {
@@ -518,12 +546,12 @@ func (s *Server) executeBrowse(ctx context.Context, call runQueryArgs, args brow
 	if refusal != nil || merr != nil {
 		return refusal, nil, merr, set, false
 	}
-	desc, derr := s.cfg.Tree.Describe(ctx, args.ConnectionID, args.Path, false, nil)
+	meta, derr := s.describeRelation(ctx, rv.summary, args.Path)
 	if derr != nil {
 		res, out, err = toolError(derr)
 		return res, out, err, set, false
 	}
-	plan, msg := planBrowse(rv.summary, sh, desc.Meta, args, set)
+	plan, msg := planBrowse(rv.summary, sh, meta, args, set)
 	if msg != "" || plan.preview(rv.summary.Kind) != preview {
 		res, out, err = errResult(fmt.Sprintf("masking or the table's columns on %q changed while this call waited; run it again", rv.summary.Name))
 		return res, out, err, set, false
