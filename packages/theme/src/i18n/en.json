@@ -16745,6 +16745,18 @@
         },
         "tooltip": "{app} resource use"
       },
+      "ops": {
+        "notStoppable": {
+          "tooltip": "This operation can’t be stopped"
+        },
+        "open": {
+          "label": "Show operations"
+        },
+        "stop": {
+          "tooltip": "Stop {name}"
+        },
+        "title": "Running operations"
+      },
       "runs": {
         "open": {
           "hint": "Click to show the runs list."
