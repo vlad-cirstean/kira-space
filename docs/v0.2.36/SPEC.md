@@ -15,7 +15,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 | P530 | Expensive-query (EXPLAIN) threshold enforced for MCP, with explanation | Pending |
 | P531 | Ops throttle covers every op from every session, with explanation | Done |
 | P532 | Table allow list per connection for DB MCP | Pending |
-| P533 | Tool descriptions suggest inspecting schemas first | Pending |
+| P533 | Tool descriptions suggest inspecting schemas first | Done |
 | P534 | Masking validation: new columns are withheld until masking is reviewed | Pending |
 | P535 | Masked-read permission and constrained browse tool as the MCP default | Pending |
 | P536 | Review MCP results before delivery to the agent | Pending |
@@ -68,6 +68,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 - Ask: the DB MCP tool descriptions and the server instructions suggest the agent first inspect the schema of the tables it will query. A suggestion only, nothing enforced.
 - Touches the llmprompts registry text and budget, plus the docs listing the prompts.
 - Plan: `plans/P533.md`.
+- Result: dbmcp.instructions and describe_table, describe_schema, run_query, explain_query descriptions suggest inspecting table schemas before a query; budget lines and contract hash updated; docs bullets added; real `claude` Studio suite passes.
 
 ### P534 Masking validation: new columns are withheld until masking is reviewed
 
