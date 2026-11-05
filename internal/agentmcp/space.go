@@ -211,6 +211,15 @@ func fail(tool string, err error) *mcp.CallToolResult {
 }
 
 func (s *Server) addSpaceTools(srv *mcp.Server) {
+	s.addTaskInfoTool(srv)
+	s.addDeclareReposTool(srv)
+	s.addRequestBranchesTool(srv)
+	s.addBranchStatusTool(srv)
+	s.addRenameBranchTool(srv)
+	s.addReportArtifactsTool(srv)
+}
+
+func (s *Server) addTaskInfoTool(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "task_info",
 		Description: llmprompts.HeadlessToolTaskInfo.Text(s.prompts, llmprompts.NoVars{}),
@@ -227,6 +236,9 @@ func (s *Server) addSpaceTools(srv *mcp.Server) {
 		}
 		return nil, info, nil
 	})
+}
+
+func (s *Server) addDeclareReposTool(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "declare_repos",
 		Description: llmprompts.HeadlessToolDeclareRepos.Text(s.prompts, llmprompts.NoVars{}),
@@ -249,6 +261,9 @@ func (s *Server) addSpaceTools(srv *mcp.Server) {
 		}
 		return nil, info, nil
 	})
+}
+
+func (s *Server) addRequestBranchesTool(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "request_branches",
 		Description: llmprompts.HeadlessToolRequestBranches.Text(s.prompts, llmprompts.NoVars{}),
@@ -272,6 +287,9 @@ func (s *Server) addSpaceTools(srv *mcp.Server) {
 		}
 		return nil, res, nil
 	})
+}
+
+func (s *Server) addBranchStatusTool(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "branch_status",
 		Description: llmprompts.HeadlessToolBranchStatus.Text(s.prompts, llmprompts.NoVars{}),
@@ -294,6 +312,9 @@ func (s *Server) addSpaceTools(srv *mcp.Server) {
 		}
 		return nil, info, nil
 	})
+}
+
+func (s *Server) addRenameBranchTool(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "rename_branch",
 		Description: llmprompts.HeadlessToolRenameBranch.Text(s.prompts, llmprompts.NoVars{}),
@@ -315,6 +336,9 @@ func (s *Server) addSpaceTools(srv *mcp.Server) {
 		}
 		return nil, res, nil
 	})
+}
+
+func (s *Server) addReportArtifactsTool(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "report_artifacts",
 		Description: llmprompts.HeadlessToolReportArtifacts.Text(s.prompts, llmprompts.NoVars{}),
