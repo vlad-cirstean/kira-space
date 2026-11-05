@@ -204,7 +204,7 @@ The scripts specific to this app:
 | `bun run typecheck:space-unit` | `apps/kira-space/tests/unit` (`tsgo`) |
 | `bun run typecheck:git` | `packages/git-ipc`, `packages/git-core` (`tsgo`), plus `packages/git-ui` (`vue-tsc`) |
 | `bun run test:ui:space` | Builds, then runs Playwright (WebKit) against this app's own built bundle |
-| `bun run test:ui:space-mobile` | Builds the phone bundle, then runs its Playwright tests on iOS (WebKit) and Android (Chromium) profiles |
+| `bun run test:ui:space-mobile` | Builds the phone bundle, then runs its Playwright tests on an iOS (WebKit) profile, plus one Chromium project for the insecure-origin spec |
 | `bun run test:e2e-real:space` | Playwright against a real `-tags server` build of this app |
 | `bun run test:flows:space` | Go flow tests: the real app wiring on a temp home (`test:flows:space:complete` adds the slow permutations) |
 | `bun run test:claude:space` | Opt-in: real `claude` CLI, needs an authenticated install, spends a few cents |

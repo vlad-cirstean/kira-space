@@ -3709,7 +3709,7 @@ repo's CI runs.
 - internal/queryplan/parse_test.go and tests/unit/explain-plan.spec.ts read the same fixtures in tests/fixtures/explain-plans/, pinning the Go EXPLAIN-parser port against the frontend parser so drift in either fails on the same bytes.
 - internal/mask/parity_test.go and tests/unit/mask-parity.spec.ts both read 66 shared masking fixture pairs under tests/fixtures/mask/.
 - apps/kira-studio/playwright.config.ts runs six projects: ui, ui-timing, ipc-frontend, e2e-real, visual and perf; perf is opt-in, serial, in no suite script, and lives in tests/perf/. All but ui-timing are fullyParallel.
-- Kira Space's apps/kira-space/playwright.config.ts has projects ui, mobile-ios, mobile-android, e2e-real (workers: 2) and visual.
+- Kira Space's apps/kira-space/playwright.config.ts has projects ui, mobile-ios, mobile-insecure (Chromium, insecure-origin spec only), e2e-real (workers: 2) and visual.
 - The ui project can be fullyParallel (unlike the old e2e project's workers: 1) because the serialisation existed for Electron apps contending over wall-clock/RSS budgets and Docker containers, which this tier lacks.
 - ui-timing runs with workers: 1, serially after ui finishes (dependencies: ['ui']), because its real-millisecond wall-clock assertions need the rest of the tier's CPU contention out of the way.
 - e2e-real runs workers: 2 safely because a per-test KIRA_HOME plus WAILS_SERVER_PORT gives each instance its own SQLite app storage and secrets.

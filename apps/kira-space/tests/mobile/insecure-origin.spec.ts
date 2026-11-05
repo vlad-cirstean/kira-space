@@ -1,12 +1,10 @@
 import { expect, test } from './fixtures';
 
 // P223: the phone app runs from plain HTTP on a LAN address, which is not a secure context. The
-// host name below maps to the mock server (playwright.config.ts, mobile-android), so the page
+// host name below maps to the mock server (playwright.config.ts, mobile-insecure), so the page
 // really is insecure: no crypto.randomUUID, no service worker, ws:// for the terminal.
 
 const t = (id: string) => `[data-testid="${id}"]`;
-
-test.skip(({ browserName }) => browserName !== 'chromium', 'host mapping is Chromium-only');
 
 test('pairs, writes and attaches a terminal on an insecure origin', async ({ page, server }) => {
   server.reset();
