@@ -8,6 +8,7 @@ import DbQueryBody from './DbQueryBody.vue';
 import DbResponseBody from './DbResponseBody.vue';
 import KubeReadBody from './KubeReadBody.vue';
 import ProofReviewBody from './ProofReviewBody.vue';
+import ScriptRunBody from './ScriptRunBody.vue';
 
 const DB_CLASS_LABEL: Record<string, MessageKey> = {
   read: 'studio.project.connectionDialog.mcp.read.label',
@@ -51,6 +52,11 @@ export function studioApprovalKinds(): ApprovalKinds {
       body: markRaw(KubeReadBody),
       operation: (item) =>
         t(KUBE_OPERATION_LABEL[kubeReadPayloadSchema.parse(item.payload).operation]),
+    },
+    'script.run': {
+      header: markRaw(ConnectionHeader),
+      body: markRaw(ScriptRunBody),
+      operation: () => t('studio.dbMcp.approval.script.operation.label'),
     },
     'proof.review': {
       body: markRaw(ProofReviewBody),

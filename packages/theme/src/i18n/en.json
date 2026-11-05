@@ -13511,6 +13511,26 @@
         "read": {
           "body": "{connection} ({kind}) wants to run a read statement through the database MCP server."
         },
+        "script": {
+          "folder": {
+            "label": "Runs in {folder}"
+          },
+          "lede": {
+            "body": "An MCP client wants to run this script on your computer. It sees the output only if it asks for the logs."
+          },
+          "operation": {
+            "label": "Agent run request"
+          },
+          "origin": {
+            "label": "Asked by {client} {version}"
+          },
+          "secretSaved": {
+            "status": "Saved value, not shown"
+          },
+          "secretUnset": {
+            "status": "No saved value"
+          }
+        },
         "statementView": {
           "aria": "Statement view"
         },
