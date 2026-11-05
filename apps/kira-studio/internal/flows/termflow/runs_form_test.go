@@ -122,6 +122,36 @@ func TestRunsFormStudio(t *testing.T) {
 	}
 	app.Contract(t, "runs-form", "form#bad", bad, runsMasks...)
 
+	mcpArgs := bridge.CustomScriptsFormArgs{File: "ship.yaml", Text: view.Text, Edits: []configfs.Edit{
+		{Path: []string{"mcp", "enabled"}, Value: true},
+		{Path: []string{"mcp", "run"}, Value: "allow"},
+		{Path: []string{"mcp", "description"}, Value: "Ships the build."},
+	}}
+	app.Contract(t, "runs-form", "args:CustomScriptsService.Form#mcp", mcpArgs, runsMasks...)
+	withMCP, err := cs.Form(mcpArgs)
+	if err != nil || withMCP.Problem != nil {
+		t.Fatalf("Form of the mcp block = %+v, %v", withMCP, err)
+	}
+	if v, ok := withMCP.Value.(scripts.File); !ok || v.MCP == nil || !v.MCP.Enabled || v.MCP.Run != "allow" || v.MCP.Description != "Ships the build." {
+		t.Fatalf("decoded mcp = %#v, want enabled allow with the description", withMCP.Value)
+	}
+	app.Contract(t, "runs-form", "form#mcp", withMCP, runsMasks...)
+
+	invalidArgs := bridge.CustomScriptsFormArgs{File: "ship.yaml", Text: view.Text, Edits: []configfs.Edit{
+		{Path: []string{"mcp", "enabled"}, Value: true},
+		{Path: []string{"mcp", "run"}, Value: "always"},
+	}}
+	invalid, err := cs.Form(invalidArgs)
+	if err != nil || invalid.Problem == nil || invalid.Problem.Path != "/mcp/run" {
+		t.Fatalf("Form of mcp.run always = %+v, %v, want a problem at /mcp/run", invalid, err)
+	}
+	app.Contract(t, "runs-form", "form#mcpInvalid", invalid, runsMasks...)
+
+	smartText := "name: Thinker\nkind: smart\nprompt: think\nmcp:\n  enabled: true\n"
+	smart, err := cs.Form(bridge.CustomScriptsFormArgs{File: "ship.yaml", Text: smartText, Edits: []configfs.Edit{}})
+	if err != nil || smart.Problem == nil || smart.Problem.Path != "/mcp/enabled" {
+		t.Fatalf("Form of a smart file with mcp.enabled = %+v, %v, want a problem at /mcp/enabled", smart.Problem, err)
+	}
 }
 
 func ptr[T any](v T) *T { return &v }

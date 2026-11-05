@@ -182,7 +182,7 @@ func TestDbMcpCancelScriptRun(t *testing.T) {
 	}
 	defer sess.Close()
 
-	rec, err := f.app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{Name: "job", Color: "blue", Command: "sleep 60"}})
+	rec, err := f.app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{Name: "job", Color: "blue", Command: "sleep 60", MCP: allowMCP("")}})
 	if err != nil {
 		t.Fatal(err)
 	}

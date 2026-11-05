@@ -1,0 +1,76 @@
+{
+  "DbMcpService.PendingApprovals": {
+    "pending": {
+      "class": "unknown",
+      "cluster": null,
+      "connectionId": "ask",
+      "connectionName": "ask",
+      "expiresAtMs": 0,
+      "kind": "script",
+      "origin": {
+        "client": "flow-client",
+        "version": "1"
+      },
+      "plan": null,
+      "reason": "permission",
+      "requestId": "<masked>",
+      "response": null,
+      "script": {
+        "command": "echo \"region=$KIRA_PARAM_REGION token=$KIRA_PARAM_TOKEN\"",
+        "cwd": "<masked>",
+        "description": "Echoes the region and a token.",
+        "env": [
+          {
+            "fromVar": "region",
+            "name": "KIRA_PARAM_REGION",
+            "saved": false,
+            "secret": false,
+            "value": "eu"
+          },
+          {
+            "fromVar": "token",
+            "name": "KIRA_PARAM_TOKEN",
+            "saved": true,
+            "secret": true,
+            "value": ""
+          }
+        ],
+        "name": "ask",
+        "params": [
+          {
+            "fromVar": "region",
+            "name": "region",
+            "saved": false,
+            "secret": false,
+            "value": "eu"
+          },
+          {
+            "fromVar": "token",
+            "name": "token",
+            "saved": true,
+            "secret": true,
+            "value": ""
+          }
+        ],
+        "scriptId": "ask"
+      },
+      "stage": "query",
+      "statement": "echo \"region=$KIRA_PARAM_REGION token=$KIRA_PARAM_TOKEN\"",
+      "subject": "script",
+      "target": {
+        "color": "",
+        "database": "",
+        "host": "",
+        "path": [],
+        "readOnly": false
+      }
+    },
+    "queued": 0
+  },
+  "args:DbMcpService.ApproveQuery": {
+    "requestId": "<masked>"
+  },
+  "args:DbMcpService.DenyQuery": {
+    "requestId": "<masked>"
+  }
+}
