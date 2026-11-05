@@ -7,7 +7,7 @@ import { toRef } from 'vue';
 import type { ProofTab } from './tabHost';
 import { useProofScreenshot } from './useProofScreenshot';
 
-// Primary action copies the active tab; the menu adds all tabs, in order, and saving as PNG.
+// Primary action copies the active tab; the menu adds saving the tab as a PNG and every tab into a folder.
 const props = defineProps<{
   target: HTMLElement | null;
   tabs: ProofTab[];
@@ -28,19 +28,16 @@ const shot = useProofScreenshot({
     :pending="shot.busy.value"
     :disabled="tabs.length === 0"
     data-testid="proof-shot"
-    @click="shot.copy(false)"
+    @click="shot.copy()"
   >
     <CodiconIcon name="device-camera" :size="13" />
     {{ t('studio.proof.shot.copy.label') }}
     <template #menu>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem data-testid="proof-shot-copy-all" @select="shot.copy(true)">
-          {{ t('studio.proof.shot.copyAll.label') }}
-        </DropdownMenuItem>
-        <DropdownMenuItem data-testid="proof-shot-save" @select="shot.save(false)">
+        <DropdownMenuItem data-testid="proof-shot-save" @select="shot.save()">
           {{ t('studio.proof.shot.save.label') }}
         </DropdownMenuItem>
-        <DropdownMenuItem data-testid="proof-shot-save-all" @select="shot.save(true)">
+        <DropdownMenuItem data-testid="proof-shot-save-all" @select="shot.saveAll()">
           {{ t('studio.proof.shot.saveAll.label') }}
         </DropdownMenuItem>
       </DropdownMenuContent>

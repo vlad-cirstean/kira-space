@@ -68,7 +68,9 @@ import type {
   ProofDetail,
   ProofOpenResult,
   ProofSavePngResult,
+  ProofSavePngToResult,
   ProofSelect,
+  ProofShotFolderResult,
   ProofStepDetail,
   ProofSummary,
   ProofViewState,
@@ -448,6 +450,20 @@ const studioControl = {
     unwrap(ProofService.WindowTarget({ key: windowKey })).then((r) => trust<ProofWindowTarget>(r)),
   proofSavePng: (filename: string, pngBase64: string): Promise<ProofSavePngResult> =>
     unwrap(ProofService.SavePng({ filename, pngBase64 })).then((r) => trust<ProofSavePngResult>(r)),
+  proofChooseShotFolder: (sessionName: string): Promise<ProofShotFolderResult> =>
+    unwrap(ProofService.ChooseShotFolder({ sessionName })).then((r) =>
+      trust<ProofShotFolderResult>(r),
+    ),
+  proofSavePngTo: (
+    folderId: string,
+    filename: string,
+    pngBase64: string,
+  ): Promise<ProofSavePngToResult> =>
+    unwrap(ProofService.SavePngTo({ folderId, filename, pngBase64 })).then((r) =>
+      trust<ProofSavePngToResult>(r),
+    ),
+  proofForgetShotFolder: (folderId: string): Promise<void> =>
+    unwrap(ProofService.ForgetShotFolder({ folderId })),
   onProofChanged: (cb: (event: ProofChanged) => void): (() => void) => on(CHANNEL.proofChanged, cb),
   onProofSelect: (cb: (event: ProofSelect) => void): (() => void) => on(CHANNEL.proofSelect, cb),
 

@@ -166,6 +166,14 @@ export const proofSavePngResultSchema = /*#__PURE__*/ z.object({
   saved: z.boolean(),
   path: z.string().nullable(),
 });
+export const proofShotFolderResultSchema = /*#__PURE__*/ z.object({
+  canceled: z.boolean(),
+  id: z.string(),
+  path: z.string(),
+});
+export const proofSavePngToResultSchema = /*#__PURE__*/ z.object({ path: z.string() });
+export type ProofShotFolderResult = z.infer<typeof proofShotFolderResultSchema>;
+export type ProofSavePngToResult = z.infer<typeof proofSavePngToResultSchema>;
 export type ProofOpenResult = z.infer<typeof proofOpenResultSchema>;
 export type ProofWindowTarget = z.infer<typeof proofWindowTargetSchema>;
 export type ProofSavePngResult = z.infer<typeof proofSavePngResultSchema>;

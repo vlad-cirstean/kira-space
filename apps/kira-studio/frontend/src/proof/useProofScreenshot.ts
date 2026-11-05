@@ -2,9 +2,10 @@ import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { copyImageOrReportErrorLazy } from '@workbench/behaviour/clipboard';
 import { announceApp } from '@workbench/behaviour/liveRegion';
+import { errorText } from '@workbench/bridge/codedError';
 import { type MaybeRefOrGetter, nextTick, toValue } from 'vue';
 import { control } from '../bridge/control';
-import { blobToBase64, canvasToPng, captureElement, fileSlug, stackCanvases } from './screenshot';
+import { blobToBase64, canvasToPng, captureElement, fileSlug, shotFileName } from './screenshot';
 import { useProofWindowStore } from './state';
 import type { ProofTab } from './tabHost';
 
@@ -39,69 +40,91 @@ interface Source {
   sessionName: MaybeRefOrGetter<string>;
 }
 
-/** One tab or all tabs in order, to the clipboard or to a PNG on disk. */
+/** The active tab to the clipboard or a PNG, or every tab as its own PNG in a fresh folder. */
 export function useProofScreenshot(source: Source) {
   const store = useProofWindowStore();
 
-  async function shoot(tabs: ProofTab[]): Promise<HTMLCanvasElement> {
+  async function shoot(): Promise<HTMLCanvasElement> {
     const el = toValue(source.target);
     if (!el) throw new Error('shoot: no target');
-    const original = store.activeId;
-    const shots: HTMLCanvasElement[] = [];
-    try {
-      for (const tab of tabs) {
-        if (tabs.length > 1) {
-          store.activeId = tab.id;
-          await nextTick();
-        }
-        await whenSettled(el);
-        shots.push(await captureElement(el));
-      }
-    } finally {
-      if (tabs.length > 1) store.activeId = original;
-    }
-    if (shots.length === 1) return shots[0] as HTMLCanvasElement;
-    return stackCanvases(shots, getComputedStyle(el).borderTopColor);
+    await whenSettled(el);
+    return captureElement(el);
   }
 
-  async function copy(tabs: ProofTab[]): Promise<void> {
+  async function copy(): Promise<void> {
     let failure: string | null = null;
-    await copyImageOrReportErrorLazy(shoot(tabs).then(canvasToPng), (message) => {
+    await copyImageOrReportErrorLazy(shoot().then(canvasToPng), (message) => {
       failure = message;
     });
     if (failure) throw new Error(failure);
     announceApp(t('studio.proof.shot.copied.announce'));
   }
 
-  async function save(tabs: ProofTab[], all: boolean): Promise<void> {
-    const png = await canvasToPng(await shoot(tabs));
+  async function saveActive(): Promise<void> {
+    const png = await canvasToPng(await shoot());
+    const only = toValue(source.tabs).find((tab) => tab.active);
     const base = fileSlug(toValue(source.sessionName));
-    const only = tabs[0];
-    const name =
-      all || !only ? base : `${base}-${String(only.state.meta.ordinal).padStart(2, '0')}`;
+    const name = only ? `${base}-${String(only.state.meta.ordinal).padStart(2, '0')}` : base;
     const result = await control.proofSavePng(`${name}.png`, await blobToBase64(png));
     if (result.saved && result.path) {
       announceApp(t('studio.proof.shot.saved.announce', { path: result.path }));
     }
   }
 
-  const action = useAsyncAction(async (mode: 'copy' | 'save', all: boolean) => {
+  /** One tab in memory at a time; a failure keeps the files already written. */
+  async function saveAll(): Promise<void> {
     const tabs = toValue(source.tabs);
-    const picked = all ? tabs : tabs.filter((tab) => tab.active);
-    if (mode === 'copy') await copy(picked);
-    else await save(picked, all);
+    const folder = await control.proofChooseShotFolder(toValue(source.sessionName));
+    if (folder.canceled) return;
+    const original = store.activeId;
+    let saved = 0;
+    try {
+      for (const [i, tab] of tabs.entries()) {
+        store.activeId = tab.id;
+        await nextTick();
+        const png = await canvasToPng(await shoot());
+        const name = shotFileName(i + 1, tabs.length, tab.state.meta.description);
+        await control.proofSavePngTo(folder.id, name, await blobToBase64(png));
+        saved += 1;
+      }
+    } catch (e) {
+      if (saved === 0) throw e;
+      throw new Error(
+        t('studio.proof.shot.savedPartial.error', {
+          count: saved,
+          total: tabs.length,
+          error: errorText(e),
+        }),
+        { cause: e },
+      );
+    } finally {
+      store.activeId = original;
+      try {
+        await control.proofForgetShotFolder(folder.id);
+      } catch {
+        // Best effort: Go evicts the oldest folder ids past a small cap.
+      }
+    }
+    announceApp(t('studio.proof.shot.savedAll.announce', { count: saved, path: folder.path }));
+  }
+
+  const action = useAsyncAction(async (mode: 'copy' | 'save' | 'saveAll') => {
+    if (mode === 'copy') await copy();
+    else if (mode === 'save') await saveActive();
+    else await saveAll();
   });
 
-  async function run(mode: 'copy' | 'save', all: boolean): Promise<void> {
+  async function run(mode: 'copy' | 'save' | 'saveAll'): Promise<void> {
     if (action.pending.value) return;
-    if (!(await action.run(mode, all))) {
+    if (!(await action.run(mode))) {
       announceApp(t('studio.proof.shot.failed.error', { error: action.error.value ?? '' }));
     }
   }
 
   return {
     busy: action.pending,
-    copy: (all: boolean) => run('copy', all),
-    save: (all: boolean) => run('save', all),
+    copy: () => run('copy'),
+    save: () => run('save'),
+    saveAll: () => run('saveAll'),
   };
 }

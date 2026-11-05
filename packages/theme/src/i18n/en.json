@@ -2661,6 +2661,18 @@
         "notPng": {
           "body": "The screenshot is not a PNG image."
         },
+        "shotExists": {
+          "body": "A screenshot with that name is already in the folder."
+        },
+        "shotFolder": {
+          "title": "Choose where to save the screenshots"
+        },
+        "shotFolderGone": {
+          "body": "The screenshot folder is no longer available. Save again."
+        },
+        "shotFolderTaken": {
+          "body": "Too many folders with that name exist. Choose another location."
+        },
         "tooLarge": {
           "body": "The screenshot is too large to save."
         },
@@ -15717,9 +15729,6 @@
           "label": "Copy screenshot",
           "tooltip": "Copy a screenshot of this tab"
         },
-        "copyAll": {
-          "label": "Copy all tabs"
-        },
         "failed": {
           "error": "Couldn’t take the screenshot: {error}"
         },
@@ -15733,10 +15742,16 @@
           "label": "Save tab as PNG…"
         },
         "saveAll": {
-          "label": "Save all tabs as PNG…"
+          "label": "Save all tabs to folder…"
         },
         "saved": {
           "announce": "Saved to {path}"
+        },
+        "savedAll": {
+          "announce": "Saved {count} screenshots to {path}"
+        },
+        "savedPartial": {
+          "error": "Saved {count} of {total} screenshots before failing: {error}"
         }
       },
       "tabs": {
