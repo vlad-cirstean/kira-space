@@ -10,7 +10,12 @@ import * as VariablesService from '@bindings/variablesservice.js';
 // args/results reference it rather than restating it, so the renderer types against it through
 // vite.config.ts's existing @bindings-internal alias.
 import type * as WailsStorageModels from '@bindings-internal/storage/model/models.js';
-import type { ApiConfigView, ApiFileDetail, ApiFormResult } from '@shared/domain/apiConfig';
+import type {
+  ApiAgentEnvironment,
+  ApiConfigView,
+  ApiFileDetail,
+  ApiFormResult,
+} from '@shared/domain/apiConfig';
 import type { ImportResult } from '@shared/domain/collections';
 import type { PaletteColor } from '@shared/domain/color';
 import type {
@@ -247,6 +252,8 @@ export const apiControl = {
     unwrap(ApiConfigService.SetSecret({ name, value })).then((r) => trust<ApiConfigView>(r)),
   apiConfigDeleteSecret: (name: string): Promise<ApiConfigView> =>
     unwrap(ApiConfigService.DeleteSecret({ name })).then((r) => trust<ApiConfigView>(r)),
+  apiConfigAgentAccess: (): Promise<ApiAgentEnvironment[]> =>
+    unwrap(ApiConfigService.AgentAccess()).then((r) => trust<ApiAgentEnvironment[]>(r ?? [])),
   apiConfigFile: (file: string): Promise<ApiFileDetail> =>
     unwrap(ApiConfigService.File({ file })).then((r) => trust<ApiFileDetail>(r)),
   apiConfigSaveFile: (file: string, text: string, baseHash: string): Promise<ApiFileDetail> =>

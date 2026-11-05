@@ -12141,6 +12141,35 @@
   },
   "studio": {
     "api": {
+      "agentAccess": {
+        "autoApproveReads": {
+          "label": "Auto-approve read requests from agents"
+        },
+        "autoReads": {
+          "status": "Reads auto-approved"
+        },
+        "available": {
+          "aria": "Make {name} available to agents"
+        },
+        "hosts": {
+          "aria": "Hosts {name} may be sent to",
+          "hint": "Use a host name, optionally with a port or a wildcard subdomain.",
+          "placeholder": "Add a host, then press Enter"
+        },
+        "hostsRequired": {
+          "error": "Add at least one allowed host."
+        },
+        "intro": {
+          "body": "Choose which variables an agent can reference by name in a request. A secret also needs the hosts it may be sent to."
+        },
+        "none": {
+          "hint": "No variables are available to agents."
+        },
+        "overview": {
+          "body": "Variables that AI agents can use in API requests through the database MCP server. Agents see names, never values."
+        },
+        "tab": {}
+      },
       "collections": {
         "copyName": {
           "label": "{name} copy"
@@ -13488,6 +13517,39 @@
     },
     "dbMcp": {
       "approval": {
+        "api": {
+          "body": {
+            "label": "Body {type}"
+          },
+          "credential": {
+            "label": "Uses credential {name} (hosts: {hosts})"
+          },
+          "dontSend": {
+            "label": "Don’t send"
+          },
+          "form": {
+            "label": "Form fields"
+          },
+          "headers": {},
+          "noEnvironment": {},
+          "options": {
+            "label": "{redirects}, timeout {seconds} s"
+          },
+          "query": {},
+          "redirectsOff": {
+            "option": "Redirects not followed"
+          },
+          "redirectsOn": {
+            "option": "Redirects followed"
+          },
+          "send": {},
+          "truncated": {
+            "status": "Body truncated for display"
+          },
+          "variables": {
+            "label": "Variables used"
+          }
+        },
         "asSent": {
           "option": "As sent"
         },
@@ -16004,6 +16066,23 @@
         }
       },
       "dbMcp": {
+        "api": {
+          "count": {
+            "status": "{count} variables shared from {environments} environments"
+          },
+          "description": "Adds the api_request tool to the database MCP server. Agents can use only the variables you share per environment.",
+          "label": "Let agents send API requests"
+        },
+        "apiApproval": {
+          "always": {
+            "option": "Ask me for every request"
+          },
+          "label": "API request approval",
+          "never": {
+            "body": "Agents send requests with your shared credentials without asking. Only turn this on for hosts and variables you trust.",
+            "option": "Send without asking"
+          }
+        },
         "copyCommandAbove": {
           "label": "Copy command above"
         },

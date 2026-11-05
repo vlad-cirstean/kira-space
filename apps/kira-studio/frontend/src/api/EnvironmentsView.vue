@@ -22,6 +22,7 @@ import { control } from '../bridge/control';
 import { useConnectionsStore } from '../state/connections';
 import { useRunState } from '../state/runState';
 import type { EnvironmentsTabRecord } from '../state/tabDomain';
+import ApiAgentAccess from './ApiAgentAccess.vue';
 import ApiConfigProblems from './ApiConfigProblems.vue';
 import ApiSecrets from './ApiSecrets.vue';
 import { useApiConfig } from './state/apiConfig';
@@ -294,6 +295,7 @@ async function onSetActive(id: string): Promise<void> {
           />
         </div>
       </RadioGroup>
+      <ApiAgentAccess />
       <ApiSecrets />
     </div>
     <ApiConfigProblems />

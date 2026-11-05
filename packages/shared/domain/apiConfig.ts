@@ -52,13 +52,28 @@ export interface ApiFileVariable {
   value?: string;
   secret?: string;
   description?: string;
+  /** Shared with agents through the API request tools. */
+  agent?: boolean;
+  /** The hosts an agent may send a secret to; required for a secret that is shared. */
+  agentHosts?: string[];
 }
 
 export interface ApiEnvironmentFileModel {
   name: string;
   description?: string;
   color?: string;
+  agentAutoApproveReads?: boolean;
   variables?: ApiFileVariable[];
+}
+
+/** One environment in ApiConfigService.AgentAccess: names and hosts, never a value. */
+export interface ApiAgentEnvironment {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  autoApproveReads: boolean;
+  variables: { name: string; secret: boolean; hosts?: string[] }[];
 }
 
 /** A collection file as the dialog sees it: only `variables` is edited; items stay in the file. */

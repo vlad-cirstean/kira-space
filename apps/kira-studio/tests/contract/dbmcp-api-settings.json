@@ -1,0 +1,23 @@
+{
+  "args:SettingsService.Set#approval": {
+    "patch": {
+      "dbMcp": {
+        "apiApproval": "never"
+      }
+    }
+  },
+  "args:SettingsService.Set#off": {
+    "patch": {
+      "dbMcp": {
+        "apiRequests": false
+      }
+    }
+  },
+  "args:SettingsService.Set#on": {
+    "patch": {
+      "dbMcp": {
+        "apiRequests": true
+      }
+    }
+  }
+}

@@ -11,13 +11,14 @@ import (
 
 // Contract api-agent-access, read by tests/ui/api-agent-access.spec.ts: an environment file shares
 // variables with agents through `agent`/`agentHosts`, the overview lists names and hosts only, and a
-// misplaced or missing host list is a file problem with a line.
+// misplaced or missing host list is a file problem with a line. The edits recorded are the ones the
+// Agent access tab sends.
 func TestApiAgentAccess(t *testing.T) {
 	app := flowharness.New(t)
 	const sc = "api-agent-access"
 	const envFile = "staging.environment.yaml"
 	cfg := app.W.ApiConfig
-	mask := flowharness.Mask("hash", "baseHash", "id")
+	mask := flowharness.Mask("hash", "baseHash")
 	paths := flowharness.Replace(app.KiraHome, "<home>")
 
 	seed := "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
@@ -25,52 +26,72 @@ func TestApiAgentAccess(t *testing.T) {
 	if got, err := cfg.AgentAccess(); err != nil || len(got) != 0 {
 		t.Fatalf("AgentAccess before sharing = %+v, %v, want none", got, err)
 	}
-
-	edits := []configfs.Edit{
-		{Path: []string{"agentAutoApproveReads"}, Value: true},
-		{Path: []string{"variables"}, Value: []any{
-			map[string]any{"name": "base_url", "value": "https://staging.example.com", "agent": true},
-			map[string]any{"name": "token", "secret": "${secret:staging.token}", "agent": true, "agentHosts": []any{"staging.example.com", "*.example.org"}},
-		}},
-	}
-	args := bridge.ApiFormArgs{File: envFile, Text: seed, Edits: edits}
-	app.Contract(t, sc, "args:ApiConfigService.Form", args, mask, paths)
-	form, err := cfg.Form(args)
-	if err != nil || form.Problem != nil {
-		t.Fatalf("Form = %+v, %v", form, err)
-	}
 	view, err := cfg.File(bridge.ApiFileArgs{File: envFile})
-	if err != nil {
-		t.Fatal(err)
+	if err != nil || view.Problem != nil {
+		t.Fatalf("File = %+v, %v", view, err)
 	}
-	saved, err := cfg.SaveFile(bridge.ApiSaveFileArgs{File: envFile, Text: form.Text, BaseHash: view.Hash})
+	app.Contract(t, sc, "file#read", view, mask, paths)
+
+	call := func(name, text string, edits []configfs.Edit) configfs.FormResult {
+		t.Helper()
+		args := bridge.ApiFormArgs{File: envFile, Text: text, Edits: edits}
+		app.Contract(t, sc, "args:ApiConfigService.Form#"+name, args, mask, paths)
+		res, err := cfg.Form(args)
+		if err != nil {
+			t.Fatalf("Form %s: %v", name, err)
+		}
+		app.Contract(t, sc, "form#"+name, res, mask, paths)
+		return res
+	}
+	variables := func(token map[string]any) []configfs.Edit {
+		return []configfs.Edit{{Path: []string{"variables"}, Value: []any{
+			map[string]any{"name": "base_url", "value": "https://staging.example.com"}, token,
+		}}}
+	}
+
+	call("read", seed, []configfs.Edit{})
+	shared := call("share", seed, variables(map[string]any{
+		"name": "token", "secret": "${secret:staging.token}", "agent": true, "agentHosts": []any{"staging.example.com"},
+	}))
+	if shared.Problem != nil || !strings.Contains(shared.Text, "agentHosts") {
+		t.Fatalf("share = %+v, want agent keys in the text", shared)
+	}
+	noHosts := call("no-hosts", shared.Text, variables(map[string]any{
+		"name": "token", "secret": "${secret:staging.token}", "agent": true,
+	}))
+	if noHosts.Problem == nil || noHosts.Problem.Line == 0 || !strings.Contains(strings.ToLower(noHosts.Problem.Message), "host") {
+		t.Fatalf("no-hosts problem = %+v, want one about hosts with a line", noHosts.Problem)
+	}
+	reads := call("reads", seed, []configfs.Edit{{Path: []string{"agentAutoApproveReads"}, Value: true}})
+	if reads.Problem != nil || !strings.Contains(reads.Text, "agentAutoApproveReads: true") {
+		t.Fatalf("reads = %+v", reads)
+	}
+	yamlSide := strings.Replace(seed, "    value: https://staging.example.com\n", "    value: https://staging.example.com\n    agent: true\n", 1)
+	if res := call("yaml", yamlSide, []configfs.Edit{}); res.Problem != nil || res.Text != yamlSide {
+		t.Fatalf("yaml = %+v", res)
+	}
+	plain := call("hosts-on-plain", strings.Replace(seed, "    value: https://staging.example.com\n", "    value: https://staging.example.com\n    agentHosts: [a.com]\n", 1), []configfs.Edit{})
+	if plain.Problem == nil || !strings.Contains(strings.ToLower(plain.Problem.Message), "host") {
+		t.Fatalf("hosts-on-plain problem = %+v", plain.Problem)
+	}
+
+	saveArgs := bridge.ApiSaveFileArgs{File: envFile, Text: shared.Text, BaseHash: view.Hash}
+	app.Contract(t, sc, "args:ApiConfigService.SaveFile", saveArgs, mask, paths)
+	saved, err := cfg.SaveFile(saveArgs)
 	if err != nil || saved.Problem != nil {
 		t.Fatalf("SaveFile = %+v, %v", saved, err)
 	}
+	app.Contract(t, sc, "file#saved", saved, mask, paths)
 
 	access, err := cfg.AgentAccess()
 	if err != nil || len(access) != 1 {
 		t.Fatalf("AgentAccess = %+v, %v, want Staging", access, err)
 	}
 	e := access[0]
-	if e.Name != "Staging" || !e.AutoApproveReads || len(e.Variables) != 2 || !e.Variables[1].Secret || len(e.Variables[1].Hosts) != 2 {
-		t.Fatalf("AgentAccess[0] = %+v", e)
+	if e.Name != "Staging" || e.AutoApproveReads || len(e.Variables) != 1 || e.Variables[0].Name != "token" || !e.Variables[0].Secret || len(e.Variables[0].Hosts) != 1 {
+		t.Fatalf("AgentAccess[0] = %+v, want token with one host", e)
 	}
 	app.Contract(t, sc, "AgentAccess", access, mask, paths)
-
-	problem := func(name, text, want string) {
-		t.Helper()
-		res, err := cfg.Form(bridge.ApiFormArgs{File: envFile, Text: text, Edits: []configfs.Edit{}})
-		if err != nil {
-			t.Fatalf("%s: %v", name, err)
-		}
-		if res.Problem == nil || res.Problem.Line == 0 || !strings.Contains(strings.ToLower(res.Problem.Message), want) {
-			t.Errorf("%s problem = %+v, want one mentioning %q", name, res.Problem, want)
-		}
-		app.Contract(t, sc, "problem#"+name, res.Problem, mask, paths)
-	}
-	problem("no-hosts", strings.Replace(seed, "    secret: ${secret:staging.token}\n", "    secret: ${secret:staging.token}\n    agent: true\n", 1), "host")
-	problem("hosts-on-plain", strings.Replace(seed, "    value: https://staging.example.com\n", "    value: https://staging.example.com\n    agentHosts: [a.com]\n", 1), "host")
 
 	col := newCollection(t, app, "Orders API")
 	colView, err := cfg.File(bridge.ApiFileArgs{File: col.File})

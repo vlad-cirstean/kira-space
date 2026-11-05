@@ -135,6 +135,32 @@ export const scriptRunPayloadSchema = /*#__PURE__*/ z.object({
 });
 export type ScriptRunPayload = z.infer<typeof scriptRunPayloadSchema>;
 
+// api.request item payload (dbmcp apiPayload). Values are as the agent sent them: a credential stays
+// {{name}}, and a secret variable's value is "••••".
+const apiPairSchema = /*#__PURE__*/ z.object({ name: z.string(), value: z.string() });
+export const apiRequestPayloadSchema = /*#__PURE__*/ z.object({
+  method: z.string(),
+  url: z.string(),
+  host: z.string(),
+  environment: z.object({ id: z.string(), name: z.string(), color: z.string() }).nullable(),
+  query: z.array(apiPairSchema),
+  headers: z.array(apiPairSchema.extend({ masked: z.boolean() })),
+  auth: z.object({ scheme: z.string(), display: z.string() }).nullable(),
+  body: z
+    .object({
+      contentType: z.string(),
+      text: z.string(),
+      truncated: z.boolean(),
+      form: z.array(apiPairSchema).nullable(),
+    })
+    .nullable(),
+  variables: z.array(z.object({ name: z.string(), value: z.string(), secret: z.boolean() })),
+  credentials: z.array(z.object({ name: z.string(), hosts: z.array(z.string()) })),
+  followRedirects: z.boolean(),
+  timeoutSeconds: z.number(),
+});
+export type ApiRequestPayload = z.infer<typeof apiRequestPayloadSchema>;
+
 // bridge/dbmcp.go's DbMcpPendingResponse: the exact text the AI client receives if the user sends.
 export const dbMcpPendingResponseSchema = /*#__PURE__*/ z.object({
   requestId: z.string(),

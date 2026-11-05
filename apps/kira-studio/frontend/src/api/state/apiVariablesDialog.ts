@@ -5,9 +5,9 @@ import { ref } from 'vue';
 export const useApiVariablesDialogStore = defineStore('apiVariablesDialog', () => {
   const file = ref<string | null>(null);
   /** The tab the dialog opens on. */
-  const tab = ref<'environment' | 'variables'>('variables');
+  const tab = ref<'environment' | 'variables' | 'agent'>('variables');
 
-  function open(name: string, on: 'environment' | 'variables' = 'variables'): void {
+  function open(name: string, on: 'environment' | 'variables' | 'agent' = 'variables'): void {
     file.value = name;
     tab.value = on;
   }

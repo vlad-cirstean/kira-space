@@ -16,15 +16,17 @@ export const FILE_FIELDS: readonly FieldSpec[] = [
   { path: ['name'] },
   { path: ['description'], unsetWhenEmpty: true },
   { path: ['color'], unsetWhenEmpty: true, unsetWhen: 'none' },
+  { path: ['agentAutoApproveReads'], unsetWhen: false },
   { path: ['variables'], unsetWhenEmpty: true },
 ];
 
-export type VariablesSection = 'environment' | 'variables' | 'yaml';
+export type VariablesSection = 'environment' | 'variables' | 'agent' | 'yaml';
 
 /** Pointers each section claims, for the problem strip. */
 export const VARIABLES_SECTION_POINTERS = {
   environment: ['/name', '/description', '/color'],
   variables: ['/variables'],
+  agent: ['/agentAutoApproveReads'],
 } as const satisfies Record<Exclude<VariablesSection, 'yaml'>, readonly string[]>;
 
 const SECRET_REF = /^\$\{secret:([^}]+)\}$/;
@@ -56,7 +58,31 @@ export function cleanVariable(v: ApiFileVariable): ApiFileVariable {
   if (v.secret) out.secret = v.secret;
   else if (v.value) out.value = v.value;
   if (v.description) out.description = v.description;
+  if (v.agent) {
+    out.agent = true;
+    if (v.secret && v.agentHosts?.length) out.agentHosts = v.agentHosts;
+  }
   return out;
+}
+
+const HOST_VARIABLES = new Set(['base_url', 'baseUrl', 'baseURL', 'api_url', 'host', 'url']);
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+/** The host a secret shared with agents most likely belongs to: the first base-URL-like variable that
+ *  parses as an http(s) URL. Plain http to a non-loopback host needs its `http://` prefix. */
+export function defaultAgentHosts(variables: readonly ApiFileVariable[]): string[] {
+  for (const v of variables) {
+    if (!HOST_VARIABLES.has(v.name) || !v.value) continue;
+    try {
+      const u = new URL(v.value);
+      if (u.protocol !== 'https:' && u.protocol !== 'http:') continue;
+      const plain = u.protocol === 'http:' && !LOOPBACK.has(u.hostname);
+      return [plain ? `http://${u.host}` : u.host];
+    } catch {
+      // Not a URL: try the next variable.
+    }
+  }
+  return [];
 }
 
 function toEnvRows(vars: readonly ApiFileVariable[]): EnvRow[] {
@@ -102,7 +128,12 @@ export function applyBulk(base: readonly ApiFileVariable[], text: string): BulkR
       if (e.hasValue) typed[secretNameOf(match.secret)] = e.value;
       return cleanVariable({ ...match, description: e.description });
     }
-    return cleanVariable({ name: e.name, value: e.value, description: e.description });
+    return cleanVariable({
+      name: e.name,
+      value: e.value,
+      description: e.description,
+      agent: match?.agent,
+    });
   });
   return {
     variables,

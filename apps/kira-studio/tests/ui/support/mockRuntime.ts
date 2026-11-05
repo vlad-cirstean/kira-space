@@ -128,6 +128,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   apiConfigFile: 'ApiConfigService.File',
   apiConfigSaveFile: 'ApiConfigService.SaveFile',
   apiConfigForm: 'ApiConfigService.Form',
+  apiConfigAgentAccess: 'ApiConfigService.AgentAccess',
   connectionConfigView: 'ConnectionConfigService.View',
   connectionConfigFile: 'ConnectionConfigService.File',
   connectionConfigSaveFile: 'ConnectionConfigService.SaveFile',

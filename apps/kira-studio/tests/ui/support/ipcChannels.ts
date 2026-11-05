@@ -121,6 +121,7 @@ export const IPC = {
   apiConfigFile: 'kira:apiConfig:file',
   apiConfigSaveFile: 'kira:apiConfig:saveFile',
   apiConfigForm: 'kira:apiConfig:form',
+  apiConfigAgentAccess: 'kira:apiConfig:agentAccess',
   connectionConfigView: 'kira:connectionConfig:view',
   connectionConfigFile: 'kira:connectionConfig:file',
   connectionConfigSaveFile: 'kira:connectionConfig:saveFile',

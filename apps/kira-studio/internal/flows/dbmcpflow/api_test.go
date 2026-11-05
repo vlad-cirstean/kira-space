@@ -55,6 +55,17 @@ func (f *fixture) writeDev(t *testing.T, hosts string, autoReads bool) {
 	f.app.WriteAPIFile(t, devFile, []byte(strings.Replace(text, "BASE", f.base, 1)))
 }
 
+// patchAPI applies one API setting alone, as the settings pane does, and records the call as the
+// dbmcp-api-settings contract tests/ui/dbmcp-api-settings.spec.ts replays.
+func (f *fixture) patchAPI(t *testing.T, key string, patch *model.DbMcpPatch) {
+	t.Helper()
+	args := bridge.SettingsSetArgs{Patch: model.SettingsPatch{DbMcp: patch}}
+	if _, err := f.app.W.Settings.Set(args); err != nil {
+		t.Fatal(err)
+	}
+	f.app.Contract(t, "dbmcp-api-settings", "args:SettingsService.Set#"+key, args)
+}
+
 func (f *fixture) setAPI(t *testing.T, enabled bool, approval string) {
 	t.Helper()
 	patch := &model.DbMcpPatch{APIRequests: &enabled, APIApproval: &approval}
@@ -121,8 +132,8 @@ func TestApiRequestApproved(t *testing.T) {
 		t.Fatalf("payload = %s, want the placeholder header and the token credential", it.Payload)
 	}
 	listJSON, _ := json.Marshal(f.list(t))
-	f.app.Contract(t, "approvals-api", "ApprovalsService.List", []approvals.Item{it}, flowharness.Mask("createdAt", "expiresAt", "cwd", "id", "environment.id"), flowharness.Replace(srv.URL, "http://127.0.0.1:<port>"))
-	f.app.Contract(t, "approvals-api", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{it.ID}, Approve: true}, flowharness.Mask("ids"))
+	f.app.Contract(t, "approvals-api", "ApprovalsService.List", []approvals.Item{it}, flowharness.Mask("createdAt", "expiresAt", "cwd", "environment.id"), flowharness.Replace(srv.URL, "http://127.0.0.1:<port>"))
+	f.app.Contract(t, "approvals-api", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{it.ID}, Approve: true})
 
 	f.answer(t, true, req.RequestID)
 	res := wait(t, pending)
@@ -258,7 +269,7 @@ func TestApiApprovalModes(t *testing.T) {
 	}
 
 	f.writeDev(t, "127.0.0.1", false)
-	f.setAPI(t, true, "never")
+	f.patchAPI(t, "approval", &model.DbMcpPatch{APIApproval: ptr("never")})
 	if out := decodeResult[apiResult](t, callTool(t, sess, "api_request", post)); out.Status != 200 || f.queueLen(t) != 0 {
 		t.Fatalf("approval never = %+v, queue %d, want a send with no item", out, f.queueLen(t))
 	}
@@ -285,14 +296,14 @@ func TestApiToolsToggle(t *testing.T) {
 	if !has() {
 		t.Fatal("api tools missing with apiRequests on")
 	}
-	f.setAPI(t, false, "always")
+	f.patchAPI(t, "off", &model.DbMcpPatch{APIRequests: ptr(false)})
 	if has() {
 		t.Fatal("api tools listed with apiRequests off")
 	}
 	if res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "api_request", Arguments: apiArgs("", "GET", "http://127.0.0.1/")}); err == nil && !res.IsError {
 		t.Fatalf("api_request with the tools off = %q, want an error", text(res))
 	}
-	f.setAPI(t, true, "always")
+	f.patchAPI(t, "on", &model.DbMcpPatch{APIRequests: ptr(true)})
 	if !has() {
 		t.Fatal("api tools missing after turning them back on")
 	}
@@ -344,5 +355,41 @@ func TestApiResponseCaps(t *testing.T) {
 	slow["timeoutSeconds"] = 1
 	if res := callTool(t, sess, "api_request", slow); !res.IsError {
 		t.Fatalf("slow = %q, want a timeout error", text(res))
+	}
+}
+
+// TestApiRequestBodies: the item carries the body as sent (JSON text, form fields), and a DELETE reads
+// as danger. Contract approvals-api, read by tests/ui/approvals-api.spec.ts.
+func TestApiRequestBodies(t *testing.T) {
+	f := newFixture(t)
+	srv, sess, envID := f.apiSetup(t, "127.0.0.1", false)
+
+	record := func(key string, args map[string]any) approvals.Item {
+		t.Helper()
+		pending := callToolAsync(sess, "api_request", args)
+		req := f.pending(t)
+		f.app.Contract(t, "approvals-api", "item#"+key, req.Item, flowharness.Mask("createdAt", "expiresAt", "cwd", "environment.id"), flowharness.Replace(srv.URL, "http://127.0.0.1:<port>"))
+		f.answer(t, false, req.RequestID)
+		if out := wait(t, pending); !out.IsError {
+			t.Fatalf("denied %s = %q, want an error", key, text(out))
+		}
+		return req.Item
+	}
+
+	jsonArgs := apiArgs(envID, "POST", "{{base_url}}/echo", "Authorization", "Bearer {{token}}")
+	jsonArgs["body"] = `{"name":"kira","tags":["a","b"]}`
+	jsonArgs["contentType"] = "application/json"
+	record("json", jsonArgs)
+
+	formArgs := apiArgs(envID, "POST", "{{base_url}}/echo")
+	formArgs["form"] = []map[string]string{{"name": "grant_type", "value": "client_credentials"}, {"name": "scope", "value": "read"}}
+	record("form", formArgs)
+
+	del := record("delete", apiArgs(envID, "DELETE", "{{base_url}}/echo?id=7"))
+	if del.Operation.Tone != "danger" {
+		t.Fatalf("DELETE tone = %q, want danger", del.Operation.Tone)
+	}
+	if len(srv.Requests()) != 0 {
+		t.Fatalf("server saw %d requests, want none", len(srv.Requests()))
 	}
 }

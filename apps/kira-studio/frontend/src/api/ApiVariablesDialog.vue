@@ -24,6 +24,7 @@ import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, watch } from 'vue';
 import { control } from '../bridge/control';
+import ApiAgentAccessForm from './ApiAgentAccessForm.vue';
 import ApiVariablesTable from './ApiVariablesTable.vue';
 import BulkVariablesEditor from './BulkVariablesEditor.vue';
 import EnvironmentFields from './EnvironmentFields.vue';
@@ -101,16 +102,17 @@ watch(
     secretError.value = '';
     bulk.value = false;
     section.value =
-      dialogStore.tab === 'environment' && isEnvironment.value ? 'environment' : 'variables';
+      isEnvironment.value && dialogStore.tab !== 'variables' ? dialogStore.tab : 'variables';
   },
 );
 
 const sections = computed<VariablesSection[]>(() =>
-  isEnvironment.value ? ['environment', 'variables', 'yaml'] : ['variables', 'yaml'],
+  isEnvironment.value ? ['environment', 'variables', 'agent', 'yaml'] : ['variables', 'yaml'],
 );
 const LABEL = {
   environment: () => t('docker.field.env.label'),
   variables: () => t('common.module.variables.label'),
+  agent: () => t('studio.project.connectionDialog.mcp.access.label'),
   yaml: () => t('common.yaml.label'),
 } as const satisfies Record<VariablesSection, () => string>;
 const items = computed(() =>
@@ -216,6 +218,11 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
             >
               <EnvironmentFields
                 v-if="section === 'environment' && isEnvironment"
+                v-model="draft.model.value as ApiEnvironmentFileModel"
+                :error-for="draft.errorFor"
+              />
+              <ApiAgentAccessForm
+                v-else-if="section === 'agent' && isEnvironment"
                 v-model="draft.model.value as ApiEnvironmentFileModel"
                 :error-for="draft.errorFor"
               />

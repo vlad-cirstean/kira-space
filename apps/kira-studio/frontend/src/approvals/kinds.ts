@@ -1,8 +1,9 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
-import { kubeReadPayloadSchema } from '@shared/domain/dbmcp';
+import { apiRequestPayloadSchema, kubeReadPayloadSchema } from '@shared/domain/dbmcp';
 import { type MessageKey, t } from '@theme/i18n';
 import type { ApprovalKinds } from '@workbench/approvals/registry';
 import { markRaw } from 'vue';
+import ApiRequestBody from './ApiRequestBody.vue';
 import ConnectionHeader from './ConnectionHeader.vue';
 import DbQueryBody from './DbQueryBody.vue';
 import DbResponseBody from './DbResponseBody.vue';
@@ -57,6 +58,15 @@ export function studioApprovalKinds(): ApprovalKinds {
       header: markRaw(ConnectionHeader),
       body: markRaw(ScriptRunBody),
       operation: () => t('studio.dbMcp.approval.script.operation.label'),
+    },
+    'api.request': {
+      header: markRaw(ConnectionHeader),
+      body: markRaw(ApiRequestBody),
+      operation: (item) => apiRequestPayloadSchema.parse(item.payload).method,
+      labels: () => ({
+        approve: t('common.action.send.label'),
+        deny: t('studio.dbMcp.approval.api.dontSend.label'),
+      }),
     },
     'proof.review': {
       body: markRaw(ProofReviewBody),
