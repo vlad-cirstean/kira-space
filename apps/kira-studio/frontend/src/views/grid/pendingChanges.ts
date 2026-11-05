@@ -1,4 +1,5 @@
 import type { MutationRowOp } from '@shared/domain/mutations';
+import { newUuid } from '@shared/ids';
 import type { MutateResponse } from '@shared/protocol/dataOps';
 import { cellText, isNull, type TabularPage } from '@shared/protocol/page';
 import { compareNatural } from '@workbench/behaviour/match';
@@ -399,7 +400,7 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
   function addInsertRow(tabId: string, columns: string[]): string {
     if (committingState[tabId]) return '';
     const p = ensure(tabId);
-    const id = crypto.randomUUID();
+    const id = newUuid();
     const values: Record<string, string | null> = {};
     for (const name of columns) values[name] = null;
     p.inserts.push({ id, values });
@@ -458,7 +459,6 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
       const ops = buildPlan(tabId);
       if (!ops) return null;
       const result = await data.mutate({
-        opId: crypto.randomUUID(),
         tabId,
         connectionId,
         path,

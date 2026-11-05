@@ -1,3 +1,4 @@
+import { newUuid } from '@shared/ids';
 import type { TabLike } from '@workbench/host';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
@@ -50,7 +51,7 @@ export const useKubeTabsStore = defineStore('kubeTabs', () => {
       return;
     }
     const tab: StoredTab = {
-      id: `kube-tab:${crypto.randomUUID()}`,
+      id: `kube-tab:${newUuid()}`,
       kind: 'resource',
       state: { ref: r, view: opts.view ?? 'describe' },
     };

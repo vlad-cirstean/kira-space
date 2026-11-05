@@ -198,9 +198,8 @@ export const useStreamViewStore = defineStore('streamView', () => {
     // partition/offset/timestamp filter. Sending the same encoded filter here scopes the count
     // identically (kafka/count.go's countTopic now shares load's own freshWindows, so "N total"
     // and the browse agree on what they are counting).
-    await runPagedCount(rt, (opId, refresh) =>
+    await runPagedCount(rt, (refresh) =>
       data.count({
-        opId,
         tabId,
         connectionId,
         path: tab.path,

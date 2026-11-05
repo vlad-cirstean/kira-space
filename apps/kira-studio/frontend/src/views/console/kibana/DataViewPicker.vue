@@ -20,7 +20,7 @@ const search = ref('');
 
 const query = useQuery(() => ({
   queryKey: ['kibana', 'dataViews', props.connectionId ?? ''] as const,
-  queryFn: () => control.kibanaDataViews(props.connectionId ?? '', crypto.randomUUID()),
+  queryFn: () => control.kibanaDataViews(props.connectionId ?? ''),
   enabled: !!props.connectionId && props.enabled,
   staleTime: 60_000,
 }));

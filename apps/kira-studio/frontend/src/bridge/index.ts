@@ -538,12 +538,12 @@ const studioControl = {
     on(CHANNEL.schemaChanged, cb),
 
   // P424: Discover reads beyond execute(). The wire shapes are zod-parsed, not trusted.
-  kibanaDataViews: (connectionId: string, opId: string): Promise<KibanaDataView[]> =>
-    unwrap(KibanaService.DataViews({ connectionId, opId })).then((r) =>
+  kibanaDataViews: (connectionId: string): Promise<KibanaDataView[]> =>
+    unwrap(KibanaService.DataViews({ connectionId, opId: '' })).then((r) =>
       kibanaDataViewSchema.array().parse(r ?? []),
     ),
-  kibanaDataView: (connectionId: string, opId: string, id: string): Promise<KibanaDataView> =>
-    unwrap(KibanaService.DataView({ connectionId, opId, id })).then((r) =>
+  kibanaDataView: (connectionId: string, id: string): Promise<KibanaDataView> =>
+    unwrap(KibanaService.DataView({ connectionId, opId: '', id })).then((r) =>
       kibanaDataViewSchema.parse(r),
     ),
   kibanaHistogram: (args: {

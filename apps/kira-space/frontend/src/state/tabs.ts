@@ -1,3 +1,4 @@
+import { newUuid } from '@shared/ids';
 import { createTabsStore } from '@workbench/state/createTabsStore';
 import { control } from '../bridge/control';
 import { useOpenedFilesWindowStore } from './openedFilesWindow';
@@ -67,7 +68,7 @@ export const useTabsStore = createTabsStore({
     // has no active tab at all) — a restored session's own active tab must never be stolen by
     // shell creation.
     function createPinnedRepoGraphTab(workspaceId: string): TabRecord {
-      const id = crypto.randomUUID();
+      const id = newUuid();
       const record = {
         id,
         connectionId: null,

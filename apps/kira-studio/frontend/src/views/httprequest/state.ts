@@ -8,6 +8,7 @@ import type {
   HttpResponseWire,
   HttpTimeline,
 } from '@shared/domain/http';
+import { newUuid } from '@shared/ids';
 import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
 import { variablesForSend } from '../../api/state/variables';
@@ -166,7 +167,7 @@ export const useHttpRequestViewStore = defineStore('httpRequestView', () => {
     const rt = ensureRuntime(tabId);
     if (rt.status === 'running') return;
 
-    const opId = crypto.randomUUID();
+    const opId = newUuid();
     rt.status = 'running';
     rt.opId = opId;
     rt.preflight = true;

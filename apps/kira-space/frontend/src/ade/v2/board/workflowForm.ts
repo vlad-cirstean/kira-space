@@ -1,3 +1,4 @@
+import { newId as mintId } from '@shared/ids';
 import { t } from '@theme/i18n';
 import type { StepKind, Workflow, WorkflowStep } from '../wire';
 import type { Tone } from './actions';
@@ -38,14 +39,12 @@ export function kindLabel(kind: StepKind): string {
   return t(`space.ade.workflows.kind.${kind}.option`);
 }
 
-const ID_SUFFIX_LENGTH = 8;
-
-/** `step-<8 hex>`, never in `taken`. Runs are keyed by these ids, so a removed id must not come
+/** `stp_<12 chars>`, never in `taken`. Runs are keyed by these ids, so a removed id must not come
  *  back: the lowest free `step-N` would hand a new step the old one's runs. */
 export function newId(taken: readonly string[]): string {
   const used = new Set(taken);
   let id: string;
-  do id = `step-${crypto.randomUUID().slice(0, ID_SUFFIX_LENGTH)}`;
+  do id = mintId('stp');
   while (used.has(id));
   return id;
 }

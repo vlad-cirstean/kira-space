@@ -1,3 +1,4 @@
+import { newUuid } from '@shared/ids';
 import { defineStore } from 'pinia';
 import { reactive } from 'vue';
 
@@ -73,7 +74,7 @@ export const useStreamFilterHistoryStore = defineStore('streamFilterHistory', ()
     const deduped = existing.filter((e) => !sameFilter(filter, e));
     // Keeps the pin: re-applying a pinned filter must not let it age out of the cap.
     deduped.unshift({
-      id: crypto.randomUUID(),
+      id: newUuid(),
       ...filter,
       pinned: prior?.pinned ?? false,
       usedAt: Date.now(),

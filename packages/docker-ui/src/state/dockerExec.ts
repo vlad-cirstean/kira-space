@@ -1,3 +1,4 @@
+import { newUuid } from '@shared/ids';
 import { t } from '@theme/i18n';
 import { cleanupTabRuntime } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
@@ -21,7 +22,7 @@ export const useDockerExecSessionsStore = defineStore('dockerExecSessions', () =
   function open(ctx: DockerContext, containerId: string): DockerExecSession {
     const n = Math.max(0, ...forContainer(containerId).map((s) => s.n)) + 1;
     const session: DockerExecSession = {
-      id: `docker-exec:${crypto.randomUUID()}`,
+      id: `docker-exec:${newUuid()}`,
       containerId,
       title: t('docker.exec.session.title', { n }),
       n,

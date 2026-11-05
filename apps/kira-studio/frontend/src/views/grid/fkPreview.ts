@@ -1,4 +1,5 @@
 import type { ForeignKeyMeta } from '@shared/domain/tree';
+import { newUuid } from '@shared/ids';
 import { cellText, isNull, isTruncated, type TypeClass } from '@shared/protocol/page';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
@@ -47,7 +48,7 @@ export async function fetchReferencedRow(
   filter: string,
   signal: PreviewSignal,
 ): Promise<FkPreviewState> {
-  const opId = crypto.randomUUID();
+  const opId = newUuid();
   signal.opId = opId;
   try {
     const response = await data.read({
