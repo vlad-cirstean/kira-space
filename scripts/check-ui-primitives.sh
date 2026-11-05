@@ -245,6 +245,9 @@ U103@@vt@@@@bare .sort() (end on a stable key)@@\.sort\(\)
 U104@@v@@@@toolbar divider must use ToolbarSeparator (P351)@@class="[^"]*(?:\bw-px\b[^"]*\bh-3\.5\b|\bh-3\.5\b[^"]*\bw-px\b)
 U104@@v@@ToolbarSeparator.vue@@toolbar divider must use ToolbarSeparator (P351)@@<Separator\b(?&t)\sorientation="vertical"
 U105@@vt@@AdeDayBand.vue@@repeating gradient texture (surfaces are flat tokens)@@repeating-(?:linear|radial|conic)-gradient
+U106@@v@@@@filled button (outline or toolbar; see P525 rules)@@<(?:Button|TooltipIconButton|SplitButton)\b(?&t)\s:?class="[^"]*${TOK}bg-(?:primary|agent|tone-[a-z]+-solid|ok|warn|error|info)(?![\w/-])
+U107@@v@@@@icon in a dialog header (title, description and actions only)@@(?s)<DialogHeader\b(?&t)>(?:(?!</DialogHeader>|<Button\b|<TooltipIconButton\b).)*?<(?:CodiconIcon|EngineIcon|svg)\b
+U108@@v@@@@toolbar pressed look by class (use aria-pressed / aria-expanded; the toolbar variant draws it)@@<(?:Button|TooltipIconButton)\b(?&t)\s:class="[^"]*'bg-field
 GUARDS
 
 # hits: "U<n> path"
