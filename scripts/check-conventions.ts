@@ -222,7 +222,7 @@ export function idRegistryHits(goSource: string, tsSource: string): Hit[] {
   return [{ rule: 'N13', path: TS_IDS_PATH, message: `id registry differs (${diff.join('; ')})` }];
 }
 
-/** N14: ids come from `@shared/ids`; no raw `randomUUID`, `nanoid` or `uuid` import elsewhere. */
+/** N14: ids come from `@shared/ids`; no raw `randomUUID`, `Math.random().toString(36)`, `nanoid` or `uuid` import elsewhere. */
 export function rawIdHits(path: string, source: string): Hit[] {
   if (path === TS_IDS_PATH) return [];
   const hits: Hit[] = [];
@@ -231,6 +231,9 @@ export function rawIdHits(path: string, source: string): Hit[] {
   }
   if (/from\s+['"](?:nanoid|uuid)(?:\/[^'"]*)?['"]/.test(source)) {
     hits.push({ rule: 'N14', path, message: 'imports nanoid or uuid; use @shared/ids' });
+  }
+  if (/Math\.random\(\)\.toString\(36\)/.test(source)) {
+    hits.push({ rule: 'N14', path, message: 'Math.random().toString(36); use @shared/ids' });
   }
   return hits;
 }

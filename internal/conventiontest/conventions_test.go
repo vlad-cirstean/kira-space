@@ -40,7 +40,12 @@ func isTestTooling(rel string) bool {
 }
 
 // idGenerators are the packages only internal/ids may import (G6).
-var idGenerators = map[string]bool{"github.com/google/uuid": true, "github.com/matoous/go-nanoid/v2": true}
+var idGenerators = map[string]bool{
+	"github.com/google/uuid":          true,
+	"github.com/matoous/go-nanoid/v2": true,
+	"github.com/oklog/ulid":           true,
+	"github.com/oklog/ulid/v2":        true,
+}
 
 // ipcerrMsg maps an ipcerr constructor to its message argument index.
 var ipcerrMsg = map[string]int{"New": 1, "BadRequest": 0, "NotFound": 0, "Internal": 0, "SecretStore": 0}
@@ -131,11 +136,33 @@ func scan(t *testing.T, root, rel string) []finding {
 	}
 	// G6: ids come from internal/ids; no other package imports an id generator.
 	if dir != "internal/ids" {
+		randNames := map[string]bool{}
 		for _, imp := range f.Imports {
-			if path, err := strconv.Unquote(imp.Path.Value); err == nil && idGenerators[path] {
+			path, err := strconv.Unquote(imp.Path.Value)
+			if err != nil {
+				continue
+			}
+			if idGenerators[path] {
 				add("G6", imp.Pos(), "imports "+path+"; mint ids with internal/ids")
 			}
+			if path == "crypto/rand" {
+				name := "rand"
+				if imp.Name != nil {
+					name = imp.Name.Name
+				}
+				randNames[name] = true
+			}
 		}
+		ast.Inspect(f, func(n ast.Node) bool {
+			if call, ok := n.(*ast.CallExpr); ok {
+				if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Text" {
+					if id, ok := sel.X.(*ast.Ident); ok && randNames[id.Name] {
+						add("G6", call.Pos(), "crypto/rand.Text mints an id; use internal/ids")
+					}
+				}
+			}
+			return true
+		})
 	}
 	ast.Inspect(f, func(n ast.Node) bool {
 		switch x := n.(type) {
