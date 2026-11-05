@@ -30,6 +30,8 @@
       "mode": "read",
       "plan": null,
       "reason": "the count is needed",
+      "reviewOffered": true,
+      "reviewResult": false,
       "statement": "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM c) SELECT count(*) FROM (SELECT x FROM c LIMIT 8000000)"
     },
     "reason": "exemption",
@@ -77,6 +79,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "app",
@@ -125,6 +132,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "session",
@@ -173,6 +185,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "app",
@@ -221,6 +238,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "app",
@@ -269,6 +291,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "app",
@@ -317,6 +344,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "app",
@@ -362,6 +394,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "app",
@@ -407,6 +444,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "app",
@@ -453,6 +495,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "none",
@@ -499,6 +546,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "none",

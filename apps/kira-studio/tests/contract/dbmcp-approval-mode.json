@@ -22,6 +22,8 @@
         "enforcement": "",
         "mode": "write",
         "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
         "statement": "select body from notes where id = 1"
       },
       "reason": "permission",

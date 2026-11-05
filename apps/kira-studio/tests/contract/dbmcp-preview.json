@@ -21,6 +21,8 @@
         "bytes": 231,
         "connectionId": "<id:2>",
         "isError": false,
+        "mode": "read",
+        "requested": false,
         "statement": "select id, body from notes order by id"
       },
       "reason": "preview",

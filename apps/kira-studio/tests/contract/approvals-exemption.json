@@ -31,6 +31,8 @@
         "mode": "read",
         "plan": null,
         "reason": "the report needs every row",
+        "reviewOffered": true,
+        "reviewResult": false,
         "statement": "select * from notes /* big */"
       },
       "reason": "exemption",
@@ -87,6 +89,8 @@
       "mode": "read",
       "plan": null,
       "reason": "it is a slow table",
+      "reviewOffered": true,
+      "reviewResult": false,
       "statement": "select * from notes /* big */ /* slow */"
     },
     "reason": "exemption",

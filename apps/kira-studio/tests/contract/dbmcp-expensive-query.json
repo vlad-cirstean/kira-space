@@ -89,6 +89,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "app",
@@ -137,6 +142,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "session",
@@ -185,6 +195,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "session",
@@ -233,6 +248,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "app",
@@ -281,6 +301,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "app",
@@ -329,6 +354,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "app",
@@ -377,6 +407,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "app",
@@ -422,6 +457,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "app",
@@ -467,6 +507,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "app",
@@ -513,6 +558,11 @@
         "write": "prompt"
       },
       "readOnly": false,
+      "reviewResults": {
+        "ddl": false,
+        "read": false,
+        "write": false
+      },
       "statementTimeout": {
         "enforcement": {
           "ddl": "none",
