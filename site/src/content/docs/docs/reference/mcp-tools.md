@@ -98,8 +98,9 @@ Server name `kira-ade`. `finish_step` is available to every agent run. `fetch_re
 - `report_artifacts`: record what the task produced. Argument: `artifacts`, 1 to 20 items of `kind` (`change_request`, `issue`, `deployment`, `doc`, `link`), `title`, `url`, `ref`. Branches, commits, change requests and deployments of the task repositories are found without a report.
 - `task_info`: the task, its workflow, step, repositories and branches.
 - `declare_repos`: add registered repositories to the task. Argument: `repos`, 1 to 20.
-- `request_branches`: ask the user to approve branches and worktrees, one call for all repositories. Kira Space names new branches (`kira/<id>`). The call waits for the answer, up to 30 minutes. Per repository the result is `created`, `existing`, `denied`, `timeout` or `failed`. Argument: `repos`, 1 to 20.
-- `branch_status`: the worktree and setup state of a branch. Arguments: `repo`, `waitSeconds` (0 to 600).
+- `request_branches`: ask the user to approve branches and worktrees, one call for all. You name each branch. A repository may get several branches. The call waits for the answer, up to 30 minutes. Per branch the result is `created`, `existing`, `denied`, `timeout` or `failed`. Argument: `branches`, 1 to 20 items of `repo` and `branch`.
+- `branch_status`: the worktree and setup state of a branch. Arguments: `repo`, `branch`, `waitSeconds` (0 to 600).
+- `rename_branch`: ask the user to approve renaming one of the task's branches. The worktree folder stays. The remote branch is renamed only if the user agrees. The result is `renamed`, `denied`, `timeout` or `failed`, with the remote state `renamed`, `kept`, `untracked` or `failed`. Refused for main, integration and protected branches, open change requests and sandboxed branches. Arguments: `repo`, `from`, `to`, `renameRemote`.
 - `run_outcome`: how the latest runs of the task ended. Arguments: `runId`, `branch`, `kind`, `limit` (default 3, maximum 10).
 - `fetch_remote`: fetch one remote of the repository, in the app. Sandboxed runs only. Argument: `remote` (default `origin`).
 - `push_branch`: push the task branch to the same-named remote branch, in the app. Sandboxed write runs only. Never a protected branch. Argument: `force` (lease-checked force push).
