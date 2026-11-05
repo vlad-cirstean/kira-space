@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Code convention guard N1-N7 and N8-N13.
+ * Code convention guard N1-N7 and N8-N14.
  *
  * N1 file names (.ts camelCase, .vue PascalCase), N2 no `.test.ts`, N3 no util/utils/helpers
  * folder, N4 Pinia id = export name without `use`/`create` and `Store`, N5 event names
@@ -33,7 +33,8 @@ export type Rule =
   | 'N10'
   | 'N11'
   | 'N12'
-  | 'N13';
+  | 'N13'
+  | 'N14';
 export interface Hit {
   rule: Rule;
   path: string;
@@ -219,6 +220,19 @@ export function idRegistryHits(goSource: string, tsSource: string): Hit[] {
   for (const p of ts.keys()) if (!go.has(p)) diff.push(`${p}: only in TS`);
   if (diff.length === 0) return [];
   return [{ rule: 'N13', path: TS_IDS_PATH, message: `id registry differs (${diff.join('; ')})` }];
+}
+
+/** N14: ids come from `@shared/ids`; no raw `randomUUID`, `nanoid` or `uuid` import elsewhere. */
+export function rawIdHits(path: string, source: string): Hit[] {
+  if (path === TS_IDS_PATH) return [];
+  const hits: Hit[] = [];
+  if (/\bcrypto\.randomUUID\s*\(|\brandomUUID\s*\(/.test(source)) {
+    hits.push({ rule: 'N14', path, message: 'randomUUID; use newUuid from @shared/ids' });
+  }
+  if (/from\s+['"](?:nanoid|uuid)(?:\/[^'"]*)?['"]/.test(source)) {
+    hits.push({ rule: 'N14', path, message: 'imports nanoid or uuid; use @shared/ids' });
+  }
+  return hits;
 }
 
 export function migrationHits(
@@ -466,6 +480,7 @@ function fileHits(path: string, dirs: Set<string>): Hit[] {
   for (const h of folderHits(path)) dirs.add(JSON.stringify(h));
   if (path.endsWith('.ts') && !/\.(?:spec|test)\.ts$/.test(path))
     hits.push(...piniaHits(path, read()));
+  if (!/\.(?:spec|test)\.ts$/.test(path)) hits.push(...rawIdHits(path, read()));
   return hits;
 }
 
@@ -520,7 +535,7 @@ function main(): number {
     );
     return 1;
   }
-  console.log('check-conventions: every convention holds (N1-N13).');
+  console.log('check-conventions: every convention holds (N1-N14).');
   return 0;
 }
 

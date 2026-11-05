@@ -39,6 +39,9 @@ func isTestTooling(rel string) bool {
 	return false
 }
 
+// idGenerators are the packages only internal/ids may import (G6).
+var idGenerators = map[string]bool{"github.com/google/uuid": true, "github.com/matoous/go-nanoid/v2": true}
+
 // ipcerrMsg maps an ipcerr constructor to its message argument index.
 var ipcerrMsg = map[string]int{"New": 1, "BadRequest": 0, "NotFound": 0, "Internal": 0, "SecretStore": 0}
 
@@ -125,6 +128,14 @@ func scan(t *testing.T, root, rel string) []finding {
 			}
 			return true
 		})
+	}
+	// G6: ids come from internal/ids; no other package imports an id generator.
+	if dir != "internal/ids" {
+		for _, imp := range f.Imports {
+			if path, err := strconv.Unquote(imp.Path.Value); err == nil && idGenerators[path] {
+				add("G6", imp.Pos(), "imports "+path+"; mint ids with internal/ids")
+			}
+		}
 	}
 	ast.Inspect(f, func(n ast.Node) bool {
 		switch x := n.(type) {

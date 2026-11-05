@@ -10,6 +10,7 @@ import {
   migrationHits,
   oversizeVueHit,
   piniaHits,
+  rawIdHits,
   specHelperHits,
   stateAndMenuNameHits,
   testSuffixHit,
@@ -186,6 +187,18 @@ describe('N13 id registry parity', () => {
     expect(hits[0]?.message).toContain('wt: Go 10, TS 12');
     expect(hits[0]?.message).toContain('shot: Go 12, TS missing');
     expect(hits[0]?.message).toContain('abc: only in TS');
+  });
+});
+
+describe('N14 raw id generators', () => {
+  test('randomUUID and direct nanoid or uuid imports fail', () => {
+    expect(rawIdHits('a.ts', 'const id = crypto.randomUUID();')[0]?.rule).toBe('N14');
+    expect(rawIdHits('a.ts', "import { v7 } from 'uuid';")).toHaveLength(1);
+    expect(rawIdHits('a.ts', "import { nanoid } from 'nanoid';")).toHaveLength(1);
+  });
+  test('the helper and clean code pass', () => {
+    expect(rawIdHits('packages/shared/ids.ts', "import { v7 } from 'uuid';")).toEqual([]);
+    expect(rawIdHits('a.ts', "import { newUuid } from '@shared/ids';")).toEqual([]);
   });
 });
 

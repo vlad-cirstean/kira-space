@@ -1242,7 +1242,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 
 ### Consistency conventions (P266)
 
-- Consistency conventions are enforced by guards: scripts/check-ui-primitives.sh (U72-U82), scripts/check-conventions.ts (N1-N7), internal/conventiontest (G1-G5), Biome noConsole, golangci sloglint.
+- Consistency conventions are enforced by guards: scripts/check-ui-primitives.sh (U72-U82), scripts/check-conventions.ts (N1-N14), internal/conventiontest (G1-G6), Biome noConsole, golangci sloglint.
 - Each convention guard keeps a named exemption list with a reason per entry; an entry that exempts nothing fails, so the lists only shrink.
 - The UI uses one glyph set: codicons, referenced by bare names (e.g. trash, not codicon-trash).
 - Use simple-icons for third-party brand marks and seti for file types.
