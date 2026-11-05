@@ -115,6 +115,10 @@ type Config struct {
 	Proof ProofStore
 	// Kube backs the kube_* tools; its calls record their own op-log rows. Nil leaves them unregistered.
 	Kube KubeReader
+	// Ops backs list_operations and cancel_operation; nil leaves both unregistered. Runs adds
+	// script runs to them; nil means none are listed or stoppable.
+	Ops  OpsControl
+	Runs ScriptRunControl
 	// Prompts resolves the editable instruction and tool texts; nil means the registry defaults.
 	Prompts llmprompts.Source
 	// Logger receives every operational log line. A nil Logger falls back to slog.Default().
@@ -152,7 +156,7 @@ type Server struct {
 // phase alone.
 const serverVersion = "0.0.0"
 
-// New resolves cfg, mints or loads this instance's own token, builds the five-tool mcp.Server, and
+// New resolves cfg, mints or loads this instance's own token, builds the mcp.Server, and
 // binds the HTTP listener (§3.2, DefaultPort only — see bindHTTP/F11) — but does not yet accept
 // connections; call Serve for that.
 func New(cfg Config) (*Server, error) {
@@ -222,7 +226,7 @@ func (s *Server) server() *mcp.Server {
 	return s.mcp
 }
 
-// buildMCPServer constructs the five-tool mcp.Server (§4) — pure registration, no I/O of its own;
+// buildMCPServer constructs the mcp.Server (§4) — pure registration, no I/O of its own;
 // every handler closes over s and calls into s.cfg.Conns/Tree/Query through access.go's gates.
 func (s *Server) buildMCPServer() *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{
@@ -266,6 +270,9 @@ func (s *Server) buildMCPServer() *mcp.Server {
 	}
 	if s.cfg.Kube != nil {
 		s.addKubeTools(srv, src)
+	}
+	if s.cfg.Ops != nil {
+		s.addOpsTools(srv, src)
 	}
 
 	return srv

@@ -13,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
+	"github.com/kirathecat/kira-studio/internal/scriptruns"
 )
 
 // dbMcpServerName is the one name every Install call registers under — internal/dbmcp's own
@@ -39,6 +40,8 @@ type DbMcpService struct {
 	Proof dbmcp.ProofStore
 	// Kube backs the kube_* tools (P440).
 	Kube dbmcp.KubeReader
+	// Runs backs the script-run half of the operations tools.
+	Runs dbmcp.ScriptRunControl
 
 	embedded embedded.Service[*dbmcp.Server, DbMcpStatus]
 }
@@ -65,6 +68,8 @@ func NewDbMcpService(deps appcore.Deps, installer harness.MCPInstaller, approval
 				Approvals:        s.Approvals,
 				Proof:            s.Proof,
 				Kube:             s.Kube,
+				Ops:              s.Deps.Router,
+				Runs:             s.Runs,
 				MaskRules:        s.Deps.MaskRules,
 				ExplainThreshold: s.explainThreshold,
 				PreviewResponses: s.previewResponses,
@@ -543,3 +548,24 @@ func (s *DbMcpService) PendingResponse(args DbMcpApprovalArgs) (DbMcpPendingResp
 	}
 	return DbMcpPendingResponse{RequestID: args.RequestID, Text: r.Text, IsError: r.IsError}, nil
 }
+
+type scriptRunControl struct{ svc *scriptruns.Service }
+
+// NewScriptRunControl adapts the script-run service to dbmcp's consumer-declared interface.
+func NewScriptRunControl(svc *scriptruns.Service) dbmcp.ScriptRunControl {
+	return scriptRunControl{svc: svc}
+}
+
+func (c scriptRunControl) Live() ([]dbmcp.LiveRun, error) {
+	runs, err := c.svc.Runs.Live()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]dbmcp.LiveRun, 0, len(runs))
+	for _, r := range runs {
+		out = append(out, dbmcp.LiveRun{ID: r.ID, ScriptName: r.ScriptName, State: r.State, StartedAt: r.StartedAt})
+	}
+	return out, nil
+}
+
+func (c scriptRunControl) Stop(id string) error { return c.svc.Stop(id) }

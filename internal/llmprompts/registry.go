@@ -1326,7 +1326,7 @@ var DbmcpInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.dbmcpInstructions.title",
 	PurposeKey: "llmPrompts.entry.dbmcpInstructions.description",
 	UsedByKey:  "llmPrompts.entry.dbmcpInstructions.usedBy.body",
-	Default:    "Read and query the databases configured in this Kira Studio app. Only connections the user exposed are visible; start with `list_connections`. Walk structure with `list_children`, passing back a `path` it returned. Levels differ per engine; do not assume a database or schema level exists. `run_query` and `explain_query` need the database's `path` on engines with several databases. `describe_schema` returns every relation's columns in one call, cheaper than one `describe_table` per table. `run_query` runs one statement through the app's SQL console path, under the connection's own permissions; results are capped and say so when truncated. Every query appears in the user's Operations panel. Each `list_connections` entry's `permissions` object names its read/write/DDL mode (deny, allow or prompt) and its `description`, when set, says what the connection is for — read both before calling `run_query`. Run `explain_query` before an expensive-looking query. `run_query` plans it anyway on connections whose owner turned auto-explain on. A connection with masked columns lists them in `list_connections`' own `maskedColumns` field, as \"table.column: kind\" — a masked cell's value is redacted (never the real value), and a trailing `#TAG` is an opaque correlation token, never a literal part of the value: equal values always share a tag, but the tag is short enough that two distinct values can rarely share one too, so treat a tag match as a strong hint toward equality, not proof of it. Kubernetes tools (`kube_*`) are read only; start with `kube_list_clusters` and read each cluster's `permissions` and `description` first. A prompt permission waits up to two minutes for the user.",
+	Default:    "Read and query the databases configured in this Kira Studio app. Only connections the user exposed are visible; start with `list_connections`. Walk structure with `list_children`, passing back a `path` it returned. Levels differ per engine; do not assume a database or schema level exists. `run_query` and `explain_query` need the database's `path` on engines with several databases. `describe_schema` returns every relation's columns in one call, cheaper than one `describe_table` per table. `run_query` runs one statement through the app's SQL console path, under the connection's own permissions; results are capped and say so when truncated. Every query appears in the user's Operations panel. Each `list_connections` entry's `permissions` object names its read/write/DDL mode (deny, allow or prompt) and its `description`, when set, says what the connection is for — read both before calling `run_query`. Run `explain_query` before an expensive-looking query. `run_query` plans it anyway on connections whose owner turned auto-explain on. A connection with masked columns lists them in `list_connections`' own `maskedColumns` field, as \"table.column: kind\" — a masked cell's value is redacted (never the real value), and a trailing `#TAG` is an opaque correlation token, never a literal part of the value: equal values always share a tag, but the tag is short enough that two distinct values can rarely share one too, so treat a tag match as a strong hint toward equality, not proof of it. Kubernetes tools (`kube_*`) are read only; start with `kube_list_clusters` and read each cluster's `permissions` and `description` first. A prompt permission waits up to two minutes for the user. `list_operations` shows what is running; `cancel_operation` stops one, including your own long `run_query`.",
 }, NoVars{})
 
 // DbmcpToolListConnections describes the list_connections tool.
@@ -1450,6 +1450,20 @@ var DbmcpToolProofListSessions = define(Entry{
 	ID: "dbmcp.tool.proof_list_sessions", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_list_sessions",
 	Default: "List closed proof sessions, newest first, with step count and whether an edit waits for review. Use it to find the name proof_edit_session needs. The app keeps the newest 30.",
 }, NoVars{})
+
+// DbmcpToolListOperations describes the list_operations tool.
+var DbmcpToolListOperations = define(Entry{
+	ID: "dbmcp.tool.list_operations", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list_operations",
+	Default: "List running operations: queries, metadata reads, HTTP, gRPC and Kubernetes calls on exposed connections, and running or waiting script runs. Ids feed cancel_operation.",
+}, NoVars{})
+
+// DbmcpToolCancelOperation describes the cancel_operation tool.
+var DbmcpToolCancelOperation = define(Entry{
+	ID: "dbmcp.tool.cancel_operation", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "cancel_operation",
+	Default: "Stop one running operation by id from list_operations. A stopped query returns a cancelled error to its caller; a write rolls back.",
+}, NoVars{})
+
+var _ = arg(DbmcpToolCancelOperation.id, "opId", studioApp, NextCall, `Operation id from list_operations.`, NoVars{})
 
 // DbmcpToolKubeListClusters describes the kube_list_clusters tool.
 var DbmcpToolKubeListClusters = define(Entry{

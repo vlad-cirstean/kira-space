@@ -163,7 +163,6 @@ func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, kee
 	dbMcpApprovals.Prompts = promptRouter
 	kubeSvc := &bridge.KubernetesService{BoundService: kubernetes.NewBoundService(deps.Repos.KubeClusters, deps.Events, append([]kubernetes.Option{kubernetes.WithRecorder(bridge.KubeRecorder{Host: deps.Router.Host()})}, opts.KubernetesExtra...)...)}
 	dbMcpSvc := bridge.NewDbMcpService(deps, installer, dbMcpApprovals, proofSvc, kubernetes.ServiceOf(kubeSvc.BoundService))
-	bridge.StartDbMcpIfEnabled(dbMcpSvc)
 
 	// P87 §3/§4: one keep-awake assertion for the whole app, driven by the titlebar toggle. The
 	// driver is a runtime.GOOS switch — a real caffeinate child on macOS, a documented no-op
@@ -208,6 +207,9 @@ func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, kee
 	if err := runs.Recover(); err != nil {
 		slog.Warn("recover script runs", "scope", "startup", "err", err)
 	}
+	// The ops tools read live runs, so the server starts only once runs exists.
+	dbMcpSvc.Runs = bridge.NewScriptRunControl(runs)
+	bridge.StartDbMcpIfEnabled(dbMcpSvc)
 	sched := &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
 	runLoader, err := scripts.NewLoader(scripts.LoaderOptions{
 		Repo: deps.Repos.CustomScripts, Dir: filepath.Join(deps.Home, "runs"), Home: deps.Home, App: "Studio",

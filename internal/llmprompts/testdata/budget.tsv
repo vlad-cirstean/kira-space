@@ -131,8 +131,11 @@ ade.jiraLine	55
 ade.rebase.contextLine	95
 ade.sendBack.line	63
 run.resume.line	261
-dbmcp.instructions	1700
+dbmcp.instructions	1800
 dbmcp.tool.list_connections	120
+dbmcp.tool.list_operations	190
+dbmcp.tool.cancel_operation	150
+dbmcp.tool.cancel_operation.arg.opId	50
 dbmcp.tool.list_children	167
 dbmcp.tool.list_children.arg.connectionId	36
 dbmcp.tool.list_children.arg.path	85
