@@ -363,7 +363,7 @@ func (a *Adapter) ResolveTables(ctx context.Context, p adapters.TableParse, path
 	if len(p.Unqualified) > 0 {
 		rows, err := runArrayQuery(ctx, conn, `SELECT t.name,
 			COALESCE((SELECT n.nspname FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-				WHERE c.oid = pg_catalog.to_regclass(pg_catalog.quote_ident(t.name))), pg_catalog.current_schema())
+				WHERE c.oid = pg_catalog.to_regclass(pg_catalog.quote_ident(t.name))), pg_catalog.current_schema(), '')
 			FROM pg_catalog.unnest($1::text[]) AS t(name)`, []any{p.Unqualified}, op, track, QueryOptions{})
 		if err != nil {
 			return nil, "", err
