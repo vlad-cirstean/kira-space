@@ -168,9 +168,11 @@ func (s *Server) planFor(ctx context.Context, summary model.ConnectionSummary, s
 		return nil, err
 	}
 
-	resp, err := s.cfg.Query.ExecuteRead(ctx, adapterhost.ExecuteRequestWire{
+	req := adapterhost.ExecuteRequestWire{
 		OpID: ids.NewID(), ConnectionID: summary.ID, Path: path, Statements: statements,
-	})
+	}
+	applyStatementTimeout(&req, summary, modeRead)
+	resp, err := s.cfg.Query.ExecuteRead(ctx, req)
 	if err != nil {
 		return nil, err
 	}

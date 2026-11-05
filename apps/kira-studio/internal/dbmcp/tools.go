@@ -45,7 +45,7 @@ func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ li
 			ID: c.ID, Name: c.Name, Kind: c.Kind, ReadOnly: c.ReadOnly, Status: state.Status,
 			Description: c.McpDescription,
 			Permissions: connectionPermissions{Read: c.McpReadMode, Write: c.McpWriteMode, DDL: c.McpDdlMode},
-			Access:      accessOf(c), Enforcement: enforcementOf(c.Kind),
+			Access:      accessOf(c), Enforcement: enforcementOf(c.Kind), StatementTimeout: timeoutViewOf(c),
 		}
 		if state.ServerVersion != nil {
 			view.ServerVersion = state.ServerVersion
@@ -221,10 +221,10 @@ func (s *Server) runQuery(ctx context.Context, _ *mcp.CallToolRequest, args runQ
 	plan, heavy := s.maybeExplain(ctx, rv.summary, args)
 
 	if ex != nil {
-		if res, out, err, done := s.awaitExemption(ctx, args, rv, ex, plan); done {
+		if res, out, err, done := s.awaitExemption(ctx, args, &rv, ex, plan); done {
 			return res, out, err
 		}
-	} else if res, out, err, done := s.awaitApproval(ctx, args, rv, heavy, plan); done {
+	} else if res, out, err, done := s.awaitApproval(ctx, args, &rv, heavy, plan); done {
 		return res, out, err
 	}
 
@@ -524,7 +524,7 @@ func (s *Server) maybeExplain(ctx context.Context, summary model.ConnectionSumma
 // (the stricter reason — the user said "ask me about every write") with the plan evidence riding
 // along. A no-op (done false) when neither verdict == "prompt" nor heavy applies. done is true
 // whenever runQuery should return (res, out, err) immediately.
-func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv queryResolution, heavy bool, plan *queryplan.Plan) (res *mcp.CallToolResult, out any, err error, done bool) {
+func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv *queryResolution, heavy bool, plan *queryplan.Plan) (res *mcp.CallToolResult, out any, err error, done bool) {
 	if rv.verdict != "prompt" && !heavy {
 		return nil, nil, nil, false
 	}
@@ -553,8 +553,9 @@ func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv queryR
 }
 
 // recheckAfterApproval refuses when the connection lost exposure or the mode became denied while the
-// approval was pending.
-func (s *Server) recheckAfterApproval(args runQueryArgs, rv queryResolution) (res *mcp.CallToolResult, out any, err error, done bool) {
+// approval was pending. Otherwise it stores the re-resolved summary in rv, so settings read at
+// execute (the statement timeout) are current after a long wait.
+func (s *Server) recheckAfterApproval(args runQueryArgs, rv *queryResolution) (res *mcp.CallToolResult, out any, err error, done bool) {
 	resummary, rerr := s.resolveEnabled(args.ConnectionID)
 	if rerr != nil {
 		res, out, err = errResult(rerr.Error())
@@ -564,6 +565,7 @@ func (s *Server) recheckAfterApproval(args runQueryArgs, rv queryResolution) (re
 		res, out, err = errResult(fmt.Sprintf("connection %q now denies %s over MCP. Allowed: %s", resummary.Name, rv.mode, accessOf(resummary).Summary))
 		return res, out, err, true
 	}
+	rv.summary = resummary
 	return nil, nil, nil, false
 }
 
@@ -703,12 +705,14 @@ func (s *Server) explainQuery(ctx context.Context, _ *mcp.CallToolRequest, args 
 		mk = &set
 	}
 
-	resp, err := s.cfg.Query.ExecuteRead(ctx, adapterhost.ExecuteRequestWire{
+	req := adapterhost.ExecuteRequestWire{
 		OpID:         ids.NewID(),
 		ConnectionID: args.ConnectionID,
 		Path:         args.Path,
 		Statements:   statements,
-	})
+	}
+	applyStatementTimeout(&req, summary, modeRead)
+	resp, err := s.cfg.Query.ExecuteRead(ctx, req)
 	if err != nil {
 		if mk != nil {
 			return maskedToolError(err)

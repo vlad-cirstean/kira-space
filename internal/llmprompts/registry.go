@@ -1346,7 +1346,7 @@ var DbmcpInstructions = define(Entry{
 // DbmcpToolListConnections describes the list_connections tool.
 var DbmcpToolListConnections = define(Entry{
 	ID: "dbmcp.tool.list_connections", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list_connections",
-	Default: "List every database connection exposed to MCP, with kind, read-only flag, live status and, once connected, capabilities. `access` lists the modes run_query may use and which need approval. `enforcement` says what backs mode read: session (the database refuses writes), app (Kira checks; the engine has no read-only session) or none.",
+	Default: "List every database connection exposed to MCP, with kind, read-only flag, live status and, once connected, capabilities. `access` lists the modes run_query may use and which need approval. `enforcement` says what backs mode read: session (the database refuses writes), app (Kira checks; the engine has no read-only session) or none. `statementTimeout` is the seconds a statement may run (0 off) and per mode what stops it: session (the database) or app (Kira cancels it).",
 }, NoVars{})
 
 // DbmcpToolListChildren describes the list_children tool.
@@ -1388,7 +1388,7 @@ var (
 // DbmcpToolRunQuery describes the run_query tool.
 var DbmcpToolRunQuery = define(Entry{
 	ID: "dbmcp.tool.run_query", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "run_query",
-	Default: "Run one statement per call, not a script. Declare `mode`: read runs on a separate read-only connection (where list_connections reports enforcement session, the database itself refuses writes, including writes hidden in functions); write and ddl run on the normal connection. The connection's permission for the declared mode applies: a denied mode is refused, an approval mode waits up to 10 minutes for the user. list_connections' `access` shows which modes each connection allows and which need approval. A statement that looks more powerful than its mode is refused with the mode to use. Reading stops at maxRows: rowCount is rows fetched, a lower bound when truncated is true. With auto-explain on, an expensive read pauses for approval. On a kibana connection, `sql` is one Discover request as a JSON object (see the `sql` argument); mode read only. A call over a limit is refused with an exemption id: improve the statement, or repeat the exact call with `exemption` to ask the user to lift that limit once. The user always decides.",
+	Default: "Run one statement per call, not a script. Declare `mode`: read runs on a separate read-only connection (where list_connections reports enforcement session, the database itself refuses writes, including writes hidden in functions); write and ddl run on the normal connection. The connection's permission for the declared mode applies: a denied mode is refused, an approval mode waits up to 10 minutes for the user. list_connections' `access` shows which modes each connection allows and which need approval. A statement that looks more powerful than its mode is refused with the mode to use. Reading stops at maxRows: rowCount is rows fetched, a lower bound when truncated is true. With auto-explain on, an expensive read pauses for approval. On a kibana connection, `sql` is one Discover request as a JSON object (see the `sql` argument); mode read only. A call over a limit (such as the connection's statement timeout) is refused with an exemption id: improve the statement, or repeat the exact call with `exemption` to ask the user to lift that limit once. The user always decides.",
 }, NoVars{})
 
 var (

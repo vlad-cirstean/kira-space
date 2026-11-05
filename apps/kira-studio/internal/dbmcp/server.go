@@ -246,7 +246,12 @@ func New(cfg Config) (*Server, error) {
 	return s, nil
 }
 
-// validateLimits rejects a limit with no name, a duplicate name, or neither PreLimit nor ExecLimit.
+// builtinLimits are the limits every server enforces, ahead of Config.Limits.
+func builtinLimits() []Limit { return []Limit{statementTimeoutLimit{}} }
+
+// validateLimits rejects a limit with no name, a duplicate name inside in, or neither PreLimit nor
+// ExecLimit. It returns the built-ins followed by in; an entry named like a built-in replaces it
+// (the test seam injects fakes this way).
 func validateLimits(in []Limit) ([]Limit, error) {
 	seen := map[string]bool{}
 	for _, l := range in {
@@ -263,7 +268,13 @@ func validateLimits(in []Limit) ([]Limit, error) {
 		}
 		seen[name] = true
 	}
-	return append([]Limit(nil), in...), nil
+	out := make([]Limit, 0, len(in)+1)
+	for _, b := range builtinLimits() {
+		if !seen[b.Name()] {
+			out = append(out, b)
+		}
+	}
+	return append(out, in...), nil
 }
 
 // watchExposure closes the read lane of a connection the user stops exposing to MCP.
