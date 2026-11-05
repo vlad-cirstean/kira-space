@@ -2,6 +2,7 @@
 import { FILE_KINDS } from '@shared/domain/connection';
 import type { ConnectionFileMask, ConnectionFileModel } from '@shared/domain/connectionConfig';
 import type { MaskKind } from '@shared/domain/mask';
+import type { MaskReviewColumn } from '@shared/domain/maskReview';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -16,6 +17,7 @@ import { computed, ref } from 'vue';
 import { useConnectionsStore } from '../../state/connections';
 import { regenerateMaskKey } from '../../state/maskRules';
 import CheckboxRow from './CheckboxRow.vue';
+import ConnectionMaskReview from './ConnectionMaskReview.vue';
 
 // The file's masking rules. They are part of the draft and save with the file; the correlation key
 // is separate and regenerates at once.
@@ -65,6 +67,11 @@ function keepHintLabel(kind: string): string | undefined {
 const newTable = ref('');
 const newColumn = ref('');
 const newKind = ref<MaskKind>('redact');
+
+function prefillRule(col: MaskReviewColumn): void {
+  newTable.value = col.table;
+  newColumn.value = col.column;
+}
 
 function setRules(next: ConnectionFileMask[]): void {
   file.value.masks = next;
@@ -218,6 +225,8 @@ async function onRegenerateKey(): Promise<void> {
       }}</Button>
     </div>
     <FieldDescription class="w-full">{{ t(MASK_KIND_EXPLANATION[newKind]) }}</FieldDescription>
+
+    <ConnectionMaskReview v-model="file" :connection-id="connectionId" @mask="prefillRule" />
 
     <FieldDescription v-if="!connectionId" class="w-full">{{
       t('studio.project.connectionDialog.privacy.saveFirst.hint')

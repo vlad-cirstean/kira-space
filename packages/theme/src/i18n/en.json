@@ -15374,7 +15374,7 @@
             "body": "When a limit refuses a statement, the agent may ask to lift it for that one statement. A dialog always appears, even when the mode is allow. Approve all does not cover it; you approve each one by itself. Deny keeps the limit."
           },
           "enforceMasking": {
-            "body": "Kira masks a result column when its lowercased name matches a rule. The rule’s table is ignored. Kira scans the statement for a masked column behind an alias or expression and refuses that result. The scan is best effort. A view that renames a column can slip through. A where clause on a masked column can reveal values by which rows come back."
+            "body": "Kira masks a result column when its lowercased name matches a rule. The rule’s table is ignored. Kira scans the statement for a masked column behind an alias or expression and refuses that result. The scan is best effort. A view that renames a column can slip through. A where clause on a masked column can reveal values by which rows come back. New columns are withheld until you review them when column review is on."
           },
           "enforceModes": {
             "body": "Kira checks the mode before any query runs. Deny refuses the call. Allow runs it at once. Ask me shows you the statement and runs it only after you approve; no answer in 10 minutes refuses it."
@@ -15579,6 +15579,72 @@
           },
           "noRules": {
             "emptyHint": "No masking rules yet on this connection."
+          },
+          "reviewConfirmAll": {
+            "label": "Confirm all as reviewed"
+          },
+          "reviewEmpty": {
+            "empty": "No columns to show"
+          },
+          "reviewEnforceHit": {
+            "body": "A new column that no rule masks and nobody reviewed is dropped from results. A query that renames, transforms or filters on it is refused. The agent is told which column, never its values."
+          },
+          "reviewEnforceLimits": {
+            "body": "Matching is by column name, like masking. A reviewed column that shares a name with a new one is withheld too. A column added in the last 30 seconds can slip through. A renamed column counts as new. Scripts are not checked. No exemption applies."
+          },
+          "reviewEnforceWho": {
+            "body": "Kira’s MCP server enforces this. It checks the columns on connect, on refresh and at most every 30 seconds while the agent queries."
+          },
+          "reviewFilterAll": {
+            "option": "All columns"
+          },
+          "reviewMask": {
+            "label": "Mask"
+          },
+          "reviewMasked": {
+            "status": "Masked"
+          },
+          "reviewNa": {
+            "body": "Column review does not apply to this connection kind."
+          },
+          "reviewOffConfirm": {
+            "body": "New columns then reach the agent unmasked.",
+            "label": "Turn off",
+            "title": "Turn off column review?"
+          },
+          "reviewOffline": {
+            "body": "Connect to list columns. Saved entries are kept."
+          },
+          "reviewOn": {
+            "description": "Turning this on records every current column as reviewed.",
+            "label": "Withhold new columns until reviewed"
+          },
+          "reviewPending": {
+            "status": "Needs review"
+          },
+          "reviewRefresh": {
+            "tooltip": "Refresh columns"
+          },
+          "reviewReviewed": {
+            "status": "Marked reviewed"
+          },
+          "reviewSearch": {
+            "placeholder": "Filter columns"
+          },
+          "reviewStatusDone": {
+            "status": "All columns reviewed"
+          },
+          "reviewStatusOff": {
+            "status": "Column review is off, so new columns reach the agent"
+          },
+          "reviewStatusPending": {
+            "status": "{count} columns need review"
+          },
+          "reviewTitle": {
+            "label": "Column review"
+          },
+          "reviewTruncated": {
+            "body": "Showing the first {max} columns."
           },
           "saveFirst": {
             "hint": "Save this connection first to manage masking rules."
@@ -16037,6 +16103,12 @@
       },
       "uriRevealFailed": {
         "error": "Couldn’t reveal the saved URI."
+      }
+    },
+    "prompt": {
+      "maskingReview": {
+        "body": "{count} new columns are withheld from the AI agent until you review masking.",
+        "label": "Review masking"
       }
     },
     "proof": {

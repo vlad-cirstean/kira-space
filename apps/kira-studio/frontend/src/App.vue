@@ -33,6 +33,7 @@ import { studioApprovalKinds } from './approvals/kinds';
 import { control } from './bridge/control';
 import ConnectionFileDialog from './project/ConnectionFileDialog.vue';
 import DataGripImportDialog from './project/DataGripImportDialog.vue';
+import MaskingReviewPrompt from './project/MaskingReviewPrompt.vue';
 import NewConnectionDialog from './project/NewConnectionDialog.vue';
 import ProofReadyPrompt from './proof/ProofReadyPrompt.vue';
 import { closeTab, nextTab, prevTab, studioPaletteCommands } from './shortcuts/studioCommands';
@@ -74,6 +75,7 @@ const promptKinds = {
   update: markRaw(UpdatePrompt),
   quit: markRaw(QuitPrompt),
   proof: markRaw(ProofReadyPrompt),
+  masking: markRaw(MaskingReviewPrompt),
 };
 const paletteStore = usePaletteStore();
 providePaletteCommands(studioPaletteCommands());

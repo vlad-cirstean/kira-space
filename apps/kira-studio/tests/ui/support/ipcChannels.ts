@@ -58,6 +58,8 @@ export const IPC = {
   maskRulesDelete: 'kira:maskRules:delete',
   maskRulesRegenerateKey: 'kira:maskRules:regenerateKey',
   maskRulesCounts: 'kira:maskRules:counts',
+  maskReviewColumns: 'kira:maskRules:reviewColumns',
+  maskReviewPending: 'kira:maskRules:reviewPending',
   maskRulesCorrelationKey: 'kira:maskRules:correlationKey',
   treeChildren: 'kira:tree:children',
   treeKeyTypes: 'kira:tree:keyTypes',

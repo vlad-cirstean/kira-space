@@ -169,6 +169,8 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   dbMcpInstallAgent: 'DbMcpService.InstallAgent',
   dbMcpPendingResponse: 'DbMcpService.PendingResponse',
   dbMcpTables: 'DbMcpService.Tables',
+  maskReviewColumns: 'MaskRulesService.ReviewColumns',
+  maskReviewPending: 'MaskRulesService.ReviewPending',
 
   updateStatus: 'UpdateService.Status',
   updateCheck: 'UpdateService.Check',
@@ -431,6 +433,8 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   // connection this chapter's own fixtures predate, not a fixture miss.
   [IPC.maskRulesList]: '[]',
   [IPC.maskRulesCounts]: '{}',
+  [IPC.maskReviewColumns]: '{"applicable":false,"columns":[],"truncated":false,"checkedAt":0}',
+  [IPC.maskReviewPending]: '{"count":0}',
   [IPC.maskRulesCorrelationKey]: '""',
   // Every SQL console/data-tab fetches its container's cached columns on
   // mount/activation (state/schemaColumns.ts's ensureSchemaColumns) — a spec with no

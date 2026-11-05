@@ -110,6 +110,16 @@ watch(
     section.value = 'general';
   },
 );
+// Declared after the file watch: a requested section wins over the reset.
+watch(
+  () => dialogStore.section,
+  (s) => {
+    if (!s) return;
+    section.value = s;
+    dialogStore.section = null;
+  },
+  { immediate: true },
+);
 
 const SECTIONS: ConnectionSection[] = [
   'general',
