@@ -451,7 +451,7 @@ func Build(opts Options) *Wired {
 	}
 	bridge.KeepAwakeRecompute(w.KeepAwake)
 
-	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"workflows": adeflow.Dir(config.KiraSpaceHome()), agentctx.Folder: filepath.Join(deps.Home, "agent"), "runs": filepath.Join(deps.Home, "runs"), repocfg.Folder: w.RepoConfig.Dir()})}
+	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"workflows": adeflow.Dir(config.KiraSpaceHome()), "steps": adeflow.StepsDir(config.KiraSpaceHome()), agentctx.Folder: filepath.Join(deps.Home, "agent"), "runs": filepath.Join(deps.Home, "runs"), repocfg.Folder: w.RepoConfig.Dir()})}
 
 	// OpenNewWindow is assigned by BindShell once the shell exists.
 	w.WindowsSvc = &bridge.WindowsService{Service: &windowsvc.Service{Windows: deps.Repos.Windows}}
