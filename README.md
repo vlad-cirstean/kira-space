@@ -195,7 +195,9 @@ databases under rules you set. It is off by default and enabled from Settings �
 - **Deny by default** — a connection stays invisible to the AI client until you expose it.
 - **Per-connection permissions** — read, write and DDL are each *allow*, *deny* or *prompt*
   (defaults: read allow, write prompt, DDL deny). *Prompt* waits for you to approve the exact
-  statement. A statement that can't be classified gets the strictest mode.
+  statement. The AI client declares a mode on every `run_query`; a `read` call runs on a separate
+  read-only database connection, so the database itself refuses writes on PostgreSQL, MySQL,
+  MariaDB, SQLite and ClickHouse. MongoDB and Redis reads are checked by Kira.
 - Queries estimated above the expensive-query threshold pause for approval when auto-explain is on.
 - PII masking rules apply to results before the AI client sees them.
 

@@ -23,7 +23,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 | P524 | Manual order for API collections and environments | Done |
 | P525 | Uniform flat design: dialogs and outline buttons | Done |
 | P526 | Standalone step library and Workflows page tabs | Done |
-| P527 | DB MCP declared query mode enforced by the database | Pending |
+| P527 | DB MCP declared query mode enforced by the database | Done |
 
 ## Rows
 
@@ -138,3 +138,4 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 - Ask (user): "The db mcp tool should use dedicated read and write methods that actually enforce the permissions on db level or by using 2 connections one for read and one for write depending on the db."
 - Scope (user decisions): one tool, `run_query`, gains a required `mode` (read, write, ddl). Read runs on a per-connection read lane (second connection, same credentials, engine session-level read-only); write and ddl run on the main connection under that mode's own permission. The classifier only refuses a statement more powerful than its mode. `list_connections` reports allowed modes and approval per mode. No second credentials; Mongo and Redis reads stay app-checked (known limit). Runs after P523.
 - Plan: `plans/P527.md`.
+- Result: Done in 8 code commits plus docs, no migration. `run_query` takes required `mode` (read|write|ddl). Read runs on a Router-owned read lane (second adapter, same credentials, `adapters.LaneConfig`): postgres, mysql, mariadb, sqlite, clickhouse (session-enforced), mongodb, redis (app-checked). Write and ddl run on the main connection under the declared mode's own permission. Classifier only refuses (tighten-only). Lane fails closed, closes on connect, disconnect, exposure off, quit and 10 idle minutes, and cancels through `OpSpec.Adapter`. `list_connections` reports `access` and `enforcement`. Studio: Agent access line and four known-limit notes in the connection MCP tab, declared mode, detected chip and enforcement in the query approval. Flow tests `TestDbMcpMode*`, `TestDbMcpListConnectionsAccess`, `TestDbMcpReadLaneLifecycle`, `TestDbMcpCancelReadLaneOp`, `TestDbMcpReadLanePostgres`; UI specs `dbmcp-approval-mode`, `connection-mcp-access`.
