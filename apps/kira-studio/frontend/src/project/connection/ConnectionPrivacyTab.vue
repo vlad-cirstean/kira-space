@@ -179,7 +179,7 @@ async function onRegenerateKey(): Promise<void> {
         <TooltipIconButton
           icon="trash"
           :label="t('studio.project.connectionDialog.removeRule.tooltip')"
-          variant="danger"
+          tone="error"
           data-testid="mask-rule-remove"
           @click="onRemove(i)"
         />

@@ -159,7 +159,7 @@ function save(): void {
       </Button>
       <Button
         type="submit"
-        variant="toolbar-primary"
+        variant="dialog-primary"
         size="kira"
         :disabled="!valid"
         data-testid="kibana-filter-save"

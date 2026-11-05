@@ -266,7 +266,7 @@ onUnmounted(() => {
             </AlertDescription>
             <AlertAction>
               <Button
-                variant="toolbar-primary"
+                variant="dialog-primary"
                 size="kira"
                 data-testid="keyvalue-object-edit-save"
                 :pending="actions.objectSaving.value"

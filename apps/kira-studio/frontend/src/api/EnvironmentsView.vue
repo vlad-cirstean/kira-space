@@ -150,7 +150,7 @@ async function onSetActive(id: string): Promise<void> {
       <RunState :state="runState" />
       <div class="flex items-center gap-1.5 shrink-0">
         <Button
-          variant="toolbar-primary"
+          variant="dialog-primary"
           size="kira"
           data-testid="new-environment"
           @click="onNewEnvironment"

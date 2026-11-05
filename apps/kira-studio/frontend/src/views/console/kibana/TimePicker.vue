@@ -123,7 +123,7 @@ const isActive = (preset: KibanaTimePreset): boolean =>
             />
           </div>
           <Button
-            variant="toolbar-primary"
+            variant="dialog-primary"
             size="kira"
             class="self-end"
             :disabled="!absoluteValid"

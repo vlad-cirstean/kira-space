@@ -1955,7 +1955,7 @@ onBeforeUnmount(() => {
             <span>{{
               t('git.common.forceDelete.body', { name: forceDeleteRefCandidate?.name ?? '' })
             }}</span>
-            <Button variant="danger" size="kira" @click="confirmForceDeleteRef">{{
+            <Button variant="dialog-danger" size="kira" @click="confirmForceDeleteRef">{{
               t('git.common.forceDelete.confirm')
             }}</Button>
             <Button

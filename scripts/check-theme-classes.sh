@@ -459,8 +459,8 @@ check_class_all 'strip-err-text' 'the err variant'"'"'s own built-in AlertDescri
 # apply its exported nativeSelectVariants() as a class function instead. Not common prose.
 check_class_all 'p-select' 'NativeSelect (packages/theme/src/components/ui/native-select) or nativeSelectVariants() for an app-drawn trigger button'
 # P110 B26: the two hand-rolled button primitives, folded into Button's own existing
-# toolbar/toolbar-primary/dialog/dialog-primary variants (packages/theme/src/components/ui/button).
-check_class_all 'p-btn' 'Button variant="toolbar"/"toolbar-primary"'
+# toolbar/dialog/dialog-primary variants (packages/theme/src/components/ui/button).
+check_class_all 'p-btn' 'Button variant="toolbar"'
 check_class_all 'p-dlgbtn' 'Button variant="dialog"/"dialog-primary"'
 # P110 B27: the dialog body wrapper and footer-actions row, both folded into plain utilities
 # (flex flex-col gap-2 p-3 / flex flex-col gap-0.5 p-1 for .list; flex items-center gap-1.5 /

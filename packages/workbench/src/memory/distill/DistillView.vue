@@ -173,7 +173,7 @@ async function run(): Promise<void> {
       <div class="flex items-center gap-2">
         <Button
           v-if="!inFlight"
-          variant="toolbar-primary"
+          variant="dialog-primary"
           size="kira"
           :disabled="!canRun"
           data-testid="distill-run"

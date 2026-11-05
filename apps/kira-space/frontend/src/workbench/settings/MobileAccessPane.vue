@@ -350,7 +350,7 @@ const activeDevices = computed(() =>
             <TooltipIconButton
               icon="trash"
               :label="t('space.settings.mobileAccess.devices.revoke.label')"
-              variant="danger"
+              tone="error"
               :data-testid="`mobile-device-revoke-${device.id}`"
               @click="onRevoke(device.id, device.label)"
             />
