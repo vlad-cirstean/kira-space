@@ -54,6 +54,7 @@ export function studioApprovalKinds(): ApprovalKinds {
       header: markRaw(ConnectionHeader),
       body: markRaw(DbResponseBody),
       operation: dbOperation,
+      individualOnly: true,
       labels: () => ({
         approve: t('studio.dbMcp.preview.send.label'),
         deny: t('studio.dbMcp.preview.withhold.label'),

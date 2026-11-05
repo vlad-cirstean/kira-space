@@ -129,6 +129,9 @@ export const dbQueryPayloadSchema = /*#__PURE__*/ z.object({
   detected: z.string(),
   enforcement: z.string(),
   plan: dbMcpApprovalPlanSchema.nullable(),
+  // The item offers "review the result"; reviewResult says the connection's settings already do.
+  reviewOffered: z.boolean().default(false),
+  reviewResult: z.boolean().default(false),
 });
 export type DbQueryPayload = z.infer<typeof dbQueryPayloadSchema>;
 
@@ -149,6 +152,8 @@ export const dbExemptionPayloadSchema = /*#__PURE__*/ z.object({
   reason: z.string(),
   limits: z.array(dbMcpLimitHitSchema).min(1),
   plan: dbMcpApprovalPlanSchema.nullable(),
+  reviewOffered: z.boolean().default(false),
+  reviewResult: z.boolean().default(false),
 });
 export type DbExemptionPayload = z.infer<typeof dbExemptionPayloadSchema>;
 
@@ -158,6 +163,9 @@ export const dbResponsePayloadSchema = /*#__PURE__*/ z.object({
   isError: z.boolean(),
   bytes: z.number(),
   alreadyRan: z.boolean(),
+  // The declared mode; requested says the approver asked for this review rather than a setting.
+  mode: dbMcpModeSchema.optional(),
+  requested: z.boolean().default(false),
 });
 export type DbResponsePayload = z.infer<typeof dbResponsePayloadSchema>;
 

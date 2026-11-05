@@ -13673,6 +13673,12 @@
         "read": {
           "body": "{connection} ({kind}) wants to run a read statement through the database MCP server."
         },
+        "reviewResult": {
+          "label": "Review the result before the AI gets it"
+        },
+        "reviewResultOn": {
+          "body": "This connection reviews {mode} results."
+        },
         "script": {
           "folder": {
             "label": "Runs in {folder}"
@@ -13717,6 +13723,9 @@
         },
         "redisType": {
           "status": "Type {type}"
+        },
+        "requested": {
+          "body": "{connection} ({kind}) ran this statement. You asked to check its result before the AI gets it."
         },
         "send": {
           "label": "Send to AI"
@@ -15420,6 +15429,21 @@
           "reviewAlways": {
             "option": "Always"
           },
+          "reviewEnforceDeny": {
+            "body": "Withhold, no answer in 10 minutes, or the agent cancelling returns an error with no rows. The agent never sees a withheld result."
+          },
+          "reviewEnforceLimits": {
+            "body": "Withhold does not undo a write. The agent still learns that the query ran. A statement is reviewed when its mode, or the mode it looks like, holds results. Only run_query results are reviewed."
+          },
+          "reviewEnforceMemory": {
+            "body": "A held result lives only in memory. It is never logged, saved or shown in a notification. A result over 8 MB is withheld unseen."
+          },
+          "reviewEnforceScope": {
+            "body": "The statement timeout and the throttle cover the query, not your review. An approval prompt can also ask to review that one call."
+          },
+          "reviewEnforceWho": {
+            "body": "Kira enforces review in the app. The query runs, then Kira holds its result until you send or withhold it. The agent gets nothing until then."
+          },
           "reviewInheritOff": {
             "option": "App setting (off)"
           },
@@ -16392,7 +16416,7 @@
           "hint": "This server restarted since it was last enabled; its registration command needs a fresh token to show again."
         },
         "preview": {
-          "description": "Holds each query result until you send it on. Masking is already applied to what you see. A write has already run by the time its result shows; withholding hides the result, it does not undo the change. A connection’s MCP tab can override this.",
+          "description": "Holds each query result until you send it on. Masking is already applied to what you see. A write has already run by the time its result shows; withholding hides the result, it does not undo the change. A connection’s MCP tab can override this per mode.",
           "label": "Review results before the AI gets them"
         },
         "regenerate": {

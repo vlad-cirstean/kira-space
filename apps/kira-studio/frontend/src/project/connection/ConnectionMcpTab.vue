@@ -33,6 +33,7 @@ import { computed, ref } from 'vue';
 import { control } from '../../bridge/control';
 import { useSettingsStore } from '../../state/settings';
 import CheckboxRow from './CheckboxRow.vue';
+import ConnectionMcpReview from './ConnectionMcpReview.vue';
 
 // What an AI client may do through the database MCP server. A key left out takes its default.
 const props = defineProps<{
@@ -186,27 +187,6 @@ function modeOptions(cls: (typeof CLASSES)[number]['cls']) {
     disabled: !enabled.value || (cls !== 'read' && !writeConsole.value),
   }));
 }
-
-// Inherit's label shows the current app setting.
-const reviewOptions = computed(() => {
-  const items = [
-    {
-      value: 'inherit',
-      label: t(
-        settingsStore.dbMcp.previewResponses
-          ? 'studio.project.connectionDialog.mcp.reviewInheritOn.option'
-          : 'studio.project.connectionDialog.mcp.reviewInheritOff.option',
-      ),
-    },
-    { value: 'review', label: t('studio.project.connectionDialog.mcp.reviewAlways.option') },
-    { value: 'send', label: t('studio.project.connectionDialog.mcp.reviewNever.option') },
-  ];
-  return items.map((i) => ({
-    ...i,
-    testid: `connection-mcp-review-${i.value}`,
-    disabled: !enabled.value,
-  }));
-});
 
 const throttleLead = computed(() => {
   const perSec = file.value.throttle_per_sec ?? 0;
@@ -560,24 +540,11 @@ const timeoutThrottled = computed(
       </template>
     </Field>
 
-    <Field class="flex-1">
-      <FieldLabel
-        >{{ t('studio.project.connectionDialog.mcp.review.label') }}
-        <span class="text-subtle"
-          >— {{ t('studio.project.connectionDialog.mcp.reviewNote.label') }}</span
-        ></FieldLabel
-      >
-      <SecondaryTabs
-        variant="segmented"
-        size="kira-lg"
-        :model-value="mcp.review_results ?? 'inherit'"
-        :items="reviewOptions"
-        data-testid="connection-mcp-review"
-        @update:model-value="(v) => setMcp({ review_results: String(v) })"
-      />
-      <FieldDescription class="w-full">{{
-        t('studio.project.connectionDialog.mcp.review.description')
-      }}</FieldDescription>
-    </Field>
+    <ConnectionMcpReview
+      :mcp="mcp"
+      :enabled="enabled"
+      :write-console="writeConsole"
+      @change="setMcp"
+    />
   </div>
 </template>

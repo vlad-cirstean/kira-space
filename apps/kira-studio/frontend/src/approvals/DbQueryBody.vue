@@ -6,8 +6,10 @@ import { type MessageKey, t } from '@theme/i18n';
 import { computed } from 'vue';
 import ApprovalPlanEvidence from './ApprovalPlanEvidence.vue';
 import ApprovalStatement from './ApprovalStatement.vue';
+import ReviewResultOption from './ReviewResultOption.vue';
 
 const props = defineProps<{ item: ApprovalItem }>();
+defineEmits<{ options: [value: { reviewResult: boolean }] }>();
 
 const payload = computed(() => dbQueryPayloadSchema.parse(props.item.payload));
 
@@ -61,5 +63,11 @@ const lede = computed(() => {
       {{ t('studio.dbMcp.approval.detected.label', { class: payload.detected }) }}
     </FieldDescription>
     <ApprovalPlanEvidence v-if="payload.plan" :plan="payload.plan" />
+    <ReviewResultOption
+      v-if="payload.reviewOffered"
+      :mode="payload.mode"
+      :reviewed="payload.reviewResult"
+      @options="(v) => $emit('options', v)"
+    />
   </div>
 </template>
