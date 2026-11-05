@@ -162,6 +162,7 @@ export const IPC = {
   dbMcpRegenerate: 'kira:dbmcp:regenerate',
   dbMcpInstallAgent: 'kira:dbmcp:installAgent',
   dbMcpPendingResponse: 'kira:dbmcp:approval:response',
+  dbMcpTables: 'kira:dbmcp:tables',
 
   updateStatus: 'kira:update:status',
   updateCheck: 'kira:update:check',

@@ -265,3 +265,21 @@ export const dbMcpRunQueryResultSchema = /*#__PURE__*/ z.discriminatedUnion('kin
   z.object({ ...runQueryEnvelope, kind: z.literal('empty') }),
 ]);
 export type DbMcpRunQueryResult = z.infer<typeof dbMcpRunQueryResultSchema>;
+
+// P532: kinds the per-connection table allow list applies to (internal/tableref Levels > 0).
+export const TABLE_LIST_KINDS: ReadonlySet<string> = /*#__PURE__*/ new Set([
+  'postgres',
+  'mysql',
+  'mariadb',
+  'clickhouse',
+  'mongodb',
+  'sqlite',
+  'kibana',
+]);
+
+// bridge/dbmcp_tables.go's DbMcpService.Tables: the live relations the MCP tab can list.
+export const dbMcpTablesListingSchema = /*#__PURE__*/ z.object({
+  tables: /*#__PURE__*/ z.array(/*#__PURE__*/ z.object({ ref: z.string(), kind: z.string() })),
+  truncated: z.boolean(),
+});
+export type DbMcpTablesListing = z.infer<typeof dbMcpTablesListingSchema>;

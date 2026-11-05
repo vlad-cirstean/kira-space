@@ -15424,6 +15424,55 @@
           "strictest": {
             "description": "A statement this app can’t classify is treated as whichever of the three is strictest. These settings govern the MCP server only. The read-only flag on the {tab} tab governs this app’s own console."
           },
+          "tables": {
+            "label": "Allowed tables"
+          },
+          "tablesAll": {
+            "description": "Includes tables created later. Untick to choose.",
+            "label": "All tables"
+          },
+          "tablesCount": {
+            "label": "{selected} of {total} allowed"
+          },
+          "tablesEmpty": {
+            "label": "No tables found"
+          },
+          "tablesEnforceExempt": {
+            "body": "No exemption applies."
+          },
+          "tablesEnforceFail": {
+            "body": "A statement Kira can’t parse is refused."
+          },
+          "tablesEnforceParse": {
+            "body": "Kira parses every MCP statement before it runs and refuses any that touches an unlisted table, in every mode."
+          },
+          "tablesEnforceScope": {
+            "body": "A view is checked by its own name only. Scripts and operations are not checked."
+          },
+          "tablesLoading": {
+            "label": "Loading tables…"
+          },
+          "tablesNa": {
+            "body": "This connection type has no tables, so there is nothing to limit."
+          },
+          "tablesNote": {
+            "label": "Which tables the AI client may touch"
+          },
+          "tablesOffline": {
+            "body": "Connect to this connection to list its tables."
+          },
+          "tablesSelectAll": {
+            "label": "Select all shown"
+          },
+          "tablesStale": {
+            "label": "No longer exists"
+          },
+          "tablesTruncated": {
+            "body": "Only the first {max} tables are shown."
+          },
+          "tablesUnsaved": {
+            "body": "Save the connection, then connect, to choose tables."
+          },
           "throttle": {
             "body": "MCP calls share this connection’s throttle of {rate} ops per second with your own ops ({tab} tab)."
           },

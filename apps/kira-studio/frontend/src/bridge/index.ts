@@ -42,7 +42,12 @@ import type {
   ConnectionSecretKind,
 } from '@shared/domain/connectionConfig';
 import type { DataGripPreview, DataGripReport } from '@shared/domain/datagrip';
-import type { DbMcpInstallResult, DbMcpPendingResponse, DbMcpStatus } from '@shared/domain/dbmcp';
+import type {
+  DbMcpInstallResult,
+  DbMcpPendingResponse,
+  DbMcpStatus,
+  DbMcpTablesListing,
+} from '@shared/domain/dbmcp';
 import type { ObjectDefinition } from '@shared/domain/definition';
 import {
   type KibanaDataView,
@@ -407,6 +412,8 @@ const studioControl = {
     unwrap(DbMcpService.Regenerate()).then((r) => trust<DbMcpStatus>(r)),
   dbMcpInstallAgent: (): Promise<DbMcpInstallResult> =>
     unwrap(DbMcpService.InstallAgent()).then((r) => trust<DbMcpInstallResult>(r)),
+  dbMcpTables: (id: string): Promise<DbMcpTablesListing> =>
+    unwrap(DbMcpService.Tables({ id })).then((r) => trust<DbMcpTablesListing>(r)),
   dbMcpPendingResponse: (requestId: string): Promise<DbMcpPendingResponse> =>
     unwrap(DbMcpService.PendingResponse({ requestId })).then((r) => trust<DbMcpPendingResponse>(r)),
 

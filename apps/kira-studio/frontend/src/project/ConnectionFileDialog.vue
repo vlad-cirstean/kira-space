@@ -318,6 +318,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
               <ConnectionMcpTab
                 v-show="section === 'mcp'"
                 v-model="draft.model.value!"
+                :connection-id="detail.id"
                 :error-for="draft.errorFor"
               />
               <ConnectionPrivacyTab

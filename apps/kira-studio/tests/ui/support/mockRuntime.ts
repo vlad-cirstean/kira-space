@@ -168,6 +168,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   dbMcpRegenerate: 'DbMcpService.Regenerate',
   dbMcpInstallAgent: 'DbMcpService.InstallAgent',
   dbMcpPendingResponse: 'DbMcpService.PendingResponse',
+  dbMcpTables: 'DbMcpService.Tables',
 
   updateStatus: 'UpdateService.Status',
   updateCheck: 'UpdateService.Check',
