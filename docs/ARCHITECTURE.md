@@ -870,6 +870,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - `useAutomationOps` merges them into each app's panel list. Cancel maps to Stop (running) or Decline (waiting); the menu adds Copy for agent, Open run, Resume and Run again. A waiting run shows its state in the command cell, not the status cell, so Cancel stays reachable.
 - `opLogMatches` is the one filter predicate for op rows and script run rows. Clear sets `clearedAt`; script runs started before it stay hidden in that window.
 - `AutomationsModuleContext.showOperations` opens the Operations dock; the Runs panel's empty state links to it.
+- The status bar running-ops widget (`RunningOpsStatusItem.vue`, `workbench.statusBar.ops`) lists every running panel row with a Stop per row: op-log records with status running (not `visibleOps`, so panel filters never hide running work) plus live script runs. Space skips `background` rows and disables Stop when `cancellable` is false. It coexists with `RunsStatusItem`, so a running script run counts in both.
 - No Kira-Studio import (MonacoHost, a connections store, kira-studio) may reach the shared package; this was verified by a closing-audit grep in P132 Part 1 §7.
 
 - WorkbenchShell.vue (shared) always mounts #dock; hasDock is removed, opsVisible/opsHeight are required props, and the status bar is always mt-1.
@@ -3109,7 +3110,7 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 
 ### The six tools
 
-- The database MCP server exposes six tools: list_connections, list_children, describe_table, describe_schema, run_query and explain_query, all registered via mcp.AddTool in buildMCPServer in server.go.
+- The database MCP server exposes six core tools, plus optional sets (proof_*, kube_*, operations): list_connections, list_children, describe_table, describe_schema, run_query and explain_query, all registered via mcp.AddTool in buildMCPServer in server.go.
 - The MCP server's metadata tools route through the existing internal/adapters layer, and run_query uses the same adapter query path as the console (adapterhost.Router.Execute); no second metadata or query path exists.
 - adapterhost.Router.Execute is exported so that run_query can use the console's adapter query path.
 - run_query passes its maxRows as the console cap, so the adapter stops reading at that row count; rowCount is the number of rows fetched and is only a lower bound on the total when truncated is true.
@@ -3125,6 +3126,16 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 - Prompt mode uses the shared ApprovalBroker (`KindDbMcp`) with `ApprovalRequest.Cluster`. The dialog shows a kubectl-equivalent statement. It is display and op command only, never run. The cluster is re-resolved after approval.
 - Calls log as op kind `kubernetes` (connectionless), source MCP, through the same `kubernetes.Service` seam as the UI (P484).
 - Settings: cluster list menu "MCP access" and Settings, Database MCP pane list.
+
+### Operation tools (P518)
+
+- `list_operations` and `cancel_operation` register when `Config.Ops` is set (`*adapterhost.Router`). `Config.Runs` adds script runs; nil lists and stops none.
+- Listed ops are `Host.RunningOps()`: started ops only (op:start emitted). Throttled-but-queued ops and `Host.Cancellable` stream work have no panel row and are not listed.
+- `Host.CancelRunning` cancels a listed op and keeps no early-cancel entry on a miss, unlike `CancelOp`. A guessed or stale id cannot poison a later op.
+- An op on a connection not exposed to MCP is neither listed nor cancellable. Unknown, finished and hidden ids get one identical error. Connectionless ops list by kind and time only, never command text.
+- Script runs use the panel's `run:<id>` ids. `scriptruns.Repo.Live` lists running and waiting runs; cancel maps to `Service.Stop`.
+- No approval prompt: a cancel never changes data, and a cancelled write rolls back like a user Stop.
+- Kira Space's agent MCP has no cancel tool.
 
 ### Permissions and statement classification (M2)
 
