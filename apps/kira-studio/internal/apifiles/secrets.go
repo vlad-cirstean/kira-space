@@ -51,6 +51,11 @@ func (s *Secrets) Reveal(name string) (string, error) {
 	return s.Snapshot().Secret(context.Background(), "", name)
 }
 
+// Open decrypts every Api secret once: the values, and the per-name errors of those that cannot be read.
+func (s *Secrets) Open() (vals map[string]string, unreadable map[string]error, err error) {
+	return s.Store.Open(secrets.ScopeVariable, SecretOwner)
+}
+
 // Snapshot resolves ${secret:name} for one send: the first reference decrypts every Api secret once and
 // later references read that copy.
 func (s *Secrets) Snapshot() configfs.SecretSource {

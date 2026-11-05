@@ -21,6 +21,8 @@ type EnvironmentFile struct {
 	Description string     `json:"description,omitempty"`
 	Color       string     `json:"color,omitempty"`
 	Variables   []Variable `json:"variables,omitempty"`
+	// AgentAutoApproveReads skips the approval for body-less GET, HEAD and OPTIONS agent requests.
+	AgentAutoApproveReads bool `json:"agentAutoApproveReads,omitempty"`
 }
 
 // Variable holds a plain Value, or a Secret reference (`${secret:name}`), never both.
@@ -29,6 +31,9 @@ type Variable struct {
 	Value       string `json:"value,omitempty"`
 	Secret      string `json:"secret,omitempty"`
 	Description string `json:"description,omitempty"`
+	// Agent makes the variable usable by agents; AgentHosts bounds where a secret may be sent.
+	Agent      bool     `json:"agent,omitempty"`
+	AgentHosts []string `json:"agentHosts,omitempty"`
 }
 
 // Item is a folder (Items), an HTTP request or a gRPC request.

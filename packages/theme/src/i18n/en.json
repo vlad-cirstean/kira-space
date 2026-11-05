@@ -2427,6 +2427,15 @@
         }
       },
       "apiFiles": {
+        "agentHostInvalid": {
+          "body": "The allowed host {host} of {name} isn’t valid. Use a host name, optionally with a port or a wildcard subdomain."
+        },
+        "agentHostsMisplaced": {
+          "body": "The variable {name} lists allowed hosts, but only a secret available to agents can. Remove them or fix the variable."
+        },
+        "agentHostsRequired": {
+          "body": "The secret {name} is available to agents but lists no allowed host. Add at least one allowed host."
+        },
         "changed": {
           "body": "The file changed while Kira saved. Retry."
         },
