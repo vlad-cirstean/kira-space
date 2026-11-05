@@ -15337,6 +15337,24 @@
           "descriptionNote": {
             "label": "What this database is for, read verbatim by MCP clients"
           },
+          "enforceDdl": {
+            "body": "Kira reads the statement text to tell DDL from the rest. Text it can’t classify needs DDL, so set DDL to deny to block it."
+          },
+          "enforceExemption": {
+            "body": "When a limit refuses a statement, the agent may ask to lift it for that one statement. A dialog always appears, even when the mode is allow. Approve all does not cover it; you approve each one by itself. Deny keeps the limit."
+          },
+          "enforceMasking": {
+            "body": "Kira masks a result column when its lowercased name matches a rule. The rule’s table is ignored. Kira scans the statement for a masked column behind an alias or expression and refuses that result. The scan is best effort. A view that renames a column can slip through. A where clause on a masked column can reveal values by which rows come back."
+          },
+          "enforceModes": {
+            "body": "Kira checks the mode before any query runs. Deny refuses the call. Allow runs it at once. Ask me shows you the statement and runs it only after you approve; no answer in 10 minutes refuses it."
+          },
+          "enforceRows": {
+            "body": "Kira cuts each result to 200 rows unless the agent asks for more, up to 2000. A cut result is flagged truncated."
+          },
+          "enforceThrottle": {
+            "body": "Kira enforces the throttle in one gate per connection, for you and for the agent. An exemption does not lift it."
+          },
           "expose": {
             "description": "Nothing is exposed by default. The same switch lives in the database MCP section of settings; either one toggles the other.",
             "label": "Expose to the database MCP server"

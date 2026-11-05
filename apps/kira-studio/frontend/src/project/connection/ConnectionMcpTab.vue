@@ -47,21 +47,16 @@ const accessSummary = computed(() =>
 const writeOrDdlOpen = computed(
   () => (mcp.value.write ?? 'prompt') !== 'deny' || (mcp.value.ddl ?? 'deny') !== 'deny',
 );
-const notes = computed(() => {
-  const list: { name: string; key: MessageKey }[] = [];
-  if (enforcement.value === 'app')
-    list.push({ name: 'limitApp', key: 'studio.project.connectionDialog.mcp.limitApp.body' });
-  if (enforcement.value === 'session')
-    list.push({ name: 'readLane', key: 'studio.project.connectionDialog.mcp.readLane.body' });
-  if (!writeConsole.value)
-    list.push({
-      name: 'noWriteConsole',
-      key: 'studio.project.connectionDialog.mcp.noWriteConsole.body',
-    });
-  else if (writeOrDdlOpen.value)
-    list.push({ name: 'limitDdl', key: 'studio.project.connectionDialog.mcp.limitDdl.body' });
-  return list;
-});
+// The known-limit note under each class: reads name their lane, write names the DDL blind spot.
+function classNote(cls: 'read' | 'write' | 'ddl'): { name: string; key: MessageKey } | undefined {
+  if (cls === 'read' && enforcement.value === 'app')
+    return { name: 'limitApp', key: 'studio.project.connectionDialog.mcp.limitApp.body' };
+  if (cls === 'read' && enforcement.value === 'session')
+    return { name: 'readLane', key: 'studio.project.connectionDialog.mcp.readLane.body' };
+  if (cls === 'write' && writeConsole.value && writeOrDdlOpen.value)
+    return { name: 'limitDdl', key: 'studio.project.connectionDialog.mcp.limitDdl.body' };
+  return undefined;
+}
 
 const CLASSES = [
   {
@@ -185,7 +180,24 @@ const throttleLead = computed(() => {
         :data-testid="`connection-mcp-${c.cls}`"
         @update:model-value="(v) => setMcp({ [c.cls]: String(v) })"
       />
+      <FieldDescription
+        v-if="classNote(c.cls)"
+        class="w-full"
+        :data-testid="`connection-mcp-note-${classNote(c.cls)?.name}`"
+      >
+        {{ t(classNote(c.cls)?.key as MessageKey) }}
+      </FieldDescription>
+      <FieldDescription
+        v-if="c.cls === 'ddl' && writeConsole"
+        class="w-full"
+        data-testid="connection-mcp-enforce-ddl"
+      >
+        {{ t('studio.project.connectionDialog.mcp.enforceDdl.body') }}
+      </FieldDescription>
     </Field>
+    <FieldDescription class="w-full" data-testid="connection-mcp-enforce-modes">
+      {{ t('studio.project.connectionDialog.mcp.enforceModes.body') }}
+    </FieldDescription>
     <FieldDescription class="w-full" data-testid="connection-mcp-access">
       <strong>{{ t('studio.project.connectionDialog.mcp.access.label') }}</strong>
       <span data-testid="connection-mcp-access-summary"> {{ accessSummary }}.</span>
@@ -194,12 +206,11 @@ const throttleLead = computed(() => {
       >
     </FieldDescription>
     <FieldDescription
-      v-for="n in notes"
-      :key="n.name"
+      v-if="!writeConsole"
       class="w-full"
-      :data-testid="`connection-mcp-note-${n.name}`"
+      data-testid="connection-mcp-note-noWriteConsole"
     >
-      {{ t(n.key) }}
+      {{ t('studio.project.connectionDialog.mcp.noWriteConsole.body') }}
     </FieldDescription>
     <FieldDescription class="w-full">
       {{
@@ -211,7 +222,21 @@ const throttleLead = computed(() => {
     <FieldDescription v-if="enabled" class="w-full" data-testid="connection-mcp-throttle">
       {{ throttleLead }}
       {{ t('studio.project.connectionDialog.throttle.description') }}
+      <span data-testid="connection-mcp-enforce-throttle">{{
+        t('studio.project.connectionDialog.mcp.enforceThrottle.body')
+      }}</span>
     </FieldDescription>
+    <template v-if="enabled">
+      <FieldDescription class="w-full" data-testid="connection-mcp-enforce-exemption">
+        {{ t('studio.project.connectionDialog.mcp.enforceExemption.body') }}
+      </FieldDescription>
+      <FieldDescription class="w-full" data-testid="connection-mcp-enforce-rows">
+        {{ t('studio.project.connectionDialog.mcp.enforceRows.body') }}
+      </FieldDescription>
+      <FieldDescription class="w-full" data-testid="connection-mcp-enforce-masking">
+        {{ t('studio.project.connectionDialog.mcp.enforceMasking.body') }}
+      </FieldDescription>
+    </template>
 
     <Field class="flex-1">
       <FieldLabel

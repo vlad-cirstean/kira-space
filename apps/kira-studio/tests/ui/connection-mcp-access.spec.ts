@@ -5,7 +5,8 @@ import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 import { connectionRow } from './support/tree';
 
-// The Agent access line and known-limit notes in the connection MCP tab. Backend half: dbmcpflow
+// The Agent access line, known-limit notes and per-setting enforcement lines in the connection
+// MCP tab. Backend half: dbmcpflow
 // TestDbMcpListConnectionsAccess, whose dbmcp-list-access contract pins the summaries below.
 
 const FILE = 'local.yaml';
@@ -115,4 +116,55 @@ test('a kind without a write console disables write and DDL, never hides them', 
     await expect(page.locator(`[data-testid="connection-mcp-${cls}-allow"]`)).toBeDisabled();
   }
   await expect(page.locator('[data-testid="connection-mcp-read-allow"]')).toBeEnabled();
+});
+
+const line = (page: Awaited<ReturnType<typeof open>>, id: string) =>
+  page.locator(`[data-testid="connection-mcp-enforce-${id}"]`);
+
+test('modes, DDL, exemption, throttle, rows and masking lines render for a SQL engine', async ({
+  relaunch,
+}) => {
+  const page = await open(relaunch, {
+    kind: 'sqlite',
+    mcp: { read: 'allow', write: 'prompt', ddl: 'deny' },
+  });
+  await expect(line(page, 'modes')).toContainText('Kira checks the mode before any query runs');
+  await expect(line(page, 'modes')).toContainText('no answer in 10 minutes refuses it');
+  await expect(line(page, 'ddl')).toContainText('Text it can’t classify needs DDL');
+  await expect(line(page, 'exemption')).toContainText(
+    'A dialog always appears, even when the mode is allow',
+  );
+  await expect(line(page, 'exemption')).toContainText('Approve all does not cover it');
+  await expect(line(page, 'throttle')).toContainText('one gate per connection');
+  await expect(line(page, 'rows')).toContainText('200 rows');
+  await expect(line(page, 'rows')).toContainText('up to 2000');
+  await expect(line(page, 'masking')).toContainText('lowercased name');
+  await expect(line(page, 'masking')).toContainText('The rule’s table is ignored');
+  await expect(line(page, 'masking')).toContainText('can reveal values by which rows come back');
+});
+
+test('the DDL line hides for a kind without a write console, the rest stay', async ({
+  relaunch,
+}) => {
+  const page = await open(relaunch, { kind: 'kibana', mcp: { read: 'allow' } });
+  await expect(line(page, 'ddl')).toHaveCount(0);
+  await expect(line(page, 'modes')).toBeVisible();
+});
+
+test('the exemption, throttle, rows and masking lines hide while MCP is off', async ({
+  relaunch,
+}) => {
+  const page = await open(relaunch, { kind: 'sqlite', mcp: { enabled: false } });
+  for (const id of ['exemption', 'throttle', 'rows', 'masking']) {
+    await expect(line(page, id)).toHaveCount(0);
+  }
+  await expect(line(page, 'modes')).toBeVisible();
+});
+
+test('the Privacy tab repeats the masking limits', async ({ relaunch }) => {
+  const page = await open(relaunch, { kind: 'sqlite', mcp: {} });
+  await page.locator('[data-testid="connection-tab-privacy"]').click();
+  await expect(page.locator('[data-testid="connection-privacy-enforce-masking"]')).toContainText(
+    'best effort',
+  );
 });

@@ -135,6 +135,9 @@ async function onRegenerateKey(): Promise<void> {
     <FieldDescription class="w-full">
       {{ t('studio.project.connectionDialog.privacy.intro.description') }}
     </FieldDescription>
+    <FieldDescription class="w-full" data-testid="connection-privacy-enforce-masking">
+      {{ t('studio.project.connectionDialog.mcp.enforceMasking.body') }}
+    </FieldDescription>
 
     <div
       v-if="rules.length"
