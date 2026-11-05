@@ -60,11 +60,26 @@ The app parses every `run_query` and `explain_query` statement before it runs. A
 
 Limits: a view is checked by its own name, so listing a view grants what it shows. Scripts and operations are not checked. Kafka, S3, SQS and Redis have no tables, so the list does not apply. Triggers, rules and other code that runs inside the database can still reach unlisted tables; use database permissions for a hard guarantee.
 
+## Expensive queries
+
+Before an AI client's SELECT or WITH runs, the app asks the database for the query plan. The query itself does not run. The app compares the plan's estimated row count with your expensive-query threshold. At or above it, the call is refused before it runs. The estimate is the rows the plan reads, not the rows the query returns.
+
+Set the threshold in Settings, under Advanced. The default is 100,000, and the same number drives the warning in the console. Each connection's MCP tab turns the check on or off.
+
+The AI client can improve the query or ask for an exemption. You always approve an exemption in a dialog. It shows the estimate and the plan. If the plan cannot be read, the call is refused and no exemption is offered.
+
+Kira enforces this, not the database. PostgreSQL, MySQL, MariaDB and ClickHouse give a row estimate. SQLite, MongoDB, Redis, Kibana, Kafka, S3 and SQS give none, so queries there are not checked.
+
+Known limits:
+- Estimates come from table statistics, so stale statistics give wrong numbers.
+- The estimate ignores LIMIT: a small sample of a big table can be refused.
+- Only SELECT and WITH statements are checked. A plan with no table scan has no estimate and passes.
+- The plan request is one more operation and counts against the connection's throttle.
+- The statement timeout still applies to everything.
+
 ## Approvals
 
 A prompt waits for you to approve the exact statement. The dialog names the connection and the statement class.
-
-When auto-explain is on, a query estimated above your expensive-query threshold pauses for approval. The dialog shows the estimate and the threshold.
 
 When a limit rejects a statement, the AI client can ask you to lift that limit for that one statement. You always get a dialog, even for modes that need no approval. It shows the limit, the measured value, the limit value, the client's reason and the statement. Approving covers that one run; the limit stays for every other call. With several requests waiting, "Approve all" skips these. Approve each one on its own.
 

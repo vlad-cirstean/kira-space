@@ -12,7 +12,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 |---|---|---|
 | P528 | DB MCP limit exemptions: agent asks, user always approves | Done |
 | P529 | Statement timeout per connection, enforced by the engine | Done |
-| P530 | Expensive-query (EXPLAIN) threshold enforced for MCP, with explanation | Pending |
+| P530 | Expensive-query (EXPLAIN) threshold enforced for MCP, with explanation | Done |
 | P531 | Ops throttle covers every op from every session, with explanation | Done |
 | P532 | Table allow list per connection for DB MCP | Done |
 | P533 | Tool descriptions suggest inspecting schemas first | Done |
@@ -46,6 +46,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 - Add a plain explanation next to the setting: it is the estimated row count from the query plan, not the rows returned; above it the app warns on the user side and rejects on the MCP side. Explanation text lives in the i18n catalog and is shown in Settings and in the connection MCP tab.
 - Decide in plan: engines without a usable EXPLAIN row estimate (document, key-value, Kafka and similar) skip the check and say so in the MCP tab.
 - Plan: `plans/P530.md`.
+- Result: built-in `expensive_query` `PreLimit` (`dbmcp/expensive.go`). One EXPLAIN per call (`planForCall`, before limits, read class in any declared mode, `mcp.auto_explain` reused, no migration) feeds the limit, the dialog and the result's `plan`. Estimate at or above `advanced.expensiveQueryRows` refuses with the P528 exemption path; EXPLAIN failure refuses (fail closed). `ApprovalReasonHeavy` and the heavy prompt are gone. `list_connections.expensiveQuery {rowsThreshold, check}`. Settings > Advanced and the MCP tab explain the estimate, who enforces, what a hit does and known limits (stale statistics, LIMIT ignored, SELECT/WITH only, throttle). Flow tests (Postgres complete, SQLite, list_connections), contract `dbmcp-expensive-query` and `connection-mcp-expensive.spec.ts` pass.
 
 ### P531 Ops throttle covers every op from every session, with explanation
 
