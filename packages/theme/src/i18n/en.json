@@ -1600,6 +1600,9 @@
       "dbMcp": {
         "title": "Approve this query"
       },
+      "dbMcpAPI": {
+        "title": "Send {method} request to {host}"
+      },
       "dbMcpNamed": {
         "title": "Approve this query · {name}"
       },

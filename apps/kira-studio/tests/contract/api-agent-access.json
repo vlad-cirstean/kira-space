@@ -1,0 +1,72 @@
+{
+  "AgentAccess": [
+    {
+      "autoApproveReads": true,
+      "color": "none",
+      "description": "",
+      "id": "<masked>",
+      "name": "Staging",
+      "variables": [
+        {
+          "name": "base_url",
+          "secret": false
+        },
+        {
+          "hosts": [
+            "staging.example.com",
+            "*.example.org"
+          ],
+          "name": "token",
+          "secret": true
+        }
+      ]
+    }
+  ],
+  "args:ApiConfigService.Form": {
+    "edits": [
+      {
+        "path": [
+          "agentAutoApproveReads"
+        ],
+        "unset": false,
+        "value": true
+      },
+      {
+        "path": [
+          "variables"
+        ],
+        "unset": false,
+        "value": [
+          {
+            "agent": true,
+            "name": "base_url",
+            "value": "https://staging.example.com"
+          },
+          {
+            "agent": true,
+            "agentHosts": [
+              "staging.example.com",
+              "*.example.org"
+            ],
+            "name": "token",
+            "secret": "${secret:staging.token}"
+          }
+        ]
+      }
+    ],
+    "file": "staging.environment.yaml",
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "problem#hosts-on-plain": {
+    "col": 5,
+    "line": 5,
+    "message": "The variable base_url lists allowed hosts, but only a secret available to agents can. Remove them or fix the variable.",
+    "path": "/variables/0/agentHosts"
+  },
+  "problem#no-hosts": {
+    "col": 5,
+    "line": 7,
+    "message": "The secret token is available to agents but lists no allowed host. Add at least one allowed host.",
+    "path": "/variables/1/agent"
+  }
+}

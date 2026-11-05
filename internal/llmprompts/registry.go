@@ -1326,7 +1326,7 @@ var DbmcpInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.dbmcpInstructions.title",
 	PurposeKey: "llmPrompts.entry.dbmcpInstructions.description",
 	UsedByKey:  "llmPrompts.entry.dbmcpInstructions.usedBy.body",
-	Default:    "Read and query the databases configured in this Kira Studio app. Only connections the user exposed are visible; start with `list_connections`. Walk structure with `list_children`, passing back a `path` it returned. Levels differ per engine; do not assume a database or schema level exists. `run_query` and `explain_query` need the database's `path` on engines with several databases. `describe_schema` returns every relation's columns in one call, cheaper than one `describe_table` per table. `run_query` runs one statement through the app's SQL console path, under the connection's own permissions; results are capped and say so when truncated. Every query appears in the user's Operations panel. Each `list_connections` entry's `access` names the modes `run_query` may use and which need approval, and its `description`, when set, says what the connection is for — read both before calling `run_query`, and declare the least powerful `mode` that fits. Run `explain_query` before an expensive-looking query. `run_query` plans it anyway on connections whose owner turned auto-explain on. A connection with masked columns lists them in `list_connections`' own `maskedColumns` field, as \"table.column: kind\" — a masked cell's value is redacted (never the real value), and a trailing `#TAG` is an opaque correlation token, never a literal part of the value: equal values always share a tag, but the tag is short enough that two distinct values can rarely share one too, so treat a tag match as a strong hint toward equality, not proof of it. Kubernetes tools (`kube_*`) are read only; start with `kube_list_clusters` and read each cluster's `permissions` and `description` first. A prompt permission waits up to 10 minutes for the user. `list_operations` shows what is running; `cancel_operation` stops one, including your own long `run_query`. `run_script` runs a `list_scripts` script; read output with `get_script_logs`.",
+	Default:    "Read and query the databases configured in this Kira Studio app. Only connections the user exposed are visible; start with `list_connections`. Walk structure with `list_children`, passing back a `path` it returned. Levels differ per engine; do not assume a database or schema level exists. `run_query` and `explain_query` need the database's `path` on engines with several databases. `describe_schema` returns every relation's columns in one call, cheaper than one `describe_table` per table. `run_query` runs one statement through the app's SQL console path, under the connection's own permissions; results are capped and say so when truncated. Every query appears in the user's Operations panel. Each `list_connections` entry's `access` names the modes `run_query` may use and which need approval, and its `description`, when set, says what the connection is for — read both before calling `run_query`, and declare the least powerful `mode` that fits. Run `explain_query` before an expensive-looking query. `run_query` plans it anyway on connections whose owner turned auto-explain on. A connection with masked columns lists them in `list_connections`' own `maskedColumns` field, as \"table.column: kind\" — a masked cell's value is redacted (never the real value), and a trailing `#TAG` is an opaque correlation token, never a literal part of the value: equal values always share a tag, but the tag is short enough that two distinct values can rarely share one too, so treat a tag match as a strong hint toward equality, not proof of it. Kubernetes tools (`kube_*`) are read only; start with `kube_list_clusters` and read each cluster's `permissions` and `description` first. A prompt permission waits up to 10 minutes for the user. `list_operations` shows what is running; `cancel_operation` stops one, including your own long `run_query`. `run_script` runs a `list_scripts` script; read output with `get_script_logs`. `api_request` tools appear only when the user enabled them; they see variable names, never values, and a credential is refused for a host the user did not allow.",
 }, NoVars{})
 
 // DbmcpToolListConnections describes the list_connections tool.
@@ -1506,6 +1506,38 @@ var (
 	_ = arg(DbmcpToolGetScriptLogs.id, "from", studioApp, NextCall, `tail: last lines. head: first lines. Default tail.`, NoVars{})
 	_ = arg(DbmcpToolGetScriptLogs.id, "lines", studioApp, NextCall, `Lines to return, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 100, Max: 500})
 	_ = arg(DbmcpToolGetScriptLogs.id, "contains", studioApp, NextCall, `Keep lines containing this text (case-sensitive), before the line cap.`, NoVars{})
+)
+
+// DbmcpToolAPIListEnvironments describes the api_list_environments tool.
+var DbmcpToolAPIListEnvironments = define(Entry{
+	ID: "dbmcp.tool.api_list_environments", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "api_list_environments",
+	Default: "List environments that share variables with agents: id, name, whether reads skip approval, and variable names. A secret lists its allowed hosts. Values are never shown. Requests without an environment are allowed.",
+}, NoVars{})
+
+// DbmcpToolAPIRequest describes the api_request tool.
+var DbmcpToolAPIRequest = define(Entry{
+	ID: "dbmcp.tool.api_request", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "api_request",
+	Default: "Send one HTTP request. Reference shared variables as {{name}}, in the url, headers, query or body. A secret goes only to its allowed hosts, otherwise the call fails. The user may be asked to approve. TLS is always verified. Secret values are masked in the response, which is capped.",
+}, NoVars{})
+
+var (
+	_ = arg(DbmcpToolAPIRequest.id, "environmentId", studioApp, NextCall, `Environment id from api_list_environments. Omit to use no variables.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "method", studioApp, NextCall, `GET, HEAD, OPTIONS, POST, PUT, PATCH or DELETE.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "url", studioApp, NextCall, `Full http or https URL. May hold {{name}} references.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "headers", studioApp, NextCall, `Request headers.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "headers.name", studioApp, NextCall, `Header name.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "headers.value", studioApp, NextCall, `Header value. May hold {{name}} references.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "query", studioApp, NextCall, `Query entries added to the URL, percent-encoded for you.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "query.name", studioApp, NextCall, `Query name.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "query.value", studioApp, NextCall, `Query value. May hold {{name}} references.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "body", studioApp, NextCall, `Raw request body, up to 1 MiB. Exclusive with form.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "contentType", studioApp, NextCall, `Content-Type of body, such as application/json.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "form", studioApp, NextCall, `Form fields sent as application/x-www-form-urlencoded. Exclusive with body.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "form.name", studioApp, NextCall, `Field name.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "form.value", studioApp, NextCall, `Field value. May hold {{name}} references.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "timeoutSeconds", studioApp, NextCall, `Request timeout, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 30, Max: 300})
+	_ = arg(DbmcpToolAPIRequest.id, "maxResponseBytes", studioApp, NextCall, `Response body cap in bytes, up to {{.Max}}. Default {{.Default}}.`, LimitVars{Default: 65536, Max: 524288})
+	_ = arg(DbmcpToolAPIRequest.id, "followRedirects", studioApp, NextCall, `Follow redirects. Default true. A redirect that would carry a credential to a host not allowed fails.`, NoVars{})
 )
 
 // DbmcpToolKubeListClusters describes the kube_list_clusters tool.

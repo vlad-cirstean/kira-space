@@ -3,6 +3,7 @@ package bridge
 import (
 	"strings"
 
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/agentapi"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appcore"
 	"github.com/kirathecat/kira-studio/internal/configfs"
@@ -18,6 +19,7 @@ const maxApiSecretBytes = 64 << 10
 type ApiConfigService struct {
 	Deps  appcore.Deps
 	Files *apifiles.Store
+	Agent *agentapi.Service
 }
 
 // ApiSecretArgs saves one secret. The value is write-only: no method returns it.
@@ -38,6 +40,16 @@ func (s *ApiConfigService) View() (apifiles.View, error) {
 		return apifiles.View{}, ipcerr.InternalErr(err)
 	}
 	return v, nil
+}
+
+// AgentAccess lists the environments that share variables with agents: names and allowed hosts, never
+// a value. It is the same data the API request tools list.
+func (s *ApiConfigService) AgentAccess() ([]agentapi.EnvView, error) {
+	envs, err := s.Agent.Environments()
+	if err != nil {
+		return nil, ipcerr.InternalErr(err)
+	}
+	return envs, nil
 }
 
 // SetSecret seals one secret value under name. A secret store that cannot seal keeps its E_SECRET_STORE code.

@@ -136,6 +136,10 @@ type Config struct {
 	Runs ScriptRunControl
 	// Scripts backs the script tools; nil leaves them unregistered.
 	Scripts ScriptControl
+	// API backs the api_* tools; nil leaves them unregistered. APISettings is read fresh per call and
+	// decides whether the tools are listed and whether a request waits for the user.
+	API         APIRequester
+	APISettings func() APISettings
 	// Prompts resolves the editable instruction and tool texts; nil means the registry defaults.
 	Prompts llmprompts.Source
 	// Logger receives every operational log line. A nil Logger falls back to slog.Default().
@@ -163,6 +167,7 @@ type Server struct {
 	mcpMu  sync.Mutex
 	mcp    *mcp.Server
 	mcpRev uint64
+	mcpAPI bool
 
 	httpState // http.go's own fields (listener, *http.Server)
 
@@ -219,7 +224,7 @@ func New(cfg Config) (*Server, error) {
 		log:   log,
 		token: tokenRec,
 	}
-	s.mcp, s.mcpRev = s.buildMCPServer(), s.prompts().Revision()
+	s.mcp, s.mcpRev, s.mcpAPI = s.buildMCPServer(), s.prompts().Revision(), s.apiEnabled()
 
 	if err := s.bindHTTP(); err != nil {
 		return nil, err
@@ -252,13 +257,13 @@ func (s *Server) prompts() llmprompts.Source {
 	return s.cfg.Prompts
 }
 
-// server returns the tool set, rebuilt when a prompt edit moved the revision: the HTTP transport is
+// server returns the tool set, rebuilt when a prompt edit moved the revision or the API tools were toggled: the HTTP transport is
 // stateless, so the next request already sees the new texts.
 func (s *Server) server() *mcp.Server {
 	s.mcpMu.Lock()
 	defer s.mcpMu.Unlock()
-	if rev := s.prompts().Revision(); rev != s.mcpRev {
-		s.mcp, s.mcpRev = s.buildMCPServer(), rev
+	if rev, api := s.prompts().Revision(), s.apiEnabled(); rev != s.mcpRev || api != s.mcpAPI {
+		s.mcp, s.mcpRev, s.mcpAPI = s.buildMCPServer(), rev, api
 	}
 	return s.mcp
 }
@@ -313,6 +318,9 @@ func (s *Server) buildMCPServer() *mcp.Server {
 	}
 	if s.cfg.Scripts != nil {
 		s.addScriptTools(srv, src)
+	}
+	if s.apiEnabled() {
+		s.addAPITools(srv, src)
 	}
 
 	return srv

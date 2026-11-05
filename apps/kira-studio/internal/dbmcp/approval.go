@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/agentapi"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
@@ -166,6 +167,8 @@ type ApprovalRequest struct {
 	Origin ApprovalOrigin
 	// Script is set for the script.run subject; Target is then empty.
 	Script *ApprovalScript
+	// API is set for the api.request subject; Target is then empty.
+	API *agentapi.Planned
 }
 
 // ApprovalOrigin is what the stateless HTTP transport can tell about the caller.
@@ -213,7 +216,7 @@ func NewApprovalBroker(now func() time.Time, q *approvals.Queue) *ApprovalBroker
 		q = approvals.New(nil)
 	}
 	b := &ApprovalBroker{now: now, Queue: q, queue: notify.NewPendingQueue[*approvalEntry]()}
-	for _, kind := range []string{approvals.KindDbQuery, approvals.KindDbResponse, approvals.KindKubeRead, approvals.KindScriptRun} {
+	for _, kind := range []string{approvals.KindDbQuery, approvals.KindDbResponse, approvals.KindKubeRead, approvals.KindScriptRun, approvals.KindAPIRequest} {
 		q.Register(kind, brokerOwner{b})
 	}
 	return b

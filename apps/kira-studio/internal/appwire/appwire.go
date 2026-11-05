@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/agentapi"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appcore"
@@ -269,7 +270,8 @@ func Build(opts Options) (*Wired, error) {
 	if installer == nil {
 		installer = harness.ActiveInstaller(agents)
 	}
-	embedded := wireEmbeddedServices(deps, installer, approvalQueue, opts.KeepAwakeDriver, connectionsSvc, oplogWiring, metricsTicker, promptRouter, agents, proofSvc, opts)
+	agentAPI := &agentapi.Service{Envs: apiFiles, Secrets: apiSecrets, Ops: router.Host(), Globals: bridge.AgentAPIGlobals(repositories.Settings)}
+	embedded := wireEmbeddedServices(deps, installer, approvalQueue, opts.KeepAwakeDriver, connectionsSvc, oplogWiring, metricsTicker, promptRouter, agents, proofSvc, agentAPI, opts)
 	lifecycle := wireLifecycle(windows, embedded.events, embedded.eventsDetach, metricsTicker, oplogWiring, connectionsSvc,
 		embedded.dbMcpSvc, embedded.keepAwakeSvc, embedded.terminalSvc, embedded.dockerSvc, embedded.kubeSvc, updateInstaller, embedded.runs, embedded.closeAgent, embedded.sched, embedded.runLoader, apiFiles, connFiles, repositories, db)
 	embedded.sched.Start()
@@ -321,7 +323,7 @@ func Build(opts Options) (*Wired, error) {
 		Grpc:             &bridge.GrpcService{Deps: deps},
 		Collections:      &bridge.CollectionsService{Deps: deps, Files: apiFiles},
 		Variables:        &bridge.VariablesService{Deps: deps, Files: apiFiles},
-		ApiConfig:        &bridge.ApiConfigService{Deps: deps, Files: apiFiles},
+		ApiConfig:        &bridge.ApiConfigService{Deps: deps, Files: apiFiles, Agent: agentAPI},
 		ApiFiles:         apiFiles,
 		ResponseHistory:  &bridge.ResponseHistoryService{Deps: deps},
 		GrpcHistory:      &bridge.GrpcHistoryService{Deps: deps},

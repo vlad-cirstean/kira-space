@@ -13,7 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/prompts"
 )
 
-// Kinds known to the apps. P522 adds api.request.
+// Kinds known to the apps.
 const (
 	KindDbQuery       = "db.query"
 	KindDbResponse    = "db.response"
@@ -21,6 +21,7 @@ const (
 	KindProofReview   = "proof.review"
 	KindBranchRequest = "branch.request"
 	KindScriptRun     = "script.run"
+	KindAPIRequest    = "api.request"
 )
 
 // Item is one pending approval as the window renders it. Payload is per kind, validated by the client.

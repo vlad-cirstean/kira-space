@@ -20,6 +20,7 @@ import (
 	_ "github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters/s3"
 	_ "github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters/sqlite"
 	_ "github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters/sqs"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/agentapi"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/bridge"
@@ -154,7 +155,7 @@ type embeddedWired struct {
 // event bus, attached to every producer built so far. deps is taken by value, since every call
 // site here is at or after the point main's own deps.Events assignment (the emitter) has already
 // run.
-func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, approvalQueue *approvals.Queue, keepAwakeDriver keepawake.Driver, connectionsSvc *connections.Service, oplogWiring *oplog.Wiring, metricsTicker *metrics.Ticker, promptRouter *prompts.Router, agents harness.Selector, proofSvc *proof.Service, opts Options) embeddedWired {
+func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, approvalQueue *approvals.Queue, keepAwakeDriver keepawake.Driver, connectionsSvc *connections.Service, oplogWiring *oplog.Wiring, metricsTicker *metrics.Ticker, promptRouter *prompts.Router, agents harness.Selector, proofSvc *proof.Service, agentAPI *agentapi.Service, opts Options) embeddedWired {
 	// The DB MCP server's embedded instance — owned by this app's own lifecycle.
 	// StartIfEnabled's own failure (a bind conflict) is logged, never fatal.
 	// The approval broker outlives the server's own start/stop (constructed here, not
@@ -210,6 +211,7 @@ func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, app
 	// The ops tools read live runs, so the server starts only once runs exists.
 	dbMcpSvc.Runs = bridge.NewScriptRunControl(runs)
 	dbMcpSvc.Scripts = bridge.NewScriptControl(runs)
+	dbMcpSvc.API = agentAPI
 	bridge.StartDbMcpIfEnabled(dbMcpSvc)
 	sched := &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
 	runLoader, err := scripts.NewLoader(scripts.LoaderOptions{

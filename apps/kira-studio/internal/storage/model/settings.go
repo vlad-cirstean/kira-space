@@ -37,6 +37,10 @@ type DbMcpSettings struct {
 	PreviewResponses bool `json:"previewResponses"`
 	// FocusOnApproval brings the window forward when a query or result waits for approval.
 	FocusOnApproval bool `json:"focusOnApproval"`
+	// APIRequests lists the API request tools to agents.
+	APIRequests bool `json:"apiRequests"`
+	// APIApproval is "always" (each request waits for the user) or "never".
+	APIApproval string `json:"apiApproval"`
 }
 
 // ApiSettings mirrors packages/shared/domain/settings.ts's apiSettingsSchema — the
@@ -88,7 +92,7 @@ func DefaultSettings() Settings {
 			MaxRedirects:     10,
 			DisableCookieJar: true,
 		},
-		DbMcp: DbMcpSettings{ServerEnabled: false, PreviewResponses: false, FocusOnApproval: true},
+		DbMcp: DbMcpSettings{ServerEnabled: false, PreviewResponses: false, FocusOnApproval: true, APIRequests: false, APIApproval: "always"},
 		Agent: appsettings.DefaultAgent(),
 	}
 }
@@ -125,9 +129,11 @@ type ApiPatch struct {
 
 // DbMcpPatch mirrors DbMcpSettings' own `.partial()` shape (M1 §6.2).
 type DbMcpPatch struct {
-	ServerEnabled    *bool `json:"serverEnabled,omitempty"`
-	PreviewResponses *bool `json:"previewResponses,omitempty"`
-	FocusOnApproval  *bool `json:"focusOnApproval,omitempty"`
+	ServerEnabled    *bool   `json:"serverEnabled,omitempty"`
+	PreviewResponses *bool   `json:"previewResponses,omitempty"`
+	FocusOnApproval  *bool   `json:"focusOnApproval,omitempty"`
+	APIRequests      *bool   `json:"apiRequests,omitempty"`
+	APIApproval      *string `json:"apiApproval,omitempty"`
 }
 
 type SettingsPatch struct {
@@ -144,6 +150,11 @@ type SettingsPatch struct {
 // member (internal/httpclient/options.go's own comment states why).
 func ValidHTTPVersion(v string) bool {
 	return v == "1.1" || v == "2"
+}
+
+// ValidAPIApproval mirrors settings.ts's apiApproval enum.
+func ValidAPIApproval(v string) bool {
+	return v == "always" || v == "never"
 }
 
 // ValidPageSize mirrors settings.ts's pageSizeSchema (shared with tabs.ts's per-kind page sizes).
@@ -219,10 +230,16 @@ func validateApiSection(a *ApiPatch) error {
 	return nil
 }
 
+func validateDbMcpSection(d *DbMcpPatch) error {
+	if d != nil && d.APIApproval != nil && !ValidAPIApproval(*d.APIApproval) {
+		return fmt.Errorf("model: dbMcp.apiApproval: invalid value %q", *d.APIApproval)
+	}
+	return nil
+}
+
 // Validate checks every leaf the caller actually patched against settings.ts's bounds, naming
 // the offending leaf in the error — fontFamily and fontSize have no bounds in the TS schema
-// either, so they are accepted as-is. DbMcp has no bounds either and so no validateX
-// of their own.
+// either, so they are accepted as-is.
 func (p SettingsPatch) Validate() error {
 	if err := appsettings.ValidateAppearance(p.Appearance); err != nil {
 		return err
@@ -237,6 +254,9 @@ func (p SettingsPatch) Validate() error {
 		return err
 	}
 	if err := validateApiSection(p.Api); err != nil {
+		return err
+	}
+	if err := validateDbMcpSection(p.DbMcp); err != nil {
 		return err
 	}
 	return appsettings.ValidateAgent(p.Agent)

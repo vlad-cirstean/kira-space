@@ -49,6 +49,8 @@ type fixture struct {
 	url    string
 	connID string
 	dbPath string
+	// base is the API tests' target server URL.
+	base string
 }
 
 func newFixture(t *testing.T, opts ...flowharness.Opt) *fixture {

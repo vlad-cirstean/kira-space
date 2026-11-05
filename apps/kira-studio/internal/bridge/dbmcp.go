@@ -43,6 +43,8 @@ type DbMcpService struct {
 	Runs dbmcp.ScriptRunControl
 	// Scripts backs the script tools.
 	Scripts dbmcp.ScriptControl
+	// API backs the API request tools; nil leaves them unregistered.
+	API dbmcp.APIRequester
 
 	embedded embedded.Service[*dbmcp.Server, DbMcpStatus]
 }
@@ -72,6 +74,8 @@ func NewDbMcpService(deps appcore.Deps, installer harness.MCPInstaller, approval
 				Ops:              s.Deps.Router,
 				Runs:             s.Runs,
 				Scripts:          s.Scripts,
+				API:              s.API,
+				APISettings:      s.apiSettings,
 				MaskRules:        s.Deps.MaskRules,
 				ExplainThreshold: s.explainThreshold,
 				PreviewResponses: s.previewResponses,

@@ -115,6 +115,8 @@ func itemOf(r ApprovalRequest) approvals.Item {
 			ScriptID: sc.ScriptID, Description: sc.Description, Command: sc.Command, Cwd: sc.Cwd,
 			Params: valuePayloads(sc.Params), Env: valuePayloads(sc.Env),
 		})
+	case approvals.KindAPIRequest:
+		it.Target, it.Operation, it.Payload = apiItemParts(r.API)
 	case approvals.KindDbResponse:
 		it.Reason = "preview"
 		it.Target, it.Operation = dbTarget(r)
@@ -196,6 +198,8 @@ func promptTitle(req ApprovalRequest) string {
 	named := req.ConnectionName != ""
 	response := req.Stage == ApprovalStageResponse
 	switch {
+	case req.Subject == approvals.KindAPIRequest && req.API != nil:
+		return i18n.T("backend.prompt.dbMcpAPI.title", map[string]string{"method": req.API.Method, "host": req.API.Host})
 	case req.Subject == approvals.KindScriptRun:
 		return i18n.T("backend.prompt.dbMcpScript.title", map[string]string{"name": req.ConnectionName})
 	case response && named:

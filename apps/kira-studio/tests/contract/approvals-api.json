@@ -1,0 +1,79 @@
+{
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "<masked>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": {
+          "display": "Bearer {{token}}",
+          "scheme": "Bearer"
+        },
+        "body": null,
+        "credentials": [
+          {
+            "hosts": [
+              "127.0.0.1"
+            ],
+            "name": "token"
+          }
+        ],
+        "environment": {
+          "color": "green",
+          "id": "<masked>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [
+          {
+            "masked": true,
+            "name": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "host": "127.0.0.1",
+        "method": "GET",
+        "query": [],
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo",
+        "variables": [
+          {
+            "name": "base_url",
+            "secret": false,
+            "value": "http://127.0.0.1:<port>"
+          },
+          {
+            "name": "token",
+            "secret": true,
+            "value": "••••"
+          }
+        ]
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "args:ApprovalsService.Answer": {
+    "approve": true,
+    "ids": [],
+    "options": null
+  }
+}
