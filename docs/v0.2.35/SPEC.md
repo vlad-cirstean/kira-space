@@ -20,7 +20,7 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 | P521 | Scripts MCP | Pending |
 | P522 | API MCP | Pending |
 | P523 | Prefixed nanoid for every Kira-generated id | Pending |
-| P524 | Manual order for API collections and environments | Pending |
+| P524 | Manual order for API collections and environments | Done |
 
 ## Rows
 
@@ -99,3 +99,4 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each in its
 - Ask: Restore manual (drag and drop) ordering of API collections, API items within collections, and environments. P514 dropped it; they list by name now.
 - Order persists. Backend order field plus migration in `apifiles` if needed. UI drag and drop. Paired Go flow test and UI spec.
 - Plan: `plans/P524.md`.
+- Result: Done in 7 commits, no migration. Order is app state in `sort_order`: new rows append, rename keeps the place, forget reindexes. `ReorderCollections` and `ReorderEnvironments` restored (`apifiles.Store`). Collection drag, Move up/down and Alt+Arrow in the tree; grip drag and keyboard reorder for environments. Flow `TestApiOrder`, UI spec `api-order`. `api-lifecycle` contract regenerated, diff is collection order only.

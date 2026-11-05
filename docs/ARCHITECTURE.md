@@ -537,7 +537,7 @@ tabs(id, connection_id, path, kind, state_json, order, active, window_key, works
 api_collections(id, name, sort_order, origin_json, variables_promoted,
                  created_at, updated_at)                -- P4; variables_promoted added P5;
                                                        -- sort_order is the user's order, set by
-                                                       -- ReorderCollections (P381)
+                                                       -- ReorderCollections (P524)
 api_items(id, collection_id, parent_id, kind, name, sort_order, method, url, protocol,
            request_json, origin_json, created_at, updated_at)
                                                        -- the folder/request tree; parent_id and
@@ -546,7 +546,8 @@ api_items(id, collection_id, parent_id, kind, name, sort_order, method, url, pro
                                                        -- P11) added by ALTER TABLE, not a new
                                                        -- migration's table — see below
 api_environments(id, name, sort_order, is_active, created_at, updated_at)  -- P5; top-level,
-                                                       -- no collection_id; at most one is_active
+                                                       -- no collection_id; at most one is_active;
+                                                       -- sort_order set by ReorderEnvironments (P524)
 api_variables(id, collection_id, environment_id, name, value, is_secret, secret_value,
                sort_order, created_at, updated_at)      -- P5; owned by exactly one of
                                                        -- collection_id/environment_id (CHECK);
@@ -589,7 +590,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - The 0010 rename migration uses ALTER TABLE RENAME for each table, then DROP INDEX and CREATE INDEX for each of seven indexes, because SQLite has no ALTER INDEX RENAME; foreign key references are rewritten automatically since db.go sets _foreign_keys=1.
 - Already-applied migrations 0006-0009 are left untouched, so a fresh install creates http_* tables and renames them in 0010; migrate.go refuses to run against a schema_version newer than the build knows.
 - migrate_rename_test.go is the one test that exercises a migration against seeded v9 data; it asserts rows survive under new names, generated scope_key columns still compute, grpc_call_history's foreign key names api_items, and collection delete still cascades.
-- Postman collections are imported into `<id>.collection.yaml` files (P473) and projected into the normalized api_collections/api_items tree; sort_order is data and is rewritten dense within a parent on any insert or delete.
+- Postman collections are imported into `<id>.collection.yaml` files (P473) and projected into the normalized api_collections/api_items tree; sort_order is data and is rewritten dense within a parent on any insert or delete (collections and environments: see Api config files).
 - api_items.parent_id is a self-reference with ON DELETE CASCADE, enforced because the DSN sets _foreign_keys=1 on every pooled connection, so deleting a folder deletes its subtree at any depth in one statement with no recursive Go delete.
 - Each api row stores origin_json, the original Postman object verbatim minus its recursive item array, because encoding/json drops undeclared struct members and no typed model could round-trip unmodelled members.
 - Postman export starts from origin_json and rewrites only url, header and body, and only when re-importing the origin's member no longer yields what is stored; method is always written from request_json; other members are re-emitted byte-identically.
@@ -3313,7 +3314,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - Folder `~/.kira-studio/api` (config folder `api`, `ConfigFilesService` Open and Reveal). A collection is `<id>.collection.yaml` (name, `variables`, `items`: folders nest, requests carry the HTTP or gRPC body). An environment is `<id>.environment.yaml` (name, colour, `variables`). File stem is the id. `AGENTS.md` beside them is generated from the schema (`apifiles/agents_intro.md` plus rule docs). Cap 1 MiB per file.
 - Package `apps/kira-studio/internal/apifiles`: `Store` owns the folder, the load path and every write to `api_*`. Files to DB only. Invalid file: rows keep the last good version, a `Problem` with line is published, one Warn per new hash. File gone: rows go (history cascades).
 - Projection: `api_collections`, `api_items`, `api_environments`, `api_variables` are derived from the files. Surrogate uuid ids stay; new columns `stem`, `item_key`, `secret_ref` bind them to file ids. Renaming a file or item `id` is a delete plus a create; changing `name` keeps history. State kept in the DB: `is_active` (only `SetActiveEnvironment` writes it), response and call history, variable history, tab state.
-- Order is file order: `items` order is the tree order, collections and environments sort by name. Drag, move and reorder are gone.
+- Order: item order is file order (`items` order is the tree order). Collection and environment order is app state in `sort_order`, set by `ReorderCollections` and `ReorderEnvironments` (`apifiles.Store`, `sqlitex.ReorderSortOrder`; no file write). New rows append, a rename keeps the place, a file renamed on disk (new stem) moves to the end, a fresh DB starts from file-load order.
 - Secrets: a secret variable is `secret: ${secret:<name>}`; the value lives in `secret_values` (scope `variable`, owner `api`). `ApiConfigService.SetSecret` and `DeleteSecret` are write-only. No value reaches a file, a log or a problem message. `apivars` two-stage substitution is unchanged.
 - App writes: Save of a request rewrites only that node through yaml.v3 node edits (`apifiles/edit.go`), so comments elsewhere stay, with a `baseHash` check. Create collection, item and gRPC item, and Import (Postman) write files. Export is unchanged and skips secret values.
 - Bound surface kept: Collections `List`, `GetRequest`, `GetGrpcRequest`, `SaveRequest`, `SaveGrpcRequest`, `CreateCollection`, `CreateItem`, `CreateGrpcItem`, `Import`, `Export`; Variables `ListEnvironments`, `CreateEnvironment`, `SetActiveEnvironment`, `List`, `History`, `Reveal`, `RevealHistory`; `ApiConfigService` `View`, `SetSecret`, `DeleteSecret`. Rename, delete, duplicate, move, reorder, variable CRUD and bulk edit are removed; edit the file.
@@ -3377,7 +3378,6 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
   - Connections: Duplicate and Delete in the dialog footer; `ConnectionConfigService.DeleteFile` removes a file that never had a row.
   - Runs: `Move`, `RenameCollection`, `DeleteCollection` edit the `collection` key of member files. A collection is a name. Rename checks all members first and refuses a taken name. Not atomic across files; the error lists what changed.
   - Api: `Rename`, `DeleteMany` (topmost rows only), `MoveItems`, environment `DeleteEnvironment` and `DuplicateEnvironment` (name `<name> copy`, shares the secret references). A move across collection files inserts into the destination first, then cuts the source, and returns `map[oldRowID]newRowID`. It re-points `api_response_history` and `grpc_call_history` to the new rows. Open request tabs and the selection follow the map (`remapRequestTabItems`). A folder into itself or its descendants is refused (`ErrInvalidMove`).
-- Out of scope: manual api collection and environment order. Both list by name.
 
 ### Agent context (P452)
 
