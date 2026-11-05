@@ -14,6 +14,9 @@ import (
 //go:embed agents_intro.md
 var agentsIntro string
 
+//go:embed steps_intro.md
+var stepsIntro string
+
 // rule documents one cross-field check of the validator. rules_test.go proves each one still rejects its example.
 type rule struct{ ID, Doc string }
 
@@ -36,6 +39,25 @@ var rules = []rule{
 	{"sandbox-paths", "Sandbox paths are absolute or start with `~/`. They never name the root, the home folder or an ancestor of it, an agent config folder or the keychain folder."},
 	{"legacy-status", "The old status names `To do`, `In progress`, `In review` and `Done` read as their ids."},
 	{"runtime-checks", "Whether a `status` exists and whether an `only <repo>` repo exists is checked when a task runs, not when the file loads."},
+	{"reference", "A step with `step` references a library step that exists and is valid. It takes no `kind`. `id` defaults to the `step` value."},
+	{"overrides", "On a reference, a scalar or list key replaces the library value. `params` and `settings` merge by key. `sandbox` and `results` replace whole."},
+	{"ref-routes", "On a reference, `routes` re-points results by id and `results` replaces the list. Both together are an error."},
+	{"prompt-extra", "`prompt_extra` is only for a referenced agent step with a prompt or a referenced manual step with `session: true`."},
+}
+
+// stepRules are the cross-field checks of the library folder, in addition to the per-key rules.
+var stepRules = []string{
+	"The file name without `.yaml` equals `id`.",
+	"A library step takes the keys of its kind (see each option), never `skip`, `review.implementer` or a result `next` that names a step id.",
+	"A result `next` is `next`, `end` or `stop`. `stop` is only for a result with `ok: false`.",
+	"The other checks of a workflow step apply (agent body, outside repo, sandbox, results, status ids).",
+}
+
+// refOptions document the keys only a reference item takes.
+var refOptions = []configfs.DocOption{
+	{Path: "steps[].step", Type: "text", Description: "Id of a library step (file name in the steps folder without `.yaml`). The item then takes the library step's values, and only the keys it sets differ."},
+	{Path: "steps[].routes", Type: "mapping", Description: "Reference only. Maps a result id of the library step to `next`, `end`, `stop` or a step id of this workflow. Not with `results`."},
+	{Path: "steps[].prompt_extra", Type: "text", Description: "Reference only. Text appended to the library step's prompt (agent step) or first message (manual step with a session)."},
 }
 
 // DocModel is the source of the workflows folder's AGENTS.md, built from the option table, the
@@ -64,6 +86,39 @@ func DocModel() configfs.DocModel {
 		if o.Path == "steps[].settings" {
 			m.Options = append(m.Options, settingOptions()...)
 		}
+		if o.Path == "steps[].id" {
+			m.Options = append(m.Options, refOptions[0])
+		}
+	}
+	m.Options = append(m.Options, refOptions[1:]...)
+	return m
+}
+
+// StepDocModel is the source of the step library's AGENTS.md: the step options of the workflow table
+// without the workflow-only keys, at the top level of the file.
+func StepDocModel() configfs.DocModel {
+	m := configfs.DocModel{
+		App:     "Space",
+		Title:   "Steps",
+		Intro:   stepsIntro,
+		Pattern: "<id>.yaml",
+		Format:  "YAML",
+		Rules:   stepRules,
+	}
+	for _, o := range DocModel().Options {
+		rest, ok := strings.CutPrefix(o.Path, "steps[].")
+		if !ok || rest == "step" || rest == "skip" || rest == "routes" || rest == "prompt_extra" || rest == "review.implementer" {
+			continue
+		}
+		o.Path = rest
+		switch rest {
+		case "id":
+			o.Description = "Step id. Must equal the file name without `.yaml`; workflows reference the step by it."
+		case "results[].next":
+			o.Range = "`next`, `end` or `stop`"
+			o.Description = "Where the workflow goes after this outcome. A workflow can re-point it with `routes`."
+		}
+		m.Options = append(m.Options, o)
 	}
 	return m
 }

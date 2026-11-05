@@ -139,6 +139,11 @@ type WorkflowStep struct {
 	Settings map[string]map[string]string `json:"settings"`
 	// Agent is the provider id whose agent runs the step's new conversations; "" uses the Agent setting.
 	Agent string `json:"agent"`
+	// Use is the id of the library step this step references; "" is an inline step. Every other field
+	// holds the effective value (library step plus the workflow's overrides).
+	Use string `json:"use,omitempty"`
+	// PromptExtra is the workflow's text appended to Prompt when the step runs; set on a reference only.
+	PromptExtra string `json:"promptExtra,omitempty"`
 }
 
 // StageSettingSpec is one setting the editor offers, from the provider catalog.
@@ -245,6 +250,9 @@ type WorkflowsResult struct {
 	Sandbox SandboxSupport `json:"sandbox"`
 	// StageSettings is every stage setting the registered providers take, in provider then catalog order.
 	StageSettings []StageSettingSpec `json:"stageSettings"`
+	// Steps is the step library; StepsDir is its folder.
+	Steps    []StepEntry `json:"steps"`
+	StepsDir string      `json:"stepsDir"`
 }
 
 type WorkflowYaml struct {

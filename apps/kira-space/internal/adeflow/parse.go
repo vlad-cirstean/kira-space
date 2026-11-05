@@ -41,7 +41,15 @@ const stagesRemoved = `"stages" is no longer supported: list every step under "s
 
 // Parse decodes and validates one workflow file. src is the whole file; the file stem is checked
 // separately by the Reader (Parse has no file name).
-func Parse(src []byte) (adewire.Workflow, *adewire.WorkflowError) {
+func Parse(src []byte) (adewire.Workflow, *adewire.WorkflowError) { return ParseWith(src, nil) }
+
+// StepLookup resolves a library step id to its validated mapping node. msg is set instead of the node
+// when the step is missing or invalid.
+type StepLookup func(id string) (node *yaml.Node, msg string)
+
+// ParseWith is Parse with a step library: a `step:` item resolves through lookup. A nil lookup refuses
+// every reference.
+func ParseWith(src []byte, lookup StepLookup) (adewire.Workflow, *adewire.WorkflowError) {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(src, &doc); err != nil {
 		line := 0
@@ -53,7 +61,7 @@ func Parse(src []byte) (adewire.Workflow, *adewire.WorkflowError) {
 	if doc.Kind == 0 || len(doc.Content) == 0 {
 		return adewire.Workflow{}, &adewire.WorkflowError{Message: i18n.T("backend.space.ade.workflowEmpty.body", nil)}
 	}
-	v := &validator{}
+	v := &validator{lookup: lookup}
 	wf := v.workflow(doc.Content[0])
 	if v.err != nil {
 		return adewire.Workflow{}, v.err
@@ -63,7 +71,9 @@ func Parse(src []byte) (adewire.Workflow, *adewire.WorkflowError) {
 
 // validator keeps the first error; every rule short-circuits on it.
 type validator struct {
-	err *adewire.WorkflowError
+	err     *adewire.WorkflowError
+	lookup  StepLookup
+	library bool // validating a library step file: workflow-only keys are refused
 }
 
 func (v *validator) fail(n *yaml.Node, prefix, format string, args ...any) {
@@ -122,7 +132,7 @@ func (v *validator) str(m map[string]*yaml.Node, prefix, key string, required bo
 		return ""
 	}
 	val := n.Value
-	if key == "prompt" || key == "command" {
+	if key == "prompt" || key == "command" || key == "prompt_extra" {
 		val = strings.TrimRight(val, "\n")
 	} else {
 		val = strings.TrimSpace(val)
@@ -188,7 +198,7 @@ func (v *validator) workflow(root *yaml.Node) adewire.Workflow {
 	var prefixes []string
 	for i, sn := range list.Content {
 		sp := fmt.Sprintf("step %d: ", i+1)
-		step, rn := v.step(sn, sp, earlier, candidates)
+		step, rn := v.item(sn, sp, earlier, candidates)
 		if v.err != nil {
 			return wf
 		}
@@ -212,6 +222,9 @@ func (v *validator) workflow(root *yaml.Node) adewire.Workflow {
 func (v *validator) step(sn *yaml.Node, sp string, earlier, candidates map[string]bool) (adewire.WorkflowStep, *resultNodes) {
 	step := adewire.WorkflowStep{Results: []adewire.StepResult{}, AllowedTools: make([]string, 0), Params: map[string][]string{}, Sandbox: adewire.DefaultSandbox(), Settings: map[string]map[string]string{}}
 	sm := v.fields(sn, sp, stepOrder...)
+	if v.err == nil && v.library {
+		v.libraryKeys(sm, sp)
+	}
 	if v.err != nil {
 		return step, nil
 	}
@@ -248,6 +261,9 @@ func (v *validator) step(sn *yaml.Node, sp string, earlier, candidates map[strin
 		rn = v.results(n, sp)
 		if v.err == nil && step.Kind == adewire.KindScript {
 			v.scriptResults(rn, sp)
+		}
+		if v.err == nil && v.library {
+			v.libraryRoutes(rn, sp)
 		}
 		step.Results = rn.list
 	} else {
@@ -669,7 +685,9 @@ func (v *validator) reviewConfig(n *yaml.Node, sp string, candidates map[string]
 			v.fail(m["send_to"], sp, "send_to must be %s", oneOf(sendToValues))
 		}
 	}
-	if _, has := m["implementer"]; has {
+	if n, has := m["implementer"]; has && v.library {
+		v.fail(n, sp, "implementer is set in a workflow, not in a library step")
+	} else if has {
 		cfg.Implementer = v.str(m, sp, "implementer", true)
 		if v.err == nil && !candidates[cfg.Implementer] {
 			v.fail(m["implementer"], sp, "implementer must be an earlier agent step")

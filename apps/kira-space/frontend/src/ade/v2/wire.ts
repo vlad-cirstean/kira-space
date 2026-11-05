@@ -115,6 +115,10 @@ export interface WorkflowStep {
   agent: string;
   /** Per provider id, setting key to value; `{}` = provider defaults. */
   settings: Record<string, Record<string, string>>;
+  /** Library step this step references; absent on an inline step. Other fields hold the effective values. */
+  use?: string;
+  /** The workflow's text appended to `prompt` when the step runs (references only). */
+  promptExtra?: string;
 }
 /** One setting the editor offers, from the provider catalog. */
 export interface StageSettingSpec {
@@ -164,7 +168,29 @@ export interface WorkflowsResult {
   workflows: WorkflowEntry[];
   sandbox: SandboxSupport;
   stageSettings: StageSettingSpec[];
+  /** The step library. */
+  steps: StepEntry[];
+  stepsDir: string;
 }
+export interface StepEntry {
+  fileName: string;
+  path: string;
+  step: WorkflowStep | null /* last valid version; null if never valid */;
+  error: WorkflowError | null;
+  /** Ids of the workflows that reference the step. */
+  usedBy: string[];
+  hash: string;
+}
+export interface StepYaml {
+  fileName: string;
+  path: string;
+  yaml: string;
+  hash: string;
+}
+export interface StepValidation {
+  step: WorkflowStep | null;
+  error: WorkflowError | null;
+} // exactly one non-null
 export interface WorkflowYaml {
   fileName: string;
   path: string;
@@ -1045,6 +1071,28 @@ export interface ImportWorkflowArgs {
 }
 export interface NewWorkflowArgs {
   name: string;
+}
+export interface SaveStepArgs {
+  fileName: string;
+  step: WorkflowStep;
+  baseHash: string;
+}
+export interface SaveStepYamlArgs {
+  fileName: string;
+  yaml: string;
+  baseHash: string;
+}
+export interface ValidateStepYamlArgs {
+  yaml: string;
+}
+/** `from` set: save that inline step to the library under a new file. */
+export interface NewStepArgs {
+  name: string;
+  kind: StepKind;
+  from: WorkflowStep | null;
+}
+export interface DeleteStepArgs {
+  fileName: string;
 }
 export interface FolderArgs {
   path: string;

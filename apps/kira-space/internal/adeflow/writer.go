@@ -35,13 +35,7 @@ const maxYamlBytes = configfs.MaxFileBytes
 var fileNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*\.yaml$`)
 
 // ValidateYaml parses src exactly as the reader does; exactly one of the result fields is set.
-func ValidateYaml(src string) adewire.WorkflowValidation {
-	wf, werr := Parse([]byte(src))
-	if werr != nil {
-		return adewire.WorkflowValidation{Error: werr}
-	}
-	return adewire.WorkflowValidation{Workflow: &wf}
-}
+func ValidateYaml(src string) adewire.WorkflowValidation { return (&Reader{}).Validate(src) }
 
 func (r *Reader) path(file string) (string, error) {
 	if !fileNamePattern.MatchString(file) {
@@ -113,7 +107,7 @@ func (r *Reader) Save(file, baseHash string, wf adewire.Workflow) (adewire.Workf
 	case !os.IsNotExist(err):
 		return adewire.WorkflowEntry{}, fmt.Errorf("adeflow: read %s: %w", file, err)
 	}
-	out, err := encodeWorkflow(&doc, wf)
+	out, err := encodeWorkflow(&doc, wf, r.Steps)
 	if err != nil {
 		return adewire.WorkflowEntry{}, err
 	}
@@ -141,7 +135,7 @@ func (r *Reader) Import(srcPath string) (adewire.WorkflowEntry, error) {
 		return adewire.WorkflowEntry{}, invalidf("cannot read %s: %v", srcPath, err)
 	}
 	stem := ""
-	if wf, werr := Parse(src); werr == nil {
+	if wf, werr := ParseWith(src, r.lookup()); werr == nil {
 		stem = wf.ID
 	} else {
 		stem = slug(strings.TrimSuffix(filepath.Base(srcPath), filepath.Ext(srcPath)), "workflow")
@@ -179,7 +173,7 @@ func (r *Reader) New(name string) (adewire.WorkflowEntry, error) {
 	wf := adewire.Workflow{ID: id, Name: name, Steps: []adewire.WorkflowStep{
 		{ID: "work", Name: "Work", Kind: adewire.KindManual, Results: []adewire.StepResult{}},
 	}}
-	out, err := encodeWorkflow(&yaml.Node{}, wf)
+	out, err := encodeWorkflow(&yaml.Node{}, wf, nil)
 	if err != nil {
 		return adewire.WorkflowEntry{}, err
 	}
@@ -223,11 +217,13 @@ func yamlErrLineOf(err error) int {
 
 // encodeWorkflow applies wf onto doc (zero value = new document), encodes it and re-parses the
 // bytes; a result that does not parse is refused.
-func encodeWorkflow(doc *yaml.Node, wf adewire.Workflow) ([]byte, error) {
+func encodeWorkflow(doc *yaml.Node, wf adewire.Workflow, lib *StepLibrary) ([]byte, error) {
 	if doc.Kind == 0 || len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
 		*doc = yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{Kind: yaml.MappingNode, Tag: "!!map"}}}
 	}
-	applyWorkflow(doc.Content[0], wf)
+	if err := applyWorkflow(doc.Content[0], wf, lib); err != nil {
+		return nil, err
+	}
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(2)
@@ -237,7 +233,7 @@ func encodeWorkflow(doc *yaml.Node, wf adewire.Workflow) ([]byte, error) {
 	if err := enc.Close(); err != nil {
 		return nil, fmt.Errorf("adeflow: encode workflow: %w", err)
 	}
-	if _, werr := Parse(buf.Bytes()); werr != nil {
+	if _, werr := ParseWith(buf.Bytes(), lib.lookup()); werr != nil {
 		if werr.Line > 0 {
 			return nil, invalidf("%s (line %d)", werr.Message, werr.Line)
 		}
@@ -383,6 +379,9 @@ func itemID(n *yaml.Node) string {
 	if _, v := find(n, "id"); v != nil {
 		return strings.TrimSpace(v.Value)
 	}
+	if _, v := find(n, "step"); v != nil { // a reference without id
+		return strings.TrimSpace(v.Value)
+	}
 	return ""
 }
 
@@ -416,7 +415,11 @@ func syncItems(old *yaml.Node, ids []string, apply func(i int, item *yaml.Node))
 	return seq
 }
 
-func applyWorkflow(root *yaml.Node, wf adewire.Workflow) {
+func applyWorkflow(root *yaml.Node, wf adewire.Workflow, lib *StepLibrary) error {
+	libs, err := referencedSteps(wf, lib)
+	if err != nil {
+		return err
+	}
 	setScalar(root, "id", kText, wf.ID, true, topOrder)
 	setScalar(root, "name", kText, wf.Name, true, topOrder)
 	if i, _ := find(root, "kira_space_mcp"); i >= 0 { // legacy switch (P408)
@@ -427,7 +430,14 @@ func applyWorkflow(root *yaml.Node, wf adewire.Workflow) {
 		ids[i] = st.ID
 	}
 	_, old := find(root, "steps")
-	put(root, "steps", syncItems(old, ids, func(i int, item *yaml.Node) { applyStep(item, wf.Steps[i]) }), topOrder)
+	put(root, "steps", syncItems(old, ids, func(i int, item *yaml.Node) {
+		if libs[i] != nil {
+			applyRef(item, wf.Steps[i], *libs[i])
+			return
+		}
+		applyStep(item, wf.Steps[i])
+	}), topOrder)
+	return nil
 }
 
 // applyStep writes one step: the keys of its kind, and none of another kind's (a kind change leaves them behind).

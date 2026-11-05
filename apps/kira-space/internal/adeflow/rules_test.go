@@ -11,7 +11,9 @@ func TestRuleDocsEnforced(t *testing.T) {
 	type fixture struct {
 		file, src string
 		accepted  bool
+		ref       bool // parse with a step library holding the agent step `lib`
 	}
+	const ref = head + "  - step: lib\n"
 	fix := map[string]fixture{
 		"stem":           {file: "other.yaml", src: head + agent},
 		"stages":         {src: "id: w\nname: W\nstages: []\n"},
@@ -30,6 +32,10 @@ func TestRuleDocsEnforced(t *testing.T) {
 		"sandbox-off":    {src: head + agent + "    sandbox:\n      access: off\n      network: true\n"},
 		"sandbox-paths":  {src: head + agent + "    sandbox:\n      read:\n        - /\n"},
 		"legacy-status":  {src: head + manual + "    status: In review\n", accepted: true},
+		"reference":      {src: head + "  - step: nope\n", ref: true},
+		"overrides":      {src: ref + "    timeout: 1h\n    settings: {}\n", accepted: true, ref: true},
+		"ref-routes":     {src: ref + "    routes: {done: end}\n    results:\n      - id: done\n        ok: true\n", ref: true},
+		"prompt-extra":   {src: ref + "    smart_script: s\n    prompt_extra: x\n", ref: true},
 		"runtime-checks": {src: head + "  - id: a\n    name: A\n    kind: agent\n    runs_on: only nowhere\n    timeout: 5m\n    prompt: p\n    status: not-a-status\n", accepted: true},
 	}
 	for _, r := range rules {
@@ -40,8 +46,11 @@ func TestRuleDocsEnforced(t *testing.T) {
 		}
 		delete(fix, r.ID)
 		wf, perr := Parse([]byte(f.src))
+		if f.ref {
+			wf, perr = ParseWith([]byte(f.src), libReader(t, map[string]string{"lib.yaml": "id: lib\nname: L\nkind: agent\nruns_on: once\ntimeout: 5m\nprompt: p\n"}).lookup())
+		}
 		if r.ID == "stem" {
-			_, p := decodeWorkflow(f.file, []byte(f.src))
+			_, p := decodeWorkflow(f.file, []byte(f.src), nil)
 			if p == nil {
 				t.Errorf("rule %q: file %s accepted", r.ID, f.file)
 			}
