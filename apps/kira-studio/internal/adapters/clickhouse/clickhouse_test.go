@@ -820,3 +820,42 @@ func TestClickHouse_ReadLane(t *testing.T) {
 		testsupport.LaneCancel(path, "SELECT sleepEachRow(1) FROM numbers(30) SETTINGS max_block_size = 1"),
 	)
 }
+
+// DB MCP statement timeout: max_execution_time with timeout_overflow_mode=throw stops the read on the
+// lane (server code 159), and the next request carries no leftover setting.
+func TestClickHouse_StatementTimeout(t *testing.T) {
+	fixture := testsupport.StartClickHouse(t)
+	testsupport.ClickHouseRun(t, fixture)
+	cfg := fixture.Config
+	path := nodePath(cfg.ID)
+	testsupport.RunScenarios(t, connectedAdapter(t, cfg), cfg,
+		testsupport.StatementTimeout(testsupport.StatementTimeoutCase{
+			Name: "read lane", Path: path, Lane: true,
+			Slow: "SELECT sum(cityHash64(number)) FROM numbers(1000000000000)", WantCode: "TIMEOUT_EXCEEDED",
+			Baseline: "SELECT getSetting('max_execution_time')", BaselineWant: "0",
+			Lifted: "SELECT sleepEachRow(1) FROM numbers(2) SETTINGS max_block_size = 1",
+		}),
+	)
+
+	// A profile that pins max_execution_time (constraint, code 452): the server refuses the timeout
+	// settings before running anything, the adapter retries without them, and the read succeeds.
+	t.Run("settings refused by a constrained profile", func(t *testing.T) {
+		testsupport.AdminStatements(t, fixture, `
+			CREATE USER IF NOT EXISTS kira_prof IDENTIFIED WITH plaintext_password BY 'kira_prof_pw' SETTINGS max_execution_time = 0 CONST;
+			GRANT SELECT ON kira_test.* TO kira_prof;
+			GRANT SELECT ON system.* TO kira_prof;`)
+		profCfg := cfg
+		profCfg.ID = "test-clickhouse-prof"
+		profCfg.Username = testsupport.Strp("kira_prof")
+		profCfg.Password = testsupport.Strp("kira_prof_pw")
+		a := connectedAdapter(t, profCfg)
+		for i := 0; i < 2; i++ {
+			pages, err := a.Execute(context.Background(), model.ConsoleRequest{
+				Path: nodePath(profCfg.ID), Statements: []string{"SELECT 1"}, StatementTimeout: time.Second,
+			}, adapters.NewOpCtx("timeout-refused-"+strconv.Itoa(i)))
+			if err != nil || len(pages) != 1 {
+				t.Fatalf("Execute #%d = %v, %v, want the fallback to run it", i, pages, err)
+			}
+		}
+	})
+}

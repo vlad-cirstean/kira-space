@@ -1664,3 +1664,36 @@ func TestPostgres_ReadLane(t *testing.T) {
 		testsupport.LaneCancel(path, "SELECT pg_sleep(30)"),
 	)
 }
+
+// DB MCP statement timeout: the engine stops the statement on the lane and on the main connection,
+// and the setting does not outlive the request.
+func TestPostgres_StatementTimeout(t *testing.T) {
+	fixture := testsupport.StartPostgres(t)
+	path := nodePath(fixture, seg("database", "kira_test"))
+	a := connectedAdapter(t, fixture)
+	unchanged := func(t *testing.T, main adapters.Adapter) {
+		t.Helper()
+		if got := testsupport.FirstCell(t, main, path, "SELECT count(*) FROM app.kira_to_log"); got != "0" {
+			t.Errorf("kira_to_log rows = %s, want 0", got)
+		}
+	}
+	setup := []string{"CREATE TABLE app.kira_to_log (id int)"}
+	teardown := []string{"DROP TABLE app.kira_to_log"}
+	testsupport.RunScenarios(t, a, fixture.Config,
+		testsupport.StatementTimeout(testsupport.StatementTimeoutCase{
+			Name: "read lane", Path: path, Lane: true, Slow: "SELECT pg_sleep(5)", WantCode: "57014",
+			Baseline: "SHOW statement_timeout", BaselineWant: "0", Lifted: "SELECT pg_sleep(2)",
+		}),
+		testsupport.StatementTimeout(testsupport.StatementTimeoutCase{
+			Name: "main write", Path: path, Setup: setup, Teardown: teardown,
+			Slow: "INSERT INTO app.kira_to_log SELECT 1 FROM pg_sleep(5)", WantCode: "57014", Unchanged: unchanged,
+			Baseline: "SHOW statement_timeout", BaselineWant: "0", Lifted: "SELECT pg_sleep(2)",
+		}),
+		testsupport.StatementTimeout(testsupport.StatementTimeoutCase{
+			Name: "main write inside a user transaction", Path: path,
+			Setup: []string{"BEGIN"}, After: []string{"ROLLBACK"}, Teardown: []string{"ROLLBACK"},
+			Slow: "SELECT pg_sleep(5)", WantCode: "57014",
+			Baseline: "SHOW statement_timeout", BaselineWant: "0", Lifted: "SELECT pg_sleep(2)",
+		}),
+	)
+}

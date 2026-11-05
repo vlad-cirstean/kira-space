@@ -372,7 +372,7 @@ func (a *Adapter) Execute(ctx context.Context, req model.ConsoleRequest, op *ada
 		return nil, err
 	}
 	defer release()
-	return execute(ctx, conn, op, a.trackerFor(op.OpID), a.state.Load().ReadOnly || req.ReadOnly, a.state.Load().ReadOnly, req.Statements, adapters.ConsoleCapFor(req))
+	return execute(ctx, conn, op, a.trackerFor(op.OpID), a.state.Load().ReadOnly || req.ReadOnly, a.state.Load().ReadOnly, req.Statements, adapters.ConsoleCapFor(req), req.StatementTimeout)
 }
 
 // DownloadObject is index.ts's downloadObject — caps.FileTransfer is false, so no UI ever offers

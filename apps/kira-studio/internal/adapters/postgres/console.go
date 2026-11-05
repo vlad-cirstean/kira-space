@@ -2,8 +2,14 @@ package postgres
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
@@ -238,7 +244,8 @@ func verifyReadOnlyWrap(ctx context.Context, conn *trackedConn, op *adapters.OpC
 // Wrapping the whole batch in an explicit BEGIN READ ONLY transaction closes every angle
 // tried against a real server except that one specific statement, which
 // AssertNoTransactionEscalation rejects outright before anything runs.
-func execute(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track TrackQuery, readOnly, connReadOnly bool, statements []string, limit page.ResultCap) ([]page.Page, error) {
+func execute(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track TrackQuery, readOnly, connReadOnly bool, statements []string, limit page.ResultCap, timeout time.Duration) (pages []page.Page, err error) {
+	defer func() { err = timeoutError(ctx, timeout, err) }()
 	if len(statements) == 0 {
 		return nil, adapters.T(adapters.CodeQuery, "backend.studio.adapter.noStatements.body", nil, nil)
 	}
@@ -267,6 +274,18 @@ func execute(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track T
 			return nil, err
 		}
 		defer cleanup()
+		if timeout > 0 {
+			// SET LOCAL reverts at the wrap's COMMIT, which runs on every exit: nothing to restore.
+			if _, err := conn.Exec(ctx, "SET LOCAL statement_timeout = "+strconv.FormatInt(timeout.Milliseconds(), 10)); err != nil {
+				return nil, mapError(err)
+			}
+		}
+	} else if timeout > 0 {
+		restore, err := setSessionTimeout(ctx, conn, op, track, timeout)
+		if err != nil {
+			return nil, err
+		}
+		defer restore()
 	}
 
 	results := make([]rawResult, 0, len(statements))
@@ -306,9 +325,57 @@ func execute(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track T
 		typeMeta = meta
 	}
 
-	pages := make([]page.Page, len(results))
+	pages = make([]page.Page, len(results))
 	for i, r := range results {
 		pages[i] = buildPage(r, typeMeta)
 	}
 	return pages, nil
+}
+
+// setSessionTimeout applies timeout for the rest of this batch on the pinned connection and returns
+// the restore. The entry lock is held until release, so no other op sees the changed setting.
+func setSessionTimeout(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track TrackQuery, timeout time.Duration) (func(), error) {
+	cur, err := runRaw(ctx, conn, "SELECT current_setting('statement_timeout')", nil, op, track, page.ResultCap{})
+	if err != nil {
+		return nil, err
+	}
+	if len(cur.rows) != 1 || len(cur.rows[0]) != 1 || cur.rows[0][0] == nil {
+		return nil, adapters.Contract("statement_timeout read returned no value", nil)
+	}
+	saved := *cur.rows[0][0]
+	const setSQL = "SELECT set_config('statement_timeout', $1, false)"
+	if _, err := runRaw(ctx, conn, setSQL, []any{fmt.Sprintf("%dms", timeout.Milliseconds())}, op, track, page.ResultCap{}); err != nil {
+		return nil, err
+	}
+	return func() {
+		conn.waitInFlight()
+		if conn.IsClosed() {
+			return
+		}
+		// A failed statement in a user transaction leaves it aborted: closing would destroy the
+		// transaction, and the set_config reverts at the rollback the user must issue anyway.
+		if conn.PgConn().TxStatus() == 'E' {
+			return
+		}
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), endTransactionTimeout)
+		defer cancel()
+		if _, err := conn.Exec(cleanupCtx, setSQL, pgx.QueryExecModeSimpleProtocol, saved); err != nil {
+			// Never leave a live connection carrying the agent's limit: the pool drops a closed one.
+			_ = conn.Close(cleanupCtx)
+		}
+	}, nil
+}
+
+// timeoutError maps the engine's statement_timeout cancel to the typed timeout. Stop and a timeout
+// share SQLSTATE 57014 and the message is localised, so the op ctx tells them apart: Stop cancels
+// it first, a statement timeout leaves it live.
+func timeoutError(ctx context.Context, timeout time.Duration, err error) error {
+	if err == nil || timeout <= 0 || ctx.Err() != nil {
+		return err
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "57014" {
+		return adapters.StatementTimeout(timeout, 0, err)
+	}
+	return err
 }

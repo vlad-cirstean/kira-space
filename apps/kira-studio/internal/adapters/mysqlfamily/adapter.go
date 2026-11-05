@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"regexp"
 	"strconv"
+	"sync/atomic"
 
 	"github.com/go-sql-driver/mysql"
 
@@ -28,6 +29,10 @@ type Adapter struct {
 	caps    adapters.Caps
 
 	state adapters.Guarded[connState]
+
+	// mariadbServer is set at Connect from VERSION(): the timeout variable depends on the server,
+	// not on the kind the connection was filed under.
+	mariadbServer atomic.Bool
 
 	tracker adapters.QueryTracker[RunningQuery]
 }
@@ -105,6 +110,7 @@ func (a *Adapter) Connect(ctx context.Context, cfg model.ResolvedConnectionConfi
 	release()
 
 	a.setConnected(database.String, cfg.ReadOnly)
+	a.mariadbServer.Store(mariadbVersionRE.MatchString(serverVersion))
 
 	// D6: pointing the MySQL adapter at a MariaDB server (or vice versa) works — same driver, same
 	// wire protocol — so this is a warning, not a connect failure.
@@ -354,7 +360,7 @@ func (a *Adapter) Execute(ctx context.Context, req model.ConsoleRequest, op *ada
 		return nil, err
 	}
 	defer release()
-	return execute(ctx, entry, op, a.trackerFor(op.OpID), a.state.Load().ReadOnly || req.ReadOnly, a.state.Load().ReadOnly, req.Statements, adapters.ConsoleCapFor(req))
+	return execute(ctx, entry, op, a.trackerFor(op.OpID), a.state.Load().ReadOnly || req.ReadOnly, a.state.Load().ReadOnly, req.Statements, adapters.ConsoleCapFor(req), req.StatementTimeout, a.mariadbServer.Load())
 }
 
 // DownloadObject is index.ts's downloadObject — caps.FileTransfer is false; never reached.

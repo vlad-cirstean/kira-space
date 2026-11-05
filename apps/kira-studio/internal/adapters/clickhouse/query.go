@@ -194,13 +194,13 @@ func StreamQuery(ctx context.Context, h *Handle, queryID string, sql string, op 
 // RunCommand is query.ts's runCommand — a non-row-returning statement (INSERT, DDL) via a plain
 // POST, never a FORMAT clause: an INSERT's own FORMAT names the *input* data's format, not an
 // output format, so appending one would be a different statement entirely.
-func RunCommand(ctx context.Context, h *Handle, queryID string, sql string, op *adapters.OpCtx, track TrackQuery) (int64, error) {
+func RunCommand(ctx context.Context, h *Handle, queryID string, sql string, op *adapters.OpCtx, track TrackQuery, settings map[string]string) (int64, error) {
 	if err := adapters.CheckNotStarted(ctx); err != nil {
 		return 0, err
 	}
 	release := track(RunningQuery{QueryID: queryID})
 	return adapters.RunWithAbortRace(ctx, release, func(reqCtx context.Context) (int64, error) {
-		resp, err := doRequest(reqCtx, h, sql, queryID, nil, nil, h.ReadOnly)
+		resp, err := doRequest(reqCtx, h, sql, queryID, settings, nil, h.ReadOnly)
 		if err != nil {
 			return 0, err
 		}

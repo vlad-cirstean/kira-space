@@ -319,7 +319,7 @@ func (a *Adapter) Execute(ctx context.Context, req model.ConsoleRequest, op *ada
 		return nil, err
 	}
 	seq := a.newOpSeq(op.OpID)
-	return execute(ctx, handle, op, a.trackerFor(op.OpID), req.Statements, func() string { return seq.next(a) }, adapters.ConsoleCapFor(req))
+	return execute(ctx, handle, op, a.trackerFor(op.OpID), req.Statements, func() string { return seq.next(a) }, adapters.ConsoleCapFor(req), req.StatementTimeout, a.deps.Log)
 }
 
 // DownloadObject is index.ts's downloadObject — caps.FileTransfer is false, so no UI ever offers
