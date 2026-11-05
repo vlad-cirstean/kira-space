@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/flowharness/servers"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/approvals"
+	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 const (
@@ -145,18 +147,23 @@ func TestApiRequestApproved(t *testing.T) {
 		t.Fatalf("server saw %+v, want one request with the real credential", got)
 	}
 
-	recent, err := f.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 50})
-	if err != nil {
-		t.Fatal(err)
-	}
+	// The op log is written by an async consumer: wait for the row to leave "running".
 	var row *model.OpRecord
 	var rowsJSON []byte
-	rowsJSON, _ = json.Marshal(recent)
-	for i := range recent {
-		if recent[i].Kind == "http" {
-			row = &recent[i]
+	testx.WaitUntil(t, 10*time.Second, func() bool {
+		recent, err := f.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 50})
+		if err != nil {
+			t.Fatal(err)
 		}
-	}
+		rowsJSON, _ = json.Marshal(recent)
+		row = nil
+		for i := range recent {
+			if recent[i].Kind == "http" && recent[i].Status != "running" {
+				row = &recent[i]
+			}
+		}
+		return row != nil
+	})
 	if row == nil || row.Source != "mcp" || row.Command == nil || !strings.HasPrefix(*row.Command, "GET "+srv.URL+"/echo") {
 		t.Fatalf("op rows = %s, want one mcp http row", rowsJSON)
 	}
