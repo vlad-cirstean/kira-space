@@ -24,7 +24,7 @@ import (
 
 // OpSpec is the Go analogue of scheduler/ops.ts's runOp spec parameter. ConnectionID is nil for a
 // connection-less op (adapter:test probes a throwaway adapter, never a live one). OpID empty mints
-// a fresh id, matching runOp's `spec.opId ?? crypto.randomUUID()`.
+// a fresh id, matching runOp's `spec.opId ?? newUuid()`.
 type OpSpec struct {
 	ConnectionID *string
 	Kind         string // a model.OpKind value

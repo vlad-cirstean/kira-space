@@ -1,6 +1,7 @@
 import { open, readFile, rm, stat } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { resolve } from 'node:path';
+import { newUuid } from '@shared/ids';
 
 // Helpers both apps' tests/e2e-real fixtures share: a real `-tags server` Go backend is built under
 // one cross-process lock, spawned on a free loopback port and polled until it answers /health.
@@ -143,7 +144,7 @@ export async function bound<T>(
       object: 0,
       method: 0,
       args: {
-        'call-id': crypto.randomUUID(),
+        'call-id': newUuid(),
         methodName: `${bridgePkg}.${service}.${method}`,
         args: args === undefined ? [] : [args],
       },

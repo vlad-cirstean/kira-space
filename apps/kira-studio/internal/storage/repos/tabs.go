@@ -82,7 +82,7 @@ func (r *TabsRepo) List(windowKey string) ([]model.TabRecord, error) {
 // every record regardless of what changed — tabs.ts's saveDebounced() calls this once a second
 // while someone types in a console tab, so an unchanged 1 MB `state_json` for nine untouched tabs
 // was rewritten every second purely because a tenth tab's own text changed. `id` is the table's
-// own PRIMARY KEY (globally unique — every tab id is a crypto.randomUUID(), and the original code
+// own PRIMARY KEY (globally unique — every tab id is a UUID, and the original code
 // already assumed as much: an INSERT colliding with a row under a *different* window_key would
 // have failed outright before this fix, same as it would now), so `ON CONFLICT(id) DO UPDATE`
 // rewrites only the row for the record it was asked to write, and SQLite skips

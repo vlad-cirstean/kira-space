@@ -1,4 +1,5 @@
 import { CROCKFORD_ALPHABET, crockfordBase32 } from '@shared/domain/mask';
+import { newUuid } from '@shared/ids';
 import type { MessageKey } from '@theme/i18n';
 import type { CellFormat } from './formats';
 
@@ -66,7 +67,7 @@ export const GENERATORS: readonly Generator[] = [
     id: 'uuid',
     labelKey: 'studio.cellEditor.generate.uuid.label',
     hintKey: 'studio.cellEditor.generate.uuid.description',
-    run: () => crypto.randomUUID(),
+    run: () => newUuid(),
   },
   {
     id: 'ulid',

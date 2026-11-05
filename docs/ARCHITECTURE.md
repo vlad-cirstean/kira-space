@@ -203,6 +203,15 @@ whatever sandbox a session happens to be in),
 - The shell can open a second window via Window → New Window (⇧⌘N, P8), but only from a Go-side menu command, never from a renderer-initiated call; JavaScriptCanOpenWindowsAutomatically is Disabled and the renderer never calls window.open or an equivalent.
 - P66/P119 update-availability check and install are Go-side: internal/appupdate fetches GitHub release metadata itself, and InstallUpdate stages the update through its own detached installer. The renderer calls only nullary methods (Status, Check, InstallUpdate, CancelInstall) and sends or receives no URL. Check bypasses the cache and surfaces a failed check; a poll keeps failure silent.
 
+## Ids
+
+- Keys and machine ids are UUIDv7: `ids.NewID()` (`internal/ids`, google/uuid) in Go, `newUuid()` (`packages/shared/ids.ts`, `uuid`) in TS. Never `uuid.New*`, `crypto.randomUUID` or `crypto/rand` for an id; guards G6 (Go) and N14 (TS) enforce it.
+- A user-touched handle that is not a key (worktree dir, temp dir, flow run, TUI stem, sandbox, distill) is a prefixed Crockford-base32 nanoid: `ids.New(ids.Prefix)` / `newId(prefix)`, body 10 or 12 chars. The registry is `internal/ids/prefixes.go`, equal to `PREFIXES` in `packages/shared/ids.ts` (N13).
+- A v7 head is a timestamp: never slice its first characters. `shortId` shows the last 4.
+- `ids.IsClientID` (1-64 bytes of `[A-Za-z0-9_:-]`) bounds client-supplied tab and terminal ids. Tab upserts are scoped to the owning window key (`ErrTabOwnedElsewhere`, `ErrInvalidTab`, both `E_CONTRACT`).
+- Op ids: `adapterhost.Host` refuses a non-UUID id (`E_QUERY`, "The operation ID is not valid."). Read, Count, Mutate and ObjectDownload take an optional `opId`; an empty one is minted in Go. A reused op id fails its history write and cannot overwrite the first row.
+- `review_comment.id` stays an integer.
+
 ## Adapter contract
 
 - Each database/queue/storage engine is one package under apps/kira-studio/internal/adapters/ (postgres, mysqlfamily shared by mariadb/mysql, sqlite, clickhouse, mongo, redis, sqs, s3, kafka) implementing the Adapter interface in adapter.go.
@@ -1327,7 +1336,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - Both app menus carry View: Command palette and Find.
 - WorkbenchTitleBar replaces per-app title bars; LogLines is the one virtualized log viewer; StatusBar stays per app.
 - Shared UI test helpers live in packages/workbench/src/testing/ui/; app-only ones in apps/*/tests/ui/support/.
-- Persistence ids are TEXT uuid v4.
+- Persistence ids are TEXT UUID (v7 for new keys; legacy v4 rows stay valid, `ids.IsUUID` accepts any version). See "Ids".
 - New timestamp columns are INTEGER unix ms named *_at; older TEXT ISO columns stay as legacy, and N7 refuses new ones.
 - Migrations are named NNNN_<phase>_<slug>.sql.
 - Files a person or another program reads must be written with renameio.WriteFile; exempt are test tooling and temp snapshots (G4).
@@ -2863,7 +2872,7 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 - Audit logs one "mobileweb: write" line per write, attach, release and reclaim (device, action, ids), never message text or keystrokes; there is no persisted audit table.
 - appevent.Tap forwards only window-wide Emit (not EmitTo/EmitFocused) to a hub that applies an SSE channel allowlist (kira:adetask:* read channels, kira:agent:sessions, kira:agent:event). Every kira:mobile:* channel is desktop only. Terminal bytes travel only over the attach socket; the client invalidates all queries on SSE reconnect.
 - ade/v2/reader.ts (AdeReader) is the transport seam: desktop binds it to control, mobile to HTTP. The mobile app in frontend/mobile/ is a second Vite build (vite.mobile.config.ts, tsconfig.mobile.json, dist-mobile, embedded by main.go) with no @bindings alias, so an accidental desktop control import fails the build.
-- The phone app has no service worker, manifest or install metas (the shell is one index.html) and avoids secure-context-only APIs: idempotency keys are a v4 UUID from crypto.getRandomValues because crypto.randomUUID is undefined on an insecure origin.
+- The phone app has no service worker, manifest or install metas (the shell is one index.html) and avoids secure-context-only APIs: idempotency keys come from `newUuid` in `packages/shared/ids.ts` (the `uuid` package uses crypto.getRandomValues) because crypto.randomUUID is undefined on an insecure origin.
 
 ## Memory MCP server and module (P201, Kira Space)
 

@@ -23,7 +23,7 @@ export type WorkspaceKey = string;
 
 // The one non-repo slot: an unscoped terminal tab (state/terminalTabs.ts's own default, no repo in
 // scope) and the moment before any repository has ever been opened. Never a real code_repos id
-// (crypto.randomUUID() never produces this literal), so it can never collide with one.
+// (a UUID never matches this literal), so it can never collide with one.
 export const GENERAL_WORKSPACE = '__general__';
 
 // The files window's one tab partition: repo and loose file tabs share a strip. Never a real
