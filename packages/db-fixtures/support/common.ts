@@ -27,6 +27,7 @@ export function baseConnectionConfig(
     mcpDdlMode: 'deny',
     mcpAutoExplain: true,
     mcpReviewResults: 'inherit',
+    mcpStatementTimeoutSec: 10,
     ...overrides,
   };
 }

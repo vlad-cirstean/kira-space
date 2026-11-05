@@ -81,6 +81,8 @@ type MCP struct {
 	DDL           string `json:"ddl,omitempty"`
 	AutoExplain   *bool  `json:"auto_explain,omitempty"`
 	ReviewResults string `json:"review_results,omitempty"`
+	// StatementTimeoutSec nil means the default; a pointer so 0 (off) survives omitempty.
+	StatementTimeoutSec *int `json:"statement_timeout_sec,omitempty"`
 }
 
 // Mask hides one column's values from the DB MCP server. KeepHint and Correlate default to true.
@@ -144,6 +146,7 @@ func (f File) Fields() model.ConnectionFields {
 		Host: nilIfEmpty(f.Host), Database: nilIfEmpty(f.Database), Username: nilIfEmpty(f.Username),
 		Options: map[string]any{}, AutoExplain: f.AutoExplain, ThrottlePerSec: f.ThrottlePerSec,
 		McpReadMode: McpRead, McpWriteMode: McpWrite, McpDdlMode: McpDDL, McpAutoExplain: true, McpReviewResults: ReviewInherit,
+		McpStatementTimeoutSec: model.McpStatementTimeoutDefault,
 	}
 	if f.Port != 0 {
 		p := f.Port
@@ -160,6 +163,9 @@ func (f File) Fields() model.ConnectionFields {
 		out.McpEnabled, out.McpDescription = m.Enabled, m.Description
 		out.McpReadMode, out.McpWriteMode, out.McpDdlMode = orDefault(m.Read, McpRead), orDefault(m.Write, McpWrite), orDefault(m.DDL, McpDDL)
 		out.McpAutoExplain, out.McpReviewResults = boolOr(m.AutoExplain, true), orDefault(m.ReviewResults, ReviewInherit)
+		if m.StatementTimeoutSec != nil {
+			out.McpStatementTimeoutSec = *m.StatementTimeoutSec
+		}
 	}
 	return out
 }
@@ -235,6 +241,10 @@ func FileOf(c model.ConnectionFields, masks []model.MaskRuleFields, tree model.T
 	}
 	if c.McpReviewResults != ReviewInherit {
 		m.ReviewResults = c.McpReviewResults
+	}
+	if c.McpStatementTimeoutSec != model.McpStatementTimeoutDefault {
+		v := c.McpStatementTimeoutSec
+		m.StatementTimeoutSec = &v
 	}
 	if m != (MCP{}) {
 		f.MCP = &m

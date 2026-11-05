@@ -2559,6 +2559,9 @@
         "mcpDescriptionLength": {
           "body": "MCP description must be at most 1000 characters."
         },
+        "mcpStatementTimeoutRange": {
+          "body": "Statement timeout is 0 (off) or a whole number of seconds from 1 to 3600."
+        },
         "nameLength": {
           "body": "Name must be 1-120 characters."
         },

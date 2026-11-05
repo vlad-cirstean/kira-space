@@ -129,6 +129,9 @@ func (f File) checkMCP() *ValidationError {
 	if m.ReviewResults != "" && !model.ValidMcpReviewResults(m.ReviewResults) {
 		return invalid("/mcp/review_results")
 	}
+	if m.StatementTimeoutSec != nil && !model.ValidMcpStatementTimeout(*m.StatementTimeoutSec) {
+		return bad("/mcp/statement_timeout_sec", "backend.studio.connection.mcpStatementTimeoutRange.body", nil)
+	}
 	if len(m.Description) > DescriptionMax {
 		return bad("/mcp/description", "backend.studio.connection.mcpDescriptionLength.body", nil)
 	}

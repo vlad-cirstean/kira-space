@@ -104,6 +104,7 @@ async function start(opts?: { seedBigTable?: boolean }): Promise<SqliteFixture> 
     mcpDdlMode: 'deny',
     mcpAutoExplain: true,
     mcpReviewResults: 'inherit',
+    mcpStatementTimeoutSec: 10,
     password: null,
   };
 

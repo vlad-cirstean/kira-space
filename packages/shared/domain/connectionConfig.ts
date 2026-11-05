@@ -69,6 +69,7 @@ export interface ConnectionFileMcp {
   ddl?: string;
   auto_explain?: boolean;
   review_results?: string;
+  statement_timeout_sec?: number;
 }
 
 export interface ConnectionFileModel {

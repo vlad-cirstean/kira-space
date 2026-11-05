@@ -135,7 +135,7 @@ func applyOne(ds DataSource, projectDir string, cfg SecurityConfig, secretsAvail
 			Username: fields.Username, Options: map[string]any{},
 			// The connection dialog's defaults; Create rejects an empty permission mode.
 			McpReadMode: "allow", McpWriteMode: "prompt", McpDdlMode: "deny", McpAutoExplain: true,
-			McpReviewResults: "inherit",
+			McpReviewResults: "inherit", McpStatementTimeoutSec: model.McpStatementTimeoutDefault,
 		},
 		Password: password,
 	}

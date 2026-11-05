@@ -142,6 +142,13 @@
           "enum": ["inherit", "review", "send"],
           "default": "inherit",
           "description": "inherit follows the app setting; review always holds results for a look; send never holds them."
+        },
+        "statement_timeout_sec": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3600,
+          "default": 10,
+          "description": "Seconds each statement an agent runs may take; 0 turns the timeout off."
         }
       }
     },

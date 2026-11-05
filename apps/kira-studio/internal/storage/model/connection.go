@@ -49,6 +49,9 @@ type ConnectionFields struct {
 	McpAutoExplain bool `json:"mcpAutoExplain"`
 	// Result review on the DB MCP path: inherit (app setting), review (always hold), send (never).
 	McpReviewResults string `json:"mcpReviewResults"`
+	// McpStatementTimeoutSec bounds each statement an agent runs (P529): seconds, 0 off. A first-class
+	// column, never options: a safety limit must not be settable through options or a URI.
+	McpStatementTimeoutSec int `json:"mcpStatementTimeoutSec"`
 }
 
 // ConnectionSummary mirrors packages/shared/domain/connection.ts's connectionSummarySchema.
@@ -123,6 +126,15 @@ var mcpPermissionModes = map[string]bool{"deny": true, "allow": true, "prompt": 
 
 // ValidMcpPermissionMode mirrors connection.ts's mcpPermissionModeSchema (M2).
 func ValidMcpPermissionMode(v string) bool { return mcpPermissionModes[v] }
+
+// Statement timeout bounds (P529); mirrors connection.ts's CONNECTION_MCP_STATEMENT_TIMEOUT.
+const (
+	McpStatementTimeoutDefault = 10
+	McpStatementTimeoutMax     = 3600
+)
+
+// ValidMcpStatementTimeout reports whether v is 0 (off) or a whole number of seconds up to the max.
+func ValidMcpStatementTimeout(v int) bool { return v >= 0 && v <= McpStatementTimeoutMax }
 
 // mcpReviewResultsValues mirrors connection.ts's mcpReviewResultsSchema.
 var mcpReviewResultsValues = map[string]bool{"inherit": true, "review": true, "send": true}

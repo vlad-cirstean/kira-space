@@ -104,6 +104,7 @@ func (l *Loader) legacyRows(tx *sql.Tx, withSecrets bool) ([]legacyConn, error) 
 			&c.password, &c.uri); err != nil {
 			return nil, fmt.Errorf("connfiles: scan connection: %w", err)
 		}
+		f.McpStatementTimeoutSec = model.McpStatementTimeoutDefault // the column never existed on a legacy row
 		f.ReadOnly, f.PreconnectSidecar, f.AutoExplain, f.McpEnabled, f.McpAutoExplain = ro != 0, side != 0, auto != 0, mcp != 0, mcpAuto != 0
 		f.Options = map[string]any{}
 		if opts.Valid && opts.String != "" {

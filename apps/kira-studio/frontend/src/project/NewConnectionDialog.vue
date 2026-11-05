@@ -69,6 +69,7 @@ function inputFor(): ConnectionInput {
     mcpDdlMode: 'deny',
     mcpAutoExplain: true,
     mcpReviewResults: 'inherit',
+    mcpStatementTimeoutSec: 10,
   };
 }
 

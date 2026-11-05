@@ -74,6 +74,7 @@ var names = []sqlitex.MigrationSource{
 	{Version: 56, Name: "p475_connection_files", File: "0056_p475_connection_files.sql"},
 	{Version: 57, Name: "p485_kube_cluster_order", File: "0057_p485_kube_cluster_order.sql"},
 	{Version: 58, Name: "p521_script_run_mcp", File: "0058_p521_script_run_mcp.sql"},
+	{Version: 60, Name: "p529_connection_mcp_statement_timeout", File: "0060_p529_connection_mcp_statement_timeout.sql"},
 }
 
 // All returns every migration in ascending version order.

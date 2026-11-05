@@ -81,6 +81,7 @@ async function start(): Promise<KafkaFixture> {
     mcpDdlMode: 'deny',
     mcpAutoExplain: true,
     mcpReviewResults: 'inherit',
+    mcpStatementTimeoutSec: 10,
     password: null,
   };
 

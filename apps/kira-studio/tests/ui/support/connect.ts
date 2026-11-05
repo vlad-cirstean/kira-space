@@ -42,6 +42,7 @@ export function newConnectionArgs(
     mcpDdlMode: 'deny',
     mcpAutoExplain: true,
     mcpReviewResults: 'inherit',
+    mcpStatementTimeoutSec: 10,
   };
 }
 

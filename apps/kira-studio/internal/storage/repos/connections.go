@@ -14,7 +14,7 @@ const connectionSelectColumns = `
 	id, COALESCE(stem || '.yaml', ''), name, kind, color, mode, read_only, host, port, database, username,
 	options_json, preconnect, preconnect_sidecar, preconnect_delay_sec, auto_explain, throttle_per_sec,
 	mcp_enabled,
-	mcp_description, mcp_read_mode, mcp_write_mode, mcp_ddl_mode, mcp_auto_explain, mcp_review_results,
+	mcp_description, mcp_read_mode, mcp_write_mode, mcp_ddl_mode, mcp_auto_explain, mcp_review_results, mcp_statement_timeout_sec,
 	sort_order, created_at, updated_at
 `
 
@@ -47,7 +47,7 @@ func scanConnectionRow(row rowScanner) (*model.ConnectionSummary, error) {
 	if err := row.Scan(
 		&c.ID, &c.File, &c.Name, &c.Kind, &c.Color, &c.Mode, &readOnly, &host, &port, &database,
 		&username, &options, &preconnect, &sidecar, &c.PreconnectDelaySec, &autoExplain, &c.ThrottlePerSec,
-		&mcpEnabled, &c.McpDescription, &c.McpReadMode, &c.McpWriteMode, &c.McpDdlMode, &mcpAutoExplain, &c.McpReviewResults,
+		&mcpEnabled, &c.McpDescription, &c.McpReadMode, &c.McpWriteMode, &c.McpDdlMode, &mcpAutoExplain, &c.McpReviewResults, &c.McpStatementTimeoutSec,
 		&c.SortOrder, &c.CreatedAt, &c.UpdatedAt,
 	); err != nil {
 		return nil, err
@@ -84,6 +84,11 @@ func scanConnectionRow(row rowScanner) (*model.ConnectionSummary, error) {
 	if !model.ValidMcpReviewResults(c.McpReviewResults) {
 		slog.Warn("coercing connection row: unrecognised MCP review setting", "scope", "storage/connections", "id", c.ID, "value", c.McpReviewResults)
 		c.McpReviewResults = "review"
+	}
+	// P529: an unreadable timeout falls back to the default, never to off.
+	if !model.ValidMcpStatementTimeout(c.McpStatementTimeoutSec) {
+		slog.Warn("coercing connection row: unrecognised MCP statement timeout", "scope", "storage/connections", "id", c.ID, "value", c.McpStatementTimeoutSec)
+		c.McpStatementTimeoutSec = model.McpStatementTimeoutDefault
 	}
 
 	c.ReadOnly = readOnly != 0

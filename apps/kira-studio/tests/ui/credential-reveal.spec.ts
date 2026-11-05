@@ -43,6 +43,7 @@ const CONN: ConnectionSummary = {
   mcpDdlMode: 'deny',
   mcpAutoExplain: true,
   mcpReviewResults: 'inherit',
+  mcpStatementTimeoutSec: 10,
   sortOrder: 0,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
