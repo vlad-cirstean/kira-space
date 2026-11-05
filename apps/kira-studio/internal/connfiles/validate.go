@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/tableref"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -132,8 +134,31 @@ func (f File) checkMCP() *ValidationError {
 	if m.StatementTimeoutSec != nil && !model.ValidMcpStatementTimeout(*m.StatementTimeoutSec) {
 		return bad("/mcp/statement_timeout_sec", "backend.studio.connection.mcpStatementTimeoutRange.body", nil)
 	}
+	if m.Tables != nil {
+		if err := f.checkMCPTables(*m.Tables); err != nil {
+			return err
+		}
+	}
 	if len(m.Description) > DescriptionMax {
 		return bad("/mcp/description", "backend.studio.connection.mcpDescriptionLength.body", nil)
+	}
+	return nil
+}
+
+// MCPTablesMax caps the entries of mcp.tables.
+const MCPTablesMax = 10000
+
+func (f File) checkMCPTables(entries []string) *ValidationError {
+	if !tableref.Applies(f.Kind) {
+		return bad("/mcp/tables", "backend.studio.connection.mcpTablesKind.body", nil)
+	}
+	if len(entries) > MCPTablesMax {
+		return bad("/mcp/tables", "backend.studio.connection.mcpTablesMax.body", map[string]string{"max": strconv.Itoa(MCPTablesMax)})
+	}
+	for i, e := range entries {
+		if _, err := tableref.Parse(f.Kind, e); err != nil {
+			return bad(fmt.Sprintf("/mcp/tables/%d", i), "backend.studio.connection.mcpTablesEntry.body", nil)
+		}
 	}
 	return nil
 }

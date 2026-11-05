@@ -22,6 +22,7 @@ const inheriting = (): ConnectionSummary => ({
   id: ID,
   mcpReviewResults: 'inherit',
   mcpStatementTimeoutSec: 10,
+  mcpTables: null,
   sortOrder: 0,
 });
 const other = (): ConnectionSummary => ({

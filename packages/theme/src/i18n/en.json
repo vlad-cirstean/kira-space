@@ -2562,6 +2562,15 @@
         "mcpStatementTimeoutRange": {
           "body": "Statement timeout is 0 (off) or a whole number of seconds from 1 to 3600."
         },
+        "mcpTablesEntry": {
+          "body": "A table in the MCP table list is not valid for this connection kind."
+        },
+        "mcpTablesKind": {
+          "body": "The MCP table list does not apply to this connection kind."
+        },
+        "mcpTablesMax": {
+          "body": "The MCP table list holds at most {max} entries."
+        },
         "nameLength": {
           "body": "Name must be 1-120 characters."
         },

@@ -149,6 +149,12 @@
           "maximum": 3600,
           "default": 10,
           "description": "Seconds each statement an agent runs may take; 0 turns the timeout off."
+        },
+        "tables": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Tables, views or collections MCP statements may touch. Absent allows all, including later ones; an empty list allows none. Entry format: postgres database.schema.name; mysql, mariadb, clickhouse, mongodb database.name; sqlite and kibana name. Wrap a part in double quotes when it holds a dot. Not for redis, kafka, s3 or sqs."
         }
       }
     },

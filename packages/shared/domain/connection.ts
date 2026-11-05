@@ -172,6 +172,8 @@ const connectionFieldsSchema = /*#__PURE__*/ z.object({
     .min(0)
     .max(CONNECTION_MCP_STATEMENT_TIMEOUT.max)
     .default(CONNECTION_MCP_STATEMENT_TIMEOUT.default),
+  // P532: tables MCP statements may touch (tableref entries). null = all, including later ones; [] = none.
+  mcpTables: z.array(z.string()).nullable().default(null),
   // M2: free-text "what this DB is for", passed to an AI client as connection metadata
   // (list_connections). Never interpreted by this app.
   mcpDescription: z.string().max(1000).default(''),

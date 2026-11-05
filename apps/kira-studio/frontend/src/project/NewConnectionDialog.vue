@@ -70,6 +70,7 @@ function inputFor(): ConnectionInput {
     mcpAutoExplain: true,
     mcpReviewResults: 'inherit',
     mcpStatementTimeoutSec: 10,
+    mcpTables: null,
   };
 }
 

@@ -70,6 +70,8 @@ export interface ConnectionFileMcp {
   auto_explain?: boolean;
   review_results?: string;
   statement_timeout_sec?: number;
+  // Absent = all tables; [] = none.
+  tables?: string[];
 }
 
 export interface ConnectionFileModel {

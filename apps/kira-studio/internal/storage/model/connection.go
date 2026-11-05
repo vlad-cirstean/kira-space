@@ -52,6 +52,10 @@ type ConnectionFields struct {
 	// McpStatementTimeoutSec bounds each statement an agent runs (P529): seconds, 0 off. A first-class
 	// column, never options: a safety limit must not be settable through options or a URI.
 	McpStatementTimeoutSec int `json:"mcpStatementTimeoutSec"`
+	// P532: tables, views and collections MCP statements may touch, as tableref entries. nil = all,
+	// including ones created later; non-nil (maybe empty) = exactly those. Not applicable to redis, kafka,
+	// s3 or sqs.
+	McpTables []string `json:"mcpTables"`
 }
 
 // ConnectionSummary mirrors packages/shared/domain/connection.ts's connectionSummarySchema.

@@ -5,6 +5,7 @@
 package connfiles
 
 import (
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -83,6 +84,8 @@ type MCP struct {
 	ReviewResults string `json:"review_results,omitempty"`
 	// StatementTimeoutSec nil means the default; a pointer so 0 (off) survives omitempty.
 	StatementTimeoutSec *int `json:"statement_timeout_sec,omitempty"`
+	// Tables lists the tables MCP statements may touch. Absent = all; a pointer so an empty list survives omitempty.
+	Tables *[]string `json:"tables,omitempty"`
 }
 
 // Mask hides one column's values from the DB MCP server. KeepHint and Correlate default to true.
@@ -105,6 +108,19 @@ func orDefault(v, def string) string {
 		return def
 	}
 	return v
+}
+
+// dedupe copies in without repeats, never nil.
+func dedupe(in []string) []string {
+	out := make([]string, 0, len(in))
+	seen := map[string]bool{}
+	for _, s := range in {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 func nilIfEmpty(s string) *string {
@@ -165,6 +181,9 @@ func (f File) Fields() model.ConnectionFields {
 		out.McpAutoExplain, out.McpReviewResults = boolOr(m.AutoExplain, true), orDefault(m.ReviewResults, ReviewInherit)
 		if m.StatementTimeoutSec != nil {
 			out.McpStatementTimeoutSec = *m.StatementTimeoutSec
+		}
+		if m.Tables != nil {
+			out.McpTables = dedupe(*m.Tables)
 		}
 	}
 	return out
@@ -246,7 +265,11 @@ func FileOf(c model.ConnectionFields, masks []model.MaskRuleFields, tree model.T
 		v := c.McpStatementTimeoutSec
 		m.StatementTimeoutSec = &v
 	}
-	if m != (MCP{}) {
+	if c.McpTables != nil {
+		tables := append([]string{}, c.McpTables...)
+		m.Tables = &tables
+	}
+	if !reflect.DeepEqual(m, MCP{}) {
 		f.MCP = &m
 	}
 	for _, r := range masks {

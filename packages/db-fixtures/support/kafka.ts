@@ -82,6 +82,7 @@ async function start(): Promise<KafkaFixture> {
     mcpAutoExplain: true,
     mcpReviewResults: 'inherit',
     mcpStatementTimeoutSec: 10,
+    mcpTables: null,
     password: null,
   };
 
