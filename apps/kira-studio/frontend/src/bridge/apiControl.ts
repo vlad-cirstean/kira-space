@@ -230,6 +230,9 @@ export const apiControl = {
     beforeId: string | null;
   }): Promise<Record<string, string>> =>
     unwrap(CollectionsService.MoveItems(args)).then((r) => trust<Record<string, string>>(r ?? {})),
+  /** Puts the listed collections first, in that order. */
+  collectionsReorderCollections: (ids: string[]): Promise<void> =>
+    unwrap(CollectionsService.ReorderCollections({ ids })),
   collectionsImport: (paths: string[]): Promise<ImportResult> =>
     unwrap(CollectionsService.Import({ paths })).then((r) => trust<ImportResult>(r)),
   // P5 D16: ExportReport.secretCount is what lets the panel say "N secret values were not
@@ -275,6 +278,8 @@ export const apiControl = {
     ),
   variablesDeleteEnvironment: (id: string): Promise<void> =>
     unwrap(VariablesService.DeleteEnvironment({ id })),
+  variablesReorderEnvironments: (ids: string[]): Promise<void> =>
+    unwrap(VariablesService.ReorderEnvironments({ ids })),
   variablesDuplicateEnvironment: (id: string): Promise<ApiEnvironment> =>
     unwrap(VariablesService.DuplicateEnvironment({ id })).then((r) => trust<ApiEnvironment>(r)),
   // id: '' selects "No environment" (D3).

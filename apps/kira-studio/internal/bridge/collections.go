@@ -300,6 +300,21 @@ func (s *CollectionsService) MoveItems(args CollectionsMoveItemsArgs) (map[strin
 	return moved, nil
 }
 
+type CollectionsReorderCollectionsArgs struct {
+	IDs []string `json:"ids"`
+}
+
+// ReorderCollections puts the listed collections first, in that order; ids left out keep their order after.
+func (s *CollectionsService) ReorderCollections(args CollectionsReorderCollectionsArgs) error {
+	if len(args.IDs) == 0 {
+		return ipcerr.Required("ids")
+	}
+	if err := s.Files.ReorderCollections(args.IDs); err != nil {
+		return apiFilesErr(err)
+	}
+	return nil
+}
+
 // apiFilesErr maps a config file write failure: a missing row or item is E_NOT_FOUND, a broken or
 // refused file E_BAD_REQUEST, a file changed twice during the write E_CONFLICT.
 func apiFilesErr(err error) error {
@@ -315,6 +330,8 @@ func apiFilesErr(err error) error {
 		return ipcerr.T(ipcerr.CodeNotFound, "backend.studio.apiFiles.notFound.body", nil)
 	case errors.Is(err, apifiles.ErrInvalidMove):
 		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.collection.invalidMove.body", nil)
+	case errors.Is(err, apifiles.ErrInvalidOrder):
+		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.collection.invalidOrder.body", nil)
 	case errors.Is(err, apifiles.ErrNotFolder), errors.Is(err, apifiles.ErrProtocol), errors.Is(err, configfs.ErrInvalid):
 		return ipcerr.BadRequest(err.Error())
 	case errors.Is(err, configfs.ErrConflict):

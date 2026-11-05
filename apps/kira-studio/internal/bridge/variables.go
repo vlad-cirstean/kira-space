@@ -9,9 +9,9 @@ import (
 )
 
 // VariablesService reads environments and variables from the rows the api config files project to,
-// switches the active environment (app state, not config) and creates an environment file. Names,
-// order and plain values are edited in the files. Reveal/RevealHistory need the Authorizer gate, so
-// they go through Deps.ApiVars.
+// switches the active environment (app state, not config) and creates an environment file. Names
+// and plain values are edited in the files; the environment order is app state.
+// Reveal/RevealHistory need the Authorizer gate, so they go through Deps.ApiVars.
 type VariablesService struct {
 	Deps  appcore.Deps
 	Files *apifiles.Store
@@ -67,6 +67,21 @@ func (s *VariablesService) DeleteEnvironment(args VariablesEnvironmentIDArgs) er
 		return ipcerr.Required("id")
 	}
 	return apiFilesErr(s.Files.DeleteEnvironment(args.ID))
+}
+
+type VariablesReorderEnvironmentsArgs struct {
+	IDs []string `json:"ids"`
+}
+
+// ReorderEnvironments puts the listed environments first, in that order; ids left out keep their order after.
+func (s *VariablesService) ReorderEnvironments(args VariablesReorderEnvironmentsArgs) error {
+	if len(args.IDs) == 0 {
+		return ipcerr.Required("ids")
+	}
+	if err := s.Files.ReorderEnvironments(args.IDs); err != nil {
+		return apiFilesErr(err)
+	}
+	return nil
 }
 
 // DuplicateEnvironment copies the environment file under a free name.

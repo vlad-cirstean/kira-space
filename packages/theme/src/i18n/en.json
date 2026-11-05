@@ -2466,6 +2466,9 @@
             "body": "{count} folder- or item-level variables were kept but are not resolved yet. A secret-typed one has its value stripped."
           }
         },
+        "invalidOrder": {
+          "body": "That order no longer matches the list. Retry."
+        },
         "writeFailed": {
           "error": "Couldn’t write {path}: {detail}"
         }
