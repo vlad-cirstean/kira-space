@@ -10,6 +10,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -73,7 +74,7 @@ func TestPhoneWrites(t *testing.T) {
 	if r := p.send(http.MethodPost, "/api/ade/later/items", map[string]string{"title": "x"}, ""); r.Status != http.StatusBadRequest || r.code(t) != "E_IDEMPOTENCY_KEY" {
 		t.Fatalf("write without an Idempotency-Key = %d %s", r.Status, r.Body)
 	}
-	key := uuid.NewString()
+	key := ids.NewID() // v7; p.post below sends v4 keys, which still run once
 	first := p.send(http.MethodPost, "/api/ade/later/items", map[string]string{"title": "first"}, key)
 	if first.Status != http.StatusOK {
 		t.Fatalf("later add = %d %s", first.Status, first.Body)
@@ -164,4 +165,28 @@ func TestPhoneWrites(t *testing.T) {
 		return false
 	})
 	f.release(t)
+}
+
+// v7 and v4 keys each run once and replay; a short non-UUID key is refused.
+func TestPhoneIdempotencyKeys(t *testing.T) {
+	f := newFixture(t)
+	p, deviceID := pairedPhone(t, f)
+	if err := f.app.W.Mobile.SetDevicePermissions(bridge.MobileDevicePermissionsArgs{ID: deviceID, Write: true}); err != nil {
+		t.Fatal(err)
+	}
+	const path = "/api/ade/later/items"
+	if r := p.send(http.MethodPost, path, map[string]string{"title": "bad"}, "abc"); r.Status != http.StatusBadRequest || r.code(t) != "E_IDEMPOTENCY_KEY" {
+		t.Fatalf("key abc = %d %s", r.Status, r.Body)
+	}
+	for name, key := range map[string]string{"v7": ids.NewID(), "v4": uuid.NewString()} {
+		body := map[string]string{"title": name + " key"}
+		first := p.send(http.MethodPost, path, body, key)
+		again := p.send(http.MethodPost, path, body, key)
+		if first.Status != http.StatusOK || again.Header.Get("Idempotent-Replay") != "true" || !bytes.Equal(first.Body, again.Body) {
+			t.Fatalf("%s key: first %d, replay %d (replay header %q)", name, first.Status, again.Status, again.Header.Get("Idempotent-Replay"))
+		}
+		if got := shelfTitles(t, f.app, adewire.ShelfLater, body["title"]); len(got) != 1 {
+			t.Fatalf("%s key ran %d times, want once", name, len(got))
+		}
+	}
 }
