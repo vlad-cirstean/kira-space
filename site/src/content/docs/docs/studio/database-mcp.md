@@ -77,6 +77,16 @@ Known limits:
 - The plan request is one more operation and counts against the connection's throttle.
 - The statement timeout still applies to everything.
 
+## Column review
+
+Masking rules only protect columns you marked. A column added later is unmarked, so it would reach the AI client. Column review closes that gap for PostgreSQL, MySQL, MariaDB, ClickHouse and SQLite.
+
+In the Privacy tab, turn on **Withhold new columns until reviewed**. Kira records every current column as reviewed. From then on a column that no rule masks and nobody reviewed is withheld from MCP results. `run_query` drops it and names it in `withheldColumns`. A query that renames, transforms or filters on it is refused. Kira tells the agent the column name, never a value, and shows a prompt so you can review it.
+
+Review a column by ticking it, masking it with the **Mask** button, or choosing **Confirm all as reviewed**. The choice is saved in the connection file as `mask_review`.
+
+Limits: matching is by column name, like masking, so a reviewed column can share its name with a withheld one. Kira checks on connect, on Refresh and after an MCP write. It also rechecks every 30 seconds. A column added in the last 30 seconds can slip through. A renamed column counts as new. Scripts are not checked. No exemption applies.
+
 ## Approvals
 
 A prompt waits for you to approve the exact statement. The dialog names the connection and the statement class.
