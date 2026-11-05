@@ -20,7 +20,11 @@ import (
 // About a second of SQLite work; the cancel test uses the unbounded-ish longQuery instead.
 const slowQuery = `WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM c) SELECT count(*) FROM (SELECT x FROM c LIMIT 2500000)`
 
-type opMark struct{ topic, source, kind, opID string }
+type opMark struct {
+	topic, source, kind, opID string
+	startedAt                 time.Time
+	durationMs                int
+}
 
 // recordOps appends one mark per op:start/op:end of connID's ops, in arrival order.
 func (f *fixture) recordOps() (get func() []opMark, stop func()) {
@@ -38,10 +42,15 @@ func (f *fixture) recordOps() (get func() []opMark, stop func()) {
 				OpID   string `json:"opId"`
 				Kind   string `json:"kind"`
 				Source string `json:"source"`
+				// op:start
+				StartedAt string `json:"startedAt"`
+				// op:end
+				DurationMs int `json:"durationMs"`
 			}
 			_ = json.Unmarshal(e.Payload, &p)
+			started, _ := time.Parse(time.RFC3339Nano, p.StartedAt)
 			mu.Lock()
-			marks = append(marks, opMark{e.Topic, p.Source, p.Kind, p.OpID})
+			marks = append(marks, opMark{e.Topic, p.Source, p.Kind, p.OpID, started, p.DurationMs})
 			mu.Unlock()
 		}
 	}()
@@ -125,8 +134,13 @@ func TestThrottleSerialAcrossUserAndMcp(t *testing.T) {
 			if tc.overlap && mcpStart > userEnd {
 				t.Errorf("throttle off: mcp op started after the user op ended, want them side by side: %+v", got)
 			}
-			if !tc.overlap && mcpStart < userEnd {
-				t.Errorf("throttled: mcp op started before the user op ended: %+v", got)
+			// The gate frees the slot before op:end is emitted, so event order can't prove serialization:
+			// compare the user op's own start + duration with the mcp op's start instead (3ms covers the
+			// three ms truncations).
+			userStart := got[indexOf(got, oplog.EventOpStart, userOp)].startedAt
+			userRanUntil := userStart.Add(time.Duration(got[userEnd].durationMs) * time.Millisecond)
+			if !tc.overlap && got[mcpStart].startedAt.Add(3*time.Millisecond).Before(userRanUntil) {
+				t.Errorf("throttled: mcp op started at %v, before the user op finished at %v: %+v", got[mcpStart].startedAt, userRanUntil, got)
 			}
 		})
 	}
