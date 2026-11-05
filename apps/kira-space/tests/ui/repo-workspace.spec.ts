@@ -742,7 +742,7 @@ test('a repo workspace: file-tree rows carry per-language icons, directories kee
   await expect(tabFileIcon).toHaveAttribute('style', goStyle as string);
 });
 
-// terminalId is a client-generated UUID (state/tabs.ts's own crypto.randomUUID()) — unpredictable
+// terminalId is a client-generated UUID (state/tabs.ts's own newUuid()) — unpredictable
 // ahead of time, so this carries no `args` at all and relies on mockRuntime.ts's own single-
 // snapshot shortcut ("a channel called with the same args every time … answers regardless of the
 // exact args it was called with"). Without a real answer here, the mocked call 422s and
