@@ -137,9 +137,14 @@ type ApprovalRequest struct {
 	ConnectionID   string
 	ConnectionName string
 	Kind           string
-	Class          adapters.OpClass
-	Statement      string
-	Target         ApprovalTarget
+	// Class is what the statement looks like (the detected class); Mode is what the caller declared
+	// (read, write or ddl) and decides the connection and the permission gate.
+	Class adapters.OpClass
+	Mode  string
+	// Enforcement says what backs mode read on this kind: session, app or none. Read items only.
+	Enforcement string
+	Statement   string
+	Target      ApprovalTarget
 	// Stage defaults to ApprovalStageQuery when empty.
 	Stage ApprovalStage
 	// Response is set only for ApprovalStageResponse.

@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/config"
@@ -63,10 +64,24 @@ type MetadataReader interface {
 // console's own run() uses.
 type QueryRunner interface {
 	Execute(ctx context.Context, req adapterhost.ExecuteRequestWire) (adapterhost.ExecuteResponse, error)
+	// ExecuteRead runs a read-mode request on the connection's read lane: a second adapter on the
+	// engine's read-only session. It never falls back to the main adapter.
+	ExecuteRead(ctx context.Context, req adapterhost.ExecuteRequestWire) (adapterhost.ExecuteResponse, error)
 	// ClassifyStatement answers what one statement would do (M2's permission gate) — an adapter
 	// error (or one that does not implement adapters.StatementClassifier) yields ClassUnknown, never
 	// a fatal error the caller must special-case.
 	ClassifyStatement(ctx context.Context, connectionID, statement string) (adapters.OpClass, error)
+}
+
+// laneCloser is the optional QueryRunner half that owns read lanes (*adapterhost.Router).
+type laneCloser interface {
+	CloseReadLane(ctx context.Context, connectionID string)
+	CloseReadLanes(ctx context.Context)
+}
+
+// listWatcher is the optional ConnectionsReader half that reports list changes (*connections.Service).
+type listWatcher interface {
+	OnListChanged(fn func([]model.ConnectionSummary)) (unsubscribe func())
 }
 
 // MaskRules is dbmcp's own consumer-declared interface over *maskrules.Service. A nil
@@ -151,6 +166,9 @@ type Server struct {
 
 	httpState // http.go's own fields (listener, *http.Server)
 
+	// unwatchList stops the exposure watcher that closes read lanes of un-exposed connections.
+	unwatchList func()
+
 	closeOnce sync.Once
 }
 
@@ -206,7 +224,24 @@ func New(cfg Config) (*Server, error) {
 	if err := s.bindHTTP(); err != nil {
 		return nil, err
 	}
+	s.watchExposure()
 	return s, nil
+}
+
+// watchExposure closes the read lane of a connection the user stops exposing to MCP.
+func (s *Server) watchExposure() {
+	lanes, ok := s.cfg.Query.(laneCloser)
+	watcher, watchable := s.cfg.Conns.(listWatcher)
+	if !ok || !watchable {
+		return
+	}
+	s.unwatchList = watcher.OnListChanged(func(list []model.ConnectionSummary) {
+		for _, c := range list {
+			if !c.McpEnabled {
+				lanes.CloseReadLane(context.Background(), c.ID)
+			}
+		}
+	})
 }
 
 // prompts is the source of the server's instruction and tool texts.
@@ -260,7 +295,7 @@ func (s *Server) buildMCPServer() *mcp.Server {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "run_query",
 		Description: llmprompts.DbmcpToolRunQuery.Text(src, llmprompts.NoVars{}),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[runQueryArgs](src, llmprompts.DbmcpToolRunQuery.ID(), map[string]any{"maxRows": llmprompts.LimitVars{Default: runQueryDefaultMaxRows, Max: runQueryMaxMaxRows}}), "connectionId", "sql"),
+		InputSchema: runQuerySchema(src),
 	}, withPanicRecovery(s, "run_query", s.runQuery))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "explain_query",
@@ -281,6 +316,14 @@ func (s *Server) buildMCPServer() *mcp.Server {
 	}
 
 	return srv
+}
+
+// runQuerySchema is run_query's input schema: mode is required and limited to the three declared modes.
+func runQuerySchema(src llmprompts.Source) *jsonschema.Schema {
+	sch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[runQueryArgs](src, llmprompts.DbmcpToolRunQuery.ID(),
+		map[string]any{"maxRows": llmprompts.LimitVars{Default: runQueryDefaultMaxRows, Max: runQueryMaxMaxRows}}), "connectionId", "sql", "mode")
+	sch.Properties["mode"].Enum = []any{modeRead, modeWrite, modeDDL}
+	return sch
 }
 
 // withPanicRecovery wraps every MCP tool handler mcp.AddTool registers: go-sdk v1.8.0 runs
@@ -340,6 +383,12 @@ func (s *Server) Close() error {
 	var err error
 	s.closeOnce.Do(func() {
 		err = s.closeHTTP()
+		if s.unwatchList != nil {
+			s.unwatchList()
+		}
+		if lanes, ok := s.cfg.Query.(laneCloser); ok {
+			lanes.CloseReadLanes(context.Background())
+		}
 	})
 	return err
 }

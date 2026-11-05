@@ -38,9 +38,14 @@ func planPayloadOf(p *ApprovalPlan) *planPayload {
 }
 
 type queryPayload struct {
-	ConnectionID string       `json:"connectionId"`
-	Statement    string       `json:"statement"`
-	Plan         *planPayload `json:"plan"`
+	ConnectionID string `json:"connectionId"`
+	Statement    string `json:"statement"`
+	// Mode is the declared mode; Detected is what the statement looks like. Enforcement is set on
+	// read items only.
+	Mode        string       `json:"mode"`
+	Detected    string       `json:"detected"`
+	Enforcement string       `json:"enforcement"`
+	Plan        *planPayload `json:"plan"`
 }
 
 type responsePayload struct {
@@ -123,7 +128,10 @@ func itemOf(r ApprovalRequest) approvals.Item {
 		})
 	default:
 		it.Target, it.Operation = dbTarget(r)
-		it.Payload = mustJSON(queryPayload{ConnectionID: r.ConnectionID, Statement: r.Statement, Plan: planPayloadOf(r.Plan)})
+		it.Payload = mustJSON(queryPayload{
+			ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
+			Enforcement: r.Enforcement, Plan: planPayloadOf(r.Plan),
+		})
 	}
 	return it
 }
@@ -146,14 +154,22 @@ func dbTarget(r ApprovalRequest) (approvals.Target, approvals.Operation) {
 	return approvals.Target{
 			Name: r.ConnectionName, Kind: r.Kind, Color: t.Color, ReadOnly: t.ReadOnly, Location: strings.Join(parts, " · "),
 		},
-		approvals.Operation{Class: string(r.Class), Tone: toneOf(r.Class)}
+		approvals.Operation{Class: operationClass(r), Tone: toneOf(operationClass(r))}
 }
 
-func toneOf(c adapters.OpClass) string {
-	switch c {
-	case adapters.ClassRead:
+// operationClass is the declared mode, or the detected class for an item that carries no mode.
+func operationClass(r ApprovalRequest) string {
+	if r.Mode != "" {
+		return r.Mode
+	}
+	return string(r.Class)
+}
+
+func toneOf(class string) string {
+	switch class {
+	case string(adapters.ClassRead):
 		return "neutral"
-	case adapters.ClassWrite:
+	case string(adapters.ClassWrite):
 		return "caution"
 	}
 	return "danger"

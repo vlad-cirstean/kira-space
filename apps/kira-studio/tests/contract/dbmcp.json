@@ -18,6 +18,9 @@
       },
       "payload": {
         "connectionId": "<id:2>",
+        "detected": "write",
+        "enforcement": "",
+        "mode": "write",
         "plan": null,
         "statement": "insert into notes (body) values ('three')"
       },

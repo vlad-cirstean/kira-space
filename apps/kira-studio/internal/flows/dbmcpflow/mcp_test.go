@@ -109,9 +109,20 @@ func text(res *mcp.CallToolResult) string {
 	return b.String()
 }
 
+// modeOf declares the least powerful mode a test statement needs.
+func modeOf(sqlText string) string {
+	switch first, _, _ := strings.Cut(strings.ToLower(strings.TrimSpace(sqlText)), " "); first {
+	case "select", "with":
+		return "read"
+	case "insert", "update", "delete":
+		return "write"
+	}
+	return "ddl"
+}
+
 func runQuery(t *testing.T, sess *mcp.ClientSession, connID, sqlText string) *mcp.CallToolResult {
 	t.Helper()
-	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "run_query", Arguments: map[string]any{"connectionId": connID, "sql": sqlText, "path": ""}})
+	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "run_query", Arguments: map[string]any{"connectionId": connID, "sql": sqlText, "path": "", "mode": modeOf(sqlText)}})
 	if err != nil {
 		t.Fatalf("run_query %q: %v", sqlText, err)
 	}
@@ -163,7 +174,7 @@ func TestDbMcpApprovalFlow(t *testing.T) {
 	call := func() chan outcome {
 		ch := make(chan outcome, 1)
 		go func() {
-			res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "run_query", Arguments: map[string]any{"connectionId": f.connID, "sql": write, "path": ""}})
+			res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "run_query", Arguments: map[string]any{"connectionId": f.connID, "sql": write, "path": "", "mode": "write"}})
 			ch <- outcome{res, err}
 		}()
 		return ch
@@ -337,7 +348,7 @@ type callOutcome struct {
 func callAsync(sess *mcp.ClientSession, connID, sqlText string) chan callOutcome {
 	ch := make(chan callOutcome, 1)
 	go func() {
-		res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "run_query", Arguments: map[string]any{"connectionId": connID, "sql": sqlText, "path": ""}})
+		res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "run_query", Arguments: map[string]any{"connectionId": connID, "sql": sqlText, "path": "", "mode": modeOf(sqlText)}})
 		ch <- callOutcome{res, err}
 	}()
 	return ch

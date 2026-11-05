@@ -44,6 +44,7 @@ func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ li
 			ID: c.ID, Name: c.Name, Kind: c.Kind, ReadOnly: c.ReadOnly, Status: state.Status,
 			Description: c.McpDescription,
 			Permissions: connectionPermissions{Read: c.McpReadMode, Write: c.McpWriteMode, DDL: c.McpDdlMode},
+			Access:      accessOf(c), Enforcement: enforcementOf(c.Kind),
 		}
 		if state.ServerVersion != nil {
 			view.ServerVersion = state.ServerVersion
@@ -173,6 +174,7 @@ type runQueryArgs struct {
 	ConnectionID string `json:"connectionId"`
 	SQL          string `json:"sql"`
 	Path         string `json:"path"`
+	Mode         string `json:"mode"`
 	MaxRows      int    `json:"maxRows,omitempty"`
 }
 
@@ -183,14 +185,12 @@ type runQueryArgs struct {
 // the same deduplicated path the UI uses, so the connection visibly comes up in the app rather than
 // opening invisibly.
 //
-// The gate order — a deliberate reorder from the predicted seam, for two reasons: a
-// statement the permission gate will deny must buy no EXPLAIN work, and one call must raise at
-// most one approval prompt. resolve (unchanged) → refuse before connecting if every mode denies
-// (unchanged) → clamp maxRows (unchanged) → connect (unchanged) → classify (unchanged) → verdict,
-// with deny refusing here, before any EXPLAIN (reordered) → forced EXPLAIN when McpAutoExplain is
-// on (new — a nil plan or any error degrades to "no plan", never blocks) → heavy check (new,
-// overThreshold only) → at most one approval, for verdict=="prompt" or heavy (extended) →
-// execute (unchanged) → render, now carrying a plan summary when one exists (extended).
+// The gate order: resolve the connection → check the declared mode → refuse before connecting when
+// the declared mode's permission denies → clamp maxRows → connect → tighten-only classifier check
+// (a statement that looks more powerful than its mode is refused, never run) → forced EXPLAIN when
+// McpAutoExplain is on (read mode only; a nil plan or any error degrades to "no plan") → heavy
+// check → at most one approval, for a prompt verdict on the declared mode or a heavy plan →
+// execute (read on the read lane, write and ddl on the main connection) → render.
 func (s *Server) runQuery(ctx context.Context, _ *mcp.CallToolRequest, args runQueryArgs) (*mcp.CallToolResult, any, error) {
 	rv, res, out, err, done := s.resolveVerdict(ctx, args)
 	if done {
@@ -199,7 +199,7 @@ func (s *Server) runQuery(ctx context.Context, _ *mcp.CallToolRequest, args runQ
 
 	plan, heavy := s.maybeExplain(ctx, rv.summary, args)
 
-	if res, out, err, done := s.awaitApproval(ctx, args, rv.summary, rv.class, rv.verdict, heavy, plan, rv.threshold); done {
+	if res, out, err, done := s.awaitApproval(ctx, args, rv, heavy, plan); done {
 		return res, out, err
 	}
 
@@ -225,17 +225,26 @@ func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv que
 		mk = &set
 	}
 
-	resp, err := s.cfg.Query.Execute(ctx, adapterhost.ExecuteRequestWire{
+	req := adapterhost.ExecuteRequestWire{
 		OpID:         uuid.NewString(),
 		ConnectionID: args.ConnectionID,
 		Path:         args.Path,
 		Statements:   []string{args.SQL},
 		Cap:          page.ResultCap{Rows: rv.maxRows},
-		// A read verdict can still carry a writing function (SELECT f()); unless writes are
-		// allowed outright, the adapter's read-only wrap backstops the classifier.
-		ReadOnly: rv.class == adapters.ClassRead && rv.modes.write != "allow",
-	})
+	}
+	// The declared mode picks the connection: read runs on the read lane, where the engine
+	// refuses writes; write and ddl run on the main connection.
+	var resp adapterhost.ExecuteResponse
+	if rv.mode == modeRead {
+		resp, err = s.cfg.Query.ExecuteRead(ctx, req)
+	} else {
+		resp, err = s.cfg.Query.Execute(ctx, req)
+	}
 	if err != nil {
+		if rv.mode == modeRead && isReadOnlyRefusal(err) {
+			res, out, err = s.readOnlyRefusal(rv.summary, err, mk != nil)
+			return res, out, err, set, true
+		}
 		// A Postgres/MySQL driver error routinely embeds the offending value (a
 		// failed type-cast error names the literal it couldn't parse) — on a connection with
 		// active mask rules, the adapter's raw message could leak a real, unmasked value one row
@@ -293,7 +302,7 @@ func (s *Server) reviewResponse(ctx context.Context, args runQueryArgs, rv query
 
 	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
 		ConnectionID: args.ConnectionID, ConnectionName: name, Kind: rv.summary.Kind,
-		Class: rv.class, Statement: args.SQL, Reason: ApprovalReasonPermission,
+		Class: rv.class, Mode: rv.mode, Statement: args.SQL, Reason: ApprovalReasonPermission,
 		Target: targetOf(rv.summary, args.Path), Stage: ApprovalStageResponse, Response: &held, Origin: originFrom(ctx),
 	})
 	switch outcome {
@@ -335,21 +344,21 @@ func resultText(res *mcp.CallToolResult) string {
 	return b.String()
 }
 
-// queryResolution is resolveVerdict's own bundle — everything runQuery needs from the resolve/
-// refuse/clamp/connect/classify/verdict pipeline (§5.2) to proceed into maybeExplain/awaitApproval.
+// queryResolution is resolveVerdict's own bundle: everything runQuery needs from the
+// resolve/check/gate/clamp/connect/tighten pipeline to proceed into maybeExplain/awaitApproval.
 type queryResolution struct {
-	summary   model.ConnectionSummary
-	modes     modes
+	summary model.ConnectionSummary
+	// mode is the declared mode; verdict is its permission (allow or prompt once resolveVerdict passes).
+	mode      string
 	class     adapters.OpClass
 	verdict   string
 	maxRows   int
 	threshold int
 }
 
-// resolveVerdict is runQuery's own resolve→refuse→clamp→connect→classify→verdict pipeline.
-// done is true whenever runQuery should return (res, out, err) immediately — every gate here
-// short-circuits query execution, so no EXPLAIN work or approval prompt is ever spent on a
-// statement the gate would refuse anyway.
+// resolveVerdict is runQuery's resolve → check mode → gate → clamp → connect → tighten pipeline.
+// done is true whenever runQuery should return (res, out, err) immediately: every gate here
+// short-circuits execution, so no EXPLAIN work or approval prompt is spent on a refused statement.
 func (s *Server) resolveVerdict(ctx context.Context, args runQueryArgs) (rv queryResolution, res *mcp.CallToolResult, out any, err error, done bool) {
 	rv.summary, err = s.resolveEnabled(args.ConnectionID)
 	if err != nil {
@@ -360,10 +369,14 @@ func (s *Server) resolveVerdict(ctx context.Context, args runQueryArgs) (rv quer
 		res, out, err = errResult(msg)
 		return rv, res, out, err, true
 	}
-
-	rv.modes = modesOf(rv.summary)
-	if rv.modes.read == "deny" && rv.modes.write == "deny" && rv.modes.ddl == "deny" {
-		res, out, err = errResult(fmt.Sprintf("connection %q's MCP permissions deny every statement class; change them in the connection's MCP tab", rv.summary.Name))
+	if msg := checkMode(rv.summary, args.Mode); msg != "" {
+		res, out, err = errResult(msg)
+		return rv, res, out, err, true
+	}
+	rv.mode = args.Mode
+	var msg string
+	if rv.verdict, msg = gateMode(rv.summary, rv.mode); msg != "" {
+		res, out, err = errResult(msg)
 		return rv, res, out, err, true
 	}
 
@@ -375,10 +388,7 @@ func (s *Server) resolveVerdict(ctx context.Context, args runQueryArgs) (rv quer
 		rv.maxRows = runQueryMaxMaxRows
 	}
 
-	// Read once per call, not per use below: ExplainThreshold's own doc comment ("read fresh on
-	// every call, never cached") is about staleness across separate runQuery invocations, not
-	// within one — a second read microseconds later in the same call cannot see a different
-	// setting, so it was a duplicate repo read (settings.GetAll()) for no correctness benefit.
+	// Read once per call, not per use: ExplainThreshold is read fresh on every call, never cached.
 	rv.threshold = s.cfg.ExplainThreshold()
 
 	state, cerr := s.connectForQuery(ctx, args.ConnectionID)
@@ -391,31 +401,72 @@ func (s *Server) resolveVerdict(ctx context.Context, args runQueryArgs) (rv quer
 		return rv, res, out, err, true
 	}
 
-	// A classifier error degrades to ClassUnknown rather than failing the call — never a way to
-	// bypass the gate, and never a way to break a connection either.
+	// A classifier error degrades to ClassUnknown rather than failing the call. The class can only
+	// refuse: it never picks the connection and never relaxes the declared mode's gate.
 	class, cerr := s.cfg.Query.ClassifyStatement(ctx, args.ConnectionID, args.SQL)
 	if cerr != nil {
 		s.log.Warn("dbmcp: run_query: classification failed, treating as unknown", "connectionId", args.ConnectionID, "err", cerr)
 		class = adapters.ClassUnknown
 	}
 	rv.class = class
-
-	rv.verdict = verdictFor(rv.modes, rv.class)
-	switch rv.verdict {
-	case "allow", "prompt":
-		// continue below — a statement the gate will deny must buy no EXPLAIN work (§5.2), so deny
-		// is refused before auto-force-explain ever runs.
-	case "deny":
-		res, out, err = errResult(fmt.Sprintf("this connection's MCP permissions deny %s statements; change them in the connection's MCP tab", rv.class))
-		return rv, res, out, err, true
-	default:
-		// An unrecognised mode word cannot reach here — repos/connections.go's scan coerces any
-		// unreadable mode to "deny" before this method is ever called.
-		res, out, err = errResult(fmt.Sprintf("this connection's MCP permissions are misconfigured for %s statements; change them in the connection's MCP tab", rv.class))
+	if msg := tightenByClass(rv.summary, rv.mode, class); msg != "" {
+		res, out, err = errResult(msg)
 		return rv, res, out, err, true
 	}
-
 	return rv, nil, nil, nil, false
+}
+
+// checkMode refuses a missing or unknown mode, naming what the connection allows.
+func checkMode(summary model.ConnectionSummary, mode string) string {
+	if modeRank[mode] == 0 && mode != modeRead {
+		return fmt.Sprintf("run_query needs mode: read, write or ddl. Connection %q allows: %s", summary.Name, accessOf(summary).Summary)
+	}
+	return ""
+}
+
+// gateMode is the permission gate on the declared mode alone. It returns the verdict (allow or
+// prompt) or, for a denied mode, the refusal text.
+func gateMode(summary model.ConnectionSummary, mode string) (verdict, refusal string) {
+	verdict = modeVerdict(summary, mode)
+	if verdict == "deny" {
+		return verdict, fmt.Sprintf("connection %q does not allow %s over MCP. Allowed: %s", summary.Name, mode, accessOf(summary).Summary)
+	}
+	return verdict, ""
+}
+
+// tightenByClass refuses a statement that looks more powerful than its declared mode. A lower class
+// than declared runs under the declared mode's gate and connection.
+func tightenByClass(summary model.ConnectionSummary, mode string, class adapters.OpClass) string {
+	if classRank(class) <= modeRank[mode] {
+		return ""
+	}
+	allowed := accessOf(summary).Summary
+	if class == adapters.ClassUnknown {
+		return fmt.Sprintf("could not tell what this statement does; declare mode=ddl if it changes schema. Connection %q allows: %s", summary.Name, allowed)
+	}
+	return fmt.Sprintf("this statement looks like %s; run it with mode=%s. Connection %q allows: %s", class, classMode(class), summary.Name, allowed)
+}
+
+// isReadOnlyRefusal reports whether err is the engine (or, on app lanes, Kira's own check) refusing
+// a write on the read lane: postgres 25006, mysql 1792/1290, sqlite readonly (8), clickhouse 164.
+func isReadOnlyRefusal(err error) bool {
+	msg := strings.ToLower(err.Error())
+	for _, marker := range []string{"25006", "read-only", "read only", "readonly", "1792", "1290", "code: 164", "(164)"} {
+		if strings.Contains(msg, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+// readOnlyRefusal words a lane refusal for the agent. On a masked connection the engine text is
+// withheld like any masked driver error.
+func (s *Server) readOnlyRefusal(summary model.ConnectionSummary, err error, masked bool) (*mcp.CallToolResult, any, error) {
+	allowed := accessOf(summary).Summary
+	if masked {
+		return errResult(fmt.Sprintf("the database refused a write on the read-only connection (message withheld, this connection has active PII masking rules). Use mode=write or mode=ddl. Connection %q allows: %s", summary.Name, allowed))
+	}
+	return errResult(fmt.Sprintf("the database refused a write on the read-only connection: %s. Use mode=write or mode=ddl. Connection %q allows: %s", err.Error(), summary.Name, allowed))
 }
 
 // maybeExplain runs auto-force-explain (a plan-only EXPLAIN, never ANALYZE) when the connection
@@ -425,7 +476,7 @@ func (s *Server) resolveVerdict(ctx context.Context, args runQueryArgs) (rv quer
 // overThreshold only, never "any warn issue" — SQLite reports no row estimate at all, so borrowing
 // the console's isFlaggedPlan rule would raise a modal on nearly every SQLite query.
 func (s *Server) maybeExplain(ctx context.Context, summary model.ConnectionSummary, args runQueryArgs) (plan *queryplan.Plan, heavy bool) {
-	if summary.McpAutoExplain {
+	if summary.McpAutoExplain && args.Mode == modeRead {
 		p, planErr := s.planFor(ctx, summary, args.SQL, args.Path)
 		if planErr != nil {
 			s.log.Warn("dbmcp: run_query: auto-force-explain failed, running without a plan", "connectionId", args.ConnectionID, "err", planErr)
@@ -441,42 +492,49 @@ func (s *Server) maybeExplain(ctx context.Context, summary model.ConnectionSumma
 // (the stricter reason — the user said "ask me about every write") with the plan evidence riding
 // along. A no-op (done false) when neither verdict == "prompt" nor heavy applies. done is true
 // whenever runQuery should return (res, out, err) immediately.
-func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, summary model.ConnectionSummary, class adapters.OpClass, verdict string, heavy bool, plan *queryplan.Plan, threshold int) (res *mcp.CallToolResult, out any, err error, done bool) {
-	if verdict != "prompt" && !heavy {
+func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv queryResolution, heavy bool, plan *queryplan.Plan) (res *mcp.CallToolResult, out any, err error, done bool) {
+	if rv.verdict != "prompt" && !heavy {
 		return nil, nil, nil, false
 	}
 
 	reason := ApprovalReasonHeavy
-	if verdict == "prompt" {
+	if rv.verdict == "prompt" {
 		reason = ApprovalReasonPermission
 	}
 	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
-		ConnectionID: args.ConnectionID, ConnectionName: summary.Name, Kind: summary.Kind,
-		Class: class, Statement: args.SQL, Reason: reason,
-		Target: targetOf(summary, args.Path),
-		Plan:   approvalPlanFrom(plan, threshold), Origin: originFrom(ctx),
+		ConnectionID: args.ConnectionID, ConnectionName: rv.summary.Name, Kind: rv.summary.Kind,
+		Class: rv.class, Mode: rv.mode, Enforcement: enforcementFor(rv.summary, rv.mode),
+		Statement: args.SQL, Reason: reason,
+		Target: targetOf(rv.summary, args.Path),
+		Plan:   approvalPlanFrom(plan, rv.threshold), Origin: originFrom(ctx),
 	})
 	switch outcome {
 	case ApprovalApproved:
-		// summary/m/verdict above were resolved before this (up to ApprovalTimeout) wait.
-		// If the user reacted to the prompt by revoking the connection's MCP exposure or
-		// tightening this class's mode to deny, an Approve landing after that must not run the
-		// statement under permissions that no longer hold — re-resolve both, the same posture
-		// MaskSetFor below already takes for mask rules post-approval.
+		// rv.summary was resolved before this (up to ApprovalTimeout) wait. If the user reacted to
+		// the prompt by revoking the connection's MCP exposure or denying this mode, an Approve
+		// landing after that must not run the statement under permissions that no longer hold.
 		resummary, rerr := s.resolveEnabled(args.ConnectionID)
 		if rerr != nil {
 			res, out, err = errResult(rerr.Error())
 			return res, out, err, true
 		}
-		if v := verdictFor(modesOf(resummary), class); v == "deny" {
-			res, out, err = errResult(fmt.Sprintf("this connection's MCP permissions now deny %s statements; change them in the connection's MCP tab", class))
+		if v := modeVerdict(resummary, rv.mode); v == "deny" {
+			res, out, err = errResult(fmt.Sprintf("connection %q now denies %s over MCP. Allowed: %s", resummary.Name, rv.mode, accessOf(resummary).Summary))
 			return res, out, err, true
 		}
 		return nil, nil, nil, false
 	default:
-		res, out, err = approvalOutcomeError(outcome, fmt.Sprintf("query against %q", summary.Name))
+		res, out, err = approvalOutcomeError(outcome, fmt.Sprintf("query against %q", rv.summary.Name))
 		return res, out, err, true
 	}
+}
+
+// enforcementFor is the enforcement label the approval shows for a read item; other modes carry none.
+func enforcementFor(summary model.ConnectionSummary, mode string) string {
+	if mode != modeRead {
+		return ""
+	}
+	return enforcementOf(summary.Kind)
 }
 
 const queueFullMessage = "too many queries are already waiting for approval; retry after the user answers them"
@@ -607,7 +665,7 @@ func (s *Server) explainQuery(ctx context.Context, _ *mcp.CallToolRequest, args 
 		mk = &set
 	}
 
-	resp, err := s.cfg.Query.Execute(ctx, adapterhost.ExecuteRequestWire{
+	resp, err := s.cfg.Query.ExecuteRead(ctx, adapterhost.ExecuteRequestWire{
 		OpID:         uuid.NewString(),
 		ConnectionID: args.ConnectionID,
 		Path:         args.Path,

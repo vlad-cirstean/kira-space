@@ -168,7 +168,7 @@ func (s *Server) planFor(ctx context.Context, summary model.ConnectionSummary, s
 		return nil, err
 	}
 
-	resp, err := s.cfg.Query.Execute(ctx, adapterhost.ExecuteRequestWire{
+	resp, err := s.cfg.Query.ExecuteRead(ctx, adapterhost.ExecuteRequestWire{
 		OpID: uuid.NewString(), ConnectionID: summary.ID, Path: path, Statements: statements,
 	})
 	if err != nil {
