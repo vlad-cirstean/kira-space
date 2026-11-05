@@ -88,6 +88,9 @@ type Service struct {
 	tailMu sync.Mutex
 	tails  map[string]*termTail
 
+	// waiters are the Wait calls blocked on a run, woken when it finishes.
+	waiters map[string]map[chan struct{}]struct{}
+
 	// restore is the offer to run again what the last quit or crash ended; it lives for one app session.
 	restore restoreOffer
 }
@@ -205,6 +208,7 @@ func (s *Service) finish(run *Run, err error) {
 	}
 	s.emit(*run)
 	s.purge()
+	s.wake(run.ID)
 }
 
 // Failed records that the run's session did not spawn.

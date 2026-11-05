@@ -1207,6 +1207,12 @@
         "fillIn": {
           "body": "Fill in {names}."
         },
+        "mcpSecret": {
+          "body": "An agent can’t set the secret parameter {name}. Save its value in Kira."
+        },
+        "mcpSmart": {
+          "body": "A smart run can’t be started by an agent."
+        },
         "noSchedule": {
           "body": "This script has no schedule."
         },

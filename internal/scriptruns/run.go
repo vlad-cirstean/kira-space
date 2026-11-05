@@ -12,6 +12,8 @@ const (
 	TriggerManual    Trigger = "manual"
 	TriggerADE       Trigger = "ade"
 	TriggerScheduled Trigger = "scheduled"
+	// TriggerMCP is a run an agent started through the Database MCP server.
+	TriggerMCP Trigger = "mcp"
 )
 
 // Run kinds.
