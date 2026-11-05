@@ -1,0 +1,234 @@
+{
+  "AdeTaskService.DeleteStep#used": "used by workflows: lib-flow",
+  "AdeTaskService.SaveStep#ok": {
+    "error": null,
+    "fileName": "implement.yaml",
+    "hash": "54115c256f9ecf39bde6a09d7ccc4b04f0b6298b832b218b69751d9a0390186d",
+    "path": "<space>/steps/implement.yaml",
+    "step": {
+      "agent": "",
+      "allowedTools": [],
+      "before": "auto",
+      "command": "",
+      "id": "implement",
+      "kind": "agent",
+      "maxReturns": 3,
+      "name": "Implement",
+      "outsideRepo": false,
+      "params": {},
+      "prompt": "Implement the task in {repo}.",
+      "results": [
+        {
+          "description": "",
+          "id": "done",
+          "loop": false,
+          "next": "next",
+          "ok": true
+        },
+        {
+          "description": "",
+          "id": "failed",
+          "loop": false,
+          "next": "stop",
+          "ok": false
+        }
+      ],
+      "review": null,
+      "runsOn": "each repo",
+      "sandbox": {
+        "access": "write",
+        "allow": [],
+        "network": true,
+        "read": []
+      },
+      "session": false,
+      "settings": {},
+      "skip": false,
+      "smartScript": "",
+      "status": "",
+      "timeout": "1m"
+    },
+    "usedBy": []
+  },
+  "AdeTaskService.StepYaml#implement": {
+    "fileName": "implement.yaml",
+    "hash": "54115c256f9ecf39bde6a09d7ccc4b04f0b6298b832b218b69751d9a0390186d",
+    "path": "<space>/steps/implement.yaml",
+    "yaml": "id: implement\nname: Implement\nkind: agent\nruns_on: each repo\ntimeout: 1m\nprompt: Implement the task in {repo}.\n"
+  },
+  "AdeTaskService.ValidateStepYaml#skip": {
+    "error": {
+      "line": 7,
+      "message": "skip is set in a workflow, not in a library step"
+    },
+    "step": null
+  },
+  "AdeTaskService.Workflows#broken-step": {
+    "dir": "<space>/workflows",
+    "sandbox": {
+      "enforced": false,
+      "reason": "The sandbox is not enforced on this OS. It runs on macOS only. Claude permission rules still apply, but they do not stop shell commands."
+    },
+    "stageSettings": [
+      {
+        "hint": "Tokens of context before Claude Code compacts the conversation, 100000 to 1000000. Empty uses Claude Code’s default.",
+        "key": "auto_compact_window",
+        "kind": "int",
+        "label": "Auto compact limit",
+        "max": 1000000,
+        "min": 100000,
+        "provider": "claude",
+        "providerLabel": "Claude"
+      }
+    ],
+    "steps": [
+      {
+        "error": {
+          "line": 0,
+          "message": "name is required"
+        },
+        "fileName": "broken.yaml",
+        "hash": "963d9896264d24258057aa8b6eb17fae2556aaa42932c09ee62e4bc527ef0a5d",
+        "path": "<space>/steps/broken.yaml",
+        "step": null,
+        "usedBy": []
+      }
+    ],
+    "stepsDir": "<space>/steps",
+    "workflows": []
+  },
+  "AdeTaskService.Workflows#steps": {
+    "dir": "<space>/workflows",
+    "sandbox": {
+      "enforced": false,
+      "reason": "The sandbox is not enforced on this OS. It runs on macOS only. Claude permission rules still apply, but they do not stop shell commands."
+    },
+    "stageSettings": [
+      {
+        "hint": "Tokens of context before Claude Code compacts the conversation, 100000 to 1000000. Empty uses Claude Code’s default.",
+        "key": "auto_compact_window",
+        "kind": "int",
+        "label": "Auto compact limit",
+        "max": 1000000,
+        "min": 100000,
+        "provider": "claude",
+        "providerLabel": "Claude"
+      }
+    ],
+    "steps": [
+      {
+        "error": null,
+        "fileName": "implement.yaml",
+        "hash": "54115c256f9ecf39bde6a09d7ccc4b04f0b6298b832b218b69751d9a0390186d",
+        "path": "<space>/steps/implement.yaml",
+        "step": {
+          "agent": "",
+          "allowedTools": [],
+          "before": "auto",
+          "command": "",
+          "id": "implement",
+          "kind": "agent",
+          "maxReturns": 3,
+          "name": "Implement",
+          "outsideRepo": false,
+          "params": {},
+          "prompt": "Implement the task in {repo}.",
+          "results": [
+            {
+              "description": "",
+              "id": "done",
+              "loop": false,
+              "next": "next",
+              "ok": true
+            },
+            {
+              "description": "",
+              "id": "failed",
+              "loop": false,
+              "next": "stop",
+              "ok": false
+            }
+          ],
+          "review": null,
+          "runsOn": "each repo",
+          "sandbox": {
+            "access": "write",
+            "allow": [],
+            "network": true,
+            "read": []
+          },
+          "session": false,
+          "settings": {},
+          "skip": false,
+          "smartScript": "",
+          "status": "",
+          "timeout": "1m"
+        },
+        "usedBy": [
+          "lib-flow"
+        ]
+      }
+    ],
+    "stepsDir": "<space>/steps",
+    "workflows": [
+      {
+        "error": null,
+        "fileName": "lib-flow.yaml",
+        "hash": "ac781b0a1cef831ae82e29929491afd3c797d98c2f80ea9a6df0ea042e13f7e2",
+        "path": "<space>/workflows/lib-flow.yaml",
+        "usedBy": 0,
+        "workflow": {
+          "id": "lib-flow",
+          "name": "Library flow",
+          "steps": [
+            {
+              "agent": "",
+              "allowedTools": [],
+              "before": "auto",
+              "command": "",
+              "id": "implement",
+              "kind": "agent",
+              "maxReturns": 3,
+              "name": "Implement",
+              "outsideRepo": false,
+              "params": {},
+              "prompt": "Implement the task in {repo}.",
+              "promptExtra": "Also update CHANGELOG.md.",
+              "results": [
+                {
+                  "description": "",
+                  "id": "done",
+                  "loop": false,
+                  "next": "next",
+                  "ok": true
+                },
+                {
+                  "description": "",
+                  "id": "failed",
+                  "loop": false,
+                  "next": "end",
+                  "ok": false
+                }
+              ],
+              "review": null,
+              "runsOn": "each repo",
+              "sandbox": {
+                "access": "write",
+                "allow": [],
+                "network": true,
+                "read": []
+              },
+              "session": false,
+              "settings": {},
+              "skip": false,
+              "smartScript": "",
+              "status": "",
+              "timeout": "2h",
+              "use": "implement"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

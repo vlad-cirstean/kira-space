@@ -171,6 +171,8 @@
         "providerLabel": "Claude"
       }
     ],
+    "steps": [],
+    "stepsDir": "<space>/steps",
     "workflows": [
       {
         "error": null,
@@ -380,6 +382,8 @@
         "providerLabel": "Claude"
       }
     ],
+    "steps": [],
+    "stepsDir": "<space>/steps",
     "workflows": [
       {
         "error": null,
@@ -513,6 +517,8 @@
         "providerLabel": "Claude"
       }
     ],
+    "steps": [],
+    "stepsDir": "<space>/steps",
     "workflows": [
       {
         "error": null,
