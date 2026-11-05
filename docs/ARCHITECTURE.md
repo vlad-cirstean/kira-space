@@ -210,7 +210,8 @@ whatever sandbox a session happens to be in),
 - A v7 head is a timestamp: never slice its first characters. `shortId` shows the last 4.
 - `ids.IsClientID` (1-64 bytes of `[A-Za-z0-9_:-]`) bounds client-supplied tab and terminal ids. Tab upserts are scoped to the owning window key (`ErrTabOwnedElsewhere`, `ErrInvalidTab`, both `E_CONTRACT`).
 - Op ids: `adapterhost.Host` refuses a non-UUID id (`E_QUERY`, "The operation ID is not valid."). Read, Count, Mutate and ObjectDownload take an optional `opId`; an empty one is minted in Go. A reused op id fails its history write and cannot overwrite the first row.
-- `review_comment.id` stays an integer.
+- `review_comment.id` and `review_removed.id` are TEXT UUIDv7 (migrations 0007, 0008). Old rows hold `00000000-0000-7000-8000-<old integer as 12 hex>`; `model.LegacyCommentID` maps the integers in stored review round specs to them.
+- `newUserUuidV4()` (`packages/shared/ids.ts`) is for values written into user data (the cell editor generator) only, never an id Kira keys on.
 
 ## Adapter contract
 
