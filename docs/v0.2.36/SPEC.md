@@ -11,7 +11,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 | Phase | Title | Status |
 |---|---|---|
 | P528 | DB MCP limit exemptions: agent asks, user always approves | Done |
-| P529 | Statement timeout per connection, enforced by the engine | Pending |
+| P529 | Statement timeout per connection, enforced by the engine | Done |
 | P530 | Expensive-query (EXPLAIN) threshold enforced for MCP, with explanation | Pending |
 | P531 | Ops throttle covers every op from every session, with explanation | Done |
 | P532 | Table allow list per connection for DB MCP | Pending |
@@ -38,6 +38,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 - Per engine: Postgres, MySQL, MariaDB, ClickHouse and SQLite session or driver-level mechanism where the engine has one. Where none exists (state in plan), enforce by context cancel plus the P518 cancel path and label that enforcement `app`, same labels as P527 `enforcement`.
 - Applies to every MCP mode (read, write, ddl). Default value decided in plan.
 - Plan: `plans/P529.md`.
+- Result: `mcp.statement_timeout_sec` (absent 10, 0 off, 1 to 3600; migration 0060 column). Engine layer: Postgres, MySQL (SELECT), MariaDB, ClickHouse; app backstop timer in `Host.RunOp` through the P518 cancel path (2 s grace when the engine enforces); SQLite, MongoDB, Redis, Kibana read app only. Built-in `statement_timeout` `ExecLimit` in `dbmcp/timeout.go`; an exemption lifts it with no SET issued. `list_connections` carries `statementTimeout`. MCP tab field with who-enforces, on-hit and throttle lines. Real-container calibration passes for Postgres, MySQL, MariaDB, ClickHouse.
 
 ### P530 Expensive-query (EXPLAIN) threshold enforced for MCP, with explanation
 

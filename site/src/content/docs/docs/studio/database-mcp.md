@@ -44,6 +44,14 @@ A `read` call runs on a separate read-only connection with the same credentials,
 
 The connection dialog's MCP tab shows which modes the client may use and what backs `read`.
 
+## Statement timeout
+
+Each connection has a statement timeout for AI client statements, set in the MCP tab. The default is 10 seconds. 0 turns it off. The range is 1 to 3600.
+
+The database enforces it where it can: PostgreSQL, MySQL (reads only), MariaDB and ClickHouse. Where it cannot, the app stops the statement itself, with the same cancel as Stop. SQLite and MongoDB are stopped this way. Redis is stopped on the app side, but the server may keep running the command. Time spent queued behind other operations does not count. The app adds a 2 second grace so the database's own error wins when it can.
+
+A timed-out statement is refused, and the AI client can ask for an exemption. You always approve it in a dialog. An exempted statement runs with no time limit, so you can stop it from the Operations panel.
+
 ## Approvals
 
 A prompt waits for you to approve the exact statement. The dialog names the connection and the statement class.
