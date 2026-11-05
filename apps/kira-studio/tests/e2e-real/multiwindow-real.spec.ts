@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures';
+import { createConnection } from './support/connections';
 import { installPassthrough } from './support/passthrough';
 import {
   SQLITE_UNAVAILABLE_MESSAGE,
@@ -94,13 +95,7 @@ test('two windows, one backend: each keeps only its own tabs (P8 F6)', async ({
   await pageTwo.waitForSelector('[data-testid="status-bar"]');
 
   // The connection itself is app-wide (D1) — added once, from page one.
-  await pageOne.click('[data-testid="add-connection"]');
-  await expect(pageOne.locator('[data-testid="connection-dialog"]')).toBeVisible();
-  await pageOne.click('[data-testid="connection-kind-sqlite"]');
-  await pageOne.fill('[data-testid="connection-name"]', 'Real SQLite');
-  await pageOne.fill('[data-testid="connection-database"]', sqlite.path);
-  await pageOne.click('[data-testid="connection-save"]');
-  await expect(pageOne.locator('[data-testid="connection-dialog"]')).toHaveCount(0);
+  await createConnection(kira, { name: 'Real SQLite', kind: 'sqlite', database: sqlite.path });
 
   // A reload re-hydrates from a plain ConnectionsService.List() call — real backend state, not a
   // UI row count (sqlite-real.spec.ts's own precedent, §5) — so both pages see the same
