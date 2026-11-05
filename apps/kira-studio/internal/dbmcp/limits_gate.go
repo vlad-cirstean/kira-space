@@ -135,16 +135,18 @@ func (s *Server) refuseByLimits(summary model.ConnectionSummary, ex *claimedExem
 // awaitExemption raises the one db.exemption approval of an exempted call. It never reads the mode's
 // verdict or any review setting: an exempted call always asks.
 func (s *Server) awaitExemption(ctx context.Context, args runQueryArgs, rv *queryResolution, ex *claimedExemption, plan *queryplan.Plan) (res *mcp.CallToolResult, out any, err error, done bool) {
-	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
+	outcome, choice := s.cfg.Approvals.RequestChoice(ctx, ApprovalRequest{
 		Subject: approvals.KindDbExemption, ConnectionID: args.ConnectionID, ConnectionName: rv.summary.Name, Kind: rv.summary.Kind,
 		Class: rv.class, Mode: rv.mode, Enforcement: enforcementFor(rv.summary, rv.mode),
 		Statement: args.SQL, Reason: ApprovalReasonExemption,
 		Target:    targetOf(rv.summary, args.Path),
 		Plan:      approvalPlanFrom(plan, rv.threshold),
 		Exemption: &ApprovalExemption{Reason: ex.reason, Hits: ex.hits}, Origin: originFrom(ctx),
+		OfferReview: true, ReviewOn: s.reviewFor(rv.summary, rv.mode, rv.class),
 	})
 	switch outcome {
 	case ApprovalApproved:
+		rv.reviewRequested = choice.ReviewResult
 		return s.recheckAfterApproval(args, rv)
 	case ApprovalDenied:
 		names := make([]string, len(ex.hits))

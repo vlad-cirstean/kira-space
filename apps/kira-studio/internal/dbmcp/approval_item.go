@@ -46,6 +46,9 @@ type queryPayload struct {
 	Detected    string       `json:"detected"`
 	Enforcement string       `json:"enforcement"`
 	Plan        *planPayload `json:"plan"`
+	// ReviewOffered shows "review the result"; ReviewResult says the connection's settings already do.
+	ReviewOffered bool `json:"reviewOffered"`
+	ReviewResult  bool `json:"reviewResult"`
 }
 
 type limitHitPayload struct {
@@ -56,14 +59,16 @@ type limitHitPayload struct {
 }
 
 type exemptionPayload struct {
-	ConnectionID string            `json:"connectionId"`
-	Statement    string            `json:"statement"`
-	Mode         string            `json:"mode"`
-	Detected     string            `json:"detected"`
-	Enforcement  string            `json:"enforcement"`
-	Reason       string            `json:"reason"`
-	Limits       []limitHitPayload `json:"limits"`
-	Plan         *planPayload      `json:"plan"`
+	ConnectionID  string            `json:"connectionId"`
+	Statement     string            `json:"statement"`
+	Mode          string            `json:"mode"`
+	Detected      string            `json:"detected"`
+	Enforcement   string            `json:"enforcement"`
+	Reason        string            `json:"reason"`
+	Limits        []limitHitPayload `json:"limits"`
+	Plan          *planPayload      `json:"plan"`
+	ReviewOffered bool              `json:"reviewOffered"`
+	ReviewResult  bool              `json:"reviewResult"`
 }
 
 func exemptionPayloadOf(r ApprovalRequest) exemptionPayload {
@@ -78,6 +83,7 @@ func exemptionPayloadOf(r ApprovalRequest) exemptionPayload {
 	return exemptionPayload{
 		ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
 		Enforcement: r.Enforcement, Reason: ex.Reason, Limits: limits, Plan: planPayloadOf(r.Plan),
+		ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
 	}
 }
 
@@ -87,6 +93,9 @@ type responsePayload struct {
 	IsError      bool   `json:"isError"`
 	Bytes        int    `json:"bytes"`
 	AlreadyRan   bool   `json:"alreadyRan"`
+	// Mode is the declared mode; Requested says the approver asked for this review rather than a setting.
+	Mode      string `json:"mode"`
+	Requested bool   `json:"requested"`
 }
 
 type kubePayload struct {
@@ -163,12 +172,14 @@ func itemOf(r ApprovalRequest) approvals.Item {
 		it.Payload = mustJSON(responsePayload{
 			ConnectionID: r.ConnectionID, Statement: r.Statement,
 			IsError: held.IsError, Bytes: held.Bytes, AlreadyRan: r.Class != adapters.ClassRead,
+			Mode: r.Mode, Requested: held.Requested,
 		})
 	default:
 		it.Target, it.Operation = dbTarget(r)
 		it.Payload = mustJSON(queryPayload{
 			ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
 			Enforcement: r.Enforcement, Plan: planPayloadOf(r.Plan),
+			ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
 		})
 	}
 	return it

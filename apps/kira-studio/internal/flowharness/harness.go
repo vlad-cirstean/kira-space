@@ -61,6 +61,7 @@ type options struct {
 	dockerExtra     []docker.Option
 	kubeExtra       []kubernetes.Option
 	dbMcpLimits     []dbmcp.Limit
+	heldCaps        *[2]int
 }
 
 // WithoutSecretStore boots without KIRA_INSECURE_SECRETS, so the cipher is unavailable on Linux.
@@ -95,6 +96,11 @@ func WithKubernetesOptions(opts ...kubernetes.Option) Opt {
 // engine trips deterministically.
 func WithDbMcpLimits(ls ...dbmcp.Limit) Opt {
 	return func(o *options) { o.dbMcpLimits = append(o.dbMcpLimits, ls...) }
+}
+
+// WithApprovalHeldCaps replaces the DB MCP held result caps (per result, all results), in bytes.
+func WithApprovalHeldCaps(perResult, total int) Opt {
+	return func(o *options) { o.heldCaps = &[2]int{perResult, total} }
 }
 
 // kubeEnv hands the Kubernetes service the test process environment instead of probing the user's
@@ -222,6 +228,9 @@ func (a *App) build() {
 		a.t.Fatalf("appwire.Build: %v", err)
 	}
 	w.DbMcp.Limits = append(w.DbMcp.Limits, a.opts.dbMcpLimits...)
+	if c := a.opts.heldCaps; c != nil {
+		w.DbMcp.Approvals.SetHeldCaps(c[0], c[1])
+	}
 	w.Proof.Shell = a.ProofWindows
 	w.WindowsSvc.OpenNewWindow = func() {
 		a.mu.Lock()

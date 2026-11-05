@@ -174,6 +174,8 @@ type connectionView struct {
 	// string (e.g. "[1000-10000)") as a literal value. Omitted when the connection
 	// has no rules at all.
 	MaskedColumns []string `json:"maskedColumns,omitempty"`
+	// ReviewResults says which modes hold their run_query result for the user before the agent gets it.
+	ReviewResults reviewView `json:"reviewResults"`
 	// Tables is the table allow list (P532): all, or the exact tables MCP may touch.
 	Tables *allowedTablesView `json:"tables"`
 	// ColumnReview says whether new columns are withheld until the user reviews masking (P534). Omitted for

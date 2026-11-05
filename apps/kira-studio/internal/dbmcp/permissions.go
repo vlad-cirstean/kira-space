@@ -10,13 +10,11 @@ import (
 // modes is one connection's three MCP permission words (M2 §4.1), each one of deny/allow/prompt.
 type modes struct{ read, write, ddl string }
 
-// reviewFor reports whether a call's result is held: the setting of the declared mode or of the
-// detected class. Either one holds, so declaring a weaker mode than the statement looks like never
-// skips review (tightenByClass accepts a weaker statement than its mode). An unknown class holds when
-// any mode does. inherit follows the app setting, read once per call.
-func (s *Server) reviewFor(c model.ConnectionSummary, mode string, class adapters.OpClass) bool {
-	app, read := false, false
-	resolve := func(v string) bool {
+// reviewResolver maps a review setting to held or not. inherit follows the app setting, read at most
+// once per resolver.
+func (s *Server) reviewResolver() func(string) bool {
+	var app, read bool
+	return func(v string) bool {
 		switch v {
 		case "review":
 			return true
@@ -28,13 +26,33 @@ func (s *Server) reviewFor(c model.ConnectionSummary, mode string, class adapter
 		}
 		return app
 	}
-	if resolve(c.McpReview.For(mode)) {
+}
+
+// reviewFor reports whether a call's result is held: the setting of the declared mode or of the
+// detected class. Either one holds, so declaring a weaker mode than the statement looks like never
+// skips review (tightenByClass accepts a weaker statement than its mode). An unknown class holds when
+// any mode does.
+func (s *Server) reviewFor(c model.ConnectionSummary, mode string, class adapters.OpClass) bool {
+	held := s.reviewResolver()
+	if held(c.McpReview.For(mode)) {
 		return true
 	}
 	if class == adapters.ClassUnknown {
-		return resolve(c.McpReview.Read) || resolve(c.McpReview.Write) || resolve(c.McpReview.Ddl)
+		return held(c.McpReview.Read) || held(c.McpReview.Write) || held(c.McpReview.Ddl)
 	}
-	return resolve(c.McpReview.For(classMode(class)))
+	return held(c.McpReview.For(classMode(class)))
+}
+
+// reviewView is list_connections' reviewResults: which modes hold their results for the user.
+type reviewView struct {
+	Read  bool `json:"read"`
+	Write bool `json:"write"`
+	DDL   bool `json:"ddl"`
+}
+
+func (s *Server) reviewViewOf(c model.ConnectionSummary) reviewView {
+	held := s.reviewResolver()
+	return reviewView{Read: held(c.McpReview.Read), Write: held(c.McpReview.Write), DDL: held(c.McpReview.Ddl)}
 }
 
 // modesOf reads c's own MCP permission fields.

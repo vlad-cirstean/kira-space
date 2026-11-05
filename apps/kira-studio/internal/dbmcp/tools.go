@@ -48,6 +48,7 @@ func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ li
 			Permissions: connectionPermissions{Read: c.McpReadMode, Write: c.McpWriteMode, DDL: c.McpDdlMode},
 			Access:      accessOf(c), Enforcement: enforcementOf(c.Kind), StatementTimeout: timeoutViewOf(c),
 			ExpensiveQuery: expensiveQueryView{RowsThreshold: threshold, Check: expensiveCheckOf(c)},
+			ReviewResults:  s.reviewViewOf(c),
 		}
 		if state.ServerVersion != nil {
 			view.ServerVersion = state.ServerVersion
@@ -255,7 +256,11 @@ func (s *Server) runQuery(ctx context.Context, _ *mcp.CallToolRequest, args runQ
 	}
 
 	res, out, err, set, executed := s.executeAndRender(ctx, args, rv, rv.plan, ex)
-	if !executed || !s.reviewFor(rv.summary, rv.mode, rv.class) {
+	if !executed {
+		return res, out, err
+	}
+	// Read after the run: the user may have changed the setting while the query ran.
+	if !rv.reviewRequested && !s.reviewFor(rv.summary, rv.mode, rv.class) {
 		return res, out, err
 	}
 	return s.reviewResponse(ctx, args, rv, set, res, out, err)
@@ -357,11 +362,16 @@ func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv que
 // reviewResponse holds the result of a statement that already ran until the user sends or
 // withholds it. Only an approval returns the held result, untouched; every other outcome returns
 // an app-authored error with no row data.
+//
+// The text lives only in the broker entry and this goroutine: no log, op record, snapshot or
+// notification carries it. Both end on every exit (answer, 10 minute timeout, client cancel or
+// disconnect, server stop, quit), so nothing outlives the call. A result over the broker's per-result
+// cap, or one that would push the total over its cap, is withheld unseen.
 func (s *Server) reviewResponse(ctx context.Context, args runQueryArgs, rv queryResolution, rendered maskset, res *mcp.CallToolResult, out any, err error) (*mcp.CallToolResult, any, error) {
 	name := rv.summary.Name
 	// go-sdk v1.8.0 (mcp/server.go toolForErr): a regular handler error reaches the client as an
 	// IsError text result carrying err.Error(), so the preview of a bare Go error matches the wire.
-	held := ApprovalResponse{IsError: true}
+	held := ApprovalResponse{IsError: true, Requested: rv.reviewRequested}
 	if res != nil {
 		held.IsError = res.IsError
 		held.Text = resultText(res)
@@ -375,31 +385,53 @@ func (s *Server) reviewResponse(ctx context.Context, args runQueryArgs, rv query
 		Class: rv.class, Mode: rv.mode, Statement: args.SQL, Reason: ApprovalReasonPermission,
 		Target: targetOf(rv.summary, args.Path), Stage: ApprovalStageResponse, Response: &held, Origin: originFrom(ctx),
 	})
-	switch outcome {
-	case ApprovalApproved:
-		// The review can take up to ApprovalTimeout: exposure or masking rules may have changed since the
-		// result was rendered.
-		if _, rerr := s.resolveEnabled(args.ConnectionID); rerr != nil {
-			return errResult(fmt.Sprintf("query against %q ran, but its result was withheld: %s", name, rerr.Error()))
-		}
-		now, refusal, merr := s.maskStateFor(ctx, rv.summary)
-		if refusal != nil || merr != nil {
-			return errResult(fmt.Sprintf("query against %q ran, but its masking rules could not be re-checked and its result was withheld", name))
-		}
-		if !now.Equal(rendered) {
-			return errResult(fmt.Sprintf("masking rules or column review for %q changed while its result was in review; run the query again", name))
+	if outcome == ApprovalApproved {
+		if msg := s.recheckHeld(ctx, rv, args.ConnectionID, name, rendered); msg != "" {
+			return errResult(msg)
 		}
 		return res, out, err
+	}
+	return errResult(heldRefusal(outcome, rv, held.Bytes))
+}
+
+// recheckHeld returns why an approved result must still be withheld, "" when it may go. The review can take
+// up to ApprovalTimeout: exposure or masking rules may have changed since the result was rendered.
+func (s *Server) recheckHeld(ctx context.Context, rv queryResolution, connectionID, name string, rendered maskset) string {
+	if _, rerr := s.resolveEnabled(connectionID); rerr != nil {
+		return fmt.Sprintf("query against %q ran, but its result was withheld: %s", name, rerr.Error())
+	}
+	now, refusal, merr := s.maskStateFor(ctx, rv.summary)
+	if refusal != nil || merr != nil {
+		return fmt.Sprintf("query against %q ran, but its masking rules could not be re-checked and its result was withheld", name)
+	}
+	if !now.Equal(rendered) {
+		return fmt.Sprintf("masking rules or column review for %q changed while its result was in review; run the query again", name)
+	}
+	return ""
+}
+
+// heldRefusal is the app-authored text of a result the user did not send. It never carries data.
+func heldRefusal(outcome ApprovalOutcome, rv queryResolution, size int) string {
+	name := rv.summary.Name
+	switch outcome {
 	case ApprovalDenied:
-		return errResult(fmt.Sprintf("query against %q ran, but the user withheld its result", name))
+		msg := fmt.Sprintf("the user withheld the result of this query on %q; it ran, but you get no rows. Do not rerun it to get the result another way.", name)
+		if rv.class != adapters.ClassRead {
+			msg += " Its changes stay."
+		}
+		return msg
+	case ApprovalTooLarge:
+		return fmt.Sprintf("the result of this query on %q is %.1f MB, over the %d MB review limit, so it was withheld unseen. Ask for fewer rows or columns.", name, float64(size)/(1<<20), maxHeldResultBytes>>20)
+	case ApprovalHeldFull:
+		return "too many results are waiting for the user's review; retry after the user answers them"
 	case ApprovalTimedOut:
-		return errResult(fmt.Sprintf("query against %q ran, but its result got no review within %s and was withheld", name, approvalWindow()))
+		return fmt.Sprintf("query against %q ran, but its result got no review within %s and was withheld", name, approvalWindow())
 	case ApprovalAbandoned:
-		return errResult(fmt.Sprintf("the database MCP server stopped before the result of the query against %q was reviewed", name))
+		return fmt.Sprintf("the database MCP server stopped before the result of the query against %q was reviewed", name)
 	case ApprovalQueueFull:
-		return errResult("query ran; " + queueFullMessage)
+		return "query ran; " + queueFullMessage
 	default:
-		return errResult(fmt.Sprintf("query against %q ran, but its result was not approved", name))
+		return fmt.Sprintf("query against %q ran, but its result was not approved", name)
 	}
 }
 
@@ -428,6 +460,8 @@ type queryResolution struct {
 	// result's plan summary.
 	plan    *queryplan.Plan
 	planErr error
+	// reviewRequested is set when the approver ticked "review the result" on the pre-run item.
+	reviewRequested bool
 }
 
 // resolveVerdict is runQuery's resolve → check mode → gate → clamp → connect → tighten → tables → column review pipeline.
@@ -568,15 +602,17 @@ func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv *query
 		return nil, nil, nil, false
 	}
 
-	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
+	outcome, choice := s.cfg.Approvals.RequestChoice(ctx, ApprovalRequest{
 		ConnectionID: args.ConnectionID, ConnectionName: rv.summary.Name, Kind: rv.summary.Kind,
 		Class: rv.class, Mode: rv.mode, Enforcement: enforcementFor(rv.summary, rv.mode),
 		Statement: args.SQL, Reason: ApprovalReasonPermission,
 		Target: targetOf(rv.summary, args.Path),
 		Plan:   approvalPlanFrom(plan, rv.threshold), Origin: originFrom(ctx),
+		OfferReview: true, ReviewOn: s.reviewFor(rv.summary, rv.mode, rv.class),
 	})
 	switch outcome {
 	case ApprovalApproved:
+		rv.reviewRequested = choice.ReviewResult
 		// rv.summary was resolved before this (up to ApprovalTimeout) wait. If the user reacted to
 		// the prompt by revoking the connection's MCP exposure or denying this mode, an Approve
 		// landing after that must not run the statement under permissions that no longer hold.
