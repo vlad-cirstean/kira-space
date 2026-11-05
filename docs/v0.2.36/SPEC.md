@@ -18,7 +18,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 | P533 | Tool descriptions suggest inspecting schemas first | Done |
 | P534 | Masking validation: new columns are withheld until masking is reviewed | Done |
 | P535 | Masked-read permission and constrained browse tool as the MCP default | Pending |
-| P536 | Review MCP results before delivery to the agent | Pending |
+| P536 | Review MCP results before delivery to the agent | Done |
 
 ## Rows
 
@@ -95,6 +95,7 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 - Flow: query runs, the result is held, the user sees it in the approvals surface (P520 kind with a result body, grid or table, with masking already applied), then Deliver or Withhold. Withheld returns a refusal to the agent. Long approval timeouts as in P520.
 - Held results must not be logged or kept longer than needed; plan covers memory, size caps and the op log.
 - Plan: `plans/P536.md`.
+- Result: per-mode `mcp.review.read|write|ddl` (inherit, review, send; migration 0063, legacy `review_results` fans out to all three). Stricter of declared and detected mode picks the setting. Approval dialogs for `db.query` and `db.exemption` offer a review checkbox; checked, the call raises a `db.response` item after execution. `db.response` is individualOnly (Approve all skips it). Held results are memory-only with caps 8 MiB each and 64 MiB total, not listed in list_operations, and dropped on every exit. MCP tab explains enforcement (5 i18n keys). Prompts and budgets updated. Tests: `dbmcpflow/review_test.go` (9 flows), 2 broker unit tests, `tests/ui/dbmcp-review-mode.spec.ts` (8), contracts regenerated.
 
 ## Close
 

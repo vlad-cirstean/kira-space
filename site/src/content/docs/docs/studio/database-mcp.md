@@ -93,7 +93,13 @@ A prompt waits for you to approve the exact statement. The dialog names the conn
 
 When a limit rejects a statement, the AI client can ask you to lift that limit for that one statement. You always get a dialog, even for modes that need no approval. It shows the limit, the measured value, the limit value, the client's reason and the statement. Approving covers that one run; the limit stays for every other call. With several requests waiting, "Approve all" skips these. Approve each one on its own.
 
-You can also review each query result before the AI client gets it. The app-wide switch is in Settings, under Database MCP. A connection's MCP tab can override it with Always or Never. A write has already run when its result shows, so withholding hides the result and does not undo the change.
+You can review each query result before the AI client gets it. The app-wide switch is in Settings, under Database MCP. A connection's MCP tab sets Read, Write and DDL results on their own: inherit the app setting, always review, or always send. The tab explains which setting applies.
+
+A permission prompt also has a checkbox, "Review the result before the AI gets it". Check it to review the result of that one call, even when review is off. Limit exemption prompts have it too.
+
+A held result shows as a table with the masking already applied. Send gives the AI client that exact result. Withhold gives it an error with no data. A write has already run when its result shows, so withholding hides the result and does not undo the change. "Approve all" skips result reviews. Approve each one on its own.
+
+Held results stay in memory only. Nothing is stored or logged. A result over 8 MB is refused instead of held, and so is any result once held results total 64 MB.
 
 ## Masking
 
