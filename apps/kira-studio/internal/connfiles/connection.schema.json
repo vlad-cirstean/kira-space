@@ -135,7 +135,7 @@
         "auto_explain": {
           "type": "boolean",
           "default": true,
-          "description": "Run EXPLAIN first and hold costly queries for a decision."
+          "description": "Run EXPLAIN before an agent's SELECT or WITH and refuse it when the estimated rows read reach advanced.expensiveQueryRows."
         },
         "review_results": {
           "type": "string",

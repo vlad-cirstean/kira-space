@@ -7,6 +7,7 @@ import type { ConnectionFileMcp, ConnectionFileModel } from '@shared/domain/conn
 import {
   accessSummaryOf,
   enforcementOf,
+  expensiveQueryCheckOf,
   hasWriteConsole,
   statementTimeoutEnforcementOf,
   TABLE_LIST_KINDS,
@@ -23,6 +24,7 @@ import { Textarea } from '@theme/components/ui/textarea';
 import { type MessageKey, t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
+import { formatCount } from '@workbench/behaviour/format';
 import { compareNatural, matchesQuery } from '@workbench/behaviour/match';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
 import QueryState from '@workbench/components/QueryState.vue';
@@ -48,6 +50,11 @@ function setMcp(change: Partial<ConnectionFileMcp>): void {
 
 // Disabled, never hidden, for kinds without a parseable EXPLAIN: the setting stays visible.
 const explainSupported = computed(() => EXPLAIN_SUPPORTED_KINDS.has(file.value.kind as never));
+
+// Mirrors internal/dbmcp's expensiveCheckOf: which row-check note applies to this kind and switch.
+const rowCheck = computed(() =>
+  expensiveQueryCheckOf(file.value.kind, mcp.value.auto_explain ?? true),
+);
 
 // Mirrors internal/dbmcp's accessOf: what each declared run_query mode allows for this connection.
 const writeConsole = computed(() => hasWriteConsole(file.value.kind));
@@ -287,12 +294,39 @@ const timeoutThrottled = computed(
       :model-value="mcp.auto_explain ?? true"
       :disabled="!enabled || !explainSupported"
       :label="t('studio.project.connectionDialog.mcp.plan.label')"
-      :description="
-        explainSupported ? undefined : t('studio.project.connectionDialog.mcp.plan.description')
-      "
       testid="connection-mcp-auto-explain"
       @update:model-value="(v) => setMcp({ auto_explain: v })"
     />
+    <template v-if="enabled">
+      <template v-if="rowCheck === 'plan'">
+        <FieldDescription class="w-full" data-testid="connection-mcp-rows-threshold">
+          {{ t('studio.settings.advanced.expensiveRows.description') }}
+        </FieldDescription>
+        <FieldDescription class="w-full" data-testid="connection-mcp-rows-who">
+          {{
+            t('studio.project.connectionDialog.mcp.rowsWho.body', {
+              threshold: formatCount(settingsStore.advanced.expensiveQueryRows),
+            })
+          }}
+        </FieldDescription>
+        <FieldDescription class="w-full" data-testid="connection-mcp-rows-hit">
+          {{ t('studio.project.connectionDialog.mcp.rowsHit.body') }}
+        </FieldDescription>
+        <FieldDescription class="w-full" data-testid="connection-mcp-rows-limits">
+          {{ t('studio.project.connectionDialog.mcp.rowsLimits.body') }}
+        </FieldDescription>
+      </template>
+      <FieldDescription
+        v-else-if="rowCheck === 'off'"
+        class="w-full"
+        data-testid="connection-mcp-rows-off"
+      >
+        {{ t('studio.project.connectionDialog.mcp.rowsOff.body') }}
+      </FieldDescription>
+      <FieldDescription v-else class="w-full" data-testid="connection-mcp-rows-none">
+        {{ t('studio.project.connectionDialog.mcp.rowsNone.body') }}
+      </FieldDescription>
+    </template>
 
     <Field v-for="c in CLASSES" :key="c.cls" class="flex-1">
       <FieldLabel

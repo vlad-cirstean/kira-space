@@ -15384,8 +15384,7 @@
             "body": "Write and DDL modes are not available for this connection kind."
           },
           "plan": {
-            "description": "This engine has no query plan this app can read.",
-            "label": "Plan queries before running them"
+            "label": "Check agent queries against the row threshold"
           },
           "prompt": {
             "label": "Ask me"
@@ -15417,6 +15416,21 @@
           },
           "reviewNote": {
             "label": "Hold each query result for you to check before the AI gets it"
+          },
+          "rowsHit": {
+            "body": "At or above it, the call is refused before it runs. The agent may improve the query or ask for an exemption; you always approve it in a dialog. If the EXPLAIN fails or its plan can’t be read, the call is refused too."
+          },
+          "rowsLimits": {
+            "body": "Known limits. Estimates come from table statistics and ignore LIMIT, so sampling a big table can be refused. Other statements, and reads the planner can’t size, are not checked; the statement timeout still applies. The EXPLAIN is one more op against the throttle."
+          },
+          "rowsNone": {
+            "body": "This engine gives no row estimate, so agent queries here are not checked."
+          },
+          "rowsOff": {
+            "body": "Off. Agent queries run without a row check; the statement timeout still applies."
+          },
+          "rowsWho": {
+            "body": "Kira enforces this, not the database. Before an agent’s SELECT or WITH runs, in any mode, Kira runs EXPLAIN without ANALYZE, so nothing executes, and compares the plan’s estimate with {threshold} rows."
           },
           "strictest": {
             "description": "A statement this app can’t classify is treated as whichever of the three is strictest. These settings govern the MCP server only. The read-only flag on the {tab} tab governs this app’s own console."
@@ -16166,7 +16180,7 @@
     "settings": {
       "advanced": {
         "expensiveRows": {
-          "description": "A query whose plan is estimated to read at least this many rows is flagged as expensive by the console’s explain button and by auto-explain. Not comparable across engines’ own cost figures. See the plan panel’s own note.",
+          "description": "The estimated rows a query’s plan reads, not the rows it returns. At or above it, the console’s explain and auto-explain warn you, and the database MCP server refuses an agent’s query before it runs where the connection’s MCP tab has the check on. Not comparable to the engines’ own cost figures.",
           "label": "Expensive query threshold (rows)"
         },
         "logLevel": {
@@ -16285,7 +16299,7 @@
           "status": "Read {read} · write {write} · DDL {ddl}"
         },
         "modesPlans": {
-          "status": "Read {read} · write {write} · DDL {ddl} · plans queries"
+          "status": "Read {read} · write {write} · DDL {ddl} · row check"
         },
         "noToken": {
           "hint": "This server restarted since it was last enabled; its registration command needs a fresh token to show again."
