@@ -1,25 +1,26 @@
 # v0.2.35
 
-Branch `chapter/v0.2.35`, based on `chapter/v0.2.34` (v0.2.34 not yet merged to main). First `P` is 512 (highest in v0.2.34 is P511), last is P523.
+Branch `chapter/v0.2.35`, based on `chapter/v0.2.34` (v0.2.34 not yet merged to main). First `P` is 512 (highest in v0.2.34 is P511), last is P524.
 
-Source: user request. Twelve phases. P523 is the last implementation phase. Close duty after P523: one full suite run, 2 code review rounds (user ask), hand-written close. User decision: the v0.2.34 PR is not merged yet, so after the close and push, stop. Do NOT open the v0.2.35 PR or subscribe to one; report that the branch is ready. Each phase: Opus plan, Sonnet implementation.
+Source: user request. Thirteen phases. P524 is the last implementation phase. Close duty after P524: one full suite run, 2 code review rounds (user ask), hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
 
-Parallelism (user ask): up to 3 phases run at once as named streams, each its own worktree off the same base, zero file overlap. Waves keep table order; a wave starts only when the prior wave is landed. Waves: A = P512, P513, P514. B = P515, P516, P517. C = P518, P519. D = P520 alone (async touches every MCP tool). E = P521, P522 (planner may force sequential on overlap in the shared MCP access settings). F = P523 alone (touches every id generator). From P512 on, new Kira-generated ids follow the P523 convention where cheap.
+Parallelism (user ask): up to 3 phases run at once as named streams, each in its own worktree off the same base, zero file overlap. P512 to P517 landed. Remaining waves: P518 + P519 + P524 in parallel, then P520 alone (async touches every MCP tool), then P521 + P522 (planner may force sequential on overlap in the shared MCP access settings), then P523 alone (touches every id generator). From P512 on, new Kira-generated ids follow the P523 convention where cheap.
 
 | Phase | Title | Status |
 |---|---|---|
-| P512 | Tracked-item update indicators with per-concept settings | Pending |
-| P513 | Repo scripts reference run-module scripts (backend, YAML) | Pending |
-| P514 | YAML syntax highlighting and restored config dialogs | Pending |
-| P515 | Run-script picker in the restored repo dialog | Pending |
-| P516 | Reveal button on every secret field | Pending |
-| P517 | Multiple worktrees per repo, agent-named branches, branch rename | Pending |
+| P512 | Tracked-item update indicators with per-concept settings | Done |
+| P513 | Repo scripts reference run-module scripts (backend, YAML) | Done |
+| P514 | YAML syntax highlighting and restored config dialogs | Done |
+| P515 | Run-script picker in the restored repo dialog | Done |
+| P516 | Reveal button on every secret field | Done |
+| P517 | Multiple worktrees per repo, agent-named branches, branch rename | Done |
 | P518 | Cancel ops via MCP and status bar running-ops widget | Pending |
 | P519 | Proof window cell editor and multi-file screenshots | Pending |
 | P520 | Async MCP tools with aggregated approvals and result push | Pending |
 | P521 | Scripts MCP | Pending |
 | P522 | API MCP | Pending |
 | P523 | Prefixed nanoid for every Kira-generated id | Pending |
+| P524 | Manual order for API collections and environments | Pending |
 
 ## Rows
 
@@ -28,33 +29,39 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each its ow
 - Ask: Task shows at a glance that a tracked item changed since last seen: PR (new comments, merged, checks failed), Jira issue, branch, and the other trackable kinds.
 - Meaningful vs noise is configurable in Settings, per trackable kind and per concept, independently. Examples: PR comment added, PR merged, checks passed, checks failed (two separate toggles), assignee change. Defaults: comments, merge/close, checks failed, status change on; assignee, checks passed off.
 - Plan: `plans/P512.md`.
+- Result: Done. Githost sync fields and snapshots with diff, watcher and bridge, per-concept Settings toggles, ADE indicators, flow and UI specs, docs. `CHANNEL.adeTaskUpdates` added. Real-hardware GitHub sync not run; comment and assignee fields covered by fakehost only.
 
 ### P513 Repo scripts reference run-module scripts (backend, YAML)
 
 - Ask: Repo scripts (prepare worktree, check deployments, etc.) may reference a script from the Run module and run it the same way workflows do.
 - Scope (user decision): normal Run scripts only; smart scripts refused with a clear message. Picker UI is P515.
 - Plan: `plans/P513.md`.
+- Result: Done (backend, YAML, docs). Keys `worktree.prepare_run` and `environments[].deployed_sha_run`, `model.ScriptRef`, shared `resolveScriptRef`. Smart scripts refused for repo use. Picker UI is P515.
 
 ### P514 YAML syntax highlighting and restored config dialogs
 
 - Ask: Every config YAML view/editor gets syntax highlighting. Bring back the form config dialogs; YAML stays hand-editable, dialogs edit the same files, human-friendly as before.
 - Scope (user decision): also restore the lifecycle actions the old dialogs had (connection delete and duplicate, API rename/delete/move, run collection editing).
 - Plan: `plans/P514.md`.
+- Result: Done in 17 commits, groups A to F. Monaco YAML highlighting on every config editor, `configfs.Form` with `useConfigFormDraft` (form and YAML edit one file), restored run, repo, connection and API dialogs with lifecycle actions (duplicate, delete, rename, move). Deviation: no manual collection or environment order, collections list by name (see P524). Duplicate environment shares secret refs.
 
 ### P515 Run-script picker in the restored repo dialog
 
 - Ask: Repo dialog (restored by P514) lets the user pick a Run script for the prepare worktree and deployed-SHA hooks, using the P513 keys; params editable. Depends on P513 and P514.
 - Plan: `plans/P515.md`.
+- Result: Done in 4 commits. `RunScriptRefPicker` and `RepoScriptField` (Command and Script tabs) in the repo dialog for prepare and deployed-SHA hooks; `ParamValues.MarshalJSON` keeps one-or-list shape. Flow `TestRepoScriptPicker` and UI spec `repo-script-picker`.
 
 ### P516 Reveal button on every secret field
 
 - Ask: Every place a secret is entered or shown has a reveal (eye) toggle, including dialogs restored by P514.
 - Plan: `plans/P516.md`.
+- Result: Done in 3 code commits plus docs. Shared `SecretInput` with eye toggle at every secret entry and display, no Go change. Revealed value drops on `set` change. Spec `secret-reveal` plus call-site specs.
 
 ### P517 Multiple worktrees per repo, agent-named branches, branch rename
 
 - Ask: A task may hold several worktrees for one repo (several branches in one repo). Worktree dir name is a nanoid. Branch name is a required argument of the MCP create tool, chosen by the agent. MCP tool can rename an existing branch, gated by an approval dialog.
 - Plan: `plans/P517.md`.
+- Result: Done. Several worktrees per repo (`wt_` nanoid dirs, migration 0075), `request_branches` takes agent-chosen names (breaking), `rename_branch` MCP tool with approval dialog. Flow tests and UI specs for multi-worktree and rename. Real `claude` test not run.
 
 ### P518 Cancel ops via MCP and status bar running-ops widget
 
@@ -86,3 +93,9 @@ Parallelism (user ask): up to 3 phases run at once as named streams, each its ow
 - Ask: Every id Kira generates, of any kind, in the Kira apps is a nanoid with a short prefix. The prefix names the feature the id belongs to. External ids (GitHub, Jira, Docker, etc.) stay unaltered.
 - Plan decides: inventory of all generators (uuid, ulid, autoincrement-as-id, hand-rolled), one shared id helper and prefix registry per language, handling of stored existing ids (migrate or leave, with reasoning), lint guard against new unprefixed generators. Uses an existing nanoid library.
 - Plan: `plans/P523.md`.
+
+### P524 Manual order for API collections and environments
+
+- Ask: Restore manual (drag and drop) ordering of API collections, API items within collections, and environments. P514 dropped it; they list by name now.
+- Order persists. Backend order field plus migration in `apifiles` if needed. UI drag and drop. Paired Go flow test and UI spec.
+- Plan: `plans/P524.md`.
