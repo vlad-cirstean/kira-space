@@ -9,12 +9,9 @@ import { applyBulk, serializeVariables } from './variablesForm';
 
 // The `.env` view of the variables list. The text is seeded once from the rows the editor opened on;
 // every valid edit replaces the rows in the draft, matched to those opening rows by name, so a secret
-// keeps its reference. A value typed on a secret's line is held for the write-only call on Save.
+// keeps its reference. A value on a secret's line is refused: secrets are entered in the row's SecretInput.
 const props = defineProps<{ variables: ApiFileVariable[] }>();
-const emit = defineEmits<{
-  'update:variables': [ApiFileVariable[]];
-  'update:typed': [Record<string, string>];
-}>();
+const emit = defineEmits<{ 'update:variables': [ApiFileVariable[]] }>();
 
 const baseline = props.variables.map((v) => ({ ...v }));
 const text = ref(serializeVariables(baseline));
@@ -26,7 +23,6 @@ function onInput(next: string): void {
   result.value = applyBulk(baseline, next);
   if (result.value.error) return;
   emit('update:variables', result.value.variables);
-  emit('update:typed', result.value.typed);
 }
 </script>
 

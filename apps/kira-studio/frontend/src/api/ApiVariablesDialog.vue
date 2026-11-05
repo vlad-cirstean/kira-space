@@ -254,7 +254,6 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
                   v-if="bulk"
                   :variables="variables"
                   @update:variables="(v) => (variables = v)"
-                  @update:typed="(v) => (typed = { ...typed, ...v })"
                 />
                 <ApiVariablesTable
                   v-else

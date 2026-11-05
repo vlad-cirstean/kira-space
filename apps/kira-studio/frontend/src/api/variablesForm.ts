@@ -100,20 +100,28 @@ export const serializeVariables = (vars: readonly ApiFileVariable[]): string =>
 
 export interface BulkResult {
   variables: ApiFileVariable[];
-  /** Values typed on a secret's line, by the secret's name. */
-  typed: Record<string, string>;
   summary: { added: number; updated: number; removed: number };
   error: EnvParseError | null;
 }
 
+/** 1-based line numbers of the `KEY=VALUE` lines, in entry order (blank and `#` lines hold none). */
+function entryLines(text: string): number[] {
+  const out: number[] = [];
+  text.split('\n').forEach((line, i) => {
+    const trimmed = line.trim();
+    if (trimmed !== '' && !trimmed.startsWith('#')) out.push(i + 1);
+  });
+  return out;
+}
+
 /** The rows `text` describes, matched to `base` by name (the Nth repeat of a name to the Nth row of
- *  that name). A line on a secret's row keeps the reference; a new line is a plain variable. */
+ *  that name). A line on a secret's row keeps the reference; a new line is a plain variable. A value
+ *  on a secret's line is an error: secret values never enter plain text, only the row's SecretInput. */
 export function applyBulk(base: readonly ApiFileVariable[], text: string): BulkResult {
   const parsed = parseEnv(text);
   if (parsed.error) {
     return {
       variables: [...base],
-      typed: {},
       summary: { added: 0, updated: 0, removed: 0 },
       error: parsed.error,
     };
@@ -121,11 +129,21 @@ export function applyBulk(base: readonly ApiFileVariable[], text: string): BulkR
   const diff = reconcileEnv(toEnvRows(base), parsed.entries);
   const pools = new Map<string, ApiFileVariable[]>();
   for (const v of base) pools.set(v.name, [...(pools.get(v.name) ?? []), v]);
-  const typed: Record<string, string> = {};
-  const variables = parsed.entries.map((e: EnvEntry): ApiFileVariable => {
+  const lines = entryLines(text);
+  let secretValueError: EnvParseError | null = null;
+  const variables = parsed.entries.map((e: EnvEntry, i): ApiFileVariable => {
     const match = pools.get(e.name)?.shift();
     if (match?.secret) {
-      if (e.hasValue) typed[secretNameOf(match.secret)] = e.value;
+      if (e.hasValue && !secretValueError) {
+        const line = lines[i] ?? 1;
+        secretValueError = {
+          line,
+          message: {
+            key: 'studio.api.variablesDialog.bulk.secretValue.error',
+            params: { name: e.name },
+          },
+        };
+      }
       return cleanVariable({ ...match, description: e.description });
     }
     return cleanVariable({
@@ -135,9 +153,15 @@ export function applyBulk(base: readonly ApiFileVariable[], text: string): BulkR
       agent: match?.agent,
     });
   });
+  if (secretValueError) {
+    return {
+      variables: [...base],
+      summary: { added: 0, updated: 0, removed: 0 },
+      error: secretValueError,
+    };
+  }
   return {
     variables,
-    typed,
     summary: {
       added: diff.added.length,
       updated: diff.updated.length,

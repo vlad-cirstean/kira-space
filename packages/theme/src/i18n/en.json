@@ -12549,7 +12549,10 @@
       },
       "variablesDialog": {
         "bulk": {
-          "hint": "One name=value per line. A comment line above a variable is its description. A secret keeps its bare name= line and its value unless you type one.",
+          "hint": "One name=value per line. A comment line above a variable is its description. A secret keeps its bare name= line; enter its value in the list.",
+          "secretValue": {
+            "error": "{name} is a secret. Enter its value in the variables list, not in text."
+          },
           "summary": {
             "status": "{added} added · {updated} updated · {removed} removed"
           },

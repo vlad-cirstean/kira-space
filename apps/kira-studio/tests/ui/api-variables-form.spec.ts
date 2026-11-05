@@ -168,6 +168,21 @@ test('a typed secret goes through the write-only call, never the file', async ({
   expect(control.log().some((e) => e.channel === IPC.apiConfigSaveFile)).toBe(false);
 });
 
+test('dotenv text refuses a value typed on a secret line', async ({ relaunch }) => {
+  const { window: page, control } = await openEnvironment(relaunch);
+  await page.locator('[data-testid="api-tab-variables"]').click();
+  await page.locator('[data-testid="api-variables-bulk-toggle"]').click();
+  const editor = page.locator('[data-testid="variables-bulk-text"]');
+  await replaceCodeEditorText(
+    page,
+    editor,
+    'base_url=https://staging.example.com\ntoken=hunter2\n',
+  );
+  await expect(page.locator('[data-testid="variables-bulk-error"]')).toContainText('Line 2');
+  await expect(page.locator('[data-testid="variables-bulk-error"]')).toContainText('token');
+  expect(control.log().some((e) => e.channel === IPC.apiConfigSetSecret)).toBe(false);
+});
+
 test('a collection file edits its variables from the tree menu', async ({ relaunch }) => {
   const { window: page } = await (async () => {
     const app = await relaunch({
