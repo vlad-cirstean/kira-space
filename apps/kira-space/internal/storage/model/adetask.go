@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"slices"
@@ -174,11 +175,11 @@ const AdeRunPurposeReview = "review"
 
 // AdeReviewSpec is a review round's plan, stored in ade_runs.spec_json.
 type AdeReviewSpec struct {
-	ReviewRunID string  `json:"reviewRunId"`
-	Round       int     `json:"round"`
-	Route       string  `json:"route"`
-	CommentIDs  []int64 `json:"commentIds"`
-	HeadBefore  string  `json:"headBefore,omitempty"`
+	ReviewRunID string        `json:"reviewRunId"`
+	Round       int           `json:"round"`
+	Route       string        `json:"route"`
+	CommentIDs  CommentIDList `json:"commentIds"`
+	HeadBefore  string        `json:"headBefore,omitempty"`
 	// HeadAfter is the worktree tip when the round ended ("" while it runs).
 	HeadAfter string `json:"headAfter,omitempty"`
 	// GitRepoID and Branch key the comments in review.db.
@@ -481,5 +482,26 @@ func (d AdeStatusDefaults) Validate(set []AdeTaskStatus) error {
 			return fmt.Errorf("model: ade status defaults: %s names unknown status %q", n.slot, n.id)
 		}
 	}
+	return nil
+}
+
+// CommentIDList holds review comment ids. Runs stored before ids became strings hold JSON numbers.
+type CommentIDList []string
+
+// UnmarshalJSON accepts strings and legacy numbers.
+func (l *CommentIDList) UnmarshalJSON(b []byte) error {
+	var raw []json.Number
+	if err := json.Unmarshal(b, &raw); err == nil {
+		*l = make(CommentIDList, len(raw))
+		for i, n := range raw {
+			(*l)[i] = n.String()
+		}
+		return nil
+	}
+	var s []string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	*l = s
 	return nil
 }

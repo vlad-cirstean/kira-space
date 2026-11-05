@@ -480,7 +480,7 @@ func (b *TaskBoard) SendReview(ctx context.Context, args adewire.SendReviewArgs)
 	}
 	spec := model.AdeReviewSpec{
 		ReviewRunID: rc.run.ID, Route: route, GitRepoID: tgt.GitRepoID, Branch: tgt.Branch,
-		CommentIDs: make([]int64, len(open)),
+		CommentIDs: make([]string, len(open)),
 	}
 	for i, c := range open {
 		spec.CommentIDs[i] = c.ID
@@ -888,7 +888,7 @@ func (b *TaskBoard) resumeReviewRound(ctx context.Context, run model.AdeRun) err
 // --- reply and finish ----------------------------------------------------------------------------
 
 // Reply stores an agent's answer to one comment of its round (agentmcp.ReviewReplier).
-func (b *TaskBoard) Reply(runID string, id int64, reply string, resolved bool) error {
+func (b *TaskBoard) Reply(runID string, id string, reply string, resolved bool) error {
 	run, err := b.deps.Tasks.GetRun(runID)
 	if err != nil {
 		return err
@@ -901,7 +901,7 @@ func (b *TaskBoard) Reply(runID string, id int64, reply string, resolved bool) e
 		return err
 	}
 	if !slices.Contains(spec.CommentIDs, id) {
-		return fmt.Errorf("comment %d was not sent to you", id)
+		return fmt.Errorf("comment %s was not sent to you", id)
 	}
 	store, err := b.reviewStore()
 	if err != nil {
@@ -912,7 +912,7 @@ func (b *TaskBoard) Reply(runID string, id int64, reply string, resolved bool) e
 		return err
 	}
 	if !ok {
-		return fmt.Errorf("comment %d no longer exists", id)
+		return fmt.Errorf("comment %s no longer exists", id)
 	}
 	b.emitReview(run.TaskID, run.BranchID)
 	return nil

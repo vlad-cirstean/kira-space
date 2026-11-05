@@ -228,7 +228,7 @@ func (s *Store) DeleteWorking(ctx context.Context, repoID, branch, path string) 
 
 // PromoteComment turns a working comment into a commit-origin one anchored at a commit: new
 // range, anchor, and no stored content. false when the id matches nothing in this session.
-func (s *Store) PromoteComment(ctx context.Context, repoID, branch string, id int64, anchorSHA, blobOID string, rng LineRange) (bool, error) {
+func (s *Store) PromoteComment(ctx context.Context, repoID, branch string, id string, anchorSHA, blobOID string, rng LineRange) (bool, error) {
 	return s.updateComment(ctx, repoID, branch,
 		`origin = 'commit', anchor_sha = ?, anchor_blob_oid = ?, start_line = ?, end_line = ?, anchor_content = NULL`,
 		[]any{anchorSHA, blobOID, rng.Start, rng.End}, id)

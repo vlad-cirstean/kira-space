@@ -191,7 +191,7 @@ test('the Review pane shows each comment kind, state and the agent reply', async
   const comments = [
     {
       ...base,
-      id: 1,
+      id: '1',
       range: { start: 3, end: 3 },
       body: 'Rename it.',
       kind: 'change',
@@ -201,7 +201,7 @@ test('the Review pane shows each comment kind, state and the agent reply', async
     },
     {
       ...base,
-      id: 2,
+      id: '2',
       range: { start: 9, end: 9 },
       body: 'Why cents?',
       kind: 'question',

@@ -160,7 +160,7 @@ func TestPromoteWorkingComments(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
-	got := map[int64]CommentEntry{}
+	got := map[string]CommentEntry{}
 	for _, c := range list.Comments {
 		got[c.ID] = c
 	}

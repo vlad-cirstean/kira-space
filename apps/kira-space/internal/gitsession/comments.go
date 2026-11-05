@@ -20,7 +20,7 @@ var ErrCommentRangeOutOfFile = errors.New("gitsession: comment range is past the
 
 // CommentEntry mirrors @kira/git-ipc's own ReviewComment (D11).
 type CommentEntry struct {
-	ID        int64                   `json:"id"`
+	ID        string                  `json:"id"`
 	Path      string                  `json:"path"`
 	Range     gitreview.LineRange     `json:"range"`
 	Body      string                  `json:"body"`
@@ -154,7 +154,7 @@ func (e *RepoEntry) ExportComments(ctx context.Context, branch, at string) (stri
 // RemoveComment is review.comment.remove's whole orchestration — a thin pass-through plus Touch
 // (D16); the store's own statement is what scopes the delete to this session and makes it
 // idempotent (D11).
-func (e *RepoEntry) RemoveComment(ctx context.Context, branch string, id int64) (bool, error) {
+func (e *RepoEntry) RemoveComment(ctx context.Context, branch string, id string) (bool, error) {
 	removed, err := e.review.RemoveComment(ctx, e.Summary.RepoID, branch, id)
 	if err != nil {
 		return false, err
@@ -166,7 +166,7 @@ func (e *RepoEntry) RemoveComment(ctx context.Context, branch string, id int64) 
 }
 
 // SetCommentState is review.comment.setState's whole orchestration.
-func (e *RepoEntry) SetCommentState(ctx context.Context, branch string, id int64, state string) (bool, error) {
+func (e *RepoEntry) SetCommentState(ctx context.Context, branch string, id string, state string) (bool, error) {
 	changed, err := e.review.SetCommentState(ctx, e.Summary.RepoID, branch, id, state)
 	if err != nil {
 		return false, err
@@ -178,7 +178,7 @@ func (e *RepoEntry) SetCommentState(ctx context.Context, branch string, id int64
 }
 
 // EditComment is review.comment.edit's whole orchestration.
-func (e *RepoEntry) EditComment(ctx context.Context, branch string, id int64, body, kind string) (bool, error) {
+func (e *RepoEntry) EditComment(ctx context.Context, branch string, id string, body, kind string) (bool, error) {
 	changed, err := e.review.EditComment(ctx, e.Summary.RepoID, branch, id, body, kind)
 	if err != nil {
 		return false, err

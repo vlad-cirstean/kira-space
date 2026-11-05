@@ -3,6 +3,7 @@ package adeflow_test
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -36,7 +37,7 @@ func rvStep(sendTo string) string {
 		"      - id: rejected\n        ok: false\n        next: stop\n"
 }
 
-func rvReply(id int64, text string) fakeagent.MCPCall {
+func rvReply(id string, text string) fakeagent.MCPCall {
 	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "reply_review_comment",
 		Args: map[string]any{"id": id, "reply": text, "resolved": true}}
 }
@@ -49,8 +50,17 @@ type reviewFx struct {
 	gs  *flowharness.GitStream
 }
 
+// seqCommentIDs numbers new review comments "1", "2", ... so a scripted agent can name them.
+func seqCommentIDs(t *testing.T) {
+	t.Helper()
+	orig, n := gitreview.NewCommentID, 0
+	gitreview.NewCommentID = func() string { n++; return strconv.Itoa(n) }
+	t.Cleanup(func() { gitreview.NewCommentID = orig })
+}
+
 func newReviewFx(t *testing.T, sendTo string, actions ...fakeagent.Action) *reviewFx {
 	t.Helper()
+	seqCommentIDs(t)
 	steps := agentStep("implement", "") + rvStep(sendTo) + agentStep("verify", "")
 	return &reviewFx{runFixture: newRunFixture(t, actions, steps)}
 }
@@ -103,14 +113,14 @@ func (f *reviewFx) comments(t *testing.T) []gitsession.CommentEntry {
 	return res.Comments
 }
 
-func (f *reviewFx) setState(t *testing.T, id int64, state string) {
+func (f *reviewFx) setState(t *testing.T, id string, state string) {
 	t.Helper()
 	var res gitrpc.ReviewCommentSetStateResult
 	f.gs.MustRequest("review.comment.setState", gitrpc.ReviewCommentSetStateParams{
 		RepoID: f.tgt.GitRepoID, Branch: f.tgt.Branch, ID: id, State: state,
 	}, &res)
 	if !res.Changed {
-		t.Fatalf("setState %d %s changed nothing", id, state)
+		t.Fatalf("setState %s %s changed nothing", id, state)
 	}
 }
 
@@ -200,15 +210,15 @@ func TestReviewSendImplementer(t *testing.T) {
 		fakeagent.Action{Name: "done", Sh: rvImplement},
 		fakeagent.Action{
 			Sh:       "echo fixed >> r.txt && git commit -q -am fix",
-			MCP:      []fakeagent.MCPCall{rvReply(1, "renamed"), rvReply(2, "because the API retries")},
+			MCP:      []fakeagent.MCPCall{rvReply("1", "renamed"), rvReply("2", "because the API retries")},
 			WaitFile: gate, Name: "done",
 		})
 	f.toReview(t, "feat/api-review-impl")
 	f.window(t)
 	change := f.comment(t, 1, "rename this", "")
 	question := f.comment(t, 3, "why twice?", "question")
-	if change.ID != 1 || question.ID != 2 {
-		t.Fatalf("comment ids = %d, %d, want 1, 2 (the fake agent replies to them)", change.ID, question.ID)
+	if change.ID != "1" || question.ID != "2" {
+		t.Fatalf("comment ids = %s, %s, want 1, 2 (the fake agent replies to them)", change.ID, question.ID)
 	}
 	implementID := f.claudeID(t, "api-1.args")
 
@@ -258,8 +268,8 @@ func TestReviewSendImplementer(t *testing.T) {
 func TestReviewSendNew(t *testing.T) {
 	f := newReviewFx(t, "implementer",
 		fakeagent.Action{Name: "done", Sh: rvImplement},
-		fakeagent.Action{MCP: []fakeagent.MCPCall{rvReply(1, "looks wrong, fixed")}, Name: "done"},
-		fakeagent.Action{MCP: []fakeagent.MCPCall{rvReply(1, "fixed again")}, Name: "done"})
+		fakeagent.Action{MCP: []fakeagent.MCPCall{rvReply("1", "looks wrong, fixed")}, Name: "done"},
+		fakeagent.Action{MCP: []fakeagent.MCPCall{rvReply("1", "fixed again")}, Name: "done"})
 	f.toReview(t, "feat/api-review-new")
 	f.window(t)
 	f.comment(t, 1, "rename this", "")
@@ -283,7 +293,7 @@ func TestReviewSendNew(t *testing.T) {
 		t.Fatalf("comments after round 1 = %+v", got)
 	}
 
-	f.setState(t, 1, "open")
+	f.setState(t, "1", "open")
 	if err := f.send("", ""); err != nil {
 		t.Fatalf("SendReview again: %v", err)
 	}
@@ -365,7 +375,7 @@ func TestReviewLostFallback(t *testing.T) {
 	f := newReviewFx(t, "implementer",
 		fakeagent.Action{Name: "done", Sh: rvImplement},
 		fakeagent.Action{Name: "lost"},
-		fakeagent.Action{MCP: []fakeagent.MCPCall{rvReply(1, "done anyway")}, Name: "done"})
+		fakeagent.Action{MCP: []fakeagent.MCPCall{rvReply("1", "done anyway")}, Name: "done"})
 	f.toReview(t, "feat/api-review-lost")
 	f.window(t)
 	f.comment(t, 1, "rename this", "")
@@ -402,7 +412,7 @@ func TestReviewQuitResume(t *testing.T) {
 	f := newReviewFx(t, "implementer",
 		fakeagent.Action{Name: "done", Sh: rvImplement},
 		fakeagent.Action{WaitFile: hold},
-		fakeagent.Action{MCP: []fakeagent.MCPCall{rvReply(1, "renamed")}, Name: "done"})
+		fakeagent.Action{MCP: []fakeagent.MCPCall{rvReply("1", "renamed")}, Name: "done"})
 	review := f.toReview(t, "feat/api-review-quit")
 	f.window(t)
 	f.comment(t, 1, "rename this", "")
@@ -443,7 +453,7 @@ func TestReviewRefusals(t *testing.T) {
 	f := newReviewFx(t, "implementer",
 		fakeagent.Action{Name: "done", Sh: rvImplement},
 		fakeagent.Action{WaitFile: gate, Name: "done"},
-		fakeagent.Action{MCP: []fakeagent.MCPCall{rvReply(99, "not mine")}, Name: "done"})
+		fakeagent.Action{MCP: []fakeagent.MCPCall{rvReply("99", "not mine")}, Name: "done"})
 	f.toReview(t, "feat/api-review-refuse")
 	f.window(t)
 
@@ -518,7 +528,7 @@ func TestReviewForwardComments(t *testing.T) {
 	f.app.Contract(t, "ade-review-forward", "AdeTaskService.ReviewForwardText", copied)
 	for _, c := range f.comments(t) {
 		if c.SentAt != nil {
-			t.Fatalf("ReviewForwardText stamped comment %d sent", c.ID)
+			t.Fatalf("ReviewForwardText stamped comment %s sent", c.ID)
 		}
 	}
 

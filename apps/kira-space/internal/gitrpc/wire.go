@@ -509,7 +509,7 @@ type ReviewCommentAddParams struct {
 type ReviewCommentSetStateParams struct {
 	RepoID string `json:"repoId"`
 	Branch string `json:"branch"`
-	ID     int64  `json:"id"`
+	ID     string `json:"id"`
 	State  string `json:"state"` // open | addressed
 }
 
@@ -522,7 +522,7 @@ type ReviewCommentSetStateResult struct {
 type ReviewCommentEditParams struct {
 	RepoID string `json:"repoId"`
 	Branch string `json:"branch"`
-	ID     int64  `json:"id"`
+	ID     string `json:"id"`
 	Body   string `json:"body"`
 	Kind   string `json:"kind"` // change | question
 }
@@ -550,7 +550,7 @@ type ReviewCommentListParams struct {
 type ReviewCommentRemoveParams struct {
 	RepoID string `json:"repoId"`
 	Branch string `json:"branch"`
-	ID     int64  `json:"id"`
+	ID     string `json:"id"`
 }
 
 // ReviewCommentRemoveResult is `false`, not an error, for a row already gone (D11) — two windows

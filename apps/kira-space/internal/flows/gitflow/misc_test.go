@@ -225,7 +225,7 @@ func TestReviewSession(t *testing.T) {
 	add := call[gitrpc.ReviewCommentAddResult](t, r.gs, "review.comment.add", gitrpc.ReviewCommentAddParams{
 		RepoID: id, Branch: "feat", Path: "a.txt", At: tip, Range: gitreview.LineRange{Start: 2, End: 3}, Body: "why a2?",
 	})
-	if add.Comment.ID == 0 || add.Comment.Anchor != gitreview.AnchorExact {
+	if add.Comment.ID == "" || add.Comment.Anchor != gitreview.AnchorExact {
 		t.Fatalf("comment add = %+v", add.Comment)
 	}
 	export := call[gitrpc.ReviewCommentExportResult](t, r.gs, "review.comment.export", gitrpc.ReviewCommentExportParams{RepoID: id, Branch: "feat"})

@@ -74,7 +74,7 @@ export const renderedLine = (modified: Locator, text: string) =>
 export type Relaunch = Parameters<Parameters<typeof reviewTest>[2]>[0]['relaunch'];
 
 export const HUNK_COMMENT = {
-  id: 1,
+  id: '1',
   path: 'src/pending.ts',
   range: { start: 12, end: 12 },
   body: 'Why this?',

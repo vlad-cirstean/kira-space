@@ -128,8 +128,8 @@ func (r *Router) handleReviewCommentRemove(ctx context.Context, c *gitsession.Co
 			if err := validRefArg("branch", p.Branch); err != nil {
 				return "", err
 			}
-			if p.ID <= 0 {
-				return "", ipcerr.Contract("gitrpc: review.comment.remove: id must be positive")
+			if p.ID == "" {
+				return "", ipcerr.Contract("gitrpc: review.comment.remove: id must not be empty")
 			}
 			return p.RepoID, nil
 		},
@@ -152,8 +152,8 @@ func (r *Router) handleReviewCommentSetState(ctx context.Context, c *gitsession.
 			if err := validRefArg("branch", p.Branch); err != nil {
 				return "", err
 			}
-			if p.ID <= 0 {
-				return "", ipcerr.Contract("gitrpc: review.comment.setState: id must be positive")
+			if p.ID == "" {
+				return "", ipcerr.Contract("gitrpc: review.comment.setState: id must not be empty")
 			}
 			if p.State != gitreview.CommentStateOpen && p.State != gitreview.CommentStateAddressed {
 				return "", ipcerr.Contract("gitrpc: review.comment.setState: state must be open or addressed")
@@ -180,8 +180,8 @@ func (r *Router) handleReviewCommentEdit(ctx context.Context, c *gitsession.Conn
 			if err := validRefArg("branch", p.Branch); err != nil {
 				return "", err
 			}
-			if p.ID <= 0 {
-				return "", ipcerr.Contract("gitrpc: review.comment.edit: id must be positive")
+			if p.ID == "" {
+				return "", ipcerr.Contract("gitrpc: review.comment.edit: id must not be empty")
 			}
 			if p.Kind != gitreview.CommentKindChange && p.Kind != gitreview.CommentKindQuestion {
 				return "", ipcerr.Contract("gitrpc: review.comment.edit: kind must be change or question")

@@ -46,7 +46,7 @@ export function reviewStep(key: string): StepWire {
 export const SHA = 'a'.repeat(40);
 function comment(id: number, over: Wire = {}): Wire {
   return {
-    id,
+    id: String(id),
     path: 'src/billing.ts',
     range: { start: 10 * id, end: 10 * id },
     body: `Comment ${id}`,

@@ -39,7 +39,7 @@ export function useReviewComments(target: () => ReviewWindowTarget) {
     }),
   );
   const setState = useMutation({
-    mutationFn: async (a: { id: number; state: ReviewCommentState }) => {
+    mutationFn: async (a: { id: string; state: ReviewCommentState }) => {
       const t = target();
       await hold.ready();
       await gitCall('review.comment.setState', {

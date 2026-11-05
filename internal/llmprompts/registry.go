@@ -224,7 +224,7 @@ type RebaseContextVars struct {
 
 // ReviewCommentVar is one review comment sent to an agent.
 type ReviewCommentVar struct {
-	ID    int64  `json:"id"`
+	ID    string `json:"id"`
 	Kind  string `json:"kind"`
 	Path  string `json:"path"`
 	Lines string `json:"lines"`
@@ -1190,9 +1190,9 @@ var reviewRoundExample = ReviewRoundVars{
 	Repo: "kira-space", Branch: "feat/login", Base: "main", Worktree: "/work/kira-space/feat-login", Round: 1,
 	ChangeRequestURL: "https://github.com/acme/kira-space/pull/42",
 	Comments: []ReviewCommentVar{
-		{ID: 3, Kind: "change", Path: "src/login.ts", Lines: "12-14", Body: "Rename this to isValid."},
-		{ID: 4, Kind: "question", Path: "src/login.ts", Lines: "30", Body: "Why retry twice?"},
-		{ID: 5, Kind: "change", Path: "src/login.ts", Lines: "41", Body: "Drop this log line.", Uncommitted: true},
+		{ID: "3", Kind: "change", Path: "src/login.ts", Lines: "12-14", Body: "Rename this to isValid."},
+		{ID: "4", Kind: "question", Path: "src/login.ts", Lines: "30", Body: "Why retry twice?"},
+		{ID: "5", Kind: "change", Path: "src/login.ts", Lines: "41", Body: "Drop this log line.", Uncommitted: true},
 	},
 }
 

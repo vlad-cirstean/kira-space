@@ -16,7 +16,7 @@
         "anchorSha": "<masked>",
         "body": "already handled",
         "createdAt": 0,
-        "id": 3,
+        "id": "3",
         "kind": "change",
         "origin": "commit",
         "path": "r.txt",
