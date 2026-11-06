@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -31,16 +33,25 @@ type MobileDeviceRow struct {
 
 // MobileDevicesRepo is the trust store for phones paired with the mobile agents web.
 type MobileDevicesRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
-const mobileDeviceColumns = `id, label, user_agent, token_hash, token_salt, created_at, last_seen_at, last_ip, revoked_at, can_write, can_agent_input, expires_at`
+var mobileDeviceColumns = []string{
+	kiraschema.MobileDevices.ID, kiraschema.MobileDevices.Label, kiraschema.MobileDevices.UserAgent,
+	kiraschema.MobileDevices.TokenHash, kiraschema.MobileDevices.TokenSalt, kiraschema.MobileDevices.CreatedAt,
+	kiraschema.MobileDevices.LastSeenAt, kiraschema.MobileDevices.LastIP, kiraschema.MobileDevices.RevokedAt,
+	kiraschema.MobileDevices.CanWrite, kiraschema.MobileDevices.CanAgentInput, kiraschema.MobileDevices.ExpiresAt,
+}
 
 // ByID reads one row. found is false (with a nil error) when no such row exists; the timing
 // discipline around a miss is the caller's job.
 func (r *MobileDevicesRepo) ByID(id string) (MobileDeviceRow, bool, error) {
 	var rec MobileDeviceRow
-	err := r.DB.QueryRow(`SELECT `+mobileDeviceColumns+` FROM mobile_devices WHERE id = ?`, id).Scan(
+	c := kiraschema.MobileDevices
+	sb := r.Dialect.Select(mobileDeviceColumns...).From(c.Table)
+	sb.Where(sb.Equal(c.ID, id))
+	err := sqlb.QueryRow(r.DB, sb).Scan(
 		&rec.ID, &rec.Label, &rec.UserAgent, &rec.TokenHash, &rec.TokenSalt,
 		&rec.CreatedAt, &rec.LastSeenAt, &rec.LastIP, &rec.RevokedAt, &rec.CanWrite, &rec.CanAgentInput, &rec.ExpiresAt,
 	)
@@ -56,11 +67,11 @@ func (r *MobileDevicesRepo) ByID(id string) (MobileDeviceRow, bool, error) {
 // Insert records a newly approved device. Device ids are minted server-side per approval, so a
 // conflict is a bug, never a re-pair.
 func (r *MobileDevicesRepo) Insert(row MobileDeviceRow) error {
-	_, err := r.DB.Exec(
-		`INSERT INTO mobile_devices (`+mobileDeviceColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	ib := r.Dialect.InsertInto(kiraschema.MobileDevices.Table).Cols(mobileDeviceColumns...).Values(
 		row.ID, row.Label, row.UserAgent, row.TokenHash, row.TokenSalt,
 		row.CreatedAt, row.LastSeenAt, row.LastIP, row.RevokedAt, row.CanWrite, row.CanAgentInput, row.ExpiresAt,
 	)
+	_, err := sqlb.Exec(r.DB, ib)
 	if err != nil {
 		return fmt.Errorf("repos: insert mobile device %s: %w", row.ID, err)
 	}
@@ -69,7 +80,10 @@ func (r *MobileDevicesRepo) Insert(row MobileDeviceRow) error {
 
 // TouchLastSeen records an authenticated request.
 func (r *MobileDevicesRepo) TouchLastSeen(id string, now int64, ip string) error {
-	res, err := r.DB.Exec(`UPDATE mobile_devices SET last_seen_at = ?, last_ip = ? WHERE id = ?`, now, ip, id)
+	c := kiraschema.MobileDevices
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.LastSeenAt, now), ub.Assign(c.LastIP, ip)).Where(ub.Equal(c.ID, id))
+	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		return fmt.Errorf("repos: touch mobile device %s: %w", id, err)
 	}
@@ -78,7 +92,10 @@ func (r *MobileDevicesRepo) TouchLastSeen(id string, now int64, ip string) error
 
 // Revoke sets revoked_at; the row stays so the pane keeps history.
 func (r *MobileDevicesRepo) Revoke(id string, now int64) error {
-	res, err := r.DB.Exec(`UPDATE mobile_devices SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL`, now, id)
+	c := kiraschema.MobileDevices
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.RevokedAt, now)).Where(ub.Equal(c.ID, id), ub.IsNull(c.RevokedAt))
+	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		return fmt.Errorf("repos: revoke mobile device %s: %w", id, err)
 	}
@@ -87,7 +104,10 @@ func (r *MobileDevicesRepo) Revoke(id string, now int64) error {
 
 // SetPermissions replaces both flags on an unrevoked device.
 func (r *MobileDevicesRepo) SetPermissions(id string, canWrite, canAgentInput bool) error {
-	res, err := r.DB.Exec(`UPDATE mobile_devices SET can_write = ?, can_agent_input = ? WHERE id = ? AND revoked_at IS NULL`, canWrite, canAgentInput, id)
+	c := kiraschema.MobileDevices
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.CanWrite, canWrite), ub.Assign(c.CanAgentInput, canAgentInput)).Where(ub.Equal(c.ID, id), ub.IsNull(c.RevokedAt))
+	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		return fmt.Errorf("repos: set mobile device permissions %s: %w", id, err)
 	}
@@ -97,7 +117,10 @@ func (r *MobileDevicesRepo) SetPermissions(id string, canWrite, canAgentInput bo
 // List returns every device, revoked included, most recently seen first, projected to
 // model.MobileDevice (never the hash or the salt).
 func (r *MobileDevicesRepo) List() ([]model.MobileDevice, error) {
-	rows, err := r.DB.Query(`SELECT id, label, user_agent, created_at, last_seen_at, last_ip, revoked_at, can_write, can_agent_input, expires_at FROM mobile_devices ORDER BY last_seen_at DESC`)
+	c := kiraschema.MobileDevices
+	sb := r.Dialect.Select(c.ID, c.Label, c.UserAgent, c.CreatedAt, c.LastSeenAt, c.LastIP, c.RevokedAt, c.CanWrite, c.CanAgentInput, c.ExpiresAt).
+		From(c.Table).OrderBy(c.LastSeenAt + " DESC")
+	rows, err := sqlb.Query(r.DB, sb)
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.MobileDevice, bool, error) {
 		var d model.MobileDevice
 		err := rows.Scan(&d.ID, &d.Label, &d.UserAgent, &d.CreatedAt, &d.LastSeenAt, &d.LastIP, &d.RevokedAt, &d.CanWrite, &d.CanAgentInput, &d.ExpiresAt)

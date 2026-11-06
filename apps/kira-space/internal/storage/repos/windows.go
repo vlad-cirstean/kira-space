@@ -6,6 +6,8 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/appstorage"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -13,13 +15,16 @@ import (
 // either open right now or was the last time the app quit, plus this app's own per-window module
 // mode (P128 §2.2's migration 0003_p128_window_mode.sql).
 type WindowsRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
 // shared is this repo's own row against repo-root internal/appstorage.WindowRepo, which owns
 // every method below directly (P107 T2-10, I2-3) — this app's own WindowRecord/WindowBounds are
 // plain aliases of appstorage's own, so nothing here needs its own query or conversion any more.
-func (r *WindowsRepo) shared() *appstorage.WindowRepo { return &appstorage.WindowRepo{DB: r.DB} }
+func (r *WindowsRepo) shared() *appstorage.WindowRepo {
+	return &appstorage.WindowRepo{DB: r.DB, Dialect: r.Dialect}
+}
 
 // GetMode reads one window's stored mode, normalised against this app's own vocabulary — a thin
 // delegate to appstorage.WindowRepo.GetMode (P128 §2.2). Used by windowsvc.Service's bound Ensure,
@@ -41,7 +46,7 @@ func (r *WindowsRepo) List() ([]model.WindowRecord, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := r.DB.Query(`SELECT window_key FROM ade_review_windows`)
+	rows, err := sqlb.Query(r.DB, r.Dialect.Select(kiraschema.AdeReviewWindows.WindowKey).From(kiraschema.AdeReviewWindows.Table))
 	review, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (string, bool, error) {
 		var k string
 		err := rows.Scan(&k)

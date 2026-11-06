@@ -9,18 +9,26 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/updates"
 	"github.com/kirathecat/kira-studio/internal/appsettings"
-	"github.com/kirathecat/kira-studio/internal/appstorage"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // SettingsRepo reads and writes the `settings` table, one JSON-valued row per leaf
 // (`${section}.${key}`), never a blob per section — same shape as Kira Studio's own SettingsRepo,
 // trimmed to the three sections model.Settings actually has here (appearance/advanced/git).
-const settingsSelectAllSQL = `SELECT key, value FROM settings`
+var settingsLeaves = sqlb.LeafTable{Table: kiraschema.Settings.Table, Key: kiraschema.Settings.Key, Value: kiraschema.Settings.Value}
+
+// settingsSelectAllSQL is the "every stored leaf" query repos.New prepares once.
+var settingsSelectAllSQL = func() string {
+	q, _ := sqlb.SQLite.Select(settingsLeaves.Key, settingsLeaves.Value).From(settingsLeaves.Table).Build()
+	return q
+}()
 
 type SettingsRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 
 	// selectAll is prepared once by repos.New. nil when a SettingsRepo is constructed directly
 	// (e.g. in tests), which falls back to an ad-hoc query with identical SQL.
@@ -39,16 +47,7 @@ func (r *SettingsRepo) agents() *harness.Registry {
 }
 
 func (r *SettingsRepo) GetAll() (model.Settings, error) {
-	var (
-		rows *sql.Rows
-		err  error
-	)
-	if r.selectAll != nil {
-		rows, err = r.selectAll.Query()
-	} else {
-		rows, err = r.DB.Query(settingsSelectAllSQL)
-	}
-	stored, err := appstorage.ScanLeafRows(rows, err)
+	stored, err := sqlb.QueryLeaves(r.DB, r.Dialect, r.selectAll, settingsLeaves)
 	if err != nil {
 		return model.Settings{}, err
 	}
@@ -337,7 +336,7 @@ func (r *SettingsRepo) Set(patch model.SettingsPatch) (model.Settings, error) {
 		return model.Settings{}, fmt.Errorf("repos: %w", err)
 	}
 
-	err := appstorage.UpdateLeaves(r.DB, r.selectAll, settingsSelectAllSQL, func(tx *sql.Tx, _ map[string]json.RawMessage) error {
+	err := sqlb.UpdateLeaves(r.DB, r.Dialect, r.selectAll, settingsLeaves, func(tx *sql.Tx, _ map[string]json.RawMessage) error {
 		if err := upsertAppearance(tx, patch.Appearance); err != nil {
 			return err
 		}
