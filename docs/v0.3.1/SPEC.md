@@ -10,7 +10,7 @@ Sequencing: user asked 3 phases in parallel. Batch: P551 + P552 (schema) + P554,
 |---|---|---|
 | P551 | Site expansion: content, pages and explanations with images | Pending |
 | P552 | Tighten SQLite types and constraints, reorganise schema | Done |
-| P553 | Go SQL query builder for the app's SQLite | Pending |
+| P553 | Go SQL query builder for the app's SQLite | Done |
 | P554 | GitOps for config files: shared config repos | Done |
 
 ## Rows
@@ -49,6 +49,7 @@ Sequencing: user asked 3 phases in parallel. Batch: P551 + P552 (schema) + P554,
 - Needs v0.3.0 P544 landed and P552 (schema) landed.
 - Decide in plan: library and reasoning (license at package level; name any requirement that rules a candidate out); repo interface boundary; migration order, repo by repo, behaviour unchanged each step; where raw SQL that cannot be expressed stays isolated; test strategy (existing flow tests and adapter-free repo tests; no new unit tests unless complex); perf check on hot queries.
 - Plan: `plans/P553.md`.
+- Result: `github.com/huandu/go-sqlbuilder` v1.44.1 (MIT) builds every runtime SQL statement on `kira.db`. `internal/sqlb` holds the dialect (zero value SQLite), run helpers, upsert tail, offset-only, sort-order and leaf helpers, `Cached` and `Sub`. `internal/kiraschema` holds generated table and column identifiers, guarded by `TestKiraSchemaGenerated`. Raw SQL stays in migrations, the runner, fold code, separate DBs, `maintenance.go` and the `data_version` read. Lint N16 fails literal SQL in the converted files. The old `sqlitex` and `appstorage` SQL-string helpers are deleted. `repos/hotplans_test.go` pins nine hot plans on repo-built SQL. Builder cost over 5% of call time (`OpLogRepo.Upsert` 6.6%, `AdeTaskRepo.ListLive` 10.5%) builds once; both then match pre-conversion allocations. Detail in `plans/P553.md` Result.
 
 ### P554 GitOps for config files: shared config repos
 
