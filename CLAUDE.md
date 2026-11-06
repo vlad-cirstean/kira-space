@@ -282,7 +282,8 @@ duplicated here; this file only points at them.
   mechanism — it's designed for that (P25's own `Scenario`/`Requires` seam, populated by P26).
 - **Real `claude` tests are opt-in and cost tokens.** After changing Claude integration code, run the
   matching row of `docs/DEV_ENVIRONMENT.md` "Real `claude` tests" (`bun run test:claude*`). They live in
-  nested Go modules under `apps/*/tests/claude/`. Never wire them into hooks or CI.
+  nested Go modules under `apps/*/tests/claude/`. Never wire them into hooks or CI. Run on this machine;
+  verify auth with the probe in DEV_ENVIRONMENT, never assume no login.
 - **Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)** —
   `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, with a `!` or `BREAKING CHANGE:` footer
   for breaking changes.

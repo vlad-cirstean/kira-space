@@ -12,6 +12,8 @@ Keychain, Colima for containers. A Linux sandbox/container session is the constr
 restriction in this file assumes Linux unless its own section says otherwise. Check once, before
 assuming a constraint below applies to the current session.
 
+Container sessions have a Claude login via env. Never assume none: verify with the probe in "Real `claude` tests".
+
 ## The user cannot run anything in the sandbox
 
 No shell, commands, kill, manual cleanup, tests or scripts in this container. An agent runs it, or
@@ -534,6 +536,12 @@ Opt-in tests that run the real `claude` CLI and spend tokens. Never in CI, pre-c
 - Needs an authenticated `claude` on `PATH`. Tests use haiku (`--model haiku`, `ANTHROPIC_MODEL=haiku` for
   app-built launches), a temp `HOME`, `--max-budget-usd 0.05` and one-sentence prompts. A package preflight
   skips, not fails, when `claude` is missing or `claude -p` cannot run under the temp `HOME`.
+- Meant to run on this machine, cloud containers included. Auth comes from session env, not a credentials file.
+  Check auth with the probe: `claude -p "reply with: ok" --model haiku --max-budget-usd 0.05`. Output `ok` means
+  logged in. Never read, print or look for credential files or tokens. No `~/.claude/.credentials.json` and no
+  `ANTHROPIC_API_KEY` means nothing.
+- A preflight skip is not a pass. On skip, run the probe and investigate. Report skips as "skipped", never "passed".
+  "Not run: no login" is valid only after the probe itself fails; quote the probe's error line in the report.
 - Rule: after changing code in an area below, run that row before calling the change done. Append `-count=1`: `go test` caches a passing run and prints the old spend.
 - Resume rows (P279, CLI 2.1.296): a held `hold.sh` Bash call, app restart, Resume. Prompts say the call is safe to rerun and to inspect nothing first; haiku otherwise runs `ps`/`ls`, gets denied (no approval surface) and stops as blocked. The CLI's "interrupted" `tool_result` is not in the run log; the check is the shared Claude session id. Hand probe recipe: temp `HOME` with an onboarding-done `.claude.json`, parent `CLAUDE_CODE_SESSION_ID`, `CLAUDE_CODE_REMOTE_SESSION_ID`, `CLAUDECODE` unset, SIGKILL the child's process group mid tool call, then `claude -p --resume <id>`.
 - Agent config import and export (P454): `internal/agentport/**` or `internal/harness/claude/mcpinstall/**` changed: `bun run test:claude -count=1 -run 'TestAgentPortClaude|TestRealClaudeSettingsUntouched'`, plus Studio `TestDbMcpInstallRegisters` (shared `register`). No model call; real `claude mcp add-json`, `mcp list` and a temp `HOME`.
