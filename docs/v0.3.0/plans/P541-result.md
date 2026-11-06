@@ -14,8 +14,6 @@ specs pass (23); `checkprompts`, lint, typecheck, `lint:dead`, build pass. Main 
 mermaid code (dynamic import only). Real `claude` proof run: not run, no login or API key in the sandbox.
 
 Deviations: no existing dark-mode resolver exists, so `darkMode` derives from the luminance of the
-elevated-background token. Mermaid 12.2.0 fails a flowchart image node (`I@{ img: ... }`) with "Loading
-error." under the CSP, so the UI spec asserts the error state with source and zero remote requests instead
-of a drawn image. Header keywords confirmed against the 12.2.0 detectors for classDiagram, erDiagram,
+elevated-background token. Mermaid 12.2.0 cannot draw image nodes under the CSP. Go does not refuse them; the tool text tells agents to send no images. A stored image node shows the error state with its source, so the UI spec asserts that and zero remote requests instead of a drawn image. Header keywords confirmed against the 12.2.0 detectors for classDiagram, erDiagram,
 gantt, gitGraph, journey, mindmap, stateDiagram, timeline; flowchart, graph and sequenceDiagram confirmed
 by the passing renders.
