@@ -77,6 +77,9 @@ func Run(o Options) error {
 	exists := fileExists(path)
 	if !found {
 		if !exists {
+			if err := o.foldRunsOnly(); err != nil {
+				return err
+			}
 			return writeMarker(o.Space, marker{State: stateDone, Fresh: true})
 		}
 		m = marker{
@@ -89,6 +92,11 @@ func Run(o Options) error {
 	}
 	if exists && !m.Imported {
 		if err := o.importStudio(path, &m); err != nil {
+			return err
+		}
+	}
+	if !exists {
+		if err := o.foldRunsOnly(); err != nil {
 			return err
 		}
 	}
@@ -116,6 +124,12 @@ func Run(o Options) error {
 	}
 	slog.Info("database fold done", "scope", "startup", "backup", m.Backup)
 	return nil
+}
+
+// foldRunsOnly finishes the home fold's runs step when there is no studio.db to read rows from;
+// otherwise the legacy run files and automation folders would never reach Space.
+func (o *Options) foldRunsOnly() error {
+	return homefold.Runs(homefold.Options{Space: o.Space, SpaceHome: o.Home})
 }
 
 func (o *Options) importStudio(path string, m *marker) error {

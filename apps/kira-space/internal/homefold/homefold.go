@@ -55,6 +55,7 @@ type marker struct {
 	Scripts    map[string]string `json:"scripts,omitempty"`
 	Runs       map[string]string `json:"runs,omitempty"`
 	Reregister bool              `json:"reregister,omitempty"`
+	RowsCopied bool              `json:"rowsCopied,omitempty"`
 }
 
 func (o *Options) step(name string) error {
@@ -157,7 +158,9 @@ func readMarker(db *sql.DB) (m marker, found bool, err error) {
 	return m, true, nil
 }
 
-func writeMarker(db *sql.DB, m marker) error {
+func writeMarker(db interface {
+	Exec(query string, args ...any) (sql.Result, error)
+}, m marker) error {
 	raw, err := json.Marshal(m)
 	if err != nil {
 		return err

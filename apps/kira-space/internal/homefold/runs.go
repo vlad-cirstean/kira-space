@@ -23,7 +23,8 @@ var runFileRE = regexp.MustCompile(`^([a-z0-9][a-z0-9_-]{0,79})\.yaml$`)
 const maxIDLen = 80
 
 // Runs copies the Studio runs rows, run files and automation folders into the Space stack, then
-// deletes the copied Studio rows. It runs after Files, with the Studio database open.
+// deletes the copied Studio rows. It runs after Files. A nil o.Studio folds the run files and
+// automation folders only (a legacy home without a Studio database).
 func Runs(o Options) error {
 	m, found, err := readMarker(o.Space)
 	if err != nil {
@@ -55,8 +56,10 @@ func Runs(o Options) error {
 	if err := o.step("rows"); err != nil {
 		return err
 	}
-	if err := copyRows(o, m); err != nil {
-		return fmt.Errorf("homefold: copy runs rows: %w", err)
+	if !m.RowsCopied {
+		if err := copyRows(o, &m); err != nil {
+			return fmt.Errorf("homefold: copy runs rows: %w", err)
+		}
 	}
 	if err := o.step("run-files"); err != nil {
 		return err
@@ -173,6 +176,9 @@ func scriptIDs(db *sql.DB, dir string) (map[string]bool, error) {
 }
 
 func columnSet(db *sql.DB, query string) (map[string]bool, error) {
+	if db == nil {
+		return map[string]bool{}, nil
+	}
 	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
@@ -300,6 +306,9 @@ type tableData struct {
 // readStudioTables reads every folded table up front: the Space database is one connection, held by
 // the transaction that writes.
 func readStudioTables(o Options) (map[string]tableData, error) {
+	if o.Studio == nil {
+		return map[string]tableData{}, nil
+	}
 	where := map[string]string{"secret_values": ` WHERE scope = '` + string(secrets.ScopeScriptParam) + `'`}
 	out := map[string]tableData{}
 	for _, table := range runTables {
@@ -341,13 +350,14 @@ func remapRows(o Options, m marker, data map[string]tableData) (needExport bool)
 	return needExport
 }
 
-// copyRows copies the Studio runs tables into the Space database in one transaction.
-func copyRows(o Options, m marker) error {
+// copyRows copies the Studio runs tables into the Space database in one transaction, which also
+// records the copy in the marker so a resume does not recount its own rows as clashes.
+func copyRows(o Options, m *marker) error {
 	data, err := readStudioTables(o)
 	if err != nil {
 		return err
 	}
-	needExport := remapRows(o, m, data)
+	needExport := remapRows(o, *m, data)
 
 	tx, err := o.Space.Begin()
 	if err != nil {
@@ -380,7 +390,16 @@ func copyRows(o Options, m marker) error {
 			return err
 		}
 	}
-	return tx.Commit()
+	m.RowsCopied = true
+	if err := writeMarker(tx, *m); err != nil {
+		m.RowsCopied = false
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		m.RowsCopied = false
+		return err
+	}
+	return nil
 }
 
 func asString(v any) string {
@@ -467,6 +486,9 @@ func copyAutomations(o Options, m marker, src string) error {
 // deleteStudioRows drops the copied rows from the Studio database in one transaction, so a second
 // import can never see them.
 func deleteStudioRows(db *sql.DB) error {
+	if db == nil {
+		return nil
+	}
 	tx, err := db.Begin()
 	if err != nil {
 		return err
