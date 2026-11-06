@@ -98,7 +98,11 @@ No stream reads another stream's output. Any order of landing works.
 6. Copy and names. About description names Kira Space and both module families; `dbmcp`
    instructions and `internal/llmprompts` texts naming Kira Studio say Kira Space (server name
    `kira-db` stays); `g1measure` anchor default `Kira Space`; `datagrip/keychain_other.go`
-   messages; remove `appupdate.Studio`; comments naming `apps/kira-studio` in Go.
+   messages; remove `appupdate.Studio`; comments naming `apps/kira-studio` in Go. Leftovers after
+   Part 1: comments in `apps/kira-space/cmd/g1measure/main.go` and
+   `internal/gitsearch/{conformance,differential}_test.go` (fix path to `apps/kira-space`);
+   testdata `apps/kira-space/tests/claude/testdata/memory-eval/` (golden corpus names Kira Studio;
+   keep if frozen eval data, note it in A's notes, else update).
 7. Menu. Part 1 concatenated; order it: one app menu, one Settings item, one Window menu, Studio
    query and view items after Space's. Signal channels unchanged.
 
@@ -132,6 +136,8 @@ compare mode for each package touching contract output; `go vet` in `tests/claud
 8. Copy. App-name strings saying Kira Studio in `packages/theme/src/i18n/en.json` say Kira Space;
    drop keys left unused (`check-catalog --unused`).
 9. Unit tests. `tests/unit/studio/` follows moved or deleted code; delete specs of deleted code.
+   Leftover after Part 1: string in `apps/kira-space/tests/unit/go-ts-vocabulary-parity.spec.ts`
+   naming `apps/kira-studio`; fix to `apps/kira-space`.
 
 Verification (fast only): `bun run typecheck`; `bun run lint`; `bun run build:space` (desktop,
 mobile); proto build; `bun test` for unit specs B changed or added; grep: no import of
@@ -163,13 +169,27 @@ mobile); proto build; `bun test` for unit specs B changed or added; grep: no imp
    `playwright.studio*.config.ts`.
 7. Docs per `P537.md` Docs section; `docs/PACKAGING.md` §1 and §8 become one app; root
    `README.md` normal prose; `apps/kira-space/README.md` absorbs Studio's README from `aa8a899b`;
-   `site/` pages; `docs/ARCHITECTURE.md` Known open item for two homes and two DBs.
-8. `biome.json`, `knip.json` leftovers.
+   `docs/ARCHITECTURE.md` Known open item for two homes and two DBs.
+8. `site/` presents ONE app, Kira Space. Studio modules (databases, API, Docker, Kubernetes) are
+   modules inside it, in `MODE_ORDER` from `P537.md`. Part 1 made path-only edits; prose is
+   untouched. Rework prose, no page presents two products:
+   - nav and landing/home;
+   - product copy;
+   - docs sidebar and section titles;
+   - screenshots and captions;
+   - download and install sections;
+   - page titles and meta;
+   - redirects from old Studio URLs to the matching Kira Space module page.
+9. Leftover `apps/kira-studio` mentions after Part 1, owned by C: strings in
+   `apps/kira-space/tests/ui/{color-rails,modules}.spec.ts`. Fix to `apps/kira-space` / Kira Space.
+10. `biome.json`, `knip.json` leftovers.
 
 Verification (fast only): `bun run typecheck`; `bun run lint` (includes `site` docs check);
 `bunx playwright test --list` per config; `sh -n` on each changed shell script;
-`bash scripts/verify-packaging.sh` off-macOS checks; `bun run site:build`; `git grep -l
-apps/kira-studio` over C-owned paths lists only `docs/HISTORY.md` and `docs/v0.2.36/`.
+`bash scripts/verify-packaging.sh` off-macOS checks; `bun run site:build`; `bun run site:check`;
+`git grep -n -i "kira studio" site/` lists only intentional historical or module-name mentions
+(each justified in C's notes); `git grep -l apps/kira-studio` over C-owned paths lists only
+`docs/HISTORY.md` and `docs/v0.2.36/`.
 
 ## Landing
 
