@@ -92,6 +92,13 @@ func TestConfigSync(t *testing.T) {
 		t.Fatal("no configSync event")
 	}
 
+	if got, err := svc.SetFetchMinutes(bridge.ConfigSyncMinutesArgs{Minutes: 15}); err != nil || got.FetchMinutes != 15 {
+		t.Fatalf("SetFetchMinutes(15) = %+v, %v", got, err)
+	}
+	if _, err := svc.SetFetchMinutes(bridge.ConfigSyncMinutesArgs{Minutes: 3}); err == nil {
+		t.Fatal("SetFetchMinutes(3) accepted, want rejection below the 5 minute floor")
+	}
+
 	// Review window: one window, the second call focuses it.
 	if err := svc.OpenReview(); err != nil {
 		t.Fatal(err)
