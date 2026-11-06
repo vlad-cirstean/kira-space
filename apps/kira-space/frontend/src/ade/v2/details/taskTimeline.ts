@@ -1,11 +1,9 @@
 import { t } from '@theme/i18n';
-import type { Artifact, Handover, Task } from '../wire';
+import type { Artifact, Task } from '../wire';
 
-export interface TimelineEntry {
+export interface TimelineEvent {
   key: string;
-  kind: 'created' | 'branch' | 'artifact' | 'handover';
-  /** Draft handovers only. */
-  draft: boolean;
+  type: 'created' | 'branch' | 'artifact';
   at: number;
   label: string;
   url: string;
@@ -18,22 +16,17 @@ export interface TimelineBranch {
   addedAt: number;
 }
 
-const stepName = (name: string, id: string): string =>
-  name || (id === 'done' ? t('common.done.status') : id);
-
-/** What happened to the task, oldest first: its creation, each branch, each stored artifact (detected
- *  ones have no real time) and each handover. */
-export function taskTimeline(
+/** What happened to the task outside notes, handovers and proof: its creation, each branch and each
+ *  stored artifact (detected ones have no real time). Unsorted; `taskChain` orders them. */
+export function timelineEvents(
   task: Task,
   branches: readonly TimelineBranch[],
   artifacts: readonly Artifact[],
-  handovers: readonly Handover[],
-): TimelineEntry[] {
-  const out: TimelineEntry[] = [
+): TimelineEvent[] {
+  const out: TimelineEvent[] = [
     {
       key: 'created',
-      kind: 'created',
-      draft: false,
+      type: 'created',
       at: task.createdAt,
       label: t('space.ade.details.timeline.created.label'),
       url: '',
@@ -43,8 +36,7 @@ export function taskTimeline(
   for (const b of branches) {
     out.push({
       key: `branch:${b.id}`,
-      kind: 'branch',
-      draft: false,
+      type: 'branch',
       at: b.addedAt,
       label: t('space.ade.details.timeline.branch.label', {
         name: b.name || t('common.field.branch.label'),
@@ -57,32 +49,12 @@ export function taskTimeline(
     if (a.id === '') continue;
     out.push({
       key: `artifact:${a.id}`,
-      kind: 'artifact',
-      draft: false,
+      type: 'artifact',
       at: a.createdAt,
       label: t('space.ade.details.timeline.artifact.label', { title: a.title || a.ref || a.url }),
       url: a.url,
       sessionId: a.sessionId,
     });
   }
-  for (const h of handovers) {
-    if (h.state === 'note') continue; // shown in the notes chain
-    const from = stepName(h.fromStepName, h.fromStepId);
-    out.push({
-      key: `handover:${h.id}`,
-      kind: 'handover',
-      draft: h.state === 'draft',
-      at: h.createdAt,
-      label:
-        h.state === 'draft'
-          ? t('space.ade.details.timeline.draft.label', { from })
-          : t('space.ade.details.timeline.handover.label', {
-              from,
-              to: stepName(h.toStepName, h.toStepId),
-            }),
-      url: '',
-      sessionId: h.sessionId,
-    });
-  }
-  return out.sort((a, b) => a.at - b.at);
+  return out;
 }

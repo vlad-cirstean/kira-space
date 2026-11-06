@@ -86,7 +86,7 @@ const RESPONSE_PANE_OPTIONS = computed(() => [
   // P10 D11/F19: the fifth segment — where the time went, per hop.
   {
     value: 'timeline' as const,
-    label: t('studio.http.pane.timeline.label'),
+    label: t('common.timeline.label'),
     testid: 'http-response-pane-timeline',
   },
 ]);

@@ -2,10 +2,9 @@
 import type { Task } from '../wire';
 import AdeLinkGroups from './AdeLinkGroups.vue';
 import AdeTaskChain from './AdeTaskChain.vue';
-import AdeTaskTimeline from './AdeTaskTimeline.vue';
 import type { TimelineBranch } from './taskTimeline';
 
-// Details tab: the links, the task chain (notes, handovers, proof) and the timeline. Archived tasks open it read-only.
+// Details tab: the links, one list of notes, handovers and proof (task events with the Timeline toggle). Archived tasks open it read-only.
 const props = defineProps<{
   task: Task;
   branches: readonly TimelineBranch[];
@@ -23,14 +22,9 @@ const emit = defineEmits<{ openSession: [sessionId: string] }>();
       @open-session="emit('openSession', $event)"
     />
     <AdeTaskChain
-      :task-id="task.id"
-      :readonly="readonly"
-      @open-session="emit('openSession', $event)"
-    />
-    <AdeTaskTimeline
       :task="task"
       :branches="branches"
-      :archived="readonly"
+      :readonly="readonly"
       @open-session="emit('openSession', $event)"
     />
   </div>

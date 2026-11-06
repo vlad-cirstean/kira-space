@@ -3693,6 +3693,9 @@
     "task": {
       "label": "Task"
     },
+    "timeline": {
+      "label": "Timeline"
+    },
     "truncated": {
       "status": "Earlier output dropped"
     },
@@ -8946,14 +8949,8 @@
           "created": {
             "label": "Task created"
           },
-          "draft": {
-            "label": "Draft handover from {from}"
-          },
-          "handover": {
-            "label": "Handover from {from} to {to}"
-          },
-          "header": {
-            "label": "Timeline ({count})"
+          "toggle": {
+            "tooltip": "Show task events in the list"
           }
         }
       },
@@ -14611,9 +14608,6 @@
         },
         "params": {
           "label": "Params"
-        },
-        "timeline": {
-          "label": "Timeline"
         }
       },
       "raw": {
