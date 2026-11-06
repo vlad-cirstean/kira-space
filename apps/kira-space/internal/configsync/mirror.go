@@ -42,18 +42,8 @@ func (e *syncError) Error() string { return e.kind + ": " + e.message }
 
 func (e *syncError) problem() *Problem { return &Problem{Kind: e.kind, Message: e.message} }
 
-func manifestError(key string, params map[string]string) *syncError {
-	return &syncError{kind: ProblemManifest, message: i18n.T(manifestKeys[key], params)}
-}
-
-var manifestKeys = map[string]string{
-	"missing":  "backend.space.configSync.manifest.missing.body",
-	"invalid":  "backend.space.configSync.manifest.invalid.body",
-	"version":  "backend.space.configSync.manifest.version.body",
-	"module":   "backend.space.configSync.manifest.module.body",
-	"repos":    "backend.space.configSync.manifest.repos.body",
-	"tooMany":  "backend.space.configSync.manifest.tooMany.body",
-	"tooLarge": "backend.space.configSync.manifest.tooLarge.body",
+func manifestError(message string) *syncError {
+	return &syncError{kind: ProblemManifest, message: message}
 }
 
 // mirror is the bare clone under .sync/repo.git: no worktree, no checkout, no hooks on fetch.
@@ -153,17 +143,17 @@ func parseManifest(src []byte) (manifest, *syncError) {
 	dec := yaml.NewDecoder(bytes.NewReader(src))
 	dec.KnownFields(true)
 	if err := dec.Decode(&mf); err != nil {
-		return mf, manifestError("invalid", nil)
+		return mf, manifestError(i18n.T("backend.space.configSync.manifest.invalid.body", nil))
 	}
 	if mf.Version != 1 {
-		return mf, manifestError("version", nil)
+		return mf, manifestError(i18n.T("backend.space.configSync.manifest.version.body", nil))
 	}
 	for _, name := range mf.Modules {
 		if name == "repos" {
-			return mf, manifestError("repos", nil)
+			return mf, manifestError(i18n.T("backend.space.configSync.manifest.repos.body", nil))
 		}
 		if !slices.Contains(syncModules, name) {
-			return mf, manifestError("module", map[string]string{"name": name})
+			return mf, manifestError(i18n.T("backend.space.configSync.manifest.module.body", map[string]string{"name": name}))
 		}
 	}
 	return mf, nil
@@ -180,7 +170,7 @@ func (m *mirror) readTree(ctx context.Context, commit string) (*sharedTree, *syn
 	var manifestOID string
 	entries := bytes.Split(bytes.TrimRight(res.Stdout, "\x00"), []byte{0})
 	if len(entries) > maxTreeEntries {
-		return nil, manifestError("tooMany", nil)
+		return nil, manifestError(i18n.T("backend.space.configSync.manifest.tooMany.body", nil))
 	}
 	for _, ent := range entries {
 		meta, path, ok := bytes.Cut(ent, []byte{'\t'})
@@ -200,7 +190,7 @@ func (m *mirror) readTree(ctx context.Context, commit string) (*sharedTree, *syn
 		}
 	}
 	if manifestOID == "" {
-		return nil, manifestError("missing", nil)
+		return nil, manifestError(i18n.T("backend.space.configSync.manifest.missing.body", nil))
 	}
 	path, err := m.gitPath(ctx)
 	if err != nil {
@@ -212,7 +202,7 @@ func (m *mirror) readTree(ctx context.Context, commit string) (*sharedTree, *syn
 		_, data, err := cf.Read(ctx, oid)
 		switch {
 		case errors.Is(err, catfile.ErrTooLarge):
-			return nil, manifestError("tooLarge", map[string]string{"file": name})
+			return nil, manifestError(i18n.T("backend.space.configSync.manifest.tooLarge.body", map[string]string{"file": name}))
 		case err != nil:
 			return nil, &syncError{kind: ProblemGit, message: firstLine(err.Error()), transient: ctx.Err() != nil}
 		}
