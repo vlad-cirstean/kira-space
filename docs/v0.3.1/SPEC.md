@@ -20,6 +20,9 @@ Sequencing: P551 needs v0.3.0 P549 (WebP, frame) and P550 (image pipeline), both
 - Ask: improve the Astro presentation site. More functionality and explanations: module pages, how it works, workflows, MCP and agents, Studio modules, security and privacy, install and migration guides, changelog or feature index, better search and navigation. Images, screenshots and diagrams for many more scenarios wherever useful.
 - Uses the image pipeline from v0.3.0 P550 (CI-generated shots, crop specs, `site/src/data/shots.ts` manifest) and the WebP and frame from v0.3.0 P549. New scenarios are added as shot specs and crop specs; this phase builds no pipeline.
 - Decide in plan: scenario list; which shots generate in CI and which stay committed as WebP, within the P550 rules; content structure and navigation; copy style; naming and referencing of generated shots; site visual tests.
+- Ask, Build-with-Kira carousel: carousel on the site explaining how building an app works in Kira Space. Each step has a clear name, short explanation and image. Previous/next arrows move back and forth; keyboard and touch accessible, no autoplay. Steps: (1) Start a planned task over a workflow. (2) A DB prompt. (3) How it created branches, handover and artifacts. (4) The review window. (5) The proof window.
+- Carousel shots may be FAKED: CI cannot run real `claude`. Use staged fixtures or stubs so the five shots read as one cohesive flow (same task, branch, workflow, DB across steps). Need not be a real flow. Each image is a cropped shot from the v0.3.0 P550 pipeline (`shotCapture.ts` manifest, crop kinds window/floating/region), generated in CI, none committed.
+- Decide in plan, carousel: implementation (Astro island with Vue or small lib, vs pure CSS scroll-snap plus minimal JS; prefer a well-maintained open-source lib or CSS scroll-snap plus arrows); reduced-motion; phone layout; shared scenario fixture for the five shots; step copy and i18n/content location; tests (site spec asserts 5 named steps, arrow navigation, images load).
 - Plan: `plans/P551.md`.
 
 ### P552 Go SQL query builder for the app's SQLite
@@ -56,6 +59,7 @@ Runs after P554 and the full suite run, before the code review. Close does not s
 - [ ] Images use the v0.3.0 pipeline (P549, P550): WebP only, macOS 26 frame on full-window shots, every other site image cropped to its subject. New P551 scenarios generate in CI. Orchestrator views each new image.
 - [ ] Site build with CI generation, from a clean checkout: generated shots appear, `site:build` and `site:check` pass.
 - [ ] Site content. New pages, navigation and search work. Visual baselines re-recorded for the final UI. Install command, repo URLs, download links and migration notes correct. Redirects work.
+- [ ] Build-with-Kira carousel (P551): shows 5 named steps, each with explanation; arrows work (mouse, keyboard, touch); images load and read as one story (same task, branch, workflow, DB).
 - [ ] One app presented everywhere: Kira Space, Space modules first, then Studio modules. No page, shot or alt text shows two products or stale kira-studio wording.
 - [ ] Docs match final behaviour: README, ARCHITECTURE (builder, schema constraints), PACKAGING, DEV_ENVIRONMENT (screenshots, site CI), site docs.
 - [ ] `docs/pending-changes/*.patch` match the final state. Applied from a session with workflow scope.
