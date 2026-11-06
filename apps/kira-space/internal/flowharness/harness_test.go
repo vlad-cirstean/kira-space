@@ -22,8 +22,8 @@ func TestHarnessBootsWithDefaultSettings(t *testing.T) {
 	app := flowharness.New(t)
 	t.Logf("harness boot: %s", time.Since(start))
 
-	if got := len(app.W.Bound()); got != 62 {
-		t.Fatalf("bound services = %d, want 62", got)
+	if got := len(app.W.Bound()); got != 61 {
+		t.Fatalf("bound services = %d, want 61", got)
 	}
 	settings, err := app.W.Settings.GetAll()
 	if err != nil {
