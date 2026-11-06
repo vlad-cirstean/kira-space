@@ -5,7 +5,7 @@ import {
   controlSnapshots as redisControl,
   portSnapshots as redisPorts,
 } from '../ipc/redis/redis.fixture';
-import { expect, studioTest, test } from './fixtures';
+import { apiTest, expect, studioTest, test } from './fixtures';
 import { modeTab } from './studio/support/apiMode';
 import { collectionRow } from './studio/support/apiRows';
 import { primaryChord } from './studio/support/chord';
@@ -664,7 +664,7 @@ studioTest.describe('databases module', () => {
     };
   }
 
-  studioTest(
+  apiTest(
     'pane InlineState: response formatting is hidden at 100 ms and visible within 1 s',
     async ({ relaunch }) => {
       // Over INLINE_CHARS (65 536), so the format pass runs in the worker and stays pending.
@@ -686,7 +686,7 @@ studioTest.describe('databases module', () => {
     },
   );
 
-  studioTest(
+  apiTest(
     'response find bar: count text, Enter and Shift+Enter move the current match',
     async ({ relaunch }) => {
       const body = '{"id":1,"name":"Ada","note":"Ada Lovelace"}';

@@ -60,6 +60,8 @@ export async function installClipboardShim(page: Page): Promise<void> {
   await page.addInitScript(CLIPBOARD_SHIM);
   await page.reload();
   await page.waitForSelector('[data-testid="status-bar"]');
+  // The reload boots the merged app into its first module again.
+  await page.locator('[data-testid="mode-tab"][data-mode="studio"]').click();
 }
 
 // Real-clipboard coverage (grid-copy-menu.spec.ts). Chromium reads the OS clipboard; WebKit refuses

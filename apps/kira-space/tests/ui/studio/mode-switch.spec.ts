@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, studioTest as test } from '../fixtures';
+import { test as bootTest, expect, studioTest as test } from '../fixtures';
 import { installFakeTimers } from '../support/clock';
 import { IPC } from '../support/ipcChannels';
 import { emitWailsEvent } from '../support/mockRuntime';
@@ -25,7 +25,7 @@ const FIXTURE = orderItemsFixture(CONNECTION_ID);
 const CONNECTION_SUMMARY = postgresConnectionSummary(CONNECTION_ID, 'Mode DB', 'blue');
 
 // MODE_ORDER cannot be imported across the web/node tsconfig boundary; the DOM is the source.
-const KNOWN_MODES = ['studio', 'api', 'automations', 'docker'];
+const KNOWN_MODES = ['automations', 'studio', 'api', 'docker'];
 const KNOWN_NAMES: Record<string, string> = {
   studio: 'Studio',
   api: 'API',
@@ -190,17 +190,18 @@ test('mode switch — the mode tabs, an empty Http mode, and Studio state that s
 // coverage), and (b) switching mode eventually reaches windowsSetMode, debounced rather than
 // synchronous (the invariant — the mode click itself schedules no tabsSave, still proven
 // unchanged by the existing case above).
-test('a window boots into whatever mode windowsEnsure answers with (P22 D12)', async ({
-  relaunch,
-}) => {
-  const { window: page } = await relaunch({
-    control: [{ channel: IPC.windowsEnsure, response: { mode: 'api' } }],
-  });
+bootTest(
+  'a window boots into whatever mode windowsEnsure answers with (P22 D12)',
+  async ({ relaunch }) => {
+    const { window: page } = await relaunch({
+      control: [{ channel: IPC.windowsEnsure, response: { mode: 'api' } }],
+    });
 
-  await expect(modeTab(page, 'api')).toHaveClass(/is-active/);
-  await expect(modeTab(page, 'studio')).not.toHaveClass(/is-active/);
-  await expect(page.locator('[data-testid="api-start"]')).toBeVisible();
-});
+    await expect(modeTab(page, 'api')).toHaveClass(/is-active/);
+    await expect(modeTab(page, 'studio')).not.toHaveClass(/is-active/);
+    await expect(page.locator('[data-testid="api-start"]')).toBeVisible();
+  },
+);
 
 test('a window-close flush saves pending tab state at once, then acks (P168 Part 13 F21)', async ({
   relaunch,
@@ -229,36 +230,37 @@ test('a window-close flush saves pending tab state at once, then acks (P168 Part
   expect(saveAt).toBeGreaterThanOrEqual(0);
 });
 
-test('switching mode reaches windowsSetMode eventually, never synchronously (P22 D12/F20)', async ({
-  relaunch,
-}) => {
-  // state/mode.ts's own constant — restated here rather than imported across the web/node
-  // tsconfig boundary (this suite's existing convention, see `global.d.ts:1`-`5`).
-  const MODE_WRITE_DEBOUNCE_MS = 150;
-  const { window: page, control } = await relaunch({ control: [] });
-  await installFakeTimers(page); // support/clock.ts — after boot, never before
+bootTest(
+  'switching mode reaches windowsSetMode eventually, never synchronously (P22 D12/F20)',
+  async ({ relaunch }) => {
+    // state/mode.ts's own constant — restated here rather than imported across the web/node
+    // tsconfig boundary (this suite's existing convention, see `global.d.ts:1`-`5`).
+    const MODE_WRITE_DEBOUNCE_MS = 150;
+    const { window: page, control } = await relaunch({ control: [] });
+    await installFakeTimers(page); // support/clock.ts — after boot, never before
 
-  const setModeCalls = () => control.log().filter((e) => e.channel === IPC.windowsSetMode);
+    const setModeCalls = () => control.log().filter((e) => e.channel === IPC.windowsSetMode);
 
-  await modeTab(page, 'api').click();
-  // Nothing yet — the click itself must not fire a synchronous IPC (F20's own invariant). Time
-  // has not moved, so this isn't a wall-clock budget: the debounce *cannot* have elapsed, however
-  // slowly the harness's own click landed (P81 §3.3/§6 — same shape as grpc-request's).
-  expect(setModeCalls()).toHaveLength(0);
-  await page.clock.runFor(MODE_WRITE_DEBOUNCE_MS - 1);
-  expect(setModeCalls()).toHaveLength(0);
-  await page.clock.runFor(2);
-  await expect.poll(() => setModeCalls().length).toBe(1);
-  expect(setModeCalls()[0]?.args).toMatchObject({ mode: 'api' });
+    await modeTab(page, 'api').click();
+    // Nothing yet — the click itself must not fire a synchronous IPC (F20's own invariant). Time
+    // has not moved, so this isn't a wall-clock budget: the debounce *cannot* have elapsed, however
+    // slowly the harness's own click landed (P81 §3.3/§6 — same shape as grpc-request's).
+    expect(setModeCalls()).toHaveLength(0);
+    await page.clock.runFor(MODE_WRITE_DEBOUNCE_MS - 1);
+    expect(setModeCalls()).toHaveLength(0);
+    await page.clock.runFor(2);
+    await expect.poll(() => setModeCalls().length).toBe(1);
+    expect(setModeCalls()[0]?.args).toMatchObject({ mode: 'api' });
 
-  // Switching again before the first write's debounce would have fired collapses to the latest
-  // value, the same coalescing behaviour state/layout.ts's own patchLayout has.
-  await modeTab(page, 'studio').click();
-  await modeTab(page, 'api').click();
-  await page.clock.runFor(MODE_WRITE_DEBOUNCE_MS + 1);
-  await expect.poll(() => setModeCalls().length).toBe(2);
-  expect(setModeCalls()[1]?.args).toMatchObject({ mode: 'api' });
-});
+    // Switching again before the first write's debounce would have fired collapses to the latest
+    // value, the same coalescing behaviour state/layout.ts's own patchLayout has.
+    await modeTab(page, 'studio').click();
+    await modeTab(page, 'api').click();
+    await page.clock.runFor(MODE_WRITE_DEBOUNCE_MS + 1);
+    await expect.poll(() => setModeCalls().length).toBe(2);
+    expect(setModeCalls()[1]?.args).toMatchObject({ mode: 'api' });
+  },
+);
 
 test('every mode tab is icon-only, named, with a tooltip', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: [] });

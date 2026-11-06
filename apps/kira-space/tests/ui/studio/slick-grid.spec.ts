@@ -4,7 +4,7 @@ import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
 import { expect, studioTest as test } from '../fixtures';
 import { IPC } from '../support/ipcChannels';
 import { primaryChord } from './support/chord';
-import { CLIPBOARD_SHIM } from './support/clipboard';
+import { installClipboardShim } from './support/clipboard';
 import { createConnection } from './support/connect';
 import {
   cellNavButton,
@@ -1166,9 +1166,7 @@ test('P22 Pass B follow-up — select-all under an active row filter copies only
   ];
 
   const { window: page } = await relaunch({ control: CONTROL, stream: FIXTURE.port });
-  await page.addInitScript(CLIPBOARD_SHIM);
-  await page.reload();
-  await page.waitForSelector('[data-testid="status-bar"]');
+  await installClipboardShim(page);
 
   await createConnection(page, 'postgres', 'Select All Filter DB');
 
@@ -1927,9 +1925,7 @@ test('P22 Pass B follow-up — a range selection under an active filter only cop
   ];
 
   const { window: page } = await relaunch({ control: CONTROL, stream: FIXTURE.port });
-  await page.addInitScript(CLIPBOARD_SHIM);
-  await page.reload();
-  await page.waitForSelector('[data-testid="status-bar"]');
+  await installClipboardShim(page);
   const isMac = await page.evaluate(() => navigator.userAgent.includes('Mac'));
   const DELETE_KEY = isMac ? 'Meta+Backspace' : 'Delete';
 

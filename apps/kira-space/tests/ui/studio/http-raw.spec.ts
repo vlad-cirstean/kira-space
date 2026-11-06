@@ -1,5 +1,5 @@
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, studioTest as test } from '../fixtures';
+import { expect, apiTest as test } from '../fixtures';
 import { IPC } from '../support/ipcChannels';
 import { httpResponse as buildHttpResponse, openHttpModeAndNewRequest } from './support/apiMode';
 import { editorText } from './support/editorText';
