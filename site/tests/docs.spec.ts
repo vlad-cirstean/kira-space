@@ -36,9 +36,23 @@ const PAGES = walk(DOCS_DIR)
 const SHOT_PAGES: Record<string, readonly ShotId[]> = {
   'studio/data-grid': ['studio-data-grid', 'studio-grid-row-menu'],
   'studio/sql-console': ['studio-sql-console'],
+  'studio/database-mcp': ['build-db-approval', 'build-db-audit'],
   'studio/api-client': ['studio-api'],
   'space/git': ['space-git-graph', 'space-commit-detail'],
-  'space/agents': ['space-agents-board'],
+  'space/agents': [
+    'space-agents-board',
+    'build-branches-panel',
+    'build-handover-dialog',
+    'build-review-window',
+  ],
+  'space/workflows': ['build-start-workflow', 'build-start-step'],
+  'space/proof': [
+    'build-proof-window',
+    'build-proof-chart',
+    'build-proof-diagram',
+    'build-proof-compare',
+    'build-proof-chain',
+  ],
   'space/memory': ['space-memory'],
 };
 
@@ -54,7 +68,7 @@ function watchErrors(page: Page): string[] {
 }
 
 test('the page list is not empty', () => {
-  expect(PAGES.length).toBeGreaterThanOrEqual(18);
+  expect(PAGES.length).toBeGreaterThanOrEqual(26);
 });
 
 test('the Develop section is gone', async ({ request }) => {

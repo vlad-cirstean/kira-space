@@ -44,7 +44,7 @@ const { shot, eager = false, glow = false, tile = false } = Astro.props;
         decoding="async"
         class:list={[
           'mx-auto block h-auto max-w-full',
-          tile && 'max-h-full w-auto object-contain',
+          tile && 'max-h-full object-contain',
           shot.kind === 'region' && 'overflow-hidden rounded-xl ring-1 ring-border-strong',
         ]}
       >

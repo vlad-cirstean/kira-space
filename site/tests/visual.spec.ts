@@ -4,9 +4,13 @@ const BASE = '/kira-studio/';
 
 test.skip(process.platform !== 'linux', 'Linux-recorded baseline');
 
-for (const route of [{ name: 'landing', path: '' }]) {
+for (const route of [
+  { name: 'landing', path: '' },
+  { name: 'build', path: 'build/' },
+]) {
   test(`${route.name} page matches the baseline`, async ({ page }) => {
     test.slow();
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto(`${BASE}${route.path}`);
     await page.evaluate(async () => {
       for (let y = 0; y < document.documentElement.scrollHeight; y += window.innerHeight) {

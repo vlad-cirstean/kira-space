@@ -98,7 +98,10 @@ function setup(root: HTMLElement): void {
     window.clearTimeout(timer);
     timer = undefined;
   };
-  const live = () => track.setAttribute('aria-live', timer === undefined ? 'polite' : 'off');
+  const live = () => {
+    root.dataset.paused = [...pauses].join(' ');
+    track.setAttribute('aria-live', timer === undefined ? 'polite' : 'off');
+  };
   const arm = () => {
     stop();
     if (!reduced() && pauses.size === 0)
