@@ -1,6 +1,6 @@
 ---
 title: Prompts
-description: View and edit the prompts both apps send to Claude.
+description: View and edit the prompts Kira Space send to Claude.
 sources:
   - internal/llmprompts/entry.go
   - internal/llmprompts/registry.go
@@ -18,7 +18,7 @@ sidebar:
 - Memory (Kira Space).
 - Agent runs.
 - Rebase and review (Kira Space).
-- Database MCP (Kira Studio).
+- Database MCP (Studio modules).
 
 Text you write yourself stays outside this list. That covers smart script bodies and workflow step prompts.
 

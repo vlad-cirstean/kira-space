@@ -78,7 +78,7 @@ State of an ingest job. Argument: `id`, the job id from `ingest_files`.
 
 Run `/mcp__kira-memory__remember` to store durable facts from given text or the recent conversation. Argument: `text`.
 
-## Database MCP server (Kira Studio)
+## Database MCP server (Studio modules)
 
 Server name `kira-db`. See [Database MCP server](../../studio/database-mcp/).
 

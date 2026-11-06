@@ -242,11 +242,11 @@ Finished and stopped sessions sit behind the **Finished or stopped** dropdown at
 
 The **Context** sub-tab of **Agent config** edits one Markdown file that every agent gets as extra system prompt: `~/.kira-space/agent/context.md`.
 
-- Both apps use it: sessions, Take over, resume, headless steps, smart scripts and Continue in terminal. Memory calls do not.
+- Every module uses it: sessions, Take over, resume, headless steps, smart scripts and Continue in terminal. Memory calls do not.
 - Up to 32 KiB. Empty or missing means no context. A broken file gives agents the last good text.
 - A save applies to agents started after it. A running session keeps its text.
 - A resumed Claude Code conversation keeps the context it started with until it compacts. OpenCode reads the new text on resume.
-- Kira Studio has no editor. It reads the same file.
+- The Studio modules have no editor. They read the same file.
 
 ## Agent settings
 
@@ -292,7 +292,7 @@ References:
 - A missing variable or secret fails the launch and names it.
 - OpenCode refuses a value that holds `{env:` or `{file:`.
 
-The **Secrets** section lists the secrets the file references. **Set value** stores a value sealed on this computer, shared with Kira Studio. Kira never shows it again. Deleting a secret warns that settings which reference it fail to launch until you set it again.
+The **Secrets** section lists the secrets the file references. **Set value** stores a value sealed on this computer, shared with the Studio modules. Kira never shows it again. Deleting a secret warns that settings which reference it fail to launch until you set it again.
 
 **Result** shows per agent the exact config it receives, with references as written, plus what Kira adds at launch. For OpenCode that is one JSON document in `OPENCODE_CONFIG_CONTENT`. No file is written.
 
@@ -346,7 +346,7 @@ Kira can't isolate managed settings and policy, or variables that your shell pro
 
 For smart scripts, the MCP list shows the servers in agent settings. A ticked server missing there blocks the run. With the switch off, the CLI's own list and your user settings load. See [Smart scripts](../../shared/runs/#smart-scripts).
 
-Kira Studio has no switch. Its launches are always hermetic.
+The Studio modules have no switch. Their launches are always hermetic.
 
 ## Config files
 

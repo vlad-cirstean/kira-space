@@ -3,7 +3,6 @@ import { expect, type Page, test } from '@playwright/test';
 const BASE = '/kira-studio/';
 interface Route {
   readonly path: string;
-  readonly app: 'studio' | 'space';
   readonly name: string;
   readonly hero: string;
   readonly shots: readonly string[];
@@ -12,17 +11,15 @@ interface Route {
 const ROUTES: readonly Route[] = [
   {
     path: '',
-    app: 'studio',
-    name: 'Kira Studio',
-    hero: 'studio-data-grid',
-    shots: ['studio-data-grid', 'studio-sql-console', 'studio-api'],
-  },
-  {
-    path: 'space/',
-    app: 'space',
     name: 'Kira Space',
     hero: 'space-agents-board',
-    shots: ['space-agents-board', 'space-git-graph', 'space-memory'],
+    shots: [
+      'space-agents-board',
+      'space-git-graph',
+      'space-memory',
+      'studio-sql-console',
+      'studio-api',
+    ],
   },
 ];
 
@@ -37,7 +34,7 @@ async function openPage(page: Page, route: Route): Promise<string[]> {
 }
 
 for (const route of ROUTES) {
-  test.describe(route.app, () => {
+  test.describe('landing', () => {
     test('no horizontal scroll and no hidden overflow', async ({ page }) => {
       await openPage(page, route);
       const metrics = await page.evaluate(() => ({
@@ -184,47 +181,16 @@ for (const route of ROUTES) {
       );
       expect(bare).toEqual([]);
     });
-
-    test('tab bar marks the current app', async ({ page }) => {
-      await openPage(page, route);
-      const links = page.locator('nav[aria-label="Apps"] a');
-      await expect(links).toHaveCount(2);
-      await expect(page.locator('nav[aria-label="Apps"] a[aria-current="page"]')).toHaveCount(1);
-      await expect(
-        page.locator(`nav[aria-label="Apps"] a[data-app="${route.app}"]`),
-      ).toHaveAttribute('aria-current', 'page');
-    });
   });
 }
 
-test('tabs navigate between the apps', async ({ page }) => {
-  await page.goto(BASE);
-  await page.locator('nav[aria-label="Apps"] a[data-app="space"]').click();
-  await expect(page).toHaveURL(`${BASE}space/`);
-  await expect(page.locator('h1')).toHaveText('Kira Space');
-  await page.locator('nav[aria-label="Apps"] a[data-app="studio"]').click();
-  await expect(page.locator('h1')).toHaveText('Kira Studio');
-});
-
-test('the Space tab opens by deep link', async ({ page }) => {
+test('the retired /space/ URL redirects to the landing page', async ({ page }) => {
   await page.goto(`${BASE}space/`);
-  await expect(page.locator('nav[aria-label="Apps"] a[data-app="space"]')).toHaveAttribute(
-    'aria-current',
-    'page',
-  );
+  await expect(page).toHaveURL(BASE);
+  await expect(page.locator('h1')).toHaveText('Kira Space');
 });
 
-test('the tab link shows a focus ring from the keyboard', async ({ page }, info) => {
-  test.skip(info.project.name === 'phone', 'No keyboard on a phone');
+test('the landing page has no app tab bar', async ({ page }) => {
   await page.goto(BASE);
-  const space = page.locator('nav[aria-label="Apps"] a[data-app="space"]');
-  for (let i = 0; i < 12 && !(await space.evaluate((el) => el === document.activeElement)); i++) {
-    await page.keyboard.press('Tab');
-  }
-  await expect(space).toBeFocused();
-  const ring = await space.evaluate((el) => {
-    const css = getComputedStyle(el);
-    return { outline: css.outlineStyle, shadow: css.boxShadow };
-  });
-  expect(ring.outline !== 'none' || ring.shadow !== 'none').toBe(true);
+  await expect(page.locator('nav[aria-label="Apps"]')).toHaveCount(0);
 });

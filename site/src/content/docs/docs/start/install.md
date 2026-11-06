@@ -1,6 +1,6 @@
 ---
 title: Install and update
-description: Install Kira Studio or Kira Space with one command, and update from inside the app.
+description: Install Kira Space with one command, and update from inside the app.
 sources:
   - README.md
   - apps/kira-space/README.md
@@ -13,21 +13,24 @@ sidebar:
 
 ## Install
 
-Run this in Terminal to install Kira Studio:
+Run this in Terminal to install Kira Space:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scripts/install.sh | sh -s -- --app=studio
+curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scripts/install.sh | sh
 ```
 
-Use `--app=space` to install Kira Space instead. The same command replaces an older copy.
+The same command replaces an older copy.
 
 The script:
 
 1. Downloads the latest release's disk image.
 2. Moves the app into `/Applications`.
 3. Opens the app, with no Gatekeeper prompt.
+4. Moves an installed Kira Studio to the Trash.
 
 A disk image downloaded through a browser does trigger Gatekeeper. The script avoids that.
+
+Kira Studio is now part of Kira Space. Its data stays in `~/.kira-studio`, which the Studio modules keep using. Nothing there is deleted.
 
 Failures land in `~/Library/Logs/<app name>/install.log`.
 

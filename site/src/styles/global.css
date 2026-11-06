@@ -6,10 +6,6 @@ html {
   scroll-padding-top: 4rem;
 }
 
-[data-app="studio"] {
-  --tint: var(--kira-info);
-}
-
 [data-app="space"] {
   --tint: var(--kira-ok);
 }

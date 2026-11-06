@@ -4,11 +4,8 @@ const BASE = '/kira-studio/';
 
 test.skip(process.platform !== 'linux', 'Linux-recorded baseline');
 
-for (const route of [
-  { app: 'studio', path: '' },
-  { app: 'space', path: 'space/' },
-]) {
-  test(`${route.app} tab matches the baseline`, async ({ page }) => {
+for (const route of [{ name: 'landing', path: '' }]) {
+  test(`${route.name} page matches the baseline`, async ({ page }) => {
     test.slow();
     await page.goto(`${BASE}${route.path}`);
     await page.evaluate(async () => {
@@ -31,7 +28,7 @@ for (const route of [
       await document.fonts.ready;
       window.scrollTo({ top: 0, behavior: 'instant' });
     });
-    await expect(page).toHaveScreenshot(`${route.app}.png`, {
+    await expect(page).toHaveScreenshot(`${route.name}.png`, {
       fullPage: true,
       animations: 'disabled',
       caret: 'hide',
