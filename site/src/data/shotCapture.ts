@@ -45,6 +45,16 @@ export const SHOT_CAPTURE = {
   'build-handover-notes': { kind: 'region', selector: '[data-testid="ade-task-chain"]' },
   'build-artifacts-list': { kind: 'region', selector: '[data-testid="ade-details-links"]' },
   'build-artifacts-done': { kind: 'floating', selector: '[data-testid="ade-stage-dialog"]' },
+  'build-review-window': { kind: 'window', detail: { x: 290, y: 100 } },
+  'build-review-thread': { kind: 'region', selector: '[data-testid="repo-diff-editor"]' },
+  'build-review-agent': { kind: 'region', selector: '[data-testid="ade-review-right"]' },
+  'build-review-forward': { kind: 'region', selector: '[data-testid="ade-review-forward-bar"]' },
+  'build-review-actions': { kind: 'floating', selector: '[role="menu"]' },
+  'build-proof-window': { kind: 'window', detail: { x: 0, y: 0 } },
+  'build-proof-chart': { kind: 'window', detail: { x: 0, y: 0 } },
+  'build-proof-diagram': { kind: 'region', selector: '[data-testid="proof-step"]' },
+  'build-proof-compare': { kind: 'window', detail: { x: 0, y: 0 } },
+  'build-proof-chain': { kind: 'region', selector: '[data-testid="ade-task-chain"]' },
 } as const satisfies Record<string, ShotCapture>;
 
 export type ShotId = keyof typeof SHOT_CAPTURE;

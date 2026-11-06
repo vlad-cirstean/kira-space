@@ -1,8 +1,11 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { CAPTURE_LAUNCH, CAPTURE_NOW } from '@workbench/testing/screenshots/capture';
 import { liveItem } from '@workbench/testing/ui/approvals';
+import { AGENT_PANEL_ON } from '../../ui/fixtures';
+import { reviewStep } from '../../ui/support/adeReviewStep';
 import { adeBoard, adeFixture, adeV2Control } from '../../ui/support/adeV2';
 import { contract } from '../../ui/support/contract';
+import type { GitStreamMockArgs } from '../../ui/support/gitStreamMock';
 import { IPC } from '../../ui/support/ipcChannels';
 import type { ControlSnapshot } from '../../ui/support/types';
 
@@ -288,4 +291,338 @@ export function storyArtifacts(): { artifacts: Rec[]; gaps: Rec[] } {
     ],
     gaps: [],
   };
+}
+
+export const REVIEW_AGENT = adeFixture<{ session: { terminalId: string } }>('review-agent');
+const CSV_FILE = 'src/orders/exportCsv.ts';
+const SHA = 'a'.repeat(40);
+
+/** The story's source file at line `n`; the diff shows lines 97 to 103 and the comment sits on 12. */
+const CODE: Record<number, string> = {
+  1: "import { db } from '../db';",
+  3: '',
+  4: '/** Columns of the orders export, in file order. */',
+  12: 'export const COLUMNS = [',
+  97: '  const rows = await db.query(ORDERS_QUERY, [month]);',
+  98: "  const header = COLUMNS.map((c) => c.title).join(',');",
+  99: "  const lines = rows.map((row) => COLUMNS.map((c) => escapeCell(row[c.key])).join(','));",
+  100: "  return [header, ...lines].join('\\n');",
+  101: '}',
+  102: '',
+  103: 'export function escapeCell(value: unknown): string {',
+};
+const CHANGED_100 = "  return `${[header, ...lines].join('\\r\\n')}\\r\\n`;";
+
+const codeLine = (n: number, changed: boolean) =>
+  n === 100 && changed ? CHANGED_100 : (CODE[n] ?? '');
+
+const blob = (changed: boolean) => ({
+  content: Array.from({ length: 140 }, (_, i) => codeLine(i + 1, changed)).join('\n'),
+});
+
+function storyDiff() {
+  const hunk = contract<{ body: { hunks: Rec[] } & Rec } & Rec>(
+    'git-review-hunks',
+    'git:review.fileDiff#range',
+  );
+  const text = (line: Rec) => ({
+    ...line,
+    text: codeLine(
+      (line.newLine ?? line.oldLine) as number,
+      line.kind === 'add' || line.kind === 'context' ? true : false,
+    ),
+  });
+  return {
+    ...hunk,
+    path: CSV_FILE,
+    body: {
+      ...hunk.body,
+      hunks: hunk.body.hunks.map((h) => ({
+        ...h,
+        heading: 'export function toCsv',
+        lines: (h.lines as Rec[]).map(text),
+      })),
+    },
+  };
+}
+
+const comment = (id: number, over: Rec = {}): Rec => ({
+  id: String(id),
+  path: CSV_FILE,
+  range: { start: 12, end: 12 },
+  body: '',
+  anchor: 'exact',
+  anchorSha: SHA,
+  createdAt: CAPTURE_NOW - 3_600_000,
+  kind: 'change',
+  state: 'open',
+  reply: '',
+  repliedAt: null,
+  sentAt: null,
+  ...over,
+});
+
+export const STORY_COMMENTS: Rec[] = [
+  comment(1, {
+    range: { start: 100, end: 100 },
+    body: 'Excel expects CRLF line ends and a trailing newline.',
+    state: 'addressed',
+    reply: 'Switched to CRLF and added the trailing newline.',
+    sentAt: 1,
+  }),
+  comment(2, {
+    kind: 'question',
+    body: 'Do paid orders include refunded ones?',
+    state: 'addressed',
+    reply: 'No. Refunded orders have the status refunded.',
+    sentAt: 1,
+  }),
+  comment(3, { body: 'Name the columns once, not per row.' }),
+];
+
+const REVIEW_FILES = {
+  branchTip: SHA,
+  mergeBase: 'b'.repeat(40),
+  files: [
+    {
+      change: { kind: 'modified', path: CSV_FILE, similarity: 0 },
+      review: { kind: 'none', changedSinceReview: false },
+    },
+    {
+      change: { kind: 'modified', path: 'src/orders/OrdersPage.vue', similarity: 0 },
+      review: { kind: 'full', changedSinceReview: false },
+    },
+    {
+      change: { kind: 'added', path: 'src/orders/ExportButton.vue', similarity: 0 },
+      review: { kind: 'full', changedSinceReview: false },
+    },
+  ],
+};
+
+/** Review window boot: control, git stream and storage. Pass `reviewStep` keys of contract ade-review-step. */
+export function storyReview(key = 'answered'): {
+  control: ControlSnapshot[];
+  gitStream: GitStreamMockArgs;
+  storage: Record<string, string>;
+} {
+  const target = {
+    ...adeFixture<{ codeRepoId: string; gitRepoId: string }>('review-target'),
+    branch: STORY.branch,
+    worktree: '~/wt/acme-web/orders-csv-export',
+  };
+  return {
+    storage: AGENT_PANEL_ON,
+    control: storyBoard([
+      { channel: IPC.adeTaskReviewWindowTarget, response: target },
+      { channel: IPC.adeTaskReviewAgent, response: REVIEW_AGENT },
+      { channel: IPC.adeTaskReviewStep, response: reviewStep(key) },
+      { channel: IPC.windowsEnsure, response: { mode: 'git' } },
+      {
+        channel: IPC.codeWorkspaceListRepos,
+        response: [
+          {
+            id: target.codeRepoId,
+            name: 'acme-web',
+            root: '/tmp/acme-web',
+            repoId: target.gitRepoId,
+            sortOrder: 1,
+            color: 'none',
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      },
+    ]),
+    gitStream: {
+      repoId: target.gitRepoId as string,
+      extraResults: {
+        'review.resolveBase': {
+          branch: STORY.branch,
+          base: 'main',
+          reason: 'override',
+          range: { kind: 'ready', commitCount: 3 },
+          candidates: [],
+        },
+        'review.files': REVIEW_FILES,
+        'review.session.load': null,
+        'repo.open': null,
+        'file.read': { __sequence: [blob(false), blob(true)] },
+        'review.snapshot': { kind: 'none', text: null, reviewedAtSha: null },
+        'review.fileDiff': storyDiff(),
+        'review.comment.list': { at: SHA, comments: STORY_COMMENTS },
+        'review.comment.setState': { changed: true },
+        'changeRequest.reviewState': contract(
+          'ade-review-actions',
+          'git:changeRequest.reviewState',
+        ),
+        'changeRequest.submitReview': contract(
+          'ade-review-actions',
+          'git:changeRequest.submitReview',
+        ),
+      },
+    },
+  };
+}
+
+const PROOF_ID = 'orders-export';
+const PROOF_PENDING_ID = 'orders-export-edit';
+const HOUR = 3_600_000;
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const proofStepFx = (base: string, key: string, ordinal: number, patch: Rec = {}): Rec => ({
+  ...contract<Rec>(base, `ProofService.Step#${key}`),
+  ordinal,
+  ...patch,
+});
+
+const proofSteps = (changed: boolean): Rec[] => {
+  const perDay = [412, 388, 455, 420, 502, 96, 71];
+  return [
+    proofStepFx('proof', 'table', 1, {
+      description: 'Orders in the export',
+      query: "select id, status, total, created_at from orders where status = 'paid' limit 8",
+      data: {
+        columns: [
+          { name: 'id', type: 'number' },
+          { name: 'status', type: 'text' },
+          { name: 'total', type: 'number' },
+          { name: 'created_at', type: 'text' },
+        ],
+        rows: [
+          [10482, 'paid', 129.9, '2026-10-26 09:14'],
+          [10483, 'paid', 54.0, '2026-10-26 09:31'],
+          [10485, 'paid', 18.5, '2026-10-26 10:02'],
+          [10488, 'paid', 249.0, '2026-10-26 10:47'],
+          [10491, 'paid', 76.25, '2026-10-26 11:20'],
+          [10494, 'paid', 33.0, '2026-10-26 11:58'],
+          [10496, 'paid', 412.8, '2026-10-26 12:15'],
+          [10499, 'paid', 61.4, '2026-10-26 12:40'],
+        ],
+      },
+    }),
+    proofStepFx('proof-chart', 'bar', 2, {
+      description: 'Exports per day',
+      source: 'postgres',
+      data: {
+        horizontal: false,
+        stacked: false,
+        type: 'bar',
+        x: { name: 'day', type: 'category' },
+        y: { name: 'exports', unit: '' },
+        series: [
+          {
+            name: 'exports',
+            points: DAYS.map((d, i) => [d, i === 4 && changed ? 540 : perDay[i]]),
+          },
+        ],
+      },
+    }),
+    proofStepFx('proof-diagram', 'flowchart', 3, {
+      description: 'Export flow',
+      data: {
+        type: 'flowchart',
+        source:
+          'flowchart LR\n  Button[Export button] --> Route[GET /orders.csv]\n  Route --> Query[(orders)]\n  Query --> Csv[CSV file]',
+      },
+    }),
+    proofStepFx('proof', 'keyvalue', 4, {
+      description: 'Export summary',
+      data: {
+        entries: [
+          { field: 'rows', value: 84000 },
+          { field: 'durationMs', value: 1840 },
+          { field: 'fileKb', value: 6120 },
+        ],
+      },
+    }),
+  ];
+};
+
+const proofSummary = (s: Rec, diff: string): Rec => ({
+  bytes: s.bytes,
+  description: s.description,
+  diff,
+  language: s.language,
+  ordinal: s.ordinal,
+  originOrdinal: diff === 'added' ? null : s.ordinal,
+  source: s.source,
+  view: s.view,
+});
+
+function proofRev(rev: number, changed: boolean, diffs: string[]): Rec {
+  return {
+    createdAt: CAPTURE_NOW - 3 * HOUR,
+    reason: changed ? 'Friday spike checked against the audit log' : '',
+    rev,
+    steps: proofSteps(changed).map((s, i) => proofSummary(s, diffs[i] as string)),
+  };
+}
+
+const CLOSED = CAPTURE_NOW - 2 * HOUR;
+
+/** Proof window boot for the story: one closed session, or a pending edit when `pending`. */
+export function storyProof(pending = false): ControlSnapshot[] {
+  const base = contract<Rec>('proof', 'ProofService.Session');
+  const id = pending ? PROOF_PENDING_ID : PROOF_ID;
+  const added = ['added', 'added', 'added', 'added'];
+  const session: Rec = {
+    ...base,
+    id,
+    name: 'Orders export',
+    closedAt: CLOSED,
+    current: proofRev(1, false, added),
+    pending: pending ? proofRev(2, true, ['unchanged', 'changed', 'unchanged', 'unchanged']) : null,
+  };
+  const step = (rev: number, s: Rec): ControlSnapshot => ({
+    channel: IPC.proofStep,
+    args: { sessionId: id, rev, ordinal: s.ordinal },
+    response: s,
+  });
+  return [
+    { channel: IPC.proofWindowTarget, response: { sessionId: id } },
+    {
+      channel: IPC.proofSessions,
+      response: [{ id, name: 'Orders export', closedAt: CLOSED, steps: 4, pending, seen: true }],
+    },
+    { channel: IPC.proofSession, response: session },
+    ...proofSteps(false).map((s) => step(1, s)),
+    ...(pending
+      ? proofSteps(true).map((s) =>
+          step(2, { ...s, diff: s.ordinal === 2 ? 'changed' : 'unchanged' }),
+        )
+      : []),
+  ];
+}
+
+/** Task Details chain: one agent proof plus the story's handover notes. */
+export function storyProofChain(): ControlSnapshot[] {
+  const steps = proofSteps(false).filter((s) => s.view !== 'diagram');
+  return [
+    {
+      channel: IPC.adeTaskProofs,
+      response: {
+        proofs: [
+          {
+            closedAt: CLOSED,
+            linkedAt: CLOSED,
+            name: 'Orders export',
+            pending: false,
+            proofId: 'P_orders',
+            rev: 1,
+            sessionId: '',
+            source: 'agent',
+            stepId: 'impl',
+            stepName: 'Implement',
+            steps: steps.map((s) => ({
+              description: s.description,
+              ordinal: s.ordinal,
+              source: s.source,
+              view: s.view,
+            })),
+            summary: '',
+          },
+        ],
+      },
+    },
+    { channel: IPC.adeTaskHandovers, ...{ response: storyHandovers() } },
+  ];
 }
