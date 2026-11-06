@@ -103,6 +103,8 @@ export interface WorkflowStep {
   /** Agent prompt; manual: the session's first message. */
   prompt: string;
   allowedTools: string[] /* D6, [] = none added */;
+  /** The step's agent sessions get the Kira DB tools (agent, review, manual session; not with a smart script). */
+  dbMcp: boolean;
   /** Name of the smart script that replaces `prompt`; '' = a prompt step. */
   smartScript: string;
   /** The smart script's values per param name. */

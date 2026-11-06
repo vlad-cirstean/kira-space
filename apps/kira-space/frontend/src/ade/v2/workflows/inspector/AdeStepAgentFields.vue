@@ -36,7 +36,13 @@ function setMode(v: string): void {
   emit(
     'patch',
     v === 'smart'
-      ? { smartScript: smartScripts.value[0]?.name ?? '', prompt: '', allowedTools: [], params: {} }
+      ? {
+          smartScript: smartScripts.value[0]?.name ?? '',
+          prompt: '',
+          allowedTools: [],
+          dbMcp: false,
+          params: {},
+        }
       : { smartScript: '', params: {} },
   );
 }

@@ -10772,6 +10772,10 @@
           "commandOutside": {
             "hint": "Runs in the task folder. A non-zero exit fails the step. {tokens} are shell-quoted when needed."
           },
+          "dbMcp": {
+            "hint": "This step’s sessions get the database MCP tools. The app handles access, and it works with the server off.",
+            "label": "Kira database tools"
+          },
           "editStatuses": {
             "label": "Edit statuses"
           },
@@ -16508,6 +16512,9 @@
           "toggle": {
             "aria": "Expose script {name} to agents"
           }
+        },
+        "sessions": {
+          "hint": "Workflow steps with Kira database tools on get their own access, even with this off."
         },
         "tokenExpired": {
           "body": "Token expired. Regenerate it above."

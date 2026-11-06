@@ -189,6 +189,9 @@ const dbMcpApiApprovalId = useId();
       <FieldContent>
         <Label :for="dbMcpEnabledId">{{ t('studio.settings.dbMcp.enable.label') }}</Label>
         <FieldDescription>{{ t('studio.settings.dbMcp.enable.description') }}</FieldDescription>
+        <FieldDescription data-testid="dbmcp-sessions-hint">{{
+          t('studio.settings.dbMcp.sessions.hint')
+        }}</FieldDescription>
       </FieldContent>
     </Field>
 

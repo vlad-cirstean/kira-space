@@ -134,6 +134,7 @@ export function mkStep(over: Partial<WorkflowStep> & Pick<WorkflowStep, 'id'>): 
     timeout: '1h',
     prompt: 'p',
     allowedTools: [],
+    dbMcp: false,
     smartScript: '',
     params: {},
     review: null,
