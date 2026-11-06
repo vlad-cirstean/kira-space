@@ -263,6 +263,7 @@ type contentBlock struct {
 	Type      string          `json:"type"`
 	ID        string          `json:"id"`
 	Name      string          `json:"name"`
+	Text      string          `json:"text"`
 	Input     json.RawMessage `json:"input"`
 	ToolUseID string          `json:"tool_use_id"`
 	Content   json.RawMessage `json:"content"`
@@ -323,11 +324,7 @@ func toolResult(msgs []streamMsg, toolUseID string) (text string, isError, ok bo
 			var sb strings.Builder
 			if json.Unmarshal(b.Content, &parts) == nil {
 				for _, p := range parts {
-					var txt struct {
-						Text string `json:"text"`
-					}
-					_ = json.Unmarshal(mustRaw(p), &txt)
-					sb.WriteString(txt.Text)
+					sb.WriteString(p.Text)
 				}
 			}
 			return sb.String(), b.IsError, true

@@ -71,8 +71,16 @@ func TestKubeMcpThroughClaude(t *testing.T) {
 	if len(uses) == 0 {
 		t.Fatalf("no kube_list_resources tool use in the stream:\n%s", tail(out, 1500))
 	}
-	text, isErr, ok = toolResult(msgs, uses[0].ID)
-	if !ok || isErr || !strings.Contains(text, "web-1") {
+	// The CLI defers MCP schemas, so a first call can be rejected for wrong arguments; the retry counts.
+	var good bool
+	for _, u := range uses {
+		text, isErr, ok = toolResult(msgs, u.ID)
+		if ok && !isErr && strings.Contains(text, "web-1") {
+			good = true
+			break
+		}
+	}
+	if !good {
 		t.Fatalf("kube_list_resources result = %q (ok=%v, error=%v), want the fake pods", text, ok, isErr)
 	}
 	if res := resultMsg(t, msgs); res.IsError {
