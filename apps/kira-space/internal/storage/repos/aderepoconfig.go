@@ -178,7 +178,7 @@ func (r *AdeRepoConfigRepo) ApplyFolderHidden(path string, imported []ImportedRe
 		stored := r.Dialect.Select(f.Hidden).From(f.Table)
 		stored.Where(stored.Equal(f.Path, path))
 		ub := r.Dialect.Update(c.Table)
-		ub.Set(c.Hidden+" = COALESCE(("+ub.Var(stored)+"), "+c.Hidden+")", c.HiddenRev+" = "+c.HiddenRev+" + 1").
+		ub.Set(c.Hidden+" = COALESCE("+sqlb.Sub(ub, stored)+", "+c.Hidden+")", c.HiddenRev+" = "+c.HiddenRev+" + 1").
 			Where(ub.Equal(c.ID, in.ID), ub.Equal(c.HiddenRev, in.Rev))
 		if _, err := sqlb.Exec(tx, ub); err != nil {
 			return fmt.Errorf("repos: apply ade folder hidden: %w", err)

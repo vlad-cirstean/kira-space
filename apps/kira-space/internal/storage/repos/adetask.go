@@ -1422,7 +1422,7 @@ func (r *AdeTaskRepo) LatestRuns(taskID string) ([]model.AdeRun, error) {
 	newest.Where("b."+c.TaskID+" = a."+c.TaskID, "b."+c.StepID+" = a."+c.StepID, "b."+c.BranchID+" = a."+c.BranchID,
 		"b."+c.Purpose+" = a."+c.Purpose)
 	sb := r.Dialect.Select(adeRunColumns...).From(c.Table + " a")
-	sb.Where(sb.Equal(c.TaskID, taskID), c.Attempt+" = ("+sb.Var(newest)+")").OrderBy("COALESCE("+c.StartedAt+", 0)", c.ID)
+	sb.Where(sb.Equal(c.TaskID, taskID), c.Attempt+" = "+sqlb.Sub(sb, newest)).OrderBy("COALESCE("+c.StartedAt+", 0)", c.ID)
 	rows, err := sqlb.Query(r.DB, sb)
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.AdeRun, bool, error) {
 		run, err := scanAdeRun(rows)
