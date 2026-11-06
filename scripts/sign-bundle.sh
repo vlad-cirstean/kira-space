@@ -8,17 +8,16 @@
 # plan explicitly warned its own paths were written from an earlier session and would need
 # re-verifying against a real packaged bundle rather than copied. macOS only.
 #
-# P100 Part 2: takes the app dir (relative to the repo root) and app name as $1/$2, so
-# package:space (apps/kira-space, "Kira Space") reuses this instead of a second near-identical
-# script — defaults preserve the original apps/kira-studio/"Kira Studio" call unchanged.
+# Takes the app dir (relative to the repo root) and app name as $1/$2; the defaults are the one
+# app, apps/kira-space/"Kira Space".
 set -eu
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 # shellcheck source=./lib.sh
 . "$SCRIPT_DIR/lib.sh"
 
-APP_DIR="${1:-apps/kira-studio}"
-APP_NAME="${2:-Kira Studio}"
+APP_DIR="${1:-apps/kira-space}"
+APP_NAME="${2:-Kira Space}"
 
 APP="$ROOT_DIR/$APP_DIR/bin/$APP_NAME.app"
 DMG="$ROOT_DIR/$APP_DIR/bin/$APP_NAME.dmg"
