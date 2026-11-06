@@ -221,4 +221,4 @@ Runs after P548 and the full suite run, before the code review. Close does not s
 - [ ] `docs/pending-changes/*.patch` match the final state. Applied from a session with workflow scope.
 - [ ] Known failing UI specs all fixed: grpc-request (20), row-coloring (2), settings-apply-on-save (4), control-sizing (1), data-view (1), copy-coverage "settings dialog, every pane", ui-leftovers http-send pair, api-ui-consistency. Studio visual baselines re-recorded.
 
-Image delivery for many scenarios (WebP, build-time generation) is a follow-up the user may add as a phase.
+Image delivery for many scenarios (WebP, build-time generation) is planned as v0.3.1 P549 and P550.
