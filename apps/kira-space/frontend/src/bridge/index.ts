@@ -607,6 +607,14 @@ const spaceControl = {
     unwrap(AdeTaskService.Handovers(args)).then((r) => trust<V2.HandoversResult>(r)),
   adeTaskAddNote: (args: V2.AddNoteArgs): Promise<V2.Handover> =>
     unwrap(AdeTaskService.AddNote(args)).then((r) => trust<V2.Handover>(r)),
+  adeTaskProofs: (args: V2.TaskArgs): Promise<V2.TaskProofsResult> =>
+    unwrap(AdeTaskService.TaskProofs(args)).then((r) => trust<V2.TaskProofsResult>(r)),
+  adeTaskProofChoices: (): Promise<V2.ProofChoicesResult> =>
+    unwrap(AdeTaskService.ProofChoices()).then((r) => trust<V2.ProofChoicesResult>(r)),
+  adeTaskLinkProof: (args: V2.LinkProofArgs): Promise<void> =>
+    unwrap(AdeTaskService.LinkProof(args)),
+  adeTaskUnlinkProof: (args: V2.LinkProofArgs): Promise<void> =>
+    unwrap(AdeTaskService.UnlinkProof(args)),
   adeTaskUpdateHandover: (args: V2.UpdateHandoverArgs): Promise<void> =>
     unwrap(AdeTaskService.UpdateHandover(args)),
   adeTaskDismissHandover: (args: V2.TaskArgs): Promise<void> =>

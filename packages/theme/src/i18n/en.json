@@ -9592,6 +9592,28 @@
           "label": "{step} · waiting"
         }
       },
+      "proof": {
+        "attach": {
+          "empty": {
+            "body": "No proof sessions to attach."
+          },
+          "tooltip": "Attach a proof session"
+        },
+        "chain": {
+          "title": "Notes and proof"
+        },
+        "entry": {
+          "open": {
+            "tooltip": "Open in the proof window"
+          },
+          "pending": {
+            "status": "Edit to review"
+          },
+          "remove": {
+            "tooltip": "Remove from task"
+          }
+        }
+      },
       "rebase": {
         "abort": {
           "label": "Abort rebase",

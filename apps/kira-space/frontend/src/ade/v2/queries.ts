@@ -25,6 +25,7 @@ import type {
   HostLinkArgs,
   ImportWorkflowArgs,
   LaunchStepArgs,
+  LinkProofArgs,
   NewStepArgs,
   NewWorkflowArgs,
   OntoArgs,
@@ -88,6 +89,8 @@ export const stepYamlKey = ['adetask', 'stepYaml'] as const;
 const candidatesKey = (codeRepoId: string) => ['adetask', 'candidates', codeRepoId] as const;
 export const reviewStepPrefix = ['adetask', 'reviewStep'] as const;
 export const handoversPrefix = ['adetask', 'handovers'] as const;
+export const proofsPrefix = ['adetask', 'proofs'] as const;
+export const proofChoicesKey = ['adetask', 'proofChoices'] as const;
 export const artifactsPrefix = ['adetask', 'artifacts'] as const;
 export const issuePrefix = ['adetask', 'issue'] as const;
 export const reviewTargetKey = (windowKey: string) =>
@@ -507,6 +510,45 @@ export function useHandovers(taskId: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: [...handoversPrefix, taskId] as const,
     queryFn: () => control.adeTaskHandovers({ taskId: toValue(taskId) }),
+  });
+}
+
+/** The proof sessions attached to a task, newest closed first; a proof push refetches it. */
+export function useTaskProofs(taskId: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: [...proofsPrefix, taskId] as const,
+    queryFn: () => control.adeTaskProofs({ taskId: toValue(taskId) }),
+  });
+}
+
+/** Closed proof sessions no task holds; read only while the attach menu is open. */
+export function useProofChoices(enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: proofChoicesKey,
+    queryFn: () => control.adeTaskProofChoices(),
+    staleTime: 0,
+    enabled: () => toValue(enabled),
+  });
+}
+
+function refreshProofs(): Promise<unknown> {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: proofsPrefix }),
+    queryClient.invalidateQueries({ queryKey: proofChoicesKey }),
+  ]);
+}
+
+export function useLinkProof() {
+  return useMutation({
+    mutationFn: (args: LinkProofArgs) => control.adeTaskLinkProof(args),
+    onSuccess: refreshProofs,
+  });
+}
+
+export function useUnlinkProof() {
+  return useMutation({
+    mutationFn: (args: LinkProofArgs) => control.adeTaskUnlinkProof(args),
+    onSuccess: refreshProofs,
   });
 }
 

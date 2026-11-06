@@ -548,6 +548,45 @@ export interface RemoveArtifactArgs {
 export interface HandoversResult {
   handovers: Handover[];
 }
+/** One step of an attached proof session; the data stays in the proof window's store. */
+interface TaskProofStep {
+  ordinal: number;
+  description: string;
+  view: 'table' | 'document' | 'keyvalue' | 'chart' | 'diagram';
+  source: string;
+}
+/** A closed proof session attached to a task. `sessionId` is the Kira session that attached it ('' = the user). */
+export interface TaskProof {
+  proofId: string;
+  name: string;
+  summary: string;
+  closedAt: number;
+  linkedAt: number;
+  source: 'agent' | 'user';
+  sessionId: string;
+  stepId: string;
+  stepName: string;
+  rev: number;
+  pending: boolean;
+  steps: TaskProofStep[];
+}
+export interface TaskProofsResult {
+  proofs: TaskProof[];
+}
+/** A closed proof session no task holds yet. */
+interface ProofChoice {
+  proofId: string;
+  name: string;
+  closedAt: number;
+  steps: number;
+}
+export interface ProofChoicesResult {
+  proofs: ProofChoice[];
+}
+export interface LinkProofArgs {
+  taskId: string;
+  proofId: string;
+}
 export interface AddNoteArgs {
   taskId: string;
   body: string;
