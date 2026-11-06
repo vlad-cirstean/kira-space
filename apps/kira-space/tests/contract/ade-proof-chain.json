@@ -1,0 +1,79 @@
+{
+  "AdeTaskService.Handovers#chain": {
+    "handovers": [
+      {
+        "body": "Check the error states.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "design",
+        "fromStepName": "Design",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "user",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      }
+    ]
+  },
+  "AdeTaskService.ProofChoices": {
+    "proofs": [
+      {
+        "closedAt": 0,
+        "name": "Legacy",
+        "proofId": "<masked>",
+        "steps": 1
+      }
+    ]
+  },
+  "AdeTaskService.TaskProofs#chain": {
+    "proofs": [
+      {
+        "closedAt": 0,
+        "linkedAt": 0,
+        "name": "Login checks",
+        "pending": false,
+        "proofId": "<masked>",
+        "rev": 1,
+        "sessionId": "<masked>",
+        "source": "agent",
+        "stepId": "design",
+        "stepName": "Design",
+        "steps": [
+          {
+            "description": "Login checks step 1",
+            "ordinal": 1,
+            "source": "mermaid",
+            "view": "diagram"
+          },
+          {
+            "description": "Login checks step 2",
+            "ordinal": 2,
+            "source": "postgres",
+            "view": "table"
+          }
+        ],
+        "summary": ""
+      }
+    ]
+  },
+  "ProofService.Step#diagram": {
+    "bytes": 91,
+    "data": {
+      "source": "flowchart TD\n  Form --> Check\n  Check --> Saved",
+      "type": "flowchart"
+    },
+    "description": "Login checks step 1",
+    "diff": "added",
+    "language": "text",
+    "ordinal": 1,
+    "originOrdinal": null,
+    "query": "",
+    "source": "mermaid",
+    "view": "diagram"
+  }
+}

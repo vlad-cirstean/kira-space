@@ -96,6 +96,7 @@
         "mcp__kira-ade__branch_status",
         "mcp__kira-ade__rename_branch",
         "mcp__kira-ade__report_artifacts",
+        "mcp__kira-ade__attach_proof",
         "mcp__kira-ade__list_operations",
         "mcp__kira-ade__cancel_operation"
       ],
@@ -146,6 +147,7 @@
         "mcp__kira-ade__branch_status",
         "mcp__kira-ade__rename_branch",
         "mcp__kira-ade__report_artifacts",
+        "mcp__kira-ade__attach_proof",
         "mcp__kira-ade__list_operations",
         "mcp__kira-ade__cancel_operation"
       ],
@@ -177,6 +179,7 @@
       "mcp__kira-ade__branch_status",
       "mcp__kira-ade__rename_branch",
       "mcp__kira-ade__report_artifacts",
+      "mcp__kira-ade__attach_proof",
       "mcp__kira-ade__list_operations",
       "mcp__kira-ade__cancel_operation"
     ],
