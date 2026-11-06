@@ -72,6 +72,24 @@ func copyFile(src, dst string, mode fs.FileMode) (err error) {
 	return os.Chmod(dst, mode)
 }
 
+// CopyVerified copies src to dst through dst+".tmp" and a verify, so dst is never half written.
+func CopyVerified(src, dst string) error {
+	tmp := dst + ".tmp"
+	if err := os.RemoveAll(tmp); err != nil {
+		return fmt.Errorf("fsmove: %w", err)
+	}
+	if err := CopyTree(src, tmp); err != nil {
+		return fmt.Errorf("fsmove: copy %s: %w", src, err)
+	}
+	if err := VerifyTree(src, tmp); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, dst); err != nil {
+		return fmt.Errorf("fsmove: %w", err)
+	}
+	return nil
+}
+
 // VerifyTree fails unless every entry of src Exists in dst with the same type, size and content. A
 // dst superset is fine: it is what a resumed move sees after a half-finished delete of src.
 func VerifyTree(src, dst string) error {

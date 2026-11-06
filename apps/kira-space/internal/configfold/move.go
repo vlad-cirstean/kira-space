@@ -18,25 +18,7 @@ func backup(e entry, home, dir string) error {
 	if !fsmove.Exists(src) || fsmove.Exists(dst) {
 		return nil
 	}
-	return copyVerified(src, dst)
-}
-
-// copyVerified copies src to dst through dst+".tmp" and a verify, so dst is never half written.
-func copyVerified(src, dst string) error {
-	tmp := dst + ".tmp"
-	if err := os.RemoveAll(tmp); err != nil {
-		return fmt.Errorf("configfold: %w", err)
-	}
-	if err := fsmove.CopyTree(src, tmp); err != nil {
-		return fmt.Errorf("configfold: copy %s: %w", src, err)
-	}
-	if err := fsmove.VerifyTree(src, tmp); err != nil {
-		return fmt.Errorf("configfold: %w", err)
-	}
-	if err := os.Rename(tmp, dst); err != nil {
-		return fmt.Errorf("configfold: %w", err)
-	}
-	return nil
+	return fsmove.CopyVerified(src, dst)
 }
 
 // move lands one legacy entry in its target. Every outcome is safe to repeat.
@@ -80,7 +62,7 @@ func (o *Options) relocate(src, dst string) error {
 	if !errors.Is(err, syscall.EXDEV) {
 		return fmt.Errorf("configfold: move %s: %w", src, err)
 	}
-	if err := copyVerified(src, dst); err != nil {
+	if err := fsmove.CopyVerified(src, dst); err != nil {
 		return err
 	}
 	return removeLegacy(src)
