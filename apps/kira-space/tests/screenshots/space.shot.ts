@@ -283,6 +283,34 @@ const FACTS: Fact[] = [
     reason: 'Imported from the platform handbook.',
     keywords: ['search', 'api', 'rate limit'],
   },
+  {
+    fact: 'Feature flags live in config/flags.yaml, never in code.',
+    origin: 'user',
+    scope: 'project',
+    reason: 'Stated in the engineering handbook.',
+    keywords: ['flags', 'config'],
+  },
+  {
+    fact: 'Integration tests use the seeded orders fixture.',
+    origin: 'agent',
+    scope: 'project',
+    reason: 'Found in tests/README.md.',
+    keywords: ['tests', 'fixtures'],
+  },
+  {
+    fact: 'Releases are cut from main on the first Monday of the month.',
+    origin: 'user',
+    scope: 'company',
+    reason: 'The release calendar says so.',
+    keywords: ['release', 'schedule'],
+  },
+  {
+    fact: 'Customer emails are masked in every log line.',
+    origin: 'external',
+    scope: 'company',
+    reason: 'Imported from the security policy.',
+    keywords: ['privacy', 'logging'],
+  },
 ];
 
 const MEMORIES = FACTS.map((f, i) => ({

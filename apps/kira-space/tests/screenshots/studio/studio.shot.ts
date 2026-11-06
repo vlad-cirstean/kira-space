@@ -134,6 +134,64 @@ test('studio sql console', async ({ relaunch, consoleErrors }) => {
   await shoot(page, 'studio-sql-console', consoleErrors);
 });
 
+const API_STAMP = '2026-09-20T09:00:00Z';
+const apiCollection = (id: string, name: string, order: number) => ({
+  id,
+  name,
+  file: `${name.toLowerCase().replace(/ /g, '-')}.collection.yaml`,
+  sortOrder: order,
+  createdAt: API_STAMP,
+  updatedAt: API_STAMP,
+});
+const apiItem = (
+  collectionId: string,
+  id: string,
+  kind: 'request' | 'folder',
+  name: string,
+  method: string,
+  url: string,
+  order: number,
+  parentId: string | null = null,
+) => ({
+  collectionId,
+  id,
+  kind,
+  name,
+  method,
+  url,
+  parentId,
+  protocol: 'http',
+  sortOrder: order,
+  createdAt: API_STAMP,
+  updatedAt: API_STAMP,
+});
+const API_TREE = {
+  collections: [
+    apiCollection('col-orders', 'Orders API', 0),
+    apiCollection('col-customers', 'Customers API', 1),
+    apiCollection('col-billing', 'Billing', 2),
+  ],
+  items: [
+    apiItem('col-orders', 'o-list', 'request', 'List orders', 'GET', '/v1/orders', 0),
+    apiItem('col-orders', 'o-get', 'request', 'Get order', 'GET', '/v1/orders/4217', 1),
+    apiItem('col-orders', 'o-create', 'request', 'Create order', 'POST', '/v1/orders', 2),
+    apiItem('col-orders', 'o-cancel', 'request', 'Cancel order', 'DELETE', '/v1/orders/4217', 3),
+    apiItem('col-customers', 'c-list', 'request', 'List customers', 'GET', '/v1/customers', 0),
+    apiItem('col-customers', 'c-get', 'request', 'Get customer', 'GET', '/v1/customers/88', 1),
+    apiItem(
+      'col-customers',
+      'c-update',
+      'request',
+      'Update customer',
+      'PUT',
+      '/v1/customers/88',
+      2,
+    ),
+    apiItem('col-billing', 'b-invoices', 'request', 'List invoices', 'GET', '/v1/invoices', 0),
+    apiItem('col-billing', 'b-refund', 'request', 'Refund payment', 'POST', '/v1/refunds', 1),
+  ],
+};
+
 test('studio api request', async ({ relaunch, consoleErrors }) => {
   const body = JSON.stringify(
     {
@@ -163,12 +221,13 @@ test('studio api request', async ({ relaunch, consoleErrors }) => {
     bodyBytes: body.length,
     bodyTruncated: false,
     elapsedMs: 84,
-    finalUrl: 'https://api.acme.example/v1/orders/4217',
+    finalUrl: 'https://api.acme.example/v1/orders/4217?status=shipped&expand=items&limit=25',
     redirects: [],
   };
   const { window: page } = await relaunch({
     ...CAPTURE_LAUNCH,
     control: [
+      { channel: IPC.collectionsList, response: API_TREE },
       { channel: IPC.apiConfigView, response: { files: [], secrets: [] } },
       { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/repos', files: [] } },
       { channel: IPC.adeTaskRepos, response: { repos: [], folders: [] } },
@@ -177,7 +236,16 @@ test('studio api request', async ({ relaunch, consoleErrors }) => {
     ],
   });
   await openHttpModeAndNewRequest(page);
-  await page.fill('[data-testid="http-url"]', 'https://api.acme.example/v1/orders/4217');
+  for (const id of ['col-orders', 'col-customers']) {
+    await page
+      .locator(`[data-testid="collection-row"][data-id="${id}"] [data-testid="tree-twisty"]`)
+      .click();
+  }
+  await expect(page.getByText('Get customer')).toBeVisible();
+  await page.fill(
+    '[data-testid="http-url"]',
+    'https://api.acme.example/v1/orders/4217?status=shipped&expand=items&limit=25',
+  );
   await page.click('[data-testid="http-send"]');
   await expect(page.locator('[data-testid="http-status"]')).toHaveText('200 OK');
   await expect(page.locator('[data-testid="http-request-view"]')).toContainText('Alice Morgan');
