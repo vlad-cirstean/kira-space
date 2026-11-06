@@ -193,6 +193,31 @@ func TestDbMcpColumnReview(t *testing.T) {
 	f.app.Contract(t, "dbmcp-mask-review", "MaskRulesService.ReviewPending", pending)
 }
 
+// A column added outside MCP is withheld on the first result that carries it, without waiting for a tree
+// Refresh or the 30 s freshness to lapse (real maskreview.Service, sqlite).
+func TestDbMcpColumnReviewNewColumnWithinFreshness(t *testing.T) {
+	f := newFixture(t)
+	sess := f.session(t)
+	const leak = "leak-value"
+	f.setReviewed(t, "notes.id", "notes.body")
+	if cols, w := f.resultColumns(t, runQuery(t, sess, f.connID, "select * from notes")); len(cols) != 2 || len(w) != 0 {
+		t.Fatalf("select * all reviewed = %v withheld %v", cols, w)
+	}
+
+	f.execSQL(t, "alter table notes add column secret text", "update notes set secret = '"+leak+"'")
+	r := runQuery(t, sess, f.connID, "select * from notes")
+	if cols, w := f.resultColumns(t, r); r.IsError || len(cols) != 2 || len(w) != 1 || w[0] != "secret" || strings.Contains(text(r), leak) {
+		t.Fatalf("select * after an out-of-band column = %q, want secret withheld", text(r))
+	}
+
+	// A new table whose column shares the name of a reviewed one on another table.
+	f.execSQL(t, "create table other (id integer)", "alter table other add column body text", "insert into other (id, body) values (1, '"+leak+"')")
+	r = runQuery(t, sess, f.connID, "select body from other")
+	if _, w := f.resultColumns(t, r); r.IsError || len(w) != 1 || w[0] != "body" || strings.Contains(text(r), leak) {
+		t.Fatalf("select body from other = %q, want the unreviewed body withheld", text(r))
+	}
+}
+
 func TestDbMcpColumnReviewOutsideTableList(t *testing.T) {
 	f := newFixture(t)
 	f.setReviewed(t, "notes.id", "notes.body")

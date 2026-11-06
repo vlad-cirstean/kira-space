@@ -338,7 +338,7 @@ func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv que
 	}
 	if tp, ok := resp.Pages[0].(page.TabularPage); ok && set.known != nil {
 		var refusal *mcp.CallToolResult
-		if set, refusal = s.settleResult(ctx, rv.summary, set, tp.Columns); refusal != nil {
+		if set, refusal = s.settleResult(ctx, rv, args, set, tp.Columns); refusal != nil {
 			return refusal, nil, nil, set, true
 		}
 		set.resultColumns = tp.Columns
@@ -354,10 +354,10 @@ func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv que
 		// error. Anything else here is a genuine internal render fault.
 		var refused *maskingRefusedError
 		if errors.As(err, &refused) {
-			res, out, err = errResult(refused.Error())
+			res, out, err = errResult(ranSuffix(fmt.Sprintf("query against %q ran, but its result was withheld: %s", rv.summary.Name, refused.Error()), rv))
 			return res, out, err, set, true
 		}
-		return nil, nil, err, set, true
+		return nil, nil, fmt.Errorf("%s", ranSuffix(fmt.Sprintf("query against %q ran, but its result could not be rendered: %v", rv.summary.Name, err), rv)), set, true
 	}
 	// Finding #12, M6: a `;`-separated args.SQL can make the adapter execute more than one
 	// statement, each with its own page — surface that rather than silently rendering only
@@ -397,7 +397,7 @@ func (s *Server) reviewResponse(ctx context.Context, args runQueryArgs, rv query
 		Target: targetOf(rv.summary, args.Path), Stage: ApprovalStageResponse, Response: &held, Origin: originFrom(ctx),
 	})
 	if outcome == ApprovalApproved {
-		if msg := s.recheckHeld(ctx, rv, args.ConnectionID, name, rendered); msg != "" {
+		if msg := s.recheckHeld(ctx, rv, args, rendered); msg != "" {
 			return errResult(msg)
 		}
 		return res, out, err
@@ -406,49 +406,66 @@ func (s *Server) reviewResponse(ctx context.Context, args runQueryArgs, rv query
 }
 
 // recheckHeld returns why an approved result must still be withheld, "" when it may go. The review can take
-// up to ApprovalTimeout: exposure or masking rules may have changed since the result was rendered.
-func (s *Server) recheckHeld(ctx context.Context, rv queryResolution, connectionID, name string, rendered maskset) string {
-	if _, rerr := s.resolveEnabled(connectionID); rerr != nil {
-		return fmt.Sprintf("query against %q ran, but its result was withheld: %s", name, rerr.Error())
+// up to ApprovalTimeout: exposure or masking rules may have changed since the result was rendered. The
+// statement has run, so every text says so.
+func (s *Server) recheckHeld(ctx context.Context, rv queryResolution, args runQueryArgs, rendered maskset) string {
+	name := rv.summary.Name
+	if _, rerr := s.resolveEnabled(args.ConnectionID); rerr != nil {
+		return ranSuffix(fmt.Sprintf("query against %q ran, but its result was withheld: %s", name, rerr.Error()), rv)
 	}
 	now, refusal, merr := s.maskStateFor(ctx, rv.summary)
 	if refusal == nil && merr == nil {
-		now, refusal = s.settleResult(ctx, rv.summary, now, rendered.resultColumns)
+		now.stmt = rendered.stmt
+		now, refusal = s.settleResult(ctx, rv, args, now, rendered.resultColumns)
 	}
 	if refusal != nil || merr != nil {
-		return fmt.Sprintf("query against %q ran, but its masking rules could not be re-checked and its result was withheld", name)
+		return ranSuffix(fmt.Sprintf("query against %q ran, but its masking rules could not be re-checked and its result was withheld.", name), rv)
 	}
 	if !now.Equal(rendered) {
-		return fmt.Sprintf("masking rules or column review for %q changed while its result was in review; run the query again", name)
+		msg := fmt.Sprintf("query against %q ran, but masking rules or column review changed while its result was in review, so the result was withheld.", name)
+		if rv.class == adapters.ClassRead {
+			return msg + " Run the query again."
+		}
+		return ranSuffix(msg, rv)
 	}
 	return ""
 }
 
-// heldRefusal is the app-authored text of a result the user did not send. It never carries data.
+// heldRefusal is the app-authored text of a result the user did not send. It never carries data. The
+// statement has run, so every text says so.
 func heldRefusal(outcome ApprovalOutcome, rv queryResolution, size int) string {
 	name := rv.summary.Name
 	switch outcome {
 	case ApprovalDenied:
 		return ranSuffix(fmt.Sprintf("the user withheld the result of this query on %q; it ran, but you get no rows. Do not rerun it to get the result another way.", name), rv)
 	case ApprovalTooLarge:
-		return fmt.Sprintf("the result of this query on %q is %.1f MB, over the %d MB review limit, so it was withheld unseen. Ask for fewer rows or columns.", name, float64(size)/(1<<20), maxHeldResultBytes>>20)
+		msg := fmt.Sprintf("the query on %q ran, but its result is %.1f MB, over the %d MB review limit, so it was withheld unseen.", name, float64(size)/(1<<20), maxHeldResultBytes>>20)
+		if rv.class == adapters.ClassRead {
+			return msg + " Ask for fewer rows or columns."
+		}
+		return ranSuffix(msg, rv)
 	case ApprovalHeldFull:
 		return ranSuffix(fmt.Sprintf("query against %q ran, but too many results are waiting for the user's review, so its result was withheld. Do not rerun it.", name), rv)
 	case ApprovalTimedOut:
-		return fmt.Sprintf("query against %q ran, but its result got no review within %s and was withheld", name, approvalWindow())
+		return ranSuffix(fmt.Sprintf("query against %q ran, but its result got no review within %s and was withheld.", name, approvalWindow()), rv)
 	case ApprovalAbandoned:
-		return fmt.Sprintf("the database MCP server stopped before the result of the query against %q was reviewed", name)
+		return ranSuffix(fmt.Sprintf("the database MCP server stopped before the result of the query against %q was reviewed; the query ran and its result was withheld.", name), rv)
 	case ApprovalQueueFull:
 		return ranSuffix(fmt.Sprintf("query against %q ran, but too many queries are waiting for approval, so its result was withheld. Do not rerun it.", name), rv)
 	default:
-		return fmt.Sprintf("query against %q ran, but its result was not approved", name)
+		return ranSuffix(fmt.Sprintf("query against %q ran, but its result was not approved.", name), rv)
 	}
 }
 
-// ranSuffix tells the agent a non-read statement's changes stay, so it does not retry a committed write.
+// ranSuffix tells the agent a non-read statement's changes stay and it must not rerun, so it does not repeat a
+// committed write.
 func ranSuffix(msg string, rv queryResolution) string {
-	if rv.class != adapters.ClassRead {
-		msg += " Its changes stay."
+	if rv.class == adapters.ClassRead {
+		return msg
+	}
+	msg += " Its changes stay."
+	if !strings.Contains(msg, "not rerun") {
+		msg += " Do not rerun it."
 	}
 	return msg
 }

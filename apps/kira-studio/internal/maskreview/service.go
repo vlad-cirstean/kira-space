@@ -34,9 +34,8 @@ type Withheld struct {
 	Names map[string]bool
 	// Pending is the canonical refs of the columns neither masked nor reviewed, sorted.
 	Pending []string
-	// Known is the lowercased name of every live column the check saw; nil when review is off. A result
-	// column outside it is an alias, a computed column or a column added since the check.
-	Known map[string]bool
+	// Known is the live columns the check saw; nil when review is off.
+	Known *Known
 	// Incomplete is non-empty when the columns could not be checked in full (over a cap, or the check failed): the gate refuses.
 	Incomplete string
 }
@@ -54,7 +53,6 @@ type ListedColumn struct {
 type Listing struct {
 	Applicable bool           `json:"applicable"`
 	Columns    []ListedColumn `json:"columns"`
-	Truncated  bool           `json:"truncated"`
 	// Incomplete names the cap that cut the check short ("over 50000 columns"); empty when complete.
 	Incomplete string `json:"incomplete,omitempty"`
 	CheckedAt  int64  `json:"checkedAt"`
@@ -87,8 +85,7 @@ type Deps struct {
 
 type entry struct {
 	live       []LiveColumn
-	known      map[string]bool
-	truncated  bool
+	known      *Known
 	incomplete string
 	eval       Evaluation
 	scopeKey   string
@@ -197,21 +194,97 @@ func (s *Service) For(ctx context.Context, summary model.ConnectionSummary) With
 	return e.withheld()
 }
 
-// Recheck is the gate's forced read: one check that bypasses the cached column listings, for a result that
-// carries a column name the last check never saw. It is the same as For otherwise.
-func (s *Service) Recheck(ctx context.Context, summary model.ConnectionSummary) Withheld {
+// Recheck is the gate's forced read for result columns the last check cannot vouch for (req.Names). It reads
+// live only the containers of the statement's relations, merged into the last check, and remembers the names
+// that stay unmatched. Without a usable last check, or for an unparsed statement, the scope is every container.
+// It is the same as For otherwise.
+func (s *Service) Recheck(ctx context.Context, summary model.ConnectionSummary, req Rescan) Withheld {
 	if !Applies(summary.Kind) || !summary.MaskReviewOn {
 		return Withheld{}
 	}
 	m := s.lockFor(summary.ID)
 	m.Lock()
 	defer m.Unlock()
-	e, err := s.check(ctx, summary, opts{columns: true})
+	e, err := s.rescan(ctx, summary, req)
 	if err != nil {
 		return Withheld{On: true, Incomplete: failureReason(err)}
 	}
 	s.syncPrompt(summary, e)
 	return e.withheld()
+}
+
+// usable is the stored entry when a partial refresh may build on it.
+func (s *Service) usable(summary model.ConnectionSummary) *entry {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	e := s.entries[summary.ID]
+	if e == nil || e.stale || e.known == nil || e.incomplete != "" || e.scopeKey != scopeKeyOf(summary) {
+		return nil
+	}
+	return e
+}
+
+func (s *Service) rescan(ctx context.Context, summary model.ConnectionSummary, req Rescan) (*entry, error) {
+	old := s.usable(summary)
+	if old == nil {
+		return s.checkWith(ctx, summary, opts{columns: true}, &req)
+	}
+	var want func(string) bool
+	if req.Parsed {
+		targets := map[string]bool{}
+		for _, r := range req.Tables {
+			targets[containerKeyOf(summary.Kind, r)] = true
+		}
+		want = func(key string) bool { return targets[key] }
+	}
+	set, err := tableref.NewSet(summary.Kind, summary.McpTables)
+	if err != nil {
+		return nil, fmt.Errorf("maskreview: table list: %w", err)
+	}
+	s.mu.Lock()
+	startGen := s.gen[summary.ID]
+	s.mu.Unlock()
+	w := &walker{s: s, ctx: ctx, id: summary.ID, kind: summary.Kind, set: set, scope: newScope(summary.Kind, set), o: opts{columns: true}, want: want, fetched: map[string]bool{}}
+	if err := w.run(); err != nil {
+		return nil, err
+	}
+	if len(w.fetched) == 0 {
+		return s.withAliases(summary, old, req), nil
+	}
+	live := make([]LiveColumn, 0, len(old.live)+len(w.live))
+	for _, c := range old.live {
+		if !w.fetched[containerKeyOf(summary.Kind, c.Ref.Ref)] {
+			live = append(live, c)
+		}
+	}
+	live = append(live, w.live...)
+	e := &entry{live: live, incomplete: w.incomplete, scopeKey: old.scopeKey, checkedAt: old.checkedAt}
+	e.known = NewKnown(summary.Kind, live).carry(old.known, req)
+	if err := s.evaluateInto(summary, e); err != nil {
+		return nil, err
+	}
+	s.store(summary.ID, startGen, e)
+	return e, nil
+}
+
+// withAliases stores old again with the names req left unmatched remembered, after a rescan read nothing.
+func (s *Service) withAliases(summary model.ConnectionSummary, old *entry, req Rescan) *entry {
+	e := *old
+	e.known = old.known.carry(old.known, req)
+	s.mu.Lock()
+	if s.entries[summary.ID] == old {
+		s.entries[summary.ID] = &e
+	}
+	s.mu.Unlock()
+	return &e
+}
+
+func (s *Service) store(id string, startGen uint64, e *entry) {
+	s.mu.Lock()
+	if s.gen[id] == startGen {
+		s.entries[id] = e
+	}
+	s.mu.Unlock()
 }
 
 // failureReason names the failure class, never a driver message.
@@ -292,7 +365,7 @@ func (s *Service) summary(id string) (*model.ConnectionSummary, error) {
 }
 
 func listingOf(kind string, e *entry) Listing {
-	out := Listing{Applicable: true, Columns: make([]ListedColumn, 0, len(e.live)), Truncated: e.incomplete != "" || e.truncated, Incomplete: e.incomplete, CheckedAt: e.checkedAt.UnixMilli()}
+	out := Listing{Applicable: true, Columns: make([]ListedColumn, 0, len(e.live)), Incomplete: e.incomplete, CheckedAt: e.checkedAt.UnixMilli()}
 	for _, c := range e.live {
 		out.Columns = append(out.Columns, ListedColumn{
 			Ref: tableref.FormatColumn(kind, c.Ref), Table: c.Ref.Name, Column: c.Ref.Column, DataType: c.DataType, RelationKind: c.RelationKind,
@@ -411,6 +484,11 @@ func (s *Service) evaluateInto(summary model.ConnectionSummary, e *entry) error 
 
 // check walks the live columns, evaluates them and stores the entry unless the connection changed meanwhile.
 func (s *Service) check(ctx context.Context, summary model.ConnectionSummary, o opts) (*entry, error) {
+	return s.checkWith(ctx, summary, o, nil)
+}
+
+// checkWith is check that also remembers the names req left unmatched.
+func (s *Service) checkWith(ctx context.Context, summary model.ConnectionSummary, o opts, req *Rescan) (*entry, error) {
 	set, err := tableref.NewSet(summary.Kind, summary.McpTables)
 	if err != nil {
 		return nil, fmt.Errorf("maskreview: table list: %w", err)
@@ -423,19 +501,14 @@ func (s *Service) check(ctx context.Context, summary model.ConnectionSummary, o 
 	if err := w.run(); err != nil {
 		return nil, err
 	}
-	known := make(map[string]bool, len(w.live))
-	for _, c := range w.live {
-		known[strings.ToLower(c.Ref.Column)] = true
+	e := &entry{live: w.live, known: NewKnown(summary.Kind, w.live), incomplete: w.incomplete, scopeKey: scopeKeyOf(summary), checkedAt: s.d.Now()}
+	if req != nil {
+		e.known = e.known.carry(nil, *req)
 	}
-	e := &entry{live: w.live, known: known, incomplete: w.incomplete, scopeKey: scopeKeyOf(summary), checkedAt: s.d.Now()}
 	if err := s.evaluateInto(summary, e); err != nil {
 		return nil, err
 	}
-	s.mu.Lock()
-	if s.gen[summary.ID] == startGen {
-		s.entries[summary.ID] = e
-	}
-	s.mu.Unlock()
+	s.store(summary.ID, startGen, e)
 	return e, nil
 }
 
@@ -516,7 +589,10 @@ type walker struct {
 	set   *tableref.Set
 	scope scope
 	o     opts
+	// want limits the column reads to the containers it accepts; nil reads all.
+	want func(containerKey string) bool
 
+	fetched    map[string]bool
 	containers []container
 	live       []LiveColumn
 	incomplete string
@@ -578,10 +654,18 @@ func (w *walker) fetchColumns() error {
 		if w.incomplete != "" {
 			return nil
 		}
+		key := containerKeyOfSegs(w.kind, c.segs)
+		if w.want != nil && !w.want(key) {
+			continue
+		}
 		res, err := w.s.d.Tree.SchemaColumns(w.ctx, w.id, c.path, w.o.columns)
 		if err != nil {
 			return err
 		}
+		if w.fetched == nil {
+			w.fetched = map[string]bool{}
+		}
+		w.fetched[key] = true
 		for _, rel := range res.Relations {
 			w.addRelation(c, rel)
 		}
@@ -605,4 +689,22 @@ func (w *walker) addRelation(c container, rel model.RelationColumns) {
 		}
 		w.live = append(w.live, LiveColumn{Ref: tableref.ColumnRef{Ref: ref, Column: col.Name}, DataType: col.DataType, RelationKind: rel.Kind})
 	}
+}
+
+// containerKeyOf names the container holding r: its database and schema, folded as the kind folds names.
+func containerKeyOf(kind string, r tableref.Ref) string {
+	return nameKey(kind, r.Database) + "\x00" + nameKey(kind, r.Schema)
+}
+
+func nameKey(kind, s string) string {
+	if kind == "sqlite" {
+		return strings.ToLower(s)
+	}
+	return s
+}
+
+func containerKeyOfSegs(kind string, segs []model.PathSegment) string {
+	probe := append(append([]model.PathSegment{}, segs...), model.PathSegment{Kind: "table", Name: "_"})
+	r, _ := tableref.FromPath(kind, probe)
+	return containerKeyOf(kind, r)
 }

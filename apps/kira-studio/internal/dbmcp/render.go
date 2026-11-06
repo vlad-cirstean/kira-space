@@ -26,10 +26,11 @@ type maskset struct {
 	mask.Set
 	// withheld holds lowercased result column names to drop.
 	withheld map[string]bool
-	// known holds lowercased live column names of the last check; nil when column review is off.
-	known map[string]bool
-	// resultColumns are the result columns this set was settled against, for the held-result recheck.
+	// known is the live columns of the last check; nil when column review is off.
+	known *maskreview.Known
+	// resultColumns and stmt are what this set was settled against, for the held-result recheck.
 	resultColumns []page.ColumnDescriptor
+	stmt          *stmtTables
 }
 
 // Empty reports whether nothing is masked and nothing is withheld.
