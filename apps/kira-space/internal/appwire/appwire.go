@@ -213,49 +213,48 @@ type Wired struct {
 	Metrics       *metrics.Ticker
 	UpdateInstall *appupdate.Installer
 
-	GitWindows        *bridge.GitWindows
-	GitSvc            *bridge.GitService
-	GitCredential     *bridge.GitCredentialService
-	GitHost           *bridge.GitHostService
-	HostView          *bridge.HostViewService
-	Capture           *bridge.CaptureService
-	IssueTracker      *bridge.IssueTrackerService
-	Link              *bridge.LinkService
-	Files             *bridge.FilesService
-	Settings          *bridge.SettingsService
-	StudioSettings    *bridge.StudioSettingsService
-	Layout            *bridge.LayoutService
-	Tabs              *bridge.TabsService
-	CustomScripts     *bridge.CustomScriptsService
-	ScriptRuns        *bridge.ScriptRunsService
-	runs              *scriptruns.Service
-	sched             *scriptruns.Scheduler
-	runLoader         *scripts.Loader
-	Terminal          *bridge.TerminalService
-	AdeTask           *bridge.AdeTaskService
-	Ops               *bridge.OpsService
-	StudioOps         *bridge.StudioOpsService
-	Lifecycle         *bridge.LifecycleService
-	KeepAwake         *bridge.KeepAwakeService
-	Mobile            *bridge.MobileAccessService
-	Memory            *bridge.MemoryService
-	MemoryImport      *bridge.MemoryImportService
-	MemoryDistill     *bridge.MemoryDistillService
-	WindowsSvc        *bridge.WindowsService
-	ConfigFiles       *bridge.ConfigFilesService
-	StudioConfigFiles *bridge.StudioConfigFilesService
-	PromptsSvc        *bridge.PromptsService
-	ApprovalsSvc      *bridge.ApprovalsService
-	Approvals         *approvals.Queue
-	LlmPromptsSvc     *bridge.LlmPromptsService
-	Update            *bridge.UpdateService
-	CodeWorkspace     *bridge.CodeWorkspaceService
-	OpenedFiles       *openedfiles.Service
-	OpenedFilesSvc    *bridge.OpenedFilesService
-	FileHandlersSvc   *bridge.FileHandlersService
-	AgentNotifySvc    *bridge.AgentNotifyService
-	AgentUsage        *agentusage.Service
-	AgentUsageSvc     *bridge.AgentUsageService
+	GitWindows      *bridge.GitWindows
+	GitSvc          *bridge.GitService
+	GitCredential   *bridge.GitCredentialService
+	GitHost         *bridge.GitHostService
+	HostView        *bridge.HostViewService
+	Capture         *bridge.CaptureService
+	IssueTracker    *bridge.IssueTrackerService
+	Link            *bridge.LinkService
+	Files           *bridge.FilesService
+	Settings        *bridge.SettingsService
+	StudioSettings  *bridge.StudioSettingsService
+	Layout          *bridge.LayoutService
+	Tabs            *bridge.TabsService
+	CustomScripts   *bridge.CustomScriptsService
+	ScriptRuns      *bridge.ScriptRunsService
+	runs            *scriptruns.Service
+	sched           *scriptruns.Scheduler
+	runLoader       *scripts.Loader
+	Terminal        *bridge.TerminalService
+	AdeTask         *bridge.AdeTaskService
+	Ops             *bridge.OpsService
+	StudioOps       *bridge.StudioOpsService
+	Lifecycle       *bridge.LifecycleService
+	KeepAwake       *bridge.KeepAwakeService
+	Mobile          *bridge.MobileAccessService
+	Memory          *bridge.MemoryService
+	MemoryImport    *bridge.MemoryImportService
+	MemoryDistill   *bridge.MemoryDistillService
+	WindowsSvc      *bridge.WindowsService
+	ConfigFiles     *bridge.ConfigFilesService
+	PromptsSvc      *bridge.PromptsService
+	ApprovalsSvc    *bridge.ApprovalsService
+	Approvals       *approvals.Queue
+	LlmPromptsSvc   *bridge.LlmPromptsService
+	Update          *bridge.UpdateService
+	CodeWorkspace   *bridge.CodeWorkspaceService
+	OpenedFiles     *openedfiles.Service
+	OpenedFilesSvc  *bridge.OpenedFilesService
+	FileHandlersSvc *bridge.FileHandlersService
+	AgentNotifySvc  *bridge.AgentNotifyService
+	AgentUsage      *agentusage.Service
+	AgentUsageSvc   *bridge.AgentUsageService
 	// Agents resolves the active agent provider per call.
 	Agents   harness.Selector
 	AgentSvc *bridge.AgentService
@@ -558,7 +557,7 @@ func Build(opts Options) (*Wired, error) {
 	}
 	bridge.KeepAwakeRecompute(w.KeepAwake)
 
-	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"workflows": adeflow.Dir(config.KiraSpaceHome()), "steps": adeflow.StepsDir(config.KiraSpaceHome()), agentctx.Folder: filepath.Join(deps.Home, "agent"), "runs": filepath.Join(deps.Home, "runs"), repocfg.Folder: w.RepoConfig.Dir()})}
+	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"workflows": adeflow.Dir(config.KiraSpaceHome()), "steps": adeflow.StepsDir(config.KiraSpaceHome()), agentctx.Folder: filepath.Join(deps.Home, "agent"), "runs": filepath.Join(deps.Home, "runs"), repocfg.Folder: w.RepoConfig.Dir(), "api": apifiles.Dir(deps.Home), "connections": connfiles.Dir(deps.Home)})}
 
 	// OpenNewWindow is assigned by BindShell once the shell exists.
 	w.WindowsSvc = &bridge.WindowsService{Service: &windowsvc.Service{Windows: deps.Repos.Windows}}
@@ -694,7 +693,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.Collections), application.NewService(w.Variables), application.NewService(w.ApiConfig),
 		application.NewService(w.ConnectionConfig), application.NewService(w.ResponseHistory), application.NewService(w.GrpcHistory),
 		application.NewService(w.DataGrip), application.NewService(w.DbMcp), application.NewService(w.Docker),
-		application.NewService(w.Kubernetes), application.NewService(w.Proof), application.NewService(w.StudioConfigFiles),
+		application.NewService(w.Kubernetes), application.NewService(w.Proof),
 	}
 }
 

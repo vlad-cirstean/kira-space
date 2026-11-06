@@ -2,7 +2,6 @@ package appwire
 
 import (
 	"log/slog"
-	"path/filepath"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentapi"
@@ -20,7 +19,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 	studiomodel "github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	studiorepos "github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
-	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/secrets"
@@ -157,7 +155,6 @@ func (w *Wired) buildStudio(opts Options) error {
 	w.GrpcHistory = &bridge.GrpcHistoryService{Deps: deps}
 	w.DataGrip = &bridge.DataGripService{Deps: deps}
 	w.DbMcp = embedded.dbMcpSvc
-	w.StudioConfigFiles = &bridge.StudioConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"runs": filepath.Join(home, "runs"), "api": apiFiles.Dir(), "connections": connFiles.Dir()})}
 	w.Docker = embedded.dockerSvc
 	w.Kubernetes = embedded.kubeSvc
 	w.ProofStore = proofSvc

@@ -14,6 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 )
 
 const configFilesSecret = "sk-config-files-7c41"
@@ -86,6 +87,16 @@ func TestApiConfigFiles(t *testing.T) {
 	}
 	if _, err := os.Stat(file); err != nil {
 		t.Fatalf("collection file missing: %v", err)
+	}
+	openArgs := configsvc.FileArgs{Folder: "api", File: col.File}
+	if err := app.W.ConfigFiles.Open(openArgs); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.W.ConfigFiles.Reveal(openArgs); err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(app.SpaceHome, "api", col.File); app.FileOpener.OpenedFiles()[0] != want || app.FileOpener.RevealedFiles()[0] != want {
+		t.Fatalf("opened %v, revealed %v, want %s", app.FileOpener.OpenedFiles(), app.FileOpener.RevealedFiles(), want)
 	}
 
 	// 2. An external atomic write (as an editor does) reaches the rows.
