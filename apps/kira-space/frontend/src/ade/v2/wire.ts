@@ -446,7 +446,8 @@ export interface Task {
   workflow: Workflow | null /* the version a started task runs; null until it starts */;
   workflowOutdated: boolean /* the live file differs from `workflow` */;
   est: string /* '' none; extend-only, D16 */;
-  notes: string /* Markdown */;
+  /** Derived, read-only: the task's user notes, newest first, joined by a blank line. */
+  notes: string;
   color: number;
   branchIds: string[];
   runs: Run[];
@@ -473,7 +474,8 @@ export interface Handover {
   toStepName: string;
   body: string;
   source: 'agent' | 'run' | 'user';
-  state: 'draft' | 'handed';
+  /** 'note' = a user note: source 'user', fromStep* the stage it was written in, toStep* empty. */
+  state: 'draft' | 'handed' | 'note';
   finished: boolean;
   dismissed: boolean;
   edited: boolean;
@@ -546,9 +548,13 @@ export interface RemoveArtifactArgs {
 export interface HandoversResult {
   handovers: Handover[];
 }
+export interface AddNoteArgs {
+  taskId: string;
+  body: string;
+}
 export interface UpdateHandoverArgs {
   id: string;
-  /** '' deletes the row. */
+  /** '' deletes the row. A note row may reach 1 MiB, other rows 16 KiB. */
   body: string;
 }
 /** `notes` replaces the stage's draft handover; '' drops it; absent keeps it. */
@@ -877,6 +883,7 @@ export interface CreateTaskArgs {
   title: string;
   jira: Jira | null;
   hostUrl: string;
+  /** The first note; '' adds none. */
   notes: string;
   codeRepoIds: string[];
   workflowId: string;
@@ -964,7 +971,6 @@ export interface TaskPatch {
   clearJira: boolean;
   hostUrl: string | null;
   est: string | null;
-  notes: string | null;
   color: number | null;
   kind: 'task' | 'parked' | null;
   statusId: TaskStatus | null;

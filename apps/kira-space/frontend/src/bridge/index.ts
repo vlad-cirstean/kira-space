@@ -605,6 +605,8 @@ const spaceControl = {
     unwrap(AdeTaskService.StepDone(args)).then((r) => trust<V2.Task>(r)),
   adeTaskHandovers: (args: V2.TaskArgs): Promise<V2.HandoversResult> =>
     unwrap(AdeTaskService.Handovers(args)).then((r) => trust<V2.HandoversResult>(r)),
+  adeTaskAddNote: (args: V2.AddNoteArgs): Promise<V2.Handover> =>
+    unwrap(AdeTaskService.AddNote(args)).then((r) => trust<V2.Handover>(r)),
   adeTaskUpdateHandover: (args: V2.UpdateHandoverArgs): Promise<void> =>
     unwrap(AdeTaskService.UpdateHandover(args)),
   adeTaskDismissHandover: (args: V2.TaskArgs): Promise<void> =>

@@ -59,7 +59,8 @@ test('the notes toolbar toggles expose aria-pressed', async ({ relaunch }) => {
     .locator('[data-testid="ade-card"][data-task-id="T_notif"] [data-testid="ade-card-head"]')
     .click();
   await page.locator(t('ade-panel-tab-details')).click();
-  await page.locator(`${t('ade-details-tab')} .ProseMirror`).click();
+  await page.locator(t('ade-note-add')).click();
+  await page.locator(`${t('ade-note-composer')} .ProseMirror`).click();
   const bold = page.locator(t('ade-notes-toolbar-btn')).first();
   await expect(bold).toHaveAttribute('aria-pressed', 'false');
   await bold.click();

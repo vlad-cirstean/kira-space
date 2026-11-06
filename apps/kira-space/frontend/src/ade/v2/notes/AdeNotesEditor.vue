@@ -11,30 +11,41 @@ import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { isPrimaryModifier } from '@workbench/shortcuts/keys';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { control } from '../../../bridge/control';
+import { parseWithLineBreaks } from './notesDoc';
 import { notesExtensions } from './notesExtensions';
 
-// Notes editor: TipTap + `@tiptap/markdown`. Loads and saves Markdown only; ProseMirror JSON never
-// reaches the wire.
+// Notes editor: TipTap + `@tiptap/markdown`. Takes and emits Markdown only; ProseMirror JSON never
+// reaches the wire. It emits only after a user edit: Markdown parse and serialize normalizes text,
+// so an untouched editor must not report a changed string.
 const props = defineProps<{
-  notes: string;
-  itemId: string;
-  /** Archived task: no toolbar, no edits, no save. */
+  /** No toolbar, no edits. */
   readonly?: boolean;
+  /** Single newlines stay line breaks: agent text is plain text, not Markdown paragraphs. Fixed at mount. */
+  hardBreaks?: boolean;
+  /** Aria label and toolbar caption. */
+  label?: string;
+  placeholder?: string;
+  /** Smaller minimum height, for popovers and dialogs. */
+  compact?: boolean;
+  /** Focus the end of the text when it mounts. */
+  focusOnMount?: boolean;
 }>();
 
-const emit = defineEmits<{ save: [itemId: string, value: string] }>();
+const model = defineModel<string>({ required: true });
+const emit = defineEmits<{ submit: [] }>();
 
-let lastEmitted = props.notes;
-// The item the editor text currently belongs to; lags `props.itemId` until the switch watcher runs.
-let contentItemId = props.itemId;
+const caption = computed(() => props.label ?? t('space.common.notes.label'));
+let lastEmitted = model.value;
+let dirty = false;
 
 function flush(): void {
   const ed = editor.value;
-  if (!ed || props.readonly) return;
+  if (!ed || props.readonly || !dirty) return;
+  dirty = false;
   const md = ed.getMarkdown();
   if (md !== lastEmitted) {
     lastEmitted = md;
-    emit('save', contentItemId, md);
+    model.value = md;
   }
 }
 
@@ -51,12 +62,14 @@ const PROSE = [
 ].join(' ');
 
 const editor = useEditor({
-  content: props.notes,
-  contentType: 'markdown',
-  extensions: notesExtensions(),
+  ...(props.hardBreaks
+    ? { content: parseWithLineBreaks(model.value) }
+    : { content: model.value, contentType: 'markdown' as const }),
+  extensions: notesExtensions({ placeholder: props.placeholder }),
   editable: !props.readonly,
+  autofocus: props.focusOnMount ? 'end' : false,
   editorProps: {
-    attributes: { class: PROSE, 'aria-label': t('space.common.notes.label') },
+    attributes: { class: PROSE, 'aria-label': caption.value },
     handleClick(_view, _pos, event) {
       const target = event.target as HTMLElement | null;
       const link = target?.closest('a');
@@ -67,36 +80,30 @@ const editor = useEditor({
       }
       return false;
     },
+    handleKeyDown(_view, event) {
+      if (props.readonly || event.key !== 'Enter' || !isPrimaryModifier(event)) return false;
+      event.preventDefault();
+      flush();
+      emit('submit');
+      return true;
+    },
   },
   onUpdate: () => {
-    if (!props.readonly) debouncedFlush();
+    if (props.readonly) return;
+    dirty = true;
+    debouncedFlush();
   },
   onBlur: () => flush(),
 });
 
-// Re-set content on an item switch (after flushing the outgoing item's pending edit), or when
-// incoming `notes` differs from the last emit and the editor is unfocused; never mid-edit.
-watch(
-  () => props.itemId,
-  () => {
-    flush();
-    contentItemId = props.itemId;
-    const ed = editor.value;
-    if (!ed) return;
-    lastEmitted = props.notes;
-    ed.commands.setContent(props.notes, { contentType: 'markdown', emitUpdate: false });
-  },
-);
-
-watch(
-  () => props.notes,
-  (next) => {
-    const ed = editor.value;
-    if (!ed || ed.isFocused || next === lastEmitted) return;
-    lastEmitted = next;
-    ed.commands.setContent(next, { contentType: 'markdown', emitUpdate: false });
-  },
-);
+// Outside changes (a prefill that loads late, a saved body) replace the text, never mid-edit.
+watch(model, (next) => {
+  const ed = editor.value;
+  if (!ed || next === lastEmitted || (ed.isFocused && !props.readonly)) return;
+  lastEmitted = next;
+  dirty = false;
+  ed.commands.setContent(next, { contentType: 'markdown', emitUpdate: false });
+});
 
 onBeforeUnmount(() => {
   flush();
@@ -216,7 +223,8 @@ function keepFocus(e: MouseEvent): void {
 
 <template>
   <div
-    class="flex min-h-35 flex-1 flex-col overflow-hidden rounded-kira-sm border border-border bg-bg"
+    class="flex flex-1 flex-col overflow-hidden rounded-kira-sm"
+    :class="readonly ? '' : ['border border-border bg-bg', compact ? 'min-h-24' : 'min-h-35']"
   >
     <div
       v-if="!readonly"
@@ -224,9 +232,7 @@ function keepFocus(e: MouseEvent): void {
       :aria-label="t('space.ade.notes.formatting.aria')"
       class="flex shrink-0 items-center gap-0.5 bg-chrome px-1.5 py-1"
     >
-      <span class="px-1.5 text-kira-sm text-muted-foreground">{{
-        t('space.common.notes.label')
-      }}</span>
+      <span class="px-1.5 text-kira-sm text-muted-foreground">{{ caption }}</span>
       <Button
         v-for="btn in toolbar"
         :key="btn.label"
@@ -267,7 +273,8 @@ function keepFocus(e: MouseEvent): void {
     </div>
     <EditorContent
       :editor="editor"
-      class="min-h-25 flex-1 overflow-auto text-kira-md leading-normal text-fg focus-within:focus-ring"
+      class="flex-1 overflow-auto text-kira-md leading-normal text-fg focus-within:focus-ring"
+      :class="readonly ? '' : compact ? 'min-h-14' : 'min-h-25'"
       data-testid="ade-notes-editor"
     />
   </div>

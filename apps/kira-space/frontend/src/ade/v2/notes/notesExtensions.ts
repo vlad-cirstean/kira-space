@@ -8,7 +8,7 @@ import StarterKit from '@tiptap/starter-kit';
 // Shared by the Notes editor and the headless Markdown round-trip spec, so the two never drift.
 // `underline: false`: Markdown has no underline, so saving would drop it. `link.openOnClick:
 // false`: the editor opens links itself, through the OS.
-export function notesExtensions(): AnyExtension[] {
+export function notesExtensions(opts: { placeholder?: string } = {}): AnyExtension[] {
   return [
     StarterKit.configure({
       underline: false,
@@ -24,7 +24,9 @@ export function notesExtensions(): AnyExtension[] {
             : t('space.ade.notes.taskItemEmpty.aria'),
       },
     }),
-    Placeholder.configure({ placeholder: t('space.ade.notes.placeholder.placeholder') }),
+    Placeholder.configure({
+      placeholder: opts.placeholder ?? t('space.ade.notes.placeholder.placeholder'),
+    }),
     Markdown,
   ];
 }

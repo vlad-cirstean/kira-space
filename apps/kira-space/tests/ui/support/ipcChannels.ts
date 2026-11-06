@@ -261,6 +261,7 @@ export const IPC = {
   adeTaskResumeRun: 'kira:adetask:resumeRun',
   adeTaskStepDone: 'kira:adetask:stepDone',
   adeTaskHandovers: 'kira:adetask:handovers',
+  adeTaskAddNote: 'kira:adetask:addNote',
   adeTaskUpdateHandover: 'kira:adetask:updateHandover',
   adeTaskDismissHandover: 'kira:adetask:dismissHandover',
   adeTaskArtifacts: 'kira:adetask:artifacts',

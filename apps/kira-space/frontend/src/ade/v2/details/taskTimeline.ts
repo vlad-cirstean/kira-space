@@ -66,6 +66,7 @@ export function taskTimeline(
     });
   }
   for (const h of handovers) {
+    if (h.state === 'note') continue; // shown in the notes chain
     const from = stepName(h.fromStepName, h.fromStepId);
     out.push({
       key: `handover:${h.id}`,

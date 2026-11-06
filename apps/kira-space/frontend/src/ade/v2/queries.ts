@@ -10,6 +10,7 @@ import { archivedTaskKey, boardKey, runSandboxKey, sessionsKey } from './readQue
 import type {
   AddExistingBranchArgs,
   AddLinkArgs,
+  AddNoteArgs,
   AddTaskRepoArgs,
   Board,
   BranchArgs,
@@ -187,7 +188,6 @@ function withTaskPatch(board: Board, args: UpdateTaskArgs): Board {
       jira: p.clearJira ? null : (p.jira ?? t.jira),
       hostUrl: p.hostUrl ?? t.hostUrl,
       est: p.est ?? t.est,
-      notes: p.notes ?? t.notes,
       color: p.color ?? t.color,
       kind: p.kind ?? t.kind,
       statusId: p.statusId ?? t.statusId,
@@ -553,9 +553,18 @@ export function useRemoveArtifact() {
   });
 }
 
+/** Appends a user note to the task's chain. */
+export function useAddNote() {
+  return useMutation({
+    mutationFn: (args: AddNoteArgs) => control.adeTaskAddNote(args),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: handoversPrefix }),
+  });
+}
+
 export function useUpdateHandover() {
   return useMutation({
     mutationFn: (args: UpdateHandoverArgs) => control.adeTaskUpdateHandover(args),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: handoversPrefix }),
   });
 }
 
