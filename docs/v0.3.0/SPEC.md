@@ -18,7 +18,7 @@ Twins: every Studio twin in `plans/TWINS.md` is merged by P538, P539, P540 or P5
 | P541 | Mermaid visualiser in the proof tool and proof MCP tool | Done |
 | P542 | Unified notes: user notes and agent handovers in one chain | Done |
 | P543 | Proof as an artifact chain in the task details panel | Done |
-| P544 Part 1 | One database | Pending |
+| P544 Part 1 | One database | Done |
 | P544 Part 2 | Settings and op log twins | Pending |
 | P545 | Timeline becomes a toggle merged into the same list | Pending |
 | P546 | Forward panel edits (diff only) to agents running in the step | Pending |
@@ -183,6 +183,7 @@ Result:
   - `ls apps/kira-space/internal/bridge/studio_{ops,settings,configfiles}.go` all fail.
   - `comm -12 <(ls apps/kira-space/tests/ui) <(ls apps/kira-space/tests/ui/studio)` and the same over `tests/visual` print only `support`.
 - Plan: `plans/P544.md` (`## Part 1`). Part 1 covers TWINS B544-1, B544-2, B544-5, B544-6: `studio.db` folds into `kira.db`, one migration sequence and storage package, `StudioDeps` gone, tabs and windows in one table each, `appmerge` retired into `dbfold`. Acceptance lines for settings and op log twins pass at Part 2.
+- Result: Done. `studio.db` folds into `kira.db`: one migration sequence (`0078_p544_module_tables.sql`, `0079_p544_tabs_connection.sql`; Studio's 0001 to 0066 frozen in `dbfold/legacy`), one `storage` model and repos package (`studiostorage` and `appmerge` deleted). Tabs and windows are one table each; `IsStudioTabKind` routing gone. `appcore.Deps` is the only deps struct; `studio_build.go` and `studio_wire.go` became `dbmodule.go` (`wireAdapters`, `wireEmbedded`, `wireDbServices`). `TaskBoardDeps` carries `Proofs` and `DbMcp`; `SetProofs` and `SetDbMcp` gone. `dbfold.Run` replaces `appmerge`: marker `dbfold.p544`, `VACUUM INTO` backups, legacy lift, `homefold.Runs`, one-transaction import, resumable. `proof_task_links` cascades from `ade_tasks`. `tabs-scope-db` contract folded into `tabs-scope`; its spec is `tests/ui/tabs-scope-db.spec.ts`. `TestDbFold` (interrupt at none, `upgrade`, `import`, `remove`) and `TestDbFoldFresh` pass. Bound services 61, prompts 269. Studio settings and op log twins stay (interim `Db*` repo names, `db_op_log` table) until Part 2.
 
 ### P544 Part 2: settings and op log twins
 
