@@ -515,7 +515,7 @@ func (s *Store) repointHistory(rows []keyPair, reverse bool) error {
 		if reverse {
 			from, to = to, from
 		}
-		for _, table := range []string{"api_response_history", "grpc_call_history"} {
+		for _, table := range []string{"api_response_history", "api_grpc_history"} {
 			if _, err := tx.Exec(`UPDATE `+table+` SET item_id = ? WHERE item_id = ?`, to, from); err != nil {
 				return fmt.Errorf("apifiles: move history of %s: %w", from, err)
 			}

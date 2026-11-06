@@ -476,7 +476,7 @@ var serverStreamFn = grpcclient.ServerStream
 // renderer only learns the outcome by awaiting Call's own promise, so bridge/http.go's own
 // ordering (Record inside the send closure, before the send resolves) is automatically preserved.
 // A *streaming* call's renderer is instead woken by the terminal event finish emits — if that
-// event goes out before the row exists in grpc_call_history, a History pane already open for this
+// event goes out before the row exists in api_grpc_history, a History pane already open for this
 // tab can react to the event, immediately re-list, and be answered before the insert lands: the
 // finished call's own row is then simply missing from the list (and the pane's staleness flag
 // incorrectly cleared) until some unrelated later call, delete or clear happens to trigger another

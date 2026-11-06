@@ -23,7 +23,7 @@ import (
 // masked back to {{name}} form before mapGrpcError ever turns it into ipcerr.Error.Details, a
 // copyable surface. The full persistence-round-trip case (through a real migrated SQLite
 // database, mirroring TestMaskSecrets_RedirectURLsFinalURLAndTimelineHopsBeforePersisting) is
-// grpc_history_test.go, once grpc_call_history exists to persist into.
+// grpc_history_test.go, once api_grpc_history exists to persist into.
 func TestMaskGrpcError_MasksMessageAndPartial(t *testing.T) {
 	const secret = "sk_live_super_secret_token"
 	const masked = "{{apiToken}}"
@@ -70,7 +70,7 @@ func TestMaskGrpcError_NoOpWithNothingUsed(t *testing.T) {
 // fails against the pre-fix code, which called no masker at all on the success path, so a
 // substituted secret echoed back by the server (a gateway reflecting a header, a status message
 // quoting the credential it rejected on an otherwise-OK transport) reached both the renderer and
-// grpc_call_history.snapshot_json unmasked.
+// api_grpc_history.snapshot_json unmasked.
 func TestMaskGrpcResult_MasksStatusMessageAndMetadata(t *testing.T) {
 	const secret = "sk_live_super_secret_token"
 	const masked = "{{apiToken}}"
@@ -183,7 +183,7 @@ func newGrpcServiceForTest(t *testing.T) (svc *GrpcService, db *storage.DB, seed
 // use them (the "the reflection call... and the descriptor cache key" checklist rows apply the
 // identical discipline one call earlier, in-memory only, with nothing to persist to round-trip
 // in the first place) — but recordGrpcHistory is handed the UNRESOLVED args, so what reaches
-// grpc_call_history, read back as a raw column straight out of a real migrated SQLite database,
+// api_grpc_history, read back as a raw column straight out of a real migrated SQLite database,
 // must still be spelled {{name}}, never the live value.
 func TestRecordGrpcHistory_NeverPersistsResolvedSecrets(t *testing.T) {
 	svc, db, seedProbes := newGrpcServiceForTest(t)
@@ -217,7 +217,7 @@ func TestRecordGrpcHistory_NeverPersistsResolvedSecrets(t *testing.T) {
 
 	var rawSnapshot string
 	if err := db.DB.QueryRow(
-		`SELECT snapshot_json FROM grpc_call_history WHERE id = ?`, entries[0].ID,
+		`SELECT snapshot_json FROM api_grpc_history WHERE id = ?`, entries[0].ID,
 	).Scan(&rawSnapshot); err != nil {
 		t.Fatalf("query snapshot_json: %v", err)
 	}
@@ -461,7 +461,7 @@ func TestRunServerStream_RecordsHistoryBeforeEmittingTerminalEvent(t *testing.T)
 		t.Fatal("no terminal (done) event was emitted")
 	}
 	if !emitter.sawRecordedAtDone {
-		t.Fatal("the terminal event fired before grpc_call_history had a row for this call — a History pane woken by this event can be answered before the insert lands")
+		t.Fatal("the terminal event fired before api_grpc_history had a row for this call — a History pane woken by this event can be answered before the insert lands")
 	}
 
 	entries, err := svc.Deps.Repos.GrpcHistory.List("tab:tab1")

@@ -9,7 +9,7 @@ import (
 )
 
 // Four caps, because a streamed call can grow in a way an HTTP response body cannot —
-// the first three are the three (grpc_call_history is a fourth application of the same
+// the first three are the three (api_grpc_history is a fourth application of the same
 // insert-then-trim/global-sweep pattern, following a precedent rather than duplicating an
 // abstraction that exists), the fourth (maxGrpcStoredMessages) is genuinely new.
 const (
@@ -127,9 +127,9 @@ func (r *GrpcHistoryRepo) Record(rec model.GrpcCallHistoryRecord) error {
 			snap.MetadataElided = true
 			return json.Marshal(snap)
 		},
-		func(tx *sql.Tx, id string, itemID *string, calledAt, environment string, storedBytes int, snapshotJSON []byte) error {
+		func(tx *sql.Tx, id string, itemID *string, calledAt int64, environment string, storedBytes int, snapshotJSON []byte) error {
 			_, err := tx.Exec(
-				`INSERT INTO grpc_call_history
+				`INSERT INTO api_grpc_history
 				   (id, item_id, tab_id, called_at, target, method, streaming, environment,
 				    code, code_name, status_message, elapsed_ms, message_count, message_bytes, stored_bytes, snapshot_json)
 				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -152,7 +152,7 @@ func scanGrpcHistoryEntry(row rowScanner) (model.GrpcCallHistoryEntry, error) {
 		itemID sql.NullString
 	)
 	if err := row.Scan(
-		&e.ID, &itemID, &e.TabID, &e.CalledAt, &e.Target, &e.Method, &e.Streaming, &e.Environment,
+		&e.ID, &itemID, &e.TabID, msISO(&e.CalledAt), &e.Target, &e.Method, &e.Streaming, &e.Environment,
 		&e.Code, &e.CodeName, &e.StatusMessage, &e.ElapsedMs, &e.MessageCount, &e.MessageBytes, &e.StoredBytes,
 	); err != nil {
 		return model.GrpcCallHistoryEntry{}, err
@@ -164,9 +164,9 @@ func scanGrpcHistoryEntry(row rowScanner) (model.GrpcCallHistoryEntry, error) {
 }
 
 // grpcHistoryTable is the historyTable[T] instance List/Delete/Adopt/SweepOrphans below delegate
-// to (T2-14) — grpc_call_history's own table name/scope/order column/summary columns/scan func.
+// to (T2-14) — api_grpc_history's own table name/scope/order column/summary columns/scan func.
 var grpcHistoryTable = historyTable[model.GrpcCallHistoryEntry]{
-	table: "grpc_call_history", scope: "grpc_history", timeColumn: "called_at",
+	table: "api_grpc_history", scope: "grpc_history", timeColumn: "called_at",
 	columns: grpcHistoryEntryColumns, scan: scanGrpcHistoryEntry,
 }
 
@@ -179,14 +179,14 @@ func (r *GrpcHistoryRepo) List(scopeKey string) ([]model.GrpcCallHistoryEntry, e
 // Get decodes one row's snapshot_json and rebuilds Entry from the row's own summary columns —
 // GetHistory (P107 I2-8) runs the shared query, this closure does the rest.
 func (r *GrpcHistoryRepo) Get(id string) (model.GrpcCallSnapshot, error) {
-	return GetHistory(r.DB, "grpc_call_history", grpcHistoryEntryColumns, id, func(row rowScanner) (model.GrpcCallSnapshot, error) {
+	return GetHistory(r.DB, "api_grpc_history", grpcHistoryEntryColumns, id, func(row rowScanner) (model.GrpcCallSnapshot, error) {
 		var (
 			e            model.GrpcCallHistoryEntry
 			itemID       sql.NullString
 			snapshotJSON string
 		)
 		if err := row.Scan(
-			&e.ID, &itemID, &e.TabID, &e.CalledAt, &e.Target, &e.Method, &e.Streaming, &e.Environment,
+			&e.ID, &itemID, &e.TabID, msISO(&e.CalledAt), &e.Target, &e.Method, &e.Streaming, &e.Environment,
 			&e.Code, &e.CodeName, &e.StatusMessage, &e.ElapsedMs, &e.MessageCount, &e.MessageBytes, &e.StoredBytes,
 			&snapshotJSON,
 		); err != nil {
@@ -219,7 +219,7 @@ func (r *GrpcHistoryRepo) Delete(id string) error {
 
 // Clear removes every entry in one scope.
 func (r *GrpcHistoryRepo) Clear(scopeKey string) error {
-	if _, err := r.DB.Exec(`DELETE FROM grpc_call_history WHERE scope_key = ?`, scopeKey); err != nil {
+	if _, err := r.DB.Exec(`DELETE FROM api_grpc_history WHERE scope_key = ?`, scopeKey); err != nil {
 		return fmt.Errorf("repos/grpc_history: clear: %w", err)
 	}
 	return nil

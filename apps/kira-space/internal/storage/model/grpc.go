@@ -50,14 +50,14 @@ func (r SavedGrpcRequest) Validate() error {
 	return nil
 }
 
-// The two streaming-kind values grpc_call_history.streaming holds (D11) — mirrors
+// The two streaming-kind values api_grpc_history.streaming holds (D11) — mirrors
 // domain/grpc.ts's GRPC_STREAMING_KINDS.
 const (
 	GrpcStreamingUnary  = "unary"
 	GrpcStreamingServer = "server"
 )
 
-// GrpcCallHistoryEntry is one grpc_call_history row's list projection — no snapshot, ever (D11's
+// GrpcCallHistoryEntry is one api_grpc_history row's list projection — no snapshot, ever (D11's
 // List never selects snapshot_json, mirroring ResponseHistoryEntry's own D4).
 type GrpcCallHistoryEntry struct {
 	ID            string  `json:"id"`

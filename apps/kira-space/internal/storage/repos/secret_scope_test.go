@@ -18,7 +18,7 @@ func TestAHistorySecretOpensOnlyUnderItsOwnScope(t *testing.T) {
 	cipher := secrets.New()
 	r := repos.NewVariables(db, cipher)
 
-	const now = "2026-01-01T00:00:00Z"
+	const now = int64(1767225600000)
 	collID, varID := uuid.NewString(), uuid.NewString()
 	if _, err := db.Exec(`INSERT INTO api_collections (id, name, sort_order, created_at, updated_at) VALUES (?, 'Orders', 0, ?, ?)`, collID, now, now); err != nil {
 		t.Fatalf("seed collection: %v", err)
@@ -35,7 +35,7 @@ func TestAHistorySecretOpensOnlyUnderItsOwnScope(t *testing.T) {
 		id := uuid.NewString()
 		if _, err := db.Exec(
 			`INSERT INTO api_variable_history (id, variable_id, value, is_secret, secret_value, recorded_at) VALUES (?, ?, '', 1, ?, ?)`,
-			id, varID, sealed, kiratime.NowISO(),
+			id, varID, sealed, kiratime.NowMs(),
 		); err != nil {
 			t.Fatalf("seed history row: %v", err)
 		}

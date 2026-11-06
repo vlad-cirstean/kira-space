@@ -125,7 +125,7 @@ func (r *ResponseHistoryRepo) Record(rec model.ResponseHistoryRecord) error {
 			snap.Response.Timeline.Hops = hops
 			return json.Marshal(snap)
 		},
-		func(tx *sql.Tx, id string, itemID *string, sentAt, environment string, storedBytes int, snapshotJSON []byte) error {
+		func(tx *sql.Tx, id string, itemID *string, sentAt int64, environment string, storedBytes int, snapshotJSON []byte) error {
 			_, err := tx.Exec(
 				`INSERT INTO api_response_history
 				   (id, item_id, tab_id, sent_at, method, url, environment, status, status_text,
@@ -170,7 +170,7 @@ func scanResponseHistoryEntry(row rowScanner) (model.ResponseHistoryEntry, error
 		itemID sql.NullString
 	)
 	if err := row.Scan(
-		&e.ID, &itemID, &e.TabID, &e.SentAt, &e.Method, &e.URL, &e.Environment,
+		&e.ID, &itemID, &e.TabID, msISO(&e.SentAt), &e.Method, &e.URL, &e.Environment,
 		&e.Status, &e.StatusText, &e.ElapsedMs, &e.BodyBytes, &e.StoredBytes,
 	); err != nil {
 		return model.ResponseHistoryEntry{}, err
@@ -207,7 +207,7 @@ func (r *ResponseHistoryRepo) Get(id string) (model.ResponseHistorySnapshot, err
 			snapshotJSON string
 		)
 		if err := row.Scan(
-			&e.ID, &itemID, &e.TabID, &e.SentAt, &e.Method, &e.URL, &e.Environment,
+			&e.ID, &itemID, &e.TabID, msISO(&e.SentAt), &e.Method, &e.URL, &e.Environment,
 			&e.Status, &e.StatusText, &e.ElapsedMs, &e.BodyBytes, &e.StoredBytes, &snapshotJSON,
 		); err != nil {
 			return model.ResponseHistorySnapshot{}, fmt.Errorf("repos/response_history: get: %w", err)

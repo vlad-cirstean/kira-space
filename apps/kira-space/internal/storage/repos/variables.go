@@ -74,7 +74,7 @@ func (r *VariablesRepo) SetActiveEnvironment(id string) error {
 		return fmt.Errorf("repos/variables: clear active environment: %w", err)
 	}
 	if id != "" {
-		res, err := tx.Exec(`UPDATE api_environments SET is_active = 1, updated_at = ? WHERE id = ?`, kiratime.NowISO(), id)
+		res, err := tx.Exec(`UPDATE api_environments SET is_active = 1, updated_at = ? WHERE id = ?`, kiratime.NowMs(), id)
 		if err != nil {
 			return fmt.Errorf("repos/variables: set active environment %s: %w", id, err)
 		}
@@ -169,7 +169,7 @@ func (r *VariablesRepo) History(variableID string) ([]model.VariableHistoryEntry
 			e        model.VariableHistoryEntry
 			isSecret int
 		)
-		if err := rows.Scan(&e.ID, &e.VariableID, &e.Value, &isSecret, &e.RecordedAt); err != nil {
+		if err := rows.Scan(&e.ID, &e.VariableID, &e.Value, &isSecret, msISO(&e.RecordedAt)); err != nil {
 			return nil, fmt.Errorf("repos/variables: scan history entry: %w", err)
 		}
 		e.IsSecret = isSecret != 0

@@ -45,7 +45,7 @@ func (r *CollectionsRepo) listCollections() ([]model.Collection, error) {
 	rows, err := r.DB.Query(`SELECT ` + collectionSelectColumns + ` FROM api_collections ORDER BY sort_order, name`)
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.Collection, bool, error) {
 		var c model.Collection
-		err := rows.Scan(&c.ID, &c.Name, &c.SortOrder, &c.CreatedAt, &c.UpdatedAt, &c.File)
+		err := rows.Scan(&c.ID, &c.Name, &c.SortOrder, msISO(&c.CreatedAt), msISO(&c.UpdatedAt), &c.File)
 		return c, true, err
 	})
 }
@@ -65,7 +65,7 @@ func scanItem(row rowScanner) (model.CollectionItem, error) {
 	)
 	if err := row.Scan(
 		&item.ID, &item.CollectionID, &parent, &item.Kind, &item.Name,
-		&item.SortOrder, &item.Method, &item.URL, &item.Protocol, &item.CreatedAt, &item.UpdatedAt,
+		&item.SortOrder, &item.Method, &item.URL, &item.Protocol, msISO(&item.CreatedAt), msISO(&item.UpdatedAt),
 	); err != nil {
 		return model.CollectionItem{}, fmt.Errorf("repos/collections: scan item: %w", err)
 	}
@@ -171,7 +171,7 @@ func (r *CollectionsRepo) GetItem(itemID string) (model.CollectionItem, error) {
 func (r *CollectionsRepo) GetCollection(id string) (model.Collection, error) {
 	row := r.DB.QueryRow(`SELECT `+collectionSelectColumns+` FROM api_collections WHERE id = ?`, id)
 	var c model.Collection
-	if err := row.Scan(&c.ID, &c.Name, &c.SortOrder, &c.CreatedAt, &c.UpdatedAt, &c.File); err != nil {
+	if err := row.Scan(&c.ID, &c.Name, &c.SortOrder, msISO(&c.CreatedAt), msISO(&c.UpdatedAt), &c.File); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.Collection{}, fmt.Errorf("repos/collections: no collection %s", id)
 		}

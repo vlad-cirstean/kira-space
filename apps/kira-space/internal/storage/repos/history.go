@@ -121,7 +121,7 @@ func (h historyTable[T]) Record(
 	db *sql.DB, in historyRecordInput, perScopeCap, byteBudget int,
 	build func() ([]byte, error),
 	elide func() ([]byte, error),
-	insert func(tx *sql.Tx, id string, itemID *string, timestamp, environment string, storedBytes int, snapshotJSON []byte) error,
+	insert func(tx *sql.Tx, id string, itemID *string, timestamp int64, environment string, storedBytes int, snapshotJSON []byte) error,
 ) (string, error) {
 	tx, err := db.Begin()
 	if err != nil {
@@ -154,7 +154,7 @@ func (h historyTable[T]) Record(
 	if in.ItemID != "" {
 		itemID = &in.ItemID
 	}
-	timestamp := kiratime.NowISO()
+	timestamp := kiratime.NowMs()
 	storedBytes := len(snapshotJSON)
 
 	if err := insert(tx, id, itemID, timestamp, environment, storedBytes, snapshotJSON); err != nil {

@@ -99,7 +99,7 @@ func (s *Store) recordCollection(tx *sql.Tx, stem, valueJSON string, ch *Changes
 	if err := json.Unmarshal([]byte(valueJSON), &f); err != nil {
 		return fmt.Errorf("apifiles: decode %s: %w", stem, err)
 	}
-	now := kiratime.NowISO()
+	now := kiratime.NowMs()
 	var id, name string
 	err := tx.QueryRow(`SELECT id, name FROM api_collections WHERE stem = ?`, stem).Scan(&id, &name)
 	switch {
@@ -207,7 +207,7 @@ func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, c
 	}
 	kept := map[string]bool{}
 	ids := map[string]string{}
-	now := kiratime.NowISO()
+	now := kiratime.NowMs()
 	for _, f := range flat {
 		parent := ids[f.parentKey]
 		old, found := existing[f.key]
@@ -285,7 +285,7 @@ func nullable(s string) any {
 	return s
 }
 
-func (s *Store) insertItem(tx *sql.Tx, collectionID, stem, parent string, f flatItem, now string, ch *Changes) (string, error) {
+func (s *Store) insertItem(tx *sql.Tx, collectionID, stem, parent string, f flatItem, now int64, ch *Changes) (string, error) {
 	id := ids.NewID()
 	kind := itemKind(f)
 	if _, err := tx.Exec(`INSERT INTO api_items (id, collection_id, parent_id, kind, name, sort_order, method, url, protocol, request_json, origin_json, created_at, updated_at, item_key)
@@ -300,7 +300,7 @@ func (s *Store) insertItem(tx *sql.Tx, collectionID, stem, parent string, f flat
 	return id, nil
 }
 
-func updateItem(tx *sql.Tx, old itemRow, parent string, f flatItem, now string, ch *Changes) error {
+func updateItem(tx *sql.Tx, old itemRow, parent string, f flatItem, now int64, ch *Changes) error {
 	kind := itemKind(f)
 	structural := old.parent != parent || old.kind != kind || old.name != f.name || old.order != f.order ||
 		old.method != f.method || old.url != f.url || old.protocol != f.protocol
@@ -352,7 +352,7 @@ func (s *Store) recordEnvironment(tx *sql.Tx, stem, valueJSON string, ch *Change
 		return fmt.Errorf("apifiles: decode %s: %w", stem, err)
 	}
 	color := orDefault(f.Color, "none")
-	now := kiratime.NowISO()
+	now := kiratime.NowMs()
 	var id, name, description, oldColor string
 	err := tx.QueryRow(`SELECT id, name, description, color FROM api_environments WHERE stem = ?`, stem).Scan(&id, &name, &description, &oldColor)
 	switch {
@@ -431,7 +431,7 @@ func syncVariables(tx *sql.Tx, scope, ownerID string, vars []Variable, ch *Chang
 		return err
 	}
 	kept := map[string]bool{}
-	now := kiratime.NowISO()
+	now := kiratime.NowMs()
 	changed := false
 	for i, v := range vars {
 		secret := v.Secret != ""
@@ -507,7 +507,7 @@ func loadVariableRows(tx *sql.Tx, column, ownerID string) (map[string]varRow, []
 	return existing, all, nil
 }
 
-func updateVariable(tx *sql.Tx, old varRow, v Variable, value string, secret bool, refArg any, order int, now string) error {
+func updateVariable(tx *sql.Tx, old varRow, v Variable, value string, secret bool, refArg any, order int, now int64) error {
 	if !old.secret && !secret && old.value != value {
 		if err := recordHistory(tx, old.id, old.value, now); err != nil {
 			return err
@@ -533,7 +533,7 @@ func boolInt(b bool) int {
 }
 
 // recordHistory keeps the value a plain variable had before an edit, then trims to the limit.
-func recordHistory(tx *sql.Tx, variableID, old, now string) error {
+func recordHistory(tx *sql.Tx, variableID, old string, now int64) error {
 	if _, err := tx.Exec(`INSERT INTO api_variable_history (id, variable_id, value, is_secret, secret_value, recorded_at) VALUES (?, ?, ?, 0, NULL, ?)`,
 		ids.NewID(), variableID, old, now); err != nil {
 		return fmt.Errorf("apifiles: insert history: %w", err)
