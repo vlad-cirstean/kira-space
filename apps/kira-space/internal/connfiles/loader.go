@@ -14,7 +14,9 @@ import (
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/ids"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/secrets"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // Header is the comment that opens a file Kira writes.
@@ -32,7 +34,8 @@ func (c Changes) Empty() bool { return len(c.Items) == 0 && !c.Config }
 
 // Options builds a Loader.
 type Options struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 	// Dir is the connections folder, <home>/config/connections.
 	Dir     string
 	Secrets *Secrets
@@ -189,7 +192,10 @@ type Record struct {
 func (l *Loader) RecordOf(id string) (Record, bool) {
 	var stem sql.NullString
 	var js string
-	err := l.o.DB.QueryRow(`SELECT stem, config_json FROM connections WHERE id = ?`, id).Scan(&stem, &js)
+	c := kiraschema.Connections
+	sb := l.o.Dialect.Select(c.Stem, c.ConfigJSON).From(c.Table)
+	sb.Where(sb.Equal(c.ID, id))
+	err := sqlb.QueryRow(l.o.DB, sb).Scan(&stem, &js)
 	if err != nil || !stem.Valid || js == "" {
 		return Record{}, false
 	}
@@ -239,7 +245,10 @@ type View struct {
 }
 
 func (l *Loader) idsByStem() (map[string]string, error) {
-	rows, err := l.o.DB.Query(`SELECT stem, id FROM connections WHERE stem IS NOT NULL`)
+	c := kiraschema.Connections
+	sb := l.o.Dialect.Select(c.Stem, c.ID).From(c.Table)
+	sb.Where(sb.IsNotNull(c.Stem))
+	rows, err := sqlb.Query(l.o.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("connfiles: list ids: %w", err)
 	}
@@ -322,7 +331,10 @@ func (l *Loader) secretViews(only map[[2]string]bool) ([]SecretView, error) {
 
 // referenced collects the secret names every projected file names, per kind.
 func (l *Loader) referenced() (map[string]map[string]bool, error) {
-	rows, err := l.o.DB.Query(`SELECT config_json FROM connections WHERE config_json <> ''`)
+	c := kiraschema.Connections
+	sb := l.o.Dialect.Select(c.ConfigJSON).From(c.Table)
+	sb.Where(sb.NotEqual(c.ConfigJSON, ""))
+	rows, err := sqlb.Query(l.o.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("connfiles: list referenced secrets: %w", err)
 	}
@@ -504,7 +516,10 @@ func (l *Loader) stemTaken(stem string) bool {
 		return true
 	}
 	var one int
-	return l.o.DB.QueryRow(`SELECT 1 FROM connections WHERE stem = ?`, stem).Scan(&one) == nil
+	c := kiraschema.Connections
+	sb := l.o.Dialect.Select("1").From(c.Table)
+	sb.Where(sb.Equal(c.Stem, stem))
+	return sqlb.QueryRow(l.o.DB, sb).Scan(&one) == nil
 }
 
 // stemClaimed adds the stem-named secrets to stemTaken: a secret name outlives a file rename, so a free

@@ -10,8 +10,9 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ids"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
-	"github.com/kirathecat/kira-studio/internal/sqlitex"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // Change is one connection a load or a write made stale. Old is nil for a new connection and New is
@@ -71,7 +72,10 @@ func sameJSON(a, b any) bool {
 type projection struct{ l *Loader }
 
 func (p *projection) Snapshot() (map[string]string, error) {
-	rows, err := p.l.o.DB.Query(`SELECT stem, config_json FROM connections WHERE stem IS NOT NULL AND config_json <> ''`)
+	c := kiraschema.Connections
+	sb := p.l.o.Dialect.Select(c.Stem, c.ConfigJSON).From(c.Table)
+	sb.Where(sb.IsNotNull(c.Stem), sb.NotEqual(c.ConfigJSON, ""))
+	rows, err := sqlb.Query(p.l.o.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("connfiles: query last valid: %w", err)
 	}
@@ -118,7 +122,10 @@ func (p *projection) Forget(file string) error {
 		return nil
 	}
 	var id, js string
-	err := p.l.o.DB.QueryRow(`SELECT id, config_json FROM connections WHERE stem = ?`, stem).Scan(&id, &js)
+	c := kiraschema.Connections
+	sb := p.l.o.Dialect.Select(c.ID, c.ConfigJSON).From(c.Table)
+	sb.Where(sb.Equal(c.Stem, stem))
+	err := sqlb.QueryRow(p.l.o.DB, sb).Scan(&id, &js)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
@@ -128,7 +135,9 @@ func (p *projection) Forget(file string) error {
 	if p.l.o.OnForget != nil {
 		p.l.o.OnForget(id)
 	}
-	if _, err := p.l.o.DB.Exec(`DELETE FROM connections WHERE id = ?`, id); err != nil {
+	del := p.l.o.Dialect.DeleteFrom(c.Table)
+	del.Where(del.Equal(c.ID, id))
+	if _, err := sqlb.Exec(p.l.o.DB, del); err != nil {
 		return fmt.Errorf("connfiles: delete %s: %w", stem, err)
 	}
 	var old File
@@ -140,11 +149,17 @@ func (p *projection) Forget(file string) error {
 	return nil
 }
 
-const configColumns = `name = ?, kind = ?, color = ?, mode = ?, read_only = ?, host = ?, port = ?,
-	database = ?, username = ?, options_json = ?, preconnect = ?,
-	preconnect_sidecar = ?, preconnect_delay_sec = ?, auto_explain = ?, throttle_per_sec = ?,
-	mcp_enabled = ?, mcp_description = ?, mcp_read_mode = ?, mcp_write_mode = ?, mcp_ddl_mode = ?, mcp_masked_mode = ?,
-	mcp_auto_explain = ?, mcp_review_read = ?, mcp_review_write = ?, mcp_review_ddl = ?, mcp_review_masked = ?, mcp_statement_timeout_sec = ?, mcp_tables_json = ?, mask_review_on = ?`
+// configColumns lists the columns configArgs fills, in the same order.
+var configColumns = func() []string {
+	c := kiraschema.Connections
+	return []string{
+		c.Name, c.Kind, c.Color, c.Mode, c.ReadOnly, c.Host, c.Port, c.Database, c.Username, c.OptionsJSON,
+		c.Preconnect, c.PreconnectSidecar, c.PreconnectDelaySec, c.AutoExplain, c.ThrottlePerSec,
+		c.MCPEnabled, c.MCPDescription, c.MCPReadMode, c.MCPWriteMode, c.MCPDdlMode, c.MCPMaskedMode,
+		c.MCPAutoExplain, c.MCPReviewRead, c.MCPReviewWrite, c.MCPReviewDdl, c.MCPReviewMasked,
+		c.MCPStatementTimeoutSec, c.MCPTablesJSON, c.MaskReviewOn,
+	}
+}()
 
 func b2i(b bool) int {
 	if b {
@@ -184,22 +199,23 @@ func (l *Loader) upsert(tx *sql.Tx, stem string, f File, valueJSON string) (stri
 		return "", nil, err
 	}
 	now := kiratime.NowMs()
+	c := kiraschema.Connections
+	d := l.o.Dialect
 	var id, prev string
-	err = tx.QueryRow(`SELECT id, config_json FROM connections WHERE stem = ?`, stem).Scan(&id, &prev)
+	sel := d.Select(c.ID, c.ConfigJSON).From(c.Table)
+	sel.Where(sel.Equal(c.Stem, stem))
+	err = sqlb.QueryRow(tx, sel).Scan(&id, &prev)
 	var old *File
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		id = l.o.newID()
-		order, err := sqlitex.NextSortOrder(tx, "connections", "")
+		order, err := sqlb.NextSortOrder(tx, d, c.Table, c.SortOrder, nil)
 		if err != nil {
 			return "", nil, err
 		}
-		if _, err := tx.Exec(`INSERT INTO connections (id, name, kind, color, mode, read_only, host, port, database, username,
-			options_json, preconnect, preconnect_sidecar, preconnect_delay_sec, auto_explain, throttle_per_sec, mcp_enabled,
-			mcp_description, mcp_read_mode, mcp_write_mode, mcp_ddl_mode, mcp_masked_mode, mcp_auto_explain, mcp_review_read, mcp_review_write, mcp_review_ddl, mcp_review_masked, mcp_statement_timeout_sec, mcp_tables_json, mask_review_on,
-			created_at, updated_at, sort_order, stem, config_json)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			append(append([]any{id}, args...), now, now, order, stem, valueJSON)...); err != nil {
+		cols := append(append([]string{c.ID}, configColumns...), c.CreatedAt, c.UpdatedAt, c.SortOrder, c.Stem, c.ConfigJSON)
+		ib := d.InsertInto(c.Table).Cols(cols...).Values(append(append([]any{id}, args...), now, now, order, stem, valueJSON)...)
+		if _, err := sqlb.Exec(tx, ib); err != nil {
 			return "", nil, fmt.Errorf("connfiles: insert %s: %w", stem, err)
 		}
 	case err != nil:
@@ -209,23 +225,30 @@ func (l *Loader) upsert(tx *sql.Tx, stem string, f File, valueJSON string) (stri
 		if prev != "" && json.Unmarshal([]byte(prev), &o) == nil {
 			old = &o
 		}
-		if _, err := tx.Exec(`UPDATE connections SET `+configColumns+`, config_json = ?, updated_at = ? WHERE id = ?`,
-			append(args, valueJSON, now, id)...); err != nil {
+		ub := d.Update(c.Table)
+		for i, col := range configColumns {
+			ub.SetMore(ub.Assign(col, args[i]))
+		}
+		ub.SetMore(ub.Assign(c.ConfigJSON, valueJSON), ub.Assign(c.UpdatedAt, now)).Where(ub.Equal(c.ID, id))
+		if _, err := sqlb.Exec(tx, ub); err != nil {
 			return "", nil, fmt.Errorf("connfiles: update %s: %w", stem, err)
 		}
 	}
-	if err := syncMasks(tx, id, f.Masks, now); err != nil {
+	if err := syncMasks(tx, d, id, f.Masks, now); err != nil {
 		return "", nil, err
 	}
-	if err := syncReviewed(tx, id, f.ReviewedColumns()); err != nil {
+	if err := syncReviewed(tx, d, id, f.ReviewedColumns()); err != nil {
 		return "", nil, err
 	}
 	return id, old, nil
 }
 
 // syncReviewed makes the reviewed column rows of connection id equal want, touching only the difference.
-func syncReviewed(tx *sql.Tx, id string, want []string) error {
-	rows, err := tx.Query(`SELECT column_ref FROM connection_mask_reviewed WHERE connection_id = ?`, id)
+func syncReviewed(tx *sql.Tx, d sqlb.Dialect, id string, want []string) error {
+	c := kiraschema.ConnectionMaskReviewed
+	sel := d.Select(c.ColumnRef).From(c.Table)
+	sel.Where(sel.Equal(c.ConnectionID, id))
+	rows, err := sqlb.Query(tx, sel)
 	if err != nil {
 		return fmt.Errorf("connfiles: read reviewed columns: %w", err)
 	}
@@ -249,13 +272,16 @@ func syncReviewed(tx *sql.Tx, id string, want []string) error {
 		if have[ref] {
 			continue
 		}
-		if _, err := tx.Exec(`INSERT INTO connection_mask_reviewed (connection_id, column_ref) VALUES (?, ?)`, id, ref); err != nil {
+		ib := d.InsertInto(c.Table).Cols(c.ConnectionID, c.ColumnRef).Values(id, ref)
+		if _, err := sqlb.Exec(tx, ib); err != nil {
 			return fmt.Errorf("connfiles: insert reviewed column: %w", err)
 		}
 	}
 	for ref := range have {
 		if !keep[ref] {
-			if _, err := tx.Exec(`DELETE FROM connection_mask_reviewed WHERE connection_id = ? AND column_ref = ?`, id, ref); err != nil {
+			del := d.DeleteFrom(c.Table)
+			del.Where(del.Equal(c.ConnectionID, id), del.Equal(c.ColumnRef, ref))
+			if _, err := sqlb.Exec(tx, del); err != nil {
 				return fmt.Errorf("connfiles: delete reviewed column: %w", err)
 			}
 		}
@@ -270,20 +296,23 @@ type maskRow struct {
 
 // syncMasks makes the rule rows of connection id equal the file's masks, keeping the id and creation
 // time of a rule that stays.
-func syncMasks(tx *sql.Tx, id string, masks []Mask, now int64) error {
-	rows, err := tx.Query(`SELECT id, lower(table_name), lower(column_name), created_at FROM connection_mask_rules WHERE connection_id = ?`, id)
+func syncMasks(tx *sql.Tx, d sqlb.Dialect, id string, masks []Mask, now int64) error {
+	c := kiraschema.ConnectionMaskRules
+	sel := d.Select(c.ID, "lower("+c.TableName+")", "lower("+c.ColumnName+")", c.CreatedAt).From(c.Table)
+	sel.Where(sel.Equal(c.ConnectionID, id))
+	rows, err := sqlb.Query(tx, sel)
 	if err != nil {
 		return fmt.Errorf("connfiles: read masks: %w", err)
 	}
 	have := map[string]maskRow{}
 	for rows.Next() {
 		var r maskRow
-		var t, c string
-		if err := rows.Scan(&r.id, &t, &c, &r.createdAt); err != nil {
+		var t, col string
+		if err := rows.Scan(&r.id, &t, &col, &r.createdAt); err != nil {
 			rows.Close()
 			return fmt.Errorf("connfiles: scan masks: %w", err)
 		}
-		have[t+"\x00"+c] = r
+		have[t+"\x00"+col] = r
 	}
 	if err := rows.Err(); err != nil {
 		rows.Close()
@@ -296,21 +325,26 @@ func syncMasks(tx *sql.Tx, id string, masks []Mask, now int64) error {
 		key := strings.ToLower(mf.TableName) + "\x00" + strings.ToLower(mf.ColumnName)
 		keep[key] = true
 		if r, ok := have[key]; ok {
-			if _, err := tx.Exec(`UPDATE connection_mask_rules SET table_name = ?, column_name = ?, mask_kind = ?, keep_hint = ?, correlate = ?, updated_at = ? WHERE id = ?`,
-				mf.TableName, mf.ColumnName, string(mf.Kind), b2i(mf.KeepHint), b2i(mf.Correlate), now, r.id); err != nil {
+			ub := d.Update(c.Table)
+			ub.Set(ub.Assign(c.TableName, mf.TableName), ub.Assign(c.ColumnName, mf.ColumnName), ub.Assign(c.MaskKind, string(mf.Kind)),
+				ub.Assign(c.KeepHint, b2i(mf.KeepHint)), ub.Assign(c.Correlate, b2i(mf.Correlate)), ub.Assign(c.UpdatedAt, now)).
+				Where(ub.Equal(c.ID, r.id))
+			if _, err := sqlb.Exec(tx, ub); err != nil {
 				return fmt.Errorf("connfiles: update mask: %w", err)
 			}
 			continue
 		}
-		if _, err := tx.Exec(`INSERT INTO connection_mask_rules (id, connection_id, table_name, column_name, mask_kind, keep_hint, correlate, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			ids.NewID(), id, mf.TableName, mf.ColumnName, string(mf.Kind), b2i(mf.KeepHint), b2i(mf.Correlate), now, now); err != nil {
+		ib := d.InsertInto(c.Table).Cols(c.ID, c.ConnectionID, c.TableName, c.ColumnName, c.MaskKind, c.KeepHint, c.Correlate, c.CreatedAt, c.UpdatedAt).
+			Values(ids.NewID(), id, mf.TableName, mf.ColumnName, string(mf.Kind), b2i(mf.KeepHint), b2i(mf.Correlate), now, now)
+		if _, err := sqlb.Exec(tx, ib); err != nil {
 			return fmt.Errorf("connfiles: insert mask: %w", err)
 		}
 	}
 	for key, r := range have {
 		if !keep[key] {
-			if _, err := tx.Exec(`DELETE FROM connection_mask_rules WHERE id = ?`, r.id); err != nil {
+			del := d.DeleteFrom(c.Table)
+			del.Where(del.Equal(c.ID, r.id))
+			if _, err := sqlb.Exec(tx, del); err != nil {
 				return fmt.Errorf("connfiles: delete mask: %w", err)
 			}
 		}
