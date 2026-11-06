@@ -1,0 +1,22 @@
+Why: release test-matrix and db-compat jobs link GTK4/WebKitGTK via cgo; setup action needs gtk: "true".
+
+diff --git a/.github/workflows/release.yml b/.github/workflows/release.yml
+index 917259f78..6cda566cc 100644
+--- a/.github/workflows/release.yml
++++ b/.github/workflows/release.yml
+@@ -164,6 +164,7 @@ jobs:
+           bun: "false"
+           bindings: "false"
+           go-cache: go-ct
++          gtk: "true"
+           cache-save: "false"
+       - run: sh scripts/test-matrix.sh --mirror
+ 
+@@ -187,6 +188,7 @@ jobs:
+           bun: "false"
+           bindings: "false"
+           go-cache: go-ct
++          gtk: "true"
+           cache-save: "false"
+       - run: sh scripts/db-compat.sh --${{ matrix.extreme }} --mirror
+ 
