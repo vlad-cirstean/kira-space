@@ -5,6 +5,7 @@ const ICONS: Record<ProofView, string> = {
   document: 'json',
   keyvalue: 'symbol-key',
   chart: 'graph',
+  diagram: 'type-hierarchy-sub',
 };
 
 export function proofViewIcon(view: ProofView): string {

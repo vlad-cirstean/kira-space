@@ -2,8 +2,10 @@
 import type { EditorLanguageId } from '@shared/domain/editor';
 import {
   type ProofChartPayload,
+  type ProofDiagramPayload,
   type ProofStepDetail,
   proofChartPayloadSchema,
+  proofDiagramPayloadSchema,
 } from '@shared/domain/proof';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
@@ -17,6 +19,7 @@ import { useCellSelectionStore } from '../state/cellSelection';
 import ConsoleResultGrid from '../views/console/ConsoleResultGrid.vue';
 import CellEditorDock from '../views/shared/celleditor/CellEditorDock.vue';
 import ProofChart from './ProofChart.vue';
+import ProofDiagram from './ProofDiagram.vue';
 import { buildProofPage, mountProofPage, proofPageKey, releaseProofPage } from './pages';
 import { useProofStep } from './queries';
 import { useProofWindowStore } from './state';
@@ -63,13 +66,16 @@ watch(hasCell, (open) => {
 const pageError = shallowRef<string | null>(null);
 const pageMounted = ref(false);
 const chartPayload = shallowRef<ProofChartPayload | null>(null);
+const diagramPayload = shallowRef<ProofDiagramPayload | null>(null);
 watch(
   () => step.data.value,
   (data) => {
-    if (!data || pageMounted.value || chartPayload.value) return;
+    if (!data || pageMounted.value || chartPayload.value || diagramPayload.value) return;
     try {
       if (data.view === 'chart') {
         chartPayload.value = proofChartPayloadSchema.parse(data.data);
+      } else if (data.view === 'diagram') {
+        diagramPayload.value = proofDiagramPayloadSchema.parse(data.data);
       } else {
         mountProofPage(key, buildProofPage(data.view, data.data));
         pageMounted.value = true;
@@ -184,6 +190,17 @@ onBeforeUnmount(() => {
               :description="data.description"
               :seed="view.seed.value.chart"
               @update:chart="view.setChart"
+              @ready="resultReady = true"
+            />
+            <ProofDiagram
+              v-else-if="diagramPayload && view.seed.value"
+              :payload="diagramPayload"
+              :description="data.description"
+              :seed="{
+                top: view.seed.value.resultScrollTop,
+                left: view.seed.value.resultScrollLeft,
+              }"
+              @update:scroll="view.setDiagramScroll"
               @ready="resultReady = true"
             />
           </div>

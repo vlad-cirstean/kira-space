@@ -16207,6 +16207,20 @@
         "body": "Removes {name} and its saved views. This can’t be undone.",
         "title": "Delete this session"
       },
+      "diagram": {
+        "invalid": {
+          "title": "Diagram does not parse"
+        },
+        "region": {
+          "aria": "Diagram: {description}"
+        },
+        "source": {
+          "label": "Diagram source"
+        },
+        "tooLarge": {
+          "body": "The diagram is too large to draw."
+        }
+      },
       "history": {
         "aria": "Validation sessions",
         "empty": "No validation sessions yet",

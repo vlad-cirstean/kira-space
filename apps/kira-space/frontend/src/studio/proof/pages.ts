@@ -29,7 +29,7 @@ function cellText(value: unknown): string | null {
 
 /** Throws a ZodError when the payload does not match its view: Go validated it, but the window
  *  never trusts a payload it did not parse. */
-export function buildProofPage(view: Exclude<ProofView, 'chart'>, data: unknown): Page {
+export function buildProofPage(view: Exclude<ProofView, 'chart' | 'diagram'>, data: unknown): Page {
   if (view === 'table') {
     const payload = proofTablePayloadSchema.parse(data);
     const builder = createTabularPageBuilder(
