@@ -40,6 +40,7 @@ export const PROPER_NOUNS: readonly string[] = [
   'Docker',
   'Jira',
   'MCP',
+  'DB',
   'AI',
   'SSO',
   'PII',

@@ -236,6 +236,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskHandovers: 'AdeTaskService.Handovers',
   adeTaskAddNote: 'AdeTaskService.AddNote',
   adeTaskProofs: 'AdeTaskService.TaskProofs',
+  adeTaskDbAudit: 'AdeTaskService.DbAudit',
   adeTaskProofChoices: 'AdeTaskService.ProofChoices',
   adeTaskLinkProof: 'AdeTaskService.LinkProof',
   adeTaskUnlinkProof: 'AdeTaskService.UnlinkProof',

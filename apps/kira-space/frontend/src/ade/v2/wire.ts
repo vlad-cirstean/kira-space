@@ -575,6 +575,60 @@ export interface TaskProof {
 export interface TaskProofsResult {
   proofs: TaskProof[];
 }
+/** A limit an exemption request asks to lift. */
+interface DbAuditLimit {
+  name: string;
+  threshold: string;
+}
+/** An approval raised inside a Kira DB call. */
+export interface DbAuditApproval {
+  id: string;
+  /** The approvals kind: db.query, db.response, db.exemption, kube.read, script.run or api.request. */
+  subject: string;
+  reason: string;
+  stage: string;
+  outcome:
+    | 'pending'
+    | 'approved'
+    | 'denied'
+    | 'timedOut'
+    | 'abandoned'
+    | 'queueFull'
+    | 'tooLarge'
+    | 'heldFull';
+  raisedAt: number;
+  resolvedAt: number | null;
+  exemptionLimits: DbAuditLimit[];
+  exemptionReason: string;
+}
+/** One tool call of an agent session on the Kira DB session server. The statement has no literals. */
+export interface DbAuditEntry {
+  id: string;
+  sessionId: string;
+  stepId: string;
+  stepName: string;
+  tool: string;
+  connectionName: string;
+  mode: string;
+  target: string;
+  statement: string;
+  statementLen: number;
+  statementWithheld: boolean;
+  statementTruncated: boolean;
+  summary: string;
+  status: 'running' | 'ok' | 'error' | 'refused' | 'cancelled';
+  error: string;
+  startedAt: number;
+  durationMs: number | null;
+  approvals: DbAuditApproval[];
+}
+export interface DbAuditResult {
+  entries: DbAuditEntry[];
+}
+/** Payload of the dbAudit push: the task whose trail changed. */
+export interface DbAuditEvent {
+  taskId: string;
+}
 /** A closed proof session no task holds yet. */
 interface ProofChoice {
   proofId: string;

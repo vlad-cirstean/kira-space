@@ -8938,6 +8938,54 @@
           },
           "placeholder": "Paste or type a link, with an optional title"
         },
+        "dbAudit": {
+          "accepted": {
+            "status": "Accepted"
+          },
+          "denied": {
+            "status": "Denied"
+          },
+          "limits": {
+            "label": "Limits: {limits}"
+          },
+          "reason": {
+            "label": "Reason: {reason}"
+          },
+          "refused": {
+            "status": "Refused"
+          },
+          "subjectApi": {
+            "label": "API request"
+          },
+          "subjectExemption": {
+            "label": "Exemption"
+          },
+          "subjectKube": {
+            "label": "Kubernetes read"
+          },
+          "subjectQuery": {
+            "label": "Run query"
+          },
+          "subjectResponse": {
+            "label": "Send result"
+          },
+          "subjectScript": {
+            "label": "Script request"
+          },
+          "timedOut": {
+            "status": "Timed out"
+          },
+          "toggle": {
+            "label": "Kira DB ({count})",
+            "tooltip": "Show Kira DB actions and approvals in the list"
+          },
+          "unanswered": {
+            "status": "Not answered"
+          },
+          "withheld": {
+            "body": "Statement not recorded ({count} characters)."
+          }
+        },
         "empty": {
           "body": "No links yet."
         },

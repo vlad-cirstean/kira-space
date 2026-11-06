@@ -263,6 +263,7 @@ export const IPC = {
   adeTaskHandovers: 'kira:adetask:handovers',
   adeTaskAddNote: 'kira:adetask:addNote',
   adeTaskProofs: 'kira:adetask:proofs',
+  adeTaskDbAudit: 'kira:adetask:dbAuditList',
   adeTaskProofChoices: 'kira:adetask:proofChoices',
   adeTaskLinkProof: 'kira:adetask:linkProof',
   adeTaskUnlinkProof: 'kira:adetask:unlinkProof',
@@ -337,6 +338,7 @@ export const IPC = {
   adeTaskSessionsChanged: 'kira:adetask:sessions',
   adeTaskReviewChanged: 'kira:adetask:review',
   adeTaskUpdatesChanged: 'kira:adetask:updates',
+  adeTaskDbAuditChanged: 'kira:adetask:dbAudit',
   adeTaskOpenSession: 'kira:adetask:openSession',
 
   // P201 Part 2: the Memory module's bound surface; memoryChanged is a push channel, no FQN entry.

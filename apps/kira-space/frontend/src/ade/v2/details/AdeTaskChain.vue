@@ -11,10 +11,17 @@ import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { computed, ref } from 'vue';
 import AdeNoteEntry from '../notes/AdeNoteEntry.vue';
 import AdeNotesEditor from '../notes/AdeNotesEditor.vue';
-import { useAddNote, useHandovers, useTaskArtifacts, useTaskProofs } from '../queries';
+import {
+  useAddNote,
+  useHandovers,
+  useTaskArtifacts,
+  useTaskDbAudit,
+  useTaskProofs,
+} from '../queries';
 import { useAdeDetailsListStore } from '../state/adeDetailsList';
 import { useAdeNoteComposerStore } from '../state/adeNoteComposer';
 import type { Task } from '../wire';
+import AdeAuditEntry from './AdeAuditEntry.vue';
 import AdeProofAttachMenu from './AdeProofAttachMenu.vue';
 import AdeProofEntry from './AdeProofEntry.vue';
 import AdeTimelineEntry from './AdeTimelineEntry.vue';
@@ -22,7 +29,8 @@ import { taskChain } from './taskChain';
 import { type TimelineBranch, timelineEvents } from './taskTimeline';
 
 // The task chain: the user's notes, what each stage left for the next and the proof sessions
-// attached to the task, one list, newest first; the Timeline toggle adds task events. An entry edits
+// attached to the task, one list, newest first; the Timeline toggle adds task events and the Kira DB
+// toggle (on by default) the DB actions of its agent sessions. An entry edits
 // in place unless the task is archived.
 const props = defineProps<{
   task: Task;
@@ -36,6 +44,8 @@ const list = useAdeDetailsListStore();
 const handovers = useHandovers(() => taskId.value);
 const proofs = useTaskProofs(() => taskId.value);
 const artifacts = useTaskArtifacts(() => taskId.value);
+const dbAudit = useTaskDbAudit(() => taskId.value);
+const auditCount = computed(() => dbAudit.data.value?.entries.length ?? 0);
 const add = useAddNote();
 
 const entries = computed(() =>
@@ -45,6 +55,7 @@ const entries = computed(() =>
     events: list.showTimeline
       ? timelineEvents(props.task, props.branches, artifacts.data.value?.artifacts ?? [])
       : [],
+    audit: list.showDbAudit ? (dbAudit.data.value?.entries ?? []) : [],
   }),
 );
 const hasChain = computed(() => entries.value.some((e) => e.layer === 'chain'));
@@ -80,6 +91,20 @@ const editing = ref<string | null>(null);
           </Toggle>
         </TooltipTrigger>
         <TooltipContent>{{ t('space.ade.details.timeline.toggle.tooltip') }}</TooltipContent>
+      </Tooltip>
+      <Tooltip v-if="auditCount > 0">
+        <TooltipTrigger as-child>
+          <Toggle
+            :model-value="list.showDbAudit"
+            size="kira"
+            data-testid="ade-details-dbaudit-toggle"
+            @update:model-value="list.setShowDbAudit"
+          >
+            <CodiconIcon name="database" :size="13" />
+            {{ t('space.ade.details.dbAudit.toggle.label', { count: auditCount }) }}
+          </Toggle>
+        </TooltipTrigger>
+        <TooltipContent>{{ t('space.ade.details.dbAudit.toggle.tooltip') }}</TooltipContent>
       </Tooltip>
       <template v-if="!readonly">
         <TooltipIconButton
@@ -160,6 +185,13 @@ const editing = ref<string | null>(null);
         :proof="e.proof"
         :task-id="task.id"
         :readonly="readonly"
+        @open-session="emit('openSession', $event)"
+      />
+      <AdeAuditEntry
+        v-else-if="e.kind === 'audit'"
+        :entry="e.audit"
+        :task-id="task.id"
+        :archived="readonly"
         @open-session="emit('openSession', $event)"
       />
       <AdeTimelineEntry

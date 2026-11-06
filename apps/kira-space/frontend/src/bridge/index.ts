@@ -609,6 +609,8 @@ const spaceControl = {
     unwrap(AdeTaskService.AddNote(args)).then((r) => trust<V2.Handover>(r)),
   adeTaskProofs: (args: V2.TaskArgs): Promise<V2.TaskProofsResult> =>
     unwrap(AdeTaskService.TaskProofs(args)).then((r) => trust<V2.TaskProofsResult>(r)),
+  adeTaskDbAudit: (args: V2.TaskArgs): Promise<V2.DbAuditResult> =>
+    unwrap(AdeTaskService.DbAudit(args)).then((r) => trust<V2.DbAuditResult>(r)),
   adeTaskProofChoices: (): Promise<V2.ProofChoicesResult> =>
     unwrap(AdeTaskService.ProofChoices()).then((r) => trust<V2.ProofChoicesResult>(r)),
   adeTaskLinkProof: (args: V2.LinkProofArgs): Promise<void> =>
@@ -743,6 +745,8 @@ const spaceControl = {
   onAdeTaskSessions: (cb: () => void): (() => void) => on(CHANNEL.adeTaskSessions, cb),
   onAdeTaskReview: (cb: (event: V2.ReviewEvent) => void): (() => void) =>
     on(CHANNEL.adeTaskReview, cb),
+  onAdeTaskDbAudit: (cb: (event: V2.DbAuditEvent) => void): (() => void) =>
+    on(CHANNEL.adeTaskDbAudit, cb),
   onAdeTaskOpenSession: (cb: (event: V2.OpenSessionEvent) => void): (() => void) =>
     on(CHANNEL.adeTaskOpenSession, cb),
 

@@ -98,6 +98,7 @@ const candidatesKey = (codeRepoId: string) => ['adetask', 'candidates', codeRepo
 export const reviewStepPrefix = ['adetask', 'reviewStep'] as const;
 export const handoversPrefix = ['adetask', 'handovers'] as const;
 export const proofsPrefix = ['adetask', 'proofs'] as const;
+export const dbAuditPrefix = ['adetask', 'dbAudit'] as const;
 export const proofChoicesKey = ['adetask', 'proofChoices'] as const;
 export const artifactsPrefix = ['adetask', 'artifacts'] as const;
 export const issuePrefix = ['adetask', 'issue'] as const;
@@ -526,6 +527,14 @@ export function useTaskProofs(taskId: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: [...proofsPrefix, taskId] as const,
     queryFn: () => control.adeTaskProofs({ taskId: toValue(taskId) }),
+  });
+}
+
+/** The Kira DB calls and approvals of a task's agent sessions, newest first; a dbAudit push refetches it. */
+export function useTaskDbAudit(taskId: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: [...dbAuditPrefix, taskId] as const,
+    queryFn: () => control.adeTaskDbAudit({ taskId: toValue(taskId) }),
   });
 }
 

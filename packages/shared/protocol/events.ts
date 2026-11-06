@@ -120,6 +120,8 @@ export const CHANNEL = {
   adeTaskOpenSession: 'kira:adetask:openSession',
   adeTaskReview: 'kira:adetask:review',
   adeTaskUpdates: 'kira:adetask:updates',
+  // P547: the Kira DB audit trail of one task changed, {taskId}.
+  adeTaskDbAudit: 'kira:adetask:dbAudit',
   // P420: validation-proof sessions changed (Emit, app-wide), {sessionId}; a request for the proof
   // window to show one session (EmitTo), {sessionId}.
   proofChanged: 'kira:proof:changed',

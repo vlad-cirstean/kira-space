@@ -202,6 +202,7 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskSetTaskStep, response: adeFixture('task') },
     { channel: IPC.adeTaskHandovers, response: { handovers: [] } },
     { channel: IPC.adeTaskProofs, response: { proofs: [] } },
+    { channel: IPC.adeTaskDbAudit, response: { entries: [] } },
     { channel: IPC.adeTaskProofChoices, response: { proofs: [] } },
     { channel: IPC.adeTaskLinkProof },
     { channel: IPC.adeTaskUnlinkProof },
