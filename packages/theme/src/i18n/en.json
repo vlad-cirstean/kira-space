@@ -15689,7 +15689,7 @@
             "label": "Column review"
           },
           "reviewTruncated": {
-            "body": "Showing the first {max} columns."
+            "body": "The column list is cut short ({limit}). Database MCP refuses every call until the check fits."
           },
           "saveFirst": {
             "hint": "Save this connection first to manage masking rules."

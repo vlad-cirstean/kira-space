@@ -22,6 +22,7 @@ export const maskReviewListingSchema = /*#__PURE__*/ z.object({
     }),
   ),
   truncated: z.boolean(),
+  incomplete: z.string().optional(),
   checkedAt: z.number(),
 });
 export type MaskReviewListing = z.infer<typeof maskReviewListingSchema>;

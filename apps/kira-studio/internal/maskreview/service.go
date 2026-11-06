@@ -52,7 +52,9 @@ type Listing struct {
 	Applicable bool           `json:"applicable"`
 	Columns    []ListedColumn `json:"columns"`
 	Truncated  bool           `json:"truncated"`
-	CheckedAt  int64          `json:"checkedAt"`
+	// Incomplete names the cap that cut the check short ("over 50000 columns"); empty when complete.
+	Incomplete string `json:"incomplete,omitempty"`
+	CheckedAt  int64  `json:"checkedAt"`
 }
 
 // Deps are the seams Service reads.
@@ -269,7 +271,7 @@ func (s *Service) summary(id string) (*model.ConnectionSummary, error) {
 }
 
 func listingOf(kind string, e *entry) Listing {
-	out := Listing{Applicable: true, Columns: make([]ListedColumn, 0, len(e.live)), Truncated: e.incomplete != "" || e.truncated, CheckedAt: e.checkedAt.UnixMilli()}
+	out := Listing{Applicable: true, Columns: make([]ListedColumn, 0, len(e.live)), Truncated: e.incomplete != "" || e.truncated, Incomplete: e.incomplete, CheckedAt: e.checkedAt.UnixMilli()}
 	for _, c := range e.live {
 		out.Columns = append(out.Columns, ListedColumn{
 			Ref: tableref.FormatColumn(kind, c.Ref), Table: c.Ref.Name, Column: c.Ref.Column, DataType: c.DataType, RelationKind: c.RelationKind,

@@ -36,7 +36,6 @@ const confirmDialogStore = useConfirmDialogStore();
 const queryClient = useQueryClient();
 const { single: rowHeight } = useRowHeight();
 
-const COLUMNS_SHOWN_MAX = 100000;
 const applies = computed(() => MASK_REVIEW_KINDS.has(file.value.kind));
 const on = computed(() => file.value.mask_review !== undefined);
 const reviewed = computed(() => new Set(file.value.mask_review?.columns ?? []));
@@ -293,13 +292,13 @@ const STATE_VARIANT = { masked: 'ok', reviewed: 'default', pending: 'warn' } as 
             </div>
           </div>
           <FieldDescription
-            v-if="columnsQuery.data.value?.truncated"
+            v-if="columnsQuery.data.value?.incomplete"
             class="w-full"
             data-testid="connection-privacy-review-truncated"
           >
             {{
               t('studio.project.connectionDialog.privacy.reviewTruncated.body', {
-                max: String(COLUMNS_SHOWN_MAX),
+                limit: columnsQuery.data.value?.incomplete ?? '',
               })
             }}
           </FieldDescription>
