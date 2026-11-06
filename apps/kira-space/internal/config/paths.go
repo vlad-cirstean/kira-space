@@ -62,3 +62,9 @@ func StudioDbPath() string {
 func StudioDbPathAt(home string) string {
 	return kirapaths.DbPathAt(home, "kira.db")
 }
+
+// ModuleDbPathAt is the Studio modules' database file, studio.db under the Space home, until the DB
+// merge (P544).
+func ModuleDbPathAt(home string) string {
+	return kirapaths.DbPathAt(home, "studio.db")
+}
