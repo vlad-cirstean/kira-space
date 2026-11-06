@@ -2,13 +2,14 @@
 
 Branch `chapter/v0.3.0`, based on `chapter/v0.2.36` (v0.2.36 not yet merged to main). First `P` is 537 (highest in v0.2.36 is P536), last is P547.
 
-Source: user request. Eleven phases: merge both apps into one Kira Space, then fold the two homes into one, move config YAML into one subfolder, merge the main SQLite DBs, then proof, notes and timeline rework in the task details panel, then Kira DB audit trail and the Studio MCP workflow option. Close duty after the last phase lands: one full suite run, 2 code review rounds (user ask), hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
+Source: user request. Eleven phases (P537 split into two Parts): merge both apps into one Kira Space, then fold the two homes into one, move config YAML into one subfolder, merge the main SQLite DBs, then proof, notes and timeline rework in the task details panel, then Kira DB audit trail and the Studio MCP workflow option. Close duty after the last phase lands: one full suite run, 2 code review rounds (user ask), hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
 
 Sequencing: P537 first. Every later phase builds on the merged app, so none starts before P537 (all its Parts) is committed. P538 to P540 run in order: home first, then config subfolder, then DB merge; each migration runs after the previous one landed. Table order is execution order. P542 to P545 share the task details panel and the notes editor; run one at a time. P546 also depends on v0.2.36 P528 (exemption approvals) having landed.
 
 | Phase | Title | Status |
 |---|---|---|
-| P537 | Merge Kira Space and Kira Studio into one app named Kira Space | Pending |
+| P537 Part 1 | Merge Kira Space and Kira Studio: relocate Studio into `apps/kira-space` and freeze the merged bridge | Pending |
+| P537 Part 2 | Merge Kira Space and Kira Studio: finish in three parallel streams (Go, frontend, build/tests/docs) | Pending |
 | P538 | Fold the Studio home folder into the Kira Space home folder | Pending |
 | P539 | Move every config YAML into one subfolder of the home | Pending |
 | P540 | Merge the main SQLite databases into one | Pending |
@@ -22,11 +23,22 @@ Sequencing: P537 first. Every later phase builds on the merged app, so none star
 
 ## Rows
 
-### P537 Merge Kira Space and Kira Studio into one app named Kira Space
+### P537 shared ask (both Parts): Merge Kira Space and Kira Studio into one app named Kira Space
 
 - Ask: merge both apps (`apps/kira-space` and `apps/kira-studio`) into one app named Kira Space. Module order in the app: the existing Kira Space modules first, then the Studio modules.
 - Decide in plan: split into Parts if needed (CLAUDE.md Part rule: `P537 Part 1: …`, each with own plan, pass and Result); Go module and `main.go` merge, shared packages already duplicated (`appcore`, `appshell`, `appwire`, `bridge`, `config`, `storage`, `oplog`, `flowharness`, `flows`, `buildinfo`, `layering_test.go`); one frontend, one bridge, binding generation; Taskfile, build and packaging (`docs/PACKAGING.md`), CI and test layout (`tests/`, playwright configs); DB, storage and config migration for existing installs of both apps; what happens to the Studio MCP server (`internal/dbmcp`) and the `kira-db` naming; docs (`ARCHITECTURE.md`, `DEV_ENVIRONMENT.md`, READMEs) updated.
-- Plan: `plans/P537.md`.
+- Plan: `plans/P537.md` (decisions shared by both Parts). Split into two Parts (couplings in `P537.md`).
+
+### P537 Part 1: Merge Kira Space and Kira Studio: relocate Studio into `apps/kira-space` and freeze the merged bridge
+
+- Enabling step, one sequential implementer. Every Studio file moves to its final path; every path reference is rewired; the Go bridge merges to its final bound surface (one binary, one bindings tree); Studio source typechecks in Space's frontend project. Writes the rename table Part 2 builds on.
+- Plan: `plans/P537-part1.md`.
+
+### P537 Part 2: Merge Kira Space and Kira Studio: finish in three parallel streams (Go, frontend, build/tests/docs)
+
+- Three named streams off Part 1's last commit (user raised the stream cap to 3): A Go (flow harness and flows merge, claude tests, first-launch migration, old-Studio guard, copy); B frontend (one entry, module order, stores, settings dialog); C build, packaging, CI, playwright layout, docs. Zero file overlap, no ordering dependency; landing order and checks in the plan.
+- Depends on P537 Part 1.
+- Plan: `plans/P537-part2.md`.
 
 ### P538 Fold the Studio home folder into the Kira Space home folder
 
