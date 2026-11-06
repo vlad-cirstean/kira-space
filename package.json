@@ -67,7 +67,7 @@
     "test:ipc:fe": "bun run build:test && playwright test --config=apps/kira-space/playwright.config.ts --project=ipc-frontend",
     "test:visual": "bun run build:test && playwright test --config=apps/kira-space/playwright.config.ts --project=visual",
     "test:visual:update": "bun run build:test && playwright test --config=apps/kira-space/playwright.config.ts --project=visual --update-snapshots",
-    "test:e2e-real": "node node_modules/.bin/playwright test --config=apps/kira-space/playwright.config.ts --project=e2e-real --project=e2e-real-studio",
+    "test:e2e-real": "node node_modules/.bin/playwright test --config=apps/kira-space/playwright.config.ts --project=e2e-real",
     "test:flows": "go test -p 1 ./apps/kira-space/internal/flows/... ./apps/kira-space/internal/flowharness/...",
     "test:flows:complete": "KIRA_FLOW_COMPLETE=1 KIRA_FLOW_DOCKER=require go test -p 1 -timeout 20m ./apps/kira-space/internal/flows/... ./apps/kira-space/internal/flowharness/...",
     "test:unit": "bun test apps/kira-space/tests/unit packages/api-core/test packages/git-core/src packages/git-ipc/src packages/git-ui/src packages/workbench/src packages/docker-ui/src packages/theme/src scripts/copy scripts/commentsweep scripts/check-conventions.spec.ts site/scripts",

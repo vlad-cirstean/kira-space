@@ -9,8 +9,7 @@ const wallClockBudgetTitles = /150ms sandbox gate|interaction budgets|perf tripw
 
 // One config for the one app. Every project runs against the same test build (`bun run build:test`)
 // or the same `-tags server` binary. Databases-module specs live in `studio/` subfolders of the
-// same tiers; their fixture selects the module through the mode switcher. Only `e2e-real-studio`
-// stays a separate project until its fixtures merge.
+// ui tiers; their fixture selects the module through the mode switcher.
 //
 // `browserName: 'webkit'` matches what a packaged build embeds (WKWebView on macOS, WebKitGTK on
 // Linux). `bunx playwright install webkit` plus the system libs its post-install warning names
@@ -95,14 +94,6 @@ export default defineConfig({
     {
       name: 'e2e-real',
       testDir: './tests/e2e-real',
-      testIgnore: 'studio/**',
-      use: { browserName: 'chromium' },
-      fullyParallel: true,
-      workers: 2,
-    },
-    {
-      name: 'e2e-real-studio',
-      testDir: './tests/e2e-real/studio',
       use: { browserName: 'chromium' },
       fullyParallel: true,
       workers: 2,
