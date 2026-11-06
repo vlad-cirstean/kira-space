@@ -2,26 +2,24 @@
 
 [![PR](https://github.com/vlad-cirstean/kira-studio/actions/workflows/pr.yml/badge.svg)](https://github.com/vlad-cirstean/kira-studio/actions/workflows/pr.yml)
 
-A native macOS git client and code workspace: a commit graph, branch review and remote operations
-over a VS Code-adjacent workspace (file tree, Monaco viewer, diffs, search), with coding agents, a
-memory store, a terminal and a phone view on your home network — built on Wails (Go)
-and Vue 3. Its modules are Agents, Runs, Memory and Git.
+Native macOS workbench: git client, code workspace, coding agents, memory store, terminal, phone
+view, plus the database (Studio), Api, Docker and Kubernetes modules. Wails (Go) and Vue 3. Modes:
+Agents, Automations, Memory, Git, Studio, Api, Docker, Kubernetes. Replaces the former Kira Studio
+app.
 
 [Presentation page](https://vlad-cirstean.github.io/kira-studio/) and
-[screenshots](../../README.md#screenshots).
+[screenshots](../../README.md#screenshots). Root [`README.md`](../../README.md) covers the Studio,
+Api, Docker and Database MCP features.
 
 ## Status
 
-- **Beta, split out of Kira Studio as its own app at v1.9 P100.** The git backend, the native code
-  workspace all shipped as part of Kira Studio through v1.3-v1.8; P100
-  moved them here, unchanged in behavior, into a standalone app with no database or API tooling of
-  its own. See the root [`README.md`](../../README.md) for that sibling app and
-  [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md)'s Git module section for the fuller history.
-- **macOS 26+, Apple Silicon (`arm64`) only. Dark mode only.**
-- The packaged build is **unsigned (ad-hoc)** — code signing and notarization are deferred past
-  v1, the same posture as Kira Studio's own build. The first launch after installing a new build
-  may show one "Kira Space wants to use your confidential information stored in…" prompt —
-  **Always Allow** answers it permanently for that build.
+- Beta. P537 merged Kira Studio into this app. Studio code lives in `frontend/src/studio` and the
+  `studio*` Go packages.
+- macOS 26+, Apple Silicon (`arm64`) only. Dark mode only.
+- Packaged build is ad-hoc signed, not notarized. First launch after an install may show one
+  keychain prompt; **Always Allow** answers it for that build.
+- Two data homes until the merge completes: `~/.kira-space/` and the Studio module's
+  `~/.kira-studio/`. See `docs/ARCHITECTURE.md` Known open items.
 
 ## Code workspace features
 
@@ -138,135 +136,121 @@ Two limits worth knowing up front:
 ## Requirements
 
 - macOS 26 or later, Apple Silicon (`arm64`).
-- [Git](https://git-scm.com) 2.38 or newer on `PATH`. The native Git module needs nothing beyond
-  that.
-- Optional: an authenticated `claude` CLI for Agents and Memory, or `opencode` for Agents. Memory calls
-  always use `claude`.
-- Optional: the [GitHub CLI](https://cli.github.com) (`gh`), already
-  logged in, for GitHub PR links — without it the PR indicator simply stays blank and nothing
-  else changes.
-- The rest of the toolchain (Go, Bun, the Wails v3 CLI, Xcode command-line tools) is the same as
-  Kira Studio's own — see the root [`README.md`](../../README.md)'s Requirements section. This app
-  lives in the same monorepo and Bun workspace, so a single `bun install`/`bun run setup` covers
-  both apps.
+- [Git](https://git-scm.com) 2.38 or newer on `PATH`.
+- Optional: authenticated `claude` CLI for Agents, Memory and smart scripts; `opencode` for Agents.
+- Optional: [GitHub CLI](https://cli.github.com) (`gh`), logged in, for PR links. Without it the
+  PR indicator stays blank.
+- Optional: Docker-compatible daemon for the Docker module and database tests.
+- Toolchain (Go, Bun, Wails v3 CLI, Xcode command-line tools): see root
+  [`README.md`](../../README.md) Requirements. One `bun install` or `bun run setup` covers
+  everything.
 
 ## Install
 
-Run in Terminal — installs a fresh copy or replaces an older one, then opens the app:
-
 ```sh
-curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scripts/install.sh | sh -s -- --app=space
+curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scripts/install.sh | sh
 ```
 
-This downloads the latest release's signed (ad-hoc) disk image, moves the app into `/Applications`
-and opens it — no Gatekeeper prompt, unlike a DMG downloaded through a browser. The same script with
-`--app=studio` installs Kira Studio instead (see the root [`README.md`](../../README.md)). Once
-installed, the app checks for a newer release itself and offers to install it.
+Downloads the latest release's ad-hoc signed disk image, moves the app into `/Applications`, opens
+it with no Gatekeeper prompt. Moves an installed Kira Studio to the Trash; `~/.kira-studio/` stays.
+The app checks for newer releases and offers to install.
 
-**Building from source** is the developer path, not required just to run the app:
+Build from source:
 
 ```sh
 git clone <repo-url>
 cd kira-studio
-bun run package:space
+bun run package
 ```
 
-The built, signed (ad-hoc) app lands at `apps/kira-space/bin/Kira Space.app`, and the disk image
-that ships it at `apps/kira-space/bin/Kira Space.dmg`.
-
-Since a locally built image is unsigned (ad-hoc) and never passed through the installer, its first
-launch needs a Gatekeeper workaround: right-click → Open, or:
+Output: `apps/kira-space/bin/Kira Space.app` and `apps/kira-space/bin/Kira Space.dmg`. A local build
+skips the installer, so clear quarantine on first launch (right-click Open, or):
 
 ```sh
 xattr -dr com.apple.quarantine "apps/kira-space/bin/Kira Space.app"
 ```
 
-See [`docs/PACKAGING.md`](../../docs/PACKAGING.md)'s "Kira Space packaging" section for the bundle
-layout and the verification checklist.
+See [`docs/PACKAGING.md`](../../docs/PACKAGING.md) for bundle layout and the verification checklist.
 
 ## Development
 
 ```sh
-bun run dev:space   # from the repo root — installs everything needed, then `wails3 task dev`
+bun run dev   # from the repo root: installs deps, then `wails3 task dev`
 ```
 
-Run from the repo root (same as Kira Studio); see the root [`README.md`](../../README.md)'s
-Development section for the shared scripts (`setup`, `lint`, `typecheck`, `test:go`, and so on).
-The scripts specific to this app:
+Run from the repo root. Shared scripts (`setup`, `lint`, `typecheck`, `test:go`) are in the root
+[`README.md`](../../README.md) Development section.
 
 | Script | What it does |
 |---|---|
-| `bun run dev:space` | `cd apps/kira-space && wails3 task dev` — native window, HMR |
-| `bun run build:space` | Production Vue builds into `apps/kira-space/frontend/dist`, plus the phone bundle `dist-mobile` |
-| `bun run build:space-mobile` | Builds only the phone bundle |
-| `bun run typecheck:space-web` | `apps/kira-space/frontend/src`, including `.vue` files (`vue-tsc`) |
-| `bun run typecheck:space-tests` | `apps/kira-space/tests/` tiers and `playwright.config.ts` (`tsgo`) |
-| `bun run typecheck:space-unit` | `apps/kira-space/tests/unit` (`tsgo`) |
-| `bun run typecheck:git` | `packages/git-ipc`, `packages/git-core` (`tsgo`), plus `packages/git-ui` (`vue-tsc`) |
-| `bun run test:ui:space` | Builds, then runs Playwright (WebKit) against this app's own built bundle |
-| `bun run test:ui:space-mobile` | Builds the phone bundle, then runs its Playwright tests on an iOS (WebKit) profile, plus one Chromium project for the insecure-origin spec |
-| `bun run test:e2e-real:space` | Playwright against a real `-tags server` build of this app |
-| `bun run test:flows:space` | Go flow tests: the real app wiring on a temp home (`test:flows:space:complete` adds the slow permutations) |
-| `bun run test:claude:space` | Opt-in: real `claude` CLI, needs an authenticated install, spends a few cents |
-| `bun run test:visual:space` | Pixel-diff baselines |
-| `bun run package:space` | Builds the native Wails bundle and the `.dmg` around it, ad-hoc signs both — `apps/kira-space/bin/Kira Space.{app,dmg}` |
+| `bun run dev` | `cd apps/kira-space && wails3 task dev`: native window, HMR |
+| `bun run build` | Production Vue builds into `frontend/dist`, plus phone bundle `dist-mobile` |
+| `bun run build:mobile` | Phone bundle only |
+| `bun run typecheck:web` | `frontend/src`, `.vue` files included (`vue-tsc`) |
+| `bun run typecheck:tests` | `tests/` tiers and Playwright configs (`tsgo`) |
+| `bun run typecheck:unit` | `tests/unit` (`tsgo`) |
+| `bun run typecheck:git` | `packages/git-ipc`, `packages/git-core` (`tsgo`), `packages/git-ui` (`vue-tsc`) |
+| `bun run test:ui` | Build, then Playwright (WebKit): `ui`, `ui-studio`, `ui-clipboard` projects |
+| `bun run test:ui:timing` | Wall-clock specs (`ui-timing`) |
+| `bun run test:ui:mobile` | Phone bundle on an iOS (WebKit) profile, plus one Chromium project |
+| `bun run test:e2e-real` | Playwright against a real `-tags server` build |
+| `bun run test:flows` | Go flow tests on a temp home (`test:flows:complete` adds slow permutations) |
+| `bun run test:claude` | Opt-in: real `claude` CLI, spends tokens |
+| `bun run test:claude:db` | Opt-in: DB MCP, Kubernetes, proof and smart-script rows |
+| `bun run test:visual` | Pixel-diff baselines |
+| `bun run package` | Native Wails bundle and `.dmg`, ad-hoc signed: `apps/kira-space/bin/Kira Space.{app,dmg}` |
 
-`bun run test:unit`, `bun run test:go` and `bun run typecheck` (unscoped) already cover this app —
-they run every project/package in the workspace, git included.
+`bun run test:unit`, `bun run test:go` and unscoped `bun run typecheck` cover the whole workspace.
 
-**App data:** this app keeps `kira.db`, `logs/`, and `review.db`, all under `~/.kira-space/`. The `KIRA_SPACE_HOME` environment variable relocates
-that whole directory, the same way `KIRA_HOME` does for Kira Studio's own home — the two are
-independent, so running both apps at once (or two test instances) never contends over one lock
-or one database. Memories live apart, in `~/.kira-memory/` (`KIRA_MEMORY_HOME`): `memory.db` and the
-downloaded `models/`.
+**App data:** `kira.db`, `logs/`, `review.db` under `~/.kira-space/` (`KIRA_SPACE_HOME`). Memories
+in `~/.kira-memory/` (`KIRA_MEMORY_HOME`): `memory.db` and downloaded `models/`. The Studio module
+keeps connections, scripts and Api collections in `~/.kira-studio/` (`KIRA_HOME`) until the homes
+merge. Each home has its own lock; two instances on different homes never contend.
 
 ## Tests
 
-TypeScript suites under `apps/kira-space/tests/` (`unit/`, `ui/`, `mobile/`, `e2e-real/`, `visual/`,
-and an opt-in `perf/`), the shared `contract/` fixtures, the opt-in real-`claude` module `claude/`, and the Go
-suite under `apps/kira-space/`, including the flow tier (`test:flows:space`).
-`packages/db-fixtures/` is not exercised here — that's Kira Studio's own DB fixture corpus.
+TypeScript suites under `apps/kira-space/tests/`: `unit/`, `ui/`, `ipc/`, `mobile/`, `e2e-real/`,
+`visual/`, opt-in `perf/` and `proto/`, shared `contract/` fixtures. Each tier holds a `studio/`
+subdirectory for the Studio module's specs, run as separate `-studio` Playwright projects. Opt-in
+real-`claude` Go modules: `claude/` and `claude-studio/`. Go suite under `apps/kira-space/`,
+flow tier included (`test:flows`). `packages/db-fixtures/` is the shared DB fixture corpus for the
+Studio module.
 
-- **`bun run test:unit`** — plain TypeScript modules exercised with fakes rather than a real
-  window process (this app's tests run alongside Kira Studio's own in one invocation).
-- **`bun run test:ui:space`** — Playwright against this app's own built bundle, real WebKit.
-- **`bun run test:go`** — the Go test suite, shared with Kira Studio's own (`go test ./...` from
-  the repo root covers both apps, since they're one Go module). The git packages need no container
-  at all — they build real repositories under `t.TempDir()` against the `git` on `PATH`, and skip
-  themselves without one; their perf probes are opt-in behind `KIRA_GIT_PERF=1` and assert
-  nothing.
+- `bun run test:unit`: plain TypeScript modules with fakes.
+- `bun run test:ui`: Playwright against the built bundle, real WebKit.
+- `bun run test:go`: Go suite (`go test ./...` from the repo root). Git packages build real
+  repositories under `t.TempDir()` and skip without `git`. Perf probes sit behind
+  `KIRA_GIT_PERF=1` and assert nothing.
 
 ## Architecture
 
-Kira Space is a native Wails (Go) app, packaged the same way Kira Studio is: one Go process
-handles windowing, IPC and the whole git backend — no sidecar, no second runtime. The Vue 3
-frontend runs in the OS's own WebView (WKWebView on macOS).
+Native Wails (Go) app: one Go process handles windowing, IPC, the git backend and every database
+driver. No sidecar, no second runtime. Vue 3 frontend in the OS WebView (WKWebView).
 
 ```
 apps/kira-space/internal        the Go app: git backend (gitclient, gitops, gitstore, gitrpc, gitsession, ...), the native code workspace (codeworkspace), agents (ade), the phone server (mobileweb), wiring (appwire), flow tests (flowharness), the IPC bridge
-apps/kira-space/frontend/src    the Vue 3 app (bindings + the built bundle live alongside it, both gitignored)
-apps/kira-space/tests/unit      unit suite — no external resource
+apps/kira-space/frontend/src    the Vue 3 app (bindings + the built bundle live alongside it, both gitignored); Studio modules in src/studio
+apps/kira-space/tests/unit      unit suite, no external resource (studio/ holds the Studio specs; same for ui, e2e-real, contract, visual)
 apps/kira-space/tests/ui        Playwright against the built bundle, WebKit
 apps/kira-space/tests/mobile    Playwright for the phone bundle
 apps/kira-space/tests/e2e-real  Playwright against a real server build (only what cannot split at the IPC boundary)
 apps/kira-space/tests/contract  JSON fixtures shared by the Go flow tests and the UI specs
 apps/kira-space/tests/claude    opt-in tests against the real `claude` CLI (own Go module)
 apps/kira-space/tests/visual    pixel-diff baselines
-internal             repo-root Go shared by both apps: `shell`, `appevent`, `ipcerr`, `startupfail`, `appstorage`, `memory`, `harness`, and more
-packages/workbench   the shared workbench shell (TitleBar/StatusBar/MainView/TabStrip), Pinia store factories, the Monaco editor bootstrap, both apps' test harnesses
+internal             repo-root Go shared by the app's packages: `shell`, `appevent`, `ipcerr`, `startupfail`, `appstorage`, `memory`, `harness`, and more
+packages/workbench   the shared workbench shell (TitleBar/StatusBar/MainView/TabStrip), Pinia store factories, the Monaco editor bootstrap, test harnesses
 packages/git-ipc     the git contract, RPC/codec/validation, the stream channel, the FlatBuffers schema
 packages/git-core    client-side git logic: commit store, lane layout, the client half of search, settings schema
-packages/git-ui      the git graph/review UI, hosted by this app's native Git module
-packages/theme       shared design tokens/CSS both apps' frontends import, plus the shadcn-vue `components/ui/*` sets
+packages/git-ui      the git graph/review UI, hosted by the native Git module
+packages/theme       shared design tokens/CSS, plus the shadcn-vue `components/ui/*` sets
 ```
 
 See [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md)'s Git module section for the full
-current-state breakdown, and [`docs/HISTORY.md (v1.9)`](../../docs/HISTORY.md (v1.9)) for the phase (P100)
-that created this app.
+current-state breakdown, and [`docs/HISTORY.md`](../../docs/HISTORY.md) for finished chapters.
 
 ## Not shipped
 
-Everything the root [`README.md`](../../README.md)'s own "Not shipped" section lists.
+See the root [`README.md`](../../README.md) "Not shipped" section.
 
 ## Upgrading
 

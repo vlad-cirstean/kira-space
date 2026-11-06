@@ -92,7 +92,7 @@ U11 packages/workbench/src/components/LogLines.vue # ANSI bold is log data
 U62 packages/workbench/src/components/AutocompleteField.vue # accepting a suggestion restores focus and the caret on the real input
 U26 packages/workbench/src/components/OpLogPanel.vue # error log row wash at the shared /15 tint, with the inset rail
 U36 packages/theme/src/components/VarText.vue # inline variable mark, not a content box
-# A (apps/kira-studio)
+# A (apps/kira-space)
 U100 apps/kira-space/frontend/src/studio/api/CopyAsCurlDialog.vue # read-only output fields, nothing to discard
 U34 apps/kira-space/frontend/src/studio/theme/EngineIcon.vue # engine brand marks are third-party logo colours
 U36 apps/kira-space/frontend/src/studio/project/connection/ConnectionEnginePicker.vue # engine tile is a selectable radio card, not a content box

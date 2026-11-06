@@ -30,10 +30,10 @@ whatever sandbox a session happens to be in),
 - The window uses a custom MacTitleBar (AppearsTransparent, HideTitle, FullSizeContent, no toolbar) over a full-size-content window, not the OS-drawn bar, drawn by the shared packages/workbench/src/components/TitleBar.vue.
 - On macOS 26 AppKit picks window chrome by the executable's linked-SDK field. The SDK is the building machine's Xcode; CI and release run on `macos-26`, so dev and release both link SDK 26.
 - Each app's own frontend/src/workbench/TitleBar.vue supplies its title-bar buttons and mode tabs through the shared TitleBar shell's default slot.
-- TypeScript is pinned to 6 (below TS 7) on purpose: TS7 has no stable programmatic compiler API until 7.1, and vue-tsc (run by typecheck:web:studio) consumes that API in-process.
-- The tsgo binary from @typescript/native-preview (used by typecheck:tests:studio and typecheck:unit:studio) is a separate tool already at latest upstream; the plan is to converge on one toolchain once TS 7.1 ships and vue-tsc adopts it.
+- TypeScript is pinned to 6 (below TS 7) on purpose: TS7 has no stable programmatic compiler API until 7.1, and vue-tsc (run by typecheck:web) consumes that API in-process.
+- The tsgo binary from @typescript/native-preview (used by typecheck:tests and typecheck:unit) is a separate tool already at latest upstream; the plan is to converge on one toolchain once TS 7.1 ships and vue-tsc adopts it.
 - Bun is used as package manager, script runner and test runner for tooling only; every adapter is native Go, so nothing at runtime depends on Bun.
-- Vite builds apps/kira-studio/frontend/src into frontend/dist, which apps/kira-studio/main.go embeds via //go:embed all:frontend/dist and serves through Wails' AssetOptions.Handler.
+- Vite builds apps/kira-space/frontend/src/studio into frontend/dist, which apps/kira-space/main.go embeds via //go:embed all:frontend/dist and serves through Wails' AssetOptions.Handler.
 - The query console's SQL Format button loads sql-formatter lazily through views/console/sqlFormatterEntry.ts's await import() (~37 KB gzip).
 - @faker-js/faker/locale/en is reached via two duplicated one-line entry files (views/grid/fakeData/fakerEntry.ts and packages/api-core/src/http/dynamic/fakerEntry.ts), duplicated because api-core is a no-app-import package (P12 D16(e), P1 D7 biome rule).
 - Rolldown folds the two identical faker entry files into one shared stub chunk, with the locale data (en-*.js, ~155 KB gzip) in its own shared chunk; generators.ts (58-entry $name to faker-call dispatch table) gets a third lazy chunk (~0.8 KB gzip).
@@ -44,7 +44,7 @@ whatever sandbox a session happens to be in),
 - P60a moved the response-history Compare dialog onto Monaco's diff editor and deleted the @codemirror/merge dependency and its mergeEntry.ts chunk.
 - The lazy chunks (sql-formatter, faker, generators, monaco) are fetched only on first use and do not grow index-*.js or launch cost.
 - P60b removed the nine @codemirror/* packages plus @lezer/highlight, which had been eagerly bundled into the main chunk, cutting index-*.js from 1 723.09 kB raw / 520.66 kB gzip to 1 307.65 kB raw / 384.15 kB gzip.
-- After the P98-P112 frontend-library migration (Pinia, TanStack Query, shadcn-vue, reka-ui) and P100 git-ui removal, index-*.js measures 1 339.31 kB raw / 355.29 kB gzip (v1.9 P109, bun run build:studio).
+- After the P98-P112 frontend-library migration (Pinia, TanStack Query, shadcn-vue, reka-ui) and P100 git-ui removal, index-*.js measures 1 339.31 kB raw / 355.29 kB gzip (v1.9 P109, bun run build).
 - The UI uses Vue 3 with script setup and the Composition API in VDOM mode; Vapor mode was evaluated and declined in P6.
 - Styling uses Tailwind v4 with CSS-first config; the flat zinc dark palette; `packages/theme/src/tokens.css` is its only colour source.
 - Dynamic colours must be Record<Enum,string> class maps of full literals, never template-built class names, because Tailwind emits only scanned literals.
@@ -111,7 +111,7 @@ whatever sandbox a session happens to be in),
 - dt-sql-parser and monaco-sql-languages were declined because they cover neither SQLite nor ClickHouse and pull in an ANTLR runtime for a few node kinds.
 - The in-house SQL tokenizer covers all five dialects, tolerates half-typed text (never throws), and keeps byte-accurate offsets.
 - Zod's remaining TypeScript-side job is connection-dialog input validation; the engine wire protocol it used to guard went with the deletion of src/engine/ (P58f).
-- Rows read back out of SQLite are validated in Go with hand-written model decoders in apps/kira-studio/internal/storage/model/.
+- Rows read back out of SQLite are validated in Go with hand-written model decoders in apps/kira-space/internal/studiostorage/model/.
 - Linting uses Biome for TS/Vue and golangci-lint for Go; gocognit and gocyclo run at min-complexity 30 and Biome's noExcessiveCognitiveComplexity at maxAllowedComplexity 30.
 - knip checks TS/Vue dead files, dependencies, duplicate exports, and unused exports/types/binaries.
 - Biome is the single TS/Vue formatter and linter; ESLint and Prettier are not used.
@@ -122,8 +122,8 @@ whatever sandbox a session happens to be in),
 - App icon is an Icon Composer `appicon.icon` with one full-bleed layer; the system applies the mask. actool 26 compiles it to `Assets.car`, named by `CFBundleIconName` `appicon` (P349).
 - The DMG is a styled disk image with an /Applications shortcut, has no silent auto-update (a user-initiated one is scripts/install.sh, P119), and has no runtime/ tree to vendor or sign.
 - No DMG carries a .vsix, because Kira Space's VS Code extension was removed in P243 Part 2.
-- Real-container DB adapter tests are written in Go with testcontainers-go (apps/kira-studio/internal/adapters/testsupport/, run by bun run test:go), not in Bun; Colima is the container runtime.
-- packages/db-fixtures/ no longer holds per-engine specs; it is the shared fixture corpus (fixtures/*.sql, support/*.ts) seeded by Go's testsupport package and apps/kira-studio/tests/e2e-real/, with Bun driving only the e2e-real seeding.
+- Real-container DB adapter tests are written in Go with testcontainers-go (apps/kira-space/internal/adapters/testsupport/, run by bun run test:go), not in Bun; Colima is the container runtime.
+- packages/db-fixtures/ no longer holds per-engine specs; it is the shared fixture corpus (fixtures/*.sql, support/*.ts) seeded by Go's testsupport package and apps/kira-space/tests/e2e-real/studio/, with Bun driving only the e2e-real seeding.
 - UI tests use Playwright against the built bundle in real WebKit.
 - Logging uses Go log/slog to a single daily-rolling file under ~/.kira-studio/logs/, mirroring the former electron-log configuration.
 - The grid engine is slickgrid@5.20.0 core SlickGrid class only, with no SlickDataView, plugin or slickgrid-vue; it is the only grid engine, and the old DataGrid.vue, GridRow.vue and __kiraGridEngine are gone (P22 Pass B).
@@ -141,12 +141,12 @@ whatever sandbox a session happens to be in),
 - kiraSlickGrid.ts positions columns through --sg-l<i>/--sg-r<i> custom properties on the grid root plus one shared append-only sheet, never SlickGrid's per-grid <style>, because WebKit rebuilds every element's style on a sheet removal or rule mutation (~55 ms per mount on the test page).
 - CommitGrid.vue uses plain SlickGrid and keeps the per-grid style sheet.
 - slickTheme.css and CommitGrid.vue set contain: layout paint on .grid-canvas, because without one stacking context overlapping runway rows each get a compositing layer rebuilt per row mount (P162).
-- The outbound HTTP client is plain net/http in apps/kira-studio/internal/httpclient/ with no client, retry, URL-parsing or multipart-builder dependency.
+- The outbound HTTP client is plain net/http in apps/kira-space/internal/httpclient/ with no client, retry, URL-parsing or multipart-builder dependency.
 - The HTTP client uses one package-level *http.Client with a 30s timeout via context.WithTimeout rather than Client.Timeout, so Stop and timeout abort an in-flight body read the same way; it follows redirects (every hop recorded, up to 10), always verifies TLS, and uses http.ProxyFromEnvironment.
 - The outbound HTTP client is reachable only from Go; the webview's own fetch is never used (the 'Go owns the network' invariant).
 - The request builder supports body modes none/raw/code/urlencoded/formdata/file (internal/httpclient/body.go); a two-pass mime/multipart writer computes an exact Content-Length from a fixed boundary before streaming, so form-data or binary sends are never chunked.
 - One stdlib net/http/httptrace.ClientTrace is installed per send, recording each redirect hop's DNS/connect/TLS/wait/download phases, bucketed by checkRedirect (P10).
-- The outbound gRPC client lives in apps/kira-studio/internal/grpcclient/ and uses google.golang.org/grpc, google.golang.org/protobuf (dynamicpb/protojson/protodesc/protoregistry, grpc-go's reflection client) and bufbuild/protocompile, with no generated .pb.go code and no protoc/buf build step.
+- The outbound gRPC client lives in apps/kira-space/internal/grpcclient/ and uses google.golang.org/grpc, google.golang.org/protobuf (dynamicpb/protojson/protodesc/protoregistry, grpc-go's reflection client) and bufbuild/protocompile, with no generated .pb.go code and no protoc/buf build step.
 - The gRPC client is dynamic: a method is discovered via server reflection or a supplied .proto compiled by protocompile (no codegen), then called through dynamicpb/protojson.
 - The gRPC client supports only unary and server-streaming calls; client- and bidi-streaming are out of scope.
 - gRPC deadlines (P232): connect plus HTTP/2 handshake 5 s, whole reflection 15 s; a unary call follows api.requestTimeoutMs (0 = none, default), overridable by GrpcCallArgs.timeoutMs clamped to 0..3_600_000; each timeout ends in E_TIMEOUT naming target and wait.
@@ -179,14 +179,14 @@ whatever sandbox a session happens to be in),
 - .json/.jsonc are colored by Monaco's worker-free JSON tokenizer, not the JavaScript grammar; .vue/.svelte are colored as plain HTML because no grammar exists for either.
 - Monaco `editor.addCommand` registers its handler in the global command registry and returns no disposable, so the handler's closure outlives the editor. Use `editor.addAction` and dispose the result on unmount (MonacoHost, `useFileEdit`).
 - Call `setModel(null)` before `dispose()` on an editor whose models outlive it (Space `editors.ts` `releaseWidget`); a widget disposed with cached models attached stays reachable from them.
-- The git graph in the native workspace moved to Kira Space in v1.9 P100; apps/kira-studio/frontend/package.json no longer depends on @kira/git-ui, @kira/git-ipc, @kira/git-core or seti-icons. @kira/kira-ui was deleted in P267.
+- The git graph in the native workspace moved to Kira Space in v1.9 P100; apps/kira-space/frontend/package.json no longer depends on @kira/git-ui, @kira/git-ipc, @kira/git-core or seti-icons. @kira/kira-ui was deleted in P267.
 - Database drivers are Go-native for all ten kinds as of P58e M9.3: pgx/v5 (postgres), go-sql-driver/mysql (mariadb/mysql via shared mysqlfamily core), modernc.org/sqlite (pure Go), hand-rolled net/http client (clickhouse), mongo-driver/v2, go-redis/v9, aws-sdk-go-v2 sqs/s3 (shared awscfg package), franz-go + kadm (kafka).
 - The database/adapter surface is cgo-free, but some darwin-only files use cgo for OS integrations (repo-root internal/secrets and internal/metrics, Kira Studio internal/localauth, Kira Space internal/gitclient FSEvents watcher), each behind a darwin && cgo build tag with a non-cgo companion.
 - CGO_ENABLED=1 is needed for real darwin builds (beyond Wails' macOS bindings) but never for a Linux dev/test loop.
 - The Node engine child process was removed in P58f M10, along with its build/vendoring machinery and supervision code; it already served no connection traffic after C2 (P58e M9.3).
-- Kira Studio app identity: organisation kirathecat, bundle ID com.kirathecat.kira-studio (the -shell suffix is gone), executable Contents/MacOS/Kira Studio (space included).
+- Kira Space is the only app (P537). Organisation kirathecat, bundle ID com.kirathecat.kira-space, executable Contents/MacOS/Kira Space (space included). Kira Studio is retired; its modules (Studio, Api, Docker, Kubernetes) are Space modes.
 - There is no silent auto-update; P119 adds a user-initiated update through scripts/install.sh.
-- Kira Space (P100) ships as its own DMG under the same organisation, with bundle ID com.kirathecat.kira-space (set in apps/kira-space/build/config.yml, mirrored in build/darwin/Info.plist) and executable Contents/MacOS/Kira Space, using the same install/update path.
+- Kira Space ships as one DMG (kira-space-macos-arm64.dmg); bundle ID is set in apps/kira-space/build/config.yml and mirrored in build/darwin/Info.plist. scripts/install.sh moves an installed Kira Studio.app to the Trash and leaves ~/.kira-studio/.
 
 ## Invariants
 
@@ -215,12 +215,12 @@ whatever sandbox a session happens to be in),
 
 ## Adapter contract
 
-- Each database/queue/storage engine is one package under apps/kira-studio/internal/adapters/ (postgres, mysqlfamily shared by mariadb/mysql, sqlite, clickhouse, mongo, redis, sqs, s3, kafka) implementing the Adapter interface in adapter.go.
+- Each database/queue/storage engine is one package under apps/kira-space/internal/adapters/ (postgres, mysqlfamily shared by mariadb/mysql, sqlite, clickhouse, mongo, redis, sqs, s3, kafka) implementing the Adapter interface in adapter.go.
 - The Go Caps struct (adapters/caps.go) declares what each engine can do; its field order is kept identical to the TypeScript Caps type in packages/shared/caps.ts so the two can be diffed against each other.
 - KeyBrowser cap is true only for redis and s3: their top-level container's key/object space is unbounded and nested, so the project tree treats it as a leaf and the UI reaches it through a dedicated Browse tab.
 - The UI must read only Caps, never a connection.kind check, to decide what to show.
 - registry.go's loaders map is a plain constructor table where each adapter package registers its constructor from its own init(); it is not a lazy-import map, because Go links every adapter into the binary so no per-engine baseline-memory concern remains.
-- The nativeKinds map is gone; every connection kind routes through the loaders registry. Only a stale comment remains, at apps/kira-studio/internal/storage/repos/connections.go:172.
+- The nativeKinds map is gone; every connection kind routes through the loaders registry. Only a stale comment remains, at apps/kira-space/internal/studiostorage/repos/connections.go:172.
 - Console results are capped: adapters.DefaultConsoleCap is 10,000 rows and 56 MiB of held cell text, shared by every statement of a batch via adapters.RemainingCap; an exhausted budget admits one row, then reports truncated. The cap is sized so a full batch fits the data-frame response limit.
 - model.ConsoleRequest.Cap (Go callers only, never on the renderer wire) lowers the console cap, and adapters.ConsoleCapFor clamps anything above the default.
 - An engine checks the cap after Next() and before appending, so PagePosition.Truncated means at least one more row existed and an exactly-cap result reports false.
@@ -262,7 +262,7 @@ whatever sandbox a session happens to be in),
 - Writable SQS connections ignore the filter value, keep the queue's own visibility timeout, and keep receipt handles for Delete.
 - SQS authentication is by named AWS profile; static keys are accepted only in URI mode.
 - Cancellation is always forwarded to the server, never just "stop showing the result"; if a driver cannot cancel, the capability is absent and the stop button says so.
-- Every adapter maps its driver's errors to the closed ErrorCode set via New/CodeOf in apps/kira-studio/internal/adapters/errors.go, preserving the driver's message verbatim (Adapter rule 4).
+- Every adapter maps its driver's errors to the closed ErrorCode set via New/CodeOf in apps/kira-space/internal/adapters/errors.go, preserving the driver's message verbatim (Adapter rule 4).
 - errors.go holds shared adapter guards: Unsupported/NoQueryConsole (E_UNSUPPORTED stubs), AssertWritable (read-only refusal opening Mutate), CheckNotStarted/CheckCancelled (cancellation checks against the op's context), and RequireConnected[T] (guard that Connect ran).
 - sqltext.go holds shared driver-agnostic SQL text/planning glue for SQL adapters' read.go: projection resolution, keyset-eligibility rule with per-dialect tiebreaker, page-token encode/decode, WhereClause/ParseCountValue, and the keyset pipeline (AssertKeysetSupported, ResolveFetchColumns, BuildScanOrderBy, BuildKeysetPosition) used by postgres/mysqlfamily/sqlite.
 - sqlmutate.go holds shared mutation guards (OrderedOps, AssertColumnsKnown, AssertAffectedExactlyOne, AssertKeyIsPrimaryKey) and a generic row-op-to-SQL renderer (ValueRenderer, LiteralRenderer/NewParamRenderer, RenderRowOp) shared by postgres/mysqlfamily/sqlite apart from dialect placeholder and qualified-name format.
@@ -273,18 +273,18 @@ whatever sandbox a session happens to be in),
 ### PostgreSQL / MariaDB / MySQL
 
 - PostgreSQL, MariaDB and MySQL adapters are full read/write SQL adapters using keyset pagination on the primary key (falling back to LIMIT/OFFSET) and cancellation on a side connection (pg_cancel_backend for Postgres, KILL QUERY for MySQL family).
-- PostgreSQL is Go-native (apps/kira-studio/internal/adapters/postgres/, pgx/v5) and served in-process by adapterhost.Router through the loaders registry; no Node engine child exists any more (deleted P58f).
+- PostgreSQL is Go-native (apps/kira-space/internal/adapters/postgres/, pgx/v5) and served in-process by adapterhost.Router through the loaders registry; no Node engine child exists any more (deleted P58f).
 - The Go Postgres port keeps keyset-on-PK pagination and pg_cancel_backend on a side connection using the tracked backend pid; only the hosting process and query-context handling changed.
 - In the Postgres adapter, never pass the caller-side op cancellation context.Context to pgx's Query/Exec, because pgx honours context cancellation and races its own cancel request against the explicit pg_cancel_backend call; use adapters.RunWithAbortRace (internal/adapters/abort.go).
 - Postgres declarative partitions list as children of their partitioned parent (`pg_inherits`, `relispartition`), not at schema level. A partition path uses its own schema.
-- MariaDB and MySQL are Go-native (apps/kira-studio/internal/adapters/mysqlfamily/, github.com/go-sql-driver/mysql); mysqlfamily/ holds the single Adapter implementation, while mariadb/ and mysql/ each hold only their own Profile (server label, ApplyEngineOptions).
+- MariaDB and MySQL are Go-native (apps/kira-space/internal/adapters/mysqlfamily/, github.com/go-sql-driver/mysql); mysqlfamily/ holds the single Adapter implementation, while mariadb/ and mysql/ each hold only their own Profile (server label, ApplyEngineOptions).
 - In mysqlfamily, never pass the op's own context to the driver, because cancelling the context passed to QueryContext/ExecContext closes the underlying connection outright (driver: bad connection on the next statement); use adapters.RunWithAbortRace with a background context and an explicit KILL QUERY <threadId> on a side connection (query.go).
 - The Go MySQL-family adapter lost the query console's "N row(s) affected" status text (a generic "OK" shows instead), because go-sql-driver/mysql's QueryContext path, which the console's multi-statement runner needs, has no RowsAffected().
 - allowPublicKeyRetrieval has no equivalent in the Go MySQL-family adapter: go-sql-driver/mysql unconditionally requests the server's RSA public key over plaintext when caching_sha2_password needs one and TLS is off, with no option to refuse.
 
 ### SQLite (P35; Go-native as of P58b M6.3)
 
-- The SQLite adapter is Go-native as of P58b M6.3, at apps/kira-studio/internal/adapters/sqlite/, using modernc.org/sqlite (pure Go, cgo-free), the same driver that backs the app's own storage.
+- The SQLite adapter is Go-native as of P58b M6.3, at apps/kira-space/internal/adapters/sqlite/, using modernc.org/sqlite (pure Go, cgo-free), the same driver that backs the app's own storage.
 - The Go SQLite adapter reports caps.cancel true; the old Node adapter reported false because node:sqlite (Bun 1.4+/Node 22.5+ builtin) had no sqlite3_interrupt and a synchronous API that blocked the event loop so an abort could not be delivered.
 - Go SQLite cancels by cancelling an adapter-owned per-op context.Context on that op's own dedicated *sql.Conn (one connection per op, not a pinned shared one), reaching sqlite3_interrupt; Postgres/MariaDB/MySQL instead cancel through a side connection.
 - SQLite keyset pagination falls back through primary key, then unique index, then the table's implicit rowid (never surfaced as mutation identity), before degrading to LIMIT/OFFSET; unchanged from the Node design.
@@ -294,7 +294,7 @@ whatever sandbox a session happens to be in),
 
 ### ClickHouse (P36; Go-native as of P58b M6.4)
 
-- The ClickHouse adapter is Go-native (since P58b M6.4), at apps/kira-studio/internal/adapters/clickhouse/, using plain net/http; it was the last of the five SQL-family kinds migrated to Go.
+- The ClickHouse adapter is Go-native (since P58b M6.4), at apps/kira-space/internal/adapters/clickhouse/, using plain net/http; it was the last of the five SQL-family kinds migrated to Go.
 - The Go ClickHouse adapter has no driver dependency: a hand-rolled HTTP client POSTs the statement text and reads the JSONCompactStringsEachRowWithNamesAndTypes format line by line (names row, types row, then one JSON array of strings or the ᴺᵁᴸᴸ sentinel per data row).
 - No Go-side type system is needed for ClickHouse because its own text rendering already covers exotic types (Decimal128, UUID, Array/Tuple/Map, Enum8, big UInt64/Int64) the way the cell editor needs.
 - The ClickHouse adapter must set output_format_json_quote_64bit_integers=1 explicitly, because @clickhouse/client's .json() set it invisibly; without it FORMAT JSON catalog queries render UInt64/Int64 as bare numbers, losing precision past 2^53 and failing decode into Go string fields.
@@ -306,7 +306,7 @@ whatever sandbox a session happens to be in),
 
 ### Kafka (Go-native as of P58e M9.3)
 
-- The Kafka adapter is Go-native (apps/kira-studio/internal/adapters/kafka/), built on github.com/twmb/franz-go and franz-go/pkg/kadm; it was the tenth and last of ten kinds to go Go-native (P58e M9.3).
+- The Kafka adapter is Go-native (apps/kira-space/internal/adapters/kafka/), built on github.com/twmb/franz-go and franz-go/pkg/kadm; it was the tenth and last of ten kinds to go Go-native (P58e M9.3).
 - Checkpoint C2 (P58 zero-traffic proof) was recorded with the Kafka flip: a full manual pass across all ten kinds plus cancel/settings-save/cache-clear left the Node engine child's connection-count metric at zero.
 - franz-go replaces the old TypeScript driver's ABI-specific compiled binding with a pure-Go client, so there is no compiled binding, ABI, rebuild step, or packaged-bundle native-module gap.
 - The Kafka adapter never joins a consumer group for a read-only browse; it uses kgo.ConsumePartitions to assign partitions directly at explicit start offsets, never subscribe() or kgo.ConsumerGroup.
@@ -323,7 +323,7 @@ whatever sandbox a session happens to be in),
 
 ### SQS (Go-native as of P58d M8.2)
 
-- The SQS adapter is Go-native as of P58d M8.2, in apps/kira-studio/internal/adapters/sqs/, using aws-sdk-go-v2/service/sqs; it is the eighth of ten kinds P58 migrates to Go.
+- The SQS adapter is Go-native as of P58d M8.2, in apps/kira-space/internal/adapters/sqs/, using aws-sdk-go-v2/service/sqs; it is the eighth of ten kinds P58 migrates to Go.
 - The SQS adapter sets caps.pagination = 'batch': every poll is an independent, non-resumable ReceiveMessage call with no addressable position, so the stream view never auto-loads and only an explicit Poll button polls.
 - In the SQS adapter, canDelete is a real per-item removal via the message's receipt handle, kept adapter-local and in-memory and never round-tripped over the wire, because a receipt handle is only valid for the message it names, on the session that received it.
 - The Go SQS port needs an explicit mutex plus a FIFO eviction queue for receipt handles, because the JavaScript original relied on single-threadedness and Map insertion order.
@@ -337,7 +337,7 @@ whatever sandbox a session happens to be in),
 
 ### S3 (Go-native as of P58d M8.3)
 
-- The S3 adapter is Go-native (apps/kira-studio/internal/adapters/s3/, aws-sdk-go-v2/service/s3).
+- The S3 adapter is Go-native (apps/kira-space/internal/adapters/s3/, aws-sdk-go-v2/service/s3).
 - S3 is the only engine with caps.fileTransfer: items are whole files streamed to/from a local path via a native OS dialog (downloadObject), not a value the mutation-preview model can show inline.
 - fileTransfer is orthogonal to the three write flags: Download reads regardless of a connection's read-only flag, while Upload is gated on fileTransfer && canInsert together.
 - S3 sets caps.keyBrowser = true (P41) because a bucket's prefix/object space has no fixed size and can nest arbitrarily deep; the bucket node in s3/catalog.go is hasChildren: false, and /-delimited prefix/object navigation happens in a Browse tab (SPEC.md §8.18).
@@ -350,7 +350,7 @@ whatever sandbox a session happens to be in),
 
 ### MongoDB / Redis (P9/P41; Go-native as of P58c M7.3/M7.4)
 
-- The MongoDB and Redis adapters are Go-native as of P58c, located in apps/kira-studio/internal/adapters/mongo/ and .../redis/.
+- The MongoDB and Redis adapters are Go-native as of P58c, located in apps/kira-space/internal/adapters/mongo/ and .../redis/.
 - The MongoDB adapter paginates by _id keyset, falling back to skip/limit.
 - MongoDB cancellation uses $currentOp plus killOp on the same client the adapter already holds, never a side connection, because $currentOp's default allUsers: false only matches the polling connection's own authenticated user.
 - The Redis adapter paginates with SCAN cursors (never KEYS) and gets exact per-key counts via O(1) type-length commands.
@@ -593,8 +593,8 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - Migration 0020 added connections.mcp_enabled (deny-by-default MCP exposure); 0021 added mcp_read_mode/mcp_write_mode/mcp_ddl_mode plus mcp_description; 0022 added mcp_auto_explain (auto-force-EXPLAIN on run_query); 0023 created connection_mask_rules and connections.mask_correlation_key.
 - Migration 0027_p108part11_op_log_path.sql added op_log.path TEXT, the console path an op actually ran against.
 - Op source rides the RunOp ctx (`adapterhost.WithOpSource`), set by dbmcp's tool wrapper; connection lifecycle ops are always `user`, since MCP's connect is a shared, deduplicated attempt with its own ctx.
-- Migrations are forward-only numbered SQL files in apps/kira-studio/internal/storage/migrations/, applied on startup.
-- Table access is hand-written database/sql in apps/kira-studio/internal/storage/repos/; there is no ORM (the Drizzle dependency went out with the Electron shell).
+- Migrations are forward-only numbered SQL files in apps/kira-space/internal/studiostorage/migrations/, applied on startup.
+- Table access is hand-written database/sql in apps/kira-space/internal/studiostorage/repos/; there is no ORM (the Drizzle dependency went out with the Electron shell).
 - Every row read from settings, ui_layout and connections is decoded through the model types in internal/storage/model/ before use, so a hand-edited or stale-shape row fails loudly instead of propagating zero values into the UI.
 - Migration 0010_p12_api_rename.sql renamed the six http_* collection/variable/history tables to api_*, because api_items stores gRPC requests too and api_variables resolves gRPC targets and metadata; grpc_call_history was not renamed since it holds gRPC calls only.
 - The 0010 rename migration uses ALTER TABLE RENAME for each table, then DROP INDEX and CREATE INDEX for each of seven indexes, because SQLite has no ALTER INDEX RENAME; foreign key references are rewritten automatically since db.go sets _foreign_keys=1.
@@ -635,7 +635,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - scope_key is the single axis List/trim/Clear key on (the saved request item_id, else 'tab:'+tab_id), implemented as a GENERATED ALWAYS AS (COALESCE(item_id, 'tab:' || tab_id)) VIRTUAL column, to avoid two writers (Record and Adopt) needing to agree and to keep the index usable without per-call-shape SQL.
 - api_response_history.item_id cascades on delete (the DSN sets _foreign_keys=1 on every connection), so deleting a saved request, or its folder or collection, removes its history in one statement.
 - api_response_history.tab_id is deliberately not a foreign key into tabs, because TabsRepo.Save deletes and re-inserts a window's whole tab set on a 1-second debounce firing on every URL keystroke, so ON DELETE CASCADE would erase scratch-tab history.
-- Scratch-tab response history is swept once per launch by ResponseHistoryRepo.SweepOrphans (called from apps/kira-studio/internal/appwire/wire.go beside oplog's startup prune), deleting rows with item_id NULL whose tab_id is not in tabs.
+- Scratch-tab response history is swept once per launch by ResponseHistoryRepo.SweepOrphans (called from apps/kira-space/internal/appwire/wire.go beside oplog's startup prune), deleting rows with item_id NULL whose tab_id is not in tabs.
 - Orphan sweeping runs only at launch, not on tab close, deliberately: residue is bounded by the global byte budget, and a call on closeTab could fail silently during a quit.
 - Save as… adopts a scratch tab's history onto the new saved request via ResponseHistoryRepo.Adopt (UPDATE api_response_history SET item_id = ? WHERE item_id IS NULL AND tab_id = ?); scope_key follows because it is generated.
 - There is no reverse of Adopt: deleting a saved request cascades its history away and does not orphan it back to the tab, since deletion is already an explicit destructive action.
@@ -962,12 +962,12 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - P12 D17 is an audit naming every couple that would block splitting Api into a standalone app; it is not a restructuring.
 - internal/bridge stays one Go package holding both modules' services (verdict: Accepted). It has one file per service and the six Api files import nothing from the thirteen Studio ones; splitting would rewrite every bound method FQN (mockRuntime.ts BRIDGE_PKG and 136 FQN_SUFFIX_BY_IPC_KEY entries) for no boundary beyond what Go's internal/ rule gives.
 - appcore.Deps carries Studio's Connections/Tree/Router into Api services and Api's ApiVars into Studio's ConnectionsService (verdict: Accepted, documented). It is embedded by value in twenty-one bound services as of P127; a standalone Api app would need only Deps{DB, Repos, ApiVars, Events}.
-- apps/kira-studio/internal/storage/{model,repos} carries both modules' tables and imports httpclient/postman (model.ResponseHistorySnapshot embeds httpclient.Response by value; repos.CollectionsRepo speaks postman.Tree/Item). This is the real blocker to splitting Api out; the split is a five-constructor, every-repo-test change worth doing only once a second host exists.
+- apps/kira-space/internal/studiostorage/{model,repos} carries both modules' tables and imports httpclient/postman (model.ResponseHistorySnapshot embeds httpclient.Response by value; repos.CollectionsRepo speaks postman.Tree/Item). This is the real blocker to splitting Api out; the split is a five-constructor, every-repo-test change worth doing only once a second host exists.
 - Planned storage split shape (not created): model/{collections,variables,grpc,responsehistory}.go and repos/{collections,variables,response_history,grpc_history}.go move to a new apistore package; repos.Repos embeds *apistore.Repos for its four Api fields; postman imports apistore instead of model; model stops importing httpclient.
 - adapterhost.Host.RunOp is the Api module's op scheduler by design: one op log avoids a second dead ring on every request tab or a second useRunState/ops store, and bridge/http.go and bridge/grpc.go pass ConnectionID: nil into the same scheduler every DB adapter uses.
 - ConnectionsService.SecretsStatus is the Api module's only call into a Studio service (used by api/VariableSetView.vue's OS-keychain check). It reports a process-wide platform fact and lives on ConnectionsService only historically; the proper fix is a separate SecretsService, a new bound method out of scope for P12.
 - No Go domain package may import internal/bridge. Repo-root internal/ipcerr (the error type every bound method returns) was moved out of internal/bridge/ipcerr so connections, secrets and tree no longer depend on the IPC transport layer.
-- apps/kira-studio/internal/layering_test.go's TestDomainPackagesDoNotImportBridge runs go list -deps against the named domain packages so imports into internal/bridge/... fail a test. Kira Space has its own apps/kira-space/internal/layering_test.go, and both use the shared helper internal/layeringtest.
+- apps/kira-space/internal/layering_test.go's TestDomainPackagesDoNotImportBridge runs go list -deps against the named domain packages so imports into internal/bridge/... fail a test. Kira Space has its own apps/kira-space/internal/layering_test.go, and both use the shared helper internal/layeringtest.
 - The layering tests do not cover repo-root internal/ packages (e.g. internal/harness, internal/terminal), because Go's internal/ visibility rule already stops them from importing either app's internal/bridge.
 - api/reveal.ts's runReveal is the single four-outcome switch (revealed | cancelled | confirmation-required | error) with a recurse-once-on-confirmation shape, shared by revealVariable, revealHistoryEntry and the Copy as curl reveal loop. The Copy as curl loop calls revealVariable rather than hand-rolling its own copy.
 - project/ConnectionDialog.vue keeps its own copy of the gated-reveal loop on purpose, because sharing it would need a home both project/** and api/** may import, i.e. a new Studio↔Api shared module, created by the phase whose job is removing couplings between them.
@@ -978,7 +978,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - api/ApiDialogs.vue mounts the api module's six dialogs, each gated by its own store's open flag; it is a template-only wrapper, so App.vue imports one thing instead of eleven.
 
 - No standalone api-ui package exists; shared UI was extracted (P98/P104/P110) into packages/theme (shadcn-vue components/ui/*, Tailwind tokens, CodiconIcon) and packages/workbench (shell components, Pinia store factories, editor bootstrap, test harnesses).
-- The Api module's own UI (ApiDialogs.vue, request/response views, api/state/) stays in apps/kira-studio/frontend/src/api/ because only Kira Studio hosts an Api module, so no second app justifies a shared api-ui package.
+- The Api module's own UI (ApiDialogs.vue, request/response views, api/state/) stays in apps/kira-space/frontend/src/studio/api/ because only Kira Studio hosts an Api module, so no second app justifies a shared api-ui package.
 - Monaco's editor theme lives in packages/workbench/src/editor/monacoTheme.ts; CodeMirrorHost.vue was deleted at P60b and replaced by editor/MonacoHost.vue.
 - An HTTP request body is one of six modes in httpBodyModeSchema (packages/shared/domain/http.ts): none, raw, code, urlencoded, formdata, file; there is no GraphQL mode.
 - GraphQL support was deleted entirely by a product decision (no query/variables state, no GraphQL StreamLanguage, no server-side envelope builder); raw is plain text only and JavaScript/JSON/HTML/XML became the top-level code mode with its own codeLanguage field.
@@ -1425,7 +1425,7 @@ Kira Space, a separate app with the identical two-process shape (see Git module,
            │
 ┌──────────┴───────────┐
 │  Go shell (Wails v3) │  window, menus, SQLite, settings, op log, keychain,
-│  apps/kira-studio    │  pre-connect, every adapter, cache, metrics
+│  apps/kira-space    │  pre-connect, every adapter, cache, metrics
 │  main.go + appwire   │
 └──────────────────────┘
 ```
@@ -1518,14 +1518,14 @@ never decoded (P86's own privacy rule, restated in Known open items below) — o
 `ScheduleWakeup` by name can.
 
 **The renderer talks to Go over two planes.** The **control plane** is the Wails-generated
-TypeScript bindings under `apps/kira-studio/frontend/bindings/…/internal/bridge/` (git-ignored, regenerated by
-`wails3 task common:generate:bindings`, which `scripts/setup.sh` calls), which `apps/kira-studio/frontend/src/bridge/control.ts` calls as plain
+TypeScript bindings under `apps/kira-space/frontend/bindings/…/internal/bridge/` (git-ignored, regenerated by
+`wails3 task common:generate:bindings`, which `scripts/setup.sh` calls), which `apps/kira-space/frontend/src/studio/bridge/control.ts` calls as plain
 typed async functions — `AppService.Info()`, `ConnectionsService.List()` — resolving under the hood
 to HTTP calls against the local `/wails/runtime` endpoint driven by `/wails/runtime.js`
 (`@wailsio/runtime`). That specifier is a literal URL the app itself answers — Wails serves its own
 runtime bundle there — not a package the build resolves, so `vite.config.ts` marks `/wails/*`
 external. Vite's dev server still has to resolve it at transform time, which is what
-`apps/kira-studio/frontend/wails/runtime.js` is for: a file at exactly that path under the Vite root, so the
+`apps/kira-space/frontend/wails/runtime.js` is for: a file at exactly that path under the Vite root, so the
 rewritten import URL stays `/wails/runtime.js` and `wails3 dev`'s asset server (which answers
 `/wails/*` itself and proxies only the rest to Vite) keeps serving the real bundle. Every call is
 wrapped in one `unwrap()` normalizing a Go-side error into
@@ -1547,7 +1547,7 @@ transfer.go`'s `openUploadBody`), so an upload's size stays bounded by the files
 512 KiB/64 MiB arithmetic, and a multi-GB file becomes one ~200-byte control call rather than hundreds.
 
 The **data plane** is a single named
-stream, `"engine"`, opened once per page load by `apps/kira-studio/frontend/src/bridge/port.ts` via
+stream, `"engine"`, opened once per page load by `apps/kira-space/frontend/src/studio/bridge/port.ts` via
 `Stream('engine')`, carrying binary FlatBuffers frames for bulk payloads (grid pages, tree
 results) — requests are still plain JSON text (P11 D3); only responses and events are binary.
 
@@ -1559,11 +1559,11 @@ frames to `POST /wails/stream/send` — both over the asset server's custom URI 
 so no local TCP port is open for another process on the machine to reach. `WailsSocket` wraps
 that poll/send pair in the same `readyState`/`onmessage`/`send()` shape a `WebSocket` has, which is
 why the frontend code reads as if it were talking to one — but a real, on-the-wire `WebSocket` only
-exists in a `-tags server` build (`apps/kira-studio/tests/e2e-real/` builds with that tag; the
+exists in a `-tags server` build (`apps/kira-space/tests/e2e-real/studio/` builds with that tag; the
 packaged app does not), where the identical application code runs unchanged over a real
 `net.Listener` instead.
 
-- The Go data plane is a server: HandleDataFrame in apps/kira-studio/internal/adapterhost/dataframe.go parses only each inbound frame's op (and connectionId for connection-scoped ops) to route it, then answers every op in-process via adapterhost.Dispatcher.
+- The Go data plane is a server: HandleDataFrame in apps/kira-space/internal/adapterhost/dataframe.go parses only each inbound frame's op (and connectionId for connection-scoped ops) to route it, then answers every op in-process via adapterhost.Dispatcher.
 - Data-plane responses and events are encoded as one FlatBuffers Frame with file identifier "KIF1", whose offsets/truncated vectors are [uint] so decodeFrame in packages/shared/protocol/frame.ts reads each chunk's four buffers as zero-copy typed-array views, not base64 decode-and-copy.
 - Requests from renderer to Go still travel as plain JSON text; only responses and events are FlatBuffers.
 - The engine is the Go process itself, so ping is answered locally and the status pill's pid is the process's own os.Getpid().
@@ -1585,7 +1585,7 @@ packaged app does not), where the identical application code runs unchanged over
 - appwire Options carries the OS seams main.go owns (DB, repos, emitter, dialogs, keep-awake driver); Studio adds cipher, authorizer and MCP installer; Space adds browser, git Locator, mobile assets, LAN seams, GhLocator and TrackerGrace.
 - main.go keeps the Wails app, windows, menu and startupfail; Space's appwire also has BindShell (window hooks) and StartMobile. Production and both flowharness packages call the same Build.
 
-- Kira Studio's Go side lives in apps/kira-studio/; Wired.Bound() registers 30 bound services under apps/kira-studio/internal/bridge/, with main.go building application.New options from appwire.Build.
+- Kira Studio's Go side lives in apps/kira-space/; Wired.Bound() registers 30 bound services under apps/kira-space/internal/bridge/, with main.go building application.New options from appwire.Build.
 - Kira Studio's Bound() binds no git-related service; GitClientsService moved to Kira Space as of P100 and was deleted there in P243 Part 2 with the Connected editors pane.
 - Kira Space's Bound() binds a separate set of 37 services, counted by the application.NewService entries in Bound() in apps/kira-space/internal/appwire/appwire.go (P452 AgentContextService, P453 AgentSettingsService, P454 AgentPortService, P474 RepoConfigService, P476 GitService).
 - TerminalService and WindowsService are per-app embeddings of one shared Go type each: internal/windowsvc.Service (Ensure/SetMode/OpenNew) and internal/terminal.BoundService (Open/Write/Resize/Close/DefaultCwd), living once at repo root (P128).
@@ -1642,7 +1642,7 @@ packaged app does not), where the identical application code runs unchanged over
 
 ## Git module (v1.3), Kira Space's own app as of P100
 
-- As of P100 the git module (all internal/git* Go packages, internal/ghclient, internal/codeworkspace, and the consumers of packages/git-ui, git-core, git-ipc) moved from apps/kira-studio into apps/kira-space, a separate standalone macOS app.
+- As of P100 the git module (all internal/git* Go packages, internal/ghclient, internal/codeworkspace, and the consumers of packages/git-ui, git-core, git-ipc) moved from apps/kira-space into apps/kira-space, a separate standalone macOS app.
 - Kira Space has its own binary, its own ~/.kira-space/ home (KIRA_SPACE_HOME), and its own kira.db and review.db.
 - From P100 through P127 Kira Space's window had no title-bar mode switcher; the repo workspace was the whole app, mounted directly rather than behind a 'git' AppMode.
 - P128 gave Kira Space its own module system with modules git, automations (the same shared Runs module Kira Studio uses) and ade (the app's task-planner surface).
@@ -3112,7 +3112,7 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 - Lists use the server-side Table format (`Accept: application/json;as=Table;v=v1;g=meta.k8s.io`), so columns and cells match kubectl. Rows page by limit 500 and continue, capped at 5000 rows; past the cap `truncated` is true. Label selectors are validated before the call (E_BAD_REQUEST).
 - Describe returns overview fields, labels, annotations, owners, conditions, up to 200 events and a YAML manifest. Secret data and stringData become `<N bytes>`; the last-applied annotation and managedFields are dropped.
 - Logs stream per window and per stream id through a coalescer (16 ms, 500 lines). A line is capped at 64 KiB; the UI keeps the newest 20 000 lines. Follow with Tail all asks the server for 20 000 lines, because a byte limit would end the follow stream. Streams end on LogsClose, window close, service shutdown and quit.
-- Frontend: apps/kira-studio/frontend/src/kubernetes/ (app-local, no second consumer). The shell tab strip stays off for mode `kubernetes`; the module has its own `TabStrip` through `TabStripHost` (`kubernetes/tabHost.ts`), in memory per window (pod names are ephemeral, so no restore). Server state is on TanStack Query under ['kubernetes', clusterId, ...]; lists refetch every 10 s while the document is visible. UI state is one Pinia store; the last cluster plus kind, namespace and up to 3 recent kinds per cluster persist in localStorage (kira.kubernetes.selection); `kira.kubernetes.listWidth` and `kira.kubernetes.listHidden` persist the pane layout. A second store, `useKubeTabsStore`, owns the open tabs.
+- Frontend: apps/kira-space/frontend/src/studio/kubernetes/ (app-local, no second consumer). The shell tab strip stays off for mode `kubernetes`; the module has its own `TabStrip` through `TabStripHost` (`kubernetes/tabHost.ts`), in memory per window (pod names are ephemeral, so no restore). Server state is on TanStack Query under ['kubernetes', clusterId, ...]; lists refetch every 10 s while the document is visible. UI state is one Pinia store; the last cluster plus kind, namespace and up to 3 recent kinds per cluster persist in localStorage (kira.kubernetes.selection); `kira.kubernetes.listWidth` and `kira.kubernetes.listHidden` persist the pane layout. A second store, `useKubeTabsStore`, owns the open tabs.
 - Flow tests run against `flowharness.KubeFake`, an in-process HTTPS API server (client-go sends no credentials over plain HTTP). It serves discovery, Table lists, objects, events, logs and an exec-plugin cluster. No real cluster is used anywhere.
 - P440: `Service.SetMcp` stores per-cluster MCP modes and description (migration 0051, above Studio's reserved 0050). `ListCapped` and `ReadLogs` (one non-follow request, 256 KiB cap) feed the MCP tools. See "Kubernetes tools (P440)" under Database MCP server.
 - P484: every cluster call records one op, kind `kubernetes`, through `kubernetes.Recorder` (`bridge.KubeRecorder` over `Host.RunOp`; `Service.record` is the one seam). UI and MCP calls share it; MCP rows get source `mcp` from the context. The command comes from `commands.go`, also the approval dialog text. Not recorded: refetches of loaded data (`background: true`, set by `queries.ts` when the query already holds data), `SetMcp`, kubeconfig-only `Clusters`, and failures before the call starts (unknown cluster). A log stream's row runs until the stream ends; panel Cancel ends the stream like `LogsClose`. A `Status` probe that finds the cluster unavailable still returns a value, and its row is an error. The running row carries no command; it arrives with op:end.
@@ -3143,7 +3143,7 @@ One queue and one dialog per app hold every pending agent approval. Tools stay s
 - The database MCP server uses DefaultPort 8766 only; on a port conflict it refuses to start rather than falling back to a kernel-assigned port, because every existing registration names 8766 and a fallback would leave it pointing at whatever else listens there, which would receive the live bearer token.
 - There is one token file, mcp-db-token.json, with no slug, because one instance exists per app process per KIRA_HOME (dbMcpTokenName in internal/bridge/dbmcp.go).
 - The database MCP server's lifecycle is managed by bridge.DbMcpService: it is constructed and started when the Settings toggle turns on (or already is at boot) and stopped when the toggle turns off or the app quits.
-- The ApprovalBroker is constructed once in apps/kira-studio/internal/appwire/wire.go and outlives the server's start/stop, so the boot-time event subscription stays valid across a restart.
+- The ApprovalBroker is constructed once in apps/kira-space/internal/appwire/wire.go and outlives the server's start/stop, so the boot-time event subscription stays valid across a restart.
 
 ### The six tools
 
@@ -3451,7 +3451,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 ### Api config files (P473)
 
 - Folder `~/.kira-studio/api` (config folder `api`, `ConfigFilesService` Open and Reveal). A collection is `<id>.collection.yaml` (name, `variables`, `items`: folders nest, requests carry the HTTP or gRPC body). An environment is `<id>.environment.yaml` (name, colour, `variables`). File stem is the id. `AGENTS.md` beside them is generated from the schema (`apifiles/agents_intro.md` plus rule docs). Cap 1 MiB per file.
-- Package `apps/kira-studio/internal/apifiles`: `Store` owns the folder, the load path and every write to `api_*`. Files to DB only. Invalid file: rows keep the last good version, a `Problem` with line is published, one Warn per new hash. File gone: rows go (history cascades).
+- Package `apps/kira-space/internal/apifiles`: `Store` owns the folder, the load path and every write to `api_*`. Files to DB only. Invalid file: rows keep the last good version, a `Problem` with line is published, one Warn per new hash. File gone: rows go (history cascades).
 - Projection: `api_collections`, `api_items`, `api_environments`, `api_variables` are derived from the files. Surrogate uuid ids stay; new columns `stem`, `item_key`, `secret_ref` bind them to file ids. Renaming a file or item `id` is a delete plus a create; changing `name` keeps history. State kept in the DB: `is_active` (only `SetActiveEnvironment` writes it), response and call history, variable history, tab state.
 - Order: item order is file order (`items` order is the tree order). Collection and environment order is app state in `sort_order`, set by `ReorderCollections` and `ReorderEnvironments` (`apifiles.Store`, `sqlitex.ReorderSortOrder`; no file write). New rows append, a rename keeps the place, a file renamed on disk (new stem) moves to the end, a fresh DB starts from file-load order.
 - Agent keys (P522, environment files only): per variable `agent`, per secret `agentHosts`, top level `agentAutoApproveReads`; see "API request tools (P522)". `ApiConfigService.AgentAccess` lists them without values.
@@ -3594,22 +3594,22 @@ permission except clipboard reads, set `JavaScriptCanOpenWindowsAutomatically` f
 | P46 control | Status under Wails |
 |---|---|
 | `contextIsolation` / `sandbox` / `nodeIntegration: false` | **No subject, strictly better.** There is no Node in the webview to isolate it from, and no `contextBridge`/`window.kira` surface at all — the renderer reaches Go only through generated bindings and the `engine` stream. |
-| DevTools in a packaged build | **Ports, by a different mechanism.** It is a Go build tag rather than a runtime option: `-tags production`, already set by `apps/kira-studio/build/darwin/Taskfile.yml`. |
+| DevTools in a packaged build | **Ports, by a different mechanism.** It is a Go build tag rather than a runtime option: `-tags production`, already set by `apps/kira-space/build/darwin/Taskfile.yml`. |
 | Every Chromium permission except the clipboard | **Set; on macOS and Linux only camera and microphone are enforced.** `WebviewWindowOptions.Permissions` exists and is populated (microphone/camera/geolocation/notifications denied, `PermissionClipboardRead` allowed). Wails v3.1.0's `permissions_darwin.go` consults it for `getUserMedia` only (`resolveMediaCapturePermission`: a denied microphone or camera is refused instead of prompting); geolocation, notifications and clipboard are not consulted there (`permissions_linux.go` likewise covers media capture only). On macOS the real clipboard answer is WebKit's own user-gesture heuristics. |
-| `window.open` deny | **Partial.** `MacWebviewPreferences.JavaScriptCanOpenWindowsAutomatically` is false, which denies JS-initiated windows; there is no per-request handler (no `WKUIDelegate createWebViewWithConfiguration:`). Still zero `window.open`, zero `target="_blank"` and zero `<a href>` in `apps/kira-studio/frontend/src`/`packages/shared`, and file pickers remain native dialogs via `FilesService`, not popups. |
+| `window.open` deny | **Partial.** `MacWebviewPreferences.JavaScriptCanOpenWindowsAutomatically` is false, which denies JS-initiated windows; there is no per-request handler (no `WKUIDelegate createWebViewWithConfiguration:`). Still zero `window.open`, zero `target="_blank"` and zero `<a href>` in `apps/kira-space/frontend/src/studio`/`packages/shared`, and file pickers remain native dialogs via `FilesService`, not popups. |
 | Navigation lock to the base URL | **No analogue — a real loss, already known.** There is no navigation-policy delegate on darwin at all (`webview_window_darwin.m` has no `decidePolicy`). This is weaker than the Electron `will-frame-navigate` guard plus fuses it replaces, and is recorded as a loss rather than mitigated. |
 | `webviewTag: false` | **No subject.** |
 | The spellchecker | **No analogue in the shell** — Wails exposes no spellcheck control. The mitigation moved into the renderer instead: `spellcheck="false"` on the field itself. The reason is unchanged: the connection dialog's password field becomes plain `type="text"` once the eye toggle reveals it. |
 | WebGL off | **No subject.** |
 | The seven `disable-*` Chromium switches | **No subject.** |
-| `grantFileProtocolExtraPrivileges` | **No subject, and the whole class with it.** Assets are no longer served over `file://` — `apps/kira-studio/main.go` embeds `frontend/dist` and serves it through a plain Go `http.Handler` (`AssetOptions.Handler`), so the `file://`-module-CORS trap that made this fuse mandatory does not exist. |
+| `grantFileProtocolExtraPrivileges` | **No subject, and the whole class with it.** Assets are no longer served over `file://` — `apps/kira-space/main.go` embeds `frontend/dist` and serves it through a plain Go `http.Handler` (`AssetOptions.Handler`), so the `file://`-module-CORS trap that made this fuse mandatory does not exist. |
 | The three Electron fuses (`runAsNode` and friends) | **No subject.** There is no Electron binary to re-run as Node. |
 
 **As of P100, the next paragraph describes Kira Space's renderer, not Kira Studio's** —
-`packages/git-ui` moved there in full, and `apps/kira-studio/frontend` no longer depends on it at
+`packages/git-ui` moved there in full, and `apps/kira-space/frontend` no longer depends on it at
 all. As of P120, `LinkService`/`link.go` was Kira Space's own; Kira Studio's copy had no live
-caller and was removed. P260 rebinds a Studio `LinkService` (`apps/kira-studio/internal/bridge/link.go`)
-for the Docker registry button, called from `apps/kira-studio/frontend/src/docker/context.ts`. The
+caller and was removed. P260 rebinds a Studio `LinkService` (`apps/kira-space/internal/bridge/link.go`)
+for the Docker registry button, called from `apps/kira-space/frontend/src/studio/docker/context.ts`. The
 `linkOpenExternal` wrapper lives in the shared `packages/workbench/src/bridge/createCoreControl.ts`;
 the git UI is its only caller (`repo/git/hostHandlers.ts:433`), binding Space's `bridge/link.go`.
 
@@ -3683,11 +3683,11 @@ repo's CI runs.
 
 ## Testing
 
-- Studio test suites under apps/kira-studio/tests/ are unit/, ipc/, ui/, e2e-real/, visual/, plus opt-in perf/ and proto/ (playwright.proto.config.ts); fixtures/ and support/ are not suites.
+- Test suites under apps/kira-space/tests/ are unit/, ipc/, ui/, mobile/, e2e-real/, visual/, plus opt-in perf/ and proto/ (playwright.proto.config.ts); fixtures/ and support/ are not suites. unit/, contract/, ui/, e2e-real/, visual/, perf/ and screenshots/ each hold a studio/ subdirectory with the Studio modules' specs.
+- One playwright.config.ts defines the Space projects and separate -studio projects (ui-studio, e2e-real-studio, visual-studio, screenshots-studio), each with its own testDir, so grep rules, baselines and fixtures stay distinct. ui-timing grep-selects wall-clock specs and depends on ui-studio.
 - The ipc/ directory holds two suites, a Go backend half and a Playwright frontend half per adapter, sharing one fixture module by design (P50).
-- Kira Space is a separate app with its own test tree (unit/, ui/, mobile/, e2e-real/, visual/, perf/, plus the Go flow tier); it has no ipc/ tier because it has no database adapters to split against.
-- Kira Space's tests/unit/ and tests/ui/ (bun run test:ui:space) run against Space's own built bundle; its internal/ Go suite is covered by bun run test:go, which runs both apps' packages together.
-- Studio flow tier (P232): apps/kira-studio/internal/appwire is the composition root, and internal/flowharness boots it in-process on a temp home with real HTTP and gRPC servers, a real Docker daemon and real PTYs.
+- tests/unit/ and tests/ui/ (bun run test:ui) run against the built bundle; the internal/ Go suite is covered by bun run test:go.
+- Flow tier (P232): apps/kira-space/internal/appwire is the composition root, and internal/flowharness boots it in-process on a temp home with real HTTP and gRPC servers, a real Docker daemon and real PTYs.
 - Studio flow Docker tests skip with a message when no Docker daemon is available; KIRA_FLOW_DOCKER=require makes them fail instead.
 - Studio flow tests live in internal/flows/{apiflow,httpflow,grpcflow,dockerflow,termflow}.
 - The flow gRPC server runs unary methods through its interceptor, so Calls() and required metadata cover unary and streams.
@@ -3696,8 +3696,8 @@ repo's CI runs.
 - Space flow harness uses real SQLite, git (fixed dates, git fast-import history), the bound git calls and graph plane, PTY, watchers and mobile HTTP; it fakes the claude and gh CLIs (internal/flowtest/fakeagent, scenario JSON), a second code host (flowharness/fakehost, registered with WithGitHost), dialogs, browser, keep-awake, LAN detection and window manager.
 - appwire.Options exposes test seams GhLocator, TrackerGrace and MobilePoll, set via flowharness.WithoutGh, WithTrackerGrace and WithMobilePoll.
 - The fake claude prints no stream init line under --output-format json, accepts an inline --mcp-config, and answers headless calls by --system-prompt through scenario prompts rules.
-- Space flow tests live in internal/flows/{gitflow,repoflow,editorflow,adeflow,memoryflow,termflow,appflow,mobileflow,githostflow}; bun run test:flows:space is the general suite, and test:flows:space:complete sets KIRA_FLOW_COMPLETE=1 and adds slow permutation coverage.
-- Space e2e-real tier (project e2e-real, bun run test:e2e-real:space) uses a go build -tags server binary on a temp home, fake claude/gh first on PATH, and Chromium on /?window=<uuid>.
+- Space flow tests live in internal/flows/{gitflow,repoflow,editorflow,adeflow,memoryflow,termflow,appflow,mobileflow,githostflow}; bun run test:flows is the general suite, and test:flows:complete sets KIRA_FLOW_COMPLETE=1 and adds slow permutation coverage.
+- Space e2e-real tier (project e2e-real, bun run test:e2e-real) uses a go build -tags server binary on a temp home, fake claude/gh first on PATH, and Chromium on /?window=<uuid>.
 - The Space server build locates git through gitclient.NewHostLocator (locator_server.go), not the darwin-only locator.
 - Space e2e-real has no native dialogs (stubbed with page.route) and no mobile access.
 - The server build's EmitTo broadcasts to every browser window (internal/shell/emitto_server.go); listeners filter by their own ids.
@@ -3715,11 +3715,11 @@ repo's CI runs.
 - Studio flow harness uses real SQLite, HTTP/HTTPS servers with a per-binary test CA (CAFile), gRPC with reflection and testdata/flow.proto, a silent TCP server and the Docker engine; it fakes dialogs (queued answers), keep-awake driver, MCP installer (never touches Claude config) and OS auth.
 - Studio Docker flow tests use the single image mirror.gcr.io/library/alpine:3.20; labelled resources are swept in flowharness.Main; DOCKER_HOST resolves before HOME is swapped.
 - Shared between Studio and Space: internal/flowtest, with an Events recorder implementing appevent.Emitter and a Complete gate on KIRA_FLOW_COMPLETE.
-- bun run test:flows:studio is the general Studio flow suite; test:flows:studio:complete sets KIRA_FLOW_COMPLETE=1 KIRA_FLOW_DOCKER=require.
-- The real claude tier (P237, P249) lives in apps/kira-space/tests/claude/ and apps/kira-studio/tests/claude/, nested Go modules with own go.mod and replace to the repo module, so go test ./..., lint:go, CI and hooks never see them.
+- bun run test:flows is the general flow suite; test:flows:complete sets KIRA_FLOW_COMPLETE=1 KIRA_FLOW_DOCKER=require.
+- The real claude tier (P237, P249) lives in apps/kira-space/tests/claude/, a nested Go module with own go.mod and replace to the repo module, so go test ./..., lint:go, CI and hooks never see them.
 - Real claude tests boot the real appwire.Build with the real claude CLI (haiku, temp HOME, 0.05 USD cap per run) and assert what fakes cannot, such as hook injection, untouched user Claude settings, ADE runs, memory gate and Database MCP install.
-- Real claude tests are opt-in and token-costing, run via bun run test:claude, test:claude:space or test:claude:studio; per-area commands are in docs/DEV_ENVIRONMENT.md, section "Real claude tests".
-- Run container-backed and UI test suites against their own KIRA_HOME and Testcontainers-provisioned databases, never the developer's ~/.kira-studio or a database used by a running bun run dev:studio, and never disturb that instance.
+- Real claude tests are opt-in and token-costing, run via bun run test:claude or test:claude:db; per-area commands are in docs/DEV_ENVIRONMENT.md, section "Real claude tests".
+- Run container-backed and UI test suites against their own KIRA_HOME and Testcontainers-provisioned databases, never the developer's ~/.kira-studio or a database used by a running bun run dev, and never disturb that instance.
 - Deliberate exception (P25 F10): on macOS the app's Keychain item is shared with the developer's login keychain, so tests saving a connection password touch the same OS encryption key; this is safe because secrets stay in each test's temp KIRA_HOME kira.db and no test rotates or clears the key.
 - tests/unit/ needs nothing external and finishes in about a second (bun test tests/unit); it uses plain TypeScript modules exercised with fakes rather than a real container or real app process.
 - A unit test exists only for genuinely complex or deeply-nested logic (parsers, cursor/pagination boundary arithmetic, cache eviction, crypto, concurrency state machines); CRUD-, wrapper- and constructor-shaped tests were deleted as low-value.
@@ -3728,14 +3728,14 @@ repo's CI runs.
 - A shared runtime stub (packages/workbench/src/testing/unit/wailsRuntime.ts) registers a fake /wails/runtime.js and is imported for its side effect by every spec needing one, because Bun's module registry is shared across all spec files in a run, so the first-loaded stub wins for the whole run.
 - packages/db-fixtures/ is a shared fixture corpus, not a spec suite; all per-engine *.spec.ts files are gone, the last four (clickhouse, mariadb, mysql, sqlite) retired in P58f M10 alongside src/engine/.
 - The per-engine specs were kept only while a passing TypeScript spec served as a live oracle to diff the Go port against; that argument expired once src/engine/adapters/ was removed.
-- packages/db-fixtures/fixtures/*.{sql,ts} survive because they are read by apps/kira-studio/internal/adapters/testsupport/{postgres,mariadb,mysql,sqlite,clickhouse}.go by absolute path and by apps/kira-studio/tests/e2e-real/.
-- Seven support/*.ts modules in packages/db-fixtures (common, connectionConfig, docker, postgres, mariadb, sqlite, kafka) survive; apps/kira-studio/tests/e2e-real/support/*.ts re-exports them for container seeding.
-- The kafka spec could never run under Bun because the old TypeScript driver's compiled binding loaded under no Bun ABI; it moved to apps/kira-studio/internal/adapters/kafka/kafka_test.go in P58e M9, ahead of the other specs.
+- packages/db-fixtures/fixtures/*.{sql,ts} survive because they are read by apps/kira-space/internal/adapters/testsupport/{postgres,mariadb,mysql,sqlite,clickhouse}.go by absolute path and by apps/kira-space/tests/e2e-real/studio/.
+- Seven support/*.ts modules in packages/db-fixtures (common, connectionConfig, docker, postgres, mariadb, sqlite, kafka) survive; apps/kira-space/tests/e2e-real/studio/support/*.ts re-exports them for container seeding.
+- The kafka spec could never run under Bun because the old TypeScript driver's compiled binding loaded under no Bun ABI; it moved to apps/kira-space/internal/adapters/kafka/kafka_test.go in P58e M9, ahead of the other specs.
 
-- Per-engine adapter scenario coverage (connect, tree, describe, paging, count, filter, cancel-mid-query asserted server-side, cache, add/delete row, command preview) lives in apps/kira-studio/internal/adapters/*/*_test.go, one Go test file per engine, run by bun run test:go.
+- Per-engine adapter scenario coverage (connect, tree, describe, paging, count, filter, cancel-mid-query asserted server-side, cache, add/delete row, command preview) lives in apps/kira-space/internal/adapters/*/*_test.go, one Go test file per engine, run by bun run test:go.
 - scripts/db-compat.sh (bun run test:compat) runs the conformance packages against every supported kind's oldest and newest server image (sixteen kind/min|max pairs) via testsupport.ImageFor's env-var override, running every pair even after an earlier one fails.
 - db-compat's only CI entry point is the db-compat job in .github/workflows/release.yml, a needs:-gated job every release tag must pass; there is no standalone workflow_dispatch workflow. One-off runs use bun run test:compat -- --only <kind> --min|--max locally.
-- The supported server version floor/ceiling is surfaced to users via the MIN_SERVER_VERSION map in packages/shared/domain/connection.ts, rendered per kind by apps/kira-studio/frontend/src/project/ConnectionDialog.vue.
+- The supported server version floor/ceiling is surfaced to users via the MIN_SERVER_VERSION map in packages/shared/domain/connection.ts, rendered per kind by apps/kira-space/frontend/src/studio/project/ConnectionDialog.vue.
 - Each adapter's real-container coverage has two suites: a general suite (the *_test.go file) that runs unconditionally under bun run test:go with one assertion per capability a caps.go declares, and a complete suite (authmatrix_test.go per adapter) gated behind KIRA_TEST_MATRIX=1 and run by scripts/test-matrix.sh (bun run test:matrix).
 - The complete suite is the full auth/config permutation matrix per adapter (root vs. least-privilege principal, with/without password, with/without database field), with each connecting case's functional consequences attached via testsupport.Scenario/RunMatrix's Then.
 - testsupport.RunScenarios runs the same Scenario body outside a matrix table so one scenario backs both test tiers instead of being written twice.
@@ -3743,36 +3743,36 @@ repo's CI runs.
 - Test images pin exact patch tags. PR CI caches images keyed on `testsupport/*.go`; a floating tag would run different builds per job. Mongo stays on 7.0 because 8.x/9.x exit at startup on runner kernels 6.19-7.0.13 (SERVER-125742).
 - The complete suite is built to catch a permission refusal getting the wrong ErrorCode (authorization failure read as E_AUTH wrong password); clickhouse, mongo, redis and kafka are known pinned instances, each with a comment at the assertion.
 - tests/ipc/ per adapter holds <adapter>.frontend.spec.ts, which drives the real Vue UI with both planes mocked via bun run test:ipc:fe (no Docker, container or native driver), and <adapter>.fixture.ts, which is generated and never hand-written.
-- Fixtures are generated by KIRA_IPC_FIXTURES=write go test ./apps/kira-studio/internal/ipcfixture/..., which captures real responses from a real container; plain go test runs assert real responses against the committed fixture. Postgres and sqlite generate no fixture of their own.
+- Fixtures are generated by KIRA_IPC_FIXTURES=write go test ./apps/kira-space/internal/ipcfixture/..., which captures real responses from a real container; plain go test runs assert real responses against the committed fixture. Postgres and sqlite generate no fixture of their own.
 - Anti-drift guarantee: a frontend spec cannot mock a shape the backend has stopped producing without that same fixture module's own backend assertion failing first; it holds only while something regenerates the fixtures.
 - The fixture generator uses SetEscapeHTML(false) and typed structs, never maps, because Go's encoding/json escapes HTML and sorts map keys by default.
 - Non-reproducible fields (timestamps, ephemeral ports, random ids, approximate row-count estimates) freeze to fixed placeholders (frozen.go) after structural validation against the real value, never invented.
 - tests/ipc/support/types.ts is the one TypeScript file kept in tests/ipc; it holds the frontend specs' shared types.
 - tests/e2e/ (the _electron.launch() tier) was retired with the Electron shell; mongo.spec.ts's full-stack anchor value was not recovered, an accepted documented loss.
 - Other retired e2e specs were recovered elsewhere: sqlite and postgres wiring by tests/e2e-real/, and s3.spec.ts's file-write contract by a packages/db-fixtures/ case. hardening.spec.ts and startup.spec.ts were deleted with no analogue; cold start is now a manual procedure (docs/PERF.md §3).
-- tests/ui/ (bun run test:ui:studio) drives the real built frontend/dist bundle over a static HTTP file server in real WebKit, with no native app process or container; both wire planes are mocked.
+- tests/ui/ (bun run test:ui) drives the real built frontend/dist bundle over a static HTTP file server in real WebKit, with no native app process or container; both wire planes are mocked.
 - In tests/ui/, the control plane is mocked by page.route('**/wails/runtime') answering from fixtures keyed by a hand-maintained CHANNEL_TO_FQN table, and the data plane by a fake window._wails.streamFactory socket.
 - tests/e2e-real/ is a deliberately small full-stack wiring tier that builds the Go shell with -tags server (Wails v3 server mode), serving both planes over HTTP and WebSocket to a plain Chromium tab with no native window, against a real backend, adapter and container.
 - multiwindow-real.spec.ts is the only full-stack proof of P8's tabs.window_key isolation (two windows, one backend, each keeps only its own tabs).
 - e2e-real uses Chromium rather than WebKit because it is a wiring tier, not a UI-fidelity tier; UI fidelity is tests/ui/'s job.
 - Server mode has no file dialogs (FilesService.ChooseSave/ChooseOpen answer HTTP 422), so a spec needing one stubs that method through a passthrough route reusing CHANNEL_TO_FQN.
 - mariadb-real.spec.ts's second test proves two native kinds (MariaDB and Kafka) coexist in one session across a page reload, replacing the retired test that killed the Node engine child.
-- A worker-scoped flowServers fixture spawns apps/kira-studio/bin/flowservers (built once under the shared build lock), so e2e-real and the Go flow tier share one server implementation; the serverEnv option adds environment to it.
+- A worker-scoped flowServers fixture spawns apps/kira-space/bin/flowservers (built once under the shared build lock), so e2e-real and the Go flow tier share one server implementation; the serverEnv option adds environment to it.
 
-- tests/visual/ (bun run test:visual:studio) is a bounded pixel-diff tier of eight specs and 13 snapshots, reusing tests/ui/'s fixtures and mocked wire planes.
+- tests/visual/ (bun run test:visual) is a bounded pixel-diff tier of eight specs and 13 snapshots, reusing tests/ui/'s fixtures and mocked wire planes.
 - Seven visual specs (workbench shell, data grid, SQL console, connection dialog, Schema (DDL) editor, HTTP request view, Runs restore dialog) have one at-rest screenshot each; settings.spec.ts contributes 6, one per Settings pane.
 - The visual tier is its own Playwright project, not folded into ui, mirroring ui-timing, because a different measurement contract earns a different project.
 - Capture or update visual baselines only from the ui CI job's ubuntu-latest environment, never a local macOS run, because WKWebView and WebKitGTK glyph rendering differ regardless of font choice.
 - Playwright's animations: 'disabled' default freezes the app's state-gated infinite CSS animations before visual capture.
 - tests/visual/support/pin-fonts.css, loaded via stylePath and affecting only visual specs, collapses --kira-font-ui and --kira-font-data to their trailing generic keyword to remove run-to-run ambiguity from multi-hop fontconfig fallback on the CI image.
-- Kira Space has its own visual tests in apps/kira-space/tests/visual/ (bun run test:visual:space): settings (4 panes: Advanced, Appearance, Git, Memory) and git-module (3: graph, graph detail, stash dialog).
+- Kira Space has its own visual tests in apps/kira-space/tests/visual/ (bun run test:visual): settings (4 panes: Advanced, Appearance, Git, Memory) and git-module (3: graph, graph detail, stash dialog).
 - The git module's Go tests (internal/git* packages) build real repositories under t.TempDir() against the git on PATH, need no container, and self-skip without git; the 2.38 git floor applies to tests too, so older git skips more.
 - gitclient/porcelain is guarded by a committed golden-byte corpus of recorded real git output, because a porcelain parser has several interacting rules.
 - gitsearch is guarded by packages/git-core/testdata/searchConformance.json, read by both its Go suite and the TypeScript twin's suite.
 - The git perf probes TestGraphStreamPerf and TestG8PerfBaseline (internal/flows/gitflow/) run only with KIRA_GIT_PERF=1 and assert nothing, printing one key=value line each, because a hard threshold would be flaky on real macOS hardware; numbers are in docs/PERF.md §2.13.
 - internal/queryplan/parse_test.go and tests/unit/explain-plan.spec.ts read the same fixtures in tests/fixtures/explain-plans/, pinning the Go EXPLAIN-parser port against the frontend parser so drift in either fails on the same bytes.
 - internal/mask/parity_test.go and tests/unit/mask-parity.spec.ts both read 66 shared masking fixture pairs under tests/fixtures/mask/.
-- apps/kira-studio/playwright.config.ts runs six projects: ui, ui-timing, ipc-frontend, e2e-real, visual and perf; perf is opt-in, serial, in no suite script, and lives in tests/perf/. All but ui-timing are fullyParallel.
+- apps/kira-space/playwright.config.ts runs six projects: ui, ui-timing, ipc-frontend, e2e-real, visual and perf; perf is opt-in, serial, in no suite script, and lives in tests/perf/. All but ui-timing are fullyParallel.
 - Kira Space's apps/kira-space/playwright.config.ts has projects ui, mobile-ios, mobile-insecure (Chromium, insecure-origin spec only), e2e-real (workers: 2) and visual.
 - The ui project can be fullyParallel (unlike the old e2e project's workers: 1) because the serialisation existed for Electron apps contending over wall-clock/RSS budgets and Docker containers, which this tier lacks.
 - ui-timing runs with workers: 1, serially after ui finishes (dependencies: ['ui']), because its real-millisecond wall-clock assertions need the rest of the tier's CPU contention out of the way.
@@ -3835,6 +3835,9 @@ config, project files.
 
 ## Known open items
 
+- **Two data homes and two databases until P538/P540 (P537).** Space modes use ~/.kira-space/kira.db (KIRA_SPACE_HOME); the Studio modules (Studio, Api, Docker, Kubernetes) still use ~/.kira-studio/kira.db (KIRA_HOME) and its own settings. Settings, logs and the app lock are per home. P538 and P540 merge them.
+- **Old Kira Studio updater.** An installed old Kira Studio still fetches install.sh from main and passes --app=studio; install.sh installs Space and retires Studio. Studio releases publish no further assets.
+
 Kept only while genuinely open — delete an item the moment it's resolved, never mark it done in
 place. `CLAUDE.md` states the process rule; this is the list itself.
 
@@ -3870,7 +3873,7 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
 - **OpenCode user skills leak under hermetic (P455, H-OC3).** No env drops `~/.claude/skills` and `~/.agents/skills` while keeping project skills; Kira keeps project skills (Q6).
 - **Hermetic OpenCode does not load project `CLAUDE.md` (P455, H-OC4).** `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1` is required with the redirect and also drops it. Project `AGENTS.md` loads.
 - **OpenCode applies no common hook (P453).** Plugin hooks have no user-command form; the settings view shows each common hook as not applied.
-- **Darwin CI tests a deleted path until the pending patch lands (P447).** `pr.yml` and `cache-warm.yml` still list `./apps/kira-studio/internal/secrets/...`. The fix is `docs/pending-changes/.github__workflows__secrets-path.patch`. Delete once applied.
+- **Darwin CI tests a deleted path until the pending patch lands (P447).** `pr.yml` and `cache-warm.yml` still list `./apps/kira-space/internal/secrets/...`. The fix is `docs/pending-changes/.github__workflows__secrets-path.patch`. Delete once applied.
 - **`finish_step` summary masking is not covered end to end (P447).** The fake agent's summary is fixed text; only the unit path checks it. Delete once a flow drives a secret through a summary.
 - **Saved script secrets show in a live terminal (P447).** A terminal-run script prints into its live tab and the Space phone terminal ring unmasked; only the run tail and log are masked. A process that echoes its secret shows it there.
 - **OpenCode facts without a model key are unverified (P449).** `facts.go` marks each with its probe id: the lost-session error text (U5), the MCP tool permission key `<server>_<tool>` (U7), plugin event names and `fetch` over a unix socket (U12), install paths (U15), the model API host list for network-off runs (U16), and the tool and cost event shapes of `run --format json` (`step_start`, `text` with `part.text` and `step_finish` with `part.reason` are verified). A wrong guess degrades quietly: a lost session reads as a plain failure, a MCP grant may not match, activity icons may stay idle. Run the probes in `docs/DEV_ENVIRONMENT.md` with a key, then fix `facts.go` and delete this item.
@@ -3929,7 +3932,7 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
 
 - **No detached runner for agent runs and PTYs (P279).** Quit or crash stops every agent and PTY. The memory ingest runner is separate and does detach (P274). Resume restores the Claude conversation; the turn in flight is lost and its tool effects may be half-applied. The `kira-db` MCP stops with Studio. Resume needs the saved transcript under `~/.claude`; without it the run fails with "could not resume". OpenCode resumes from its own session store.
 
-- **Studio Settings footer shows `~/.kira-studio/kira.sqlite`; the real file is `kira.db`.** Label in `apps/kira-studio/frontend/src/workbench/SettingsDialog.vue`. The docs say `kira.db`.
+- **Studio Settings footer shows `~/.kira-studio/kira.sqlite`; the real file is `kira.db`.** Label in `apps/kira-space/frontend/src/studio/workbench/SettingsDialog.vue`. The docs say `kira.db`.
 - **Quit discards staged grid edits and dirty edit buffers (P267).** Tab close and dialogs guard unsaved edits; app quit does not. Accepted by the user (P266 decision).
 - **Backend, git-core and flow engine text is English-only (P265).** Accepted by the user. Go errors outside the catalog, `packages/git-core` strings and `@vue-flow`'s hardcoded `vue-flow__*` ARIA hints stay English; `copyCoverage` skips the vue-flow subtree.
 - **Claude Code usage limits show only what Kira-started sessions report (P239).** Claude Code sends
@@ -3968,7 +3971,7 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
   real phone.
 - **Console reads on PostgreSQL and MySQL/MariaDB drain past the cap (P174).** At the cap `rows.Close()` discards the remaining rows off the wire: memory is bounded, server and network time are not. The Stop button ends a long drain. Delete once a driver offers a cheap server-side stop that keeps later statements in the batch intact.
 - **Some Redis console commands are read whole before the cap (P174).** `SUNION`, `SINTER`, `SDIFF`, `EVAL`/`FCALL`, module commands and `GET` of a huge string have no bounded form; go-redis reads the reply whole, then the page is capped. Delete once those commands get bounded rewrites or a streaming reader.
-- **Parts of an interactive `claude` turn are unobserved (P147, P149, P150).** The real suite (`bun run test:claude:space`) launches the TUI, sees hooks including `Stop`, and drives `Send` into a session. Never seen against a real `claude`: the folder-trust prompt (the suite pre-trusts the folder), `claude --resume` of a stopped session, the initial ` -- ` message, send-then-archive completing after the turn, and for the P150 review agent `--add-dir` resume, a paste into a `working` turn and a forwarded comment paste (P354). Delete once checked on an authenticated desktop build.
+- **Parts of an interactive `claude` turn are unobserved (P147, P149, P150).** The real suite (`bun run test:claude`) launches the TUI, sees hooks including `Stop`, and drives `Send` into a session. Never seen against a real `claude`: the folder-trust prompt (the suite pre-trusts the folder), `claude --resume` of a stopped session, the initial ` -- ` message, send-then-archive completing after the turn, and for the P150 review agent `--add-dir` resume, a paste into a `working` turn and a forwarded comment paste (P354). Delete once checked on an authenticated desktop build.
 - **A taken-over review round has no reply or finish tools (P286).** `TakeOver` of a round opens the plain interactive session: `reply_review_comment` and `finish_step` are not on it, so its comments stay open until answered by hand. Delete once a take-over loads them.
 - **Native close/hide wiring of review windows is unobserved (P150).** A server build has no native window; `closeDecision` has a test, the Wails hooks do not. The P354 main-thread unhide fix on a second Review code press is covered by an ordering test only; the AppKit abort itself is unobserved. Delete once checked on a desktop build.
 - **Tab switch remounts above the 50 ms product budget in the WebKit sandbox (P139 Part 2)**. Every
@@ -4016,7 +4019,7 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
   further prompt. Closing this needs the pending archive itself surviving a reload (a persisted
   Go-side flag on the task), a later phase's call.
 
-- **`apps/kira-studio/internal/ipcfixture`'s fixture connection rows carry no MCP mode columns** (v1.7 M3). The committed `testdata/*.fixture.json` hold no `mcp_read_mode`/`mcp_write_mode`/`mcp_ddl_mode`, so each fixture connection logs "coercing connection row: unrecognised MCP ... mode". The `keyTypes` gap this item once named is fixed. Not rerun here for lack of Docker: whether the on-demand suite still diffs against the committed JSON is unconfirmed. Closing it needs the suite's own regeneration path (`KIRA_IPC_FIXTURES=write`) against the current schema.
+- **`apps/kira-space/internal/ipcfixture`'s fixture connection rows carry no MCP mode columns** (v1.7 M3). The committed `testdata/*.fixture.json` hold no `mcp_read_mode`/`mcp_write_mode`/`mcp_ddl_mode`, so each fixture connection logs "coercing connection row: unrecognised MCP ... mode". The `keyTypes` gap this item once named is fixed. Not rerun here for lack of Docker: whether the on-demand suite still diffs against the committed JSON is unconfirmed. Closing it needs the suite's own regeneration path (`KIRA_IPC_FIXTURES=write`) against the current schema.
 
 - **`maskedColumnRenamedOrHidden`'s outer-statement scan can't see into a pre-existing view
   definition** (M7 round 2, finding #1). A view that itself renames a masked column
@@ -4051,8 +4054,8 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
   Closing this needs that provenance wiring.
 
 - **Response bodies, gRPC response messages and jar cookies reach `kira.db` history unmasked**
-  (F16, P108 Part 8). `apps/kira-studio/internal/bridge/http.go`'s `maskSecrets` masks headers, redirect/final URLs and the
-  rendered `Wire` exchange, but never `resp.Body` — `apps/kira-studio/internal/httpclient/options.go`'s own
+  (F16, P108 Part 8). `apps/kira-space/internal/bridge/http.go`'s `maskSecrets` masks headers, redirect/final URLs and the
+  rendered `Wire` exchange, but never `resp.Body` — `apps/kira-space/internal/httpclient/options.go`'s own
   `WireMask`/`wire.go`'s `capWireText` (P108 F12) mask the *request* body's wire text earlier, before
   truncation, but that is a different pass over a different field, and the response body stays
   untouched by either; `bridge/grpc.go`'s `maskGrpcResult` never masks `Messages[].JSON`; the
@@ -4063,7 +4066,7 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
   `Set-Cookie` therefore stores that secret in plaintext in history. Closing this needs the same
   substituted-secret value set applied as a body/message/cookie scan, not just a header/URL one.
 
-- **`apps/kira-studio/internal/dbmcp/http.go`'s HTTP server leaves `WriteTimeout`/`ReadTimeout` unset** (M7 finding
+- **`apps/kira-space/internal/dbmcp/http.go`'s HTTP server leaves `WriteTimeout`/`ReadTimeout` unset** (M7 finding
   #7 gave it `ReadHeaderTimeout`/`IdleTimeout` plus the cross-origin wrapper). Deliberate: the
   Streamable HTTP transport holds long-lived server-to-client streams, and a write/read deadline
   would cut one mid-response; a slow client body on a long POST is not a threat on loopback the way
@@ -4143,8 +4146,8 @@ Performance:
   `review.comment.list` re-anchoring passes** (a server-side cost) — C13-12 fixed the diff-reload
   fan-out (C14-2 fixed a regression in that same split) but not the comment-reload fan-out.
 
-- **`.github/workflows/pr.yml` has no `test:ui:space` step.**
-  `typecheck`/`lint` cover Kira Space (whole-repo scripts), `build:space` and the Space `gitclient`
+- **`.github/workflows/pr.yml` has no `test:ui` step.**
+  `typecheck`/`lint` cover Kira Space (whole-repo scripts), `build` and the Space `gitclient`
   tests run. `verify:packaging` in `pr.yml` finds no packaged bundle, so its artifact checks skip;
   `release.yml` runs them. Closing this needs its own follow-up. This session cannot push a
   `.github/workflows/*.yml` change (`docs/DEV_ENVIRONMENT.md`); stage it under
@@ -4172,7 +4175,7 @@ Performance:
 - **Unsaved ADE workflow edits are lost when the whole Agents module is switched away (P196).** The leave guard covers list switch, import/new, mode toggle and shell tab change, not a module switch.
 - **Change request facts correct on the next request, not by push (P189).** No server-to-client change notification exists; a client revalidation after `refsChanged` can hit a stale server entry, bounded by the TTL and the next refs change.
 - **The graph keeps its pre-refresh scroll offset after an auto refresh (P203).** A new tip is off screen until scrolled or remounted.
-- **`ui-timing` budgets fail in the WebKit sandbox even on an idle host (P250, P264, P266, P267, P277, P443).** Two Studio tests fail (`budgets.spec.ts` interactions, `perf.spec.ts` scroll); the rest of `ui-timing` passes. Measured idle (load below 2, no leftover process): scroll work p50 17-18 ms vs 16, `perf.spec.ts` scroll frame p95 89-96 ms vs 80, tab switch p95 up to 363 ms vs 300, cached tree expand p95 58 ms vs 50, console keystroke p50 55 ms vs 50. Cause: this host's WebKit runs JS work 1.8x and DOM work 2.9x slower than Chromium on the same host. The same code passes in Chromium with margin. Profiling found no hot-path work left to cut (SlickGrid render, keystroke and tree paths are already batched), so no `perf` change landed. Budgets are never loosened. P443 (2026-11-01): the same failure showed on base `6ba267359` (Playwright 1.63) at keystroke p50 53-56 ms; on Playwright 1.64.1 with an idle start (load 0.68 and 0.97) all four tests passed twice: keystroke p50 39.0 ms in the Before run, 36.0 ms in `bun run test:ui:timing:studio` (budget 50 ms, unchanged). Two passes do not clear the item; the drift from the P139 32-36 ms and the pass/fail swing between runs stay unexplained. `ui-timing` left `bun run test:ui:studio`; CI still runs it. Delete once the project passes on the CI runner, a Mac or a faster host.
+- **`ui-timing` budgets fail in the WebKit sandbox even on an idle host (P250, P264, P266, P267, P277, P443).** Two Studio tests fail (`budgets.spec.ts` interactions, `perf.spec.ts` scroll); the rest of `ui-timing` passes. Measured idle (load below 2, no leftover process): scroll work p50 17-18 ms vs 16, `perf.spec.ts` scroll frame p95 89-96 ms vs 80, tab switch p95 up to 363 ms vs 300, cached tree expand p95 58 ms vs 50, console keystroke p50 55 ms vs 50. Cause: this host's WebKit runs JS work 1.8x and DOM work 2.9x slower than Chromium on the same host. The same code passes in Chromium with margin. Profiling found no hot-path work left to cut (SlickGrid render, keystroke and tree paths are already batched), so no `perf` change landed. Budgets are never loosened. P443 (2026-11-01): the same failure showed on base `6ba267359` (Playwright 1.63) at keystroke p50 53-56 ms; on Playwright 1.64.1 with an idle start (load 0.68 and 0.97) all four tests passed twice: keystroke p50 39.0 ms in the Before run, 36.0 ms in `bun run test:ui:timing` (budget 50 ms, unchanged). Two passes do not clear the item; the drift from the P139 32-36 ms and the pass/fail swing between runs stay unexplained. `ui-timing` left `bun run test:ui`; CI still runs it. Delete once the project passes on the CI runner, a Mac or a faster host.
 - **Docker: remote `tcp://` without TLS is allowed (P200),** flagged `secure: false` in the UI. Exec sessions stay in the Terminal tab's chip list after the container stops; close the chip by hand.
 - **Docker restore: the bridge-ID boot marker is unverified on Docker Desktop, Colima and OrbStack (P334).** Measured on Linux dockerd only. Check on a Mac: restart the VM with containers running, open Docker, expect the banner. Delete once confirmed.
 - **Docker restore: engines without a default bridge network (P334)** detect a restart only when this session saw the outage. No launch-time detection.
@@ -4180,7 +4183,7 @@ Performance:
 - **Visual baseline of the ADE workflow graph shows the Preview placeholder (P271).** The finish note is rendered by `LlmPromptsService.Preview`, unmocked in that spec. The PNG does not show the real note text.
 - **Visual baselines are recorded in the dev sandbox (P227, P229, P242, P245, P247, P264, P266).** Accepted by the user. 13 Studio, 4 Space Settings, 3 git-module and 1 ADE workflow graph PNGs; the suites pass there. CI render may drift (0.6-1% on 13 specs before the P264 re-record); if the CI job disagrees, regenerate there and check each diff is the expected change only.
 - **The phone sees desktop worktree paths (P231 B-4).** Board `branches[].worktree` is a local path served to paired phones. Open user decision; delete once decided.
-- **Space repo-graph specs time out on first paint under heavy load (P230, P231, P243, P277).** Under 8 busy loops with `--repeat-each=40 --workers=8` (recipe in `docs/DEV_ENVIRONMENT.md`) app boot to graph row 0 takes 5-11 s against a 5 s default wait, 1.3 s idle. Failures: `repo-graph-refresh` scroll test 8+ of 40, `repo-graph-paging` 9 of 48 (`graph-svg` wait in `openRepo`), `repo-graph-columns` 3 of 400, `repo-workspace` 4 of 252. All pass idle (`test:ui:space`: 576 passed). Cause: CPU starvation of the whole app boot, not a test step. Delete once the boot is cheaper or the machine faster.
+- **Space repo-graph specs time out on first paint under heavy load (P230, P231, P243, P277).** Under 8 busy loops with `--repeat-each=40 --workers=8` (recipe in `docs/DEV_ENVIRONMENT.md`) app boot to graph row 0 takes 5-11 s against a 5 s default wait, 1.3 s idle. Failures: `repo-graph-refresh` scroll test 8+ of 40, `repo-graph-paging` 9 of 48 (`graph-svg` wait in `openRepo`), `repo-graph-columns` 3 of 400, `repo-workspace` 4 of 252. All pass idle (`test:ui`: 576 passed). Cause: CPU starvation of the whole app boot, not a test step. Delete once the boot is cheaper or the machine faster.
 - **Jira wiki-markup descriptions and comments show as literal text (P428).** A non-ADF string body is escaped plain text, not converted.
 - **Issue comments past 100, or past the newest 50 in the fallback, are not shown (P428).** The view says so and offers the tracker link.
 - **Comments over the 1 MiB acli cap even through `comment list` are omitted (P428).** The view shows a note.
