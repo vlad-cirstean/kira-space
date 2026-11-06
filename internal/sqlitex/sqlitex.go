@@ -9,6 +9,7 @@
 package sqlitex
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/url"
@@ -116,7 +117,17 @@ type Migration struct {
 	Version int
 	Name    string
 	SQL     string
+	// ForeignKeysOff runs the step with PRAGMA foreign_keys = OFF (a no-op inside a transaction,
+	// so Migrate sets it on a pinned connection first), the SQLite 12-step table-rebuild shape:
+	// DROP TABLE of a parent would otherwise fire ON DELETE CASCADE on every child. The step is
+	// followed by PRAGMA foreign_key_check; any violation rolls the whole step back.
+	ForeignKeysOff bool
+	// Func runs after SQL inside the same transaction, for a step whose shape varies at runtime.
+	Func func(*sql.Tx) error
 }
+
+// ForeignKeysOffMarker is the first line of a migration file that wants Migration.ForeignKeysOff.
+const ForeignKeysOffMarker = "-- kira:foreign-keys off"
 
 // SchemaTooNewError is Migrate's refusal when the database on disk was written by a build that
 // understands a newer schema than this binary does — continuing would risk this older
@@ -175,6 +186,12 @@ func Migrate(db *sql.DB, migrations []Migration) error {
 		if m.Version <= current {
 			continue
 		}
+		if m.ForeignKeysOff {
+			if err := applyForeignKeysOff(db, m); err != nil {
+				return err
+			}
+			continue
+		}
 		tx, err := db.Begin()
 		if err != nil {
 			return fmt.Errorf("sqlitex: begin migration %s: %w", m.Name, err)
@@ -182,6 +199,12 @@ func Migrate(db *sql.DB, migrations []Migration) error {
 		if _, err := tx.Exec(m.SQL); err != nil {
 			_ = tx.Rollback()
 			return fmt.Errorf("sqlitex: apply migration %s: %w", m.Name, err)
+		}
+		if m.Func != nil {
+			if err := m.Func(tx); err != nil {
+				_ = tx.Rollback()
+				return fmt.Errorf("sqlitex: apply migration %s: %w", m.Name, err)
+			}
 		}
 		if _, err := tx.Exec(`UPDATE schema_version SET version = ?`, m.Version); err != nil {
 			_ = tx.Rollback()
@@ -192,6 +215,70 @@ func Migrate(db *sql.DB, migrations []Migration) error {
 		}
 	}
 	return nil
+}
+
+// applyForeignKeysOff applies one ForeignKeysOff step on a pinned connection and re-enables
+// foreign keys on every exit path.
+func applyForeignKeysOff(db *sql.DB, m Migration) (err error) {
+	ctx := context.Background()
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("sqlitex: pin connection for migration %s: %w", m.Name, err)
+	}
+	defer func() {
+		if _, ferr := conn.ExecContext(ctx, `PRAGMA foreign_keys = ON`); ferr != nil && err == nil {
+			err = fmt.Errorf("sqlitex: re-enable foreign keys after migration %s: %w", m.Name, ferr)
+		}
+		_ = conn.Close()
+	}()
+	if _, err := conn.ExecContext(ctx, `PRAGMA foreign_keys = OFF`); err != nil {
+		return fmt.Errorf("sqlitex: disable foreign keys for migration %s: %w", m.Name, err)
+	}
+	tx, err := conn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("sqlitex: begin migration %s: %w", m.Name, err)
+	}
+	if _, err := tx.Exec(m.SQL); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("sqlitex: apply migration %s: %w", m.Name, err)
+	}
+	if m.Func != nil {
+		if err := m.Func(tx); err != nil {
+			_ = tx.Rollback()
+			return fmt.Errorf("sqlitex: apply migration %s: %w", m.Name, err)
+		}
+	}
+	if err := checkForeignKeys(tx); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("sqlitex: migration %s: %w", m.Name, err)
+	}
+	if _, err := tx.Exec(`UPDATE schema_version SET version = ?`, m.Version); err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("sqlitex: record migration %s: %w", m.Name, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("sqlitex: commit migration %s: %w", m.Name, err)
+	}
+	return nil
+}
+
+// checkForeignKeys fails on the first PRAGMA foreign_key_check violation, naming table, rowid and parent.
+func checkForeignKeys(tx *sql.Tx) error {
+	rows, err := tx.Query(`PRAGMA foreign_key_check`)
+	if err != nil {
+		return fmt.Errorf("foreign_key_check: %w", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		var table, parent string
+		var rowid sql.NullInt64
+		var fkid int
+		if err := rows.Scan(&table, &rowid, &parent, &fkid); err != nil {
+			return fmt.Errorf("foreign_key_check scan: %w", err)
+		}
+		return fmt.Errorf("foreign key violation: table %s rowid %d references missing %s", table, rowid.Int64, parent)
+	}
+	return rows.Err()
 }
 
 // RequireOneRow turns an UPDATE/DELETE's RowsAffected() == 0 into a "no such <what>" error — both

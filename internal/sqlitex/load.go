@@ -3,6 +3,7 @@ package sqlitex
 import (
 	"io/fs"
 	"sort"
+	"strings"
 )
 
 // MigrationSource names one embedded migration file in application order — the shared shape each
@@ -24,7 +25,12 @@ func LoadMigrations(fsys fs.FS, sources []MigrationSource) ([]Migration, error) 
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, Migration{Version: s.Version, Name: s.Name, SQL: string(b)})
+		sqlText := string(b)
+		first, _, _ := strings.Cut(sqlText, "\n")
+		out = append(out, Migration{
+			Version: s.Version, Name: s.Name, SQL: sqlText,
+			ForeignKeysOff: strings.TrimSpace(first) == ForeignKeysOffMarker,
+		})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Version < out[j].Version })
 	return out, nil
