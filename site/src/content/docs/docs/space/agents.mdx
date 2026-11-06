@@ -212,6 +212,17 @@ A step with `outside_repo: true` (agent, script or session) runs in the task fol
   outside_repo: true
 ```
 
+### Kira database tools
+
+`db_mcp: true` gives an agent, review or session step the [Kira database tools](../../studio/database-mcp/) for its session. In the inspector, tick **Kira database tools** under Advanced. Smart script steps and manual steps without a session have no such option.
+
+```yaml
+- id: migrate
+  kind: agent
+  db_mcp: true
+  prompt: Check the schema with list_connections.
+```
+
 Linux and Windows write the profile but do not enforce it. The badge says `Not enforced`. Claude permission rules still apply; they do not stop shell commands.
 
 ## Runs

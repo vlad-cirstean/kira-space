@@ -24,6 +24,12 @@ The server is off by default. Turn it on with **Enable the database MCP server**
 - A port conflict stops the server. It never falls back to another port.
 - Tool list: see [MCP tools](../../reference/mcp-tools/).
 
+## Workflow steps
+
+A workflow step with `db_mcp: true` gets the database tools in its own session. Tick **Kira database tools** in the step inspector. No token to copy: Kira creates one per launch, keeps it in memory and revokes it when the session ends.
+
+This works with the server switch off. The session talks to a separate server named `kira-db-session` on a random loopback port. It shares your exposed connections, limits and approvals. External clients never reach it, and the server on port 8766 stays as the switch sets it. Turning the switch off leaves running steps connected, and approvals they wait on stay open until the session ends.
+
 ## Exposed connections
 
 Deny by default. A connection stays invisible until you check it under **Exposed connections**.

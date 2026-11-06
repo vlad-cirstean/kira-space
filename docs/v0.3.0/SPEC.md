@@ -22,7 +22,7 @@ Twins: every Studio twin in `plans/TWINS.md` is merged by P538, P539, P540 or P5
 | P545 | Timeline becomes a toggle merged into the same list | Pending |
 | P546 | Forward panel edits (diff only) to agents running in the step | Pending |
 | P547 | Kira DB audit trail in the details panel | Pending |
-| P548 | Studio MCP option in workflow steps | Pending |
+| P548 | Studio MCP option in workflow steps | Done |
 | P549 | WebP screenshots and macOS 26 window frame | Done |
 | P550 | Site image pipeline: CI generates and publishes site images | Done |
 
@@ -210,6 +210,7 @@ Result:
 - Touches workflow step editing (`workflows/AdeStepInspector.vue`, `inspector/`) and the MCP server auth (`mcpauth`, `dbmcp`).
 - Decide in plan: step schema field and validation; per-session scoped access when the global external switch is off, and that it never opens the server to external clients; session-scoped credential lifecycle handled by the app, never shown to the user; interaction with the P537 naming outcome.
 - Plan: `plans/P548.md`.
+- Result: Done. Step key `db_mcp` (wire `dbMcp`) on agent without smart script, review and manual with session; table-driven in `adeflow/options.go`, so parser, writer, generated AGENTS.md and library refs follow. `dbmcp.SessionPool` is a second server (`kira-db-session`, ephemeral loopback port, per-launch tokens held as hashes, starts on first grant, closes on last release, independent of the Settings switch, shared ApprovalBroker). Tokens ride in the agentmcp per-launch config (`Grant.Extra`), never argv or logs. Approval abandon split into `AbandonExternal`, `AbandonSession`, `AbandonSessions`; origins carry `SessionID`, `TaskID`; `dbmcp.SessionFrom` gives P547 the identity. Headless grant in `superviseAgent`, interactive in `prepareWithGrant`; `TaskBoard.SetDbMcp`. Inspector checkbox under Advanced, Settings hint. Tests: `TestSessionPoolLifecycle` (32 goroutines, `-race`), `TestDbMcpStep` (contract `ade-db-mcp-step`; session and external tokens each work only on their own server; parked approval survives switch off), UI spec `ade-v2-workflow-db-mcp.spec.ts`; 13 contracts regenerated (only `dbMcp: false` added). Real `claude` `TestDbMcpSessionStep` and `TestDbMcpInstallRegisters` pass. Deviations: revoked token check accepts a refused connection or 401 (server closes on last release); labels say "Kira database tools" (catalog check rejects capital DB). Notes for P544 in `plans/P548.md`. Not run: full Go, UI, e2e-real (chapter end).
 
 ### P549 WebP screenshots and macOS 26 window frame
 
