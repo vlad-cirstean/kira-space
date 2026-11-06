@@ -13,8 +13,10 @@ export const PENDING_ID = 'session-2';
 // biome-ignore lint/suspicious/noExplicitAny: Go-written fixtures have no static shape
 type Json = Record<string, any>;
 
-const fixture = (name: 'proof' | 'proof-pending' | 'proof-chart', key: string): Json =>
-  contract(name, key) as Json;
+const fixture = (
+  name: 'proof' | 'proof-pending' | 'proof-chart' | 'proof-diagram',
+  key: string,
+): Json => contract(name, key) as Json;
 
 /** A fresh folder from ChooseShotFolder (tests/contract/proof.json) with its masked fields filled. */
 export const shotFolder = (): Json => ({
@@ -215,4 +217,45 @@ export async function diffClipboardImage(
     },
     { b64: shot.toString('base64'), index },
   );
+}
+
+export type DiagramKey = 'flowchart' | 'sequence' | 'image' | 'broken';
+export const DIAGRAM_KEYS: DiagramKey[] = ['flowchart', 'sequence', 'image', 'broken'];
+
+/** A diagram step from the Go-written contract; `patch` overrides any field of the step. */
+export function diagramStep(
+  sessionId: string,
+  rev: number,
+  ordinal: number,
+  key: DiagramKey,
+  patch: Json = {},
+): ControlSnapshot {
+  return {
+    channel: IPC.proofStep,
+    args: { sessionId, rev, ordinal },
+    response: { ...fixture('proof-diagram', `ProofService.Step#${key}`), ordinal, ...patch },
+  };
+}
+
+/** Boot snapshots for the diagram session; steps 1-4 in the contract's order. */
+export function diagramControl(extra: ControlSnapshot[] = []): ControlSnapshot[] {
+  return [
+    { channel: IPC.proofWindowTarget, response: { sessionId: SESSION_ID } },
+    {
+      channel: IPC.proofSessions,
+      response: (fixture('proof-diagram', 'ProofService.Sessions') as unknown as Json[]).map(
+        (x) => ({ ...x, id: SESSION_ID, closedAt: CLOSED_AT }),
+      ),
+    },
+    {
+      channel: IPC.proofSession,
+      response: {
+        ...fixture('proof-diagram', 'ProofService.Session'),
+        id: SESSION_ID,
+        closedAt: CLOSED_AT,
+      },
+    },
+    ...DIAGRAM_KEYS.map((key, i) => diagramStep(SESSION_ID, 1, i + 1, key)),
+    ...extra,
+  ];
 }
