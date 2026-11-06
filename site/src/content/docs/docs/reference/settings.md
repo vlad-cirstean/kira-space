@@ -114,8 +114,8 @@ Git log level (default info) and the popup notification (on).
 
 | Modules | Home | Override | Database |
 |---|---|---|---|
-| Studio modules | `~/.kira-studio` | `KIRA_HOME` | `kira.db` |
-| Git, agents, memory | `~/.kira-space` | `KIRA_SPACE_HOME` | `kira.db` |
+| Studio modules | `~/.kira-space` | `KIRA_SPACE_HOME` | `studio.db` |
+| Git, agents, automations | `~/.kira-space` | `KIRA_SPACE_HOME` | `kira.db` |
 | Memory | `~/.kira-memory` | `KIRA_MEMORY_HOME` | `memory.db` |
 
 Each home keeps `logs` and `llm-prompts.json`. The Git, agents and memory home also keeps `workflows/`, `agent/` (context and agent settings) and `agent-secrets.db`. The Studio modules read the same agent folder. The two homes stay separate until a later release merges them.

@@ -18,7 +18,7 @@ Runs exist in the Automations mode and the Studio modules. A run is a YAML file.
 
 ## Run files
 
-A run lives in `<id>.yaml` in the `runs` folder of the module's home: `~/.kira-studio/runs` for the Studio modules, `~/.kira-space/runs` for Automations. The file name without `.yaml` is the run id. Use lowercase letters, digits, `-` and `_`.
+A run lives in `<id>.yaml` in the `runs` folder of the home: `~/.kira-space/runs`. The file name without `.yaml` is the run id. Use lowercase letters, digits, `-` and `_`.
 
 - **New script** and **New smart script** write a small valid file and open it.
 - Double-click a row, or choose **Edit file**, to edit it as a form or as YAML. Both tabs edit the same text; **Save** writes the file. A form edit keeps your comments and key order. **Open** opens the file in your editor. **Reveal** and **Copy path** work as in other config files.

@@ -65,10 +65,11 @@ release and offers to update; nothing installs until you click **Update**.
 ### Upgrading from Kira Studio
 
 Kira Studio no longer ships as a separate app. Running the install command above installs Kira Space
-and moves `Kira Studio.app` to the Trash. Kira Studio's data stays in `~/.kira-studio/`, untouched.
-Kira Space keeps its own data in `~/.kira-space/`. The Studio module still reads
-`~/.kira-studio/` for now, so your saved connections, scripts and Api collections remain there until
-a later release folds the two homes together.
+and moves `Kira Studio.app` to the Trash. The installer does not touch `~/.kira-studio/`. On first
+launch Kira Space folds that folder into `~/.kira-space/`: your saved connections, scripts, runs and
+Api collections move over, and the whole old folder is kept as a backup under
+`~/.kira-space/backups/` until you delete it. Quit Kira Studio first; Kira Space refuses to start
+while the old app is still running.
 
 ### Building from source
 
@@ -284,10 +285,9 @@ Other scripts you'll use most:
 `package.json` lists every script. `bun install` also installs git hooks: `pre-commit` runs lint and
 typecheck, `pre-push` runs the Go build and linters.
 
-**App data:** Kira Space keeps `kira.db`, `logs/` and `review.db` under `~/.kira-space/`
-(override with `KIRA_SPACE_HOME`). Memories live in `~/.kira-memory/` (`KIRA_MEMORY_HOME`). The
-Studio module keeps its connections, scripts and Api collections in `~/.kira-studio/` (override with
-`KIRA_HOME`) until the homes merge.
+**App data:** Kira Space keeps `kira.db`, `studio.db`, `connections/`, `api/`, `logs/` and `review.db`
+under `~/.kira-space/` (override with `KIRA_SPACE_HOME`). Memories live in `~/.kira-memory/`
+(`KIRA_MEMORY_HOME`).
 
 For local test databases, see [`scripts/demo-dbs/README.md`](scripts/demo-dbs/README.md). Test tiers
 are described in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)'s Testing section, and

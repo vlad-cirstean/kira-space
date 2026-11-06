@@ -213,7 +213,7 @@ table below.
 | `.app` on-disk size | **not measured** — expect substantially less than the pre-P58f figure now that there is no ~126 MB vendored `runtime/` tree to carry, likely close to the compiled Go binary's own size alone; not a recorded number |
 
 Not verifiable off macOS (needs a human on real hardware — see §4): code signature checks, Gatekeeper
-quarantine behavior, launching the app at all, `~/.kira-studio/` creation, cold-start timing, packaged
+quarantine behavior, launching the app at all, `~/.kira-space/` creation, cold-start timing, packaged
 RSS, and the `.app` size.
 
 ## 4. Human checklist (run on macOS 26+ arm64)
@@ -239,15 +239,16 @@ human to launch the packaged app and use it.
 5. Gatekeeper: an unsigned, unnotarized build needs right-click → Open, or
    `xattr -dr com.apple.quarantine "/Applications/Kira Space.app"`. Expected, not a defect. —
    *not yet run*
-6. `~/.kira-studio/` is created with `kira.db` and `logs/` on first launch — the real home, since
-   `KIRA_HOME` is unset in a packaged run. — *not yet run*
+6. `~/.kira-space/` is created with `kira.db`, `studio.db` and `logs/` on first launch — the real home, since
+   `KIRA_SPACE_HOME` is unset in a packaged run. An existing `~/.kira-studio/` folds in once and moves to
+   `~/.kira-space/backups/p539-<UTC>/kira-studio`, kept until deleted by hand. — *not yet run*
 7. Create a connection, expand the tree, open a data tab, scroll, open the cell editor, quit cleanly.
    The View menu has no Reload / Toggle DevTools in a `-tags production` build. — *not yet run*
 8. Kafka: connecting is **expected to succeed** in a packaged build — Kafka has been served
    in-process by the native Go adapter since P58e M9, and as of P58f M10 there is no Node engine
    left for a native-module `require()` to fail against even in principle. — *not yet run*
 9. Cold start: launch 3 times, discard the first, take the median from the startup log line in
-   `~/.kira-studio/logs/`; record against the ≤ 1500 ms target. RSS cross-check: rebuild the
+   `~/.kira-space/logs/`; record against the ≤ 1500 ms target. RSS cross-check: rebuild the
    5-connection/10-tab scenario by hand and sum the app's processes via `ps -o rss=`, against 350 MB —
    expect a materially better number than any pre-P58f measurement, since there is no second
    process's baseline RSS to add on top of the webview and shell any more. —
@@ -568,7 +569,7 @@ apps/kira-space && wails3 task darwin:package:dmg`, then `sh scripts/sign-bundle
 Artifacts: `apps/kira-space/bin/Kira Space.dmg`/`.app`/`Kira Space` (DMG, bundle, bare binary). The
 DMG ships as `kira-space-macos-arm64.dmg`; `release.yml` builds one app, one tag, one release (§7).
 Kira Studio is retired: `install.sh` moves an installed `Kira Studio.app` to the Trash and leaves
-`~/.kira-studio/`, which the Studio module still uses. A running old Studio updater still passes
+`~/.kira-studio/`; Space folds it into `~/.kira-space/` on first launch and keeps a backup under `~/.kira-space/backups/`. A running old Studio updater still passes
 `--app=studio`; `install.sh` installs Space and retires Studio.
 
 **ONNX Runtime (P210).** `darwin:package` and `darwin:package:universal` depend on `fetch:onnxruntime`

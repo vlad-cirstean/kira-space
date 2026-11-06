@@ -18,7 +18,7 @@ Api, Docker and Database MCP features.
 - macOS 26+, Apple Silicon (`arm64`) only. Dark mode only.
 - Packaged build is ad-hoc signed, not notarized. First launch after an install may show one
   keychain prompt; **Always Allow** answers it for that build.
-- One data home, `~/.kira-space/`. First launch folds a `~/.kira-studio/` in and keeps it as a backup
+- One data home, `~/.kira-space/`. First launch folds the retired Studio home in and keeps it as a backup
   under `~/.kira-space/backups/`.
 
 ## Code workspace features
@@ -152,7 +152,7 @@ curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scri
 ```
 
 Downloads the latest release's ad-hoc signed disk image, moves the app into `/Applications`, opens
-it with no Gatekeeper prompt. Moves an installed Kira Studio to the Trash; first launch folds `~/.kira-studio/` into `~/.kira-space/`.
+it with no Gatekeeper prompt. Moves an installed Kira Studio to the Trash; first launch folds the old Studio home into `~/.kira-space/`.
 The app checks for newer releases and offers to install.
 
 Build from source:

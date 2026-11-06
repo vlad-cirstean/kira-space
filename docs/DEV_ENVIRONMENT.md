@@ -214,9 +214,10 @@ historical prose.
   is `${KIRA_SPACE_HOME}/app.lock`, so two `KIRA_SPACE_HOME`s are two fully independent backends
   and a test never contends with a `bun run dev` session. Anything needing a server builds
   one over its own temp `KIRA_SPACE_HOME` — never the fixed path.
-  The Studio modules use `KIRA_HOME` (`~/.kira-studio/`) until P539/P544 merge the homes. A test
-  that boots both module sets sets both; setting only one silently talks to the other's real home.
-- **A test binary panics if it resolves an app home with `KIRA_HOME`/`KIRA_SPACE_HOME` unset** (`kirapaths.Home`, non-`production` builds). A package whose tests reach one calls `testx.RunWithTempHomes` from `TestMain`.
+  The Studio modules use the same home (`studio.db` beside `kira.db`). `KIRA_HOME` is read only by the
+  one-time fold of the retired `~/.kira-studio/` (`homefold.LegacyHome`); a set `KIRA_SPACE_HOME` without
+  `KIRA_HOME` folds nothing.
+- **A test binary panics if it resolves an app home with `KIRA_SPACE_HOME` unset** (`kirapaths.Home`, non-`production` builds). A package whose tests reach one calls `testx.RunWithTempHomes` from `TestMain`.
 - **`bun run dev` runs the one dev loop** (`cd apps/kira-space && wails3 task dev`): native window,
   Vite dev server on port 9246.
 - **The perf probes are opt-in and assert nothing.**
@@ -834,8 +835,8 @@ pre-push design.
 The app has never shipped, so migration 0025 is a plain forward drop with no installed base to
 preserve (`docs/ARCHITECTURE.md`'s Storage section) — nothing cleans up a dev box's own leftovers
 from before v1.9 P97. If this container (or a persistent dev machine) ran a pre-P97 build, delete
-by hand: `${KIRA_HOME}/codeindex.db*` (the tree-sitter parse cache), `${KIRA_HOME}/codeindex-sync-
-*.lock` (its per-repository sync flocks) and `${KIRA_HOME}/mcp-repo-map-*-token.json` (the repo-map
+by hand: `${KIRA_SPACE_HOME}/codeindex.db*` (the tree-sitter parse cache), `${KIRA_SPACE_HOME}/codeindex-sync-
+*.lock` (its per-repository sync flocks) and `${KIRA_SPACE_HOME}/mcp-repo-map-*-token.json` (the repo-map
 MCP tokens). No runtime cleanup code is shipped for this — a permanent housekeeping path in a
 shipping app would be permanent code for a one-off developer chore.
 
@@ -848,7 +849,7 @@ This server exists only inside the app process: `apps/kira-space/cmd/` holds onl
   are `bun run dev` (needs a GUI this container does not have) or a `go build -tags server` boot
   proof — the same `//go:build server` route documented above for the bound-call surface. M5's own
   verification did exactly that and drove a real `dbmcp` endpoint with `curl`.
-- Its token is `${KIRA_HOME}/mcp-db-token.json` — no repo slug, one per `KIRA_HOME`
+- Its token is `${KIRA_SPACE_HOME}/mcp-db-token.json` — no repo slug, one per `KIRA_SPACE_HOME`
   (`internal/bridge/dbmcp.go`'s `dbMcpTokenName`, via `mcpauth.PathNamed`) — and it carries a 7-day
   expiry since M1 (`mcpauth.TTL`).
 - Its port is always `DefaultPort` **8766** (`internal/dbmcp/server.go`). A conflict on that port
@@ -1057,8 +1058,8 @@ Every name read or set in Go. "Set by" says who supplies it; "you" means set it 
 
 | Name | Purpose | Set by |
 |---|---|---|
-| `KIRA_HOME` | Studio modules' data dir (`~/.kira-studio/`). Panics in a non-`production` test binary when unset | you; `testx.RunWithTempHomes` in tests |
-| `KIRA_SPACE_HOME` | Kira Space data dir and instance-lock dir (`app.lock`) | you; `testx.RunWithTempHomes` |
+| `KIRA_HOME` | Retired Studio data dir (`~/.kira-studio/`); read only by the one-time fold | you |
+| `KIRA_SPACE_HOME` | The one data dir and instance-lock dir (`app.lock`). Panics in a non-`production` test binary when unset | you; `testx.RunWithTempHomes` |
 | `KIRA_MEMORY_HOME` | Memory data dir, else `~/.kira-memory` | you; `testx.RunWithTempHomes` |
 | `KIRA_DEV` | Overrides the production check on a non-`production` build (`kirapaths`) | you |
 | `KIRA_INSECURE_SECRETS` | `1` stores secrets unencrypted on Linux without a keyring. Dev only | you; IPC fixture harness |

@@ -5,7 +5,7 @@
 # Interactive: `curl -fsSL <raw-url> | sh -s -- --app=space` — the same command installs a fresh
 # copy or replaces an older one. `--app=studio` is the migration path for the retired Kira Studio
 # app (its updater still passes it): it installs Kira Space the same way, then moves
-# /Applications/Kira Studio.app to the Trash. It never touches ~/.kira-studio. Self-update: the app itself runs this
+# /Applications/Kira Studio.app to the Trash. It never touches ~/.kira-studio (the app folds it into ~/.kira-space). Self-update: the app itself runs this
 # script with --wait-pid/--notify-fd, stages the new bundle, hands off over fd 3, then quits once
 # it reads that hand-off — the app never overwrites its own running binary. Log file, either mode:
 # ~/Library/Logs/<App name>/install.log (the retired app's name for --app=studio, where the old
@@ -393,7 +393,7 @@ JXA_EOF
   # ---- 12: retire the old app (--app=studio only) ---------------------------------------------
   # Kira Space is installed and verified; only now does Kira Studio.app go, to the Trash and only
   # when it is the real Kira Studio bundle. ~/.kira-studio holds the user's data and is never
-  # touched: Kira Space opens it in place.
+  # touched here: Kira Space folds it into ~/.kira-space on first launch.
   if [ -n "$LEGACY_NAME" ] && [ -d "/Applications/$LEGACY_NAME.app" ]; then
     if ! codesign --verify --deep --strict "/Applications/$APP_NAME.app" >/dev/null 2>&1 </dev/null; then
       die "the installed $APP_NAME.app failed verification; leaving $LEGACY_NAME.app in place"
@@ -415,9 +415,9 @@ JXA_EOF
       fi
       mkdir -p "$TRASH"
       if mv "/Applications/$LEGACY_NAME.app" "$TRASHED" </dev/null 2>/dev/null; then
-        log "moved $LEGACY_NAME.app to the Trash ($TRASHED); your data in ~/.kira-studio stays"
+        log "moved $LEGACY_NAME.app to the Trash ($TRASHED); your data in ~/.kira-studio moves into ~/.kira-space on first launch"
       else
-        log "couldn't move $LEGACY_NAME.app to the Trash; delete it by hand. Your data in ~/.kira-studio stays"
+        log "couldn't move $LEGACY_NAME.app to the Trash; delete it by hand. Your data in ~/.kira-studio moves into ~/.kira-space on first launch"
       fi
     fi
   fi

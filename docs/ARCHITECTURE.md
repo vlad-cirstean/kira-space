@@ -117,7 +117,7 @@ whatever sandbox a session happens to be in),
 - Biome is the single TS/Vue formatter and linter; ESLint and Prettier are not used.
 - bun run lint also runs scripts/check-tokens.sh, scripts/check-theme-classes.sh and scripts/check-class-conflicts.ts.
 - golangci-lint and knip run only in the pre-push hook and CI (.githooks/pre-push), not per commit.
-- The app's SQLite database lives at ~/.kira-studio/kira.db and is accessed from Go via database/sql with modernc.org/sqlite (pure Go, no cgo), with SetMaxOpenConns(1); there is no ORM and Drizzle is gone.
+- The Studio modules' SQLite database lives at ~/.kira-space/studio.db beside Space's kira.db and is accessed from Go via database/sql with modernc.org/sqlite (pure Go, no cgo), with SetMaxOpenConns(1); there is no ORM and Drizzle is gone.
 - Packaging uses wails3 task darwin:package:dmg plus scripts/sign-bundle.sh; the .app and .dmg are ad-hoc signed (identity -), with no notarization.
 - App icon is an Icon Composer `appicon.icon` with one full-bleed layer; the system applies the mask. actool 26 compiles it to `Assets.car`, named by `CFBundleIconName` `appicon` (P349).
 - The DMG is a styled disk image with an /Applications shortcut, has no silent auto-update (a user-initiated one is scripts/install.sh, P119), and has no runtime/ tree to vendor or sign.
@@ -125,7 +125,7 @@ whatever sandbox a session happens to be in),
 - Real-container DB adapter tests are written in Go with testcontainers-go (apps/kira-space/internal/adapters/testsupport/, run by bun run test:go), not in Bun; Colima is the container runtime.
 - packages/db-fixtures/ no longer holds per-engine specs; it is the shared fixture corpus (fixtures/*.sql, support/*.ts) seeded by Go's testsupport package and apps/kira-space/tests/e2e-real/studio/, with Bun driving only the e2e-real seeding.
 - UI tests use Playwright against the built bundle in real WebKit.
-- Logging uses Go log/slog to a single daily-rolling file under ~/.kira-studio/logs/, mirroring the former electron-log configuration.
+- Logging uses Go log/slog to a single daily-rolling file under ~/.kira-space/logs/, mirroring the former electron-log configuration.
 - The grid engine is slickgrid@5.20.0 core SlickGrid class only, with no SlickDataView, plugin or slickgrid-vue; it is the only grid engine, and the old DataGrid.vue, GridRow.vue and __kiraGridEngine are gone (P22 Pass B).
 - views/grid/SlickGridHost.vue hosts the data tab with sort, editor, selection ranges, FK/PK nav and clipboard.
 - A left-click on an outbound-FK cell's nav button opens a read-only preview popover (FkPreviewPopover.vue) fetched with one tab-free, attribution-only data.read; its actions are 'Open in new tab' (navigateForeignKey) and 'Edit this record' (P67).
@@ -186,7 +186,7 @@ whatever sandbox a session happens to be in),
 - The Node engine child process was removed in P58f M10, along with its build/vendoring machinery and supervision code; it already served no connection traffic after C2 (P58e M9.3).
 - Kira Space is the only app (P537). Organisation kirathecat, bundle ID com.kirathecat.kira-space, executable Contents/MacOS/Kira Space (space included). Kira Studio is retired; its modules (Studio, Api, Docker, Kubernetes) are Space modes.
 - There is no silent auto-update; P119 adds a user-initiated update through scripts/install.sh.
-- Kira Space ships as one DMG (kira-space-macos-arm64.dmg); bundle ID is set in apps/kira-space/build/config.yml and mirrored in build/darwin/Info.plist. scripts/install.sh moves an installed Kira Studio.app to the Trash and leaves ~/.kira-studio/.
+- Kira Space ships as one DMG (kira-space-macos-arm64.dmg); bundle ID is set in apps/kira-space/build/config.yml and mirrored in build/darwin/Info.plist. scripts/install.sh moves an installed Kira Studio.app to the Trash and leaves ~/.kira-studio/ for the first-launch fold.
 
 ## Invariants
 
@@ -391,8 +391,18 @@ whatever sandbox a session happens to be in),
 
 ## Storage
 
-- ~/.kira-studio/ (mode 0700) contains kira.db (0600), logs/, and the DB MCP server's token mcp-db-token.json (one per KIRA_HOME, no slug).
-- As of P100, ~/.kira-studio/ holds no git state; review.db moved to Kira Space's own ~/.kira-space/ under KIRA_SPACE_HOME.
+- ~/.kira-space/ (mode 0700) is the one data home. It holds kira.db (Space), studio.db (Studio modules), connections/, api/, logs/ and the DB MCP server's token mcp-db-token.json (one per KIRA_SPACE_HOME, no slug). The retired ~/.kira-studio home folds in once (see Home fold below).
+- As of P100, the home holds no git state in the Studio modules; review.db lives in the same home.
+
+### Home fold (P539)
+
+- `homefold` is the only package that names `KIRA_HOME` or `.kira-studio`. `LegacyHome()` returns `KIRA_HOME` when set; else "" when `KIRA_SPACE_HOME` is set or under `go test`; else `$HOME/.kira-studio`. A legacy path that overlaps the Space home returns "" with a warning.
+- Marker: row `homefold.p539` in the Space `settings` table. JSON: `state` (`moving`, `files`, `runs`, `done`), `fresh`, `backup`, `legacy`, id maps for remapped scripts and runs, `reregister`. Every step is resumable from the marker.
+- Files stage: take the flock on `<legacy>/app.lock` (busy returns `ErrStudioRunning`, startup alert `StepOldStudio`), move the legacy folder to `<space>/backups/p539-<UTC ts>/kira-studio` (`os.Rename`, copy and verify on EXDEV), write `<space>/studio.db` with `VACUUM INTO`, copy `connections/`, `api/` and the DB MCP tokens (0600), merge prompt overrides (Space wins an id clash).
+- Runs stage: back up the Space DB to `<backup>/space.db`, then in one Space transaction `INSERT OR IGNORE` the Studio scripts, collections, runs, run logs and `script-param` secrets. Space wins a script id; a Studio clash becomes `<id>-studio`, `-studio-2` and so on. A run id clash gets a new id. `cwd` under the legacy automations path is rewritten. Run yaml files and automations dirs copy to mapped names. Then one Studio transaction deletes the copied rows.
+- After a fold the Claude Code `kira-db` registration names the moved helper script. The first start with the DB MCP server running rewrites it (`mcpinstall.Registered`, then `InstallAgent`) and clears `reregister`.
+- The backup folder stays until the user deletes it.
+
 - Credentials in the connections table's password column are encrypted at rest (P25) from Go, using a single symmetric key in the OS keychain for all values, with ciphertext in the app's own database.
 - A single keychain key was kept because one keychain item means one authorization decision rather than a prompt per connection, item-count and item-size limits become irrelevant, and SecretStore.copy() stays a raw column copy that never needs the OS key.
 - The encryption key is 32 random bytes stored as one generic-password keychain item via github.com/keybase/go-keychain (service 'Kira Studio Secrets', account 'Kira Studio'); values are sealed with AES-256-GCM in a kira:v3:<base64> envelope.
@@ -1318,7 +1328,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 | Per-tab view state | Tab `state_json` |
 | Per-device convenience | `usePersistedState`, key `kira.<module>.<name>` |
 | Git view state | `ViewStateStore` |
-| Files under KIRA_HOME | Atomic write (`renameio`) |
+| Files under KIRA_SPACE_HOME | Atomic write (`renameio`) |
 | LLM prompt overrides | `<home>/llm-prompts.json` (`renameio`), see "App prompts" |
 
 - Settings sections and leaves are camelCase and new booleans are positive; api.disableCookieJar keeps its name because renaming it rewrites user data.
@@ -3141,7 +3151,7 @@ One queue and one dialog per app hold every pending agent approval. Tools stay s
 - mcpauth writes token files with renameio.NewPendingFile and WithStaticPermissions(0600), so an existing looser file is re-tightened.
 - The database MCP server is this app's only embedded MCP server since v1.9 P97 removed the repo-map one it originally sat beside.
 - The database MCP server uses DefaultPort 8766 only; on a port conflict it refuses to start rather than falling back to a kernel-assigned port, because every existing registration names 8766 and a fallback would leave it pointing at whatever else listens there, which would receive the live bearer token.
-- There is one token file, mcp-db-token.json, with no slug, because one instance exists per app process per KIRA_HOME (dbMcpTokenName in internal/bridge/dbmcp.go).
+- There is one token file, mcp-db-token.json, with no slug, because one instance exists per app process per KIRA_SPACE_HOME (dbMcpTokenName in internal/bridge/dbmcp.go).
 - The database MCP server's lifecycle is managed by bridge.DbMcpService: it is constructed and started when the Settings toggle turns on (or already is at boot) and stopped when the toggle turns off or the app quits.
 - The ApprovalBroker is constructed once in apps/kira-space/internal/appwire/wire.go and outlives the server's start/stop, so the boot-time event subscription stays valid across a restart.
 
@@ -3360,7 +3370,7 @@ Built-in `PreLimit` `expensive_query`: an agent `run_query` whose plan estimates
 - Prompts use text/template, one set per resolve, with only the funcs inc and join; an entry with NoVars and no fragments is literal and never parsed.
 - After an intended default prompt change, regenerate testdata/golden with go test ./internal/llmprompts -run TestGolden -update and review the diff.
 - RenderParts wraps each string variable in marker runes and splits, so Settings Preview marks resolved values with VarText; a failed self-check returns one literal part.
-- Prompt overrides are stored per app in <home>/llm-prompts.json (~/.kira-studio/, ~/.kira-space/), written with renameio at mode 0600, shaped {version, revision, overrides: {id: {text, defaultHash, updatedAt}}}.
+- Prompt overrides are stored in <home>/llm-prompts.json (~/.kira-space/), written with renameio at mode 0600, shaped {version, revision, overrides: {id: {text, defaultHash, updatedAt}}}.
 - Saving the default text removes the override; override text must be 1 byte to 32 KiB.
 - A prompt change carries baseHash, and a stale one is refused with E_CONFLICT.
 - If the store file is corrupt or an override no longer validates, the default is used, a warning is logged, and it is flagged in Settings (storeError, invalid); defaultChanged flags an override made against an older default.
@@ -3437,7 +3447,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 
 ### Runs config files (P472)
 
-- A run is `<home>/runs/<id>.yaml` in both apps (Studio `~/.kira-studio/runs`, Space `~/.kira-space/runs`); the file stem is the run id (`^[a-z0-9][a-z0-9_-]{0,79}$`). Another name is listed as a problem with `id` empty and never used. `AGENTS.md` beside them is generated from the schema.
+- A run is `<home>/runs/<id>.yaml` (`~/.kira-space/runs`); the file stem is the run id (`^[a-z0-9][a-z0-9_-]{0,79}$`). Another name is listed as a problem with `id` empty and never used. `AGENTS.md` beside them is generated from the schema.
 - Keys: `name`, `kind` (`script` default, `smart`), `command` (the shell command, or `prompt` for a smart run), `params`, `smart`, `schedule`, `mcp` (agent access, Studio; see Scripts tools, P521), `dir` (`kira`, `fixed`), `path`, `color`, `collection` (a name), `use_ade_dir` (Space only; Studio refuses it). `internal/scripts/run.schema.json` is the base; `assembleSchema` writes every enum and bound the Go validator owns into it, so schema and `AGENTS.md` cannot drift.
 - `scripts.Loader` owns the folder (`configfs.Folder[File]`) and the projection (`Repo.Projection`): `custom_scripts.config_json` is the last good file value. Files to DB only. Invalid file: the row keeps the last good version, a `FileProblem{file, id, line, message, lastGood}` is published, one Warn per new hash. A run with no last good version has a problem and no row. File gone: row, saved secrets and (through Delete) the kira folder go; run history stays.
 - State the file never holds, kept in the row: `sort_order`, `schedule_task_id`, `schedule_branch_id`. `Record` never writes them. The schedule target is set by `SetScheduleTarget` (Space only), apart from the file text.
@@ -3450,7 +3460,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 
 ### Api config files (P473)
 
-- Folder `~/.kira-studio/api` (config folder `api`, `ConfigFilesService` Open and Reveal). A collection is `<id>.collection.yaml` (name, `variables`, `items`: folders nest, requests carry the HTTP or gRPC body). An environment is `<id>.environment.yaml` (name, colour, `variables`). File stem is the id. `AGENTS.md` beside them is generated from the schema (`apifiles/agents_intro.md` plus rule docs). Cap 1 MiB per file.
+- Folder `~/.kira-space/api` (config folder `api`, `ConfigFilesService` Open and Reveal). A collection is `<id>.collection.yaml` (name, `variables`, `items`: folders nest, requests carry the HTTP or gRPC body). An environment is `<id>.environment.yaml` (name, colour, `variables`). File stem is the id. `AGENTS.md` beside them is generated from the schema (`apifiles/agents_intro.md` plus rule docs). Cap 1 MiB per file.
 - Package `apps/kira-space/internal/apifiles`: `Store` owns the folder, the load path and every write to `api_*`. Files to DB only. Invalid file: rows keep the last good version, a `Problem` with line is published, one Warn per new hash. File gone: rows go (history cascades).
 - Projection: `api_collections`, `api_items`, `api_environments`, `api_variables` are derived from the files. Surrogate uuid ids stay; new columns `stem`, `item_key`, `secret_ref` bind them to file ids. Renaming a file or item `id` is a delete plus a create; changing `name` keeps history. State kept in the DB: `is_active` (only `SetActiveEnvironment` writes it), response and call history, variable history, tab state.
 - Order: item order is file order (`items` order is the tree order). Collection and environment order is app state in `sort_order`, set by `ReorderCollections` and `ReorderEnvironments` (`apifiles.Store`, `sqlitex.ReorderSortOrder`; no file write). New rows append, a rename keeps the place, a file renamed on disk (new stem) moves to the end, a fresh DB starts from file-load order.
@@ -3492,7 +3502,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 
 ### Connection config files (P475)
 
-- Folder `~/.kira-studio/connections` (config folder `connections`, Studio only; `ConfigFilesService` Open and Reveal). One `<stem>.yaml` per connection; `AGENTS.md` beside them is generated from the schema. File stem is the id. Cap 1 MiB per file.
+- Folder `~/.kira-space/connections` (config folder `connections`; `ConfigFilesService` Open and Reveal). One `<stem>.yaml` per connection; `AGENTS.md` beside them is generated from the schema. File stem is the id. Cap 1 MiB per file.
 - Keys: name, kind, color, mode (fields or URI), host, port, database, username, read-only, pre-connect command, sidecar, delay, auto-explain, throttle, MCP settings (enabled, description, read, write and DDL modes, auto-explain, review results) and the per-connection tree visibility filters. An absent leaf means the default.
 - Package `internal/connfiles`: `Loader` owns the folder and every write to `connections`. Files to DB only. A surrogate uuid row binds to a file by `stem`. `connections.config_json` holds the last valid file JSON and is the record source. Invalid file: row keeps the last good version, a `Problem` with line is published, one Warn per new hash. File gone: row goes. A file that never held a valid connection lists as a broken entry, bound to no row.
 - Secrets: password and URI are `${secret:<stem>.password}` and `${secret:<stem>.uri}`; values live in `secret_values`. `ConnectionConfigService.SetSecret` and `DeleteSecret` are write-only; Reveal keeps its confirm-before-reveal flow. No value reaches a file, a log or a problem message.
@@ -3711,7 +3721,7 @@ repo's CI runs.
 - e2e-real keeps only what cannot split at the IPC boundary: Studio Docker, MariaDB, SQLite wiring, Postgres connection tests, multi-window routing, terminal keystroke order; Space boot, multi-window routing, terminal keystroke order.
 - The graph chunk golden (gitflow.TestFixtures_CaptureGraphChunkFrame) compares by default and writes only under KIRA_CONTRACT=write.
 - Biome ignores the contract directories because they hold generated JSON.
-- Studio flowharness.New boots appwire.Build in-process with temp HOME/KIRA_HOME, TZ=UTC and KIRA_INSECURE_SECRETS=1; Restart rebuilds the app and Quit runs ServiceShutdown like Wails.
+- flowharness.New boots appwire.Build in-process with temp HOME/KIRA_SPACE_HOME, TZ=UTC and KIRA_INSECURE_SECRETS=1; Restart rebuilds the app and Quit runs ServiceShutdown like Wails.
 - Studio flow harness uses real SQLite, HTTP/HTTPS servers with a per-binary test CA (CAFile), gRPC with reflection and testdata/flow.proto, a silent TCP server and the Docker engine; it fakes dialogs (queued answers), keep-awake driver, MCP installer (never touches Claude config) and OS auth.
 - Studio Docker flow tests use the single image mirror.gcr.io/library/alpine:3.20; labelled resources are swept in flowharness.Main; DOCKER_HOST resolves before HOME is swapped.
 - Shared between Studio and Space: internal/flowtest, with an Events recorder implementing appevent.Emitter and a Complete gate on KIRA_FLOW_COMPLETE.
@@ -3719,8 +3729,8 @@ repo's CI runs.
 - The real claude tier (P237, P249) lives in apps/kira-space/tests/claude/, a nested Go module with own go.mod and replace to the repo module, so go test ./..., lint:go, CI and hooks never see them.
 - Real claude tests boot the real appwire.Build with the real claude CLI (haiku, temp HOME, 0.05 USD cap per run) and assert what fakes cannot, such as hook injection, untouched user Claude settings, ADE runs, memory gate and Database MCP install.
 - Real claude tests are opt-in and token-costing, run via bun run test:claude or test:claude:db; per-area commands are in docs/DEV_ENVIRONMENT.md, section "Real claude tests".
-- Run container-backed and UI test suites against their own KIRA_HOME and Testcontainers-provisioned databases, never the developer's ~/.kira-studio or a database used by a running bun run dev, and never disturb that instance.
-- Deliberate exception (P25 F10): on macOS the app's Keychain item is shared with the developer's login keychain, so tests saving a connection password touch the same OS encryption key; this is safe because secrets stay in each test's temp KIRA_HOME kira.db and no test rotates or clears the key.
+- Run container-backed and UI test suites against their own KIRA_SPACE_HOME and Testcontainers-provisioned databases, never the developer's ~/.kira-space or a database used by a running bun run dev, and never disturb that instance.
+- Deliberate exception (P25 F10): on macOS the app's Keychain item is shared with the developer's login keychain, so tests saving a connection password touch the same OS encryption key; this is safe because secrets stay in each test's temp KIRA_SPACE_HOME kira.db and no test rotates or clears the key.
 - tests/unit/ needs nothing external and finishes in about a second (bun test tests/unit); it uses plain TypeScript modules exercised with fakes rather than a real container or real app process.
 - A unit test exists only for genuinely complex or deeply-nested logic (parsers, cursor/pagination boundary arithmetic, cache eviction, crypto, concurrency state machines); CRUD-, wrapper- and constructor-shaped tests were deleted as low-value.
 - The Go suite was pruned against the same strict bar as the unit tests in the same pass.
@@ -3776,7 +3786,7 @@ repo's CI runs.
 - Kira Space's apps/kira-space/playwright.config.ts has projects ui, mobile-ios, mobile-insecure (Chromium, insecure-origin spec only), e2e-real (workers: 2) and visual.
 - The ui project can be fullyParallel (unlike the old e2e project's workers: 1) because the serialisation existed for Electron apps contending over wall-clock/RSS budgets and Docker containers, which this tier lacks.
 - ui-timing runs with workers: 1, serially after ui finishes (dependencies: ['ui']), because its real-millisecond wall-clock assertions need the rest of the tier's CPU contention out of the way.
-- e2e-real runs workers: 2 safely because a per-test KIRA_HOME plus WAILS_SERVER_PORT gives each instance its own SQLite app storage and secrets.
+- e2e-real runs workers: 2 safely because a per-test KIRA_SPACE_HOME plus WAILS_SERVER_PORT gives each instance its own SQLite app storage and secrets.
 - Terminal Close hangs up only the shell's process group; jobs the shell does not hang up (dash background jobs, bash/zsh disown, nohup, trap '' HUP) outlive the tab, as in VS Code, tmux and kitty.
 - No sweep of the session's process groups exists on Terminal Close, because such a sweep cannot tell a disowned job from a dash job.
 - On Linux the terminal session ends exitDrain (200 ms) after the shell exits, not when the last slave holder closes, so a surviving job neither stalls Close nor keeps a shell-exited tab open.
@@ -3835,7 +3845,6 @@ config, project files.
 
 ## Known open items
 
-- **Two data homes and two databases until P539/P544 (P537).** Space modes use ~/.kira-space/kira.db (KIRA_SPACE_HOME); the Studio modules (Studio, Api, Docker, Kubernetes) still use ~/.kira-studio/kira.db (KIRA_HOME) and its own settings. Settings, logs and the app lock are per home. P539 and P544 merge them.
 - **Old Kira Studio updater.** An installed old Kira Studio still fetches install.sh from main and passes --app=studio; install.sh installs Space and retires Studio. Studio releases publish no further assets.
 
 Kept only while genuinely open — delete an item the moment it's resolved, never mark it done in
@@ -3932,7 +3941,6 @@ place. `CLAUDE.md` states the process rule; this is the list itself.
 
 - **No detached runner for agent runs and PTYs (P279).** Quit or crash stops every agent and PTY. The memory ingest runner is separate and does detach (P274). Resume restores the Claude conversation; the turn in flight is lost and its tool effects may be half-applied. The `kira-db` MCP stops with Studio. Resume needs the saved transcript under `~/.claude`; without it the run fails with "could not resume". OpenCode resumes from its own session store.
 
-- **Studio Settings footer shows `~/.kira-studio/kira.sqlite`; the real file is `kira.db`.** Label in `apps/kira-space/frontend/src/studio/workbench/SettingsDialog.vue`. The docs say `kira.db`.
 - **Quit discards staged grid edits and dirty edit buffers (P267).** Tab close and dialogs guard unsaved edits; app quit does not. Accepted by the user (P266 decision).
 - **Backend, git-core and flow engine text is English-only (P265).** Accepted by the user. Go errors outside the catalog, `packages/git-core` strings and `@vue-flow`'s hardcoded `vue-flow__*` ARIA hints stay English; `copyCoverage` skips the vue-flow subtree.
 - **Claude Code usage limits show only what Kira-started sessions report (P239).** Claude Code sends

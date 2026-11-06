@@ -1032,7 +1032,7 @@ numbers here.
    (Gatekeeper's quarantine scan of an ad-hoc-signed bundle on first launch isn't the app's cost).
    Launch it the way a user would rather than `exec`ing the binary — §2.4's own methodology note
    records that a directly-`exec`'d run is a structurally different process set on macOS.
-3. Read the cold-start line from `~/.kira-studio/logs/kira-<YYYY-MM-DD>.log` for each of the 3
+3. Read the cold-start line from `~/.kira-space/logs/kira-<YYYY-MM-DD>.log` for each of the 3
    launches and take the median. That line is emitted by `apps/kira-space/internal/shell/window.go`'s
    `events.Common.WindowRuntimeReady` handler (P56 — Wails' analogue of `did-finish-load`, and the
    measurement point that replaces Electron's `process.uptime()`, which no longer exists): it reads
@@ -1099,7 +1099,7 @@ already cover.
 
 **Log file retention (F12, D12)** — now `internal/logging`'s `Sweep`, which deletes `kira-*.log`
 files older than `LogRetentionDays` (30) by mtime at startup. Verify by backdating a log file's mtime
-past 30 days in `~/.kira-studio/logs/`, relaunching the packaged app, and confirming that file is
+past 30 days in `~/.kira-space/logs/`, relaunching the packaged app, and confirming that file is
 gone while newer ones remain.
 
 **App size (lever L-D)** — `du -sh "apps/kira-space/bin/Kira Space.app"`, against the > 300 MB trigger. See
