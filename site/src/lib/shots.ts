@@ -25,7 +25,7 @@ export interface ResolvedWindowShot extends ShotDef {
   readonly social: string;
 }
 
-export interface ResolvedCropShot extends ShotDef {
+interface ResolvedCropShot extends ShotDef {
   readonly kind: 'floating' | 'region';
   readonly placeholder: boolean;
   readonly crop: string;

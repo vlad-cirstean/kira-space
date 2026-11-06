@@ -66,13 +66,22 @@ needs.
 
 ## Presentation screenshots and site check (P280)
 
-- `bun run screenshots` rebuilds `frontend/dist` (test bundle), then captures six shots in
-  WebKit into `screenshots/`. Studio shots only: `bun run build:test && bunx playwright test
-  --config=apps/kira-space/playwright.config.ts --project=screenshots`. Never run it beside a UI suite in the same checkout. Not in hooks, CI or
-  the Pages Action. Run it by hand when a shown UI changes, then commit the WebP files. Output is lossless WebP, never PNG (guard N15).
-  Space shots only: add `tests/screenshots/space.shot.ts` to the command.
-- Rerun it and check `git status --porcelain screenshots/` is empty. A diff means a nondeterministic
-  input; fix the cause, never add tolerance.
+- `bun run screenshots` rebuilds `frontend/dist` (test bundle), then captures every shot in
+  WebKit into `screenshots/` (gitignored, nothing committed; CI builds the published set). One
+  spec: `bun run build:test && bunx playwright test --config=apps/kira-space/playwright.config.ts
+  --project=screenshots <file>`. Never run it beside a UI suite in the same checkout. Output is
+  lossless WebP, never PNG (guard N15).
+- `bun run site:shots:fill` checks every manifest id has its files: exit 1 on a missing one. In CI
+  it runs with `--fallback <dir>` and never fails (last-good copy, else placeholder).
+- Local site with no images: `bun run site:dev` serves placeholders and warns per missing file.
+  `site:build` fails on a missing image; `KIRA_SITE_SHOTS=placeholder bun run site:build` uses
+  placeholders. For real images run `bun run screenshots` first.
+- Add a shot: an entry in `site/src/data/shotCapture.ts`, copy in `site/src/data/shots.ts`, a
+  `shoot(page, '<id>', consoleErrors)` call in the spec, a `<DocShot id="<id>" />` or hero use.
+- The pages.yml change is a pending patch (`docs/pending-changes/.github__workflows__pages.yml.patch`):
+  apply `.github__actions__setup__action.yml.patch` first, then this one.
+- Determinism check: run `bun run screenshots` twice and `cmp` every file in `screenshots/`. A diff
+  means a nondeterministic input; fix the cause, never add tolerance.
 - Shot flows: `apps/*/tests/screenshots/*.shot.ts`. A shot fails on a console error, so a mocked
   channel without a fixture (`E_FIXTURE_MISS`, HTTP 422) shows up as one; add the snapshot.
 - `bun run site:check` builds the site, then runs the 375 px and 1280 px WebKit checks.

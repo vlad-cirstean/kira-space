@@ -1,0 +1,70 @@
+P550: Pages builds the site shots (cache, last-good fallback, placeholders). Apply .github__actions__setup__action.yml.patch first (bindings paths under apps/kira-space).
+
+diff --git a/.github/workflows/pages.yml b/.github/workflows/pages.yml
+index 51296232a..7a60727eb 100644
+--- a/.github/workflows/pages.yml
++++ b/.github/workflows/pages.yml
+@@ -15,18 +15,56 @@ concurrency:
+ jobs:
+   build:
+     runs-on: ubuntu-latest
+-    timeout-minutes: 10
++    # Cache miss: setup with bindings 4 to 6 min, WebKit 1 to 2, frontend build and 8 shots 2 to 3, site 1.
++    timeout-minutes: 30
+     steps:
+       - uses: actions/checkout@v7
+-      - uses: oven-sh/setup-bun@v2
++      - name: Shot cache key (app source, shot specs, manifest, frame assets)
++        id: key
++        run: echo "key=site-shots-${{ hashFiles('apps/kira-space/frontend/**', 'packages/**', 'apps/kira-space/tests/screenshots/**', 'apps/kira-space/tests/ui/fixtures.ts', 'apps/kira-space/tests/ui/support/**', 'apps/kira-space/tests/ui/studio/support/**', 'apps/kira-space/tests/ipc/support/**', 'apps/kira-space/tests/support/**', 'apps/kira-space/playwright.config.ts', 'screenshots/assets/**', 'site/src/data/shotCapture.ts', 'package.json', 'bun.lock', 'go.mod', 'go.sum', 'apps/kira-space/**/*.go', 'internal/**/*.go', '!**/*_test.go') }}" >> "$GITHUB_OUTPUT"
++      - name: Restore site shots (an exact hit is fresh, a prefix hit is the last-good fallback)
++        id: shots
++        uses: actions/cache/restore@v6
++        with:
++          path: |
++            screenshots/
++            !screenshots/assets/
++          key: ${{ steps.key.outputs.key }}
++          restore-keys: site-shots-
++      - name: Set a stale last-good set aside
++        if: steps.shots.outputs.cache-hit != 'true'
++        run: |
++          mkdir -p .shots-fallback
++          find screenshots -mindepth 1 -maxdepth 1 ! -name assets -exec mv {} .shots-fallback/ \;
++      - uses: ./.github/actions/setup
+         with:
+-          bun-version: 1.4.4
+-      - name: Cache bun install (keyed on the lockfile)
++          bindings: ${{ steps.shots.outputs.cache-hit != 'true' && 'true' || 'false' }}
++      - name: Cache Playwright browsers (keyed on the lockfile, which pins the @playwright/test version)
++        if: steps.shots.outputs.cache-hit != 'true'
+         uses: actions/cache@v6
+         with:
+-          path: ~/.bun/install/cache
+-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+-      - run: bun install --frozen-lockfile
++          path: ~/.cache/ms-playwright
++          key: playwright-${{ runner.os }}-webkit-${{ hashFiles('bun.lock') }}
++      - name: Install Playwright WebKit (retried, apt and the browser CDN flake)
++        if: steps.shots.outputs.cache-hit != 'true'
++        run: sh scripts/retry.sh 2 180 sh scripts/playwright-install.sh webkit
++      - name: Capture site shots
++        id: capture
++        if: steps.shots.outputs.cache-hit != 'true'
++        continue-on-error: true
++        run: bun run screenshots --retries=1
++      - name: Fill a missing shot from the last-good set, else a placeholder
++        id: fill
++        if: steps.shots.outputs.cache-hit != 'true'
++        run: bun run site:shots:fill --fallback .shots-fallback
++      - name: Save site shots (never a partial or fallback set)
++        if: steps.shots.outputs.cache-hit != 'true' && steps.capture.outcome == 'success' && steps.fill.outputs.complete == 'true'
++        uses: actions/cache/save@v6
++        with:
++          path: |
++            screenshots/
++            !screenshots/assets/
++          key: ${{ steps.key.outputs.key }}
+       - uses: actions/configure-pages@v6
+       - run: bun run site:build
+       - uses: actions/upload-pages-artifact@v5

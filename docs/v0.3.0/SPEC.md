@@ -24,7 +24,7 @@ Twins: every Studio twin in `plans/TWINS.md` is merged by P538, P539, P540 or P5
 | P547 | Kira DB audit trail in the details panel | Pending |
 | P548 | Studio MCP option in workflow steps | Pending |
 | P549 | WebP screenshots and macOS 26 window frame | Done |
-| P550 | Site image pipeline: CI generates and publishes site images | Pending |
+| P550 | Site image pipeline: CI generates and publishes site images | Done |
 
 ## Rows
 
@@ -233,6 +233,9 @@ Result:
 - Decide in plan: which shots generate in CI and which stay committed as WebP; CI cost and caching (hash of app source and shot specs); flake handling so one bad shot does not break the deploy; manifest shape in `shots.ts`; site visual tests for the pipeline.
 - Batch: stream B7 beside P549 (`plans/PARALLEL.md`).
 - Plan: `plans/P550.md`.
+- Result: Landed on top of P549 (`chapter/v0.3.0` at `d18a403b3`). Step 0: every contract name C4 exists (`encodeWebp`, `saveShot`, `prepareCapture`, `captureShot`, `WINDOW`, `SCALE`, `FRAME`, `CAPTURE_LAUNCH`, `CAPTURE_NOW`, `installCaptureFonts`); `ResolvedShot` fields and N15 as assumed; no extraction needed. Manifest `site/src/data/shotCapture.ts` (6 `window`, `studio-grid-row-menu` `floating`, `space-commit-detail` `region`), `crop.ts`, `shoot.ts` dispatcher, `lib/shots.ts` union with placeholder mode, `Shot.astro` crop branch, `dist/shots/<id>.webp` copies, `site:shots:fill`, README links to the Pages URLs, nothing under `screenshots/` committed except `assets/`. Verified: two `bun run screenshots` runs `cmp` equal; clean tree fails `site:build` with `Missing screenshot`, `KIRA_SITE_SHOTS=placeholder` builds, `site:dev` serves 200; strict fill exits 1 on a deleted crop, `--fallback` restores it with `complete=false`; full `site/tests` pass, visual baselines re-recorded once with shot images masked.
+- Deviations: N15 also rejects a tracked WebP under `screenshots/`. All three Studio shot specs failed on 422 console errors at the P549 tip, so they got the three Space channel stubs (same lines as `bd2bcb7a4`, plus the API shot's own control). The checklist cherry-pick of `bd2bcb7a4` and `7de43e32f` is redundant: skip both, images are no longer committed. Cache key adds `package.json` and the import closure dirs (`tests/ipc/support`, `tests/support`, `tests/ui/fixtures.ts`, `tests/ui/support`, `tests/ui/studio/support`); `tests/contract` and `tests/fixtures` are not imported by a shot. `site/src/lib/shots.ts` and `site/scripts/**` are exempt from Biome `noConsole`.
+- Pending: `docs/pending-changes/.github__workflows__pages.yml.patch` (apply after the setup-action patch; `git apply --check` passes). The workflow runs for the first time only once applied.
 
 ## Close
 
