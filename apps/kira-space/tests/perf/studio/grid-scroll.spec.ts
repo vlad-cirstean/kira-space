@@ -19,7 +19,7 @@ import {
 import { findRow } from '../../ui/studio/support/tree';
 import { wideColumns, wideRows } from './support/wideTable';
 
-// Data grid: a 10 000-row page, momentum flicks down and up. Run `bun run perf:probe:studio`.
+// Data grid: a 10 000-row page, momentum flicks down and up. Run `bun run perf:probe`.
 // NCOLS (default 2, the stock `big_rows` shape) above 2 swaps in a wide page of mixed types.
 
 const NCOLS = Number(process.env.NCOLS ?? 2);

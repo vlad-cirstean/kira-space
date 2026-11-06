@@ -430,7 +430,7 @@ test('update dialog and prompt host use catalog text', async ({ relaunch }) => {
           updateAvailable: true,
           currentVersion: '1.2.0',
           latestVersion: '1.3.0',
-          installLogPath: '/tmp/kira-studio-update.log',
+          installLogPath: '/tmp/kira-space-update.log',
         },
       },
     ],
@@ -440,5 +440,5 @@ test('update dialog and prompt host use catalog text', async ({ relaunch }) => {
 
   const dialog = tid(page, 'update-dialog');
   await expect(dialog).toBeVisible();
-  await expectCatalogText(dialog, { allow: [/kira-studio-update\.log/] });
+  await expectCatalogText(dialog, { allow: [/kira-space-update\.log/] });
 });

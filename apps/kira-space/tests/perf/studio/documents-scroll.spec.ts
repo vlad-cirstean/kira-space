@@ -10,7 +10,7 @@ import {
   load1,
 } from './perfProbe';
 
-// P161: documents view fast-scroll probe. Opt-in (`bun run perf:documents:studio`), asserts
+// P161: documents view fast-scroll probe. Opt-in (`bun run perf:documents`), asserts
 // nothing. Run on a quiet machine (load1 <= 1.0); runs print load1 so a noisy one can be
 // discarded. Real wheel input over 5 000 expanded documents (~160 px rows, 800 000 px list).
 

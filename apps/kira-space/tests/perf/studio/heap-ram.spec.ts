@@ -58,7 +58,7 @@ import {
 } from './support/ramWorlds';
 
 // P480 RAM probe, Studio worlds. Report-only: prints `RAM`/`HEAPSNAP` lines, asserts only on the UI
-// states that gate a checkpoint. `bun run perf:ram:studio`; docs/DEV_ENVIRONMENT.md "Perf probes".
+// states that gate a checkpoint. `bun run perf:ram`; docs/DEV_ENVIRONMENT.md "Perf probes".
 
 const MODES = ['api', 'automations', 'docker', 'kubernetes'] as const;
 

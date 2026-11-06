@@ -30,7 +30,7 @@ import {
 } from './support/ramWorlds';
 
 // P480 RAM probe, Space worlds. Report-only: prints `RAM`/`HEAPSNAP` lines, asserts only on the UI
-// states that gate a checkpoint. `bun run perf:ram:space`; docs/DEV_ENVIRONMENT.md "Perf probes".
+// states that gate a checkpoint. `bun run perf:ram`; docs/DEV_ENVIRONMENT.md "Perf probes".
 
 const repoRow = (page: import('@playwright/test').Page, id: string) =>
   page.locator(`[data-testid="repo-row"][data-repo-id="${id}"]`);

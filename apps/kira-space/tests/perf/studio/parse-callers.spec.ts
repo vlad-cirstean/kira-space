@@ -32,7 +32,7 @@ import {
 } from './documentsFixture';
 import { load1 } from './perfProbe';
 
-// P163: opt-in probe of every large-input parse caller (`bun run perf:parse:studio`), asserts
+// P163: opt-in probe of every large-input parse caller (`bun run perf:parse`), asserts
 // nothing. Same gate as the HTTP probe: run only at load1 <= 1.0 (docs/DEV_ENVIRONMENT.md).
 
 const MB = 1_048_576;

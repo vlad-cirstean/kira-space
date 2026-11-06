@@ -3,7 +3,7 @@ import { httpResponse, openHttpModeAndNewRequest } from '../../ui/studio/support
 import { IPC } from '../../ui/studio/support/ipcChannels';
 import { load1, RssSampler, type RunMetrics, runLine, summaryLine } from './perfProbe';
 
-// P160: HTTP response viewer probe. Opt-in (`bun run perf:http:studio`), asserts nothing. Run on
+// P160: HTTP response viewer probe. Opt-in (`bun run perf:http`), asserts nothing. Run on
 // a quiet machine (load1 <= 1.0); runs print load1 so a noisy one can be discarded.
 
 const MB = 1_048_576;

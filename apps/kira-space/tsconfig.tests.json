@@ -9,10 +9,7 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "types": ["node"],
-    // P100 Part 2: mirrors Kira Studio's own tsconfig.tests.json exactly — graphStreamFixture.ts
-    // (copied verbatim, support/graphStreamFixture.ts's own doc comment) imports the real
-    // `@kira/git-ipc` codec, the same CLAUDE.md library-over-hand-roll reasoning that tsconfig
-    // documents.
+    // graphStreamFixture.ts imports the real `@kira/git-ipc` codec rather than hand-rolling one.
     "allowImportingTsExtensions": true,
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "paths": {
@@ -32,8 +29,6 @@
     "../../packages/workbench/env.d.ts",
     "playwright.config.ts",
     "playwright.perf.config.ts",
-    "playwright.studio.config.ts",
-    "playwright.studio-perf.config.ts",
     "playwright.proto.config.ts",
     "tests/perf/**/*.ts",
     "tests/e2e-real/**/*.ts",

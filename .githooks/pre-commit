@@ -1,5 +1,5 @@
 #!/bin/sh
-# Kira Studio pre-commit — see git show bd0c224688d9:docs/v1/plans/P15-gh-tooling.md §3, scoped by P294.
+# Kira Space pre-commit — see git show bd0c224688d9:docs/v1/plans/P15-gh-tooling.md §3, scoped by P294.
 # Installed by `bun install` (package.json "prepare" sets core.hooksPath).
 # Checks only what the commit stages or deletes (biome --staged, the affected typecheck projects); falls back
 # to the full lint + typecheck when config, a lockfile, scripts or a shared package changed.

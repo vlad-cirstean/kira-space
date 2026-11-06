@@ -3,8 +3,8 @@ import { expect, test } from './fixtures';
 import { installGitStreamMock } from './support/gitStreamMock';
 import { IPC } from './support/ipcChannels';
 
-// P226: one colour mark across modules. Pins the same literal as
-// apps/kira-studio/tests/ui/color-rails.spec.ts, so Studio and Space rails match by construction.
+// P226: one colour mark across modules. Pins the same literal as the Studio modules' rails
+// (tests/ui/studio), so Studio and Space rails match by construction.
 
 const RAIL_CLASS = 'absolute inset-y-0 left-0 w-1 bg-conn-cyan';
 

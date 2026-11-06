@@ -30,7 +30,7 @@ const UPDATE = {
     updateAvailable: true,
     currentVersion: '1.2.0',
     latestVersion: '1.3.0',
-    installLogPath: '/tmp/kira-studio-update.log',
+    installLogPath: '/tmp/kira-space-update.log',
   },
 } as const;
 

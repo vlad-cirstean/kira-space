@@ -40,15 +40,11 @@ export interface RelaunchOptions extends UiFixturesOptions {
 export type Relaunch = RelaunchOf<KiraAppExtra, RelaunchOptions>;
 
 /**
- * The `tests/ui/` counterpart to `tests/e2e/fixtures.ts`. There is no more Electron
- * process, no `KIRA_HOME`, and no real backend of any kind — `relaunch()` here means "open a fresh
- * page against the static build and mock both wire protocols from scratch", not "restart a real
- * app process". A spec that genuinely needs a second `relaunch()` to assert something survives a
- * restart is asserting something this tier cannot prove any more (there is nothing to persist to)
- * — see the per-spec porting notes for where that changed the scenario itself, not just its
- * mechanics.
+ * `relaunch()` means "open a fresh page against the static build and mock both wire protocols from
+ * scratch", not "restart a real app process". There is nothing to persist to, so a spec cannot
+ * assert state survives a restart.
  */
-export const test = createUiFixtures<KiraAppExtra, RelaunchOptions>({
+const baseTest = createUiFixtures<KiraAppExtra, RelaunchOptions>({
   distDir: DIST_DIR,
   installMocks: async (page, options) => {
     // Both installs are page.route/addInitScript registrations — they must land before the first
@@ -58,6 +54,21 @@ export const test = createUiFixtures<KiraAppExtra, RelaunchOptions>({
     const control = await installControlMocks(page, mergeBootSnapshots(options?.control ?? []));
     const stream = await installMockStream(page, options?.stream ?? []);
     return { control, stream };
+  },
+});
+
+/**
+ * The merged app boots into its first module. Studio specs expect the databases module, so every
+ * launch selects it through the mode switcher before the spec runs. A spec that opens a window
+ * kind directly (`?window=`) navigates on its own afterwards and is unaffected.
+ */
+export const test = baseTest.extend<{ relaunch: Relaunch }>({
+  relaunch: async ({ relaunch }, use) => {
+    await use(async (options) => {
+      const app = await relaunch(options);
+      await app.window.locator('[data-testid="mode-tab"][data-mode="studio"]').click();
+      return app;
+    });
   },
 });
 

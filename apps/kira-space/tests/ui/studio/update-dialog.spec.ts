@@ -29,7 +29,7 @@ test('update available: the routed dialog shows, Later dismisses it, the item re
           updateAvailable: true,
           currentVersion: '1.2.0',
           latestVersion: '1.3.0',
-          installLogPath: '/tmp/kira-studio-update.log',
+          installLogPath: '/tmp/kira-space-update.log',
         },
       },
     ],
@@ -39,7 +39,7 @@ test('update available: the routed dialog shows, Later dismisses it, the item re
   const dialog = window.locator('[data-testid="update-dialog"]');
   await expect(dialog).toBeVisible();
   await expect(window.locator('[data-testid="update-dialog-versions"]')).toHaveText(
-    'Kira Studio 1.3.0 is available. You have 1.2.0.',
+    'Kira Space 1.3.0 is available. You have 1.2.0.',
   );
 
   const item = window.locator('[data-testid="update-available"]');
@@ -80,7 +80,7 @@ test('Update click installs: control log shows the install call', async ({ relau
           updateAvailable: true,
           currentVersion: '1.2.0',
           latestVersion: '1.3.0',
-          installLogPath: '/tmp/kira-studio-update.log',
+          installLogPath: '/tmp/kira-space-update.log',
         },
       },
       { channel: IPC.updateInstall, hold: true },
@@ -104,7 +104,7 @@ test('a failed install shows the error and re-enables Try again', async ({ relau
           updateAvailable: true,
           currentVersion: '1.2.0',
           latestVersion: '1.3.0',
-          installLogPath: '/tmp/kira-studio-update.log',
+          installLogPath: '/tmp/kira-space-update.log',
         },
       },
       {
@@ -132,7 +132,7 @@ test('menu check, up to date: shows the latest-version text, Close closes', asyn
   await emitWailsEvent(window, CHANNEL.checkForUpdates, undefined);
 
   await expect(window.locator('[data-testid="update-dialog-up-to-date"]')).toHaveText(
-    'Kira Studio 0.0.0-dev is the latest version.',
+    'Kira Space 0.0.0-dev is the latest version.',
   );
   await window.click('[data-testid="update-dialog-close"]');
   await expect(window.locator('[data-testid="update-dialog"]')).toHaveCount(0);
@@ -167,7 +167,7 @@ test('menu check finding an update shows it without a second popup', async ({ re
           updateAvailable: true,
           currentVersion: '1.2.0',
           latestVersion: '1.3.0',
-          installLogPath: '/tmp/kira-studio-update.log',
+          installLogPath: '/tmp/kira-space-update.log',
         },
       },
     ],
@@ -176,7 +176,7 @@ test('menu check finding an update shows it without a second popup', async ({ re
   await emitWailsEvent(window, CHANNEL.checkForUpdates, undefined);
 
   await expect(window.locator('[data-testid="update-dialog-versions"]')).toHaveText(
-    'Kira Studio 1.3.0 is available. You have 1.2.0.',
+    'Kira Space 1.3.0 is available. You have 1.2.0.',
   );
   await expect(window.locator('[data-testid="update-dialog-install"]')).toBeVisible();
   expect(control.log().some((e) => e.channel === IPC.promptsRaise)).toBe(false);
@@ -193,7 +193,7 @@ test('a failed menu check does not stick to the dialog once an update is availab
           updateAvailable: true,
           currentVersion: '1.2.0',
           latestVersion: '1.3.0',
-          installLogPath: '/tmp/kira-studio-update.log',
+          installLogPath: '/tmp/kira-space-update.log',
         },
       },
       { channel: IPC.updateCheck, error: { code: 'E_CONFLICT', message: 'Offline.' } },

@@ -28,9 +28,9 @@ typecheck_targets() {
   [ -n "$_ts" ] || return 0
   printf '%s\n' "$_ts" | while IFS= read -r _f; do
     case "$_f" in
-      apps/kira-space/frontend/proto/*|apps/kira-space/frontend/*proto*|apps/kira-space/tests/proto/*) echo "proto:studio space-web space-mobile space-tests space-unit" ;;
-      apps/kira-space/frontend/*|apps/kira-space/tests/*|apps/kira-space/tsconfig*|apps/kira-space/playwright*) echo "space-web space-mobile space-tests space-unit" ;;
-      packages/api-core/*) echo "api-core:studio" ;;
+      apps/kira-space/frontend/proto/*|apps/kira-space/frontend/*proto*|apps/kira-space/tests/proto/*) echo "proto web mobile tests unit" ;;
+      apps/kira-space/frontend/*|apps/kira-space/tests/*|apps/kira-space/tsconfig*|apps/kira-space/playwright*) echo "web mobile tests unit" ;;
+      packages/api-core/*) echo "api-core" ;;
       packages/git-*/*) echo "git" ;;
       packages/docker-ui/*) echo "docker" ;;
       site/scripts/*) echo "docs-check" ;;
@@ -65,31 +65,16 @@ nested_go_mods() {
   done | sort -u
 }
 
-# ui_target_of <file>: prints studio, space, both or none, the UI suites (Playwright `ui`) one
-# path can affect. First match wins. UI specs run a built bundle against mocks, so Go code never
-# reaches them; contract JSON and bindings sit under the app dir and select that app.
-ui_target_of() {
+# ui_affects <file>: 0 when one path can affect the Playwright `ui` suite. UI specs run a built
+# bundle against mocks, so Go code never reaches them; contract JSON and bindings sit under the
+# app dir and select it.
+ui_affects() {
   case "$1" in
-    go.mod|go.sum|*/go.mod|*/go.sum|.golangci.yml|*/.golangci.yml) echo none; return ;;
+    go.mod|go.sum|*/go.mod|*/go.sum|.golangci.yml|*/.golangci.yml) return 1 ;;
   esac
-  if printf '%s\n' "$1" | grep -Eq "$FULL_RE"; then echo both; return; fi
+  if printf '%s\n' "$1" | grep -Eq "$FULL_RE"; then return 0; fi
   case "$1" in
-    packages/*) echo both ;;
-    *.go|internal/*|apps/*/internal/*|apps/*/tests/claude/*|docs/*|site/*|*.md) echo none ;;
-    apps/kira-space/frontend/src/studio/*|apps/kira-space/tests/*/studio/*|apps/kira-space/tests/ipc/*|apps/kira-space/tests/proto/*|apps/kira-space/playwright.studio*) echo studio ;;
-    apps/kira-space/*) echo space ;;
-    *) echo both ;;
+    *.go|internal/*|apps/*/internal/*|apps/*/tests/claude/*|docs/*|site/*|*.md) return 1 ;;
+    *) return 0 ;;
   esac
-}
-
-# ui_targets <file list>: prints `studio`, `space`, both (one per line) or nothing.
-ui_targets() {
-  printf '%s\n' "$1" | while IFS= read -r _f; do
-    [ -n "$_f" ] || continue
-    case "$(ui_target_of "$_f")" in
-      studio) echo studio ;;
-      space) echo space ;;
-      both) echo studio; echo space ;;
-    esac
-  done | sort -u
 }

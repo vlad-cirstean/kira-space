@@ -1,70 +1,22 @@
-import { execFileSync, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { test as base, type Page } from '@playwright/test';
-import { acquireBuildLock, bound, getFreePort, waitForHealth } from '@workbench/testing/e2eReal';
+import { bound, getFreePort, waitForHealth } from '@workbench/testing/e2eReal';
+import { APP_DIR, buildPrerequisites, FAKE_AGENT_BINARY, SERVER_BINARY } from '../support/build';
 import { type FlowServers, startFlowServers } from './support/flowServers';
 
-// The tests/e2e-real/ counterpart to tests/e2e/fixtures.ts's `_electron.launch()`.
-// There is no Electron process and no native window: `relaunch`-equivalent
-// setup here means "build (if needed) and spawn a `go build -tags server` binary, wait for it to
-// answer /health, then open a plain browser page against it" — a real Go backend, a real embedded
-// engine, a real database adapter, reached over plain HTTP/WebSocket.
+// The Studio modules' real-backend tier: the merged app's `go build -tags server` binary (built
+// once per run by ../support/build.ts, shared with the Space tier), a real embedded engine and a
+// real database adapter, reached over plain HTTP/WebSocket by a plain Chromium tab. Each test
+// selects its module through the mode switcher after boot.
 
-const ROOT_DIR = resolve(__dirname, '../../../../..');
-const APP_DIR = resolve(ROOT_DIR, 'apps/kira-space');
-const SERVER_BINARY = resolve(APP_DIR, 'bin/kira-server-test');
-const FAKE_AGENT_BINARY = resolve(APP_DIR, 'bin/fakeclaude');
 const BRIDGE_PKG = 'github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge';
 
-function goBinDir(): string {
-  return `${execFileSync('go', ['env', 'GOPATH'], { encoding: 'utf8' }).trim()}/bin`;
-}
-
-// `scripts/setup.sh` installs `wails3` via `go install` and expects it on PATH afterward (its own
-// shell-profile note) — set explicitly here so this fixture never depends on the invoking shell
-// having done that.
-function envWithGoBin(): NodeJS.ProcessEnv {
-  const extra = goBinDir();
-  const path = process.env.PATH ?? '';
-  return { ...process.env, PATH: path.includes(extra) ? path : `${path}:${extra}` };
-}
-
-// Build prerequisites, all idempotent: `scripts/setup.sh` (pinned
-// wails3, generated bindings — no vendored Node runtime or bundled engine to check for)
-// plus `bun run build:test:studio` (apps/kira-space/frontend/dist, which main.go's `//go:embed
-// all:frontend/dist` picks up — the hooks-enabled build, same as test:ui/test:ipc:fe),
-// then the one step that script doesn't do — `go build -tags server`. Memoized per worker process
-// so a spec file with multiple tests builds once, not once per test.
-let prerequisitesReady: Promise<void> | undefined;
-
-function buildPrerequisites(): Promise<void> {
-  prerequisitesReady ??= (async () => {
-    const release = await acquireBuildLock();
-    try {
-      const env = envWithGoBin();
-      execFileSync('sh', ['scripts/setup.sh'], { cwd: ROOT_DIR, env, stdio: 'inherit' });
-      // `build:wails` (a separate `vite.wails.config.ts`) was folded into the main `vite build`
-      // once P57 removed Electron — this repo's own `vite.config.ts` already outputs straight to
-      // `apps/kira-space/frontend/dist`, main.go's `//go:embed` target.
-      execFileSync('bun', ['run', 'build:test:studio'], { cwd: ROOT_DIR, env, stdio: 'inherit' });
-      await mkdir(resolve(APP_DIR, 'bin'), { recursive: true });
-      execFileSync('go', ['build', '-tags', 'server', '-o', SERVER_BINARY, '.'], {
-        cwd: APP_DIR,
-        env,
-        stdio: 'inherit',
-      });
-      execFileSync(
-        'go',
-        ['build', '-o', FAKE_AGENT_BINARY, '../../../internal/flowtest/fakeagent/cmd/fakeclaude'],
-        { cwd: APP_DIR, env, stdio: 'inherit' },
-      );
-    } finally {
-      await release();
-    }
-  })();
-  return prerequisitesReady;
+/** Opens a Studio module; the merged app boots into the first module, not the databases one. */
+async function selectMode(page: Page, mode: string): Promise<void> {
+  await page.locator(`[data-testid="mode-tab"][data-mode="${mode}"]`).click();
 }
 
 export interface KiraApp {
@@ -131,7 +83,7 @@ export const test = base.extend<KiraFixtures, { prerequisites: true }>({
     // Non-negotiable per tests/e2e/fixtures.ts's own precedent (P25 D10): a real ~/.kira-studio
     // must never be touched by a test run.
     if (!kiraHome.startsWith(tmpdir())) {
-      throw new Error(`KIRA_HOME fixture "${kiraHome}" is not under the OS tmpdir`);
+      throw new Error(`kiraHome fixture "${kiraHome}" is not under the OS tmpdir`);
     }
 
     const fake: Record<string, string> = {};
@@ -161,6 +113,8 @@ export const test = base.extend<KiraFixtures, { prerequisites: true }>({
       ...process.env,
       ...fake,
       KIRA_HOME: kiraHome,
+      KIRA_SPACE_HOME: join(kiraHome, 'space'),
+      KIRA_MEMORY_HOME: join(kiraHome, 'memory'),
       // Linux has no real keychain backing (CLAUDE.md) — same Linux-only development fallback
       // tests/e2e/fixtures.ts already sets, a no-op on macOS.
       KIRA_INSECURE_SECRETS: '1',
@@ -196,7 +150,7 @@ export const test = base.extend<KiraFixtures, { prerequisites: true }>({
           waitForHealth(`${baseURL}/health`, 20_000),
           exited.then((code) => {
             throw new Error(
-              `kira-server-test exited (code ${code}) before /health:\n${stderr.join('')}`,
+              `kira-space-server-test exited (code ${code}) before /health:\n${stderr.join('')}`,
             );
           }),
         ]);
@@ -215,6 +169,7 @@ export const test = base.extend<KiraFixtures, { prerequisites: true }>({
     await page.setViewportSize({ width: 1440, height: 960 });
     await page.goto(`${baseURL}/`);
     await page.waitForSelector('[data-testid="status-bar"]');
+    await selectMode(page, 'studio');
 
     await use({
       window: page,
@@ -226,6 +181,7 @@ export const test = base.extend<KiraFixtures, { prerequisites: true }>({
         server = await start();
         await page.goto(`${baseURL}/`);
         await page.waitForSelector('[data-testid="status-bar"]');
+        await selectMode(page, 'studio');
       },
     });
 

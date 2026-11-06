@@ -9,7 +9,7 @@ record.
 ## Baselines are regenerated only from the `ui` CI job's own environment
 
 A baseline PNG (the `*-snapshots/` directories Playwright creates beside each spec) is only ever
-captured or updated via `bun run test:visual:update:studio` run inside `.github/workflows/pr.yml`'s `ui`
+captured or updated via `bun run test:visual:update` run inside `.github/workflows/pr.yml`'s `ui`
 job — `ubuntu-24.04`, the exact `bunx playwright install webkit` + apt-package set that job
 installs — or a container that matches it byte-for-byte. **Never from a local macOS run.** WKWebView
 (what a real packaged build and a macOS dev machine both use) renders different glyph
