@@ -204,6 +204,12 @@ See `docs/ARCHITECTURE.md`'s ClickHouse section for the adapter's own design fac
   `go build -tags server`) are memoized per worker process by
   `apps/kira-space/tests/e2e-real/studio/fixtures.ts`'s `buildPrerequisites()`.
 
+## kira.db schema identifiers (P553)
+
+- After a schema change regenerate the Go identifiers: `go generate ./internal/kiraschema` (same as
+  `go test ./apps/kira-space/internal/storage -run 'TestKiraSchema|TestSchemaSnapshot' -update`). Commit
+  `internal/kiraschema/kiraschema_gen.go` and `storage/testdata/schema.sql`. Without it `TestKiraSchemaGenerated` fails.
+
 ## Secrets / `KIRA_INSECURE_SECRETS` (P25, moved to Go in P52/P57)
 
 See `docs/ARCHITECTURE.md`'s Storage section for the cipher, the key and the envelope. Here:
