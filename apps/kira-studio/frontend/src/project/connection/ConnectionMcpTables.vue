@@ -70,7 +70,7 @@ function setAllTables(all: boolean): void {
     emit('change', { tables: undefined });
     return;
   }
-  emit('change', { tables: (tablesQuery.data.value?.tables ?? []).map((x) => x.ref) });
+  emit('change', { tables: [] });
 }
 function toggleTable(ref: string, on: boolean): void {
   const next = new Set(chosen.value);
