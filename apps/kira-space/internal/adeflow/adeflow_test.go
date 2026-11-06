@@ -199,13 +199,13 @@ func TestParse_rules(t *testing.T) {
 
 type memStore struct{ m map[string]string }
 
-func (s *memStore) LastValid() (map[string]string, error) { return s.m, nil }
-func (s *memStore) RecordLastValid(f, js string, _ int64) error {
+func (s *memStore) Snapshot() (map[string]string, error) { return s.m, nil }
+func (s *memStore) Record(f, js string, _ int64) error {
 	s.m[f] = js
 	return nil
 }
 
-func (s *memStore) ForgetLastValid(f string) error {
+func (s *memStore) Forget(f string) error {
 	delete(s.m, f)
 	return nil
 }

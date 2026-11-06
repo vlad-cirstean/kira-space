@@ -870,45 +870,6 @@ func (r *AdeTaskRepo) SetupByBranch() (map[string]model.AdeWorktreeSetup, error)
 	return out, nil
 }
 
-// LastValid returns the last valid workflow JSON recorded per file name.
-func (r *AdeTaskRepo) LastValid() (map[string]string, error) {
-	rows, err := r.DB.Query(`SELECT file, value_json FROM config_last_valid WHERE folder = 'workflows'`)
-	if err != nil {
-		return nil, fmt.Errorf("repos: query ade workflow last valid: %w", err)
-	}
-	defer rows.Close()
-	out := make(map[string]string)
-	for rows.Next() {
-		var file, js string
-		if err := rows.Scan(&file, &js); err != nil {
-			return nil, fmt.Errorf("repos: scan ade workflow last valid: %w", err)
-		}
-		out[file] = js
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("repos: ade workflow last valid rows: %w", err)
-	}
-	return out, nil
-}
-
-// RecordLastValid upserts the last valid workflow JSON for a file.
-func (r *AdeTaskRepo) RecordLastValid(file, workflowJSON string, now int64) error {
-	if _, err := r.DB.Exec(`INSERT INTO config_last_valid (folder, file, value_json, recorded_at) VALUES ('workflows', ?, ?, ?)
-		ON CONFLICT(folder, file) DO UPDATE SET value_json = excluded.value_json, recorded_at = excluded.recorded_at`,
-		file, workflowJSON, now); err != nil {
-		return fmt.Errorf("repos: record ade workflow last valid %s: %w", file, err)
-	}
-	return nil
-}
-
-// ForgetLastValid drops the last valid workflow row of a file that no longer exists.
-func (r *AdeTaskRepo) ForgetLastValid(file string) error {
-	if _, err := r.DB.Exec(`DELETE FROM config_last_valid WHERE folder = 'workflows' AND file = ?`, file); err != nil {
-		return fmt.Errorf("repos: forget ade workflow last valid %s: %w", file, err)
-	}
-	return nil
-}
-
 // SetBranchName records the created branch name; ErrBranchNameTaken when a live branch of the repo
 // already holds it, ErrBranchMissing when the branch is gone.
 func (r *AdeTaskRepo) SetBranchName(id, name string) error {

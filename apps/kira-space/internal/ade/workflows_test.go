@@ -3,6 +3,7 @@ package ade
 import (
 	"context"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,7 +53,7 @@ func TestWorkflows_writesAndExternalEdits(t *testing.T) {
 		Logs:   r.AdeLogs,
 		Runner: gitclient.NewExecRunner(), Registry: registry,
 		GitStatus: func(context.Context) gitclient.GitStatus { return gitclient.GitStatus{Kind: "ok", Path: "git"} },
-		Workflows: &adeflow.Reader{Dir: dir, Store: r.AdeTasks}, OnWorkflows: func() { emitted.Add(1) },
+		Workflows: &adeflow.Reader{Dir: dir, Store: configfs.TableProjection{DB: db.DB, Folder: adeflow.WorkflowsFolder}}, OnWorkflows: func() { emitted.Add(1) },
 		AutofetchMinutes: func() int { return 5 },
 	})
 	t.Cleanup(b.Close)

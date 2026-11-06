@@ -10,22 +10,16 @@ import (
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
-// Store persists the last valid workflow per file so a file broken on disk keeps its previous
-// version in use across restarts. It is the workflows Projection (docs/ARCHITECTURE.md, Config files).
-type Store interface {
-	LastValid() (map[string]string, error)
-	RecordLastValid(file, workflowJSON string, now int64) error
-	ForgetLastValid(file string) error
-}
-
 // WorkflowsFolder is the workflows module folder name under <home>/config.
 const WorkflowsFolder = "workflows"
 
 // Reader lists and resolves workflows over a configfs.Folder. Only the writer methods (writer.go)
 // create the directory or write a workflow file, and WriteDocs.
 type Reader struct {
-	Dir   string
-	Store Store
+	Dir string
+	// Store persists the last valid workflow per file so a file broken on disk keeps its previous
+	// version in use across restarts (a configfs.TableProjection over WorkflowsFolder).
+	Store configfs.Projection
 	Now   func() time.Time
 	// Steps is the step library that `step:` items resolve against; nil refuses every reference.
 	Steps *StepLibrary
@@ -35,14 +29,6 @@ type Reader struct {
 	f    *configfs.Folder[adewire.Workflow]
 }
 
-type projection struct{ s Store }
-
-func (p projection) Snapshot() (map[string]string, error) { return p.s.LastValid() }
-func (p projection) Record(file, js string, now int64) error {
-	return p.s.RecordLastValid(file, js, now)
-}
-func (p projection) Forget(file string) error { return p.s.ForgetLastValid(file) }
-
 func (r *Reader) folder() *configfs.Folder[adewire.Workflow] {
 	r.once.Do(func() {
 		r.f = &configfs.Folder[adewire.Workflow]{
@@ -50,7 +36,7 @@ func (r *Reader) folder() *configfs.Folder[adewire.Workflow] {
 			Ext:        ".yaml",
 			Name:       fileNamePattern,
 			Decode:     r.decode,
-			Projection: projection{r.Store},
+			Projection: r.Store,
 			Now:        r.Now,
 		}
 	})

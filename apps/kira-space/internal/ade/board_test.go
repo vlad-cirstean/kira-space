@@ -3,6 +3,7 @@ package ade
 import (
 	"context"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"path/filepath"
 	"slices"
 	"sync/atomic"
@@ -53,7 +54,7 @@ func newBoardHarness(t *testing.T) *boardHarness {
 		GitRepoSettings: h.files.Settings,
 		Registry:        registry,
 		GitStatus:       func(context.Context) gitclient.GitStatus { return h.status.Load().(gitclient.GitStatus) },
-		Workflows:       &adeflow.Reader{Dir: t.TempDir(), Store: r.AdeTasks},
+		Workflows:       &adeflow.Reader{Dir: t.TempDir(), Store: configfs.TableProjection{DB: db.DB, Folder: adeflow.WorkflowsFolder}},
 		OnBoard:         func() { h.emitted.Add(1) }, HomeDir: "/home/u",
 		AutofetchMinutes: func() int { return 5 },
 	})
