@@ -18,7 +18,8 @@ Twins: every Studio twin in `plans/TWINS.md` is merged by P538, P539, P540 or P5
 | P541 | Mermaid visualiser in the proof tool and proof MCP tool | Done |
 | P542 | Unified notes: user notes and agent handovers in one chain | Done |
 | P543 | Proof as an artifact chain in the task details panel | Done |
-| P544 | Merge the main SQLite databases into one | Pending |
+| P544 Part 1 | One database | Pending |
+| P544 Part 2 | Settings and op log twins | Pending |
 | P545 | Timeline becomes a toggle merged into the same list | Pending |
 | P546 | Forward panel edits (diff only) to agents running in the step | Pending |
 | P547 | Kira DB audit trail in the details panel | Pending |
@@ -164,7 +165,7 @@ Result:
 - Plan: `plans/P543.md`.
 - Result: Done. Proof sessions link to tasks through `proof_task_links` (migration `0066_p543_proof_task_links.sql`, cascade on session delete; no FK to `ade_tasks` across DBs). Agent MCP tool `attach_proof` (by session name, closed sessions only) and a user menu in the chain (`AdeProofAttachMenu`) link or unlink; ownership refusals are `ToolError`s. `pruneClosed` never prunes a linked session. `AdeTaskChain` replaces `AdeNotesChain`: handovers and proofs merge by time desc; ties rank proof with diagram step, handover, other proof, then key (`taskChain.ts`). Details tab order: links, chain, timeline. Diagram steps render through `ProofDiagram`; mermaid stays lazy. Handover tool text gains a terse rule (10 short lines, no restating proof, diffs or links); `budget.tsv` updated. New bridge methods `TaskProofs`, `ProofChoices`, `LinkProof`, `UnlinkProof`. `TestProofChain` (contract `ade-proof-chain`) and `ade-v2-proof-chain.spec.ts` (8) pass; `ade-automation` contract regenerated (tool list). Deviations: repo method `UnattachedSessions`; `AdeProofDiagramStep` imports `ProofDiagram` statically (already in main chunk); steps aria label reuses `studio.proof.tabs.aria`; UI spec injects explicit times (contract masks them). Open: real `claude` run not done (no login); `ui-leftovers` http-send pair fails at base. P544: fold `proof_task_links` into the merged DB with `REFERENCES ade_tasks(id) ON DELETE CASCADE`.
 
-### P544 Merge the main SQLite databases into one
+### P544 Part 1: one database
 
 - Ask: practically merge the SQLite DBs into one main DB with one migration sequence. Some stay isolated for good reasons; the main ones become one.
 - Scope: Studio `kira.db` and Space `kira.db` become one. Audit every other DB (`review.db`, `agent-secrets.db`, `memory.db` under `~/.kira-memory`, op log, any other `*.db` found by grep on `storage`, `oplog`, `OpenAt`) and decide per DB: merge or stay isolated, with the reason written in the plan (candidates: secrets sealed separately; memory shared with the stdio server; `review.db` size or lifecycle). Data migration of existing user DBs, idempotent, backup first.
@@ -181,7 +182,13 @@ Result:
   - `ls apps/kira-space/internal/studiostorage apps/kira-space/internal/appmerge apps/kira-space/tests/unit/studio/go-ts-vocabulary-parity.spec.ts apps/kira-space/tests/visual/studio/operations.spec.ts apps/kira-space/tests/visual/studio/settings.spec.ts` all fail.
   - `ls apps/kira-space/internal/bridge/studio_{ops,settings,configfiles}.go` all fail.
   - `comm -12 <(ls apps/kira-space/tests/ui) <(ls apps/kira-space/tests/ui/studio)` and the same over `tests/visual` print only `support`.
-- Plan: `plans/P544.md`.
+- Plan: `plans/P544.md` (`## Part 1`). Part 1 covers TWINS B544-1, B544-2, B544-5, B544-6: `studio.db` folds into `kira.db`, one migration sequence and storage package, `StudioDeps` gone, tabs and windows in one table each, `appmerge` retired into `dbfold`. Acceptance lines for settings and op log twins pass at Part 2.
+
+### P544 Part 2: settings and op log twins
+
+- Ask: one settings service, store and panel; one op log table, service, store and panel (TWINS B544-3, B544-4). Needs Part 1's single DB.
+- Acceptance: every line of Part 1's acceptance list prints nothing or fails as stated.
+- Plan: `plans/P544.md` (`## Part 2`).
 
 ### P545 Timeline becomes a toggle merged into the same list
 
