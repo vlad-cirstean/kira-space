@@ -69,7 +69,8 @@ needs.
 - `bun run screenshots` rebuilds `frontend/dist` (test bundle), then captures six shots in
   WebKit into `screenshots/`. Studio shots only: `bun run build:test && bunx playwright test
   --config=apps/kira-space/playwright.config.ts --project=screenshots`. Never run it beside a UI suite in the same checkout. Not in hooks, CI or
-  the Pages Action. Run it by hand when a shown UI changes, then commit the PNGs.
+  the Pages Action. Run it by hand when a shown UI changes, then commit the WebP files. Output is lossless WebP, never PNG (guard N15).
+  Space shots only: add `tests/screenshots/space.shot.ts` to the command.
 - Rerun it and check `git status --porcelain screenshots/` is empty. A diff means a nondeterministic
   input; fix the cause, never add tolerance.
 - Shot flows: `apps/*/tests/screenshots/*.shot.ts`. A shot fails on a console error, so a mocked
@@ -77,7 +78,7 @@ needs.
 - `bun run site:check` builds the site, then runs the 375 px and 1280 px WebKit checks.
   `bun run site:dev` serves it locally.
 - Site visual baselines (`site/tests/visual.spec.ts-snapshots/`) are recorded on Linux in this
-  sandbox and skipped elsewhere. Refresh only for an intended change:
+  sandbox and skipped elsewhere. They stay PNG: Playwright `toHaveScreenshot` writes PNG only. Refresh only for an intended change:
   `bunx playwright test --config=site/playwright.config.ts visual --update-snapshots` (after
   `bun run site:build`).
 - `bun run site:build` runs `astro check`, then the build. Root `lint` runs `site/scripts/check-docs.ts`

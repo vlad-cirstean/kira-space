@@ -221,6 +221,7 @@ Result:
 - Ownership vs P550: P549 owns capture, format, frame and output paths. P550 builds on them and edits none of that.
 - Batch: stream B7 beside P550 (`plans/PARALLEL.md`).
 - Plan: `plans/P549.md`.
+- Result (open, status stays Pending): steps 1 to 6 landed. Lossless WebP via sharp at capture (`encodeWebp`, `saveShot`, `prepareCapture`, `FRAME` exported from `capture.ts`). 12 PNGs converted and deleted, replacement set 0.47 MB. N15 guard in `check-conventions.ts` plus `.gitignore` line. Site serves WebP as emitted, `social` build PNG for og:image only, README links WebP, `.webp` assertions in `site.spec.ts` and `docs.spec.ts`. 3 Space shots regenerated, second run byte-identical and `git status --porcelain screenshots/` empty. Landing baselines re-recorded, `bun run site:check` passes (119 passed). Docs updated. Step 7 awaiting the user's macOS 26 reference screenshot (2x, dark window, full-size content view, uncropped): frame values in `FRAME` and `traffic-lights.svg` are provisional (radius 16, flat lights, baked shadow). On arrival: set `FRAME` and SVG from it, regenerate Space shots, re-record baselines, name the reference in commit and `docs/ARCHITECTURE.md`. Deviation: N15 landed after the migration commit, not before, because its hook would fail while PNGs were tracked. Studio shots keep the old frame (converted) until the chapter-end regeneration.
 
 ### P550 Site image pipeline: CI generates and publishes site images
 
