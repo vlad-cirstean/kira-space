@@ -33,6 +33,8 @@ type Deps struct {
 	Run      func(ctx context.Context, path string, args []string) error
 	// RunEnv is Run with the environment a spawn gets, used when InstallJSON names one.
 	RunEnv func(ctx context.Context, path string, args, env []string) error
+	// RunOut is Run returning the child's bounded stdout.
+	RunOut func(ctx context.Context, path string, args []string) ([]byte, error)
 	// Candidates are the absolute paths probed after PATH.
 	Candidates func() []string
 }
@@ -45,13 +47,14 @@ type Installer struct {
 	stat     func(string) (os.FileInfo, error)
 	run      func(ctx context.Context, path string, args []string) error
 	runEnv   func(ctx context.Context, path string, args, env []string) error
+	runOut   func(ctx context.Context, path string, args []string) ([]byte, error)
 	cands    func() []string
 }
 
 // New constructs an Installer over d, substituting the real OS implementation for any zero-value
 // field.
 func New(d Deps) *Installer {
-	i := &Installer{lookPath: d.LookPath, stat: d.Stat, run: d.Run, runEnv: d.RunEnv, cands: d.Candidates}
+	i := &Installer{lookPath: d.LookPath, stat: d.Stat, run: d.Run, runEnv: d.RunEnv, runOut: d.RunOut, cands: d.Candidates}
 	if i.lookPath == nil {
 		i.lookPath = realLookPath
 	}
@@ -65,6 +68,11 @@ func New(d Deps) *Installer {
 		i.runEnv = func(ctx context.Context, path string, args, env []string) error {
 			_, err := toolexec.RunIO(ctx, path, args, "", env, nil)
 			return err
+		}
+	}
+	if i.runOut == nil {
+		i.runOut = func(ctx context.Context, path string, args []string) ([]byte, error) {
+			return toolexec.RunIO(ctx, path, args, "", os.Environ(), nil)
 		}
 	}
 	if i.cands == nil {
@@ -139,9 +147,10 @@ func isNotRegisteredError(err error) bool {
 	return strings.Contains(runErr.Stderr, "No MCP server named")
 }
 
-// Registered reports whether Claude Code has a server called name, through `claude mcp get`. A
-// missing CLI or the CLI's "No MCP server named" failure is false; any other failure is returned. It reads
-// the CLI's exit status only, never its config file.
+// Registered reports whether Claude Code has a server called name, through `claude mcp list`: a line
+// starting `<name>: ` answers true. Only the name column is read; `claude mcp get`, which prints stored
+// headers, is never run. A missing CLI is false. Claude health-checks every server, so the spawn can
+// take a while.
 func (i *Installer) Registered(ctx context.Context, name string) (bool, error) {
 	claudePath, _, found := i.locateClaude()
 	if !found {
@@ -149,14 +158,17 @@ func (i *Installer) Registered(ctx context.Context, name string) (bool, error) {
 	}
 	spawnCtx, cancel := context.WithTimeout(ctx, spawnTimeout)
 	defer cancel()
-	err := i.run(spawnCtx, claudePath, []string{"mcp", "get", name})
-	if err == nil {
-		return true, nil
+	out, err := i.runOut(spawnCtx, claudePath, []string{"mcp", "list"})
+	if err != nil {
+		return false, errors.New(detailFor(spawnCtx, err))
 	}
-	if isNotRegisteredError(err) {
-		return false, nil
+	prefix := name + ": "
+	for _, line := range strings.Split(string(out), "\n") {
+		if strings.HasPrefix(strings.TrimRight(line, "\r"), prefix) {
+			return true, nil
+		}
 	}
-	return false, errors.New(detailFor(spawnCtx, err))
+	return false, nil
 }
 
 // Install re-resolves `claude` fresh and never returns a Go error — every outcome is a named
