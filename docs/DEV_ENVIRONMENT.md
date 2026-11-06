@@ -214,7 +214,7 @@ historical prose.
   is `${KIRA_SPACE_HOME}/app.lock`, so two `KIRA_SPACE_HOME`s are two fully independent backends
   and a test never contends with a `bun run dev` session. Anything needing a server builds
   one over its own temp `KIRA_SPACE_HOME` — never the fixed path.
-  The Studio modules use `KIRA_HOME` (`~/.kira-studio/`) until P538/P540 merge the homes. A test
+  The Studio modules use `KIRA_HOME` (`~/.kira-studio/`) until P539/P541 merge the homes. A test
   that boots both module sets sets both; setting only one silently talks to the other's real home.
 - **A test binary panics if it resolves an app home with `KIRA_HOME`/`KIRA_SPACE_HOME` unset** (`kirapaths.Home`, non-`production` builds). A package whose tests reach one calls `testx.RunWithTempHomes` from `TestMain`.
 - **`bun run dev` runs the one dev loop** (`cd apps/kira-space && wails3 task dev`): native window,

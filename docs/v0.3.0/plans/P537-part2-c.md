@@ -63,4 +63,4 @@ git-grep checks for `apps/kira-studio` and `:studio` script names. Typecheck run
 - Apply `docs/pending-changes/*.patch` to `.github/` from a session with workflow scope.
 - Old-Studio updater asset name (`kira-studio-macos-arm64.dmg`) is outside C: `install.sh` fetches
   the Space DMG for `--app=studio`.
-- P538/P540 merge `~/.kira-studio` into `~/.kira-space` (Known open item added).
+- P539/P541 merge `~/.kira-studio` into `~/.kira-space` (Known open item added).

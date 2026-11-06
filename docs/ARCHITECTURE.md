@@ -3835,7 +3835,7 @@ config, project files.
 
 ## Known open items
 
-- **Two data homes and two databases until P538/P540 (P537).** Space modes use ~/.kira-space/kira.db (KIRA_SPACE_HOME); the Studio modules (Studio, Api, Docker, Kubernetes) still use ~/.kira-studio/kira.db (KIRA_HOME) and its own settings. Settings, logs and the app lock are per home. P538 and P540 merge them.
+- **Two data homes and two databases until P539/P541 (P537).** Space modes use ~/.kira-space/kira.db (KIRA_SPACE_HOME); the Studio modules (Studio, Api, Docker, Kubernetes) still use ~/.kira-studio/kira.db (KIRA_HOME) and its own settings. Settings, logs and the app lock are per home. P539 and P541 merge them.
 - **Old Kira Studio updater.** An installed old Kira Studio still fetches install.sh from main and passes --app=studio; install.sh installs Space and retires Studio. Studio releases publish no further assets.
 
 Kept only while genuinely open — delete an item the moment it's resolved, never mark it done in

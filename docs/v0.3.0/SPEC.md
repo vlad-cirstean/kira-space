@@ -1,25 +1,28 @@
 # v0.3.0
 
-Branch `chapter/v0.3.0`, based on `chapter/v0.2.36` (v0.2.36 not yet merged to main). First `P` is 537 (highest in v0.2.36 is P536), last is P547.
+Branch `chapter/v0.3.0`, based on `chapter/v0.2.36` (v0.2.36 not yet merged to main). First `P` is 537 (highest in v0.2.36 is P536), last is P548.
 
-Source: user request. Eleven phases (P537 split into two Parts): merge both apps into one Kira Space, then fold the two homes into one, move config YAML into one subfolder, merge the main SQLite DBs, then proof, notes and timeline rework in the task details panel, then Kira DB audit trail and the Studio MCP workflow option. Close duty after the last phase lands: one full suite run, 2 code review rounds (user ask), hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
+Source: user request. Twelve phases (P537 split into two Parts): merge both apps into one Kira Space, then merge the Studio twins with no data dependency (`plans/TWINS.md`), then fold the two homes into one, move config YAML into one subfolder, merge the main SQLite DBs, then proof, notes and timeline rework in the task details panel, then Kira DB audit trail and the Studio MCP workflow option. Close duty after the last phase lands: one full suite run, 2 code review rounds (user ask), hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
 
-Sequencing: P537 first. Every later phase builds on the merged app, so none starts before P537 (all its Parts) is committed. P538 to P540 run in order: home first, then config subfolder, then DB merge; each migration runs after the previous one landed. Table order is execution order. P542 to P545 share the task details panel and the notes editor; run one at a time. P546 also depends on v0.2.36 P528 (exemption approvals) having landed.
+Sequencing: P537 first. Every later phase builds on the merged app, so none starts before P537 (all its Parts) is committed. P538 merges the twins `plans/TWINS.md` marks MERGE-NOW. P539 to P541 run in order: home first, then config subfolder, then DB merge; each migration runs after the previous one landed. Table order is execution order, except where the user-asked batches in `plans/PARALLEL.md` run up to 3 phases at once. P543 to P546 share the task details panel and the notes editor; run one at a time. P547 also depends on v0.2.36 P528 (exemption approvals) having landed.
+
+Twins: every Studio twin in `plans/TWINS.md` is merged by P538, P539, P540 or P541. Each of those rows names its TWINS items and an acceptance checklist (git-grep-able end state). That phase is not Done until every command in its checklist prints what the checklist says.
 
 | Phase | Title | Status |
 |---|---|---|
 | P537 Part 1 | Merge Kira Space and Kira Studio: relocate Studio into `apps/kira-space` and freeze the merged bridge | Done |
 | P537 Part 2 | Merge Kira Space and Kira Studio: finish in three parallel streams (Go, frontend, build/tests/docs) | Done |
-| P538 | Fold the Studio home folder into the Kira Space home folder | Pending |
-| P539 | Move every config YAML into one subfolder of the home | Pending |
-| P540 | Merge the main SQLite databases into one | Pending |
-| P541 | Mermaid visualiser in the proof tool and proof MCP tool | Pending |
-| P542 | Proof as an artifact chain in the task details panel | Pending |
-| P543 | Unified notes: user notes and agent handovers in one chain | Pending |
-| P544 | Timeline becomes a toggle merged into the same list | Pending |
-| P545 | Forward panel edits (diff only) to agents running in the step | Pending |
-| P546 | Kira DB audit trail in the details panel | Pending |
-| P547 | Studio MCP option in workflow steps | Pending |
+| P538 | Merge the Studio twins that have no data dependency | Pending |
+| P539 | Fold the Studio home folder into the Kira Space home folder | Pending |
+| P540 | Move every config YAML into one subfolder of the home | Pending |
+| P541 | Merge the main SQLite databases into one | Pending |
+| P542 | Mermaid visualiser in the proof tool and proof MCP tool | Pending |
+| P543 | Proof as an artifact chain in the task details panel | Pending |
+| P544 | Unified notes: user notes and agent handovers in one chain | Pending |
+| P545 | Timeline becomes a toggle merged into the same list | Pending |
+| P546 | Forward panel edits (diff only) to agents running in the step | Pending |
+| P547 | Kira DB audit trail in the details panel | Pending |
+| P548 | Studio MCP option in workflow steps | Pending |
 
 ## Rows
 
@@ -69,80 +72,135 @@ Result:
 - Notes: `plans/P537-part2-{a,b,c}.md`.
 - Result: Done. Streams landed fast-forward in order A, B, C, no conflicts (rebased onto chapter branch each time). Stream tips after rebase: A `42568c8b`, B `832a8fab`, C `9020562e`. Worktrees and stream branches removed.
 - Landing check: `bun run setup`, `go build ./...`, `go build -tags server ./apps/kira-space/...`, `go vet ./...`, `lint:go` (0 issues), `lint`, `typecheck`, `lint:dead` all pass on merged tree. `playwright --list` works for every config (main 2083 tests, perf 103, proto 6). `test:claude:db` test names all exist in merged `tests/claude`. Bindings: 62 services, 519 methods, identical to Part 1 snapshot. No landing-check fixes needed: knip had no stale `src/studio/main.ts` entry (Stream C removed it); `tests/unit/studio/go-ts-vocabulary-parity.spec.ts` still passes (Go `studiostorage` list not moved). Full suites not run (chapter end). Pre-push hook passed.
-- Deviations: `appmerge` skips backup and marker work when Studio side holds no rows; Studio-only stack tests deleted (`TestPreviewRefusesTaskInStudio`, `TestStudioRefusesTaskContext`); Studio panes for app-wide keys dropped, two settings stores stay until P540; site is one landing page, `/space` redirects to `/`. Details in the notes files.
-- Known open items: apply `docs/pending-changes/*.patch` to `.github/` from a session with workflow scope. Studio visual baselines change; re-record at chapter-end suite run. `apps/kira-studio` remains only in `.github/` (pending patches), `docs/HISTORY.md`, `CLAUDE.md`, and frozen eval data under `apps/kira-space/tests/claude/testdata/memory-eval/`. `~/.kira-studio` merge is P538 to P540.
+- Deviations: `appmerge` skips backup and marker work when Studio side holds no rows; Studio-only stack tests deleted (`TestPreviewRefusesTaskInStudio`, `TestStudioRefusesTaskContext`); Studio panes for app-wide keys dropped, two settings stores stay until P541; site is one landing page, `/space` redirects to `/`. Details in the notes files.
+- Known open items: apply `docs/pending-changes/*.patch` to `.github/` from a session with workflow scope. Studio visual baselines change; re-record at chapter-end suite run. `apps/kira-studio` remains only in `.github/` (pending patches), `docs/HISTORY.md`, `CLAUDE.md`, and frozen eval data under `apps/kira-space/tests/claude/testdata/memory-eval/`. `~/.kira-studio` merge is P539 to P541.
 
-### P538 Fold the Studio home folder into the Kira Space home folder
+### P538 Merge the Studio twins that have no data dependency
+
+- Ask: merge every Studio twin `plans/TWINS.md` marks MERGE-NOW (M1 to M9). None needs the home fold, config subfolder or DB merge. User wants every twin gone by P541; this phase takes the ones free now.
+- Scope:
+  - M1: delete the dead Studio layout repo and model (`studiostorage/repos/layout.go`, `layout_test.go`, `studiostorage/model/layout.go`, `Layout` field in `repos.go`). Fix the bug: Space `model.Layout` has no cell editor panel, so `frontend/src/state/layout.ts` `setCellEditorHeight` has not persisted since P537. Add `PanelCellEditor` to Space `model.Layout`, `LayoutPatch` and `decodeLayout`. Backend flow test plus UI spec for the height round-trip (CLAUDE.md feature-test split). Studio `ui_layout` table stays; P541 copies the old `panel.cellEditor.height` row.
+  - M2: delete the 13 stale `tests/contract/studio/*.json` that have Space twins; repoint their UI readers to `tests/ui/support/contract.ts`.
+  - M3: one `Contract` helper, one `tests/contract/` dir, one UI `contract.ts`. Delete `StudioContract`, `StudioContractEvent`, `contractDir("studio")`. Rename colliding scenarios owned by later phases with a `-db` suffix: `automations-mcp-app`, `smart` (P539 deletes them with the Studio runs stack tests), `tabs-scope` (P541 folds it). Plan resolves the `agent` and `automations` collisions; `quit-confirm` goes with M4.
+  - M4: fold unique cases of `termflow/studio{shell,terminalid,claudemissing,helpers}_test.go` and `windowflow/studioquit_test.go` into `termflow/terminal_test.go` and `appflow/quit_test.go`; drop cases both cover; one `quit-confirm` contract.
+  - M5: one spec per name in `tests/ui/` for the 15 UI spec twins; Studio-only cases (DB approval bodies, Studio module chrome) move in as cases.
+  - M6: one UI fixture and mock runtime (`tests/ui/fixtures.ts`, `tests/ui/support/*`); Studio service mocks become entries in it (`StudioSettings*`, `StudioOps*`, `StudioConfigFiles*` entries stay until P539 and P541). One Playwright project per tier: drop `ui-studio`, `visual-studio`, `screenshots-studio`; repoint `ui-clipboard` and `ui-timing`; root `package.json` `test:ui`, `test:visual` and `screenshots` drop the `-studio` projects. `e2e-real-studio` stays until P539 (B539-1).
+  - M7: delete byte-identical `tests/e2e-real/studio/prompts-two-windows-real.spec.ts`; merge the temp-HOME setup into Space `terminal-real`; move the tabs-per-window case into Space `multiwindow-real`.
+  - M8: one spec per perf probe (`heap-ram`, `heap-tabs`); worlds from one `tests/perf/support/ramWorlds.ts`.
+  - M9: `App: "Space"` in `connfiles/docs.go` and `apifiles/docs.go`, so generated AGENTS.md headers read Kira Space. Header text only, no layout change.
+- Out of scope: every BLOCKED-BY item in `TWINS.md` (P539 to P541 own them).
+- Decide in plan: keep or drop per case for M4 and M5; scenario renames; merged mock runtime shape; Studio visual baselines re-recorded now or at the chapter-end suite run.
+- Acceptance (run from repo root; each prints nothing unless an allowance is named). P538 is not Done until every line passes:
+  - `ls apps/kira-space/internal/studiostorage/repos/layout.go apps/kira-space/internal/studiostorage/model/layout.go` both fail; `git grep -n CellEditor apps/kira-space/internal/storage/model/layout.go` matches.
+  - `git grep -nE 'StudioContract|contract/studio'`
+  - `ls apps/kira-space/tests/contract/studio` fails.
+  - `ls apps/kira-space/internal/flows/termflow/studio{shell,terminalid,claudemissing,helpers}_test.go apps/kira-space/internal/flows/windowflow/studioquit_test.go` all fail.
+  - `comm -12 <(ls apps/kira-space/tests/ui) <(ls apps/kira-space/tests/ui/studio)` prints only `support`, `automations-*.spec.ts` (P539), `operations.spec.ts` and `running-ops-status.spec.ts` (P541).
+  - `comm -12 <(ls apps/kira-space/tests/ui/support) <(ls apps/kira-space/tests/ui/studio/support)`
+  - `comm -12 <(ls apps/kira-space/tests/e2e-real) <(ls apps/kira-space/tests/e2e-real/studio)` prints only `support` and `fixtures.ts` (P539).
+  - `comm -12 <(ls apps/kira-space/tests/perf) <(ls apps/kira-space/tests/perf/studio)` prints only `support`; the same command over the two `support` dirs prints nothing.
+  - `comm -12 <(ls apps/kira-space/tests/visual) <(ls apps/kira-space/tests/visual/studio)` prints only `support`, `operations.spec.ts*` and `settings.spec.ts*` (P541).
+  - `git grep -nE "'(ui|visual|screenshots|e2e-real)-studio'" apps/kira-space/playwright.config.ts package.json` prints only `e2e-real-studio` (P539).
+  - `git grep -n 'App, m.Title.*"Studio"\|c.App.*"Studio"\|App: "Studio"' apps/kira-space/internal/connfiles apps/kira-space/internal/apifiles`
+- Plan: `plans/P538.md`.
+
+### P539 Fold the Studio home folder into the Kira Space home folder
 
 - Ask: the two apps are merged (P537), so their home folders merge too. Studio home `~/.kira-studio` (`KIRA_HOME`) folds into Space home `~/.kira-space` (`KIRA_SPACE_HOME`). All SQLite DBs and config YAML live under the one Kira Space home.
 - Scope: one path resolver (`kirapaths`, both `config/paths.go` wrappers collapse); logs, tokens (for example `mcp-db-token.json`), `llm-prompts.json`, `kira.db`, `connections/`, `api/`, `runs/` and the rest of the Studio home move. One-time, idempotent migration of existing user data with a backup first and no loss; a half-finished run resumes cleanly.
 - Decide in plan: audit the real file list of both homes (grep `kirapaths`, `config.KiraHome`, `KiraSpaceHome`); env var handling (`KIRA_HOME` retired, deprecated alias, or honoured once for migration; dev and test overrides); name collisions between the two homes (`logs/`, `llm-prompts.json`, `app.lock`); backup location and retention; what happens to the old folder after a verified move; shared dirs outside both homes (`kirapaths.SharedAgentDir`, `~/.kira-memory`) stay out unless the plan names a reason; `dbmcp` home seam; update `docs/PACKAGING.md`, `docs/DEV_ENVIRONMENT.md`, `docs/ARCHITECTURE.md` and test fixtures (Go, Playwright, `tests/`).
-- Plan: `plans/P538.md`.
+- Twins (`plans/TWINS.md`): B539-1 to B539-7. Path config and test harnesses on one home; second runs stack and its router deleted; `StudioConfigFilesService` folded into `ConfigFilesService` (`api`, `connections` registered there); DB MCP token and helper under the Space home with agent registrations rewritten; `AppService.Info` reports one home; Studio DB file and `connections/`, `api/` dirs under the Space home (DB stays a second file until P541); `appmerge` reads home-level files from the Space home. Also delete the `-db` contracts P538 renamed for the runs stack (`automations-mcp-app-db`, `smart-db`) with their tests.
+- Runs-stack rows (B539-2): the Studio DB holds `custom_scripts`, `custom_script_collections`, `script_runs`, `script_run_logs`, `secret_values` and `config_last_valid` rows for the second runs stack. TWINS leaves two options: copy them into the Space DB with the `runs/` folder, or keep the router until P541. The checklist below deletes the router, so P539 copies: one idempotent, backed-up step moves both `runs/` folders and those rows into the Space home and Space DB, then deletes the second stack. Plan decides script name and id collisions between the two folders, secret ownership (keychain refs stay valid), and how the copied Studio rows are marked or dropped so P541 never imports them twice.
+- Acceptance (from `TWINS.md`; run from repo root; each prints nothing unless an allowance is named). P539 is not Done until every line passes:
+  - `git grep -nE 'StudioHome|StudioDbPath|KIRA_HOME|\.kira-studio' -- apps internal ':!**/testdata/**'` prints only the one-time fold code and the `internal/secrets/cipher.go` history comment.
+  - `git grep -n 'App: *"Studio"' -- '*.go'`
+  - `git grep -nE 'Studio +\*script(s|runs)\.' apps/kira-space/internal/bridge`
+  - `git grep -nE 'StudioConfigFiles|studioconfigfilesservice'`
+  - `git grep -n 'kiraHome\|KiraHome' apps/kira-space/internal/flowharness apps/kira-space/tests/e2e-real`
+  - `ls apps/kira-space/internal/flows/termflow/studio*_test.go` lists none of `studio{context,settings,hermetic,smart,script}_test.go`.
+  - `ls apps/kira-space/tests/ui/studio/automations-*.spec.ts` lists nothing.
+  - `git grep -n 'configFilesOpen\|configFilesReveal' apps/kira-space/frontend/src/studio/bridge/control.ts`
+  - `git grep -nE "'e2e-real-studio'" apps/kira-space/playwright.config.ts package.json`; `ls apps/kira-space/tests/e2e-real/studio/fixtures.ts` fails.
+- Plan: `plans/P539.md`.
 
-### P539 Move every config YAML into one subfolder of the home
+### P540 Move every config YAML into one subfolder of the home
 
 - Ask: all config YAML folders move under one subfolder of the Kira Space home (for example `<home>/config/<module>/`; plan decides the name), so the folder can later be a git repo. Git ops are out of scope: no `git init`, no commit, no sync, no UI for it.
 - Scope: connections, api (collections, environments), runs, workflows, steps, repos, `agent/settings.yaml`, `agent/context.md` and every other config file. Generated `AGENTS.md` files stay inside the subfolder. DB files, logs, tokens and secrets never go in it (nothing in it may need `.gitignore` to stay safe). Migration of existing layouts, idempotent, backup first; watchers and write paths updated.
 - Decide in plan: audit the real list (grep `configfs.Folder`, `connfiles`, `apifiles`, `adeflow.Dir`/`StepsDir`, `repocfg`, `agentcfg`, `kirapaths`); subfolder name and per-module layout; files that look like config but hold secrets or runtime state and stay out (for example `agent-secrets.db`, the sealed key material, `app.lock`); `configfs` watcher root and the write-suppression of own writes; docs-in-folder files (`connfiles/docs.go`); `docs/ARCHITECTURE.md` and `docs/DEV_ENVIRONMENT.md` updates; test fixtures.
-- Depends on P538.
-- Plan: `plans/P539.md`.
+- Depends on P539.
+- Twins (`plans/TWINS.md`): B540-1. One config-folder registry remains after P539; P540 adds one resolver for `<home>/<subfolder>/<module>` and removes every scattered home join (`appwire.go` `ConfigFilesService` map, `adeflow.Dir`, `adeflow.StepsDir`, `agent`, `runs`; `appwire/studio_build.go` `connections`, `api`).
+- Acceptance (from `TWINS.md`). P540 is not Done until it passes:
+  - `git grep -nE 'filepath\.Join\([^)]*(Home|home)[^)]*"(connections|api|runs|workflows|steps|agent)"' apps/kira-space/internal` prints nothing outside the one config-root resolver.
+- Plan: `plans/P540.md`.
 
-### P540 Merge the main SQLite databases into one
+### P541 Merge the main SQLite databases into one
 
 - Ask: practically merge the SQLite DBs into one main DB with one migration sequence. Some stay isolated for good reasons; the main ones become one.
 - Scope: Studio `kira.db` and Space `kira.db` become one. Audit every other DB (`review.db`, `agent-secrets.db`, `memory.db` under `~/.kira-memory`, op log, any other `*.db` found by grep on `storage`, `oplog`, `OpenAt`) and decide per DB: merge or stay isolated, with the reason written in the plan (candidates: secrets sealed separately; memory shared with the stdio server; `review.db` size or lifecycle). Data migration of existing user DBs, idempotent, backup first.
 - Decide in plan: per-DB verdict table; merged schema and migration numbering (one sequence, how two existing histories fold in); table-name collisions and renames; copy path for existing Studio and Space DBs, including a user holding only one of them; single-writer and `SetMaxOpenConns` effects of one DB serving both subsystems (lock contention, long transactions, WAL); repository and flow-test fixtures; split into Parts per CLAUDE.md if needed (for example Part 1 schema and migrations, Part 2 data migration and cut-over).
-- Depends on P538.
-- Plan: `plans/P540.md`.
+- Depends on P539 and P540 (strict chain: home, config subfolder, DB).
+- Twins (`plans/TWINS.md`): B541-1 to B541-6. One storage package and one migration sequence (no `studiostorage` import left; the database-module domain model moves or is renamed); `StudioDeps` and the second build stage gone; one settings service, store and table; one op log table, service, store and panel; tabs and windows in one DB (`IsStudioTabKind` routing gone); `appmerge` replaced or retired. Also: copy the Studio `ui_layout` `panel.cellEditor.height` value into the Space layout (P538 M1), and fold the `tabs-scope-db` contract P538 renamed.
+- Acceptance (from `TWINS.md`; run from repo root; each prints nothing). P541 is not Done until every line passes:
+  - `git grep -nE 'studiostorage|studiorepos|studiomodel|studiooplog'`
+  - `git grep -nE 'StudioDeps|StudioOps|StudioSettings|StudioCanceller|StudioSources|StudioDB|StudioRepos|buildStudio|IsStudioTabKind|studioAdapters|studioEmbedded'`
+  - `git grep -nE 'studio:kira:|studioSettingsChanged|studioOpUpdate'`
+  - `git grep -nE "useStudioSettingsStore|useStudioOpsStore|'studioSettings'|'studioOpLog'|studioAdvanced|StudioOperationsPanel|StudioAdvancedFields|STUDIO_MODES"`
+  - `git grep -n 'storeId' packages/workbench/src/state/createOpLogStore.ts`
+  - `ls apps/kira-space/frontend/bindings/github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge | grep -i studio`
+  - `ls apps/kira-space/internal/studiostorage apps/kira-space/internal/appmerge apps/kira-space/tests/unit/studio/go-ts-vocabulary-parity.spec.ts apps/kira-space/tests/visual/studio/operations.spec.ts apps/kira-space/tests/visual/studio/settings.spec.ts` all fail.
+  - `ls apps/kira-space/internal/bridge/studio_{ops,settings,configfiles}.go` all fail.
+  - `comm -12 <(ls apps/kira-space/tests/ui) <(ls apps/kira-space/tests/ui/studio)` and the same over `tests/visual` print only `support`.
+- Plan: `plans/P541.md`.
 
-### P541 Mermaid visualiser in the proof tool and proof MCP tool
+### P542 Mermaid visualiser in the proof tool and proof MCP tool
 
 - Ask: Mermaid JS visualiser in the proof tool (`internal/proof`, `frontend/src/proof`). The proof MCP tool (`dbmcp/proof_tools.go`) offers that option: the agent can submit a Mermaid diagram as proof.
 - Decide in plan: Mermaid library adoption and license check; render safety (sandbox, strict security level, size cap); invalid diagram handling and what the agent is told; storage shape for a diagram proof; tool schema and description text in the llmprompts registry.
-- Plan: `plans/P541.md`.
+- Plan: `plans/P542.md`.
 
-### P542 Proof as an artifact chain in the task details panel
+### P543 Proof as an artifact chain in the task details panel
 
 - Ask: proof becomes an artifact in the task details panel. Result is a chain of proof. Links of interest stay at the top, grouped. Everything else is in order (for example diagram, then handover, then other proof) and shown in that order.
 - Handover text is terse. Add a short rule for this in the MCP tool description (llmprompts).
 - Decide in plan: chain ordering key and model; where the artifact lives relative to `AdeDetailsTab.vue` and `AdeLinkGroups.vue`; how existing proof records migrate into the chain; exact wording and budget of the terse-handover rule.
-- Plan: `plans/P542.md`.
+- Plan: `plans/P543.md`.
 
-### P543 Unified notes: user notes and agent handovers in one chain
+### P544 Unified notes: user notes and agent handovers in one chain
 
 - Ask: manual notes unified. The notes panel is hidden by default; a button reveals it so the user can write. User notes appear in the same ordered chain as agent handovers (a handover from the user): one unified model. Adding and editing any note uses the same rich text editor everywhere. Sorted by time, newest first.
 - Touches `notes/AdeHandoverList.vue`, `notes/AdeNotesEditor.vue`, `notesExtensions.ts` and the stage handover prompt.
 - Decide in plan: data model and migration of existing manual notes and handovers; author marker (user or agent); which editor instances get replaced; hidden-state persistence.
-- Plan: `plans/P543.md`.
+- Plan: `plans/P544.md`.
 
-### P544 Timeline becomes a toggle merged into the same list
+### P545 Timeline becomes a toggle merged into the same list
 
 - Ask: timeline is no longer a collapsible; it is a toggle. Its items show in the same time order in the same list.
 - Touches `details/AdeTaskTimeline.vue` and `taskTimeline.ts`.
-- Decide in plan: merged-list item model with P542 and P543 entries; default toggle state and persistence; sort direction consistent with the notes (newest first).
-- Plan: `plans/P544.md`.
+- Decide in plan: merged-list item model with P543 and P544 entries; default toggle state and persistence; sort direction consistent with the notes (newest first).
+- Plan: `plans/P545.md`.
 
-### P545 Forward panel edits (diff only) to agents running in the step
+### P546 Forward panel edits (diff only) to agents running in the step
 
 - Ask: every edit in the panel offers forwarding the change, only the diff, to the agents running in that step.
 - Decide in plan: which edits count (notes, links, proof, others in the panel); diff format; how running agents in the step are found and addressed; offer UI (per-edit prompt versus per-save control); no forward when no agent is running.
-- Plan: `plans/P545.md`.
+- Plan: `plans/P546.md`.
 
-### P546 Kira DB audit trail in the details panel
+### P547 Kira DB audit trail in the details panel
 
 - Ask: when Kira DB is used from a session in Kira Space, every action is recorded in the details panel in chronological order. Record the queries and ops themselves (not the data), time taken, success or failure. Recorded by code, not by the agent.
 - Prompts (approvals) are also shown, with accepted or denied, especially exemption ones (v0.2.36 P528).
 - Depends on the P537 merge and v0.2.36 P528.
-- Decide in plan: capture point in `dbmcp` and link to the session and task; storage and retention; redaction so no row data or bound values land in the trail; how it joins the merged list from P544.
-- Plan: `plans/P546.md`.
+- Decide in plan: capture point in `dbmcp` and link to the session and task; storage and retention; redaction so no row data or bound values land in the trail; how it joins the merged list from P545.
+- Plan: `plans/P547.md`.
 
-### P547 Studio MCP option in workflow steps
+### P548 Studio MCP option in workflow steps
 
 - Ask: a Studio MCP option in workflow steps. No token; the app manages it automatically. If the Studio MCP server is globally disabled for external use, an agent session started with the DB MCP option still gets it working for that session.
 - Touches workflow step editing (`workflows/AdeStepInspector.vue`, `inspector/`) and the MCP server auth (`mcpauth`, `dbmcp`).
 - Decide in plan: step schema field and validation; per-session scoped access when the global external switch is off, and that it never opens the server to external clients; session-scoped credential lifecycle handled by the app, never shown to the user; interaction with the P537 naming outcome.
-- Plan: `plans/P547.md`.
+- Plan: `plans/P548.md`.
 
 ## Close
 
-2 code review rounds (user ask). After P547: one full suite run with all failures fixed, review rounds, hand-written close per CLAUDE.md, PR.
+2 code review rounds (user ask). After P548: one full suite run with all failures fixed, review rounds, hand-written close per CLAUDE.md, PR.
