@@ -511,7 +511,7 @@
 		<key>CFBundleExecutable</key>
 		<string>Kira Space</string>
 		<key>CFBundleGetInfoString</key>
-		<string>Kira Space — a native git client for macOS</string>
+		<string>Kira Space — a native workbench for macOS</string>
 		<key>CFBundleIconFile</key>
 		<string>icons</string>
 		<key>CFBundleIconName</key>
