@@ -98,6 +98,8 @@ Limits enforcement model (shared by P529, P530, P531): a limit is enforced by th
 - Plan: `plans/P536.md`.
 - Result: per-mode `mcp.review.read|write|ddl` (inherit, review, send; migration 0063, legacy `review_results` fans out to all three). Stricter of declared and detected mode picks the setting. Approval dialogs for `db.query` and `db.exemption` offer a review checkbox; checked, the call raises a `db.response` item after execution. `db.response` is individualOnly (Approve all skips it). Held results are memory-only with caps 8 MiB each and 64 MiB total, not listed in list_operations, and dropped on every exit. MCP tab explains enforcement (5 i18n keys). Prompts and budgets updated. Tests: `dbmcpflow/review_test.go` (9 flows), 2 broker unit tests, `tests/ui/dbmcp-review-mode.spec.ts` (8), contracts regenerated.
 
+2 code review rounds: R1 9 findings, R2 8 findings, all fixed; per-relation column review settles in `dbmcp`/`maskreview`.
+
 ## Close
 
 2 code review rounds (user ask). After P536: one full suite run with all failures fixed, review rounds, hand-written close per CLAUDE.md, PR.
