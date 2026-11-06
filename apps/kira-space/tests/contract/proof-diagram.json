@@ -1,0 +1,127 @@
+{
+  "ProofService.Session": {
+    "closedAt": 0,
+    "current": {
+      "createdAt": 0,
+      "reason": "",
+      "rev": 1,
+      "steps": [
+        {
+          "bytes": 96,
+          "description": "Diagram 1",
+          "diff": "added",
+          "language": "text",
+          "ordinal": 1,
+          "originOrdinal": null,
+          "source": "mermaid",
+          "view": "diagram"
+        },
+        {
+          "bytes": 121,
+          "description": "Diagram 2",
+          "diff": "added",
+          "language": "text",
+          "ordinal": 2,
+          "originOrdinal": null,
+          "source": "mermaid",
+          "view": "diagram"
+        },
+        {
+          "bytes": 108,
+          "description": "Diagram 3",
+          "diff": "added",
+          "language": "text",
+          "ordinal": 3,
+          "originOrdinal": null,
+          "source": "mermaid",
+          "view": "diagram"
+        },
+        {
+          "bytes": 58,
+          "description": "Diagram 4",
+          "diff": "added",
+          "language": "text",
+          "ordinal": 4,
+          "originOrdinal": null,
+          "source": "mermaid",
+          "view": "diagram"
+        }
+      ]
+    },
+    "id": "<masked>",
+    "name": "Checkout flow",
+    "pending": null,
+    "removed": [],
+    "summary": ""
+  },
+  "ProofService.Sessions": [
+    {
+      "closedAt": 0,
+      "id": "<masked>",
+      "name": "Checkout flow",
+      "pending": false,
+      "seen": false,
+      "steps": 4
+    }
+  ],
+  "ProofService.Step#broken": {
+    "bytes": 58,
+    "data": {
+      "source": "flowchart TD\n  A -->",
+      "type": "flowchart"
+    },
+    "description": "Diagram 4",
+    "diff": "added",
+    "language": "text",
+    "ordinal": 4,
+    "originOrdinal": null,
+    "query": "",
+    "source": "mermaid",
+    "view": "diagram"
+  },
+  "ProofService.Step#flowchart": {
+    "bytes": 96,
+    "data": {
+      "source": "flowchart TD\n  Cart --> Checkout\n  Checkout --> Paid",
+      "type": "flowchart"
+    },
+    "description": "Diagram 1",
+    "diff": "added",
+    "language": "text",
+    "ordinal": 1,
+    "originOrdinal": null,
+    "query": "",
+    "source": "mermaid",
+    "view": "diagram"
+  },
+  "ProofService.Step#image": {
+    "bytes": 108,
+    "data": {
+      "source": "flowchart LR\n  I@{ img: \"https://example.invalid/x.png\" }\n  I --> J",
+      "type": "flowchart"
+    },
+    "description": "Diagram 3",
+    "diff": "added",
+    "language": "text",
+    "ordinal": 3,
+    "originOrdinal": null,
+    "query": "",
+    "source": "mermaid",
+    "view": "diagram"
+  },
+  "ProofService.Step#sequence": {
+    "bytes": 121,
+    "data": {
+      "source": "sequenceDiagram\n  Browser->>API: POST /pay\n  API->>DB: insert",
+      "type": "sequenceDiagram"
+    },
+    "description": "Diagram 2",
+    "diff": "added",
+    "language": "text",
+    "ordinal": 2,
+    "originOrdinal": null,
+    "query": "",
+    "source": "mermaid",
+    "view": "diagram"
+  }
+}
