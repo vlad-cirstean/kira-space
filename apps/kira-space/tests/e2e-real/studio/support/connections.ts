@@ -12,7 +12,10 @@ interface ConnectionSpec {
 
 // A connection is a file now and the new-connection dialog writes engine defaults only, so the
 // real-backend specs create theirs through the bound call with the full config.
-export async function createConnection(kira: KiraApp, spec: ConnectionSpec): Promise<void> {
+export async function createConnection(
+  kira: Pick<KiraApp, 'call'>,
+  spec: ConnectionSpec,
+): Promise<void> {
   await kira.call('ConnectionsService', 'Create', {
     name: spec.name,
     kind: spec.kind,
