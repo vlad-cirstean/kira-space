@@ -123,7 +123,7 @@ func errorCode(err error) (string, bool) {
 	}
 	var ipcErr *ipcerr.Error
 	if errors.As(err, &ipcErr) {
-		return string(ipcErr.Code), true
+		return ipcErr.Code, true
 	}
 	return "", false
 }

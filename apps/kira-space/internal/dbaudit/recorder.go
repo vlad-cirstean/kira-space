@@ -95,7 +95,7 @@ func New(d Deps) *Recorder {
 }
 
 func (r *Recorder) warn(what string, err error) {
-	slog.Warn("db audit: "+what, "scope", "dbaudit", "err", err)
+	slog.Warn("db audit failed", "scope", "dbaudit", "step", what, "err", err)
 }
 
 func (r *Recorder) emit(taskID string) {
