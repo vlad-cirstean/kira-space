@@ -7,6 +7,7 @@ sources:
   - scripts/install.sh
   - docs/PACKAGING.md
   - internal/appupdate/checker.go
+  - internal/secrets/keyring_darwin.go
 sidebar:
   order: 1
 ---
@@ -30,15 +31,18 @@ The script:
 
 A disk image downloaded through a browser does trigger Gatekeeper. The script avoids that.
 
-Kira Studio is now part of Kira Space. On first launch Kira Space moves the data in `~/.kira-studio` into `~/.kira-space`, including scripts and runs. Quit Kira Studio first. The old folder is kept whole as a backup in `~/.kira-space/backups/`; delete it when you no longer need it. Config folders (connections, API files, runs, workflows, steps, repository settings, agent) then move once into `~/.kira-space/config/`, with a second backup in `~/.kira-space/backups/`.
+Coming from Kira Studio? See [Migrate from Kira Studio](../migrate/).
 
 Failures land in `~/Library/Logs/<app name>/install.log`.
 
-## Keychain prompt
+## What macOS asks
 
 :::caution
-Builds are ad-hoc signed, not notarized. Each new build counts as a different app to the Keychain. The first launch after an update may ask to use "confidential information stored in…". Choose **Always Allow** once for that build.
+Builds are ad-hoc signed, not notarized. Each new build counts as a different app to macOS.
 :::
+
+- **Keychain.** The first launch after an update may ask to use "confidential information stored in…". Kira Space asks to use its own key. It is the one item the app stores, and it encrypts your saved credentials. Choose **Always Allow** once for that build. Kira Space never reads items of other apps.
+- **Folders.** macOS may ask for access to folders that hold your repositories, such as Documents or Desktop. Allow it. Without access, Kira Space cannot read those repositories.
 
 ## Update
 

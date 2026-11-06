@@ -13,6 +13,8 @@ sidebar:
   order: 6
 ---
 
+import DocShot from '../../../../components/DocShot.astro';
+
 An optional local [MCP](https://modelcontextprotocol.io) server. An AI client lists, browses and queries your connections through the same path the SQL console uses.
 
 The server is off by default. Turn it on with **Enable the database MCP server** in `Settings > Database MCP`.
@@ -31,6 +33,8 @@ A workflow step with `db_mcp: true` gets the database tools in its own session. 
 This works with the server switch off. The session talks to a separate server named `kira-db-session` on a random loopback port. It shares your exposed connections, limits and approvals. External clients never reach it, and the server on port 8766 stays as the switch sets it. Turning the switch off leaves running steps connected, and approvals they wait on stay open until the session ends.
 
 ## Audit trail
+
+<DocShot id="build-db-audit" />
 
 When a workflow step gives its session the Kira database tools, Kira Space records each tool call in the task's Details list, in time order. A row shows the tool, the connection, the time taken, success or failure, and the statement with its literal values masked. A statement Kira cannot mask safely is not recorded; the row says so.
 
@@ -116,6 +120,8 @@ Review a column by ticking it, masking it with the **Mask** button, or choosing 
 Limits: matching is by column name, like masking, so a reviewed column can share its name with a withheld one. Kira checks on connect, on Refresh and after an MCP write. It also rechecks every 30 seconds. A column added in the last 30 seconds can slip through. A renamed column counts as new. Scripts are not checked. No exemption applies.
 
 ## Approvals
+
+<DocShot id="build-db-approval" />
 
 A prompt waits for you to approve the exact statement. The dialog names the connection and the statement class.
 

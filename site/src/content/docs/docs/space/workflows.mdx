@@ -1,0 +1,165 @@
+---
+title: Workflows
+description: Define the steps a task moves through, with an agent, a prompt and a sandbox for each.
+sources:
+  - apps/kira-space/README.md
+  - docs/ARCHITECTURE.md
+  - apps/kira-space/internal/ade
+  - apps/kira-space/internal/adeflow
+  - apps/kira-space/frontend/src/ade
+  - internal/agentmcp
+  - internal/configfs
+  - packages/theme/src/i18n/en.json
+sidebar:
+  order: 3
+---
+
+import DocShot from '../../../../components/DocShot.astro';
+
+<DocShot id="build-start-workflow" />
+
+<DocShot id="build-start-step" />
+
+A workflow is a YAML file in the `workflows` folder of the Space config, `~/.kira-space/config/workflows`. No workflow ships preinstalled. Sample files live in `apps/kira-space/internal/adeflow/testdata`.
+
+The app watches the folder. A broken edit keeps the last valid version and reports the line.
+
+A workflow lists its steps under `steps`, in order. Every step has an `id`, a `name`, a `kind` and a task `status` (a status id, such as `in-review`) while the task sits on it. Old files that name a status (`In review`) still load. A top-level `stages` key is refused: list every step under `steps`.
+
+A step has one of four kinds:
+
+- `agent`: the agent runs a `prompt` headless.
+- `script`: one shell `command` runs in each branch worktree. Exit code 0 ends with `done`, any other with `failed`.
+- `review`: the run waits for you. See [Review steps](#review-steps).
+- `manual`: your own work. `session: true` opens an interactive agent session, with an optional `prompt` as its first message.
+
+`agent` names the agent for an agent step, a review step or a manual step with `session: true`. Leave it out to use the setting.
+
+An agent, script or review step runs `once`, for `each repo`, or `only <repo>`. It starts automatically or waits for your approval (`before: approval`). A step with `skip: true` is passed over; at least one step must stay unskipped.
+
+```yaml
+id: feature
+name: Feature
+steps:
+  - id: spec
+    name: Spec
+    kind: manual
+    session: true
+  - id: impl
+    name: Implement
+    kind: agent
+    runs_on: each repo
+    prompt: Implement the spec for {repo} on {branch}.
+  - id: release
+    name: Release
+    kind: script
+    command: ./scripts/release.sh --branch {branch}
+```
+
+## Results and routes
+
+An agent step can declare 1 to 12 results. Each result has an `id`, an `ok` flag and a `next` route. A script step has the fixed results `done` and `failed`; set only their `next`. A manual step has no results and moves to the next step when you finish it.
+
+- `next`: the next step.
+- A step id: that step. A later step skips the steps between. An earlier step makes a loop.
+- `end`: the end of the workflow.
+- `stop`: stop the task. Only a result that is not ok can use it.
+
+A route to the step itself or an earlier step is a return. The step's `max_returns` limits them per task, step and branch. The count survives restart and Resume.
+
+- Agent and script step: 1 to 10, default 3.
+- Review step: 0 to 10, default 0. `0` means no limit.
+
+At the limit the run stops with `Stopped: <step> reached its limit of <n> returns.` Retry the step to continue.
+
+A run that ends with no report takes the step's `failed` result.
+
+## Graph editor
+
+The Workflows page edits a workflow as a graph or as YAML. Save with `Cmd+S`. Nothing saves automatically. Leaving with unsaved edits asks first.
+
+Edit on the canvas. `+ Add step` under the graph adds a step of a kind you pick. The `⋯` menu on a step, or a right click, has Add step after, Move up, Move down, Make start, Skip and Remove. Move is off when it would turn a forward route into a return. Select a step to edit it in the inspector. The inspector shows the step number, name and kind switch on top, then four sections: **Action**, **Run**, **Sandbox** (agent, script and review steps) and **Results**. **Run** holds the repository scope, start gate, timeout, task status and agent. The status list is your set, with an **Edit statuses** link to the Workflows page. A step with no status of its own uses the default for its kind. **Advanced** holds allowed tools, agent settings and skip. Changing the kind clears the prompt, command or session prompt, after a confirmation.
+
+A task follows the live file until its first run, session or move. After that it keeps a snapshot, and an updated file applies to new work only.
+
+## Moving a task
+
+The step block on a task offers Back and Next, and the task menu offers **Move to step**. Moving to an earlier step keeps the later runs as history; the step runs again. Moving to a later step passes over the steps between. **Done** finishes the task.
+
+## Review steps
+
+A step with a `review` block waits for you instead of running an agent. Put it after the step that wrote the code.
+
+```yaml
+- id: review
+  name: Review
+  runs_on: each repo
+  timeout: 1h
+  review:
+    send_to: implementer
+  results:
+    - id: approved
+      ok: true
+    - id: rejected
+      ok: false
+      next: stop
+```
+
+`send_to` is `implementer` or `new`. `implementer` resumes the session of an earlier agent step, with its agent. `new` starts a review agent that keeps its own session across rounds. The optional `implementer` key names that step. Empty means the nearest earlier agent step. A review step takes no `prompt`, `allowed_tools` or smart script. `timeout` stays required.
+
+The run enters the `review` state and the board shows **Waiting for review** and a **Review** item in Needs you. Open **Review code**, comment on the diff, then pick **Send to agent** in the **Workflow review** tab. The tab also holds the route and the finish buttons.
+
+A comment is a **Change** or a **Question**. One send is one headless round. The agent answers each open comment with `reply_review_comment` and may commit. An answered comment turns **Addressed**. Reopen one and send again for another round. A round runs one at a time. A round resumed on the `implementer` runs with that step's `allowed_tools` plus `reply_review_comment`, so list `Edit` there if answers may change files. A `new` agent gets no `allowed_tools` list.
+
+Finish with one of the step's results. The note you type (up to 2000 characters) reaches the step the result routes to. Open comments ask for a confirmation first.
+
+If the implementer session is gone, the round moves to a new review agent and the tab says so. A round that a quit interrupted shows **Resume**. The review run itself stays in `review` across a restart.
+
+## Sandbox
+
+On macOS every agent, script and session step runs under a Seatbelt sandbox, unless its access is `off`. An agent or review step without a `sandbox` block gets the default: write the branch worktree, network on. A script step or manual session step without one runs with no sandbox, so existing steps behave as before.
+
+```yaml
+sandbox:
+  access: write        # write | read | off
+  read: [~/notes]      # extra read-only folders
+  allow: [~/go]        # extra read-write paths
+  network: true        # false: the agent's model API only
+```
+
+- `write`: writes the worktree and the scratch folder. Reads the worktree, tools and the `read` list. A home file outside them fails.
+- `read`: same reads, no worktree writes.
+- `off`: no sandbox, no other keys. The step badge shows `No sandbox`. This is the script and manual session default.
+- A script step can set `sandbox` like an agent step. `read` fits a check that must not change files.
+- A manual step with a session can set `sandbox` too. The session chip shows the policy and blocked actions. A sandboxed session cannot push or fetch, change agent settings or sign in again; push from the branch menu.
+- Paths are absolute or start with `~/`. Keychain paths are refused.
+
+Git inside the sandbox can stage, commit, amend and rebase in place. It cannot create branches, worktrees or tags, change config or hooks, write other branches, or delete objects. Use `request_branches` for a branch. Use `fetch_remote` and `push_branch` for the network; both run in the app. `push_branch` pushes the task branch only, never a protected branch, and a read step cannot push.
+
+The SSH agent is blocked. With `network: false` only the agent's model API is reachable. With OpenCode, `network: false` reaches only a fixed list of model hosts. Sandboxed agents read the macOS keychain, so Claude Code signs in as usual. OpenCode reads its sign-in from its own data folder.
+
+The run line shows a lock badge: `Write worktree`, `Read only`, `No sandbox`, or `N blocked` after denials. Click it for the policy, the first 50 blocked actions and the profile. A run that fails after a block says `Sandbox blocked <op> <path>.` Take over of an agent run opens an unsandboxed session.
+
+## Outside the repositories
+
+A step with `outside_repo: true` (agent, script or session) runs in the task folder, even when the task has branches. In the inspector, turn **Repository aware** off. The step has no repository scope. Its prompt or command may not use `{repo}` or `{branch}`; saving fails with a message if it does. Use it for work that touches no code, such as a notes or planning step. The run line reads `Task folder`.
+
+```yaml
+- id: notes
+  kind: script
+  command: ./notes.sh {task}
+  outside_repo: true
+```
+
+## Kira database tools
+
+`db_mcp: true` gives an agent, review or session step the [Kira database tools](../../studio/database-mcp/) for its session. In the inspector, tick **Kira database tools** under Advanced. Smart script steps and manual steps without a session have no such option. Each call shows in the task's Details list; see [Audit trail](../../studio/database-mcp/#audit-trail).
+
+```yaml
+- id: migrate
+  kind: agent
+  db_mcp: true
+  prompt: Check the schema with list_connections.
+```
+
+Linux and Windows write the profile but do not enforce it. The badge says `Not enforced`. Claude permission rules still apply; they do not stop shell commands.

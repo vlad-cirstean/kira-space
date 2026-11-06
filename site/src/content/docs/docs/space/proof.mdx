@@ -1,0 +1,43 @@
+---
+title: Proof
+description: Read the proof an agent records, compare a proposed edit and find it in the task.
+sources:
+  - apps/kira-space/README.md
+  - docs/ARCHITECTURE.md
+  - apps/kira-space/internal/adeflow
+  - apps/kira-space/frontend/src/ade
+  - internal/agentmcp
+  - packages/theme/src/i18n/en.json
+sidebar:
+  order: 5
+---
+
+import DocShot from '../../../../components/DocShot.astro';
+
+An agent records proof that its work does what the task asks. A proof session holds ordered steps. A step is a table, a chart, a diagram, a document or a list of key values. The agent closes a session with `proof_close_session` and shows it in the task with `attach_proof`.
+
+## Proof window
+
+<DocShot id="build-proof-window" />
+
+The window lists sessions on the left and the steps of one session as tabs. A step shows its source, its query and its data exactly as the agent recorded them. Data renders as literal text, never as markup.
+
+## Chart and diagram steps
+
+<DocShot id="build-proof-chart" />
+
+A chart step draws a line, bar, histogram, area, scatter or pie chart. A diagram step draws a Mermaid flowchart or sequence diagram from the recorded source.
+
+<DocShot id="build-proof-diagram" />
+
+## Edits wait for you
+
+When an agent edits a closed session, the edit waits. The window shows **Current**, **Proposed** and **Compare**. A step tab and the change panel carry a badge: added, changed, removed or unchanged. Accept or reject the edit.
+
+<DocShot id="build-proof-compare" />
+
+## Proof in the task
+
+The proof joins the task's Details tab, in one list with the handover notes. The list shows the newest first. A **Timeline** toggle in its header switches the view.
+
+<DocShot id="build-proof-chain" />

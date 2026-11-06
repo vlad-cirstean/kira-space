@@ -20,8 +20,9 @@ The same window holds the **Studio** modules: a database client for ten engines,
 
 ## Where to look
 
-- [Install and update](start/install/): get the app running.
-- Studio modules: [databases](studio/databases/), [data grid](studio/data-grid/), [SQL console](studio/sql-console/), [API client](studio/api-client/), [Docker](studio/docker/), [Database MCP server](studio/database-mcp/).
-- Git, agents and memory: [Git](space/git/), [code workspace](space/workspace/), [agents](space/agents/), [phone view](space/phone/), [memory](space/memory/).
+- Start: [install and update](start/install/), [migrate from Kira Studio](start/migrate/), [how it works](start/how-it-works/).
+- Git, agents and memory: [Git](space/git/), [code workspace](space/workspace/), [workflows](space/workflows/), [agents](space/agents/), [proof](space/proof/), [MCP and agents](space/mcp/), [phone view](space/phone/), [memory](space/memory/).
+- Studio modules: [databases](studio/databases/), [data grid](studio/data-grid/), [SQL console](studio/sql-console/), [API client](studio/api-client/), [Docker](studio/docker/), [Kubernetes](studio/kubernetes/), [Database MCP server](studio/database-mcp/).
 - Runs: [runs and smart scripts](shared/runs/).
-- Reference: [settings](reference/settings/), [prompts](reference/prompts/), [MCP tools](reference/mcp-tools/), [memory formats](reference/memory-formats/).
+- Reference: [settings](reference/settings/), [prompts](reference/prompts/), [MCP tools](reference/mcp-tools/), [memory formats](reference/memory-formats/), [security and privacy](reference/security/), [feature index](reference/features/).
+- Search: use the search box in the header of any docs page.
