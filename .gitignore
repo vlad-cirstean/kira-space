@@ -197,3 +197,6 @@ site/.astro/
 
 # commentsweep work dir (P320)
 .commentsweep/
+
+# Product screenshots are WebP only (N15)
+screenshots/**/*.png

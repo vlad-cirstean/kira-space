@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Code convention guard N1-N7 and N8-N14.
+ * Code convention guard N1-N7 and N8-N15.
  *
  * N1 file names (.ts camelCase, .vue PascalCase), N2 no `.test.ts`, N3 no util/utils/helpers
  * folder, N4 Pinia id = export name without `use`/`create` and `Store`, N5 event names
@@ -13,6 +13,9 @@
  * `components/` dir (outside `components/ui`), N10 a `.vue` over 600 lines needs a named
  * engine-host exemption, N11 a non-global `shortcut: '<id>'` in a `menu.ts` is bound in its feature
  * dir, N12 a `state/` dir holds 2+ files and menu builders live in `menu.ts`.
+ *
+ * N15 no tracked PNG under `screenshots/` or `site/` (product screenshots are WebP); Playwright
+ * `toHaveScreenshot` baselines in `-snapshots` dirs under `site/tests` are PNG only and stay.
  *
  * No pending list: every hit fails. N6 also fails on any retired-code registry (`Legacy` in Go,
  * `LEGACY_ERROR_CODES` in TS).
@@ -34,7 +37,8 @@ export type Rule =
   | 'N11'
   | 'N12'
   | 'N13'
-  | 'N14';
+  | 'N14'
+  | 'N15';
 export interface Hit {
   rule: Rule;
   path: string;
@@ -481,6 +485,21 @@ function fileHits(path: string, dirs: Set<string>): Hit[] {
   return hits;
 }
 
+/** N15: product screenshots are WebP; a tracked PNG under `screenshots/` or `site/` fails. */
+function pngHits(tracked: readonly string[]): Hit[] {
+  return tracked
+    .filter(
+      (path) =>
+        /^(?:screenshots|site)\//.test(path) &&
+        !/^site\/tests\/(?:.*\/)?[^/]*-snapshots\//.test(path),
+    )
+    .map((path) => ({
+      rule: 'N15' as const,
+      path,
+      message: 'product screenshots are WebP; run bun run screenshots',
+    }));
+}
+
 function collectHits(): Hit[] {
   const hits: Hit[] = [];
   const dirs = new Set<string>();
@@ -513,6 +532,8 @@ function collectHits(): Hit[] {
       readFileSync(join(REPO_ROOT, TS_IDS_PATH), 'utf8'),
     ),
   );
+  const listed = Bun.spawnSync(['git', 'ls-files', '-z', '--', '*.png'], { cwd: REPO_ROOT });
+  hits.push(...pngHits(new TextDecoder().decode(listed.stdout).split('\0').filter(Boolean)));
   for (const { dir, baseline } of MIGRATION_SETS) {
     const files = new Map<string, string>();
     for (const name of readdirSync(join(REPO_ROOT, dir)).filter((n) => n.endsWith('.sql'))) {
@@ -532,7 +553,7 @@ function main(): number {
     );
     return 1;
   }
-  console.log('check-conventions: every convention holds (N1-N14).');
+  console.log('check-conventions: every convention holds (N1-N15).');
   return 0;
 }
 
