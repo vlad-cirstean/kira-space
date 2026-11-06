@@ -3,7 +3,6 @@ package ipcfixture
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 
@@ -89,11 +88,11 @@ func (a *App) disconnectTracked() {
 	}
 }
 
-// NewApp builds one App per test, in a fresh temp KIRA_HOME, and registers cleanup in the reverse
+// NewApp builds one App per test, in a fresh temp Space home, and registers cleanup in the reverse
 // order main.go's own teardown does.
 func NewApp(t *testing.T) *App {
 	t.Helper()
-	t.Setenv("KIRA_HOME", t.TempDir())
+	t.Setenv("KIRA_SPACE_HOME", t.TempDir())
 	// Required on Linux (CLAUDE.md's Secrets section) — the real macOS Keychain path is untestable
 	// here, and every fixture scenario needs a working cipher to store a connection's password.
 	t.Setenv("KIRA_INSECURE_SECRETS", "1")
@@ -124,7 +123,7 @@ func NewApp(t *testing.T) *App {
 	var connectionsSvc *connections.Service
 	var maskRulesSvc *maskrules.Service
 	files, err := connfiles.New(connfiles.Options{
-		DB: db.DB, Dir: filepath.Join(os.Getenv("KIRA_HOME"), "connections"),
+		DB: db.DB, Dir: connfiles.Dir(os.Getenv("KIRA_SPACE_HOME")),
 		Secrets: &connfiles.Secrets{Store: secrets.NewStore(db.DB, cipher), DB: db.DB},
 		NewID:   app.mintID,
 		OnChange: func(ch connfiles.Changes) {

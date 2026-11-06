@@ -7,4 +7,4 @@ export {
   type SqliteFixture,
   sqliteAvailable,
   startSqlite,
-} from '../../../../../../packages/db-fixtures/support/sqlite';
+} from '../../../../../packages/db-fixtures/support/sqlite';

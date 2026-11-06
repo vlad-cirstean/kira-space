@@ -27,7 +27,7 @@ package startupfail
 type Step string
 
 const (
-	// StepEnsureLayout is config.EnsureLayout() failing to create/chmod ~/.kira-studio (and its
+	// StepEnsureLayout is config.EnsureLayout() failing to create/chmod the app home (and its
 	// logs subdirectory) — main.go's very first fallible call, before logging.Init has run.
 	StepEnsureLayout Step = "ensureLayout"
 	// StepLogging is logging.Init() failing to install the slog file handler — the second call,

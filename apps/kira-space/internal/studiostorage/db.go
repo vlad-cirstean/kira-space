@@ -24,15 +24,15 @@ type DB struct {
 	*sql.DB
 }
 
-// Open creates KIRA_HOME if needed, opens (or creates) the database file at the trimmed
+// Open creates the Space home if needed, opens (or creates) studio.db under it at the trimmed
 // permissions the Electron build uses, applies the four startup pragmas, and runs every pending
 // migration.
 func Open() (*DB, error) {
-	return OpenAt(config.StudioHome())
+	return OpenAt(config.KiraSpaceHome())
 }
 
-// OpenAt is Open against an explicit home dir instead of $KIRA_HOME. Exists so a test can pass its
-// own t.TempDir() directly rather than t.Setenv("KIRA_HOME", …) — Go's testing package panics if
+// OpenAt is Open against an explicit home dir instead of $KIRA_SPACE_HOME. Exists so a test can pass its
+// own t.TempDir() directly rather than t.Setenv("KIRA_SPACE_HOME", …) — Go's testing package panics if
 // t.Setenv runs in a test that called t.Parallel() (or whose parent did), so a test wanting both
 // isolation and parallelism needs the dir threaded explicitly.
 func OpenAt(home string) (*DB, error) {
@@ -40,7 +40,7 @@ func OpenAt(home string) (*DB, error) {
 		return nil, fmt.Errorf("storage: ensure layout: %w", err)
 	}
 
-	path := config.StudioDbPathAt(home)
+	path := config.ModuleDbPathAt(home)
 	steps, err := migrations.All()
 	if err != nil {
 		return nil, fmt.Errorf("storage: load migrations: %w", err)

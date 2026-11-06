@@ -74,7 +74,7 @@ func TestApiConfigFiles(t *testing.T) {
 		}
 		return tree.Items
 	}
-	paths := flowharness.Replace(app.KiraHome, "<home>")
+	paths := flowharness.Replace(app.SpaceHome, "<home>")
 
 	// 1. Creating a collection writes its file.
 	col, err := cs.CreateCollection(bridge.CollectionsCreateCollectionArgs{Name: "Orders API"})

@@ -105,7 +105,7 @@ type harness struct {
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
-	t.Setenv("KIRA_HOME", t.TempDir())
+	t.Setenv("KIRA_SPACE_HOME", t.TempDir())
 	db, err := studiostorage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)

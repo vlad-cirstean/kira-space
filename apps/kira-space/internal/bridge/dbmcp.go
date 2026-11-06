@@ -20,7 +20,7 @@ import (
 const dbMcpServerName = "kira-db"
 
 // dbMcpTokenName is mcpauth.PathNamed's own file-name argument — no repo-id slug (M1 §2.2): one DB
-// MCP instance exists per app process per KIRA_HOME, with no second identity to key several apart
+// MCP instance exists per app process per Space home, with no second identity to key several apart
 // by.
 const dbMcpTokenName = "mcp-db"
 
@@ -61,7 +61,7 @@ func NewDbMcpService(deps appcore.StudioDeps, installer harness.MCPInstaller, ap
 	s := &DbMcpService{Deps: deps, Installer: installer, Approvals: approvals, Proof: proofStore, Kube: kube}
 	s.embedded = embedded.Service[*dbmcp.Server, DbMcpStatus]{
 		StartFn: func(mint bool) (*dbmcp.Server, error) {
-			home := config.StudioHome()
+			home := config.KiraSpaceHome()
 			// The headersHelper script's own content depends only on the token file's path, never
 			// its live value — ensure it once per start (F2), not on every statusFn/Install call.
 			if _, err := mcpauth.EnsureHeaderHelperScript(home, mcpauth.HelperTokenPathNamed(home, dbMcpTokenName)); err != nil {
@@ -129,7 +129,7 @@ func NewDbMcpService(deps appcore.StudioDeps, installer harness.MCPInstaller, ap
 			// TTL even though the helper file (and the record it matches) both survive restarts
 			// and stay valid.
 			if helperTokenValid(srv) {
-				helperPath := mcpauth.HeaderHelperScriptPath(config.StudioHome())
+				helperPath := mcpauth.HeaderHelperScriptPath(config.KiraSpaceHome())
 				st.Command = s.Installer.Command(dbMcpServerName, srv.URL(), helperPath)
 			}
 			if exp := srv.TokenExpiry(); !exp.IsZero() {
@@ -232,7 +232,7 @@ func helperTokenMatchesRecord(helperPath string, rec mcpauth.Record) bool {
 // stayed false, wrongly, across every ordinary restart within the token's own 7-day TTL even
 // though the helper file (and the record it matches) both survive a restart and stay valid.
 func helperTokenValid(srv *dbmcp.Server) bool {
-	helperPath := mcpauth.HelperTokenPathNamed(config.StudioHome(), dbMcpTokenName)
+	helperPath := mcpauth.HelperTokenPathNamed(config.KiraSpaceHome(), dbMcpTokenName)
 	return helperTokenMatchesRecord(helperPath, srv.TokenRecord())
 }
 
@@ -321,7 +321,7 @@ func (s *DbMcpService) Regenerate() DbMcpStatus {
 	if s.embedded.Server == nil {
 		return s.embedded.StatusLocked()
 	}
-	path := mcpauth.PathNamed(config.StudioHome(), dbMcpTokenName)
+	path := mcpauth.PathNamed(config.KiraSpaceHome(), dbMcpTokenName)
 	plain, rec, err := mcpauth.MintTTL(mcpauth.TTL)
 	if err != nil {
 		slog.Warn("db mcp: regenerate token", "scope", "dbmcp", "err", err)
@@ -333,7 +333,7 @@ func (s *DbMcpService) Regenerate() DbMcpStatus {
 	}
 	// The helper script's own live source (F2) — rotation is exactly rewriting this file, no
 	// re-registration, so a stale mirror here would defeat the whole point of Regenerate.
-	if err := mcpauth.SaveHelperToken(mcpauth.HelperTokenPathNamed(config.StudioHome(), dbMcpTokenName), plain); err != nil {
+	if err := mcpauth.SaveHelperToken(mcpauth.HelperTokenPathNamed(config.KiraSpaceHome(), dbMcpTokenName), plain); err != nil {
 		slog.Warn("db mcp: persist regenerated helper token", "scope", "dbmcp", "err", err)
 		return s.embedded.StatusLocked()
 	}
@@ -369,7 +369,7 @@ func (s *DbMcpService) InstallAgent(ctx context.Context) DbMcpInstallResult {
 	}
 	url := srv.URL()
 	s.embedded.Mu.Unlock()
-	helperPath := mcpauth.HeaderHelperScriptPath(config.StudioHome())
+	helperPath := mcpauth.HeaderHelperScriptPath(config.KiraSpaceHome())
 	return toWireDbMcpInstallResult(s.Installer.Install(ctx, dbMcpServerName, url, helperPath))
 }
 

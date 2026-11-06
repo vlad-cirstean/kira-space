@@ -155,11 +155,11 @@ func pairValue(pairs []grpcclient.MetaPair, name string) string {
 func dbBytes(t *testing.T, app *flowharness.App) []byte {
 	t.Helper()
 	var all []byte
-	err := filepath.WalkDir(app.KiraHome, func(p string, d os.DirEntry, err error) error {
+	err := filepath.WalkDir(app.SpaceHome, func(p string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
-		if bytes.HasPrefix([]byte(filepath.Base(p)), []byte("kira.db")) {
+		if bytes.HasPrefix([]byte(filepath.Base(p)), []byte("studio.db")) {
 			b, rerr := os.ReadFile(p)
 			if rerr != nil {
 				return rerr
@@ -172,7 +172,7 @@ func dbBytes(t *testing.T, app *flowharness.App) []byte {
 		t.Fatal(err)
 	}
 	if len(all) == 0 {
-		t.Fatalf("no kira.db files under %s", app.KiraHome)
+		t.Fatalf("no studio.db files under %s", app.SpaceHome)
 	}
 	return all
 }

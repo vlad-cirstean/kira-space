@@ -235,10 +235,10 @@ func (noGhLocator) Locate() (string, []string, bool) { return "", []string{"gh (
 type App struct {
 	t *testing.T
 	// Root is the short temp root (not t.TempDir: macOS paths there exceed the 104-byte unix socket
-	// limit for the hooks and askpass sockets). Home is the isolated HOME, KiraHome the Studio home
-	// (KIRA_HOME), Work the directory test repositories are built in, BinDir the PATH-first fake tool
-	// directory, FakeDir where the fake agent records its calls.
-	Root, Home, SpaceHome, KiraHome, MemoryHome, Work, BinDir, FakeDir string
+	// limit for the hooks and askpass sockets). Home is the isolated HOME, SpaceHome the one app home,
+	// Work the directory test repositories are built in, BinDir the PATH-first fake tool directory,
+	// FakeDir where the fake agent records its calls.
+	Root, Home, SpaceHome, MemoryHome, Work, BinDir, FakeDir string
 	// dbMcpPort is the port the previous run bound, reused across Restart.
 	dbMcpPort int
 
@@ -300,7 +300,7 @@ func New(t *testing.T, opts ...Opt) *App {
 	a := &App{
 		t: t, Root: root,
 		Home: filepath.Join(root, "home"), SpaceHome: filepath.Join(root, "space"),
-		KiraHome: filepath.Join(root, "kira"), MemoryHome: filepath.Join(root, "memory"), Work: filepath.Join(root, "work"),
+		MemoryHome: filepath.Join(root, "memory"), Work: filepath.Join(root, "work"),
 		BinDir: filepath.Join(root, "bin"), FakeDir: filepath.Join(root, "fake"),
 		Events: newEvents(), Browser: &Browser{}, FileOpener: &FileOpener{}, Dialogs: &Dialogs{}, WindowMgr: newWindowManager(),
 		KeepAwake: &KeepAwakeDriver{}, McpInstaller: &McpInstaller{}, OSAuth: &OSAuth{}, Focus: &WindowFocus{},
@@ -314,7 +314,6 @@ func New(t *testing.T, opts ...Opt) *App {
 	a.opts = o
 	a.writeHome()
 	a.writeBin(o)
-	t.Setenv("KIRA_HOME", a.KiraHome)
 	t.Setenv("KIRA_SPACE_HOME", a.SpaceHome)
 	t.Setenv("KIRA_MEMORY_HOME", a.MemoryHome)
 	t.Setenv("HOME", a.Home)

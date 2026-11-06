@@ -1,13 +1,13 @@
 import { expect, test } from './fixtures';
-import { createConnection } from './studio/support/connections';
-import { installPassthrough } from './studio/support/passthrough';
+import { createConnection } from './support/connections';
+import { installPassthrough } from './support/passthrough';
+import { stubNativeDialogs } from './support/routes';
 import {
   SQLITE_UNAVAILABLE_MESSAGE,
   type SqliteFixture,
   sqliteAvailable,
   startSqlite,
-} from './studio/support/sqlite';
-import { stubNativeDialogs } from './support/routes';
+} from './support/sqlite';
 
 // Two pages, two window keys, one server: a terminal started in one page streams only to it.
 test('terminal output reaches only the page that owns the terminal', async ({ kira, browser }) => {

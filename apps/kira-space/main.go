@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"errors"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/buildinfo"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/homefold"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/openedfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
@@ -45,9 +47,10 @@ var assets embed.FS
 //go:embed all:frontend/dist-mobile
 var mobileAssets embed.FS
 
-// Startup order: the argv shims (askpass, memory-mcp, memory-embed) -> config.EnsureLayout (both
-// homes) -> logging.Init/Sweep -> instance lock -> storage.Open and studiostorage.Open (migrate) ->
-// repos.New x2 -> appmerge.Run (first-launch Studio carry-over) -> appwire.Build (every Space and Studio service) -> application.New (bound services,
+// Startup order: the argv shims (askpass, memory-mcp, memory-embed) -> refuseOldStudio ->
+// config.EnsureLayout -> logging.Init/Sweep -> instance lock -> storage.Open -> homefold.Files (legacy
+// Studio home folded in) -> studiostorage.Open (migrate) -> repos.New x2 -> appmerge.Run (first-launch
+// Studio carry-over) -> appwire.Build (every Space and Studio service) -> application.New (bound services,
 // git and engine streams) -> the menu -> the startup window list, opened -> app.Run().
 func main() {
 	if code, ok := appwire.RunArgvShim(os.Args); ok {
@@ -92,6 +95,7 @@ func main() {
 	if err != nil {
 		reporter.Fatal(startupfail.StepRepos, err)
 	}
+	foldLegacyHome(reporter, db)
 	studioDB, err := studiostorage.Open()
 	if err != nil {
 		reporter.Fatal(startupfail.StepStorage, err)
@@ -308,12 +312,25 @@ func purgeKeyedWindows(repositories *repos.Repos) {
 // carryOverStudio runs the first-launch carry-over of a Kira Studio install (P537).
 func carryOverStudio(reporter *startupfail.Reporter, db *storage.DB, studioDB *studiostorage.DB) {
 	err := appmerge.Run(appmerge.Options{
-		Space: db.DB, Studio: studioDB.DB, SpaceHome: config.KiraSpaceHome(), StudioHome: config.StudioHome(),
+		Space: db.DB, Studio: studioDB.DB, SpaceHome: config.KiraSpaceHome(),
 		Ephemeral: func(key string) bool {
 			return bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) || proof.IsWindowKey(key)
 		},
 	})
 	if err != nil {
+		reporter.Fatal(startupfail.StepStorage, err)
+	}
+}
+
+// foldLegacyHome folds the retired Kira Studio home into the Space home once (P539). A running old
+// Studio stops the launch with its own alert; any other failure leaves the marker at its last step,
+// so the next launch resumes.
+func foldLegacyHome(reporter *startupfail.Reporter, db *storage.DB) {
+	err := homefold.Files(homefold.Options{Space: db.DB, SpaceHome: config.KiraSpaceHome(), Legacy: homefold.LegacyHome()})
+	switch {
+	case errors.Is(err, homefold.ErrStudioRunning):
+		reporter.Fatal(startupfail.StepOldStudio, err)
+	case err != nil:
 		reporter.Fatal(startupfail.StepStorage, err)
 	}
 }

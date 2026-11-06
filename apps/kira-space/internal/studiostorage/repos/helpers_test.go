@@ -14,7 +14,7 @@ import (
 // covered on every test run (P52 §13).
 func newRepos(t *testing.T) *studiostorage.DB {
 	t.Helper()
-	t.Setenv("KIRA_HOME", t.TempDir())
+	t.Setenv("KIRA_SPACE_HOME", t.TempDir())
 	db, err := studiostorage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)

@@ -92,7 +92,7 @@
     "hash": "<masked>",
     "kind": "collection",
     "lastGood": false,
-    "path": "<kira>/api/orders-api.collection.yaml",
+    "path": "<space>/api/orders-api.collection.yaml",
     "problem": null,
     "text": "name: Orders API\nitems: []\n"
   },
@@ -101,7 +101,7 @@
     "hash": "<masked>",
     "kind": "environment",
     "lastGood": false,
-    "path": "<kira>/api/staging.environment.yaml",
+    "path": "<space>/api/staging.environment.yaml",
     "problem": null,
     "text": "# Staging servers for the web team.\ncolor: green\nname: Staging # shown in the picker\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
   },
@@ -110,7 +110,7 @@
     "hash": "<masked>",
     "kind": "environment",
     "lastGood": false,
-    "path": "<kira>/api/staging.environment.yaml",
+    "path": "<space>/api/staging.environment.yaml",
     "problem": null,
     "text": "# Staging servers for the web team.\nname: Staging # shown in the picker\nvariables:\n  - description: API root\n    name: base_url\n    value: https://eu.example.com\n  - name: token\n    secret: ${secret:staging-eu.token}\ndescription: EU staging\n"
   },

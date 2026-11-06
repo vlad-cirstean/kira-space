@@ -6,8 +6,8 @@
 export {
   DOCKER_UNAVAILABLE_MESSAGE,
   isDockerAvailable,
-} from '../../../../../../packages/db-fixtures/support/docker';
+} from '../../../../../packages/db-fixtures/support/docker';
 export {
   type PgFixture,
   startPostgres,
-} from '../../../../../../packages/db-fixtures/support/postgres';
+} from '../../../../../packages/db-fixtures/support/postgres';

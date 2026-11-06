@@ -51,6 +51,6 @@ func (s *AppService) Info() (AppInfo, error) {
 		AppVersion: buildinfo.Version,
 		Go:         runtime.Version(),
 		Wails:      wailsVersion(),
-		KiraHome:   config.StudioHome(),
+		KiraHome:   config.KiraSpaceHome(),
 	}, nil
 }

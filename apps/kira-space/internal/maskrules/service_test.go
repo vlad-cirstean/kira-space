@@ -13,7 +13,7 @@ import (
 // (and its cache invalidated) between MaskSetFor's query and its store must not leave the
 // pre-write set cached.
 func TestMaskSetForDoesNotCacheSetStaleAfterConcurrentWrite(t *testing.T) {
-	t.Setenv("KIRA_HOME", t.TempDir())
+	t.Setenv("KIRA_SPACE_HOME", t.TempDir())
 	db, err := studiostorage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)

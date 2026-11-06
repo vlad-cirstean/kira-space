@@ -36,7 +36,7 @@ function dockerHost(): string | undefined {
 
 const unavailable = engineError();
 const host = dockerHost();
-test.use({ serverEnv: host ? { DOCKER_HOST: host } : {} });
+test.use({ startMode: 'studio', serverEnv: host ? { DOCKER_HOST: host } : {} });
 
 test('Docker mode lists a compose-labelled container, streams logs, execs and stops it', async ({
   kira,

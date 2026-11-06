@@ -62,7 +62,7 @@ func TestConnectionConfigFile(t *testing.T) {
 	app := flowharness.New(t)
 	const sc = "connection-files"
 	cfg := app.W.ConnectionConfig
-	paths := flowharness.Replace(app.KiraHome, "<home>")
+	paths := flowharness.Replace(app.SpaceHome, "<home>")
 	dbPath := newSQLiteFile(t)
 	times := flowharness.Mask("createdAt", "updatedAt")
 	dbFile := flowharness.Replace(dbPath, "<db>")
@@ -210,7 +210,7 @@ func TestConnectionSecrets(t *testing.T) {
 	if len(view.Secrets) != 1 || view.Secrets[0] != want {
 		t.Fatalf("secrets = %+v, want %+v", view.Secrets, want)
 	}
-	app.Contract(t, sc, "ConnectionConfigService.View", view, flowharness.Replace(app.KiraHome, "<home>"))
+	app.Contract(t, sc, "ConnectionConfigService.View", view, flowharness.Replace(app.SpaceHome, "<home>"))
 	if j, _ := json.Marshal(view); strings.Contains(string(j), fileSecret) {
 		t.Fatal("View carries the secret value")
 	}
@@ -245,7 +245,7 @@ func TestConnectionSecrets(t *testing.T) {
 	if len(view.Secrets) != 1 || view.Secrets[0].Set || !view.Secrets[0].Referenced {
 		t.Fatalf("secrets after delete = %+v, want pg.password unset but referenced", view.Secrets)
 	}
-	app.Contract(t, sc, "ConnectionConfigService.View#unset", view, flowharness.Replace(app.KiraHome, "<home>"))
+	app.Contract(t, sc, "ConnectionConfigService.View#unset", view, flowharness.Replace(app.SpaceHome, "<home>"))
 	st, err := app.W.Connections.Connect(bridge.ConnectionsIDArgs{ID: conn.ID})
 	if err == nil && (st.Status != "error" || st.Error == nil || !strings.Contains(*st.Error, "pg.password")) {
 		t.Fatalf("Connect with an unset secret = %+v, want an error state naming pg.password", st)
@@ -340,7 +340,7 @@ func TestConnectionFilesMigration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.Contract(t, sc, "ConnectionConfigService.View", view, flowharness.Replace(app.KiraHome, "<home>"))
+	app.Contract(t, sc, "ConnectionConfigService.View", view, flowharness.Replace(app.SpaceHome, "<home>"))
 
 	// The superseded columns and tables are gone, and a later start exports nothing again.
 	var n int

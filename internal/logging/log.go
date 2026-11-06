@@ -1,6 +1,6 @@
 // Package logging installs the process-wide slog default that internal/storage/repos and
 // internal/enginehost already log through (P53/P54's late-bound seam) — a daily-rolling file
-// under KIRA_HOME/logs, mirroring src/main/log.ts's electron-log configuration.
+// under the app home logs folder, mirroring src/main/log.ts's electron-log configuration.
 package logging
 
 import (

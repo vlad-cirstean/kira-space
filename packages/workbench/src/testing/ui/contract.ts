@@ -13,7 +13,6 @@ const FIXED: Record<string, string> = {
   '<home>': '/home/test',
   '<work>': '/home/test/work',
   '<tmp>': '/tmp/test',
-  '<kira>': '/home/test/.kira',
   '<space>': '/home/test/.kira-space',
   '<memory>': '/home/test/.kira-memory',
   '<bin>': '/home/test/bin',

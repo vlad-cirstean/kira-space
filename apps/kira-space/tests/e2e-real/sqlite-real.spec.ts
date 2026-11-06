@@ -1,4 +1,4 @@
-import { assertTooltipShows } from '../../ui/studio/support/tooltip';
+import { assertTooltipShows } from '../ui/studio/support/tooltip';
 import { expect, test } from './fixtures';
 import { createConnection } from './support/connections';
 import { installPassthrough } from './support/passthrough';
@@ -8,6 +8,8 @@ import {
   sqliteAvailable,
   startSqlite,
 } from './support/sqlite';
+
+test.use({ startMode: 'studio' });
 
 // The Docker-free anchor for the real-backend tier: a real SQLite connection through the real
 // dialog, through the real Go bridge, to a real file seeded from

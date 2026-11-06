@@ -3,7 +3,7 @@
 // through the existing adapter layer (internal/adapterhost, internal/tree, internal/connections),
 // never a parallel path. Transport is go-sdk/mcp over a loopback-only Streamable HTTP listener
 // (DefaultPort 8766), with mcpauth minting and verifying its own bearer token and its own token
-// file, independent of the rest of the app beyond KIRA_HOME itself.
+// file, independent of the rest of the app beyond the Space home itself.
 //
 // There is no headless binary: the DB server needs the app's own live adapters, keychain-backed
 // secrets and op-log/throttle/cancel machinery (§3.1), none of which a second process could reach
@@ -36,7 +36,7 @@ import (
 )
 
 // DefaultPort is the one port this instance ever binds — there is at most one instance per
-// KIRA_HOME in practice, and bindHTTP refuses to start rather than silently fall back to an
+// Space home in practice, and bindHTTP refuses to start rather than silently fall back to an
 // ephemeral port when it is taken: every existing registration names this port, and a
 // fallback would leave it pointing at whatever else is now listening there.
 const DefaultPort = 8766
@@ -46,7 +46,7 @@ const DefaultPort = 8766
 const EphemeralPort = -1
 
 // TokenProvider resolves this instance's own 7-day-rotating token — no repo-id slug to key on: one
-// DB MCP instance exists per app process per KIRA_HOME, with no second identity to key several
+// DB MCP instance exists per app process per Space home, with no second identity to key several
 // apart by (§2.2).
 type TokenProvider func() (rec mcpauth.Record, plain string, minted bool, err error)
 
@@ -127,7 +127,7 @@ type ColumnReview interface {
 type Config struct {
 	// Port overrides DefaultPort (test seam). Zero means DefaultPort; EphemeralPort an OS-chosen one.
 	Port int
-	// Home overrides KIRA_HOME (a debugging seam) — empty means config.StudioHome().
+	// Home overrides the Space home (a debugging seam) — empty means config.KiraSpaceHome().
 	Home string
 	// Token resolves this instance's own auth record — required.
 	Token TokenProvider
@@ -221,7 +221,7 @@ const serverVersion = "0.0.0"
 // connections; call Serve for that.
 func New(cfg Config) (*Server, error) {
 	if cfg.Home == "" {
-		cfg.Home = config.StudioHome()
+		cfg.Home = config.KiraSpaceHome()
 	}
 	log := cfg.Logger
 	if log == nil {

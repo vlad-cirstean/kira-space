@@ -20,7 +20,7 @@ func TestApiLifecycle(t *testing.T) {
 	srv := flowharness.HTTP(t)
 	const sc = "api-lifecycle"
 	cs, cfg := app.W.Collections, app.W.ApiConfig
-	paths := flowharness.Replace(app.KiraHome, "<home>")
+	paths := flowharness.Replace(app.SpaceHome, "<home>")
 	httpURL := flowharness.Replace(srv.URL, "<http>")
 
 	app.WriteAPIFile(t, "orders.collection.yaml", []byte(`# Orders API, owned by the web team.

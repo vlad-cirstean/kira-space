@@ -50,7 +50,7 @@
     "hash": "<masked>",
     "id": "",
     "lastGood": false,
-    "path": "<kira>/connections/broken.yaml",
+    "path": "<space>/connections/broken.yaml",
     "problem": {
       "line": 1,
       "message": "name is required."
@@ -64,7 +64,7 @@
     "hash": "<masked>",
     "id": "<id:2>",
     "lastGood": false,
-    "path": "<kira>/connections/pg-copy.yaml",
+    "path": "<space>/connections/pg-copy.yaml",
     "problem": null,
     "secrets": [
       {

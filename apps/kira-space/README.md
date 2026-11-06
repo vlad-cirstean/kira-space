@@ -18,8 +18,8 @@ Api, Docker and Database MCP features.
 - macOS 26+, Apple Silicon (`arm64`) only. Dark mode only.
 - Packaged build is ad-hoc signed, not notarized. First launch after an install may show one
   keychain prompt; **Always Allow** answers it for that build.
-- Two data homes until the merge completes: `~/.kira-space/` and the Studio module's
-  `~/.kira-studio/`. See `docs/ARCHITECTURE.md` Known open items.
+- One data home, `~/.kira-space/`. First launch folds a `~/.kira-studio/` in and keeps it as a backup
+  under `~/.kira-space/backups/`.
 
 ## Code workspace features
 
@@ -152,7 +152,7 @@ curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scri
 ```
 
 Downloads the latest release's ad-hoc signed disk image, moves the app into `/Applications`, opens
-it with no Gatekeeper prompt. Moves an installed Kira Studio to the Trash; `~/.kira-studio/` stays.
+it with no Gatekeeper prompt. Moves an installed Kira Studio to the Trash; first launch folds `~/.kira-studio/` into `~/.kira-space/`.
 The app checks for newer releases and offers to install.
 
 Build from source:
@@ -202,10 +202,9 @@ Run from the repo root. Shared scripts (`setup`, `lint`, `typecheck`, `test:go`)
 
 `bun run test:unit`, `bun run test:go` and unscoped `bun run typecheck` cover the whole workspace.
 
-**App data:** `kira.db`, `logs/`, `review.db` under `~/.kira-space/` (`KIRA_SPACE_HOME`). Memories
-in `~/.kira-memory/` (`KIRA_MEMORY_HOME`): `memory.db` and downloaded `models/`. The Studio module
-keeps connections, scripts and Api collections in `~/.kira-studio/` (`KIRA_HOME`) until the homes
-merge. Each home has its own lock; two instances on different homes never contend.
+**App data:** `kira.db`, `studio.db`, `logs/`, `review.db`, connections, Api collections and runs under
+`~/.kira-space/` (`KIRA_SPACE_HOME`). Memories in `~/.kira-memory/` (`KIRA_MEMORY_HOME`): `memory.db`
+and downloaded `models/`. The home has one lock; two instances on different homes never contend.
 
 ## Tests
 

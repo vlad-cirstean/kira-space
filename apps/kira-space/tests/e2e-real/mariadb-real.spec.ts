@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { assertTooltipShows } from '../../ui/studio/support/tooltip';
+import { assertTooltipShows } from '../ui/studio/support/tooltip';
 import { expect, test } from './fixtures';
 import { createConnection } from './support/connections';
 import { type KafkaFixture, startKafka } from './support/kafka';
@@ -10,6 +10,8 @@ import {
   startMariadb,
 } from './support/mariadb';
 import { installPassthrough } from './support/passthrough';
+
+test.use({ startMode: 'studio' });
 
 // The half that could not run before a second adapter went native: MariaDB, proven end to end
 // against a real Go-native adapter in a running app, rather than only in adapterhost's own router

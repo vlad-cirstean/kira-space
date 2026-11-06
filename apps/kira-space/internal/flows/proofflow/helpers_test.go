@@ -48,7 +48,7 @@ func newFixture(t *testing.T) *fixture {
 	if m == nil {
 		t.Fatalf("Status.Command has no server url: %q", st.Command)
 	}
-	plain, ok, err := mcpauth.LoadHelperToken(mcpauth.HelperTokenPathNamed(app.KiraHome, "mcp-db"))
+	plain, ok, err := mcpauth.LoadHelperToken(mcpauth.HelperTokenPathNamed(app.SpaceHome, "mcp-db"))
 	if err != nil || !ok {
 		t.Fatalf("helper token: ok=%v err=%v", ok, err)
 	}

@@ -18,7 +18,7 @@ func TestApiOrder(t *testing.T) {
 	app := flowharness.New(t)
 	const sc = "api-order"
 	cs, vs := app.W.Collections, app.W.Variables
-	paths := flowharness.Replace(app.KiraHome, "<home>")
+	paths := flowharness.Replace(app.SpaceHome, "<home>")
 
 	app.WriteAPIFile(t, "alpha.collection.yaml", []byte(`name: Zeta
 items:

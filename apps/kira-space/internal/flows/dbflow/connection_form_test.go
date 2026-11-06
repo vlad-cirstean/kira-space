@@ -21,7 +21,7 @@ func TestConnectionForm(t *testing.T) {
 	const typed = "typed-pw-9c1f"
 	cfg := app.W.ConnectionConfig
 	mask := flowharness.Mask("hash", "baseHash", "createdAt", "updatedAt")
-	paths := flowharness.Replace(app.KiraHome, "<home>")
+	paths := flowharness.Replace(app.SpaceHome, "<home>")
 
 	in := sqliteInput("Pg", "")
 	in.Kind, in.Database = "postgres", ptr("app")

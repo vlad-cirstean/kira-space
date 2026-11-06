@@ -1,4 +1,4 @@
-import type { KiraApp } from '../fixtures';
+import type { KiraSpaceApp } from '../fixtures';
 
 interface ConnectionSpec {
   name: string;
@@ -13,7 +13,7 @@ interface ConnectionSpec {
 // A connection is a file now and the new-connection dialog writes engine defaults only, so the
 // real-backend specs create theirs through the bound call with the full config.
 export async function createConnection(
-  kira: Pick<KiraApp, 'call'>,
+  kira: Pick<KiraSpaceApp, 'call'>,
   spec: ConnectionSpec,
 ): Promise<void> {
   await kira.call('ConnectionsService', 'Create', {

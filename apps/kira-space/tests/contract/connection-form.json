@@ -92,7 +92,7 @@
     "hash": "<masked>",
     "id": "<id:1>",
     "lastGood": false,
-    "path": "<kira>/connections/pg.yaml",
+    "path": "<space>/connections/pg.yaml",
     "problem": null,
     "secrets": [
       {
@@ -110,7 +110,7 @@
     "hash": "<masked>",
     "id": "<id:1>",
     "lastGood": false,
-    "path": "<kira>/connections/pg.yaml",
+    "path": "<space>/connections/pg.yaml",
     "problem": null,
     "secrets": [
       {

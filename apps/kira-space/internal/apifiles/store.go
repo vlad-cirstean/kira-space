@@ -61,6 +61,9 @@ func New(o Options) (*Store, error) {
 // Dir is the api folder.
 func (s *Store) Dir() string { return s.o.Dir }
 
+// Dir is the Api config folder under an app home.
+func Dir(home string) string { return filepath.Join(home, "api") }
+
 // Start migrates the legacy rows once, loads the folder, writes AGENTS.md and watches the folder. A
 // failed migration skips the rest: an unfinished export never projects. A failure of the docs or the
 // watch is logged and never fatal.

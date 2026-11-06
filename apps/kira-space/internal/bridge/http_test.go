@@ -83,7 +83,7 @@ func TestMaskSecrets_RedirectURLsFinalURLAndTimelineHopsBeforePersisting(t *test
 	// every send — reproduced here against a real migrated SQLite database (studiostorage.Open(), the
 	// same helper repos_test.go's own newRepos wraps) rather than a fixture, so a future refactor
 	// that changes the schema or the marshalling would still be caught.
-	t.Setenv("KIRA_HOME", t.TempDir())
+	t.Setenv("KIRA_SPACE_HOME", t.TempDir())
 	db, err := studiostorage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
@@ -319,7 +319,7 @@ func TestHttpSendFailure_OpLogErrorNeverContainsSecret(t *testing.T) {
 	const secret = "sk_live_super_secret_token"
 	usedSecrets := []apivars.UsedSecret{{Name: "apiKey", Rendered: secret, Placeholder: "{{apiKey}}"}}
 
-	t.Setenv("KIRA_HOME", t.TempDir())
+	t.Setenv("KIRA_SPACE_HOME", t.TempDir())
 	db, err := studiostorage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)

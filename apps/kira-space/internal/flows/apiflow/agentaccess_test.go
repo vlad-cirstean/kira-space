@@ -19,7 +19,7 @@ func TestApiAgentAccess(t *testing.T) {
 	const envFile = "staging.environment.yaml"
 	cfg := app.W.ApiConfig
 	mask := flowharness.Mask("hash", "baseHash")
-	paths := flowharness.Replace(app.KiraHome, "<home>")
+	paths := flowharness.Replace(app.SpaceHome, "<home>")
 
 	seed := "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
 	app.WriteAPIFile(t, envFile, []byte(seed))

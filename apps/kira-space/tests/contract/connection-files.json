@@ -1,6 +1,6 @@
 {
   "ConnectionConfigService.View": {
-    "dir": "<kira>/connections",
+    "dir": "<space>/connections",
     "files": [
       {
         "file": "local.yaml",
@@ -19,7 +19,7 @@
     }
   },
   "ConnectionConfigService.View#bad": {
-    "dir": "<kira>/connections",
+    "dir": "<space>/connections",
     "files": [
       {
         "file": "local.yaml",

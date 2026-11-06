@@ -3,4 +3,4 @@
 export {
   type KafkaFixture,
   startKafka,
-} from '../../../../../../packages/db-fixtures/support/kafka';
+} from '../../../../../packages/db-fixtures/support/kafka';

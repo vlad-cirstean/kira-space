@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { assertTooltipShows } from '../../ui/studio/support/tooltip';
+import { assertTooltipShows } from '../ui/studio/support/tooltip';
 import { expect, test } from './fixtures';
 import { createConnection } from './support/connections';
 import { installPassthrough } from './support/passthrough';
@@ -9,6 +9,8 @@ import {
   type PgFixture,
   startPostgres,
 } from './support/postgres';
+
+test.use({ startMode: 'studio' });
 
 // The network-adapter counterpart to E1's file-based anchor.
 // SQLite is a file opened in-process; Postgres exercises the parts of the chain only a network

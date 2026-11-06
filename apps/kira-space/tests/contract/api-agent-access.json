@@ -104,7 +104,7 @@
     "hash": "<masked>",
     "kind": "environment",
     "lastGood": false,
-    "path": "<kira>/api/staging.environment.yaml",
+    "path": "<space>/api/staging.environment.yaml",
     "problem": null,
     "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
   },
@@ -113,7 +113,7 @@
     "hash": "<masked>",
     "kind": "environment",
     "lastGood": false,
-    "path": "<kira>/api/staging.environment.yaml",
+    "path": "<space>/api/staging.environment.yaml",
     "problem": null,
     "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - agent: true\n    agentHosts:\n      - staging.example.com\n    name: token\n    secret: ${secret:staging.token}\n"
   },

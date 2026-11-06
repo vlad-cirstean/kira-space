@@ -107,8 +107,8 @@ func httpServer(url, helperPath string) serverJSON {
 // and safe to have landed in a shell history.
 //
 // F10: headersHelper is shell-quoted here, the same way Install below quotes it, so the displayed
-// command matches what Install actually sends — a helperPath containing a space (KIRA_HOME or
-// $HOME with one, common on macOS for a custom KIRA_HOME) would otherwise break into two shell
+// command matches what Install actually sends — a helperPath containing a space (the app home
+// or $HOME with one, common on macOS for a custom home) would otherwise break into two shell
 // words once Claude Code later runs the stored headersHelper string through a shell of its own,
 // silently sending no Authorization header and failing every call with an unexplained 401.
 func (*Installer) Command(name, url, helperPath string) string {

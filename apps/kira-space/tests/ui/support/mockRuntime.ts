@@ -443,8 +443,6 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   dbMcpTables: 'DbMcpService.Tables',
   maskReviewColumns: 'MaskRulesService.ReviewColumns',
   maskReviewPending: 'MaskRulesService.ReviewPending',
-  studioConfigFilesOpen: 'StudioConfigFilesService.Open',
-  studioConfigFilesReveal: 'StudioConfigFilesService.Reveal',
   proofSessions: 'ProofService.Sessions',
   proofSession: 'ProofService.Session',
   proofStep: 'ProofService.Step',

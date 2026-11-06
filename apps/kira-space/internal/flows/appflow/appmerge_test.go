@@ -1,10 +1,7 @@
 package appflow_test
 
 import (
-	"bytes"
 	"database/sql"
-	"encoding/json"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -58,20 +55,9 @@ func TestAppMergeFirstLaunch(t *testing.T) {
 		`INSERT INTO ui_layout (key, value) VALUES ('modes.api.project.width', '321'), ('modes.git.project.width', '999'), ('modes.automations.project.width', '400')`,
 		`INSERT INTO settings (key, value) VALUES ('appearance.fontSize', '17'), ('agent.provider', '"codex"'), ('advanced.logLevel', '"debug"'), ('advanced.notifyPrompts', 'false')`,
 	)
-	if err := os.WriteFile(filepath.Join(studioHome, "llm-prompts.json"),
-		[]byte(`{"version":1,"revision":3,"overrides":{"a.one":{"text":"studio one"},"a.two":{"text":"studio two"}}}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(spaceHome, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(spaceHome, "llm-prompts.json"),
-		[]byte(`{"version":1,"revision":7,"overrides":{"a.one":{"text":"space one"}}}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
 
 	opts := appmerge.Options{
-		Space: sp.DB, Studio: st.DB, SpaceHome: spaceHome, StudioHome: studioHome,
+		Space: sp.DB, Studio: st.DB, SpaceHome: spaceHome,
 		Ephemeral: func(k string) bool { return k == "hostview-x" },
 	}
 	if err := appmerge.Run(opts); err != nil {
@@ -86,20 +72,6 @@ func TestAppMergeFirstLaunch(t *testing.T) {
 	}
 	if got := scalar(t, sp.DB, `SELECT group_concat(key || '=' || value, ',') FROM (SELECT * FROM settings WHERE key != 'appmerge.p537' ORDER BY key)`); got != "advanced.gitLogLevel=\"debug\",advanced.notifyPrompts=false,agent.provider=\"codex\",appearance.fontSize=17" {
 		t.Errorf("settings = %q", got)
-	}
-	raw, err := os.ReadFile(filepath.Join(spaceHome, "llm-prompts.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var doc struct {
-		Revision  int
-		Overrides map[string]struct{ Text string }
-	}
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		t.Fatal(err)
-	}
-	if doc.Revision != 8 || doc.Overrides["a.one"].Text != "space one" || doc.Overrides["a.two"].Text != "studio two" {
-		t.Errorf("prompts = %s", raw)
 	}
 	backups, _ := filepath.Glob(filepath.Join(spaceHome, "backups", "p537-*", "*.db"))
 	if len(backups) != 2 {
@@ -121,9 +93,5 @@ func TestAppMergeFirstLaunch(t *testing.T) {
 	again, _ := filepath.Glob(filepath.Join(spaceHome, "backups", "p537-*", "*.db"))
 	if len(again) != 2 {
 		t.Errorf("resume made another backup: %v", again)
-	}
-	raw2, _ := os.ReadFile(filepath.Join(spaceHome, "llm-prompts.json"))
-	if !bytes.Equal(raw2, raw) {
-		t.Errorf("prompts rewritten on resume: %s", raw2)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -85,11 +86,11 @@ func waitOp(t *testing.T, app *flowharness.App, opID string) model.OpRecord {
 func dbBytes(t *testing.T, app *flowharness.App) []byte {
 	t.Helper()
 	var all []byte
-	err := filepath.WalkDir(app.KiraHome, func(p string, d os.DirEntry, err error) error {
+	err := filepath.WalkDir(app.SpaceHome, func(p string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
-		if base := filepath.Base(p); len(base) >= 7 && base[:7] == "kira.db" {
+		if base := filepath.Base(p); strings.HasPrefix(base, "studio.db") {
 			b, rerr := os.ReadFile(p)
 			if rerr != nil {
 				return rerr
@@ -102,7 +103,7 @@ func dbBytes(t *testing.T, app *flowharness.App) []byte {
 		t.Fatal(err)
 	}
 	if len(all) == 0 {
-		t.Fatalf("no kira.db files under %s", app.KiraHome)
+		t.Fatalf("no studio.db files under %s", app.SpaceHome)
 	}
 	return all
 }

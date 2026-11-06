@@ -20,7 +20,7 @@ func TestConnectionLifecycle(t *testing.T) {
 	const sc = "connection-lifecycle"
 	cfg := app.W.ConnectionConfig
 	mask := flowharness.Mask("hash", "baseHash", "createdAt", "updatedAt")
-	paths := flowharness.Replace(app.KiraHome, "<home>")
+	paths := flowharness.Replace(app.SpaceHome, "<home>")
 
 	in := sqliteInput("Pg", "")
 	in.Kind, in.Database = "postgres", ptr("app")

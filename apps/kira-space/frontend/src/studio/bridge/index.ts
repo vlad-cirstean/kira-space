@@ -11,7 +11,6 @@ import type * as WailsModels from '@bindings/models.js';
 import * as ProofService from '@bindings/proofservice.js';
 import * as QueriesService from '@bindings/queriesservice.js';
 import * as SchemaService from '@bindings/schemaservice.js';
-import * as ConfigFilesService from '@bindings/studioconfigfilesservice.js';
 import * as OpsService from '@bindings/studioopsservice.js';
 import * as SettingsService from '@bindings/studiosettingsservice.js';
 import * as TreeService from '@bindings/treeservice.js';
@@ -538,18 +537,11 @@ const studioControl = {
     prefix: string;
   }): Promise<KibanaSuggestions> =>
     unwrap(KibanaService.Suggest(args)).then((r) => kibanaSuggestionsSchema.parse(r)),
-
-  // P85 §9.3: the Scripts settings section and the tab strip's own dropdown both go through
-  // state/customScripts.ts, the one store that wraps these.
-  configFilesOpen: (args: { folder: string; file: string }): Promise<void> =>
-    unwrap(ConfigFilesService.Open(args)),
-  configFilesReveal: (args: { folder: string; file: string }): Promise<void> =>
-    unwrap(ConfigFilesService.Reveal(args)),
 };
 
 // Studio's control: the hub's shared and Space methods, with the Studio-bound ones layered on top.
-// The overrides below share a name with a hub method but bind a Studio service (settings, ops,
-// config files), so Studio files must import this object and Space files the hub's.
+// The overrides below share a name with a hub method but bind a Studio service (settings
+// and ops), so Studio files must import this object and Space files the hub's.
 const studioCore = createCoreControl<Settings, Layout, TabRecord, SettingsPatch, AppMode>(
   { ...coreBindings, settings: SettingsService },
   { settingsChanged: CHANNEL.studioSettingsChanged },

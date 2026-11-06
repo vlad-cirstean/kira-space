@@ -1,9 +1,9 @@
 // Package appmerge carries a Kira Studio install into the merged app on first launch (P537).
 //
 // Both databases stay until the DB merge (P544). This moves what the one UI needs from the Studio side:
-// tabs of closed Studio windows, layout of Studio modes, shared settings when Space has none, and
-// prompt overrides. Run is idempotent and resumable: a marker row in the Space database records
-// progress, and every step checks its own end state.
+// tabs of closed Studio windows, layout of Studio modes and shared settings when Space has none.
+// Run is idempotent and resumable: a marker row in the Space database records progress, and every
+// step checks its own end state.
 package appmerge
 
 import (
@@ -11,13 +11,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/google/renameio/v2"
 	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
@@ -26,10 +24,10 @@ const markerKey = "appmerge.p537"
 // Options names the two databases and homes. Ephemeral reports window keys (host views, captures,
 // opened files, proofs) that never carry user tabs.
 type Options struct {
-	Space, Studio         *sql.DB
-	SpaceHome, StudioHome string
-	Ephemeral             func(key string) bool
-	Now                   func() time.Time
+	Space, Studio *sql.DB
+	SpaceHome     string
+	Ephemeral     func(key string) bool
+	Now           func() time.Time
 }
 
 type marker struct {
@@ -88,9 +86,6 @@ func Run(o Options) error {
 			return fmt.Errorf("appmerge: settings: %w", err)
 		}
 	}
-	if err := mergePrompts(o); err != nil {
-		return fmt.Errorf("appmerge: prompts: %w", err)
-	}
 	m.State = "done"
 	slog.Info("appmerge: Studio data carried over", "scope", "appmerge", "backup", m.Backup)
 	return writeMarker(o.Space, m)
@@ -137,11 +132,7 @@ func hasStudioData(o Options) (bool, error) {
 		(SELECT COUNT(*) FROM settings) + (SELECT COUNT(*) FROM ui_layout) + (SELECT COUNT(*) FROM tabs)`).Scan(&n); err != nil {
 		return false, fmt.Errorf("appmerge: count studio rows: %w", err)
 	}
-	if n > 0 {
-		return true, nil
-	}
-	_, err := os.Stat(filepath.Join(o.StudioHome, "llm-prompts.json"))
-	return err == nil, nil
+	return n > 0, nil
 }
 
 func dirExists(p string) bool {
@@ -325,62 +316,4 @@ func importSettings(o Options) error {
 		}
 	}
 	return nil
-}
-
-// mergePrompts copies Studio prompt overrides Space has not overridden. Records stay raw JSON so
-// the llmprompts file format keeps one owner.
-func mergePrompts(o Options) error {
-	src, ok, err := readPrompts(filepath.Join(o.StudioHome, "llm-prompts.json"))
-	if err != nil || !ok || len(src.Overrides) == 0 {
-		return err
-	}
-	dstPath := filepath.Join(o.SpaceHome, "llm-prompts.json")
-	dst, ok, err := readPrompts(dstPath)
-	if err != nil || !ok {
-		return err
-	}
-	added := false
-	for id, rec := range src.Overrides {
-		if _, ok := dst.Overrides[id]; !ok {
-			dst.Overrides[id] = rec
-			added = true
-		}
-	}
-	if !added {
-		return nil
-	}
-	dst.Revision++
-	raw, err := json.MarshalIndent(dst, "", "  ")
-	if err != nil {
-		return err
-	}
-	return renameio.WriteFile(dstPath, raw, 0o600)
-}
-
-type promptsDoc struct {
-	Version   int                        `json:"version"`
-	Revision  uint64                     `json:"revision"`
-	Overrides map[string]json.RawMessage `json:"overrides"`
-}
-
-// readPrompts reads one overrides file; an absent file is empty. ok is false for a corrupt or
-// foreign-version file, which the merge leaves alone rather than overwrite.
-func readPrompts(path string) (d promptsDoc, ok bool, err error) {
-	d = promptsDoc{Version: 1, Overrides: map[string]json.RawMessage{}}
-	b, err := os.ReadFile(path)
-	if errors.Is(err, fs.ErrNotExist) {
-		return d, true, nil
-	}
-	if err != nil {
-		return d, false, err
-	}
-	var parsed promptsDoc
-	if err := json.Unmarshal(b, &parsed); err != nil || parsed.Version != 1 {
-		slog.Warn("appmerge: prompt overrides unreadable, skipped", "scope", "appmerge", "file", filepath.Base(path), "err", err)
-		return d, false, nil
-	}
-	if parsed.Overrides == nil {
-		parsed.Overrides = d.Overrides
-	}
-	return parsed, true, nil
 }

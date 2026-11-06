@@ -78,6 +78,9 @@ func New(o Options) (*Loader, error) {
 // Dir is the connections folder.
 func (l *Loader) Dir() string { return l.o.Dir }
 
+// Dir is the connections folder under an app home.
+func Dir(home string) string { return filepath.Join(home, "connections") }
+
 // Start migrates the legacy rows once, loads the folder, writes AGENTS.md and watches the folder. A
 // failed migration skips the rest: an unfinished export never projects. A failure of the docs or the
 // watch is logged and never fatal.

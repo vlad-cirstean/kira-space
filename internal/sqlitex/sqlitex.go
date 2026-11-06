@@ -57,7 +57,7 @@ func BuildDSN(path string) string {
 // escapeDSNPath percent-encodes the three bytes modernc's sqlite3_open_v2 (opened with
 // SQLITE_OPEN_URI) treats as URI syntax rather than literal path bytes: "%" (percent-decoding),
 // "?" (starts the query string BuildDSN itself appends right after path) and "#" (starts a
-// fragment). Left unescaped, a KIRA_HOME/KIRA_SPACE_HOME-derived path carrying any of the three
+// fragment). Left unescaped, a KIRA_SPACE_HOME-derived path carrying any of the three
 // would open a different file than path names, while Open's own os.Chmod(path) below still
 // targets the real one. Deliberately not net/url's own URL{Scheme:"file",...}.String(): that adds
 // a "//" authority marker unconditionally, which turns a relative path (this DSN's existing,

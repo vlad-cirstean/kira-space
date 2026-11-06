@@ -335,7 +335,7 @@ func TestInstallAgentWithoutCli(t *testing.T) {
 
 func helperToken(t *testing.T, app *flowharness.App) string {
 	t.Helper()
-	plain, ok, err := mcpauth.LoadHelperToken(mcpauth.HelperTokenPathNamed(app.KiraHome, "mcp-db"))
+	plain, ok, err := mcpauth.LoadHelperToken(mcpauth.HelperTokenPathNamed(app.SpaceHome, "mcp-db"))
 	if err != nil || !ok {
 		t.Fatalf("helper token: ok=%v err=%v", ok, err)
 	}

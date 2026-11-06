@@ -23,7 +23,7 @@ func TestApiVariablesForm(t *testing.T) {
 	const envFile = "staging.environment.yaml"
 	cfg := app.W.ApiConfig
 	mask := flowharness.Mask("hash", "baseHash")
-	paths := flowharness.Replace(app.KiraHome, "<home>")
+	paths := flowharness.Replace(app.SpaceHome, "<home>")
 
 	// A head comment, a line comment and color before name.
 	seed := "# Staging servers for the web team.\n" +

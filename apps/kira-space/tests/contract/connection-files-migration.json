@@ -1,6 +1,6 @@
 {
   "ConnectionConfigService.View": {
-    "dir": "<kira>/connections",
+    "dir": "<space>/connections",
     "files": [
       {
         "file": "legacy-mongo.yaml",

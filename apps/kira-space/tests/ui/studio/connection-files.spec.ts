@@ -164,12 +164,12 @@ test('Edit file shows the file error and Save sends the text with its base hash'
 
 test('Open in editor from the menu opens the connection file', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({
-    control: boot([{ channel: IPC.studioConfigFilesOpen, response: null }]),
+    control: boot([{ channel: IPC.configFilesOpen, response: null }]),
   });
   await (await connectionRow(page, 'Local')).click({ button: 'right' });
   await page.click('[data-testid="menu-item-open-file"]');
   await expect
-    .poll(() => control.log().find((e) => e.channel === IPC.studioConfigFilesOpen)?.args)
+    .poll(() => control.log().find((e) => e.channel === IPC.configFilesOpen)?.args)
     .toEqual({ folder: 'connections', file: FILE });
 });
 

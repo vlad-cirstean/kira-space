@@ -49,7 +49,7 @@ type StudioDeps struct {
 	// Prompts resolves the editable LLM prompt texts.
 	Prompts llmprompts.Source
 	DB      *sql.DB
-	// Home is the app data folder (KIRA_HOME).
+	// Home is the app data folder (the Space home).
 	Home      string
 	StartedAt int64 // unix millis, for appInfo-style diagnostics later
 

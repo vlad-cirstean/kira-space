@@ -55,9 +55,9 @@ func (w *Wired) buildStudio(opts Options) error {
 	var connectionsSvc *connections.Service
 	var maskRulesSvc *maskrules.Service
 	var maskReviewSvc *maskreview.Service
-	studioHome := config.StudioHome()
+	home := config.KiraSpaceHome()
 	connFiles, err := connfiles.New(connfiles.Options{
-		DB: db.DB, Dir: filepath.Join(studioHome, "connections"),
+		DB: db.DB, Dir: connfiles.Dir(home),
 		Secrets: &connfiles.Secrets{Store: secrets.NewStore(db.DB, opts.Cipher), DB: db.DB},
 		OnChange: func(ch connfiles.Changes) {
 			connectionsSvc.ConfigChanged(ch)
@@ -77,7 +77,7 @@ func (w *Wired) buildStudio(opts Options) error {
 	// reveal grace genuinely shared between a connection-password reveal and a variable reveal.
 	apiSecrets := &apifiles.Secrets{Store: secrets.NewStore(db.DB, opts.Cipher), DB: db.DB}
 	apiFiles, err := apifiles.New(apifiles.Options{
-		DB: db.DB, Dir: filepath.Join(studioHome, "api"), Secrets: apiSecrets,
+		DB: db.DB, Dir: apifiles.Dir(home), Secrets: apiSecrets,
 		OnChange: func(ch apifiles.Changes) { bridge.EmitApiChanges(emitter, ch) },
 	})
 	if err != nil {
@@ -85,7 +85,7 @@ func (w *Wired) buildStudio(opts Options) error {
 	}
 	deps := appcore.StudioDeps{
 		DB:        db.DB,
-		Home:      studioHome,
+		Home:      home,
 		StartedAt: time.Now().UnixMilli(),
 		Repos:     repositories,
 		ApiVars:   apivars.New(repositories.Variables, authorizer, apiSecrets),
@@ -142,7 +142,7 @@ func (w *Wired) buildStudio(opts Options) error {
 	apiFiles.Start()
 	connFiles.Start()
 	if w.AgentSettings != nil {
-		if err := w.AgentSettings.Sweep(filepath.Join(studioHome, "automations-mcp")); err != nil {
+		if err := w.AgentSettings.Sweep(filepath.Join(home, "automations-mcp")); err != nil {
 			slog.Warn("agent settings: sweep studio", "scope", "startup", "err", err)
 		}
 	}
@@ -170,7 +170,7 @@ func (w *Wired) buildStudio(opts Options) error {
 	w.GrpcHistory = &bridge.GrpcHistoryService{Deps: deps}
 	w.DataGrip = &bridge.DataGripService{Deps: deps}
 	w.DbMcp = embedded.dbMcpSvc
-	w.StudioConfigFiles = &bridge.StudioConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"runs": filepath.Join(studioHome, "runs"), "api": apiFiles.Dir(), "connections": connFiles.Dir()})}
+	w.StudioConfigFiles = &bridge.StudioConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"runs": filepath.Join(home, "runs"), "api": apiFiles.Dir(), "connections": connFiles.Dir()})}
 	w.Docker = embedded.dockerSvc
 	w.Kubernetes = embedded.kubeSvc
 	w.ProofStore = proofSvc

@@ -109,7 +109,7 @@ func TokenVerifier(label string, load func() Record) auth.TokenVerifier {
 	}
 }
 
-// PathNamed returns name's token file location under home — home is normally KIRA_HOME.
+// PathNamed returns name's token file location under home — home is normally the app home.
 func PathNamed(home, name string) string {
 	return filepath.Join(home, name+"-token.json")
 }
@@ -151,14 +151,14 @@ func Load(path string) (Record, bool, error) {
 }
 
 // Save writes rec to path, mode 0600 — hash+salt only, never the plaintext. Creates path's
-// parent directory first (mode 0700) — a machine where KIRA_HOME does not exist yet otherwise
+// parent directory first (mode 0700) — a machine where the app home does not exist yet otherwise
 // fails outright on the very first mint.
 //
 // Writes via a temp file + rename rather than truncating path in place: a crash or a
 // full disk mid-write used to leave a truncated token file that Load then fails to parse, taking
 // the whole server down at next start with no path forward but deleting a file the user has no
 // reason to know about. Rename is atomic on both target platforms (POSIX same-filesystem rename;
-// this repo's own KIRA_HOME layout keeps the temp file alongside the real one, so it is), so a
+// this repo's own home layout keeps the temp file alongside the real one, so it is), so a
 // reader only ever sees the old complete file or the new complete file, never a partial one.
 func Save(path string, rec Record) error {
 	data, err := json.Marshal(rec)

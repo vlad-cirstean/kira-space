@@ -75,8 +75,8 @@ const CONTROL: ControlSnapshot[] = [
     args: { scope: 'collection', ownerId: collection.id },
     response: VARIABLES,
   },
-  { channel: IPC.studioConfigFilesOpen, response: undefined },
-  { channel: IPC.studioConfigFilesReveal, response: undefined },
+  { channel: IPC.configFilesOpen, response: undefined },
+  { channel: IPC.configFilesReveal, response: undefined },
   { channel: IPC.apiConfigSetSecret, response: afterSet },
 ];
 
@@ -105,16 +105,16 @@ test('api config files — the tree shows the file, a bad edit shows its line, O
   await strip.locator('[data-testid="config-file-open"]').click();
   await strip.locator('[data-testid="config-file-reveal"]').click();
   await expect
-    .poll(() => control.log().filter((e) => e.channel === IPC.studioConfigFilesOpen))
+    .poll(() => control.log().filter((e) => e.channel === IPC.configFilesOpen))
     .toHaveLength(1);
-  expect(control.log().find((e) => e.channel === IPC.studioConfigFilesOpen)?.args).toMatchObject({
+  expect(control.log().find((e) => e.channel === IPC.configFilesOpen)?.args).toMatchObject({
     folder: 'api',
     file,
   });
   await expect
-    .poll(() => control.log().filter((e) => e.channel === IPC.studioConfigFilesReveal))
+    .poll(() => control.log().filter((e) => e.channel === IPC.configFilesReveal))
     .toHaveLength(1);
-  expect(control.log().find((e) => e.channel === IPC.studioConfigFilesReveal)?.args).toMatchObject({
+  expect(control.log().find((e) => e.channel === IPC.configFilesReveal)?.args).toMatchObject({
     folder: 'api',
     file,
   });

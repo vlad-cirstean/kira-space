@@ -7,7 +7,7 @@ import { acquireBuildLock } from '@workbench/testing/e2eReal';
 // flowservers), built once under the shared build lock and spawned per test, so the browser tier
 // and the Go flow tests share one server implementation.
 
-const ROOT_DIR = resolve(__dirname, '../../../../../..');
+const ROOT_DIR = resolve(__dirname, '../../../../..');
 const BINARY = resolve(ROOT_DIR, 'apps/kira-space/bin/flowservers');
 
 export interface FlowServerRequest {

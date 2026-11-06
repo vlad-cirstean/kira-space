@@ -166,7 +166,7 @@ type harness struct {
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
-	t.Setenv("KIRA_HOME", t.TempDir())
+	t.Setenv("KIRA_SPACE_HOME", t.TempDir())
 	t.Setenv("KIRA_INSECURE_SECRETS", "1")
 
 	db, err := studiostorage.Open()

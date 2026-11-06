@@ -142,7 +142,7 @@ func TestGrpcHasAnyReference(t *testing.T) {
 func newGrpcServiceForTest(t *testing.T) (svc *GrpcService, db *studiostorage.DB, seedProbes func(secretVars map[string]string) string) {
 	t.Helper()
 	t.Setenv("KIRA_INSECURE_SECRETS", "1")
-	t.Setenv("KIRA_HOME", t.TempDir())
+	t.Setenv("KIRA_SPACE_HOME", t.TempDir())
 	db, err := studiostorage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
