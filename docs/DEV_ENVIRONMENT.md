@@ -68,7 +68,7 @@ needs.
 
 - `bun run screenshots` rebuilds `frontend/dist` (test bundle), then captures six shots in
   WebKit into `screenshots/`. Studio shots only: `bun run build:test && bunx playwright test
-  --config=apps/kira-space/playwright.config.ts --project=screenshots-studio`; Space only: `--project=screenshots`. Never run it beside a UI suite in the same checkout. Not in hooks, CI or
+  --config=apps/kira-space/playwright.config.ts --project=screenshots`. Never run it beside a UI suite in the same checkout. Not in hooks, CI or
   the Pages Action. Run it by hand when a shown UI changes, then commit the PNGs.
 - Rerun it and check `git status --porcelain screenshots/` is empty. A diff means a nondeterministic
   input; fix the cause, never add tolerance.
@@ -453,7 +453,7 @@ temp `KIRA_SPACE_HOME`, `WAILS_SERVER_HOST=127.0.0.1`. Run `bun run build:mobile
 - `go test ./apps/kira-space/internal/flows/kubeflow` needs no cluster and no kubectl. `flowharness.KubeFake`
   is an HTTPS API server; `KubeFake.WriteKubeconfig` writes the kubeconfig and the exec-plugin script.
 - The harness reads PATH and KUBECONFIG from the process environment at call time (`kubeEnv`), so a test sets them with `t.Setenv`.
-- Rewrite `apps/kira-space/tests/contract/studio/kubernetes.json` with `KIRA_CONTRACT=write`, then rerun without it; the UI spec `kubernetes-module.spec.ts` reads the same file.
+- Rewrite `apps/kira-space/tests/contract/kubernetes.json` with `KIRA_CONTRACT=write`, then rerun without it; the UI spec `kubernetes-module.spec.ts` reads the same file.
 
 ## Contract fixtures (P249)
 
@@ -998,7 +998,7 @@ flick). Add a view by copying a probe and calling `measureFlick` over `FLICK_LAD
   `--project=heap-webkit` reports WebKit process RSS only. Per world it prints `RAM <app> <world>
   <checkpoint> <json>` (JS heap after two GCs, DOM counters, settled renderer RSS, Monaco/xterm/grid/img
   counts, Pinia and TanStack Query stats) and appends the same to `test-results-perf/ram/`. Knobs:
-  `KIRA_RAM_WORLD=a,b` narrows worlds, `KIRA_RAM_N` sets tab units (default 10). Pass B, attribution:
+  `KIRA_RAM_WORLD=a,b` narrows worlds (Studio worlds share the `space` app key; the idle world hops every mode, the Studio terminal world is `terminal-automations`), `KIRA_RAM_N` sets tab units (default 10). Pass B, attribution:
   build unminified (`cd apps/kira-space/frontend && KIRA_DEBUG_HOOKS=1 bunx vite build --minify false`,
   Space likewise without the flag), then `KIRA_RAM_SNAPSHOTS=1` takes heap snapshots (parsed with
   `heap-snapshot-toolkit`, `HEAPSNAP` lines; `KIRA_RAM_KEEP_SNAPSHOTS=1` keeps the files). Rebuild

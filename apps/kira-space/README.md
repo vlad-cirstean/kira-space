@@ -190,7 +190,7 @@ Run from the repo root. Shared scripts (`setup`, `lint`, `typecheck`, `test:go`)
 | `bun run typecheck:tests` | `tests/` tiers and Playwright configs (`tsgo`) |
 | `bun run typecheck:unit` | `tests/unit` (`tsgo`) |
 | `bun run typecheck:git` | `packages/git-ipc`, `packages/git-core` (`tsgo`), `packages/git-ui` (`vue-tsc`) |
-| `bun run test:ui` | Build, then Playwright (WebKit): `ui`, `ui-studio`, `ui-clipboard` projects |
+| `bun run test:ui` | Build, then Playwright (WebKit): `ui`, `ui-clipboard` projects |
 | `bun run test:ui:timing` | Wall-clock specs (`ui-timing`) |
 | `bun run test:ui:mobile` | Phone bundle on an iOS (WebKit) profile, plus one Chromium project |
 | `bun run test:e2e-real` | Playwright against a real `-tags server` build |

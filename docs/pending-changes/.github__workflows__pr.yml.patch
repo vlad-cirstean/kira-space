@@ -1,4 +1,4 @@
-P537: one app. One build, UI shards over the merged config (ui and ui-studio, 8 shards), visual job, adapter paths under apps/kira-space.
+P537: one app. One build, UI shards over the merged config (ui, 8 shards), visual job, adapter paths under apps/kira-space.
 
 diff --git a/.github/workflows/pr.yml b/.github/workflows/pr.yml
 index e899834d..515322bf 100644
@@ -40,7 +40,7 @@ index e899834d..515322bf 100644
        - run: bun run test:unit
  
 -  # Playwright `ui` project in 4 shards. fail-fast off: a red shard must not hide the others.
-+  # Playwright `ui` and `ui-studio` projects of the one config, in 8 shards over one test build.
++  # Playwright `ui` project of the one config, in 8 shards over one test build.
 +  # fail-fast off: a red shard must not hide the others.
    ui:
 -    name: ui (Linux, shard ${{ matrix.shard }}/4)
@@ -62,7 +62,7 @@ index e899834d..515322bf 100644
 -      - run: bun run build:test:studio
 -      - run: bunx playwright test --config=apps/kira-studio/playwright.config.ts --project=ui --shard=${{ matrix.shard }}/4
 +      - run: bun run build:test
-+      - run: bunx playwright test --config=apps/kira-space/playwright.config.ts --project=ui --project=ui-studio --shard=${{ matrix.shard }}/8
++      - run: bunx playwright test --config=apps/kira-space/playwright.config.ts --project=ui --shard=${{ matrix.shard }}/8
        - uses: actions/upload-artifact@v7
          if: failure()
          with:
@@ -76,7 +76,7 @@ index e899834d..515322bf 100644
 -  # ipc-frontend (chromium), visual (webkit), then ui-timing alone on an idle machine. `--no-deps`
 -  # skips the `ui` project that ui-timing depends on in local runs.
 +  # ipc-frontend (chromium), real-clipboard grid copy (chromium), then ui-timing alone on an idle
-+  # machine. `--no-deps` skips the `ui-studio` project that ui-timing depends on in local runs.
++  # machine. `--no-deps` skips the `ui` project that ui-timing depends on in local runs.
    ui-extra:
      name: ui-extra (Linux)
      runs-on: ubuntu-24.04
@@ -102,7 +102,7 @@ index e899834d..515322bf 100644
 -      - name: Visual regression tests (baselines are only ever captured from this environment, see tests/visual/README.md)
 -        run: bunx playwright test --config=apps/kira-studio/playwright.config.ts --project=visual
 +        run: bunx playwright test --config=apps/kira-space/playwright.config.ts --project=ipc-frontend
-+      - name: Real-clipboard grid copy tests (Chromium; the same spec runs in `ui-studio` on WebKit)
++      - name: Real-clipboard grid copy tests (Chromium; the same spec runs in `ui` on WebKit)
 +        run: bunx playwright test --config=apps/kira-space/playwright.config.ts --project=ui-clipboard
        - name: Wall-clock budget tests (alone, no other browser contending for the CPU)
 -        run: bunx playwright test --config=apps/kira-studio/playwright.config.ts --project=ui-timing --no-deps
@@ -166,7 +166,7 @@ index e899834d..515322bf 100644
 -      - run: bun run build:test:space
 -      - run: bunx playwright test --config=apps/kira-space/playwright.config.ts --project=visual
 +      - run: bun run build:test
-+      - run: bunx playwright test --config=apps/kira-space/playwright.config.ts --project=visual --project=visual-studio
++      - run: bunx playwright test --config=apps/kira-space/playwright.config.ts --project=visual
        - uses: actions/upload-artifact@v7
          if: failure()
          with:
