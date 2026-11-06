@@ -14,10 +14,10 @@ Result: 6 batches instead of 11 serial phases.
 | Batch | Phases | Lands before |
 |---|---|---|
 | B1 | P538 | B2 starts |
-| B2 | P539, P542 | B3 starts |
-| B3 | P540, P543 | B4 starts |
-| B4 | P544, P548 | B5 starts |
-| B5 | P541, P545 | B6 starts |
+| B2 | P539, P541 | B3 starts |
+| B3 | P540, P542 | B4 starts |
+| B4 | P543, P548 | B5 starts |
+| B5 | P544, P545 | B6 starts |
 | B6 | P546, P547 | chapter-end suite run |
 
 ## Rules every batch follows
@@ -36,32 +36,28 @@ Result: 6 batches instead of 11 serial phases.
 
 ## Order deviation
 
-Table order holds as dependency order: every phase's dependencies sit above it. Batching runs some
-higher phases before lower ones; the user-asked batch exception covers that, so no renumber.
-Largest shift: P541 (DB merge) runs in B5, after P544. Reason: P541 folds both migration sequences,
-and P542, P543, P544 add schema; finishing their schema first lets P541 plan against the final
-tables once. P539 and P540 still land before P541 (strict chain kept). The no-shift alternative
-(P541 with P548 in B4, then P544, P545, P546 with P547 alone) needs 7 batches.
+Table order is dependency order. B4 runs P548 before P544 to P547; the user-asked batch exception
+covers that. P548 depends on none of them.
 
 ## Pairs that cannot run together
 
 - P538 with any later phase it would otherwise pair with. P538 rewrites the shared test harness:
   54 `StudioContract` callers (dbflow, dbmcpflow, proofflow, apiflow, dockerflow, termflow, others),
   `tests/ui/studio` fixtures and mock runtime, Playwright projects. P539 also edits
-  `flowharness/contract.go` and the `tests/ui/studio/automations-*` specs P538 repoints. P542 edits
+  `flowharness/contract.go` and the `tests/ui/studio/automations-*` specs P538 repoints. P541 edits
   `proofflow` tests and proof UI specs (both on the Studio harness today). P548 adds `dbmcpflow`
   tests. A new test written against `StudioContract` breaks once P538 lands. So B1 is P538 alone.
-- P539, P540, P541: strict chain, never two at once.
-- P542 then P543: the chain orders diagram proof first; the diagram view comes from P542.
-- P543 and P544: both rework handover display (`AdeHandoverList`, handovers in a chain).
-- P545 needs P543 and P544 (merged list of their entries).
+- P539, P540: strict chain, never two at once.
+- P541 then P542: the chain orders diagram proof first; the diagram view comes from P541.
+- P542 and P543: both rework handover display (`AdeHandoverList`, handovers in a chain).
+- P545 needs P542 and P543 (merged list of their entries).
 - P546 and P547 need P545 (merged list and its edit surfaces). P546 and P545 also restructure the
   same list.
-- P541 with P542, P543, P544 or P547: each adds proof, handover or audit schema that P541 folds.
+- P544 with P541, P542 or P543: each adds proof or handover schema that P544 folds; P544 runs after all three. P547 runs after P544 and stores its audit trail in the merged DB.
 - P539 and P548: both reshape the DB MCP token, helper script and agent registrations
   (`bridge/dbmcp.go`, `internal/mcpauth`, `internal/harness/claude/mcpinstall`).
-- P543 and P548: both may add per-session identity to `dbmcp` (proof to task link; session
-  credential). P548 runs after P543 and builds on what it added; P547 runs after both and uses it for
+- P542 and P548: both may add per-session identity to `dbmcp` (proof to task link; session
+  credential). P548 runs after P542 and builds on what it added; P547 runs after both and uses it for
   session and task attribution.
 
 ## B1: P538
@@ -69,84 +65,84 @@ tables once. P539 and P540 still land before P541 (strict chain kept). The no-sh
 - Why alone: see first bullet above.
 - Shared files: none (one stream).
 
-## B2: P539 (home fold), P542 (Mermaid proof)
+## B2: P539 (home fold), P541 (Mermaid proof)
 
 - Why independent: P539 moves paths, the home, the second runs stack, the config-files twin, the DB
-  MCP token. P542 adds a diagram view to proof steps, its tool schema and renderer. The P539 fold
+  MCP token. P541 adds a diagram view to proof steps, its tool schema and renderer. The P539 fold
   moves the Studio DB as a whole file, so a new Studio migration applies wherever the file sits.
-  P542 reads nothing P539 changes.
-- Migration owner: `studiostorage/migrations` P542 (rebuild of `proof_steps` and `proof_view_state`
+  P541 reads nothing P539 changes.
+- Migration owner: `studiostorage/migrations` P541 (rebuild of `proof_steps` and `proof_view_state`
   for the new view value, same pattern as `0048_p426_proof_chart_view.sql`); `storage/migrations`
   P539 (only if its runs-row copy needs one).
 
-| Shared file | P539 edit | P542 edit |
+| Shared file | P539 edit | P541 edit |
 |---|---|---|
 | `internal/flows/proofflow/helpers_test.go` | line 51 `app.KiraHome` helper token path to the Space home | none; new helpers go in a new file (`diagram_test.go`) |
 | `tests/ui/support/mockRuntime.ts` | drop `StudioConfigFiles*` entries | none; diagram fixtures in `tests/ui/studio/support/proof.ts` |
 | `internal/appwire/studio_build.go` | runs stack, dirs, config files (lines 41-80, 173) | only if proof deps change (lines 122-129) |
 | `docs/ARCHITECTURE.md` | home fold sections, Known open item | proof section |
 
-- Not shared: `dbmcp/server.go` (P539), `dbmcp/proof_tools.go` (P542), `internal/llmprompts/registry.go` (P542), `package.json`/`bun.lock` (P542, Mermaid).
-- Landing: P539, then P542.
+- Not shared: `dbmcp/server.go` (P539), `dbmcp/proof_tools.go` (P541), `internal/llmprompts/registry.go` (P541), `package.json`/`bun.lock` (P541, Mermaid).
+- Landing: P539, then P541.
 
-## B3: P540 (config subfolder), P543 (proof chain)
+## B3: P540 (config subfolder), P542 (proof chain)
 
 - Why independent: P540 moves YAML folders and adds one config-root resolver (`configfs`,
-  `connfiles`, `apifiles`, `adeflow` dirs, `repocfg`, `agentcfg`, appwire joins). P543 links proof
+  `connfiles`, `apifiles`, `adeflow` dirs, `repocfg`, `agentcfg`, appwire joins). P542 links proof
   to tasks and shows proof, links and handovers as a chain in the details panel. Neither reads the
   other's data.
-- Migration owner: `studiostorage/migrations` P543 (proof to task link); `storage/migrations` P543
+- Migration owner: `studiostorage/migrations` P542 (proof to task link); `storage/migrations` P542
   if its link lives in the Space DB. P540's layout move is a filesystem migration, not SQL.
 
-| Shared file | P540 edit | P543 edit |
+| Shared file | P540 edit | P542 edit |
 |---|---|---|
 | `internal/appwire/appwire.go` | config folder map and home joins (around lines 543, 566, 795) | proof wiring into the task board deps, own hunk |
 | `internal/appwire/studio_build.go` | `connections`, `api` dirs (lines 60, 80, 168, 173) | `proofDeps` (lines 122-129) |
 | `docs/ARCHITECTURE.md` | config subfolder section | proof chain section |
 
-- Not shared: `internal/llmprompts/registry.go` (P543, terse-handover rule), `frontend/src/ade/v2/**` (P543), `dbmcp/proof_tools.go` (P543).
-- Landing: P540, then P543.
+- Not shared: `internal/llmprompts/registry.go` (P542, terse-handover rule), `frontend/src/ade/v2/**` (P542), `dbmcp/proof_tools.go` (P542).
+- Landing: P540, then P542.
 
-## B4: P544 (unified notes), P548 (Studio MCP option in steps)
+## B4: P543 (unified notes), P548 (Studio MCP option in steps)
 
-- Why independent: P544 reshapes notes and handovers (Space `ade_task_handovers`, `ade/handover.go`,
+- Why independent: P543 reshapes notes and handovers (Space `ade_task_handovers`, `ade/handover.go`,
   notes components, stage handover prompt). P548 adds a step field and per-session DB MCP access
   (`adeflow` options and parser, step launch, `mcpauth`, `dbmcp` auth, `mcpinstall`, step
   inspector). No file overlap beyond additive struct fields; no ordering.
-- Migration owner: `storage/migrations` P544. P548 keeps its session credential in memory; if its
+- Migration owner: `storage/migrations` P543. P548 keeps its session credential in memory; if its
   plan needs a table it stops and moves to B5.
 
-| Shared file | P544 edit | P548 edit |
+| Shared file | P543 edit | P548 edit |
 |---|---|---|
 | `internal/bridge/adewire/wire.go` | `Handover` fields | `WorkflowStep` field |
 | `frontend/src/ade/v2/wire.ts` | `Handover` type | `WorkflowStep` type |
 | `internal/llmprompts/registry.go` | stage handover entries | DB MCP option text, if any; separate entries |
 | i18n catalogs | notes keys | step inspector keys |
 
-- Landing: P544, then P548.
+- Landing: P543, then P548.
 
-## B5: P541 (DB merge), P545 (timeline toggle)
+## B5: P544 (DB merge), P545 (timeline toggle)
 
-- Why independent: P541 is backend storage, wiring and the Studio settings and op-log frontend
+- Why independent: P544 is backend storage, wiring and the Studio settings and op-log frontend
   (`studio/state/*`, `SettingsDialog`, `OperationsDock`, `createOpLogStore`). P545 is the details
-  list only (`AdeTaskTimeline.vue`, `taskTimeline.ts`, the chain component from P543/P544,
+  list only (`AdeTaskTimeline.vue`, `taskTimeline.ts`, the chain component from P542/P543,
   `state/adePanelTabs.ts`). Condition: P545 keeps toggle persistence out of the settings table (a
   Pinia store, as `adePanelTabs` does today); a plan that needs a settings key moves P545 to B6.
-- Migration owner: both dirs P541. P545 adds none.
+- Migration owner: both dirs P544. P545 adds none.
 
-| Shared file | P541 edit | P545 edit |
+| Shared file | P544 edit | P545 edit |
 |---|---|---|
 | `tests/ui/support/mockRuntime.ts` | drop `StudioSettings*`, `StudioOps*` entries | none expected; timeline fixtures in its spec |
 | i18n catalogs | drop Studio settings and op-log keys | timeline toggle keys |
 
-- Landing: P541, then P545.
+- Landing: P544, then P545.
 
 ## B6: P546 (forward panel edits), P547 (Kira DB audit trail)
 
 - Why independent: P546 hooks the panel's edit paths (notes, links, proof) and delivers a diff to
   the step's running agents (`internal/ade`, `bridge/adetask.go`, agent sessions). P547 captures
   every Kira DB call and approval in `dbmcp`, stores it in the merged DB and adds an entry kind to
-  the merged list. P547's prerequisites: v0.2.36 P528 and P537 (landed), P541 (merged DB), P545
+  the merged list. P547's prerequisites: v0.2.36 P528 and P537 (landed), P544 (merged DB), P545
   (merged list), P548 (session attribution); all landed by B5.
 - Migration owner: `storage/migrations` P547. P546 adds none.
 

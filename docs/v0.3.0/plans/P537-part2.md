@@ -122,7 +122,7 @@ compare mode for each package touching contract output; `go vet` in `tests/claud
 3. Stores, one per concern: mode, tabs (one store, `TAB_KINDS` union; Studio modes as workspaces;
    Studio's incognito indicator for its kinds), layout, keepAwake, appUpdate, appMetrics,
    terminals, terminalTabs, customScripts, pinia. Two settings stores stay (`settings` over
-   `SettingsService`, `studioSettings` over `StudioSettingsService`): two concerns until P541.
+   `SettingsService`, `studioSettings` over `StudioSettingsService`): two concerns until P544.
    Operations dock: Space feed for Space modules, Studio feed (`StudioOpsService`) for Studio
    modules.
 4. Bridge hub. One `src/bridge/index.ts` exporting merged services; Studio's `control`, `data`,

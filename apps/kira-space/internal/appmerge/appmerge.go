@@ -1,6 +1,6 @@
 // Package appmerge carries a Kira Studio install into the merged app on first launch (P537).
 //
-// Both databases stay until P538 and P540. This moves what the one UI needs from the Studio side:
+// Both databases stay until the DB merge (P544). This moves what the one UI needs from the Studio side:
 // tabs of closed Studio windows, layout of Studio modes, shared settings when Space has none, and
 // prompt overrides. Run is idempotent and resumable: a marker row in the Space database records
 // progress, and every step checks its own end state.
