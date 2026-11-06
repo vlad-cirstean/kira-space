@@ -1986,6 +1986,9 @@
           "invalid": {
             "body": "Enter an https, ssh or file URL without credentials in it."
           }
+        },
+        "window": {
+          "title": "Shared config changes"
         }
       },
       "gitGraph": {
