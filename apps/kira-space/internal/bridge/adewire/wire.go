@@ -128,6 +128,8 @@ type WorkflowStep struct {
 	Timeout      string   `json:"timeout"`
 	Prompt       string   `json:"prompt"` // agent prompt; manual: first session message
 	AllowedTools []string `json:"allowedTools"`
+	// DbMcp gives the step's agent sessions the Kira DB tools, for that session only (agent, review, manual session).
+	DbMcp bool `json:"dbMcp"`
 	// SmartScript runs the named smart script instead of Prompt; Params are its values per param name.
 	SmartScript string              `json:"smartScript"`
 	Params      map[string][]string `json:"params"`
@@ -495,11 +497,12 @@ type Task struct {
 	Workflow         *Workflow `json:"workflow"`
 	WorkflowOutdated bool      `json:"workflowOutdated"`
 	Est              string    `json:"est"`
-	Notes            string    `json:"notes"`
-	Color            int       `json:"color"`
-	BranchIDs        []string  `json:"branchIds"`
-	Runs             []Run     `json:"runs"`
-	CreatedAt        int64     `json:"createdAt"`
+	// Notes is derived and read-only: the task's user notes, newest first, joined by a blank line.
+	Notes     string   `json:"notes"`
+	Color     int      `json:"color"`
+	BranchIDs []string `json:"branchIds"`
+	Runs      []Run    `json:"runs"`
+	CreatedAt int64    `json:"createdAt"`
 	// StatusID is the task's status; StatusBy says who set it last: 'auto' (a step change) or 'user'.
 	StatusID string `json:"statusId"`
 	StatusBy string `json:"statusBy"`
@@ -548,6 +551,7 @@ type BranchRequest struct {
 // Handover is the text one stage leaves for the next. A draft (State 'draft', ToStepID empty) is open until
 // the task moves; a handed row is one stage move. Step names are snapshots; a step id of 'done' is past
 // the last step. Source is 'agent' (a session's handover call), 'run' (a finished run's summary) or 'user'.
+// State 'note' is a user note: Source 'user', FromStep* the stage it was written in, ToStep* empty.
 type Handover struct {
 	ID           string `json:"id"`
 	TaskID       string `json:"taskId"`
@@ -568,6 +572,111 @@ type Handover struct {
 
 type HandoversResult struct {
 	Handovers []Handover `json:"handovers"`
+}
+
+// AddNoteArgs appends a user note to a task's chain.
+type AddNoteArgs struct {
+	TaskID string `json:"taskId"`
+	Body   string `json:"body"`
+}
+
+// TaskProofStep is one step of an attached proof session, without its data.
+type TaskProofStep struct {
+	Ordinal     int    `json:"ordinal"`
+	Description string `json:"description"`
+	View        string `json:"view"`
+	Source      string `json:"source"`
+}
+
+// TaskProof is a closed proof session attached to a task. ProofID names the proof session;
+// SessionID the Kira session that attached it, empty for a user attach. Rev is the current revision.
+type TaskProof struct {
+	ProofID   string          `json:"proofId"`
+	Name      string          `json:"name"`
+	Summary   string          `json:"summary"`
+	ClosedAt  int64           `json:"closedAt"`
+	LinkedAt  int64           `json:"linkedAt"`
+	Source    string          `json:"source"`
+	SessionID string          `json:"sessionId"`
+	StepID    string          `json:"stepId"`
+	StepName  string          `json:"stepName"`
+	Rev       int             `json:"rev"`
+	Pending   bool            `json:"pending"`
+	Steps     []TaskProofStep `json:"steps"`
+}
+
+type TaskProofsResult struct {
+	Proofs []TaskProof `json:"proofs"`
+}
+
+// DbAuditLimit is one limit an exemption request asks to lift, with its configured threshold.
+type DbAuditLimit struct {
+	Name      string `json:"name"`
+	Threshold string `json:"threshold"`
+}
+
+// DbAuditApproval is one approval raised inside a Kira DB call. Outcome is pending, approved,
+// denied, timedOut, abandoned, queueFull, tooLarge or heldFull.
+type DbAuditApproval struct {
+	ID              string         `json:"id"`
+	Subject         string         `json:"subject"`
+	Reason          string         `json:"reason"`
+	Stage           string         `json:"stage"`
+	Outcome         string         `json:"outcome"`
+	RaisedAt        int64          `json:"raisedAt"`
+	ResolvedAt      *int64         `json:"resolvedAt"`
+	ExemptionLimits []DbAuditLimit `json:"exemptionLimits"`
+	ExemptionReason string         `json:"exemptionReason"`
+}
+
+// DbAuditEntry is one tool call of an agent session on the Kira DB session server. Statement is
+// masked (no literals); Status is running, ok, error, refused or cancelled.
+type DbAuditEntry struct {
+	ID                 string            `json:"id"`
+	SessionID          string            `json:"sessionId"`
+	StepID             string            `json:"stepId"`
+	StepName           string            `json:"stepName"`
+	Tool               string            `json:"tool"`
+	ConnectionName     string            `json:"connectionName"`
+	Mode               string            `json:"mode"`
+	Target             string            `json:"target"`
+	Statement          string            `json:"statement"`
+	StatementLen       int               `json:"statementLen"`
+	StatementWithheld  bool              `json:"statementWithheld"`
+	StatementTruncated bool              `json:"statementTruncated"`
+	Summary            string            `json:"summary"`
+	Status             string            `json:"status"`
+	Error              string            `json:"error"`
+	StartedAt          int64             `json:"startedAt"`
+	DurationMs         *int64            `json:"durationMs"`
+	Approvals          []DbAuditApproval `json:"approvals"`
+}
+
+type DbAuditResult struct {
+	Entries []DbAuditEntry `json:"entries"`
+}
+
+// DbAuditEvent is the payload of ChannelDbAudit: the task whose trail changed.
+type DbAuditEvent struct {
+	TaskID string `json:"taskId"`
+}
+
+// ProofChoice is a closed proof session no task holds yet.
+type ProofChoice struct {
+	ProofID  string `json:"proofId"`
+	Name     string `json:"name"`
+	ClosedAt int64  `json:"closedAt"`
+	Steps    int    `json:"steps"`
+}
+
+type ProofChoicesResult struct {
+	Proofs []ProofChoice `json:"proofs"`
+}
+
+// LinkProofArgs attaches or detaches one proof session.
+type LinkProofArgs struct {
+	TaskID  string `json:"taskId"`
+	ProofID string `json:"proofId"`
 }
 
 type UpdateHandoverArgs struct {
@@ -823,7 +932,7 @@ type CreateTaskArgs struct {
 	Title       string   `json:"title"`
 	Jira        *Jira    `json:"jira"`
 	HostURL     string   `json:"hostUrl"`
-	Notes       string   `json:"notes"`
+	Notes       string   `json:"notes"` // first note; '' adds none
 	CodeRepoIDs []string `json:"codeRepoIds"`
 	WorkflowID  string   `json:"workflowId"`
 	// Bases maps a code repo id to the base of its branch; a missing repo starts from main.
@@ -838,7 +947,6 @@ type TaskPatch struct {
 	ClearJira bool    `json:"clearJira"`
 	HostURL   *string `json:"hostUrl"`
 	Est       *string `json:"est"`
-	Notes     *string `json:"notes"`
 	Color     *int    `json:"color"`
 	Kind      *string `json:"kind"` // 'task' | 'parked'
 	// StatusID moves the task to that status by hand.
@@ -1148,6 +1256,46 @@ type ReviewAgentLaunch struct {
 // ForwardReviewResult counts the open review comments pasted into the review agent.
 type ForwardReviewResult struct {
 	Count int `json:"count"`
+}
+
+// PanelForwardItem is one pending task panel edit. Kind is note, handover, link, proof or field.
+type PanelForwardItem struct {
+	Key   string `json:"key"`
+	Kind  string `json:"kind"`
+	Label string `json:"label"`
+	At    int64  `json:"at"`
+}
+
+// ForwardTarget is a running agent session that takes forwarded panel edits.
+type ForwardTarget struct {
+	SessionID string `json:"sessionId"`
+	Badge     string `json:"badge"`
+}
+
+// PanelForward is the offer to send pending panel edits to the agents running in the task's step.
+// Targets take a message; Unreachable counts running sessions that take none (background runs).
+// Preview is the exact message.
+type PanelForward struct {
+	StepID      string             `json:"stepId"`
+	StepName    string             `json:"stepName"`
+	Items       []PanelForwardItem `json:"items"`
+	Targets     []ForwardTarget    `json:"targets"`
+	Unreachable int                `json:"unreachable"`
+	Dropped     int                `json:"dropped"`
+	Preview     string             `json:"preview"`
+}
+
+// PanelForwardFailure is a session a forward did not reach.
+type PanelForwardFailure struct {
+	SessionID string `json:"sessionId"`
+	Error     string `json:"error"`
+}
+
+// PanelForwardResult says which sessions took the forward, which had ended and which failed.
+type PanelForwardResult struct {
+	Sent   []string              `json:"sent"`
+	Ended  []string              `json:"ended"`
+	Failed []PanelForwardFailure `json:"failed"`
 }
 
 // ReviewForwardText is the message ForwardReviewComments would send, composed for copying.

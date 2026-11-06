@@ -5,12 +5,10 @@ vars:
   BIN_DIR: "bin"
   # This repository has exactly one package manager (docs/ARCHITECTURE.md's Stack section).
   PACKAGE_MANAGER: '{{.PACKAGE_MANAGER | default "bun"}}'
-  # 9246, not Kira Studio's 9245 — the two dev servers must be able to run side by side.
   VITE_PORT: '{{.WAILS_VITE_PORT | default 9246}}'
   # The Bun workspace root: one lockfile, one node_modules, for every app and package.
   WORKSPACE_ROOT: '{{.ROOT_DIR}}/../..'
-  # Same "build/config.yml's info.version is the single source" convention as Kira Studio's own
-  # Taskfile.yml.
+  # build/config.yml's info.version is the single source of the app version.
   APP_VERSION:
     sh: |
       v=$(sed -n 's/^  version: *"\([^"]*\)".*/\1/p' "{{.ROOT_DIR}}/build/config.yml" | head -1)

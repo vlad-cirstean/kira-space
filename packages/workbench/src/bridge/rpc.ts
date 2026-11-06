@@ -18,7 +18,7 @@ import { toCodedError } from './codedError';
 
 // Wails delivers a bound method's error as a RuntimeError whose .message is
 // ipcerr.Error's own JSON encoding and whose .cause is that same {code, message} as an object
-// (apps/kira-studio/internal/bridge's ipcerr package + Wails' bindings.go/transport_http.go).
+// (apps/kira-space/internal/bridge's ipcerr package + Wails' bindings.go/transport_http.go).
 // Unwrapped once, here, so every consumer keeps reading `err.message` for display and `err.code`
 // for branching.
 // `details` — ipcerr.Error's own optional `json.RawMessage` field — is carried through

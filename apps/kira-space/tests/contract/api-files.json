@@ -1,0 +1,58 @@
+{
+  "ApiConfigService.View": {
+    "dir": "<space>/config/api",
+    "files": [
+      {
+        "file": "orders-api.collection.yaml",
+        "kind": "collection",
+        "lastGood": true,
+        "name": "Orders API",
+        "path": "<space>/config/api/orders-api.collection.yaml",
+        "problem": {
+          "line": 13,
+          "message": "The item ID list is used twice. Each item ID is unique in the file."
+        }
+      }
+    ],
+    "secrets": [
+      {
+        "name": "orders.token",
+        "referenced": true,
+        "set": false
+      }
+    ],
+    "storage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    }
+  },
+  "CollectionsService.List": {
+    "collections": [
+      {
+        "createdAt": "<time>",
+        "file": "orders-api.collection.yaml",
+        "id": "<id:1>",
+        "name": "Orders API",
+        "sortOrder": 0,
+        "updatedAt": "<time>"
+      }
+    ],
+    "items": [
+      {
+        "collectionId": "<id:1>",
+        "createdAt": "<time>",
+        "id": "<id:2>",
+        "kind": "request",
+        "method": "GET",
+        "name": "List orders",
+        "parentId": null,
+        "protocol": "http",
+        "sortOrder": 0,
+        "updatedAt": "<time>",
+        "url": "{{base_url}}/echo?list=1"
+      }
+    ]
+  }
+}

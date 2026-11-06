@@ -12,6 +12,8 @@ Keychain, Colima for containers. A Linux sandbox/container session is the constr
 restriction in this file assumes Linux unless its own section says otherwise. Check once, before
 assuming a constraint below applies to the current session.
 
+Container sessions have a Claude login via env. Never assume none: verify with the probe in "Real `claude` tests".
+
 ## The user cannot run anything in the sandbox
 
 No shell, commands, kill, manual cleanup, tests or scripts in this container. An agent runs it, or
@@ -66,25 +68,33 @@ needs.
 
 ## Presentation screenshots and site check (P280)
 
-- `bun run screenshots` rebuilds both `frontend/dist` (test bundles), then captures six shots in
-  WebKit into `screenshots/`. For Studio only: `bun run build:test:studio && bunx playwright test
-  --config=apps/kira-studio/playwright.config.ts --project=screenshots`; same pattern for Space. Never run it beside a UI suite in the same checkout. Not in hooks, CI or
-  the Pages Action. Run it by hand when a shown UI changes, then commit the PNGs.
-- Rerun it and check `git status --porcelain screenshots/` is empty. A diff means a nondeterministic
-  input; fix the cause, never add tolerance.
+- `bun run screenshots` rebuilds `frontend/dist` (test bundle), then captures every shot in
+  WebKit into `screenshots/` (gitignored, nothing committed; CI builds the published set). One
+  spec: `bun run build:test && bunx playwright test --config=apps/kira-space/playwright.config.ts
+  --project=screenshots <file>`. Never run it beside a UI suite in the same checkout. Output is
+  lossless WebP, never PNG (guard N15).
+- `bun run site:shots:fill` checks every manifest id has its files: exit 1 on a missing one. In CI
+  it runs with `--fallback <dir>` and never fails (last-good copy, else placeholder).
+- Local site with no images: `bun run site:dev` serves placeholders and warns per missing file.
+  `site:build` fails on a missing image; `KIRA_SITE_SHOTS=placeholder bun run site:build` uses
+  placeholders. For real images run `bun run screenshots` first.
+- Add a shot: an entry in `site/src/data/shotCapture.ts`, copy in `site/src/data/shots.ts`, a
+  `shoot(page, '<id>', consoleErrors)` call in the spec, a `<DocShot id="<id>" />` or hero use.
+- Determinism check: run `bun run screenshots` twice and `cmp` every file in `screenshots/`. A diff
+  means a nondeterministic input; fix the cause, never add tolerance.
 - Shot flows: `apps/*/tests/screenshots/*.shot.ts`. A shot fails on a console error, so a mocked
   channel without a fixture (`E_FIXTURE_MISS`, HTTP 422) shows up as one; add the snapshot.
 - `bun run site:check` builds the site, then runs the 375 px and 1280 px WebKit checks.
   `bun run site:dev` serves it locally.
 - Site visual baselines (`site/tests/visual.spec.ts-snapshots/`) are recorded on Linux in this
-  sandbox and skipped elsewhere. Refresh only for an intended change:
+  sandbox and skipped elsewhere. They stay PNG: Playwright `toHaveScreenshot` writes PNG only. Refresh only for an intended change:
   `bunx playwright test --config=site/playwright.config.ts visual --update-snapshots` (after
   `bun run site:build`).
 - `bun run site:build` runs `astro check`, then the build. Root `lint` runs `site/scripts/check-docs.ts`
   (docs style lint); run it alone with `bun site/scripts/check-docs.ts`. Its spec runs in `test:unit`.
   A `sources:` path that does not exist fails lint.
 
-## Docker (for `packages/db-fixtures/`'s container fixtures, used directly by `apps/kira-studio/tests/e2e-real/`, and Docker flow tests)
+## Docker (for `packages/db-fixtures/`'s container fixtures, used directly by `apps/kira-space/tests/e2e-real/studio/`, and Docker flow tests)
 
 - **Claude Code on the web's Linux containers**: `docker` is preinstalled but the daemon isn't
   running and there's no systemd. Start it directly, as root: `nohup dockerd > /tmp/dockerd.log 2>&1 &
@@ -93,7 +103,7 @@ needs.
 - **The Docker module's real-engine test needs the daemon up** (P200): `go test -race -v
   ./internal/docker/... ./internal/shell/...`; `TestEngine` skips without `dockerd`, so confirm it
   shows `--- PASS`, not `SKIP`.
-- **Studio Docker flow tests need the daemon up too**; see "Kira Studio flow
+- **Studio Docker flow tests need the daemon up too**; see "Studio flow
   suites (P232)" below.
 - **The other dev environment (macOS) uses Colima** (`colima start`) — not `dockerd` directly, and
   no systemd there either.
@@ -114,29 +124,29 @@ needs.
 - **Bun's `testcontainers` integration hangs indefinitely in this sandbox** on images that pull and
   run fine under plain Node with the identical image (confirmed fine on real hardware — a Bun-here
   quirk, not a real bug). Postgres is a confirmed instance. Workaround, already applied in
-  `apps/kira-studio/tests/e2e-real/` (`support/postgres.ts`, `support/mariadb.ts`): invoke
+  `apps/kira-space/tests/e2e-real/studio/` (`support/postgres.ts`, `support/mariadb.ts`): invoke
   Playwright via its plain Node CLI entrypoint (`node node_modules/.bin/playwright test
   --project=e2e-real`), never `bunx playwright test`. **No vendored Node runtime exists**
   to bundle a standalone capture script against. Capturing a
   genuinely new `tests/ui/` fixture shape needs a one-off capture mode in
-  `apps/kira-studio/internal/ipcfixture`'s Go generator, not yet built (only the six committed
+  `apps/kira-space/internal/ipcfixture`'s Go generator, not yet built (only the six committed
   per-adapter fixture generators exist, see below).
 
-## `apps/kira-studio/tests/ipc/` — building and testing in this environment (P50, updated P57, backend moved to Go P58f)
+## `apps/kira-space/tests/ipc/` — building and testing in this environment (P50, updated P57, backend moved to Go P58f)
 
 See `docs/ARCHITECTURE.md`'s Testing section for what this tier is and why its fixture is generated
 rather than hand-written. This section is only about running it here.
 
 - **Neither half needs `xvfb`** — no Electron, no native window anywhere in the repo. The frontend
-  half (`bun run test:ipc:fe:studio`) drives headless Chromium against a static file server, the same way
+  half (`bun run test:ipc:fe`) drives headless Chromium against a static file server, the same way
   `tests/ui/` does.
 - **The backend half is Go, not a bundled TypeScript spec** — no esbuild step, no vendored Node
-  runtime. `apps/kira-studio/internal/ipcfixture`'s per-adapter Go test (`clickhouse_test.go`,
+  runtime. `apps/kira-space/internal/ipcfixture`'s per-adapter Go test (`clickhouse_test.go`,
   `kafka_test.go`, `mariadb_test.go`, `mysql_test.go`, `redis_test.go`, `sqs_test.go` — postgres and
   sqlite generate no fixture of their own, see `docs/ARCHITECTURE.md`) drives the real
   `adapterhost`/`adapters` stack against a real container and writes
-  `apps/kira-studio/tests/ipc/<adapter>/<adapter>.fixture.ts`.
-- **Regenerating a fixture**: `KIRA_IPC_FIXTURES=write go test ./apps/kira-studio/internal/ipcfixture/...`
+  `apps/kira-space/tests/ipc/<adapter>/<adapter>.fixture.ts`.
+- **Regenerating a fixture**: `KIRA_IPC_FIXTURES=write go test ./apps/kira-space/internal/ipcfixture/...`
   writes each `<adapter>.fixture.ts` via `write.go`'s `mustMarshalNoEscape` (`SetEscapeHTML(false)` +
   typed structs, never maps, since Go's `encoding/json` otherwise escapes HTML and sorts map keys).
   Run `bunx biome check --write` on the result afterward — formatting only, content unchanged.
@@ -148,13 +158,13 @@ rather than hand-written. This section is only about running it here.
   host:port is frozen the same way ClickHouse's `.inner_id.<uuid>` is.
 - **There is no one-off capture mode yet** (P58f D15's own gap, see the Docker section above):
   `KIRA_IPC_FIXTURES=write` only regenerates the six fixtures already committed under
-  `apps/kira-studio/tests/ipc/`. Capturing a fresh shape for a new `tests/ui/` fixture needs that
+  `apps/kira-space/tests/ipc/`. Capturing a fresh shape for a new `tests/ui/` fixture needs that
   mode written first.
 
 ## Kibana and Elasticsearch — testing in this environment (P424)
 
 - Fixture starts Elasticsearch plus Kibana (`kibana:9.5.3`, `elasticsearch:9.5.3`, plain Hub names; `bun run test:images` pulls both) on one Docker network. Needs about 1.5 GB of memory. Cold start takes 1 to 3 minutes; seeding adds seconds. Never run two heavy jobs beside it: a concurrent `vue-tsc` run OOM-killed Kibana (exit 137) on a 16 GB box.
-- Run from `apps/kira-studio`: `CGO_ENABLED=1 go test ./internal/adapters/kibana/ -count=1 -timeout 40m` (conformance, search, KQL, interval). Complete suite: `KIRA_TEST_MATRIX=1 ... -run TestKibana_AuthMatrix`. Flow test: `go test ./internal/flows/dbflow -run TestKibanaDiscoverJourney`; `KIRA_CONTRACT=write` regenerates `tests/contract/kibana-discover.json`.
+- Run from `apps/kira-space`: `CGO_ENABLED=1 go test ./internal/adapters/kibana/ -count=1 -timeout 40m` (conformance, search, KQL, interval). Complete suite: `KIRA_TEST_MATRIX=1 ... -run TestKibana_AuthMatrix`. Flow test: `go test ./internal/flows/dbflow -run TestKibanaDiscoverJourney`; `KIRA_CONTRACT=write` regenerates `tests/contract/kibana-discover.json`.
 - Compat overrides: `KIRA_COMPAT_IMAGE_KIBANA` and `KIRA_COMPAT_IMAGE_ELASTICSEARCH`. Keep both on the same version.
 - Elasticsearch runs with `cluster.routing.allocation.disk.threshold_enabled=false`. On a near-full disk the watermark otherwise leaves every shard unassigned and Kibana hangs on startup.
 - A low-privilege Kibana user on 9.x gets no version from `/api/status`; tests do not assert one for that user.
@@ -166,7 +176,7 @@ See `docs/ARCHITECTURE.md`'s ClickHouse section for the adapter's own design fac
 - This sandbox's `ulimit -Hn` is fixed at 20000 and can't be raised even as root (a plain `docker
   run` with no custom ulimits works fine), which broke the old JS tier: `@testcontainers/clickhouse`
   hardcoded `.withUlimits({nofile: {hard: 262144, soft: 262144}})`. The Go side
-  (`apps/kira-studio/internal/adapters/testsupport/clickhouse.go`, used by both
+  (`apps/kira-space/internal/adapters/testsupport/clickhouse.go`, used by both
   `internal/adapters/clickhouse` and `internal/ipcfixture`) needs no equivalent workaround:
   `testcontainers-go/modules/clickhouse` doesn't hardcode a restrictive `Ulimits`, so this sandbox's
   ceiling never becomes a problem. If a future container image or module version reintroduces one,
@@ -174,35 +184,35 @@ See `docs/ARCHITECTURE.md`'s ClickHouse section for the adapter's own design fac
 
 ## SQLite — testing in this environment (P35)
 
-- Coverage lives in `apps/kira-studio/internal/adapters/sqlite/*_test.go` (`bun run test:go`), no
+- Coverage lives in `apps/kira-space/internal/adapters/sqlite/*_test.go` (`bun run test:go`), no
   Docker: `modernc.org/sqlite` (pure Go, no cgo) against a real `t.TempDir()` file.
-  `packages/db-fixtures/support/sqlite.ts` survives regardless, since `apps/kira-studio/tests/e2e-real/`
+  `packages/db-fixtures/support/sqlite.ts` survives regardless, since `apps/kira-space/tests/e2e-real/studio/`
   still reads it directly.
-- `apps/kira-studio/tests/e2e-real/sqlite-real.spec.ts` runs unconditionally, Docker-free by design
+- `apps/kira-space/tests/e2e-real/studio/sqlite-real.spec.ts` runs unconditionally, Docker-free by design
   — a real `-tags server` Go binary, every adapter served in-process, and a real temp-file database
-  driven by a plain Playwright tab. Prerequisites (`scripts/setup.sh`, `bun run build:studio`, and
+  driven by a plain Playwright tab. Prerequisites (`scripts/setup.sh`, `bun run build`, and
   `go build -tags server`) are memoized per worker process by
-  `apps/kira-studio/tests/e2e-real/fixtures.ts`'s `buildPrerequisites()`.
+  `apps/kira-space/tests/e2e-real/studio/fixtures.ts`'s `buildPrerequisites()`.
 
 ## Secrets / `KIRA_INSECURE_SECRETS` (P25, moved to Go in P52/P57)
 
 See `docs/ARCHITECTURE.md`'s Storage section for the cipher, the key and the envelope. Here:
 
 - **There is no Linux keychain backend at all** (no `gnome-keyring`/`kwallet` probing) — set
-  `KIRA_INSECURE_SECRETS=1` before launching the app (`bun run dev:studio`, the Go binary directly, or
+  `KIRA_INSECURE_SECRETS=1` before launching the app (`bun run dev`, the Go binary directly, or
   `t.Setenv("KIRA_INSECURE_SECRETS", "1")` in a Go test) on any Linux box to opt into the dev-only
-  fallback. `apps/kira-studio/tests/e2e-real/`'s fixture sets it for every real-backend test. Kira Space needs it on Linux too (P447: saved script secrets); its flow harness sets it.
+  fallback. `apps/kira-space/tests/e2e-real/studio/`'s fixture sets it for every real-backend test. Kira Space needs it on Linux too (P447: saved script secrets); its flow harness sets it.
 - Without it, Linux secret storage is **unavailable** — a password-bearing save fails visibly
   rather than silently falling back to plaintext. Deliberate, not a bug to work around.
 - **On macOS the app ignores the variable outright** — it uses the real Keychain, so leaving it set
-  accidentally can never weaken it. `apps/kira-studio/tests/ui/secrets.spec.ts`'s "keychain
+  accidentally can never weaken it. `apps/kira-space/tests/ui/studio/secrets.spec.ts`'s "keychain
   available" scenario guards this.
 
 ## The git module — running and testing it here (G1-G34, updated P79; moved to Kira Space, P100)
 
 See `docs/ARCHITECTURE.md`'s Git module section for what it is and why. This section is only about
 running it here. **As of v1.9 P100, the whole module lives under `apps/kira-space`, not
-`apps/kira-studio`** — every path and env var below was retargeted at Part 1/Part 2, not left as
+`apps/kira-space`** — every path and env var below was retargeted at Part 1/Part 2, not left as
 historical prose.
 
 - **`go test ./apps/kira-space/internal/git...` needs a real `git` on `PATH` and nothing else** —
@@ -212,14 +222,14 @@ historical prose.
   informatively.
 - **`KIRA_SPACE_HOME` scopes the instance lock, not just the database.** The single-instance flock
   is `${KIRA_SPACE_HOME}/app.lock`, so two `KIRA_SPACE_HOME`s are two fully independent backends
-  and a test never contends with a `bun run dev:space` session. Anything needing a server builds
+  and a test never contends with a `bun run dev` session. Anything needing a server builds
   one over its own temp `KIRA_SPACE_HOME` — never the fixed path.
-  Never `KIRA_HOME` (Kira Studio's own env var) — the two apps' homes are fully separate as of
-  P100, so setting the wrong one silently talks to the wrong app's storage, or none at all.
-- **A test binary panics if it resolves an app home with `KIRA_HOME`/`KIRA_SPACE_HOME` unset** (`kirapaths.Home`, non-`production` builds). A package whose tests reach one calls `testx.RunWithTempHomes` from `TestMain`.
-- **`bun run dev:space` runs Kira Space's own dev loop** (`cd apps/kira-space && wails3 task dev`)
-  — a separate native window/process from `bun run dev:studio`'s Kira Studio, on its own Vite dev-server
-  port (9246, beside Kira Studio's 9245) so both can run at once without colliding.
+  The Studio modules use the same home (`studio.db` beside `kira.db`). `KIRA_HOME` is read only by the
+  one-time fold of the retired `~/.kira-studio/` (`homefold.LegacyHome`); a set `KIRA_SPACE_HOME` without
+  `KIRA_HOME` folds nothing.
+- **A test binary panics if it resolves an app home with `KIRA_SPACE_HOME` unset** (`kirapaths.Home`, non-`production` builds). A package whose tests reach one calls `testx.RunWithTempHomes` from `TestMain`.
+- **`bun run dev` runs the one dev loop** (`cd apps/kira-space && wails3 task dev`): native window,
+  Vite dev server on port 9246.
 - **The perf probes are opt-in and assert nothing.**
   `KIRA_GIT_PERF=1 go test -run 'TestGraphStreamPerf|TestG8PerfBaseline' ./apps/kira-space/internal/flows/gitflow/ -v`
   prints one `key=value` line per probe. No threshold assertion, deliberately: this container's
@@ -232,14 +242,14 @@ historical prose.
   `gitGraphClose`. Spec: `git-graph-plane.spec.ts`.
 - **Git contract fixtures have no version.** Regenerating needs no bump. `KIRA_CONTRACT=write` rewrites
   `graphChunkFrame.{bin,json}` with a random tmp path: `git checkout` them unless regenerating on purpose.
-- **`bun run perf:http:studio` probes the HTTP response viewer** (P160, `tests/perf/`, Playwright
-  project `perf`, in no suite script). Builds the production bundle (`build:studio` overwrites
-  `frontend/dist`; `test:ui:studio` rebuilds its own test bundle). `KIRA_PERF_RUNS` (default 3) runs
+- **`bun run perf:http` probes the HTTP response viewer** (P160, `tests/perf/`, Playwright
+  project `perf`, in no suite script). Builds the production bundle (`build` overwrites
+  `frontend/dist`; `test:ui` rebuilds its own test bundle). `KIRA_PERF_RUNS` (default 3) runs
   per case, `KIRA_PERF_CASES=json,text-1line` narrows. 12 cases: 4 body shapes x 2.4/5/12 MB. Gate:
   run only at `load1 <= 1.0` (`/proc/loadavg`); each run line prints `load1` (includes the probe's own browser, ~1.0 extra, so a reading up to ~2 during a run is normal; check the gate before starting).
   Output is `key=value` per run plus a median `summary` per case. RSS is Linux-only and sums every
   browser process under the test worker.
-- **`bun run perf:parse:studio` probes every large-input parse caller** (P163,
+- **`bun run perf:parse` probes every large-input parse caller** (P163,
   `tests/perf/parse-callers.spec.ts`, same `perf` project and gate). Cases: `req-body-json`,
   `req-body-xml`, `grpc-json` (0.5/5 MB, `KIRA_PERF_SIZES_MB`), `console-format` (64/236/1024 KB),
   `doc-fieldnames`, `console-copy-all-json|shell`, `pure-fns` (pure callers timed in-page via a
@@ -248,7 +258,7 @@ historical prose.
   the Playwright WebKit transport breaks on any message over 512 KB. A before run needs a second
   worktree at the older commit with the probe files copied over. This sandbox's `load1` swings 1-8
   with nothing of ours running (host steal): read the per-run `load1`, rerun a case that matters.
-- **`bun run perf:documents:studio` probes the Documents list scroll** (P161, `tests/perf/documents-scroll.spec.ts`,
+- **`bun run perf:documents` probes the Documents list scroll** (P161, `tests/perf/documents-scroll.spec.ts`,
   same `perf` project). 5 000 Mongo documents, ~160 px expanded rows, real wheel input. Cases `ladder`
   (momentum), `flick` (80 x 9 600 px), `flick-up`; `KIRA_PERF_CASES`, `KIRA_PERF_RUNS` as above. Prints
   frame p50/p95/max, frames over 50 ms and rendered-band coverage per run. Same gate. Run through the
@@ -262,9 +272,8 @@ historical prose.
   verification scope" note fixes the list and the reason. The unscoped tree stays worth running
   occasionally as a backstop, not per phase.
 - **A fresh worktree fails `bun run typecheck`/the pre-commit hook on any change**, even after
-  `bun install` — `typecheck:web:studio`/`typecheck:space-web`/`typecheck:tests:studio`/
-  `typecheck:space-tests`/`typecheck:unit:studio`/`typecheck:space-unit` all resolve one of the two
-  apps' frontends' Wails-generated `@bindings/*` modules, and `go build ./...` (pre-push) fails
+  `bun install` — `typecheck:web`/`typecheck:tests`/
+  `typecheck:unit` all resolve the frontend's Wails-generated `@bindings/*` modules, and `go build ./...` (pre-push) fails
   separately on `//go:embed all:frontend/dist` finding no built frontend. **Run
   `sh scripts/prepare-worktree.sh` once per fresh worktree** (below) — it closes both gaps plus the
   Linux-only `wails3` CLI build deps, idempotently. `scripts/prepare-dev-environment.sh` runs it
@@ -333,10 +342,10 @@ historical prose.
   metrics tickers), and Kira Space's own `internal/gitclient`'s FSEvents watcher) is behind a
   `darwin && cgo` build tag with a real, working `!darwin || !cgo` companion, invisible to a Linux
   build; `modernc.org/sqlite` (the sqlite adapter and each app's own storage) stays cgo-free on
-  every platform. `go test ./apps/kira-studio/internal/...` /
-  `go build ./apps/kira-studio/internal/...` (and the `apps/kira-space` equivalents) need no C
+  every platform. `go test ./apps/kira-space/internal/...` /
+  `go build ./apps/kira-space/internal/...` (and the `apps/kira-space` equivalents) need no C
   compiler in this container as a result. Only each app's own `main` package imports Wails and
-  needs the GTK/WebKit headers, so prefer `./apps/kira-studio/internal/...` or
+  needs the GTK/WebKit headers, so prefer `./apps/kira-space/internal/...` or
   `./apps/kira-space/internal/...` for a fast loop.
 - **`GOOS=darwin` cross-compiles here only with `CGO_ENABLED=0`.** A pure-Go package builds and
   vets for `darwin/arm64` from this container (`GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build
@@ -398,7 +407,7 @@ historical prose.
 ## Kira Space real backend in a sandbox — server-tag recipe (P126)
 
 Build: `go build -tags server ./apps/kira-space/...` (Wails v3/Go's own `server` platform, above),
-temp `KIRA_SPACE_HOME`, `WAILS_SERVER_HOST=127.0.0.1`. Run `bun run build:space-mobile` first: `main.go` embeds `frontend/dist-mobile`.
+temp `KIRA_SPACE_HOME`, `WAILS_SERVER_HOST=127.0.0.1`. Run `bun run build:mobile` first: `main.go` embeds `frontend/dist-mobile`.
 
 - **Page boots with `/?window=<uuid>`**: the renderer calls `WindowsService.Ensure`, which creates
   the `windows` row. No seeding. Import repos via `CodeWorkspaceService.ImportRepo`.
@@ -427,16 +436,16 @@ temp `KIRA_SPACE_HOME`, `WAILS_SERVER_HOST=127.0.0.1`. Run `bun run build:space-
   set in the server's env is lost. Point `HOME` at a dir whose `.bash_profile` prepends the fake bin dir,
   then confirm with `/proc/<pid>/cmdline`. Discovery uses `exec.LookPath` for `gh`.
 - **Review smoke seeding** (P150): `code_repos.repo_id` is the repo path; copy sample workflows into
-  `<home>/workflows`; task rows need `entry_step_id`. To patch git discovery without touching source,
+  `<home>/config/workflows`; task rows need `entry_step_id`. To patch git discovery without touching source,
   build with a `-overlay` JSON replacing the discovery file.
 - **In harness scripts never `pkill -f` or `pgrep -f` a pattern that appears in your own command line**
   (e.g. `claude --session-id`): it kills the calling shell. Anchor it (`pgrep -f '^claude --session-id'`).
 
-## Kira Studio flow suites (P232)
+## Studio flow suites (P232)
 
-- Go flows: `bun run test:flows:studio`. Complete suite: `bun run test:flows:studio:complete`
+- Go flows: `bun run test:flows`. Complete suite: `bun run test:flows:complete`
   (`KIRA_FLOW_COMPLETE=1 KIRA_FLOW_DOCKER=require`, 20 min timeout). Real-backend Playwright:
-  `bun run test:e2e-real:studio`, which builds `apps/kira-studio/bin/flowservers` (gitignored), the
+  `bun run test:e2e-real`, which builds `apps/kira-space/bin/flowservers` (gitignored), the
   HTTP, HTTPS and gRPC servers the Go flows also use.
 - Run `go test` with `CGO_ENABLED=1`.
 - Fake `claude` also plays `claude mcp list` (reads `$HOME/.claude.json`, records `mcp-list-<n>.args`) and, for `--setting-sources user`, finds tools on those servers within `--settings` `allowedMcpServers`. A test that changes the config sets `claude.SetMCPListTTL(0)`.
@@ -452,10 +461,10 @@ temp `KIRA_SPACE_HOME`, `WAILS_SERVER_HOST=127.0.0.1`. Run `bun run build:space-
 
 ## Kubernetes flow tests (P439)
 
-- `go test ./apps/kira-studio/internal/flows/kubeflow` needs no cluster and no kubectl. `flowharness.KubeFake`
+- `go test ./apps/kira-space/internal/flows/kubeflow` needs no cluster and no kubectl. `flowharness.KubeFake`
   is an HTTPS API server; `KubeFake.WriteKubeconfig` writes the kubeconfig and the exec-plugin script.
 - The harness reads PATH and KUBECONFIG from the process environment at call time (`kubeEnv`), so a test sets them with `t.Setenv`.
-- Rewrite `apps/kira-studio/tests/contract/kubernetes.json` with `KIRA_CONTRACT=write`, then rerun without it; the UI spec `kubernetes-module.spec.ts` reads the same file.
+- Rewrite `apps/kira-space/tests/contract/kubernetes.json` with `KIRA_CONTRACT=write`, then rerun without it; the UI spec `kubernetes-module.spec.ts` reads the same file.
 
 ## Contract fixtures (P249)
 
@@ -489,8 +498,8 @@ temp `KIRA_SPACE_HOME`, `WAILS_SERVER_HOST=127.0.0.1`. Run `bun run build:space-
 
 ## Kira Space flow suites (P231)
 
-- Go flows: `bun run test:flows:space`. Complete suite: `bun run test:flows:space:complete`
-  (`KIRA_FLOW_COMPLETE=1`, 20 min timeout). Real-backend Playwright: `bun run test:e2e-real:space`
+- Go flows: `bun run test:flows`. Complete suite: `bun run test:flows:complete`
+  (`KIRA_FLOW_COMPLETE=1`, 20 min timeout). Real-backend Playwright: `bun run test:e2e-real`
   (builds `apps/kira-space/bin/kira-space-server-test` and `bin/fakeclaude`, gitignored).
 - Fake `claude`/`gh`: the test binary or `fakeclaude` symlinked as `claude`/`gh`. Scenario JSON
   path in `KIRA_FAKE_SCEN`, call records (`.args`, `.cwd`, `.prompt`) in `KIRA_FAKE_DIR`.
@@ -516,22 +525,28 @@ popup never shows there. Call `openMainWindow(kira)` (`@workbench/testing/e2eRea
 
 Opt-in tests that run the real `claude` CLI and spend tokens. Never in CI, pre-commit or pre-push.
 
-- Own Go module per app: `apps/kira-space/tests/claude/`, `apps/kira-studio/tests/claude/`. Opt-in by absence:
+- Own Go module: `apps/kira-space/tests/claude/` (Studio's tests merged in at P537). Opt-in by absence:
   `go test ./...`, `lint:go`, CI and hooks stop at the nested `go.mod`; pre-push lints a changed nested module
   by `cd`-ing into it (`nested_go_mods` in `scripts/hook-scope.sh`), never tests it. No build tag, no env flag. Never add
   a root `go.work`: workspace mode pulls the modules into `./...`. After a Wails or Go bump run
-  `go mod tidy` in both modules.
-- Run: `bun run test:claude` (both), `test:claude:space`, `test:claude:studio`. Narrow with `go test` flags
-  appended: `bun run test:claude:space -run 'TestAdeHeadlessRun|TestAdeRebaseRun'`.
-- Compile check without spending: `bun run lint:claude` (golangci-lint in both modules).
+  `go mod tidy` in the module.
+- Run: `bun run test:claude` (whole module) or `test:claude:db` (DB MCP, Kubernetes, proof, smart-script rows). Narrow with `go test` flags
+  appended: `bun run test:claude -run 'TestAdeHeadlessRun|TestAdeRebaseRun'`.
+- Compile check without spending: `bun run lint:claude` (golangci-lint in the module).
 - Needs an authenticated `claude` on `PATH`. Tests use haiku (`--model haiku`, `ANTHROPIC_MODEL=haiku` for
   app-built launches), a temp `HOME`, `--max-budget-usd 0.05` and one-sentence prompts. A package preflight
   skips, not fails, when `claude` is missing or `claude -p` cannot run under the temp `HOME`.
+- Meant to run on this machine, cloud containers included. Auth comes from session env, not a credentials file.
+  Check auth with the probe: `claude -p "reply with: ok" --model haiku --max-budget-usd 0.05`. Output `ok` means
+  logged in. Never read, print or look for credential files or tokens. No `~/.claude/.credentials.json` and no
+  `ANTHROPIC_API_KEY` means nothing.
+- A preflight skip is not a pass. On skip, run the probe and investigate. Report skips as "skipped", never "passed".
+  "Not run: no login" is valid only after the probe itself fails; quote the probe's error line in the report.
 - Rule: after changing code in an area below, run that row before calling the change done. Append `-count=1`: `go test` caches a passing run and prints the old spend.
 - Resume rows (P279, CLI 2.1.296): a held `hold.sh` Bash call, app restart, Resume. Prompts say the call is safe to rerun and to inspect nothing first; haiku otherwise runs `ps`/`ls`, gets denied (no approval surface) and stops as blocked. The CLI's "interrupted" `tool_result` is not in the run log; the check is the shared Claude session id. Hand probe recipe: temp `HOME` with an onboarding-done `.claude.json`, parent `CLAUDE_CODE_SESSION_ID`, `CLAUDE_CODE_REMOTE_SESSION_ID`, `CLAUDECODE` unset, SIGKILL the child's process group mid tool call, then `claude -p --resume <id>`.
-- Agent config import and export (P454): `internal/agentport/**` or `internal/harness/claude/mcpinstall/**` changed: `bun run test:claude:space -count=1 -run 'TestAgentPortClaude|TestRealClaudeSettingsUntouched'`, plus Studio `TestDbMcpInstallRegisters` (shared `register`). No model call; real `claude mcp add-json`, `mcp list` and a temp `HOME`.
+- Agent config import and export (P454): `internal/agentport/**` or `internal/harness/claude/mcpinstall/**` changed: `bun run test:claude -count=1 -run 'TestAgentPortClaude|TestRealClaudeSettingsUntouched'`, plus Studio `TestDbMcpInstallRegisters` (shared `register`). No model call; real `claude mcp add-json`, `mcp list` and a temp `HOME`.
 - P444 (CLI 2.1.316): `TestSmartScriptRun/user_MCP_server_loads_through_claude` (hermetic off) runs real `claude mcp list` plus one haiku run, a few cents. Studio `app_MCP_server_loads_through_claude` is the hermetic case.
-- Hermetic launches (P455): `internal/harness/**`, `internal/agentcfg/servers.go`, `apps/*/internal/ade/launches.go`, `internal/scriptruns/**`: `bun run test:claude:space -run 'TestHermeticSession|TestAgentSettingsClaude|TestRealClaudeSettingsUntouched|TestSmartScriptRun|TestTerminalAgentHooks' -count=1` and `bun run test:claude:studio -run TestSmartScriptRun -count=1`. `TestHermeticSession` runs two haiku steps (hermetic, control with hermetic off), a few cents.
+- Hermetic launches (P455): `internal/harness/**`, `internal/agentcfg/servers.go`, `apps/*/internal/ade/launches.go`, `internal/scriptruns/**`: `bun run test:claude -run 'TestHermeticSession|TestAgentSettingsClaude|TestRealClaudeSettingsUntouched|TestSmartScriptRun|TestTerminalAgentHooks' -count=1` and `bun run test:claude:db -run TestSmartScriptRun -count=1`. `TestHermeticSession` runs two haiku steps (hermetic, control with hermetic off), a few cents.
 - Spend, measured on 2026-10-09 (CLI 2.1.295, haiku): `claude -p` results of the Space suite 0.014 USD, TUI sessions (about 4 at 1 to 2 haiku prompts) an estimated 0.02 USD, Studio suite under 0.01 USD, memory gate smoke a few cents, import smoke 0.14 USD (P211), memory docs test 0.01 USD (P276). Space suite about 75 s, Studio about 12 s. The Space run prints its measured `claude -p` spend. P279 (CLI 2.1.296): resume rows 0.0067 USD per run of the three (about 55 s), whole Space ADE and smart set 0.020 USD (about 156 s). P296: `comment` subtest of the memory docs test 0.006 USD (about 16 s), prompt-registry row of the Space suite 0.083 USD (about 427 s). P297 (CLI 2.1.302): `TestMemoryDistill` 0.03 USD (about 21 s), `TestMemoryDistillBridge` 0.03 USD (about 13 s), `TestMemoryMcpFollowsDocs` 0.022 USD (about 85 s), prompt-registry row 0.082 USD (about 444 s); `TestMemoryGate` now also checks rule kind (about 32 s). Eval subset round `round-p297-01` 1.50 USD (ledger `spend-p297.jsonl`, needs `KIRA_EVAL_PHASE_CAP_USD` above the run cap plus 2); a shallow clone must first `git fetch --depth=1 origin <corpus commit>`.
 - `scripts/docshistory` (docs chapter fold, P299): needs the logged-in `claude` CLI, builds `kira-space` itself
   (or `--binary`), gives each unit temp `KIRA_MEMORY_HOME`/`KIRA_SPACE_HOME` and never touches your memory DB.
@@ -543,18 +558,18 @@ Opt-in tests that run the real `claude` CLI and spend tokens. Never in CI, pre-c
 
 | Changed area (paths) | Command |
 |---|---|
-| Hook injection, shim, listener: `internal/harness/claude/hooks/**`, `internal/harness/settings.go`, `apps/kira-space/internal/ade/tracker.go`, `internal/terminal/bound.go` | `bun run test:claude:space -run 'TestTerminalAgentHooks\|TestHookPayloadContract\|TestShimInertForPlainClaude'` |
-| Claude config isolation and agent settings: anything that composes a `claude` argv or env (`internal/harness/claude/**`), `internal/agentcfg/**`, `apps/kira-space/internal/appwire/wire.go` | `bun run test:claude:space -run 'TestHermeticSession\|TestAgentSettingsClaude\|TestRealClaudeSettingsUntouched' -count=1` (about 100 s, under a cent of `claude -p`) |
-| ADE runs and sessions: `apps/kira-space/internal/{ade,adeflow}/**, internal/agentmcp/**, internal/mcpcall/**, internal/harness/claude/headless.go` | `bun run test:claude:space -run 'TestAdeHeadlessRun\|TestAdeStepResults\|TestAdeManualSession\|TestAdeAdHocSession\|TestAdeRebaseRun\|TestAdeResumeRun\|TestAdeResumeLost\|TestAdeReviewStep\|TestAdeReviewLost\|TestAdeSandbox\|TestAdeSandboxReadOnly\|TestAdeBranchRequest\|TestAdeReportArtifacts'` (`TestAdeBranchRequest` holds the request 65 s, about 90 s, 0.009 USD: the CLI cuts an MCP call at 60 s unless `MCP_TOOL_TIMEOUT` is set, which Kira does for every launch) |
-| Agent sandbox: `internal/agentsandbox/**`, `apps/kira-space/internal/ade/sandbox.go` | `bun run test:claude:space -run 'TestAdeSandbox\|TestAdeSandboxReadOnly' -count=1`. Linux checks the second layer (flags, note, `enforced 0`); the macOS half is in the Mac checklist below. |
-| Smart scripts: `internal/{agentmcp,mcpcall,scriptruns,scripts}/**` (incl. `scheduler.go`, `confirm.go`), `internal/harness/claude/headless.go`, `apps/kira-space/internal/ade/automation.go` | `bun run test:claude:space -run 'TestSmartScriptRun\|TestSmartScriptResume'` and `bun run test:claude:studio -run TestSmartScriptRun` |
-| Memory MCP and install: `internal/memory/memorycli/**`, `internal/memory/mcpserver/**`, `internal/memory/memfmt/**`, `internal/mcpcall/**`, `apps/kira-space/internal/appwire/memoryops.go`, `internal/harness/claude/mcpinstall/**`, `apps/kira-space/internal/bridge/memory.go`, `apps/kira-space/internal/bridge/memorydistill.go` | `bun run test:claude:space -run 'TestMemoryMcpThroughClaude\|TestMemoryMcpFollowsDocs\|TestMemoryInstallRegisters\|TestMemoryDistill\|TestMemoryDistillBridge'` (`TestMemoryDistill` covers `ingest_files` with `distill` true, P297; `TestMemoryDistillBridge` covers the UI bridge call, P285 Part 4, P297; `TestMemoryDistillRewrite` covers mode rewrite, P315, about 0.01 USD) |
-| Memory gate: `internal/memory/{agentrunner.go,gate*.go,service.go}`, `internal/harness/claude/structured.go` | `bun run test:claude:space -run TestMemoryGate` |
-| Memory import and ingest: `internal/memory/importer/**`, `internal/harness/claude/structured.go` | `bun run test:claude:space -run 'TestMemoryImport\|TestMemoryIngest\|TestMemoryDistill\|TestMemoryDistillBridge\|TestMemoryDistillTrivia'` (import about 50 s, 0.14 USD, P211; ingest P274; the `TestMemoryDistill` prefix also runs `TestMemoryDistillRewrite`, P315) |
+| Hook injection, shim, listener: `internal/harness/claude/hooks/**`, `internal/harness/settings.go`, `apps/kira-space/internal/ade/tracker.go`, `internal/terminal/bound.go` | `bun run test:claude -run 'TestTerminalAgentHooks\|TestHookPayloadContract\|TestShimInertForPlainClaude'` |
+| Claude config isolation and agent settings: anything that composes a `claude` argv or env (`internal/harness/claude/**`), `internal/agentcfg/**`, `apps/kira-space/internal/appwire/wire.go` | `bun run test:claude -run 'TestHermeticSession\|TestAgentSettingsClaude\|TestRealClaudeSettingsUntouched' -count=1` (about 100 s, under a cent of `claude -p`) |
+| ADE runs and sessions: `apps/kira-space/internal/{ade,adeflow}/**, internal/agentmcp/**, internal/mcpcall/**, internal/harness/claude/headless.go` | `bun run test:claude -run 'TestAdeHeadlessRun\|TestAdeStepResults\|TestAdeManualSession\|TestAdeAdHocSession\|TestAdeRebaseRun\|TestAdeResumeRun\|TestAdeResumeLost\|TestAdeReviewStep\|TestAdeReviewLost\|TestAdeSandbox\|TestAdeSandboxReadOnly\|TestAdeBranchRequest\|TestAdeReportArtifacts'` (`TestAdeBranchRequest` holds the request 65 s, about 90 s, 0.009 USD: the CLI cuts an MCP call at 60 s unless `MCP_TOOL_TIMEOUT` is set, which Kira does for every launch) |
+| Agent sandbox: `internal/agentsandbox/**`, `apps/kira-space/internal/ade/sandbox.go` | `bun run test:claude -run 'TestAdeSandbox\|TestAdeSandboxReadOnly' -count=1`. Linux checks the second layer (flags, note, `enforced 0`); the macOS half is in the Mac checklist below. |
+| Smart scripts: `internal/{agentmcp,mcpcall,scriptruns,scripts}/**` (incl. `scheduler.go`, `confirm.go`), `internal/harness/claude/headless.go`, `apps/kira-space/internal/ade/automation.go` | `bun run test:claude -run 'TestSmartScriptRun\|TestSmartScriptResume'` and `bun run test:claude:db -run TestSmartScriptRun` |
+| Memory MCP and install: `internal/memory/memorycli/**`, `internal/memory/mcpserver/**`, `internal/memory/memfmt/**`, `internal/mcpcall/**`, `apps/kira-space/internal/appwire/memoryops.go`, `internal/harness/claude/mcpinstall/**`, `apps/kira-space/internal/bridge/memory.go`, `apps/kira-space/internal/bridge/memorydistill.go` | `bun run test:claude -run 'TestMemoryMcpThroughClaude\|TestMemoryMcpFollowsDocs\|TestMemoryInstallRegisters\|TestMemoryDistill\|TestMemoryDistillBridge'` (`TestMemoryDistill` covers `ingest_files` with `distill` true, P297; `TestMemoryDistillBridge` covers the UI bridge call, P285 Part 4, P297; `TestMemoryDistillRewrite` covers mode rewrite, P315, about 0.01 USD) |
+| Memory gate: `internal/memory/{agentrunner.go,gate*.go,service.go}`, `internal/harness/claude/structured.go` | `bun run test:claude -run TestMemoryGate` |
+| Memory import and ingest: `internal/memory/importer/**`, `internal/harness/claude/structured.go` | `bun run test:claude -run 'TestMemoryImport\|TestMemoryIngest\|TestMemoryDistill\|TestMemoryDistillBridge\|TestMemoryDistillTrivia'` (import about 50 s, 0.14 USD, P211; ingest P274; the `TestMemoryDistill` prefix also runs `TestMemoryDistillRewrite`, P315) |
 | Memory ingest eval (P285): `internal/llmprompts` memory.import.* prompts, `internal/memory/importer/{chunk,extract,finalize}*.go` quality | `bun run eval:memory` with `KIRA_EVAL_MODE=run KIRA_EVAL_ROUND=<name>` (see ARCHITECTURE "Memory ingest eval"). Opt-in, never in hooks or CI. Costs about 4 to 5 USD per tuning run (8 to 10 min), judge included; P285 spent 57.9 USD in all; Part 2 spent 28.5 USD (ledger `spend-p2.jsonl`). Part 3 spent about 5.4 USD on the eval (ledger `spend-p3.jsonl`). P289 spent about 8.9 USD on the 5-source subset (ledger `spend-p289.jsonl`; `KIRA_EVAL_ONLY=plan-p257,spec-chunk-go,doc-arch-prompts,cmt-runner-go,json-ade-errors`, about 1.5 USD per round); run the test binary from `apps/kira-space/tests/claude` (`go test -c`) to keep a tree edit from changing a round midway. `KIRA_EVAL_MODE=footprint` with `KIRA_EVAL_ROUNDS=<r1,r2>` re-renders stored facts of past rounds and costs nothing. P291 (retrieval and telegraph eval) spent 14.04 USD of 20 (ledger `P291-runs/spend-p291.jsonl`, set `KIRA_EVAL_RUNS_DIR=P291-runs KIRA_EVAL_LEDGER=spend-p291.jsonl`); modes `questions`, `keys`, `telegraph`, `score` (with `KIRA_EVAL_STYLE=tele`) are paid, `retrieval` and `compare` are free and need `KIRA_ORT_LIB` (`sh scripts/fetch-onnxruntime.sh linux-x64`). Not a pass/fail row: it scores quality. |
-| DB MCP: `apps/kira-studio/internal/dbmcp/**`, `apps/kira-studio/internal/kubernetes/**`, `apps/kira-studio/internal/bridge/dbmcp.go`, `apps/kira-studio/internal/proof/**`, `apps/kira-studio/internal/bridge/proof.go` | `bun run test:claude:studio` (`TestKubeMcpThroughClaude` covers the kube tools, P440) |
-| Prompt registry, store, templates: `internal/llmprompts/**` (after a default rewrite run the whole row; regenerate goldens with `go test ./internal/llmprompts -run TestGolden -update` and contracts with `KIRA_CONTRACT=write`) | memory gate, memory MCP, memory import, ADE, smart scripts and DB MCP rows above: `test:claude:space -run 'TestMemoryGate\|TestMemoryMcpThroughClaude\|TestMemoryMcpFollowsDocs\|TestMemoryInstallRegisters\|TestMemoryImport\|TestMemoryIngest\|TestMemoryDistill\|TestMemoryDistillBridge\|TestMemoryDistillTrivia\|TestAdeHeadlessRun\|TestAdeStepResults\|TestAdeManualSession\|TestAdeAdHocSession\|TestAdeRebaseRun\|TestAdeResumeRun\|TestAdeResumeLost\|TestAdeSandbox\|TestSmartScriptRun\|TestSmartScriptResume'` and `bun run test:claude:studio` |
-| Agent context: `internal/agentctx/**`, `ContextFile` in `internal/harness/claude/{interactive,headless}.go`, `apps/kira-space/internal/ade/{tracker,runs}.go`, `internal/scriptruns/{smart_run,resume}.go` | `bun run test:claude:space -run TestAgentContextHeadless -count=1` (one haiku smart run, about 10 s, a cent) |
+| DB MCP: `apps/kira-space/internal/dbmcp/**`, `apps/kira-space/internal/kubernetes/**`, `apps/kira-space/internal/bridge/dbmcp.go`, `apps/kira-space/internal/proof/**`, `apps/kira-space/internal/bridge/proof.go` | `bun run test:claude:db` (`TestKubeMcpThroughClaude` covers the kube tools, P440) |
+| Prompt registry, store, templates: `internal/llmprompts/**` (after a default rewrite run the whole row; regenerate goldens with `go test ./internal/llmprompts -run TestGolden -update` and contracts with `KIRA_CONTRACT=write`) | memory gate, memory MCP, memory import, ADE, smart scripts and DB MCP rows above: `test:claude -run 'TestMemoryGate\|TestMemoryMcpThroughClaude\|TestMemoryMcpFollowsDocs\|TestMemoryInstallRegisters\|TestMemoryImport\|TestMemoryIngest\|TestMemoryDistill\|TestMemoryDistillBridge\|TestMemoryDistillTrivia\|TestAdeHeadlessRun\|TestAdeStepResults\|TestAdeManualSession\|TestAdeAdHocSession\|TestAdeRebaseRun\|TestAdeResumeRun\|TestAdeResumeLost\|TestAdeSandbox\|TestSmartScriptRun\|TestSmartScriptResume'` and `bun run test:claude:db` |
+| Agent context: `internal/agentctx/**`, `ContextFile` in `internal/harness/claude/{interactive,headless}.go`, `apps/kira-space/internal/ade/{tracker,runs}.go`, `internal/scriptruns/{smart_run,resume}.go` | `bun run test:claude -run TestAgentContextHeadless -count=1` (one haiku smart run, about 10 s, a cent) |
 | Any other `internal/harness/**` change | `bun run test:claude` |
 | Claude CLI upgrade | `bun run test:claude` |
 
@@ -632,7 +647,7 @@ The sandbox (P287) enforces on macOS only. The sandbox session cannot run Seatbe
    object delete and `.git` file write denied; home file read denied, `read` folder allowed; direct connect
    with network off denied; the watcher reports the `git branch` denial within 5 s.
 2. Sign in to `claude` on the Mac. Sandboxed runs read the login keychain.
-3. `bun run test:claude:space -run 'TestAdeSandbox' -count=1`. Expect `a.txt` in the worktree, no branch `x` or
+3. `bun run test:claude -run 'TestAdeSandbox' -count=1`. Expect `a.txt` in the worktree, no branch `x` or
    `y`, at least one denial recorded, and a run `done` or `failed` with a reason naming the ref path. The
    read-only test must leave the file unchanged.
 4. In the app: run a workflow step, open the run-line lock badge, check the denial list and **View profile**.
@@ -681,10 +696,10 @@ The sandbox (P287) enforces on macOS only. The sandbox session cannot run Seatbe
   Never answer a load failure with a longer wait or a retry; find what the step waits on.
 - **`golangci-lint` refuses parallel instances** (two runs fail on the lock). Run it alone. On a lock error
   wait 60 s and retry. This covers `bun run lint:go`, `lint:claude` and the pre-push hook.
-- **`bun run lint:go` needs `bun run build:space-mobile` once per checkout** (`main.go` embeds
+- **`bun run lint:go` needs `bun run build:mobile` once per checkout** (`main.go` embeds
   `frontend/dist-mobile`; absent, typecheck of the Go module fails).
-- **`ui-timing` needs an idle machine** (load below ~1, nothing else running). It is out of `bun run test:ui:studio`
-  (P443); run `bun run test:ui:timing:studio` alone (4 tests, about 70 s; CI runs the same `--no-deps` command). Check
+- **`ui-timing` needs an idle machine** (load below ~1, nothing else running). It is out of `bun run test:ui`
+  (P443); run `bun run test:ui:timing` alone (4 tests, about 70 s; CI runs the same `--no-deps` command). Check
   no `playwright`, `chrome` or `webkit` process is left before it starts. The WebKit sandbox is slow (measured 1.8x
   on JS and 2.9x on DOM work against Chromium on the same host); the open budget failures, if any, are in
   `ARCHITECTURE.md` Known open items.
@@ -717,11 +732,11 @@ exits 0. It overrides `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` for that one install 
 
 ## Mobile agents web — build, test, try on a phone (P212)
 
-- Build: `bun run build:space-mobile` writes `apps/kira-space/frontend/dist-mobile`, which `main.go`
+- Build: `bun run build:mobile` writes `apps/kira-space/frontend/dist-mobile`, which `main.go`
   embeds; gitignored like `frontend/dist`, so `go build ./...` fails on a clean checkout until built.
-  `scripts/prepare-worktree.sh` builds it, root `bun run build:space` chains it (CI), and the
+  `scripts/prepare-worktree.sh` builds it, root `bun run build` chains it (CI), and the
   Taskfile `build:frontend` task builds it before production `go build`.
-- Tests: `bun run test:ui:space-mobile` (projects `mobile-ios` WebKit, `mobile-insecure` Chromium;
+- Tests: `bun run test:ui:mobile` (projects `mobile-ios` WebKit, `mobile-insecure` Chromium;
   builds first). `insecure-origin.spec.ts` runs on `mobile-insecure` only (Chromium host mapping in
   `playwright.config.ts`). Visual baselines are not part of it.
 - Phone: enable Settings > Mobile access, click "Trust this network" while on your home Wi-Fi, scan
@@ -747,18 +762,18 @@ exits 0. It overrides `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` for that one install 
 
 - `KIRA_MEMORY_HOME` scopes `memory.db` (default `~/.kira-memory`). `testx.RunWithTempHomes` sets it
   for test binaries.
-- Smoke against the real CLI, opt-in: `bun run test:claude:space -run TestMemoryGate`.
+- Smoke against the real CLI, opt-in: `bun run test:claude -run TestMemoryGate`.
   Needs an authenticated `claude` on `PATH` (`claude -p` works here, CLI 2.1.292; ~14 s, a few cents).
   The gate uses `--safe-mode --setting-sources "" --strict-mcp-config --tools "" --no-session-persistence`;
   never `--bare`, it forces API-key auth.
 - Import smoke (P211), real CLI, about 50 s and 0.14 USD:
-  `bun run test:claude:space -run TestMemoryImport`. It runs the engine on
+  `bun run test:claude -run TestMemoryImport`. It runs the engine on
   `apps/kira-space/tests/claude/testdata/smoke` with a small chunk budget and re-executes the test binary as
   `memory-mcp` (set `KIRA_TEST_MEMORY_MCP=1`; `TestMain` in that module handles it), so no built app is needed.
   P274: the import now runs in a detached `memory-ingest` runner (flow binary and `tests/claude` binary
   serve it through `flowharness.Main`); its log is `$KIRA_MEMORY_HOME/import-runner.log`. Check no runner
   outlives a suite: `pgrep -f '^.*memory-ingest$'` is empty 35 s after.
-  Import UI states: `bun run build:test:space`, then Playwright `memory-import` (mock bridge).
+  Import UI states: `bun run build:test`, then Playwright `memory-import` (mock bridge).
 - MCP path: `go build -tags server ./apps/kira-space`, then `claude -p --mcp-config <file>
   --strict-mcp-config` with a `stdio` server `{command: <binary>, args: ["memory-mcp"], env:
   {KIRA_MEMORY_HOME: <tmp>}}`. `printf '' | <binary> memory-mcp` exits 0. The macOS app-bundle binary
@@ -836,21 +851,21 @@ pre-push design.
 The app has never shipped, so migration 0025 is a plain forward drop with no installed base to
 preserve (`docs/ARCHITECTURE.md`'s Storage section) — nothing cleans up a dev box's own leftovers
 from before v1.9 P97. If this container (or a persistent dev machine) ran a pre-P97 build, delete
-by hand: `${KIRA_HOME}/codeindex.db*` (the tree-sitter parse cache), `${KIRA_HOME}/codeindex-sync-
-*.lock` (its per-repository sync flocks) and `${KIRA_HOME}/mcp-repo-map-*-token.json` (the repo-map
+by hand: `${KIRA_SPACE_HOME}/codeindex.db*` (the tree-sitter parse cache), `${KIRA_SPACE_HOME}/codeindex-sync-
+*.lock` (its per-repository sync flocks) and `${KIRA_SPACE_HOME}/mcp-repo-map-*-token.json` (the repo-map
 MCP tokens). No runtime cleanup code is shipped for this — a permanent housekeeping path in a
 shipping app would be permanent code for a one-off developer chore.
 
 ## Database MCP server — reaching it in this environment (M1-M5)
 
-This server exists only inside the app process: `apps/kira-studio/cmd/` holds only `g1measure`, and
+This server exists only inside the app process: `apps/kira-space/cmd/` holds only `g1measure`, and
 `package.json` has no `mcp:*` script for it.
 
 - **No headless binary and no `bun run mcp:*` script exists for it.** The only ways to reach it here
-  are `bun run dev:studio` (needs a GUI this container does not have) or a `go build -tags server` boot
+  are `bun run dev` (needs a GUI this container does not have) or a `go build -tags server` boot
   proof — the same `//go:build server` route documented above for the bound-call surface. M5's own
   verification did exactly that and drove a real `dbmcp` endpoint with `curl`.
-- Its token is `${KIRA_HOME}/mcp-db-token.json` — no repo slug, one per `KIRA_HOME`
+- Its token is `${KIRA_SPACE_HOME}/mcp-db-token.json` — no repo slug, one per `KIRA_SPACE_HOME`
   (`internal/bridge/dbmcp.go`'s `dbMcpTokenName`, via `mcpauth.PathNamed`) — and it carries a 7-day
   expiry since M1 (`mcpauth.TTL`).
 - Its port is always `DefaultPort` **8766** (`internal/dbmcp/server.go`). A conflict on that port
@@ -905,7 +920,7 @@ worktree with no index of its own, falls back to the main checkout's (`git workt
 with `--db`/`CODEGRAPH_DB`. `--root` = where source files are read from.
 
 ```sh
-bun scripts/codegraph-duplicates.ts --path apps/kira-studio/internal --lang go --top 10
+bun scripts/codegraph-duplicates.ts --path apps/kira-space/internal --lang go --top 10
 bun scripts/codegraph-duplicates.ts --sweep calls --lcs 0.6 --min-callees 4 --json
 ```
 
@@ -940,7 +955,7 @@ suites). Tooling lives in `scripts/mutation/` and `tools/mutation/` (own `packag
   `tools/mutation/bin/` (gitignored); Stryker installs via `bun install --frozen-lockfile` in
   `tools/mutation/`.
 - **Run**: `nice -n 19 sh scripts/mutation/run.sh go|ts|all [target...]`. Go targets are package
-  dirs (`apps/kira-studio/internal/mask`); TS targets are area names from
+  dirs (`apps/kira-space/internal/mask`); TS targets are area names from
   `tools/mutation/areas.json`. Default: every Go package with tests, every TS area.
 - **Flags**: `--changed <ref>` mutates only files changed since `<ref>` (Go: other files of a package
   are excluded; TS: intersected with the area globs). `--resume <run-dir>` continues a halted run
@@ -959,7 +974,7 @@ suites). Tooling lives in `scripts/mutation/` and `tools/mutation/` (own `packag
   covered mutant per worker, plus 10s per timed-out mutant (infinite-loop mutants are common). A
   full run takes hours: run it in resumable chunks (one `run.sh` call per target group,
   `--resume` the same run dir). Heaviest Go suites: `gitsession`, `ade`, `gitrpc`,
-  `apps/kira-studio/internal`.
+  `apps/kira-space/internal`.
 - **Go details**: a package whose plain `go test` is red is recorded `red` and skipped. gremlins
   scales its per-mutant timeout from the coverage run, so `go.sh` passes a coefficient that floors
   it at 60s. `_darwin.go` and `//go:build darwin` files are not mutated (invisible on Linux).
@@ -986,30 +1001,29 @@ suites). Tooling lives in `scripts/mutation/` and `tools/mutation/` (own `packag
 
 ## Perf probes — `tests/perf/` (scroll lag, RSS)
 
-Report-only probes: print `PERF ...` lines, assert nothing. Run `bun run perf:probe:studio` or
-`bun run perf:probe:space`; narrow with a file filter, e.g.
-`bunx playwright test --config=apps/kira-studio/playwright.perf.config.ts documents`.
+Report-only probes: print `PERF ...` lines, assert nothing. Run `bun run perf:probe`; narrow with a file filter, e.g.
+`bunx playwright test --config=apps/kira-space/playwright.perf.config.ts documents`.
 Helper: `packages/workbench/src/testing/ui/perfProbe.ts` (RSS sampler, rAF frame stats, momentum
 flick). Add a view by copying a probe and calling `measureFlick` over `FLICK_LADDER`.
 
-- Tab heap probe (P433): `bunx playwright test --config=apps/kira-studio/playwright.perf.config.ts
-  --project=heap` (same for `apps/kira-space`). Chromium only (CDP), report-only, prints `HEAP ...`
+- Tab heap probe (P433): `bunx playwright test --config=apps/kira-space/playwright.perf.config.ts
+  --project=heap`. Chromium only (CDP), report-only, prints `HEAP ...`
   lines: heap per open tab, reads per switch round, reads after six fake minutes away, heap after
   close-all. Helper: `packages/workbench/src/testing/ui/heapProbe.ts`. Build first
-  (`bun run build:test:studio` or `build:test:space`). `KIRA_HEAP_FILE_LINES` sizes the Space file.
-- RAM probe (P480): `bun run perf:ram:studio` / `perf:ram:space` (Chromium, `--project=heap heap-ram`);
+  (`bun run build:test`). `KIRA_HEAP_FILE_LINES` sizes the Space file.
+- RAM probe (P480): `bun run perf:ram` (Chromium, `--project=heap heap-ram`);
   `--project=heap-webkit` reports WebKit process RSS only. Per world it prints `RAM <app> <world>
   <checkpoint> <json>` (JS heap after two GCs, DOM counters, settled renderer RSS, Monaco/xterm/grid/img
   counts, Pinia and TanStack Query stats) and appends the same to `test-results-perf/ram/`. Knobs:
-  `KIRA_RAM_WORLD=a,b` narrows worlds, `KIRA_RAM_N` sets tab units (default 10). Pass B, attribution:
-  build unminified (`cd apps/kira-studio/frontend && KIRA_DEBUG_HOOKS=1 bunx vite build --minify false`,
+  `KIRA_RAM_WORLD=a,b` narrows worlds (Studio worlds share the `space` app key; the idle world hops every mode, the Studio terminal world is `terminal-automations`), `KIRA_RAM_N` sets tab units (default 10). Pass B, attribution:
+  build unminified (`cd apps/kira-space/frontend && KIRA_DEBUG_HOOKS=1 bunx vite build --minify false`,
   Space likewise without the flag), then `KIRA_RAM_SNAPSHOTS=1` takes heap snapshots (parsed with
   `heap-snapshot-toolkit`, `HEAPSNAP` lines; `KIRA_RAM_KEEP_SNAPSHOTS=1` keeps the files). Rebuild
   minified afterwards (`build:test:*`). Helpers: `memProbe.ts`, `heapSnapshot.ts` in `testing/ui/`.
 - Engine is Playwright WebKit. Linux runs the WPE port: software rendering, no GPU process.
 - fps = 1000 / frame ms. Compare views to each other, not to 16 ms.
 - RSS comes from `ps`. On macOS it omits CoreAnimation/IOSurface graphics memory, the dominant
-  scroll cost there. Read real footprint with `apps/kira-studio/frontend/proto/grid/mac/wkhost.swift`.
+  scroll cost there. Read real footprint with `apps/kira-space/frontend/proto/grid/mac/wkhost.swift`.
 - Env knobs: `NDOCS` (documents), `NROWS`/`NCOLS` (console grid), `BODYKIND`/`NITEMS` (HTTP
   response), `NTABLES` (tree), `GRAPH_N` (git graph), `NCONTAINERS` (docker list).
 
@@ -1025,12 +1039,12 @@ Dev-only Cheetah Grid prototype beside SlickGrid baselines. Not in the shipped b
   `proto:build:grid:hooks` writes `dist-proto-hooks` (`window.__kiraGridProto`, `window.cheetahGrid`,
   trace HUD).
 - Both grid pages build the same data: `createProtoData` over the shared `wideTable` template, 10 000 rows x 20 columns, no randomness. Open `cheetah.html` and `slick.html?variant=kira` in two windows to compare by hand; pass the same `fixture`, `w`, `h` and `rowHeight` to both.
-- `bun run test:proto:studio` builds the hooks build and runs `tests/proto/` in Playwright WebKit.
+- `bun run test:proto` builds the hooks build and runs `tests/proto/` in Playwright WebKit.
 - `bun run perf:probe:proto` builds both and runs `tests/perf/proto-grid-scroll.spec.ts`. Frame cost
   uses the release build, late data the hooks build. `GRID=cheetah,slick-stock,slick-kira` narrows.
   `PERF_HEADED=1 xvfb-run -a bun run perf:probe:proto` runs headed WebKitGTK.
 - Compare against the app with `NCOLS=20 TRACE=1 bunx playwright test
-  --config=apps/kira-studio/playwright.perf.config.ts grid-scroll` at the same commit. Its
+  --config=apps/kira-space/playwright.perf.config.ts grid-scroll` at the same commit. Its
   `PERF viewport` line is the size the proto probe copies.
 - Container numbers rank engines only. No GPU, DPR 1. Footprint needs the Mac.
 
@@ -1040,14 +1054,14 @@ Needs Xcode command line tools. Not run in the sandbox, `wkhost.swift` is uncomp
 
 1. `bun run proto:build:grid && bun run proto:build:grid:hooks`, then
    `bun run proto:preview:grid` (serves `dist-proto` on 127.0.0.1:9246).
-2. `swiftc -O -o /tmp/wkhost apps/kira-studio/frontend/proto/grid/mac/wkhost.swift`.
-3. Per page: `/tmp/wkhost <url> 90 apps/kira-studio/frontend/proto/grid/mac/driver.js 2> <name>.log`
+2. `swiftc -O -o /tmp/wkhost apps/kira-space/frontend/proto/grid/mac/wkhost.swift`.
+3. Per page: `/tmp/wkhost <url> 90 apps/kira-space/frontend/proto/grid/mac/driver.js 2> <name>.log`
    for `proto/grid/empty.html`, `slick.html?variant=kira`, `slick.html?variant=stock`,
    `cheetah.html`, all with `?w=1440&h=960&rowHeight=28` appended (use `&` after the variant).
 4. Per page and band (`MARK-idle`, `MARK-40px`, `MARK-100px`, `MARK-200px`): idle footprint, peak
    `FOOTPRINT`, delta. Never `vmmap` for the series.
 5. Late data on a real trackpad: serve `dist-proto-hooks`
-   (`cd apps/kira-studio/frontend && bunx vite preview --config vite.proto.config.ts --outDir
+   (`cd apps/kira-space/frontend && bunx vite preview --config vite.proto.config.ts --outDir
    dist-proto-hooks`), open `cheetah.html?fixture=features` in Safari, press Start trace, one hard
    two-finger flick, Stop trace. The JSON is on the clipboard. Same on `slick.html?variant=kira`. In
    the real app: `__kiraScrollTrace` (`docs/PERF.md` section 2.1a). Note perceived smoothness and
@@ -1060,8 +1074,8 @@ Every name read or set in Go. "Set by" says who supplies it; "you" means set it 
 
 | Name | Purpose | Set by |
 |---|---|---|
-| `KIRA_HOME` | Kira Studio data dir. Panics in a non-`production` test binary when unset | you; `testx.RunWithTempHomes` in tests |
-| `KIRA_SPACE_HOME` | Kira Space data dir and instance-lock dir (`app.lock`) | you; `testx.RunWithTempHomes` |
+| `KIRA_HOME` | Retired Studio data dir (`~/.kira-studio/`); read only by the one-time fold | you |
+| `KIRA_SPACE_HOME` | The one data dir and instance-lock dir (`app.lock`). Panics in a non-`production` test binary when unset | you; `testx.RunWithTempHomes` |
 | `KIRA_MEMORY_HOME` | Memory data dir, else `~/.kira-memory` | you; `testx.RunWithTempHomes` |
 | `KIRA_DEV` | Overrides the production check on a non-`production` build (`kirapaths`) | you |
 | `KIRA_INSECURE_SECRETS` | `1` stores secrets unencrypted on Linux without a keyring. Dev only | you; IPC fixture harness |
@@ -1095,7 +1109,7 @@ Every name read or set in Go. "Set by" says who supplies it; "you" means set it 
 ## Comment sweep (P320)
 
 `go run ./scripts/commentsweep <cmd>`, from repo root. `run` spends tokens: needs an authenticated `claude` on `PATH`
-and builds `kira-space` (`bun run build:space` when `frontend/dist` or `dist-mobile` is missing). Work dir
+and builds `kira-space` (`bun run build` when `frontend/dist` or `dist-mobile` is missing). Work dir
 `.commentsweep/` (gitignored, resumable): `manifest.jsonl` holds every comment found, any size, with its status.
 
 - `scan [--min-chars 300]`: extract only, counts and cost projection. Refuses a dirty in-scope tree.

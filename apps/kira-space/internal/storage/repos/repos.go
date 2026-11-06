@@ -9,15 +9,9 @@ import (
 	"github.com/kirathecat/kira-studio/internal/scripts"
 )
 
-// Repos is every storage repo this app needs, constructed once at startup — Kira Studio's own
-// Repos aggregate carries eighteen repos across connections/queries/collections/history/git;
-// Kira Space's own trimmed copy carried only the five this app's own services
-// (CodeWorkspaceService, GithubService, this app's own window shell, and
-// SettingsService reads for advanced.gitLogLevel/git.*) touched. Layout and Tabs are
-// an addition, once the frontend gave both a real consumer
-// (migrations/0002_p100_tabs_layout.sql). AdeSessions is an addition — ade.Tracker's
-// persisted history of every Claude Code session it has spawned or resumed
-// (migrations/0004_p129_ade_sessions.sql).
+// Repos is every storage repo this app needs that takes no cipher, constructed once at startup.
+// Variables and MaskKeys need one, so they come from NewVariables and NewMaskKeys once the
+// cipher is wired.
 type Repos struct {
 	Settings              *SettingsRepo
 	Windows               *WindowsRepo
@@ -39,6 +33,20 @@ type Repos struct {
 	AdeSessionSandbox     *AdeSessionSandboxRepo
 	AdeTrackedItems       *AdeTrackedItemsRepo
 	OpLog                 *OpLogRepo
+	DbAudit               *DbAuditRepo
+	Connections           *ConnectionsRepo
+	SavedQueries          *SavedQueriesRepo
+	FilterHistory         *FilterHistoryRepo
+	Metadata              *MetadataCacheRepo
+	Collections           *CollectionsRepo
+	Variables             *VariablesRepo
+	ResponseHistory       *ResponseHistoryRepo
+	GrpcHistory           *GrpcHistoryRepo
+	MaskRules             *MaskRulesRepo
+	MaskReview            *MaskReviewRepo
+	DockerRestore         *DockerRestoreRepo
+	KubeClusters          *KubeClustersRepo
+	Proof                 *ProofRepo
 	CustomScripts         *scripts.Repo
 	ScriptRuns            *scriptruns.Repo
 
@@ -83,6 +91,19 @@ func New(db *sql.DB) (*Repos, error) {
 		AdeSessionSandbox:     &AdeSessionSandboxRepo{DB: db},
 		AdeTrackedItems:       &AdeTrackedItemsRepo{DB: db},
 		OpLog:                 &OpLogRepo{DB: db},
+		DbAudit:               &DbAuditRepo{DB: db},
+		Connections:           &ConnectionsRepo{DB: db},
+		SavedQueries:          &SavedQueriesRepo{DB: db},
+		FilterHistory:         &FilterHistoryRepo{DB: db},
+		Metadata:              &MetadataCacheRepo{DB: db},
+		Collections:           &CollectionsRepo{DB: db},
+		ResponseHistory:       &ResponseHistoryRepo{DB: db},
+		GrpcHistory:           &GrpcHistoryRepo{DB: db},
+		MaskRules:             &MaskRulesRepo{DB: db},
+		MaskReview:            &MaskReviewRepo{DB: db},
+		DockerRestore:         &DockerRestoreRepo{DB: db},
+		KubeClusters:          &KubeClustersRepo{DB: db},
+		Proof:                 &ProofRepo{DB: db},
 		CustomScripts:         &scripts.Repo{DB: db},
 		ScriptRuns:            &scriptruns.Repo{DB: db},
 		stmts:                 []*sql.Stmt{settingsSelectAll, layoutSelectAll, tabsSelectAll},

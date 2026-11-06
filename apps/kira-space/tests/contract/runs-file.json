@@ -10,7 +10,7 @@
     "hash": "<masked>",
     "id": "deploy",
     "lastGood": true,
-    "path": "<space>/runs/deploy.yaml",
+    "path": "<space>/config/runs/deploy.yaml",
     "problem": {
       "line": 3,
       "message": "kind must be one of \"script\", \"smart\"."
@@ -23,7 +23,7 @@
     "hash": "<masked>",
     "id": "deploy",
     "lastGood": false,
-    "path": "<space>/runs/deploy.yaml",
+    "path": "<space>/config/runs/deploy.yaml",
     "problem": null,
     "text": "name: Ship\ncollection: Ops\ncolor: blue\ncommand: echo ship {env}\nparams:\n  - name: env\n    type: select\n    options: [staging, prod]\n    default: staging\n  - name: token\n    type: text\n    secret: true\n"
   },
@@ -33,7 +33,7 @@
     "hash": "<masked>",
     "id": "deploy",
     "lastGood": false,
-    "path": "<space>/runs/deploy.yaml",
+    "path": "<space>/config/runs/deploy.yaml",
     "problem": null,
     "text": "name: Ship\ncollection: Ops\ncolor: blue\ncommand: echo ship {env}\nparams:\n  - name: env\n    type: select\n    options: [staging, prod]\n    default: staging\n  - name: token\n    type: text\n    secret: true\n"
   },
@@ -44,7 +44,7 @@
         "sortOrder": 0
       }
     ],
-    "dir": "<space>/runs",
+    "dir": "<space>/config/runs",
     "problems": [
       {
         "file": "deploy.yaml",
@@ -113,7 +113,7 @@
         "sortOrder": 0
       }
     ],
-    "dir": "<space>/runs",
+    "dir": "<space>/config/runs",
     "problems": [],
     "scripts": [
       {
@@ -174,7 +174,7 @@
         "sortOrder": 0
       }
     ],
-    "dir": "<space>/runs",
+    "dir": "<space>/config/runs",
     "problems": [],
     "scripts": [
       {

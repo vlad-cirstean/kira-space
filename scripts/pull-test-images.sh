@@ -37,7 +37,7 @@ pull_one() {
   fi
 }
 
-IMAGES="$(cd "$ROOT_DIR" && go run ./apps/kira-studio/internal/adapters/testsupport/cmd/testimages)"
+IMAGES="$(cd "$ROOT_DIR" && go run ./apps/kira-space/internal/adapters/testsupport/cmd/testimages)"
 
 for _i in $IMAGES; do
   pull_one "$_i" &

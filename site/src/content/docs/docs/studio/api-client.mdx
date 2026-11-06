@@ -4,9 +4,9 @@ description: Build and send HTTP and gRPC requests, with collections and environ
 sources:
   - README.md
   - packages/api-core/src
-  - apps/kira-studio/frontend/src/views/httprequest
-  - apps/kira-studio/frontend/src/views/grpcrequest
-  - apps/kira-studio/frontend/src/state/settingsDomain.ts
+  - apps/kira-space/frontend/src/studio/views/httprequest
+  - apps/kira-space/frontend/src/studio/views/grpcrequest
+  - apps/kira-space/frontend/src/state/settingsDomain.ts
   - packages/theme/src/i18n/en.json
 sidebar:
   order: 4
@@ -30,7 +30,7 @@ Unary and server-streaming calls. Stop ends a stream. Client-streaming and bidir
 
 A collection is a tree of requests and folders. Import and export use the Postman collection format. Export skips gRPC requests. Rename, duplicate, delete and move rows from the row menu. F2 renames. Drag moves a request or folder. **Move to collection** moves it to another collection. A move to another collection keeps request history.
 
-Collections, environments and variables are files in `~/.kira-studio/api`. Use **Edit variables** or **Edit environment** to edit a file as a form or YAML, or **Open file** and **Reveal file** to use your editor. The order of `items` in a file is the order in the tree. A bad edit shows its line above the tree; the app keeps the last good version until the file is valid. `AGENTS.md` in that folder lists every option.
+Collections, environments and variables are files in `~/.kira-space/config/api`. Use **Edit variables** or **Edit environment** to edit a file as a form or YAML, or **Open file** and **Reveal file** to use your editor. The order of `items` in a file is the order in the tree. A bad edit shows its line above the tree; the app keeps the last good version until the file is valid. `AGENTS.md` in that folder lists every option.
 
 **Export collection…** does not write secret values to the file.
 

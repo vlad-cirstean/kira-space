@@ -1,5 +1,5 @@
 // Package appupdate is the whole update-availability check plus the detached self-update
-// installer (install.go), shared by both Kira Studio and Kira Space — a repo-root package,
+// installer (install.go), used by Kira Space — a repo-root package,
 // so it imports nothing under either app's own internal/ (Go's internal/ visibility rule enforces
 // this at compile time). The check itself is one plain net/http GET against GitHub's public
 // releases/latest endpoint, self-contained and dependency-free (no githost/github, no httpclient,

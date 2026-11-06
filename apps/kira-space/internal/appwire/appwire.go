@@ -1,5 +1,6 @@
-// Package appwire is Kira Space's composition root: it builds the 34 bound services, the git router
-// and socket, the ADE tracker and board, and their teardown. main and the flow-test harness
+// Package appwire is Kira Space's composition root: it builds the bound services of both modules
+// (Space's own, Studio's connections, adapters and API client, and the merged ones), the git
+// router and socket, the ADE tracker and board, the adapter router, and their teardown. main and the flow-test harness
 // (internal/flowharness) both call Build, so a test cannot wire differently from production. It
 // sits above internal/bridge in the layering, like internal/appshell.
 package appwire
@@ -16,15 +17,18 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adeflow"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentnotify"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentusage"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/buildinfo"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbaudit"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
@@ -34,11 +38,15 @@ import (
 	githostproviders "github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/providers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker/jira"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/lannet"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mobileterm"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mobileweb"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/openedfiles"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
@@ -50,6 +58,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/appupdate"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
+	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/agentsvc"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
@@ -71,10 +80,12 @@ import (
 // in the harness.
 type Options struct {
 	Repos *repos.Repos
+	// Authorizer is shared by connections and variables, so a reveal grace is shared; nil builds one.
+	Authorizer *localauth.Authorizer
 	// Cipher seals saved secret values; nil builds one from the keychain.
 	Cipher *secrets.Cipher
 	// DB is closed last by Teardown, after Repos.
-	DB io.Closer
+	DB *storage.DB
 	// Emitter is the window event sink (a deferred Wails emitter in production).
 	Emitter appevent.Emitter
 	Browser bridge.Browser
@@ -125,7 +136,34 @@ type Options struct {
 	// TrackedUpdates tunes the tracked item update watcher; the zero value is production's (a
 	// flow-test seam).
 	TrackedUpdates ade.UpdatesConfig
+	// McpInstaller installs the DB MCP server into the agent's config; nil uses the active provider's.
+	McpInstaller harness.MCPInstaller
+	// DockerHubAPI replaces the Docker Hub base URL the image registry check calls (flow-test seam); empty keeps the default.
+	DockerHubAPI string
+	// DockerExtra appends docker options (flow-test seams for the restore tracker).
+	DockerExtra []docker.Option
+	// KubernetesExtra appends kubernetes options (flow-test seams: environment, list limits).
+	KubernetesExtra []kubernetes.Option
+	// DbMcpPort overrides dbmcp.DefaultPort (flow-test seam); zero keeps the default.
+	DbMcpPort int
+	// WindowFocus replaces the registry's focus state and raise (a flow-test seam); nil keeps the registry.
+	WindowFocus WindowFocus
 }
+
+// WindowFocus is the part of the window registry a prompt raise reads and drives.
+type WindowFocus interface {
+	Focused(key string) bool
+	Focus(key string) bool
+}
+
+// focusWindows swaps the registry's focus state and raise for a test seam.
+type focusWindows struct {
+	*shell.WindowRegistry
+	focus WindowFocus
+}
+
+func (f focusWindows) Focused(key string) bool { return f.focus.Focused(key) }
+func (f focusWindows) Focus(key string) bool   { return f.focus.Focus(key) }
 
 // ShellHooks completes the window-manager seams once the shell exists. CloseWindow, FocusWindow and
 // SetWindowTitle default to the window registry.
@@ -228,6 +266,42 @@ type Wired struct {
 	AgentSettings *agentcfg.Store
 	AgentSecrets  *agentcfg.SecretStore
 
+	// Database module: the services over the one database.
+	Router           *adapterhost.Router
+	App              *bridge.AppService
+	Connections      *bridge.ConnectionsService
+	MaskRules        *bridge.MaskRulesService
+	ConnectionConfig *bridge.ConnectionConfigService
+	// ConnectionFiles is the connections folder behind Connections, Filters, Schema and MaskRules.
+	ConnectionFiles *connfiles.Loader
+	Tree            *bridge.TreeService
+	Filters         *bridge.FiltersService
+	Queries         *bridge.QueriesService
+	Schema          *bridge.SchemaService
+	Kibana          *bridge.KibanaService
+	Http            *bridge.HttpService
+	Grpc            *bridge.GrpcService
+	Collections     *bridge.CollectionsService
+	Variables       *bridge.VariablesService
+	ApiConfig       *bridge.ApiConfigService
+	// ApiFiles is the api config folder behind Collections, Variables and ApiConfig.
+	ApiFiles        *apifiles.Store
+	ResponseHistory *bridge.ResponseHistoryService
+	GrpcHistory     *bridge.GrpcHistoryService
+	DataGrip        *bridge.DataGripService
+	DbMcp           *bridge.DbMcpService
+	Docker          *bridge.DockerService
+	Kubernetes      *bridge.KubernetesService
+	Proof           *bridge.ProofService
+	// ProofStore is the validation-proof store behind Proof and the DB MCP proof tools.
+	ProofStore *proof.Service
+	// OnWindowClosing are the Studio window-close hooks the shell runs.
+	OnWindowClosing []func(string)
+
+	proofShell *registryShell
+	dbAudit    *dbaudit.Recorder
+	dbTeardown func()
+
 	reopen           func()
 	appFocused       atomic.Pointer[func() bool]
 	detachMetrics    func()
@@ -241,8 +315,8 @@ type Wired struct {
 	teardownOnce     func()
 }
 
-// Build wires every service.
-func Build(opts Options) *Wired {
+// Build wires every service. A Studio settings read failure is the only error; main reports it fatal.
+func Build(opts Options) (*Wired, error) {
 	repositories := opts.Repos
 	w := &Wired{Repos: repositories}
 	registry := opts.Providers
@@ -273,19 +347,35 @@ func Build(opts Options) *Wired {
 	// The tap feeds every window-wide event to the phone event hub, which drops what is not allowlisted.
 	mobileHub := mobileweb.NewHub()
 	emitter := appevent.NewTap(opts.Emitter, mobileHub.Publish)
-	promptStore := llmprompts.NewStore(filepath.Join(config.KiraSpaceHome(), "llm-prompts.json"))
+	promptStore := llmprompts.NewStore(promptsPath(config.KiraSpaceHome()))
 	deps := appcore.Deps{Repos: repositories, Home: config.KiraSpaceHome(), Events: emitter, GitRegistry: git.registry, Prompts: promptStore}
 	events := bridge.NewEvents(emitter)
 	w.Emitter, w.Deps, w.Events = emitter, deps, events
-	w.Prompts = prompts.New(prompts.Deps{
-		Windows: w.Windows, App: "Space", Reopen: w.reopenWindow,
+	var promptWindows prompts.Windows = w.Windows
+	if opts.WindowFocus != nil {
+		promptWindows = focusWindows{WindowRegistry: w.Windows, focus: opts.WindowFocus}
+	}
+	promptDeps := prompts.Deps{
+		Windows: promptWindows, App: "Space", Reopen: w.reopenWindow,
 		Emit:   func(l []prompts.Routed) { emitter.Emit(bridge.ChannelPromptsChanged, l) },
 		Reveal: func(key, id string) { emitter.EmitTo(key, bridge.ChannelPromptsReveal, map[string]string{"id": id}) },
 		Enabled: func() bool {
 			s, err := repositories.Settings.GetAll()
 			return err != nil || s.Advanced.NotifyPrompts
 		},
-	})
+		// A read error raises: showing the approval is the harmless direction.
+		RaiseOnOpen: func(k prompts.Kind) bool {
+			if k != prompts.KindApproval {
+				return false
+			}
+			s, err := repositories.Settings.GetAll()
+			return err != nil || s.DbMcp.FocusOnApproval
+		},
+	}
+	if opts.Clock != nil {
+		promptDeps.Now = opts.Clock.Now
+	}
+	w.Prompts = prompts.New(promptDeps)
 	w.Windows.OnChange = w.Prompts.Reroute
 	credentialRelay.Prompts = w.Prompts
 	w.PromptsSvc = &bridge.PromptsService{Bound: &prompts.Bound{R: w.Prompts}}
@@ -293,10 +383,15 @@ func Build(opts Options) *Wired {
 	w.ApprovalsSvc = &bridge.ApprovalsService{Service: &approvals.Service{Q: w.Approvals}}
 	w.detachApprovals = events.AttachApprovals(w.Approvals)
 	w.LlmPromptsSvc = &bridge.LlmPromptsService{Bound: &llmprompts.Bound{
-		Store: promptStore, App: llmprompts.Space,
+		Store:   promptStore,
 		Changed: func(rev uint64) { emitter.Emit(bridge.ChannelLlmPromptsChanged, map[string]uint64{"revision": rev}) },
 	}}
 	w.detachOpLog = events.AttachOpLog(git.opLog)
+	dbm, err := w.wireAdapters(&deps, opts, git.opLog)
+	if err != nil {
+		return nil, err
+	}
+	w.Deps = deps
 
 	// P119: the update-availability checker and its detached installer.
 	updateChecker := appupdate.NewChecker(appupdate.Space.Name, buildinfo.Version)
@@ -349,7 +444,7 @@ func Build(opts Options) *Wired {
 	})
 	w.AgentUsageSvc = &bridge.AgentUsageService{U: w.AgentUsage}
 	w.AgentContext = agentctx.New(agentctx.Options{
-		Dir: filepath.Join(deps.Home, "agent"), SnapshotDir: filepath.Join(deps.Home, "agent-context"),
+		Dir: configfs.ModuleDir(deps.Home, agentctx.Folder), SnapshotDir: filepath.Join(deps.Home, "agent-context"),
 		Projection: configfs.TableProjection{DB: repositories.CustomScripts.DB, Folder: agentctx.Folder}, App: "Space",
 		KeepsOnResume: func() []string { return keepsContextOnResume(registry) },
 	})
@@ -396,7 +491,8 @@ func Build(opts Options) *Wired {
 	if err := runs.Recover(); err != nil {
 		slog.Warn("recover script runs", "scope", "startup", "err", err)
 	}
-	w.ScriptRuns = &bridge.ScriptRunsService{Bound: &scriptruns.Bound{Svc: runs}}
+	w.CustomScripts = &bridge.CustomScriptsService{}
+	w.ScriptRuns = &bridge.ScriptRunsService{Runs: &scriptruns.Bound{Svc: runs}}
 	w.Terminal = &bridge.TerminalService{BoundService: &terminal.BoundService{
 		Emit: emitter, Registry: terminalRegistry, ComposeAgent: adeTracker.Compose, AbortAgent: adeTracker.Abort, AgentStarted: adeTracker.OnAgentStarted,
 		Arbiter: termBroker, Scripts: runs, Agent: w.Agents,
@@ -422,6 +518,7 @@ func Build(opts Options) *Wired {
 	removeLegacyGitSocket()
 	go removeRetiredModels()
 
+	proofSvc, dbMcpSessions := w.wireDbServices(dbm, opts)
 	// Archive closes a task's review windows through the registry.
 	w.AdeBoard = wireAdeTask(repositories, events, git, adeTracker, adeCloseTerminal(terminalRegistry),
 		closeTaskReviewWindows(repositories, func(key string) bool {
@@ -430,13 +527,13 @@ func Build(opts Options) *Wired {
 				return w.AdeTask.CloseWindow(key)
 			}
 			return w.Windows.Close(key)
-		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig)
+		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions)
 	runs.ADE = w.AdeBoard
 	w.watchRepoConfig(events)
 	w.sched = &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
 	loader, err := scripts.NewLoader(scripts.LoaderOptions{
-		Repo: repositories.CustomScripts, Dir: filepath.Join(deps.Home, "runs"), Home: deps.Home, App: "Space", SpaceKeys: true,
-		Emit:     func(snapshot scripts.Snapshot) { emitter.Emit(bridge.ChannelCustomScriptsChanged, snapshot) },
+		Repo: repositories.CustomScripts, Dir: configfs.ModuleDir(deps.Home, scripts.Folder), Home: deps.Home, App: "Space", SpaceKeys: true,
+		Emit:     func(snapshot scripts.Snapshot) { w.CustomScripts.Publish(emitter, snapshot) },
 		OnChange: w.sched.Reload,
 	})
 	if err != nil {
@@ -458,7 +555,7 @@ func Build(opts Options) *Wired {
 	}
 	bridge.KeepAwakeRecompute(w.KeepAwake)
 
-	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"workflows": adeflow.Dir(config.KiraSpaceHome()), "steps": adeflow.StepsDir(config.KiraSpaceHome()), agentctx.Folder: filepath.Join(deps.Home, "agent"), "runs": filepath.Join(deps.Home, "runs"), repocfg.Folder: w.RepoConfig.Dir()})}
+	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, configFolders(deps.Home, w.RepoConfig.Dir()))}
 
 	// OpenNewWindow is assigned by BindShell once the shell exists.
 	w.WindowsSvc = &bridge.WindowsService{Service: &windowsvc.Service{Windows: deps.Repos.Windows}}
@@ -496,15 +593,15 @@ func Build(opts Options) *Wired {
 	w.Quitter = shell.NewQuitter(events, w.beforeFlushOnce, w.teardownOnce, 2*time.Second, w.Windows.Keys)
 
 	w.Files = &bridge.FilesService{Dialogs: opts.Dialogs}
-	w.CustomScripts = &bridge.CustomScriptsService{Svc: &scripts.Service{Loader: loader}}
-	w.Ops = &bridge.OpsService{Log: git.opLog}
-	live := liveWork(repositories, terminalRegistry, runs)
+	w.CustomScripts.Scripts = &scripts.Service{Loader: loader}
+	w.Ops = &bridge.OpsService{Log: git.opLog, Canceller: w.Router}
+	live := liveWork(repositories, terminalRegistry, runs.Live)
 	w.Quitter.SetGate(prompts.QuitGate{R: w.Prompts, LiveFn: func() int { return live().Total() }})
 	w.Lifecycle = &bridge.LifecycleService{Flusher: w.Quitter, WindowFlusher: w.CloseFlush, Quit: w.Quitter, Live: live}
 	w.MemoryImport = bridge.NewMemoryImportService(w.Memory, opts.Dialogs)
 	w.MemoryDistill = bridge.NewMemoryDistillService(w.Memory, opts.Dialogs, emitter)
 	w.Update = &bridge.UpdateService{Checker: updateChecker, Installer: updateInstaller, Quit: w.Quitter.RequestQuit}
-	return w
+	return w, nil
 }
 
 // BindShell points the window-manager seams at the shell, which exists only after Build.
@@ -570,7 +667,8 @@ func (w *Wired) reopenWindow() {
 // StartMobile starts the phone server when settings enable it; call after the shell is up.
 func (w *Wired) StartMobile() { bridge.StartMobileIfEnabled(w.Mobile) }
 
-// Bound returns the 38 bound services in registration order.
+// Bound returns the bound services in registration order: Space's, then Studio's, with the merged
+// ones registered once.
 func (w *Wired) Bound() []application.Service {
 	return []application.Service{
 		application.NewService(w.GitCredential),
@@ -583,6 +681,14 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),
 		application.NewService(w.PromptsSvc), application.NewService(w.ApprovalsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc),
 		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc), application.NewService(w.RepoConfigSvc), application.NewService(w.GitSvc),
+		application.NewService(w.App), application.NewService(w.Connections),
+		application.NewService(w.MaskRules), application.NewService(w.Tree),
+		application.NewService(w.Filters), application.NewService(w.Queries), application.NewService(w.Schema),
+		application.NewService(w.Kibana), application.NewService(w.Http), application.NewService(w.Grpc),
+		application.NewService(w.Collections), application.NewService(w.Variables), application.NewService(w.ApiConfig),
+		application.NewService(w.ConnectionConfig), application.NewService(w.ResponseHistory), application.NewService(w.GrpcHistory),
+		application.NewService(w.DataGrip), application.NewService(w.DbMcp), application.NewService(w.Docker),
+		application.NewService(w.Kubernetes), application.NewService(w.Proof),
 	}
 }
 
@@ -596,6 +702,9 @@ func (w *Wired) teardown(db io.Closer) {
 	// P119: a Cmd+Q mid-download aborts the install rather than leaving an orphan that later
 	// swaps a bundle the user quit away from. After hand-off this is a no-op.
 	w.UpdateInstall.Cancel()
+	if w.dbTeardown != nil {
+		w.dbTeardown()
+	}
 	w.stopAgentContext()
 	w.RepoConfig.Close()
 	w.OpenedFiles.Close()
@@ -662,7 +771,7 @@ func (w *Wired) wireAgentSettings(registry *harness.Registry, repositories *repo
 		w.AgentSecrets = sec
 	}
 	store, err := agentcfg.New(agentcfg.Options{
-		Dir: filepath.Join(home, "agent"), Providers: registry, Secrets: w.AgentSecrets, App: "Space",
+		Dir: configfs.ModuleDir(home, agentctx.Folder), Providers: registry, Secrets: w.AgentSecrets, App: "Space",
 		Projection: configfs.TableProjection{DB: repositories.CustomScripts.DB, Folder: agentctx.Folder},
 		Hermetic: func() bool {
 			settings, err := repositories.Settings.GetAll()
@@ -674,7 +783,7 @@ func (w *Wired) wireAgentSettings(registry *harness.Registry, repositories *repo
 		return w.watchAgentContext(events)
 	}
 	w.AgentSettings = store
-	if err := store.Sweep(filepath.Join(home, "ade", "runs"), filepath.Join(home, "automations-mcp")); err != nil {
+	if err := store.Sweep(adeRunsDir(home), filepath.Join(home, "automations-mcp")); err != nil {
 		slog.Warn("agent settings: sweep", "scope", "startup", "err", err)
 	}
 	store.View() // follows the file into the DB projection

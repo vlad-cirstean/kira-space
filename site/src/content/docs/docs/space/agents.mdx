@@ -81,7 +81,7 @@ No rebase starts on its own when a base moves.
 
 ## Workflows
 
-A workflow is a YAML file in the `workflows` folder of the Space home, `~/.kira-space/workflows`. No workflow ships preinstalled. Sample files live in `apps/kira-space/internal/adeflow/testdata`.
+A workflow is a YAML file in the `workflows` folder of the Space config, `~/.kira-space/config/workflows`. No workflow ships preinstalled. Sample files live in `apps/kira-space/internal/adeflow/testdata`.
 
 The app watches the folder. A broken edit keeps the last valid version and reports the line.
 
@@ -212,6 +212,17 @@ A step with `outside_repo: true` (agent, script or session) runs in the task fol
   outside_repo: true
 ```
 
+### Kira database tools
+
+`db_mcp: true` gives an agent, review or session step the [Kira database tools](../../studio/database-mcp/) for its session. In the inspector, tick **Kira database tools** under Advanced. Smart script steps and manual steps without a session have no such option. Each call shows in the task's Details list; see [Audit trail](../../studio/database-mcp/#audit-trail).
+
+```yaml
+- id: migrate
+  kind: agent
+  db_mcp: true
+  prompt: Check the schema with list_connections.
+```
+
 Linux and Windows write the profile but do not enforce it. The badge says `Not enforced`. Claude permission rules still apply; they do not stop shell commands.
 
 ## Runs
@@ -240,17 +251,17 @@ Finished and stopped sessions sit behind the **Finished or stopped** dropdown at
 
 ## Agent context
 
-The **Context** sub-tab of **Agent config** edits one Markdown file that every agent gets as extra system prompt: `~/.kira-space/agent/context.md`.
+The **Context** sub-tab of **Agent config** edits one Markdown file that every agent gets as extra system prompt: `~/.kira-space/config/agent/context.md`.
 
-- Both apps use it: sessions, Take over, resume, headless steps, smart scripts and Continue in terminal. Memory calls do not.
+- Every module uses it: sessions, Take over, resume, headless steps, smart scripts and Continue in terminal. Memory calls do not.
 - Up to 32 KiB. Empty or missing means no context. A broken file gives agents the last good text.
 - A save applies to agents started after it. A running session keeps its text.
 - A resumed Claude Code conversation keeps the context it started with until it compacts. OpenCode reads the new text on resume.
-- Kira Studio has no editor. It reads the same file.
+- The Studio modules have no editor. They read the same file.
 
 ## Agent settings
 
-The **Settings** sub-tab of **Agent config** edits `~/.kira-space/agent/settings.yaml`. One file serves every agent. Kira renders it in each agent's own format. The file is up to 256 KiB, and an unknown key is refused with its line.
+The **Settings** sub-tab of **Agent config** edits `~/.kira-space/config/agent/settings.yaml`. One file serves every agent. Kira renders it in each agent's own format. The file is up to 256 KiB, and an unknown key is refused with its line.
 
 Common keys:
 
@@ -292,7 +303,7 @@ References:
 - A missing variable or secret fails the launch and names it.
 - OpenCode refuses a value that holds `{env:` or `{file:`.
 
-The **Secrets** section lists the secrets the file references. **Set value** stores a value sealed on this computer, shared with Kira Studio. Kira never shows it again. Deleting a secret warns that settings which reference it fail to launch until you set it again.
+The **Secrets** section lists the secrets the file references. **Set value** stores a value sealed on this computer, shared with the Studio modules. Kira never shows it again. Deleting a secret warns that settings which reference it fail to launch until you set it again.
 
 **Result** shows per agent the exact config it receives, with references as written, plus what Kira adds at launch. For OpenCode that is one JSON document in `OPENCODE_CONFIG_CONTENT`. No file is written.
 
@@ -346,11 +357,11 @@ Kira can't isolate managed settings and policy, or variables that your shell pro
 
 For smart scripts, the MCP list shows the servers in agent settings. A ticked server missing there blocks the run. With the switch off, the CLI's own list and your user settings load. See [Smart scripts](../../shared/runs/#smart-scripts).
 
-Kira Studio has no switch. Its launches are always hermetic.
+The Studio modules have no switch. Their launches are always hermetic.
 
 ## Config files
 
-Workflows and agent config are plain files in `~/.kira-space`, in the `workflows` and `agent` folders.
+Workflows and agent config are plain files in `~/.kira-space/config`, in the `workflows` and `agent` folders.
 
 - Each folder has a generated `AGENTS.md` that lists every option, so an AI agent can edit the files. Kira rewrites it at start. Edits to it are lost.
 - The file bar on the Workflows, Context and Settings pages shows the path and status, with Open, Reveal, Copy path and **About these files**.

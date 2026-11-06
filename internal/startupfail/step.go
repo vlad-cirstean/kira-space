@@ -1,5 +1,5 @@
 // Package startupfail is the whole of the logic: showing the user a native alert, and getting a
-// log record written, for any of the boot-sequence failures apps/kira-studio/main.go hits before
+// log record written, for any of the boot-sequence failures apps/kira-space/main.go hits before
 // any window (and, for five of the nine sites, before any *application.App at all) exists.
 //
 // Why this package exists rather than reaching for what is already in the tree: Wails v3's own
@@ -27,7 +27,7 @@ package startupfail
 type Step string
 
 const (
-	// StepEnsureLayout is config.EnsureLayout() failing to create/chmod ~/.kira-studio (and its
+	// StepEnsureLayout is config.EnsureLayout() failing to create/chmod the app home (and its
 	// logs subdirectory) — main.go's very first fallible call, before logging.Init has run.
 	StepEnsureLayout Step = "ensureLayout"
 	// StepLogging is logging.Init() failing to install the slog file handler — the second call,
@@ -56,4 +56,7 @@ const (
 	// caught via application.Options.ErrorHandler, never reachable from any log.Fatal* site
 	// in main.go because Wails calls os.Exit itself without ever returning to main.
 	StepPlatform Step = "platform"
+	// StepOldStudio is a running Kira Studio.app found at launch: P537 folded it into this app,
+	// and both would write the same data.
+	StepOldStudio Step = "oldStudio"
 )

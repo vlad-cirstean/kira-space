@@ -8,9 +8,9 @@ info:
   companyName: "Kira the Cat" # The name of the company
   productName: "Kira Space" # The name of the application
   productIdentifier: "com.kirathecat.kira-space"
-  description: "The git module of Kira Studio, standing on its own (P100)" # The application description
+  description: "Native macOS workbench: git, coding agents, databases, APIs, Docker and Kubernetes" # The application description
   copyright: "(c) 2026, Kira the Cat" # Copyright text
-  comments: "Kira Space — a native git client for macOS" # Comments
+  comments: "Kira Space — a native workbench for macOS" # Comments
   version: "0.0.0" # The application version
   # cfBundleIconName: "appicon" # The macOS icon name in Assets.car icon bundles (optional)
   #                               # Should match the name of your .icon file without the extension

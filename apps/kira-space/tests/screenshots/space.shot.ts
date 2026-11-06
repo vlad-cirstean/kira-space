@@ -1,11 +1,12 @@
 import { buildPackedChunk } from '@kira/git-core/testing/packedChunk';
-import { CAPTURE_LAUNCH, CAPTURE_NOW, captureShot } from '@workbench/testing/screenshots/capture';
+import { CAPTURE_LAUNCH, CAPTURE_NOW } from '@workbench/testing/screenshots/capture';
 import { expect, test } from '../ui/fixtures';
 import { adeV2Control, FIXED_NOW } from '../ui/support/adeV2';
 import { buildGraphStreamChunk } from '../ui/support/graphStreamFixture';
 import { IPC } from '../ui/support/ipcChannels';
 import { openMemory } from '../ui/support/memoryNav';
 import type { ControlSnapshot } from '../ui/support/types';
+import { shoot } from './support/shoot';
 
 // P280: presentation screenshots of Kira Space, from the production bundle against the mocked
 // runtime. Run by `bun run screenshots`; output goes to /screenshots.
@@ -167,7 +168,7 @@ const VIEW_STATE = {
 test('space git graph', async ({ relaunch, consoleErrors }) => {
   const control: ControlSnapshot[] = [
     { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-    { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/repos', files: [] } },
+    { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/config/repos', files: [] } },
     { channel: IPC.adeTaskRepos, response: { repos: [], folders: [] } },
     { channel: IPC.adeTaskSessions, response: { sessions: [] } },
     {
@@ -222,7 +223,8 @@ test('space git graph', async ({ relaunch, consoleErrors }) => {
   await expect(detail).toBeVisible();
   await expect(detail.locator('[data-testid="file-tree-row"]').first()).toBeVisible();
 
-  await captureShot(win, { id: 'space-git-graph', detail: { x: 265, y: 130 }, consoleErrors });
+  await shoot(win, 'space-git-graph', consoleErrors);
+  await shoot(win, 'space-commit-detail', consoleErrors);
 });
 
 test('space agents board', async ({ relaunch, consoleErrors }) => {
@@ -233,7 +235,7 @@ test('space agents board', async ({ relaunch, consoleErrors }) => {
     win.locator('[data-testid="ade-card"][data-task-id="T_search"] [data-testid="ade-step-label"]'),
   ).toHaveText('Make CI green 3/6');
 
-  await captureShot(win, { id: 'space-agents-board', detail: { x: 290, y: 180 }, consoleErrors });
+  await shoot(win, 'space-agents-board', consoleErrors);
 });
 
 interface Fact {
@@ -281,6 +283,34 @@ const FACTS: Fact[] = [
     reason: 'Imported from the platform handbook.',
     keywords: ['search', 'api', 'rate limit'],
   },
+  {
+    fact: 'Feature flags live in config/flags.yaml, never in code.',
+    origin: 'user',
+    scope: 'project',
+    reason: 'Stated in the engineering handbook.',
+    keywords: ['flags', 'config'],
+  },
+  {
+    fact: 'Integration tests use the seeded orders fixture.',
+    origin: 'agent',
+    scope: 'project',
+    reason: 'Found in tests/README.md.',
+    keywords: ['tests', 'fixtures'],
+  },
+  {
+    fact: 'Releases are cut from main on the first Monday of the month.',
+    origin: 'user',
+    scope: 'company',
+    reason: 'The release calendar says so.',
+    keywords: ['release', 'schedule'],
+  },
+  {
+    fact: 'Customer emails are masked in every log line.',
+    origin: 'external',
+    scope: 'company',
+    reason: 'Imported from the security policy.',
+    keywords: ['privacy', 'logging'],
+  },
 ];
 
 const MEMORIES = FACTS.map((f, i) => ({
@@ -310,7 +340,7 @@ test('space memory', async ({ relaunch, consoleErrors }) => {
     ...CAPTURE_LAUNCH,
     control: [
       { channel: IPC.memoryRecent, response: MEMORIES },
-      { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/repos', files: [] } },
+      { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/config/repos', files: [] } },
       { channel: IPC.memoryProjects, response: [PROJECT] },
       { channel: IPC.adeTaskRepos, response: { repos: [], folders: [] } },
       { channel: IPC.adeTaskSessions, response: { sessions: [] } },
@@ -332,5 +362,5 @@ test('space memory', async ({ relaunch, consoleErrors }) => {
   await first.click();
   await expect(win.locator('[data-testid="memory-detail"]')).toBeVisible();
 
-  await captureShot(win, { id: 'space-memory', detail: { x: 0, y: 130 }, consoleErrors });
+  await shoot(win, 'space-memory', consoleErrors);
 });

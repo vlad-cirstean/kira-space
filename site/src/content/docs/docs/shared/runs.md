@@ -14,11 +14,11 @@ sidebar:
   order: 1
 ---
 
-Runs exist in both apps. A run is a YAML file. Scripts group in collections. Each script runs in its own folder and keeps a run history with status, exit code and result.
+Runs exist in the Automations mode and the Studio modules. A run is a YAML file. Scripts group in collections. Each script runs in its own folder and keeps a run history with status, exit code and result.
 
 ## Run files
 
-A run lives in `<id>.yaml` in the `runs` folder of the app home: `~/.kira-studio/runs` in Kira Studio, `~/.kira-space/runs` in Kira Space. The file name without `.yaml` is the run id. Use lowercase letters, digits, `-` and `_`.
+A run lives in `<id>.yaml` in the `runs` folder of the home config: `~/.kira-space/config/runs`. The file name without `.yaml` is the run id. Use lowercase letters, digits, `-` and `_`.
 
 - **New script** and **New smart script** write a small valid file and open it.
 - Double-click a row, or choose **Edit file**, to edit it as a form or as YAML. Both tabs edit the same text; **Save** writes the file. A form edit keeps your comments and key order. **Open** opens the file in your editor. **Reveal** and **Copy path** work as in other config files.
@@ -50,7 +50,7 @@ A secret parameter can keep a saved value. The file lists only the parameter nam
 - The stored log, the run outcome and the terminal tail show a mask. The live terminal tab and the phone view do not.
 - Resume uses the saved value.
 - Deleting a script or parameter deletes the value. So does renaming it or turning off its secret flag. Duplicate and export never copy it.
-- Kira Space and Kira Studio seal values with one key held in the keychain.
+- Both module sets seal values with one key held in the keychain.
 - When the keychain is unavailable, a secret can't be saved and each run asks for it.
 
 ## Smart scripts
@@ -74,7 +74,7 @@ The run history lists denied tools.
 
 Kira adds a closing instruction to the prompt so the run reports through `finish_step`. See [Prompts](../../reference/prompts/).
 
-Kira Studio smart scripts use the same agent settings and context files, from `~/.kira-space/agent/`. They always launch hermetic.
+Studio-module smart scripts use the same agent settings and context files, from `~/.kira-space/config/agent/`. They always launch hermetic.
 
 ## Schedules
 

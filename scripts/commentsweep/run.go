@@ -116,10 +116,10 @@ func buildBinary(dir string) (string, error) {
 	for _, d := range []string{"apps/kira-space/frontend/dist", "apps/kira-space/frontend/dist-mobile"} {
 		if _, err := os.Stat(d); err != nil {
 			fmt.Fprintln(os.Stderr, "building kira-space frontend")
-			b := exec.Command("bun", "run", "build:space")
+			b := exec.Command("bun", "run", "build")
 			b.Stdout, b.Stderr = os.Stderr, os.Stderr
 			if err := b.Run(); err != nil {
-				return "", fmt.Errorf("build:space: %w", err)
+				return "", fmt.Errorf("build: %w", err)
 			}
 			break
 		}

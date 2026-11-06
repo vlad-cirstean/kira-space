@@ -15,10 +15,13 @@ import (
 	"github.com/kirathecat/kira-studio/internal/configfs"
 )
 
+// Folder is the runs module folder name under <home>/config.
+const Folder = "runs"
+
 // LoaderOptions builds a Loader.
 type LoaderOptions struct {
 	Repo *Repo
-	// Dir is the runs folder, <home>/runs.
+	// Dir is the runs folder, <home>/config/runs.
 	Dir string
 	// Home is the app data folder; a deleted run loses its automations folder under it.
 	Home string
@@ -142,6 +145,12 @@ func (l *Loader) publishLocked(force bool) {
 	if l.o.OnChange != nil {
 		l.o.OnChange()
 	}
+}
+
+// Has reports whether a run with this id is stored.
+func (l *Loader) Has(id string) bool {
+	rec, err := l.o.Repo.Get(id)
+	return err == nil && rec != nil
 }
 
 // Snapshot is the whole panel state.

@@ -39,7 +39,7 @@ func collectionNames(snap scripts.Snapshot) []string {
 
 func fileText(t *testing.T, app *flowharness.App, file string) string {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join(app.SpaceHome, "runs", file))
+	b, err := os.ReadFile(filepath.Join(app.ConfigDir("runs"), file))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestRunsLifecycle(t *testing.T) {
 		t.Fatalf("collections after delete = %v, want B", names)
 	}
 	for _, f := range []string{"x.yaml", "y.yaml", "z.yaml"} {
-		if _, err := os.Stat(filepath.Join(app.SpaceHome, "runs", f)); !os.IsNotExist(err) {
+		if _, err := os.Stat(filepath.Join(app.ConfigDir("runs"), f)); !os.IsNotExist(err) {
 			t.Fatalf("%s survived DeleteCollection: %v", f, err)
 		}
 	}

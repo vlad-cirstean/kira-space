@@ -156,10 +156,10 @@ func TestAdeReviewStep(t *testing.T) {
 	}
 	for _, c := range r.comments(t) {
 		if c.Reply == "" {
-			t.Fatalf("comment %d has no reply after round 1: %+v; log:\n%s", c.ID, c, r.roundLog(t, round))
+			t.Fatalf("comment %s has no reply after round 1: %+v; log:\n%s", c.ID, c, r.roundLog(t, round))
 		}
 	}
-	got := map[int64]gitsession.CommentEntry{}
+	got := map[string]gitsession.CommentEntry{}
 	for _, c := range r.comments(t) {
 		got[c.ID] = c
 	}

@@ -1,5 +1,6 @@
 import { expect, test } from './fixtures';
 
+// Fixtures already set HOME per test (Studio's variant only added a temp HOME).
 // P232: Space's Terminal module shares Studio's terminal store, so per-key writes must reach a real
 // shell in order here too.
 

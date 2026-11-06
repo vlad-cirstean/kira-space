@@ -28,62 +28,61 @@
 }
 
 /* SlickGrid builds these nodes and rewrites their inline styles; no template carries utilities.
-   Its own stylesheets are not imported (Bootstrap/Salesforce palettes). Its dynamic CSS writes only
+   The Studio grid views import `slick.grid.css` into the same bundle; it is unlayered, so these rules
+   stay unlayered too (a layer would lose its dotted cell borders). Its dynamic CSS writes only
    height/left/right, so position must come from here. `outline: 0` and `border: 0` stay raw: the
    utilities lean on `--tw-*` @property rules. */
-@layer components {
-  .kira-commit-grid .slick-pane {
-    @apply absolute overflow-hidden w-full;
-    outline: 0;
-  }
+.kira-commit-grid .slick-pane {
+  @apply absolute overflow-hidden w-full;
+  outline: 0;
+}
 
-  .kira-commit-grid .slick-viewport,
-  .kira-commit-grid .grid-canvas {
-    @apply relative bg-bg;
-    outline: 0;
-  }
+.kira-commit-grid .slick-viewport,
+.kira-commit-grid .grid-canvas {
+  @apply relative bg-bg;
+  outline: 0;
+}
 
-  /* SlickGrid rewrites inline `overflow-x: auto` on every resizeCanvas. Columns always fit
-     (columnFit.ts); important hidden stops a sideways wheel scrolling the graph off screen. */
-  .kira-commit-grid .slick-viewport {
-    @apply w-full overflow-x-hidden!;
-  }
+/* SlickGrid rewrites inline `overflow-x: auto` on every resizeCanvas. Columns always fit
+   (columnFit.ts); important hidden stops a sideways wheel scrolling the graph off screen. */
+.kira-commit-grid .slick-viewport {
+  @apply w-full overflow-x-hidden!;
+}
 
-  /* One stacking context and paint boundary for all rows: no per-row compositing layer. */
-  .kira-commit-grid .grid-canvas {
-    contain: layout paint;
-  }
+/* One stacking context and paint boundary for all rows: no per-row compositing layer. */
+.kira-commit-grid .grid-canvas {
+  contain: layout paint;
+}
 
-  /* Opaque, not transparent: a repainted row erases the band it owns. */
-  .kira-commit-grid .slick-row.ui-widget-content {
-    @apply absolute w-full bg-bg cursor-pointer;
-    border: 0;
-  }
+/* Opaque, not transparent: a repainted row erases the band it owns. */
+.kira-commit-grid .slick-row.ui-widget-content {
+  @apply absolute w-full bg-bg cursor-pointer;
+  border: 0;
+}
 
-  .kira-commit-grid .slick-row:hover {
-    @apply bg-field;
-  }
+.kira-commit-grid .slick-row:hover {
+  @apply bg-field;
+}
 
-  .kira-commit-grid .slick-row.kira-row-selected {
-    @apply bg-select text-fg;
-  }
+.kira-commit-grid .slick-row.kira-row-selected {
+  @apply bg-select text-fg;
+}
 
-  .kira-commit-grid .slick-row:focus-visible {
-    @apply focus-ring;
-  }
+.kira-commit-grid .slick-row:focus-visible {
+  @apply focus-ring;
+}
 
-  /* Placeholder row: the muted tone is the "not a real commit" cue. */
-  .kira-commit-grid .slick-row.kira-row-collapsed {
-    @apply text-muted-foreground;
-  }
+/* Placeholder row: the muted tone is the "not a real commit" cue. */
+.kira-commit-grid .slick-row.kira-row-collapsed {
+  @apply text-muted-foreground;
+}
 
-  .kira-commit-grid .slick-cell {
-    @apply absolute flex items-center overflow-hidden py-0 px-2;
-    border: none;
-  }
+.kira-commit-grid .slick-cell {
+  @apply absolute flex items-center overflow-hidden py-0 px-2 cursor-pointer;
+  border: none;
+}
 
-  /* Row overdraw (0.5px past the band, no seam at fractional DPR) draws outside the cell. */
-  .kira-commit-grid .kira-cell-graph {
-    @apply p-0 overflow-visible;
-  }
+/* Row overdraw (0.5px past the band, no seam at fractional DPR) draws outside the cell. */
+.kira-commit-grid .kira-cell-graph {
+  @apply p-0 overflow-visible;
 }

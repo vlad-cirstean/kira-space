@@ -26,7 +26,7 @@ func newTestInstaller(t *testing.T, script string) (*Installer, string) {
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "install.log")
 	i := &Installer{
-		app:     Studio,
+		app:     Space,
 		running: "1.0.0",
 		shell:   "/bin/sh",
 		logPath: logPath,

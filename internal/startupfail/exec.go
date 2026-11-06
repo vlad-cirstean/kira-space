@@ -16,7 +16,7 @@ func realLookPath(name string) (string, error)  { return exec.LookPath(name) }
 func realStat(path string) (os.FileInfo, error) { return os.Stat(path) }
 
 // realGetenv exists as its own named function (rather than os.Getenv used inline) for one reason:
-// scripts/verify-packaging.sh's check S8 fails the build if apps/kira-studio/main.go itself
+// scripts/verify-packaging.sh's check S8 fails the build if apps/kira-space/main.go itself
 // contains "os.Getenv" — so the one environment read this package needs (KIRA_NO_STARTUP_ALERT)
 // must happen entirely inside internal/startupfail, never in main.go.
 func realGetenv(key string) string { return os.Getenv(key) }

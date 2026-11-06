@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
@@ -436,16 +437,24 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 	} else {
 		grant.StepID = grantStep
 	}
-	cfg, release, err := b.agent.Register(grant)
+	sdef := tuiStepDef(tc, cmpNonEmpty(pa.StepID, grantStep))
+	releaseDb, err := b.grantDbMcp(sdef, dbmcp.SessionIdentity{SessionID: grant.SessionID, TaskID: tc.task.ID, RunID: runID, Cwd: pa.Cwd}, &grant)
 	if err != nil {
 		return adewire.Launch{}, err
 	}
+	cfg, release, err := b.agent.Register(grant)
+	if err != nil {
+		releaseDb()
+		return adewire.Launch{}, err
+	}
+	release = joinRelease(release, releaseDb)
 	tools = append(tools, agentmcp.RunOutcome)
+
 	if runID == "" {
 		tools = append(tools, agentmcp.Handover)
 	}
 	tools = append(tools, agentmcp.SpaceToolIDs...)
-	pa.MCPConfig, pa.AllowedTools = cfg, harness.ToolNames(agent, tools...)
+	pa.MCPConfig, pa.AllowedTools = cfg, withDbMcpTool(sdef, harness.ToolNames(agent, tools...))
 	stem := ids.New(ids.TUI)
 	prep, err := b.prepareApp(ctx, agentcfg.Launch{Provider: agent, Kind: harness.LaunchInteractive, Dir: b.deps.AgentDir, Stem: stem})
 	if err != nil {
@@ -652,7 +661,7 @@ func (b *TaskBoard) LaunchStep(ctx context.Context, args adewire.LaunchStepArgs)
 	}
 	message := args.Message
 	if message == "" {
-		message = composeManualMessage(b.prompts(), step, taskTitle(tc.task, tc.branches), tc.task.JiraKey, tc.task.JiraURL, tc.task.Notes, lines, folder, b.handoverFor(tc, step.ID))
+		message = composeManualMessage(b.prompts(), step, taskTitle(tc.task, tc.branches), tc.task.JiraKey, tc.task.JiraURL, b.userNotes(tc.task.ID), lines, folder, b.handoverFor(tc, step.ID))
 	}
 	pa := PrepareArgs{TaskID: tc.task.ID, StepID: step.ID, Cwd: cwd, Message: message, Settings: step.Settings, Provider: step.Agent}
 	if len(extra) > 0 {

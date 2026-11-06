@@ -3,11 +3,11 @@ title: Data grid
 description: Browse, filter, edit and commit table rows in the data grid.
 sources:
   - README.md
-  - apps/kira-studio/frontend/src/views/grid
-  - apps/kira-studio/frontend/src/views/documents
-  - apps/kira-studio/frontend/src/views/keyvalue
-  - apps/kira-studio/frontend/src/views/stream
-  - apps/kira-studio/frontend/src/state/settingsDomain.ts
+  - apps/kira-space/frontend/src/studio/views/grid
+  - apps/kira-space/frontend/src/studio/views/documents
+  - apps/kira-space/frontend/src/studio/views/keyvalue
+  - apps/kira-space/frontend/src/studio/views/stream
+  - apps/kira-space/frontend/src/state/settingsDomain.ts
   - packages/theme/src/i18n/en.json
 sidebar:
   order: 2
@@ -34,6 +34,8 @@ Type a server-side `WHERE` and `ORDER BY`. The app keeps a history of filters an
 SQL tables stage edits. Add, delete and edit rows as a pending change set. The preview shows the exact command.
 
 Nothing reaches the database until you click **Commit pending changes**. Document, key/value and stream writes apply immediately.
+
+<DocShot id="studio-grid-row-menu" />
 
 ## Cell editor
 

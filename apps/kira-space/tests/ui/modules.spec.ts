@@ -14,12 +14,23 @@ function modeTab(page: Page, mode: 'git' | 'automations' | 'ade') {
   return page.locator(`[data-testid="mode-tab"][data-mode="${mode}"]`);
 }
 
-test('the title bar lists Agents, Runs, Memory, then Git', async ({ relaunch }) => {
+test('the title bar lists Agents, Runs, Memory, Git, then the Studio modules', async ({
+  relaunch,
+}) => {
   const { window: page } = await relaunch();
   const modes = await page
     .locator('[data-testid="mode-tab"]')
     .evaluateAll((els) => els.map((e) => e.getAttribute('data-mode')));
-  expect(modes).toEqual(['ade', 'automations', 'memory', 'git']);
+  expect(modes).toEqual([
+    'ade',
+    'automations',
+    'memory',
+    'git',
+    'studio',
+    'api',
+    'docker',
+    'kubernetes',
+  ]);
   await expect(modeTab(page, 'git')).toHaveClass(/is-active/);
   const tabs = page.locator('[data-testid="mode-tab"]');
   const names = ['Agents', 'Runs', 'Memory', 'Git'];
@@ -52,11 +63,11 @@ test('clicking a mode tab schedules exactly one debounced windowsSetMode, never 
 }) => {
   // state/mode.ts's own re-export of packages/workbench/src/state/createModeStore.ts's own
   // constant — restated here rather than imported across the web/node tsconfig boundary, same
-  // convention Kira Studio's own mode-switch.spec.ts already follows.
+  // convention tests/ui/studio/mode-switch.spec.ts already follows.
   const MODE_WRITE_DEBOUNCE_MS = 150;
   const { window: page, control } = await relaunch({ control: [] });
   // Playwright's fake clock, paused — installed after boot (relaunch() already waited on the
-  // status bar), the same precaution apps/kira-studio/tests/ui/support/clock.ts's own
+  // status bar), the same precaution tests/ui/studio/support/clock.ts's own
   // installFakeTimers documents: a bare install() alone still ticks on real time until paused.
   await page.clock.install();
   await page.clock.pauseAt(Date.now() + 10_000);
@@ -65,7 +76,7 @@ test('clicking a mode tab schedules exactly one debounced windowsSetMode, never 
 
   await modeTab(page, 'automations').click();
   // Nothing yet — the click itself must not fire a synchronous IPC (F20's own invariant, shared
-  // with Kira Studio's mode store since P128 §2.3).
+  // with the Studio modules since P128 §2.3).
   expect(setModeCalls()).toHaveLength(0);
   await page.clock.runFor(MODE_WRITE_DEBOUNCE_MS - 1);
   expect(setModeCalls()).toHaveLength(0);

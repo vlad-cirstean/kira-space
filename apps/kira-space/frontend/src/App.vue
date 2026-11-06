@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { AppMode } from '@shared/domain/mode';
 // P104 §6.1: every converted call site reaches timing (delayDuration/skipDelayDuration) through
 // this one provider.
 import { TooltipProvider } from '@theme/components/ui/tooltip';
@@ -26,7 +27,7 @@ import CommandPalette from '@workbench/shortcuts/CommandPalette.vue';
 import { runCommand } from '@workbench/shortcuts/commands';
 import { providePaletteCommands, usePaletteStore } from '@workbench/shortcuts/palette';
 import { appUpdateStoreKey } from '@workbench/state/createAppUpdateStore';
-import { getCurrentInstance, markRaw, onMounted, onUnmounted, provide } from 'vue';
+import { computed, getCurrentInstance, markRaw, onMounted, onUnmounted, provide } from 'vue';
 import { spaceApprovalKinds } from './ade/v2/request/kinds';
 import AdeReviewWindow from './ade/v2/review/AdeReviewWindow.vue';
 import AdeHandoverPrompt from './ade/v2/stage/AdeHandoverPrompt.vue';
@@ -39,19 +40,37 @@ import { useCaptureWindowStore } from './capture/state';
 import HostViewWindow from './hostview/HostViewWindow.vue';
 import { useHostViewWindowStore } from './hostview/state';
 import OpenedFilesWindow from './openedfiles/OpenedFilesWindow.vue';
-import { spacePaletteCommands } from './shortcuts/spaceCommands';
+import { appPaletteCommands, closeTab, nextTab, prevTab } from './shortcuts/appCommands';
 import { useAppUpdateStore } from './state/appUpdate';
 import { useKeepAwakeStore } from './state/keepAwake';
 import { useLayoutStore } from './state/layout';
-import { type SpaceMode, useModeStore } from './state/mode';
+import { useModeStore } from './state/mode';
 import { useOpenedFilesWindowStore } from './state/openedFilesWindow';
 import { useSettingsStore } from './state/settings';
+import ApiDialogs from './studio/api/ApiDialogs.vue';
+import { useCollectionsStore } from './studio/api/state/collections';
+import { openApiRequestTab } from './studio/api/tabs';
+import { studioApprovalKinds } from './studio/approvals/kinds';
+import { control as studioControl } from './studio/bridge/control';
+import ConnectionFileDialog from './studio/project/ConnectionFileDialog.vue';
+import DataGripImportDialog from './studio/project/DataGripImportDialog.vue';
+import MaskingReviewPrompt from './studio/project/MaskingReviewPrompt.vue';
+import NewConnectionDialog from './studio/project/NewConnectionDialog.vue';
+import ProofReadyPrompt from './studio/proof/ProofReadyPrompt.vue';
+import ProofWindow from './studio/proof/ProofWindow.vue';
+import { useProofWindowStore } from './studio/proof/state';
+import { useConnectionDialogStore } from './studio/state/connectionDialogs';
+import { useDatagripImportStore } from './studio/state/datagripImport';
+import { useFakeDataStore } from './studio/state/fakeData';
+import { useObjectStoreStore } from './studio/state/objectStore';
+import GenerateDataDialog from './studio/workbench/GenerateDataDialog.vue';
+import UploadObjectDialog from './studio/workbench/UploadObjectDialog.vue';
 import { createAutomationsModule } from './workbench/automationsModule';
 import GitCredentialDialog from './workbench/GitCredentialDialog.vue';
-import { createWorkbenchHost, useTabsStore } from './workbench/host';
+import { createWorkbenchHost } from './workbench/host';
 import MobilePairingDialog from './workbench/MobilePairingDialog.vue';
 import { createMemoryModule } from './workbench/memoryModule';
-import { MODE_ORDER, MODES } from './workbench/modes';
+import { CONNECTION_PANEL_MODES, MODE_ORDER, MODES } from './workbench/modes';
 import SettingsDialog from './workbench/SettingsDialog.vue';
 import WorkbenchShell from './workbench/WorkbenchShell.vue';
 
@@ -64,7 +83,7 @@ provide(automationsModuleKey, createAutomationsModule());
 provide(memoryModuleKey, createMemoryModule());
 provide(promptsControlKey, control);
 provide(approvalsControlKey, control);
-provideApprovalKinds(spaceApprovalKinds());
+provideApprovalKinds({ ...spaceApprovalKinds(), ...studioApprovalKinds() });
 provide(llmPromptsControlKey, control);
 // App level, not component level: Pinia stores and composables outside the tree inject it too.
 getCurrentInstance()?.appContext.app.provide(agentControlKey, control);
@@ -74,11 +93,10 @@ getCurrentInstance()?.appContext.app.provide(agentControlKey, control);
 const layoutStore = useLayoutStore();
 const settingsStore = useSettingsStore();
 useAgentMessageDefaults(() => settingsStore.agent.provider, control);
-const tabsStore = useTabsStore();
 const modeStore = useModeStore();
 const keepAwakeStore = useKeepAwakeStore();
 const paletteStore = usePaletteStore();
-providePaletteCommands(spacePaletteCommands());
+providePaletteCommands(appPaletteCommands());
 const appUpdateStore = useAppUpdateStore();
 provide(appUpdateStoreKey, appUpdateStore);
 // P246: one dialog per routed popup kind; PromptHost shows the one the router targeted here.
@@ -89,11 +107,32 @@ const promptKinds = {
   update: markRaw(UpdatePrompt),
   quit: markRaw(QuitPrompt),
   handover: markRaw(AdeHandoverPrompt),
+  proof: markRaw(ProofReadyPrompt),
+  masking: markRaw(MaskingReviewPrompt),
 };
 const reviewWindow = useAdeReviewWindowStore();
 const hostView = useHostViewWindowStore();
 const capture = useCaptureWindowStore();
 const openedFilesWindow = useOpenedFilesWindowStore();
+const proofWindow = useProofWindowStore();
+const connectionDialogStore = useConnectionDialogStore();
+const datagripImportStore = useDatagripImportStore();
+const fakeDataStore = useFakeDataStore();
+const objectStoreStore = useObjectStoreStore();
+const collectionsStore = useCollectionsStore();
+
+// Review, host-view, capture, opened-files and proof windows own no project or operations panel.
+const mainWindow = (): boolean =>
+  !reviewWindow.target &&
+  !hostView.target &&
+  !capture.item &&
+  !openedFilesWindow.active &&
+  !proofWindow.active;
+const panelLabel = computed(() =>
+  CONNECTION_PANEL_MODES.has(modeStore.active)
+    ? t('common.module.connections.label')
+    : t('common.module.repositories.label'),
+);
 
 let unsubscribe: Array<() => void> = [];
 
@@ -106,19 +145,34 @@ onMounted(() => {
     // A review window has no project panel, and its secondary panel is the agent panel; the layout
     // is shared across windows, so toggling it from here would move the main window's panels.
     control.onToggleProjectPanel(() => {
-      if (!reviewWindow.target && !hostView.target && !capture.item && !openedFilesWindow.active)
-        layoutStore.toggleProjectPanel();
+      if (mainWindow()) layoutStore.toggleProjectPanel();
     }),
     control.onToggleOperationsPanel(() => {
       if (reviewWindow.target) reviewWindow.toggleAgentPanel();
-      else if (!hostView.target && !capture.item && !openedFilesWindow.active)
-        layoutStore.toggleOperationsPanel();
+      else if (mainWindow()) layoutStore.toggleOperationsPanel();
     }),
-    control.onTabNext(tabsStore.activateNextTab),
-    control.onTabPrev(tabsStore.activatePrevTab),
-    control.onTabClose(tabsStore.closeActiveTab),
+    control.onTabNext(nextTab),
+    control.onTabPrev(prevTab),
+    control.onTabClose(closeTab),
     control.onCommandPalette(paletteStore.togglePalette),
     control.onViewFind(() => runCommand('view.find')),
+    studioControl.onNewConnection(() => connectionDialogStore.openNew()),
+    studioControl.onNewRequest(() => {
+      modeStore.setMode('api');
+      openApiRequestTab();
+    }),
+    studioControl.onImportPostman(() => {
+      modeStore.setMode('api');
+      void collectionsStore.importPostman();
+    }),
+    studioControl.onImportDataGrip(() => {
+      modeStore.setMode('studio');
+      void datagripImportStore.pickAndScanDataGripProject();
+    }),
+    studioControl.onViewRefresh(() => runCommand('view.refresh')),
+    studioControl.onViewRun(() => runCommand('view.run')),
+    studioControl.onViewRunAll(() => runCommand('view.run-all')),
+    studioControl.onViewFormat(() => runCommand('view.format')),
   ];
 });
 
@@ -127,7 +181,7 @@ onUnmounted(() => {
 });
 
 // Leaving Agents unmounts the workflow and agent config editors: confirm before dropping unsaved edits.
-async function beforeModeChange(mode: SpaceMode): Promise<boolean> {
+async function beforeModeChange(mode: AppMode): Promise<boolean> {
   if (modeStore.active === 'ade' && mode !== 'ade') {
     return (await useAdeWorkflowsUiStore().leave()) && (await useAdeAgentsUiStore().leave());
   }
@@ -152,12 +206,13 @@ function onToggleKeepAwake(): void {
     <HostViewWindow v-else-if="hostView.target" />
     <AdeReviewWindow v-else-if="reviewWindow.target" />
     <OpenedFilesWindow v-else-if="openedFilesWindow.active" />
+    <ProofWindow v-else-if="proofWindow.active" />
     <div v-else class="h-full flex flex-col">
       <WorkbenchTitleBar
         :order="MODE_ORDER"
         :modes="MODES"
         :active="modeStore.active"
-        :panel-label="t('common.module.repositories.label')"
+        :panel-label="panelLabel"
         :project-visible="layoutStore.panel.project.visible"
         :operations-visible="layoutStore.panel.operations.visible"
         :keep-awake="keepAwakeStore.status"
@@ -178,6 +233,12 @@ function onToggleKeepAwake(): void {
       </WorkbenchTitleBar>
       <WorkbenchShell />
     </div>
+    <NewConnectionDialog v-if="connectionDialogStore.newOpen" />
+    <ConnectionFileDialog v-if="connectionDialogStore.file !== null" />
+    <DataGripImportDialog v-if="datagripImportStore.open" />
+    <ApiDialogs />
+    <UploadObjectDialog v-if="objectStoreStore.open" />
+    <GenerateDataDialog v-if="fakeDataStore.open" />
     <PromptHost :kinds="promptKinds" />
     <ApprovalsSurface />
     <ConfirmDialog />

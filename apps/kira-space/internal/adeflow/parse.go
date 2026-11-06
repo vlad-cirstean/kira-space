@@ -1,4 +1,4 @@
-// Package adeflow reads and writes ADE v2 workflow YAML files in <KiraSpaceHome>/workflows. It
+// Package adeflow reads and writes ADE v2 workflow YAML files in <KiraSpaceHome>/config/workflows. It
 // validates strictly (an unknown key is an error) and reports node line numbers. The Reader lists;
 // writer.go edits files in place, preserving comments and key order.
 package adeflow
@@ -290,10 +290,18 @@ func (v *validator) step(sn *yaml.Node, sp string, earlier, candidates map[strin
 		step.Sandbox = v.sandbox(n, sp)
 	}
 	step.Agent = v.agent(sm, sp)
+	v.stepExtras(&step, sm, sp)
+	return step, rn
+}
+
+// stepExtras reads the settings block and the db_mcp flag.
+func (v *validator) stepExtras(step *adewire.WorkflowStep, sm map[string]*yaml.Node, sp string) {
 	if n, has := sm["settings"]; has && v.err == nil {
 		step.Settings = v.settings(n, sp)
 	}
-	return step, rn
+	if _, has := sm["db_mcp"]; has && v.err == nil {
+		step.DbMcp = v.boolean(sm, sp, "db_mcp")
+	}
 }
 
 // outsideVars rejects {repo} and {branch} in the prompt or command of an outside-repo step: they would expand empty.
@@ -380,6 +388,13 @@ func (v *validator) manualStep(step *adewire.WorkflowStep, sm map[string]*yaml.N
 			step.Settings = v.settings(n, sp)
 		} else {
 			v.fail(n, sp, "settings is not allowed on %s steps without a session", step.Kind)
+		}
+	}
+	if n, has := sm["db_mcp"]; has && v.err == nil {
+		if step.Session {
+			step.DbMcp = v.boolean(sm, sp, "db_mcp")
+		} else {
+			v.fail(n, sp, "db_mcp is not allowed on %s steps without a session", step.Kind)
 		}
 	}
 }
@@ -470,7 +485,7 @@ func (v *validator) agentBody(sm map[string]*yaml.Node, sp string, step *adewire
 		step.AllowedTools = v.allowedTools(sm, sp)
 		return
 	}
-	for _, key := range []string{"prompt", "allowed_tools"} {
+	for _, key := range []string{"prompt", "allowed_tools", "db_mcp"} {
 		if n, has := sm[key]; has {
 			v.fail(n, sp, "%s is not allowed with smart_script", key)
 			return

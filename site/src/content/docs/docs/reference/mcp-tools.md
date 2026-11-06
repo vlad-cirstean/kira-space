@@ -4,7 +4,7 @@ description: Every tool each Kira MCP server offers, with its arguments.
 sources:
   - internal/llmprompts/registry.go
   - internal/memory/mcpserver
-  - apps/kira-studio/internal/dbmcp/server.go
+  - apps/kira-space/internal/dbmcp/server.go
   - internal/agentmcp
   - internal/harness/claude/mcpinstall
 sidebar:
@@ -78,9 +78,9 @@ State of an ingest job. Argument: `id`, the job id from `ingest_files`.
 
 Run `/mcp__kira-memory__remember` to store durable facts from given text or the recent conversation. Argument: `text`.
 
-## Database MCP server (Kira Studio)
+## Database MCP server (Studio modules)
 
-Server name `kira-db`. See [Database MCP server](../../studio/database-mcp/).
+Server name `kira-db`. Workflow steps with `db_mcp` reach the same tools as `kira-db-session`. See [Database MCP server](../../studio/database-mcp/).
 
 - `list_connections`: every exposed connection with its kind, read-only flag, status, `access` per mode, `enforcement`, `tables` and masked columns. `statementTimeout` gives the seconds (0 for off) and who enforces it per mode. `tables` is all, or the only tables MCP may touch. `columnReview` shows whether column review is on and `withheld` lists the columns results drop until you review masking. `expensiveQuery` gives `rowsThreshold` and `check`: `plan` (`run_query` refuses a SELECT or WITH at or above it), `off` or `none` (the engine gives no row estimate). `reviewResults` lists the modes whose results the user reviews first, `masked` included. `access.masked` and `permissions.masked` are `browse_table`'s permission; `browse` says whether the connection's kind supports it.
 - `list_children`: the children of one container; tables outside the connection's allow list are hidden. Arguments: `connectionId`, `path`, `refresh`.
@@ -98,6 +98,7 @@ Server name `kira-ade`. `finish_step` is available to every agent run. `fetch_re
 - `finish_step`: report how a step ended. Call it once, last. The reply lists the task's artifacts. Arguments: `status`, `summary`, `reason`, `conflictedFiles`, `lastGitError`, `tried`.
 - `reply_review_comment`: answer one review comment. Only in a workflow review round. Call once per comment. Arguments: `id`, `reply`, `resolved`.
 - `report_artifacts`: record what the task produced. Argument: `artifacts`, 1 to 20 items of `kind` (`change_request`, `issue`, `deployment`, `doc`, `link`), `title`, `url`, `ref`. Branches, commits, change requests and deployments of the task repositories are found without a report.
+- `attach_proof`: show a closed proof session in the task's notes chain. Call it after `proof_close_session`. Argument: `name`. A session belongs to one task; a repeat call is fine.
 - `task_info`: the task, its workflow, step, repositories and branches.
 - `declare_repos`: add registered repositories to the task. Argument: `repos`, 1 to 20.
 - `request_branches`: ask the user to approve branches and worktrees, one call for all. You name each branch. A repository may get several branches. The call waits for the answer, up to 30 minutes. Per branch the result is `created`, `existing`, `denied`, `timeout` or `failed`. Argument: `branches`, 1 to 20 items of `repo` and `branch`.

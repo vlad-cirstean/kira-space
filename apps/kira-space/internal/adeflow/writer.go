@@ -468,8 +468,9 @@ func applyStep(m *yaml.Node, s adewire.WorkflowStep) {
 			applySandbox(m, s.Sandbox, s.Kind)
 			applyAgent(m, s.Agent)
 			applySettings(m, s.Settings)
+			applyDbMcp(m, s.DbMcp)
 		} else {
-			dropKeys(m, "sandbox", "agent", "settings")
+			dropKeys(m, "sandbox", "agent", "settings", "db_mcp")
 		}
 		return
 	}
@@ -490,6 +491,7 @@ func applyStep(m *yaml.Node, s adewire.WorkflowStep) {
 		applySandbox(m, s.Sandbox, s.Kind)
 		applyAgent(m, s.Agent)
 		applySettings(m, s.Settings)
+		applyDbMcp(m, s.DbMcp)
 		applyReview(m, defaultReview(s.Review))
 	default:
 		applySandbox(m, s.Sandbox, s.Kind)
@@ -499,9 +501,10 @@ func applyStep(m *yaml.Node, s adewire.WorkflowStep) {
 			dropKeys(m, "smart_script", "params")
 			setScalar(m, "prompt", kBlock, s.Prompt, true, stepOrder)
 			setList(m, "allowed_tools", s.AllowedTools, stepOrder)
+			applyDbMcp(m, s.DbMcp)
 			return
 		}
-		dropKeys(m, "prompt", "allowed_tools")
+		dropKeys(m, "prompt", "allowed_tools", "db_mcp")
 		setScalar(m, "smart_script", kText, s.SmartScript, true, stepOrder)
 		setParams(m, s.Params)
 	}
@@ -512,6 +515,14 @@ func defaultReview(r *adewire.ReviewStepConfig) adewire.ReviewStepConfig {
 		return adewire.ReviewStepConfig{SendTo: adewire.ReviewSendImplementer}
 	}
 	return *r
+}
+
+// applyDbMcp writes db_mcp: true, or removes the key.
+func applyDbMcp(m *yaml.Node, on bool) {
+	setScalar(m, "db_mcp", kBool, "true", on, stepOrder)
+	if !on {
+		dropKeys(m, "db_mcp")
+	}
 }
 
 // applyOutside writes outside_repo: true, or removes the key.

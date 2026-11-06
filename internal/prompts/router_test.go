@@ -98,7 +98,7 @@ func newRig(t *testing.T) *rig {
 	g := &rig{w: newWindows(), sink: &recSink{}, enabled: true}
 	var mu sync.Mutex
 	g.r = prompts.New(prompts.Deps{
-		Windows: g.w, App: "Studio",
+		Windows: g.w, App: "Space",
 		Emit:    func(l []prompts.Routed) { mu.Lock(); g.last = l; mu.Unlock() },
 		Reveal:  func(key, id string) { g.reveals = append(g.reveals, key+" "+id) },
 		Reopen:  func() { g.reopens++; g.w.add("reopened", 0); g.r.Reroute() },

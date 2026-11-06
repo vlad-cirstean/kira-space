@@ -4,11 +4,13 @@ import { defaultLayout } from '@shared/domain/layout';
 import {
   buildChannelMaps,
   type ControlMockHandle,
+  type ControlSnapshot as MockSnapshot,
   resolveWailsRuntimeJsPath,
   emitWailsEvent as sharedEmitWailsEvent,
   installControlMocks as sharedInstallControlMocks,
 } from '@workbench/testing/ui/mockRuntime';
 import { defaultSettings } from '../../../frontend/src/state/settingsDomain';
+import { STUDIO_TAB_KIND_MODE, type StudioTabKind } from '../../../frontend/src/state/tabDomain';
 import { contract } from './contract';
 import { IPC } from './ipcChannels';
 import type { ControlSnapshot } from './types';
@@ -93,6 +95,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   openedFilesTerminalOpen: 'OpenedFilesService.TerminalOpen',
   codeWorkspaceOpenWorkspace: 'CodeWorkspaceService.OpenWorkspace',
   codeWorkspaceCloseWorkspace: 'CodeWorkspaceService.CloseWorkspace',
+  codeWorkspaceShutdown: 'CodeWorkspaceService.Shutdown',
   codeWorkspaceReadDiff: 'CodeWorkspaceService.ReadDiff',
   codeWorkspaceStartSearch: 'CodeWorkspaceService.StartSearch',
   codeWorkspaceCancelSearch: 'CodeWorkspaceService.CancelSearch',
@@ -231,6 +234,12 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskResumeRun: 'AdeTaskService.ResumeRun',
   adeTaskStepDone: 'AdeTaskService.StepDone',
   adeTaskHandovers: 'AdeTaskService.Handovers',
+  adeTaskAddNote: 'AdeTaskService.AddNote',
+  adeTaskProofs: 'AdeTaskService.TaskProofs',
+  adeTaskDbAudit: 'AdeTaskService.DbAudit',
+  adeTaskProofChoices: 'AdeTaskService.ProofChoices',
+  adeTaskLinkProof: 'AdeTaskService.LinkProof',
+  adeTaskUnlinkProof: 'AdeTaskService.UnlinkProof',
   adeTaskUpdateHandover: 'AdeTaskService.UpdateHandover',
   adeTaskDismissHandover: 'AdeTaskService.DismissHandover',
   adeTaskArtifacts: 'AdeTaskService.Artifacts',
@@ -272,6 +281,9 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskReviewWorkingCommentAdd: 'AdeTaskService.ReviewWorkingCommentAdd',
   adeTaskReviewAgent: 'AdeTaskService.ReviewAgent',
   adeTaskForwardReviewComments: 'AdeTaskService.ForwardReviewComments',
+  adeTaskPanelForward: 'AdeTaskService.PanelForward',
+  adeTaskForwardPanelEdits: 'AdeTaskService.ForwardPanelEdits',
+  adeTaskDismissPanelEdits: 'AdeTaskService.DismissPanelEdits',
   adeTaskReviewForwardText: 'AdeTaskService.ReviewForwardText',
   adeTaskLaunchReviewAgent: 'AdeTaskService.LaunchReviewAgent',
   adeTaskArchiveRisk: 'AdeTaskService.ArchiveRisk',
@@ -290,6 +302,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskRemoveTaskBranch: 'AdeTaskService.RemoveTaskBranch',
   adeTaskRemoveTaskRepo: 'AdeTaskService.RemoveTaskRepo',
   adeTaskTaskBranchRisk: 'AdeTaskService.TaskBranchRisk',
+  adeTaskHostProviders: 'AdeTaskService.HostProviders',
 
   memorySearch: 'MemoryService.Search',
   memoryRecent: 'MemoryService.Recent',
@@ -319,6 +332,178 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   memoryDistillLimits: 'MemoryDistillService.Limits',
   memoryDistillChoose: 'MemoryDistillService.Choose',
   memoryDistillToImport: 'MemoryDistillService.ToImport',
+
+  // Databases module (formerly Kira Studio's own table).
+  appInfo: 'AppService.Info',
+  filesChooseSave: 'FilesService.ChooseSave',
+  filesChooseOpen: 'FilesService.ChooseOpen',
+  filesChooseOpenMany: 'FilesService.ChooseOpenMany',
+  datagripScan: 'DataGripService.Scan',
+  datagripImport: 'DataGripService.Import',
+  connectionsList: 'ConnectionsService.List',
+  connectionsCreate: 'ConnectionsService.Create',
+  connectionsUpdateCredentials: 'ConnectionsService.UpdateCredentials',
+  connectionsDuplicate: 'ConnectionsService.Duplicate',
+  connectionsDelete: 'ConnectionsService.Delete',
+  connectionsReorder: 'ConnectionsService.Reorder',
+  connectionsReveal: 'ConnectionsService.Reveal',
+  connectionsSecretsStatus: 'ConnectionsService.SecretsStatus',
+  connectionsTest: 'ConnectionsService.Test',
+  connectionsConnect: 'ConnectionsService.Connect',
+  connectionsDisconnect: 'ConnectionsService.Disconnect',
+  connectionsStates: 'ConnectionsService.States',
+  maskRulesList: 'MaskRulesService.List',
+  maskRulesUpsert: 'MaskRulesService.Upsert',
+  maskRulesDelete: 'MaskRulesService.Delete',
+  maskRulesRegenerateKey: 'MaskRulesService.RegenerateKey',
+  maskRulesCounts: 'MaskRulesService.Counts',
+  maskRulesCorrelationKey: 'MaskRulesService.CorrelationKey',
+  treeChildren: 'TreeService.Children',
+  treeKeyTypes: 'TreeService.KeyTypes',
+  treeDescribe: 'TreeService.Describe',
+  treeDefinition: 'TreeService.Definition',
+  treeSchemaColumns: 'TreeService.SchemaColumns',
+  treeInvalidate: 'TreeService.Invalidate',
+  filtersList: 'FiltersService.List',
+  filtersReplace: 'FiltersService.Replace',
+  httpSend: 'HttpService.Send',
+  // P90 item 2's three cookie bound calls.
+  httpCookies: 'HttpService.Cookies',
+  httpDeleteCookie: 'HttpService.DeleteCookie',
+  httpClearCookies: 'HttpService.ClearCookies',
+  queriesList: 'QueriesService.List',
+  queriesSave: 'QueriesService.Save',
+  queriesListConsole: 'QueriesService.ListConsole',
+  queriesSaveConsole: 'QueriesService.SaveConsole',
+  queriesListDiscover: 'QueriesService.ListDiscover',
+  queriesSaveDiscover: 'QueriesService.SaveDiscover',
+  queriesUpdateDiscover: 'QueriesService.UpdateDiscover',
+  queriesUpdate: 'QueriesService.Update',
+  queriesDelete: 'QueriesService.Delete',
+  queriesTouch: 'QueriesService.Touch',
+  queriesHistoryList: 'QueriesService.HistoryList',
+  queriesHistoryRecord: 'QueriesService.HistoryRecord',
+  schemaGet: 'SchemaService.Get',
+  schemaSet: 'SchemaService.Set',
+  kibanaDataViews: 'KibanaService.DataViews',
+  kibanaDataView: 'KibanaService.DataView',
+  kibanaHistogram: 'KibanaService.Histogram',
+  kibanaSuggest: 'KibanaService.Suggest',
+  collectionsList: 'CollectionsService.List',
+  collectionsGetRequest: 'CollectionsService.GetRequest',
+  collectionsSaveRequest: 'CollectionsService.SaveRequest',
+  collectionsCreateCollection: 'CollectionsService.CreateCollection',
+  collectionsCreateItem: 'CollectionsService.CreateItem',
+  collectionsRename: 'CollectionsService.Rename',
+  collectionsDeleteMany: 'CollectionsService.DeleteMany',
+  collectionsMoveItems: 'CollectionsService.MoveItems',
+  collectionsReorderCollections: 'CollectionsService.ReorderCollections',
+  collectionsImport: 'CollectionsService.Import',
+  collectionsExport: 'CollectionsService.Export',
+  apiConfigView: 'ApiConfigService.View',
+  apiConfigSetSecret: 'ApiConfigService.SetSecret',
+  apiConfigDeleteSecret: 'ApiConfigService.DeleteSecret',
+  apiConfigFile: 'ApiConfigService.File',
+  apiConfigSaveFile: 'ApiConfigService.SaveFile',
+  apiConfigForm: 'ApiConfigService.Form',
+  apiConfigAgentAccess: 'ApiConfigService.AgentAccess',
+  connectionConfigView: 'ConnectionConfigService.View',
+  connectionConfigFile: 'ConnectionConfigService.File',
+  connectionConfigSaveFile: 'ConnectionConfigService.SaveFile',
+  connectionConfigForm: 'ConnectionConfigService.Form',
+  connectionConfigDeleteFile: 'ConnectionConfigService.DeleteFile',
+  connectionConfigSetSecret: 'ConnectionConfigService.SetSecret',
+  connectionConfigDeleteSecret: 'ConnectionConfigService.DeleteSecret',
+  variablesListEnvironments: 'VariablesService.ListEnvironments',
+  variablesCreateEnvironment: 'VariablesService.CreateEnvironment',
+  variablesDeleteEnvironment: 'VariablesService.DeleteEnvironment',
+  variablesDuplicateEnvironment: 'VariablesService.DuplicateEnvironment',
+  variablesReorderEnvironments: 'VariablesService.ReorderEnvironments',
+  variablesSetActiveEnvironment: 'VariablesService.SetActiveEnvironment',
+  variablesList: 'VariablesService.List',
+  variablesHistory: 'VariablesService.History',
+  variablesReveal: 'VariablesService.Reveal',
+  variablesRevealHistory: 'VariablesService.RevealHistory',
+  historyList: 'ResponseHistoryService.List',
+  historyGet: 'ResponseHistoryService.Get',
+  historyDelete: 'ResponseHistoryService.Delete',
+  historyClear: 'ResponseHistoryService.Clear',
+  historyAdopt: 'ResponseHistoryService.Adopt',
+  grpcDescribe: 'GrpcService.Describe',
+  grpcCall: 'GrpcService.Call',
+  grpcHistoryList: 'GrpcHistoryService.List',
+  grpcHistoryGet: 'GrpcHistoryService.Get',
+  grpcHistoryDelete: 'GrpcHistoryService.Delete',
+  grpcHistoryClear: 'GrpcHistoryService.Clear',
+  grpcHistoryAdopt: 'GrpcHistoryService.Adopt',
+  collectionsGetGrpcRequest: 'CollectionsService.GetGrpcRequest',
+  collectionsSaveGrpcRequest: 'CollectionsService.SaveGrpcRequest',
+  collectionsCreateGrpcItem: 'CollectionsService.CreateGrpcItem',
+  dbMcpStatus: 'DbMcpService.Status',
+  dbMcpSetEnabled: 'DbMcpService.SetEnabled',
+  dbMcpRegenerate: 'DbMcpService.Regenerate',
+  dbMcpInstallAgent: 'DbMcpService.InstallAgent',
+  dbMcpPendingResponse: 'DbMcpService.PendingResponse',
+  dbMcpTables: 'DbMcpService.Tables',
+  maskReviewColumns: 'MaskRulesService.ReviewColumns',
+  maskReviewPending: 'MaskRulesService.ReviewPending',
+  proofSessions: 'ProofService.Sessions',
+  proofSession: 'ProofService.Session',
+  proofStep: 'ProofService.Step',
+  proofViewState: 'ProofService.ViewState',
+  proofSetViewState: 'ProofService.SetViewState',
+  proofAcceptEdit: 'ProofService.AcceptEdit',
+  proofRejectEdit: 'ProofService.RejectEdit',
+  proofDelete: 'ProofService.Delete',
+  proofMarkSeen: 'ProofService.MarkSeen',
+  proofOpenWindow: 'ProofService.OpenWindow',
+  proofWindowTarget: 'ProofService.WindowTarget',
+  proofSavePng: 'ProofService.SavePng',
+  proofChooseShotFolder: 'ProofService.ChooseShotFolder',
+  proofSavePngTo: 'ProofService.SavePngTo',
+  proofForgetShotFolder: 'ProofService.ForgetShotFolder',
+  kubernetesClusters: 'KubernetesService.Clusters',
+  kubernetesDescribe: 'KubernetesService.Describe',
+  kubernetesKinds: 'KubernetesService.Kinds',
+  kubernetesList: 'KubernetesService.List',
+  kubernetesLogsClose: 'KubernetesService.LogsClose',
+  kubernetesLogsOpen: 'KubernetesService.LogsOpen',
+  kubernetesNamespaces: 'KubernetesService.Namespaces',
+  kubernetesReorder: 'KubernetesService.Reorder',
+  kubernetesSetMcp: 'KubernetesService.SetMcp',
+  kubernetesStatus: 'KubernetesService.Status',
+  dockerContainerEditSpec: 'DockerService.ContainerEditSpec',
+  dockerContainerSize: 'DockerService.ContainerSize',
+  dockerContainers: 'DockerService.Containers',
+  dockerContexts: 'DockerService.Contexts',
+  dockerDiskUsage: 'DockerService.DiskUsage',
+  dockerExecClose: 'DockerService.ExecClose',
+  dockerExecOpen: 'DockerService.ExecOpen',
+  dockerExecResize: 'DockerService.ExecResize',
+  dockerExecWrite: 'DockerService.ExecWrite',
+  dockerConfirmImageRegistry: 'DockerService.ConfirmImageRegistry',
+  dockerImageRegistry: 'DockerService.ImageRegistry',
+  dockerImages: 'DockerService.Images',
+  dockerInspect: 'DockerService.Inspect',
+  dockerInspectContainer: 'DockerService.InspectContainer',
+  dockerLogsClose: 'DockerService.LogsClose',
+  dockerLogsOpen: 'DockerService.LogsOpen',
+  dockerNetworks: 'DockerService.Networks',
+  dockerRecreateContainer: 'DockerService.RecreateContainer',
+  dockerRestart: 'DockerService.Restart',
+  dockerRestoreContainers: 'DockerService.RestoreContainers',
+  dockerRestoreDismiss: 'DockerService.RestoreDismiss',
+  dockerRestoreState: 'DockerService.RestoreState',
+  dockerStart: 'DockerService.Start',
+  dockerStatsSubscribe: 'DockerService.StatsSubscribe',
+  dockerStatsUnsubscribe: 'DockerService.StatsUnsubscribe',
+  dockerStatus: 'DockerService.Status',
+  dockerStop: 'DockerService.Stop',
+  dockerUnwatch: 'DockerService.Unwatch',
+  dockerUpdateContainer: 'DockerService.UpdateContainer',
+  dockerUseContext: 'DockerService.UseContext',
+  dockerVolumes: 'DockerService.Volumes',
+  dockerWatch: 'DockerService.Watch',
 };
 
 export const { channelToFqn: CHANNEL_TO_FQN, fqnToChannel: FQN_TO_CHANNEL } = buildChannelMaps(
@@ -326,6 +511,20 @@ export const { channelToFqn: CHANNEL_TO_FQN, fqnToChannel: FQN_TO_CHANNEL } = bu
   FQN_SUFFIX_BY_IPC_KEY,
   BRIDGE_PKG,
 );
+
+const EMPTY_OBJECT_META = {
+  path: '',
+  kind: 'table',
+  name: '',
+  qualifiedName: '',
+  columns: [],
+  primaryKey: null,
+  foreignKeys: [],
+  referencedBy: [],
+  indexes: [],
+  rowEstimate: null,
+  comment: null,
+};
 
 // A call this mock never expects a fixture to cover, answered the same way regardless of a
 // spec's own args — pre-serialised JSON, keyed by channel; used only when a channel has *no*
@@ -371,7 +570,6 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   [IPC.settingsSet]: JSON.stringify(defaultSettings),
   // P132 Part 2: main.ts's bootstrap() hydrates the op log on every boot.
   [IPC.opsRecent]: '[]',
-  [IPC.opsCancel]: 'null',
   [IPC.mobileStatusGet]: JSON.stringify({
     enabled: false,
     running: false,
@@ -475,11 +673,138 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
     done: 0,
     total: 0,
   }),
+  // Databases module (formerly Kira Studio's own table).
+  [IPC.filtersList]: JSON.stringify({ hiddenKinds: [], hiddenPaths: [] }),
+  // The connection files' status: no file has a problem unless a spec says so.
+  [IPC.connectionConfigView]: JSON.stringify({
+    dir: '',
+    files: [],
+    secrets: [],
+    storage: { available: true, backend: 'keychain', insecureFallback: false, reason: null },
+  }),
+  [IPC.connectionConfigFile]: JSON.stringify({
+    file: '',
+    id: '',
+    path: '',
+    text: '',
+    hash: '',
+    problem: null,
+    lastGood: false,
+    editable: true,
+    secrets: [],
+  }),
+  // The connection file dialog applies its draft text through the form call; an empty file has no
+  // model and no problem unless a spec says so.
+  [IPC.connectionConfigForm]: JSON.stringify({ text: '', value: null, problem: null }),
+  // Every SQL console loads its connection's own DDL document on mount
+  // (state/schemas.ts's ensureDdl) — a spec with no Schema (DDL)… of its own gets the same
+  // "absent until the user writes one" empty document a fresh connection gets, not a fixture
+  // miss. connectionId is echoed as '' here since the frontend only reads `.ddl` off this call.
+  [IPC.schemaGet]: JSON.stringify({ connectionId: '', ddl: '', updatedAt: '' }),
+  [IPC.linkOpenExternal]: 'null',
+  // P420: the proof window's calls, answered from tests/contract/proof.json.
+  [IPC.proofSessions]: JSON.stringify(contract('proof', 'ProofService.Sessions')),
+  [IPC.proofSession]: JSON.stringify(contract('proof', 'ProofService.Session')),
+  [IPC.proofStep]: JSON.stringify(contract('proof', 'ProofService.Step#table')),
+  [IPC.proofViewState]: '[]',
+  [IPC.proofSetViewState]: 'null',
+  [IPC.proofAcceptEdit]: 'null',
+  [IPC.proofRejectEdit]: 'null',
+  [IPC.proofDelete]: 'null',
+  [IPC.proofMarkSeen]: 'null',
+  [IPC.proofOpenWindow]: '{"key":"proof-1","opened":true}',
+  [IPC.proofWindowTarget]: '{"sessionId":null}',
+  [IPC.proofSavePng]: '{"saved":false,"path":null}',
+  [IPC.proofChooseShotFolder]: '{"canceled":true,"id":"","path":""}',
+  [IPC.proofSavePngTo]: '{"path":""}',
+  [IPC.proofForgetShotFolder]: 'null',
+  // Boot queries of the code-repo stores, issued in every mode.
+  [IPC.adeTaskRepos]: '{"repos":[],"folders":[]}',
+  [IPC.adeTaskSessions]: '{"sessions":[]}',
+  [IPC.repoConfigList]: '{"dir":"","files":[]}',
+  [IPC.queriesHistoryRecord]: 'null',
+  [IPC.treeInvalidate]: 'null',
+  [IPC.treeDescribe]: JSON.stringify({ meta: EMPTY_OBJECT_META, source: 'server' }),
+  // SlickGridHost.vue's own onMounted loads a tab's connection's mask rules
+  // unconditionally (so folding is ready the instant the preview is toggled on) — a spec with no
+  // maskRulesList snapshot of its own gets "no rules configured", the correct default for every
+  // connection this chapter's own fixtures predate, not a fixture miss.
+  [IPC.maskRulesList]: '[]',
+  [IPC.maskRulesCounts]: '{}',
+  [IPC.maskReviewColumns]: '{"applicable":false,"columns":[],"checkedAt":0}',
+  [IPC.maskReviewPending]: '{"count":0}',
+  [IPC.maskRulesCorrelationKey]: '""',
+  // Every SQL console/data-tab fetches its container's cached columns on
+  // mount/activation (state/schemaColumns.ts's ensureSchemaColumns) — a spec with no
+  // treeSchemaColumns snapshot of its own gets "nothing cached for this container yet", the same
+  // reasoning treeDescribe's own wildcard above already carries, not a fixture miss.
+  [IPC.treeSchemaColumns]: JSON.stringify({ relations: [], source: 'server' }),
+  // BrowseView.vue's own ensureKeyTypes fires on every VirtualList visible-range tick for a
+  // redis browse tab — `paths` is whatever happens to be on screen at whatever moment a headless
+  // run's own scroll/render timing lands on, so unlike treeChildren there is no fixed args shape
+  // any fixture could capture even in principle. ensureKeyTypes itself already treats a failed
+  // batch as silent (a decorative badge must never raise the error strip a failed *listing*
+  // owns) — this answers "nothing yet" instead of a network-level miss for the same call.
+  [IPC.treeKeyTypes]: '[]',
+  // Http's left panel fetches its whole tree on mount, and the call is NOT wrapped in a
+  // try/catch — a fixture miss would leave the panel permanently empty rather than degrade. Every
+  // spec that switches to Http mode without seeding a collections fixture (mode-switch.spec.ts
+  // boots with none and asserts the panel still says "Collections") gets "no collections yet",
+  // the same reasoning `queriesList: '[]'` already carries.
+  [IPC.collectionsList]: JSON.stringify({ collections: [], items: [] }),
+  // P5 F9: the environment switcher and the variables dialog both fetch on mount, uncaught, the
+  // same trap collectionsList already needed a wildcard for — mode-switch.spec.ts,
+  // http-request.spec.ts and http-request-body.spec.ts all boot with no variables fixture at all.
+  [IPC.variablesListEnvironments]: '[]',
+  [IPC.variablesList]: '[]',
+  [IPC.queriesList]: '[]',
+  [IPC.queriesListConsole]: '[]',
+  [IPC.queriesHistoryList]: '[]',
+  // mode-switch.spec.ts and both existing http-request*.spec.ts specs boot with no history fixture
+  // at all — ResponsePane.vue's History segment fetches on mount, so "no history yet for a request
+  // never seen before" is the right default rather than a fixture miss.
+  [IPC.historyList]: '[]',
+  // M1 §6.2: hydrateDbMcp() joins the same unconditional-every-boot Promise.all, same
+  // reasoning — nothing in tests/ui/ seeds a dbmcp fixture, so
+  // "off, nothing running" is the honest default for a dev-server run under Playwright.
+  [IPC.dbMcpStatus]: JSON.stringify({
+    running: false,
+    command: '',
+    agentAvailable: false,
+    probed: [],
+    expiresAt: '',
+    error: '',
+  }),
+  // P85: main.ts's bootstrap() joins hydrateCustomScripts() to the same unconditional-every-boot
+  // Promise.all as updateStatus above, same reasoning — a spec that never configures a
+  // script gets "no scripts yet", not a fixture miss.
+  [IPC.customScriptsList]:
+    '{"dir":"/home/test/runs","collections":[],"scripts":[],"problems":[],"secretStorage":{"available":true,"backend":"keychain","insecureFallback":false,"reason":null}}',
 });
 
 // `windowKey`/`tabId` are excluded outright — a per-window or per-tab id this app generates at
 // runtime, never reproducible from a fixture.
-const CANONICAL_OPTIONS = { excludeKeys: ['windowKey', 'tabId', 'terminalId'] };
+// `refresh` defaults to `false` at every call site, so a live call always carries it explicitly
+// while an older captured fixture may omit it; dropping an explicit `false` makes them compare equal.
+const CANONICAL_OPTIONS = {
+  excludeKeys: ['windowKey', 'tabId', 'terminalId'],
+  dropKey: (key: string, value: unknown) => key === 'refresh' && value === false,
+};
+
+// The mode a fresh boot answers windowsEnsure with when a spec gives no snapshot for it: the
+// active tab of its (single, args-less) tabsList snapshot decides, so a spec restoring a Studio
+// tab as active boots displaying it. Anything else falls to the wildcard default.
+function inferredBootMode(byChannel: ReadonlyMap<string, MockSnapshot[]>): string | undefined {
+  const tabsSnaps = byChannel.get(IPC.tabsList);
+  const tabs = (tabsSnaps?.length === 1 ? tabsSnaps[0].response : undefined) as
+    | { kind?: string; active?: boolean }[]
+    | undefined;
+  if (!tabs || tabs.length === 0) return undefined;
+  const kind = (tabs.find((t) => t.active) ?? tabs[0])?.kind;
+  return kind && kind in STUDIO_TAB_KIND_MODE
+    ? STUDIO_TAB_KIND_MODE[kind as StudioTabKind]
+    : undefined;
+}
 
 /**
  * Replaces the control channel's answers at the network layer — `page.route` intercepts every
@@ -496,6 +821,33 @@ export async function installControlMocks(
     wildcardDefaults: WILDCARD_DEFAULTS,
     runtimeJsPath: WAILS_RUNTIME_JS,
     canonicalOptions: CANONICAL_OPTIONS,
+    // `refresh:true` never appears in a captured fixture (capture always reads `refresh:false`
+    // first); a static fixture world answers both the same way.
+    resolveSnapshotFallback: (_channel, args, findSnap) => {
+      if (args && typeof args === 'object' && (args as { refresh?: unknown }).refresh === true) {
+        return findSnap({ ...args, refresh: false });
+      }
+      return undefined;
+    },
+    // opsCancel (never snapshotted) releases the stream replies held by `untilCancel`
+    // snapshots; a spec asserts the cancelled op id from `control.log()`.
+    resolveMissingBody: (channel, byChannel) => {
+      if (channel === IPC.opsCancel) {
+        void page
+          .evaluate(() =>
+            (
+              globalThis as unknown as { __kiraReleaseCancelled?: () => void }
+            ).__kiraReleaseCancelled?.(),
+          )
+          .catch(() => {});
+        return 'null';
+      }
+      if (channel === IPC.windowsEnsure) {
+        const mode = inferredBootMode(byChannel);
+        return mode ? JSON.stringify({ mode }) : undefined;
+      }
+      return undefined;
+    },
   });
   emulateAdeTaskPush(page);
   return handle;
@@ -522,8 +874,11 @@ const ADE_TASK_PUSHES: Readonly<Record<string, readonly string[]>> = {
   [IPC.adeTaskResumeRun]: [IPC.adeTaskBoardChanged],
   [IPC.adeTaskStepDone]: [IPC.adeTaskBoardChanged],
   [IPC.adeTaskSetTaskStep]: [IPC.adeTaskBoardChanged],
+  [IPC.adeTaskAddNote]: [IPC.adeTaskBoardChanged],
   [IPC.adeTaskUpdateHandover]: [IPC.adeTaskBoardChanged],
   [IPC.adeTaskDismissHandover]: [IPC.adeTaskBoardChanged],
+  [IPC.adeTaskForwardPanelEdits]: [IPC.adeTaskBoardChanged],
+  [IPC.adeTaskDismissPanelEdits]: [IPC.adeTaskBoardChanged],
   [IPC.adeTaskAddLink]: [IPC.adeTaskBoardChanged],
   [IPC.adeTaskEditLink]: [IPC.adeTaskBoardChanged],
   [IPC.adeTaskRemoveArtifact]: [IPC.adeTaskBoardChanged],

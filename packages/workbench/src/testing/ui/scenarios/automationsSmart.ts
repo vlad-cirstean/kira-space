@@ -440,7 +440,7 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
       .toMatchObject({ scriptId: 'plain-1', scriptLaunchToken: 'tok-1', launchKind: 'script' });
   });
 
-  // Contract smart. Backend half: termflow TestSmartScript (Studio) / TestSmartScriptSpace (Space) ("done run", "outcomes") stores the same
+  // Contract smart. Backend half: termflow TestSmartScriptSpace stores the same
   // fixture against the fake claude.
   for (const outcome of [
     { key: 'done', label: 'Succeeded', summary: 'summary-done' },

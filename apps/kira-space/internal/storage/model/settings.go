@@ -11,9 +11,8 @@ import (
 	"github.com/kirathecat/kira-studio/internal/shell"
 )
 
-// Kira Space's own trimmed Settings model. Data/Cache/Api/DbMcp are dropped
-// entirely: all four are DB-client-only concerns (page sizes, the query cache budget, HTTP client
-// tuning, the embedded DB MCP server) Kira Space has no use for. Agent carries the leaves.
+// Kira Space's Settings model. Data/Cache/Api/DbMcp are the database module's sections (page sizes,
+// the query cache budget, HTTP client tuning, the embedded DB MCP server). Agent carries the leaves.
 // Appearance/Advanced/Git are this app's own: the only app with a git module, so the two
 // appearance leaves only the git module uses (InlineBlame/DateFormat), its own diagnostic-log leaf
 // (GitLogLevel — Kira Studio's own is a same-shaped but separately named/keyed advanced.logLevel,
@@ -26,6 +25,10 @@ type AdvancedSettings struct {
 	GitLogLevel string `json:"gitLogLevel"`
 	// NotifyPrompts posts an OS notification when a popup waits for an answer (P246).
 	NotifyPrompts bool `json:"notifyPrompts"`
+	// OpLogRetentionDays prunes database ops older than this many days.
+	OpLogRetentionDays int `json:"opLogRetentionDays"`
+	// ExpensiveQueryRows is an estimated-rows-read threshold, never a cost unit.
+	ExpensiveQueryRows int `json:"expensiveQueryRows"`
 }
 
 // Appearance embeds appsettings.Appearance for the five leaves both apps share, plus the two only
@@ -185,6 +188,10 @@ type Settings struct {
 	Memory     MemorySettings   `json:"memory"`
 	Agent      AgentSettings    `json:"agent"`
 	Tracking   TrackingSettings `json:"tracking"`
+	Data       DataSettings     `json:"data"`
+	Cache      CacheSettings    `json:"cache"`
+	Api        ApiSettings      `json:"api"`
+	DbMcp      DbMcpSettings    `json:"dbMcp"`
 }
 
 // DefaultMobileSettings mirrors settingsDomain.ts's mobileSettingsSchema defaults.
@@ -225,7 +232,7 @@ func DefaultSettings() Settings {
 			InlineBlame: true,
 			DateFormat:  "relative",
 		},
-		Advanced: AdvancedSettings{GitLogLevel: "info", NotifyPrompts: true},
+		Advanced: AdvancedSettings{GitLogLevel: "info", NotifyPrompts: true, OpLogRetentionDays: 30, ExpensiveQueryRows: 100_000},
 		Git:      DefaultGitSettings(),
 		Ade:      DefaultAdeSettings(),
 		Mobile:   DefaultMobileSettings(),
@@ -233,13 +240,30 @@ func DefaultSettings() Settings {
 		Memory:   MemorySettings{Models: map[string]string{}},
 		Agent:    DefaultAgentSettings(),
 		Tracking: DefaultTrackingSettings(),
+		Data:     DataSettings{DefaultPageSize: 100},
+		Cache:    CacheSettings{L2BudgetMb: 64},
+		// P90 §2.1: three deliberate default changes from pre-P90 httpclient behaviour — timeout
+		// 30s -> none, max response 10 MiB -> 5 MB (large bodies freeze the viewer), max redirects
+		// unchanged at 10. internal/httpclient/options.go's normalize() defaults must equal these.
+		Api: ApiSettings{
+			HTTPVersion:      "2",
+			RequestTimeoutMs: 0,
+			MaxResponseMb:    5,
+			SSLVerify:        true,
+			FollowRedirects:  true,
+			MaxRedirects:     10,
+			DisableCookieJar: true,
+		},
+		DbMcp: DbMcpSettings{ServerEnabled: false, PreviewResponses: false, FocusOnApproval: true, APIRequests: false, APIApproval: "always"},
 	}
 }
 
 // AdvancedPatch mirrors AdvancedSettings' own `.partial()` shape.
 type AdvancedPatch struct {
-	GitLogLevel   *string `json:"gitLogLevel,omitempty"`
-	NotifyPrompts *bool   `json:"notifyPrompts,omitempty"`
+	GitLogLevel        *string `json:"gitLogLevel,omitempty"`
+	NotifyPrompts      *bool   `json:"notifyPrompts,omitempty"`
+	OpLogRetentionDays *int    `json:"opLogRetentionDays,omitempty"`
+	ExpensiveQueryRows *int    `json:"expensiveQueryRows,omitempty"`
 }
 
 // AppearancePatch embeds appsettings.AppearancePatch for the five leaves both apps share, plus this
@@ -323,6 +347,10 @@ type SettingsPatch struct {
 	Memory     *MemoryPatch     `json:"memory,omitempty"`
 	Agent      *AgentPatch      `json:"agent,omitempty"`
 	Tracking   *TrackingPatch   `json:"tracking,omitempty"`
+	Data       *DataPatch       `json:"data,omitempty"`
+	Cache      *CachePatch      `json:"cache,omitempty"`
+	Api        *ApiPatch        `json:"api,omitempty"`
+	DbMcp      *DbMcpPatch      `json:"dbMcp,omitempty"`
 }
 
 // validateAppearanceSection mirrors upsertAppearance's own leaf list (repos/settings.go).
@@ -345,6 +373,12 @@ func validateAdvancedSection(a *AdvancedPatch) error {
 	}
 	if a.GitLogLevel != nil && !appsettings.ValidLogLevel(*a.GitLogLevel) {
 		return fmt.Errorf("model: advanced.gitLogLevel: invalid value %q", *a.GitLogLevel)
+	}
+	if a.OpLogRetentionDays != nil && !appsettings.InRange(1, 365)(*a.OpLogRetentionDays) {
+		return fmt.Errorf("model: advanced.opLogRetentionDays: out of range value %d", *a.OpLogRetentionDays)
+	}
+	if a.ExpensiveQueryRows != nil && !appsettings.InRange(1_000, 1_000_000_000)(*a.ExpensiveQueryRows) {
+		return fmt.Errorf("model: advanced.expensiveQueryRows: out of range value %d", *a.ExpensiveQueryRows)
 	}
 	return nil
 }
@@ -545,6 +579,18 @@ func (p SettingsPatch) Validate() error {
 		return err
 	}
 	if err := validateTrackingSection(p.Tracking); err != nil {
+		return err
+	}
+	if err := validateDataSection(p.Data); err != nil {
+		return err
+	}
+	if err := validateCacheSection(p.Cache); err != nil {
+		return err
+	}
+	if err := validateApiSection(p.Api); err != nil {
+		return err
+	}
+	if err := validateDbMcpSection(p.DbMcp); err != nil {
 		return err
 	}
 	if p.Agent == nil {

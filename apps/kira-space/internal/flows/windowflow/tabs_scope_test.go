@@ -20,8 +20,7 @@ func sTab(id string, order int, active bool) model.TabRecord {
 	return model.TabRecord{ID: id, Path: "repo/" + id, Kind: "repo-graph", State: json.RawMessage(`{}`), Order: order, Active: active, WorkspaceID: &ws}
 }
 
-// Space half of the tabs-scope scenario; Studio's spec tests/ui/tabs-scope.spec.ts renders it.
-// Backend half of tests/ui/tabs-scope.spec.ts.
+// Backend half of tests/ui/tabs-scope-db.spec.ts. One tab store holds repository and database kinds.
 func TestTabsScope(t *testing.T) {
 	app := flowharness.New(t)
 	for _, key := range []string{"A", "B"} {
@@ -49,7 +48,7 @@ func TestTabsScope(t *testing.T) {
 	}
 
 	v7, v4 := ids.NewID(), "5f2c1c0e-8f0a-4a52-9d6e-0b6c2f7a1d11"
-	if err := app.W.Tabs.Save(bridge.TabsSaveArgs{WindowKey: "A", Tabs: []model.TabRecord{sTab(v7, 0, true), sTab(v4, 1, false)}}); err != nil {
+	if err := app.W.Tabs.Save(bridge.TabsSaveArgs{WindowKey: "A", Tabs: []model.TabRecord{sTab(v7, 0, true), tab(v4, "console", 1, false)}}); err != nil {
 		t.Fatal(err)
 	}
 	if got := listIDs("A"); !reflect.DeepEqual(got, []string{v7, v4}) {

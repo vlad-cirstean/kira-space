@@ -1,0 +1,214 @@
+{
+  "args:ApiConfigService.Form#bad": {
+    "edits": [],
+    "file": "staging.environment.yaml",
+    "text": "# Staging servers for the web team.\ncolor: green\nname: Staging # shown in the picker\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n    value: x\n"
+  },
+  "args:ApiConfigService.Form#collection": {
+    "edits": [
+      {
+        "path": [
+          "variables"
+        ],
+        "unset": false,
+        "value": [
+          {
+            "name": "base_url",
+            "value": "https://orders.example.com"
+          }
+        ]
+      }
+    ],
+    "file": "orders-api.collection.yaml",
+    "text": "name: Orders API\nitems: []\n"
+  },
+  "args:ApiConfigService.Form#edited": {
+    "edits": [
+      {
+        "path": [
+          "description"
+        ],
+        "unset": false,
+        "value": "EU staging"
+      },
+      {
+        "path": [
+          "variables"
+        ],
+        "unset": false,
+        "value": [
+          {
+            "description": "API root",
+            "name": "base_url",
+            "value": "https://eu.example.com"
+          },
+          {
+            "name": "token",
+            "secret": "${secret:staging-eu.token}"
+          }
+        ]
+      },
+      {
+        "path": [
+          "color"
+        ],
+        "unset": true,
+        "value": null
+      }
+    ],
+    "file": "staging.environment.yaml",
+    "text": "# Staging servers for the web team.\ncolor: green\nname: Staging # shown in the picker\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "args:ApiConfigService.Form#read": {
+    "edits": [],
+    "file": "staging.environment.yaml",
+    "text": "# Staging servers for the web team.\ncolor: green\nname: Staging # shown in the picker\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "args:ApiConfigService.Form#rename": {
+    "edits": [
+      {
+        "path": [
+          "name"
+        ],
+        "unset": false,
+        "value": "Staging EU"
+      }
+    ],
+    "file": "staging.environment.yaml",
+    "text": "# Staging servers for the web team.\ncolor: green\nname: Staging # shown in the picker\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "args:ApiConfigService.Form#yaml": {
+    "edits": [],
+    "file": "staging.environment.yaml",
+    "text": "# Staging servers for the web team.\ncolor: green\nname: Staging yaml # shown in the picker\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "args:ApiConfigService.SaveFile": {
+    "baseHash": "<masked>",
+    "file": "staging.environment.yaml",
+    "text": "# Staging servers for the web team.\nname: Staging # shown in the picker\nvariables:\n  - description: API root\n    name: base_url\n    value: https://eu.example.com\n  - name: token\n    secret: ${secret:staging-eu.token}\ndescription: EU staging\n"
+  },
+  "file#collection": {
+    "file": "orders-api.collection.yaml",
+    "hash": "<masked>",
+    "kind": "collection",
+    "lastGood": false,
+    "path": "<space>/config/api/orders-api.collection.yaml",
+    "problem": null,
+    "text": "name: Orders API\nitems: []\n"
+  },
+  "file#read": {
+    "file": "staging.environment.yaml",
+    "hash": "<masked>",
+    "kind": "environment",
+    "lastGood": false,
+    "path": "<space>/config/api/staging.environment.yaml",
+    "problem": null,
+    "text": "# Staging servers for the web team.\ncolor: green\nname: Staging # shown in the picker\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "file#saved": {
+    "file": "staging.environment.yaml",
+    "hash": "<masked>",
+    "kind": "environment",
+    "lastGood": false,
+    "path": "<space>/config/api/staging.environment.yaml",
+    "problem": null,
+    "text": "# Staging servers for the web team.\nname: Staging # shown in the picker\nvariables:\n  - description: API root\n    name: base_url\n    value: https://eu.example.com\n  - name: token\n    secret: ${secret:staging-eu.token}\ndescription: EU staging\n"
+  },
+  "form#bad": {
+    "problem": {
+      "col": 5,
+      "line": 8,
+      "message": "The variable token sets both value and secret. Set one.",
+      "path": "/variables/1/secret"
+    },
+    "text": "# Staging servers for the web team.\ncolor: green\nname: Staging # shown in the picker\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n    value: x\n",
+    "value": null
+  },
+  "form#collection": {
+    "problem": null,
+    "text": "name: Orders API\nitems: []\nvariables:\n  - name: base_url\n    value: https://orders.example.com\n",
+    "value": {
+      "items": [],
+      "name": "Orders API",
+      "variables": [
+        {
+          "name": "base_url",
+          "value": "https://orders.example.com"
+        }
+      ]
+    }
+  },
+  "form#edited": {
+    "problem": null,
+    "text": "# Staging servers for the web team.\nname: Staging # shown in the picker\nvariables:\n  - description: API root\n    name: base_url\n    value: https://eu.example.com\n  - name: token\n    secret: ${secret:staging-eu.token}\ndescription: EU staging\n",
+    "value": {
+      "description": "EU staging",
+      "name": "Staging",
+      "variables": [
+        {
+          "description": "API root",
+          "name": "base_url",
+          "value": "https://eu.example.com"
+        },
+        {
+          "name": "token",
+          "secret": "${secret:staging-eu.token}"
+        }
+      ]
+    }
+  },
+  "form#read": {
+    "problem": null,
+    "text": "# Staging servers for the web team.\ncolor: green\nname: Staging # shown in the picker\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n",
+    "value": {
+      "color": "green",
+      "name": "Staging",
+      "variables": [
+        {
+          "name": "base_url",
+          "value": "https://staging.example.com"
+        },
+        {
+          "name": "token",
+          "secret": "${secret:staging.token}"
+        }
+      ]
+    }
+  },
+  "form#rename": {
+    "problem": null,
+    "text": "# Staging servers for the web team.\ncolor: green\nname: Staging EU # shown in the picker\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n",
+    "value": {
+      "color": "green",
+      "name": "Staging EU",
+      "variables": [
+        {
+          "name": "base_url",
+          "value": "https://staging.example.com"
+        },
+        {
+          "name": "token",
+          "secret": "${secret:staging.token}"
+        }
+      ]
+    }
+  },
+  "form#yaml": {
+    "problem": null,
+    "text": "# Staging servers for the web team.\ncolor: green\nname: Staging yaml # shown in the picker\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n",
+    "value": {
+      "color": "green",
+      "name": "Staging yaml",
+      "variables": [
+        {
+          "name": "base_url",
+          "value": "https://staging.example.com"
+        },
+        {
+          "name": "token",
+          "secret": "${secret:staging.token}"
+        }
+      ]
+    }
+  }
+}

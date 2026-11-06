@@ -1,9 +1,13 @@
 package flowharness
 
 import (
+	"context"
 	"sync"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
+	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/harness/claude"
 	"github.com/kirathecat/kira-studio/internal/shell"
 )
 
@@ -73,6 +77,27 @@ type Dialogs struct {
 	Directory []bridge.OpenDirectoryRequest
 	Files     []bridge.OpenFilesRequest
 	File      []bridge.OpenFileRequest
+	Save      []bridge.SaveFileRequest
+	saves     []string
+}
+
+// AnswerSave queues the path the next SaveFile returns.
+func (d *Dialogs) AnswerSave(path string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.saves = append(d.saves, path)
+}
+
+func (d *Dialogs) SaveFile(req bridge.SaveFileRequest) (string, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.Save = append(d.Save, req)
+	if len(d.saves) == 0 {
+		return "", nil
+	}
+	p := d.saves[0]
+	d.saves = d.saves[1:]
+	return p, nil
 }
 
 // AnswerFile queues the path the next OpenFile returns.
@@ -249,4 +274,172 @@ func (k *KeepAwakeDriver) Held() bool {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	return k.held
+}
+
+// McpInstaller records installs; it never touches the real claude config. Known names the
+// servers Registered reports as already registered.
+type McpInstaller struct {
+	mu       sync.Mutex
+	Installs []McpInstall
+	Known    map[string]bool
+}
+
+// McpInstall is one Install call.
+type McpInstall struct{ Name, URL, Token string }
+
+func (m *McpInstaller) Status() harness.InstallStatus { return harness.InstallStatus{} }
+
+func (m *McpInstaller) Install(_ context.Context, name, url, token string) harness.InstallResult {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Installs = append(m.Installs, McpInstall{name, url, token})
+	return harness.InstallResult{Outcome: harness.OutcomeInstalled}
+}
+
+// InstallCalls returns a copy of the recorded Install calls.
+func (m *McpInstaller) InstallCalls() []McpInstall {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]McpInstall(nil), m.Installs...)
+}
+
+// Registered answers the optional registration probe from Known.
+func (m *McpInstaller) Registered(_ context.Context, name string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.Known[name], nil
+}
+
+func (m *McpInstaller) InstallStdio(context.Context, string, string, []string) harness.InstallResult {
+	return harness.InstallResult{}
+}
+
+func (m *McpInstaller) Command(name, url, helperPath string) string {
+	return claude.New().MCPInstaller().Command(name, url, helperPath)
+}
+
+func (m *McpInstaller) StdioCommand(name, command string, args []string) string {
+	return claude.New().MCPInstaller().StdioCommand(name, command, args)
+}
+
+// OSAuth scripts the OS authentication prompt. By default it is unavailable, so a reveal needs the
+// in-app confirmation, as on a Mac with neither biometry nor a login password.
+type OSAuth struct {
+	mu        sync.Mutex
+	available bool
+	outcome   localauth.Outcome
+	// Prompts records the reason of every evaluate call.
+	Prompts []string
+}
+
+// Script sets whether OS authentication is available and what its prompt answers.
+func (o *OSAuth) Script(available bool, outcome localauth.Outcome) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.available, o.outcome = available, outcome
+}
+
+func (o *OSAuth) evaluate(reason string) (localauth.Outcome, error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.Prompts = append(o.Prompts, reason)
+	return o.outcome, nil
+}
+
+func (o *OSAuth) isAvailable() bool {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.available
+}
+
+// WindowFocus records window raises in order and keeps the focus state a raise sets.
+type WindowFocus struct {
+	mu      sync.Mutex
+	keys    []string
+	focused map[string]bool
+}
+
+func (w *WindowFocus) Focused(key string) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.focused[key]
+}
+
+func (w *WindowFocus) Focus(key string) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.focused == nil {
+		w.focused = map[string]bool{}
+	}
+	w.keys = append(w.keys, key)
+	w.focused[key] = true
+	return true
+}
+
+// Blur clears every window's focus, like the user switching to another app.
+func (w *WindowFocus) Blur() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.focused = nil
+}
+
+// Keys returns a copy of the raised window keys, oldest first.
+func (w *WindowFocus) Keys() []string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return append([]string(nil), w.keys...)
+}
+
+// ProofShell stands in for the window manager under the proof window: it records opens and
+// raises, and a window it opened stays live until Close.
+type ProofShell struct {
+	mu     sync.Mutex
+	live   map[string]bool
+	Opened []shell.WindowRecord
+	Raised []string
+	Titles map[string]string
+}
+
+func (p *ProofShell) Keys() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	keys := make([]string, 0, len(p.live))
+	for k := range p.live {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func (p *ProofShell) Focus(key string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.Raised = append(p.Raised, key)
+	return p.live[key]
+}
+
+func (p *ProofShell) SetTitle(key, title string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.Titles == nil {
+		p.Titles = map[string]string{}
+	}
+	p.Titles[key] = title
+	return p.live[key]
+}
+
+func (p *ProofShell) Open(rec shell.WindowRecord) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.live == nil {
+		p.live = map[string]bool{}
+	}
+	p.live[rec.Key] = true
+	p.Opened = append(p.Opened, rec)
+}
+
+// Close ends a window the way the user closing it does.
+func (p *ProofShell) Close(key string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	delete(p.live, key)
 }

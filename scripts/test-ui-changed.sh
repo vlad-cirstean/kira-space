@@ -1,7 +1,7 @@
 #!/bin/sh
-# test-ui-changed.sh [--dry-run] [<base>] — runs the Playwright `ui` suite of each app a change
-# can affect (table in scripts/hook-scope.sh `ui_target_of`). Files: `git diff --name-only <base>`
-# plus untracked. Unknown paths select both apps. Default base: merge-base with origin/main.
+# test-ui-changed.sh [--dry-run] [<base>] — runs the Playwright `ui` suite when a change can affect
+# it (`ui_affects` in scripts/hook-scope.sh). Files: `git diff --name-only <base>` plus untracked.
+# Default base: merge-base with origin/main.
 set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
@@ -19,32 +19,19 @@ for a in "$@"; do
 done
 [ -n "$base" ] || [ -n "${UI_CHANGED_FILES:-}" ] || base="$(git merge-base HEAD origin/main)"
 
-# An app spec importing the other app's code breaks the per-app split.
-if grep -rEn "from '[^']*kira-studio/" apps/kira-space/tests --include=*.ts \
-  || grep -rEn "from '[^']*kira-space/" apps/kira-studio/tests --include=*.ts; then
-  echo "test-ui-changed: an app test imports the other app (move it to packages/workbench/src/testing/ui)" >&2
-  exit 1
-fi
-
 # UI_CHANGED_FILES (newline list) replaces the git file list, for checking the table.
 files="${UI_CHANGED_FILES:-$( { git diff --name-only "$base"; git ls-files --others --exclude-standard; } | sort -u)}"
-targets="$(ui_targets "$files")"
 
-if [ -z "$targets" ]; then
+why="$(printf '%s\n' "$files" | while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  if ui_affects "$f"; then echo "$f"; break; fi
+done)"
+
+if [ -z "$why" ]; then
   echo "no UI suite affected"
   exit 0
 fi
 
-for app in studio space; do
-  printf '%s\n' "$targets" | grep -qx "$app" || continue
-  why="$(printf '%s\n' "$files" | while IFS= read -r f; do
-    case "$(ui_target_of "$f")" in "$app" | both) echo "$f"; break ;; esac
-  done)"
-  echo "ui:$app (because of $why)"
-done
+echo "ui (because of $why)"
 [ "$dry" = 1 ] && exit 0
-
-for app in studio space; do
-  printf '%s\n' "$targets" | grep -qx "$app" || continue
-  bun run "test:ui:$app"
-done
+bun run test:ui

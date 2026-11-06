@@ -1,0 +1,187 @@
+{
+  "AdeTaskService.DbAudit#list": {
+    "entries": [
+      {
+        "approvals": [
+          {
+            "exemptionLimits": [
+              {
+                "name": "expensive_query",
+                "threshold": "1000 rows"
+              }
+            ],
+            "exemptionReason": "quarterly report needs the full table",
+            "id": "<masked>",
+            "outcome": "denied",
+            "raisedAt": 0,
+            "reason": "exemption",
+            "resolvedAt": 0,
+            "stage": "query",
+            "subject": "db.exemption"
+          }
+        ],
+        "connectionName": "audit db",
+        "durationMs": 0,
+        "error": "the user kept limit expensive_query for this statement on \"audit db\"; it did not run. Improve the statement or stop.",
+        "id": "<masked>",
+        "mode": "read",
+        "sessionId": "<masked>",
+        "startedAt": 0,
+        "statement": "SELECT * FROM people   WHERE email = '…'",
+        "statementLen": 62,
+        "statementTruncated": false,
+        "statementWithheld": false,
+        "status": "refused",
+        "stepId": "work",
+        "stepName": "Work",
+        "summary": "",
+        "target": "",
+        "tool": "run_query"
+      },
+      {
+        "approvals": [],
+        "connectionName": "audit db",
+        "durationMs": 0,
+        "error": "refused (message not recorded)",
+        "id": "<masked>",
+        "mode": "read",
+        "sessionId": "<masked>",
+        "startedAt": 0,
+        "statement": "SELECT * FROM people   WHERE email = '…'",
+        "statementLen": 62,
+        "statementTruncated": false,
+        "statementWithheld": false,
+        "status": "refused",
+        "stepId": "work",
+        "stepName": "Work",
+        "summary": "",
+        "target": "",
+        "tool": "run_query"
+      },
+      {
+        "approvals": [
+          {
+            "exemptionLimits": [],
+            "exemptionReason": "",
+            "id": "<masked>",
+            "outcome": "denied",
+            "raisedAt": 0,
+            "reason": "permission",
+            "resolvedAt": 0,
+            "stage": "query",
+            "subject": "db.query"
+          }
+        ],
+        "connectionName": "audit db",
+        "durationMs": 0,
+        "error": "query against \"audit db\" was denied by the user",
+        "id": "<masked>",
+        "mode": "write",
+        "sessionId": "<masked>",
+        "startedAt": 0,
+        "statement": "INSERT INTO people (name, email) VALUES ('…', '…')",
+        "statementLen": 64,
+        "statementTruncated": false,
+        "statementWithheld": false,
+        "status": "refused",
+        "stepId": "work",
+        "stepName": "Work",
+        "summary": "",
+        "target": "",
+        "tool": "run_query"
+      },
+      {
+        "approvals": [
+          {
+            "exemptionLimits": [],
+            "exemptionReason": "",
+            "id": "<masked>",
+            "outcome": "approved",
+            "raisedAt": 0,
+            "reason": "permission",
+            "resolvedAt": 0,
+            "stage": "query",
+            "subject": "db.query"
+          }
+        ],
+        "connectionName": "audit db",
+        "durationMs": 0,
+        "error": "",
+        "id": "<masked>",
+        "mode": "write",
+        "sessionId": "<masked>",
+        "startedAt": 0,
+        "statement": "INSERT INTO people (name, email) VALUES ('…', '…')",
+        "statementLen": 64,
+        "statementTruncated": false,
+        "statementWithheld": false,
+        "status": "ok",
+        "stepId": "work",
+        "stepName": "Work",
+        "summary": "",
+        "target": "",
+        "tool": "run_query"
+      },
+      {
+        "approvals": [],
+        "connectionName": "audit db",
+        "durationMs": 0,
+        "error": "E_QUERY: failed (message not recorded)",
+        "id": "<masked>",
+        "mode": "read",
+        "sessionId": "<masked>",
+        "startedAt": 0,
+        "statement": "SELECT * FROM missing WHERE name = '…'",
+        "statementLen": 42,
+        "statementTruncated": false,
+        "statementWithheld": false,
+        "status": "error",
+        "stepId": "work",
+        "stepName": "Work",
+        "summary": "",
+        "target": "",
+        "tool": "run_query"
+      },
+      {
+        "approvals": [],
+        "connectionName": "audit db",
+        "durationMs": 0,
+        "error": "",
+        "id": "<masked>",
+        "mode": "read",
+        "sessionId": "<masked>",
+        "startedAt": 0,
+        "statement": "SELECT * FROM people WHERE email = '…'",
+        "statementLen": 52,
+        "statementTruncated": false,
+        "statementWithheld": false,
+        "status": "ok",
+        "stepId": "work",
+        "stepName": "Work",
+        "summary": "",
+        "target": "",
+        "tool": "run_query"
+      },
+      {
+        "approvals": [],
+        "connectionName": "",
+        "durationMs": 0,
+        "error": "",
+        "id": "<masked>",
+        "mode": "",
+        "sessionId": "<masked>",
+        "startedAt": 0,
+        "statement": "",
+        "statementLen": 0,
+        "statementTruncated": false,
+        "statementWithheld": false,
+        "status": "ok",
+        "stepId": "work",
+        "stepName": "Work",
+        "summary": "",
+        "target": "",
+        "tool": "list_connections"
+      }
+    ]
+  }
+}

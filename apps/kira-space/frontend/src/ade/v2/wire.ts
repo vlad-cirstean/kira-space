@@ -103,6 +103,8 @@ export interface WorkflowStep {
   /** Agent prompt; manual: the session's first message. */
   prompt: string;
   allowedTools: string[] /* D6, [] = none added */;
+  /** The step's agent sessions get the Kira DB tools (agent, review, manual session; not with a smart script). */
+  dbMcp: boolean;
   /** Name of the smart script that replaces `prompt`; '' = a prompt step. */
   smartScript: string;
   /** The smart script's values per param name. */
@@ -446,7 +448,8 @@ export interface Task {
   workflow: Workflow | null /* the version a started task runs; null until it starts */;
   workflowOutdated: boolean /* the live file differs from `workflow` */;
   est: string /* '' none; extend-only, D16 */;
-  notes: string /* Markdown */;
+  /** Derived, read-only: the task's user notes, newest first, joined by a blank line. */
+  notes: string;
   color: number;
   branchIds: string[];
   runs: Run[];
@@ -473,7 +476,8 @@ export interface Handover {
   toStepName: string;
   body: string;
   source: 'agent' | 'run' | 'user';
-  state: 'draft' | 'handed';
+  /** 'note' = a user note: source 'user', fromStep* the stage it was written in, toStep* empty. */
+  state: 'draft' | 'handed' | 'note';
   finished: boolean;
   dismissed: boolean;
   edited: boolean;
@@ -546,9 +550,106 @@ export interface RemoveArtifactArgs {
 export interface HandoversResult {
   handovers: Handover[];
 }
+/** One step of an attached proof session; the data stays in the proof window's store. */
+interface TaskProofStep {
+  ordinal: number;
+  description: string;
+  view: 'table' | 'document' | 'keyvalue' | 'chart' | 'diagram';
+  source: string;
+}
+/** A closed proof session attached to a task. `sessionId` is the Kira session that attached it ('' = the user). */
+export interface TaskProof {
+  proofId: string;
+  name: string;
+  summary: string;
+  closedAt: number;
+  linkedAt: number;
+  source: 'agent' | 'user';
+  sessionId: string;
+  stepId: string;
+  stepName: string;
+  rev: number;
+  pending: boolean;
+  steps: TaskProofStep[];
+}
+export interface TaskProofsResult {
+  proofs: TaskProof[];
+}
+/** A limit an exemption request asks to lift. */
+interface DbAuditLimit {
+  name: string;
+  threshold: string;
+}
+/** An approval raised inside a Kira DB call. */
+export interface DbAuditApproval {
+  id: string;
+  /** The approvals kind: db.query, db.response, db.exemption, kube.read, script.run or api.request. */
+  subject: string;
+  reason: string;
+  stage: string;
+  outcome:
+    | 'pending'
+    | 'approved'
+    | 'denied'
+    | 'timedOut'
+    | 'abandoned'
+    | 'queueFull'
+    | 'tooLarge'
+    | 'heldFull';
+  raisedAt: number;
+  resolvedAt: number | null;
+  exemptionLimits: DbAuditLimit[];
+  exemptionReason: string;
+}
+/** One tool call of an agent session on the Kira DB session server. The statement has no literals. */
+export interface DbAuditEntry {
+  id: string;
+  sessionId: string;
+  stepId: string;
+  stepName: string;
+  tool: string;
+  connectionName: string;
+  mode: string;
+  target: string;
+  statement: string;
+  statementLen: number;
+  statementWithheld: boolean;
+  statementTruncated: boolean;
+  summary: string;
+  status: 'running' | 'ok' | 'error' | 'refused' | 'cancelled';
+  error: string;
+  startedAt: number;
+  durationMs: number | null;
+  approvals: DbAuditApproval[];
+}
+export interface DbAuditResult {
+  entries: DbAuditEntry[];
+}
+/** Payload of the dbAudit push: the task whose trail changed. */
+export interface DbAuditEvent {
+  taskId: string;
+}
+/** A closed proof session no task holds yet. */
+interface ProofChoice {
+  proofId: string;
+  name: string;
+  closedAt: number;
+  steps: number;
+}
+export interface ProofChoicesResult {
+  proofs: ProofChoice[];
+}
+export interface LinkProofArgs {
+  taskId: string;
+  proofId: string;
+}
+export interface AddNoteArgs {
+  taskId: string;
+  body: string;
+}
 export interface UpdateHandoverArgs {
   id: string;
-  /** '' deletes the row. */
+  /** '' deletes the row. A note row may reach 1 MiB, other rows 16 KiB. */
   body: string;
 }
 /** `notes` replaces the stage's draft handover; '' drops it; absent keeps it. */
@@ -850,6 +951,34 @@ export interface ReviewForwardText {
 export interface ForwardReviewResult {
   count: number;
 }
+interface PanelForwardItem {
+  key: string;
+  kind: 'note' | 'handover' | 'link' | 'proof' | 'field';
+  label: string;
+  at: number;
+}
+interface ForwardTarget {
+  sessionId: string;
+  badge: string;
+}
+export interface PanelForward {
+  stepId: string;
+  stepName: string;
+  items: PanelForwardItem[];
+  targets: ForwardTarget[];
+  unreachable: number /* running sessions that take no message */;
+  dropped: number;
+  preview: string;
+}
+interface PanelForwardFailure {
+  sessionId: string;
+  error: string;
+}
+export interface PanelForwardResult {
+  sent: string[];
+  ended: string[];
+  failed: PanelForwardFailure[];
+}
 
 // ---- push payloads
 export interface RunsChangedEvent {
@@ -877,6 +1006,7 @@ export interface CreateTaskArgs {
   title: string;
   jira: Jira | null;
   hostUrl: string;
+  /** The first note; '' adds none. */
   notes: string;
   codeRepoIds: string[];
   workflowId: string;
@@ -964,7 +1094,6 @@ export interface TaskPatch {
   clearJira: boolean;
   hostUrl: string | null;
   est: string | null;
-  notes: string | null;
   color: number | null;
   kind: 'task' | 'parked' | null;
   statusId: TaskStatus | null;

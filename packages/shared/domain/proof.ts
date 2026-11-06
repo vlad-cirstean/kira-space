@@ -4,7 +4,13 @@ import { z } from 'zod';
 // shapes internal/proof/validate.go stores; Go validates first, the window parses again before
 // building a page from a payload.
 
-export const proofViewSchema = /*#__PURE__*/ z.enum(['table', 'document', 'keyvalue', 'chart']);
+export const proofViewSchema = /*#__PURE__*/ z.enum([
+  'table',
+  'document',
+  'keyvalue',
+  'chart',
+  'diagram',
+]);
 export type ProofView = z.infer<typeof proofViewSchema>;
 
 export const proofLanguageSchema = /*#__PURE__*/ z.enum(['sql', 'json', 'shell', 'text']);
@@ -66,6 +72,25 @@ export const proofChartPayloadSchema = /*#__PURE__*/ z.union([
   proofPieChartSchema,
 ]);
 export type ProofChartPayload = z.infer<typeof proofChartPayloadSchema>;
+
+export const proofDiagramPayloadSchema = /*#__PURE__*/ z.object({
+  type: z.enum([
+    'flowchart',
+    'graph',
+    'sequenceDiagram',
+    'classDiagram',
+    'stateDiagram',
+    'stateDiagram-v2',
+    'erDiagram',
+    'gantt',
+    'journey',
+    'gitGraph',
+    'mindmap',
+    'timeline',
+  ]),
+  source: z.string(),
+});
+export type ProofDiagramPayload = z.infer<typeof proofDiagramPayloadSchema>;
 
 // Legend entries hidden, the clicked point and the zoom window (percent of the axis).
 export const proofChartViewStateSchema = /*#__PURE__*/ z.object({

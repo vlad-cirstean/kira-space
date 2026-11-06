@@ -2,10 +2,10 @@
 
 See the [README](../README.md) for what the app is and how to run it.
 
-Kira Studio ships as an unsigned (ad-hoc), local, arm64-only macOS build in v1 — see SPEC.md §1/§3.
+Kira Space ships as an unsigned (ad-hoc), local, arm64-only macOS build. One app, one bundle, one DMG (P537).
 
 Packaging is Wails v3's own [Task](https://taskfile.dev)-based pipeline (P57): config lives in
-`apps/kira-studio/build/config.yml`, the task graph in `apps/kira-studio/Taskfile.yml` and `apps/kira-studio/build/darwin/Taskfile.yml`,
+`apps/kira-space/build/config.yml`, the task graph in `apps/kira-space/Taskfile.yml` and `apps/kira-space/build/darwin/Taskfile.yml`,
 and entry points in the repo-root `package.json`'s `scripts` plus `scripts/sign-bundle.sh` and
 `scripts/verify-packaging.sh`. There is no `electron-builder.yml`, no asar, and no native-module ABI
 rebuild step — all deleted with Electron in P57 M7. **As of P58f M10, there is no vendored Node
@@ -19,10 +19,10 @@ Requires macOS arm64, Bun, Go (`go.mod`: 1.27.0), and Xcode command-line tools. 
 itself:
 
 ```sh
-bun run package:studio          # installs everything first, then wails3 task darwin:package:dmg, then scripts/sign-bundle.sh
+bun run package          # installs everything first, then wails3 task darwin:package:dmg, then scripts/sign-bundle.sh
 ```
 
-`bun run package:studio` and `bun run dev:studio` both run `bun run setup` first (wired as `prepackage:studio`/`predev:studio`),
+`bun run package` and `bun run dev` both run `bun run setup` first (wired as `prepackage`/`predev`),
 which is `scripts/setup.sh`, the one entry point for everything a fresh clone needs before building.
 It sources `scripts/lib.sh` for shared `ROOT_DIR`, `require_cmd`, `ensure_gopath_on_path`,
 `sha256_file` and `pinned_wails_version`/`go_directive` helpers, then:
@@ -36,37 +36,37 @@ It sources `scripts/lib.sh` for shared `ROOT_DIR`, `require_cmd`, `ensure_gopath
 - delegates bindings regeneration to `wails3 task common:generate:bindings`, **for both this app
   and Kira Space** (`apps/kira-space`, as of v1.9 P100) — a loop over the two app dirs, each gated
   on its own identity stamp (`apps/<app>/.task/bindings.stamp`) and its own bindings directory's
-  presence (`setup.sh`'s bindings-regeneration block) — `apps/kira-studio/frontend/src/bridge/*.ts`
-  (and Kira Space's own equivalent) import their generated bindings directly, so `bun run build:studio`
+  presence (`setup.sh`'s bindings-regeneration block) — `apps/kira-space/frontend/src/studio/bridge/*.ts`
+  (and Kira Space's own equivalent) import their generated bindings directly, so `bun run build`
   fails without them.
 
 `setup.sh` does only what is missing on each run. To run just the install step (e.g. to warm up a
 machine before writing code), use `bun run setup`.
-`apps/kira-studio/{bin,frontend/dist,frontend/bindings}` are gitignored (`apps/kira-studio/.gitignore`).
+`apps/kira-space/{bin,frontend/dist,frontend/bindings}` are gitignored (`apps/kira-space/.gitignore`).
 
 Expected artifacts (nothing lands in `dist/` or `out/` any more):
 
-- `apps/kira-studio/bin/Kira Studio.dmg` — **the shipped artifact** (P10): the styled, ad-hoc-signed
+- `apps/kira-space/bin/Kira Space.dmg` — **the shipped artifact** (P10): the styled, ad-hoc-signed
   disk image holding the app and an `/Applications` shortcut to drag it onto.
-- `apps/kira-studio/bin/Kira Studio.app` — the packaged, ad-hoc-signed bundle the image is built
+- `apps/kira-space/bin/Kira Space.app` — the packaged, ad-hoc-signed bundle the image is built
   from. Still produced, and still what you run locally; it is no longer what ships.
-- `apps/kira-studio/bin/Kira Studio` — the bare Go binary the bundle is assembled around.
+- `apps/kira-space/bin/Kira Space` — the bare Go binary the bundle is assembled around.
 
 **No app artifact carries a `.vsix`.** The VS Code extension was removed in P243 Part 2.
 
 No `.zip` is produced anywhere any more — the release workflow uploads the `.dmg` (§7).
 
-**Bundle layout** (`apps/kira-studio/build/darwin/Taskfile.yml`'s `create:app:bundle`):
+**Bundle layout** (`apps/kira-space/build/darwin/Taskfile.yml`'s `create:app:bundle`):
 
 ```
-apps/kira-studio/bin/Kira Studio.app/
+apps/kira-space/bin/Kira Space.app/
   Contents/
-    Info.plist                       CFBundleName/CFBundleExecutable "Kira Studio",
-                                     CFBundleIdentifier com.kirathecat.kira-studio
+    Info.plist                       CFBundleName/CFBundleExecutable "Kira Space",
+                                     CFBundleIdentifier com.kirathecat.kira-space
     Resources/
       icons.icns                     fallback icon; Assets.car (compiled from appicon.icon on macos-26) is the primary (§6)
     MacOS/
-      Kira Studio                    the compiled Go binary — the literal filename, space included,
+      Kira Space                     the compiled Go binary — the literal filename, space included,
                                      must equal CFBundleExecutable or the bundle neither launches
                                      nor codesigns
 ```
@@ -75,17 +75,17 @@ There is no `runtime/` subtree any more (P58f M10) — the compiled Go binary is
 `create:app:bundle` used to assert `runtime/{node,engine}` existed and copy that tree in before
 signing; both the guard and the copy step are gone, since there is nothing left to vendor.
 
-**Dev loop:** `bun run dev:studio` (`cd apps/kira-studio && wails3 task dev`) launches a real native window
+**Dev loop:** `bun run dev` (`cd apps/kira-space && wails3 task dev`) launches a real native window
 with hot reload — the Wails task's own dev-mode config drives the frontend build with a blocking
 `common:build:frontend` for the embedded bundle, then runs `common:dev:frontend` (the Vite dev
-server) in the background for HMR; `predev:studio` runs `bun run setup` first. `wails3 task darwin:run`
-builds and runs a `Kira Studio.dev.app` from `build/darwin/Info.dev.plist` without packaging.
+server) in the background for HMR; `predev` runs `bun run setup` first. `wails3 task darwin:run`
+builds and runs a `Kira Space.dev.app` from `build/darwin/Info.dev.plist` without packaging.
 
 ## 2. Config summary
 
-**`apps/kira-studio/build/config.yml`** — the source Wails generates build assets from:
+**`apps/kira-space/build/config.yml`** — the source Wails generates build assets from:
 
-- `info.productName: "Kira Studio"`, `info.productIdentifier: "com.kirathecat.kira-studio"` (P57 D11:
+- `info.productName: "Kira Space"`, `info.productIdentifier: "com.kirathecat.kira-space"` (P57 D11:
   the Wails build is the only build now, so P51/P52's deliberately-distinct `…-shell` identifier is
   gone), `info.companyName`, and `info.version` — **the app's version, and the only place one is
   defined** (see "Where the version comes from" below).
@@ -93,8 +93,8 @@ builds and runs a `Kira Studio.dev.app` from `build/darwin/Info.dev.plist` witho
 - Editing `info` requires `wails3 task common:update:build-assets` to regenerate the assets, which
   overwrites hand edits under `build/` — so `Info.plist` below is regenerated, not hand-maintained.
 
-**`apps/kira-studio/build/darwin/Info.plist`** — `CFBundleName` and `CFBundleExecutable` are both `Kira Studio`,
-`CFBundleIdentifier` is `com.kirathecat.kira-studio`, `CFBundleVersion`/`CFBundleShortVersionString`
+**`apps/kira-space/build/darwin/Info.plist`** — `CFBundleName` and `CFBundleExecutable` are both `Kira Space`,
+`CFBundleIdentifier` is `com.kirathecat.kira-space`, `CFBundleVersion`/`CFBundleShortVersionString`
 `0.0.0` (the scaffolded value; the *bundle's* copy is stamped at packaging time, below),
 `CFBundleIconFile` `icons`, `CFBundleIconName` `appicon`, `LSMinimumSystemVersion` `26.0.0`. That floor is hand-narrowed
 from Wails' template default of `12.0.0`, and matches the build's deployment target and the README's macOS 26+ product claim. The template hardcodes `12.0.0`, so a
@@ -120,7 +120,7 @@ build time:
 
 | Consumer | How it gets there |
 |---|---|
-| The Go binary | `apps/kira-studio/Taskfile.yml`'s `APP_VERSION` reads `config.yml`; `BUILD_FLAGS` links it in with `-ldflags "-X …/internal/buildinfo.Version=<version>"`, in both the dev and production branches |
+| The Go binary | `apps/kira-space/Taskfile.yml`'s `APP_VERSION` reads `config.yml`; `BUILD_FLAGS` links it in with `-ldflags "-X …/internal/buildinfo.Version=<version>"`, in both the dev and production branches |
 | The About dialog | `main.go`'s `application.Options.Description`. The macOS About item is the `application.About` role (`internal/shell/menutemplate.go`), which Wails renders with its own dialog — name, description, icon, and **no version field of its own** — so the version rides in the description |
 | `AppService.Info()`'s `appVersion` | reads the same `buildinfo.Version`. Nothing in the renderer calls it today; it is API surface, not a display path |
 | `Contents/Info.plist` (`CFBundleShortVersionString`, `CFBundleVersion`) — what Finder's Get Info and the version column read | `create:app:bundle` runs PlistBuddy over the bundle's *copy* after `cp`. The checked-in plist keeps its scaffolded `0.0.0`: it is a generated file, and a hand-edit there would not survive `common:update:build-assets` anyway |
@@ -136,21 +136,21 @@ error rather than continuing past it.
 The root `package.json`'s `version` is **not** it — that is npm metadata for a private, unpublished
 workspace root, and nothing in the app or the build reads it.
 
-**`apps/kira-studio/Taskfile.yml` + `apps/kira-studio/build/darwin/Taskfile.yml`** — the task graph `bun run package:studio` drives:
+**`apps/kira-space/Taskfile.yml` + `apps/kira-space/build/darwin/Taskfile.yml`** — the task graph `bun run package` drives:
 
 | Task | What it does |
 |---|---|
-| `darwin:package:dmg` | what `bun run package:studio` invokes: `deps: package`, then `create:dmg` |
+| `darwin:package:dmg` | what `bun run package` invokes: `deps: package`, then `create:dmg` |
 | `create:dmg` | `wails3 tool package --format dmg` over the built `.app` — background `darwin/dmg-background.png`, volume icon *and* file icon `darwin/icons.icns`, window 540×380. The tool adds the `/Applications` symlink and places the two icons itself. macOS only (`platforms: [darwin]`) |
 | `darwin:package` | `deps: build`, then `create:app:bundle`. Still callable on its own when all you want is the bundle |
 | `darwin:build` → `build:native` | preconditioned on `uname -s = Darwin` — there is no off-macOS branch any more (§5); `deps` = `common:go:mod:tidy`, `common:build:frontend`, `common:generate:icons`; then `go build -tags production -trimpath -buildvcs=false -ldflags="-w -s" -o bin/Kira Studio` with `GOOS=darwin CGO_ENABLED=1 GOARCH=$ARCH` (host arch unless overridden) and `MACOSX_DEPLOYMENT_TARGET=14.0` (`MACOS_MIN`: 26.0 with an SDK 26+, else 14.0, P346) |
 | `create:app:bundle` | `rm -rf`s any previous bundle, then makes `Contents/{MacOS,Resources}` and copies `icons.icns`, `Assets.car` (when actool 26 produced one), the binary and `Info.plist`, then ends unconditionally with `codesign:adhoc` — only reachable behind `build`'s own Darwin precondition, so there is no off-macOS fallback to speak of. The `rm -rf` matters: every other step only copies *into* the bundle, so without it a resource an earlier build produced outlives the build that stopped producing it |
 
-`common:build:frontend` runs the same `bun run build:studio` the checklist above already ran; Task's
+`common:build:frontend` runs the same `bun run build` the checklist above already ran; Task's
 `sources`/`generates` up-to-date checking makes the second invocation a no-op against fresh output, so
 building the renderer first is cheap insurance, not duplicated work.
 
-**`scripts/sign-bundle.sh`** — ad-hoc signing, run by `bun run package:studio` after the Task pipeline. macOS
+**`scripts/sign-bundle.sh`** — ad-hoc signing, run by `bun run package` after the Task pipeline. macOS
 only; exits 1 elsewhere.
 
 ```sh
@@ -179,7 +179,7 @@ SPEC.md §3; the app is arm64-only, so a universal binary has nothing to be univ
 a macOS Keychain generic-password item (`internal/secrets/keyring_darwin.go`, service
 "Kira Studio Secrets", shared by Studio and Space). Keychain ACLs are keyed to a stable code-signing identity, which is
 exactly what ad-hoc signing defers, so the first launch after installing a new build may show one
-"Kira Studio wants to use your confidential information stored in…" prompt; **Always Allow** answers it
+"Kira Space wants to use your confidential information stored in…" prompt; **Always Allow** answers it
 permanently for that build. Expected, and the honest cost of deferring signing — not worth working
 around with a bundled private key.
 
@@ -204,16 +204,16 @@ table below.
 
 | Check | Result |
 |---|---|
-| `bun run build:studio` (vite → `apps/kira-studio/frontend/dist`) | **pass** — run here this session |
+| `bun run build` (vite → `apps/kira-space/frontend/dist`) | **pass** — run here this session |
 | `bun run typecheck`, `bun run lint` | **pass** |
-| `sh scripts/verify-packaging.sh` | **pass** — static checks S1/S2/S5 ran; `verify-packaging: note — skipped A1/A3/A5/N2 — "apps/kira-studio/bin/Kira Studio.app" not present` and `verify-packaging: note — skipped A4/N3 — "apps/kira-studio/bin/Kira Studio.dmg" not present`, then `verify-packaging: all checks passed` |
+| `sh scripts/verify-packaging.sh` | **pass** — static checks S1/S2/S5 ran; `verify-packaging: note — skipped A1/A3/A5/N2 — "apps/kira-space/bin/Kira Space.app" not present` and `verify-packaging: note — skipped A4/N3 — "apps/kira-space/bin/Kira Space.dmg" not present`, then `verify-packaging: all checks passed` |
 | `wails3 task darwin:package` | **not run** — needs macOS (§5) |
 | `scripts/sign-bundle.sh` | **not run** — `codesign` is macOS-only and the script refuses to run off Darwin |
 | Real bundle contents, `Info.plist` values, ad-hoc signatures | **not verified** — no bundle was produced here |
 | `.app` on-disk size | **not measured** — expect substantially less than the pre-P58f figure now that there is no ~126 MB vendored `runtime/` tree to carry, likely close to the compiled Go binary's own size alone; not a recorded number |
 
 Not verifiable off macOS (needs a human on real hardware — see §4): code signature checks, Gatekeeper
-quarantine behavior, launching the app at all, `~/.kira-studio/` creation, cold-start timing, packaged
+quarantine behavior, launching the app at all, `~/.kira-space/` creation, cold-start timing, packaged
 RSS, and the `.app` size.
 
 ## 4. Human checklist (run on macOS 26+ arm64)
@@ -225,11 +225,11 @@ only updated from an *observed* run, never from expectation. The items marked **
 observed on macOS 26.5.2 arm64 while wiring up the DMG; everything still marked *not yet run* needs a
 human to launch the packaged app and use it.
 
-1. `bun run package:studio` completes and `sign-bundle.sh` prints `signed and verified`. — **pass**
+1. `bun run package` completes and `sign-bundle.sh` prints `signed and verified`. — **pass**
    (P10, macOS 26.5.2 arm64): printed twice, once for the `.app` and once for the `.dmg`.
-2. `codesign -dv --verbose=2 "apps/kira-studio/bin/Kira Studio.app"` reports `Signature=adhoc`. There is no
+2. `codesign -dv --verbose=2 "apps/kira-space/bin/Kira Space.app"` reports `Signature=adhoc`. There is no
    nested vendored Node binary to check separately any more (P58f M10). — **pass** (P10):
-   `Signature=adhoc`, `Identifier=com.kirathecat.kira-studio`, `TeamIdentifier=not set`.
+   `Signature=adhoc`, `Identifier=com.kirathecat.kira-space`, `TeamIdentifier=not set`.
 3. `bun run verify:packaging` passes against the real bundle — i.e. A1/A3/N2 actually execute
    instead of reporting "skipped". — **pass** (P10): all checks passed with both artifacts present,
    so A1/A3/N2 and P10's own A4/N3 all executed.
@@ -237,17 +237,18 @@ human to launch the packaged app and use it.
    process itself now (P58f D11), so there is no vendored runtime for a missing-file check to name;
    a launch failure here is an ordinary Go panic/crash, not a missing-sidecar error. — *not yet run*
 5. Gatekeeper: an unsigned, unnotarized build needs right-click → Open, or
-   `xattr -dr com.apple.quarantine "/Applications/Kira Studio.app"`. Expected, not a defect. —
+   `xattr -dr com.apple.quarantine "/Applications/Kira Space.app"`. Expected, not a defect. —
    *not yet run*
-6. `~/.kira-studio/` is created with `kira.db` and `logs/` on first launch — the real home, since
-   `KIRA_HOME` is unset in a packaged run. — *not yet run*
+6. `~/.kira-space/` is created with `kira.db`, `studio.db`, `config/` and `logs/` on first launch — the real home, since
+   `KIRA_SPACE_HOME` is unset in a packaged run. An existing `~/.kira-studio/` folds in once and moves to
+   `~/.kira-space/backups/p539-<UTC>/kira-studio`, kept until deleted by hand. Existing config folders (`connections`, `api`, `runs`, `workflows`, `steps`, `repos`, `agent`, `llm-prompts.json`) move into `config/` once, backup `~/.kira-space/backups/p540-<UTC>/`, kept until deleted by hand. — *not yet run*
 7. Create a connection, expand the tree, open a data tab, scroll, open the cell editor, quit cleanly.
    The View menu has no Reload / Toggle DevTools in a `-tags production` build. — *not yet run*
 8. Kafka: connecting is **expected to succeed** in a packaged build — Kafka has been served
    in-process by the native Go adapter since P58e M9, and as of P58f M10 there is no Node engine
    left for a native-module `require()` to fail against even in principle. — *not yet run*
 9. Cold start: launch 3 times, discard the first, take the median from the startup log line in
-   `~/.kira-studio/logs/`; record against the ≤ 1500 ms target. RSS cross-check: rebuild the
+   `~/.kira-space/logs/`; record against the ≤ 1500 ms target. RSS cross-check: rebuild the
    5-connection/10-tab scenario by hand and sum the app's processes via `ps -o rss=`, against 350 MB —
    expect a materially better number than any pre-P58f measurement, since there is no second
    process's baseline RSS to add on top of the webview and shell any more. —
@@ -256,7 +257,7 @@ human to launch the packaged app and use it.
     any pre-P58f measurement, now that the ~126 MB vendored `runtime/` tree is gone. — **pass**
     (P10): **42 MB** for the `.app`, **16 MB** for the compressed `.dmg` around it, against a
     300 MB budget.
-11. The disk image installs the way it looks like it should (P10): it mounts, holds `Kira Studio.app`
+11. The disk image installs the way it looks like it should (P10): it mounts, holds `Kira Space.app`
     beside an `/Applications` symlink, and carries the app's own icon as both its Finder icon and its
     volume icon. — **partial**: mount, contents, both icons and `Signature=adhoc` on the image were
     verified from the shell; the drag-onto-Applications gesture and how the window *looks* when
@@ -271,7 +272,7 @@ full step-by-step. All *not yet run*.
 13. Fresh machine, no app installed: the Studio curl command installs and opens the app with **no**
     Gatekeeper prompt (`xattr -p com.apple.quarantine` on the installed `.app` reports no such
     attribute). Repeat for Space.
-14. Running the same command again while the app is open fails with "Quit Kira Studio first" —
+14. Running the same command again while the app is open fails with "Quit Kira Space first" —
     nothing changed, no disk image left mounted, no stale `/Applications/.studio-install.*`.
 15. An older stamped build, launched, auto-opens the update dialog naming both versions; **Later**
     closes it without re-opening on the next launch for that same version; clicking the status-bar
@@ -286,7 +287,7 @@ full step-by-step. All *not yet run*.
 19. Whether any macOS App Management privacy prompt appeared during the self-replace, in which
     mode, and what the user had to grant (§2.6's own open risk).
 20. A dev build makes no request to `api.github.com` at all (no update item, no dialog) — checked
-    with Little Snitch or `nettop` during a `bun run dev:studio` session.
+    with Little Snitch or `nettop` during a `bun run dev` session.
 
 ## 5. Off-macOS: what this environment could actually check
 
@@ -326,7 +327,7 @@ the renderer build, typecheck, lint, the Go unit tests, and the static half of `
 - **Ad-hoc signature only** (identity `-`). The build is not distributable outside the machine that
   built it, and SPEC.md §3 defers signing/notarization past v1. `wails3 tool sign [--notarize]` is
   available via `darwin:sign`/`darwin:sign:notarize` but is wired into nothing.
-- **The DMG is what ships (P10).** `bun run package:studio` runs `darwin:package:dmg`, so a build produces
+- **The DMG is what ships (P10).** `bun run package` runs `darwin:package:dmg`, so a build produces
   the `.app` *and* the styled image around it, and `scripts/sign-bundle.sh` ad-hoc signs both. The
   window is 540×380 with the app at 28% and the `/Applications` shortcut at 72% of its width
   (positions come from `wails3 tool package` itself, not from anything in this repo); the volume
@@ -409,8 +410,8 @@ repo the macOS job bills at 10x, about 190 billed minutes in total.
    a non-prerelease tag whose commit is not on `main`; then `build (macOS)`, `test-matrix (Linux)` and
    `db-compat (Linux, min|max)` start together at that commit. `build` restores the setup action's
    caches from `main` and saves none; `cache-warm.yml` is what fills `main`'s caches. It runs
-   `bun run package:studio` and `bun run package:space`, names each `.dmg`
-   (`kira-studio-macos-arm64.dmg`, `kira-space-macos-arm64.dmg`), runs `verify:packaging` and the
+   `bun run package` and `bun run package`, names each `.dmg`
+   (`kira-space-macos-arm64.dmg`), runs `verify:packaging` and the
    bundle and disk image assert, hashes both images and uploads them as artifact `release-dmgs`.
    `lint` and `typecheck` do not rerun here; `main` takes only PR merges, which the ruleset gates on
    PR CI, and `tag` refuses any other commit.
@@ -444,7 +445,7 @@ re-asserting the absence of the silent kind:
 - **S1** — no `electron-updater`/`update-electron-app` dependency in `package.json`.
 - **S2** — no updater code in `apps/` or `packages/` (there has been no `src/` since P3's
   restructure and P58f's `src/engine/` deletion).
-- **S5** — `package.json`'s `package:studio`/`package:space` scripts still run
+- **S5** — `package.json`'s `package`/`package` scripts still run
   `wails3 task darwin:package:dmg` (P10 moved this from the plain `.app`-only task, so the shipped
   `.dmg` always has something to upload); this check fails loudly if either packaging entry point
   is swapped for something that could publish.
@@ -454,15 +455,15 @@ P29 added three more static checks, guarding §2.1/§2.2's own findings against 
 - **S6** — `frontend/dist/assets/*.js` (when it exists) does not carry the Playwright debug-hook
   identifiers (`__kiraCount`, `__kiraCacheStats`, `__kiraRetention`, `__kiraRetainedBytes`,
   `__kiraTreeConnectionIds`) — the guard against `build:frontend`'s Task fingerprint trap: it keys
-  off `frontend`'s own `sources` (excluding `dist`), so `bun run test:ui:studio` (which writes the
-  hooks-enabled `build:test:studio` bundle to `dist`) followed by `bun run package:studio` with no intervening
+  off `frontend`'s own `sources` (excluding `dist`), so `bun run test:ui` (which writes the
+  hooks-enabled `build:test` bundle to `dist`) followed by `bun run package` with no intervening
   source edit would otherwise let Task's up-to-date check skip the rebuild and embed the wrong
   bundle. Checked against `frontend/dist` rather than the `.app` bundle so it also runs on Linux
   and before packaging.
 - **S7** — `frontend/src/main.ts` assigns no `window.__kira*` outside its
   `if (__KIRA_DEBUG_HOOKS__)` block — the check that would have caught
   `window.__kiraGridEngine` shipping unconditionally, and catches the next hook added the same way.
-- **S8** — `apps/kira-studio/main.go` calls no `os.Getenv` at all — true since `KIRA_G1_BLANK` was
+- **S8** — `apps/kira-space/main.go` calls no `os.Getenv` at all — true since `KIRA_G1_BLANK` was
   deleted. A precise, low-false-positive invariant for the app's own entry point.
 - **S10** — no reference under `apps/`, `packages/` or `internal/` to `browser_download_url` or
   `releases/download` — rescoped by P119 to include `internal/` (`appupdate` now lives there).
@@ -487,13 +488,13 @@ by construction rather than deleted per build.
 
 **P66 (v1.6) added an update-*availability* check; P119 (v1.9) added the install itself, still only
 on an explicit click.** A tagged release build polls `GET https://api.github.com/repos/
-vlad-cirstean/kira-studio/releases/latest` (repo-root `internal/appupdate`, shared by both apps, no
+vlad-cirstean/kira-studio/releases/latest` (repo-root `internal/appupdate`, no
 `gh` CLI dependency — public metadata needs no per-user credential) and, when the tag is newer than
 the running build, shows a status-bar item (`internal/bridge/update.go`,
 `packages/workbench/src/components/{UpdateAvailableItem,UpdateDialog}.vue`) that opens a modal
 dialog with an **Update** button. Clicking it re-checks availability, then `internal/
 appupdate.Installer` fetches `scripts/install.sh` fresh from `main` (never bundled), validates its
-contract marker, and spawns it detached with `--app=studio|space`; the script and the app hand off
+contract marker, and spawns it detached with `--app=space` (`--app=studio`, from an old Studio updater, is the migration path: installs Space, retires Studio); the script and the app hand off
 over an fd once the disk image is staged, the app quits, and the script swaps the bundle into
 `/Applications` and reopens it. **Nothing downloads or installs without that click** — S10/S11
 above are what keep the app-code half of that true; `scripts/install.sh` itself is the one
@@ -558,19 +559,18 @@ Kira Space embeds two gitignored bundles: `frontend/dist` (desktop UI) and `fron
 `//go:embed all:frontend/dist-mobile`; since P223 only `index.html`, `favicon.ico` and `assets/`: no
 service worker, manifest or setup page). Both must exist before `go build`. The Taskfile `build:frontend`
 task builds both (`bun run build` then `bun run build:mobile`), so packaged builds embed the real phone app.
-Clean checkout or fresh worktree: `sh scripts/prepare-worktree.sh` builds both. CI: `bun run build:space` chains both.
+Clean checkout or fresh worktree: `sh scripts/prepare-worktree.sh` builds both. CI: `bun run build` chains both.
 
-**As of v1.9 P100, Kira Space is a separate app with its own bundle, own DMG, and its own copy of
-the whole pipeline above** — `apps/kira-space/build/config.yml`, `apps/kira-space/Taskfile.yml` and
-`apps/kira-space/build/darwin/Taskfile.yml`, generated and packaged exactly the way §1-§2 describe
-for Kira Studio, `CFBundleIdentifier com.kirathecat.kira-space`. `bun run package:space` (`cd
+**One app since P537.** Kira Space is the only bundle: `apps/kira-space/build/config.yml`,
+`apps/kira-space/Taskfile.yml` and `apps/kira-space/build/darwin/Taskfile.yml` generate and package it
+as §1-§2 describe, `CFBundleIdentifier com.kirathecat.kira-space`. `bun run package` (`cd
 apps/kira-space && wails3 task darwin:package:dmg`, then `sh scripts/sign-bundle.sh apps/kira-space
-"Kira Space"`) is the entry point — `sign-bundle.sh` takes the app dir and app name as `$1`/`$2` as
-of P100 Part 2, so this one script signs both apps' bundles rather than a near-identical copy per
-app. Expected artifacts: `apps/kira-space/bin/Kira Space.dmg`/`.app`/`Kira Space` (the DMG, the
-bundle, and the bare binary). **As of P119, `Kira Space.dmg` ships as `kira-space-macos-arm64.dmg` on the
-same release as Kira Studio's own disk image** — one `release.yml` build job, one tag, one release
-(§7) — rather than a separate release or a separate `release-space` job.
+"Kira Space"`) is the entry point. `sign-bundle.sh` takes app dir and app name as `$1`/`$2`.
+Artifacts: `apps/kira-space/bin/Kira Space.dmg`/`.app`/`Kira Space` (DMG, bundle, bare binary). The
+DMG ships as `kira-space-macos-arm64.dmg`; `release.yml` builds one app, one tag, one release (§7).
+Kira Studio is retired: `install.sh` moves an installed `Kira Studio.app` to the Trash and leaves
+`~/.kira-studio/`; Space folds it into `~/.kira-space/` on first launch and keeps a backup under `~/.kira-space/backups/`. A running old Studio updater still passes
+`--app=studio`; `install.sh` installs Space and retires Studio.
 
 **ONNX Runtime (P210).** `darwin:package` and `darwin:package:universal` depend on `fetch:onnxruntime`
 (`scripts/fetch-onnxruntime.sh osx-arm64`: MIT release tgz, SHA-256 pinned, extracted to the gitignored
@@ -583,8 +583,7 @@ needs signing. Mac verification is a human item (see `docs/ARCHITECTURE.md` Know
 `Contents/Frameworks/libonnxruntime.1.31.1.dylib` present, `codesign --verify --deep --strict` passes,
 worker footprint in Activity Monitor at most 150 MB.
 
-**Not yet run in this environment** for the same reason as Kira Studio's own §3/§4: this sandbox is
-Linux, with no macOS, no `codesign`, and no `code` CLI to probe for. What §5's off-macOS limits say
-about Kira Studio's own build applies identically here — `build:native` needs macOS, `codesign`
+**Not yet run in this environment** for the same reason as §3/§4: this sandbox is
+Linux, with no macOS, no `codesign`, and no `code` CLI to probe for. What §5's off-macOS limits say applies here — `build:native` needs macOS, `codesign`
 does not exist off Darwin — so nothing above has been observed against a real bundle, only read
 from the Taskfiles that produce one.

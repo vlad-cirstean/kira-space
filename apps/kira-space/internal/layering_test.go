@@ -1,5 +1,4 @@
-// layering_test.go guards the same Go-side module-boundary rule Kira Studio's own copy does
-// (apps/kira-studio/internal/layering_test.go): internal/bridge is the IPC transport layer, and
+// layering_test.go guards the Go-side module-boundary rule: internal/bridge is the IPC transport layer, and
 // no domain package below it may import anything under internal/bridge.
 package internal_test
 
@@ -15,14 +14,15 @@ const modulePrefix = "github.com/kirathecat/kira-studio/apps/kira-space/"
 // intended layering. internal/appshell replaces internal/shell here — the generic
 // half of the app's own composition root moved to repo-root internal/shell, outside this go list
 // scope; appshell is what's left importing bridge. internal/appwire is the shared composition
-// root and internal/flowharness the flow-test harness over it, the same role as Kira Studio's
-// internal/ipcfixture; the flows/* packages hold only tests of the bound services.
+// root and internal/flowharness the flow-test harness over it, the same role as internal/ipcfixture;
+// the flows/* packages hold only tests of the bound services.
 var packagesExemptFromBridgeCheck = map[string]bool{
 	"internal":                       true,
 	"internal/bridge":                true,
 	"internal/appshell":              true,
 	"internal/appwire":               true,
 	"internal/flowharness":           true,
+	"internal/ipcfixture":            true,
 	"internal/flowharness/fakeagent": true,
 	"internal/flows/gitflow":         true,
 	"internal/flows/repoflow":        true,
@@ -36,10 +36,8 @@ var packagesExemptFromBridgeCheck = map[string]bool{
 // adewire is a pure wire-type leaf the v2 ADE engine returns directly, so domain packages
 // may import it; every other internal/bridge dependency stays banned.
 //
-// TestDomainPackagesDoNotImportBridge is Kira Studio's own test (see its own doc comment for the
-// full rationale), enumerating every internal/* package under this app straight from `go list`.
-// The runner itself is shared (internal/layeringtest.Run) — only modulePrefix and the
-// exemption set differ per app.
+// TestDomainPackagesDoNotImportBridge enumerates every internal/* package straight from `go list`.
+// The runner is shared (internal/layeringtest.Run).
 func TestDomainPackagesDoNotImportBridge(t *testing.T) {
 	layeringtest.RunAllowing(t, modulePrefix, packagesExemptFromBridgeCheck, []string{"/internal/bridge/adewire"})
 }

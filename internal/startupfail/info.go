@@ -3,7 +3,7 @@ package startupfail
 // Info is the app-identifying seam Classify/RenderAlert/RenderClipboard need but this package
 // itself must not: hoisted to repo-root internal/, startupfail can no longer import
 // either app's own internal/config (Go's internal/ visibility rule — a repo-root package cannot
-// import anything under apps/kira-studio/internal or apps/kira-space/internal) or an
+// import anything under apps/kira-space/internal or apps/kira-space/internal) or an
 // internal/buildinfo (which stays per-app, since it's genuinely just a one-line Version var with no
 // shared logic worth hoisting). Every caller supplies its own Info instead of this package reaching
 // out for one.

@@ -50,7 +50,7 @@ func commitInc(t *testing.T, dir, msg string) string {
 }
 
 // newIncrementalTestEntry opens repoDir over a fresh Registry whose Review store lives under
-// t.TempDir() (never a real KIRA_HOME) and returns the RepoEntry plus that store, so a test can
+// t.TempDir() (never a real app home) and returns the RepoEntry plus that store, so a test can
 // seed a FileRecord directly with Store.Put before driving FileDelta/ReviewFileDiff.
 func newIncrementalTestEntry(t *testing.T, repoDir string) (*RepoEntry, *gitreview.Store) {
 	t.Helper()

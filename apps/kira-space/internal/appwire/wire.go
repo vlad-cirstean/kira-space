@@ -16,10 +16,12 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adeflow"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentnotify"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentusage"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/buildinfo"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitaskpass"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
@@ -34,9 +36,12 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/agentctx"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/approvals"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/harness"
+	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/memory"
 	memembed "github.com/kirathecat/kira-studio/internal/memory/embed"
 	"github.com/kirathecat/kira-studio/internal/memory/memcheck"
@@ -44,6 +49,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/memory/modelstore"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
+	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 )
@@ -64,9 +70,9 @@ func RunArgvShim(args []string) (code int, ok bool) {
 	case "askpass":
 		return gitaskpass.RunHelper(args[2:], os.Environ(), os.Stdout), true
 	case "memory-mcp":
-		return memorycli.Run(args[2:], filepath.Join(config.KiraSpaceHome(), "llm-prompts.json"), agentSelectorAt(config.DbPath()), memoryModelAt(config.DbPath()), memoryOps(config.DbPath(), opOwnersDir())), true
+		return memorycli.Run(args[2:], promptsPath(config.KiraSpaceHome()), agentSelectorAt(config.DbPath()), memoryModelAt(config.DbPath()), memoryOps(config.DbPath(), opOwnersDir())), true
 	case "memory-ingest":
-		return memorycli.RunIngest(args[2:], filepath.Join(config.KiraSpaceHome(), "llm-prompts.json"), agentSelectorAt(config.DbPath()), memoryModelAt(config.DbPath())), true
+		return memorycli.RunIngest(args[2:], promptsPath(config.KiraSpaceHome()), agentSelectorAt(config.DbPath()), memoryModelAt(config.DbPath())), true
 	case "memory-embed":
 		return memembed.RunWorker(args[2:]), true
 	case "memory-check":
@@ -170,9 +176,9 @@ func agentSessionCount(repositories *repos.Repos, registry *terminal.Registry) f
 }
 
 // liveWork counts what a quit stops: agent PTYs, running ADE runs, and smart and headless script runs.
-func liveWork(repositories *repos.Repos, registry *terminal.Registry, runs *scriptruns.Service) func() shell.QuitStatus {
+func liveWork(repositories *repos.Repos, registry *terminal.Registry, scriptsLive func() int) func() shell.QuitStatus {
 	return func() shell.QuitStatus {
-		st := shell.QuitStatus{Agents: len(registry.AgentSessions()), Scripts: runs.Live()}
+		st := shell.QuitStatus{Agents: len(registry.AgentSessions()), Scripts: scriptsLive()}
 		n, err := repositories.AdeTasks.CountRunning()
 		if err != nil {
 			slog.Warn("quit: count ade runs", "scope", "lifecycle", "err", err)
@@ -197,13 +203,14 @@ func closeTaskReviewWindows(repositories *repos.Repos, closeWindow func(key stri
 }
 
 // wireAdeTask builds the v2 task board engine (P144): its own Conn, the workflow reader over
-// <home>/workflows, and the cached git discovery gating merge-tree checks. It recovers rows a
+// <home>/config/workflows, and the cached git discovery gating merge-tree checks. It recovers rows a
 // restart left running, then starts the board.
 func wireAdeTask(
 	repositories *repos.Repos, events *bridge.Events, git gitWired, tracker *ade.Tracker, closeTerminal func(string) error,
 	closeReviewWindows func(taskID string), credentials *gitcred.Relay, keepAwake *bridge.KeepAwakeService,
 	notifier *agentnotify.Notifier, usage *agentusage.Service, rebaseTimeout, branchRequestWait time.Duration, updates ade.UpdatesConfig, runs *scriptruns.Service,
 	agents harness.Selector, promptSink prompts.Sink, approvalQueue *approvals.Queue, repoFiles *repocfg.Store,
+	proofs ade.ProofLinks, dbMcp ade.DbMcpSessions,
 ) *ade.TaskBoard {
 	userHome, err := os.UserHomeDir()
 	if err != nil {
@@ -211,7 +218,8 @@ func wireAdeTask(
 	}
 	gitPath := adeGitPathSetting(repositories)
 	board := ade.NewTaskBoard(ade.TaskBoardDeps{
-		Agent:       agents,
+		Agent:  agents,
+		Proofs: proofs, DbMcp: dbMcp, DbAudit: repositories.DbAudit,
 		ContextFile: runs.ContextFile,
 		AgentConfig: runs.AgentConfig, Servers: runs.Servers,
 		Ops:     git.opLog,
@@ -222,8 +230,8 @@ func wireAdeTask(
 		Trackers:  git.trackers,
 		GitStatus: func(ctx context.Context) gitclient.GitStatus { return git.discovery.Status(ctx, gitPath()) },
 		Askpass:   git.askpassBroker,
-		Workflows: &adeflow.Reader{Dir: adeflow.Dir(config.KiraSpaceHome()), Store: repositories.AdeTasks,
-			Steps: &adeflow.StepLibrary{Dir: adeflow.StepsDir(config.KiraSpaceHome()), DB: repositories.CustomScripts.DB}},
+		Workflows: &adeflow.Reader{Dir: configfs.ModuleDir(config.KiraSpaceHome(), adeflow.WorkflowsFolder), Store: repositories.AdeTasks,
+			Steps: &adeflow.StepLibrary{Dir: configfs.ModuleDir(config.KiraSpaceHome(), adeflow.StepsFolder), DB: repositories.CustomScripts.DB}},
 		OnBoard:      func() { bridge.AdeTaskBoardChanged(events) },
 		OnUpdates:    func() { bridge.AdeTaskUpdatesChanged(events) },
 		TrackedItems: repositories.AdeTrackedItems, Updates: updates,
@@ -261,7 +269,7 @@ func wireAdeTask(
 		},
 		CustomScripts: runs.Scripts, ScriptsHome: runs.Home,
 		ScriptRunsOf: func(taskID string, limit int) ([]scriptruns.Run, error) { return runs.List(limit, taskID) },
-		AgentDir:     filepath.Join(config.KiraSpaceHome(), "ade", "runs"),
+		AgentDir:     adeRunsDir(config.KiraSpaceHome()),
 		TasksDir:     filepath.Join(config.KiraSpaceHome(), "ade", "tasks"),
 		HeadlessSettingSources: func() string {
 			settings, err := repositories.Settings.GetAll()
@@ -537,7 +545,7 @@ func (w *Wired) revealNote(n agentnotify.Note) {
 	}
 }
 
-// wireRepoConfig builds the repo config store over <home>/repos, moves the legacy rows into files
+// wireRepoConfig builds the repo config store over <home>/config/repos, moves the legacy rows into files
 // once and loads the folder. The change hooks and the watch start in watchRepoConfig, once the git
 // router and the board exist.
 func wireRepoConfig(repositories *repos.Repos, hosts *githost.Registry) *repocfg.Store {
@@ -547,7 +555,7 @@ func wireRepoConfig(repositories *repos.Repos, hosts *githost.Registry) *repocfg
 			ids = append(ids, info.ID)
 		}
 	}
-	store, err := repocfg.New(repocfg.Options{DB: repositories.CustomScripts.DB, Dir: filepath.Join(config.KiraSpaceHome(), repocfg.Folder), GitHosts: ids})
+	store, err := repocfg.New(repocfg.Options{DB: repositories.CustomScripts.DB, Dir: configfs.ModuleDir(config.KiraSpaceHome(), repocfg.Folder), GitHosts: ids})
 	if err != nil {
 		panic(fmt.Sprintf("appwire: repo config (static schema): %v", err))
 	}
@@ -587,3 +595,20 @@ func repoFile(store *repocfg.Store) func(repoID string) (string, *adewire.RepoPr
 		return strings.TrimSuffix(file, ".yaml"), problem
 	}
 }
+
+// promptsPath is the user prompt overrides file under an app home.
+func promptsPath(home string) string {
+	return filepath.Join(configfs.ModuleDir(home, llmprompts.Folder), llmprompts.File)
+}
+
+// configFolders maps every config module the file service edits to its folder.
+func configFolders(home, repoDir string) map[string]string {
+	folders := map[string]string{repocfg.Folder: repoDir}
+	for _, f := range []string{connfiles.Folder, apifiles.Folder, scripts.Folder, adeflow.WorkflowsFolder, adeflow.StepsFolder, agentctx.Folder} {
+		folders[f] = configfs.ModuleDir(home, f)
+	}
+	return folders
+}
+
+// adeRunsDir holds the per-run MCP files; runtime state, not config.
+func adeRunsDir(home string) string { return filepath.Join(home, "ade/runs") }

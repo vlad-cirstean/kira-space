@@ -63,7 +63,6 @@ export function taskPatch(over: Partial<TaskPatch>): TaskPatch {
     clearJira: false,
     hostUrl: null,
     est: null,
-    notes: null,
     color: null,
     kind: null,
     statusId: null,

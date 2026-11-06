@@ -4,6 +4,7 @@ import { t } from '@theme/i18n';
 import { computed, watch } from 'vue';
 import { usePlanModel } from '../plan/usePlanModel';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useAdeNoteComposerStore } from '../state/adeNoteComposer';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import AdeArchivedPanel from './AdeArchivedPanel.vue';
 import AdeBranchPanel from './AdeBranchPanel.vue';
@@ -13,12 +14,16 @@ import AdeTaskPanel from './AdeTaskPanel.vue';
 // Right-hand panel of the Plan: the selected task, or one of its branches.
 const ui = useAdeBoardUiStore();
 const tabs = useAdePanelTabsStore();
+const composer = useAdeNoteComposerStore();
 const { model } = usePlanModel();
 
 watch(
   () => model.value?.board,
   (b) => {
-    if (b) tabs.prune(new Set(b.tasks.map((x) => x.id)), new Set(b.branches.map((x) => x.id)));
+    if (!b) return;
+    const taskIds = new Set(b.tasks.map((x) => x.id));
+    tabs.prune(taskIds, new Set(b.branches.map((x) => x.id)));
+    composer.prune(taskIds);
   },
 );
 

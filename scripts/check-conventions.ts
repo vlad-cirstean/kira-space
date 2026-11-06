@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Code convention guard N1-N7 and N8-N14.
+ * Code convention guard N1-N7 and N8-N15.
  *
  * N1 file names (.ts camelCase, .vue PascalCase), N2 no `.test.ts`, N3 no util/utils/helpers
  * folder, N4 Pinia id = export name without `use`/`create` and `Store`, N5 event names
@@ -13,6 +13,10 @@
  * `components/` dir (outside `components/ui`), N10 a `.vue` over 600 lines needs a named
  * engine-host exemption, N11 a non-global `shortcut: '<id>'` in a `menu.ts` is bound in its feature
  * dir, N12 a `state/` dir holds 2+ files and menu builders live in `menu.ts`.
+ *
+ * N15 no tracked PNG under `screenshots/` or `site/` (product screenshots are WebP) and no tracked
+ * WebP under `screenshots/` (CI generates every product shot, P550); Playwright `toHaveScreenshot`
+ * baselines in `-snapshots` dirs under `site/tests` are PNG only and stay.
  *
  * No pending list: every hit fails. N6 also fails on any retired-code registry (`Legacy` in Go,
  * `LEGACY_ERROR_CODES` in TS).
@@ -34,7 +38,8 @@ export type Rule =
   | 'N11'
   | 'N12'
   | 'N13'
-  | 'N14';
+  | 'N14'
+  | 'N15';
 export interface Hit {
   rule: Rule;
   path: string;
@@ -42,7 +47,7 @@ export interface Hit {
 }
 
 const REPO_ROOT = join(import.meta.dir, '..');
-const SOURCE_ROOTS = ['apps/kira-studio/frontend', 'apps/kira-space/frontend', 'packages'];
+const SOURCE_ROOTS = ['apps/kira-space/frontend', 'packages'];
 const SKIP_DIR = new Set([
   'node_modules',
   'dist',
@@ -67,24 +72,18 @@ const EVENT_NAME = /^kira:[a-z][a-zA-Z]*:[a-z][a-zA-Z]*$/;
 const MIGRATION_SETS: ReadonlyArray<{ dir: string; baseline: number }> = [
   { dir: 'apps/kira-space/internal/gitreview/migrations', baseline: 3 },
   { dir: 'apps/kira-space/internal/storage/migrations', baseline: 32 },
-  { dir: 'apps/kira-studio/internal/storage/migrations', baseline: 37 },
+  { dir: 'apps/kira-space/internal/dbfold/legacy', baseline: 37 },
   // 0004 rebuilds memories and memory_events with their legacy TEXT ISO created_at/superseded_at unchanged.
   { dir: 'internal/memory/migrations', baseline: 4 },
 ];
 const MIGRATION_NAME = /^(\d{4})_[a-z]\d+[a-z]?_[a-z0-9]+(?:_[a-z0-9]+)*\.sql$/;
 const BAD_FOLDERS = new Set(['util', 'utils', 'helpers']);
 const SPEC_ROOTS = [
-  'apps/kira-studio/tests/ui',
-  'apps/kira-studio/tests/visual',
   'apps/kira-space/tests/ui',
   'apps/kira-space/tests/visual',
   'apps/kira-space/tests/mobile',
 ];
-const SUPPORT_ROOTS = [
-  'apps/kira-studio/tests/ui/support',
-  'apps/kira-space/tests/ui/support',
-  'packages/workbench/src/testing/ui',
-];
+const SUPPORT_ROOTS = ['apps/kira-space/tests/ui/support', 'packages/workbench/src/testing/ui'];
 const MAX_VUE_LINES = 600;
 // Engine hosts and shells: one file owns a whole third-party engine or app frame.
 const OVERSIZE_VUE_OK = new Set([
@@ -98,7 +97,7 @@ const OVERSIZE_VUE_OK = new Set([
 // Printed in a menu, bound by the grid engine itself rather than a shortcut call.
 const ENGINE_BOUND_SHORTCUTS = new Set(['grid.edit']);
 const SHORTCUTS_PATH = 'packages/shared/domain/shortcuts.ts';
-const MENU_ROOTS = ['apps/kira-studio/frontend/src', 'apps/kira-space/frontend/src'];
+const MENU_ROOTS = ['apps/kira-space/frontend/src'];
 
 export function fileNameHit(path: string): Hit | undefined {
   const name = path.slice(path.lastIndexOf('/') + 1);
@@ -247,6 +246,8 @@ export function migrationHits(
   for (const [name, sql] of files) {
     const num = Number.parseInt(name.slice(0, 4), 10);
     if (!(num > baseline)) continue;
+    // P544 copies Studio's final schema verbatim, legacy TEXT timestamps included.
+    if (name === '0078_p544_module_tables.sql') continue;
     const path = `${dir}/${name}`;
     if (!MIGRATION_NAME.test(name)) {
       hits.push({
@@ -487,6 +488,22 @@ function fileHits(path: string, dirs: Set<string>): Hit[] {
   return hits;
 }
 
+/** N15: product shots are generated WebP, never committed; a tracked PNG under `screenshots/` or `site/`, or WebP under `screenshots/`, fails. */
+function imageHits(tracked: readonly string[]): Hit[] {
+  return tracked
+    .filter((path) =>
+      path.endsWith('.webp')
+        ? path.startsWith('screenshots/')
+        : /^(?:screenshots|site)\//.test(path) &&
+          !/^site\/tests\/(?:.*\/)?[^/]*-snapshots\//.test(path),
+    )
+    .map((path) => ({
+      rule: 'N15' as const,
+      path,
+      message: 'product screenshots are generated, not committed; run bun run screenshots',
+    }));
+}
+
 function collectHits(): Hit[] {
   const hits: Hit[] = [];
   const dirs = new Set<string>();
@@ -519,6 +536,10 @@ function collectHits(): Hit[] {
       readFileSync(join(REPO_ROOT, TS_IDS_PATH), 'utf8'),
     ),
   );
+  const listed = Bun.spawnSync(['git', 'ls-files', '-z', '--', '*.png', '*.webp'], {
+    cwd: REPO_ROOT,
+  });
+  hits.push(...imageHits(new TextDecoder().decode(listed.stdout).split('\0').filter(Boolean)));
   for (const { dir, baseline } of MIGRATION_SETS) {
     const files = new Map<string, string>();
     for (const name of readdirSync(join(REPO_ROOT, dir)).filter((n) => n.endsWith('.sql'))) {
@@ -538,7 +559,7 @@ function main(): number {
     );
     return 1;
   }
-  console.log('check-conventions: every convention holds (N1-N14).');
+  console.log('check-conventions: every convention holds (N1-N15).');
   return 0;
 }
 

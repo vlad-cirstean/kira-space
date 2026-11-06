@@ -4,7 +4,7 @@ import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 import type { ControlSnapshot } from './support/types';
 
-// Task panel: Main, Details and Sessions tabs, link groups, timeline and session links. Link adding
+// Task panel: Main, Details and Sessions tabs, link groups and session links. Link adding
 // and editing: ade-v2-details-links.spec.ts. Contract ade-task-panel; backend half: flows/adeflow
 // TestTaskPanelOrigins.
 
@@ -103,7 +103,7 @@ test('Main shows branches with their PR line and never handover text', async ({ 
   await expect(page.locator(`${t('ade-task-branch-pr')}[data-branch-id="b_billdash"]`)).toHaveCount(
     0,
   );
-  await expect(page.locator(t('ade-handovers'))).toHaveCount(0);
+  await expect(page.locator(t('ade-task-chain'))).toHaveCount(0);
 });
 
 test('Details groups the Jira and host links in Main and stored links in Related', async ({
@@ -123,18 +123,6 @@ test('Details groups the Jira and host links in Main and stored links in Related
     expect(await title.getAttribute('href')).toBeTruthy();
     expect((await title.textContent())?.trim()).not.toMatch(/^[#!]?\d+$/);
   }
-});
-
-test('the timeline starts closed and lists entries oldest first', async ({ relaunch }) => {
-  const { window: page } = await openPlan(relaunch, panel());
-  await openDetails(page);
-  await expect(page.locator(t('ade-details-timeline-entry'))).toHaveCount(0);
-  await page.locator(t('ade-details-timeline-toggle')).click();
-  const kinds = await page
-    .locator(t('ade-details-timeline-entry'))
-    .evaluateAll((els) => els.map((e) => e.getAttribute('data-kind')));
-  expect(kinds[0]).toBe('created');
-  for (const kind of ['branch', 'artifact', 'handover']) expect(kinds).toContain(kind);
 });
 
 test('session links open the Sessions tab on that session', async ({ relaunch }) => {

@@ -13,10 +13,10 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
-import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import AdeArtifactList from '../artifacts/AdeArtifactList.vue';
+import AdeNotesEditor from '../notes/AdeNotesEditor.vue';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 
 // Moves a task to another stage with handover notes for it. `routed` picks which mount shows it: the
@@ -82,10 +82,12 @@ async function move(): Promise<void> {
           <Label for="ade-stage-notes" class="text-muted-foreground">{{
             t('space.ade.stageDialog.notes.label')
           }}</Label>
-          <Textarea
+          <AdeNotesEditor
             id="ade-stage-notes"
             v-model="store.notes"
-            class="max-h-90 resize-y"
+            compact
+            :hard-breaks="store.draft?.source !== 'user'"
+            :label="t('space.ade.stageDialog.notes.label')"
             :placeholder="t('space.ade.stageDialog.notes.placeholder')"
             data-testid="ade-stage-notes"
           />

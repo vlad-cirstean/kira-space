@@ -12,7 +12,7 @@ import AdeStepAgentPick from './AdeStepAgentPick.vue';
 import AdeStepSettings from './AdeStepSettings.vue';
 import AdeStepStatus from './AdeStepStatus.vue';
 
-// Rarely changed: allowed tools, agent settings and skipping the step. A manual step keeps its status and agent here.
+// Rarely changed: allowed tools, Kira DB tools, agent settings and skipping the step. A manual step keeps its status and agent here.
 const props = defineProps<{ step: WorkflowStep }>();
 const emit = defineEmits<{ patch: [p: Partial<WorkflowStep>] }>();
 const draft = useAdeWorkflowDraftStore();
@@ -20,6 +20,12 @@ const library = useStepScope() === 'library';
 const hasSession = computed(
   () =>
     props.step.kind === 'agent' ||
+    props.step.kind === 'review' ||
+    (props.step.kind === 'manual' && props.step.session),
+);
+const hasDbMcp = computed(
+  () =>
+    (props.step.kind === 'agent' && props.step.smartScript === '') ||
     props.step.kind === 'review' ||
     (props.step.kind === 'manual' && props.step.session),
 );
@@ -59,6 +65,19 @@ function onTools(v: string | number): void {
       @update:model-value="onTools"
     />
     <template #hint>{{ t('space.ade.workflows.stepInspector.tools.hint') }}</template>
+  </AdeInspectorRow>
+  <AdeInspectorRow
+    v-if="hasDbMcp"
+    :label="t('space.ade.workflows.stepInspector.dbMcp.label')"
+    :for="id('db-mcp')"
+  >
+    <Checkbox
+      :id="id('db-mcp')"
+      :model-value="step.dbMcp"
+      data-testid="ade-wf-step-db-mcp"
+      @update:model-value="(v) => emit('patch', { dbMcp: v === true })"
+    />
+    <template #hint>{{ t('space.ade.workflows.stepInspector.dbMcp.hint') }}</template>
   </AdeInspectorRow>
   <AdeStepSettings
     v-if="hasSession"

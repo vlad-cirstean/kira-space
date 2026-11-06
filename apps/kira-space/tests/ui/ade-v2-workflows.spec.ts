@@ -53,10 +53,13 @@ async function openYaml(page: Page): Promise<void> {
 
 test('an empty folder shows the explanation', async ({ relaunch }) => {
   const { window: page } = await openWorkflows(relaunch, [
-    { channel: IPC.adeTaskWorkflows, response: { dir: '~/.kira-space/workflows', workflows: [] } },
+    {
+      channel: IPC.adeTaskWorkflows,
+      response: { dir: '~/.kira-space/config/workflows', workflows: [] },
+    },
   ]);
   await expect(page.locator(t('ade-wf-empty'))).toContainText(
-    'No workflows yet. Workflows are YAML files in ~/.kira-space/workflows.',
+    'No workflows yet. Workflows are YAML files in ~/.kira-space/config/workflows.',
   );
 });
 

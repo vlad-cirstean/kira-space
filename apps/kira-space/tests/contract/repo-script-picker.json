@@ -450,7 +450,7 @@
         "sortOrder": 0
       }
     ],
-    "dir": "<space>/runs",
+    "dir": "<space>/config/runs",
     "problems": [],
     "scripts": [
       {

@@ -60,13 +60,16 @@ duplicated here; this file only points at them.
 - **A genuinely independent split runs as named streams** (Stream A, Stream B, …), each its own git
   worktree off the same base commit — the pre-commit hook lints/typechecks the whole tree, so a
   shared checkout would fail implementers' commits on each other's half-done edits. The plan states
-  the split explicitly: a per-stream file-ownership table with zero overlap, plus confirmation of no
-  ordering dependency between streams. No such confirmation means no split — default back to one
-  sequential implementer (P110's iter2 plan rejected a split: real overlap in a shared script, plus
-  a rename dependency chain between two would-be streams). Cap concurrent streams at 2 unless the
-  user says otherwise. Landing: once every stream is implemented and independently verified, rebase
-  each onto the chapter branch in any order (a real conflict means the ownership boundary was wrong),
-  remove the worktrees, push. A worktree survives a container restart — resume a stopped stream from
+  the split explicitly: a per-stream file-ownership table naming each file's owner, plus
+  confirmation of no ordering dependency between streams. Small overlap is allowed: a few shared
+  files (registries, i18n catalogs, route tables, config lists) touched by more than one stream,
+  each listed in the table with the edit each stream makes, in additive hunks that rebase cleanly.
+  Large or semantic overlap, or no confirmation of no ordering dependency, means no split — default
+  back to one sequential implementer (P110's iter2 plan rejected a split: real overlap in a shared
+  script, plus a rename dependency chain between two would-be streams). Cap concurrent streams at 3.
+  Landing: once every stream is implemented and independently verified, rebase each onto the
+  chapter branch in any order; resolve a conflict in a listed shared file, stop on any other
+  (the ownership boundary was wrong), remove the worktrees, push. A worktree survives a container restart — resume a stopped stream from
   its last commit, never restart from scratch.
 - **Implement the whole plan first, then test once and fix what's found** — don't gate every
   intermediate commit on the full test suite. Fast checks (typecheck, lint, build) are cheap and
@@ -85,13 +88,14 @@ duplicated here; this file only points at them.
   close phase, then the PR. The user need not restate it.
 - **The loop per phase:** check for a plan, spawn an Opus subagent to write one if missing, spawn
   a Sonnet subagent (or several, only if genuinely parallelizable) to implement the whole phase, and
-  wait for it before moving on. One phase at a time, in order — never parallelize or batch phases.
-  **A phase isn't done until it's both planned and implemented.** Don't start the next phase's
-  plan — don't even spawn its Opus subagent — until the current phase's Sonnet implementer has
-  finished and its work is committed. This applies across phases only: the "parallel subagents
-  only when genuinely independent" allowance above is scoped to splitting one phase's own
-  implementation work, never to running two different phases (or their planning and
-  implementation) at the same time.
+  wait for it before moving on. Phases run in table order, one at a time, unless the user
+  asks for parallel phases. **A phase isn't done until it's both planned and implemented.** Don't
+  start the next phase's plan until the current phase's Sonnet implementer has finished and its
+  work is committed. Exception, on the user's request: run a batch of up to 3 phases concurrently,
+  each its own stream (own worktree, own Opus plan, own Sonnet implementer). Batch only phases with
+  no ordering dependency and at most small overlap (see the streams rule above). Prefer batching
+  whole phases over splitting one phase into parts. The batch's grouping lives in a plan file
+  under the chapter's `plans/`.
 - **The orchestrating session verifies before accepting — a plan or an implementation isn't done
   because a subagent says so.** Before marking a phase's plan, or its implementation, complete,
   check the result against the full original ask: the `SPEC.md` row's own wording, the user's own
@@ -278,7 +282,8 @@ duplicated here; this file only points at them.
   mechanism — it's designed for that (P25's own `Scenario`/`Requires` seam, populated by P26).
 - **Real `claude` tests are opt-in and cost tokens.** After changing Claude integration code, run the
   matching row of `docs/DEV_ENVIRONMENT.md` "Real `claude` tests" (`bun run test:claude*`). They live in
-  nested Go modules under `apps/*/tests/claude/`. Never wire them into hooks or CI.
+  nested Go modules under `apps/*/tests/claude/`. Never wire them into hooks or CI. Run on this machine;
+  verify auth with the probe in DEV_ENVIRONMENT, never assume no login.
 - **Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)** —
   `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, with a `!` or `BREAKING CHANGE:` footer
   for breaking changes.

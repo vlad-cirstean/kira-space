@@ -12,13 +12,20 @@ const (
 
 // normalizeMessage prepares message text for either the initial CLI prompt or a forwarded paste:
 // CRLF and bare CR become LF (a message typed on Windows or pasted from one source must not leave
-// a stray \r inside the pty write), and any embedded end-of-paste sequence is stripped so pasted
-// text can never terminate its own bracketed-paste block early.
+// a stray \r inside the pty write), and every other control char (ESC, C1, DEL) is dropped, keeping \n and \t. Dropping ESC alone
+// defeats a nested \x1b[20\x1b[201~1~ that a single-pass replace would reassemble into end-of-paste.
 func normalizeMessage(s string) string {
 	s = strings.ReplaceAll(s, "\r\n", "\n")
 	s = strings.ReplaceAll(s, "\r", "\n")
-	s = strings.ReplaceAll(s, bracketedPasteEnd, "")
-	return s
+	return strings.Map(func(r rune) rune {
+		if r == '\n' || r == '\t' {
+			return r
+		}
+		if r < 0x20 || r == 0x7f || (r >= 0x80 && r <= 0x9f) {
+			return -1
+		}
+		return r
+	}, s)
 }
 
 // pasteBytes renders message as a bracketed-paste write followed by the Enter that submits it —

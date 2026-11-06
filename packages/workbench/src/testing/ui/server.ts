@@ -58,7 +58,7 @@ export async function serveStatic(
 }
 
 /**
- * A static HTTP server over `apps/kira-studio/frontend/dist`, one per worker — the tests/ui/
+ * A static HTTP server over `apps/kira-space/frontend/dist`, one per worker — the tests/ui/
  * counterpart to `_electron.launch()`. It serves `index.html` for `/` and every built asset, and
  * deliberately serves nothing under `/wails/`: those requests are either intercepted by
  * `mockRuntime.ts` (the runtime's own `*.js` files, and the one RPC endpoint bound calls POST to)

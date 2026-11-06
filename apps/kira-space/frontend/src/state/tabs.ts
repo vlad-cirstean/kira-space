@@ -1,18 +1,22 @@
 import { newUuid } from '@shared/ids';
 import { createTabsStore } from '@workbench/state/createTabsStore';
 import { control } from '../bridge/control';
+import { studioTabsExtension, studioTabsHooks } from '../studio/state/studioTabs';
 import { useOpenedFilesWindowStore } from './openedFilesWindow';
 import {
   defaultRepoGraphTabState,
   type LocalFileTabState,
   type RepoFileTabState,
   type RepoGraphTabState,
+  STUDIO_TAB_KIND_MODE,
+  type StudioTabKind,
   type TabRecord,
 } from './tabDomain';
 import { TAB_KINDS } from './tabKinds';
 import {
   FILES_WORKSPACE,
   GENERAL_WORKSPACE,
+  isRepoWorkspace,
   useWorkspaceStore,
   visibleWorkspace,
   type WorkspaceKey,
@@ -25,13 +29,17 @@ import {
 // post-hydrate `openRepos` derivation, and the extras no other app has
 // (`createPinnedRepoGraphTab`, `closeWorkspaceTabs`, the two repo-kind patchers).
 
-// A tab's own workspace: its `workspaceId` when a repo (or a scoped terminal) set one, else the
-// one shared slot for a fully-unscoped terminal tab — see state/workspace.ts's own header comment
-// for why there is exactly one non-repo slot here.
+// A tab's own workspace: its `workspaceId` when a repo or a module (a scoped terminal) set one,
+// else its module for a database or API kind, else the one shared unscoped slot.
 // The files window partitions every tab under FILES_WORKSPACE; `workspaceId` keeps the repo id.
 function workspaceKeyOf(tab: Pick<TabRecord, 'kind' | 'workspaceId'>): WorkspaceKey {
   if (useOpenedFilesWindowStore().active) return FILES_WORKSPACE;
-  return tab.workspaceId ?? GENERAL_WORKSPACE;
+  return tab.workspaceId ?? studioKindWorkspace(tab.kind) ?? GENERAL_WORKSPACE;
+}
+
+// The database and API kinds live in their own module's workspace, never a repo's.
+function studioKindWorkspace(kind: TabRecord['kind']): WorkspaceKey | null {
+  return kind in STUDIO_TAB_KIND_MODE ? STUDIO_TAB_KIND_MODE[kind as StudioTabKind] : null;
 }
 
 export interface OpenTabResult {
@@ -43,10 +51,15 @@ export const useTabsStore = createTabsStore({
   kinds: TAB_KINDS,
   workspaceKeyOf,
   control,
-  // No explicit workspaceId ⇒ the one shared unscoped slot, regardless of kind — this app has no
-  // per-kind mode the way Kira Studio's STUDIO_TAB_KIND_MODE does.
-  fallbackWorkspaceKey: () =>
-    useOpenedFilesWindowStore().active ? FILES_WORKSPACE : GENERAL_WORKSPACE,
+  // No explicit workspaceId: a database or API kind opens in its module, anything else in the one
+  // shared unscoped slot.
+  fallbackWorkspaceKey: (kind) =>
+    useOpenedFilesWindowStore().active
+      ? FILES_WORKSPACE
+      : (studioKindWorkspace(kind) ?? GENERAL_WORKSPACE),
+  // The module workspaces always exist, even at zero tabs.
+  seedWorkspaceKeys: ['studio', 'api'],
+  ...studioTabsHooks,
   // state/workspace.ts imports closeWorkspaceTabs from this file, a two-way call graph — not a
   // cycle, since neither side reads the other at module-evaluation time, only inside a function
   // body called after both modules have finished loading (Pinia's own store registry resolves
@@ -56,7 +69,7 @@ export const useTabsStore = createTabsStore({
     const openRepos: string[] = [];
     for (const t of tabs) {
       const key = workspaceKeyOf(t);
-      if (key === GENERAL_WORKSPACE) continue;
+      if (!isRepoWorkspace(key)) continue;
       if (!openRepos.includes(key)) openRepos.push(key);
     }
     useWorkspaceStore().openRepos = openRepos;
@@ -137,6 +150,7 @@ export const useTabsStore = createTabsStore({
     }
 
     return {
+      ...studioTabsExtension(actions),
       createPinnedRepoGraphTab,
       closeWorkspaceTabs: closeWorkspaceTabsAction,
       patchRepoFileTabState,

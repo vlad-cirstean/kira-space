@@ -102,7 +102,7 @@ max <= 50 (p50 9-14 ms, max 51-68 ms), identical at P139's own commit `058623df`
 changed between. This host runs the render ~1.4x slower than P139's (p50 6-8 ms). Bounds became **p50
 <= 16 ms and max <= 80 ms**. The 8 ms product budget is unchanged and unverified here.
 
-**P161 Documents list (WebKit sandbox, `perf:documents:studio`).** 5 000 documents, 160 px rows, fast
+**P161 Documents list (WebKit sandbox, `perf:documents`).** 5 000 documents, 160 px rows, fast
 flick: before frame p95 171 ms (80 of 82 over 50 ms), after 66 ms (41 of 80). Fixes: one shared
 tooltip instead of two reka `Tooltip`s per row (~51 ms of a 142 ms frame), overscan in px (320). The
 target (flick p95 <= 50 ms) was not met: mounting a full new row window per frame floors at 21 ms.
@@ -115,7 +115,7 @@ medians. Fixes: row-key `v-for` keys plus per-key cached nav handlers in `Virtua
 skip re-render on range change, row components with primitive props, one `AttributeTooltip` instead
 of a reka `Tooltip` per row button and origin icon.
 
-**P163 large-input parse callers (WebKit sandbox, `perf:parse:studio`).** Moving parse and format to
+**P163 large-input parse callers (WebKit sandbox, `perf:parse`).** Moving parse and format to
 a worker cut the longest main-thread block: Console Format 64 KB 631 → 84 ms, 236 KB 1 848 → 187 ms,
 1 MB 6 913 → 683 ms; Console Copy all 198-411 → 83-85 ms (10 000 x 0.4 KB). Beautify keeps a ~1 s
 block at 5 MB because Monaco applies the result as one undoable edit. Documents field-name
@@ -158,7 +158,7 @@ Two budgets needed a documented adjustment for this tier, neither for app-work r
 Not ported: `perf.spec.ts`'s "L2 budget never exceeded after twenty pages", because
 `window.__kiraCacheStats` wraps a real engine request and a mock could only make "usage ≤ budget"
 true by construction. The budget-respecting behaviour is asserted in Go against the real cache,
-`apps/kira-studio/internal/enginecache/lru_test.go`'s `TestByteLru_*`. The `leaks.spec.ts`
+`apps/kira-space/internal/enginecache/lru_test.go`'s `TestByteLru_*`. The `leaks.spec.ts`
 sub-scenarios "L3 is bounded" and "clearing the cache resets the hit rate" drop for the same reason;
 "deleting a connection closes its tabs" drops because `tests/ui/support/mockRuntime.ts` has no
 `Events.On` analogue for `connectionsChanged`. `tests/e2e-real/` is the only tier that could recover
@@ -231,7 +231,7 @@ this environment has never been able to produce (`git show 7d8a72ab4a5e:docs/WEB
 the process; this probe lives inside the page and lets the human supply the momentum instead). It's
 reachable from a dev build's View → Open DevTools (`internal/shell/menutemplate.go`). Protocol:
 
-1. `bun run dev:studio`, open a 50 000+-row table at page size 10 000, comfortable density.
+1. `bun run dev`, open a 50 000+-row table at page size 10 000, comfortable density.
 2. Web Inspector → Console → `__kiraScrollTrace.start()`.
 3. One hard two-finger flick, let momentum die out.
 4. `copy(JSON.stringify(__kiraScrollTrace.stop()))` — report `summary.pxPerFrame` (the first real
@@ -271,7 +271,7 @@ the evidence for that cutover; steps 1-5's two-engine comparison itself is histo
 re-run. Step 6's `window.__kiraGridTuning` A/B, and every A/B further down this section, still work
 standalone and are rewritten below to drop the now-dead engine-switch step. **Run any of them from a
 build where the hooks are actually compiled in** (P29 F1 gates `window.__kira*` behind
-`__KIRA_DEBUG_HOOKS__`): `bun run dev:studio` (`wails3 task dev`)'s Vite dev server, or a native build via
+`__KIRA_DEBUG_HOOKS__`): `bun run dev` (`wails3 task dev`)'s Vite dev server, or a native build via
 `build:dev`/`build:test` — **never** a packaged `.dmg`, where they're gone by design.
 
 **What this section isn't: it doesn't say the fast-scroll lag is fixed.** Pass A
@@ -302,7 +302,7 @@ this section's head).** This is §2.1a's own protocol (above), doubled: run it o
 incumbent grid, once against the spike, same window size, same table, same page size, same hard
 two-finger flick.
 
-1. `bun run dev:studio`, open a 50 000+-row table at page size 10 000, comfortable density — exactly §2.1a
+1. `bun run dev`, open a 50 000+-row table at page size 10 000, comfortable density — exactly §2.1a
    step 1.
 2. Web Inspector → Console → `__kiraScrollTrace.start()`, one hard two-finger flick, let momentum
    die, `copy(JSON.stringify(__kiraScrollTrace.stop()))`. This is the **incumbent** run — do it
@@ -333,7 +333,7 @@ directly. That's what read on macOS as "that fluid velocity sensitive mac scroll
 this app's own velocity/runway logic are unaffected, since both already run off native `scroll`, not
 off SlickGrid's wheel-specific internals.
 
-**Bundle size, measured in this session** (`bun run build:studio`, before/after this phase's own C2/C5,
+**Bundle size, measured in this session** (`bun run build`, before/after this phase's own C2/C5,
 gzip): the launch chunk grew from **353.31 KB to 397.64 KB** (**+44.33 KB**), and the CSS asset from
 21.75 KB to 22.90 KB (**+1.15 KB**) — **+45.48 KB total**, against the plan's own **≤45 000 B**
 ceiling (§7.4(a) item 7) and its **~42 KB JS / ~1.3 KB CSS** projection (F9). This is **~480 B (about
@@ -703,7 +703,7 @@ and are invisible to V8's GC, so lazy loading only defers that cost. Not re-meas
 |---|---|---|---|
 | L-B renderer page retention | Tab RSS delta (10 vs 0 tabs) > 120 MB and retained bytes explain < half | delta ≈ 18–43 MB | no |
 | L-C L2 budget default | steady state at the 64 MB budget and total RSS > 350 MB | L2 at 0.3 MB / 64 MB | no |
-| L-D bundle weight | packaged `.app` > 300 MB on disk | not re-measured for the Wails bundle; the old 252 MB figure was an electron-builder build that no longer exists. `scripts/vendor-node.sh` and the vendored Node are gone (P58f M10). Record `du -sh "apps/kira-studio/bin/Kira Studio.app"` (§3) on the next macOS run | unknown |
+| L-D bundle weight | packaged `.app` > 300 MB on disk | not re-measured for the Wails bundle; the old 252 MB figure was an electron-builder build that no longer exists. `scripts/vendor-node.sh` and the vendored Node are gone (P58f M10). Record `du -sh "apps/kira-space/bin/Kira Space.app"` (§3) on the next macOS run | unknown |
 | L-E engine old-space cap | peak engine RSS > 400 MB in any §3 scenario | peak 155.6 MB | no |
 | L-F cached tree expand | p95 > 50 ms | 2.8 ms | no |
 | L-G cell editor populate | p95 > 50 ms | 4.9 ms | no |
@@ -719,7 +719,7 @@ for this class of app, or measuring only the app-attributable delta.
 build; this sandbox is Linux x86_64 with WebKitGTK 2.52.3, structurally unlike WKWebView. The verdict
 is §2.4.
 
-Instrument: `apps/kira-studio/cmd/g1measure` over `internal/metrics`' `gopsutil` RSS summation (the
+Instrument: `apps/kira-space/cmd/g1measure` over `internal/metrics`' `gopsutil` RSS summation (the
 same package behind `kira:app:metrics`), cross-checked against `ps --forest`. It is gate-G1
 measurement scaffolding. On Linux, WebKitGTK's `WebKitNetworkProcess` and `WebKitWebProcess` are true
 children of the Go process, with `WebKitWebProcess` re-executed through two `bwrap` wrappers (1.6-2.2
@@ -729,7 +729,7 @@ Min of 10: blank page **616.3 MB**; real renderer with the nine boot-path reads 
 (`WebKitWebProcess` 317.8 MB, Go shell 274.7 MB). The engine child alone was 45-46 MB (≤ 150 MB
 check passes, platform-independent). Read against §2.2's 620-626 MB Electron baseline, this build is
 not smaller on Linux, because WebKitGTK is a full separate library instance. That motivated the real
-macOS re-run. The blank-page scaffold (`KIRA_G1_BLANK=1`, `apps/kira-studio/blank/`) was removed in
+macOS re-run. The blank-page scaffold (`KIRA_G1_BLANK=1`, `apps/kira-space/blank/`) was removed in
 P29.
 
 ### 2.4 P52 gate G1 — real macOS arm64 result and verdict: **Go**
@@ -959,7 +959,7 @@ component classes replaced duplicated `.kv-*` styling. Container build, not a pa
 Base `c9ec9d14` (chapter `v0.2.28` after P479). Host: 4-core container, Linux 6.18, Chromium
 headless shell 1243, WebKit 2370. Probe: `heap-ram.spec.ts` of each app, Pass A (minified build,
 3 repeats, median [spread]); the probe's load gate waits for `load1 <= 1.0`. Commands:
-`KIRA_RAM_WORLD=docker bunx playwright test --config=apps/kira-studio/playwright.perf.config.ts --project=heap heap-ram --repeat-each=3`
+`KIRA_RAM_WORLD=docker bunx playwright test --config=apps/kira-space/playwright.perf.config.ts --project=heap heap-ram --repeat-each=3`
 and `KIRA_RAM_WORLD=memory,diff,ade` for Space (`apps/kira-space/playwright.perf.config.ts`).
 "Before" was measured on the base commit, "after" on the fixed tree, same host.
 
@@ -1011,14 +1011,14 @@ here. **Rewritten for the Wails/Go bundle at P57 M8**: the steps below are a
 re-pointed procedure, not a re-measurement — nothing in this section has been executed on real
 hardware since the migration, and no number in this file changed as a result of the rewrite.
 
-**The bundle these procedures run against.** `bun run package:studio` (`cd apps/kira-studio && wails3 task
+**The bundle these procedures run against.** `bun run package` (`cd apps/kira-space && wails3 task
 darwin:package:dmg`, then `scripts/sign-bundle.sh`; see `docs/PACKAGING.md`) produces both
-**`apps/kira-studio/bin/Kira Studio.app`** and, around it, **`Kira Studio.dmg`** — the shipped
+**`apps/kira-space/bin/Kira Space.app`** and, around it, **`Kira Space.dmg`** — the shipped
 artifact as of P10. electron-builder's `dist/mac-arm64/` output, its `app.asar` and its
 `out/main/` entry points no longer exist. As of P58f M10 there's also no `Contents/MacOS/runtime/`
 tree of any kind — no vendored Node runtime, no engine-child bundle — since every adapter now runs
 natively inside the one Go binary. The only measurement-relevant path inside the bundle is
-`Contents/MacOS/Kira Studio` itself.
+`Contents/MacOS/Kira Space` itself.
 
 **Tab switch (P139 Part 2).** Open `big_rows` and `wide_table` data tabs. In the packaged app's Web
 Inspector, confirm `CSS.supports('margin-trim: inline')` is `true`. Record a Timeline over 20
@@ -1027,17 +1027,17 @@ and the count of full style recalculations per switch (expect none from SlickGri
 numbers here.
 
 **Packaged cold start** (target: ≤ 1500 ms median of 3 warm launches):
-1. `bun run package:studio`.
-2. Launch `apps/kira-studio/bin/Kira Studio.app` 3 times via Finder or `open`, discarding the first
+1. `bun run package`.
+2. Launch `apps/kira-space/bin/Kira Space.app` 3 times via Finder or `open`, discarding the first
    (Gatekeeper's quarantine scan of an ad-hoc-signed bundle on first launch isn't the app's cost).
    Launch it the way a user would rather than `exec`ing the binary — §2.4's own methodology note
    records that a directly-`exec`'d run is a structurally different process set on macOS.
-3. Read the cold-start line from `~/.kira-studio/logs/kira-<YYYY-MM-DD>.log` for each of the 3
-   launches and take the median. That line is emitted by `apps/kira-studio/internal/shell/window.go`'s
+3. Read the cold-start line from `~/.kira-space/logs/kira-<YYYY-MM-DD>.log` for each of the 3
+   launches and take the median. That line is emitted by `apps/kira-space/internal/shell/window.go`'s
    `events.Common.WindowRuntimeReady` handler (P56 — Wails' analogue of `did-finish-load`, and the
    measurement point that replaces Electron's `process.uptime()`, which no longer exists): it reads
    `msg="did-finish-load at uptime <N>ms" scope=startup`, where `<N>` is milliseconds from
-   `apps/kira-studio/main.go`'s `startedAt` (captured at process entry) to the frontend runtime being ready.
+   `apps/kira-space/main.go`'s `startedAt` (captured at process entry) to the frontend runtime being ready.
    A packaged run writes to the file only — the stderr copy is dev-only (`config.IsDev()`).
 4. Record: `<median> ms — <date>, <machine>`.
 
@@ -1054,7 +1054,7 @@ packaged check is what's left):
    There's no separate manual command to run for the headline number, and no per-process breakdown
    — it's one app-wide figure by construction (§2.2's per-process table has no equivalent here).
 3. **Optional second opinion — not the same instrument as step 2, and the two numbers aren't
-   directly comparable.** `cd apps/kira-studio && go run ./cmd/g1measure` (its `-anchor`/`-helper`
+   directly comparable.** `cd apps/kira-space && go run ./cmd/g1measure` (its `-anchor`/`-helper`
    defaults are `metrics.AnchorNeedles`/`HelperNeedles`; min of 10 samples 1 s apart) and a plain
    `ps -o rss=` sum both report **RSS**, never phys_footprint — `cmd/g1measure/main.go` sums
    gopsutil's `mi.RSS` and was never updated when P7 switched the status-bar readout to
@@ -1064,7 +1064,7 @@ packaged check is what's left):
    of the difference). The **350 MB budget below was set against an RSS sum** (§2.2), so a step-2
    phys_footprint reading is *not* a like-for-like comparison against it — record the RSS figure
    (step 3) against the budget, and record the status-bar figure too if in doubt which one a future
-   reader will want. As of P58f M10 the process set for either instrument is just the `Kira Studio`
+   reader will want. As of P58f M10 the process set for either instrument is just the `Kira Space`
    binary and the `com.apple.WebKit.*` helpers (there's no vendored Node process left to include).
    Don't grep `com.apple.WebKit` by hand unfiltered: it also matches every *other* running app's
    idle WebKit helpers, the over-count §2.4's third bug records (≈ 87 MB of other apps on that
@@ -1072,7 +1072,7 @@ packaged check is what's left):
 4. Record both figures if in doubt, and label each with which instrument it came from: `<RSS total>
    MB (g1measure/ps) / <phys_footprint total> MB (status bar) — <date>, <machine>`.
 
-**Window-bounds debounce timer on close (F8, D8)** — now `apps/kira-studio/internal/shell/window.go`: the
+**Window-bounds debounce timer on close (F8, D8)** — now `apps/kira-space/internal/shell/window.go`: the
 resize/move debouncer (300 ms, `boundsDebounce`) is cancelled on `events.Common.WindowClosing`, and
 again by `Attach`'s detach at quit. **The Electron-era symptom this check watched for doesn't carry
 over.** It looked for the process lingering on an unref'd-but-still-pending `setTimeout`; a pending
@@ -1094,21 +1094,21 @@ own `op:end`, so one adapter's crash can't leave that op stuck `running`; (2) `i
 (P58f D9) — finishes any row still `running` when the op-event channel itself closes, e.g. at
 shutdown. A hard kill of the whole process (SIGKILL, OOM, a panic outside `safeRun`) still leaves
 `running` rows on next launch, same as before P58f; there's nothing left this manual procedure
-would exercise that `apps/kira-studio/internal/adapterhost` and `apps/kira-studio/internal/oplog`'s own unit tests don't
+would exercise that `apps/kira-space/internal/adapterhost` and `apps/kira-space/internal/oplog`'s own unit tests don't
 already cover.
 
 **Log file retention (F12, D12)** — now `internal/logging`'s `Sweep`, which deletes `kira-*.log`
 files older than `LogRetentionDays` (30) by mtime at startup. Verify by backdating a log file's mtime
-past 30 days in `~/.kira-studio/logs/`, relaunching the packaged app, and confirming that file is
+past 30 days in `~/.kira-space/logs/`, relaunching the packaged app, and confirming that file is
 gone while newer ones remain.
 
-**App size (lever L-D)** — `du -sh "apps/kira-studio/bin/Kira Studio.app"`, against the > 300 MB trigger. See
+**App size (lever L-D)** — `du -sh "apps/kira-space/bin/Kira Space.app"`, against the > 300 MB trigger. See
 §2.2's lever table for what that row currently does and doesn't claim.
 
 ## 4. P13's nonfunctional sweep — the three items P12 handed forward
 
 All three resolved in P13. Their cache coverage moved to Go with L2/L3 (P58a A21) and is asserted in
-`apps/kira-studio/internal/enginecache/lru_test.go`'s `TestByteLru_*` cases.
+`apps/kira-space/internal/enginecache/lru_test.go`'s `TestByteLru_*` cases.
 
 1. **L3 count store had no byte budget — fixed (F19, D19).** Now a `ByteLru` like L2:
    `L3_BUDGET_BYTES = 256 * 1024`, `COUNT_ENTRY_BYTES = 128`, so 2 048 entries before eviction

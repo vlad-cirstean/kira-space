@@ -88,6 +88,16 @@ func (r *AdeSessionsRepo) ListRunningTUI() ([]model.AdeSession, error) {
 	})
 }
 
+// ListRunning returns the task's running sessions of either mode, served by the task_id index.
+func (r *AdeSessionsRepo) ListRunning(taskID string) ([]model.AdeSession, error) {
+	rows, err := r.DB.Query(`SELECT `+adeSessionsSelectColumns+` FROM ade_sessions
+		WHERE task_id = ? AND state = ?`, taskID, model.AdeSessionStateRunning)
+	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.AdeSession, bool, error) {
+		rec, err := scanAdeSessionRow(rows)
+		return rec, true, err
+	})
+}
+
 // InsertHeadless writes a headless task session row (no terminal).
 func (r *AdeSessionsRepo) InsertHeadless(rec model.AdeSession) error {
 	if rec.TaskID == "" {

@@ -7,6 +7,7 @@ import { scriptRunTabKind } from '@workbench/tabs/scriptRunTabKind';
 import { terminalTabKind } from '@workbench/tabs/terminalTabKind';
 import { parseStateWith, type TabKindRegistry } from '@workbench/tabs/types';
 import { useRepoLinksStore } from '../repo/state/repoLinks';
+import { STUDIO_TAB_KINDS } from '../studio/state/tabKinds';
 import {
   dropLocalFileTab,
   dropRepoDiffTab,
@@ -39,6 +40,7 @@ import {
   repoMultiDiffTabStateSchema,
   SPACE_TAB_KIND_MODE,
   type SpaceTabKind,
+  type TabKind,
   type TabRecord,
 } from './tabDomain';
 import { useTerminalsStore } from './terminals';
@@ -101,107 +103,111 @@ function repoRailColor(tab: TabRecord): PaletteColor | undefined {
   return color === 'none' ? undefined : color;
 }
 
-export const TAB_KINDS: TabKindRegistry<SpaceTabKind, TabRecord, TabIcon, PaletteColor, MenuItem> =
-  {
-    'repo-graph': {
-      mode: SPACE_TAB_KIND_MODE['repo-graph'],
-      title: (tab) =>
-        useCodeReposStore().codeRepoRecord(tab.workspaceId ?? '')?.name ?? t('common.graph.label'),
-      icon: () => 'source-control',
-      railColor: repoRailColor,
-      defaultState: (): RepoGraphTabState => defaultRepoGraphTabState(),
-      // Never actually reached (`pinned: true` refuses duplication, state/tabs.ts), but a real
-      // default rather than `{}` keeps this consistent with every other kind's own duplicateState.
-      duplicateState: (_tab: RepoGraphTabRecord): RepoGraphTabState => defaultRepoGraphTabState(),
-      dropResources: noDrop,
-      menuExtras: () => [],
-      parseState: parseStateWith(repoGraphTabStateSchema),
-      pinned: true,
-      keepMounted: true,
-    },
-    // One opened repository file, rendered by Monaco (read-only). The same seti icon the file tree
-    // already shows for this path (RepoTreeRow.vue's own fileIconStyle, repo/fileIcon.ts).
-    'repo-file': {
-      mode: SPACE_TAB_KIND_MODE['repo-file'],
-      title: repoFileTitle,
-      icon: (tab) => ({ filePath: tab.path }),
-      railColor: repoRailColor,
-      defaultState: (): RepoFileTabState => defaultRepoFileTabState(),
-      duplicateState: (tab: RepoFileTabRecord): RepoFileTabState => ({ ...tab.state }),
-      // Disposes the live editor widget (if any) and the cached model — RepoFileView.vue's own
-      // unmount (a mere tab switch) never reaches this; only an actual close does.
-      dropResources: (tabId) => dropRepoFileTab(tabId),
-      menuExtras: () => [],
-      parseState: parseStateWith(repoFileTabStateSchema),
-      // An edit buffer with unsaved changes: closing the tab asks to discard first.
-      isDirty: (tabId) => useFileEditStore().isDirty(tabId),
-      badge: (tab) =>
-        useFileEditStore().isDirty(tab.id)
-          ? { icon: 'circle-filled', tooltip: t('common.state.unsavedChanges.status') }
-          : null,
-    },
-    // An externally opened file outside every imported repository (`path` is absolute): the title
-    // is the basename. No rail colour: no repository behind it.
-    'local-file': {
-      mode: SPACE_TAB_KIND_MODE['local-file'],
-      title: repoFileTitle,
-      icon: (tab) => ({ filePath: tab.path }),
-      railColor: () => undefined,
-      defaultState: (): LocalFileTabState => defaultLocalFileTabState(),
-      duplicateState: (tab: LocalFileTabRecord): LocalFileTabState => ({ ...tab.state }),
-      dropResources: (tabId) => dropLocalFileTab(tabId),
-      menuExtras: () => [],
-      parseState: parseStateWith(localFileTabStateSchema),
-    },
-    // A HEAD-vs-worktree diff, opened from "Open changes" — read-only, mirroring 'repo-file''s
-    // shape exactly. No badge, no pinned: a read-only tab.
-    'repo-diff': {
-      mode: SPACE_TAB_KIND_MODE['repo-diff'],
-      title: repoDiffTitle,
-      icon: () => 'git-compare',
-      railColor: repoRailColor,
-      defaultState: (): RepoDiffTabState => defaultRepoDiffTabState(),
-      // A commit diff's revision pair must survive duplication — resetting to `{}` would silently
-      // turn a duplicated commit-diff tab into a HEAD-vs-worktree one.
-      duplicateState: (tab: RepoDiffTabRecord): RepoDiffTabState => ({ ...tab.state }),
-      dropResources: (tabId) => dropRepoDiffTab(tabId),
-      menuExtras: () => [],
-      parseState: parseStateWith(repoDiffTabStateSchema),
-    },
-    // One commit's whole changed-file set, one tab (VS Code's multi-file diff) — read-only,
-    // mirroring 'repo-diff''s own shape. No badge, no pinned, same reasoning.
-    'repo-multi-diff': {
-      mode: SPACE_TAB_KIND_MODE['repo-multi-diff'],
-      title: repoMultiDiffTitle,
-      icon: () => 'diff-multiple',
-      railColor: repoRailColor,
-      // Never reached through a generic "new tab of this kind" affordance — openRepoMultiDiffTab
-      // always supplies a real files/revision pair. This placeholder only satisfies TabKindDef's own
-      // required member.
-      defaultState: (): RepoMultiDiffTabState =>
-        defaultRepoMultiDiffTabState([], { left: '', right: '', leftLabel: '', rightLabel: '' }),
-      // files/review are arrays/objects — copied fresh so editing the duplicate's own state (were it
-      // ever mutated in place) can't reach back into the original's.
-      duplicateState: (tab: RepoMultiDiffTabRecord): RepoMultiDiffTabState => ({
-        ...tab.state,
-        files: [...tab.state.files],
-        review: tab.state.review ? { ...tab.state.review } : null,
-      }),
-      dropResources: (tabId) => dropRepoMultiDiffTab(tabId),
-      menuExtras: () => [],
-      parseState: parseStateWith(repoMultiDiffTabStateSchema),
-    },
-    // An embedded shell at one worktree's directory, rendered with @xterm/xterm. A launch's own
-    // label (a script's name, or 'Claude Code') wins over the cwd's basename.
-    // The descriptor itself moved to workbench's own terminalTabKind, shared with kira-studio's
-    // identical copy — only the mode constant and dropResources' own store differ per app.
-    terminal: terminalTabKind<'terminal', TabRecord, TabIcon, PaletteColor, MenuItem>(
-      SPACE_TAB_KIND_MODE.terminal,
-      (tabId) => useTerminalsStore().closeTerminalSession(tabId),
-      (tabId) => useTerminalsStore().terminalSession(tabId),
-    ),
-    'script-run': scriptRunTabKind<'script-run', TabRecord, TabIcon, PaletteColor, MenuItem>(
-      SPACE_TAB_KIND_MODE['script-run'],
-      scriptRunState,
-    ),
-  };
+const SPACE_TAB_KINDS: TabKindRegistry<SpaceTabKind, TabRecord, TabIcon, PaletteColor, MenuItem> = {
+  'repo-graph': {
+    mode: SPACE_TAB_KIND_MODE['repo-graph'],
+    title: (tab) =>
+      useCodeReposStore().codeRepoRecord(tab.workspaceId ?? '')?.name ?? t('common.graph.label'),
+    icon: () => 'source-control',
+    railColor: repoRailColor,
+    defaultState: (): RepoGraphTabState => defaultRepoGraphTabState(),
+    // Never actually reached (`pinned: true` refuses duplication, state/tabs.ts), but a real
+    // default rather than `{}` keeps this consistent with every other kind's own duplicateState.
+    duplicateState: (_tab: RepoGraphTabRecord): RepoGraphTabState => defaultRepoGraphTabState(),
+    dropResources: noDrop,
+    menuExtras: () => [],
+    parseState: parseStateWith(repoGraphTabStateSchema),
+    pinned: true,
+    keepMounted: true,
+  },
+  // One opened repository file, rendered by Monaco (read-only). The same seti icon the file tree
+  // already shows for this path (RepoTreeRow.vue's own fileIconStyle, repo/fileIcon.ts).
+  'repo-file': {
+    mode: SPACE_TAB_KIND_MODE['repo-file'],
+    title: repoFileTitle,
+    icon: (tab) => ({ filePath: tab.path }),
+    railColor: repoRailColor,
+    defaultState: (): RepoFileTabState => defaultRepoFileTabState(),
+    duplicateState: (tab: RepoFileTabRecord): RepoFileTabState => ({ ...tab.state }),
+    // Disposes the live editor widget (if any) and the cached model — RepoFileView.vue's own
+    // unmount (a mere tab switch) never reaches this; only an actual close does.
+    dropResources: (tabId) => dropRepoFileTab(tabId),
+    menuExtras: () => [],
+    parseState: parseStateWith(repoFileTabStateSchema),
+    // An edit buffer with unsaved changes: closing the tab asks to discard first.
+    isDirty: (tabId) => useFileEditStore().isDirty(tabId),
+    badge: (tab) =>
+      useFileEditStore().isDirty(tab.id)
+        ? { icon: 'circle-filled', tooltip: t('common.state.unsavedChanges.status') }
+        : null,
+  },
+  // An externally opened file outside every imported repository (`path` is absolute): the title
+  // is the basename. No rail colour: no repository behind it.
+  'local-file': {
+    mode: SPACE_TAB_KIND_MODE['local-file'],
+    title: repoFileTitle,
+    icon: (tab) => ({ filePath: tab.path }),
+    railColor: () => undefined,
+    defaultState: (): LocalFileTabState => defaultLocalFileTabState(),
+    duplicateState: (tab: LocalFileTabRecord): LocalFileTabState => ({ ...tab.state }),
+    dropResources: (tabId) => dropLocalFileTab(tabId),
+    menuExtras: () => [],
+    parseState: parseStateWith(localFileTabStateSchema),
+  },
+  // A HEAD-vs-worktree diff, opened from "Open changes" — read-only, mirroring 'repo-file''s
+  // shape exactly. No badge, no pinned: a read-only tab.
+  'repo-diff': {
+    mode: SPACE_TAB_KIND_MODE['repo-diff'],
+    title: repoDiffTitle,
+    icon: () => 'git-compare',
+    railColor: repoRailColor,
+    defaultState: (): RepoDiffTabState => defaultRepoDiffTabState(),
+    // A commit diff's revision pair must survive duplication — resetting to `{}` would silently
+    // turn a duplicated commit-diff tab into a HEAD-vs-worktree one.
+    duplicateState: (tab: RepoDiffTabRecord): RepoDiffTabState => ({ ...tab.state }),
+    dropResources: (tabId) => dropRepoDiffTab(tabId),
+    menuExtras: () => [],
+    parseState: parseStateWith(repoDiffTabStateSchema),
+  },
+  // One commit's whole changed-file set, one tab (VS Code's multi-file diff) — read-only,
+  // mirroring 'repo-diff''s own shape. No badge, no pinned, same reasoning.
+  'repo-multi-diff': {
+    mode: SPACE_TAB_KIND_MODE['repo-multi-diff'],
+    title: repoMultiDiffTitle,
+    icon: () => 'diff-multiple',
+    railColor: repoRailColor,
+    // Never reached through a generic "new tab of this kind" affordance — openRepoMultiDiffTab
+    // always supplies a real files/revision pair. This placeholder only satisfies TabKindDef's own
+    // required member.
+    defaultState: (): RepoMultiDiffTabState =>
+      defaultRepoMultiDiffTabState([], { left: '', right: '', leftLabel: '', rightLabel: '' }),
+    // files/review are arrays/objects — copied fresh so editing the duplicate's own state (were it
+    // ever mutated in place) can't reach back into the original's.
+    duplicateState: (tab: RepoMultiDiffTabRecord): RepoMultiDiffTabState => ({
+      ...tab.state,
+      files: [...tab.state.files],
+      review: tab.state.review ? { ...tab.state.review } : null,
+    }),
+    dropResources: (tabId) => dropRepoMultiDiffTab(tabId),
+    menuExtras: () => [],
+    parseState: parseStateWith(repoMultiDiffTabStateSchema),
+  },
+  // An embedded shell at one worktree's directory, rendered with @xterm/xterm. A launch's own
+  // label (a script's name, or 'Claude Code') wins over the cwd's basename.
+  // The descriptor itself moved to workbench's own terminalTabKind, shared with kira-studio's
+  // identical copy — only the mode constant and dropResources' own store differ per app.
+  terminal: terminalTabKind<'terminal', TabRecord, TabIcon, PaletteColor, MenuItem>(
+    SPACE_TAB_KIND_MODE.terminal,
+    (tabId) => useTerminalsStore().closeTerminalSession(tabId),
+    (tabId) => useTerminalsStore().terminalSession(tabId),
+  ),
+  'script-run': scriptRunTabKind<'script-run', TabRecord, TabIcon, PaletteColor, MenuItem>(
+    SPACE_TAB_KIND_MODE['script-run'],
+    scriptRunState,
+  ),
+};
+
+export const TAB_KINDS: TabKindRegistry<TabKind, TabRecord, TabIcon, PaletteColor, MenuItem> = {
+  ...SPACE_TAB_KINDS,
+  ...STUDIO_TAB_KINDS,
+};

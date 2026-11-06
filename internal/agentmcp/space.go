@@ -116,6 +116,17 @@ type RenameBranchResult struct {
 	Next     string `json:"next"`
 }
 
+// AttachProofResult is attach_proof's answer; Status is "attached".
+type AttachProofResult struct {
+	Name   string `json:"name"`
+	Steps  int    `json:"steps"`
+	Status string `json:"status"`
+}
+
+type attachProofArgs struct {
+	Name string `json:"name"`
+}
+
 // OperationInfo is one running operation of the task that an agent may stop.
 type OperationInfo struct {
 	OpID      string `json:"opId"`
@@ -162,6 +173,8 @@ type SpaceTools interface {
 	BranchStatus(ctx context.Context, taskID, repo, branch string, wait time.Duration) (BranchInfo, error)
 	RenameBranch(ctx context.Context, call SpaceCall, args RenameBranchArgs) (RenameBranchResult, error)
 	ReportArtifacts(ctx context.Context, call SpaceCall, in []ArtifactInput) (ReportArtifactsResult, error)
+	// AttachProof shows a closed proof session, by name, in the task's notes chain.
+	AttachProof(ctx context.Context, call SpaceCall, name string) (AttachProofResult, error)
 	// ListArtifacts lists every artifact of the task; a failing source is a gap, not an error.
 	ListArtifacts(ctx context.Context, taskID string) (TaskArtifacts, error)
 	// ListOperations lists the task's running operations that can be stopped; background rows stay out.
@@ -247,6 +260,7 @@ func (s *Server) addSpaceTools(srv *mcp.Server) {
 	s.addBranchStatusTool(srv)
 	s.addRenameBranchTool(srv)
 	s.addReportArtifactsTool(srv)
+	s.addAttachProofTool(srv)
 	s.addOperationTools(srv)
 }
 
@@ -429,6 +443,30 @@ func (s *Server) addReportArtifactsTool(srv *mcp.Server) {
 		res, err := s.space.ReportArtifacts(ctx, call, args.Artifacts)
 		if err != nil {
 			return fail("report_artifacts", err), ReportArtifactsResult{}, nil
+		}
+		return nil, res, nil
+	})
+}
+
+func (s *Server) addAttachProofTool(srv *mcp.Server) {
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "attach_proof",
+		Description: llmprompts.HeadlessToolAttachProof.Text(s.prompts, llmprompts.NoVars{}),
+		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[attachProofArgs](s.prompts, llmprompts.HeadlessToolAttachProof.ID(), nil), "name"),
+	}, func(ctx context.Context, req *mcp.CallToolRequest, args attachProofArgs) (*mcp.CallToolResult, AttachProofResult, error) {
+		call, bad := s.spaceTask(req)
+		if bad != nil {
+			return bad, AttachProofResult{}, nil
+		}
+		args.Name = strings.TrimSpace(args.Name)
+		if args.Name == "" {
+			return toolError("name is required."), AttachProofResult{}, nil
+		}
+		ctx, done := s.callCtx(ctx, req)
+		defer done()
+		res, err := s.space.AttachProof(ctx, call, args.Name)
+		if err != nil {
+			return fail("attach_proof", err), AttachProofResult{}, nil
 		}
 		return nil, res, nil
 	})

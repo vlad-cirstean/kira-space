@@ -202,6 +202,10 @@ func TestTextToLater(t *testing.T) {
 	if tk.Title != "Export header" || tk.Notes != strings.TrimSpace(text) || tk.HostURL != "" || tk.Jira != nil {
 		t.Fatalf("task = %+v", tk)
 	}
+	if hs, err := r.app.W.AdeTask.Handovers(ctx, adewire.TaskArgs{TaskID: res.TaskID}); err != nil || len(hs.Handovers) != 1 ||
+		hs.Handovers[0].State != "note" || hs.Handovers[0].Source != "user" || hs.Handovers[0].Body != tk.Notes {
+		t.Fatalf("captured text did not land as one user note: %+v, %v", hs, err)
+	}
 	board, _ := r.app.W.AdeTask.Board(ctx)
 	var order []string
 	for _, b := range board.Tasks {

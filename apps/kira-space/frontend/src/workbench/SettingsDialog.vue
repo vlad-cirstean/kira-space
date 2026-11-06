@@ -10,6 +10,10 @@ import { useLlmPromptsShellExtra } from '@workbench/state/llmPromptDrafts';
 import { computed } from 'vue';
 import { type Section, sections, useSettingsStore } from '../state/settings';
 import { defaultSettings, type SettingsPatch } from '../state/settingsDomain';
+import ApiPane from '../studio/workbench/settings/ApiPane.vue';
+import CachePane from '../studio/workbench/settings/CachePane.vue';
+import DatabaseMcpPane from '../studio/workbench/settings/DatabaseMcpPane.vue';
+import DataPane from '../studio/workbench/settings/DataPane.vue';
 import AdvancedPane from './settings/AdvancedPane.vue';
 import AgentPane from './settings/AgentPane.vue';
 import AppearancePane from './settings/AppearancePane.vue';
@@ -21,14 +25,6 @@ import MemoryPane from './settings/MemoryPane.vue';
 import MobileAccessPane from './settings/MobileAccessPane.vue';
 import UpdatesPane from './settings/UpdatesPane.vue';
 
-// Kira Studio's own workbench/SettingsDialog.vue — only the sections still relevant to a repo-only
-// workbench (state/settings.ts's own `sections`).
-// Now a thin composition over SettingsShell.vue plus this app's own panes
-// (workbench/settings/*.vue — see SettingsShell.vue's own file-level comment for what stays
-// app-side and why). Everything genuinely app-specific stays here: which three of Settings'
-// sections this dialog edits, the dialog's own width/height, the deep-link reset, and the footer
-// markup (its one small, real difference from Kira Studio's own — see SettingsShell.vue's
-// comment #2).
 const emit = defineEmits<{ close: [] }>();
 
 const settingsStore = useSettingsStore();
@@ -45,6 +41,10 @@ const sectionLabels = computed<Record<Section, string>>(() => ({
   'Mobile access': t('space.settings.nav.mobileAccess.label'),
   Agent: agentInfo.value.productLabel,
   Memory: t('common.module.memory.label'),
+  Data: t('studio.settings.nav.data.label'),
+  Cache: t('studio.settings.nav.cache.label'),
+  Api: t('studio.mode.api.label'),
+  'Database MCP': t('studio.settings.nav.databaseMcp.label'),
   Prompts: t('llmPrompts.nav.label'),
   Advanced: t('common.advanced.label'),
 }));
@@ -53,9 +53,7 @@ const sectionLabels = computed<Record<Section, string>>(() => ({
 // was opened with.
 useSettingsDeepLinkReset(settingsStore);
 
-async function save(patch: SettingsPatch): Promise<void> {
-  await settingsStore.patchSettings(patch);
-}
+const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSettings(patch);
 </script>
 
 <template>
@@ -71,6 +69,9 @@ async function save(patch: SettingsPatch): Promise<void> {
       memory: defaultSettings.memory,
       capture: defaultSettings.capture,
       tracking: defaultSettings.tracking,
+      data: defaultSettings.data,
+      cache: defaultSettings.cache,
+      api: defaultSettings.api,
       ade: {
         headlessSettingSources: defaultSettings.ade.headlessSettingSources,
       },
@@ -83,6 +84,9 @@ async function save(patch: SettingsPatch): Promise<void> {
       memory: settingsStore.memory,
       capture: settingsStore.capture,
       tracking: settingsStore.tracking,
+      data: settingsStore.data,
+      cache: settingsStore.cache,
+      api: settingsStore.api,
       ade: {
         headlessSettingSources: settingsStore.ade.headlessSettingSources,
       },
@@ -150,6 +154,34 @@ async function save(patch: SettingsPatch): Promise<void> {
       />
       <MemoryPane
         :active="s.activeSection === 'Memory'"
+        :draft="s.draft"
+        :is-at-default="s.isAtDefault"
+        :reset-leaf="s.resetLeaf"
+        :register-field-error="s.registerFieldError"
+      />
+      <DataPane
+        :active="s.activeSection === 'Data'"
+        :draft="s.draft"
+        :is-at-default="s.isAtDefault"
+        :reset-leaf="s.resetLeaf"
+        :register-field-error="s.registerFieldError"
+      />
+      <CachePane
+        :active="s.activeSection === 'Cache'"
+        :draft="s.draft"
+        :is-at-default="s.isAtDefault"
+        :reset-leaf="s.resetLeaf"
+        :register-field-error="s.registerFieldError"
+      />
+      <ApiPane
+        :active="s.activeSection === 'Api'"
+        :draft="s.draft"
+        :is-at-default="s.isAtDefault"
+        :reset-leaf="s.resetLeaf"
+        :register-field-error="s.registerFieldError"
+      />
+      <DatabaseMcpPane
+        :active="s.activeSection === 'Database MCP'"
         :draft="s.draft"
         :is-at-default="s.isAtDefault"
         :reset-leaf="s.resetLeaf"

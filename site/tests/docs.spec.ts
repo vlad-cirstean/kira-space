@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
+import type { ShotId } from '../src/data/shotCapture';
+import { expectShotImage } from './shotImage';
 
 const BASE = '/kira-studio/';
 const DOCS_DIR = join(import.meta.dirname, '..', 'src', 'content', 'docs', 'docs');
@@ -31,13 +33,13 @@ const PAGES = walk(DOCS_DIR)
   .sort()
   .map(pageOf);
 
-const SHOT_PAGES: Record<string, string> = {
-  'studio/data-grid': 'studio-data-grid',
-  'studio/sql-console': 'studio-sql-console',
-  'studio/api-client': 'studio-api',
-  'space/git': 'space-git-graph',
-  'space/agents': 'space-agents-board',
-  'space/memory': 'space-memory',
+const SHOT_PAGES: Record<string, readonly ShotId[]> = {
+  'studio/data-grid': ['studio-data-grid', 'studio-grid-row-menu'],
+  'studio/sql-console': ['studio-sql-console'],
+  'studio/api-client': ['studio-api'],
+  'space/git': ['space-git-graph', 'space-commit-detail'],
+  'space/agents': ['space-agents-board'],
+  'space/memory': ['space-memory'],
 };
 
 const visited = new Set<string>();
@@ -150,20 +152,10 @@ for (const doc of PAGES) {
       }
     });
 
-    const shot = SHOT_PAGES[doc.file];
-    if (shot) {
-      test('shot uses the crop on a phone and the framed window on desktop', async ({
-        page,
-      }, info) => {
+    for (const shot of SHOT_PAGES[doc.file] ?? []) {
+      test(`shot ${shot} uses the right image for the viewport`, async ({ page }, info) => {
         await page.goto(doc.url);
-        const img = page.locator(`img[data-shot="${shot}"]`).last();
-        await img.scrollIntoViewIfNeeded();
-        await expect
-          .poll(() => img.evaluate((el: HTMLImageElement) => el.currentSrc))
-          .toContain(shot);
-        const src = await img.evaluate((el: HTMLImageElement) => el.currentSrc);
-        if (info.project.name === 'phone') expect(src).toContain(`${shot}-detail`);
-        else expect(src).not.toContain('-detail');
+        await expectShotImage(page, shot, info.project.name === 'phone');
       });
     }
   });

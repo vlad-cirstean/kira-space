@@ -248,6 +248,17 @@ type ReviewRoundVars struct {
 	ChangeRequestURL string `json:"changeRequestURL"`
 }
 
+// PanelForwardItemVar is one panel change: a label and its diff text.
+type PanelForwardItemVar struct {
+	Label string `json:"label"`
+	Diff  string `json:"diff"`
+}
+
+// PanelForwardVars fills the forwarded panel changes message.
+type PanelForwardVars struct {
+	Items []PanelForwardItemVar `json:"items"`
+}
+
 // ResumeVars fills the resume-after-restart message.
 type ResumeVars struct {
 	App string `json:"app" prompt:"required"`
@@ -997,11 +1008,11 @@ var (
 // HeadlessToolHandover describes the handover tool.
 var HeadlessToolHandover = define(Entry{
 	ID: "headless.tool.handover", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "handover",
-	Default: `Leave notes for the next stage of this task. Call it when you did work the next stage must know about; again to replace the notes.`,
+	Default: `Leave notes for the next stage of this task. Call it when you did work the next stage must know about; again to replace the notes. Be terse: facts, open items and decisions, at most 10 short lines. Do not restate proof, diffs or links the task already shows.`,
 }, NoVars{})
 
 var (
-	_ = arg(HeadlessToolHandover.id, "notes", spaceApp, NextCall, `What you did, what is left, what the next stage must know. Plain text, at most {{.Max}} bytes.`, MaxVars{Max: 16384})
+	_ = arg(HeadlessToolHandover.id, "notes", spaceApp, NextCall, `What you did, what is left, what the next stage must know. Markdown, at most {{.Max}} bytes. Shown in the task's notes; the user may edit it.`, MaxVars{Max: 16384})
 	_ = arg(HeadlessToolHandover.id, "finished", spaceApp, NextCall, `true when your stage's work is done: Kira Space then offers the user to move the task on. Default false.`, NoVars{})
 )
 
@@ -1027,6 +1038,14 @@ var (
 	_ = arg(HeadlessToolReportArtifacts.id, "artifacts.url", spaceApp, NextCall, `http or https address. Give url or ref.`, NoVars{})
 	_ = arg(HeadlessToolReportArtifacts.id, "artifacts.ref", spaceApp, NextCall, `What names it without a url, such as a file path.`, NoVars{})
 )
+
+// HeadlessToolAttachProof describes the attach_proof tool.
+var HeadlessToolAttachProof = define(Entry{
+	ID: "headless.tool.attach_proof", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "attach_proof",
+	Default: `Show a closed proof session in this task's notes chain. Call it after proof_close_session with the session name. A session belongs to one task; a repeat call is fine.`,
+}, NoVars{})
+
+var _ = arg(HeadlessToolAttachProof.id, "name", spaceApp, NextCall, `Name of a closed proof session, as proof_close_session or proof_list_sessions returns it.`, NoVars{})
 
 // HeadlessArtifactsHeader opens the artifact list a finishing call returns.
 var HeadlessArtifactsHeader = define(Entry{
@@ -1248,6 +1267,21 @@ var AdeReviewForwardMessage = define(Entry{
 {{end}}Answer each question. Make the change a change comment asks for.`,
 }, reviewRoundExample)
 
+// AdePanelForwardMessage carries the user's task panel edits, as diffs, into the agents running in the step.
+var AdePanelForwardMessage = define(Entry{
+	ID: "ade.panel.forward.message", Kind: KindMessage, Apps: spaceApp, Applies: NextCall,
+	TitleKey:   "llmPrompts.entry.adePanelForwardMessage.title",
+	PurposeKey: "llmPrompts.entry.adePanelForwardMessage.description",
+	UsedByKey:  "llmPrompts.entry.adePanelForwardMessage.usedBy.body",
+	Default: `The user changed the task panel. Only the changes follow, as a diff; nothing else changed.
+{{range .Items}}--- {{.Label}}
+{{.Diff}}
+{{end}}Take these changes into account in your current work.`,
+}, PanelForwardVars{Items: []PanelForwardItemVar{
+	{Label: "note (Implement, 14:05)", Diff: "@@ -2,3 +2,3 @@\n Use the new endpoint.\n-Keep the old flag.\n+Drop the old flag.\n Add a test."},
+	{Label: "task title", Diff: "- Add login\n+ Add login form"},
+}})
+
 // AdeStartMessage is the first message of a branch-level Start session.
 var AdeStartMessage = define(Entry{
 	ID: "ade.start.message", Kind: KindMessage, Apps: spaceApp, Applies: NextCall,
@@ -1284,7 +1318,7 @@ var AdeHandoverLine = define(Entry{
 	TitleKey:   "llmPrompts.entry.adeHandoverLine.title",
 	PurposeKey: "llmPrompts.entry.adeHandoverLine.description",
 	UsedByKey:  "llmPrompts.entry.adeHandoverLine.usedBy.body",
-	Default:    `Call handover with notes for the next stage. Set finished true when this stage's work is done.`,
+	Default:    `Call handover with notes for the next stage; they join the task's notes. Set finished true when this stage is done.`,
 }, NoVars{})
 
 // AdeRepoLine is one repository line of a launch message.
@@ -1332,7 +1366,7 @@ var RunResumeLine = define(Entry{
 	Default:    `Kira {{.App}} closed while you worked; your last turn was cut off. A tool call marked interrupted has an unknown outcome: it may have run in part. Check that action's current state (files, git, running processes) before you redo or skip it. Then continue the task.`,
 }, ResumeVars{App: "Space"})
 
-// Database MCP (Kira Studio).
+// Database MCP (Kira Space).
 
 // DbmcpInstructions is what the database MCP server tells a client when it connects.
 var DbmcpInstructions = define(Entry{
@@ -1340,7 +1374,7 @@ var DbmcpInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.dbmcpInstructions.title",
 	PurposeKey: "llmPrompts.entry.dbmcpInstructions.description",
 	UsedByKey:  "llmPrompts.entry.dbmcpInstructions.usedBy.body",
-	Default:    "Read and query the databases configured in this Kira Studio app. Only connections the user exposed are visible; start with `list_connections`. Walk structure with `list_children`, passing back a `path` it returned. Levels differ per engine; do not assume a database or schema level exists. `run_query` and `explain_query` need the database's `path` on engines with several databases. Before writing a query, inspect the schema of the tables it touches: `describe_schema` returns every relation's columns in one call, cheaper than one `describe_table` per table. To read rows, use `browse_table` first: pick a table, columns, filters, order and up to 100 rows; masking always applies. Use `run_query` only when `browse_table` does not fit (joins, aggregates, expressions, several tables). `run_query` runs one statement through the app's SQL console path, under the connection's own permissions; results are capped and say so when truncated. Every query appears in the user's Operations panel. Each `list_connections` entry's `access` names the modes `run_query` may use and which need approval, and its `description`, when set, says what the connection is for — read both before calling `run_query`, and declare the least powerful `mode` that fits. Run `explain_query` before an expensive-looking query: `run_query` refuses a SELECT or WITH whose plan estimates at least the connection's `expensiveQuery` threshold of rows read. A connection with masked columns lists them in `list_connections`' own `maskedColumns` field, as \"table.column: kind\" — a masked cell's value is redacted (never the real value), and a trailing `#TAG` is an opaque correlation token, never a literal part of the value: equal values always share a tag, but the tag is short enough that two distinct values can rarely share one too, so treat a tag match as a strong hint toward equality, not proof of it. Kubernetes tools (`kube_*`) are read only; start with `kube_list_clusters` and read each cluster's `permissions` and `description` first. A prompt permission waits up to 10 minutes for the user. `list_operations` shows what is running; `cancel_operation` stops one, including your own long `run_query`. `run_script` runs a `list_scripts` script; read output with `get_script_logs`. `api_request` tools appear only when the user enabled them; they see variable names, never values, and a credential is refused for a host the user did not allow.",
+	Default:    "Read and query the databases configured in this Kira Space app. Only connections the user exposed are visible; start with `list_connections`. Walk structure with `list_children`, passing back a `path` it returned. Levels differ per engine; do not assume a database or schema level exists. `run_query` and `explain_query` need the database's `path` on engines with several databases. Before writing a query, inspect the schema of the tables it touches: `describe_schema` returns every relation's columns in one call, cheaper than one `describe_table` per table. To read rows, use `browse_table` first: pick a table, columns, filters, order and up to 100 rows; masking always applies. Use `run_query` only when `browse_table` does not fit (joins, aggregates, expressions, several tables). `run_query` runs one statement through the app's SQL console path, under the connection's own permissions; results are capped and say so when truncated. Every query appears in the user's Operations panel. Each `list_connections` entry's `access` names the modes `run_query` may use and which need approval, and its `description`, when set, says what the connection is for — read both before calling `run_query`, and declare the least powerful `mode` that fits. Run `explain_query` before an expensive-looking query: `run_query` refuses a SELECT or WITH whose plan estimates at least the connection's `expensiveQuery` threshold of rows read. A connection with masked columns lists them in `list_connections`' own `maskedColumns` field, as \"table.column: kind\" — a masked cell's value is redacted (never the real value), and a trailing `#TAG` is an opaque correlation token, never a literal part of the value: equal values always share a tag, but the tag is short enough that two distinct values can rarely share one too, so treat a tag match as a strong hint toward equality, not proof of it. Kubernetes tools (`kube_*`) are read only; start with `kube_list_clusters` and read each cluster's `permissions` and `description` first. A prompt permission waits up to 10 minutes for the user. `list_operations` shows what is running; `cancel_operation` stops one, including your own long `run_query`. `run_script` runs a `list_scripts` script; read output with `get_script_logs`. `api_request` tools appear only when the user enabled them; they see variable names, never values, and a credential is refused for a host the user did not allow.",
 }, NoVars{})
 
 // DbmcpToolListConnections describes the list_connections tool.
@@ -1465,7 +1499,7 @@ var (
 // DbmcpToolProofAddStep describes the proof_add_step tool.
 var DbmcpToolProofAddStep = define(Entry{
 	ID: "dbmcp.tool.proof_add_step", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_add_step",
-	Default: "Add the next step to a draft. Steps show in the order added; the call returns the step's ordinal. The data can come from any tool you used: pick the view that shows it best. table, document and keyvalue show values; chart plots numbers (a count over time, a before/after comparison, a share of a total) and shows no table, so add a table step too when exact values matter. Every value is validated and rejected with the field and limit when it does not fit.",
+	Default: "Add the next step to a draft. Steps show in the order added; the call returns the step's ordinal. The data can come from any tool you used: pick the view that shows it best. table, document and keyvalue show values; chart plots numbers (a count over time, a before/after comparison, a share of a total) and shows no table, so add a table step too when exact values matter; diagram draws Mermaid text (a flow, a call sequence, states, entities; no images). Every value is validated and rejected with the field and limit when it does not fit.",
 }, NoVars{})
 
 var (
@@ -1474,8 +1508,8 @@ var (
 	_ = arg(DbmcpToolProofAddStep.id, "query", studioApp, NextCall, `The query or command you ran, up to 64 KiB. Shown above the data.`, NoVars{})
 	_ = arg(DbmcpToolProofAddStep.id, "language", studioApp, NextCall, `Highlighting for query: sql, json, shell or text. Default text.`, NoVars{})
 	_ = arg(DbmcpToolProofAddStep.id, "source", studioApp, NextCall, `Short label of the tool that produced the data, such as elasticsearch. Up to 64 characters.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "view", studioApp, NextCall, `table, document, keyvalue or chart. Required unless keepOrdinal is set.`, NoVars{})
-	_ = arg(DbmcpToolProofAddStep.id, "data", studioApp, NextCall, `table: {columns:[{name,type?}],rows:[[cell,...]]} with type number, text, boolean, temporal, json or other (inferred when omitted). document: {documents:[{id?,body:{...}}]}. keyvalue: {entries:[{field,value}]}. chart, type bar, line, area or scatter: {type,x:{type,name?},y?:{name?,unit?},stacked?,horizontal?,series:[{name,points:[[x,y],...]}]}. x.type is category (x a string label), time (ISO-8601 or epoch milliseconds) or value (number). y is a number, or null for a gap. stacked: bar and area only; horizontal: bar only. Histogram: bar, one point per bucket. Time series: line or area, x.type time. Up to 20 series, 1000 categories, 20000 points (bar and scatter 1000). chart, type pie: {type,unit?,slices:[{name,value}]}, up to 50 slices, values 0 or more. Limits: 10000 rows or documents, 64 KiB per cell, 4 MiB per step. Required unless keepOrdinal is set.`, NoVars{})
+	_ = arg(DbmcpToolProofAddStep.id, "view", studioApp, NextCall, `table, document, keyvalue, chart or diagram. Required unless keepOrdinal is set.`, NoVars{})
+	_ = arg(DbmcpToolProofAddStep.id, "data", studioApp, NextCall, `table: {columns:[{name,type?}],rows:[[cell,...]]} with type number, text, boolean, temporal, json or other (inferred when omitted). document: {documents:[{id?,body:{...}}]}. keyvalue: {entries:[{field,value}]}. chart, type bar, line, area or scatter: {type,x:{type,name?},y?:{name?,unit?},stacked?,horizontal?,series:[{name,points:[[x,y],...]}]}. x.type is category (x a string label), time (ISO-8601 or epoch milliseconds) or value (number). y is a number, or null for a gap. stacked: bar and area only; horizontal: bar only. Histogram: bar, one point per bucket. Time series: line or area, x.type time. Up to 20 series, 1000 categories, 20000 points (bar and scatter 1000). chart, type pie: {type,unit?,slices:[{name,value}]}, up to 50 slices, values 0 or more. diagram: {source}, Mermaid text whose first line starts with flowchart, graph, sequenceDiagram, classDiagram, stateDiagram, stateDiagram-v2, erDiagram, gantt, journey, gitGraph, mindmap or timeline. No front matter, %%{...}%% directives, click lines, url() or @import. No images (no img or image nodes, no markdown or html images). Up to 20000 bytes, 1000 lines, 500 edges. Only these rules are checked here; a syntax error shows the user the parser message and your source, so quote labels that hold punctuation: A["label (x)"]. Limits: 10000 rows or documents, 64 KiB per cell, 4 MiB per step. Required unless keepOrdinal is set.`, NoVars{})
 	_ = arg(DbmcpToolProofAddStep.id, "keepOrdinal", studioApp, NextCall, `Edit drafts only: reuse the old step with this ordinal unchanged. Pass no other step field.`, NoVars{})
 	_ = arg(DbmcpToolProofAddStep.id, "replacesOrdinal", studioApp, NextCall, `Edit drafts only: this step is a changed version of the old step with this ordinal.`, NoVars{})
 )
@@ -1483,7 +1517,7 @@ var (
 // DbmcpToolProofCloseSession describes the proof_close_session tool.
 var DbmcpToolProofCloseSession = define(Entry{
 	ID: "dbmcp.tool.proof_close_session", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_close_session",
-	Default: "Finish a draft and notify the user. Needs at least one step. A new session returns status closed; an edit returns pending_review until the user accepts or rejects it. The draftId is spent.",
+	Default: "Finish a draft and notify the user. Needs at least one step. A new session returns status closed; an edit returns pending_review until the user accepts or rejects it. The draftId is spent. In a Kira Space task, then call attach_proof with the name.",
 }, NoVars{})
 
 var _ = arg(DbmcpToolProofCloseSession.id, "draftId", studioApp, NextCall, `Draft id from proof_start_session or proof_edit_session.`, NoVars{})
@@ -1491,7 +1525,7 @@ var _ = arg(DbmcpToolProofCloseSession.id, "draftId", studioApp, NextCall, `Draf
 // DbmcpToolProofListSessions describes the proof_list_sessions tool.
 var DbmcpToolProofListSessions = define(Entry{
 	ID: "dbmcp.tool.proof_list_sessions", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_list_sessions",
-	Default: "List closed proof sessions, newest first, with step count and whether an edit waits for review. Use it to find the name proof_edit_session needs. The app keeps the newest 30.",
+	Default: "List closed proof sessions, newest first, with step count and whether an edit waits for review. Use it to find the name proof_edit_session needs. The app keeps the newest 30 not attached to a task.",
 }, NoVars{})
 
 // DbmcpToolListOperations describes the list_operations tool.

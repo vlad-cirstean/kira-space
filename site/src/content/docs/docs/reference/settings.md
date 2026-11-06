@@ -1,15 +1,12 @@
 ---
 title: Settings
-description: Every Settings section in both apps, with defaults and where data lives.
+description: Every Settings section, with defaults and where data lives.
 sources:
-  - apps/kira-studio/frontend/src/state/settings.ts
-  - apps/kira-studio/frontend/src/state/settingsDomain.ts
   - apps/kira-space/frontend/src/state/settings.ts
   - apps/kira-space/frontend/src/state/settingsDomain.ts
   - packages/shared/domain/settings.ts
-  - apps/kira-studio/frontend/src/workbench/settings
+  - apps/kira-space/frontend/src/studio/workbench/settings
   - apps/kira-space/frontend/src/workbench/settings
-  - apps/kira-studio/internal/config/paths.go
   - apps/kira-space/internal/config/paths.go
   - internal/kirapaths/paths.go
   - internal/appsettings/agent.go
@@ -19,11 +16,11 @@ sidebar:
   order: 1
 ---
 
-## Kira Studio
+## Studio modules
 
 Sections: Appearance, Data, Cache, Api, Database MCP, Prompts, Advanced.
 
-Kira Studio has no agent section. It runs Claude Code with hermetic launches on.
+The Studio modules have no agent section. They run Claude Code with hermetic launches on.
 
 ### Appearance
 
@@ -60,13 +57,13 @@ See [Prompts](../prompts/).
 - Log level: off, error, warn, info or debug. Default info.
 - A system notification when a popup waits in a window that is not in front. On by default.
 
-## Kira Space
+## Git, agents and memory
 
 Sections: Appearance, Git, CLI tools, File types, Capture, Mobile access, the agent (Claude Code or OpenCode), Memory, Prompts, Advanced.
 
 ### Appearance
 
-The same appearance settings as Kira Studio, plus inline blame (on) and date format (relative or absolute, default relative).
+The same appearance settings as the Studio modules, plus inline blame (on) and date format (relative or absolute, default relative).
 
 ### Git
 
@@ -112,10 +109,10 @@ Git log level (default info) and the popup notification (on).
 
 ## Where data lives
 
-| App | Home | Override | Database |
+| Modules | Home | Override | Database |
 |---|---|---|---|
-| Kira Studio | `~/.kira-studio` | `KIRA_HOME` | `kira.db` |
-| Kira Space | `~/.kira-space` | `KIRA_SPACE_HOME` | `kira.db` |
+| Studio modules | `~/.kira-space` | `KIRA_SPACE_HOME` | `studio.db` |
+| Git, agents, automations | `~/.kira-space` | `KIRA_SPACE_HOME` | `kira.db` |
 | Memory | `~/.kira-memory` | `KIRA_MEMORY_HOME` | `memory.db` |
 
-Each app also keeps `logs` and `llm-prompts.json` in its home. Kira Space also keeps `workflows/`, `agent/` (context and agent settings) and `agent-secrets.db` in its home. Kira Studio reads the same agent folder. The two apps use separate homes, so they can run side by side.
+Kira Space keeps one home, `~/.kira-space`. Its `config/` folder holds the plain-file config, one folder per module: `connections`, `api`, `runs`, `workflows`, `steps`, `repos`, `agent` (context and agent settings) and `prompts` (`llm-prompts.json`). Databases (`kira.db`, `studio.db`, `review.db`, `agent-secrets.db`), tokens, `logs/` and `backups/` stay outside `config/`. Memory keeps its own home.

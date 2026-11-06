@@ -23,18 +23,25 @@ var (
 // specs read the same file as the mock answer; see flowtest.Contract.
 func (a *App) Contract(t testing.TB, scenario, key string, got any, opts ...ContractOption) {
 	t.Helper()
-	opts = append([]ContractOption{
-		Replace(a.Work, "<work>"), Replace(a.BinDir, "<bin>"), Replace(a.FakeDir, "<fake>"),
-		Replace(a.SpaceHome, "<space>"), Replace(a.MemoryHome, "<memory>"), Replace(a.Home, "<home>"),
-		Replace(a.Root, "<tmp>"),
-	}, opts...)
-	flowtest.Contract(t, contractDir(), scenario, key, got, opts...)
+	a.contract(t, scenario, key, got, opts...)
 }
 
 // ContractEvent stores ev's payload under key "event:<channel>".
 func (a *App) ContractEvent(t testing.TB, scenario string, ev Event, opts ...ContractOption) {
 	t.Helper()
 	a.Contract(t, scenario, "event:"+ev.Channel, ev.Data, opts...)
+}
+
+// contract compares against tests/contract.
+func (a *App) contract(t testing.TB, scenario, key string, got any, opts ...ContractOption) {
+	t.Helper()
+	repl := make([]ContractOption, 0, 8+len(opts))
+	repl = append(repl,
+		Replace(a.Work, "<work>"), Replace(a.BinDir, "<bin>"), Replace(a.FakeDir, "<fake>"),
+		Replace(a.SpaceHome, "<space>"), Replace(a.MemoryHome, "<memory>"),
+		Replace(a.Home, "<home>"), Replace(a.Root, "<tmp>"))
+	repl = append(repl, opts...)
+	flowtest.Contract(t, contractDir(), scenario, key, got, repl...)
 }
 
 func contractDir() string {

@@ -70,7 +70,7 @@ func TestRepoScriptRefFile(t *testing.T) {
 	problem("script-blank", repoText(key, "worktree:", "  prepare_run: { script: '  ' }"), "/worktree/prepare_run/script")
 	problem("param-name", repoText(key, "worktree:", "  prepare_run: { script: Install deps, params: { Mode: ci } }"), "/worktree/prepare_run/params/Mode")
 
-	docs, err := os.ReadFile(filepath.Join(app.SpaceHome, repocfg.Folder, configfs.DocsFile))
+	docs, err := os.ReadFile(filepath.Join(app.ConfigDir(repocfg.Folder), configfs.DocsFile))
 	if err != nil {
 		t.Fatal(err)
 	}

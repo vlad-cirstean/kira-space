@@ -1,7 +1,7 @@
 // Package buildinfo carries the one fact a build knows about itself that the source cannot: which
 // version it is. Everything else about the app is in the tree; this is stamped onto it.
 //
-// Kira Space's own copy of apps/kira-studio/internal/buildinfo — deliberately not
+// Kira Space's own copy of apps/kira-space/internal/buildinfo — deliberately not
 // hoisted to repo-root internal/, since it is genuinely just this one Version var with no shared
 // logic worth sharing (see internal/kirapaths and internal/sqlitex for the packages that were).
 package buildinfo

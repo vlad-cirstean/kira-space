@@ -38,7 +38,7 @@
       "tailwind": false,
       "project": ["scripts/**/*.ts", "packages/db-fixtures/**/*.ts"]
     },
-    "apps/kira-studio/frontend": {
+    "apps/kira-space/frontend": {
       // src/main.ts dropped (P94 pass 3 §3.2): knip already reaches it through package.json's
       // own field for this workspace — a redundant entry pattern, not a second real entry point.
       // src/lib/utils.ts and src/components/ui/** both moved out to packages/theme (P103's
@@ -46,13 +46,8 @@
       // carries the equivalent ignore.
       // P165: the dev-only grid prototype's own page scripts (the proto/grid/*.html Vite entries of
       // vite.proto.config.ts, which knip does not follow), never in the app build.
-      "entry": ["index.html", "proto/grid/main.ts", "proto/grid/slickMain.ts"],
-      "project": ["src/**/*.{ts,vue}", "proto/**/*.{ts,vue}"]
-    },
-    "apps/kira-space/frontend": {
-      // Mirrors apps/kira-studio/frontend's own block above.
-      "entry": ["index.html", "mobile/index.html"],
-      "project": ["src/**/*.{ts,vue}", "mobile/**/*.{ts,vue}"]
+      "entry": ["index.html", "mobile/index.html", "proto/grid/main.ts", "proto/grid/slickMain.ts"],
+      "project": ["src/**/*.{ts,vue}", "mobile/**/*.{ts,vue}", "proto/**/*.{ts,vue}"]
     },
     "packages/shared": { "entry": ["**/*.ts"], "project": ["**/*.ts"] },
     "packages/theme": {
@@ -69,7 +64,7 @@
     "packages/workbench": {
       // Same alias-boundary reasoning as packages/theme above (`@workbench/*`, P103 Part 1) —
       // every file here is its own entry. `formatBytes` (behaviour/format.ts) and `runMenuShortcut`
-      // (state/contextMenu.ts) each have exactly one real consumer today (Kira Studio only) — an
+      // (state/contextMenu.ts) each have exactly one real consumer today (the Studio modules only) — an
       // expected, not-a-finding shape per the plan's own §9 gate, not an unused export.
       "entry": ["src/**/*.{ts,vue}"],
       "project": ["src/**/*.{ts,vue}"]
@@ -83,13 +78,13 @@
       "project": ["src/**/*.ts", "test/**/*.ts"]
     },
     "packages/git-ipc": {
-      // src/index.ts dropped (P94 pass 3 §3.2) — see apps/kira-studio/frontend's own note above.
+      // src/index.ts dropped (P94 pass 3 §3.2) — see apps/kira-space/frontend's own note above.
       "entry": ["src/**/*.spec.ts"],
       "project": ["src/**/*.ts"]
     },
     "packages/git-core": {
       "entry": [
-        // src/index.ts dropped (P94 pass 3 §3.2) — see apps/kira-studio/frontend's own note above.
+        // src/index.ts dropped (P94 pass 3 §3.2) — see apps/kira-space/frontend's own note above.
         "src/**/*.spec.ts",
         // Invoked via `bun run` against its own absolute path, from a Go test
         // (apps/kira-space/internal/gitsearch/differential_test.go) — never a static import.
@@ -113,7 +108,8 @@
         "src/pages/**/*.ts",
         "tests/**/*.spec.ts",
         "scripts/**/*.spec.ts",
-        "scripts/check-docs.ts"
+        "scripts/check-docs.ts",
+        "scripts/shots-fill.ts"
       ],
       "project": ["src/**/*.{ts,astro,mdx}", "tests/**/*.ts", "scripts/**/*.ts"]
     }

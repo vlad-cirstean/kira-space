@@ -1,18 +1,12 @@
 ---
-import { type AppContent, INSTALL } from '../data/content';
+import { APP, INSTALL } from '../data/content';
 import { REPO_URL } from '../data/nav';
 import Icon from './Icon.astro';
-
-interface Props {
-  app: AppContent;
-}
-
-const { app } = Astro.props;
 ---
 
 <section id="install" class="mx-auto max-w-5xl px-4 pb-20">
   <div class="h-px bg-gradient-to-r from-transparent via-border-strong to-transparent"></div>
-  <h2 class="mt-16 text-2xl font-semibold tracking-tight sm:text-4xl">Install {app.name}</h2>
+  <h2 class="mt-16 text-2xl font-semibold tracking-tight sm:text-4xl">Install {APP.name}</h2>
   <ol class="mt-8 grid gap-4 md:grid-cols-2">
     <li class="rounded-xl border border-border bg-elevated p-5 shadow-card">
       <span
@@ -25,11 +19,11 @@ const { app } = Astro.props;
           class="flex items-center gap-2 border-b border-border-strong px-3 py-2 text-sm text-subtle"
         >
           <Icon name="terminal" class="size-4" />
-          <span>{app.name}</span>
+          <span>{APP.name}</span>
         </div>
         <pre
           class="whitespace-pre-wrap break-all p-4 font-mono text-sm"
-        ><code>{INSTALL.command(app.id)}</code></pre>
+        ><code>{INSTALL.command}</code></pre>
       </div>
     </li>
     <li class="rounded-xl border border-border bg-elevated p-5 shadow-card">

@@ -267,11 +267,6 @@ func validateUpdateTask(a adewire.UpdateTaskArgs) error {
 			return err
 		}
 	}
-	if p.Notes != nil {
-		if err := validateAdeNotes(*p.Notes); err != nil {
-			return err
-		}
-	}
 	if p.Color != nil && (*p.Color < 0 || *p.Color >= adeTaskMaxColor) {
 		return adeTaskInvalid("color is out of range")
 	}
@@ -969,13 +964,78 @@ func (s *AdeTaskService) Handovers(ctx context.Context, args adewire.TaskArgs) (
 	return adewire.HandoversResult{Handovers: rows}, adeTaskError(err)
 }
 
-// UpdateHandover replaces a handover row's body; an empty body deletes it.
+// AddNote appends a user note to the task's notes chain.
+func (s *AdeTaskService) AddNote(ctx context.Context, args adewire.AddNoteArgs) (adewire.Handover, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return adewire.Handover{}, err
+	}
+	if err := validateAdeNotes(args.Body); err != nil {
+		return adewire.Handover{}, err
+	}
+	h, err := s.Engine.AddNote(ctx, args.TaskID, args.Body)
+	return h, adeTaskError(err)
+}
+
+// TaskProofs lists the proof sessions attached to a task, newest first. Archived tasks work too.
+func (s *AdeTaskService) TaskProofs(ctx context.Context, args adewire.TaskArgs) (adewire.TaskProofsResult, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return adewire.TaskProofsResult{}, err
+	}
+	rows, err := s.Engine.TaskProofs(ctx, args.TaskID)
+	return adewire.TaskProofsResult{Proofs: rows}, adeTaskError(err)
+}
+
+// DbAudit lists the Kira DB calls and approvals of a task's agent sessions, newest first. Archived tasks work too.
+func (s *AdeTaskService) DbAudit(ctx context.Context, args adewire.TaskArgs) (adewire.DbAuditResult, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return adewire.DbAuditResult{}, err
+	}
+	rows, err := s.Engine.DbAudit(ctx, args.TaskID)
+	return adewire.DbAuditResult{Entries: rows}, adeTaskError(err)
+}
+
+// ProofChoices lists the closed proof sessions no task holds yet.
+func (s *AdeTaskService) ProofChoices(ctx context.Context) (adewire.ProofChoicesResult, error) {
+	ctx = adeUserCtx(ctx)
+	rows, err := s.Engine.ProofChoices(ctx)
+	return adewire.ProofChoicesResult{Proofs: rows}, adeTaskError(err)
+}
+
+func validateAdeLinkProof(args adewire.LinkProofArgs) error {
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return err
+	}
+	return validateAdeItemID(args.ProofID, "proofId")
+}
+
+// LinkProof attaches a closed proof session to the task.
+func (s *AdeTaskService) LinkProof(ctx context.Context, args adewire.LinkProofArgs) error {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeLinkProof(args); err != nil {
+		return err
+	}
+	return adeTaskError(s.Engine.LinkProof(ctx, args.TaskID, args.ProofID))
+}
+
+// UnlinkProof removes a proof session from the task; the session stays in the proof window.
+func (s *AdeTaskService) UnlinkProof(ctx context.Context, args adewire.LinkProofArgs) error {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeLinkProof(args); err != nil {
+		return err
+	}
+	return adeTaskError(s.Engine.UnlinkProof(ctx, args.TaskID, args.ProofID))
+}
+
+// UpdateHandover replaces a handover row's body (a note up to 1 MiB, other rows up to 16 KiB); an empty body deletes it.
 func (s *AdeTaskService) UpdateHandover(ctx context.Context, args adewire.UpdateHandoverArgs) error {
 	ctx = adeUserCtx(ctx)
 	if err := validateAdeItemID(args.ID, "id"); err != nil {
 		return err
 	}
-	if err := validateAdeHandoverNotes(&args.Body); err != nil {
+	if err := validateAdeNotes(args.Body); err != nil {
 		return err
 	}
 	return adeTaskError(s.Engine.UpdateHandover(ctx, args.ID, args.Body))
@@ -1385,6 +1445,35 @@ func (s *AdeTaskService) ForwardReviewComments(ctx context.Context, args adewire
 	}
 	n, err := s.Engine.ForwardReviewComments(ctx, args.BranchID)
 	return adewire.ForwardReviewResult{Count: n}, adeTaskError(err)
+}
+
+// PanelForward lists the pending panel edits and the agents that would take them.
+func (s *AdeTaskService) PanelForward(ctx context.Context, args adewire.TaskArgs) (adewire.PanelForward, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeItemID(args.TaskID, "taskId"); err != nil {
+		return adewire.PanelForward{}, err
+	}
+	out, err := s.Engine.PanelForward(ctx, args.TaskID)
+	return out, adeTaskError(err)
+}
+
+// ForwardPanelEdits pastes the pending panel edits into the agents running in the task's step.
+func (s *AdeTaskService) ForwardPanelEdits(ctx context.Context, args adewire.TaskArgs) (adewire.PanelForwardResult, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeItemID(args.TaskID, "taskId"); err != nil {
+		return adewire.PanelForwardResult{}, err
+	}
+	out, err := s.Engine.ForwardPanelEdits(ctx, args.TaskID)
+	return out, adeTaskError(err)
+}
+
+// DismissPanelEdits drops the pending panel edits without sending them.
+func (s *AdeTaskService) DismissPanelEdits(ctx context.Context, args adewire.TaskArgs) error {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeItemID(args.TaskID, "taskId"); err != nil {
+		return err
+	}
+	return adeTaskError(s.Engine.DismissPanelEdits(ctx, args.TaskID))
 }
 
 // ReviewForwardText returns the message ForwardReviewComments would send. It sends and stamps nothing.

@@ -23,7 +23,7 @@ func TestAdeTaskRepo_RestoreTask(t *testing.T) {
 	}
 	mk := func(id string, branches ...model.AdeTaskBranch) {
 		t.Helper()
-		if _, err := tasks.CreateTask(model.AdeTask{ID: id, Kind: model.AdeTaskKindTask, Title: id, CreatedAt: 1}, branches, nil); err != nil {
+		if _, err := tasks.CreateTask(model.AdeTask{ID: id, Kind: model.AdeTaskKindTask, Title: id, CreatedAt: 1}, branches, nil, nil); err != nil {
 			t.Fatalf("create %s: %v", id, err)
 		}
 	}

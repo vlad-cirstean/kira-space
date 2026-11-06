@@ -9,10 +9,7 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "types": ["node"],
-    // P100 Part 2: mirrors Kira Studio's own tsconfig.tests.json exactly — graphStreamFixture.ts
-    // (copied verbatim, support/graphStreamFixture.ts's own doc comment) imports the real
-    // `@kira/git-ipc` codec, the same CLAUDE.md library-over-hand-roll reasoning that tsconfig
-    // documents.
+    // graphStreamFixture.ts imports the real `@kira/git-ipc` codec rather than hand-rolling one.
     "allowImportingTsExtensions": true,
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "paths": {
@@ -32,10 +29,16 @@
     "../../packages/workbench/env.d.ts",
     "playwright.config.ts",
     "playwright.perf.config.ts",
+    "playwright.proto.config.ts",
     "tests/perf/**/*.ts",
     "tests/e2e-real/**/*.ts",
     "tests/ui/**/*.ts",
-    "tests/screenshots/**/*.ts"
+    "tests/visual/**/*.ts",
+    "tests/proto/**/*.ts",
+    "tests/ipc/**/*.ts",
+    "tests/support/**/*.ts",
+    "tests/screenshots/**/*.ts",
+    "../../packages/db-fixtures/support/**/*.ts"
   ],
   // P103 Part 1: testing/unit/* imports `bun:test` (this project's own `types` is `["node"]`,
   // for tests/ui's Playwright surface, not `bun-types`) — apps/*/tests/unit/tsconfig.json is

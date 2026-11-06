@@ -1,5 +1,5 @@
 #!/bin/sh
-# Kira Studio pre-push — P94 §5, scoped by P294. Branch names (scripts/check-push-refs.sh) first; then the heavier checks, run where a cold
+# Kira Space pre-push — P94 §5, scoped by P294. Branch names (scripts/check-push-refs.sh) first; then the heavier checks, run where a cold
 # multi-minute wait is acceptable and a per-commit one is not. Scoped to the pushed range: Go lint
 # and tests only for changed Go packages (nested modules lint in their own dir, no tests), knip only when frontend code or package config changed;
 # `go build ./...` always runs (a link error can sit in an unchanged dependent). Config, lockfile or

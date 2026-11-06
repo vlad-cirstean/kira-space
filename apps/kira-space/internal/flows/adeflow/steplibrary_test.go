@@ -140,7 +140,7 @@ func TestStepLibrary(t *testing.T) {
 	if err := app.W.AdeTask.DeleteStep(ctx, adewire.DeleteStepArgs{FileName: "implement.yaml"}); err != nil {
 		t.Fatalf("DeleteStep after the reference is gone: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(app.SpaceHome, "steps", "implement.yaml")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(app.ConfigDir("steps"), "implement.yaml")); !os.IsNotExist(err) {
 		t.Fatalf("step file still there: %v", err)
 	}
 }
@@ -199,7 +199,7 @@ func TestStepLibraryMigration(t *testing.T) {
 	rec := importRepo(t, app, repo.Dir)
 
 	// Plant pre-library files, as an older release left them, and start a task on one.
-	wfDir := filepath.Join(app.SpaceHome, "workflows")
+	wfDir := app.ConfigDir("workflows")
 	files := map[string]string{"m-one.yaml": slMigrateOne, "m-two.yaml": slMigrateTwo, "m-broken.yaml": "id: m-broken\n  oops: [\n"}
 	for name, src := range files {
 		if err := os.WriteFile(filepath.Join(wfDir, name), []byte(src), 0o644); err != nil {
@@ -224,7 +224,7 @@ func TestStepLibraryMigration(t *testing.T) {
 	}
 	app.Restart()
 
-	stepsDir := filepath.Join(app.SpaceHome, "steps")
+	stepsDir := app.ConfigDir("steps")
 	for _, f := range []string{"implement.yaml", "implement-2.yaml", "gate.yaml"} {
 		if _, err := os.Stat(filepath.Join(stepsDir, f)); err != nil {
 			t.Errorf("library file %s: %v", f, err)

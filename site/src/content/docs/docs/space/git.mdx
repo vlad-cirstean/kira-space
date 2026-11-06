@@ -28,6 +28,8 @@ The graph is virtualized and lane-drawn over the whole ref set. It shows ref bad
 
 Open a commit to see its file tree and diffs. **Go to file** works on historical content that is not checked out. Opening a commit's changes opens every changed file as one replaceable preview group. Double-click a tab to keep it.
 
+<DocShot id="space-commit-detail" />
+
 ## Refs and history rewriting
 
 - Create, rename and delete branches and tags, local and remote.
@@ -99,7 +101,7 @@ Open **Repository settings** from the Git toolbar. Each setting applies to one r
 
 ### Settings file
 
-Every repository setting lives in one YAML file under `~/.kira-space/repos/`, matched to its repository by the `path:` key. The file also holds the nickname, the integration branches, the deployment environments and the worktree options (prepare script, timeout, base path). Edit it in the **Repositories** dialog, or in your own editor: a saved change applies at once.
+Every repository setting lives in one YAML file under `~/.kira-space/config/repos/`, matched to its repository by the `path:` key. The file also holds the nickname, the integration branches, the deployment environments and the worktree options (prepare script, timeout, base path). Edit it in the **Repositories** dialog, or in your own editor: a saved change applies at once.
 
 In the dialog, the prepare script and each environment's deployed-SHA script can be a command or a Run script picked from the list. A repository file runs normal Run scripts only, not smart ones.
 

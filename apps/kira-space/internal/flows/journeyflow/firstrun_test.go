@@ -89,9 +89,12 @@ func TestFirstRunJourney(t *testing.T) {
 		t.Fatal(err)
 	}
 	title, notes, est := "Fix login flow", "see ticket", "2d"
-	if upd, err := app.W.AdeTask.UpdateTask(ctx, adewire.UpdateTaskArgs{TaskID: task.ID, Patch: adewire.TaskPatch{Title: &title, Notes: &notes, Est: &est}}); err != nil ||
-		upd.Title != title || upd.Notes != notes || upd.Est != est {
+	if upd, err := app.W.AdeTask.UpdateTask(ctx, adewire.UpdateTaskArgs{TaskID: task.ID, Patch: adewire.TaskPatch{Title: &title, Est: &est}}); err != nil ||
+		upd.Title != title || upd.Est != est {
 		t.Fatalf("UpdateTask = %+v, %v", upd, err)
+	}
+	if _, err := app.W.AdeTask.AddNote(ctx, adewire.AddNoteArgs{TaskID: task.ID, Body: notes}); err != nil {
+		t.Fatalf("AddNote: %v", err)
 	}
 	if _, err := app.W.AdeTask.AddTaskRepo(ctx, adewire.AddTaskRepoArgs{TaskID: task.ID, CodeRepoID: rec2.ID}); err != nil {
 		t.Fatalf("AddTaskRepo: %v", err)

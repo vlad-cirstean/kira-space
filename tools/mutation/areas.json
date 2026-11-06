@@ -12,24 +12,19 @@
   ],
   "noUnitSuite": ["packages/theme"],
   "areas": {
-    "kira-studio": {
-      "mutate": ["apps/kira-studio/frontend/src/**/*.ts"],
-      "tests": ["apps/kira-studio/tests/unit"],
-      "excludeTests": [
-        {
-          "path": "apps/kira-studio/tests/unit/tabs-save-retries-after-failure.spec.ts",
-          "reason": "setTimeout(0) race fails under Stryker instrumentation (also in a plain instrumented sandbox)"
-        },
-        {
-          "path": "apps/kira-studio/tests/unit/tabs-save-serialized.spec.ts",
-          "reason": "setTimeout(0) race fails under Stryker instrumentation (also in a plain instrumented sandbox)"
-        }
-      ]
-    },
     "kira-space": {
       "mutate": ["apps/kira-space/frontend/src/**/*.ts"],
       "tests": ["apps/kira-space/tests/unit"],
-      "excludeTests": []
+      "excludeTests": [
+        {
+          "path": "apps/kira-space/tests/unit/studio/tabs-save-retries-after-failure.spec.ts",
+          "reason": "setTimeout(0) race fails under Stryker instrumentation (also in a plain instrumented sandbox)"
+        },
+        {
+          "path": "apps/kira-space/tests/unit/studio/tabs-save-serialized.spec.ts",
+          "reason": "setTimeout(0) race fails under Stryker instrumentation (also in a plain instrumented sandbox)"
+        }
+      ]
     },
     "api-core": {
       "mutate": ["packages/api-core/src/**/*.ts"],
@@ -54,7 +49,6 @@
     "cross": {
       "mutate": ["packages/shared/**/*.ts", "packages/workbench/src/**/*.ts"],
       "tests": [
-        "apps/kira-studio/tests/unit",
         "apps/kira-space/tests/unit",
         "packages/api-core/test",
         "packages/git-core/src",
@@ -64,11 +58,11 @@
       ],
       "excludeTests": [
         {
-          "path": "apps/kira-studio/tests/unit/tabs-save-retries-after-failure.spec.ts",
+          "path": "apps/kira-space/tests/unit/studio/tabs-save-retries-after-failure.spec.ts",
           "reason": "setTimeout(0) race fails under Stryker instrumentation"
         },
         {
-          "path": "apps/kira-studio/tests/unit/tabs-save-serialized.spec.ts",
+          "path": "apps/kira-space/tests/unit/studio/tabs-save-serialized.spec.ts",
           "reason": "setTimeout(0) race fails under Stryker instrumentation"
         }
       ]

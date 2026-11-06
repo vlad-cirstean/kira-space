@@ -24,6 +24,8 @@ type stepDef struct {
 	// ReturnLimit is how many returns the step may make before the run stops; 0 is no limit.
 	ReturnLimit  int
 	AllowedTools []string
+	// DbMcp gives the step's agent sessions the Kira DB tools.
+	DbMcp bool
 	// DisallowedTools become --disallowedTools; only the rebase step sets them.
 	DisallowedTools []string
 	// SmartScript names the smart script that replaces Prompt; Params are its values.
@@ -58,13 +60,17 @@ func workflowSteps(wf adewire.Workflow) []stepDef {
 			prompt = s.Command
 		}
 		out[i] = stepDef{ID: s.ID, Name: s.Name, Kind: s.Kind, RunsOn: s.RunsOn, Before: s.Before, Timeout: s.Timeout, Prompt: prompt,
-			Skip: s.Skip, Session: s.Session, OutsideRepo: s.OutsideRepo, Results: results, ReturnLimit: s.MaxReturns, AllowedTools: s.AllowedTools,
+			Skip: s.Skip, Session: s.Session, OutsideRepo: s.OutsideRepo, Results: results, ReturnLimit: s.MaxReturns, AllowedTools: s.AllowedTools, DbMcp: s.DbMcp,
 			SmartScript: s.SmartScript, Params: s.Params, Review: s.Review, Sandbox: s.Sandbox.NormalizedFor(s.Kind), Settings: s.Settings, Agent: s.Agent}
 		if s.Kind == adewire.KindScript {
-			out[i].Settings, out[i].Agent = nil, ""
+			out[i].Settings, out[i].Agent, out[i].DbMcp = nil, "", false
 		}
 		if s.Kind == adewire.KindManual {
 			out[i].Settings, out[i].Agent = nil, ""
+			out[i].DbMcp = s.Session && s.DbMcp
+		}
+		if s.SmartScript != "" {
+			out[i].DbMcp = false
 		}
 	}
 	return out

@@ -1,13 +1,18 @@
-// Package appcore is Kira Space's own Deps struct — the trimmed sibling of Kira
-// Studio's own apps/kira-studio/internal/appcore, embedded by value into each bound service the
-// same way. Kira Studio's Deps carries eight fields across connections/adapters/variables/mask
-// rules/git; this app has no adapters, no connections, no HTTP variables — Repos, Events and
-// GitRegistry are the whole surface the bridge services embedding Deps read.
+// Package appcore holds Deps, embedded by value into each bound service.
 package appcore
 
 import (
+	"database/sql"
+
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apivars"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/maskreview"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/maskrules"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/tree"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 )
@@ -22,11 +27,27 @@ type Deps struct {
 	// Prompts resolves the editable LLM prompt texts.
 	Prompts llmprompts.Source
 	Repos   *repos.Repos
+	// DB is the one application database.
+	DB *sql.DB
 	// Home is the app data folder (KIRA_SPACE_HOME).
-	Home   string
-	Events Emitter
+	Home      string
+	StartedAt int64 // unix millis, for appInfo-style diagnostics
+	Events    Emitter
 	// GitRegistry is internal/gitsession's own Registry — bridge/github.go's GitHubService reads
-	// it to build its own known-GitHub-hosts allowlist (the same seam Kira Studio's own Deps
-	// carries it for). May be nil in a fixture that never wires the git module.
+	// it to build its own known-GitHub-hosts allowlist. May be nil in a fixture that never wires the git module.
 	GitRegistry *gitsession.Registry
+
+	Connections *connections.Service
+	// ConnectionFiles is the connections folder: the source of every connection's config.
+	ConnectionFiles *connfiles.Loader
+	Tree            *tree.Service
+	Router          *adapterhost.Router
+	// ApiVars (it resolves gRPC targets too) is the gated variable/history reveal and stage 2 of
+	// the two-stage {{name}} substitution.
+	ApiVars *apivars.Service
+	// MaskRules is the rule-management service — the bridge's own Privacy-tab/header-menu surface,
+	// and (via dbmcp.Config.MaskRules) the DB MCP server's masking seam.
+	MaskRules *maskrules.Service
+	// MaskReview is the column review state: the MCP gate's withheld columns and the Privacy tab's live list.
+	MaskReview *maskreview.Service
 }

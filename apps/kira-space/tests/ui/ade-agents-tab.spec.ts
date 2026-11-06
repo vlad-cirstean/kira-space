@@ -11,7 +11,7 @@ const t = (id: string) => `[data-testid="${id}"]`;
 const context = {
   folder: 'agent',
   file: 'context.md',
-  path: '~/.kira-space/agent/context.md',
+  path: '~/.kira-space/config/agent/context.md',
   exists: true,
   text: 'Use tabs.\n',
   hash: 'h1',

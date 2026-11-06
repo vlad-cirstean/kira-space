@@ -81,6 +81,7 @@ export function createAutomationsModule(): AutomationsModuleContext {
       confirmDecline: (runId) => control.scriptRunsConfirmDecline(runId),
     },
     ade: true,
+    mcp: true,
     showAutomations: () => modeStore.setMode('automations'),
     showOperations: () => layoutStore.showOperationsPanel(),
     files: {

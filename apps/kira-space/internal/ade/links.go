@@ -129,6 +129,7 @@ func (b *TaskBoard) fileLinkLocked(tc *taskCtx, c linkClass) (adewire.LinkResult
 		return adewire.LinkResult{}, err
 	}
 	a := wireStoredArtifact(rows[0])
+	b.recordArtifact(t.ID, rows[0].ID, "", artifactText(rows[0]))
 	return adewire.LinkResult{Filed: linkFiledStored, Kind: a.Kind, Artifact: &a}, nil
 }
 
@@ -140,8 +141,14 @@ func (b *TaskBoard) setSlotLocked(taskID, slot string, c linkClass) (adewire.Lin
 	} else {
 		patch.HostURL = &c.URL
 	}
+	prev, _ := b.deps.Tasks.GetTask(taskID)
 	if _, err := b.deps.Tasks.UpdateTask(taskID, patch); err != nil {
 		return adewire.LinkResult{}, err
+	}
+	if slot == linkFiledJira {
+		b.recordJira(taskID, prev.JiraKey, prev.JiraURL, c.Ref, c.URL)
+	} else {
+		b.recordHost(taskID, prev.HostURL, c.URL)
 	}
 	b.notifyBoard()
 	return adewire.LinkResult{Filed: slot, Kind: c.Kind}, nil
@@ -204,6 +211,11 @@ func (b *TaskBoard) EditLink(ctx context.Context, args adewire.EditLinkArgs) (ad
 	if err := b.clearSlotLocked(tc.task.ID, args.Slot); err != nil {
 		return adewire.LinkResult{}, err
 	}
+	if args.Slot == linkSlotJira {
+		b.recordJira(tc.task.ID, tc.task.JiraKey, tc.task.JiraURL, "", "")
+	} else {
+		b.recordHost(tc.task.ID, tc.task.HostURL, "")
+	}
 	return res, nil
 }
 
@@ -265,6 +277,7 @@ func (b *TaskBoard) editStoredLocked(tc *taskCtx, args adewire.EditLinkArgs, p p
 	}
 	b.notifyBoard()
 	a := wireStoredArtifact(updated)
+	b.recordArtifact(args.TaskID, row.ID, artifactText(*row), artifactText(updated))
 	return adewire.LinkResult{Filed: linkFiledStored, Kind: a.Kind, Artifact: &a}, nil
 }
 

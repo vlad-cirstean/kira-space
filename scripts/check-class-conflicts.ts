@@ -51,7 +51,6 @@ import { cn } from '../packages/theme/src/lib/utils';
 const REPO_ROOT = join(import.meta.dir, '..');
 
 const SCAN_DIRS = [
-  'apps/kira-studio/frontend/src',
   'apps/kira-space/frontend/src',
   'packages/theme/src',
   'packages/workbench/src',

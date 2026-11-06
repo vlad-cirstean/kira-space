@@ -1,14 +1,14 @@
 package bridge
 
 import (
+	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 )
 
-// CustomScriptsService is this app's binding-name shim over internal/scripts.Service (the
-// store, validation and the list-changed broadcast live there once, shared with the other app).
+// CustomScriptsService is this app's binding-name shim over internal/scripts.Service.
 type CustomScriptsService struct {
-	Svc *scripts.Service
+	Scripts *scripts.Service
 }
 
 type (
@@ -26,54 +26,57 @@ type (
 	CustomScriptsDeleteCollectionArgs   = scripts.DeleteCollectionArgs
 )
 
-func (s *CustomScriptsService) List() (scripts.Snapshot, error) {
-	return s.Svc.List()
+// Publish emits the latest snapshot on ChannelCustomScriptsChanged. The loader's Emit hook calls it.
+//
+//wails:ignore
+func (s *CustomScriptsService) Publish(emit appevent.Emitter, snap scripts.Snapshot) {
+	emit.Emit(ChannelCustomScriptsChanged, snap)
 }
 
+func (s *CustomScriptsService) List() (scripts.Snapshot, error) { return s.Scripts.List() }
+
 func (s *CustomScriptsService) Create(args CustomScriptsCreateArgs) (scripts.CustomScript, error) {
-	return s.Svc.Create(args)
+	return s.Scripts.Create(args)
 }
 
 func (s *CustomScriptsService) Delete(args CustomScriptsDeleteArgs) error {
-	return s.Svc.Delete(args)
+	return s.Scripts.Delete(args)
 }
 
 func (s *CustomScriptsService) File(args CustomScriptsFileArgs) (scripts.FileView, error) {
-	return s.Svc.File(args)
+	return s.Scripts.File(args)
 }
 
 func (s *CustomScriptsService) SaveFile(args CustomScriptsSaveFileArgs) (scripts.FileView, error) {
-	return s.Svc.SaveFile(args)
+	return s.Scripts.SaveFile(args)
 }
 
 func (s *CustomScriptsService) SetSecrets(args CustomScriptsSetSecretsArgs) (scripts.CustomScript, error) {
-	return s.Svc.SetSecrets(args)
+	return s.Scripts.SetSecrets(args)
 }
 
 func (s *CustomScriptsService) SetScheduleTarget(args CustomScriptsSetScheduleTargetArgs) (scripts.CustomScript, error) {
-	return s.Svc.SetScheduleTarget(args)
+	return s.Scripts.SetScheduleTarget(args)
 }
 
 func (s *CustomScriptsService) Reorder(args CustomScriptsReorderArgs) error {
-	return s.Svc.Reorder(args)
+	return s.Scripts.Reorder(args)
 }
 
 func (s *CustomScriptsService) ReorderCollections(args CustomScriptsReorderCollectionsArgs) error {
-	return s.Svc.ReorderCollections(args)
+	return s.Scripts.ReorderCollections(args)
 }
 
 func (s *CustomScriptsService) Form(args CustomScriptsFormArgs) (configfs.FormResult, error) {
-	return s.Svc.Form(args)
+	return s.Scripts.Form(args)
 }
 
-func (s *CustomScriptsService) Move(args CustomScriptsMoveArgs) error {
-	return s.Svc.Move(args)
-}
+func (s *CustomScriptsService) Move(args CustomScriptsMoveArgs) error { return s.Scripts.Move(args) }
 
 func (s *CustomScriptsService) RenameCollection(args CustomScriptsRenameCollectionArgs) error {
-	return s.Svc.RenameCollection(args)
+	return s.Scripts.RenameCollection(args)
 }
 
 func (s *CustomScriptsService) DeleteCollection(args CustomScriptsDeleteCollectionArgs) error {
-	return s.Svc.DeleteCollection(args)
+	return s.Scripts.DeleteCollection(args)
 }

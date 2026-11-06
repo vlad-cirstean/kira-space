@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // zod schemas mirroring internal/storage/model/maskrule.go, and a pure-function port
 // of internal/mask/mask.go — "function for function", pinned against the same shared fixture set
-// (apps/kira-studio/tests/fixtures/mask/*.{input,expected}.json) both apps/kira-studio/internal/
+// (apps/kira-space/tests/fixtures/studio/mask/*.{input,expected}.json) both apps/kira-space/internal/
 // mask/parity_test.go and tests/unit/mask-parity.spec.ts read, the explain-plan pattern.
 //
 // Six kinds, not seven: an `id` kind (identifier columns, tag-only) was dropped before

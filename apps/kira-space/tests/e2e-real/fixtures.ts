@@ -1,57 +1,19 @@
-import { execFileSync, spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { spawn } from 'node:child_process';
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { test as base, type Page } from '@playwright/test';
-import { acquireBuildLock, getFreePort, waitForHealth } from '@workbench/testing/e2eReal';
+import { getFreePort, waitForHealth } from '@workbench/testing/e2eReal';
 import { bound } from './support/bound';
+import { APP_DIR, buildPrerequisites, FAKE_AGENT_BINARY, SERVER_BINARY } from './support/build';
+import { type FlowServers, startFlowServers } from './support/flowServers';
 import { stubNativeDialogs } from './support/routes';
 
 // Kira Space's real-backend tier: a `go build -tags server` binary on real SQLite, git, PTY and
 // stream, reached by a plain browser page. The claude and gh CLIs are the fake agent
 // (internal/flowtest/fakeagent); dialogs, keep-awake and the window manager have no server-build
-// counterpart.
-
-const ROOT_DIR = resolve(__dirname, '../../../..');
-const APP_DIR = resolve(ROOT_DIR, 'apps/kira-space');
-const SERVER_BINARY = resolve(APP_DIR, 'bin/kira-space-server-test');
-const FAKE_AGENT_BINARY = resolve(APP_DIR, 'bin/fakeclaude');
-
-function envWithGoBin(): NodeJS.ProcessEnv {
-  const extra = `${execFileSync('go', ['env', 'GOPATH'], { encoding: 'utf8' }).trim()}/bin`;
-  const path = process.env.PATH ?? '';
-  return { ...process.env, PATH: path.includes(extra) ? path : `${path}:${extra}` };
-}
-
-// Idempotent and memoized per worker; the cross-process lock serializes concurrent workers.
-let prerequisitesReady: Promise<void> | undefined;
-
-function buildPrerequisites(): Promise<void> {
-  prerequisitesReady ??= (async () => {
-    const release = await acquireBuildLock();
-    try {
-      const env = envWithGoBin();
-      const run = (cmd: string, args: string[], cwd = ROOT_DIR) =>
-        execFileSync(cmd, args, { cwd, env, stdio: 'inherit' });
-      run('sh', ['scripts/setup.sh']);
-      run('bun', ['run', 'build:test:space']);
-      if (!existsSync(resolve(APP_DIR, 'frontend/dist-mobile/index.html'))) {
-        run('bun', ['run', 'build:space-mobile']);
-      }
-      await mkdir(resolve(APP_DIR, 'bin'), { recursive: true });
-      run('go', ['build', '-tags', 'server', '-o', SERVER_BINARY, '.'], APP_DIR);
-      run(
-        'go',
-        ['build', '-o', FAKE_AGENT_BINARY, '../../internal/flowtest/fakeagent/cmd/fakeclaude'],
-        APP_DIR,
-      );
-    } finally {
-      await release();
-    }
-  })();
-  return prerequisitesReady;
-}
+// counterpart. A database spec also gets the flow harness's HTTP, HTTPS and gRPC servers and can open
+// a Studio module on boot (`startMode`).
 
 export interface KiraSpaceApp {
   window: Page;
@@ -73,6 +35,12 @@ export interface KiraSpaceApp {
 interface KiraSpaceFixtures {
   consoleErrors: string[];
   scenario: object | undefined;
+  /** Extra environment for the spawned server (merged last): `test.use({ serverEnv: { DOCKER_HOST } })`. */
+  serverEnv: Record<string, string>;
+  /** Mode tab opened after boot and after every relaunch; unset keeps the app's first mode. */
+  startMode: string | undefined;
+  /** The flow harness's real HTTP, HTTPS and gRPC servers, one set per test so recorded requests never leak between tests. */
+  flowServers: FlowServers;
   kira: KiraSpaceApp;
 }
 
@@ -95,7 +63,21 @@ export const test = base.extend<KiraSpaceFixtures, { prerequisites: true }>({
 
   scenario: [undefined, { option: true }],
 
-  kira: async ({ browser, consoleErrors, scenario }, use) => {
+  serverEnv: [{}, { option: true }],
+
+  startMode: [undefined, { option: true }],
+
+  flowServers: [
+    // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a literal destructuring pattern here, even with no fixture deps.
+    async ({}, use) => {
+      const { servers, stop } = await startFlowServers();
+      await use(servers);
+      await stop();
+    },
+    { scope: 'test' },
+  ],
+
+  kira: async ({ browser, consoleErrors, scenario, serverEnv, startMode }, use) => {
     // Short root: unix-socket paths under it must stay below the sun_path limit.
     const root = await mkdtemp(join(tmpdir(), 'ksr-'));
     const home = join(root, 'home');
@@ -121,7 +103,6 @@ export const test = base.extend<KiraSpaceFixtures, { prerequisites: true }>({
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       HOME: home,
-      KIRA_HOME: join(root, 'kira'),
       KIRA_SPACE_HOME: join(root, 'space'),
       KIRA_MEMORY_HOME: join(root, 'memory'),
       GIT_CONFIG_NOSYSTEM: '1',
@@ -135,6 +116,7 @@ export const test = base.extend<KiraSpaceFixtures, { prerequisites: true }>({
       // whole bound surface to anyone who can reach the port.
       WAILS_SERVER_HOST: '127.0.0.1',
       WAILS_SERVER_PORT: String(port),
+      ...serverEnv,
     };
 
     const baseURL = `http://127.0.0.1:${port}`;
@@ -182,8 +164,13 @@ export const test = base.extend<KiraSpaceFixtures, { prerequisites: true }>({
     await stubNativeDialogs(page);
     await page.setViewportSize({ width: 1440, height: 960 });
     const url = `${baseURL}/?window=${crypto.randomUUID()}`;
-    await page.goto(url);
-    await page.waitForSelector('[data-testid="status-bar"]');
+    const boot = async (): Promise<void> => {
+      await page.goto(url);
+      await page.waitForSelector('[data-testid="status-bar"]');
+      if (startMode)
+        await page.locator(`[data-testid="mode-tab"][data-mode="${startMode}"]`).click();
+    };
+    await boot();
 
     await use({
       window: page,
@@ -192,16 +179,12 @@ export const test = base.extend<KiraSpaceFixtures, { prerequisites: true }>({
       work,
       fakeDir,
       call: (service, method, args) => bound(baseURL, service, method, args),
-      reload: async () => {
-        await page.goto(url);
-        await page.waitForSelector('[data-testid="status-bar"]');
-      },
+      reload: boot,
       relaunch: async () => {
         server.proc.kill('SIGKILL');
         await server.exited;
         server = await start();
-        await page.goto(url);
-        await page.waitForSelector('[data-testid="status-bar"]');
+        await boot();
       },
     });
 

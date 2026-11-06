@@ -18,7 +18,7 @@ func TestAgentContextHeadless(t *testing.T) {
 		t.Fatal(err)
 	}
 	marker := "ctx-" + hex.EncodeToString(b)
-	dir := filepath.Join(app.SpaceHome, "agent")
+	dir := app.ConfigDir("agent")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}

@@ -1,7 +1,6 @@
 package adeflow
 
 import (
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -19,8 +18,8 @@ type Store interface {
 	ForgetLastValid(file string) error
 }
 
-// Dir is the workflows directory under the app home.
-func Dir(home string) string { return filepath.Join(home, "workflows") }
+// WorkflowsFolder is the workflows module folder name under <home>/config.
+const WorkflowsFolder = "workflows"
 
 // Reader lists and resolves workflows over a configfs.Folder. Only the writer methods (writer.go)
 // create the directory or write a workflow file, and WriteDocs.

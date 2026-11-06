@@ -61,7 +61,7 @@ func (b *TaskBoard) launchReviewAgent(ctx context.Context, tc *taskCtx, tr *Trac
 				lines[i].ChangeRequestURL = b.changeRequestURL(ctx, sb, tc.task.HostURL)
 			}
 		}
-		message = composeReviewMessage(b.prompts(), title, tc.task.JiraKey, tc.task.JiraURL, tc.task.Notes, lines, b.handoverFor(tc, cmpNonEmpty(stepID, b.currentStepID(tc))))
+		message = composeReviewMessage(b.prompts(), title, tc.task.JiraKey, tc.task.JiraURL, b.userNotes(tc.task.ID), lines, b.handoverFor(tc, cmpNonEmpty(stepID, b.currentStepID(tc))))
 		if step != nil && step.Prompt != "" {
 			message += "\n" + substitute(step.Prompt, repoVars(title, tc.task.JiraKey, lines), false)
 		}

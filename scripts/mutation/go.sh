@@ -6,9 +6,9 @@ GREMLINS_VERSION="v0.6.0"
 # Test infrastructure and generated code; mutants there say nothing about product tests.
 go_excluded() {
   case "$1" in
-    internal/layeringtest | internal/testx | apps/kira-studio/internal/adapters/testsupport | \
-      apps/kira-studio/internal/ipcfixture | apps/kira-studio/internal/page/wire | \
-      apps/kira-space/internal/gitwire | apps/kira-studio/cmd | apps/kira-studio/cmd/*)
+    internal/layeringtest | internal/testx | apps/kira-space/internal/adapters/testsupport | \
+      apps/kira-space/internal/ipcfixture | apps/kira-space/internal/page/wire | \
+      apps/kira-space/internal/gitwire)
       return 0 ;;
   esac
   return 1
@@ -55,7 +55,7 @@ mutation_go() {
     for _t in $TARGETS; do _pkgs="$_pkgs ${_t#./}"; done
   else
     _pkgs="$(go list -e -f '{{if or .TestGoFiles .XTestGoFiles}}{{.Dir}}{{end}}' \
-      ./internal/... ./apps/kira-studio/internal/... ./apps/kira-space/internal/... |
+      ./internal/... ./apps/kira-space/internal/... |
       sed "s|^$SNAP/||" | sort)"
   fi
 

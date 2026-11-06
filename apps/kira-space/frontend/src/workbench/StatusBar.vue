@@ -18,14 +18,12 @@ import { useBlameStatusStore } from '../state/blameStatus';
 import { useModeStore } from '../state/mode';
 import { useOpsStore } from '../state/ops';
 import { useSettingsStore } from '../state/settings';
+import { TAB_KINDS } from '../state/tabKinds';
+import { useTabsStore } from '../state/tabs';
+import { useConnectionsStore } from '../studio/state/connections';
 import { blameLineText, blameLineTooltip } from '../views/repo/blameLine';
 import AgentUsageItem from './AgentUsageItem.vue';
 
-// Kira Studio's own workbench/StatusBar.vue, trimmed to the blame item on the left. Now a thin
-// composition over the shared bar chrome (packages/workbench/src/components/StatusBar.vue). The
-// app-metrics item is added back — AppMetricsItem.vue, shared with Kira Studio's own copy of this
-// file. The update item is added, same shared component (UpdateAvailableItem.vue) and the same
-// in-app dialog Kira Studio's own copy opens.
 const blameStatusStore = useBlameStatusStore();
 const appMetricsStore = useAppMetricsStore();
 const appUpdateStore = useAppUpdateStore();
@@ -33,6 +31,8 @@ const modeStore = useModeStore();
 const settingsStore = useSettingsStore();
 const { info: agentInfo } = useAgentInfo();
 const opsStore = useOpsStore();
+const connectionsStore = useConnectionsStore();
+const tabsStore = useTabsStore();
 const automations = useAutomationsModule();
 const automationItems = useRunningAutomationItems();
 
@@ -40,14 +40,27 @@ const automationItems = useRunningAutomationItems();
 const opItems = computed<RunningOpItem[]>(() =>
   opsStore.records
     .filter((r) => r.status === 'running' && !r.background)
-    .map((r) => ({
-      id: r.id,
-      label: r.kind,
-      detail: r.subject || r.repoName,
-      startedAt: Date.parse(r.startedAt),
-      canStop: r.cancellable,
-      stop: () => void opsStore.cancelOp(r.id),
-    })),
+    .map((r) => {
+      if (r.category !== 'db') {
+        return {
+          id: r.id,
+          label: r.kind,
+          detail: r.subject || r.repoName,
+          startedAt: Date.parse(r.startedAt),
+          canStop: r.cancellable,
+          stop: () => void opsStore.cancelOp(r.id),
+        };
+      }
+      const tab = r.tabId ? tabsStore.tabs.find((x) => x.id === r.tabId) : undefined;
+      return {
+        id: r.id,
+        label: connectionsStore.connectionRecord(r.connectionId)?.name ?? r.kind,
+        detail: tab ? `${r.kind} · ${TAB_KINDS[tab.kind].title(tab)}` : r.kind,
+        startedAt: Date.parse(r.startedAt),
+        canStop: r.cancellable,
+        stop: () => void opsStore.cancelOp(r.id),
+      };
+    }),
 );
 const items = computed(() => [...opItems.value, ...automationItems.value]);
 

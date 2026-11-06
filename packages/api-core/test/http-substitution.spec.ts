@@ -29,7 +29,7 @@ const cases: Case[] = JSON.parse(
   readFileSync(
     resolvePath(
       import.meta.dir,
-      '../../../apps/kira-studio/internal/apivars/testdata/substitution.json',
+      '../../../apps/kira-space/internal/apivars/testdata/substitution.json',
     ),
     'utf8',
   ),

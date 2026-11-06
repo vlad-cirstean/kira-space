@@ -180,7 +180,32 @@ test('+ Add branch attaches an existing branch to this task', async ({ relaunch 
 });
 
 test('Main tab has no link or notes rows; notes live in the Details tab', async ({ relaunch }) => {
-  const { window: page } = await openPlan(relaunch);
+  const { window: page } = await openPlan(relaunch, [
+    {
+      channel: IPC.adeTaskHandovers,
+      response: {
+        handovers: [
+          {
+            id: 'n1',
+            taskId: 'T_bill',
+            fromStepId: '',
+            fromStepName: '',
+            toStepId: '',
+            toStepName: '',
+            body: '## Q4 pricing launch',
+            source: 'user',
+            state: 'note',
+            finished: false,
+            dismissed: false,
+            edited: false,
+            sessionId: '',
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        ],
+      },
+    },
+  ]);
   await openTask(page, 'T_bill');
   const labels = (await page.locator('[data-testid="ade-main-tab"] dt').allTextContents()).map(
     (s) => s.trim(),
@@ -193,18 +218,23 @@ test('Main tab has no link or notes rows; notes live in the Details tab', async 
   );
 });
 
-test('typing in Notes saves once, debounced', async ({ relaunch }) => {
+test('a note typed in the composer is sent once, as AddNote', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch);
   await openTask(page, 'T_notif');
   await page.locator('[data-testid="ade-panel-tab-details"]').click();
-  const editor = page.locator('[data-testid="ade-details-tab"] .ProseMirror');
-  await editor.click();
+  await page.locator('[data-testid="ade-note-add"]').click();
+  await page.locator('[data-testid="ade-note-composer"] .ProseMirror').click();
   await page.keyboard.type('check the digest', { delay: 20 });
-  await expect.poll(() => updates(control)).toHaveLength(1);
-  await page.clock.runFor(900);
-  expect(updates(control)).toHaveLength(1);
-  const args = updates(control)[0]?.args as { patch: { notes: string } };
-  expect(args.patch.notes).toContain('check the digest');
+  await page.locator('[data-testid="ade-note-save"]').click();
+  await expect
+    .poll(() => control.log().filter((e) => e.channel === IPC.adeTaskAddNote))
+    .toHaveLength(1);
+  expect(updates(control)).toHaveLength(0);
+  const args = control.log().find((e) => e.channel === IPC.adeTaskAddNote)?.args as {
+    taskId: string;
+    body: string;
+  };
+  expect(args).toEqual({ taskId: 'T_notif', body: 'check the digest' });
 });
 
 test('a branch opens Details with merged and deployed rows; back to the task', async ({

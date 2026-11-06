@@ -1,0 +1,256 @@
+{
+  "AdeTaskService.Artifacts#list": {
+    "artifacts": [
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "link",
+        "ref": "<masked>",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "user",
+        "status": "",
+        "title": "Runbook",
+        "url": "https://wiki.example/runbook"
+      }
+    ],
+    "gaps": []
+  },
+  "AdeTaskService.Board#list": {
+    "autofetchMinutes": 0,
+    "branches": [
+      {
+        "addedAt": 0,
+        "ahead": 0,
+        "base": "main",
+        "baseBranchId": "",
+        "baseMissing": false,
+        "baseOwner": "",
+        "basePendingFrom": "",
+        "behind": 0,
+        "codeRepoId": "<id:1>",
+        "conflictCheck": "done",
+        "conflictCheckReason": "",
+        "conflictsIfRebased": [],
+        "deployments": [],
+        "dirty": [],
+        "id": "<masked>",
+        "integration": [],
+        "kind": "mine",
+        "lastCommitAt": null,
+        "mergedAt": null,
+        "mergedIntoMain": false,
+        "name": "",
+        "origin": "",
+        "owner": "",
+        "rebaseInProgress": false,
+        "setup": null,
+        "taskId": "<masked>",
+        "tip": "",
+        "upstream": "",
+        "upstreamAhead": 0,
+        "upstreamBehind": 0,
+        "worktree": ""
+      }
+    ],
+    "history": [],
+    "pairs": [],
+    "plan": {
+      "backlog": [],
+      "day": {},
+      "order": [
+        "<id:2>"
+      ],
+      "queuedAfter": {},
+      "unpushed": {}
+    },
+    "repos": [
+      {
+        "codeRepoId": "<id:1>",
+        "lastFetchAt": null,
+        "mainName": "main",
+        "remote": "origin"
+      }
+    ],
+    "statusDefaults": {
+      "finished": "done",
+      "new": "todo",
+      "review": "in-review",
+      "step": "in-progress"
+    },
+    "statuses": [
+      {
+        "color": "grey",
+        "id": "<masked>",
+        "name": "To do"
+      },
+      {
+        "color": "amber",
+        "id": "<masked>",
+        "name": "In progress"
+      },
+      {
+        "color": "blue",
+        "id": "<masked>",
+        "name": "In review"
+      },
+      {
+        "color": "green",
+        "id": "<masked>",
+        "name": "Done"
+      }
+    ],
+    "tasks": [
+      {
+        "branchIds": [
+          "<id:3>"
+        ],
+        "branchRequestId": "",
+        "color": 0,
+        "createdAt": 0,
+        "entryStepId": "work",
+        "est": "",
+        "handoverDrafts": [
+          {
+            "body": "Form wired.",
+            "createdAt": 0,
+            "dismissed": false,
+            "edited": false,
+            "finished": false,
+            "fromStepId": "work",
+            "fromStepName": "Work",
+            "id": "<masked>",
+            "sessionId": "<masked>",
+            "source": "agent",
+            "state": "draft",
+            "taskId": "<masked>",
+            "toStepId": "",
+            "toStepName": "",
+            "updatedAt": 0
+          }
+        ],
+        "handoverIn": null,
+        "hostLink": null,
+        "hostUrl": "",
+        "id": "<masked>",
+        "jira": null,
+        "kind": "task",
+        "notes": "Check the error states.",
+        "owner": "",
+        "runs": [],
+        "since": {},
+        "statusBy": "auto",
+        "statusId": "in-progress",
+        "statusStep": "work",
+        "title": "Login form",
+        "workflow": {
+          "id": "<masked>",
+          "name": "Flow",
+          "steps": [
+            {
+              "agent": "",
+              "allowedTools": [],
+              "before": "",
+              "command": "",
+              "dbMcp": false,
+              "id": "<masked>",
+              "kind": "manual",
+              "maxReturns": 0,
+              "name": "Work",
+              "outsideRepo": false,
+              "params": {},
+              "prompt": "",
+              "results": [],
+              "review": null,
+              "runsOn": "",
+              "sandbox": {
+                "access": "off",
+                "allow": [],
+                "network": true,
+                "read": []
+              },
+              "session": true,
+              "settings": {},
+              "skip": false,
+              "smartScript": "",
+              "status": "in-progress",
+              "timeout": ""
+            }
+          ]
+        },
+        "workflowId": "flow",
+        "workflowOutdated": false
+      }
+    ],
+    "worktreeBasePath": "<home>/wt"
+  },
+  "AdeTaskService.Handovers#list": {
+    "handovers": [
+      {
+        "body": "Form wired.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "work",
+        "fromStepName": "Work",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "agent",
+        "state": "draft",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      },
+      {
+        "body": "Check the error states.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "work",
+        "fromStepName": "Work",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "user",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      }
+    ]
+  },
+  "AdeTaskService.TaskProofs#list": {
+    "proofs": [
+      {
+        "closedAt": 0,
+        "linkedAt": 0,
+        "name": "Login checks",
+        "pending": false,
+        "proofId": "<masked>",
+        "rev": 1,
+        "sessionId": "<masked>",
+        "source": "agent",
+        "stepId": "work",
+        "stepName": "Work",
+        "steps": [
+          {
+            "description": "Login checks step 1",
+            "ordinal": 1,
+            "source": "mermaid",
+            "view": "diagram"
+          },
+          {
+            "description": "Login checks step 2",
+            "ordinal": 2,
+            "source": "postgres",
+            "view": "table"
+          }
+        ],
+        "summary": ""
+      }
+    ]
+  }
+}

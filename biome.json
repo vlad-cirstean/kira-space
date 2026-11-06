@@ -11,7 +11,6 @@
       "!dist",
       "!test-results",
       "!node_modules",
-      "!apps/kira-studio/tests/contract",
       "!apps/kira-space/tests/contract",
       "!docs/design",
       "!apps/kira-space/tests/claude/testdata/memory-eval",
@@ -85,14 +84,16 @@
     {
       "includes": [
         "packages/workbench/src/bridge/log.ts",
-        "apps/kira-studio/frontend/src/views/shared/slick/scrollTrace.ts",
+        "apps/kira-space/frontend/src/studio/views/shared/slick/scrollTrace.ts",
         "packages/workbench/src/testing/**",
         "**/tests/**",
         "**/test/**",
         "**/*.spec.ts",
         "scripts/**",
+        "site/scripts/**",
+        "site/src/lib/shots.ts",
         "tools/mutation/**",
-        "apps/kira-studio/frontend/proto/**"
+        "apps/kira-space/frontend/proto/**"
       ],
       "linter": { "rules": { "suspicious": { "noConsole": "off" } } }
     },
@@ -137,7 +138,7 @@
       }
     },
     {
-      "includes": ["apps/kira-studio/frontend/src/views/**"],
+      "includes": ["apps/kira-space/frontend/src/studio/views/**"],
       "linter": {
         "rules": {
           "style": {
@@ -180,7 +181,7 @@
       }
     },
     {
-      "includes": ["apps/kira-studio/frontend/src/project/**"],
+      "includes": ["apps/kira-space/frontend/src/studio/project/**"],
       "linter": {
         "rules": {
           "style": {
@@ -228,7 +229,7 @@
       }
     },
     {
-      "includes": ["apps/kira-studio/frontend/src/api/**"],
+      "includes": ["apps/kira-space/frontend/src/studio/api/**"],
       "linter": {
         "rules": {
           "style": {
@@ -257,8 +258,8 @@
     },
     {
       "includes": [
-        "apps/kira-studio/frontend/src/state/**",
-        "apps/kira-studio/frontend/src/shortcuts/**"
+        "apps/kira-space/frontend/src/studio/state/**",
+        "apps/kira-space/frontend/src/studio/shortcuts/**"
       ],
       "linter": {
         "rules": {
@@ -280,8 +281,8 @@
     },
     {
       "includes": [
-        "apps/kira-studio/frontend/src/views/httprequest/**",
-        "apps/kira-studio/frontend/src/views/grpcrequest/**"
+        "apps/kira-space/frontend/src/studio/views/httprequest/**",
+        "apps/kira-space/frontend/src/studio/views/grpcrequest/**"
       ],
       "linter": {
         "rules": {
@@ -351,7 +352,7 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["@kira/shared", "@kira/api-core", "**/apps/kira-studio/**"],
+                    "group": ["@kira/shared", "@kira/api-core", "**/frontend/src/studio/**"],
                     "message": "SPEC §7: the git module is its own package family — it must not import Studio's or Api's code."
                   }
                 ]

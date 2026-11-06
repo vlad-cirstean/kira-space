@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { getSchema } from '@tiptap/core';
 import { MarkdownManager } from '@tiptap/markdown';
+import { parseWithLineBreaks } from '../../frontend/src/ade/v2/notes/notesDoc';
 import { notesExtensions } from '../../frontend/src/ade/v2/notes/notesExtensions';
 
 // A headless Markdown round-trip against the shared extension set
@@ -83,5 +84,13 @@ describe('ade-notes-markdown', () => {
       'Totals live in `invoice.ts` for now.';
     const once = roundTrip(md);
     expect(roundTrip(once)).toBe(once);
+  });
+
+  test('parseWithLineBreaks keeps single newlines as line breaks; the plain parse folds them', () => {
+    const md = 'Form wired.\nValidation missing.';
+    expect(JSON.stringify(parseWithLineBreaks(md))).toContain('hardBreak');
+    expect(JSON.stringify(manager.parse(md))).not.toContain('hardBreak');
+    const code = '```\na\nb\n```';
+    expect(JSON.stringify(parseWithLineBreaks(code))).not.toContain('hardBreak');
   });
 });

@@ -1,6 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="52" height="12" viewBox="0 0 52 12">
   <title>Window buttons</title>
-  <circle cx="6" cy="6" r="5.75" fill="#FF5F57" stroke="#E0443E" stroke-width="0.5"/>
-  <circle cx="26" cy="6" r="5.75" fill="#FEBC2E" stroke="#DEA123" stroke-width="0.5"/>
-  <circle cx="46" cy="6" r="5.75" fill="#28C840" stroke="#1AAB29" stroke-width="0.5"/>
+  <circle cx="6" cy="6" r="6" fill="#FF5F57"/>
+  <circle cx="26" cy="6" r="6" fill="#FEBC2E"/>
+  <circle cx="46" cy="6" r="6" fill="#28C840"/>
+  <g fill="none" stroke="#000" stroke-opacity="0.12" stroke-width="0.5">
+    <circle cx="6" cy="6" r="5.75"/>
+    <circle cx="26" cy="6" r="5.75"/>
+    <circle cx="46" cy="6" r="5.75"/>
+  </g>
 </svg>

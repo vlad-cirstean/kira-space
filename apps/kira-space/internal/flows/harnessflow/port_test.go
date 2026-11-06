@@ -245,7 +245,7 @@ func TestAgentPortClaude(t *testing.T) {
 	if _, err := svc.ImportApply(ctx, args); err == nil {
 		t.Fatal("a second apply with the same token succeeded")
 	}
-	yaml := readFile(t, filepath.Join(app.SpaceHome, "agent", agentcfg.File))
+	yaml := readFile(t, filepath.Join(app.ConfigDir("agent"), agentcfg.File))
 	for _, want := range []string{"# kept by the import", "Bearer ${secret:gh-authorization}", "${secret:notes-api_key}", "${secret:env-jira_token}", "model: sonnet"} {
 		if !strings.Contains(yaml, want) {
 			t.Errorf("settings.yaml = %s, want %q", yaml, want)

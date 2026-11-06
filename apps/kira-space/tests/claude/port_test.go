@@ -55,7 +55,7 @@ func TestAgentPortClaude(t *testing.T) {
 	if _, err := svc.ImportApply(ctx, agentport.ImportApplyArgs{Token: prev.Token, Items: []agentport.ImportSelection{{ID: "mcp/gh"}, {ID: "env/P454_PLAIN"}}}); err != nil {
 		t.Fatalf("ImportApply: %v", err)
 	}
-	settingsYAML, err := os.ReadFile(filepath.Join(app.SpaceHome, "agent", "settings.yaml"))
+	settingsYAML, err := os.ReadFile(filepath.Join(app.ConfigDir("agent"), "settings.yaml"))
 	if err != nil || strings.Contains(string(settingsYAML), literal) || !strings.Contains(string(settingsYAML), "${secret:gh-authorization}") {
 		t.Fatalf("settings.yaml = %s, %v, want the reference and no literal", settingsYAML, err)
 	}

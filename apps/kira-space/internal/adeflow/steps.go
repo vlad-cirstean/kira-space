@@ -16,11 +16,8 @@ import (
 	"github.com/kirathecat/kira-studio/internal/configfs"
 )
 
-// StepsDir is the step library directory under the app home.
-func StepsDir(home string) string { return filepath.Join(home, "steps") }
-
-// stepsFolder is the config_last_valid folder name of the library.
-const stepsFolder = "steps"
+// StepsFolder is the library module folder name under <home>/config and its config_last_valid folder name.
+const StepsFolder = "steps"
 
 // StepLibrary lists, resolves and writes library steps over a configfs.Folder. A library step is one
 // step with no workflow-only keys; a workflow references it by id (see refs.go).
@@ -69,7 +66,7 @@ func (l *StepLibrary) folder() *configfs.Folder[adewire.WorkflowStep] {
 	l.once.Do(func() {
 		var proj configfs.Projection = &memProjection{m: map[string]string{}}
 		if l.DB != nil {
-			proj = configfs.TableProjection{DB: l.DB, Folder: stepsFolder}
+			proj = configfs.TableProjection{DB: l.DB, Folder: StepsFolder}
 		}
 		l.f = &configfs.Folder[adewire.WorkflowStep]{
 			Dir:        l.Dir,

@@ -70,7 +70,7 @@ func EstOverCap(est string) bool {
 	return n > MaxEstDays
 }
 
-const adeTaskColumns = `id, kind, title, owner, jira_key, jira_url, host_url, workflow_id, entry_step_id, since_json, workflow_json, workflow_hash, est, notes, color, created_at, archived_at, status_id, status_by, status_step`
+const adeTaskColumns = `id, kind, title, owner, jira_key, jira_url, host_url, workflow_id, entry_step_id, since_json, workflow_json, workflow_hash, est, color, created_at, archived_at, status_id, status_by, status_step`
 const adeTaskBranchInsertColumns = `id, task_id, code_repo_id, name, kind, base, base_branch_id, base_pending_from, queued_after, position, had_commits, added_at, merged_at, archived_at, origin`
 const adeTaskBranchColumns = adeTaskBranchInsertColumns + `, cr_number, cr_title, cr_state, cr_url, review_comments, worktree_dir`
 const adeRunColumns = `id, task_id, step_id, branch_id, attempt, state, loops, note, summary, session_id, exit_code, started_at, finished_at, outcome_json, purpose, spec_json, launch_note, launch_resume_id, launch_prompt, launch_extra`
@@ -102,7 +102,7 @@ func scanAdeTask(row rowScanner) (model.AdeTask, error) {
 	var since, workflow sql.NullString
 	var archived sql.NullInt64
 	if err := row.Scan(&t.ID, &t.Kind, &t.Title, &t.Owner, &t.JiraKey, &t.JiraURL, &t.HostURL, &t.WorkflowID,
-		&t.EntryStepID, &since, &workflow, &t.WorkflowHash, &t.Est, &t.Notes, &t.Color, &t.CreatedAt, &archived, &t.StatusID, &t.StatusBy, &t.StatusStep); err != nil {
+		&t.EntryStepID, &since, &workflow, &t.WorkflowHash, &t.Est, &t.Color, &t.CreatedAt, &archived, &t.StatusID, &t.StatusBy, &t.StatusStep); err != nil {
 		return model.AdeTask{}, err
 	}
 	t.SinceJSON = since.String
@@ -153,7 +153,7 @@ func (r *AdeTaskRepo) queryTasks(query string, args ...any) ([]model.AdeTask, er
 // ListLive returns non-archived tasks in plan order (a task with no plan row sorts last).
 func (r *AdeTaskRepo) ListLive() ([]model.AdeTask, error) {
 	return r.queryTasks(`SELECT t.id, t.kind, t.title, t.owner, t.jira_key, t.jira_url, t.host_url, t.workflow_id,
-		t.entry_step_id, t.since_json, t.workflow_json, t.workflow_hash, t.est, t.notes, t.color, t.created_at, t.archived_at, t.status_id, t.status_by, t.status_step
+		t.entry_step_id, t.since_json, t.workflow_json, t.workflow_hash, t.est, t.color, t.created_at, t.archived_at, t.status_id, t.status_by, t.status_step
 		FROM ade_tasks t LEFT JOIN ade_task_plan p ON p.task_id = t.id
 		WHERE t.archived_at IS NULL ORDER BY p.position IS NULL, p.position, t.created_at, t.id`)
 }
@@ -176,9 +176,9 @@ func (r *AdeTaskRepo) GetTask(id string) (model.AdeTask, error) {
 }
 
 // insertTask writes the task, its branches and a plan row on `day` (Later when nil), in tx: at the end of
-// the order, or at the top when top is set. It assigns the task's color: the first slot no live task uses,
+// the order, or at the top when top is set, plus the first user note when given. It assigns the task's color: the first slot no live task uses,
 // else the least-used slot overall.
-func insertTask(tx *sql.Tx, t model.AdeTask, branches []model.AdeTaskBranch, day *string, top bool) (model.AdeTask, error) {
+func insertTask(tx *sql.Tx, t model.AdeTask, branches []model.AdeTaskBranch, day *string, top bool, note *model.AdeHandover) (model.AdeTask, error) {
 	if err := t.Validate(); err != nil {
 		return model.AdeTask{}, err
 	}
@@ -221,13 +221,18 @@ func insertTask(tx *sql.Tx, t model.AdeTask, branches []model.AdeTaskBranch, day
 	if t.StatusBy == "" {
 		t.StatusBy = model.AdeStatusByAuto
 	}
-	if _, err := tx.Exec(`INSERT INTO ade_tasks (id, kind, title, owner, jira_key, jira_url, host_url, workflow_id, entry_step_id, since_json, est, notes, color, created_at, archived_at, status_id, status_by, status_step) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
+	if _, err := tx.Exec(`INSERT INTO ade_tasks (id, kind, title, owner, jira_key, jira_url, host_url, workflow_id, entry_step_id, since_json, est, color, created_at, archived_at, status_id, status_by, status_step) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
 		t.ID, t.Kind, t.Title, t.Owner, t.JiraKey, t.JiraURL, t.HostURL, t.WorkflowID, t.EntryStepID, since, t.Est,
-		t.Notes, t.Color, t.CreatedAt, t.StatusID, t.StatusBy, t.StatusStep); err != nil {
+		t.Color, t.CreatedAt, t.StatusID, t.StatusBy, t.StatusStep); err != nil {
 		return model.AdeTask{}, fmt.Errorf("repos: insert ade task %s: %w", t.ID, err)
 	}
 	for _, b := range branches {
 		if err := insertTaskBranch(tx, b); err != nil {
+			return model.AdeTask{}, err
+		}
+	}
+	if note != nil {
+		if err := insertNote(tx, *note); err != nil {
 			return model.AdeTask{}, err
 		}
 	}
@@ -276,14 +281,14 @@ func isUniqueViolation(err error) bool {
 }
 
 // CreateTask inserts a task, its branches and a plan row at the end of `day` (Later when nil) in
-// one transaction and returns the stored task (color assigned).
-func (r *AdeTaskRepo) CreateTask(t model.AdeTask, branches []model.AdeTaskBranch, day *string) (model.AdeTask, error) {
+// one transaction, with the first user note when note is not nil, and returns the stored task (color assigned).
+func (r *AdeTaskRepo) CreateTask(t model.AdeTask, branches []model.AdeTaskBranch, day *string, note *model.AdeHandover) (model.AdeTask, error) {
 	tx, err := r.DB.Begin()
 	if err != nil {
 		return model.AdeTask{}, fmt.Errorf("repos: begin create ade task: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	out, err := insertTask(tx, t, branches, day, false)
+	out, err := insertTask(tx, t, branches, day, false, note)
 	if err != nil {
 		return model.AdeTask{}, err
 	}
@@ -301,7 +306,7 @@ func (r *AdeTaskRepo) CaptureTask(t model.AdeTask, day *string) (model.AdeTask, 
 		return model.AdeTask{}, fmt.Errorf("repos: begin capture ade task: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	out, err := insertTask(tx, t, nil, day, true)
+	out, err := insertTask(tx, t, nil, day, true, nil)
 	if err != nil {
 		return model.AdeTask{}, err
 	}
@@ -357,8 +362,8 @@ func (r *AdeTaskRepo) UpdateTask(id string, p model.AdeTaskPatch) (model.AdeTask
 			return model.AdeTask{}, err
 		}
 	}
-	if _, err := tx.Exec(`UPDATE ade_tasks SET kind = ?, owner = ?, title = ?, jira_key = ?, jira_url = ?, host_url = ?, est = ?, notes = ?, color = ?, status_id = ?, status_by = ?, status_step = ? WHERE id = ?`,
-		cur.Kind, cur.Owner, cur.Title, cur.JiraKey, cur.JiraURL, cur.HostURL, cur.Est, cur.Notes, cur.Color, cur.StatusID, cur.StatusBy, cur.StatusStep, id); err != nil {
+	if _, err := tx.Exec(`UPDATE ade_tasks SET kind = ?, owner = ?, title = ?, jira_key = ?, jira_url = ?, host_url = ?, est = ?, color = ?, status_id = ?, status_by = ?, status_step = ? WHERE id = ?`,
+		cur.Kind, cur.Owner, cur.Title, cur.JiraKey, cur.JiraURL, cur.HostURL, cur.Est, cur.Color, cur.StatusID, cur.StatusBy, cur.StatusStep, id); err != nil {
 		return model.AdeTask{}, fmt.Errorf("repos: update ade task %s: %w", id, err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -398,9 +403,6 @@ func patchLeaves(cur *model.AdeTask, p model.AdeTaskPatch) error {
 	}
 	if p.HostURL != nil {
 		cur.HostURL = *p.HostURL
-	}
-	if p.Notes != nil {
-		cur.Notes = *p.Notes
 	}
 	if p.Color != nil {
 		if *p.Color < 0 || *p.Color >= maxColorSlots {

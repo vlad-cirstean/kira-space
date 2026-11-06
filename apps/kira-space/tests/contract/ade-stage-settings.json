@@ -7,7 +7,7 @@
   },
   "AdeTaskService.SaveWorkflow#stage-settings-range": "{\"code\":\"E_BAD_REQUEST\",\"message\":\"step 2: settings.claude.auto_compact_window must be a whole number from 100000 to 1000000 (line 20)\"}",
   "AdeTaskService.Workflows#stage-settings": {
-    "dir": "<space>/workflows",
+    "dir": "<space>/config/workflows",
     "sandbox": {
       "enforced": false,
       "reason": "The sandbox is not enforced on this OS. It runs on macOS only. Claude permission rules still apply, but they do not stop shell commands."
@@ -25,13 +25,13 @@
       }
     ],
     "steps": [],
-    "stepsDir": "<space>/steps",
+    "stepsDir": "<space>/config/steps",
     "workflows": [
       {
         "error": null,
         "fileName": "flow.yaml",
         "hash": "ce1b6914a2508d19b5edf405787ade89272b8df618f2899f3add12757767ae47",
-        "path": "<space>/workflows/flow.yaml",
+        "path": "<space>/config/workflows/flow.yaml",
         "usedBy": 0,
         "workflow": {
           "id": "flow",
@@ -42,6 +42,7 @@
               "allowedTools": [],
               "before": "auto",
               "command": "",
+              "dbMcp": false,
               "id": "tuned",
               "kind": "agent",
               "maxReturns": 3,
@@ -89,6 +90,7 @@
               "allowedTools": [],
               "before": "auto",
               "command": "",
+              "dbMcp": false,
               "id": "plain",
               "kind": "agent",
               "maxReturns": 3,
@@ -144,6 +146,7 @@
           "allowedTools": [],
           "before": "auto",
           "command": "",
+          "dbMcp": false,
           "id": "tuned",
           "kind": "agent",
           "maxReturns": 3,
@@ -191,6 +194,7 @@
           "allowedTools": [],
           "before": "auto",
           "command": "",
+          "dbMcp": false,
           "id": "plain",
           "kind": "agent",
           "maxReturns": 3,

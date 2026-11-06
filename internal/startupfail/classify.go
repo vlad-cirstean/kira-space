@@ -143,6 +143,13 @@ func Classify(step Step, err error, info Info) Message {
 				" exists, is a folder you can write to, and that the disk isn't full.",
 			Detail: detail,
 		}
+	case StepOldStudio:
+		return Message{
+			Step: step, Expected: true,
+			Headline: "Kira Studio is still running.",
+			Advice:   "Kira Studio is now part of " + app + ". Quit Kira Studio, then open " + app + " again.",
+			Detail:   detail,
+		}
 	case StepRun:
 		return bugMessage(step, app+" couldn't open its main window.", detail)
 	case StepPlatform:

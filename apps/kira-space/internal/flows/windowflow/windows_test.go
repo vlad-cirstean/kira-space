@@ -13,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
+	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -222,4 +223,14 @@ func TestOpenNewWindow(t *testing.T) {
 	if err := (&windowsvc.Service{}).OpenNew(); err == nil {
 		t.Fatal("OpenNew without a shell succeeded")
 	}
+}
+
+func quitPrompts(app *flowharness.App) []prompts.Routed {
+	var out []prompts.Routed
+	for _, p := range app.W.Prompts.List() {
+		if p.Kind == prompts.KindQuit {
+			out = append(out, p)
+		}
+	}
+	return out
 }

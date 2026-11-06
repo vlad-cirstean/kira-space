@@ -1,12 +1,15 @@
 // Package config resolves this app's on-disk locations and dev/packaged mode.
 //
-// The path logic itself is repo-root internal/kirapaths, shared with
-// apps/kira-studio — this file is a thin wrapper supplying Kira Space's own env var
-// (KIRA_SPACE_HOME), directory name (.kira-space) and database file name (kira.db). Kira Space
-// never shares a home or a database with Kira Studio.
+// The path logic itself is repo-root internal/kirapaths. This file supplies Kira Space's own env
+// var (KIRA_SPACE_HOME), directory name (.kira-space) and database file name (kira.db).
 package config
 
-import "github.com/kirathecat/kira-studio/internal/kirapaths"
+import (
+	"os"
+
+	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/kirapaths"
+)
 
 // KiraSpaceHome is this app's data directory, honouring KIRA_SPACE_HOME.
 func KiraSpaceHome() string {
@@ -35,13 +38,26 @@ func LogsDirAt(home string) string {
 	return kirapaths.LogsDirAt(home)
 }
 
-// EnsureLayout creates KIRA_SPACE_HOME and its logs directory at 0700, tightening an existing
-// loose directory too, not only on first create.
+// EnsureLayout creates the home and its logs directory at 0700, tightening an existing loose
+// directory too, not only on first create.
 func EnsureLayout() error {
 	return EnsureLayoutAt(KiraSpaceHome())
 }
 
-// EnsureLayoutAt is EnsureLayout against an explicit home dir — see DbPathAt.
+// EnsureLayoutAt is EnsureLayout against an explicit home dir — see DbPathAt. It also creates
+// <home>/config at 0700: a config folder watcher adds its parent and fails when it is missing.
 func EnsureLayoutAt(home string) error {
-	return kirapaths.EnsureLayoutAt(home)
+	if err := kirapaths.EnsureLayoutAt(home); err != nil {
+		return err
+	}
+	root := configfs.Root(home)
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		return err
+	}
+	return os.Chmod(root, 0o700)
+}
+
+// ModuleDbPathAt is the retired Studio database file, studio.db under the Space home. Only dbfold reads it.
+func ModuleDbPathAt(home string) string {
+	return kirapaths.DbPathAt(home, "studio.db")
 }

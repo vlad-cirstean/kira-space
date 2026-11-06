@@ -5,9 +5,8 @@
 #
 # Covers exactly the five gaps a genuinely fresh worktree hits (confirmed by hitting each one):
 #   1. Linux system packages the `wails3` CLI itself needs to build (checked, not reinstalled)
-#   2/3/4. `bun install`, `go mod download`, pinned `wails3` install + bindings codegen for both
-#      apps — delegated to `scripts/setup.sh`, which already does exactly this
-#   5. a real `frontend/dist` for each app, so `go build ./...` (pre-push) doesn't fail on
+#   2/3/4. `bun install`, `go mod download`, pinned `wails3` install + bindings codegen — delegated to `scripts/setup.sh`, which already does exactly this
+#   5. a real `frontend/dist`, so `go build ./...` (pre-push) doesn't fail on
 #      `//go:embed all:frontend/dist` finding no matching files
 set -eu
 
@@ -28,12 +27,12 @@ else
   echo "prepare-worktree: wails3 CLI build deps already present, skipping apt-get"
 fi
 
-# ---- 2-4: bun workspace, Go module, pinned wails3 + bindings for both apps ------------------------
+# ---- 2-4: bun workspace, Go module, pinned wails3 + bindings ------------------------
 sh "$SCRIPT_DIR/setup.sh"
 
-# ---- 5: a real frontend/dist per app, so `go build ./...` (pre-push) doesn't fail on the Go binaries'
+# ---- 5: a real frontend/dist, so `go build ./...` (pre-push) doesn't fail on the Go binaries'
 # own `//go:embed all:frontend/dist` finding zero matching files -----------------------------------
-for APP_DIR in apps/kira-studio apps/kira-space; do
+for APP_DIR in apps/kira-space; do
   DIST_DIR="$ROOT_DIR/$APP_DIR/frontend/dist"
   if [ -d "$DIST_DIR" ] && [ -n "$(ls -A "$DIST_DIR" 2>/dev/null)" ]; then
     echo "prepare-worktree: $APP_DIR/frontend/dist already built, skipping"

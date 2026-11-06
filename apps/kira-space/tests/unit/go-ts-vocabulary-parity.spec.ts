@@ -1,5 +1,5 @@
 // Kira Space's own half of the Go/TS tab-kind vocabulary parity check —
-// Kira Studio's own copy (apps/kira-studio/tests/unit/go-ts-vocabulary-parity.spec.ts) used to
+// Kira Studio's own copy (apps/kira-space/tests/unit/go-ts-vocabulary-parity.spec.ts) used to
 // check the one shared 16-member RENDERABLE_TAB_KINDS against Kira Studio's Go list alone,
 // leaving this app's own five-kind vocabulary unchecked against anything. This is the one
 // vocabulary TypeScript's own exhaustiveness checks cannot catch a miss on — a kind missing from
@@ -27,12 +27,12 @@ function extractGoStringSet(source: string, varName: string): Set<string> {
 }
 
 describe('Go/TS tab-kind vocabulary parity (P103 Part 2 §5.1)', () => {
-  test('model.RenderableTabKinds (Go) matches SPACE_RENDERABLE_TAB_KINDS (TS)', () => {
+  test('model.spaceTabKinds (Go) matches SPACE_RENDERABLE_TAB_KINDS (TS)', () => {
     const source = readFileSync(
       resolve(import.meta.dir, '../../internal/storage/model/tabs.go'),
       'utf8',
     );
-    const goKinds = extractGoStringSet(source, 'RenderableTabKinds');
+    const goKinds = extractGoStringSet(source, 'spaceTabKinds');
     expect(goKinds).toEqual(new Set(SPACE_RENDERABLE_TAB_KINDS));
   });
 });

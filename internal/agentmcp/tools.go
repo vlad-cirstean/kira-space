@@ -22,6 +22,7 @@ var (
 		{Server: ServerName, Tool: "branch_status"},
 		{Server: ServerName, Tool: "rename_branch"},
 		{Server: ServerName, Tool: "report_artifacts"},
+		{Server: ServerName, Tool: "attach_proof"},
 		{Server: ServerName, Tool: "list_operations"},
 		{Server: ServerName, Tool: "cancel_operation"},
 	}

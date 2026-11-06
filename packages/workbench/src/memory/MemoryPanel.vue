@@ -197,10 +197,10 @@ const historyToggleId = useId();
               v-bind="nav.rowProps(memory.id)"
               :class="
                 cn(
-                  VIRTUAL_ROW_CLASS,
                   rowVariants({ layout: 'double', selected: selectedId === memory.id }),
                   'w-full flex-col gap-1 whitespace-normal py-1.5 text-left',
                   memory.historical && 'opacity-50',
+                  VIRTUAL_ROW_CLASS,
                 )
               "
               :style="{ ...rowIndent(0), transform: `translateY(${item.start}px)` }"

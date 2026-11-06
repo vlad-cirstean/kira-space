@@ -1306,7 +1306,7 @@
           "body": "Credential storage is only supported on macOS in this build."
         },
         "unknownEnvelope": {
-          "body": "The stored credential isn’t in this app’s envelope format. Values saved by an earlier version of Kira Studio can’t be read and must be entered again."
+          "body": "The stored credential isn’t in this app’s envelope format. Values saved by an earlier version can’t be read and must be entered again."
         }
       },
       "seed": {
@@ -1724,6 +1724,17 @@
         },
         "notesTooLong": {
           "body": "The notes are too long."
+        },
+        "panelForward": {
+          "empty": {
+            "body": "No panel changes to send."
+          },
+          "noAgent": {
+            "body": "No agent runs in this step now."
+          },
+          "unreachable": {
+            "body": "Background runs take no messages. Take over a run to send."
+          }
         },
         "resumeCwdNotDir": {
           "body": "The folder to resume in is a file, not a folder."
@@ -2614,7 +2625,7 @@
           "body": "The “{option}” option holds a secret that fields mode can’t store. Use URI mode."
         },
         "shuttingDown": {
-          "body": "Kira Studio is shutting down."
+          "body": "Kira Space is shutting down."
         },
         "throttleFinite": {
           "body": "Throttle must be a finite number."
@@ -3573,9 +3584,6 @@
       "kiraSpace": {
         "label": "Kira Space"
       },
-      "kiraStudio": {
-        "label": "Kira Studio"
-      },
       "kubernetes": {
         "label": "Kubernetes"
       }
@@ -3695,6 +3703,9 @@
     },
     "task": {
       "label": "Task"
+    },
+    "timeline": {
+      "label": "Timeline"
     },
     "truncated": {
       "status": "Earlier output dropped"
@@ -6797,6 +6808,13 @@
           "body": "Added to the first message of a manual step session that runs under the sandbox."
         }
       },
+      "adePanelForwardMessage": {
+        "description": "Sent to the agents running in the current step with the task panel changes you made, as a diff.",
+        "title": "Panel changes message",
+        "usedBy": {
+          "body": "Sent when you forward pending task panel changes to the running agents."
+        }
+      },
       "adeRebaseContextLine": {
         "description": "Tells the agent that the last rebase of a branch did not finish and points to run_outcome.",
         "title": "Unfinished rebase line",
@@ -8920,6 +8938,54 @@
           },
           "placeholder": "Paste or type a link, with an optional title"
         },
+        "dbAudit": {
+          "accepted": {
+            "status": "Accepted"
+          },
+          "denied": {
+            "status": "Denied"
+          },
+          "limits": {
+            "label": "Limits: {limits}"
+          },
+          "reason": {
+            "label": "Reason: {reason}"
+          },
+          "refused": {
+            "status": "Refused"
+          },
+          "subjectApi": {
+            "label": "API request"
+          },
+          "subjectExemption": {
+            "label": "Exemption"
+          },
+          "subjectKube": {
+            "label": "Kubernetes read"
+          },
+          "subjectQuery": {
+            "label": "Run query"
+          },
+          "subjectResponse": {
+            "label": "Send result"
+          },
+          "subjectScript": {
+            "label": "Script request"
+          },
+          "timedOut": {
+            "status": "Timed out"
+          },
+          "toggle": {
+            "label": "Kira DB ({count})",
+            "tooltip": "Show Kira DB actions and approvals in the list"
+          },
+          "unanswered": {
+            "status": "Not answered"
+          },
+          "withheld": {
+            "body": "Statement not recorded ({count} characters)."
+          }
+        },
         "empty": {
           "body": "No links yet."
         },
@@ -8949,14 +9015,8 @@
           "created": {
             "label": "Task created"
           },
-          "draft": {
-            "label": "Draft handover from {from}"
-          },
-          "handover": {
-            "label": "Handover from {from} to {to}"
-          },
-          "header": {
-            "label": "Timeline ({count})"
+          "toggle": {
+            "tooltip": "Show task events in the list"
           }
         }
       },
@@ -9014,9 +9074,6 @@
         "edit": {
           "tooltip": "Edit handover"
         },
-        "empty": {
-          "body": "No handovers yet. The notes a stage leaves for the next show here."
-        },
         "finished": {
           "status": "Ready to hand over"
         },
@@ -9025,9 +9082,6 @@
         },
         "moveOn": {
           "label": "Move on…"
-        },
-        "title": {
-          "title": "Handovers"
         }
       },
       "header": {
@@ -9191,6 +9245,18 @@
         }
       },
       "notes": {
+        "add": {
+          "label": "Add note",
+          "tooltip": "Add a note"
+        },
+        "author": {
+          "agent": {
+            "aria": "Written by an agent"
+          },
+          "user": {
+            "aria": "Written by you"
+          }
+        },
         "bold": {
           "tooltip": "Bold"
         },
@@ -9199,6 +9265,17 @@
         },
         "checklist": {
           "tooltip": "Checklist"
+        },
+        "empty": {
+          "body": "No notes yet. Add one, or an agent leaves one when it hands over."
+        },
+        "entry": {
+          "during": {
+            "label": "During {stage}"
+          },
+          "note": {
+            "title": "Task note"
+          }
         },
         "formatting": {
           "aria": "Formatting"
@@ -9324,6 +9401,29 @@
           "stuck": {
             "hint": "A step is stuck or failed."
           }
+        }
+      },
+      "panelForward": {
+        "discard": {
+          "tooltip": "Discard the pending changes"
+        },
+        "dropped": {
+          "body": "Too many changes. The oldest were dropped."
+        },
+        "failed": {
+          "body": "Not every agent got the changes ({sessions})."
+        },
+        "pending": {
+          "body": "{count} panel change not sent to the agents in {step}. | {count} panel changes not sent to the agents in {step}."
+        },
+        "preview": {
+          "label": "Show message"
+        },
+        "send": {
+          "label": "Send to {count} agent | Send to {count} agents"
+        },
+        "unreachable": {
+          "tooltip": "Background runs take no messages; take over a run to send"
         }
       },
       "plan": {
@@ -9576,6 +9676,28 @@
         },
         "waiting": {
           "label": "{step} · waiting"
+        }
+      },
+      "proof": {
+        "attach": {
+          "empty": {
+            "body": "No proof sessions to attach."
+          },
+          "tooltip": "Attach a proof session"
+        },
+        "chain": {
+          "title": "Notes and proof"
+        },
+        "entry": {
+          "open": {
+            "tooltip": "Open in the proof window"
+          },
+          "pending": {
+            "status": "Edit to review"
+          },
+          "remove": {
+            "tooltip": "Remove from task"
+          }
         }
       },
       "rebase": {
@@ -10735,6 +10857,10 @@
           },
           "commandOutside": {
             "hint": "Runs in the task folder. A non-zero exit fails the step. {tokens} are shell-quoted when needed."
+          },
+          "dbMcp": {
+            "hint": "This step’s sessions get the database MCP tools. The app handles access, and it works with the server off.",
+            "label": "Kira database tools"
           },
           "editStatuses": {
             "label": "Edit statuses"
@@ -14571,9 +14697,6 @@
         },
         "params": {
           "label": "Params"
-        },
-        "timeline": {
-          "label": "Timeline"
         }
       },
       "raw": {
@@ -15247,14 +15370,8 @@
       }
     },
     "operations": {
-      "clear": {
-        "hint": "Clears the in-memory ring only. Retention of op_log is automatic. Script runs come from the run history (newest 500 kept) and are hidden here, not deleted."
-      },
       "commandTruncated": {
         "status": "Command truncated at 64 kibibytes, can’t be re-run"
-      },
-      "empty": {
-        "hint": "Queries, connections and HTTP calls show here."
       },
       "field": {
         "path": {
@@ -16210,6 +16327,20 @@
         "body": "Removes {name} and its saved views. This can’t be undone.",
         "title": "Delete this session"
       },
+      "diagram": {
+        "invalid": {
+          "title": "Diagram does not parse"
+        },
+        "region": {
+          "aria": "Diagram: {description}"
+        },
+        "source": {
+          "label": "Diagram source"
+        },
+        "tooLarge": {
+          "body": "The diagram is too large to draw."
+        }
+      },
       "history": {
         "aria": "Validation sessions",
         "empty": "No validation sessions yet",
@@ -16315,10 +16446,6 @@
           "description": "The estimated rows a query’s plan reads, not the rows it returns. At or above it, the console’s explain and auto-explain warn you, and the database MCP server refuses an agent’s query before it runs where the connection’s MCP tab has the check on. Not comparable to the engines’ own cost figures.",
           "label": "Expensive query threshold (rows)"
         },
-        "logLevel": {
-          "description": "Verbosity of Kira Studio’s own diagnostic log.",
-          "label": "Log level"
-        },
         "opLogRetention": {
           "label": "Operation log retention (days)"
         }
@@ -16343,12 +16470,6 @@
         "rowColoring": {
           "description": "Colour grid values by their column’s data type. Off renders every row in the plain text colour.",
           "label": "Row colouring"
-        },
-        "rowDensity": {
-          "description": "Applies to the tree, the grid and every list."
-        },
-        "wordWrap": {
-          "description": "Long lines wrap instead of scrolling. Applies to the query console, the MongoDB console and the cell editor."
         }
       },
       "cache": {
@@ -16408,7 +16529,7 @@
         },
         "focus": {
           "description": "When a query or result waits for approval, show the window and switch to its desktop.",
-          "label": "Bring Kira Studio forward for approvals"
+          "label": "Bring Kira Space forward for approvals"
         },
         "kube": {
           "empty": {
@@ -16469,16 +16590,14 @@
             "aria": "Expose script {name} to agents"
           }
         },
+        "sessions": {
+          "hint": "Workflow steps with Kira database tools on get their own access, even with this off."
+        },
         "tokenExpired": {
           "body": "Token expired. Regenerate it above."
         },
         "tokenValid": {
           "body": "Token valid until {date}."
-        }
-      },
-      "footer": {
-        "stored": {
-          "status": "Stored in {path}"
         }
       },
       "nav": {
@@ -16512,10 +16631,6 @@
     },
     "shortcuts": {
       "palette": {
-        "closeTab": {
-          "label": "Close tab"
-        },
-        "empty": "No matching commands",
         "explainQuery": {
           "label": "Explain query"
         },
@@ -16525,27 +16640,14 @@
         "generateData": {
           "label": "Generate data…"
         },
-        "nextTab": {
-          "label": "Next tab"
-        },
-        "placeholder": "Type a command",
-        "previousTab": {
-          "label": "Previous tab"
-        },
         "runStatement": {
           "label": "Run statement"
-        },
-        "toggleOperationsPanel": {
-          "label": "Toggle operations panel"
-        },
-        "toggleProjectPanel": {
-          "label": "Toggle project panel"
         }
       }
     },
     "start": {
       "empty": {
-        "body": "Kira Studio needs somewhere to connect before it can show you anything.",
+        "body": "Kira Space needs somewhere to connect before it can show you anything.",
         "title": "No connections yet"
       },
       "importDataGrip": {

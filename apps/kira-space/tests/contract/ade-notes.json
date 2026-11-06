@@ -1,0 +1,330 @@
+{
+  "AdeTaskBoard.Board#notes": {
+    "autofetchMinutes": 0,
+    "branches": [
+      {
+        "addedAt": 0,
+        "ahead": 0,
+        "base": "main",
+        "baseBranchId": "",
+        "baseMissing": false,
+        "baseOwner": "",
+        "basePendingFrom": "",
+        "behind": 0,
+        "codeRepoId": "<id:1>",
+        "conflictCheck": "done",
+        "conflictCheckReason": "",
+        "conflictsIfRebased": [],
+        "deployments": [],
+        "dirty": [],
+        "id": "<masked>",
+        "integration": [],
+        "kind": "mine",
+        "lastCommitAt": null,
+        "mergedAt": null,
+        "mergedIntoMain": false,
+        "name": "",
+        "origin": "",
+        "owner": "",
+        "rebaseInProgress": false,
+        "setup": null,
+        "taskId": "<masked>",
+        "tip": "",
+        "upstream": "",
+        "upstreamAhead": 0,
+        "upstreamBehind": 0,
+        "worktree": ""
+      }
+    ],
+    "history": [],
+    "pairs": [],
+    "plan": {
+      "backlog": [],
+      "day": {},
+      "order": [
+        "<id:2>"
+      ],
+      "queuedAfter": {},
+      "unpushed": {}
+    },
+    "repos": [
+      {
+        "codeRepoId": "<id:1>",
+        "lastFetchAt": null,
+        "mainName": "main",
+        "remote": "origin"
+      }
+    ],
+    "statusDefaults": {
+      "finished": "done",
+      "new": "todo",
+      "review": "in-review",
+      "step": "in-progress"
+    },
+    "statuses": [
+      {
+        "color": "grey",
+        "id": "<masked>",
+        "name": "To do"
+      },
+      {
+        "color": "amber",
+        "id": "<masked>",
+        "name": "In progress"
+      },
+      {
+        "color": "blue",
+        "id": "<masked>",
+        "name": "In review"
+      },
+      {
+        "color": "green",
+        "id": "<masked>",
+        "name": "Done"
+      }
+    ],
+    "tasks": [
+      {
+        "branchIds": [
+          "<id:3>"
+        ],
+        "branchRequestId": "",
+        "color": 0,
+        "createdAt": 0,
+        "entryStepId": "build",
+        "est": "",
+        "handoverDrafts": [],
+        "handoverIn": {
+          "body": "Form wired.\nValidation missing.",
+          "createdAt": 0,
+          "dismissed": false,
+          "edited": false,
+          "finished": false,
+          "fromStepId": "design",
+          "fromStepName": "Design",
+          "id": "<masked>",
+          "sessionId": "<masked>",
+          "source": "agent",
+          "state": "handed",
+          "taskId": "<masked>",
+          "toStepId": "build",
+          "toStepName": "build",
+          "updatedAt": 0
+        },
+        "hostLink": null,
+        "hostUrl": "",
+        "id": "<masked>",
+        "jira": null,
+        "kind": "task",
+        "notes": "Ship on Friday.\n\nUse the **new** API.\n\nCheck the error states.",
+        "owner": "",
+        "runs": [],
+        "since": {},
+        "statusBy": "auto",
+        "statusId": "in-progress",
+        "statusStep": "build",
+        "title": "Login form",
+        "workflow": {
+          "id": "<masked>",
+          "name": "Flow",
+          "steps": [
+            {
+              "agent": "",
+              "allowedTools": [],
+              "before": "",
+              "command": "",
+              "dbMcp": false,
+              "id": "<masked>",
+              "kind": "manual",
+              "maxReturns": 0,
+              "name": "Design",
+              "outsideRepo": false,
+              "params": {},
+              "prompt": "",
+              "results": [],
+              "review": null,
+              "runsOn": "",
+              "sandbox": {
+                "access": "off",
+                "allow": [],
+                "network": true,
+                "read": []
+              },
+              "session": true,
+              "settings": {},
+              "skip": false,
+              "smartScript": "",
+              "status": "",
+              "timeout": ""
+            },
+            {
+              "agent": "",
+              "allowedTools": [],
+              "before": "auto",
+              "command": "",
+              "dbMcp": false,
+              "id": "<masked>",
+              "kind": "agent",
+              "maxReturns": 3,
+              "name": "build",
+              "outsideRepo": false,
+              "params": {},
+              "prompt": "work on {branch} in {repo}",
+              "results": [
+                {
+                  "description": "",
+                  "id": "<masked>",
+                  "loop": false,
+                  "next": "next",
+                  "ok": true
+                },
+                {
+                  "description": "",
+                  "id": "<masked>",
+                  "loop": false,
+                  "next": "stop",
+                  "ok": false
+                }
+              ],
+              "review": null,
+              "runsOn": "each repo",
+              "sandbox": {
+                "access": "write",
+                "allow": [],
+                "network": true,
+                "read": []
+              },
+              "session": false,
+              "settings": {},
+              "skip": false,
+              "smartScript": "",
+              "status": "",
+              "timeout": "1m"
+            },
+            {
+              "agent": "",
+              "allowedTools": [],
+              "before": "",
+              "command": "",
+              "dbMcp": false,
+              "id": "<masked>",
+              "kind": "manual",
+              "maxReturns": 0,
+              "name": "Ship",
+              "outsideRepo": false,
+              "params": {},
+              "prompt": "",
+              "results": [],
+              "review": null,
+              "runsOn": "",
+              "sandbox": {
+                "access": "off",
+                "allow": [],
+                "network": true,
+                "read": []
+              },
+              "session": false,
+              "settings": {},
+              "skip": false,
+              "smartScript": "",
+              "status": "",
+              "timeout": ""
+            }
+          ]
+        },
+        "workflowId": "flow",
+        "workflowOutdated": false
+      }
+    ],
+    "worktreeBasePath": "<home>/wt"
+  },
+  "AdeTaskService.AddNote": {
+    "body": "Use the **new** API.",
+    "createdAt": 0,
+    "dismissed": false,
+    "edited": false,
+    "finished": false,
+    "fromStepId": "design",
+    "fromStepName": "Design",
+    "id": "<masked>",
+    "sessionId": "<masked>",
+    "source": "user",
+    "state": "note",
+    "taskId": "<masked>",
+    "toStepId": "",
+    "toStepName": "",
+    "updatedAt": 0
+  },
+  "AdeTaskService.Handovers#chain": {
+    "handovers": [
+      {
+        "body": "Ship on Friday.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "build",
+        "fromStepName": "build",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "user",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      },
+      {
+        "body": "Form wired.\nValidation missing.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "design",
+        "fromStepName": "Design",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "agent",
+        "state": "handed",
+        "taskId": "<masked>",
+        "toStepId": "build",
+        "toStepName": "build",
+        "updatedAt": 0
+      },
+      {
+        "body": "Use the **new** API.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "design",
+        "fromStepName": "Design",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "user",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      },
+      {
+        "body": "Check the error states.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "design",
+        "fromStepName": "Design",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "user",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      }
+    ]
+  }
+}

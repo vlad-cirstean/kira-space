@@ -66,6 +66,12 @@ type TaskBoardDeps struct {
 	GitStatus func(ctx context.Context) gitclient.GitStatus
 	Askpass   *gitaskpass.Broker
 	Workflows *adeflow.Reader
+	// Proofs attaches validation-proof sessions to tasks; nil turns the proof tools off.
+	Proofs ProofLinks
+	// DbMcp mints the per-session Kira DB server entry; nil makes a db_mcp step fail to launch.
+	DbMcp DbMcpSessions
+	// DbAudit reads the Kira DB audit trail of a task.
+	DbAudit DbAuditReader
 	// Runner spawns git for repo identification (folder import).
 	Runner gitclient.Runner
 	// Ops is the operation log: agent sessions, worktree setups and MCP tool calls land in it.
@@ -180,6 +186,8 @@ type TaskBoard struct {
 	rebase         map[string]*rebaseCache
 	boardTimer     *time.Timer
 	updates        *updateWatcher
+
+	panelEdits panelEdits // pending task panel edits per task (panelforward.go)
 
 	runMu            sync.Mutex                 // guards live, setupLive, archiving, taskMus, finishes, stepMsgs
 	live             map[string]*liveRun        // run id -> its process
@@ -578,7 +586,7 @@ func (b *TaskBoard) assemble(d boardData, repoIDs []string, results map[string]*
 func (b *TaskBoard) toWireTask(t model.AdeTask, branchIDs []string, runs []model.AdeRun, reviews map[string]model.AdeReview) adewire.Task {
 	out := adewire.Task{
 		ID: t.ID, Kind: t.Kind, Title: t.Title, Owner: t.Owner, HostURL: t.HostURL, HostLink: b.hostLink(t.HostURL), WorkflowID: t.WorkflowID,
-		EntryStepID: t.EntryStepID, Since: map[string]int{}, Est: t.Est, Notes: t.Notes, Color: t.Color, CreatedAt: t.CreatedAt,
+		EntryStepID: t.EntryStepID, Since: map[string]int{}, Est: t.Est, Color: t.Color, CreatedAt: t.CreatedAt,
 		StatusID: t.StatusID, StatusBy: t.StatusBy, StatusStep: t.StatusStep,
 		BranchIDs: make([]string, 0, len(branchIDs)), Runs: make([]adewire.Run, 0, len(runs)),
 		HandoverDrafts: []adewire.Handover{}, BranchRequestID: b.branchRequestOf(t.ID),

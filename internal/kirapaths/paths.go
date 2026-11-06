@@ -1,5 +1,5 @@
 // Package kirapaths is the repo-root generalization of the on-disk layout logic
-// apps/kira-studio/internal/config/paths.go used to own outright (KiraHome/DbPath/LogsDir/
+// apps/kira-space/internal/studiotmp/config/paths.go used to own outright (KiraHome/DbPath/LogsDir/
 // EnsureLayout): the same shape was needed for apps/kira-space's own, separate home
 // directory (KIRA_SPACE_HOME/~/.kira-space, never sharing a home, or a database with
 // Kira Studio). Rather than duplicate this
@@ -54,16 +54,4 @@ func EnsureLayoutAt(home string) error {
 		}
 	}
 	return nil
-}
-
-// SharedAgentDir is the agent folder both apps read (~/.kira-space/agent): Kira Space hosts and
-// edits it, Kira Studio only reads it.
-func SharedAgentDir() string {
-	return filepath.Join(Home("KIRA_SPACE_HOME", ".kira-space"), "agent")
-}
-
-// SharedAgentSecrets is the sealed credential store both apps open (~/.kira-space/agent-secrets.db),
-// a sibling of the agent folder, never inside it.
-func SharedAgentSecrets() string {
-	return filepath.Join(Home("KIRA_SPACE_HOME", ".kira-space"), "agent-secrets.db")
 }

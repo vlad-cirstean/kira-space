@@ -29,5 +29,12 @@ const spaceOpRecordSchema = /*#__PURE__*/ opLogRecordSchema.extend({
   steps: z.array(opStepSchema),
   stepsDropped: z.number(),
   cancellable: z.boolean(),
+  // Database and API ops only.
+  connectionId: z.string().nullable().optional(),
+  tabId: z.string().nullable().optional(),
+  rows: z.number().nullable().optional(),
+  commandTruncated: z.boolean().optional(),
+  path: z.string().nullable().optional(),
+  delayMs: z.number().optional(),
 });
 export type SpaceOpRecord = z.infer<typeof spaceOpRecordSchema>;

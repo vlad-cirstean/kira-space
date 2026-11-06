@@ -1,13 +1,13 @@
 ---
 import { type AppContent, SITE } from '../data/content';
 import { href, REPO_URL } from '../data/nav';
-import type { ResolvedShot } from '../lib/shots';
+import type { ResolvedWindowShot } from '../lib/shots';
 import Icon from './Icon.astro';
 import Shot from './Shot.astro';
 
 interface Props {
   app: AppContent;
-  shot: ResolvedShot;
+  shot: ResolvedWindowShot;
 }
 
 const { app, shot } = Astro.props;

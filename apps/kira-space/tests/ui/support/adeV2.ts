@@ -19,6 +19,17 @@ export function adeFixture<T = unknown>(name: string): T {
   return JSON.parse(readFileSync(resolve(FIXTURE_DIR, `${name}.json`), 'utf8')) as T;
 }
 
+/** A task with no pending panel edits: the forward bar stays hidden. */
+const NO_PANEL_FORWARD = {
+  stepId: '',
+  stepName: '',
+  items: [],
+  targets: [],
+  unreachable: 0,
+  dropped: 0,
+  preview: '',
+};
+
 /** The task issue of a task no tracker recognises: the Task tab shows no issue row. */
 const NO_TRACKER_ISSUE = {
   provider: '',
@@ -167,7 +178,7 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskSaveStepYaml, response: libraryStep() },
     { channel: IPC.adeTaskNewStep, response: libraryStep() },
     { channel: IPC.adeTaskDeleteStep },
-    { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/repos', files: [] } },
+    { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/config/repos', files: [] } },
     {
       channel: IPC.repoConfigFile,
       response: contract('repo-config-file', 'RepoConfigService.SaveFile'),
@@ -190,8 +201,16 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskStepDone, response: adeFixture('task') },
     { channel: IPC.adeTaskSetTaskStep, response: adeFixture('task') },
     { channel: IPC.adeTaskHandovers, response: { handovers: [] } },
+    { channel: IPC.adeTaskProofs, response: { proofs: [] } },
+    { channel: IPC.adeTaskDbAudit, response: { entries: [] } },
+    { channel: IPC.adeTaskProofChoices, response: { proofs: [] } },
+    { channel: IPC.adeTaskLinkProof },
+    { channel: IPC.adeTaskUnlinkProof },
     { channel: IPC.adeTaskUpdateHandover },
     { channel: IPC.adeTaskDismissHandover },
+    { channel: IPC.adeTaskPanelForward, response: NO_PANEL_FORWARD },
+    { channel: IPC.adeTaskForwardPanelEdits },
+    { channel: IPC.adeTaskDismissPanelEdits },
     { channel: IPC.adeTaskArtifacts, response: { artifacts: [], gaps: [] } },
     { channel: IPC.adeTaskIssue, response: NO_TRACKER_ISSUE },
     { channel: IPC.adeTaskTrackedUpdates, response: { updates: [] } },

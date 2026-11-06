@@ -7,7 +7,7 @@ import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 import type { ControlSnapshot } from './support/types';
 
-// Stage handover: the routed prompt, the stage dialog, the Notes tab list and the Run dialog block.
+// Stage handover: the routed prompt, the stage dialog, the Details notes chain and the Run dialog block.
 // Contract ade-handover; backend half: flows/adeflow TestStageHandover (handover_test.go).
 
 const t = (id: string) => `[data-testid="${id}"]`;
@@ -97,8 +97,8 @@ test('contract: the routed handover prompt shows the draft and Move sends StepDo
   relaunch,
 }) => {
   const { page, control } = await openRouted(relaunch);
-  const notes = page.locator(t('ade-stage-notes'));
-  await expect(notes).toHaveValue(BODY);
+  const notes = page.locator(t('ade-stage-notes')).locator('.ProseMirror');
+  await expect(notes).toHaveText(BODY);
   await expect(page.locator(t('ade-stage-not-now'))).toBeVisible();
 
   await notes.fill(`${BODY} Check C.`);
@@ -132,8 +132,8 @@ test('the step mover opens the dialog and sends SetTaskStep with the typed notes
   const { window: page, control } = await openPlan(relaunch, snapshots(withDraft));
   await openTask(page, 'T_auth');
   await page.locator(t('ade-step-back')).click();
-  const notes = page.locator(t('ade-stage-notes'));
-  await expect(notes).toHaveValue('');
+  const notes = page.locator(t('ade-stage-notes')).locator('.ProseMirror');
+  await expect(notes).toHaveText('');
   await notes.fill('Redo the PR text.');
   await page.locator(t('ade-stage-move')).click();
   await expect.poll(() => calls(control, IPC.adeTaskSetTaskStep)).toHaveLength(1);
@@ -154,13 +154,13 @@ test('Task tab shows no handover; Notes lists the draft and moves; an edit sends
   await expect(page.locator(t('ade-main-tab'))).not.toContainText(BODY);
   await expect(page.locator(t('ade-task-handover-row'))).toHaveCount(0);
   await page.locator(t('ade-panel-tab-details')).click();
-  const list = page.locator(t('ade-handovers'));
+  const list = page.locator(t('ade-task-chain'));
   await expect(list.locator(t('ade-handover-draft'))).toContainText(BODY);
   await expect(list.locator(t('ade-handover-row'))).toHaveCount(handed.length);
   await expect(list.locator(t('ade-handover-row')).first()).toContainText(handed[0]?.body ?? '');
 
   await list.locator(t('ade-handover-row')).first().locator(t('ade-handover-edit')).click();
-  await list.locator(t('ade-handover-text')).fill('Corrected note.');
+  await list.locator(t('ade-handover-text')).locator('.ProseMirror').fill('Corrected note.');
   await list.locator(t('ade-handover-save')).click();
   await expect.poll(() => calls(control, IPC.adeTaskUpdateHandover)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskUpdateHandover)[0]?.args).toEqual({

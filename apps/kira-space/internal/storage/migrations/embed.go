@@ -87,6 +87,13 @@ var names = []sqlitex.MigrationSource{
 	{Version: 69, Name: "p511_manual_step_sandbox", File: "0069_p511_manual_step_sandbox.sql"},
 	{Version: 70, Name: "p512_tracked_updates", File: "0070_p512_tracked_updates.sql"},
 	{Version: 75, Name: "p517_worktree_dir", File: "0075_p517_worktree_dir.sql"},
+	{Version: 76, Name: "p537_script_run_mcp", File: "0076_p537_script_run_mcp.sql"},
+	{Version: 77, Name: "p543_unified_notes", File: "0077_p543_unified_notes.sql"},
+	{Version: 78, Name: "p544_module_tables", File: "0078_p544_module_tables.sql"},
+	{Version: 79, Name: "p544_tabs_connection", File: "0079_p544_tabs_connection.sql"},
+	{Version: 80, Name: "p544_op_log_fold", File: "0080_p544_op_log_fold.sql"},
+	{Version: 81, Name: "p547_db_audit", File: "0081_p547_db_audit.sql"},
+	{Version: 82, Name: "p549_db_audit_call_index", File: "0082_p549_db_audit_call_index.sql"},
 }
 
 // All returns every migration in ascending version order.

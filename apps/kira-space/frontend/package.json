@@ -11,9 +11,15 @@
     "build:mobile": "vite build --config vite.mobile.config.ts"
   },
   "dependencies": {
+    "@kira/api-core": "workspace:*",
+    "@kira/docker-ui": "workspace:*",
     "@kira/git-core": "workspace:*",
     "@kira/git-ipc": "workspace:*",
     "@kira/git-ui": "workspace:*",
+    "dompurify": "3.4.17",
+    "mermaid": "12.2.0",
+    "modern-screenshot": "4.7.0",
+    "shell-quote": "1.12.0",
     "vue": "3.5.44",
     "zod": "4.6.7"
   }

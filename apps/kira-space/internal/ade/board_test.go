@@ -94,7 +94,7 @@ func (h *boardHarness) addTask(id, kind string, specs ...branchSpec) {
 			Position: i, HadCommits: s.hadCommits, AddedAt: 1,
 		})
 	}
-	if _, err := h.repos.AdeTasks.CreateTask(model.AdeTask{ID: id, Kind: kind, Title: id, CreatedAt: 1}, bs, nil); err != nil {
+	if _, err := h.repos.AdeTasks.CreateTask(model.AdeTask{ID: id, Kind: kind, Title: id, CreatedAt: 1}, bs, nil, nil); err != nil {
 		h.t.Fatalf("create task %s: %v", id, err)
 	}
 }

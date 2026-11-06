@@ -1,4 +1,4 @@
-# Kira Studio — design system + workbench
+# Kira Space — design system + workbench
 
 Published canvas: https://claude.ai/code/artifact/2f4b49c0-d9fe-45a9-8964-a162eeb876ba
 
@@ -9,7 +9,7 @@ its own. Measured on the current tree: 6 font sizes, ~19 distinct padding pairs,
 7 control heights, 8 button class names, and `.icon-button` defined
 independently in three files.
 
-Static mockups, not a clickable prototype. Nothing under `apps/kira-studio/frontend/src` is
+Static mockups, not a clickable prototype. Nothing under `apps/kira-space/frontend/src/studio` is
 touched by anything in this folder.
 
 ## How it is built

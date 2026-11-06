@@ -3,9 +3,9 @@ title: Database MCP server
 description: Let an AI client read your databases under rules you set.
 sources:
   - README.md
-  - apps/kira-studio/internal/dbmcp/server.go
-  - apps/kira-studio/internal/dbmcp/tools.go
-  - apps/kira-studio/frontend/src/state/settingsDomain.ts
+  - apps/kira-space/internal/dbmcp/server.go
+  - apps/kira-space/internal/dbmcp/tools.go
+  - apps/kira-space/frontend/src/state/settingsDomain.ts
   - internal/llmprompts/registry.go
   - docs/ARCHITECTURE.md
   - packages/theme/src/i18n/en.json
@@ -23,6 +23,20 @@ The server is off by default. Turn it on with **Enable the database MCP server**
 - Its own bearer token. **Regenerate token** issues a new one.
 - A port conflict stops the server. It never falls back to another port.
 - Tool list: see [MCP tools](../../reference/mcp-tools/).
+
+## Workflow steps
+
+A workflow step with `db_mcp: true` gets the database tools in its own session. Tick **Kira database tools** in the step inspector. No token to copy: Kira creates one per launch, keeps it in memory and revokes it when the session ends.
+
+This works with the server switch off. The session talks to a separate server named `kira-db-session` on a random loopback port. It shares your exposed connections, limits and approvals. External clients never reach it, and the server on port 8766 stays as the switch sets it. Turning the switch off leaves running steps connected, and approvals they wait on stay open until the session ends.
+
+## Audit trail
+
+When a workflow step gives its session the Kira database tools, Kira Space records each tool call in the task's Details list, in time order. A row shows the tool, the connection, the time taken, success or failure, and the statement with its literal values masked. A statement Kira cannot mask safely is not recorded; the row says so.
+
+Approvals the call raised show under it: accepted, denied, timed out or not answered. An exemption approval lists the limits it lifted and the reason.
+
+Kira never stores results, bound values or error text, only an error code. Use the **Kira DB** toggle in the Details header to hide the rows. Calls from external clients are not recorded.
 
 ## Exposed connections
 

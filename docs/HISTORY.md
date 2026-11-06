@@ -7704,3 +7704,57 @@ Review MCP results before delivery to the agent. Per-mode `mcp.review.read|write
 
 2 code review rounds: R1 9 findings, R2 8 findings, all fixed; per-relation column review settles in `dbmcp`/`maskreview`.
 <!-- /chapter v0.2.36 -->
+<!-- chapter v0.3.0 -->
+## v0.3.0
+Source: docs/v0.3.0/ at 76f3773cb. 16 phases.
+
+### v0.3.0 P537 Part 1 (Done)
+Merge Kira Space and Kira Studio: Studio relocated into `apps/kira-space` and merged bridge frozen. 62 bound services, 519 methods. Twins `OpsService`, `SettingsService`, `ConfigFilesService` renamed with a `Studio` prefix until P544. Tabs, CustomScripts and ScriptRuns route over both stacks by id lookup. Studio sources sit under `frontend/src/studio`, tests under `tests/<suite>/studio`.
+
+### v0.3.0 P537 Part 2 (Done)
+Finish the merge in three parallel streams (Go, frontend, build/tests/docs), landed fast-forward A, B, C with no conflicts. Build, vet, lint, typecheck and dead-code checks pass on the merged tree; bindings identical to Part 1. Site is one landing page, `/space` redirects to `/`. `appmerge` carries Studio rows until P544. Studio-only stack tests deleted.
+
+### v0.3.0 P538 (Done)
+Studio twins with no data dependency merged. Cell editor height persists in the Space layout (`TestLayoutCellEditorHeight`); Studio layout repo gone. One `Contract` helper, one flat `tests/contract/`, 15 stale Studio contracts deleted. One UI harness (`studioTest`) and one mock runtime; `ui-studio`, `visual-studio`, `screenshots-studio` projects gone; 15 UI spec twins and e2e-real twins merged. One `ramWorlds.ts` for perf.
+
+### v0.3.0 P539 (Done)
+Studio home folded into the Space home: one data home `~/.kira-space/`, `studio.db` beside `kira.db`. `internal/homefold` (`Files` and `Runs`, marker `homefold.p539`, backup `backups/p539-<ts>/`, resumable, `TestHomeFold`). Second runs stack deleted. `StudioConfigFilesService` folded into `ConfigFilesService`. DB MCP re-registers after the fold.
+
+### v0.3.0 P540 (Done)
+Every config folder lives in `<home>/config/<module>/`; `llm-prompts.json` in `config/prompts/`. One resolver, `configfs.Root`/`ModuleDir`. `internal/configfold` (marker `configfold.p540`, backup `backups/p540-<ts>/`, resumable, `config/` wins a collision) runs before `homefold.Files`. Tree copier moved to `internal/fsmove`. `TestConfigFold` covers fresh, fold, idempotent, interrupted, cross-device, collision.
+
+### v0.3.0 P541 (Done)
+Mermaid visualiser in the proof tool and proof MCP tool. Proof steps take view `diagram` (Mermaid text in `data.source`), validated in Go (`proof/diagram.go`: header allow list; no front matter, directives, click lines, `url(`, `@import`; 20000 bytes, 1000 lines). Migration 0065. Lazy `mermaid` 12.2.0 and `dompurify`, strict mode, no HTML labels. Image nodes cannot draw under the CSP: tool text says send none. Open: real `claude` proof run not done.
+
+### v0.3.0 P542 (Done)
+Unified notes: user notes and agent handovers form one chain of `ade_task_handovers` rows (state `note`). Migration 0077 moves `ade_tasks.notes` into note rows. Bridge `AddNote`. `AdeNotesChain` and one Markdown editor (`AdeNotesEditor`) everywhere; composer draft in the `adeNoteComposer` Pinia store. Limits: note 1 MiB, draft/handed 16 KiB.
+
+### v0.3.0 P543 (Done)
+Proof as an artifact chain in the task details panel. `proof_task_links` (migration 0066 era, cascade on session delete); agent MCP tool `attach_proof` and a user attach menu; `pruneClosed` keeps linked sessions. `AdeTaskChain` replaces `AdeNotesChain`, merging handovers and proofs by time desc. Details tab order: links, chain, timeline. Diagram steps render through `ProofDiagram`. Bridge methods `TaskProofs`, `ProofChoices`, `LinkProof`, `UnlinkProof`.
+
+### v0.3.0 P544 Part 1 (Done)
+One database. `studio.db` folds into `kira.db`: one migration sequence (0078, 0079; Studio's 0001 to 0066 frozen in `dbfold/legacy`), one `storage` model and repos package. `appcore.Deps` is the only deps struct. `dbfold.Run` replaces `appmerge` (marker `dbfold.p544`, `VACUUM INTO` backups, resumable). `proof_task_links` cascades from `ade_tasks`. `TestDbFold`, `TestDbFoldFresh`.
+
+### v0.3.0 P544 Part 2 (Done)
+Settings and op log twins merged. One `SettingsService`, `settings` table and frontend store; database sections are leaves of it. Migration 0080 folds `db_op_log` into `op_log` (category `db`); `OpsService` is the only op service. `workbench/OperationsPanel.vue` lists every module with a per-connection facet. Bound services 59.
+
+### v0.3.0 P545 (Done)
+Timeline becomes a `Toggle` in the chain header, default off, kept per device (`kira.ade.details.timeline`). `taskChain` merges handovers, proofs and events newest first. `AdeTaskTimeline.vue` deleted. `TestDetailsList` (contract `ade-details-list`) and `ade-v2-details-list.spec.ts`.
+
+### v0.3.0 P546 (Done)
+User panel edits (notes, handovers, links, proof attach, task title) forward as diffs to agents running in the step. Per-task in-memory pending set (`ade/panelforward.go`), net-change coalescing, unified hunks via `go-udiff`; caps 200 lines per item, 32 KiB per message, 32 items. Only TUI sessions with a bound terminal take the paste. `AdePanelForwardBar.vue` offers send and discard; headless runs are not reached.
+
+### v0.3.0 P547 (Done)
+Kira DB audit trail in the details panel. Table `ade_db_audit` (migration 0081, cap 2000 per task). `dbaudit.Recorder` captures session-server calls and approvals. Statements masked by allow list (`MaskSQLLiterals`, per-adapter `RedactStatement`); errors stored as code only; results and params never. `Kira DB (n)` toggle, default on. External server not audited (open item).
+
+### v0.3.0 P548 (Done)
+Studio MCP option in workflow steps. Step key `db_mcp` (wire `dbMcp`) on agent without smart script, review and manual with session. `dbmcp.SessionPool` is a second server (`kira-db-session`, ephemeral loopback port, per-launch hashed tokens, starts on first grant, closes on last release). Tokens ride the per-launch config, never argv or logs. `TestSessionPoolLifecycle`, `TestDbMcpStep`; real `claude` tests pass.
+
+### v0.3.0 P549 (Done)
+Lossless WebP screenshots via sharp at capture (`encodeWebp`, `saveShot`, `prepareCapture`, single `FRAME` constant). macOS 26 window frame: radius 16, flat lights, 0.5px hairline, shadow `0 18px 48px`; values accepted by the user without an Apple reference. 12 PNGs converted. N15 guard in `check-conventions.ts` rejects tracked PNG and WebP under `screenshots/`. Site serves WebP as emitted.
+
+### v0.3.0 P550 (Done)
+Site image pipeline: CI generates site images. Manifest `site/src/data/shotCapture.ts` (6 `window`, 1 `floating`, 1 `region` shot), `crop.ts`, `shoot.ts` dispatcher, placeholder mode `KIRA_SITE_SHOTS=placeholder`, `site:shots:fill` with `--fallback`. Two `bun run screenshots` runs byte-identical; nothing generated is committed. Workflow patch in `docs/pending-changes/` (apply with workflow scope).
+
+Full Go suite and cheap checks green; UI suites run in PR CI; real `claude` tests passed. 2 code review rounds, all findings fixed. All 8 site images viewed and good.
+<!-- /chapter v0.3.0 -->

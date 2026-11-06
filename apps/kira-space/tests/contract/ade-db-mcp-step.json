@@ -1,0 +1,126 @@
+{
+  "AdeTaskService.Workflows": {
+    "dir": "<space>/config/workflows",
+    "sandbox": {
+      "enforced": false,
+      "reason": "The sandbox is not enforced on this OS. It runs on macOS only. Claude permission rules still apply, but they do not stop shell commands."
+    },
+    "stageSettings": [
+      {
+        "hint": "Tokens of context before Claude Code compacts the conversation, 100000 to 1000000. Empty uses Claude Code’s default.",
+        "key": "auto_compact_window",
+        "kind": "int",
+        "label": "Auto compact limit",
+        "max": 1000000,
+        "min": 100000,
+        "provider": "claude",
+        "providerLabel": "Claude"
+      }
+    ],
+    "steps": [],
+    "stepsDir": "<space>/config/steps",
+    "workflows": [
+      {
+        "error": null,
+        "fileName": "flow.yaml",
+        "hash": "9f311f4805760888dfc6174dc8498d1c878e436931f9cb5e87d0915b0a192cd3",
+        "path": "<space>/config/workflows/flow.yaml",
+        "usedBy": 0,
+        "workflow": {
+          "id": "flow",
+          "name": "Flow",
+          "steps": [
+            {
+              "agent": "",
+              "allowedTools": [],
+              "before": "auto",
+              "command": "",
+              "dbMcp": true,
+              "id": "withdb",
+              "kind": "agent",
+              "maxReturns": 3,
+              "name": "withdb",
+              "outsideRepo": false,
+              "params": {},
+              "prompt": "work on {branch} in {repo}",
+              "results": [
+                {
+                  "description": "",
+                  "id": "done",
+                  "loop": false,
+                  "next": "next",
+                  "ok": true
+                },
+                {
+                  "description": "",
+                  "id": "failed",
+                  "loop": false,
+                  "next": "stop",
+                  "ok": false
+                }
+              ],
+              "review": null,
+              "runsOn": "each repo",
+              "sandbox": {
+                "access": "write",
+                "allow": [],
+                "network": true,
+                "read": []
+              },
+              "session": false,
+              "settings": {},
+              "skip": false,
+              "smartScript": "",
+              "status": "",
+              "timeout": "1m"
+            },
+            {
+              "agent": "",
+              "allowedTools": [],
+              "before": "auto",
+              "command": "",
+              "dbMcp": false,
+              "id": "plain",
+              "kind": "agent",
+              "maxReturns": 3,
+              "name": "plain",
+              "outsideRepo": false,
+              "params": {},
+              "prompt": "work on {branch} in {repo}",
+              "results": [
+                {
+                  "description": "",
+                  "id": "done",
+                  "loop": false,
+                  "next": "next",
+                  "ok": true
+                },
+                {
+                  "description": "",
+                  "id": "failed",
+                  "loop": false,
+                  "next": "stop",
+                  "ok": false
+                }
+              ],
+              "review": null,
+              "runsOn": "each repo",
+              "sandbox": {
+                "access": "write",
+                "allow": [],
+                "network": true,
+                "read": []
+              },
+              "session": false,
+              "settings": {},
+              "skip": false,
+              "smartScript": "",
+              "status": "",
+              "timeout": "1m"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

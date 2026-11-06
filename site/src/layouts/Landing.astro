@@ -1,42 +1,38 @@
 ---
 import AppHero from '../components/AppHero.astro';
-import AppTabs from '../components/AppTabs.astro';
 import FeatureGrid from '../components/FeatureGrid.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import Highlight from '../components/Highlight.astro';
 import Install from '../components/Install.astro';
-import { APPS, SITE } from '../data/content';
-import type { AppId } from '../data/shots';
-import { resolveAllShots } from '../lib/shots';
+import { APP as content, SITE } from '../data/content';
+import { type ResolvedWindowShot, resolveAllShots } from '../lib/shots';
 import Base from './Base.astro';
 
-interface Props {
-  app: AppId;
+const shots = await resolveAllShots();
+// Hero and highlights show a whole window, and og:image needs the window's social PNG.
+function windowShot(id: string): ResolvedWindowShot {
+  const shot = shots.find((s) => s.id === id);
+  if (!shot) throw new Error(`Missing shot ${id}`);
+  if (shot.kind !== 'window')
+    throw new Error(`Shot ${id} is a ${shot.kind} crop, not a window shot`);
+  return shot;
 }
-
-const content = APPS.find((a) => a.id === Astro.props.app);
-if (!content) throw new Error(`Unknown app ${Astro.props.app}`);
-const shots = (await resolveAllShots()).filter((s) => s.app === content.id);
-const hero = shots.find((s) => s.id === content.hero);
-if (!hero) throw new Error(`Missing hero shot ${content.hero}`);
+const hero = windowShot(content.hero);
 ---
 
-<Base title={content.pageTitle} description={content.description} image={hero.framedPng}>
+<Base title={content.pageTitle} description={content.description} image={hero.social}>
   <Header />
-  <main data-app={content.id} class="relative isolate overflow-hidden">
+  <main data-app="space" class="relative isolate overflow-hidden">
     <div
       aria-hidden="true"
       class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[40rem] bg-[radial-gradient(ellipse_60%_100%_at_50%_0%,color-mix(in_srgb,var(--tint)_18%,transparent),transparent)]"
     > </div>
     <p class="mx-auto max-w-5xl px-4 pt-8 text-base text-muted">{SITE.tagline}</p>
-    <AppTabs current={content.id} />
     <AppHero app={content} shot={hero} />
     <FeatureGrid features={content.features} />
     {content.highlights.map((h, i) => {
-      const shot = shots.find((s) => s.id === h.shot);
-      if (!shot) throw new Error(`Missing highlight shot ${h.shot}`);
-      return <Highlight highlight={h} shot={shot} flip={i % 2 === 1} />;
+      return <Highlight highlight={h} shot={windowShot(h.shot)} flip={i % 2 === 1} />;
     })}
     <Install app={content} />
   </main>

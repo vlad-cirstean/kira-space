@@ -1,16 +1,22 @@
 import type { QueryClient } from '@tanstack/vue-query';
+import { useDebounceFn } from '@vueuse/core';
+import { TIMING } from '@workbench/behaviour/timing';
 import { watch } from 'vue';
 import { control } from '../bridge/control';
 import { repoConfigKey } from '../repo/state/repoConfigQueries';
 import { reposKey } from '../repo/state/reposQueries';
+import { control as studioControl } from '../studio/bridge/control';
 import type { useAgentSessionsStore } from './state';
 import { agentContextKey } from './v2/context/queries';
 import { installMobileLaunch } from './v2/dialog/mobileLaunch';
 import { adeTurns } from './v2/dialog/turnWatch';
 import {
   artifactsPrefix,
+  dbAuditPrefix,
   handoversPrefix,
   issuePrefix,
+  proofChoicesKey,
+  proofsPrefix,
   reviewStepPrefix,
   stepYamlKey,
   workflowYamlKey,
@@ -76,6 +82,18 @@ export function installAdeSignals(
     void queryClient.invalidateQueries({ queryKey: handoversPrefix });
     void queryClient.invalidateQueries({ queryKey: artifactsPrefix });
     void queryClient.invalidateQueries({ queryKey: issuePrefix });
+  });
+  // A proof session closing, attaching or deleting changes a task's chain.
+  studioControl.onProofChanged(() => {
+    void queryClient.invalidateQueries({ queryKey: proofsPrefix });
+    void queryClient.invalidateQueries({ queryKey: proofChoicesKey });
+  });
+  // A burst of Kira DB calls refetches the trail once.
+  const refreshDbAudit = useDebounceFn(() => {
+    void queryClient.invalidateQueries({ queryKey: dbAuditPrefix });
+  }, TIMING.search);
+  control.onAdeTaskDbAudit(() => {
+    void refreshDbAudit();
   });
   control.onAdeTaskRuns(refreshReviewStep);
   control.onAdeTaskUpdates(() => {

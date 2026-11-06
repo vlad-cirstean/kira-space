@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"errors"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -15,8 +16,13 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/buildinfo"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/configfold"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/homefold"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/openedfiles"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
@@ -40,12 +46,10 @@ var assets embed.FS
 //go:embed all:frontend/dist-mobile
 var mobileAssets embed.FS
 
-// Startup order: the argv shims (askpass, memory-mcp, memory-embed) -> config.EnsureLayout ->
-// logging.Init/Sweep -> storage.Open (migrates) -> repos.New -> appwire.Build (terminal registry,
-// ADE tracker with the Claude Code hooks, task board, keep-awake, the 34 bound services) ->
-// application.New (the bound services plus the git stream registration) -> the menu -> the
-// startup window list, opened -> app.Run(). No adapters, connections, HTTP/gRPC or DB MCP:
-// not this app's module.
+// Startup order: the argv shims (askpass, memory-mcp, memory-embed) -> refuseOldStudio ->
+// config.EnsureLayout -> logging.Init/Sweep -> instance lock -> storage.Open -> configfold.Run (config files into <home>/config) -> homefold.Files (legacy
+// Studio home folded in) -> dbfold.Run (studio.db imported, Studio scripts and runs folded in) -> appwire.Build (every Space and Studio service) -> application.New (bound services,
+// git and engine streams) -> the menu -> the startup window list, opened -> app.Run().
 func main() {
 	if code, ok := appwire.RunArgvShim(os.Args); ok {
 		os.Exit(code)
@@ -68,6 +72,8 @@ func main() {
 
 	startedAt := time.Now()
 
+	refuseOldStudio(reporter)
+
 	if err := config.EnsureLayout(); err != nil {
 		reporter.Fatal(startupfail.StepEnsureLayout, err)
 	}
@@ -87,6 +93,9 @@ func main() {
 	if err != nil {
 		reporter.Fatal(startupfail.StepRepos, err)
 	}
+	foldConfig(reporter, db)
+	foldLegacyHome(reporter, db)
+	foldDB(reporter, db)
 
 	settings, err := repositories.Settings.GetAll()
 	if err != nil {
@@ -102,17 +111,21 @@ func main() {
 	browserOpener, attachBrowser := shell.NewDeferredBrowser()
 	fileOpener, attachFileOpener := shell.NewDeferredFileOpener()
 	rawDialogs, attachDialogs := shell.NewDeferredDialogs()
-	wired := appwire.Build(appwire.Options{
-		Repos: repositories, DB: db, Cipher: secrets.New(), Emitter: rawEmitter, Browser: browserOpener, FileOpener: fileOpener,
+	wired, err := appwire.Build(appwire.Options{
+		Repos: repositories, DB: db,
+		Cipher: secrets.New(), Authorizer: localauth.New(time.Now, localauth.Evaluate, localauth.Available), Emitter: rawEmitter, Browser: browserOpener, FileOpener: fileOpener,
 		Dialogs: appshell.NewDialogs(rawDialogs), Locator: platformLocator(),
 		KeepAwakeDriver: keepawake.NewPlatformDriver(), MobileAssets: mobileAssetsFS,
 		FileHandlers: filehandlers.NewRegistry(),
 	})
+	if err != nil {
+		reporter.Fatal(startupfail.StepSettings, err)
+	}
 	windows, quitter := wired.Windows, wired.Quitter
 
 	app := application.New(application.Options{
 		Name:        "Kira Space",
-		Description: "A git client for macOS\n\nVersion " + buildinfo.Version,
+		Description: "Git, agents, memory and automations, plus databases, APIs, Docker and Kubernetes, in one app\n\nVersion " + buildinfo.Version,
 		Services:    append(wired.Bound(), notifyServices(wired)...),
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -158,6 +171,7 @@ func main() {
 	attachDialogs(app, windowToActOn)
 
 	appshell.RegisterGitGraphStream(app, wired.GitWindows)
+	appshell.RegisterEngineStream(app, wired.Router)
 
 	winDeps := shell.WindowOpenerDeps{
 		App:        app,
@@ -166,18 +180,23 @@ func main() {
 		Terminal: wired.Terminal.Registry, Repo: repositories.Windows,
 		Cfg: shell.Config{AppName: "Kira Space", WindowTitle: "Kira Space"},
 		Ephemeral: func(key string) bool {
-			if bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) {
+			if bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) || proof.IsWindowKey(key) {
 				return true
 			}
 			ok, _ := repositories.AdeReview.IsReviewKey(key)
 			return ok
 		},
 	}
+	winDeps.OnWindowClosing = append(winDeps.OnWindowClosing, wired.OnWindowClosing...)
 	winDeps.OnWindowClosing = append(winDeps.OnWindowClosing, wired.OpenedFiles.Forget, wired.HostView.Targets.Forget, wired.GitWindows.Close,
 		func(key string) { bridge.CaptureForget(wired.Capture, key) })
 	openNew := func() { shell.OpenNewWindow(winDeps) }
 	// OpenNewWindow is the title bar's "New window" button (P116 G6) — the same action the ⇧⌘N
 	// menu command below ties to.
+	wired.BindProofShell(func(rec shell.WindowRecord) {
+		rec.Bounds = shell.CascadeFrom(app.Window.Current())
+		shell.OpenWindow(winDeps, rec)
+	})
 	wired.BindShell(appwire.ShellHooks{
 		OpenWindow: func(rec shell.WindowRecord) {
 			rec.Bounds = shell.CascadeFrom(app.Window.Current())
@@ -262,7 +281,7 @@ func purgeReviewWindows(repositories *repos.Repos) {
 	}
 }
 
-// purgeKeyedWindows drops capture popup, host view and files window rows a previous run left
+// purgeKeyedWindows drops capture popup, host view, files window and proof window rows a previous run left
 // behind: they are never restored.
 func purgeKeyedWindows(repositories *repos.Repos) {
 	records, err := repositories.Windows.List()
@@ -271,11 +290,48 @@ func purgeKeyedWindows(repositories *repos.Repos) {
 		return
 	}
 	for _, r := range records {
-		if !bridge.IsHostViewKey(r.Key) && !bridge.IsCaptureKey(r.Key) && !openedfiles.IsWindowKey(r.Key) {
+		if !bridge.IsHostViewKey(r.Key) && !bridge.IsCaptureKey(r.Key) && !openedfiles.IsWindowKey(r.Key) && !proof.IsWindowKey(r.Key) {
 			continue
 		}
 		if err := repositories.Windows.Delete(r.Key); err != nil {
 			slog.Warn("purge window", "scope", "window", "key", r.Key, "err", err)
 		}
+	}
+}
+
+// foldDB folds a Kira Studio database into the Space one once (P544).
+func foldDB(reporter *startupfail.Reporter, db *storage.DB) {
+	err := dbfold.Run(dbfold.Options{
+		Home: config.KiraSpaceHome(), Space: db.DB,
+		Ephemeral: func(key string) bool {
+			return bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) || proof.IsWindowKey(key)
+		},
+	})
+	if err != nil {
+		reporter.Fatal(startupfail.StepStorage, err)
+	}
+}
+
+// foldConfig moves the config folders into <home>/config once (P540). A failure leaves the marker at its
+// last step, so the next launch resumes.
+func foldConfig(reporter *startupfail.Reporter, db *storage.DB) {
+	if err := configfold.Run(configfold.Options{Space: db.DB, Home: config.KiraSpaceHome()}); err != nil {
+		reporter.Fatal(startupfail.StepStorage, err)
+	}
+}
+
+// foldLegacyHome folds the retired Kira Studio home into the Space home once (P539). A running old
+// Studio stops the launch with its own alert; any other failure leaves the marker at its last step,
+// so the next launch resumes.
+func foldLegacyHome(reporter *startupfail.Reporter, db *storage.DB) {
+	legacy := homefold.LegacyHome()
+	err := homefold.Files(homefold.Options{Space: db.DB, SpaceHome: config.KiraSpaceHome(), Legacy: legacy})
+	switch {
+	case errors.Is(err, homefold.ErrStudioRunning):
+		reporter.Fatal(startupfail.StepOldStudio, err)
+	case err != nil:
+		reporter.Fatal(startupfail.StepStorage, err)
+	case homefold.Reappeared(legacy):
+		slog.Warn("homefold: Kira Studio recreated its home after the fold; its data is not in Space. Delete Kira Studio.app", "scope", "homefold", "path", legacy)
 	}
 }

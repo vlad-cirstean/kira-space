@@ -6,10 +6,17 @@ import type { MaybeRefOrGetter } from 'vue';
 import { toValue } from 'vue';
 import { control } from '../../bridge/control';
 import { withShelved } from './board/shelf';
-import { archivedTaskKey, boardKey, runSandboxKey, sessionsKey } from './readQueries';
+import {
+  archivedTaskKey,
+  boardKey,
+  panelForwardPrefix,
+  runSandboxKey,
+  sessionsKey,
+} from './readQueries';
 import type {
   AddExistingBranchArgs,
   AddLinkArgs,
+  AddNoteArgs,
   AddTaskRepoArgs,
   Board,
   BranchArgs,
@@ -24,9 +31,12 @@ import type {
   HostLinkArgs,
   ImportWorkflowArgs,
   LaunchStepArgs,
+  LinkProofArgs,
   NewStepArgs,
   NewWorkflowArgs,
   OntoArgs,
+  PanelForward,
+  PanelForwardResult,
   RebaseArgs,
   RebasePreview,
   RebaseStart,
@@ -87,6 +97,9 @@ export const stepYamlKey = ['adetask', 'stepYaml'] as const;
 const candidatesKey = (codeRepoId: string) => ['adetask', 'candidates', codeRepoId] as const;
 export const reviewStepPrefix = ['adetask', 'reviewStep'] as const;
 export const handoversPrefix = ['adetask', 'handovers'] as const;
+export const proofsPrefix = ['adetask', 'proofs'] as const;
+export const dbAuditPrefix = ['adetask', 'dbAudit'] as const;
+export const proofChoicesKey = ['adetask', 'proofChoices'] as const;
 export const artifactsPrefix = ['adetask', 'artifacts'] as const;
 export const issuePrefix = ['adetask', 'issue'] as const;
 export const reviewTargetKey = (windowKey: string) =>
@@ -187,7 +200,6 @@ function withTaskPatch(board: Board, args: UpdateTaskArgs): Board {
       jira: p.clearJira ? null : (p.jira ?? t.jira),
       hostUrl: p.hostUrl ?? t.hostUrl,
       est: p.est ?? t.est,
-      notes: p.notes ?? t.notes,
       color: p.color ?? t.color,
       kind: p.kind ?? t.kind,
       statusId: p.statusId ?? t.statusId,
@@ -510,6 +522,53 @@ export function useHandovers(taskId: MaybeRefOrGetter<string>) {
   });
 }
 
+/** The proof sessions attached to a task, newest closed first; a proof push refetches it. */
+export function useTaskProofs(taskId: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: [...proofsPrefix, taskId] as const,
+    queryFn: () => control.adeTaskProofs({ taskId: toValue(taskId) }),
+  });
+}
+
+/** The Kira DB calls and approvals of a task's agent sessions, newest first; a dbAudit push refetches it. */
+export function useTaskDbAudit(taskId: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: [...dbAuditPrefix, taskId] as const,
+    queryFn: () => control.adeTaskDbAudit({ taskId: toValue(taskId) }),
+  });
+}
+
+/** Closed proof sessions no task holds; read only while the attach menu is open. */
+export function useProofChoices(enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: proofChoicesKey,
+    queryFn: () => control.adeTaskProofChoices(),
+    staleTime: 0,
+    enabled: () => toValue(enabled),
+  });
+}
+
+function refreshProofs(): Promise<unknown> {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: proofsPrefix }),
+    queryClient.invalidateQueries({ queryKey: proofChoicesKey }),
+  ]);
+}
+
+export function useLinkProof() {
+  return useMutation({
+    mutationFn: (args: LinkProofArgs) => control.adeTaskLinkProof(args),
+    onSuccess: refreshProofs,
+  });
+}
+
+export function useUnlinkProof() {
+  return useMutation({
+    mutationFn: (args: LinkProofArgs) => control.adeTaskUnlinkProof(args),
+    onSuccess: refreshProofs,
+  });
+}
+
 /** The task's artifacts, detected and stored; a board push refetches it while mounted. */
 export function useTaskArtifacts(taskId: MaybeRefOrGetter<string>) {
   return useQuery({
@@ -553,9 +612,18 @@ export function useRemoveArtifact() {
   });
 }
 
+/** Appends a user note to the task's chain. */
+export function useAddNote() {
+  return useMutation({
+    mutationFn: (args: AddNoteArgs) => control.adeTaskAddNote(args),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: handoversPrefix }),
+  });
+}
+
 export function useUpdateHandover() {
   return useMutation({
     mutationFn: (args: UpdateHandoverArgs) => control.adeTaskUpdateHandover(args),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: handoversPrefix }),
   });
 }
 
@@ -583,6 +651,29 @@ export function useForwardReviewComments() {
   return useMutation({
     mutationFn: (args: BranchArgs): Promise<ForwardReviewResult> =>
       control.adeTaskForwardReviewComments(args),
+  });
+}
+
+/** The task's pending panel edits and the agents that would take them; board and sessions pushes refetch it. */
+export function usePanelForward(taskId: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: [...panelForwardPrefix, taskId] as const,
+    queryFn: (): Promise<PanelForward> => control.adeTaskPanelForward({ taskId: toValue(taskId) }),
+  });
+}
+
+export function useForwardPanelEdits() {
+  return useMutation({
+    mutationFn: (args: TaskArgs): Promise<PanelForwardResult> =>
+      control.adeTaskForwardPanelEdits(args),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: panelForwardPrefix }),
+  });
+}
+
+export function useDismissPanelEdits() {
+  return useMutation({
+    mutationFn: (args: TaskArgs) => control.adeTaskDismissPanelEdits(args),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: panelForwardPrefix }),
   });
 }
 

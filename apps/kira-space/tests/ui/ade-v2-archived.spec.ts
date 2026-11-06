@@ -72,6 +72,30 @@ test('a selected archived task shows all it kept, read-only', async ({ relaunch 
   const { window: page, control } = await openPlan(relaunch, [
     { channel: IPC.adeTaskArchivedTask, response: fx },
     sessionsWith(fx.branches[0].id),
+    {
+      channel: IPC.adeTaskHandovers,
+      response: {
+        handovers: [
+          {
+            id: 'n1',
+            taskId: 'H_1',
+            fromStepId: '',
+            fromStepName: '',
+            toStepId: '',
+            toStepName: '',
+            body: fx.task.notes,
+            source: 'user',
+            state: 'note',
+            finished: false,
+            dismissed: false,
+            edited: false,
+            sessionId: '',
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        ],
+      },
+    },
   ]);
   await pickArchived(page, 'H_1');
   await expect.poll(() => calls(control, IPC.adeTaskArchivedTask)).toHaveLength(1);

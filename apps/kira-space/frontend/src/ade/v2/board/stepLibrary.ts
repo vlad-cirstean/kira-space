@@ -18,6 +18,7 @@ const OVERRIDABLE = [
   'before',
   'timeout',
   'allowedTools',
+  'dbMcp',
   'settings',
   'sandbox',
   'review',

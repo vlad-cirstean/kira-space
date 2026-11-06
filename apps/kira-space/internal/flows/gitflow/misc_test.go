@@ -136,7 +136,7 @@ func TestRepoSettingsLiveInFile(t *testing.T) {
 	repo := r.app.NewRepo("filed")
 	repo.Commit("init", map[string]string{"a.txt": "a\n"})
 	id := r.open(repo.Dir).RepoID
-	path := filepath.Join(r.app.SpaceHome, "repos", "filed.yaml")
+	path := filepath.Join(r.app.ConfigDir("repos"), "filed.yaml")
 	read := func() string {
 		raw, err := os.ReadFile(path)
 		if err != nil {

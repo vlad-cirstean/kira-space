@@ -65,6 +65,7 @@ function kindDefaults(kind: StepKind): Omit<WorkflowStep, 'id' | 'name'> {
     timeout: '',
     prompt: '',
     allowedTools: [],
+    dbMcp: false,
     smartScript: '',
     params: {},
     review: null,

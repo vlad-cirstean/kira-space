@@ -6,7 +6,6 @@ import { FieldDescription, FieldError } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
-import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { refDebounced } from '@vueuse/core';
@@ -19,6 +18,7 @@ import AdeLinkTarget from './AdeLinkTarget.vue';
 import { firstWork, offsetToIso } from './board/calendar';
 import { candidateOf, candidateOptions } from './branchOptions';
 import { parseJira } from './jira';
+import AdeNotesEditor from './notes/AdeNotesEditor.vue';
 import { usePlanModel } from './plan/usePlanModel';
 import {
   useAddExistingBranch,
@@ -190,11 +190,11 @@ async function pick(value: string): Promise<void> {
         <Label for="ade-nw-notes" class="self-start pt-1.5 text-muted-foreground">{{
           t('space.common.notes.label')
         }}</Label>
-        <Textarea
+        <AdeNotesEditor
           id="ade-nw-notes"
           v-model="notes"
+          compact
           :placeholder="t('space.ade.add.notes.placeholder')"
-          class="resize-y"
           data-testid="ade-nw-notes"
         />
         <span />

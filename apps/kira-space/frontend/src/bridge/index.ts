@@ -44,6 +44,7 @@ import type {
   MobileStatus,
   MobileTerminalHold,
 } from '@shared/domain/mobile';
+import type { AppMode } from '@shared/domain/mode';
 import type {
   CodeSearchEvent,
   DiffContent,
@@ -123,7 +124,6 @@ import type {
 } from '../repo/state/repoConfigTypes';
 import type { RepoFormArgs, RepoFormResult } from '../repo/state/repoFormTypes';
 import type { CliToolsResult, IssueTrackers } from '../state/cliToolsDomain';
-import type { SpaceMode } from '../state/modeDomain';
 import type { SpaceOpRecord } from '../state/opsDomain';
 import type { Settings, SettingsPatch } from '../state/settingsDomain';
 import type { TabRecord } from '../state/tabDomain';
@@ -605,6 +605,18 @@ const spaceControl = {
     unwrap(AdeTaskService.StepDone(args)).then((r) => trust<V2.Task>(r)),
   adeTaskHandovers: (args: V2.TaskArgs): Promise<V2.HandoversResult> =>
     unwrap(AdeTaskService.Handovers(args)).then((r) => trust<V2.HandoversResult>(r)),
+  adeTaskAddNote: (args: V2.AddNoteArgs): Promise<V2.Handover> =>
+    unwrap(AdeTaskService.AddNote(args)).then((r) => trust<V2.Handover>(r)),
+  adeTaskProofs: (args: V2.TaskArgs): Promise<V2.TaskProofsResult> =>
+    unwrap(AdeTaskService.TaskProofs(args)).then((r) => trust<V2.TaskProofsResult>(r)),
+  adeTaskDbAudit: (args: V2.TaskArgs): Promise<V2.DbAuditResult> =>
+    unwrap(AdeTaskService.DbAudit(args)).then((r) => trust<V2.DbAuditResult>(r)),
+  adeTaskProofChoices: (): Promise<V2.ProofChoicesResult> =>
+    unwrap(AdeTaskService.ProofChoices()).then((r) => trust<V2.ProofChoicesResult>(r)),
+  adeTaskLinkProof: (args: V2.LinkProofArgs): Promise<void> =>
+    unwrap(AdeTaskService.LinkProof(args)),
+  adeTaskUnlinkProof: (args: V2.LinkProofArgs): Promise<void> =>
+    unwrap(AdeTaskService.UnlinkProof(args)),
   adeTaskUpdateHandover: (args: V2.UpdateHandoverArgs): Promise<void> =>
     unwrap(AdeTaskService.UpdateHandover(args)),
   adeTaskDismissHandover: (args: V2.TaskArgs): Promise<void> =>
@@ -708,6 +720,12 @@ const spaceControl = {
     unwrap(AdeTaskService.ForwardReviewComments(args)).then((r) =>
       trust<V2.ForwardReviewResult>(r),
     ),
+  adeTaskPanelForward: (args: V2.TaskArgs): Promise<V2.PanelForward> =>
+    unwrap(AdeTaskService.PanelForward(args)).then((r) => trust<V2.PanelForward>(r)),
+  adeTaskForwardPanelEdits: (args: V2.TaskArgs): Promise<V2.PanelForwardResult> =>
+    unwrap(AdeTaskService.ForwardPanelEdits(args)).then((r) => trust<V2.PanelForwardResult>(r)),
+  adeTaskDismissPanelEdits: (args: V2.TaskArgs): Promise<void> =>
+    unwrap(AdeTaskService.DismissPanelEdits(args)),
   adeTaskReviewForwardText: (args: V2.BranchArgs): Promise<V2.ReviewForwardText> =>
     unwrap(AdeTaskService.ReviewForwardText(args)).then((r) => trust<V2.ReviewForwardText>(r)),
   adeTaskArchiveRisk: (args: V2.TaskArgs): Promise<V2.ArchiveRisk> =>
@@ -727,6 +745,8 @@ const spaceControl = {
   onAdeTaskSessions: (cb: () => void): (() => void) => on(CHANNEL.adeTaskSessions, cb),
   onAdeTaskReview: (cb: (event: V2.ReviewEvent) => void): (() => void) =>
     on(CHANNEL.adeTaskReview, cb),
+  onAdeTaskDbAudit: (cb: (event: V2.DbAuditEvent) => void): (() => void) =>
+    on(CHANNEL.adeTaskDbAudit, cb),
   onAdeTaskOpenSession: (cb: (event: V2.OpenSessionEvent) => void): (() => void) =>
     on(CHANNEL.adeTaskOpenSession, cb),
 
@@ -773,25 +793,27 @@ interface AgentNotifyFocus {
   activeScriptRunId: string;
 }
 
-// P103 Part 2 (§5.6): the shared methods (createCoreControl.ts, P116 H5/P119 grew that set) plus
-// this app's own remaining ones (spaceControl, above) — every `control.xxx()` call site in the app
-// is unchanged, since neither the method names nor their bound-call FQNs moved.
+// The bound services both module families share.
+const coreBindings = {
+  settings: SettingsService,
+  layout: LayoutService,
+  tabs: TabsService,
+  lifecycle: LifecycleService,
+  terminal: TerminalService,
+  files: FilesService,
+  windows: WindowsService,
+  keepAwake: KeepAwakeService,
+  update: UpdateService,
+  prompts: PromptsService,
+  approvals: ApprovalsService,
+  llmPrompts: LlmPromptsService,
+  agent: AgentService,
+};
+
+// The shared methods (createCoreControl.ts) plus Space's own. Studio's Studio-bound methods live in
+// studio/bridge/index.ts, which layers them over this object.
 export const control = {
-  ...createCoreControl<Settings, Layout, TabRecord, SettingsPatch, SpaceMode>({
-    settings: SettingsService,
-    layout: LayoutService,
-    tabs: TabsService,
-    lifecycle: LifecycleService,
-    terminal: TerminalService,
-    files: FilesService,
-    windows: WindowsService,
-    keepAwake: KeepAwakeService,
-    update: UpdateService,
-    prompts: PromptsService,
-    approvals: ApprovalsService,
-    llmPrompts: LlmPromptsService,
-    agent: AgentService,
-  }),
+  ...createCoreControl<Settings, Layout, TabRecord, SettingsPatch, AppMode>(coreBindings),
   ...memoryControl,
   ...spaceControl,
 };
