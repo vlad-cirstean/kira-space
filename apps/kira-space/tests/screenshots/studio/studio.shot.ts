@@ -1,12 +1,14 @@
 import type { Page } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
-import { CAPTURE_LAUNCH, captureShot } from '@workbench/testing/screenshots/capture';
+import { CAPTURE_LAUNCH } from '@workbench/testing/screenshots/capture';
 import type { ControlSnapshot, LogicalPage, PortSnapshot } from '../../ipc/support/types';
 import { expect, studioTest as test } from '../../ui/fixtures';
 import { openHttpModeAndNewRequest } from '../../ui/studio/support/apiMode';
 import { typeInto } from '../../ui/studio/support/editor';
+import { gutterCell } from '../../ui/studio/support/grid';
 import { connectionRow, expandRow, findRow, openRowMenu } from '../../ui/studio/support/tree';
 import { IPC } from '../../ui/support/ipcChannels';
+import { shoot } from '../support/shoot';
 import {
   ACME,
   CONNECTION_ID,
@@ -22,6 +24,9 @@ import {
 
 const CONTROL: ControlSnapshot[] = [
   { channel: IPC.connectionsList, response: [SUMMARY] },
+  { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/repos', files: [] } },
+  { channel: IPC.adeTaskRepos, response: { repos: [], folders: [] } },
+  { channel: IPC.adeTaskSessions, response: { sessions: [] } },
   ...ACME.control,
 ];
 
@@ -54,7 +59,11 @@ test('studio data grid', async ({ relaunch, consoleErrors }) => {
   await expect(grid).toContainText('Alice Morgan');
   await rows.nth(2).click();
 
-  await captureShot(page, { id: 'studio-data-grid', detail: { x: 265, y: 130 }, consoleErrors });
+  await shoot(page, 'studio-data-grid', consoleErrors);
+
+  await gutterCell(page, 4).click({ button: 'right' });
+  await expect(page.locator('[data-testid="context-menu"]')).toBeVisible();
+  await shoot(page, 'studio-grid-row-menu', consoleErrors);
 });
 
 const QUERY = [
@@ -122,7 +131,7 @@ test('studio sql console', async ({ relaunch, consoleErrors }) => {
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await expect(view.locator('.monaco-editor.focused')).toHaveCount(0);
 
-  await captureShot(page, { id: 'studio-sql-console', detail: { x: 265, y: 150 }, consoleErrors });
+  await shoot(page, 'studio-sql-console', consoleErrors);
 });
 
 test('studio api request', async ({ relaunch, consoleErrors }) => {
@@ -161,6 +170,9 @@ test('studio api request', async ({ relaunch, consoleErrors }) => {
     ...CAPTURE_LAUNCH,
     control: [
       { channel: IPC.apiConfigView, response: { files: [], secrets: [] } },
+      { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/repos', files: [] } },
+      { channel: IPC.adeTaskRepos, response: { repos: [], folders: [] } },
+      { channel: IPC.adeTaskSessions, response: { sessions: [] } },
       { channel: IPC.httpSend, response },
     ],
   });
@@ -178,5 +190,5 @@ test('studio api request', async ({ relaunch, consoleErrors }) => {
     )
     .toBeGreaterThan(2);
 
-  await captureShot(page, { id: 'studio-api', detail: { x: 270, y: 310 }, consoleErrors });
+  await shoot(page, 'studio-api', consoleErrors);
 });

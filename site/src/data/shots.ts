@@ -1,7 +1,8 @@
 import type { IconName } from './icons';
+import type { ShotId } from './shotCapture';
 
 export interface ShotDef {
-  readonly id: string;
+  readonly id: ShotId;
   readonly title: string;
   readonly alt: string;
   readonly caption: string;
@@ -9,7 +10,7 @@ export interface ShotDef {
   readonly label: string;
 }
 
-// Files: screenshots/framed/<id>.webp and screenshots/<id>-detail.webp (bun run screenshots).
+// Site copy per shot. How and where each shot is captured: shotCapture.ts (bun run screenshots).
 export const SHOTS: readonly ShotDef[] = [
   {
     id: 'studio-data-grid',
@@ -58,5 +59,21 @@ export const SHOTS: readonly ShotDef[] = [
     caption: 'Memory. Every fact shows origin and scope.',
     icon: 'lightbulb',
     label: 'Memory',
+  },
+  {
+    id: 'studio-grid-row-menu',
+    title: 'Row menu',
+    alt: 'Kira Space grid context menu with copy, duplicate, revert and delete row actions.',
+    caption: 'Row menu. Copy, duplicate, revert or delete the selected rows.',
+    icon: 'table',
+    label: 'Row menu',
+  },
+  {
+    id: 'space-commit-detail',
+    title: 'Commit detail',
+    alt: 'Kira Space commit detail pane with the message and the changed files as a tree.',
+    caption: 'Commit detail. Message and changed files as a tree.',
+    icon: 'git-branch',
+    label: 'Commit detail',
   },
 ];
