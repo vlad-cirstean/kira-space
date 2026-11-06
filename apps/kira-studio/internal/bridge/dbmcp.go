@@ -48,6 +48,8 @@ type DbMcpService struct {
 	// Limits are extra run_query limits for the embedded server (flow tests); production adds its limits
 	// inside dbmcp.
 	Limits []dbmcp.Limit
+	// Port overrides dbmcp.DefaultPort (flow tests); zero keeps the default.
+	Port int
 
 	embedded embedded.Service[*dbmcp.Server, DbMcpStatus]
 }
@@ -86,6 +88,7 @@ func NewDbMcpService(deps appcore.Deps, installer harness.MCPInstaller, approval
 				Logger:           slog.Default(),
 				Prompts:          s.Deps.Prompts,
 				Limits:           s.Limits,
+				Port:             s.Port,
 			})
 			if err != nil {
 				return nil, err

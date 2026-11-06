@@ -41,6 +41,10 @@ import (
 // fallback would leave it pointing at whatever else is now listening there.
 const DefaultPort = 8766
 
+// EphemeralPort as Config.Port asks the OS for a free loopback port. Test seam: packages whose
+// tests run in parallel under `go test` cannot share DefaultPort.
+const EphemeralPort = -1
+
 // TokenProvider resolves this instance's own 7-day-rotating token — no repo-id slug to key on: one
 // DB MCP instance exists per app process per KIRA_HOME, with no second identity to key several
 // apart by (§2.2).
@@ -121,6 +125,8 @@ type ColumnReview interface {
 // Config is everything New needs. Zero-value Home takes the documented default; every other field
 // is required.
 type Config struct {
+	// Port overrides DefaultPort (test seam). Zero means DefaultPort; EphemeralPort an OS-chosen one.
+	Port int
 	// Home overrides KIRA_HOME (a debugging seam) — empty means config.KiraHome().
 	Home string
 	// Token resolves this instance's own auth record — required.

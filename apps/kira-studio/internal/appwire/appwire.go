@@ -77,6 +77,8 @@ type Options struct {
 	DockerExtra []docker.Option
 	// KubernetesExtra appends kubernetes options (flow-test seams: environment, list limits).
 	KubernetesExtra []kubernetes.Option
+	// DbMcpPort overrides dbmcp.DefaultPort (flow-test seam); zero keeps the default.
+	DbMcpPort int
 	// Providers is the agent harness registry; nil means providers.New() (a flow-test seam).
 	Providers *harness.Registry
 	// WindowFocus replaces the registry's focus state and raise (a flow-test seam); nil keeps the registry.

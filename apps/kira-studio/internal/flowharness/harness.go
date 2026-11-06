@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -39,6 +41,8 @@ import (
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
+
+var dbMcpPortRe = regexp.MustCompile(`:(\d+)/mcp`)
 
 // Event and Events record every emit toward a window; see internal/flowtest.
 type (
@@ -112,6 +116,8 @@ func kubeEnv() kubernetes.Env {
 // App is one booted Kira Studio.
 type App struct {
 	t *testing.T
+	// dbMcpPort is the port the previous run bound, reused across Restart.
+	dbMcpPort int
 	// Home is the isolated HOME (also what DefaultCwd and the docker config dir read); KiraHome is
 	// KIRA_HOME. BinDir is the PATH-first directory holding the fake claude and fake-mcp, FakeDir
 	// where the fake agent records its calls.
@@ -216,8 +222,15 @@ func (a *App) build() {
 	if !a.opts.noSecretStore && !cipher.Status().Available {
 		a.t.Fatalf("cipher unavailable: %+v", cipher.Status())
 	}
+	// Packages run in parallel, so they cannot share DefaultPort; a restart keeps its port so
+	// open client sessions reconnect.
+	dbMcpPort := dbmcp.EphemeralPort
+	if a.dbMcpPort != 0 {
+		dbMcpPort = a.dbMcpPort
+	}
 	w, err := appwire.Build(appwire.Options{
-		DB: db, Repos: r, Cipher: cipher,
+		DbMcpPort: dbMcpPort,
+		DB:        db, Repos: r, Cipher: cipher,
 		Authorizer: localauth.New(time.Now, a.OSAuth.evaluate, a.OSAuth.isAvailable),
 		Emitter:    a.Events, Browser: a.Browser, FileOpener: a.FileOpener, Dialogs: a.Dialogs, KeepAwakeDriver: a.KeepAwake, McpInstaller: a.McpInstaller,
 		AppName: "Kira Studio", Version: "flowtest", SmartTimeout: a.opts.smartTimeout,
@@ -291,6 +304,9 @@ func (a *App) Quit(t testing.TB) {
 // the old Wired are dead.
 func (a *App) Restart(t testing.TB) {
 	t.Helper()
+	if m := dbMcpPortRe.FindStringSubmatch(a.W.DbMcp.Status().Command); m != nil {
+		a.dbMcpPort, _ = strconv.Atoi(m[1])
+	}
 	a.Quit(t)
 	a.build()
 }
