@@ -109,6 +109,8 @@ type MaskRules interface {
 type ColumnReview interface {
 	// For is the gate's read: the withheld columns of one connection, checked inline when the last check is stale.
 	For(ctx context.Context, summary model.ConnectionSummary) maskreview.Withheld
+	// Recheck is For with a forced column refresh, for a result column the last check never saw.
+	Recheck(ctx context.Context, summary model.ConnectionSummary) maskreview.Withheld
 	// Cached is the last state without any op, for list_connections.
 	Cached(connectionID string) (maskreview.Withheld, bool)
 	// MarkStale makes the next For check again, after an MCP write or DDL statement.

@@ -34,6 +34,9 @@ type Withheld struct {
 	Names map[string]bool
 	// Pending is the canonical refs of the columns neither masked nor reviewed, sorted.
 	Pending []string
+	// Known is the lowercased name of every live column the check saw; nil when review is off. A result
+	// column outside it is an alias, a computed column or a column added since the check.
+	Known map[string]bool
 	// Incomplete is non-empty when the columns could not be checked in full (over a cap, or the check failed): the gate refuses.
 	Incomplete string
 }
@@ -84,6 +87,7 @@ type Deps struct {
 
 type entry struct {
 	live       []LiveColumn
+	known      map[string]bool
 	truncated  bool
 	incomplete string
 	eval       Evaluation
@@ -93,7 +97,7 @@ type entry struct {
 }
 
 func (e *entry) withheld() Withheld {
-	return Withheld{On: true, Names: e.eval.Names, Pending: e.eval.Pending, Incomplete: e.incomplete}
+	return Withheld{On: true, Names: e.eval.Names, Pending: e.eval.Pending, Known: e.known, Incomplete: e.incomplete}
 }
 
 type runner struct {
@@ -190,6 +194,23 @@ func (s *Service) For(ctx context.Context, summary model.ConnectionSummary) With
 			s.syncPrompt(summary, e)
 		}
 	}
+	return e.withheld()
+}
+
+// Recheck is the gate's forced read: one check that bypasses the cached column listings, for a result that
+// carries a column name the last check never saw. It is the same as For otherwise.
+func (s *Service) Recheck(ctx context.Context, summary model.ConnectionSummary) Withheld {
+	if !Applies(summary.Kind) || !summary.MaskReviewOn {
+		return Withheld{}
+	}
+	m := s.lockFor(summary.ID)
+	m.Lock()
+	defer m.Unlock()
+	e, err := s.check(ctx, summary, opts{columns: true})
+	if err != nil {
+		return Withheld{On: true, Incomplete: failureReason(err)}
+	}
+	s.syncPrompt(summary, e)
 	return e.withheld()
 }
 
@@ -402,7 +423,11 @@ func (s *Service) check(ctx context.Context, summary model.ConnectionSummary, o 
 	if err := w.run(); err != nil {
 		return nil, err
 	}
-	e := &entry{live: w.live, incomplete: w.incomplete, scopeKey: scopeKeyOf(summary), checkedAt: s.d.Now()}
+	known := make(map[string]bool, len(w.live))
+	for _, c := range w.live {
+		known[strings.ToLower(c.Ref.Column)] = true
+	}
+	e := &entry{live: w.live, known: known, incomplete: w.incomplete, scopeKey: scopeKeyOf(summary), checkedAt: s.d.Now()}
 	if err := s.evaluateInto(summary, e); err != nil {
 		return nil, err
 	}

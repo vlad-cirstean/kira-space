@@ -90,6 +90,9 @@ func (fakeColumnReviewNone) For(context.Context, model.ConnectionSummary) maskre
 func (fakeColumnReviewNone) Cached(string) (maskreview.Withheld, bool) {
 	return maskreview.Withheld{}, false
 }
+func (fakeColumnReviewNone) Recheck(context.Context, model.ConnectionSummary) maskreview.Withheld {
+	return maskreview.Withheld{}
+}
 func (fakeColumnReviewNone) MarkStale(string) {}
 
 type fakeMaskRulesNone struct{}

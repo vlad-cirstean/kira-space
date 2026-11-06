@@ -3,7 +3,9 @@ package dbmcp
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -27,7 +29,34 @@ func (s *Server) maskStateFor(ctx context.Context, summary model.ConnectionSumma
 	if w.Incomplete != "" {
 		return maskset{Set: rules}, reviewRefusal(summary, w.Incomplete), nil
 	}
-	return maskset{Set: rules, withheld: w.Names}, nil, nil
+	return maskset{Set: rules, withheld: w.Names, known: w.Known}, nil, nil
+}
+
+// unknownResultColumn reports whether a result column name is outside the last column check: an alias, a
+// computed column, or a column added since that check.
+func unknownResultColumn(known map[string]bool, columns []page.ColumnDescriptor) bool {
+	for _, c := range columns {
+		if !known[strings.ToLower(c.Name)] {
+			return true
+		}
+	}
+	return false
+}
+
+// settleResult makes the withheld set cover every column of a result. A name the last check never saw
+// forces one refresh with columns:true; the name is withheld only if that refresh finds it pending, so
+// aliases and computed columns still pass. At most one refresh per call. A non-nil result refuses the
+// call because the refresh could not complete.
+func (s *Server) settleResult(ctx context.Context, summary model.ConnectionSummary, set maskset, columns []page.ColumnDescriptor) (maskset, *mcp.CallToolResult) {
+	if set.known == nil || !unknownResultColumn(set.known, columns) {
+		return set, nil
+	}
+	w := s.cfg.ColumnReview.Recheck(ctx, summary)
+	if w.Incomplete != "" {
+		return set, reviewRefusal(summary, w.Incomplete)
+	}
+	set.withheld, set.known = w.Names, w.Known
+	return set, nil
 }
 
 // checkColumnReview refuses a call on a connection whose columns cannot be checked. It is the last

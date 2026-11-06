@@ -336,6 +336,17 @@ func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv que
 		res, out, err = jsonResult(map[string]any{"kind": "empty", "rowCount": 0, "returned": 0})
 		return res, out, err, set, true
 	}
+	if tp, ok := resp.Pages[0].(page.TabularPage); ok && set.known != nil {
+		var refusal *mcp.CallToolResult
+		if set, refusal = s.settleResult(ctx, rv.summary, set, tp.Columns); refusal != nil {
+			return refusal, nil, nil, set, true
+		}
+		set.resultColumns = tp.Columns
+		mk = nil
+		if !set.Empty() {
+			mk = &set
+		}
+	}
 	rendered, err := renderPage(resp.Pages[0], rv.maxRows, summaryOf(plan, rv.threshold), mk, args.SQL)
 	if err != nil {
 		// §4.4/§5.3: a document/stream page under active masking rules is caller-correctable
@@ -401,6 +412,9 @@ func (s *Server) recheckHeld(ctx context.Context, rv queryResolution, connection
 		return fmt.Sprintf("query against %q ran, but its result was withheld: %s", name, rerr.Error())
 	}
 	now, refusal, merr := s.maskStateFor(ctx, rv.summary)
+	if refusal == nil && merr == nil {
+		now, refusal = s.settleResult(ctx, rv.summary, now, rendered.resultColumns)
+	}
 	if refusal != nil || merr != nil {
 		return fmt.Sprintf("query against %q ran, but its masking rules could not be re-checked and its result was withheld", name)
 	}
