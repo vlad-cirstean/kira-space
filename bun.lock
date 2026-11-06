@@ -181,6 +181,9 @@
         "anser": "2.3.5",
         "vue": "3.5.44",
       },
+      "devDependencies": {
+        "sharp": "0.35.5",
+      },
     },
     "site": {
       "name": "@kira/site",
