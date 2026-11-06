@@ -7,22 +7,32 @@ import (
 	"log/slog"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
-const connectionSelectColumns = `
-	id, COALESCE(stem || '.yaml', ''), name, kind, color, mode, read_only, host, port, database, username,
-	options_json, preconnect, preconnect_sidecar, preconnect_delay_sec, auto_explain, throttle_per_sec,
-	mcp_enabled,
-	mcp_description, mcp_read_mode, mcp_write_mode, mcp_ddl_mode, mcp_masked_mode, mcp_auto_explain, mcp_review_read, mcp_review_write, mcp_review_ddl, mcp_review_masked, mcp_statement_timeout_sec, mcp_tables_json, mask_review_on,
-	sort_order, created_at, updated_at
-`
+// connectionSelectColumns is the column list scanConnectionRow reads, in scan order.
+var connectionSelectColumns = []string{
+	kiraschema.Connections.ID, "COALESCE(" + kiraschema.Connections.Stem + " || '.yaml', '')", kiraschema.Connections.Name,
+	kiraschema.Connections.Kind, kiraschema.Connections.Color, kiraschema.Connections.Mode, kiraschema.Connections.ReadOnly,
+	kiraschema.Connections.Host, kiraschema.Connections.Port, kiraschema.Connections.Database, kiraschema.Connections.Username,
+	kiraschema.Connections.OptionsJSON, kiraschema.Connections.Preconnect, kiraschema.Connections.PreconnectSidecar,
+	kiraschema.Connections.PreconnectDelaySec, kiraschema.Connections.AutoExplain, kiraschema.Connections.ThrottlePerSec,
+	kiraschema.Connections.MCPEnabled, kiraschema.Connections.MCPDescription, kiraschema.Connections.MCPReadMode,
+	kiraschema.Connections.MCPWriteMode, kiraschema.Connections.MCPDdlMode, kiraschema.Connections.MCPMaskedMode,
+	kiraschema.Connections.MCPAutoExplain, kiraschema.Connections.MCPReviewRead, kiraschema.Connections.MCPReviewWrite,
+	kiraschema.Connections.MCPReviewDdl, kiraschema.Connections.MCPReviewMasked, kiraschema.Connections.MCPStatementTimeoutSec,
+	kiraschema.Connections.MCPTablesJSON, kiraschema.Connections.MaskReviewOn, kiraschema.Connections.SortOrder,
+	kiraschema.Connections.CreatedAt, kiraschema.Connections.UpdatedAt,
+}
 
 // ConnectionsRepo reads the connections table, the projection of the connection files. Only
 // connfiles writes it, except Reorder: order is state, not config.
 type ConnectionsRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
 // scanConnectionRow never sets URI: a URI is a secret the file only names, so every summary the repo
@@ -143,7 +153,9 @@ func scanConnectionRow(row rowScanner) (*model.ConnectionSummary, error) {
 // applies — two rows sharing a sort_order must not come back in arbitrary order) and never selects
 // password.
 func (r *ConnectionsRepo) List() ([]model.ConnectionSummary, error) {
-	rows, err := r.DB.Query(`SELECT ` + connectionSelectColumns + ` FROM connections ORDER BY sort_order ASC, name ASC`)
+	c := kiraschema.Connections
+	sb := r.Dialect.Select(connectionSelectColumns...).From(c.Table).OrderBy(c.SortOrder+" ASC", c.Name+" ASC")
+	rows, err := sqlb.Query(r.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos/connections: query: %w", err)
 	}
@@ -180,9 +192,12 @@ func (r *ConnectionsRepo) KindOf(connID string) (string, bool) {
 
 // Get returns (nil, nil) when no row with this id exists (or the row failed validation).
 func (r *ConnectionsRepo) Get(connID string) (*model.ConnectionSummary, error) {
+	sb := r.Dialect.Select(connectionSelectColumns...).From(kiraschema.Connections.Table)
+	sb.Where(sb.Equal(kiraschema.Connections.ID, connID))
+	query, args := sb.Build()
 	c, err := sqlitex.QueryOne(r.DB, func(row *sql.Row) (*model.ConnectionSummary, error) {
 		return scanConnectionRow(row)
-	}, `SELECT `+connectionSelectColumns+` FROM connections WHERE id = ?`, connID)
+	}, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("repos/connections: get %s: %w", connID, err)
 	}
@@ -197,11 +212,11 @@ func (r *ConnectionsRepo) Reorder(ids []string) error {
 		return fmt.Errorf("repos/connections: reorder: begin: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if err := sqlitex.ReorderSortOrder(tx,
-		`SELECT id FROM connections ORDER BY sort_order ASC, name ASC`,
-		`UPDATE connections SET sort_order = ? WHERE id = ?`,
-		ids,
-	); err != nil {
+	c := kiraschema.Connections
+	if err := sqlb.ReorderSortOrder(tx, r.Dialect, sqlb.SortSet{
+		Table: c.Table, Key: c.ID, Order: c.SortOrder,
+		Select: r.Dialect.Select(c.ID).From(c.Table).OrderBy(c.SortOrder+" ASC", c.Name+" ASC"),
+	}, ids); err != nil {
 		return fmt.Errorf("repos/connections: reorder: %w", err)
 	}
 	if err := tx.Commit(); err != nil {

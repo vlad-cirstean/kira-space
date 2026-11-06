@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/postman"
@@ -17,15 +19,24 @@ import (
 // files, written only by apifiles.Store; a read never touches request_json or origin_json on the
 // list path.
 type CollectionsRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
 // The projections that never touch request_json/origin_json. SQLite stores a row's columns in
 // declaration order and spills the tail into overflow pages, so stopping before them is the cheap
 // path for the one query that runs on every panel mount.
-const (
-	collectionSelectColumns = `id, name, sort_order, created_at, updated_at, COALESCE(stem || '.collection.yaml', '')`
-	itemSelectColumns       = `id, collection_id, parent_id, kind, name, sort_order, method, url, protocol, created_at, updated_at`
+var (
+	collectionSelectColumns = []string{
+		kiraschema.APICollections.ID, kiraschema.APICollections.Name, kiraschema.APICollections.SortOrder,
+		kiraschema.APICollections.CreatedAt, kiraschema.APICollections.UpdatedAt,
+		"COALESCE(" + kiraschema.APICollections.Stem + " || '.collection.yaml', '')",
+	}
+	itemSelectColumns = []string{
+		kiraschema.APIItems.ID, kiraschema.APIItems.CollectionID, kiraschema.APIItems.ParentID, kiraschema.APIItems.Kind,
+		kiraschema.APIItems.Name, kiraschema.APIItems.SortOrder, kiraschema.APIItems.Method, kiraschema.APIItems.URL,
+		kiraschema.APIItems.Protocol, kiraschema.APIItems.CreatedAt, kiraschema.APIItems.UpdatedAt,
+	}
 )
 
 // mirroring how TreeService.Children returns flat nodes. One call per panel mount; no N+1.
@@ -42,7 +53,8 @@ func (r *CollectionsRepo) List() ([]model.Collection, []model.CollectionItem, er
 }
 
 func (r *CollectionsRepo) listCollections() ([]model.Collection, error) {
-	rows, err := r.DB.Query(`SELECT ` + collectionSelectColumns + ` FROM api_collections ORDER BY sort_order, name`)
+	c := kiraschema.APICollections
+	rows, err := sqlb.Query(r.DB, r.Dialect.Select(collectionSelectColumns...).From(c.Table).OrderBy(c.SortOrder, c.Name))
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.Collection, bool, error) {
 		var c model.Collection
 		err := rows.Scan(&c.ID, &c.Name, &c.SortOrder, msISO(&c.CreatedAt), msISO(&c.UpdatedAt), &c.File)
@@ -51,7 +63,8 @@ func (r *CollectionsRepo) listCollections() ([]model.Collection, error) {
 }
 
 func (r *CollectionsRepo) listItems() ([]model.CollectionItem, error) {
-	rows, err := r.DB.Query(`SELECT ` + itemSelectColumns + ` FROM api_items ORDER BY collection_id, sort_order`)
+	c := kiraschema.APIItems
+	rows, err := sqlb.Query(r.DB, r.Dialect.Select(itemSelectColumns...).From(c.Table).OrderBy(c.CollectionID, c.SortOrder))
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.CollectionItem, bool, error) {
 		item, err := scanItem(rows)
 		return item, true, err
@@ -86,13 +99,16 @@ var (
 // kind/protocol/request_json by item id, refuse a missing row, a non-request item or a protocol
 // mismatch, then hand the raw body to decode. errLabel keeps the two callers' error text exactly
 // as it was ("get request %s" for HTTP, "get grpc request %s" for gRPC) rather than merging them.
-func getRequestBody[T any](db *sql.DB, itemID, wantProtocol, errLabel string, decode func(itemID, body string) (T, error)) (T, error) {
+func getRequestBody[T any](db *sql.DB, d sqlb.Dialect, itemID, wantProtocol, errLabel string, decode func(itemID, body string) (T, error)) (T, error) {
 	var (
 		kind, protocol string
 		body           string
 		zero           T
 	)
-	err := db.QueryRow(`SELECT kind, protocol, request_json FROM api_items WHERE id = ?`, itemID).Scan(&kind, &protocol, &body)
+	c := kiraschema.APIItems
+	sb := d.Select(c.Kind, c.Protocol, c.RequestJSON).From(c.Table)
+	sb.Where(sb.Equal(c.ID, itemID))
+	err := sqlb.QueryRow(db, sb).Scan(&kind, &protocol, &body)
 	if errors.Is(err, sql.ErrNoRows) {
 		return zero, fmt.Errorf("%w: %s", ErrItemNotFound, itemID)
 	}
@@ -113,12 +129,12 @@ func getRequestBody[T any](db *sql.DB, itemID, wantProtocol, errLabel string, de
 // legible error rather than handed to the renderer half-formed — the write-side counterpart of
 // repos/saved_queries.go's drop-and-log on read.
 func (r *CollectionsRepo) GetRequest(itemID string) (model.SavedRequest, error) {
-	return getRequestBody(r.DB, itemID, model.ItemProtocolHTTP, "", decodeSavedRequest)
+	return getRequestBody(r.DB, r.Dialect, itemID, model.ItemProtocolHTTP, "", decodeSavedRequest)
 }
 
 // GetGrpcRequest is GetRequest's own gRPC sibling (D12).
 func (r *CollectionsRepo) GetGrpcRequest(itemID string) (model.SavedGrpcRequest, error) {
-	return getRequestBody(r.DB, itemID, model.ItemProtocolGrpc, "grpc ", decodeSavedGrpcRequest)
+	return getRequestBody(r.DB, r.Dialect, itemID, model.ItemProtocolGrpc, "grpc ", decodeSavedGrpcRequest)
 }
 
 func decodeSavedGrpcRequest(itemID, body string) (model.SavedGrpcRequest, error) {
@@ -159,8 +175,9 @@ func decodeSavedRequest(itemID, body string) (model.SavedRequest, error) {
 
 // GetItem reads one item row.
 func (r *CollectionsRepo) GetItem(itemID string) (model.CollectionItem, error) {
-	row := r.DB.QueryRow(`SELECT `+itemSelectColumns+` FROM api_items WHERE id = ?`, itemID)
-	item, err := scanItem(row)
+	sb := r.Dialect.Select(itemSelectColumns...).From(kiraschema.APIItems.Table)
+	sb.Where(sb.Equal(kiraschema.APIItems.ID, itemID))
+	item, err := scanItem(sqlb.QueryRow(r.DB, sb))
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return model.CollectionItem{}, fmt.Errorf("%w: %s", ErrItemNotFound, itemID)
 	}
@@ -169,9 +186,10 @@ func (r *CollectionsRepo) GetItem(itemID string) (model.CollectionItem, error) {
 
 // GetCollection reads one collection row.
 func (r *CollectionsRepo) GetCollection(id string) (model.Collection, error) {
-	row := r.DB.QueryRow(`SELECT `+collectionSelectColumns+` FROM api_collections WHERE id = ?`, id)
+	sb := r.Dialect.Select(collectionSelectColumns...).From(kiraschema.APICollections.Table)
+	sb.Where(sb.Equal(kiraschema.APICollections.ID, id))
 	var c model.Collection
-	if err := row.Scan(&c.ID, &c.Name, &c.SortOrder, msISO(&c.CreatedAt), msISO(&c.UpdatedAt), &c.File); err != nil {
+	if err := sqlb.QueryRow(r.DB, sb).Scan(&c.ID, &c.Name, &c.SortOrder, msISO(&c.CreatedAt), msISO(&c.UpdatedAt), &c.File); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.Collection{}, fmt.Errorf("repos/collections: no collection %s", id)
 		}
@@ -187,7 +205,10 @@ func (r *CollectionsRepo) LoadTree(collectionID string) (*postman.Tree, error) {
 		name       string
 		originJSON string
 	)
-	err := r.DB.QueryRow(`SELECT name, origin_json FROM api_collections WHERE id = ?`, collectionID).Scan(&name, &originJSON)
+	cc := kiraschema.APICollections
+	csb := r.Dialect.Select(cc.Name, cc.OriginJSON).From(cc.Table)
+	csb.Where(csb.Equal(cc.ID, collectionID))
+	err := sqlb.QueryRow(r.DB, csb).Scan(&name, &originJSON)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("repos/collections: no collection %s", collectionID)
 	}
@@ -200,10 +221,10 @@ func (r *CollectionsRepo) LoadTree(collectionID string) (*postman.Tree, error) {
 	// D15/D16: the collection's own promoted variables, re-emitted from these rows — a secret
 	// row's `value` is already '' by construction (D4's own CHECK constraint), which is what
 	// makes D16's "a secret exports valueless" true here with no decrypt and no extra branch.
-	varRows, err := r.DB.Query(
-		`SELECT name, value, is_secret FROM api_variables WHERE collection_id = ? ORDER BY sort_order, name`,
-		collectionID,
-	)
+	vc := kiraschema.APIVariables
+	vsb := r.Dialect.Select(vc.Name, vc.Value, vc.IsSecret).From(vc.Table)
+	vsb.Where(vsb.Equal(vc.CollectionID, collectionID)).OrderBy(vc.SortOrder, vc.Name)
+	varRows, err := sqlb.Query(r.DB, vsb)
 	if err != nil {
 		return nil, fmt.Errorf("repos/collections: query variables: %w", err)
 	}
@@ -229,11 +250,10 @@ func (r *CollectionsRepo) LoadTree(collectionID string) (*postman.Tree, error) {
 	}
 	varRows.Close()
 
-	rows, err := r.DB.Query(
-		`SELECT id, parent_id, kind, name, sort_order, protocol, request_json, origin_json
-		   FROM api_items WHERE collection_id = ? ORDER BY sort_order, created_at, id`,
-		collectionID,
-	)
+	ic := kiraschema.APIItems
+	isb := r.Dialect.Select(ic.ID, ic.ParentID, ic.Kind, ic.Name, ic.SortOrder, ic.Protocol, ic.RequestJSON, ic.OriginJSON).From(ic.Table)
+	isb.Where(isb.Equal(ic.CollectionID, collectionID)).OrderBy(ic.SortOrder, ic.CreatedAt, ic.ID)
+	rows, err := sqlb.Query(r.DB, isb)
 	if err != nil {
 		return nil, fmt.Errorf("repos/collections: query items: %w", err)
 	}

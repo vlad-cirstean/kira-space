@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"log/slog"
 )
 
@@ -16,20 +18,18 @@ const (
 )
 
 type MetadataCacheRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
 // readPayload returns the row's payload object (or nil if there is no row / it fails to parse —
 // treated as a miss, mirroring metadata-cache.ts's own try/catch).
-func readPayload(q interface {
-	QueryRow(query string, args ...any) *sql.Row
-}, connectionID, path string) map[string]json.RawMessage {
+func (r *MetadataCacheRepo) readPayload(q sqlb.Querier, connectionID, path string) map[string]json.RawMessage {
+	c := kiraschema.ConnectionMetadataCache
+	sb := r.Dialect.Select(c.PayloadJSON).From(c.Table)
+	sb.Where(sb.Equal(c.ConnectionID, connectionID), sb.Equal(c.Path, path))
 	var payloadJSON string
-	err := q.QueryRow(
-		`SELECT payload_json FROM connection_metadata_cache WHERE connection_id = ? AND path = ?`,
-		connectionID, path,
-	).Scan(&payloadJSON)
-	if err != nil {
+	if err := sqlb.QueryRow(q, sb).Scan(&payloadJSON); err != nil {
 		return nil
 	}
 	var payload map[string]json.RawMessage
@@ -65,7 +65,7 @@ func fetchedAtFor(payload map[string]json.RawMessage, kind string) string {
 // the payload's own per-kind fetch time — internal/tree.Service is the sole judge of
 // whether that makes it stale.
 func (r *MetadataCacheRepo) Get(connectionID, path, kind string) (json.RawMessage, string, error) {
-	payload := readPayload(r.DB, connectionID, path)
+	payload := r.readPayload(r.DB, connectionID, path)
 	return payload[kind], fetchedAtFor(payload, kind), nil
 }
 
@@ -81,7 +81,7 @@ func (r *MetadataCacheRepo) Put(connectionID, path, kind string, payload json.Ra
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	existing := readPayload(tx, connectionID, path)
+	existing := r.readPayload(tx, connectionID, path)
 	merged := map[string]json.RawMessage{}
 	for k, v := range existing {
 		merged[k] = v
@@ -109,25 +109,20 @@ func (r *MetadataCacheRepo) Put(connectionID, path, kind string, payload json.Ra
 		return nil // not an error; the deferred Rollback is a no-op since nothing was written.
 	}
 
-	if _, err := tx.Exec(
-		`INSERT INTO connection_metadata_cache (connection_id, path, kind, payload_json, fetched_at, etag)
-		 VALUES (?, ?, ?, ?, ?, NULL)
-		 ON CONFLICT(connection_id, path) DO UPDATE SET kind = excluded.kind, payload_json = excluded.payload_json, fetched_at = excluded.fetched_at`,
-		connectionID, path, kind, string(encoded), kiratime.ISOOrZero(now),
-	); err != nil {
+	c := kiraschema.ConnectionMetadataCache
+	ib := r.Dialect.InsertInto(c.Table).Cols(c.ConnectionID, c.Path, c.Kind, c.PayloadJSON, c.FetchedAt, c.Etag).
+		Values(connectionID, path, kind, string(encoded), kiratime.ISOOrZero(now), nil)
+	sqlb.Upsert(ib, []string{c.ConnectionID, c.Path}, []string{c.Kind, c.PayloadJSON, c.FetchedAt}, "")
+	if _, err := sqlb.Exec(tx, ib); err != nil {
 		return fmt.Errorf("repos/metadata_cache: upsert: %w", err)
 	}
 
-	if _, err := tx.Exec(`
-		DELETE FROM connection_metadata_cache
-		 WHERE connection_id = ?
-		   AND path NOT IN (
-		     SELECT path FROM connection_metadata_cache
-		      WHERE connection_id = ?
-		      ORDER BY fetched_at DESC, rowid DESC
-		      LIMIT ?
-		   )
-	`, connectionID, connectionID, maxMetadataRowsPerConnection); err != nil {
+	keep := r.Dialect.Select(c.Path).From(c.Table)
+	keep.Where(keep.Equal(c.ConnectionID, connectionID)).
+		OrderBy(c.FetchedAt+" DESC", sqlb.RowID+" DESC").Limit(maxMetadataRowsPerConnection)
+	del := r.Dialect.DeleteFrom(c.Table)
+	del.Where(del.Equal(c.ConnectionID, connectionID), del.NotIn(c.Path, keep))
+	if _, err := sqlb.Exec(tx, del); err != nil {
 		return fmt.Errorf("repos/metadata_cache: evict: %w", err)
 	}
 
@@ -140,9 +135,10 @@ func (r *MetadataCacheRepo) Put(connectionID, path, kind string, payload json.Ra
 // Drop clears one cached path (path == "" clears the whole connection — see DropConnection for
 // the explicit form callers should prefer for that case).
 func (r *MetadataCacheRepo) Drop(connectionID, path string) error {
-	if _, err := r.DB.Exec(
-		`DELETE FROM connection_metadata_cache WHERE connection_id = ? AND path = ?`, connectionID, path,
-	); err != nil {
+	c := kiraschema.ConnectionMetadataCache
+	del := r.Dialect.DeleteFrom(c.Table)
+	del.Where(del.Equal(c.ConnectionID, connectionID), del.Equal(c.Path, path))
+	if _, err := sqlb.Exec(r.DB, del); err != nil {
 		return fmt.Errorf("repos/metadata_cache: drop %s:%s: %w", connectionID, path, err)
 	}
 	return nil
@@ -151,7 +147,10 @@ func (r *MetadataCacheRepo) Drop(connectionID, path string) error {
 // DropConnection drops every cached row for the whole connection (metadata-cache.ts's
 // dropCached with path omitted).
 func (r *MetadataCacheRepo) DropConnection(connectionID string) error {
-	if _, err := r.DB.Exec(`DELETE FROM connection_metadata_cache WHERE connection_id = ?`, connectionID); err != nil {
+	c := kiraschema.ConnectionMetadataCache
+	del := r.Dialect.DeleteFrom(c.Table)
+	del.Where(del.Equal(c.ConnectionID, connectionID))
+	if _, err := sqlb.Exec(r.DB, del); err != nil {
 		return fmt.Errorf("repos/metadata_cache: drop connection %s: %w", connectionID, err)
 	}
 	return nil
