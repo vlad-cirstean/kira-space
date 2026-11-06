@@ -1,16 +1,16 @@
 # v0.3.1
 
-Branch `chapter/v0.3.1`, based on `chapter/v0.3.0` (v0.3.0 must merge first). First `P` is 551 (highest in v0.3.0 is P550), last is P554.
+Branch `chapter/v0.3.1`, based on `main` (v0.3.0 merged). First `P` is 551 (highest in v0.3.0 is P550), last is P554.
 
 Source: user request. Four phases: site expansion on the v0.3.0 image pipeline, SQL query builder for the app's own SQLite, tighter SQLite schema, GitOps for config files. Close duty after the last phase lands: one full suite run, 2 code review rounds, hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
 
-Sequencing: P551 needs v0.3.0 P549 (WebP, frame) and P550 (image pipeline), both landed with the chapter base. P552 and P553 touch the DB layer and need v0.3.0 P544 (single merged DB) landed. Reading of the code: both touch `apps/kira-space/internal/storage/repos` and `storage/migrations` (modernc.org/sqlite v1.61.1; `foreign_keys` set in `storage/db.go`; no ORM, raw `sqlitex` helpers). P552 edits repo Go files and leaves migrations as SQL. P553 adds migration SQL files and tightens types the repos scan (bool, JSON, timestamps). Overlap is small but real, in repo scan code and in `db.go`. Default: P553 then P552. P553 reorganises schema (split/merge tables), so builder models generate against the final schema. P553 plan confirms; if it disagrees, swap back with lockstep renumber and cross-reference updates. Parallel allowed only if the P553 plan keeps every column name and Go type unchanged and lists per-file ownership with zero overlap. P551 shares no files with P552 or P553 and may run beside either. Up to 3 phases at once per CLAUDE.md batch rule; a batch plan goes under `plans/PARALLEL.md`. P554 needs v0.3.0 P540 (unified `<home>/config`, landed). Config YAML is file-based, so P554 has no DB dependency and is independent of P552 and P553. Table order is execution order otherwise.
+Sequencing: user asked 3 phases in parallel. Batch: P551 + P552 (schema) + P554, all independent. P553 (builder) runs after P552 lands, so builder models generate against the final schema. Batch plan: `plans/PARALLEL.md`. P551 needs v0.3.0 P549 (WebP, frame) and P550 (image pipeline), landed in main. P552 and P553 touch the DB layer (v0.3.0 P544, single merged DB, landed). Reading of the code: both touch `apps/kira-space/internal/storage/repos` and `storage/migrations` (modernc.org/sqlite v1.61.1; `foreign_keys` set in `storage/db.go`; no ORM, raw `sqlitex` helpers). P552 adds migration SQL files and tightens types the repos scan (bool, JSON, timestamps). P553 edits repo Go files and leaves migrations as SQL. Overlap is small but real, in repo scan code and in `db.go`; P553 starts only after P552 lands. P551 shares no files with P552 or P553. P554 needs v0.3.0 P540 (unified `<home>/config`, landed). Config YAML is file-based, so P554 has no DB dependency and is independent of P552 and P553. Table order is execution order otherwise.
 
 | Phase | Title | Status |
 |---|---|---|
 | P551 | Site expansion: content, pages and explanations with images | Pending |
-| P552 | Go SQL query builder for the app's SQLite | Pending |
-| P553 | Tighten SQLite types and constraints, reorganise schema | Pending |
+| P552 | Tighten SQLite types and constraints, reorganise schema | Pending |
+| P553 | Go SQL query builder for the app's SQLite | Pending |
 | P554 | GitOps for config files: shared config repos | Pending |
 
 ## Rows
@@ -32,20 +32,20 @@ Sequencing: P551 needs v0.3.0 P549 (WebP, frame) and P550 (image pipeline), both
 - Install images, missing-file rule: plan lists both as an input the user provides. Dev build shows a visible "screenshot pending" placeholder. CI build (`CI=true`) fails while either file is missing. Plan documents the check and where it lives.
 - Plan: `plans/P551.md`.
 
-### P552 Go SQL query builder for the app's SQLite
+### P552 Tighten SQLite types and constraints, reorganise schema
+
+- Ask: columns are loose today. Tighten the app DB schema: `STRICT` tables (SQLite 3.37+; check the version bundled by the driver), proper types, `NOT NULL`, `CHECK` (enums, ranges, booleans 0/1, `json_valid`), `UNIQUE`, foreign keys with explicit `ON DELETE`, defaults, indexes on foreign keys. Table-rebuild migrations copy data safely, back up first, handle rows that violate new constraints (repair, quarantine, or fail with a clear message). `PRAGMA foreign_keys` on. Also audit whole app DB schema (kira.db, after v0.3.0 Studio fold) for efficiency and organisation. Audit covers every table in kira.db: original Space tables and Studio tables folded in by v0.3.0 P544 (migrations 0078-0081, incl. `proof_task_links`, `db_op_log` folded into `op_log`, `ade_db_audit`). Cross-origin merges/splits in scope (overlapping Space/Studio concepts: connections, tabs, history, op logs). Split tables that mix concerns or carry wide/rarely-read columns (e.g. large blobs/JSON moved to side tables). Merge tables that are near-duplicates or 1:1 with no reason to be separate (e.g. leftovers of Space/Studio fold). Normalise repeated data. Review indexes: drop unused/redundant, add missing, covering/partial where hot queries benefit. Review naming consistency (prefixes per module, singular/plural, column names) and id/timestamp conventions. Check hot-query plans with `EXPLAIN QUERY PLAN`.
+- Depends on v0.3.0 P544.
+- Decide in plan: audit of every table and column; constraint catalogue per table; migration strategy (per table or grouped; order by foreign key dependencies); verification (schema snapshot test is acceptable: it guards complex migration logic; migration flow test on a seeded old-shape DB); interplay with P553 (builder types) and a possible later Postgres schema; order relative to P553; schema audit output (per-table verdict keep/split/merge/rename, with reason); target ER layout; how split/merge migrations preserve data and repos stay behaviour-compatible; impact on P553: builder models generate against the final schema, so P552 runs before P553 (settled, see Sequencing; the plan may flag a conflict but must not reorder on its own); perf check on hot queries before/after.
+- Plan: `plans/P552.md`.
+
+### P553 Go SQL query builder for the app's SQLite
 
 - Ask: use an existing, well-maintained, fully open-source Go SQL query builder for the app's own SQLite (repos under `apps/kira-space/internal/storage` and `storage/repos`, or their merged successor). Decline hand-rolling. Migrations stay SQL files.
 - Design so a PostgreSQL backend can be added later. Keep in mind: dialect abstraction, placeholders, upsert and `RETURNING`, identifier quoting, type mapping (booleans, timestamps, JSON, blobs), transactions, migrations runner per dialect, concurrency and locking differences, pagination, full text, SQLite-only code (pragmas, rowid, `INSERT OR REPLACE`, `strftime`/`datetime`).
 - Not in scope: Postgres support itself.
-- Needs v0.3.0 P544 landed.
+- Needs v0.3.0 P544 landed and P552 (schema) landed.
 - Decide in plan: library and reasoning (license at package level; name any requirement that rules a candidate out); repo interface boundary; migration order, repo by repo, behaviour unchanged each step; where raw SQL that cannot be expressed stays isolated; test strategy (existing flow tests and adapter-free repo tests; no new unit tests unless complex); perf check on hot queries.
-- Plan: `plans/P552.md`.
-
-### P553 Tighten SQLite types and constraints, reorganise schema
-
-- Ask: columns are loose today. Tighten the app DB schema: `STRICT` tables (SQLite 3.37+; check the version bundled by the driver), proper types, `NOT NULL`, `CHECK` (enums, ranges, booleans 0/1, `json_valid`), `UNIQUE`, foreign keys with explicit `ON DELETE`, defaults, indexes on foreign keys. Table-rebuild migrations copy data safely, back up first, handle rows that violate new constraints (repair, quarantine, or fail with a clear message). `PRAGMA foreign_keys` on. Also audit whole app DB schema (kira.db, after v0.3.0 Studio fold) for efficiency and organisation. Audit covers every table in kira.db: original Space tables and Studio tables folded in by v0.3.0 P544 (migrations 0078-0081, incl. `proof_task_links`, `db_op_log` folded into `op_log`, `ade_db_audit`). Cross-origin merges/splits in scope (overlapping Space/Studio concepts: connections, tabs, history, op logs). Split tables that mix concerns or carry wide/rarely-read columns (e.g. large blobs/JSON moved to side tables). Merge tables that are near-duplicates or 1:1 with no reason to be separate (e.g. leftovers of Space/Studio fold). Normalise repeated data. Review indexes: drop unused/redundant, add missing, covering/partial where hot queries benefit. Review naming consistency (prefixes per module, singular/plural, column names) and id/timestamp conventions. Check hot-query plans with `EXPLAIN QUERY PLAN`.
-- Depends on v0.3.0 P544.
-- Decide in plan: audit of every table and column; constraint catalogue per table; migration strategy (per table or grouped; order by foreign key dependencies); verification (schema snapshot test is acceptable: it guards complex migration logic; migration flow test on a seeded old-shape DB); interplay with P552 (builder types) and a possible later Postgres schema; order relative to P552; schema audit output (per-table verdict keep/split/merge/rename, with reason); target ER layout; how split/merge migrations preserve data and repos stay behaviour-compatible; impact on P552: builder models should be generated against final schema, so P553 likely runs before P552. Say so; if plan agrees, renumber per CLAUDE.md lockstep rule (swap P552/P553, update all cross-references); perf check on hot queries before/after.
 - Plan: `plans/P553.md`.
 
 ### P554 GitOps for config files: shared config repos
