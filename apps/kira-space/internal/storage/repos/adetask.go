@@ -116,6 +116,8 @@ func (r *AdeTaskRepo) selectRuns() *sqlbuilder.SelectBuilder {
 type AdeTaskRepo struct {
 	DB      *sql.DB
 	Dialect sqlb.Dialect
+
+	listLiveSQL sqlb.Cached
 }
 
 func nullInt64Ptr(n sql.NullInt64) *int64 {
@@ -169,6 +171,10 @@ func scanAdeTaskBranch(row rowScanner) (model.AdeTaskBranch, error) {
 
 func (r *AdeTaskRepo) queryTasks(b sqlb.Builder) ([]model.AdeTask, error) {
 	rows, err := sqlb.Query(r.DB, b)
+	return r.scanTasks(rows, err)
+}
+
+func (r *AdeTaskRepo) scanTasks(rows *sql.Rows, err error) ([]model.AdeTask, error) {
 	if err != nil {
 		return nil, fmt.Errorf("repos: query ade tasks: %w", err)
 	}
@@ -189,12 +195,17 @@ func (r *AdeTaskRepo) queryTasks(b sqlb.Builder) ([]model.AdeTask, error) {
 
 // ListLive returns non-archived tasks in plan order (a task with no plan row sorts last).
 func (r *AdeTaskRepo) ListLive() ([]model.AdeTask, error) {
-	t, p := kiraschema.AdeTasks, kiraschema.AdeTaskPlan
-	sb := r.Dialect.Select(adeQual("t", adeTaskColumns)...).From(t.Table + " t")
-	sb.JoinWithOption(sqlbuilder.LeftJoin, p.Table+" p", "p."+p.TaskID+" = t."+t.ID)
-	sb.Where(sb.IsNull("t."+t.ArchivedAt)).
-		OrderBy("p."+p.Position+" IS NULL", "p."+p.Position, "t."+t.CreatedAt, "t."+t.ID)
-	return r.queryTasks(sb)
+	// Argument-free and fixed, so the statement builds once.
+	query := r.listLiveSQL.SQL(func() sqlb.Builder {
+		t, p := kiraschema.AdeTasks, kiraschema.AdeTaskPlan
+		sb := r.Dialect.Select(adeQual("t", adeTaskColumns)...).From(t.Table + " t")
+		sb.JoinWithOption(sqlbuilder.LeftJoin, p.Table+" p", "p."+p.TaskID+" = t."+t.ID)
+		sb.Where(sb.IsNull("t."+t.ArchivedAt)).
+			OrderBy("p."+p.Position+" IS NULL", "p."+p.Position, "t."+t.CreatedAt, "t."+t.ID)
+		return sb
+	})
+	rows, err := r.DB.Query(query)
+	return r.scanTasks(rows, err)
 }
 
 // ListArchived returns archived tasks, newest archive first.

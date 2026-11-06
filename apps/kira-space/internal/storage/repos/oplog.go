@@ -18,6 +18,8 @@ import (
 type OpLogRepo struct {
 	DB      *sql.DB
 	Dialect sqlb.Dialect
+
+	upsertSQL sqlb.Cached
 }
 
 // Upsert inserts or replaces the row for rec.ID.
@@ -30,14 +32,18 @@ func (r *OpLogRepo) Upsert(rec oplog.Record) error {
 	if err != nil {
 		return fmt.Errorf("repos: parse op start %q: %w", rec.StartedAt, err)
 	}
-	c := kiraschema.OpLog
-	ib := r.Dialect.InsertInto(c.Table).Cols(opColumns...).Values(
+	// Shape never varies, so the statement builds once; args follow opColumns order.
+	query := r.upsertSQL.SQL(func() sqlb.Builder {
+		c := kiraschema.OpLog
+		ib := r.Dialect.InsertInto(c.Table).Cols(opColumns...).Values(make([]any, len(opColumns))...)
+		sqlb.Upsert(ib, []string{c.ID}, []string{c.DurationMs, c.Status, c.Source, c.Subject, c.Command, c.Error, c.StepsJSON,
+			c.StepsDropped, c.RepeatCount, c.Rows, c.CommandTruncated, c.Path}, "")
+		return ib
+	})
+	if _, err = r.DB.Exec(query,
 		rec.ID, started.UnixMilli(), rec.DurationMs, rec.Category, rec.Kind, rec.Status, rec.Module, rec.Trigger, rec.Source,
 		rec.Subject, rec.RepoRoot, rec.RepoName, rec.TaskID, rec.ParentID, rec.Command, rec.Error, string(steps),
-		rec.StepsDropped, rec.Background, rec.Repeat, rec.ConnectionID, rec.TabID, rec.Rows, rec.CommandTruncated, rec.Path)
-	sqlb.Upsert(ib, []string{c.ID}, []string{c.DurationMs, c.Status, c.Source, c.Subject, c.Command, c.Error, c.StepsJSON,
-		c.StepsDropped, c.RepeatCount, c.Rows, c.CommandTruncated, c.Path}, "")
-	if _, err = sqlb.Exec(r.DB, ib); err != nil {
+		rec.StepsDropped, rec.Background, rec.Repeat, rec.ConnectionID, rec.TabID, rec.Rows, rec.CommandTruncated, rec.Path); err != nil {
 		return fmt.Errorf("repos: upsert op %s: %w", rec.ID, err)
 	}
 	return nil
