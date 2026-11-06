@@ -9,14 +9,14 @@ plan, own Sonnet implementer. Discovery: `codegraph_explore` over the details pa
 (`adeflow/parse.go`, `adeflow/options.go`, `adewire.WorkflowStep`, `AdeStepInspector`), agent
 sessions; shell greps for migrations, `StudioContract` callers and test dirs.
 
-Result: 6 batches instead of 11 serial phases.
+Result: 6 batches instead of 11 serial phases. P543 moved into B2 as a third stream (plan `P543.md`).
 
 | Batch | Phases | Lands before |
 |---|---|---|
 | B1 | P538 | B2 starts |
-| B2 | P539, P541 | B3 starts |
+| B2 | P539, P541, P543 | B3 starts |
 | B3 | P540, P542 | B4 starts |
-| B4 | P543, P548 | B5 starts |
+| B4 | P548 | B5 starts |
 | B5 | P544, P545 | B6 starts |
 | B6 | P546, P547 | chapter-end suite run |
 
@@ -36,8 +36,12 @@ Result: 6 batches instead of 11 serial phases.
 
 ## Order deviation
 
-Table order is dependency order. B4 runs P548 before P544 to P547; the user-asked batch exception
-covers that. P548 depends on none of them.
+Table order is dependency order. B2 runs P543 before P540 and P542; B4 runs P548 before P544 to P547; the
+user-asked batch exception covers both. P543 depends on neither: it reshapes notes and handovers in the Space DB
+and the details panel, P540 moves YAML folders, and P542 builds its chain on top of the unified notes chain
+(`notes/AdeNotesChain.vue`, rows with state `note`). P548 depends on none of P544 to P547.
+SPEC sequencing says P541 to P543 share the details panel and run one at a time: P541 touches only the proof
+window (`frontend/src/studio/proof/`), not the panel, so P541 beside P543 holds; P542, P543, P545, P546 stay serial.
 
 ## Pairs that cannot run together
 
@@ -49,11 +53,14 @@ covers that. P548 depends on none of them.
   tests. A new test written against `StudioContract` breaks once P538 lands. So B1 is P538 alone.
 - P539, P540: strict chain, never two at once.
 - P541 then P542: the chain orders diagram proof first; the diagram view comes from P541.
-- P542 and P543: both rework handover display (`AdeHandoverList`, handovers in a chain).
+- P542 and P543: both rework handover display (P543 replaces `AdeHandoverList` with `AdeNotesChain`). P543
+  lands first (B2); P542 plans against the unified chain.
 - P545 needs P542 and P543 (merged list of their entries).
 - P546 and P547 need P545 (merged list and its edit surfaces). P546 and P545 also restructure the
   same list.
 - P544 with P541, P542 or P543: each adds proof or handover schema that P544 folds; P544 runs after all three. P547 runs after P544 and stores its audit trail in the merged DB.
+- P548 with B3 (P542) or B5 (P544): P548 runs after P542 (below); P544 deletes the Studio build stage
+  where the DB MCP server is wired, which P548's per-session access changes. So B4 stays P548 alone.
 - P539 and P548: both reshape the DB MCP token, helper script and agent registrations
   (`bridge/dbmcp.go`, `internal/mcpauth`, `internal/harness/claude/mcpinstall`).
 - P542 and P548: both may add per-session identity to `dbmcp` (proof to task link; session
@@ -65,25 +72,34 @@ covers that. P548 depends on none of them.
 - Why alone: see first bullet above.
 - Shared files: none (one stream).
 
-## B2: P539 (home fold), P541 (Mermaid proof)
+## B2: P539 (home fold), P541 (Mermaid proof), P543 (unified notes)
 
 - Why independent: P539 moves paths, the home, the second runs stack, the config-files twin, the DB
-  MCP token. P541 adds a diagram view to proof steps, its tool schema and renderer. The P539 fold
-  moves the Studio DB as a whole file, so a new Studio migration applies wherever the file sits.
-  P541 reads nothing P539 changes.
+  MCP token. P541 adds a diagram view to proof steps, its tool schema and renderer. P543 moves task notes into
+  the handover chain (Space `ade_task_handovers`, `internal/ade`, `bridge/adetask.go`, `capture.go`, notes
+  components, stage dialog, add popover, handover tool text). The P539 fold moves both DB files whole, so a new
+  Studio or Space migration applies wherever the file sits. None reads data another changes; P543 touches no
+  home path (`flowharness.App.KiraHome`, which P539 deletes, stays unused).
 - Migration owner: `studiostorage/migrations` P541 (rebuild of `proof_steps` and `proof_view_state`
-  for the new view value, same pattern as `0048_p426_proof_chart_view.sql`); `storage/migrations`
-  P539 (only if its runs-row copy needs one).
+  for the new view value, same pattern as `0048_p426_proof_chart_view.sql`, 0065); `storage/migrations`
+  P543 (0077: `ade_task_handovers` rebuild with state `note`, notes copy, `ade_tasks.notes` drop). P539 needs
+  neither (its plan); if it adds a Space migration anyway, P543 renumbers at its rebase (lands last).
 
-| Shared file | P539 edit | P541 edit |
-|---|---|---|
-| `internal/flows/proofflow/helpers_test.go` | line 51 `app.KiraHome` helper token path to the Space home | none; new helpers go in a new file (`diagram_test.go`) |
-| `tests/ui/support/mockRuntime.ts` | drop `StudioConfigFiles*` entries | none; diagram fixtures in `tests/ui/studio/support/proof.ts` |
-| `internal/appwire/studio_build.go` | runs stack, dirs, config files (lines 41-80, 173) | only if proof deps change (lines 122-129) |
-| `docs/ARCHITECTURE.md` | home fold sections, Known open item | proof section |
+| Shared file | P539 edit | P541 edit | P543 edit |
+|---|---|---|---|
+| `internal/flows/proofflow/helpers_test.go` | line 51 `app.KiraHome` helper token path to the Space home | none; new helpers go in a new file (`diagram_test.go`) | none |
+| `tests/ui/support/mockRuntime.ts` | drop `StudioConfigFiles*` entries | none; diagram fixtures in `tests/ui/studio/support/proof.ts` | add `adeTaskAddNote` (near 239) and its invalidation (near 875) |
+| `tests/ui/support/ipcChannels.ts` | drop studio config-files keys (495-496) | none | add `adeTaskAddNote` (near 265) |
+| `internal/appwire/studio_build.go` | runs stack, dirs, config files (lines 41-80, 173) | only if proof deps change (lines 122-129) | none |
+| `internal/llmprompts/registry.go` | none | proof entries (near 1465) | handover notes arg (near 1003), `ade.handoverLine` (near 1283) |
+| `internal/llmprompts/testdata/budget.tsv` | none | lines 228, 240, 241 | lines 109, 132 |
+| i18n catalogs | backend keys if any | `studio.proof.diagram.*` | `space.ade.notes.*` |
+| `docs/ARCHITECTURE.md` | home fold sections, Known open item | proof section | "Stage handover (P407)" section, Task panel line |
 
-- Not shared: `dbmcp/server.go` (P539), `dbmcp/proof_tools.go` (P541), `internal/llmprompts/registry.go` (P541), `package.json`/`bun.lock` (P541, Mermaid).
-- Landing: P539, then P541.
+- Not shared: `dbmcp/server.go` (P539), `dbmcp/proof_tools.go` (P541), `package.json`/`bun.lock` (P541,
+  Mermaid), `internal/ade/**`, `bridge/adetask*.go`, `bridge/capture.go`, `adewire/wire.go`,
+  `frontend/src/ade/v2/**`, `tests/contract/ade-*.json` (P543).
+- Landing: P539, then P541, then P543.
 
 ## B3: P540 (config subfolder), P542 (proof chain)
 
@@ -103,29 +119,17 @@ covers that. P548 depends on none of them.
 - Not shared: `internal/llmprompts/registry.go` (P542, terse-handover rule), `frontend/src/ade/v2/**` (P542), `dbmcp/proof_tools.go` (P542).
 - Landing: P540, then P542.
 
-## B4: P543 (unified notes), P548 (Studio MCP option in steps)
+## B4: P548 (Studio MCP option in steps)
 
-- Why independent: P543 reshapes notes and handovers (Space `ade_task_handovers`, `ade/handover.go`,
-  notes components, stage handover prompt). P548 adds a step field and per-session DB MCP access
-  (`adeflow` options and parser, step launch, `mcpauth`, `dbmcp` auth, `mcpinstall`, step
-  inspector). No file overlap beyond additive struct fields; no ordering.
-- Migration owner: `storage/migrations` P543. P548 keeps its session credential in memory; if its
-  plan needs a table it stops and moves to B5.
-
-| Shared file | P543 edit | P548 edit |
-|---|---|---|
-| `internal/bridge/adewire/wire.go` | `Handover` fields | `WorkflowStep` field |
-| `frontend/src/ade/v2/wire.ts` | `Handover` type | `WorkflowStep` type |
-| `internal/llmprompts/registry.go` | stage handover entries | DB MCP option text, if any; separate entries |
-| i18n catalogs | notes keys | step inspector keys |
-
-- Landing: P543, then P548.
+- Why alone: P548 runs after P542 (B3) and cannot pair with P539 (B2) or P544 (B5); see pairs above.
+- Migration owner: both dirs P548, if its plan needs a table (default: session credential in memory).
+- Shared files: none (one stream).
 
 ## B5: P544 (DB merge), P545 (timeline toggle)
 
 - Why independent: P544 is backend storage, wiring and the Studio settings and op-log frontend
   (`studio/state/*`, `SettingsDialog`, `OperationsDock`, `createOpLogStore`). P545 is the details
-  list only (`AdeTaskTimeline.vue`, `taskTimeline.ts`, the chain component from P542/P543,
+  list only (`AdeTaskTimeline.vue`, `taskTimeline.ts`, the chain component from P542/P543 (`AdeNotesChain.vue` or its P542 successor),
   `state/adePanelTabs.ts`). Condition: P545 keeps toggle persistence out of the settings table (a
   Pinia store, as `adePanelTabs` does today); a plan that needs a settings key moves P545 to B6.
 - Migration owner: both dirs P544. P545 adds none.
