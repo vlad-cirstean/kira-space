@@ -587,7 +587,7 @@ type TaskProofStep struct {
 }
 
 // TaskProof is a closed proof session attached to a task. ProofID names the proof session;
-// SessionID the Kira session that attached it, ” for a user attach. Rev is the current revision.
+// SessionID the Kira session that attached it, empty for a user attach. Rev is the current revision.
 type TaskProof struct {
 	ProofID   string          `json:"proofId"`
 	Name      string          `json:"name"`
