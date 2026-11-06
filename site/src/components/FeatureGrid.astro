@@ -1,5 +1,6 @@
 ---
 import type { Feature } from '../data/content';
+import { href } from '../data/nav';
 import Icon from './Icon.astro';
 
 interface Props {
@@ -17,7 +18,18 @@ const { features } = Astro.props;
         <span class="flex size-10 items-center justify-center rounded-lg bg-tint/10 text-tint ring-1 ring-tint/20">
           <Icon name={f.icon} class="size-5" />
         </span>
-        <h3 class="mt-4 font-medium text-fg">{f.title}</h3>
+        <h3 class="mt-4 font-medium text-fg">
+          {f.href ? (
+            <a
+              href={href(f.href)}
+              class="inline-flex min-h-11 items-center underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              {f.title}
+            </a>
+          ) : (
+            f.title
+          )}
+        </h3>
         <p class="mt-1 text-base text-muted">{f.body}</p>
       </li>
     ))}

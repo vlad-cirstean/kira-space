@@ -1,3 +1,5 @@
+> **Beta, not production ready, not notarized.** Read the [install notes](https://vlad-cirstean.github.io/kira-studio/#install) before you install.
+
 # Kira Space
 
 [![PR](https://github.com/vlad-cirstean/kira-studio/actions/workflows/pr.yml/badge.svg)](https://github.com/vlad-cirstean/kira-studio/actions/workflows/pr.yml)

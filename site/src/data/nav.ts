@@ -12,7 +12,8 @@ export interface NavLink {
 }
 
 export const NAV: readonly NavLink[] = [
-  { label: 'Install', href: '#install' },
+  { label: 'Build with Kira', href: href('build/') },
+  { label: 'Install', href: href('#install') },
   { label: 'Docs', href: href('docs/') },
   { label: 'GitHub', href: REPO_URL, external: true },
 ];

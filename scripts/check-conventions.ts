@@ -15,7 +15,8 @@
  * dir, N12 a `state/` dir holds 2+ files and menu builders live in `menu.ts`.
  *
  * N15 no tracked PNG under `screenshots/` or `site/` (product screenshots are WebP) and no tracked
- * WebP under `screenshots/` (CI generates every product shot, P550); Playwright `toHaveScreenshot`
+ * WebP under `screenshots/` (CI generates every product shot, P550); the user-supplied install
+ * dialogs under `site/src/assets/install/` are the only committed WebP; Playwright `toHaveScreenshot`
  * baselines in `-snapshots` dirs under `site/tests` are PNG only and stay.
  *
  * No pending list: every hit fails. N6 also fails on any retired-code registry (`Legacy` in Go,
@@ -512,7 +513,8 @@ function imageHits(tracked: readonly string[]): Hit[] {
     .map((path) => ({
       rule: 'N15' as const,
       path,
-      message: 'product screenshots are generated, not committed; run bun run screenshots',
+      message:
+        'product screenshots are generated, not committed (run bun run screenshots); only the user-supplied install dialogs under site/src/assets/install/ are committed WebP',
     }));
 }
 

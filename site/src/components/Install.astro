@@ -1,13 +1,17 @@
 ---
 import { APP, INSTALL } from '../data/content';
 import { REPO_URL } from '../data/nav';
+import { installShot } from '../lib/installShots';
 import Icon from './Icon.astro';
+
+const { macos } = INSTALL;
+const dialogs = macos.items.map((item) => ({ ...item, image: installShot(item.file) }));
 ---
 
 <section id="install" class="mx-auto max-w-5xl px-4 pb-20">
   <div class="h-px bg-gradient-to-r from-transparent via-border-strong to-transparent"></div>
   <h2 class="mt-16 text-2xl font-semibold tracking-tight sm:text-4xl">Install {APP.name}</h2>
-  <ol class="mt-8 grid gap-4 md:grid-cols-2">
+  <ol class="mt-8 grid gap-4">
     <li class="rounded-xl border border-border bg-elevated p-5 shadow-card">
       <span
         class="flex size-8 items-center justify-center rounded-full bg-tint/10 text-sm font-semibold text-tint ring-1 ring-tint/20"
@@ -26,17 +30,43 @@ import Icon from './Icon.astro';
         ><code>{INSTALL.command}</code></pre>
       </div>
     </li>
-    <li class="rounded-xl border border-border bg-elevated p-5 shadow-card">
-      <span
-        class="flex size-8 items-center justify-center rounded-full bg-tint/10 text-sm font-semibold text-tint ring-1 ring-tint/20"
-        >2</span
-      >
-      <p class="mt-3 flex gap-3 text-base text-fg">
-        <Icon name="lock" class="mt-1 size-4 text-tint" />
-        <span>{INSTALL.steps[1]}</span>
-      </p>
-    </li>
   </ol>
+  <div class="mt-6 rounded-xl border border-border bg-elevated p-5 shadow-card">
+    <h3 class="flex items-center gap-3 text-lg font-medium text-fg">
+      <Icon name="lock" class="size-4 text-tint" />
+      {macos.title}
+    </h3>
+    <p class="mt-2 text-base text-muted">{macos.intro}</p>
+    <ul class="mt-4 grid gap-6 md:grid-cols-2">
+      {dialogs.map((d) => (
+        <li>
+          <h4 class="font-medium text-fg">{d.title}</h4>
+          <p class="mt-1 text-base text-muted">{d.body}</p>
+          <figure class="m-0 mt-3">
+            {d.image ? (
+              <img
+                src={d.image.src}
+                width={d.image.width}
+                height={d.image.height}
+                alt={d.alt}
+                loading="lazy"
+                decoding="async"
+                class="h-auto max-w-full rounded-lg ring-1 ring-border-strong"
+              >
+            ) : (
+              <div
+                data-install-pending
+                class="rounded-lg border border-dashed border-border-strong p-6 text-base text-muted"
+              >
+                Screenshot pending: {d.alt}
+              </div>
+            )}
+            <figcaption class="mt-2 text-base text-muted">{d.caption}</figcaption>
+          </figure>
+        </li>
+      ))}
+    </ul>
+  </div>
   <div class="mt-6 flex gap-3 rounded-xl border border-warn/40 bg-warn/10 p-4 text-base text-fg">
     <Icon name="warning" class="mt-1 size-4 text-warn" />
     <p>{INSTALL.note}</p>

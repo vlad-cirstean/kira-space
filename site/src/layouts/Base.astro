@@ -5,6 +5,7 @@ import '../styles/global.css';
 import { getImage } from 'astro:assets';
 import iconSvg from '../../../apps/kira-space/build/appicon.icon/Assets/kira_icon_vector.svg';
 import appIcon from '../../../apps/kira-space/build/appicon.png';
+import BetaNotice from '../components/BetaNotice.astro';
 
 interface Props {
   title: string;
@@ -38,6 +39,7 @@ const ogImage = image ? new URL(image, Astro.site).href : undefined;
     <meta name="twitter:card" content="summary_large_image">
   </head>
   <body class="min-h-screen bg-bg font-sans text-base leading-relaxed text-fg antialiased">
+    <BetaNotice />
     <slot />
   </body>
 </html>

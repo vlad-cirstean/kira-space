@@ -1,0 +1,18 @@
+---
+import type { ResolvedShot } from '../lib/shots';
+import Shot from './Shot.astro';
+
+interface Props {
+  shots: readonly ResolvedShot[];
+}
+
+const { shots } = Astro.props;
+---
+
+<div class="mt-8 grid gap-6 md:grid-cols-2" data-gallery>
+  {shots.map((shot, i) => (
+    <div class:list={[shot.kind === 'window' && 'md:col-span-2']}>
+      <Shot shot={shot} tile={shot.kind !== 'window'} eager={i === 0} />
+    </div>
+  ))}
+</div>
