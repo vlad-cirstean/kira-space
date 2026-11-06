@@ -399,20 +399,14 @@ func (a *Adapter) ResolveTables(ctx context.Context, p adapters.TableParse, path
 		}
 		rows, err := runArrayQuery(ctx, conn, `SELECT DISTINCT p.proname FROM pg_catalog.pg_proc p
 			JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
-			WHERE n.nspname = 'pg_catalog' AND p.proname = ANY($1::text[])`, []any{names}, op, track, QueryOptions{})
+			WHERE n.nspname <> 'pg_catalog' AND p.proname = ANY($1::text[])`, []any{names}, op, track, QueryOptions{})
 		if err != nil {
 			return nil, "", err
 		}
-		builtin := map[string]bool{}
+		var user []string
 		for _, r := range rows {
 			if len(r) == 1 && r[0] != nil {
-				builtin[*r[0]] = true
-			}
-		}
-		var user []string
-		for _, n := range names {
-			if !builtin[n] {
-				user = append(user, n)
+				user = append(user, *r[0])
 			}
 		}
 		if len(user) > 0 {
