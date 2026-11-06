@@ -9,7 +9,7 @@ Sequencing: P537 first. Every later phase builds on the merged app, so none star
 | Phase | Title | Status |
 |---|---|---|
 | P537 Part 1 | Merge Kira Space and Kira Studio: relocate Studio into `apps/kira-space` and freeze the merged bridge | Done |
-| P537 Part 2 | Merge Kira Space and Kira Studio: finish in three parallel streams (Go, frontend, build/tests/docs) | Pending |
+| P537 Part 2 | Merge Kira Space and Kira Studio: finish in three parallel streams (Go, frontend, build/tests/docs) | Done |
 | P538 | Fold the Studio home folder into the Kira Space home folder | Pending |
 | P539 | Move every config YAML into one subfolder of the home | Pending |
 | P540 | Merge the main SQLite databases into one | Pending |
@@ -66,6 +66,11 @@ Result:
 - Three named streams off Part 1's last commit (user raised the stream cap to 3): A Go (flow harness and flows merge, claude tests, first-launch migration, old-Studio guard, copy); B frontend (one entry, module order, stores, settings dialog); C build, packaging, CI, playwright layout, docs. Zero file overlap, no ordering dependency; landing order and checks in the plan.
 - Depends on P537 Part 1.
 - Plan: `plans/P537-part2.md`.
+- Notes: `plans/P537-part2-{a,b,c}.md`.
+- Result: Done. Streams landed fast-forward in order A, B, C, no conflicts (rebased onto chapter branch each time). Stream tips after rebase: A `42568c8b`, B `832a8fab`, C `9020562e`. Worktrees and stream branches removed.
+- Landing check: `bun run setup`, `go build ./...`, `go build -tags server ./apps/kira-space/...`, `go vet ./...`, `lint:go` (0 issues), `lint`, `typecheck`, `lint:dead` all pass on merged tree. `playwright --list` works for every config (main 2083 tests, perf 103, proto 6). `test:claude:db` test names all exist in merged `tests/claude`. Bindings: 62 services, 519 methods, identical to Part 1 snapshot. No landing-check fixes needed: knip had no stale `src/studio/main.ts` entry (Stream C removed it); `tests/unit/studio/go-ts-vocabulary-parity.spec.ts` still passes (Go `studiostorage` list not moved). Full suites not run (chapter end). Pre-push hook passed.
+- Deviations: `appmerge` skips backup and marker work when Studio side holds no rows; Studio-only stack tests deleted (`TestPreviewRefusesTaskInStudio`, `TestStudioRefusesTaskContext`); Studio panes for app-wide keys dropped, two settings stores stay until P540; site is one landing page, `/space` redirects to `/`. Details in the notes files.
+- Known open items: apply `docs/pending-changes/*.patch` to `.github/` from a session with workflow scope. Studio visual baselines change; re-record at chapter-end suite run. `apps/kira-studio` remains only in `.github/` (pending patches), `docs/HISTORY.md`, `CLAUDE.md`, and frozen eval data under `apps/kira-space/tests/claude/testdata/memory-eval/`. `~/.kira-studio` merge is P538 to P540.
 
 ### P538 Fold the Studio home folder into the Kira Space home folder
 
