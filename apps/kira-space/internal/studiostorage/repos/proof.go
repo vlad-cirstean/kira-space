@@ -397,9 +397,10 @@ func (r *ProofRepo) CloseDraft(draftID string, now time.Time) (ProofClosed, erro
 	return out, err
 }
 
-// pruneClosed deletes the closed sessions beyond the newest ProofKeepClosed and returns their ids.
+// pruneClosed deletes the unattached closed sessions beyond the newest ProofKeepClosed and returns
+// their ids. A session linked to a task is never pruned.
 func pruneClosed(tx *sql.Tx) ([]string, error) {
-	rows, err := tx.Query(`SELECT id FROM proof_sessions WHERE state = 'closed' ORDER BY closed_at DESC, rowid DESC LIMIT -1 OFFSET ?`, ProofKeepClosed)
+	rows, err := tx.Query(`SELECT id FROM proof_sessions WHERE state = 'closed' AND id NOT IN (SELECT session_id FROM proof_task_links) ORDER BY closed_at DESC, rowid DESC LIMIT -1 OFFSET ?`, ProofKeepClosed)
 	if err != nil {
 		return nil, err
 	}
@@ -643,4 +644,124 @@ func queryAll[T any](rows *sql.Rows, err error, scan func(*sql.Rows) (T, error))
 		return nil, fmt.Errorf("repos/proof: rows: %w", err)
 	}
 	return out, nil
+}
+
+// ProofTaskLink is one proof_task_links row, minus the session it belongs to.
+type ProofTaskLink struct {
+	TaskID, Source, KiraSessionID, StepID, StepName string
+}
+
+// ProofTaskSession is a closed session attached to a task, with its current revision's steps
+// (no payload).
+type ProofTaskSession struct {
+	Session  ProofSessionRow
+	Link     ProofTaskLink
+	LinkedAt int64
+	Steps    []ProofStepRow
+}
+
+// LinkTask attaches a closed session, found by id or (byKey) by name key, to a task. Linking to the
+// same task again changes nothing; a session belongs to one task.
+func (r *ProofRepo) LinkTask(idOrKey string, byKey bool, l ProofTaskLink, now time.Time) (ProofSessionRow, error) {
+	var out ProofSessionRow
+	err := r.tx(func(tx *sql.Tx) error {
+		col := "id"
+		if byKey {
+			col = "name_key"
+		}
+		s, err := scanProofSession(tx.QueryRow(`SELECT `+proofSessionCols+` FROM proof_sessions WHERE `+col+` = ?`, idOrKey))
+		if errors.Is(err, sql.ErrNoRows) {
+			return proofErr(ProofNotFound, "no proof session with that name; call proof_list_sessions")
+		}
+		if err != nil {
+			return err
+		}
+		if s.State != "closed" {
+			return proofErr(ProofBadState, "close it with proof_close_session first")
+		}
+		out = s
+		var taskID string
+		err = tx.QueryRow(`SELECT task_id FROM proof_task_links WHERE session_id = ?`, s.ID).Scan(&taskID)
+		switch {
+		case err == nil && taskID == l.TaskID:
+			return nil
+		case err == nil:
+			return proofErr(ProofBadState, "proof session %q belongs to another task", s.Name)
+		case !errors.Is(err, sql.ErrNoRows):
+			return err
+		}
+		_, err = tx.Exec(`INSERT INTO proof_task_links (session_id, task_id, source, kira_session_id, step_id, step_name, linked_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			s.ID, l.TaskID, l.Source, l.KiraSessionID, l.StepID, l.StepName, now.UnixMilli())
+		return err
+	})
+	return out, err
+}
+
+// UnlinkTask detaches a session from a task.
+func (r *ProofRepo) UnlinkTask(id, taskID string) error {
+	res, err := r.DB.Exec(`DELETE FROM proof_task_links WHERE session_id = ? AND task_id = ?`, id, taskID)
+	if err != nil {
+		return fmt.Errorf("repos/proof: unlink: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return proofErr(ProofNotFound, "no such proof session on this task")
+	}
+	return nil
+}
+
+// TaskSessions lists the sessions attached to a task, newest closed first, each with its current
+// revision's steps. Two queries, grouped in Go.
+func (r *ProofRepo) TaskSessions(taskID string) ([]ProofTaskSession, error) {
+	rows, err := r.DB.Query(`SELECT s.id, s.name, s.name_key, s.state, s.current_rev, s.pending_rev, s.summary, s.created_at, s.closed_at, s.seen_at, s.updated_at,
+		l.source, l.kira_session_id, l.step_id, l.step_name, l.linked_at
+		FROM proof_task_links l JOIN proof_sessions s ON s.id = l.session_id
+		WHERE l.task_id = ? AND s.state = 'closed' ORDER BY s.closed_at DESC, s.rowid DESC`, taskID)
+	list, err := queryAll(rows, err, func(rows *sql.Rows) (ProofTaskSession, error) {
+		var t ProofTaskSession
+		var cur, pend, closed, seen sql.NullInt64
+		s := &t.Session
+		err := rows.Scan(&s.ID, &s.Name, &s.NameKey, &s.State, &cur, &pend, &s.Summary, &s.CreatedAt, &closed, &seen, &s.UpdatedAt,
+			&t.Link.Source, &t.Link.KiraSessionID, &t.Link.StepID, &t.Link.StepName, &t.LinkedAt)
+		s.CurrentRev, s.PendingRev, s.ClosedAt, s.SeenAt = nullInt(cur), nullInt(pend), nullInt64(closed), nullInt64(seen)
+		t.Link.TaskID = taskID
+		return t, err
+	})
+	if err != nil || len(list) == 0 {
+		return list, err
+	}
+	srows, err := r.DB.Query(`SELECT st.session_id, st.rev, st.ordinal, st.description, st.query, st.language, st.source, st.view, st.payload_bytes, st.diff, st.origin_ordinal
+		FROM proof_task_links l JOIN proof_sessions s ON s.id = l.session_id
+		JOIN proof_steps st ON st.session_id = s.id AND st.rev = s.current_rev
+		WHERE l.task_id = ? AND s.state = 'closed' ORDER BY st.session_id, st.ordinal`, taskID)
+	steps, err := queryAll(srows, err, func(rows *sql.Rows) (ProofStepRow, error) {
+		var st ProofStepRow
+		var origin sql.NullInt64
+		err := rows.Scan(&st.SessionID, &st.Rev, &st.Ordinal, &st.Description, &st.Query, &st.Language, &st.Source, &st.View, &st.PayloadBytes, &st.Diff, &origin)
+		st.OriginOrdinal = nullInt(origin)
+		return st, err
+	})
+	if err != nil {
+		return nil, err
+	}
+	at := make(map[string]int, len(list))
+	for i := range list {
+		at[list[i].Session.ID] = i
+	}
+	for _, st := range steps {
+		i := at[st.SessionID]
+		list[i].Steps = append(list[i].Steps, st)
+	}
+	return list, nil
+}
+
+// UnattachedSessions lists closed sessions with no task link, newest first.
+func (r *ProofRepo) UnattachedSessions() ([]ProofSummary, error) {
+	rows, err := r.DB.Query(`SELECT s.id, s.name, s.closed_at, s.pending_rev IS NOT NULL, s.seen_at IS NOT NULL,
+		(SELECT COUNT(*) FROM proof_steps st WHERE st.session_id = s.id AND st.rev = s.current_rev)
+		FROM proof_sessions s WHERE s.state = 'closed' AND s.id NOT IN (SELECT session_id FROM proof_task_links)
+		ORDER BY s.closed_at DESC, s.rowid DESC`)
+	return queryAll(rows, err, func(rows *sql.Rows) (ProofSummary, error) {
+		var p ProofSummary
+		return p, rows.Scan(&p.ID, &p.Name, &p.ClosedAt, &p.Pending, &p.Seen, &p.Steps)
+	})
 }
