@@ -3,7 +3,8 @@
  * P550: checks that every shot in shotCapture.ts has its image under screenshots/.
  * Strict (default): a missing file prints the list and exits 1.
  * `--fallback <dir>` (CI): copies a missing file from the last-good cache, else switches the site
- * build to placeholders; writes `complete` to $GITHUB_OUTPUT and always exits 0.
+ * build to placeholders and writes `complete` to $GITHUB_OUTPUT. Exits 0, except under CI=true
+ * when a shot still lacks an image: a placeholder there would hide a capture failure, so exit 1.
  */
 import { appendFileSync, copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -79,4 +80,10 @@ if (filled.length > 0 || missing.length > 0) {
   append('GITHUB_STEP_SUMMARY', '### Site shots');
   for (const line of filled) append('GITHUB_STEP_SUMMARY', `- last-good copy: ${line}`);
   for (const line of missing) append('GITHUB_STEP_SUMMARY', `- placeholder: ${line}`);
+}
+if (missing.length > 0 && process.env.CI === 'true') {
+  print(
+    `shots-fill: ${missing.length} shots have no image and no last-good copy. Failing under CI.`,
+  );
+  process.exit(1);
 }
