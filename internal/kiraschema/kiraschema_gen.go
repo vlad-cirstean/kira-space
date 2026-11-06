@@ -55,7 +55,7 @@ var AdeDbAudit = struct {
 	TaskID:             "task_id",
 	CallID:             "call_id",
 	Kind:               "kind",
-	StartedMs: "started_ms",
+	StartedMs:          "started_ms",
 	EndedMs:            "ended_ms",
 	StatementLen:       "statement_len",
 	StatementWithheld:  "statement_withheld",
