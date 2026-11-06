@@ -1,0 +1,64 @@
+{
+  "AdeTaskService.ForwardPanelEdits": {
+    "ended": [],
+    "failed": [],
+    "sent": [
+      "<id:2>"
+    ]
+  },
+  "AdeTaskService.PanelForward#headless": {
+    "dropped": 0,
+    "items": [
+      {
+        "at": 0,
+        "key": "<masked>",
+        "kind": "note",
+        "label": "note (one, 12:00)"
+      }
+    ],
+    "preview": "The user changed the task panel. Only the changes follow, as a diff; nothing else changed.\n--- note (one, 12:00)\n@@ -0,0 +1 @@\n+use the new endpoint\nTake these changes into account in your current work.",
+    "stepId": "one",
+    "stepName": "one",
+    "targets": [],
+    "unreachable": 1
+  },
+  "AdeTaskService.PanelForward#pending": {
+    "dropped": 0,
+    "items": [
+      {
+        "at": 0,
+        "key": "<masked>",
+        "kind": "note",
+        "label": "note (Design, 12:00)"
+      },
+      {
+        "at": 0,
+        "key": "<masked>",
+        "kind": "link",
+        "label": "link"
+      },
+      {
+        "at": 0,
+        "key": "<masked>",
+        "kind": "field",
+        "label": "task title"
+      }
+    ],
+    "preview": "The user changed the task panel. Only the changes follow, as a diff; nothing else changed.\n--- note (Design, 12:00)\n@@ -1,4 +1,4 @@\n alpha\n-bravo\n+bravo final\n charlie\n delta\n--- link\n+ link Runbook https://wiki.example/runbook\n--- task title\n- Fix login\n+ Fix login form\nTake these changes into account in your current work.",
+    "stepId": "design",
+    "stepName": "Design",
+    "targets": [
+      {
+        "badge": "Design · claude",
+        "sessionId": "<masked>"
+      }
+    ],
+    "unreachable": 0
+  },
+  "args:AdeTaskService.DismissPanelEdits": {
+    "taskId": "<id:1>"
+  },
+  "args:AdeTaskService.ForwardPanelEdits": {
+    "taskId": "<id:1>"
+  }
+}
