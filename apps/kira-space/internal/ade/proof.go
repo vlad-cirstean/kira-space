@@ -91,6 +91,9 @@ func (b *TaskBoard) LinkProof(_ context.Context, taskID, proofID string) error {
 	if _, err := links.AttachByID(proofID, l); err != nil {
 		return proofUserError(err)
 	}
+	if p := b.proofOf(taskID, proofID); p != nil {
+		b.recordPanelEdit(taskID, "proof:"+proofID, panelItemKindProof, "proof", "", proofText(p.Name, p.Summary))
+	}
 	return nil
 }
 
@@ -106,7 +109,14 @@ func (b *TaskBoard) UnlinkProof(_ context.Context, taskID, proofID string) error
 	if _, err := b.loadTaskCtx(taskID); err != nil {
 		return err
 	}
-	return proofUserError(links.Detach(proofID, taskID))
+	prev := b.proofOf(taskID, proofID)
+	if err := proofUserError(links.Detach(proofID, taskID)); err != nil {
+		return err
+	}
+	if prev != nil {
+		b.recordPanelEdit(taskID, "proof:"+proofID, panelItemKindProof, "proof", proofText(prev.Name, prev.Summary), "")
+	}
+	return nil
 }
 
 // TaskProofs lists the sessions attached to a task. Archived tasks work too.

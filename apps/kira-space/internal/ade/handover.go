@@ -261,6 +261,7 @@ func (b *TaskBoard) AddNote(_ context.Context, taskID, body string) (adewire.Han
 	if err != nil {
 		return adewire.Handover{}, err
 	}
+	b.recordHandover(n, "", n.Body)
 	b.notifyBoard()
 	return toWireHandover(n), nil
 }
@@ -312,6 +313,11 @@ func (b *TaskBoard) UpdateHandover(_ context.Context, id, body string) error {
 	} else if _, err := b.deps.Tasks.UpdateHandoverBody(id, body, b.deps.Now().UnixMilli()); err != nil {
 		return err
 	}
+	after := body
+	if strings.TrimSpace(body) == "" {
+		after = ""
+	}
+	b.recordHandover(*row, row.Body, after)
 	b.notifyBoard()
 	return nil
 }

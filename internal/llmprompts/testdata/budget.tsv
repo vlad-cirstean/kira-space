@@ -220,6 +220,7 @@ ade.review.comments	389
 ade.review.round.message	686
 ade.review.followup.message	466
 ade.review.forward.message	285
+ade.panel.forward.message	308
 headless.reviewReply.ack	6
 headless.tool.reply_review_comment	63
 headless.tool.reply_review_comment.arg.id	29

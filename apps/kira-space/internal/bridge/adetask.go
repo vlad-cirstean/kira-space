@@ -1437,6 +1437,35 @@ func (s *AdeTaskService) ForwardReviewComments(ctx context.Context, args adewire
 	return adewire.ForwardReviewResult{Count: n}, adeTaskError(err)
 }
 
+// PanelForward lists the pending panel edits and the agents that would take them.
+func (s *AdeTaskService) PanelForward(ctx context.Context, args adewire.TaskArgs) (adewire.PanelForward, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeItemID(args.TaskID, "taskId"); err != nil {
+		return adewire.PanelForward{}, err
+	}
+	out, err := s.Engine.PanelForward(ctx, args.TaskID)
+	return out, adeTaskError(err)
+}
+
+// ForwardPanelEdits pastes the pending panel edits into the agents running in the task's step.
+func (s *AdeTaskService) ForwardPanelEdits(ctx context.Context, args adewire.TaskArgs) (adewire.PanelForwardResult, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeItemID(args.TaskID, "taskId"); err != nil {
+		return adewire.PanelForwardResult{}, err
+	}
+	out, err := s.Engine.ForwardPanelEdits(ctx, args.TaskID)
+	return out, adeTaskError(err)
+}
+
+// DismissPanelEdits drops the pending panel edits without sending them.
+func (s *AdeTaskService) DismissPanelEdits(ctx context.Context, args adewire.TaskArgs) error {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeItemID(args.TaskID, "taskId"); err != nil {
+		return err
+	}
+	return adeTaskError(s.Engine.DismissPanelEdits(ctx, args.TaskID))
+}
+
 // ReviewForwardText returns the message ForwardReviewComments would send. It sends and stamps nothing.
 func (s *AdeTaskService) ReviewForwardText(ctx context.Context, args adewire.BranchArgs) (adewire.ReviewForwardText, error) {
 	ctx = adeUserCtx(ctx)

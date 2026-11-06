@@ -1206,6 +1206,46 @@ type ForwardReviewResult struct {
 	Count int `json:"count"`
 }
 
+// PanelForwardItem is one pending task panel edit. Kind is note, handover, link, proof or field.
+type PanelForwardItem struct {
+	Key   string `json:"key"`
+	Kind  string `json:"kind"`
+	Label string `json:"label"`
+	At    int64  `json:"at"`
+}
+
+// ForwardTarget is a running agent session that takes forwarded panel edits.
+type ForwardTarget struct {
+	SessionID string `json:"sessionId"`
+	Badge     string `json:"badge"`
+}
+
+// PanelForward is the offer to send pending panel edits to the agents running in the task's step.
+// Targets take a message; Unreachable counts running sessions that take none (background runs).
+// Preview is the exact message.
+type PanelForward struct {
+	StepID      string             `json:"stepId"`
+	StepName    string             `json:"stepName"`
+	Items       []PanelForwardItem `json:"items"`
+	Targets     []ForwardTarget    `json:"targets"`
+	Unreachable int                `json:"unreachable"`
+	Dropped     int                `json:"dropped"`
+	Preview     string             `json:"preview"`
+}
+
+// PanelForwardFailure is a session a forward did not reach.
+type PanelForwardFailure struct {
+	SessionID string `json:"sessionId"`
+	Error     string `json:"error"`
+}
+
+// PanelForwardResult says which sessions took the forward, which had ended and which failed.
+type PanelForwardResult struct {
+	Sent   []string              `json:"sent"`
+	Ended  []string              `json:"ended"`
+	Failed []PanelForwardFailure `json:"failed"`
+}
+
 // ReviewForwardText is the message ForwardReviewComments would send, composed for copying.
 type ReviewForwardText struct {
 	Text string `json:"text"`

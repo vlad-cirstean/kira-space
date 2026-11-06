@@ -248,6 +248,17 @@ type ReviewRoundVars struct {
 	ChangeRequestURL string `json:"changeRequestURL"`
 }
 
+// PanelForwardItemVar is one panel change: a label and its diff text.
+type PanelForwardItemVar struct {
+	Label string `json:"label"`
+	Diff  string `json:"diff"`
+}
+
+// PanelForwardVars fills the forwarded panel changes message.
+type PanelForwardVars struct {
+	Items []PanelForwardItemVar `json:"items"`
+}
+
 // ResumeVars fills the resume-after-restart message.
 type ResumeVars struct {
 	App string `json:"app" prompt:"required"`
@@ -1255,6 +1266,21 @@ var AdeReviewForwardMessage = define(Entry{
 {{.Body}}
 {{end}}Answer each question. Make the change a change comment asks for.`,
 }, reviewRoundExample)
+
+// AdePanelForwardMessage carries the user's task panel edits, as diffs, into the agents running in the step.
+var AdePanelForwardMessage = define(Entry{
+	ID: "ade.panel.forward.message", Kind: KindMessage, Apps: spaceApp, Applies: NextCall,
+	TitleKey:   "llmPrompts.entry.adePanelForwardMessage.title",
+	PurposeKey: "llmPrompts.entry.adePanelForwardMessage.description",
+	UsedByKey:  "llmPrompts.entry.adePanelForwardMessage.usedBy.body",
+	Default: `The user changed the task panel. Only the changes follow, as a diff; nothing else changed.
+{{range .Items}}--- {{.Label}}
+{{.Diff}}
+{{end}}Take these changes into account in your current work.`,
+}, PanelForwardVars{Items: []PanelForwardItemVar{
+	{Label: "note (Implement, 14:05)", Diff: "@@ -2,3 +2,3 @@\n Use the new endpoint.\n-Keep the old flag.\n+Drop the old flag.\n Add a test."},
+	{Label: "task title", Diff: "- Add login\n+ Add login form"},
+}})
 
 // AdeStartMessage is the first message of a branch-level Start session.
 var AdeStartMessage = define(Entry{

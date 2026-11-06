@@ -219,9 +219,18 @@ func (b *TaskBoard) UpdateTask(ctx context.Context, args adewire.UpdateTaskArgs)
 			}
 		}
 	}
+	var prevTask *model.AdeTask
+	if userTrigger(ctx) && (p.Title != nil || p.Jira != nil || p.ClearJira || p.HostURL != nil) {
+		if t, err := b.deps.Tasks.GetTask(args.TaskID); err == nil {
+			prevTask = &t
+		}
+	}
 	task, err := b.deps.Tasks.UpdateTask(args.TaskID, patch)
 	if err != nil {
 		return adewire.Task{}, err
+	}
+	if prevTask != nil {
+		b.recordTaskEdit(*prevTask, task)
 	}
 	b.notifyBoard()
 	for _, sb := range converted {

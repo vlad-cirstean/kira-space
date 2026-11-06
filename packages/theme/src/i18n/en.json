@@ -1725,6 +1725,17 @@
         "notesTooLong": {
           "body": "The notes are too long."
         },
+        "panelForward": {
+          "empty": {
+            "body": "No panel changes to send."
+          },
+          "noAgent": {
+            "body": "No agent runs in this step now."
+          },
+          "unreachable": {
+            "body": "Background runs take no messages. Take over a run to send."
+          }
+        },
         "resumeCwdNotDir": {
           "body": "The folder to resume in is a file, not a folder."
         },
@@ -6795,6 +6806,13 @@
         "title": "Manual session sandbox notice",
         "usedBy": {
           "body": "Added to the first message of a manual step session that runs under the sandbox."
+        }
+      },
+      "adePanelForwardMessage": {
+        "description": "Sent to the agents running in the current step with the task panel changes you made, as a diff.",
+        "title": "Panel changes message",
+        "usedBy": {
+          "body": "Sent when you forward pending task panel changes to the running agents."
         }
       },
       "adeRebaseContextLine": {

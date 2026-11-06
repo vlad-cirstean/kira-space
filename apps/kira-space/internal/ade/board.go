@@ -185,6 +185,8 @@ type TaskBoard struct {
 	boardTimer     *time.Timer
 	updates        *updateWatcher
 
+	panelEdits panelEdits // pending task panel edits per task (panelforward.go)
+
 	runMu            sync.Mutex                 // guards live, setupLive, archiving, taskMus, finishes, stepMsgs
 	live             map[string]*liveRun        // run id -> its process
 	tuiGrants        map[string]tuiBinding      // TUI record id -> the agent MCP grant its launch registered

@@ -539,6 +539,7 @@ func (b *TaskBoard) RemoveArtifact(_ context.Context, args adewire.RemoveArtifac
 	if err := b.deps.Tasks.DeleteArtifact(args.ID); err != nil {
 		return err
 	}
+	b.recordArtifact(args.TaskID, row.ID, artifactText(*row), "")
 	b.notifyBoard()
 	return nil
 }
