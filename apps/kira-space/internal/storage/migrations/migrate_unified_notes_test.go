@@ -8,7 +8,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// P543: migration 0077 copies each task's notes into the handover chain as a user note and drops
+// P542: migration 0077 copies each task's notes into the handover chain as a user note and drops
 // ade_tasks.notes. The table rebuild must keep every handover row and both indexes.
 func TestMigration77MovesNotesIntoChain(t *testing.T) {
 	db, err := sql.Open("sqlite", "file:"+t.TempDir()+"/kira.sqlite?_foreign_keys=1")

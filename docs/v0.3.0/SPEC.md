@@ -16,8 +16,8 @@ Twins: every Studio twin in `plans/TWINS.md` is merged by P538, P539, P540 or P5
 | P539 | Fold the Studio home folder into the Kira Space home folder | Done |
 | P540 | Move every config YAML into one subfolder of the home | Pending |
 | P541 | Mermaid visualiser in the proof tool and proof MCP tool | Done |
-| P542 | Proof as an artifact chain in the task details panel | Pending |
-| P543 | Unified notes: user notes and agent handovers in one chain | Done |
+| P542 | Unified notes: user notes and agent handovers in one chain | Done |
+| P543 | Proof as an artifact chain in the task details panel | Pending |
 | P544 | Merge the main SQLite databases into one | Pending |
 | P545 | Timeline becomes a toggle merged into the same list | Pending |
 | P546 | Forward panel edits (diff only) to agents running in the step | Pending |
@@ -145,20 +145,20 @@ Result:
 - Plan: `plans/P541.md`.
 - Result: Done. Proof steps take view `diagram`: Mermaid text in `data.source`, validated in Go (`proof/diagram.go`: header allow list; no front matter, directives, click lines, `url(`, `@import`, control characters; 20000 bytes, 1000 lines). Migration `0065_p541_proof_diagram_view.sql` rebuilds the proof tables. Window renders through `diagramRender.ts`: lazy `mermaid` 12.2.0 and `dompurify` 3.4.17, strict mode, no HTML labels, private DOMPurify pass, CSP last layer; parse errors show message above source. `TestProofDiagram`, proofflow tests, `proof-diagram`, `proof-chart`, `proof-window` UI specs pass; main entry chunk holds no mermaid code. Deviations: no existing dark-mode resolver, so `darkMode` derives from luminance of the elevated-background token. Mermaid 12.2.0 cannot draw image nodes under the CSP: Go accepts them, tool text says send no images, a stored image node shows the error state with its source; UI spec asserts that and zero remote requests. Open: real `claude` proof run not done (no API key).
 
-### P542 Proof as an artifact chain in the task details panel
-
-- Ask: proof becomes an artifact in the task details panel. Result is a chain of proof. Links of interest stay at the top, grouped. Everything else is in order (for example diagram, then handover, then other proof) and shown in that order.
-- Handover text is terse. Add a short rule for this in the MCP tool description (llmprompts).
-- Decide in plan: chain ordering key and model; where the artifact lives relative to `AdeDetailsTab.vue` and `AdeLinkGroups.vue`; how existing proof records migrate into the chain; exact wording and budget of the terse-handover rule.
-- Plan: `plans/P542.md`.
-
-### P543 Unified notes: user notes and agent handovers in one chain
+### P542 Unified notes: user notes and agent handovers in one chain
 
 - Ask: manual notes unified. The notes panel is hidden by default; a button reveals it so the user can write. User notes appear in the same ordered chain as agent handovers (a handover from the user): one unified model. Adding and editing any note uses the same rich text editor everywhere. Sorted by time, newest first.
 - Touches `notes/AdeHandoverList.vue`, `notes/AdeNotesEditor.vue`, `notesExtensions.ts` and the stage handover prompt.
 - Decide in plan: data model and migration of existing manual notes and handovers; author marker (user or agent); which editor instances get replaced; hidden-state persistence.
-- Plan: `plans/P543.md`.
+- Plan: `plans/P542.md`.
 - Result: Done. User notes are rows in `ade_task_handovers` (state `note`); agent handovers and user notes form one chain, one Markdown editor everywhere. Migration 0077 rebuilds `ade_tasks` without `notes` and copies non-blank notes into note rows; `Task.notes` stays on the wire, derived read-only. New bridge method `AddNote`; capture text lands as one user note. Limits: note 1 MiB, draft/handed 16 KiB. `AdeNotesChain` replaces `AdeHandoverList`; `AdeNotesEditor` serves chain, stage dialog and Add popover; composer draft in `adeNoteComposer` Pinia store. Handover notes arg and `ade.handoverLine` reworded. `TestUnifiedNotes`, `TestMigration77MovesNotesIntoChain`, `ade-v2-notes.spec.ts` (6) and updated ADE specs pass. Deviations: editor prop `focusOnMount` (biome noAutofocus); hard breaks via `notesDoc.ts` `parseWithLineBreaks`, not marked options (global leak); composer store has `clear`, no `hide`; `useUpdateHandover` also invalidates handovers prefix; `budget.tsv` raised also for `ade.manual.message`, `ade.review.message`, `ade.start.message`, 8 goldens regenerated; extra test files touched outside the plan table. Open: mobile step-move notes (`PlanTaskCard.vue`) stays a plain Textarea, pending user confirmation; real `claude` run not done (no API key); `ui-leftovers` http-send pair (InlineState, find bar) fails at base, left for chapter-end run.
+
+### P543 Proof as an artifact chain in the task details panel
+
+- Ask: proof becomes an artifact in the task details panel. Result is a chain of proof. Links of interest stay at the top, grouped. Everything else is in order (for example diagram, then handover, then other proof) and shown in that order.
+- Handover text is terse. Add a short rule for this in the MCP tool description (llmprompts).
+- Decide in plan: chain ordering key and model; where the artifact lives relative to `AdeDetailsTab.vue` and `AdeLinkGroups.vue`; how existing proof records migrate into the chain; exact wording and budget of the terse-handover rule.
+- Plan: `plans/P543.md`.
 
 ### P544 Merge the main SQLite databases into one
 
@@ -210,3 +210,15 @@ Result:
 ## Close
 
 2 code review rounds (user ask). After P548: one full suite run with all failures fixed, review rounds, hand-written close per CLAUDE.md, PR.
+
+### Site and images check (mandatory)
+
+Runs after P548 and the full suite run, before the code review. Close does not start until every item passes.
+
+- [ ] Product screenshots. Apply the shot-fixture fix to every Studio shot: stub the Space channels `kira:repoconfig:list`, `kira:adetask:repos:call`, `kira:adetask:sessions:call` in CONTROL of `apps/kira-space/tests/screenshots/studio/studio.shot.ts`. Fix is commit `bd2bcb7a4` on local branch `shot/sql-console`; regenerated SQL console image is `7de43e32f`. Cherry-pick both if still unmerged. Regenerate every image from the final merged app with `bun run screenshots`: agents board, git graph, memory, SQL console, data grid, API module, framed versions included. The orchestrator views each image.
+- [ ] Site. `site:build` and `site:check` pass. Visual baselines re-recorded for the final UI. One app presented everywhere; no page shows two products. Install command, repo URLs, download links and Studio-to-Space migration notes correct. Redirects work.
+- [ ] Docs and prompts match final behaviour: README, ARCHITECTURE, PACKAGING, DEV_ENVIRONMENT, site docs, llmprompts docs. Cover home fold, diagram proof, unified notes, Settings panes, module order. No stale kira-studio or twin wording.
+- [ ] `docs/pending-changes/*.patch` match the final state. Applied from a session with workflow scope.
+- [ ] Known failing UI specs all fixed: grpc-request (20), row-coloring (2), settings-apply-on-save (4), control-sizing (1), data-view (1), copy-coverage "settings dialog, every pane", ui-leftovers http-send pair, api-ui-consistency. Studio visual baselines re-recorded.
+
+Image delivery for many scenarios (WebP, build-time generation) is a follow-up the user may add as a phase.

@@ -2794,7 +2794,7 @@ Stage = workflow step. A handover is text one stage leaves for the next. Table `
 - A `handover` call with `finished: true` replies with the task's artifacts (see Task artifacts).
 - Tests: flows/adeflow `TestStageHandover` (contract `ade-handover`) and tests/ui/ade-v2-handover.spec.ts.
 
-#### Unified notes (P543)
+#### Unified notes (P542)
 
 - One chain: user notes live in `ade_task_handovers` as state `note` (`source user`, `from_step_*` = the task's stage when written, `to_step_*` and `session_id` empty). `ade_tasks.notes` is gone. Drafts and handed rows keep their rules; `LatestHandover`, `HandoverDraft`, `FinishedDrafts` and the board facts filter on `draft`/`handed`, so a note never becomes a stage handover or raises the prompt. The table keeps its name.
 - Migration 0077 rebuilds the table with the wider state CHECK, copies each task's non-blank `notes` verbatim as one `note` row stamped with the task's `created_at` (no edit time existed), then drops the column. A blank-only note (spaces, tabs, newlines) copies nothing.

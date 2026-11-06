@@ -14,7 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
-// P543 unified notes. Contract ade-notes: tests/ui/ade-v2-notes.spec.ts reads these.
+// P542 unified notes. Contract ade-notes: tests/ui/ade-v2-notes.spec.ts reads these.
 
 const notesScenario = "ade-notes"
 

@@ -1,4 +1,4 @@
--- P543: user notes join the handover chain as state 'note' rows; ade_tasks.notes goes.
+-- P542: user notes join the handover chain as state 'note' rows; ade_tasks.notes goes.
 CREATE TABLE ade_task_handovers_new (
   id TEXT PRIMARY KEY,
   task_id TEXT NOT NULL REFERENCES ade_tasks (id) ON DELETE CASCADE,
