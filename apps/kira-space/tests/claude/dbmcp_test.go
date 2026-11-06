@@ -253,3 +253,35 @@ func TestDbMcpInstallRegisters(t *testing.T) {
 		t.Fatalf("claude mcp list has no connected %s:\n%s", dbServer, out)
 	}
 }
+
+// TestDbMcpSessionStep runs a headless agent step with db_mcp on while the Settings switch is off:
+// the real claude must reach the session server and call list_connections.
+func TestDbMcpSessionStep(t *testing.T) {
+	f := newAdeFixture(t, nil)
+	dbFile := filepath.Join(t.TempDir(), "real.sqlite")
+	if err := os.WriteFile(dbFile, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	connName := "real-claude-sqlite"
+	conn, err := f.W.Connections.Create(connections.Input{ConnectionFields: model.ConnectionFields{
+		Name: connName, Kind: "sqlite", Color: "blue", Mode: "fields", Database: &dbFile, Options: map[string]any{},
+		McpEnabled: true, McpDescription: "scratch database", McpReadMode: "allow", McpWriteMode: "deny", McpDdlMode: "deny",
+	}})
+	if err != nil {
+		t.Fatalf("Connections.Create: %v", err)
+	}
+	if _, err := f.W.Connections.Connect(bridge.ConnectionsIDArgs{ID: conn.ID}); err != nil {
+		t.Fatalf("Connections.Connect: %v", err)
+	}
+	f.saveWorkflow(t, "flow", "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 3m\n    db_mcp: true\n"+
+		"    prompt: Call the list_connections tool of the kira-db-session server once, then call finish_step with status done and summary ok.\n"+
+		manualStepYAML)
+	run := f.startRun(t, f.createTask(t, "flow"), "feat/real-claude-db")
+	log := f.runLog(t, run.ID)
+	if run.State != "done" {
+		t.Fatalf("run = %+v, want done; log:\n%s", run, tail(log, 1500))
+	}
+	if !strings.Contains(log, "mcp__kira-db-session__list_connections") || !strings.Contains(log, connName) {
+		t.Fatalf("run log lacks the list_connections call or %q:\n%s", connName, tail(log, 1500))
+	}
+}
