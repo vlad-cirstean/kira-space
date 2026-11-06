@@ -3,6 +3,7 @@ package clickhouse
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	chparser "github.com/AfterShip/clickhouse-sql-parser/parser"
@@ -178,7 +179,7 @@ func (w *chWalker) walk(n chparser.Expr, scope map[string]bool) {
 				w.refuse("function " + name)
 				break
 			}
-			if chInFuncs[name] && t.Params != nil && t.Params.Items != nil && len(t.Params.Items.Items) > 1 && isNameExpr(t.Params.Items.Items[1]) {
+			if chInFuncs.MatchString(name) && t.Params != nil && t.Params.Items != nil && len(t.Params.Items.Items) > 1 && isNameExpr(t.Params.Items.Items[1]) {
 				w.refuse("IN with a table name")
 				break
 			}
@@ -199,12 +200,9 @@ func (w *chWalker) walk(n chparser.Expr, scope map[string]bool) {
 	})
 }
 
-// chInFuncs are the function forms of IN; a bare name as the second argument is a table.
-var chInFuncs = map[string]bool{
-	"in": true, "notin": true, "globalin": true, "globalnotin": true,
-	"nullin": true, "notnullin": true, "globalnullin": true, "globalnotnullin": true,
-	"innullin": true, "notinnullin": true,
-}
+// chInFuncs matches the function forms of IN (in, notIn, nullIn, globalNotNullIn and the *IgnoreSet variants,
+// lowercased); a bare name as the second argument is a table.
+var chInFuncs = regexp.MustCompile(`^(global)?(not)?(null)?in(ignoreset)?$`)
 
 // isNameExpr reports a bare (possibly parenthesised) identifier, which ClickHouse reads as a table after IN.
 func isNameExpr(e chparser.Expr) bool {

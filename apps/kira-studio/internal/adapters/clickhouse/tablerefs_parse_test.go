@@ -46,6 +46,7 @@ func TestParseTablesClickHouse(t *testing.T) {
 		{name: "in table", sql: "SELECT * FROM a WHERE x IN secret", refusal: "IN with a table name"},
 		{name: "in function table", sql: "SELECT count() FROM a WHERE in(id, secret)", refusal: "IN with a table name"},
 		{name: "global not in function table", sql: "SELECT 1 FROM a WHERE globalNotIn(id, secret)", refusal: "IN with a table name"},
+		{name: "in ignore set function table", sql: "SELECT 1 FROM a WHERE globalNullInIgnoreSet(id, secret)", refusal: "IN with a table name"},
 		{name: "in parenthesised table", sql: "SELECT 1 FROM a WHERE id IN (secret)", refusal: "IN with a table name"},
 		{name: "in function tuple", sql: "SELECT 1 FROM a WHERE in(id, (1, 2))", refs: []string{"shop.a"}, funcs: []string{"in"}},
 		{name: "in function subquery", sql: "SELECT 1 FROM a WHERE in(id, (SELECT 1 FROM b))", refs: []string{"shop.a", "shop.b"}, funcs: []string{"in"}},
