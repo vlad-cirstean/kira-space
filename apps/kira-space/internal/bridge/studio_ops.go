@@ -21,8 +21,8 @@ type StudioCanceller interface {
 // appcore.StudioDeps (the same shape bridge.FilesService's own Dialogs field already uses): appcore
 // cannot import bridge (bridge already imports appcore), so a StudioCanceller-typed field belongs here.
 type StudioOpsService struct {
-	Deps            appcore.StudioDeps
-	StudioCanceller StudioCanceller
+	Deps      appcore.StudioDeps
+	Canceller StudioCanceller
 }
 
 type StudioOpsRecentArgs struct {
@@ -46,6 +46,6 @@ func (s *StudioOpsService) Cancel(args StudioOpsCancelArgs) error {
 	if args.OpID == "" {
 		return ipcerr.Required("opId")
 	}
-	_, err := s.StudioCanceller.Cancel(context.Background(), args.OpID)
+	_, err := s.Canceller.Cancel(context.Background(), args.OpID)
 	return err
 }

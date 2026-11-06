@@ -40,7 +40,7 @@ func TestShellTab(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitExit(t, app, mark, "w1", "t1")
-	testx.WaitUntil(t, wait, func() bool { _, ok := app.W.TerminalRegistry.WindowOf("t1"); return !ok })
+	testx.WaitUntil(t, wait, func() bool { _, ok := app.W.TermRegistry.WindowOf("t1"); return !ok })
 	if err := svc.Write(terminal.WriteArgs{TerminalID: "t1", Data: "ZWNobyBoaQo="}); err != nil {
 		t.Fatalf("Write after Close = %v, want a no-op", err)
 	}
@@ -71,10 +71,10 @@ func TestOpenRefusals(t *testing.T) {
 			t.Fatalf("%s: err = %v, want %s", name, err, c.code)
 		}
 	}
-	if _, ok := app.W.TerminalRegistry.WindowOf("r"); ok {
+	if _, ok := app.W.TermRegistry.WindowOf("r"); ok {
 		t.Fatal("a refused Open registered a session")
 	}
-	if w, _ := app.W.TerminalRegistry.WindowOf("live"); w != "w1" {
+	if w, _ := app.W.TermRegistry.WindowOf("live"); w != "w1" {
 		t.Fatalf("duplicate Open moved the live session to window %q", w)
 	}
 }

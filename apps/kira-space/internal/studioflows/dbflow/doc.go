@@ -1,3 +1,3 @@
 // Package dbflow holds Kira Studio flow tests for database connections, trees, saved queries and
-// masking, run at the IPC boundary through internal/flowharness.
+// masking, run at the IPC boundary through internal/studioflowharness.
 package dbflow

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 )
 
@@ -41,11 +41,11 @@ func TestHarnessBootsAndSends(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := app.W.TerminalRegistry.WindowOf("t1"); !ok {
+	if _, ok := app.W.TermRegistry.WindowOf("t1"); !ok {
 		t.Fatal("shell not registered after Open")
 	}
 	app.Quit(t)
-	if _, ok := app.W.TerminalRegistry.WindowOf("t1"); ok {
+	if _, ok := app.W.TermRegistry.WindowOf("t1"); ok {
 		t.Fatal("shell still registered after Quit")
 	}
 }

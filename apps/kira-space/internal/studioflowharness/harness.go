@@ -27,13 +27,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appwire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
+	spacerepos "github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appwire"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/flowtest"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
@@ -218,6 +220,14 @@ func (a *App) build() {
 	if err != nil {
 		a.t.Fatalf("repos.New: %v", err)
 	}
+	spaceDB, err := storage.Open()
+	if err != nil {
+		a.t.Fatalf("space storage.Open: %v", err)
+	}
+	spaceRepos, err := spacerepos.New(spaceDB.DB)
+	if err != nil {
+		a.t.Fatalf("space repos.New: %v", err)
+	}
 	cipher := secrets.New()
 	if !a.opts.noSecretStore && !cipher.Status().Available {
 		a.t.Fatalf("cipher unavailable: %+v", cipher.Status())
@@ -230,10 +240,10 @@ func (a *App) build() {
 	}
 	w, err := appwire.Build(appwire.Options{
 		DbMcpPort: dbMcpPort,
-		DB:        db, Repos: r, Cipher: cipher,
+		DB: spaceDB, Repos: spaceRepos, StudioDB: db, StudioRepos: r, Cipher: cipher,
 		Authorizer: localauth.New(time.Now, a.OSAuth.evaluate, a.OSAuth.isAvailable),
 		Emitter:    a.Events, Browser: a.Browser, FileOpener: a.FileOpener, Dialogs: a.Dialogs, KeepAwakeDriver: a.KeepAwake, McpInstaller: a.McpInstaller,
-		AppName: "Kira Studio", Version: "flowtest", SmartTimeout: a.opts.smartTimeout,
+		SmartTimeout:    a.opts.smartTimeout,
 		ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, DockerHubAPI: a.opts.dockerHubAPI, DockerExtra: a.opts.dockerExtra, WindowFocus: a.Focus,
 		KubernetesExtra: append([]kubernetes.Option{kubernetes.WithEnv(kubeEnv)}, a.opts.kubeExtra...),
 	})
@@ -270,7 +280,7 @@ func (a *App) NewWindows() int {
 // CloseWindow runs what closing a window runs in the shell: the terminal registry's CloseWindow,
 // then each OnWindowClosing hook (internal/shell/openwindow.go).
 func (a *App) CloseWindow(key string) {
-	a.W.TerminalRegistry.CloseWindow(key)
+	a.W.TermRegistry.CloseWindow(key)
 	for _, hook := range a.W.OnWindowClosing {
 		hook(key)
 	}

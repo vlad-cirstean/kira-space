@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 )

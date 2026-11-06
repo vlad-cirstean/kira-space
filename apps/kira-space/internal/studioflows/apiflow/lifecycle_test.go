@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 )
 
 // Contract api-lifecycle, read by tests/ui/api-lifecycle.spec.ts: the tree menu renames, moves and

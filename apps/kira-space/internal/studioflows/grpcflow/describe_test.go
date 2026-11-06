@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/grpcclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 )
 
 func TestDescribeReflection(t *testing.T) {
@@ -198,7 +198,7 @@ func TestDescribeCancel(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("Describe never connected to the silent server")
 	}
-	if err := app.W.Ops.Cancel(bridge.StudioOpsCancelArgs{OpID: args.OpID}); err != nil {
+	if err := app.W.StudioOps.Cancel(bridge.StudioOpsCancelArgs{OpID: args.OpID}); err != nil {
 		t.Fatal(err)
 	}
 	select {

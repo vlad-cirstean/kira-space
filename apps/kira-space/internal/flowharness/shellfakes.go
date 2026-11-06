@@ -73,6 +73,27 @@ type Dialogs struct {
 	Directory []bridge.OpenDirectoryRequest
 	Files     []bridge.OpenFilesRequest
 	File      []bridge.OpenFileRequest
+	Save      []bridge.SaveFileRequest
+	saves     []string
+}
+
+// AnswerSave queues the path the next SaveFile returns.
+func (d *Dialogs) AnswerSave(path string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.saves = append(d.saves, path)
+}
+
+func (d *Dialogs) SaveFile(req bridge.SaveFileRequest) (string, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.Save = append(d.Save, req)
+	if len(d.saves) == 0 {
+		return "", nil
+	}
+	p := d.saves[0]
+	d.saves = d.saves[1:]
+	return p, nil
 }
 
 // AnswerFile queues the path the next OpenFile returns.

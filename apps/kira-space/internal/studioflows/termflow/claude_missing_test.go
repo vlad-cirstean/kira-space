@@ -36,7 +36,7 @@ func TestClaudeCodeLaunchWithoutClaude(t *testing.T) {
 		t.Fatalf("Open = %v, want the claude-missing Kira error", err)
 	}
 	app.Contract(t, "terminal", "TerminalService.Open#claudeMissing", map[string]any{"code": ie.Code, "message": ie.Message})
-	if _, ok := app.W.TerminalRegistry.WindowOf("cc1"); ok {
+	if _, ok := app.W.TermRegistry.WindowOf("cc1"); ok {
 		t.Fatal("a failed launch left a session registered")
 	}
 }

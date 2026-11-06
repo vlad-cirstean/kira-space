@@ -7,11 +7,11 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	_ "modernc.org/sqlite"
 )

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
@@ -114,7 +114,7 @@ func TestRunsConfigFileStudio(t *testing.T) {
 		t.Fatalf("use_ade_dir replaced the last good record: %+v", r)
 	}
 
-	if err := app.W.ConfigFiles.Open(configsvc.FileArgs{Folder: "runs", File: "deploy.yaml"}); err != nil {
+	if err := app.W.StudioConfigFiles.Open(configsvc.FileArgs{Folder: "runs", File: "deploy.yaml"}); err != nil {
 		t.Fatal(err)
 	}
 	want := filepath.Join(app.KiraHome, "runs", "deploy.yaml")

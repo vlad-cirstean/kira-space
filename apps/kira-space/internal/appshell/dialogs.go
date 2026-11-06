@@ -20,6 +20,10 @@ func NewDialogs(d *shell.Dialogs) *Dialogs {
 	return &Dialogs{d: d}
 }
 
+func (a *Dialogs) SaveFile(req bridge.SaveFileRequest) (string, error) {
+	return a.d.SaveFile(req.Directory, req.Filename)
+}
+
 func (a *Dialogs) OpenDirectory(req bridge.OpenDirectoryRequest) (string, error) {
 	return a.d.OpenDirectory(req.Title)
 }

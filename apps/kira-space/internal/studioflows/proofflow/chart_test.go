@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 )
 
 func chartPayload(t *testing.T, f *fixture, id string, rev, ordinal int) proof.StepDetail {

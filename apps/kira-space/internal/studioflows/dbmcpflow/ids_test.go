@@ -6,9 +6,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
@@ -35,7 +35,7 @@ func TestOpIDs(t *testing.T) {
 	if err := f.exec("", "select 1"); err != nil {
 		t.Fatal(err)
 	}
-	recent, err := f.app.W.Ops.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
+	recent, err := f.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -35,7 +35,7 @@ func runIDOf(d *studioflowharness.Docker) string {
 	return strings.TrimSuffix(strings.TrimPrefix(d.Prefix(), "kira-flow-"), "-")
 }
 
-func editOpts(d *studioflowharness.Docker, box editBox, extra ...flowharness.ContractOption) []studioflowharness.ContractOption {
+func editOpts(d *studioflowharness.Docker, box editBox, extra ...studioflowharness.ContractOption) []studioflowharness.ContractOption {
 	opts := []studioflowharness.ContractOption{
 		studioflowharness.Mask("id", "baseHash", "oldId"),
 		studioflowharness.Replace(d.Prefix(), "kira-flow-"),

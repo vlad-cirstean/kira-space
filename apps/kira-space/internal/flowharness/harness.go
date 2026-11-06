@@ -32,6 +32,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appwire"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
@@ -43,6 +44,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/lannet"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
+	studiorepos "github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox/sandboxtest"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
@@ -372,6 +375,17 @@ func (a *App) build() {
 	if err != nil {
 		a.t.Fatalf("repos.New: %v", err)
 	}
+	if err := config.EnsureLayout(); err != nil {
+		a.t.Fatalf("ensure layout: %v", err)
+	}
+	studioDB, err := studiostorage.Open()
+	if err != nil {
+		a.t.Fatalf("studiostorage.Open: %v", err)
+	}
+	studioRepos, err := studiorepos.New(studioDB.DB)
+	if err != nil {
+		a.t.Fatalf("studio repos.New: %v", err)
+	}
 	a.db, a.repos, a.stopped = db, r, false
 	if a.opts.sandbox == nil {
 		// Same on every OS: flows never depend on the host's real Seatbelt.
@@ -393,7 +407,8 @@ func (a *App) build() {
 	if a.opts.issueTracker != nil {
 		tracker = *a.opts.issueTracker
 	}
-	a.W = appwire.Build(appwire.Options{
+	a.W, err = appwire.Build(appwire.Options{
+		StudioDB: studioDB, StudioRepos: studioRepos,
 		Providers: registry, IssueTracker: tracker,
 		GitHosts: githostproviders.New(ghOptions, append([]githost.Provider{azure.New(az)}, a.opts.gitHosts...)...), TrackerGrace: a.opts.trackerGrace, RebaseTimeout: a.opts.rebaseTimeout, BranchRequestWait: a.opts.branchWait, SmartTimeout: a.opts.smartTimeout, Sandbox: a.opts.sandbox, ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, EmbedSpec: a.opts.embedSpec, MobilePoll: a.opts.mobilePoll, ChangeRequestSync: a.opts.crSync, TrackedUpdates: *a.opts.updates,
 		Repos: r, DB: db, Emitter: a.Events, Browser: a.Browser, FileOpener: a.FileOpener, Dialogs: a.Dialogs,

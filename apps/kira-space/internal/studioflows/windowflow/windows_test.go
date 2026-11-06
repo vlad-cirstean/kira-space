@@ -9,9 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	spacemodel "github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
@@ -22,8 +23,8 @@ import (
 
 const wait = 20 * time.Second
 
-func tab(id, kind string, order int, active bool) model.TabRecord {
-	return model.TabRecord{ID: id, Path: "p/" + id, Kind: kind, State: json.RawMessage(`{}`), Order: order, Active: active}
+func tab(id, kind string, order int, active bool) spacemodel.TabRecord {
+	return spacemodel.TabRecord{ID: id, Path: "p/" + id, Kind: kind, State: json.RawMessage(`{}`), Order: order, Active: active}
 }
 
 func openTerm(t *testing.T, app *studioflowharness.App, window, id string) {
@@ -82,8 +83,8 @@ func TestStudioWindows(t *testing.T) {
 		t.Fatalf("OpenNew = %v, shell asked for %d windows, want 1", err, app.NewWindows())
 	}
 
-	tabsA := []model.TabRecord{tab("a1", "console", 0, false), tab("a2", "console", 1, true)}
-	tabsB := []model.TabRecord{tab("b1", "http-request", 0, true)}
+	tabsA := []spacemodel.TabRecord{tab("a1", "console", 0, false), tab("a2", "console", 1, true)}
+	tabsB := []spacemodel.TabRecord{tab("b1", "http-request", 0, true)}
 	if err := app.W.Tabs.Save(bridge.TabsSaveArgs{WindowKey: "A", Tabs: tabsA}); err != nil {
 		t.Fatal(err)
 	}
@@ -111,14 +112,14 @@ func TestStudioWindows(t *testing.T) {
 	// Layout and settings are app-wide: one write, every window hears it.
 	mark := app.Events.Mark()
 	wide, tall := 400.0, 300.0
-	merged, err := app.W.Layout.Set(bridge.LayoutSetArgs{Patch: model.LayoutPatch{Modes: map[string]model.PanelSizesPatch{
-		"studio": {Project: &model.ProjectSizePatch{Width: &wide}, Operations: &model.OperationsSizePatch{Height: &tall}},
+	merged, err := app.W.Layout.Set(bridge.LayoutSetArgs{Patch: spacemodel.LayoutPatch{Modes: map[string]spacemodel.PanelSizesPatch{
+		"studio": {Project: &spacemodel.ProjectSizePatch{Width: &wide}, Operations: &spacemodel.OperationsSizePatch{Height: &tall}},
 	}}})
 	if err != nil || merged.Modes["studio"].Project.Width != wide || merged.Modes["studio"].Operations.Height != tall {
 		t.Fatalf("Layout.Set = %+v (%v)", merged, err)
 	}
 	// P312: sizes are per module, so another module keeps its defaults.
-	if got := merged.Modes["api"]; got != model.DefaultPanelSizes() {
+	if got := merged.Modes["api"]; got != spacemodel.DefaultPanelSizes() {
 		t.Fatalf("api sizes = %+v, want the defaults untouched", got)
 	}
 	if got, err := app.W.Layout.GetAll(); err != nil || !reflect.DeepEqual(got, merged) {
@@ -127,11 +128,11 @@ func TestStudioWindows(t *testing.T) {
 	if ev := app.Events.WaitAfter(t, mark, appevent.ChannelLayoutChanged, nil, wait); ev.Window != "" {
 		t.Fatalf("layout change went to window %q, want every window", ev.Window)
 	}
-	settingsBefore, err := app.W.Settings.GetAll()
+	settingsBefore, err := app.W.StudioSettings.GetAll()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, err := app.W.Settings.GetAll(); err != nil || !reflect.DeepEqual(got, settingsBefore) {
+	if got, err := app.W.StudioSettings.GetAll(); err != nil || !reflect.DeepEqual(got, settingsBefore) {
 		t.Fatalf("Settings.GetAll unstable: %v", err)
 	}
 
@@ -157,10 +158,10 @@ func TestStudioWindows(t *testing.T) {
 	if a, _ := app.W.WindowsSvc.Ensure(windowsvc.EnsureArgs{WindowKey: "A"}); a.Mode != "automations" {
 		t.Fatalf("window A mode after a relaunch = %q", a.Mode)
 	}
-	if got, _ := app.W.Layout.GetAll(); got.Modes["studio"].Project.Width != wide || got.Modes["api"] != model.DefaultPanelSizes() {
+	if got, _ := app.W.Layout.GetAll(); got.Modes["studio"].Project.Width != wide || got.Modes["api"] != spacemodel.DefaultPanelSizes() {
 		t.Fatalf("layout after a relaunch = %+v", got)
 	}
-	_, err = app.W.Layout.Set(bridge.LayoutSetArgs{Patch: model.LayoutPatch{Modes: map[string]model.PanelSizesPatch{"bogus": {}}}})
+	_, err = app.W.Layout.Set(bridge.LayoutSetArgs{Patch: spacemodel.LayoutPatch{Modes: map[string]spacemodel.PanelSizesPatch{"bogus": {}}}})
 	var coded *ipcerr.Error
 	if !errors.As(err, &coded) || coded.Code != string(ipcerr.CodeContract) {
 		t.Fatalf("Layout.Set(unknown mode) = %v, want %s", err, ipcerr.CodeContract)
@@ -215,8 +216,8 @@ func TestDockerStatsEndWithTheirWindow(t *testing.T) {
 func TestLayoutWidthUserSetSurvivesRestart(t *testing.T) {
 	app := studioflowharness.New(t)
 	width, userSet := 300.0, true
-	if _, err := app.W.Layout.Set(bridge.LayoutSetArgs{Patch: model.LayoutPatch{Modes: map[string]model.PanelSizesPatch{
-		"studio": {Project: &model.ProjectSizePatch{Width: &width, WidthUserSet: &userSet}},
+	if _, err := app.W.Layout.Set(bridge.LayoutSetArgs{Patch: spacemodel.LayoutPatch{Modes: map[string]spacemodel.PanelSizesPatch{
+		"studio": {Project: &spacemodel.ProjectSizePatch{Width: &width, WidthUserSet: &userSet}},
 	}}}); err != nil {
 		t.Fatalf("Layout.Set: %v", err)
 	}

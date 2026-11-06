@@ -24,4 +24,4 @@ type WindowRecord = appstorage.WindowRecord
 // WindowModes is this app's own mode vocabulary (workbench/modes.ts's SpaceMode) — an unrecognised
 // or since-removed mode degrades to Default via appstorage.WindowModes.Normalize rather than
 // failing to read/write the row.
-var WindowModes = appstorage.WindowModes{Default: "git", Valid: []string{"git", "automations", "ade", "memory"}}
+var WindowModes = appstorage.WindowModes{Default: "git", Valid: []string{"git", "automations", "ade", "memory", "studio", "api", "docker", "kubernetes"}}

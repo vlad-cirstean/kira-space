@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 )
 
 func pngB64(extra string) string {

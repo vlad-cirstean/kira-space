@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	spacemodel "github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/windowsvc"
 )
 
@@ -66,11 +67,11 @@ func TestHistoryClear(t *testing.T) {
 	}
 
 	// A relaunch sweeps history of tabs that no longer exist, so only tab-b (open) keeps its rows.
-	tabB := model.TabRecord{ID: "tab-b", Path: "p/tab-b", Kind: "http-request", State: json.RawMessage(`{}`), Active: true}
+	tabB := spacemodel.TabRecord{ID: "tab-b", Path: "p/tab-b", Kind: "http-request", State: json.RawMessage(`{}`), Active: true}
 	if _, err := app.W.WindowsSvc.Ensure(windowsvc.EnsureArgs{WindowKey: "w1"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := app.W.Tabs.Save(bridge.TabsSaveArgs{WindowKey: "w1", Tabs: []model.TabRecord{tabB}}); err != nil {
+	if err := app.W.Tabs.Save(bridge.TabsSaveArgs{WindowKey: "w1", Tabs: []spacemodel.TabRecord{tabB}}); err != nil {
 		t.Fatal(err)
 	}
 	app.Restart(t)

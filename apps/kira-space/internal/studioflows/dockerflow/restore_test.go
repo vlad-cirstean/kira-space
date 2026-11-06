@@ -128,7 +128,7 @@ func (e restoreEnv) kill(t *testing.T, ids ...string) {
 	}
 }
 
-func (e restoreEnv) opts(ids map[string]string, extra ...flowharness.ContractOption) []studioflowharness.ContractOption {
+func (e restoreEnv) opts(ids map[string]string, extra ...studioflowharness.ContractOption) []studioflowharness.ContractOption {
 	opts := []studioflowharness.ContractOption{
 		studioflowharness.Mask("engineId", "context", "detectedAt", "bootAt"),
 		studioflowharness.Replace(e.d.Prefix(), "kira-flow-"),

@@ -11,10 +11,10 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mcpauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 )

@@ -10,8 +10,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
 	_ "github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/kafka"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/testsupport"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/tree"
 )
 

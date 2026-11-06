@@ -170,9 +170,9 @@ func agentSessionCount(repositories *repos.Repos, registry *terminal.Registry) f
 }
 
 // liveWork counts what a quit stops: agent PTYs, running ADE runs, and smart and headless script runs.
-func liveWork(repositories *repos.Repos, registry *terminal.Registry, runs *scriptruns.Service) func() shell.QuitStatus {
+func liveWork(repositories *repos.Repos, registry *terminal.Registry, scriptsLive func() int) func() shell.QuitStatus {
 	return func() shell.QuitStatus {
-		st := shell.QuitStatus{Agents: len(registry.AgentSessions()), Scripts: runs.Live()}
+		st := shell.QuitStatus{Agents: len(registry.AgentSessions()), Scripts: scriptsLive()}
 		n, err := repositories.AdeTasks.CountRunning()
 		if err != nil {
 			slog.Warn("quit: count ade runs", "scope", "lifecycle", "err", err)

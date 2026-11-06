@@ -13,12 +13,17 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-// BuildTemplate is Kira Space's own menu — Kira Studio's own BuildTemplate
-// (apps/kira-space/internal/studiotmp/appshell/menu.go) trimmed to this app's own commands: no connections/
-// requests/import items, no run/format (this app has none of those).
+// BuildTemplate is the merged app menu: Studio's connection/request/import/run/format items plus
+// Space's review-code item.
 func BuildTemplate(appName string, isDev bool) []shell.Section {
 	appItems := shell.AppMenuHead()
 	appItems = append(appItems,
+		shell.Item{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.newConnection.label", nil), Accelerator: shell.Shortcuts["app.newConnection"].Accelerator(), Channel: bridge.ChannelNewConnection},
+		shell.Item{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.newRequest.label", nil), Channel: bridge.ChannelNewRequest},
+		shell.Item{Kind: shell.ItemSeparator},
+		shell.Item{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.importPostman.label", nil), Channel: bridge.ChannelImportPostman},
+		shell.Item{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.importDataGrip.label", nil), Channel: bridge.ChannelImportDataGrip},
+		shell.Item{Kind: shell.ItemSeparator},
 		shell.Item{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.settings.label", nil), Accelerator: shell.Shortcuts["app.settings"].Accelerator(), Channel: bridge.ChannelOpenSettings},
 		shell.Item{Kind: shell.ItemSeparator},
 	)
@@ -33,6 +38,10 @@ func BuildTemplate(appName string, isDev bool) []shell.Section {
 		{Kind: shell.ItemSeparator},
 		{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.commandPalette.label", nil), Accelerator: shell.Shortcuts["view.commandPalette"].Accelerator(), Channel: bridge.ChannelCommandPalette},
 		{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.find.label", nil), Accelerator: shell.Shortcuts["view.find"].Accelerator(), Channel: bridge.ChannelViewFind},
+		{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.refresh.label", nil), Accelerator: shell.Shortcuts["view.refresh"].Accelerator(), Channel: bridge.ChannelViewRefresh},
+		{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.runStatement.label", nil), Accelerator: shell.Shortcuts["view.run"].Accelerator(), Channel: bridge.ChannelViewRun},
+		{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.runAll.label", nil), Accelerator: shell.Shortcuts["view.runAll"].Accelerator(), Channel: bridge.ChannelViewRunAll},
+		{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.format.label", nil), Accelerator: shell.Shortcuts["view.format"].Accelerator(), Channel: bridge.ChannelViewFormat},
 		{Kind: shell.ItemEmit, Label: i18n.T("backend.space.menu.reviewCode.label", nil), Accelerator: shell.Shortcuts["ade.reviewCode"].Accelerator(), Channel: bridge.ChannelReviewCode},
 	}
 	if isDev {

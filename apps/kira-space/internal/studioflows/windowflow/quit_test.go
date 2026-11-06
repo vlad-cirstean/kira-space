@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/prompts"
@@ -78,7 +78,7 @@ func TestQuitConfirm(t *testing.T) {
 	if status().Asking {
 		t.Fatal("QuitStatus still asking after Cancel")
 	}
-	if _, err := app.W.Settings.GetAll(); err != nil {
+	if _, err := app.W.StudioSettings.GetAll(); err != nil {
 		t.Fatalf("bound calls dead after Cancel: %v", err)
 	}
 	if app.W.Quitter.ShouldQuit() {

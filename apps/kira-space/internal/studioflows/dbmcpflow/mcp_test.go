@@ -14,11 +14,11 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	_ "modernc.org/sqlite"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mcpauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/harness"
@@ -53,7 +53,7 @@ type fixture struct {
 	base string
 }
 
-func newFixture(t *testing.T, opts ...flowharness.Opt) *fixture {
+func newFixture(t *testing.T, opts ...studioflowharness.Opt) *fixture {
 	t.Helper()
 	app := studioflowharness.New(t, opts...)
 	dbPath := filepath.Join(t.TempDir(), "mcp.db")
@@ -278,7 +278,7 @@ func TestDbMcpOpsCarrySource(t *testing.T) {
 
 	var rows []model.OpRecord
 	testx.WaitUntil(t, 10*time.Second, func() bool {
-		recent, err := f.app.W.Ops.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
+		recent, err := f.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
 		if err != nil {
 			t.Fatalf("Ops.Recent: %v", err)
 		}
@@ -359,7 +359,7 @@ func callAsync(sess *mcp.ClientSession, connID, sqlText string) chan callOutcome
 func (f *fixture) setPreview(t *testing.T, on bool) bridge.StudioSettingsSetArgs {
 	t.Helper()
 	args := bridge.StudioSettingsSetArgs{Patch: model.SettingsPatch{DbMcp: &model.DbMcpPatch{PreviewResponses: &on}}}
-	if _, err := f.app.W.Settings.Set(args); err != nil {
+	if _, err := f.app.W.StudioSettings.Set(args); err != nil {
 		t.Fatal(err)
 	}
 	return args

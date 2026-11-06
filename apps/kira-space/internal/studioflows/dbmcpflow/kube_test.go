@@ -9,10 +9,10 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -57,7 +57,7 @@ func newKubeFixture(t *testing.T) *kubeFixture {
 	return k
 }
 
-func (k *kubeFixture) contract(t *testing.T, key string, got any, extra ...flowharness.ContractOption) {
+func (k *kubeFixture) contract(t *testing.T, key string, got any, extra ...studioflowharness.ContractOption) {
 	t.Helper()
 	opts := append([]studioflowharness.ContractOption{
 		studioflowharness.Replace(k.fake.URL, "<kube>"), studioflowharness.Replace(k.fake.DownURL(), "<down>"),
@@ -206,7 +206,7 @@ func TestKubeMcp(t *testing.T) {
 		before := k.podRequests()
 		const stmt = "kubectl get pods -n default --context kind-dev"
 		stmtRows := func() (n int) {
-			recent, err := k.app.W.Ops.Recent(bridge.StudioOpsRecentArgs{Limit: 200})
+			recent, err := k.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 200})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -239,7 +239,7 @@ func TestKubeMcp(t *testing.T) {
 
 		var row model.OpRecord
 		testx.WaitUntil(t, 10*time.Second, func() bool {
-			recent, err := k.app.W.Ops.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
+			recent, err := k.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 )
 
 func opUpdates(app *studioflowharness.App, mark int) []model.OpRecord {
@@ -167,7 +167,7 @@ func TestSQLitePreconnectDelay(t *testing.T) {
 		waitOp(t, app, mark, "preconnect", "running")
 		recs := opUpdates(app, mark)
 		opID := recs[indexOf(recs, "preconnect", "running")].ID
-		if err := app.W.Ops.Cancel(bridge.StudioOpsCancelArgs{OpID: opID}); err != nil {
+		if err := app.W.StudioOps.Cancel(bridge.StudioOpsCancelArgs{OpID: opID}); err != nil {
 			t.Fatalf("Ops.Cancel: %v", err)
 		}
 

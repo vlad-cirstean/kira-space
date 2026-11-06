@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeclock"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
@@ -19,7 +19,7 @@ import (
 // A Monday, 30 s before 09:00 UTC.
 var scheduleStart = time.Date(2030, 1, 7, 8, 59, 30, 0, time.UTC)
 
-func clockApp(t *testing.T, opts ...flowharness.Opt) (*studioflowharness.App, *fakeclock.Clock) {
+func clockApp(t *testing.T, opts ...studioflowharness.Opt) (*studioflowharness.App, *fakeclock.Clock) {
 	t.Helper()
 	clock := fakeclock.New(scheduleStart)
 	return studioflowharness.New(t, append(opts, studioflowharness.WithClock(clock))...), clock

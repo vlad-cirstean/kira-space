@@ -9,8 +9,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -51,7 +51,7 @@ func (f *fixture) setReviewed(t *testing.T, cols ...string) {
 	if err := f.app.W.ConnectionFiles.Patch(f.connID, configfs.NodeSet{Path: []string{"mask_review"}, Value: map[string]any{"columns": cols}}); err != nil {
 		t.Fatalf("Patch mask_review: %v", err)
 	}
-	f.app.W.Deps.MaskReview.Wait()
+	f.app.W.StudioDeps.MaskReview.Wait()
 }
 
 // refreshColumns is the tree Refresh: a background check that bypasses the metadata cache.
@@ -60,7 +60,7 @@ func (f *fixture) refreshColumns(t *testing.T) {
 	if err := f.app.W.Tree.Invalidate(bridge.TreeInvalidateArgs{ConnectionID: f.connID}); err != nil {
 		t.Fatalf("Invalidate: %v", err)
 	}
-	f.app.W.Deps.MaskReview.Wait()
+	f.app.W.StudioDeps.MaskReview.Wait()
 }
 
 func (f *fixture) resultColumns(t *testing.T, r *mcp.CallToolResult) (cols, withheld []string) {
@@ -157,7 +157,7 @@ func TestDbMcpColumnReview(t *testing.T) {
 
 	// A mask rule covers the column: not pending, prompt closed, value masked.
 	f.maskColumn(t, "secret")
-	f.app.W.Deps.MaskReview.Wait()
+	f.app.W.StudioDeps.MaskReview.Wait()
 	testx.WaitUntil(t, 5*time.Second, func() bool { return !f.maskingPrompt(t) })
 	r = runQuery(t, sess, f.connID, "select * from notes")
 	if cols, w := f.resultColumns(t, r); len(cols) != 3 || len(w) != 0 || strings.Contains(text(r), hush) {
@@ -172,7 +172,7 @@ func TestDbMcpColumnReview(t *testing.T) {
 	if err := f.app.W.MaskRules.Delete(bridge.MaskRulesDeleteArgs{ID: rules[0].ID}); err != nil {
 		t.Fatal(err)
 	}
-	f.app.W.Deps.MaskReview.Wait()
+	f.app.W.StudioDeps.MaskReview.Wait()
 	testx.WaitUntil(t, 5*time.Second, func() bool { return f.maskingPrompt(t) })
 	f.setReviewed(t, "notes.id", "notes.body", "notes.secret")
 	testx.WaitUntil(t, 5*time.Second, func() bool { return !f.maskingPrompt(t) })
@@ -229,7 +229,7 @@ func TestDbMcpColumnReviewOutsideTableList(t *testing.T) {
 	if f.maskingPrompt(t) {
 		t.Fatal("a column of an unlisted table opened the masking prompt")
 	}
-	if n := f.app.W.Deps.MaskReview.PendingCount(f.connID); n != 0 {
+	if n := f.app.W.StudioDeps.MaskReview.PendingCount(f.connID); n != 0 {
 		t.Fatalf("pending = %d, want 0 for an unlisted table", n)
 	}
 }

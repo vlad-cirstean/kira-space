@@ -27,7 +27,7 @@ type env struct {
 }
 
 // boot starts the fake API server and the app over a four-context kubeconfig.
-func boot(t *testing.T, fopts []studioflowharness.KubeFakeOption, opts ...flowharness.Opt) *env {
+func boot(t *testing.T, fopts []studioflowharness.KubeFakeOption, opts ...studioflowharness.Opt) *env {
 	t.Helper()
 	fake := studioflowharness.NewKubeFake(t, fopts...)
 	app := studioflowharness.New(t, opts...)
@@ -56,7 +56,7 @@ func (e *env) loadIDs(t *testing.T) {
 	}
 }
 
-func (e *env) contract(t *testing.T, key string, got any, extra ...flowharness.ContractOption) {
+func (e *env) contract(t *testing.T, key string, got any, extra ...studioflowharness.ContractOption) {
 	t.Helper()
 	opts := append([]studioflowharness.ContractOption{
 		studioflowharness.Replace(e.fake.URL, "<kube>"), studioflowharness.Replace(e.fake.DownURL(), "<down>"),

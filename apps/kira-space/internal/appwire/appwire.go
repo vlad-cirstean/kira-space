@@ -1,5 +1,6 @@
-// Package appwire is Kira Space's composition root: it builds the 34 bound services, the git router
-// and socket, the ADE tracker and board, and their teardown. main and the flow-test harness
+// Package appwire is Kira Space's composition root: it builds the bound services of both modules
+// (Space's own, Studio's connections, adapters and API client, and the merged ones), the git
+// router and socket, the ADE tracker and board, the adapter router, and their teardown. main and the flow-test harness
 // (internal/flowharness) both call Build, so a test cannot wire differently from production. It
 // sits above internal/bridge in the layering, like internal/appshell.
 package appwire
@@ -16,15 +17,18 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adeflow"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentnotify"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentusage"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/buildinfo"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
@@ -34,13 +38,18 @@ import (
 	githostproviders "github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/providers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker/jira"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/lannet"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mobileterm"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mobileweb"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/openedfiles"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
+	studiorepos "github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentctx"
 	"github.com/kirathecat/kira-studio/internal/agentport"
@@ -50,6 +59,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/appupdate"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
+	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/agentsvc"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
@@ -71,6 +81,11 @@ import (
 // in the harness.
 type Options struct {
 	Repos *repos.Repos
+	// StudioDB and StudioRepos are the Studio database; Teardown closes both after the Space side.
+	StudioDB    *studiostorage.DB
+	StudioRepos *studiorepos.Repos
+	// Authorizer is shared by connections and variables, so a reveal grace is shared; nil builds one.
+	Authorizer *localauth.Authorizer
 	// Cipher seals saved secret values; nil builds one from the keychain.
 	Cipher *secrets.Cipher
 	// DB is closed last by Teardown, after Repos.
@@ -125,7 +140,34 @@ type Options struct {
 	// TrackedUpdates tunes the tracked item update watcher; the zero value is production's (a
 	// flow-test seam).
 	TrackedUpdates ade.UpdatesConfig
+	// McpInstaller installs the DB MCP server into the agent's config; nil uses the active provider's.
+	McpInstaller harness.MCPInstaller
+	// DockerHubAPI replaces the Docker Hub base URL the image registry check calls (flow-test seam); empty keeps the default.
+	DockerHubAPI string
+	// DockerExtra appends docker options (flow-test seams for the restore tracker).
+	DockerExtra []docker.Option
+	// KubernetesExtra appends kubernetes options (flow-test seams: environment, list limits).
+	KubernetesExtra []kubernetes.Option
+	// DbMcpPort overrides dbmcp.DefaultPort (flow-test seam); zero keeps the default.
+	DbMcpPort int
+	// WindowFocus replaces the registry's focus state and raise (a flow-test seam); nil keeps the registry.
+	WindowFocus WindowFocus
 }
+
+// WindowFocus is the part of the window registry a prompt raise reads and drives.
+type WindowFocus interface {
+	Focused(key string) bool
+	Focus(key string) bool
+}
+
+// focusWindows swaps the registry's focus state and raise for a test seam.
+type focusWindows struct {
+	*shell.WindowRegistry
+	focus WindowFocus
+}
+
+func (f focusWindows) Focused(key string) bool { return f.focus.Focused(key) }
+func (f focusWindows) Focus(key string) bool   { return f.focus.Focus(key) }
 
 // ShellHooks completes the window-manager seams once the shell exists. CloseWindow, FocusWindow and
 // SetWindowTitle default to the window registry.
@@ -171,46 +213,49 @@ type Wired struct {
 	Metrics       *metrics.Ticker
 	UpdateInstall *appupdate.Installer
 
-	GitWindows      *bridge.GitWindows
-	GitSvc          *bridge.GitService
-	GitCredential   *bridge.GitCredentialService
-	GitHost         *bridge.GitHostService
-	HostView        *bridge.HostViewService
-	Capture         *bridge.CaptureService
-	IssueTracker    *bridge.IssueTrackerService
-	Link            *bridge.LinkService
-	Files           *bridge.FilesService
-	Settings        *bridge.SettingsService
-	Layout          *bridge.LayoutService
-	Tabs            *bridge.TabsService
-	CustomScripts   *bridge.CustomScriptsService
-	ScriptRuns      *bridge.ScriptRunsService
-	runs            *scriptruns.Service
-	sched           *scriptruns.Scheduler
-	runLoader       *scripts.Loader
-	Terminal        *bridge.TerminalService
-	AdeTask         *bridge.AdeTaskService
-	Ops             *bridge.OpsService
-	Lifecycle       *bridge.LifecycleService
-	KeepAwake       *bridge.KeepAwakeService
-	Mobile          *bridge.MobileAccessService
-	Memory          *bridge.MemoryService
-	MemoryImport    *bridge.MemoryImportService
-	MemoryDistill   *bridge.MemoryDistillService
-	WindowsSvc      *bridge.WindowsService
-	ConfigFiles     *bridge.ConfigFilesService
-	PromptsSvc      *bridge.PromptsService
-	ApprovalsSvc    *bridge.ApprovalsService
-	Approvals       *approvals.Queue
-	LlmPromptsSvc   *bridge.LlmPromptsService
-	Update          *bridge.UpdateService
-	CodeWorkspace   *bridge.CodeWorkspaceService
-	OpenedFiles     *openedfiles.Service
-	OpenedFilesSvc  *bridge.OpenedFilesService
-	FileHandlersSvc *bridge.FileHandlersService
-	AgentNotifySvc  *bridge.AgentNotifyService
-	AgentUsage      *agentusage.Service
-	AgentUsageSvc   *bridge.AgentUsageService
+	GitWindows        *bridge.GitWindows
+	GitSvc            *bridge.GitService
+	GitCredential     *bridge.GitCredentialService
+	GitHost           *bridge.GitHostService
+	HostView          *bridge.HostViewService
+	Capture           *bridge.CaptureService
+	IssueTracker      *bridge.IssueTrackerService
+	Link              *bridge.LinkService
+	Files             *bridge.FilesService
+	Settings          *bridge.SettingsService
+	StudioSettings    *bridge.StudioSettingsService
+	Layout            *bridge.LayoutService
+	Tabs              *bridge.TabsService
+	CustomScripts     *bridge.CustomScriptsService
+	ScriptRuns        *bridge.ScriptRunsService
+	runs              *scriptruns.Service
+	sched             *scriptruns.Scheduler
+	runLoader         *scripts.Loader
+	Terminal          *bridge.TerminalService
+	AdeTask           *bridge.AdeTaskService
+	Ops               *bridge.OpsService
+	StudioOps         *bridge.StudioOpsService
+	Lifecycle         *bridge.LifecycleService
+	KeepAwake         *bridge.KeepAwakeService
+	Mobile            *bridge.MobileAccessService
+	Memory            *bridge.MemoryService
+	MemoryImport      *bridge.MemoryImportService
+	MemoryDistill     *bridge.MemoryDistillService
+	WindowsSvc        *bridge.WindowsService
+	ConfigFiles       *bridge.ConfigFilesService
+	StudioConfigFiles *bridge.StudioConfigFilesService
+	PromptsSvc        *bridge.PromptsService
+	ApprovalsSvc      *bridge.ApprovalsService
+	Approvals         *approvals.Queue
+	LlmPromptsSvc     *bridge.LlmPromptsService
+	Update            *bridge.UpdateService
+	CodeWorkspace     *bridge.CodeWorkspaceService
+	OpenedFiles       *openedfiles.Service
+	OpenedFilesSvc    *bridge.OpenedFilesService
+	FileHandlersSvc   *bridge.FileHandlersService
+	AgentNotifySvc    *bridge.AgentNotifyService
+	AgentUsage        *agentusage.Service
+	AgentUsageSvc     *bridge.AgentUsageService
 	// Agents resolves the active agent provider per call.
 	Agents   harness.Selector
 	AgentSvc *bridge.AgentService
@@ -228,6 +273,48 @@ type Wired struct {
 	AgentSettings *agentcfg.Store
 	AgentSecrets  *agentcfg.SecretStore
 
+	// Studio side: the Studio database and the services over it.
+	StudioRepos      *studiorepos.Repos
+	StudioDeps       appcore.StudioDeps
+	Router           *adapterhost.Router
+	App              *bridge.AppService
+	Connections      *bridge.ConnectionsService
+	MaskRules        *bridge.MaskRulesService
+	ConnectionConfig *bridge.ConnectionConfigService
+	// ConnectionFiles is the connections folder behind Connections, Filters, Schema and MaskRules.
+	ConnectionFiles *connfiles.Loader
+	Tree            *bridge.TreeService
+	Filters         *bridge.FiltersService
+	Queries         *bridge.QueriesService
+	Schema          *bridge.SchemaService
+	Kibana          *bridge.KibanaService
+	Http            *bridge.HttpService
+	Grpc            *bridge.GrpcService
+	Collections     *bridge.CollectionsService
+	Variables       *bridge.VariablesService
+	ApiConfig       *bridge.ApiConfigService
+	// ApiFiles is the api config folder behind Collections, Variables and ApiConfig.
+	ApiFiles        *apifiles.Store
+	ResponseHistory *bridge.ResponseHistoryService
+	GrpcHistory     *bridge.GrpcHistoryService
+	DataGrip        *bridge.DataGripService
+	DbMcp           *bridge.DbMcpService
+	Docker          *bridge.DockerService
+	Kubernetes      *bridge.KubernetesService
+	Proof           *bridge.ProofService
+	// ProofStore is the validation-proof store behind Proof and the DB MCP proof tools.
+	ProofStore *proof.Service
+	// OnWindowClosing are the Studio window-close hooks the shell runs.
+	OnWindowClosing []func(string)
+
+	proofShell          *registryShell
+	launchers           *scriptLaunchers
+	studioRuns          *scriptruns.Service
+	studioSched         *scriptruns.Scheduler
+	studioRunLoader     *scripts.Loader
+	studioTeardownEarly func()
+	studioTeardownLate  func()
+
 	reopen           func()
 	appFocused       atomic.Pointer[func() bool]
 	detachMetrics    func()
@@ -241,8 +328,8 @@ type Wired struct {
 	teardownOnce     func()
 }
 
-// Build wires every service.
-func Build(opts Options) *Wired {
+// Build wires every service. A Studio settings read failure is the only error; main reports it fatal.
+func Build(opts Options) (*Wired, error) {
 	repositories := opts.Repos
 	w := &Wired{Repos: repositories}
 	registry := opts.Providers
@@ -277,15 +364,31 @@ func Build(opts Options) *Wired {
 	deps := appcore.Deps{Repos: repositories, Home: config.KiraSpaceHome(), Events: emitter, GitRegistry: git.registry, Prompts: promptStore}
 	events := bridge.NewEvents(emitter)
 	w.Emitter, w.Deps, w.Events = emitter, deps, events
-	w.Prompts = prompts.New(prompts.Deps{
-		Windows: w.Windows, App: "Space", Reopen: w.reopenWindow,
+	var promptWindows prompts.Windows = w.Windows
+	if opts.WindowFocus != nil {
+		promptWindows = focusWindows{WindowRegistry: w.Windows, focus: opts.WindowFocus}
+	}
+	promptDeps := prompts.Deps{
+		Windows: promptWindows, App: "Space", Reopen: w.reopenWindow,
 		Emit:   func(l []prompts.Routed) { emitter.Emit(bridge.ChannelPromptsChanged, l) },
 		Reveal: func(key, id string) { emitter.EmitTo(key, bridge.ChannelPromptsReveal, map[string]string{"id": id}) },
 		Enabled: func() bool {
 			s, err := repositories.Settings.GetAll()
 			return err != nil || s.Advanced.NotifyPrompts
 		},
-	})
+		// A read error raises: showing the approval is the harmless direction.
+		RaiseOnOpen: func(k prompts.Kind) bool {
+			if k != prompts.KindApproval {
+				return false
+			}
+			s, err := opts.StudioRepos.Settings.GetAll()
+			return err != nil || s.DbMcp.FocusOnApproval
+		},
+	}
+	if opts.Clock != nil {
+		promptDeps.Now = opts.Clock.Now
+	}
+	w.Prompts = prompts.New(promptDeps)
 	w.Windows.OnChange = w.Prompts.Reroute
 	credentialRelay.Prompts = w.Prompts
 	w.PromptsSvc = &bridge.PromptsService{Bound: &prompts.Bound{R: w.Prompts}}
@@ -396,10 +499,12 @@ func Build(opts Options) *Wired {
 	if err := runs.Recover(); err != nil {
 		slog.Warn("recover script runs", "scope", "startup", "err", err)
 	}
-	w.ScriptRuns = &bridge.ScriptRunsService{Bound: &scriptruns.Bound{Svc: runs}}
+	w.CustomScripts = &bridge.CustomScriptsService{}
+	w.ScriptRuns = &bridge.ScriptRunsService{Space: &scriptruns.Bound{Svc: runs}, Scripts: w.CustomScripts}
+	w.launchers = &scriptLaunchers{space: runs, studioOwns: opts.StudioRepos.CustomScripts, spaceOwns: repositories.CustomScripts}
 	w.Terminal = &bridge.TerminalService{BoundService: &terminal.BoundService{
 		Emit: emitter, Registry: terminalRegistry, ComposeAgent: adeTracker.Compose, AbortAgent: adeTracker.Abort, AgentStarted: adeTracker.OnAgentStarted,
-		Arbiter: termBroker, Scripts: runs, Agent: w.Agents,
+		Arbiter: termBroker, Scripts: w.launchers, Agent: w.Agents,
 	}}
 	// P116 G5 keep-awake toggle plus P188's agent reason: the live Claude Code session count —
 	// terminal agent tabs and running headless ade sessions — against agent.keepAwakeWithAgents.
@@ -436,7 +541,7 @@ func Build(opts Options) *Wired {
 	w.sched = &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
 	loader, err := scripts.NewLoader(scripts.LoaderOptions{
 		Repo: repositories.CustomScripts, Dir: filepath.Join(deps.Home, "runs"), Home: deps.Home, App: "Space", SpaceKeys: true,
-		Emit:     func(snapshot scripts.Snapshot) { emitter.Emit(bridge.ChannelCustomScriptsChanged, snapshot) },
+		Emit:     func(snapshot scripts.Snapshot) { w.CustomScripts.Publish(emitter, false, snapshot) },
 		OnChange: w.sched.Reload,
 	})
 	if err != nil {
@@ -496,15 +601,24 @@ func Build(opts Options) *Wired {
 	w.Quitter = shell.NewQuitter(events, w.beforeFlushOnce, w.teardownOnce, 2*time.Second, w.Windows.Keys)
 
 	w.Files = &bridge.FilesService{Dialogs: opts.Dialogs}
-	w.CustomScripts = &bridge.CustomScriptsService{Svc: &scripts.Service{Loader: loader}}
+	w.CustomScripts.Space = &scripts.Service{Loader: loader}
 	w.Ops = &bridge.OpsService{Log: git.opLog}
-	live := liveWork(repositories, terminalRegistry, runs)
+	live := liveWork(repositories, terminalRegistry, func() int {
+		n := runs.Live()
+		if w.studioRuns != nil {
+			n += w.studioRuns.Live()
+		}
+		return n
+	})
 	w.Quitter.SetGate(prompts.QuitGate{R: w.Prompts, LiveFn: func() int { return live().Total() }})
 	w.Lifecycle = &bridge.LifecycleService{Flusher: w.Quitter, WindowFlusher: w.CloseFlush, Quit: w.Quitter, Live: live}
 	w.MemoryImport = bridge.NewMemoryImportService(w.Memory, opts.Dialogs)
 	w.MemoryDistill = bridge.NewMemoryDistillService(w.Memory, opts.Dialogs, emitter)
 	w.Update = &bridge.UpdateService{Checker: updateChecker, Installer: updateInstaller, Quit: w.Quitter.RequestQuit}
-	return w
+	if err := w.buildStudio(opts); err != nil {
+		return nil, err
+	}
+	return w, nil
 }
 
 // BindShell points the window-manager seams at the shell, which exists only after Build.
@@ -570,7 +684,8 @@ func (w *Wired) reopenWindow() {
 // StartMobile starts the phone server when settings enable it; call after the shell is up.
 func (w *Wired) StartMobile() { bridge.StartMobileIfEnabled(w.Mobile) }
 
-// Bound returns the 38 bound services in registration order.
+// Bound returns the bound services in registration order: Space's, then Studio's, with the merged
+// ones registered once.
 func (w *Wired) Bound() []application.Service {
 	return []application.Service{
 		application.NewService(w.GitCredential),
@@ -583,6 +698,14 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),
 		application.NewService(w.PromptsSvc), application.NewService(w.ApprovalsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc),
 		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc), application.NewService(w.RepoConfigSvc), application.NewService(w.GitSvc),
+		application.NewService(w.App), application.NewService(w.StudioSettings), application.NewService(w.Connections),
+		application.NewService(w.MaskRules), application.NewService(w.Tree), application.NewService(w.StudioOps),
+		application.NewService(w.Filters), application.NewService(w.Queries), application.NewService(w.Schema),
+		application.NewService(w.Kibana), application.NewService(w.Http), application.NewService(w.Grpc),
+		application.NewService(w.Collections), application.NewService(w.Variables), application.NewService(w.ApiConfig),
+		application.NewService(w.ConnectionConfig), application.NewService(w.ResponseHistory), application.NewService(w.GrpcHistory),
+		application.NewService(w.DataGrip), application.NewService(w.DbMcp), application.NewService(w.Docker),
+		application.NewService(w.Kubernetes), application.NewService(w.Proof), application.NewService(w.StudioConfigFiles),
 	}
 }
 
@@ -596,6 +719,9 @@ func (w *Wired) teardown(db io.Closer) {
 	// P119: a Cmd+Q mid-download aborts the install rather than leaving an orphan that later
 	// swaps a bundle the user quit away from. After hand-off this is a no-op.
 	w.UpdateInstall.Cancel()
+	if w.studioTeardownEarly != nil {
+		w.studioTeardownEarly()
+	}
 	w.stopAgentContext()
 	w.RepoConfig.Close()
 	w.OpenedFiles.Close()
@@ -636,6 +762,10 @@ func (w *Wired) teardown(db io.Closer) {
 	}
 	if err := db.Close(); err != nil {
 		slog.Warn("close db", "scope", "shutdown", "err", err)
+	}
+	// The Studio database closes last: terminal exits above still finish Studio runs.
+	if w.studioTeardownLate != nil {
+		w.studioTeardownLate()
 	}
 }
 

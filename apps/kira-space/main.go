@@ -16,10 +16,14 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/buildinfo"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/openedfiles"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
+	studiorepos "github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/keepawake"
 	"github.com/kirathecat/kira-studio/internal/logging"
@@ -40,12 +44,10 @@ var assets embed.FS
 //go:embed all:frontend/dist-mobile
 var mobileAssets embed.FS
 
-// Startup order: the argv shims (askpass, memory-mcp, memory-embed) -> config.EnsureLayout ->
-// logging.Init/Sweep -> storage.Open (migrates) -> repos.New -> appwire.Build (terminal registry,
-// ADE tracker with the Claude Code hooks, task board, keep-awake, the 34 bound services) ->
-// application.New (the bound services plus the git stream registration) -> the menu -> the
-// startup window list, opened -> app.Run(). No adapters, connections, HTTP/gRPC or DB MCP:
-// not this app's module.
+// Startup order: the argv shims (askpass, memory-mcp, memory-embed) -> config.EnsureLayout (both
+// homes) -> logging.Init/Sweep -> instance lock -> storage.Open and studiostorage.Open (migrate) ->
+// repos.New x2 -> appwire.Build (every Space and Studio service) -> application.New (bound services,
+// git and engine streams) -> the menu -> the startup window list, opened -> app.Run().
 func main() {
 	if code, ok := appwire.RunArgvShim(os.Args); ok {
 		os.Exit(code)
@@ -87,6 +89,14 @@ func main() {
 	if err != nil {
 		reporter.Fatal(startupfail.StepRepos, err)
 	}
+	studioDB, err := studiostorage.Open()
+	if err != nil {
+		reporter.Fatal(startupfail.StepStorage, err)
+	}
+	studioRepositories, err := studiorepos.New(studioDB.DB)
+	if err != nil {
+		reporter.Fatal(startupfail.StepRepos, err)
+	}
 
 	settings, err := repositories.Settings.GetAll()
 	if err != nil {
@@ -102,12 +112,16 @@ func main() {
 	browserOpener, attachBrowser := shell.NewDeferredBrowser()
 	fileOpener, attachFileOpener := shell.NewDeferredFileOpener()
 	rawDialogs, attachDialogs := shell.NewDeferredDialogs()
-	wired := appwire.Build(appwire.Options{
-		Repos: repositories, DB: db, Cipher: secrets.New(), Emitter: rawEmitter, Browser: browserOpener, FileOpener: fileOpener,
+	wired, err := appwire.Build(appwire.Options{
+		Repos: repositories, DB: db, StudioDB: studioDB, StudioRepos: studioRepositories,
+		Cipher: secrets.New(), Authorizer: localauth.New(time.Now, localauth.Evaluate, localauth.Available), Emitter: rawEmitter, Browser: browserOpener, FileOpener: fileOpener,
 		Dialogs: appshell.NewDialogs(rawDialogs), Locator: platformLocator(),
 		KeepAwakeDriver: keepawake.NewPlatformDriver(), MobileAssets: mobileAssetsFS,
 		FileHandlers: filehandlers.NewRegistry(),
 	})
+	if err != nil {
+		reporter.Fatal(startupfail.StepSettings, err)
+	}
 	windows, quitter := wired.Windows, wired.Quitter
 
 	app := application.New(application.Options{
@@ -158,6 +172,7 @@ func main() {
 	attachDialogs(app, windowToActOn)
 
 	appshell.RegisterGitGraphStream(app, wired.GitWindows)
+	appshell.RegisterEngineStream(app, wired.Router)
 
 	winDeps := shell.WindowOpenerDeps{
 		App:        app,
@@ -166,18 +181,23 @@ func main() {
 		Terminal: wired.Terminal.Registry, Repo: repositories.Windows,
 		Cfg: shell.Config{AppName: "Kira Space", WindowTitle: "Kira Space"},
 		Ephemeral: func(key string) bool {
-			if bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) {
+			if bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) || proof.IsWindowKey(key) {
 				return true
 			}
 			ok, _ := repositories.AdeReview.IsReviewKey(key)
 			return ok
 		},
 	}
+	winDeps.OnWindowClosing = append(winDeps.OnWindowClosing, wired.OnWindowClosing...)
 	winDeps.OnWindowClosing = append(winDeps.OnWindowClosing, wired.OpenedFiles.Forget, wired.HostView.Targets.Forget, wired.GitWindows.Close,
 		func(key string) { bridge.CaptureForget(wired.Capture, key) })
 	openNew := func() { shell.OpenNewWindow(winDeps) }
 	// OpenNewWindow is the title bar's "New window" button (P116 G6) — the same action the ⇧⌘N
 	// menu command below ties to.
+	wired.BindProofShell(func(rec shell.WindowRecord) {
+		rec.Bounds = shell.CascadeFrom(app.Window.Current())
+		shell.OpenWindow(winDeps, rec)
+	})
 	wired.BindShell(appwire.ShellHooks{
 		OpenWindow: func(rec shell.WindowRecord) {
 			rec.Bounds = shell.CascadeFrom(app.Window.Current())
@@ -262,7 +282,7 @@ func purgeReviewWindows(repositories *repos.Repos) {
 	}
 }
 
-// purgeKeyedWindows drops capture popup, host view and files window rows a previous run left
+// purgeKeyedWindows drops capture popup, host view, files window and proof window rows a previous run left
 // behind: they are never restored.
 func purgeKeyedWindows(repositories *repos.Repos) {
 	records, err := repositories.Windows.List()
@@ -271,7 +291,7 @@ func purgeKeyedWindows(repositories *repos.Repos) {
 		return
 	}
 	for _, r := range records {
-		if !bridge.IsHostViewKey(r.Key) && !bridge.IsCaptureKey(r.Key) && !openedfiles.IsWindowKey(r.Key) {
+		if !bridge.IsHostViewKey(r.Key) && !bridge.IsCaptureKey(r.Key) && !openedfiles.IsWindowKey(r.Key) && !proof.IsWindowKey(r.Key) {
 			continue
 		}
 		if err := repositories.Windows.Delete(r.Key); err != nil {

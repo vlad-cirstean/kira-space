@@ -13,10 +13,10 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/testsupport"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 

@@ -23,6 +23,8 @@ var packagesExemptFromBridgeCheck = map[string]bool{
 	"internal/appshell":              true,
 	"internal/appwire":               true,
 	"internal/flowharness":           true,
+	"internal/ipcfixture":            true,
+	"internal/studioflowharness":     true,
 	"internal/flowharness/fakeagent": true,
 	"internal/flows/gitflow":         true,
 	"internal/flows/repoflow":        true,
