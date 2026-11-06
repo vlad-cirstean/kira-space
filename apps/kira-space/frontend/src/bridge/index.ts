@@ -9,6 +9,7 @@ import * as ApprovalsService from '@bindings/approvalsservice.js';
 import * as CaptureService from '@bindings/captureservice.js';
 import * as CodeWorkspaceService from '@bindings/codeworkspaceservice.js';
 import * as ConfigFilesService from '@bindings/configfilesservice.js';
+import * as ConfigSyncService from '@bindings/configsyncservice.js';
 import * as CustomScriptsService from '@bindings/customscriptsservice.js';
 import * as FileHandlersService from '@bindings/filehandlersservice.js';
 import * as FilesService from '@bindings/filesservice.js';
@@ -108,6 +109,12 @@ import type {
 import type * as V2 from '../ade/v2/wire';
 import type { CaptureItem, CaptureResult, HotkeyState } from '../capture/wire';
 import { CHANNEL_CAPTURE_ITEM, CHANNEL_CAPTURE_STATUS } from '../capture/wire';
+import type {
+  ConfigSyncApplyResult,
+  ConfigSyncChoice,
+  ConfigSyncPreview,
+  ConfigSyncStatus,
+} from '../configsync/domain';
 import type {
   HostViewChangeRequest,
   HostViewIssue,
@@ -396,6 +403,49 @@ const spaceControl = {
     unwrap(CodeWorkspaceService.WriteFile({ id, path, text, baseHash })).then((r) =>
       trust<WriteFileResult>(r),
     ),
+
+  // Shared config (P554): one shared Git repository pulled into the config folders.
+  configSyncStatus: (): Promise<ConfigSyncStatus> =>
+    unwrap(ConfigSyncService.Status()).then((r) => trust<ConfigSyncStatus>(r)),
+  onConfigSyncChanged: (cb: (status: ConfigSyncStatus) => void): (() => void) =>
+    on(CHANNEL.configSyncChanged, (p) => cb(trust<ConfigSyncStatus>(p))),
+  configSyncSetRepo: (args: {
+    url: string;
+    branch: string;
+    windowKey: string;
+  }): Promise<ConfigSyncStatus> =>
+    unwrap(ConfigSyncService.SetRepo(args)).then((r) => trust<ConfigSyncStatus>(r)),
+  configSyncRemoveRepo: (): Promise<ConfigSyncStatus> =>
+    unwrap(ConfigSyncService.RemoveRepo()).then((r) => trust<ConfigSyncStatus>(r)),
+  configSyncSetFetchMinutes: (minutes: number): Promise<ConfigSyncStatus> =>
+    unwrap(ConfigSyncService.SetFetchMinutes({ minutes })).then((r) => trust<ConfigSyncStatus>(r)),
+  configSyncSetMode: (module: string, mode: string): Promise<ConfigSyncStatus> =>
+    unwrap(ConfigSyncService.SetMode({ module, mode })).then((r) => trust<ConfigSyncStatus>(r)),
+  configSyncSetDeactivated: (
+    module: string,
+    unit: string,
+    off: boolean,
+  ): Promise<ConfigSyncStatus> =>
+    unwrap(ConfigSyncService.SetDeactivated({ module, unit, off })).then((r) =>
+      trust<ConfigSyncStatus>(r),
+    ),
+  configSyncFetchNow: (): Promise<ConfigSyncStatus> =>
+    unwrap(ConfigSyncService.FetchNow({ windowKey })).then((r) => trust<ConfigSyncStatus>(r)),
+  configSyncPreview: (): Promise<ConfigSyncPreview> =>
+    unwrap(ConfigSyncService.Preview()).then((r) => trust<ConfigSyncPreview>(r)),
+  configSyncApply: (
+    token: string,
+    choices: Record<string, ConfigSyncChoice>,
+  ): Promise<ConfigSyncApplyResult> =>
+    unwrap(ConfigSyncService.Apply({ token, choices })).then((r) =>
+      trust<ConfigSyncApplyResult>(r),
+    ),
+  configSyncDismiss: (sha: string): Promise<ConfigSyncStatus> =>
+    unwrap(ConfigSyncService.Dismiss({ sha })).then((r) => trust<ConfigSyncStatus>(r)),
+  configSyncOpenReview: (): Promise<void> => unwrap(ConfigSyncService.OpenReview()),
+  configSyncCloseReview: (): Promise<void> => unwrap(ConfigSyncService.CloseReview()),
+  configSyncIsReviewWindow: (args: { windowKey: string }): Promise<boolean> =>
+    unwrap(ConfigSyncService.IsReviewWindow(args)).then((r) => trust<boolean>(r)),
 
   // External opens: whether this window is the files window, the files waiting for it (once per
   // drain), and a standalone file's content.

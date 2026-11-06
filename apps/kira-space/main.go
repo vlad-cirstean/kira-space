@@ -192,7 +192,7 @@ func main() {
 		},
 	}
 	winDeps.OnWindowClosing = append(winDeps.OnWindowClosing, wired.OnWindowClosing...)
-	winDeps.OnWindowClosing = append(winDeps.OnWindowClosing, wired.OpenedFiles.Forget, wired.ConfigSyncSvc.Forget, wired.HostView.Targets.Forget, wired.GitWindows.Close,
+	winDeps.OnWindowClosing = append(winDeps.OnWindowClosing, wired.OpenedFiles.Forget, wired.ConfigSyncSvc.Review.Forget, wired.HostView.Targets.Forget, wired.GitWindows.Close,
 		func(key string) { bridge.CaptureForget(wired.Capture, key) })
 	openNew := func() { shell.OpenNewWindow(winDeps) }
 	// OpenNewWindow is the title bar's "New window" button (P116 G6) — the same action the ⇧⌘N

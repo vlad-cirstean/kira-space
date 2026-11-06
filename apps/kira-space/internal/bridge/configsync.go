@@ -23,10 +23,16 @@ func IsConfigSyncKey(key string) bool { return strings.HasPrefix(key, configSync
 // ConfigSyncService is the bound face of configsync.Service plus the review window.
 type ConfigSyncService struct {
 	Sync *configsync.Service
-	// Window hooks; fields so they stay off the bound surface.
+	// Review is a field so its hooks stay off the bound surface.
+	Review ConfigSyncReview
+}
+
+// ConfigSyncReview owns the one review window.
+type ConfigSyncReview struct {
 	OpenWindow     func(key string)
 	FocusWindow    func(key string) bool
 	SetWindowTitle func(key, title string)
+	CloseWindow    func(key string) bool
 
 	mu     sync.Mutex
 	openMu sync.Mutex
@@ -34,7 +40,7 @@ type ConfigSyncService struct {
 }
 
 // Forget drops the review window's key when it closes.
-func (s *ConfigSyncService) Forget(key string) {
+func (s *ConfigSyncReview) Forget(key string) {
 	s.mu.Lock()
 	if s.review == key {
 		s.review = ""
@@ -160,9 +166,22 @@ func (s *ConfigSyncService) IsReviewWindow(args ConfigSyncWindowArgs) (bool, err
 }
 
 // OpenReview opens the review window, or focuses the one already open.
-func (s *ConfigSyncService) OpenReview() error {
+func (s *ConfigSyncService) OpenReview() error { s.Review.open(); return nil }
+
+// CloseReview closes the review window, if open.
+func (s *ConfigSyncService) CloseReview() error {
+	s.Review.mu.Lock()
+	key := s.Review.review
+	s.Review.mu.Unlock()
+	if key != "" && s.Review.CloseWindow != nil {
+		s.Review.CloseWindow(key)
+	}
+	return nil
+}
+
+func (s *ConfigSyncReview) open() {
 	if s.OpenWindow == nil {
-		return nil
+		return
 	}
 	s.openMu.Lock()
 	defer s.openMu.Unlock()
@@ -170,7 +189,7 @@ func (s *ConfigSyncService) OpenReview() error {
 	key := s.review
 	s.mu.Unlock()
 	if key != "" && s.FocusWindow != nil && s.FocusWindow(key) {
-		return nil
+		return
 	}
 	key = configSyncKeyPrefix + ids.NewID()
 	s.mu.Lock()
@@ -180,5 +199,4 @@ func (s *ConfigSyncService) OpenReview() error {
 	if s.SetWindowTitle != nil {
 		s.SetWindowTitle(key, i18n.T("backend.space.configSync.window.title", nil))
 	}
-	return nil
 }

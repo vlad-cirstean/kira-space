@@ -11207,6 +11207,60 @@
         "label": "Workflows"
       }
     },
+    "configSync": {
+      "diff": {
+        "empty": {
+          "empty": "Select a unit to see its changes"
+        }
+      },
+      "footer": {
+        "commit": {
+          "label": "Commit"
+        }
+      },
+      "kind": {
+        "modify": {
+          "label": "Modify"
+        }
+      },
+      "row": {
+        "deactivate": {
+          "label": "Never apply on this machine"
+        },
+        "mine": {
+          "option": "Keep mine"
+        },
+        "runsCommands": {
+          "label": "Runs commands"
+        },
+        "shared": {
+          "option": "Take shared"
+        },
+        "unsetSecrets": {
+          "hint": "Secrets not set here: {names}."
+        }
+      },
+      "toast": {
+        "count": {
+          "status": "{count} change | {count} changes"
+        },
+        "review": {
+          "label": "Review changes"
+        },
+        "title": {
+          "status": "New shared config available"
+        }
+      },
+      "window": {
+        "empty": {
+          "empty": "Nothing to pull"
+        },
+        "loading": {
+          "loading": "Loading the changes…"
+        },
+        "title": "Shared config changes"
+      }
+    },
     "gitCredential": {
       "dialog": {
         "title": "Git credentials"
@@ -12077,6 +12131,84 @@
           }
         }
       },
+      "configSync": {
+        "add": {
+          "label": "Add repository"
+        },
+        "change": {
+          "label": "Change repository"
+        },
+        "changes": {
+          "status": "{count} change available | {count} changes available"
+        },
+        "deactivated": {
+          "label": "Deactivated"
+        },
+        "description": "Pull configuration files from one shared Git repository. Nothing is pushed, and you review every change before it applies.",
+        "fetched": {
+          "status": "Last fetched {time}"
+        },
+        "fetchNow": {
+          "label": "Fetch now"
+        },
+        "interval": {
+          "label": "Fetch interval (minutes)"
+        },
+        "mode": {
+          "combined": {
+            "option": "Combined"
+          },
+          "local": {
+            "option": "Keep local"
+          },
+          "shared": {
+            "option": "Shared"
+          }
+        },
+        "module": {
+          "agent": {
+            "label": "Agent settings"
+          },
+          "api": {
+            "label": "Api requests"
+          },
+          "label": "Config module",
+          "prompts": {
+            "label": "Prompt overrides"
+          },
+          "runs": {
+            "label": "Run definitions"
+          },
+          "steps": {
+            "label": "Step library"
+          },
+          "workflows": {
+            "label": "Workflow definitions"
+          }
+        },
+        "neverFetched": {
+          "status": "Not fetched yet"
+        },
+        "pullConflicts": {
+          "hint": "This pull has conflicts. Review them before you pull."
+        },
+        "pulled": {
+          "announce": "Shared config applied"
+        },
+        "removeConfirm": {
+          "body": "Kira deletes its local sync data. Files already applied stay as local files.",
+          "title": "Remove the shared repository?"
+        },
+        "units": {
+          "label": "Units"
+        },
+        "upToDate": {
+          "status": "Everything is up to date"
+        },
+        "url": {
+          "label": "Repository URL"
+        }
+      },
       "fileTypes": {
         "description": "Make Kira Space the app that opens code and data files from Finder. It opens them read-only. Turning a switch off gives each type back to the app that had it.",
         "ext": {
@@ -12250,6 +12382,9 @@
         },
         "mobileAccess": {
           "label": "Mobile access"
+        },
+        "sharedConfig": {
+          "label": "Shared config"
         },
         "updates": {
           "label": "Updates"

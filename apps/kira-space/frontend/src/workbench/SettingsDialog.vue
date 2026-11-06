@@ -19,6 +19,7 @@ import AgentPane from './settings/AgentPane.vue';
 import AppearancePane from './settings/AppearancePane.vue';
 import CapturePane from './settings/CapturePane.vue';
 import CliToolsPane from './settings/CliToolsPane.vue';
+import ConfigSyncPane from './settings/ConfigSyncPane.vue';
 import FileTypesPane from './settings/FileTypesPane.vue';
 import GitPane from './settings/GitPane.vue';
 import MemoryPane from './settings/MemoryPane.vue';
@@ -34,6 +35,7 @@ const { info: agentInfo } = useAgentInfo();
 const sectionLabels = computed<Record<Section, string>>(() => ({
   Appearance: t('common.appearance.label'),
   Git: t('common.module.git.label'),
+  'Shared config': t('space.settings.nav.sharedConfig.label'),
   'CLI tools': t('space.settings.nav.cliTools.label'),
   'File types': t('space.settings.nav.fileTypes.label'),
   Capture: t('space.settings.nav.capture.label'),
@@ -105,6 +107,13 @@ const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSetting
       />
       <GitPane
         :active="s.activeSection === 'Git'"
+        :draft="s.draft"
+        :is-at-default="s.isAtDefault"
+        :reset-leaf="s.resetLeaf"
+        :register-field-error="s.registerFieldError"
+      />
+      <ConfigSyncPane
+        :active="s.activeSection === 'Shared config'"
         :draft="s.draft"
         :is-at-default="s.isAtDefault"
         :reset-leaf="s.resetLeaf"

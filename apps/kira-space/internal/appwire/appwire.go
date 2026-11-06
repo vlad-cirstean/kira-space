@@ -635,9 +635,10 @@ func (w *Wired) BindShell(h ShellHooks) {
 	w.OpenedFiles.OpenWindow = h.OpenNewWindowKeyed
 	w.OpenedFiles.FocusWindow = focusWindow
 	w.OpenedFiles.SetWindowTitle = setTitle
-	w.ConfigSyncSvc.OpenWindow = h.OpenNewWindowKeyed
-	w.ConfigSyncSvc.FocusWindow = focusWindow
-	w.ConfigSyncSvc.SetWindowTitle = setTitle
+	w.ConfigSyncSvc.Review.OpenWindow = h.OpenNewWindowKeyed
+	w.ConfigSyncSvc.Review.FocusWindow = focusWindow
+	w.ConfigSyncSvc.Review.CloseWindow = closeWindow
+	w.ConfigSyncSvc.Review.SetWindowTitle = setTitle
 	w.bindCapture(h, closeWindow, focusWindow)
 }
 

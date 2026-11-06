@@ -15,6 +15,7 @@ import { controlAdeReader } from './bridge/adeReader';
 import { control } from './bridge/control';
 import { captureItemKey } from './capture/queries';
 import { useCaptureWindowStore } from './capture/state';
+import { configSyncWindowKey } from './configsync/queries';
 import { hostViewTargetKey } from './hostview/queries';
 import { useHostViewWindowStore } from './hostview/state';
 import { openedFilesWindowKey } from './openedfiles/queries';
@@ -24,6 +25,7 @@ import { installAgentNotifyFocus } from './state/agentNotify';
 import { useAppMetricsStore } from './state/appMetrics';
 import { useAppUpdateStore } from './state/appUpdate';
 import { useCodeReposStore } from './state/coderepos';
+import { useConfigSyncWindowStore } from './state/configSyncWindow';
 import { useCustomScriptsStore } from './state/customScripts';
 import { useGitCredentialStore } from './state/gitCredential';
 import { useKeepAwakeStore } from './state/keepAwake';
@@ -84,6 +86,7 @@ async function mountShell(): Promise<void> {
   const hostViewStore = useHostViewWindowStore(pinia);
   const captureStore = useCaptureWindowStore(pinia);
   const openedFilesWindowStore = useOpenedFilesWindowStore(pinia);
+  const configSyncWindowStore = useConfigSyncWindowStore(pinia);
 
   // A proof window boots only what it shows.
   if (windowKey.startsWith(PROOF_WINDOW_PREFIX)) {
@@ -121,6 +124,10 @@ async function mountShell(): Promise<void> {
     }),
   ]);
   modeStore.hydrateMode(mode);
+  configSyncWindowStore.active = await queryClient.query({
+    queryKey: configSyncWindowKey(windowKey),
+    queryFn: () => control.configSyncIsReviewWindow({ windowKey }),
+  });
   // Before hydrateTabs, so the restored tabs partition under the files window's one key.
   openedFilesWindowStore.active = filesWindow;
 

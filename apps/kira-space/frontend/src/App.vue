@@ -37,11 +37,14 @@ import { useAdeWorkflowsUiStore } from './ade/v2/state/adeWorkflowsUi';
 import { control } from './bridge/control';
 import CaptureWindow from './capture/CaptureWindow.vue';
 import { useCaptureWindowStore } from './capture/state';
+import ConfigSyncReviewWindow from './configsync/ConfigSyncReviewWindow.vue';
+import ConfigSyncToast from './configsync/ConfigSyncToast.vue';
 import HostViewWindow from './hostview/HostViewWindow.vue';
 import { useHostViewWindowStore } from './hostview/state';
 import OpenedFilesWindow from './openedfiles/OpenedFilesWindow.vue';
 import { appPaletteCommands, closeTab, nextTab, prevTab } from './shortcuts/appCommands';
 import { useAppUpdateStore } from './state/appUpdate';
+import { useConfigSyncWindowStore } from './state/configSyncWindow';
 import { useKeepAwakeStore } from './state/keepAwake';
 import { useLayoutStore } from './state/layout';
 import { useModeStore } from './state/mode';
@@ -114,6 +117,7 @@ const reviewWindow = useAdeReviewWindowStore();
 const hostView = useHostViewWindowStore();
 const capture = useCaptureWindowStore();
 const openedFilesWindow = useOpenedFilesWindowStore();
+const configSyncWindow = useConfigSyncWindowStore();
 const proofWindow = useProofWindowStore();
 const connectionDialogStore = useConnectionDialogStore();
 const datagripImportStore = useDatagripImportStore();
@@ -127,6 +131,7 @@ const mainWindow = (): boolean =>
   !hostView.target &&
   !capture.item &&
   !openedFilesWindow.active &&
+  !configSyncWindow.active &&
   !proofWindow.active;
 const panelLabel = computed(() =>
   CONNECTION_PANEL_MODES.has(modeStore.active)
@@ -206,6 +211,7 @@ function onToggleKeepAwake(): void {
     <HostViewWindow v-else-if="hostView.target" />
     <AdeReviewWindow v-else-if="reviewWindow.target" />
     <OpenedFilesWindow v-else-if="openedFilesWindow.active" />
+    <ConfigSyncReviewWindow v-else-if="configSyncWindow.active" />
     <ProofWindow v-else-if="proofWindow.active" />
     <div v-else class="h-full flex flex-col">
       <WorkbenchTitleBar
@@ -241,6 +247,7 @@ function onToggleKeepAwake(): void {
     <GenerateDataDialog v-if="fakeDataStore.open" />
     <PromptHost :kinds="promptKinds" />
     <ApprovalsSurface />
+    <ConfigSyncToast v-if="mainWindow()" />
     <ConfirmDialog />
     <AppLiveRegion />
     <UpdateDialog v-if="appUpdateStore.dialogOpen" :store="appUpdateStore" />
