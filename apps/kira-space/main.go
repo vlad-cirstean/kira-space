@@ -11,13 +11,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appmerge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appshell"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appwire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/buildinfo"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/configfold"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/homefold"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
@@ -26,8 +26,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
-	studiorepos "github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/keepawake"
 	"github.com/kirathecat/kira-studio/internal/logging"
@@ -50,8 +48,7 @@ var mobileAssets embed.FS
 
 // Startup order: the argv shims (askpass, memory-mcp, memory-embed) -> refuseOldStudio ->
 // config.EnsureLayout -> logging.Init/Sweep -> instance lock -> storage.Open -> configfold.Run (config files into <home>/config) -> homefold.Files (legacy
-// Studio home folded in) -> studiostorage.Open (migrate) -> repos.New x2 -> appmerge.Run (first-launch
-// Studio carry-over) -> homefold.Runs (Studio scripts and runs folded in) -> appwire.Build (every Space and Studio service) -> application.New (bound services,
+// Studio home folded in) -> dbfold.Run (studio.db imported, Studio scripts and runs folded in) -> appwire.Build (every Space and Studio service) -> application.New (bound services,
 // git and engine streams) -> the menu -> the startup window list, opened -> app.Run().
 func main() {
 	if code, ok := appwire.RunArgvShim(os.Args); ok {
@@ -98,17 +95,7 @@ func main() {
 	}
 	foldConfig(reporter, db)
 	foldLegacyHome(reporter, db)
-	studioDB, err := studiostorage.Open()
-	if err != nil {
-		reporter.Fatal(startupfail.StepStorage, err)
-	}
-	studioRepositories, err := studiorepos.New(studioDB.DB)
-	if err != nil {
-		reporter.Fatal(startupfail.StepRepos, err)
-	}
-
-	carryOverStudio(reporter, db, studioDB)
-	foldLegacyRuns(reporter, db, studioDB)
+	foldStudioDB(reporter, db)
 
 	settings, err := repositories.Settings.GetAll()
 	if err != nil {
@@ -125,7 +112,7 @@ func main() {
 	fileOpener, attachFileOpener := shell.NewDeferredFileOpener()
 	rawDialogs, attachDialogs := shell.NewDeferredDialogs()
 	wired, err := appwire.Build(appwire.Options{
-		Repos: repositories, DB: db, StudioDB: studioDB, StudioRepos: studioRepositories,
+		Repos: repositories, DB: db,
 		Cipher: secrets.New(), Authorizer: localauth.New(time.Now, localauth.Evaluate, localauth.Available), Emitter: rawEmitter, Browser: browserOpener, FileOpener: fileOpener,
 		Dialogs: appshell.NewDialogs(rawDialogs), Locator: platformLocator(),
 		KeepAwakeDriver: keepawake.NewPlatformDriver(), MobileAssets: mobileAssetsFS,
@@ -312,22 +299,14 @@ func purgeKeyedWindows(repositories *repos.Repos) {
 	}
 }
 
-// carryOverStudio runs the first-launch carry-over of a Kira Studio install (P537).
-func carryOverStudio(reporter *startupfail.Reporter, db *storage.DB, studioDB *studiostorage.DB) {
-	err := appmerge.Run(appmerge.Options{
-		Space: db.DB, Studio: studioDB.DB, SpaceHome: config.KiraSpaceHome(),
+// foldStudioDB folds a Kira Studio database into the Space one once (P544).
+func foldStudioDB(reporter *startupfail.Reporter, db *storage.DB) {
+	err := dbfold.Run(dbfold.Options{
+		Home: config.KiraSpaceHome(), Space: db.DB,
 		Ephemeral: func(key string) bool {
 			return bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) || proof.IsWindowKey(key)
 		},
 	})
-	if err != nil {
-		reporter.Fatal(startupfail.StepStorage, err)
-	}
-}
-
-// foldLegacyRuns moves the Studio DB's script rows and run files into the Space DB (P539).
-func foldLegacyRuns(reporter *startupfail.Reporter, db *storage.DB, studioDB *studiostorage.DB) {
-	err := homefold.Runs(homefold.Options{Space: db.DB, SpaceHome: config.KiraSpaceHome(), Studio: studioDB.DB})
 	if err != nil {
 		reporter.Fatal(startupfail.StepStorage, err)
 	}

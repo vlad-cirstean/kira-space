@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 )
@@ -48,8 +48,8 @@ type legacyOut struct {
 	text           []byte
 }
 
-func (l *Loader) hasColumn(table, column string) (bool, error) {
-	rows, err := l.o.DB.Query(`SELECT name FROM pragma_table_info(?)`, table)
+func hasColumn(db *sql.DB, table, column string) (bool, error) {
+	rows, err := db.Query(`SELECT name FROM pragma_table_info(?)`, table)
 	if err != nil {
 		return false, fmt.Errorf("connfiles: inspect %s: %w", table, err)
 	}
@@ -119,7 +119,7 @@ func (l *Loader) legacyRows(tx *sql.Tx, withSecrets bool) ([]legacyConn, error) 
 }
 
 func (l *Loader) bindLegacyRows() ([]legacyOut, error) {
-	hasPassword, err := l.hasColumn("connections", "password")
+	hasPassword, err := hasColumn(l.o.DB, "connections", "password")
 	if err != nil {
 		return nil, err
 	}
@@ -267,21 +267,24 @@ func legacyTree(tx *sql.Tx, id string) (model.TreeVisibility, error) {
 	return v, rows.Err()
 }
 
-// dropLegacy removes what the files replaced. Each step skips what is already gone, so a rerun is safe.
-func (l *Loader) dropLegacy() error {
+func (l *Loader) dropLegacy() error { return DropLegacy(l.o.DB) }
+
+// DropLegacy removes what the files replaced. Each step skips what is already gone, so a rerun is safe.
+// The DB fold calls it for rows imported from a database that already exported its connections.
+func DropLegacy(db *sql.DB) error {
 	for _, col := range []string{"password", "uri"} {
-		has, err := l.hasColumn("connections", col)
+		has, err := hasColumn(db, "connections", col)
 		if err != nil {
 			return err
 		}
 		if has {
-			if _, err := l.o.DB.Exec(`ALTER TABLE connections DROP COLUMN ` + col); err != nil {
+			if _, err := db.Exec(`ALTER TABLE connections DROP COLUMN ` + col); err != nil {
 				return fmt.Errorf("connfiles: drop column %s: %w", col, err)
 			}
 		}
 	}
 	for _, t := range []string{"connection_tree_filters", "connection_ddl"} {
-		if _, err := l.o.DB.Exec(`DROP TABLE IF EXISTS ` + t); err != nil {
+		if _, err := db.Exec(`DROP TABLE IF EXISTS ` + t); err != nil {
 			return fmt.Errorf("connfiles: drop table %s: %w", t, err)
 		}
 	}

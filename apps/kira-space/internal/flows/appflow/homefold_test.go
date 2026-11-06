@@ -17,7 +17,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/homefold"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
@@ -54,7 +53,7 @@ func newFoldFixture(t *testing.T) *foldFixture {
 	root := t.TempDir()
 	f := &foldFixture{space: filepath.Join(root, "space"), legacy: filepath.Join(root, "legacy")}
 
-	scratch, err := studiostorage.OpenAt(filepath.Join(root, "scratch"))
+	scratch, err := storage.OpenAt(filepath.Join(root, "scratch"))
 	if err != nil {
 		t.Fatal(err)
 	}
