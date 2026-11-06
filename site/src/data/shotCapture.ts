@@ -28,6 +28,17 @@ export const SHOT_CAPTURE = {
     bottom: '[data-testid="file-tree-row"]',
     padding: 0,
   },
+  // Build with Kira (P551)
+  'build-start-board': { kind: 'window', detail: { x: 120, y: 280 } },
+  'build-start-capture': { kind: 'floating', selector: '[data-testid="ade-add-popover"]' },
+  'build-start-workflow': { kind: 'window', detail: { x: 320, y: 150 } },
+  'build-start-step': { kind: 'region', selector: '[data-testid="ade-wf-inspector"]' },
+  'build-start-launch': { kind: 'floating', selector: '[data-testid="context-menu"]' },
+  'build-db-approval': { kind: 'window', detail: { x: 300, y: 120 } },
+  'build-db-statement': { kind: 'region', selector: '[data-testid^="approval-item-db.query"]' },
+  'build-db-exemption': { kind: 'region', selector: '[data-testid^="approval-item-db.exemption"]' },
+  'build-db-audit': { kind: 'region', selector: '[data-testid="ade-details-tab"]', padding: 0 },
+  'build-db-settings': { kind: 'region', selector: '[data-testid="settings-dialog"]', padding: 0 },
 } as const satisfies Record<string, ShotCapture>;
 
 export type ShotId = keyof typeof SHOT_CAPTURE;
