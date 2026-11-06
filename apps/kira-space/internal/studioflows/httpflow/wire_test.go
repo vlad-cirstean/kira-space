@@ -16,7 +16,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 )
 
 func secretVar(t *testing.T, app *studioflowharness.App, name, value string) (collectionID, envID string) {
@@ -204,7 +204,7 @@ func TestTimeoutAndCancel(t *testing.T) {
 	}()
 	waitUntil(t, "slow request to reach the server", func() bool { return len(srv.Requests()) >= 2 })
 	time.Sleep(100 * time.Millisecond)
-	if err := app.W.Ops.Cancel(bridge.OpsCancelArgs{OpID: cancelled.OpID}); err != nil {
+	if err := app.W.Ops.Cancel(bridge.StudioOpsCancelArgs{OpID: cancelled.OpID}); err != nil {
 		t.Fatal(err)
 	}
 	select {

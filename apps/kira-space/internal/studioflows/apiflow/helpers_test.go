@@ -13,7 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
@@ -63,7 +63,7 @@ func waitOp(t *testing.T, app *studioflowharness.App, opID string) model.OpRecor
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for {
-		recs, err := app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 500})
+		recs, err := app.W.Ops.Recent(bridge.StudioOpsRecentArgs{Limit: 500})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -82,7 +82,7 @@ func waitOp(t *testing.T, app *studioflowharness.App, opID string) model.OpRecor
 // waitOpUpdate waits for the op-log update event that closes opID; it fires for incognito ops too.
 func waitOpUpdate(t *testing.T, app *studioflowharness.App, opID string) {
 	t.Helper()
-	app.Events.Wait(t, bridge.ChannelOpUpdate, func(e studioflowharness.Event) bool {
+	app.Events.Wait(t, bridge.ChannelStudioOpUpdate, func(e studioflowharness.Event) bool {
 		var rec model.OpRecord
 		e.Decode(t, &rec)
 		return rec.ID == opID && rec.Status != "running"

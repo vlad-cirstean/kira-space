@@ -9,6 +9,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/enginecache"
@@ -17,8 +18,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/tree"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/secrets"
@@ -46,7 +46,7 @@ type App struct {
 
 	ConnectionsSvc *bridge.ConnectionsService
 	TreeSvc        *bridge.TreeService
-	OpsSvc         *bridge.OpsService
+	OpsSvc         *bridge.StudioOpsService
 	MaskRulesSvc   *bridge.MaskRulesService
 
 	// connectedMu guards connectedIDs — every real adapter this harness connects
@@ -159,7 +159,7 @@ func NewApp(t *testing.T) *App {
 	app.Files, app.Connections, app.Tree = files, connectionsSvc, treeSvc
 	app.ConnectionsSvc = &bridge.ConnectionsService{Deps: appDeps}
 	app.TreeSvc = &bridge.TreeService{Deps: appDeps}
-	app.OpsSvc = &bridge.OpsService{Deps: appDeps, Canceller: router}
+	app.OpsSvc = &bridge.StudioOpsService{Deps: appDeps, Canceller: router}
 	app.MaskRulesSvc = &bridge.MaskRulesService{Deps: appDeps}
 	// Every *_test.go file using this harness calls Recorder.ConnectionsConnect
 	// and none of them call the matching disconnect — real adapters otherwise accumulate in the
@@ -326,7 +326,7 @@ func (r *Recorder) TreeDefinition(t *testing.T, connectionID, path string, refre
 	return result
 }
 
-// OpsCancel is IPC.opsCancel: bridge.OpsService.Cancel. Every committed fixture captures this
+// OpsCancel is IPC.opsCancel: bridge.StudioOpsService.Cancel. Every committed fixture captures this
 // channel with no args and no response (the TypeScript spec pushed `{channel: IPC.opsCancel}`
 // literally, never the real opId or the void result) — matched here rather than "improved", so a
 // regenerated fixture does not gratuitously diff read-mode's own committed file.

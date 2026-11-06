@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/claude"
 	"github.com/kirathecat/kira-studio/internal/shell"

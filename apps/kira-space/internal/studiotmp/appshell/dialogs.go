@@ -1,7 +1,7 @@
 package appshell
 
 import (
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/shell"
 )
 

@@ -16,7 +16,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 )
 
 // Backend half of tests/ui/connection-mcp-expensive.spec.ts: a read-class SELECT whose plan estimates
@@ -30,7 +30,7 @@ var rowsMeasuredRe = regexp.MustCompile(`measured (\d+) rows, limit (\d+) rows`)
 func (f *fixture) setExpensiveThreshold(t *testing.T, rows int) {
 	t.Helper()
 	patch := model.SettingsPatch{Advanced: &model.AdvancedPatch{ExpensiveQueryRows: &rows}}
-	if _, err := f.app.W.Settings.Set(bridge.SettingsSetArgs{Patch: patch}); err != nil {
+	if _, err := f.app.W.Settings.Set(bridge.StudioSettingsSetArgs{Patch: patch}); err != nil {
 		t.Fatalf("Settings.Set: %v", err)
 	}
 }

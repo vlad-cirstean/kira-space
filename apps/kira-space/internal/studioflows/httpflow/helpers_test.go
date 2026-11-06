@@ -13,7 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
@@ -55,7 +55,7 @@ func sendErr(t *testing.T, app *studioflowharness.App, args bridge.HttpSendArgs)
 
 func setApi(t *testing.T, app *studioflowharness.App, patch model.ApiPatch) {
 	t.Helper()
-	if _, err := app.W.Settings.Set(bridge.SettingsSetArgs{Patch: model.SettingsPatch{Api: &patch}}); err != nil {
+	if _, err := app.W.Settings.Set(bridge.StudioSettingsSetArgs{Patch: model.SettingsPatch{Api: &patch}}); err != nil {
 		t.Fatalf("Settings.Set: %v", err)
 	}
 }
@@ -65,7 +65,7 @@ func waitOp(t *testing.T, app *studioflowharness.App, opID string) model.OpRecor
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for {
-		recs, err := app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 200})
+		recs, err := app.W.Ops.Recent(bridge.StudioOpsRecentArgs{Limit: 200})
 		if err != nil {
 			t.Fatalf("Ops.Recent: %v", err)
 		}

@@ -6,13 +6,13 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 func (e *env) ops(t *testing.T) []model.OpRecord {
 	t.Helper()
-	recs, err := e.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 200})
+	recs, err := e.app.W.Ops.Recent(bridge.StudioOpsRecentArgs{Limit: 200})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestOpsRecordEveryAction(t *testing.T) {
 		t.Fatalf("running op = %+v", running)
 	}
 	e.contract(t, "OpsService.Recent:running", []model.OpRecord{running}, studioflowharness.Mask("id", "startedAt", "durationMs"))
-	if err := e.app.W.Ops.Cancel(bridge.OpsCancelArgs{OpID: running.ID}); err != nil {
+	if err := e.app.W.Ops.Cancel(bridge.StudioOpsCancelArgs{OpID: running.ID}); err != nil {
 		t.Fatal(err)
 	}
 	if _, errMsg := waitEnded(t, e.app, mark, "w1", "f1"); errMsg != "" {

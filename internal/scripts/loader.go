@@ -144,6 +144,12 @@ func (l *Loader) publishLocked(force bool) {
 	}
 }
 
+// Has reports whether a run with this id is stored.
+func (l *Loader) Has(id string) bool {
+	rec, err := l.o.Repo.Get(id)
+	return err == nil && rec != nil
+}
+
 // Snapshot is the whole panel state.
 func (l *Loader) Snapshot() (Snapshot, error) {
 	l.mu.Lock()

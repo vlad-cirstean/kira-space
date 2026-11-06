@@ -8,7 +8,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 )
 
 func TestIncognitoLeavesNoTrace(t *testing.T) {
@@ -47,7 +47,7 @@ func TestIncognitoLeavesNoTrace(t *testing.T) {
 	if rows, _ := app.W.GrpcHistory.List(bridge.GrpcHistoryScopeArgs{TabID: "tab-incognito"}); len(rows) != 0 {
 		t.Errorf("incognito gRPC call left %d history rows", len(rows))
 	}
-	recs, err := app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 500})
+	recs, err := app.W.Ops.Recent(bridge.StudioOpsRecentArgs{Limit: 500})
 	if err != nil {
 		t.Fatal(err)
 	}

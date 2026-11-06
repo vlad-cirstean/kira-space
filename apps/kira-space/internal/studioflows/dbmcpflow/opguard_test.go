@@ -9,7 +9,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
@@ -64,7 +64,7 @@ func TestOpIDGuard(t *testing.T) {
 		t.Fatalf("reused op row = %+v, want the first op's row unchanged", row)
 	}
 	n := 0
-	recent, err := f.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 50})
+	recent, err := f.app.W.Ops.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
 	if err != nil {
 		t.Fatal(err)
 	}

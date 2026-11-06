@@ -12,7 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness/servers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -61,7 +61,7 @@ func (f *fixture) writeDev(t *testing.T, hosts string, autoReads bool) {
 // dbmcp-api-settings contract tests/ui/dbmcp-api-settings.spec.ts replays.
 func (f *fixture) patchAPI(t *testing.T, key string, patch *model.DbMcpPatch) {
 	t.Helper()
-	args := bridge.SettingsSetArgs{Patch: model.SettingsPatch{DbMcp: patch}}
+	args := bridge.StudioSettingsSetArgs{Patch: model.SettingsPatch{DbMcp: patch}}
 	if _, err := f.app.W.Settings.Set(args); err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func (f *fixture) patchAPI(t *testing.T, key string, patch *model.DbMcpPatch) {
 func (f *fixture) setAPI(t *testing.T, enabled bool, approval string) {
 	t.Helper()
 	patch := &model.DbMcpPatch{APIRequests: &enabled, APIApproval: &approval}
-	if _, err := f.app.W.Settings.Set(bridge.SettingsSetArgs{Patch: model.SettingsPatch{DbMcp: patch}}); err != nil {
+	if _, err := f.app.W.Settings.Set(bridge.StudioSettingsSetArgs{Patch: model.SettingsPatch{DbMcp: patch}}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -151,7 +151,7 @@ func TestApiRequestApproved(t *testing.T) {
 	var row *model.OpRecord
 	var rowsJSON []byte
 	testx.WaitUntil(t, 10*time.Second, func() bool {
-		recent, err := f.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 50})
+		recent, err := f.app.W.Ops.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
 		if err != nil {
 			t.Fatal(err)
 		}

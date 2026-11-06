@@ -8,7 +8,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/grpcclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 )
 
 func TestUnaryMetadataAndStatus(t *testing.T) {
@@ -175,7 +175,7 @@ func TestServerStreamAndCancel(t *testing.T) {
 			return n
 		}
 		waitUntil(t, "3 messages", func() bool { return received() >= 3 })
-		if err := app.W.Ops.Cancel(bridge.OpsCancelArgs{OpID: args.OpID}); err != nil {
+		if err := app.W.Ops.Cancel(bridge.StudioOpsCancelArgs{OpID: args.OpID}); err != nil {
 			t.Fatal(err)
 		}
 		var err error

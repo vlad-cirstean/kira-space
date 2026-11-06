@@ -89,7 +89,7 @@ type RunningOp struct {
 // asks drain to finish its own queue and close ch itself, once, from that single goroutine.
 type eventSub struct {
 	ch   chan studiooplog.Event // consumer-facing; only drain ever sends on or closes this
-	wake chan struct{}    // 1-buffered: wakes drain when the queue goes non-empty or closes
+	wake chan struct{}          // 1-buffered: wakes drain when the queue goes non-empty or closes
 
 	mu     sync.Mutex
 	queue  []studiooplog.Event

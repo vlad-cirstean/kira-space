@@ -15,7 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -205,7 +205,7 @@ func TestDbMcpReviewWithhold(t *testing.T) {
 		t.Fatalf("withheld write = %q, want the text with the changes note", text(res))
 	}
 
-	recent, err := f.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 50})
+	recent, err := f.app.W.Ops.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
 	if err != nil {
 		t.Fatal(err)
 	}

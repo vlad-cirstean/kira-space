@@ -12,12 +12,12 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 )
 
 func opUpdates(app *studioflowharness.App, mark int) []model.OpRecord {
 	var out []model.OpRecord
-	for _, ev := range app.Events.Since(mark, bridge.ChannelOpUpdate) {
+	for _, ev := range app.Events.Since(mark, bridge.ChannelStudioOpUpdate) {
 		if rec, ok := ev.Data.(model.OpRecord); ok {
 			out = append(out, rec)
 		}
@@ -29,7 +29,7 @@ func opUpdates(app *studioflowharness.App, mark int) []model.OpRecord {
 // op events asynchronously, so they can land after Connect returns.
 func waitOp(t *testing.T, app *studioflowharness.App, mark int, kind, status string) {
 	t.Helper()
-	app.Events.WaitAfter(t, mark, bridge.ChannelOpUpdate, func(ev studioflowharness.Event) bool {
+	app.Events.WaitAfter(t, mark, bridge.ChannelStudioOpUpdate, func(ev studioflowharness.Event) bool {
 		rec, ok := ev.Data.(model.OpRecord)
 		return ok && rec.Kind == kind && rec.Status == status
 	}, 5*time.Second)
@@ -167,7 +167,7 @@ func TestSQLitePreconnectDelay(t *testing.T) {
 		waitOp(t, app, mark, "preconnect", "running")
 		recs := opUpdates(app, mark)
 		opID := recs[indexOf(recs, "preconnect", "running")].ID
-		if err := app.W.Ops.Cancel(bridge.OpsCancelArgs{OpID: opID}); err != nil {
+		if err := app.W.Ops.Cancel(bridge.StudioOpsCancelArgs{OpID: opID}); err != nil {
 			t.Fatalf("Ops.Cancel: %v", err)
 		}
 

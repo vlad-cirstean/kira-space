@@ -12,7 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
@@ -75,7 +75,7 @@ func waitListed(t *testing.T, sess *mcp.ClientSession, match func(listedOp) bool
 
 func (f *fixture) opRow(t *testing.T, id string) (model.OpRecord, bool) {
 	t.Helper()
-	recent, err := f.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 50})
+	recent, err := f.app.W.Ops.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
 	if err != nil {
 		t.Fatalf("Ops.Recent: %v", err)
 	}
@@ -161,7 +161,7 @@ func TestDbMcpCancelOperation(t *testing.T) {
 	if res := cancelOp(t, b, hiddenOp); !res.IsError || !strings.Contains(text(res), "no running operation") {
 		t.Fatalf("cancel of hidden op = %q, want the no-running-operation error", text(res))
 	}
-	if err := f.app.W.Ops.Cancel(bridge.OpsCancelArgs{OpID: hiddenOp}); err != nil {
+	if err := f.app.W.Ops.Cancel(bridge.StudioOpsCancelArgs{OpID: hiddenOp}); err != nil {
 		t.Fatal(err)
 	}
 	select {

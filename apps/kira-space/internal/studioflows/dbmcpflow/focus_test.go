@@ -7,7 +7,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeclock"
 	"github.com/kirathecat/kira-studio/internal/flowtest/notifysink"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -78,7 +78,7 @@ func TestDbMcpApprovalFocus(t *testing.T) {
 
 	// Off: the window stays put and the notification still shows.
 	off := false
-	args := bridge.SettingsSetArgs{Patch: model.SettingsPatch{DbMcp: &model.DbMcpPatch{FocusOnApproval: &off}}}
+	args := bridge.StudioSettingsSetArgs{Patch: model.SettingsPatch{DbMcp: &model.DbMcpPatch{FocusOnApproval: &off}}}
 	if _, err := f.app.W.Settings.Set(args); err != nil {
 		t.Fatal(err)
 	}

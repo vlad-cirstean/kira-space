@@ -7,7 +7,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeclock"
 	"github.com/kirathecat/kira-studio/internal/flowtest/notifysink"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
@@ -256,7 +256,7 @@ func TestNotifyPromptsSetting(t *testing.T) {
 	}
 
 	off := false
-	if _, err := app.W.Settings.Set(bridge.SettingsSetArgs{Patch: model.SettingsPatch{Advanced: &model.AdvancedPatch{NotifyPrompts: &off}}}); err != nil {
+	if _, err := app.W.Settings.Set(bridge.StudioSettingsSetArgs{Patch: model.SettingsPatch{Advanced: &model.AdvancedPatch{NotifyPrompts: &off}}}); err != nil {
 		t.Fatal(err)
 	}
 	before := sink.Sends()

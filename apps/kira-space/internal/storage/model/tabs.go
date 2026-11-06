@@ -16,13 +16,15 @@ import (
 // WorkspaceID is required here for every kind, unlike Kira Studio's own optional field: every tab
 // kind this app has is scoped to a repository, so there is no "app-wide" tab to fall back to.
 type TabRecord struct {
-	ID          string          `json:"id"`
-	Path        string          `json:"path"`
-	Kind        string          `json:"kind"`
-	State       json.RawMessage `json:"state"`
-	Order       int             `json:"order"`
-	Active      bool            `json:"active"`
-	WorkspaceID *string         `json:"workspaceId"`
+	ID string `json:"id"`
+	// ConnectionID scopes a Studio tab to a DB connection; Space persists no such tab and ignores it.
+	ConnectionID *string         `json:"connectionId,omitempty"`
+	Path         string          `json:"path"`
+	Kind         string          `json:"kind"`
+	State        json.RawMessage `json:"state"`
+	Order        int             `json:"order"`
+	Active       bool            `json:"active"`
+	WorkspaceID  *string         `json:"workspaceId"`
 }
 
 // RenderableTabKinds is Kira Studio's own RenderableTabKinds, trimmed to the five kinds P100 Part

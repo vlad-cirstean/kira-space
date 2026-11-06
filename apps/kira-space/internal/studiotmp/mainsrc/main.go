@@ -13,7 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appshell"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appwire"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/buildinfo"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/config"
 	"github.com/kirathecat/kira-studio/internal/ids"

@@ -12,6 +12,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentapi"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apivars"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
@@ -22,9 +24,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/appupdate"
@@ -107,7 +107,7 @@ type Wired struct {
 	OnWindowClosing  []func(string)
 
 	App         *bridge.AppService
-	Settings    *bridge.SettingsService
+	Settings    *bridge.StudioSettingsService
 	Layout      *bridge.LayoutService
 	Tabs        *bridge.TabsService
 	WindowsSvc  *bridge.WindowsService
@@ -118,7 +118,7 @@ type Wired struct {
 	// ConnectionFiles is the connections folder behind Connections, Filters, Schema and MaskRules.
 	ConnectionFiles *connfiles.Loader
 	Tree            *bridge.TreeService
-	Ops             *bridge.OpsService
+	Ops             *bridge.StudioOpsService
 	Filters         *bridge.FiltersService
 	Files           *bridge.FilesService
 	Queries         *bridge.QueriesService
@@ -138,7 +138,7 @@ type Wired struct {
 	KeepAwake       *bridge.KeepAwakeService
 	Terminal        *bridge.TerminalService
 	CustomScripts   *bridge.CustomScriptsService
-	ConfigFiles     *bridge.ConfigFilesService
+	ConfigFiles     *bridge.StudioConfigFilesService
 	ScriptRuns      *bridge.ScriptRunsService
 	Docker          *bridge.DockerService
 	Kubernetes      *bridge.KubernetesService
@@ -326,7 +326,7 @@ func Build(opts Options) (*Wired, error) {
 		}, proofTargets.Forget},
 
 		App:              &bridge.AppService{Deps: deps},
-		Settings:         &bridge.SettingsService{Deps: deps},
+		Settings:         &bridge.StudioSettingsService{Deps: deps},
 		Layout:           &bridge.LayoutService{Deps: deps},
 		Tabs:             &bridge.TabsService{Deps: deps},
 		WindowsSvc:       embedded.windowsSvc,
@@ -335,7 +335,7 @@ func Build(opts Options) (*Wired, error) {
 		ConnectionConfig: &bridge.ConnectionConfigService{Deps: deps, Files: connFiles},
 		ConnectionFiles:  connFiles,
 		Tree:             &bridge.TreeService{Deps: deps},
-		Ops:              &bridge.OpsService{Deps: deps, Canceller: router},
+		Ops:              &bridge.StudioOpsService{Deps: deps, Canceller: router},
 		Filters:          &bridge.FiltersService{Deps: deps},
 		Files:            &bridge.FilesService{Dialogs: opts.Dialogs},
 		Queries:          &bridge.QueriesService{Deps: deps},
@@ -354,7 +354,7 @@ func Build(opts Options) (*Wired, error) {
 		KeepAwake:        embedded.keepAwakeSvc,
 		Terminal:         embedded.terminalSvc,
 		CustomScripts:    &bridge.CustomScriptsService{Svc: &scripts.Service{Loader: embedded.runLoader}},
-		ConfigFiles:      &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"runs": filepath.Join(deps.Home, "runs"), "api": apiFiles.Dir(), "connections": connFiles.Dir()})},
+		ConfigFiles:      &bridge.StudioConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"runs": filepath.Join(deps.Home, "runs"), "api": apiFiles.Dir(), "connections": connFiles.Dir()})},
 		ScriptRuns:       embedded.scriptRuns,
 		Docker:           embedded.dockerSvc,
 		Kubernetes:       embedded.kubeSvc,

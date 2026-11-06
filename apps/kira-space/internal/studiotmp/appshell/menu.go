@@ -7,7 +7,7 @@
 package appshell
 
 import (
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 	"github.com/wailsapp/wails/v3/pkg/application"

@@ -74,3 +74,9 @@ func (t TabRecord) Validate() error {
 		ID: t.ID, Path: t.Path, Kind: t.Kind, State: t.State, WorkspaceID: t.WorkspaceID,
 	}, IsRenderableTabKind, func(kind string) bool { return kind == "terminal" })
 }
+
+// IsStudioTabKind reports whether a tab of this kind persists in the Studio database. The shared
+// workbench kinds (terminal, script-run) persist with Space.
+func IsStudioTabKind(kind string) bool {
+	return RenderableTabKinds[kind] && kind != "terminal" && kind != "script-run"
+}
