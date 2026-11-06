@@ -32,6 +32,8 @@ for (const route of [{ name: 'landing', path: '' }]) {
       fullPage: true,
       animations: 'disabled',
       caret: 'hide',
+      // App pixels change with every UI change; the baseline guards the page layout.
+      mask: [page.locator('img[data-shot]')],
     });
   });
 }

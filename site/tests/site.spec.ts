@@ -1,11 +1,13 @@
 import { expect, type Page, test } from '@playwright/test';
+import type { ShotId } from '../src/data/shotCapture';
+import { expectShotImage } from './shotImage';
 
 const BASE = '/kira-studio/';
 interface Route {
   readonly path: string;
   readonly name: string;
-  readonly hero: string;
-  readonly shots: readonly string[];
+  readonly hero: ShotId;
+  readonly shots: readonly ShotId[];
 }
 
 const ROUTES: readonly Route[] = [
@@ -118,17 +120,7 @@ for (const route of ROUTES) {
       await openPage(page, route);
       const phone = info.project.name === 'phone';
       if (phone) expect(page.viewportSize()?.width).toBe(375);
-      for (const id of route.shots) {
-        const img = page.locator(`img[data-shot="${id}"]`).last();
-        await img.scrollIntoViewIfNeeded();
-        await expect
-          .poll(() => img.evaluate((el: HTMLImageElement) => el.currentSrc))
-          .toContain(id);
-        const src = await img.evaluate((el: HTMLImageElement) => el.currentSrc);
-        expect(src).toMatch(/\.webp$/);
-        if (phone) expect(src).toContain(`${id}-detail`);
-        else expect(src).not.toContain('-detail');
-      }
+      for (const id of route.shots) await expectShotImage(page, id, phone);
     });
 
     test('body text is readable and tap targets are large enough', async ({ page }, info) => {
@@ -194,4 +186,12 @@ test('the retired /space/ URL redirects to the landing page', async ({ page }) =
 test('the landing page has no app tab bar', async ({ page }) => {
   await page.goto(BASE);
   await expect(page.locator('nav[aria-label="Apps"]')).toHaveCount(0);
+});
+
+test('the hero shot is published at the stable URL the README links to', async ({ request }) => {
+  for (const route of ROUTES) {
+    const res = await request.get(`${BASE}shots/${route.hero}.webp`);
+    expect(res.status()).toBe(200);
+    expect(res.headers()['content-type']).toContain('image/webp');
+  }
 });
