@@ -46,7 +46,15 @@
       // carries the equivalent ignore.
       // P165: the dev-only grid prototype's own page scripts (the proto/grid/*.html Vite entries of
       // vite.proto.config.ts, which knip does not follow), never in the app build.
-      "entry": ["index.html", "mobile/index.html", "proto/grid/main.ts", "proto/grid/slickMain.ts"],
+      // P537 Part 1: Studio's own entry (src/studio/main.ts), unreachable from Space's main.ts
+      // until Part 2 wires Studio in. Its views/workers/state are reached through it.
+      "entry": [
+        "index.html",
+        "mobile/index.html",
+        "proto/grid/main.ts",
+        "proto/grid/slickMain.ts",
+        "src/studio/main.ts"
+      ],
       "project": ["src/**/*.{ts,vue}", "mobile/**/*.{ts,vue}", "proto/**/*.{ts,vue}"]
     },
     "packages/shared": { "entry": ["**/*.ts"], "project": ["**/*.ts"] },
