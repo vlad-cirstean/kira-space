@@ -154,7 +154,7 @@ test('Task tab shows no handover; Notes lists the draft and moves; an edit sends
   await expect(page.locator(t('ade-main-tab'))).not.toContainText(BODY);
   await expect(page.locator(t('ade-task-handover-row'))).toHaveCount(0);
   await page.locator(t('ade-panel-tab-details')).click();
-  const list = page.locator(t('ade-notes-chain'));
+  const list = page.locator(t('ade-task-chain'));
   await expect(list.locator(t('ade-handover-draft'))).toContainText(BODY);
   await expect(list.locator(t('ade-handover-row'))).toHaveCount(handed.length);
   await expect(list.locator(t('ade-handover-row')).first()).toContainText(handed[0]?.body ?? '');

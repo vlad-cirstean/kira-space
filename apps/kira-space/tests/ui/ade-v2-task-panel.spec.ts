@@ -103,7 +103,7 @@ test('Main shows branches with their PR line and never handover text', async ({ 
   await expect(page.locator(`${t('ade-task-branch-pr')}[data-branch-id="b_billdash"]`)).toHaveCount(
     0,
   );
-  await expect(page.locator(t('ade-notes-chain'))).toHaveCount(0);
+  await expect(page.locator(t('ade-task-chain'))).toHaveCount(0);
 });
 
 test('Details groups the Jira and host links in Main and stored links in Related', async ({

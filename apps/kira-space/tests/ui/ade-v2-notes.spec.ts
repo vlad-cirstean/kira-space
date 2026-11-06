@@ -31,7 +31,7 @@ function chainSnapshot(taskId: string): ControlSnapshot {
 async function openDetails(page: Page, taskId = 'T_alerts'): Promise<void> {
   await openTask(page, taskId);
   await page.locator(t('ade-panel-tab-details')).click();
-  await expect(page.locator(t('ade-notes-chain'))).toBeVisible();
+  await expect(page.locator(t('ade-task-chain'))).toBeVisible();
 }
 
 test('contract: the chain lists notes and the agent handover newest first, marked by author', async ({
@@ -39,7 +39,7 @@ test('contract: the chain lists notes and the agent handover newest first, marke
 }) => {
   const { window: page } = await openPlan(relaunch, [chainSnapshot('T_alerts')]);
   await openDetails(page);
-  const entries = page.locator(`${t('ade-notes-chain')} [data-author]`);
+  const entries = page.locator(`${t('ade-task-chain')} [data-author]`);
   await expect(entries).toHaveCount(4);
   expect(await entries.evaluateAll((els) => els.map((e) => e.getAttribute('data-author')))).toEqual(
     ['user', 'agent', 'user', 'user'],
@@ -91,7 +91,7 @@ test('editing the handed agent row uses the same editor and sends UpdateHandover
 }) => {
   const { window: page, control } = await openPlan(relaunch, [chainSnapshot('T_alerts')]);
   await openDetails(page);
-  const row = page.locator(`${t('ade-notes-chain')} ${t('ade-handover-row')}`);
+  const row = page.locator(`${t('ade-task-chain')} ${t('ade-handover-row')}`);
   await row.locator(t('ade-handover-edit')).click();
   await expect(page.locator(t('ade-notes-toolbar-btn')).first()).toBeVisible();
   await row.locator('.ProseMirror').fill('Corrected handover.');
@@ -113,11 +113,11 @@ test('an archived task shows the chain read-only: no Add, no editor controls', a
   await page.locator(t('ade-archived-find')).click();
   await page.locator(`${t('ade-archived-find-item')}[data-task-id="H_1"]`).click();
   await page.locator(t('ade-panel-tab-details')).click();
-  await expect(page.locator(`${t('ade-notes-chain')} [data-author]`)).toHaveCount(4);
+  await expect(page.locator(`${t('ade-task-chain')} [data-author]`)).toHaveCount(4);
   await expect(page.locator(t('ade-note-add'))).toHaveCount(0);
   await expect(page.locator(t('ade-handover-edit'))).toHaveCount(0);
   await expect(page.locator(t('ade-notes-toolbar-btn'))).toHaveCount(0);
-  await expect(page.locator(`${t('ade-notes-chain')} .ProseMirror`).first()).toHaveAttribute(
+  await expect(page.locator(`${t('ade-task-chain')} .ProseMirror`).first()).toHaveAttribute(
     'contenteditable',
     'false',
   );
