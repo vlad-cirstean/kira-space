@@ -3,14 +3,14 @@ import { defineConfig, devices } from '@playwright/test';
 // Titles of every test with a real-millisecond wall-clock assertion: budgets.spec.ts's and
 // perf.spec.ts's own single test each, plus slick-grid.spec.ts's two "150ms sandbox gate" tests.
 // `ui-timing` selects exactly these by title, not by file: slick-grid.spec.ts also holds 15 tests
-// with no wall-clock assertion that gain nothing from running serially. `ui-studio` excludes them
-// the same way, so nothing runs twice.
+// with no wall-clock assertion that gain nothing from running serially. `ui` excludes them the
+// same way, so nothing runs twice.
 const wallClockBudgetTitles = /150ms sandbox gate|interaction budgets|perf tripwires/;
 
 // One config for the one app. Every project runs against the same test build (`bun run build:test`)
-// or the same `-tags server` binary. Studio-module specs live in `studio/` subfolders and get a
-// `-studio` project beside the Space one: their baselines, fixtures and timing rules differ, and
-// their fixtures select their module through the mode switcher.
+// or the same `-tags server` binary. Databases-module specs live in `studio/` subfolders of the
+// same tiers; their fixture selects the module through the mode switcher. Only `e2e-real-studio`
+// stays a separate project until its fixtures merge.
 //
 // `browserName: 'webkit'` matches what a packaged build embeds (WKWebView on macOS, WebKitGTK on
 // Linux). `bunx playwright install webkit` plus the system libs its post-install warning names
@@ -29,43 +29,35 @@ export default defineConfig({
     {
       name: 'ui',
       testDir: './tests/ui',
-      testIgnore: 'studio/**',
-      use: { browserName: 'webkit' },
-      fullyParallel: true,
-      workers: '100%',
-    },
-    {
-      name: 'ui-studio',
-      testDir: './tests/ui/studio',
-      testIgnore: ['budgets.spec.ts', 'perf.spec.ts'],
+      testIgnore: ['studio/budgets.spec.ts', 'studio/perf.spec.ts'],
       grepInvert: wallClockBudgetTitles,
       use: { browserName: 'webkit' },
       fullyParallel: true,
       workers: '100%',
     },
     // grid-copy-menu.spec.ts reads the real clipboard, which only Chromium allows. The same file
-    // also runs in `ui-studio` (WebKit) against a pass-through recorder (support/clipboard.ts).
+    // also runs in `ui` (WebKit) against a pass-through recorder (studio/support/clipboard.ts).
     {
       name: 'ui-clipboard',
-      testDir: './tests/ui/studio',
-      testMatch: ['grid-copy-menu.spec.ts'],
+      testDir: './tests/ui',
+      testMatch: ['studio/grid-copy-menu.spec.ts'],
       use: { browserName: 'chromium' },
       fullyParallel: true,
       workers: '100%',
     },
     // The wall-clock specs measure real milliseconds, so other browsers contending for the CPU
-    // are part of what they measure. They run alone, serially, after `ui-studio` has finished.
+    // are part of what they measure. They run alone, serially, after `ui` has finished.
     // CI runs this with `--no-deps` (pr.yml). Locally it is out of `test:ui`: it needs an idle
     // host, so run `bun run test:ui:timing` alone.
     {
       name: 'ui-timing',
-      testDir: './tests/ui/studio',
-      testMatch: ['budgets.spec.ts', 'perf.spec.ts', 'slick-grid.spec.ts'],
+      testDir: './tests/ui',
+      testMatch: ['studio/budgets.spec.ts', 'studio/perf.spec.ts', 'studio/slick-grid.spec.ts'],
       grep: wallClockBudgetTitles,
       use: { browserName: 'webkit' },
       fullyParallel: false,
       workers: 1,
-      dependencies: ['ui-studio'],
+      dependencies: ['ui'],
     },
     {
       name: 'ipc-frontend',
@@ -124,20 +116,6 @@ export default defineConfig({
     {
       name: 'visual',
       testDir: './tests/visual',
-      testIgnore: 'studio/**',
-      use: { browserName: 'webkit' },
-      fullyParallel: true,
-      workers: '100%',
-      expect: {
-        toHaveScreenshot: {
-          animations: 'disabled',
-          stylePath: './tests/visual/support/pin-fonts.css',
-        },
-      },
-    },
-    {
-      name: 'visual-studio',
-      testDir: './tests/visual/studio',
       use: { browserName: 'webkit' },
       fullyParallel: true,
       workers: '100%',
@@ -153,16 +131,6 @@ export default defineConfig({
     {
       name: 'screenshots',
       testDir: './tests/screenshots',
-      testIgnore: 'studio/**',
-      testMatch: '**/*.shot.ts',
-      use: { browserName: 'webkit' },
-      fullyParallel: false,
-      workers: 1,
-      retries: 0,
-    },
-    {
-      name: 'screenshots-studio',
-      testDir: './tests/screenshots/studio',
       testMatch: '**/*.shot.ts',
       use: { browserName: 'webkit' },
       fullyParallel: false,

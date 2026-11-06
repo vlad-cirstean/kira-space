@@ -1,11 +1,11 @@
 import type { Locator, Page } from '@playwright/test';
 import { installDockerMocks } from '../../../../../packages/docker-ui/src/testing/ui/dockerMock';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { modeTab } from './support/apiMode';
-import { contract } from './support/contract';
 import { containerDetailBare } from './support/dockerFixture';
-import { IPC } from './support/ipcChannels';
 
 // P265 Stream C: pins the unified wording of the Docker and Automations surfaces.
 

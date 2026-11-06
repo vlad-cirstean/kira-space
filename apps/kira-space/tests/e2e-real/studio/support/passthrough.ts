@@ -1,5 +1,5 @@
 import type { Page, Route } from '@playwright/test';
-import { CHANNEL_TO_FQN } from '../../../ui/studio/support/mockRuntime';
+import { CHANNEL_TO_FQN } from '../../../ui/support/mockRuntime';
 
 // The inverse of tests/ui/support/mockRuntime.ts: that module
 // fakes every bound call by default and answers from a fixture; this one leaves every bound call

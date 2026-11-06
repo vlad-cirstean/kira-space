@@ -1,9 +1,9 @@
 import type { Locator, Page } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { connectionCreateArgs, createConnection } from './support/connect';
 import { acceptConfirm } from './support/dialogs';
-import { IPC } from './support/ipcChannels';
 import {
   ANALYTICS_CHILDREN,
   ANALYTICS_PATH,

@@ -1,11 +1,11 @@
 import type { Page } from '@playwright/test';
 import { CHANNEL } from '@shared/protocol/events';
 import { emitPrompts, routed } from '@workbench/testing/ui/prompts';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { installClipboardSpy } from './support/clipboard';
 import { editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
 import {
   bigTable,
   diffClipboardImage,

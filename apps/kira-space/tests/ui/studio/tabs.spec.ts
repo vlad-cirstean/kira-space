@@ -1,9 +1,9 @@
 import { dragTab } from '@workbench/testing/ui/drag';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { connectionCreateArgs, createConnection } from './support/connect';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
 import {
   ORDER_ITEMS_PATH,
   orderItemsFixture,

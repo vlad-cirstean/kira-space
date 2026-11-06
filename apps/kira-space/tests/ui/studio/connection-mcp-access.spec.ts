@@ -1,8 +1,8 @@
 import type { ConnectionSummary } from '@shared/domain/connection';
 import type { ConnectionConfigView, ConnectionFileDetail } from '@shared/domain/connectionConfig';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { connectionRow } from './support/tree';
 
 // The Agent access line, known-limit notes and per-setting enforcement lines in the connection

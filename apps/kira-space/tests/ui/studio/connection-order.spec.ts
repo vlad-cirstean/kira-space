@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import {
   POSTGRES_CAPS,
   postgresConnectionSummary,

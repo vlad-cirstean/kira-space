@@ -4,9 +4,9 @@ import {
   portSnapshots as redisPorts,
 } from '../../ipc/redis/redis.fixture';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { createConnection, disconnectConnection } from './support/connect';
-import { IPC } from './support/ipcChannels';
 import {
   DB_PATH as MONGO_DB_PATH,
   mongoConnectionSummary,

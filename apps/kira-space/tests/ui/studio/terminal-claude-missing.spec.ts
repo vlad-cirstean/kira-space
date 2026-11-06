@@ -1,7 +1,7 @@
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 
 // Contract terminal. Backend half: termflow TestClaudeCodeLaunchWithoutClaude.
 // Continue in terminal on a failed smart run opens a Claude Code tab; without the CLI the tab

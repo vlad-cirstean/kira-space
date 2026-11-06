@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
-import { IPC } from './support/ipcChannels';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import {
   activePanel,
   clustersIn,
@@ -13,7 +14,6 @@ import {
   setupKubernetes,
   tabChip,
 } from './support/kubernetesFixture';
-import { emitWailsEvent } from './support/mockRuntime';
 
 // Contract kubernetes. The kubeflow contracts are the backend half; this spec drives the same
 // scenarios through the UI: pods first, kind bar, resources in tabs, one log stream per pod tab.

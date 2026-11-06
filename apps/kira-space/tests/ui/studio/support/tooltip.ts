@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { expect } from '../fixtures';
+import { expect } from '../../fixtures';
 
 // `[data-slot="tooltip-content"]` is `ui/tooltip`'s own TooltipContent.vue marker (P104 §6.5),
 // not tied to any one call site's DOM — AttributeTooltip.vue's grid-header bridge renders through

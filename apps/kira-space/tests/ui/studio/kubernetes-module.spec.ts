@@ -1,4 +1,5 @@
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { emitWailsEvent } from '../support/mockRuntime';
 import {
   activePanel,
   idOf,
@@ -10,7 +11,6 @@ import {
   setupKubernetes,
   tabChip,
 } from './support/kubernetesFixture';
-import { emitWailsEvent } from './support/mockRuntime';
 
 const POD = { namespace: 'default', name: 'web-1' };
 const row = (page: Parameters<typeof loc>[0], name: string) =>

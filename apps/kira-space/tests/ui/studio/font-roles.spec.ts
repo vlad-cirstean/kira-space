@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { createConnection } from './support/connect';
-import { IPC } from './support/ipcChannels';
 import {
   DB_PATH,
   mariadbConnectionSummary,
@@ -58,7 +58,7 @@ const CONTROL: ControlSnapshot[] = [
     response: CONNECTION_SUMMARY,
   },
   ...FIXTURE.control,
-  { channel: IPC.opsRecent, response: [OP_RECORD] },
+  { channel: IPC.studioOpsRecent, response: [OP_RECORD] },
 ];
 
 async function connectAndOpenGrid(page: Page): Promise<void> {

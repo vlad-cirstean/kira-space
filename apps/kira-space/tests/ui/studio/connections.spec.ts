@@ -1,10 +1,10 @@
 import type { ConnectionSummary } from '@shared/domain/connection';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { installClipboardSpy, lastClipboardWrite } from './support/clipboard';
 import { createConnection, newConnectionArgs } from './support/connect';
 import { acceptConfirm } from './support/dialogs';
-import { IPC } from './support/ipcChannels';
 import { connectionRow } from './support/tree';
 
 // Connection menu and lifecycle over the file-backed config (P475). Fields live in the file, so

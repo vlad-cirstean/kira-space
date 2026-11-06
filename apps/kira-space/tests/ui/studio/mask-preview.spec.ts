@@ -1,9 +1,9 @@
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ColumnDescriptor } from '@shared/protocol/page';
 import type { ControlSnapshot, LogicalPage, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { gridCell } from './support/grid';
-import { IPC } from './support/ipcChannels';
 import {
   POSTGRES_CAPS,
   postgresConnectionSummary,

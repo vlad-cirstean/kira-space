@@ -1,4 +1,4 @@
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { gridCell } from '../../ui/studio/support/grid';
 import { assertTooltipShows } from '../../ui/studio/support/tooltip';
 import { connectionRow, expandRow, findRow, openRowMenu } from '../../ui/studio/support/tree';

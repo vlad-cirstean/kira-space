@@ -1,7 +1,8 @@
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ColumnDescriptor } from '@shared/protocol/page';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { primaryChord } from './support/chord';
 import { CLIPBOARD_SHIM } from './support/clipboard';
 import { createConnection } from './support/connect';
@@ -13,7 +14,6 @@ import {
   headerCell,
   mutationsForScroll,
 } from './support/grid';
-import { IPC } from './support/ipcChannels';
 import {
   APP_CHILDREN,
   APP_PATH,

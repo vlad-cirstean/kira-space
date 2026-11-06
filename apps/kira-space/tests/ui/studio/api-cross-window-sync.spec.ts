@@ -5,10 +5,10 @@
 // variables change reaches a URL's unresolved chip and Copy as cURL, and a tree change reaches an
 // open tab's orphan/Save-as fallback.
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { modeTab, openHttpModeAndNewRequest } from './support/apiMode';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
 
 const NOW = '2026-01-01T00:00:00.000Z';
 

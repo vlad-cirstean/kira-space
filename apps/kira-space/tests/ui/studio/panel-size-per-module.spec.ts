@@ -1,10 +1,10 @@
 import type { Page } from '@playwright/test';
 import { defaultLayout } from '@shared/domain/layout';
 import { center, openDock } from '../../../../../packages/workbench/src/testing/ui/panelResize';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { modeTab } from './support/apiMode';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
 
 // P312: panel sizes are per module; the flow test (windowflow) covers the same scenario in Go.
 

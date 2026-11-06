@@ -1,10 +1,10 @@
 import { scriptRunSchema } from '@shared/domain/scriptRuns';
 import { customScriptSchema } from '@shared/domain/scripts';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { postgresConnectionSummary } from './support/postgresFixture';
 
 // Status bar running-ops widget. Backend half: dbmcpflow TestDbMcpCancelOperation (the running op
@@ -39,8 +39,8 @@ const CONTROL: ControlSnapshot[] = [
     channel: IPC.connectionsList,
     response: [postgresConnectionSummary('conn-1', 'Warehouse DB', 'blue')],
   },
-  { channel: IPC.opsRecent, response: [OP] },
-  { channel: IPC.opsCancel, response: null },
+  { channel: IPC.studioOpsRecent, response: [OP] },
+  { channel: IPC.studioOpsCancel, response: null },
   { channel: IPC.customScriptsList, response: { collections: [], scripts: [script] } },
   { channel: IPC.scriptRunsList, response: [run('running')] },
   { channel: IPC.scriptRunsStop, response: null },
@@ -60,9 +60,9 @@ test('contract: the widget lists a running op and run; Stop sends the cancel and
   await expect(opRow).toContainText('Warehouse DB');
   await opRow.locator('[data-testid="status-ops-stop"]').click();
   await expect
-    .poll(() => control.log().find((e) => e.channel === IPC.opsCancel)?.args)
+    .poll(() => control.log().find((e) => e.channel === IPC.studioOpsCancel)?.args)
     .toEqual({ opId: 'op-live' });
-  await emitWailsEvent(page, IPC.opUpdate, { ...OP, status: 'cancelled', durationMs: 5 });
+  await emitWailsEvent(page, IPC.studioOpUpdate, { ...OP, status: 'cancelled', durationMs: 5 });
   await expect(rows).toHaveCount(1);
   await expect(item).toContainText('1 running');
 

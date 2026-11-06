@@ -1,4 +1,4 @@
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { openSettings } from '../../ui/studio/support/settings';
 
 // One baseline per settings pane. Pre-approved re-record: the run-state/error/dialog

@@ -1,6 +1,6 @@
 import { installDockerMocks } from '../../../../../packages/docker-ui/src/testing/ui/dockerMock';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
 import { openContainer, openDocker } from './support/dockerFixture';
 
 const BRIDGE_PKG = 'github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge';

@@ -4,10 +4,10 @@ import {
   browserTimeZone,
   resolveTime,
 } from '../../../frontend/src/studio/views/console/kibana/time';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { acceptConfirm, cancelConfirm } from './support/dialogs';
-import { IPC } from './support/ipcChannels';
 import { executeHits, kibanaControl, logsNode, logsView } from './support/kibanaFixture';
 import { connectionRow, expandRow, findRow, openRowMenu } from './support/tree';
 

@@ -1,10 +1,10 @@
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { installFakeTimers } from '../support/clock';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { modeTab, openHttpRequestView } from './support/apiMode';
-import { installFakeTimers } from './support/clock';
-import { contract } from './support/contract';
 import { editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
 
 // Six scenarios against the real built bundle, none needing a mockRuntime.ts change —
 // variablesReveal is already registered, and every other bound call these scenarios touch

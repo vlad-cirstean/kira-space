@@ -1,5 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { emitWailsEvent } from '../support/mockRuntime';
 import {
   clustersIn,
   idOf,
@@ -9,7 +10,6 @@ import {
   openKubernetes,
   setupKubernetes,
 } from './support/kubernetesFixture';
-import { emitWailsEvent } from './support/mockRuntime';
 import { settleFrames } from './support/tree';
 
 // Contract kubernetes. Backend half: kubeflow TestClusterOrder. Clusters reorder by pointer drag

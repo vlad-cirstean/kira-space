@@ -1,9 +1,9 @@
 import { installDockerMocks } from '../../../../../packages/docker-ui/src/testing/ui/dockerMock';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { modeTab } from './support/apiMode';
 import { container, containerDetail, openDocker } from './support/dockerFixture';
-import { IPC } from './support/ipcChannels';
 
 // P266 stream C. Backend half: internal/flows/{termflow,dockerflow}/errors_test.go return the
 // same texts asserted here.

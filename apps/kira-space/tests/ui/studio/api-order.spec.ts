@@ -1,11 +1,11 @@
 import type { Locator, Page } from '@playwright/test';
 import { sortableHover } from '@workbench/testing/ui/drag';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { openHttpMode } from './support/apiMode';
 import { collectionRow } from './support/apiRows';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
 import { dragRow, settleFrames } from './support/tree';
 
 // Collections and environments keep a manual order (drag, Move up / Move down, Alt+Arrow); items

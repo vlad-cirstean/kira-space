@@ -2,10 +2,10 @@
 // itself on kira:savedQueries:changed and the menu refetches. Backend half: dbflow's SQLite
 // journey asserts Go emits the event for every write.
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { connectAndExpand, connectionCreateArgs, openConsoleFromMenu } from './support/connect';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
 import {
   ORDER_ITEMS_PATH,
   orderItemsFixture,

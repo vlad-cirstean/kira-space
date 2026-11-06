@@ -1,11 +1,11 @@
 import { CHANNEL } from '@shared/protocol/events';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { openHttpMode } from './support/apiMode';
 import { collectionRow } from './support/apiRows';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
 
 // P4 §6.3: four tests, one snapshot per channel (mockRuntime.ts: a channel with exactly one
 // snapshot answers args-blind, which is what lets a test assert on a call's args afterwards

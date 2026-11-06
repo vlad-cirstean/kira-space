@@ -1,6 +1,6 @@
 import { CHANNEL } from '@shared/protocol/events';
 import { emitPrompts, routed } from '@workbench/testing/ui/prompts';
-import { expect, test } from './fixtures';
+import { expect, studioTest, test } from './fixtures';
 import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
 
@@ -104,4 +104,112 @@ test('menu check, up to date: shows the latest-version text, Close closes', asyn
   );
   await window.click('[data-testid="update-dialog-close"]');
   await expect(window.locator('[data-testid="update-dialog"]')).toHaveCount(0);
+});
+
+studioTest.describe('databases module', () => {
+  studioTest('a failed install shows the error and re-enables Try again', async ({ relaunch }) => {
+    const { window } = await relaunch({
+      control: [
+        {
+          channel: IPC.updateStatus,
+          response: {
+            updateAvailable: true,
+            currentVersion: '1.2.0',
+            latestVersion: '1.3.0',
+            installLogPath: '/tmp/kira-space-update.log',
+          },
+        },
+        {
+          channel: IPC.updateInstall,
+          error: { code: 'E_INTERNAL', message: 'checksum mismatch' },
+        },
+      ],
+    });
+    await emitPrompts(window, [routed('update', '1.3.0')]);
+
+    await window.click('[data-testid="update-dialog-install"]');
+
+    const error = window.locator('[data-testid="update-dialog-error"]');
+    await expect(error).toBeVisible();
+    await expect(error).toContainText('checksum mismatch');
+
+    const install = window.locator('[data-testid="update-dialog-install"]');
+    await expect(install).toBeEnabled();
+    await expect(install).toHaveText('Retry');
+  });
+
+  studioTest('menu check failing shows the error, Retry checks again', async ({ relaunch }) => {
+    const { window, control } = await relaunch({
+      control: [
+        {
+          channel: IPC.updateCheck,
+          error: { code: 'E_CONFLICT', message: 'Updates are available only in release builds.' },
+        },
+      ],
+    });
+
+    await emitWailsEvent(window, CHANNEL.checkForUpdates, undefined);
+
+    const error = window.locator('[data-testid="update-dialog-check-error"]');
+    await expect(error).toContainText('Updates are available only in release builds.');
+    await window.click('[data-testid="update-dialog-retry"]');
+    await expect
+      .poll(() => control.log().filter((e) => e.channel === IPC.updateCheck).length)
+      .toBe(2);
+  });
+
+  studioTest(
+    'menu check finding an update shows it without a second popup',
+    async ({ relaunch }) => {
+      const { window, control } = await relaunch({
+        control: [
+          {
+            channel: IPC.updateCheck,
+            response: {
+              updateAvailable: true,
+              currentVersion: '1.2.0',
+              latestVersion: '1.3.0',
+              installLogPath: '/tmp/kira-space-update.log',
+            },
+          },
+        ],
+      });
+
+      await emitWailsEvent(window, CHANNEL.checkForUpdates, undefined);
+
+      await expect(window.locator('[data-testid="update-dialog-versions"]')).toHaveText(
+        'Kira Space 1.3.0 is available. You have 1.2.0.',
+      );
+      await expect(window.locator('[data-testid="update-dialog-install"]')).toBeVisible();
+      expect(control.log().some((e) => e.channel === IPC.promptsRaise)).toBe(false);
+    },
+  );
+
+  studioTest(
+    'a failed menu check does not stick to the dialog once an update is available',
+    async ({ relaunch }) => {
+      const { window } = await relaunch({
+        control: [
+          {
+            channel: IPC.updateStatus,
+            response: {
+              updateAvailable: true,
+              currentVersion: '1.2.0',
+              latestVersion: '1.3.0',
+              installLogPath: '/tmp/kira-space-update.log',
+            },
+          },
+          { channel: IPC.updateCheck, error: { code: 'E_CONFLICT', message: 'Offline.' } },
+        ],
+      });
+      await emitWailsEvent(window, CHANNEL.checkForUpdates, undefined);
+      await expect(window.locator('[data-testid="update-dialog-check-error"]')).toBeVisible();
+      await window.locator('[data-testid="update-dialog-close"]').click();
+      await expect(window.locator('[data-testid="update-dialog"]')).toHaveCount(0);
+
+      await window.click('[data-testid="update-available"]');
+      await expect(window.locator('[data-testid="update-dialog-install"]')).toBeVisible();
+      await expect(window.locator('[data-testid="update-dialog-check-error"]')).toHaveCount(0);
+    },
+  );
 });

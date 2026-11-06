@@ -2,10 +2,10 @@ import type { Page } from '@playwright/test';
 import { defaultSettings as spaceDefaults } from '../../../frontend/src/state/settingsDomain';
 import { defaultSettings } from '../../../frontend/src/studio/state/settingsDomain';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { createConnection } from './support/connect';
 import { gridCell as gridCellAt } from './support/grid';
-import { IPC } from './support/ipcChannels';
 import {
   BIG_ROWS_PATH,
   bigRowsFixture,
@@ -100,7 +100,7 @@ test('colouring off at boot — both columns plain, no inline colour at all', as
       CONNECTION_CREATE_SNAPSHOT,
       ...FIXTURE.control,
       {
-        channel: IPC.settingsGetAll,
+        channel: IPC.studioSettingsGetAll,
         response: {
           ...defaultSettings,
           appearance: { ...spaceDefaults.appearance, rowColoring: false },
@@ -127,7 +127,7 @@ test('saving the toggle repaints the open grid', async ({ relaunch }) => {
     control: [
       CONNECTION_CREATE_SNAPSHOT,
       ...FIXTURE.control,
-      { channel: IPC.settingsSet, response: flippedSettings },
+      { channel: IPC.studioSettingsSet, response: flippedSettings },
     ],
     stream: FIXTURE.port,
   });

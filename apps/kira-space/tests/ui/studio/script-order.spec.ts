@@ -1,10 +1,10 @@
 import type { Locator, Page } from '@playwright/test';
 import { sortableHover } from '@workbench/testing/ui/drag';
 import { registerOrderScenarios } from '@workbench/testing/ui/scenarios/automationsOrder';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { modeTab } from './support/apiMode';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
 
 // P308/P381: scripts reorder within their own set (ungrouped or one collection) and collections reorder
 // among themselves, by drag or Alt+arrows. The Go half is termflow TestScriptOrder; its contract

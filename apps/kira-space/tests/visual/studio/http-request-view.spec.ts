@@ -1,7 +1,7 @@
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { openHttpModeAndNewRequest } from '../../ui/studio/support/apiMode';
-import { IPC } from '../../ui/studio/support/ipcChannels';
+import { IPC } from '../../ui/support/ipcChannels';
 
 // The Api module had no visual snapshot at all, so the Tailwind migration could (and did) break it
 // silently. An HTTP request view with a sent response, at rest — the densest single-request

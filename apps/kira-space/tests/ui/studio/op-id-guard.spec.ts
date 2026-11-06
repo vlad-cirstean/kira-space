@@ -1,10 +1,10 @@
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { connectAndExpand, connectionCreateArgs, openConsoleFromMenu } from './support/connect';
-import { contract } from './support/contract';
 import { typeInto } from './support/editor';
-import { IPC } from './support/ipcChannels';
 import {
   ORDER_ITEMS_PATH,
   orderItemsFixture,
@@ -31,7 +31,7 @@ test('a refused op shows the error, leaves no running row, and history keeps the
       response: summary,
     },
     ...fixture.control,
-    { channel: IPC.opsRecent, response: [history] },
+    { channel: IPC.studioOpsRecent, response: [history] },
   ];
   const port: PortSnapshot[] = [
     ...fixture.port,

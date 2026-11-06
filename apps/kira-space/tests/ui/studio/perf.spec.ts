@@ -1,9 +1,9 @@
 import type { Page } from '@playwright/test';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { createConnection } from './support/connect';
 import { gridScroller } from './support/grid';
-import { IPC } from './support/ipcChannels';
 import { percentile } from './support/measure';
 import {
   BIG_ROWS_META,

@@ -1,9 +1,8 @@
 import type { Page } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { createConnection } from '../../ui/studio/support/connect';
 import { mariadbCreateArgs } from '../../ui/studio/support/connectionArgs';
-import { IPC } from '../../ui/studio/support/ipcChannels';
 import {
   DB_PATH,
   mariadbConnectionSummary,
@@ -11,6 +10,7 @@ import {
   orderItemsFixture,
 } from '../../ui/studio/support/mariadbFixture';
 import { connectionRow, expandRow, findRow, openRowMenu } from '../../ui/studio/support/tree';
+import { IPC } from '../../ui/support/ipcChannels';
 import { settleFonts } from './support/settle';
 
 // The data grid at rest on a small, representative table — mixed column types, no scroll/edit in

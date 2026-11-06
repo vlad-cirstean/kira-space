@@ -3,7 +3,9 @@ import { DATA_OP } from '@shared/protocol/dataOps';
 import { boxCenter, sortableHover } from '@workbench/testing/ui/drag';
 import type { ControlSnapshot, LogicalPage } from '../../ipc/support/types';
 import { MD5_ROWS } from '../../support/seeds/md5Rows';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { installClipboardSpy, lastClipboardWrite } from './support/clipboard';
 import { connectAndExpand, connectionCreateArgs } from './support/connect';
 import {
@@ -15,8 +17,6 @@ import {
   nullMarker,
   sortIndicators,
 } from './support/grid';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
 import type { StudioPortSnapshot } from './support/mockStream';
 import {
   BIG_ROWS_COLUMNS,
@@ -1549,7 +1549,7 @@ test('data view — pagination, count, projection, sort, filter, search, stop, N
     .first()
     .getAttribute('data-tab-id');
   if (!activeTabId) throw new Error('expected an active tab id');
-  await emitWailsEvent(page, IPC.opUpdate, {
+  await emitWailsEvent(page, IPC.studioOpUpdate, {
     id: 'op-synthetic-run-state-colour',
     connectionId: CONNECTION_ID,
     tabId: activeTabId,
@@ -1567,7 +1567,7 @@ test('data view — pagination, count, projection, sort, filter, search, stop, N
   );
   // Close out the synthetic record so it doesn't linger as "running" once the real stop-flow below
   // clears the optimistic rt.opId — opsStore only updates on the next matching-id push.
-  await emitWailsEvent(page, IPC.opUpdate, {
+  await emitWailsEvent(page, IPC.studioOpUpdate, {
     id: 'op-synthetic-run-state-colour',
     connectionId: CONNECTION_ID,
     tabId: activeTabId,
@@ -1595,7 +1595,7 @@ test('data view — pagination, count, projection, sort, filter, search, stop, N
     .poll(() =>
       control
         .log()
-        .filter((e) => e.channel === IPC.opsCancel)
+        .filter((e) => e.channel === IPC.studioOpsCancel)
         .map((e) => e.args),
     )
     .toEqual([{ opId: inFlightRead?.opId }]);

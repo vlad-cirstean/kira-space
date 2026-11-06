@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test';
 import { defaultSettings as spaceDefaults } from '../../../frontend/src/state/settingsDomain';
 import { defaultSettings } from '../../../frontend/src/studio/state/settingsDomain';
-import { expect, test } from './fixtures';
-import { IPC } from './support/ipcChannels';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { openSettings } from './support/settings';
 
 // The settings dialog stages every control into a local draft and only reaches
@@ -24,7 +24,7 @@ function rowHeightVar(page: Page): Promise<string> {
 }
 
 function settingsSetCalls(control: { log(): { channel: string; args: unknown }[] }) {
-  return control.log().filter((e) => e.channel === IPC.settingsSet);
+  return control.log().filter((e) => e.channel === IPC.studioSettingsSet);
 }
 
 test('staged changes reach nothing until Save', async ({ relaunch }) => {
@@ -45,7 +45,7 @@ test('Save commits once, carrying only the leaves that changed', async ({ relaun
     appearance: { ...spaceDefaults.appearance, rowDensity: 'compact' as const, wordWrap: false },
   };
   const { window: page, control } = await relaunch({
-    control: [{ channel: IPC.settingsSet, response: flipped }],
+    control: [{ channel: IPC.studioSettingsSet, response: flipped }],
   });
   await openSettings(page);
 
@@ -95,7 +95,7 @@ test('a per-setting reset stages only that leaf', async ({ relaunch }) => {
     advanced: { opLogRetentionDays: 7 },
   };
   const { window: page, control } = await relaunch({
-    control: [{ channel: IPC.settingsGetAll, response: nonDefault }],
+    control: [{ channel: IPC.studioSettingsGetAll, response: nonDefault }],
   });
 
   await openSettings(page);
@@ -139,7 +139,7 @@ test('a rejected Save leaves the live value alone and shows the error', async ({
   const { window: page, control } = await relaunch({
     control: [
       {
-        channel: IPC.settingsSet,
+        channel: IPC.studioSettingsSet,
         error: { code: 'E_QUERY', message: 'settings write failed' },
       },
     ],

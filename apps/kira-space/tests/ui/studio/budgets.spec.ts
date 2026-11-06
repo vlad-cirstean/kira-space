@@ -2,11 +2,11 @@ import type { Page } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ColumnDescriptor } from '@shared/protocol/page';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { WIDE_TABLE_COLUMNS, WIDE_TABLE_ROWS } from './support/cellEditorCaptures';
 import { createConnection } from './support/connect';
 import { GRID_SCROLLER_SELECTOR, gridCellSelector, gridScroller } from './support/grid';
-import { IPC } from './support/ipcChannels';
 import {
   measureClickToDom,
   measureScrollResponses,

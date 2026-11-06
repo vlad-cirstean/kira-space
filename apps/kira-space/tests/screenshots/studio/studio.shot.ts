@@ -2,11 +2,11 @@ import type { Page } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import { CAPTURE_LAUNCH, captureShot } from '@workbench/testing/screenshots/capture';
 import type { ControlSnapshot, LogicalPage, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { openHttpModeAndNewRequest } from '../../ui/studio/support/apiMode';
 import { typeInto } from '../../ui/studio/support/editor';
-import { IPC } from '../../ui/studio/support/ipcChannels';
 import { connectionRow, expandRow, findRow, openRowMenu } from '../../ui/studio/support/tree';
+import { IPC } from '../../ui/support/ipcChannels';
 import {
   ACME,
   CONNECTION_ID,

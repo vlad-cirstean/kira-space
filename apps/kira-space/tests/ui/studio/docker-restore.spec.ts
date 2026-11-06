@@ -1,7 +1,7 @@
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { openDocker, setupDocker } from './support/dockerFixture';
-import { emitWailsEvent } from './support/mockRuntime';
 
 type Json = Record<string, unknown>;
 

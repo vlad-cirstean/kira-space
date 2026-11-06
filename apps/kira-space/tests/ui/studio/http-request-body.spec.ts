@@ -1,10 +1,10 @@
 import type { Locator, Page } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { openHttpModeAndNewRequest } from './support/apiMode';
 import { typeInto as typeIntoView } from './support/editor';
 import { editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
 
 // Four tests, one httpSend snapshot each (the same one-snapshot-per-test constraint
 // http-request.spec.ts's own header comment states — a channel with more than one snapshot

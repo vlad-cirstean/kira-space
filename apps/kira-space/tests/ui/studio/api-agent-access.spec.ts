@@ -1,9 +1,9 @@
 import { codeEditorText, replaceCodeEditorText } from '@workbench/testing/ui/codeEditor';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { openHttpMode } from './support/apiMode';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
 
 // The Environments view lists what agents may use; the variables dialog's Agent access tab edits it
 // over the same draft as the YAML tab. Backend half: apiflow.TestApiAgentAccess writes the

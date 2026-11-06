@@ -1,11 +1,11 @@
 import type { Page } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { openHttpMode } from './support/apiMode';
 import { collectionRow, variableRow } from './support/apiRows';
-import { contract } from './support/contract';
 import { acceptConfirm } from './support/dialogs';
-import { IPC } from './support/ipcChannels';
 
 // P5 §6.3: five tests, own file (§0.3 — nothing appended to collections.spec.ts or the mixed
 // parity spec). Modelled on credential-reveal.spec.ts — mocking the reveal *outcome* per scenario

@@ -1,14 +1,14 @@
 import type { Locator, Page } from '@playwright/test';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
 import {
   installFakeTimers,
   runPastTooltipDelay,
   runToJustBeforeTooltipDelay,
   settleTooltipSkipDelay,
-} from './support/clock';
+} from '../support/clock';
+import { IPC } from '../support/ipcChannels';
 import { connectionCreateArgs, createConnection } from './support/connect';
-import { IPC } from './support/ipcChannels';
 import {
   COMPOSITE_PK_META,
   COMPOSITE_PK_PATH,

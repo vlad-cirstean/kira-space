@@ -1,4 +1,4 @@
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 
 // The full workbench shell at rest, no
 // connections/tabs open — the exact empty-boot state smoke.spec.ts already proves stable,

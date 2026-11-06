@@ -6,10 +6,10 @@ import {
   setPseudoLocale,
 } from '../../../../../packages/workbench/src/testing/ui/copyCoverage';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { modeTab } from './support/apiMode';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
 
 // P265 Stream C: every chrome string on the Docker and Automations surfaces comes from the catalog.
 // The pseudo-locale wraps catalog messages; fixture data is allowed by pattern.

@@ -4,11 +4,11 @@ import {
   replaceCodeEditorText,
 } from '@workbench/testing/ui/codeEditor';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { openHttpMode } from './support/apiMode';
 import { collectionRow } from './support/apiRows';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
 
 // The variables dialog edits an environment or collection file as a form and as YAML over one draft.
 // Backend half: apiflow.TestApiVariablesForm writes the api-variables-form contract.

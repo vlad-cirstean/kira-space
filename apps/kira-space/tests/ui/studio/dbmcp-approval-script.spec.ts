@@ -1,8 +1,8 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 
 // Contract dbmcp-approval-script. Backend half: dbmcpflow TestDbMcpScriptApproval. An agent's
 // run_script in prompt mode parks in the approvals dialog as a script.run item: the script, who

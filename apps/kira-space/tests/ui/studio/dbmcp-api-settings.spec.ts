@@ -1,7 +1,7 @@
 import { defaultSettings } from '../../../frontend/src/studio/state/settingsDomain';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { openSettings } from './support/settings';
 
 // Contract dbmcp-api-settings. Backend half: dbmcpflow TestApiToolsToggle and TestApiApprovalModes,
@@ -13,12 +13,12 @@ test('contract: the switch lists the tools, "never" shows its warning', async ({
   const { window: page, control } = await relaunch({
     control: [
       {
-        channel: IPC.settingsSet,
+        channel: IPC.studioSettingsSet,
         args: on,
         response: { ...defaultSettings, dbMcp: enabled },
       },
       {
-        channel: IPC.settingsSet,
+        channel: IPC.studioSettingsSet,
         args: never,
         response: { ...defaultSettings, dbMcp: { ...enabled, apiApproval: 'never' } },
       },
@@ -31,7 +31,7 @@ test('contract: the switch lists the tools, "never" shows its warning', async ({
 
   await page.click('[data-testid="settings-db-mcp-api"]');
   await expect
-    .poll(() => control.log().find((e) => e.channel === IPC.settingsSet)?.args)
+    .poll(() => control.log().find((e) => e.channel === IPC.studioSettingsSet)?.args)
     .toEqual(on);
   const select = page.locator('[data-testid="settings-db-mcp-api-approval"]');
   await expect(select).toHaveValue('always');
@@ -43,7 +43,7 @@ test('contract: the switch lists the tools, "never" shows its warning', async ({
       () =>
         control
           .log()
-          .filter((e) => e.channel === IPC.settingsSet)
+          .filter((e) => e.channel === IPC.studioSettingsSet)
           .at(-1)?.args,
     )
     .toEqual(never);

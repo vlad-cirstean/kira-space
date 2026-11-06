@@ -45,6 +45,36 @@
     "file": "ship.yaml",
     "text": "# Ship the build.\nname: Ship # shown in the panel\nschedule:\n  enabled: false\n  confirm: false\n  cron: \"0 9 * * *\"\ncommand: echo ship\ncolor: blue\ncollection: Ops\n"
   },
+  "args:CustomScriptsService.Form#mcp": {
+    "edits": [
+      {
+        "path": [
+          "mcp",
+          "enabled"
+        ],
+        "unset": false,
+        "value": true
+      },
+      {
+        "path": [
+          "mcp",
+          "run"
+        ],
+        "unset": false,
+        "value": "allow"
+      },
+      {
+        "path": [
+          "mcp",
+          "description"
+        ],
+        "unset": false,
+        "value": "Ships the build."
+      }
+    ],
+    "file": "ship.yaml",
+    "text": "# Ship the build.\nname: Ship # shown in the panel\nschedule:\n  enabled: false\n  confirm: false\n  cron: \"0 9 * * *\"\ncommand: echo ship\ncolor: blue\ncollection: Ops\n"
+  },
   "args:CustomScriptsService.Form#read": {
     "edits": [],
     "file": "ship.yaml",
@@ -123,6 +153,36 @@
         "enabled": false
       }
     }
+  },
+  "form#mcp": {
+    "problem": null,
+    "text": "# Ship the build.\nname: Ship # shown in the panel\nschedule:\n  enabled: false\n  confirm: false\n  cron: \"0 9 * * *\"\ncommand: echo ship\ncolor: blue\ncollection: Ops\nmcp:\n  enabled: true\n  run: allow\n  description: Ships the build.\n",
+    "value": {
+      "collection": "Ops",
+      "color": "blue",
+      "command": "echo ship",
+      "mcp": {
+        "description": "Ships the build.",
+        "enabled": true,
+        "run": "allow"
+      },
+      "name": "Ship",
+      "schedule": {
+        "confirm": false,
+        "cron": "0 9 * * *",
+        "enabled": false
+      }
+    }
+  },
+  "form#mcpInvalid": {
+    "problem": {
+      "col": 3,
+      "line": 12,
+      "message": "mcp.run must be one of \"prompt\", \"allow\".",
+      "path": "/mcp/run"
+    },
+    "text": "# Ship the build.\nname: Ship # shown in the panel\nschedule:\n  enabled: false\n  confirm: false\n  cron: \"0 9 * * *\"\ncommand: echo ship\ncolor: blue\ncollection: Ops\nmcp:\n  enabled: true\n  run: always\n",
+    "value": null
   },
   "form#read": {
     "problem": null,

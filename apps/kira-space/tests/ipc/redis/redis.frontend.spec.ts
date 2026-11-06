@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { expect, type Relaunch, test } from '../../ui/studio/fixtures';
+import { expect, type Relaunch, studioTest as test } from '../../ui/fixtures';
 import { acceptConfirm } from '../../ui/studio/support/dialogs';
 import { connectionRow, expandRow, findRow, openRowMenu } from '../../ui/studio/support/tree';
 import type { ControlSnapshot } from '../support/types';

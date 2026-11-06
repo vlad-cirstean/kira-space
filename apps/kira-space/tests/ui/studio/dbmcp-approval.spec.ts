@@ -1,9 +1,9 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
 
 // Contract dbmcp. Backend half: dbmcpflow TestDbMcpApprovalFlow. A write from an AI client parks in
 // the approvals dialog; Approve answers the item id.

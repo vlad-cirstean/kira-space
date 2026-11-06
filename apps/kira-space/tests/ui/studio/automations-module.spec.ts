@@ -1,8 +1,8 @@
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { modeTab } from './support/apiMode';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
 
 // TERMINAL_OPEN_OK's shape uses control.log() polling rather than call-count
 // assertions. The mocked DefaultCwd below is '/home/test' — mockRuntime.ts's own boot default

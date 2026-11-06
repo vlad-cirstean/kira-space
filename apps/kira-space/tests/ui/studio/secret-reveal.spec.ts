@@ -1,11 +1,11 @@
 import type { ConnectionSummary } from '@shared/domain/connection';
 import type { ConnectionConfigView, ConnectionFileDetail } from '@shared/domain/connectionConfig';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { openHttpMode } from './support/apiMode';
-import { contract } from './support/contract';
 import { acceptConfirm } from './support/dialogs';
-import { IPC } from './support/ipcChannels';
 import { connectionRow } from './support/tree';
 
 // P516: every secret field has an eye. It toggles what is typed, client-side; a saved value shows

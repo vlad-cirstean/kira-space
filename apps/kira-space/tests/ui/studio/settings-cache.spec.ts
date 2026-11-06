@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
 import { pushCacheStats } from './support/mockStream';
 import { openSettings } from './support/settings';
 

@@ -1,7 +1,8 @@
 import type { Locator, Page } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import {
   connectMongo,
   connectRedis,
@@ -11,7 +12,6 @@ import {
 import { mongoCreateArgs, postgresCreateArgs, redisCreateArgs } from './support/connectionArgs';
 import { typeInto } from './support/editor';
 import { editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
 import {
   connectAndExpandControl as mongoConnectAndExpandControl,
   mongoConnectionSummary,

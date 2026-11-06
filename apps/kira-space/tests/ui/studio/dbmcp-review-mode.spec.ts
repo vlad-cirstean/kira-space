@@ -2,9 +2,9 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import type { ConnectionSummary } from '@shared/domain/connection';
 import type { ConnectionConfigView, ConnectionFileDetail } from '@shared/domain/connectionConfig';
 import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { connectionRow } from './support/tree';
 
 // Contract dbmcp-review-mode. Backend half: dbmcpflow TestDbMcpReviewPerMode, TestDbMcpReviewOnRequest,

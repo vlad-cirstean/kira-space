@@ -1,7 +1,7 @@
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { modeTab, openHttpModeAndNewRequest } from './support/apiMode';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
 
 // A window cannot take another window's tab id: the save is refused with E_CONTRACT, the strip
 // keeps its tabs and the next save retries. A new terminal sends a v7 id.

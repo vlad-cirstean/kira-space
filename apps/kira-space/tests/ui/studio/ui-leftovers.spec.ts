@@ -5,7 +5,8 @@ import {
   portSnapshots as redisPorts,
 } from '../../ipc/redis/redis.fixture';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { modeTab } from './support/apiMode';
 import { collectionRow } from './support/apiRows';
 import { primaryChord } from './support/chord';
@@ -18,7 +19,6 @@ import {
 } from './support/connect';
 import { acceptConfirm, cancelConfirm } from './support/dialogs';
 import { gridCell } from './support/grid';
-import { IPC } from './support/ipcChannels';
 import { mongoConnectionSummary, WIDGETS_PATH, widgetsFixture } from './support/mongoFixture';
 import {
   COMPOSITE_PK_PATH,

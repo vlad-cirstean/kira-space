@@ -1,8 +1,8 @@
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import {
   POSTGRES_CAPS,
   postgresConnectionSummary,
@@ -44,7 +44,7 @@ test('Operations panel — the filter matches the connection name, not only the 
 
   const CONTROL: ControlSnapshot[] = [
     { channel: IPC.connectionsList, response: [CONN] },
-    { channel: IPC.opsRecent, response: [OP_A, OP_B] },
+    { channel: IPC.studioOpsRecent, response: [OP_A, OP_B] },
   ];
   const { window: page } = await relaunch({ control: CONTROL });
 
@@ -101,7 +101,7 @@ test('Operations panel — a truncated command cannot be re-run, but can still b
         },
       ],
     },
-    { channel: IPC.opsRecent, response: [TRUNCATED, WHOLE] },
+    { channel: IPC.studioOpsRecent, response: [TRUNCATED, WHOLE] },
   ];
   const { window: page } = await relaunch({ control: CONTROL });
 
@@ -217,7 +217,7 @@ test('Operations panel — arrows, Home/End, Enter and Space toggle detail, Shif
     opRecord({ id, command: `select ${i}`, startedAt: `2026-01-01T00:0${i}:00.000Z` }),
   );
   const { window: page } = await relaunch({
-    control: [{ channel: IPC.opsRecent, response: ops }],
+    control: [{ channel: IPC.studioOpsRecent, response: ops }],
   });
 
   await page.click('[data-testid="toggle-operations-panel"]');
@@ -287,7 +287,7 @@ test('contract: a pre-connect script row ticks a live timer and cannot be re-run
           },
         ],
       },
-      { channel: IPC.opsRecent, response: [] },
+      { channel: IPC.studioOpsRecent, response: [] },
     ],
   });
   const t0 = Date.now();
@@ -295,7 +295,7 @@ test('contract: a pre-connect script row ticks a live timer and cannot be re-run
   await page.clock.pauseAt(t0 + 1000);
   await page.click('[data-testid="toggle-operations-panel"]');
 
-  await emitWailsEvent(page, IPC.opUpdate, {
+  await emitWailsEvent(page, IPC.studioOpUpdate, {
     ...running,
     ...base,
     startedAt: new Date(t0 + 1000).toISOString(),
@@ -309,7 +309,7 @@ test('contract: a pre-connect script row ticks a live timer and cannot be re-run
   await page.clock.runFor(2000);
   await expect(elapsed).toHaveText('0:02');
 
-  await emitWailsEvent(page, IPC.opUpdate, { ...ok, ...base, durationMs: 2300 });
+  await emitWailsEvent(page, IPC.studioOpUpdate, { ...ok, ...base, durationMs: 2300 });
   await expect(elapsed).toHaveCount(0);
   await expect(row).toContainText('2.3');
 
@@ -335,7 +335,7 @@ test('contract: a delayed pre-connect row counts down before the connect', async
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.connectionsList, response: [CONN] },
-      { channel: IPC.opsRecent, response: [] },
+      { channel: IPC.studioOpsRecent, response: [] },
     ],
   });
   const t0 = Date.now();
@@ -343,7 +343,7 @@ test('contract: a delayed pre-connect row counts down before the connect', async
   await page.clock.pauseAt(t0 + 1000);
   await page.click('[data-testid="toggle-operations-panel"]');
 
-  await emitWailsEvent(page, IPC.opUpdate, {
+  await emitWailsEvent(page, IPC.studioOpUpdate, {
     ...running,
     id: 'op-pre-delay',
     connectionId: 'conn-pre-2',
@@ -368,7 +368,7 @@ test('contract: an op shows whether the user or MCP ran it', async ({ relaunch }
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.connectionsList, response: [] },
-      { channel: IPC.opsRecent, response: ops },
+      { channel: IPC.studioOpsRecent, response: ops },
     ],
   });
 
@@ -398,7 +398,7 @@ test('Operations panel — detail shows highlighted command, full error and fiel
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.connectionsList, response: [CONN] },
-      { channel: IPC.opsRecent, response: [op] },
+      { channel: IPC.studioOpsRecent, response: [op] },
     ],
   });
 
@@ -431,7 +431,7 @@ test('Operations panel — Connection facet filters and a narrow dock drops Sour
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.connectionsList, response: [A, B] },
-      { channel: IPC.opsRecent, response: ops },
+      { channel: IPC.studioOpsRecent, response: ops },
     ],
   });
 

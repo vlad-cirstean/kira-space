@@ -1,8 +1,8 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 
 // Contract approvals-exemption. Backend half: dbmcpflow TestDbMcpExemptionApproved and
 // TestDbMcpExemptionUnion. An agent asks to lift a limit for one statement: the dialog names each limit

@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { expect } from '../fixtures';
+import { expect } from '../../fixtures';
 
 // P107 I2-25: modeTab/openHttpModeAndNewRequest/grpcTab/httpResponse were copied, byte-identically
 // or nearly so, across 15/9/2/3 spec files respectively. One copy here, imported everywhere.

@@ -2,7 +2,7 @@ import type { Page, TestInfo } from '@playwright/test';
 import { closeAllTabs } from '@workbench/testing/ui/heapProbe';
 import { type MemSampler, runMemWorld, worldEnabled } from '@workbench/testing/ui/memProbe';
 import { emitWailsEvent } from '@workbench/testing/ui/mockRuntime';
-import { expect } from '../../../ui/studio/fixtures';
+import { expect } from '../../../ui/fixtures';
 import { modeTab } from '../../../ui/studio/support/apiMode';
 import { connectionRow, expandRow, openRowMenu } from '../../../ui/studio/support/tree';
 

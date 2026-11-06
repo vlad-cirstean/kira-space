@@ -3,7 +3,8 @@ import type { ConnectionSummary } from '@shared/domain/connection';
 import type { ObjectMeta } from '@shared/domain/tree';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { primaryChord } from './support/chord';
 import { installClipboardShim } from './support/clipboard';
 import { connectAndExpand, connectionCreateArgs } from './support/connect';
@@ -17,7 +18,6 @@ import {
   headerCell,
   nullMarker,
 } from './support/grid';
-import { IPC } from './support/ipcChannels';
 import {
   APP_PATH,
   COMPOSITE_PK_COLUMNS,

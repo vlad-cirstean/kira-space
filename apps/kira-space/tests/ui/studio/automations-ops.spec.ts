@@ -1,8 +1,8 @@
 import { registerOpsScenarios } from '@workbench/testing/ui/scenarios/automationsOps';
-import { test } from './fixtures';
+import { studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { modeTab } from './support/apiMode';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
 
 // Automation runs in the Operations panel. Backend half: termflow TestScriptRunNonZeroExit.
 

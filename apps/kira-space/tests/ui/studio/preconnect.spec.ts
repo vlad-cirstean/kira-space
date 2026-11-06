@@ -1,7 +1,7 @@
 import type { ConnectionSummary } from '@shared/domain/connection';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
-import { IPC } from './support/ipcChannels';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { connectionRow } from './support/tree';
 
 // Ported from tests/e2e/preconnect.spec.ts. The sidecar lifecycle half spawns a real shell process

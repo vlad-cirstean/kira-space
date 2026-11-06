@@ -1,10 +1,10 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import type { ConnectionSummary } from '@shared/domain/connection';
 import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { openSettings } from './support/settings';
 
 // Contract dbmcp-review-connection. Backend half: dbmcpflow TestDbMcpReviewPerConnection, which sets

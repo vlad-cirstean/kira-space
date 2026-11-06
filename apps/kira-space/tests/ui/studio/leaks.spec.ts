@@ -1,11 +1,11 @@
 import type { Locator, Page } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, LogicalPage, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { connectionCreateArgs, createConnection, openConsoleFromMenu } from './support/connect';
 import { acceptConfirm } from './support/dialogs';
 import { typeInto } from './support/editor';
-import { IPC } from './support/ipcChannels';
 import {
   APP_PATH,
   DB_PATH,

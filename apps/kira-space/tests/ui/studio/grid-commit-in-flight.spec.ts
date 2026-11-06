@@ -1,9 +1,9 @@
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { connectAndExpand, connectionCreateArgs } from './support/connect';
 import { gridCell } from './support/grid';
-import { IPC } from './support/ipcChannels';
 import {
   COMPOSITE_PK_COLUMNS,
   COMPOSITE_PK_PATH,

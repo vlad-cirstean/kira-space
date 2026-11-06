@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect } from '../fixtures';
+import { expect } from '../../fixtures';
 
 // P107 I2-25: openSettings was copied, byte-identically, across 3 spec files. One copy here,
 // imported everywhere.

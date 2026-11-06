@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 import type { ConnectionKind } from '@shared/domain/connection';
 import { DEFAULT_PORT } from '@shared/domain/connection';
-import { expect } from '../fixtures';
+import { expect } from '../../fixtures';
 import { APP_PATH, DB_PATH } from './postgresFixture';
 import { connectionRow, expandRow, openRowMenu } from './tree';
 

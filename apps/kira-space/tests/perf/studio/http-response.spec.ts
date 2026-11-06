@@ -1,6 +1,6 @@
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { httpResponse, openHttpModeAndNewRequest } from '../../ui/studio/support/apiMode';
-import { IPC } from '../../ui/studio/support/ipcChannels';
+import { IPC } from '../../ui/support/ipcChannels';
 import { load1, RssSampler, type RunMetrics, runLine, summaryLine } from './perfProbe';
 
 // P160: HTTP response viewer probe. Opt-in (`bun run perf:http`), asserts nothing. Run on

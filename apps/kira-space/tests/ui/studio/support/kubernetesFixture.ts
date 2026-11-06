@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test';
 import { runtimeErrorBody } from '@workbench/testing/ui/mockRuntime';
 import type { ControlSnapshot } from '../../../ipc/support/types';
-import { expect, type test } from '../fixtures';
-import { contract } from './contract';
+import { expect, type studioTest as test } from '../../fixtures';
+import { contract } from '../../support/contract';
 
 export type KubeHandler = (args: Record<string, unknown>) => unknown;
 

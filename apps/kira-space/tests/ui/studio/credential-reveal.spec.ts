@@ -6,9 +6,9 @@ import type {
   ConnectionSecret,
 } from '@shared/domain/connectionConfig';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { acceptConfirm, cancelConfirm } from './support/dialogs';
-import { IPC } from './support/ipcChannels';
 
 // Confirm-before-reveal for saved credentials, now from a connection file's secrets section
 // (P475). Follows secrets.spec.ts's pattern: mocking ConnectionsService.Reveal's response per

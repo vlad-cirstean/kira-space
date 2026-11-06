@@ -1,8 +1,8 @@
 import type { Locator, Page } from '@playwright/test';
 import { installDockerMocks } from '../../../../../packages/docker-ui/src/testing/ui/dockerMock';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
 import { modeTab } from './support/apiMode';
-import { contract } from './support/contract';
 import { containerDetailBare } from './support/dockerFixture';
 
 const BRIDGE_PKG = 'github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge';

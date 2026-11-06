@@ -1,7 +1,7 @@
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { modeTab, openHttpRequestView } from './support/apiMode';
-import { IPC } from './support/ipcChannels';
 
 // `tests/ui` drives the real built bundle in real WebKit with both wire planes mocked, so it
 // exercises the real lazy chunk load through a real dynamic import() — the one tier that proves

@@ -1,5 +1,5 @@
-import { expect, test } from '../../ui/studio/fixtures';
-import { IPC } from '../../ui/studio/support/ipcChannels';
+import { expect, studioTest as test } from '../../ui/fixtures';
+import { IPC } from '../../ui/support/ipcChannels';
 
 // The new-connection dialog at rest (name, kind, color): the only connection form left now that a
 // connection's fields live in its file.

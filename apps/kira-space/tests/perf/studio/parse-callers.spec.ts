@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import type { Locator, Page } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { grpcTab } from '../../ui/studio/support/apiMode';
 import { installClipboardSpy } from '../../ui/studio/support/clipboard';
 import {
@@ -13,13 +13,13 @@ import {
   connectionCreateArgs,
   openConsoleFromMenu,
 } from '../../ui/studio/support/connect';
-import { IPC } from '../../ui/studio/support/ipcChannels';
 import { WIDGETS_PATH } from '../../ui/studio/support/mongoFixture';
 import {
   ORDER_ITEMS_PATH,
   orderItemsFixture,
   postgresConnectionSummary,
 } from '../../ui/studio/support/postgresFixture';
+import { IPC } from '../../ui/support/ipcChannels';
 import { type ActionMetrics, actionLine, actionSummaryLine, measureAction } from './blockMeter';
 import {
   CONNECTION_ID,

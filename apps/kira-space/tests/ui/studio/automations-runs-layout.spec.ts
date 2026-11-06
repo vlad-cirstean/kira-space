@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { modeTab } from './support/apiMode';
-import { IPC } from './support/ipcChannels';
 
 // The Runs section takes at most half of the panel, sized against the panel, not the viewport; the
 // script list keeps the rest.

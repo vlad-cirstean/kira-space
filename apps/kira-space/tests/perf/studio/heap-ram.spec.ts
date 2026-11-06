@@ -18,11 +18,10 @@ import {
   controlSnapshots as sqsControl,
   portSnapshots as sqsPorts,
 } from '../../ipc/sqs/sqs.fixture';
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { grpcTab } from '../../ui/studio/support/apiMode';
 import { connectPostgres, ITEMS_CONTROL, ITEMS_PORT } from '../../ui/studio/support/copyScenarios';
 import { container, openDocker, setupDocker } from '../../ui/studio/support/dockerFixture';
-import { IPC } from '../../ui/studio/support/ipcChannels';
 import {
   executeHits,
   kibanaControl,
@@ -43,6 +42,7 @@ import {
 } from '../../ui/studio/support/mongoFixture';
 import { ORDER_ITEMS_PATH } from '../../ui/studio/support/postgresFixture';
 import { expandRow, findRow, openBrowseLeaf } from '../../ui/studio/support/tree';
+import { IPC } from '../../ui/support/ipcChannels';
 import { CONTROL, FIXTURE, makeDocs, openWidgets, readSnapshot } from './documentsFixture';
 import {
   APP,

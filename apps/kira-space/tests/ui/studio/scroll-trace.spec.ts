@@ -1,8 +1,8 @@
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { createConnection } from './support/connect';
 import { GRID_SCROLLER_SELECTOR } from './support/grid';
-import { IPC } from './support/ipcChannels';
 import {
   BIG_ROWS_META,
   BIG_ROWS_PATH,

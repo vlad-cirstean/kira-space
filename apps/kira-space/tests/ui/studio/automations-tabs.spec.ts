@@ -1,8 +1,8 @@
 import { registerTabScenarios } from '@workbench/testing/ui/scenarios/automationsTabs';
-import { test } from './fixtures';
+import { studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { modeTab } from './support/apiMode';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
 
 // P380: one tab per script, play-only start. Backend half: termflow TestScriptRunTwice.
 

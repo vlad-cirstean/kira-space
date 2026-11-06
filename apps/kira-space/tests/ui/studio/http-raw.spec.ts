@@ -1,8 +1,8 @@
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { httpResponse as buildHttpResponse, openHttpModeAndNewRequest } from './support/apiMode';
 import { editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
 
 // P9 §6.4: the real built bundle, real WebKit, both wire planes mocked — the inspector (D12/D14,
 // exact and http2/masked) and the editor (D8/D9/D10), each seeded through the same one-snapshot-

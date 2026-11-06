@@ -1,8 +1,8 @@
 import { registerRunsScenarios } from '@workbench/testing/ui/scenarios/automationsRuns';
-import { test } from './fixtures';
+import { studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { modeTab } from './support/apiMode';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
 
 // P242 Part 1: Automations runs on the mocked bridge. A run's push event is emitted by hand; the
 // terminal id is the client-generated tab id, read back from the terminalOpen call.

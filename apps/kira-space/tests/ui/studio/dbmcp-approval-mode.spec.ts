@@ -1,7 +1,7 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
 
 // Contract dbmcp-approval-mode. Backend half: dbmcpflow TestDbMcpModeTightenOnly. A SELECT declared
 // write parks for approval as a write and says what it looks like.

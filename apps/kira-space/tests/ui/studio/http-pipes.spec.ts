@@ -1,8 +1,8 @@
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { httpResponse, openHttpModeAndNewRequest } from './support/apiMode';
 import { editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
 
 // The end-to-end proof, which no unit test can give because it is a property
 // of what reaches the wire — three cases, mirroring http-variables.spec.ts's own

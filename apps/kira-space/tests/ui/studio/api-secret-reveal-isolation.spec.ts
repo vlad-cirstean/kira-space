@@ -1,8 +1,8 @@
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { openHttpMode } from './support/apiMode';
 import { collectionRow, variableRow } from './support/apiRows';
-import { IPC } from './support/ipcChannels';
 
 // revealedValues (state/variables.ts) is shared between the Variables
 // tab and the Copy-as-curl dialog's own revealSecretValues loop (curl.ts), but only

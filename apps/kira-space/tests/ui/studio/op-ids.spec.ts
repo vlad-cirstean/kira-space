@@ -1,11 +1,11 @@
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { connectAndExpand, connectionCreateArgs, openConsoleFromMenu } from './support/connect';
 import { executeSnap, numberPage } from './support/consolePages';
-import { contract } from './support/contract';
 import { typeInto } from './support/editor';
-import { IPC } from './support/ipcChannels';
 import {
   ORDER_ITEMS_PATH,
   orderItemsFixture,
@@ -40,8 +40,8 @@ test('a console run sends a v7 opId; a v4 op row still shows in the widget', asy
       response: summary,
     },
     ...fixture.control,
-    { channel: IPC.opsRecent, response: [legacy] },
-    { channel: IPC.opsCancel, response: null },
+    { channel: IPC.studioOpsRecent, response: [legacy] },
+    { channel: IPC.studioOpsCancel, response: null },
   ];
   const port: PortSnapshot[] = [
     ...fixture.port,
@@ -64,6 +64,6 @@ test('a console run sends a v7 opId; a v4 op row still shows in the widget', asy
   await page.locator('[data-testid="status-ops"]').click();
   await row.locator('[data-testid="status-ops-stop"]').click();
   await expect
-    .poll(() => log.log().find((e) => e.channel === IPC.opsCancel)?.args)
+    .poll(() => log.log().find((e) => e.channel === IPC.studioOpsCancel)?.args)
     .toEqual({ opId: '3f2504e0-4f89-41d3-9a0c-0305e82c3301' });
 });

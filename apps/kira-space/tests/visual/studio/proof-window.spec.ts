@@ -1,6 +1,5 @@
 import type { ProofViewState } from '@shared/domain/proof';
-import { expect, test } from '../../ui/studio/fixtures';
-import { IPC } from '../../ui/studio/support/ipcChannels';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import {
   bigTable,
   chartControl,
@@ -14,6 +13,7 @@ import {
   stepSnapshot,
   viewState,
 } from '../../ui/studio/support/proof';
+import { IPC } from '../../ui/support/ipcChannels';
 
 // P420 Part 2: the proof window follows the review window's chrome; these baselines catch a
 // layout or token drift in the three surfaces a reader sees.

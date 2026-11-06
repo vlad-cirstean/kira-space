@@ -1,7 +1,7 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
-import { expect, test } from '../../ui/studio/fixtures';
-import { contract } from '../../ui/studio/support/contract';
+import { expect, studioTest as test } from '../../ui/fixtures';
+import { contract } from '../../ui/support/contract';
 import { settleFonts } from './support/settle';
 
 // P520: the approvals dialog with three queued writes, then minimised to the toast.

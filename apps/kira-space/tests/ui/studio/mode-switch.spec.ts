@@ -1,11 +1,11 @@
 import type { Locator, Page } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { installFakeTimers } from '../support/clock';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { modeTab } from './support/apiMode';
-import { installFakeTimers } from './support/clock';
 import { createConnection } from './support/connect';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
 import {
   ORDER_ITEMS_PATH,
   orderItemsFixture,

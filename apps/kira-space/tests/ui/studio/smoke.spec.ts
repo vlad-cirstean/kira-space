@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
 
 // Ported from tests/e2e/smoke.spec.ts. The app-name assertion (`app.evaluate(({app}) =>
 // app.getName())`) has no analogue here — there is no Electron `app` object, and the bundle's

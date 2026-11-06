@@ -1,9 +1,9 @@
 import type { Locator } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { modeTab, openHttpModeAndNewRequest } from './support/apiMode';
 import { editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
 
 // Three tests, one httpSend snapshot each (a channel with more than one snapshot matches on args,
 // and the send's renderer-minted opId makes those args unmatchable across two sends in one test;

@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test';
 import { installDockerMocks } from '../../../../../../packages/docker-ui/src/testing/ui/dockerMock';
-import { expect, type test } from '../fixtures';
+import { expect, type studioTest as test } from '../../fixtures';
+import { contract } from '../../support/contract';
 import { modeTab } from './apiMode';
-import { contract } from './contract';
 
 // biome-ignore lint/suspicious/noExplicitAny: contract fixtures are untyped JSON
 type Json = Record<string, any>;

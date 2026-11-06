@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
 import { container, openDocker, setupDocker } from './support/dockerFixture';
 
 test('container list: arrows, Home/End, Left/Right on a compose group, Enter opens, Shift+F10 menu returns focus', async ({

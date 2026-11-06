@@ -1,5 +1,7 @@
 import { installDockerMocks } from '../../../../../packages/docker-ui/src/testing/ui/dockerMock';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { modeTab, openHttpModeAndNewRequest } from './support/apiMode';
 import { installClipboardSpy } from './support/clipboard';
 import {
@@ -12,9 +14,7 @@ import {
   PG_PORT,
 } from './support/copyScenarios';
 import { gutterCell } from './support/grid';
-import { IPC } from './support/ipcChannels';
 import { loc, openKubernetes, setupKubernetes } from './support/kubernetesFixture';
-import { emitWailsEvent } from './support/mockRuntime';
 import { COMPOSITE_PK_PATH } from './support/postgresFixture';
 import { openSettings } from './support/settings';
 import { readOnlySqsSnapshots, SQS_QUEUE_PATH } from './support/sqsFixture';

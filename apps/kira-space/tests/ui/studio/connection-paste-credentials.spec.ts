@@ -5,9 +5,9 @@ import {
   connectionStateSchema,
 } from '@shared/domain/connection';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { connectionRow } from './support/tree';
 
 // P248: "Update credentials…" on a saved connection takes a pasted block. The pasted password

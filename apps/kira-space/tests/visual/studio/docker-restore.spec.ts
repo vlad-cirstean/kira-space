@@ -1,6 +1,6 @@
-import { expect, test } from '../../ui/studio/fixtures';
-import { contract } from '../../ui/studio/support/contract';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { openDocker, setupDocker } from '../../ui/studio/support/dockerFixture';
+import { contract } from '../../ui/support/contract';
 import { settleFonts } from './support/settle';
 
 // P441: the Docker restore dialog on the shared design: standalone, Compose project, waiting,

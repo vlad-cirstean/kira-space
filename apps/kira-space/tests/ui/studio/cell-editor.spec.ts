@@ -1,7 +1,10 @@
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ColumnDescriptor } from '@shared/protocol/page';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
+import type { ControlLogEntry } from '../support/mockRuntime';
 import {
   FORMATS_COLUMNS,
   FORMATS_DEFINITION_WITHOUT_PATH,
@@ -21,8 +24,6 @@ import { primaryChord } from './support/chord';
 import { connectionCreateArgs, createConnection } from './support/connect';
 import { diffEditorText, editorText as sharedEditorText } from './support/editorText';
 import { gridCell, gridCellSelector, gridScroller } from './support/grid';
-import { IPC } from './support/ipcChannels';
-import type { ControlLogEntry } from './support/mockRuntime';
 import type { SeenPortRequest } from './support/mockStream';
 import {
   APP_PATH,
@@ -1247,6 +1248,54 @@ test('cell editor — timestamp controls stay in view at small dock height', asy
   await selectCell(page, 4, 'sample'); // undecodable row
   await expect(page.locator('[data-testid="cell-editor-decoded-empty"]')).toBeVisible();
   await insideDock('cell-editor-decoded-empty');
+});
+
+// Contract layout-cell-editor. Backend half: appflow TestLayoutCellEditorHeight. The stored dock
+// height is what the dock opens at, and a drag writes the new height back inside 120..480.
+test('contract: the dock opens at the stored height and a drag persists the new one', async ({
+  relaunch,
+}) => {
+  const layout = contract<{ panel: { cellEditor: { height: number } } }>(
+    'layout-cell-editor',
+    'LayoutService.GetAll#cellEditor',
+  );
+  const stored = layout.panel.cellEditor.height;
+  const { window: page, control } = await relaunch({
+    control: [...CONTROL_2, { channel: IPC.layoutGetAll, response: layout }],
+    stream: PORT_2,
+  });
+  await connectAndExpand(page, { name: 'Format Actions DB', color: 'blue' });
+  await (await findRow(page, FORMATS_PATH)).dblclick();
+  await expect(page.locator('[data-testid="data-grid"]')).toBeVisible();
+  await selectCell(page, 5, 'sample');
+
+  const dock = page.locator('[data-testid="cell-editor"]');
+  const dockHeight = async () => (await dock.boundingBox())?.height ?? Number.NaN;
+  await expect.poll(dockHeight).toBeCloseTo(stored, 0);
+
+  const handle = await page.locator('.cell-splitter').boundingBox();
+  if (!handle) throw new Error('no resize handle');
+  const x = handle.x + handle.width / 2;
+  const y = handle.y + handle.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y - 40, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(dockHeight).toBeCloseTo(stored + 40, 0);
+
+  const written = () =>
+    control
+      .log()
+      .filter((e) => e.channel === IPC.layoutSet)
+      .map((e) => (e.args as { patch: { panel?: { cellEditor?: { height?: number } } } }).patch)
+      .flatMap((p) =>
+        p.panel?.cellEditor?.height === undefined ? [] : [p.panel.cellEditor.height],
+      );
+  await expect.poll(() => written().at(-1)).toBeGreaterThan(stored);
+  for (const height of written()) {
+    expect(height).toBeGreaterThanOrEqual(120);
+    expect(height).toBeLessThanOrEqual(480);
+  }
 });
 
 test("cell editor — owned by the view, never shows another tab's cell", async ({

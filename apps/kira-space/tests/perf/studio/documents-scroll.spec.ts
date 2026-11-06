@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { CONTROL, FIXTURE, makeDocs, openWidgets, readSnapshot } from './documentsFixture';
 import {
   type Frame,

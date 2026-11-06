@@ -1,8 +1,8 @@
 import { RssSampler, startFrames, stopFrames } from '@workbench/testing/ui/perfProbe';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { httpResponse, openHttpModeAndNewRequest } from '../../ui/studio/support/apiMode';
-import { IPC } from '../../ui/studio/support/ipcChannels';
+import { IPC } from '../../ui/support/ipcChannels';
 
 // HTTP response viewer on a large body. BODYKIND: json (default) | text-80col | text-short-lines |
 // text-1line; NITEMS sizes the json body (100000 is about 12 MB). Reports time to first text, the

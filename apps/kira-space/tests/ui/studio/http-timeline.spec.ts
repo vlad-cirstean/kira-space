@@ -1,9 +1,9 @@
 import type { Page } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { httpResponse as buildHttpResponse, openHttpModeAndNewRequest } from './support/apiMode';
 import { editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
 
 // The real built bundle, real WebKit, both wire planes mocked — the waterfall,
 // the SPEC's own "reused, not zero" requirement, the two jump affordances, a stored

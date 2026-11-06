@@ -1,8 +1,8 @@
 import type { Locator, Page } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { installClipboardSpy } from './support/clipboard';
-import { IPC } from './support/ipcChannels';
 import {
   CHART_KEYS,
   chartControl,

@@ -11,13 +11,13 @@ import {
   controlSnapshots as redisControl,
   portSnapshots as redisPorts,
 } from '../../ipc/redis/redis.fixture';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { grpcTab, modeTab } from './support/apiMode';
 import { openConsoleFromMenu } from './support/connect';
 import { connectPostgres, ITEMS_CONTROL, ITEMS_PORT } from './support/copyScenarios';
 import { typeInto } from './support/editor';
 import { editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
 import { executeHits, kibanaControl, logsNode, logsView } from './support/kibanaFixture';
 import { ORDER_ITEMS_PATH } from './support/postgresFixture';
 import { connectionRow, expandRow, findRow, openBrowseLeaf, openRowMenu } from './support/tree';

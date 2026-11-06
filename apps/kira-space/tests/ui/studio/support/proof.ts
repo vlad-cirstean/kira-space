@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test';
 import type { ProofViewStateEntry } from '@shared/domain/proof';
 import type { ControlSnapshot } from '../../../ipc/support/types';
-import { contract } from './contract';
-import { IPC } from './ipcChannels';
+import { contract } from '../../support/contract';
+import { IPC } from '../../support/ipcChannels';
 
 // Snapshots for the proof window (tests/contract/proof.json and proof-pending.json, written by the
 // Go flow tests) with the ids filled in. The window boots from `?window=proof-1`.

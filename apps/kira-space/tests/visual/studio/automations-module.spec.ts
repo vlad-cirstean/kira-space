@@ -1,7 +1,7 @@
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { modeTab } from '../../ui/studio/support/apiMode';
-import { contract } from '../../ui/studio/support/contract';
-import { IPC } from '../../ui/studio/support/ipcChannels';
+import { contract } from '../../ui/support/contract';
+import { IPC } from '../../ui/support/ipcChannels';
 import { settleFonts } from './support/settle';
 
 // P441: the Runs restore dialog on the shared design: ready, needs-input and already-running rows.

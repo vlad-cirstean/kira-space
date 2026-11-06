@@ -6,10 +6,9 @@ import {
   RssSampler,
 } from '@workbench/testing/ui/perfProbe';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { connectAndExpand, connectionCreateArgs } from '../../ui/studio/support/connect';
 import { gridScroller } from '../../ui/studio/support/grid';
-import { IPC } from '../../ui/studio/support/ipcChannels';
 import {
   BIG_ROWS_PATH,
   bigRowsFixture,
@@ -17,6 +16,7 @@ import {
   postgresConnectionSummary,
 } from '../../ui/studio/support/postgresFixture';
 import { findRow } from '../../ui/studio/support/tree';
+import { IPC } from '../../ui/support/ipcChannels';
 import { wideColumns, wideRows } from './support/wideTable';
 
 // Data grid: a 10 000-row page, momentum flicks down and up. Run `bun run perf:probe`.

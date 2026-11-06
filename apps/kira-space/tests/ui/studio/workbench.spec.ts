@@ -1,6 +1,6 @@
-import { expect, test } from './fixtures';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 
 // Ported from tests/e2e/workbench.spec.ts. Five of its seven scenarios asserted real
 // persistence across a relaunch (panel visibility, settings appearance/Advanced sections, word

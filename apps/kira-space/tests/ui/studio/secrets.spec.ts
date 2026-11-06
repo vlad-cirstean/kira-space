@@ -1,8 +1,8 @@
 import type { ConnectionSummary } from '@shared/domain/connection';
 import type { ConnectionConfigView, ConnectionFileDetail } from '@shared/domain/connectionConfig';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
-import { IPC } from './support/ipcChannels';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { connectionRow } from './support/tree';
 
 // The secrets section of a connection's file dialog (P475). Secret values are write-only: the

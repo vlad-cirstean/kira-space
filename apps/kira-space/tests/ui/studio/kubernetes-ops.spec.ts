@@ -1,5 +1,6 @@
-import { expect, test } from './fixtures';
-import { IPC } from './support/ipcChannels';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import {
   activePanel,
   idOf,
@@ -9,7 +10,6 @@ import {
   openKubernetes,
   setupKubernetes,
 } from './support/kubernetesFixture';
-import { emitWailsEvent } from './support/mockRuntime';
 
 // Contract kubernetes. Backend half: kubeflow TestOpsRecordEveryAction. Every cluster call is one
 // Operations panel row; refetches of loaded data skip the log.
@@ -30,7 +30,7 @@ test('contract: the Operations panel lists every Kubernetes action', async ({ re
   const ops = recent();
   const { page } = await setupKubernetes(relaunch, {}, [
     { channel: IPC.connectionsList, response: [] },
-    { channel: IPC.opsRecent, response: ops },
+    { channel: IPC.studioOpsRecent, response: ops },
   ]);
 
   await page.click('[data-testid="toggle-operations-panel"]');
@@ -60,7 +60,7 @@ test('contract: Cancel in the panel ends a running log stream', async ({ relaunc
   const live = running();
   const { page, kube, control } = await setupKubernetes(relaunch, {}, [
     { channel: IPC.connectionsList, response: [] },
-    { channel: IPC.opsRecent, response: [] },
+    { channel: IPC.studioOpsRecent, response: [] },
   ]);
   await openKubernetes(page);
   await openKind(page, 'kind-dev', 'v1/pods');
@@ -70,7 +70,7 @@ test('contract: Cancel in the panel ends a running log stream', async ({ relaunc
   const { streamId } = kube.calls('LogsOpen')[0].args as { streamId: string };
 
   await page.click('[data-testid="toggle-operations-panel"]');
-  await emitWailsEvent(page, IPC.opUpdate, live);
+  await emitWailsEvent(page, IPC.studioOpUpdate, live);
   await expect(loc(page, 'op-row')).toHaveCount(1);
   await loc(page, 'op-row').click({ button: 'right' });
   await page.locator('[data-testid="menu-item-cancel"]').click();
@@ -78,12 +78,16 @@ test('contract: Cancel in the panel ends a running log stream', async ({ relaunc
     .poll(() =>
       control
         .log()
-        .filter((e) => e.channel === IPC.opsCancel)
+        .filter((e) => e.channel === IPC.studioOpsCancel)
         .map((e) => e.args),
     )
     .toEqual([{ opId: live.id }]);
 
-  await emitWailsEvent(page, IPC.opUpdate, { ...live, status: 'cancelled', durationMs: 1200 });
+  await emitWailsEvent(page, IPC.studioOpUpdate, {
+    ...live,
+    status: 'cancelled',
+    durationMs: 1200,
+  });
   await emitWailsEvent(page, 'kira:kubernetes:logs', { streamId, lines: [], ended: true });
   await expect(loc(page, 'kube-logs-ended')).toBeVisible();
   await expect(loc(page, 'kube-logs-reconnect')).toBeVisible();

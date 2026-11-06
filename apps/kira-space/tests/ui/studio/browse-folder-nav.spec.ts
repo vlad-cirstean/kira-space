@@ -3,7 +3,7 @@ import {
   controlSnapshots as redisControl,
   portSnapshots as redisPorts,
 } from '../../ipc/redis/redis.fixture';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
 import { openRedisBrowse, REDIS_DB0 } from './support/redisFixture';
 import { BUCKET_PATH, OBJECT_PATH, openS3Browse, s3Control } from './support/s3Fixture';
 

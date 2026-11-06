@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test';
 import type { ConnectionSummary } from '@shared/domain/connection';
 import type { ControlSnapshot } from '../../../ipc/support/types';
-import { expect } from '../fixtures';
-import { IPC } from './ipcChannels';
+import { expect } from '../../fixtures';
+import { IPC } from '../../support/ipcChannels';
 import { connectionRow, expandRow, findRow, openRowMenu } from './tree';
 
 // Real capture of a real Redis 7 container's connect() response — via

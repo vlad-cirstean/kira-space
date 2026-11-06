@@ -1,7 +1,8 @@
 import type { Page } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { installClipboardSpy, lastClipboardWrite } from './support/clipboard';
 import {
   connectMongo,
@@ -12,7 +13,6 @@ import {
 import { mongoCreateArgs, redisCreateArgs } from './support/connectionArgs';
 import { hoverWord } from './support/editor';
 import { editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
 import {
   DB_PATH as MARIADB_DB_PATH,
   connectAndExpandControl as mariadbConnectAndExpandControl,

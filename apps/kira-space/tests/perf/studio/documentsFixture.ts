@@ -1,10 +1,9 @@
 import type { Page } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
-import { expect } from '../../ui/studio/fixtures';
+import { expect } from '../../ui/fixtures';
 import { createConnection } from '../../ui/studio/support/connect';
 import { mongoCreateArgs } from '../../ui/studio/support/connectionArgs';
-import { IPC } from '../../ui/studio/support/ipcChannels';
 import {
   DB_PATH,
   mongoConnectionSummary,
@@ -12,6 +11,7 @@ import {
   widgetsFixture,
 } from '../../ui/studio/support/mongoFixture';
 import { connectionRow, expandRow, findRow, openRowMenu } from '../../ui/studio/support/tree';
+import { IPC } from '../../ui/support/ipcChannels';
 
 // Shared by the documents probes: a Mongo widgets collection served with `n` synthetic documents.
 

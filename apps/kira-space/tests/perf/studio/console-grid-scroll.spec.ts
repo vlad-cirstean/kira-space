@@ -8,19 +8,19 @@ import {
   RssSampler,
 } from '@workbench/testing/ui/perfProbe';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import {
   connectAndExpand,
   connectionCreateArgs,
   openConsoleFromMenu,
 } from '../../ui/studio/support/connect';
 import { typeInto } from '../../ui/studio/support/editor';
-import { IPC } from '../../ui/studio/support/ipcChannels';
 import {
   ORDER_ITEMS_PATH,
   orderItemsFixture,
   postgresConnectionSummary,
 } from '../../ui/studio/support/postgresFixture';
+import { IPC } from '../../ui/support/ipcChannels';
 
 // Console result grid: NROWS x NCOLS text cells. Visible column count drives frame cost.
 

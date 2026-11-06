@@ -2,7 +2,7 @@ import type { ConnectionSummary } from '@shared/domain/connection';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ColumnDescriptor } from '@shared/protocol/page';
 import type { ControlSnapshot, PortSnapshot } from '../../../ipc/support/types';
-import { IPC } from './ipcChannels';
+import { IPC } from '../../support/ipcChannels';
 
 /**
  * The connect/expand/order-items/connection-summary scaffolding `mariadbFixture.ts`,

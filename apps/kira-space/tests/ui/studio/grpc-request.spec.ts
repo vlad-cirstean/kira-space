@@ -1,14 +1,14 @@
 import type { Page } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { installFakeTimers } from '../support/clock';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
+import { CHANNEL_TO_FQN, emitWailsEvent } from '../support/mockRuntime';
 import { grpcTab as buildGrpcTab, modeTab } from './support/apiMode';
 import { collectionRow } from './support/apiRows';
-import { installFakeTimers } from './support/clock';
-import { contract } from './support/contract';
 import { acceptConfirm } from './support/dialogs';
 import { editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
-import { CHANNEL_TO_FQN, emitWailsEvent } from './support/mockRuntime';
 
 // Located by row id rather than by label — collections.spec.ts's own helper verbatim, over the
 // collections tree's own row (`[data-testid="collection-row"]`), a different tree from
@@ -549,7 +549,7 @@ test('gRPC request — Stop cancels an in-flight stream and keeps what arrived',
   await page.click('[data-testid="grpc-request-stop"]');
   // opsCancel is a void wildcard default (mockRuntime.ts's WILDCARD_DEFAULTS) — consumed, not
   // seeded, exactly as §6.4's own wording says.
-  await expect.poll(() => control.log().some((e) => e.channel === IPC.opsCancel)).toBe(true);
+  await expect.poll(() => control.log().some((e) => e.channel === IPC.studioOpsCancel)).toBe(true);
 
   await emitWailsEvent(page, IPC.grpcCall, {
     callId,
@@ -1359,7 +1359,7 @@ test('gRPC contract — a server stream delivers messages and Stop ends it', asy
   await expect(page.locator('[data-testid="grpc-request-stop"]')).toBeEnabled();
 
   await page.click('[data-testid="grpc-request-stop"]');
-  await expect.poll(() => control.log().some((e) => e.channel === IPC.opsCancel)).toBe(true);
+  await expect.poll(() => control.log().some((e) => e.channel === IPC.studioOpsCancel)).toBe(true);
   await emitWailsEvent(page, IPC.grpcCall, { ...cancelled, callId });
 
   await expect(page.locator('[data-testid="grpc-request-stop"]')).toBeDisabled();

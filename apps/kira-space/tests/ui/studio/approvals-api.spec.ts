@@ -1,8 +1,8 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 
 // Contract approvals-api. Backend half: dbmcpflow TestApiRequestApproved and TestApiRequestBodies. An
 // agent's api_request parks in the approvals dialog as an api.request item: the method and URL, the

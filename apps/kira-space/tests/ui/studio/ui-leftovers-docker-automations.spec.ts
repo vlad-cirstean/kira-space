@@ -4,12 +4,12 @@ import { customScriptSchema } from '@shared/domain/scripts';
 import { replaceCodeEditorText } from '@workbench/testing/ui/codeEditor';
 import { installDockerMocks } from '../../../../../packages/docker-ui/src/testing/ui/dockerMock';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { modeTab } from './support/apiMode';
-import { contract } from './support/contract';
 import { containerDetail } from './support/dockerFixture';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
 
 // P267 C9: behaviour the UI leftovers pass unified. Docker logs and rows, the script dialog and run
 // log, and the tab strip's keyboard move.

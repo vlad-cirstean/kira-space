@@ -2,10 +2,10 @@ import type { ConnectionSummary } from '@shared/domain/connection';
 import type { ConnectionConfigView, ConnectionFileDetail } from '@shared/domain/connectionConfig';
 import { expectHighlighted, replaceCodeEditorText } from '@workbench/testing/ui/codeEditor';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { connectionRow } from './support/tree';
 
 // Contract connection-files. Backend half: dbflow TestConnectionFiles (a file edit changes the
@@ -164,12 +164,12 @@ test('Edit file shows the file error and Save sends the text with its base hash'
 
 test('Open in editor from the menu opens the connection file', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({
-    control: boot([{ channel: IPC.configFilesOpen, response: null }]),
+    control: boot([{ channel: IPC.studioConfigFilesOpen, response: null }]),
   });
   await (await connectionRow(page, 'Local')).click({ button: 'right' });
   await page.click('[data-testid="menu-item-open-file"]');
   await expect
-    .poll(() => control.log().find((e) => e.channel === IPC.configFilesOpen)?.args)
+    .poll(() => control.log().find((e) => e.channel === IPC.studioConfigFilesOpen)?.args)
     .toEqual({ folder: 'connections', file: FILE });
 });
 

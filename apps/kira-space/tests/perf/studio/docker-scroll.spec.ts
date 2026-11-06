@@ -5,7 +5,7 @@ import {
   measureFlick,
   RssSampler,
 } from '@workbench/testing/ui/perfProbe';
-import { test } from '../../ui/studio/fixtures';
+import { studioTest as test } from '../../ui/fixtures';
 import { container, openDocker, setupDocker } from '../../ui/studio/support/dockerFixture';
 
 // Docker container list: NCONTAINERS (default 400), compose groups of 5 for the first 40%.

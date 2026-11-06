@@ -8,7 +8,8 @@ import {
   portSnapshots as sqsPorts,
 } from '../../ipc/sqs/sqs.fixture';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import {
   connectAndExpand,
   connectionCreateArgs,
@@ -17,7 +18,6 @@ import {
 } from './support/connect';
 import { executeSnap, numberPage } from './support/consolePages';
 import { typeInto } from './support/editor';
-import { IPC } from './support/ipcChannels';
 import {
   connectionsDisconnectSnapshot,
   ORDER_ITEMS_PATH,

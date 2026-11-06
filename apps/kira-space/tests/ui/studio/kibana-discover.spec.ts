@@ -4,7 +4,7 @@ import {
   browserTimeZone,
   resolveTime,
 } from '../../../frontend/src/studio/views/console/kibana/time';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
 import { typeInto } from './support/editor';
 import {
   executeColumns,

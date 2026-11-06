@@ -4,13 +4,13 @@ import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ColumnDescriptor } from '@shared/protocol/page';
 import type { ControlSnapshot, LogicalPage, PortSnapshot } from '../../../ipc/support/types';
 import { MD5_ROWS } from '../../../support/seeds/md5Rows';
+import { IPC } from '../../support/ipcChannels';
 import { NULLS_AND_UNICODE_COLUMNS, NULLS_AND_UNICODE_ROWS } from './cellEditorCaptures';
 import {
   connectAndExpandControl as sharedConnectAndExpandControl,
   connectionSummary as sharedConnectionSummary,
   orderItemsFixture as sharedOrderItemsFixture,
 } from './engineFixture';
-import { IPC } from './ipcChannels';
 
 // Real captures against a real Postgres container, seeded with
 // packages/db-fixtures/fixtures/0001_seed.sql — via scripts/capture-postgres-tree.ts, not

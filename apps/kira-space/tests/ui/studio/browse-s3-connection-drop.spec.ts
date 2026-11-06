@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import { CHANNEL } from '@shared/protocol/events';
-import { expect, test } from './fixtures';
-import { emitWailsEvent } from './support/mockRuntime';
+import { expect, studioTest as test } from '../fixtures';
+import { emitWailsEvent } from '../support/mockRuntime';
 import {
   BUCKET_PATH,
   CAPS,

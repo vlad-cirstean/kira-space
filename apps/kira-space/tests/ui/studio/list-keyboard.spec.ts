@@ -8,11 +8,11 @@ import {
   portSnapshots as sqsPorts,
 } from '../../ipc/sqs/sqs.fixture';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { grpcTab, modeTab, openHttpModeAndNewRequest } from './support/apiMode';
 import { connectAndExpand, connectionCreateArgs, openConsoleFromMenu } from './support/connect';
 import { editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
 import {
   mongoConnectionSummary,
   WIDGETS_BODIES,

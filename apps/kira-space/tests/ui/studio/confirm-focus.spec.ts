@@ -5,8 +5,8 @@ import type {
   ConnectionSecret,
 } from '@shared/domain/connectionConfig';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
-import { IPC } from './support/ipcChannels';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { postgresConnectionSummary } from './support/postgresFixture';
 
 // P264: a danger confirm opens on Cancel (Enter declines), a primary confirm opens on its confirm

@@ -2,9 +2,9 @@ import type { ConnectionSummary } from '@shared/domain/connection';
 import type { ConnectionConfigView, ConnectionFileDetail } from '@shared/domain/connectionConfig';
 import type { MaskReviewListing } from '@shared/domain/maskReview';
 import { emitPrompts, routed } from '@workbench/testing/ui/prompts';
-import { expect, test } from './fixtures';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { connectionRow } from './support/tree';
 
 // Column review in the connection Privacy tab and the masking prompt. Backend half: dbmcpflow

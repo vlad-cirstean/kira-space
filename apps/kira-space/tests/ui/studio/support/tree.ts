@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { expect } from '../fixtures';
+import { expect } from '../../fixtures';
 
 // Ported byte-identically from tests/e2e/support/tree.ts — no DOM behaviour here is
 // Electron-specific, so nothing changed except which fixtures.ts's `expect` this resolves to.

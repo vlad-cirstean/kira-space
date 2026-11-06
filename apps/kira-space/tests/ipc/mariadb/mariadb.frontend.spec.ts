@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { assertTooltipShows } from '../../ui/studio/support/tooltip';
 import { connectionRow, expandRow, findRow, openRowMenu } from '../../ui/studio/support/tree';
 import { controlSnapshots, portSnapshots } from './mariadb.fixture';

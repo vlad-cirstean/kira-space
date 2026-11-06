@@ -1,10 +1,10 @@
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { openHttpMode } from './support/apiMode';
 import { collectionRow } from './support/apiRows';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
 
 // Contract api-files. Backend half: apiflow.TestApiConfigFiles writes the same fixture. One
 // scenario, both halves: a collection file is read into the tree; a bad edit surfaces as a
@@ -75,8 +75,8 @@ const CONTROL: ControlSnapshot[] = [
     args: { scope: 'collection', ownerId: collection.id },
     response: VARIABLES,
   },
-  { channel: IPC.configFilesOpen, response: undefined },
-  { channel: IPC.configFilesReveal, response: undefined },
+  { channel: IPC.studioConfigFilesOpen, response: undefined },
+  { channel: IPC.studioConfigFilesReveal, response: undefined },
   { channel: IPC.apiConfigSetSecret, response: afterSet },
 ];
 
@@ -105,16 +105,16 @@ test('api config files — the tree shows the file, a bad edit shows its line, O
   await strip.locator('[data-testid="config-file-open"]').click();
   await strip.locator('[data-testid="config-file-reveal"]').click();
   await expect
-    .poll(() => control.log().filter((e) => e.channel === IPC.configFilesOpen))
+    .poll(() => control.log().filter((e) => e.channel === IPC.studioConfigFilesOpen))
     .toHaveLength(1);
-  expect(control.log().find((e) => e.channel === IPC.configFilesOpen)?.args).toMatchObject({
+  expect(control.log().find((e) => e.channel === IPC.studioConfigFilesOpen)?.args).toMatchObject({
     folder: 'api',
     file,
   });
   await expect
-    .poll(() => control.log().filter((e) => e.channel === IPC.configFilesReveal))
+    .poll(() => control.log().filter((e) => e.channel === IPC.studioConfigFilesReveal))
     .toHaveLength(1);
-  expect(control.log().find((e) => e.channel === IPC.configFilesReveal)?.args).toMatchObject({
+  expect(control.log().find((e) => e.channel === IPC.studioConfigFilesReveal)?.args).toMatchObject({
     folder: 'api',
     file,
   });

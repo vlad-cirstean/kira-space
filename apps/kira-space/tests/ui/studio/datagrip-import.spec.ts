@@ -3,9 +3,9 @@ import type { DataGripPreview, DataGripReport } from '@shared/domain/datagrip';
 import type { SecretStorageStatus } from '@shared/domain/secrets';
 import { CHANNEL } from '@shared/protocol/events';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 
 // P28 D18: the panel button is gone — the DataGrip import is a menu-bar command now
 // (App → Import DataGrip Connections…), so these specs drive the channel the menu item emits.

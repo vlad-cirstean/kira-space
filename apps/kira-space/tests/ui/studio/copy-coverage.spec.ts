@@ -13,9 +13,11 @@ import {
   controlSnapshots as sqsControl,
   portSnapshots as sqsPorts,
 } from '../../ipc/sqs/sqs.fixture';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { grpcTab, modeTab, openHttpModeAndNewRequest } from './support/apiMode';
-import { contract } from './support/contract';
 import {
   connectPostgres,
   ITEMS_ALLOW,
@@ -31,9 +33,7 @@ import {
 } from './support/copyScenarios';
 import { typeInto } from './support/editor';
 import { cellText, gridCell, gutterCell, headerCell } from './support/grid';
-import { IPC } from './support/ipcChannels';
 import { openKind, openKubernetes, setupKubernetes } from './support/kubernetesFixture';
-import { emitWailsEvent } from './support/mockRuntime';
 import {
   DB_PATH as MONGO_DB_PATH,
   mongoConnectionSummary,

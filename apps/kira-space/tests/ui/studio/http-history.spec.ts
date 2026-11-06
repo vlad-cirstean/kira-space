@@ -1,8 +1,8 @@
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { modeTab, openHttpModeAndNewRequest } from './support/apiMode';
 import { diffEditorText, editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
 
 // P8 §6.3: three tests, each seeding historyList (and historyGet where needed) rather than
 // sending twice — F12's whole point (P2 §8 OQ-8's predicted one-snapshot-per-channel limitation

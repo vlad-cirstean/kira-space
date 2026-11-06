@@ -1,5 +1,5 @@
 import { DATA_OP } from '@shared/protocol/dataOps';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
 import { acceptConfirm } from './support/dialogs';
 import { readOnlySqsSnapshots, SQS_QUEUE_PATH, SQS_REDRIVE_LIMIT } from './support/sqsFixture';
 import { connectionRow, expandRow, findRow, openRowMenu } from './support/tree';

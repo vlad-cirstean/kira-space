@@ -1,8 +1,8 @@
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { connectAndExpand, connectionCreateArgs } from './support/connect';
 import { editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
 import {
   APP_PATH,
   ORDER_ITEMS_PATH,

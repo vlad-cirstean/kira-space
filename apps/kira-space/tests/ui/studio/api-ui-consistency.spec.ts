@@ -1,8 +1,8 @@
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { grpcTab, modeTab, openHttpModeAndNewRequest } from './support/apiMode';
 import { stableBoundingBox } from './support/editorText';
-import { IPC } from './support/ipcChannels';
 
 // A small, Api-only spec (the SPEC's module-boundary rule — "a single test file covering
 // both is not") guarding three things a restyle can genuinely regress, not the restyles

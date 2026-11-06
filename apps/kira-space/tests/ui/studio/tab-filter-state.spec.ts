@@ -4,12 +4,12 @@ import {
   portSnapshots as redisPorts,
 } from '../../ipc/redis/redis.fixture';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { openHttpModeAndNewRequest } from './support/apiMode';
 import { connectAndExpand, connectionCreateArgs } from './support/connect';
 import { acceptConfirm } from './support/dialogs';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
 import type { StudioPortSnapshot } from './support/mockStream';
 import {
   APP_PATH,

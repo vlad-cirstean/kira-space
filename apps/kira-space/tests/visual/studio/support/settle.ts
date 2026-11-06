@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect } from '../../../ui/studio/fixtures';
+import { expect } from '../../../ui/fixtures';
 
 // Icons are the codicon web font, loaded on first use. On a starved runner the glyphs paint late,
 // so two consecutive captures differ and toHaveScreenshot never gets a stable pair. Wait until no

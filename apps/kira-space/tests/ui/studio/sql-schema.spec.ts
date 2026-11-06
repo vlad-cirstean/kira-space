@@ -1,11 +1,11 @@
 import type { Locator, Page } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { createConnection, openConsoleFromMenu } from './support/connect';
 import { postgresCreateArgs } from './support/connectionArgs';
 import { hoverWord, typeInto } from './support/editor';
 import { editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
 import {
   APP_PATH,
   appSchemaColumnsSnapshot,

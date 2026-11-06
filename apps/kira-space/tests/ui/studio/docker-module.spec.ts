@@ -1,7 +1,9 @@
 import en from '../../../../../packages/theme/src/i18n/en.json';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { modeTab } from './support/apiMode';
-import { contract } from './support/contract';
 import {
   container,
   ENDPOINT,
@@ -12,8 +14,6 @@ import {
   seedContainers,
   setupDocker,
 } from './support/dockerFixture';
-import { IPC } from './support/ipcChannels';
-import { emitWailsEvent } from './support/mockRuntime';
 import { assertTooltipShows } from './support/tooltip';
 
 const DOWN_STATUS = {

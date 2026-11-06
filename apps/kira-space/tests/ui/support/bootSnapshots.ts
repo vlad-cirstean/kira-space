@@ -1,7 +1,16 @@
 import { defaultLayout } from '@shared/domain/layout';
+import type { SecretStorageStatus } from '@shared/domain/secrets';
 import { defaultSettings } from '../../../frontend/src/state/settingsDomain';
+import { defaultSettings as defaultStudioSettings } from '../../../frontend/src/studio/state/settingsDomain';
 import { IPC } from './ipcChannels';
 import type { ControlSnapshot } from './types';
+
+const KEYCHAIN_AVAILABLE: SecretStorageStatus = {
+  available: true,
+  backend: 'keychain',
+  insecureFallback: false,
+  reason: null,
+};
 
 /**
  * The `Promise.all` `apps/kira-space/frontend/src/main.ts`'s `bootstrap()` fires before `mount()`
@@ -40,6 +49,13 @@ export const EMPTY_BOOT_SNAPSHOTS: readonly ControlSnapshot[] = [
   },
   { channel: IPC.scriptRunsList, response: [] },
   { channel: IPC.promptsList, response: [] },
+  // The databases module's bootstrap(): its own settings, connections, mask-rule counts and ops.
+  { channel: IPC.studioSettingsGetAll, response: defaultStudioSettings },
+  { channel: IPC.connectionsList, response: [] },
+  { channel: IPC.connectionsStates, response: [] },
+  { channel: IPC.connectionsSecretsStatus, response: KEYCHAIN_AVAILABLE },
+  { channel: IPC.maskRulesCounts, response: {} },
+  { channel: IPC.studioOpsRecent, response: [] },
 ];
 
 /** A spec's own snapshot for a channel replaces the default outright, rather than being appended

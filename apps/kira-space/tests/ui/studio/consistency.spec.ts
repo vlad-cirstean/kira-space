@@ -1,10 +1,11 @@
 import type { Locator, Page } from '@playwright/test';
 import { installDockerMocks } from '../../../../../packages/docker-ui/src/testing/ui/dockerMock';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
+import { emitWailsEvent } from '../support/mockRuntime';
 import { modeTab, openHttpModeAndNewRequest } from './support/apiMode';
 import { PG_CONN } from './support/copyScenarios';
-import { IPC } from './support/ipcChannels';
 import {
   kubeError,
   loc,
@@ -12,7 +13,6 @@ import {
   openKubernetes,
   setupKubernetes,
 } from './support/kubernetesFixture';
-import { emitWailsEvent } from './support/mockRuntime';
 import { openSettings } from './support/settings';
 import { connectionRow } from './support/tree';
 

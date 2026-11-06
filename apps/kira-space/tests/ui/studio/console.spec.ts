@@ -2,7 +2,8 @@ import type { Page } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ColumnDescriptor } from '@shared/protocol/page';
 import type { ControlSnapshot, LogicalPage, PortSnapshot } from '../../ipc/support/types';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { installClipboardSpy, lastClipboardWrite } from './support/clipboard';
 import {
   connectAndExpand,
@@ -14,7 +15,6 @@ import { mongoCreateArgs } from './support/connectionArgs';
 import { executeSnap, intColumnPage, numberPage } from './support/consolePages';
 import { typeInto } from './support/editor';
 import { editorText } from './support/editorText';
-import { IPC } from './support/ipcChannels';
 import {
   DB_PATH as MONGO_DB_PATH,
   connectAndExpandControl as mongoConnectAndExpandControl,

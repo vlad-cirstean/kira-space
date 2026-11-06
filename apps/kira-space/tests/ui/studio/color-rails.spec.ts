@@ -1,7 +1,7 @@
 import type { ConnectionSummary } from '@shared/domain/connection';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { IPC } from '../support/ipcChannels';
 import { modeTab } from './support/apiMode';
-import { IPC } from './support/ipcChannels';
 
 // P226: one colour mark across modules. The Studio connection tree rail and the script
 // rail share one class string and geometry; apps/kira-space/tests/ui/color-rails.spec.ts pins

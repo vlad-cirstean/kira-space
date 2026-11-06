@@ -18,10 +18,9 @@ import {
   controlSnapshots as sqsControl,
   portSnapshots as sqsPorts,
 } from '../../ipc/sqs/sqs.fixture';
-import { expect, type KiraApp, test } from '../../ui/studio/fixtures';
+import { expect, type KiraApp, studioTest as test } from '../../ui/fixtures';
 import { grpcTab, modeTab } from '../../ui/studio/support/apiMode';
 import { connectPostgres, ITEMS_CONTROL, ITEMS_PORT } from '../../ui/studio/support/copyScenarios';
-import { IPC } from '../../ui/studio/support/ipcChannels';
 import {
   executeHits,
   kibanaControl,
@@ -42,6 +41,7 @@ import {
   openBrowseLeaf,
   openRowMenu,
 } from '../../ui/studio/support/tree';
+import { IPC } from '../../ui/support/ipcChannels';
 
 // P433 heap probe: per tab kind, JS heap per open tab, switch rounds, six minutes away, close all.
 // Chromium only (CDP); report-only. `bunx playwright test -c playwright.perf.config.ts heap-tabs

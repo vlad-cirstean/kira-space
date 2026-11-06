@@ -3,9 +3,9 @@ import type { KibanaDataView, KibanaHistogram, KibanaSuggestions } from '@shared
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ColumnDescriptor } from '@shared/protocol/page';
 import type { ControlSnapshot, PortSnapshot } from '../../../ipc/support/types';
-import { contract } from './contract';
+import { contract } from '../../support/contract';
+import { IPC } from '../../support/ipcChannels';
 import { connectionSummary } from './engineFixture';
-import { IPC } from './ipcChannels';
 
 // Answers come from the Go flow TestKibanaDiscoverJourney (contract kibana-discover), so the UI
 // half asserts against the very results the backend half produced.

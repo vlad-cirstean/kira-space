@@ -6,9 +6,8 @@ import {
   RssSampler,
 } from '@workbench/testing/ui/perfProbe';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { connectAndExpand, connectionCreateArgs } from '../../ui/studio/support/connect';
-import { IPC } from '../../ui/studio/support/ipcChannels';
 import {
   APP_CHILDREN,
   APP_PATH,
@@ -16,6 +15,7 @@ import {
   postgresConnectionSummary,
 } from '../../ui/studio/support/postgresFixture';
 import { expandRow } from '../../ui/studio/support/tree';
+import { IPC } from '../../ui/support/ipcChannels';
 
 // Project tree: one schema with NTABLES (default 5000) tables, expand time plus momentum flicks.
 

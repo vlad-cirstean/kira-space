@@ -1,15 +1,15 @@
 import type { Page } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from '../../ui/studio/fixtures';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { createConnection } from '../../ui/studio/support/connect';
 import { mariadbCreateArgs } from '../../ui/studio/support/connectionArgs';
-import { IPC } from '../../ui/studio/support/ipcChannels';
 import {
   DB_PATH,
   mariadbConnectionSummary,
   orderItemsFixture,
 } from '../../ui/studio/support/mariadbFixture';
 import { connectionRow, expandRow, openRowMenu } from '../../ui/studio/support/tree';
+import { IPC } from '../../ui/support/ipcChannels';
 import { settleFonts } from './support/settle';
 
 // v1.4 P6 (docs/HISTORY.md (v1.4 P6)): the SQL console at rest with

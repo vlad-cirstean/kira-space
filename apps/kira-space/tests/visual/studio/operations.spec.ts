@@ -1,7 +1,7 @@
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, test } from '../../ui/studio/fixtures';
-import { IPC } from '../../ui/studio/support/ipcChannels';
+import { expect, studioTest as test } from '../../ui/fixtures';
 import { postgresConnectionSummary } from '../../ui/studio/support/postgresFixture';
+import { IPC } from '../../ui/support/ipcChannels';
 import { settleFonts } from './support/settle';
 
 // P432: the Operations dock at rest, then with one failed op expanded.
@@ -29,7 +29,7 @@ const CONTROL: ControlSnapshot[] = [
     response: [postgresConnectionSummary('conn-vis-ops', 'Warehouse DB', 'blue')],
   },
   {
-    channel: IPC.opsRecent,
+    channel: IPC.studioOpsRecent,
     response: [
       op({ id: 'op-a' }),
       op({

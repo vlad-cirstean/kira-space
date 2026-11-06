@@ -6,10 +6,10 @@ import {
   scriptsSnapshotSchema,
 } from '@shared/domain/scripts';
 import { codeEditorText } from '@workbench/testing/ui/codeEditor';
-import { expect, test } from './fixtures';
+import { expect, studioTest as test } from '../fixtures';
+import { contract } from '../support/contract';
+import { IPC } from '../support/ipcChannels';
 import { modeTab } from './support/apiMode';
-import { contract } from './support/contract';
-import { IPC } from './support/ipcChannels';
 import { openSettings } from './support/settings';
 
 // Contracts runs-form and automations. Backend half: termflow TestRunsFormStudio (the mcp edits)
