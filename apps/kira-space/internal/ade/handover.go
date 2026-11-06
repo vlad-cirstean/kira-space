@@ -21,6 +21,13 @@ import (
 // maxHandoverBytes bounds a handover body, whoever writes it.
 const maxHandoverBytes = agentmcp.MaxHandoverBytes
 
+// maxNoteBytes bounds a user note (state note); drafts and handed rows keep maxHandoverBytes.
+const maxNoteBytes = 1 << 20
+
+func noteTooLong() error {
+	return invalid("%s", i18n.T("backend.space.ade.notesTooLong.body", nil))
+}
+
 // handoverTooLong is the refusal for a body over the limit.
 func handoverTooLong() error {
 	return invalid("%s", i18n.T("backend.space.ade.handoverTooLong.body", nil))
@@ -231,17 +238,66 @@ func (b *TaskBoard) DismissHandover(_ context.Context, taskID string) error {
 	return nil
 }
 
-// UpdateHandover replaces a row's body; an empty body deletes the row. A draft's deletion closes its prompt.
-func (b *TaskBoard) UpdateHandover(_ context.Context, id, body string) error {
-	if len(body) > maxHandoverBytes {
-		return handoverTooLong()
+// AddNote appends a user note to the task's chain, stamped with the stage the task is in. Archived tasks refuse.
+func (b *TaskBoard) AddNote(_ context.Context, taskID, body string) (adewire.Handover, error) {
+	if strings.TrimSpace(body) == "" {
+		return adewire.Handover{}, invalid("a note needs text")
 	}
+	if len(body) > maxNoteBytes {
+		return adewire.Handover{}, noteTooLong()
+	}
+	mu := b.taskMu(taskID)
+	mu.Lock()
+	defer mu.Unlock()
+	tc, err := b.loadTaskCtx(taskID)
+	if err != nil {
+		return adewire.Handover{}, err
+	}
+	cur := b.currentStepID(tc)
+	now := b.deps.Now().UnixMilli()
+	n, err := b.deps.Tasks.AddNote(model.AdeHandover{
+		ID: ids.NewID(), TaskID: taskID, FromStepID: cur, FromStepName: stepName(tc, cur), Body: body, CreatedAt: now,
+	})
+	if err != nil {
+		return adewire.Handover{}, err
+	}
+	b.notifyBoard()
+	return toWireHandover(n), nil
+}
+
+// userNotes joins the task's user notes, newest first, with a blank line between; the prompts' Notes input.
+func (b *TaskBoard) userNotes(taskID string) string {
+	rows, err := b.deps.Tasks.Notes(taskID)
+	if err != nil {
+		slog.Warn("ade: read notes", "scope", "ade", "task", taskID, "err", err)
+		return ""
+	}
+	return joinNotes(rows)
+}
+
+func joinNotes(rows []model.AdeHandover) string {
+	bodies := make([]string, len(rows))
+	for i, n := range rows {
+		bodies[i] = n.Body
+	}
+	return strings.Join(bodies, "\n\n")
+}
+
+// UpdateHandover replaces a row's body; an empty body deletes the row. A draft's deletion closes its prompt.
+// A note row may reach maxNoteBytes; the others maxHandoverBytes.
+func (b *TaskBoard) UpdateHandover(_ context.Context, id, body string) error {
 	row, err := b.deps.Tasks.GetHandover(id)
 	if err != nil {
 		return err
 	}
 	if row == nil {
 		return invalid("handover %s not found", id)
+	}
+	switch {
+	case row.State == model.AdeHandoverNote && len(body) > maxNoteBytes:
+		return noteTooLong()
+	case row.State != model.AdeHandoverNote && len(body) > maxHandoverBytes:
+		return handoverTooLong()
 	}
 	mu := b.taskMu(row.TaskID)
 	mu.Lock()
@@ -317,4 +373,5 @@ func applyHandovers(t *adewire.Task, bh repos.BoardHandover) {
 		t.HandoverIn = &w
 	}
 	t.HandoverDrafts = toWireHandovers(bh.Drafts)
+	t.Notes = joinNotes(bh.Notes)
 }

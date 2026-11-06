@@ -131,9 +131,10 @@ func (b *TaskBoard) CreateTask(ctx context.Context, args adewire.CreateTaskArgs)
 	if err := b.requireRepos(args.CodeRepoIDs); err != nil {
 		return adewire.Task{}, err
 	}
+	var entryName string
 	task := model.AdeTask{
 		ID: ids.NewID(), Kind: model.AdeTaskKindTask, Title: title, JiraKey: jiraKey, JiraURL: jiraURL,
-		HostURL: args.HostURL, Notes: args.Notes, CreatedAt: b.deps.Now().UnixMilli(),
+		HostURL: args.HostURL, CreatedAt: b.deps.Now().UnixMilli(),
 	}
 	if args.WorkflowID != "" {
 		if b.deps.Workflows == nil {
@@ -144,6 +145,11 @@ func (b *TaskBoard) CreateTask(ctx context.Context, args adewire.CreateTaskArgs)
 			return adewire.Task{}, invalid("workflow %q not found", args.WorkflowID)
 		}
 		task.WorkflowID, task.EntryStepID = wf.ID, firstStepID(wf)
+		for _, st := range wf.Steps {
+			if st.ID == task.EntryStepID {
+				entryName = cmpNonEmpty(st.Name, st.ID)
+			}
+		}
 	}
 	for id := range args.Bases {
 		if !slices.Contains(args.CodeRepoIDs, id) {
@@ -161,7 +167,13 @@ func (b *TaskBoard) CreateTask(ctx context.Context, args adewire.CreateTaskArgs)
 			Position: i, AddedAt: task.CreatedAt, Base: base, BaseBranchID: baseBranchID,
 		}
 	}
-	stored, err := b.deps.Tasks.CreateTask(task, branches, args.Day)
+	var note *model.AdeHandover
+	if strings.TrimSpace(args.Notes) != "" {
+		note = &model.AdeHandover{
+			ID: ids.NewID(), TaskID: task.ID, FromStepID: task.EntryStepID, FromStepName: entryName, Body: args.Notes, CreatedAt: task.CreatedAt,
+		}
+	}
+	stored, err := b.deps.Tasks.CreateTask(task, branches, args.Day, note)
 	if err != nil {
 		return adewire.Task{}, err
 	}
@@ -176,7 +188,7 @@ func (b *TaskBoard) UpdateTask(ctx context.Context, args adewire.UpdateTaskArgs)
 	if p.Jira != nil && p.ClearJira {
 		return adewire.Task{}, invalid("jira and clearJira are mutually exclusive")
 	}
-	patch := model.AdeTaskPatch{Title: p.Title, HostURL: p.HostURL, Est: p.Est, Notes: p.Notes, Color: p.Color, Kind: p.Kind, StatusID: p.StatusID}
+	patch := model.AdeTaskPatch{Title: p.Title, HostURL: p.HostURL, Est: p.Est, Color: p.Color, Kind: p.Kind, StatusID: p.StatusID}
 	if p.Title != nil {
 		trimmed := strings.TrimSpace(*p.Title)
 		patch.Title = &trimmed
@@ -462,7 +474,7 @@ func (b *TaskBoard) attachExistingBranch(ctx context.Context, args adewire.AddEx
 			task.Kind, task.Owner = model.AdeTaskKindReview, target.row.AuthorName
 		}
 		sb = model.AdeTaskBranch{ID: ids.NewID(), TaskID: task.ID, CodeRepoID: args.CodeRepoID, Name: args.Name, Kind: target.kind, AddedAt: now}
-		if task, err = b.deps.Tasks.CreateTask(task, []model.AdeTaskBranch{sb}, nil); err != nil {
+		if task, err = b.deps.Tasks.CreateTask(task, []model.AdeTaskBranch{sb}, nil, nil); err != nil {
 			return adewire.AddExistingBranchResult{}, err
 		}
 	} else {

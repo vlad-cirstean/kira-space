@@ -495,11 +495,12 @@ type Task struct {
 	Workflow         *Workflow `json:"workflow"`
 	WorkflowOutdated bool      `json:"workflowOutdated"`
 	Est              string    `json:"est"`
-	Notes            string    `json:"notes"`
-	Color            int       `json:"color"`
-	BranchIDs        []string  `json:"branchIds"`
-	Runs             []Run     `json:"runs"`
-	CreatedAt        int64     `json:"createdAt"`
+	// Notes is derived and read-only: the task's user notes, newest first, joined by a blank line.
+	Notes     string   `json:"notes"`
+	Color     int      `json:"color"`
+	BranchIDs []string `json:"branchIds"`
+	Runs      []Run    `json:"runs"`
+	CreatedAt int64    `json:"createdAt"`
 	// StatusID is the task's status; StatusBy says who set it last: 'auto' (a step change) or 'user'.
 	StatusID string `json:"statusId"`
 	StatusBy string `json:"statusBy"`
@@ -548,6 +549,7 @@ type BranchRequest struct {
 // Handover is the text one stage leaves for the next. A draft (State 'draft', ToStepID empty) is open until
 // the task moves; a handed row is one stage move. Step names are snapshots; a step id of 'done' is past
 // the last step. Source is 'agent' (a session's handover call), 'run' (a finished run's summary) or 'user'.
+// State 'note' is a user note: Source 'user', FromStep* the stage it was written in, ToStep* empty.
 type Handover struct {
 	ID           string `json:"id"`
 	TaskID       string `json:"taskId"`
@@ -568,6 +570,12 @@ type Handover struct {
 
 type HandoversResult struct {
 	Handovers []Handover `json:"handovers"`
+}
+
+// AddNoteArgs appends a user note to a task's chain.
+type AddNoteArgs struct {
+	TaskID string `json:"taskId"`
+	Body   string `json:"body"`
 }
 
 type UpdateHandoverArgs struct {
@@ -823,7 +831,7 @@ type CreateTaskArgs struct {
 	Title       string   `json:"title"`
 	Jira        *Jira    `json:"jira"`
 	HostURL     string   `json:"hostUrl"`
-	Notes       string   `json:"notes"`
+	Notes       string   `json:"notes"` // first note; '' adds none
 	CodeRepoIDs []string `json:"codeRepoIds"`
 	WorkflowID  string   `json:"workflowId"`
 	// Bases maps a code repo id to the base of its branch; a missing repo starts from main.
@@ -838,7 +846,6 @@ type TaskPatch struct {
 	ClearJira bool    `json:"clearJira"`
 	HostURL   *string `json:"hostUrl"`
 	Est       *string `json:"est"`
-	Notes     *string `json:"notes"`
 	Color     *int    `json:"color"`
 	Kind      *string `json:"kind"` // 'task' | 'parked'
 	// StatusID moves the task to that status by hand.

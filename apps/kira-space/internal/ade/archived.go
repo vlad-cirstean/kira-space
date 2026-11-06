@@ -51,6 +51,7 @@ func (b *TaskBoard) ArchivedTask(ctx context.Context, taskID string) (adewire.Ar
 		ids = append(ids, r.ID)
 	}
 	wt := b.toWireTask(t, ids, runs, reviews)
+	wt.Notes = b.userNotes(taskID)
 	decorateTask(&wt, t, b.liveWorkflows())
 
 	out := adewire.ArchivedTask{
@@ -209,6 +210,7 @@ func (b *TaskBoard) RestoreTask(ctx context.Context, taskID string) (adewire.Tas
 		ids = append(ids, br.ID)
 	}
 	wt := b.toWireTask(tc.task, ids, runs, reviews)
+	wt.Notes = b.userNotes(taskID)
 	decorateTask(&wt, tc.task, b.liveWorkflows())
 	return wt, nil
 }

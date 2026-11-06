@@ -180,17 +180,21 @@ func (s *CaptureService) add(ctx context.Context, e captureEntry, title string, 
 		return CaptureResult{}, err
 	}
 	res := CaptureResult{TaskID: task.ID}
-	var patch adewire.TaskPatch
 	if e.item.Text != title {
-		patch.Notes = &e.item.Text
+		if _, err := s.Tasks.AddNote(ctx, adewire.AddNoteArgs{TaskID: task.ID, Body: e.item.Text}); err != nil {
+			res.Notice = i18n.T("backend.space.capture.partial.body",
+				map[string]string{"title": title, "error": strings.TrimSuffix(errText(err), ".")})
+			return res, nil
+		}
 	}
+	var patch adewire.TaskPatch
 	if s.singleLink(e.item.Text) {
 		if _, ok := s.Tasks.Hosts.ParseLink(e.item.Text); ok {
 			patch.HostURL = &e.item.Text
 		}
 	}
 	patch.Jira = e.jira
-	if patch.Notes != nil || patch.HostURL != nil || patch.Jira != nil {
+	if patch.HostURL != nil || patch.Jira != nil {
 		if _, err := s.Tasks.UpdateTask(ctx, adewire.UpdateTaskArgs{TaskID: task.ID, Patch: patch}); err != nil {
 			res.Notice = i18n.T("backend.space.capture.partial.body",
 				map[string]string{"title": title, "error": strings.TrimSuffix(errText(err), ".")})

@@ -267,11 +267,6 @@ func validateUpdateTask(a adewire.UpdateTaskArgs) error {
 			return err
 		}
 	}
-	if p.Notes != nil {
-		if err := validateAdeNotes(*p.Notes); err != nil {
-			return err
-		}
-	}
 	if p.Color != nil && (*p.Color < 0 || *p.Color >= adeTaskMaxColor) {
 		return adeTaskInvalid("color is out of range")
 	}
@@ -969,13 +964,26 @@ func (s *AdeTaskService) Handovers(ctx context.Context, args adewire.TaskArgs) (
 	return adewire.HandoversResult{Handovers: rows}, adeTaskError(err)
 }
 
-// UpdateHandover replaces a handover row's body; an empty body deletes it.
+// AddNote appends a user note to the task's notes chain.
+func (s *AdeTaskService) AddNote(ctx context.Context, args adewire.AddNoteArgs) (adewire.Handover, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return adewire.Handover{}, err
+	}
+	if err := validateAdeNotes(args.Body); err != nil {
+		return adewire.Handover{}, err
+	}
+	h, err := s.Engine.AddNote(ctx, args.TaskID, args.Body)
+	return h, adeTaskError(err)
+}
+
+// UpdateHandover replaces a handover row's body (a note up to 1 MiB, other rows up to 16 KiB); an empty body deletes it.
 func (s *AdeTaskService) UpdateHandover(ctx context.Context, args adewire.UpdateHandoverArgs) error {
 	ctx = adeUserCtx(ctx)
 	if err := validateAdeItemID(args.ID, "id"); err != nil {
 		return err
 	}
-	if err := validateAdeHandoverNotes(&args.Body); err != nil {
+	if err := validateAdeNotes(args.Body); err != nil {
 		return err
 	}
 	return adeTaskError(s.Engine.UpdateHandover(ctx, args.ID, args.Body))

@@ -652,7 +652,7 @@ func (b *TaskBoard) LaunchStep(ctx context.Context, args adewire.LaunchStepArgs)
 	}
 	message := args.Message
 	if message == "" {
-		message = composeManualMessage(b.prompts(), step, taskTitle(tc.task, tc.branches), tc.task.JiraKey, tc.task.JiraURL, tc.task.Notes, lines, folder, b.handoverFor(tc, step.ID))
+		message = composeManualMessage(b.prompts(), step, taskTitle(tc.task, tc.branches), tc.task.JiraKey, tc.task.JiraURL, b.userNotes(tc.task.ID), lines, folder, b.handoverFor(tc, step.ID))
 	}
 	pa := PrepareArgs{TaskID: tc.task.ID, StepID: step.ID, Cwd: cwd, Message: message, Settings: step.Settings, Provider: step.Agent}
 	if len(extra) > 0 {

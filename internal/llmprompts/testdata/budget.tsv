@@ -106,7 +106,7 @@ headless.tool.run_outcome.arg.branch	30
 headless.tool.run_outcome.arg.kind	88
 headless.tool.run_outcome.arg.limit	34
 headless.tool.handover	130
-headless.tool.handover.arg.notes	91
+headless.tool.handover.arg.notes	138
 headless.tool.handover.arg.finished	104
 headless.handover.ack	37
 headless.tool.report_artifacts	184
@@ -123,13 +123,13 @@ headless.tool.git.arg.worktree	36
 headless.tool.git.arg.args	93
 ade.rebase.prompt	338
 ade.step.prompt	909
-ade.manual.message	780
+ade.manual.message	801
 ade.manual.sandboxNote	330
-ade.review.message	905
-ade.start.message	685
+ade.review.message	926
+ade.start.message	706
 ade.repoLine	79
 ade.handoverBlock	59
-ade.handoverLine	94
+ade.handoverLine	115
 ade.jiraLine	55
 ade.rebase.contextLine	95
 ade.sendBack.line	63

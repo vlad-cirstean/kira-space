@@ -1001,7 +1001,7 @@ var HeadlessToolHandover = define(Entry{
 }, NoVars{})
 
 var (
-	_ = arg(HeadlessToolHandover.id, "notes", spaceApp, NextCall, `What you did, what is left, what the next stage must know. Plain text, at most {{.Max}} bytes.`, MaxVars{Max: 16384})
+	_ = arg(HeadlessToolHandover.id, "notes", spaceApp, NextCall, `What you did, what is left, what the next stage must know. Markdown, at most {{.Max}} bytes. Shown in the task's notes; the user may edit it.`, MaxVars{Max: 16384})
 	_ = arg(HeadlessToolHandover.id, "finished", spaceApp, NextCall, `true when your stage's work is done: Kira Space then offers the user to move the task on. Default false.`, NoVars{})
 )
 
@@ -1284,7 +1284,7 @@ var AdeHandoverLine = define(Entry{
 	TitleKey:   "llmPrompts.entry.adeHandoverLine.title",
 	PurposeKey: "llmPrompts.entry.adeHandoverLine.description",
 	UsedByKey:  "llmPrompts.entry.adeHandoverLine.usedBy.body",
-	Default:    `Call handover with notes for the next stage. Set finished true when this stage's work is done.`,
+	Default:    `Call handover with notes for the next stage; they join the task's notes. Set finished true when this stage is done.`,
 }, NoVars{})
 
 // AdeRepoLine is one repository line of a launch message.

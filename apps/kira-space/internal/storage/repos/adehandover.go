@@ -32,6 +32,42 @@ func (r *AdeTaskRepo) Handovers(taskID string) ([]model.AdeHandover, error) {
 		ORDER BY CASE state WHEN 'draft' THEN updated_at ELSE created_at END DESC, rowid DESC`, taskID)
 }
 
+// Notes lists the task's user notes, newest first.
+func (r *AdeTaskRepo) Notes(taskID string) ([]model.AdeHandover, error) {
+	return r.queryHandovers(`SELECT `+handoverCols+` FROM ade_task_handovers WHERE task_id = ? AND state = 'note'
+		ORDER BY created_at DESC, rowid DESC`, taskID)
+}
+
+func insertNote(tx *sql.Tx, h model.AdeHandover) error {
+	if _, err := tx.Exec(`INSERT INTO ade_task_handovers
+		(id, task_id, from_step_id, from_step_name, body, source, state, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, 'user', 'note', ?, ?)`,
+		h.ID, h.TaskID, h.FromStepID, h.FromStepName, h.Body, h.CreatedAt, h.CreatedAt); err != nil {
+		return fmt.Errorf("repos: insert note %s: %w", h.TaskID, err)
+	}
+	return nil
+}
+
+// AddNote stores a user note; h.FromStep* snapshot the task's stage.
+func (r *AdeTaskRepo) AddNote(h model.AdeHandover) (model.AdeHandover, error) {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return model.AdeHandover{}, fmt.Errorf("repos: begin add note %s: %w", h.TaskID, err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	if err := insertNote(tx, h); err != nil {
+		return model.AdeHandover{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return model.AdeHandover{}, fmt.Errorf("repos: commit add note %s: %w", h.TaskID, err)
+	}
+	n, err := r.GetHandover(h.ID)
+	if err != nil || n == nil {
+		return model.AdeHandover{}, fmt.Errorf("repos: read note %s: %w", h.ID, err)
+	}
+	return *n, nil
+}
+
 // GetHandover returns the row, (nil, nil) when it does not exist.
 func (r *AdeTaskRepo) GetHandover(id string) (*model.AdeHandover, error) {
 	return sqlitex.QueryOne(r.DB, func(row *sql.Row) (*model.AdeHandover, error) {
@@ -70,13 +106,15 @@ func (r *AdeTaskRepo) FinishedDrafts() ([]model.AdeHandover, error) {
 		WHERE state = 'draft' AND finished = 1 AND dismissed = 0 AND task_id IN (SELECT id FROM ade_tasks WHERE archived_at IS NULL)`)
 }
 
-// BoardHandover is one task's board facts: the newest handed row and its open drafts.
+// BoardHandover is one task's board facts: the newest handed row, its open drafts and its user notes
+// (newest first).
 type BoardHandover struct {
 	In     *model.AdeHandover
 	Drafts []model.AdeHandover
+	Notes  []model.AdeHandover
 }
 
-// BoardHandovers reads the newest handed row and the open drafts of every live task in two queries.
+// BoardHandovers reads the newest handed row the open drafts and the user notes of every live task in three queries.
 func (r *AdeTaskRepo) BoardHandovers() (map[string]BoardHandover, error) {
 	out := map[string]BoardHandover{}
 	latest, err := r.queryHandovers(`SELECT ` + handoverCols + ` FROM ade_task_handovers h
@@ -99,6 +137,16 @@ func (r *AdeTaskRepo) BoardHandovers() (map[string]BoardHandover, error) {
 		bh := out[d.TaskID]
 		bh.Drafts = append(bh.Drafts, d)
 		out[d.TaskID] = bh
+	}
+	notes, err := r.queryHandovers(`SELECT ` + handoverCols + ` FROM ade_task_handovers WHERE state = 'note'
+		ORDER BY created_at DESC, rowid DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("repos: board notes: %w", err)
+	}
+	for _, n := range notes {
+		bh := out[n.TaskID]
+		bh.Notes = append(bh.Notes, n)
+		out[n.TaskID] = bh
 	}
 	return out, nil
 }

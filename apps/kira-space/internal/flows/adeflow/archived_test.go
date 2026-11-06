@@ -34,9 +34,12 @@ func TestArchivedTaskKeepsData(t *testing.T) {
 	notes, est, hostURL := "<p>remember the cache</p>", "3h", "https://forge.test/acme/api/-/merge_requests/9"
 	jira := &adewire.Jira{Key: "KIRA-12", URL: "https://jira.test/browse/KIRA-12"}
 	if _, err := app.W.AdeTask.UpdateTask(ctx, adewire.UpdateTaskArgs{TaskID: f.taskID, Patch: adewire.TaskPatch{
-		Notes: &notes, Est: &est, HostURL: &hostURL, Jira: jira,
+		Est: &est, HostURL: &hostURL, Jira: jira,
 	}}); err != nil {
 		t.Fatalf("UpdateTask: %v", err)
+	}
+	if _, err := app.W.AdeTask.AddNote(ctx, adewire.AddNoteArgs{TaskID: f.taskID, Body: notes}); err != nil {
+		t.Fatalf("AddNote: %v", err)
 	}
 	f.start(t, archivedBranch)
 	run := waitRun(t, app, f.taskID, "one", "done")

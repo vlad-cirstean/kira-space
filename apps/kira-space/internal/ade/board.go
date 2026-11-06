@@ -578,7 +578,7 @@ func (b *TaskBoard) assemble(d boardData, repoIDs []string, results map[string]*
 func (b *TaskBoard) toWireTask(t model.AdeTask, branchIDs []string, runs []model.AdeRun, reviews map[string]model.AdeReview) adewire.Task {
 	out := adewire.Task{
 		ID: t.ID, Kind: t.Kind, Title: t.Title, Owner: t.Owner, HostURL: t.HostURL, HostLink: b.hostLink(t.HostURL), WorkflowID: t.WorkflowID,
-		EntryStepID: t.EntryStepID, Since: map[string]int{}, Est: t.Est, Notes: t.Notes, Color: t.Color, CreatedAt: t.CreatedAt,
+		EntryStepID: t.EntryStepID, Since: map[string]int{}, Est: t.Est, Color: t.Color, CreatedAt: t.CreatedAt,
 		StatusID: t.StatusID, StatusBy: t.StatusBy, StatusStep: t.StatusStep,
 		BranchIDs: make([]string, 0, len(branchIDs)), Runs: make([]adewire.Run, 0, len(runs)),
 		HandoverDrafts: []adewire.Handover{}, BranchRequestID: b.branchRequestOf(t.ID),

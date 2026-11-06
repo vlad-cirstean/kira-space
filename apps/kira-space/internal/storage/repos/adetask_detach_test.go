@@ -44,7 +44,7 @@ func TestAdeTaskRepo_DetachBranch(t *testing.T) {
 			stacked.BaseBranchID, stacked.Base = tc.detach, "ignored"
 			queued := br("q", "r2", "", model.AdeBranchKindMine, 3)
 			queued.QueuedAfter = tc.detach
-			if _, err := tasks.CreateTask(model.AdeTask{ID: "T", Kind: model.AdeTaskKindTask, Title: "t", CreatedAt: 1}, []model.AdeTaskBranch{c, d, stacked, queued}, nil); err != nil {
+			if _, err := tasks.CreateTask(model.AdeTask{ID: "T", Kind: model.AdeTaskKindTask, Title: "t", CreatedAt: 1}, []model.AdeTaskBranch{c, d, stacked, queued}, nil, nil); err != nil {
 				t.Fatalf("create: %v", err)
 			}
 			if tc.withRun {

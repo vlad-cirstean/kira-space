@@ -7,6 +7,7 @@ const (
 	AdeHandoverSourceUser  = "user"
 	AdeHandoverDraft       = "draft"
 	AdeHandoverHanded      = "handed"
+	AdeHandoverNote        = "note"
 )
 
 // AdeHandover is one row of ade_task_handovers: the text one stage leaves for the next. A draft

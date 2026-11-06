@@ -42,7 +42,7 @@ type promptInput struct {
 	Message string
 	// Extra, when non-empty, is added after the body (the failure line of a fresh send-back run).
 	Extra string
-	// Notes are the task notes; Handover and HandoverFrom what the previous stage left (the stage name).
+	// Notes are the task's user notes, newest first; Handover and HandoverFrom what the previous stage left (the stage name).
 	// They stay when Message replaces the composed header.
 	Notes, Handover, HandoverFrom string
 	// Context lines (a rebase that did not finish) go after the body.

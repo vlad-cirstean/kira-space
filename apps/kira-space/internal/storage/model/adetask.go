@@ -47,7 +47,6 @@ type AdeTask struct {
 	WorkflowJSON string
 	WorkflowHash string
 	Est          string
-	Notes        string
 	Color        int
 	CreatedAt    int64
 	ArchivedAt   *int64
@@ -76,7 +75,6 @@ type AdeTaskPatch struct {
 	JiraURL *string
 	HostURL *string
 	Est     *string
-	Notes   *string
 	Color   *int
 	Kind    *string
 	// StatusID moves the task to that status by hand (status_by = user).
