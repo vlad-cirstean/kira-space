@@ -16,6 +16,6 @@ func DocModel() (configfs.DocModel, error) {
 		return configfs.DocModel{}, err
 	}
 	m := d.doc
-	m.App, m.Title, m.Pattern, m.Format, m.Intro = "Studio", "Connections", "<id>.yaml", "YAML", introText
+	m.App, m.Title, m.Pattern, m.Format, m.Intro = "Space", "Connections", "<id>.yaml", "YAML", introText
 	return m, nil
 }

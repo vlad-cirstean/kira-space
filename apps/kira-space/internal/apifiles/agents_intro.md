@@ -1,4 +1,4 @@
-Kira Studio's Api module reads this folder. Each collection is a `<id>.collection.yaml` file and each environment a `<id>.environment.yaml` file.
+Kira Space's Api module reads this folder. Each collection is a `<id>.collection.yaml` file and each environment a `<id>.environment.yaml` file.
 
 Substitution:
 

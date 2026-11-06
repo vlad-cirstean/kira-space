@@ -21,7 +21,7 @@ func DocModel() (configfs.DocModel, error) {
 		return configfs.DocModel{}, err
 	}
 	c, e := d.collectionDoc, d.environmentDoc
-	c.App, c.Pattern, c.Format, c.Intro = "Studio", "<id>.collection.yaml", "YAML", collectionIntro
-	e.App, e.Pattern, e.Format, e.Intro = "Studio", "<id>.environment.yaml", "YAML", environmentIntro
-	return configfs.DocModel{App: "Studio", Title: "Api", Intro: agentsIntro, Sections: []configfs.DocModel{c, e}}, nil
+	c.App, c.Pattern, c.Format, c.Intro = "Space", "<id>.collection.yaml", "YAML", collectionIntro
+	e.App, e.Pattern, e.Format, e.Intro = "Space", "<id>.environment.yaml", "YAML", environmentIntro
+	return configfs.DocModel{App: "Space", Title: "Api", Intro: agentsIntro, Sections: []configfs.DocModel{c, e}}, nil
 }
