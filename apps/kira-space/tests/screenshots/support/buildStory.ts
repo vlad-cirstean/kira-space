@@ -311,7 +311,7 @@ const CODE: Record<number, string> = {
   102: '',
   103: 'export function escapeCell(value: unknown): string {',
 };
-const CHANGED_100 = "  return `${[header, ...lines].join('\\r\\n')}\\r\\n`;";
+const CHANGED_100 = `  return \`\${[header, ...lines].join('\\r\\n')}\\r\\n\`;`;
 
 const codeLine = (n: number, changed: boolean) =>
   n === 100 && changed ? CHANGED_100 : (CODE[n] ?? '');
@@ -329,7 +329,7 @@ function storyDiff() {
     ...line,
     text: codeLine(
       (line.newLine ?? line.oldLine) as number,
-      line.kind === 'add' || line.kind === 'context' ? true : false,
+      line.kind === 'add' || line.kind === 'context',
     ),
   });
   return {
