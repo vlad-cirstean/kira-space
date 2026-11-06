@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
 import { expect, studioTest as test } from '../fixtures';
+import { dbOp } from '../support/dbOps';
 import { IPC } from '../support/ipcChannels';
 import { createConnection } from './support/connect';
 import {
@@ -58,7 +59,7 @@ const CONTROL: ControlSnapshot[] = [
     response: CONNECTION_SUMMARY,
   },
   ...FIXTURE.control,
-  { channel: IPC.studioOpsRecent, response: [OP_RECORD] },
+  { channel: IPC.opsRecent, response: [dbOp(OP_RECORD)] },
 ];
 
 async function connectAndOpenGrid(page: Page): Promise<void> {

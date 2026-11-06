@@ -76,7 +76,7 @@ export const controlSnapshots: ControlSnapshot[] = [
     },
   },
   {
-    channel: 'kira:ops:recent',
+    channel: 'kira:oplog:recent',
     response: [],
   },
   {

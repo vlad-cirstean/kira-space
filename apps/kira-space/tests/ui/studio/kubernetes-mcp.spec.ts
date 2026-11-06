@@ -96,11 +96,11 @@ test('contract: a Kubernetes read shows the cluster and answers by item id', asy
 });
 
 test('contract: the Operations panel shows an MCP Kubernetes read', async ({ relaunch }) => {
-  const ops = contract<Record<string, unknown>[]>(SCENARIO, 'StudioOpsService.Recent');
+  const ops = contract<Record<string, unknown>[]>(SCENARIO, 'OpsService.Recent');
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.connectionsList, response: [] },
-      { channel: IPC.studioOpsRecent, response: ops },
+      { channel: IPC.opsRecent, response: ops },
     ],
   });
 

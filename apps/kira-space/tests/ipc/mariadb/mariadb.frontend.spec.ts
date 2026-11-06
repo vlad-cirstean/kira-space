@@ -72,7 +72,7 @@ test('mariadb (frontend, mocked IPC) — connect, tree, data tab, count, filter,
   await expect(page.locator('[data-testid="toolbar-stop"]')).toBeDisabled({ timeout: 2_000 });
 
   const controlLog = control.log();
-  const cancelCall = controlLog.find((entry) => entry.channel === 'kira:ops:cancel');
+  const cancelCall = controlLog.find((entry) => entry.channel === 'kira:oplog:cancel');
   expect(cancelCall).toBeTruthy();
   expect(typeof (cancelCall?.args as { opId?: unknown } | undefined)?.opId).toBe('string');
 

@@ -23,14 +23,14 @@ const hydrate = (op: Op, i: number): Op => ({
   durationMs: op.status === 'running' ? null : 40 + i,
   error: op.status === 'error' ? `cluster call ${i} failed` : op.error,
 });
-const recent = () => k<Op[]>('StudioOpsService.Recent').map(hydrate);
-const running = () => hydrate(k<Op[]>('StudioOpsService.Recent:running')[0], 99);
+const recent = () => k<Op[]>('OpsService.Recent').map(hydrate);
+const running = () => hydrate(k<Op[]>('OpsService.Recent:running')[0], 99);
 
 test('contract: the Operations panel lists every Kubernetes action', async ({ relaunch }) => {
   const ops = recent();
   const { page } = await setupKubernetes(relaunch, {}, [
     { channel: IPC.connectionsList, response: [] },
-    { channel: IPC.studioOpsRecent, response: ops },
+    { channel: IPC.opsRecent, response: ops },
   ]);
 
   await page.click('[data-testid="toggle-operations-panel"]');
@@ -60,7 +60,7 @@ test('contract: Cancel in the panel ends a running log stream', async ({ relaunc
   const live = running();
   const { page, kube, control } = await setupKubernetes(relaunch, {}, [
     { channel: IPC.connectionsList, response: [] },
-    { channel: IPC.studioOpsRecent, response: [] },
+    { channel: IPC.opsRecent, response: [] },
   ]);
   await openKubernetes(page);
   await openKind(page, 'kind-dev', 'v1/pods');
@@ -70,7 +70,7 @@ test('contract: Cancel in the panel ends a running log stream', async ({ relaunc
   const { streamId } = kube.calls('LogsOpen')[0].args as { streamId: string };
 
   await page.click('[data-testid="toggle-operations-panel"]');
-  await emitWailsEvent(page, IPC.studioOpUpdate, live);
+  await emitWailsEvent(page, IPC.opUpdate, live);
   await expect(loc(page, 'op-row')).toHaveCount(1);
   await loc(page, 'op-row').click({ button: 'right' });
   await page.locator('[data-testid="menu-item-cancel"]').click();
@@ -78,12 +78,12 @@ test('contract: Cancel in the panel ends a running log stream', async ({ relaunc
     .poll(() =>
       control
         .log()
-        .filter((e) => e.channel === IPC.studioOpsCancel)
+        .filter((e) => e.channel === IPC.opsCancel)
         .map((e) => e.args),
     )
     .toEqual([{ opId: live.id }]);
 
-  await emitWailsEvent(page, IPC.studioOpUpdate, {
+  await emitWailsEvent(page, IPC.opUpdate, {
     ...live,
     status: 'cancelled',
     durationMs: 1200,

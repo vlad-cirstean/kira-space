@@ -42,16 +42,14 @@ export interface OpLogStoreOptions<R extends OpLogRecord> {
   searchText?: (record: R) => string;
   /** Marks high-volume records: a separate 300-row lane, hidden until `showBackground`. */
   background?: (record: R) => boolean;
-  /** Value the facet dropdown filters on (Space: module, Studio: connection id). */
+  /** Value the facet dropdown filters on (module; a database op: its connection). */
   facet?: (record: R) => string;
-  /** Pinia id; a second feed in one app (Studio's) needs its own. */
-  storeId?: string;
 }
 
 export function createOpLogStore<R extends OpLogRecord>(options: OpLogStoreOptions<R>) {
   const { control, searchText, background, facet } = options;
 
-  return defineStore(options.storeId ?? 'opLog', () => {
+  return defineStore('opLog', () => {
     // Vue's own `reactive<T>` return type (`UnwrapNestedRefs<T>`) recomputes a structurally-equal
     // but nominally different type for a generic `R` — this cast restores the plain type below
     // without changing `reactive`'s actual runtime behavior at all (createTabsStore.ts's own

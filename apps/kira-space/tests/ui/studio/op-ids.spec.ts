@@ -18,7 +18,7 @@ import {
 const V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const ID = 'conn-op-ids';
 
-const [recorded] = contract<Record<string, unknown>[]>('op-id-guard', 'StudioOpsService.Recent');
+const [recorded] = contract<Record<string, unknown>[]>('op-id-guard', 'OpsService.Recent');
 
 test('a console run sends a v7 opId; a v4 op row still shows in the widget', async ({
   relaunch,
@@ -29,6 +29,7 @@ test('a console run sends a v7 opId; a v4 op row still shows in the widget', asy
     ...recorded,
     id: '3f2504e0-4f89-41d3-9a0c-0305e82c3301',
     status: 'running',
+    cancellable: true,
     connectionId: ID,
     startedAt: new Date().toISOString(),
   };
@@ -40,8 +41,8 @@ test('a console run sends a v7 opId; a v4 op row still shows in the widget', asy
       response: summary,
     },
     ...fixture.control,
-    { channel: IPC.studioOpsRecent, response: [legacy] },
-    { channel: IPC.studioOpsCancel, response: null },
+    { channel: IPC.opsRecent, response: [legacy] },
+    { channel: IPC.opsCancel, response: null },
   ];
   const port: PortSnapshot[] = [
     ...fixture.port,
@@ -64,6 +65,6 @@ test('a console run sends a v7 opId; a v4 op row still shows in the widget', asy
   await page.locator('[data-testid="status-ops"]').click();
   await row.locator('[data-testid="status-ops-stop"]').click();
   await expect
-    .poll(() => log.log().find((e) => e.channel === IPC.studioOpsCancel)?.args)
+    .poll(() => log.log().find((e) => e.channel === IPC.opsCancel)?.args)
     .toEqual({ opId: '3f2504e0-4f89-41d3-9a0c-0305e82c3301' });
 });

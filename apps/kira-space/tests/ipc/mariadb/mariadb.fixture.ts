@@ -232,7 +232,7 @@ export const controlSnapshots: ControlSnapshot[] = [
     },
   },
   {
-    channel: 'kira:ops:cancel',
+    channel: 'kira:oplog:cancel',
   },
 ];
 

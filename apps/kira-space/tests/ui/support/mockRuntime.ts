@@ -362,8 +362,6 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   treeInvalidate: 'TreeService.Invalidate',
   filtersList: 'FiltersService.List',
   filtersReplace: 'FiltersService.Replace',
-  studioOpsRecent: 'StudioOpsService.Recent',
-  studioOpsCancel: 'StudioOpsService.Cancel',
   httpSend: 'HttpService.Send',
   // P90 item 2's three cookie bound calls.
   httpCookies: 'HttpService.Cookies',
@@ -717,7 +715,6 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   [IPC.proofChooseShotFolder]: '{"canceled":true,"id":"","path":""}',
   [IPC.proofSavePngTo]: '{"path":""}',
   [IPC.proofForgetShotFolder]: 'null',
-  [IPC.studioOpsCancel]: 'null',
   [IPC.queriesHistoryRecord]: 'null',
   [IPC.treeInvalidate]: 'null',
   [IPC.treeDescribe]: JSON.stringify({ meta: EMPTY_OBJECT_META, source: 'server' }),
@@ -825,10 +822,10 @@ export async function installControlMocks(
       }
       return undefined;
     },
-    // studioOpsCancel (never snapshotted) releases the stream replies held by `untilCancel`
+    // opsCancel (never snapshotted) releases the stream replies held by `untilCancel`
     // snapshots; a spec asserts the cancelled op id from `control.log()`.
     resolveMissingBody: (channel, byChannel) => {
-      if (channel === IPC.studioOpsCancel) {
+      if (channel === IPC.opsCancel) {
         void page
           .evaluate(() =>
             (

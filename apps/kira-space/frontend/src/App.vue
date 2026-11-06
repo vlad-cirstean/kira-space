@@ -70,7 +70,7 @@ import GitCredentialDialog from './workbench/GitCredentialDialog.vue';
 import { createWorkbenchHost } from './workbench/host';
 import MobilePairingDialog from './workbench/MobilePairingDialog.vue';
 import { createMemoryModule } from './workbench/memoryModule';
-import { MODE_ORDER, MODES, STUDIO_MODES } from './workbench/modes';
+import { CONNECTION_PANEL_MODES, MODE_ORDER, MODES } from './workbench/modes';
 import SettingsDialog from './workbench/SettingsDialog.vue';
 import WorkbenchShell from './workbench/WorkbenchShell.vue';
 
@@ -129,7 +129,7 @@ const mainWindow = (): boolean =>
   !openedFilesWindow.active &&
   !proofWindow.active;
 const panelLabel = computed(() =>
-  STUDIO_MODES.has(modeStore.active)
+  CONNECTION_PANEL_MODES.has(modeStore.active)
     ? t('common.module.connections.label')
     : t('common.module.repositories.label'),
 );

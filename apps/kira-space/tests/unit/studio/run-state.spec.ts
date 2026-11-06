@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { setActivePinia } from 'pinia';
-import type { OpRecord } from '../../../../../packages/shared/domain/ops';
+import type { SpaceOpRecord } from '../../../frontend/src/state/opsDomain';
 import { pinia } from '../../../frontend/src/state/pinia';
 
 // state/runState.ts is a plain computed() over state/ops.ts's reactive() store —
@@ -17,12 +17,14 @@ setActivePinia(pinia);
 // runState.ts's own module-level `useOpsStore(pinia)` call already resolves against this same
 // singleton (state/pinia.ts) — reusing it here (rather than a fresh createPinia()) is what makes
 // this the identical store instance runState.ts's watchEffect/useRunState read.
-const { useStudioOpsStore } = await import('../../../frontend/src/studio/state/ops');
+const { useOpsStore } = await import('../../../frontend/src/state/ops');
 const { useRunState } = await import('../../../frontend/src/studio/state/runState');
 
-const opsStore = useStudioOpsStore();
+const opsStore = useOpsStore();
 
-function record(partial: Partial<OpRecord> & Pick<OpRecord, 'id' | 'tabId' | 'status'>): OpRecord {
+function record(
+  partial: Partial<SpaceOpRecord> & Pick<SpaceOpRecord, 'id' | 'tabId' | 'status'>,
+): SpaceOpRecord {
   return {
     connectionId: null,
     startedAt: new Date().toISOString(),
@@ -32,6 +34,19 @@ function record(partial: Partial<OpRecord> & Pick<OpRecord, 'id' | 'tabId' | 'st
     command: null,
     error: null,
     source: 'user',
+    category: 'db',
+    module: 'database',
+    trigger: 'user',
+    subject: '',
+    repoRoot: '',
+    repoName: '',
+    taskId: '',
+    parentId: '',
+    background: false,
+    repeat: 1,
+    steps: [],
+    stepsDropped: 0,
+    cancellable: true,
     ...partial,
   };
 }

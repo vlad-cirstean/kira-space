@@ -1,13 +1,14 @@
-import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, studioTest as test } from '../fixtures';
-import { contract } from '../support/contract';
-import { IPC } from '../support/ipcChannels';
-import { emitWailsEvent } from '../support/mockRuntime';
+import type { ControlSnapshot } from '../ipc/support/types';
+import { expect, studioTest as test } from './fixtures';
 import {
   POSTGRES_CAPS,
   postgresConnectionSummary,
   SERVER_VERSION,
-} from './support/postgresFixture';
+} from './studio/support/postgresFixture';
+import { contract } from './support/contract';
+import { dbOp } from './support/dbOps';
+import { IPC } from './support/ipcChannels';
+import { emitWailsEvent } from './support/mockRuntime';
 
 // The op log (workbench/panels/OperationsPanel.vue) is the fifth of the five search gaps found.
 // Its own always-visible filter (a TextField with icon="filter", opsState.ts's own filterText)
@@ -19,7 +20,7 @@ import {
 const NOW = '2026-01-01T00:00:00.000Z';
 
 function opRecord(overrides: Record<string, unknown>): Record<string, unknown> {
-  return {
+  return dbOp({
     id: 'op-1',
     connectionId: null,
     tabId: null,
@@ -32,7 +33,7 @@ function opRecord(overrides: Record<string, unknown>): Record<string, unknown> {
     error: null,
     source: 'user',
     ...overrides,
-  };
+  });
 }
 
 test('Operations panel — the filter matches the connection name, not only the command', async ({
@@ -44,7 +45,7 @@ test('Operations panel — the filter matches the connection name, not only the 
 
   const CONTROL: ControlSnapshot[] = [
     { channel: IPC.connectionsList, response: [CONN] },
-    { channel: IPC.studioOpsRecent, response: [OP_A, OP_B] },
+    { channel: IPC.opsRecent, response: [OP_A, OP_B] },
   ];
   const { window: page } = await relaunch({ control: CONTROL });
 
@@ -101,7 +102,7 @@ test('Operations panel — a truncated command cannot be re-run, but can still b
         },
       ],
     },
-    { channel: IPC.studioOpsRecent, response: [TRUNCATED, WHOLE] },
+    { channel: IPC.opsRecent, response: [TRUNCATED, WHOLE] },
   ];
   const { window: page } = await relaunch({ control: CONTROL });
 
@@ -217,7 +218,7 @@ test('Operations panel — arrows, Home/End, Enter and Space toggle detail, Shif
     opRecord({ id, command: `select ${i}`, startedAt: `2026-01-01T00:0${i}:00.000Z` }),
   );
   const { window: page } = await relaunch({
-    control: [{ channel: IPC.studioOpsRecent, response: ops }],
+    control: [{ channel: IPC.opsRecent, response: ops }],
   });
 
   await page.click('[data-testid="toggle-operations-panel"]');
@@ -287,7 +288,7 @@ test('contract: a pre-connect script row ticks a live timer and cannot be re-run
           },
         ],
       },
-      { channel: IPC.studioOpsRecent, response: [] },
+      { channel: IPC.opsRecent, response: [] },
     ],
   });
   const t0 = Date.now();
@@ -295,7 +296,7 @@ test('contract: a pre-connect script row ticks a live timer and cannot be re-run
   await page.clock.pauseAt(t0 + 1000);
   await page.click('[data-testid="toggle-operations-panel"]');
 
-  await emitWailsEvent(page, IPC.studioOpUpdate, {
+  await emitWailsEvent(page, IPC.opUpdate, {
     ...running,
     ...base,
     startedAt: new Date(t0 + 1000).toISOString(),
@@ -309,7 +310,7 @@ test('contract: a pre-connect script row ticks a live timer and cannot be re-run
   await page.clock.runFor(2000);
   await expect(elapsed).toHaveText('0:02');
 
-  await emitWailsEvent(page, IPC.studioOpUpdate, { ...ok, ...base, durationMs: 2300 });
+  await emitWailsEvent(page, IPC.opUpdate, { ...ok, ...base, durationMs: 2300 });
   await expect(elapsed).toHaveCount(0);
   await expect(row).toContainText('2.3');
 
@@ -335,7 +336,7 @@ test('contract: a delayed pre-connect row counts down before the connect', async
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.connectionsList, response: [CONN] },
-      { channel: IPC.studioOpsRecent, response: [] },
+      { channel: IPC.opsRecent, response: [] },
     ],
   });
   const t0 = Date.now();
@@ -343,7 +344,7 @@ test('contract: a delayed pre-connect row counts down before the connect', async
   await page.clock.pauseAt(t0 + 1000);
   await page.click('[data-testid="toggle-operations-panel"]');
 
-  await emitWailsEvent(page, IPC.studioOpUpdate, {
+  await emitWailsEvent(page, IPC.opUpdate, {
     ...running,
     id: 'op-pre-delay',
     connectionId: 'conn-pre-2',
@@ -364,11 +365,11 @@ test('contract: a delayed pre-connect row counts down before the connect', async
 // P328: the source column tells MCP tool calls from the user's own ops. Backend half:
 // TestDbMcpOpsCarrySource.
 test('contract: an op shows whether the user or MCP ran it', async ({ relaunch }) => {
-  const ops = contract<Record<string, unknown>[]>('ops-source', 'StudioOpsService.Recent');
+  const ops = contract<Record<string, unknown>[]>('ops-source', 'OpsService.Recent');
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.connectionsList, response: [] },
-      { channel: IPC.studioOpsRecent, response: ops },
+      { channel: IPC.opsRecent, response: ops },
     ],
   });
 
@@ -398,7 +399,7 @@ test('Operations panel — detail shows highlighted command, full error and fiel
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.connectionsList, response: [CONN] },
-      { channel: IPC.studioOpsRecent, response: [op] },
+      { channel: IPC.opsRecent, response: [op] },
     ],
   });
 
@@ -431,7 +432,7 @@ test('Operations panel — Connection facet filters and a narrow dock drops Sour
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.connectionsList, response: [A, B] },
-      { channel: IPC.studioOpsRecent, response: ops },
+      { channel: IPC.opsRecent, response: ops },
     ],
   });
 

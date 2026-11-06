@@ -12,8 +12,8 @@ import ProjectPanel from '../studio/workbench/panels/ProjectPanel.vue';
 import StudioStart from '../studio/workbench/panels/StudioStart.vue';
 
 // Space modules first, then the database, API, Docker and Kubernetes modules.
-/** Modes fed by the Studio backend (connections, API, Docker, Kubernetes). */
-export const STUDIO_MODES: ReadonlySet<AppMode> = new Set([
+/** Modes whose project panel lists connections (database, API, Docker, Kubernetes). */
+export const CONNECTION_PANEL_MODES: ReadonlySet<AppMode> = new Set([
   'studio',
   'api',
   'docker',

@@ -374,8 +374,7 @@ export const IPC = {
   memoryDistillToImport: 'kira:memory:distilltoimport',
   memoryDistill: 'kira:memory:distill',
   // Databases module (formerly Kira Studio's own table). The studio* keys are the Studio twins of
-  // Space keys of the same name; studioOpsRecent/studioOpsCancel keep the legacy `kira:ops:*` strings
-  // baked into tests/ipc captures.
+  // Space keys of the same name.
   appInfo: 'kira:app:info',
   newConnection: 'kira:menu:newConnection',
   viewRefresh: 'kira:menu:viewRefresh',
@@ -414,8 +413,6 @@ export const IPC = {
   treeInvalidate: 'kira:tree:invalidate',
   filtersList: 'kira:filters:list',
   filtersReplace: 'kira:filters:replace',
-  studioOpsRecent: 'kira:ops:recent',
-  studioOpsCancel: 'kira:ops:cancel',
   httpSend: 'kira:http:send',
   // P90 item 2's three cookie bound calls.
   httpCookies: 'kira:http:cookies',
@@ -545,7 +542,6 @@ export const IPC = {
   connectionConfigChanged: 'kira:connectionConfig:changed',
   connectionFiltersChanged: 'kira:connection:filtersChanged',
   schemaChanged: 'kira:schema:changed',
-  studioOpUpdate: 'studio:kira:op:update',
   proofSessions: 'kira:proof:sessions',
   proofSession: 'kira:proof:session',
   proofStep: 'kira:proof:step',

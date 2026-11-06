@@ -19,7 +19,7 @@ Twins: every Studio twin in `plans/TWINS.md` is merged by P538, P539, P540 or P5
 | P542 | Unified notes: user notes and agent handovers in one chain | Done |
 | P543 | Proof as an artifact chain in the task details panel | Done |
 | P544 Part 1 | One database | Done |
-| P544 Part 2 | Settings and op log twins | Pending |
+| P544 Part 2 | Settings and op log twins | Done |
 | P545 | Timeline becomes a toggle merged into the same list | Pending |
 | P546 | Forward panel edits (diff only) to agents running in the step | Pending |
 | P547 | Kira DB audit trail in the details panel | Pending |
@@ -190,6 +190,7 @@ Result:
 - Ask: one settings service, store and panel; one op log table, service, store and panel (TWINS B544-3, B544-4). Needs Part 1's single DB.
 - Acceptance: every line of Part 1's acceptance list prints nothing or fails as stated.
 - Plan: `plans/P544.md` (`## Part 2`).
+- Result: Done. Settings: one `SettingsService`, `settings` table, `settings:changed` channel and frontend store; database sections (`cache`, `dbMcp`, `advanced` leaves, log level `advanced.gitLogLevel`) are leaves of it, `DbSettingsRepo` and `StudioSettings*` gone, a cache budget change reaches the router through `PushCacheConfig`. Op log: migration 0080 folds `db_op_log` into `op_log` (category `db`); `oplog.DbSource` replaces `studiooplog`; `OpsService` is the only op service, `StudioOpsService`, `bridge/studio_ops.go`, `repos/ops.go` and `DbOps` deleted; `dbfold` maps studio `op_log` straight into `op_log`. Frontend: `useStudioOpsStore`, the Studio panel and the dock feed switch deleted; `workbench/OperationsPanel.vue` lists every module with connection dot, rows column, Reveal tab, Re-run, preconnect countdown and a per-connection facet; `storeId` gone from `createOpLogStore`. Bound services 59, prompts 269. Studio `operations` and `running-ops-status` UI specs now live at `tests/ui/operations-db.spec.ts` and `running-ops-db.spec.ts`. Deviations: `stored_bytes` and the byte budget dropped from the database op log; database rows share the foreground lane cap of 500; a database command is capped at 64 KiB with an ellipsis; `Prune` split by category; `TestOpIDs` v4-list assertion and the op_log byte-index test removed.
 
 ### P545 Timeline becomes a toggle merged into the same list
 

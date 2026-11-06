@@ -6,7 +6,6 @@ import { initConnectionConfigSync } from './state/connectionConfig';
 import { useConnectionsStore } from './state/connections';
 import { useDbMcpStore } from './state/dbmcp';
 import { initMaskRulesSync, loadMaskRuleCounts } from './state/maskRules';
-import { useStudioOpsStore } from './state/ops';
 import { initSavedQueriesSync } from './state/savedQueriesSync';
 import { useSchemaColumnsStore } from './state/schemaColumns';
 import { initSchemaSync } from './state/schemas';
@@ -30,6 +29,5 @@ export function hydrateStudio(): Promise<unknown[]> {
     useConnectionsStore(pinia).hydrateConnections(),
     loadMaskRuleCounts(),
     useDbMcpStore(pinia).hydrateDbMcp(),
-    useStudioOpsStore(pinia).hydrateOps(),
   ]);
 }

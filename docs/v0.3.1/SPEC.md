@@ -34,7 +34,7 @@ Sequencing: P551 needs v0.3.0 P549 (WebP, frame) and P550 (image pipeline), both
 
 ### P552 Go SQL query builder for the app's SQLite
 
-- Ask: use an existing, well-maintained, fully open-source Go SQL query builder for the app's own SQLite (repos under `apps/kira-space/internal/storage` and `studiostorage/repos`, or their merged successor). Decline hand-rolling. Migrations stay SQL files.
+- Ask: use an existing, well-maintained, fully open-source Go SQL query builder for the app's own SQLite (repos under `apps/kira-space/internal/storage` and `storage/repos`, or their merged successor). Decline hand-rolling. Migrations stay SQL files.
 - Design so a PostgreSQL backend can be added later. Keep in mind: dialect abstraction, placeholders, upsert and `RETURNING`, identifier quoting, type mapping (booleans, timestamps, JSON, blobs), transactions, migrations runner per dialect, concurrency and locking differences, pagination, full text, SQLite-only code (pragmas, rowid, `INSERT OR REPLACE`, `strftime`/`datetime`).
 - Not in scope: Postgres support itself.
 - Needs v0.3.0 P544 landed.

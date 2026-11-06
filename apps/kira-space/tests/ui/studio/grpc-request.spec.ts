@@ -549,7 +549,7 @@ test('gRPC request — Stop cancels an in-flight stream and keeps what arrived',
   await page.click('[data-testid="grpc-request-stop"]');
   // opsCancel is a void wildcard default (mockRuntime.ts's WILDCARD_DEFAULTS) — consumed, not
   // seeded, exactly as §6.4's own wording says.
-  await expect.poll(() => control.log().some((e) => e.channel === IPC.studioOpsCancel)).toBe(true);
+  await expect.poll(() => control.log().some((e) => e.channel === IPC.opsCancel)).toBe(true);
 
   await emitWailsEvent(page, IPC.grpcCall, {
     callId,
@@ -1359,7 +1359,7 @@ test('gRPC contract — a server stream delivers messages and Stop ends it', asy
   await expect(page.locator('[data-testid="grpc-request-stop"]')).toBeEnabled();
 
   await page.click('[data-testid="grpc-request-stop"]');
-  await expect.poll(() => control.log().some((e) => e.channel === IPC.studioOpsCancel)).toBe(true);
+  await expect.poll(() => control.log().some((e) => e.channel === IPC.opsCancel)).toBe(true);
   await emitWailsEvent(page, IPC.grpcCall, { ...cancelled, callId });
 
   await expect(page.locator('[data-testid="grpc-request-stop"]')).toBeDisabled();

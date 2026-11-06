@@ -21,7 +21,6 @@ import { useSettingsStore } from '../state/settings';
 import { TAB_KINDS } from '../state/tabKinds';
 import { useTabsStore } from '../state/tabs';
 import { useConnectionsStore } from '../studio/state/connections';
-import { useStudioOpsStore } from '../studio/state/ops';
 import { blameLineText, blameLineTooltip } from '../views/repo/blameLine';
 import AgentUsageItem from './AgentUsageItem.vue';
 
@@ -32,7 +31,6 @@ const modeStore = useModeStore();
 const settingsStore = useSettingsStore();
 const { info: agentInfo } = useAgentInfo();
 const opsStore = useOpsStore();
-const studioOpsStore = useStudioOpsStore();
 const connectionsStore = useConnectionsStore();
 const tabsStore = useTabsStore();
 const automations = useAutomationsModule();
@@ -42,32 +40,29 @@ const automationItems = useRunningAutomationItems();
 const opItems = computed<RunningOpItem[]>(() =>
   opsStore.records
     .filter((r) => r.status === 'running' && !r.background)
-    .map((r) => ({
-      id: r.id,
-      label: r.kind,
-      detail: r.subject || r.repoName,
-      startedAt: Date.parse(r.startedAt),
-      canStop: r.cancellable,
-      stop: () => void opsStore.cancelOp(r.id),
-    })),
-);
-// The Studio feed (databases, API, Docker, Kubernetes) runs in parallel with Space's.
-const studioOpItems = computed<RunningOpItem[]>(() =>
-  studioOpsStore.records
-    .filter((r) => r.status === 'running')
     .map((r) => {
+      if (r.category !== 'db') {
+        return {
+          id: r.id,
+          label: r.kind,
+          detail: r.subject || r.repoName,
+          startedAt: Date.parse(r.startedAt),
+          canStop: r.cancellable,
+          stop: () => void opsStore.cancelOp(r.id),
+        };
+      }
       const tab = r.tabId ? tabsStore.tabs.find((x) => x.id === r.tabId) : undefined;
       return {
         id: r.id,
         label: connectionsStore.connectionRecord(r.connectionId)?.name ?? r.kind,
         detail: tab ? `${r.kind} · ${TAB_KINDS[tab.kind].title(tab)}` : r.kind,
         startedAt: Date.parse(r.startedAt),
-        canStop: true,
-        stop: () => void studioOpsStore.cancelOp(r.id),
+        canStop: r.cancellable,
+        stop: () => void opsStore.cancelOp(r.id),
       };
     }),
 );
-const items = computed(() => [...opItems.value, ...studioOpItems.value, ...automationItems.value]);
+const items = computed(() => [...opItems.value, ...automationItems.value]);
 
 // P76 §5.2: 'none' and 'uncommitted' both render nothing — an always-present "Uncommitted" readout
 // is the extension's own choice; this bar hides items with nothing to say instead.

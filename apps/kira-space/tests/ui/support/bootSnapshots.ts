@@ -53,7 +53,7 @@ export const EMPTY_BOOT_SNAPSHOTS: readonly ControlSnapshot[] = [
   { channel: IPC.connectionsStates, response: [] },
   { channel: IPC.connectionsSecretsStatus, response: KEYCHAIN_AVAILABLE },
   { channel: IPC.maskRulesCounts, response: {} },
-  { channel: IPC.studioOpsRecent, response: [] },
+  { channel: IPC.opsRecent, response: [] },
 ];
 
 /** A spec's own snapshot for a channel replaces the default outright, rather than being appended

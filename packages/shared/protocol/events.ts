@@ -33,8 +33,6 @@ export const CHANNEL = {
   settingsChanged: 'kira:settings:changed',
   layoutChanged: 'kira:layout:changed',
   opUpdate: 'kira:op:update',
-  // Studio's op payloads (StudioOpsService) ride a prefixed channel; the plain names above stay Space's.
-  studioOpUpdate: 'studio:kira:op:update',
   opBatch: 'kira:op:batch',
   appMetrics: 'kira:app:metrics',
   schemaChanged: 'kira:schema:changed',

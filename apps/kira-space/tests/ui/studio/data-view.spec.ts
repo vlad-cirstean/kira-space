@@ -4,6 +4,7 @@ import { boxCenter, sortableHover } from '@workbench/testing/ui/drag';
 import type { ControlSnapshot, LogicalPage } from '../../ipc/support/types';
 import { MD5_ROWS } from '../../support/seeds/md5Rows';
 import { expect, studioTest as test } from '../fixtures';
+import { dbOp } from '../support/dbOps';
 import { IPC } from '../support/ipcChannels';
 import { emitWailsEvent } from '../support/mockRuntime';
 import { installClipboardSpy, lastClipboardWrite } from './support/clipboard';
@@ -1549,36 +1550,44 @@ test('data view — pagination, count, projection, sort, filter, search, stop, N
     .first()
     .getAttribute('data-tab-id');
   if (!activeTabId) throw new Error('expected an active tab id');
-  await emitWailsEvent(page, IPC.studioOpUpdate, {
-    id: 'op-synthetic-run-state-colour',
-    connectionId: CONNECTION_ID,
-    tabId: activeTabId,
-    startedAt: new Date().toISOString(),
-    durationMs: null,
-    kind: 'read',
-    status: 'running',
-    rows: null,
-    command: null,
-    error: null,
-  });
+  await emitWailsEvent(
+    page,
+    IPC.opUpdate,
+    dbOp({
+      id: 'op-synthetic-run-state-colour',
+      connectionId: CONNECTION_ID,
+      tabId: activeTabId,
+      startedAt: new Date().toISOString(),
+      durationMs: null,
+      kind: 'read',
+      status: 'running',
+      rows: null,
+      command: null,
+      error: null,
+    }),
+  );
   await expect(page.locator('[data-testid="run-state"]').first()).toHaveCSS(
     'color',
     'rgb(105, 161, 232)',
   );
   // Close out the synthetic record so it doesn't linger as "running" once the real stop-flow below
   // clears the optimistic rt.opId — opsStore only updates on the next matching-id push.
-  await emitWailsEvent(page, IPC.studioOpUpdate, {
-    id: 'op-synthetic-run-state-colour',
-    connectionId: CONNECTION_ID,
-    tabId: activeTabId,
-    startedAt: new Date().toISOString(),
-    durationMs: 1,
-    kind: 'read',
-    status: 'cancelled',
-    rows: null,
-    command: null,
-    error: null,
-  });
+  await emitWailsEvent(
+    page,
+    IPC.opUpdate,
+    dbOp({
+      id: 'op-synthetic-run-state-colour',
+      connectionId: CONNECTION_ID,
+      tabId: activeTabId,
+      startedAt: new Date().toISOString(),
+      durationMs: 1,
+      kind: 'read',
+      status: 'cancelled',
+      rows: null,
+      command: null,
+      error: null,
+    }),
+  );
   await page.fill('[data-testid="filter-where-input"]', '(SELECT pg_sleep(2)) IS NULL OR id > 0');
   await page.press('[data-testid="filter-where-input"]', 'Enter');
   await expect(page.locator('[data-testid="toolbar-stop"]')).toBeEnabled();
@@ -1595,7 +1604,7 @@ test('data view — pagination, count, projection, sort, filter, search, stop, N
     .poll(() =>
       control
         .log()
-        .filter((e) => e.channel === IPC.studioOpsCancel)
+        .filter((e) => e.channel === IPC.opsCancel)
         .map((e) => e.args),
     )
     .toEqual([{ opId: inFlightRead?.opId }]);

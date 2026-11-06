@@ -1094,7 +1094,7 @@ own `op:end`, so one adapter's crash can't leave that op stuck `running`; (2) `i
 (P58f D9) — finishes any row still `running` when the op-event channel itself closes, e.g. at
 shutdown. A hard kill of the whole process (SIGKILL, OOM, a panic outside `safeRun`) still leaves
 `running` rows on next launch, same as before P58f; there's nothing left this manual procedure
-would exercise that `apps/kira-space/internal/adapterhost` and `apps/kira-space/internal/studiooplog`'s own unit tests don't
+would exercise that `apps/kira-space/internal/adapterhost` and `apps/kira-space/internal/oplog`'s own unit tests don't
 already cover.
 
 **Log file retention (F12, D12)** — now `internal/logging`'s `Sweep`, which deletes `kira-*.log`

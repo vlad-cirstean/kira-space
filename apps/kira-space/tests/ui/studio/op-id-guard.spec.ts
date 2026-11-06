@@ -14,7 +14,7 @@ import {
 // A malformed op id is refused with E_QUERY and leaves no row; a reused id keeps the first op's
 // history row. Contract op-id-guard. Backend half: dbmcpflow TestOpIDGuard.
 
-const [recorded] = contract<Record<string, unknown>[]>('op-id-guard', 'StudioOpsService.Recent');
+const [recorded] = contract<Record<string, unknown>[]>('op-id-guard', 'OpsService.Recent');
 const ID = 'conn-op-guard';
 
 test('a refused op shows the error, leaves no running row, and history keeps the first op', async ({
@@ -31,7 +31,7 @@ test('a refused op shows the error, leaves no running row, and history keeps the
       response: summary,
     },
     ...fixture.control,
-    { channel: IPC.studioOpsRecent, response: [history] },
+    { channel: IPC.opsRecent, response: [history] },
   ];
   const port: PortSnapshot[] = [
     ...fixture.port,

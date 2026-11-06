@@ -15287,14 +15287,8 @@
       }
     },
     "operations": {
-      "clear": {
-        "hint": "Clears the in-memory ring only. Retention of op_log is automatic. Script runs come from the run history (newest 500 kept) and are hidden here, not deleted."
-      },
       "commandTruncated": {
         "status": "Command truncated at 64 kibibytes, can’t be re-run"
-      },
-      "empty": {
-        "hint": "Queries, connections and HTTP calls show here."
       },
       "field": {
         "path": {

@@ -11,7 +11,6 @@ import type * as WailsModels from '@bindings/models.js';
 import * as ProofService from '@bindings/proofservice.js';
 import * as QueriesService from '@bindings/queriesservice.js';
 import * as SchemaService from '@bindings/schemaservice.js';
-import * as OpsService from '@bindings/studioopsservice.js';
 import * as TreeService from '@bindings/treeservice.js';
 import type * as DataGripModels from '@bindings-internal/datagrip/models.js';
 import type {
@@ -46,7 +45,6 @@ import {
 } from '@shared/domain/kibana';
 import type { MaskRule, MaskRuleFields } from '@shared/domain/mask';
 import type { MaskReviewListing, MaskReviewPending } from '@shared/domain/maskReview';
-import type { OpRecord } from '@shared/domain/ops';
 import type {
   ProofChanged,
   ProofDetail,
@@ -422,11 +420,6 @@ const studioControl = {
     unwrap(ProofService.ForgetShotFolder({ folderId })),
   onProofChanged: (cb: (event: ProofChanged) => void): (() => void) => on(CHANNEL.proofChanged, cb),
   onProofSelect: (cb: (event: ProofSelect) => void): (() => void) => on(CHANNEL.proofSelect, cb),
-
-  opsRecent: (limit: number): Promise<OpRecord[]> =>
-    unwrap(OpsService.Recent({ limit })).then((r) => trust<OpRecord[]>(r ?? [])),
-  opsCancel: (opId: string): Promise<void> => unwrap(OpsService.Cancel({ opId })),
-  onOpUpdate: (cb: (record: OpRecord) => void): (() => void) => on(CHANNEL.studioOpUpdate, cb),
 
   // Go's SavedQuery is one flat struct with `kind: string` and `body: json.RawMessage` (typed
   // `any` in the bindings) rather than the domain's real discriminated union — Go has no sum
