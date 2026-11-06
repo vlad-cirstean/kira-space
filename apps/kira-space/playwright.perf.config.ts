@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 // Perf probes: report numbers, assert nothing. Own config so no normal tier ever runs them.
 // `bun run perf:probe`; docs/DEV_ENVIRONMENT.md "Perf probes". `tests/perf/studio/` holds the
-// Studio-module probes; they share these projects.
+// Studio-module scroll and parse probes; Studio RAM and heap worlds sit in `heap-ram`/`heap-tabs`.
 export default defineConfig({
   workers: 1,
   fullyParallel: false,
