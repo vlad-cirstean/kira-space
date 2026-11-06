@@ -70,30 +70,21 @@ func (b *TaskBoard) forwardTargets(tc *taskCtx, step string) (reach, unreach []m
 		}
 		return r.StepID == step
 	}
-	tui, err := b.deps.Sessions.ListRunningTUI()
+	running, err := b.deps.Sessions.ListRunning(tc.task.ID)
 	if err != nil {
 		return nil, nil, err
 	}
-	for _, r := range tui {
+	for _, r := range running {
 		if !match(r) {
 			continue
 		}
-		if b.deps.Tracker != nil {
+		if r.Mode == model.AdeSessionModeTUI && b.deps.Tracker != nil {
 			if _, ok := b.deps.Tracker.TerminalOf(r.ID); ok {
 				reach = append(reach, r)
 				continue
 			}
 		}
 		unreach = append(unreach, r)
-	}
-	all, err := b.deps.Sessions.ListTask()
-	if err != nil {
-		return nil, nil, err
-	}
-	for _, r := range all {
-		if r.Mode == model.AdeSessionModeHeadless && match(r) {
-			unreach = append(unreach, r)
-		}
 	}
 	byStart := func(rows []model.AdeSession) {
 		sort.SliceStable(rows, func(i, j int) bool {
