@@ -1,6 +1,6 @@
 // Package appshell is Kira Space's own residue of the app-shell composition: the
 // generic half (window/menu/quit/close-flush machinery, the deferred Wails adapters) is repo-root
-// internal/shell, shared with Kira Studio; this package is everything left over that is genuinely
+// internal/shell; this package is everything left over that is genuinely
 // this app's own — its own menu content, its own dialog request-struct adapter and its own stream
 // registration. A distinct package name (not "shell") so one main.go can import both repo-root
 // internal/shell and this package with no alias.
@@ -13,18 +13,18 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-// BuildTemplate is the merged app menu: Studio's connection/request/import/run/format items plus
-// Space's review-code item.
+// BuildTemplate is the merged app menu: Space's items first, then Studio's connection, request and
+// import items (app menu) and refresh, run and format items (View).
 func BuildTemplate(appName string, isDev bool) []shell.Section {
 	appItems := shell.AppMenuHead()
 	appItems = append(appItems,
+		shell.Item{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.settings.label", nil), Accelerator: shell.Shortcuts["app.settings"].Accelerator(), Channel: bridge.ChannelOpenSettings},
+		shell.Item{Kind: shell.ItemSeparator},
 		shell.Item{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.newConnection.label", nil), Accelerator: shell.Shortcuts["app.newConnection"].Accelerator(), Channel: bridge.ChannelNewConnection},
 		shell.Item{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.newRequest.label", nil), Channel: bridge.ChannelNewRequest},
 		shell.Item{Kind: shell.ItemSeparator},
 		shell.Item{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.importPostman.label", nil), Channel: bridge.ChannelImportPostman},
 		shell.Item{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.importDataGrip.label", nil), Channel: bridge.ChannelImportDataGrip},
-		shell.Item{Kind: shell.ItemSeparator},
-		shell.Item{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.settings.label", nil), Accelerator: shell.Shortcuts["app.settings"].Accelerator(), Channel: bridge.ChannelOpenSettings},
 		shell.Item{Kind: shell.ItemSeparator},
 	)
 	appItems = append(appItems, shell.AppMenuTail(appName)...)
@@ -38,11 +38,11 @@ func BuildTemplate(appName string, isDev bool) []shell.Section {
 		{Kind: shell.ItemSeparator},
 		{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.commandPalette.label", nil), Accelerator: shell.Shortcuts["view.commandPalette"].Accelerator(), Channel: bridge.ChannelCommandPalette},
 		{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.find.label", nil), Accelerator: shell.Shortcuts["view.find"].Accelerator(), Channel: bridge.ChannelViewFind},
+		{Kind: shell.ItemEmit, Label: i18n.T("backend.space.menu.reviewCode.label", nil), Accelerator: shell.Shortcuts["ade.reviewCode"].Accelerator(), Channel: bridge.ChannelReviewCode},
 		{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.refresh.label", nil), Accelerator: shell.Shortcuts["view.refresh"].Accelerator(), Channel: bridge.ChannelViewRefresh},
 		{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.runStatement.label", nil), Accelerator: shell.Shortcuts["view.run"].Accelerator(), Channel: bridge.ChannelViewRun},
 		{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.runAll.label", nil), Accelerator: shell.Shortcuts["view.runAll"].Accelerator(), Channel: bridge.ChannelViewRunAll},
 		{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.format.label", nil), Accelerator: shell.Shortcuts["view.format"].Accelerator(), Channel: bridge.ChannelViewFormat},
-		{Kind: shell.ItemEmit, Label: i18n.T("backend.space.menu.reviewCode.label", nil), Accelerator: shell.Shortcuts["ade.reviewCode"].Accelerator(), Channel: bridge.ChannelReviewCode},
 	}
 	if isDev {
 		viewItems = append(viewItems,
@@ -54,7 +54,7 @@ func BuildTemplate(appName string, isDev bool) []shell.Section {
 	viewSection := shell.Section{Label: i18n.T("backend.menu.view.label", nil), Items: viewItems}
 
 	// role: 'close' defaults to CmdOrCtrl+W, which "Close Tab" below now claims — re-accelerated to
-	// Shift+W, Kira Studio's own remap (its menu.go's identical comment).
+	// Shift+W.
 	windowItems := append([]shell.Item{
 		{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.nextTab.label", nil), Accelerator: shell.Shortcuts["tab.next"].Accelerator(), Channel: bridge.ChannelTabNext},
 		{Kind: shell.ItemEmit, Label: i18n.T("backend.menu.previousTab.label", nil), Accelerator: shell.Shortcuts["tab.prev"].Accelerator(), Channel: bridge.ChannelTabPrev},

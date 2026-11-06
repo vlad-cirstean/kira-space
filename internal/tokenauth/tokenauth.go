@@ -1,6 +1,6 @@
 // Package tokenauth mints, hashes and verifies a bearer token: crypto/rand bytes encoded
 // base64url on the wire, salted SHA-256 at rest, constant-time compare on verify. Both
-// internal/pairing (device trust tokens) and apps/kira-studio's own
+// internal/pairing (device trust tokens) and apps/kira-space's own
 // internal/mcpauth (DB-MCP bearer tokens) used this identical shape; each keeps
 // its own persistence, TTL and dummy-comparison discipline around this.
 package tokenauth

@@ -25,10 +25,9 @@ func main() {
 	var anchorFlag, helperFlag string
 	var samples int
 	var intervalSec int
-	// "Kira Studio" is this app's own shipping executable name (apps/kira-studio/Taskfile.yml's
-	// APP_NAME) — P116 H4 moved the shared AppProcessSet/HelperNeedles machinery to repo-root
-	// internal/metrics, which no longer carries a Studio-specific anchor default of its own.
-	flag.StringVar(&anchorFlag, "anchor", "Kira Studio",
+	// "Kira Space" is this app's own shipping executable name (apps/kira-space/Taskfile.yml's
+	// APP_NAME); repo-root internal/metrics carries no app-specific anchor default.
+	flag.StringVar(&anchorFlag, "anchor", "Kira Space",
 		"comma-separated executable-path substrings identifying this app's own executable (the Go binary)")
 	flag.StringVar(&helperFlag, "helper", strings.Join(metrics.HelperNeedles, ","),
 		"comma-separated executable-path substrings identifying native-webview helper processes — filtered to this app's own on darwin, see AppProcessSet")

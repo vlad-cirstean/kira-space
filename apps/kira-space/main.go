@@ -101,14 +101,7 @@ func main() {
 		reporter.Fatal(startupfail.StepRepos, err)
 	}
 
-	if err := appmerge.Run(appmerge.Options{
-		Space: db.DB, Studio: studioDB.DB, SpaceHome: config.KiraSpaceHome(), StudioHome: config.StudioHome(),
-		Ephemeral: func(key string) bool {
-			return bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) || proof.IsWindowKey(key)
-		},
-	}); err != nil {
-		reporter.Fatal(startupfail.StepStorage, err)
-	}
+	carryOverStudio(reporter, db, studioDB)
 
 	settings, err := repositories.Settings.GetAll()
 	if err != nil {
@@ -138,7 +131,7 @@ func main() {
 
 	app := application.New(application.Options{
 		Name:        "Kira Space",
-		Description: "A git client for macOS\n\nVersion " + buildinfo.Version,
+		Description: "Git, agents, memory and automations, plus databases, APIs, Docker and Kubernetes, in one app\n\nVersion " + buildinfo.Version,
 		Services:    append(wired.Bound(), notifyServices(wired)...),
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
@@ -309,5 +302,18 @@ func purgeKeyedWindows(repositories *repos.Repos) {
 		if err := repositories.Windows.Delete(r.Key); err != nil {
 			slog.Warn("purge window", "scope", "window", "key", r.Key, "err", err)
 		}
+	}
+}
+
+// carryOverStudio runs the first-launch carry-over of a Kira Studio install (P537).
+func carryOverStudio(reporter *startupfail.Reporter, db *storage.DB, studioDB *studiostorage.DB) {
+	err := appmerge.Run(appmerge.Options{
+		Space: db.DB, Studio: studioDB.DB, SpaceHome: config.KiraSpaceHome(), StudioHome: config.StudioHome(),
+		Ephemeral: func(key string) bool {
+			return bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) || proof.IsWindowKey(key)
+		},
+	})
+	if err != nil {
+		reporter.Fatal(startupfail.StepStorage, err)
 	}
 }

@@ -19,13 +19,13 @@ func readKeychainPassword(uuid string) (password, username string, err error) {
 	if runtime.GOOS == "windows" {
 		return "", "", &RefusalError{
 			Code:    ReasonCredentialStoreUnsupported,
-			Message: "Kira Studio does not ship on Windows, so the DataGrip password store there (CRYPT_32/DPAPI) can never be read here.",
+			Message: "Kira Space does not ship on Windows, so the DataGrip password store there (CRYPT_32/DPAPI) can never be read here.",
 		}
 	}
 	return "", "", &RefusalError{
 		Code: ReasonCredentialStoreUnsupported,
 		Message: "the system keychain is not reachable on " + runtime.GOOS + " in this build — the default " +
-			"Linux backend (freedesktop Secret Service) needs libsecret over cgo, which Kira Studio's Go " +
+			"Linux backend (freedesktop Secret Service) needs libsecret over cgo, which Kira Space's Go " +
 			"code does not use. Set DataGrip's Passwords setting to \"In KeePass\" and re-save this " +
 			"password to make the import work here.",
 	}

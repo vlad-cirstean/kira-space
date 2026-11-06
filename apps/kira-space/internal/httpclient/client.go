@@ -450,7 +450,7 @@ func applyHeaders(httpReq *http.Request, req Request, formBoundary, defaultConte
 	}
 	if !hasUserAgent {
 		// Go's default "Go-http-client/1.1" misrepresents the app; overridable by the user (D4).
-		httpReq.Header.Set("User-Agent", "Kira Studio/"+buildinfo.Version)
+		httpReq.Header.Set("User-Agent", "Kira Space/"+buildinfo.Version)
 	}
 
 	// P3 D7: Content-Type is a default applied only when the user set none — matching Postman's

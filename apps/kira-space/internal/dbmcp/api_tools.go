@@ -76,7 +76,7 @@ func (a apiRequestArgs) input() agentapi.Input {
 	}
 }
 
-const apiRequestsOff = "API requests are turned off in Kira Studio's database MCP settings"
+const apiRequestsOff = "API requests are turned off in Kira Space's database MCP settings"
 
 func (s *Server) apiListEnvironments(_ context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
 	if !s.apiEnabled() {

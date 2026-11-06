@@ -164,7 +164,7 @@ func lookupPassword(ds DataSource, cfg SecurityConfig) (password, username strin
 		return "", "", &RefusalError{
 			Code: ReasonCredentialStoreUnsupported,
 			Message: "DataGrip is configured to use its own local password store instead of the system " +
-				"keychain, which Kira Studio does not support",
+				"keychain, which Kira Space does not support",
 		}
 	}
 	order := LookupOrder(cfg.Provider)

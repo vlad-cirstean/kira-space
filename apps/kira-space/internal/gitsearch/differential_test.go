@@ -108,7 +108,7 @@ func differentialRunnerPath(t *testing.T) string {
 	if !ok {
 		t.Fatal("runtime.Caller failed")
 	}
-	// internal/gitsearch -> apps/kira-studio -> apps -> <repo root> -> packages/git-core/src/search
+	// internal/gitsearch -> apps/kira-space -> apps -> <repo root> -> packages/git-core/src/search
 	return filepath.Join(thisFile, "..", "..", "..", "..", "..", "packages", "git-core", "src", "search", "differentialRunner.ts")
 }
 

@@ -101,7 +101,7 @@ func TokenVerifier(label string, load func() Record) auth.TokenVerifier {
 			// F8: post-F2, the registered command never carries the token — the live plaintext
 			// lives only in the helper token mirror file, which Regenerate rewrites in place. No
 			// re-registration is needed on expiry, unlike before F2.
-			return nil, fmt.Errorf("%w: the %s MCP token expired at %s. Press Regenerate in Kira Studio's Database MCP settings to mint a fresh one — no need to re-register this server.",
+			return nil, fmt.Errorf("%w: the %s MCP token expired at %s. Press Regenerate in Kira Space's Database MCP settings to mint a fresh one — no need to re-register this server.",
 				auth.ErrInvalidToken, label, rec.ExpiresAt.Format(time.RFC3339))
 		default:
 			return nil, auth.ErrInvalidToken

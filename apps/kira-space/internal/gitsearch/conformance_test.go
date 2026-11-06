@@ -49,7 +49,7 @@ func corpusPath(t *testing.T) string {
 	if !ok {
 		t.Fatal("runtime.Caller failed")
 	}
-	// internal/gitsearch -> apps/kira-studio -> apps -> <repo root> -> packages/git-core/testdata
+	// internal/gitsearch -> apps/kira-space -> apps -> <repo root> -> packages/git-core/testdata
 	return filepath.Join(thisFile, "..", "..", "..", "..", "..", "packages", "git-core", "testdata", "searchConformance.json")
 }
 

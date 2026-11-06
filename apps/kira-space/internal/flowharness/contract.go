@@ -49,18 +49,19 @@ func (a *App) StudioContractEvent(t testing.TB, scenario string, ev Event, opts 
 // placeholder set so existing files stay byte-identical.
 func (a *App) contract(t testing.TB, sub, scenario, key string, got any, opts ...ContractOption) {
 	t.Helper()
-	repl := []ContractOption{
-		Replace(a.Work, "<work>"), Replace(a.BinDir, "<bin>"), Replace(a.FakeDir, "<fake>"),
-		Replace(a.SpaceHome, "<space>"), Replace(a.MemoryHome, "<memory>"), Replace(a.Home, "<home>"),
-		Replace(a.Root, "<tmp>"),
-	}
+	repl := make([]ContractOption, 0, 7+len(opts))
 	if sub == "studio" {
-		repl = []ContractOption{
+		repl = append(repl,
 			Replace(a.BinDir, "<bin>"), Replace(a.FakeDir, "<fake>"), Replace(a.KiraHome, "<kira>"), Replace(a.SpaceHome, "<kira>"),
-			Replace(a.Home, "<home>"), Replace(a.Root, "<tmp>"),
-		}
+			Replace(a.Home, "<home>"), Replace(a.Root, "<tmp>"))
+	} else {
+		repl = append(repl,
+			Replace(a.Work, "<work>"), Replace(a.BinDir, "<bin>"), Replace(a.FakeDir, "<fake>"),
+			Replace(a.SpaceHome, "<space>"), Replace(a.MemoryHome, "<memory>"), Replace(a.Home, "<home>"),
+			Replace(a.Root, "<tmp>"))
 	}
-	flowtest.Contract(t, contractDir(sub), scenario, key, got, append(repl, opts...)...)
+	repl = append(repl, opts...)
+	flowtest.Contract(t, contractDir(sub), scenario, key, got, repl...)
 }
 
 func contractDir(sub string) string {

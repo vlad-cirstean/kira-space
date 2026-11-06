@@ -1,6 +1,7 @@
 package appflow_test
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"os"
@@ -122,7 +123,7 @@ func TestAppMergeFirstLaunch(t *testing.T) {
 		t.Errorf("resume made another backup: %v", again)
 	}
 	raw2, _ := os.ReadFile(filepath.Join(spaceHome, "llm-prompts.json"))
-	if string(raw2) != string(raw) {
+	if !bytes.Equal(raw2, raw) {
 		t.Errorf("prompts rewritten on resume: %s", raw2)
 	}
 }

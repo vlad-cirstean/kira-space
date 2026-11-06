@@ -7,7 +7,7 @@
 //
 // There is no headless binary: the DB server needs the app's own live adapters, keychain-backed
 // secrets and op-log/throttle/cancel machinery (§3.1), none of which a second process could reach
-// without duplicating them. It runs when Kira Studio runs, embedded only (internal/bridge/dbmcp.go).
+// without duplicating them. It runs when Kira Space runs, embedded only (internal/bridge/dbmcp.go).
 //
 // This package imports nothing from internal/bridge (internal/layering_test.go enforces it).
 package dbmcp
@@ -348,7 +348,7 @@ func (s *Server) server() *mcp.Server {
 func (s *Server) buildMCPServer() *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{
 		Name:    "kira-db",
-		Title:   "Kira Studio databases",
+		Title:   "Kira Space databases",
 		Version: serverVersion,
 	}, &mcp.ServerOptions{Instructions: llmprompts.DbmcpInstructions.Text(s.prompts(), llmprompts.NoVars{})})
 
