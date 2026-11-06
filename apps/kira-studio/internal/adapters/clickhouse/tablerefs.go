@@ -178,6 +178,10 @@ func (w *chWalker) walk(n chparser.Expr, scope map[string]bool) {
 				w.refuse("function " + name)
 				break
 			}
+			if chInFuncs[name] && t.Params != nil && t.Params.Items != nil && len(t.Params.Items.Items) > 1 && isNameExpr(t.Params.Items.Items[1]) {
+				w.refuse("IN with a table name")
+				break
+			}
 			f := adapters.FuncRef{Name: name}
 			if !w.funcs[f] {
 				w.funcs[f] = true
@@ -186,14 +190,44 @@ func (w *chWalker) walk(n chparser.Expr, scope map[string]bool) {
 		case *chparser.BinaryOperation:
 			// "x IN secret" reads a table, but parses as a plain identifier.
 			if strings.Contains(strings.ToUpper(string(t.Operation)), "IN") {
-				switch t.RightExpr.(type) {
-				case *chparser.Ident, *chparser.NestedIdentifier, *chparser.Path:
+				if isNameExpr(t.RightExpr) {
 					w.refuse("IN with a table name")
 				}
 			}
 		}
 		return true
 	})
+}
+
+// chInFuncs are the function forms of IN; a bare name as the second argument is a table.
+var chInFuncs = map[string]bool{
+	"in": true, "notin": true, "globalin": true, "globalnotin": true,
+	"nullin": true, "notnullin": true, "globalnullin": true, "globalnotnullin": true,
+	"innullin": true, "notinnullin": true,
+}
+
+// isNameExpr reports a bare (possibly parenthesised) identifier, which ClickHouse reads as a table after IN.
+func isNameExpr(e chparser.Expr) bool {
+	for {
+		switch t := e.(type) {
+		case *chparser.Ident, *chparser.NestedIdentifier, *chparser.Path:
+			return true
+		case *chparser.ColumnExpr:
+			e = t.Expr
+		case *chparser.ParamExprList:
+			if t.Items == nil || len(t.Items.Items) != 1 {
+				return false
+			}
+			e = t.Items.Items[0]
+		case *chparser.ColumnExprList:
+			if len(t.Items) != 1 {
+				return false
+			}
+			e = t.Items[0]
+		default:
+			return false
+		}
+	}
 }
 
 // withScope walks q with its WITH clause taken off, so each CTE body and the rest see the right names.
@@ -206,10 +240,8 @@ func (w *chWalker) withScope(q *chparser.SelectQuery, scope map[string]bool) {
 	for k := range scope {
 		all[k] = true
 	}
-	var names []string
 	for _, c := range with.CTEs {
 		if id, ok := c.Expr.(*chparser.Ident); ok && isSubquery(c.Alias) {
-			names = append(names, id.Name)
 			all[id.Name] = true
 		}
 	}
@@ -226,7 +258,6 @@ func (w *chWalker) withScope(q *chparser.SelectQuery, scope map[string]bool) {
 		}
 		w.walk(c.Expr, copyScope(seen))
 	}
-	_ = names
 	w.walk(q, all)
 }
 
