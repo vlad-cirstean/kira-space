@@ -16,8 +16,8 @@ const (
 	channelTreeChildren       = "kira:tree:children"
 	channelTreeDescribe       = "kira:tree:describe"
 	channelTreeDefinition     = "kira:tree:definition"
-	channelOpsRecent          = "kira:ops:recent"
-	channelOpsCancel          = "kira:ops:cancel"
+	channelOpsRecent          = "kira:oplog:recent"
+	channelOpsCancel          = "kira:oplog:cancel"
 )
 
 // The two DATA_OP values every committed fixture needs, from packages/shared/protocol/dataOps.ts's
