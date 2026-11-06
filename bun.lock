@@ -78,19 +78,11 @@
       "name": "@kira/kira-space-frontend",
       "version": "0.0.0",
       "dependencies": {
+        "@kira/api-core": "workspace:*",
+        "@kira/docker-ui": "workspace:*",
         "@kira/git-core": "workspace:*",
         "@kira/git-ipc": "workspace:*",
         "@kira/git-ui": "workspace:*",
-        "vue": "3.5.44",
-        "zod": "4.6.7",
-      },
-    },
-    "apps/kira-studio/frontend": {
-      "name": "@kira/kira-studio-frontend",
-      "version": "0.0.0",
-      "dependencies": {
-        "@kira/api-core": "workspace:*",
-        "@kira/docker-ui": "workspace:*",
         "modern-screenshot": "4.7.0",
         "shell-quote": "1.12.0",
         "vue": "3.5.44",
@@ -461,8 +453,6 @@
     "@kira/git-ui": ["@kira/git-ui@workspace:packages/git-ui"],
 
     "@kira/kira-space-frontend": ["@kira/kira-space-frontend@workspace:apps/kira-space/frontend"],
-
-    "@kira/kira-studio-frontend": ["@kira/kira-studio-frontend@workspace:apps/kira-studio/frontend"],
 
     "@kira/shared": ["@kira/shared@workspace:packages/shared"],
 

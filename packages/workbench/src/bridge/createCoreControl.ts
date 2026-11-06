@@ -272,12 +272,19 @@ export interface CoreControl<S, L, T, P, M> {
   onLlmPromptsChanged: (cb: (event: LlmPromptsChangedEvent) => void) => () => void;
 }
 
-export function createCoreControl<S, L, T, P, M>(b: CoreBindings): CoreControl<S, L, T, P, M> {
+export interface CoreChannels {
+  settingsChanged: string;
+}
+
+export function createCoreControl<S, L, T, P, M>(
+  b: CoreBindings,
+  channels: CoreChannels = { settingsChanged: CHANNEL.settingsChanged },
+): CoreControl<S, L, T, P, M> {
   return {
     settingsGetAll: (): Promise<S> => unwrap(b.settings.GetAll()).then((r) => trust<S>(r)),
     settingsSet: (patch: P): Promise<S> =>
       unwrap(b.settings.Set({ patch })).then((r) => trust<S>(r)),
-    onSettingsChanged: (cb: (settings: S) => void): (() => void) => on(CHANNEL.settingsChanged, cb),
+    onSettingsChanged: (cb: (settings: S) => void): (() => void) => on(channels.settingsChanged, cb),
 
     layoutGetAll: (): Promise<L> => unwrap(b.layout.GetAll()).then((r) => trust<L>(r)),
     layoutSet: (patch: LayoutPatch): Promise<L> =>

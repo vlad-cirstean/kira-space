@@ -6,7 +6,7 @@ import { defineAppViteConfig } from '../../../packages/workbench/src/viteAppConf
 // plugins and debug-hook define as the app, different entries and outDir. The shipped build
 // (`vite build`, index.html only) never reaches `proto/`, and Go embeds only `dist`.
 const app = defineAppViteConfig({
-  app: 'kira-studio',
+  app: 'kira-space',
   port: 9246,
   configUrl: import.meta.url,
 });

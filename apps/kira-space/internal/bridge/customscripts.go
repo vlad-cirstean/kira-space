@@ -57,6 +57,8 @@ func (s *CustomScriptsService) ownerOfFile(file string) *scripts.Service {
 
 // Publish stores one stack's latest snapshot (studio picks the stack) and emits the merged list on
 // ChannelCustomScriptsChanged. Both loaders' Emit hooks call it.
+//
+//wails:ignore
 func (s *CustomScriptsService) Publish(emit appevent.Emitter, studio bool, snap scripts.Snapshot) {
 	i := 0
 	if studio {
