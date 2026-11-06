@@ -278,8 +278,9 @@ func listingOf(kind string, e *entry) Listing {
 	return out
 }
 
-// Connected starts a background check after a connect.
-func (s *Service) Connected(id string) { s.schedule(id, opts{}) }
+// Connected starts a background check after a connect. It bypasses the persisted column cache, which can be
+// days old, so a column added while the app was closed is seen.
+func (s *Service) Connected(id string) { s.schedule(id, opts{columns: true}) }
 
 // Refresh starts a background check that bypasses the metadata cache, after the user refreshed the tree.
 func (s *Service) Refresh(id string) { s.schedule(id, opts{columns: true, containers: true}) }
