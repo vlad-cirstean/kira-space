@@ -11,6 +11,7 @@ import {
   oversizeVueHit,
   piniaHits,
   rawIdHits,
+  rawSqlHits,
   specHelperHits,
   stateAndMenuNameHits,
   testSuffixHit,
@@ -217,6 +218,32 @@ describe('N14 raw id generators', () => {
   test('the helper and clean code pass', () => {
     expect(rawIdHits('packages/shared/ids.ts', "import { v7 } from 'uuid';")).toEqual([]);
     expect(rawIdHits('a.ts', "import { newUuid } from '@shared/ids';")).toEqual([]);
+  });
+});
+
+describe('N16 raw SQL', () => {
+  const repo = 'apps/kira-space/internal/storage/repos/x.go';
+  test('a string-literal statement fails, in every call form', () => {
+    expect(rawSqlHits(repo, 'db.Exec(`DELETE FROM t`)')[0]?.rule).toBe('N16');
+    expect(rawSqlHits(repo, 'tx.QueryRow("SELECT 1 FROM "+table)')).toHaveLength(1);
+    expect(rawSqlHits(repo, 'db.QueryContext(ctx, "SELECT 1")')).toHaveLength(1);
+    expect(rawSqlHits(repo, 'db.Prepare(`SELECT ?`)')).toHaveLength(1);
+    expect(rawSqlHits(repo, 'db.Query(fmt.Sprintf("SELECT %s", c), a)')).toHaveLength(1);
+    expect(rawSqlHits(repo, 'q, _ := sqlbuilder.SQLite.Interpolate(s, a)')).toHaveLength(1);
+  });
+  test('builder text, comments and other literals pass', () => {
+    expect(rawSqlHits(repo, 'q, args := sb.Build()\nrows, err := db.Query(q, args...)')).toEqual(
+      [],
+    );
+    expect(rawSqlHits(repo, 'rows, err := db.QueryContext(ctx, q, "x")')).toEqual([]);
+    expect(rawSqlHits(repo, '// db.Exec(`DELETE FROM t`)\n/* tx.Query("x") */')).toEqual([]);
+  });
+  test('the two allowlisted raw spots pass; other SQL beside them fails', () => {
+    const maint = 'apps/kira-space/internal/storage/repos/maintenance.go';
+    const oplog = 'apps/kira-space/internal/storage/repos/oplogforeign.go';
+    expect(rawSqlHits(maint, 'db.Exec(`PRAGMA incremental_vacuum`)')).toEqual([]);
+    expect(rawSqlHits(oplog, 'db.QueryRow(`PRAGMA data_version`)')).toEqual([]);
+    expect(rawSqlHits(oplog, 'db.Exec(`DELETE FROM op_log`)')).toHaveLength(1);
   });
 });
 

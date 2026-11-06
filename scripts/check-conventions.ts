@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Code convention guard N1-N7 and N8-N15.
+ * Code convention guard N1-N7 and N8-N16.
  *
  * N1 file names (.ts camelCase, .vue PascalCase), N2 no `.test.ts`, N3 no util/utils/helpers
  * folder, N4 Pinia id = export name without `use`/`create` and `Store`, N5 event names
@@ -18,6 +18,10 @@
  * WebP under `screenshots/` (CI generates every product shot, P550); the user-supplied install
  * dialogs under `site/src/assets/install/` are the only committed WebP; Playwright `toHaveScreenshot`
  * baselines in `-snapshots` dirs under `site/tests` are PNG only and stay.
+ *
+ * N16 no string-literal SQL passed to `Exec`/`Query`/`QueryRow`/`Prepare` (or their `Context`
+ * forms) and no `Interpolate(` in the Go files that run SQL on `kira.db` (P553): statements come
+ * from `internal/sqlb` builders. Two raw spots stay, allowlisted in `RAW_SQL_ALLOW`.
  *
  * No pending list: every hit fails. N6 also fails on any retired-code registry (`Legacy` in Go,
  * `LEGACY_ERROR_CODES` in TS).
@@ -40,7 +44,8 @@ export type Rule =
   | 'N12'
   | 'N13'
   | 'N14'
-  | 'N15';
+  | 'N15'
+  | 'N16';
 export interface Hit {
   rule: Rule;
   path: string;
@@ -518,6 +523,121 @@ function imageHits(tracked: readonly string[]): Hit[] {
     }));
 }
 
+const SQL_DIR_ROOTS = ['apps/kira-space/internal/storage/repos'];
+const SQL_FILES = [
+  'internal/appstorage/window.go',
+  'internal/appstorage/tabs.go',
+  'internal/scripts/repo.go',
+  'internal/scripts/lifecycle.go',
+  'internal/scripts/loader.go',
+  'internal/scriptruns/repo.go',
+  'internal/secrets/store.go',
+  'internal/configfs/table.go',
+  'apps/kira-space/internal/connfiles/projection.go',
+  'apps/kira-space/internal/connfiles/loader.go',
+  'apps/kira-space/internal/connfiles/secrets.go',
+  'apps/kira-space/internal/apifiles/project.go',
+  'apps/kira-space/internal/apifiles/store.go',
+  'apps/kira-space/internal/apifiles/lifecycle.go',
+  'apps/kira-space/internal/apifiles/secrets.go',
+  'apps/kira-space/internal/apifiles/agentenv.go',
+  'apps/kira-space/internal/apifiles/order.go',
+  'apps/kira-space/internal/bridge/collections.go',
+  'apps/kira-space/internal/appwire/memoryops.go',
+];
+/** The only raw SQL left in N16's files: SQLite maintenance PRAGMAs with no Postgres analogue (P553 plan 2.4). */
+const RAW_SQL_ALLOW: ReadonlyArray<{ path: string; contains?: string }> = [
+  { path: 'apps/kira-space/internal/storage/repos/maintenance.go' },
+  {
+    path: 'apps/kira-space/internal/storage/repos/oplogforeign.go',
+    contains: 'PRAGMA data_version',
+  },
+];
+const SQL_CALL = /\.(Exec|Query|QueryRow|Prepare)(Context)?\(/g;
+
+/** Blanks Go comments, keeping string and rune literals, so a commented call never matches. */
+function stripGoComments(src: string): string {
+  let out = '';
+  let i = 0;
+  while (i < src.length) {
+    const ch = src[i] ?? '';
+    const next = src[i + 1] ?? '';
+    if (ch === '/' && next === '/') {
+      while (i < src.length && src[i] !== '\n') i++;
+    } else if (ch === '/' && next === '*') {
+      const end = src.indexOf('*/', i + 2);
+      i = end < 0 ? src.length : end + 2;
+    } else if (ch === '"' || ch === '`' || ch === "'") {
+      let j = i + 1;
+      while (j < src.length && src[j] !== ch) j += ch === '`' || src[j] !== '\\' ? 1 : 2;
+      out += src.slice(i, j + 1);
+      i = j + 1;
+    } else {
+      out += ch;
+      i++;
+    }
+  }
+  return out;
+}
+
+/** The text of one call argument starting at `from`, up to its top-level comma or closing paren. */
+function goArg(src: string, from: number): { text: string; end: number } {
+  let depth = 0;
+  let i = from;
+  while (i < src.length) {
+    const ch = src[i] ?? '';
+    if (ch === '"' || ch === '`' || ch === "'") {
+      let j = i + 1;
+      while (j < src.length && src[j] !== ch) j += ch === '`' || src[j] !== '\\' ? 1 : 2;
+      i = j + 1;
+      continue;
+    }
+    if ('([{'.includes(ch)) depth++;
+    else if (')]}'.includes(ch)) {
+      if (depth === 0) break;
+      depth--;
+    } else if (ch === ',' && depth === 0) break;
+    i++;
+  }
+  return { text: src.slice(from, i), end: i };
+}
+
+/** N16: raw SQL text in a runtime Go file; statements come from `sqlb` builders. */
+export function rawSqlHits(path: string, source: string): Hit[] {
+  const src = stripGoComments(source);
+  const hits: Hit[] = [];
+  const allowed = RAW_SQL_ALLOW.filter((a) => a.path === path);
+  if (allowed.some((a) => a.contains === undefined)) return hits;
+  const add = (what: string): void => {
+    hits.push({
+      rule: 'N16',
+      path,
+      message: `${what}; build the statement with internal/sqlb (docs/ARCHITECTURE.md "Query builder (P553)")`,
+    });
+  };
+  for (const m of src.matchAll(SQL_CALL)) {
+    let arg = goArg(src, (m.index ?? 0) + m[0].length);
+    if (m[2]) arg = goArg(src, arg.end + 1);
+    if (!/["`]/.test(arg.text)) continue;
+    if (allowed.some((a) => a.contains !== undefined && arg.text.includes(a.contains))) continue;
+    add(`string-literal SQL passed to ${m[1]}${m[2] ?? ''}`);
+  }
+  if (/\bInterpolate\(/.test(src)) add('Interpolate( inlines bind values into SQL text');
+  return hits;
+}
+
+function rawSqlFileHits(): Hit[] {
+  const paths = [
+    ...SQL_DIR_ROOTS.flatMap((root) =>
+      readdirSync(join(REPO_ROOT, root))
+        .filter((n) => n.endsWith('.go') && !n.endsWith('_test.go'))
+        .map((n) => `${root}/${n}`),
+    ),
+    ...SQL_FILES,
+  ];
+  return paths.flatMap((p) => rawSqlHits(p, readFileSync(join(REPO_ROOT, p), 'utf8')));
+}
+
 function collectHits(): Hit[] {
   const hits: Hit[] = [];
   const dirs = new Set<string>();
@@ -534,6 +654,7 @@ function collectHits(): Hit[] {
     ...stateAndMenuNameHits(allPaths.filter((p) => MENU_ROOTS.some((r) => p.startsWith(`${r}/`)))),
   );
   hits.push(...specHits());
+  hits.push(...rawSqlFileHits());
   hits.push(...menuHits(allPaths));
   for (const { path, literal } of EVENT_FILES) {
     hits.push(...eventHits(path, readFileSync(join(REPO_ROOT, path), 'utf8'), literal));
@@ -573,7 +694,7 @@ function main(): number {
     );
     return 1;
   }
-  console.log('check-conventions: every convention holds (N1-N15).');
+  console.log('check-conventions: every convention holds (N1-N16).');
   return 0;
 }
 
