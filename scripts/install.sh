@@ -332,6 +332,12 @@ JXA_EOF
     die "downloaded app's version ('$GOT_VERSION') does not match the release tag ('$WANT_VERSION')"
   fi
 
+  # Studio's updater lands here while Space may be open. Fail before the hand-off, while Studio
+  # still shows the error in its own dialog.
+  if [ "$APP_ARG" = "studio" ] && [ -n "$NOTIFY_FD" ] && pgrep -xq "$APP_NAME" </dev/null; then
+    die "Quit $APP_NAME, then update again"
+  fi
+
   # ---- 9: hand off (self-update mode only) -------------------------------------------------------
   if [ -n "$NOTIFY_FD" ]; then
     eval "printf 'staged %s\\n' \"\$TAG\" >&$NOTIFY_FD"
