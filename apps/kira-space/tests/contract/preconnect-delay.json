@@ -1,5 +1,8 @@
 {
   "event:preconnect-delay-running": {
+    "background": false,
+    "cancellable": true,
+    "category": "db",
     "command": null,
     "commandTruncated": false,
     "connectionId": "<id:1>",
@@ -8,11 +11,21 @@
     "error": null,
     "id": "<masked>",
     "kind": "preconnect",
+    "module": "database",
+    "parentId": "",
     "path": null,
+    "repeat": 1,
+    "repoName": "",
+    "repoRoot": "",
     "rows": null,
     "source": "user",
     "startedAt": "<time>",
     "status": "running",
-    "tabId": null
+    "steps": [],
+    "stepsDropped": 0,
+    "subject": "slow-tunnel",
+    "tabId": null,
+    "taskId": "",
+    "trigger": "user"
   }
 }

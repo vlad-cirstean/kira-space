@@ -15,10 +15,10 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -326,12 +326,14 @@ func TestHttpSendFailure_OpLogErrorNeverContainsSecret(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	opsRepo := &repos.DbOpsRepo{DB: db.DB}
+	opLogRepo := &repos.OpLogRepo{DB: db.DB}
+	opLog := oplog.New(oplog.WithStore(opLogRepo))
+	defer opLog.Close()
 	host := adapterhost.NewHost(adapters.Deps{}, nil)
-	wiring := studiooplog.New(host, opsRepo, 30)
+	wiring := oplog.NewDbSource(host, opLog, opLogRepo.PruneCategory, nil, func() int { return 30 })
 
-	done := make(chan model.DbOpRecord, 4)
-	unsubscribe := wiring.OnUpdate(func(rec model.DbOpRecord) {
+	done := make(chan oplog.Record, 4)
+	unsubscribe := opLog.OnUpdate(func(rec oplog.Record) {
 		if rec.Status != "running" {
 			done <- rec
 		}
@@ -380,8 +382,9 @@ func TestHttpSendFailure_OpLogErrorNeverContainsSecret(t *testing.T) {
 		t.Fatal("timed out waiting for the op:end update")
 	}
 
+	opLog.Close()
 	var rawError string
-	if err := db.DB.QueryRow(`SELECT error FROM db_op_log WHERE id = ?`, "77836346-c554-7005-86e5-b4e461e0b2f8").Scan(&rawError); err != nil {
+	if err := db.DB.QueryRow(`SELECT error FROM op_log WHERE id = ?`, "77836346-c554-7005-86e5-b4e461e0b2f8").Scan(&rawError); err != nil {
 		t.Fatalf("query op_log.error: %v", err)
 	}
 	if strings.Contains(rawError, secret) {

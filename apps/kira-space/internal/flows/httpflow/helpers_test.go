@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -62,11 +63,11 @@ func setApi(t *testing.T, app *flowharness.App, patch model.ApiPatch) {
 }
 
 // waitOp returns the op-log row of opID once it left "running".
-func waitOp(t *testing.T, app *flowharness.App, opID string) model.DbOpRecord {
+func waitOp(t *testing.T, app *flowharness.App, opID string) oplog.Record {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for {
-		recs, err := app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 200})
+		recs, err := app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 200})
 		if err != nil {
 			t.Fatalf("Ops.Recent: %v", err)
 		}

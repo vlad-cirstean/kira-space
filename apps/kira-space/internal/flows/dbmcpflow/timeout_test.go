@@ -13,8 +13,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/testx"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -69,9 +69,9 @@ func (f *fixture) mcpExecEnds() (get func() []opEndMark, stop func()) {
 			_ = json.Unmarshal(e.Payload, &p)
 			mu.Lock()
 			switch e.Topic {
-			case studiooplog.EventOpStart:
+			case oplog.DbEventOpStart:
 				mcpOps[p.OpID] = p.Kind == "execute" && p.Source == "mcp"
-			case studiooplog.EventOpEnd:
+			case oplog.DbEventOpEnd:
 				if mcpOps[p.OpID] {
 					m := opEndMark{Status: p.Status}
 					if p.Error != nil {
@@ -217,7 +217,7 @@ func TestDbMcpStatementTimeoutQueueNotCounted(t *testing.T) {
 	userOp := ids.NewID()
 	userDone := make(chan error, 1)
 	go func() { userDone <- f.exec(userOp, cte(mediumCTE)) }()
-	testx.WaitUntil(t, 10*time.Second, func() bool { return indexOf(marks(), studiooplog.EventOpStart, userOp) >= 0 })
+	testx.WaitUntil(t, 10*time.Second, func() bool { return indexOf(marks(), oplog.DbEventOpStart, userOp) >= 0 })
 
 	start := time.Now()
 	res := runQuery(t, sess, f.connID, "select 1")

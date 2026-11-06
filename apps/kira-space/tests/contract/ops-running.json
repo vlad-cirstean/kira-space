@@ -1,6 +1,9 @@
 {
-  "StudioOpsService.Recent": [
+  "OpsService.Recent": [
     {
+      "background": false,
+      "cancellable": true,
+      "category": "db",
       "command": null,
       "commandTruncated": false,
       "connectionId": "<masked>",
@@ -8,12 +11,52 @@
       "error": null,
       "id": "<masked>",
       "kind": "execute",
+      "module": "database",
+      "parentId": "",
       "path": null,
+      "repeat": 1,
+      "repoName": "",
+      "repoRoot": "",
       "rows": null,
       "source": "mcp",
       "startedAt": "<masked>",
       "status": "running",
-      "tabId": null
+      "steps": [],
+      "stepsDropped": 0,
+      "subject": "notes db",
+      "tabId": null,
+      "taskId": "",
+      "trigger": "mcp"
+    }
+  ],
+  "OpsService.Recent": [
+    {
+      "background": false,
+      "cancellable": true,
+      "category": "db",
+      "command": null,
+      "commandTruncated": false,
+      "connectionId": "<masked>",
+      "durationMs": null,
+      "error": null,
+      "id": "<masked>",
+      "kind": "execute",
+      "module": "database",
+      "parentId": "",
+      "path": null,
+      "repeat": 1,
+      "repoName": "",
+      "repoRoot": "",
+      "rows": null,
+      "source": "mcp",
+      "startedAt": "<masked>",
+      "status": "running",
+      "steps": [],
+      "stepsDropped": 0,
+      "subject": "notes db",
+      "tabId": null,
+      "taskId": "",
+      "trigger": "mcp"
     }
   ]
 }

@@ -198,7 +198,7 @@ func TestDescribeCancel(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("Describe never connected to the silent server")
 	}
-	if err := app.W.StudioOps.Cancel(bridge.StudioOpsCancelArgs{OpID: args.OpID}); err != nil {
+	if err := app.W.Ops.Cancel(bridge.OpsCancelArgs{OpID: args.OpID}); err != nil {
 		t.Fatal(err)
 	}
 	select {

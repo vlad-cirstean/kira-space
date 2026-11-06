@@ -34,6 +34,8 @@ const (
 type Store interface {
 	Upsert(Record) error
 	Prune(cutoff time.Time, maxRows int) error
+	// PruneCategory keeps at most maxRows of one category and drops its rows older than cutoff.
+	PruneCategory(category string, cutoff time.Time, maxRows int) error
 }
 
 // Log is the two-lane ring. A nil *Log is valid and records nothing.
@@ -213,6 +215,68 @@ func insertFront(lane []*Record, rec *Record, capacity int) []*Record {
 	return lane
 }
 
+// Admit adds an externally clocked record (a database op) to the foreground lane and, unless
+// persist is false, stores it. It reports false and changes nothing when the id is taken, so a
+// reused id never overwrites the first op's row.
+func (l *Log) Admit(rec Record, persist bool) bool {
+	if l == nil {
+		return false
+	}
+	if rec.Steps == nil {
+		rec.Steps = []Step{}
+	}
+	rec.ephemeral = !persist
+	l.mu.Lock()
+	for _, r := range l.fg {
+		if r.ID == rec.ID {
+			l.mu.Unlock()
+			return false
+		}
+	}
+	l.fg = insertFront(l.fg, &rec, FgCapacity)
+	snap := rec.clone()
+	l.mu.Unlock()
+	l.publish(snap, true, persist)
+	return true
+}
+
+// Settle applies fn to the foreground record id, then publishes and stores the result.
+// It reports false when the record is gone.
+func (l *Log) Settle(id string, fn func(*Record)) (Record, bool) {
+	if l == nil {
+		return Record{}, false
+	}
+	l.mu.Lock()
+	var rec *Record
+	for _, r := range l.fg {
+		if r.ID == id {
+			rec = r
+			break
+		}
+	}
+	if rec == nil {
+		l.mu.Unlock()
+		return Record{}, false
+	}
+	fn(rec)
+	l.finishedFg++
+	snap := rec.clone()
+	l.mu.Unlock()
+	l.publish(snap, true, !snap.ephemeral)
+	return snap, true
+}
+
+// Announce emits rec to subscribers without adding it to the lane or the store.
+func (l *Log) Announce(rec Record) {
+	if l == nil {
+		return
+	}
+	if rec.Steps == nil {
+		rec.Steps = []Step{}
+	}
+	l.emit.Emit(rec)
+}
+
 // Recent returns up to limit foreground plus up to limit background records, newest first.
 func (l *Log) Recent(limit int) []Record {
 	if l == nil || limit <= 0 {
@@ -233,6 +297,23 @@ func (l *Log) Recent(limit int) []Record {
 		}
 	}
 	return out
+}
+
+// Lookup returns a copy of the foreground or background record id.
+func (l *Log) Lookup(id string) (Record, bool) {
+	if l == nil {
+		return Record{}, false
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for _, lane := range [][]*Record{l.fg, l.bg} {
+		for _, r := range lane {
+			if r.ID == id {
+				return r.clone(), true
+			}
+		}
+	}
+	return Record{}, false
 }
 
 // CancellableRunning returns the running foreground rows of taskID that accept a cancel, newest first.

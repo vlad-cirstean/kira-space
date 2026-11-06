@@ -175,7 +175,7 @@ func TestServerStreamAndCancel(t *testing.T) {
 			return n
 		}
 		waitUntil(t, "3 messages", func() bool { return received() >= 3 })
-		if err := app.W.StudioOps.Cancel(bridge.StudioOpsCancelArgs{OpID: args.OpID}); err != nil {
+		if err := app.W.Ops.Cancel(bridge.OpsCancelArgs{OpID: args.OpID}); err != nil {
 			t.Fatal(err)
 		}
 		var err error

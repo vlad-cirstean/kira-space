@@ -1,18 +1,18 @@
 package kubeflow
 
 import (
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
-func (e *env) ops(t *testing.T) []model.DbOpRecord {
+func (e *env) ops(t *testing.T) []oplog.Record {
 	t.Helper()
-	recs, err := e.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 200})
+	recs, err := e.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 200})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,9 +20,9 @@ func (e *env) ops(t *testing.T) []model.DbOpRecord {
 }
 
 // newestOp waits for the n-th row and returns it once it is not running (or is, when wantRunning).
-func (e *env) newestOp(t *testing.T, n int, wantRunning bool) model.DbOpRecord {
+func (e *env) newestOp(t *testing.T, n int, wantRunning bool) oplog.Record {
 	t.Helper()
-	var row model.DbOpRecord
+	var row oplog.Record
 	testx.WaitUntil(t, wait, func() bool {
 		recs := e.ops(t)
 		if len(recs) < n || (recs[0].Status == "running") != wantRunning {
@@ -34,7 +34,7 @@ func (e *env) newestOp(t *testing.T, n int, wantRunning bool) model.DbOpRecord {
 	return row
 }
 
-func wantOp(t *testing.T, row model.DbOpRecord, status, command string, rows *int) {
+func wantOp(t *testing.T, row oplog.Record, status, command string, rows *int) {
 	t.Helper()
 	if row.Kind != "kubernetes" || row.Status != status || row.Source != "user" || row.ConnectionID != nil || row.TabID != nil ||
 		row.Command == nil || *row.Command != command || (rows == nil) != (row.Rows == nil) || (rows != nil && *rows != *row.Rows) {
@@ -103,8 +103,8 @@ func TestOpsRecordEveryAction(t *testing.T) {
 	if running.Kind != "kubernetes" || running.Source != "user" || running.ConnectionID != nil || running.Command != nil {
 		t.Fatalf("running op = %+v", running)
 	}
-	e.contract(t, "StudioOpsService.Recent:running", []model.DbOpRecord{running}, flowharness.Mask("id", "startedAt", "durationMs"))
-	if err := e.app.W.StudioOps.Cancel(bridge.StudioOpsCancelArgs{OpID: running.ID}); err != nil {
+	e.contract(t, "OpsService.Recent:running", []oplog.Record{running}, flowharness.Mask("id", "startedAt", "durationMs"))
+	if err := e.app.W.Ops.Cancel(bridge.OpsCancelArgs{OpID: running.ID}); err != nil {
 		t.Fatal(err)
 	}
 	if _, errMsg := waitEnded(t, e.app, mark, "w1", "f1"); errMsg != "" {
@@ -147,5 +147,5 @@ func TestOpsRecordEveryAction(t *testing.T) {
 	if len(recs) != 9 {
 		t.Fatalf("%d rows, want 9: pre-op failures and SetMcp record nothing", len(recs))
 	}
-	e.contract(t, "StudioOpsService.Recent", recs, flowharness.Mask("id", "startedAt", "durationMs", "error"))
+	e.contract(t, "OpsService.Recent", recs, flowharness.Mask("id", "startedAt", "durationMs", "error"))
 }

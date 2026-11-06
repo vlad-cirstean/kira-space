@@ -119,8 +119,11 @@
     "list": "prompt",
     "logs": "allow"
   },
-  "StudioOpsService.Recent": [
+  "OpsService.Recent": [
     {
+      "background": false,
+      "cancellable": false,
+      "category": "db",
       "command": "kubectl get pods -n default --context kind-dev",
       "commandTruncated": false,
       "connectionId": null,
@@ -128,12 +131,52 @@
       "error": null,
       "id": "<masked>",
       "kind": "kubernetes",
+      "module": "database",
+      "parentId": "",
       "path": null,
+      "repeat": 1,
+      "repoName": "",
+      "repoRoot": "",
       "rows": 3,
       "source": "mcp",
       "startedAt": "<masked>",
       "status": "ok",
-      "tabId": null
+      "steps": [],
+      "stepsDropped": 0,
+      "subject": "",
+      "tabId": null,
+      "taskId": "",
+      "trigger": "mcp"
+    }
+  ],
+  "OpsService.Recent": [
+    {
+      "background": false,
+      "cancellable": false,
+      "category": "db",
+      "command": "kubectl get pods -n default --context kind-dev",
+      "commandTruncated": false,
+      "connectionId": null,
+      "durationMs": 0,
+      "error": null,
+      "id": "<masked>",
+      "kind": "kubernetes",
+      "module": "database",
+      "parentId": "",
+      "path": null,
+      "repeat": 1,
+      "repoName": "",
+      "repoRoot": "",
+      "rows": 3,
+      "source": "mcp",
+      "startedAt": "<masked>",
+      "status": "ok",
+      "steps": [],
+      "stepsDropped": 0,
+      "subject": "",
+      "tabId": null,
+      "taskId": "",
+      "trigger": "mcp"
     }
   ],
   "args:ApprovalsService.Answer": {

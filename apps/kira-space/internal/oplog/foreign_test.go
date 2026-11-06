@@ -78,6 +78,8 @@ type countStore struct{ upserts int }
 func (c *countStore) Upsert(Record) error            { c.upserts++; return nil }
 func (c *countStore) Prune(_ time.Time, _ int) error { return nil }
 
+func (c *countStore) PruneCategory(string, time.Time, int) error { return nil }
+
 func TestIngestMergesByIDAndStartOrder(t *testing.T) {
 	s := newSpy()
 	s.l.Ingest([]Record{frec("a.1", "2026-01-01T00:00:02.000Z", StatusRunning), frec("b.1", "2026-01-01T00:00:01.000Z", StatusOK)})

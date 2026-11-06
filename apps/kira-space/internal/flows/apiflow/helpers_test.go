@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -59,11 +60,11 @@ func savedGet() model.SavedRequest {
 	return model.SavedRequest{Method: "GET", BodyMode: "none", CodeLanguage: "json"}
 }
 
-func waitOp(t *testing.T, app *flowharness.App, opID string) model.DbOpRecord {
+func waitOp(t *testing.T, app *flowharness.App, opID string) oplog.Record {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for {
-		recs, err := app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 500})
+		recs, err := app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 500})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -82,8 +83,8 @@ func waitOp(t *testing.T, app *flowharness.App, opID string) model.DbOpRecord {
 // waitOpUpdate waits for the op-log update event that closes opID; it fires for incognito ops too.
 func waitOpUpdate(t *testing.T, app *flowharness.App, opID string) {
 	t.Helper()
-	app.Events.Wait(t, bridge.ChannelStudioOpUpdate, func(e flowharness.Event) bool {
-		var rec model.DbOpRecord
+	app.Events.Wait(t, bridge.ChannelOpUpdate, func(e flowharness.Event) bool {
+		var rec oplog.Record
 		e.Decode(t, &rec)
 		return rec.ID == opID && rec.Status != "running"
 	}, 10*time.Second)

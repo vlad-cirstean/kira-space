@@ -34,7 +34,6 @@ type Repos struct {
 	AdeTrackedItems       *AdeTrackedItemsRepo
 	OpLog                 *OpLogRepo
 	Connections           *ConnectionsRepo
-	DbOps                 *DbOpsRepo
 	SavedQueries          *SavedQueriesRepo
 	FilterHistory         *FilterHistoryRepo
 	Metadata              *MetadataCacheRepo
@@ -69,14 +68,6 @@ func New(db *sql.DB) (*Repos, error) {
 	if err != nil {
 		return nil, fmt.Errorf("repos: prepare tabs select: %w", err)
 	}
-	opsInsert, err := db.Prepare(opsInsertSQL)
-	if err != nil {
-		return nil, fmt.Errorf("repos: prepare ops insert: %w", err)
-	}
-	opsUpdate, err := db.Prepare(opsUpdateSQL)
-	if err != nil {
-		return nil, fmt.Errorf("repos: prepare ops update: %w", err)
-	}
 
 	return &Repos{
 		Settings:              &SettingsRepo{DB: db, selectAll: settingsSelectAll},
@@ -100,7 +91,6 @@ func New(db *sql.DB) (*Repos, error) {
 		AdeTrackedItems:       &AdeTrackedItemsRepo{DB: db},
 		OpLog:                 &OpLogRepo{DB: db},
 		Connections:           &ConnectionsRepo{DB: db},
-		DbOps:                 &DbOpsRepo{DB: db, insert: opsInsert, update: opsUpdate},
 		SavedQueries:          &SavedQueriesRepo{DB: db},
 		FilterHistory:         &FilterHistoryRepo{DB: db},
 		Metadata:              &MetadataCacheRepo{DB: db},
@@ -114,7 +104,7 @@ func New(db *sql.DB) (*Repos, error) {
 		Proof:                 &ProofRepo{DB: db},
 		CustomScripts:         &scripts.Repo{DB: db},
 		ScriptRuns:            &scriptruns.Repo{DB: db},
-		stmts:                 []*sql.Stmt{settingsSelectAll, layoutSelectAll, tabsSelectAll, opsInsert, opsUpdate},
+		stmts:                 []*sql.Stmt{settingsSelectAll, layoutSelectAll, tabsSelectAll},
 	}, nil
 }
 

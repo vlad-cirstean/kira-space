@@ -8,16 +8,16 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 )
 
 // opEndStatus drains events until the op:end for the single op under test.
-func opEndStatus(t *testing.T, events <-chan studiooplog.Event) opEndPayload {
+func opEndStatus(t *testing.T, events <-chan oplog.DbEvent) opEndPayload {
 	t.Helper()
 	for {
 		select {
 		case e := <-events:
-			if e.Topic != studiooplog.EventOpEnd {
+			if e.Topic != oplog.DbEventOpEnd {
 				continue
 			}
 			var p opEndPayload

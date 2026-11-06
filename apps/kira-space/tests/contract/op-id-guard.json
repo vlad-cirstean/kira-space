@@ -1,6 +1,9 @@
 {
-  "StudioOpsService.Recent": [
+  "OpsService.Recent": [
     {
+      "background": false,
+      "cancellable": false,
+      "category": "db",
       "command": "select 1 as first",
       "commandTruncated": false,
       "connectionId": "<masked>",
@@ -8,12 +11,52 @@
       "error": null,
       "id": "<id:1>",
       "kind": "execute",
+      "module": "database",
+      "parentId": "",
       "path": "",
+      "repeat": 1,
+      "repoName": "",
+      "repoRoot": "",
       "rows": 1,
       "source": "user",
       "startedAt": "<masked>",
       "status": "ok",
-      "tabId": null
+      "steps": [],
+      "stepsDropped": 0,
+      "subject": "notes db",
+      "tabId": null,
+      "taskId": "",
+      "trigger": "user"
+    }
+  ],
+  "OpsService.Recent": [
+    {
+      "background": false,
+      "cancellable": false,
+      "category": "db",
+      "command": "select 1 as first",
+      "commandTruncated": false,
+      "connectionId": "<masked>",
+      "durationMs": 0,
+      "error": null,
+      "id": "<id:1>",
+      "kind": "execute",
+      "module": "database",
+      "parentId": "",
+      "path": "",
+      "repeat": 1,
+      "repoName": "",
+      "repoRoot": "",
+      "rows": 1,
+      "source": "user",
+      "startedAt": "<masked>",
+      "status": "ok",
+      "steps": [],
+      "stepsDropped": 0,
+      "subject": "notes db",
+      "tabId": null,
+      "taskId": "",
+      "trigger": "user"
     }
   ]
 }

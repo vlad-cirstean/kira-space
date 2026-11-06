@@ -1,6 +1,7 @@
 package dbmcpflow
 
 import (
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -12,7 +13,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -206,7 +206,7 @@ func TestKubeMcp(t *testing.T) {
 		before := k.podRequests()
 		const stmt = "kubectl get pods -n default --context kind-dev"
 		stmtRows := func() (n int) {
-			recent, err := k.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 200})
+			recent, err := k.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 200})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -237,9 +237,9 @@ func TestKubeMcp(t *testing.T) {
 			t.Fatalf("approved list = %+v (%s)", out, text(out.res))
 		}
 
-		var row model.DbOpRecord
+		var row oplog.Record
 		testx.WaitUntil(t, 10*time.Second, func() bool {
-			recent, err := k.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
+			recent, err := k.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 50})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -258,7 +258,7 @@ func TestKubeMcp(t *testing.T) {
 			t.Fatalf("one MCP read wrote %d rows, want 1", n-rowsBefore)
 		}
 		// Contract dbmcp-kube: tests/ui/kubernetes-mcp.spec.ts renders this row in the Operations panel.
-		k.contract(t, "StudioOpsService.Recent", []model.DbOpRecord{row})
+		k.contract(t, "OpsService.Recent", []oplog.Record{row})
 
 		before = k.podRequests()
 		denied := k.callAsync("kube_list_resources", k.listPods("default", nil))

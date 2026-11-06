@@ -1,52 +1,5 @@
 package model
 
-// DbOpRecord mirrors packages/shared/domain/ops.ts's opRecordSchema.
-type DbOpRecord struct {
-	ID           string  `json:"id"`
-	ConnectionID *string `json:"connectionId"`
-	TabID        *string `json:"tabId"`
-	StartedAt    string  `json:"startedAt"`
-	DurationMs   *int    `json:"durationMs"`
-	Kind         string  `json:"kind"`
-	Status       string  `json:"status"`
-	Rows         *int    `json:"rows"`
-	Command      *string `json:"command"`
-	Error        *string `json:"error"`
-	// CommandTruncated (P23 D1(c)): Command was truncated to maxOpCommandBytes at storage time, so
-	// it is no longer the whole script that ran — Re-run must refuse rather than replay a prefix.
-	CommandTruncated bool `json:"commandTruncated"`
-	// Path (P108 Part 11 F5): the encoded console path (database/schema) this op ran against — nil
-	// for every op kind that isn't a console execute() batch, and for a pre-P108-Part-11 row. Set
-	// by adapterhost.Dispatcher.Execute (op.SetPath), the one op kind that has a path at all.
-	Path *string `json:"path"`
-	// DelayMs (P307 Part 2): a preconnect op's configured wait, so the panel can count it down. Live
-	// only, never stored in op_log.
-	DelayMs *int `json:"delayMs,omitempty"`
-	// Source (P328): who started the op, "user" or "mcp".
-	Source string `json:"source"`
-}
-
-// OpAppend is ops.ts's AppendOpInput.
-type OpAppend struct {
-	ID           string
-	ConnectionID *string
-	TabID        *string
-	Kind         string
-	StartedAt    string
-	Source       string
-}
-
-// OpFinish is ops.ts's FinishOpPatch.
-type OpFinish struct {
-	Status     string
-	DurationMs int
-	Rows       *int
-	Command    *string
-	Error      *string
-	// Path (P108 Part 11 F5): see DbOpRecord.Path.
-	Path *string
-}
-
 // opKinds mirrors ops.ts's opKindSchema. Note 'ddl' is deliberately absent (P52 §4.3 / P53 §3.1):
 // the legacy 'ddl'->'definition' coercion is dropped, not ported.
 var opKinds = map[string]bool{

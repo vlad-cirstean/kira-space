@@ -204,7 +204,7 @@ func TestTimeoutAndCancel(t *testing.T) {
 	}()
 	waitUntil(t, "slow request to reach the server", func() bool { return len(srv.Requests()) >= 2 })
 	time.Sleep(100 * time.Millisecond)
-	if err := app.W.StudioOps.Cancel(bridge.StudioOpsCancelArgs{OpID: cancelled.OpID}); err != nil {
+	if err := app.W.Ops.Cancel(bridge.OpsCancelArgs{OpID: cancelled.OpID}); err != nil {
 		t.Fatal(err)
 	}
 	select {

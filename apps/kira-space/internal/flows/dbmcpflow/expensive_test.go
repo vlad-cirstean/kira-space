@@ -15,8 +15,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
 )
 
 // Backend half of tests/ui/connection-mcp-expensive.spec.ts: a read-class SELECT whose plan estimates
@@ -52,9 +52,9 @@ func (f *fixture) mcpCommands() (get func() []string, stop func()) {
 			_ = json.Unmarshal(e.Payload, &p)
 			mu.Lock()
 			switch e.Topic {
-			case studiooplog.EventOpStart:
+			case oplog.DbEventOpStart:
 				mcpOps[p.OpID] = p.Kind == "execute" && p.Source == "mcp"
-			case studiooplog.EventOpEnd:
+			case oplog.DbEventOpEnd:
 				if mcpOps[p.OpID] {
 					c := ""
 					if p.Command != nil {

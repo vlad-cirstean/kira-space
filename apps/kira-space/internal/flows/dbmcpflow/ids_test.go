@@ -2,13 +2,10 @@ package dbmcpflow
 
 import (
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
@@ -22,20 +19,13 @@ func TestOpIDs(t *testing.T) {
 		t.Fatalf("connection id %q is not a v7 UUID", f.connID)
 	}
 	legacy := uuid.NewString()
-	startedAt := time.Now().UTC().Format(time.RFC3339Nano)
-	if err := (&repos.DbOpsRepo{DB: f.app.DB()}).Append(model.OpAppend{ID: legacy, Kind: "execute", StartedAt: startedAt, Source: "user"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := f.opRow(t, legacy); !ok {
-		t.Fatal("a v4 op row does not list")
-	}
 	if ok, err := f.app.W.Router.Cancel(ctx, legacy); ok || err != nil {
 		t.Fatalf("Cancel(v4 id) = %v, %v; want false, nil", ok, err)
 	}
 	if err := f.exec("", "select 1"); err != nil {
 		t.Fatal(err)
 	}
-	recent, err := f.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
+	recent, err := f.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 50})
 	if err != nil {
 		t.Fatal(err)
 	}

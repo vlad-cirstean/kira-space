@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
@@ -174,7 +174,7 @@ func TestSubscribe_DeliversEveryEventEvenWhenFarPastTheOldFixedBufferSize(t *tes
 
 	const n = 500 // well past the old fixed 32-slot buffer
 	for i := 0; i < n; i++ {
-		h.emitJSON(studiooplog.EventOpStart, opStartPayload{OpID: strconv.Itoa(i)})
+		h.emitJSON(oplog.DbEventOpStart, opStartPayload{OpID: strconv.Itoa(i)})
 	}
 
 	received := make(map[string]bool, n)
@@ -205,7 +205,7 @@ func TestSubscribe_UnsubscribeRacesEmitWithoutPanicking(t *testing.T) {
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			h.emitJSON(studiooplog.EventOpStart, opStartPayload{OpID: "x"})
+			h.emitJSON(oplog.DbEventOpStart, opStartPayload{OpID: "x"})
 		}()
 		go func() {
 			defer wg.Done()

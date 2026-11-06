@@ -53,16 +53,3 @@ func TestGrpcHistory_ByteBudgetSumUsesCoveringIndex(t *testing.T) {
 		t.Errorf("query plan = %q, want it to use the covering index (an index-only scan), not a full table scan", plan)
 	}
 }
-
-// P23 D2/D3: op_log is the third table given this same shape — 0015_p23_op_log_bytes.sql's
-// op_log_bytes index is what OpsRepo.Prune's own SUM(stored_bytes) gate needs to stay an
-// index-only scan instead of degrading into the exact full-scan finding 11 caught on the other
-// two tables.
-func TestOpLog_ByteBudgetSumUsesCoveringIndex(t *testing.T) {
-	ops := newOpsRepo(t)
-	plan := explainPlanDetail(t, ops.DB,
-		"EXPLAIN QUERY PLAN SELECT COALESCE(SUM(stored_bytes), 0) FROM db_op_log")
-	if !strings.Contains(plan, "COVERING INDEX db_op_log_bytes") {
-		t.Errorf("query plan = %q, want it to use the covering index (an index-only scan), not a full table scan", plan)
-	}
-}

@@ -26,9 +26,6 @@ const (
 	// left panel visibility.
 	ChannelConnectionFiltersChanged = "kira:connection:filtersChanged"
 	ChannelSchemaChanged            = "kira:schema:changed"
-	// ChannelStudioOpUpdate carries Studio's own payload
-	// (StudioOpsService).
-	ChannelStudioOpUpdate = "studio:kira:op:update"
 	// ChannelGrpcCall is a server-streaming call's coalesced message batches, delivered with EmitTo
 	// (one window only) by the RunOp closure calling grpcclient.ServerStream.
 	ChannelGrpcCall = "kira:grpc:call"
@@ -54,9 +51,6 @@ type DbSources struct {
 		OnMetadataInvalidated(func(string)) func()
 		OnListChanged(func([]model.ConnectionSummary)) func()
 	}
-	Oplog interface {
-		OnUpdate(func(model.DbOpRecord)) func()
-	}
 }
 
 // AttachDb subscribes to every producer in s and returns one detach that unsubscribes all of
@@ -71,13 +65,9 @@ func (ev *Events) AttachDb(s DbSources) (detach func()) {
 	unsubList := s.Connections.OnListChanged(func(list []model.ConnectionSummary) {
 		ev.emit.Emit(ChannelConnectionsChanged, list)
 	})
-	unsubOplog := s.Oplog.OnUpdate(func(rec model.DbOpRecord) {
-		ev.emit.Emit(ChannelStudioOpUpdate, rec)
-	})
 	return func() {
 		unsubState()
 		unsubInvalidated()
 		unsubList()
-		unsubOplog()
 	}
 }

@@ -6,6 +6,7 @@ const (
 	CategorySession = "session"
 	CategoryMCP     = "mcp"
 	CategoryTracker = "tracker"
+	CategoryDB      = "db"
 )
 
 // Modules that originate an operation.
@@ -15,6 +16,7 @@ const (
 	ModuleFiles  = "files"
 	ModuleVSCode = "vscode"
 	ModuleApp    = "app"
+	ModuleDB     = "database"
 )
 
 // Triggers: who asked for the operation.
@@ -64,6 +66,19 @@ type Record struct {
 	Steps        []Step  `json:"steps"`
 	StepsDropped int     `json:"stepsDropped"`
 	Cancellable  bool    `json:"cancellable"`
+
+	// Database ops only. ConnectionID and TabID are nil for a connectionless or tabless op.
+	ConnectionID     *string `json:"connectionId"`
+	TabID            *string `json:"tabId"`
+	Rows             *int    `json:"rows"`
+	CommandTruncated bool    `json:"commandTruncated"`
+	// Path is the encoded console path (database/schema) a console batch ran against.
+	Path *string `json:"path"`
+	// DelayMs is a preconnect op's configured wait; live only, never stored.
+	DelayMs *int `json:"delayMs,omitempty"`
+
+	// ephemeral rows (incognito database ops) show live and never reach the store.
+	ephemeral bool
 }
 
 // Meta identifies the operation being started. Module, trigger, task and parent come from the ctx.

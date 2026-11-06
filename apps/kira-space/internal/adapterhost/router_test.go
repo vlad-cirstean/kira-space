@@ -9,9 +9,9 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/enginecache"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
 )
 
 // Cancel must find an op this router's own scheduler started.
@@ -153,7 +153,7 @@ func TestRouter_DescribeAndDefinition_ThreadTabIDIntoOpStart(t *testing.T) {
 		for {
 			select {
 			case evt := <-events:
-				if evt.Topic != studiooplog.EventOpStart {
+				if evt.Topic != oplog.DbEventOpStart {
 					continue
 				}
 				var payload struct {

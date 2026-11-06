@@ -31,10 +31,6 @@ func newMetadataCacheRepo(t *testing.T) *repos.MetadataCacheRepo {
 	return &repos.MetadataCacheRepo{DB: newRepos(t).DB}
 }
 
-func newOpsRepo(t *testing.T) *repos.DbOpsRepo {
-	return &repos.DbOpsRepo{DB: newRepos(t).DB}
-}
-
 // seedConnection inserts a minimal connections row so a test can reference connID from a table
 // with a foreign key into connections(id) — foreign_keys=ON (P52 §4.3) enforces this for real.
 func seedConnection(t *testing.T, db *sql.DB, connID string) {

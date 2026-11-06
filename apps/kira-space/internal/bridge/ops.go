@@ -7,10 +7,17 @@ import (
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
-// OpsService serves the in-memory op log. Arg and result shapes match Kira Studio's OpsService,
-// so the shared OpLogControl fits both.
+// DbCanceller cancels a database op: *adapterhost.Router asks its scheduler first (op ownership,
+// not connection kind) and remembers a cancel that arrives before the op starts.
+type DbCanceller interface {
+	Cancel(ctx context.Context, opID string) (bool, error)
+}
+
+// OpsService serves the op log of every module.
 type OpsService struct {
 	Log *oplog.Log
+	// Canceller takes cancels of database ops, and of ids the log has not seen yet.
+	Canceller DbCanceller
 }
 
 type OpsRecentArgs struct {
@@ -33,8 +40,15 @@ func (s *OpsService) Cancel(args OpsCancelArgs) error {
 	if args.OpID == "" {
 		return ipcerr.Required("opId")
 	}
-	s.Log.Cancel(args.OpID)
-	return nil
+	if rec, ok := s.Log.Lookup(args.OpID); ok && rec.Category != oplog.CategoryDB {
+		s.Log.Cancel(args.OpID)
+		return nil
+	}
+	if s.Canceller == nil {
+		return nil
+	}
+	_, err := s.Canceller.Cancel(context.Background(), args.OpID)
+	return err
 }
 
 // filesCtx stamps spawns started by a Files-module call.

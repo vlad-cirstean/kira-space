@@ -34,11 +34,11 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/maskreview"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/maskrules"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/preconnect"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/tree"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/docker"
@@ -51,7 +51,7 @@ import (
 type dbModule struct {
 	router         *adapterhost.Router
 	connectionsSvc *connections.Service
-	oplogWiring    *studiooplog.Wiring
+	oplogWiring    *oplog.DbSource
 	connFiles      *connfiles.Loader
 	apiFiles       *apifiles.Store
 	apiSecrets     *apifiles.Secrets
@@ -62,7 +62,7 @@ type dbModule struct {
 // supervisor, the connections and tree services, column review, the op log and the per-launch history
 // sweeps. It fills the module's fields of deps in place and runs after the prompt router and the
 // approval queue exist. A settings read failure is the only error.
-func (w *Wired) wireAdapters(deps *appcore.Deps, opts Options) (*dbModule, error) {
+func (w *Wired) wireAdapters(deps *appcore.Deps, opts Options, opLog *oplog.Log) (*dbModule, error) {
 	repositories, db := opts.Repos, opts.DB
 	emitter := w.Emitter
 	authorizer := opts.Authorizer
@@ -144,8 +144,21 @@ func (w *Wired) wireAdapters(deps *appcore.Deps, opts Options) (*dbModule, error
 	// Configure pushes the budget to both caches (§4.9).
 	router.PushCacheConfig(settings)
 
-	// The router's in-process scheduler is oplog's only EventSource.
-	oplogWiring := studiooplog.New(router.Host(), repositories.DbOps, settings.Advanced.OpLogRetentionDays)
+	// The router's in-process scheduler is the database ops' only event source.
+	oplogWiring := oplog.NewDbSource(router.Host(), opLog, repositories.OpLog.PruneCategory,
+		func(id string) string {
+			if c, err := repositories.Connections.Get(id); err == nil && c != nil {
+				return c.Name
+			}
+			return ""
+		},
+		func() int {
+			s, err := repositories.Settings.GetAll()
+			if err != nil {
+				return model.DefaultSettings().Advanced.OpLogRetentionDays
+			}
+			return s.Advanced.OpLogRetentionDays
+		})
 	oplogWiring.Start()
 
 	// A scratch tab's response history is swept once per launch, beside oplog's own startup prune —
@@ -196,7 +209,7 @@ type dbEmbedded struct {
 // wireEmbedded wires the embedded services: DB MCP (with its own approval broker), Docker and
 // Kubernetes. Process-wide singletons (terminal registry, prompt router, agent settings, events) come
 // from w.
-func (w *Wired) wireEmbedded(deps appcore.Deps, installer harness.MCPInstaller, connectionsSvc *connections.Service, oplogWiring *studiooplog.Wiring, proofSvc *proof.Service, agentAPI *agentapi.Service, opts Options) dbEmbedded {
+func (w *Wired) wireEmbedded(deps appcore.Deps, installer harness.MCPInstaller, connectionsSvc *connections.Service, oplogWiring *oplog.DbSource, proofSvc *proof.Service, agentAPI *agentapi.Service, opts Options) dbEmbedded {
 	// The approval broker outlives the server's own start/stop (constructed here, not inside
 	// DbMcpService.startLocked), so the event subscription stays valid across a restart of the
 	// embedded server within one app run. StartIfEnabled's own failure (a bind conflict) is logged,
@@ -215,7 +228,7 @@ func (w *Wired) wireEmbedded(deps appcore.Deps, installer harness.MCPInstaller, 
 	stopReregister := reregisterAfterFold(dbMcpSvc, w.Repos.CustomScripts.DB)
 	dockerSvc := &bridge.DockerService{BoundService: docker.NewBoundService(deps.Events, dockerOptions(opts, deps.Repos.DockerRestore)...)}
 	docker.StartRestoreBound(dockerSvc.BoundService)
-	eventsDetach := w.Events.AttachDb(bridge.DbSources{Connections: connectionsSvc, Oplog: oplogWiring})
+	eventsDetach := w.Events.AttachDb(bridge.DbSources{Connections: connectionsSvc})
 
 	return dbEmbedded{
 		dbMcpSvc: dbMcpSvc, dbMcpSessions: dbMcpSessions,
@@ -253,7 +266,6 @@ func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *db
 
 	w.Router = dbm.router
 	w.App = &bridge.AppService{Deps: deps}
-	w.StudioOps = &bridge.StudioOpsService{Deps: deps, Canceller: dbm.router}
 	w.Connections = &bridge.ConnectionsService{Deps: deps}
 	w.MaskRules = &bridge.MaskRulesService{Deps: deps}
 	w.ConnectionConfig = &bridge.ConnectionConfigService{Deps: deps, Files: dbm.connFiles}

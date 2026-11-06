@@ -46,7 +46,6 @@ type App struct {
 
 	ConnectionsSvc *bridge.ConnectionsService
 	TreeSvc        *bridge.TreeService
-	OpsSvc         *bridge.StudioOpsService
 	MaskRulesSvc   *bridge.MaskRulesService
 
 	// connectedMu guards connectedIDs — every real adapter this harness connects
@@ -159,7 +158,6 @@ func NewApp(t *testing.T) *App {
 	app.Files, app.Connections, app.Tree = files, connectionsSvc, treeSvc
 	app.ConnectionsSvc = &bridge.ConnectionsService{Deps: appDeps}
 	app.TreeSvc = &bridge.TreeService{Deps: appDeps}
-	app.OpsSvc = &bridge.StudioOpsService{Deps: appDeps, Canceller: router}
 	app.MaskRulesSvc = &bridge.MaskRulesService{Deps: appDeps}
 	// Every *_test.go file using this harness calls Recorder.ConnectionsConnect
 	// and none of them call the matching disconnect — real adapters otherwise accumulate in the
@@ -326,7 +324,7 @@ func (r *Recorder) TreeDefinition(t *testing.T, connectionID, path string, refre
 	return result
 }
 
-// OpsCancel is IPC.opsCancel: bridge.StudioOpsService.Cancel. Every committed fixture captures this
+// OpsCancel is IPC.opsCancel: bridge.OpsService.Cancel. Every committed fixture captures this
 // channel with no args and no response (the TypeScript spec pushed `{channel: IPC.opsCancel}`
 // literally, never the real opId or the void result) — matched here rather than "improved", so a
 // regenerated fixture does not gratuitously diff read-mode's own committed file.

@@ -9,9 +9,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/enginecache"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
 )
 
 // dataFakeAdapter is a fuller test double than host_test.go's fakeAdapter: every method the
@@ -249,7 +249,7 @@ func TestDispatcher_EmptyOpIDMinted(t *testing.T) {
 	for _, kind := range []string{"count", "mutate", "transfer"} {
 		e := <-events
 		var p opStartPayload
-		if err := json.Unmarshal(e.Payload, &p); err != nil || e.Topic != studiooplog.EventOpStart || p.Kind != kind {
+		if err := json.Unmarshal(e.Payload, &p); err != nil || e.Topic != oplog.DbEventOpStart || p.Kind != kind {
 			t.Fatalf("event %+v (%v), want op:start for %s", e, err, kind)
 		}
 		if u, err := uuid.Parse(p.OpID); err != nil || u.Version() != 7 {

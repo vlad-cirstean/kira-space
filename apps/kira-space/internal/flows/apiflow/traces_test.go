@@ -4,11 +4,13 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 func TestIncognitoLeavesNoTrace(t *testing.T) {
@@ -47,19 +49,28 @@ func TestIncognitoLeavesNoTrace(t *testing.T) {
 	if rows, _ := app.W.GrpcHistory.List(bridge.GrpcHistoryScopeArgs{TabID: "tab-incognito"}); len(rows) != 0 {
 		t.Errorf("incognito gRPC call left %d history rows", len(rows))
 	}
-	recs, err := app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 500})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var ids []string
-	for _, r := range recs {
-		ids = append(ids, r.ID)
-		if r.ID == hidden.OpID || r.ID == hiddenCall.OpID {
-			t.Errorf("op log persisted incognito op %s", r.ID)
+	// The log shows an incognito op live; only the store must never hold it.
+	stored := func() []string {
+		rows, err := app.DB().Query(`SELECT id FROM op_log WHERE category = 'db'`)
+		if err != nil {
+			t.Fatal(err)
 		}
+		defer rows.Close()
+		var ids []string
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				t.Fatal(err)
+			}
+			ids = append(ids, id)
+		}
+		return ids
 	}
-	if len(ids) != 2 {
-		t.Errorf("op log rows = %v, want only the two control ops", ids)
+	testx.WaitUntil(t, 5*time.Second, func() bool { return len(stored()) >= 2 })
+	for _, id := range stored() {
+		if id == hidden.OpID || id == hiddenCall.OpID {
+			t.Errorf("op log persisted incognito op %s", id)
+		}
 	}
 
 	db := dbBytes(t, app)

@@ -3,6 +3,7 @@ package dbmcpflow
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"strings"
 	"testing"
 	"time"
@@ -148,10 +149,10 @@ func TestApiRequestApproved(t *testing.T) {
 	}
 
 	// The op log is written by an async consumer: wait for the row to leave "running".
-	var row *model.DbOpRecord
+	var row *oplog.Record
 	var rowsJSON []byte
 	testx.WaitUntil(t, 10*time.Second, func() bool {
-		recent, err := f.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
+		recent, err := f.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 50})
 		if err != nil {
 			t.Fatal(err)
 		}

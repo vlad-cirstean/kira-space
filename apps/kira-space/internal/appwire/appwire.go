@@ -228,7 +228,6 @@ type Wired struct {
 	Terminal        *bridge.TerminalService
 	AdeTask         *bridge.AdeTaskService
 	Ops             *bridge.OpsService
-	StudioOps       *bridge.StudioOpsService
 	Lifecycle       *bridge.LifecycleService
 	KeepAwake       *bridge.KeepAwakeService
 	Mobile          *bridge.MobileAccessService
@@ -386,7 +385,7 @@ func Build(opts Options) (*Wired, error) {
 		Changed: func(rev uint64) { emitter.Emit(bridge.ChannelLlmPromptsChanged, map[string]uint64{"revision": rev}) },
 	}}
 	w.detachOpLog = events.AttachOpLog(git.opLog)
-	dbm, err := w.wireAdapters(&deps, opts)
+	dbm, err := w.wireAdapters(&deps, opts, git.opLog)
 	if err != nil {
 		return nil, err
 	}
@@ -593,7 +592,7 @@ func Build(opts Options) (*Wired, error) {
 
 	w.Files = &bridge.FilesService{Dialogs: opts.Dialogs}
 	w.CustomScripts.Scripts = &scripts.Service{Loader: loader}
-	w.Ops = &bridge.OpsService{Log: git.opLog}
+	w.Ops = &bridge.OpsService{Log: git.opLog, Canceller: w.Router}
 	live := liveWork(repositories, terminalRegistry, runs.Live)
 	w.Quitter.SetGate(prompts.QuitGate{R: w.Prompts, LiveFn: func() int { return live().Total() }})
 	w.Lifecycle = &bridge.LifecycleService{Flusher: w.Quitter, WindowFlusher: w.CloseFlush, Quit: w.Quitter, Live: live}
@@ -681,7 +680,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.PromptsSvc), application.NewService(w.ApprovalsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc),
 		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc), application.NewService(w.RepoConfigSvc), application.NewService(w.GitSvc),
 		application.NewService(w.App), application.NewService(w.Connections),
-		application.NewService(w.MaskRules), application.NewService(w.Tree), application.NewService(w.StudioOps),
+		application.NewService(w.MaskRules), application.NewService(w.Tree),
 		application.NewService(w.Filters), application.NewService(w.Queries), application.NewService(w.Schema),
 		application.NewService(w.Kibana), application.NewService(w.Http), application.NewService(w.Grpc),
 		application.NewService(w.Collections), application.NewService(w.Variables), application.NewService(w.ApiConfig),

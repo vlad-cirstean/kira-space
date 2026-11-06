@@ -2,6 +2,7 @@ package dbmcpflow
 
 import (
 	"encoding/json"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"strings"
 	"testing"
 	"time"
@@ -73,9 +74,9 @@ func waitListed(t *testing.T, sess *mcp.ClientSession, match func(listedOp) bool
 	return found
 }
 
-func (f *fixture) opRow(t *testing.T, id string) (model.DbOpRecord, bool) {
+func (f *fixture) opRow(t *testing.T, id string) (oplog.Record, bool) {
 	t.Helper()
-	recent, err := f.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
+	recent, err := f.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 50})
 	if err != nil {
 		t.Fatalf("Ops.Recent: %v", err)
 	}
@@ -84,12 +85,12 @@ func (f *fixture) opRow(t *testing.T, id string) (model.DbOpRecord, bool) {
 			return r, true
 		}
 	}
-	return model.DbOpRecord{}, false
+	return oplog.Record{}, false
 }
 
-func (f *fixture) waitStatus(t *testing.T, id, status string) model.DbOpRecord {
+func (f *fixture) waitStatus(t *testing.T, id, status string) oplog.Record {
 	t.Helper()
-	var row model.DbOpRecord
+	var row oplog.Record
 	testx.WaitUntil(t, 10*time.Second, func() bool {
 		r, ok := f.opRow(t, id)
 		row = r
@@ -118,7 +119,7 @@ func TestDbMcpCancelOperation(t *testing.T) {
 	}
 	row := f.waitStatus(t, op.OpID, "running")
 	// Contract ops-running: tests/ui/running-ops-status.spec.ts renders this running row.
-	f.app.Contract(t, "ops-running", "StudioOpsService.Recent", []model.DbOpRecord{row}, flowharness.Mask("id", "startedAt", "durationMs", "connectionId"))
+	f.app.Contract(t, "ops-running", "OpsService.Recent", []oplog.Record{row}, flowharness.Mask("id", "startedAt", "durationMs", "connectionId"))
 
 	if res := cancelOp(t, b, op.OpID); res.IsError || !strings.Contains(text(res), `"cancelled":true`) {
 		t.Fatalf("cancel_operation = %q", text(res))
@@ -161,7 +162,7 @@ func TestDbMcpCancelOperation(t *testing.T) {
 	if res := cancelOp(t, b, hiddenOp); !res.IsError || !strings.Contains(text(res), "no running operation") {
 		t.Fatalf("cancel of hidden op = %q, want the no-running-operation error", text(res))
 	}
-	if err := f.app.W.StudioOps.Cancel(bridge.StudioOpsCancelArgs{OpID: hiddenOp}); err != nil {
+	if err := f.app.W.Ops.Cancel(bridge.OpsCancelArgs{OpID: hiddenOp}); err != nil {
 		t.Fatal(err)
 	}
 	select {

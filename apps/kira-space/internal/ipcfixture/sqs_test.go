@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
@@ -46,7 +47,7 @@ func TestFixture_SQS(t *testing.T) {
 	// opsRecent: a synthetic control snapshot, not a real backend call — this backend half never
 	// issues an ENGINE_OP.describe-equivalent call for sqs at all (describe:false), so there is no
 	// real op to list; the mocked frontend's own opsRecent is stubbed to `[]` by construction.
-	rec.recordControl(channelOpsRecent, nil, []model.DbOpRecord{})
+	rec.recordControl(channelOpsRecent, nil, []oplog.Record{})
 
 	// --- tree: a flat queue list, no nested level under any queue -------------------------------
 	root := rec.TreeChildren(t, cfg.ID, "", false)

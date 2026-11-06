@@ -1,6 +1,7 @@
 package dbflow
 
 import (
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,10 +16,10 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
-func opUpdates(app *flowharness.App, mark int) []model.DbOpRecord {
-	var out []model.DbOpRecord
-	for _, ev := range app.Events.Since(mark, bridge.ChannelStudioOpUpdate) {
-		if rec, ok := ev.Data.(model.DbOpRecord); ok {
+func opUpdates(app *flowharness.App, mark int) []oplog.Record {
+	var out []oplog.Record
+	for _, ev := range app.Events.Since(mark, bridge.ChannelOpUpdate) {
+		if rec, ok := ev.Data.(oplog.Record); ok {
 			out = append(out, rec)
 		}
 	}
@@ -29,13 +30,13 @@ func opUpdates(app *flowharness.App, mark int) []model.DbOpRecord {
 // op events asynchronously, so they can land after Connect returns.
 func waitOp(t *testing.T, app *flowharness.App, mark int, kind, status string) {
 	t.Helper()
-	app.Events.WaitAfter(t, mark, bridge.ChannelStudioOpUpdate, func(ev flowharness.Event) bool {
-		rec, ok := ev.Data.(model.DbOpRecord)
+	app.Events.WaitAfter(t, mark, bridge.ChannelOpUpdate, func(ev flowharness.Event) bool {
+		rec, ok := ev.Data.(oplog.Record)
 		return ok && rec.Kind == kind && rec.Status == status
 	}, 5*time.Second)
 }
 
-func indexOf(recs []model.DbOpRecord, kind, status string) int {
+func indexOf(recs []oplog.Record, kind, status string) int {
 	for i, r := range recs {
 		if r.Kind == kind && r.Status == status {
 			return i
@@ -167,7 +168,7 @@ func TestSQLitePreconnectDelay(t *testing.T) {
 		waitOp(t, app, mark, "preconnect", "running")
 		recs := opUpdates(app, mark)
 		opID := recs[indexOf(recs, "preconnect", "running")].ID
-		if err := app.W.StudioOps.Cancel(bridge.StudioOpsCancelArgs{OpID: opID}); err != nil {
+		if err := app.W.Ops.Cancel(bridge.OpsCancelArgs{OpID: opID}); err != nil {
 			t.Fatalf("Ops.Cancel: %v", err)
 		}
 

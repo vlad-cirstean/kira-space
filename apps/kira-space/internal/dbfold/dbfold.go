@@ -300,6 +300,9 @@ func importRows(o *Options, path string, m *marker) (err error) {
 	if err := copySettings(t, freshSettings); err != nil {
 		return err
 	}
+	if err := copyOps(t); err != nil {
+		return err
+	}
 	if err := copyKeyed(t); err != nil {
 		return err
 	}
@@ -332,7 +335,6 @@ var moduleTables = []moduleTable{
 	{"saved_queries", "saved_queries"},
 	{"filter_history", "filter_history"},
 	{"metadata_cache", "metadata_cache"},
-	{"op_log", "db_op_log"},
 	{"api_collections", "api_collections"},
 	{"api_items", "api_items"},
 	{"api_environments", "api_environments"},
@@ -350,6 +352,26 @@ var moduleTables = []moduleTable{
 	{"proof_steps", "proof_steps"},
 	{"proof_view_state", "proof_view_state"},
 	{"proof_task_links", "proof_task_links"},
+}
+
+// copyOps maps Studio's op_log rows into the merged op_log, the same mapping migration 0080 applies to
+// a db_op_log already in the Space database.
+func copyOps(t tx) error {
+	has, err := studioHasTable(t, "op_log")
+	if err != nil || !has {
+		return err
+	}
+	_, err = t.Exec(`INSERT OR IGNORE INTO main.op_log (id, started_ms, duration_ms, category, kind, status, module, trigger_,
+			source, subject, repo_root, repo_name, task_id, parent_id, command, error, steps_json, steps_dropped, background,
+			repeat_count, connection_id, tab_id, rows, command_truncated, path)
+		SELECT d.id, COALESCE(CAST(unixepoch(d.started_at, 'subsec') * 1000 AS INTEGER), 0), d.duration_ms, 'db', d.kind, d.status,
+			'database', d.source, d.source, COALESCE(c.name, ''), '', '', '', '', d.command, d.error, '[]', 0, 0, 1,
+			d.connection_id, d.tab_id, d.rows, d.command_truncated, d.path
+		FROM studio.op_log d LEFT JOIN main.connections c ON c.id = d.connection_id`)
+	if err != nil {
+		return fmt.Errorf("copy op_log: %w", err)
+	}
+	return nil
 }
 
 func copyModuleTables(t tx) error {

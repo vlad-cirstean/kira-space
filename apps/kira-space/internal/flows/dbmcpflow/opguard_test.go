@@ -2,6 +2,7 @@ package dbmcpflow
 
 import (
 	"errors"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"strings"
 	"testing"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
@@ -64,7 +64,7 @@ func TestOpIDGuard(t *testing.T) {
 		t.Fatalf("reused op row = %+v, want the first op's row unchanged", row)
 	}
 	n := 0
-	recent, err := f.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
+	recent, err := f.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 50})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestOpIDGuard(t *testing.T) {
 	if n != 1 {
 		t.Fatalf("op_log has %d rows for the reused id, want 1", n)
 	}
-	f.app.Contract(t, "op-id-guard", "StudioOpsService.Recent", []model.DbOpRecord{row}, flowharness.Mask("startedAt", "durationMs", "connectionId"))
+	f.app.Contract(t, "op-id-guard", "OpsService.Recent", []oplog.Record{row}, flowharness.Mask("startedAt", "durationMs", "connectionId"))
 
 	// Early cancel still works for a UUID.
 	early := ids.NewID()

@@ -3,6 +3,7 @@ package dbmcpflow
 import (
 	"context"
 	"database/sql"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -276,9 +277,9 @@ func TestDbMcpOpsCarrySource(t *testing.T) {
 		t.Fatalf("Tree.Children: %v", err)
 	}
 
-	var rows []model.DbOpRecord
+	var rows []oplog.Record
 	testx.WaitUntil(t, 10*time.Second, func() bool {
-		recent, err := f.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
+		recent, err := f.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 50})
 		if err != nil {
 			t.Fatalf("Ops.Recent: %v", err)
 		}
@@ -298,7 +299,7 @@ func TestDbMcpOpsCarrySource(t *testing.T) {
 		t.Fatalf("op sources = %v, want execute=mcp children=user", bySource)
 	}
 	// Contract ops-source: tests/ui/operations.spec.ts renders these rows' source column.
-	f.app.Contract(t, "ops-source", "StudioOpsService.Recent", rows, flowharness.Mask("id", "startedAt", "durationMs", "connectionId"))
+	f.app.Contract(t, "ops-source", "OpsService.Recent", rows, flowharness.Mask("id", "startedAt", "durationMs", "connectionId"))
 }
 
 func TestInstallAgentWithoutCli(t *testing.T) {

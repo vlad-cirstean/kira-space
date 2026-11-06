@@ -15,8 +15,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -147,7 +147,7 @@ func (f *fixture) readOps() (count func() int, stop func()) {
 		for e := range events {
 			var p struct{ Kind, Source string }
 			_ = json.Unmarshal(e.Payload, &p)
-			if e.Topic == studiooplog.EventOpStart && p.Kind == "read" && p.Source == "mcp" {
+			if e.Topic == oplog.DbEventOpStart && p.Kind == "read" && p.Source == "mcp" {
 				mu.Lock()
 				n++
 				mu.Unlock()
