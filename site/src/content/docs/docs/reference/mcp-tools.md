@@ -98,6 +98,7 @@ Server name `kira-ade`. `finish_step` is available to every agent run. `fetch_re
 - `finish_step`: report how a step ended. Call it once, last. The reply lists the task's artifacts. Arguments: `status`, `summary`, `reason`, `conflictedFiles`, `lastGitError`, `tried`.
 - `reply_review_comment`: answer one review comment. Only in a workflow review round. Call once per comment. Arguments: `id`, `reply`, `resolved`.
 - `report_artifacts`: record what the task produced. Argument: `artifacts`, 1 to 20 items of `kind` (`change_request`, `issue`, `deployment`, `doc`, `link`), `title`, `url`, `ref`. Branches, commits, change requests and deployments of the task repositories are found without a report.
+- `attach_proof`: show a closed proof session in the task's notes chain. Call it after `proof_close_session`. Argument: `name`. A session belongs to one task; a repeat call is fine.
 - `task_info`: the task, its workflow, step, repositories and branches.
 - `declare_repos`: add registered repositories to the task. Argument: `repos`, 1 to 20.
 - `request_branches`: ask the user to approve branches and worktrees, one call for all. You name each branch. A repository may get several branches. The call waits for the answer, up to 30 minutes. Per branch the result is `created`, `existing`, `denied`, `timeout` or `failed`. Argument: `branches`, 1 to 20 items of `repo` and `branch`.

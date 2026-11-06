@@ -17,7 +17,7 @@ Twins: every Studio twin in `plans/TWINS.md` is merged by P538, P539, P540 or P5
 | P540 | Move every config YAML into one subfolder of the home | Done |
 | P541 | Mermaid visualiser in the proof tool and proof MCP tool | Done |
 | P542 | Unified notes: user notes and agent handovers in one chain | Done |
-| P543 | Proof as an artifact chain in the task details panel | Pending |
+| P543 | Proof as an artifact chain in the task details panel | Done |
 | P544 | Merge the main SQLite databases into one | Pending |
 | P545 | Timeline becomes a toggle merged into the same list | Pending |
 | P546 | Forward panel edits (diff only) to agents running in the step | Pending |
@@ -160,6 +160,7 @@ Result:
 - Handover text is terse. Add a short rule for this in the MCP tool description (llmprompts).
 - Decide in plan: chain ordering key and model; where the artifact lives relative to `AdeDetailsTab.vue` and `AdeLinkGroups.vue`; how existing proof records migrate into the chain; exact wording and budget of the terse-handover rule.
 - Plan: `plans/P543.md`.
+- Result: Done. Proof sessions link to tasks through `proof_task_links` (migration `0066_p543_proof_task_links.sql`, cascade on session delete; no FK to `ade_tasks` across DBs). Agent MCP tool `attach_proof` (by session name, closed sessions only) and a user menu in the chain (`AdeProofAttachMenu`) link or unlink; ownership refusals are `ToolError`s. `pruneClosed` never prunes a linked session. `AdeTaskChain` replaces `AdeNotesChain`: handovers and proofs merge by time desc; ties rank proof with diagram step, handover, other proof, then key (`taskChain.ts`). Details tab order: links, chain, timeline. Diagram steps render through `ProofDiagram`; mermaid stays lazy. Handover tool text gains a terse rule (10 short lines, no restating proof, diffs or links); `budget.tsv` updated. New bridge methods `TaskProofs`, `ProofChoices`, `LinkProof`, `UnlinkProof`. `TestProofChain` (contract `ade-proof-chain`) and `ade-v2-proof-chain.spec.ts` (8) pass; `ade-automation` contract regenerated (tool list). Deviations: repo method `UnattachedSessions`; `AdeProofDiagramStep` imports `ProofDiagram` statically (already in main chunk); steps aria label reuses `studio.proof.tabs.aria`; UI spec injects explicit times (contract masks them). Open: real `claude` run not done (no login); `ui-leftovers` http-send pair fails at base. P544: fold `proof_task_links` into the merged DB with `REFERENCES ade_tasks(id) ON DELETE CASCADE`.
 
 ### P544 Merge the main SQLite databases into one
 
