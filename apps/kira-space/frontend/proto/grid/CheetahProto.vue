@@ -6,15 +6,15 @@ import { useContextMenuStore } from '@workbench/state/contextMenu';
 import { type ListGrid, themes } from 'cheetah-grid';
 import { markRaw, nextTick, onMounted, onScopeDispose, ref, shallowRef } from 'vue';
 import { CGrid, CGridColumn } from 'vue-cheetah-grid';
-import { setVisibleWindow } from '../../src/views/grid/page';
-import { parseDelimited } from '../../src/views/shared/clipboardFormats';
+import { setVisibleWindow } from '../../src/studio/views/grid/page';
+import { parseDelimited } from '../../src/studio/views/shared/clipboardFormats';
 import {
   columnHeaderTooltip,
   GUTTER_WIDTH,
   headerAwareMinWidth,
   initialWidthsByIndex,
   tooltipAttrs,
-} from '../../src/views/shared/page/columns';
+} from '../../src/studio/views/shared/page/columns';
 import { CellColumn, GutterColumn, type NavKind } from './cellColumn';
 import { DataSource } from './cheetahTypes';
 import { copySelection, selectionText } from './clipboard';

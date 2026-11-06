@@ -25,6 +25,7 @@
   },
   "include": [
     "**/*.ts",
+    "../support/**/*.ts",
     "../../../../packages/workbench/env.d.ts",
     "../../../../packages/workbench/src/**/*.ts",
     "../../../../packages/workbench/src/**/*.vue"

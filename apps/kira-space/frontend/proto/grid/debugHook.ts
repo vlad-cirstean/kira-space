@@ -1,6 +1,6 @@
 import cheetahGrid, { type ListGrid } from 'cheetah-grid';
-import { categoryForTypeClass } from '../../src/theme/icons';
-import { alignmentFor } from '../../src/views/shared/page/columns';
+import { categoryForTypeClass } from '../../src/studio/theme/icons';
+import { alignmentFor } from '../../src/studio/views/shared/page/columns';
 import { EDITOR_CLASS } from './edit';
 import type { KiraGridProtoHook } from './hookTypes';
 

@@ -18,7 +18,7 @@ var (
 	Replace = flowtest.Replace
 )
 
-// Contract compares got with key in apps/kira-studio/tests/contract/<scenario>.json (or writes it
+// Contract compares got with key in apps/kira-space/tests/contract/studio/<scenario>.json (or writes it
 // under KIRA_CONTRACT=write), with this app's temp directories replaced by placeholders. The UI
 // specs read the same file as the mock answer; see flowtest.Contract.
 func (a *App) Contract(t testing.TB, scenario, key string, got any, opts ...ContractOption) {
@@ -38,5 +38,5 @@ func (a *App) ContractEvent(t testing.TB, scenario string, ev Event, opts ...Con
 
 func contractDir() string {
 	_, file, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(file), "..", "..", "tests", "contract")
+	return filepath.Join(filepath.Dir(file), "..", "..", "tests", "contract", "studio")
 }

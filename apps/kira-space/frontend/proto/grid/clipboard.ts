@@ -4,7 +4,7 @@ import {
   type RowSnapshot,
   rowsToTsv,
   tsvField,
-} from '../../src/views/shared/clipboardFormats';
+} from '../../src/studio/views/shared/clipboardFormats';
 import { selectedCols, selectedRows } from './selection';
 import { type ProtoState, pageRowOf } from './state';
 

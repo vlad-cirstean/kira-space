@@ -6,9 +6,9 @@ import {
   type TabularPage,
   unpagedPosition,
 } from '@shared/protocol/page';
-import { ROWS, wideColumns, wideRows } from '../../../tests/perf/support/wideTable';
-import { createMaskPreviewTransform, type MaskedCellView } from '../../src/views/grid/maskPreview';
-import { type CellView, cell, setPage } from '../../src/views/grid/page';
+import { ROWS, wideColumns, wideRows } from '../../../tests/perf/studio/support/wideTable';
+import { createMaskPreviewTransform, type MaskedCellView } from '../../src/studio/views/grid/maskPreview';
+import { type CellView, cell, setPage } from '../../src/studio/views/grid/page';
 
 const PROTO_SCOPE = 'proto-grid';
 const NCOLS = 20;

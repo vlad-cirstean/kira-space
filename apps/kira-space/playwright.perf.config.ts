@@ -13,7 +13,7 @@ export default defineConfig({
     {
       name: 'perf',
       testDir: './tests/perf',
-      testIgnore: 'heap-*.spec.ts',
+      testIgnore: ['heap-*.spec.ts', 'studio/**'],
       use: { browserName: 'webkit', headless: !process.env.PERF_HEADED },
     },
     // P433/P480: JS heap per tab kind and RAM attribution need CDP, so Chromium.
@@ -22,6 +22,7 @@ export default defineConfig({
       name: 'heap',
       testDir: './tests/perf',
       testMatch: 'heap-*.spec.ts',
+      testIgnore: 'studio/**',
       timeout: 600_000,
       use: { browserName: 'chromium', headless: !process.env.PERF_HEADED },
     },
@@ -30,6 +31,7 @@ export default defineConfig({
       name: 'heap-webkit',
       testDir: './tests/perf',
       testMatch: 'heap-ram.spec.ts',
+      testIgnore: 'studio/**',
       timeout: 600_000,
       use: { browserName: 'webkit', headless: !process.env.PERF_HEADED },
     },

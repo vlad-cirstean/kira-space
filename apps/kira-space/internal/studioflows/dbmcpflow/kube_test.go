@@ -258,7 +258,7 @@ func TestKubeMcp(t *testing.T) {
 			t.Fatalf("one MCP read wrote %d rows, want 1", n-rowsBefore)
 		}
 		// Contract dbmcp-kube: tests/ui/kubernetes-mcp.spec.ts renders this row in the Operations panel.
-		k.contract(t, "OpsService.Recent", []model.OpRecord{row})
+		k.contract(t, "StudioOpsService.Recent", []model.OpRecord{row})
 
 		before = k.podRequests()
 		denied := k.callAsync("kube_list_resources", k.listPods("default", nil))

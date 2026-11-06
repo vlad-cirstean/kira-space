@@ -1,0 +1,37 @@
+import { defineConfig } from '@playwright/test';
+
+// Perf probes: report numbers, assert nothing. Own config so no normal tier ever runs them.
+// `bun run perf:probe:studio`; docs/DEV_ENVIRONMENT.md "Perf probes".
+export default defineConfig({
+  workers: 1,
+  fullyParallel: false,
+  retries: 0,
+  timeout: 180_000,
+  reporter: [['list']],
+  outputDir: 'test-results-perf',
+  projects: [
+    {
+      name: 'perf',
+      testDir: './tests/perf/studio',
+      testIgnore: 'heap-*.spec.ts',
+      use: { browserName: 'webkit', headless: !process.env.PERF_HEADED },
+    },
+    // P433/P480: JS heap per tab kind and RAM attribution need CDP, so Chromium.
+    // `--project heap heap-tabs` or `heap-ram`.
+    {
+      name: 'heap',
+      testDir: './tests/perf/studio',
+      testMatch: 'heap-*.spec.ts',
+      timeout: 600_000,
+      use: { browserName: 'chromium', headless: !process.env.PERF_HEADED },
+    },
+    // P480: process RSS only (no CDP) on the shipped engine family.
+    {
+      name: 'heap-webkit',
+      testDir: './tests/perf/studio',
+      testMatch: 'heap-ram.spec.ts',
+      timeout: 600_000,
+      use: { browserName: 'webkit', headless: !process.env.PERF_HEADED },
+    },
+  ],
+});

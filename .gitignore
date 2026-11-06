@@ -141,6 +141,7 @@ vite.config.ts.timestamp-*
 # Playwright
 test-results/
 test-results-perf/
+test-results-studio/
 test-results-proto/
 
 # tests/e2e-real/fixtures.ts's own cross-process build lock (F10, P108 Part 6) — reclaimed

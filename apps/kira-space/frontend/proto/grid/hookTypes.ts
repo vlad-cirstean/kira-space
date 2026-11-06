@@ -1,5 +1,5 @@
 // Shape of `window.__kiraGridProto`, shared by the debug hook and the Playwright helper
-// (apps/kira-studio/tests/proto/support/grid.ts). Pure types: no DOM, Vue or cheetah imports.
+// (apps/kira-space/tests/proto/support/grid.ts). Pure types: no DOM, Vue or cheetah imports.
 
 interface ViewportRect {
   x: number;

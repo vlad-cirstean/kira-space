@@ -8,17 +8,17 @@ import {
 } from 'slickgrid';
 import 'slickgrid/dist/styles/css/slick.grid.css';
 import { defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
-import { categoryForTypeClass } from '../../src/theme/icons';
+import { categoryForTypeClass } from '../../src/studio/theme/icons';
 import {
   alignmentFor,
   GUTTER_WIDTH,
   headerAwareMinWidth,
   initialWidthsByIndex,
-} from '../../src/views/shared/page/columns';
-import { createGridDataSource, type RowHandle } from '../../src/views/shared/slick/dataSource';
-import { gutterColumn } from '../../src/views/shared/slick/gridHostShared';
-import { KiraSlickGrid } from '../../src/views/shared/slick/kiraSlickGrid';
-import '../../src/views/shared/slick/slickTheme.css';
+} from '../../src/studio/views/shared/page/columns';
+import { createGridDataSource, type RowHandle } from '../../src/studio/views/shared/slick/dataSource';
+import { gutterColumn } from '../../src/studio/views/shared/slick/gridHostShared';
+import { KiraSlickGrid } from '../../src/studio/views/shared/slick/kiraSlickGrid';
+import '../../src/studio/views/shared/slick/slickTheme.css';
 import { createProtoData, GUTTER_FIELD, readParams } from './data';
 import { createState } from './state';
 import { readPalette } from './theme';

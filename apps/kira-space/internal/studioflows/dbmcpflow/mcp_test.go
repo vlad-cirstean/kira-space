@@ -298,7 +298,7 @@ func TestDbMcpOpsCarrySource(t *testing.T) {
 		t.Fatalf("op sources = %v, want execute=mcp children=user", bySource)
 	}
 	// Contract ops-source: tests/ui/operations.spec.ts renders these rows' source column.
-	f.app.Contract(t, "ops-source", "OpsService.Recent", rows, studioflowharness.Mask("id", "startedAt", "durationMs", "connectionId"))
+	f.app.Contract(t, "ops-source", "StudioOpsService.Recent", rows, studioflowharness.Mask("id", "startedAt", "durationMs", "connectionId"))
 }
 
 func TestInstallAgentWithoutCli(t *testing.T) {

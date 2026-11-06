@@ -1,0 +1,790 @@
+{
+  "KubernetesService.Clusters": {
+    "clusters": [
+      {
+        "cluster": "kind-dev",
+        "context": "kind-dev",
+        "current": true,
+        "id": "<id:1>",
+        "mcp": {
+          "describe": "prompt",
+          "description": "",
+          "discover": "prompt",
+          "list": "prompt",
+          "logs": "prompt"
+        },
+        "namespace": "default",
+        "server": "<kube>",
+        "source": "<kubeconfig>",
+        "user": "dev-user"
+      },
+      {
+        "cluster": "kind-dev",
+        "context": "bad-token",
+        "current": false,
+        "id": "<id:2>",
+        "mcp": {
+          "describe": "prompt",
+          "description": "",
+          "discover": "prompt",
+          "list": "prompt",
+          "logs": "prompt"
+        },
+        "namespace": "",
+        "server": "<kube>",
+        "source": "<kubeconfig>",
+        "user": "bad-user"
+      },
+      {
+        "cluster": "down",
+        "context": "down",
+        "current": false,
+        "id": "<id:3>",
+        "mcp": {
+          "describe": "prompt",
+          "description": "",
+          "discover": "prompt",
+          "list": "prompt",
+          "logs": "prompt"
+        },
+        "namespace": "",
+        "server": "<down>",
+        "source": "<kubeconfig>",
+        "user": "dev-user"
+      },
+      {
+        "cluster": "kind-dev",
+        "context": "plugin-ctx",
+        "current": false,
+        "id": "<id:4>",
+        "mcp": {
+          "describe": "prompt",
+          "description": "",
+          "discover": "prompt",
+          "list": "prompt",
+          "logs": "prompt"
+        },
+        "namespace": "",
+        "server": "<kube>",
+        "source": "<kubeconfig>",
+        "user": "plugin-user"
+      }
+    ],
+    "config": {
+      "message": "",
+      "paths": [
+        "<kubeconfig>"
+      ],
+      "state": "ok"
+    }
+  },
+  "KubernetesService.Clusters:invalid": {
+    "clusters": [],
+    "config": {
+      "message": "<masked>",
+      "paths": [
+        "<home>/bad"
+      ],
+      "state": "invalid"
+    }
+  },
+  "KubernetesService.Clusters:missing": {
+    "clusters": [],
+    "config": {
+      "message": "",
+      "paths": [
+        "<home>/none"
+      ],
+      "state": "missing"
+    }
+  },
+  "KubernetesService.Describe": {
+    "annotations": {},
+    "apiVersion": "v1",
+    "conditions": [
+      {
+        "lastTransition": "<time>",
+        "message": "",
+        "reason": "",
+        "status": "True",
+        "type": "Ready"
+      },
+      {
+        "lastTransition": "<time>",
+        "message": "assigned to node-1",
+        "reason": "Scheduled",
+        "status": "True",
+        "type": "PodScheduled"
+      }
+    ],
+    "containers": [
+      {
+        "init": true,
+        "name": "init"
+      },
+      {
+        "init": false,
+        "name": "app"
+      },
+      {
+        "init": false,
+        "name": "sidecar"
+      }
+    ],
+    "created": "<time>",
+    "events": [
+      {
+        "count": 1,
+        "first": "<time>",
+        "last": "<time>",
+        "message": "container started",
+        "reason": "Started",
+        "source": "kubelet",
+        "type": "Normal"
+      },
+      {
+        "count": 1,
+        "first": "<time>",
+        "last": "<time>",
+        "message": "image pulled",
+        "reason": "Pulled",
+        "source": "kubelet",
+        "type": "Normal"
+      }
+    ],
+    "kind": "Pod",
+    "labels": {
+      "app": "web"
+    },
+    "name": "web-1",
+    "namespace": "default",
+    "owners": [
+      {
+        "kind": "ReplicaSet",
+        "name": "web-1-rs"
+      }
+    ],
+    "uid": "uid-pod-default-web-1"
+  },
+  "KubernetesService.Describe:secret": {
+    "annotations": {
+      "owner": "team-a"
+    },
+    "apiVersion": "v1",
+    "conditions": [],
+    "containers": [],
+    "created": "<time>",
+    "events": [],
+    "kind": "Secret",
+    "labels": {},
+    "manifest": "apiVersion: v1\ndata:\n  password: <14 bytes>\n  user: <5 bytes>\nkind: Secret\nmetadata:\n  annotations:\n    owner: team-a\n  creationTimestamp: \"<time>\"\n  name: db-creds\n  namespace: default\n  uid: uid-secret-db-creds\ntype: Opaque\n",
+    "name": "db-creds",
+    "namespace": "default",
+    "owners": [],
+    "uid": "uid-secret-db-creds"
+  },
+  "KubernetesService.Kinds": {
+    "kinds": [
+      {
+        "category": "workloads",
+        "group": "apps",
+        "key": "apps/v1/deployments",
+        "kind": "Deployment",
+        "logs": false,
+        "namespaced": true,
+        "resource": "deployments",
+        "version": "v1"
+      },
+      {
+        "category": "workloads",
+        "group": "",
+        "key": "v1/pods",
+        "kind": "Pod",
+        "logs": true,
+        "namespaced": true,
+        "resource": "pods",
+        "version": "v1"
+      },
+      {
+        "category": "network",
+        "group": "",
+        "key": "v1/services",
+        "kind": "Service",
+        "logs": false,
+        "namespaced": true,
+        "resource": "services",
+        "version": "v1"
+      },
+      {
+        "category": "config",
+        "group": "",
+        "key": "v1/secrets",
+        "kind": "Secret",
+        "logs": false,
+        "namespaced": true,
+        "resource": "secrets",
+        "version": "v1"
+      },
+      {
+        "category": "cluster",
+        "group": "",
+        "key": "v1/events",
+        "kind": "Event",
+        "logs": false,
+        "namespaced": true,
+        "resource": "events",
+        "version": "v1"
+      },
+      {
+        "category": "cluster",
+        "group": "",
+        "key": "v1/namespaces",
+        "kind": "Namespace",
+        "logs": false,
+        "namespaced": false,
+        "resource": "namespaces",
+        "version": "v1"
+      },
+      {
+        "category": "cluster",
+        "group": "",
+        "key": "v1/nodes",
+        "kind": "Node",
+        "logs": false,
+        "namespaced": false,
+        "resource": "nodes",
+        "version": "v1"
+      },
+      {
+        "category": "custom",
+        "group": "example.com",
+        "key": "example.com/v1/widgets",
+        "kind": "Widget",
+        "logs": false,
+        "namespaced": true,
+        "resource": "widgets",
+        "version": "v1"
+      }
+    ],
+    "partial": true
+  },
+  "KubernetesService.List": {
+    "columns": [
+      {
+        "name": "Name",
+        "type": "string"
+      },
+      {
+        "name": "Ready",
+        "type": "string"
+      },
+      {
+        "name": "Status",
+        "type": "string"
+      },
+      {
+        "name": "Restarts",
+        "type": "integer"
+      },
+      {
+        "name": "Age",
+        "type": "string"
+      }
+    ],
+    "rows": [
+      {
+        "cells": [
+          "web-1",
+          "1/1",
+          "Running",
+          "0",
+          "5m"
+        ],
+        "key": "uid-pod-default-web-1",
+        "name": "web-1",
+        "namespace": "default"
+      },
+      {
+        "cells": [
+          "web-2",
+          "1/1",
+          "Running",
+          "0",
+          "5m"
+        ],
+        "key": "uid-pod-default-web-2",
+        "name": "web-2",
+        "namespace": "default"
+      },
+      {
+        "cells": [
+          "db-0",
+          "1/1",
+          "Running",
+          "0",
+          "5m"
+        ],
+        "key": "uid-pod-default-db-0",
+        "name": "db-0",
+        "namespace": "default"
+      }
+    ],
+    "truncated": false
+  },
+  "KubernetesService.List:allNamespaces": {
+    "columns": [
+      {
+        "name": "Namespace",
+        "type": "string"
+      },
+      {
+        "name": "Name",
+        "type": "string"
+      },
+      {
+        "name": "Ready",
+        "type": "string"
+      },
+      {
+        "name": "Status",
+        "type": "string"
+      },
+      {
+        "name": "Restarts",
+        "type": "integer"
+      },
+      {
+        "name": "Age",
+        "type": "string"
+      }
+    ],
+    "rows": [
+      {
+        "cells": [
+          "default",
+          "web-1",
+          "1/1",
+          "Running",
+          "0",
+          "5m"
+        ],
+        "key": "uid-pod-default-web-1",
+        "name": "web-1",
+        "namespace": "default"
+      },
+      {
+        "cells": [
+          "default",
+          "web-2",
+          "1/1",
+          "Running",
+          "0",
+          "5m"
+        ],
+        "key": "uid-pod-default-web-2",
+        "name": "web-2",
+        "namespace": "default"
+      },
+      {
+        "cells": [
+          "default",
+          "db-0",
+          "1/1",
+          "Running",
+          "0",
+          "5m"
+        ],
+        "key": "uid-pod-default-db-0",
+        "name": "db-0",
+        "namespace": "default"
+      },
+      {
+        "cells": [
+          "kube-system",
+          "coredns-1",
+          "1/1",
+          "Running",
+          "0",
+          "5m"
+        ],
+        "key": "uid-pod-kube-system-coredns-1",
+        "name": "coredns-1",
+        "namespace": "kube-system"
+      }
+    ],
+    "truncated": false
+  },
+  "KubernetesService.List:truncated": {
+    "columns": [
+      {
+        "name": "Namespace",
+        "type": "string"
+      },
+      {
+        "name": "Name",
+        "type": "string"
+      },
+      {
+        "name": "Ready",
+        "type": "string"
+      },
+      {
+        "name": "Status",
+        "type": "string"
+      },
+      {
+        "name": "Restarts",
+        "type": "integer"
+      },
+      {
+        "name": "Age",
+        "type": "string"
+      }
+    ],
+    "rows": [
+      {
+        "cells": [
+          "default",
+          "web-1",
+          "1/1",
+          "Running",
+          "0",
+          "5m"
+        ],
+        "key": "uid-pod-default-web-1",
+        "name": "web-1",
+        "namespace": "default"
+      },
+      {
+        "cells": [
+          "default",
+          "web-2",
+          "1/1",
+          "Running",
+          "0",
+          "5m"
+        ],
+        "key": "uid-pod-default-web-2",
+        "name": "web-2",
+        "namespace": "default"
+      },
+      {
+        "cells": [
+          "default",
+          "db-0",
+          "1/1",
+          "Running",
+          "0",
+          "5m"
+        ],
+        "key": "uid-pod-default-db-0",
+        "name": "db-0",
+        "namespace": "default"
+      }
+    ],
+    "truncated": true
+  },
+  "KubernetesService.Namespaces": {
+    "fallback": "default",
+    "namespaces": [
+      "apps",
+      "default",
+      "kube-system"
+    ],
+    "restricted": false
+  },
+  "KubernetesService.Namespaces:restricted": {
+    "fallback": "default",
+    "namespaces": [],
+    "restricted": true
+  },
+  "KubernetesService.Reorder": {
+    "clusters": [
+      {
+        "cluster": "down",
+        "context": "down",
+        "current": false,
+        "id": "<id:3>",
+        "mcp": {
+          "describe": "prompt",
+          "description": "",
+          "discover": "prompt",
+          "list": "prompt",
+          "logs": "prompt"
+        },
+        "namespace": "",
+        "server": "<down>",
+        "source": "<kubeconfig>",
+        "user": "dev-user"
+      },
+      {
+        "cluster": "kind-dev",
+        "context": "kind-dev",
+        "current": true,
+        "id": "<id:1>",
+        "mcp": {
+          "describe": "prompt",
+          "description": "",
+          "discover": "prompt",
+          "list": "prompt",
+          "logs": "prompt"
+        },
+        "namespace": "default",
+        "server": "<kube>",
+        "source": "<kubeconfig>",
+        "user": "dev-user"
+      },
+      {
+        "cluster": "kind-dev",
+        "context": "bad-token",
+        "current": false,
+        "id": "<id:2>",
+        "mcp": {
+          "describe": "prompt",
+          "description": "",
+          "discover": "prompt",
+          "list": "prompt",
+          "logs": "prompt"
+        },
+        "namespace": "",
+        "server": "<kube>",
+        "source": "<kubeconfig>",
+        "user": "bad-user"
+      },
+      {
+        "cluster": "kind-dev",
+        "context": "plugin-ctx",
+        "current": false,
+        "id": "<id:4>",
+        "mcp": {
+          "describe": "prompt",
+          "description": "",
+          "discover": "prompt",
+          "list": "prompt",
+          "logs": "prompt"
+        },
+        "namespace": "",
+        "server": "<kube>",
+        "source": "<kubeconfig>",
+        "user": "plugin-user"
+      }
+    ],
+    "config": {
+      "message": "",
+      "paths": [
+        "<kubeconfig>"
+      ],
+      "state": "ok"
+    }
+  },
+  "KubernetesService.Status": {
+    "message": "",
+    "reason": "",
+    "serverVersion": "v1.31.0-fake",
+    "state": "ok"
+  },
+  "KubernetesService.Status:plugin": {
+    "message": "<masked>",
+    "reason": "plugin",
+    "serverVersion": "",
+    "state": "unavailable"
+  },
+  "KubernetesService.Status:unauthorized": {
+    "message": "<masked>",
+    "reason": "unauthorized",
+    "serverVersion": "",
+    "state": "unavailable"
+  },
+  "StudioOpsService.Recent": [
+    {
+      "command": "kubectl version --context down",
+      "commandTruncated": false,
+      "connectionId": null,
+      "durationMs": 0,
+      "error": "<masked>",
+      "id": "<masked>",
+      "kind": "kubernetes",
+      "path": null,
+      "rows": null,
+      "source": "user",
+      "startedAt": "<masked>",
+      "status": "error",
+      "tabId": null
+    },
+    {
+      "command": "kubectl logs web-1 -n default -c nope --tail 100 --context kind-dev",
+      "commandTruncated": false,
+      "connectionId": null,
+      "durationMs": 0,
+      "error": "<masked>",
+      "id": "<masked>",
+      "kind": "kubernetes",
+      "path": null,
+      "rows": null,
+      "source": "user",
+      "startedAt": "<masked>",
+      "status": "error",
+      "tabId": null
+    },
+    {
+      "command": "kubectl logs web-1 -n default -c app --tail 1000 -f --context kind-dev",
+      "commandTruncated": false,
+      "connectionId": null,
+      "durationMs": 0,
+      "error": null,
+      "id": "<masked>",
+      "kind": "kubernetes",
+      "path": null,
+      "rows": 3,
+      "source": "user",
+      "startedAt": "<masked>",
+      "status": "ok",
+      "tabId": null
+    },
+    {
+      "command": "kubectl logs web-1 -n default -c app --tail 1000 -f --context kind-dev",
+      "commandTruncated": false,
+      "connectionId": null,
+      "durationMs": 0,
+      "error": "<masked>",
+      "id": "<masked>",
+      "kind": "kubernetes",
+      "path": null,
+      "rows": 3,
+      "source": "user",
+      "startedAt": "<masked>",
+      "status": "cancelled",
+      "tabId": null
+    },
+    {
+      "command": "kubectl describe pods web-1 -n default --context kind-dev",
+      "commandTruncated": false,
+      "connectionId": null,
+      "durationMs": 0,
+      "error": null,
+      "id": "<masked>",
+      "kind": "kubernetes",
+      "path": null,
+      "rows": 1,
+      "source": "user",
+      "startedAt": "<masked>",
+      "status": "ok",
+      "tabId": null
+    },
+    {
+      "command": "kubectl get pods -n default --context kind-dev",
+      "commandTruncated": false,
+      "connectionId": null,
+      "durationMs": 0,
+      "error": null,
+      "id": "<masked>",
+      "kind": "kubernetes",
+      "path": null,
+      "rows": 3,
+      "source": "user",
+      "startedAt": "<masked>",
+      "status": "ok",
+      "tabId": null
+    },
+    {
+      "command": "kubectl get namespaces --context kind-dev",
+      "commandTruncated": false,
+      "connectionId": null,
+      "durationMs": 0,
+      "error": null,
+      "id": "<masked>",
+      "kind": "kubernetes",
+      "path": null,
+      "rows": 3,
+      "source": "user",
+      "startedAt": "<masked>",
+      "status": "ok",
+      "tabId": null
+    },
+    {
+      "command": "kubectl api-resources --context kind-dev",
+      "commandTruncated": false,
+      "connectionId": null,
+      "durationMs": 0,
+      "error": null,
+      "id": "<masked>",
+      "kind": "kubernetes",
+      "path": null,
+      "rows": 8,
+      "source": "user",
+      "startedAt": "<masked>",
+      "status": "ok",
+      "tabId": null
+    },
+    {
+      "command": "kubectl version --context kind-dev",
+      "commandTruncated": false,
+      "connectionId": null,
+      "durationMs": 0,
+      "error": null,
+      "id": "<masked>",
+      "kind": "kubernetes",
+      "path": null,
+      "rows": null,
+      "source": "user",
+      "startedAt": "<masked>",
+      "status": "ok",
+      "tabId": null
+    }
+  ],
+  "StudioOpsService.Recent:running": [
+    {
+      "command": null,
+      "commandTruncated": false,
+      "connectionId": null,
+      "durationMs": null,
+      "error": null,
+      "id": "<masked>",
+      "kind": "kubernetes",
+      "path": null,
+      "rows": null,
+      "source": "user",
+      "startedAt": "<masked>",
+      "status": "running",
+      "tabId": null
+    }
+  ],
+  "args:KubernetesService.Reorder": {
+    "ids": [
+      "<id:3>",
+      "<id:1>",
+      "<id:2>",
+      "<id:4>"
+    ]
+  },
+  "event:kira:kubernetes:logs": {
+    "ended": true,
+    "lines": [
+      {
+        "text": "extra 3"
+      },
+      {
+        "text": "extra 4"
+      }
+    ],
+    "streamId": "s1"
+  },
+  "event:kira:kubernetes:logs:timestamps": {
+    "ended": true,
+    "lines": [
+      {
+        "text": "line one",
+        "ts": "<time>"
+      },
+      {
+        "text": "line two",
+        "ts": "<time>"
+      },
+      {
+        "text": "line three",
+        "ts": "<time>"
+      }
+    ],
+    "streamId": "ts"
+  }
+}

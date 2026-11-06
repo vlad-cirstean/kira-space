@@ -32,10 +32,18 @@
     "../../packages/workbench/env.d.ts",
     "playwright.config.ts",
     "playwright.perf.config.ts",
+    "playwright.studio.config.ts",
+    "playwright.studio-perf.config.ts",
+    "playwright.proto.config.ts",
     "tests/perf/**/*.ts",
     "tests/e2e-real/**/*.ts",
     "tests/ui/**/*.ts",
-    "tests/screenshots/**/*.ts"
+    "tests/visual/**/*.ts",
+    "tests/proto/**/*.ts",
+    "tests/ipc/**/*.ts",
+    "tests/support/**/*.ts",
+    "tests/screenshots/**/*.ts",
+    "../../packages/db-fixtures/support/**/*.ts"
   ],
   // P103 Part 1: testing/unit/* imports `bun:test` (this project's own `types` is `["node"]`,
   // for tests/ui's Playwright surface, not `bun-types`) — apps/*/tests/unit/tsconfig.json is

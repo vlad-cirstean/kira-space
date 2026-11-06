@@ -23,6 +23,7 @@ export default defineConfig({
     {
       name: 'ui',
       testDir: './tests/ui',
+      testIgnore: 'studio/**',
       use: { browserName: 'webkit' },
       fullyParallel: true,
       workers: '100%',
@@ -55,6 +56,7 @@ export default defineConfig({
     {
       name: 'e2e-real',
       testDir: './tests/e2e-real',
+      testIgnore: 'studio/**',
       use: { browserName: 'chromium' },
       fullyParallel: true,
       workers: 2,
@@ -62,6 +64,7 @@ export default defineConfig({
     {
       name: 'visual',
       testDir: './tests/visual',
+      testIgnore: 'studio/**',
       use: { browserName: 'webkit' },
       fullyParallel: true,
       workers: '100%',
@@ -77,6 +80,7 @@ export default defineConfig({
     {
       name: 'screenshots',
       testDir: './tests/screenshots',
+      testIgnore: 'studio/**',
       testMatch: '**/*.shot.ts',
       use: { browserName: 'webkit' },
       fullyParallel: false,

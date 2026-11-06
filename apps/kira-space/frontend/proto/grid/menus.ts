@@ -5,7 +5,7 @@ import {
   rowsToCsv,
   rowsToJson,
   rowsToTsv,
-} from '../../src/views/shared/clipboardFormats';
+} from '../../src/studio/views/shared/clipboardFormats';
 import { type CellText, cellAt, columnName, copyText, rowSnapshot } from './clipboard';
 import { vetoReason } from './pending';
 import { selectedCols, selectedRows } from './selection';

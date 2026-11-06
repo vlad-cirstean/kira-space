@@ -856,7 +856,7 @@ watch(
    every UI spec use it to find "the Monaco host") and the anchor every :deep()/:global() rule below
    needs (no template to put a class on for Monaco's own child DOM). P110 I2-18: the
    `.monaco-host--single-line.monaco-host-pending` compound moved to a ternary on the `<pre>` in the
-   template; `.kira-ed-var*` moved to the shared apps/kira-studio/frontend/src/editor/
+   template; `.kira-ed-var*` moved to the shared apps/kira-space/frontend/src/studio/editor/
    edDecorations.css (M8), imported once from workbench.css -- AutocompleteField.vue's overlay painted a
    byte-identical copy of the same three rules. */
 .monaco-host--single-line,

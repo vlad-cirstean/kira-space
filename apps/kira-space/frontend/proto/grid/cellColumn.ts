@@ -1,5 +1,5 @@
-import { categoryForTypeClass } from '../../src/theme/icons';
-import { alignmentFor } from '../../src/views/shared/page/columns';
+import { categoryForTypeClass } from '../../src/studio/theme/icons';
+import { alignmentFor } from '../../src/studio/views/shared/page/columns';
 import { type CellContext, ColumnBase, type DrawCellInfo, type Rect } from './cheetahTypes';
 import { railOf } from './pending';
 import { EDGE_BOTTOM, EDGE_LEFT, EDGE_RIGHT, EDGE_TOP, edgesOf, rowSelected } from './selection';
