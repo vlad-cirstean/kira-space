@@ -78,7 +78,7 @@
 }
 
 .kira-commit-grid .slick-cell {
-  @apply absolute flex items-center overflow-hidden py-0 px-2;
+  @apply absolute flex items-center overflow-hidden py-0 px-2 cursor-pointer;
   border: none;
 }
 
