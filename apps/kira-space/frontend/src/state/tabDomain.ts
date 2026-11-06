@@ -126,7 +126,7 @@ const studioTabKindSchema = /*#__PURE__*/ z.enum([
   'console',
   'browse',
   // P2: the first Api-mode kind (§2 F1) — four vocabularies join it, this one plus
-  // STUDIO_RENDERABLE_TAB_KINDS/STUDIO_TAB_KIND_MODE below and Go's own model.RenderableTabKinds.
+  // STUDIO_TAB_KIND_MODE below and Go's own model.RenderableTabKinds.
   'http-request',
   // P11 D2: the second kind inside the 'api' mode — a protocol AND a surface, following
   // 'http-request''s own naming reasoning verbatim.
@@ -138,23 +138,6 @@ const studioTabKindSchema = /*#__PURE__*/ z.enum([
   'environments',
 ]);
 export type StudioTabKind = z.infer<typeof studioTabKindSchema>;
-
-// 'data' and 'definition' are renderable; 'console' joins them, 'document', 'keyvalue', 'stream',
-// 'browse', 'http-request', 'grpc-request'. The restore path drops rows of any other kind with
-// a `warn` — a closed vocabulary decided once, same discipline as the Caps/connectionKind.
-export const STUDIO_RENDERABLE_TAB_KINDS: readonly StudioTabKind[] = [
-  'data',
-  'definition',
-  'console',
-  'document',
-  'keyvalue',
-  'stream',
-  'browse',
-  'http-request',
-  'grpc-request',
-  'variable-set',
-  'environments',
-];
 
 // P1 D5: a tab's mode is a total function of its kind — no mode column, no migration. All seven
 // Studio kinds map to 'studio'; 'http-request' (P2) and 'grpc-request' (P11 D2) both map to 'api'.

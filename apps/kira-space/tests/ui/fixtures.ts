@@ -84,6 +84,17 @@ export const studioTest = test.extend<{ relaunch: Relaunch }>({
   },
 });
 
+/** Like `studioTest`, for specs whose restored tabs are API-module tabs (gRPC, HTTP). */
+export const apiTest = test.extend<{ relaunch: Relaunch }>({
+  relaunch: async ({ relaunch }, use) => {
+    await use(async (options) => {
+      const app = await relaunch(options);
+      await app.window.locator('[data-testid="mode-tab"][data-mode="api"]').click();
+      return app;
+    });
+  },
+});
+
 /** A review window has no status bar: it is ready once its own root renders. */
 export const reviewTest = createUiFixtures<KiraAppExtra, RelaunchOptions>({
   distDir: DIST_DIR,

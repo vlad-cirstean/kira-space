@@ -1,5 +1,5 @@
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, studioTest as test } from '../fixtures';
+import { expect, apiTest as test } from '../fixtures';
 import { IPC } from '../support/ipcChannels';
 import { grpcTab, modeTab, openHttpModeAndNewRequest } from './support/apiMode';
 import { stableBoundingBox } from './support/editorText';

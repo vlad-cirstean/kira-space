@@ -13,7 +13,7 @@ import {
 } from '../ipc/redis/redis.fixture';
 import { controlSnapshots as sqsControl, portSnapshots as sqsPorts } from '../ipc/sqs/sqs.fixture';
 import { runPreviewSnapshots } from './adePromptPreview';
-import { expect, reviewTest, studioTest, test } from './fixtures';
+import { apiTest, expect, reviewTest, studioTest, test } from './fixtures';
 import { grpcTab, modeTab, openHttpModeAndNewRequest } from './studio/support/apiMode';
 import {
   connectPostgres,
@@ -268,6 +268,7 @@ test('settings dialog, every pane', async ({ relaunch }) => {
   const allow = [
     ...fixtureData(),
     ...[agent.productLabel, ...agent.models.map((m) => m.label)].map((v) => new RegExp(`^${v}$`)),
+    /^(id|email)$/,
   ];
   for (const section of [
     'Appearance',
@@ -361,12 +362,28 @@ studioTest.describe('databases module', () => {
   });
 
   studioTest('settings dialog, every pane', async ({ relaunch }) => {
-    const { window: page } = await relaunch({ control: [] });
+    const agent = contract<{ productLabel: string; models: { label: string }[] }>(
+      'agent',
+      'AgentService.Info',
+    );
+    const providerNames = [agent.productLabel, ...agent.models.map((m) => m.label)].map(
+      (v) => new RegExp(`^${v}$`),
+    );
+    const { window: page } = await relaunch({
+      control: [
+        {
+          channel: IPC.memoryMcpStatus,
+          response: contract('memory-settings', 'MemoryService.McpStatus'),
+        },
+      ],
+    });
     await setPseudoLocale(page);
     await openSettings(page);
     for (const section of ['Appearance', 'Data', 'Cache', 'Api', 'Database MCP', 'Advanced']) {
       await loc(page, `settings-section-${section}`).click();
-      await expectCatalogText(loc(page, 'settings-dialog'), { allow: [...ALLOW, SCHEMA] });
+      await expectCatalogText(loc(page, 'settings-dialog'), {
+        allow: [...ALLOW, SCHEMA, ...providerNames],
+      });
     }
   });
 
@@ -602,7 +619,7 @@ studioTest.describe('databases module', () => {
     await expectCatalogText(view, { allow: [...ALLOW, /orders|queue|sqs|message|\d/i] });
   });
 
-  studioTest('gRPC request view, every tab', async ({ relaunch }) => {
+  apiTest('gRPC request view, every tab', async ({ relaunch }) => {
     const { window: page } = await relaunch({
       control: [
         { channel: IPC.tabsList, response: [grpcTab({})] },

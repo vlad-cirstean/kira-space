@@ -784,7 +784,7 @@ interface AgentNotifyFocus {
 }
 
 // The bound services both module families share.
-export const coreBindings = {
+const coreBindings = {
   settings: SettingsService,
   layout: LayoutService,
   tabs: TabsService,

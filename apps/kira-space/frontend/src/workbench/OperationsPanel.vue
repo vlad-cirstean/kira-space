@@ -56,7 +56,7 @@ const AUTOMATION_FACET = 'automation';
 const columns = computed<OpLogColumn[]>(() => [
   { id: 'status', label: t('common.field.status.label'), width: '44px' },
   { id: 'time', label: t('common.field.time.label'), width: '84px', priority: 3 },
-  { id: 'origin', label: t('common.field.source.label'), width: '170px', priority: 2 },
+  { id: 'origin', label: t('common.field.source.label'), width: '170px', priority: 5 },
   { id: 'subject', label: t('git.search.field.subject.label'), width: '150px', priority: 1 },
   { id: 'kind', label: t('common.field.kind.label'), width: '110px', priority: 4 },
   {

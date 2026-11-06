@@ -660,6 +660,7 @@ studioTest.describe('databases module', () => {
         },
       ],
     });
+    await modeTab(page, 'api').click();
     const rows = page.locator('[data-testid="grpc-history-row"]');
     await expect(rows).toHaveCount(3);
 

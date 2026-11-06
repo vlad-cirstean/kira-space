@@ -440,7 +440,7 @@ test('Operations panel — Connection facet filters and a narrow dock drops Sour
   const rows = page.locator('[data-testid="op-row"]');
   await expect(rows).toHaveCount(2);
   await page.click('[data-testid="ops-facet"]');
-  await page.click('[data-testid="ops-facet-conn-f-b"]');
+  await page.click('[data-testid="ops-facet-database:conn-f-b"]');
   await page.keyboard.press('Escape');
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText('Beta DB');

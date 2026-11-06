@@ -9,7 +9,7 @@ import type { SpaceOpRecord } from './opsDomain';
 // shared "database" module.
 export const DB_FACET_PREFIX = 'database:';
 
-export function opFacet(r: SpaceOpRecord): string {
+function opFacet(r: SpaceOpRecord): string {
   return r.module === 'database' ? `${DB_FACET_PREFIX}${r.connectionId ?? ''}` : r.module;
 }
 

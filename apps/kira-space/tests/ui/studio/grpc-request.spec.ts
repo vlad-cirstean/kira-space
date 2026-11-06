@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import type { ControlSnapshot } from '../../ipc/support/types';
-import { expect, studioTest as test } from '../fixtures';
+import { expect, apiTest as test } from '../fixtures';
 import { installFakeTimers } from '../support/clock';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';

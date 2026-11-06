@@ -566,7 +566,6 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   [IPC.settingsSet]: JSON.stringify(defaultSettings),
   // P132 Part 2: main.ts's bootstrap() hydrates the op log on every boot.
   [IPC.opsRecent]: '[]',
-  [IPC.opsCancel]: 'null',
   [IPC.mobileStatusGet]: JSON.stringify({
     enabled: false,
     running: false,
@@ -715,6 +714,10 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   [IPC.proofChooseShotFolder]: '{"canceled":true,"id":"","path":""}',
   [IPC.proofSavePngTo]: '{"path":""}',
   [IPC.proofForgetShotFolder]: 'null',
+  // Boot queries of the code-repo stores, issued in every mode.
+  [IPC.adeTaskRepos]: '{"repos":[],"folders":[]}',
+  [IPC.adeTaskSessions]: '{"sessions":[]}',
+  [IPC.repoConfigList]: '{"dir":"","files":[]}',
   [IPC.queriesHistoryRecord]: 'null',
   [IPC.treeInvalidate]: 'null',
   [IPC.treeDescribe]: JSON.stringify({ meta: EMPTY_OBJECT_META, source: 'server' }),
