@@ -497,7 +497,8 @@ func (r *Repo) logFilter(sb *sqlbuilder.SelectBuilder, runID, contains string) [
 	c := kiraschema.ScriptRunLogs
 	conds := []string{sb.Equal(c.RunID, runID)}
 	if contains != "" {
-		conds = append(conds, sb.GreaterThan(sqlb.ContainsExpr(r.Dialect, c.Text, sb.Var(contains)), 0))
+		// Cond methods escape "$" in the field, so the placeholder goes through Build.
+		conds = append(conds, sb.Var(sqlbuilder.Build(sqlb.ContainsExpr(r.Dialect, c.Text, "$0")+" > 0", contains)))
 	}
 	return conds
 }
