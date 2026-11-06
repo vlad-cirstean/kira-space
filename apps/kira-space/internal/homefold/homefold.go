@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
+	"github.com/kirathecat/kira-studio/internal/fsmove"
 )
 
 // ErrStudioRunning means the old Studio holds its app.lock; nothing was moved.
@@ -81,6 +82,16 @@ func (o *Options) now() time.Time {
 // an overridden Space home never pulls the real ~/.kira-studio, which keeps dev and test runs clean.
 func LegacyHome() string {
 	return legacyHome(config.KiraSpaceHome())
+}
+
+// Reappeared reports whether legacy holds files again after the fold: a Kira Studio that is still
+// installed recreated it. Files never folds twice, so those files stay unread.
+func Reappeared(legacy string) bool {
+	if legacy == "" {
+		return false
+	}
+	empty, err := fsmove.IsEmptyDir(legacy)
+	return err == nil && !empty
 }
 
 func legacyHome(spaceHome string) string {

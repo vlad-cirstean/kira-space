@@ -263,24 +263,30 @@ func tableColumns(db *sql.DB, table string) ([]string, error) {
 	return cols, rows.Err()
 }
 
-func insertRows(tx *sql.Tx, table string, cols []string, rows []map[string]any) error {
+// insertRows returns how many rows INSERT OR IGNORE dropped on a key clash.
+func insertRows(tx *sql.Tx, table string, cols []string, rows []map[string]any) (int, error) {
 	q := `INSERT OR IGNORE INTO ` + table + ` (` + strings.Join(cols, ", ") + `) VALUES (` +
 		strings.TrimSuffix(strings.Repeat("?, ", len(cols)), ", ") + `)`
 	stmt, err := tx.Prepare(q)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer func() { _ = stmt.Close() }()
+	ignored := 0
 	for _, r := range rows {
 		args := make([]any, len(cols))
 		for i, c := range cols {
 			args[i] = r[c]
 		}
-		if _, err := stmt.Exec(args...); err != nil {
-			return err
+		res, err := stmt.Exec(args...)
+		if err != nil {
+			return 0, err
+		}
+		if n, err := res.RowsAffected(); err == nil && n == 0 {
+			ignored++
 		}
 	}
-	return nil
+	return ignored, nil
 }
 
 var runTables = []string{"custom_script_collections", "custom_scripts", "script_runs", "script_run_logs", "secret_values"}
@@ -361,8 +367,12 @@ func copyRows(o Options, m marker) error {
 				}
 			}
 		}
-		if err := insertRows(tx, table, d.cols, d.rows); err != nil {
+		ignored, err := insertRows(tx, table, d.cols, d.rows)
+		if err != nil {
 			return fmt.Errorf("%s: %w", table, err)
+		}
+		if ignored > 0 {
+			slog.Warn("homefold: Studio rows dropped on a key clash with Space", "scope", "homefold", "table", table, "read", len(d.rows), "dropped", ignored)
 		}
 	}
 	if needExport {

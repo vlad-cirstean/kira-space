@@ -324,11 +324,14 @@ func foldConfig(reporter *startupfail.Reporter, db *storage.DB) {
 // Studio stops the launch with its own alert; any other failure leaves the marker at its last step,
 // so the next launch resumes.
 func foldLegacyHome(reporter *startupfail.Reporter, db *storage.DB) {
-	err := homefold.Files(homefold.Options{Space: db.DB, SpaceHome: config.KiraSpaceHome(), Legacy: homefold.LegacyHome()})
+	legacy := homefold.LegacyHome()
+	err := homefold.Files(homefold.Options{Space: db.DB, SpaceHome: config.KiraSpaceHome(), Legacy: legacy})
 	switch {
 	case errors.Is(err, homefold.ErrStudioRunning):
 		reporter.Fatal(startupfail.StepOldStudio, err)
 	case err != nil:
 		reporter.Fatal(startupfail.StepStorage, err)
+	case homefold.Reappeared(legacy):
+		slog.Warn("homefold: Kira Studio recreated its home after the fold; its data is not in Space. Delete Kira Studio.app", "scope", "homefold", "path", legacy)
 	}
 }
