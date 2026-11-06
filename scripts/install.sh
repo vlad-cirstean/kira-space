@@ -420,7 +420,7 @@ JXA_EOF
         TRASHED="$TRASH/$LEGACY_NAME $(date +%Y-%m-%d-%H%M%S).app"
       fi
       mkdir -p "$TRASH"
-      if mv "/Applications/$LEGACY_NAME.app" "$TRASHED" </dev/null 2>/dev/null; then
+      if mv -f "/Applications/$LEGACY_NAME.app" "$TRASHED" 2>/dev/null; then
         log "moved $LEGACY_NAME.app to the Trash ($TRASHED); your data in ~/.kira-studio moves into ~/.kira-space on first launch"
       else
         log "couldn't move $LEGACY_NAME.app to the Trash; delete it by hand. Your data in ~/.kira-studio moves into ~/.kira-space on first launch"
