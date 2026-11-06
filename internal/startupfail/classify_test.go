@@ -52,6 +52,7 @@ func allSteps() []startupfail.Step {
 		startupfail.StepInstanceLock,
 		startupfail.StepRun,
 		startupfail.StepPlatform,
+		startupfail.StepOldStudio,
 	}
 }
 
@@ -86,6 +87,7 @@ func TestClassifyExpectedColumn(t *testing.T) {
 		startupfail.StepInstanceLock: true,
 		startupfail.StepRun:          false,
 		startupfail.StepPlatform:     false,
+		startupfail.StepOldStudio:    true,
 	}
 	for step, wantExpected := range want {
 		if got := startupfail.Classify(step, errors.New("boom"), testInfo()).Expected; got != wantExpected {

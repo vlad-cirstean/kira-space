@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appmerge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appshell"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appwire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
@@ -46,7 +47,7 @@ var mobileAssets embed.FS
 
 // Startup order: the argv shims (askpass, memory-mcp, memory-embed) -> config.EnsureLayout (both
 // homes) -> logging.Init/Sweep -> instance lock -> storage.Open and studiostorage.Open (migrate) ->
-// repos.New x2 -> appwire.Build (every Space and Studio service) -> application.New (bound services,
+// repos.New x2 -> appmerge.Run (first-launch Studio carry-over) -> appwire.Build (every Space and Studio service) -> application.New (bound services,
 // git and engine streams) -> the menu -> the startup window list, opened -> app.Run().
 func main() {
 	if code, ok := appwire.RunArgvShim(os.Args); ok {
@@ -69,6 +70,8 @@ func main() {
 	terminal.TermProgramVersion = buildinfo.Version
 
 	startedAt := time.Now()
+
+	refuseOldStudio(reporter)
 
 	if err := config.EnsureLayout(); err != nil {
 		reporter.Fatal(startupfail.StepEnsureLayout, err)
@@ -96,6 +99,15 @@ func main() {
 	studioRepositories, err := studiorepos.New(studioDB.DB)
 	if err != nil {
 		reporter.Fatal(startupfail.StepRepos, err)
+	}
+
+	if err := appmerge.Run(appmerge.Options{
+		Space: db.DB, Studio: studioDB.DB, SpaceHome: config.KiraSpaceHome(), StudioHome: config.StudioHome(),
+		Ephemeral: func(key string) bool {
+			return bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) || proof.IsWindowKey(key)
+		},
+	}); err != nil {
+		reporter.Fatal(startupfail.StepStorage, err)
 	}
 
 	settings, err := repositories.Settings.GetAll()
