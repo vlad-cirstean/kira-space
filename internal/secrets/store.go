@@ -13,7 +13,7 @@ type Execer interface {
 }
 
 // Store is the only reader and writer of secret_values: sealed values keyed by scope, owner and
-// name. A scope's owner ids are the caller's own (custom_scripts.id for ScopeScriptParam).
+// name. A scope's owner ids are the caller's own (scripts.id for ScopeScriptParam).
 type Store struct {
 	db *sql.DB
 	c  *Cipher

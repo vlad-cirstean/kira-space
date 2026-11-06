@@ -19,7 +19,7 @@ type rowScanner interface {
 
 const selectColumns = `id, name, command, working_dir, dir_mode, color, collection, sort_order, created_at, updated_at, kind, params_json, smart_json, use_ade_dir, schedule_json, schedule_task_id, schedule_branch_id, config_json`
 
-// Repo reads and writes the `custom_scripts` table: the projection of the run files plus the state
+// Repo reads and writes the `scripts` table: the projection of the run files plus the state
 // columns (order, schedule target). List is ordered deterministically.
 type Repo struct {
 	DB *sql.DB
@@ -108,7 +108,7 @@ func encodeExtras(f CustomScriptFields) (extras, error) {
 
 // List orders by sort_order, name for a stable, deterministic tiebreak.
 func (r *Repo) List() ([]CustomScript, error) {
-	rows, err := r.DB.Query(`SELECT ` + selectColumns + ` FROM custom_scripts ORDER BY sort_order ASC, name ASC`)
+	rows, err := r.DB.Query(`SELECT ` + selectColumns + ` FROM scripts ORDER BY sort_order ASC, name ASC`)
 	list, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (CustomScript, bool, error) {
 		rec, err := scanRow(rows)
 		return rec, true, err
@@ -134,7 +134,7 @@ func (r *Repo) Get(id string) (*CustomScript, error) {
 			return nil, err
 		}
 		return &s, nil
-	}, `SELECT `+selectColumns+` FROM custom_scripts WHERE id = ?`, id)
+	}, `SELECT `+selectColumns+` FROM scripts WHERE id = ?`, id)
 	if err != nil {
 		return nil, fmt.Errorf("scripts: get %s: %w", id, err)
 	}
@@ -152,17 +152,17 @@ func (r *Repo) Get(id string) (*CustomScript, error) {
 // Reorder applies a user's drag order to one set: the ungrouped scripts ("") or one collection's.
 // sort_order becomes dense per set.
 func (r *Repo) Reorder(collection string, ids []string) error {
-	return r.reorderTx("custom_scripts",
-		`SELECT id FROM custom_scripts WHERE collection = ? ORDER BY sort_order ASC, name ASC`,
-		`UPDATE custom_scripts SET sort_order = ? WHERE id = ?`,
+	return r.reorderTx("scripts",
+		`SELECT id FROM scripts WHERE collection = ? ORDER BY sort_order ASC, name ASC`,
+		`UPDATE scripts SET sort_order = ? WHERE id = ?`,
 		ids, collection)
 }
 
 // ReorderCollections applies a user's drag order to the collections, named by name.
 func (r *Repo) ReorderCollections(names []string) error {
-	return r.reorderTx("custom_script_collections",
-		`SELECT name FROM custom_script_collections ORDER BY sort_order ASC, name ASC`,
-		`UPDATE custom_script_collections SET sort_order = ? WHERE name = ?`,
+	return r.reorderTx("script_collections",
+		`SELECT name FROM script_collections ORDER BY sort_order ASC, name ASC`,
+		`UPDATE script_collections SET sort_order = ? WHERE name = ?`,
 		names)
 }
 
@@ -183,7 +183,7 @@ func (r *Repo) reorderTx(table, selectSQL, updateSQL string, ids []string, args 
 
 // ListCollections orders by sort_order (user drag order), name as the tiebreak.
 func (r *Repo) ListCollections() ([]Collection, error) {
-	rows, err := r.DB.Query(`SELECT name, sort_order FROM custom_script_collections ORDER BY sort_order ASC, name ASC`)
+	rows, err := r.DB.Query(`SELECT name, sort_order FROM script_collections ORDER BY sort_order ASC, name ASC`)
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (Collection, bool, error) {
 		var c Collection
 		err := rows.Scan(&c.Name, &c.SortOrder)
@@ -197,7 +197,7 @@ func (r *Repo) SetScheduleTarget(id, taskID, branchID string) error {
 	if taskID == "" {
 		branchID = ""
 	}
-	res, err := r.DB.Exec(`UPDATE custom_scripts SET schedule_task_id = ?, schedule_branch_id = ? WHERE id = ?`, taskID, branchID, id)
+	res, err := r.DB.Exec(`UPDATE scripts SET schedule_task_id = ?, schedule_branch_id = ? WHERE id = ?`, taskID, branchID, id)
 	if err != nil {
 		return fmt.Errorf("scripts: set schedule target of %s: %w", id, err)
 	}
@@ -206,7 +206,7 @@ func (r *Repo) SetScheduleTarget(id, taskID, branchID string) error {
 
 // pruneCollections drops order rows no run names.
 func (r *Repo) pruneCollections() error {
-	if _, err := r.DB.Exec(`DELETE FROM custom_script_collections WHERE name NOT IN (SELECT collection FROM custom_scripts)`); err != nil {
+	if _, err := r.DB.Exec(`DELETE FROM script_collections WHERE name NOT IN (SELECT collection FROM scripts)`); err != nil {
 		return fmt.Errorf("scripts: prune collections: %w", err)
 	}
 	return nil
@@ -223,7 +223,7 @@ func requireRow(res sql.Result, op, id string) error {
 	return nil
 }
 
-// projection implements configfs.Projection over custom_scripts: the last good file value lives in
+// projection implements configfs.Projection over scripts: the last good file value lives in
 // config_json and the config columns follow it. State columns are never written here.
 type projection struct{ r *Repo }
 
@@ -231,7 +231,7 @@ type projection struct{ r *Repo }
 func (r *Repo) Projection() *projection { return &projection{r} }
 
 func (p *projection) Snapshot() (map[string]string, error) {
-	rows, err := p.r.DB.Query(`SELECT id, config_json FROM custom_scripts WHERE config_json <> ''`)
+	rows, err := p.r.DB.Query(`SELECT id, config_json FROM scripts WHERE config_json <> ''`)
 	if err != nil {
 		return nil, fmt.Errorf("scripts: read last good: %w", err)
 	}
@@ -270,12 +270,12 @@ func (p *projection) Record(file, valueJSON string, now int64) error {
 		return fmt.Errorf("scripts: record %s: begin: %w", file, err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	order, err := sqlitex.NextSortOrder(tx, "custom_scripts", "collection = ?", fields.Collection)
+	order, err := sqlitex.NextSortOrder(tx, "scripts", "collection = ?", fields.Collection)
 	if err != nil {
 		return err
 	}
 	if _, err := tx.Exec(
-		`INSERT INTO custom_scripts (id, name, command, working_dir, dir_mode, color, collection, sort_order, created_at, updated_at,
+		`INSERT INTO scripts (id, name, command, working_dir, dir_mode, color, collection, sort_order, created_at, updated_at,
 		   kind, params_json, smart_json, use_ade_dir, schedule_json, config_json)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET name = excluded.name, command = excluded.command, working_dir = excluded.working_dir,
@@ -288,8 +288,8 @@ func (p *projection) Record(file, valueJSON string, now int64) error {
 		return fmt.Errorf("scripts: record %s: %w", file, err)
 	}
 	if fields.Collection != "" {
-		if _, err := tx.Exec(`INSERT OR IGNORE INTO custom_script_collections (name, sort_order)
-			VALUES (?, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM custom_script_collections))`, fields.Collection); err != nil {
+		if _, err := tx.Exec(`INSERT OR IGNORE INTO script_collections (name, sort_order)
+			VALUES (?, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM script_collections))`, fields.Collection); err != nil {
 			return fmt.Errorf("scripts: record %s: collection: %w", file, err)
 		}
 	}
@@ -310,7 +310,7 @@ func (p *projection) Forget(file string) error {
 		return fmt.Errorf("scripts: forget %s: begin: %w", file, err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.Exec(`DELETE FROM custom_scripts WHERE id = ?`, id); err != nil {
+	if _, err := tx.Exec(`DELETE FROM scripts WHERE id = ?`, id); err != nil {
 		return fmt.Errorf("scripts: forget %s: %w", file, err)
 	}
 	if err := r.pruneSecrets(tx, id); err != nil {

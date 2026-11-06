@@ -176,7 +176,7 @@ func (s *Service) RenameCollection(args RenameCollectionArgs) error {
 
 func (s *Service) renameLocked(name, newName string, ids []string) error {
 	l := s.Loader
-	if _, err := l.o.Repo.DB.Exec(`UPDATE custom_script_collections SET name = ? WHERE name = ?`, newName, name); err != nil {
+	if _, err := l.o.Repo.DB.Exec(`UPDATE script_collections SET name = ? WHERE name = ?`, newName, name); err != nil {
 		return fmt.Errorf("scripts: rename collection row: %w", err)
 	}
 	var done []string

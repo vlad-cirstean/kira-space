@@ -34,7 +34,7 @@ type LoaderOptions struct {
 	OnChange func()
 }
 
-// Loader keeps custom_scripts in step with the run files: files to the DB only. It is long-lived.
+// Loader keeps scripts in step with the run files: files to the DB only. It is long-lived.
 type Loader struct {
 	o      LoaderOptions
 	folder *configfs.Folder[File]
@@ -341,7 +341,7 @@ func (l *Loader) SaveFile(file, text, baseHash string) (FileView, error) {
 // writes <id>.yaml unless one exists. A crash before the marker reruns it idempotently.
 func (l *Loader) migrate() error {
 	repo := l.o.Repo
-	rows, err := repo.DB.Query(`SELECT ` + selectColumns + ` FROM custom_scripts WHERE config_json = ''`)
+	rows, err := repo.DB.Query(`SELECT ` + selectColumns + ` FROM scripts WHERE config_json = ''`)
 	if err != nil {
 		return fmt.Errorf("scripts: read legacy runs: %w", err)
 	}
@@ -391,7 +391,7 @@ func (l *Loader) migrate() error {
 				return err
 			}
 		}
-		if _, err := repo.DB.Exec(`UPDATE custom_scripts SET config_json = ?, dir_mode = ?, working_dir = ? WHERE id = ?`, string(js), dirMode, dir, rec.ID); err != nil {
+		if _, err := repo.DB.Exec(`UPDATE scripts SET config_json = ?, dir_mode = ?, working_dir = ? WHERE id = ?`, string(js), dirMode, dir, rec.ID); err != nil {
 			return fmt.Errorf("scripts: seed last good of %s: %w", rec.ID, err)
 		}
 	}

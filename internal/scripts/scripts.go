@@ -1,4 +1,4 @@
-// Package scripts is the one script (custom_scripts) store and bound surface both
+// Package scripts is the one script (scripts) store and bound surface both
 // apps share: the record type and its validation, the SQL repo, and the Wails service each app
 // embeds under its own binding name (windowsvc's precedent).
 package scripts

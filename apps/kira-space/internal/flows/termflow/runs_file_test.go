@@ -183,11 +183,11 @@ func TestRunsFileMigration(t *testing.T) {
 		{"22222222-bbbb-4bbb-8bbb-222222222222", "Brain", "smart", "Think", "kira", "", "", string(smart), 2, "task-1", "branch-1"},
 	} {
 		if r.collection != "" {
-			if _, err := db.Exec(`INSERT OR IGNORE INTO custom_script_collections (name, sort_order) VALUES (?, 0)`, r.collection); err != nil {
+			if _, err := db.Exec(`INSERT OR IGNORE INTO script_collections (name, sort_order) VALUES (?, 0)`, r.collection); err != nil {
 				t.Fatal(err)
 			}
 		}
-		if _, err := db.Exec(`INSERT INTO custom_scripts (id, name, command, kind, dir_mode, working_dir, color, collection, sort_order, schedule_task_id, schedule_branch_id, smart_json, config_json, created_at, updated_at)
+		if _, err := db.Exec(`INSERT INTO scripts (id, name, command, kind, dir_mode, working_dir, color, collection, sort_order, schedule_task_id, schedule_branch_id, smart_json, config_json, created_at, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?, 'blue', ?, ?, ?, ?, ?, '', 1, 1)`,
 			r.id, r.name, r.cmd, r.kind, r.dirMode, r.dir, r.collection, r.sort, r.task, r.branch, r.smart); err != nil {
 			t.Fatalf("seed %s: %v", r.name, err)
@@ -202,7 +202,7 @@ func TestRunsFileMigration(t *testing.T) {
 	if _, err := app.W.CustomScripts.SetSecrets(bridge.CustomScriptsSetSecretsArgs{ID: keyed.ID, Values: map[string]*string{"token": ptr("s3cret")}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(`UPDATE custom_scripts SET config_json = '' WHERE id = ?`, keyed.ID); err != nil {
+	if _, err := db.Exec(`UPDATE scripts SET config_json = '' WHERE id = ?`, keyed.ID); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Remove(filepath.Join(app.ConfigDir("runs"), keyed.ID+".yaml")); err != nil {
@@ -234,7 +234,7 @@ func TestRunsFileMigration(t *testing.T) {
 		}
 	}
 	var task, branch string
-	if err := app.DB().QueryRow(`SELECT schedule_task_id, schedule_branch_id FROM custom_scripts WHERE id = ?`, brain.ID).Scan(&task, &branch); err != nil {
+	if err := app.DB().QueryRow(`SELECT schedule_task_id, schedule_branch_id FROM scripts WHERE id = ?`, brain.ID).Scan(&task, &branch); err != nil {
 		t.Fatal(err)
 	}
 	if task != "task-1" || branch != "branch-1" {

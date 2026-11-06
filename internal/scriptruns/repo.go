@@ -315,14 +315,11 @@ func (r *Repo) SkipWaiting(by, value, reason string, src runoutcome.Source, now 
 	})
 }
 
-// Purge keeps only the newest keepFinished finished runs and drops the logs of the rest.
+// Purge keeps only the newest keepFinished finished runs; the logs of the rest cascade.
 func (r *Repo) Purge() error {
 	if _, err := r.DB.Exec(`DELETE FROM script_runs WHERE state NOT IN ('running', 'waiting') AND id NOT IN
 		(SELECT id FROM script_runs WHERE state NOT IN ('running', 'waiting') ORDER BY created_at DESC, id DESC LIMIT ?)`, keepFinished); err != nil {
 		return fmt.Errorf("scriptruns: purge: %w", err)
-	}
-	if _, err := r.DB.Exec(`DELETE FROM script_run_logs WHERE run_id NOT IN (SELECT id FROM script_runs)`); err != nil {
-		return fmt.Errorf("scriptruns: purge logs: %w", err)
 	}
 	return nil
 }
