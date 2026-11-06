@@ -151,7 +151,7 @@ index 71a06b3f..fc71ce0f 100644
  
 +          Coming from Kira Studio, the old app's own update offer runs the same installer with
 +          `--app=studio`: it installs Kira Space, then moves Kira Studio.app to the Trash. Your data
-+          in `~/.kira-studio` stays and Kira Space opens it in place.
++          in `~/.kira-studio` folds into `~/.kira-space` on first launch (backup kept).
 +
            This is the only supported install method. These builds aren't signed by Apple; a disk
            image downloaded through a browser is blocked by Gatekeeper, while the installer's own
