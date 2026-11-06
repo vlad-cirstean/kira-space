@@ -225,7 +225,7 @@ headless.tool.reply_review_comment.arg.reply	44
 headless.tool.reply_review_comment.arg.resolved	53
 dbmcp.tool.proof_start_session	270
 dbmcp.tool.proof_edit_session	340
-dbmcp.tool.proof_add_step	457
+dbmcp.tool.proof_add_step	529
 dbmcp.tool.proof_close_session	190
 dbmcp.tool.proof_list_sessions	180
 dbmcp.tool.proof_start_session.arg.name	40
@@ -237,8 +237,8 @@ dbmcp.tool.proof_add_step.arg.description	100
 dbmcp.tool.proof_add_step.arg.query	70
 dbmcp.tool.proof_add_step.arg.language	70
 dbmcp.tool.proof_add_step.arg.source	100
-dbmcp.tool.proof_add_step.arg.view	71
-dbmcp.tool.proof_add_step.arg.data	865
+dbmcp.tool.proof_add_step.arg.view	80
+dbmcp.tool.proof_add_step.arg.data	1332
 dbmcp.tool.proof_add_step.arg.keepOrdinal	100
 dbmcp.tool.proof_add_step.arg.replacesOrdinal	90
 dbmcp.tool.proof_close_session.arg.draftId	60

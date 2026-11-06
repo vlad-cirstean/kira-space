@@ -111,7 +111,7 @@ func (s *Server) addProofTools(srv *mcp.Server, src llmprompts.Source) {
 	mcp.AddTool(srv, add("proof_edit_session", llmprompts.DbmcpToolProofEditSession, editSch), withPanicRecovery(s, "proof_edit_session", s.proofEdit))
 
 	stepSch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[proofAddStepArgs](src, llmprompts.DbmcpToolProofAddStep.ID(), nil), "draftId")
-	stepSch.Properties["view"].Enum = []any{proof.ViewTable, proof.ViewDocument, proof.ViewKeyValue, proof.ViewChart}
+	stepSch.Properties["view"].Enum = []any{proof.ViewTable, proof.ViewDocument, proof.ViewKeyValue, proof.ViewChart, proof.ViewDiagram}
 	stepSch.Properties["language"].Enum = []any{"sql", "json", "shell", "text"}
 	stepSch.Properties["keepOrdinal"].Minimum = jsonschema.Ptr(1.0)
 	stepSch.Properties["replacesOrdinal"].Minimum = jsonschema.Ptr(1.0)
