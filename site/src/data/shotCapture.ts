@@ -39,6 +39,12 @@ export const SHOT_CAPTURE = {
   'build-db-exemption': { kind: 'region', selector: '[data-testid^="approval-item-db.exemption"]' },
   'build-db-audit': { kind: 'region', selector: '[data-testid="ade-details-tab"]', padding: 0 },
   'build-db-settings': { kind: 'region', selector: '[data-testid="settings-dialog"]', padding: 0 },
+  'build-branches-panel': { kind: 'window', detail: { x: 600, y: 120 } },
+  'build-branches-add': { kind: 'floating', selector: '[data-testid="ade-add-popover"]' },
+  'build-handover-dialog': { kind: 'floating', selector: '[data-testid="ade-stage-dialog"]' },
+  'build-handover-notes': { kind: 'region', selector: '[data-testid="ade-task-chain"]' },
+  'build-artifacts-list': { kind: 'region', selector: '[data-testid="ade-details-links"]' },
+  'build-artifacts-done': { kind: 'floating', selector: '[data-testid="ade-stage-dialog"]' },
 } as const satisfies Record<string, ShotCapture>;
 
 export type ShotId = keyof typeof SHOT_CAPTURE;

@@ -66,12 +66,13 @@ function storyWorkflows() {
 
 /** Main window in the ade mode with the story board; `extra` replaces a default channel. */
 export function storyBoard(extra: readonly ControlSnapshot[] = []): ControlSnapshot[] {
-  return adeV2Control([
+  const base: ControlSnapshot[] = [
     { channel: IPC.codeWorkspaceListRepos, response: STORY_REPOS },
     { channel: IPC.adeTaskBoard, response: storyBoardFx() },
     { channel: IPC.adeTaskWorkflows, response: storyWorkflows() },
-    ...extra,
-  ]);
+  ];
+  const overridden = new Set(extra.map((s) => s.channel));
+  return adeV2Control([...base.filter((s) => !overridden.has(s.channel)), ...extra]);
 }
 
 export const STORY_LAUNCH = CAPTURE_LAUNCH;
@@ -171,4 +172,120 @@ export function storyDbAudit(): Rec[] {
       })),
     };
   });
+}
+
+const HANDOVER_BODIES = {
+  spec: 'Spec signed off: export paid orders only, one CSV file per month, newest first.',
+  plan: 'Plan agreed: one export endpoint in acme-api, a download button in acme-web. Rows stream, no paging.',
+} as const;
+
+interface HandoverFx extends Rec {
+  id: string;
+}
+
+/** Handover draft of the story task, as the board carries it while the session finishes a stage. */
+export function storyHandoverDraft(): HandoverFx {
+  const board = contract<{ tasks: { handoverDrafts: HandoverFx[] }[] }>(
+    'ade-handover',
+    'AdeTaskService.Board#draft',
+  );
+  const draft = board.tasks[0]?.handoverDrafts[0];
+  if (!draft) throw new Error('contract board has no draft');
+  return {
+    ...draft,
+    id: 'h_draft',
+    taskId: STORY.taskId,
+    fromStepId: 'plan',
+    fromStepName: 'Plan from spec',
+    toStepId: 'impl',
+    toStepName: 'Implement',
+    body: HANDOVER_BODIES.plan,
+    updatedAt: 1,
+  };
+}
+
+/** Handover chain of the story task: the draft first, then the earlier stage. */
+export function storyHandovers(): { handovers: Rec[] } {
+  const { handovers } = contract<{ handovers: Rec[] }>('ade-handover', 'AdeTaskService.Handovers');
+  const [first] = handovers;
+  return {
+    handovers: [
+      storyHandoverDraft(),
+      {
+        ...first,
+        id: 'h_spec',
+        taskId: STORY.taskId,
+        fromStepId: 'spec',
+        fromStepName: 'Spec',
+        toStepId: 'plan',
+        toStepName: 'Plan from spec',
+        body: HANDOVER_BODIES.spec,
+        createdAt: CAPTURE_NOW - 2 * 3_600_000,
+        updatedAt: CAPTURE_NOW - 2 * 3_600_000,
+      },
+    ],
+  };
+}
+
+/** Board whose story task carries the handover draft. */
+export function storyBoardWithDraft() {
+  const board = storyBoardFx();
+  const task = board.tasks.find((t) => t.id === STORY.taskId);
+  if (task) {
+    task.handoverDrafts = [storyHandoverDraft()];
+    task.runs = [];
+  }
+  return board;
+}
+
+const artifact = (id: string, kind: string, title: string, over: Rec = {}): Rec => ({
+  createdAt: CAPTURE_NOW - 3_600_000,
+  id,
+  kind,
+  ref: id,
+  repo: '',
+  sessionId: '',
+  source: 'host',
+  status: '',
+  title,
+  url: '',
+  ...over,
+});
+
+/** Artifacts of the story task: PR, issue, proof, branches and a deployment. */
+export function storyArtifacts(): { artifacts: Rec[]; gaps: Rec[] } {
+  return {
+    artifacts: [
+      artifact('a_pr', 'changeRequest', 'Export orders as CSV', {
+        repo: 'acme-api',
+        status: 'open',
+        url: 'https://forge.test/acme/acme-api/-/merge_requests/41',
+      }),
+      artifact('a_pr_web', 'changeRequest', 'Export button on the orders page', {
+        repo: 'acme-web',
+        status: 'open',
+        url: 'https://forge.test/acme/acme-web/-/merge_requests/87',
+      }),
+      artifact('a_issue', 'issue', 'PAY-102', {
+        source: 'jira',
+        url: 'https://acme.atlassian.net/browse/PAY-102',
+      }),
+      artifact('a_doc', 'doc', 'CSV format notes', {
+        source: 'user',
+        url: 'https://wiki.example/orders-csv',
+      }),
+      artifact('a_branch_api', 'branch', STORY.branch, {
+        repo: 'acme-api',
+        source: 'git',
+        status: 'pushed',
+        url: 'https://forge.test/acme/acme-api/-/tree/feat/orders-csv-export',
+      }),
+      artifact('a_deploy', 'deployment', 'staging', {
+        repo: 'acme-api',
+        source: 'git',
+        status: 'deployed',
+      }),
+    ],
+    gaps: [],
+  };
 }
