@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/renameio/v2"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
+	"github.com/kirathecat/kira-studio/internal/fsmove"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -27,7 +28,7 @@ func Files(o Options) error {
 	case found && (m.State == stateDone || m.State == stateFiles || m.State == stateRuns):
 		return nil
 	case !found:
-		empty, err := isEmptyDir(o.Legacy)
+		empty, err := fsmove.IsEmptyDir(o.Legacy)
 		if err != nil {
 			return fmt.Errorf("homefold: read %s: %w", o.Legacy, err)
 		}
@@ -36,7 +37,7 @@ func Files(o Options) error {
 		}
 	}
 
-	if exists(o.Legacy) {
+	if fsmove.Exists(o.Legacy) {
 		lock, ok, err := config.AcquireLock(filepath.Join(o.Legacy, "app.lock"))
 		if err != nil {
 			return fmt.Errorf("homefold: lock: %w", err)
@@ -117,7 +118,7 @@ func landFiles(o Options, m marker) error {
 func moveAside(o Options, backup string) error {
 	for _, name := range []string{"studio.db", "studio.db-wal", "studio.db-shm", "connections", "api"} {
 		p := filepath.Join(o.SpaceHome, name)
-		if !exists(p) {
+		if !fsmove.Exists(p) {
 			continue
 		}
 		if err := os.Rename(p, filepath.Join(backup, name+".pre-p539")); err != nil {
@@ -129,10 +130,10 @@ func moveAside(o Options, backup string) error {
 
 // moveLegacy renames the legacy folder to src, copying across devices. Safe to repeat after any crash.
 func moveLegacy(o Options, legacy, src string) error {
-	legacyOK, srcOK := exists(legacy), exists(src)
+	legacyOK, srcOK := fsmove.Exists(legacy), fsmove.Exists(src)
 	switch {
 	case legacyOK && srcOK:
-		if err := verifyTree(legacy, src); err != nil {
+		if err := fsmove.VerifyTree(legacy, src); err != nil {
 			return err
 		}
 		return os.RemoveAll(legacy)
@@ -150,10 +151,10 @@ func moveLegacy(o Options, legacy, src string) error {
 	if err := os.RemoveAll(tmp); err != nil {
 		return err
 	}
-	if err := copyTree(legacy, tmp); err != nil {
+	if err := fsmove.CopyTree(legacy, tmp); err != nil {
 		return fmt.Errorf("homefold: copy %s: %w", legacy, err)
 	}
-	if err := verifyTree(legacy, tmp); err != nil {
+	if err := fsmove.VerifyTree(legacy, tmp); err != nil {
 		return err
 	}
 	if err := os.Rename(tmp, src); err != nil {
@@ -165,7 +166,7 @@ func moveLegacy(o Options, legacy, src string) error {
 // landDB writes the Studio database to <space>/studio.db as a consistent snapshot of the backup copy.
 func landDB(o Options, src string) error {
 	from := filepath.Join(src, "kira.db")
-	if !exists(from) {
+	if !fsmove.Exists(from) {
 		return nil
 	}
 	db, err := sqlitex.Open(from)
@@ -194,7 +195,7 @@ func landDB(o Options, src string) error {
 
 func landDir(o Options, src, name string) error {
 	from := filepath.Join(src, name)
-	if !exists(from) {
+	if !fsmove.Exists(from) {
 		return nil
 	}
 	dst := filepath.Join(o.SpaceHome, name)
@@ -202,7 +203,7 @@ func landDir(o Options, src, name string) error {
 	if err := os.RemoveAll(tmp); err != nil {
 		return err
 	}
-	if err := copyTree(from, tmp); err != nil {
+	if err := fsmove.CopyTree(from, tmp); err != nil {
 		return fmt.Errorf("homefold: copy %s: %w", name, err)
 	}
 	if err := os.RemoveAll(dst); err != nil {
@@ -259,7 +260,7 @@ func logLeftovers(src string) {
 func foldPrompts(o Options, backup, src string) error {
 	spacePath := filepath.Join(o.SpaceHome, "llm-prompts.json")
 	bak := filepath.Join(backup, "space-llm-prompts.json")
-	if !exists(bak) && exists(spacePath) {
+	if !fsmove.Exists(bak) && fsmove.Exists(spacePath) {
 		b, err := os.ReadFile(spacePath)
 		if err != nil {
 			return err

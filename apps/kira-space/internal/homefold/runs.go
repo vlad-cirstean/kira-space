@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/google/renameio/v2"
+	"github.com/kirathecat/kira-studio/internal/fsmove"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 )
@@ -85,7 +86,7 @@ func Runs(o Options) error {
 
 func backupSpaceDB(o Options, backup string) error {
 	dst := filepath.Join(backup, "space.db")
-	if exists(dst) {
+	if fsmove.Exists(dst) {
 		return nil
 	}
 	tmp := dst + ".tmp"
@@ -401,7 +402,7 @@ func copyRunFiles(o Options, m marker, src string) error {
 			continue
 		}
 		dst := filepath.Join(o.SpaceHome, "runs", mapped(m.Scripts, sm[1])+".yaml")
-		if exists(dst) {
+		if fsmove.Exists(dst) {
 			continue
 		}
 		b, err := os.ReadFile(filepath.Join(dir, e.Name()))
@@ -436,14 +437,14 @@ func copyAutomations(o Options, m marker, src string) error {
 			continue
 		}
 		dst := filepath.Join(o.SpaceHome, "automations", mapped(m.Scripts, e.Name()))
-		if exists(dst) {
+		if fsmove.Exists(dst) {
 			continue
 		}
 		tmp := dst + ".p539tmp"
 		if err := os.RemoveAll(tmp); err != nil {
 			return err
 		}
-		if err := copyTree(filepath.Join(dir, e.Name()), tmp); err != nil {
+		if err := fsmove.CopyTree(filepath.Join(dir, e.Name()), tmp); err != nil {
 			return err
 		}
 		if err := os.Rename(tmp, dst); err != nil {

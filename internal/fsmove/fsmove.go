@@ -1,4 +1,5 @@
-package homefold
+// Package fsmove copies, verifies and tests config trees for the startup folds (homefold, configfold).
+package fsmove
 
 import (
 	"bytes"
@@ -11,9 +12,9 @@ import (
 	"path/filepath"
 )
 
-// copyTree copies src to dst: directories, regular files and symlinks (kept as links), each with its
+// CopyTree copies src to dst: directories, regular files and symlinks (kept as links), each with its
 // source mode. os.CopyFS would follow links and loosen modes.
-func copyTree(src, dst string) error {
+func CopyTree(src, dst string) error {
 	return filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -71,9 +72,9 @@ func copyFile(src, dst string, mode fs.FileMode) (err error) {
 	return os.Chmod(dst, mode)
 }
 
-// verifyTree fails unless every entry of src exists in dst with the same type, size and content. A
+// VerifyTree fails unless every entry of src Exists in dst with the same type, size and content. A
 // dst superset is fine: it is what a resumed move sees after a half-finished delete of src.
-func verifyTree(src, dst string) error {
+func VerifyTree(src, dst string) error {
 	return filepath.WalkDir(src, func(p string, _ fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -83,7 +84,7 @@ func verifyTree(src, dst string) error {
 			return err
 		}
 		if err := sameEntry(p, filepath.Join(dst, rel)); err != nil {
-			return fmt.Errorf("homefold: verify %s: %w", rel, err)
+			return fmt.Errorf("fsmove: verify %s: %w", rel, err)
 		}
 		return nil
 	})
@@ -146,12 +147,14 @@ func fileHash(path string) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
-func exists(p string) bool {
+// Exists reports whether p exists; a dangling symlink counts.
+func Exists(p string) bool {
 	_, err := os.Lstat(p)
 	return err == nil
 }
 
-func isEmptyDir(p string) (bool, error) {
+// IsEmptyDir reports whether p is missing or an empty directory.
+func IsEmptyDir(p string) (bool, error) {
 	entries, err := os.ReadDir(p)
 	if errors.Is(err, fs.ErrNotExist) {
 		return true, nil
