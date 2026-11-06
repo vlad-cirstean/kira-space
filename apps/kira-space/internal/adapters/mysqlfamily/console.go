@@ -352,3 +352,8 @@ func setSessionTimeout(ctx context.Context, conn Entry, timeout time.Duration, m
 		}
 	}, nil
 }
+
+// RedactStatement satisfies adapters.StatementRedactor: string literals masked, comments dropped.
+func (a *Adapter) RedactStatement(statement string) (string, bool) {
+	return adapters.MaskSQLLiterals(statement, adapters.MySQLDialect)
+}

@@ -398,3 +398,8 @@ func timeoutError(ctx context.Context, timeout time.Duration, err error) error {
 	}
 	return err
 }
+
+// RedactStatement satisfies adapters.StatementRedactor: string literals masked, comments dropped.
+func (a *Adapter) RedactStatement(statement string) (string, bool) {
+	return adapters.MaskSQLLiterals(statement, adapters.PostgresDialect)
+}

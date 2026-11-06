@@ -116,3 +116,8 @@ func execute(ctx context.Context, conn *sql.Conn, op *adapters.OpCtx, statements
 	}
 	return pages, nil
 }
+
+// RedactStatement satisfies adapters.StatementRedactor: string literals masked, comments dropped.
+func (a *Adapter) RedactStatement(statement string) (string, bool) {
+	return adapters.MaskSQLLiterals(statement, adapters.SQLiteDialect)
+}

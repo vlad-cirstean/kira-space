@@ -488,6 +488,20 @@ func (r *Router) ClassifyStatement(ctx context.Context, connectionID, statement 
 	return classifier.ClassifyStatement(ctx, statement)
 }
 
+// RedactStatement returns statement as the connection's adapter would keep it in an audit trail.
+// ok is false when the connection has no live adapter or its kind has no redactor.
+func (r *Router) RedactStatement(connectionID, statement string) (string, bool) {
+	adapter, err := requireLiveAdapter(connectionID)
+	if err != nil {
+		return "", false
+	}
+	redactor, ok := adapter.(adapters.StatementRedactor)
+	if !ok {
+		return "", false
+	}
+	return redactor.RedactStatement(statement)
+}
+
 // ---- bridge.Canceller ----
 
 // Cancel asks the in-process scheduler — the only place an op can be running now that P58f's

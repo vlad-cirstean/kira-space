@@ -611,3 +611,17 @@ func execute(ctx context.Context, db *mongodriver.Database, readOnly bool, op *a
 	}
 	return pages, nil
 }
+
+// RedactStatement satisfies adapters.StatementRedactor: arguments are documents (data), so only
+// the `db.<collection>.<method>(…)` shape is kept.
+func (a *Adapter) RedactStatement(statement string) (string, bool) {
+	parser, err := NewLiteralParser(strings.TrimSpace(statement))
+	if err != nil {
+		return "", false
+	}
+	collection, method, err := parseTarget(parser)
+	if err != nil {
+		return "", false
+	}
+	return "db." + collection + "." + method + "(…)", true
+}

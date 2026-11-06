@@ -235,3 +235,8 @@ func execute(ctx context.Context, h *Handle, op *adapters.OpCtx, track TrackQuer
 	}
 	return pages, nil
 }
+
+// RedactStatement satisfies adapters.StatementRedactor: string literals masked, comments dropped.
+func (a *Adapter) RedactStatement(statement string) (string, bool) {
+	return adapters.MaskSQLLiterals(statement, adapters.ClickHouseDialect)
+}

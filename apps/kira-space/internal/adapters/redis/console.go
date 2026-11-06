@@ -509,3 +509,13 @@ func execute(ctx context.Context, set *dbConnectionSet, dbIndex int, readOnly bo
 	}
 	return pages, nil
 }
+
+// RedactStatement satisfies adapters.StatementRedactor: keys and values can be data, so only the
+// command name is kept.
+func (a *Adapter) RedactStatement(statement string) (string, bool) {
+	tokens, err := tokenize(statement)
+	if err != nil || len(tokens) == 0 {
+		return "", false
+	}
+	return strings.ToUpper(tokens[0]) + " …", true
+}
