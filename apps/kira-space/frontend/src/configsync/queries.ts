@@ -3,8 +3,8 @@ import { onScopeDispose } from 'vue';
 import { control } from '../bridge/control';
 import type { ConfigSyncChoice, ConfigSyncStatus } from './domain';
 
-export const configSyncStatusKey = ['configSync', 'status'] as const;
-export const configSyncPreviewKey = ['configSync', 'preview'] as const;
+const configSyncStatusKey = ['configSync', 'status'] as const;
+const configSyncPreviewKey = ['configSync', 'preview'] as const;
 export const configSyncWindowKey = (windowKey: string) =>
   ['configSync', 'window', windowKey] as const;
 

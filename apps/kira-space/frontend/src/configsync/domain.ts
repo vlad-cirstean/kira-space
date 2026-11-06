@@ -1,5 +1,5 @@
 // P554: wire shapes of internal/configsync (type only; the bridge trusts them like its siblings).
-export type ConfigSyncModule = {
+type ConfigSyncModule = {
   name: string;
   mode: string;
   modes: string[];
@@ -7,7 +7,7 @@ export type ConfigSyncModule = {
   deactivated: number;
 };
 
-export type ConfigSyncProblem = { kind: string; message: string };
+type ConfigSyncProblem = { kind: string; message: string };
 
 export type ConfigSyncStatus = {
   configured: boolean;
@@ -40,7 +40,7 @@ export type ConfigSyncRow = {
   unsetSecrets: string[];
 };
 
-export type ConfigSyncFileDiff = {
+type ConfigSyncFileDiff = {
   module: string;
   file: string;
   current: string;
