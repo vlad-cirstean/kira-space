@@ -977,6 +977,48 @@ func (s *AdeTaskService) AddNote(ctx context.Context, args adewire.AddNoteArgs) 
 	return h, adeTaskError(err)
 }
 
+// TaskProofs lists the proof sessions attached to a task, newest first. Archived tasks work too.
+func (s *AdeTaskService) TaskProofs(ctx context.Context, args adewire.TaskArgs) (adewire.TaskProofsResult, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return adewire.TaskProofsResult{}, err
+	}
+	rows, err := s.Engine.TaskProofs(ctx, args.TaskID)
+	return adewire.TaskProofsResult{Proofs: rows}, adeTaskError(err)
+}
+
+// ProofChoices lists the closed proof sessions no task holds yet.
+func (s *AdeTaskService) ProofChoices(ctx context.Context) (adewire.ProofChoicesResult, error) {
+	ctx = adeUserCtx(ctx)
+	rows, err := s.Engine.ProofChoices(ctx)
+	return adewire.ProofChoicesResult{Proofs: rows}, adeTaskError(err)
+}
+
+func validateAdeLinkProof(args adewire.LinkProofArgs) error {
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return err
+	}
+	return validateAdeItemID(args.ProofID, "proofId")
+}
+
+// LinkProof attaches a closed proof session to the task.
+func (s *AdeTaskService) LinkProof(ctx context.Context, args adewire.LinkProofArgs) error {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeLinkProof(args); err != nil {
+		return err
+	}
+	return adeTaskError(s.Engine.LinkProof(ctx, args.TaskID, args.ProofID))
+}
+
+// UnlinkProof removes a proof session from the task; the session stays in the proof window.
+func (s *AdeTaskService) UnlinkProof(ctx context.Context, args adewire.LinkProofArgs) error {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeLinkProof(args); err != nil {
+		return err
+	}
+	return adeTaskError(s.Engine.UnlinkProof(ctx, args.TaskID, args.ProofID))
+}
+
 // UpdateHandover replaces a handover row's body (a note up to 1 MiB, other rows up to 16 KiB); an empty body deletes it.
 func (s *AdeTaskService) UpdateHandover(ctx context.Context, args adewire.UpdateHandoverArgs) error {
 	ctx = adeUserCtx(ctx)

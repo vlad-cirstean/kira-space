@@ -605,6 +605,7 @@ func Build(opts Options) (*Wired, error) {
 	if err := w.buildStudio(opts); err != nil {
 		return nil, err
 	}
+	w.AdeBoard.SetProofs(w.ProofStore)
 	return w, nil
 }
 

@@ -578,6 +578,53 @@ type AddNoteArgs struct {
 	Body   string `json:"body"`
 }
 
+// TaskProofStep is one step of an attached proof session, without its data.
+type TaskProofStep struct {
+	Ordinal     int    `json:"ordinal"`
+	Description string `json:"description"`
+	View        string `json:"view"`
+	Source      string `json:"source"`
+}
+
+// TaskProof is a closed proof session attached to a task. ProofID names the proof session;
+// SessionID the Kira session that attached it, '' for a user attach. Rev is the current revision.
+type TaskProof struct {
+	ProofID   string          `json:"proofId"`
+	Name      string          `json:"name"`
+	Summary   string          `json:"summary"`
+	ClosedAt  int64           `json:"closedAt"`
+	LinkedAt  int64           `json:"linkedAt"`
+	Source    string          `json:"source"`
+	SessionID string          `json:"sessionId"`
+	StepID    string          `json:"stepId"`
+	StepName  string          `json:"stepName"`
+	Rev       int             `json:"rev"`
+	Pending   bool            `json:"pending"`
+	Steps     []TaskProofStep `json:"steps"`
+}
+
+type TaskProofsResult struct {
+	Proofs []TaskProof `json:"proofs"`
+}
+
+// ProofChoice is a closed proof session no task holds yet.
+type ProofChoice struct {
+	ProofID  string `json:"proofId"`
+	Name     string `json:"name"`
+	ClosedAt int64  `json:"closedAt"`
+	Steps    int    `json:"steps"`
+}
+
+type ProofChoicesResult struct {
+	Proofs []ProofChoice `json:"proofs"`
+}
+
+// LinkProofArgs attaches or detaches one proof session.
+type LinkProofArgs struct {
+	TaskID  string `json:"taskId"`
+	ProofID string `json:"proofId"`
+}
+
 type UpdateHandoverArgs struct {
 	ID string `json:"id"`
 	// Body '' deletes the row.

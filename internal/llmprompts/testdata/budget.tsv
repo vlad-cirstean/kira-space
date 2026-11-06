@@ -105,7 +105,7 @@ headless.tool.run_outcome.arg.runId	45
 headless.tool.run_outcome.arg.branch	30
 headless.tool.run_outcome.arg.kind	88
 headless.tool.run_outcome.arg.limit	34
-headless.tool.handover	130
+headless.tool.handover	258
 headless.tool.handover.arg.notes	138
 headless.tool.handover.arg.finished	104
 headless.handover.ack	37
@@ -115,6 +115,8 @@ headless.tool.report_artifacts.arg.artifacts.kind	46
 headless.tool.report_artifacts.arg.artifacts.title	30
 headless.tool.report_artifacts.arg.artifacts.url	39
 headless.tool.report_artifacts.arg.artifacts.ref	49
+headless.tool.attach_proof	166
+headless.tool.attach_proof.arg.name	89
 headless.artifacts.header	73
 headless.artifacts.more	27
 headless.artifacts.unavailable	30
@@ -226,8 +228,8 @@ headless.tool.reply_review_comment.arg.resolved	53
 dbmcp.tool.proof_start_session	270
 dbmcp.tool.proof_edit_session	340
 dbmcp.tool.proof_add_step	540
-dbmcp.tool.proof_close_session	190
-dbmcp.tool.proof_list_sessions	180
+dbmcp.tool.proof_close_session	248
+dbmcp.tool.proof_list_sessions	197
 dbmcp.tool.proof_start_session.arg.name	40
 dbmcp.tool.proof_start_session.arg.summary	60
 dbmcp.tool.proof_edit_session.arg.name	70

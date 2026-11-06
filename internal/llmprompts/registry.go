@@ -997,7 +997,7 @@ var (
 // HeadlessToolHandover describes the handover tool.
 var HeadlessToolHandover = define(Entry{
 	ID: "headless.tool.handover", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "handover",
-	Default: `Leave notes for the next stage of this task. Call it when you did work the next stage must know about; again to replace the notes.`,
+	Default: `Leave notes for the next stage of this task. Call it when you did work the next stage must know about; again to replace the notes. Be terse: facts, open items and decisions, at most 10 short lines. Do not restate proof, diffs or links the task already shows.`,
 }, NoVars{})
 
 var (
@@ -1027,6 +1027,14 @@ var (
 	_ = arg(HeadlessToolReportArtifacts.id, "artifacts.url", spaceApp, NextCall, `http or https address. Give url or ref.`, NoVars{})
 	_ = arg(HeadlessToolReportArtifacts.id, "artifacts.ref", spaceApp, NextCall, `What names it without a url, such as a file path.`, NoVars{})
 )
+
+// HeadlessToolAttachProof describes the attach_proof tool.
+var HeadlessToolAttachProof = define(Entry{
+	ID: "headless.tool.attach_proof", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "attach_proof",
+	Default: `Show a closed proof session in this task's notes chain. Call it after proof_close_session with the session name. A session belongs to one task; a repeat call is fine.`,
+}, NoVars{})
+
+var _ = arg(HeadlessToolAttachProof.id, "name", spaceApp, NextCall, `Name of a closed proof session, as proof_close_session or proof_list_sessions returns it.`, NoVars{})
 
 // HeadlessArtifactsHeader opens the artifact list a finishing call returns.
 var HeadlessArtifactsHeader = define(Entry{
@@ -1483,7 +1491,7 @@ var (
 // DbmcpToolProofCloseSession describes the proof_close_session tool.
 var DbmcpToolProofCloseSession = define(Entry{
 	ID: "dbmcp.tool.proof_close_session", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_close_session",
-	Default: "Finish a draft and notify the user. Needs at least one step. A new session returns status closed; an edit returns pending_review until the user accepts or rejects it. The draftId is spent.",
+	Default: "Finish a draft and notify the user. Needs at least one step. A new session returns status closed; an edit returns pending_review until the user accepts or rejects it. The draftId is spent. In a Kira Space task, then call attach_proof with the name.",
 }, NoVars{})
 
 var _ = arg(DbmcpToolProofCloseSession.id, "draftId", studioApp, NextCall, `Draft id from proof_start_session or proof_edit_session.`, NoVars{})
@@ -1491,7 +1499,7 @@ var _ = arg(DbmcpToolProofCloseSession.id, "draftId", studioApp, NextCall, `Draf
 // DbmcpToolProofListSessions describes the proof_list_sessions tool.
 var DbmcpToolProofListSessions = define(Entry{
 	ID: "dbmcp.tool.proof_list_sessions", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "proof_list_sessions",
-	Default: "List closed proof sessions, newest first, with step count and whether an edit waits for review. Use it to find the name proof_edit_session needs. The app keeps the newest 30.",
+	Default: "List closed proof sessions, newest first, with step count and whether an edit waits for review. Use it to find the name proof_edit_session needs. The app keeps the newest 30 not attached to a task.",
 }, NoVars{})
 
 // DbmcpToolListOperations describes the list_operations tool.

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -180,6 +181,7 @@ type TaskBoard struct {
 	rebase         map[string]*rebaseCache
 	boardTimer     *time.Timer
 	updates        *updateWatcher
+	proofs         atomic.Pointer[proofHolder] // bound after the Studio stage builds (SetProofs)
 
 	runMu            sync.Mutex                 // guards live, setupLive, archiving, taskMus, finishes, stepMsgs
 	live             map[string]*liveRun        // run id -> its process
