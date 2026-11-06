@@ -118,7 +118,7 @@ func explicitOff(key string, s adewire.WorkflowStep) *yaml.Node {
 		return newScalar(kText, "auto")
 	case "max_returns":
 		return newScalar(kInt, strconv.Itoa(s.MaxReturns))
-	case "outside_repo", "session":
+	case "outside_repo", "session", "db_mcp":
 		return newScalar(kBool, "false")
 	case "allowed_tools":
 		return scalarList(nil)

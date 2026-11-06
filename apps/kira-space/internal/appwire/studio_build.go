@@ -156,6 +156,7 @@ func (w *Wired) buildStudio(opts Options) error {
 	w.GrpcHistory = &bridge.GrpcHistoryService{Deps: deps}
 	w.DataGrip = &bridge.DataGripService{Deps: deps}
 	w.DbMcp = embedded.dbMcpSvc
+	w.DbMcpSessions = embedded.dbMcpSessions
 	w.Docker = embedded.dockerSvc
 	w.Kubernetes = embedded.kubeSvc
 	w.ProofStore = proofSvc
@@ -178,6 +179,7 @@ func (w *Wired) buildStudio(opts Options) error {
 		// approvals then waits out closeHTTP's graceful drain, so no run_query can still be
 		// mid-flight, dialing a preconnect target on demand, once Shutdown below starts tearing
 		// preconnect down.
+		embedded.dbMcpSessions.Close()
 		bridge.StopDbMcp(embedded.dbMcpSvc)
 		connectionsSvc.Shutdown()
 		docker.StopRestoreBound(embedded.dockerSvc.BoundService)

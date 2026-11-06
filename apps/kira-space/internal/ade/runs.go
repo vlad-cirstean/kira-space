@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitprepare"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
@@ -864,11 +865,19 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	if sbx != nil {
 		grantSandbox = sbx.grant
 	}
-	cfg, release, err := b.agent.Register(agentmcp.Grant{RunID: run.ID, TaskID: run.TaskID, SessionID: l.sessionID, Space: space, Git: l.git, Review: l.review, Sandbox: grantSandbox, Agent: l.agent, Results: grantResults(rebase || round, def)})
+	grant := agentmcp.Grant{RunID: run.ID, TaskID: run.TaskID, SessionID: l.sessionID, Space: space, Git: l.git, Review: l.review, Sandbox: grantSandbox, Agent: l.agent, Results: grantResults(rebase || round, def)}
+	releaseDb, err := b.grantDbMcp(def, dbmcp.SessionIdentity{SessionID: l.sessionID, TaskID: run.TaskID, RunID: run.ID, Cwd: l.path}, &grant)
 	if err != nil {
 		fail(err)
 		return
 	}
+	cfg, release, err := b.agent.Register(grant)
+	if err != nil {
+		releaseDb()
+		fail(err)
+		return
+	}
+	release = joinRelease(release, releaseDb)
 	prep, err := b.headlessApp(ctx, l, run.ID)
 	if err != nil {
 		release()
@@ -891,7 +900,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 	agent := l.agent
 	spec := harness.HeadlessSpec{
 		Bin: b.deps.AgentBin, Dir: l.path, Prompt: l.prompt, SessionID: b.sessionAgentID(sessionID),
-		Resume: l.resume, MCPConfigs: []string{cfg}, Config: b.configScope(), AllowedTools: roundTools(agent, allowedTools(agent, def.AllowedTools, space), round), DisallowedTools: def.DisallowedTools,
+		Resume: l.resume, MCPConfigs: []string{cfg}, Config: b.configScope(), AllowedTools: roundTools(agent, allowedTools(agent, withDbMcpTool(def, def.AllowedTools), space), round), DisallowedTools: def.DisallowedTools,
 		Timeout: l.timeout, Stage: stageValues(def.Settings, agent), ContextFile: l.contextFile, App: prep.App,
 		Hermetic: b.hermetic() && len(ticked.UserMCP) == 0,
 	}

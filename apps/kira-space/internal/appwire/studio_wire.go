@@ -114,10 +114,11 @@ func wireStudioAdapters(deps *appcore.StudioDeps, settings studiomodel.Settings,
 // studioEmbedded is wireStudioEmbedded's own result: the embedded services the later wiring and
 // teardown still reach.
 type studioEmbedded struct {
-	dbMcpSvc     *bridge.DbMcpService
-	dockerSvc    *bridge.DockerService
-	kubeSvc      *bridge.KubernetesService
-	eventsDetach func()
+	dbMcpSvc      *bridge.DbMcpService
+	dbMcpSessions *dbmcp.SessionPool
+	dockerSvc     *bridge.DockerService
+	kubeSvc       *bridge.KubernetesService
+	eventsDetach  func()
 	// stopReregister cancels and waits out the post-fold DB MCP re-registration.
 	stopReregister func()
 }
@@ -134,6 +135,7 @@ func (w *Wired) wireStudioEmbedded(deps appcore.StudioDeps, installer harness.MC
 	kubeSvc := &bridge.KubernetesService{BoundService: kubernetes.NewBoundService(deps.Repos.KubeClusters, deps.Events, append([]kubernetes.Option{kubernetes.WithRecorder(bridge.KubeRecorder{Host: deps.Router.Host()})}, opts.KubernetesExtra...)...)}
 	dbMcpSvc := bridge.NewDbMcpService(deps, installer, dbMcpApprovals, proofSvc, kubernetes.ServiceOf(kubeSvc.BoundService))
 	dbMcpSvc.Port = opts.DbMcpPort
+	dbMcpSessions := bridge.NewDbMcpSessions(dbMcpSvc)
 
 	// The ops tools read live runs, so the server starts only once the run service exists.
 	dbMcpSvc.Runs = bridge.NewScriptRunControl(w.runs)
@@ -146,7 +148,7 @@ func (w *Wired) wireStudioEmbedded(deps appcore.StudioDeps, installer harness.MC
 	eventsDetach := w.Events.AttachStudio(bridge.StudioSources{Connections: connectionsSvc, Oplog: oplogWiring})
 
 	return studioEmbedded{
-		dbMcpSvc:  dbMcpSvc,
+		dbMcpSvc: dbMcpSvc, dbMcpSessions: dbMcpSessions,
 		dockerSvc: dockerSvc, kubeSvc: kubeSvc, eventsDetach: eventsDetach, stopReregister: stopReregister,
 	}
 }

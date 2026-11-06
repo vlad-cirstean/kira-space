@@ -128,6 +128,8 @@ type WorkflowStep struct {
 	Timeout      string   `json:"timeout"`
 	Prompt       string   `json:"prompt"` // agent prompt; manual: first session message
 	AllowedTools []string `json:"allowedTools"`
+	// DbMcp gives the step's agent sessions the Kira DB tools, for that session only (agent, review, manual session).
+	DbMcp bool `json:"dbMcp"`
 	// SmartScript runs the named smart script instead of Prompt; Params are its values per param name.
 	SmartScript string              `json:"smartScript"`
 	Params      map[string][]string `json:"params"`

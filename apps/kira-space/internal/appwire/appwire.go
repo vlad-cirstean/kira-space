@@ -28,6 +28,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
@@ -297,9 +298,11 @@ type Wired struct {
 	GrpcHistory     *bridge.GrpcHistoryService
 	DataGrip        *bridge.DataGripService
 	DbMcp           *bridge.DbMcpService
-	Docker          *bridge.DockerService
-	Kubernetes      *bridge.KubernetesService
-	Proof           *bridge.ProofService
+	// DbMcpSessions serves the agent sessions of workflow steps with db_mcp; never bound to the renderer.
+	DbMcpSessions *dbmcp.SessionPool
+	Docker        *bridge.DockerService
+	Kubernetes    *bridge.KubernetesService
+	Proof         *bridge.ProofService
 	// ProofStore is the validation-proof store behind Proof and the DB MCP proof tools.
 	ProofStore *proof.Service
 	// OnWindowClosing are the Studio window-close hooks the shell runs.
@@ -606,6 +609,7 @@ func Build(opts Options) (*Wired, error) {
 		return nil, err
 	}
 	w.AdeBoard.SetProofs(w.ProofStore)
+	w.AdeBoard.SetDbMcp(w.DbMcpSessions)
 	return w, nil
 }
 

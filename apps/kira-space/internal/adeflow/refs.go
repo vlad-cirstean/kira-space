@@ -117,12 +117,18 @@ func reconcileBody(merged *yaml.Node, fm map[string]*yaml.Node) {
 	if n, has := fm["outside_repo"]; has && n.Value == "true" && fm["runs_on"] == nil {
 		dropKeys(merged, "runs_on")
 	}
+	if n, has := fm["session"]; has && n.Value != "true" && fm["db_mcp"] == nil {
+		dropKeys(merged, "db_mcp")
+	}
 	if fm["smart_script"] != nil {
 		if fm["prompt"] == nil {
 			dropKeys(merged, "prompt")
 		}
 		if fm["allowed_tools"] == nil {
 			dropKeys(merged, "allowed_tools")
+		}
+		if fm["db_mcp"] == nil {
+			dropKeys(merged, "db_mcp")
 		}
 	} else if fm["prompt"] != nil || fm["allowed_tools"] != nil {
 		dropKeys(merged, "smart_script", "params")

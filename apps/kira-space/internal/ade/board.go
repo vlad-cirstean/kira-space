@@ -182,6 +182,7 @@ type TaskBoard struct {
 	boardTimer     *time.Timer
 	updates        *updateWatcher
 	proofs         atomic.Pointer[proofHolder] // bound after the Studio stage builds (SetProofs)
+	dbMcp          atomic.Pointer[dbMcpHolder] // bound after the Studio stage builds (SetDbMcp)
 
 	runMu            sync.Mutex                 // guards live, setupLive, archiving, taskMus, finishes, stepMsgs
 	live             map[string]*liveRun        // run id -> its process
