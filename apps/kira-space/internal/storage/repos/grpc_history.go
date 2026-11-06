@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // Four caps, because a streamed call can grow in a way an HTTP response body cannot —
@@ -29,7 +31,8 @@ const (
 var grpcHistoryByteBudget = 32 * 1024 * 1024
 
 type GrpcHistoryRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
 // storedGrpcSnapshot is exactly what snapshot_json holds — Entry is deliberately absent, the same
@@ -67,7 +70,7 @@ func (r *GrpcHistoryRepo) Record(rec model.GrpcCallHistoryRecord) error {
 	}
 
 	var snap storedGrpcSnapshot
-	_, err := grpcHistoryTable.Record(r.DB,
+	_, err := grpcHistoryTable.Record(r.DB, r.Dialect,
 		historyRecordInput{TabID: rec.TabID, ItemID: rec.ItemID, EnvironmentID: rec.EnvironmentID},
 		grpcHistoryPerScopeCap, grpcHistoryByteBudget,
 		func() ([]byte, error) {
@@ -128,23 +131,36 @@ func (r *GrpcHistoryRepo) Record(rec model.GrpcCallHistoryRecord) error {
 			return json.Marshal(snap)
 		},
 		func(tx *sql.Tx, id string, itemID *string, calledAt int64, environment string, storedBytes int, snapshotJSON []byte) error {
-			_, err := tx.Exec(
-				`INSERT INTO api_grpc_history
-				   (id, item_id, tab_id, called_at, target, method, streaming, environment,
-				    code, code_name, status_message, elapsed_ms, message_count, message_bytes, stored_bytes, snapshot_json)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			c := kiraschema.APIGrpcHistory
+			ib := r.Dialect.InsertInto(c.Table).Cols(
+				c.ID, c.ItemID, c.TabID, c.CalledAt, c.Target, c.Method, c.Streaming, c.Environment,
+				c.Code, c.CodeName, c.StatusMessage, c.ElapsedMs, c.MessageCount, c.MessageBytes, c.StoredBytes, c.SnapshotJSON,
+			).Values(
 				id, itemID, rec.TabID, calledAt, rec.Target, rec.Method, rec.Streaming, environment,
 				rec.Code, rec.CodeName, rec.StatusMessage, rec.ElapsedMs, rec.MessageCount, rec.MessageBytes,
 				storedBytes, string(snapshotJSON),
 			)
+			_, err := sqlb.Exec(tx, ib)
 			return err
 		},
 	)
 	return err
 }
 
-const grpcHistoryEntryColumns = `id, item_id, tab_id, called_at, target, method, streaming, environment,
-	code, code_name, status_message, elapsed_ms, message_count, message_bytes, stored_bytes`
+var grpcHistoryEntryColumns = func() []string {
+	c := kiraschema.APIGrpcHistory
+	return []string{
+		c.ID, c.ItemID, c.TabID, c.CalledAt, c.Target, c.Method, c.Streaming, c.Environment,
+		c.Code, c.CodeName, c.StatusMessage, c.ElapsedMs, c.MessageCount, c.MessageBytes, c.StoredBytes,
+	}
+}()
+
+var grpcHistoryColumns = historyColumns{
+	Table: kiraschema.APIGrpcHistory.Table, ID: kiraschema.APIGrpcHistory.ID,
+	ItemID: kiraschema.APIGrpcHistory.ItemID, TabID: kiraschema.APIGrpcHistory.TabID,
+	ScopeKey: kiraschema.APIGrpcHistory.ScopeKey, StoredBytes: kiraschema.APIGrpcHistory.StoredBytes,
+	SnapshotJSON: kiraschema.APIGrpcHistory.SnapshotJSON, Time: kiraschema.APIGrpcHistory.CalledAt,
+}
 
 func scanGrpcHistoryEntry(row rowScanner) (model.GrpcCallHistoryEntry, error) {
 	var (
@@ -166,20 +182,20 @@ func scanGrpcHistoryEntry(row rowScanner) (model.GrpcCallHistoryEntry, error) {
 // grpcHistoryTable is the historyTable[T] instance List/Delete/Adopt/SweepOrphans below delegate
 // to (T2-14) — api_grpc_history's own table name/scope/order column/summary columns/scan func.
 var grpcHistoryTable = historyTable[model.GrpcCallHistoryEntry]{
-	table: "api_grpc_history", scope: "grpc_history", timeColumn: "called_at",
+	scope: "grpc_history", cols: grpcHistoryColumns,
 	columns: grpcHistoryEntryColumns, scan: scanGrpcHistoryEntry,
 }
 
 // List is the summary projection (every column but snapshot_json), newest first — ≤
 // grpcHistoryPerScopeCap by construction (Record's own trim).
 func (r *GrpcHistoryRepo) List(scopeKey string) ([]model.GrpcCallHistoryEntry, error) {
-	return grpcHistoryTable.List(r.DB, scopeKey)
+	return grpcHistoryTable.List(r.DB, r.Dialect, scopeKey)
 }
 
 // Get decodes one row's snapshot_json and rebuilds Entry from the row's own summary columns —
 // GetHistory (P107 I2-8) runs the shared query, this closure does the rest.
 func (r *GrpcHistoryRepo) Get(id string) (model.GrpcCallSnapshot, error) {
-	return GetHistory(r.DB, "api_grpc_history", grpcHistoryEntryColumns, id, func(row rowScanner) (model.GrpcCallSnapshot, error) {
+	return GetHistory(r.DB, r.Dialect, grpcHistoryColumns, grpcHistoryEntryColumns, id, func(row rowScanner) (model.GrpcCallSnapshot, error) {
 		var (
 			e            model.GrpcCallHistoryEntry
 			itemID       sql.NullString
@@ -214,12 +230,15 @@ func (r *GrpcHistoryRepo) Get(id string) (model.GrpcCallSnapshot, error) {
 
 // Delete removes one entry.
 func (r *GrpcHistoryRepo) Delete(id string) error {
-	return grpcHistoryTable.Delete(r.DB, id)
+	return grpcHistoryTable.Delete(r.DB, r.Dialect, id)
 }
 
 // Clear removes every entry in one scope.
 func (r *GrpcHistoryRepo) Clear(scopeKey string) error {
-	if _, err := r.DB.Exec(`DELETE FROM api_grpc_history WHERE scope_key = ?`, scopeKey); err != nil {
+	c := kiraschema.APIGrpcHistory
+	del := r.Dialect.DeleteFrom(c.Table)
+	del.Where(del.Equal(c.ScopeKey, scopeKey))
+	if _, err := sqlb.Exec(r.DB, del); err != nil {
 		return fmt.Errorf("repos/grpc_history: clear: %w", err)
 	}
 	return nil
@@ -228,11 +247,11 @@ func (r *GrpcHistoryRepo) Clear(scopeKey string) error {
 // Adopt moves a scratch tab's history onto a newly-saved request (mirrors
 // response_history.go's own D14) — one UPDATE, scope follows via the generated column.
 func (r *GrpcHistoryRepo) Adopt(tabID, itemID string) (int, error) {
-	return grpcHistoryTable.Adopt(r.DB, tabID, itemID)
+	return grpcHistoryTable.Adopt(r.DB, r.Dialect, tabID, itemID)
 }
 
 // SweepOrphans deletes a scratch tab's history once its tab is gone — run once at launch beside
 // response_history's own startup prune (mirrors D7).
 func (r *GrpcHistoryRepo) SweepOrphans() error {
-	return grpcHistoryTable.SweepOrphans(r.DB)
+	return grpcHistoryTable.SweepOrphans(r.DB, r.Dialect)
 }

@@ -7,6 +7,8 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // Three caps, because three independent things can grow — bytes per entry, count per
@@ -30,7 +32,8 @@ const (
 var historyByteBudget = 128 * 1024 * 1024
 
 type ResponseHistoryRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
 // storedSnapshot is exactly what snapshot_json holds — Entry is deliberately absent (D4's Get
@@ -62,7 +65,7 @@ func (r *ResponseHistoryRepo) Record(rec model.ResponseHistoryRecord) error {
 	}
 
 	var snap storedSnapshot
-	_, err := responseHistoryTable.Record(r.DB,
+	_, err := responseHistoryTable.Record(r.DB, r.Dialect,
 		historyRecordInput{TabID: rec.TabID, ItemID: rec.ItemID, EnvironmentID: rec.EnvironmentID},
 		historyPerScopeLimit, historyByteBudget,
 		func() ([]byte, error) {
@@ -126,15 +129,16 @@ func (r *ResponseHistoryRepo) Record(rec model.ResponseHistoryRecord) error {
 			return json.Marshal(snap)
 		},
 		func(tx *sql.Tx, id string, itemID *string, sentAt int64, environment string, storedBytes int, snapshotJSON []byte) error {
-			_, err := tx.Exec(
-				`INSERT INTO api_response_history
-				   (id, item_id, tab_id, sent_at, method, url, environment, status, status_text,
-				    elapsed_ms, body_bytes, stored_bytes, snapshot_json)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			c := kiraschema.APIResponseHistory
+			ib := r.Dialect.InsertInto(c.Table).Cols(
+				c.ID, c.ItemID, c.TabID, c.SentAt, c.Method, c.URL, c.Environment, c.Status, c.StatusText,
+				c.ElapsedMs, c.BodyBytes, c.StoredBytes, c.SnapshotJSON,
+			).Values(
 				id, itemID, rec.TabID, sentAt, rec.Method, rec.URL, environment,
 				rec.Response.Status, rec.Response.StatusText, rec.Response.ElapsedMs,
 				rec.Response.BodyBytes, storedBytes, string(snapshotJSON),
 			)
+			_, err := sqlb.Exec(tx, ib)
 			return err
 		},
 	)
@@ -161,8 +165,20 @@ func capBody(b httpclient.Body) (httpclient.Body, bool) {
 	return b, false
 }
 
-const responseHistoryEntryColumns = `id, item_id, tab_id, sent_at, method, url, environment,
-	status, status_text, elapsed_ms, body_bytes, stored_bytes`
+var responseHistoryEntryColumns = func() []string {
+	c := kiraschema.APIResponseHistory
+	return []string{
+		c.ID, c.ItemID, c.TabID, c.SentAt, c.Method, c.URL, c.Environment,
+		c.Status, c.StatusText, c.ElapsedMs, c.BodyBytes, c.StoredBytes,
+	}
+}()
+
+var responseHistoryColumns = historyColumns{
+	Table: kiraschema.APIResponseHistory.Table, ID: kiraschema.APIResponseHistory.ID,
+	ItemID: kiraschema.APIResponseHistory.ItemID, TabID: kiraschema.APIResponseHistory.TabID,
+	ScopeKey: kiraschema.APIResponseHistory.ScopeKey, StoredBytes: kiraschema.APIResponseHistory.StoredBytes,
+	SnapshotJSON: kiraschema.APIResponseHistory.SnapshotJSON, Time: kiraschema.APIResponseHistory.SentAt,
+}
 
 func scanResponseHistoryEntry(row rowScanner) (model.ResponseHistoryEntry, error) {
 	var (
@@ -185,14 +201,14 @@ func scanResponseHistoryEntry(row rowScanner) (model.ResponseHistoryEntry, error
 // delegate to (T2-14) — api_response_history's own table name/scope/order column/summary
 // columns/scan func.
 var responseHistoryTable = historyTable[model.ResponseHistoryEntry]{
-	table: "api_response_history", scope: "response_history", timeColumn: "sent_at",
+	scope: "response_history", cols: responseHistoryColumns,
 	columns: responseHistoryEntryColumns, scan: scanResponseHistoryEntry,
 }
 
 // List is the summary projection (every column but snapshot_json), newest first — ≤
 // historyPerScopeLimit by construction (Record's own trim).
 func (r *ResponseHistoryRepo) List(scopeKey string) ([]model.ResponseHistoryEntry, error) {
-	return responseHistoryTable.List(r.DB, scopeKey)
+	return responseHistoryTable.List(r.DB, r.Dialect, scopeKey)
 }
 
 // Get decodes one row's snapshot_json and rebuilds Entry from the row's own summary columns
@@ -200,7 +216,7 @@ func (r *ResponseHistoryRepo) List(scopeKey string) ([]model.ResponseHistoryEntr
 // lookup rather than a list a bad row could otherwise blank entirely (repos/saved_queries.go's
 // posture is for List, not Get). GetHistory runs the shared query, this closure does the rest.
 func (r *ResponseHistoryRepo) Get(id string) (model.ResponseHistorySnapshot, error) {
-	return GetHistory(r.DB, "api_response_history", responseHistoryEntryColumns, id, func(row rowScanner) (model.ResponseHistorySnapshot, error) {
+	return GetHistory(r.DB, r.Dialect, responseHistoryColumns, responseHistoryEntryColumns, id, func(row rowScanner) (model.ResponseHistorySnapshot, error) {
 		var (
 			e            model.ResponseHistoryEntry
 			itemID       sql.NullString
@@ -235,12 +251,15 @@ func (r *ResponseHistoryRepo) Get(id string) (model.ResponseHistorySnapshot, err
 
 // Delete removes one entry.
 func (r *ResponseHistoryRepo) Delete(id string) error {
-	return responseHistoryTable.Delete(r.DB, id)
+	return responseHistoryTable.Delete(r.DB, r.Dialect, id)
 }
 
 // Clear removes every entry in one scope.
 func (r *ResponseHistoryRepo) Clear(scopeKey string) error {
-	if _, err := r.DB.Exec(`DELETE FROM api_response_history WHERE scope_key = ?`, scopeKey); err != nil {
+	c := kiraschema.APIResponseHistory
+	del := r.Dialect.DeleteFrom(c.Table)
+	del.Where(del.Equal(c.ScopeKey, scopeKey))
+	if _, err := sqlb.Exec(r.DB, del); err != nil {
 		return fmt.Errorf("repos/response_history: clear: %w", err)
 	}
 	return nil
@@ -249,7 +268,7 @@ func (r *ResponseHistoryRepo) Clear(scopeKey string) error {
 // Adopt moves a scratch tab's history onto a newly-saved request (D14) — one UPDATE, scope
 // follows via the generated column (F8) with no second write.
 func (r *ResponseHistoryRepo) Adopt(tabID, itemID string) (int, error) {
-	return responseHistoryTable.Adopt(r.DB, tabID, itemID)
+	return responseHistoryTable.Adopt(r.DB, r.Dialect, tabID, itemID)
 }
 
 // SweepOrphans deletes a scratch tab's history once its tab is gone (D7) — run once at launch
@@ -257,5 +276,5 @@ func (r *ResponseHistoryRepo) Adopt(tabID, itemID string) (int, error) {
 // rewrites a window's whole tab set but always re-inserts what is currently open, so a row absent
 // there is a tab that was actually closed.
 func (r *ResponseHistoryRepo) SweepOrphans() error {
-	return responseHistoryTable.SweepOrphans(r.DB)
+	return responseHistoryTable.SweepOrphans(r.DB, r.Dialect)
 }

@@ -5,7 +5,9 @@ import (
 	"fmt"
 
 	"github.com/kirathecat/kira-studio/internal/ids"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // historyTable is the read/adopt/orphan-sweep/single-delete shape grpc_history.go and
@@ -19,22 +21,25 @@ type historyTable[T any] struct {
 	// table is the SQL table name; scope is the shorter name every error string here is already
 	// prefixed with ("grpc_history" / "response_history" — kept distinct from table so error text
 	// stays exactly what it was before this hoist).
-	table, scope string
-	timeColumn   string // "called_at" / "sent_at"
-	columns      string // the summary SELECT list (every column but snapshot_json)
-	scan         func(rowScanner) (T, error)
+	scope string
+	cols  historyColumns
+	// columns is the summary SELECT list (every column but snapshot_json).
+	columns []string
+	scan    func(rowScanner) (T, error)
+}
+
+// historyColumns names the columns of one history table that the shared SQL touches.
+type historyColumns struct {
+	Table, ID, ItemID, TabID, ScopeKey, StoredBytes, SnapshotJSON string
+	Time                                                          string // called_at / sent_at
 }
 
 // List is the summary projection, newest first — ≤ the caller's own per-scope cap by construction
 // (each table's own Record trim).
-func (h historyTable[T]) List(db *sql.DB, scopeKey string) ([]T, error) {
-	rows, err := db.Query(
-		`SELECT `+h.columns+`
-		   FROM `+h.table+`
-		  WHERE scope_key = ?
-		  ORDER BY `+h.timeColumn+` DESC, rowid DESC`,
-		scopeKey,
-	)
+func (h historyTable[T]) List(db *sql.DB, d sqlb.Dialect, scopeKey string) ([]T, error) {
+	sb := d.Select(h.columns...).From(h.cols.Table)
+	sb.Where(sb.Equal(h.cols.ScopeKey, scopeKey)).OrderBy(h.cols.Time+" DESC", sqlb.RowID+" DESC")
+	rows, err := sqlb.Query(db, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos/%s: query list: %w", h.scope, err)
 	}
@@ -55,8 +60,10 @@ func (h historyTable[T]) List(db *sql.DB, scopeKey string) ([]T, error) {
 }
 
 // Delete removes one entry.
-func (h historyTable[T]) Delete(db *sql.DB, id string) error {
-	if _, err := db.Exec(`DELETE FROM `+h.table+` WHERE id = ?`, id); err != nil {
+func (h historyTable[T]) Delete(db *sql.DB, d sqlb.Dialect, id string) error {
+	del := d.DeleteFrom(h.cols.Table)
+	del.Where(del.Equal(h.cols.ID, id))
+	if _, err := sqlb.Exec(db, del); err != nil {
 		return fmt.Errorf("repos/%s: delete: %w", h.scope, err)
 	}
 	return nil
@@ -64,11 +71,10 @@ func (h historyTable[T]) Delete(db *sql.DB, id string) error {
 
 // Adopt moves a scratch tab's history onto a newly-saved request — one UPDATE, scope follows via
 // the generated column.
-func (h historyTable[T]) Adopt(db *sql.DB, tabID, itemID string) (int, error) {
-	res, err := db.Exec(
-		`UPDATE `+h.table+` SET item_id = ? WHERE item_id IS NULL AND tab_id = ?`,
-		itemID, tabID,
-	)
+func (h historyTable[T]) Adopt(db *sql.DB, d sqlb.Dialect, tabID, itemID string) (int, error) {
+	ub := d.Update(h.cols.Table)
+	ub.Set(ub.Assign(h.cols.ItemID, itemID)).Where(ub.IsNull(h.cols.ItemID), ub.Equal(h.cols.TabID, tabID))
+	res, err := sqlb.Exec(db, ub)
 	if err != nil {
 		return 0, fmt.Errorf("repos/%s: adopt: %w", h.scope, err)
 	}
@@ -80,11 +86,11 @@ func (h historyTable[T]) Adopt(db *sql.DB, tabID, itemID string) (int, error) {
 }
 
 // SweepOrphans deletes a scratch tab's history once its tab is gone — run once at launch.
-func (h historyTable[T]) SweepOrphans(db *sql.DB) error {
-	if _, err := db.Exec(
-		`DELETE FROM ` + h.table + `
-		  WHERE item_id IS NULL AND tab_id NOT IN (SELECT id FROM tabs)`,
-	); err != nil {
+func (h historyTable[T]) SweepOrphans(db *sql.DB, d sqlb.Dialect) error {
+	live := d.Select(kiraschema.Tabs.ID).From(kiraschema.Tabs.Table)
+	del := d.DeleteFrom(h.cols.Table)
+	del.Where(del.IsNull(h.cols.ItemID), del.NotIn(h.cols.TabID, live))
+	if _, err := sqlb.Exec(db, del); err != nil {
 		return fmt.Errorf("repos/%s: sweep orphans: %w", h.scope, err)
 	}
 	return nil
@@ -118,7 +124,7 @@ type historyRecordInput struct {
 // the global byte sweep below are otherwise identical SQL, parameterized by h.table/h.timeColumn
 // (already on this struct) the same way List/Delete/Adopt/SweepOrphans above already are.
 func (h historyTable[T]) Record(
-	db *sql.DB, in historyRecordInput, perScopeCap, byteBudget int,
+	db *sql.DB, d sqlb.Dialect, in historyRecordInput, perScopeCap, byteBudget int,
 	build func() ([]byte, error),
 	elide func() ([]byte, error),
 	insert func(tx *sql.Tx, id string, itemID *string, timestamp int64, environment string, storedBytes int, snapshotJSON []byte) error,
@@ -131,9 +137,10 @@ func (h historyTable[T]) Record(
 
 	environment := ""
 	if in.EnvironmentID != "" {
-		if err := tx.QueryRow(
-			`SELECT name FROM api_environments WHERE id = ?`, in.EnvironmentID,
-		).Scan(&environment); err != nil && err != sql.ErrNoRows {
+		env := kiraschema.APIEnvironments
+		esb := d.Select(env.Name).From(env.Table)
+		esb.Where(esb.Equal(env.ID, in.EnvironmentID))
+		if err := sqlb.QueryRow(tx, esb).Scan(&environment); err != nil && err != sql.ErrNoRows {
 			return "", fmt.Errorf("repos/%s: resolve environment: %w", h.scope, err)
 		}
 	}
@@ -166,33 +173,32 @@ func (h historyTable[T]) Record(
 	if itemID != nil {
 		scopeKey = *itemID
 	}
-	if _, err := tx.Exec(
-		`DELETE FROM `+h.table+`
-		  WHERE scope_key = ?
-		    AND id NOT IN (SELECT id FROM `+h.table+`
-		                     WHERE scope_key = ?
-		                     ORDER BY `+h.timeColumn+` DESC, rowid DESC LIMIT ?)`,
-		scopeKey, scopeKey, perScopeCap,
-	); err != nil {
+	c := h.cols
+	keep := d.Select(c.ID).From(c.Table)
+	keep.Where(keep.Equal(c.ScopeKey, scopeKey)).OrderBy(c.Time+" DESC", sqlb.RowID+" DESC").Limit(perScopeCap)
+	capDel := d.DeleteFrom(c.Table)
+	capDel.Where(capDel.Equal(c.ScopeKey, scopeKey), capDel.NotIn(c.ID, keep))
+	if _, err := sqlb.Exec(tx, capDel); err != nil {
 		return "", fmt.Errorf("repos/%s: cap scope: %w", h.scope, err)
 	}
 
 	// Global byte budget, oldest-first across every scope — the per-entry caps each build/elide
 	// closure enforces are what make this safe: no single row can exceed the budget by itself.
 	var totalBytes int64
-	if err := tx.QueryRow(`SELECT COALESCE(SUM(stored_bytes), 0) FROM ` + h.table).Scan(&totalBytes); err != nil {
+	sum := d.Select("COALESCE(SUM(" + c.StoredBytes + "), 0)").From(c.Table)
+	if err := sqlb.QueryRow(tx, sum).Scan(&totalBytes); err != nil {
 		return "", fmt.Errorf("repos/%s: sum stored_bytes: %w", h.scope, err)
 	}
 	if totalBytes > int64(byteBudget) {
-		if _, err := tx.Exec(
-			`DELETE FROM `+h.table+` WHERE id NOT IN (
-			   SELECT id FROM (
-			     SELECT id, SUM(stored_bytes) OVER (ORDER BY `+h.timeColumn+` DESC, rowid DESC
-			                                        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running
-			       FROM `+h.table+`
-			   ) WHERE running <= ?)`,
-			byteBudget,
-		); err != nil {
+		const running = "running"
+		window := d.Select(c.ID, "SUM("+c.StoredBytes+") OVER (ORDER BY "+c.Time+" DESC, "+sqlb.RowID+" DESC"+
+			" ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS "+running).From(c.Table)
+		inRange := d.Select(c.ID)
+		inRange.From(inRange.BuilderAs(window, "w"))
+		inRange.Where(inRange.LessEqualThan(running, byteBudget))
+		sweep := d.DeleteFrom(c.Table)
+		sweep.Where(sweep.NotIn(c.ID, inRange))
+		if _, err := sqlb.Exec(tx, sweep); err != nil {
 			return "", fmt.Errorf("repos/%s: sweep budget: %w", h.scope, err)
 		}
 	}
@@ -213,7 +219,8 @@ func (h historyTable[T]) Record(
 // and the final Snapshot struct literal in one closure, wrapping its own two distinct errors
 // ("get" for a Scan failure, "decode snapshot %s" for an Unmarshal one) exactly as each table's
 // own Get always did — collapsing them into one message here would lose that distinction.
-func GetHistory[S any](db *sql.DB, table, columns, id string, scanAndAssemble func(rowScanner) (S, error)) (S, error) {
-	row := db.QueryRow(`SELECT `+columns+`, snapshot_json FROM `+table+` WHERE id = ?`, id)
-	return scanAndAssemble(row)
+func GetHistory[S any](db *sql.DB, d sqlb.Dialect, c historyColumns, columns []string, id string, scanAndAssemble func(rowScanner) (S, error)) (S, error) {
+	sb := d.Select(append(append([]string{}, columns...), c.SnapshotJSON)...).From(c.Table)
+	sb.Where(sb.Equal(c.ID, id))
+	return scanAndAssemble(sqlb.QueryRow(db, sb))
 }
