@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // TestSortSpecAcceptsAnEmptyTermList is the accept half of SortSpec's hand-written codec: a

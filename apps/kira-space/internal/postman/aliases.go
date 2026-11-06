@@ -3,7 +3,7 @@ package postman
 import (
 	"strings"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // Postman's own `{{$name}}` dynamic-variable spellings, mapped onto the `fake.`

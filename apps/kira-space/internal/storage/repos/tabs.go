@@ -11,11 +11,10 @@ import (
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
-const tabsSelectAllSQL = `SELECT id, path, kind, state_json, "order", active, workspace_id FROM tabs WHERE window_key = ? ORDER BY "order" ASC`
+const tabsSelectAllSQL = `SELECT id, connection_id, path, kind, state_json, "order", active, workspace_id FROM tabs WHERE window_key = ? ORDER BY "order" ASC`
 
-// TabsRepo is Kira Studio's own TabsRepo, minus its `connection_id` column — this app has no
-// connections concept, and WorkspaceID is written NOT NULL (0002_p100_tabs_layout.sql), never
-// scanned as sql.NullString.
+// TabsRepo reads and writes the `tabs` table: repository tabs carry a workspace, database-module
+// tabs a connection, so both columns are nullable.
 type TabsRepo struct {
 	DB *sql.DB
 
@@ -34,11 +33,12 @@ func (r *TabsRepo) List(windowKey string) ([]model.TabRecord, error) {
 	}
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.TabRecord, bool, error) {
 		var (
-			id, path, kind, stateJSON, workspaceID string
-			order                                  int
-			active                                 bool
+			id, path, kind, stateJSON string
+			connectionID, workspaceID sql.NullString
+			order                     int
+			active                    bool
 		)
-		if err := rows.Scan(&id, &path, &kind, &stateJSON, &order, &active, &workspaceID); err != nil {
+		if err := rows.Scan(&id, &connectionID, &path, &kind, &stateJSON, &order, &active, &workspaceID); err != nil {
 			return model.TabRecord{}, false, err
 		}
 		if !model.IsJSONObject([]byte(stateJSON)) {
@@ -49,16 +49,19 @@ func (r *TabsRepo) List(windowKey string) ([]model.TabRecord, error) {
 			slog.Warn("dropping tab row: unrecognised kind", "scope", "storage/tabs", "id", id, "kind", kind)
 			return model.TabRecord{}, false, nil
 		}
-		return model.TabRecord{
-			ID: id, Path: path, Kind: kind, State: json.RawMessage(stateJSON),
-			Order: order, Active: active, WorkspaceID: &workspaceID,
-		}, true, nil
+		rec := model.TabRecord{ID: id, Path: path, Kind: kind, State: json.RawMessage(stateJSON), Order: order, Active: active}
+		if connectionID.Valid {
+			rec.ConnectionID = &connectionID.String
+		}
+		if workspaceID.Valid {
+			rec.WorkspaceID = &workspaceID.String
+		}
+		return rec, true, nil
 	})
 }
 
-// Save replaces windowKey's own tab set in one transaction — Kira Studio's own TabsRepo.Save,
-// unchanged in shape (validate up front, upsert-then-prune by id, scoped to windowKey — F6's fix),
-// minus the connection_id column.
+// Save replaces windowKey's own tab set in one transaction: validate up front, upsert-then-prune
+// by id, scoped to windowKey so one window never erases another's tabs.
 func (r *TabsRepo) Save(windowKey string, records []model.TabRecord) error {
 	for i, rec := range records {
 		if err := rec.Validate(); err != nil {
@@ -74,9 +77,10 @@ func (r *TabsRepo) Save(windowKey string, records []model.TabRecord) error {
 	return appstorage.ReplaceKeyed(r.DB, "tabs", "window_key", windowKey, keep, func(tx *sql.Tx) error {
 		for i, rec := range records {
 			res, err := tx.Exec(
-				`INSERT INTO tabs (id, path, kind, state_json, "order", active, window_key, workspace_id)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+				`INSERT INTO tabs (id, connection_id, path, kind, state_json, "order", active, window_key, workspace_id)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 				 ON CONFLICT(id) DO UPDATE SET
+				   connection_id = excluded.connection_id,
 				   path          = excluded.path,
 				   kind          = excluded.kind,
 				   state_json    = excluded.state_json,
@@ -84,7 +88,7 @@ func (r *TabsRepo) Save(windowKey string, records []model.TabRecord) error {
 				   active        = excluded.active,
 				   workspace_id  = excluded.workspace_id
 				 WHERE tabs.window_key = excluded.window_key`,
-				rec.ID, rec.Path, rec.Kind, string(rec.State), i, rec.Active, windowKey, rec.WorkspaceID,
+				rec.ID, rec.ConnectionID, rec.Path, rec.Kind, string(rec.State), i, rec.Active, windowKey, rec.WorkspaceID,
 			)
 			if err != nil {
 				return fmt.Errorf("repos/tabs: upsert %s: %w", rec.ID, err)

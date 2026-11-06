@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // StatementTimeoutCase drives the StatementTimeout scenario. Setup and Teardown run on the main

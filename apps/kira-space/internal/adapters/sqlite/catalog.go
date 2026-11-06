@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // QueryExecutor is catalog.ts's own QueryExecutor: every catalog query is routed through it so it

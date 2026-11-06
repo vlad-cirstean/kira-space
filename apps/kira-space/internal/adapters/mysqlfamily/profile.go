@@ -7,7 +7,7 @@ package mysqlfamily
 import (
 	"github.com/go-sql-driver/mysql"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // LogFunc is adapters.Deps's own Log signature, named locally so profile.go need not import

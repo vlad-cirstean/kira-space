@@ -16,7 +16,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // 0007_s3_seed.ts's own constants, re-expressed in Go (P58d D24).

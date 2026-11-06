@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -34,13 +34,6 @@ func scanMaskRuleRow(row rowScanner) (model.MaskRule, error) {
 	r.KeepHint = keepHint != 0
 	r.Correlate = correlate != 0
 	return r, nil
-}
-
-// queryer is satisfied by both *sql.DB and *sql.Tx — listForConnection (below) runs the identical
-// query over either, so CopyForConnection's own transaction (F8) can share it with ListForConnection
-// rather than keeping a second, drifting copy of the same query/scan loop.
-type queryer interface {
-	Query(query string, args ...any) (*sql.Rows, error)
 }
 
 // ListForConnection orders by lower(table_name), lower(column_name) — deterministic and matching

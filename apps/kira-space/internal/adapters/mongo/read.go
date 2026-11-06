@@ -11,7 +11,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // idText is read.ts's idText: EJSON.stringify(doc._id, {relaxed:false}). bson.MarshalExtJSON

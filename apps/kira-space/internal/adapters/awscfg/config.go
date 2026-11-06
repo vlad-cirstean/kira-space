@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // Resolved is what both adapters need from a ResolvedConnectionConfig before constructing their

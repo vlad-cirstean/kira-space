@@ -5,17 +5,17 @@ import (
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 )
 
 // newRepos opens a real (tmpfile-backed) SQLite database through the real migrations — going
-// through studiostorage.Open() rather than hand-restating the schema is what makes every migration
+// through storage.Open() rather than hand-restating the schema is what makes every migration
 // covered on every test run (P52 §13).
-func newRepos(t *testing.T) *studiostorage.DB {
+func newRepos(t *testing.T) *storage.DB {
 	t.Helper()
 	t.Setenv("KIRA_SPACE_HOME", t.TempDir())
-	db, err := studiostorage.Open()
+	db, err := storage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
 	}
@@ -31,8 +31,8 @@ func newMetadataCacheRepo(t *testing.T) *repos.MetadataCacheRepo {
 	return &repos.MetadataCacheRepo{DB: newRepos(t).DB}
 }
 
-func newOpsRepo(t *testing.T) *repos.OpsRepo {
-	return &repos.OpsRepo{DB: newRepos(t).DB}
+func newOpsRepo(t *testing.T) *repos.DbOpsRepo {
+	return &repos.DbOpsRepo{DB: newRepos(t).DB}
 }
 
 // seedConnection inserts a minimal connections row so a test can reference connID from a table

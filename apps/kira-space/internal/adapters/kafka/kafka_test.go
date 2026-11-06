@@ -29,7 +29,7 @@ import (
 	_ "github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/kafka"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/testsupport"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 var deps = adapters.Deps{Log: func(level, message string) {}}

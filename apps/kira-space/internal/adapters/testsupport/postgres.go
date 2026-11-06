@@ -18,7 +18,7 @@ import (
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // DockerUnavailableMessage mirrors packages/db-fixtures/support/docker.ts's own DOCKER_UNAVAILABLE_MESSAGE,

@@ -3,12 +3,12 @@ package repos_test
 import (
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 )
 
-func newSettingsRepo(t *testing.T) *repos.SettingsRepo {
-	return &repos.SettingsRepo{DB: newRepos(t).DB}
+func newSettingsRepo(t *testing.T) *repos.DbSettingsRepo {
+	return &repos.DbSettingsRepo{DB: newRepos(t).DB}
 }
 
 // TestSettingsRepo_LogLevelDefault is the code review's own regression guard:
@@ -29,8 +29,8 @@ func TestSettingsRepo_LogLevelDefault(t *testing.T) {
 func TestSettingsRepo_LogLevelRoundTrip(t *testing.T) {
 	r := newSettingsRepo(t)
 	logLevel := "debug"
-	if _, err := r.Set(model.SettingsPatch{
-		Advanced: &model.AdvancedPatch{LogLevel: &logLevel},
+	if _, err := r.Set(model.DbSettingsPatch{
+		Advanced: &model.DbAdvancedPatch{LogLevel: &logLevel},
 	}); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestSettingsRepo_LogLevelRoundTrip(t *testing.T) {
 func TestSettingsRepo_LogLevelRejectInvalid(t *testing.T) {
 	r := newSettingsRepo(t)
 	bad := "sideways"
-	if _, err := r.Set(model.SettingsPatch{Advanced: &model.AdvancedPatch{LogLevel: &bad}}); err == nil {
+	if _, err := r.Set(model.DbSettingsPatch{Advanced: &model.DbAdvancedPatch{LogLevel: &bad}}); err == nil {
 		t.Fatal("Set(logLevel: \"sideways\") = nil error, want a validation error")
 	}
 }

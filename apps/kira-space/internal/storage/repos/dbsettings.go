@@ -6,26 +6,26 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/appsettings"
 	"github.com/kirathecat/kira-studio/internal/appstorage"
 )
 
-// SettingsRepo reads and writes the `settings` table, one JSON-valued row per leaf
+// DbSettingsRepo reads and writes the `settings` table, one JSON-valued row per leaf
 // (`${section}.${key}`), never a blob per section — settings.ts's own per-leaf fallback is what
 // lets a row written before a key existed still parse (P52 §4.3).
-const settingsSelectAllSQL = `SELECT key, value FROM settings`
+const dbSettingsSelectAllSQL = `SELECT key, value FROM settings`
 
-type SettingsRepo struct {
+type DbSettingsRepo struct {
 	DB *sql.DB
 
 	// selectAll is prepared once by repos.New (P52 §5.4 — this is one of the app's hot boot-path
-	// reads). nil when a SettingsRepo is constructed directly (e.g. in tests), which falls back
+	// reads). nil when a DbSettingsRepo is constructed directly (e.g. in tests), which falls back
 	// to an ad-hoc query with identical SQL.
 	selectAll *sql.Stmt
 }
 
-func (r *SettingsRepo) GetAll() (model.Settings, error) {
+func (r *DbSettingsRepo) GetAll() (model.DbSettings, error) {
 	var (
 		rows *sql.Rows
 		err  error
@@ -33,14 +33,14 @@ func (r *SettingsRepo) GetAll() (model.Settings, error) {
 	if r.selectAll != nil {
 		rows, err = r.selectAll.Query()
 	} else {
-		rows, err = r.DB.Query(settingsSelectAllSQL)
+		rows, err = r.DB.Query(dbSettingsSelectAllSQL)
 	}
 	stored, err := appstorage.ScanLeafRows(rows, err)
 	if err != nil {
-		return model.Settings{}, err
+		return model.DbSettings{}, err
 	}
 
-	result := model.DefaultSettings()
+	result := model.DefaultDbSettings()
 	result.Appearance = appsettings.ReadAppearance(stored)
 	appsettings.LeafValid(stored, "data.defaultPageSize", &result.Data.DefaultPageSize, model.ValidPageSize)
 	appsettings.LeafValid(stored, "cache.l2BudgetMb", &result.Cache.L2BudgetMb, appsettings.InRange(8, 1024))
@@ -78,7 +78,7 @@ func upsertCacheSection(tx *sql.Tx, c *model.CachePatch) error {
 	return appsettings.UpsertOptional(tx, "cache.l2BudgetMb", c.L2BudgetMb)
 }
 
-func upsertAdvancedSection(tx *sql.Tx, a *model.AdvancedPatch) error {
+func upsertDbAdvancedSection(tx *sql.Tx, a *model.DbAdvancedPatch) error {
 	if a == nil {
 		return nil
 	}
@@ -140,12 +140,12 @@ func upsertDbMcpSection(tx *sql.Tx, dm *model.DbMcpPatch) error {
 
 // Set validates the patch, writes only the leaves the caller actually patched in one transaction
 // (D15 — a full rewrite would touch eleven unrelated rows), and returns GetAll() afterwards.
-func (r *SettingsRepo) Set(patch model.SettingsPatch) (model.Settings, error) {
+func (r *DbSettingsRepo) Set(patch model.DbSettingsPatch) (model.DbSettings, error) {
 	if err := patch.Validate(); err != nil {
-		return model.Settings{}, fmt.Errorf("repos/settings: %w", err)
+		return model.DbSettings{}, fmt.Errorf("repos/settings: %w", err)
 	}
 
-	err := appstorage.UpdateLeaves(r.DB, r.selectAll, settingsSelectAllSQL, func(tx *sql.Tx, _ map[string]json.RawMessage) error {
+	err := appstorage.UpdateLeaves(r.DB, r.selectAll, dbSettingsSelectAllSQL, func(tx *sql.Tx, _ map[string]json.RawMessage) error {
 		if err := appsettings.UpsertAppearance(tx, patch.Appearance); err != nil {
 			return err
 		}
@@ -155,7 +155,7 @@ func (r *SettingsRepo) Set(patch model.SettingsPatch) (model.Settings, error) {
 		if err := upsertCacheSection(tx, patch.Cache); err != nil {
 			return err
 		}
-		if err := upsertAdvancedSection(tx, patch.Advanced); err != nil {
+		if err := upsertDbAdvancedSection(tx, patch.Advanced); err != nil {
 			return err
 		}
 		if err := upsertApiSection(tx, patch.Api); err != nil {
@@ -167,7 +167,7 @@ func (r *SettingsRepo) Set(patch model.SettingsPatch) (model.Settings, error) {
 		return appsettings.UpsertAgent(tx, patch.Agent)
 	})
 	if err != nil {
-		return model.Settings{}, err
+		return model.DbSettings{}, err
 	}
 	return r.GetAll()
 }

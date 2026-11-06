@@ -18,7 +18,7 @@ import (
 	"maps"
 	"sort"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // Write emits t as a v2.1 collection. json.Encoder with SetEscapeHTML(false) is the same

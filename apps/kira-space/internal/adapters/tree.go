@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // This file hoists the two path-depth error shapes postgres/mysqlfamily/sqlite's own Children each

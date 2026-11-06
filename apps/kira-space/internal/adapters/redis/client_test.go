@@ -3,7 +3,7 @@ package redis
 import (
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // require/prefer used to map to

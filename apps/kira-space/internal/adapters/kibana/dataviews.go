@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // detailTTL bounds how long a fetched data view serves searches before its fields are re-read.

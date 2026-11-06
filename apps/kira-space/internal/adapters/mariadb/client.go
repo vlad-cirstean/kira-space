@@ -6,7 +6,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/mysqlfamily"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // applyEngineOptions is client.ts's applyEngineOptions — MariaDB has no auth plugin that needs an

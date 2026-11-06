@@ -10,7 +10,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // ConditionsCase drives ReadConditions. The scratch table holds ids 1..4: Alice, O'Brien (note NULL),

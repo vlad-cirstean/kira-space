@@ -1,7 +1,7 @@
 package model
 
-// OpRecord mirrors packages/shared/domain/ops.ts's opRecordSchema.
-type OpRecord struct {
+// DbOpRecord mirrors packages/shared/domain/ops.ts's opRecordSchema.
+type DbOpRecord struct {
 	ID           string  `json:"id"`
 	ConnectionID *string `json:"connectionId"`
 	TabID        *string `json:"tabId"`
@@ -43,7 +43,7 @@ type OpFinish struct {
 	Rows       *int
 	Command    *string
 	Error      *string
-	// Path (P108 Part 11 F5): see OpRecord.Path.
+	// Path (P108 Part 11 F5): see DbOpRecord.Path.
 	Path *string
 }
 

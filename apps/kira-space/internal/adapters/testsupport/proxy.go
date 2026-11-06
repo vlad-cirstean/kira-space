@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // PausableProxy is a TCP forwarder whose server-to-client direction can be frozen, so a test can

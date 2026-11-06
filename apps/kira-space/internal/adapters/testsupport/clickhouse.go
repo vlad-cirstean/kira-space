@@ -14,7 +14,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	tcclickhouse "github.com/testcontainers/testcontainers-go/modules/clickhouse"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // ClickHouseFixture is support/clickhouse.ts's ClickHouseFixture.

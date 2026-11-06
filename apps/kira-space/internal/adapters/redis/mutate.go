@@ -6,7 +6,7 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // The reserved sentinels for redis mutations, expressed through the existing relational-shaped

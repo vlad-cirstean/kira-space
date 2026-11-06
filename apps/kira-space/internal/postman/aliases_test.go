@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // The rewrite earns a test where the rest of this batch does not — it edits user data at

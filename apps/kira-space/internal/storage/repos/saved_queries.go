@@ -10,7 +10,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // ErrSavedQueryNotFound is a read or patch of a saved-query id that has no row.
@@ -18,10 +18,6 @@ var ErrSavedQueryNotFound = errors.New("repos/saved_queries: not found")
 
 // ErrSavedQueryNameTaken is a rename or save into a name another discover query of the connection holds.
 var ErrSavedQueryNameTaken = errors.New("repos/saved_queries: name taken")
-
-func isUniqueViolation(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
-}
 
 const savedQuerySelectColumns = `id, connection_id, path, name, kind, body, pinned, created_at, used_at`
 

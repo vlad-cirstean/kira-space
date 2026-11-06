@@ -10,7 +10,7 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // Never an unbudgeted SCAN (ground rules): a fixed COUNT hint per round-trip, and a hard cap on

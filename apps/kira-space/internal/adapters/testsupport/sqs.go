@@ -13,7 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/testcontainers/testcontainers-go"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // 0006_sqs_seed.ts's own constants, re-expressed in Go (P58d D24).

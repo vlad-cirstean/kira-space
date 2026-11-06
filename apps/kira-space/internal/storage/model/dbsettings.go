@@ -14,12 +14,12 @@ type CacheSettings struct {
 	L2BudgetMb int `json:"l2BudgetMb"`
 }
 
-// AdvancedSettings' own LogLevel is Studio's own diagnostic-log verbosity, its own name/key
+// DbAdvancedSettings' own LogLevel is Studio's own diagnostic-log verbosity, its own name/key
 // (`advanced.logLevel`), no longer the shared appsettings.AdvancedCore embed both apps used to
 // share under a name that never fit Studio's own module set.
 // internal/logging.SetLevel is its actual mechanism; appsettings.ValidLogLevel is its validator,
 // genuinely shared with Kira Space's own equivalent leaf.
-type AdvancedSettings struct {
+type DbAdvancedSettings struct {
 	OpLogRetentionDays int `json:"opLogRetentionDays"`
 	// P18 D14/D20: an estimated-rows-read threshold, never a cost unit — settings.ts's own
 	// EXPENSIVE_QUERY_ROWS_RANGE comment carries the full argument.
@@ -46,7 +46,7 @@ type DbMcpSettings struct {
 // ApiSettings mirrors packages/shared/domain/settings.ts's apiSettingsSchema — the
 // seven request settings that used to be httpclient package constants (internal/httpclient's own
 // options.go states the coupling back at this file: its normalize() defaults must equal
-// DefaultSettings().Api field for field). HTTPVersion is "1.1" | "2"; RequestTimeoutMs is
+// DefaultDbSettings().Api field for field). HTTPVersion is "1.1" | "2"; RequestTimeoutMs is
 // milliseconds, 0 = none; MaxResponseMb is whole MB, 0 = unlimited.
 type ApiSettings struct {
 	HTTPVersion      string `json:"httpVersion"`
@@ -58,23 +58,23 @@ type ApiSettings struct {
 	DisableCookieJar bool   `json:"disableCookieJar"`
 }
 
-type Settings struct {
+type DbSettings struct {
 	Appearance appsettings.Appearance `json:"appearance"`
 	Data       DataSettings           `json:"data"`
 	Cache      CacheSettings          `json:"cache"`
-	Advanced   AdvancedSettings       `json:"advanced"`
+	Advanced   DbAdvancedSettings     `json:"advanced"`
 	Api        ApiSettings            `json:"api"`
 	DbMcp      DbMcpSettings          `json:"dbMcp"`
 	Agent      appsettings.Agent      `json:"agent"`
 }
 
-// DefaultSettings mirrors packages/shared/domain/settings.ts's defaultSettings verbatim.
-func DefaultSettings() Settings {
-	return Settings{
+// DefaultDbSettings mirrors packages/shared/domain/settings.ts's defaultSettings verbatim.
+func DefaultDbSettings() DbSettings {
+	return DbSettings{
 		Appearance: appsettings.DefaultAppearance(),
 		Data:       DataSettings{DefaultPageSize: 100},
 		Cache:      CacheSettings{L2BudgetMb: 64},
-		Advanced: AdvancedSettings{
+		Advanced: DbAdvancedSettings{
 			OpLogRetentionDays: 30,
 			ExpensiveQueryRows: 100_000,
 			LogLevel:           "info",
@@ -108,8 +108,8 @@ type CachePatch struct {
 	L2BudgetMb *int `json:"l2BudgetMb,omitempty"`
 }
 
-// AdvancedPatch mirrors AdvancedSettings' own `.partial()` shape.
-type AdvancedPatch struct {
+// DbAdvancedPatch mirrors DbAdvancedSettings' own `.partial()` shape.
+type DbAdvancedPatch struct {
 	OpLogRetentionDays *int    `json:"opLogRetentionDays,omitempty"`
 	ExpensiveQueryRows *int    `json:"expensiveQueryRows,omitempty"`
 	LogLevel           *string `json:"logLevel,omitempty"`
@@ -136,11 +136,11 @@ type DbMcpPatch struct {
 	APIApproval      *string `json:"apiApproval,omitempty"`
 }
 
-type SettingsPatch struct {
+type DbSettingsPatch struct {
 	Appearance *appsettings.AppearancePatch `json:"appearance,omitempty"`
 	Data       *DataPatch                   `json:"data,omitempty"`
 	Cache      *CachePatch                  `json:"cache,omitempty"`
-	Advanced   *AdvancedPatch               `json:"advanced,omitempty"`
+	Advanced   *DbAdvancedPatch             `json:"advanced,omitempty"`
 	Api        *ApiPatch                    `json:"api,omitempty"`
 	DbMcp      *DbMcpPatch                  `json:"dbMcp,omitempty"`
 	Agent      *appsettings.AgentPatch      `json:"agent,omitempty"`
@@ -195,7 +195,7 @@ func validateCacheSection(c *CachePatch) error {
 	return nil
 }
 
-func validateAdvancedSection(a *AdvancedPatch) error {
+func validateDbAdvancedSection(a *DbAdvancedPatch) error {
 	if a == nil {
 		return nil
 	}
@@ -240,7 +240,7 @@ func validateDbMcpSection(d *DbMcpPatch) error {
 // Validate checks every leaf the caller actually patched against settings.ts's bounds, naming
 // the offending leaf in the error — fontFamily and fontSize have no bounds in the TS schema
 // either, so they are accepted as-is.
-func (p SettingsPatch) Validate() error {
+func (p DbSettingsPatch) Validate() error {
 	if err := appsettings.ValidateAppearance(p.Appearance); err != nil {
 		return err
 	}
@@ -250,7 +250,7 @@ func (p SettingsPatch) Validate() error {
 	if err := validateCacheSection(p.Cache); err != nil {
 		return err
 	}
-	if err := validateAdvancedSection(p.Advanced); err != nil {
+	if err := validateDbAdvancedSection(p.Advanced); err != nil {
 		return err
 	}
 	if err := validateApiSection(p.Api); err != nil {

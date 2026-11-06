@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // RunRowOps is redis/mongo/s3/sqs's own mutate loop, carried verbatim across all four: readOnly

@@ -17,7 +17,7 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // SchemaURL is what export always writes for info.schema, regardless of what the imported file

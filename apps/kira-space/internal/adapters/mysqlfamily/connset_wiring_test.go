@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // TestAcquire_SingleFlightPerDatabase is white-box (package mysqlfamily) coverage for NewConnSet's

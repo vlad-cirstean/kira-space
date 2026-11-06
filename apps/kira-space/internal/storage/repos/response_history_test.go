@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 )
 
 // Seven cases, each guarding a rule genuinely easy to get wrong when three caps and a

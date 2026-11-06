@@ -3,7 +3,7 @@ package adapters
 import (
 	"maps"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // LaneOption marks a config opened as a DB MCP read lane (Options key): drivers that pool on

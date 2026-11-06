@@ -9,7 +9,7 @@ import (
 	"github.com/twmb/franz-go/pkg/kadm"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // isInternalGroup mirrors catalog.ts's isInternal — kept for groups only. kadm.ListedGroup has no

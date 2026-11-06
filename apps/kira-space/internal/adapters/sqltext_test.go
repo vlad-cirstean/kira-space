@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // Ported one for one from tests/unit/sql-text.spec.ts — see that file's own header for

@@ -19,7 +19,7 @@ import (
 	mongoadapter "github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/mongo"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/testsupport"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // TestMain mirrors postgres_test.go's own: the container this whole package's tests share is torn

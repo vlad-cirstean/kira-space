@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/awscfg"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // connect is client.ts's connectSqs. No path-style analogue — that is S3's alone.

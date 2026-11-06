@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // Three caps, because three independent things can grow — bytes per entry, count per

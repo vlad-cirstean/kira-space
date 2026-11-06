@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // assertInsertOnly is mutate.ts's own — D24/D25: MergeTree's PRIMARY KEY is a sparse index, not a

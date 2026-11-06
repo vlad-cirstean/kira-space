@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 )
 
 // P11 §6.2: the four caps, each asserted on the boundary — mirrors response_history_test.go's own

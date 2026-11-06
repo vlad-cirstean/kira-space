@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 )
 
 // op_log's caps now interact four ways (age cut, row cap, byte budget, per-row truncation), and
@@ -17,7 +17,7 @@ import (
 // pre-existing passes are pinned here too, as regression cases, since Prune is being
 // restructured for the first time.
 
-func appendAndFinish(t *testing.T, ops *repos.OpsRepo, id, startedAt string, patch model.OpFinish) {
+func appendAndFinish(t *testing.T, ops *repos.DbOpsRepo, id, startedAt string, patch model.OpFinish) {
 	t.Helper()
 	if err := ops.Append(model.OpAppend{ID: id, Kind: "read", StartedAt: startedAt}); err != nil {
 		t.Fatalf("Append(%s): %v", id, err)
@@ -27,7 +27,7 @@ func appendAndFinish(t *testing.T, ops *repos.OpsRepo, id, startedAt string, pat
 	}
 }
 
-func recordFor(t *testing.T, ops *repos.OpsRepo, id string) model.OpRecord {
+func recordFor(t *testing.T, ops *repos.DbOpsRepo, id string) model.DbOpRecord {
 	t.Helper()
 	recs, err := ops.Recent(1000)
 	if err != nil {
@@ -39,13 +39,13 @@ func recordFor(t *testing.T, ops *repos.OpsRepo, id string) model.OpRecord {
 		}
 	}
 	t.Fatalf("no op_log row for %s", id)
-	return model.OpRecord{}
+	return model.DbOpRecord{}
 }
 
-func storedBytesFor(t *testing.T, ops *repos.OpsRepo, id string) int {
+func storedBytesFor(t *testing.T, ops *repos.DbOpsRepo, id string) int {
 	t.Helper()
 	var n int
-	if err := ops.DB.QueryRow(`SELECT stored_bytes FROM op_log WHERE id = ?`, id).Scan(&n); err != nil {
+	if err := ops.DB.QueryRow(`SELECT stored_bytes FROM db_op_log WHERE id = ?`, id).Scan(&n); err != nil {
 		t.Fatalf("query stored_bytes(%s): %v", id, err)
 	}
 	return n
@@ -54,10 +54,10 @@ func storedBytesFor(t *testing.T, ops *repos.OpsRepo, id string) int {
 // seedRawOp inserts a terminal op_log row directly, bypassing Append/Finish's own caps —
 // oplog/wire_test.go's own helper, reused here to seed a stale row for the retention-cut
 // regression without needing a truthful command_truncated computation.
-func seedRawOp(t *testing.T, ops *repos.OpsRepo, id, startedAt string) {
+func seedRawOp(t *testing.T, ops *repos.DbOpsRepo, id, startedAt string) {
 	t.Helper()
 	if _, err := ops.DB.Exec(
-		`INSERT INTO op_log (id, connection_id, tab_id, started_at, duration_ms, kind, status, rows, command, error)
+		`INSERT INTO db_op_log (id, connection_id, tab_id, started_at, duration_ms, kind, status, rows, command, error)
 		 VALUES (?, NULL, NULL, ?, NULL, 'read', 'ok', NULL, NULL, NULL)`,
 		id, startedAt,
 	); err != nil {
@@ -227,7 +227,7 @@ func TestOpsPruneHardCapRowsStillWorks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("begin seed tx: %v", err)
 	}
-	stmt, err := tx.Prepare(`INSERT INTO op_log (id, connection_id, tab_id, started_at, duration_ms, kind, status, rows, command, error)
+	stmt, err := tx.Prepare(`INSERT INTO db_op_log (id, connection_id, tab_id, started_at, duration_ms, kind, status, rows, command, error)
 		VALUES (?, NULL, NULL, ?, NULL, 'read', 'ok', NULL, NULL, NULL)`)
 	if err != nil {
 		t.Fatalf("prepare seed insert: %v", err)
@@ -253,7 +253,7 @@ func TestOpsPruneHardCapRowsStillWorks(t *testing.T) {
 	}
 
 	var count int
-	if err := ops.DB.QueryRow(`SELECT COUNT(*) FROM op_log`).Scan(&count); err != nil {
+	if err := ops.DB.QueryRow(`SELECT COUNT(*) FROM db_op_log`).Scan(&count); err != nil {
 		t.Fatalf("count op_log: %v", err)
 	}
 	if count != 20_000 {
@@ -262,12 +262,12 @@ func TestOpsPruneHardCapRowsStillWorks(t *testing.T) {
 
 	// The oldest row (op-00000) is the one that must have been evicted, not an arbitrary one.
 	var exists int
-	err = ops.DB.QueryRow(`SELECT 1 FROM op_log WHERE id = 'op-00000'`).Scan(&exists)
+	err = ops.DB.QueryRow(`SELECT 1 FROM db_op_log WHERE id = 'op-00000'`).Scan(&exists)
 	if err == nil {
 		t.Fatal("op-00000 (the oldest seeded row) survived the hard cap, want it evicted")
 	}
 	var stillExists int
-	if err := ops.DB.QueryRow(`SELECT 1 FROM op_log WHERE id = 'op-20000'`).Scan(&stillExists); err != nil {
+	if err := ops.DB.QueryRow(`SELECT 1 FROM db_op_log WHERE id = 'op-20000'`).Scan(&stillExists); err != nil {
 		t.Fatalf("op-20000 (the newest seeded row) did not survive the hard cap: %v", err)
 	}
 }

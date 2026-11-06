@@ -9,7 +9,7 @@ import (
 
 	"github.com/testcontainers/testcontainers-go"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // mysqlFamilyFixture is MysqlFixture's and MariaFixture's own shared shape (P107 T2-5): both are

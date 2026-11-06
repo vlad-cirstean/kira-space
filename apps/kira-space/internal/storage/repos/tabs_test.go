@@ -4,12 +4,16 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 )
 
 func newTabsRepo(t *testing.T) *repos.TabsRepo {
-	return &repos.TabsRepo{DB: newRepos(t).DB}
+	r := &repos.TabsRepo{DB: newRepos(t).DB}
+	if _, err := r.DB.Exec(`INSERT INTO windows (key, "order") VALUES ('main', 0)`); err != nil {
+		t.Fatalf("seed main window: %v", err)
+	}
+	return r
 }
 
 func validTabRecord(id string) model.TabRecord {
@@ -96,8 +100,7 @@ func TestTabsRepoSaveAndListRoundTrip(t *testing.T) {
 func TestTabsRepoSaveScopesUpsertAndPruneByWindow(t *testing.T) {
 	r := newTabsRepo(t)
 
-	// "main" is seeded by migration 0002; a second window ("other") needs its own `windows` row
-	// too — `tabs.window_key` is a foreign key onto it (0002_p8_windows.sql).
+	// A second window ("other") needs its own `windows` row — `tabs.window_key` is a foreign key onto it.
 	if _, err := r.DB.Exec(`INSERT INTO windows (key, "order", bounds_json) VALUES ('other', 1, NULL)`); err != nil {
 		t.Fatalf("seed windows row: %v", err)
 	}

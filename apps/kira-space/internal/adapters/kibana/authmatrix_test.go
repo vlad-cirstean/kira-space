@@ -9,7 +9,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	_ "github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/kibana"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/testsupport"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 func TestKibana_AuthMatrix(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // Sentinel keys (mirrors mongo/mutate.ts's $document, sqs/mutate.go's $body/$headers): a new

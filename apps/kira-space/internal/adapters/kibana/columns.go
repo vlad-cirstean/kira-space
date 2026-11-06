@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // tableColumns validates the requested columns and puts the time field first, as Discover does.

@@ -3,7 +3,7 @@ package sqlite
 import (
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // TestPkIsKeysetEligible covers: SQLite is the one dialect here where PRIMARY KEY does

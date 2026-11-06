@@ -12,7 +12,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // builderMethods is the seven-member vocabulary this app's request builder can show

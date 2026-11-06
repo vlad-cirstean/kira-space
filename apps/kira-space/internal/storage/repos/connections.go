@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -22,12 +22,6 @@ const connectionSelectColumns = `
 // connfiles writes it, except Reorder: order is state, not config.
 type ConnectionsRepo struct {
 	DB *sql.DB
-}
-
-// rowScanner is satisfied by both *sql.Rows and *sql.Row, letting scanConnectionRow serve both
-// List (many rows) and Get (one row) with the same column layout and validation.
-type rowScanner interface {
-	Scan(dest ...any) error
 }
 
 // scanConnectionRow never sets URI: a URI is a secret the file only names, so every summary the repo

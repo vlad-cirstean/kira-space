@@ -9,7 +9,7 @@ import (
 	"log/slog"
 	"unicode/utf8"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // historyLimit mirrors filter-history.ts's HISTORY_LIMIT.

@@ -12,7 +12,7 @@ import (
 	smithy "github.com/aws/smithy-go"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // P33 D2/F10's sentinels, mirrored from packages/shared/domain/objectStore.ts — edit, delete and

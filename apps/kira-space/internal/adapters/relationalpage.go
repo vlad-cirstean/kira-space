@@ -2,7 +2,7 @@ package adapters
 
 import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // This file hoists the prologue postgres/mysqlfamily/sqlite's own readPage each ran verbatim:

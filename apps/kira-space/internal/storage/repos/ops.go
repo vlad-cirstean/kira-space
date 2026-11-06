@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // hardCapRows mirrors ops.ts's HARD_CAP_ROWS.
@@ -37,9 +37,9 @@ const (
 var opLogByteBudget = 32 * 1024 * 1024
 
 const (
-	opsInsertSQL = `INSERT INTO op_log (id, connection_id, tab_id, started_at, duration_ms, kind, status, rows, command, error, source)
+	opsInsertSQL = `INSERT INTO db_op_log (id, connection_id, tab_id, started_at, duration_ms, kind, status, rows, command, error, source)
 		 VALUES (?, ?, ?, ?, NULL, ?, 'running', NULL, NULL, NULL, ?)`
-	opsUpdateSQL = `UPDATE op_log SET status = ?, duration_ms = ?, rows = ?, command = ?, error = ?, stored_bytes = ?, command_truncated = ?, path = ? WHERE id = ?`
+	opsUpdateSQL = `UPDATE db_op_log SET status = ?, duration_ms = ?, rows = ?, command = ?, error = ?, stored_bytes = ?, command_truncated = ?, path = ? WHERE id = ?`
 )
 
 // InterruptedOpError is the message a still-'running' op_log row gets stamped with by
@@ -47,7 +47,7 @@ const (
 // the crash case that never runs an orderly Stop() at all.
 const InterruptedOpError = "interrupted (app did not exit cleanly)"
 
-type OpsRepo struct {
+type DbOpsRepo struct {
 	DB *sql.DB
 
 	// insert and update are prepared once by repos.New (P52 §5.4 names "op-log append/finish"
@@ -59,7 +59,7 @@ type OpsRepo struct {
 
 // Append inserts a new running op row (ops.ts's appendOp). stored_bytes/command_truncated take
 // their column defaults (0) — a running op has no command or error yet.
-func (r *OpsRepo) Append(op model.OpAppend) error {
+func (r *DbOpsRepo) Append(op model.OpAppend) error {
 	if op.Source == "" {
 		op.Source = "user"
 	}
@@ -84,9 +84,9 @@ func (r *OpsRepo) Append(op model.OpAppend) error {
 // else touches op_log (main.go, ahead of oplog.Wiring.Start's own prune): a real op can only ever
 // reach 'running' through Append, called from oplog.Wiring.consume, which does not start running
 // until Start subscribes — so nothing genuinely in flight can race this UPDATE.
-func (r *OpsRepo) ReconcileInterrupted() (n int64, err error) {
+func (r *DbOpsRepo) ReconcileInterrupted() (n int64, err error) {
 	res, err := r.DB.Exec(
-		`UPDATE op_log SET status = 'error', error = ?, stored_bytes = stored_bytes + ? WHERE status = 'running'`,
+		`UPDATE db_op_log SET status = 'error', error = ?, stored_bytes = stored_bytes + ? WHERE status = 'running'`,
 		InterruptedOpError, len(InterruptedOpError),
 	)
 	if err != nil {
@@ -104,7 +104,7 @@ func (r *OpsRepo) ReconcileInterrupted() (n int64, err error) {
 // live-update record from the same patch it just passed in, rather than from the pre-truncation
 // event payload, so a push and a subsequent reload never disagree about what was stored.
 // The returned bool is the command_truncated flag.
-func (r *OpsRepo) Finish(opID string, patch *model.OpFinish) (commandTruncated bool, err error) {
+func (r *DbOpsRepo) Finish(opID string, patch *model.OpFinish) (commandTruncated bool, err error) {
 	if patch.Command != nil && len(*patch.Command) > maxOpCommandBytes {
 		truncated := capUTF8(*patch.Command, maxOpCommandBytes)
 		patch.Command = &truncated
@@ -136,10 +136,10 @@ func (r *OpsRepo) Finish(opID string, patch *model.OpFinish) (commandTruncated b
 // Recent mirrors ops.ts's recentOps. There is no 'ddl'->'definition' coercion here (P52 §4.3 /
 // P53 §3.1: it existed only for rows written before P19, and a fresh kira.db cannot contain
 // one) — an unrecognised kind or status is simply dropped, logged, like any other bad row.
-func (r *OpsRepo) Recent(limit int) ([]model.OpRecord, error) {
+func (r *DbOpsRepo) Recent(limit int) ([]model.DbOpRecord, error) {
 	rows, err := r.DB.Query(`
 		SELECT id, connection_id, tab_id, started_at, duration_ms, kind, status, rows, command, error, command_truncated, path, source
-		  FROM op_log
+		  FROM db_op_log
 		 ORDER BY started_at DESC, rowid DESC
 		 LIMIT ?
 	`, limit)
@@ -148,10 +148,10 @@ func (r *OpsRepo) Recent(limit int) ([]model.OpRecord, error) {
 	}
 	defer rows.Close()
 
-	out := []model.OpRecord{}
+	out := []model.DbOpRecord{}
 	for rows.Next() {
 		var (
-			o                   model.OpRecord
+			o                   model.DbOpRecord
 			connectionID, tabID sql.NullString
 			durationMs, opRows  sql.NullInt64
 			command, opErr      sql.NullString
@@ -209,15 +209,15 @@ func (r *OpsRepo) Recent(limit int) ([]model.OpRecord, error) {
 // the table-wide byte budget — cheapest and most selective pass first, each shrinking the input
 // the next pass has to consider. Every pass is a single DELETE with a
 // subquery, never per-call-shape SQL.
-func (r *OpsRepo) Prune(retentionDays int) error {
+func (r *DbOpsRepo) Prune(retentionDays int) error {
 	cutoff := kiratime.FormatISO(time.Now().Add(-time.Duration(retentionDays) * 24 * time.Hour))
-	if _, err := r.DB.Exec(`DELETE FROM op_log WHERE started_at < ?`, cutoff); err != nil {
+	if _, err := r.DB.Exec(`DELETE FROM db_op_log WHERE started_at < ?`, cutoff); err != nil {
 		return fmt.Errorf("repos/ops: prune retention cut: %w", err)
 	}
 	if _, err := r.DB.Exec(`
-		DELETE FROM op_log
+		DELETE FROM db_op_log
 		 WHERE id NOT IN (
-		   SELECT id FROM op_log ORDER BY started_at DESC, rowid DESC LIMIT ?
+		   SELECT id FROM db_op_log ORDER BY started_at DESC, rowid DESC LIMIT ?
 		 )
 	`, hardCapRows); err != nil {
 		return fmt.Errorf("repos/ops: prune hard cap: %w", err)
@@ -237,16 +237,16 @@ func (r *OpsRepo) Prune(retentionDays int) error {
 	// ops (oplog/wire.go), and the overshoot that cadence permits is bounded by construction: the
 	// 64 KiB cap was derived from exactly that arithmetic.
 	var totalBytes int64
-	if err := r.DB.QueryRow(`SELECT COALESCE(SUM(stored_bytes), 0) FROM op_log`).Scan(&totalBytes); err != nil {
+	if err := r.DB.QueryRow(`SELECT COALESCE(SUM(stored_bytes), 0) FROM db_op_log`).Scan(&totalBytes); err != nil {
 		return fmt.Errorf("repos/ops: sum stored_bytes: %w", err)
 	}
 	if totalBytes > int64(opLogByteBudget) {
 		if _, err := r.DB.Exec(`
-			DELETE FROM op_log WHERE id NOT IN (
+			DELETE FROM db_op_log WHERE id NOT IN (
 			  SELECT id FROM (
 			    SELECT id, SUM(stored_bytes) OVER (ORDER BY started_at DESC, rowid DESC
 			                                       ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running
-			      FROM op_log
+			      FROM db_op_log
 			  ) WHERE running <= ?)
 		`, opLogByteBudget); err != nil {
 			return fmt.Errorf("repos/ops: prune byte budget: %w", err)

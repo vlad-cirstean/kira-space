@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // This file is the Go analogue of sql-mutate.ts: the mutation-plan ordering rule and the
