@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // ErrStatusSet marks a status set Save refuses; the wrapped text names the failed rule.
@@ -18,7 +20,8 @@ var ErrStatusSet = errors.New("repos: invalid task status set")
 
 // AdeStatusRepo reads and rewrites the task status set (ade_task_statuses).
 type AdeStatusRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
 // queryer is satisfied by both *sql.DB and *sql.Tx, so one query/scan loop serves a plain call and
@@ -28,8 +31,9 @@ type queryer interface {
 	QueryRow(query string, args ...any) *sql.Row
 }
 
-func listStatuses(q queryer) ([]model.AdeTaskStatus, error) {
-	rows, err := q.Query(`SELECT id, name, color, position FROM ade_task_statuses ORDER BY position, id`)
+func listStatuses(q sqlb.Querier, d sqlb.Dialect) ([]model.AdeTaskStatus, error) {
+	c := kiraschema.AdeTaskStatuses
+	rows, err := sqlb.Query(q, d.Select(c.ID, c.Name, c.Color, c.Position).From(c.Table).OrderBy(c.Position, c.ID))
 	if err != nil {
 		return nil, fmt.Errorf("repos: query ade task statuses: %w", err)
 	}
@@ -48,8 +52,9 @@ func listStatuses(q queryer) ([]model.AdeTaskStatus, error) {
 	return out, nil
 }
 
-func defaultsOf(q queryer) (model.AdeStatusDefaults, error) {
-	rows, err := q.Query(`SELECT slot, status_id FROM ade_task_status_defaults`)
+func defaultsOf(q sqlb.Querier, dialect sqlb.Dialect) (model.AdeStatusDefaults, error) {
+	c := kiraschema.AdeTaskStatusDefaults
+	rows, err := sqlb.Query(q, dialect.Select(c.Slot, c.StatusID).From(c.Table))
 	if err != nil {
 		return model.AdeStatusDefaults{}, fmt.Errorf("repos: query ade task status defaults: %w", err)
 	}
@@ -79,8 +84,8 @@ func defaultsOf(q queryer) (model.AdeStatusDefaults, error) {
 
 // statusForNew is the status a created task starts in: the review slot for a review task when set,
 // else the new slot; ErrStatusUnknown when the new slot is empty.
-func statusForNew(q queryer, review bool) (string, error) {
-	d, err := defaultsOf(q)
+func statusForNew(q sqlb.Querier, dialect sqlb.Dialect, review bool) (string, error) {
+	d, err := defaultsOf(q, dialect)
 	if err != nil {
 		return "", err
 	}
@@ -95,12 +100,12 @@ func statusForNew(q queryer, review bool) (string, error) {
 
 // List returns the set in position order.
 func (r *AdeStatusRepo) List() ([]model.AdeTaskStatus, error) {
-	return listStatuses(r.DB)
+	return listStatuses(r.DB, r.Dialect)
 }
 
 // Defaults returns the status of each automatic change; an empty field keeps the current status.
 func (r *AdeStatusRepo) Defaults() (model.AdeStatusDefaults, error) {
-	return defaultsOf(r.DB)
+	return defaultsOf(r.DB, r.Dialect)
 }
 
 func setErr(format string, args ...any) error {
@@ -144,7 +149,7 @@ func (r *AdeStatusRepo) Save(set []model.AdeTaskStatus, defaults model.AdeStatus
 		return nil, model.AdeStatusDefaults{}, fmt.Errorf("repos: begin save ade task statuses: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	old, err := listStatuses(tx)
+	old, err := listStatuses(tx, r.Dialect)
 	if err != nil {
 		return nil, model.AdeStatusDefaults{}, err
 	}
@@ -161,17 +166,18 @@ func (r *AdeStatusRepo) Save(set []model.AdeTaskStatus, defaults model.AdeStatus
 	if err := defaults.Validate(next); err != nil {
 		return nil, model.AdeStatusDefaults{}, setErr("%v", err)
 	}
-	if err := reassignRemoved(tx, old, next, taken, reassign); err != nil {
+	if err := reassignRemoved(tx, r.Dialect, old, next, taken, reassign); err != nil {
 		return nil, model.AdeStatusDefaults{}, err
 	}
 	for _, s := range next {
-		if _, err := tx.Exec(`INSERT INTO ade_task_statuses (id, name, color, position) VALUES (?, ?, ?, ?)
-			ON CONFLICT(id) DO UPDATE SET name = excluded.name, color = excluded.color, position = excluded.position`,
-			s.ID, s.Name, s.Color, s.Position); err != nil {
+		c := kiraschema.AdeTaskStatuses
+		ib := r.Dialect.InsertInto(c.Table).Cols(c.ID, c.Name, c.Color, c.Position).Values(s.ID, s.Name, s.Color, s.Position)
+		sqlb.Upsert(ib, []string{c.ID}, []string{c.Name, c.Color, c.Position}, "")
+		if _, err := sqlb.Exec(tx, ib); err != nil {
 			return nil, model.AdeStatusDefaults{}, fmt.Errorf("repos: write ade task status %s: %w", s.ID, err)
 		}
 	}
-	if err := writeDefaults(tx, defaults); err != nil {
+	if err := writeDefaults(tx, r.Dialect, defaults); err != nil {
 		return nil, model.AdeStatusDefaults{}, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -192,8 +198,9 @@ func moveRemovedDefaults(d model.AdeStatusDefaults, taken map[string]bool, oldBy
 	return d
 }
 
-func writeDefaults(tx *sql.Tx, d model.AdeStatusDefaults) error {
-	if _, err := tx.Exec(`DELETE FROM ade_task_status_defaults`); err != nil {
+func writeDefaults(tx *sql.Tx, dialect sqlb.Dialect, d model.AdeStatusDefaults) error {
+	c := kiraschema.AdeTaskStatusDefaults
+	if _, err := sqlb.Exec(tx, dialect.DeleteFrom(c.Table)); err != nil {
 		return fmt.Errorf("repos: clear ade task status defaults: %w", err)
 	}
 	for _, e := range [...]struct{ slot, id string }{
@@ -203,7 +210,8 @@ func writeDefaults(tx *sql.Tx, d model.AdeStatusDefaults) error {
 		if e.id == "" {
 			continue
 		}
-		if _, err := tx.Exec(`INSERT INTO ade_task_status_defaults (slot, status_id) VALUES (?, ?)`, e.slot, e.id); err != nil {
+		ib := dialect.InsertInto(c.Table).Cols(c.Slot, c.StatusID).Values(e.slot, e.id)
+		if _, err := sqlb.Exec(tx, ib); err != nil {
 			return fmt.Errorf("repos: write ade task status default %s: %w", e.slot, err)
 		}
 	}
@@ -254,7 +262,7 @@ func normalizeSet(set []model.AdeTaskStatus, oldByID map[string]model.AdeTaskSta
 }
 
 // reassignRemoved moves the tasks of each old status missing from taken to its target and deletes the row.
-func reassignRemoved(tx *sql.Tx, old, next []model.AdeTaskStatus, taken map[string]bool, reassign map[string]string) error {
+func reassignRemoved(tx *sql.Tx, d sqlb.Dialect, old, next []model.AdeTaskStatus, taken map[string]bool, reassign map[string]string) error {
 	for _, o := range old {
 		if taken[o.ID] {
 			continue
@@ -266,10 +274,15 @@ func reassignRemoved(tx *sql.Tx, old, next []model.AdeTaskStatus, taken map[stri
 		if !slices.ContainsFunc(next, func(s model.AdeTaskStatus) bool { return s.ID == target }) {
 			return setErr("tasks of %q cannot move to %q: it is not in the set", o.ID, target)
 		}
-		if _, err := tx.Exec(`UPDATE ade_tasks SET status_id = ?, status_by = ? WHERE status_id = ?`, target, model.AdeStatusByUser, o.ID); err != nil {
+		tk, st := kiraschema.AdeTasks, kiraschema.AdeTaskStatuses
+		move := d.Update(tk.Table)
+		move.Set(move.Assign(tk.StatusID, target), move.Assign(tk.StatusBy, model.AdeStatusByUser)).Where(move.Equal(tk.StatusID, o.ID))
+		if _, err := sqlb.Exec(tx, move); err != nil {
 			return fmt.Errorf("repos: reassign ade tasks of status %s: %w", o.ID, err)
 		}
-		if _, err := tx.Exec(`DELETE FROM ade_task_statuses WHERE id = ?`, o.ID); err != nil {
+		drop := d.DeleteFrom(st.Table)
+		drop.Where(drop.Equal(st.ID, o.ID))
+		if _, err := sqlb.Exec(tx, drop); err != nil {
 			return fmt.Errorf("repos: delete ade task status %s: %w", o.ID, err)
 		}
 	}

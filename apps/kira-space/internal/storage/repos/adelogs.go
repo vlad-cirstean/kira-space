@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"unicode/utf8"
 
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -40,7 +42,8 @@ type AdeLogPage struct {
 
 // AdeLogsRepo stores run and worktree-setup logs: the newest AdeLogTailBytes per log.
 type AdeLogsRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
 // Reset empties a log (creating it) and zeroes its counters.
@@ -50,12 +53,15 @@ func (r *AdeLogsRepo) Reset(kind, id, taskID string) error {
 		return fmt.Errorf("repos: begin reset ade log: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	if _, err := tx.Exec(`DELETE FROM ade_log_chunks WHERE kind = ? AND id = ?`, kind, id); err != nil {
+	del := r.Dialect.DeleteFrom(kiraschema.AdeLogChunks.Table)
+	del.Where(del.Equal(kiraschema.AdeLogChunks.Kind, kind), del.Equal(kiraschema.AdeLogChunks.ID, id))
+	if _, err := sqlb.Exec(tx, del); err != nil {
 		return fmt.Errorf("repos: reset ade log chunks %s/%s: %w", kind, id, err)
 	}
-	if _, err := tx.Exec(`INSERT INTO ade_logs (kind, id, task_id, next_seq, bytes, truncated) VALUES (?, ?, ?, 1, 0, 0)
-		ON CONFLICT(kind, id) DO UPDATE SET task_id = excluded.task_id, next_seq = 1, bytes = 0, truncated = 0`,
-		kind, id, taskID); err != nil {
+	l := kiraschema.AdeLogs
+	ib := r.Dialect.InsertInto(l.Table).Cols(l.Kind, l.ID, l.TaskID, l.NextSeq, l.Bytes, l.Truncated).Values(kind, id, taskID, 1, 0, 0)
+	sqlb.UpsertSet(ib, []string{l.Kind, l.ID}, []string{l.TaskID + " = excluded." + l.TaskID, l.NextSeq + " = 1", l.Bytes + " = 0", l.Truncated + " = 0"}, "")
+	if _, err := sqlb.Exec(tx, ib); err != nil {
 		return fmt.Errorf("repos: reset ade log %s/%s: %w", kind, id, err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -78,7 +84,10 @@ func (r *AdeLogsRepo) Append(kind, id string, chunks []AdeLogChunk) ([]AdeLogChu
 	var next int
 	var bytes int64
 	var truncated int
-	if err := tx.QueryRow(`SELECT next_seq, bytes, truncated FROM ade_logs WHERE kind = ? AND id = ?`, kind, id).Scan(&next, &bytes, &truncated); err != nil {
+	l, ch := kiraschema.AdeLogs, kiraschema.AdeLogChunks
+	state := r.Dialect.Select(l.NextSeq, l.Bytes, l.Truncated).From(l.Table)
+	state.Where(state.Equal(l.Kind, kind), state.Equal(l.ID, id))
+	if err := sqlb.QueryRow(tx, state).Scan(&next, &bytes, &truncated); err != nil {
 		return nil, fmt.Errorf("repos: read ade log %s/%s: %w", kind, id, err)
 	}
 	out := make([]AdeLogChunk, 0, len(chunks))
@@ -87,28 +96,36 @@ func (r *AdeLogsRepo) Append(kind, id string, chunks []AdeLogChunk) ([]AdeLogChu
 		next++
 		c.Text = clipChunk(c.Text)
 		bytes += int64(len(c.Text))
-		if _, err := tx.Exec(`INSERT INTO ade_log_chunks (kind, id, seq, at, stream, text) VALUES (?, ?, ?, ?, ?, ?)`,
-			kind, id, c.Seq, c.At, c.Stream, c.Text); err != nil {
+		ib := r.Dialect.InsertInto(ch.Table).Cols(ch.Kind, ch.ID, ch.Seq, ch.At, ch.Stream, ch.Text).
+			Values(kind, id, c.Seq, c.At, c.Stream, c.Text)
+		if _, err := sqlb.Exec(tx, ib); err != nil {
 			return nil, fmt.Errorf("repos: append ade log chunk %s/%s: %w", kind, id, err)
 		}
 		out = append(out, c)
 	}
 	for bytes > AdeLogTailBytes {
 		var seq, size int64
-		err := tx.QueryRow(`SELECT seq, length(CAST(text AS BLOB)) FROM ade_log_chunks WHERE kind = ? AND id = ? ORDER BY seq LIMIT 1`, kind, id).Scan(&seq, &size)
+		oldest := r.Dialect.Select(ch.Seq, "length(CAST("+ch.Text+" AS BLOB))").From(ch.Table)
+		oldest.Where(oldest.Equal(ch.Kind, kind), oldest.Equal(ch.ID, id)).OrderBy(ch.Seq).Limit(1)
+		err := sqlb.QueryRow(tx, oldest).Scan(&seq, &size)
 		if errors.Is(err, sql.ErrNoRows) {
 			break
 		}
 		if err != nil {
 			return nil, fmt.Errorf("repos: read oldest ade log chunk %s/%s: %w", kind, id, err)
 		}
-		if _, err := tx.Exec(`DELETE FROM ade_log_chunks WHERE kind = ? AND id = ? AND seq = ?`, kind, id, seq); err != nil {
+		drop := r.Dialect.DeleteFrom(ch.Table)
+		drop.Where(drop.Equal(ch.Kind, kind), drop.Equal(ch.ID, id), drop.Equal(ch.Seq, seq))
+		if _, err := sqlb.Exec(tx, drop); err != nil {
 			return nil, fmt.Errorf("repos: drop ade log chunk %s/%s: %w", kind, id, err)
 		}
 		bytes -= size
 		truncated = 1
 	}
-	if _, err := tx.Exec(`UPDATE ade_logs SET next_seq = ?, bytes = ?, truncated = ? WHERE kind = ? AND id = ?`, next, bytes, truncated, kind, id); err != nil {
+	ub := r.Dialect.Update(l.Table)
+	ub.Set(ub.Assign(l.NextSeq, next), ub.Assign(l.Bytes, bytes), ub.Assign(l.Truncated, truncated)).
+		Where(ub.Equal(l.Kind, kind), ub.Equal(l.ID, id))
+	if _, err := sqlb.Exec(tx, ub); err != nil {
 		return nil, fmt.Errorf("repos: update ade log %s/%s: %w", kind, id, err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -133,7 +150,10 @@ func clipChunk(text string) string {
 func (r *AdeLogsRepo) Page(kind, id string, afterSeq int) (AdeLogPage, error) {
 	page := AdeLogPage{Chunks: []AdeLogChunk{}, NextSeq: afterSeq}
 	var truncated int
-	err := r.DB.QueryRow(`SELECT truncated FROM ade_logs WHERE kind = ? AND id = ?`, kind, id).Scan(&truncated)
+	l, ch := kiraschema.AdeLogs, kiraschema.AdeLogChunks
+	head := r.Dialect.Select(l.Truncated).From(l.Table)
+	head.Where(head.Equal(l.Kind, kind), head.Equal(l.ID, id))
+	err := sqlb.QueryRow(r.DB, head).Scan(&truncated)
 	if errors.Is(err, sql.ErrNoRows) {
 		return page, nil
 	}
@@ -141,8 +161,9 @@ func (r *AdeLogsRepo) Page(kind, id string, afterSeq int) (AdeLogPage, error) {
 		return page, fmt.Errorf("repos: read ade log %s/%s: %w", kind, id, err)
 	}
 	page.Truncated = truncated != 0
-	rows, err := r.DB.Query(`SELECT seq, at, stream, text FROM ade_log_chunks WHERE kind = ? AND id = ? AND seq > ? ORDER BY seq LIMIT ?`,
-		kind, id, afterSeq, adeLogPageLimit)
+	sb := r.Dialect.Select(ch.Seq, ch.At, ch.Stream, ch.Text).From(ch.Table)
+	sb.Where(sb.Equal(ch.Kind, kind), sb.Equal(ch.ID, id), sb.GreaterThan(ch.Seq, afterSeq)).OrderBy(ch.Seq).Limit(adeLogPageLimit)
+	rows, err := sqlb.Query(r.DB, sb)
 	chunks, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (AdeLogChunk, bool, error) {
 		var c AdeLogChunk
 		err := rows.Scan(&c.Seq, &c.At, &c.Stream, &c.Text)

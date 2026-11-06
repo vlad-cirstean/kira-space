@@ -3,15 +3,17 @@ package repos
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // AdeFactsRepo stores the ade integration/deployment memory: branch marks (tip last seen fully
 // contained in a target or environment) and each environment's last deploy-script result.
 type AdeFactsRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
 // Marks returns every mark for the given branch ids, keyed by branch id.
@@ -20,12 +22,10 @@ func (r *AdeFactsRepo) Marks(branchIDs []string) (map[string][]model.AdeBranchMa
 	if len(branchIDs) == 0 {
 		return out, nil
 	}
-	args := make([]any, len(branchIDs))
-	for i, id := range branchIDs {
-		args[i] = id
-	}
-	rows, err := r.DB.Query(`SELECT branch_id, kind, name, merged_tip, recorded, updated_at FROM ade_branch_marks
-		WHERE branch_id IN (?`+strings.Repeat(",?", len(branchIDs)-1)+`) ORDER BY branch_id, kind, name`, args...)
+	c := kiraschema.AdeBranchMarks
+	sb := r.Dialect.Select(c.BranchID, c.Kind, c.Name, c.MergedTip, c.Recorded, c.UpdatedAt).From(c.Table)
+	sb.Where(sb.In(c.BranchID, sqlb.Args(branchIDs)...)).OrderBy(c.BranchID, c.Kind, c.Name)
+	rows, err := sqlb.Query(r.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos: query ade marks: %w", err)
 	}
@@ -48,11 +48,15 @@ func (r *AdeFactsRepo) Marks(branchIDs []string) (map[string][]model.AdeBranchMa
 // UpsertMark records the contained tip. recorded only ever rises: an automatic mark never clears a
 // recorded one, and recorded=false leaves an existing flag alone.
 func (r *AdeFactsRepo) UpsertMark(m model.AdeBranchMark) error {
-	if _, err := r.DB.Exec(`INSERT INTO ade_branch_marks (branch_id, kind, name, merged_tip, recorded, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT(branch_id, kind, name) DO UPDATE SET merged_tip = excluded.merged_tip,
-		  recorded = MAX(recorded, excluded.recorded), updated_at = excluded.updated_at`,
-		m.BranchID, m.Kind, m.Name, m.MergedTip, boolInt(m.Recorded), m.UpdatedAt); err != nil {
+	c := kiraschema.AdeBranchMarks
+	ib := r.Dialect.InsertInto(c.Table).Cols(c.BranchID, c.Kind, c.Name, c.MergedTip, c.Recorded, c.UpdatedAt).
+		Values(m.BranchID, m.Kind, m.Name, m.MergedTip, m.Recorded, m.UpdatedAt)
+	sqlb.UpsertSet(ib, []string{c.BranchID, c.Kind, c.Name}, []string{
+		c.MergedTip + " = excluded." + c.MergedTip,
+		c.Recorded + " = MAX(" + c.Recorded + ", excluded." + c.Recorded + ")",
+		c.UpdatedAt + " = excluded." + c.UpdatedAt,
+	}, "")
+	if _, err := sqlb.Exec(r.DB, ib); err != nil {
 		return fmt.Errorf("repos: upsert ade mark: %w", err)
 	}
 	return nil
@@ -61,15 +65,16 @@ func (r *AdeFactsRepo) UpsertMark(m model.AdeBranchMark) error {
 // DeleteMarksNotIn drops the marks of kind for codeRepoID's branches whose name is not in names
 // (a target or environment removed from config).
 func (r *AdeFactsRepo) DeleteMarksNotIn(kind, codeRepoID string, names []string) error {
-	q := `DELETE FROM ade_branch_marks WHERE kind = ? AND branch_id IN (SELECT id FROM ade_task_branches WHERE code_repo_id = ?)`
-	args := []any{kind, codeRepoID}
+	c, b := kiraschema.AdeBranchMarks, kiraschema.AdeTaskBranches
+	branches := r.Dialect.Select(b.ID).From(b.Table)
+	branches.Where(branches.Equal(b.CodeRepoID, codeRepoID))
+	del := r.Dialect.DeleteFrom(c.Table)
+	conds := []string{del.Equal(c.Kind, kind), del.In(c.BranchID, branches)}
 	if len(names) > 0 {
-		q += ` AND name NOT IN (?` + strings.Repeat(",?", len(names)-1) + `)`
-		for _, n := range names {
-			args = append(args, n)
-		}
+		conds = append(conds, del.NotIn(c.Name, sqlb.Args(names)...))
 	}
-	if _, err := r.DB.Exec(q, args...); err != nil {
+	del.Where(conds...)
+	if _, err := sqlb.Exec(r.DB, del); err != nil {
 		return fmt.Errorf("repos: delete ade marks: %w", err)
 	}
 	return nil
@@ -78,15 +83,14 @@ func (r *AdeFactsRepo) DeleteMarksNotIn(kind, codeRepoID string, names []string)
 // DeleteEnvStateNotIn drops codeRepoID's environment states whose environment is not in names (an
 // environment removed from config).
 func (r *AdeFactsRepo) DeleteEnvStateNotIn(codeRepoID string, names []string) error {
-	q := `DELETE FROM ade_env_state WHERE code_repo_id = ?`
-	args := []any{codeRepoID}
+	c := kiraschema.AdeEnvState
+	del := r.Dialect.DeleteFrom(c.Table)
+	conds := []string{del.Equal(c.CodeRepoID, codeRepoID)}
 	if len(names) > 0 {
-		q += ` AND env NOT IN (?` + strings.Repeat(",?", len(names)-1) + `)`
-		for _, n := range names {
-			args = append(args, n)
-		}
+		conds = append(conds, del.NotIn(c.Env, sqlb.Args(names)...))
 	}
-	if _, err := r.DB.Exec(q, args...); err != nil {
+	del.Where(conds...)
+	if _, err := sqlb.Exec(r.DB, del); err != nil {
 		return fmt.Errorf("repos: delete ade env state: %w", err)
 	}
 	return nil
@@ -94,7 +98,10 @@ func (r *AdeFactsRepo) DeleteEnvStateNotIn(codeRepoID string, names []string) er
 
 // EnvStates returns codeRepoID's environment states keyed by environment name.
 func (r *AdeFactsRepo) EnvStates(codeRepoID string) (map[string]model.AdeEnvState, error) {
-	rows, err := r.DB.Query(`SELECT code_repo_id, env, sha, prev_sha, error, checked_at FROM ade_env_state WHERE code_repo_id = ?`, codeRepoID)
+	c := kiraschema.AdeEnvState
+	sb := r.Dialect.Select(c.CodeRepoID, c.Env, c.Sha, c.PrevSha, c.Error, c.CheckedAt).From(c.Table)
+	sb.Where(sb.Equal(c.CodeRepoID, codeRepoID))
+	rows, err := sqlb.Query(r.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("repos: query ade env state: %w", err)
 	}
@@ -116,13 +123,18 @@ func (r *AdeFactsRepo) EnvStates(codeRepoID string) (map[string]model.AdeEnvStat
 // SetEnvState stores a script result. On success (sha non-empty, no error) prev_sha takes the old
 // sha when it changed; on failure the last good sha is kept and only error/checked_at move.
 func (r *AdeFactsRepo) SetEnvState(s model.AdeEnvState) error {
-	if _, err := r.DB.Exec(`INSERT INTO ade_env_state (code_repo_id, env, sha, prev_sha, error, checked_at)
-		VALUES (?, ?, ?, '', ?, ?)
-		ON CONFLICT(code_repo_id, env) DO UPDATE SET
-		  prev_sha = CASE WHEN excluded.error = '' AND excluded.sha <> '' AND sha <> '' AND sha <> excluded.sha THEN sha ELSE prev_sha END,
-		  sha = CASE WHEN excluded.error = '' AND excluded.sha <> '' THEN excluded.sha ELSE sha END,
-		  error = excluded.error, checked_at = excluded.checked_at`,
-		s.CodeRepoID, s.Env, s.Sha, s.Error, s.CheckedAt); err != nil {
+	c := kiraschema.AdeEnvState
+	ib := r.Dialect.InsertInto(c.Table).Cols(c.CodeRepoID, c.Env, c.Sha, c.PrevSha, c.Error, c.CheckedAt).
+		Values(s.CodeRepoID, s.Env, s.Sha, "", s.Error, s.CheckedAt)
+	ex := func(col string) string { return "excluded." + col }
+	sqlb.UpsertSet(ib, []string{c.CodeRepoID, c.Env}, []string{
+		c.PrevSha + " = CASE WHEN " + ex(c.Error) + " = '' AND " + ex(c.Sha) + " <> '' AND " + c.Sha + " <> '' AND " + c.Sha +
+			" <> " + ex(c.Sha) + " THEN " + c.Sha + " ELSE " + c.PrevSha + " END",
+		c.Sha + " = CASE WHEN " + ex(c.Error) + " = '' AND " + ex(c.Sha) + " <> '' THEN " + ex(c.Sha) + " ELSE " + c.Sha + " END",
+		c.Error + " = " + ex(c.Error),
+		c.CheckedAt + " = " + ex(c.CheckedAt),
+	}, "")
+	if _, err := sqlb.Exec(r.DB, ib); err != nil {
 		return fmt.Errorf("repos: set ade env state: %w", err)
 	}
 	return nil
