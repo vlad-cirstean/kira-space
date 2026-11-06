@@ -1,4 +1,4 @@
-// Package adeflow reads and writes ADE v2 workflow YAML files in <KiraSpaceHome>/workflows. It
+// Package adeflow reads and writes ADE v2 workflow YAML files in <KiraSpaceHome>/config/workflows. It
 // validates strictly (an unknown key is an error) and reports node line numbers. The Reader lists;
 // writer.go edits files in place, preserving comments and key order.
 package adeflow

@@ -1,5 +1,5 @@
 // Package apifiles keeps the Api module's collections and environments as config files in
-// <home>/api. The files are the source of truth; the api_* tables are a projection written only by
+// <home>/config/api. The files are the source of truth; the api_* tables are a projection written only by
 // this package. Secret values stay out of the files: a variable names a secret, whose sealed value
 // lives in the app DB.
 package apifiles

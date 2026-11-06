@@ -33,7 +33,7 @@ func (c Changes) Empty() bool { return len(c.Items) == 0 && !c.Config }
 // Options builds a Loader.
 type Options struct {
 	DB *sql.DB
-	// Dir is the connections folder, <home>/connections.
+	// Dir is the connections folder, <home>/config/connections.
 	Dir     string
 	Secrets *Secrets
 	// OnChange receives what a load or a write made stale. It runs outside the loader's lock.
@@ -80,9 +80,6 @@ func (l *Loader) Dir() string { return l.o.Dir }
 
 // Folder is the connections module folder name under <home>/config.
 const Folder = "connections"
-
-// Dir is the connections folder under an app home.
-func Dir(home string) string { return filepath.Join(home, "connections") }
 
 // Start migrates the legacy rows once, loads the folder, writes AGENTS.md and watches the folder. A
 // failed migration skips the rest: an unfinished export never projects. A failure of the docs or the

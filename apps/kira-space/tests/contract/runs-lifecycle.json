@@ -18,7 +18,7 @@
         "sortOrder": 1
       }
     ],
-    "dir": "<space>/runs",
+    "dir": "<space>/config/runs",
     "problems": [],
     "scripts": [
       {
@@ -59,7 +59,7 @@
         "sortOrder": 1
       }
     ],
-    "dir": "<space>/runs",
+    "dir": "<space>/config/runs",
     "problems": [],
     "scripts": [
       {
@@ -157,7 +157,7 @@
         "sortOrder": 1
       }
     ],
-    "dir": "<space>/runs",
+    "dir": "<space>/config/runs",
     "problems": [],
     "scripts": [
       {
@@ -255,7 +255,7 @@
         "sortOrder": 1
       }
     ],
-    "dir": "<space>/runs",
+    "dir": "<space>/config/runs",
     "problems": [],
     "scripts": [
       {

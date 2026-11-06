@@ -92,7 +92,7 @@
     "hash": "<masked>",
     "id": "<id:1>",
     "lastGood": false,
-    "path": "<space>/connections/pg.yaml",
+    "path": "<space>/config/connections/pg.yaml",
     "problem": null,
     "secrets": [
       {
@@ -110,7 +110,7 @@
     "hash": "<masked>",
     "id": "<id:1>",
     "lastGood": false,
-    "path": "<space>/connections/pg.yaml",
+    "path": "<space>/config/connections/pg.yaml",
     "problem": null,
     "secrets": [
       {

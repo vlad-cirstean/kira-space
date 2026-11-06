@@ -1,6 +1,6 @@
 package adewire
 
-// StepEntry is one file of the step library (<home>/steps/<id>.yaml).
+// StepEntry is one file of the step library (<home>/config/steps/<id>.yaml).
 type StepEntry struct {
 	FileName string         `json:"fileName"`
 	Path     string         `json:"path"`

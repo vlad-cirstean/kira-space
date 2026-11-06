@@ -29,7 +29,7 @@
     "editable": true,
     "exists": true,
     "file": "proj.yaml",
-    "filePath": "<space>/repos/proj.yaml",
+    "filePath": "<space>/config/repos/proj.yaml",
     "hash": "<masked>",
     "lastGood": true,
     "path": "<work>/proj",
@@ -51,7 +51,7 @@
     "text": "# Kira repo settings. Options: AGENTS.md in this folder.\npath: <work>/proj\n# nickname: \"\"\n# integration_branches: []\n# environments:\n#   - name: staging\n#     deployed_sha_script: curl -fsS https://staging.example.com/version\n#   - name: prod\n#     deployed_sha_run: { script: Prod sha }\n# worktree:\n#   prepare_script: bun install\n#   # or a Run script: prepare_run: { script: Install deps, params: { mode: ci } }\n#   prepare_timeout: 15m\n#   base_path: \"\"\n# graph:\n#   page_size: 5000\n#   scope: all\n# stash:\n#   show_in_graph: true\n#   include_untracked: false\n# review:\n#   base_candidates: [main, master]\n# pull:\n#   strategy: auto\n# git_host:\n#   provider: auto\n# checkout:\n#   auto_stash: true\n"
   },
   "RepoConfigService.List": {
-    "dir": "<space>/repos",
+    "dir": "<space>/config/repos",
     "files": [
       {
         "file": "proj.yaml",
@@ -76,7 +76,7 @@
     "editable": true,
     "exists": true,
     "file": "proj.yaml",
-    "filePath": "<space>/repos/proj.yaml",
+    "filePath": "<space>/config/repos/proj.yaml",
     "hash": "<masked>",
     "lastGood": false,
     "path": "<work>/proj",

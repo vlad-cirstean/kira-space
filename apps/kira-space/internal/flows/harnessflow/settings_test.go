@@ -362,7 +362,7 @@ func TestAgentSettingsReachEveryLaunch(t *testing.T) {
 	})
 
 	// Crash leftovers are swept at the next start.
-	left := filepath.Join(app.SpaceHome, "ade", "runs", "x-app.mcp.json")
+	left := filepath.Join(app.SpaceHome, "ade/runs", "x-app.mcp.json")
 	if err := os.MkdirAll(filepath.Dir(left), 0o700); err != nil {
 		t.Fatal(err)
 	}

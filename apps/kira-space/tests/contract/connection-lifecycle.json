@@ -50,7 +50,7 @@
     "hash": "<masked>",
     "id": "",
     "lastGood": false,
-    "path": "<space>/connections/broken.yaml",
+    "path": "<space>/config/connections/broken.yaml",
     "problem": {
       "line": 1,
       "message": "name is required."
@@ -64,7 +64,7 @@
     "hash": "<masked>",
     "id": "<id:2>",
     "lastGood": false,
-    "path": "<space>/connections/pg-copy.yaml",
+    "path": "<space>/config/connections/pg-copy.yaml",
     "problem": null,
     "secrets": [
       {

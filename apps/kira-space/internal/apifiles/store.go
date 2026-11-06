@@ -19,7 +19,7 @@ import (
 // Options builds a Store.
 type Options struct {
 	DB *sql.DB
-	// Dir is the api folder, <home>/api.
+	// Dir is the api folder, <home>/config/api.
 	Dir     string
 	Secrets *Secrets
 	// OnChange receives what a load or a write made stale. It runs outside the store's lock.
@@ -63,9 +63,6 @@ func (s *Store) Dir() string { return s.o.Dir }
 
 // Folder is the api module folder name under <home>/config.
 const Folder = "api"
-
-// Dir is the Api config folder under an app home.
-func Dir(home string) string { return filepath.Join(home, "api") }
 
 // Start migrates the legacy rows once, loads the folder, writes AGENTS.md and watches the folder. A
 // failed migration skips the rest: an unfinished export never projects. A failure of the docs or the

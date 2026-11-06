@@ -4,7 +4,7 @@
     "error": null,
     "fileName": "implement.yaml",
     "hash": "54115c256f9ecf39bde6a09d7ccc4b04f0b6298b832b218b69751d9a0390186d",
-    "path": "<space>/steps/implement.yaml",
+    "path": "<space>/config/steps/implement.yaml",
     "step": {
       "agent": "",
       "allowedTools": [],
@@ -53,7 +53,7 @@
   "AdeTaskService.StepYaml#implement": {
     "fileName": "implement.yaml",
     "hash": "54115c256f9ecf39bde6a09d7ccc4b04f0b6298b832b218b69751d9a0390186d",
-    "path": "<space>/steps/implement.yaml",
+    "path": "<space>/config/steps/implement.yaml",
     "yaml": "id: implement\nname: Implement\nkind: agent\nruns_on: each repo\ntimeout: 1m\nprompt: Implement the task in {repo}.\n"
   },
   "AdeTaskService.ValidateStepYaml#skip": {
@@ -64,7 +64,7 @@
     "step": null
   },
   "AdeTaskService.Workflows#broken-step": {
-    "dir": "<space>/workflows",
+    "dir": "<space>/config/workflows",
     "sandbox": {
       "enforced": false,
       "reason": "The sandbox is not enforced on this OS. It runs on macOS only. Claude permission rules still apply, but they do not stop shell commands."
@@ -89,16 +89,16 @@
         },
         "fileName": "broken.yaml",
         "hash": "963d9896264d24258057aa8b6eb17fae2556aaa42932c09ee62e4bc527ef0a5d",
-        "path": "<space>/steps/broken.yaml",
+        "path": "<space>/config/steps/broken.yaml",
         "step": null,
         "usedBy": []
       }
     ],
-    "stepsDir": "<space>/steps",
+    "stepsDir": "<space>/config/steps",
     "workflows": []
   },
   "AdeTaskService.Workflows#steps": {
-    "dir": "<space>/workflows",
+    "dir": "<space>/config/workflows",
     "sandbox": {
       "enforced": false,
       "reason": "The sandbox is not enforced on this OS. It runs on macOS only. Claude permission rules still apply, but they do not stop shell commands."
@@ -120,7 +120,7 @@
         "error": null,
         "fileName": "implement.yaml",
         "hash": "54115c256f9ecf39bde6a09d7ccc4b04f0b6298b832b218b69751d9a0390186d",
-        "path": "<space>/steps/implement.yaml",
+        "path": "<space>/config/steps/implement.yaml",
         "step": {
           "agent": "",
           "allowedTools": [],
@@ -169,13 +169,13 @@
         ]
       }
     ],
-    "stepsDir": "<space>/steps",
+    "stepsDir": "<space>/config/steps",
     "workflows": [
       {
         "error": null,
         "fileName": "lib-flow.yaml",
         "hash": "ac781b0a1cef831ae82e29929491afd3c797d98c2f80ea9a6df0ea042e13f7e2",
-        "path": "<space>/workflows/lib-flow.yaml",
+        "path": "<space>/config/workflows/lib-flow.yaml",
         "usedBy": 0,
         "workflow": {
           "id": "lib-flow",

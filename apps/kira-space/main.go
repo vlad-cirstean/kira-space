@@ -17,6 +17,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/buildinfo"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/configfold"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/homefold"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
@@ -48,7 +49,7 @@ var assets embed.FS
 var mobileAssets embed.FS
 
 // Startup order: the argv shims (askpass, memory-mcp, memory-embed) -> refuseOldStudio ->
-// config.EnsureLayout -> logging.Init/Sweep -> instance lock -> storage.Open -> homefold.Files (legacy
+// config.EnsureLayout -> logging.Init/Sweep -> instance lock -> storage.Open -> configfold.Run (config files into <home>/config) -> homefold.Files (legacy
 // Studio home folded in) -> studiostorage.Open (migrate) -> repos.New x2 -> appmerge.Run (first-launch
 // Studio carry-over) -> homefold.Runs (Studio scripts and runs folded in) -> appwire.Build (every Space and Studio service) -> application.New (bound services,
 // git and engine streams) -> the menu -> the startup window list, opened -> app.Run().
@@ -95,6 +96,7 @@ func main() {
 	if err != nil {
 		reporter.Fatal(startupfail.StepRepos, err)
 	}
+	foldConfig(reporter, db)
 	foldLegacyHome(reporter, db)
 	studioDB, err := studiostorage.Open()
 	if err != nil {
@@ -327,6 +329,14 @@ func carryOverStudio(reporter *startupfail.Reporter, db *storage.DB, studioDB *s
 func foldLegacyRuns(reporter *startupfail.Reporter, db *storage.DB, studioDB *studiostorage.DB) {
 	err := homefold.Runs(homefold.Options{Space: db.DB, SpaceHome: config.KiraSpaceHome(), Studio: studioDB.DB})
 	if err != nil {
+		reporter.Fatal(startupfail.StepStorage, err)
+	}
+}
+
+// foldConfig moves the config folders into <home>/config once (P540). A failure leaves the marker at its
+// last step, so the next launch resumes.
+func foldConfig(reporter *startupfail.Reporter, db *storage.DB) {
+	if err := configfold.Run(configfold.Options{Space: db.DB, Home: config.KiraSpaceHome()}); err != nil {
 		reporter.Fatal(startupfail.StepStorage, err)
 	}
 }

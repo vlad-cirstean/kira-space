@@ -12,6 +12,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/configfold"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 )
 
 var configModules = []string{"connections", "api", "runs", "workflows", "steps", "repos", "agent"}
@@ -38,6 +39,7 @@ func newConfigFixture(t *testing.T, legacy bool) *configFixture {
 	if !legacy {
 		return f
 	}
+	at := func(name string) string { return filepath.Join(home, name) }
 	w := func(rel, body string, mode os.FileMode) { mustWrite(t, filepath.Join(home, rel), body, mode) }
 	w("connections/a.yaml", "conn", 0o644)
 	w("api/c.collection.yaml", "col", 0o644)
@@ -47,7 +49,7 @@ func newConfigFixture(t *testing.T, legacy bool) *configFixture {
 	w("workflows/.p526-backup/w.yaml", "old", 0o644)
 	target := filepath.Join(filepath.Dir(home), "dotfiles", "steps")
 	mustWrite(t, filepath.Join(target, "s.yaml"), "step", 0o644)
-	if err := os.Symlink(target, filepath.Join(home, "steps")); err != nil {
+	if err := os.Symlink(target, at("steps")); err != nil {
 		t.Fatal(err)
 	}
 	w("repos/x.yaml", "repo", 0o644)
@@ -78,6 +80,8 @@ func (f *configFixture) homeSnapshot(t *testing.T) string {
 	t.Helper()
 	return strings.ReplaceAll(treeSnapshot(t, f.home), filepath.Dir(f.home), "ROOT")
 }
+
+func (f *configFixture) configDir(module string) string { return configfs.ModuleDir(f.home, module) }
 
 func (f *configFixture) legacyName(module string) string { return filepath.Join(f.home, module) }
 
@@ -236,8 +240,8 @@ func TestConfigFold(t *testing.T) {
 
 	t.Run("collision", func(t *testing.T) {
 		f := newConfigFixture(t, true)
-		mustWrite(t, filepath.Join(f.home, "config", "workflows", "w.yaml"), "kept", 0o644)
-		mustWrite(t, filepath.Join(f.home, "workflows", "only.yaml"), "moved", 0o644)
+		mustWrite(t, filepath.Join(f.configDir("workflows"), "w.yaml"), "kept", 0o644)
+		mustWrite(t, filepath.Join(f.legacyName("workflows"), "only.yaml"), "moved", 0o644)
 		if err := configfold.Run(f.opts); err != nil {
 			t.Fatal(err)
 		}
@@ -248,14 +252,14 @@ func TestConfigFold(t *testing.T) {
 			}
 			return string(b)
 		}
-		cfg := filepath.Join(f.home, "config", "workflows")
+		cfg := f.configDir("workflows")
 		if got := read(cfg, "w.yaml"); got != "kept" {
 			t.Errorf("w.yaml = %q, want kept", got)
 		}
 		if got := read(cfg, "only.yaml"); got != "moved" {
 			t.Errorf("only.yaml = %q", got)
 		}
-		if exists(filepath.Join(f.home, "workflows")) {
+		if exists(f.legacyName("workflows")) {
 			t.Error("legacy workflows still present")
 		}
 		backups, _ := filepath.Glob(filepath.Join(f.home, "backups", "p540-*"))

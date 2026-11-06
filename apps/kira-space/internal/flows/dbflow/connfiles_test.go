@@ -84,7 +84,7 @@ func TestConnectionConfigFile(t *testing.T) {
 	if err := app.W.ConfigFiles.Reveal(openArgs); err != nil {
 		t.Fatal(err)
 	}
-	if want := filepath.Join(app.SpaceHome, "connections", conn.File); app.FileOpener.OpenedFiles()[0] != want || app.FileOpener.RevealedFiles()[0] != want {
+	if want := filepath.Join(app.ConfigDir("connections"), conn.File); app.FileOpener.OpenedFiles()[0] != want || app.FileOpener.RevealedFiles()[0] != want {
 		t.Fatalf("opened %v, revealed %v, want %s", app.FileOpener.OpenedFiles(), app.FileOpener.RevealedFiles(), want)
 	}
 	list, err := app.W.Connections.List()

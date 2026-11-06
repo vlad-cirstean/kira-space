@@ -95,7 +95,7 @@ func TestApiConfigFiles(t *testing.T) {
 	if err := app.W.ConfigFiles.Reveal(openArgs); err != nil {
 		t.Fatal(err)
 	}
-	if want := filepath.Join(app.SpaceHome, "api", col.File); app.FileOpener.OpenedFiles()[0] != want || app.FileOpener.RevealedFiles()[0] != want {
+	if want := filepath.Join(app.ConfigDir("api"), col.File); app.FileOpener.OpenedFiles()[0] != want || app.FileOpener.RevealedFiles()[0] != want {
 		t.Fatalf("opened %v, revealed %v, want %s", app.FileOpener.OpenedFiles(), app.FileOpener.RevealedFiles(), want)
 	}
 

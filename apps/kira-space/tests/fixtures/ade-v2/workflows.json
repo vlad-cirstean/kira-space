@@ -1,9 +1,9 @@
 {
-  "dir": "~/.kira-space/workflows",
+  "dir": "~/.kira-space/config/workflows",
   "workflows": [
     {
       "fileName": "standard.yaml",
-      "path": "~/.kira-space/workflows/standard.yaml",
+      "path": "~/.kira-space/config/workflows/standard.yaml",
       "workflow": {
         "id": "standard",
         "name": "Standard feature",
@@ -330,7 +330,7 @@
     },
     {
       "fileName": "bugfix.yaml",
-      "path": "~/.kira-space/workflows/bugfix.yaml",
+      "path": "~/.kira-space/config/workflows/bugfix.yaml",
       "workflow": {
         "id": "bugfix",
         "name": "Bugfix",
@@ -586,7 +586,7 @@
     },
     {
       "fileName": "chore.yaml",
-      "path": "~/.kira-space/workflows/chore.yaml",
+      "path": "~/.kira-space/config/workflows/chore.yaml",
       "workflow": {
         "id": "chore",
         "name": "Maintenance",
@@ -728,7 +728,7 @@
     },
     {
       "fileName": "broken.yaml",
-      "path": "~/.kira-space/workflows/broken.yaml",
+      "path": "~/.kira-space/config/workflows/broken.yaml",
       "workflow": null,
       "error": {
         "line": 11,
@@ -755,5 +755,5 @@
     }
   ],
   "steps": [],
-  "stepsDir": "/home/user/.kira-space/steps"
+  "stepsDir": "/home/user/.kira-space/config/steps"
 }

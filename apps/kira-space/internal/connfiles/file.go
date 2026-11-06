@@ -1,4 +1,4 @@
-// Package connfiles keeps Kira Studio's connections as config files in <home>/connections. The files
+// Package connfiles keeps Kira Studio's connections as config files in <home>/config/connections. The files
 // are the source of truth; the connections table and its mask rule rows are a projection written only
 // by this package. A password or a URI stays out of the files: the file names a secret, whose sealed
 // value lives in the app DB.

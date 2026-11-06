@@ -44,7 +44,7 @@ Api, Docker and Database MCP features.
 
 - **Agents** — a task planner with workflows, runs and interactive agent sessions. Claude Code or
   OpenCode, picked per launch, per step or in Settings. One shared context and settings file for every
-  agent (`~/.kira-space/agent/`), secrets sealed in the keychain layer. Import and export of each agent's
+  agent (`~/.kira-space/config/agent/`), secrets sealed in the keychain layer. Import and export of each agent's
   user config. Hermetic launches on by default: agents skip your user config. Kira writes your agent
   config only on Export.
   A task picks its base branch (the repo's main, any branch, or another planner branch to stack on); a

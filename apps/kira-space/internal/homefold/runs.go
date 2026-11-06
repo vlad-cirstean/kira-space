@@ -106,7 +106,7 @@ func buildMaps(o Options, src string) (scripts, runs map[string]string, err erro
 	if err != nil {
 		return nil, nil, err
 	}
-	taken, err := scriptIDs(o.Space, filepath.Join(o.SpaceHome, "runs"))
+	taken, err := scriptIDs(o.Space, runsDir(o.SpaceHome))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -392,7 +392,7 @@ func copyRunFiles(o Options, m marker, src string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Join(o.SpaceHome, "runs"), 0o700); err != nil {
+	if err := os.MkdirAll(runsDir(o.SpaceHome), 0o700); err != nil {
 		return err
 	}
 	for _, e := range entries {
@@ -401,7 +401,7 @@ func copyRunFiles(o Options, m marker, src string) error {
 			slog.Warn("homefold: run folder entry left in backup", "scope", "homefold", "name", e.Name())
 			continue
 		}
-		dst := filepath.Join(o.SpaceHome, "runs", mapped(m.Scripts, sm[1])+".yaml")
+		dst := filepath.Join(runsDir(o.SpaceHome), mapped(m.Scripts, sm[1])+".yaml")
 		if fsmove.Exists(dst) {
 			continue
 		}

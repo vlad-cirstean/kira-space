@@ -1,6 +1,6 @@
 {
   "ConnectionConfigService.View": {
-    "dir": "<space>/connections",
+    "dir": "<space>/config/connections",
     "files": [
       {
         "file": "legacy-mongo.yaml",

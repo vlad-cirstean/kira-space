@@ -55,6 +55,7 @@ import (
 	studiorepos "github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox/sandboxtest"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/harness"
@@ -426,6 +427,9 @@ func loopbackNetwork() lannet.Network {
 		},
 	}
 }
+
+// ConfigDir is the config folder of a module (<space>/config/<module>).
+func (a *App) ConfigDir(module string) string { return configfs.ModuleDir(a.SpaceHome, module) }
 
 func (a *App) build() {
 	a.t.Helper()

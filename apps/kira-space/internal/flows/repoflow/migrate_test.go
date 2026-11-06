@@ -52,7 +52,7 @@ func TestRepoConfigMigration(t *testing.T) {
 			t.Fatalf("seed %.40s: %v", q, err)
 		}
 	}
-	dir := filepath.Join(app.SpaceHome, repocfg.Folder)
+	dir := app.ConfigDir(repocfg.Folder)
 	if err := os.RemoveAll(dir); err != nil {
 		t.Fatal(err)
 	}

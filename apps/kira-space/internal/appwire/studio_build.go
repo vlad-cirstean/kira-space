@@ -19,6 +19,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 	studiomodel "github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	studiorepos "github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/secrets"
@@ -48,7 +49,7 @@ func (w *Wired) buildStudio(opts Options) error {
 	var maskReviewSvc *maskreview.Service
 	home := config.KiraSpaceHome()
 	connFiles, err := connfiles.New(connfiles.Options{
-		DB: db.DB, Dir: connfiles.Dir(home),
+		DB: db.DB, Dir: configfs.ModuleDir(home, connfiles.Folder),
 		Secrets: &connfiles.Secrets{Store: secrets.NewStore(db.DB, opts.Cipher), DB: db.DB},
 		OnChange: func(ch connfiles.Changes) {
 			connectionsSvc.ConfigChanged(ch)
@@ -68,7 +69,7 @@ func (w *Wired) buildStudio(opts Options) error {
 	// reveal grace genuinely shared between a connection-password reveal and a variable reveal.
 	apiSecrets := &apifiles.Secrets{Store: secrets.NewStore(db.DB, opts.Cipher), DB: db.DB}
 	apiFiles, err := apifiles.New(apifiles.Options{
-		DB: db.DB, Dir: apifiles.Dir(home), Secrets: apiSecrets,
+		DB: db.DB, Dir: configfs.ModuleDir(home, apifiles.Folder), Secrets: apiSecrets,
 		OnChange: func(ch apifiles.Changes) { bridge.EmitApiChanges(emitter, ch) },
 	})
 	if err != nil {

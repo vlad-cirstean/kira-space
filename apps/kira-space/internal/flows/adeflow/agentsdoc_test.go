@@ -22,7 +22,7 @@ var yamlFence = regexp.MustCompile("(?s)```yaml\n(.*?)```")
 // value, rule and agent setting, its examples validate, and it is regenerated over edits.
 func TestWorkflowsAgentsDoc(t *testing.T) {
 	app := flowharness.New(t)
-	dir := filepath.Join(app.SpaceHome, "workflows")
+	dir := app.ConfigDir("workflows")
 	path := filepath.Join(dir, "AGENTS.md")
 	want := configfs.RenderAgentsMD(adeflow.DocModel())
 

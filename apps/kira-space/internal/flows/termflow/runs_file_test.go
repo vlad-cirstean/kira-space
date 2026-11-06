@@ -61,7 +61,7 @@ func scriptOf(snap scripts.Snapshot, id string) (scripts.CustomScript, bool) {
 
 func writeRun(t *testing.T, app *flowharness.App, file, text string) {
 	t.Helper()
-	if err := os.WriteFile(filepath.Join(app.SpaceHome, "runs", file), []byte(text), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(app.ConfigDir("runs"), file), []byte(text), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -70,7 +70,7 @@ func TestRunsConfigFile(t *testing.T) {
 	app := flowharness.New(t)
 	cs := app.W.CustomScripts
 
-	agents, err := os.ReadFile(filepath.Join(app.SpaceHome, "runs", "AGENTS.md"))
+	agents, err := os.ReadFile(filepath.Join(app.ConfigDir("runs"), "AGENTS.md"))
 	if err != nil || !strings.Contains(string(agents), "smart.model") {
 		t.Fatalf("AGENTS.md = %q, %v, want the field docs", agents, err)
 	}
@@ -146,7 +146,7 @@ func TestRunsConfigFile(t *testing.T) {
 	}
 
 	mark = app.Events.Mark()
-	if err := os.Remove(filepath.Join(app.SpaceHome, "runs", "deploy.yaml")); err != nil {
+	if err := os.Remove(filepath.Join(app.ConfigDir("runs"), "deploy.yaml")); err != nil {
 		t.Fatal(err)
 	}
 	waitSnapshot(t, app, mark, func(s scripts.Snapshot) bool { _, ok := scriptOf(s, "deploy"); return !ok })
@@ -205,7 +205,7 @@ func TestRunsFileMigration(t *testing.T) {
 	if _, err := db.Exec(`UPDATE custom_scripts SET config_json = '' WHERE id = ?`, keyed.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Remove(filepath.Join(app.SpaceHome, "runs", keyed.ID+".yaml")); err != nil {
+	if err := os.Remove(filepath.Join(app.ConfigDir("runs"), keyed.ID+".yaml")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.Exec(`DELETE FROM settings WHERE key = 'config.migrated.runs'`); err != nil {
@@ -229,7 +229,7 @@ func TestRunsFileMigration(t *testing.T) {
 		t.Fatalf("smart record = %+v", brain)
 	}
 	for _, id := range []string{legacy.ID, brain.ID} {
-		if _, err := os.Stat(filepath.Join(app.SpaceHome, "runs", id+".yaml")); err != nil {
+		if _, err := os.Stat(filepath.Join(app.ConfigDir("runs"), id+".yaml")); err != nil {
 			t.Fatalf("legacy run %s not exported: %v", id, err)
 		}
 	}
@@ -244,7 +244,7 @@ func TestRunsFileMigration(t *testing.T) {
 		t.Fatalf("keyed record = %+v, want its saved secret kept", keyed)
 	}
 
-	if err := os.Remove(filepath.Join(app.SpaceHome, "runs", legacy.ID+".yaml")); err != nil {
+	if err := os.Remove(filepath.Join(app.ConfigDir("runs"), legacy.ID+".yaml")); err != nil {
 		t.Fatal(err)
 	}
 	app.Restart()
@@ -255,7 +255,7 @@ func TestRunsFileMigration(t *testing.T) {
 	if _, ok := scriptOf(snap, legacy.ID); ok {
 		t.Fatal("deleted file's run is back after a restart")
 	}
-	if _, err := os.Stat(filepath.Join(app.SpaceHome, "runs", legacy.ID+".yaml")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(app.ConfigDir("runs"), legacy.ID+".yaml")); !os.IsNotExist(err) {
 		t.Fatalf("deleted file was exported again: %v", err)
 	}
 	if _, ok := scriptOf(snap, brain.ID); !ok {

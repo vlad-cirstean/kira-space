@@ -99,7 +99,7 @@
     "error": null,
     "fileName": "flow.yaml",
     "hash": "<masked>",
-    "path": "<space>/workflows/flow.yaml",
+    "path": "<space>/config/workflows/flow.yaml",
     "usedBy": 1,
     "workflow": {
       "id": "flow",

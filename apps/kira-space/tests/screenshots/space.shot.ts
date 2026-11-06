@@ -167,7 +167,7 @@ const VIEW_STATE = {
 test('space git graph', async ({ relaunch, consoleErrors }) => {
   const control: ControlSnapshot[] = [
     { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-    { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/repos', files: [] } },
+    { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/config/repos', files: [] } },
     { channel: IPC.adeTaskRepos, response: { repos: [], folders: [] } },
     { channel: IPC.adeTaskSessions, response: { sessions: [] } },
     {
@@ -310,7 +310,7 @@ test('space memory', async ({ relaunch, consoleErrors }) => {
     ...CAPTURE_LAUNCH,
     control: [
       { channel: IPC.memoryRecent, response: MEMORIES },
-      { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/repos', files: [] } },
+      { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/config/repos', files: [] } },
       { channel: IPC.memoryProjects, response: [PROJECT] },
       { channel: IPC.adeTaskRepos, response: { repos: [], folders: [] } },
       { channel: IPC.adeTaskSessions, response: { sessions: [] } },

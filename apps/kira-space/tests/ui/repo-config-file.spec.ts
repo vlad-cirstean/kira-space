@@ -139,7 +139,7 @@ test('contract: a repo with a file error shows a dot, and unbound files list und
 }) => {
   const dup = contract<ItemFx>('repo-config-file', 'RepoConfigService.List#duplicate');
   const { window: page, control } = await open(relaunch, [
-    { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/repos', files: [dup] } },
+    { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/config/repos', files: [dup] } },
   ]);
   await expect(
     page.locator(

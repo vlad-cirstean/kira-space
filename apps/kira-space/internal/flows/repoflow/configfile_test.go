@@ -54,7 +54,7 @@ func TestRepoConfigFile(t *testing.T) {
 	rec := importVia(t, app, r.Dir)
 	key := rec.RepoID
 	svc := app.W.RepoConfigSvc
-	dir := filepath.Join(app.SpaceHome, repocfg.Folder)
+	dir := app.ConfigDir(repocfg.Folder)
 	mask := flowharness.Mask("hash")
 
 	var file string

@@ -3,7 +3,7 @@
     "error": null,
     "fileName": "editor.yaml",
     "hash": "c3dedba42035be3edb35eb8fffa15dab10b947453a6bfa4a4c3d5754bcf5af34",
-    "path": "<space>/workflows/editor.yaml",
+    "path": "<space>/config/workflows/editor.yaml",
     "usedBy": 0,
     "workflow": {
       "id": "editor",
@@ -154,7 +154,7 @@
     "workflow": null
   },
   "AdeTaskService.Workflows": {
-    "dir": "<space>/workflows",
+    "dir": "<space>/config/workflows",
     "sandbox": {
       "enforced": false,
       "reason": "The sandbox is not enforced on this OS. It runs on macOS only. Claude permission rules still apply, but they do not stop shell commands."
@@ -172,13 +172,13 @@
       }
     ],
     "steps": [],
-    "stepsDir": "<space>/steps",
+    "stepsDir": "<space>/config/steps",
     "workflows": [
       {
         "error": null,
         "fileName": "editor.yaml",
         "hash": "f9320cd915d3c7cb38720b62f5878665f0cc4cf1aa8bf8c0c64da5e1f4d44840",
-        "path": "<space>/workflows/editor.yaml",
+        "path": "<space>/config/workflows/editor.yaml",
         "usedBy": 0,
         "workflow": {
           "id": "editor",
@@ -365,7 +365,7 @@
     ]
   },
   "AdeTaskService.Workflows#manual-sandbox": {
-    "dir": "<space>/workflows",
+    "dir": "<space>/config/workflows",
     "sandbox": {
       "enforced": false,
       "reason": "The sandbox is not enforced on this OS. It runs on macOS only. Claude permission rules still apply, but they do not stop shell commands."
@@ -383,13 +383,13 @@
       }
     ],
     "steps": [],
-    "stepsDir": "<space>/steps",
+    "stepsDir": "<space>/config/steps",
     "workflows": [
       {
         "error": null,
         "fileName": "flow.yaml",
         "hash": "a2d174c7a3c310449e81b3fc70d748689f76c5f1edd6043299dc8701042bbd36",
-        "path": "<space>/workflows/flow.yaml",
+        "path": "<space>/config/workflows/flow.yaml",
         "usedBy": 0,
         "workflow": {
           "id": "flow",
@@ -500,7 +500,7 @@
     ]
   },
   "AdeTaskService.Workflows#outside": {
-    "dir": "<space>/workflows",
+    "dir": "<space>/config/workflows",
     "sandbox": {
       "enforced": false,
       "reason": "The sandbox is not enforced on this OS. It runs on macOS only. Claude permission rules still apply, but they do not stop shell commands."
@@ -518,13 +518,13 @@
       }
     ],
     "steps": [],
-    "stepsDir": "<space>/steps",
+    "stepsDir": "<space>/config/steps",
     "workflows": [
       {
         "error": null,
         "fileName": "flow.yaml",
         "hash": "0e817cc6f5da83cb5ba9e945f3e9a5676ab652e44dbfea600c68bb1737e5f6f0",
-        "path": "<space>/workflows/flow.yaml",
+        "path": "<space>/config/workflows/flow.yaml",
         "usedBy": 0,
         "workflow": {
           "id": "flow",

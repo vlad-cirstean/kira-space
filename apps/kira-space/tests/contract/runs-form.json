@@ -109,7 +109,7 @@
     "hash": "<masked>",
     "id": "ship",
     "lastGood": false,
-    "path": "<space>/runs/ship.yaml",
+    "path": "<space>/config/runs/ship.yaml",
     "problem": null,
     "text": "# Ship the build.\nname: Ship # shown in the panel\nschedule:\n  enabled: false\n  confirm: false\n  cron: \"0 9 * * *\"\ncommand: echo ship\ncolor: blue\ncollection: Ops\n"
   },
@@ -119,7 +119,7 @@
     "hash": "<masked>",
     "id": "ship",
     "lastGood": false,
-    "path": "<space>/runs/ship.yaml",
+    "path": "<space>/config/runs/ship.yaml",
     "problem": null,
     "text": "# Ship the build.\nname: Release # shown in the panel\nschedule:\n  enabled: false\n  confirm: false\n  cron: 30 8 * * 1\ncommand: echo ship\ncollection: Ops\nparams:\n  - name: token\n    secret: true\n    type: text\n"
   },

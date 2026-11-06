@@ -149,7 +149,7 @@ func TestAgentContextReachesEveryLaunch(t *testing.T) {
 	if err := app.W.ConfigFiles.Open(configsvc.FileArgs{Folder: agentctx.Folder, File: agentctx.File}); err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	if got := app.FileOpener.OpenedFiles(); len(got) != 1 || got[0] != filepath.Join(app.SpaceHome, "agent", agentctx.File) {
+	if got := app.FileOpener.OpenedFiles(); len(got) != 1 || got[0] != filepath.Join(app.ConfigDir("agent"), agentctx.File) {
 		t.Fatalf("opened = %v, want the context file", got)
 	}
 
@@ -244,7 +244,7 @@ func TestAgentContextReachesEveryLaunch(t *testing.T) {
 	setProvider(t, app, "claude")
 
 	// A broken file keeps the last good text in use, across a restart.
-	cfgPath := filepath.Join(app.SpaceHome, "agent", agentctx.File)
+	cfgPath := filepath.Join(app.ConfigDir("agent"), agentctx.File)
 	mark := app.Events.Mark()
 	if err := os.WriteFile(cfgPath, []byte("ok\n\xff\xfe"), 0o644); err != nil {
 		t.Fatal(err)

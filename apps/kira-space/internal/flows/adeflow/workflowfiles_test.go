@@ -52,7 +52,7 @@ func waitWorkflowsEvent(t *testing.T, app *flowharness.App, mark int) {
 // workflows channel, a broken edit keeps the last good version, and a deleted file is forgotten.
 func TestWorkflowFilesSync(t *testing.T) {
 	app := flowharness.New(t)
-	dir := filepath.Join(app.SpaceHome, "workflows")
+	dir := app.ConfigDir("workflows")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestWorkflowSaveWritesAtomicallyOnce(t *testing.T) {
 	if n := len(app.Events.Since(mark, adewire.ChannelWorkflows)); n != 1 {
 		t.Errorf("%d workflows events for one save, want 1", n)
 	}
-	entries, err := os.ReadDir(filepath.Join(app.SpaceHome, "workflows"))
+	entries, err := os.ReadDir(app.ConfigDir("workflows"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func TestWorkflowSaveWritesAtomicallyOnce(t *testing.T) {
 func TestConfigFilesOpenReveal(t *testing.T) {
 	app := flowharness.New(t)
 	saveWorkflow(t, app, "shown", flowYAML("shown", manualStep))
-	want := filepath.Join(app.SpaceHome, "workflows", "shown.yaml")
+	want := filepath.Join(app.ConfigDir("workflows"), "shown.yaml")
 	args := configsvc.FileArgs{Folder: "workflows", File: "shown.yaml"}
 
 	if err := app.W.ConfigFiles.Open(args); err != nil {

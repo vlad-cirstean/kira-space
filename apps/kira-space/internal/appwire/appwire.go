@@ -19,7 +19,6 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adeflow"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentnotify"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentusage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
@@ -355,7 +354,7 @@ func Build(opts Options) (*Wired, error) {
 	// The tap feeds every window-wide event to the phone event hub, which drops what is not allowlisted.
 	mobileHub := mobileweb.NewHub()
 	emitter := appevent.NewTap(opts.Emitter, mobileHub.Publish)
-	promptStore := llmprompts.NewStore(filepath.Join(config.KiraSpaceHome(), "llm-prompts.json"))
+	promptStore := llmprompts.NewStore(promptsPath(config.KiraSpaceHome()))
 	deps := appcore.Deps{Repos: repositories, Home: config.KiraSpaceHome(), Events: emitter, GitRegistry: git.registry, Prompts: promptStore}
 	events := bridge.NewEvents(emitter)
 	w.Emitter, w.Deps, w.Events = emitter, deps, events
@@ -447,7 +446,7 @@ func Build(opts Options) (*Wired, error) {
 	})
 	w.AgentUsageSvc = &bridge.AgentUsageService{U: w.AgentUsage}
 	w.AgentContext = agentctx.New(agentctx.Options{
-		Dir: filepath.Join(deps.Home, "agent"), SnapshotDir: filepath.Join(deps.Home, "agent-context"),
+		Dir: configfs.ModuleDir(deps.Home, agentctx.Folder), SnapshotDir: filepath.Join(deps.Home, "agent-context"),
 		Projection: configfs.TableProjection{DB: repositories.CustomScripts.DB, Folder: agentctx.Folder}, App: "Space",
 		KeepsOnResume: func() []string { return keepsContextOnResume(registry) },
 	})
@@ -534,7 +533,7 @@ func Build(opts Options) (*Wired, error) {
 	w.watchRepoConfig(events)
 	w.sched = &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
 	loader, err := scripts.NewLoader(scripts.LoaderOptions{
-		Repo: repositories.CustomScripts, Dir: filepath.Join(deps.Home, "runs"), Home: deps.Home, App: "Space", SpaceKeys: true,
+		Repo: repositories.CustomScripts, Dir: configfs.ModuleDir(deps.Home, scripts.Folder), Home: deps.Home, App: "Space", SpaceKeys: true,
 		Emit:     func(snapshot scripts.Snapshot) { w.CustomScripts.Publish(emitter, snapshot) },
 		OnChange: w.sched.Reload,
 	})
@@ -557,7 +556,7 @@ func Build(opts Options) (*Wired, error) {
 	}
 	bridge.KeepAwakeRecompute(w.KeepAwake)
 
-	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, map[string]string{"workflows": adeflow.Dir(config.KiraSpaceHome()), "steps": adeflow.StepsDir(config.KiraSpaceHome()), agentctx.Folder: filepath.Join(deps.Home, "agent"), "runs": filepath.Join(deps.Home, "runs"), repocfg.Folder: w.RepoConfig.Dir(), "api": apifiles.Dir(deps.Home), "connections": connfiles.Dir(deps.Home)})}
+	w.ConfigFiles = &bridge.ConfigFilesService{Service: configsvc.New(opts.FileOpener, configFolders(deps.Home, w.RepoConfig.Dir()))}
 
 	// OpenNewWindow is assigned by BindShell once the shell exists.
 	w.WindowsSvc = &bridge.WindowsService{Service: &windowsvc.Service{Windows: deps.Repos.Windows}}
@@ -780,7 +779,7 @@ func (w *Wired) wireAgentSettings(registry *harness.Registry, repositories *repo
 		w.AgentSecrets = sec
 	}
 	store, err := agentcfg.New(agentcfg.Options{
-		Dir: filepath.Join(home, "agent"), Providers: registry, Secrets: w.AgentSecrets, App: "Space",
+		Dir: configfs.ModuleDir(home, agentctx.Folder), Providers: registry, Secrets: w.AgentSecrets, App: "Space",
 		Projection: configfs.TableProjection{DB: repositories.CustomScripts.DB, Folder: agentctx.Folder},
 		Hermetic: func() bool {
 			settings, err := repositories.Settings.GetAll()
@@ -792,7 +791,7 @@ func (w *Wired) wireAgentSettings(registry *harness.Registry, repositories *repo
 		return w.watchAgentContext(events)
 	}
 	w.AgentSettings = store
-	if err := store.Sweep(filepath.Join(home, "ade", "runs"), filepath.Join(home, "automations-mcp")); err != nil {
+	if err := store.Sweep(adeRunsDir(home), filepath.Join(home, "automations-mcp")); err != nil {
 		slog.Warn("agent settings: sweep", "scope", "startup", "err", err)
 	}
 	store.View() // follows the file into the DB projection

@@ -4,7 +4,12 @@
 // var (KIRA_SPACE_HOME), directory name (.kira-space) and database file name (kira.db).
 package config
 
-import "github.com/kirathecat/kira-studio/internal/kirapaths"
+import (
+	"os"
+
+	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/kirapaths"
+)
 
 // KiraSpaceHome is this app's data directory, honouring KIRA_SPACE_HOME.
 func KiraSpaceHome() string {
@@ -39,9 +44,17 @@ func EnsureLayout() error {
 	return EnsureLayoutAt(KiraSpaceHome())
 }
 
-// EnsureLayoutAt is EnsureLayout against an explicit home dir — see DbPathAt.
+// EnsureLayoutAt is EnsureLayout against an explicit home dir — see DbPathAt. It also creates
+// <home>/config at 0700: a config folder watcher adds its parent and fails when it is missing.
 func EnsureLayoutAt(home string) error {
-	return kirapaths.EnsureLayoutAt(home)
+	if err := kirapaths.EnsureLayoutAt(home); err != nil {
+		return err
+	}
+	root := configfs.Root(home)
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		return err
+	}
+	return os.Chmod(root, 0o700)
 }
 
 // ModuleDbPathAt is the Studio modules' database file, studio.db under the Space home, until the DB

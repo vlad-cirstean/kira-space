@@ -1,13 +1,13 @@
 {
   "ApiConfigService.View": {
-    "dir": "<space>/api",
+    "dir": "<space>/config/api",
     "files": [
       {
         "file": "orders-api.collection.yaml",
         "kind": "collection",
         "lastGood": true,
         "name": "Orders API",
-        "path": "<space>/api/orders-api.collection.yaml",
+        "path": "<space>/config/api/orders-api.collection.yaml",
         "problem": {
           "line": 13,
           "message": "The item ID list is used twice. Each item ID is unique in the file."

@@ -19,6 +19,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/tree"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 )
@@ -123,7 +124,7 @@ func NewApp(t *testing.T) *App {
 	var connectionsSvc *connections.Service
 	var maskRulesSvc *maskrules.Service
 	files, err := connfiles.New(connfiles.Options{
-		DB: db.DB, Dir: connfiles.Dir(os.Getenv("KIRA_SPACE_HOME")),
+		DB: db.DB, Dir: configfs.ModuleDir(os.Getenv("KIRA_SPACE_HOME"), connfiles.Folder),
 		Secrets: &connfiles.Secrets{Store: secrets.NewStore(db.DB, cipher), DB: db.DB},
 		NewID:   app.mintID,
 		OnChange: func(ch connfiles.Changes) {

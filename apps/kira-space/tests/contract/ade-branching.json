@@ -105,7 +105,7 @@
     "taskId": "<id:3>"
   },
   "AdeTaskService.Workflows": {
-    "dir": "<space>/workflows",
+    "dir": "<space>/config/workflows",
     "sandbox": {
       "enforced": false,
       "reason": "The sandbox is not enforced on this OS. It runs on macOS only. Claude permission rules still apply, but they do not stop shell commands."
@@ -123,13 +123,13 @@
       }
     ],
     "steps": [],
-    "stepsDir": "<space>/steps",
+    "stepsDir": "<space>/config/steps",
     "workflows": [
       {
         "error": null,
         "fileName": "flow.yaml",
         "hash": "04f2ad1705c7a92d9a12e6bf9fb4fe29acf6c18a808b2f317039435c4f204b24",
-        "path": "<space>/workflows/flow.yaml",
+        "path": "<space>/config/workflows/flow.yaml",
         "usedBy": 1,
         "workflow": {
           "id": "flow",

@@ -16,9 +16,6 @@ import (
 	"github.com/kirathecat/kira-studio/internal/configfs"
 )
 
-// StepsDir is the step library directory under the app home.
-func StepsDir(home string) string { return filepath.Join(home, "steps") }
-
 // StepsFolder is the library module folder name under <home>/config and its config_last_valid folder name.
 const StepsFolder = "steps"
 

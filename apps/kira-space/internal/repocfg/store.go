@@ -19,7 +19,7 @@ import (
 // Options builds a Store.
 type Options struct {
 	DB       *sql.DB  // config_last_valid and the legacy tables
-	Dir      string   // <home>/repos
+	Dir      string   // <home>/config/repos
 	GitHosts []string // registered Git host ids, listed in AGENTS.md
 	Now      func() time.Time
 }

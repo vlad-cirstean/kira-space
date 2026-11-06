@@ -7,7 +7,7 @@
     "hash": "09bc32833f8ae4b5055e57bcd2393ac1c00f453fed06904bd8f83e2fa017598a",
     "lastGood": false,
     "maxBytes": 262144,
-    "path": "<space>/agent/settings.yaml",
+    "path": "<space>/config/agent/settings.yaml",
     "problem": null,
     "providers": [
       {

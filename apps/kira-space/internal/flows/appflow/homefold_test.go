@@ -18,6 +18,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/homefold"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -115,8 +116,8 @@ func newFoldFixture(t *testing.T) *foldFixture {
 		`INSERT INTO script_runs (id, script_id, script_name, trigger_kind, state, created_at) VALUES ('run-dup', 'build', 'Space build', 'manual', 'done', 1)`,
 		`INSERT INTO settings (key, value) VALUES ('config.migrated.runs', '1')`,
 	)
-	mustWrite(t, filepath.Join(f.space, "runs", "build.yaml"), "id: build\nspace: true\n", 0o644)
-	mustWrite(t, filepath.Join(f.space, "llm-prompts.json"),
+	mustWrite(t, filepath.Join(f.config("runs"), "build.yaml"), "id: build\nspace: true\n", 0o644)
+	mustWrite(t, filepath.Join(f.config("prompts"), "llm-prompts.json"),
 		`{"version":1,"revision":7,"overrides":{"a.one":{"text":"space one"}}}`, 0o600)
 
 	f.opts = homefold.Options{
@@ -125,6 +126,8 @@ func newFoldFixture(t *testing.T) *foldFixture {
 	}
 	return f
 }
+
+func (f *foldFixture) config(module string) string { return configfs.ModuleDir(f.space, module) }
 
 // fold runs both stages like main does: Files, then Runs against the Studio database it landed.
 func (f *foldFixture) fold(t *testing.T) error {
@@ -400,7 +403,7 @@ func checkFolded(t *testing.T, f *foldFixture, legacyBefore string) {
 	}
 
 	for _, name := range []string{"connections/a.yaml", "api/c/x.yaml"} {
-		if !exists(filepath.Join(f.space, name)) {
+		if !exists(filepath.Join(f.space, "config", name)) {
 			t.Errorf("%s not landed", name)
 		}
 	}
@@ -446,12 +449,12 @@ func checkFolded(t *testing.T, f *foldFixture, legacyBefore string) {
 	}
 
 	for name, mode := range map[string]os.FileMode{"build-studio.yaml": 0o644, "deploy.yaml": 0o600, "legacy-cfg.yaml": 0o644, "build.yaml": 0o644} {
-		fi, err := os.Stat(filepath.Join(f.space, "runs", name))
+		fi, err := os.Stat(filepath.Join(f.config("runs"), name))
 		if err != nil || fi.Mode().Perm() != mode {
 			t.Errorf("runs/%s: %v %v, want mode %o", name, fi, err, mode)
 		}
 	}
-	if b, _ := os.ReadFile(filepath.Join(f.space, "runs", "build.yaml")); !strings.Contains(string(b), "space: true") {
+	if b, _ := os.ReadFile(filepath.Join(f.config("runs"), "build.yaml")); !strings.Contains(string(b), "space: true") {
 		t.Error("Space run file overwritten")
 	}
 	if got, err := os.Readlink(filepath.Join(f.space, "automations", "build-studio", "link")); err != nil || got != "work/secret.txt" {
@@ -461,7 +464,7 @@ func checkFolded(t *testing.T, f *foldFixture, legacyBefore string) {
 		t.Errorf("automation file mode: %v %v", fi, err)
 	}
 
-	raw, _ := os.ReadFile(filepath.Join(f.space, "llm-prompts.json"))
+	raw, _ := os.ReadFile(filepath.Join(f.config("prompts"), "llm-prompts.json"))
 	if s := string(raw); !strings.Contains(s, "space one") || strings.Contains(s, "studio one") || !strings.Contains(s, "studio two") {
 		t.Errorf("prompts = %s", s)
 	}

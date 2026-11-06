@@ -167,7 +167,7 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskSaveStepYaml, response: libraryStep() },
     { channel: IPC.adeTaskNewStep, response: libraryStep() },
     { channel: IPC.adeTaskDeleteStep },
-    { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/repos', files: [] } },
+    { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/config/repos', files: [] } },
     {
       channel: IPC.repoConfigFile,
       response: contract('repo-config-file', 'RepoConfigService.SaveFile'),

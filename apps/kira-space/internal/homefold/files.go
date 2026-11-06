@@ -12,8 +12,13 @@ import (
 	"syscall"
 
 	"github.com/google/renameio/v2"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
+	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/fsmove"
+	"github.com/kirathecat/kira-studio/internal/llmprompts"
+	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -79,7 +84,7 @@ func landFiles(o Options, m marker) error {
 		{"move", func() error { return moveLegacy(o, m.Legacy, src) }},
 		{"db", func() error { return landDB(o, src) }},
 		{"dirs", func() error {
-			for _, name := range []string{"connections", "api"} {
+			for _, name := range []string{connfiles.Folder, apifiles.Folder} {
 				if err := landDir(o, src, name); err != nil {
 					return err
 				}
@@ -116,8 +121,8 @@ func landFiles(o Options, m marker) error {
 
 // moveAside parks dev leftovers the fold would overwrite; real installs have none.
 func moveAside(o Options, backup string) error {
-	for _, name := range []string{"studio.db", "studio.db-wal", "studio.db-shm", "connections", "api"} {
-		p := filepath.Join(o.SpaceHome, name)
+	for _, name := range []string{"studio.db", "studio.db-wal", "studio.db-shm", connfiles.Folder, apifiles.Folder} {
+		p := parkedPath(o.SpaceHome, name)
 		if !fsmove.Exists(p) {
 			continue
 		}
@@ -193,12 +198,27 @@ func landDB(o Options, src string) error {
 	return os.Rename(tmp, dst)
 }
 
+// runsDir is the Space runs folder.
+func runsDir(home string) string { return configfs.ModuleDir(home, scripts.Folder) }
+
+// parkedPath is where a Space item the fold would overwrite lives: a config folder under <home>/config,
+// a database file at the home.
+func parkedPath(home, name string) string {
+	if name == connfiles.Folder || name == apifiles.Folder {
+		return configfs.ModuleDir(home, name)
+	}
+	return filepath.Join(home, name)
+}
+
 func landDir(o Options, src, name string) error {
 	from := filepath.Join(src, name)
 	if !fsmove.Exists(from) {
 		return nil
 	}
-	dst := filepath.Join(o.SpaceHome, name)
+	if err := os.MkdirAll(configfs.Root(o.SpaceHome), 0o700); err != nil {
+		return err
+	}
+	dst := configfs.ModuleDir(o.SpaceHome, name)
 	tmp := dst + ".p539tmp"
 	if err := os.RemoveAll(tmp); err != nil {
 		return err
@@ -258,7 +278,7 @@ func logLeftovers(src string) {
 
 // foldPrompts backs up the Space overrides file once, then adds Studio overrides Space lacks.
 func foldPrompts(o Options, backup, src string) error {
-	spacePath := filepath.Join(o.SpaceHome, "llm-prompts.json")
+	spacePath := filepath.Join(configfs.ModuleDir(o.SpaceHome, llmprompts.Folder), llmprompts.File)
 	bak := filepath.Join(backup, "space-llm-prompts.json")
 	if !fsmove.Exists(bak) && fsmove.Exists(spacePath) {
 		b, err := os.ReadFile(spacePath)
@@ -269,7 +289,10 @@ func foldPrompts(o Options, backup, src string) error {
 			return err
 		}
 	}
-	return mergePrompts(filepath.Join(src, "llm-prompts.json"), spacePath)
+	if err := os.MkdirAll(filepath.Dir(spacePath), 0o700); err != nil {
+		return err
+	}
+	return mergePrompts(filepath.Join(src, llmprompts.File), spacePath)
 }
 
 // mergePrompts copies Studio prompt overrides Space has not overridden. Records stay raw JSON so

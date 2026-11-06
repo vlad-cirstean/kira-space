@@ -80,7 +80,7 @@ func studioSmartScriptMCP(t *testing.T) {
 			t.Fatal(err)
 		}
 		fakeMCP := filepath.Join(app.BinDir, "fake-mcp")
-		dir := filepath.Join(app.SpaceHome, "agent")
+		dir := app.ConfigDir("agent")
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			t.Fatal(err)
 		}
