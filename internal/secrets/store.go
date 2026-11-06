@@ -3,20 +3,22 @@ package secrets
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
+
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
-// Execer is the write half of *sql.DB and *sql.Tx, so a caller seals values inside its own tx.
-type Execer interface {
-	Exec(query string, args ...any) (sql.Result, error)
-}
+// Execer is *sql.DB or *sql.Tx, so a caller seals values inside its own tx.
+type Execer = sqlb.Querier
 
 // Store is the only reader and writer of secret_values: sealed values keyed by scope, owner and
 // name. A scope's owner ids are the caller's own (scripts.id for ScopeScriptParam).
 type Store struct {
 	db *sql.DB
 	c  *Cipher
+	// Dialect builds the SQL; the zero value is SQLite.
+	Dialect sqlb.Dialect
 }
 
 func NewStore(db *sql.DB, c *Cipher) *Store { return &Store{db: db, c: c} }
@@ -29,9 +31,11 @@ func (s *Store) Put(q Execer, scope Scope, owner, name, plain string) error {
 	if err != nil {
 		return err
 	}
-	_, err = q.Exec(`INSERT INTO secret_values (scope, owner, name, value, updated_ms) VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT (scope, owner, name) DO UPDATE SET value = excluded.value, updated_ms = excluded.updated_ms`,
-		string(scope), owner, name, sealed, time.Now().UnixMilli())
+	c := kiraschema.SecretValues
+	ib := s.Dialect.InsertInto(c.Table).Cols(c.Scope, c.Owner, c.Name, c.Value, c.UpdatedMs).
+		Values(string(scope), owner, name, sealed, time.Now().UnixMilli())
+	sqlb.Upsert(ib, []string{c.Scope, c.Owner, c.Name}, []string{c.Value, c.UpdatedMs}, "")
+	_, err = sqlb.Exec(q, ib)
 	return err
 }
 
@@ -41,9 +45,11 @@ func (s *Store) PutNew(q Execer, scope Scope, owner, name, plain string) (bool, 
 	if err != nil {
 		return false, err
 	}
-	res, err := q.Exec(`INSERT INTO secret_values (scope, owner, name, value, updated_ms) VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT (scope, owner, name) DO NOTHING`,
-		string(scope), owner, name, sealed, time.Now().UnixMilli())
+	c := kiraschema.SecretValues
+	ib := s.Dialect.InsertInto(c.Table).Cols(c.Scope, c.Owner, c.Name, c.Value, c.UpdatedMs).
+		Values(string(scope), owner, name, sealed, time.Now().UnixMilli())
+	sqlb.UpsertNothing(ib, []string{c.Scope, c.Owner, c.Name})
+	res, err := sqlb.Exec(q, ib)
 	if err != nil {
 		return false, err
 	}
@@ -53,21 +59,23 @@ func (s *Store) PutNew(q Execer, scope Scope, owner, name, plain string) (bool, 
 
 // Prune deletes the owner's names not in keep; keep nil deletes them all.
 func (s *Store) Prune(q Execer, scope Scope, owner string, keep []string) error {
-	query := `DELETE FROM secret_values WHERE scope = ? AND owner = ?`
-	args := []any{string(scope), owner}
+	c := kiraschema.SecretValues
+	db := s.Dialect.DeleteFrom(c.Table)
+	conds := []string{db.Equal(c.Scope, string(scope)), db.Equal(c.Owner, owner)}
 	if len(keep) > 0 {
-		query += ` AND name NOT IN (?` + strings.Repeat(`, ?`, len(keep)-1) + `)`
-		for _, n := range keep {
-			args = append(args, n)
-		}
+		conds = append(conds, db.NotIn(c.Name, sqlb.Args(keep)...))
 	}
-	_, err := q.Exec(query, args...)
+	db.Where(conds...)
+	_, err := sqlb.Exec(q, db)
 	return err
 }
 
 // Names lists saved names per owner, for snapshots. No decrypt.
 func (s *Store) Names(scope Scope) (map[string][]string, error) {
-	rows, err := s.db.Query(`SELECT owner, name FROM secret_values WHERE scope = ? ORDER BY owner, name`, string(scope))
+	c := kiraschema.SecretValues
+	sb := s.Dialect.Select(c.Owner, c.Name).From(c.Table)
+	sb.Where(sb.Equal(c.Scope, string(scope))).OrderBy(c.Owner, c.Name)
+	rows, err := sqlb.Query(s.db, sb)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +93,10 @@ func (s *Store) Names(scope Scope) (map[string][]string, error) {
 
 // Open decrypts one owner's values; unreadable holds names whose value failed to decrypt.
 func (s *Store) Open(scope Scope, owner string) (vals map[string]string, unreadable map[string]error, err error) {
-	rows, err := s.db.Query(`SELECT name, value FROM secret_values WHERE scope = ? AND owner = ?`, string(scope), owner)
+	c := kiraschema.SecretValues
+	sb := s.Dialect.Select(c.Name, c.Value).From(c.Table)
+	sb.Where(sb.Equal(c.Scope, string(scope)), sb.Equal(c.Owner, owner))
+	rows, err := sqlb.Query(s.db, sb)
 	if err != nil {
 		return nil, nil, err
 	}

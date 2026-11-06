@@ -3,17 +3,24 @@ package configfs
 import (
 	"database/sql"
 	"fmt"
+
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // TableProjection is a Projection over the config_last_valid table of an app DB, one row per file of
 // a folder.
 type TableProjection struct {
-	DB     *sql.DB
-	Folder string
+	DB      *sql.DB
+	Folder  string
+	Dialect sqlb.Dialect
 }
 
 func (t TableProjection) Snapshot() (map[string]string, error) {
-	rows, err := t.DB.Query(`SELECT file, value_json FROM config_last_valid WHERE folder = ?`, t.Folder)
+	c := kiraschema.ConfigLastValid
+	sb := t.Dialect.Select(c.File, c.ValueJSON).From(c.Table)
+	sb.Where(sb.Equal(c.Folder, t.Folder))
+	rows, err := sqlb.Query(t.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("configfs: query last valid %s: %w", t.Folder, err)
 	}
@@ -33,16 +40,20 @@ func (t TableProjection) Snapshot() (map[string]string, error) {
 }
 
 func (t TableProjection) Record(file, valueJSON string, now int64) error {
-	if _, err := t.DB.Exec(`INSERT INTO config_last_valid (folder, file, value_json, recorded_at) VALUES (?, ?, ?, ?)
-		ON CONFLICT(folder, file) DO UPDATE SET value_json = excluded.value_json, recorded_at = excluded.recorded_at`,
-		t.Folder, file, valueJSON, now); err != nil {
+	c := kiraschema.ConfigLastValid
+	ib := t.Dialect.InsertInto(c.Table).Cols(c.Folder, c.File, c.ValueJSON, c.RecordedAt).Values(t.Folder, file, valueJSON, now)
+	sqlb.Upsert(ib, []string{c.Folder, c.File}, []string{c.ValueJSON, c.RecordedAt}, "")
+	if _, err := sqlb.Exec(t.DB, ib); err != nil {
 		return fmt.Errorf("configfs: record last valid %s/%s: %w", t.Folder, file, err)
 	}
 	return nil
 }
 
 func (t TableProjection) Forget(file string) error {
-	if _, err := t.DB.Exec(`DELETE FROM config_last_valid WHERE folder = ? AND file = ?`, t.Folder, file); err != nil {
+	c := kiraschema.ConfigLastValid
+	db := t.Dialect.DeleteFrom(c.Table)
+	db.Where(db.Equal(c.Folder, t.Folder), db.Equal(c.File, file))
+	if _, err := sqlb.Exec(t.DB, db); err != nil {
 		return fmt.Errorf("configfs: forget last valid %s/%s: %w", t.Folder, file, err)
 	}
 	return nil

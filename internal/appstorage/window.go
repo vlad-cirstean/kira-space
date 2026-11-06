@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // WindowBounds is a plain screen rectangle, shared by every window's stored geometry — field-for-
@@ -55,7 +58,8 @@ func (w WindowRecord) Validate() error {
 // Create/EnsureExists/SetBounds/GetMode/SetMode, and keeps its own List/Delete on top since those
 // touch app-specific model types this package deliberately stays clear of.
 type WindowRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
 // WindowModes is one app's own mode vocabulary — its default and every value Normalize below
@@ -83,7 +87,10 @@ func (m WindowModes) Normalize(mode string) string {
 // so this is the boot-time seam that carries `mode` to the frontend without a second round trip.
 func (r *WindowRepo) GetMode(key string, modes WindowModes) (string, error) {
 	var mode string
-	err := r.DB.QueryRow(`SELECT mode FROM windows WHERE key = ?`, key).Scan(&mode)
+	c := kiraschema.Windows
+	sb := r.Dialect.Select(c.Mode).From(c.Table)
+	sb.Where(sb.Equal(c.Key, key))
+	err := sqlb.QueryRow(r.DB, sb).Scan(&mode)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", fmt.Errorf("appstorage/windows: %s: no such window", key)
 	}
@@ -96,7 +103,10 @@ func (r *WindowRepo) GetMode(key string, modes WindowModes) (string, error) {
 // SetMode persists one window's app mode — written on shutdown/mode-debounce rather than on every
 // mode click (a mode switch itself schedules no write).
 func (r *WindowRepo) SetMode(key, mode string, modes WindowModes) error {
-	res, err := r.DB.Exec(`UPDATE windows SET mode = ? WHERE key = ?`, modes.Normalize(mode), key)
+	c := kiraschema.Windows
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.Mode, modes.Normalize(mode))).Where(ub.Equal(c.Key, key))
+	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		return fmt.Errorf("appstorage/windows: update mode %s: %w", key, err)
 	}
@@ -109,7 +119,10 @@ func (r *WindowRepo) SetMode(key, mode string, modes WindowModes) error {
 // Exists reports whether key names a live `windows` row.
 func (r *WindowRepo) Exists(key string) (bool, error) {
 	var one int
-	err := r.DB.QueryRow(`SELECT 1 FROM windows WHERE key = ?`, key).Scan(&one)
+	c := kiraschema.Windows
+	sb := r.Dialect.Select("1").From(c.Table)
+	sb.Where(sb.Equal(c.Key, key))
+	err := sqlb.QueryRow(r.DB, sb).Scan(&one)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
@@ -135,10 +148,9 @@ func (r *WindowRepo) Create(rec WindowRecord) error {
 		}
 		boundsJSON = string(encoded)
 	}
-	if _, err := r.DB.Exec(
-		`INSERT INTO windows (key, sort_order, bounds_json) VALUES (?, ?, ?)`,
-		rec.Key, rec.Order, boundsJSON,
-	); err != nil {
+	c := kiraschema.Windows
+	ib := r.Dialect.InsertInto(c.Table).Cols(c.Key, c.SortOrder, c.BoundsJSON).Values(rec.Key, rec.Order, boundsJSON)
+	if _, err := sqlb.Exec(r.DB, ib); err != nil {
 		return fmt.Errorf("appstorage/windows: insert %s: %w", rec.Key, err)
 	}
 	return nil
@@ -148,7 +160,9 @@ func (r *WindowRepo) Create(rec WindowRecord) error {
 // Kira Space's own WindowsRepo.List delegates here outright; Kira Studio's own List stays a
 // dedicated query so it can read its own extra `mode` column in the same round trip.
 func (r *WindowRepo) List() ([]WindowRecord, error) {
-	rows, err := r.DB.Query(`SELECT key, sort_order, bounds_json FROM windows ORDER BY sort_order ASC`)
+	c := kiraschema.Windows
+	sb := r.Dialect.Select(c.Key, c.SortOrder, c.BoundsJSON).From(c.Table).OrderBy(c.SortOrder + " ASC")
+	rows, err := sqlb.Query(r.DB, sb)
 	if err != nil {
 		return nil, fmt.Errorf("appstorage/windows: query: %w", err)
 	}
@@ -183,7 +197,10 @@ func (r *WindowRepo) List() ([]WindowRecord, error) {
 // statement (Studio's own row also cascades its tabs via `tabs.window_key ... ON DELETE CASCADE`,
 // a DB-level constraint this call triggers the same way regardless of which Go code issues it).
 func (r *WindowRepo) Delete(key string) error {
-	if _, err := r.DB.Exec(`DELETE FROM windows WHERE key = ?`, key); err != nil {
+	c := kiraschema.Windows
+	db := r.Dialect.DeleteFrom(c.Table)
+	db.Where(db.Equal(c.Key, key))
+	if _, err := sqlb.Exec(r.DB, db); err != nil {
 		return fmt.Errorf("appstorage/windows: delete %s: %w", key, err)
 	}
 	return nil
@@ -200,22 +217,26 @@ func (r *WindowRepo) EnsureExists(key string) error {
 	}
 	defer tx.Rollback() //nolint:errcheck
 
+	c := kiraschema.Windows
 	var exists bool
-	if err := tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM windows WHERE key = ?)`, key).Scan(&exists); err != nil {
+	probe := r.Dialect.Select("1").From(c.Table)
+	probe.Where(probe.Equal(c.Key, key))
+	check := r.Dialect.Select()
+	check.Select(check.Exists(probe))
+	if err := sqlb.QueryRow(tx, check).Scan(&exists); err != nil {
 		return fmt.Errorf("appstorage/windows: ensure exists %s: %w", key, err)
 	}
 	if !exists {
 		var maxOrder sql.NullInt64
-		if err := tx.QueryRow(`SELECT MAX(sort_order) FROM windows`).Scan(&maxOrder); err != nil {
+		if err := sqlb.QueryRow(tx, r.Dialect.Select("MAX("+c.SortOrder+")").From(c.Table)).Scan(&maxOrder); err != nil {
 			return fmt.Errorf("appstorage/windows: ensure max order: %w", err)
 		}
 		order := 0
 		if maxOrder.Valid {
 			order = int(maxOrder.Int64) + 1
 		}
-		if _, err := tx.Exec(
-			`INSERT INTO windows (key, sort_order, bounds_json) VALUES (?, ?, NULL)`, key, order,
-		); err != nil {
+		ib := r.Dialect.InsertInto(c.Table).Cols(c.Key, c.SortOrder, c.BoundsJSON).Values(key, order, nil)
+		if _, err := sqlb.Exec(tx, ib); err != nil {
 			return fmt.Errorf("appstorage/windows: ensure insert %s: %w", key, err)
 		}
 	}
@@ -231,7 +252,10 @@ func (r *WindowRepo) SetBounds(key string, b WindowBounds) error {
 	if err != nil {
 		return fmt.Errorf("appstorage/windows: encode bounds: %w", err)
 	}
-	res, err := r.DB.Exec(`UPDATE windows SET bounds_json = ? WHERE key = ?`, string(encoded), key)
+	c := kiraschema.Windows
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.BoundsJSON, string(encoded))).Where(ub.Equal(c.Key, key))
+	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		return fmt.Errorf("appstorage/windows: update %s: %w", key, err)
 	}
