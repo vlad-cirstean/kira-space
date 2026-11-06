@@ -9355,6 +9355,29 @@
           }
         }
       },
+      "panelForward": {
+        "discard": {
+          "tooltip": "Discard the pending changes"
+        },
+        "dropped": {
+          "body": "Too many changes. The oldest were dropped."
+        },
+        "failed": {
+          "body": "Not every agent got the changes ({sessions})."
+        },
+        "pending": {
+          "body": "{count} panel change not sent to the agents in {step}. | {count} panel changes not sent to the agents in {step}."
+        },
+        "preview": {
+          "label": "Show message"
+        },
+        "send": {
+          "label": "Send to {count} agent | Send to {count} agents"
+        },
+        "unreachable": {
+          "tooltip": "Background runs take no messages; take over a run to send"
+        }
+      },
       "plan": {
         "band": {
           "further": {

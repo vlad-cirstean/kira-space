@@ -718,6 +718,12 @@ const spaceControl = {
     unwrap(AdeTaskService.ForwardReviewComments(args)).then((r) =>
       trust<V2.ForwardReviewResult>(r),
     ),
+  adeTaskPanelForward: (args: V2.TaskArgs): Promise<V2.PanelForward> =>
+    unwrap(AdeTaskService.PanelForward(args)).then((r) => trust<V2.PanelForward>(r)),
+  adeTaskForwardPanelEdits: (args: V2.TaskArgs): Promise<V2.PanelForwardResult> =>
+    unwrap(AdeTaskService.ForwardPanelEdits(args)).then((r) => trust<V2.PanelForwardResult>(r)),
+  adeTaskDismissPanelEdits: (args: V2.TaskArgs): Promise<void> =>
+    unwrap(AdeTaskService.DismissPanelEdits(args)),
   adeTaskReviewForwardText: (args: V2.BranchArgs): Promise<V2.ReviewForwardText> =>
     unwrap(AdeTaskService.ReviewForwardText(args)).then((r) => trust<V2.ReviewForwardText>(r)),
   adeTaskArchiveRisk: (args: V2.TaskArgs): Promise<V2.ArchiveRisk> =>

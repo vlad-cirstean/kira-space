@@ -6,7 +6,13 @@ import type { MaybeRefOrGetter } from 'vue';
 import { toValue } from 'vue';
 import { control } from '../../bridge/control';
 import { withShelved } from './board/shelf';
-import { archivedTaskKey, boardKey, runSandboxKey, sessionsKey } from './readQueries';
+import {
+  archivedTaskKey,
+  boardKey,
+  panelForwardPrefix,
+  runSandboxKey,
+  sessionsKey,
+} from './readQueries';
 import type {
   AddExistingBranchArgs,
   AddLinkArgs,
@@ -29,6 +35,8 @@ import type {
   NewStepArgs,
   NewWorkflowArgs,
   OntoArgs,
+  PanelForward,
+  PanelForwardResult,
   RebaseArgs,
   RebasePreview,
   RebaseStart,
@@ -634,6 +642,29 @@ export function useForwardReviewComments() {
   return useMutation({
     mutationFn: (args: BranchArgs): Promise<ForwardReviewResult> =>
       control.adeTaskForwardReviewComments(args),
+  });
+}
+
+/** The task's pending panel edits and the agents that would take them; board and sessions pushes refetch it. */
+export function usePanelForward(taskId: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: [...panelForwardPrefix, taskId] as const,
+    queryFn: (): Promise<PanelForward> => control.adeTaskPanelForward({ taskId: toValue(taskId) }),
+  });
+}
+
+export function useForwardPanelEdits() {
+  return useMutation({
+    mutationFn: (args: TaskArgs): Promise<PanelForwardResult> =>
+      control.adeTaskForwardPanelEdits(args),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: panelForwardPrefix }),
+  });
+}
+
+export function useDismissPanelEdits() {
+  return useMutation({
+    mutationFn: (args: TaskArgs) => control.adeTaskDismissPanelEdits(args),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: panelForwardPrefix }),
   });
 }
 

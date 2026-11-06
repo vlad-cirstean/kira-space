@@ -13,6 +13,7 @@ export const workflowsKey = ['adetask', 'workflows'] as const;
 export const logKey = (kind: LogKind, id: string) => ['adetask', 'log', kind, id] as const;
 export const runSandboxKey = ['ade', 'runSandbox'] as const;
 export const sessionsKey = ['adetask', 'sessions'] as const;
+export const panelForwardPrefix = ['adetask', 'panelForward'] as const;
 export const repoNamesKey = ['adetask', 'repoNames'] as const;
 const archivedKey = ['adetask', 'archived'] as const;
 export const archivedTaskKey = (taskId: string) => [...archivedKey, taskId] as const;

@@ -897,6 +897,34 @@ export interface ReviewForwardText {
 export interface ForwardReviewResult {
   count: number;
 }
+export interface PanelForwardItem {
+  key: string;
+  kind: 'note' | 'handover' | 'link' | 'proof' | 'field';
+  label: string;
+  at: number;
+}
+export interface ForwardTarget {
+  sessionId: string;
+  badge: string;
+}
+export interface PanelForward {
+  stepId: string;
+  stepName: string;
+  items: PanelForwardItem[];
+  targets: ForwardTarget[];
+  unreachable: number /* running sessions that take no message */;
+  dropped: number;
+  preview: string;
+}
+export interface PanelForwardFailure {
+  sessionId: string;
+  error: string;
+}
+export interface PanelForwardResult {
+  sent: string[];
+  ended: string[];
+  failed: PanelForwardFailure[];
+}
 
 // ---- push payloads
 export interface RunsChangedEvent {

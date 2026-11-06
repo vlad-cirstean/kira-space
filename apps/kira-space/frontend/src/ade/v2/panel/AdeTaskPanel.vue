@@ -25,6 +25,7 @@ import { useSessionViews } from '../sessions/useSessionViews';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import AdeMainTab from './AdeMainTab.vue';
+import AdePanelForwardBar from './AdePanelForwardBar.vue';
 import AdePanelFrame from './AdePanelFrame.vue';
 
 // Task mode: header facts, then the Main, Details and Sessions tabs.
@@ -167,6 +168,7 @@ const facts = computed(() => {
         data-testid="ade-panel-action-error"
         ><AlertDescription>{{ ui.actionError[card.task.id] }}</AlertDescription></Alert
       >
+      <AdePanelForwardBar v-if="!card.review" :task-id="card.task.id" />
       <AdeAutomationsBlock :task-id="card.task.id" />
       <Alert v-if="card.review" variant="info" data-testid="ade-panel-review-note"
         ><AlertDescription>{{

@@ -4,6 +4,7 @@ import {
   boardKey,
   changeRequestsKey,
   logKey,
+  panelForwardPrefix,
   runSandboxKey,
   sessionsKey,
   workflowsKey,
@@ -27,12 +28,14 @@ export function installAdeReadSignals(queryClient: QueryClient, source: AdeSigna
   source.onBoard(() => {
     void queryClient.invalidateQueries({ queryKey: boardKey, exact: true });
     void queryClient.invalidateQueries({ queryKey: changeRequestsKey, exact: true });
+    void queryClient.invalidateQueries({ queryKey: panelForwardPrefix });
   });
   source.onWorkflows(() => {
     void queryClient.invalidateQueries({ queryKey: workflowsKey, exact: true });
   });
   source.onSessions(() => {
     void queryClient.invalidateQueries({ queryKey: sessionsKey, exact: true });
+    void queryClient.invalidateQueries({ queryKey: panelForwardPrefix });
     void queryClient.invalidateQueries({ queryKey: [...runSandboxKey, 'session'] });
   });
   source.onRuns((event) => {
