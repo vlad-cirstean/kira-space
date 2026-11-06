@@ -15,11 +15,14 @@ type TableParse struct {
 	Refs        []tableref.Ref // qualified by the text or the path
 	Unqualified []string       // postgres only: relation names search_path resolves
 	Funcs       []FuncRef      // calls whose origin the catalog decides
+	Ops         []string       // postgres only: unqualified operator names whose schema the catalog decides
 	Refusal     string         // non-empty: refused under a list (unparsable, CALL, SET, denied built-in, ...)
 }
 
 // NeedsProbe reports whether ResolveTables must run.
-func (p TableParse) NeedsProbe() bool { return len(p.Unqualified) > 0 || len(p.Funcs) > 0 }
+func (p TableParse) NeedsProbe() bool {
+	return len(p.Unqualified) > 0 || len(p.Funcs) > 0 || len(p.Ops) > 0
+}
 
 // TableReferencer names the tables a statement touches (P532). Kinds with tables implement it; redis, kafka,
 // s3 and sqs do not.

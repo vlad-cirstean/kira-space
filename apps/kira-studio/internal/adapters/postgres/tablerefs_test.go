@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -31,6 +32,9 @@ func TestPostgres_TableProbe(t *testing.T) {
 		`CREATE TABLE IF NOT EXISTS ` + qu + `.p532_pub (id int)`,
 		`CREATE TABLE IF NOT EXISTS app.p532_hidden (id int)`,
 		`CREATE OR REPLACE FUNCTION ` + qu + `.p532_fn() RETURNS int LANGUAGE sql AS 'SELECT 1'`,
+		`CREATE OR REPLACE FUNCTION ` + qu + `.format(int) RETURNS text LANGUAGE sql AS $$SELECT 'x'$$`,
+		`CREATE OR REPLACE FUNCTION ` + qu + `.p532_eq(int, int) RETURNS bool LANGUAGE sql AS 'SELECT true'`,
+		`CREATE OPERATOR ` + qu + `.=== (LEFTARG = int, RIGHTARG = int, FUNCTION = ` + qu + `.p532_eq)`,
 	} {
 		if _, err := side.Exec(context.Background(), stmt); err != nil {
 			t.Fatalf("setup %q: %v", stmt, err)
@@ -75,6 +79,20 @@ func TestPostgres_TableProbe(t *testing.T) {
 	}
 	if _, refusal := probe(`SELECT lower('A') FROM p532_pub`); refusal != "" {
 		t.Errorf("a built-in function was refused: %s", refusal)
+	}
+	// A user overload of a built-in name is refused, and the refusal names the way to the built-in.
+	if _, refusal := probe(`SELECT format('%s', 1) FROM p532_pub`); !strings.Contains(refusal, "function format") || !strings.Contains(refusal, "pg_catalog.format") {
+		t.Errorf("a user overload of format = %q; want a refusal pointing at pg_catalog.format", refusal)
+	}
+	if _, refusal := probe(`SELECT pg_catalog.format('%s', 1) FROM p532_pub`); refusal != "" {
+		t.Errorf("pg_catalog.format was refused: %s", refusal)
+	}
+	// A user operator runs its backing function, so it is refused; a built-in operator is not.
+	if _, refusal := probe(`SELECT 1 === 2`); refusal != "operator ===" {
+		t.Errorf("a user-defined operator = %q; want operator ===", refusal)
+	}
+	if _, refusal := probe(`SELECT 1 = 2 FROM p532_pub`); refusal != "" {
+		t.Errorf("a built-in operator was refused: %s", refusal)
 	}
 	// A function created after the first probe is still seen: no cached name list.
 	if _, err := side.Exec(context.Background(), `CREATE OR REPLACE FUNCTION `+qu+`.p532_late() RETURNS int LANGUAGE sql AS 'SELECT 2'`); err != nil {

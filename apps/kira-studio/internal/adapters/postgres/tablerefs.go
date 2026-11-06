@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/wasilibs/go-pgquery/parser"
@@ -56,6 +55,7 @@ type pgWalker struct {
 	refs    map[tableref.Ref]bool
 	unq     map[string]bool
 	funcs   map[adapters.FuncRef]bool
+	ops     map[string]bool
 	refusal string
 }
 
@@ -100,7 +100,7 @@ func parseTablesPostgres(sql, database string) adapters.TableParse {
 	if err := json.Unmarshal([]byte(js), &root); err != nil {
 		return adapters.TableParse{Refusal: "parse error: " + err.Error()}
 	}
-	w := &pgWalker{db: database, refs: map[tableref.Ref]bool{}, unq: map[string]bool{}, funcs: map[adapters.FuncRef]bool{}}
+	w := &pgWalker{db: database, refs: map[tableref.Ref]bool{}, unq: map[string]bool{}, funcs: map[adapters.FuncRef]bool{}, ops: map[string]bool{}}
 	for _, s := range root.Stmts {
 		w.statement(s.Stmt)
 	}
@@ -274,12 +274,9 @@ func (w *pgWalker) walkStruct(typ string, body map[string]any, sc scope) {
 	case "FuncCall":
 		w.funcCall(body)
 	case "A_Expr":
-		names := list(body["name"])
-		if len(names) > 1 {
-			if first, ok := node(names[0], "String"); !ok || str(first["sval"]) != "pg_catalog" {
-				w.refuse("qualified operator")
-			}
-		}
+		w.operator(list(body["name"]))
+	case "SubLink":
+		w.operator(list(body["operName"]))
 	case "CallStmt", "DoStmt":
 		w.refuse(typ)
 		return
@@ -324,6 +321,23 @@ func (w *pgWalker) withScope(wc map[string]any, sc scope) scope {
 		w.walk(cte["ctequery"], bodySc)
 	}
 	return all
+}
+
+// operator refuses a qualified operator outside pg_catalog and collects an unqualified name for the catalog
+// probe: a user operator in a search_path schema runs its backing function.
+func (w *pgWalker) operator(names []any) {
+	switch len(names) {
+	case 0:
+	case 1:
+		if s, ok := node(names[0], "String"); ok && !w.ops[str(s["sval"])] {
+			w.ops[str(s["sval"])] = true
+			w.out.Ops = append(w.out.Ops, str(s["sval"]))
+		}
+	default:
+		if first, ok := node(names[0], "String"); !ok || str(first["sval"]) != "pg_catalog" {
+			w.refuse("qualified operator")
+		}
+	}
 }
 
 func (w *pgWalker) funcCall(body map[string]any) {
@@ -397,21 +411,36 @@ func (a *Adapter) ResolveTables(ctx context.Context, p adapters.TableParse, path
 		for i, f := range p.Funcs {
 			names[i] = f.Name
 		}
-		rows, err := runArrayQuery(ctx, conn, `SELECT DISTINCT p.proname FROM pg_catalog.pg_proc p
+		// builtin: pg_catalog has a function of this name, which pg_catalog.<name> calls.
+		rows, err := runArrayQuery(ctx, conn, `SELECT p.proname, MIN(n.nspname),
+			pg_catalog.bool_or(EXISTS (SELECT 1 FROM pg_catalog.pg_proc b WHERE b.pronamespace = 'pg_catalog'::pg_catalog.regnamespace AND b.proname = p.proname))::text
+			FROM pg_catalog.pg_proc p
 			JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
-			WHERE n.nspname <> 'pg_catalog' AND p.proname = ANY($1::text[])`, []any{names}, op, track, QueryOptions{})
+			WHERE n.nspname <> 'pg_catalog' AND p.proname = ANY($1::text[])
+			GROUP BY p.proname ORDER BY p.proname LIMIT 1`, []any{names}, op, track, QueryOptions{})
 		if err != nil {
 			return nil, "", err
 		}
-		var user []string
-		for _, r := range rows {
-			if len(r) == 1 && r[0] != nil {
-				user = append(user, *r[0])
+		if len(rows) == 1 && len(rows[0]) == 3 && rows[0][0] != nil && rows[0][1] != nil {
+			msg := "function " + *rows[0][0]
+			if rows[0][2] != nil && *rows[0][2] == "true" {
+				msg += " (a function of this name also exists in schema " + *rows[0][1] + "; call pg_catalog." + *rows[0][0] + " to use the built-in)"
 			}
+			return nil, msg, nil
 		}
-		if len(user) > 0 {
-			sort.Strings(user)
-			return nil, "function " + user[0], nil
+	}
+	if len(p.Ops) > 0 {
+		// An extension's operators (citext, pg_trgm, ...) are installed by the server's owner and stay allowed.
+		rows, err := runArrayQuery(ctx, conn, `SELECT DISTINCT o.oprname FROM pg_catalog.pg_operator o
+			JOIN pg_catalog.pg_namespace n ON n.oid = o.oprnamespace
+			WHERE n.nspname <> 'pg_catalog' AND o.oprname = ANY($1::text[])
+			AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_depend d WHERE d.classid = 'pg_catalog.pg_operator'::pg_catalog.regclass AND d.objid = o.oid AND d.deptype = 'e')
+			ORDER BY o.oprname LIMIT 1`, []any{p.Ops}, op, track, QueryOptions{})
+		if err != nil {
+			return nil, "", err
+		}
+		if len(rows) == 1 && len(rows[0]) == 1 && rows[0][0] != nil {
+			return nil, "operator " + *rows[0][0], nil
 		}
 	}
 	return refs, "", nil

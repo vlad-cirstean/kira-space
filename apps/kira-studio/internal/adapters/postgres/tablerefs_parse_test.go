@@ -137,3 +137,11 @@ func sameFuncs(a []adapters.FuncRef, b []string) bool {
 	}
 	return sameStrings(names, b)
 }
+
+// Unqualified operators go to the catalog probe: a user operator runs its backing function.
+func TestParseTablesPostgresOperators(t *testing.T) {
+	got := parseTablesPostgres(`SELECT 1 === 2 FROM s.a WHERE x = ANY (SELECT y FROM s.b) AND z ~~ 'a%' AND w OPERATOR(pg_catalog.+) 1 > 0`, "shop")
+	if got.Refusal != "" || !sameStrings(got.Ops, []string{"===", "=", "~~", ">"}) {
+		t.Fatalf("refusal=%q ops=%v", got.Refusal, got.Ops)
+	}
+}
