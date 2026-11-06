@@ -16,27 +16,27 @@ See the presentation page: [Kira Space](https://vlad-cirstean.github.io/kira-stu
 
 ## Screenshots
 
-![Kira Space commit graph with branches, tags and the commit detail pane open.](screenshots/framed/space-git-graph.webp)
+![Kira Space commit graph with branches, tags and the commit detail pane open.](https://vlad-cirstean.github.io/kira-studio/shots/space-git-graph.webp)
 
 The git graph: branches, tags and commit detail.
 
-![Kira Space agents board with tasks across stages and live runs.](screenshots/framed/space-agents-board.webp)
+![Kira Space agents board with tasks across stages and live runs.](https://vlad-cirstean.github.io/kira-studio/shots/space-agents-board.webp)
 
 The agents board: tasks across stages, with runs live.
 
-![Kira Space memory list showing each fact with its origin and scope.](screenshots/framed/space-memory.webp)
+![Kira Space memory list showing each fact with its origin and scope.](https://vlad-cirstean.github.io/kira-studio/shots/space-memory.webp)
 
 Memory: every fact shows its origin and scope.
 
-![Kira Space data grid showing an orders table with one row selected.](screenshots/framed/studio-data-grid.webp)
+![Kira Space data grid showing an orders table with one row selected.](https://vlad-cirstean.github.io/kira-studio/shots/studio-data-grid.webp)
 
 The Studio module's data grid: filter, sort, edit and commit rows.
 
-![Kira Space SQL console with a join query and its result grid.](screenshots/framed/studio-sql-console.webp)
+![Kira Space SQL console with a join query and its result grid.](https://vlad-cirstean.github.io/kira-studio/shots/studio-sql-console.webp)
 
 The SQL console: run a statement or the whole script.
 
-![Kira Space Api module showing an HTTP request and its JSON response.](screenshots/framed/studio-api.webp)
+![Kira Space Api module showing an HTTP request and its JSON response.](https://vlad-cirstean.github.io/kira-studio/shots/studio-api.webp)
 
 The Api module: HTTP and gRPC requests with a JSON response.
 
@@ -264,10 +264,10 @@ bun run package   # build and ad-hoc sign the .app and .dmg
 Other scripts you'll use most:
 
 - `bun run setup` — install dependencies without building or running anything.
-- `bun run screenshots` — regenerate the images in `screenshots/` from the built frontend against
-  the mocked runtime. Run it by hand when the UI changes, never beside a UI test run (it rebuilds
-  `frontend/dist`). Run it a second time and `git diff --exit-code -- screenshots/` must pass:
-  the output is byte-identical.
+- `bun run screenshots` — generate the product images in `screenshots/` from the built frontend
+  against the mocked runtime, never beside a UI test run (it rebuilds `frontend/dist`). The images
+  are gitignored: the Pages workflow builds the published set, and you only need them to run
+  `bun run site:build` with real images. Two runs give byte-identical files.
 - `bun run site:dev` and `bun run site:check` — serve the presentation page from `site/`, and build
   it and check its layout at phone and desktop widths.
 - `bun run lint` and `bun run typecheck` — Biome plus the repo's style guards; TypeScript for every

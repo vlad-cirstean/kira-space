@@ -14,8 +14,9 @@
  * engine-host exemption, N11 a non-global `shortcut: '<id>'` in a `menu.ts` is bound in its feature
  * dir, N12 a `state/` dir holds 2+ files and menu builders live in `menu.ts`.
  *
- * N15 no tracked PNG under `screenshots/` or `site/` (product screenshots are WebP); Playwright
- * `toHaveScreenshot` baselines in `-snapshots` dirs under `site/tests` are PNG only and stay.
+ * N15 no tracked PNG under `screenshots/` or `site/` (product screenshots are WebP) and no tracked
+ * WebP under `screenshots/` (CI generates every product shot, P550); Playwright `toHaveScreenshot`
+ * baselines in `-snapshots` dirs under `site/tests` are PNG only and stay.
  *
  * No pending list: every hit fails. N6 also fails on any retired-code registry (`Legacy` in Go,
  * `LEGACY_ERROR_CODES` in TS).
@@ -485,18 +486,19 @@ function fileHits(path: string, dirs: Set<string>): Hit[] {
   return hits;
 }
 
-/** N15: product screenshots are WebP; a tracked PNG under `screenshots/` or `site/` fails. */
-function pngHits(tracked: readonly string[]): Hit[] {
+/** N15: product shots are generated WebP, never committed; a tracked PNG under `screenshots/` or `site/`, or WebP under `screenshots/`, fails. */
+function imageHits(tracked: readonly string[]): Hit[] {
   return tracked
-    .filter(
-      (path) =>
-        /^(?:screenshots|site)\//.test(path) &&
-        !/^site\/tests\/(?:.*\/)?[^/]*-snapshots\//.test(path),
+    .filter((path) =>
+      path.endsWith('.webp')
+        ? path.startsWith('screenshots/')
+        : /^(?:screenshots|site)\//.test(path) &&
+          !/^site\/tests\/(?:.*\/)?[^/]*-snapshots\//.test(path),
     )
     .map((path) => ({
       rule: 'N15' as const,
       path,
-      message: 'product screenshots are WebP; run bun run screenshots',
+      message: 'product screenshots are generated, not committed; run bun run screenshots',
     }));
 }
 
@@ -532,8 +534,10 @@ function collectHits(): Hit[] {
       readFileSync(join(REPO_ROOT, TS_IDS_PATH), 'utf8'),
     ),
   );
-  const listed = Bun.spawnSync(['git', 'ls-files', '-z', '--', '*.png'], { cwd: REPO_ROOT });
-  hits.push(...pngHits(new TextDecoder().decode(listed.stdout).split('\0').filter(Boolean)));
+  const listed = Bun.spawnSync(['git', 'ls-files', '-z', '--', '*.png', '*.webp'], {
+    cwd: REPO_ROOT,
+  });
+  hits.push(...imageHits(new TextDecoder().decode(listed.stdout).split('\0').filter(Boolean)));
   for (const { dir, baseline } of MIGRATION_SETS) {
     const files = new Map<string, string>();
     for (const name of readdirSync(join(REPO_ROOT, dir)).filter((n) => n.endsWith('.sql'))) {
