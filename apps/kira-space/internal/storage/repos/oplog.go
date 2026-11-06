@@ -45,9 +45,7 @@ func (r *OpLogRepo) Upsert(rec oplog.Record) error {
 
 // Recent returns up to limit rows, newest first.
 func (r *OpLogRepo) Recent(limit int) ([]oplog.Record, error) {
-	sb := r.Dialect.Select(opColumns...).From(kiraschema.OpLog.Table)
-	sb.OrderBy(kiraschema.OpLog.StartedMs+" DESC", kiraschema.OpLog.ID+" DESC").Limit(limit)
-	rows, err := sqlb.Query(r.DB, sb)
+	rows, err := sqlb.Query(r.DB, r.recentQuery(limit))
 	if err != nil {
 		return nil, fmt.Errorf("repos: list ops: %w", err)
 	}
@@ -61,6 +59,11 @@ func (r *OpLogRepo) Recent(limit int) ([]oplog.Record, error) {
 		out = append(out, rec)
 	}
 	return out, rows.Err()
+}
+
+func (r *OpLogRepo) recentQuery(limit int) *sqlbuilder.SelectBuilder {
+	sb := r.Dialect.Select(opColumns...).From(kiraschema.OpLog.Table)
+	return sb.OrderBy(kiraschema.OpLog.StartedMs+" DESC", kiraschema.OpLog.ID+" DESC").Limit(limit)
 }
 
 // opColumns is the column list scanOp reads, in scan order.
@@ -138,14 +141,18 @@ func (r *OpLogRepo) pruneAge(scope func(*sqlbuilder.Cond) string, cutoff time.Ti
 
 // pruneCount keeps the newest maxRows rows of scope.
 func (r *OpLogRepo) pruneCount(scope func(*sqlbuilder.Cond) string, maxRows int) error {
+	_, err := sqlb.Exec(r.DB, r.pruneCountQuery(scope, maxRows))
+	return err
+}
+
+func (r *OpLogRepo) pruneCountQuery(scope func(*sqlbuilder.Cond) string, maxRows int) *sqlbuilder.DeleteBuilder {
 	c := kiraschema.OpLog
 	old := r.Dialect.Select(c.ID).From(c.Table)
 	old.Where(scope(&old.Cond)).OrderBy(c.StartedMs+" DESC", c.ID+" DESC")
 	sqlb.OffsetOnly(r.Dialect, old, maxRows)
 	del := r.Dialect.DeleteFrom(c.Table)
 	del.Where(del.In(c.ID, old))
-	_, err := sqlb.Exec(r.DB, del)
-	return err
+	return del
 }
 
 // ReconcileInterrupted turns rows left running by a quit into errors carrying msg. Foreign rows

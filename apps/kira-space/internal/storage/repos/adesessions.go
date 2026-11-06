@@ -100,14 +100,17 @@ func (r *AdeSessionsRepo) CountRunningHeadless() (int, error) {
 
 // ListRunningTUI returns the task rows whose interactive terminal is open.
 func (r *AdeSessionsRepo) ListRunningTUI() ([]model.AdeSession, error) {
-	c := kiraschema.AdeSessions
-	sb := r.selectSessions()
-	sb.Where(sb.NotEqual(c.TaskID, ""), sb.Equal(c.Mode, model.AdeSessionModeTUI), sb.Equal(c.State, model.AdeSessionStateRunning))
-	rows, err := sqlb.Query(r.DB, sb)
+	rows, err := sqlb.Query(r.DB, r.runningTUIQuery())
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.AdeSession, bool, error) {
 		rec, err := scanAdeSessionRow(rows)
 		return rec, true, err
 	})
+}
+
+func (r *AdeSessionsRepo) runningTUIQuery() *sqlbuilder.SelectBuilder {
+	c := kiraschema.AdeSessions
+	sb := r.selectSessions()
+	return sb.Where(sb.NotEqual(c.TaskID, ""), sb.Equal(c.Mode, model.AdeSessionModeTUI), sb.Equal(c.State, model.AdeSessionStateRunning))
 }
 
 // ListRunning returns the task's running sessions of either mode, served by the task_id index.

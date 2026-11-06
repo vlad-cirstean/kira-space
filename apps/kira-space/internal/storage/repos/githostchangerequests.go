@@ -149,11 +149,7 @@ func (r *GitHostChangeRequestsRepo) NewestPerBranch(repoKey, headOwner string) (
 
 // ChangeRequestsForBranch returns one head branch's rows, newest first.
 func (r *GitHostChangeRequestsRepo) ChangeRequestsForBranch(repoKey, headOwner, headRef string) ([]model.GitHostChangeRequest, error) {
-	c := kiraschema.GitHostChangeRequests
-	sb := r.Dialect.Select(gitHostCRColumns...).From(c.Table)
-	sb.Where(sb.Equal(c.RepoKey, repoKey), sb.Equal(c.HeadOwner, headOwner), sb.Equal(c.HeadRef, headRef)).
-		OrderBy(c.UpdatedAt+" DESC", c.Number+" DESC")
-	rows, err := sqlb.Query(r.DB, sb)
+	rows, err := sqlb.Query(r.DB, r.byHeadQuery(repoKey, headOwner, headRef))
 	out, err := sqlitex.QueryAll(rows, err, scanGitHostCR)
 	if err != nil {
 		return nil, fmt.Errorf("repos: list change requests of %s %s: %w", repoKey, headRef, err)
@@ -161,17 +157,27 @@ func (r *GitHostChangeRequestsRepo) ChangeRequestsForBranch(repoKey, headOwner, 
 	return out, nil
 }
 
-// OpenChangeRequests returns every open row of the repository, any head owner.
-func (r *GitHostChangeRequestsRepo) OpenChangeRequests(repoKey string) ([]model.GitHostChangeRequest, error) {
+func (r *GitHostChangeRequestsRepo) byHeadQuery(repoKey, headOwner, headRef string) *sqlbuilder.SelectBuilder {
 	c := kiraschema.GitHostChangeRequests
 	sb := r.Dialect.Select(gitHostCRColumns...).From(c.Table)
-	sb.Where(sb.Equal(c.RepoKey, repoKey), sb.Equal(c.State, "open")).OrderBy(c.UpdatedAt+" DESC", c.Number+" DESC")
-	rows, err := sqlb.Query(r.DB, sb)
+	return sb.Where(sb.Equal(c.RepoKey, repoKey), sb.Equal(c.HeadOwner, headOwner), sb.Equal(c.HeadRef, headRef)).
+		OrderBy(c.UpdatedAt+" DESC", c.Number+" DESC")
+}
+
+// OpenChangeRequests returns every open row of the repository, any head owner.
+func (r *GitHostChangeRequestsRepo) OpenChangeRequests(repoKey string) ([]model.GitHostChangeRequest, error) {
+	rows, err := sqlb.Query(r.DB, r.openQuery(repoKey))
 	out, err := sqlitex.QueryAll(rows, err, scanGitHostCR)
 	if err != nil {
 		return nil, fmt.Errorf("repos: list open change requests of %s: %w", repoKey, err)
 	}
 	return out, nil
+}
+
+func (r *GitHostChangeRequestsRepo) openQuery(repoKey string) *sqlbuilder.SelectBuilder {
+	c := kiraschema.GitHostChangeRequests
+	sb := r.Dialect.Select(gitHostCRColumns...).From(c.Table)
+	return sb.Where(sb.Equal(c.RepoKey, repoKey), sb.Equal(c.State, "open")).OrderBy(c.UpdatedAt+" DESC", c.Number+" DESC")
 }
 
 // SyncState returns the repository's sync state; false when never synced.

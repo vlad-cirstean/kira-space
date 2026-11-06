@@ -109,10 +109,14 @@ func decodeStrict[T any](body string) (T, error) {
 }
 
 func (r *SavedQueriesRepo) listByKind(connectionID, path, kind string) ([]model.SavedQuery, error) {
+	return r.queryRows(r.listByKindQuery(connectionID, path, kind))
+}
+
+func (r *SavedQueriesRepo) listByKindQuery(connectionID, path, kind string) *sqlbuilder.SelectBuilder {
 	c := kiraschema.ConnectionSavedQueries
-	return r.queryRows(r.savedQueryList(connectionID, func(sb *sqlbuilder.SelectBuilder) []string {
+	return r.savedQueryList(connectionID, func(sb *sqlbuilder.SelectBuilder) []string {
 		return []string{sb.Equal(c.Path, path), sb.Equal(c.Kind, kind)}
-	}))
+	})
 }
 
 // ListDiscover lists a connection's discover queries regardless of path.

@@ -122,11 +122,15 @@ func (r *Repo) Get(id string) (Run, error) {
 	return run, nil
 }
 
+// ListQuery is List's statement; exported so the hot-plan test pins its plan.
+func (r *Repo) ListQuery(limit int) *sqlbuilder.SelectBuilder {
+	c := kiraschema.ScriptRuns
+	return r.Dialect.Select(columns...).From(c.Table).OrderBy(c.CreatedAt+" DESC", c.ID+" DESC").Limit(limit)
+}
+
 // List returns the newest runs first.
 func (r *Repo) List(limit int) ([]Run, error) {
-	c := kiraschema.ScriptRuns
-	sb := r.Dialect.Select(columns...).From(c.Table).OrderBy(c.CreatedAt+" DESC", c.ID+" DESC").Limit(limit)
-	rows, err := sqlb.Query(r.DB, sb)
+	rows, err := sqlb.Query(r.DB, r.ListQuery(limit))
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (Run, bool, error) {
 		run, err := scan(rows)
 		return run, true, err

@@ -1539,26 +1539,32 @@ func (r *AdeTaskRepo) Reviews() (map[string]model.AdeReview, error) {
 
 // ReviewRounds returns the task's review rounds, oldest first.
 func (r *AdeTaskRepo) ReviewRounds(taskID string) ([]model.AdeRun, error) {
-	c := kiraschema.AdeRuns
-	sb := r.selectRuns()
-	sb.Where(sb.Equal(c.TaskID, taskID), sb.Equal(c.Purpose, model.AdeRunPurposeReview)).OrderBy(c.Attempt, c.ID)
-	rows, err := sqlb.Query(r.DB, sb)
+	rows, err := sqlb.Query(r.DB, r.reviewRoundsQuery(taskID))
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.AdeRun, bool, error) {
 		run, err := scanAdeRun(rows)
 		return run, true, err
 	})
 }
 
-// PendingOnBranch lists the pending runs of a branch with the given purpose.
-func (r *AdeTaskRepo) PendingOnBranch(branchID, purpose string) ([]model.AdeRun, error) {
+func (r *AdeTaskRepo) reviewRoundsQuery(taskID string) *sqlbuilder.SelectBuilder {
 	c := kiraschema.AdeRuns
 	sb := r.selectRuns()
-	sb.Where(sb.Equal(c.BranchID, branchID), sb.Equal(c.Purpose, purpose), sb.Equal(c.State, model.AdeRunPending)).OrderBy(c.ID)
-	rows, err := sqlb.Query(r.DB, sb)
+	return sb.Where(sb.Equal(c.TaskID, taskID), sb.Equal(c.Purpose, model.AdeRunPurposeReview)).OrderBy(c.Attempt, c.ID)
+}
+
+// PendingOnBranch lists the pending runs of a branch with the given purpose.
+func (r *AdeTaskRepo) PendingOnBranch(branchID, purpose string) ([]model.AdeRun, error) {
+	rows, err := sqlb.Query(r.DB, r.pendingOnBranchQuery(branchID, purpose))
 	return sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (model.AdeRun, bool, error) {
 		run, err := scanAdeRun(rows)
 		return run, true, err
 	})
+}
+
+func (r *AdeTaskRepo) pendingOnBranchQuery(branchID, purpose string) *sqlbuilder.SelectBuilder {
+	c := kiraschema.AdeRuns
+	sb := r.selectRuns()
+	return sb.Where(sb.Equal(c.BranchID, branchID), sb.Equal(c.Purpose, purpose), sb.Equal(c.State, model.AdeRunPending)).OrderBy(c.ID)
 }
 
 // CountRunning counts runs in the running state.
