@@ -3200,7 +3200,7 @@ One queue and one dialog per app hold every pending agent approval. Tools stay s
 
 ### Audit trail (P547)
 
-- Every tool call of a session server (`kira-db-session`) lands in `ade_db_audit` (migration 0081), keyed by task and session. The external `kira-db` server and calls outside a step session are not recorded.
+- Every tool call of a session server (`kira-db-session`) lands in `ade_db_audit` (migration 0081, `call_id` index in 0082), keyed by task and session. The external `kira-db` server and calls outside a step session are not recorded.
 - Capture is code, not the agent: `mcpcall.Record(srv, s.auditHook)` in `buildMCPServer` when `Config.Audit` is set. `dbmcp.Auditor` is implemented by `dbaudit.Recorder`, wired in `appwire/dbmodule.go` and handed to the session pool through `DbMcpService.SessionAudit`.
 - A row holds tool, connection, start, duration, status (`running|ok|error|refused|cancelled`), an error code only, a masked statement and an allow-listed summary. Results, bound values and error text are never stored.
 - Statement masking is by allow list. `adapters.MaskSQLLiterals` (built on `lexSQLComments`/`scanQuote`) replaces literals with `'…'` and drops comments; an adapter implements `adapters.StatementRedactor` (`RedactStatement`) for its own dialect (Mongo keeps `db.<coll>.<method>(…)`, Redis `CMD …`). A hazard or an unterminated quote returns false and the row stores a length and the withheld flag instead. A connection not live at call start settles the statement after the call.
