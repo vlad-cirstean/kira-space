@@ -11,7 +11,7 @@ Sequencing: user asked 3 phases in parallel. Batch: P551 + P552 (schema) + P554,
 | P551 | Site expansion: content, pages and explanations with images | Pending |
 | P552 | Tighten SQLite types and constraints, reorganise schema | Done |
 | P553 | Go SQL query builder for the app's SQLite | Pending |
-| P554 | GitOps for config files: shared config repos | Pending |
+| P554 | GitOps for config files: shared config repos | Done |
 
 ## Rows
 
@@ -55,6 +55,9 @@ Sequencing: user asked 3 phases in parallel. Batch: P551 + P552 (schema) + P554,
 - Needs v0.3.0 P540 (landed). Independent of P552 and P553: config YAML is file-based, no DB dependency.
 - Decide in plan: repo layout and manifest of resources per module; local-vs-shared precedence and combine rules per module (agent configs combine; others override or exclusive); per-entry deactivate storage; fetch interval and auth (reuse existing git machinery, never touch CLI credentials; no secrets in the shared repo: connections and secrets stay local or are referenced); conflict handling when local edits diverge from shared; apply atomicity and rollback or backup (reuse the P540 backup approach); where the review window diff reuses existing diff components; multiple repos allowed or one; tests per the flow-test + UI-spec split rule (same scenario once on backend, once on frontend).
 - Plan: `plans/P554.md`.
+- Result: Done. New `internal/configsync`: pull-only sync of one shared git repo into `<home>/config/<module>/`, three-way merge per file and per entry, per-entry deactivate, gate (YAML parse, module validators, literal-credential scan), preview session, backup to `<home>/backups/configsync-<ts>/`, journal, rollback, boot `Recover`, prune to 10. Bridge `ConfigSyncService`, appwire wiring, toast, review window, Shared config settings pane. Flow test `configsyncflow` passes; UI spec `config-sync.spec.ts` written and typechecked, not run in this stream.
+- Deviations: only agent, steps and prompts have module validators (connections, api, runs, workflows get the generic gate; their decoders are unexported and shared files belong to Stream B). Combined-file base stored as `<file>.entries.json`. Deactivate control is a Checkbox (U28). No `configsync/wire.ts`; `CHANNEL.configSyncChanged` used.
+- Known open items: module validators for connections, api, runs, workflows (ARCHITECTURE Known open items).
 
 ## Close
 
