@@ -44,7 +44,7 @@ func TestDescribePod(t *testing.T) {
 	if strings.Contains(got.Manifest, "managedFields") || !strings.Contains(got.Manifest, "kind: Pod") {
 		t.Fatalf("manifest = %q", got.Manifest)
 	}
-	e.contract(t, "KubernetesService.Describe", got, flowharness.Omit("manifest"))
+	e.contract(t, "KubernetesService.Describe", got, studioflowharness.Omit("manifest"))
 }
 
 func TestDescribeSecretHidesValues(t *testing.T) {
@@ -60,7 +60,7 @@ func TestDescribeSecretHidesValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, leak := range []string{"hunter2-secret", flowharness.B64("hunter2-secret"), flowharness.B64("admin"), "admin\n"} {
+	for _, leak := range []string{"hunter2-secret", studioflowharness.B64("hunter2-secret"), studioflowharness.B64("admin"), "admin\n"} {
 		if strings.Contains(string(raw), leak) {
 			t.Errorf("result leaks %q", leak)
 		}

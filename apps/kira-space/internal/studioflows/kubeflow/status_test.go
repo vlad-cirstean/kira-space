@@ -35,7 +35,7 @@ func TestStatus(t *testing.T) {
 		if st.State != "unavailable" || st.Reason != "unauthorized" {
 			t.Fatalf("status = %+v", st)
 		}
-		e.contract(t, "KubernetesService.Status:unauthorized", st, flowharness.Mask("message"))
+		e.contract(t, "KubernetesService.Status:unauthorized", st, studioflowharness.Mask("message"))
 	})
 
 	t.Run("unreachable", func(t *testing.T) {
@@ -59,7 +59,7 @@ func TestStatus(t *testing.T) {
 		if st := e.status(t, "bad-token", true); st.Reason != "unauthorized" {
 			t.Fatalf("before rewrite: %+v", st)
 		}
-		writeFile(t, e.cfg, strings.Replace(string(raw), "wrong-token", flowharness.KubeGoodToken, 1))
+		writeFile(t, e.cfg, strings.Replace(string(raw), "wrong-token", studioflowharness.KubeGoodToken, 1))
 		if st := e.status(t, "bad-token", true); st.State != "ok" {
 			t.Fatalf("after rewrite: %+v", st)
 		}
@@ -68,7 +68,7 @@ func TestStatus(t *testing.T) {
 
 func TestStatusExecPlugin(t *testing.T) {
 	var bin string
-	e := boot(t, nil, flowharness.WithKubernetesOptions(kubernetes.WithEnv(func() kubernetes.Env {
+	e := boot(t, nil, studioflowharness.WithKubernetesOptions(kubernetes.WithEnv(func() kubernetes.Env {
 		return kubernetes.Env{Path: bin + ":/usr/bin:/bin", Kubeconfig: os.Getenv("KUBECONFIG")}
 	})))
 	bin = e.app.BinDir
@@ -84,7 +84,7 @@ func TestStatusExecPlugin(t *testing.T) {
 		if st.State != "unavailable" || st.Reason != "plugin" {
 			t.Fatalf("status = %+v", st)
 		}
-		e.contract(t, "KubernetesService.Status:plugin", st, flowharness.Mask("message"))
+		e.contract(t, "KubernetesService.Status:plugin", st, studioflowharness.Mask("message"))
 	})
 
 	t.Run("found-on-resolved-path", func(t *testing.T) {

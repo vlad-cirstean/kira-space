@@ -117,7 +117,7 @@ func TestLogsStream(t *testing.T) {
 	}
 
 	t.Run("100000 lines", func(t *testing.T) {
-		flowharness.Complete(t)
+		studioflowharness.Complete(t)
 		bulk := shellBox(d, "bulk", "seq 1 100000", nil)
 		mark := app.Events.Mark()
 		if err := svc.LogsOpen(docker.LogsOpenArgs{WindowKey: "w1", StreamID: "bulk", ContainerID: bulk, Tail: -1, Follow: true}); err != nil {
@@ -146,7 +146,7 @@ func TestExecSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.Contract(t, "docker-exec", "args:DockerService.ExecOpen", open, flowharness.Mask("containerId"))
+	app.Contract(t, "docker-exec", "args:DockerService.ExecOpen", open, studioflowharness.Mask("containerId"))
 	app.Contract(t, "docker-exec", "DockerService.ExecOpen", opened)
 	write(t, app, "x1", "echo $((6*7))\n")
 	answer := regexp.MustCompile(`(?m)^42\r?$`)
@@ -342,7 +342,7 @@ func TestQuitEndsStreams(t *testing.T) {
 		return exited
 	})
 
-	fresh := flowharness.New(t)
+	fresh := studioflowharness.New(t)
 	list, err := fresh.W.Docker.Containers(docker.ListArgs{All: true})
 	if err != nil {
 		t.Fatal(err)
@@ -353,7 +353,7 @@ func TestQuitEndsStreams(t *testing.T) {
 }
 
 func TestComposeGrouping(t *testing.T) {
-	flowharness.Complete(t)
+	studioflowharness.Complete(t)
 	app, d := boot(t)
 	if err := exec.Command("docker", "compose", "version").Run(); err != nil {
 		t.Skip("docker compose is not installed")

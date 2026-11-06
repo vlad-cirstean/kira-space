@@ -17,7 +17,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/tree"
 	"github.com/kirathecat/kira-studio/internal/ids"
@@ -98,9 +98,9 @@ func NewApp(t *testing.T) *App {
 	// here, and every fixture scenario needs a working cipher to store a connection's password.
 	t.Setenv("KIRA_INSECURE_SECRETS", "1")
 
-	db, err := storage.Open()
+	db, err := studiostorage.Open()
 	if err != nil {
-		t.Fatalf("ipcfixture: storage.Open: %v", err)
+		t.Fatalf("ipcfixture: studiostorage.Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
@@ -151,7 +151,7 @@ func NewApp(t *testing.T) *App {
 	maskKeysRepo := repos.NewMaskKeys(db.DB, cipher)
 	maskRulesSvc = maskrules.New(r.MaskRules, maskKeysRepo, files)
 
-	appDeps := appcore.Deps{
+	appDeps := appcore.StudioDeps{
 		DB: db.DB, Repos: r, Connections: connectionsSvc, ConnectionFiles: files, Tree: treeSvc, Router: router,
 		MaskRules: maskRulesSvc,
 	}

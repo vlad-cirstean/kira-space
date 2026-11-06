@@ -17,7 +17,7 @@ import (
 // Contract dbmcp-focus: tests/ui/dbmcp-focus.spec.ts drives the setting switch.
 func TestDbMcpApprovalFocus(t *testing.T) {
 	clock := fakeclock.New(time.Date(2030, 1, 7, 9, 0, 0, 0, time.UTC))
-	f := newFixture(t, flowharness.WithClock(clock))
+	f := newFixture(t, studioflowharness.WithClock(clock))
 	sink := notifysink.New()
 	f.app.W.Prompts.SetSink(sink)
 	f.app.W.Windows.Add("w1", 0, nil, func() {})
@@ -46,7 +46,7 @@ func TestDbMcpApprovalFocus(t *testing.T) {
 		t.Fatalf("raised %v, want [w1]", keys)
 	}
 	entry := f.dbmcpEntries(t, 1)[0]
-	f.app.Events.Wait(t, bridge.ChannelPromptsReveal, func(e flowharness.Event) bool {
+	f.app.Events.Wait(t, bridge.ChannelPromptsReveal, func(e studioflowharness.Event) bool {
 		var p struct{ ID string }
 		e.Decode(t, &p)
 		return e.Window == "w1" && p.ID == entry.ID

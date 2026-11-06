@@ -2,13 +2,13 @@ package bridge
 
 import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/logging"
 )
 
 type SettingsService struct {
-	Deps appcore.Deps
+	Deps appcore.StudioDeps
 }
 
 func (s *SettingsService) GetAll() (model.Settings, error) {

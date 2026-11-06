@@ -121,7 +121,7 @@ func TestDbMcpModeTightenOnly(t *testing.T) {
 		t.Fatalf("approval = %+v class %q, want declared write, detected read", pl, req.Item.Operation.Class)
 	}
 	// Contract dbmcp-approval-mode: tests/ui/dbmcp-approval-mode.spec.ts renders this item.
-	f.app.Contract(t, "dbmcp-approval-mode", "ApprovalsService.List", []any{req.Item}, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.Contract(t, "dbmcp-approval-mode", "ApprovalsService.List", []any{req.Item}, studioflowharness.Mask("createdAt", "expiresAt"), studioflowharness.Replace(f.dbPath, "/data/mcp.db"))
 	f.answerItems(t, false, req.Item.ID)
 	if res := <-done; res == nil || !res.IsError {
 		t.Fatalf("denied over-declared select = %+v, want a tool error", res)
@@ -296,8 +296,8 @@ func startPostgres(t *testing.T, pass, dbName string) (string, int) {
 
 // The database itself refuses a write hidden in a function under mode=read (SQLSTATE 25006).
 func TestDbMcpReadLanePostgres(t *testing.T) {
-	flowharness.Complete(t)
-	flowharness.RequireDocker(t)
+	studioflowharness.Complete(t)
+	studioflowharness.RequireDocker(t)
 	const pass, dbName = "flowpass", "flowdb"
 	host, port := startPostgres(t, pass, dbName)
 	f := newFixture(t)

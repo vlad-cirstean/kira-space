@@ -33,13 +33,13 @@ func (b bearer) RoundTrip(r *http.Request) (*http.Response, error) {
 
 // fixture is an app with the MCP server on and a connected client.
 type fixture struct {
-	app  *flowharness.App
+	app  *studioflowharness.App
 	sess *mcp.ClientSession
 }
 
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	st, err := app.W.DbMcp.SetEnabled(bridge.DbMcpSetEnabledArgs{Enabled: true})
 	if err != nil || !st.Running {
 		t.Fatalf("SetEnabled = %+v (%v), want running", st, err)
@@ -156,7 +156,7 @@ func keyValueStep(desc string) map[string]any {
 	}
 }
 
-func proofPrompts(t *testing.T, app *flowharness.App) []prompts.Routed {
+func proofPrompts(t *testing.T, app *studioflowharness.App) []prompts.Routed {
 	t.Helper()
 	all, err := app.W.PromptsSvc.List()
 	if err != nil {
@@ -171,7 +171,7 @@ func proofPrompts(t *testing.T, app *flowharness.App) []prompts.Routed {
 	return out
 }
 
-func reviewItems(t *testing.T, app *flowharness.App) []approvals.Item {
+func reviewItems(t *testing.T, app *studioflowharness.App) []approvals.Item {
 	t.Helper()
 	all, err := app.W.ApprovalsSvc.List()
 	if err != nil {
@@ -186,7 +186,7 @@ func reviewItems(t *testing.T, app *flowharness.App) []approvals.Item {
 	return out
 }
 
-func session(t *testing.T, app *flowharness.App, id string) proof.Detail {
+func session(t *testing.T, app *studioflowharness.App, id string) proof.Detail {
 	t.Helper()
 	d, err := app.W.Proof.Session(bridge.ProofSessionArgs{SessionID: id})
 	if err != nil {
@@ -195,7 +195,7 @@ func session(t *testing.T, app *flowharness.App, id string) proof.Detail {
 	return d
 }
 
-func sessionID(t *testing.T, app *flowharness.App, name string) string {
+func sessionID(t *testing.T, app *studioflowharness.App, name string) string {
 	t.Helper()
 	list, err := app.W.Proof.Sessions()
 	if err != nil {

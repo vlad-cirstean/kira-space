@@ -3,13 +3,13 @@ package bridge
 import (
 	"context"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/tree"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
 type TreeService struct {
-	Deps appcore.Deps
+	Deps appcore.StudioDeps
 }
 
 type TreeChildrenArgs struct {

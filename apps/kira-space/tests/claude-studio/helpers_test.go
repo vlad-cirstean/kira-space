@@ -26,7 +26,7 @@ const (
 )
 
 type realApp struct {
-	*flowharness.App
+	*studioflowharness.App
 	Claude string
 }
 
@@ -42,7 +42,7 @@ func newRealApp(t *testing.T) *realApp {
 	if parentSession == "" {
 		parentSession = os.Getenv("CLAUDE_CODE_REMOTE_SESSION_ID")
 	}
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	// Stop the agent session running this suite from leaking its identity into the child (the
 	// sandbox's remote session id does too: the child reuses it as its own session_id).
 	for _, k := range []string{"CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_REMOTE_SESSION_ID", "CLAUDECODE"} {

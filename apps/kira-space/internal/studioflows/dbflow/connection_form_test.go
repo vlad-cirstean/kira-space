@@ -16,12 +16,12 @@ import (
 // file as node edits (comments and key order stay), a YAML-side change re-decodes, a bad draft is a
 // problem with a line, and a typed password goes through the write-only secret call.
 func TestConnectionForm(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	const sc = "connection-form"
 	const typed = "typed-pw-9c1f"
 	cfg := app.W.ConnectionConfig
-	mask := flowharness.Mask("hash", "baseHash", "createdAt", "updatedAt")
-	paths := flowharness.Replace(app.KiraHome, "<home>")
+	mask := studioflowharness.Mask("hash", "baseHash", "createdAt", "updatedAt")
+	paths := studioflowharness.Replace(app.KiraHome, "<home>")
 
 	in := sqliteInput("Pg", "")
 	in.Kind, in.Database = "postgres", ptr("app")

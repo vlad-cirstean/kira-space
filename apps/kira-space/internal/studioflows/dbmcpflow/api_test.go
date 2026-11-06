@@ -90,7 +90,7 @@ func apiArgs(envID, method, url string, headers ...string) map[string]any {
 
 func (f *fixture) apiSetup(t *testing.T, hosts string, autoReads bool) (*servers.HTTPServer, *mcp.ClientSession, string) {
 	t.Helper()
-	srv := flowharness.HTTP(t)
+	srv := studioflowharness.HTTP(t)
 	f.base = srv.URL
 	envID := f.apiEnv(t, hosts, autoReads)
 	sess, err := f.connect(t, f.token(t))
@@ -134,7 +134,7 @@ func TestApiRequestApproved(t *testing.T) {
 		t.Fatalf("payload = %s, want the placeholder header and the token credential", it.Payload)
 	}
 	listJSON, _ := json.Marshal(f.list(t))
-	f.app.Contract(t, "approvals-api", "ApprovalsService.List", []approvals.Item{it}, flowharness.Mask("createdAt", "expiresAt", "cwd", "environment.id"), flowharness.Replace(srv.URL, "http://127.0.0.1:<port>"))
+	f.app.Contract(t, "approvals-api", "ApprovalsService.List", []approvals.Item{it}, studioflowharness.Mask("createdAt", "expiresAt", "cwd", "environment.id"), studioflowharness.Replace(srv.URL, "http://127.0.0.1:<port>"))
 	f.app.Contract(t, "approvals-api", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{it.ID}, Approve: true})
 
 	f.answer(t, true, req.RequestID)
@@ -392,7 +392,7 @@ func TestApiRequestBodies(t *testing.T) {
 		t.Helper()
 		pending := callToolAsync(sess, "api_request", args)
 		req := f.pending(t)
-		f.app.Contract(t, "approvals-api", "item#"+key, req.Item, flowharness.Mask("createdAt", "expiresAt", "cwd", "environment.id"), flowharness.Replace(srv.URL, "http://127.0.0.1:<port>"))
+		f.app.Contract(t, "approvals-api", "item#"+key, req.Item, studioflowharness.Mask("createdAt", "expiresAt", "cwd", "environment.id"), studioflowharness.Replace(srv.URL, "http://127.0.0.1:<port>"))
 		f.answer(t, false, req.RequestID)
 		if out := wait(t, pending); !out.IsError {
 			t.Fatalf("denied %s = %q, want an error", key, text(out))

@@ -35,7 +35,7 @@ func (f *fixture) recordOps() (get func() []opMark, stop func()) {
 	go func() {
 		defer close(done)
 		for e := range events {
-			if e.Topic != oplog.EventOpStart && e.Topic != oplog.EventOpEnd {
+			if e.Topic != studiooplog.EventOpStart && e.Topic != studiooplog.EventOpEnd {
 				continue
 			}
 			var p struct {
@@ -117,17 +117,17 @@ func TestThrottleSerialAcrossUserAndMcp(t *testing.T) {
 
 			userOp := ids.NewID()
 			userDone := f.userSlow(userOp)
-			testx.WaitUntil(t, 10*time.Second, func() bool { return indexOf(marks(), oplog.EventOpStart, userOp) >= 0 })
+			testx.WaitUntil(t, 10*time.Second, func() bool { return indexOf(marks(), studiooplog.EventOpStart, userOp) >= 0 })
 			if res := runQuery(t, sess, f.connID, "select 1"); res.IsError {
 				t.Fatalf("run_query = %q", text(res))
 			}
 			if err := <-userDone; err != nil {
 				t.Fatal(err)
 			}
-			testx.WaitUntil(t, 10*time.Second, func() bool { return indexOf(marks(), oplog.EventOpEnd, userOp) >= 0 })
+			testx.WaitUntil(t, 10*time.Second, func() bool { return indexOf(marks(), studiooplog.EventOpEnd, userOp) >= 0 })
 
 			got := marks()
-			mcpStart, userEnd := indexOf(got, oplog.EventOpStart, "mcp"), indexOf(got, oplog.EventOpEnd, userOp)
+			mcpStart, userEnd := indexOf(got, studiooplog.EventOpStart, "mcp"), indexOf(got, studiooplog.EventOpEnd, userOp)
 			if mcpStart < 0 || userEnd < 0 {
 				t.Fatalf("marks = %+v, want an mcp start and a user end", got)
 			}
@@ -137,7 +137,7 @@ func TestThrottleSerialAcrossUserAndMcp(t *testing.T) {
 			// The gate frees the slot before op:end is emitted, so event order can't prove serialization:
 			// compare the user op's own start + duration with the mcp op's start instead (3ms covers the
 			// three ms truncations).
-			userStart := got[indexOf(got, oplog.EventOpStart, userOp)].startedAt
+			userStart := got[indexOf(got, studiooplog.EventOpStart, userOp)].startedAt
 			userRanUntil := userStart.Add(time.Duration(got[userEnd].durationMs) * time.Millisecond)
 			if !tc.overlap && got[mcpStart].startedAt.Add(3*time.Millisecond).Before(userRanUntil) {
 				t.Errorf("throttled: mcp op started at %v, before the user op finished at %v: %+v", got[mcpStart].startedAt, userRanUntil, got)

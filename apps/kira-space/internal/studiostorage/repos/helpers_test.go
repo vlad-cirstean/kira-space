@@ -10,12 +10,12 @@ import (
 )
 
 // newRepos opens a real (tmpfile-backed) SQLite database through the real migrations — going
-// through storage.Open() rather than hand-restating the schema is what makes every migration
+// through studiostorage.Open() rather than hand-restating the schema is what makes every migration
 // covered on every test run (P52 §13).
-func newRepos(t *testing.T) *storage.DB {
+func newRepos(t *testing.T) *studiostorage.DB {
 	t.Helper()
 	t.Setenv("KIRA_HOME", t.TempDir())
-	db, err := storage.Open()
+	db, err := studiostorage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
 	}

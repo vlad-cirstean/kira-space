@@ -15,7 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
-func quitPrompts(app *flowharness.App) []prompts.Routed {
+func quitPrompts(app *studioflowharness.App) []prompts.Routed {
 	var out []prompts.Routed
 	for _, p := range app.W.Prompts.List() {
 		if p.Kind == prompts.KindQuit {
@@ -26,7 +26,7 @@ func quitPrompts(app *flowharness.App) []prompts.Routed {
 }
 
 func TestQuitConfirm(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	app.W.Windows.Add("main", 0, nil, func() {})
 	hold := filepath.Join(t.TempDir(), "hold")
 	app.Scenario(fakeagent.Scenario{Claude: map[string][]fakeagent.Action{"*": {{WaitFile: hold}, {Name: "done"}}}})

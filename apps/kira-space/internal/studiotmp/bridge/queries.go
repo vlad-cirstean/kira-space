@@ -6,7 +6,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -14,7 +14,7 @@ import (
 // over Deps.Repos.SavedQueries / Deps.Repos.FilterHistory with an explicit guard and an ipcerr
 // translation. Name-length validation is not repeated here — it already lives in
 // SavedQueriesRepo.insert/Update via model.ValidSavedQueryName.
-type QueriesService struct{ Deps appcore.Deps }
+type QueriesService struct{ Deps appcore.StudioDeps }
 
 // SavedQueriesChangedEvent is ChannelSavedQueriesChanged's payload: whose list changed and which
 // kind ("filter", "console" or "discover").

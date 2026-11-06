@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
@@ -17,7 +17,7 @@ import (
 // missing or removed, this test would panic on a nil pointer dereference rather than silently
 // pass.
 func TestConnectionsServiceRejectsBareID(t *testing.T) {
-	svc := &bridge.ConnectionsService{Deps: appcore.Deps{}}
+	svc := &bridge.ConnectionsService{Deps: appcore.StudioDeps{}}
 
 	assertContract := func(t *testing.T, err error) {
 		t.Helper()

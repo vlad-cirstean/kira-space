@@ -17,8 +17,8 @@ import (
 )
 
 func TestSavedRequestHistory(t *testing.T) {
-	app := flowharness.New(t)
-	srv := flowharness.HTTP(t)
+	app := studioflowharness.New(t)
+	srv := studioflowharness.HTTP(t)
 
 	mark := app.Events.Mark()
 	col := newCollection(t, app, "orders")
@@ -86,11 +86,11 @@ func TestSavedRequestHistory(t *testing.T) {
 }
 
 func TestVariablePrecedence(t *testing.T) {
-	app := flowharness.New(t)
-	srv := flowharness.HTTP(t)
-	col := app.SeedCollection(t, "scoped", flowharness.APIVar{Name: "who", Value: "from-collection", Secret: true})
-	dev := app.SeedEnvironment(t, "dev", flowharness.APIVar{Name: "who", Value: "from-dev", Secret: true})
-	prod := app.SeedEnvironment(t, "prod", flowharness.APIVar{Name: "who", Value: "from-prod", Secret: true})
+	app := studioflowharness.New(t)
+	srv := studioflowharness.HTTP(t)
+	col := app.SeedCollection(t, "scoped", studioflowharness.APIVar{Name: "who", Value: "from-collection", Secret: true})
+	dev := app.SeedEnvironment(t, "dev", studioflowharness.APIVar{Name: "who", Value: "from-dev", Secret: true})
+	prod := app.SeedEnvironment(t, "prod", studioflowharness.APIVar{Name: "who", Value: "from-prod", Secret: true})
 
 	sendWho := func(envID string) string {
 		t.Helper()
@@ -164,8 +164,8 @@ func TestVariablePrecedence(t *testing.T) {
 	})
 
 	t.Run("a plain value edited in the file keeps its history", func(t *testing.T) {
-		plain := app.SeedEnvironment(t, "plain", flowharness.APIVar{Name: "mode", Value: "one"})
-		app.SeedEnvironment(t, "plain", flowharness.APIVar{Name: "mode", Value: "two"})
+		plain := app.SeedEnvironment(t, "plain", studioflowharness.APIVar{Name: "mode", Value: "one"})
+		app.SeedEnvironment(t, "plain", studioflowharness.APIVar{Name: "mode", Value: "two"})
 		vars, err := app.W.Variables.List(bridge.VariablesScopeArgs{Scope: model.VariableScopeEnvironment, OwnerID: plain.ID})
 		if err != nil || len(vars) != 1 || vars[0].Value != "two" {
 			t.Fatalf("variables = %+v (%v), want mode=two", vars, err)
@@ -178,7 +178,7 @@ func TestVariablePrecedence(t *testing.T) {
 }
 
 // tree flattens a collection into comparable lines: folder path, kind, method, url and body.
-func tree(t *testing.T, app *flowharness.App, collectionID string) []string {
+func tree(t *testing.T, app *studioflowharness.App, collectionID string) []string {
 	t.Helper()
 	all, err := app.W.Collections.List()
 	if err != nil {
@@ -223,8 +223,8 @@ func mustHeaders(r model.SavedRequest) string {
 }
 
 func TestPostmanImportSendExport(t *testing.T) {
-	app := flowharness.New(t)
-	srv := flowharness.HTTP(t)
+	app := studioflowharness.New(t)
+	srv := studioflowharness.HTTP(t)
 
 	fixture, err := os.ReadFile(filepath.Join("testdata", "collection.json"))
 	if err != nil {
@@ -239,13 +239,13 @@ func TestPostmanImportSendExport(t *testing.T) {
 	// Contract api-postman, read by tests/ui/collections.spec.ts "Postman import builds the tree
 	// and export asks for a save path".
 	const sc = "api-postman"
-	pathOpts := []flowharness.ContractOption{flowharness.Replace(dir, "<tmp>"), flowharness.Replace(srv.URL, "<http>")}
+	pathOpts := []studioflowharness.ContractOption{studioflowharness.Replace(dir, "<tmp>"), studioflowharness.Replace(srv.URL, "<http>")}
 	app.Dialogs.QueueOpenFiles(imported)
 	chosen, err := app.W.Files.ChooseOpenMany(bridge.FilesChooseOpenArgs{})
 	if err != nil || len(chosen.Files) != 1 {
 		t.Fatalf("ChooseOpenMany = %+v (%v)", chosen, err)
 	}
-	app.Contract(t, sc, "FilesService.ChooseOpenMany", chosen, append(pathOpts, flowharness.Mask("size"))...)
+	app.Contract(t, sc, "FilesService.ChooseOpenMany", chosen, append(pathOpts, studioflowharness.Mask("size"))...)
 	importArgs := bridge.CollectionsImportArgs{Paths: []string{chosen.Files[0].Path}}
 	app.Contract(t, sc, "args:CollectionsService.Import", importArgs, pathOpts...)
 	res, err := app.W.Collections.Import(importArgs)
@@ -373,7 +373,7 @@ func headerOf(h model.SavedHeader) httpclient.Header {
 }
 
 func TestGrpcItemSaveAndRestart(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	cs := app.W.Collections
 	from := newCollection(t, app, "from")
 	folder, err := cs.CreateItem(bridge.CollectionsCreateItemArgs{CollectionID: from.ID, Kind: model.CollectionItemFolder, Name: "dir"})
@@ -441,7 +441,7 @@ func TestGrpcItemSaveAndRestart(t *testing.T) {
 }
 
 func TestPostmanImportCollectionAndEnvironment(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	dir := t.TempDir()
 	write := func(name, body string) string {
 		p := filepath.Join(dir, name)
@@ -462,13 +462,13 @@ func TestPostmanImportCollectionAndEnvironment(t *testing.T) {
 	// Contract api-postman-multi, read by tests/ui/collections.spec.ts "Postman import of a
 	// collection, an environment and a bad file".
 	const sc = "api-postman-multi"
-	pathOpts := []flowharness.ContractOption{flowharness.Replace(dir, "<tmp>")}
+	pathOpts := []studioflowharness.ContractOption{studioflowharness.Replace(dir, "<tmp>")}
 	app.Dialogs.QueueOpenFiles(collection, environment, bad, wrapped)
 	chosen, err := app.W.Files.ChooseOpenMany(bridge.FilesChooseOpenArgs{})
 	if err != nil || len(chosen.Files) != 4 {
 		t.Fatalf("ChooseOpenMany = %+v (%v)", chosen, err)
 	}
-	app.Contract(t, sc, "FilesService.ChooseOpenMany", chosen, append(pathOpts, flowharness.Mask("size"))...)
+	app.Contract(t, sc, "FilesService.ChooseOpenMany", chosen, append(pathOpts, studioflowharness.Mask("size"))...)
 	paths := make([]string, len(chosen.Files))
 	for i, f := range chosen.Files {
 		paths[i] = f.Path
@@ -546,7 +546,7 @@ func TestPostmanImportCollectionAndEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.Contract(t, sc, "VariablesService.List", vars, flowharness.Mask("ownerId", "sortOrder"))
+	app.Contract(t, sc, "VariablesService.List", vars, studioflowharness.Mask("ownerId", "sortOrder"))
 	got := map[string]model.Variable{}
 	for _, v := range vars {
 		got[v.Name] = v

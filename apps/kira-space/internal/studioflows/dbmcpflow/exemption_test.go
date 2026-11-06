@@ -52,7 +52,7 @@ func (fakeTimeLimit) Hit(_ dbmcp.LimitCall, err error, _ time.Duration) *dbmcp.L
 
 func newExemptionFixture(t *testing.T) (*fixture, *mcp.ClientSession) {
 	t.Helper()
-	f := newFixture(t, flowharness.WithDbMcpLimits(fakeRowsLimit{}, fakeTimeLimit{}))
+	f := newFixture(t, studioflowharness.WithDbMcpLimits(fakeRowsLimit{}, fakeTimeLimit{}))
 	sess, err := f.connect(t, f.token(t))
 	if err != nil {
 		t.Fatal(err)
@@ -146,7 +146,7 @@ func TestDbMcpExemptionApproved(t *testing.T) {
 		len(pl.Limits) != 1 || pl.Limits[0].Limit != "expensive_query" || pl.Limits[0].Measured != 5000 || pl.Limits[0].Max != 1000 || pl.Limits[0].Unit != "rows" {
 		t.Fatalf("payload = %+v", pl)
 	}
-	f.app.Contract(t, "approvals-exemption", "ApprovalsService.List", items, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.Contract(t, "approvals-exemption", "ApprovalsService.List", items, studioflowharness.Mask("createdAt", "expiresAt"), studioflowharness.Replace(f.dbPath, "/data/mcp.db"))
 	f.app.Contract(t, "approvals-exemption", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{items[0].ID}, Approve: true})
 
 	f.answerItems(t, true, items[0].ID)
@@ -285,7 +285,7 @@ func TestDbMcpExemptionUnion(t *testing.T) {
 	if len(pl.Limits) != 2 || pl.Limits[0].Limit != "expensive_query" || pl.Limits[1].Limit != "statement_timeout" {
 		t.Fatalf("union dialog = %+v", pl)
 	}
-	f.app.Contract(t, "approvals-exemption", "item#union", items[0], flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.Contract(t, "approvals-exemption", "item#union", items[0], studioflowharness.Mask("createdAt", "expiresAt"), studioflowharness.Replace(f.dbPath, "/data/mcp.db"))
 	f.answerItems(t, true, items[0].ID)
 	if res := wait(t, call); res.IsError || !strings.Contains(text(res), "one") {
 		t.Fatalf("fully exempt call = %q, want the rows", text(res))

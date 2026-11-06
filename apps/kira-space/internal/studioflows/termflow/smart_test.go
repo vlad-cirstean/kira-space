@@ -33,7 +33,7 @@ import (
 // settingsPath is the per-launch app settings file in a Continue in terminal command.
 var settingsPath = regexp.MustCompile(`'--settings' '[^']*'`)
 
-func newSmart(t *testing.T, app *flowharness.App, prompt string, mod func(*scripts.CustomScriptFields)) scripts.CustomScript {
+func newSmart(t *testing.T, app *studioflowharness.App, prompt string, mod func(*scripts.CustomScriptFields)) scripts.CustomScript {
 	t.Helper()
 	f := scripts.CustomScriptFields{Name: "ask", Kind: scripts.KindSmart, Command: prompt, Color: "blue"}
 	if mod != nil {
@@ -46,7 +46,7 @@ func newSmart(t *testing.T, app *flowharness.App, prompt string, mod func(*scrip
 	return rec
 }
 
-func previewOf(t *testing.T, app *flowharness.App, args scriptruns.RunArgs) scriptruns.Preview {
+func previewOf(t *testing.T, app *studioflowharness.App, args scriptruns.RunArgs) scriptruns.Preview {
 	t.Helper()
 	pv, err := app.W.ScriptRuns.Preview(args)
 	if err != nil {
@@ -60,7 +60,7 @@ func startArgs(args scriptruns.RunArgs, pv scriptruns.Preview) scriptruns.StartA
 }
 
 // startSmart previews, then starts, and returns the run id.
-func startSmart(t *testing.T, app *flowharness.App, args scriptruns.RunArgs) (string, scriptruns.Preview) {
+func startSmart(t *testing.T, app *studioflowharness.App, args scriptruns.RunArgs) (string, scriptruns.Preview) {
 	t.Helper()
 	pv := previewOf(t, app, args)
 	started, err := app.W.ScriptRuns.Start(startArgs(args, pv))
@@ -70,7 +70,7 @@ func startSmart(t *testing.T, app *flowharness.App, args scriptruns.RunArgs) (st
 	return started.RunID, pv
 }
 
-func waitSmart(t *testing.T, app *flowharness.App, id, state string) scriptruns.Run {
+func waitSmart(t *testing.T, app *studioflowharness.App, id, state string) scriptruns.Run {
 	t.Helper()
 	var r scriptruns.Run
 	testx.WaitUntil(t, wait, func() bool {
@@ -90,7 +90,7 @@ func errCode(err error) string {
 }
 
 // callFile reads a file the fake claude wrote for its n-th call from a script's folder.
-func callFile(t *testing.T, app *flowharness.App, n int, ext string) string {
+func callFile(t *testing.T, app *studioflowharness.App, n int, ext string) string {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join(app.FakeDir, fmt.Sprintf("automations-%d%s", n, ext)))
 	if err != nil {
@@ -99,7 +99,7 @@ func callFile(t *testing.T, app *flowharness.App, n int, ext string) string {
 	return string(raw)
 }
 
-func waitCall(t *testing.T, app *flowharness.App, n int) {
+func waitCall(t *testing.T, app *studioflowharness.App, n int) {
 	t.Helper()
 	testx.WaitUntil(t, wait, func() bool {
 		_, err := os.Stat(filepath.Join(app.FakeDir, fmt.Sprintf("automations-%d.args", n)))
@@ -113,7 +113,7 @@ func scenario(actions ...fakeagent.Action) fakeagent.Scenario {
 
 func TestSmartScript(t *testing.T) {
 	t.Run("save rules", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		rec := newSmart(t, app, "Look at {topic}", func(f *scripts.CustomScriptFields) {
 			f.Params = []scripts.Param{{Name: "topic", Type: scripts.ParamText}}
 		})
@@ -152,7 +152,7 @@ func TestSmartScript(t *testing.T) {
 	})
 
 	t.Run("preview", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		rec := newSmart(t, app, "Fix {topic} in {branch} using {level}", func(f *scripts.CustomScriptFields) {
 			f.Params = []scripts.Param{
 				{Name: "topic", Type: scripts.ParamText, Required: true},
@@ -202,7 +202,7 @@ func TestSmartScript(t *testing.T) {
 	})
 
 	t.Run("done run", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		gate := filepath.Join(t.TempDir(), "gate")
 		app.Scenario(scenario(fakeagent.Action{Name: "done", WaitFile: gate}))
 		rec := newSmart(t, app, "Say hi about {topic}", func(f *scripts.CustomScriptFields) {
@@ -214,8 +214,8 @@ func TestSmartScript(t *testing.T) {
 		// Contract smart: tests/ui/automations-smart.spec.ts "contract: a smart script runs to Succeeded
 		// ..." reads the same fixture.
 		app.Contract(t, "smart", "CustomScriptsService.Create", rec)
-		app.Contract(t, "smart", "ScriptRunsService.Preview", pv, flowharness.Mask("hash"))
-		app.Contract(t, "smart", "args:ScriptRunsService.Start", startArgs(args, pv), flowharness.Mask("hash"))
+		app.Contract(t, "smart", "ScriptRunsService.Preview", pv, studioflowharness.Mask("hash"))
+		app.Contract(t, "smart", "args:ScriptRunsService.Start", startArgs(args, pv), studioflowharness.Mask("hash"))
 
 		waitCall(t, app, 1)
 		running, err := app.W.ScriptRuns.Get(scriptruns.IDArgs{ID: id})
@@ -226,7 +226,7 @@ func TestSmartScript(t *testing.T) {
 			t.Fatal(err)
 		}
 		done := waitSmart(t, app, id, "done")
-		app.Contract(t, "smart", "ScriptRunsService.Get#done", done, flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "costUsd"))
+		app.Contract(t, "smart", "ScriptRunsService.Get#done", done, studioflowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "costUsd"))
 		o := done.Outcome
 		if o == nil || o.Status != "done" || !o.Reported || o.Source != "agent" || o.Summary != "summary-done" {
 			t.Fatalf("outcome = %+v", o)
@@ -270,7 +270,7 @@ func TestSmartScript(t *testing.T) {
 	})
 
 	t.Run("outcomes", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		dir := t.TempDir()
 		budget := filepath.Join(dir, "budget.jsonl")
 		denied := filepath.Join(dir, "denied.jsonl")
@@ -297,7 +297,7 @@ func TestSmartScript(t *testing.T) {
 		}
 		failed := run()
 		app.Contract(t, "smart", "CustomScriptsService.Create#failed", rec)
-		app.Contract(t, "smart", "ScriptRunsService.Get#failed", failed, flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "costUsd"))
+		app.Contract(t, "smart", "ScriptRunsService.Get#failed", failed, studioflowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "costUsd"))
 		launch, err := app.W.ScriptRuns.ResumeCommand(scriptruns.ResumeCommandArgs{RunID: failed.ID})
 		if err != nil {
 			t.Fatal(err)
@@ -305,7 +305,7 @@ func TestSmartScript(t *testing.T) {
 		if want := "claude --resume '" + failed.SessionID + "' '--setting-sources' 'project,local'"; !strings.HasPrefix(launch.Command, want+" '--settings' '") {
 			t.Fatalf("ResumeCommand = %q, want %q", launch.Command, want)
 		}
-		app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: settingsPath.ReplaceAllString(strings.Replace(launch.Command, failed.SessionID, "sess-1", 1), "'--settings' '<settings>'"), Token: launch.Token}, flowharness.Mask("token"))
+		app.Contract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: settingsPath.ReplaceAllString(strings.Replace(launch.Command, failed.SessionID, "sess-1", 1), "'--settings' '<settings>'"), Token: launch.Token}, studioflowharness.Mask("token"))
 		if o := failed.Outcome; o.Status != "failed" || o.Reason != "summary-failed" || !o.Reported || o.Source != "agent" {
 			t.Errorf("failed = %+v", o)
 		}
@@ -327,7 +327,7 @@ func TestSmartScript(t *testing.T) {
 	})
 
 	t.Run("timeout", func(t *testing.T) {
-		app := flowharness.New(t, flowharness.WithSmartTimeout(2*time.Second))
+		app := studioflowharness.New(t, studioflowharness.WithSmartTimeout(2*time.Second))
 		app.Scenario(scenario(fakeagent.Action{Name: "sleep"}))
 		rec := newSmart(t, app, "go", nil)
 		id, _ := startSmart(t, app, scriptruns.RunArgs{ScriptID: rec.ID})
@@ -338,7 +338,7 @@ func TestSmartScript(t *testing.T) {
 	})
 
 	t.Run("stop and quit", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		app.Scenario(scenario(fakeagent.Action{Name: "sleep"}))
 		rec := newSmart(t, app, "go", nil)
 		id, _ := startSmart(t, app, scriptruns.RunArgs{ScriptID: rec.ID})
@@ -364,7 +364,7 @@ func TestSmartScript(t *testing.T) {
 	})
 
 	t.Run("run cap", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		app.Scenario(scenario(fakeagent.Action{Name: "sleep"}))
 		var recs []scripts.CustomScript
 		for i := range 4 {
@@ -396,7 +396,7 @@ func TestSmartScript(t *testing.T) {
 	})
 
 	t.Run("one live run per script", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		app.Scenario(scenario(fakeagent.Action{Name: "sleep"}))
 		rec := newSmart(t, app, "go", nil)
 		args := scriptruns.RunArgs{ScriptID: rec.ID}
@@ -415,7 +415,7 @@ func TestSmartScript(t *testing.T) {
 	})
 
 	t.Run("hash and one-off prompt", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		rec := newSmart(t, app, "original {topic}", func(f *scripts.CustomScriptFields) {
 			f.Params = []scripts.Param{{Name: "topic", Type: scripts.ParamText}}
 		})
@@ -452,7 +452,7 @@ func TestSmartScript(t *testing.T) {
 	})
 
 	t.Run("injection", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		rec := newSmart(t, app, "Value: {topic}", func(f *scripts.CustomScriptFields) {
 			f.Params = []scripts.Param{{Name: "topic", Type: scripts.ParamText}}
 		})
@@ -494,7 +494,7 @@ func TestSmartScript(t *testing.T) {
 	})
 
 	t.Run("secret param", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		rec := newSmart(t, app, "Use the key", func(f *scripts.CustomScriptFields) {
 			f.Params = []scripts.Param{{Name: "key", Type: scripts.ParamText, Secret: true}}
 		})
@@ -528,7 +528,7 @@ func TestSmartScript(t *testing.T) {
 	})
 
 	t.Run("normal script with params", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		rec := newScript(t, app, scripts.CustomScriptFields{
 			Command: `echo "got=$KIRA_PARAM_WHO"; read x`,
 			Params:  []scripts.Param{{Name: "who", Type: scripts.ParamText}},
@@ -586,7 +586,7 @@ func TestSmartScript(t *testing.T) {
 	t.Run("user mcp servers", func(t *testing.T) {
 		restore := claude.SetMCPListTTL(0)
 		t.Cleanup(restore)
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		app.SetHermetic(t, false) // ticks servers of the CLI's own config
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
@@ -712,7 +712,7 @@ func TestSmartScript(t *testing.T) {
 }
 
 func TestStudioRefusesTaskContext(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	rec := newSmart(t, app, "hi", nil)
 	_, err := app.W.ScriptRuns.Preview(scriptruns.RunArgs{ScriptID: rec.ID, TaskID: "t1"})
 	if errCode(err) != "E_BAD_REQUEST" || !strings.Contains(err.Error(), "Tasks exist only in Kira Space") {

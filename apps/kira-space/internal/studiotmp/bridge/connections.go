@@ -3,12 +3,12 @@ package bridge
 import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
 type ConnectionsService struct {
-	Deps appcore.Deps
+	Deps appcore.StudioDeps
 }
 
 func (s *ConnectionsService) List() ([]model.ConnectionSummary, error) {

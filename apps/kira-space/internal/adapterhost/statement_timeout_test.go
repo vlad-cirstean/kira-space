@@ -12,12 +12,12 @@ import (
 )
 
 // opEndStatus drains events until the op:end for the single op under test.
-func opEndStatus(t *testing.T, events <-chan oplog.Event) opEndPayload {
+func opEndStatus(t *testing.T, events <-chan studiooplog.Event) opEndPayload {
 	t.Helper()
 	for {
 		select {
 		case e := <-events:
-			if e.Topic != oplog.EventOpEnd {
+			if e.Topic != studiooplog.EventOpEnd {
 				continue
 			}
 			var p opEndPayload

@@ -23,7 +23,7 @@ import (
 // browse, saved queries, history, filters, masking, duplicate/reorder/update, restart.
 type journey struct {
 	t         *testing.T
-	app       *flowharness.App
+	app       *studioflowharness.App
 	input     connections.Input
 	table     string // table name as the tree shows it
 	readSQL   string // returns rows from the table
@@ -346,7 +346,7 @@ func (j *journey) snapshot(connID string) persisted {
 }
 
 func TestSQLiteJourney(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	path := newSQLiteFile(t)
 	bad := sqliteInput("missing", path+".missing")
 	j := &journey{t: t, app: app, input: sqliteInput("fixture", path), table: "users", readSQL: "select id, name, email from users order by id", rows: 3, bad: &bad}
@@ -354,7 +354,7 @@ func TestSQLiteJourney(t *testing.T) {
 }
 
 func TestSecretsStatusAndReveal(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	status, err := app.W.Connections.SecretsStatus()
 	if err != nil || !status.Available || !status.InsecureFallback || status.Backend != "basic_text" {
 		t.Fatalf("SecretsStatus = %+v (%v), want the insecure basic_text fallback", status, err)
@@ -416,7 +416,7 @@ func TestSecretsStatusAndReveal(t *testing.T) {
 }
 
 func TestSchemaDDLSetGet(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	conn, err := app.W.Connections.Create(connections.Input{ConnectionFields: model.ConnectionFields{
 		Name: "ddl", Kind: "sqlite", Color: "teal", Mode: "fields", Database: ptr(filepath.Join(t.TempDir(), "d.db")), Options: map[string]any{},
 		McpReadMode: "allow", McpWriteMode: "prompt", McpDdlMode: "deny",

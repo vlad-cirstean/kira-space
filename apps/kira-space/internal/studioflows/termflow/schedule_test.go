@@ -19,10 +19,10 @@ import (
 // A Monday, 30 s before 09:00 UTC.
 var scheduleStart = time.Date(2030, 1, 7, 8, 59, 30, 0, time.UTC)
 
-func clockApp(t *testing.T, opts ...flowharness.Opt) (*flowharness.App, *fakeclock.Clock) {
+func clockApp(t *testing.T, opts ...flowharness.Opt) (*studioflowharness.App, *fakeclock.Clock) {
 	t.Helper()
 	clock := fakeclock.New(scheduleStart)
-	return flowharness.New(t, append(opts, flowharness.WithClock(clock))...), clock
+	return studioflowharness.New(t, append(opts, studioflowharness.WithClock(clock))...), clock
 }
 
 // advance waits for the scheduler loop to be asleep on its timer, then moves the clock.
@@ -42,7 +42,7 @@ func rearmed(t *testing.T, clock *fakeclock.Clock) {
 	}
 }
 
-func recurring(t *testing.T, app *flowharness.App, cron string, mod func(*scripts.CustomScriptFields)) scripts.CustomScript {
+func recurring(t *testing.T, app *studioflowharness.App, cron string, mod func(*scripts.CustomScriptFields)) scripts.CustomScript {
 	t.Helper()
 	f := scripts.CustomScriptFields{
 		Name: "tick", Kind: scripts.KindScript, Command: "echo hi", Color: "blue",
@@ -58,7 +58,7 @@ func recurring(t *testing.T, app *flowharness.App, cron string, mod func(*script
 	return rec
 }
 
-func update(t *testing.T, app *flowharness.App, rec scripts.CustomScript, mod func(*scripts.CustomScriptFields)) scripts.CustomScript {
+func update(t *testing.T, app *studioflowharness.App, rec scripts.CustomScript, mod func(*scripts.CustomScriptFields)) scripts.CustomScript {
 	t.Helper()
 	f := scripts.CustomScriptFields{
 		Name: rec.Name, Kind: rec.Kind, Command: rec.Command, Params: rec.Params, Smart: rec.Smart,
@@ -68,7 +68,7 @@ func update(t *testing.T, app *flowharness.App, rec scripts.CustomScript, mod fu
 	return scriptstest.Update(t, app.W.CustomScripts, rec.ID, f)
 }
 
-func scheduledRuns(t *testing.T, app *flowharness.App, scriptID string) []scriptruns.Run {
+func scheduledRuns(t *testing.T, app *studioflowharness.App, scriptID string) []scriptruns.Run {
 	t.Helper()
 	all, err := app.W.ScriptRuns.List(scriptruns.ListArgs{Limit: 200})
 	if err != nil {
@@ -84,7 +84,7 @@ func scheduledRuns(t *testing.T, app *flowharness.App, scriptID string) []script
 }
 
 // waitRun waits for the oldest scheduled run of a script in state, counting from the n-th (0-based, oldest first).
-func waitSched(t *testing.T, app *flowharness.App, scriptID string, n int, state string) scriptruns.Run {
+func waitSched(t *testing.T, app *studioflowharness.App, scriptID string, n int, state string) scriptruns.Run {
 	t.Helper()
 	var got scriptruns.Run
 	testx.WaitUntil(t, wait, func() bool {
@@ -98,7 +98,7 @@ func waitSched(t *testing.T, app *flowharness.App, scriptID string, n int, state
 	return got
 }
 
-func logText(t *testing.T, app *flowharness.App, runID string) string {
+func logText(t *testing.T, app *studioflowharness.App, runID string) string {
 	t.Helper()
 	page, err := app.W.ScriptRuns.ReadLog(scriptruns.ReadLogArgs{ID: runID})
 	if err != nil {
@@ -119,7 +119,7 @@ func reasonOf(r scriptruns.Run) string {
 }
 
 func TestScheduleValidation(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	for _, c := range []struct {
 		name, want string
 		mod        func(*scripts.CustomScriptFields)
@@ -187,7 +187,7 @@ func TestScheduleHeadless(t *testing.T) {
 	})
 
 	t.Run("timeout", func(t *testing.T) {
-		app, clock := clockApp(t, flowharness.WithScheduleTimeout(2*time.Second))
+		app, clock := clockApp(t, studioflowharness.WithScheduleTimeout(2*time.Second))
 		rec := recurring(t, app, "* * * * *", func(f *scripts.CustomScriptFields) { f.Command = "sleep 30" })
 		advance(t, clock, 30*time.Second)
 		if r := waitSched(t, app, rec.ID, 0, "failed"); reasonOf(r) != "timed out after 2s" {
@@ -221,7 +221,7 @@ func TestScheduleOverlap(t *testing.T) {
 		if !strings.Contains(reasonOf(skipped), "the previous run is still running (started 09:00)") || skipped.Outcome.Source != "schedule" {
 			t.Fatalf("skipped = %+v", skipped.Outcome)
 		}
-		app.Contract(t, "schedule-overlap", "ScriptRunsService.Get#skipped", skipped, flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "sessionId"))
+		app.Contract(t, "schedule-overlap", "ScriptRunsService.Get#skipped", skipped, studioflowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "sessionId"))
 		if err := app.W.ScriptRuns.Stop(scriptruns.IDArgs{ID: first.ID}); err != nil {
 			t.Fatal(err)
 		}
@@ -264,7 +264,7 @@ func TestScheduleConfirm(t *testing.T) {
 	app.Contract(t, sc, "CustomScriptsService.Create", rec)
 	advance(t, clock, 30*time.Second)
 	waiting := waitSched(t, app, rec.ID, 0, "waiting")
-	app.Contract(t, sc, "ScriptRunsService.Get#waiting", waiting, flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash"))
+	app.Contract(t, sc, "ScriptRunsService.Get#waiting", waiting, studioflowharness.Mask("createdAt", "startedAt", "finishedAt", "hash"))
 	if waiting.TerminalID != "" || waiting.StartedAt != nil || waiting.Outcome != nil {
 		t.Fatalf("waiting = %+v", waiting)
 	}
@@ -275,7 +275,7 @@ func TestScheduleConfirm(t *testing.T) {
 	if pv.Dir.Path != waiting.Cwd || pv.Command != waiting.Command || pv.Command != "echo hello" {
 		t.Fatalf("preview dir %q command %q, waiting cwd %q command %q", pv.Dir.Path, pv.Command, waiting.Cwd, waiting.Command)
 	}
-	app.Contract(t, sc, "ScriptRunsService.SchedulePreview", pv, flowharness.Mask("hash"))
+	app.Contract(t, sc, "ScriptRunsService.SchedulePreview", pv, studioflowharness.Mask("hash"))
 
 	rearmed(t, clock)
 	advance(t, clock, time.Minute)
@@ -284,7 +284,7 @@ func TestScheduleConfirm(t *testing.T) {
 	}
 
 	accept := scriptruns.ConfirmArgs{RunID: waiting.ID, Hash: pv.Hash}
-	app.Contract(t, sc, "args:ScriptRunsService.ConfirmAccept", accept, flowharness.Mask("hash"))
+	app.Contract(t, sc, "args:ScriptRunsService.ConfirmAccept", accept, studioflowharness.Mask("hash"))
 	started, err := app.W.ScriptRuns.ConfirmAccept(accept)
 	if err != nil || started.RunID != waiting.ID {
 		t.Fatalf("ConfirmAccept = %+v, %v", started, err)
@@ -293,7 +293,7 @@ func TestScheduleConfirm(t *testing.T) {
 	if r := waitSmart(t, app, waiting.ID, "done"); r.Trigger != scriptruns.TriggerScheduled || !strings.Contains(logText(t, app, r.ID), "hello") {
 		t.Fatalf("accepted run = %+v", r)
 	} else {
-		app.Contract(t, sc, "ScriptRunsService.Get#done", r, flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash"))
+		app.Contract(t, sc, "ScriptRunsService.Get#done", r, studioflowharness.Mask("createdAt", "startedAt", "finishedAt", "hash"))
 		page, err := app.W.ScriptRuns.ReadLog(scriptruns.ReadLogArgs{ID: r.ID})
 		if err != nil {
 			t.Fatal(err)
@@ -389,7 +389,7 @@ func TestScheduleRestart(t *testing.T) {
 }
 
 func TestRunScheduleNow(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	rec := recurring(t, app, "0 9 * * *", func(f *scripts.CustomScriptFields) {
 		f.Command = "sleep 30"
 		f.Schedule.Enabled = false
@@ -402,15 +402,15 @@ func TestRunScheduleNow(t *testing.T) {
 	// Contract schedule-now, read by tests/ui/automations-recurring.spec.ts "contract: Run now starts
 	// the schedule run at once".
 	app.Contract(t, "schedule-now", "CustomScriptsService.Create", rec)
-	app.Contract(t, "schedule-now", "ScriptRunsService.SchedulePreview", pv, flowharness.Mask("hash"))
-	app.Contract(t, "schedule-now", "args:ScriptRunsService.RunScheduleNow", args, flowharness.Mask("hash"))
+	app.Contract(t, "schedule-now", "ScriptRunsService.SchedulePreview", pv, studioflowharness.Mask("hash"))
+	app.Contract(t, "schedule-now", "args:ScriptRunsService.RunScheduleNow", args, studioflowharness.Mask("hash"))
 	started, err := app.W.ScriptRuns.RunScheduleNow(args)
 	if err != nil {
 		t.Fatal(err)
 	}
 	app.Contract(t, "schedule-now", "ScriptRunsService.RunScheduleNow", started)
 	run := waitSmart(t, app, started.RunID, "running")
-	app.Contract(t, "schedule-now", "ScriptRunsService.Get#running", run, flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash"))
+	app.Contract(t, "schedule-now", "ScriptRunsService.Get#running", run, studioflowharness.Mask("createdAt", "startedAt", "finishedAt", "hash"))
 	if run.Trigger != scriptruns.TriggerScheduled || run.TerminalID != "" {
 		t.Fatalf("run = %+v", run)
 	}

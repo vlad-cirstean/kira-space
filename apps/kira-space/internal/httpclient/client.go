@@ -21,7 +21,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/buildinfo"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/buildinfo"
 )
 
 var validMethods = map[string]bool{

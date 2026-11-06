@@ -1,13 +1,13 @@
 // Package storage owns the Go build's SQLite database: opening it, migrating it, and the
 // hot-path repo queries. Go analogue of src/main/storage/{db,migrate}.ts.
-package storage
+package studiostorage
 
 import (
 	"database/sql"
 	"fmt"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/migrations"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/config"
 	"github.com/kirathecat/kira-studio/internal/appstorage"
 )
 
@@ -28,7 +28,7 @@ type DB struct {
 // permissions the Electron build uses, applies the four startup pragmas, and runs every pending
 // migration.
 func Open() (*DB, error) {
-	return OpenAt(config.KiraHome())
+	return OpenAt(config.StudioHome())
 }
 
 // OpenAt is Open against an explicit home dir instead of $KIRA_HOME. Exists so a test can pass its
@@ -40,7 +40,7 @@ func OpenAt(home string) (*DB, error) {
 		return nil, fmt.Errorf("storage: ensure layout: %w", err)
 	}
 
-	path := config.DbPathAt(home)
+	path := config.StudioDbPathAt(home)
 	steps, err := migrations.All()
 	if err != nil {
 		return nil, fmt.Errorf("storage: load migrations: %w", err)

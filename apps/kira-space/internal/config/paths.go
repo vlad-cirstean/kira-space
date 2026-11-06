@@ -1,9 +1,8 @@
 // Package config resolves this app's on-disk locations and dev/packaged mode.
 //
-// The path logic itself is repo-root internal/kirapaths, shared with
-// apps/kira-studio — this file is a thin wrapper supplying Kira Space's own env var
-// (KIRA_SPACE_HOME), directory name (.kira-space) and database file name (kira.db). Kira Space
-// never shares a home or a database with Kira Studio.
+// The path logic itself is repo-root internal/kirapaths. This file supplies Kira Space's own env
+// var (KIRA_SPACE_HOME), directory name (.kira-space) and database file name (kira.db), plus the
+// Studio side's (KIRA_HOME, .kira-studio, kira.db) until the home fold.
 package config
 
 import "github.com/kirathecat/kira-studio/internal/kirapaths"
@@ -35,13 +34,31 @@ func LogsDirAt(home string) string {
 	return kirapaths.LogsDirAt(home)
 }
 
-// EnsureLayout creates KIRA_SPACE_HOME and its logs directory at 0700, tightening an existing
+// EnsureLayout creates both homes and the Space logs directory at 0700, tightening an existing
 // loose directory too, not only on first create.
 func EnsureLayout() error {
-	return EnsureLayoutAt(KiraSpaceHome())
+	if err := EnsureLayoutAt(KiraSpaceHome()); err != nil {
+		return err
+	}
+	return kirapaths.EnsureLayoutAt(StudioHome())
 }
 
 // EnsureLayoutAt is EnsureLayout against an explicit home dir — see DbPathAt.
 func EnsureLayoutAt(home string) error {
 	return kirapaths.EnsureLayoutAt(home)
+}
+
+// StudioHome is the Studio data directory, honouring KIRA_HOME.
+func StudioHome() string {
+	return kirapaths.Home("KIRA_HOME", ".kira-studio")
+}
+
+// StudioDbPath is the Studio database file, kira.db under StudioHome.
+func StudioDbPath() string {
+	return StudioDbPathAt(StudioHome())
+}
+
+// StudioDbPathAt is StudioDbPath against an explicit home dir.
+func StudioDbPathAt(home string) string {
+	return kirapaths.DbPathAt(home, "kira.db")
 }

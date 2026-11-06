@@ -20,16 +20,16 @@ import (
 // The engine is shared with every other test, so each assertion looks only at this run's prefixed containers.
 
 type restoreEnv struct {
-	app *flowharness.App
-	d   *flowharness.Docker
-	gen *flowharness.BootGen
+	app *studioflowharness.App
+	d   *studioflowharness.Docker
+	gen *studioflowharness.BootGen
 }
 
 func bootRestore(t *testing.T) restoreEnv {
 	t.Helper()
-	d := flowharness.RequireDocker(t)
-	gen := &flowharness.BootGen{}
-	app := flowharness.New(t, flowharness.WithDockerOptions(
+	d := studioflowharness.RequireDocker(t)
+	gen := &studioflowharness.BootGen{}
+	app := studioflowharness.New(t, studioflowharness.WithDockerOptions(
 		docker.WithRestoreTiming(200*time.Millisecond, time.Second, 2*time.Second),
 		docker.WithBootProbe(gen.Probe()),
 	))
@@ -128,14 +128,14 @@ func (e restoreEnv) kill(t *testing.T, ids ...string) {
 	}
 }
 
-func (e restoreEnv) opts(ids map[string]string, extra ...flowharness.ContractOption) []flowharness.ContractOption {
-	opts := []flowharness.ContractOption{
-		flowharness.Mask("engineId", "context", "detectedAt", "bootAt"),
-		flowharness.Replace(e.d.Prefix(), "kira-flow-"),
-		flowharness.Replace(runIDOf(e.d), "run"),
+func (e restoreEnv) opts(ids map[string]string, extra ...flowharness.ContractOption) []studioflowharness.ContractOption {
+	opts := []studioflowharness.ContractOption{
+		studioflowharness.Mask("engineId", "context", "detectedAt", "bootAt"),
+		studioflowharness.Replace(e.d.Prefix(), "kira-flow-"),
+		studioflowharness.Replace(runIDOf(e.d), "run"),
 	}
 	for name, id := range ids {
-		opts = append(opts, flowharness.Replace(id, "id-"+name))
+		opts = append(opts, studioflowharness.Replace(id, "id-"+name))
 	}
 	return append(opts, extra...)
 }
@@ -144,7 +144,7 @@ func restartPolicy(name container.RestartPolicyMode) *container.HostConfig {
 	return &container.HostConfig{RestartPolicy: container.RestartPolicy{Name: name}}
 }
 
-func keepAlive(d *flowharness.Docker, name string, policy container.RestartPolicyMode) string {
+func keepAlive(d *studioflowharness.Docker, name string, policy container.RestartPolicyMode) string {
 	stop := 1
 	return d.RunWith(name, container.Config{Cmd: []string{"sh", "-c", "exec sleep 300"}, StopTimeout: &stop}, restartPolicy(policy), nil)
 }
@@ -228,7 +228,7 @@ func TestRestoreAfterEngineRestart(t *testing.T) {
 
 	e.waitState(t, "restore to settle", func(s docker.RestoreState) bool { return !hasOpenOurs(e, s) })
 	var sawPending, sawSettled bool
-	var pendingEv flowharness.Event
+	var pendingEv studioflowharness.Event
 	for _, ev := range e.app.Events.Since(mark, docker.ChannelRestore) {
 		s, ok := ev.Data.(docker.RestoreState)
 		if !ok {
@@ -369,8 +369,8 @@ func TestRestoreRealDaemonRestart(t *testing.T) {
 	if os.Getenv("KIRA_FLOW_DOCKER_RESTART") != "1" {
 		t.Skip("set KIRA_FLOW_DOCKER_RESTART=1 to restart the local dockerd")
 	}
-	d := flowharness.RequireDocker(t)
-	app := flowharness.New(t, flowharness.WithDockerOptions(docker.WithRestoreTiming(500*time.Millisecond, 2*time.Second, 5*time.Second)))
+	d := studioflowharness.RequireDocker(t)
+	app := studioflowharness.New(t, studioflowharness.WithDockerOptions(docker.WithRestoreTiming(500*time.Millisecond, 2*time.Second, 5*time.Second)))
 	e := restoreEnv{app: app, d: d}
 	solo := sleeper(d, "solo", nil)
 	keeper := keepAlive(d, "keeper", "always")

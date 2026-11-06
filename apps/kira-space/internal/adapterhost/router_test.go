@@ -153,7 +153,7 @@ func TestRouter_DescribeAndDefinition_ThreadTabIDIntoOpStart(t *testing.T) {
 		for {
 			select {
 			case evt := <-events:
-				if evt.Topic != oplog.EventOpStart {
+				if evt.Topic != studiooplog.EventOpStart {
 					continue
 				}
 				var payload struct {

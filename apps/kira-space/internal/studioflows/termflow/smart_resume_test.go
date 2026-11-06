@@ -14,7 +14,7 @@ import (
 )
 
 // resumeCall returns the args and stdin of the fake claude call that carried --resume.
-func resumeCall(t *testing.T, app *flowharness.App) (args, prompt string) {
+func resumeCall(t *testing.T, app *studioflowharness.App) (args, prompt string) {
 	t.Helper()
 	testx.WaitUntil(t, wait, func() bool {
 		files, _ := filepath.Glob(filepath.Join(app.FakeDir, "*.args"))
@@ -43,10 +43,10 @@ func argAfter(args, flag string) string {
 }
 
 func TestSmartScriptResume(t *testing.T) {
-	runMask := flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "costUsd")
+	runMask := studioflowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "costUsd")
 
 	t.Run("quit", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		hold := filepath.Join(t.TempDir(), "hold")
 		app.Scenario(scenario(fakeagent.Action{WaitFile: hold}, fakeagent.Action{Name: "done"}))
 		rec := newSmart(t, app, "Say hi", nil)
@@ -86,7 +86,7 @@ func TestSmartScriptResume(t *testing.T) {
 	})
 
 	t.Run("crash", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		app.Scenario(scenario(fakeagent.Action{Name: "done"}))
 		rec := newSmart(t, app, "Say hi", nil)
 		id, _ := startSmart(t, app, scriptruns.RunArgs{ScriptID: rec.ID})
@@ -110,7 +110,7 @@ func TestSmartScriptResume(t *testing.T) {
 	})
 
 	t.Run("secret param", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		hold := filepath.Join(t.TempDir(), "hold")
 		app.Scenario(scenario(fakeagent.Action{WaitFile: hold}))
 		rec := newSmart(t, app, "Say hi", func(f *scripts.CustomScriptFields) {

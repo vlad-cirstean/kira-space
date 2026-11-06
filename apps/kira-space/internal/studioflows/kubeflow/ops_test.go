@@ -103,7 +103,7 @@ func TestOpsRecordEveryAction(t *testing.T) {
 	if running.Kind != "kubernetes" || running.Source != "user" || running.ConnectionID != nil || running.Command != nil {
 		t.Fatalf("running op = %+v", running)
 	}
-	e.contract(t, "OpsService.Recent:running", []model.OpRecord{running}, flowharness.Mask("id", "startedAt", "durationMs"))
+	e.contract(t, "OpsService.Recent:running", []model.OpRecord{running}, studioflowharness.Mask("id", "startedAt", "durationMs"))
 	if err := e.app.W.Ops.Cancel(bridge.OpsCancelArgs{OpID: running.ID}); err != nil {
 		t.Fatal(err)
 	}
@@ -147,5 +147,5 @@ func TestOpsRecordEveryAction(t *testing.T) {
 	if len(recs) != 9 {
 		t.Fatalf("%d rows, want 9: pre-op failures and SetMcp record nothing", len(recs))
 	}
-	e.contract(t, "OpsService.Recent", recs, flowharness.Mask("id", "startedAt", "durationMs", "error"))
+	e.contract(t, "OpsService.Recent", recs, studioflowharness.Mask("id", "startedAt", "durationMs", "error"))
 }

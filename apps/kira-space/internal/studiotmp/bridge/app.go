@@ -4,9 +4,9 @@ import (
 	"runtime"
 	"runtime/debug"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/buildinfo"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/config"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/buildinfo"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 )
 
 // wailsModulePath is the module debug.ReadBuildInfo reports the pinned Wails runtime dependency
@@ -43,7 +43,7 @@ type AppInfo struct {
 
 // AppService.Info is the direct analogue of today's IPC.appInfo (src/main/ipc/app.ts).
 type AppService struct {
-	Deps appcore.Deps
+	Deps appcore.StudioDeps
 }
 
 func (s *AppService) Info() (AppInfo, error) {
@@ -51,6 +51,6 @@ func (s *AppService) Info() (AppInfo, error) {
 		AppVersion: buildinfo.Version,
 		Go:         runtime.Version(),
 		Wails:      wailsVersion(),
-		KiraHome:   config.KiraHome(),
+		KiraHome:   config.StudioHome(),
 	}, nil
 }

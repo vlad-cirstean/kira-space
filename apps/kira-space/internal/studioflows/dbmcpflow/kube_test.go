@@ -22,7 +22,7 @@ const kubeScenario = "dbmcp-kube"
 
 type kubeFixture struct {
 	*fixture
-	fake *flowharness.KubeFake
+	fake *studioflowharness.KubeFake
 	cfg  string
 	ids  map[string]string
 	sess *mcp.ClientSession
@@ -30,10 +30,10 @@ type kubeFixture struct {
 
 func newKubeFixture(t *testing.T) *kubeFixture {
 	t.Helper()
-	fake := flowharness.NewKubeFake(t)
+	fake := studioflowharness.NewKubeFake(t)
 	f := newFixture(t)
 	k := &kubeFixture{fixture: f, fake: fake, cfg: filepath.Join(f.app.Home, "kubeconfig"), ids: map[string]string{}}
-	fake.WriteKubeconfig(t, k.cfg, flowharness.KubeconfigOpts{BinDir: f.app.BinDir})
+	fake.WriteKubeconfig(t, k.cfg, studioflowharness.KubeconfigOpts{BinDir: f.app.BinDir})
 	t.Setenv("KUBECONFIG", k.cfg)
 	res, err := f.app.W.Kubernetes.Clusters()
 	if err != nil {
@@ -59,10 +59,10 @@ func newKubeFixture(t *testing.T) *kubeFixture {
 
 func (k *kubeFixture) contract(t *testing.T, key string, got any, extra ...flowharness.ContractOption) {
 	t.Helper()
-	opts := append([]flowharness.ContractOption{
-		flowharness.Replace(k.fake.URL, "<kube>"), flowharness.Replace(k.fake.DownURL(), "<down>"),
-		flowharness.Replace(k.cfg, "<kubeconfig>"),
-		flowharness.Mask("id", "clusterId", "requestId", "connectionId", "expiresAtMs", "startedAt", "durationMs"),
+	opts := append([]studioflowharness.ContractOption{
+		studioflowharness.Replace(k.fake.URL, "<kube>"), studioflowharness.Replace(k.fake.DownURL(), "<down>"),
+		studioflowharness.Replace(k.cfg, "<kubeconfig>"),
+		studioflowharness.Mask("id", "clusterId", "requestId", "connectionId", "expiresAtMs", "startedAt", "durationMs"),
 	}, extra...)
 	k.app.Contract(t, kubeScenario, key, got, opts...)
 }
@@ -229,7 +229,7 @@ func TestKubeMcp(t *testing.T) {
 		}
 		// Contract dbmcp-kube: tests/ui/kubernetes-mcp.spec.ts renders this request in the approval dialog.
 		// The item id stays a stable placeholder so the UI spec answers the id it rendered.
-		k.app.Contract(t, kubeScenario, "ApprovalsService.List", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(k.fake.URL, "<kube>"))
+		k.app.Contract(t, kubeScenario, "ApprovalsService.List", []approvals.Item{req.Item}, studioflowharness.Mask("createdAt", "expiresAt"), studioflowharness.Replace(k.fake.URL, "<kube>"))
 		k.app.Contract(t, kubeScenario, "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
 		k.answerItems(t, true, req.Item.ID)
 		out := <-pending
@@ -301,7 +301,7 @@ func TestKubeMcp(t *testing.T) {
 		}
 		sec := k.call(t, "kube_describe", map[string]any{"clusterId": dev, "kind": "v1/secrets", "name": "db-creds", "namespace": "default"})
 		if sec.IsError || !strings.Contains(text(sec), `14 bytes`) || strings.Contains(text(sec), "hunter2-secret") ||
-			strings.Contains(text(sec), flowharness.B64("hunter2-secret")) {
+			strings.Contains(text(sec), studioflowharness.B64("hunter2-secret")) {
 			t.Fatalf("secret describe leaks or lacks the byte count: %q", text(sec))
 		}
 		logs := k.call(t, "kube_pod_logs", map[string]any{"clusterId": dev, "namespace": "default", "pod": "web-1", "container": "app", "tail": 2})

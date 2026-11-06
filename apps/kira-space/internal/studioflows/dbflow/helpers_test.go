@@ -50,7 +50,7 @@ func sqliteInput(name, path string) connections.Input {
 	}}
 }
 
-func createConn(t *testing.T, app *flowharness.App, in connections.Input) model.ConnectionSummary {
+func createConn(t *testing.T, app *studioflowharness.App, in connections.Input) model.ConnectionSummary {
 	t.Helper()
 	c, err := app.W.Connections.Create(in)
 	if err != nil {
@@ -59,7 +59,7 @@ func createConn(t *testing.T, app *flowharness.App, in connections.Input) model.
 	return c
 }
 
-func connect(t *testing.T, app *flowharness.App, id string) model.ConnectionState {
+func connect(t *testing.T, app *studioflowharness.App, id string) model.ConnectionState {
 	t.Helper()
 	st, err := app.W.Connections.Connect(bridge.ConnectionsIDArgs{ID: id})
 	if err != nil {
@@ -68,7 +68,7 @@ func connect(t *testing.T, app *flowharness.App, id string) model.ConnectionStat
 	return st
 }
 
-func execute(t *testing.T, app *flowharness.App, connID string, stmts ...string) []page.Page {
+func execute(t *testing.T, app *studioflowharness.App, connID string, stmts ...string) []page.Page {
 	t.Helper()
 	resp, err := app.W.Router.Execute(ctx, adapterhost.ExecuteRequestWire{
 		OpID: ids.NewID(), ConnectionID: connID, Statements: stmts,

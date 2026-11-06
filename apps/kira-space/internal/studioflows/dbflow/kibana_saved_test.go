@@ -17,7 +17,7 @@ import (
 // local, so no Kibana runs and the connection is never connected.
 // Contract kibana-saved: tests/ui/kibana-saved.spec.ts answers its calls with these results.
 func TestKibanaSavedQueriesJourney(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	conn := createConn(t, app, connections.Input{ConnectionFields: model.ConnectionFields{
 		Name: "saved kibana", Kind: "kibana", Color: "indigo", Mode: "fields",
 		Host: ptr("127.0.0.1"), Port: ptr(5601), Options: map[string]any{},
@@ -26,7 +26,7 @@ func TestKibanaSavedQueriesJourney(t *testing.T) {
 	q := app.W.Queries
 	view := testsupport.KibanaLogsView
 	viewName := view
-	mask := flowharness.Mask("createdAt", "usedAt")
+	mask := studioflowharness.Mask("createdAt", "usedAt")
 
 	bodyA := model.DiscoverBody{
 		Query: "level:error", DataViewID: view, DataViewName: &viewName, Language: "kuery",

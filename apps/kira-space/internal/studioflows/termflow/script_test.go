@@ -16,7 +16,7 @@ import (
 )
 
 func TestScriptInPickedFolder(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 
 	canceled, err := app.W.Files.ChooseFolder(bridge.FilesChooseFolderArgs{})
 	if err != nil || !canceled.Canceled || canceled.Path != nil {
@@ -35,7 +35,7 @@ func TestScriptInPickedFolder(t *testing.T) {
 		t.Fatalf("picker = %+v, %v, want %s", picked, err, dir)
 	}
 
-	picks := flowharness.Replace(dir, "<tmp>/picked")
+	picks := studioflowharness.Replace(dir, "<tmp>/picked")
 	app.Contract(t, "terminal", "FilesService.ChooseFolder#picked", picked, picks)
 	mark := app.Events.Mark()
 	cmd := "ls marker.txt; exit 4"
@@ -65,7 +65,7 @@ func TestScriptInPickedFolder(t *testing.T) {
 }
 
 func TestScriptCollections(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	cs := app.W.CustomScripts
 	mk := func(name, coll string) scripts.CustomScript {
 		t.Helper()
@@ -120,7 +120,7 @@ func TestScriptCollections(t *testing.T) {
 }
 
 func TestScriptOrder(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	cs := app.W.CustomScripts
 	mk := func(name, coll string) scripts.CustomScript {
 		t.Helper()
@@ -194,7 +194,7 @@ func TestScriptOrder(t *testing.T) {
 	}
 }
 
-func lastSnapshot(t *testing.T, app *flowharness.App) scripts.Snapshot {
+func lastSnapshot(t *testing.T, app *studioflowharness.App) scripts.Snapshot {
 	t.Helper()
 	evs := app.Events.Since(0, bridge.ChannelCustomScriptsChanged)
 	if len(evs) == 0 {
@@ -212,7 +212,7 @@ func sameJSON(a, b any) bool {
 }
 
 func TestCustomScriptUpdateRemove(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	cs := app.W.CustomScripts
 	rec, err := cs.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{Name: "old", Command: "echo old", Color: "blue"}})
 	if err != nil {

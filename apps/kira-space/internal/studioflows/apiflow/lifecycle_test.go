@@ -16,12 +16,12 @@ import (
 // makes new rows and answers an id map, history follows a moved request, and an environment is
 // duplicated and deleted as a file.
 func TestApiLifecycle(t *testing.T) {
-	app := flowharness.New(t)
-	srv := flowharness.HTTP(t)
+	app := studioflowharness.New(t)
+	srv := studioflowharness.HTTP(t)
 	const sc = "api-lifecycle"
 	cs, cfg := app.W.Collections, app.W.ApiConfig
-	paths := flowharness.Replace(app.KiraHome, "<home>")
-	httpURL := flowharness.Replace(srv.URL, "<http>")
+	paths := studioflowharness.Replace(app.KiraHome, "<home>")
+	httpURL := studioflowharness.Replace(srv.URL, "<http>")
 
 	app.WriteAPIFile(t, "orders.collection.yaml", []byte(`# Orders API, owned by the web team.
 name: Orders
@@ -242,7 +242,7 @@ items:
 
 	// Environments: duplicate, then delete the active one.
 	vs := app.W.Variables
-	prod := app.SeedEnvironment(t, "Production", flowharness.APIVar{Name: "base_url", Value: "https://prod.example.com"})
+	prod := app.SeedEnvironment(t, "Production", studioflowharness.APIVar{Name: "base_url", Value: "https://prod.example.com"})
 	if err := vs.SetActiveEnvironment(bridge.VariablesEnvironmentIDArgs{ID: prod.ID}); err != nil {
 		t.Fatal(err)
 	}

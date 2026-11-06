@@ -16,7 +16,7 @@ import (
 
 // Backend half of tests/ui/tabs-scope.spec.ts.
 func TestTabsScope(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	for _, key := range []string{"A", "B"} {
 		if _, err := app.W.WindowsSvc.Ensure(windowsvc.EnsureArgs{WindowKey: key}); err != nil {
 			t.Fatal(err)

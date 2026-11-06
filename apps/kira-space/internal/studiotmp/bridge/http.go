@@ -12,7 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -20,7 +20,7 @@ import (
 // *existing* op scheduler the DB adapters already use (D3) — no new scheduler, no new op log,
 // no new cancel path.
 type HttpService struct {
-	Deps appcore.Deps
+	Deps appcore.StudioDeps
 }
 
 // HttpSendArgs carries httpclient.Request's fields plus the op-log addressing every op needs

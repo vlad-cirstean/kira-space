@@ -52,9 +52,9 @@ func (f *fixture) mcpCommands() (get func() []string, stop func()) {
 			_ = json.Unmarshal(e.Payload, &p)
 			mu.Lock()
 			switch e.Topic {
-			case oplog.EventOpStart:
+			case studiooplog.EventOpStart:
 				mcpOps[p.OpID] = p.Kind == "execute" && p.Source == "mcp"
-			case oplog.EventOpEnd:
+			case studiooplog.EventOpEnd:
 				if mcpOps[p.OpID] {
 					c := ""
 					if p.Command != nil {
@@ -124,8 +124,8 @@ func resultPlan(t *testing.T, res *mcp.CallToolResult) (rows float64, ok bool) {
 }
 
 func TestDbMcpExpensiveQueryPostgres(t *testing.T) {
-	flowharness.Complete(t)
-	flowharness.RequireDocker(t)
+	studioflowharness.Complete(t)
+	studioflowharness.RequireDocker(t)
 	const pass, dbName = "flowpass", "flowdb"
 	host, port := startPostgres(t, pass, dbName)
 	f := newFixture(t)
@@ -230,7 +230,7 @@ func TestDbMcpExpensiveQueryPostgres(t *testing.T) {
 	if err := json.Unmarshal(items[0].Payload, &evidence); err != nil || evidence.Plan == nil || evidence.Plan.EstimatedRowsRead == nil {
 		t.Fatalf("exemption payload has no plan evidence: %s (%v)", items[0].Payload, err)
 	}
-	f.app.Contract(t, "dbmcp-expensive-query", "item", items[0], flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(host+":"+strconv.Itoa(port), "localhost:5432"))
+	f.app.Contract(t, "dbmcp-expensive-query", "item", items[0], studioflowharness.Mask("createdAt", "expiresAt"), studioflowharness.Replace(host+":"+strconv.Itoa(port), "localhost:5432"))
 	f.answerItems(t, true, items[0].ID)
 	if res := wait(t, exCall); res.IsError || !strings.Contains(text(res), `"truncated"`) {
 		t.Fatalf("approved exempt call = %q, want rows capped at maxRows", text(res))
@@ -380,5 +380,5 @@ func TestDbMcpListConnectionsExpensiveQuery(t *testing.T) {
 	}
 	var all any
 	_ = json.Unmarshal([]byte(text(res)), &all)
-	f.app.Contract(t, "dbmcp-expensive-query", "list_connections", all, flowharness.Mask("id"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.Contract(t, "dbmcp-expensive-query", "list_connections", all, studioflowharness.Mask("id"), studioflowharness.Replace(f.dbPath, "/data/mcp.db"))
 }

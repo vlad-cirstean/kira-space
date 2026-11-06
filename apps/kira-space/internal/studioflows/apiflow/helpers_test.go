@@ -28,7 +28,7 @@ func get(url string) bridge.HttpSendArgs {
 	return bridge.HttpSendArgs{OpID: newOp(), TabID: "tab-1", Method: "GET", URL: url}
 }
 
-func send(t *testing.T, app *flowharness.App, args bridge.HttpSendArgs) httpclient.Response {
+func send(t *testing.T, app *studioflowharness.App, args bridge.HttpSendArgs) httpclient.Response {
 	t.Helper()
 	res, err := app.W.Http.Send(ctx, args)
 	if err != nil {
@@ -46,7 +46,7 @@ func ipcErr(t *testing.T, err error) *ipcerr.Error {
 	return ie
 }
 
-func newCollection(t *testing.T, app *flowharness.App, name string) model.Collection {
+func newCollection(t *testing.T, app *studioflowharness.App, name string) model.Collection {
 	t.Helper()
 	c, err := app.W.Collections.CreateCollection(bridge.CollectionsCreateCollectionArgs{Name: name})
 	if err != nil {
@@ -59,7 +59,7 @@ func savedGet() model.SavedRequest {
 	return model.SavedRequest{Method: "GET", BodyMode: "none", CodeLanguage: "json"}
 }
 
-func waitOp(t *testing.T, app *flowharness.App, opID string) model.OpRecord {
+func waitOp(t *testing.T, app *studioflowharness.App, opID string) model.OpRecord {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for {
@@ -80,16 +80,16 @@ func waitOp(t *testing.T, app *flowharness.App, opID string) model.OpRecord {
 }
 
 // waitOpUpdate waits for the op-log update event that closes opID; it fires for incognito ops too.
-func waitOpUpdate(t *testing.T, app *flowharness.App, opID string) {
+func waitOpUpdate(t *testing.T, app *studioflowharness.App, opID string) {
 	t.Helper()
-	app.Events.Wait(t, bridge.ChannelOpUpdate, func(e flowharness.Event) bool {
+	app.Events.Wait(t, bridge.ChannelOpUpdate, func(e studioflowharness.Event) bool {
 		var rec model.OpRecord
 		e.Decode(t, &rec)
 		return rec.ID == opID && rec.Status != "running"
 	}, 10*time.Second)
 }
 
-func dbBytes(t *testing.T, app *flowharness.App) []byte {
+func dbBytes(t *testing.T, app *studioflowharness.App) []byte {
 	t.Helper()
 	var all []byte
 	err := filepath.WalkDir(app.KiraHome, func(p string, d os.DirEntry, err error) error {
@@ -117,7 +117,7 @@ func dbBytes(t *testing.T, app *flowharness.App) []byte {
 func contains(haystack []byte, needle string) bool { return bytes.Contains(haystack, []byte(needle)) }
 
 // apiChanges decodes every kira:api:dataChanged event after mark into its change lists.
-func apiChanges(t *testing.T, app *flowharness.App, mark int) [][]bridge.ApiDataChange {
+func apiChanges(t *testing.T, app *studioflowharness.App, mark int) [][]bridge.ApiDataChange {
 	t.Helper()
 	var out [][]bridge.ApiDataChange
 	for _, ev := range app.Events.Since(mark, bridge.ChannelApiDataChanged) {
@@ -137,7 +137,7 @@ func hasChange(changes []bridge.ApiDataChange, c bridge.ApiDataChange) bool {
 	return false
 }
 
-func lastRequest(srv *flowharness.HTTPServer) flowharness.Request {
+func lastRequest(srv *studioflowharness.HTTPServer) studioflowharness.Request {
 	reqs := srv.Requests()
 	return reqs[len(reqs)-1]
 }

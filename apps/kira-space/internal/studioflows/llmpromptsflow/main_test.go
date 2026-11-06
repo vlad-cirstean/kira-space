@@ -7,4 +7,4 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 )
 
-func TestMain(m *testing.M) { os.Exit(flowharness.Main(m)) }
+func TestMain(m *testing.M) { os.Exit(studioflowharness.Main(m)) }

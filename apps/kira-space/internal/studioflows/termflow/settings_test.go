@@ -33,7 +33,7 @@ func appSettingsFiles(root string) []string {
 func TestAgentSettingsStudio(t *testing.T) {
 	const secret = "STUDIO-SETTINGS-SECRET"
 	t.Setenv(fakeagent.EnvRecordEnv, "P453_MARK")
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	app.Scenario(scenario(fakeagent.Action{Name: "done"}))
 	dir := filepath.Join(app.SpaceHome, "agent")
 	if err := os.MkdirAll(dir, 0o755); err != nil {

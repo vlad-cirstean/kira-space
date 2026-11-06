@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -18,10 +18,10 @@ type Canceller interface {
 }
 
 // OpsService keeps Canceller as its own field rather than routing it through the shared
-// appcore.Deps (the same shape bridge.FilesService's own Dialogs field already uses): appcore
+// appcore.StudioDeps (the same shape bridge.FilesService's own Dialogs field already uses): appcore
 // cannot import bridge (bridge already imports appcore), so a Canceller-typed field belongs here.
 type OpsService struct {
-	Deps      appcore.Deps
+	Deps      appcore.StudioDeps
 	Canceller Canceller
 }
 

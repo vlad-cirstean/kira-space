@@ -73,6 +73,6 @@ func TestClusters(t *testing.T) {
 		if got.Config.State != "invalid" || got.Config.Message == "" || len(got.Clusters) != 0 {
 			t.Fatalf("result = %+v", got)
 		}
-		e.contract(t, "KubernetesService.Clusters:invalid", got, flowharness.Mask("message"))
+		e.contract(t, "KubernetesService.Clusters:invalid", got, studioflowharness.Mask("message"))
 	})
 }

@@ -15,10 +15,10 @@ import (
 // order in the rows (new ones append, a rename keeps the place, a restart keeps the order), and items
 // still reorder as file edits beside it.
 func TestApiOrder(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	const sc = "api-order"
 	cs, vs := app.W.Collections, app.W.Variables
-	paths := flowharness.Replace(app.KiraHome, "<home>")
+	paths := studioflowharness.Replace(app.KiraHome, "<home>")
 
 	app.WriteAPIFile(t, "alpha.collection.yaml", []byte(`name: Zeta
 items:

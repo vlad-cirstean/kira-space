@@ -18,7 +18,7 @@ import (
 // startPostgres runs a throwaway Postgres on a random port; the journey seeds it through the app.
 func startPostgres(t *testing.T) connections.Input {
 	t.Helper()
-	flowharness.RequireDocker(t)
+	studioflowharness.RequireDocker(t)
 	const pass, dbName = "flowpass", "flowdb"
 	c, err := tcpostgres.Run(ctx, testsupport.ImageFor("postgres", "postgres:17.11-alpine"),
 		tcpostgres.WithDatabase(dbName), tcpostgres.WithUsername("postgres"), tcpostgres.WithPassword(pass),
@@ -44,9 +44,9 @@ func startPostgres(t *testing.T) connections.Input {
 }
 
 func TestPostgresJourney(t *testing.T) {
-	flowharness.Complete(t)
+	studioflowharness.Complete(t)
 	in := startPostgres(t)
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	seed := createConn(t, app, in)
 	if st := connect(t, app, seed.ID); st.Status != "connected" {
 		t.Fatalf("seed connect = %+v", st)
@@ -67,9 +67,9 @@ func TestPostgresJourney(t *testing.T) {
 // Contract paste-credentials: tests/ui/connection-paste-credentials.spec.ts "Update credentials with a
 // password only reconnects a live connection" answers its connect calls with these states.
 func TestPostgresUpdateCredentials(t *testing.T) {
-	flowharness.Complete(t)
+	studioflowharness.Complete(t)
 	in := startPostgres(t)
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	stale := in
 	stale.Password = ptr("stale-password")
 	conn := createConn(t, app, stale)
@@ -86,5 +86,5 @@ func TestPostgresUpdateCredentials(t *testing.T) {
 		t.Fatalf("connect after UpdateCredentials = %+v, want connected", fixed)
 	}
 	app.Contract(t, "paste-credentials", "ConnectionsService.Connect#connected", fixed,
-		flowharness.Mask("since", "serverVersion"), flowharness.Omit("caps"))
+		studioflowharness.Mask("since", "serverVersion"), studioflowharness.Omit("caps"))
 }

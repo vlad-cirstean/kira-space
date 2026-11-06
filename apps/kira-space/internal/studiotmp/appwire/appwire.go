@@ -22,9 +22,9 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/config"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/appupdate"
@@ -49,7 +49,7 @@ import (
 // in the harness.
 type Options struct {
 	// DB is closed last by Teardown, after Repos.
-	DB    *storage.DB
+	DB    *studiostorage.DB
 	Repos *repos.Repos
 	// Cipher and Authorizer are shared by connections and variables, so a reveal grace is shared.
 	Cipher     *secrets.Cipher
@@ -95,7 +95,7 @@ type WindowFocus interface {
 type Wired struct {
 	StartedAt  time.Time
 	Repos      *repos.Repos
-	Deps       appcore.Deps
+	Deps       appcore.StudioDeps
 	Router     *adapterhost.Router
 	Events     *bridge.Events
 	Windows    *shell.WindowRegistry
@@ -192,7 +192,7 @@ func Build(opts Options) (*Wired, error) {
 	var maskRulesSvc *maskrules.Service
 	var maskReviewSvc *maskreview.Service
 	connFiles, err := connfiles.New(connfiles.Options{
-		DB: db.DB, Dir: filepath.Join(config.KiraHome(), "connections"),
+		DB: db.DB, Dir: filepath.Join(config.StudioHome(), "connections"),
 		Secrets: &connfiles.Secrets{Store: secrets.NewStore(db.DB, opts.Cipher), DB: db.DB},
 		OnChange: func(ch connfiles.Changes) {
 			connectionsSvc.ConfigChanged(ch)
@@ -210,18 +210,18 @@ func Build(opts Options) (*Wired, error) {
 
 	// P5 D8: the SAME authorizer instance connections.New below is given: that is what makes the
 	// reveal grace genuinely shared between a connection-password reveal and a variable reveal.
-	promptStore := llmprompts.NewStore(filepath.Join(config.KiraHome(), "llm-prompts.json"))
+	promptStore := llmprompts.NewStore(filepath.Join(config.StudioHome(), "llm-prompts.json"))
 	apiSecrets := &apifiles.Secrets{Store: secrets.NewStore(db.DB, opts.Cipher), DB: db.DB}
 	apiFiles, err := apifiles.New(apifiles.Options{
-		DB: db.DB, Dir: filepath.Join(config.KiraHome(), "api"), Secrets: apiSecrets,
+		DB: db.DB, Dir: filepath.Join(config.StudioHome(), "api"), Secrets: apiSecrets,
 		OnChange: func(ch apifiles.Changes) { bridge.EmitApiChanges(opts.Emitter, ch) },
 	})
 	if err != nil {
 		return nil, err
 	}
-	deps := appcore.Deps{
+	deps := appcore.StudioDeps{
 		DB:        db.DB,
-		Home:      config.KiraHome(),
+		Home:      config.StudioHome(),
 		StartedAt: startedAt.UnixMilli(),
 		Repos:     repositories,
 		ApiVars:   apivars.New(repositories.Variables, opts.Authorizer, apiSecrets),

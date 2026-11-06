@@ -69,9 +69,9 @@ func (f *fixture) mcpExecEnds() (get func() []opEndMark, stop func()) {
 			_ = json.Unmarshal(e.Payload, &p)
 			mu.Lock()
 			switch e.Topic {
-			case oplog.EventOpStart:
+			case studiooplog.EventOpStart:
 				mcpOps[p.OpID] = p.Kind == "execute" && p.Source == "mcp"
-			case oplog.EventOpEnd:
+			case studiooplog.EventOpEnd:
 				if mcpOps[p.OpID] {
 					m := opEndMark{Status: p.Status}
 					if p.Error != nil {
@@ -170,7 +170,7 @@ func TestDbMcpStatementTimeoutExemption(t *testing.T) {
 	if len(pl.Limits) != 1 || pl.Limits[0].Limit != "statement_timeout" || pl.Limits[0].Max != 1000 || pl.Limits[0].Unit != "ms" {
 		t.Fatalf("payload = %+v", pl)
 	}
-	f.app.Contract(t, "dbmcp-statement-timeout", "item", items[0], flowharness.Mask("createdAt", "expiresAt", "measured"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.Contract(t, "dbmcp-statement-timeout", "item", items[0], studioflowharness.Mask("createdAt", "expiresAt", "measured"), studioflowharness.Replace(f.dbPath, "/data/mcp.db"))
 	f.answerItems(t, true, items[0].ID)
 	start := time.Now()
 	res := wait(t, call)
@@ -217,7 +217,7 @@ func TestDbMcpStatementTimeoutQueueNotCounted(t *testing.T) {
 	userOp := ids.NewID()
 	userDone := make(chan error, 1)
 	go func() { userDone <- f.exec(userOp, cte(mediumCTE)) }()
-	testx.WaitUntil(t, 10*time.Second, func() bool { return indexOf(marks(), oplog.EventOpStart, userOp) >= 0 })
+	testx.WaitUntil(t, 10*time.Second, func() bool { return indexOf(marks(), studiooplog.EventOpStart, userOp) >= 0 })
 
 	start := time.Now()
 	res := runQuery(t, sess, f.connID, "select 1")
@@ -294,5 +294,5 @@ func TestDbMcpListConnectionsStatementTimeout(t *testing.T) {
 	}
 	var all any
 	_ = json.Unmarshal([]byte(text(res)), &all)
-	f.app.Contract(t, "dbmcp-statement-timeout", "list_connections", all, flowharness.Mask("id"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.Contract(t, "dbmcp-statement-timeout", "list_connections", all, studioflowharness.Mask("id"), studioflowharness.Replace(f.dbPath, "/data/mcp.db"))
 }

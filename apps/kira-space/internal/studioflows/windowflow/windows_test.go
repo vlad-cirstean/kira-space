@@ -26,7 +26,7 @@ func tab(id, kind string, order int, active bool) model.TabRecord {
 	return model.TabRecord{ID: id, Path: "p/" + id, Kind: kind, State: json.RawMessage(`{}`), Order: order, Active: active}
 }
 
-func openTerm(t *testing.T, app *flowharness.App, window, id string) {
+func openTerm(t *testing.T, app *studioflowharness.App, window, id string) {
 	t.Helper()
 	if _, err := app.W.Terminal.Open(terminal.OpenArgs{TerminalID: id, WindowKey: window, Cwd: app.Home, Cols: 80, Rows: 24}); err != nil {
 		t.Fatal(err)
@@ -34,7 +34,7 @@ func openTerm(t *testing.T, app *flowharness.App, window, id string) {
 }
 
 // termOut is the decoded output, and whether the terminal exited, seen by one window since mark.
-func termOut(app *flowharness.App, mark int, window, id string) (string, bool) {
+func termOut(app *studioflowharness.App, mark int, window, id string) (string, bool) {
 	var sb strings.Builder
 	exited := false
 	for _, ev := range app.Events.Since(mark, appevent.ChannelTerminal) {
@@ -50,7 +50,7 @@ func termOut(app *flowharness.App, mark int, window, id string) (string, bool) {
 }
 
 func TestStudioWindows(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	w := app.W.WindowsSvc
 
 	var ie *ipcerr.Error
@@ -170,7 +170,7 @@ func TestStudioWindows(t *testing.T) {
 // The acks are fire-and-forget: with nothing owed they change nothing, and a quit with no window
 // owing one goes straight through its flush.
 func TestQuitHandshake(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	app.W.Lifecycle.Flushed(bridge.LifecycleFlushedArgs{WindowKey: "ghost"})
 	app.W.Lifecycle.WindowFlushed(bridge.LifecycleWindowFlushedArgs{WindowKey: "ghost"})
 	if app.W.Quitter.ShouldQuit() {
@@ -184,8 +184,8 @@ func TestQuitHandshake(t *testing.T) {
 }
 
 func TestDockerStatsEndWithTheirWindow(t *testing.T) {
-	d := flowharness.RequireDocker(t)
-	app := flowharness.New(t)
+	d := studioflowharness.RequireDocker(t)
+	app := studioflowharness.New(t)
 	id := d.Run("winstats", []string{"sleep", "600"}, nil)
 	for _, key := range []string{"A", "B"} {
 		if err := app.W.Docker.StatsSubscribe(docker.StatsArgs{WindowKey: key, IDs: []string{id}}); err != nil {
@@ -213,7 +213,7 @@ func TestDockerStatsEndWithTheirWindow(t *testing.T) {
 
 // widthUserSet must survive the bridge and a relaunch (the Git review widen reads it).
 func TestLayoutWidthUserSetSurvivesRestart(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	width, userSet := 300.0, true
 	if _, err := app.W.Layout.Set(bridge.LayoutSetArgs{Patch: model.LayoutPatch{Modes: map[string]model.PanelSizesPatch{
 		"studio": {Project: &model.ProjectSizePatch{Width: &width, WidthUserSet: &userSet}},

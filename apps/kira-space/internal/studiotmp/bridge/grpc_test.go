@@ -13,7 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/grpcclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
@@ -139,11 +139,11 @@ func TestGrpcHasAnyReference(t *testing.T) {
 // and bridge/http_test.go's own newRepos-backed setup.
 //
 // seedProbes writes a "Probes" collection file whose variables are the given secrets and returns its ID.
-func newGrpcServiceForTest(t *testing.T) (svc *GrpcService, db *storage.DB, seedProbes func(secretVars map[string]string) string) {
+func newGrpcServiceForTest(t *testing.T) (svc *GrpcService, db *studiostorage.DB, seedProbes func(secretVars map[string]string) string) {
 	t.Helper()
 	t.Setenv("KIRA_INSECURE_SECRETS", "1")
 	t.Setenv("KIRA_HOME", t.TempDir())
-	db, err := storage.Open()
+	db, err := studiostorage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
 	}
@@ -159,7 +159,7 @@ func newGrpcServiceForTest(t *testing.T) (svc *GrpcService, db *storage.DB, seed
 	fx := apifilestest.New(t, db.DB, cipher)
 	apiVars := apivars.New(variablesRepo, nil, fx.Secrets)
 
-	svc = &GrpcService{Deps: appcore.Deps{DB: db.DB, Repos: repositories, ApiVars: apiVars}}
+	svc = &GrpcService{Deps: appcore.StudioDeps{DB: db.DB, Repos: repositories, ApiVars: apiVars}}
 	seedProbes = func(secretVars map[string]string) string {
 		t.Helper()
 		var vars []apifilestest.Var
@@ -355,7 +355,7 @@ func TestRunServerStream_MasksDialTargetSecretBeforeEmittingErrorEvent(t *testin
 	}
 
 	emitter := &fakeEmitter{}
-	svc := &GrpcService{Deps: appcore.Deps{Events: emitter}}
+	svc := &GrpcService{Deps: appcore.StudioDeps{Events: emitter}}
 
 	used := []apivars.UsedSecret{{Name: "host", Rendered: secretHost, Placeholder: "{{host}}"}}
 	req := grpcclient.CallRequest{

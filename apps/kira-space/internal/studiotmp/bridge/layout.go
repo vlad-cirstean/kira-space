@@ -4,12 +4,12 @@ import (
 	"slices"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
 type LayoutService struct {
-	Deps appcore.Deps
+	Deps appcore.StudioDeps
 }
 
 func (s *LayoutService) GetAll() (model.Layout, error) {

@@ -14,12 +14,12 @@ import (
 // misplaced or missing host list is a file problem with a line. The edits recorded are the ones the
 // Agent access tab sends.
 func TestApiAgentAccess(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	const sc = "api-agent-access"
 	const envFile = "staging.environment.yaml"
 	cfg := app.W.ApiConfig
-	mask := flowharness.Mask("hash", "baseHash")
-	paths := flowharness.Replace(app.KiraHome, "<home>")
+	mask := studioflowharness.Mask("hash", "baseHash")
+	paths := studioflowharness.Replace(app.KiraHome, "<home>")
 
 	seed := "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
 	app.WriteAPIFile(t, envFile, []byte(seed))

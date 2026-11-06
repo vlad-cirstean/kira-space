@@ -1,7 +1,7 @@
 package bridge
 
 import (
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/internal/keepawake"
 )
 
@@ -11,7 +11,7 @@ import (
 // registered service and none of those may be renderer-callable. The manual half (Toggle) is
 // shared with Kira Space's own KeepAwakeService. The agent-aware setting lives in Kira Space only.
 type KeepAwakeService struct {
-	Deps appcore.Deps
+	Deps appcore.StudioDeps
 	// Ctl and Toggle are exported so main.go can inject the platform driver and the shared manual
 	// toggle — TerminalService.Registry's own shape. Wails binds a registered service's exported
 	// *methods*, never its fields, so this widens nothing on the wire.

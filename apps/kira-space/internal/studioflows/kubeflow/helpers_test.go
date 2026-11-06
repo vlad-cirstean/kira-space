@@ -20,19 +20,19 @@ const (
 )
 
 type env struct {
-	app  *flowharness.App
-	fake *flowharness.KubeFake
+	app  *studioflowharness.App
+	fake *studioflowharness.KubeFake
 	cfg  string
 	ids  map[string]string
 }
 
 // boot starts the fake API server and the app over a four-context kubeconfig.
-func boot(t *testing.T, fopts []flowharness.KubeFakeOption, opts ...flowharness.Opt) *env {
+func boot(t *testing.T, fopts []studioflowharness.KubeFakeOption, opts ...flowharness.Opt) *env {
 	t.Helper()
-	fake := flowharness.NewKubeFake(t, fopts...)
-	app := flowharness.New(t, opts...)
+	fake := studioflowharness.NewKubeFake(t, fopts...)
+	app := studioflowharness.New(t, opts...)
 	e := &env{app: app, fake: fake, cfg: filepath.Join(app.Home, "kubeconfig"), ids: map[string]string{}}
-	fake.WriteKubeconfig(t, e.cfg, flowharness.KubeconfigOpts{BinDir: app.BinDir})
+	fake.WriteKubeconfig(t, e.cfg, studioflowharness.KubeconfigOpts{BinDir: app.BinDir})
 	t.Setenv("KUBECONFIG", e.cfg)
 	e.loadIDs(t)
 	t.Cleanup(func() {
@@ -58,9 +58,9 @@ func (e *env) loadIDs(t *testing.T) {
 
 func (e *env) contract(t *testing.T, key string, got any, extra ...flowharness.ContractOption) {
 	t.Helper()
-	opts := append([]flowharness.ContractOption{
-		flowharness.Replace(e.fake.URL, "<kube>"), flowharness.Replace(e.fake.DownURL(), "<down>"),
-		flowharness.Replace(e.cfg, "<kubeconfig>"),
+	opts := append([]studioflowharness.ContractOption{
+		studioflowharness.Replace(e.fake.URL, "<kube>"), studioflowharness.Replace(e.fake.DownURL(), "<down>"),
+		studioflowharness.Replace(e.cfg, "<kubeconfig>"),
 	}, extra...)
 	e.app.Contract(t, scenario, key, got, opts...)
 }
@@ -74,7 +74,7 @@ func wantCode(t *testing.T, err error, code string) {
 }
 
 // logsOf returns the lines and end state of one stream recorded since mark.
-func logsOf(app *flowharness.App, mark int, window, streamID string) (lines []kubernetes.LogLine, ended bool, errMsg string) {
+func logsOf(app *studioflowharness.App, mark int, window, streamID string) (lines []kubernetes.LogLine, ended bool, errMsg string) {
 	for _, ev := range app.Events.Since(mark, kubernetes.ChannelLogs) {
 		le, ok := ev.Data.(kubernetes.LogsEvent)
 		if !ok || le.StreamID != streamID || ev.Window != window {
@@ -88,7 +88,7 @@ func logsOf(app *flowharness.App, mark int, window, streamID string) (lines []ku
 	return lines, ended, errMsg
 }
 
-func waitLines(t *testing.T, app *flowharness.App, mark int, window, streamID string, n int) []kubernetes.LogLine {
+func waitLines(t *testing.T, app *studioflowharness.App, mark int, window, streamID string, n int) []kubernetes.LogLine {
 	t.Helper()
 	var lines []kubernetes.LogLine
 	testx.WaitUntil(t, wait, func() bool {
@@ -99,7 +99,7 @@ func waitLines(t *testing.T, app *flowharness.App, mark int, window, streamID st
 	return lines
 }
 
-func waitEnded(t *testing.T, app *flowharness.App, mark int, window, streamID string) ([]kubernetes.LogLine, string) {
+func waitEnded(t *testing.T, app *studioflowharness.App, mark int, window, streamID string) ([]kubernetes.LogLine, string) {
 	t.Helper()
 	var lines []kubernetes.LogLine
 	var errMsg string

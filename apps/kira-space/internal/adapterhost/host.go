@@ -32,7 +32,7 @@ type OpSpec struct {
 	Kind         string // a model.OpKind value
 	OpID         string
 	TabID        *string
-	// Incognito is P71 §4.3's own addition: forwarded onto op:start so oplog.Wiring can skip
+	// Incognito is P71 §4.3's own addition: forwarded onto op:start so studiooplog.Wiring can skip
 	// persisting this op at all (Append/Finish) while still emitting the live Operations-panel
 	// update — false for every caller but HttpService.Send/GrpcService.Call.
 	Incognito bool
@@ -73,7 +73,7 @@ type RunningOp struct {
 // eventSub is the lossless delivery queue for exactly one Subscribe()r. Delivery used to be a
 // non-blocking send into a fixed 32-slot buffer, dropping an event outright once it filled — on
 // the stated reasoning that "dropping one event is better than blocking every other subscriber".
-// oplog is the only production subscriber (main.go's `oplog.New(router.Host(), ...)` is the only
+// oplog is the only production subscriber (main.go's `studiooplog.New(router.Host(), ...)` is the only
 // Host.Subscribe call site; internal/bridge's http.go/grpc.go only ever call RunOp, never
 // Subscribe), and it does a synchronous SQLite write plus a Wails emit per event — up to 64
 // concurrent ops (plus tree/dbmcp/http/grpc ops) can easily outpace that, so the stated reasoning
@@ -88,21 +88,21 @@ type RunningOp struct {
 // can no longer race a send against a close at all: deliver never touches ch, and close only ever
 // asks drain to finish its own queue and close ch itself, once, from that single goroutine.
 type eventSub struct {
-	ch   chan oplog.Event // consumer-facing; only drain ever sends on or closes this
+	ch   chan studiooplog.Event // consumer-facing; only drain ever sends on or closes this
 	wake chan struct{}    // 1-buffered: wakes drain when the queue goes non-empty or closes
 
 	mu     sync.Mutex
-	queue  []oplog.Event
+	queue  []studiooplog.Event
 	closed bool
 }
 
 func newEventSub() *eventSub {
-	s := &eventSub{ch: make(chan oplog.Event), wake: make(chan struct{}, 1)}
+	s := &eventSub{ch: make(chan studiooplog.Event), wake: make(chan struct{}, 1)}
 	go s.drain()
 	return s
 }
 
-func (s *eventSub) deliver(e oplog.Event) {
+func (s *eventSub) deliver(e studiooplog.Event) {
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
@@ -159,7 +159,7 @@ type Host struct {
 	deps  adapters.Deps
 	cache *enginecache.Cache
 
-	events notify.Emitter[oplog.Event]
+	events notify.Emitter[studiooplog.Event]
 
 	mu      sync.Mutex
 	running map[string]runningOp
@@ -291,7 +291,7 @@ func (h *Host) RunOp(ctx context.Context, spec OpSpec, fn func(context.Context, 
 		h.running[opID] = cur
 	}
 	h.mu.Unlock()
-	h.emitJSON(oplog.EventOpStart, opStartPayload{
+	h.emitJSON(studiooplog.EventOpStart, opStartPayload{
 		OpID: opID, ConnectionID: spec.ConnectionID, TabID: spec.TabID, Kind: spec.Kind, StartedAt: startedAt,
 		Incognito: spec.Incognito, DelayMs: spec.DelayMs, Source: OpSourceOf(ctx),
 	})
@@ -346,7 +346,7 @@ func (h *Host) RunOp(ctx context.Context, spec OpSpec, fn func(context.Context, 
 	if c := op.Command(); c != "" {
 		command = &c
 	}
-	h.emitJSON(oplog.EventOpEnd, opEndPayload{
+	h.emitJSON(studiooplog.EventOpEnd, opEndPayload{
 		OpID: opID, Status: status, DurationMs: durationMs, Rows: op.Rows(), Command: command, Error: errMsg,
 		Path: op.Path(),
 	})
@@ -416,7 +416,7 @@ func (h *Host) emitJSON(topic string, payload any) {
 	if err != nil {
 		return
 	}
-	h.events.Emit(oplog.Event{Topic: topic, Payload: body})
+	h.events.Emit(studiooplog.Event{Topic: topic, Payload: body})
 }
 
 // rememberEarlyCancelLocked records an unknown id for RunOp to refuse; h.mu must be held.
@@ -549,9 +549,9 @@ func (h *Host) CancelOpsOnAdapter(adapter adapters.Adapter) {
 }
 
 // Subscribe returns this subscriber's own channel of every op:start/op:end event Host emits, and
-// an unsubscribe func — the exact shape oplog.EventSource wants, since this Host is oplog's only
+// an unsubscribe func — the exact shape studiooplog.EventSource wants, since this Host is oplog's only
 // producer now (P58f D9; it used to be fanned together with enginehost.Host's own events).
-func (h *Host) Subscribe() (<-chan oplog.Event, func()) {
+func (h *Host) Subscribe() (<-chan studiooplog.Event, func()) {
 	sub := newEventSub()
 	unsubscribe := h.events.Subscribe(sub.deliver)
 	return sub.ch, func() {

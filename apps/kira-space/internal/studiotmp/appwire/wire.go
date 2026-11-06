@@ -34,7 +34,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/tree"
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
@@ -61,7 +61,7 @@ import (
 type adaptersWired struct {
 	router         *adapterhost.Router
 	connectionsSvc *connections.Service
-	oplogWiring    *oplog.Wiring
+	oplogWiring    *studiooplog.Wiring
 	metricsTicker  *metrics.Ticker
 }
 
@@ -71,7 +71,7 @@ type adaptersWired struct {
 // sweeps plus the freelist reclaim -> the process-metrics ticker, started. deps is mutated in place
 // (Router/Connections/Tree) at the exact points the original sequential code set them, since
 // several bridge.XxxService{Deps: deps} literals built later copy *deps by value.
-func wireAdapters(deps *appcore.Deps, settings model.Settings, repositories *repos.Repos, files *connfiles.Loader, authorizer *localauth.Authorizer, db *storage.DB) adaptersWired {
+func wireAdapters(deps *appcore.StudioDeps, settings model.Settings, repositories *repos.Repos, files *connfiles.Loader, authorizer *localauth.Authorizer, db *studiostorage.DB) adaptersWired {
 	adapterDeps := adapters.Deps{Log: func(level, message string) {
 		switch level {
 		case "error":
@@ -103,7 +103,7 @@ func wireAdapters(deps *appcore.Deps, settings model.Settings, repositories *rep
 	// The router's in-process scheduler is oplog's only EventSource now (P58f D9) — every kind has
 	// been native since P58e, so the Node child never produces an op:start/op:end of its own to fan
 	// in (enginebackend.Merge, which used to do that, is deleted).
-	oplogWiring := oplog.New(router.Host(), repositories.Ops, settings.Advanced.OpLogRetentionDays)
+	oplogWiring := studiooplog.New(router.Host(), repositories.Ops, settings.Advanced.OpLogRetentionDays)
 	oplogWiring.Start()
 
 	// P8 D7/F18: a scratch tab's response history is swept once per launch, beside oplog's own
@@ -155,7 +155,7 @@ type embeddedWired struct {
 // event bus, attached to every producer built so far. deps is taken by value, since every call
 // site here is at or after the point main's own deps.Events assignment (the emitter) has already
 // run.
-func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, approvalQueue *approvals.Queue, keepAwakeDriver keepawake.Driver, connectionsSvc *connections.Service, oplogWiring *oplog.Wiring, metricsTicker *metrics.Ticker, promptRouter *prompts.Router, agents harness.Selector, proofSvc *proof.Service, agentAPI *agentapi.Service, opts Options) embeddedWired {
+func wireEmbeddedServices(deps appcore.StudioDeps, installer harness.MCPInstaller, approvalQueue *approvals.Queue, keepAwakeDriver keepawake.Driver, connectionsSvc *connections.Service, oplogWiring *studiooplog.Wiring, metricsTicker *metrics.Ticker, promptRouter *prompts.Router, agents harness.Selector, proofSvc *proof.Service, agentAPI *agentapi.Service, opts Options) embeddedWired {
 	// The DB MCP server's embedded instance — owned by this app's own lifecycle.
 	// StartIfEnabled's own failure (a bind conflict) is logged, never fatal.
 	// The approval broker outlives the server's own start/stop (constructed here, not
@@ -254,7 +254,7 @@ type lifecycleWired struct {
 // close-flush coordinator -> beforeFlush/teardown (today's OnShutdown, minus the ticker Stop,
 // which moves to beforeFlush, run before the flush wait rather than after it — index.ts:156)
 // -> the quitter built over both.
-func wireLifecycle(windows *shell.WindowRegistry, events *bridge.Events, eventsDetach func(), metricsTicker *metrics.Ticker, oplogWiring *oplog.Wiring, connectionsSvc *connections.Service, dbMcpSvc *bridge.DbMcpService, keepAwakeSvc *bridge.KeepAwakeService, terminalSvc *bridge.TerminalService, dockerSvc *bridge.DockerService, kubeSvc *bridge.KubernetesService, updateInstaller *appupdate.Installer, runs *scriptruns.Service, closeAgent func(), sched *scriptruns.Scheduler, runLoader *scripts.Loader, apiFiles *apifiles.Store, connFiles *connfiles.Loader, repositories *repos.Repos, db *storage.DB) lifecycleWired {
+func wireLifecycle(windows *shell.WindowRegistry, events *bridge.Events, eventsDetach func(), metricsTicker *metrics.Ticker, oplogWiring *studiooplog.Wiring, connectionsSvc *connections.Service, dbMcpSvc *bridge.DbMcpService, keepAwakeSvc *bridge.KeepAwakeService, terminalSvc *bridge.TerminalService, dockerSvc *bridge.DockerService, kubeSvc *bridge.KubernetesService, updateInstaller *appupdate.Installer, runs *scriptruns.Service, closeAgent func(), sched *scriptruns.Scheduler, runLoader *scripts.Loader, apiFiles *apifiles.Store, connFiles *connfiles.Loader, repositories *repos.Repos, db *studiostorage.DB) lifecycleWired {
 	// windows holds every currently open window's shell.Attach cleanup, keyed by that window's own
 	// identity (replacing the single detachWindow/mainWindow pair that only ever worked because at
 	// most one window could exist at a time). beforeFlush detaches every one of them, not just the
@@ -361,7 +361,7 @@ func dockerOptions(opts Options, restore docker.RestoreStore) []docker.Option {
 // openAgentSettings opens the shared credential store and the settings store Space edits. A
 // failure leaves launches without settings, never without Kira's own wiring. The returned func
 // removes this app's run files and closes the credential store.
-func openAgentSettings(registry *harness.Registry, deps appcore.Deps, opts Options) (agentcfg.PrepareFunc, *agentcfg.Store, func()) {
+func openAgentSettings(registry *harness.Registry, deps appcore.StudioDeps, opts Options) (agentcfg.PrepareFunc, *agentcfg.Store, func()) {
 	sec, err := agentcfg.OpenSecrets(kirapaths.SharedAgentSecrets(), opts.Cipher)
 	if err != nil {
 		slog.Warn("agent settings: open secrets", "scope", "startup", "err", err)

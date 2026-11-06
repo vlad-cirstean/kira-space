@@ -17,13 +17,13 @@ import (
 // re-decodes, a bad draft is a problem with a line, a collection file edits `variables` only, and a
 // typed secret saves a reference into the file and the value through the write-only call.
 func TestApiVariablesForm(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	const sc = "api-variables-form"
 	const typed = "typed-token-5d2e"
 	const envFile = "staging.environment.yaml"
 	cfg := app.W.ApiConfig
-	mask := flowharness.Mask("hash", "baseHash")
-	paths := flowharness.Replace(app.KiraHome, "<home>")
+	mask := studioflowharness.Mask("hash", "baseHash")
+	paths := studioflowharness.Replace(app.KiraHome, "<home>")
 
 	// A head comment, a line comment and color before name.
 	seed := "# Staging servers for the web team.\n" +

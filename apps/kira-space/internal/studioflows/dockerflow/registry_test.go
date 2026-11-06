@@ -61,11 +61,11 @@ func imageIDOf(t *testing.T, svc interface {
 }
 
 func TestImageRegistryURL(t *testing.T) {
-	d := flowharness.RequireDocker(t)
+	d := studioflowharness.RequireDocker(t)
 	stub := &hubStub{hits: map[string]int{}}
 	srv := httptest.NewServer(stub)
 	t.Cleanup(srv.Close)
-	app := flowharness.New(t, flowharness.WithDockerHubAPI(srv.URL))
+	app := studioflowharness.New(t, studioflowharness.WithDockerHubAPI(srv.URL))
 	svc := app.W.Docker
 	ctx := context.Background()
 
@@ -88,9 +88,9 @@ func TestImageRegistryURL(t *testing.T) {
 		}
 		t.Cleanup(func() { _, _ = d.Cli.ImageRemove(context.Background(), ref, client.ImageRemoveOptions{}) })
 	}
-	opts := []flowharness.ContractOption{
-		flowharness.Replace(d.Prefix(), "kira-flow-"),
-		flowharness.Replace(runIDOf(d), "run"),
+	opts := []studioflowharness.ContractOption{
+		studioflowharness.Replace(d.Prefix(), "kira-flow-"),
+		studioflowharness.Replace(runIDOf(d), "run"),
 	}
 
 	localID := imageIDOf(t, svc, local)
@@ -115,12 +115,12 @@ func TestImageRegistryURL(t *testing.T) {
 
 	// An explicit registry host names the registry itself: linked without asking Hub.
 	before := stub.total()
-	got, err = svc.ImageRegistry(docker.IDArgs{ID: imageIDOf(t, svc, flowharness.Image)})
+	got, err = svc.ImageRegistry(docker.IDArgs{ID: imageIDOf(t, svc, studioflowharness.Image)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got.URL != "https://hub.docker.com/_/alpine" || got.Unconfirmed {
-		t.Fatalf("registry link of %s = %+v, want the Hub page", flowharness.Image, got)
+		t.Fatalf("registry link of %s = %+v, want the Hub page", studioflowharness.Image, got)
 	}
 	if stub.total() != before {
 		t.Fatalf("explicit-host image called the Hub API %d times", stub.total()-before)

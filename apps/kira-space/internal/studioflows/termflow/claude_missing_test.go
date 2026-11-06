@@ -15,7 +15,7 @@ import (
 
 // A Claude Code launch without the CLI fails with the Kira error and opens no session.
 func TestClaudeCodeLaunchWithoutClaude(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	if err := os.Remove(filepath.Join(app.BinDir, "claude")); err != nil {
 		t.Fatal(err)
 	}

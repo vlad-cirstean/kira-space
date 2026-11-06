@@ -16,9 +16,9 @@ import (
 // namespace, through the embedded DB MCP server.
 func TestKubeMcpThroughClaude(t *testing.T) {
 	app := newRealApp(t)
-	fake := flowharness.NewKubeFake(t)
+	fake := studioflowharness.NewKubeFake(t)
 	cfgPath := filepath.Join(app.Home, "kubeconfig")
-	fake.WriteKubeconfig(t, cfgPath, flowharness.KubeconfigOpts{BinDir: app.BinDir})
+	fake.WriteKubeconfig(t, cfgPath, studioflowharness.KubeconfigOpts{BinDir: app.BinDir})
 	t.Setenv("KUBECONFIG", cfgPath)
 	res, err := app.W.Kubernetes.Clusters()
 	if err != nil {

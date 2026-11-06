@@ -1,4 +1,4 @@
-package flowharness
+package studioflowharness
 
 import (
 	"testing"

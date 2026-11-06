@@ -10,9 +10,9 @@ import (
 	"github.com/kirathecat/kira-studio/internal/flowtest"
 )
 
-func TestMain(m *testing.M) { os.Exit(flowharness.Main(m)) }
+func TestMain(m *testing.M) { os.Exit(studioflowharness.Main(m)) }
 
 func TestEveryBoundMethodHasAFlow(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	flowtest.CheckCoverage(t, "bound", flowtest.BoundMethods(app.W.Bound()), "..", ".", "exempt.txt")
 }

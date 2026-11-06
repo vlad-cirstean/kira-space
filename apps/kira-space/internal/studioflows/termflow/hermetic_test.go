@@ -16,7 +16,7 @@ import (
 // project,local sources, and a smart run ticks an MCP server from the shared agent settings, not the
 // CLI's. Frontend half: automations-smart.spec.ts.
 func TestHermeticStudio(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	app.Scenario(scenario(fakeagent.Action{Name: "done"}))
 	dir := filepath.Join(app.SpaceHome, "agent")
 	if err := os.MkdirAll(dir, 0o700); err != nil {

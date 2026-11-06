@@ -13,7 +13,7 @@ import (
 
 // Mirrors tests/ui/consistency-docker-automations.spec.ts: the run dialog shows this text.
 func TestPreviewRefusesTaskInStudio(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	rec, err := app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
 		Name: "plain", Kind: scripts.KindScript, Command: "echo hi", Color: "blue", DirMode: scripts.DirModeKira,
 	}})

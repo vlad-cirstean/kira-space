@@ -32,10 +32,10 @@ func executeWire(opID, connID, statement string) adapterhost.ExecuteRequestWire 
 // views, read fields, run a query with a filter and a sort, histogram it and ask for value hints.
 // Contract kibana-discover: tests/ui/kibana-discover.spec.ts answers its calls with these results.
 func TestKibanaDiscoverJourney(t *testing.T) {
-	flowharness.Complete(t)
-	flowharness.RequireDocker(t)
+	studioflowharness.Complete(t)
+	studioflowharness.RequireDocker(t)
 	fx := testsupport.StartKibana(t)
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 
 	in := connections.Input{ConnectionFields: model.ConnectionFields{
 		Name: "flow kibana", Kind: "kibana", Color: "indigo", Mode: "fields",
@@ -52,7 +52,7 @@ func TestKibanaDiscoverJourney(t *testing.T) {
 		t.Fatalf("Connect = %+v, want connected", st)
 	}
 	app.Contract(t, "kibana-discover", "ConnectionsService.Connect#connected", st,
-		flowharness.Mask("since", "serverVersion"))
+		studioflowharness.Mask("since", "serverVersion"))
 
 	kids, err := app.W.Tree.Children(bridge.TreeChildrenArgs{ConnectionID: conn.ID, Path: ""})
 	if err != nil {

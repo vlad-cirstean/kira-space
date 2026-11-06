@@ -2,7 +2,7 @@
 // internal/storage/repos.OpsRepo's Append/Finish/Prune — subscribing to op:start/op:end events,
 // forwarding an update for the renderer's op-log panel, and reconciling whatever was still running
 // when the event source's channel closes (app shutdown).
-package oplog
+package studiooplog
 
 import (
 	"encoding/json"

@@ -16,7 +16,7 @@ import (
 )
 
 func TestInfoAndKeepAwake(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 
 	info, err := app.W.App.Info()
 	if err != nil {
@@ -47,7 +47,7 @@ func TestInfoAndKeepAwake(t *testing.T) {
 }
 
 func TestUpdateRefusedInDevBuild(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	st, err := app.W.Update.Status(context.Background())
 	if err != nil || st.UpdateAvailable {
 		t.Fatalf("Status = %+v (%v), want no update in a dev build", st, err)
@@ -61,7 +61,7 @@ func TestUpdateRefusedInDevBuild(t *testing.T) {
 }
 
 func TestCheckForUpdatesRefusedInDevBuild(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	var ie *ipcerr.Error
 	if _, err := app.W.Update.Check(context.Background()); !errors.As(err, &ie) || ie.Code != "E_CONFLICT" || ie.Message != "Updates are available only in release builds." {
 		t.Fatalf("Check in a dev build = %v, want the coded notRelease error", err)
@@ -69,7 +69,7 @@ func TestCheckForUpdatesRefusedInDevBuild(t *testing.T) {
 }
 
 func TestDataGripScan(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	var ie *ipcerr.Error
 	if _, err := app.W.DataGrip.Scan(bridge.DataGripScanArgs{}); !errors.As(err, &ie) || ie.Code != "E_CONTRACT" {
 		t.Fatalf("Scan without a path = %v, want E_CONTRACT", err)
@@ -131,7 +131,7 @@ func TestDataGripScan(t *testing.T) {
 }
 
 func TestOpenExternal(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	open := func(url string) error { return app.W.Link.OpenExternal(bridge.LinkOpenExternalArgs{URL: url}) }
 
 	app.Contract(t, "link-open", "args:LinkService.OpenExternal", bridge.LinkOpenExternalArgs{URL: "https://hub.docker.com/_/alpine"})
@@ -152,7 +152,7 @@ func TestOpenExternal(t *testing.T) {
 }
 
 func TestTerminalLinkOpen(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	const url = "https://github.com/acme/api/pull/7"
 	args := bridge.LinkOpenExternalArgs{URL: url}
 	app.Contract(t, "terminal-link", "args:LinkService.OpenExternal", args)

@@ -91,7 +91,7 @@ func newResolveService(t *testing.T) (svc *apivars.Service, collectionID string,
 	t.Helper()
 	t.Setenv("KIRA_INSECURE_SECRETS", "1")
 	t.Setenv("KIRA_HOME", t.TempDir())
-	db, err := storage.Open()
+	db, err := studiostorage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
 	}

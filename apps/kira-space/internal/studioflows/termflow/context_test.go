@@ -15,7 +15,7 @@ import (
 // a smart script gets it, and Continue in terminal carries the flag.
 func TestAgentContextStudio(t *testing.T) {
 	const marker = "STUDIO-CONTEXT-MARKER\n"
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	app.Scenario(scenario(fakeagent.Action{Name: "done"}))
 	dir := filepath.Join(app.SpaceHome, "agent")
 	if err := os.MkdirAll(dir, 0o755); err != nil {

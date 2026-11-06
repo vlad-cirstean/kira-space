@@ -12,13 +12,13 @@ import (
 )
 
 func TestUnaryMetadataAndStatus(t *testing.T) {
-	app := flowharness.New(t)
-	srv := flowharness.GRPC(t)
+	app := studioflowharness.New(t)
+	srv := studioflowharness.GRPC(t)
 
 	args := callArgs(srv.Addr, "Unary", `{"text":"hello","index":7}`)
 	args.Metadata = []grpcclient.MetaPair{{Name: "x-trace", Value: "abc-123"}}
 	res := call(t, app, args)
-	app.Contract(t, "api-grpc", "GrpcService.Call", res, flowharness.Mask("elapsedMs", "offsetMs", "wireBytes", "messageBytes"), flowharness.Replace(srv.Addr, "<grpc>"))
+	app.Contract(t, "api-grpc", "GrpcService.Call", res, studioflowharness.Mask("elapsedMs", "offsetMs", "wireBytes", "messageBytes"), studioflowharness.Replace(srv.Addr, "<grpc>"))
 	if res.Code != 0 || res.CodeName != "OK" || res.MessageCount != 1 {
 		t.Fatalf("result = %+v, want OK with one message", res)
 	}
@@ -79,8 +79,8 @@ func TestUnaryMetadataAndStatus(t *testing.T) {
 }
 
 func TestServerStreamAndCancel(t *testing.T) {
-	app := flowharness.New(t)
-	srv := flowharness.GRPC(t)
+	app := studioflowharness.New(t)
+	srv := studioflowharness.GRPC(t)
 
 	t.Run("messages reach the calling window in order", func(t *testing.T) {
 		mark := app.Events.Mark()
@@ -97,7 +97,7 @@ func TestServerStreamAndCancel(t *testing.T) {
 			done <- outcome{r, err}
 		}()
 		// The history row is written before the terminal event, so it exists when that event is seen.
-		app.Events.WaitAfter(t, mark, bridge.ChannelGrpcCall, func(e flowharness.Event) bool {
+		app.Events.WaitAfter(t, mark, bridge.ChannelGrpcCall, func(e studioflowharness.Event) bool {
 			var d bridge.GrpcCallEvent
 			e.Decode(t, &d)
 			return d.Done
@@ -143,7 +143,7 @@ func TestServerStreamAndCancel(t *testing.T) {
 		// Batching decides how many messages one event carries; the contract is one message.
 		first := callEvents(t, app, mark)[0]
 		first.Messages = first.Messages[:1]
-		app.Contract(t, "api-grpc", "event:"+bridge.ChannelGrpcCall+"#message", first, flowharness.Mask("callId", "offsetMs", "wireBytes"))
+		app.Contract(t, "api-grpc", "event:"+bridge.ChannelGrpcCall+"#message", first, studioflowharness.Mask("callId", "offsetMs", "wireBytes"))
 		for i, s := range seqs {
 			if s != i {
 				t.Errorf("message seqs = %v, want 0..4 in order", seqs)
@@ -212,13 +212,13 @@ func TestServerStreamAndCancel(t *testing.T) {
 		partialStatus.Messages = nil
 		final.Status = &partialStatus
 		app.Contract(t, "api-grpc", "event:"+bridge.ChannelGrpcCall+"#cancelled", final,
-			flowharness.Mask("callId", "seq", "elapsedMs", "messageCount", "messageBytes", "wireBytes"))
+			studioflowharness.Mask("callId", "seq", "elapsedMs", "messageCount", "messageBytes", "wireBytes"))
 	})
 }
 
 func TestClientAndBidiRefused(t *testing.T) {
-	app := flowharness.New(t)
-	srv := flowharness.GRPC(t)
+	app := studioflowharness.New(t)
+	srv := studioflowharness.GRPC(t)
 
 	s := describe(t, app, describeArgs(srv.Addr))
 	for name, both := range map[string]bool{"ClientStream": false, "Bidi": true} {
@@ -251,8 +251,8 @@ func TestClientAndBidiRefused(t *testing.T) {
 }
 
 func TestTLSTargets(t *testing.T) {
-	app := flowharness.New(t)
-	srv := flowharness.GRPC(t, flowharness.WithGRPCTLS(t))
+	app := studioflowharness.New(t)
+	srv := studioflowharness.GRPC(t, studioflowharness.WithGRPCTLS(t))
 	tlsCfg := grpcclient.TLSConfig{Enabled: true, CAFile: srv.CAFile}
 
 	d := describeArgs(srv.Addr)
@@ -301,7 +301,7 @@ func TestTLSTargets(t *testing.T) {
 	})
 
 	t.Run("server name override passes a SAN mismatch", func(t *testing.T) {
-		other := flowharness.GRPC(t, flowharness.WithGRPCTLS(t, "flow.example.test"))
+		other := studioflowharness.GRPC(t, studioflowharness.WithGRPCTLS(t, "flow.example.test"))
 		u := callArgs(other.Addr, "Unary", `{"text":"san"}`)
 		u.TLS = grpcclient.TLSConfig{Enabled: true, CAFile: other.CAFile}
 		_, err := app.W.Grpc.Call(ctx, u)
@@ -316,8 +316,8 @@ func TestTLSTargets(t *testing.T) {
 }
 
 func TestSecretsInTargetAndMetadata(t *testing.T) {
-	app := flowharness.New(t)
-	srv := flowharness.GRPC(t)
+	app := studioflowharness.New(t)
+	srv := studioflowharness.GRPC(t)
 	const authz = "sek-5d2f9a77"
 	colID, envID := secretVars(t, app, map[string]string{"host": srv.Addr, "authz": authz})
 
@@ -390,9 +390,9 @@ func mustNotContain(t *testing.T, what, haystack, needle string) {
 }
 
 func TestLargeMessages(t *testing.T) {
-	flowharness.Complete(t)
-	app := flowharness.New(t)
-	srv := flowharness.GRPC(t)
+	studioflowharness.Complete(t)
+	app := studioflowharness.New(t)
+	srv := studioflowharness.GRPC(t)
 
 	big := call(t, app, callArgs(srv.Addr, "Unary", `{"payloadBytes":4194304}`))
 	if big.CodeName != "OK" || big.Messages[0].WireBytes < 4<<20 {

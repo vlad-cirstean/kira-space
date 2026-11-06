@@ -13,7 +13,7 @@ import (
 )
 
 func TestTerminalIDBounds(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	if _, err := app.W.WindowsSvc.Ensure(windowsvc.EnsureArgs{WindowKey: "w1"}); err != nil {
 		t.Fatal(err)
 	}

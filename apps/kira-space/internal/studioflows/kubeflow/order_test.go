@@ -90,7 +90,7 @@ contexts:
 users:
 - name: aa-user
   user: {token: %s}
-`, e.fake.URL, flowharness.KubeGoodToken))
+`, e.fake.URL, studioflowharness.KubeGoodToken))
 	t.Setenv("KUBECONFIG", e.cfg+string(os.PathListSeparator)+extra)
 	withNew := append(slices.Clone(moved), "aa-new")
 	if o := e.order(t); !slices.Equal(o, withNew) {

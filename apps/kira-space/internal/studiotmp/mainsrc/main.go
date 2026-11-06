@@ -32,7 +32,7 @@ import (
 var assets embed.FS
 
 // main's startup order mirrors src/main/index.ts, with the upgradeLegacySecrets step deleted, not
-// ported: config.EnsureLayout -> logging.Init/Sweep -> storage.Open (migrates) -> secrets.New ->
+// ported: config.EnsureLayout -> logging.Init/Sweep -> studiostorage.Open (migrates) -> secrets.New ->
 // repos.New + repos.NewSecrets -> Settings.GetAll -> adapterhost.NewRouter -> preconnect.New ->
 // connections.New(...).Start -> tree.New -> router.PushCacheConfig -> oplog.New(...).Start ->
 // metrics ticker Start -> shell.NewQuitter -> application.New(Services, ShouldQuit, OnShutdown) ->
@@ -113,14 +113,14 @@ func main() {
 // coreOpened is openCore's own result — the boot-order prefix of main's own comment: config layout,
 // logging, DB, cipher, authorizer, repos.
 type coreOpened struct {
-	db           *storage.DB
+	db           *studiostorage.DB
 	cipher       *secrets.Cipher
 	authorizer   *localauth.Authorizer
 	repositories *repos.Repos
 }
 
 // openCore runs main's own boot-order prefix: config.EnsureLayout -> logging.Init/Sweep ->
-// storage.Open (migrates) -> secrets.New -> localauth.New -> repos.New. A failure at any
+// studiostorage.Open (migrates) -> secrets.New -> localauth.New -> repos.New. A failure at any
 // reporter.Fatal step here exits the process; it never returns an error for the caller to handle.
 func openCore(reporter *startupfail.Reporter) coreOpened {
 	if err := config.EnsureLayout(); err != nil {
@@ -131,7 +131,7 @@ func openCore(reporter *startupfail.Reporter) coreOpened {
 	}
 	logging.Sweep(config.LogsDir())
 
-	db, err := storage.Open()
+	db, err := studiostorage.Open()
 	if err != nil {
 		reporter.Fatal(startupfail.StepStorage, err)
 	}

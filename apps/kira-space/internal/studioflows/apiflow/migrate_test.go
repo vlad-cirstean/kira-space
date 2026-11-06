@@ -17,8 +17,8 @@ import (
 // Rows written before the api files existed become files at the next start: ids, secrets and history
 // carry over, and a later start never exports again.
 func TestApiConfigMigration(t *testing.T) {
-	app := flowharness.New(t)
-	srv := flowharness.HTTP(t)
+	app := studioflowharness.New(t)
+	srv := studioflowharness.HTTP(t)
 	const (
 		legacyKey = "legacy-secret-9"
 		legacyEnv = "legacy-env-secret-3"

@@ -12,9 +12,9 @@ import (
 )
 
 func TestIncognitoLeavesNoTrace(t *testing.T) {
-	app := flowharness.New(t)
-	srv := flowharness.HTTP(t)
-	gsrv := flowharness.GRPC(t)
+	app := studioflowharness.New(t)
+	srv := studioflowharness.HTTP(t)
+	gsrv := studioflowharness.GRPC(t)
 
 	// Control: the same sends without incognito leave rows and bytes, so the scan below is meaningful.
 	control := get(srv.URL + "/status?path=control-9e8d7c")
@@ -78,10 +78,10 @@ func TestIncognitoLeavesNoTrace(t *testing.T) {
 // Dynamic references ({{$uuid}}, {{$timestamp}}) are resolved by the renderer before a send; the
 // IPC layer carries them through untouched and history keeps the template.
 func TestDynamicValues(t *testing.T) {
-	app := flowharness.New(t)
-	srv := flowharness.HTTP(t)
+	app := studioflowharness.New(t)
+	srv := studioflowharness.HTTP(t)
 	col := newCollection(t, app, "dyn")
-	env := app.SeedEnvironment(t, "dev", flowharness.APIVar{Name: "sk", Value: "dyn-secret-77", Secret: true})
+	env := app.SeedEnvironment(t, "dev", studioflowharness.APIVar{Name: "sk", Value: "dyn-secret-77", Secret: true})
 
 	args := get(srv.URL + "/echo?id={{$uuid}}&ts={{$timestamp}}&k={{sk}}")
 	args.CollectionID, args.EnvironmentID = col.ID, env.ID
@@ -106,8 +106,8 @@ func TestDynamicValues(t *testing.T) {
 }
 
 func TestRestartKeepsApiState(t *testing.T) {
-	app := flowharness.New(t)
-	srv := flowharness.HTTP(t)
+	app := studioflowharness.New(t)
+	srv := studioflowharness.HTTP(t)
 	col := newCollection(t, app, "persist")
 	folder, err := app.W.Collections.CreateItem(bridge.CollectionsCreateItemArgs{CollectionID: col.ID, Kind: "folder", Name: "folder"})
 	if err != nil {
@@ -126,7 +126,7 @@ func TestRestartKeepsApiState(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	env := app.SeedEnvironment(t, "dev", flowharness.APIVar{Name: "tok", Value: "persist-secret-1", Secret: true})
+	env := app.SeedEnvironment(t, "dev", studioflowharness.APIVar{Name: "tok", Value: "persist-secret-1", Secret: true})
 	if err := app.W.Variables.SetActiveEnvironment(bridge.VariablesEnvironmentIDArgs{ID: env.ID}); err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func TestRestartKeepsApiState(t *testing.T) {
 	}
 	// Contract api-restart, read by tests/ui/collections.spec.ts "after a restart the tree and the
 	// active environment come back".
-	app.Contract(t, "api-restart", "CollectionsService.List", after, flowharness.Replace(srv.URL, "<http>"))
+	app.Contract(t, "api-restart", "CollectionsService.List", after, studioflowharness.Replace(srv.URL, "<http>"))
 	envs, err := app.W.Variables.ListEnvironments()
 	if err != nil || len(envs) != 1 || !envs[0].IsActive || envs[0].ID != env.ID {
 		t.Fatalf("environments after restart = %+v (%v), want dev still active", envs, err)

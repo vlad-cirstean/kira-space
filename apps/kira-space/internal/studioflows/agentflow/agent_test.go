@@ -7,7 +7,7 @@ import (
 )
 
 func TestInfoNamesTheProvider(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	info, err := app.W.AgentSvc.Info()
 	if err != nil {
 		t.Fatal(err)

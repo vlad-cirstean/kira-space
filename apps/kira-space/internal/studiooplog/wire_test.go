@@ -1,4 +1,4 @@
-package oplog_test
+package studiooplog_test
 
 import (
 	"database/sql"
@@ -18,19 +18,19 @@ import (
 
 // fakeSource is an EventSource a test drives directly, without a real engine child.
 type fakeSource struct {
-	ch chan oplog.Event
+	ch chan studiooplog.Event
 }
 
 func newFakeSource() *fakeSource {
-	return &fakeSource{ch: make(chan oplog.Event, 1024)}
+	return &fakeSource{ch: make(chan studiooplog.Event, 1024)}
 }
 
-func (f *fakeSource) Subscribe() (<-chan oplog.Event, func()) {
+func (f *fakeSource) Subscribe() (<-chan studiooplog.Event, func()) {
 	return f.ch, func() { close(f.ch) }
 }
 
 type harness struct {
-	wiring *oplog.Wiring
+	wiring *studiooplog.Wiring
 	src    *fakeSource
 	ops    *repos.OpsRepo
 }
@@ -38,7 +38,7 @@ type harness struct {
 func newHarness(t *testing.T, retentionDays int) *harness {
 	t.Helper()
 	t.Setenv("KIRA_HOME", t.TempDir())
-	db, err := storage.Open()
+	db, err := studiostorage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
 	}
@@ -51,7 +51,7 @@ func newHarness(t *testing.T, retentionDays int) *harness {
 	t.Cleanup(func() { _ = r.Close() })
 
 	src := newFakeSource()
-	w := oplog.New(src, r.Ops, retentionDays)
+	w := studiooplog.New(src, r.Ops, retentionDays)
 	return &harness{wiring: w, src: src, ops: r.Ops}
 }
 
@@ -176,13 +176,13 @@ func TestPruneRunsAtStartAndEvery500(t *testing.T) {
 
 	seedRawOp(t, h.ops, "stale-at-500", staleAt)
 	for i := 0; i < 500; i++ {
-		h.src.ch <- oplog.Event{Topic: oplog.EventOpEnd, Payload: opEndPayload(fmt.Sprintf("op%d", i), "ok")}
+		h.src.ch <- studiooplog.Event{Topic: studiooplog.EventOpEnd, Payload: opEndPayload(fmt.Sprintf("op%d", i), "ok")}
 	}
 	waitUntil(t, 2*time.Second, func() bool { return updates.count() == 500 })
 	waitUntil(t, time.Second, func() bool { return !rowExists(t, h.ops, "stale-at-500") })
 
 	seedRawOp(t, h.ops, "stale-at-501", staleAt)
-	h.src.ch <- oplog.Event{Topic: oplog.EventOpEnd, Payload: opEndPayload("op500", "ok")}
+	h.src.ch <- studiooplog.Event{Topic: studiooplog.EventOpEnd, Payload: opEndPayload("op500", "ok")}
 	waitUntil(t, 2*time.Second, func() bool { return updates.count() == 501 })
 	time.Sleep(100 * time.Millisecond) // give a hypothetical (buggy) third prune a moment to run
 	if !rowExists(t, h.ops, "stale-at-501") {
@@ -203,16 +203,16 @@ func TestShutdownReconcilesInFlight(t *testing.T) {
 
 	startedAt := kiratime.NowISO()
 	for _, id := range []string{"op1", "op2", "op3"} {
-		h.src.ch <- oplog.Event{Topic: oplog.EventOpStart, Payload: opStartPayload(id, nil, nil, "read", startedAt)}
+		h.src.ch <- studiooplog.Event{Topic: studiooplog.EventOpStart, Payload: opStartPayload(id, nil, nil, "read", startedAt)}
 	}
-	h.src.ch <- oplog.Event{Topic: oplog.EventOpStart, Payload: opStartPayload("op4", nil, nil, "read", startedAt)}
-	h.src.ch <- oplog.Event{Topic: oplog.EventOpEnd, Payload: opEndPayload("op4", "ok")}
+	h.src.ch <- studiooplog.Event{Topic: studiooplog.EventOpStart, Payload: opStartPayload("op4", nil, nil, "read", startedAt)}
+	h.src.ch <- studiooplog.Event{Topic: studiooplog.EventOpEnd, Payload: opEndPayload("op4", "ok")}
 	waitUntil(t, time.Second, func() bool { return rowExists(t, h.ops, "op4") && fetchOp(t, h.ops, "op4").Status == "ok" })
 
 	// P71 §4.3: an incognito op still running at shutdown was never Appended (handleOpStart's own
 	// skip) — finishInFlight must skip it too, rather than writing a fresh "app exited" row for an
 	// op that never reached op_log at all.
-	h.src.ch <- oplog.Event{Topic: oplog.EventOpStart, Payload: opStartPayloadIncognito("op-incog-shutdown", startedAt)}
+	h.src.ch <- studiooplog.Event{Topic: studiooplog.EventOpStart, Payload: opStartPayloadIncognito("op-incog-shutdown", startedAt)}
 	waitUntil(t, time.Second, func() bool { return updates.count() >= 6 })
 
 	// Stop's unsubscribe closes the channel; consume's range loop returns and finishInFlight runs.
@@ -250,13 +250,13 @@ func TestIncognitoOpSkipsPersistence(t *testing.T) {
 	t.Cleanup(h.wiring.Stop)
 
 	startedAt := kiratime.NowISO()
-	h.src.ch <- oplog.Event{Topic: oplog.EventOpStart, Payload: opStartPayloadIncognito("op-incog", startedAt)}
+	h.src.ch <- studiooplog.Event{Topic: studiooplog.EventOpStart, Payload: opStartPayloadIncognito("op-incog", startedAt)}
 	waitUntil(t, time.Second, func() bool { return updates.count() == 1 })
 	if rowExists(t, h.ops, "op-incog") {
 		t.Fatalf("op:start with incognito=true wrote a row")
 	}
 
-	h.src.ch <- oplog.Event{Topic: oplog.EventOpEnd, Payload: opEndPayload("op-incog", "ok")}
+	h.src.ch <- studiooplog.Event{Topic: studiooplog.EventOpEnd, Payload: opEndPayload("op-incog", "ok")}
 	waitUntil(t, time.Second, func() bool { return updates.count() == 2 })
 	if rowExists(t, h.ops, "op-incog") {
 		t.Fatalf("op:end for an incognito op wrote a row")
@@ -278,7 +278,7 @@ func TestStopWaitsForConsumerBeforeReturning(t *testing.T) {
 
 	startedAt := kiratime.NowISO()
 	for _, id := range []string{"op1", "op2", "op3"} {
-		h.src.ch <- oplog.Event{Topic: oplog.EventOpStart, Payload: opStartPayload(id, nil, nil, "read", startedAt)}
+		h.src.ch <- studiooplog.Event{Topic: studiooplog.EventOpStart, Payload: opStartPayload(id, nil, nil, "read", startedAt)}
 	}
 	// No synchronisation before Stop other than a short, bounded wait for the Append writes to
 	// land — Stop's own job is to wait out whatever is still in flight beyond that.

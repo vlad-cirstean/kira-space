@@ -5,7 +5,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentapi"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
@@ -17,7 +17,7 @@ const maxApiSecretBytes = 64 << 10
 // ApiConfigService is the Api module's config files surface: each file's status and the secret
 // names (never the values), plus write-only secret edits. Mirrors the agent settings page.
 type ApiConfigService struct {
-	Deps  appcore.Deps
+	Deps  appcore.StudioDeps
 	Files *apifiles.Store
 	Agent *agentapi.Service
 }

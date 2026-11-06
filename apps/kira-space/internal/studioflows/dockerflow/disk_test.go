@@ -19,7 +19,7 @@ import (
 const writerScript = "mkdir -p /data; dd if=/dev/zero of=/data/f bs=1024 count=1024 2>/dev/null; dd if=/dev/zero of=/rw bs=1024 count=512 2>/dev/null; echo ready; exec sleep 300"
 
 // writer runs a container that writes 1 MiB into vol (when set) and 512 KiB into its own layer.
-func writer(d *flowharness.Docker, name, vol string) string {
+func writer(d *studioflowharness.Docker, name, vol string) string {
 	stop := 1
 	var host *container.HostConfig
 	if vol != "" {
@@ -29,7 +29,7 @@ func writer(d *flowharness.Docker, name, vol string) string {
 }
 
 func TestDiskUsage(t *testing.T) {
-	flowharness.Complete(t)
+	studioflowharness.Complete(t)
 	app, d := boot(t)
 	vol := d.Volume("disk", nil)
 	writer(d, "disk", vol)
@@ -70,8 +70,8 @@ func TestDiskUsage(t *testing.T) {
 	}
 	got.VolumeSizes = mine
 	app.Contract(t, "docker-disk", "DockerService.DiskUsage", got,
-		flowharness.Mask("count", "active", "size", "reclaimable", "total", "refCount", "durationMs"),
-		flowharness.Replace(vol, "kira-flow-disk"))
+		studioflowharness.Mask("count", "active", "size", "reclaimable", "total", "refCount", "durationMs"),
+		studioflowharness.Replace(vol, "kira-flow-disk"))
 }
 
 func TestContainerSize(t *testing.T) {
@@ -92,7 +92,7 @@ func TestContainerSize(t *testing.T) {
 	if _, err := kiratime.ParseISO(got.TakenAt); err != nil {
 		t.Fatalf("takenAt %q: %v", got.TakenAt, err)
 	}
-	app.Contract(t, "docker-disk", "DockerService.ContainerSize", got, flowharness.Mask("sizeRw", "sizeRootFs", "durationMs"))
+	app.Contract(t, "docker-disk", "DockerService.ContainerSize", got, studioflowharness.Mask("sizeRw", "sizeRootFs", "durationMs"))
 
 	for id, code := range map[string]string{"": "E_CONTRACT", "kira-flow-no-such-container": "E_NOT_FOUND"} {
 		_, err := app.W.Docker.ContainerSize(docker.IDArgs{ID: id})

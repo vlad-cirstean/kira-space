@@ -28,7 +28,7 @@ const (
 )
 
 // connectionNamed returns the listed connection with id.
-func connectionNamed(t *testing.T, app *flowharness.App, id string) (model.ConnectionSummary, bool) {
+func connectionNamed(t *testing.T, app *studioflowharness.App, id string) (model.ConnectionSummary, bool) {
 	t.Helper()
 	list, err := app.W.Connections.List()
 	if err != nil {
@@ -42,7 +42,7 @@ func connectionNamed(t *testing.T, app *flowharness.App, id string) (model.Conne
 	return model.ConnectionSummary{}, false
 }
 
-func fileProblem(t *testing.T, app *flowharness.App, file string) *connfiles.ProblemView {
+func fileProblem(t *testing.T, app *studioflowharness.App, file string) *connfiles.ProblemView {
 	t.Helper()
 	v, err := app.W.ConnectionConfig.View()
 	if err != nil {
@@ -59,13 +59,13 @@ func fileProblem(t *testing.T, app *flowharness.App, file string) *connfiles.Pro
 // Contract connection-files, read by tests/ui/connection-files.spec.ts: a connection is a file, and
 // its color, name and left panel filters follow the file.
 func TestConnectionConfigFile(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	const sc = "connection-files"
 	cfg := app.W.ConnectionConfig
-	paths := flowharness.Replace(app.KiraHome, "<home>")
+	paths := studioflowharness.Replace(app.KiraHome, "<home>")
 	dbPath := newSQLiteFile(t)
-	times := flowharness.Mask("createdAt", "updatedAt")
-	dbFile := flowharness.Replace(dbPath, "<db>")
+	times := studioflowharness.Mask("createdAt", "updatedAt")
+	dbFile := studioflowharness.Replace(dbPath, "<db>")
 
 	// 1. Creating a connection writes its file.
 	conn := createConn(t, app, sqliteInput("Local", dbPath))
@@ -184,7 +184,7 @@ func TestConnectionConfigFile(t *testing.T) {
 // Contract connection-secrets, read by tests/ui/connection-files.spec.ts: a password is a named
 // secret the file refers to; no call returns its value but Reveal.
 func TestConnectionSecrets(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	const sc = "connection-secrets"
 	cfg := app.W.ConnectionConfig
 	in := sqliteInput("Pg", "")
@@ -210,7 +210,7 @@ func TestConnectionSecrets(t *testing.T) {
 	if len(view.Secrets) != 1 || view.Secrets[0] != want {
 		t.Fatalf("secrets = %+v, want %+v", view.Secrets, want)
 	}
-	app.Contract(t, sc, "ConnectionConfigService.View", view, flowharness.Replace(app.KiraHome, "<home>"))
+	app.Contract(t, sc, "ConnectionConfigService.View", view, studioflowharness.Replace(app.KiraHome, "<home>"))
 	if j, _ := json.Marshal(view); strings.Contains(string(j), fileSecret) {
 		t.Fatal("View carries the secret value")
 	}
@@ -245,7 +245,7 @@ func TestConnectionSecrets(t *testing.T) {
 	if len(view.Secrets) != 1 || view.Secrets[0].Set || !view.Secrets[0].Referenced {
 		t.Fatalf("secrets after delete = %+v, want pg.password unset but referenced", view.Secrets)
 	}
-	app.Contract(t, sc, "ConnectionConfigService.View#unset", view, flowharness.Replace(app.KiraHome, "<home>"))
+	app.Contract(t, sc, "ConnectionConfigService.View#unset", view, studioflowharness.Replace(app.KiraHome, "<home>"))
 	st, err := app.W.Connections.Connect(bridge.ConnectionsIDArgs{ID: conn.ID})
 	if err == nil && (st.Status != "error" || st.Error == nil || !strings.Contains(*st.Error, "pg.password")) {
 		t.Fatalf("Connect with an unset secret = %+v, want an error state naming pg.password", st)
@@ -263,7 +263,7 @@ func TestConnectionSecrets(t *testing.T) {
 // sealed secrets carry over, masks, filters and DDL move into the file, and the superseded columns and
 // tables are gone.
 func TestConnectionFilesMigration(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	const sc = "connection-files-migration"
 	const now = "2026-01-01T00:00:00Z"
 	exec := func(q string, args ...any) {
@@ -340,7 +340,7 @@ func TestConnectionFilesMigration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.Contract(t, sc, "ConnectionConfigService.View", view, flowharness.Replace(app.KiraHome, "<home>"))
+	app.Contract(t, sc, "ConnectionConfigService.View", view, studioflowharness.Replace(app.KiraHome, "<home>"))
 
 	// The superseded columns and tables are gone, and a later start exports nothing again.
 	var n int
@@ -362,7 +362,7 @@ func TestConnectionFilesMigration(t *testing.T) {
 
 // A failed file write during the export leaves every legacy row in place, and the next start finishes it.
 func TestConnectionFilesMigrationFailedWrite(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	const now = "2026-01-01T00:00:00Z"
 	ids := []string{"11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"}
 	for _, q := range []string{
@@ -421,7 +421,7 @@ func TestConnectionFilesMigrationFailedWrite(t *testing.T) {
 
 // A duplicate owns its password: changing it leaves the original's alone.
 func TestConnectionDuplicateOwnsSecret(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	in := sqliteInput("Pg", "")
 	in.Kind, in.Database = "postgres", ptr("app")
 	in.Host, in.Port, in.Username = ptr("127.0.0.1"), ptr(5432), ptr("kira")
@@ -454,7 +454,7 @@ func TestConnectionDuplicateOwnsSecret(t *testing.T) {
 
 // A secret name outlives a file rename: duplicating again never overwrites the renamed file's password.
 func TestConnectionDuplicateKeepsRenamedFileSecret(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	in := sqliteInput("Pg", "")
 	in.Kind, in.Database = "postgres", ptr("app")
 	in.Host, in.Port, in.Username = ptr("127.0.0.1"), ptr(5432), ptr("kira")

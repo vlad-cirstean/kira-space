@@ -22,10 +22,10 @@ const wait = 20 * time.Second
 // A Monday, 30 s before 09:00 UTC.
 var start = time.Date(2030, 1, 7, 8, 59, 30, 0, time.UTC)
 
-func newApp(t *testing.T) (*flowharness.App, *notifysink.Sink, *fakeclock.Clock) {
+func newApp(t *testing.T) (*studioflowharness.App, *notifysink.Sink, *fakeclock.Clock) {
 	t.Helper()
 	clock := fakeclock.New(start)
-	app := flowharness.New(t, flowharness.WithClock(clock))
+	app := studioflowharness.New(t, studioflowharness.WithClock(clock))
 	sink := notifysink.New()
 	app.W.Prompts.SetSink(sink)
 	return app, sink, clock
@@ -40,7 +40,7 @@ func advance(t *testing.T, clock *fakeclock.Clock, d time.Duration) {
 	clock.Advance(d)
 }
 
-func addWindow(app *flowharness.App, key string, order int) {
+func addWindow(app *studioflowharness.App, key string, order int) {
 	app.W.Windows.Add(key, order, nil, func() {})
 }
 
@@ -53,7 +53,7 @@ func code(err error) string {
 }
 
 // listed waits until the router lists exactly n prompts of kind and returns them.
-func listed(t *testing.T, app *flowharness.App, kind prompts.Kind, n int) []prompts.Routed {
+func listed(t *testing.T, app *studioflowharness.App, kind prompts.Kind, n int) []prompts.Routed {
 	t.Helper()
 	var got []prompts.Routed
 	testx.WaitUntil(t, wait, func() bool {
@@ -72,7 +72,7 @@ func listed(t *testing.T, app *flowharness.App, kind prompts.Kind, n int) []prom
 	return got
 }
 
-func count(t *testing.T, app *flowharness.App, kind prompts.Kind) int {
+func count(t *testing.T, app *studioflowharness.App, kind prompts.Kind) int {
 	t.Helper()
 	all, err := app.W.PromptsSvc.List()
 	if err != nil {
@@ -87,7 +87,7 @@ func count(t *testing.T, app *flowharness.App, kind prompts.Kind) int {
 	return n
 }
 
-func target(t *testing.T, app *flowharness.App, id string) string {
+func target(t *testing.T, app *studioflowharness.App, id string) string {
 	t.Helper()
 	all, err := app.W.PromptsSvc.List()
 	if err != nil {
@@ -102,7 +102,7 @@ func target(t *testing.T, app *flowharness.App, id string) string {
 	return ""
 }
 
-func confirmScript(t *testing.T, app *flowharness.App, name string) scripts.CustomScript {
+func confirmScript(t *testing.T, app *studioflowharness.App, name string) scripts.CustomScript {
 	t.Helper()
 	rec, err := app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
 		Name: name, Kind: scripts.KindScript, Command: "echo hi", Color: "blue",
@@ -146,7 +146,7 @@ func TestScheduleConfirmRoutes(t *testing.T) {
 			t.Fatalf("%s targets %q, want b", e.ID, e.Target)
 		}
 	}
-	app.Contract(t, "prompts-route", "PromptsService.List#two-waiting", entries, flowharness.Mask("createdAt"))
+	app.Contract(t, "prompts-route", "PromptsService.List#two-waiting", entries, studioflowharness.Mask("createdAt"))
 	note, ok := sink.Shown("prompt:schedule")
 	if !ok || note.Title != "2 scripts wait for confirmation" {
 		t.Fatalf("shown note = %+v, %v; want the count title", note, ok)
@@ -197,7 +197,7 @@ func TestScheduleConfirmRoutes(t *testing.T) {
 	testx.WaitUntil(t, wait, func() bool { _, ok := sink.Shown("prompt:schedule"); return !ok })
 }
 
-func runScript(t *testing.T, app *flowharness.App, runID string) string {
+func runScript(t *testing.T, app *studioflowharness.App, runID string) string {
 	t.Helper()
 	runs, err := app.W.ScriptRuns.List(scriptruns.ListArgs{Limit: 50})
 	if err != nil {

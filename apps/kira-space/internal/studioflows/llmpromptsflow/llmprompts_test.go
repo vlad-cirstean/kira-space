@@ -31,7 +31,7 @@ func find(t *testing.T, l llmprompts.PromptList, id llmprompts.ID) llmprompts.Pr
 	return llmprompts.PromptView{}
 }
 
-func list(t *testing.T, app *flowharness.App) llmprompts.PromptList {
+func list(t *testing.T, app *studioflowharness.App) llmprompts.PromptList {
 	t.Helper()
 	l, err := app.W.LlmPromptsSvc.List()
 	if err != nil {
@@ -59,7 +59,7 @@ func failure(t *testing.T, err error) map[string]any {
 
 // List returns only this app's entries, all at their defaults on a fresh home.
 func TestList(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	l := list(t, app)
 	if len(l.Prompts) != 133 {
 		t.Fatalf("listed %d prompts, want 133", len(l.Prompts))
@@ -72,12 +72,12 @@ func TestList(t *testing.T) {
 			t.Fatalf("%s belongs to the other app", p.ID)
 		}
 	}
-	app.Contract(t, scenario, "LlmPromptsService.List#entry", find(t, l, editID), flowharness.Omit("defaultText", "text"))
+	app.Contract(t, scenario, "LlmPromptsService.List#entry", find(t, l, editID), studioflowharness.Omit("defaultText", "text"))
 }
 
 // Preview renders a draft without saving it and reports a broken one without failing.
 func TestPreview(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	draft := editText
 	got, err := app.W.LlmPromptsSvc.Preview(llmprompts.PreviewArgs{ID: editID, Text: &draft})
 	if err != nil {
@@ -105,7 +105,7 @@ func TestPreview(t *testing.T) {
 
 // Save overrides a prompt, pushes the revision, and saving the default text resets it.
 func TestSaveAndReset(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	cur := find(t, list(t, app), editID)
 	mark := app.Events.Mark()
 	saved, err := app.W.LlmPromptsSvc.Save(llmprompts.SaveArgs{Changes: []llmprompts.Change{{ID: editID, Text: editText, BaseHash: cur.Hash}}})
@@ -121,7 +121,7 @@ func TestSaveAndReset(t *testing.T) {
 	}
 	ev := app.Events.WaitAfter(t, mark, bridge.ChannelLlmPromptsChanged, nil, wait)
 	app.Contract(t, scenario, "event:"+ev.Channel, ev.Data)
-	app.Contract(t, scenario, "LlmPromptsService.Save#entry", got, flowharness.Mask("updatedAt"), flowharness.Omit("defaultText"))
+	app.Contract(t, scenario, "LlmPromptsService.Save#entry", got, studioflowharness.Mask("updatedAt"), studioflowharness.Omit("defaultText"))
 
 	reset, err := app.W.LlmPromptsSvc.Save(llmprompts.SaveArgs{Changes: []llmprompts.Change{{ID: editID, Text: cur.DefaultText, BaseHash: got.Hash}}})
 	if err != nil {
@@ -134,7 +134,7 @@ func TestSaveAndReset(t *testing.T) {
 
 // An invalid change is refused with its findings and changes nothing.
 func TestSaveInvalid(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	cur := find(t, list(t, app), statusID)
 	mark := app.Events.Mark()
 	_, err := app.W.LlmPromptsSvc.Save(llmprompts.SaveArgs{Changes: []llmprompts.Change{{ID: statusID, Text: "{{range .Results}}{{.Nope}}{{end}}", BaseHash: cur.Hash}}})
@@ -149,7 +149,7 @@ func TestSaveInvalid(t *testing.T) {
 
 // A change made from a stale text is refused.
 func TestSaveConflict(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	cur := find(t, list(t, app), editID)
 	if _, err := app.W.LlmPromptsSvc.Save(llmprompts.SaveArgs{Changes: []llmprompts.Change{{ID: editID, Text: editText, BaseHash: cur.Hash}}}); err != nil {
 		t.Fatal(err)

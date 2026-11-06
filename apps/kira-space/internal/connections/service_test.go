@@ -169,7 +169,7 @@ func newHarness(t *testing.T) *harness {
 	t.Setenv("KIRA_HOME", t.TempDir())
 	t.Setenv("KIRA_INSECURE_SECRETS", "1")
 
-	db, err := storage.Open()
+	db, err := studiostorage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
 	}

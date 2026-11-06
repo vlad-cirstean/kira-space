@@ -53,8 +53,8 @@ items:
 }
 
 func TestApiConfigFiles(t *testing.T) {
-	app := flowharness.New(t)
-	srv := flowharness.HTTP(t)
+	app := studioflowharness.New(t)
+	srv := studioflowharness.HTTP(t)
 	const sc = "api-files"
 	cs, vs, cfg := app.W.Collections, app.W.Variables, app.W.ApiConfig
 	file := filepath.Join(app.W.ApiFiles.Dir(), "orders-api.collection.yaml")
@@ -74,7 +74,7 @@ func TestApiConfigFiles(t *testing.T) {
 		}
 		return tree.Items
 	}
-	paths := flowharness.Replace(app.KiraHome, "<home>")
+	paths := studioflowharness.Replace(app.KiraHome, "<home>")
 
 	// 1. Creating a collection writes its file.
 	col, err := cs.CreateCollection(bridge.CollectionsCreateCollectionArgs{Name: "Orders API"})
@@ -109,7 +109,7 @@ func TestApiConfigFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.Contract(t, sc, "CollectionsService.List", tree, paths, flowharness.Replace(srv.URL, "<http>"))
+	app.Contract(t, sc, "CollectionsService.List", tree, paths, studioflowharness.Replace(srv.URL, "<http>"))
 
 	// 3. A bad edit keeps the last good rows and refuses app writes until fixed.
 	bad := strings.Replace(string(ordersFile(srv.URL, "list")), "items:\n", "items:\n  - id: list\n    name: Twin\n    http:\n      method: GET\n", 1)
@@ -217,7 +217,7 @@ func problemOf(v apifiles.View, file string) *apifiles.ProblemView {
 
 // AGENTS.md documents every top-level option of both file kinds.
 func TestApiAgentsDocCoversSchemas(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	doc, err := os.ReadFile(filepath.Join(app.W.ApiFiles.Dir(), "AGENTS.md"))
 	if err != nil {
 		t.Fatal(err)

@@ -18,7 +18,7 @@ import (
 )
 
 func TestStatusClasses(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	status := func(t *testing.T, host string) docker.Status {
 		t.Helper()
 		t.Setenv("DOCKER_HOST", host)
@@ -66,7 +66,7 @@ func TestStatusClasses(t *testing.T) {
 	})
 
 	t.Run("ok", func(t *testing.T) {
-		d := flowharness.RequireDocker(t)
+		d := studioflowharness.RequireDocker(t)
 		st := app.W.Docker.Status(docker.StatusArgs{Refresh: true})
 		if st.State != "ok" || st.Engine == nil {
 			t.Fatalf("status = %+v, want ok with engine facts", st)

@@ -14,7 +14,7 @@ import (
 // pre-write set cached.
 func TestMaskSetForDoesNotCacheSetStaleAfterConcurrentWrite(t *testing.T) {
 	t.Setenv("KIRA_HOME", t.TempDir())
-	db, err := storage.Open()
+	db, err := studiostorage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
 	}

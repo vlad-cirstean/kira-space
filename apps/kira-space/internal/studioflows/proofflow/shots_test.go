@@ -34,7 +34,7 @@ func TestProofShotFolder(t *testing.T) {
 		t.Fatalf("first = %+v, %v", first, err)
 	}
 	f.app.Contract(t, "proof", "ProofService.ChooseShotFolder", first,
-		flowharness.Mask("id", "path"))
+		studioflowharness.Mask("id", "path"))
 	f.app.Dialogs.QueueDirectory(tmp)
 	second, err := p.ChooseShotFolder(bridge.ProofChooseShotFolderArgs{SessionName: "Checkout fix"})
 	if err != nil || second.Path != filepath.Join(tmp, "Checkout fix-2") {

@@ -29,7 +29,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mcpauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/config"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/tree"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -127,7 +127,7 @@ type ColumnReview interface {
 type Config struct {
 	// Port overrides DefaultPort (test seam). Zero means DefaultPort; EphemeralPort an OS-chosen one.
 	Port int
-	// Home overrides KIRA_HOME (a debugging seam) — empty means config.KiraHome().
+	// Home overrides KIRA_HOME (a debugging seam) — empty means config.StudioHome().
 	Home string
 	// Token resolves this instance's own auth record — required.
 	Token TokenProvider
@@ -221,7 +221,7 @@ const serverVersion = "0.0.0"
 // connections; call Serve for that.
 func New(cfg Config) (*Server, error) {
 	if cfg.Home == "" {
-		cfg.Home = config.KiraHome()
+		cfg.Home = config.StudioHome()
 	}
 	log := cfg.Logger
 	if log == nil {

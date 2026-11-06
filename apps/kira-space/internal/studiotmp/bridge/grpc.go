@@ -13,7 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/grpcclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
@@ -23,7 +23,7 @@ import (
 // cancel path. It is dependency-free of grpcclient's own internals beyond its public surface
 // (Describe/Unary/ServerStream/Source/CallRequest), exactly as HttpService is of httpclient's.
 type GrpcService struct {
-	Deps appcore.Deps
+	Deps appcore.StudioDeps
 }
 
 // GrpcDescribeArgs names one descriptor source (D4) plus the scope stage 2 resolves the target and

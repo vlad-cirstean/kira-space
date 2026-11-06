@@ -15,7 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
-func newScript(t *testing.T, app *flowharness.App, f scripts.CustomScriptFields) scripts.CustomScript {
+func newScript(t *testing.T, app *studioflowharness.App, f scripts.CustomScriptFields) scripts.CustomScript {
 	t.Helper()
 	if f.Name == "" {
 		f.Name = "job"
@@ -30,7 +30,7 @@ func newScript(t *testing.T, app *flowharness.App, f scripts.CustomScriptFields)
 	return rec
 }
 
-func openScript(t *testing.T, app *flowharness.App, window, id, scriptID string) {
+func openScript(t *testing.T, app *studioflowharness.App, window, id, scriptID string) {
 	t.Helper()
 	if _, err := app.W.Terminal.Open(terminal.OpenArgs{
 		TerminalID: id, WindowKey: window, Cols: 80, Rows: 24, LaunchKind: terminal.LaunchKindScript, ScriptID: scriptID,
@@ -39,7 +39,7 @@ func openScript(t *testing.T, app *flowharness.App, window, id, scriptID string)
 	}
 }
 
-func runOf(t *testing.T, app *flowharness.App, terminalID string) scriptruns.Run {
+func runOf(t *testing.T, app *studioflowharness.App, terminalID string) scriptruns.Run {
 	t.Helper()
 	runs, err := app.W.ScriptRuns.List(scriptruns.ListArgs{})
 	if err != nil {
@@ -54,7 +54,7 @@ func runOf(t *testing.T, app *flowharness.App, terminalID string) scriptruns.Run
 	return scriptruns.Run{}
 }
 
-func waitRun(t *testing.T, app *flowharness.App, terminalID, state string) scriptruns.Run {
+func waitRun(t *testing.T, app *studioflowharness.App, terminalID, state string) scriptruns.Run {
 	t.Helper()
 	var r scriptruns.Run
 	testx.WaitUntil(t, wait, func() bool {
@@ -71,7 +71,7 @@ func waitRun(t *testing.T, app *flowharness.App, terminalID, state string) scrip
 }
 
 func TestScriptRunLifecycle(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	rec := newScript(t, app, scripts.CustomScriptFields{Command: "echo started; read x; echo done"})
 	mark := app.Events.Mark()
 	openScript(t, app, "w1", "ok", rec.ID)
@@ -92,7 +92,7 @@ func TestScriptRunLifecycle(t *testing.T) {
 	// Contract automations: tests/ui/automations-runs.spec.ts "contract: a run ends Succeeded, Failed
 	// or Cancelled" reads the same fixture.
 	app.Contract(t, "automations", "CustomScriptsService.Create#done", rec)
-	app.Contract(t, "automations", "ScriptRunsService.Get#done", done, flowharness.Mask("createdAt", "startedAt", "finishedAt"))
+	app.Contract(t, "automations", "ScriptRunsService.Get#done", done, studioflowharness.Mask("createdAt", "startedAt", "finishedAt"))
 	if done.Outcome == nil || done.Outcome.Status != "done" || done.Outcome.ExitCode == nil || *done.Outcome.ExitCode != 0 || done.FinishedAt == nil {
 		t.Fatalf("finished run = %+v", done)
 	}
@@ -105,7 +105,7 @@ func TestScriptRunLifecycle(t *testing.T) {
 }
 
 func TestScriptRunTwice(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	rec := newScript(t, app, scripts.CustomScriptFields{Command: "echo started; read x; echo done"})
 
 	mark := app.Events.Mark()
@@ -131,16 +131,16 @@ func TestScriptRunTwice(t *testing.T) {
 		t.Fatalf("states = %q, %q, want running, done", runs[0].State, runs[1].State)
 	}
 	// Contract automations: tests/ui/automations-tabs.spec.ts reads the same list.
-	app.Contract(t, "automations", "ScriptRunsService.List#twice", runs, flowharness.Mask("createdAt", "startedAt", "finishedAt"))
+	app.Contract(t, "automations", "ScriptRunsService.List#twice", runs, studioflowharness.Mask("createdAt", "startedAt", "finishedAt"))
 }
 
 func TestScriptRunNonZeroExit(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	rec := newScript(t, app, scripts.CustomScriptFields{Command: "printf '\\033[31mboom\\033[0m\\r\\n' >&2; exit 3"})
 	openScript(t, app, "w1", "bad", rec.ID)
 	r := waitRun(t, app, "bad", "failed")
 	app.Contract(t, "automations", "CustomScriptsService.Create#failed", rec)
-	app.Contract(t, "automations", "ScriptRunsService.Get#failed", r, flowharness.Mask("createdAt", "startedAt", "finishedAt"), flowharness.Replace("\nlogout", ""))
+	app.Contract(t, "automations", "ScriptRunsService.Get#failed", r, studioflowharness.Mask("createdAt", "startedAt", "finishedAt"), studioflowharness.Replace("\nlogout", ""))
 	if r.Outcome.Reason != "exited with status 3" || r.Outcome.Source != "exit" || *r.Outcome.ExitCode != 3 {
 		t.Fatalf("outcome = %+v, want exit 3", r.Outcome)
 	}
@@ -157,7 +157,7 @@ func TestScriptRunNonZeroExit(t *testing.T) {
 }
 
 func TestScriptRunStopAndClose(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	rec := newScript(t, app, scripts.CustomScriptFields{Command: "sleep 60"})
 
 	openScript(t, app, "w1", "a", rec.ID)
@@ -178,7 +178,7 @@ func TestScriptRunStopAndClose(t *testing.T) {
 		t.Fatalf("Stop outcome = %+v", r.Outcome)
 	} else {
 		app.Contract(t, "automations", "CustomScriptsService.Create#cancelled", rec)
-		app.Contract(t, "automations", "ScriptRunsService.Get#cancelled", r, flowharness.Mask("createdAt", "startedAt", "finishedAt"))
+		app.Contract(t, "automations", "ScriptRunsService.Get#cancelled", r, studioflowharness.Mask("createdAt", "startedAt", "finishedAt"))
 	}
 	if err := app.W.ScriptRuns.Stop(scriptruns.IDArgs{ID: r.ID}); err != nil {
 		t.Fatalf("Stop of a finished run = %v, want a no-op", err)
@@ -189,7 +189,7 @@ func TestScriptRunStopAndClose(t *testing.T) {
 }
 
 func TestScriptRunWindowClose(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	rec := newScript(t, app, scripts.CustomScriptFields{Command: "sleep 60"})
 	openScript(t, app, "w2", "w", rec.ID)
 	waitRun(t, app, "w", "running")
@@ -200,7 +200,7 @@ func TestScriptRunWindowClose(t *testing.T) {
 }
 
 func TestScriptRunQuitAndRestart(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	rec := newScript(t, app, scripts.CustomScriptFields{Command: "sleep 60"})
 	openScript(t, app, "w1", "q", rec.ID)
 	waitRun(t, app, "q", "running")
@@ -234,7 +234,7 @@ func TestScriptRunQuitAndRestart(t *testing.T) {
 }
 
 func TestScriptFolders(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	runs := app.W.ScriptRuns
 
 	base, err := runs.ResolveDir(scriptruns.ResolveDirArgs{})
@@ -281,7 +281,7 @@ func TestScriptFolders(t *testing.T) {
 }
 
 func TestScriptLaunchIgnoresForgedCommand(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	rec := newScript(t, app, scripts.CustomScriptFields{Command: "echo stored-command"})
 	mark := app.Events.Mark()
 	if _, err := app.W.Terminal.Open(terminal.OpenArgs{
@@ -305,7 +305,7 @@ func TestScriptLaunchIgnoresForgedCommand(t *testing.T) {
 }
 
 func TestScriptRunRetentionAndRemove(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	rec := newScript(t, app, scripts.CustomScriptFields{Command: "true"})
 	for i := 0; i < 510; i++ {
 		if _, err := app.DB().Exec(`INSERT INTO script_runs (id, script_id, script_name, trigger_kind, state, terminal_id, created_at, finished_at)

@@ -14,7 +14,7 @@ import (
 )
 
 // startTerminalRun starts a normal script through Start and opens its terminal with the token.
-func startTerminalRun(t *testing.T, app *flowharness.App, terminalID string, args scriptruns.RunArgs) {
+func startTerminalRun(t *testing.T, app *studioflowharness.App, terminalID string, args scriptruns.RunArgs) {
 	t.Helper()
 	started, err := app.W.ScriptRuns.Start(startArgs(args, previewOf(t, app, args)))
 	if err != nil || started.Terminal == nil {
@@ -24,7 +24,7 @@ func startTerminalRun(t *testing.T, app *flowharness.App, terminalID string, arg
 	waitRun(t, app, terminalID, "running")
 }
 
-func openWithToken(t *testing.T, app *flowharness.App, terminalID, scriptID, token string) {
+func openWithToken(t *testing.T, app *studioflowharness.App, terminalID, scriptID, token string) {
 	t.Helper()
 	if _, err := app.W.Terminal.Open(terminal.OpenArgs{
 		TerminalID: terminalID, WindowKey: "w1", Cols: 80, Rows: 24, LaunchKind: terminal.LaunchKindScript, ScriptID: scriptID, ScriptLaunchToken: token,
@@ -33,7 +33,7 @@ func openWithToken(t *testing.T, app *flowharness.App, terminalID, scriptID, tok
 	}
 }
 
-func restoreState(t *testing.T, app *flowharness.App) scriptruns.RestoreState {
+func restoreState(t *testing.T, app *studioflowharness.App) scriptruns.RestoreState {
 	t.Helper()
 	st, err := app.W.ScriptRuns.RestoreState()
 	if err != nil {
@@ -58,10 +58,10 @@ func choice(it scriptruns.RestoreItem) scriptruns.RestoreChoice {
 }
 
 func TestRunsRestore(t *testing.T) {
-	restoreMask := flowharness.Mask("endedAt", "hash", "token")
+	restoreMask := studioflowharness.Mask("endedAt", "hash", "token")
 
 	t.Run("quit", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		hold := filepath.Join(t.TempDir(), "hold")
 		app.Scenario(scenario(fakeagent.Action{WaitFile: hold}, fakeagent.Action{Name: "done"}))
 
@@ -151,7 +151,7 @@ func TestRunsRestore(t *testing.T) {
 	})
 
 	t.Run("crash", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		app.Scenario(scenario(fakeagent.Action{Name: "done"}))
 		rec := newSmart(t, app, "Say hi", nil)
 		id, _ := startSmart(t, app, scriptruns.RunArgs{ScriptID: rec.ID})
@@ -169,7 +169,7 @@ func TestRunsRestore(t *testing.T) {
 	})
 
 	t.Run("conflict", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		rec := newScript(t, app, scripts.CustomScriptFields{Name: "plain", Command: "sleep 60"})
 		openScript(t, app, "w1", "t1", rec.ID)
 		waitRun(t, app, "t1", "running")
@@ -193,7 +193,7 @@ func TestRunsRestore(t *testing.T) {
 	})
 
 	t.Run("live key", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		rec := newScript(t, app, scripts.CustomScriptFields{Name: "plain", Command: "sleep 60"})
 		openScript(t, app, "w1", "t1", rec.ID)
 		waitRun(t, app, "t1", "running")
@@ -211,7 +211,7 @@ func TestRunsRestore(t *testing.T) {
 	})
 
 	t.Run("stop is not offered", func(t *testing.T) {
-		app := flowharness.New(t)
+		app := studioflowharness.New(t)
 		rec := newScript(t, app, scripts.CustomScriptFields{Name: "plain", Command: "sleep 60"})
 		openScript(t, app, "w1", "stopped", rec.ID)
 		waitRun(t, app, "stopped", "running")

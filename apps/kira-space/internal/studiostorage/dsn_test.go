@@ -4,7 +4,7 @@
 // shorthand in this driver, so the value only takes effect because it goes through the generic
 // _pragma list. A driver upgrade that reorders or renames that handling would turn both fixes off
 // with no error anywhere, and nothing else in the repo would notice.
-package storage_test
+package studiostorage_test
 
 import (
 	"testing"
@@ -14,7 +14,7 @@ import (
 
 func TestOpenSetsAutoVacuumAndJournalSizeLimit(t *testing.T) {
 	t.Setenv("KIRA_HOME", t.TempDir())
-	db, err := storage.Open()
+	db, err := studiostorage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
 	}

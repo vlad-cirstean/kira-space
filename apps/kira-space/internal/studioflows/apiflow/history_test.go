@@ -11,9 +11,9 @@ import (
 )
 
 func TestHistoryClear(t *testing.T) {
-	app := flowharness.New(t)
-	srv := flowharness.HTTP(t)
-	gsrv := flowharness.GRPC(t)
+	app := studioflowharness.New(t)
+	srv := studioflowharness.HTTP(t)
+	gsrv := studioflowharness.GRPC(t)
 
 	for _, tab := range []string{"tab-a", "tab-b"} {
 		args := get(srv.URL + "/status?tab=" + tab)

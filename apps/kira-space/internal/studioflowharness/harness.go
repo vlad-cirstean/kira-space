@@ -14,7 +14,7 @@
 //		...
 //		app.Events.Wait(t, "kira:api:dataChanged", nil, 5*time.Second)
 //	}
-package flowharness
+package studioflowharness
 
 import (
 	"database/sql"
@@ -27,13 +27,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appwire"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/config"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/flowtest"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
@@ -138,7 +138,7 @@ type App struct {
 
 	mu         sync.Mutex
 	newWindows int
-	db         *storage.DB
+	db         *studiostorage.DB
 	stopped    bool
 	opts       options
 }
@@ -210,7 +210,7 @@ func (a *App) build() {
 	if err := config.EnsureLayout(); err != nil {
 		a.t.Fatalf("ensure layout: %v", err)
 	}
-	db, err := storage.Open()
+	db, err := studiostorage.Open()
 	if err != nil {
 		a.t.Fatalf("storage.Open: %v", err)
 	}

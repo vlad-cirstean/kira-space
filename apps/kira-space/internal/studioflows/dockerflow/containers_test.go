@@ -80,7 +80,7 @@ func TestContainerActions(t *testing.T) {
 	if len(det.NetworkAttachments) == 0 || det.NetworkAttachments[0].Network != "bridge" {
 		t.Fatalf("networks = %+v, want bridge", det.NetworkAttachments)
 	}
-	if det.Labels[flowharness.LabelKey] == "" || det.Raw == "" {
+	if det.Labels[studioflowharness.LabelKey] == "" || det.Raw == "" {
 		t.Fatalf("labels/raw missing: %v", det.Labels)
 	}
 
@@ -137,7 +137,7 @@ func TestImagesVolumesNetworks(t *testing.T) {
 			v = &vols[i]
 		}
 	}
-	if v == nil || v.Driver != "local" || v.Labels[flowharness.LabelKey] == "" || len(v.UsedBy) != 1 {
+	if v == nil || v.Driver != "local" || v.Labels[studioflowharness.LabelKey] == "" || len(v.UsedBy) != 1 {
 		t.Fatalf("volume %s = %+v, want local, labelled, used by the container", vol, v)
 	}
 

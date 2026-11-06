@@ -27,7 +27,7 @@ const formSecret = `f0rm"s3cret-71`
 // YAML-side change re-decodes, a bad draft is a problem with a line, and a secret param's value
 // never enters the file or the contract.
 func TestRunsFormStudio(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	cs := app.W.CustomScripts
 	writeRun(t, app, "ship.yaml", formRunYAML)
 	waitSnapshot(t, app, 0, func(s scripts.Snapshot) bool { _, ok := scriptOf(s, "ship"); return ok })

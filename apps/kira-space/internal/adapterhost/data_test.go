@@ -249,7 +249,7 @@ func TestDispatcher_EmptyOpIDMinted(t *testing.T) {
 	for _, kind := range []string{"count", "mutate", "transfer"} {
 		e := <-events
 		var p opStartPayload
-		if err := json.Unmarshal(e.Payload, &p); err != nil || e.Topic != oplog.EventOpStart || p.Kind != kind {
+		if err := json.Unmarshal(e.Payload, &p); err != nil || e.Topic != studiooplog.EventOpStart || p.Kind != kind {
 			t.Fatalf("event %+v (%v), want op:start for %s", e, err, kind)
 		}
 		if u, err := uuid.Parse(p.OpID); err != nil || u.Version() != 7 {

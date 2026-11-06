@@ -16,11 +16,11 @@ import (
 // file with its comments and gives the copy its own password reference, Delete removes file and row,
 // and DeleteFile removes a file that never held a connection and refuses one that has a row.
 func TestConnectionLifecycle(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	const sc = "connection-lifecycle"
 	cfg := app.W.ConnectionConfig
-	mask := flowharness.Mask("hash", "baseHash", "createdAt", "updatedAt")
-	paths := flowharness.Replace(app.KiraHome, "<home>")
+	mask := studioflowharness.Mask("hash", "baseHash", "createdAt", "updatedAt")
+	paths := studioflowharness.Replace(app.KiraHome, "<home>")
 
 	in := sqliteInput("Pg", "")
 	in.Kind, in.Database = "postgres", ptr("app")

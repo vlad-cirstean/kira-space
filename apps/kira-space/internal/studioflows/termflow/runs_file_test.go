@@ -25,9 +25,9 @@ params:
     default: staging
 `
 
-var runsMasks = []flowharness.ContractOption{flowharness.Mask("createdAt", "updatedAt", "hash")}
+var runsMasks = []studioflowharness.ContractOption{studioflowharness.Mask("createdAt", "updatedAt", "hash")}
 
-func waitSnapshot(t *testing.T, app *flowharness.App, mark int, ok func(scripts.Snapshot) bool) scripts.Snapshot {
+func waitSnapshot(t *testing.T, app *studioflowharness.App, mark int, ok func(scripts.Snapshot) bool) scripts.Snapshot {
 	t.Helper()
 	var got scripts.Snapshot
 	testx.WaitUntil(t, wait, func() bool {
@@ -55,7 +55,7 @@ func scriptOf(snap scripts.Snapshot, id string) (scripts.CustomScript, bool) {
 	return scripts.CustomScript{}, false
 }
 
-func writeRun(t *testing.T, app *flowharness.App, file, text string) {
+func writeRun(t *testing.T, app *studioflowharness.App, file, text string) {
 	t.Helper()
 	if err := os.WriteFile(filepath.Join(app.KiraHome, "runs", file), []byte(text), 0o644); err != nil {
 		t.Fatal(err)
@@ -65,7 +65,7 @@ func writeRun(t *testing.T, app *flowharness.App, file, text string) {
 // TestRunsConfigFileStudio: Studio's watcher and config service serve the runs folder; the Space
 // task fields are refused.
 func TestRunsConfigFileStudio(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	cs := app.W.CustomScripts
 
 	mark := app.Events.Mark()

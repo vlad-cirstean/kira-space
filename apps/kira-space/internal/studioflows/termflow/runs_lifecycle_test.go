@@ -37,7 +37,7 @@ func collectionNames(snap scripts.Snapshot) []string {
 	return names
 }
 
-func fileText(t *testing.T, app *flowharness.App, file string) string {
+func fileText(t *testing.T, app *studioflowharness.App, file string) string {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join(app.KiraHome, "runs", file))
 	if err != nil {
@@ -50,7 +50,7 @@ func fileText(t *testing.T, app *flowharness.App, file string) string {
 // comments, order rows follow, a broken member refuses a rename without writing, and a delete takes
 // every member.
 func TestRunsLifecycleStudio(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	cs := app.W.CustomScripts
 	writeRun(t, app, "x.yaml", lifecycleRun("X", "A", "# keep me\n"))
 	writeRun(t, app, "y.yaml", lifecycleRun("Y", "A", ""))

@@ -31,7 +31,7 @@ func get(url string) bridge.HttpSendArgs {
 	return bridge.HttpSendArgs{OpID: newOp(), TabID: "tab-1", Method: "GET", URL: url}
 }
 
-func send(t *testing.T, app *flowharness.App, args bridge.HttpSendArgs) httpclient.Response {
+func send(t *testing.T, app *studioflowharness.App, args bridge.HttpSendArgs) httpclient.Response {
 	t.Helper()
 	res, err := app.W.Http.Send(ctx, args)
 	if err != nil {
@@ -40,7 +40,7 @@ func send(t *testing.T, app *flowharness.App, args bridge.HttpSendArgs) httpclie
 	return res
 }
 
-func sendErr(t *testing.T, app *flowharness.App, args bridge.HttpSendArgs) *ipcerr.Error {
+func sendErr(t *testing.T, app *studioflowharness.App, args bridge.HttpSendArgs) *ipcerr.Error {
 	t.Helper()
 	_, err := app.W.Http.Send(ctx, args)
 	if err == nil {
@@ -53,7 +53,7 @@ func sendErr(t *testing.T, app *flowharness.App, args bridge.HttpSendArgs) *ipce
 	return ie
 }
 
-func setApi(t *testing.T, app *flowharness.App, patch model.ApiPatch) {
+func setApi(t *testing.T, app *studioflowharness.App, patch model.ApiPatch) {
 	t.Helper()
 	if _, err := app.W.Settings.Set(bridge.SettingsSetArgs{Patch: model.SettingsPatch{Api: &patch}}); err != nil {
 		t.Fatalf("Settings.Set: %v", err)
@@ -61,7 +61,7 @@ func setApi(t *testing.T, app *flowharness.App, patch model.ApiPatch) {
 }
 
 // waitOp returns the op-log row of opID once it left "running".
-func waitOp(t *testing.T, app *flowharness.App, opID string) model.OpRecord {
+func waitOp(t *testing.T, app *studioflowharness.App, opID string) model.OpRecord {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for {
@@ -82,7 +82,7 @@ func waitOp(t *testing.T, app *flowharness.App, opID string) model.OpRecord {
 }
 
 // dbBytes is every byte of the app database, WAL included.
-func dbBytes(t *testing.T, app *flowharness.App) []byte {
+func dbBytes(t *testing.T, app *studioflowharness.App) []byte {
 	t.Helper()
 	var all []byte
 	err := filepath.WalkDir(app.KiraHome, func(p string, d os.DirEntry, err error) error {
@@ -133,7 +133,7 @@ func writeFile(t *testing.T, name string, data []byte) string {
 	return p
 }
 
-type flowharnessRequest = flowharness.Request
+type flowharnessRequest = studioflowharness.Request
 
 type errBox struct{ err error }
 

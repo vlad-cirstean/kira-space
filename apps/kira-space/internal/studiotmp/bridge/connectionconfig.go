@@ -9,7 +9,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/maskreview"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/maskrules"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
@@ -21,7 +21,7 @@ const maxConnectionSecretBytes = 64 << 10
 // ConnectionConfigService is the connections config files surface: each file's status and text, the
 // secret names (never the values), and write-only secret edits.
 type ConnectionConfigService struct {
-	Deps appcore.Deps
+	Deps appcore.StudioDeps
 	// Files is the connections folder.
 	Files *connfiles.Loader
 }

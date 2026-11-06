@@ -5,7 +5,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiotmp/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 )
 
 // ApiDataChange names one renderer cache a mutation made stale (P112). Kind is one of the consts

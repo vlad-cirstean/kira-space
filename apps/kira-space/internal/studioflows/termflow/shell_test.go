@@ -12,7 +12,7 @@ import (
 )
 
 func TestShellTab(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	svc := app.W.Terminal
 
 	cwd := svc.DefaultCwd().Path
@@ -47,7 +47,7 @@ func TestShellTab(t *testing.T) {
 }
 
 func TestOpenRefusals(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	svc := app.W.Terminal
 	open(t, app, "w1", "live", app.Home)
 
@@ -80,7 +80,7 @@ func TestOpenRefusals(t *testing.T) {
 }
 
 func TestWindowCloseKillsOnlyItsShells(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	pidRe := regexp.MustCompile(`(?m)(?:^|\r)(\d+)\r?$`)
 	mark := app.Events.Mark()
 	pids := map[string]int{}
@@ -105,7 +105,7 @@ func TestWindowCloseKillsOnlyItsShells(t *testing.T) {
 }
 
 func TestQuitTearsDownTerminals(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	pidRe := regexp.MustCompile(`(?m)(?:^|\r)(\d+)\r?$`)
 	mark := app.Events.Mark()
 	pids := map[string]int{}
@@ -128,8 +128,8 @@ func TestQuitTearsDownTerminals(t *testing.T) {
 }
 
 func TestLargeOutput(t *testing.T) {
-	flowharness.Complete(t)
-	app := flowharness.New(t)
+	studioflowharness.Complete(t)
+	app := studioflowharness.New(t)
 	mark := app.Events.Mark()
 	if _, err := app.W.Terminal.Open(terminal.OpenArgs{
 		TerminalID: "big", WindowKey: "w1", Cwd: app.Home, Cols: 80, Rows: 24, Command: "seq 1 200000", LaunchKind: terminal.LaunchKindScript,

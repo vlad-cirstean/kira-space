@@ -1,4 +1,4 @@
-package flowharness_test
+package studioflowharness_test
 
 import (
 	"context"
@@ -11,18 +11,18 @@ import (
 	"github.com/kirathecat/kira-studio/internal/terminal"
 )
 
-func TestMain(m *testing.M) { os.Exit(flowharness.Main(m)) }
+func TestMain(m *testing.M) { os.Exit(studioflowharness.Main(m)) }
 
 // Boots the real composition root with default settings and sends a request over real sockets.
 func TestHarnessBootsAndSends(t *testing.T) {
 	start := time.Now()
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	t.Logf("harness boot: %s", time.Since(start))
 
 	if got := len(app.W.Bound()); got != 39 {
 		t.Fatalf("bound services = %d, want 39", got)
 	}
-	srv := flowharness.HTTP(t)
+	srv := studioflowharness.HTTP(t)
 	res, err := app.W.Http.Send(context.Background(), bridge.HttpSendArgs{
 		Method: "GET", URL: srv.URL + "/echo", OpID: "35aa4fd1-8a08-76b1-8044-5e6cf39f36fa", TabID: "tab-1",
 	})
@@ -52,7 +52,7 @@ func TestHarnessBootsAndSends(t *testing.T) {
 
 // A Docker ping through the helper: skips without an engine.
 func TestDockerPing(t *testing.T) {
-	d := flowharness.RequireDocker(t)
+	d := studioflowharness.RequireDocker(t)
 	id := d.Run("ping", []string{"sh", "-c", "sleep 30"}, nil)
 	if id == "" {
 		t.Fatal("no container id")

@@ -75,7 +75,7 @@ func dbText(t *testing.T, db *sql.DB) string {
 }
 
 // secretEnv is the KIRA_PARAM env the fake claude saw on its n-th call.
-func secretEnv(t *testing.T, app *flowharness.App, n int) string {
+func secretEnv(t *testing.T, app *studioflowharness.App, n int) string {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join(app.FakeDir, fmt.Sprintf("automations-%d.env", n)))
 	if err != nil {
@@ -84,7 +84,7 @@ func secretEnv(t *testing.T, app *flowharness.App, n int) string {
 	return string(raw)
 }
 
-func secretRows(t *testing.T, app *flowharness.App) int {
+func secretRows(t *testing.T, app *studioflowharness.App) int {
 	t.Helper()
 	var n int
 	if err := app.DB().QueryRow(`SELECT COUNT(*) FROM secret_values`).Scan(&n); err != nil {
@@ -100,7 +100,7 @@ func noSecret(t *testing.T, what, text string) {
 	}
 }
 
-func createSecretScript(t *testing.T, app *flowharness.App, f scripts.CustomScriptFields, values map[string]*string) scripts.CustomScript {
+func createSecretScript(t *testing.T, app *studioflowharness.App, f scripts.CustomScriptFields, values map[string]*string) scripts.CustomScript {
 	t.Helper()
 	if f.Name == "" {
 		f.Name = "keyed"
@@ -115,7 +115,7 @@ func createSecretScript(t *testing.T, app *flowharness.App, f scripts.CustomScri
 }
 
 func TestSecretParamSmartRun(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	emit := filepath.Join(t.TempDir(), "emit")
 	escaped, _ := json.Marshal(map[string]any{"command": "echo " + secretValue})
 	lines := []string{
@@ -198,7 +198,7 @@ func TestSecretParamSchedule(t *testing.T) {
 }
 
 func TestSecretParamTerminalRun(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	rec := createSecretScript(t, app, scripts.CustomScriptFields{Command: `echo "tok=$KIRA_PARAM_KEY"; exit 3`}, withSecret(secretValue))
 	startTerminalRun(t, app, "t-secret", scriptruns.RunArgs{ScriptID: rec.ID})
 	run := waitRun(t, app, "t-secret", "failed")
@@ -212,7 +212,7 @@ func TestSecretParamTerminalRun(t *testing.T) {
 }
 
 func TestSecretParamResume(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	hold := filepath.Join(t.TempDir(), "hold")
 	app.Scenario(scenario(fakeagent.Action{WaitFile: hold}))
 	rec := createSecretScript(t, app, scripts.CustomScriptFields{Kind: scripts.KindSmart, Command: "Say hi"}, withSecret(secretValue))
@@ -238,7 +238,7 @@ func TestSecretParamResume(t *testing.T) {
 }
 
 func TestSecretParamCleanup(t *testing.T) {
-	app := flowharness.New(t)
+	app := studioflowharness.New(t)
 	rec := createSecretScript(t, app, scripts.CustomScriptFields{Command: "true"}, withSecret(secretValue))
 	if secretRows(t, app) != 1 {
 		t.Fatal("no secret row after Create")
@@ -272,7 +272,7 @@ func TestSecretParamCleanup(t *testing.T) {
 func withNamed(name, v string) map[string]*string { return map[string]*string{name: &v} }
 
 func TestSecretParamStorageOff(t *testing.T) {
-	app := flowharness.New(t, flowharness.WithoutSecretStore())
+	app := studioflowharness.New(t, studioflowharness.WithoutSecretStore())
 	snap, err := app.W.CustomScripts.List()
 	if err != nil {
 		t.Fatal(err)
