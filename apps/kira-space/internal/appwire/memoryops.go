@@ -10,8 +10,10 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/mcpcall"
 	"github.com/kirathecat/kira-studio/internal/memory/memorycli"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -32,7 +34,7 @@ func memoryOps(dbPath, ownersDir string) memorycli.OpsRecorder {
 			fmt.Fprintln(os.Stderr, "kira-memory: op log off:", err)
 			return nil, none
 		}
-		if _, err := db.Exec(`SELECT 1 FROM op_log LIMIT 0`); err != nil {
+		if _, err := sqlb.Exec(db, sqlb.SQLite.Select("1").From(kiraschema.OpLog.Table).Limit(0)); err != nil {
 			fmt.Fprintln(os.Stderr, "kira-memory: op log off:", err)
 			_ = db.Close()
 			return nil, none
