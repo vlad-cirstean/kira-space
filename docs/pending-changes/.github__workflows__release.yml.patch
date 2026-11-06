@@ -1,0 +1,237 @@
+P537: one dmg, one assert_app, install smoke runs --app=space and --app=studio.
+
+diff --git a/.github/workflows/release.yml b/.github/workflows/release.yml
+index 71a06b3f..fc71ce0f 100644
+--- a/.github/workflows/release.yml
++++ b/.github/workflows/release.yml
+@@ -20,7 +20,8 @@ concurrency:
+   cancel-in-progress: false
+ 
+ # P330 graph: `tag` resolves the tag to a commit (seconds); build (macOS), test-matrix and both
+-# db-compat halves then start together at that commit; only publish waits for all of them. publish
++# db-compat halves then start together at that commit; only publish waits for all of them. After
++# publish, install-smoke runs the published installer on a clean macOS runner. publish
+ # creates a draft, verifies both assets, then publishes in one API call, so a failed job leaves no
+ # release and no half-uploaded one is ever visible. No job here saves a cache: cache-warm.yml owns
+ # main's caches, and every job here restores them.
+@@ -68,57 +69,52 @@ jobs:
+           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+           echo "releasing $TAG at $SHA"
+ 
+-  # Packages both apps. Signing is ad-hoc only (docs/PACKAGING.md §6), so there is no notarisation wait.
++  # Packages the one app. Signing is ad-hoc only (docs/PACKAGING.md §6), so there is no notarisation wait.
+   build:
+     name: build (macOS)
+     needs: tag
+     runs-on: macos-26
+     timeout-minutes: 30
+     outputs:
+-      studio-sha256: ${{ steps.sums.outputs.studio }}
+       space-sha256: ${{ steps.sums.outputs.space }}
+     steps:
+       - uses: actions/checkout@v7
+         with:
+           ref: ${{ needs.tag.outputs.sha }}
+ 
+-      # P119: one tag versions both apps. Each app's build/config.yml info.version is the one place
+-      # its build reads a version; from there it is linked into the binary and stamped into
+-      # Info.plist, and verify:packaging's A5 asserts both bundles carry it.
+-      - name: Set both apps' version from the release tag
++      # P119: the tag versions the app. build/config.yml's info.version is the one place the build
++      # reads a version; from there it is linked into the binary and stamped into Info.plist, and
++      # verify:packaging's A5 asserts the bundle carries it.
++      - name: Set the app version from the release tag
+         env:
+           RELEASE_TAG: ${{ needs.tag.outputs.tag }}
+         run: |
+           set -eu
+           TAG="${RELEASE_TAG#v}"
+           printf '%s' "$TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$' || { echo "bad version '$TAG'" >&2; exit 1; }
+-          for CONFIG in apps/kira-studio/build/config.yml apps/kira-space/build/config.yml; do
+-            perl -i -pe 's/^(  version: )"[^"]*"/$1"'"$TAG"'"/' "$CONFIG"
+-            test "$(sed -n 's/^  version: *"\([^"]*\)".*/\1/p' "$CONFIG" | head -1)" = "$TAG"
+-            echo "$CONFIG version set to $TAG"
+-          done
++          CONFIG=apps/kira-space/build/config.yml
++          perl -i -pe 's/^(  version: )"[^"]*"/$1"'"$TAG"'"/' "$CONFIG"
++          test "$(sed -n 's/^  version: *"\([^"]*\)".*/\1/p' "$CONFIG" | head -1)" = "$TAG"
++          echo "$CONFIG version set to $TAG"
+ 
+-      # Restores main's bun, wails3 and Studio bindings entries; saves nothing. Also runs scripts/setup.sh.
++      # Restores main's bun, wails3 and bindings entries; saves nothing. Also runs scripts/setup.sh.
+       - uses: ./.github/actions/setup
+         with:
+           cache-save: "false"
+ 
+-      - run: bun run package:studio
+-      - run: bun run package:space
++      - run: bun run package
+ 
+-      # P10: each package:* script already produced and signed its .dmg — this only gives each the
+-      # platform-qualified name its release asset carries. scripts/install.sh downloads these exact
+-      # names (its own --app table), so renaming one breaks that app's install and update.
+-      - name: Name the signed disk images for distribution
+-        run: |
+-          cp "apps/kira-studio/bin/Kira Studio.dmg" "kira-studio-macos-arm64.dmg"
+-          cp "apps/kira-space/bin/Kira Space.dmg" "kira-space-macos-arm64.dmg"
++      # P10: `package` already produced and signed the .dmg — this only gives it the
++      # platform-qualified name its release asset carries. scripts/install.sh downloads this exact
++      # name, so renaming it breaks install and update.
++      - name: Name the signed disk image for distribution
++        run: cp "apps/kira-space/bin/Kira Space.dmg" "kira-space-macos-arm64.dmg"
+ 
+-      # Both bundles exist now, so every Studio and Space artifact check runs instead of skipping.
++      # The bundle exists now, so every artifact check runs instead of skipping.
+       - name: Verify packaging
+         run: bun run verify:packaging
+ 
+-      - name: Assert packaged bundles and disk images (docs/PACKAGING.md §4 — checks the actual tagged release build of each app)
++      - name: Assert packaged bundle and disk image (docs/PACKAGING.md §4 — checks the actual tagged release build)
+         run: |
+           set -eu
+           assert_app() {
+@@ -138,21 +134,17 @@ jobs:
+             hdiutil detach "$MNT"
+             du -sh "$APP" "$DMG"
+           }
+-          assert_app apps/kira-studio "Kira Studio" com.kirathecat.kira-studio /tmp/kira-studio-dmg
+           assert_app apps/kira-space "Kira Space" com.kirathecat.kira-space /tmp/kira-space-dmg
+ 
+-      - name: Hash the disk images
++      - name: Hash the disk image
+         id: sums
+         run: |
+-          echo "studio=$(shasum -a 256 kira-studio-macos-arm64.dmg | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+           echo "space=$(shasum -a 256 kira-space-macos-arm64.dmg | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+ 
+       - uses: actions/upload-artifact@v7
+         with:
+           name: release-dmgs
+-          path: |
+-            kira-studio-macos-arm64.dmg
+-            kira-space-macos-arm64.dmg
++          path: kira-space-macos-arm64.dmg
+           if-no-files-found: error
+           retention-days: 14
+ 
+@@ -226,14 +218,12 @@ jobs:
+             echo "tag $TAG moved from $SHA to $NOW after this run started; start a new run: gh workflow run release.yml -f tag=$TAG" >&2
+             exit 1
+           fi
+-      - name: Download the disk images and check their hashes
++      - name: Download the disk image and check its hash
+         env:
+-          STUDIO_SHA: ${{ needs.build.outputs.studio-sha256 }}
+           SPACE_SHA: ${{ needs.build.outputs.space-sha256 }}
+         run: |
+           set -eu
+           gh run download "$GITHUB_RUN_ID" --name release-dmgs
+-          test "$(sha256sum kira-studio-macos-arm64.dmg | awk '{print $1}')" = "$STUDIO_SHA"
+           test "$(sha256sum kira-space-macos-arm64.dmg | awk '{print $1}')" = "$SPACE_SHA"
+ 
+       - name: Refuse an existing release, clear a leftover draft
+@@ -255,8 +245,8 @@ jobs:
+           Requires macOS 14 or later on Apple Silicon (arm64). Background: docs/PACKAGING.md and
+           README.md.
+ 
+-          This release carries two apps, versioned together: **Kira Studio** (database and API
+-          client) and **Kira Space** (git client).
++          This release carries one app, **Kira Space**: git, coding agents, databases, API client,
++          Docker and Kubernetes in one window. It replaces Kira Studio.
+ 
+           ## Install or update
+ 
+@@ -264,17 +254,20 @@ jobs:
+           opens the app:
+ 
+           ```
+-          curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scripts/install.sh | sh -s -- --app=studio
+           curl -fsSL https://raw.githubusercontent.com/vlad-cirstean/kira-studio/main/scripts/install.sh | sh -s -- --app=space
+           ```
+ 
++          Coming from Kira Studio, the old app's own update offer runs the same installer with
++          `--app=studio`: it installs Kira Space, then moves Kira Studio.app to the Trash. Your data
++          in `~/.kira-studio` stays and Kira Space opens it in place.
++
+           This is the only supported install method. These builds aren't signed by Apple; a disk
+           image downloaded through a browser is blocked by Gatekeeper, while the installer's own
+           download is not. The disk images attached below are what the installer downloads.
+ 
+           ## Updating from inside the app
+ 
+-          Each app checks for a newer release and offers an update. Clicking **Update** runs the
++          The app checks for a newer release and offers an update. Clicking **Update** runs the
+           same installer, quits the app, and reopens the new version. Nothing installs without
+           that click. Installer log: `~/Library/Logs/<app name>/install.log`.
+           EOF
+@@ -286,9 +279,8 @@ jobs:
+           case "$TAG" in *-*) PRE="--prerelease" ;; esac
+           gh release create "$TAG" \
+             --draft --verify-tag $PRE \
+-            --title "Kira Studio and Kira Space $TAG" \
++            --title "Kira Space $TAG" \
+             --notes-file release-notes.md \
+-            kira-studio-macos-arm64.dmg \
+             kira-space-macos-arm64.dmg
+           ID="$(gh api --paginate "repos/$GH_REPO/releases" \
+             --jq ".[] | select(.draft and .tag_name == \"$TAG\") | .id" | head -1)"
+@@ -298,12 +290,12 @@ jobs:
+       - name: Verify the uploaded assets
+         run: |
+           set -eu
+-          want_names="kira-space-macos-arm64.dmg kira-studio-macos-arm64.dmg"
++          want_names="kira-space-macos-arm64.dmg"
+           # install.sh checks each asset's size and sha256 digest; wait for the digest to appear.
+           n=0
+           while :; do
+             gh api "repos/$GH_REPO/releases/$RELEASE_ID/assets" > assets.json
+-            if jq -e 'length == 2 and all(.[]; .state == "uploaded" and .digest != null)' assets.json >/dev/null; then
++            if jq -e 'length == 1 and all(.[]; .state == "uploaded" and .digest != null)' assets.json >/dev/null; then
+               break
+             fi
+             n=$((n + 1))
+@@ -338,3 +330,44 @@ jobs:
+           if [ "$(gh api "repos/$GH_REPO/releases/$RELEASE_ID" --jq '.draft' 2>/dev/null)" = true ]; then
+             gh api -X DELETE "repos/$GH_REPO/releases/$RELEASE_ID"
+           fi
++
++  # The published installer on a clean macOS runner, both entry points. `--app=space` installs
++  # Kira Space. `--app=studio` is the old Kira Studio updater's path: it installs Kira Space, moves
++  # a stand-in Kira Studio.app to the Trash and leaves ~/.kira-studio alone. Runs after publish
++  # because the installer downloads the latest published release.
++  install-smoke:
++    name: install smoke (macOS)
++    needs: [tag, publish]
++    runs-on: macos-26
++    timeout-minutes: 15
++    steps:
++      - uses: actions/checkout@v7
++        with:
++          ref: ${{ needs.tag.outputs.sha }}
++      - name: Install with --app=space
++        run: |
++          set -eu
++          sh scripts/install.sh --app=space
++          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "/Applications/Kira Space.app/Contents/Info.plist")" = com.kirathecat.kira-space
++          codesign --verify --deep --strict "/Applications/Kira Space.app"
++          pkill -x "Kira Space" || true; sleep 3
++      - name: Install with --app=studio over a stand-in Kira Studio.app
++        run: |
++          set -eu
++          OLD="/Applications/Kira Studio.app"
++          mkdir -p "$OLD/Contents/MacOS" "$HOME/.kira-studio"
++          printf 'keep' > "$HOME/.kira-studio/marker"
++          cat > "$OLD/Contents/Info.plist" <<'EOF'
++          <?xml version="1.0" encoding="UTF-8"?>
++          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++          <plist version="1.0"><dict>
++          <key>CFBundleIdentifier</key><string>com.kirathecat.kira-studio</string>
++          <key>CFBundleName</key><string>Kira Studio</string>
++          </dict></plist>
++          EOF
++          sh scripts/install.sh --app=studio
++          test ! -e "$OLD"
++          ls "$HOME/.Trash" | grep -q '^Kira Studio'
++          test "$(cat "$HOME/.kira-studio/marker")" = keep
++          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "/Applications/Kira Space.app/Contents/Info.plist")" = com.kirathecat.kira-space
++          pkill -x "Kira Space" || true; sleep 3

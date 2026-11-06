@@ -1,0 +1,35 @@
+P537: bindings cache, .task and fontconfig paths under apps/kira-space.
+
+diff --git a/.github/actions/setup/action.yml b/.github/actions/setup/action.yml
+index 5cb112c0..c729977e 100644
+--- a/.github/actions/setup/action.yml
++++ b/.github/actions/setup/action.yml
+@@ -108,16 +108,16 @@ runs:
+       uses: actions/cache@v6
+       with:
+         path: |
+-          apps/kira-studio/frontend/bindings
+-          apps/kira-studio/.task
++          apps/kira-space/frontend/bindings
++          apps/kira-space/.task
+         key: wails-bindings-${{ hashFiles('go.mod') }}
+     - name: Restore generated Wails bindings (platform-independent output, shared across OSes)
+       if: inputs.bindings == 'true' && inputs.cache-save != 'true'
+       uses: actions/cache/restore@v6
+       with:
+         path: |
+-          apps/kira-studio/frontend/bindings
+-          apps/kira-studio/.task
++          apps/kira-space/frontend/bindings
++          apps/kira-space/.task
+         key: wails-bindings-${{ hashFiles('go.mod') }}
+     - name: Install GTK4/WebKitGTK headers (cgo builds; also needed at runtime to even invoke a cached wails3 binary for its version check, not just to build one on a cache miss; bounded and retried, scripts/ci-apt-install.sh)
+       if: runner.os == 'Linux' && (inputs.gtk == 'true' || inputs.bindings == 'true')
+@@ -132,6 +132,6 @@ runs:
+       shell: bash
+       run: |
+         sh scripts/ci-apt-install.sh fonts-inter
+-        sudo install -m 644 apps/kira-studio/tests/visual/support/fontconfig/56-prefer-inter.conf /etc/fonts/conf.d/
++        sudo install -m 644 apps/kira-space/tests/visual/support/fontconfig/56-prefer-inter.conf /etc/fonts/conf.d/
+         sudo fc-cache -f
+         test "$(fc-match sans-serif -f '%{family}')" = Inter

@@ -144,7 +144,7 @@ export default defineConfig({
       expect: {
         toHaveScreenshot: {
           animations: 'disabled',
-          stylePath: './tests/visual/studio/support/pin-fonts.css',
+          stylePath: './tests/visual/support/pin-fonts.css',
         },
       },
     },
