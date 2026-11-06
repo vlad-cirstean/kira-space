@@ -99,11 +99,13 @@ var names = []sqlitex.MigrationSource{
 	{Version: 84, Name: "p552_core", File: "0084_p552_core.sql"},
 	{Version: 85, Name: "p552_connections", File: "0085_p552_connections.sql"},
 	{Version: 86, Name: "p552_api", File: "0086_p552_api.sql"},
+	{Version: 87, Name: "p552_ade_tasks", File: "0087_p552_ade_tasks.sql"},
 }
 
 // funcs attach Go work to a step by version, run after the step's SQL in the same transaction.
 var funcs = map[int]func(*sql.Tx) error{
 	85: p552Connections,
+	87: p552RepoConfig,
 }
 
 // All returns every migration in ascending version order.

@@ -249,3 +249,34 @@ DROP TABLE connections;
 ALTER TABLE connections__n RENAME TO connections;
 CREATE UNIQUE INDEX connections_stem ON connections (stem) WHERE stem IS NOT NULL;
 `
+
+const repoConfigPlainSQL = `-- ade_repo_config
+CREATE TABLE ade_repo_config__n (
+  code_repo_id TEXT NOT NULL PRIMARY KEY REFERENCES code_repos (id) ON DELETE CASCADE,
+  source TEXT NOT NULL DEFAULT 'added'
+) STRICT;
+INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
+  SELECT 'ade_repo_config', json_object('code_repo_id', "code_repo_id", 'nickname', "nickname", 'source', "source"), 'orphan code_repo_id', 'removed', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  FROM ade_repo_config WHERE NOT EXISTS (SELECT 1 FROM code_repos p WHERE p.id = ade_repo_config."code_repo_id");
+INSERT INTO ade_repo_config__n (rowid, code_repo_id, source)
+  SELECT rowid, code_repo_id, source
+  FROM ade_repo_config WHERE NOT ((NOT EXISTS (SELECT 1 FROM code_repos p WHERE p.id = ade_repo_config."code_repo_id")));
+DROP TABLE ade_repo_config;
+ALTER TABLE ade_repo_config__n RENAME TO ade_repo_config;
+`
+
+const repoConfigCarrySQL = `-- ade_repo_config
+CREATE TABLE ade_repo_config__n (
+  code_repo_id TEXT NOT NULL PRIMARY KEY REFERENCES code_repos (id) ON DELETE CASCADE,
+  source TEXT NOT NULL DEFAULT 'added',
+  nickname TEXT NOT NULL DEFAULT ''
+) STRICT;
+INSERT INTO schema_quarantine (table_name, row_json, reason, action, migration, recorded_at)
+  SELECT 'ade_repo_config', json_object('code_repo_id', "code_repo_id", 'nickname', "nickname", 'source', "source"), 'orphan code_repo_id', 'removed', 84, CAST(unixepoch('now','subsec')*1000 AS INTEGER)
+  FROM ade_repo_config WHERE NOT EXISTS (SELECT 1 FROM code_repos p WHERE p.id = ade_repo_config."code_repo_id");
+INSERT INTO ade_repo_config__n (rowid, code_repo_id, source, nickname)
+  SELECT rowid, code_repo_id, source, nickname
+  FROM ade_repo_config WHERE NOT ((NOT EXISTS (SELECT 1 FROM code_repos p WHERE p.id = ade_repo_config."code_repo_id")));
+DROP TABLE ade_repo_config;
+ALTER TABLE ade_repo_config__n RENAME TO ade_repo_config;
+`

@@ -88,3 +88,44 @@ func p552Connections(tx *sql.Tx) error {
 	}
 	return nil
 }
+
+// p552RepoConfig rebuilds ade_repo_config. nickname and the three legacy tables stay only while the repo
+// export (marker config.migrated.repos) has not run and they hold rows to export.
+func p552RepoConfig(tx *sql.Tx) error {
+	done, err := markerSet(tx, "repos")
+	if err != nil {
+		return err
+	}
+	legacy := []string{"git_repo_settings", "ade_repo_integration", "ade_repo_envs"}
+	pending := false
+	for _, t := range legacy {
+		n, err := rowCount(tx, t)
+		if err != nil {
+			return err
+		}
+		pending = pending || n > 0
+	}
+	hasNick, err := hasColumn(tx, "ade_repo_config", "nickname")
+	if err != nil {
+		return err
+	}
+	if hasNick {
+		var n int
+		if err := tx.QueryRow(`SELECT COUNT(*) FROM ade_repo_config WHERE nickname <> ''`).Scan(&n); err != nil {
+			return fmt.Errorf("count nicknames: %w", err)
+		}
+		pending = pending || n > 0
+	}
+	carry := !done && pending && hasNick
+	ddl := repoConfigPlainSQL
+	if carry {
+		ddl = repoConfigCarrySQL
+	}
+	if _, err := tx.Exec(ddl); err != nil {
+		return fmt.Errorf("rebuild ade_repo_config: %w", err)
+	}
+	if done || !pending {
+		return dropTables(tx, legacy...)
+	}
+	return nil
+}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"github.com/kirathecat/kira-studio/internal/palette"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
@@ -20,7 +21,7 @@ type CodeReposRepo struct {
 func scanCodeRepoRow(row rowScanner) (model.CodeRepo, error) {
 	var r model.CodeRepo
 	var hidden int
-	if err := row.Scan(&r.ID, &r.Name, &r.Root, &r.RepoID, &r.SortOrder, &r.Color, &r.CreatedAt, &hidden, &r.HiddenRev); err != nil {
+	if err := row.Scan(&r.ID, &r.Name, &r.Root, &r.RepoID, &r.SortOrder, &r.Color, msISO(&r.CreatedAt), &hidden, &r.HiddenRev); err != nil {
 		return model.CodeRepo{}, err
 	}
 	r.Hidden = hidden != 0
@@ -73,7 +74,7 @@ func (r *CodeReposRepo) Create(rec model.CodeRepo) (model.CodeRepo, error) {
 	}
 	if _, err := r.DB.Exec(
 		`INSERT INTO code_repos (id, name, root, repo_id, sort_order, color, created_at, hidden) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		rec.ID, rec.Name, rec.Root, rec.RepoID, rec.SortOrder, rec.Color, rec.CreatedAt, boolInt(rec.Hidden),
+		rec.ID, rec.Name, rec.Root, rec.RepoID, rec.SortOrder, rec.Color, kiratime.ISOOrZero(rec.CreatedAt), boolInt(rec.Hidden),
 	); err != nil {
 		if isUniqueViolation(err) {
 			return model.CodeRepo{}, ErrCodeRepoExists
