@@ -381,26 +381,11 @@ func copyRows(o Options, m *marker) error {
 		table := t.dst
 		d := data[table]
 		if table == "script_run_logs" {
-			kept := d.rows[:0]
-			for _, r := range d.rows {
-				if runIDs[asString(r["run_id"])] {
-					kept = append(kept, r)
-				}
-			}
-			if len(kept) < len(d.rows) {
-				slog.Warn("homefold: Studio run logs without a run dropped", "scope", "homefold", "dropped", len(d.rows)-len(kept))
-			}
-			d.rows = kept
+			d.rows = dropOrphanLogs(d.rows, runIDs)
 		}
 		if table == "script_collections" || table == "scripts" {
-			var offset int64
-			if err := tx.QueryRow(`SELECT COALESCE(MAX(sort_order) + 1, 0) FROM ` + table).Scan(&offset); err != nil {
+			if err := offsetSort(tx, table, d.rows); err != nil {
 				return err
-			}
-			for _, r := range d.rows {
-				if n, ok := r["sort_order"].(int64); ok {
-					r["sort_order"] = n + offset
-				}
 			}
 		}
 		ignored, err := insertRows(tx, table, d.cols, d.rows)
@@ -424,6 +409,32 @@ func copyRows(o Options, m *marker) error {
 	if err := tx.Commit(); err != nil {
 		m.RowsCopied = false
 		return err
+	}
+	return nil
+}
+
+func dropOrphanLogs(rows []map[string]any, runIDs map[string]bool) []map[string]any {
+	kept := rows[:0]
+	for _, r := range rows {
+		if runIDs[asString(r["run_id"])] {
+			kept = append(kept, r)
+		}
+	}
+	if len(kept) < len(rows) {
+		slog.Warn("homefold: Studio run logs without a run dropped", "scope", "homefold", "dropped", len(rows)-len(kept))
+	}
+	return kept
+}
+
+func offsetSort(tx *sql.Tx, table string, rows []map[string]any) error {
+	var offset int64
+	if err := tx.QueryRow(`SELECT COALESCE(MAX(sort_order) + 1, 0) FROM ` + table).Scan(&offset); err != nil {
+		return err
+	}
+	for _, r := range rows {
+		if n, ok := r["sort_order"].(int64); ok {
+			r["sort_order"] = n + offset
+		}
 	}
 	return nil
 }
