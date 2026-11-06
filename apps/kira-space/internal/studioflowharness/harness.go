@@ -240,7 +240,7 @@ func (a *App) build() {
 	}
 	w, err := appwire.Build(appwire.Options{
 		DbMcpPort: dbMcpPort,
-		DB: spaceDB, Repos: spaceRepos, StudioDB: db, StudioRepos: r, Cipher: cipher,
+		DB:        spaceDB, Repos: spaceRepos, StudioDB: db, StudioRepos: r, Cipher: cipher,
 		Authorizer: localauth.New(time.Now, a.OSAuth.evaluate, a.OSAuth.isAvailable),
 		Emitter:    a.Events, Browser: a.Browser, FileOpener: a.FileOpener, Dialogs: a.Dialogs, KeepAwakeDriver: a.KeepAwake, McpInstaller: a.McpInstaller,
 		SmartTimeout:    a.opts.smartTimeout,
