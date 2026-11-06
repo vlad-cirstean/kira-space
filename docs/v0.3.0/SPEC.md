@@ -22,7 +22,7 @@ Twins: every Studio twin in `plans/TWINS.md` is merged by P538, P539, P540 or P5
 | P544 Part 2 | Settings and op log twins | Done |
 | P545 | Timeline becomes a toggle merged into the same list | Done |
 | P546 | Forward panel edits (diff only) to agents running in the step | Done |
-| P547 | Kira DB audit trail in the details panel | Pending |
+| P547 | Kira DB audit trail in the details panel | Done |
 | P548 | Studio MCP option in workflow steps | Done |
 | P549 | WebP screenshots and macOS 26 window frame | Done |
 | P550 | Site image pipeline: CI generates and publishes site images | Done |
@@ -214,6 +214,7 @@ Result:
 - Depends on the P537 merge and v0.2.36 P528.
 - Decide in plan: capture point in `dbmcp` and link to the session and task; storage and retention; redaction so no row data or bound values land in the trail; how it joins the merged list from P545.
 - Plan: `plans/P547.md`.
+- Result: Done. Table `ade_db_audit` (migration 0081, FK cascade, cap 2000 per task, `ReconcileRunning` at startup). Capture via `mcpcall.Record` hook on the session server; `dbaudit.Recorder` implements `dbmcp.Auditor` and `ApprovalObserver` (raised, resolved once, linked by `CallID`). Masking by allow list: `adapters.MaskSQLLiterals` plus per-adapter `RedactStatement` (postgres, sqlite, mysql family, clickhouse, mongo, redis); hazard or unterminated quote withholds the statement. Errors stored as code only; results and params never. Bridge `AdeTaskService.DbAudit` and push `kira:adetask:dbAudit`. Details list gets the `audit` layer, `AdeAuditEntry.vue`, `Kira DB (n)` toggle (default on, `kira.ade.details.dbAudit`). Tests: `TestDbAuditTrail` (contract `ade-db-audit`), `TestMaskSQLLiterals`, UI spec `ade-v2-db-audit.spec.ts`; `ade-v2-details-list`, `-proof-chain`, `-workflow-db-mcp`, approvals specs pass. Deviations: toggle label says "Kira DB" ('DB' added to catalog proper nouns). External server not audited (Known open item). Not run: full Go, UI, e2e-real (chapter end).
 
 ### P548 Studio MCP option in workflow steps
 

@@ -30,6 +30,14 @@ A workflow step with `db_mcp: true` gets the database tools in its own session. 
 
 This works with the server switch off. The session talks to a separate server named `kira-db-session` on a random loopback port. It shares your exposed connections, limits and approvals. External clients never reach it, and the server on port 8766 stays as the switch sets it. Turning the switch off leaves running steps connected, and approvals they wait on stay open until the session ends.
 
+## Audit trail
+
+When a workflow step gives its session the Kira database tools, Kira Space records each tool call in the task's Details list, in time order. A row shows the tool, the connection, the time taken, success or failure, and the statement with its literal values masked. A statement Kira cannot mask safely is not recorded; the row says so.
+
+Approvals the call raised show under it: accepted, denied, timed out or not answered. An exemption approval lists the limits it lifted and the reason.
+
+Kira never stores results, bound values or error text, only an error code. Use the **Kira DB** toggle in the Details header to hide the rows. Calls from external clients are not recorded.
+
 ## Exposed connections
 
 Deny by default. A connection stays invisible until you check it under **Exposed connections**.
