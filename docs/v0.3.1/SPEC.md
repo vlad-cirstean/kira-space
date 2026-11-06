@@ -1,16 +1,17 @@
 # v0.3.1
 
-Branch `chapter/v0.3.1`, based on `chapter/v0.3.0` (v0.3.0 must merge first). First `P` is 551 (highest in v0.3.0 is P550), last is P553.
+Branch `chapter/v0.3.1`, based on `chapter/v0.3.0` (v0.3.0 must merge first). First `P` is 551 (highest in v0.3.0 is P550), last is P554.
 
-Source: user request. Three phases: site expansion on the v0.3.0 image pipeline, SQL query builder for the app's own SQLite, tighter SQLite schema. Close duty after the last phase lands: one full suite run, 2 code review rounds, hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
+Source: user request. Four phases: site expansion on the v0.3.0 image pipeline, SQL query builder for the app's own SQLite, tighter SQLite schema, GitOps for config files. Close duty after the last phase lands: one full suite run, 2 code review rounds, hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
 
-Sequencing: P551 needs v0.3.0 P549 (WebP, frame) and P550 (image pipeline), both landed with the chapter base. P552 and P553 touch the DB layer and need v0.3.0 P544 (single merged DB) landed. Reading of the code: both touch `apps/kira-space/internal/storage/repos` and `storage/migrations` (modernc.org/sqlite v1.61.1; `foreign_keys` set in `storage/db.go`; no ORM, raw `sqlitex` helpers). P552 edits repo Go files and leaves migrations as SQL. P553 adds migration SQL files and tightens types the repos scan (bool, JSON, timestamps). Overlap is small but real, in repo scan code and in `db.go`. Default: P552 then P553, so P553 verifies against builder-based repos. Parallel allowed only if the P553 plan keeps every column name and Go type unchanged and lists per-file ownership with zero overlap. P551 shares no files with P552 or P553 and may run beside either. Up to 3 phases at once per CLAUDE.md batch rule; a batch plan goes under `plans/PARALLEL.md`. Table order is execution order otherwise.
+Sequencing: P551 needs v0.3.0 P549 (WebP, frame) and P550 (image pipeline), both landed with the chapter base. P552 and P553 touch the DB layer and need v0.3.0 P544 (single merged DB) landed. Reading of the code: both touch `apps/kira-space/internal/storage/repos` and `storage/migrations` (modernc.org/sqlite v1.61.1; `foreign_keys` set in `storage/db.go`; no ORM, raw `sqlitex` helpers). P552 edits repo Go files and leaves migrations as SQL. P553 adds migration SQL files and tightens types the repos scan (bool, JSON, timestamps). Overlap is small but real, in repo scan code and in `db.go`. Default: P552 then P553, so P553 verifies against builder-based repos. Parallel allowed only if the P553 plan keeps every column name and Go type unchanged and lists per-file ownership with zero overlap. P551 shares no files with P552 or P553 and may run beside either. Up to 3 phases at once per CLAUDE.md batch rule; a batch plan goes under `plans/PARALLEL.md`. P554 needs v0.3.0 P540 (unified `<home>/config`, landed). Config YAML is file-based, so P554 has no DB dependency and is independent of P552 and P553. Table order is execution order otherwise.
 
 | Phase | Title | Status |
 |---|---|---|
 | P551 | Site expansion: content, pages and explanations with images | Pending |
 | P552 | Go SQL query builder for the app's SQLite | Pending |
 | P553 | Tighten SQLite column types and constraints | Pending |
+| P554 | GitOps for config files: shared config repos | Pending |
 
 ## Rows
 
@@ -37,13 +38,20 @@ Sequencing: P551 needs v0.3.0 P549 (WebP, frame) and P550 (image pipeline), both
 - Decide in plan: audit of every table and column; constraint catalogue per table; migration strategy (per table or grouped; order by foreign key dependencies); verification (schema snapshot test is acceptable: it guards complex migration logic; migration flow test on a seeded old-shape DB); interplay with P552 (builder types) and a possible later Postgres schema; order relative to P552.
 - Plan: `plans/P553.md`.
 
+### P554 GitOps for config files: shared config repos
+
+- Ask: config files are unified under `<home>/config` (v0.3.0 P540). Add gitops support: every such resource can be local or shared. Some, like agent configs, can be combined (local + shared merged), or each entry can be deactivated individually. Settings gets an option to add a config repo. The app periodically fetches the repo for changes and shows a toast that new configs are available. Pressing the toast opens a review window comparing current config to what a pull would apply (diff per resource). If the user likes the changes they ask Kira to pull, which applies them. Settings also shows that changes exist and has the pull button, next to where the repo is configured.
+- Needs v0.3.0 P540 (landed). Independent of P552 and P553: config YAML is file-based, no DB dependency.
+- Decide in plan: repo layout and manifest of resources per module; local-vs-shared precedence and combine rules per module (agent configs combine; others override or exclusive); per-entry deactivate storage; fetch interval and auth (reuse existing git machinery, never touch CLI credentials; no secrets in the shared repo: connections and secrets stay local or are referenced); conflict handling when local edits diverge from shared; apply atomicity and rollback or backup (reuse the P540 backup approach); where the review window diff reuses existing diff components; multiple repos allowed or one; tests per the flow-test + UI-spec split rule (same scenario once on backend, once on frontend).
+- Plan: `plans/P554.md`.
+
 ## Close
 
-2 code review rounds unless the user says otherwise. After P553: one full suite run with all failures fixed, review rounds, hand-written close per CLAUDE.md, PR.
+2 code review rounds unless the user says otherwise. After P554: one full suite run with all failures fixed, review rounds, hand-written close per CLAUDE.md, PR.
 
 ### Site and images check (mandatory)
 
-Runs after P553 and the full suite run, before the code review. Close does not start until every item passes.
+Runs after P554 and the full suite run, before the code review. Close does not start until every item passes.
 
 - [ ] Images use the v0.3.0 pipeline (P549, P550): WebP only, macOS 26 frame on full-window shots, every other site image cropped to its subject. New P551 scenarios generate in CI. Orchestrator views each new image.
 - [ ] Site build with CI generation, from a clean checkout: generated shots appear, `site:build` and `site:check` pass.
@@ -51,3 +59,4 @@ Runs after P553 and the full suite run, before the code review. Close does not s
 - [ ] One app presented everywhere: Kira Space, Space modules first, then Studio modules. No page, shot or alt text shows two products or stale kira-studio wording.
 - [ ] Docs match final behaviour: README, ARCHITECTURE (builder, schema constraints), PACKAGING, DEV_ENVIRONMENT (screenshots, site CI), site docs.
 - [ ] `docs/pending-changes/*.patch` match the final state. Applied from a session with workflow scope.
+- [ ] GitOps config (P554): add repo in Settings, periodic fetch toast, review window diff per resource, pull applies atomically with backup. Combine and per-entry deactivate work for agent configs. No secrets in the shared repo. Flow test and UI spec both pass.
