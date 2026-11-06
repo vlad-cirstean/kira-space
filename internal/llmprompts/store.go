@@ -20,6 +20,13 @@ import (
 
 const fileVersion = 1
 
+const (
+	// Folder is the prompts module folder name under <home>/config.
+	Folder = "prompts"
+	// File is the user prompt overrides file inside Folder.
+	File = "llm-prompts.json"
+)
+
 // Hash is the content hash clients echo back as a change's baseHash.
 func Hash(text string) string {
 	sum := sha256.Sum256([]byte(text))

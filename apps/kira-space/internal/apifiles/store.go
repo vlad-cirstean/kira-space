@@ -61,6 +61,9 @@ func New(o Options) (*Store, error) {
 // Dir is the api folder.
 func (s *Store) Dir() string { return s.o.Dir }
 
+// Folder is the api module folder name under <home>/config.
+const Folder = "api"
+
 // Dir is the Api config folder under an app home.
 func Dir(home string) string { return filepath.Join(home, "api") }
 

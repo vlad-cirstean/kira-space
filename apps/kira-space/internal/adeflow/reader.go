@@ -19,6 +19,9 @@ type Store interface {
 	ForgetLastValid(file string) error
 }
 
+// WorkflowsFolder is the workflows module folder name under <home>/config.
+const WorkflowsFolder = "workflows"
+
 // Dir is the workflows directory under the app home.
 func Dir(home string) string { return filepath.Join(home, "workflows") }
 

@@ -78,6 +78,9 @@ func New(o Options) (*Loader, error) {
 // Dir is the connections folder.
 func (l *Loader) Dir() string { return l.o.Dir }
 
+// Folder is the connections module folder name under <home>/config.
+const Folder = "connections"
+
 // Dir is the connections folder under an app home.
 func Dir(home string) string { return filepath.Join(home, "connections") }
 

@@ -15,10 +15,13 @@ import (
 	"github.com/kirathecat/kira-studio/internal/configfs"
 )
 
+// Folder is the runs module folder name under <home>/config.
+const Folder = "runs"
+
 // LoaderOptions builds a Loader.
 type LoaderOptions struct {
 	Repo *Repo
-	// Dir is the runs folder, <home>/runs.
+	// Dir is the runs folder, <home>/config/runs.
 	Dir string
 	// Home is the app data folder; a deleted run loses its automations folder under it.
 	Home string
