@@ -73,6 +73,8 @@ type Grant struct {
 	StepID string
 	// Agent is the provider the run's CLI belongs to; it writes the grant's MCP config.
 	Agent harness.Provider
+	// Extra are further servers written into the same config file, next to ServerName.
+	Extra []harness.MCPServer
 }
 
 // ResultSpec is one result a step may report.
@@ -423,6 +425,10 @@ func (s *Server) Register(g Grant) (configPath string, release func(), err error
 		}
 		g.Sandbox = &SandboxGrant{Push: g.Sandbox.Push}
 	}
+	servers, err := extraServers(g.Extra)
+	if err != nil {
+		return "", nil, err
+	}
 	var perRun *mcp.Server
 	if g.RunID != "" && (!IsImplicit(g.Results) || g.Review != nil) {
 		perRun = s.buildMCPServer(true, g.Space, g.TaskID != "" && s.outcomes != nil, g.Git != nil, g.Review != nil, g.Sandbox != nil, s.handoverGranted(g), g.Results)
@@ -446,7 +452,7 @@ func (s *Server) Register(g Grant) (configPath string, release func(), err error
 	s.tokens = append(s.tokens, registration{id: id, grant: g, hash: hash, salt: salt, server: perRun, ctx: regCtx, cancel: cancel})
 	s.mu.Unlock()
 
-	cfg, err := g.Agent.MCPConfig([]harness.MCPServer{{Name: ServerName, URL: url, Headers: map[string]string{"Authorization": "Bearer " + plain}, Timeout: harness.MCPCallTimeout}})
+	cfg, err := g.Agent.MCPConfig(append([]harness.MCPServer{{Name: ServerName, URL: url, Headers: map[string]string{"Authorization": "Bearer " + plain}, Timeout: harness.MCPCallTimeout}}, servers...))
 	name := g.RunID
 	if name == "" {
 		name = "task-" + g.TaskID
@@ -464,6 +470,18 @@ func (s *Server) Register(g Grant) (configPath string, release func(), err error
 		return "", nil, fmt.Errorf("agentmcp: write mcp config: %w", err)
 	}
 	return path, release, nil
+}
+
+// extraServers checks a grant's extra servers: each needs a name, unique and not ServerName.
+func extraServers(in []harness.MCPServer) ([]harness.MCPServer, error) {
+	seen := map[string]bool{ServerName: true}
+	for _, e := range in {
+		if e.Name == "" || seen[e.Name] {
+			return nil, fmt.Errorf("agentmcp: extra server name %q is empty or duplicate", e.Name)
+		}
+		seen[e.Name] = true
+	}
+	return slices.Clone(in), nil
 }
 
 func (s *Server) forget(id uint64) {
