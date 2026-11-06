@@ -433,7 +433,7 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   // connection this chapter's own fixtures predate, not a fixture miss.
   [IPC.maskRulesList]: '[]',
   [IPC.maskRulesCounts]: '{}',
-  [IPC.maskReviewColumns]: '{"applicable":false,"columns":[],"truncated":false,"checkedAt":0}',
+  [IPC.maskReviewColumns]: '{"applicable":false,"columns":[],"checkedAt":0}',
   [IPC.maskReviewPending]: '{"count":0}',
   [IPC.maskRulesCorrelationKey]: '""',
   // Every SQL console/data-tab fetches its container's cached columns on

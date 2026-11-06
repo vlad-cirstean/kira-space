@@ -24,8 +24,7 @@
         "relationKind": "table",
         "table": "notes"
       }
-    ],
-    "truncated": false
+    ]
   },
   "MaskRulesService.ReviewPending": {
     "count": 0

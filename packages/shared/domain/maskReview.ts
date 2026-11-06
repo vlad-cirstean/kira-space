@@ -21,7 +21,6 @@ export const maskReviewListingSchema = /*#__PURE__*/ z.object({
       relationKind: z.string(),
     }),
   ),
-  truncated: z.boolean(),
   incomplete: z.string().optional(),
   checkedAt: z.number(),
 });
