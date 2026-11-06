@@ -14,12 +14,21 @@
     "host": "127.0.0.1",
     "id": "<id:2>",
     "kind": "postgres",
+    "maskReviewOn": false,
     "mcpAutoExplain": false,
     "mcpDdlMode": "deny",
     "mcpDescription": "",
     "mcpEnabled": false,
+    "mcpMaskedMode": "inherit",
     "mcpReadMode": "deny",
-    "mcpReviewResults": "inherit",
+    "mcpReview": {
+      "ddl": "inherit",
+      "masked": "inherit",
+      "read": "inherit",
+      "write": "inherit"
+    },
+    "mcpStatementTimeoutSec": 0,
+    "mcpTables": null,
     "mcpWriteMode": "deny",
     "mode": "fields",
     "name": "Pg copy",
@@ -65,6 +74,6 @@
         "set": true
       }
     ],
-    "text": "# Staging database.\n# Kira connection. Options: AGENTS.md in this folder.\nname: Pg copy # shown in the sidebar\nkind: postgres\ncolor: blue\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg-copy.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\n"
+    "text": "# Staging database.\n# Kira connection. Options: AGENTS.md in this folder.\nname: Pg copy # shown in the sidebar\nkind: postgres\ncolor: blue\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg-copy.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\n  statement_timeout_sec: 0\n"
   }
 }

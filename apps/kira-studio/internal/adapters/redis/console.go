@@ -266,6 +266,10 @@ func hashReadPage(upper string, args []string, reply any, limit page.ResultCap) 
 	}
 }
 
+// ClassifiesRemotely satisfies adapters.RemoteClassifier: a COMMAND table cache miss queries the
+// server.
+func (a *Adapter) ClassifiesRemotely() bool { return true }
+
 // ClassifyStatement satisfies adapters.StatementClassifier over this package's own
 // tokenize/isReadOnlyCommand — Redis has no DDL, and one run_query call is one command (tokenize
 // treats a newline as ordinary whitespace, so extra lines become arguments, never a second

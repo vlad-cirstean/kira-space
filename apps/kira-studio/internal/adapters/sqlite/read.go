@@ -110,7 +110,7 @@ func readPage(ctx context.Context, conn *sql.Conn, op *adapters.OpCtx, target Re
 		QuoteIdent:   quoteIdent,
 		Fingerprint: adapters.RelationalFingerprint[QualifiedName]{
 			Path: target.QualifiedName, Projection: req.Projection, Filter: req.Filter,
-			Sort: req.Sort, PageSize: req.PageSize,
+			Sort: req.Sort, PageSize: req.PageSize, Conditions: req.Conditions,
 		},
 	})
 	if err != nil {
@@ -127,7 +127,10 @@ func readPage(ctx context.Context, conn *sql.Conn, op *adapters.OpCtx, target Re
 	selectList := strings.Join(selectNames, ", ")
 
 	addParam, paramsPtr := adapters.NewParamAccumulator()
-	whereSQL := adapters.WhereClause(req.Filter)
+	whereSQL, err := adapters.ApplyConditions(adapters.WhereClause(req.Filter), req.Conditions, target.Columns, quoteIdent, questionPlaceholder, addParam, typeClassFor)
+	if err != nil {
+		return page.TabularPage{}, err
+	}
 	if plan.WantsKeyset {
 		whereSQL, err = adapters.BuildKeysetWhereSQL(req, order, plan.Fingerprint, whereSQL, quoteIdent, questionPlaceholder, addParam, plan.IsBinaryColumn)
 		if err != nil {

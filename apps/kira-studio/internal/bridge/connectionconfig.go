@@ -7,6 +7,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/connfiles"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskreview"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskrules"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/configfs"
@@ -173,7 +174,7 @@ type ConnectionFiltersChangedEvent struct {
 // EmitConnectionChanges pushes what a connection file load or write made stale. The connection list
 // goes out through connections.Service.ConfigChanged. Rule rows and the DB are already projected when
 // this runs.
-func EmitConnectionChanges(e appcore.Emitter, masks *maskrules.Service, ch connfiles.Changes) {
+func EmitConnectionChanges(e appcore.Emitter, masks *maskrules.Service, review *maskreview.Service, ch connfiles.Changes) {
 	for _, c := range ch.Items {
 		if c.New == nil {
 			continue
@@ -183,6 +184,9 @@ func EmitConnectionChanges(e appcore.Emitter, masks *maskrules.Service, ch connf
 			if rules, err := masks.List(c.ID); err == nil {
 				e.Emit(ChannelMaskRulesChanged, MaskRulesChangedEvent{ConnectionID: c.ID, Rules: rules})
 			}
+		}
+		if review != nil {
+			review.FileChanged(c.ID)
 		}
 		if c.DDL() {
 			e.Emit(ChannelSchemaChanged, model.ConnectionDDL{ConnectionID: c.ID, DDL: c.New.SchemaDDL})

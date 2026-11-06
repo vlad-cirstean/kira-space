@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"database/sql"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -14,23 +15,29 @@ import (
 	"github.com/kirathecat/kira-studio/internal/harness/claude/mcpinstall"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	_ "modernc.org/sqlite"
 )
 
 const dbServer = "kira-db"
 
 // enableDbMcp creates an MCP-exposed SQLite connection, turns the DB MCP server on and returns
 // the connection name plus the URL and headersHelper path the app would register with Claude Code.
-func enableDbMcp(t *testing.T, app *realApp) (connName, url, helper string) {
+// tweak edits the connection fields before they are saved; it gets the database file path.
+func enableDbMcp(t *testing.T, app *realApp, tweak ...func(*model.ConnectionFields, string)) (connName, url, helper string) {
 	t.Helper()
 	dbFile := filepath.Join(t.TempDir(), "real.sqlite")
 	if err := os.WriteFile(dbFile, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	connName = "real-claude-sqlite"
-	conn, err := app.W.Connections.Create(connections.Input{ConnectionFields: model.ConnectionFields{
+	fields := model.ConnectionFields{
 		Name: connName, Kind: "sqlite", Color: "blue", Mode: "fields", Database: &dbFile, Options: map[string]any{},
 		McpEnabled: true, McpDescription: "scratch database", McpReadMode: "allow", McpWriteMode: "deny", McpDdlMode: "deny",
-	}})
+	}
+	for _, f := range tweak {
+		f(&fields, dbFile)
+	}
+	conn, err := app.W.Connections.Create(connections.Input{ConnectionFields: fields})
 	if err != nil {
 		t.Fatalf("Connections.Create: %v", err)
 	}
@@ -122,6 +129,49 @@ func TestDbMcpRunQueryModeThroughClaude(t *testing.T) {
 	text, isErr, ok := toolResult(msgs, uses[len(uses)-1].ID)
 	if !ok || isErr || !strings.Contains(text, "\"n\"") {
 		t.Fatalf("run_query result = %q (ok=%v, error=%v), want the n column", text, ok, isErr)
+	}
+}
+
+// TestDbMcpBrowseThroughClaude has the real claude read rows through browse_table (P535) on a
+// connection whose read is denied and masked is allowed. The flow tests cover the masking itself.
+func TestDbMcpBrowseThroughClaude(t *testing.T) {
+	app := newRealApp(t)
+	connName, url, helper := enableDbMcp(t, app, func(f *model.ConnectionFields, dbFile string) {
+		db, err := sql.Open("sqlite", dbFile)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer db.Close()
+		if _, err := db.Exec(`CREATE TABLE notes (id INTEGER PRIMARY KEY, title TEXT, email TEXT);
+			INSERT INTO notes (title, email) VALUES ('a','a@x.io'),('b','b@x.io'),('c','c@x.io'),('d','d@x.io')`); err != nil {
+			t.Fatal(err)
+		}
+		f.McpReadMode, f.McpMaskedMode = "deny", "allow"
+	})
+	cfg := filepath.Join(t.TempDir(), "mcp.json")
+	raw, err := json.Marshal(map[string]any{"mcpServers": map[string]any{
+		dbServer: map[string]any{"type": "http", "url": url, "headersHelper": loginshell.Quote(helper)},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfg, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	tool := "mcp__" + dbServer + "__browse_table"
+	out := app.claudeP(t, t.TempDir(),
+		"Show me 3 rows of the notes table in the connection named "+connName+". Then reply with the word done.",
+		"--strict-mcp-config", "--mcp-config", cfg,
+		"--allowedTools", "mcp__"+dbServer+"__list_connections,"+tool+",mcp__"+dbServer+"__list_children,mcp__"+dbServer+"__describe_table",
+		"--output-format", "stream-json", "--verbose")
+	msgs := parseStream(out)
+	uses := toolUses(msgs, tool)
+	if len(uses) == 0 {
+		t.Fatalf("no browse_table tool use in the stream:\n%s", tail(out, 1500))
+	}
+	text, isErr, ok := toolResult(msgs, uses[len(uses)-1].ID)
+	if !ok || isErr || !strings.Contains(text, "title") {
+		t.Fatalf("browse_table result = %q (ok=%v, error=%v), want rows", text, ok, isErr)
 	}
 }
 

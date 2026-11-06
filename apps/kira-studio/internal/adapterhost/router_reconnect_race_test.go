@@ -218,7 +218,7 @@ func TestRouter_SlowDisconnect_KeepsNewerConnectionThrottle(t *testing.T) {
 	close(slowA.release)
 	<-done
 
-	if r.host.throttles.limiterFor(connID) == nil {
+	if r.host.throttles.gateFor(connID) == nil {
 		t.Fatal("the older Disconnect cleared the newer connection's throttle")
 	}
 }

@@ -183,6 +183,9 @@ func (a *Adapter) resolveTopicTarget(path model.NodePath, what string) (string, 
 
 // Read is index.ts's read.
 func (a *Adapter) Read(ctx context.Context, req adapters.ReadRequest, op *adapters.OpCtx) (page.Page, error) {
+	if err := adapters.RejectConditions("kafka", req.Conditions); err != nil {
+		return nil, err
+	}
 	admin, err := a.requireAdmin()
 	if err != nil {
 		return nil, err

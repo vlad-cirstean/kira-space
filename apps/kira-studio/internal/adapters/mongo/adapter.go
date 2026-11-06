@@ -306,6 +306,9 @@ func (a *Adapter) resolveCollectionTarget(path model.NodePath) (db *mongodriver.
 
 // Read is index.ts's read.
 func (a *Adapter) Read(ctx context.Context, req adapters.ReadRequest, op *adapters.OpCtx) (page.Page, error) {
+	if err := adapters.RejectConditions("mongodb", req.Conditions); err != nil {
+		return nil, err
+	}
 	db, collection, err := a.resolveCollectionTarget(req.Path)
 	if err != nil {
 		return nil, err

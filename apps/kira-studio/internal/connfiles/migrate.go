@@ -97,13 +97,17 @@ func (l *Loader) legacyRows(tx *sql.Tx, withSecrets bool) ([]legacyConn, error) 
 		var c legacyConn
 		var ro, side, auto, mcp, mcpAuto int
 		var opts sql.NullString
+		var legacyReview string
 		f := &c.fields
 		if err := rows.Scan(&c.id, &c.stem, &f.Name, &f.Kind, &f.Color, &f.Mode, &ro, &f.Host, &f.Port, &f.Database, &f.Username,
 			&opts, &f.Preconnect, &side, &f.PreconnectDelaySec, &auto, &f.ThrottlePerSec, &mcp,
-			&f.McpDescription, &f.McpReadMode, &f.McpWriteMode, &f.McpDdlMode, &mcpAuto, &f.McpReviewResults,
+			&f.McpDescription, &f.McpReadMode, &f.McpWriteMode, &f.McpDdlMode, &mcpAuto, &legacyReview,
 			&c.password, &c.uri); err != nil {
 			return nil, fmt.Errorf("connfiles: scan connection: %w", err)
 		}
+		f.McpReview = model.McpReview{Read: legacyReview, Write: legacyReview, Ddl: legacyReview, Masked: legacyReview}
+		f.McpMaskedMode = model.McpMaskedInherit
+		f.McpStatementTimeoutSec = model.McpStatementTimeoutDefault // the column never existed on a legacy row
 		f.ReadOnly, f.PreconnectSidecar, f.AutoExplain, f.McpEnabled, f.McpAutoExplain = ro != 0, side != 0, auto != 0, mcp != 0, mcpAuto != 0
 		f.Options = map[string]any{}
 		if opts.Valid && opts.String != "" {

@@ -14,7 +14,7 @@ const connectionSelectColumns = `
 	id, COALESCE(stem || '.yaml', ''), name, kind, color, mode, read_only, host, port, database, username,
 	options_json, preconnect, preconnect_sidecar, preconnect_delay_sec, auto_explain, throttle_per_sec,
 	mcp_enabled,
-	mcp_description, mcp_read_mode, mcp_write_mode, mcp_ddl_mode, mcp_auto_explain, mcp_review_results,
+	mcp_description, mcp_read_mode, mcp_write_mode, mcp_ddl_mode, mcp_masked_mode, mcp_auto_explain, mcp_review_read, mcp_review_write, mcp_review_ddl, mcp_review_masked, mcp_statement_timeout_sec, mcp_tables_json, mask_review_on,
 	sort_order, created_at, updated_at
 `
 
@@ -42,12 +42,14 @@ func scanConnectionRow(row rowScanner) (*model.ConnectionSummary, error) {
 		port                                                       sql.NullInt64
 		options                                                    sql.NullString
 		preconnect                                                 sql.NullString
+		mcpTables                                                  sql.NullString
 		readOnly, sidecar, autoExplain, mcpEnabled, mcpAutoExplain int
+		maskReview                                                 int
 	)
 	if err := row.Scan(
 		&c.ID, &c.File, &c.Name, &c.Kind, &c.Color, &c.Mode, &readOnly, &host, &port, &database,
 		&username, &options, &preconnect, &sidecar, &c.PreconnectDelaySec, &autoExplain, &c.ThrottlePerSec,
-		&mcpEnabled, &c.McpDescription, &c.McpReadMode, &c.McpWriteMode, &c.McpDdlMode, &mcpAutoExplain, &c.McpReviewResults,
+		&mcpEnabled, &c.McpDescription, &c.McpReadMode, &c.McpWriteMode, &c.McpDdlMode, &c.McpMaskedMode, &mcpAutoExplain, &c.McpReview.Read, &c.McpReview.Write, &c.McpReview.Ddl, &c.McpReview.Masked, &c.McpStatementTimeoutSec, &mcpTables, &maskReview,
 		&c.SortOrder, &c.CreatedAt, &c.UpdatedAt,
 	); err != nil {
 		return nil, err
@@ -80,12 +82,34 @@ func scanConnectionRow(row rowScanner) (*model.ConnectionSummary, error) {
 		slog.Warn("coercing connection row: unrecognised MCP DDL mode", "scope", "storage/connections", "id", c.ID, "mode", c.McpDdlMode)
 		c.McpDdlMode = "deny"
 	}
+	// P535: an unreadable masked word coerces to deny, same as the other permissions.
+	if !model.ValidMcpMaskedMode(c.McpMaskedMode) {
+		slog.Warn("coercing connection row: unrecognised MCP masked mode", "scope", "storage/connections", "id", c.ID, "mode", c.McpMaskedMode)
+		c.McpMaskedMode = "deny"
+	}
 	// P382: same fail-closed coercion; an unreadable value holds results for review.
-	if !model.ValidMcpReviewResults(c.McpReviewResults) {
-		slog.Warn("coercing connection row: unrecognised MCP review setting", "scope", "storage/connections", "id", c.ID, "value", c.McpReviewResults)
-		c.McpReviewResults = "review"
+	for mode, v := range map[string]*string{"read": &c.McpReview.Read, "write": &c.McpReview.Write, "ddl": &c.McpReview.Ddl, "masked": &c.McpReview.Masked} {
+		if !model.ValidMcpReviewResults(*v) {
+			slog.Warn("coercing connection row: unrecognised MCP review setting", "scope", "storage/connections", "id", c.ID, "mode", mode, "value", *v)
+			*v = "review"
+		}
+	}
+	// P529: an unreadable timeout falls back to the default, never to off.
+	if !model.ValidMcpStatementTimeout(c.McpStatementTimeoutSec) {
+		slog.Warn("coercing connection row: unrecognised MCP statement timeout", "scope", "storage/connections", "id", c.ID, "value", c.McpStatementTimeoutSec)
+		c.McpStatementTimeoutSec = model.McpStatementTimeoutDefault
 	}
 
+	// P532: a list that cannot be read must not widen to all; it becomes the empty list.
+	if mcpTables.Valid {
+		c.McpTables = []string{}
+		if err := json.Unmarshal([]byte(mcpTables.String), &c.McpTables); err != nil || c.McpTables == nil {
+			slog.Warn("coercing connection row: unreadable MCP table list", "scope", "storage/connections", "id", c.ID)
+			c.McpTables = []string{}
+		}
+	}
+
+	c.MaskReviewOn = maskReview != 0
 	c.ReadOnly = readOnly != 0
 	c.PreconnectSidecar = sidecar != 0
 	c.AutoExplain = autoExplain != 0

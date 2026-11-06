@@ -61,3 +61,9 @@ func StatementsFor(kind, sql string) []string {
 func Supported(kind string) bool {
 	return len(StatementsFor(kind, "x")) > 0
 }
+
+// HasRowEstimate reports whether kind's plan carries an estimated rows read: Supported minus sqlite, whose
+// EXPLAIN QUERY PLAN has none. Mirrored by connection.ts ROW_ESTIMATE_KINDS.
+func HasRowEstimate(kind string) bool {
+	return Supported(kind) && kind != "sqlite"
+}

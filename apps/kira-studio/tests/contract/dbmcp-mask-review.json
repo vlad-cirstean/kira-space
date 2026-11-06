@@ -1,0 +1,32 @@
+{
+  "MaskRulesService.ReviewColumns": {
+    "applicable": true,
+    "checkedAt": 0,
+    "columns": [
+      {
+        "column": "id",
+        "dataType": "INTEGER",
+        "ref": "notes.id",
+        "relationKind": "table",
+        "table": "notes"
+      },
+      {
+        "column": "body",
+        "dataType": "TEXT",
+        "ref": "notes.body",
+        "relationKind": "table",
+        "table": "notes"
+      },
+      {
+        "column": "secret",
+        "dataType": "TEXT",
+        "ref": "notes.secret",
+        "relationKind": "table",
+        "table": "notes"
+      }
+    ]
+  },
+  "MaskRulesService.ReviewPending": {
+    "count": 0
+  }
+}

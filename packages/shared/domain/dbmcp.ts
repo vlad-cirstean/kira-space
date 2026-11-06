@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { type ConnectionKind, ROW_ESTIMATE_KINDS } from './connection';
 
 // M1 §6.2: the Database MCP section's own domain — bridge/dbmcp.go's DbMcpStatus/
 // DbMcpInstallResult wire projections. command is the copy-paste registration text naming the
@@ -41,6 +42,8 @@ export type DbMcpApprovalPlan = z.infer<typeof dbMcpApprovalPlanSchema>;
 
 export const dbMcpModeSchema = /*#__PURE__*/ z.enum(['read', 'write', 'ddl']);
 export type DbMcpMode = z.infer<typeof dbMcpModeSchema>;
+// The mode an approval payload names: a run_query mode, or masked for a browse_table read.
+export const dbMcpPayloadModeSchema = /*#__PURE__*/ z.enum(['read', 'write', 'ddl', 'masked']);
 export type DbMcpEnforcement = 'session' | 'app' | 'none';
 
 // Mirror of internal/dbmcp/permissions.go: writeConsoleKinds, enforcementOf and accessOf. The flow
@@ -62,6 +65,42 @@ export function enforcementOf(kind: string): DbMcpEnforcement {
   if (['postgres', 'mysql', 'mariadb', 'sqlite', 'clickhouse'].includes(kind)) return 'session';
   if (kind === 'mongodb' || kind === 'redis') return 'app';
   return 'none';
+}
+
+// Mirror of internal/dbmcp/timeout.go timeoutEnforcementOf: what stops a statement past the
+// connection's statement timeout, per mode. The flow test's list_connections contract pins both sides.
+export function statementTimeoutEnforcementOf(kind: string): Record<DbMcpMode, DbMcpEnforcement> {
+  const all = (e: DbMcpEnforcement): Record<DbMcpMode, DbMcpEnforcement> => ({
+    read: e,
+    write: e,
+    ddl: e,
+  });
+  switch (kind) {
+    case 'postgres':
+      return all('session');
+    case 'mysql':
+    case 'clickhouse':
+      return { read: 'session', write: 'app', ddl: 'app' };
+    case 'mariadb':
+      return { read: 'session', write: 'session', ddl: 'app' };
+    case 'sqlite':
+    case 'mongodb':
+    case 'redis':
+      return all('app');
+    case 'kibana':
+      return { read: 'app', write: 'none', ddl: 'none' };
+    default:
+      return all('none');
+  }
+}
+
+export type ExpensiveQueryCheck = 'plan' | 'off' | 'none';
+
+// Mirror of internal/dbmcp/expensive.go expensiveCheckOf: none (no row estimate), off (the connection's
+// MCP auto_explain switch is off) or plan. The flow test's list_connections contract pins both sides.
+export function expensiveQueryCheckOf(kind: string, autoExplain: boolean): ExpensiveQueryCheck {
+  if (!ROW_ESTIMATE_KINDS.has(kind as ConnectionKind)) return 'none';
+  return autoExplain ? 'plan' : 'off';
 }
 
 export interface DbMcpAccessInput {
@@ -88,12 +127,37 @@ export const dbQueryPayloadSchema = /*#__PURE__*/ z.object({
   connectionId: z.string(),
   statement: z.string(),
   // Declared mode, what the statement looks like, and (read items) what backs mode read.
-  mode: dbMcpModeSchema,
+  mode: dbMcpPayloadModeSchema,
   detected: z.string(),
   enforcement: z.string(),
   plan: dbMcpApprovalPlanSchema.nullable(),
+  // The item offers "review the result"; reviewResult says the connection's settings already do.
+  reviewOffered: z.boolean().default(false),
+  reviewResult: z.boolean().default(false),
 });
 export type DbQueryPayload = z.infer<typeof dbQueryPayloadSchema>;
+
+export const dbMcpLimitHitSchema = /*#__PURE__*/ z.object({
+  limit: z.string(),
+  measured: z.number(),
+  max: z.number(),
+  unit: z.enum(['ms', 'rows']),
+});
+export type DbMcpLimitHit = z.infer<typeof dbMcpLimitHitSchema>;
+
+export const dbExemptionPayloadSchema = /*#__PURE__*/ z.object({
+  connectionId: z.string(),
+  statement: z.string(),
+  mode: dbMcpPayloadModeSchema,
+  detected: z.string(),
+  enforcement: z.string(),
+  reason: z.string(),
+  limits: z.array(dbMcpLimitHitSchema).min(1),
+  plan: dbMcpApprovalPlanSchema.nullable(),
+  reviewOffered: z.boolean().default(false),
+  reviewResult: z.boolean().default(false),
+});
+export type DbExemptionPayload = z.infer<typeof dbExemptionPayloadSchema>;
 
 export const dbResponsePayloadSchema = /*#__PURE__*/ z.object({
   connectionId: z.string(),
@@ -101,6 +165,9 @@ export const dbResponsePayloadSchema = /*#__PURE__*/ z.object({
   isError: z.boolean(),
   bytes: z.number(),
   alreadyRan: z.boolean(),
+  // The declared mode; requested says the approver asked for this review rather than a setting.
+  mode: dbMcpPayloadModeSchema.optional(),
+  requested: z.boolean().default(false),
 });
 export type DbResponsePayload = z.infer<typeof dbResponsePayloadSchema>;
 
@@ -218,3 +285,30 @@ export const dbMcpRunQueryResultSchema = /*#__PURE__*/ z.discriminatedUnion('kin
   z.object({ ...runQueryEnvelope, kind: z.literal('empty') }),
 ]);
 export type DbMcpRunQueryResult = z.infer<typeof dbMcpRunQueryResultSchema>;
+
+// P535: kinds with a structured browse (internal/dbmcp browseKinds).
+export const BROWSE_KINDS: ReadonlySet<string> = /*#__PURE__*/ new Set([
+  'postgres',
+  'mysql',
+  'mariadb',
+  'sqlite',
+  'clickhouse',
+]);
+
+// P532: kinds the per-connection table allow list applies to (internal/tableref Levels > 0).
+export const TABLE_LIST_KINDS: ReadonlySet<string> = /*#__PURE__*/ new Set([
+  'postgres',
+  'mysql',
+  'mariadb',
+  'clickhouse',
+  'mongodb',
+  'sqlite',
+  'kibana',
+]);
+
+// bridge/dbmcp_tables.go's DbMcpService.Tables: the live relations the MCP tab can list.
+export const dbMcpTablesListingSchema = /*#__PURE__*/ z.object({
+  tables: /*#__PURE__*/ z.array(/*#__PURE__*/ z.object({ ref: z.string(), kind: z.string() })),
+  truncated: z.boolean(),
+});
+export type DbMcpTablesListing = z.infer<typeof dbMcpTablesListingSchema>;

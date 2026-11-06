@@ -21,12 +21,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/appwire"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/config"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage"
@@ -38,6 +41,8 @@ import (
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
+
+var dbMcpPortRe = regexp.MustCompile(`:(\d+)/mcp`)
 
 // Event and Events record every emit toward a window; see internal/flowtest.
 type (
@@ -59,6 +64,8 @@ type options struct {
 	dockerHubAPI    string
 	dockerExtra     []docker.Option
 	kubeExtra       []kubernetes.Option
+	dbMcpLimits     []dbmcp.Limit
+	heldCaps        *[2]int
 }
 
 // WithoutSecretStore boots without KIRA_INSECURE_SECRETS, so the cipher is unavailable on Linux.
@@ -89,6 +96,17 @@ func WithKubernetesOptions(opts ...kubernetes.Option) Opt {
 	return func(o *options) { o.kubeExtra = append(o.kubeExtra, opts...) }
 }
 
+// WithDbMcpLimits adds limits to the DB MCP server's run_query, for tests that need a limit no real
+// engine trips deterministically.
+func WithDbMcpLimits(ls ...dbmcp.Limit) Opt {
+	return func(o *options) { o.dbMcpLimits = append(o.dbMcpLimits, ls...) }
+}
+
+// WithApprovalHeldCaps replaces the DB MCP held result caps (per result, all results), in bytes.
+func WithApprovalHeldCaps(perResult, total int) Opt {
+	return func(o *options) { o.heldCaps = &[2]int{perResult, total} }
+}
+
 // kubeEnv hands the Kubernetes service the test process environment instead of probing the user's
 // login shell.
 func kubeEnv() kubernetes.Env {
@@ -98,6 +116,8 @@ func kubeEnv() kubernetes.Env {
 // App is one booted Kira Studio.
 type App struct {
 	t *testing.T
+	// dbMcpPort is the port the previous run bound, reused across Restart.
+	dbMcpPort int
 	// Home is the isolated HOME (also what DefaultCwd and the docker config dir read); KiraHome is
 	// KIRA_HOME. BinDir is the PATH-first directory holding the fake claude and fake-mcp, FakeDir
 	// where the fake agent records its calls.
@@ -202,8 +222,15 @@ func (a *App) build() {
 	if !a.opts.noSecretStore && !cipher.Status().Available {
 		a.t.Fatalf("cipher unavailable: %+v", cipher.Status())
 	}
+	// Packages run in parallel, so they cannot share DefaultPort; a restart keeps its port so
+	// open client sessions reconnect.
+	dbMcpPort := dbmcp.EphemeralPort
+	if a.dbMcpPort != 0 {
+		dbMcpPort = a.dbMcpPort
+	}
 	w, err := appwire.Build(appwire.Options{
-		DB: db, Repos: r, Cipher: cipher,
+		DbMcpPort: dbMcpPort,
+		DB:        db, Repos: r, Cipher: cipher,
 		Authorizer: localauth.New(time.Now, a.OSAuth.evaluate, a.OSAuth.isAvailable),
 		Emitter:    a.Events, Browser: a.Browser, FileOpener: a.FileOpener, Dialogs: a.Dialogs, KeepAwakeDriver: a.KeepAwake, McpInstaller: a.McpInstaller,
 		AppName: "Kira Studio", Version: "flowtest", SmartTimeout: a.opts.smartTimeout,
@@ -212,6 +239,10 @@ func (a *App) build() {
 	})
 	if err != nil {
 		a.t.Fatalf("appwire.Build: %v", err)
+	}
+	w.DbMcp.Limits = append(w.DbMcp.Limits, a.opts.dbMcpLimits...)
+	if c := a.opts.heldCaps; c != nil {
+		w.DbMcp.Approvals.SetHeldCaps(c[0], c[1])
 	}
 	w.Proof.Shell = a.ProofWindows
 	w.WindowsSvc.OpenNewWindow = func() {
@@ -273,6 +304,9 @@ func (a *App) Quit(t testing.TB) {
 // the old Wired are dead.
 func (a *App) Restart(t testing.TB) {
 	t.Helper()
+	if m := dbMcpPortRe.FindStringSubmatch(a.W.DbMcp.Status().Command); m != nil {
+		a.dbMcpPort, _ = strconv.Atoi(m[1])
+	}
 	a.Quit(t)
 	a.build()
 }

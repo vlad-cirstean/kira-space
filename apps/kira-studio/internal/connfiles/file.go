@@ -5,6 +5,7 @@
 package connfiles
 
 import (
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -61,6 +62,7 @@ type File struct {
 	ThrottlePerSec float64        `json:"throttle_per_sec,omitempty"`
 	MCP            *MCP           `json:"mcp,omitempty"`
 	Masks          []Mask         `json:"masks,omitempty"`
+	MaskReview     *MaskReview    `json:"mask_review,omitempty"`
 	Tree           *Tree          `json:"tree,omitempty"`
 	SchemaDDL      string         `json:"schema_ddl,omitempty"`
 }
@@ -74,13 +76,37 @@ type Preconnect struct {
 
 // MCP is what an AI client may do through the DB MCP server.
 type MCP struct {
-	Enabled       bool   `json:"enabled,omitempty"`
-	Description   string `json:"description,omitempty"`
-	Read          string `json:"read,omitempty"`
-	Write         string `json:"write,omitempty"`
-	DDL           string `json:"ddl,omitempty"`
-	AutoExplain   *bool  `json:"auto_explain,omitempty"`
+	Enabled     bool   `json:"enabled,omitempty"`
+	Description string `json:"description,omitempty"`
+	Read        string `json:"read,omitempty"`
+	Write       string `json:"write,omitempty"`
+	DDL         string `json:"ddl,omitempty"`
+	// Masked is the browse_table permission (P535): inherit (absent) follows Read.
+	Masked      string `json:"masked,omitempty"`
+	AutoExplain *bool  `json:"auto_explain,omitempty"`
+	// ReviewResults is the legacy single value: it applies to every mode a Review entry leaves unset.
 	ReviewResults string `json:"review_results,omitempty"`
+	// Review is the result review per mode (P536); an absent mode falls back to ReviewResults, then inherit.
+	Review *McpReviewFile `json:"review,omitempty"`
+	// StatementTimeoutSec nil means the default; a pointer so 0 (off) survives omitempty.
+	StatementTimeoutSec *int `json:"statement_timeout_sec,omitempty"`
+	// Tables lists the tables MCP statements may touch. Absent = all; a pointer so an empty list survives omitempty.
+	Tables *[]string `json:"tables,omitempty"`
+}
+
+// MaskReview turns on column review (P534): columns no rule masks and not listed here are withheld from MCP
+// results. Columns holds tableref column entries; no omitempty so an empty list (on, nothing reviewed) survives.
+type MaskReview struct {
+	Columns []string `json:"columns"`
+}
+
+// McpReviewFile is the result review of each MCP mode.
+type McpReviewFile struct {
+	Read  string `json:"read,omitempty"`
+	Write string `json:"write,omitempty"`
+	DDL   string `json:"ddl,omitempty"`
+	// Masked is browse_table's review (P535).
+	Masked string `json:"masked,omitempty"`
 }
 
 // Mask hides one column's values from the DB MCP server. KeepHint and Correlate default to true.
@@ -103,6 +129,19 @@ func orDefault(v, def string) string {
 		return def
 	}
 	return v
+}
+
+// dedupe copies in without repeats, never nil.
+func dedupe(in []string) []string {
+	out := make([]string, 0, len(in))
+	seen := map[string]bool{}
+	for _, s := range in {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 func nilIfEmpty(s string) *string {
@@ -143,7 +182,8 @@ func (f File) Fields() model.ConnectionFields {
 		Name: f.Name, Kind: f.Kind, Color: orDefault(f.Color, ColorNone), Mode: f.EffectiveMode(), ReadOnly: f.ReadOnly,
 		Host: nilIfEmpty(f.Host), Database: nilIfEmpty(f.Database), Username: nilIfEmpty(f.Username),
 		Options: map[string]any{}, AutoExplain: f.AutoExplain, ThrottlePerSec: f.ThrottlePerSec,
-		McpReadMode: McpRead, McpWriteMode: McpWrite, McpDdlMode: McpDDL, McpAutoExplain: true, McpReviewResults: ReviewInherit,
+		McpReadMode: McpRead, McpWriteMode: McpWrite, McpDdlMode: McpDDL, McpMaskedMode: model.McpMaskedInherit, McpAutoExplain: true, McpReview: model.McpReview{Read: ReviewInherit, Write: ReviewInherit, Ddl: ReviewInherit, Masked: ReviewInherit},
+		McpStatementTimeoutSec: model.McpStatementTimeoutDefault,
 	}
 	if f.Port != 0 {
 		p := f.Port
@@ -159,9 +199,56 @@ func (f File) Fields() model.ConnectionFields {
 	if m := f.MCP; m != nil {
 		out.McpEnabled, out.McpDescription = m.Enabled, m.Description
 		out.McpReadMode, out.McpWriteMode, out.McpDdlMode = orDefault(m.Read, McpRead), orDefault(m.Write, McpWrite), orDefault(m.DDL, McpDDL)
-		out.McpAutoExplain, out.McpReviewResults = boolOr(m.AutoExplain, true), orDefault(m.ReviewResults, ReviewInherit)
+		out.McpMaskedMode = orDefault(m.Masked, model.McpMaskedInherit)
+		out.McpAutoExplain, out.McpReview = boolOr(m.AutoExplain, true), m.reviewFields()
+		if m.StatementTimeoutSec != nil {
+			out.McpStatementTimeoutSec = *m.StatementTimeoutSec
+		}
+		if m.Tables != nil {
+			out.McpTables = dedupe(*m.Tables)
+		}
 	}
+	out.MaskReviewOn = f.MaskReview != nil
 	return out
+}
+
+// ReviewedColumns is the file's reviewed column entries, deduplicated and never nil.
+func (f File) ReviewedColumns() []string {
+	if f.MaskReview == nil {
+		return []string{}
+	}
+	return dedupe(f.MaskReview.Columns)
+}
+
+// reviewFields is the per-mode review with the legacy single value and inherit as fallbacks.
+func (m MCP) reviewFields() model.McpReview {
+	legacy := orDefault(m.ReviewResults, ReviewInherit)
+	r := m.Review
+	if r == nil {
+		r = &McpReviewFile{}
+	}
+	return model.McpReview{Read: orDefault(r.Read, legacy), Write: orDefault(r.Write, legacy), Ddl: orDefault(r.DDL, legacy), Masked: orDefault(r.Masked, legacy)}
+}
+
+// reviewFileOf writes the non-inherit modes only; nil when all inherit.
+func reviewFileOf(r model.McpReview) *McpReviewFile {
+	out := McpReviewFile{}
+	if r.Read != ReviewInherit {
+		out.Read = r.Read
+	}
+	if r.Write != ReviewInherit {
+		out.Write = r.Write
+	}
+	if r.Ddl != ReviewInherit {
+		out.DDL = r.Ddl
+	}
+	if r.Masked != ReviewInherit {
+		out.Masked = r.Masked
+	}
+	if out == (McpReviewFile{}) {
+		return nil
+	}
+	return &out
 }
 
 // MaskFields is the mask as a rule row's fields.
@@ -233,10 +320,19 @@ func FileOf(c model.ConnectionFields, masks []model.MaskRuleFields, tree model.T
 	if c.McpDdlMode != McpDDL {
 		m.DDL = c.McpDdlMode
 	}
-	if c.McpReviewResults != ReviewInherit {
-		m.ReviewResults = c.McpReviewResults
+	if c.McpMaskedMode != model.McpMaskedInherit {
+		m.Masked = c.McpMaskedMode
 	}
-	if m != (MCP{}) {
+	m.Review = reviewFileOf(c.McpReview)
+	if c.McpStatementTimeoutSec != model.McpStatementTimeoutDefault {
+		v := c.McpStatementTimeoutSec
+		m.StatementTimeoutSec = &v
+	}
+	if c.McpTables != nil {
+		tables := append([]string{}, c.McpTables...)
+		m.Tables = &tables
+	}
+	if !reflect.DeepEqual(m, MCP{}) {
 		f.MCP = &m
 	}
 	for _, r := range masks {

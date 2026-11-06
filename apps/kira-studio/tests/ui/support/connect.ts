@@ -41,7 +41,11 @@ export function newConnectionArgs(
     mcpWriteMode: 'prompt',
     mcpDdlMode: 'deny',
     mcpAutoExplain: true,
-    mcpReviewResults: 'inherit',
+    mcpReview: { read: 'inherit', write: 'inherit', ddl: 'inherit', masked: 'inherit' },
+    mcpMaskedMode: 'inherit',
+    mcpStatementTimeoutSec: 10,
+    mcpTables: null,
+    maskReviewOn: false,
   };
 }
 

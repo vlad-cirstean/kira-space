@@ -1,7 +1,9 @@
 package dbmcp
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"strconv"
 	"sync"
 	"time"
@@ -31,6 +33,14 @@ func approvalWindow() string {
 // nothing else bounds how many run_query calls can be in-flight at once.
 const maxPendingApprovals = 50
 
+// Held result caps (P536). A held result lives in memory until the user answers, so both are bounded:
+// 8 MiB is far above a 2000-row result of normal width and still parses in the webview; 64 MiB bounds the
+// worst case of maxPendingApprovals results.
+const (
+	maxHeldResultBytes = 8 << 20
+	maxHeldTotalBytes  = 64 << 20
+)
+
 // ApprovalOutcome is ApprovalBroker.Request's own vocabulary — never a Go error: a human decision
 // is a value, not a failure.
 type ApprovalOutcome int
@@ -41,7 +51,19 @@ const (
 	ApprovalTimedOut
 	ApprovalAbandoned // the server stopped, or the MCP client went away (ctx cancelled)
 	ApprovalQueueFull // maxPendingApprovals already waiting; no human saw this request
+	ApprovalTooLarge  // the held result is over the per-result cap; no human saw it
+	ApprovalHeldFull  // held results already fill the total cap; no human saw this one
 )
+
+// ApprovalChoice is what an approver ticked on the item. Zero for every kind but run_query's pre-run items.
+type ApprovalChoice struct {
+	ReviewResult bool `json:"reviewResult"`
+}
+
+type approvalResolution struct {
+	outcome ApprovalOutcome
+	choice  ApprovalChoice
+}
 
 // ApprovalActionResult is what Approve/Deny report — also never an error.
 type ApprovalActionResult int
@@ -51,14 +73,15 @@ const (
 	ApprovalActionAlreadyResolved
 )
 
-// ApprovalReason is why this request was raised — M2's permission gate, or M3's heavy-plan flag.
+// ApprovalReason is why this request was raised — M2's permission gate, or an agent's exemption request.
 // Both are the same question ("should this run?") asked for different reasons, so they share one
 // queue and one dialog rather than competing for the user's attention (M3 §6.2).
 type ApprovalReason string
 
 const (
 	ApprovalReasonPermission ApprovalReason = "permission"
-	ApprovalReasonHeavy      ApprovalReason = "heavy"
+	// ApprovalReasonExemption is an agent asking to lift limits for one statement.
+	ApprovalReasonExemption ApprovalReason = "exemption"
 )
 
 // ApprovalStage says what the human is asked: whether a statement may run (query) or whether the
@@ -77,6 +100,8 @@ type ApprovalResponse struct {
 	Text    string
 	IsError bool
 	Bytes   int
+	// Requested says the approver asked for the review on the pre-run item, not a connection setting.
+	Requested bool
 }
 
 // ApprovalPlanIssue is one Issue as the dialog renders it — plan evidence, never the whole tree.
@@ -151,11 +176,10 @@ type ApprovalRequest struct {
 	Response   *ApprovalResponse
 	EnqueuedAt time.Time
 	ExpiresAt  time.Time
-	// Reason is M2's own "permission" for every M2-era call site — M3's runQuery/explainQuery are
-	// the first callers to pass ApprovalReasonHeavy or a non-nil Plan.
+	// Reason is "permission" for a mode's prompt verdict, "exemption" for a limit exemption request.
 	Reason ApprovalReason
-	// Plan is the heavy-query evidence (M3 §6.1/§6.2), nil for an ordinary permission prompt with
-	// no plan attached (auto-force-explain off, or the statement was not explainable).
+	// Plan is the query-plan evidence (M3 §6.1/§6.2), nil when no plan was made (the check is off, or
+	// the statement was not explainable).
 	Plan *ApprovalPlan
 	// Cluster is set for a Kubernetes read; Target is then empty.
 	Cluster *ApprovalCluster
@@ -168,6 +192,19 @@ type ApprovalRequest struct {
 	Script *ApprovalScript
 	// API is set for the api.request subject; Target is then empty.
 	API *agentapi.Planned
+	// Exemption is set for the db.exemption subject.
+	Exemption *ApprovalExemption
+	// OfferReview marks a pre-run item that shows "review the result" to the approver; ReviewOn says the
+	// connection's settings already review this call, so the choice is moot.
+	OfferReview bool
+	ReviewOn    bool
+}
+
+// ApprovalExemption is what an exemption request adds: the agent's reason and every limit the
+// user is asked to lift for the one statement.
+type ApprovalExemption struct {
+	Reason string
+	Hits   []LimitHit
 }
 
 // ApprovalOrigin is what the stateless HTTP transport can tell about the caller.
@@ -192,7 +229,7 @@ func (r ApprovalRequest) itemID() string { return r.subject() + ":" + r.RequestI
 
 type approvalEntry struct {
 	req    ApprovalRequest
-	result chan ApprovalOutcome // buffered 1; exactly one send over the entry's lifetime.
+	result chan approvalResolution // buffered 1; exactly one send over the entry's lifetime.
 }
 
 // ApprovalBroker is the queue/deadline/injected-clock state machine for prompt-mode requests. Every
@@ -206,16 +243,24 @@ type ApprovalBroker struct {
 
 	mu    sync.Mutex
 	queue *notify.PendingQueue[*approvalEntry]
+	// heldBytes totals the Response.Bytes of queued entries, under mu.
+	heldBytes           int
+	maxResult, maxTotal int
 }
 
 // NewApprovalBroker builds a broker over q and registers it as owner of its kinds; a nil q gets a
 // private queue (tests).
 func NewApprovalBroker(now func() time.Time, q *approvals.Queue) *ApprovalBroker {
+	return newApprovalBrokerCaps(now, q, maxHeldResultBytes, maxHeldTotalBytes)
+}
+
+// newApprovalBrokerCaps is NewApprovalBroker with the held result caps injected (tests).
+func newApprovalBrokerCaps(now func() time.Time, q *approvals.Queue, perResult, total int) *ApprovalBroker {
 	if q == nil {
 		q = approvals.New(nil)
 	}
-	b := &ApprovalBroker{now: now, Queue: q, queue: notify.NewPendingQueue[*approvalEntry]()}
-	for _, kind := range []string{approvals.KindDbQuery, approvals.KindDbResponse, approvals.KindKubeRead, approvals.KindScriptRun, approvals.KindAPIRequest} {
+	b := &ApprovalBroker{now: now, Queue: q, queue: notify.NewPendingQueue[*approvalEntry](), maxResult: perResult, maxTotal: total}
+	for _, kind := range []string{approvals.KindDbQuery, approvals.KindDbResponse, approvals.KindDbExemption, approvals.KindKubeRead, approvals.KindScriptRun, approvals.KindAPIRequest} {
 		q.Register(kind, brokerOwner{b})
 	}
 	return b
@@ -225,24 +270,82 @@ func NewApprovalBroker(now func() time.Time, q *approvals.Queue) *ApprovalBroker
 type brokerOwner struct{ b *ApprovalBroker }
 
 func (o brokerOwner) Answer(ref string, a approvals.Answer) error {
-	outcome := ApprovalDenied
-	if a.Approve {
-		outcome = ApprovalApproved
+	if !a.Approve {
+		if o.b.resolve(ref, ApprovalDenied, ApprovalChoice{}) == ApprovalActionAlreadyResolved {
+			return ipcerr.NotFoundNamed("approval")
+		}
+		return nil
 	}
-	if o.b.resolve(ref, outcome) == ApprovalActionAlreadyResolved {
+	var choice ApprovalChoice
+	if len(a.Options) > 0 {
+		dec := json.NewDecoder(bytes.NewReader(a.Options))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&choice); err != nil {
+			return ipcerr.Contract("approval options are not understood")
+		}
+	}
+	res, err := o.b.answer(ref, choice)
+	if err != nil {
+		return err
+	}
+	if res == ApprovalActionAlreadyResolved {
 		return ipcerr.NotFoundNamed("approval")
 	}
 	return nil
+}
+
+// answer approves ref with choice. A choice the item does not offer is a contract error and leaves the
+// item pending; the check shares the lock with the lookup so a resolve cannot slip between them.
+func (b *ApprovalBroker) answer(ref string, choice ApprovalChoice) (ApprovalActionResult, error) {
+	if choice != (ApprovalChoice{}) {
+		b.mu.Lock()
+		entry, ok := b.entryLocked(ref)
+		offered := ok && entry.req.OfferReview
+		b.mu.Unlock()
+		if ok && !offered {
+			return ApprovalActionResolved, ipcerr.Contract("reviewResult is not offered for this approval")
+		}
+	}
+	return b.resolve(ref, ApprovalApproved, choice), nil
+}
+
+func (b *ApprovalBroker) entryLocked(requestID string) (*approvalEntry, bool) {
+	for _, e := range b.queue.Snapshot() {
+		if e.req.RequestID == requestID {
+			return e, true
+		}
+	}
+	return nil, false
 }
 
 // Request enqueues req (minting its RequestID, EnqueuedAt and ExpiresAt) and blocks the calling
 // goroutine until it is approved, denied, its deadline elapses, or ctx is done — whichever comes
 // first. Past maxPendingApprovals it returns ApprovalQueueFull immediately rather than queueing.
 func (b *ApprovalBroker) Request(ctx context.Context, req ApprovalRequest) ApprovalOutcome {
+	outcome, _ := b.RequestChoice(ctx, req)
+	return outcome
+}
+
+// RequestChoice is Request plus what the approver ticked. A held result (req.Response) is checked
+// against both caps under mu, the one place that sees every enqueue: over the per-result cap it
+// returns ApprovalTooLarge, over the total ApprovalHeldFull, and no item is raised. Its bytes count
+// until the entry resolves, whatever the path (answer, timeout, abandon).
+func (b *ApprovalBroker) RequestChoice(ctx context.Context, req ApprovalRequest) (ApprovalOutcome, ApprovalChoice) {
 	b.mu.Lock()
 	if b.queue.Len() >= maxPendingApprovals {
 		b.mu.Unlock()
-		return ApprovalQueueFull
+		return ApprovalQueueFull, ApprovalChoice{}
+	}
+	if req.Response != nil {
+		switch {
+		case req.Response.Bytes > b.maxResult:
+			b.mu.Unlock()
+			return ApprovalTooLarge, ApprovalChoice{}
+		case b.heldBytes+req.Response.Bytes > b.maxTotal:
+			b.mu.Unlock()
+			return ApprovalHeldFull, ApprovalChoice{}
+		}
+		b.heldBytes += req.Response.Bytes
 	}
 	now := b.now()
 	if req.Stage == "" {
@@ -251,7 +354,7 @@ func (b *ApprovalBroker) Request(ctx context.Context, req ApprovalRequest) Appro
 	req.RequestID = ids.NewID()
 	req.EnqueuedAt = now
 	req.ExpiresAt = now.Add(ApprovalTimeout)
-	entry := &approvalEntry{req: req, result: make(chan ApprovalOutcome, 1)}
+	entry := &approvalEntry{req: req, result: make(chan approvalResolution, 1)}
 	b.queue.Add(entry.req.RequestID, entry)
 	// Under mu so a fast answer cannot Remove before this Put.
 	b.Queue.Put(itemOf(entry.req))
@@ -260,21 +363,30 @@ func (b *ApprovalBroker) Request(ctx context.Context, req ApprovalRequest) Appro
 	timer := time.NewTimer(time.Until(entry.req.ExpiresAt))
 	defer timer.Stop()
 	select {
-	case outcome := <-entry.result:
-		return outcome
+	case r := <-entry.result:
+		return r.outcome, r.choice
 	case <-timer.C:
-		if b.resolve(entry.req.RequestID, ApprovalTimedOut) == ApprovalActionResolved {
-			return ApprovalTimedOut
+		if b.resolve(entry.req.RequestID, ApprovalTimedOut, ApprovalChoice{}) == ApprovalActionResolved {
+			return ApprovalTimedOut, ApprovalChoice{}
 		}
 		// Approve/Deny won the race in the instant between the timer firing and this goroutine
 		// taking b.mu — take their answer instead of overriding it.
-		return <-entry.result
+		r := <-entry.result
+		return r.outcome, r.choice
 	case <-ctx.Done():
-		if b.resolve(entry.req.RequestID, ApprovalAbandoned) == ApprovalActionResolved {
-			return ApprovalAbandoned
+		if b.resolve(entry.req.RequestID, ApprovalAbandoned, ApprovalChoice{}) == ApprovalActionResolved {
+			return ApprovalAbandoned, ApprovalChoice{}
 		}
-		return <-entry.result
+		r := <-entry.result
+		return r.outcome, r.choice
 	}
+}
+
+// SetHeldCaps replaces the held result caps; flow tests use it to reach them with small results.
+func (b *ApprovalBroker) SetHeldCaps(perResult, total int) {
+	b.mu.Lock()
+	b.maxResult, b.maxTotal = perResult, total
+	b.mu.Unlock()
 }
 
 // ResponseFor returns the held result of requestID, true only while that id is queued with stage
@@ -282,15 +394,11 @@ func (b *ApprovalBroker) Request(ctx context.Context, req ApprovalRequest) Appro
 func (b *ApprovalBroker) ResponseFor(requestID string) (ApprovalResponse, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	for _, e := range b.queue.Snapshot() {
-		if e.req.RequestID == requestID {
-			if e.req.Stage != ApprovalStageResponse || e.req.Response == nil {
-				return ApprovalResponse{}, false
-			}
-			return *e.req.Response, true
-		}
+	e, ok := b.entryLocked(requestID)
+	if !ok || e.req.Stage != ApprovalStageResponse || e.req.Response == nil {
+		return ApprovalResponse{}, false
 	}
-	return ApprovalResponse{}, false
+	return *e.req.Response, true
 }
 
 // Approve resolves requestID as approved. Deny resolves it as denied. Both report
@@ -298,27 +406,30 @@ func (b *ApprovalBroker) ResponseFor(requestID string) (ApprovalResponse, bool) 
 // whichever window (or Request's own deadline/ctx branch) got there first wins, the other is a
 // no-op.
 func (b *ApprovalBroker) Approve(requestID string) ApprovalActionResult {
-	return b.resolve(requestID, ApprovalApproved)
+	return b.resolve(requestID, ApprovalApproved, ApprovalChoice{})
 }
 
 func (b *ApprovalBroker) Deny(requestID string) ApprovalActionResult {
-	return b.resolve(requestID, ApprovalDenied)
+	return b.resolve(requestID, ApprovalDenied, ApprovalChoice{})
 }
 
 // resolve is Approve/Deny's shared body, also called from Request's own deadline/ctx branches so
 // every resolution path — human decision, timeout, abandonment — goes through the same
 // remove-then-send sequence and can never double-send on entry.result.
-func (b *ApprovalBroker) resolve(requestID string, outcome ApprovalOutcome) ApprovalActionResult {
+func (b *ApprovalBroker) resolve(requestID string, outcome ApprovalOutcome, choice ApprovalChoice) ApprovalActionResult {
 	b.mu.Lock()
 	entry, ok := b.queue.Remove(requestID)
 	if !ok {
 		b.mu.Unlock()
 		return ApprovalActionAlreadyResolved
 	}
+	if entry.req.Response != nil {
+		b.heldBytes -= entry.req.Response.Bytes
+	}
 	b.Queue.Remove(entry.req.itemID())
 	b.mu.Unlock()
 
-	entry.result <- outcome
+	entry.result <- approvalResolution{outcome: outcome, choice: choice}
 	return ApprovalActionResolved
 }
 
@@ -329,13 +440,14 @@ func (b *ApprovalBroker) resolve(requestID string, outcome ApprovalOutcome) Appr
 func (b *ApprovalBroker) AbandonAll() {
 	b.mu.Lock()
 	entries := b.queue.Clear()
+	b.heldBytes = 0
 	for _, entry := range entries {
 		b.Queue.Remove(entry.req.itemID())
 	}
 	b.mu.Unlock()
 
 	for _, entry := range entries {
-		entry.result <- ApprovalAbandoned
+		entry.result <- approvalResolution{outcome: ApprovalAbandoned}
 	}
 }
 

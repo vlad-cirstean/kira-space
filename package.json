@@ -74,7 +74,7 @@
     "test:flows:studio:complete": "KIRA_FLOW_COMPLETE=1 KIRA_FLOW_DOCKER=require go test -p 1 -timeout 20m ./apps/kira-studio/internal/flows/... ./apps/kira-studio/internal/flowharness/...",
     "test:flows:space": "go test -p 1 ./apps/kira-space/internal/flows/... ./apps/kira-space/internal/flowharness/...",
     "test:flows:space:complete": "KIRA_FLOW_COMPLETE=1 go test -p 1 -timeout 20m ./apps/kira-space/internal/flows/... ./apps/kira-space/internal/flowharness/...",
-    "test:ui:space-mobile": "bun run build:space-mobile && playwright test --config=apps/kira-space/playwright.config.ts --project=mobile-ios --project=mobile-android",
+    "test:ui:space-mobile": "bun run build:space-mobile && playwright test --config=apps/kira-space/playwright.config.ts --project=mobile-ios --project=mobile-insecure",
     "perf:probe:studio": "bun run build:test:studio && playwright test --config=apps/kira-studio/playwright.perf.config.ts",
     "perf:ram:studio": "bun run build:test:studio && playwright test --config=apps/kira-studio/playwright.perf.config.ts --project=heap heap-ram",
     "perf:ram:space": "bun run build:test:space && playwright test --config=apps/kira-space/playwright.perf.config.ts --project=heap heap-ram",

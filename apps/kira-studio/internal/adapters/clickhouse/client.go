@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
@@ -44,6 +45,9 @@ type Handle struct {
 	Password        string
 	DefaultDatabase string
 	ReadOnly        bool
+	// noEngineTimeout is set once the server refused the timeout settings (a readonly=1 profile):
+	// later requests skip them and the host backstop alone enforces the limit.
+	noEngineTimeout atomic.Bool
 }
 
 type resolvedTarget struct {

@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
@@ -102,11 +103,11 @@ func isRowReturning(sql string) bool {
 // cap; allowed alongside the console's readonly=2.
 var cancelOnCloseSettings = map[string]string{"cancel_http_readonly_queries_on_client_close": "1"}
 
-func runRowReturning(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx, track TrackQuery, sql string, limit page.ResultCap) (page.TabularPage, error) {
+func runRowReturning(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx, track TrackQuery, sql string, limit page.ResultCap, extra map[string]string) (page.TabularPage, error) {
 	var columns []page.ColumnDescriptor
 	var builder *page.TabularPageBuilder
 	truncated := false
-	err := StreamQuery(ctx, h, queryID, sql, op, track, cancelOnCloseSettings, func(names, types []string) {
+	err := StreamQuery(ctx, h, queryID, sql, op, track, mergeSettings(cancelOnCloseSettings, extra), nil, func(names, types []string) {
 		// §8.14's console never consults the catalog — nullability/PK-ness are unknowable here;
 		// console results are always read-only regardless (mirrors mysql-family/console.go).
 		columns = make([]page.ColumnDescriptor, len(names))
@@ -139,8 +140,68 @@ func runRowReturning(ctx context.Context, h *Handle, queryID string, op *adapter
 	return builder.Finish(page.CappedPosition(builder.RowCount(), truncated)), nil
 }
 
+func mergeSettings(base, extra map[string]string) map[string]string {
+	if len(extra) == 0 {
+		return base
+	}
+	out := make(map[string]string, len(base)+len(extra))
+	for k, v := range base {
+		out[k] = v
+	}
+	for k, v := range extra {
+		out[k] = v
+	}
+	return out
+}
+
+// Setting names the engine timeout sends; a refusal naming either means the profile forbids them.
+const (
+	settingMaxExecutionTime    = "max_execution_time"
+	settingTimeoutOverflowMode = "timeout_overflow_mode"
+)
+
+// engineTimeoutSettings is the per-request timeout settings, nil when none apply.
+func engineTimeoutSettings(h *Handle, timeout time.Duration) map[string]string {
+	if timeout <= 0 || h.noEngineTimeout.Load() {
+		return nil
+	}
+	seconds := (timeout + time.Second - 1) / time.Second
+	return map[string]string{settingMaxExecutionTime: strconv.FormatInt(int64(seconds), 10), settingTimeoutOverflowMode: "throw"}
+}
+
+// settingsRefused reports a server refusal of the timeout settings themselves (a readonly=1
+// profile: code 164 naming the setting, or 452 constraint violation).
+func settingsRefused(err error) bool {
+	code := codeOf(err)
+	if code != readonlyCode && code != settingViolation {
+		return false
+	}
+	return strings.Contains(err.Error(), settingMaxExecutionTime) || strings.Contains(err.Error(), settingTimeoutOverflowMode)
+}
+
+// withEngineTimeout runs one request with the engine timeout settings. Settings are validated before
+// execution, so a refusal means nothing ran and one retry without them is safe; later requests
+// skip them and only the host backstop enforces the limit.
+func withEngineTimeout[T any](h *Handle, timeout time.Duration, log func(level, msg string), run func(extra map[string]string) (T, error)) (T, error) {
+	extra := engineTimeoutSettings(h, timeout)
+	v, err := run(extra)
+	if extra != nil && err != nil && settingsRefused(err) {
+		if h.noEngineTimeout.CompareAndSwap(false, true) && log != nil {
+			log("warn", "clickhouse: server refused the statement timeout settings; the app timer enforces the limit")
+		}
+		return run(nil)
+	}
+	return v, err
+}
+
 // execute is console.ts's own execute.
-func execute(ctx context.Context, h *Handle, op *adapters.OpCtx, track TrackQuery, statements []string, nextQueryID func() string, limit page.ResultCap) ([]page.Page, error) {
+func execute(ctx context.Context, h *Handle, op *adapters.OpCtx, track TrackQuery, statements []string, nextQueryID func() string, limit page.ResultCap, timeout time.Duration, log func(level, msg string)) (pages []page.Page, err error) {
+	defer func() {
+		// Stop cancels ctx first; a timeout leaves it live.
+		if err != nil && timeout > 0 && ctx.Err() == nil && codeOf(err) == timeoutExceeded {
+			err = adapters.StatementTimeout(timeout, 0, err)
+		}
+	}()
 	if len(statements) == 0 {
 		return nil, adapters.T(adapters.CodeQuery, "backend.studio.adapter.noStatements.body", nil, nil)
 	}
@@ -148,20 +209,24 @@ func execute(ctx context.Context, h *Handle, op *adapters.OpCtx, track TrackQuer
 	// never call op.SetCommand() themselves so this one call is authoritative.
 	op.SetCommand(adapters.JoinConsoleStatements(statements, "--", "#"))
 
-	pages := make([]page.Page, len(statements))
+	pages = make([]page.Page, len(statements))
 	for i, sql := range statements {
 		if err := adapters.CheckCancelled(ctx); err != nil {
 			return nil, err
 		}
 		if isRowReturning(sql) {
-			p, err := runRowReturning(ctx, h, nextQueryID(), op, track, sql, limit)
+			p, err := withEngineTimeout(h, timeout, log, func(extra map[string]string) (page.TabularPage, error) {
+				return runRowReturning(ctx, h, nextQueryID(), op, track, sql, limit, extra)
+			})
 			if err != nil {
 				return nil, err
 			}
 			pages[i] = p
 			limit = adapters.RemainingCap(limit, p.Size())
 		} else {
-			written, err := RunCommand(ctx, h, nextQueryID(), sql, op, track)
+			written, err := withEngineTimeout(h, timeout, log, func(extra map[string]string) (int64, error) {
+				return RunCommand(ctx, h, nextQueryID(), sql, op, track, extra)
+			})
 			if err != nil {
 				return nil, err
 			}

@@ -152,6 +152,8 @@ func countTitle(k Kind, n int) string {
 		return i18n.T("backend.prompt.count.update.title", map[string]string{"count": count})
 	case KindProof:
 		return i18n.T("backend.prompt.count.proof.title", map[string]string{"count": count})
+	case KindMasking:
+		return i18n.T("backend.prompt.count.masking.title", map[string]string{"count": count})
 	}
 	return ""
 }

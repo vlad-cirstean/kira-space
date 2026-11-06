@@ -370,6 +370,9 @@ func (a *Adapter) readTarget(ctx context.Context, h *Handle, path model.NodePath
 }
 
 func (a *Adapter) Read(ctx context.Context, req adapters.ReadRequest, op *adapters.OpCtx) (page.Page, error) {
+	if err := adapters.RejectConditions("kibana", req.Conditions); err != nil {
+		return nil, err
+	}
 	h, err := a.requireHandle()
 	if err != nil {
 		return nil, err

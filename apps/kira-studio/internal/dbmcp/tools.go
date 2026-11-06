@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
@@ -34,6 +35,7 @@ func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ li
 	if err != nil {
 		return nil, nil, err
 	}
+	threshold := s.cfg.ExplainThreshold()
 	out := make([]connectionView, 0, len(conns))
 	for _, c := range conns {
 		if !c.McpEnabled {
@@ -43,8 +45,10 @@ func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ li
 		view := connectionView{
 			ID: c.ID, Name: c.Name, Kind: c.Kind, ReadOnly: c.ReadOnly, Status: state.Status,
 			Description: c.McpDescription,
-			Permissions: connectionPermissions{Read: c.McpReadMode, Write: c.McpWriteMode, DDL: c.McpDdlMode},
-			Access:      accessOf(c), Enforcement: enforcementOf(c.Kind),
+			Permissions: connectionPermissions{Read: c.McpReadMode, Write: c.McpWriteMode, DDL: c.McpDdlMode, Masked: maskedModeOf(c)},
+			Access:      accessOf(c), Browse: browseView{Supported: HasBrowse(c.Kind), MaxRows: browseMaxRows}, Enforcement: enforcementOf(c.Kind), StatementTimeout: timeoutViewOf(c),
+			ExpensiveQuery: expensiveQueryView{RowsThreshold: threshold, Check: expensiveCheckOf(c)},
+			ReviewResults:  s.reviewViewOf(c),
 		}
 		if state.ServerVersion != nil {
 			view.ServerVersion = state.ServerVersion
@@ -55,8 +59,11 @@ func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ li
 		// §4.5: cheap — one repo read per list_connections call, a human-frequency operation. A
 		// read failure degrades to "no masked columns reported" rather than failing the whole
 		// listing; the render path's own refusal (§4.4) is the real safety backstop regardless.
-		if rules, err := s.cfg.MaskRules.List(c.ID); err == nil {
-			view.MaskedColumns = maskedColumnsFor(rules)
+		set, serr := allowListOf(c)
+		view.Tables = tablesView(c)
+		view.ColumnReview = s.columnReviewViewOf(c)
+		if rules, err := s.cfg.MaskRules.List(c.ID); err == nil && serr == nil {
+			view.MaskedColumns = maskedColumnsFor(filterMaskRules(set, rules))
 		}
 		out = append(out, view)
 	}
@@ -67,8 +74,8 @@ func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ li
 // resolve the connection, then refuse if read mode denies. done is true whenever the caller should
 // return (res, out, err) immediately, same convention as resolveVerdict/awaitApproval below.
 //
-// Schema-browsing tools are gated at read-mode's own minimum bar — deny refuses,
-// same as every other read here. Not extended to prompt's own approval dialog: unlike run_query/
+// Schema-browsing tools are gated at read-mode's own minimum bar — deny refuses, same as every other
+// read here — except that an open masked read passes too: browse_table needs the columns. Not extended to prompt's own approval dialog: unlike run_query/
 // explain_query, none of these run caller-supplied SQL against the connection, so there is no
 // statement to show the human in an approval request.
 func (s *Server) resolveReadGated(connectionID string) (summary model.ConnectionSummary, res *mcp.CallToolResult, out any, err error, done bool) {
@@ -77,8 +84,8 @@ func (s *Server) resolveReadGated(connectionID string) (summary model.Connection
 		res, out, err = errResult(err.Error())
 		return summary, res, out, err, true
 	}
-	if m := modesOf(summary); m.read == "deny" {
-		res, out, err = errResult(fmt.Sprintf("connection %q's MCP permissions deny read statements; change them in the connection's MCP tab", summary.Name))
+	if m := modesOf(summary); m.read == "deny" && !accessOf(summary).Masked.Allowed {
+		res, out, err = errResult(fmt.Sprintf("connection %q's MCP permissions deny read statements and masked reads; change them in the connection's MCP tab", summary.Name))
 		return summary, res, out, err, true
 	}
 	return summary, nil, nil, nil, false
@@ -112,14 +119,22 @@ type listChildrenArgs struct {
 }
 
 func (s *Server) listChildren(ctx context.Context, _ *mcp.CallToolRequest, args listChildrenArgs) (*mcp.CallToolResult, any, error) {
-	if _, res, out, err, done := s.resolveReadGated(args.ConnectionID); done {
+	summary, res, out, err, done := s.resolveReadGated(args.ConnectionID)
+	if done {
 		return res, out, err
+	}
+	set, serr := allowListOf(summary)
+	if serr != nil {
+		return badListResult(summary)
+	}
+	if msg := allowedPath(summary, set, args.Path, false); msg != "" {
+		return errResult(msg)
 	}
 	result, err := s.cfg.Tree.Children(ctx, args.ConnectionID, args.Path, args.Refresh)
 	if err != nil {
 		return toolError(err)
 	}
-	return jsonResult(result.Nodes)
+	return jsonResult(filterNodes(summary, set, result.Nodes))
 }
 
 // --- describe_table (§4.3) ---
@@ -134,8 +149,16 @@ type describeTableArgs struct {
 // it already answers E_UNSUPPORTED in its own words (kafka/s3/sqs/redis) — surfaced verbatim by
 // toolError rather than an invented message here (§4.3).
 func (s *Server) describeTable(ctx context.Context, _ *mcp.CallToolRequest, args describeTableArgs) (*mcp.CallToolResult, any, error) {
-	if _, res, out, err, done := s.resolveReadGated(args.ConnectionID); done {
+	summary, res, out, err, done := s.resolveReadGated(args.ConnectionID)
+	if done {
 		return res, out, err
+	}
+	set, serr := allowListOf(summary)
+	if serr != nil {
+		return badListResult(summary)
+	}
+	if msg := allowedPath(summary, set, args.Path, true); msg != "" {
+		return errResult(msg)
 	}
 	result, err := s.cfg.Tree.Describe(ctx, args.ConnectionID, args.Path, args.Refresh, nil)
 	if err != nil {
@@ -153,14 +176,19 @@ type describeSchemaArgs struct {
 }
 
 func (s *Server) describeSchema(ctx context.Context, _ *mcp.CallToolRequest, args describeSchemaArgs) (*mcp.CallToolResult, any, error) {
-	if _, res, out, err, done := s.resolveReadGated(args.ConnectionID); done {
+	summary, res, out, err, done := s.resolveReadGated(args.ConnectionID)
+	if done {
 		return res, out, err
+	}
+	set, serr := allowListOf(summary)
+	if serr != nil {
+		return badListResult(summary)
 	}
 	result, err := s.cfg.Tree.SchemaColumns(ctx, args.ConnectionID, args.Path, args.Refresh)
 	if err != nil {
 		return toolError(err)
 	}
-	return jsonResult(result.Relations)
+	return jsonResult(filterRelations(summary, set, args.Path, result.Relations))
 }
 
 // --- run_query (§4.5) ---
@@ -176,6 +204,13 @@ type runQueryArgs struct {
 	Path         string `json:"path"`
 	Mode         string `json:"mode"`
 	MaxRows      int    `json:"maxRows,omitempty"`
+	// Exemption asks the user to lift the limits of an earlier refusal for this exact call.
+	Exemption *exemptionArgs `json:"exemption,omitempty"`
+}
+
+type exemptionArgs struct {
+	ID     string `json:"id"`
+	Reason string `json:"reason"`
 }
 
 // runQuery builds an adapterhost.ExecuteRequestWire and calls Query.Execute — literally the method
@@ -187,24 +222,45 @@ type runQueryArgs struct {
 //
 // The gate order: resolve the connection → check the declared mode → refuse before connecting when
 // the declared mode's permission denies → clamp maxRows → connect → tighten-only classifier check
-// (a statement that looks more powerful than its mode is refused, never run) → forced EXPLAIN when
-// McpAutoExplain is on (read mode only; a nil plan or any error degrades to "no plan") → heavy
-// check → at most one approval, for a prompt verdict on the declared mode or a heavy plan →
+// (a statement that looks more powerful than its mode is refused, never run) → table allow list (P532)
+// → claim an exemption → the one EXPLAIN when McpAutoExplain is on and the classifier says read →
+// pre-limits (a hit refuses before any approval) → at most one approval, for a prompt verdict on the
+// declared mode →
 // execute (read on the read lane, write and ddl on the main connection) → render.
+//
+// Limits (limits.go): a presented exemption id is claimed, every pre-limit not
+// exempted is checked, and an exempted call raises exactly one
+// db.exemption approval in place of the db.query one, whatever the mode's verdict. Exec limits wrap the
+// execute step; one that trips refuses with a fresh id.
 func (s *Server) runQuery(ctx context.Context, _ *mcp.CallToolRequest, args runQueryArgs) (*mcp.CallToolResult, any, error) {
 	rv, res, out, err, done := s.resolveVerdict(ctx, args)
 	if done {
 		return res, out, err
 	}
 
-	plan, heavy := s.maybeExplain(ctx, rv.summary, args)
-
-	if res, out, err, done := s.awaitApproval(ctx, args, rv, heavy, plan); done {
+	ex, res, out, err, done := s.claimExemption(args, rv)
+	if done {
+		return res, out, err
+	}
+	s.planForCall(ctx, args, &rv, ex)
+	if res, out, err, done := s.checkLimits(ctx, args, rv, ex); done {
 		return res, out, err
 	}
 
-	res, out, err, set, executed := s.executeAndRender(ctx, args, rv, plan)
-	if !executed || !s.reviewResults(rv.summary) {
+	if ex != nil {
+		if res, out, err, done := s.awaitExemption(ctx, args, &rv, ex, rv.plan); done {
+			return res, out, err
+		}
+	} else if res, out, err, done := s.awaitApproval(ctx, args, &rv, rv.plan); done {
+		return res, out, err
+	}
+
+	res, out, err, set, executed := s.executeAndRender(ctx, args, rv, rv.plan, ex)
+	if !executed {
+		return res, out, err
+	}
+	// Read after the run: the user may have changed the setting while the query ran.
+	if !rv.reviewRequested && !s.reviewFor(rv.summary, rv.mode, rv.class) {
 		return res, out, err
 	}
 	return s.reviewResponse(ctx, args, rv, set, res, out, err)
@@ -213,12 +269,12 @@ func (s *Server) runQuery(ctx context.Context, _ *mcp.CallToolRequest, args runQ
 // executeAndRender masks, executes and renders. executed is false when the call failed before
 // Execute ran (no data was fetched, so nothing is held for review); set is the mask set the render
 // used.
-func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv queryResolution, plan *queryplan.Plan) (res *mcp.CallToolResult, out any, err error, set maskset, executed bool) {
+func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv queryResolution, plan *queryplan.Plan, ex *claimedExemption) (res *mcp.CallToolResult, out any, err error, set maskset, executed bool) {
 	// M5 §4.3: resolved before Execute, so a key-store failure fails the call before the query runs,
 	// not after — wasted adapter work on a call that cannot be rendered anyway.
-	set, err = s.cfg.MaskRules.MaskSetFor(args.ConnectionID)
-	if err != nil {
-		return nil, nil, err, set, false
+	set, res, err = s.maskStateFor(ctx, rv.summary)
+	if res != nil || err != nil {
+		return res, nil, err, set, false
 	}
 	var mk *maskset
 	if !set.Empty() {
@@ -232,15 +288,30 @@ func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv que
 		Statements:   []string{args.SQL},
 		Cap:          page.ResultCap{Rows: rv.maxRows},
 	}
+	// Exec limits shape the request and ctx for every call; an exempted one sees Exempt and relaxes.
+	for _, l := range s.limits {
+		el, ok := l.(ExecLimit)
+		if !ok {
+			continue
+		}
+		var done func()
+		ctx, done = el.Apply(ctx, s.limitCall(args, rv, ex.covers(l.Name())), &req)
+		defer done()
+	}
 	// The declared mode picks the connection: read runs on the read lane, where the engine
 	// refuses writes; write and ddl run on the main connection.
 	var resp adapterhost.ExecuteResponse
+	started := time.Now()
 	if rv.mode == modeRead {
 		resp, err = s.cfg.Query.ExecuteRead(ctx, req)
 	} else {
 		resp, err = s.cfg.Query.Execute(ctx, req)
 	}
 	if err != nil {
+		if hits := s.execHits(args, rv, ex, err, time.Since(started)); len(hits) > 0 {
+			res, out, err = s.refuseByLimits(rv.summary, ex, hits, args)
+			return res, out, err, set, false
+		}
 		if rv.mode == modeRead && isReadOnlyRefusal(err) {
 			res, out, err = s.readOnlyRefusal(rv.summary, err, mk != nil)
 			return res, out, err, set, true
@@ -257,9 +328,24 @@ func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv que
 		res, out, err = toolError(err)
 		return res, out, err, set, true
 	}
+	if rv.mode != modeRead {
+		// The statement may have added a column: check again before the next result is returned.
+		s.cfg.ColumnReview.MarkStale(args.ConnectionID)
+	}
 	if len(resp.Pages) == 0 {
 		res, out, err = jsonResult(map[string]any{"kind": "empty", "rowCount": 0, "returned": 0})
 		return res, out, err, set, true
+	}
+	if tp, ok := resp.Pages[0].(page.TabularPage); ok && set.known != nil {
+		var refusal *mcp.CallToolResult
+		if set, refusal = s.settleResult(ctx, rv, args, set, tp.Columns); refusal != nil {
+			return refusal, nil, nil, set, true
+		}
+		set.resultColumns = tp.Columns
+		mk = nil
+		if !set.Empty() {
+			mk = &set
+		}
 	}
 	rendered, err := renderPage(resp.Pages[0], rv.maxRows, summaryOf(plan, rv.threshold), mk, args.SQL)
 	if err != nil {
@@ -268,10 +354,10 @@ func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv que
 		// error. Anything else here is a genuine internal render fault.
 		var refused *maskingRefusedError
 		if errors.As(err, &refused) {
-			res, out, err = errResult(refused.Error())
+			res, out, err = errResult(ranSuffix(fmt.Sprintf("query against %q ran, but its result was withheld: %s", rv.summary.Name, refused.Error()), rv))
 			return res, out, err, set, true
 		}
-		return nil, nil, err, set, true
+		return nil, nil, fmt.Errorf("%s", ranSuffix(fmt.Sprintf("query against %q ran, but its result could not be rendered: %v", rv.summary.Name, err), rv)), set, true
 	}
 	// Finding #12, M6: a `;`-separated args.SQL can make the adapter execute more than one
 	// statement, each with its own page — surface that rather than silently rendering only
@@ -287,11 +373,16 @@ func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv que
 // reviewResponse holds the result of a statement that already ran until the user sends or
 // withholds it. Only an approval returns the held result, untouched; every other outcome returns
 // an app-authored error with no row data.
+//
+// The text lives only in the broker entry and this goroutine: no log, op record, snapshot or
+// notification carries it. Both end on every exit (answer, 10 minute timeout, client cancel or
+// disconnect, server stop, quit), so nothing outlives the call. A result over the broker's per-result
+// cap, or one that would push the total over its cap, is withheld unseen.
 func (s *Server) reviewResponse(ctx context.Context, args runQueryArgs, rv queryResolution, rendered maskset, res *mcp.CallToolResult, out any, err error) (*mcp.CallToolResult, any, error) {
 	name := rv.summary.Name
 	// go-sdk v1.8.0 (mcp/server.go toolForErr): a regular handler error reaches the client as an
 	// IsError text result carrying err.Error(), so the preview of a bare Go error matches the wire.
-	held := ApprovalResponse{IsError: true}
+	held := ApprovalResponse{IsError: true, Requested: rv.reviewRequested}
 	if res != nil {
 		held.IsError = res.IsError
 		held.Text = resultText(res)
@@ -305,36 +396,87 @@ func (s *Server) reviewResponse(ctx context.Context, args runQueryArgs, rv query
 		Class: rv.class, Mode: rv.mode, Statement: args.SQL, Reason: ApprovalReasonPermission,
 		Target: targetOf(rv.summary, args.Path), Stage: ApprovalStageResponse, Response: &held, Origin: originFrom(ctx),
 	})
-	switch outcome {
-	case ApprovalApproved:
-		// The review can take up to ApprovalTimeout: exposure or masking rules may have changed since the
-		// result was rendered.
-		if _, rerr := s.resolveEnabled(args.ConnectionID); rerr != nil {
-			return errResult(fmt.Sprintf("query against %q ran, but its result was withheld: %s", name, rerr.Error()))
-		}
-		now, merr := s.cfg.MaskRules.MaskSetFor(args.ConnectionID)
-		if merr != nil {
-			return errResult(fmt.Sprintf("query against %q ran, but its masking rules could not be re-checked and its result was withheld", name))
-		}
-		if !now.Equal(rendered) {
-			return errResult(fmt.Sprintf("masking rules for %q changed while its result was in review; run the query again", name))
+	if outcome == ApprovalApproved {
+		if msg := s.recheckHeld(ctx, rv, args, rendered); msg != "" {
+			return errResult(msg)
 		}
 		return res, out, err
-	case ApprovalDenied:
-		return errResult(fmt.Sprintf("query against %q ran, but the user withheld its result", name))
-	case ApprovalTimedOut:
-		return errResult(fmt.Sprintf("query against %q ran, but its result got no review within %s and was withheld", name, approvalWindow()))
-	case ApprovalAbandoned:
-		return errResult(fmt.Sprintf("the database MCP server stopped before the result of the query against %q was reviewed", name))
-	case ApprovalQueueFull:
-		return errResult("query ran; " + queueFullMessage)
-	default:
-		return errResult(fmt.Sprintf("query against %q ran, but its result was not approved", name))
 	}
+	return errResult(heldRefusal(outcome, rv, held.Bytes))
+}
+
+// recheckHeld returns why an approved result must still be withheld, "" when it may go. The review can take
+// up to ApprovalTimeout: exposure or masking rules may have changed since the result was rendered. The
+// statement has run, so every text says so.
+func (s *Server) recheckHeld(ctx context.Context, rv queryResolution, args runQueryArgs, rendered maskset) string {
+	name := rv.summary.Name
+	if _, rerr := s.resolveEnabled(args.ConnectionID); rerr != nil {
+		return ranSuffix(fmt.Sprintf("query against %q ran, but its result was withheld: %s", name, rerr.Error()), rv)
+	}
+	now, refusal, merr := s.maskStateFor(ctx, rv.summary)
+	if refusal == nil && merr == nil {
+		now.stmt = rendered.stmt
+		now, refusal = s.settleResult(ctx, rv, args, now, rendered.resultColumns)
+	}
+	if refusal != nil || merr != nil {
+		return ranSuffix(fmt.Sprintf("query against %q ran, but its masking rules could not be re-checked and its result was withheld.", name), rv)
+	}
+	if !now.Equal(rendered) {
+		msg := fmt.Sprintf("query against %q ran, but masking rules or column review changed while its result was in review, so the result was withheld.", name)
+		if rv.class == adapters.ClassRead {
+			return msg + " Run the query again."
+		}
+		return ranSuffix(msg, rv)
+	}
+	return ""
+}
+
+// heldRefusal is the app-authored text of a result the user did not send. It never carries data. The
+// statement has run, so every text says so.
+func heldRefusal(outcome ApprovalOutcome, rv queryResolution, size int) string {
+	name := rv.summary.Name
+	switch outcome {
+	case ApprovalDenied:
+		return ranSuffix(fmt.Sprintf("the user withheld the result of this query on %q; it ran, but you get no rows. Do not rerun it to get the result another way.", name), rv)
+	case ApprovalTooLarge:
+		msg := fmt.Sprintf("the query on %q ran, but its result is %.1f MB, over the %d MB review limit, so it was withheld unseen.", name, float64(size)/(1<<20), maxHeldResultBytes>>20)
+		if rv.class == adapters.ClassRead {
+			return msg + " Ask for fewer rows or columns."
+		}
+		return ranSuffix(msg, rv)
+	case ApprovalHeldFull:
+		return ranSuffix(fmt.Sprintf("query against %q ran, but too many results are waiting for the user's review, so its result was withheld. Do not rerun it.", name), rv)
+	case ApprovalTimedOut:
+		return ranSuffix(fmt.Sprintf("query against %q ran, but its result got no review within %s and was withheld.", name, approvalWindow()), rv)
+	case ApprovalAbandoned:
+		return ranSuffix(fmt.Sprintf("the database MCP server stopped before the result of the query against %q was reviewed; the query ran and its result was withheld.", name), rv)
+	case ApprovalQueueFull:
+		return ranSuffix(fmt.Sprintf("query against %q ran, but too many queries are waiting for approval, so its result was withheld. Do not rerun it.", name), rv)
+	default:
+		return ranSuffix(fmt.Sprintf("query against %q ran, but its result was not approved.", name), rv)
+	}
+}
+
+// ranSuffix tells the agent a non-read statement's changes stay and it must not rerun, so it does not repeat a
+// committed write.
+func ranSuffix(msg string, rv queryResolution) string {
+	if rv.class == adapters.ClassRead {
+		return msg
+	}
+	msg += " Its changes stay."
+	if !strings.Contains(msg, "not rerun") {
+		msg += " Do not rerun it."
+	}
+	return msg
 }
 
 // resultText is the concatenated TextContent of res — the bytes the client receives.
 func resultText(res *mcp.CallToolResult) string {
+	if len(res.Content) == 1 {
+		if tc, ok := res.Content[0].(*mcp.TextContent); ok {
+			return tc.Text
+		}
+	}
 	var b strings.Builder
 	for _, c := range res.Content {
 		if tc, ok := c.(*mcp.TextContent); ok {
@@ -345,7 +487,7 @@ func resultText(res *mcp.CallToolResult) string {
 }
 
 // queryResolution is resolveVerdict's own bundle: everything runQuery needs from the
-// resolve/check/gate/clamp/connect/tighten pipeline to proceed into maybeExplain/awaitApproval.
+// resolve/check/gate/clamp/connect/tighten pipeline to proceed into planForCall/awaitApproval.
 type queryResolution struct {
 	summary model.ConnectionSummary
 	// mode is the declared mode; verdict is its permission (allow or prompt once resolveVerdict passes).
@@ -354,9 +496,15 @@ type queryResolution struct {
 	verdict   string
 	maxRows   int
 	threshold int
+	// plan and planErr are planForCall's one EXPLAIN: it feeds the limit, the approval evidence and the
+	// result's plan summary.
+	plan    *queryplan.Plan
+	planErr error
+	// reviewRequested is set when the approver ticked "review the result" on the pre-run item.
+	reviewRequested bool
 }
 
-// resolveVerdict is runQuery's resolve → check mode → gate → clamp → connect → tighten pipeline.
+// resolveVerdict is runQuery's resolve → check mode → gate → clamp → connect → tighten → tables → column review pipeline.
 // done is true whenever runQuery should return (res, out, err) immediately: every gate here
 // short-circuits execution, so no EXPLAIN work or approval prompt is spent on a refused statement.
 func (s *Server) resolveVerdict(ctx context.Context, args runQueryArgs) (rv queryResolution, res *mcp.CallToolResult, out any, err error, done bool) {
@@ -413,6 +561,14 @@ func (s *Server) resolveVerdict(ctx context.Context, args runQueryArgs) (rv quer
 		res, out, err = errResult(msg)
 		return rv, res, out, err, true
 	}
+	// P532: table allow list, before any exemption, limit, EXPLAIN or approval.
+	if res, out, err := s.checkStatementTables(ctx, rv.summary, args.Path, args.SQL); res != nil || err != nil {
+		return rv, res, out, err, true
+	}
+	// P534: column review, before any exemption, limit, EXPLAIN or approval.
+	if res, out, err := s.checkColumnReview(ctx, rv.summary); res != nil || err != nil {
+		return rv, res, out, err, true
+	}
 	return rv, nil, nil, nil, false
 }
 
@@ -429,7 +585,11 @@ func checkMode(summary model.ConnectionSummary, mode string) string {
 func gateMode(summary model.ConnectionSummary, mode string) (verdict, refusal string) {
 	verdict = modeVerdict(summary, mode)
 	if verdict == "deny" {
-		return verdict, fmt.Sprintf("connection %q does not allow %s over MCP. Allowed: %s", summary.Name, mode, accessOf(summary).Summary)
+		msg := fmt.Sprintf("connection %q does not allow %s over MCP. Allowed: %s", summary.Name, mode, accessOf(summary).Summary)
+		if mode == modeRead && accessOf(summary).Masked.Allowed {
+			msg += ". Rows can still be read with browse_table (masked)"
+		}
+		return verdict, msg
 	}
 	return verdict, ""
 }
@@ -461,69 +621,75 @@ func (s *Server) readOnlyRefusal(summary model.ConnectionSummary, err error, mas
 	return errResult(fmt.Sprintf("the database refused a write on the read-only connection: %s. Use mode=write or mode=ddl. Connection %q allows: %s", err.Error(), summary.Name, allowed))
 }
 
-// maybeExplain runs auto-force-explain (a plan-only EXPLAIN, never ANALYZE) when the connection
-// has McpAutoExplain on — the minimum information needed to tell the human what they are approving
-// before a "prompt" verdict asks them. Any failure degrades to "no plan"; a run_query call
-// must not start failing because a plan could not be parsed. heavy is the flag,
-// overThreshold only, never "any warn issue" — SQLite reports no row estimate at all, so borrowing
-// the console's isFlaggedPlan rule would raise a modal on nearly every SQLite query.
-func (s *Server) maybeExplain(ctx context.Context, summary model.ConnectionSummary, args runQueryArgs) (plan *queryplan.Plan, heavy bool) {
-	if summary.McpAutoExplain && args.Mode == modeRead {
-		p, planErr := s.planFor(ctx, summary, args.SQL, args.Path)
-		if planErr != nil {
-			s.log.Warn("dbmcp: run_query: auto-force-explain failed, running without a plan", "connectionId", args.ConnectionID, "err", planErr)
-		} else {
-			plan = p
-		}
+// planForCall makes the call's one EXPLAIN when the connection has McpAutoExplain on and the classifier
+// says the statement is a read. Class, not the declared mode: a SELECT declared write would otherwise
+// skip the check. It runs before checkLimits so one plan feeds the limit, the dialog and the result.
+// A failure is kept in rv.planErr and the expensive_query limit fails closed on it; a call exempted from
+// expensive_query is being approved anyway, so its failure degrades to no plan.
+func (s *Server) planForCall(ctx context.Context, args runQueryArgs, rv *queryResolution, ex *claimedExemption) {
+	if !rv.summary.McpAutoExplain || rv.class != adapters.ClassRead {
+		return
 	}
-	return plan, plan != nil && plan.OverThreshold
+	plan, err := s.planFor(ctx, rv.summary, args.SQL, args.Path, rv.threshold)
+	if err != nil && ex.covers(LimitExpensiveQuery) {
+		s.log.Warn("dbmcp: run_query: EXPLAIN failed on an exempted call, approving without a plan", "connectionId", args.ConnectionID, "err", err)
+		return
+	}
+	rv.plan, rv.planErr = plan, err
 }
 
-// awaitApproval is the "at most one approval prompt per call" gate: when both a
-// permission-prompt and a heavy plan apply, one request carries Reason: ApprovalReasonPermission
-// (the stricter reason — the user said "ask me about every write") with the plan evidence riding
-// along. A no-op (done false) when neither verdict == "prompt" nor heavy applies. done is true
-// whenever runQuery should return (res, out, err) immediately.
-func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv queryResolution, heavy bool, plan *queryplan.Plan) (res *mcp.CallToolResult, out any, err error, done bool) {
-	if rv.verdict != "prompt" && !heavy {
+// awaitApproval is the "at most one approval prompt per call" gate: a prompt verdict on the declared
+// mode asks once, with the plan evidence when a plan exists. A no-op (done false) for any other verdict.
+// done is true whenever runQuery should return (res, out, err) immediately.
+func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv *queryResolution, plan *queryplan.Plan) (res *mcp.CallToolResult, out any, err error, done bool) {
+	if rv.verdict != "prompt" {
 		return nil, nil, nil, false
 	}
 
-	reason := ApprovalReasonHeavy
-	if rv.verdict == "prompt" {
-		reason = ApprovalReasonPermission
-	}
-	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
+	outcome, choice := s.cfg.Approvals.RequestChoice(ctx, ApprovalRequest{
 		ConnectionID: args.ConnectionID, ConnectionName: rv.summary.Name, Kind: rv.summary.Kind,
 		Class: rv.class, Mode: rv.mode, Enforcement: enforcementFor(rv.summary, rv.mode),
-		Statement: args.SQL, Reason: reason,
+		Statement: args.SQL, Reason: ApprovalReasonPermission,
 		Target: targetOf(rv.summary, args.Path),
 		Plan:   approvalPlanFrom(plan, rv.threshold), Origin: originFrom(ctx),
+		OfferReview: true, ReviewOn: s.reviewFor(rv.summary, rv.mode, rv.class),
 	})
 	switch outcome {
 	case ApprovalApproved:
+		rv.reviewRequested = choice.ReviewResult
 		// rv.summary was resolved before this (up to ApprovalTimeout) wait. If the user reacted to
 		// the prompt by revoking the connection's MCP exposure or denying this mode, an Approve
 		// landing after that must not run the statement under permissions that no longer hold.
-		resummary, rerr := s.resolveEnabled(args.ConnectionID)
-		if rerr != nil {
-			res, out, err = errResult(rerr.Error())
-			return res, out, err, true
-		}
-		if v := modeVerdict(resummary, rv.mode); v == "deny" {
-			res, out, err = errResult(fmt.Sprintf("connection %q now denies %s over MCP. Allowed: %s", resummary.Name, rv.mode, accessOf(resummary).Summary))
-			return res, out, err, true
-		}
-		return nil, nil, nil, false
+		return s.recheckAfterApproval(ctx, args, rv)
 	default:
 		res, out, err = approvalOutcomeError(outcome, fmt.Sprintf("query against %q", rv.summary.Name))
 		return res, out, err, true
 	}
 }
 
+// recheckAfterApproval refuses when the connection lost exposure, the mode became denied or the table allow
+// list stopped covering the statement while the approval was pending. Otherwise it stores the re-resolved summary in rv, so settings read at
+// execute (the statement timeout) are current after a long wait.
+func (s *Server) recheckAfterApproval(ctx context.Context, args runQueryArgs, rv *queryResolution) (res *mcp.CallToolResult, out any, err error, done bool) {
+	resummary, rerr := s.resolveEnabled(args.ConnectionID)
+	if rerr != nil {
+		res, out, err = errResult(rerr.Error())
+		return res, out, err, true
+	}
+	if v := modeVerdict(resummary, rv.mode); v == "deny" {
+		res, out, err = errResult(fmt.Sprintf("connection %q now denies %s over MCP. Allowed: %s", resummary.Name, rv.mode, accessOf(resummary).Summary))
+		return res, out, err, true
+	}
+	if res, out, err := s.checkStatementTables(ctx, resummary, args.Path, args.SQL); res != nil || err != nil {
+		return res, out, err, true
+	}
+	rv.summary = resummary
+	return nil, nil, nil, false
+}
+
 // enforcementFor is the enforcement label the approval shows for a read item; other modes carry none.
 func enforcementFor(summary model.ConnectionSummary, mode string) string {
-	if mode != modeRead {
+	if mode != modeRead && mode != modeMasked {
 		return ""
 	}
 	return enforcementOf(summary.Kind)
@@ -566,33 +732,43 @@ type explainQueryResult struct {
 	ThresholdRows int `json:"thresholdRows"`
 }
 
+// explainPreflight runs the explain_query checks that need no connection. A non-empty msg refuses the call.
+func (s *Server) explainPreflight(args explainQueryArgs) (model.ConnectionSummary, modes, string, error) {
+	summary, err := s.resolveEnabled(args.ConnectionID)
+	if err != nil {
+		return summary, modes{}, "", err
+	}
+	if msg := needsDatabasePath(summary, args.Path); msg != "" {
+		return summary, modes{}, msg, nil
+	}
+	// §7: unsupported kinds are refused before connecting — nothing this call can do will succeed.
+	if !queryplan.Supported(summary.Kind) {
+		return summary, modes{}, fmt.Sprintf("connection %q (%s) has no EXPLAIN this app can parse", summary.Name, summary.Kind), nil
+	}
+	// §8.1: explain_query accepts only what queryplan.Explainable accepts — a DELETE/UPDATE never
+	// gets its own EXPLAIN path (ClickHouse's EXPLAIN can execute its target on some forms).
+	if !queryplan.Explainable(args.SQL) {
+		return summary, modes{}, "explain_query only accepts a SELECT or WITH statement", nil
+	}
+	m := modesOf(summary)
+	if m.read == "deny" {
+		return summary, m, fmt.Sprintf("connection %q's MCP permissions deny read statements; change them in the connection's MCP tab", summary.Name), nil
+	}
+	return summary, m, "", nil
+}
+
 // explainQuery plans one SELECT/WITH statement without running it (the gate order):
 // resolve → kind support → explainability → read-mode deny (before connecting) → connect →
 // classify-assert every composed statement as a read → verdict on the read mode (prompt
 // raises the approval, carrying the composed statement) → execute → parse → project, dropping Raw
 // unless IncludeRaw.
 func (s *Server) explainQuery(ctx context.Context, _ *mcp.CallToolRequest, args explainQueryArgs) (*mcp.CallToolResult, any, error) {
-	summary, err := s.resolveEnabled(args.ConnectionID)
+	summary, m, msg, err := s.explainPreflight(args)
 	if err != nil {
 		return errResult(err.Error())
 	}
-	if msg := needsDatabasePath(summary, args.Path); msg != "" {
+	if msg != "" {
 		return errResult(msg)
-	}
-
-	// §7: unsupported kinds are refused before connecting — nothing this call can do will succeed.
-	if !queryplan.Supported(summary.Kind) {
-		return errResult(fmt.Sprintf("connection %q (%s) has no EXPLAIN this app can parse", summary.Name, summary.Kind))
-	}
-	// §8.1: explain_query accepts only what queryplan.Explainable accepts — a DELETE/UPDATE never
-	// gets its own EXPLAIN path (ClickHouse's EXPLAIN can execute its target on some forms).
-	if !queryplan.Explainable(args.SQL) {
-		return errResult("explain_query only accepts a SELECT or WITH statement")
-	}
-
-	m := modesOf(summary)
-	if m.read == "deny" {
-		return errResult(fmt.Sprintf("connection %q's MCP permissions deny read statements; change them in the connection's MCP tab", summary.Name))
 	}
 
 	state, err := s.connectForQuery(ctx, args.ConnectionID)
@@ -601,6 +777,9 @@ func (s *Server) explainQuery(ctx context.Context, _ *mcp.CallToolRequest, args 
 	}
 	if state.Status != "connected" {
 		return errResult(connectStateError(state))
+	}
+	if res, out, err := s.checkStatementTables(ctx, summary, args.Path, args.SQL); res != nil || err != nil {
+		return res, out, err
 	}
 
 	statements := queryplan.StatementsFor(summary.Kind, args.SQL)
@@ -648,21 +827,23 @@ func (s *Server) explainQuery(ctx context.Context, _ *mcp.CallToolRequest, args 
 	// Finding #4, M6: same masked-error scoping as run_query — a composed EXPLAIN still plans
 	// against the connection's real data, so keep the adapter's driver error value-free here too
 	// when this connection has active mask rules.
-	set, err := s.cfg.MaskRules.MaskSetFor(args.ConnectionID)
-	if err != nil {
-		return nil, nil, err
+	set, refusal, err := s.maskStateFor(ctx, summary)
+	if refusal != nil || err != nil {
+		return refusal, nil, err
 	}
 	var mk *maskset
 	if !set.Empty() {
 		mk = &set
 	}
 
-	resp, err := s.cfg.Query.ExecuteRead(ctx, adapterhost.ExecuteRequestWire{
+	req := adapterhost.ExecuteRequestWire{
 		OpID:         ids.NewID(),
 		ConnectionID: args.ConnectionID,
 		Path:         args.Path,
 		Statements:   statements,
-	})
+	}
+	applyStatementTimeout(&req, summary, modeRead)
+	resp, err := s.cfg.Query.ExecuteRead(ctx, req)
 	if err != nil {
 		if mk != nil {
 			return maskedToolError(err)

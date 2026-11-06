@@ -119,7 +119,7 @@ func mutate(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx, 
 	relationSQL := quoteIdent(database) + "." + quoteIdent(table)
 	sql := renderInsert(relationSQL, plan.Ops, literalFor)
 	op.SetCommand(sql)
-	written, err := RunCommand(ctx, h, queryID, sql, op, track)
+	written, err := RunCommand(ctx, h, queryID, sql, op, track, nil)
 	if err != nil {
 		return model.MutationResult{}, err
 	}

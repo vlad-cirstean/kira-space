@@ -122,9 +122,16 @@ func bindRequestCancellation(ctx context.Context) (context.Context, context.Canc
 // SetEnabled's st.Error — so this needs no new status surface, only a real error where a silent
 // fallback used to be.
 func (s *Server) bindHTTP() error {
-	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", DefaultPort))
+	port := DefaultPort
+	switch p := s.cfg.Port; {
+	case p == EphemeralPort:
+		port = 0
+	case p > 0:
+		port = p
+	}
+	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
-		return fmt.Errorf("dbmcp: bind 127.0.0.1:%d: %w (another process is using this port — free it and try again)", DefaultPort, err)
+		return fmt.Errorf("dbmcp: bind 127.0.0.1:%d: %w (another process is using this port — free it and try again)", port, err)
 	}
 
 	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return s.server() }, &mcp.StreamableHTTPOptions{
@@ -174,8 +181,8 @@ func (s *Server) tokenVerifier() auth.TokenVerifier {
 	})
 }
 
-// Port returns the actually-bound port — always DefaultPort (F11: bindHTTP refuses to start on any
-// other port).
+// Port returns the actually-bound port — DefaultPort unless Config.Port overrides it (F11: bindHTTP
+// never falls back on a conflict).
 func (s *Server) Port() int {
 	return s.listener.Addr().(*net.TCPAddr).Port
 }

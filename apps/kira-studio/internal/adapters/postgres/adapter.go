@@ -314,11 +314,19 @@ func (a *Adapter) Read(ctx context.Context, req adapters.ReadRequest, op *adapte
 	if err != nil {
 		return nil, err
 	}
+	if req.StatementTimeout > 0 {
+		restore, err := setSessionTimeout(ctx, conn, op, a.trackerFor(op.OpID), req.StatementTimeout)
+		if err != nil {
+			return nil, err
+		}
+		defer restore()
+	}
 	result, err := readPage(ctx, conn, op, a.trackerFor(op.OpID), target, readReq{
 		Projection: req.Projection, Filter: req.Filter, Sort: req.Sort, PageSize: req.PageSize, Cursor: req.Cursor,
+		Conditions: req.Conditions,
 	})
 	if err != nil {
-		return nil, err
+		return nil, timeoutError(ctx, req.StatementTimeout, err)
 	}
 	return result, nil
 }
@@ -372,7 +380,7 @@ func (a *Adapter) Execute(ctx context.Context, req model.ConsoleRequest, op *ada
 		return nil, err
 	}
 	defer release()
-	return execute(ctx, conn, op, a.trackerFor(op.OpID), a.state.Load().ReadOnly || req.ReadOnly, a.state.Load().ReadOnly, req.Statements, adapters.ConsoleCapFor(req))
+	return execute(ctx, conn, op, a.trackerFor(op.OpID), a.state.Load().ReadOnly || req.ReadOnly, a.state.Load().ReadOnly, req.Statements, adapters.ConsoleCapFor(req), req.StatementTimeout)
 }
 
 // DownloadObject is index.ts's downloadObject — caps.FileTransfer is false, so no UI ever offers

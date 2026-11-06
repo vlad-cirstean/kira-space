@@ -46,6 +46,45 @@ type queryPayload struct {
 	Detected    string       `json:"detected"`
 	Enforcement string       `json:"enforcement"`
 	Plan        *planPayload `json:"plan"`
+	// ReviewOffered shows "review the result"; ReviewResult says the connection's settings already do.
+	ReviewOffered bool `json:"reviewOffered"`
+	ReviewResult  bool `json:"reviewResult"`
+}
+
+type limitHitPayload struct {
+	Limit    string  `json:"limit"`
+	Measured float64 `json:"measured"`
+	Max      float64 `json:"max"`
+	Unit     string  `json:"unit"`
+}
+
+type exemptionPayload struct {
+	ConnectionID  string            `json:"connectionId"`
+	Statement     string            `json:"statement"`
+	Mode          string            `json:"mode"`
+	Detected      string            `json:"detected"`
+	Enforcement   string            `json:"enforcement"`
+	Reason        string            `json:"reason"`
+	Limits        []limitHitPayload `json:"limits"`
+	Plan          *planPayload      `json:"plan"`
+	ReviewOffered bool              `json:"reviewOffered"`
+	ReviewResult  bool              `json:"reviewResult"`
+}
+
+func exemptionPayloadOf(r ApprovalRequest) exemptionPayload {
+	ex := r.Exemption
+	if ex == nil {
+		ex = &ApprovalExemption{}
+	}
+	limits := make([]limitHitPayload, len(ex.Hits))
+	for i, h := range ex.Hits {
+		limits[i] = limitHitPayload(h)
+	}
+	return exemptionPayload{
+		ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
+		Enforcement: r.Enforcement, Reason: ex.Reason, Limits: limits, Plan: planPayloadOf(r.Plan),
+		ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
+	}
 }
 
 type responsePayload struct {
@@ -54,6 +93,9 @@ type responsePayload struct {
 	IsError      bool   `json:"isError"`
 	Bytes        int    `json:"bytes"`
 	AlreadyRan   bool   `json:"alreadyRan"`
+	// Mode is the declared mode; Requested says the approver asked for this review rather than a setting.
+	Mode      string `json:"mode"`
+	Requested bool   `json:"requested"`
 }
 
 type kubePayload struct {
@@ -117,6 +159,9 @@ func itemOf(r ApprovalRequest) approvals.Item {
 		})
 	case approvals.KindAPIRequest:
 		it.Target, it.Operation, it.Payload = apiItemParts(r.API)
+	case approvals.KindDbExemption:
+		it.Target, it.Operation = dbTarget(r)
+		it.Payload = mustJSON(exemptionPayloadOf(r))
 	case approvals.KindDbResponse:
 		it.Reason = "preview"
 		it.Target, it.Operation = dbTarget(r)
@@ -127,12 +172,14 @@ func itemOf(r ApprovalRequest) approvals.Item {
 		it.Payload = mustJSON(responsePayload{
 			ConnectionID: r.ConnectionID, Statement: r.Statement,
 			IsError: held.IsError, Bytes: held.Bytes, AlreadyRan: r.Class != adapters.ClassRead,
+			Mode: r.Mode, Requested: held.Requested,
 		})
 	default:
 		it.Target, it.Operation = dbTarget(r)
 		it.Payload = mustJSON(queryPayload{
 			ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
 			Enforcement: r.Enforcement, Plan: planPayloadOf(r.Plan),
+			ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
 		})
 	}
 	return it
@@ -159,9 +206,10 @@ func dbTarget(r ApprovalRequest) (approvals.Target, approvals.Operation) {
 		approvals.Operation{Class: operationClass(r), Tone: toneOf(operationClass(r))}
 }
 
-// operationClass is the declared mode, or the detected class for an item that carries no mode.
+// operationClass is the declared mode, or the detected class for an item that carries no mode. A masked
+// browse is a read: the payload's mode names it, the class does not.
 func operationClass(r ApprovalRequest) string {
-	if r.Mode != "" {
+	if r.Mode != "" && r.Mode != modeMasked {
 		return r.Mode
 	}
 	return string(r.Class)
@@ -202,6 +250,8 @@ func promptTitle(req ApprovalRequest) string {
 		return i18n.T("backend.prompt.dbMcpAPI.title", map[string]string{"method": req.API.Method, "host": req.API.Host})
 	case req.Subject == approvals.KindScriptRun:
 		return i18n.T("backend.prompt.dbMcpScript.title", map[string]string{"name": req.ConnectionName})
+	case req.Subject == approvals.KindDbExemption:
+		return i18n.T("backend.prompt.dbMcpExemption.title", map[string]string{"name": req.ConnectionName})
 	case response && named:
 		return i18n.T("backend.prompt.dbMcpResponseNamed.title", map[string]string{"name": req.ConnectionName})
 	case response:

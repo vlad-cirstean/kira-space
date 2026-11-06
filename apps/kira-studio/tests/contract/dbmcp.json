@@ -22,6 +22,8 @@
         "enforcement": "",
         "mode": "write",
         "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
         "statement": "insert into notes (body) values ('three')"
       },
       "reason": "permission",

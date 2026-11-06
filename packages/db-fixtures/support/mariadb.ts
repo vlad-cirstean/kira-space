@@ -8,7 +8,7 @@ import { resolveDockerHost } from './docker';
 
 resolveDockerHost();
 
-const IMAGE = 'mariadb:11.4';
+const IMAGE = 'mariadb:11.4.13';
 const ROOT_PASSWORD = 'kira';
 const DATABASE = 'kira_test';
 const ANALYTICS_DATABASE = 'kira_analytics';

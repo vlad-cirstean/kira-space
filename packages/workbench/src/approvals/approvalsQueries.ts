@@ -25,7 +25,7 @@ export function useApprovalsControl(): ApprovalsControl {
 
 const APPROVALS_KEY = ['approvals'];
 
-/** Every pending item, oldest first. A push replaces the cache. */
+/** Every pending item, oldest first. A push replaces the cache and wins over a fetch still in flight. */
 export function useApprovals() {
   const control = useApprovalsControl();
   const query = useQuery(
@@ -33,7 +33,12 @@ export function useApprovals() {
     queryClient,
   );
   onScopeDispose(
-    control.onApprovalsChanged((items) => queryClient.setQueryData(APPROVALS_KEY, items)),
+    control.onApprovalsChanged((items) => {
+      // A list fetch that started before the push would resolve later and overwrite it with stale items.
+      void queryClient
+        .cancelQueries({ queryKey: APPROVALS_KEY })
+        .then(() => queryClient.setQueryData(APPROVALS_KEY, items));
+    }),
   );
   return query;
 }

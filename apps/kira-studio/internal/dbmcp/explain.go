@@ -2,6 +2,7 @@ package dbmcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -153,31 +154,42 @@ func (s *Server) assertComposedStatementsAreReads(ctx context.Context, connectio
 }
 
 // planFor composes, verifies and runs this connection's own EXPLAIN for sql, and parses the
-// result. Returns (nil, nil) when this kind has no EXPLAIN this app can parse or sql is not
-// explainable — a no-op, not a failure (auto-force-explain's own posture). Any other
-// error (classification refusal, execute failure, parse failure) is returned for the caller to
-// decide how to degrade — runQuery's own step 7 treats every error here as "no plan", never a
-// reason to block the real query; explainQuery instead surfaces it.
-func (s *Server) planFor(ctx context.Context, summary model.ConnectionSummary, sql, path string) (*queryplan.Plan, error) {
+// result against threshold. Returns (nil, nil) when this kind has no EXPLAIN this app can parse or sql is
+// not explainable — a no-op, not a failure. Failures are the caller's to treat as a refusal: a
+// *planCheckError (app text, no adapter data) when the plan cannot be composed, trusted or read, else the
+// adapter's own error wrapped.
+func (s *Server) planFor(ctx context.Context, summary model.ConnectionSummary, sql, path string, threshold int) (*queryplan.Plan, error) {
 	if !queryplan.Supported(summary.Kind) || !queryplan.Explainable(sql) {
 		return nil, nil
 	}
+	return s.planStatements(ctx, summary, queryplan.StatementsFor(summary.Kind, sql), path, threshold)
+}
 
-	statements := queryplan.StatementsFor(summary.Kind, sql)
+// planStatements runs and parses already-composed EXPLAIN statements. The caller owns the composition and
+// the Explainable check: browse_table composes from a spec whose literals may hold ";".
+func (s *Server) planStatements(ctx context.Context, summary model.ConnectionSummary, statements []string, path string, threshold int) (*queryplan.Plan, error) {
 	if err := s.assertComposedStatementsAreReads(ctx, summary.ID, statements); err != nil {
-		return nil, err
+		s.log.Warn("dbmcp: expensive_query: composed EXPLAIN refused", "connectionId", summary.ID, "err", err)
+		return nil, &planCheckError{msg: fmt.Sprintf("expensive_query check could not plan this statement on %q; it did not run.", summary.Name)}
 	}
 
-	resp, err := s.cfg.Query.ExecuteRead(ctx, adapterhost.ExecuteRequestWire{
+	req := adapterhost.ExecuteRequestWire{
 		OpID: ids.NewID(), ConnectionID: summary.ID, Path: path, Statements: statements,
-	})
+	}
+	applyStatementTimeout(&req, summary, modeRead)
+	resp, err := s.cfg.Query.ExecuteRead(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("expensive_query check: EXPLAIN failed: %w", err)
 	}
 
-	plan, err := queryplan.FromPages(summary.Kind, resp.Pages, s.cfg.ExplainThreshold())
+	plan, err := queryplan.FromPages(summary.Kind, resp.Pages, threshold)
 	if err != nil {
-		return nil, err
+		why := "unreadable plan"
+		if errors.Is(err, queryplan.ErrTruncated) {
+			why = "plan too large to parse"
+		}
+		s.log.Warn("dbmcp: expensive_query: plan unreadable", "connectionId", summary.ID, "err", err)
+		return nil, &planCheckError{msg: fmt.Sprintf("expensive_query check could not read the query plan's row estimate on %q (%s); it did not run. Simplify the statement. The user can turn the check off in the connection's MCP tab.", summary.Name, why)}
 	}
 	return &plan, nil
 }

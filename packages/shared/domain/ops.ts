@@ -30,6 +30,8 @@ export const opKindSchema = /*#__PURE__*/ z.enum([
   'preconnect',
   // P440: a Kubernetes cluster call, from the module or MCP; connectionless like 'http'.
   'kubernetes',
+  // P532: the table allow list's catalog probe, a throttled catalog query before an MCP statement runs.
+  'tables',
 ]);
 export type OpKind = z.infer<typeof opKindSchema>;
 

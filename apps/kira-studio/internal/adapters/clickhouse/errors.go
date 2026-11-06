@@ -18,6 +18,7 @@ const (
 	unknownDatabase    = "81"
 	timeoutExceeded    = "159"
 	readonlyCode       = "164"
+	settingViolation   = "452"
 	unknownUser        = "192"
 	wrongPassword      = "193"
 	requiredPassword   = "194"
@@ -46,30 +47,45 @@ func extractCodeFromBody(body string) (code, message string) {
 	return "", trimmed
 }
 
+// serverCode is the Cause of a mapped server error: callers that must tell two errors of one
+// adapters code apart (a statement timeout from a socket timeout) read the numeric code from it.
+type serverCode string
+
+func (c serverCode) Error() string { return "ClickHouse code " + string(c) }
+
+// codeOf returns the ClickHouse result code mapCode attached to err, or "".
+func codeOf(err error) string {
+	var c serverCode
+	if errors.As(err, &c) {
+		return string(c)
+	}
+	return ""
+}
+
 // mapCode is errors.ts's own mapError, minus the AdapterError passthrough (nothing in this Go
 // package ever wraps one) and re-pointed at a (code, message) pair the caller already extracted
 // rather than a driver error object — dispatched on the numeric code, never on message text.
 func mapCode(code, message string) error {
 	switch code {
 	case unknownDatabase:
-		return adapters.New(adapters.CodeNotFound, message, nil)
+		return adapters.New(adapters.CodeNotFound, message, serverCode(code))
 	case timeoutExceeded, socketTimeout:
-		return adapters.New(adapters.CodeTimeout, message, nil)
+		return adapters.New(adapters.CodeTimeout, message, serverCode(code))
 	case readonlyCode:
-		return adapters.New(adapters.CodeUnsupported, message, adapters.RefusedWrite(nil))
+		return adapters.New(adapters.CodeUnsupported, message, adapters.RefusedWrite(serverCode(code)))
 	case tableIsReadOnly:
-		return adapters.New(adapters.CodeUnsupported, message, nil)
+		return adapters.New(adapters.CodeUnsupported, message, serverCode(code))
 	case unknownUser, wrongPassword, requiredPassword, authenticationFail, ipAddressNotAllow,
 		databaseAccessDeny, accessDenied:
-		return adapters.New(adapters.CodeAuth, message, nil)
+		return adapters.New(adapters.CodeAuth, message, serverCode(code))
 	case queryWasCancelled:
-		return adapters.New(adapters.CodeCancelled, message, nil)
+		return adapters.New(adapters.CodeCancelled, message, serverCode(code))
 	case notImplemented:
-		return adapters.New(adapters.CodeQuery, message, nil)
+		return adapters.New(adapters.CodeQuery, message, serverCode(code))
 	case networkError:
-		return adapters.New(adapters.CodeConnect, message, nil)
+		return adapters.New(adapters.CodeConnect, message, serverCode(code))
 	default:
-		return adapters.New(adapters.CodeQuery, message, nil)
+		return adapters.New(adapters.CodeQuery, message, serverCode(code))
 	}
 }
 

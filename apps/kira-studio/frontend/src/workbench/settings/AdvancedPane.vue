@@ -116,7 +116,7 @@ const expensiveQueryRowsId = useId();
       <FieldError v-if="expensiveQueryRowsError" data-testid="settings-expensive-query-rows-error">
         {{ expensiveQueryRowsError }}
       </FieldError>
-      <FieldDescription v-else>{{
+      <FieldDescription v-else data-testid="settings-expensive-query-rows-description">{{
         t('studio.settings.advanced.expensiveRows.description')
       }}</FieldDescription>
     </Field>

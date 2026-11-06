@@ -1,0 +1,105 @@
+{
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.exemption:<id:1>",
+      "kind": "db.exemption",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "detected": "read",
+        "enforcement": "session",
+        "limits": [
+          {
+            "limit": "expensive_query",
+            "max": 1000,
+            "measured": 5000,
+            "unit": "rows"
+          }
+        ],
+        "mode": "read",
+        "plan": null,
+        "reason": "the report needs every row",
+        "reviewOffered": true,
+        "reviewResult": false,
+        "statement": "select * from notes /* big */"
+      },
+      "reason": "exemption",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "args:ApprovalsService.Answer": {
+    "approve": true,
+    "ids": [
+      "db.exemption:<id:1>"
+    ],
+    "options": null
+  },
+  "item#union": {
+    "createdAt": 0,
+    "expiresAt": 0,
+    "id": "db.exemption:<id:1>",
+    "kind": "db.exemption",
+    "operation": {
+      "class": "read",
+      "tone": "neutral"
+    },
+    "origin": {
+      "client": "Claude Code 2.1.318",
+      "cwd": "",
+      "source": "",
+      "step": "",
+      "task": ""
+    },
+    "payload": {
+      "connectionId": "<id:2>",
+      "detected": "read",
+      "enforcement": "session",
+      "limits": [
+        {
+          "limit": "expensive_query",
+          "max": 1000,
+          "measured": 5000,
+          "unit": "rows"
+        },
+        {
+          "limit": "statement_timeout",
+          "max": 5000,
+          "measured": 5200,
+          "unit": "ms"
+        }
+      ],
+      "mode": "read",
+      "plan": null,
+      "reason": "it is a slow table",
+      "reviewOffered": true,
+      "reviewResult": false,
+      "statement": "select * from notes /* big */ /* slow */"
+    },
+    "reason": "exemption",
+    "target": {
+      "color": "teal",
+      "kind": "sqlite",
+      "location": "/data/mcp.db",
+      "name": "notes db",
+      "readOnly": false
+    }
+  }
+}

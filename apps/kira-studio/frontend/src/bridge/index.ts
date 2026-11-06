@@ -42,7 +42,12 @@ import type {
   ConnectionSecretKind,
 } from '@shared/domain/connectionConfig';
 import type { DataGripPreview, DataGripReport } from '@shared/domain/datagrip';
-import type { DbMcpInstallResult, DbMcpPendingResponse, DbMcpStatus } from '@shared/domain/dbmcp';
+import type {
+  DbMcpInstallResult,
+  DbMcpPendingResponse,
+  DbMcpStatus,
+  DbMcpTablesListing,
+} from '@shared/domain/dbmcp';
 import type { ObjectDefinition } from '@shared/domain/definition';
 import {
   type KibanaDataView,
@@ -57,6 +62,7 @@ import {
 } from '@shared/domain/kibana';
 import type { Layout } from '@shared/domain/layout';
 import type { MaskRule, MaskRuleFields } from '@shared/domain/mask';
+import type { MaskReviewListing, MaskReviewPending } from '@shared/domain/maskReview';
 import type { AppMode } from '@shared/domain/mode';
 import type { OpRecord } from '@shared/domain/ops';
 import type {
@@ -407,6 +413,14 @@ const studioControl = {
     unwrap(DbMcpService.Regenerate()).then((r) => trust<DbMcpStatus>(r)),
   dbMcpInstallAgent: (): Promise<DbMcpInstallResult> =>
     unwrap(DbMcpService.InstallAgent()).then((r) => trust<DbMcpInstallResult>(r)),
+  dbMcpTables: (id: string): Promise<DbMcpTablesListing> =>
+    unwrap(DbMcpService.Tables({ id })).then((r) => trust<DbMcpTablesListing>(r)),
+  maskReviewColumns: (id: string, refresh: boolean): Promise<MaskReviewListing> =>
+    unwrap(MaskRulesService.ReviewColumns({ id, refresh })).then((r) =>
+      trust<MaskReviewListing>(r),
+    ),
+  maskReviewPending: (id: string): Promise<MaskReviewPending> =>
+    unwrap(MaskRulesService.ReviewPending({ id })).then((r) => trust<MaskReviewPending>(r)),
   dbMcpPendingResponse: (requestId: string): Promise<DbMcpPendingResponse> =>
     unwrap(DbMcpService.PendingResponse({ requestId })).then((r) => trust<DbMcpPendingResponse>(r)),
 

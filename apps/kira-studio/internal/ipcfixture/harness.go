@@ -129,7 +129,7 @@ func NewApp(t *testing.T) *App {
 		NewID:   app.mintID,
 		OnChange: func(ch connfiles.Changes) {
 			connectionsSvc.ConfigChanged(ch)
-			bridge.EmitConnectionChanges(discardEmitter{}, maskRulesSvc, ch)
+			bridge.EmitConnectionChanges(discardEmitter{}, maskRulesSvc, nil, ch)
 		},
 		OnForget: func(id string) { connectionsSvc.Removed(id) },
 	})

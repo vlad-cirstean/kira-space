@@ -19,6 +19,7 @@ const (
 	ruleMode   = "Fields mode needs host and port, except sqlite (an absolute database file path) and sqs and s3 (no host or port). password is not for sqlite, sqs and s3. options holds no secret such as password or sslpassword: use uri mode for those. Uri mode needs uri and no host, port, database, username or password."
 	ruleLimits = "throttle_per_sec is 0 or 0.01 to 1000."
 	ruleMasks  = "A mask rule is unique per table and column, ignoring case. A number mask does not correlate."
+	ruleReview = "mask_review is for postgres, mysql, mariadb, clickhouse and sqlite; each column entry has one part more than a table entry of the kind."
 	ruleTree   = "tree lists each hidden kind and path once."
 	ruleStem   = "The file name without .yaml is the connection id: lowercase letters, digits and -, starting with a letter or digit, up to 60 characters. A file with another name is listed but not used."
 )
@@ -71,7 +72,7 @@ func newDecoder() (decoder, error) {
 			}
 			return f.checkMCP()
 		}),
-		rule(ruleLimits, File.checkLimits), rule(ruleMode, File.checkMode), rule(ruleMasks, File.checkMasks), rule(ruleTree, File.checkTree))
+		rule(ruleLimits, File.checkLimits), rule(ruleMode, File.checkMode), rule(ruleMasks, File.checkMasks), rule(ruleReview, File.checkMaskReview), rule(ruleTree, File.checkTree))
 	if err != nil {
 		return decoder{}, err
 	}

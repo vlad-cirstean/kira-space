@@ -53,6 +53,8 @@ type ReadReq struct {
 	Sort       *model.SortSpec
 	PageSize   int
 	Cursor     model.PageCursor
+	// Conditions are ANDed after Filter; values bind as parameters (P535).
+	Conditions []model.Condition
 }
 
 // BuildKeysetWhereSQL extends whereSQL with the keyset boundary predicate decoded from the cursor

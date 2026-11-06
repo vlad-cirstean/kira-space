@@ -17,6 +17,7 @@ import (
 const (
 	KindDbQuery       = "db.query"
 	KindDbResponse    = "db.response"
+	KindDbExemption   = "db.exemption"
 	KindKubeRead      = "kube.read"
 	KindProofReview   = "proof.review"
 	KindBranchRequest = "branch.request"
@@ -36,7 +37,7 @@ type Item struct {
 	Origin    Origin    `json:"origin"`
 	Target    Target    `json:"target"`
 	Operation Operation `json:"operation"`
-	// Reason is permission, heavy, preview, review or request.
+	// Reason is permission, heavy, preview, review, request or exemption.
 	Reason  string          `json:"reason"`
 	Payload json.RawMessage `json:"payload"`
 	// Title is the prompt router title; the view never reads it.

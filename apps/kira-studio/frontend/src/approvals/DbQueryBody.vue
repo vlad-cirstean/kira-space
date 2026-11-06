@@ -3,11 +3,13 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import { dbQueryPayloadSchema } from '@shared/domain/dbmcp';
 import { FieldDescription } from '@theme/components/ui/field';
 import { type MessageKey, t } from '@theme/i18n';
-import { formatCount } from '@workbench/behaviour/format';
 import { computed } from 'vue';
+import ApprovalPlanEvidence from './ApprovalPlanEvidence.vue';
 import ApprovalStatement from './ApprovalStatement.vue';
+import ReviewResultOption from './ReviewResultOption.vue';
 
 const props = defineProps<{ item: ApprovalItem }>();
+defineEmits<{ options: [value: { reviewResult: boolean }] }>();
 
 const payload = computed(() => dbQueryPayloadSchema.parse(props.item.payload));
 
@@ -29,20 +31,15 @@ const ENFORCEMENT_KEYS: Record<string, MessageKey> = {
 const declaredHigher = computed(
   () => (RANK[payload.value.detected] ?? Infinity) < RANK[payload.value.mode],
 );
+const masked = computed(() => payload.value.mode === 'masked');
 const enforcement = computed(() =>
-  payload.value.mode === 'read' ? ENFORCEMENT_KEYS[payload.value.enforcement] : undefined,
+  payload.value.mode === 'read' || masked.value
+    ? ENFORCEMENT_KEYS[payload.value.enforcement]
+    : undefined,
 );
 
 const lede = computed(() => {
-  const { plan } = payload.value;
   const params = { connection: props.item.target.name, kind: props.item.target.kind };
-  if (props.item.reason === 'heavy' && plan && plan.estimatedRowsRead !== null) {
-    return t('studio.dbMcp.approval.heavy.body', {
-      ...params,
-      count: plan.estimatedRowsRead,
-      threshold: formatCount(plan.thresholdRows),
-    });
-  }
   return t(
     CLASS_BODY_KEYS[props.item.operation.class] ?? 'studio.dbMcp.approval.other.body',
     params,
@@ -53,6 +50,9 @@ const lede = computed(() => {
 <template>
   <div class="flex flex-col gap-2" data-testid="db-mcp-approval-body">
     <p class="m-0 whitespace-pre-wrap">{{ lede }}</p>
+    <FieldDescription v-if="masked" data-testid="db-mcp-approval-mode-masked">
+      {{ t('studio.project.connectionDialog.mcp.masked.label') }}
+    </FieldDescription>
     <FieldDescription v-if="declaredHigher" data-testid="db-mcp-approval-declared-higher">
       {{
         t('studio.dbMcp.approval.declaredHigher.body', {
@@ -68,28 +68,12 @@ const lede = computed(() => {
     <FieldDescription data-testid="db-mcp-approval-detected">
       {{ t('studio.dbMcp.approval.detected.label', { class: payload.detected }) }}
     </FieldDescription>
-    <div v-if="payload.plan" class="flex flex-col gap-1" data-testid="db-mcp-approval-plan">
-      <FieldDescription data-testid="db-mcp-approval-plan-rows">
-        <template v-if="payload.plan.estimatedRowsRead !== null">
-          {{
-            t('studio.dbMcp.approval.estimate.body', {
-              count: payload.plan.estimatedRowsRead,
-              threshold: formatCount(payload.plan.thresholdRows),
-            })
-          }}
-        </template>
-        <template v-else>{{ t('studio.console.plan.noEstimate.body') }}</template>
-      </FieldDescription>
-      <FieldDescription
-        v-for="(issue, i) in payload.plan.issues"
-        :key="i"
-        data-testid="db-mcp-approval-plan-issue"
-      >
-        <strong>{{ issue.severity }}</strong> {{ issue.message }}
-      </FieldDescription>
-      <FieldDescription v-if="payload.plan.issuesOmitted > 0">
-        {{ t('common.more.label', { count: payload.plan.issuesOmitted }) }}
-      </FieldDescription>
-    </div>
+    <ApprovalPlanEvidence v-if="payload.plan" :plan="payload.plan" />
+    <ReviewResultOption
+      v-if="payload.reviewOffered"
+      :mode="payload.mode"
+      :reviewed="payload.reviewResult"
+      @options="(v) => $emit('options', v)"
+    />
   </div>
 </template>

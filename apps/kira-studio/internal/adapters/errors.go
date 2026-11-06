@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"strconv"
 	"strings"
 	"syscall"
+	"time"
 	"unicode"
 
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
@@ -80,6 +82,37 @@ func Internal(message string, cause error) *Error {
 // English developer text; the UI wraps it in common.error.contract.body. cause may be nil.
 func Contract(message string, cause error) *Error {
 	return New(CodeContract, message, cause)
+}
+
+// ErrStatementTimeout marks a statement stopped by its statement timeout.
+var ErrStatementTimeout = errors.New("statement timeout")
+
+// TimeoutDetail is the Cause of a statement-timeout *Error. Elapsed is filled by the host when the
+// adapter leaves it zero.
+type TimeoutDetail struct {
+	Limit, Elapsed time.Duration
+	Cause          error
+}
+
+func (d *TimeoutDetail) Error() string {
+	if d.Cause != nil {
+		return ErrStatementTimeout.Error() + ": " + d.Cause.Error()
+	}
+	return ErrStatementTimeout.Error()
+}
+
+func (d *TimeoutDetail) Unwrap() []error {
+	if d.Cause == nil {
+		return []error{ErrStatementTimeout}
+	}
+	return []error{ErrStatementTimeout, d.Cause}
+}
+
+// StatementTimeout is the E_TIMEOUT error for a statement stopped at limit.
+func StatementTimeout(limit, elapsed time.Duration, cause error) *Error {
+	return T(CodeTimeout, "backend.studio.adapter.statementTimeout.body",
+		map[string]string{"seconds": strconv.FormatFloat(limit.Seconds(), 'f', -1, 64)},
+		&TimeoutDetail{Limit: limit, Elapsed: elapsed, Cause: cause})
 }
 
 // CodeOf reports the ErrorCode of err via errors.As, for the dispatcher and the router to branch

@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime/debug"
+	"sort"
 	"sync"
 	"time"
 
@@ -25,7 +26,9 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/mask"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/maskreview"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/mcpauth"
+	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/tree"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
@@ -37,6 +40,10 @@ import (
 // ephemeral port when it is taken: every existing registration names this port, and a
 // fallback would leave it pointing at whatever else is now listening there.
 const DefaultPort = 8766
+
+// EphemeralPort as Config.Port asks the OS for a free loopback port. Test seam: packages whose
+// tests run in parallel under `go test` cannot share DefaultPort.
+const EphemeralPort = -1
 
 // TokenProvider resolves this instance's own 7-day-rotating token — no repo-id slug to key on: one
 // DB MCP instance exists per app process per KIRA_HOME, with no second identity to key several
@@ -67,6 +74,8 @@ type QueryRunner interface {
 	// ExecuteRead runs a read-mode request on the connection's read lane: a second adapter on the
 	// engine's read-only session. It never falls back to the main adapter.
 	ExecuteRead(ctx context.Context, req adapterhost.ExecuteRequestWire) (adapterhost.ExecuteResponse, error)
+	// Browse reads one structured page on the read lane (browse_table); it never writes.
+	Browse(ctx context.Context, req adapterhost.BrowseRequest) (page.Page, error)
 	// ClassifyStatement answers what one statement would do (M2's permission gate) — an adapter
 	// error (or one that does not implement adapters.StatementClassifier) yields ClassUnknown, never
 	// a fatal error the caller must special-case.
@@ -98,9 +107,26 @@ type MaskRules interface {
 	List(connectionID string) ([]model.MaskRule, error)
 }
 
+// ColumnReview is dbmcp's consumer-declared interface over *maskreview.Service (P534). A nil
+// Config.ColumnReview is a construction error for the reason MaskRules' is: silently nil would return
+// columns nobody reviewed.
+type ColumnReview interface {
+	// For is the gate's read: the withheld columns of one connection, checked inline when the last check is stale.
+	For(ctx context.Context, summary model.ConnectionSummary) maskreview.Withheld
+	// Recheck is For with a live column read of the statement's relations, for result columns the last check
+	// cannot vouch for.
+	Recheck(ctx context.Context, summary model.ConnectionSummary, req maskreview.Rescan) maskreview.Withheld
+	// Cached is the last state without any op, for list_connections.
+	Cached(connectionID string) (maskreview.Withheld, bool)
+	// MarkStale makes the next For check again, after an MCP write or DDL statement.
+	MarkStale(connectionID string)
+}
+
 // Config is everything New needs. Zero-value Home takes the documented default; every other field
 // is required.
 type Config struct {
+	// Port overrides DefaultPort (test seam). Zero means DefaultPort; EphemeralPort an OS-chosen one.
+	Port int
 	// Home overrides KIRA_HOME (a debugging seam) — empty means config.KiraHome().
 	Home string
 	// Token resolves this instance's own auth record — required.
@@ -116,6 +142,8 @@ type Config struct {
 	Approvals *ApprovalBroker
 	// MaskRules resolves a connection's own masking rules and correlation key (M5 §4.6) — required.
 	MaskRules MaskRules
+	// ColumnReview withholds columns that are new since the user reviewed masking (P534) — required.
+	ColumnReview ColumnReview
 	// ExplainThreshold is the expensive-query row threshold (advanced.expensiveQueryRows) — read
 	// fresh on every call, never cached: a stale threshold silently mis-flags every query after the
 	// user changes it. A plain func rather than an interface, so this package keeps its existing
@@ -123,7 +151,7 @@ type Config struct {
 	// make every heavy-query verdict wrong in a way nothing surfaces.
 	ExplainThreshold func() int
 	// PreviewResponses reports whether run_query results are held for the user's review before the
-	// client gets them (dbMcp.previewResponses) — read fresh on every call. It is the default for connections whose McpReviewResults is inherit. Required for the same
+	// client gets them (dbMcp.previewResponses) — read fresh on every call. It is the default for connections whose review setting is inherit. Required for the same
 	// reason as ExplainThreshold: a silently-defaulted switch would send unreviewed data.
 	PreviewResponses func() bool
 	// Proof backs the proof_* tools (P420); nil leaves them unregistered.
@@ -140,6 +168,8 @@ type Config struct {
 	// decides whether the tools are listed and whether a request waits for the user.
 	API         APIRequester
 	APISettings func() APISettings
+	// Limits are the limits the server enforces on run_query, beside its built-ins. Nil means none.
+	Limits []Limit
 	// Prompts resolves the editable instruction and tool texts; nil means the registry defaults.
 	Prompts llmprompts.Source
 	// Logger receives every operational log line. A nil Logger falls back to slog.Default().
@@ -162,6 +192,11 @@ type Server struct {
 	// that stayed false, wrongly, across every restart within the token's own TTL.
 	tokenMu sync.RWMutex
 	token   mcpauth.Record
+
+	// limits are the enforced run_query limits: built-ins, then cfg.Limits.
+	limits []Limit
+	// exemptions holds the ids limit refusals mint; it lives here so a prompt-edit rebuild keeps them.
+	exemptions *exemptionStore
 
 	// mcp is the tool set for revision mcpRev of the prompts; a prompt edit rebuilds it (server()).
 	mcpMu  sync.Mutex
@@ -204,6 +239,9 @@ func New(cfg Config) (*Server, error) {
 	if cfg.MaskRules == nil {
 		return nil, fmt.Errorf("dbmcp: Config.MaskRules is required")
 	}
+	if cfg.ColumnReview == nil {
+		return nil, fmt.Errorf("dbmcp: Config.ColumnReview is required")
+	}
 	if cfg.ExplainThreshold == nil {
 		return nil, fmt.Errorf("dbmcp: Config.ExplainThreshold is required")
 	}
@@ -219,10 +257,16 @@ func New(cfg Config) (*Server, error) {
 		return nil, fmt.Errorf("dbmcp: resolve token: %w", err)
 	}
 
+	limits, err := validateLimits(cfg.Limits)
+	if err != nil {
+		return nil, err
+	}
 	s := &Server{
-		cfg:   cfg,
-		log:   log,
-		token: tokenRec,
+		cfg:        cfg,
+		log:        log,
+		token:      tokenRec,
+		limits:     limits,
+		exemptions: newExemptionStore(cfg.Approvals.now),
 	}
 	s.mcp, s.mcpRev, s.mcpAPI = s.buildMCPServer(), s.prompts().Revision(), s.apiEnabled()
 
@@ -231,6 +275,37 @@ func New(cfg Config) (*Server, error) {
 	}
 	s.watchExposure()
 	return s, nil
+}
+
+// builtinLimits are the limits every server enforces, ahead of Config.Limits.
+func builtinLimits() []Limit { return []Limit{statementTimeoutLimit{}, expensiveQueryLimit{}} }
+
+// validateLimits rejects a limit with no name, a duplicate name inside in, or neither PreLimit nor
+// ExecLimit. It returns the built-ins followed by in; an entry named like a built-in replaces it
+// (the test seam injects fakes this way).
+func validateLimits(in []Limit) ([]Limit, error) {
+	seen := map[string]bool{}
+	for _, l := range in {
+		name := l.Name()
+		_, pre := l.(PreLimit)
+		_, exec := l.(ExecLimit)
+		switch {
+		case name == "":
+			return nil, fmt.Errorf("dbmcp: a limit has an empty name")
+		case seen[name]:
+			return nil, fmt.Errorf("dbmcp: duplicate limit %q", name)
+		case !pre && !exec:
+			return nil, fmt.Errorf("dbmcp: limit %q implements neither PreLimit nor ExecLimit", name)
+		}
+		seen[name] = true
+	}
+	out := make([]Limit, 0, len(in)+2)
+	for _, b := range builtinLimits() {
+		if !seen[b.Name()] {
+			out = append(out, b)
+		}
+	}
+	return append(out, in...), nil
 }
 
 // watchExposure closes the read lane of a connection the user stops exposing to MCP.
@@ -298,6 +373,11 @@ func (s *Server) buildMCPServer() *mcp.Server {
 		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[describeSchemaArgs](src, llmprompts.DbmcpToolDescribeSchema.ID(), nil), "connectionId", "path"),
 	}, withPanicRecovery(s, "describe_schema", s.describeSchema))
 	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "browse_table",
+		Description: llmprompts.DbmcpToolBrowseTable.Text(src, llmprompts.NoVars{}),
+		InputSchema: browseTableSchema(src),
+	}, withPanicRecovery(s, "browse_table", s.browseTable))
+	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "run_query",
 		Description: llmprompts.DbmcpToolRunQuery.Text(src, llmprompts.NoVars{}),
 		InputSchema: runQuerySchema(src),
@@ -331,6 +411,50 @@ func runQuerySchema(src llmprompts.Source) *jsonschema.Schema {
 	sch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[runQueryArgs](src, llmprompts.DbmcpToolRunQuery.ID(),
 		map[string]any{"maxRows": llmprompts.LimitVars{Default: runQueryDefaultMaxRows, Max: runQueryMaxMaxRows}}), "connectionId", "sql", "mode")
 	sch.Properties["mode"].Enum = []any{modeRead, modeWrite, modeDDL}
+	ex := sch.Properties["exemption"]
+	ex.Properties["id"].MinLength = jsonschema.Ptr(1)
+	ex.Properties["reason"].MinLength = jsonschema.Ptr(1)
+	ex.Properties["reason"].MaxLength = jsonschema.Ptr(maxExemptionReasonRunes)
+	return sch
+}
+
+// browseScalarSchema is the schema of one filter value: a string, number or boolean.
+func browseScalarSchema(desc string) *jsonschema.Schema {
+	return &jsonschema.Schema{Types: []string{"string", "number", "boolean"}, Description: desc}
+}
+
+// browseTableSchema is browse_table's input schema: the ops and directions are enums, the counts are
+// bounded, and a filter value is a scalar.
+func browseTableSchema(src llmprompts.Source) *jsonschema.Schema {
+	sch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[browseTableArgs](src, llmprompts.DbmcpToolBrowseTable.ID(),
+		map[string]any{"limit": llmprompts.LimitVars{Default: browseDefaultRows, Max: browseMaxRows}}), "connectionId", "path")
+	sch.Properties["limit"].Minimum = jsonschema.Ptr(1.0)
+	sch.Properties["limit"].Maximum = jsonschema.Ptr(float64(browseMaxRows))
+	sch.Properties["offset"].Minimum = jsonschema.Ptr(0.0)
+	sch.Properties["offset"].Maximum = jsonschema.Ptr(float64(browseMaxOffset))
+	cols := sch.Properties["columns"]
+	cols.MaxItems = jsonschema.Ptr(browseMaxColumns)
+	filters := sch.Properties["filters"]
+	filters.MaxItems = jsonschema.Ptr(browseMaxFilters)
+	fi := filters.Items
+	ops := make([]any, 0, len(browseOps))
+	for op := range browseOps {
+		ops = append(ops, op)
+	}
+	sort.Slice(ops, func(i, j int) bool { return ops[i].(string) < ops[j].(string) })
+	fi.Properties["op"].Enum = ops
+	fi.Properties["column"].MinLength = jsonschema.Ptr(1)
+	fi.Properties["value"] = browseScalarSchema(fi.Properties["value"].Description)
+	fi.Properties["values"].Items = browseScalarSchema("")
+	fi.Properties["values"].MaxItems = jsonschema.Ptr(browseMaxInValues)
+	order := sch.Properties["order"]
+	order.MaxItems = jsonschema.Ptr(browseMaxOrder)
+	order.Items.Properties["direction"].Enum = []any{"asc", "desc"}
+	order.Items.Properties["column"].MinLength = jsonschema.Ptr(1)
+	ex := sch.Properties["exemption"]
+	ex.Properties["id"].MinLength = jsonschema.Ptr(1)
+	ex.Properties["reason"].MinLength = jsonschema.Ptr(1)
+	ex.Properties["reason"].MaxLength = jsonschema.Ptr(maxExemptionReasonRunes)
 	return sch
 }
 

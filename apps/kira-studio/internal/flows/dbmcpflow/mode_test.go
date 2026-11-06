@@ -272,11 +272,9 @@ func TestDbMcpCancelReadLaneOp(t *testing.T) {
 	}
 }
 
-// The database itself refuses a write hidden in a function under mode=read (SQLSTATE 25006).
-func TestDbMcpReadLanePostgres(t *testing.T) {
-	flowharness.Complete(t)
-	flowharness.RequireDocker(t)
-	const pass, dbName = "flowpass", "flowdb"
+// startPostgres runs a Postgres container for the test and returns its host and mapped port.
+func startPostgres(t *testing.T, pass, dbName string) (string, int) {
+	t.Helper()
 	c, err := tcpostgres.Run(ctx, testsupport.ImageFor("postgres", "postgres:17.11-alpine"),
 		tcpostgres.WithDatabase(dbName), tcpostgres.WithUsername("postgres"), tcpostgres.WithPassword(pass),
 		testcontainers.WithWaitStrategy(tcwait.ForLog("database system is ready to accept connections").WithOccurrence(2).WithStartupTimeout(120*time.Second)),
@@ -293,10 +291,19 @@ func TestDbMcpReadLanePostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return host, int(mapped.Num())
+}
+
+// The database itself refuses a write hidden in a function under mode=read (SQLSTATE 25006).
+func TestDbMcpReadLanePostgres(t *testing.T) {
+	flowharness.Complete(t)
+	flowharness.RequireDocker(t)
+	const pass, dbName = "flowpass", "flowdb"
+	host, port := startPostgres(t, pass, dbName)
 	f := newFixture(t)
 	pg, err := f.app.W.Connections.Create(connections.Input{ConnectionFields: model.ConnectionFields{
 		Name: "flow pg", Kind: "postgres", Color: "indigo", Mode: "fields",
-		Host: ptr(host), Port: ptr(int(mapped.Num())), Database: ptr(dbName), Username: ptr("postgres"),
+		Host: ptr(host), Port: ptr(port), Database: ptr(dbName), Username: ptr("postgres"),
 		Options: map[string]any{"sslmode": "disable"}, McpEnabled: true, McpReadMode: "allow", McpWriteMode: "allow", McpDdlMode: "allow",
 	}, Password: ptr(pass)})
 	if err != nil {

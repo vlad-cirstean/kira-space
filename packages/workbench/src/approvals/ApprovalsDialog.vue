@@ -13,19 +13,24 @@ import {
 import { t } from '@theme/i18n';
 import { revealElement } from '@workbench/behaviour/focus';
 import { useApprovalsStore } from '@workbench/state/approvals';
-import { nextTick, watch } from 'vue';
+import { computed, nextTick, watch } from 'vue';
 import ApprovalItemCard from './ApprovalItemCard.vue';
 import { useApprovalActions } from './approvalsQueries';
+import { useApprovalKinds } from './registry';
 
 const props = defineProps<{ items: ApprovalItem[] }>();
 
 const store = useApprovalsStore();
 const { answer } = useApprovalActions();
 
+const kinds = useApprovalKinds();
+// Approve all leaves out kinds that need an explicit click on the item (limit exemptions).
+const approvable = computed(() => props.items.filter((i) => !kinds[i.kind]?.individualOnly));
+
 // Ids are captured at click time: an item that joins mid-click stays pending.
 function answerAll(approve: boolean): void {
   void answer(
-    props.items.map((i) => i.id),
+    (approve ? approvable.value : props.items).map((i) => i.id),
     approve,
   );
 }
@@ -64,12 +69,13 @@ watch(
           {{ t('workbench.approvals.denyAll.label', { count: items.length }) }}
         </Button>
         <Button
+          v-if="approvable.length > 0"
           variant="dialog-primary"
           size="kira-lg"
           data-testid="approvals-approve-all"
           @click="answerAll(true)"
         >
-          {{ t('workbench.approvals.approveAll.label', { count: items.length }) }}
+          {{ t('workbench.approvals.approveAll.label', { count: approvable.length }) }}
         </Button>
       </DialogFooter>
     </DialogContent>

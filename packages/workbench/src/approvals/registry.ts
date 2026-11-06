@@ -12,6 +12,8 @@ export interface ApprovalKindDef {
   operation?: (item: ApprovalItem) => string;
   /** Button words when Approve/Deny do not fit (Send/Withhold, Accept/Reject). */
   labels?: (item: ApprovalItem) => { approve: string; deny: string };
+  /** Approve all skips this kind: only a click on the item itself approves it. Deny all still covers it. */
+  individualOnly?: boolean;
 }
 
 export type ApprovalKinds = Record<string, ApprovalKindDef>;
@@ -22,6 +24,10 @@ export function provideApprovalKinds(kinds: ApprovalKinds): void {
   provide(approvalKindsKey, kinds);
 }
 
+export function useApprovalKinds(): ApprovalKinds {
+  return inject(approvalKindsKey, {});
+}
+
 export function useApprovalKind(kind: string): ApprovalKindDef | undefined {
-  return inject(approvalKindsKey, {})[kind];
+  return useApprovalKinds()[kind];
 }

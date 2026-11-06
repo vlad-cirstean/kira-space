@@ -721,8 +721,8 @@ exits 0. It overrides `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` for that one install 
   embeds; gitignored like `frontend/dist`, so `go build ./...` fails on a clean checkout until built.
   `scripts/prepare-worktree.sh` builds it, root `bun run build:space` chains it (CI), and the
   Taskfile `build:frontend` task builds it before production `go build`.
-- Tests: `bun run test:ui:space-mobile` (projects `mobile-ios` WebKit, `mobile-android` Chromium;
-  builds first). `insecure-origin.spec.ts` runs on Chromium only (host mapping in
+- Tests: `bun run test:ui:space-mobile` (projects `mobile-ios` WebKit, `mobile-insecure` Chromium;
+  builds first). `insecure-origin.spec.ts` runs on `mobile-insecure` only (Chromium host mapping in
   `playwright.config.ts`). Visual baselines are not part of it.
 - Phone: enable Settings > Mobile access, click "Trust this network" while on your home Wi-Fi, scan
   the QR, approve the code in Kira Space. The server runs only on that network (identity: subnet,

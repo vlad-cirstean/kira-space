@@ -1,0 +1,244 @@
+{
+  "ApprovalsService.List#exemption": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.exemption:<id:1>",
+      "kind": "db.exemption",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "detected": "read",
+        "enforcement": "session",
+        "limits": [
+          {
+            "limit": "expensive_query",
+            "max": 1000,
+            "measured": 5000,
+            "unit": "rows"
+          }
+        ],
+        "mode": "read",
+        "plan": null,
+        "reason": "the report needs every row",
+        "reviewOffered": true,
+        "reviewResult": false,
+        "statement": "select * from notes /* big */"
+      },
+      "reason": "exemption",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#on": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:1>",
+      "kind": "db.query",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "detected": "read",
+        "enforcement": "session",
+        "mode": "read",
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": true,
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#query": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:1>",
+      "kind": "db.query",
+      "operation": {
+        "class": "write",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "detected": "write",
+        "enforcement": "",
+        "mode": "write",
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
+        "statement": "insert into notes (body) values ('three')"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#requested": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.response:<id:3>",
+      "kind": "db.response",
+      "operation": {
+        "class": "write",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "alreadyRan": true,
+        "bytes": 146,
+        "connectionId": "<id:2>",
+        "isError": false,
+        "mode": "write",
+        "requested": true,
+        "statement": "insert into notes (body) values ('three')"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#response": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.response:<id:2>",
+      "kind": "db.response",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "alreadyRan": false,
+        "bytes": 217,
+        "connectionId": "<id:1>",
+        "isError": false,
+        "mode": "read",
+        "requested": false,
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "ConnectionsService.List#review": {
+    "autoExplain": false,
+    "color": "teal",
+    "createdAt": "<masked>",
+    "database": "/data/mcp.db",
+    "file": "notes-db.yaml",
+    "host": null,
+    "id": "<id:1>",
+    "kind": "sqlite",
+    "maskReviewOn": false,
+    "mcpAutoExplain": false,
+    "mcpDdlMode": "deny",
+    "mcpDescription": "scratch notes",
+    "mcpEnabled": true,
+    "mcpMaskedMode": "inherit",
+    "mcpReadMode": "allow",
+    "mcpReview": {
+      "ddl": "inherit",
+      "masked": "inherit",
+      "read": "review",
+      "write": "send"
+    },
+    "mcpStatementTimeoutSec": 0,
+    "mcpTables": null,
+    "mcpWriteMode": "allow",
+    "mode": "fields",
+    "name": "notes db",
+    "options": {},
+    "port": null,
+    "preconnect": null,
+    "preconnectDelaySec": 0,
+    "preconnectSidecar": false,
+    "readOnly": false,
+    "sortOrder": 0,
+    "throttlePerSec": 0,
+    "updatedAt": "<masked>",
+    "uri": null,
+    "username": null
+  },
+  "args:ApprovalsService.Answer#review": {
+    "approve": true,
+    "ids": [
+      "db.query:<id:1>"
+    ],
+    "options": {
+      "db.query:<id:1>": {
+        "reviewResult": true
+      }
+    }
+  }
+}

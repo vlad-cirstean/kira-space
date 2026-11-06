@@ -67,8 +67,20 @@ export interface ConnectionFileMcp {
   read?: string;
   write?: string;
   ddl?: string;
+  /** browse_table (P535): inherit (absent) follows read. */
+  masked?: string;
   auto_explain?: boolean;
+  /** Legacy single value for every mode `review` leaves unset. */
   review_results?: string;
+  review?: { read?: string; write?: string; ddl?: string; masked?: string };
+  statement_timeout_sec?: number;
+  // Absent = all tables; [] = none.
+  tables?: string[];
+}
+
+// Column review (P534). Absent = off; columns are tableref column entries.
+export interface ConnectionFileMaskReview {
+  columns: string[];
 }
 
 export interface ConnectionFileModel {
@@ -89,6 +101,7 @@ export interface ConnectionFileModel {
   throttle_per_sec?: number;
   mcp?: ConnectionFileMcp;
   masks?: ConnectionFileMask[];
+  mask_review?: ConnectionFileMaskReview;
 }
 
 /** The reply of ConnectionConfigService.Form: the edited text and what it decodes to. */

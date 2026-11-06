@@ -1,18 +1,35 @@
 <script setup lang="ts">
-import { EXPLAIN_SUPPORTED_KINDS } from '@shared/domain/connection';
+import {
+  CONNECTION_MCP_STATEMENT_TIMEOUT,
+  EXPLAIN_SUPPORTED_KINDS,
+} from '@shared/domain/connection';
 import type { ConnectionFileMcp, ConnectionFileModel } from '@shared/domain/connectionConfig';
-import { accessSummaryOf, enforcementOf, hasWriteConsole } from '@shared/domain/dbmcp';
+import {
+  accessSummaryOf,
+  enforcementOf,
+  expensiveQueryCheckOf,
+  hasWriteConsole,
+  statementTimeoutEnforcementOf,
+} from '@shared/domain/dbmcp';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { type MessageKey, t } from '@theme/i18n';
+import NumberStepperInput from '@theme/NumberStepperInput.vue';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
+import { formatCount } from '@workbench/behaviour/format';
 import { computed } from 'vue';
 import { useSettingsStore } from '../../state/settings';
 import CheckboxRow from './CheckboxRow.vue';
+import ConnectionMcpMasked from './ConnectionMcpMasked.vue';
+import ConnectionMcpReview from './ConnectionMcpReview.vue';
+import ConnectionMcpTables from './ConnectionMcpTables.vue';
 
 // What an AI client may do through the database MCP server. A key left out takes its default.
-const props = defineProps<{ errorFor: (pointer: string) => string | undefined }>();
+const props = defineProps<{
+  errorFor: (pointer: string) => string | undefined;
+  connectionId?: string;
+}>();
 const file = defineModel<ConnectionFileModel>({ required: true });
 const settingsStore = useSettingsStore();
 
@@ -24,6 +41,11 @@ function setMcp(change: Partial<ConnectionFileMcp>): void {
 
 // Disabled, never hidden, for kinds without a parseable EXPLAIN: the setting stays visible.
 const explainSupported = computed(() => EXPLAIN_SUPPORTED_KINDS.has(file.value.kind as never));
+
+// Mirrors internal/dbmcp's expensiveCheckOf: which row-check note applies to this kind and switch.
+const rowCheck = computed(() =>
+  expensiveQueryCheckOf(file.value.kind, mcp.value.auto_explain ?? true),
+);
 
 // Mirrors internal/dbmcp's accessOf: what each declared run_query mode allows for this connection.
 const writeConsole = computed(() => hasWriteConsole(file.value.kind));
@@ -47,21 +69,16 @@ const accessSummary = computed(() =>
 const writeOrDdlOpen = computed(
   () => (mcp.value.write ?? 'prompt') !== 'deny' || (mcp.value.ddl ?? 'deny') !== 'deny',
 );
-const notes = computed(() => {
-  const list: { name: string; key: MessageKey }[] = [];
-  if (enforcement.value === 'app')
-    list.push({ name: 'limitApp', key: 'studio.project.connectionDialog.mcp.limitApp.body' });
-  if (enforcement.value === 'session')
-    list.push({ name: 'readLane', key: 'studio.project.connectionDialog.mcp.readLane.body' });
-  if (!writeConsole.value)
-    list.push({
-      name: 'noWriteConsole',
-      key: 'studio.project.connectionDialog.mcp.noWriteConsole.body',
-    });
-  else if (writeOrDdlOpen.value)
-    list.push({ name: 'limitDdl', key: 'studio.project.connectionDialog.mcp.limitDdl.body' });
-  return list;
-});
+// The known-limit note under each class: reads name their lane, write names the DDL blind spot.
+function classNote(cls: 'read' | 'write' | 'ddl'): { name: string; key: MessageKey } | undefined {
+  if (cls === 'read' && enforcement.value === 'app')
+    return { name: 'limitApp', key: 'studio.project.connectionDialog.mcp.limitApp.body' };
+  if (cls === 'read' && enforcement.value === 'session')
+    return { name: 'readLane', key: 'studio.project.connectionDialog.mcp.readLane.body' };
+  if (cls === 'write' && writeConsole.value && writeOrDdlOpen.value)
+    return { name: 'limitDdl', key: 'studio.project.connectionDialog.mcp.limitDdl.body' };
+  return undefined;
+}
 
 const CLASSES = [
   {
@@ -98,26 +115,53 @@ function modeOptions(cls: (typeof CLASSES)[number]['cls']) {
   }));
 }
 
-// Inherit's label shows the current app setting.
-const reviewOptions = computed(() => {
-  const items = [
-    {
-      value: 'inherit',
-      label: t(
-        settingsStore.dbMcp.previewResponses
-          ? 'studio.project.connectionDialog.mcp.reviewInheritOn.option'
-          : 'studio.project.connectionDialog.mcp.reviewInheritOff.option',
-      ),
-    },
-    { value: 'review', label: t('studio.project.connectionDialog.mcp.reviewAlways.option') },
-    { value: 'send', label: t('studio.project.connectionDialog.mcp.reviewNever.option') },
-  ];
-  return items.map((i) => ({
-    ...i,
-    testid: `connection-mcp-review-${i.value}`,
-    disabled: !enabled.value,
-  }));
+const throttleLead = computed(() => {
+  const perSec = file.value.throttle_per_sec ?? 0;
+  const tab = t('common.advanced.label');
+  return perSec > 0
+    ? t('studio.project.connectionDialog.mcp.throttle.body', { rate: String(perSec), tab })
+    : t('studio.project.connectionDialog.mcp.throttleOff.body', { tab });
 });
+
+// Mirrors statementTimeoutEnforcementOf: who stops a statement past the timeout, per mode.
+const timeoutValue = computed(
+  () => mcp.value.statement_timeout_sec ?? CONNECTION_MCP_STATEMENT_TIMEOUT.default,
+);
+function setTimeoutSec(value: string): void {
+  const n = Number.parseFloat(value);
+  setMcp({
+    statement_timeout_sec: Number.isNaN(n) ? CONNECTION_MCP_STATEMENT_TIMEOUT.default : n,
+  });
+}
+const timeoutError = computed(() => {
+  const v = timeoutValue.value;
+  if (!Number.isInteger(v) || v < 0 || v > CONNECTION_MCP_STATEMENT_TIMEOUT.max) {
+    return t('studio.project.connectionDialog.mcp.timeoutRange.status', {
+      max: CONNECTION_MCP_STATEMENT_TIMEOUT.max,
+    });
+  }
+  return props.errorFor('/mcp/statement_timeout_sec');
+});
+const timeoutEnforcement = computed(() => {
+  if (timeoutValue.value === 0) return t('studio.project.connectionDialog.mcp.timeoutOff.body');
+  const by = statementTimeoutEnforcementOf(file.value.kind);
+  const modes = ['read', 'write', 'ddl'] as const;
+  const engine = modes.filter((m) => by[m] === 'session');
+  const app = modes.filter((m) => by[m] === 'app');
+  if (engine.length === 0 && app.length === 0)
+    return t('studio.project.connectionDialog.mcp.timeoutNone.body');
+  if (app.length === 0) return t('studio.project.connectionDialog.mcp.timeoutByEngine.body');
+  if (engine.length === 0) return t('studio.project.connectionDialog.mcp.timeoutByApp.body');
+  return t('studio.project.connectionDialog.mcp.timeoutSplit.body', {
+    engine: engine.join(', '),
+    app: app.join(', '),
+  });
+});
+const timeoutThrottled = computed(
+  () =>
+    (file.value.throttle_per_sec ?? 0) > 0 &&
+    (timeoutValue.value === 0 || timeoutValue.value >= 28),
+);
 </script>
 
 <template>
@@ -157,12 +201,41 @@ const reviewOptions = computed(() => {
       :model-value="mcp.auto_explain ?? true"
       :disabled="!enabled || !explainSupported"
       :label="t('studio.project.connectionDialog.mcp.plan.label')"
-      :description="
-        explainSupported ? undefined : t('studio.project.connectionDialog.mcp.plan.description')
-      "
       testid="connection-mcp-auto-explain"
       @update:model-value="(v) => setMcp({ auto_explain: v })"
     />
+    <template v-if="enabled">
+      <template v-if="rowCheck === 'plan'">
+        <FieldDescription class="w-full" data-testid="connection-mcp-rows-threshold">
+          {{ t('studio.settings.advanced.expensiveRows.description') }}
+        </FieldDescription>
+        <FieldDescription class="w-full" data-testid="connection-mcp-rows-who">
+          {{
+            t('studio.project.connectionDialog.mcp.rowsWho.body', {
+              threshold: formatCount(settingsStore.advanced.expensiveQueryRows),
+            })
+          }}
+        </FieldDescription>
+        <FieldDescription class="w-full" data-testid="connection-mcp-rows-hit">
+          {{ t('studio.project.connectionDialog.mcp.rowsHit.body') }}
+        </FieldDescription>
+        <FieldDescription class="w-full" data-testid="connection-mcp-rows-limits">
+          {{ t('studio.project.connectionDialog.mcp.rowsLimits.body') }}
+        </FieldDescription>
+      </template>
+      <FieldDescription
+        v-else-if="rowCheck === 'off'"
+        class="w-full"
+        data-testid="connection-mcp-rows-off"
+      >
+        {{ t('studio.project.connectionDialog.mcp.rowsOff.body') }}
+      </FieldDescription>
+      <FieldDescription v-else class="w-full" data-testid="connection-mcp-rows-none">
+        {{ t('studio.project.connectionDialog.mcp.rowsNone.body') }}
+      </FieldDescription>
+    </template>
+
+    <ConnectionMcpMasked :mcp="mcp" :kind="file.kind" :enabled="enabled" @change="setMcp" />
 
     <Field v-for="c in CLASSES" :key="c.cls" class="flex-1">
       <FieldLabel
@@ -177,7 +250,24 @@ const reviewOptions = computed(() => {
         :data-testid="`connection-mcp-${c.cls}`"
         @update:model-value="(v) => setMcp({ [c.cls]: String(v) })"
       />
+      <FieldDescription
+        v-if="classNote(c.cls)"
+        class="w-full"
+        :data-testid="`connection-mcp-note-${classNote(c.cls)?.name}`"
+      >
+        {{ t(classNote(c.cls)?.key as MessageKey) }}
+      </FieldDescription>
+      <FieldDescription
+        v-if="c.cls === 'ddl' && writeConsole"
+        class="w-full"
+        data-testid="connection-mcp-enforce-ddl"
+      >
+        {{ t('studio.project.connectionDialog.mcp.enforceDdl.body') }}
+      </FieldDescription>
     </Field>
+    <FieldDescription class="w-full" data-testid="connection-mcp-enforce-modes">
+      {{ t('studio.project.connectionDialog.mcp.enforceModes.body') }}
+    </FieldDescription>
     <FieldDescription class="w-full" data-testid="connection-mcp-access">
       <strong>{{ t('studio.project.connectionDialog.mcp.access.label') }}</strong>
       <span data-testid="connection-mcp-access-summary"> {{ accessSummary }}.</span>
@@ -186,12 +276,11 @@ const reviewOptions = computed(() => {
       >
     </FieldDescription>
     <FieldDescription
-      v-for="n in notes"
-      :key="n.name"
+      v-if="!writeConsole"
       class="w-full"
-      :data-testid="`connection-mcp-note-${n.name}`"
+      data-testid="connection-mcp-note-noWriteConsole"
     >
-      {{ t(n.key) }}
+      {{ t('studio.project.connectionDialog.mcp.noWriteConsole.body') }}
     </FieldDescription>
     <FieldDescription class="w-full">
       {{
@@ -200,25 +289,80 @@ const reviewOptions = computed(() => {
         })
       }}
     </FieldDescription>
+    <FieldDescription v-if="enabled" class="w-full" data-testid="connection-mcp-throttle">
+      {{ throttleLead }}
+      {{ t('studio.project.connectionDialog.throttle.description') }}
+      <span data-testid="connection-mcp-enforce-throttle">{{
+        t('studio.project.connectionDialog.mcp.enforceThrottle.body')
+      }}</span>
+    </FieldDescription>
+    <template v-if="enabled">
+      <FieldDescription class="w-full" data-testid="connection-mcp-enforce-exemption">
+        {{ t('studio.project.connectionDialog.mcp.enforceExemption.body') }}
+      </FieldDescription>
+      <FieldDescription class="w-full" data-testid="connection-mcp-enforce-rows">
+        {{ t('studio.project.connectionDialog.mcp.enforceRows.body') }}
+      </FieldDescription>
+      <FieldDescription class="w-full" data-testid="connection-mcp-enforce-masking">
+        {{ t('studio.project.connectionDialog.mcp.enforceMasking.body') }}
+      </FieldDescription>
+    </template>
 
     <Field class="flex-1">
-      <FieldLabel
-        >{{ t('studio.project.connectionDialog.mcp.review.label') }}
-        <span class="text-subtle"
-          >— {{ t('studio.project.connectionDialog.mcp.reviewNote.label') }}</span
-        ></FieldLabel
-      >
-      <SecondaryTabs
-        variant="segmented"
-        size="kira-lg"
-        :model-value="mcp.review_results ?? 'inherit'"
-        :items="reviewOptions"
-        data-testid="connection-mcp-review"
-        @update:model-value="(v) => setMcp({ review_results: String(v) })"
-      />
-      <FieldDescription class="w-full">{{
-        t('studio.project.connectionDialog.mcp.review.description')
-      }}</FieldDescription>
+      <FieldLabel>{{ t('studio.project.connectionDialog.mcp.timeoutLabel.label') }}</FieldLabel>
+      <div class="w-24">
+        <NumberStepperInput
+          :min="0"
+          :max="CONNECTION_MCP_STATEMENT_TIMEOUT.max"
+          step="1"
+          :disabled="!enabled"
+          :aria-invalid="timeoutError ? true : undefined"
+          data-testid="connection-mcp-timeout"
+          :model-value="String(timeoutValue)"
+          @update:model-value="(v: string | number) => setTimeoutSec(String(v))"
+        />
+      </div>
+      <FieldError v-if="timeoutError" data-testid="connection-mcp-timeout-error">
+        {{ timeoutError }}
+      </FieldError>
+      <template v-else>
+        <FieldDescription class="w-full" data-testid="connection-mcp-timeout-description">
+          {{
+            t('studio.project.connectionDialog.mcp.timeoutDescription.body', {
+              default: CONNECTION_MCP_STATEMENT_TIMEOUT.default,
+            })
+          }}
+        </FieldDescription>
+        <FieldDescription class="w-full" data-testid="connection-mcp-timeout-enforcement">
+          {{ timeoutEnforcement }}
+          <span v-if="timeoutValue > 0">{{
+            t('studio.project.connectionDialog.mcp.timeoutHit.body')
+          }}</span>
+        </FieldDescription>
+        <FieldDescription
+          v-if="timeoutThrottled"
+          class="w-full"
+          data-testid="connection-mcp-timeout-throttle"
+        >
+          {{ t('studio.project.connectionDialog.mcp.timeoutThrottle.body') }}
+        </FieldDescription>
+      </template>
     </Field>
+
+    <ConnectionMcpTables
+      :mcp="mcp"
+      :kind="file.kind"
+      :enabled="enabled"
+      :connection-id="connectionId"
+      @change="setMcp"
+    />
+
+    <ConnectionMcpReview
+      :mcp="mcp"
+      :kind="file.kind"
+      :enabled="enabled"
+      :write-console="writeConsole"
+      @change="setMcp"
+    />
   </div>
 </template>

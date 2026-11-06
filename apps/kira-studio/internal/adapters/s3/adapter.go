@@ -174,6 +174,9 @@ func (a *Adapter) resolveObjectTarget(path model.NodePath) (bucket, key string, 
 
 // Read is index.ts's read.
 func (a *Adapter) Read(ctx context.Context, req adapters.ReadRequest, op *adapters.OpCtx) (page.Page, error) {
+	if err := adapters.RejectConditions("s3", req.Conditions); err != nil {
+		return nil, err
+	}
 	client, err := a.requireClient()
 	if err != nil {
 		return nil, err

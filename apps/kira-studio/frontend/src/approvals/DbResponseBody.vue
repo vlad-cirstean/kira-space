@@ -18,10 +18,15 @@ const requestId = computed(() => props.item.id.slice(props.item.kind.length + 1)
   <div class="flex flex-col gap-2" data-testid="db-mcp-preview-body">
     <p class="m-0 whitespace-pre-wrap">
       {{
-        t('studio.dbMcp.preview.lede.body', {
-          connection: item.target.name,
-          kind: item.target.kind,
-        })
+        t(
+          payload.requested
+            ? 'studio.dbMcp.preview.requested.body'
+            : 'studio.dbMcp.preview.lede.body',
+          {
+            connection: item.target.name,
+            kind: item.target.kind,
+          },
+        )
       }}
     </p>
     <ApprovalStatement compact :kind="item.target.kind" :statement="payload.statement" />

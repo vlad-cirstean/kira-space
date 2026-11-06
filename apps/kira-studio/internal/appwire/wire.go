@@ -164,6 +164,7 @@ func wireEmbeddedServices(deps appcore.Deps, installer harness.MCPInstaller, app
 	dbMcpApprovals := dbmcp.NewApprovalBroker(time.Now, approvalQueue)
 	kubeSvc := &bridge.KubernetesService{BoundService: kubernetes.NewBoundService(deps.Repos.KubeClusters, deps.Events, append([]kubernetes.Option{kubernetes.WithRecorder(bridge.KubeRecorder{Host: deps.Router.Host()})}, opts.KubernetesExtra...)...)}
 	dbMcpSvc := bridge.NewDbMcpService(deps, installer, dbMcpApprovals, proofSvc, kubernetes.ServiceOf(kubeSvc.BoundService))
+	dbMcpSvc.Port = opts.DbMcpPort
 
 	// P87 §3/§4: one keep-awake assertion for the whole app, driven by the titlebar toggle. The
 	// driver is a runtime.GOOS switch — a real caffeinate child on macOS, a documented no-op

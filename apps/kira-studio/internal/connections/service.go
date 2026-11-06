@@ -570,10 +570,11 @@ func destinationUnchanged(a, b connfiles.File) bool {
 // already resolved, so it never changes what a destination-unchanged edit connects to —
 // "edit the throttle → Test connection" must still inject the stored password. McpEnabled
 // gates whether this connection is exposed to the DB MCP server, never what it connects to.
-// McpDescription is free-text metadata, never interpreted; McpReadMode/McpWriteMode/McpDdlMode
+// McpDescription is free-text metadata, never interpreted; McpReadMode/McpWriteMode/McpDdlMode/McpMaskedMode
 // gate DB-MCP-path permissions, not the destination. McpAutoExplain gates DB-MCP-path plan-first
-// behaviour, the same non-destination footing as AutoExplain. McpReviewResults gates DB-MCP-path
-// result review, never the destination. PreconnectDelaySec is timing only,
+// behaviour, the same non-destination footing as AutoExplain. McpReview gates DB-MCP-path
+// result review, never the destination. McpStatementTimeoutSec bounds DB-MCP statements and McpTables
+// the DB-MCP table set, never the destination. PreconnectDelaySec is timing only,
 // never the destination.
 func zeroExemptFields(f *model.ConnectionFields) {
 	f.Name = ""
@@ -585,10 +586,14 @@ func zeroExemptFields(f *model.ConnectionFields) {
 	f.McpEnabled = false
 	f.McpDescription = ""
 	f.McpReadMode = ""
+	f.McpMaskedMode = ""
 	f.McpWriteMode = ""
 	f.McpDdlMode = ""
 	f.McpAutoExplain = false
-	f.McpReviewResults = ""
+	f.McpReview = model.McpReview{}
+	f.McpStatementTimeoutSec = 0
+	f.McpTables = nil
+	f.MaskReviewOn = false
 }
 
 // Test never errors: it tests the saved file, resolves its secret server-side and never displays it

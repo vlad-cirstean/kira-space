@@ -132,16 +132,66 @@
           "default": "deny",
           "description": "Schema statements."
         },
+        "masked": {
+          "type": "string",
+          "enum": ["inherit", "deny", "allow", "prompt"],
+          "default": "inherit",
+          "description": "The browse_table tool: one table, filters, order, at most 100 rows, masking always applied. inherit follows read."
+        },
         "auto_explain": {
           "type": "boolean",
           "default": true,
-          "description": "Run EXPLAIN first and hold costly queries for a decision."
+          "description": "Run EXPLAIN before an agent's SELECT or WITH and refuse it when the estimated rows read reach advanced.expensiveQueryRows."
         },
         "review_results": {
           "type": "string",
           "enum": ["inherit", "review", "send"],
           "default": "inherit",
-          "description": "inherit follows the app setting; review always holds results for a look; send never holds them."
+          "description": "Legacy: applies to every mode that review leaves unset. inherit follows the app setting; review always holds results for a look; send never holds them."
+        },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Result review per mode. An unset mode follows review_results, else inherit. inherit follows the app setting; review always holds results for a look; send never holds them.",
+          "properties": {
+            "read": {
+              "type": "string",
+              "enum": ["inherit", "review", "send"],
+              "default": "inherit",
+              "description": "Reads."
+            },
+            "write": {
+              "type": "string",
+              "enum": ["inherit", "review", "send"],
+              "default": "inherit",
+              "description": "Writes."
+            },
+            "ddl": {
+              "type": "string",
+              "enum": ["inherit", "review", "send"],
+              "default": "inherit",
+              "description": "Schema statements."
+            },
+            "masked": {
+              "type": "string",
+              "enum": ["inherit", "review", "send"],
+              "default": "inherit",
+              "description": "browse_table results."
+            }
+          }
+        },
+        "statement_timeout_sec": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3600,
+          "default": 10,
+          "description": "Seconds each statement an agent runs may take; 0 turns the timeout off."
+        },
+        "tables": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Tables, views or collections MCP statements may touch. Absent allows all, including later ones; an empty list allows none. Entry format: postgres database.schema.name; mysql, mariadb, clickhouse, mongodb database.name; sqlite and kibana name. Wrap a part in double quotes when it holds a dot. Not for redis, kafka, s3 or sqs."
         }
       }
     },
@@ -174,6 +224,20 @@
             "default": true,
             "description": "Add a keyed tag so equal values stay recognisable. Not for number."
           }
+        }
+      }
+    },
+    "mask_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["columns"],
+      "description": "Column review for masking. Absent turns it off. Present, a column that no mask rule covers and that is not listed here is withheld from MCP results until the user reviews it. Not for mongodb, redis, kafka, s3, sqs or kibana.",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "maxItems": 100000,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Columns the user reviewed. Entry format: the table entry of the kind plus the column, for example postgres database.schema.table.column; mysql, mariadb, clickhouse database.table.column; sqlite table.column. Wrap a part in double quotes when it holds a dot."
         }
       }
     },

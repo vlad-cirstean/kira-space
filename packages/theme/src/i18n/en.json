@@ -1584,6 +1584,9 @@
         "handover": {
           "title": "{count} tasks are ready to move on"
         },
+        "masking": {
+          "title": "{count} connections need a masking review"
+        },
         "mobilePairing": {
           "title": "{count} phones ask for access"
         },
@@ -1602,6 +1605,9 @@
       },
       "dbMcpAPI": {
         "title": "Send {method} request to {host}"
+      },
+      "dbMcpExemption": {
+        "title": "Lift a limit for one query · {name}"
       },
       "dbMcpNamed": {
         "title": "Approve this query · {name}"
@@ -1623,6 +1629,9 @@
       },
       "handover": {
         "title": "Move {task} to the next stage"
+      },
+      "masking": {
+        "title": "New columns on {name} need a masking review"
       },
       "mobilePairing": {
         "title": "A phone asks for access"
@@ -2207,7 +2216,7 @@
           "body": "The operation was cancelled before it started."
         },
         "cancelledWaitingForRateLimit": {
-          "body": "The operation was cancelled while waiting for the connection’s rate limit."
+          "body": "The operation was cancelled while waiting for its turn under the connection’s throttle."
         },
         "closingQuoteFollow": {
           "body": "A closing quote must be followed by a space or the end of the line."
@@ -2413,8 +2422,17 @@
         "sqsVisibilityTimeout": {
           "body": "The visibility timeout must be a whole number of seconds from 1 to 43200."
         },
+        "statementTimeout": {
+          "body": "The statement ran longer than its {seconds} s timeout and was stopped."
+        },
         "stringUnterminated": {
           "body": "Unterminated string literal."
+        },
+        "throttleBusyTimeout": {
+          "body": "Waited {seconds} s for another operation on this connection to finish. A throttled connection runs one operation at a time. Retry, or raise or turn off the throttle in the connection settings."
+        },
+        "throttleRateTimeout": {
+          "body": "Waited {seconds} s for the connection’s throttle ({rate} ops per second). Retry, or raise the throttle in the connection settings."
         },
         "trailingContentLiteral": {
           "body": "Unexpected trailing content after the literal."
@@ -2544,8 +2562,29 @@
         "hostRequired": {
           "body": "Host is required."
         },
+        "maskReviewEntry": {
+          "body": "A column in the masking review list is not valid for this connection kind."
+        },
+        "maskReviewKind": {
+          "body": "Masking column review does not apply to this connection kind."
+        },
+        "maskReviewMax": {
+          "body": "The masking review list holds at most {max} columns."
+        },
         "mcpDescriptionLength": {
           "body": "MCP description must be at most 1000 characters."
+        },
+        "mcpStatementTimeoutRange": {
+          "body": "Statement timeout is 0 (off) or a whole number of seconds from 1 to 3600."
+        },
+        "mcpTablesEntry": {
+          "body": "A table in the MCP table list is not valid for this connection kind."
+        },
+        "mcpTablesKind": {
+          "body": "The MCP table list does not apply to this connection kind."
+        },
+        "mcpTablesMax": {
+          "body": "The MCP table list holds at most {max} entries."
         },
         "nameLength": {
           "body": "Name must be 1-120 characters."
@@ -13585,11 +13624,34 @@
         "estimate": {
           "body": "Estimated {count} row read, threshold {threshold}. | Estimated {count} rows read, threshold {threshold}."
         },
+        "exemption": {
+          "approve": {
+            "label": "Lift for this query"
+          },
+          "deny": {
+            "label": "Keep the limit"
+          },
+          "expensiveQuery": {
+            "label": "Estimated rows read"
+          },
+          "lede": {
+            "body": "{connection} ({kind}) asks to run one statement past a limit. Approving runs this statement once; the limit stays for every other call."
+          },
+          "limit": {
+            "label": "{label}: {measured}, limit {max}"
+          },
+          "noTimeout": {
+            "body": "Approving runs this statement with no time limit. Stop it from the operations panel if needed."
+          },
+          "reason": {
+            "label": "Agent’s reason"
+          },
+          "statementTimeout": {
+            "label": "Statement timeout"
+          }
+        },
         "formatted": {
           "option": "Formatted"
-        },
-        "heavy": {
-          "body": "{connection} ({kind}) wants to run a query estimated to read {count} row, over your threshold of {threshold}. | {connection} ({kind}) wants to run a query estimated to read {count} rows, over your threshold of {threshold}."
         },
         "kube": {
           "describe": {
@@ -13610,6 +13672,12 @@
         },
         "read": {
           "body": "{connection} ({kind}) wants to run a read statement through the database MCP server."
+        },
+        "reviewResult": {
+          "label": "Review the result before the AI gets it"
+        },
+        "reviewResultOn": {
+          "body": "This connection reviews {mode} results."
         },
         "script": {
           "folder": {
@@ -13655,6 +13723,9 @@
         },
         "redisType": {
           "status": "Type {type}"
+        },
+        "requested": {
+          "body": "{connection} ({kind}) ran this statement. You asked to check its result before the AI gets it."
         },
         "send": {
           "label": "Send to AI"
@@ -15305,6 +15376,24 @@
           "descriptionNote": {
             "label": "What this database is for, read verbatim by MCP clients"
           },
+          "enforceDdl": {
+            "body": "Kira reads the statement text to tell DDL from the rest. Text it can’t classify needs DDL, so set DDL to deny to block it."
+          },
+          "enforceExemption": {
+            "body": "When a limit refuses a statement, the agent may ask to lift it for that one statement. A dialog always appears, even when the mode is allow. Approve all does not cover it; you approve each one by itself. Deny keeps the limit."
+          },
+          "enforceMasking": {
+            "body": "Kira masks a result column when its lowercased name matches a rule. The rule’s table is ignored. Kira scans the statement for a masked column behind an alias or expression and refuses that result. The scan is best effort. A view that renames a column can slip through. A where clause on a masked column can reveal values by which rows come back. New columns are withheld until you review them when column review is on."
+          },
+          "enforceModes": {
+            "body": "Kira checks the mode before any query runs. Deny refuses the call. Allow runs it at once. Ask me shows you the statement and runs it only after you approve; no answer in 10 minutes refuses it."
+          },
+          "enforceRows": {
+            "body": "Kira cuts each result to 200 rows unless the agent asks for more, up to 2000. A cut result is flagged truncated."
+          },
+          "enforceThrottle": {
+            "body": "Kira enforces the throttle in one gate per connection, for you and for the agent. An exemption does not lift it."
+          },
           "expose": {
             "description": "Nothing is exposed by default. The same switch lives in the database MCP section of settings; either one toggles the other.",
             "label": "Expose to the database MCP server"
@@ -15315,12 +15404,32 @@
           "limitDdl": {
             "body": "The database can’t tell write from DDL on one session. Kira refuses statements more powerful than the declared mode, but a misclassified DDL would run under the write permission."
           },
+          "masked": {
+            "label": "Read masked data"
+          },
+          "maskedEnforceHit": {
+            "body": "A filter or sort on a masked column, a column not yet reviewed, a table off the allow list, or a view on a masked connection is refused with the reason. Masked columns only take is-empty filters. A browse over the row estimate or the statement timeout is refused; the agent may ask you to lift that limit once."
+          },
+          "maskedEnforceLimits": {
+            "body": "Masking still matches by column name. The row-estimate check plans the statement Kira builds; engines with no estimate (SQLite) skip it, and a filter value containing a semicolon can’t be planned, so it is refused while the check is on. The throttle applies. Engines without tables (MongoDB, Redis, Kafka, S3, SQS, Kibana) can’t browse."
+          },
+          "maskedEnforceWho": {
+            "body": "Kira’s MCP server builds every browse statement itself from the agent’s choices and runs it read-only. The agent never sends SQL here."
+          },
+          "maskedInherit": {
+            "option": "Same as read ({mode})"
+          },
+          "maskedNa": {
+            "body": "This engine has no structured browse. The agent can only read through run_query."
+          },
+          "maskedNote": {
+            "label": "One table, with chosen columns, filters and order; up to 100 rows"
+          },
           "noWriteConsole": {
             "body": "Write and DDL modes are not available for this connection kind."
           },
           "plan": {
-            "description": "This engine has no query plan this app can read.",
-            "label": "Plan queries before running them"
+            "label": "Check agent queries against the row threshold"
           },
           "prompt": {
             "label": "Ask me"
@@ -15341,6 +15450,21 @@
           "reviewAlways": {
             "option": "Always"
           },
+          "reviewEnforceDeny": {
+            "body": "Withhold, no answer in 10 minutes, or the agent cancelling returns an error with no rows. The agent never sees a withheld result."
+          },
+          "reviewEnforceLimits": {
+            "body": "Withhold does not undo a write. The agent still learns that the query ran. A statement is reviewed when its mode, or the mode it looks like, holds results. Only run_query and browse_table results are reviewed. A browse follows its own masked setting."
+          },
+          "reviewEnforceMemory": {
+            "body": "A held result lives only in memory. It is never logged, saved or shown in a notification. A result over 8 MB is withheld unseen."
+          },
+          "reviewEnforceScope": {
+            "body": "The statement timeout and the throttle cover the query, not your review. An approval prompt can also ask to review that one call."
+          },
+          "reviewEnforceWho": {
+            "body": "Kira enforces review in the app. The query runs, then Kira holds its result until you send or withhold it. The agent gets nothing until then."
+          },
           "reviewInheritOff": {
             "option": "App setting (off)"
           },
@@ -15353,8 +15477,108 @@
           "reviewNote": {
             "label": "Hold each query result for you to check before the AI gets it"
           },
+          "rowsHit": {
+            "body": "At or above it, the call is refused before it runs. The agent may improve the query or ask for an exemption; you always approve it in a dialog. If the EXPLAIN fails or its plan can’t be read, the call is refused too."
+          },
+          "rowsLimits": {
+            "body": "Known limits. Estimates come from table statistics and ignore LIMIT, so sampling a big table can be refused. Other statements, and reads the planner can’t size, are not checked; the statement timeout still applies. The EXPLAIN is one more op against the throttle."
+          },
+          "rowsNone": {
+            "body": "This engine gives no row estimate, so agent queries here are not checked."
+          },
+          "rowsOff": {
+            "body": "Off. Agent queries run without a row check; the statement timeout still applies."
+          },
+          "rowsWho": {
+            "body": "Kira enforces this, not the database. Before an agent’s SELECT or WITH runs, in any mode, Kira runs EXPLAIN without ANALYZE, so nothing executes, and compares the plan’s estimate with {threshold} rows."
+          },
           "strictest": {
             "description": "A statement this app can’t classify is treated as whichever of the three is strictest. These settings govern the MCP server only. The read-only flag on the {tab} tab governs this app’s own console."
+          },
+          "tables": {
+            "label": "Allowed tables"
+          },
+          "tablesAll": {
+            "description": "Includes tables created later. Untick to choose.",
+            "label": "All tables"
+          },
+          "tablesCount": {
+            "label": "{selected} of {total} allowed"
+          },
+          "tablesEmpty": {
+            "label": "No tables found"
+          },
+          "tablesEnforceExempt": {
+            "body": "No exemption applies."
+          },
+          "tablesEnforceFail": {
+            "body": "A statement Kira can’t parse is refused."
+          },
+          "tablesEnforceParse": {
+            "body": "Kira parses every MCP statement before it runs and refuses any that touches an unlisted table, in every mode."
+          },
+          "tablesEnforceScope": {
+            "body": "A view is checked by its own name only. Scripts and operations are not checked."
+          },
+          "tablesLoading": {
+            "label": "Loading tables…"
+          },
+          "tablesNa": {
+            "body": "This connection type has no tables, so there is nothing to limit."
+          },
+          "tablesNote": {
+            "label": "Which tables the AI client may touch"
+          },
+          "tablesOffline": {
+            "body": "Connect to this connection to list its tables."
+          },
+          "tablesSelectAll": {
+            "label": "Select all shown"
+          },
+          "tablesStale": {
+            "label": "No longer exists"
+          },
+          "tablesTruncated": {
+            "body": "Only the first {max} tables are shown."
+          },
+          "tablesUnsaved": {
+            "body": "Save the connection, then connect, to choose tables."
+          },
+          "throttle": {
+            "body": "MCP calls share this connection’s throttle of {rate} ops per second with your own ops ({tab} tab)."
+          },
+          "throttleOff": {
+            "body": "MCP calls are not throttled on this connection (throttle 0, {tab} tab)."
+          },
+          "timeoutByApp": {
+            "body": "The database has no statement timeout here. This app stops the statement with its cancel path."
+          },
+          "timeoutByEngine": {
+            "body": "The database stops the statement itself."
+          },
+          "timeoutDescription": {
+            "body": "Every statement an agent runs here is stopped after this many seconds, in any mode. 0 turns the timeout off. Default {default} s."
+          },
+          "timeoutHit": {
+            "body": "A stopped statement refuses the call. The agent may ask for an exemption. You always approve it in a dialog, and it runs with no limit. Time queued behind other ops does not count."
+          },
+          "timeoutLabel": {
+            "label": "Statement timeout (seconds)"
+          },
+          "timeoutNone": {
+            "body": "This kind has no console, so agents run no statements here."
+          },
+          "timeoutOff": {
+            "body": "No timeout. An agent’s statement runs until it ends or you stop it."
+          },
+          "timeoutRange": {
+            "status": "Enter 0 to turn it off, or a whole number from 1 to {max}"
+          },
+          "timeoutSplit": {
+            "body": "The database stops {engine} statements. This app stops {app} statements with its cancel path."
+          },
+          "timeoutThrottle": {
+            "body": "This connection is throttled and runs one op at a time. A long agent statement can make your own ops wait past their 30 s limit."
           },
           "write": {
             "label": "Write"
@@ -15400,6 +15624,72 @@
           },
           "noRules": {
             "emptyHint": "No masking rules yet on this connection."
+          },
+          "reviewConfirmAll": {
+            "label": "Confirm all as reviewed"
+          },
+          "reviewEmpty": {
+            "empty": "No columns to show"
+          },
+          "reviewEnforceHit": {
+            "body": "A new column that no rule masks and nobody reviewed is dropped from results. A query that renames, transforms or filters on it is refused. The agent is told which column, never its values."
+          },
+          "reviewEnforceLimits": {
+            "body": "Matching is by column name, like masking. A reviewed column that shares a name with a new one is withheld too. A column added in the last 30 seconds can slip through. A renamed column counts as new. Scripts are not checked. No exemption applies."
+          },
+          "reviewEnforceWho": {
+            "body": "Kira’s MCP server enforces this. It checks the columns on connect, on refresh and at most every 30 seconds while the agent queries."
+          },
+          "reviewFilterAll": {
+            "option": "All columns"
+          },
+          "reviewMask": {
+            "label": "Mask"
+          },
+          "reviewMasked": {
+            "status": "Masked"
+          },
+          "reviewNa": {
+            "body": "Column review does not apply to this connection kind."
+          },
+          "reviewOffConfirm": {
+            "body": "New columns then reach the agent unmasked.",
+            "label": "Turn off",
+            "title": "Turn off column review?"
+          },
+          "reviewOffline": {
+            "body": "Connect to list columns. Saved entries are kept."
+          },
+          "reviewOn": {
+            "description": "Turning this on records every current column as reviewed.",
+            "label": "Withhold new columns until reviewed"
+          },
+          "reviewPending": {
+            "status": "Needs review"
+          },
+          "reviewRefresh": {
+            "tooltip": "Refresh columns"
+          },
+          "reviewReviewed": {
+            "status": "Marked reviewed"
+          },
+          "reviewSearch": {
+            "placeholder": "Filter columns"
+          },
+          "reviewStatusDone": {
+            "status": "All columns reviewed"
+          },
+          "reviewStatusOff": {
+            "status": "Column review is off, so new columns reach the agent"
+          },
+          "reviewStatusPending": {
+            "status": "{count} columns need review"
+          },
+          "reviewTitle": {
+            "label": "Column review"
+          },
+          "reviewTruncated": {
+            "body": "The column list is cut short ({limit}). Database MCP refuses every call until the check fits."
           },
           "saveFirst": {
             "hint": "Save this connection first to manage masking rules."
@@ -15455,7 +15745,7 @@
           "label": "Test connection"
         },
         "throttle": {
-          "description": "A value of 0 disables the limit. Reads served from cache are never throttled, and connecting is never throttled. Applies immediately to a connected connection.",
+          "description": "Ops per second this app admits to the database for this connection, from every window and from MCP. Ops run one at a time, so a slow or blocking query makes the ops after it wait; an op that waits more than 30 s fails. 0 turns the throttle off, so ops run at once, side by side. Cache hits, connecting and cancelling are never throttled. Changes apply immediately.",
           "label": "Throttle commands",
           "range": {
             "status": "Unlimited (0), or {min}–{max}"
@@ -15860,6 +16150,12 @@
         "error": "Couldn’t reveal the saved URI."
       }
     },
+    "prompt": {
+      "maskingReview": {
+        "body": "{count} new columns are withheld from the AI agent until you review masking.",
+        "label": "Review masking"
+      }
+    },
     "proof": {
       "change": {
         "accept": {
@@ -16016,7 +16312,7 @@
     "settings": {
       "advanced": {
         "expensiveRows": {
-          "description": "A query whose plan is estimated to read at least this many rows is flagged as expensive by the console’s explain button and by auto-explain. Not comparable across engines’ own cost figures. See the plan panel’s own note.",
+          "description": "The estimated rows a query’s plan reads, not the rows it returns. At or above it, the console’s explain and auto-explain warn you, and the database MCP server refuses an agent’s query before it runs where the connection’s MCP tab has the check on. Not comparable to the engines’ own cost figures.",
           "label": "Expensive query threshold (rows)"
         },
         "logLevel": {
@@ -16135,13 +16431,13 @@
           "status": "Read {read} · write {write} · DDL {ddl}"
         },
         "modesPlans": {
-          "status": "Read {read} · write {write} · DDL {ddl} · plans queries"
+          "status": "Read {read} · write {write} · DDL {ddl} · row check"
         },
         "noToken": {
           "hint": "This server restarted since it was last enabled; its registration command needs a fresh token to show again."
         },
         "preview": {
-          "description": "Holds each query result until you send it on. Masking is already applied to what you see. A write has already run by the time its result shows; withholding hides the result, it does not undo the change. A connection’s MCP tab can override this.",
+          "description": "Holds each query result until you send it on. Masking is already applied to what you see. A write has already run by the time its result shows; withholding hides the result, it does not undo the change. A connection’s MCP tab can override this per mode.",
           "label": "Review results before the AI gets them"
         },
         "regenerate": {
@@ -16149,6 +16445,9 @@
         },
         "reviewAlways": {
           "status": "Results always reviewed"
+        },
+        "reviewMixed": {
+          "status": "Results reviewed per mode"
         },
         "reviewNever": {
           "status": "Results sent without review"

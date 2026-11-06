@@ -100,9 +100,16 @@ export type ConnectionMode = z.infer<typeof connectionModeSchema>;
 export const mcpPermissionModeSchema = /*#__PURE__*/ z.enum(['deny', 'allow', 'prompt']);
 export type McpPermissionMode = z.infer<typeof mcpPermissionModeSchema>;
 
+// mirrors model.ValidMcpMaskedMode (P535)
+export const mcpMaskedModeSchema = /*#__PURE__*/ z.enum(['inherit', 'deny', 'allow', 'prompt']);
+export type McpMaskedMode = z.infer<typeof mcpMaskedModeSchema>;
+
 // mirrors model.ValidMcpReviewResults
 export const mcpReviewResultsSchema = /*#__PURE__*/ z.enum(['inherit', 'review', 'send']);
 export type McpReviewResults = z.infer<typeof mcpReviewResultsSchema>;
+
+// P529: MCP statement timeout bounds; mirrors model.McpStatementTimeoutDefault/Max.
+export const CONNECTION_MCP_STATEMENT_TIMEOUT = { default: 10, max: 3600 } as const;
 
 // The plain object shape, with no refinement — kept separate so both connectionInputSchema
 // (which adds the fields/uri superRefine below) and connectionSummarySchema (which cannot
@@ -160,8 +167,28 @@ const connectionFieldsSchema = /*#__PURE__*/ z.object({
   // has no such key. Separate from autoExplain (above), which governs this app's own console — see
   // the migration's own comment for why one switch cannot mean both.
   mcpAutoExplain: z.boolean().default(true),
-  // P382: result review override; inherit follows dbMcp.previewResponses. Default is load-bearing for older rows.
-  mcpReviewResults: mcpReviewResultsSchema.default('inherit'),
+  // P536: result review override per mode; inherit follows dbMcp.previewResponses. Default is load-bearing
+  // for older payloads.
+  mcpReview: z
+    .object({
+      read: mcpReviewResultsSchema,
+      write: mcpReviewResultsSchema,
+      ddl: mcpReviewResultsSchema,
+      // P535: browse_table's review.
+      masked: mcpReviewResultsSchema.default('inherit'),
+    })
+    .default({ read: 'inherit', write: 'inherit', ddl: 'inherit', masked: 'inherit' }),
+  // P529: seconds each agent statement may run, 0 off. Default is load-bearing for older rows.
+  mcpStatementTimeoutSec: z
+    .number()
+    .int()
+    .min(0)
+    .max(CONNECTION_MCP_STATEMENT_TIMEOUT.max)
+    .default(CONNECTION_MCP_STATEMENT_TIMEOUT.default),
+  // P532: tables MCP statements may touch (tableref entries). null = all, including later ones; [] = none.
+  mcpTables: z.array(z.string()).nullable().default(null),
+  // P534: column review for masking is on; the reviewed list lives in the connection file.
+  maskReviewOn: z.boolean().default(false),
   // M2: free-text "what this DB is for", passed to an AI client as connection metadata
   // (list_connections). Never interpreted by this app.
   mcpDescription: z.string().max(1000).default(''),
@@ -172,6 +199,8 @@ const connectionFieldsSchema = /*#__PURE__*/ z.object({
   mcpReadMode: mcpPermissionModeSchema.default('allow'),
   mcpWriteMode: mcpPermissionModeSchema.default('prompt'),
   mcpDdlMode: mcpPermissionModeSchema.default('deny'),
+  // P535: browse_table permission; inherit follows mcpReadMode.
+  mcpMaskedMode: mcpMaskedModeSchema.default('inherit'),
 });
 
 // SQS and S3 have no host/port at all (P10's D8, P17's own D8/D9 mirror) — fields mode repurposes
@@ -192,6 +221,15 @@ export const EXPLAIN_SUPPORTED_KINDS: ReadonlySet<ConnectionKind> = new Set([
   'mysql',
   'mariadb',
   'sqlite',
+  'clickhouse',
+]);
+
+// Kinds whose plan carries an estimated rows read: EXPLAIN_SUPPORTED_KINDS minus sqlite, whose
+// EXPLAIN QUERY PLAN has none. Mirror of internal/queryplan/statements.go HasRowEstimate.
+export const ROW_ESTIMATE_KINDS: ReadonlySet<ConnectionKind> = new Set([
+  'postgres',
+  'mysql',
+  'mariadb',
   'clickhouse',
 ]);
 

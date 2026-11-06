@@ -42,13 +42,25 @@ type ConnectionFields struct {
 	McpReadMode  string `json:"mcpReadMode"`
 	McpWriteMode string `json:"mcpWriteMode"`
 	McpDdlMode   string `json:"mcpDdlMode"`
+	// P535: permission for browse_table, one of inherit/deny/allow/prompt; inherit follows McpReadMode.
+	McpMaskedMode string `json:"mcpMaskedMode"`
 	// Runs this connection's own EXPLAIN before every explainable run_query on the DB MCP path,
 	// and pauses the query for a human decision when the plan crosses the expensive-query row
 	// threshold. Separate from AutoExplain, which governs this app's own console — see the
 	// migration's own comment for why one switch cannot mean both.
 	McpAutoExplain bool `json:"mcpAutoExplain"`
-	// Result review on the DB MCP path: inherit (app setting), review (always hold), send (never).
-	McpReviewResults string `json:"mcpReviewResults"`
+	// Result review on the DB MCP path (P536), per mode: inherit (app setting), review (always hold), send (never).
+	McpReview McpReview `json:"mcpReview"`
+	// McpStatementTimeoutSec bounds each statement an agent runs (P529): seconds, 0 off. A first-class
+	// column, never options: a safety limit must not be settable through options or a URI.
+	McpStatementTimeoutSec int `json:"mcpStatementTimeoutSec"`
+	// P532: tables, views and collections MCP statements may touch, as tableref entries. nil = all,
+	// including ones created later; non-nil (maybe empty) = exactly those. Not applicable to redis, kafka,
+	// s3 or sqs.
+	McpTables []string `json:"mcpTables"`
+	// P534: column review for masking is on. Columns no rule masks and the user has not reviewed are
+	// withheld from MCP results. The reviewed list itself lives in repos.MaskReviewRepo.
+	MaskReviewOn bool `json:"maskReviewOn"`
 }
 
 // ConnectionSummary mirrors packages/shared/domain/connection.ts's connectionSummarySchema.
@@ -124,8 +136,47 @@ var mcpPermissionModes = map[string]bool{"deny": true, "allow": true, "prompt": 
 // ValidMcpPermissionMode mirrors connection.ts's mcpPermissionModeSchema (M2).
 func ValidMcpPermissionMode(v string) bool { return mcpPermissionModes[v] }
 
+// McpMaskedInherit is the masked-read value that follows the read permission.
+const McpMaskedInherit = "inherit"
+
+// ValidMcpMaskedMode reports whether v is a masked-read permission (P535): a permission word or inherit.
+func ValidMcpMaskedMode(v string) bool { return v == McpMaskedInherit || mcpPermissionModes[v] }
+
+// Statement timeout bounds (P529); mirrors connection.ts's CONNECTION_MCP_STATEMENT_TIMEOUT.
+const (
+	McpStatementTimeoutDefault = 10
+	McpStatementTimeoutMax     = 3600
+)
+
+// ValidMcpStatementTimeout reports whether v is 0 (off) or a whole number of seconds up to the max.
+func ValidMcpStatementTimeout(v int) bool { return v >= 0 && v <= McpStatementTimeoutMax }
+
 // mcpReviewResultsValues mirrors connection.ts's mcpReviewResultsSchema.
 var mcpReviewResultsValues = map[string]bool{"inherit": true, "review": true, "send": true}
+
+// McpReview is the result review setting of each MCP mode.
+type McpReview struct {
+	Read  string `json:"read"`
+	Write string `json:"write"`
+	Ddl   string `json:"ddl"`
+	// Masked is browse_table's review (P535).
+	Masked string `json:"masked"`
+}
+
+// For returns the setting of mode (read, write, ddl or masked); an unknown mode is inherit.
+func (r McpReview) For(mode string) string {
+	switch mode {
+	case "read":
+		return r.Read
+	case "write":
+		return r.Write
+	case "ddl":
+		return r.Ddl
+	case "masked":
+		return r.Masked
+	}
+	return "inherit"
+}
 
 // ValidMcpReviewResults mirrors connection.ts's mcpReviewResultsSchema (P382).
 func ValidMcpReviewResults(v string) bool { return mcpReviewResultsValues[v] }

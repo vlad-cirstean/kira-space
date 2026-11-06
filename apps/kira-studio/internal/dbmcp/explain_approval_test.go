@@ -23,7 +23,7 @@ func TestExplainQueryRefusesApprovedReadAfterReadModeDeniedMidWait(t *testing.T)
 	qr := &fakeQueryRunner{class: adapters.ClassRead}
 	approvals := NewApprovalBroker(time.Now, nil)
 	s := &Server{cfg: Config{
-		Conns: conns, Query: qr, Approvals: approvals, MaskRules: fakeMaskRulesNone{},
+		Conns: conns, Query: qr, Approvals: approvals, MaskRules: fakeMaskRulesNone{}, ColumnReview: fakeColumnReviewNone{},
 		ExplainThreshold: func() int { return 1000 },
 		PreviewResponses: func() bool { return false },
 	}}

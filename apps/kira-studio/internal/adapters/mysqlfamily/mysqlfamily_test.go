@@ -594,6 +594,18 @@ func runFamilySuite(t *testing.T, kind string, cfg model.ResolvedConnectionConfi
 		}),
 	)
 
+	testsupport.RunScenarios(t, connectedAdapter(t, kind, cfg), cfg,
+		testsupport.ReadConditions(testsupport.ConditionsCase{
+			Name: kind, Database: nodePath(cfg.ID, seg("database", "kira_test")),
+			Table: nodePath(cfg.ID, seg("database", "kira_test"), seg("table", "p535_cond")), Binary: true,
+			Setup: []string{
+				"CREATE TABLE p535_cond (id INT PRIMARY KEY, name VARCHAR(50), note VARCHAR(50) NULL, bin VARBINARY(8) NULL)",
+				"INSERT INTO p535_cond VALUES (1,'Alice','x',X'0102'),(2,'O''Brien',NULL,X'0304'),(3,'Bob','y',X'0506'),(4,'alina',NULL,NULL)",
+			},
+			Teardown: []string{"DROP TABLE IF EXISTS p535_cond"},
+		}),
+	)
+
 	lanePath := nodePath(cfg.ID, seg("database", "kira_test"))
 	laneUnchanged := func(t *testing.T, main adapters.Adapter) {
 		t.Helper()
@@ -615,6 +627,37 @@ func runFamilySuite(t *testing.T, kind string, cfg model.ResolvedConnectionConfi
 		}),
 		testsupport.LaneCancel(lanePath, "SELECT SLEEP(30)"),
 	)
+
+	// Statement timeout: MySQL enforces it for SELECT only (max_execution_time), MariaDB for every
+	// statement (max_statement_time). SLEEP() in a WHERE over two rows is what the engine interrupts.
+	slowRows := "(SELECT 1 UNION ALL SELECT 2) d WHERE SLEEP(5)"
+	timeoutCases := []testsupport.Scenario{
+		testsupport.StatementTimeout(testsupport.StatementTimeoutCase{
+			Name: "read lane", Path: lanePath, Lane: true, Slow: "SELECT 1 FROM " + slowRows, WantCode: "3024",
+			Baseline: "SELECT @@SESSION.max_execution_time", BaselineWant: "0", Lifted: "SELECT SLEEP(2)",
+		}),
+	}
+	if kind == "mariadb" {
+		timeoutCases = []testsupport.Scenario{
+			testsupport.StatementTimeout(testsupport.StatementTimeoutCase{
+				Name: "read lane", Path: lanePath, Lane: true, Slow: "SELECT 1 FROM " + slowRows, WantCode: "1969",
+				Baseline: "SELECT @@SESSION.max_statement_time", BaselineWant: "0", Lifted: "SELECT SLEEP(2)",
+			}),
+			testsupport.StatementTimeout(testsupport.StatementTimeoutCase{
+				Name: "main write", Path: lanePath, Setup: []string{"CREATE TABLE kira_to_log (id int)"},
+				Teardown: []string{"DROP TABLE IF EXISTS kira_to_log"},
+				Slow:     "INSERT INTO kira_to_log SELECT 1 FROM " + slowRows, WantCode: "1969",
+				Unchanged: func(t *testing.T, main adapters.Adapter) {
+					t.Helper()
+					if got := testsupport.FirstCell(t, main, lanePath, "SELECT count(*) FROM kira_to_log"); got != "0" {
+						t.Errorf("kira_to_log rows = %s, want 0", got)
+					}
+				},
+				Baseline: "SELECT @@SESSION.max_statement_time", BaselineWant: "0", Lifted: "SELECT SLEEP(2)",
+			}),
+		}
+	}
+	testsupport.RunScenarios(t, connectedAdapter(t, kind, cfg), cfg, timeoutCases...)
 
 	t.Run("count", func(t *testing.T) {
 		a := connectedAdapter(t, kind, cfg)

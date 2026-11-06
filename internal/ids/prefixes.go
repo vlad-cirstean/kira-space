@@ -29,13 +29,15 @@ const (
 	FlowRun Prefix = "frn"
 	// Step is a workflow step id in user-edited YAML.
 	Step Prefix = "stp"
+	// Exemption is a DB MCP limit exemption id, minted on a limit refusal.
+	Exemption Prefix = "exm"
 )
 
-var all = []Prefix{Worktree, Fact, Group, Shot, TUI, Sandbox, Temp, DockerTemp, Distill, FlowRun, Step}
+var all = []Prefix{Worktree, Fact, Group, Shot, TUI, Sandbox, Temp, DockerTemp, Distill, FlowRun, Step, Exemption}
 
 var sizes = map[Prefix]int{
 	Worktree: 10, Fact: 12, Group: 12, Shot: 12, TUI: 12, Sandbox: 12,
-	Temp: 12, DockerTemp: 12, Distill: 12, FlowRun: 12, Step: 12,
+	Temp: 12, DockerTemp: 12, Distill: 12, FlowRun: 12, Step: 12, Exemption: 12,
 }
 
 func (p Prefix) size() int { return sizes[p] }

@@ -396,7 +396,7 @@ func (a *Adapter) Read(ctx context.Context, req adapters.ReadRequest, op *adapte
 		}
 		result, err := readPage(driverCtx, conn, op, target, readReq{
 			Projection: req.Projection, Filter: req.Filter, Sort: req.Sort,
-			PageSize: req.PageSize, Cursor: req.Cursor,
+			PageSize: req.PageSize, Cursor: req.Cursor, Conditions: req.Conditions,
 		})
 		if err != nil {
 			return nil, err

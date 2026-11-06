@@ -29,6 +29,8 @@ type Repos struct {
 	// MaskRules is M5's rule store (connection_mask_rules) — needs no cipher, unlike MaskKeys just
 	// below, so it belongs in this aggregate the same as every other cipher-free repo.
 	MaskRules *MaskRulesRepo
+	// MaskReview is P534's reviewed-column store (connection_mask_reviewed).
+	MaskReview *MaskReviewRepo
 	// CustomScripts is P85's own launch-target store (custom_scripts).
 	CustomScripts *scripts.Repo
 	ScriptRuns    *scriptruns.Repo
@@ -80,6 +82,7 @@ func New(db *sql.DB) (*Repos, error) {
 		ResponseHistory: &ResponseHistoryRepo{DB: db},
 		GrpcHistory:     &GrpcHistoryRepo{DB: db},
 		MaskRules:       &MaskRulesRepo{DB: db},
+		MaskReview:      &MaskReviewRepo{DB: db},
 		CustomScripts:   &scripts.Repo{DB: db},
 		ScriptRuns:      &scriptruns.Repo{DB: db},
 		DockerRestore:   &DockerRestoreRepo{DB: db},

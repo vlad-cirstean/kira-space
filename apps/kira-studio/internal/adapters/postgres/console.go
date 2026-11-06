@@ -2,8 +2,14 @@ package postgres
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/page"
@@ -238,36 +244,18 @@ func verifyReadOnlyWrap(ctx context.Context, conn *trackedConn, op *adapters.OpC
 // Wrapping the whole batch in an explicit BEGIN READ ONLY transaction closes every angle
 // tried against a real server except that one specific statement, which
 // AssertNoTransactionEscalation rejects outright before anything runs.
-func execute(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track TrackQuery, readOnly, connReadOnly bool, statements []string, limit page.ResultCap) ([]page.Page, error) {
-	if len(statements) == 0 {
-		return nil, adapters.T(adapters.CodeQuery, "backend.studio.adapter.noStatements.body", nil, nil)
-	}
-	if readOnly && connReadOnly {
-		if err := adapters.AssertNoTransactionEscalation(statements, adapters.PostgresDialect); err != nil {
-			return nil, err
-		}
-	}
-	// A per-request wrap on a writable connection would run inside, then roll back, a user transaction.
-	if readOnly && !connReadOnly && conn.PgConn().TxStatus() != 'I' {
-		return nil, adapters.OpenTransaction()
+func execute(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track TrackQuery, readOnly, connReadOnly bool, statements []string, limit page.ResultCap, timeout time.Duration) (pages []page.Page, err error) {
+	defer func() { err = timeoutError(ctx, timeout, err) }()
+	if err := checkExecutable(conn, readOnly, connReadOnly, statements); err != nil {
+		return nil, err
 	}
 	op.SetCommand(adapters.JoinConsoleStatements(statements, "--"))
 
-	if readOnly {
-		// P113 G1: adapters.BeginReadOnlyConsole carries the shared BEGIN/COMMIT wrap postgres and
-		// mysqlfamily hand-rolled identically. Confirmed empirically that Postgres ends an
-		// already-aborted transaction's COMMIT with a ROLLBACK command tag, not an error — safe to
-		// call unconditionally. F2: waitInFlight blocks on every RunWithAbortRace goroutine this
-		// batch spawned still touching conn (the same non-concurrency-safe *pgx.Conn) before COMMIT.
-		cleanup, err := adapters.BeginReadOnlyConsole(ctx, "BEGIN READ ONLY", func(ctx context.Context, sql string) error {
-			_, err := conn.Exec(ctx, sql)
-			return err
-		}, conn.waitInFlight, func(err error) error { return mapError(err) })
-		if err != nil {
-			return nil, err
-		}
-		defer cleanup()
+	end, err := beginBatch(ctx, conn, op, track, readOnly, timeout)
+	if err != nil {
+		return nil, err
 	}
+	defer end()
 
 	results := make([]rawResult, 0, len(statements))
 	for _, sql := range statements {
@@ -287,28 +275,126 @@ func execute(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track T
 		}
 	}
 
+	typeMeta, err := resultTypeMeta(ctx, conn, op, track, results)
+	if err != nil {
+		return nil, err
+	}
+	pages = make([]page.Page, len(results))
+	for i, r := range results {
+		pages[i] = buildPage(r, typeMeta)
+	}
+	return pages, nil
+}
+
+// checkExecutable runs the pre-flight guards before any statement touches conn.
+func checkExecutable(conn *trackedConn, readOnly, connReadOnly bool, statements []string) error {
+	if len(statements) == 0 {
+		return adapters.T(adapters.CodeQuery, "backend.studio.adapter.noStatements.body", nil, nil)
+	}
+	if readOnly && connReadOnly {
+		if err := adapters.AssertNoTransactionEscalation(statements, adapters.PostgresDialect); err != nil {
+			return err
+		}
+	}
+	// A per-request wrap on a writable connection would run inside, then roll back, a user transaction.
+	if readOnly && !connReadOnly && conn.PgConn().TxStatus() != 'I' {
+		return adapters.OpenTransaction()
+	}
+	return nil
+}
+
+// beginBatch opens the read-only wrap and/or applies the statement timeout. The returned func ends both.
+func beginBatch(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track TrackQuery, readOnly bool, timeout time.Duration) (func(), error) {
+	if !readOnly {
+		if timeout <= 0 {
+			return func() {}, nil
+		}
+		return setSessionTimeout(ctx, conn, op, track, timeout)
+	}
+	// P113 G1: adapters.BeginReadOnlyConsole carries the shared BEGIN/COMMIT wrap postgres and
+	// mysqlfamily hand-rolled identically. Confirmed empirically that Postgres ends an
+	// already-aborted transaction's COMMIT with a ROLLBACK command tag, not an error — safe to
+	// call unconditionally. F2: waitInFlight blocks on every RunWithAbortRace goroutine this
+	// batch spawned still touching conn (the same non-concurrency-safe *pgx.Conn) before COMMIT.
+	cleanup, err := adapters.BeginReadOnlyConsole(ctx, "BEGIN READ ONLY", func(ctx context.Context, sql string) error {
+		_, err := conn.Exec(ctx, sql)
+		return err
+	}, conn.waitInFlight, func(err error) error { return mapError(err) })
+	if err != nil {
+		return nil, err
+	}
+	if timeout > 0 {
+		// SET LOCAL reverts at the wrap's COMMIT, which runs on every exit: nothing to restore.
+		if _, err := conn.Exec(ctx, "SET LOCAL statement_timeout = "+strconv.FormatInt(timeout.Milliseconds(), 10)); err != nil {
+			cleanup()
+			return nil, mapError(err)
+		}
+	}
+	return cleanup, nil
+}
+
+// resultTypeMeta resolves type names for every column OID across results.
+func resultTypeMeta(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track TrackQuery, results []rawResult) (map[uint32]pgTypeMeta, error) {
 	oidSet := map[uint32]struct{}{}
 	for _, r := range results {
 		for _, f := range r.fields {
 			oidSet[f.dataTypeOID] = struct{}{}
 		}
 	}
-	typeMeta := map[uint32]pgTypeMeta{}
-	if len(oidSet) > 0 {
-		oids := make([]uint32, 0, len(oidSet))
-		for o := range oidSet {
-			oids = append(oids, o)
-		}
-		meta, err := lookupTypeNames(ctx, conn, op, track, oids)
-		if err != nil {
-			return nil, err
-		}
-		typeMeta = meta
+	if len(oidSet) == 0 {
+		return map[uint32]pgTypeMeta{}, nil
 	}
+	oids := make([]uint32, 0, len(oidSet))
+	for o := range oidSet {
+		oids = append(oids, o)
+	}
+	return lookupTypeNames(ctx, conn, op, track, oids)
+}
 
-	pages := make([]page.Page, len(results))
-	for i, r := range results {
-		pages[i] = buildPage(r, typeMeta)
+// setSessionTimeout applies timeout for the rest of this batch on the pinned connection and returns
+// the restore. The entry lock is held until release, so no other op sees the changed setting.
+func setSessionTimeout(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track TrackQuery, timeout time.Duration) (func(), error) {
+	cur, err := runRaw(ctx, conn, "SELECT current_setting('statement_timeout')", nil, op, track, page.ResultCap{})
+	if err != nil {
+		return nil, err
 	}
-	return pages, nil
+	if len(cur.rows) != 1 || len(cur.rows[0]) != 1 || cur.rows[0][0] == nil {
+		return nil, adapters.Contract("statement_timeout read returned no value", nil)
+	}
+	saved := *cur.rows[0][0]
+	const setSQL = "SELECT set_config('statement_timeout', $1, false)"
+	if _, err := runRaw(ctx, conn, setSQL, []any{fmt.Sprintf("%dms", timeout.Milliseconds())}, op, track, page.ResultCap{}); err != nil {
+		return nil, err
+	}
+	return func() {
+		conn.waitInFlight()
+		if conn.IsClosed() {
+			return
+		}
+		// A failed statement in a user transaction leaves it aborted: closing would destroy the
+		// transaction, and the set_config reverts at the rollback the user must issue anyway.
+		if conn.PgConn().TxStatus() == 'E' {
+			return
+		}
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), endTransactionTimeout)
+		defer cancel()
+		if _, err := conn.Exec(cleanupCtx, setSQL, pgx.QueryExecModeSimpleProtocol, saved); err != nil {
+			// Never leave a live connection carrying the agent's limit: the pool drops a closed one.
+			_ = conn.Close(cleanupCtx)
+		}
+	}, nil
+}
+
+// timeoutError maps the engine's statement_timeout cancel to the typed timeout. Stop and a timeout
+// share SQLSTATE 57014 and the message is localised, so the op ctx tells them apart: Stop cancels
+// it first, a statement timeout leaves it live.
+func timeoutError(ctx context.Context, timeout time.Duration, err error) error {
+	if err == nil || timeout <= 0 || ctx.Err() != nil {
+		return err
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "57014" {
+		return adapters.StatementTimeout(timeout, 0, err)
+	}
+	return err
 }

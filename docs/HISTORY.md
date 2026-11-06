@@ -7671,3 +7671,36 @@ DB MCP declared query mode enforced by the database. `run_query` takes required 
 
 Full suite run once after P527: Go rest 142 packages, Studio unit 2013, Studio UI 767, Space UI 1139, mobile 83 plus 1 skipped, ipc-frontend, visual baselines re-recorded, e2e-real fixed. Failures F1 to F11 fixed. Two ui-timing budget failures (budgets, perf) documented as a Known open item, not fixed. 2 code review rounds, all findings fixed.
 <!-- /chapter v0.2.35 -->
+<!-- chapter v0.2.36 -->
+## v0.2.36
+Source: docs/v0.2.36/ at d3840acce. 9 phases.
+
+### v0.2.36 P528 (Done)
+DB MCP limit exemptions: agent asks, user always approves. `run_query` takes `exemption: {id, reason}`; a limit refusal mints a single-use `exm_` id; an exempted call always raises one `db.exemption` approval, also on `allow` modes, which "Approve all" skips. `Limit`/`PreLimit`/`ExecLimit` seams in `dbmcp/limits.go` and `flowharness.WithDbMcpLimits`.
+
+### v0.2.36 P529 (Done)
+Statement timeout per connection, enforced by the engine. `mcp.statement_timeout_sec` (absent 10, 0 off, 1 to 3600; migration 0060). Engine-enforced on Postgres, MySQL (SELECT), MariaDB, ClickHouse; app backstop timer in `Host.RunOp` through the P518 cancel path; SQLite, MongoDB, Redis, Kibana app only. Built-in `statement_timeout` `ExecLimit`; an exemption lifts it. `list_connections` carries `statementTimeout`. Real-container calibration passes.
+
+### v0.2.36 P530 (Done)
+Expensive-query (EXPLAIN) threshold enforced for MCP, with explanation. Built-in `expensive_query` `PreLimit` (`dbmcp/expensive.go`); one EXPLAIN per call feeds the limit, the dialog and the result `plan`. Estimate at or above `advanced.expensiveQueryRows` refuses with the exemption path; EXPLAIN failure refuses (fail closed). `ApprovalReasonHeavy` removed. Settings Advanced and the MCP tab explain the estimate, enforcer and known limits.
+
+### v0.2.36 P531 (Done)
+Ops throttle covers every op from every session, with explanation. One serial, paced gate per connection id (`Host.admit`), app-wide across windows, MCP and the read lane; live rate change keeps the slot; redis classify gated. Explained in the Advanced and MCP tabs. Flow `dbmcpflow/throttle_test.go`, UI `connection-throttle.spec.ts`.
+
+### v0.2.36 P532 (Done)
+Table allow list per connection for DB MCP. File key `mcp.tables` (absent = all, `[]` = none); per-dialect cgo-free table extraction; fail-closed gate as last step of `resolveVerdict` plus explain_query, list_children, describe_table, describe_schema and list_connections; live catalog probe as throttled op kind `tables`. MCP tab list with search and select-all.
+
+### v0.2.36 P533 (Done)
+Tool descriptions suggest inspecting schemas first. `dbmcp.instructions` and the describe_table, describe_schema, run_query, explain_query descriptions suggest it; nothing enforced. Budget lines, contract hash and docs bullets updated.
+
+### v0.2.36 P534 (Done)
+Masking validation: new columns withheld until masking is reviewed. File key `mask_review` (absent = off); `internal/maskreview` diffs live columns against rules and the reviewed list on connect, Refresh, file edit, MCP write/DDL and a 30 s recheck, scoped to the P532 list. MCP results drop unreviewed columns (`withheldColumns`); alias, filter, sort or an incomplete check refuse, never exemptable. Prompt kind `masking` opens the Privacy tab (`ConnectionMaskReview.vue`).
+
+### v0.2.36 P535 (Done)
+Masked-read permission and constrained browse tool as the MCP default. `mcp.masked` permission (inherit follows read) and `browse_table` on postgres, mysql, mariadb, sqlite, clickhouse; app-built SELECT on the read lane; masked columns take isNull/notNull only; views refused on masked connections; EXPLAIN check and exemption apply (sqlite skips). Prompts say browse first. Real `claude` case added, not run. Open: `;` in a filter value, big-table refusal.
+
+### v0.2.36 P536 (Done)
+Review MCP results before delivery to the agent. Per-mode `mcp.review.read|write|ddl` (inherit, review, send; migration 0063, legacy `review_results` fans out to all three); stricter of declared and detected mode picks the setting. Approval dialogs for `db.query` and `db.exemption` offer a review checkbox; checked, the call raises a `db.response` item after execution, individualOnly. Held results are memory-only, caps 8 MiB each and 64 MiB total, not in list_operations, dropped on every exit.
+
+2 code review rounds: R1 9 findings, R2 8 findings, all fixed; per-relation column review settles in `dbmcp`/`maskreview`.
+<!-- /chapter v0.2.36 -->

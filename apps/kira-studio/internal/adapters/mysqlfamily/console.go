@@ -3,7 +3,10 @@ package mysqlfamily
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"errors"
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -232,7 +235,8 @@ func sessionReadOnly(p page.TabularPage) bool {
 // end the wrap (COMMIT through a comment-lexer gap, an implicit commit) or flip the session default
 // for what follows, so verifyReadOnlyWrap re-checks after every statement;
 // AssertNoTransactionEscalation is the cheap first line of defense.
-func execute(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQuery, readOnly, connReadOnly bool, statements []string, limit page.ResultCap) ([]page.Page, error) {
+func execute(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQuery, readOnly, connReadOnly bool, statements []string, limit page.ResultCap, timeout time.Duration, mariadb bool) (pages []page.Page, err error) {
+	defer func() { err = timeoutError(ctx, timeout, err) }()
 	if len(statements) == 0 {
 		return nil, adapters.T(adapters.CodeQuery, "backend.studio.adapter.noStatements.body", nil, nil)
 	}
@@ -248,6 +252,16 @@ func execute(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQue
 		}
 	}
 	op.SetCommand(adapters.JoinConsoleStatements(statements, "--", "#"))
+
+	// MySQL's max_execution_time covers SELECT only, so only the read lane gets it; the host
+	// backstop stops everything else. Registered before the wrap so the restore runs after COMMIT.
+	if timeout > 0 && (mariadb || readOnly) {
+		restore, err := setSessionTimeout(ctx, conn, timeout, mariadb)
+		if err != nil {
+			return nil, err
+		}
+		defer restore()
+	}
 
 	if readOnly {
 		// P113 G1: adapters.BeginReadOnlyConsole carries the shared BEGIN/COMMIT wrap postgres and
@@ -268,7 +282,7 @@ func execute(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQue
 		defer cleanup()
 	}
 
-	pages := make([]page.Page, len(statements))
+	pages = make([]page.Page, len(statements))
 	for i, stmt := range statements {
 		if err := adapters.CheckCancelled(ctx); err != nil {
 			return nil, err
@@ -286,4 +300,55 @@ func execute(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQue
 		}
 	}
 	return pages, nil
+}
+
+// Server error numbers for a statement stopped by its time limit.
+const (
+	errQueryTimeout     = 3024 // MySQL ER_QUERY_TIMEOUT, max_execution_time
+	errStatementTimeout = 1969 // MariaDB ER_STATEMENT_TIMEOUT, max_statement_time
+)
+
+// timeoutError maps the engine's own timeout to the typed one. Stop cancels ctx first; a timeout
+// leaves it live.
+func timeoutError(ctx context.Context, timeout time.Duration, err error) error {
+	if err == nil || timeout <= 0 || ctx.Err() != nil {
+		return err
+	}
+	var myErr *mysql.MySQLError
+	if errors.As(err, &myErr) && (myErr.Number == errQueryTimeout || myErr.Number == errStatementTimeout) {
+		return adapters.StatementTimeout(timeout, 0, err)
+	}
+	return err
+}
+
+// setSessionTimeout sets the session timeout variable for this batch and returns the restore. The
+// entry lock is held until release, so no other op sees the changed variable. Session variables are
+// not transactional: the restore applies inside a user transaction too.
+func setSessionTimeout(ctx context.Context, conn Entry, timeout time.Duration, mariadb bool) (func(), error) {
+	variable, value := "max_execution_time", strconv.FormatInt(timeout.Milliseconds(), 10)
+	if mariadb {
+		variable, value = "max_statement_time", strconv.FormatFloat(timeout.Seconds(), 'f', -1, 64)
+	}
+	var raw string
+	if err := conn.QueryRowContext(ctx, "SELECT @@SESSION."+variable).Scan(&raw); err != nil {
+		return nil, mapError(err)
+	}
+	// Re-rendered from a parsed number so the restore statement never carries server-supplied text.
+	n, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return nil, adapters.Contract(fmt.Sprintf("%s read returned %q", variable, raw), err)
+	}
+	saved := strconv.FormatFloat(n, 'f', -1, 64)
+	if _, err := conn.ExecContext(ctx, "SET SESSION "+variable+" = "+value); err != nil {
+		return nil, mapError(err)
+	}
+	return func() {
+		conn.waitInFlight()
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), endTransactionTimeout)
+		defer cancel()
+		if _, err := conn.ExecContext(cleanupCtx, "SET SESSION "+variable+" = "+saved); err != nil {
+			// Never leave a live connection carrying the agent's limit: ConnSet.Acquire drops a dead one.
+			_ = conn.Raw(func(any) error { return driver.ErrBadConn })
+		}
+	}, nil
 }

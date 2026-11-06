@@ -36,7 +36,11 @@ const BASE: Omit<ConnectionSummary, 'id' | 'name' | 'kind' | 'mode' | 'sortOrder
   mcpWriteMode: 'prompt',
   mcpDdlMode: 'deny',
   mcpAutoExplain: true,
-  mcpReviewResults: 'inherit',
+  mcpReview: { read: 'inherit', write: 'inherit', ddl: 'inherit', masked: 'inherit' },
+  mcpMaskedMode: 'inherit',
+  mcpStatementTimeoutSec: 10,
+  mcpTables: null,
+  maskReviewOn: false,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
