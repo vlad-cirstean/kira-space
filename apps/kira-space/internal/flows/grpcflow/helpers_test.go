@@ -159,7 +159,7 @@ func dbBytes(t *testing.T, app *flowharness.App) []byte {
 		if err != nil || d.IsDir() {
 			return err
 		}
-		if bytes.HasPrefix([]byte(filepath.Base(p)), []byte("studio.db")) {
+		if bytes.HasPrefix([]byte(filepath.Base(p)), []byte("kira.db")) {
 			b, rerr := os.ReadFile(p)
 			if rerr != nil {
 				return rerr
@@ -172,7 +172,7 @@ func dbBytes(t *testing.T, app *flowharness.App) []byte {
 		t.Fatal(err)
 	}
 	if len(all) == 0 {
-		t.Fatalf("no studio.db files under %s", app.SpaceHome)
+		t.Fatalf("no kira.db files under %s", app.SpaceHome)
 	}
 	return all
 }

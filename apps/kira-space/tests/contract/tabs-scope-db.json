@@ -1,6 +1,0 @@
-{
-  "TabsService.Save#ownedElsewhere": {
-    "code": "E_CONTRACT",
-    "message": "tab id belongs to another window"
-  }
-}

@@ -95,7 +95,7 @@ func main() {
 	}
 	foldConfig(reporter, db)
 	foldLegacyHome(reporter, db)
-	foldStudioDB(reporter, db)
+	foldDB(reporter, db)
 
 	settings, err := repositories.Settings.GetAll()
 	if err != nil {
@@ -299,8 +299,8 @@ func purgeKeyedWindows(repositories *repos.Repos) {
 	}
 }
 
-// foldStudioDB folds a Kira Studio database into the Space one once (P544).
-func foldStudioDB(reporter *startupfail.Reporter, db *storage.DB) {
+// foldDB folds a Kira Studio database into the Space one once (P544).
+func foldDB(reporter *startupfail.Reporter, db *storage.DB) {
 	err := dbfold.Run(dbfold.Options{
 		Home: config.KiraSpaceHome(), Space: db.DB,
 		Ephemeral: func(key string) bool {

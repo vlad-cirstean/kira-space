@@ -32,9 +32,9 @@ func scalar(t *testing.T, db *sql.DB, q string) string {
 	return v.String
 }
 
-// newStudioDB writes <home>/studio.db at the legacy schema with one connection, an op, a tab on a window
+// newLegacyDB writes <home>/studio.db at the legacy schema with one connection, an op, a tab on a window
 // Space does not know, Studio-only settings and a sealed connection secret.
-func newStudioDB(t *testing.T, home string) {
+func newLegacyDB(t *testing.T, home string) {
 	t.Helper()
 	steps, err := legacy.All()
 	if err != nil {
@@ -53,6 +53,8 @@ func newStudioDB(t *testing.T, home string) {
 		`INSERT INTO settings (key, value) VALUES ('dbMcp.serverEnabled', 'true'), ('appearance.fontSize', '17'), ('config.migrated.runs', '1')`,
 		`INSERT INTO ui_layout (key, value) VALUES ('modes.api.sidebar', '300'), ('panel.cellEditor.height', '120'), ('other', '1')`,
 		`INSERT INTO secret_values (scope, owner, name, value, updated_ms) VALUES ('connection', 'c1', 'password', 'kira:v3:connection:aaa', 1)`,
+		`INSERT INTO proof_sessions (id, name, name_key, state, created_at, updated_at) VALUES ('s1', 'one', 'one', 'closed', 1, 1), ('s2', 'two', 'two', 'closed', 1, 1)`,
+		`INSERT INTO proof_task_links (session_id, task_id, source, linked_at) VALUES ('s1', 't-live', 'user', 1), ('s2', 't-gone', 'user', 1)`,
 	)
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
@@ -77,6 +79,9 @@ func assertFolded(t *testing.T, db *sql.DB, home string) {
 			t.Errorf("%s = %q, want %q", q, got, want)
 		}
 	}
+	if got := scalar(t, db, `SELECT group_concat(session_id) FROM proof_task_links`); got != "s1" {
+		t.Errorf("proof links = %q, want only the one whose task exists", got)
+	}
 	if got := scalar(t, db, `SELECT COUNT(*) FROM tabs t JOIN windows w ON w.key = t.window_key WHERE t.id = 't1'`); got != "1" {
 		t.Errorf("orphan tab not on a Space window: %s", got)
 	}
@@ -91,12 +96,13 @@ func TestDbFold(t *testing.T) {
 	for _, interrupt := range []string{"", "upgrade", "import", "remove"} {
 		t.Run("interrupt-"+interrupt, func(t *testing.T) {
 			home := t.TempDir()
-			newStudioDB(t, home)
+			newLegacyDB(t, home)
 			space, err := storage.OpenAt(home)
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = space.Close() })
+			execAll(t, space.DB, `INSERT INTO ade_tasks (id, kind, color, created_at) VALUES ('t-live', 'task', 0, 1)`)
 			opts := dbfold.Options{Home: home, Space: space.DB}
 			if interrupt != "" {
 				opts.Step = func(name string) error {
@@ -118,6 +124,10 @@ func TestDbFold(t *testing.T) {
 				t.Fatal(err)
 			}
 			assertFolded(t, space.DB, home)
+			execAll(t, space.DB, `DELETE FROM ade_tasks WHERE id = 't-live'`)
+			if got := scalar(t, space.DB, `SELECT COUNT(*) FROM proof_task_links`); got != "0" {
+				t.Errorf("proof links after the task went = %s, want 0", got)
+			}
 			backups, _ := filepath.Glob(filepath.Join(home, "backups", "p544-*", "*.db"))
 			if len(backups) != 2 {
 				t.Errorf("backups = %v", backups)

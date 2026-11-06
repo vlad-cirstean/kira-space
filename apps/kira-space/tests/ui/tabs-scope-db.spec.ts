@@ -1,7 +1,7 @@
-import { expect, studioTest as test } from '../fixtures';
-import { contract } from '../support/contract';
-import { IPC } from '../support/ipcChannels';
-import { modeTab, openHttpModeAndNewRequest } from './support/apiMode';
+import { expect, studioTest as test } from './fixtures';
+import { modeTab, openHttpModeAndNewRequest } from './studio/support/apiMode';
+import { contract } from './support/contract';
+import { IPC } from './support/ipcChannels';
 
 // A window cannot take another window's tab id: the save is refused with E_CONTRACT, the strip
 // keeps its tabs and the next save retries. A new terminal sends a v7 id.
@@ -9,7 +9,7 @@ import { modeTab, openHttpModeAndNewRequest } from './support/apiMode';
 
 const V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const refused = contract<{ code: string; message: string }>(
-  'tabs-scope-db',
+  'tabs-scope',
   'TabsService.Save#ownedElsewhere',
 );
 

@@ -381,7 +381,7 @@ func TestHttpSendFailure_OpLogErrorNeverContainsSecret(t *testing.T) {
 	}
 
 	var rawError string
-	if err := db.DB.QueryRow(`SELECT error FROM op_log WHERE id = ?`, "77836346-c554-7005-86e5-b4e461e0b2f8").Scan(&rawError); err != nil {
+	if err := db.DB.QueryRow(`SELECT error FROM db_op_log WHERE id = ?`, "77836346-c554-7005-86e5-b4e461e0b2f8").Scan(&rawError); err != nil {
 		t.Fatalf("query op_log.error: %v", err)
 	}
 	if strings.Contains(rawError, secret) {

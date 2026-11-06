@@ -215,7 +215,7 @@ func (w *Wired) wireEmbedded(deps appcore.Deps, installer harness.MCPInstaller, 
 	stopReregister := reregisterAfterFold(dbMcpSvc, w.Repos.CustomScripts.DB)
 	dockerSvc := &bridge.DockerService{BoundService: docker.NewBoundService(deps.Events, dockerOptions(opts, deps.Repos.DockerRestore)...)}
 	docker.StartRestoreBound(dockerSvc.BoundService)
-	eventsDetach := w.Events.AttachStudio(bridge.StudioSources{Connections: connectionsSvc, Oplog: oplogWiring})
+	eventsDetach := w.Events.AttachDb(bridge.DbSources{Connections: connectionsSvc, Oplog: oplogWiring})
 
 	return dbEmbedded{
 		dbMcpSvc: dbMcpSvc, dbMcpSessions: dbMcpSessions,
@@ -251,7 +251,10 @@ func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *db
 	dbm.apiFiles.Start()
 	dbm.connFiles.Start()
 
+	w.Router = dbm.router
 	w.App = &bridge.AppService{Deps: deps}
+	w.StudioSettings = &bridge.StudioSettingsService{Deps: deps}
+	w.StudioOps = &bridge.StudioOpsService{Deps: deps, Canceller: dbm.router}
 	w.Connections = &bridge.ConnectionsService{Deps: deps}
 	w.MaskRules = &bridge.MaskRulesService{Deps: deps}
 	w.ConnectionConfig = &bridge.ConnectionConfigService{Deps: deps, Files: dbm.connFiles}

@@ -285,7 +285,7 @@ Other scripts you'll use most:
 `package.json` lists every script. `bun install` also installs git hooks: `pre-commit` runs lint and
 typecheck, `pre-push` runs the Go build and linters.
 
-**App data:** Kira Space keeps `kira.db`, `studio.db`, `connections/`, `api/`, `logs/` and `review.db`
+**App data:** Kira Space keeps `kira.db`, `config/`, `logs/` and `review.db`
 under `~/.kira-space/` (override with `KIRA_SPACE_HOME`). Memories live in `~/.kira-memory/`
 (`KIRA_MEMORY_HOME`).
 

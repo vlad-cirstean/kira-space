@@ -47,9 +47,9 @@ const (
 // ChannelEngineState is declared for completeness and deliberately never emitted.
 const ChannelEngineState = "kira:engine:state"
 
-// StudioSources are the Studio push producers left as seams. Metrics and approvals are
+// DbSources are the Studio push producers left as seams. Metrics and approvals are
 // process-wide and attach once through Events.AttachMetrics and AttachApprovals.
-type StudioSources struct {
+type DbSources struct {
 	Connections interface {
 		OnStateChange(func(model.ConnectionState)) func()
 		OnMetadataInvalidated(func(string)) func()
@@ -60,9 +60,9 @@ type StudioSources struct {
 	}
 }
 
-// AttachStudio subscribes to every producer in s and returns one detach that unsubscribes all of
+// AttachDb subscribes to every producer in s and returns one detach that unsubscribes all of
 // them. Detach it first in the quit teardown so nothing emits into a half-torn-down app.
-func (ev *Events) AttachStudio(s StudioSources) (detach func()) {
+func (ev *Events) AttachDb(s DbSources) (detach func()) {
 	unsubState := s.Connections.OnStateChange(func(st model.ConnectionState) {
 		ev.emit.Emit(ChannelConnectionState, st)
 	})
