@@ -2,10 +2,12 @@ package dbmcpflow
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
@@ -25,12 +27,20 @@ func TestOpIDs(t *testing.T) {
 	if err := f.exec("", "select 1"); err != nil {
 		t.Fatal(err)
 	}
-	recent, err := f.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 50})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(recent) == 0 {
-		t.Fatal("no op row for an id-less Execute")
+	// Db events reach the op log through an async subscriber.
+	var recent []oplog.Record
+	deadline := time.Now().Add(5 * time.Second)
+	for len(recent) == 0 {
+		var err error
+		if recent, err = f.app.W.Ops.Recent(bridge.OpsRecentArgs{Limit: 50}); err != nil {
+			t.Fatal(err)
+		}
+		if len(recent) == 0 {
+			if time.Now().After(deadline) {
+				t.Fatal("no op row for an id-less Execute")
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
 	}
 	for _, r := range recent {
 		if !ids.IsUUID(r.ID) {
