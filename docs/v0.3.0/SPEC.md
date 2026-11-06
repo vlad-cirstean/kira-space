@@ -12,7 +12,7 @@ Twins: every Studio twin in `plans/TWINS.md` is merged by P538, P539, P540 or P5
 |---|---|---|
 | P537 Part 1 | Merge Kira Space and Kira Studio: relocate Studio into `apps/kira-space` and freeze the merged bridge | Done |
 | P537 Part 2 | Merge Kira Space and Kira Studio: finish in three parallel streams (Go, frontend, build/tests/docs) | Done |
-| P538 | Merge the Studio twins that have no data dependency | Pending |
+| P538 | Merge the Studio twins that have no data dependency | Done |
 | P539 | Fold the Studio home folder into the Kira Space home folder | Pending |
 | P540 | Move every config YAML into one subfolder of the home | Pending |
 | P541 | Mermaid visualiser in the proof tool and proof MCP tool | Pending |
@@ -103,6 +103,9 @@ Result:
   - `git grep -nE "'(ui|visual|screenshots|e2e-real)-studio'" apps/kira-space/playwright.config.ts package.json` prints only `e2e-real-studio` (P539).
   - `git grep -n 'App, m.Title.*"Studio"\|c.App.*"Studio"\|App: "Studio"' apps/kira-space/internal/connfiles apps/kira-space/internal/apifiles`
 - Plan: `plans/P538.md`.
+- Result: Done. M1 to M9 landed. Cell editor height persists in Space layout (`TestLayoutCellEditorHeight`, contract `layout-cell-editor`, UI case in `cell-editor.spec.ts`); Studio layout repo gone. One `Contract` helper and one flat `tests/contract/`; 15 stale Studio contracts deleted. Termflow and quit Studio tests folded; one `quit-confirm` contract. One UI harness (`studioTest` in `tests/ui/fixtures.ts`) and one mock runtime; `ui-studio`, `visual-studio`, `screenshots-studio` projects gone. 15 UI spec twins merged. e2e-real twins merged (identical `prompts-two-windows-real` deleted, tabs-per-window moved to Space `multiwindow-real`). Perf: one `ramWorlds.ts`; Studio worlds sit in `heap-ram` and `heap-tabs` (idle world hops every mode, Studio terminal world is `terminal-automations`). AGENTS.md header reads Kira Space. Docs and `docs/pending-changes` workflow patch updated.
+- Deviations: restored the runs-form MCP block in `termflow/runs_form_test.go` (Studio-only writer, contract `runs-form.json` regenerated). Space `copy-wording` case "settings reset control reads Reset to default" skipped as duplicate. Studio visual baselines not re-recorded here; chapter-end suite run owns it.
+- Left for chapter-end suite run: failures present at the phase base, not caused here: `grpc-request` (20), `row-coloring` (2), `settings-apply-on-save` (4), `control-sizing` (1), `data-view` (1), Space `copy-coverage` "settings dialog, every pane", `ui-leftovers` http-send pair (InlineState, find bar). Cause: stale `is-active` selectors and studio mode click.
 
 ### P539 Fold the Studio home folder into the Kira Space home folder
 
