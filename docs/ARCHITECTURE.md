@@ -372,7 +372,7 @@ whatever sandbox a session happens to be in),
 - KQL compiles to Elasticsearch query DSL in Go (`adapters/kibana/kql`). Hand-rolled: no Go KQL library exists and the Kibana parser is TypeScript under a non-OSI license. Lucene syntax goes through `query_string`.
 - Histogram interval: `auto` picks the nearest of the standard intervals that yields at most 100 and closest to 50 buckets; `1w`, `1M`, `1y` are calendar intervals. The response reports the interval used and whether it was scaled up. Value suggestions are a `terms` aggregation over the current query and time range; `Complete` is false when more distinct values exist than returned.
 - Optional `columns` on the request switches Execute to a `tabular` page: `fields` API with `_source:false`, time field first, nested values read from the nested group. Unknown or duplicate column fails the run. Empty `columns` keeps the `document` page.
-- Saved Discover queries reuse `saved_queries` with kind `discover` (path `''`, per connection). Partial unique index `saved_queries_discover_name` on `(connection_id, lower(name))` enforces one name per connection; SQLite `lower` folds ASCII only, so `É` and `é` are distinct names. Body is `model.DiscoverBody` (query, dataViewId, dataViewName, language, time, filters, columns, sort, sampleSize, interval; 256 KiB cap). A preset time stays relative. Update is last-write-wins: no version check, a second window overwrites.
+- Saved Discover queries reuse `connection_saved_queries` with kind `discover` (path `''`, per connection). Partial unique index `saved_queries_discover_name` on `(connection_id, lower(name))` enforces one name per connection; SQLite `lower` folds ASCII only, so `É` and `é` are distinct names. Body is `model.DiscoverBody` (query, dataViewId, dataViewName, language, time, filters, columns, sort, sampleSize, interval; 256 KiB cap). A preset time stays relative. Update is last-write-wins: no version check, a second window overwrites.
 - ES|QL and saved objects are not supported. Fixture: Elasticsearch plus Kibana 9.5.3 (floor 8.19), about 1.5 GB of memory (see DEV_ENVIRONMENT.md).
 
 ### `sslmode` semantics per engine (P21 round 1)
@@ -413,6 +413,19 @@ whatever sandbox a session happens to be in),
 - Collision (both source and target exist): `config/` wins. A source child the target lacks moves in; a differing child stays only in the backup and logs a warning.
 - Restore: close the app, move `<backup>/<name>` back to the home, delete `config/<name>` and the marker row.
 
+### Schema conventions (P552)
+
+- Every table is `STRICT`. Migration lint N7 fails a `CREATE TABLE` without it from 0083. `schema_version` stays plain.
+- Instants are INTEGER unix ms, named `*_at`, `CHECK (x >= 0)`. Exceptions keep their shared-store names: `op_log.started_ms`, `ade_db_audit.started_ms/ended_ms`, `secret_values.updated_ms`. Repos bind `kiratime.NowMs()` and scan ms into ISO strings (`msISO`, `kiratime.MsToISO`) for the wire. Never bind `time.Time` (modernc stores TEXT; STRICT INTEGER rejects).
+- Booleans are INTEGER 0/1 with a CHECK. Enum columns carry a CHECK of the Go constant set. JSON columns carry `json_valid`; `''` stays the "absent" sentinel where a column has one.
+- Every FK names `ON DELETE`. A FK column leads an index (`TestSchemaInvariants`). The deferred status FKs (`ade_tasks`, `ade_task_status_defaults`) are exempt: `AdeStatusRepo.Save` rewrites them in one transaction.
+- `testdata/schema.sql` is the golden schema; `go test ./apps/kira-space/internal/storage -update` regenerates it. P553 reads it.
+- Renames: `custom_scripts` to `scripts`, `custom_script_collections` to `script_collections`, `saved_queries`, `filter_history`, `metadata_cache` to `connection_*`, `grpc_call_history` to `api_grpc_history`, `windows.order` and `tabs.order` to `sort_order`.
+- Upgrade 0083 to 0090: `schema_quarantine` records every row a step repaired or removed (bad bool, JSON, enum, orphan under a new FK) with reason and action; startup logs one warning per table and action. Before the first such step `OpenAt` writes `<home>/backups/p552-<UTC ts>/kira.db` (`VACUUM INTO`); a later start reuses it; a fresh database writes none.
+- Runner: a migration whose first line is `-- kira:foreign-keys off` (`Migration.ForeignKeysOff`) runs on a pinned connection with `PRAGMA foreign_keys = OFF` (a no-op inside a transaction), then `PRAGMA foreign_key_check`; any row rolls the step back. `Migration.Func` runs after the SQL in the same transaction.
+- Legacy carry: `connections.password`, `uri`, `mcp_review_results`, `ade_repo_config.nickname` and the three legacy tables stay only while their export marker (`config.migrated.connections`, `config.migrated.repos`) is unset and they hold rows; `p552Connections` and `p552RepoConfig` choose the DDL. `dbfold` re-adds them when it imports an unexported Studio database.
+- Dropped: `ade_workflow_last_valid` (merged into `config_last_valid`, folder `workflows`).
+
 ### Database fold (P544)
 
 - Per-DB verdict: `kira.db` is the one database; the old `studio.db` merges in. `review.db` stays apart (bulk blobs with TTL and purges would bloat `kira.db` backups and WAL). `agent-secrets.db` stays apart (shared repo-root credential store, own scope). `~/.kira-memory/memory.db` stays apart (shared with the stdio MCP server process, FTS5).
@@ -421,7 +434,7 @@ whatever sandbox a session happens to be in),
 - `studio.db` opens with the frozen `dbfold/legacy` migrations (lifts 0064 to 0066), `homefold.Runs` folds its scripts and runs, then one transaction on one pinned conn of the Space pool (`ATTACH`) copies the module tables by column intersection, Studio-owned `settings` keys, sealed connection and api secrets, `config_last_valid`, Studio `ui_layout` keys and the tabs. `config.migrated.runs` is never copied. `INSERT OR IGNORE` everywhere: Space rows win.
 - Tabs on a window Space does not know move to Space's primary window, after its tabs; a taken tab id gets a fresh one. `proof_task_links` rows whose task is missing drop with a warning. With the Space settings fresh, Studio's appearance, agent and notify leaves seed them.
 - When `config.migrated.connections` was copied, `connfiles.DropLegacy` drops the superseded connection columns and tables. Then `studio.db`, `-wal` and `-shm` go and the marker turns `done`. Every step resumes after a crash.
-- Single writer: Studio's writers (op log, history, `metadata_cache`, connection files) queue behind ADE writes on the one connection.
+- Single writer: Studio's writers (op log, history, `connection_metadata_cache`, connection files) queue behind ADE writes on the one connection.
 
 - Credentials in the connections table's password column are encrypted at rest (P25) from Go, using a single symmetric key in the OS keychain for all values, with ciphertext in the app's own database.
 - A single keychain key was kept because one keychain item means one authorization decision rather than a prompt per connection, item-count and item-size limits become irrelevant, and SecretStore.copy() stays a raw column copy that never needs the OS key.
@@ -506,12 +519,12 @@ connection_mask_rules(id, connection_id, table_name, column_name, mask_kind, kee
                                                        -- connection URI and the Copy URI menu item, so
                                                        -- a privacy rule must not be settable or
                                                        -- clearable by pasting a URI
-saved_queries(id, connection_id, path, name, kind, body, pinned, created_at, used_at)
+connection_saved_queries(id, connection_id, path, name, kind, body, pinned, created_at, used_at)
                                                        -- saved filters/queries per table + console
-filter_history(id, connection_id, path, where_text, order_by_json, used_at)
+connection_filter_history(id, connection_id, path, where_text, order_by_json, used_at)
                                                        -- history list of past filters/sorts; capped
                                                        -- 20/path, 4,000/connection, 4 KiB/row (P23)
-metadata_cache(connection_id, path, kind, payload_json, fetched_at, etag)
+connection_metadata_cache(connection_id, path, kind, payload_json, fetched_at, etag)
 op_log(id, connection_id, tab_id, started_at, duration_ms, kind, status, rows,
        command, error, stored_bytes, command_truncated, path, source)
                                                        -- rotated, capped (P23: stored_bytes/
@@ -523,7 +536,7 @@ op_log(id, connection_id, tab_id, started_at, duration_ms, kind, status, rows,
                                                        -- pre-existing row;
                                                        -- source (TEXT, migration 0043, P328) is
                                                        -- 'user' or 'mcp', default 'user'
-custom_scripts(id, name, command, working_dir, dir_mode, color, collection, sort_order, created_at, updated_at,
+scripts(id, name, command, working_dir, dir_mode, color, collection, sort_order, created_at, updated_at,
                kind, params_json, smart_json, use_ade_dir, schedule_json, schedule_task_id,
                schedule_branch_id, config_json)
                                                        -- P472 (Studio 0054 / Space 0064): the projection
@@ -552,14 +565,14 @@ script_runs(id, script_id, script_name, color, kind, trigger_kind, state, termin
                                                        -- branch_* name the ADE context (Space only).
 script_run_logs(run_id, seq, stream, text)              -- P242 Part 2; smart-run log lines, stream
                                                        -- stdout|stderr|event
-custom_script_collections(name, sort_order)           -- P472; WITHOUT ROWID. One row per collection
+script_collections(name, sort_order)           -- P472; WITHOUT ROWID. One row per collection
                                                        -- name a run file names, order is sort_order.
                                                        -- Pruned when no run names it.
 secret_values(scope, owner, name, value, updated_ms)     -- P447; sealed kira:v3 values, PK (scope, owner, name),
-                                                       -- both apps. script-param rows: owner = custom_scripts.id.
+                                                       -- both apps. script-param rows: owner = scripts.id.
 ui_layout(key, value)                                   -- panel visibility (app-wide), panel sizes per module (modes.<mode>.*)
-windows(key, order, bounds_json)                        -- one row per workbench (P8)
-tabs(id, connection_id, path, kind, state_json, order, active, window_key, workspace_id)
+windows(key, sort_order, bounds_json)                      -- one row per workbench (P8)
+tabs(id, connection_id, path, kind, state_json, sort_order, active, window_key, workspace_id)
                                                        -- session restore, window_key ON DELETE
                                                        -- CASCADE into windows. workspace_id (C5,
                                                        -- migration 0018) used to carry
@@ -605,7 +618,7 @@ api_response_history(id, item_id, tab_id, scope_key, sent_at, method, url, envir
                                                        -- (real FK into api_items); tab_id is
                                                        -- deliberately NOT a foreign key into
                                                        -- tabs (below)
-grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, streaming,
+api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, streaming,
                    code, code_name, status_message, elapsed_ms, message_count, message_bytes,
                    stored_bytes, snapshot_json)
                                                        -- P11; api_response_history's own shape,
@@ -627,10 +640,10 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - Migrations are forward-only numbered SQL files in apps/kira-space/internal/storage/migrations/, applied on startup.
 - Table access is hand-written database/sql in apps/kira-space/internal/storage/repos/; there is no ORM (the Drizzle dependency went out with the Electron shell).
 - Every row read from settings, ui_layout and connections is decoded through the model types in internal/storage/model/ before use, so a hand-edited or stale-shape row fails loudly instead of propagating zero values into the UI.
-- Migration 0010_p12_api_rename.sql renamed the six http_* collection/variable/history tables to api_*, because api_items stores gRPC requests too and api_variables resolves gRPC targets and metadata; grpc_call_history was not renamed since it holds gRPC calls only.
+- Migration 0010_p12_api_rename.sql renamed the six http_* collection/variable/history tables to api_*, because api_items stores gRPC requests too and api_variables resolves gRPC targets and metadata; api_grpc_history was not renamed since it holds gRPC calls only.
 - The 0010 rename migration uses ALTER TABLE RENAME for each table, then DROP INDEX and CREATE INDEX for each of seven indexes, because SQLite has no ALTER INDEX RENAME; foreign key references are rewritten automatically since db.go sets _foreign_keys=1.
 - Already-applied migrations 0006-0009 are left untouched, so a fresh install creates http_* tables and renames them in 0010; migrate.go refuses to run against a schema_version newer than the build knows.
-- migrate_rename_test.go is the one test that exercises a migration against seeded v9 data; it asserts rows survive under new names, generated scope_key columns still compute, grpc_call_history's foreign key names api_items, and collection delete still cascades.
+- migrate_rename_test.go is the one test that exercises a migration against seeded v9 data; it asserts rows survive under new names, generated scope_key columns still compute, api_grpc_history's foreign key names api_items, and collection delete still cascades.
 - Postman collections are imported into `<id>.collection.yaml` files (P473) and projected into the normalized api_collections/api_items tree; sort_order is data and is rewritten dense within a parent on any insert or delete (collections and environments: see Api config files).
 - api_items.parent_id is a self-reference with ON DELETE CASCADE, enforced because the DSN sets _foreign_keys=1 on every pooled connection, so deleting a folder deletes its subtree at any depth in one statement with no recursive Go delete.
 - Each api row stores origin_json, the original Postman object verbatim minus its recursive item array, because encoding/json drops undeclared struct members and no typed model could round-trip unmodelled members.
@@ -644,7 +657,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - At send time a variable reference resolves against the active environment first, then the request's own collection, then nothing.
 - A secret's plaintext never leaves api_variables except through a gated reveal; this is guaranteed by schema: value and secret_value are separate columns (value = '' whenever is_secret = 1, secret_value set only then), so the editor's list query cannot return plaintext or ciphertext.
 - internal/apivars.Service.Reveal and RevealHistory are the only paths to a secret variable's value, gated by the same *internal/localauth.Authorizer instance that connections' reveal uses, so a 5-minute grace granted by either kind of reveal covers the other.
-- Variable history is stored in api_variable_history, one row per prior value, capped at 20 per variable with the same dedupe-then-trim discipline as filter_history.
+- Variable history is stored in api_variable_history, one row per prior value, capped at 20 per variable with the same dedupe-then-trim discipline as connection_filter_history.
 - Variable history is recorded only when a value actually changes; a secret's change is detected by decrypting the stored value and comparing plaintext, because GCM nonces make ciphertext comparison meaningless.
 - A history restore writes through the ordinary update path, so the restore is itself recorded in history.
 - A pre-P5 collection (variables_promoted = 0) has its variables promoted once, lazily, the first time they are listed.
@@ -657,7 +670,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - Response history storage is bounded by three independent caps: a 256 KiB per-entry cap, a per-scope count cap of 20, and a global byte budget of 128 MiB.
 - The 256 KiB per-entry cap applies separately to the request body and the response body, truncating the stored copy independently of internal/httpclient's 10 MiB transfer cap, with two independent truncation booleans so an entry can report both, either, or neither.
 - A binary response body (bodyEncoding base64) is not stored in response history; the entry keeps every other field including the true bodyBytes, and the raw inspector likewise elides binary bodies with a '[… N bytes of binary data …]' marker.
-- The per-scope count cap of 20 uses the same insert-then-trim SQL shape as filter_history and api_variable_history.
+- The per-scope count cap of 20 uses the same insert-then-trim SQL shape as connection_filter_history and api_variable_history.
 - The 128 MiB global byte budget evicts oldest-first across every scope via one window-function DELETE (SUM(stored_bytes) OVER) inside Record's transaction on every insert; the budget is the same order of magnitude as cache.l2BudgetMb.
 - The per-entry cap guarantees no single row exceeds the byte budget, so the row just inserted is never evicted by the global budget.
 - Response history has no time-based expiry, because a response row is a result the user asked for and a two-month-old response is not noise, unlike op_log.
@@ -684,9 +697,9 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - A gRPC request is stored as a protocol value on the existing api_items row, not as a third kind value (P11).
 - kind stays structural ('folder' vs. a leaf); protocol says which document shape request_json holds for a leaf: 'http' → model.SavedRequest, 'grpc' → model.SavedGrpcRequest.
 - A kind: 'grpc-request' value was rejected because every existing kind === 'request' check across tree/collections/export code would need re-auditing for a third value; with protocol those checks stay as narrow as before.
-- grpc_call_history is its own table rather than a widened api_response_history, because the rows differ (gRPC code/code_name/streaming vs HTTP status/redirects) and a nullable-column union would make HTTP-only queries and cap computations reason about rows they never see.
-- grpc_call_history shares column names with api_response_history by convention, not via a shared struct or shared repo.
-- grpc_call_history uses the same four storage bounds as api_response_history: per-message truncation at 64 KiB (half HTTP's single-payload cap), a 100-stored-message-per-entry elision with a true message_count kept, a 30-per-scope trim, and a global byte budget of 32 MiB (a quarter of HTTP's 128 MiB).
+- api_grpc_history is its own table rather than a widened api_response_history, because the rows differ (gRPC code/code_name/streaming vs HTTP status/redirects) and a nullable-column union would make HTTP-only queries and cap computations reason about rows they never see.
+- api_grpc_history shares column names with api_response_history by convention, not via a shared struct or shared repo.
+- api_grpc_history uses the same four storage bounds as api_response_history: per-message truncation at 64 KiB (half HTTP's single-payload cap), a 100-stored-message-per-entry elision with a true message_count kept, a 30-per-scope trim, and a global byte budget of 32 MiB (a quarter of HTTP's 128 MiB).
 - The 100-message count cap exists because a streaming call's messages have no natural single-payload bound to truncate to, so a count cap does the job a byte cap did for HTTP (D11).
 - The gRPC history 32 MiB budget (a quarter of HTTP's) reflects gRPC being a newer, narrower-audience protocol, not that a gRPC call matters less.
 - Adopt/SweepOrphans and the generated scope_key for gRPC history are ports of ResponseHistoryRepo's mechanism, unchanged in shape.
@@ -703,17 +716,17 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 |---|---|---|
 | `schema_version` | nothing | one row |
 | `settings`, `ui_layout` | nothing | closed key set; every writer is a hand-listed leaf |
-| `connections`, `connection_ddl`, `connection_tree_filters`, `saved_queries`, `connection_mask_rules` | user action | user action; all cascade on connection delete |
-| `custom_scripts`, `custom_script_collections` | run file written or edited | file deleted (the row and its saved secrets go; run history stays); a collection row goes when no run names it |
+| `connections`, `connection_ddl`, `connection_tree_filters`, `connection_saved_queries`, `connection_mask_rules` | user action | user action; all cascade on connection delete |
+| `scripts`, `script_collections` | run file written or edited | file deleted (the row and its saved secrets go; run history stays); a collection row goes when no run names it |
 | `secret_values` | save of a secret script param | user clear, param removal, script or collection delete (same tx); one row per saved value |
 | `api_collections`, `api_items`, `api_environments`, `api_variables` | user action / import | user action; import capped at 64 MiB upstream |
 | `tabs` | open tabs | rewritten per window per save; cascades on window close |
 | `windows` | live windows | one row per live window (+1 for session restore) |
-| `metadata_cache` | browsing | 4 MiB/row, 200 rows/connection, dropped whole on every reconnect |
+| `connection_metadata_cache` | browsing | 4 MiB/row, 200 rows/connection, dropped whole on every reconnect |
 | `api_variable_history` | value edits | 20 per variable |
-| `filter_history` | filter/sort use | 20 per path, **4,000 per connection**, **4 KiB per row** |
+| `connection_filter_history` | filter/sort use | 20 per path, **4,000 per connection**, **4 KiB per row** |
 | `api_response_history` | sends | 256 KiB/body, 30/scope, 128 MiB table, orphan sweep at launch |
-| `grpc_call_history` | calls | 64 KiB/msg, 100 msgs/entry, 30/scope, 32 MiB table, orphan sweep |
+| `api_grpc_history` | calls | 64 KiB/msg, 100 msgs/entry, 30/scope, 32 MiB table, orphan sweep |
 | `op_log` | every DB operation | 30 days, 20,000 rows, **64 KiB command + 8 KiB error**, **32 MiB table** |
 | the file itself | — | **`auto_vacuum=INCREMENTAL` on new databases + a startup `incremental_vacuum` above 16 MiB of freelist** |
 | `kira.db-wal` | one transaction | **`journal_size_limit` = 4 MiB** |
@@ -724,8 +737,8 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - OpsRepo.Finish truncates op_log command to 64 KiB and error to 8 KiB, because they were unbounded TEXT and a pasted batch script was stored whole on every re-run.
 - op_log Prune has a third pass: a 32 MiB table-wide byte sweep, oldest-first, gated behind an indexed SUM(stored_bytes), in addition to the 20,000-row cap and 30-day retention.
 - op_log command truncation is flagged (command_truncated) and disables the Operations panel's Re-run for that row, because Re-run replays command verbatim; error truncation is silent since nothing acts on error.
-- filter_history is capped at 20 rows per (connection_id, path) and at historyPerConnectionLimit of 4,000 rows per connection (200 cached paths times 20 rows, matching metadata_cache), evicting by used_at across the whole connection.
-- filter_history where_text/order_by_json are silently truncated to 4 KiB per row, because selecting a history entry only populates the filter box for the user to review and never executes it blindly.
+- connection_filter_history is capped at 20 rows per (connection_id, path) and at historyPerConnectionLimit of 4,000 rows per connection (200 cached paths times 20 rows, matching connection_metadata_cache), evicting by used_at across the whole connection.
+- connection_filter_history where_text/order_by_json are silently truncated to 4 KiB per row, because selecting a history entry only populates the filter box for the user to review and never executes it blindly.
 - db.go buildDSN sets _auto_vacuum=INCREMENTAL, which takes effect only on a brand-new database and is inert on an existing one, so it needs no version gate; the previous default NONE meant kira.db never shrank after deletes. INCREMENTAL was chosen over FULL because FULL reorganises pages on every commit, a constant cost for a single-writer store that commits on every debounced save.
 - repos.Maintenance.Reclaim runs once at startup and runs PRAGMA incremental_vacuum only when the freelist exceeds 16 MiB (half of op_log's table budget).
 - Converting an existing kira.db to incremental auto_vacuum is out of scope because there is no installed base; a developer who wants it runs one VACUUM by hand after setting the pragma.
@@ -740,13 +753,13 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 
 ## Caching
 
-- L1 metadata cache is persisted in `metadata_cache`, survives restart, and has no TTL; staleness is defined by connection epoch (`ConnectionState.Since`), not a clock (P24).
+- L1 metadata cache is persisted in `connection_metadata_cache`, survives restart, and has no TTL; staleness is defined by connection epoch (`ConnectionState.Since`), not a clock (P24).
 - An L1 payload is fresh if written after the connection was most recently established, otherwise stale; a stale payload is bypassed and re-fetched on its first read per kind, and not re-fetched again for the rest of that connection session.
 - The L1 epoch is compared against a per-kind timestamp stored in `payload_json` under the reserved key `fetchedAt`; the `fetched_at` column only orders the 200-row eviction.
 - While a connection is not connected no epoch exists, so the L1 cache serves at any age, making the panel instant on launch and letting a SQL console over a cached container offer completion without a live connection.
 - Connecting no longer deletes the connection's L1 rows (it did through P23); it moves the epoch so rows are re-read lazily, once each, only for paths a user opens.
 - An explicit Refresh still deletes L1 rows: a node's Refresh drops that node's whole row (all four kinds), and a connection's Refresh or Refresh all drops every row for that connection.
-- A fourth L1 kind, `columns` (SchemaColumns: every relation in a container with its columns, one round trip), shares the L1 row, keyed on the container (database/schema node); `metadata_cache`'s unique index is (connection_id, path), not including kind.
+- A fourth L1 kind, `columns` (SchemaColumns: every relation in a container with its columns, one round trip), shares the L1 row, keyed on the container (database/schema node); `connection_metadata_cache`'s unique index is (connection_id, path), not including kind.
 - `columns` is merged into one row per container rather than one row per relation, because per-relation rows would compete with the tree's `children` rows for the 200-row-per-connection budget on a large schema.
 - `columns` follows the same connection-epoch freshness rule as other kinds, is refreshed on explicit Invalidate, and is readable with no live connection because a cache hit is served before the connection is checked.
 - The `columns` cache backs SQL console schema-aware completion/diagnostics/hover (`state/schemaColumns.ts`) automatically when a console or data tab opens over a cached container; the completion layer never opens a connection or fetches on its own.
@@ -862,14 +875,14 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - Viewing a run (history, chip, resume, agent reveal) uses the same placement: tab already on that run activates, finished key tab is replaced, live key tab with another run opens a new tab.
 - createTabsStore OpenTabOpts.replace names the tab a new one takes over. The gate lives in the UI only; Go does not refuse concurrent runs of one script.
 - A script row click selects, double-click or Enter opens Edit; the play button, menu Run and Run now are the only starts.
-- A smart script (custom_scripts.kind = smart) runs as headless Claude via claude -p through internal/agentmcp (moved from Space's adeagent), sharing the launch, stream-json parser and finish_step loopback server with the ADE run engine.
+- A smart script (scripts.kind = smart) runs as headless Claude via claude -p through internal/agentmcp (moved from Space's adeagent), sharing the launch, stream-json parser and finish_step loopback server with the ADE run engine.
 - Smart script defaults are model sonnet, 1 USD budget (--max-budget-usd) and 15 min timeout; bounds in internal/scripts/smart.go are 20 params, 20000-char prompt, budget 0.05-25 USD, timeout 1 min-2 h.
 - Smart runs are Isolated: --setting-sources '' loads no Claude settings file, --strict-mcp-config allows only the report server, and --permission-prompts none denies instead of asking. Exception, only with `agent.hermetic` off (`HeadlessSpec.UserMCP`, P444): a script that ticks a user MCP server runs with --setting-sources user and no --strict-mcp-config; --settings `{"disableAllHooks":true,"allowedMcpServers":[...],"enableAllProjectMcpServers":false,"enabledMcpjsonServers":[]}` limits the loaded servers to the report server plus the ticked ones, never loads project `.mcp.json` servers, and claude loads the ticked ones from its own config. The presence check (`smartBlocker`, ADE `checkMCP`) lists servers from the app home, like the picker, so a name only a folder's `.mcp.json` defines does not count. A cached list answers while it has every ticked name; a miss re-lists unless the list is under 30 s old. A failed listing reuses the last good one; the picker shows its statuses as `unknown`. The shared list flight runs detached from the first caller; each caller waits under its own context. A ticked server grants all its tools (`mcp__<server>`) or named tools. With hermetic on (default) the picker and presence check list the app's `settings.yaml` servers instead; see "Hermetic launches (P455)".
 - A smart script's --tools and --allowedTools come from its tool allowlist (built-ins Read, Grep, Glob, Edit, Write, NotebookEdit, Bash; default Read, Grep, Glob).
 - A smart run's final report must go through finish_step; a run without it fails with the shared "no report" text.
 - Smart script params are text, select or multiselect (a text param may be secret); names are lowercase and must not use the reserved ADE built-ins task, jira, repo, branch, base, worktree; {name} in the prompt is substituted before launch.
 - A secret param value reaches a smart run through env only: never in the prompt, stored script_runs.prompt or params_json (stored as the mask), and a smart script whose prompt names a secret param is refused.
-- P447: a secret text param can have a saved value, sealed in secret_values (scope script-param, owner custom_scripts.id, name = param name). The script record holds names only (savedSecrets). Create takes secretValues and SetSecrets takes values (string saves, null clears, absent keeps); the value is write-only, never returned. A secret param has no default. Un-secreting or removing a param, or deleting the run, prunes the row after the projection commits (the single DB connection forbids a second query inside the tx). Both apps; no script duplicate or export exists, and any later path must never copy plaintext (a copy starts with no saved values). Without a keychain, saving returns E_SECRET_STORE.
+- P447: a secret text param can have a saved value, sealed in secret_values (scope script-param, owner scripts.id, name = param name). The script record holds names only (savedSecrets). Create takes secretValues and SetSecrets takes values (string saves, null clears, absent keeps); the value is write-only, never returned. A secret param has no default. Un-secreting or removing a param, or deleting the run, prunes the row after the projection commits (the single DB connection forbids a second query inside the tx). Both apps; no script duplicate or export exists, and any later path must never copy plaintext (a copy starts with no saved values). Without a keychain, saving returns E_SECRET_STORE.
 - A saved value fills a secret param only when none was typed (typed wins), stays env-only, and is used by resume and restore. An unreadable saved value counts as absent and sets Preview.SecretIssue.
 - Output masking (Masker over all secret values of the run): log lines before truncation, outcome Reason, LastError, OutputTail and Summary, and the terminal tail. Not masked: the live terminal tab and the Space phone terminal ring (mobileterm), lines cut at linewriter.MaxLine, agent writes through Space task tools, and anything the process writes elsewhere. ADE workflow smart steps fill saved secret params and mask them in the step log. A workflow `params` entry for a secret param is refused.
 - script_run_logs holds the run log (stdout|stderr|event), read by ScriptRuns.ReadLog; script_runs gains model, session_id, prompt, params_json, tools_json.
@@ -1005,7 +1018,7 @@ grpc_call_history(id, item_id, tab_id, scope_key, called_at, target, method, str
 - packages/api-core/src/http/escape.ts is the one exported goQueryEscape, imported by both curl/generate.ts and raw/generate.ts, which now live in one package's src/http/ tree.
 - api/state/history.ts's createHistoryQueries factory is shared by the HTTP and gRPC history views; HTTP's compare-selection extra is carried in a generic Extra type parameter and gRPC passes none.
 - mergedValuesAndSecrets and collectionIdFor live in api/state/variables.ts and api/state/collections.ts, because views/grpcrequest/** may not import views/httprequest/**, and both view directories already import api/state.
-- Decision D18: the four insert-then-trim capped history tables (filter_history, api_variable_history, api_response_history, grpc_call_history) do not share a Go helper, because it would compose SQL from table/column/cap strings, which was already rejected for index-usage reasons. They also differ in what they trim on (count vs. count+bytes) and whether they run inside an outer transaction.
+- Decision D18: the four insert-then-trim capped history tables (connection_filter_history, api_variable_history, api_response_history, api_grpc_history) do not share a Go helper, because it would compose SQL from table/column/cap strings, which was already rejected for index-usage reasons. They also differ in what they trim on (count vs. count+bytes) and whether they run inside an outer transaction.
 - api/ApiDialogs.vue mounts the api module's six dialogs, each gated by its own store's open flag; it is a template-only wrapper, so App.vue imports one thing instead of eleven.
 
 - No standalone api-ui package exists; shared UI was extracted (P98/P104/P110) into packages/theme (shadcn-vue components/ui/*, Tailwind tokens, CodiconIcon) and packages/workbench (shell components, Pinia store factories, editor bootstrap, test harnesses).
@@ -2411,7 +2424,7 @@ ADE tab counts render as `Badge variant="count"` through `SecondaryTabs countBad
 ### Workflows
 
 - Workflows are YAML files in <home>/config/workflows, parsed by adeflow.Reader; no workflow is seeded (D2).
-- The workflows folder is a `configfs.Folder` (P450, see Config files): watched, debounced 200 ms; a broken edit keeps the last valid version and reports the line plus a message. Saves are atomic with a baseHash check. `ade_workflow_last_valid` rows follow file deletion. The writer keeps key order and comments.
+- The workflows folder is a `configfs.Folder` (P450, see Config files): watched, debounced 200 ms; a broken edit keeps the last valid version and reports the line plus a message. Saves are atomic with a baseHash check. `config_last_valid` rows of folder `workflows` follow file deletion. The writer keeps key order and comments.
 - `apps/kira-space/internal/adeflow/options.go` is the single list of workflow keys (P451): `Parse` and the writer derive their key sets from it, and the folder's `AGENTS.md` is generated from it. A new key needs a row there or the parser refuses it.
 - A workflow has a flat list `steps` of kind agent|script|review|manual (P293); `kind` is required and each kind allows only its own keys.
 - Allowed keys: agent: outside_repo runs_on before results max_returns timeout prompt allowed_tools smart_script params sandbox settings db_mcp; script: outside_repo command runs_on before results max_returns timeout sandbox; review: review runs_on before results max_returns timeout sandbox settings db_mcp; manual: session and, with it, prompt, settings, db_mcp, outside_repo and sandbox.
@@ -3496,11 +3509,11 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - Validation: JSON Schema draft 2020-12 per kind, `github.com/santhosh-tekuri/jsonschema/v6`. `google/jsonschema-go` declined: its error names no instance location, so no file line. Pipeline: `yaml.Node` parse, node-to-JSON walk, schema validate, error mapped back to line and column, decode into the Go type (unknown fields refused), module `Rule`s. `Rule.Doc` is mandatory and renders into `AGENTS.md`.
 - A `Problem` message never echoes the offending value. Messages are English catalog keys `backend.core.config.*`.
 - Workflows keep their hand-written `adeflow.Parse` and run on `configfs.Folder` without a schema.
-- DB sync, one mechanism: files to DB only. Each module keeps a projection (last valid parsed JSON per file) in its own SQLite table through `configfs.Projection`. The projection exists so last good survives restart, state rows keep a local key, and hot paths read rows. Workflows' projection is `ade_workflow_last_valid`; rows follow file deletion.
+- DB sync, one mechanism: files to DB only. Each module keeps a projection (last valid parsed JSON per file) in its own SQLite table through `configfs.Projection`. The projection exists so last good survives restart, state rows keep a local key, and hot paths read rows. Every projection is `config_last_valid`, one `folder` per module (workflows use `workflows`); rows follow file deletion.
 - App writes never touch the projection. A UI edit writes the file (atomic, `baseHash` check), then the same load path projects it. Load: `Folder.List` at start, then on every debounced (200 ms) watch event. Unchanged JSON is skipped. Invalid file: no DB change, a `Problem` with the last good value, one Warn per new hash (file name and line, never content). File gone: `Forget`.
 - State references config only by id (file stem). A rename is a delete plus a create. Each module states whether a delete cascades or orphans its state.
 - Migration of legacy rows (P459 to P462, P472): `configfs.MigrateOnce(db, name, fn)` runs `fn` once and sets the settings marker `config.migrated.<name>` after it; never export again once set. `configfs.RenderYAML` writes the file text. Legacy secret values are never exported: they move into the secret store and the file gets a reference.
-- Config versus state: workflow files are config; `ade_workflow_last_valid` is a derived projection; task workflow snapshots are state; `AGENTS.md` is derived. The `settings` table stays in SQLite this chapter.
+- Config versus state: workflow files are config; the `workflows` rows of `config_last_valid` are a derived projection; task workflow snapshots are state; `AGENTS.md` is derived. The `settings` table stays in SQLite this chapter.
 - References: `${NAME}` reads an env var, `${secret:name}` an app secret, `$${` is a literal `${`. Anything else inside `${...}` is a load-time `Problem`. Only schema fields marked `x-kira-ref` are interpolated; `x-kira-secret` requires the whole value to be one secret reference. Shell command fields are never marked.
 - Load keeps references verbatim in the decoded value and the projection. `Resolver.Resolve` runs at use: it returns the text plus `[]Used{Name, Value, Placeholder}` for secrets, for the caller's masker. A missing env var or secret fails naming the reference, never an empty string. Env source is injected.
 - Secret seam: `configfs.SecretSource` (`Secret(ctx, namespace, name)`, errors wrap `ErrSecretMissing`). The namespace is the owning module's, never written in a file. P450 wires no production source; P453 adapts the secret store.
@@ -3513,12 +3526,12 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 
 - A run is `<home>/config/runs/<id>.yaml` (`~/.kira-space/config/runs`); the file stem is the run id (`^[a-z0-9][a-z0-9_-]{0,79}$`). Another name is listed as a problem with `id` empty and never used. `AGENTS.md` beside them is generated from the schema.
 - Keys: `name`, `kind` (`script` default, `smart`), `command` (the shell command, or `prompt` for a smart run), `params`, `smart`, `schedule`, `mcp` (agent access, Studio; see Scripts tools, P521), `dir` (`kira`, `fixed`), `path`, `color`, `collection` (a name), `use_ade_dir` (Space only; Studio refuses it). `internal/scripts/run.schema.json` is the base; `assembleSchema` writes every enum and bound the Go validator owns into it, so schema and `AGENTS.md` cannot drift.
-- `scripts.Loader` owns the folder (`configfs.Folder[File]`) and the projection (`Repo.Projection`): `custom_scripts.config_json` is the last good file value. Files to DB only. Invalid file: the row keeps the last good version, a `FileProblem{file, id, line, message, lastGood}` is published, one Warn per new hash. A run with no last good version has a problem and no row. File gone: row, saved secrets and (through Delete) the kira folder go; run history stays.
+- `scripts.Loader` owns the folder (`configfs.Folder[File]`) and the projection (`Repo.Projection`): `scripts.config_json` is the last good file value. Files to DB only. Invalid file: the row keeps the last good version, a `FileProblem{file, id, line, message, lastGood}` is published, one Warn per new hash. A run with no last good version has a problem and no row. File gone: row, saved secrets and (through Delete) the kira folder go; run history stays.
 - State the file never holds, kept in the row: `sort_order`, `schedule_task_id`, `schedule_branch_id`. `Record` never writes them. The schedule target is set by `SetScheduleTarget` (Space only), apart from the file text.
 - Validation: `Validate` returns `ValidationError{Path, Key, Args}`: `Path` is a JSON pointer in the file's own vocabulary, `Key` a catalog key `backend.core.runs.*.body`. Messages render through i18n. Secrets: a `secret: true` param holds no value in the file; values live in `secret_values` (scope `script-param`, owner run id) and go through `SetSecrets`.
 - Bound surface (`CustomScriptsService`): `List`, `Create(fields, secretValues)` (writes a new `<id>.yaml`; the id is the slugged name, made unique), `Delete`, `File(file)` and `SaveFile(file, text, baseHash)` (whole text; a changed file is `E_CONFLICT`), `SetSecrets`, Space-only `SetScheduleTarget`, `Reorder(collection, ids)`, `ReorderCollections(names)`. Removed: Update, collection CRUD, Move. Studio registers folder `runs` in `ConfigFilesService` (Open, Reveal); Space registers `workflows`, `agent` and `runs`.
-- Migration of legacy rows: `configfs.MigrateOnce` (settings key `config.migrated.runs`) exports each `custom_scripts` row to `<id>.yaml` unless one exists (YAML through `configfs.RenderYAML`). Secret params keep their sealed values; only names go in the file. The marker is set after the last file lands, so a crash reruns the export idempotently.
-- Collections are names. `custom_script_collections(name PK, sort_order)` holds order only; a row goes when no run names it. Reorder is within a set (ungrouped is `''`); drag between sets and Move are gone, the file's `collection` key moves a run.
+- Migration of legacy rows: `configfs.MigrateOnce` (settings key `config.migrated.runs`) exports each `scripts` row to `<id>.yaml` unless one exists (YAML through `configfs.RenderYAML`). Secret params keep their sealed values; only names go in the file. The marker is set after the last file lands, so a crash reruns the export idempotently.
+- Collections are names. `script_collections(name PK, sort_order)` holds order only; a row goes when no run names it. Reorder is within a set (ungrouped is `''`); drag between sets and Move are gone, the file's `collection` key moves a run.
 - UI: `AutomationsPanel.vue` lists rows; a file with an error and a last good version shows a `script-row-problem` marker, a file with none a `script-broken-<file>` row. `RunFileDialog.vue` (shared) edits the file as a form (Smart, Script, Folder, Params tabs) or whole text (YAML tab) over one draft (see Config forms and YAML editor, P514), with `ConfigFileBar` (path, status, Open, Reveal, Copy path, About), the `E_CONFLICT` Reload/Overwrite pair and `RunSecretsSection.vue` for write-only secret values. Space adds `ScheduleTargetDialog.vue`. Save does not close the dialog.
 - Tests: flows `TestRunsConfigFile`, `TestRunsFileMigration` (Space), `TestRunsConfigFileStudio` (contracts `runs-file.json`); UI `automations-file.spec.ts` in both apps on the same scenario.
 
@@ -3591,7 +3604,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - Lifecycle actions are file operations through each module's one writer; a file with a problem is never edited.
   - Connections: Duplicate and Delete in the dialog footer; `ConnectionConfigService.DeleteFile` removes a file that never had a row.
   - Runs: `Move`, `RenameCollection`, `DeleteCollection` edit the `collection` key of member files. A collection is a name. Rename checks all members first and refuses a taken name. Not atomic across files; the error lists what changed.
-  - Api: `Rename`, `DeleteMany` (topmost rows only), `MoveItems`, environment `DeleteEnvironment` and `DuplicateEnvironment` (name `<name> copy`, shares the secret references). A move across collection files inserts into the destination first, then cuts the source, and returns `map[oldRowID]newRowID`. It re-points `api_response_history` and `grpc_call_history` to the new rows. Open request tabs and the selection follow the map (`remapRequestTabItems`). A folder into itself or its descendants is refused (`ErrInvalidMove`).
+  - Api: `Rename`, `DeleteMany` (topmost rows only), `MoveItems`, environment `DeleteEnvironment` and `DuplicateEnvironment` (name `<name> copy`, shares the secret references). A move across collection files inserts into the destination first, then cuts the source, and returns `map[oldRowID]newRowID`. It re-points `api_response_history` and `api_grpc_history` to the new rows. Open request tabs and the selection follow the map (`remapRequestTabItems`). A folder into itself or its descendants is refused (`ErrInvalidMove`).
 
 ### Agent context (P452)
 

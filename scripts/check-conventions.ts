@@ -5,7 +5,7 @@
  * N1 file names (.ts camelCase, .vue PascalCase), N2 no `.test.ts`, N3 no util/utils/helpers
  * folder, N4 Pinia id = export name without `use`/`create` and `Store`, N5 event names
  * `kira:<scope>:<name>` in camelCase, N7 new migrations follow `NNNN_<phase>_<slug>.sql` and add no
- * TEXT `*_at` column, N6 the Go (`internal/ipcerr/codes.go`) and TS
+ * TEXT `*_at` column (storage migrations from 0083 also `CREATE TABLE ... STRICT`), N6 the Go (`internal/ipcerr/codes.go`) and TS
  * (`packages/shared/domain/errorCodes.ts`) error-code registries list the same codes.
  *
  * N8 a spec helper (3+ lines) copied verbatim into 2+ spec files, or copied from a
@@ -69,9 +69,9 @@ const TS_CODES_PATH = 'packages/shared/domain/errorCodes.ts';
 const GO_IDS_PATH = 'internal/ids/prefixes.go';
 const TS_IDS_PATH = 'packages/shared/ids.ts';
 const EVENT_NAME = /^kira:[a-z][a-zA-Z]*:[a-z][a-zA-Z]*$/;
-const MIGRATION_SETS: ReadonlyArray<{ dir: string; baseline: number }> = [
+const MIGRATION_SETS: ReadonlyArray<{ dir: string; baseline: number; strictFrom?: number }> = [
   { dir: 'apps/kira-space/internal/gitreview/migrations', baseline: 3 },
-  { dir: 'apps/kira-space/internal/storage/migrations', baseline: 32 },
+  { dir: 'apps/kira-space/internal/storage/migrations', baseline: 32, strictFrom: 83 },
   { dir: 'apps/kira-space/internal/dbfold/legacy', baseline: 37 },
   // 0004 rebuilds memories and memory_events with their legacy TEXT ISO created_at/superseded_at unchanged.
   { dir: 'internal/memory/migrations', baseline: 4 },
@@ -241,6 +241,7 @@ export function migrationHits(
   dir: string,
   baseline: number,
   files: ReadonlyMap<string, string>,
+  strictFrom = Number.POSITIVE_INFINITY,
 ): Hit[] {
   const hits: Hit[] = [];
   for (const [name, sql] of files) {
@@ -262,6 +263,17 @@ export function migrationHits(
         path,
         message: 'TEXT *_at column (store an integer instant)',
       });
+    }
+    if (num >= strictFrom) {
+      for (const m of sql.matchAll(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)[^;]*;/gi)) {
+        if (!/\)\s*STRICT\b/i.test(m[0])) {
+          hits.push({
+            rule: 'N7',
+            path,
+            message: `table ${m[1]} must be STRICT`,
+          });
+        }
+      }
     }
   }
   return hits;
@@ -540,12 +552,12 @@ function collectHits(): Hit[] {
     cwd: REPO_ROOT,
   });
   hits.push(...imageHits(new TextDecoder().decode(listed.stdout).split('\0').filter(Boolean)));
-  for (const { dir, baseline } of MIGRATION_SETS) {
+  for (const { dir, baseline, strictFrom } of MIGRATION_SETS) {
     const files = new Map<string, string>();
     for (const name of readdirSync(join(REPO_ROOT, dir)).filter((n) => n.endsWith('.sql'))) {
       files.set(name, readFileSync(join(REPO_ROOT, dir, name), 'utf8'));
     }
-    hits.push(...migrationHits(dir, baseline, files));
+    hits.push(...migrationHits(dir, baseline, files, strictFrom));
   }
   return hits;
 }

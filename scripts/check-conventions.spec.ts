@@ -104,6 +104,21 @@ describe('N7 migrations', () => {
   });
 });
 
+describe('N7 strict tables', () => {
+  const files = new Map([
+    ['0082_p500_old.sql', 'CREATE TABLE a (id TEXT);'],
+    [
+      '0083_p552_ok.sql',
+      'CREATE TABLE b (id TEXT PRIMARY KEY) STRICT;\nCREATE TABLE c (x INTEGER) STRICT, WITHOUT ROWID;',
+    ],
+    ['0084_p552_loose.sql', 'CREATE TABLE d (\n  id TEXT\n);\nCREATE TABLE e (id TEXT) STRICT;'],
+  ]);
+  test('tables from strictFrom must be STRICT', () => {
+    const hits = migrationHits('d', 32, files, 83);
+    expect(hits.map((h) => h.message)).toEqual(['table d must be STRICT']);
+  });
+});
+
 describe('N8 spec helpers', () => {
   const body = (name: string, tail = 'a') =>
     `async function ${name}(page: Page): Promise<void> {\n  await page.click('${tail}');\n  await page.click('b');\n}\n`;
