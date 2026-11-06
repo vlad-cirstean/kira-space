@@ -126,7 +126,7 @@ func TestDbMcpReviewPerMode(t *testing.T) {
 		t.Fatalf("review = %+v", got.McpReview)
 	}
 	replace := flowharness.Replace(f.dbPath, "/data/mcp.db")
-	f.app.StudioContract(t, "dbmcp-review-mode", "ConnectionsService.List#review", got, flowharness.Mask("createdAt", "updatedAt"), replace)
+	f.app.Contract(t, "dbmcp-review-mode", "ConnectionsService.List#review", got, flowharness.Mask("createdAt", "updatedAt"), replace)
 
 	if rr := f.listReviewResults(t, sess); !rr["read"] || rr["write"] || rr["ddl"] {
 		t.Fatalf("reviewResults = %v, want read only", rr)
@@ -142,7 +142,7 @@ func TestDbMcpReviewPerMode(t *testing.T) {
 	if p := payloadOf(t, req.Item); req.Stage != "response" || p.Mode != "read" || p.Requested {
 		t.Fatalf("pending = %+v payload %+v, want a read result held by setting", req, p)
 	}
-	f.app.StudioContract(t, "dbmcp-review-mode", "ApprovalsService.List#response", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), replace)
+	f.app.Contract(t, "dbmcp-review-mode", "ApprovalsService.List#response", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), replace)
 	f.answer(t, true, req.RequestID)
 	if sent := wait(t, done); sent.IsError || !strings.Contains(text(sent), "two") {
 		t.Fatalf("sent read = %q, want the rows", text(sent))
@@ -227,9 +227,9 @@ func TestDbMcpReviewOnRequest(t *testing.T) {
 	if p := payloadOf(t, req.Item); req.Stage != "query" || !p.ReviewOffered || p.ReviewResult {
 		t.Fatalf("pending = %+v payload %+v, want a query item offering review, not yet on", req, payloadOf(t, req.Item))
 	}
-	f.app.StudioContract(t, "dbmcp-review-mode", "ApprovalsService.List#query", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), replace)
+	f.app.Contract(t, "dbmcp-review-mode", "ApprovalsService.List#query", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), replace)
 	args := approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true, Options: map[string]json.RawMessage{req.Item.ID: json.RawMessage(`{"reviewResult":true}`)}}
-	f.app.StudioContract(t, "dbmcp-review-mode", "args:ApprovalsService.Answer#review", args)
+	f.app.Contract(t, "dbmcp-review-mode", "args:ApprovalsService.Answer#review", args)
 
 	bad := approvals.AnswerArgs{IDs: args.IDs, Approve: true, Options: map[string]json.RawMessage{req.Item.ID: json.RawMessage(`{"reviewResult":true,"extra":1}`)}}
 	if res, err := f.app.W.ApprovalsSvc.Answer(bad); err != nil || len(res) != 1 || res[0].Error == "" {
@@ -247,7 +247,7 @@ func TestDbMcpReviewOnRequest(t *testing.T) {
 	if p := payloadOf(t, resp.Item); !p.Requested || p.Mode != "write" {
 		t.Fatalf("result item payload = %+v, want requested, mode write", p)
 	}
-	f.app.StudioContract(t, "dbmcp-review-mode", "ApprovalsService.List#requested", []approvals.Item{resp.Item}, flowharness.Mask("createdAt", "expiresAt"), replace)
+	f.app.Contract(t, "dbmcp-review-mode", "ApprovalsService.List#requested", []approvals.Item{resp.Item}, flowharness.Mask("createdAt", "expiresAt"), replace)
 	f.answer(t, true, resp.RequestID)
 	if res := wait(t, done); res.IsError {
 		t.Fatalf("sent write = %q", text(res))
@@ -286,7 +286,7 @@ func TestDbMcpReviewOnRequestExemption(t *testing.T) {
 	if p := payloadOf(t, items[0]); items[0].Kind != approvals.KindDbExemption || !p.ReviewOffered || p.ReviewResult {
 		t.Fatalf("item = %s payload %+v, want an exemption offering review", items[0].Kind, p)
 	}
-	f.app.StudioContract(t, "dbmcp-review-mode", "ApprovalsService.List#exemption", items, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.Contract(t, "dbmcp-review-mode", "ApprovalsService.List#exemption", items, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
 	args := approvals.AnswerArgs{IDs: []string{items[0].ID}, Approve: true, Options: map[string]json.RawMessage{items[0].ID: json.RawMessage(`{"reviewResult":true}`)}}
 	if res, err := f.app.W.ApprovalsSvc.Answer(args); err != nil || res[0].Error != "" {
 		t.Fatalf("answer = %+v (%v)", res, err)
@@ -313,7 +313,7 @@ func TestDbMcpReviewOnRequestAlreadyOn(t *testing.T) {
 	if p := payloadOf(t, req.Item); !p.ReviewOffered || !p.ReviewResult {
 		t.Fatalf("payload = %+v, want review offered and already on", p)
 	}
-	f.app.StudioContract(t, "dbmcp-review-mode", "ApprovalsService.List#on", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.Contract(t, "dbmcp-review-mode", "ApprovalsService.List#on", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
 	f.answerItems(t, true, req.Item.ID)
 	testx.WaitUntil(t, 10*time.Second, func() bool { return f.stageNow(t) == "response" })
 	f.answer(t, true, f.pending(t).RequestID)

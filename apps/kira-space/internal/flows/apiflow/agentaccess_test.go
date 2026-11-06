@@ -30,17 +30,17 @@ func TestApiAgentAccess(t *testing.T) {
 	if err != nil || view.Problem != nil {
 		t.Fatalf("File = %+v, %v", view, err)
 	}
-	app.StudioContract(t, sc, "file#read", view, mask, paths)
+	app.Contract(t, sc, "file#read", view, mask, paths)
 
 	call := func(name, text string, edits []configfs.Edit) configfs.FormResult {
 		t.Helper()
 		args := bridge.ApiFormArgs{File: envFile, Text: text, Edits: edits}
-		app.StudioContract(t, sc, "args:ApiConfigService.Form#"+name, args, mask, paths)
+		app.Contract(t, sc, "args:ApiConfigService.Form#"+name, args, mask, paths)
 		res, err := cfg.Form(args)
 		if err != nil {
 			t.Fatalf("Form %s: %v", name, err)
 		}
-		app.StudioContract(t, sc, "form#"+name, res, mask, paths)
+		app.Contract(t, sc, "form#"+name, res, mask, paths)
 		return res
 	}
 	variables := func(token map[string]any) []configfs.Edit {
@@ -76,12 +76,12 @@ func TestApiAgentAccess(t *testing.T) {
 	}
 
 	saveArgs := bridge.ApiSaveFileArgs{File: envFile, Text: shared.Text, BaseHash: view.Hash}
-	app.StudioContract(t, sc, "args:ApiConfigService.SaveFile", saveArgs, mask, paths)
+	app.Contract(t, sc, "args:ApiConfigService.SaveFile", saveArgs, mask, paths)
 	saved, err := cfg.SaveFile(saveArgs)
 	if err != nil || saved.Problem != nil {
 		t.Fatalf("SaveFile = %+v, %v", saved, err)
 	}
-	app.StudioContract(t, sc, "file#saved", saved, mask, paths)
+	app.Contract(t, sc, "file#saved", saved, mask, paths)
 
 	access, err := cfg.AgentAccess()
 	if err != nil || len(access) != 1 {
@@ -91,7 +91,7 @@ func TestApiAgentAccess(t *testing.T) {
 	if e.Name != "Staging" || e.AutoApproveReads || len(e.Variables) != 1 || e.Variables[0].Name != "token" || !e.Variables[0].Secret || len(e.Variables[0].Hosts) != 1 {
 		t.Fatalf("AgentAccess[0] = %+v, want token with one host", e)
 	}
-	app.StudioContract(t, sc, "AgentAccess", access, mask, paths)
+	app.Contract(t, sc, "AgentAccess", access, mask, paths)
 
 	col := newCollection(t, app, "Orders API")
 	colView, err := cfg.File(bridge.ApiFileArgs{File: col.File})

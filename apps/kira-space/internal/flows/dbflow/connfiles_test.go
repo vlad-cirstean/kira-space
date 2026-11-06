@@ -80,12 +80,12 @@ func TestConnectionConfigFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.StudioContract(t, sc, "ConnectionsService.List", list, times, dbFile)
+	app.Contract(t, sc, "ConnectionsService.List", list, times, dbFile)
 	view, err := cfg.View()
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.StudioContract(t, sc, "ConnectionConfigService.View", view, paths)
+	app.Contract(t, sc, "ConnectionConfigService.View", view, paths)
 
 	// 2. An external atomic write moves the color and the name with the file.
 	text, err := os.ReadFile(file)
@@ -107,7 +107,7 @@ func TestConnectionConfigFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.StudioContract(t, sc, "ConnectionsService.List#edited", list, times, dbFile)
+	app.Contract(t, sc, "ConnectionsService.List#edited", list, times, dbFile)
 
 	// 3. A bad edit keeps the last good row and refuses app writes until fixed.
 	bad := strings.Replace(edited, "kind: sqlite", "kind: nosuchkind", 1)
@@ -122,7 +122,7 @@ func TestConnectionConfigFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.StudioContract(t, sc, "ConnectionConfigService.View#bad", view, paths)
+	app.Contract(t, sc, "ConnectionConfigService.View#bad", view, paths)
 	if c, _ := connectionNamed(t, app, conn.ID); c.Name != "Local (edited)" || c.Color != "green" {
 		t.Errorf("row after the bad edit = %+v, want the last good name and color", c)
 	}
@@ -141,7 +141,7 @@ func TestConnectionConfigFile(t *testing.T) {
 	if err != nil || len(got.HiddenKinds) != 1 || got.HiddenKinds[0] != "view" {
 		t.Fatalf("Filters.Replace = %+v (%v)", got, err)
 	}
-	app.StudioContract(t, sc, "FiltersService.Replace", got)
+	app.Contract(t, sc, "FiltersService.Replace", got)
 	if b, _ := os.ReadFile(file); !strings.Contains(string(b), "hidden_kinds") || !strings.Contains(string(b), "(edited)") {
 		t.Errorf("file after Filters.Replace lost the filters or the edit:\n%s", b)
 	}
@@ -210,7 +210,7 @@ func TestConnectionSecrets(t *testing.T) {
 	if len(view.Secrets) != 1 || view.Secrets[0] != want {
 		t.Fatalf("secrets = %+v, want %+v", view.Secrets, want)
 	}
-	app.StudioContract(t, sc, "ConnectionConfigService.View", view, flowharness.Replace(app.KiraHome, "<home>"))
+	app.Contract(t, sc, "ConnectionConfigService.View", view, flowharness.Replace(app.KiraHome, "<home>"))
 	if j, _ := json.Marshal(view); strings.Contains(string(j), fileSecret) {
 		t.Fatal("View carries the secret value")
 	}
@@ -245,7 +245,7 @@ func TestConnectionSecrets(t *testing.T) {
 	if len(view.Secrets) != 1 || view.Secrets[0].Set || !view.Secrets[0].Referenced {
 		t.Fatalf("secrets after delete = %+v, want pg.password unset but referenced", view.Secrets)
 	}
-	app.StudioContract(t, sc, "ConnectionConfigService.View#unset", view, flowharness.Replace(app.KiraHome, "<home>"))
+	app.Contract(t, sc, "ConnectionConfigService.View#unset", view, flowharness.Replace(app.KiraHome, "<home>"))
 	st, err := app.W.Connections.Connect(bridge.ConnectionsIDArgs{ID: conn.ID})
 	if err == nil && (st.Status != "error" || st.Error == nil || !strings.Contains(*st.Error, "pg.password")) {
 		t.Fatalf("Connect with an unset secret = %+v, want an error state naming pg.password", st)
@@ -340,7 +340,7 @@ func TestConnectionFilesMigration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.StudioContract(t, sc, "ConnectionConfigService.View", view, flowharness.Replace(app.KiraHome, "<home>"))
+	app.Contract(t, sc, "ConnectionConfigService.View", view, flowharness.Replace(app.KiraHome, "<home>"))
 
 	// The superseded columns and tables are gone, and a later start exports nothing again.
 	var n int

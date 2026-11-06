@@ -109,7 +109,7 @@ func TestApiConfigFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.StudioContract(t, sc, "CollectionsService.List", tree, paths, flowharness.Replace(srv.URL, "<http>"))
+	app.Contract(t, sc, "CollectionsService.List", tree, paths, flowharness.Replace(srv.URL, "<http>"))
 
 	// 3. A bad edit keeps the last good rows and refuses app writes until fixed.
 	bad := strings.Replace(string(ordersFile(srv.URL, "list")), "items:\n", "items:\n  - id: list\n    name: Twin\n    http:\n      method: GET\n", 1)
@@ -128,7 +128,7 @@ func TestApiConfigFiles(t *testing.T) {
 	if p := problemOf(view, "orders-api.collection.yaml"); p.Line == 0 || p.Message == "" {
 		t.Errorf("problem = %+v, want a line and a message", p)
 	}
-	app.StudioContract(t, sc, "ApiConfigService.View", view, paths)
+	app.Contract(t, sc, "ApiConfigService.View", view, paths)
 	if got := items(); len(got) != 1 || got[0].Name != "List orders" {
 		t.Errorf("rows after the bad edit = %+v, want the last good item", got)
 	}

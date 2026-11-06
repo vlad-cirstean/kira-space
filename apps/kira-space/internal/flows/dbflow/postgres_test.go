@@ -85,6 +85,6 @@ func TestPostgresUpdateCredentials(t *testing.T) {
 	if fixed.Status != "connected" {
 		t.Fatalf("connect after UpdateCredentials = %+v, want connected", fixed)
 	}
-	app.StudioContract(t, "paste-credentials", "ConnectionsService.Connect#connected", fixed,
+	app.Contract(t, "paste-credentials", "ConnectionsService.Connect#connected", fixed,
 		flowharness.Mask("since", "serverVersion"), flowharness.Omit("caps"))
 }

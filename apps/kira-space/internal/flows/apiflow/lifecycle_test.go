@@ -126,7 +126,7 @@ items:
 			return fmt.Sprintf("%s/%s/%03d/%s", names[it.CollectionID], parent, it.SortOrder, it.Name)
 		}
 		slices.SortFunc(tree.Items, func(a, b model.CollectionItem) int { return strings.Compare(sortKey(a), sortKey(b)) })
-		app.StudioContract(t, sc, key, tree, paths, httpURL)
+		app.Contract(t, sc, key, tree, paths, httpURL)
 	}
 	load()
 	record("tree#seed")
@@ -135,7 +135,7 @@ items:
 	rename := func(key, id, target, name string) {
 		t.Helper()
 		args := bridge.CollectionsTargetArgs{ID: id, Target: target, Name: name}
-		app.StudioContract(t, sc, "args:CollectionsService.Rename#"+key, args, paths)
+		app.Contract(t, sc, "args:CollectionsService.Rename#"+key, args, paths)
 		if err := cs.Rename(args); err != nil {
 			t.Fatalf("Rename %s: %v", target, err)
 		}
@@ -158,7 +158,7 @@ items:
 	// Move within a file: Get order before List orders; a request into the folder.
 	getItem, list, admin := item(orders, "Get order"), item(orders, "List all orders"), item(orders, "Operations")
 	moveArgs := bridge.CollectionsMoveItemsArgs{ItemIDs: []string{getItem.ID}, CollectionID: orders.ID, BeforeID: &list.ID}
-	app.StudioContract(t, sc, "args:CollectionsService.MoveItems#before", moveArgs, paths)
+	app.Contract(t, sc, "args:CollectionsService.MoveItems#before", moveArgs, paths)
 	moved, err := cs.MoveItems(moveArgs)
 	if err != nil || moved[getItem.ID] != getItem.ID {
 		t.Fatalf("MoveItems before = %v, %v, want the same row id", moved, err)
@@ -166,9 +166,9 @@ items:
 	if got := order("orders.collection.yaml"); got != "get,list,admin,purge" {
 		t.Errorf("order after the move = %s, want get,list,admin,purge", got)
 	}
-	app.StudioContract(t, sc, "result#before", moved, paths)
+	app.Contract(t, sc, "result#before", moved, paths)
 	into := bridge.CollectionsMoveItemsArgs{ItemIDs: []string{list.ID}, CollectionID: orders.ID, ParentID: &admin.ID}
-	app.StudioContract(t, sc, "args:CollectionsService.MoveItems#into", into, paths)
+	app.Contract(t, sc, "args:CollectionsService.MoveItems#into", into, paths)
 	if _, err := cs.MoveItems(into); err != nil {
 		t.Fatalf("MoveItems into a folder: %v", err)
 	}
@@ -192,14 +192,14 @@ items:
 		t.Fatalf("history before the move = %d rows, want 1", len(rows))
 	}
 	across := bridge.CollectionsMoveItemsArgs{ItemIDs: []string{admin.ID}, CollectionID: billing.ID}
-	app.StudioContract(t, sc, "args:CollectionsService.MoveItems#across", across, paths)
+	app.Contract(t, sc, "args:CollectionsService.MoveItems#across", across, paths)
 	moved, err = cs.MoveItems(across)
 	if err != nil {
 		t.Fatalf("MoveItems across: %v", err)
 	}
 	load()
 	record("tree#moved")
-	app.StudioContract(t, sc, "result#across", moved, paths)
+	app.Contract(t, sc, "result#across", moved, paths)
 	if len(moved) != 3 || moved[admin.ID] == "" || moved[admin.ID] == admin.ID {
 		t.Fatalf("id map = %v, want the folder and its two children on new rows", moved)
 	}
@@ -220,7 +220,7 @@ items:
 	// Delete: a folder and its child are one delete; a collection removes its file.
 	archive, purge := item(billing, "Archive"), item(billing, "Purge")
 	del := bridge.CollectionsDeleteManyArgs{ItemIDs: []string{purge.ID, archive.ID, moved[admin.ID]}}
-	app.StudioContract(t, sc, "args:CollectionsService.DeleteMany#items", del, paths)
+	app.Contract(t, sc, "args:CollectionsService.DeleteMany#items", del, paths)
 	if err := cs.DeleteMany(del); err != nil {
 		t.Fatalf("DeleteMany items: %v", err)
 	}
@@ -228,7 +228,7 @@ items:
 		t.Errorf("billing order after delete = %s, want list", got)
 	}
 	colDel := bridge.CollectionsDeleteManyArgs{CollectionIDs: []string{orders.ID}, ItemIDs: []string{getItem.ID}}
-	app.StudioContract(t, sc, "args:CollectionsService.DeleteMany#collection", colDel, paths)
+	app.Contract(t, sc, "args:CollectionsService.DeleteMany#collection", colDel, paths)
 	if err := cs.DeleteMany(colDel); err != nil {
 		t.Fatalf("DeleteMany collection: %v", err)
 	}
@@ -247,7 +247,7 @@ items:
 		t.Fatal(err)
 	}
 	envs, _ := vs.ListEnvironments()
-	app.StudioContract(t, sc, "environments#seed", envs, paths)
+	app.Contract(t, sc, "environments#seed", envs, paths)
 	dup, err := vs.DuplicateEnvironment(bridge.VariablesEnvironmentIDArgs{ID: prod.ID})
 	if err != nil || dup.Name != "Production copy" || dup.IsActive || dup.ID == prod.ID {
 		t.Fatalf("DuplicateEnvironment = %+v, %v, want an inactive Production copy", dup, err)
@@ -257,7 +257,7 @@ items:
 		t.Errorf("copy variables = %+v, %v, want base_url", vars, err)
 	}
 	envs, _ = vs.ListEnvironments()
-	app.StudioContract(t, sc, "environments#duplicated", envs, paths)
+	app.Contract(t, sc, "environments#duplicated", envs, paths)
 	if err := vs.DeleteEnvironment(bridge.VariablesEnvironmentIDArgs{ID: prod.ID}); err != nil {
 		t.Fatalf("DeleteEnvironment: %v", err)
 	}
@@ -265,7 +265,7 @@ items:
 	if len(envs) != 1 || envs[0].ID != dup.ID || envs[0].IsActive {
 		t.Errorf("environments after deleting the active one = %+v, want the copy, none active", envs)
 	}
-	app.StudioContract(t, sc, "environments#deleted", envs, paths)
+	app.Contract(t, sc, "environments#deleted", envs, paths)
 	if err := vs.DeleteEnvironment(bridge.VariablesEnvironmentIDArgs{ID: prod.ID}); ipcErr(t, err).Code != "E_NOT_FOUND" {
 		t.Errorf("DeleteEnvironment of a gone one = %v, want E_NOT_FOUND", err)
 	}

@@ -69,7 +69,7 @@ func TestDiskUsage(t *testing.T) {
 		}
 	}
 	got.VolumeSizes = mine
-	app.StudioContract(t, "docker-disk", "DockerService.DiskUsage", got,
+	app.Contract(t, "docker-disk", "DockerService.DiskUsage", got,
 		flowharness.Mask("count", "active", "size", "reclaimable", "total", "refCount", "durationMs"),
 		flowharness.Replace(vol, "kira-flow-disk"))
 }
@@ -92,7 +92,7 @@ func TestContainerSize(t *testing.T) {
 	if _, err := kiratime.ParseISO(got.TakenAt); err != nil {
 		t.Fatalf("takenAt %q: %v", got.TakenAt, err)
 	}
-	app.StudioContract(t, "docker-disk", "DockerService.ContainerSize", got, flowharness.Mask("sizeRw", "sizeRootFs", "durationMs"))
+	app.Contract(t, "docker-disk", "DockerService.ContainerSize", got, flowharness.Mask("sizeRw", "sizeRootFs", "durationMs"))
 
 	for id, code := range map[string]string{"": "E_CONTRACT", "kira-flow-no-such-container": "E_NOT_FOUND"} {
 		_, err := app.W.Docker.ContainerSize(docker.IDArgs{ID: id})

@@ -65,7 +65,7 @@ func (f *fixture) patchAPI(t *testing.T, key string, patch *model.DbMcpPatch) {
 	if _, err := f.app.W.StudioSettings.Set(args); err != nil {
 		t.Fatal(err)
 	}
-	f.app.StudioContract(t, "dbmcp-api-settings", "args:SettingsService.Set#"+key, args)
+	f.app.Contract(t, "dbmcp-api-settings", "args:SettingsService.Set#"+key, args)
 }
 
 func (f *fixture) setAPI(t *testing.T, enabled bool, approval string) {
@@ -134,8 +134,8 @@ func TestApiRequestApproved(t *testing.T) {
 		t.Fatalf("payload = %s, want the placeholder header and the token credential", it.Payload)
 	}
 	listJSON, _ := json.Marshal(f.list(t))
-	f.app.StudioContract(t, "approvals-api", "ApprovalsService.List", []approvals.Item{it}, flowharness.Mask("createdAt", "expiresAt", "cwd", "environment.id"), flowharness.Replace(srv.URL, "http://127.0.0.1:<port>"))
-	f.app.StudioContract(t, "approvals-api", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{it.ID}, Approve: true})
+	f.app.Contract(t, "approvals-api", "ApprovalsService.List", []approvals.Item{it}, flowharness.Mask("createdAt", "expiresAt", "cwd", "environment.id"), flowharness.Replace(srv.URL, "http://127.0.0.1:<port>"))
+	f.app.Contract(t, "approvals-api", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{it.ID}, Approve: true})
 
 	f.answer(t, true, req.RequestID)
 	res := wait(t, pending)
@@ -392,7 +392,7 @@ func TestApiRequestBodies(t *testing.T) {
 		t.Helper()
 		pending := callToolAsync(sess, "api_request", args)
 		req := f.pending(t)
-		f.app.StudioContract(t, "approvals-api", "item#"+key, req.Item, flowharness.Mask("createdAt", "expiresAt", "cwd", "environment.id"), flowharness.Replace(srv.URL, "http://127.0.0.1:<port>"))
+		f.app.Contract(t, "approvals-api", "item#"+key, req.Item, flowharness.Mask("createdAt", "expiresAt", "cwd", "environment.id"), flowharness.Replace(srv.URL, "http://127.0.0.1:<port>"))
 		f.answer(t, false, req.RequestID)
 		if out := wait(t, pending); !out.IsError {
 			t.Fatalf("denied %s = %q, want an error", key, text(out))

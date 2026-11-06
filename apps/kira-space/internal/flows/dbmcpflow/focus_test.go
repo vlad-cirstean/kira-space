@@ -82,7 +82,7 @@ func TestDbMcpApprovalFocus(t *testing.T) {
 	if _, err := f.app.W.StudioSettings.Set(args); err != nil {
 		t.Fatal(err)
 	}
-	f.app.StudioContract(t, "dbmcp-focus", "args:SettingsService.Set", args)
+	f.app.Contract(t, "dbmcp-focus", "args:SettingsService.Set", args)
 	away()
 	fourth := callAsync(sess, f.connID, write)
 	f.dbmcpEntries(t, 1)

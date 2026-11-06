@@ -41,8 +41,8 @@ func TestApprovalsPerItem(t *testing.T) {
 			t.Fatalf("item %d origin = %+v", i, it.Origin)
 		}
 	}
-	f.app.StudioContract(t, "approvals-studio", "ApprovalsService.List", items, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
-	f.app.StudioContract(t, "approvals-studio", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{items[1].ID}, Approve: false})
+	f.app.Contract(t, "approvals-studio", "ApprovalsService.List", items, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.Contract(t, "approvals-studio", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{items[1].ID}, Approve: false})
 
 	f.answerItems(t, false, items[1].ID)
 	if res := wait(t, calls[1]); !res.IsError {

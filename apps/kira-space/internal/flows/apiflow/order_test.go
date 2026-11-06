@@ -108,7 +108,7 @@ items:
 		slices.SortFunc(tree.Items, func(a, b model.CollectionItem) int {
 			return strings.Compare(a.CollectionID+"/"+fmt.Sprintf("%03d", a.SortOrder)+a.Name, b.CollectionID+"/"+fmt.Sprintf("%03d", b.SortOrder)+b.Name)
 		})
-		app.StudioContract(t, sc, key, tree, paths)
+		app.Contract(t, sc, key, tree, paths)
 	}
 	recordEnvs := func(key string) {
 		t.Helper()
@@ -116,7 +116,7 @@ items:
 		if err != nil {
 			t.Fatal(err)
 		}
-		app.StudioContract(t, sc, key, envs, paths)
+		app.Contract(t, sc, key, envs, paths)
 	}
 	// reorder runs fn and expects exactly one change event of kind.
 	oneChange := func(kind string, fn func()) {
@@ -141,7 +141,7 @@ items:
 	// Drag Mid above Zeta; the id left out keeps its place after the listed ones.
 	zeta, mid := collectionID("Zeta"), collectionID("Mid")
 	drag := bridge.CollectionsReorderCollectionsArgs{IDs: []string{mid, zeta}}
-	app.StudioContract(t, sc, "args:CollectionsService.ReorderCollections#drag", drag, paths)
+	app.Contract(t, sc, "args:CollectionsService.ReorderCollections#drag", drag, paths)
 	oneChange(bridge.ApiDataTree, func() {
 		if err := cs.ReorderCollections(drag); err != nil {
 			t.Fatal(err)
@@ -193,7 +193,7 @@ items:
 		}
 	}
 	move := bridge.CollectionsMoveItemsArgs{ItemIDs: []string{r2}, CollectionID: collectionID("Aaa"), BeforeID: &r1}
-	app.StudioContract(t, sc, "args:CollectionsService.MoveItems#items", move, paths)
+	app.Contract(t, sc, "args:CollectionsService.MoveItems#items", move, paths)
 	if _, err := cs.MoveItems(move); err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +205,7 @@ items:
 	// Environments.
 	stage, dev := envID("stage"), envID("dev")
 	envDrag := bridge.VariablesReorderEnvironmentsArgs{IDs: []string{stage, dev}}
-	app.StudioContract(t, sc, "args:VariablesService.ReorderEnvironments#drag", envDrag, paths)
+	app.Contract(t, sc, "args:VariablesService.ReorderEnvironments#drag", envDrag, paths)
 	oneChange(bridge.ApiDataEnvironments, func() {
 		if err := vs.ReorderEnvironments(envDrag); err != nil {
 			t.Fatal(err)

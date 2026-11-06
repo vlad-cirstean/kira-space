@@ -25,18 +25,18 @@ func TestCurlReplayMatchesSend(t *testing.T) {
 	opts := flowharness.Replace(srv.URL, "<http>")
 
 	imported := fmt.Sprintf(`curl -X POST '%s/echo?src=curl' -H 'Content-Type: application/json' -H 'X-Flow-Probe: p249' -d '%s'`, srv.URL, body)
-	app.StudioContract(t, sc, "curl:import", imported, opts)
+	app.Contract(t, sc, "curl:import", imported, opts)
 
 	args := get(srv.URL + "/echo?src=curl")
 	args.Method = "POST"
 	args.Headers = []httpclient.Header{{Name: "Content-Type", Value: "application/json"}, {Name: "X-Flow-Probe", Value: "p249"}}
 	args.Body = httpclient.Body{Mode: "code", Code: body, CodeLanguage: "json", URLEncoded: []httpclient.Field{}, FormData: []httpclient.FormField{}}
-	app.StudioContract(t, sc, "args:HttpService.Send", args, flowharness.Mask("opId", "tabId"), opts)
+	app.Contract(t, sc, "args:HttpService.Send", args, flowharness.Mask("opId", "tabId"), opts)
 	res := send(t, app, args)
-	app.StudioContract(t, sc, "HttpService.Send", res, opts, flowharness.Mask("elapsedMs", "bodyBytes"), flowharness.Omit("body", "headers", "timeline", "wire"))
+	app.Contract(t, sc, "HttpService.Send", res, opts, flowharness.Mask("elapsedMs", "bodyBytes"), flowharness.Omit("body", "headers", "timeline", "wire"))
 
 	generated := fmt.Sprintf("curl -L '%s/echo?src=curl' \\\n  -H 'Content-Type: application/json' \\\n  -H 'X-Flow-Probe: p249' \\\n  --data-raw '%s'", srv.URL, body)
-	app.StudioContract(t, sc, "curl:generated", generated, opts)
+	app.Contract(t, sc, "curl:generated", generated, opts)
 	var out bytes.Buffer
 	cmd := exec.Command("sh", "-c", generated)
 	cmd.Stdout, cmd.Stderr = &out, &out

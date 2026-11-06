@@ -160,9 +160,9 @@ func TestSmartScript(t *testing.T) {
 		id, pv := startSmart(t, app, args)
 		// Contract smart: tests/ui/automations-smart.spec.ts "contract: a smart script runs to Succeeded
 		// ..." reads the same fixture.
-		app.StudioContract(t, "smart", "CustomScriptsService.Create", rec)
-		app.StudioContract(t, "smart", "ScriptRunsService.Preview", pv, flowharness.Mask("hash"))
-		app.StudioContract(t, "smart", "args:ScriptRunsService.Start", startArgs(args, pv), flowharness.Mask("hash"))
+		app.Contract(t, "smart-db", "CustomScriptsService.Create", rec)
+		app.Contract(t, "smart-db", "ScriptRunsService.Preview", pv, flowharness.Mask("hash"))
+		app.Contract(t, "smart-db", "args:ScriptRunsService.Start", startArgs(args, pv), flowharness.Mask("hash"))
 
 		waitCall(t, app, 1)
 		running, err := app.W.ScriptRuns.Get(scriptruns.IDArgs{ID: id})
@@ -173,7 +173,7 @@ func TestSmartScript(t *testing.T) {
 			t.Fatal(err)
 		}
 		done := waitSmart(t, app, id, "done")
-		app.StudioContract(t, "smart", "ScriptRunsService.Get#done", done, flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "costUsd"))
+		app.Contract(t, "smart-db", "ScriptRunsService.Get#done", done, flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "costUsd"))
 		o := done.Outcome
 		if o == nil || o.Status != "done" || !o.Reported || o.Source != "agent" || o.Summary != "summary-done" {
 			t.Fatalf("outcome = %+v", o)
@@ -202,7 +202,7 @@ func TestSmartScript(t *testing.T) {
 		if err != nil || page.Truncated {
 			t.Fatalf("ReadLog = %+v, %v", page, err)
 		}
-		app.StudioContract(t, "smart", "ScriptRunsService.ReadLog", page)
+		app.Contract(t, "smart-db", "ScriptRunsService.ReadLog", page)
 		texts := make([]string, 0, len(page.Chunks))
 		for _, c := range page.Chunks {
 			texts = append(texts, c.Text)
@@ -243,8 +243,8 @@ func TestSmartScript(t *testing.T) {
 			return r
 		}
 		failed := run()
-		app.StudioContract(t, "smart", "CustomScriptsService.Create#failed", rec)
-		app.StudioContract(t, "smart", "ScriptRunsService.Get#failed", failed, flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "costUsd"))
+		app.Contract(t, "smart-db", "CustomScriptsService.Create#failed", rec)
+		app.Contract(t, "smart-db", "ScriptRunsService.Get#failed", failed, flowharness.Mask("createdAt", "startedAt", "finishedAt", "hash", "costUsd"))
 		launch, err := app.W.ScriptRuns.ResumeCommand(scriptruns.ResumeCommandArgs{RunID: failed.ID})
 		if err != nil {
 			t.Fatal(err)
@@ -252,7 +252,7 @@ func TestSmartScript(t *testing.T) {
 		if want := "claude --resume '" + failed.SessionID + "' '--setting-sources' 'project,local'"; !strings.HasPrefix(launch.Command, want+" '--settings' '") {
 			t.Fatalf("ResumeCommand = %q, want %q", launch.Command, want)
 		}
-		app.StudioContract(t, "smart", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: settingsPath.ReplaceAllString(strings.Replace(launch.Command, failed.SessionID, "sess-1", 1), "'--settings' '<settings>'"), Token: launch.Token}, flowharness.Mask("token"))
+		app.Contract(t, "smart-db", "ScriptRunsService.ResumeCommand", scriptruns.ResumeLaunch{Command: settingsPath.ReplaceAllString(strings.Replace(launch.Command, failed.SessionID, "sess-1", 1), "'--settings' '<settings>'"), Token: launch.Token}, flowharness.Mask("token"))
 		if o := failed.Outcome; o.Status != "failed" || o.Reason != "summary-failed" || !o.Reported || o.Source != "agent" {
 			t.Errorf("failed = %+v", o)
 		}

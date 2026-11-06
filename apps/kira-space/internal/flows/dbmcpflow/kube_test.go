@@ -64,7 +64,7 @@ func (k *kubeFixture) contract(t *testing.T, key string, got any, extra ...flowh
 		flowharness.Replace(k.cfg, "<kubeconfig>"),
 		flowharness.Mask("id", "clusterId", "requestId", "connectionId", "expiresAtMs", "startedAt", "durationMs"),
 	}, extra...)
-	k.app.StudioContract(t, kubeScenario, key, got, opts...)
+	k.app.Contract(t, kubeScenario, key, got, opts...)
 }
 
 func (k *kubeFixture) setMcp(t *testing.T, ctxName string, m kubernetes.McpSettings) {
@@ -229,8 +229,8 @@ func TestKubeMcp(t *testing.T) {
 		}
 		// Contract dbmcp-kube: tests/ui/kubernetes-mcp.spec.ts renders this request in the approval dialog.
 		// The item id stays a stable placeholder so the UI spec answers the id it rendered.
-		k.app.StudioContract(t, kubeScenario, "ApprovalsService.List", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(k.fake.URL, "<kube>"))
-		k.app.StudioContract(t, kubeScenario, "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
+		k.app.Contract(t, kubeScenario, "ApprovalsService.List", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(k.fake.URL, "<kube>"))
+		k.app.Contract(t, kubeScenario, "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
 		k.answerItems(t, true, req.Item.ID)
 		out := <-pending
 		if out.err != nil || out.res.IsError || !strings.Contains(text(out.res), "web-1") {

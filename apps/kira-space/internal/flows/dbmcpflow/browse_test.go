@@ -332,7 +332,7 @@ func TestDbMcpBrowsePrompt(t *testing.T) {
 	f.mcpSet(t, map[string]string{"masked": "prompt"})
 	f.maskPeople(t, "email")
 	replace := flowharness.Replace(f.dbPath, "/data/mcp.db")
-	f.app.StudioContract(t, "dbmcp-browse", "ConnectionsService.List#masked", f.summary(t), flowharness.Mask("createdAt", "updatedAt"), replace)
+	f.app.Contract(t, "dbmcp-browse", "ConnectionsService.List#masked", f.summary(t), flowharness.Mask("createdAt", "updatedAt"), replace)
 
 	args := map[string]any{"columns": []string{"id", "name"}, "filters": []map[string]any{{"column": "name", "op": "eq", "value": "O'Brien"}}, "order": []map[string]any{{"column": "id", "direction": "desc"}}, "limit": 10}
 	done := browseAsync(sess, f.connID, args)
@@ -345,7 +345,7 @@ func TestDbMcpBrowsePrompt(t *testing.T) {
 	if req.Statement != wantSQL {
 		t.Fatalf("statement = %q, want %q", req.Statement, wantSQL)
 	}
-	f.app.StudioContract(t, "dbmcp-browse", "ApprovalsService.List#browse", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), replace)
+	f.app.Contract(t, "dbmcp-browse", "ApprovalsService.List#browse", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), replace)
 	f.answerItems(t, true, req.Item.ID)
 	out := decodeBrowse(t, wait(t, done))
 	if got := out.names("name"); len(got) != 1 || got[0] != "O'Brien" {

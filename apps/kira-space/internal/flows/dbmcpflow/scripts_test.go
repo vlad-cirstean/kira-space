@@ -279,8 +279,8 @@ func TestDbMcpScriptApproval(t *testing.T) {
 		t.Fatalf("script payload = %s, want the command and a masked saved token", it.Payload)
 	}
 	// Contract dbmcp-approval-script: tests/ui/dbmcp-approval-script.spec.ts renders this item.
-	f.app.StudioContract(t, "dbmcp-approval-script", "ApprovalsService.List", []approvals.Item{it}, flowharness.Mask("createdAt", "expiresAt", "cwd", "location"))
-	f.app.StudioContract(t, "dbmcp-approval-script", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{it.ID}, Approve: false})
+	f.app.Contract(t, "dbmcp-approval-script", "ApprovalsService.List", []approvals.Item{it}, flowharness.Mask("createdAt", "expiresAt", "cwd", "location"))
+	f.app.Contract(t, "dbmcp-approval-script", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{it.ID}, Approve: false})
 
 	f.answer(t, false, req.RequestID)
 	out := wait(t, pending)

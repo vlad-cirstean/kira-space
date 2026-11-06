@@ -62,7 +62,7 @@ func (e *env) contract(t *testing.T, key string, got any, extra ...flowharness.C
 		flowharness.Replace(e.fake.URL, "<kube>"), flowharness.Replace(e.fake.DownURL(), "<down>"),
 		flowharness.Replace(e.cfg, "<kubeconfig>"),
 	}, extra...)
-	e.app.StudioContract(t, scenario, key, got, opts...)
+	e.app.Contract(t, scenario, key, got, opts...)
 }
 
 func wantCode(t *testing.T, err error, code string) {

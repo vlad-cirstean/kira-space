@@ -60,7 +60,7 @@ func TestDbMcpApprovalRoutes(t *testing.T) {
 	if strings.Contains(e.Title, "insert") || !strings.Contains(e.Title, "notes db") {
 		t.Fatalf("title %q must name the connection and never the statement", e.Title)
 	}
-	f.app.StudioContract(t, "dbmcp-route", "PromptsService.List#approval", e, flowharness.Mask("createdAt", "id", "ref"))
+	f.app.Contract(t, "dbmcp-route", "PromptsService.List#approval", e, flowharness.Mask("createdAt", "id", "ref"))
 	note, ok := sink.Shown("prompt:approval")
 	if !ok || strings.Contains(note.Title+note.Body, "insert") {
 		t.Fatalf("note = %+v, %v; want one without the statement", note, ok)

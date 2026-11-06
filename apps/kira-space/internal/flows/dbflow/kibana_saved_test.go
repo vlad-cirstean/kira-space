@@ -55,38 +55,38 @@ func TestKibanaSavedQueriesJourney(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SaveDiscover: %v", err)
 	}
-	app.StudioContract(t, "kibana-saved", "QueriesService.SaveDiscover#first", first, mask)
+	app.Contract(t, "kibana-saved", "QueriesService.SaveDiscover#first", first, mask)
 
 	list, err := q.ListDiscover(bridge.QueriesListDiscoverArgs{ConnectionID: conn.ID})
 	if err != nil || len(list) != 1 || list[0].ID != first.ID {
 		t.Fatalf("ListDiscover = %+v (%v), want the saved query", list, err)
 	}
-	app.StudioContract(t, "kibana-saved", "QueriesService.ListDiscover#afterSave", list, mask)
+	app.Contract(t, "kibana-saved", "QueriesService.ListDiscover#afterSave", list, mask)
 
 	_, err = q.SaveDiscover(bridge.QueriesSaveDiscoverArgs{ConnectionID: conn.ID, Name: "Errors Last Hour", Body: bodyA})
 	if ie := errOf(err); ie.Code != string(ipcerr.CodeConflict) {
 		t.Fatalf("duplicate name: %v, want %s", err, ipcerr.CodeConflict)
 	} else {
-		app.StudioContract(t, "kibana-saved", "QueriesService.SaveDiscover#nameTaken", codeMessage(ie))
+		app.Contract(t, "kibana-saved", "QueriesService.SaveDiscover#nameTaken", codeMessage(ie))
 	}
 
 	updated, err := q.UpdateDiscover(bridge.QueriesUpdateDiscoverArgs{ID: first.ID, Body: bodyB})
 	if err != nil || updated.ID != first.ID {
 		t.Fatalf("UpdateDiscover = %+v (%v), want the same id", updated, err)
 	}
-	app.StudioContract(t, "kibana-saved", "QueriesService.UpdateDiscover#updated", updated, mask)
+	app.Contract(t, "kibana-saved", "QueriesService.UpdateDiscover#updated", updated, mask)
 
 	list, err = q.ListDiscover(bridge.QueriesListDiscoverArgs{ConnectionID: conn.ID})
 	if err != nil || len(list) != 1 || list[0].ID != first.ID {
 		t.Fatalf("after update: %+v (%v), want one row with the same id", list, err)
 	}
-	app.StudioContract(t, "kibana-saved", "QueriesService.ListDiscover#afterUpdate", list, mask)
+	app.Contract(t, "kibana-saved", "QueriesService.ListDiscover#afterUpdate", list, mask)
 
 	copied, err := q.SaveDiscover(bridge.QueriesSaveDiscoverArgs{ConnectionID: conn.ID, Name: "errors copy", Body: bodyB})
 	if err != nil {
 		t.Fatalf("save as: %v", err)
 	}
-	app.StudioContract(t, "kibana-saved", "QueriesService.SaveDiscover#saveAs", copied, mask)
+	app.Contract(t, "kibana-saved", "QueriesService.SaveDiscover#saveAs", copied, mask)
 	if list, _ = q.ListDiscover(bridge.QueriesListDiscoverArgs{ConnectionID: conn.ID}); len(list) != 2 {
 		t.Fatalf("list has %d rows, want 2", len(list))
 	}
@@ -96,7 +96,7 @@ func TestKibanaSavedQueriesJourney(t *testing.T) {
 	if ie := errOf(err); ie.Code != string(ipcerr.CodeConflict) {
 		t.Fatalf("rename onto a taken name: %v", err)
 	} else {
-		app.StudioContract(t, "kibana-saved", "QueriesService.Update#nameTaken", codeMessage(ie))
+		app.Contract(t, "kibana-saved", "QueriesService.Update#nameTaken", codeMessage(ie))
 	}
 
 	renamed, pin := "5xx", true
@@ -104,12 +104,12 @@ func TestKibanaSavedQueriesJourney(t *testing.T) {
 	if err != nil || renamedRow.Name != "5xx" || !renamedRow.Pinned {
 		t.Fatalf("rename = %+v (%v)", renamedRow, err)
 	}
-	app.StudioContract(t, "kibana-saved", "QueriesService.Update#renamed", renamedRow, mask)
+	app.Contract(t, "kibana-saved", "QueriesService.Update#renamed", renamedRow, mask)
 	list, _ = q.ListDiscover(bridge.QueriesListDiscoverArgs{ConnectionID: conn.ID})
 	if len(list) != 2 || list[0].ID != copied.ID {
 		t.Fatalf("pinned query must list first: %+v", list)
 	}
-	app.StudioContract(t, "kibana-saved", "QueriesService.ListDiscover#afterRename", list, mask)
+	app.Contract(t, "kibana-saved", "QueriesService.ListDiscover#afterRename", list, mask)
 
 	bad := bodyB
 	bad.SampleSize = 7
@@ -117,7 +117,7 @@ func TestKibanaSavedQueriesJourney(t *testing.T) {
 	if ie := errOf(err); ie.Code != string(ipcerr.CodeBadRequest) {
 		t.Fatalf("invalid body: %v", err)
 	} else {
-		app.StudioContract(t, "kibana-saved", "QueriesService.UpdateDiscover#invalid", codeMessage(ie))
+		app.Contract(t, "kibana-saved", "QueriesService.UpdateDiscover#invalid", codeMessage(ie))
 	}
 
 	filters, _ := q.List(bridge.QueriesListArgs{ConnectionID: conn.ID, Path: ""})
@@ -133,13 +133,13 @@ func TestKibanaSavedQueriesJourney(t *testing.T) {
 	if ie := errOf(err); ie.Code != string(ipcerr.CodeNotFound) {
 		t.Fatalf("update of a deleted query: %v", err)
 	} else {
-		app.StudioContract(t, "kibana-saved", "QueriesService.UpdateDiscover#gone", codeMessage(ie))
+		app.Contract(t, "kibana-saved", "QueriesService.UpdateDiscover#gone", codeMessage(ie))
 	}
 	list, _ = q.ListDiscover(bridge.QueriesListDiscoverArgs{ConnectionID: conn.ID})
 	if len(list) != 1 || list[0].ID != first.ID {
 		t.Fatalf("after delete: %+v, want the first query only", list)
 	}
-	app.StudioContract(t, "kibana-saved", "QueriesService.ListDiscover#afterDelete", list, mask)
+	app.Contract(t, "kibana-saved", "QueriesService.ListDiscover#afterDelete", list, mask)
 
 	if err := q.Touch(bridge.QueriesIDArgs{ID: first.ID}); err != nil {
 		t.Fatalf("Touch: %v", err)

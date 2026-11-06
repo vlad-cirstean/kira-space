@@ -78,5 +78,5 @@ func TestContainerOrigin(t *testing.T) {
 	if det.Container.Origin != "devcontainer" || det.Container.OriginName != "kira" {
 		t.Fatalf("inspect origin = %q %q, want devcontainer kira", det.Container.Origin, det.Container.OriginName)
 	}
-	app.StudioContract(t, "docker-disk", "DockerService.Containers#origins", got, flowharness.Replace(d.Prefix(), "kira-flow-"), flowharness.Replace(runID, "run"))
+	app.Contract(t, "docker-disk", "DockerService.Containers#origins", got, flowharness.Replace(d.Prefix(), "kira-flow-"), flowharness.Replace(runID, "run"))
 }

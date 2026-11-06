@@ -54,7 +54,7 @@ func TestTabsScopeStudio(t *testing.T) {
 	wantContract("B saving A's tab", err)
 	var ie *ipcerr.Error
 	errors.As(err, &ie)
-	app.StudioContract(t, "tabs-scope", "TabsService.Save#ownedElsewhere", map[string]any{"code": ie.Code, "message": ie.Message})
+	app.Contract(t, "tabs-scope-db", "TabsService.Save#ownedElsewhere", map[string]any{"code": ie.Code, "message": ie.Message})
 	if got := listIDs("B"); len(got) != 0 {
 		t.Fatalf("window B kept %v after a refused batch", got)
 	}

@@ -208,10 +208,10 @@ func TestRestoreAfterEngineRestart(t *testing.T) {
 		}
 	}
 	ids := map[string]string{"solo": solo, "keeper": keeper, "doomed": doomed, "web": web, "db": db}
-	e.app.StudioContract(t, "docker-restore", "DockerService.RestoreState#pending", e.onlyOurs(st), e.opts(ids)...)
+	e.app.Contract(t, "docker-restore", "DockerService.RestoreState#pending", e.onlyOurs(st), e.opts(ids)...)
 
 	args := docker.RestoreArgs{EngineID: st.EngineID, IDs: []string{solo, web, db}}
-	e.app.StudioContract(t, "docker-restore", "args:DockerService.RestoreContainers", args, e.opts(ids)...)
+	e.app.Contract(t, "docker-restore", "args:DockerService.RestoreContainers", args, e.opts(ids)...)
 	res, err := svc.RestoreContainers(args)
 	if err != nil {
 		t.Fatal(err)
@@ -221,7 +221,7 @@ func TestRestoreAfterEngineRestart(t *testing.T) {
 			t.Fatalf("restore %s: %s", it.Name, it.Error)
 		}
 	}
-	e.app.StudioContract(t, "docker-restore", "DockerService.RestoreContainers", res, e.opts(ids)...)
+	e.app.Contract(t, "docker-restore", "DockerService.RestoreContainers", res, e.opts(ids)...)
 	if !startedAt(t, e, db).Before(startedAt(t, e, web)) {
 		t.Fatal("db started after web; want depends_on order")
 	}
@@ -245,7 +245,7 @@ func TestRestoreAfterEngineRestart(t *testing.T) {
 		t.Fatalf("restore events pending=%v settled=%v", sawPending, sawSettled)
 	}
 	pendingEv.Data = e.onlyOurs(pendingEv.Data.(docker.RestoreState))
-	e.app.StudioContractEvent(t, "docker-restore", pendingEv, e.opts(ids)...)
+	e.app.ContractEvent(t, "docker-restore", pendingEv, e.opts(ids)...)
 }
 
 func TestRestoreSnapshotSurvivesIdleEngine(t *testing.T) {

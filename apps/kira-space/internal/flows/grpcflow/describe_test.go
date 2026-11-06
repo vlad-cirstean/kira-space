@@ -17,7 +17,7 @@ func TestDescribeReflection(t *testing.T) {
 	srv := flowharness.GRPC(t)
 
 	s := describe(t, app, describeArgs(srv.Addr))
-	app.StudioContract(t, "api-grpc", "GrpcService.Describe", s, flowharness.Replace(srv.Addr, "<grpc>"))
+	app.Contract(t, "api-grpc", "GrpcService.Describe", s, flowharness.Replace(srv.Addr, "<grpc>"))
 	if s.Mode != "reflection-v1" {
 		t.Errorf("mode = %q, want reflection-v1", s.Mode)
 	}

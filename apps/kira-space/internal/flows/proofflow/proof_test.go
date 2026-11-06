@@ -32,7 +32,7 @@ func TestProofCloseAndRead(t *testing.T) {
 	if err != nil || len(list) != 1 {
 		t.Fatalf("Sessions = %+v, %v", list, err)
 	}
-	f.app.StudioContract(t, "proof", "ProofService.Sessions", list, maskIDs)
+	f.app.Contract(t, "proof", "ProofService.Sessions", list, maskIDs)
 
 	det := session(t, f.app, list[0].ID)
 	if len(det.Current.Steps) != 3 || det.Pending != nil {
@@ -43,14 +43,14 @@ func TestProofCloseAndRead(t *testing.T) {
 			t.Fatalf("step %d = %+v", i, s)
 		}
 	}
-	f.app.StudioContract(t, "proof", "ProofService.Session", det, maskIDs)
+	f.app.Contract(t, "proof", "ProofService.Session", det, maskIDs)
 
 	for i, key := range []string{"table", "document", "keyvalue"} {
 		st, err := f.app.W.Proof.Step(bridge.ProofStepArgs{SessionID: list[0].ID, Rev: det.Current.Rev, Ordinal: i + 1})
 		if err != nil {
 			t.Fatal(err)
 		}
-		f.app.StudioContract(t, "proof", "ProofService.Step#"+key, st, maskIDs)
+		f.app.Contract(t, "proof", "ProofService.Step#"+key, st, maskIDs)
 	}
 
 	// Large integers survive as written.
@@ -116,7 +116,7 @@ func TestProofEditFlow(t *testing.T) {
 	if strings.Join(diffs, ",") != "unchanged,changed,added" || len(det.Removed) != 1 || det.Removed[0].Description != "drop" {
 		t.Fatalf("diffs = %v removed = %+v", diffs, det.Removed)
 	}
-	f.app.StudioContract(t, "proof-pending", "ProofService.Session", det, maskIDs)
+	f.app.Contract(t, "proof-pending", "ProofService.Session", det, maskIDs)
 
 	// The closed edit waits in the approvals queue; approving it accepts the revision.
 	review := reviewItems(t, f.app)

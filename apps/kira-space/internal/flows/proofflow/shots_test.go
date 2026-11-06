@@ -33,7 +33,7 @@ func TestProofShotFolder(t *testing.T) {
 	if err != nil || first.Canceled || first.Path != filepath.Join(tmp, "Checkout fix") {
 		t.Fatalf("first = %+v, %v", first, err)
 	}
-	f.app.StudioContract(t, "proof", "ProofService.ChooseShotFolder", first,
+	f.app.Contract(t, "proof", "ProofService.ChooseShotFolder", first,
 		flowharness.Mask("id", "path"))
 	f.app.Dialogs.AnswerDirectory(tmp)
 	second, err := p.ChooseShotFolder(bridge.ProofChooseShotFolderArgs{SessionName: "Checkout fix"})

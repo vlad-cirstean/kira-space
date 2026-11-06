@@ -94,19 +94,19 @@ func TestActiveEnvironmentResolvesBase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.StudioContract(t, sc, "VariablesService.ListEnvironments", envs)
+	app.Contract(t, sc, "VariablesService.ListEnvironments", envs)
 	vars, err := app.W.Variables.List(bridge.VariablesScopeArgs{Scope: model.VariableScopeEnvironment, OwnerID: env.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
 	opts := flowharness.Replace(srv.URL, "<http>")
-	app.StudioContract(t, sc, "VariablesService.List", vars, opts)
+	app.Contract(t, sc, "VariablesService.List", vars, opts)
 
 	args := get(srv.URL + "/echo?from=ui")
 	args.EnvironmentID = env.ID
-	app.StudioContract(t, sc, "args:HttpService.Send", args, flowharness.Mask("opId"), opts)
+	app.Contract(t, sc, "args:HttpService.Send", args, flowharness.Mask("opId"), opts)
 	res := send(t, app, args)
-	app.StudioContract(t, sc, "HttpService.Send", res, opts, flowharness.Mask("elapsedMs", "bodyBytes"), flowharness.Omit("body", "headers", "timeline", "wire"))
+	app.Contract(t, sc, "HttpService.Send", res, opts, flowharness.Mask("elapsedMs", "bodyBytes"), flowharness.Omit("body", "headers", "timeline", "wire"))
 	if got := lastRequest(srv); got.Path != "/echo" || got.Query != "from=ui" {
 		t.Errorf("server saw %s?%s, want /echo?from=ui", got.Path, got.Query)
 	}

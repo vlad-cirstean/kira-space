@@ -32,9 +32,9 @@ func TestProofCharts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.app.StudioContract(t, "proof-chart", "ProofService.Sessions", list, maskIDs)
+	f.app.Contract(t, "proof-chart", "ProofService.Sessions", list, maskIDs)
 	det := session(t, f.app, id)
-	f.app.StudioContract(t, "proof-chart", "ProofService.Session", det, maskIDs)
+	f.app.Contract(t, "proof-chart", "ProofService.Session", det, maskIDs)
 	rev := det.Current.Rev
 
 	keys := []string{"line", "bar", "histogram", "area", "scatter", "pie"}
@@ -43,7 +43,7 @@ func TestProofCharts(t *testing.T) {
 		if st.View != "chart" {
 			t.Fatalf("step %d view = %q, want chart", i+1, st.View)
 		}
-		f.app.StudioContract(t, "proof-chart", "ProofService.Step#"+key, st, maskIDs)
+		f.app.Contract(t, "proof-chart", "ProofService.Step#"+key, st, maskIDs)
 	}
 
 	var line struct {
@@ -102,7 +102,7 @@ func TestProofCharts(t *testing.T) {
 	if err != nil || len(vs) != 2 {
 		t.Fatalf("ViewState = %+v, %v; want two entries", vs, err)
 	}
-	f.app.StudioContract(t, "proof-chart", "ProofService.ViewState#chart", vs, maskIDs)
+	f.app.Contract(t, "proof-chart", "ProofService.ViewState#chart", vs, maskIDs)
 
 	var ed proof.StartResult
 	f.call(t, "proof_edit_session", map[string]any{"name": "Deploy health", "reason": "Recount after replay"}, &ed)
@@ -118,8 +118,8 @@ func TestProofCharts(t *testing.T) {
 	if det.Pending == nil {
 		t.Fatal("no pending revision")
 	}
-	f.app.StudioContract(t, "proof-chart", "ProofService.Session#pending", det, maskIDs)
-	f.app.StudioContract(t, "proof-chart", "ProofService.Step#bar-new", chartPayload(t, f, id, det.Pending.Rev, 2), maskIDs)
+	f.app.Contract(t, "proof-chart", "ProofService.Session#pending", det, maskIDs)
+	f.app.Contract(t, "proof-chart", "ProofService.Step#bar-new", chartPayload(t, f, id, det.Pending.Rev, 2), maskIDs)
 
 	if err := f.app.W.Proof.AcceptEdit(bridge.ProofSessionArgs{SessionID: id}); err != nil {
 		t.Fatal(err)

@@ -121,7 +121,7 @@ func TestDbMcpModeTightenOnly(t *testing.T) {
 		t.Fatalf("approval = %+v class %q, want declared write, detected read", pl, req.Item.Operation.Class)
 	}
 	// Contract dbmcp-approval-mode: tests/ui/dbmcp-approval-mode.spec.ts renders this item.
-	f.app.StudioContract(t, "dbmcp-approval-mode", "ApprovalsService.List", []any{req.Item}, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.Contract(t, "dbmcp-approval-mode", "ApprovalsService.List", []any{req.Item}, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
 	f.answerItems(t, false, req.Item.ID)
 	if res := <-done; res == nil || !res.IsError {
 		t.Fatalf("denied over-declared select = %+v, want a tool error", res)
@@ -213,7 +213,7 @@ func TestDbMcpListConnectionsAccess(t *testing.T) {
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].Name < rows[j].Name })
 	// Contract dbmcp-list-access: tests/ui/connection-mcp-access.spec.ts mirrors these summaries.
-	f.app.StudioContract(t, "dbmcp-list-access", "list_connections", rows)
+	f.app.Contract(t, "dbmcp-list-access", "list_connections", rows)
 }
 
 // A lane opens on the first read, is rebuilt after a reconnect and closes on disconnect.

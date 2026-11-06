@@ -22,7 +22,7 @@ func TestScriptInPickedFolder(t *testing.T) {
 		t.Fatalf("cancelled picker = %+v, %v, want canceled with no path", canceled, err)
 	}
 	// Contract terminal: tests/ui/automations-module.spec.ts "contract: Choose… fills the folder".
-	app.StudioContract(t, "terminal", "FilesService.ChooseFolder#cancelled", canceled)
+	app.Contract(t, "terminal", "FilesService.ChooseFolder#cancelled", canceled)
 
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "marker.txt"), nil, 0o644); err != nil {
@@ -35,7 +35,7 @@ func TestScriptInPickedFolder(t *testing.T) {
 	}
 
 	picks := flowharness.Replace(dir, "<tmp>/picked")
-	app.StudioContract(t, "terminal", "FilesService.ChooseFolder#picked", picked, picks)
+	app.Contract(t, "terminal", "FilesService.ChooseFolder#picked", picked, picks)
 	mark := app.Events.Mark()
 	cmd := "ls marker.txt; exit 4"
 	rec, err := app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
@@ -44,7 +44,7 @@ func TestScriptInPickedFolder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.StudioContract(t, "terminal", "CustomScriptsService.Create#fixed", rec, picks)
+	app.Contract(t, "terminal", "CustomScriptsService.Create#fixed", rec, picks)
 	ev := app.Events.WaitAfter(t, mark, bridge.ChannelCustomScriptsChanged, nil, wait)
 	var snap scripts.Snapshot
 	ev.Decode(t, &snap)

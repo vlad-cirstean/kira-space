@@ -108,7 +108,7 @@ func TestImageRegistryURL(t *testing.T) {
 	if got, err = svc.ConfirmImageRegistry(docker.IDArgs{ID: localID}); err != nil {
 		t.Fatal(err)
 	}
-	app.StudioContract(t, "docker-registry", "DockerService.ConfirmImageRegistry#local", got, opts...)
+	app.Contract(t, "docker-registry", "DockerService.ConfirmImageRegistry#local", got, opts...)
 	if got.URL != "" || got.Unconfirmed {
 		t.Fatalf("confirmed registry link of unpublished %s = %+v, want empty", local, got)
 	}
@@ -133,7 +133,7 @@ func TestImageRegistryURL(t *testing.T) {
 	if got, err = svc.ImageRegistry(docker.IDArgs{ID: knownID}); err != nil {
 		t.Fatal(err)
 	}
-	app.StudioContract(t, "docker-registry", "DockerService.ImageRegistry#unconfirmed", got, opts...)
+	app.Contract(t, "docker-registry", "DockerService.ImageRegistry#unconfirmed", got, opts...)
 	if !got.Unconfirmed || got.URL == "" {
 		t.Fatalf("registry link of %s = %+v, want the unconfirmed candidate", known, got)
 	}
@@ -142,7 +142,7 @@ func TestImageRegistryURL(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	app.StudioContract(t, "docker-registry", "DockerService.ConfirmImageRegistry#hub", got, opts...)
+	app.Contract(t, "docker-registry", "DockerService.ConfirmImageRegistry#hub", got, opts...)
 	if want := "https://hub.docker.com/_/" + d.Prefix() + "known"; got.URL != want || got.Unconfirmed {
 		t.Fatalf("registry link of confirmed %s = %+v, want %q", known, got, want)
 	}

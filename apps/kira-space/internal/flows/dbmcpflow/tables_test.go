@@ -153,7 +153,7 @@ func TestDbMcpTableAllowList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Tables: %v", err)
 	}
-	f.app.StudioContract(t, "dbmcp-tables", "DbMcpService.Tables", listing)
+	f.app.Contract(t, "dbmcp-tables", "DbMcpService.Tables", listing)
 
 	// [] means none; removing the key means all again.
 	if err := f.app.W.ConnectionFiles.Patch(f.connID, configfs.NodeSet{Path: []string{"mcp", "tables"}, Value: []string{}}); err != nil {

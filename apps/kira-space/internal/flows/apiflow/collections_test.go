@@ -245,14 +245,14 @@ func TestPostmanImportSendExport(t *testing.T) {
 	if err != nil || len(chosen.Files) != 1 {
 		t.Fatalf("ChooseOpenMany = %+v (%v)", chosen, err)
 	}
-	app.StudioContract(t, sc, "FilesService.ChooseOpenMany", chosen, append(pathOpts, flowharness.Mask("size"))...)
+	app.Contract(t, sc, "FilesService.ChooseOpenMany", chosen, append(pathOpts, flowharness.Mask("size"))...)
 	importArgs := bridge.CollectionsImportArgs{Paths: []string{chosen.Files[0].Path}}
-	app.StudioContract(t, sc, "args:CollectionsService.Import", importArgs, pathOpts...)
+	app.Contract(t, sc, "args:CollectionsService.Import", importArgs, pathOpts...)
 	res, err := app.W.Collections.Import(importArgs)
 	if err != nil || len(res.Files) != 1 || res.Files[0].Collection == nil {
 		t.Fatalf("Import = %+v (%v)", res, err)
 	}
-	app.StudioContract(t, sc, "CollectionsService.Import", res, pathOpts...)
+	app.Contract(t, sc, "CollectionsService.Import", res, pathOpts...)
 	rep := *res.Files[0].Collection
 	if rep.Name != "Flow Orders" || rep.Folders != 1 || rep.Requests != 4 {
 		t.Errorf("report = %+v, want Flow Orders with 1 folder and 4 requests", rep)
@@ -285,7 +285,7 @@ func TestPostmanImportSendExport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.StudioContract(t, sc, "CollectionsService.List", items, pathOpts...)
+	app.Contract(t, sc, "CollectionsService.List", items, pathOpts...)
 	var create model.CollectionItem
 	for _, it := range items.Items {
 		if it.Name == "Create order" && it.CollectionID == rep.CollectionID {
@@ -324,14 +324,14 @@ func TestPostmanImportSendExport(t *testing.T) {
 	if err != nil || dest.FilePath == nil {
 		t.Fatalf("ChooseSave = %+v (%v)", dest, err)
 	}
-	app.StudioContract(t, sc, "FilesService.ChooseSave", dest, pathOpts...)
+	app.Contract(t, sc, "FilesService.ChooseSave", dest, pathOpts...)
 	exportArgs := bridge.CollectionsExportArgs{CollectionID: rep.CollectionID, Path: *dest.FilePath}
-	app.StudioContract(t, sc, "args:CollectionsService.Export", exportArgs, pathOpts...)
+	app.Contract(t, sc, "args:CollectionsService.Export", exportArgs, pathOpts...)
 	exp, err := app.W.Collections.Export(exportArgs)
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.StudioContract(t, sc, "CollectionsService.Export", exp, pathOpts...)
+	app.Contract(t, sc, "CollectionsService.Export", exp, pathOpts...)
 	if exp.SecretCount != 1 || exp.SkippedGrpc != 1 {
 		t.Errorf("export = %+v, want 1 secret and 1 skipped gRPC item", exp)
 	}
@@ -468,19 +468,19 @@ func TestPostmanImportCollectionAndEnvironment(t *testing.T) {
 	if err != nil || len(chosen.Files) != 4 {
 		t.Fatalf("ChooseOpenMany = %+v (%v)", chosen, err)
 	}
-	app.StudioContract(t, sc, "FilesService.ChooseOpenMany", chosen, append(pathOpts, flowharness.Mask("size"))...)
+	app.Contract(t, sc, "FilesService.ChooseOpenMany", chosen, append(pathOpts, flowharness.Mask("size"))...)
 	paths := make([]string, len(chosen.Files))
 	for i, f := range chosen.Files {
 		paths[i] = f.Path
 	}
 	args := bridge.CollectionsImportArgs{Paths: paths}
-	app.StudioContract(t, sc, "args:CollectionsService.Import", args, pathOpts...)
+	app.Contract(t, sc, "args:CollectionsService.Import", args, pathOpts...)
 	mark := app.Events.Mark()
 	res, err := app.W.Collections.Import(args)
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.StudioContract(t, sc, "CollectionsService.Import", res, pathOpts...)
+	app.Contract(t, sc, "CollectionsService.Import", res, pathOpts...)
 
 	if len(res.Files) != 4 {
 		t.Fatalf("files = %+v, want one entry per path", res.Files)
@@ -546,7 +546,7 @@ func TestPostmanImportCollectionAndEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.StudioContract(t, sc, "VariablesService.List", vars, flowharness.Mask("ownerId", "sortOrder"))
+	app.Contract(t, sc, "VariablesService.List", vars, flowharness.Mask("ownerId", "sortOrder"))
 	got := map[string]model.Variable{}
 	for _, v := range vars {
 		got[v.Name] = v

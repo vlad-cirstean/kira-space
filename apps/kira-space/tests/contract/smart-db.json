@@ -76,7 +76,7 @@
     "color": "blue",
     "command": "",
     "createdAt": 0,
-    "cwd": "<kira>/automations/ask",
+    "cwd": "<space>/automations/ask",
     "finishedAt": 0,
     "id": "<id:1>",
     "kind": "smart",
@@ -129,7 +129,7 @@
     "color": "blue",
     "command": "",
     "createdAt": 0,
-    "cwd": "<kira>/automations/ask",
+    "cwd": "<space>/automations/ask",
     "finishedAt": 0,
     "id": "<id:1>",
     "kind": "smart",
@@ -183,11 +183,11 @@
     "body": "Say hi about {topic}",
     "command": "",
     "dir": {
-      "base": "<kira>",
+      "base": "<space>",
       "blocker": "",
       "branch": "",
       "mode": "kira",
-      "path": "<kira>/automations/ask",
+      "path": "<space>/automations/ask",
       "pending": false
     },
     "env": [

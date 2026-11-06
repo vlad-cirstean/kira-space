@@ -146,8 +146,8 @@ func TestExecSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.StudioContract(t, "docker-exec", "args:DockerService.ExecOpen", open, flowharness.Mask("containerId"))
-	app.StudioContract(t, "docker-exec", "DockerService.ExecOpen", opened)
+	app.Contract(t, "docker-exec", "args:DockerService.ExecOpen", open, flowharness.Mask("containerId"))
+	app.Contract(t, "docker-exec", "DockerService.ExecOpen", opened)
 	write(t, app, "x1", "echo $((6*7))\n")
 	answer := regexp.MustCompile(`(?m)^42\r?$`)
 	testx.WaitUntil(t, wait, func() bool {

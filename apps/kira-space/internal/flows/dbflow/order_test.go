@@ -48,8 +48,8 @@ func TestConnectionOrder(t *testing.T) {
 	connOrder(t, changed, c.ID, a.ID, b.ID)
 
 	// Contract connection-order: tests/ui/connection-order.spec.ts drags and sends these args.
-	app.StudioContract(t, "connection-order", "args:ConnectionsService.Reorder", args)
-	app.StudioContract(t, "connection-order", "ConnectionsService.Reorder", got, flowharness.Mask("createdAt", "updatedAt"), flowharness.Replace(filepath.Dir(path), "<fixture>"))
+	app.Contract(t, "connection-order", "args:ConnectionsService.Reorder", args)
+	app.Contract(t, "connection-order", "ConnectionsService.Reorder", got, flowharness.Mask("createdAt", "updatedAt"), flowharness.Replace(filepath.Dir(path), "<fixture>"))
 
 	if _, err := app.W.Connections.Reorder(bridge.ConnectionsReorderArgs{IDs: []string{a.ID, a.ID}}); err == nil {
 		t.Fatal("Reorder with a duplicate id succeeded")

@@ -18,7 +18,7 @@ func TestUnaryMetadataAndStatus(t *testing.T) {
 	args := callArgs(srv.Addr, "Unary", `{"text":"hello","index":7}`)
 	args.Metadata = []grpcclient.MetaPair{{Name: "x-trace", Value: "abc-123"}}
 	res := call(t, app, args)
-	app.StudioContract(t, "api-grpc", "GrpcService.Call", res, flowharness.Mask("elapsedMs", "offsetMs", "wireBytes", "messageBytes"), flowharness.Replace(srv.Addr, "<grpc>"))
+	app.Contract(t, "api-grpc", "GrpcService.Call", res, flowharness.Mask("elapsedMs", "offsetMs", "wireBytes", "messageBytes"), flowharness.Replace(srv.Addr, "<grpc>"))
 	if res.Code != 0 || res.CodeName != "OK" || res.MessageCount != 1 {
 		t.Fatalf("result = %+v, want OK with one message", res)
 	}
@@ -143,7 +143,7 @@ func TestServerStreamAndCancel(t *testing.T) {
 		// Batching decides how many messages one event carries; the contract is one message.
 		first := callEvents(t, app, mark)[0]
 		first.Messages = first.Messages[:1]
-		app.StudioContract(t, "api-grpc", "event:"+bridge.ChannelGrpcCall+"#message", first, flowharness.Mask("callId", "offsetMs", "wireBytes"))
+		app.Contract(t, "api-grpc", "event:"+bridge.ChannelGrpcCall+"#message", first, flowharness.Mask("callId", "offsetMs", "wireBytes"))
 		for i, s := range seqs {
 			if s != i {
 				t.Errorf("message seqs = %v, want 0..4 in order", seqs)
@@ -211,7 +211,7 @@ func TestServerStreamAndCancel(t *testing.T) {
 		partialStatus := *final.Status
 		partialStatus.Messages = nil
 		final.Status = &partialStatus
-		app.StudioContract(t, "api-grpc", "event:"+bridge.ChannelGrpcCall+"#cancelled", final,
+		app.Contract(t, "api-grpc", "event:"+bridge.ChannelGrpcCall+"#cancelled", final,
 			flowharness.Mask("callId", "seq", "elapsedMs", "messageCount", "messageBytes", "wireBytes"))
 	})
 }

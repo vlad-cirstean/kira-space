@@ -78,8 +78,8 @@ func TestSQLitePreconnectOp(t *testing.T) {
 		}
 
 		mask := flowharness.Mask("id", "durationMs")
-		app.StudioContract(t, "preconnect-op", "event:preconnect-running", recs[running], mask)
-		app.StudioContract(t, "preconnect-op", "event:preconnect-ok", pre, mask)
+		app.Contract(t, "preconnect-op", "event:preconnect-running", recs[running], mask)
+		app.Contract(t, "preconnect-op", "event:preconnect-ok", pre, mask)
 	})
 
 	t.Run("failing script errors the connection with no connect op", func(t *testing.T) {
@@ -143,7 +143,7 @@ func TestSQLitePreconnectDelay(t *testing.T) {
 		if d := recs[done].DurationMs; d == nil || *d < 1000 {
 			t.Errorf("preconnect durationMs = %v, want >= 1000", d)
 		}
-		app.StudioContract(t, "preconnect-delay", "event:preconnect-delay-running", recs[running], flowharness.Mask("id", "durationMs"))
+		app.Contract(t, "preconnect-delay", "event:preconnect-delay-running", recs[running], flowharness.Mask("id", "durationMs"))
 	})
 
 	t.Run("cancel during the delay", func(t *testing.T) {

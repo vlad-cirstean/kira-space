@@ -170,7 +170,7 @@ func TestDbMcpStatementTimeoutExemption(t *testing.T) {
 	if len(pl.Limits) != 1 || pl.Limits[0].Limit != "statement_timeout" || pl.Limits[0].Max != 1000 || pl.Limits[0].Unit != "ms" {
 		t.Fatalf("payload = %+v", pl)
 	}
-	f.app.StudioContract(t, "dbmcp-statement-timeout", "item", items[0], flowharness.Mask("createdAt", "expiresAt", "measured"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.Contract(t, "dbmcp-statement-timeout", "item", items[0], flowharness.Mask("createdAt", "expiresAt", "measured"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
 	f.answerItems(t, true, items[0].ID)
 	start := time.Now()
 	res := wait(t, call)
@@ -294,5 +294,5 @@ func TestDbMcpListConnectionsStatementTimeout(t *testing.T) {
 	}
 	var all any
 	_ = json.Unmarshal([]byte(text(res)), &all)
-	f.app.StudioContract(t, "dbmcp-statement-timeout", "list_connections", all, flowharness.Mask("id"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.Contract(t, "dbmcp-statement-timeout", "list_connections", all, flowharness.Mask("id"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
 }

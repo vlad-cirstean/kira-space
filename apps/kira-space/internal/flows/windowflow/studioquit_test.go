@@ -68,7 +68,7 @@ func TestQuitConfirm(t *testing.T) {
 	if want := (shell.QuitStatus{Asking: true, Scripts: 1}); asking != want {
 		t.Fatalf("QuitStatus = %+v, want %+v", asking, want)
 	}
-	app.StudioContract(t, "quit-confirm", "LifecycleService.QuitStatus#asking", asking)
+	app.Contract(t, "quit-confirm", "LifecycleService.QuitStatus#asking", asking)
 	if len(app.Events.Since(0, appevent.ChannelFlushBeforeClose)) != 0 {
 		t.Fatal("the flush started before the user confirmed")
 	}
