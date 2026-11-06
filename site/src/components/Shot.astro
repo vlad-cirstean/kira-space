@@ -15,23 +15,22 @@ const { shot, eager = false, glow = false } = Astro.props;
     <div aria-hidden="true" class="absolute -inset-4 -z-10 rounded-3xl bg-tint/10 blur-3xl"></div>
   )}
   <a
-    href={shot.framedPng}
-    class="block overflow-hidden rounded-xl bg-chrome shadow-shot ring-1 ring-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+    href={shot.framed}
+    class="block overflow-hidden rounded-xl bg-chrome shadow-shot ring-1 ring-border-strong md:overflow-visible md:rounded-none md:bg-transparent md:shadow-none md:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     aria-label={`Open full size: ${shot.title}`}
   >
     <picture>
-      <source media="(min-width: 768px)" srcset={shot.framedWebp} type="image/webp">
-      <source media="(min-width: 768px)" srcset={shot.framedPng} type="image/png">
-      <source srcset={shot.detailWebp} type="image/webp">
+      <source media="(min-width: 768px)" srcset={shot.framed} type="image/webp">
       <img
-        src={shot.detailPng}
+        src={shot.detail}
         alt={shot.alt}
         data-shot={shot.id}
         width={shot.detailWidth}
         height={shot.detailHeight}
         loading={eager ? 'eager' : 'lazy'}
         decoding="async"
-        class="aspect-[4/3] h-auto w-full md:aspect-[8/5]"
+        style={`--shot-ar:${shot.framedWidth}/${shot.framedHeight}`}
+        class="aspect-[4/3] h-auto w-full md:aspect-(--shot-ar)"
       >
     </picture>
   </a>

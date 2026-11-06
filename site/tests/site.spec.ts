@@ -125,6 +125,7 @@ for (const route of ROUTES) {
           .poll(() => img.evaluate((el: HTMLImageElement) => el.currentSrc))
           .toContain(id);
         const src = await img.evaluate((el: HTMLImageElement) => el.currentSrc);
+        expect(src).toMatch(/\.webp$/);
         if (phone) expect(src).toContain(`${id}-detail`);
         else expect(src).not.toContain('-detail');
       }

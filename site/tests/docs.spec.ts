@@ -162,6 +162,7 @@ for (const doc of PAGES) {
           .poll(() => img.evaluate((el: HTMLImageElement) => el.currentSrc))
           .toContain(shot);
         const src = await img.evaluate((el: HTMLImageElement) => el.currentSrc);
+        expect(src).toMatch(/\.webp$/);
         if (info.project.name === 'phone') expect(src).toContain(`${shot}-detail`);
         else expect(src).not.toContain('-detail');
       });

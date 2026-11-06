@@ -16,27 +16,27 @@ See the presentation page: [Kira Space](https://vlad-cirstean.github.io/kira-stu
 
 ## Screenshots
 
-![Kira Space commit graph with branches, tags and the commit detail pane open.](screenshots/framed/space-git-graph.png)
+![Kira Space commit graph with branches, tags and the commit detail pane open.](screenshots/framed/space-git-graph.webp)
 
 The git graph: branches, tags and commit detail.
 
-![Kira Space agents board with tasks across stages and live runs.](screenshots/framed/space-agents-board.png)
+![Kira Space agents board with tasks across stages and live runs.](screenshots/framed/space-agents-board.webp)
 
 The agents board: tasks across stages, with runs live.
 
-![Kira Space memory list showing each fact with its origin and scope.](screenshots/framed/space-memory.png)
+![Kira Space memory list showing each fact with its origin and scope.](screenshots/framed/space-memory.webp)
 
 Memory: every fact shows its origin and scope.
 
-![Kira Space data grid showing an orders table with one row selected.](screenshots/framed/studio-data-grid.png)
+![Kira Space data grid showing an orders table with one row selected.](screenshots/framed/studio-data-grid.webp)
 
 The Studio module's data grid: filter, sort, edit and commit rows.
 
-![Kira Space SQL console with a join query and its result grid.](screenshots/framed/studio-sql-console.png)
+![Kira Space SQL console with a join query and its result grid.](screenshots/framed/studio-sql-console.webp)
 
 The SQL console: run a statement or the whole script.
 
-![Kira Space Api module showing an HTTP request and its JSON response.](screenshots/framed/studio-api.png)
+![Kira Space Api module showing an HTTP request and its JSON response.](screenshots/framed/studio-api.webp)
 
 The Api module: HTTP and gRPC requests with a JSON response.
 

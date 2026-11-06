@@ -9,7 +9,7 @@ export interface ShotDef {
   readonly label: string;
 }
 
-// Files: screenshots/framed/<id>.png and screenshots/<id>-detail.png (bun run screenshots).
+// Files: screenshots/framed/<id>.webp and screenshots/<id>-detail.webp (bun run screenshots).
 export const SHOTS: readonly ShotDef[] = [
   {
     id: 'studio-data-grid',

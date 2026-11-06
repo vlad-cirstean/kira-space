@@ -14,7 +14,7 @@ const hero = shots.find((s) => s.id === content.hero);
 if (!hero) throw new Error(`Missing hero shot ${content.hero}`);
 ---
 
-<Base title={content.pageTitle} description={content.description} image={hero.framedPng}>
+<Base title={content.pageTitle} description={content.description} image={hero.social}>
   <Header />
   <main data-app="space" class="relative isolate overflow-hidden">
     <div

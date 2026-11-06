@@ -4,8 +4,8 @@ import { SHOTS, type ShotDef } from '../data/shots';
 
 type Glob = Record<string, { default: ImageMetadata }>;
 
-const framed: Glob = import.meta.glob('../../../screenshots/framed/*.png', { eager: true });
-const detail: Glob = import.meta.glob('../../../screenshots/*-detail.png', { eager: true });
+const framed: Glob = import.meta.glob('../../../screenshots/framed/*.webp', { eager: true });
+const detail: Glob = import.meta.glob('../../../screenshots/*-detail.webp', { eager: true });
 
 function find(glob: Glob, file: string): ImageMetadata {
   const hit = Object.entries(glob).find(([path]) => path.endsWith(`/${file}`));
@@ -14,37 +14,32 @@ function find(glob: Glob, file: string): ImageMetadata {
 }
 
 export interface ResolvedShot extends ShotDef {
-  readonly framedWebp: string;
-  readonly framedPng: string;
-  readonly detailWebp: string;
-  readonly detailPng: string;
+  readonly framed: string;
+  readonly framedWidth: number;
+  readonly framedHeight: number;
+  readonly detail: string;
   readonly detailWidth: number;
   readonly detailHeight: number;
-}
-
-async function urls(src: ImageMetadata) {
-  const [webp, png] = await Promise.all([
-    getImage({ src, format: 'webp', quality: 88 }),
-    getImage({ src, format: 'png' }),
-  ]);
-  return { webp: webp.src, png: png.src };
+  /** Build-time PNG of the framed shot for og:image; scrapers handle WebP unevenly. Not committed. */
+  readonly social: string;
 }
 
 /** Resolves one listed shot; throws at build time when a file is missing. */
 export async function resolveShot(id: string): Promise<ResolvedShot> {
   const def = SHOTS.find((s) => s.id === id);
   if (!def) throw new Error(`Unknown shot ${id}`);
-  const f = await urls(find(framed, `${id}.png`));
-  const detailMeta = find(detail, `${id}-detail.png`);
-  const d = await urls(detailMeta);
+  const framedMeta = find(framed, `${id}.webp`);
+  const detailMeta = find(detail, `${id}-detail.webp`);
+  const social = await getImage({ src: framedMeta, format: 'png' });
   return {
     ...def,
-    framedWebp: f.webp,
-    framedPng: f.png,
-    detailWebp: d.webp,
-    detailPng: d.png,
+    framed: framedMeta.src,
+    framedWidth: framedMeta.width,
+    framedHeight: framedMeta.height,
+    detail: detailMeta.src,
     detailWidth: detailMeta.width,
     detailHeight: detailMeta.height,
+    social: social.src,
   };
 }
 
