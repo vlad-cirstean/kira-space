@@ -897,13 +897,13 @@ export interface ReviewForwardText {
 export interface ForwardReviewResult {
   count: number;
 }
-export interface PanelForwardItem {
+interface PanelForwardItem {
   key: string;
   kind: 'note' | 'handover' | 'link' | 'proof' | 'field';
   label: string;
   at: number;
 }
-export interface ForwardTarget {
+interface ForwardTarget {
   sessionId: string;
   badge: string;
 }
@@ -916,7 +916,7 @@ export interface PanelForward {
   dropped: number;
   preview: string;
 }
-export interface PanelForwardFailure {
+interface PanelForwardFailure {
   sessionId: string;
   error: string;
 }

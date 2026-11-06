@@ -21,7 +21,7 @@ Twins: every Studio twin in `plans/TWINS.md` is merged by P538, P539, P540 or P5
 | P544 Part 1 | One database | Done |
 | P544 Part 2 | Settings and op log twins | Done |
 | P545 | Timeline becomes a toggle merged into the same list | Done |
-| P546 | Forward panel edits (diff only) to agents running in the step | Pending |
+| P546 | Forward panel edits (diff only) to agents running in the step | Done |
 | P547 | Kira DB audit trail in the details panel | Pending |
 | P548 | Studio MCP option in workflow steps | Done |
 | P549 | WebP screenshots and macOS 26 window frame | Done |
@@ -205,6 +205,7 @@ Result:
 - Ask: every edit in the panel offers forwarding the change, only the diff, to the agents running in that step.
 - Decide in plan: which edits count (notes, links, proof, others in the panel); diff format; how running agents in the step are found and addressed; offer UI (per-edit prompt versus per-save control); no forward when no agent is running.
 - Plan: `plans/P546.md`.
+- Result: Done. User edits to notes, handovers, links (stored, Jira, host), proof attach/detach and the task title go into a per-task pending set (`ade/panelforward.go`, in memory, `recordPanelEdit` hooked in `AddNote`, `UpdateHandover`, `AddLink`, `EditLink`, `RemoveArtifact`, `UpdateTask` (user origin only), `LinkProof`, `UnlinkProof`). Items coalesce to the net change; text items are unified hunks (2 context lines, via `go-udiff`, BSD-3/MIT), others one `-`/`+` line per side; 200 lines per item, 32 KiB per message, 32 items. Targets are running sessions of the step (review agent in the review step) as `stageSessions` finds them; only TUI sessions with a bound terminal take the paste (`Tracker.Send`). `AdeTaskService.PanelForward`, `ForwardPanelEdits`, `DismissPanelEdits`; prompt `ade.panel.forward.message`. `AdePanelForwardBar.vue` sits above the tabs in `AdeTaskPanel.vue` (count, chips, collapsible exact preview, send, discard); TanStack Query `usePanelForward` refetches on board and sessions pushes. Headless runs are not reached: the bar names them and says to take over. Tests: `TestPanelForward`, `TestPanelForwardHeadless` (contract `ade-panel-forward`), UI spec `ade-v2-panel-forward.spec.ts`; `ade-v2-details-list`, `-task-panel`, `-notes`, `-proof-chain`, `-review`, `-details-links`, `-panel` pass. Deviations: `ForwardTarget` has no `headless` field (`targets` holds reachable sessions only, `unreachable` counts the rest); extra refusal `panelForward.empty`; `panelEdits` zero value is usable, no `NewTaskBoard` change. Not run: full Go, UI, e2e-real (chapter end); real `claude` (`Tracker.Send` unchanged).
 
 ### P547 Kira DB audit trail in the details panel
 
