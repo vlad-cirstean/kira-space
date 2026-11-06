@@ -15,10 +15,10 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -80,11 +80,11 @@ func TestMaskSecrets_RedirectURLsFinalURLAndTimelineHopsBeforePersisting(t *test
 	assertMasked(t, "Timeline.Hops[0].Headers[0].Value (Location)", resp.Timeline.Hops[0].Headers[0].Value)
 
 	// The real persistence path: Send (http.go) calls maskSecrets before ResponseHistory.Record on
-	// every send — reproduced here against a real migrated SQLite database (studiostorage.Open(), the
+	// every send — reproduced here against a real migrated SQLite database (storage.Open(), the
 	// same helper repos_test.go's own newRepos wraps) rather than a fixture, so a future refactor
 	// that changes the schema or the marshalling would still be caught.
 	t.Setenv("KIRA_SPACE_HOME", t.TempDir())
-	db, err := studiostorage.Open()
+	db, err := storage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
 	}
@@ -312,7 +312,7 @@ func TestMaskSendErrTimeline_MasksMessageForTransportAndBadURLErrors(t *testing.
 // TestHttpSendFailure_OpLogErrorNeverContainsSecret proves end to end, through the exact
 // path a live failed send takes: RunOp's own err.Error() (host.go) is persisted verbatim to
 // op_log.error by oplog's Wiring — reproduced here against a real Host and a real, migrated SQLite
-// database (studiostorage.Open(), the same helper the redirect/timeline masking test above uses) rather
+// database (storage.Open(), the same helper the redirect/timeline masking test above uses) rather
 // than calling maskSendErrTimeline in isolation, so a future refactor of RunOp's own error-handling
 // would still be caught.
 func TestHttpSendFailure_OpLogErrorNeverContainsSecret(t *testing.T) {
@@ -320,18 +320,18 @@ func TestHttpSendFailure_OpLogErrorNeverContainsSecret(t *testing.T) {
 	usedSecrets := []apivars.UsedSecret{{Name: "apiKey", Rendered: secret, Placeholder: "{{apiKey}}"}}
 
 	t.Setenv("KIRA_SPACE_HOME", t.TempDir())
-	db, err := studiostorage.Open()
+	db, err := storage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	opsRepo := &repos.OpsRepo{DB: db.DB}
+	opsRepo := &repos.DbOpsRepo{DB: db.DB}
 	host := adapterhost.NewHost(adapters.Deps{}, nil)
 	wiring := studiooplog.New(host, opsRepo, 30)
 
-	done := make(chan model.OpRecord, 4)
-	unsubscribe := wiring.OnUpdate(func(rec model.OpRecord) {
+	done := make(chan model.DbOpRecord, 4)
+	unsubscribe := wiring.OnUpdate(func(rec model.DbOpRecord) {
 		if rec.Status != "running" {
 			done <- rec
 		}

@@ -12,7 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/postman"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
@@ -153,7 +153,7 @@ func TestVariablePrecedence(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := app.StudioDB().Exec(`INSERT INTO api_variable_history (id, variable_id, value, is_secret, secret_value, recorded_at)
+		if _, err := app.DB().Exec(`INSERT INTO api_variable_history (id, variable_id, value, is_secret, secret_value, recorded_at)
 			VALUES ('legacy-h1', ?, '', 1, ?, '2026-01-01T00:00:00Z')`, vars[0].ID, sealed); err != nil {
 			t.Fatal(err)
 		}

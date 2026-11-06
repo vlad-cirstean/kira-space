@@ -228,7 +228,7 @@ type opEndPayload struct {
 	Rows       *int    `json:"rows"`
 	Command    *string `json:"command"`
 	Error      *string `json:"error"`
-	// Path (P108 Part 11 F5): see model.OpRecord.Path.
+	// Path (P108 Part 11 F5): see model.DbOpRecord.Path.
 	Path *string `json:"path"`
 }
 

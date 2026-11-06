@@ -12,7 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -237,7 +237,7 @@ func TestKubeMcp(t *testing.T) {
 			t.Fatalf("approved list = %+v (%s)", out, text(out.res))
 		}
 
-		var row model.OpRecord
+		var row model.DbOpRecord
 		testx.WaitUntil(t, 10*time.Second, func() bool {
 			recent, err := k.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
 			if err != nil {
@@ -258,7 +258,7 @@ func TestKubeMcp(t *testing.T) {
 			t.Fatalf("one MCP read wrote %d rows, want 1", n-rowsBefore)
 		}
 		// Contract dbmcp-kube: tests/ui/kubernetes-mcp.spec.ts renders this row in the Operations panel.
-		k.contract(t, "StudioOpsService.Recent", []model.OpRecord{row})
+		k.contract(t, "StudioOpsService.Recent", []model.DbOpRecord{row})
 
 		before = k.podRequests()
 		denied := k.callAsync("kube_list_resources", k.listPods("default", nil))

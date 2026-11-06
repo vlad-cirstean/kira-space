@@ -27,12 +27,12 @@ function extractGoStringSet(source: string, varName: string): Set<string> {
 }
 
 describe('Go/TS tab-kind vocabulary parity (P103 Part 2 §5.1)', () => {
-  test('model.RenderableTabKinds (Go) matches SPACE_RENDERABLE_TAB_KINDS (TS)', () => {
+  test('model.spaceTabKinds (Go) matches SPACE_RENDERABLE_TAB_KINDS (TS)', () => {
     const source = readFileSync(
       resolve(import.meta.dir, '../../internal/storage/model/tabs.go'),
       'utf8',
     );
-    const goKinds = extractGoStringSet(source, 'RenderableTabKinds');
+    const goKinds = extractGoStringSet(source, 'spaceTabKinds');
     expect(goKinds).toEqual(new Set(SPACE_RENDERABLE_TAB_KINDS));
   });
 });

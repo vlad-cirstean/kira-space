@@ -7,8 +7,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
@@ -23,7 +23,7 @@ func TestOpIDs(t *testing.T) {
 	}
 	legacy := uuid.NewString()
 	startedAt := time.Now().UTC().Format(time.RFC3339Nano)
-	if err := (&repos.OpsRepo{DB: f.app.StudioDB()}).Append(model.OpAppend{ID: legacy, Kind: "execute", StartedAt: startedAt, Source: "user"}); err != nil {
+	if err := (&repos.DbOpsRepo{DB: f.app.DB()}).Append(model.OpAppend{ID: legacy, Kind: "execute", StartedAt: startedAt, Source: "user"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := f.opRow(t, legacy); !ok {

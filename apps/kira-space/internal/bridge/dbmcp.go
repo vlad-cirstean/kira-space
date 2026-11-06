@@ -10,7 +10,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mcpauth"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
@@ -29,7 +29,7 @@ const dbMcpTokenName = "mcp-db"
 // constructed and started when the setting turns on (or already is, at boot), stopped when it
 // turns off or the app quits.
 type DbMcpService struct {
-	Deps      appcore.StudioDeps
+	Deps      appcore.Deps
 	Installer harness.MCPInstaller
 	// Approvals is M2's prompt-mode broker — constructed once in main.go and outliving this
 	// service's own server start/stop, so the event subscription wired at boot (Events.Attach)
@@ -57,7 +57,7 @@ type DbMcpService struct {
 // NewDbMcpService wires the embedded lifecycle's own start/stop/status closures once, here, so
 // every other method can assume s.embedded is ready — a plain struct literal (main.go's own shape
 // before T2-13) would leave them nil.
-func NewDbMcpService(deps appcore.StudioDeps, installer harness.MCPInstaller, approvals *dbmcp.ApprovalBroker, proofStore dbmcp.ProofStore, kube dbmcp.KubeReader) *DbMcpService {
+func NewDbMcpService(deps appcore.Deps, installer harness.MCPInstaller, approvals *dbmcp.ApprovalBroker, proofStore dbmcp.ProofStore, kube dbmcp.KubeReader) *DbMcpService {
 	s := &DbMcpService{Deps: deps, Installer: installer, Approvals: approvals, Proof: proofStore, Kube: kube}
 	s.embedded = embedded.Service[*dbmcp.Server, DbMcpStatus]{
 		StartFn: func(mint bool) (*dbmcp.Server, error) {
@@ -256,10 +256,10 @@ func helperTokenValid(srv *dbmcp.Server) bool {
 // threshold would silently mis-flag every query after the user changes it. A settings
 // read failure must not break a query; it falls back to the documented default and logs once.
 func (s *DbMcpService) explainThreshold() int {
-	settings, err := s.Deps.Repos.Settings.GetAll()
+	settings, err := s.Deps.Repos.DbSettings.GetAll()
 	if err != nil {
 		slog.Warn("db mcp: read expensive-query threshold, using default", "scope", "dbmcp", "err", err)
-		return model.DefaultSettings().Advanced.ExpensiveQueryRows
+		return model.DefaultDbSettings().Advanced.ExpensiveQueryRows
 	}
 	return settings.Advanced.ExpensiveQueryRows
 }
@@ -267,7 +267,7 @@ func (s *DbMcpService) explainThreshold() int {
 // previewResponses is dbmcp.Config.PreviewResponses' real backend, read fresh on every call. A
 // read failure fails closed (true): sending unreviewed data is the unsafe direction.
 func (s *DbMcpService) previewResponses() bool {
-	settings, err := s.Deps.Repos.Settings.GetAll()
+	settings, err := s.Deps.Repos.DbSettings.GetAll()
 	if err != nil {
 		slog.Warn("db mcp: read preview setting, holding results for review", "scope", "dbmcp", "err", err)
 		return true
@@ -282,7 +282,7 @@ func (s *DbMcpService) previewResponses() bool {
 // a registered service, and a wire-callable Start would let a stray call bypass the settings leaf.
 func (s *DbMcpService) startIfEnabled() {
 	s.embedded.StartIfEnabled("dbmcp", func() (bool, error) {
-		settings, err := s.Deps.Repos.Settings.GetAll()
+		settings, err := s.Deps.Repos.DbSettings.GetAll()
 		if err != nil {
 			return false, err
 		}
@@ -312,7 +312,7 @@ type DbMcpSetEnabledArgs struct {
 // mints a fresh token, even if a file already exists for a previous enable — a deliberate, explicit
 // re-enable is exactly the event token rotation ties regeneration to.
 func (s *DbMcpService) SetEnabled(args DbMcpSetEnabledArgs) (DbMcpStatus, error) {
-	merged, err := s.Deps.Repos.Settings.Set(model.SettingsPatch{
+	merged, err := s.Deps.Repos.DbSettings.Set(model.DbSettingsPatch{
 		DbMcp: &model.DbMcpPatch{ServerEnabled: &args.Enabled},
 	})
 	if err != nil {

@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -32,13 +32,13 @@ func (f *fakeSource) Subscribe() (<-chan studiooplog.Event, func()) {
 type harness struct {
 	wiring *studiooplog.Wiring
 	src    *fakeSource
-	ops    *repos.OpsRepo
+	ops    *repos.DbOpsRepo
 }
 
 func newHarness(t *testing.T, retentionDays int) *harness {
 	t.Helper()
 	t.Setenv("KIRA_SPACE_HOME", t.TempDir())
-	db, err := studiostorage.Open()
+	db, err := storage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
 	}
@@ -51,8 +51,8 @@ func newHarness(t *testing.T, retentionDays int) *harness {
 	t.Cleanup(func() { _ = r.Close() })
 
 	src := newFakeSource()
-	w := studiooplog.New(src, r.Ops, retentionDays)
-	return &harness{wiring: w, src: src, ops: r.Ops}
+	w := studiooplog.New(src, r.DbOps, retentionDays)
+	return &harness{wiring: w, src: src, ops: r.DbOps}
 }
 
 func opStartPayload(opID string, connectionID, tabID *string, kind, startedAt string) json.RawMessage {
@@ -78,10 +78,10 @@ func opEndPayload(opID, status string) json.RawMessage {
 	return b
 }
 
-func seedRawOp(t *testing.T, ops *repos.OpsRepo, id, startedAt string) {
+func seedRawOp(t *testing.T, ops *repos.DbOpsRepo, id, startedAt string) {
 	t.Helper()
 	if _, err := ops.DB.Exec(
-		`INSERT INTO op_log (id, connection_id, tab_id, started_at, duration_ms, kind, status, rows, command, error)
+		`INSERT INTO db_op_log (id, connection_id, tab_id, started_at, duration_ms, kind, status, rows, command, error)
 		 VALUES (?, NULL, NULL, ?, NULL, 'read', 'running', NULL, NULL, NULL)`,
 		id, startedAt,
 	); err != nil {
@@ -89,10 +89,10 @@ func seedRawOp(t *testing.T, ops *repos.OpsRepo, id, startedAt string) {
 	}
 }
 
-func rowExists(t *testing.T, ops *repos.OpsRepo, id string) bool {
+func rowExists(t *testing.T, ops *repos.DbOpsRepo, id string) bool {
 	t.Helper()
 	var exists int
-	err := ops.DB.QueryRow(`SELECT 1 FROM op_log WHERE id = ?`, id).Scan(&exists)
+	err := ops.DB.QueryRow(`SELECT 1 FROM db_op_log WHERE id = ?`, id).Scan(&exists)
 	if err == sql.ErrNoRows {
 		return false
 	}
@@ -102,7 +102,7 @@ func rowExists(t *testing.T, ops *repos.OpsRepo, id string) bool {
 	return true
 }
 
-func fetchOp(t *testing.T, ops *repos.OpsRepo, id string) model.OpRecord {
+func fetchOp(t *testing.T, ops *repos.DbOpsRepo, id string) model.DbOpRecord {
 	t.Helper()
 	recs, err := ops.Recent(1000)
 	if err != nil {
@@ -114,7 +114,7 @@ func fetchOp(t *testing.T, ops *repos.OpsRepo, id string) model.OpRecord {
 		}
 	}
 	t.Fatalf("no op_log row for %s", id)
-	return model.OpRecord{}
+	return model.DbOpRecord{}
 }
 
 // waitUntil is testx.WaitUntil (P107 I2-28).
@@ -123,10 +123,10 @@ var waitUntil = testx.WaitUntil
 // updateCollector is an OnUpdate sink safe for concurrent use.
 type updateCollector struct {
 	mu   sync.Mutex
-	recs []model.OpRecord
+	recs []model.DbOpRecord
 }
 
-func (c *updateCollector) handle(r model.OpRecord) {
+func (c *updateCollector) handle(r model.DbOpRecord) {
 	c.mu.Lock()
 	c.recs = append(c.recs, r)
 	c.mu.Unlock()

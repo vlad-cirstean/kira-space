@@ -10,8 +10,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/enginecache"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 )
 
 // dataFakeAdapter is a fuller test double than host_test.go's fakeAdapter: every method the

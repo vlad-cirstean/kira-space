@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/queryplan"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // expensiveQueryLimit is the built-in PreLimit LimitExpensiveQuery (P530): the plan's estimated rows read

@@ -12,13 +12,13 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
-func opUpdates(app *flowharness.App, mark int) []model.OpRecord {
-	var out []model.OpRecord
+func opUpdates(app *flowharness.App, mark int) []model.DbOpRecord {
+	var out []model.DbOpRecord
 	for _, ev := range app.Events.Since(mark, bridge.ChannelStudioOpUpdate) {
-		if rec, ok := ev.Data.(model.OpRecord); ok {
+		if rec, ok := ev.Data.(model.DbOpRecord); ok {
 			out = append(out, rec)
 		}
 	}
@@ -30,12 +30,12 @@ func opUpdates(app *flowharness.App, mark int) []model.OpRecord {
 func waitOp(t *testing.T, app *flowharness.App, mark int, kind, status string) {
 	t.Helper()
 	app.Events.WaitAfter(t, mark, bridge.ChannelStudioOpUpdate, func(ev flowharness.Event) bool {
-		rec, ok := ev.Data.(model.OpRecord)
+		rec, ok := ev.Data.(model.DbOpRecord)
 		return ok && rec.Kind == kind && rec.Status == status
 	}, 5*time.Second)
 }
 
-func indexOf(recs []model.OpRecord, kind, status string) int {
+func indexOf(recs []model.DbOpRecord, kind, status string) int {
 	for i, r := range recs {
 		if r.Kind == kind && r.Status == status {
 			return i

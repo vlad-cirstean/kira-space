@@ -10,7 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // readFirstIDThenFilterToOne is clickhouse_test.go's and mysql_test.go's own shared shape: read

@@ -17,7 +17,7 @@ import (
 // missing or removed, this test would panic on a nil pointer dereference rather than silently
 // pass.
 func TestConnectionsServiceRejectsBareID(t *testing.T) {
-	svc := &bridge.ConnectionsService{Deps: appcore.StudioDeps{}}
+	svc := &bridge.ConnectionsService{Deps: appcore.Deps{}}
 
 	assertContract := func(t *testing.T, err error) {
 		t.Helper()

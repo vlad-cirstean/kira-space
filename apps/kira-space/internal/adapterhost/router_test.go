@@ -10,8 +10,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/enginecache"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 )
 
 // Cancel must find an op this router's own scheduler started.

@@ -12,8 +12,8 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mask"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 )
 

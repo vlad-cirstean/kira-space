@@ -6,11 +6,11 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
-func (e *env) ops(t *testing.T) []model.OpRecord {
+func (e *env) ops(t *testing.T) []model.DbOpRecord {
 	t.Helper()
 	recs, err := e.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 200})
 	if err != nil {
@@ -20,9 +20,9 @@ func (e *env) ops(t *testing.T) []model.OpRecord {
 }
 
 // newestOp waits for the n-th row and returns it once it is not running (or is, when wantRunning).
-func (e *env) newestOp(t *testing.T, n int, wantRunning bool) model.OpRecord {
+func (e *env) newestOp(t *testing.T, n int, wantRunning bool) model.DbOpRecord {
 	t.Helper()
-	var row model.OpRecord
+	var row model.DbOpRecord
 	testx.WaitUntil(t, wait, func() bool {
 		recs := e.ops(t)
 		if len(recs) < n || (recs[0].Status == "running") != wantRunning {
@@ -34,7 +34,7 @@ func (e *env) newestOp(t *testing.T, n int, wantRunning bool) model.OpRecord {
 	return row
 }
 
-func wantOp(t *testing.T, row model.OpRecord, status, command string, rows *int) {
+func wantOp(t *testing.T, row model.DbOpRecord, status, command string, rows *int) {
 	t.Helper()
 	if row.Kind != "kubernetes" || row.Status != status || row.Source != "user" || row.ConnectionID != nil || row.TabID != nil ||
 		row.Command == nil || *row.Command != command || (rows == nil) != (row.Rows == nil) || (rows != nil && *rows != *row.Rows) {
@@ -103,7 +103,7 @@ func TestOpsRecordEveryAction(t *testing.T) {
 	if running.Kind != "kubernetes" || running.Source != "user" || running.ConnectionID != nil || running.Command != nil {
 		t.Fatalf("running op = %+v", running)
 	}
-	e.contract(t, "StudioOpsService.Recent:running", []model.OpRecord{running}, flowharness.Mask("id", "startedAt", "durationMs"))
+	e.contract(t, "StudioOpsService.Recent:running", []model.DbOpRecord{running}, flowharness.Mask("id", "startedAt", "durationMs"))
 	if err := e.app.W.StudioOps.Cancel(bridge.StudioOpsCancelArgs{OpID: running.ID}); err != nil {
 		t.Fatal(err)
 	}

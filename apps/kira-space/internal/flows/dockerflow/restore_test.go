@@ -98,7 +98,7 @@ func (e restoreEnv) waitState(t *testing.T, what string, pred func(docker.Restor
 
 func (e restoreEnv) inSnapshot(id string) bool {
 	var n int
-	_ = e.app.StudioDB().QueryRow(`SELECT COUNT(*) FROM docker_restore_containers WHERE container_id = ?`, id).Scan(&n)
+	_ = e.app.DB().QueryRow(`SELECT COUNT(*) FROM docker_restore_containers WHERE container_id = ?`, id).Scan(&n)
 	return n > 0
 }
 

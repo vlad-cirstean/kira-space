@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/tree"
 )
 
@@ -106,7 +106,7 @@ type harness struct {
 func newHarness(t *testing.T) *harness {
 	t.Helper()
 	t.Setenv("KIRA_SPACE_HOME", t.TempDir())
-	db, err := studiostorage.Open()
+	db, err := storage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
 	}

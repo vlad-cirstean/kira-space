@@ -12,7 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
@@ -73,7 +73,7 @@ func waitListed(t *testing.T, sess *mcp.ClientSession, match func(listedOp) bool
 	return found
 }
 
-func (f *fixture) opRow(t *testing.T, id string) (model.OpRecord, bool) {
+func (f *fixture) opRow(t *testing.T, id string) (model.DbOpRecord, bool) {
 	t.Helper()
 	recent, err := f.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
 	if err != nil {
@@ -84,12 +84,12 @@ func (f *fixture) opRow(t *testing.T, id string) (model.OpRecord, bool) {
 			return r, true
 		}
 	}
-	return model.OpRecord{}, false
+	return model.DbOpRecord{}, false
 }
 
-func (f *fixture) waitStatus(t *testing.T, id, status string) model.OpRecord {
+func (f *fixture) waitStatus(t *testing.T, id, status string) model.DbOpRecord {
 	t.Helper()
-	var row model.OpRecord
+	var row model.DbOpRecord
 	testx.WaitUntil(t, 10*time.Second, func() bool {
 		r, ok := f.opRow(t, id)
 		row = r
@@ -118,7 +118,7 @@ func TestDbMcpCancelOperation(t *testing.T) {
 	}
 	row := f.waitStatus(t, op.OpID, "running")
 	// Contract ops-running: tests/ui/running-ops-status.spec.ts renders this running row.
-	f.app.Contract(t, "ops-running", "StudioOpsService.Recent", []model.OpRecord{row}, flowharness.Mask("id", "startedAt", "durationMs", "connectionId"))
+	f.app.Contract(t, "ops-running", "StudioOpsService.Recent", []model.DbOpRecord{row}, flowharness.Mask("id", "startedAt", "durationMs", "connectionId"))
 
 	if res := cancelOp(t, b, op.OpID); res.IsError || !strings.Contains(text(res), `"cancelled":true`) {
 		t.Fatalf("cancel_operation = %q", text(res))

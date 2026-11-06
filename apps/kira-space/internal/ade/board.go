@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -67,6 +66,10 @@ type TaskBoardDeps struct {
 	GitStatus func(ctx context.Context) gitclient.GitStatus
 	Askpass   *gitaskpass.Broker
 	Workflows *adeflow.Reader
+	// Proofs attaches validation-proof sessions to tasks; nil turns the proof tools off.
+	Proofs ProofLinks
+	// DbMcp mints the per-session Kira DB server entry; nil makes a db_mcp step fail to launch.
+	DbMcp DbMcpSessions
 	// Runner spawns git for repo identification (folder import).
 	Runner gitclient.Runner
 	// Ops is the operation log: agent sessions, worktree setups and MCP tool calls land in it.
@@ -181,8 +184,6 @@ type TaskBoard struct {
 	rebase         map[string]*rebaseCache
 	boardTimer     *time.Timer
 	updates        *updateWatcher
-	proofs         atomic.Pointer[proofHolder] // bound after the Studio stage builds (SetProofs)
-	dbMcp          atomic.Pointer[dbMcpHolder] // bound after the Studio stage builds (SetDbMcp)
 
 	runMu            sync.Mutex                 // guards live, setupLive, archiving, taskMus, finishes, stepMsgs
 	live             map[string]*liveRun        // run id -> its process

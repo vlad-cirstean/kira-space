@@ -8,7 +8,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/enginecache"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // Router is the concrete type that satisfies connections.Backend, tree.Backend and
@@ -180,7 +180,7 @@ func (r *Router) SetThrottle(connectionID string, perSec float64) {
 
 // PushCacheConfig pushes engine-relevant settings (today: the L2 cache byte budget) into the
 // Go-native cache this router's Dispatcher reads (§4.9).
-func (r *Router) PushCacheConfig(settings model.Settings) {
+func (r *Router) PushCacheConfig(settings model.DbSettings) {
 	r.cache.Configure(settings.Cache.L2BudgetMb * 1024 * 1024)
 }
 

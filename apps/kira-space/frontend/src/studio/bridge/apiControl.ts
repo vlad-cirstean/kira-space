@@ -9,7 +9,7 @@ import * as VariablesService from '@bindings/variablesservice.js';
 // P4: model.SavedRequest is a storage-package type, not a bridge one — CollectionsService's own
 // args/results reference it rather than restating it, so the renderer types against it through
 // vite.config.ts's existing @bindings-internal alias.
-import type * as WailsStorageModels from '@bindings-internal/studiostorage/model/models.js';
+import type * as WailsStorageModels from '@bindings-internal/storage/model/models.js';
 import type {
   ApiAgentEnvironment,
   ApiConfigView,

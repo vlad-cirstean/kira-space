@@ -210,6 +210,7 @@ func wireAdeTask(
 	closeReviewWindows func(taskID string), credentials *gitcred.Relay, keepAwake *bridge.KeepAwakeService,
 	notifier *agentnotify.Notifier, usage *agentusage.Service, rebaseTimeout, branchRequestWait time.Duration, updates ade.UpdatesConfig, runs *scriptruns.Service,
 	agents harness.Selector, promptSink prompts.Sink, approvalQueue *approvals.Queue, repoFiles *repocfg.Store,
+	proofs ade.ProofLinks, dbMcp ade.DbMcpSessions,
 ) *ade.TaskBoard {
 	userHome, err := os.UserHomeDir()
 	if err != nil {
@@ -217,7 +218,8 @@ func wireAdeTask(
 	}
 	gitPath := adeGitPathSetting(repositories)
 	board := ade.NewTaskBoard(ade.TaskBoardDeps{
-		Agent:       agents,
+		Agent:  agents,
+		Proofs: proofs, DbMcp: dbMcp,
 		ContextFile: runs.ContextFile,
 		AgentConfig: runs.AgentConfig, Servers: runs.Servers,
 		Ops:     git.opLog,

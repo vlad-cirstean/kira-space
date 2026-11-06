@@ -18,8 +18,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles/apifilestest"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
@@ -91,7 +91,7 @@ func newResolveService(t *testing.T) (svc *apivars.Service, collectionID string,
 	t.Helper()
 	t.Setenv("KIRA_INSECURE_SECRETS", "1")
 	t.Setenv("KIRA_SPACE_HOME", t.TempDir())
-	db, err := studiostorage.Open()
+	db, err := storage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
 	}

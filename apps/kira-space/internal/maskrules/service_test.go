@@ -5,8 +5,8 @@ import (
 
 	"github.com/kirathecat/kira-studio/internal/kiratime"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 )
 
 // TestMaskSetForDoesNotCacheSetStaleAfterConcurrentWrite guards P168 Part 6 F10: a rule written
@@ -14,7 +14,7 @@ import (
 // pre-write set cached.
 func TestMaskSetForDoesNotCacheSetStaleAfterConcurrentWrite(t *testing.T) {
 	t.Setenv("KIRA_SPACE_HOME", t.TempDir())
-	db, err := studiostorage.Open()
+	db, err := storage.Open()
 	if err != nil {
 		t.Fatalf("storage.Open: %v", err)
 	}

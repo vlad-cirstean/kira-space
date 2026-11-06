@@ -4,14 +4,14 @@ import (
 	"context"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
 // KibanaService is the Discover surface beyond execute(): data views, the hit histogram and value
 // suggestions. Hits themselves run through the ordinary console execute.
 type KibanaService struct {
-	Deps appcore.StudioDeps
+	Deps appcore.Deps
 }
 
 func (s *KibanaService) DataViews(ctx context.Context, req model.KibanaDataViewsRequest) ([]model.KibanaDataView, error) {

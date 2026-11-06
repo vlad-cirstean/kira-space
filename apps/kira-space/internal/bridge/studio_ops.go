@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -18,10 +18,10 @@ type StudioCanceller interface {
 }
 
 // StudioOpsService keeps StudioCanceller as its own field rather than routing it through the shared
-// appcore.StudioDeps (the same shape bridge.FilesService's own Dialogs field already uses): appcore
+// appcore.Deps (the same shape bridge.FilesService's own Dialogs field already uses): appcore
 // cannot import bridge (bridge already imports appcore), so a StudioCanceller-typed field belongs here.
 type StudioOpsService struct {
-	Deps      appcore.StudioDeps
+	Deps      appcore.Deps
 	Canceller StudioCanceller
 }
 
@@ -29,11 +29,11 @@ type StudioOpsRecentArgs struct {
 	Limit int `json:"limit"`
 }
 
-func (s *StudioOpsService) Recent(args StudioOpsRecentArgs) ([]model.OpRecord, error) {
+func (s *StudioOpsService) Recent(args StudioOpsRecentArgs) ([]model.DbOpRecord, error) {
 	if args.Limit <= 0 {
 		return nil, ipcerr.Contract("limit must be positive")
 	}
-	return ipcerr.InternalResult(s.Deps.Repos.Ops.Recent(args.Limit))
+	return ipcerr.InternalResult(s.Deps.Repos.DbOps.Recent(args.Limit))
 }
 
 type StudioOpsCancelArgs struct {

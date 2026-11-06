@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // FrozenInnerIDUUID is what FreezeInnerIDNode substitutes for a materialized view's

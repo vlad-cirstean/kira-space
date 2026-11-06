@@ -29,7 +29,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/maskreview"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mcpauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/tree"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/modelcontextprotocol/go-sdk/mcp"

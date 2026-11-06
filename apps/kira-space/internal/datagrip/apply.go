@@ -3,7 +3,7 @@ package datagrip
 import (
 	"fmt"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // CreatorInput mirrors connections.Input's exact shape (this package never imports

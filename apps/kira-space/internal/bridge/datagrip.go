@@ -4,7 +4,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/datagrip"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -16,7 +16,7 @@ import (
 // ConnectionsService.List returns model.ConnectionSummary directly rather than through a mirror
 // type.
 type DataGripService struct {
-	Deps appcore.StudioDeps
+	Deps appcore.Deps
 }
 
 type DataGripScanArgs struct {

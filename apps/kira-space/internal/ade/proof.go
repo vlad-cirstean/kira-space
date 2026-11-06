@@ -6,12 +6,12 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 )
 
-// proof.go: proof sessions attached to tasks (P543). The links live in the Studio DB; the board
-// guards every write with the Space DB's task (it exists and is not archived).
+// proof.go: proof sessions attached to tasks (P543). The board guards every link write with the
+// task (it exists and is not archived).
 
 // ProofLinks is the proof service the board attaches sessions through; *proof.Service implements it.
 type ProofLinks interface {
@@ -22,18 +22,7 @@ type ProofLinks interface {
 	Unattached() ([]proof.Summary, error)
 }
 
-type proofHolder struct{ links ProofLinks }
-
-// SetProofs binds the proof service. The board is built before the Studio stage, so appwire calls
-// this once that stage exists.
-func (b *TaskBoard) SetProofs(p ProofLinks) { b.proofs.Store(&proofHolder{links: p}) }
-
-func (b *TaskBoard) proofLinks() ProofLinks {
-	if h := b.proofs.Load(); h != nil {
-		return h.links
-	}
-	return nil
-}
+func (b *TaskBoard) proofLinks() ProofLinks { return b.deps.Proofs }
 
 // proofUserError turns a proof refusal into an input error the bridge reports; other errors pass.
 func proofUserError(err error) error {

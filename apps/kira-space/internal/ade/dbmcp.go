@@ -14,23 +14,16 @@ type DbMcpSessions interface {
 	Grant(dbmcp.SessionIdentity) (harness.MCPServer, func(), error)
 }
 
-type dbMcpHolder struct{ sessions DbMcpSessions }
-
-// SetDbMcp binds the session pool. The board is built before the Studio stage, so appwire calls this
-// once that stage exists.
-func (b *TaskBoard) SetDbMcp(s DbMcpSessions) { b.dbMcp.Store(&dbMcpHolder{sessions: s}) }
-
 // grantDbMcp adds the Kira DB tools to g when the step asks for them. The returned release is never nil.
 func (b *TaskBoard) grantDbMcp(def stepDef, id dbmcp.SessionIdentity, g *agentmcp.Grant) (release func(), err error) {
 	if !def.DbMcp {
 		return func() {}, nil
 	}
-	h := b.dbMcp.Load()
-	if h == nil || h.sessions == nil {
+	if b.deps.DbMcp == nil {
 		return nil, fmt.Errorf("Kira DB tools could not start: the database server is not available")
 	}
 	id.StepID = def.ID
-	entry, release, err := h.sessions.Grant(id)
+	entry, release, err := b.deps.DbMcp.Grant(id)
 	if err != nil {
 		return nil, fmt.Errorf("Kira DB tools could not start: %w", err)
 	}

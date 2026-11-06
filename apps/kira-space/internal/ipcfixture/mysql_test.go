@@ -7,7 +7,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
 	_ "github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/mysql"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/testsupport"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/tree"
 )
 

@@ -4,7 +4,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -13,7 +13,7 @@ import (
 // and plain values are edited in the files; the environment order is app state.
 // Reveal/RevealHistory need the Authorizer gate, so they go through Deps.ApiVars.
 type VariablesService struct {
-	Deps  appcore.StudioDeps
+	Deps  appcore.Deps
 	Files *apifiles.Store
 }
 

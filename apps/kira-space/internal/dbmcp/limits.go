@@ -10,7 +10,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/queryplan"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // Limit names. P529 and P530 implement them.

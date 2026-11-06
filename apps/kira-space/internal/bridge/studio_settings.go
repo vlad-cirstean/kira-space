@@ -2,21 +2,21 @@ package bridge
 
 import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/logging"
 )
 
 type StudioSettingsService struct {
-	Deps appcore.StudioDeps
+	Deps appcore.Deps
 }
 
-func (s *StudioSettingsService) GetAll() (model.Settings, error) {
-	return ipcerr.InternalResult(s.Deps.Repos.Settings.GetAll())
+func (s *StudioSettingsService) GetAll() (model.DbSettings, error) {
+	return ipcerr.InternalResult(s.Deps.Repos.DbSettings.GetAll())
 }
 
 type StudioSettingsSetArgs struct {
-	Patch model.SettingsPatch `json:"patch"`
+	Patch model.DbSettingsPatch `json:"patch"`
 }
 
 // Set ports src/main/ipc/settings.ts verbatim: merge, conditionally re-push the engine's cache
@@ -24,10 +24,10 @@ type StudioSettingsSetArgs struct {
 // unconditionally — the broadcast closes the gap settings.ts:15-18 names (a settings change made
 // through any path other than the renderer's own patchSettings() wrapper would otherwise never
 // reach the renderer's local settingsState).
-func (s *StudioSettingsService) Set(args StudioSettingsSetArgs) (model.Settings, error) {
-	merged, err := s.Deps.Repos.Settings.Set(args.Patch)
+func (s *StudioSettingsService) Set(args StudioSettingsSetArgs) (model.DbSettings, error) {
+	merged, err := s.Deps.Repos.DbSettings.Set(args.Patch)
 	if err != nil {
-		return model.Settings{}, ipcerr.InternalErr(err)
+		return model.DbSettings{}, ipcerr.InternalErr(err)
 	}
 	if args.Patch.Cache != nil && args.Patch.Cache.L2BudgetMb != nil {
 		s.Deps.Router.PushCacheConfig(merged)

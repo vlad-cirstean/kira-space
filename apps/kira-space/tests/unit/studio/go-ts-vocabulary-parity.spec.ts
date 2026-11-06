@@ -97,19 +97,18 @@ describe('Go/TS tab- and op-kind vocabulary parity (P2 D10)', () => {
   // carried four kinds it can no longer produce, and nothing checked Kira Space at all). Now checks
   // this app's own 12-member STUDIO_RENDERABLE_TAB_KINDS; Kira Space's own 5-member half lives at
   // apps/kira-space/tests/unit/go-ts-vocabulary-parity.spec.ts.
-  test('model.RenderableTabKinds (Go) matches STUDIO_RENDERABLE_TAB_KINDS (TS)', () => {
+  test('model.dbTabKinds (Go) matches STUDIO_RENDERABLE_TAB_KINDS (TS)', () => {
     const source = readFileSync(
-      resolve(import.meta.dir, '../../../internal/studiostorage/model/tabs.go'),
+      resolve(import.meta.dir, '../../../internal/storage/model/tabs.go'),
       'utf8',
     );
-    const goKinds = extractGoStringSet(source, 'RenderableTabKinds');
-    // terminal and script-run belong to the shared Space vocabulary on the TS side only.
-    expect(goKinds).toEqual(new Set([...STUDIO_RENDERABLE_TAB_KINDS, 'terminal', 'script-run']));
+    const goKinds = extractGoStringSet(source, 'dbTabKinds');
+    expect(goKinds).toEqual(new Set(STUDIO_RENDERABLE_TAB_KINDS));
   });
 
   test('model.opKinds (Go) matches opKindSchema (TS)', () => {
     const source = readFileSync(
-      resolve(import.meta.dir, '../../../internal/studiostorage/model/ops.go'),
+      resolve(import.meta.dir, '../../../internal/storage/model/ops.go'),
       'utf8',
     );
     const goKinds = extractGoStringSet(source, 'opKinds');
@@ -120,7 +119,7 @@ describe('Go/TS tab- and op-kind vocabulary parity (P2 D10)', () => {
 describe('Go/TS history retention cap parity (P18 D4)', () => {
   test('response_history.go historyPerScopeLimit matches HISTORY_PER_SCOPE_LIMIT (TS)', () => {
     const source = readFileSync(
-      resolve(import.meta.dir, '../../../internal/studiostorage/repos/response_history.go'),
+      resolve(import.meta.dir, '../../../internal/storage/repos/response_history.go'),
       'utf8',
     );
     expect(extractGoIntConst(source, 'historyPerScopeLimit')).toBe(HISTORY_PER_SCOPE_LIMIT);
@@ -128,7 +127,7 @@ describe('Go/TS history retention cap parity (P18 D4)', () => {
 
   test('grpc_history.go grpcHistoryPerScopeCap matches GRPC_HISTORY_PER_SCOPE_LIMIT (TS)', () => {
     const source = readFileSync(
-      resolve(import.meta.dir, '../../../internal/studiostorage/repos/grpc_history.go'),
+      resolve(import.meta.dir, '../../../internal/storage/repos/grpc_history.go'),
       'utf8',
     );
     expect(extractGoIntConst(source, 'grpcHistoryPerScopeCap')).toBe(GRPC_HISTORY_PER_SCOPE_LIMIT);

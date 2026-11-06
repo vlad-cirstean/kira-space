@@ -15,7 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 
@@ -279,7 +279,7 @@ func TestConnectionFilesMigration(t *testing.T) {
 	const now = "2026-01-01T00:00:00Z"
 	exec := func(q string, args ...any) {
 		t.Helper()
-		if _, err := app.StudioDB().Exec(q, args...); err != nil {
+		if _, err := app.DB().Exec(q, args...); err != nil {
 			t.Fatalf("seed %q: %v", q, err)
 		}
 	}
@@ -355,10 +355,10 @@ func TestConnectionFilesMigration(t *testing.T) {
 
 	// The superseded columns and tables are gone, and a later start exports nothing again.
 	var n int
-	if err := app.StudioDB().QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE name IN ('connection_tree_filters', 'connection_ddl')`).Scan(&n); err != nil || n != 0 {
+	if err := app.DB().QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE name IN ('connection_tree_filters', 'connection_ddl')`).Scan(&n); err != nil || n != 0 {
 		t.Errorf("legacy tables left = %d (%v), want 0", n, err)
 	}
-	if err := app.StudioDB().QueryRow(`SELECT COUNT(*) FROM pragma_table_info('connections') WHERE name IN ('password', 'uri')`).Scan(&n); err != nil || n != 0 {
+	if err := app.DB().QueryRow(`SELECT COUNT(*) FROM pragma_table_info('connections') WHERE name IN ('password', 'uri')`).Scan(&n); err != nil || n != 0 {
 		t.Errorf("legacy columns left = %d (%v), want 0", n, err)
 	}
 	before, _ := os.ReadFile(filepath.Join(dir, "legacy-pg.yaml"))
@@ -385,12 +385,12 @@ func TestConnectionFilesMigrationFailedWrite(t *testing.T) {
 			ddl TEXT NOT NULL, updated_at TEXT NOT NULL)`,
 		`DELETE FROM settings WHERE key = 'config.migrated.connections'`,
 	} {
-		if _, err := app.StudioDB().Exec(q); err != nil {
+		if _, err := app.DB().Exec(q); err != nil {
 			t.Fatalf("seed %q: %v", q, err)
 		}
 	}
 	for i, name := range []string{"Legacy One", "Legacy Two"} {
-		if _, err := app.StudioDB().Exec(`INSERT INTO connections (id, name, kind, color, mode, host, port, database, username, created_at, updated_at)
+		if _, err := app.DB().Exec(`INSERT INTO connections (id, name, kind, color, mode, host, port, database, username, created_at, updated_at)
 			VALUES (?, ?, 'postgres', 'none', 'fields', '127.0.0.1', 5432, 'app', 'kira', ?, ?)`, ids[i], name, now, now); err != nil {
 			t.Fatal(err)
 		}

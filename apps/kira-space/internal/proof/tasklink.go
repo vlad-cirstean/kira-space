@@ -1,7 +1,7 @@
 package proof
 
 import (
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 )
 
 // Sources of a task link: the agent called attach_proof, or the user picked the session.

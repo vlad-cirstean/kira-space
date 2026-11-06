@@ -14,7 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
@@ -56,13 +56,13 @@ func sendErr(t *testing.T, app *flowharness.App, args bridge.HttpSendArgs) *ipce
 
 func setApi(t *testing.T, app *flowharness.App, patch model.ApiPatch) {
 	t.Helper()
-	if _, err := app.W.StudioSettings.Set(bridge.StudioSettingsSetArgs{Patch: model.SettingsPatch{Api: &patch}}); err != nil {
+	if _, err := app.W.StudioSettings.Set(bridge.StudioSettingsSetArgs{Patch: model.DbSettingsPatch{Api: &patch}}); err != nil {
 		t.Fatalf("Settings.Set: %v", err)
 	}
 }
 
 // waitOp returns the op-log row of opID once it left "running".
-func waitOp(t *testing.T, app *flowharness.App, opID string) model.OpRecord {
+func waitOp(t *testing.T, app *flowharness.App, opID string) model.DbOpRecord {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for {

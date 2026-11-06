@@ -18,7 +18,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mcpauth"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/harness"
@@ -276,7 +276,7 @@ func TestDbMcpOpsCarrySource(t *testing.T) {
 		t.Fatalf("Tree.Children: %v", err)
 	}
 
-	var rows []model.OpRecord
+	var rows []model.DbOpRecord
 	testx.WaitUntil(t, 10*time.Second, func() bool {
 		recent, err := f.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
 		if err != nil {
@@ -358,7 +358,7 @@ func callAsync(sess *mcp.ClientSession, connID, sqlText string) chan callOutcome
 
 func (f *fixture) setPreview(t *testing.T, on bool) bridge.StudioSettingsSetArgs {
 	t.Helper()
-	args := bridge.StudioSettingsSetArgs{Patch: model.SettingsPatch{DbMcp: &model.DbMcpPatch{PreviewResponses: &on}}}
+	args := bridge.StudioSettingsSetArgs{Patch: model.DbSettingsPatch{DbMcp: &model.DbMcpPatch{PreviewResponses: &on}}}
 	if _, err := f.app.W.StudioSettings.Set(args); err != nil {
 		t.Fatal(err)
 	}

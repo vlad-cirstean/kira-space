@@ -43,7 +43,7 @@ type AppInfo struct {
 
 // AppService.Info is the direct analogue of today's IPC.appInfo (src/main/ipc/app.ts).
 type AppService struct {
-	Deps appcore.StudioDeps
+	Deps appcore.Deps
 }
 
 func (s *AppService) Info() (AppInfo, error) {

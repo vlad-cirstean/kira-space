@@ -1,7 +1,7 @@
 package bridge
 
 import (
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // Studio-side channels. Strings that Space also uses with a different payload carry a "studio:"
@@ -56,7 +56,7 @@ type StudioSources struct {
 		OnListChanged(func([]model.ConnectionSummary)) func()
 	}
 	Oplog interface {
-		OnUpdate(func(model.OpRecord)) func()
+		OnUpdate(func(model.DbOpRecord)) func()
 	}
 }
 
@@ -72,7 +72,7 @@ func (ev *Events) AttachStudio(s StudioSources) (detach func()) {
 	unsubList := s.Connections.OnListChanged(func(list []model.ConnectionSummary) {
 		ev.emit.Emit(ChannelConnectionsChanged, list)
 	})
-	unsubOplog := s.Oplog.OnUpdate(func(rec model.OpRecord) {
+	unsubOplog := s.Oplog.OnUpdate(func(rec model.DbOpRecord) {
 		ev.emit.Emit(ChannelStudioOpUpdate, rec)
 	})
 	return func() {
@@ -84,6 +84,6 @@ func (ev *Events) AttachStudio(s StudioSources) (detach func()) {
 }
 
 // StudioSettingsChanged broadcasts the merged Studio settings unconditionally.
-func (ev *Events) StudioSettingsChanged(s model.Settings) {
+func (ev *Events) StudioSettingsChanged(s model.DbSettings) {
 	ev.emit.Emit(ChannelStudioSettingsChanged, s)
 }

@@ -28,7 +28,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
@@ -46,10 +45,9 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/openedfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
-	studiorepos "github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentctx"
 	"github.com/kirathecat/kira-studio/internal/agentport"
@@ -81,15 +79,12 @@ import (
 // in the harness.
 type Options struct {
 	Repos *repos.Repos
-	// StudioDB and StudioRepos are the Studio database; Teardown closes both after the Space side.
-	StudioDB    *studiostorage.DB
-	StudioRepos *studiorepos.Repos
 	// Authorizer is shared by connections and variables, so a reveal grace is shared; nil builds one.
 	Authorizer *localauth.Authorizer
 	// Cipher seals saved secret values; nil builds one from the keychain.
 	Cipher *secrets.Cipher
 	// DB is closed last by Teardown, after Repos.
-	DB io.Closer
+	DB *storage.DB
 	// Emitter is the window event sink (a deferred Wails emitter in production).
 	Emitter appevent.Emitter
 	Browser bridge.Browser
@@ -272,9 +267,7 @@ type Wired struct {
 	AgentSettings *agentcfg.Store
 	AgentSecrets  *agentcfg.SecretStore
 
-	// Studio side: the Studio database and the services over it.
-	StudioRepos      *studiorepos.Repos
-	StudioDeps       appcore.StudioDeps
+	// Database module: the services over the one database.
 	Router           *adapterhost.Router
 	App              *bridge.AppService
 	Connections      *bridge.ConnectionsService
@@ -298,19 +291,16 @@ type Wired struct {
 	GrpcHistory     *bridge.GrpcHistoryService
 	DataGrip        *bridge.DataGripService
 	DbMcp           *bridge.DbMcpService
-	// DbMcpSessions serves the agent sessions of workflow steps with db_mcp; never bound to the renderer.
-	DbMcpSessions *dbmcp.SessionPool
-	Docker        *bridge.DockerService
-	Kubernetes    *bridge.KubernetesService
-	Proof         *bridge.ProofService
+	Docker          *bridge.DockerService
+	Kubernetes      *bridge.KubernetesService
+	Proof           *bridge.ProofService
 	// ProofStore is the validation-proof store behind Proof and the DB MCP proof tools.
 	ProofStore *proof.Service
 	// OnWindowClosing are the Studio window-close hooks the shell runs.
 	OnWindowClosing []func(string)
 
-	proofShell          *registryShell
-	studioTeardownEarly func()
-	studioTeardownLate  func()
+	proofShell *registryShell
+	dbTeardown func()
 
 	reopen           func()
 	appFocused       atomic.Pointer[func() bool]
@@ -378,7 +368,7 @@ func Build(opts Options) (*Wired, error) {
 			if k != prompts.KindApproval {
 				return false
 			}
-			s, err := opts.StudioRepos.Settings.GetAll()
+			s, err := repositories.DbSettings.GetAll()
 			return err != nil || s.DbMcp.FocusOnApproval
 		},
 	}
@@ -397,6 +387,11 @@ func Build(opts Options) (*Wired, error) {
 		Changed: func(rev uint64) { emitter.Emit(bridge.ChannelLlmPromptsChanged, map[string]uint64{"revision": rev}) },
 	}}
 	w.detachOpLog = events.AttachOpLog(git.opLog)
+	dbm, err := w.wireAdapters(&deps, opts)
+	if err != nil {
+		return nil, err
+	}
+	w.Deps = deps
 
 	// P119: the update-availability checker and its detached installer.
 	updateChecker := appupdate.NewChecker(appupdate.Space.Name, buildinfo.Version)
@@ -523,6 +518,7 @@ func Build(opts Options) (*Wired, error) {
 	removeLegacyGitSocket()
 	go removeRetiredModels()
 
+	proofSvc, dbMcpSessions := w.wireDbServices(dbm, opts)
 	// Archive closes a task's review windows through the registry.
 	w.AdeBoard = wireAdeTask(repositories, events, git, adeTracker, adeCloseTerminal(terminalRegistry),
 		closeTaskReviewWindows(repositories, func(key string) bool {
@@ -531,7 +527,7 @@ func Build(opts Options) (*Wired, error) {
 				return w.AdeTask.CloseWindow(key)
 			}
 			return w.Windows.Close(key)
-		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig)
+		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions)
 	runs.ADE = w.AdeBoard
 	w.watchRepoConfig(events)
 	w.sched = &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
@@ -605,11 +601,6 @@ func Build(opts Options) (*Wired, error) {
 	w.MemoryImport = bridge.NewMemoryImportService(w.Memory, opts.Dialogs)
 	w.MemoryDistill = bridge.NewMemoryDistillService(w.Memory, opts.Dialogs, emitter)
 	w.Update = &bridge.UpdateService{Checker: updateChecker, Installer: updateInstaller, Quit: w.Quitter.RequestQuit}
-	if err := w.buildStudio(opts); err != nil {
-		return nil, err
-	}
-	w.AdeBoard.SetProofs(w.ProofStore)
-	w.AdeBoard.SetDbMcp(w.DbMcpSessions)
 	return w, nil
 }
 
@@ -711,8 +702,8 @@ func (w *Wired) teardown(db io.Closer) {
 	// P119: a Cmd+Q mid-download aborts the install rather than leaving an orphan that later
 	// swaps a bundle the user quit away from. After hand-off this is a no-op.
 	w.UpdateInstall.Cancel()
-	if w.studioTeardownEarly != nil {
-		w.studioTeardownEarly()
+	if w.dbTeardown != nil {
+		w.dbTeardown()
 	}
 	w.stopAgentContext()
 	w.RepoConfig.Close()
@@ -754,10 +745,6 @@ func (w *Wired) teardown(db io.Closer) {
 	}
 	if err := db.Close(); err != nil {
 		slog.Warn("close db", "scope", "shutdown", "err", err)
-	}
-	// The Studio database closes last: terminal exits above still finish Studio runs.
-	if w.studioTeardownLate != nil {
-		w.studioTeardownLate()
 	}
 }
 

@@ -17,7 +17,7 @@ const maxApiSecretBytes = 64 << 10
 // ApiConfigService is the Api module's config files surface: each file's status and the secret
 // names (never the values), plus write-only secret edits. Mirrors the agent settings page.
 type ApiConfigService struct {
-	Deps  appcore.StudioDeps
+	Deps  appcore.Deps
 	Files *apifiles.Store
 	Agent *agentapi.Service
 }

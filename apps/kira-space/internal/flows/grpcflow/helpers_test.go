@@ -13,7 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/grpcclient"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
@@ -88,7 +88,7 @@ func findMethod(t *testing.T, s grpcclient.Schema, name string) (grpcclient.Meth
 	return grpcclient.Method{}, false
 }
 
-func waitOp(t *testing.T, app *flowharness.App, opID string) model.OpRecord {
+func waitOp(t *testing.T, app *flowharness.App, opID string) model.DbOpRecord {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for {

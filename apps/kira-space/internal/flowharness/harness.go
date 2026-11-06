@@ -51,8 +51,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
-	studiorepos "github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox/sandboxtest"
 	"github.com/kirathecat/kira-studio/internal/configfs"
@@ -262,7 +260,6 @@ type App struct {
 
 	db       *storage.DB
 	repos    *repos.Repos
-	studioDB *studiostorage.DB
 	stopped  bool
 	built    int
 	scenario fakeagent.Scenario
@@ -444,14 +441,6 @@ func (a *App) build() {
 	if err != nil {
 		a.t.Fatalf("repos.New: %v", err)
 	}
-	studioDB, err := studiostorage.Open()
-	if err != nil {
-		a.t.Fatalf("studiostorage.Open: %v", err)
-	}
-	studioRepos, err := studiorepos.New(studioDB.DB)
-	if err != nil {
-		a.t.Fatalf("studio repos.New: %v", err)
-	}
 	cipher := secrets.New()
 	if !a.opts.noSecretStore && !cipher.Status().Available {
 		a.t.Fatalf("cipher unavailable: %+v", cipher.Status())
@@ -466,7 +455,7 @@ func (a *App) build() {
 	if a.opts.windowFocus {
 		focus = a.Focus
 	}
-	a.db, a.repos, a.studioDB, a.stopped = db, r, studioDB, false
+	a.db, a.repos, a.stopped = db, r, false
 	if a.opts.sandbox == nil {
 		// Same on every OS: flows never depend on the host's real Seatbelt.
 		a.opts.sandbox = &sandboxtest.Fake{Dir: a.t.TempDir(), NotEnforced: true}
@@ -488,7 +477,7 @@ func (a *App) build() {
 		tracker = *a.opts.issueTracker
 	}
 	a.W, err = appwire.Build(appwire.Options{
-		StudioDB: studioDB, StudioRepos: studioRepos, Cipher: cipher, DbMcpPort: dbMcpPort,
+		Cipher: cipher, DbMcpPort: dbMcpPort,
 		Authorizer:   localauth.New(time.Now, a.OSAuth.evaluate, a.OSAuth.isAvailable),
 		McpInstaller: a.McpInstaller, WindowFocus: focus, DockerHubAPI: a.opts.dockerHubAPI, DockerExtra: a.opts.dockerExtra,
 		KubernetesExtra: append([]kubernetes.Option{kubernetes.WithEnv(kubeEnv)}, a.opts.kubeExtra...),
@@ -577,11 +566,8 @@ func (a *App) CloseWindow(key string) {
 // Unregister drops the test provider from the next boot (Restart), as an uninstalled provider is.
 func (a *App) Unregister() { a.opts.providers = nil }
 
-// DB is the live Space database, for tests that plant or inspect rows no bound call reaches.
+// DB is the live application database, for tests that plant or inspect rows no bound call reaches.
 func (a *App) DB() *sql.DB { return a.db.DB }
-
-// StudioDB is the live Studio database.
-func (a *App) StudioDB() *sql.DB { return a.studioDB.DB }
 
 // Scenario installs the fake agent's scenario; processes started afterwards read it.
 func (a *App) Scenario(s fakeagent.Scenario) {

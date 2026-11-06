@@ -2,14 +2,14 @@ package bridge
 
 import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
 // GrpcHistoryService is ResponseHistoryService's own gRPC sibling (P11 D11) — same shape, same
 // "no op-log row, a single indexed local read or single-row write" reasoning. Recording itself is
 // not here at all — it is bridge/grpc.go's own recordGrpcHistory call inside Call's RunOp closure.
-type GrpcHistoryService struct{ Deps appcore.StudioDeps }
+type GrpcHistoryService struct{ Deps appcore.Deps }
 
 type GrpcHistoryScopeArgs struct {
 	ItemID string `json:"itemId"`

@@ -12,7 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness/servers"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -61,7 +61,7 @@ func (f *fixture) writeDev(t *testing.T, hosts string, autoReads bool) {
 // dbmcp-api-settings contract tests/ui/dbmcp-api-settings.spec.ts replays.
 func (f *fixture) patchAPI(t *testing.T, key string, patch *model.DbMcpPatch) {
 	t.Helper()
-	args := bridge.StudioSettingsSetArgs{Patch: model.SettingsPatch{DbMcp: patch}}
+	args := bridge.StudioSettingsSetArgs{Patch: model.DbSettingsPatch{DbMcp: patch}}
 	if _, err := f.app.W.StudioSettings.Set(args); err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func (f *fixture) patchAPI(t *testing.T, key string, patch *model.DbMcpPatch) {
 func (f *fixture) setAPI(t *testing.T, enabled bool, approval string) {
 	t.Helper()
 	patch := &model.DbMcpPatch{APIRequests: &enabled, APIApproval: &approval}
-	if _, err := f.app.W.StudioSettings.Set(bridge.StudioSettingsSetArgs{Patch: model.SettingsPatch{DbMcp: patch}}); err != nil {
+	if _, err := f.app.W.StudioSettings.Set(bridge.StudioSettingsSetArgs{Patch: model.DbSettingsPatch{DbMcp: patch}}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -148,7 +148,7 @@ func TestApiRequestApproved(t *testing.T) {
 	}
 
 	// The op log is written by an async consumer: wait for the row to leave "running".
-	var row *model.OpRecord
+	var row *model.DbOpRecord
 	var rowsJSON []byte
 	testx.WaitUntil(t, 10*time.Second, func() bool {
 		recent, err := f.app.W.StudioOps.Recent(bridge.StudioOpsRecentArgs{Limit: 50})
@@ -168,7 +168,7 @@ func TestApiRequestApproved(t *testing.T) {
 		t.Fatalf("op rows = %s, want one mcp http row", rowsJSON)
 	}
 	var history int
-	if err := f.app.StudioDB().QueryRow("SELECT COUNT(*) FROM api_response_history").Scan(&history); err != nil || history != 0 {
+	if err := f.app.DB().QueryRow("SELECT COUNT(*) FROM api_response_history").Scan(&history); err != nil || history != 0 {
 		t.Fatalf("response history rows = %d, %v, want 0", history, err)
 	}
 	noSecret(t, "the tool result, item list or op log", text(res), string(listJSON), string(rowsJSON))

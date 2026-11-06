@@ -13,7 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
@@ -59,7 +59,7 @@ func savedGet() model.SavedRequest {
 	return model.SavedRequest{Method: "GET", BodyMode: "none", CodeLanguage: "json"}
 }
 
-func waitOp(t *testing.T, app *flowharness.App, opID string) model.OpRecord {
+func waitOp(t *testing.T, app *flowharness.App, opID string) model.DbOpRecord {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for {
@@ -83,7 +83,7 @@ func waitOp(t *testing.T, app *flowharness.App, opID string) model.OpRecord {
 func waitOpUpdate(t *testing.T, app *flowharness.App, opID string) {
 	t.Helper()
 	app.Events.Wait(t, bridge.ChannelStudioOpUpdate, func(e flowharness.Event) bool {
-		var rec model.OpRecord
+		var rec model.DbOpRecord
 		e.Decode(t, &rec)
 		return rec.ID == opID && rec.Status != "running"
 	}, 10*time.Second)

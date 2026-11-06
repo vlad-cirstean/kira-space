@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // userinfoPassword returns the userinfo password of uri, decoded; nil when uri has no "://", no

@@ -9,7 +9,7 @@ import (
 )
 
 type TreeService struct {
-	Deps appcore.StudioDeps
+	Deps appcore.Deps
 }
 
 type TreeChildrenArgs struct {

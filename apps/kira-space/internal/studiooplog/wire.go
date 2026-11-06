@@ -1,5 +1,5 @@
 // Package oplog is the Go analogue of src/main/oplog.ts: pure orchestration over
-// internal/storage/repos.OpsRepo's Append/Finish/Prune — subscribing to op:start/op:end events,
+// internal/storage/repos.DbOpsRepo's Append/Finish/Prune — subscribing to op:start/op:end events,
 // forwarding an update for the renderer's op-log panel, and reconciling whatever was still running
 // when the event source's channel closes (app shutdown).
 package studiooplog
@@ -10,8 +10,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/notify"
 )
 
@@ -75,10 +75,10 @@ type inFlightOp struct {
 // does no I/O and subscribes nothing, so every test can attach OnUpdate before the first event.
 type Wiring struct {
 	src           EventSource
-	ops           *repos.OpsRepo
+	ops           *repos.DbOpsRepo
 	retentionDays int
 
-	updates     notify.Emitter[model.OpRecord]
+	updates     notify.Emitter[model.DbOpRecord]
 	unsubscribe func()
 	done        chan struct{}
 }
@@ -88,12 +88,12 @@ type Wiring struct {
 // case (a handful of finishInFlight writes) finishes in microseconds.
 const stopWait = 2 * time.Second
 
-func New(src EventSource, ops *repos.OpsRepo, retentionDays int) *Wiring {
+func New(src EventSource, ops *repos.DbOpsRepo, retentionDays int) *Wiring {
 	return &Wiring{src: src, ops: ops, retentionDays: retentionDays, done: make(chan struct{})}
 }
 
 // OnUpdate registers fn for every op-log row lifecycle event (running, then its terminal state).
-func (w *Wiring) OnUpdate(fn func(model.OpRecord)) (unsubscribe func()) {
+func (w *Wiring) OnUpdate(fn func(model.DbOpRecord)) (unsubscribe func()) {
 	return w.updates.Subscribe(fn)
 }
 
@@ -119,7 +119,7 @@ func (w *Wiring) Start() {
 // Stop ends the consumer goroutine (main's before-quit; a test's own cleanup) and waits for it to
 // finish before returning, up to stopWait. Without this,
 // unsubscribe only closes the event channel; consume still has to drain, exit its range loop and
-// run finishInFlight (one repos.OpsRepo.Finish write per still-running op), and nothing previously
+// run finishInFlight (one repos.DbOpsRepo.Finish write per still-running op), and nothing previously
 // synchronised that with the caller. main.go's teardown calls repositories.Close()/db.Close()
 // immediately after Stop(), so a race here meant "app exited" rows for in-flight ops were either
 // never written (permanent phantom "running" rows in the Operations panel) or attempted against an
@@ -204,7 +204,7 @@ func (w *Wiring) handleOpStart(payload json.RawMessage, inFlight map[string]inFl
 	}
 	inFlight[evt.OpID] = rec
 
-	w.updates.Emit(model.OpRecord{
+	w.updates.Emit(model.DbOpRecord{
 		ID: evt.OpID, ConnectionID: rec.connectionID, TabID: rec.tabID, StartedAt: rec.startedAt,
 		DurationMs: nil, Kind: rec.kind, Status: "running", Rows: nil, Command: nil, Error: nil,
 		DelayMs: delayPtr(rec.delayMs), Source: rec.source,
@@ -262,7 +262,7 @@ func (w *Wiring) handleOpEnd(payload json.RawMessage, inFlight map[string]inFlig
 		}
 	}
 
-	record := model.OpRecord{
+	record := model.DbOpRecord{
 		ID: evt.OpID, DurationMs: &evt.DurationMs, Status: evt.Status, Rows: evt.Rows,
 		Command: patch.Command, Error: patch.Error, CommandTruncated: commandTruncated, Path: patch.Path,
 	}

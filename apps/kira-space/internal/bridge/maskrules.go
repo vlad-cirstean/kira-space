@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -14,7 +14,7 @@ import (
 // actual domain validation (a valid kind, a non-empty column name, forcing correlate=false for
 // `number`) lives in maskrules.Service.Upsert.
 type MaskRulesService struct {
-	Deps appcore.StudioDeps
+	Deps appcore.Deps
 }
 
 // writeErr labels a rule/script write failure: caller-input problems (a validation error, an

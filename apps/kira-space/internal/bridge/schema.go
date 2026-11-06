@@ -3,7 +3,7 @@ package bridge
 import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
@@ -11,7 +11,7 @@ import (
 // SchemaService is the DDL half of P18 (v1.1)'s language service: Get/Set for the schema_ddl text in
 // a connection's file.
 type SchemaService struct {
-	Deps appcore.StudioDeps
+	Deps appcore.Deps
 }
 
 type SchemaGetArgs struct {

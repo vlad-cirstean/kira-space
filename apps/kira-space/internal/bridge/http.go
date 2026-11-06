@@ -12,7 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -20,7 +20,7 @@ import (
 // *existing* op scheduler the DB adapters already use (D3) — no new scheduler, no new op log,
 // no new cancel path.
 type HttpService struct {
-	Deps appcore.StudioDeps
+	Deps appcore.Deps
 }
 
 // HttpSendArgs carries httpclient.Request's fields plus the op-log addressing every op needs
@@ -73,7 +73,7 @@ func (s *HttpService) Send(ctx context.Context, args HttpSendArgs) (httpclient.R
 	// P90 §2.5: the globals are read once per send, from the same repo the Settings dialog writes
 	// — resolveSendOptions is the whole override rule, a per-request value wins, an absent one
 	// inherits the global.
-	settings, err := s.Deps.Repos.Settings.GetAll()
+	settings, err := s.Deps.Repos.DbSettings.GetAll()
 	if err != nil {
 		return httpclient.Response{}, ipcerr.InternalErr(err)
 	}
