@@ -45,7 +45,7 @@ func newLegacyDB(t *testing.T, home string) {
 		t.Fatal(err)
 	}
 	execAll(t, db,
-		`INSERT INTO connections (id, name, kind, color, mode, created_at, updated_at) VALUES ('c1', 'Main', 'postgres', 'red', 'rw', 'x', 'x')`,
+		`INSERT INTO connections (id, name, kind, color, mode, created_at, updated_at) VALUES ('c1', 'Main', 'postgres', 'red', 'rw', '2026-01-02T03:04:05.678Z', '2026-01-02T03:04:05.678Z')`,
 		`INSERT INTO op_log (id, connection_id, started_at, kind, status) VALUES ('o1', 'c1', '2026-01-02T03:04:05.678Z', 'execute', 'ok')`,
 		`INSERT INTO windows (key, "order") VALUES ('w-old', 0)`,
 		`INSERT INTO tabs (id, connection_id, window_key, path, kind, state_json, "order", active, workspace_id)
@@ -66,6 +66,7 @@ func assertFolded(t *testing.T, db *sql.DB, home string) {
 	for q, want := range map[string]string{
 		`SELECT name FROM connections WHERE id = 'c1'`:                                                   "Main",
 		`SELECT kind || category || subject FROM op_log WHERE id = 'o1'`:                                 "executedbMain",
+		`SELECT created_at || ',' || typeof(created_at) FROM connections WHERE id = 'c1'`:                "1767323045678,integer",
 		`SELECT value FROM settings WHERE key = 'dbMcp.serverEnabled'`:                                   "true",
 		`SELECT value FROM settings WHERE key = 'appearance.fontSize'`:                                   "17",
 		`SELECT COUNT(*) FROM settings WHERE key = 'config.migrated.runs'`:                               "0",
