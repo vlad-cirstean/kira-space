@@ -1894,6 +1894,100 @@
           "body": "The workspace was closed. Reopen it and retry."
         }
       },
+      "configSync": {
+        "auth": {
+          "required": {
+            "body": "The repository asked for credentials. Fetch it by hand to be prompted."
+          }
+        },
+        "branch": {
+          "invalid": {
+            "body": "Enter a plain branch name."
+          },
+          "missing": {
+            "body": "The repository has no such branch."
+          }
+        },
+        "changed": {
+          "body": "Config files or the repository changed since the review. Review again."
+        },
+        "gate": {
+          "invalid": {
+            "body": "The file is not valid ({message})."
+          },
+          "literalCredential": {
+            "body": "Literal credential at {at}. Use a secret reference instead. The shared repository must not hold one."
+          },
+          "localInvalid": {
+            "body": "The local file is not valid, so it can’t be merged. Fix it first."
+          }
+        },
+        "git": {
+          "unavailable": {
+            "body": "Git is not available. Set it up in the Git settings."
+          }
+        },
+        "internal": {
+          "body": "Shared config failed. See the log."
+        },
+        "interval": {
+          "invalid": {
+            "body": "Enter 0 to turn fetching off, or 5 to 1440 minutes."
+          }
+        },
+        "manifest": {
+          "invalid": {
+            "body": "The manifest is not valid. It needs a version and a list of modules."
+          },
+          "missing": {
+            "body": "The repository has no manifest at its root."
+          },
+          "module": {
+            "body": "The manifest lists an unknown module: {name}."
+          },
+          "repos": {
+            "body": "The repos module is never shared. Its files are keyed by local path and carry the worktree prepare script."
+          },
+          "tooLarge": {
+            "body": "{file} is too large."
+          },
+          "tooMany": {
+            "body": "The repository has too many files."
+          },
+          "version": {
+            "body": "The manifest has a version this Kira does not know."
+          }
+        },
+        "mode": {
+          "invalid": {
+            "body": "That module does not offer this mode."
+          }
+        },
+        "notConfigured": {
+          "body": "No shared config repository is set."
+        },
+        "nothingFetched": {
+          "body": "Nothing is fetched yet. Fetch the repository first."
+        },
+        "previewExpired": {
+          "body": "The review expired. Open it again."
+        },
+        "repo": {
+          "notFound": {
+            "body": "The repository was not found."
+          }
+        },
+        "unit": {
+          "invalid": {
+            "body": "That is not a shared file or entry."
+          }
+        },
+        "url": {
+          "invalid": {
+            "body": "Enter an https, ssh or file URL without credentials in it."
+          }
+        }
+      },
       "gitGraph": {
         "frameTooLarge": {
           "body": "The graph data is larger than the frame size limit."
