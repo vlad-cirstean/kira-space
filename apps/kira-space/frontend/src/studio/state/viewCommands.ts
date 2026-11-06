@@ -1,5 +1,5 @@
 import type { SortSpec } from '@shared/domain/queries';
-import { useTabsStore } from './tabs';
+import { useTabsStore } from '../../state/tabs';
 
 // The leaf-registry inversion state/tabRuntime.ts already uses, applied to the six
 // project/ -> views/ edges (ProjectTree.vue's four reload imports, menus.ts's runCount/

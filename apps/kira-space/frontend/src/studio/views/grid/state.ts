@@ -3,12 +3,12 @@ import type { ObjectMeta } from '@shared/domain/tree';
 import type { PageCursor } from '@shared/protocol/dataOps';
 import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
+import { pinia } from '../../../state/pinia';
+import type { DataTabState } from '../../../state/tabDomain';
+import { useTabsStore } from '../../../state/tabs';
 import { control } from '../../bridge/control';
 import { data } from '../../bridge/data';
-import { pinia } from '../../state/pinia';
 import { useStaleDataStore } from '../../state/staleData';
-import type { DataTabState } from '../../state/tabDomain';
-import { useTabsStore } from '../../state/tabs';
 import {
   registerDataQueryCommands,
   registerTabCount,

@@ -3,8 +3,8 @@ import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
+import { useLayoutStore } from '../../../../state/layout';
 import { useCellSelectionStore } from '../../../state/cellSelection';
-import { useLayoutStore } from '../../../state/layout';
 import CellEditorView from './CellEditorView.vue';
 
 const cellSelectionStore = useCellSelectionStore();

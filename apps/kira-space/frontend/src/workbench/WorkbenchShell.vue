@@ -8,7 +8,7 @@ import { computed } from 'vue';
 import { useLayoutStore } from '../state/layout';
 import { useModeStore } from '../state/mode';
 import { MODES } from './modes';
-import OperationsPanel from './OperationsPanel.vue';
+import OperationsDock from './OperationsDock.vue';
 import StatusBar from './StatusBar.vue';
 
 // Kira Studio's own WorkbenchShell.vue, trimmed. The Operations
@@ -73,7 +73,7 @@ const fullView = computed(() => (def.value.layout === 'full' ? def.value.view : 
       </div>
     </template>
     <template #dock>
-      <OperationsPanel />
+      <OperationsDock />
     </template>
     <template #status>
       <StatusBar />

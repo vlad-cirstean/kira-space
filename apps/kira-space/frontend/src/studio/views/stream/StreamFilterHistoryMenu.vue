@@ -2,7 +2,7 @@
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
-import { useTabsStore } from '../../state/tabs';
+import { useTabsStore } from '../../../state/tabs';
 import SavedListMenu from '../shared/SavedListMenu.vue';
 import { type StreamFilterHistoryEntry, useStreamFilterHistoryStore } from './streamFilterHistory';
 

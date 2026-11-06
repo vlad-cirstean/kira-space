@@ -11,16 +11,16 @@ import { describe, expect, test } from 'bun:test';
 import { deferred } from '@workbench/testing/unit/async';
 import { restoreAfterEach } from '@workbench/testing/unit/restoreAfterEach';
 import { setActivePinia } from 'pinia';
-import { pinia } from '../../../frontend/src/studio/state/pinia';
+import { pinia } from '../../../frontend/src/state/pinia';
 import { seedConnectionRecord } from './support/connectionRecord.ts';
 
 setActivePinia(pinia);
 
-const { control } = await import('../../../frontend/src/studio/bridge/control');
+const { control } = await import('../../../frontend/src/bridge/control');
 restoreAfterEach(control);
 const { useConnectionsStore } = await import('../../../frontend/src/studio/state/connections');
 const connectionsStore = useConnectionsStore();
-const { useTabsStore } = await import('../../../frontend/src/studio/state/tabs');
+const { useTabsStore } = await import('../../../frontend/src/state/tabs');
 const tabsStore = useTabsStore();
 
 describe('state/tabs.ts saveIfChanged serialises and coalesces overlapping saves (F12)', () => {

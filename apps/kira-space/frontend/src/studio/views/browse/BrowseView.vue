@@ -27,11 +27,11 @@ import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { runMenuShortcut, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue';
+import type { BrowseTabRecord } from '../../../state/tabDomain';
+import { useTabsStore } from '../../../state/tabs';
 import { useConnectionsStore } from '../../state/connections';
 import { useObjectStoreStore } from '../../state/objectStore';
 import { useRunState } from '../../state/runState';
-import type { BrowseTabRecord } from '../../state/tabDomain';
-import { useTabsStore } from '../../state/tabs';
 import EngineIcon from '../../theme/EngineIcon.vue';
 import { nodeIcon, redisTypeIcon, redisTypeLabel } from '../../theme/icons';
 import {

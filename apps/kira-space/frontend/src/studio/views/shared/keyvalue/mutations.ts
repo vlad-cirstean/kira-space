@@ -1,8 +1,8 @@
 import { decodePath, encodePath, pathParent } from '@shared/domain/tree';
 import { t } from '@theme/i18n';
+import { pinia } from '../../../../state/pinia';
+import { useTabsStore } from '../../../../state/tabs';
 import { data } from '../../../bridge/data';
-import { pinia } from '../../../state/pinia';
-import { useTabsStore } from '../../../state/tabs';
 import { browseInvalidate } from '../../../state/viewCommands';
 import { createImmediateMutator } from '../immediateMutation';
 import { keyValueHost } from './host';

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { ConsoleTabRecord } from '../../../state/tabDomain';
 import { useConnectionsStore } from '../../state/connections';
-import type { ConsoleTabRecord } from '../../state/tabDomain';
 import ConsoleView from './ConsoleView.vue';
 import KibanaDiscoverView from './kibana/KibanaDiscoverView.vue';
 

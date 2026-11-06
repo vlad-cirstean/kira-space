@@ -8,11 +8,8 @@ import {
   emitWailsEvent as sharedEmitWailsEvent,
   installControlMocks as sharedInstallControlMocks,
 } from '@workbench/testing/ui/mockRuntime';
+import { STUDIO_TAB_KIND_MODE, type StudioTabKind } from '../../../../frontend/src/state/tabDomain';
 import { defaultSettings } from '../../../../frontend/src/studio/state/settingsDomain';
-import {
-  STUDIO_TAB_KIND_MODE,
-  type StudioTabKind,
-} from '../../../../frontend/src/studio/state/tabDomain';
 import { contract } from './contract';
 import { IPC } from './ipcChannels';
 

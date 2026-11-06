@@ -19,7 +19,7 @@ import {
   createTabularPageBuilder,
   unpagedPosition,
 } from '../../../../../packages/shared/protocol/page';
-import { pinia } from '../../../frontend/src/studio/state/pinia';
+import { pinia } from '../../../frontend/src/state/pinia';
 
 setActivePinia(pinia);
 

@@ -5,6 +5,8 @@ export type ProofSide = 'current' | 'pending';
 
 /** The proof window's own selection: which session, which revision, which step tab. */
 export const useProofWindowStore = defineStore('proofWindow', () => {
+  /** True in a proof window: App.vue shows the proof surface instead of the workbench. */
+  const active = ref(false);
   const sessionId = ref<string | null>(null);
   /** `null` follows the default: the pending revision when one exists, else the current one. */
   const side = ref<ProofSide | null>(null);
@@ -31,5 +33,15 @@ export const useProofWindowStore = defineStore('proofWindow', () => {
     ready.value = rest;
   }
 
-  return { sessionId, side, compare, activeId, ready, selectSession, markReady, unmarkReady };
+  return {
+    active,
+    sessionId,
+    side,
+    compare,
+    activeId,
+    ready,
+    selectSession,
+    markReady,
+    unmarkReady,
+  };
 });

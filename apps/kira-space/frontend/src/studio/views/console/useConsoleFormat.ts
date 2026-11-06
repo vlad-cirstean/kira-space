@@ -8,7 +8,7 @@ import {
 } from '@shared/domain/sqlSplit';
 import { t } from '@theme/i18n';
 import { type ComputedRef, nextTick, type Ref, ref } from 'vue';
-import type { ConsoleTabRecord } from '../../state/tabDomain';
+import type { ConsoleTabRecord } from '../../../state/tabDomain';
 import { INLINE_CHARS } from '../../workers/parse/client';
 import { useParseWorker } from '../../workers/parse/useParseWorker';
 import { reasonText } from '../shared/reasonText';

@@ -1,3 +1,4 @@
+import type { AppMode } from '@shared/domain/mode';
 import { t } from '@theme/i18n';
 import type { ModeRegistry } from '@workbench/modes';
 import { defineAsyncComponent } from 'vue';
@@ -5,19 +6,32 @@ import AdeView from '../ade/AdeView.vue';
 import GitNewTab from '../repo/GitNewTab.vue';
 import GitPanel from '../repo/GitPanel.vue';
 import GitStart from '../repo/GitStart.vue';
-import type { SpaceMode } from '../state/mode';
+import ApiStart from '../studio/api/ApiStart.vue';
+import CollectionsPanel from '../studio/api/CollectionsPanel.vue';
+import ProjectPanel from '../studio/workbench/panels/ProjectPanel.vue';
+import StudioStart from '../studio/workbench/panels/StudioStart.vue';
 
-// P128 §2.6/§2.7/§2.8: this app's own module list — mirrors Kira Studio's own workbench/modes.ts.
-// One file lists a module; MODE_ORDER/MODES both widened as each module landed (git at step 6,
-// terminal at step 7, ade here at step 8).
-// P390: git last.
-export const MODE_ORDER: SpaceMode[] = ['ade', 'automations', 'memory', 'git'];
+// Space modules first, then the database, API, Docker and Kubernetes modules.
+/** Modes fed by the Studio backend (connections, API, Docker, Kubernetes). */
+export const STUDIO_MODES: ReadonlySet<AppMode> = new Set([
+  'studio',
+  'api',
+  'docker',
+  'kubernetes',
+]);
 
-// The base `ModeDef` union, not `ModeRegistry<SpaceMode, PanelModeDef>` — `ade`
-// below is the app's first `layout: 'full'` module. Kira Studio's own `MODES` stays pinned to
-// `PanelModeDef` (its shell still reads `.panel`/`.start` unconditionally); this app's shell now
-// branches on `layout` instead (`workbench/WorkbenchShell.vue`'s own `isFull` computed).
-export const MODES: ModeRegistry<SpaceMode> = {
+export const MODE_ORDER: AppMode[] = [
+  'ade',
+  'automations',
+  'memory',
+  'git',
+  'studio',
+  'api',
+  'docker',
+  'kubernetes',
+];
+
+export const MODES: ModeRegistry<AppMode> = {
   git: {
     get label() {
       return t('common.module.git.label');
@@ -27,8 +41,7 @@ export const MODES: ModeRegistry<SpaceMode> = {
     start: GitStart,
     newTab: GitNewTab,
   },
-  // P129 Part 3 §0.12/§2.1: the module's own real surface — a full-area view, no left panel, no
-  // tab strip, no tabs of its own (P128's own placeholder deleted in this commit).
+  // A full-area view: no left panel, no tab strip, no tabs.
   ade: {
     get label() {
       return t('mobile.shell.heading.title');
@@ -37,8 +50,6 @@ export const MODES: ModeRegistry<SpaceMode> = {
     layout: 'full',
     view: AdeView,
   },
-  // P128 §2.4/§2.7: a peer module, lazy the same reason Kira Studio's own copy is — nothing in a
-  // git-only session should pay for the terminal panel's own launch chunk.
   automations: {
     get label() {
       return t('common.module.automations.label');
@@ -48,7 +59,7 @@ export const MODES: ModeRegistry<SpaceMode> = {
     start: defineAsyncComponent(() => import('@workbench/automations/AutomationsStart.vue')),
     newTab: defineAsyncComponent(() => import('@workbench/automations/AutomationsNewTab.vue')),
   },
-  // P201 Part 2: a panel module that opens no tabs; the detail view is its main area.
+  // A panel module that opens no tabs; the detail view is its main area.
   memory: {
     get label() {
       return t('common.module.memory.label');
@@ -57,5 +68,41 @@ export const MODES: ModeRegistry<SpaceMode> = {
     panel: defineAsyncComponent(() => import('@workbench/memory/MemoryPanel.vue')),
     start: defineAsyncComponent(() => import('@workbench/memory/MemoryStart.vue')),
     tabStrip: false,
+  },
+  studio: {
+    get label() {
+      return t('studio.mode.studio.label');
+    },
+    icon: 'database',
+    panel: ProjectPanel,
+    start: StudioStart,
+  },
+  api: {
+    get label() {
+      return t('studio.mode.api.label');
+    },
+    icon: 'globe',
+    panel: CollectionsPanel,
+    start: ApiStart,
+  },
+  docker: {
+    get label() {
+      return t('common.product.docker.label');
+    },
+    icon: 'vm',
+    tabStrip: false,
+    panel: defineAsyncComponent(() => import('../studio/docker/DockerPanel.vue')),
+    start: defineAsyncComponent(() => import('../studio/docker/DockerView.vue')),
+  },
+  kubernetes: {
+    get label() {
+      return t('common.product.kubernetes.label');
+    },
+    icon: 'type-hierarchy',
+    tabStrip: false,
+    panel: defineAsyncComponent(
+      () => import('../studio/kubernetes/components/KubernetesPanel.vue'),
+    ),
+    start: defineAsyncComponent(() => import('../studio/kubernetes/components/KubernetesView.vue')),
   },
 };

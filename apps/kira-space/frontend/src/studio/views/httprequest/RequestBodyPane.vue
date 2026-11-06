@@ -16,6 +16,7 @@ import { type MessageKey, t } from '@theme/i18n';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import type { RangeHighlight } from '@workbench/editor/ranges';
 import { computed, ref } from 'vue';
+import type { HttpRequestTabRecord } from '../../../state/tabDomain';
 import {
   type VariableSupport,
   variableCompletionSource,
@@ -23,7 +24,6 @@ import {
 } from '../../api/state/variableCompletion';
 import { patchHttpRequestTabState } from '../../api/tabs';
 import MonacoHost from '../../editor/MonacoHost.vue';
-import type { HttpRequestTabRecord } from '../../state/tabDomain';
 import { INLINE_CHARS } from '../../workers/parse/client';
 import { useParseWorker } from '../../workers/parse/useParseWorker';
 import { beautifyFor, canBeautify } from '../shared/celleditor/formats';

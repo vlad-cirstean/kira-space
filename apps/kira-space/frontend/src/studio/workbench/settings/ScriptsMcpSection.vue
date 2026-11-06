@@ -9,7 +9,7 @@ import { applyRunFileEdits } from '@workbench/automations/runFileQueries';
 import { runFileName } from '@workbench/automations/scriptActions';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { computed } from 'vue';
-import { useCustomScriptsStore } from '../../state/customScripts';
+import { useCustomScriptsStore } from '../../../state/customScripts';
 
 // Which normal scripts an agent on the Database MCP server may list and run. The switch edits the
 // script's run file (the mcp block); description and approval mode are edited in its MCP tab.

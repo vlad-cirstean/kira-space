@@ -9,9 +9,9 @@ import { ICON } from '@theme/icons';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import AutocompleteField from '@workbench/components/AutocompleteField.vue';
 import { computed, ref, watch } from 'vue';
+import type { DataTabRecord } from '../../../state/tabDomain';
 import { control } from '../../bridge/control';
 import { useConnectionsStore } from '../../state/connections';
-import type { DataTabRecord } from '../../state/tabDomain';
 import FilterHistoryMenu from '../shared/FilterHistoryMenu.vue';
 import { identNeedsQuoting, quoteIdent, sqlDialectFor } from '../shared/sqlIdent';
 import {

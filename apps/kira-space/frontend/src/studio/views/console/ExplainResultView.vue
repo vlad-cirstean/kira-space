@@ -11,7 +11,7 @@ import { formatCount } from '@workbench/behaviour/format';
 import TreeTwisty from '@workbench/components/TreeTwisty.vue';
 import { computed, reactive, ref } from 'vue';
 import MonacoHost from '../../editor/MonacoHost.vue';
-import { useSettingsStore } from '../../state/settings';
+import { useStudioSettingsStore } from '../../state/settings';
 import { getPlan } from './explainResults';
 import type { PlanNode } from './planModel';
 
@@ -20,7 +20,7 @@ import type { PlanNode } from './planModel';
 // explainResults.ts by `pageKey` — same "one prop, resolve everything else from a store" shape
 // ConsoleResultGrid.vue's own `pageKey` already uses.
 const props = defineProps<{ pageKey: string }>();
-const settingsStore = useSettingsStore();
+const settingsStore = useStudioSettingsStore();
 
 const result = computed(() => getPlan(props.pageKey));
 const plan = computed(() => result.value?.plan);

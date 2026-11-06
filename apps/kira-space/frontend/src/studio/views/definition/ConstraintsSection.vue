@@ -13,7 +13,7 @@ import {
 } from '@theme/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { type MessageKey, t } from '@theme/i18n';
-import { useTabsStore } from '../../state/tabs';
+import { useTabsStore } from '../../../state/tabs';
 import type { ConstraintRow } from './structure';
 
 const props = defineProps<{

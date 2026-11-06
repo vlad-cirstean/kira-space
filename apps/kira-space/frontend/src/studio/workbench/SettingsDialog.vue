@@ -8,7 +8,7 @@ import PromptsPane from '@workbench/llmPrompts/PromptsPane.vue';
 import { useSettingsDeepLinkReset } from '@workbench/settings/useSettingsDeepLinkReset';
 import { useLlmPromptsShellExtra } from '@workbench/state/llmPromptDrafts';
 import { computed } from 'vue';
-import { type Section, sections, useSettingsStore } from '../state/settings';
+import { type Section, sections, useStudioSettingsStore } from '../state/settings';
 import { defaultSettings, type SettingsPatch } from '../state/settingsDomain';
 import AdvancedPane from './settings/AdvancedPane.vue';
 import ApiPane from './settings/ApiPane.vue';
@@ -27,7 +27,7 @@ const SETTINGS_DB_PATH = '~/.kira-studio/kira.sqlite';
 // difference from Kira Space's own — see SettingsShell.vue's comment #2).
 const emit = defineEmits<{ close: [] }>();
 
-const settingsStore = useSettingsStore();
+const settingsStore = useStudioSettingsStore();
 const promptsExtra = useLlmPromptsShellExtra();
 
 const sectionLabels = computed<Record<Section, string>>(() => ({

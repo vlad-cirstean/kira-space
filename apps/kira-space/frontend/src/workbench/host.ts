@@ -1,3 +1,4 @@
+import { t } from '@theme/i18n';
 import type { TabIconRender, WorkbenchHost } from '@workbench/host';
 import { computed } from 'vue';
 import { fileIconStyle } from '../repo/fileIcon';
@@ -5,23 +6,14 @@ import type { TabRecord } from '../state/tabDomain';
 import { TAB_KINDS } from '../state/tabKinds';
 import { useTabsStore } from '../state/tabs';
 import { visibleWorkspace, type WorkspaceKey } from '../state/workspace';
+import { useTabIncognitoStore } from '../studio/state/tabIncognito';
 import { TAB_VIEWS } from './tabViews';
 
-// Re-exported so App.vue's own onMounted (Next/Previous/Close Tab) reaches the tabs store
-// through this module rather than importing '../state/tabs' directly — state/tabs.ts, state/
-// workspace.ts and state/repoTabs.ts form a three-way import cycle (state/tabs.ts's own header
-// comment), and this file already resolves it safely in the order above. A second, separately-
-// ordered static import of '../state/tabs' from App.vue (biome's import sort always places
-// './state/...' before './workbench/...') re-enters that cycle through a different path and left
-// `useTabsStore` transiently unbound the first time a click reached `ensureWorkspaceShell` —
-// reproduced, root-caused and fixed here rather than in App.vue.
-export { useTabsStore };
-
-// P103 Part 2 (§5.4): the WorkbenchHost instance this app provides once, in App.vue — no
-// `tabIndicator`: this app has no TabIncognito store (a Kira Studio-only feature). `tabBadge`
-// shows a script terminal's run state (terminalTabKind's badge()).
+// The WorkbenchHost instance App.vue provides once. `tabBadge` shows a script terminal's run
+// state; `tabIndicator` the incognito eye of a database or API tab.
 export function createWorkbenchHost(): WorkbenchHost<WorkspaceKey, TabRecord> {
   const tabsStore = useTabsStore();
+  const tabIncognitoStore = useTabIncognitoStore();
 
   return {
     // P128 §2.6: whichever module is active — the active repo (or GENERAL_WORKSPACE) in `git`
@@ -45,6 +37,12 @@ export function createWorkbenchHost(): WorkbenchHost<WorkspaceKey, TabRecord> {
     },
     tabBadge(tab) {
       return TAB_KINDS[tab.kind].badge?.(tab) ?? null;
+    },
+    // The incognito eye glyph, uniform across every database and API kind.
+    tabIndicator(tab) {
+      return tabIncognitoStore.isIncognito(tab.id)
+        ? { icon: 'eye-closed', tooltip: t('studio.tab.incognito.tooltip') }
+        : null;
     },
   };
 }

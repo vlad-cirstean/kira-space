@@ -12,7 +12,7 @@ import type { ExecuteResponse } from '@shared/protocol/dataOps';
 import { createTabularPageBuilder, type Page, unpagedPosition } from '@shared/protocol/page';
 import { restoreAfterEach } from '@workbench/testing/unit/restoreAfterEach';
 import { setActivePinia } from 'pinia';
-import { pinia } from '../../../frontend/src/studio/state/pinia';
+import { pinia } from '../../../frontend/src/state/pinia';
 
 setActivePinia(pinia);
 
@@ -33,7 +33,7 @@ const { control } = await import('../../../frontend/src/studio/bridge/control');
 restoreAfterEach(control);
 const { useConnectionsStore } = await import('../../../frontend/src/studio/state/connections');
 const connectionsStore = useConnectionsStore();
-const { useTabsStore } = await import('../../../frontend/src/studio/state/tabs');
+const { useTabsStore } = await import('../../../frontend/src/state/tabs');
 const tabsStore = useTabsStore();
 const { useConsoleViewStore } = await import('../../../frontend/src/studio/views/console/state');
 const consoleViewStore = useConsoleViewStore();

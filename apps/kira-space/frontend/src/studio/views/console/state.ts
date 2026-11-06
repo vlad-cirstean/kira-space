@@ -7,13 +7,13 @@ import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
+import type { ConsoleTabRecord } from '../../../state/tabDomain';
+import { useTabsStore } from '../../../state/tabs';
 import { control } from '../../bridge/control';
 import { data } from '../../bridge/data';
 import { useConnectionsStore } from '../../state/connections';
-import { useSettingsStore } from '../../state/settings';
+import { useStudioSettingsStore } from '../../state/settings';
 import { useStaleDataStore } from '../../state/staleData';
-import type { ConsoleTabRecord } from '../../state/tabDomain';
-import { useTabsStore } from '../../state/tabs';
 import { useDocumentRowsStore } from '../shared/document/rows';
 import { applyLoadFailure, classifyLoadError, createRuntimeStore, stopOp } from '../shared/viewOp';
 import { explainStatementsFor, isExplainable } from './explain';
@@ -229,7 +229,7 @@ async function autoExplainCheck(
       cursor += pageCount;
       plans.push({
         statement: explainable[i],
-        plan: parseExplainPages(kind, pages, useSettingsStore().advanced.expensiveQueryRows),
+        plan: parseExplainPages(kind, pages, useStudioSettingsStore().advanced.expensiveQueryRows),
       });
     }
     const worstIndex = worstFlaggedIndex(plans);
@@ -616,7 +616,7 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
       const plan = parseExplainPages(
         kind,
         response.pages,
-        useSettingsStore().advanced.expensiveQueryRows,
+        useStudioSettingsStore().advanced.expensiveQueryRows,
       );
       pushPlanResult(tabId, statement, plan);
       useStaleDataStore().stamp(tabId, tab.connectionId);

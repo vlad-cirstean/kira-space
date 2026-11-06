@@ -1,39 +1,7 @@
 import type { CacheStats, CountRequestWire, CountResponse } from '@shared/protocol/dataOps';
 import { pageChunks } from '@shared/protocol/page';
-import { VueQueryPlugin } from '@tanstack/vue-query';
-import { i18n, installCopyTestHook } from '@theme/i18n';
-import { bootstrapShell, provideShellServices } from '@workbench/bootstrapShell';
-import { windowKey } from '@workbench/bridge/rpc';
-import { queryClient } from '@workbench/state/queryClient';
-import { createApp } from 'vue';
-import App from './App.vue';
-import { initApiDataSync } from './api/state/apiQueries';
-import { control } from './bridge/control';
 import { data } from './bridge/data';
 import { useTreeStore } from './project/state/tree';
-import { mountProofWindow } from './proof/boot';
-import { useAppMetricsStore } from './state/appMetrics';
-import { useAppUpdateStore } from './state/appUpdate';
-import { useCacheStatsStore } from './state/cacheStats';
-import { initConnectionConfigSync } from './state/connectionConfig';
-import { useConnectionsStore } from './state/connections';
-import { useCustomScriptsStore } from './state/customScripts';
-import { useDbMcpStore } from './state/dbmcp';
-import { useKeepAwakeStore } from './state/keepAwake';
-import { initMaskRulesSync, loadMaskRuleCounts } from './state/maskRules';
-import { useOpsStore } from './state/ops';
-import { pinia } from './state/pinia';
-import { initSavedQueriesSync } from './state/savedQueriesSync';
-import { useSchemaColumnsStore } from './state/schemaColumns';
-import { initSchemaSync } from './state/schemas';
-import { useTabsStore } from './state/tabs';
-import { useTerminalsStore } from './state/terminals';
-// workbench.css imports @theme/base.css itself now (P104) — importing both here would compile
-// base.css as two separate Tailwind roots and double its output.
-import '@workbench/workbench.css';
-import { useLayoutStore } from './state/layout';
-import { useModeStore } from './state/mode';
-import { useSettingsStore } from './state/settings';
 import { planCount as consolePlanCount } from './views/console/explainResults';
 import {
   pageStoreEntries as consolePageStoreEntries,
@@ -240,133 +208,54 @@ declare global {
     };
   }
 }
-// Every window.__kira* assignment below is Playwright- or DevTools-only (see each
-// field's own doc comment above) and must never reach a packaged build — __KIRA_DEBUG_HOOKS__ is
-// a vite.config.ts `define`, so a shipped build cannot be talked into enabling it at runtime the
-// way the deleted window.__kiraGridEngine once could. scripts/verify-packaging.sh's S6/S7 guard
-// this from regressing.
-if (__KIRA_DEBUG_HOOKS__) {
-  installCopyTestHook();
-  window.__kiraScrollTrace = { start: startScrollTrace, stop: stopScrollTrace };
-  window.__kiraGridTuning = {};
-  window.__kiraGridRetainedBytes = totalRetainedBytes;
-  window.__kiraRetainedBytes = () =>
-    totalRetainedBytes() +
-    consoleRetainedBytes() +
-    documentRetainedBytes() +
-    keyValueRetainedBytes() +
-    streamRetainedBytes();
-  window.__kiraRetention = () => {
-    const gridEntries = gridPageStoreEntries();
-    const documentEntries = documentPageStoreEntries();
-    const keyValueEntries = keyValuePageStoreEntries();
-    const streamEntries = streamPageStoreEntries();
-    const consoleEntries = consolePageStoreEntries();
-    return {
-      stores: {
-        grid: storeStats(gridEntries),
-        documents: storeStats(documentEntries),
-        keyvalue: storeStats(keyValueEntries),
-        stream: storeStats(streamEntries),
-        console: storeStats(consoleEntries),
-      },
-      documentRows: useDocumentRowsStore().retentionSnapshot(),
-      searchMatches: {
-        grid: sumMatches(gridSearchState),
-        documents: sumMatches(documentSearchState),
-        keyvalue: sumMatches(keyValueSearchState),
-        console: sumMatches(consoleSearchState),
-        stream: sumMatches(useStreamSearchStore().searchState),
-      },
-      frameBuffers: frameBufferStats([
-        ...gridEntries,
-        ...documentEntries,
-        ...keyValueEntries,
-        ...streamEntries,
-        ...consoleEntries,
-      ]),
-      explainPlans: consolePlanCount(),
+// Every window.__kira* assignment is Playwright- or DevTools-only and must never reach a packaged
+// build: __KIRA_DEBUG_HOOKS__ is a vite.config.ts `define`, so a shipped build cannot enable it at
+// runtime. scripts/verify-packaging.sh's S6/S7 guard this from regressing.
+export function installStudioDebugHooks(): void {
+  if (__KIRA_DEBUG_HOOKS__) {
+    window.__kiraScrollTrace = { start: startScrollTrace, stop: stopScrollTrace };
+    window.__kiraGridTuning = {};
+    window.__kiraGridRetainedBytes = totalRetainedBytes;
+    window.__kiraRetainedBytes = () =>
+      totalRetainedBytes() +
+      consoleRetainedBytes() +
+      documentRetainedBytes() +
+      keyValueRetainedBytes() +
+      streamRetainedBytes();
+    window.__kiraRetention = () => {
+      const gridEntries = gridPageStoreEntries();
+      const documentEntries = documentPageStoreEntries();
+      const keyValueEntries = keyValuePageStoreEntries();
+      const streamEntries = streamPageStoreEntries();
+      const consoleEntries = consolePageStoreEntries();
+      return {
+        stores: {
+          grid: storeStats(gridEntries),
+          documents: storeStats(documentEntries),
+          keyvalue: storeStats(keyValueEntries),
+          stream: storeStats(streamEntries),
+          console: storeStats(consoleEntries),
+        },
+        documentRows: useDocumentRowsStore().retentionSnapshot(),
+        searchMatches: {
+          grid: sumMatches(gridSearchState),
+          documents: sumMatches(documentSearchState),
+          keyvalue: sumMatches(keyValueSearchState),
+          console: sumMatches(consoleSearchState),
+          stream: sumMatches(useStreamSearchStore().searchState),
+        },
+        frameBuffers: frameBufferStats([
+          ...gridEntries,
+          ...documentEntries,
+          ...keyValueEntries,
+          ...streamEntries,
+          ...consoleEntries,
+        ]),
+        explainPlans: consolePlanCount(),
+      };
     };
-  };
-  window.__kiraCount = data.count;
-  window.__kiraCacheStats = data.cacheStats;
-  window.__kiraTreeConnectionIds = () => Array.from(useTreeStore().knownConnectionIds());
+    window.__kiraCount = data.count;
+    window.__kiraCacheStats = data.cacheStats;
+    window.__kiraTreeConnectionIds = () => Array.from(useTreeStore().knownConnectionIds());
+  }
 }
-
-async function mountShell(): Promise<void> {
-  // P112: live before any query exists, whether or not the Api panel ever mounts — needs no data,
-  // so it runs synchronously before the Promise.all below rather than joining it.
-  initApiDataSync();
-  initConnectionConfigSync();
-  // Every store used here runs before app.use(pinia) below, so each needs the module-level
-  // `pinia` instance passed explicitly (Pinia has no active instance yet at this point).
-  const cacheStatsStore = useCacheStatsStore(pinia);
-  const appMetricsStore = useAppMetricsStore(pinia);
-  const modeStore = useModeStore(pinia);
-  const customScriptsStore = useCustomScriptsStore(pinia);
-  const dbMcpStore = useDbMcpStore(pinia);
-  const keepAwakeStore = useKeepAwakeStore(pinia);
-  const opsStore = useOpsStore(pinia);
-  const layoutStore = useLayoutStore(pinia);
-  const connectionsStore = useConnectionsStore(pinia);
-  const tabsStore = useTabsStore(pinia);
-  const settingsStore = useSettingsStore(pinia);
-  const terminalsStore = useTerminalsStore(pinia);
-  const treeStore = useTreeStore(pinia);
-  const schemaColumnsStore = useSchemaColumnsStore(pinia);
-
-  // These three used to subscribe only from ProjectTree.vue's own onMounted —
-  // a window booted with the project panel hidden (API/Terminal mode, or per-mode panel gating)
-  // or with zero connections yet never got them for the whole session. onSchemaChanged and
-  // onConnectionMetadataInvalidated then never arrived, so a restored console tab's completion,
-  // lint and hover served stale schema/columns, and a deleted connection's DDL cache never got
-  // cleaned up. Same precedent as initApiDataSync above: live before the project panel ever
-  // mounts, whether or not it mounts this session. Each is its own idempotent
-  // unsubscribe-then-resubscribe, so calling this instead of (rather than in addition to)
-  // ProjectTree.vue's removed onMounted call changes nothing about their own behavior.
-  treeStore.initTreeSync();
-  initSchemaSync();
-  schemaColumnsStore.initSchemaColumnsSync();
-  // P108 Part 12 F18: initSchemaSync's own precedent above — live before any Privacy tab, header
-  // menu or grid preview ever mounts, whether or not one does this session.
-  initMaskRulesSync();
-  initSavedQueriesSync();
-
-  cacheStatsStore.initCacheStats();
-  appMetricsStore.initAppMetrics();
-  // Must complete before anything window-scoped below (hydrateTabs, in particular) —
-  // always a no-op on the native shell, the only registration a `-tags server` browser tab ever
-  // gets otherwise. Also this window's own persisted mode — set once before the first
-  // render, the same way hydrateLayout/hydrateSettings below hydrate their own state.
-  modeStore.hydrateMode(await control.windowsEnsure());
-  await Promise.all([
-    layoutStore.hydrateLayout(),
-    settingsStore.hydrateSettings(),
-    connectionsStore.hydrateConnections(),
-    // M5 §7.5/§6.2: every connection's own masked-column count — the Settings glance's data, and
-    // the toolbar's own "does this connection have any masked columns at all" visibility check
-    // (deleteRowTooltip's own standing rule: a permanently inert control is worse than no control).
-    loadMaskRuleCounts(),
-    customScriptsStore.hydrateCustomScripts(),
-    terminalsStore.hydrateTerminalDefaults(),
-    dbMcpStore.hydrateDbMcp(),
-    keepAwakeStore.initKeepAwake(),
-    opsStore.hydrateOps(),
-    tabsStore.hydrateTabs(),
-  ]);
-  const app = createApp(App);
-  app.use(i18n);
-  app.use(pinia);
-  provideShellServices(app);
-  app.use(VueQueryPlugin, { queryClient });
-  app.mount('#app');
-  // Off the boot critical path (Promise.all above) — an update check gains nothing from blocking
-  // first paint, and Go's own 6h cache floor (§3.3) decides what actually fetches.
-  useAppUpdateStore().initAppUpdate();
-}
-
-// mountShell's own hydrates (modeStore.hydrateMode's windowsEnsure call and every
-// entry in the Promise.all above) can reject — a DB error, or a busy DB. The catch-and-
-// retry wrapper itself moved to workbench/bootstrapShell.ts, shared with apps/kira-space's own
-// identical copy.
-void bootstrapShell(windowKey.startsWith('proof-') ? mountProofWindow : mountShell, 'Kira Studio');

@@ -2,8 +2,8 @@ import { newUuid } from '@shared/ids';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { reactive } from 'vue';
+import { useTabsStore } from '../../../state/tabs';
 import { control } from '../../bridge/control';
-import { useTabsStore } from '../../state/tabs';
 
 // grid/state.ts, documents/state.ts, keyvalue/state.ts, stream/state.ts and
 // console/state.ts each declared the same DISCONNECTED_CODES set and the same code/message

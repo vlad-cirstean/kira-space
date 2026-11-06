@@ -20,13 +20,13 @@ import ToolbarSeparator from '@workbench/components/ToolbarSeparator.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import type { DefinitionTabRecord } from '../../../state/tabDomain';
+import { useTabsStore } from '../../../state/tabs';
 import { findRanges } from '../../editor/findRanges';
 import MonacoHost from '../../editor/MonacoHost.vue';
 import { useConnectionsStore } from '../../state/connections';
 import { nodeKindLabel } from '../../state/nodeKindLabel';
 import { useRunState } from '../../state/runState';
-import type { DefinitionTabRecord } from '../../state/tabDomain';
-import { useTabsStore } from '../../state/tabs';
 import EngineIcon from '../../theme/EngineIcon.vue';
 import ResponseFindBar, {
   type FindBarHost,

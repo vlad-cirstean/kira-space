@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { KeyValueTabRecord } from '../../state/tabDomain';
+import type { KeyValueTabRecord } from '../../../state/tabDomain';
 import KeyValuePane from '../shared/keyvalue/KeyValuePane.vue';
 
 // MainView.vue keys this component by tab.id — same discipline as every other view.

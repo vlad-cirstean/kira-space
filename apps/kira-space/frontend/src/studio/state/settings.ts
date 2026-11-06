@@ -26,8 +26,9 @@ export type Section = (typeof sections)[number];
 // module first measured — is this app's own extra; Kira Space has no data grid to re-measure.
 // `<Section, Settings, SettingsPatch>` — this app's own settingsDomain.ts
 // shape, not one shared @shared/domain/settings type.
-export const useSettingsStore = createSettingsStore<Section, Settings, SettingsPatch>(
+export const useStudioSettingsStore = createSettingsStore<Section, Settings, SettingsPatch>(
   defaultSettings,
+  'studioSettings',
 )(control, () => {
   const appearanceVersion = reactive({ n: 0 });
   return {

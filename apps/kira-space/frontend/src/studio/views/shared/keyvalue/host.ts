@@ -1,5 +1,5 @@
 import type { PageSize } from '@shared/domain/tabs';
-import { useTabsStore } from '../../../state/tabs';
+import { useTabsStore } from '../../../../state/tabs';
 
 // The seam that lets views/shared/keyvalue/ (state.ts, mutations.ts, KeyValuePane.vue)
 // address either a real KeyValue tab or the browse split's preview pane through one shape, instead

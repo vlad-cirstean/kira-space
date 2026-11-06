@@ -11,9 +11,9 @@ import { t } from '@theme/i18n';
 import { formatBytes } from '@workbench/behaviour/format';
 import AutocompleteField from '@workbench/components/AutocompleteField.vue';
 import { templateToken } from '@workbench/editor/fieldCompletion';
+import type { HttpRequestTabRecord } from '../../../state/tabDomain';
 import type { VariableSupport } from '../../api/state/variableCompletion';
 import { patchHttpRequestTabState } from '../../api/tabs';
-import type { HttpRequestTabRecord } from '../../state/tabDomain';
 import FieldRowsTable from '../shared/fields/FieldRowsTable.vue';
 import { chooseBodyFile } from './files';
 

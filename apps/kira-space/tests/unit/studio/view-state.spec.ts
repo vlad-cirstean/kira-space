@@ -17,7 +17,7 @@ import { deferred } from '@workbench/testing/unit/async';
 import { restoreAfterEach } from '@workbench/testing/unit/restoreAfterEach';
 import { setActivePinia } from 'pinia';
 import { isReactive } from 'vue';
-import { pinia } from '../../../frontend/src/studio/state/pinia';
+import { pinia } from '../../../frontend/src/state/pinia';
 import { seedConnectionRecord } from './support/connectionRecord.ts';
 
 setActivePinia(pinia);
@@ -39,7 +39,7 @@ const { data } = await import('../../../frontend/src/studio/bridge/data');
 restoreAfterEach(data);
 const { useConnectionsStore } = await import('../../../frontend/src/studio/state/connections');
 const connectionsStore = useConnectionsStore();
-const { useTabsStore } = await import('../../../frontend/src/studio/state/tabs');
+const { useTabsStore } = await import('../../../frontend/src/state/tabs');
 const tabsStore = useTabsStore();
 const { useBrowseViewStore } = await import('../../../frontend/src/studio/views/browse/state');
 const browseViewStore = useBrowseViewStore();

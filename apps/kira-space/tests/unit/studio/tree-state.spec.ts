@@ -22,7 +22,7 @@ import { describe, expect, test } from 'bun:test';
 import { sleep } from '@workbench/testing/unit/async';
 import { setActivePinia } from 'pinia';
 import { effect, isShallow } from 'vue';
-import { pinia } from '../../../frontend/src/studio/state/pinia';
+import { pinia } from '../../../frontend/src/state/pinia';
 
 setActivePinia(pinia);
 

@@ -13,7 +13,7 @@ import { type MessageKey, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { formatDuration } from '@workbench/behaviour/format';
 import { computed } from 'vue';
-import type { HttpRequestTabRecord } from '../../state/tabDomain';
+import type { HttpRequestTabRecord } from '../../../state/tabDomain';
 import { useHttpHistoryViewing } from './history';
 import { useHttpRequestViewStore } from './state';
 

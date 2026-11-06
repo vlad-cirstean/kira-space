@@ -40,22 +40,27 @@ import { useSettingsStore } from './state/settings';
 import { useTabsStore } from './state/tabs';
 import { useTerminalsStore } from './state/terminals';
 import { GENERAL_WORKSPACE, useWorkspaceStore } from './state/workspace';
+import { hydrateStudio, startStudioSync } from './studio/boot';
+import { installStudioDebugHooks } from './studio/debugHooks';
+import { hydrateProofWindow } from './studio/proof/boot';
 // styles.css re-exports @workbench/workbench.css (itself @theme/base.css) and adds one more @source
 // over packages/git-ui/src, so this app's own unprefixed root scans git-ui's migrated shadcn call
 // sites too. Importing both here would compile base.css as two separate Tailwind roots and double
 // its output — this is the one entry point now.
 import './styles.css';
 
-// Kira Studio's own main.ts bootstrap, trimmed to this app's own state layer — no
-// __KIRA_DEBUG_HOOKS__ block (that whole retention-probe apparatus is data-grid/query-result
-// specific: grid/documents/keyvalue/stream/console page stores, none of which exist here) and no
-// ops/dbMcp stores (none of those subsystems exist in this app — apps/kira-space/
-// main.go's own Services list has no counterpart for any of them). Studio's own
-// agentHooks/agentSessions stores left too (agent-activity monitoring moved to a shared home, used
-// by no app as of this phase), so that gap has since closed on its own.
-// This app now has its own metrics ticker and
-// keep-awake toggle (main.go's own metrics.NewAppTicker/keepawake.New).
-// This app now has its own update checker/installer.
+const PROOF_WINDOW_PREFIX = 'proof-';
+
+function mountApp(): void {
+  const app = createApp(App);
+  app.use(i18n);
+  app.provide(adeReaderKey, controlAdeReader);
+  app.use(pinia);
+  provideShellServices(app);
+  app.use(VueQueryPlugin, { queryClient });
+  app.mount('#app');
+}
+
 async function mountShell(): Promise<void> {
   // Every store used here runs before app.use(pinia) below, so each needs the module-level
   // `pinia` instance passed explicitly (Pinia has no active instance yet at this point).
@@ -80,6 +85,14 @@ async function mountShell(): Promise<void> {
   const captureStore = useCaptureWindowStore(pinia);
   const openedFilesWindowStore = useOpenedFilesWindowStore(pinia);
 
+  // A proof window boots only what it shows.
+  if (windowKey.startsWith(PROOF_WINDOW_PREFIX)) {
+    await control.windowsEnsure();
+    await hydrateProofWindow();
+    mountApp();
+    return;
+  }
+
   // Right after the stores are built, before mount() below, so no push (`kira:adetask:*`
   // channels/agent `Stop`) is missed between mount and this window's first
   // `useAdeSnapshot`/`useAdeSessions` call. No teardown — the window is the lifetime
@@ -92,6 +105,7 @@ async function mountShell(): Promise<void> {
   // Kira Studio's own initAppMetrics precedent: just subscribes, no data dependency — runs
   // synchronously before the Promise.all below rather than joining it.
   appMetricsStore.initAppMetrics();
+  startStudioSync();
 
   // This app now persists a per-window module mode too (internal/windowsvc,
   // shared with Kira Studio) — hydrated before any other window-scoped state,
@@ -116,6 +130,7 @@ async function mountShell(): Promise<void> {
     settingsStore.hydrateSettings(),
     codeReposStore.initCodeRepos(),
     tabsStore.hydrateTabs(),
+    hydrateStudio(),
   ]);
 
   // P116 G5: keep-awake hydrate joins the optional group below, not this critical Promise.all — a
@@ -198,13 +213,7 @@ async function mountShell(): Promise<void> {
     await openPendingFiles();
   }
 
-  const app = createApp(App);
-  app.use(i18n);
-  app.provide(adeReaderKey, controlAdeReader);
-  app.use(pinia);
-  provideShellServices(app);
-  app.use(VueQueryPlugin, { queryClient });
-  app.mount('#app');
+  mountApp();
   // Review windows show no agent sessions, so only a normal window reports focus.
   if (workbenchWindow) installAgentNotifyFocus();
   // Off the boot critical path — Kira Studio's own main.ts precedent (an update check gains
@@ -212,11 +221,11 @@ async function mountShell(): Promise<void> {
   useAppUpdateStore().initAppUpdate();
 }
 
-// mountShell's own essential hydrates (layout/settings/codeRepos/tabs) can still reject — a DB
-// error, or a busy DB past the 5s _busy_timeout (the second-instance case makes this plausible).
-// The catch-and-retry wrapper itself moved to workbench/bootstrapShell.ts, shared with
-// kira-studio's own identical copy.
-// Test builds only: the copy-coverage specs switch the locale to the pseudo-locale.
-if (__KIRA_DEBUG_HOOKS__) installCopyTestHook();
+// Test builds only: the copy-coverage specs switch to the pseudo-locale; Playwright and DevTools
+// probes hang off window.__kira*.
+if (__KIRA_DEBUG_HOOKS__) {
+  installCopyTestHook();
+  installStudioDebugHooks();
+}
 
 void bootstrapShell(mountShell, 'Kira Space');

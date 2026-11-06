@@ -10,7 +10,7 @@ import { t } from '@theme/i18n';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { computed, onMounted, onUnmounted } from 'vue';
-import type { StreamTabRecord } from '../../state/tabDomain';
+import type { StreamTabRecord } from '../../../state/tabDomain';
 import EngineIcon from '../../theme/EngineIcon.vue';
 import CellEditorDock from '../shared/celleditor/CellEditorDock.vue';
 import StaleDataStrip from '../shared/StaleDataStrip.vue';

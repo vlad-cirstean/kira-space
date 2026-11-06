@@ -14,7 +14,7 @@ import type { GrpcCallEvent, GrpcCallResultWire, GrpcSchemaWire } from '@shared/
 import { deferred, sleep } from '@workbench/testing/unit/async';
 import { setActivePinia } from 'pinia';
 import { effectScope, isReactive } from 'vue';
-import { pinia } from '../../../frontend/src/studio/state/pinia';
+import { pinia } from '../../../frontend/src/state/pinia';
 
 setActivePinia(pinia);
 
@@ -306,7 +306,7 @@ describe('call() pre-flight (P168 Part 10 F21)', () => {
       const stopped = grpcRequestViewStore.call(stoppedTab);
       await Promise.resolve();
 
-      const { useTabsStore } = await import('../../../frontend/src/studio/state/tabs');
+      const { useTabsStore } = await import('../../../frontend/src/state/tabs');
       useTabsStore().closeTab(closedTab);
       grpcRequestViewStore.stop(stoppedTab);
       expect(grpcRequestViewStore.runtime[stoppedTab]?.status).toBe('cancelled');

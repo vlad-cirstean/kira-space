@@ -18,14 +18,13 @@ import { useBlameStatusStore } from '../state/blameStatus';
 import { useModeStore } from '../state/mode';
 import { useOpsStore } from '../state/ops';
 import { useSettingsStore } from '../state/settings';
+import { TAB_KINDS } from '../state/tabKinds';
+import { useTabsStore } from '../state/tabs';
+import { useConnectionsStore } from '../studio/state/connections';
+import { useStudioOpsStore } from '../studio/state/ops';
 import { blameLineText, blameLineTooltip } from '../views/repo/blameLine';
 import AgentUsageItem from './AgentUsageItem.vue';
 
-// Kira Studio's own workbench/StatusBar.vue, trimmed to the blame item on the left. Now a thin
-// composition over the shared bar chrome (packages/workbench/src/components/StatusBar.vue). The
-// app-metrics item is added back — AppMetricsItem.vue, shared with Kira Studio's own copy of this
-// file. The update item is added, same shared component (UpdateAvailableItem.vue) and the same
-// in-app dialog Kira Studio's own copy opens.
 const blameStatusStore = useBlameStatusStore();
 const appMetricsStore = useAppMetricsStore();
 const appUpdateStore = useAppUpdateStore();
@@ -33,6 +32,9 @@ const modeStore = useModeStore();
 const settingsStore = useSettingsStore();
 const { info: agentInfo } = useAgentInfo();
 const opsStore = useOpsStore();
+const studioOpsStore = useStudioOpsStore();
+const connectionsStore = useConnectionsStore();
+const tabsStore = useTabsStore();
 const automations = useAutomationsModule();
 const automationItems = useRunningAutomationItems();
 
@@ -49,7 +51,23 @@ const opItems = computed<RunningOpItem[]>(() =>
       stop: () => void opsStore.cancelOp(r.id),
     })),
 );
-const items = computed(() => [...opItems.value, ...automationItems.value]);
+// The Studio feed (databases, API, Docker, Kubernetes) runs in parallel with Space's.
+const studioOpItems = computed<RunningOpItem[]>(() =>
+  studioOpsStore.records
+    .filter((r) => r.status === 'running')
+    .map((r) => {
+      const tab = r.tabId ? tabsStore.tabs.find((x) => x.id === r.tabId) : undefined;
+      return {
+        id: r.id,
+        label: connectionsStore.connectionRecord(r.connectionId)?.name ?? r.kind,
+        detail: tab ? `${r.kind} · ${TAB_KINDS[tab.kind].title(tab)}` : r.kind,
+        startedAt: Date.parse(r.startedAt),
+        canStop: true,
+        stop: () => void studioOpsStore.cancelOp(r.id),
+      };
+    }),
+);
+const items = computed(() => [...opItems.value, ...studioOpItems.value, ...automationItems.value]);
 
 // P76 §5.2: 'none' and 'uncommitted' both render nothing — an always-present "Uncommitted" readout
 // is the extension's own choice; this bar hides items with nothing to say instead.

@@ -11,10 +11,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/to
 import { t } from '@theme/i18n';
 import ToolbarSeparator from '@workbench/components/ToolbarSeparator.vue';
 import { computed, ref } from 'vue';
+import type { DataTabRecord } from '../../../state/tabDomain';
 import { useConnectionsStore } from '../../state/connections';
 import { useFakeDataStore } from '../../state/fakeData';
 import { loadMaskRuleCounts, maskRuleCountsQueryKey } from '../../state/maskRules';
-import type { DataTabRecord } from '../../state/tabDomain';
 import PagerControls from '../shared/page/PagerControls.vue';
 import { pageSizeOptions } from '../shared/page/sizes';
 import ColumnsMenu from './ColumnsMenu.vue';

@@ -8,8 +8,8 @@ import {
 import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { type ComputedRef, computed, type Ref, ref } from 'vue';
+import type { ConsoleTabRecord } from '../../../state/tabDomain';
 import { useConnectionsStore } from '../../state/connections';
-import type { ConsoleTabRecord } from '../../state/tabDomain';
 import type { SqlDialect } from '../shared/sqlIdent';
 import { isExplainable } from './explain';
 import { useConsoleViewStore } from './state';

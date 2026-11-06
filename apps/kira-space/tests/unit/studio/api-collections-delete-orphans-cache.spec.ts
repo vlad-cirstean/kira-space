@@ -16,6 +16,7 @@ import type { CollectionItemSummary, CollectionSummary } from '@shared/domain/co
 import { queryClient } from '@workbench/state/queryClient';
 import { restoreAfterEach } from '@workbench/testing/unit/restoreAfterEach';
 import { setActivePinia } from 'pinia';
+import { pinia } from '../../../frontend/src/state/pinia';
 import {
   apiCollectionsTreeKey,
   apiSavedRequestKey,
@@ -23,7 +24,6 @@ import {
   reconcileTree,
   refreshApiQuery,
 } from '../../../frontend/src/studio/api/state/apiQueries';
-import { pinia } from '../../../frontend/src/studio/state/pinia';
 
 setActivePinia(pinia);
 

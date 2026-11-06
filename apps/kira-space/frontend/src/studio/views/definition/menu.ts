@@ -2,15 +2,17 @@ import { t } from '@theme/i18n';
 import { copyOrReportError } from '@workbench/behaviour/clipboard';
 import { announceApp } from '@workbench/behaviour/liveRegion';
 import type { MenuItem } from '@workbench/state/contextMenu';
-import { useModeStore } from '../../state/mode';
-import { useTabsStore } from '../../state/tabs';
+import { useTabsStore } from '../../../state/tabs';
+import { visibleWorkspace } from '../../../state/workspace';
 import { dataQueryCommands } from '../../state/viewCommands';
 
 // D9: the definition view's Columns section reuses the tree's former column-row menu items, but it
 // already has the table's own path directly (`tab.path`) — no `pathParent()` needed the way the
 // tree's former column rows required.
 function targetTabForTable(connectionId: string, tablePath: string): string | null {
-  const active = useModeStore().activeTab;
+  const tabs = useTabsStore();
+  const activeId = tabs.activeIdByWorkspace[visibleWorkspace()];
+  const active = tabs.tabs.find((tab) => tab.id === activeId);
   // This menu lives only in the Definition view's Columns section, so `active` here is
   // always that table's *definition* tab, never its data tab — matching on connectionId/path
   // alone would reuse the definition tab itself and silently no-op the projection/sort patch
@@ -23,7 +25,7 @@ function targetTabForTable(connectionId: string, tablePath: string): string | nu
   ) {
     return active.id;
   }
-  return useTabsStore().openDataTab(connectionId, tablePath)?.id ?? null;
+  return tabs.openDataTab(connectionId, tablePath)?.id ?? null;
 }
 
 // The pure half of "Add to projection". `currentProjection === null` means "every

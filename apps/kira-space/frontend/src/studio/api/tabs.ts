@@ -19,8 +19,8 @@ import {
   type HttpRequestTabRecord,
   type VariableSetTabRecord,
   type VariableSetTabState,
-} from '../state/tabDomain';
-import { type OpenTabResult, useTabsStore } from '../state/tabs';
+} from '../../state/tabDomain';
+import { type OpenTabResult, useTabsStore } from '../../state/tabs';
 
 // P12 D9: the module's own tab helpers, moved out of state/tabs.ts (§1.4) — these are the
 // module's own code that happened to be written in a shell file, so this is a cut-and-paste onto

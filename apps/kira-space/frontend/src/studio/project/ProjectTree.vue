@@ -19,10 +19,10 @@ import {
   useContextMenuStore,
 } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef, watch } from 'vue';
+import { useTabsStore } from '../../state/tabs';
 import { useConnectionConfig } from '../state/connectionConfig';
 import { useConnectionDialogStore } from '../state/connectionDialogs';
 import { useConnectionsStore } from '../state/connections';
-import { useTabsStore } from '../state/tabs';
 import { reloadTab } from '../state/viewCommands';
 import { useConnectionReorder } from './connectionReorder';
 import { emptyBackgroundMenu, menuForRow } from './menu';

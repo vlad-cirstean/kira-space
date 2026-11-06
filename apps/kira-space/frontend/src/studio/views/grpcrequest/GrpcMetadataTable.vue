@@ -2,9 +2,9 @@
 import { metadataValueCompletions, WELL_KNOWN_REQUEST_METADATA } from '@kira/api-core';
 import type { GrpcMetadataState } from '@shared/domain/grpc';
 import { t } from '@theme/i18n';
+import type { GrpcRequestTabRecord } from '../../../state/tabDomain';
 import type { VariableSupport } from '../../api/state/variableCompletion';
 import { patchGrpcRequestTabState } from '../../api/tabs';
-import type { GrpcRequestTabRecord } from '../../state/tabDomain';
 import FieldRowsTable from '../shared/fields/FieldRowsTable.vue';
 
 // A thin wrapper over FieldRowsTable, same shape RequestHeadersTable.vue uses —

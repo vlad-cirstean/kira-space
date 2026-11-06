@@ -19,10 +19,10 @@ import { rowMeta } from '@theme/lib/rowVariants';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { formatBytes } from '@workbench/behaviour/format';
 import { computed, ref, watch } from 'vue';
+import { useTabsStore } from '../../state/tabs';
 import { control } from '../bridge/control';
 import { useObjectStoreStore } from '../state/objectStore';
 import { useStaleDataStore } from '../state/staleData';
-import { useTabsStore } from '../state/tabs';
 import { browseInvalidate } from '../state/viewCommands';
 
 const objectStoreStore = useObjectStoreStore();

@@ -1,5 +1,5 @@
 import { hasRequestBody, httpRequestTitle } from '@kira/api-core';
-import type { ConnectionColor } from '@shared/domain/connection';
+import type { PaletteColor } from '@shared/domain/color';
 import {
   defaultGrpcRequestTabState,
   type GrpcRequestTabState,
@@ -14,23 +14,9 @@ import {
 import { tabTitle } from '@shared/domain/tabs';
 import { pathTail } from '@shared/domain/tree';
 import { t } from '@theme/i18n';
-import { scriptRunState } from '@workbench/automations/runs/runStates';
 import type { MenuItem } from '@workbench/state/contextMenu';
-import { scriptRunTabKind } from '@workbench/tabs/scriptRunTabKind';
-import { terminalTabKind } from '@workbench/tabs/terminalTabKind';
 import { parseStateWith, type TabKindRegistry } from '@workbench/tabs/types';
-import { useTreeStore } from '../project/state/tree';
-import { discoverDirty } from '../views/console/kibana/savedDiscover';
-import { dropForTab as dropConsoleResultPagesForTab } from '../views/console/resultPages';
-import { drop as dropDocumentPagesForTab } from '../views/documents/page';
-import { drop as dropGridPagesForTab } from '../views/grid/page';
-import { usePendingChangesStore } from '../views/grid/pendingChanges';
-import { isEditDirty } from '../views/shared/editDirty';
-import { drop as dropKeyValuePagesForTab } from '../views/shared/keyvalue/page';
-import { drop as dropStreamPagesForTab } from '../views/stream/page';
-import { useConnectionsStore } from './connections';
-import { useLayoutStore } from './layout';
-import { useSettingsStore } from './settings';
+import { useLayoutStore } from '../../state/layout';
 import {
   type BrowseTabRecord,
   type BrowseTabState,
@@ -70,10 +56,20 @@ import {
   type VariableSetTabRecord,
   type VariableSetTabState,
   variableSetTabStateSchema,
-} from './tabDomain';
+} from '../../state/tabDomain';
+import { useTabsStore } from '../../state/tabs';
+import { useTreeStore } from '../project/state/tree';
+import { discoverDirty } from '../views/console/kibana/savedDiscover';
+import { dropForTab as dropConsoleResultPagesForTab } from '../views/console/resultPages';
+import { drop as dropDocumentPagesForTab } from '../views/documents/page';
+import { drop as dropGridPagesForTab } from '../views/grid/page';
+import { usePendingChangesStore } from '../views/grid/pendingChanges';
+import { isEditDirty } from '../views/shared/editDirty';
+import { drop as dropKeyValuePagesForTab } from '../views/shared/keyvalue/page';
+import { drop as dropStreamPagesForTab } from '../views/stream/page';
+import { useConnectionsStore } from './connections';
+import { useStudioSettingsStore } from './settings';
 import { useTabIncognitoStore } from './tabIncognito';
-import { useTabsStore } from './tabs';
-import { useTerminalsStore } from './terminals';
 
 // The tab-kind registry, split from workbench/tabViews.ts by the lint rules —
 // this half is component-free (title/icon/railColor/dropResources/menuExtras/state constructors
@@ -94,7 +90,7 @@ const KIND_ICON: Record<string, string> = {
   matview: 'symbol-structure',
 };
 
-function railColor(tab: TabRecord): ConnectionColor | undefined {
+function railColor(tab: TabRecord): PaletteColor | undefined {
   return useConnectionsStore().connectionRecord(tab.connectionId)?.color;
 }
 
@@ -139,11 +135,12 @@ function noDrop(): void {
   // definition/browse have no page store of their own (F12) — nothing to free.
 }
 
-export const TAB_KINDS: TabKindRegistry<
+// The database and API modules' kinds; state/tabKinds.ts merges them into the one TAB_KINDS.
+export const STUDIO_TAB_KINDS: TabKindRegistry<
   StudioTabKind,
   TabRecord,
   TabIcon,
-  ConnectionColor,
+  PaletteColor,
   MenuItem
 > = {
   data: {
@@ -154,7 +151,7 @@ export const TAB_KINDS: TabKindRegistry<
       return (tail && KIND_ICON[tail.kind]) || 'table';
     },
     railColor,
-    defaultState: () => defaultDataTabState(useSettingsStore().data.defaultPageSize),
+    defaultState: () => defaultDataTabState(useStudioSettingsStore().data.defaultPageSize),
     duplicateState: (tab: DataTabRecord): DataTabState => defaultDataTabState(tab.state.pageSize),
     isDirty: (tabId) => usePendingChangesStore().hasPending(tabId),
     dropResources: dropGridPagesForTab,
@@ -211,7 +208,7 @@ export const TAB_KINDS: TabKindRegistry<
     title: tabTitle,
     icon: () => 'json',
     railColor,
-    defaultState: () => defaultDocumentTabState(useSettingsStore().data.defaultPageSize),
+    defaultState: () => defaultDocumentTabState(useStudioSettingsStore().data.defaultPageSize),
     duplicateState: (tab: DocumentTabRecord): DocumentTabState =>
       defaultDocumentTabState(tab.state.pageSize),
     isDirty: isEditDirty,
@@ -226,7 +223,7 @@ export const TAB_KINDS: TabKindRegistry<
     // them apart with no extra state.
     icon: (tab) => (pathTail(tab.path)?.kind === 'object' ? 'file' : 'symbol-key'),
     railColor,
-    defaultState: () => defaultKeyValueTabState(useSettingsStore().data.defaultPageSize),
+    defaultState: () => defaultKeyValueTabState(useStudioSettingsStore().data.defaultPageSize),
     duplicateState: (tab: KeyValueTabRecord): KeyValueTabState =>
       defaultKeyValueTabState(tab.state.pageSize),
     isDirty: isEditDirty,
@@ -239,7 +236,7 @@ export const TAB_KINDS: TabKindRegistry<
     title: tabTitle,
     icon: () => 'broadcast',
     railColor,
-    defaultState: () => defaultStreamTabState(useSettingsStore().data.defaultPageSize),
+    defaultState: () => defaultStreamTabState(useStudioSettingsStore().data.defaultPageSize),
     duplicateState: (tab: StreamTabRecord): StreamTabState =>
       defaultStreamTabState(tab.state.pageSize),
     dropResources: dropStreamPagesForTab,
@@ -369,19 +366,4 @@ export const TAB_KINDS: TabKindRegistry<
     menuExtras: () => [],
     parseState: parseStateWith(environmentsTabStateSchema),
   },
-  // `TAB_KINDS` is a total function over this app's own real vocabulary — no
-  // unreachable member to keep total against a wider union.
-  // An embedded shell at a working directory, rendered with @xterm/xterm.
-  // A launch's own label (a script's name, or 'Claude Code') wins over the cwd's basename.
-  // The descriptor itself moved to workbench's own terminalTabKind, shared with
-  // kira-space's identical copy — only the mode constant and dropResources' own store differ.
-  terminal: terminalTabKind<'terminal', TabRecord, TabIcon, ConnectionColor, MenuItem>(
-    STUDIO_TAB_KIND_MODE.terminal,
-    (tabId) => useTerminalsStore().closeTerminalSession(tabId),
-    (tabId) => useTerminalsStore().terminalSession(tabId),
-  ),
-  'script-run': scriptRunTabKind<'script-run', TabRecord, TabIcon, ConnectionColor, MenuItem>(
-    STUDIO_TAB_KIND_MODE['script-run'],
-    scriptRunState,
-  ),
 };

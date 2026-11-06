@@ -1,7 +1,7 @@
 import { t } from '@theme/i18n';
 import { computed, ref, watch } from 'vue';
+import type { StreamTabRecord } from '../../../state/tabDomain';
 import { useConnectionsStore } from '../../state/connections';
-import type { StreamTabRecord } from '../../state/tabDomain';
 import { getPage, pageVersion, streamRow } from './page';
 import { useStreamViewStore } from './state';
 

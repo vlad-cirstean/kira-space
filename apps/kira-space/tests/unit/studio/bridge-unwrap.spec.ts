@@ -2,6 +2,7 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import { resetCallFactory, setCallFactory } from '@workbench/testing/unit/wailsRuntime';
 
 const { control, unwrap } = await import('../../../frontend/src/studio/bridge/control');
+const { control: hubControl } = await import('../../../frontend/src/bridge');
 
 afterAll(() => {
   resetCallFactory();
@@ -97,6 +98,8 @@ describe('apps/kira-space/frontend/src/studio/bridge/control.ts — unwrap (P57 
       // createOpenExternal swallows failures by design (announces, never throws).
       if (name === 'openExternal') continue;
       if (leakProne.has(name)) continue;
+      // Studio's control layers over the hub's; only its own and overriding methods are in scope.
+      if (hubControl[name as keyof typeof hubControl] === member) continue;
       // Third arg is an array: apiConfigForm maps it before unwrap runs.
       const result = (member as (...args: unknown[]) => unknown)('a', 'b', [], 'd');
       if (!result || typeof (result as Promise<unknown>).then !== 'function') continue;

@@ -31,12 +31,12 @@ import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { computed, onMounted, ref } from 'vue';
+import { useTabsStore } from '../../state/tabs';
 import { control } from '../bridge/control';
 import { data } from '../bridge/data';
 import MonacoHost from '../editor/MonacoHost.vue';
 import { useConnectionsStore } from '../state/connections';
 import { useFakeDataStore } from '../state/fakeData';
-import { useTabsStore } from '../state/tabs';
 import {
   BATCH_SIZE,
   GenerationError,

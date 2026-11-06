@@ -7,7 +7,8 @@ import { useConnectionsStore } from './connections';
 // packages/workbench/src/state/createOpLogStore.ts — this app's own extra is the connection-name
 // filter match (searchText below), resolved per call since the connections store may not exist at
 // module load.
-export const useOpsStore = createOpLogStore<OpRecord>({
+export const useStudioOpsStore = createOpLogStore<OpRecord>({
+  storeId: 'studioOpLog',
   control: {
     recent: (limit) => control.opsRecent(limit),
     onUpdate: (cb) => control.onOpUpdate(cb),

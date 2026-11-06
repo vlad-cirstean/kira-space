@@ -6,8 +6,8 @@ import {
   kibanaDiscoverBodySchema,
 } from '@shared/domain/kibana';
 import type { SavedDiscoverQuery } from '@shared/domain/queries';
-import type { ConsoleTabRecord, ConsoleTabState } from '../../../state/tabDomain';
-import { useTabsStore } from '../../../state/tabs';
+import type { ConsoleTabRecord, ConsoleTabState } from '../../../../state/tabDomain';
+import { useTabsStore } from '../../../../state/tabs';
 import { setKibana } from '../state';
 
 /** The whole Discover state of a tab as a saved body; null while no data view is chosen. */

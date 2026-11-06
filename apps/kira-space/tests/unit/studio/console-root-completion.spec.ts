@@ -11,7 +11,7 @@ import { describe, expect, test } from 'bun:test';
 import type { ConnectionSummary } from '@shared/domain/connection';
 import type { TreeNode } from '@shared/domain/tree';
 import { setActivePinia } from 'pinia';
-import { pinia } from '../../../frontend/src/studio/state/pinia';
+import { pinia } from '../../../frontend/src/state/pinia';
 
 setActivePinia(pinia);
 

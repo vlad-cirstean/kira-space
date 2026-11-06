@@ -5,8 +5,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/to
 import { t } from '@theme/i18n';
 import { formatBytes } from '@workbench/behaviour/format';
 import { computed } from 'vue';
+import type { HttpRequestTabRecord } from '../../../state/tabDomain';
 import { patchHttpRequestTabState } from '../../api/tabs';
-import type { HttpRequestTabRecord } from '../../state/tabDomain';
 import { chooseBodyFile } from './files';
 
 // The binary (Postman `file`) body — one whole local file, sent as the entire request

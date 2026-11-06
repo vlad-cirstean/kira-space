@@ -13,10 +13,11 @@ import { formatRelative } from '@workbench/behaviour/format';
 import Identifier from '@workbench/components/Identifier.vue';
 import ModuleStart from '@workbench/components/ModuleStart.vue';
 import { computed } from 'vue';
+import { useTabsStore } from '../../../state/tabs';
 import { useConnectionDialogStore } from '../../state/connectionDialogs';
 import { useConnectionsStore } from '../../state/connections';
 import { useDatagripImportStore } from '../../state/datagripImport';
-import { type RecentTableEntry, useRecentTablesStore, useTabsStore } from '../../state/tabs';
+import { type RecentTableEntry, useRecentTablesStore } from '../../state/studioTabs';
 
 // P1 C4: Studio's two empty states, extracted verbatim out of MainView.vue's old dispatch
 // chain (F9) — the mode's own "nothing open" content, mirroring api/ApiStart.vue (C6).
@@ -107,7 +108,7 @@ function openRecent(entry: RecentTableEntry): void {
   <ModuleStart
     v-else
     icon="database"
-    :title="t('common.product.kiraStudio.label')"
+    :title="t('common.product.kiraSpace.label')"
     :description="t('studio.start.open.hint')"
     data-testid="no-tab-open"
   >

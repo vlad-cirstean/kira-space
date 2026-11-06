@@ -19,9 +19,9 @@ import { cn } from '@theme/lib/utils';
 import { matchesQuery } from '@workbench/behaviour/match';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { computed, ref } from 'vue';
+import type { GrpcRequestTabRecord } from '../../../state/tabDomain';
 import { patchGrpcRequestTabState } from '../../api/tabs';
 import { control } from '../../bridge/control';
-import type { GrpcRequestTabRecord } from '../../state/tabDomain';
 import { useGrpcRequestViewStore } from './state';
 
 // D13's Schema pane: the source selector (Reflection / .proto file + import paths + Reload) above

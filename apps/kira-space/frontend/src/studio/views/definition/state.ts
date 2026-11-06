@@ -3,10 +3,10 @@ import type { ObjectMeta } from '@shared/domain/tree';
 import { errorText } from '@workbench/bridge/codedError';
 import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
+import { useTabsStore } from '../../../state/tabs';
 import { control } from '../../bridge/control';
 import { useConnectionsStore } from '../../state/connections';
 import { useStaleDataStore } from '../../state/staleData';
-import { useTabsStore } from '../../state/tabs';
 import { createRuntimeStore } from '../shared/viewOp';
 
 interface DefinitionViewRuntime {

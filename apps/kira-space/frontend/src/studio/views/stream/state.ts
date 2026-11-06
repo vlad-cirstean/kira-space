@@ -3,13 +3,13 @@ import type { PageSize } from '@shared/domain/tabs';
 import type { PageCursor } from '@shared/protocol/dataOps';
 import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
+import { pinia } from '../../../state/pinia';
+import type { StreamTabRecord } from '../../../state/tabDomain';
+import { useTabsStore } from '../../../state/tabs';
 import { control } from '../../bridge/control';
 import { data } from '../../bridge/data';
 import { useConnectionsStore } from '../../state/connections';
-import { pinia } from '../../state/pinia';
 import { useStaleDataStore } from '../../state/staleData';
-import type { StreamTabRecord } from '../../state/tabDomain';
-import { useTabsStore } from '../../state/tabs';
 import { registerTabReload } from '../../state/viewCommands';
 import { runPagedLoad } from '../shared/page/load';
 import {

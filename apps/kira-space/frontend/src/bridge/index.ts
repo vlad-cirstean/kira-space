@@ -44,6 +44,7 @@ import type {
   MobileStatus,
   MobileTerminalHold,
 } from '@shared/domain/mobile';
+import type { AppMode } from '@shared/domain/mode';
 import type {
   CodeSearchEvent,
   DiffContent,
@@ -123,7 +124,6 @@ import type {
 } from '../repo/state/repoConfigTypes';
 import type { RepoFormArgs, RepoFormResult } from '../repo/state/repoFormTypes';
 import type { CliToolsResult, IssueTrackers } from '../state/cliToolsDomain';
-import type { SpaceMode } from '../state/modeDomain';
 import type { SpaceOpRecord } from '../state/opsDomain';
 import type { Settings, SettingsPatch } from '../state/settingsDomain';
 import type { TabRecord } from '../state/tabDomain';
@@ -773,25 +773,28 @@ interface AgentNotifyFocus {
   activeScriptRunId: string;
 }
 
-// P103 Part 2 (§5.6): the shared methods (createCoreControl.ts, P116 H5/P119 grew that set) plus
-// this app's own remaining ones (spaceControl, above) — every `control.xxx()` call site in the app
-// is unchanged, since neither the method names nor their bound-call FQNs moved.
+// The bound services both module families share. Studio's control re-binds only `settings`
+// (StudioSettingsService) on top of these, so the hub holds the one list.
+export const coreBindings = {
+  settings: SettingsService,
+  layout: LayoutService,
+  tabs: TabsService,
+  lifecycle: LifecycleService,
+  terminal: TerminalService,
+  files: FilesService,
+  windows: WindowsService,
+  keepAwake: KeepAwakeService,
+  update: UpdateService,
+  prompts: PromptsService,
+  approvals: ApprovalsService,
+  llmPrompts: LlmPromptsService,
+  agent: AgentService,
+};
+
+// The shared methods (createCoreControl.ts) plus Space's own. Studio's Studio-bound methods live in
+// studio/bridge/index.ts, which layers them over this object.
 export const control = {
-  ...createCoreControl<Settings, Layout, TabRecord, SettingsPatch, SpaceMode>({
-    settings: SettingsService,
-    layout: LayoutService,
-    tabs: TabsService,
-    lifecycle: LifecycleService,
-    terminal: TerminalService,
-    files: FilesService,
-    windows: WindowsService,
-    keepAwake: KeepAwakeService,
-    update: UpdateService,
-    prompts: PromptsService,
-    approvals: ApprovalsService,
-    llmPrompts: LlmPromptsService,
-    agent: AgentService,
-  }),
+  ...createCoreControl<Settings, Layout, TabRecord, SettingsPatch, AppMode>(coreBindings),
   ...memoryControl,
   ...spaceControl,
 };

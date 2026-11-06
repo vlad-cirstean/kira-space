@@ -2,8 +2,8 @@ import { useIntervalFn } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
 import { defineStore } from 'pinia';
 import { type ComputedRef, computed, ref, watchEffect } from 'vue';
-import { useOpsStore } from './ops';
-import { pinia } from './pinia';
+import { pinia } from '../../state/pinia';
+import { useStudioOpsStore } from './ops';
 
 export interface RunStateVm {
   status: 'idle' | 'running' | 'error';
@@ -25,7 +25,7 @@ const useRunStateStore = defineStore('runState', () => {
     { immediate: false },
   );
 
-  const opsStore = useOpsStore();
+  const opsStore = useStudioOpsStore();
 
   watchEffect(() => {
     const running = opsStore.records.some((r) => r.status === 'running');

@@ -9,7 +9,7 @@ import { Separator } from '@theme/components/ui/separator';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { onUnmounted, ref } from 'vue';
-import { useTabsStore } from '../../state/tabs';
+import { useTabsStore } from '../../../state/tabs';
 import { fieldNamesOnPage } from './page';
 import { nextDocumentProjectionOnClose } from './projection';
 import { useDocumentViewStore } from './state';

@@ -10,8 +10,8 @@ import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import AutocompleteField from '@workbench/components/AutocompleteField.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { computed, ref, watch } from 'vue';
+import type { DocumentTabRecord } from '../../../state/tabDomain';
 import { control } from '../../bridge/control';
-import type { DocumentTabRecord } from '../../state/tabDomain';
 import FilterHistoryMenu from '../shared/FilterHistoryMenu.vue';
 import {
   mongoFilterCandidates,

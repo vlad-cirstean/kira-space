@@ -13,8 +13,8 @@ import { errorText } from '@workbench/bridge/codedError';
 import TextPromptDialog from '@workbench/prompt/TextPromptDialog.vue';
 import { useTextPrompt } from '@workbench/prompt/useTextPrompt';
 import { computed, ref } from 'vue';
+import { useTabsStore } from '../../../state/tabs';
 import { control } from '../../bridge/control';
-import { useTabsStore } from '../../state/tabs';
 import SavedListMenu from '../shared/SavedListMenu.vue';
 import { setText } from './state';
 

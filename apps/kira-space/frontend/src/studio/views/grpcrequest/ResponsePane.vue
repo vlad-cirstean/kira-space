@@ -24,10 +24,10 @@ import type { RangeHighlight } from '@workbench/editor/ranges';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import type { GrpcRequestTabRecord } from '../../../state/tabDomain';
 import { patchGrpcRequestTabState } from '../../api/tabs';
 import { DEFAULT_FIND_OPTIONS, type FindOptions, findRanges } from '../../editor/findRanges';
 import MonacoHost from '../../editor/MonacoHost.vue';
-import type { GrpcRequestTabRecord } from '../../state/tabDomain';
 import ResponseFindBar, {
   type FindBarHost,
   type FindBarTarget,

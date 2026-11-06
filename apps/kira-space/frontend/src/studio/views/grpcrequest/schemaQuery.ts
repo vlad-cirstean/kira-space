@@ -8,11 +8,11 @@ import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { KEEP_WHILE_OPEN, queryClient } from '@workbench/state/queryClient';
 import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { computed, type MaybeRefOrGetter, toValue, watch } from 'vue';
+import type { GrpcRequestTabRecord } from '../../../state/tabDomain';
 import { loadVariableRows } from '../../api/state/apiQueries';
 import { useCollectionsStore } from '../../api/state/collections';
 import { mergeVariableRows, useVariablesStore } from '../../api/state/variables';
 import { control } from '../../bridge/control';
-import type { GrpcRequestTabRecord } from '../../state/tabDomain';
 import { resolveGrpcTabState } from './resolve';
 
 // The resolved schema for a request's

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { EditorLanguageId } from '@shared/domain/editor';
+import type { AppMode } from '@shared/domain/mode';
 import type { OpRecord } from '@shared/domain/ops';
 import { splitSqlStatements } from '@shared/domain/sqlSplit';
 import { colorMarkClass } from '@theme/connColor';
@@ -18,11 +19,12 @@ import {
 } from '@workbench/lib/opLog';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed } from 'vue';
+import { useModeStore } from '../../../state/mode';
+import { TAB_KIND_MODE } from '../../../state/tabDomain';
+import { TAB_KINDS } from '../../../state/tabKinds';
+import { useTabsStore } from '../../../state/tabs';
 import { useConnectionsStore } from '../../state/connections';
-import { useModeStore, workspaceKeyOf } from '../../state/mode';
-import { useOpsStore } from '../../state/ops';
-import { TAB_KINDS } from '../../state/tabKinds';
-import { useTabsStore } from '../../state/tabs';
+import { useStudioOpsStore } from '../../state/ops';
 import { consoleLanguageFor } from '../../views/console/format';
 import { useConsoleViewStore } from '../../views/console/state';
 import { lexOptionsFor, sqlDialectFor } from '../../views/shared/sqlIdent';
@@ -30,7 +32,7 @@ import { ensureConnectedOnce } from '../../views/shared/useConnectionGate';
 
 // The shared OpLogPanel over Kira Studio's op log: this file keeps the connection, source and rows
 // columns, the detail fields and syntax language, the connection facet, and Reveal tab / Re-run.
-const opsStore = useOpsStore();
+const opsStore = useStudioOpsStore();
 const connectionsStore = useConnectionsStore();
 const tabsStore = useTabsStore();
 const modeStore = useModeStore();
@@ -90,7 +92,7 @@ function revealTab(record: OpRecord): void {
   const tab = record.tabId ? tabsStore.tabs.find((t) => t.id === record.tabId) : undefined;
   if (!tab) return;
   // The dock lists every mode's ops: switch to the tab's own workspace so the reveal is visible.
-  modeStore.setMode(workspaceKeyOf(tab));
+  modeStore.setMode((tab.workspaceId ?? TAB_KIND_MODE[tab.kind]) as AppMode);
   tabsStore.activateTab(tab.id);
 }
 

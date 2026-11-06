@@ -21,7 +21,7 @@ import { useConnectionDialogStore } from '../../state/connectionDialogs';
 import { useConnectionsStore } from '../../state/connections';
 import { useDbMcpStore } from '../../state/dbmcp';
 import { loadMaskRuleCounts, maskRuleCountsQueryKey } from '../../state/maskRules';
-import { useSettingsStore } from '../../state/settings';
+import { useStudioSettingsStore } from '../../state/settings';
 import ScriptsMcpSection from './ScriptsMcpSection.vue';
 import type { SettingsPaneProps } from './types';
 
@@ -33,7 +33,7 @@ defineProps<SettingsPaneProps>();
 const connectionsStore = useConnectionsStore();
 const connectionDialogStore = useConnectionDialogStore();
 const dbMcpStore = useDbMcpStore();
-const settingsStore = useSettingsStore();
+const settingsStore = useStudioSettingsStore();
 const maskRuleCountsQuery = useQuery({
   queryKey: maskRuleCountsQueryKey,
   queryFn: loadMaskRuleCounts,

@@ -49,12 +49,15 @@ export interface SettingsStoreExtension<E extends Record<string, unknown>> {
 // for the *whole* store (every instantiation, not just that one), a real TS+Pinia interaction found
 // the hard way. The inner call takes no explicit type arguments at all, so
 // `E` is always inferred fresh from `extend`'s actual return value.
-export function createSettingsStore<S extends string, Se extends SettingsShape, SeP>(defaults: Se) {
+export function createSettingsStore<S extends string, Se extends SettingsShape, SeP>(
+  defaults: Se,
+  storeId = 'settings',
+) {
   return <E extends Record<string, unknown>>(
     control: SettingsControl<Se, SeP>,
     extend: (actions: SettingsStoreActions<Se>) => SettingsStoreExtension<E>,
   ) =>
-    defineStore('settings', () => {
+    defineStore(storeId, () => {
       // `reactive<Se>(...)` itself types as `Reactive<Se>` (Vue's own `UnwrapNestedRefs<Se>`),
       // which TS can't prove equals `Se` for a generic type parameter — the same gap every other
       // generic Pinia store call site in this codebase casts through. `Se`'s own bound

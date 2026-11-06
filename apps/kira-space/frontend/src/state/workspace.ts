@@ -1,3 +1,4 @@
+import type { AppMode } from '@shared/domain/mode';
 import { t } from '@theme/i18n';
 import { usePersistedState } from '@workbench/behaviour/persisted';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
@@ -29,6 +30,23 @@ export const GENERAL_WORKSPACE = '__general__';
 // The files window's one tab partition: repo and loose file tabs share a strip. Never a real
 // code_repos id, same reasoning as GENERAL_WORKSPACE.
 export const FILES_WORKSPACE = '__files__';
+
+// The module ids that double as workspace keys (a non-git module's tab strip).
+const MODE_KEYS: Record<AppMode, true> = {
+  ade: true,
+  automations: true,
+  memory: true,
+  git: true,
+  studio: true,
+  api: true,
+  docker: true,
+  kubernetes: true,
+};
+
+/** True for a repository's workspace: not the unscoped slot, the files window or a module's. */
+export function isRepoWorkspace(key: WorkspaceKey): boolean {
+  return key !== GENERAL_WORKSPACE && key !== FILES_WORKSPACE && !(key in MODE_KEYS);
+}
 
 /** Identity — every WorkspaceKey here already is a repo id (or GENERAL_WORKSPACE). Kept as a named
  *  function so call sites written against the old `repo:${id}`-prefixed type need no edit. */

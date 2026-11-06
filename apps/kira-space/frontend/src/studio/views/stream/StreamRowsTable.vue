@@ -14,9 +14,9 @@ import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualR
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, watch } from 'vue';
+import type { StreamTabRecord } from '../../../state/tabDomain';
+import { useTabsStore } from '../../../state/tabs';
 import { type SelectedCell, useCellSelectionStore } from '../../state/cellSelection';
-import type { StreamTabRecord } from '../../state/tabDomain';
-import { useTabsStore } from '../../state/tabs';
 import { datasetNumber } from '../shared/eventCoords';
 import SearchFilterNotice from '../shared/page/SearchFilterNotice.vue';
 import { setVisibleRows } from '../shared/page/visibleRows';

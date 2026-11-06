@@ -18,7 +18,7 @@ import { resolve } from 'node:path';
 import { GRPC_HISTORY_PER_SCOPE_LIMIT } from '../../../../../packages/shared/domain/grpcHistory';
 import { opKindSchema } from '../../../../../packages/shared/domain/ops';
 import { HISTORY_PER_SCOPE_LIMIT } from '../../../../../packages/shared/domain/responseHistory';
-import { STUDIO_RENDERABLE_TAB_KINDS } from '../../../frontend/src/studio/state/tabDomain';
+import { STUDIO_RENDERABLE_TAB_KINDS } from '../../../frontend/src/state/tabDomain';
 
 /** Strips a Go `//` line comment from each line before any extractor scans the source —
  *  without this, a `}` or a `name = N` pattern inside a comment can end a map body early or satisfy
@@ -103,7 +103,8 @@ describe('Go/TS tab- and op-kind vocabulary parity (P2 D10)', () => {
       'utf8',
     );
     const goKinds = extractGoStringSet(source, 'RenderableTabKinds');
-    expect(goKinds).toEqual(new Set(STUDIO_RENDERABLE_TAB_KINDS));
+    // terminal and script-run belong to the shared Space vocabulary on the TS side only.
+    expect(goKinds).toEqual(new Set([...STUDIO_RENDERABLE_TAB_KINDS, 'terminal', 'script-run']));
   });
 
   test('model.opKinds (Go) matches opKindSchema (TS)', () => {

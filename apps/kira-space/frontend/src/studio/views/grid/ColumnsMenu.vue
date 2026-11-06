@@ -13,7 +13,7 @@ import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { moveId, useSortableReorder } from '@workbench/behaviour/sortableReorder';
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
-import { useTabsStore } from '../../state/tabs';
+import { useTabsStore } from '../../../state/tabs';
 import { nextProjectionFromSelectedColumns } from './menu';
 import { useGridViewStore } from './state';
 

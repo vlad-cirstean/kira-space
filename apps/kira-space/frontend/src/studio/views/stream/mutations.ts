@@ -1,5 +1,5 @@
-import { pinia } from '../../state/pinia';
-import { useTabsStore } from '../../state/tabs';
+import { pinia } from '../../../state/pinia';
+import { useTabsStore } from '../../../state/tabs';
 import { createImmediateMutator } from '../shared/immediateMutation';
 import { useStreamViewStore } from './state';
 

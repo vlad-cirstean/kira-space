@@ -23,7 +23,6 @@ import { formatZonedWeekdayClock } from '@workbench/behaviour/format';
 import { TIMING } from '@workbench/behaviour/timing';
 import { computed, ref, useId, watch } from 'vue';
 import { errorText } from '../../bridge/codedError';
-import { useAutomationsModule } from '../module';
 import ParamsForm from '../run/ParamsForm.vue';
 import { useNextFires } from '../schedule/scheduleQueries';
 import { schedulePresets, timezones } from '../schedule/scheduleText';
@@ -39,7 +38,6 @@ const props = defineProps<{
 const schedule = defineModel<ScriptSchedule>({ required: true });
 // False while the cron or zone is refused, so the editor can hold Save.
 const emit = defineEmits<{ valid: [ok: boolean] }>();
-const ctx = useAutomationsModule();
 const idBase = useId();
 
 function patch(change: Partial<ScriptSchedule>): void {
@@ -92,9 +90,7 @@ watch(
   { immediate: true },
 );
 
-const appName = computed(() =>
-  ctx.ade ? t('common.product.kiraSpace.label') : t('common.product.kiraStudio.label'),
-);
+const appName = computed(() => t('common.product.kiraSpace.label'));
 </script>
 
 <template>

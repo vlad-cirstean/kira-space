@@ -1,7 +1,7 @@
 import type { ConnectionStatus } from '@shared/domain/connection';
 import { type ComputedRef, computed, type Ref, ref } from 'vue';
+import { useTabsStore } from '../../../state/tabs';
 import { useConnectionsStore } from '../../state/connections';
-import { useTabsStore } from '../../state/tabs';
 
 /**
  * §8.4: a restored tab shows only the reconnect button until pressed — nothing loads automatically.

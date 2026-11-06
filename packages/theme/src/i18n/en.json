@@ -1306,7 +1306,7 @@
           "body": "Credential storage is only supported on macOS in this build."
         },
         "unknownEnvelope": {
-          "body": "The stored credential isn’t in this app’s envelope format. Values saved by an earlier version of Kira Studio can’t be read and must be entered again."
+          "body": "The stored credential isn’t in this app’s envelope format. Values saved by an earlier version can’t be read and must be entered again."
         }
       },
       "seed": {
@@ -2614,7 +2614,7 @@
           "body": "The “{option}” option holds a secret that fields mode can’t store. Use URI mode."
         },
         "shuttingDown": {
-          "body": "Kira Studio is shutting down."
+          "body": "Kira Space is shutting down."
         },
         "throttleFinite": {
           "body": "Throttle must be a finite number."
@@ -3572,9 +3572,6 @@
       },
       "kiraSpace": {
         "label": "Kira Space"
-      },
-      "kiraStudio": {
-        "label": "Kira Studio"
       },
       "kubernetes": {
         "label": "Kubernetes"
@@ -16512,10 +16509,6 @@
     },
     "shortcuts": {
       "palette": {
-        "closeTab": {
-          "label": "Close tab"
-        },
-        "empty": "No matching commands",
         "explainQuery": {
           "label": "Explain query"
         },
@@ -16525,27 +16518,14 @@
         "generateData": {
           "label": "Generate data…"
         },
-        "nextTab": {
-          "label": "Next tab"
-        },
-        "placeholder": "Type a command",
-        "previousTab": {
-          "label": "Previous tab"
-        },
         "runStatement": {
           "label": "Run statement"
-        },
-        "toggleOperationsPanel": {
-          "label": "Toggle operations panel"
-        },
-        "toggleProjectPanel": {
-          "label": "Toggle project panel"
         }
       }
     },
     "start": {
       "empty": {
-        "body": "Kira Studio needs somewhere to connect before it can show you anything.",
+        "body": "Kira Space needs somewhere to connect before it can show you anything.",
         "title": "No connections yet"
       },
       "importDataGrip": {

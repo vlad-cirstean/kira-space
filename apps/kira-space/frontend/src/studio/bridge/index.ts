@@ -1,34 +1,20 @@
-import * as AgentService from '@bindings/agentservice.js';
-import * as ApprovalsService from '@bindings/approvalsservice.js';
 import * as AppService from '@bindings/appservice.js';
 import * as ConnectionConfigService from '@bindings/connectionconfigservice.js';
 import * as ConnectionsService from '@bindings/connectionsservice.js';
-import * as CustomScriptsService from '@bindings/customscriptsservice.js';
 import * as DataGripService from '@bindings/datagripservice.js';
 import * as DbMcpService from '@bindings/dbmcpservice.js';
 import * as FilesService from '@bindings/filesservice.js';
 import * as FiltersService from '@bindings/filtersservice.js';
-import * as KeepAwakeService from '@bindings/keepawakeservice.js';
 import * as KibanaService from '@bindings/kibanaservice.js';
-import * as LayoutService from '@bindings/layoutservice.js';
-import * as LifecycleService from '@bindings/lifecycleservice.js';
-import * as LinkService from '@bindings/linkservice.js';
-import * as LlmPromptsService from '@bindings/llmpromptsservice.js';
 import * as MaskRulesService from '@bindings/maskrulesservice.js';
 import type * as WailsModels from '@bindings/models.js';
-import * as PromptsService from '@bindings/promptsservice.js';
 import * as ProofService from '@bindings/proofservice.js';
 import * as QueriesService from '@bindings/queriesservice.js';
 import * as SchemaService from '@bindings/schemaservice.js';
-import * as ScriptRunsService from '@bindings/scriptrunsservice.js';
 import * as ConfigFilesService from '@bindings/studioconfigfilesservice.js';
 import * as OpsService from '@bindings/studioopsservice.js';
 import * as SettingsService from '@bindings/studiosettingsservice.js';
-import * as TabsService from '@bindings/tabsservice.js';
-import * as TerminalService from '@bindings/terminalservice.js';
 import * as TreeService from '@bindings/treeservice.js';
-import * as UpdateService from '@bindings/updateservice.js';
-import * as WindowsService from '@bindings/windowsservice.js';
 import type * as DataGripModels from '@bindings-internal/datagrip/models.js';
 import type {
   ConnectionInput,
@@ -91,28 +77,6 @@ import {
   savedDiscoverQuerySchema,
 } from '@shared/domain/queries';
 import type { ConnectionDdl } from '@shared/domain/schema';
-import type {
-  ScriptRun,
-  ScriptRunArgs,
-  ScriptRunLogChunk,
-  ScriptRunLogPage,
-  ScriptRunPreview,
-  ScriptRunRestoreChoice,
-  ScriptRunRestoreResult,
-  ScriptRunRestoreState,
-  ScriptRunResumeLaunch,
-  ScriptRunStarted,
-} from '@shared/domain/scriptRuns';
-import type {
-  CustomScript,
-  CustomScriptFields,
-  RunFormResult,
-  ScriptDir,
-  ScriptFileView,
-  ScriptMcpServerList,
-  ScriptsSnapshot,
-  SecretValues,
-} from '@shared/domain/scripts';
 import type { SecretStorageStatus } from '@shared/domain/secrets';
 import type { ObjectMeta, RelationColumns, TreeNode } from '@shared/domain/tree';
 import type { TreeVisibility } from '@shared/domain/treeFilter';
@@ -122,14 +86,13 @@ import {
   type MaskRulesChangedEvent,
   type SavedQueriesChangedEvent,
 } from '@shared/protocol/events';
-import { scriptsSnapshotOf } from '@workbench/automations/createCustomScriptsStore';
 import { createCoreControl } from '@workbench/bridge/createCoreControl';
 import { logWarn } from '@workbench/bridge/log';
-import { createOpenExternal } from '@workbench/bridge/openExternal';
 import { on, trust, unwrap, windowKey } from '@workbench/bridge/rpc';
 import type { FormEdit } from '@workbench/config/configForm';
+import { coreBindings, control as hubControl } from '../../bridge';
+import type { TabRecord } from '../../state/tabDomain';
 import type { Settings, SettingsPatch } from '../state/settingsDomain';
-import type { TabRecord } from '../state/tabDomain';
 import { apiControl } from './apiControl';
 
 // bridge/index.ts is the composition root: the only file that imports
@@ -146,8 +109,6 @@ const studioControl = {
   onNewRequest: (cb: () => void): (() => void) => on(CHANNEL.newRequest, cb),
   onImportPostman: (cb: () => void): (() => void) => on(CHANNEL.importPostman, cb),
   onImportDataGrip: (cb: () => void): (() => void) => on(CHANNEL.importDataGrip, cb),
-  onCommandPalette: (cb: () => void): (() => void) => on(CHANNEL.commandPalette, cb),
-  onViewFind: (cb: () => void): (() => void) => on(CHANNEL.viewFind, cb),
   onViewRefresh: (cb: () => void): (() => void) => on(CHANNEL.viewRefresh, cb),
   onViewRun: (cb: () => void): (() => void) => on(CHANNEL.viewRun, cb),
   onViewRunAll: (cb: () => void): (() => void) => on(CHANNEL.viewRunAll, cb),
@@ -584,139 +545,21 @@ const studioControl = {
     unwrap(ConfigFilesService.Open(args)),
   configFilesReveal: (args: { folder: string; file: string }): Promise<void> =>
     unwrap(ConfigFilesService.Reveal(args)),
-  customScriptsList: (): Promise<ScriptsSnapshot> =>
-    unwrap(CustomScriptsService.List()).then((r) => scriptsSnapshotOf(r)),
-  customScriptsCreate: (
-    fields: CustomScriptFields,
-    secretValues: SecretValues | null,
-  ): Promise<CustomScript> =>
-    unwrap(CustomScriptsService.Create({ fields, secretValues })).then((r) =>
-      trust<CustomScript>(r),
-    ),
-  customScriptsDelete: (id: string): Promise<void> => unwrap(CustomScriptsService.Delete({ id })),
-  customScriptsFile: (file: string): Promise<ScriptFileView> =>
-    unwrap(CustomScriptsService.File({ file })).then((r) => trust<ScriptFileView>(r)),
-  customScriptsSaveFile: (file: string, text: string, baseHash: string): Promise<ScriptFileView> =>
-    unwrap(CustomScriptsService.SaveFile({ file, text, baseHash })).then((r) =>
-      trust<ScriptFileView>(r),
-    ),
-  customScriptsForm: (file: string, text: string, edits: FormEdit[]): Promise<RunFormResult> =>
-    unwrap(
-      CustomScriptsService.Form({
-        file,
-        text,
-        edits: edits.map((e) => ({ path: e.path, value: e.value ?? null, unset: e.unset })),
-      }),
-    ).then((r) => trust<RunFormResult>(r)),
-  customScriptsSetSecrets: (id: string, values: SecretValues): Promise<CustomScript> =>
-    unwrap(CustomScriptsService.SetSecrets({ id, values })).then((r) => trust<CustomScript>(r)),
-  customScriptsReorder: (collection: string, ids: string[]): Promise<void> =>
-    unwrap(CustomScriptsService.Reorder({ collection, ids })),
-  customScriptsReorderCollections: (names: string[]): Promise<void> =>
-    unwrap(CustomScriptsService.ReorderCollections({ names })),
-  customScriptsMove: (id: string, collection: string, beforeId: string | null): Promise<void> =>
-    unwrap(CustomScriptsService.Move({ id, collection, beforeId })),
-  customScriptsRenameCollection: (name: string, newName: string): Promise<void> =>
-    unwrap(CustomScriptsService.RenameCollection({ name, newName })),
-  customScriptsDeleteCollection: (name: string): Promise<void> =>
-    unwrap(CustomScriptsService.DeleteCollection({ name })),
-  onCustomScriptsChanged: (cb: (snapshot: ScriptsSnapshot) => void): (() => void) =>
-    on(CHANNEL.customScriptsChanged, (r) => cb(scriptsSnapshotOf(r))),
-
-  scriptRunsList: (limit?: number, taskId?: string): Promise<ScriptRun[]> =>
-    unwrap(ScriptRunsService.List({ limit: limit ?? 0, taskId: taskId ?? '' })).then((r) =>
-      trust<ScriptRun[]>(r ?? []),
-    ),
-  scriptRunsNextFires: (cron: string, timezone: string, count?: number): Promise<number[]> =>
-    unwrap(ScriptRunsService.NextFires({ cron, timezone, count: count ?? 0 })).then((r) =>
-      trust<number[]>(r ?? []),
-    ),
-  scriptRunsStop: (id: string): Promise<void> => unwrap(ScriptRunsService.Stop({ id })),
-  scriptRunsResolveDir: (scriptId: string): Promise<ScriptDir> =>
-    unwrap(ScriptRunsService.ResolveDir({ scriptId })).then((r) => trust<ScriptDir>(r)),
-  scriptRunsMcpServers: (): Promise<ScriptMcpServerList> =>
-    unwrap(ScriptRunsService.McpServers()).then((r) => trust<ScriptMcpServerList>(r)),
-  onScriptRunsChanged: (cb: (run: ScriptRun) => void): (() => void) =>
-    on(CHANNEL.scriptRunsChanged, (r) => cb(trust<ScriptRun>(r))),
-  scriptRunsPreview: (args: ScriptRunArgs): Promise<ScriptRunPreview> =>
-    unwrap(ScriptRunsService.Preview({ ...args, listTasks: args.listTasks ?? false })).then((r) =>
-      trust<ScriptRunPreview>(r),
-    ),
-  scriptRunsStart: (args: ScriptRunArgs, hash: string): Promise<ScriptRunStarted> =>
-    unwrap(ScriptRunsService.Start({ ...args, listTasks: args.listTasks ?? false, hash })).then(
-      (r) => trust<ScriptRunStarted>(r),
-    ),
-  scriptRunsResume: (id: string): Promise<ScriptRunStarted> =>
-    unwrap(ScriptRunsService.Resume({ id })).then((r) => trust<ScriptRunStarted>(r)),
-  scriptRunsRestoreState: (): Promise<ScriptRunRestoreState> =>
-    unwrap(ScriptRunsService.RestoreState()).then((r) => trust<ScriptRunRestoreState>(r)),
-  scriptRunsRestore: (items: ScriptRunRestoreChoice[]): Promise<ScriptRunRestoreResult> =>
-    unwrap(ScriptRunsService.Restore({ items })).then((r) => trust<ScriptRunRestoreResult>(r)),
-  scriptRunsRestoreDismiss: (): Promise<void> => unwrap(ScriptRunsService.RestoreDismiss()),
-  scriptRunsResumeCommand: (runId: string): Promise<ScriptRunResumeLaunch> =>
-    unwrap(ScriptRunsService.ResumeCommand({ runId })).then((r) => trust<ScriptRunResumeLaunch>(r)),
-  scriptRunsReadLog: (id: string, afterSeq: number): Promise<ScriptRunLogPage> =>
-    unwrap(ScriptRunsService.ReadLog({ id, afterSeq })).then((r) => {
-      const page = trust<Partial<ScriptRunLogPage>>(r);
-      return { chunks: page.chunks ?? [], truncated: page.truncated ?? false };
-    }),
-  onScriptRunLog: (
-    cb: (push: { runId: string; chunks: ScriptRunLogChunk[] }) => void,
-  ): (() => void) =>
-    on(CHANNEL.scriptRunLog, (r) => cb(trust<{ runId: string; chunks: ScriptRunLogChunk[] }>(r))),
-  scriptRunsSchedulePreview: (
-    scriptId: string,
-    secrets: Record<string, string[]>,
-  ): Promise<ScriptRunPreview> =>
-    unwrap(ScriptRunsService.SchedulePreview({ scriptId, secrets })).then((r) =>
-      trust<ScriptRunPreview>(r),
-    ),
-  scriptRunsRunScheduleNow: (
-    scriptId: string,
-    hash: string,
-    secrets: Record<string, string[]>,
-  ): Promise<ScriptRunStarted> =>
-    unwrap(ScriptRunsService.RunScheduleNow({ scriptId, hash, secrets })).then((r) =>
-      trust<ScriptRunStarted>(r),
-    ),
-  scriptRunsConfirmAccept: (
-    runId: string,
-    hash: string,
-    secrets: Record<string, string[]>,
-  ): Promise<ScriptRunStarted> =>
-    unwrap(ScriptRunsService.ConfirmAccept({ runId, hash, secrets })).then((r) =>
-      trust<ScriptRunStarted>(r),
-    ),
-  scriptRunsConfirmDecline: (runId: string): Promise<void> =>
-    unwrap(ScriptRunsService.ConfirmDecline({ id: runId })),
 };
 
-// One exported object, composed from the methods shared with Kira Space
-// (createCoreControl.ts), Studio's own 94 remaining methods (studioControl, above) and the module's
-// own 40 (apiControl.ts) — every one of the ~200 `control.xxx()` call sites in the app is
-// unchanged, and mockRuntime.ts's channel map is unchanged, since neither the method names nor
-// their bound-call FQNs moved. Spread order matters not at all here (the three objects' key sets
-// are disjoint by construction).
+// Studio's control: the hub's shared and Space methods, with the Studio-bound ones layered on top.
+// The overrides below share a name with a hub method but bind a Studio service (settings, ops,
+// config files), so Studio files must import this object and Space files the hub's.
+const studioCore = createCoreControl<Settings, Layout, TabRecord, SettingsPatch, AppMode>(
+  { ...coreBindings, settings: SettingsService },
+  { settingsChanged: CHANNEL.studioSettingsChanged },
+);
+
 export const control = {
-  ...createCoreControl<Settings, Layout, TabRecord, SettingsPatch, AppMode>(
-    {
-      settings: SettingsService,
-      layout: LayoutService,
-      tabs: TabsService,
-      lifecycle: LifecycleService,
-      terminal: TerminalService,
-      files: FilesService,
-      windows: WindowsService,
-      keepAwake: KeepAwakeService,
-      update: UpdateService,
-      prompts: PromptsService,
-      approvals: ApprovalsService,
-      llmPrompts: LlmPromptsService,
-      agent: AgentService,
-    },
-    { settingsChanged: CHANNEL.studioSettingsChanged },
-  ),
-  openExternal: createOpenExternal((url) => unwrap(LinkService.OpenExternal({ url }))),
+  ...hubControl,
+  settingsGetAll: studioCore.settingsGetAll,
+  settingsSet: studioCore.settingsSet,
+  onSettingsChanged: studioCore.onSettingsChanged,
   ...apiControl,
   ...studioControl,
 };

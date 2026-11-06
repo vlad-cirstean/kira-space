@@ -1,8 +1,8 @@
 import { t } from '@theme/i18n';
 import { formatBytes } from '@workbench/behaviour/format';
 import { computed } from 'vue';
+import type { DocumentTabRecord } from '../../../state/tabDomain';
 import { useConnectionsStore } from '../../state/connections';
-import type { DocumentTabRecord } from '../../state/tabDomain';
 import { writeDisabledReason } from '../shared/writeGate';
 import { documentRow, getPage, pageVersion } from './page';
 import { useDocumentViewStore } from './state';

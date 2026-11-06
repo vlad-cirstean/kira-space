@@ -3,14 +3,35 @@ import { runCommand } from '@workbench/shortcuts/commands';
 import type { PaletteCommand } from '@workbench/shortcuts/palette';
 import { useAppUpdateStore } from '../state/appUpdate';
 import { useLayoutStore } from '../state/layout';
+import { useModeStore } from '../state/mode';
 import { useOpenedFilesWindowStore } from '../state/openedFilesWindow';
 import { useSettingsStore } from '../state/settings';
 import { useTabsStore } from '../state/tabs';
+import { useKubeTabsStore } from '../studio/kubernetes/tabs';
+import { studioPaletteCommands } from '../studio/shortcuts/studioCommands';
 
-/** Space's palette commands; call once from App setup (the stores resolve there). The getter re-reads labels when the locale changes. */
-export function spacePaletteCommands(): () => PaletteCommand[] {
+// Kubernetes mode keeps its own tab store; the shell store holds no tab there.
+const kubernetesActive = (): boolean => useModeStore().active === 'kubernetes';
+
+/** Tab stepping and closing for the palette and the Window menu. */
+export function nextTab(): void {
+  if (kubernetesActive()) useKubeTabsStore().activateNext();
+  else useTabsStore().activateNextTab();
+}
+
+export function prevTab(): void {
+  if (kubernetesActive()) useKubeTabsStore().activatePrev();
+  else useTabsStore().activatePrevTab();
+}
+
+export function closeTab(): void {
+  if (kubernetesActive()) useKubeTabsStore().closeActive();
+  else useTabsStore().closeActiveTab();
+}
+
+/** The app's palette commands; call once from App setup (the stores resolve there). The getter re-reads labels when the locale changes. */
+export function appPaletteCommands(): () => PaletteCommand[] {
   const layoutStore = useLayoutStore();
-  const tabsStore = useTabsStore();
   const settingsStore = useSettingsStore();
   const appUpdateStore = useAppUpdateStore();
   const filesWindow = useOpenedFilesWindowStore();
@@ -50,17 +71,18 @@ export function spacePaletteCommands(): () => PaletteCommand[] {
     {
       id: 'tab-next',
       label: t('space.shortcuts.palette.nextTab.label'),
-      run: tabsStore.activateNextTab,
+      run: nextTab,
     },
     {
       id: 'tab-prev',
       label: t('space.shortcuts.palette.previousTab.label'),
-      run: tabsStore.activatePrevTab,
+      run: prevTab,
     },
     {
       id: 'tab-close',
       label: t('space.shortcuts.palette.closeTab.label'),
-      run: tabsStore.closeActiveTab,
+      run: closeTab,
     },
+    ...studioPaletteCommands(),
   ];
 }

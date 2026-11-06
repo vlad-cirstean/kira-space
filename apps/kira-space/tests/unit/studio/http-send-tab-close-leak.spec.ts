@@ -12,7 +12,7 @@ import type { HttpResponseWire } from '@shared/domain/http';
 import { deferred, sleep } from '@workbench/testing/unit/async';
 import { restoreAfterEach } from '@workbench/testing/unit/restoreAfterEach';
 import { setActivePinia } from 'pinia';
-import { pinia } from '../../../frontend/src/studio/state/pinia';
+import { pinia } from '../../../frontend/src/state/pinia';
 
 setActivePinia(pinia);
 
@@ -40,7 +40,7 @@ beforeEach(() => {
   ).variablesListEnvironments = async () => [];
 });
 const { openApiRequestTab } = await import('../../../frontend/src/studio/api/tabs');
-const { useTabsStore } = await import('../../../frontend/src/studio/state/tabs');
+const { useTabsStore } = await import('../../../frontend/src/state/tabs');
 const { useHttpRequestViewStore } = await import(
   '../../../frontend/src/studio/views/httprequest/state'
 );

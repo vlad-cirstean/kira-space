@@ -8,9 +8,9 @@ import {
 } from '@kira/api-core';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
+import type { HttpRequestTabRecord } from '../../../state/tabDomain';
 import type { VariableSupport } from '../../api/state/variableCompletion';
 import { patchHttpRequestTabState } from '../../api/tabs';
-import type { HttpRequestTabRecord } from '../../state/tabDomain';
 import FieldRowsTable from '../shared/fields/FieldRowsTable.vue';
 
 // A derived two-way editor over the URL, never a stored `params` array — `pairs`
