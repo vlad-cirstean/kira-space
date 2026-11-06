@@ -24,9 +24,11 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbaudit"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/enginecache"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/homefold"
@@ -218,6 +220,8 @@ func (w *Wired) wireEmbedded(deps appcore.Deps, installer harness.MCPInstaller, 
 	kubeSvc := &bridge.KubernetesService{BoundService: kubernetes.NewBoundService(deps.Repos.KubeClusters, deps.Events, append([]kubernetes.Option{kubernetes.WithRecorder(bridge.KubeRecorder{Host: deps.Router.Host()})}, opts.KubernetesExtra...)...)}
 	dbMcpSvc := bridge.NewDbMcpService(deps, installer, dbMcpApprovals, proofSvc, kubernetes.ServiceOf(kubeSvc.BoundService))
 	dbMcpSvc.Port = opts.DbMcpPort
+	dbMcpSvc.SessionAudit = w.dbAudit
+	dbMcpApprovals.SetObserver(w.dbAudit)
 	dbMcpSessions := bridge.NewDbMcpSessions(dbMcpSvc)
 
 	// The ops tools read live runs, so the server starts only once the run service exists.
@@ -242,6 +246,19 @@ func (w *Wired) wireEmbedded(deps appcore.Deps, installer harness.MCPInstaller, 
 // session pool.
 func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *dbmcp.SessionPool) {
 	deps, repositories, emitter := w.Deps, w.Repos, w.Emitter
+	if err := repositories.DbAudit.ReconcileRunning("app exited"); err != nil {
+		slog.Warn("db audit: reconcile", "scope", "startup", "err", err)
+	}
+	w.dbAudit = dbaudit.New(dbaudit.Deps{
+		Store: repositories.DbAudit, Redactor: dbm.router,
+		ConnName: func(id string) string {
+			if c, err := repositories.Connections.Get(id); err == nil && c != nil {
+				return c.Name
+			}
+			return ""
+		},
+		Emit: func(taskID string) { emitter.Emit(adewire.ChannelDbAudit, adewire.DbAuditEvent{TaskID: taskID}) },
+	})
 	proofDeps := proof.Deps{
 		Repo: repositories.Proof, Prompts: w.Prompts, Approvals: w.Approvals,
 		Emit: func(channel string, payload any) { emitter.Emit(channel, payload) },

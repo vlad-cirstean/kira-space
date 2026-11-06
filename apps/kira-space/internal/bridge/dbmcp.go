@@ -50,6 +50,8 @@ type DbMcpService struct {
 	Limits []dbmcp.Limit
 	// Port overrides dbmcp.DefaultPort (flow tests); zero keeps the default.
 	Port int
+	// SessionAudit records the session server's tool calls; the external server never audits.
+	SessionAudit dbmcp.Auditor
 
 	embedded embedded.Service[*dbmcp.Server, DbMcpStatus]
 }
@@ -152,7 +154,9 @@ func (s *DbMcpService) serverConfig(port int) dbmcp.Config {
 // func, not a method: Wails binds every exported method, and a bound pool would hand tokens to the renderer.
 func NewDbMcpSessions(s *DbMcpService) *dbmcp.SessionPool {
 	return dbmcp.NewSessionPool(s.Approvals, func(*dbmcp.SessionTokens) dbmcp.Config {
-		return s.serverConfig(dbmcp.EphemeralPort)
+		cfg := s.serverConfig(dbmcp.EphemeralPort)
+		cfg.Audit = s.SessionAudit
+		return cfg
 	})
 }
 

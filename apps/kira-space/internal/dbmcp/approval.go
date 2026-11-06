@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
@@ -54,6 +55,38 @@ const (
 	ApprovalTooLarge  // the held result is over the per-result cap; no human saw it
 	ApprovalHeldFull  // held results already fill the total cap; no human saw this one
 )
+
+// String is the outcome's audit-trail name.
+func (o ApprovalOutcome) String() string {
+	switch o {
+	case ApprovalApproved:
+		return "approved"
+	case ApprovalDenied:
+		return "denied"
+	case ApprovalTimedOut:
+		return "timedOut"
+	case ApprovalAbandoned:
+		return "abandoned"
+	case ApprovalQueueFull:
+		return "queueFull"
+	case ApprovalTooLarge:
+		return "tooLarge"
+	case ApprovalHeldFull:
+		return "heldFull"
+	}
+	return "unknown"
+}
+
+// ApprovalObserver sees every request that passes RequestChoice. ApprovalRaised runs once the request is
+// queued; ApprovalResolved runs once with the final outcome. A request refused before queueing (queue
+// full, result too large) has no ApprovalRaised and a req.RequestID of "". Calls run outside the
+// broker's lock.
+type ApprovalObserver interface {
+	ApprovalRaised(req ApprovalRequest)
+	ApprovalResolved(req ApprovalRequest, outcome ApprovalOutcome)
+}
+
+type observerBox struct{ o ApprovalObserver }
 
 // ApprovalChoice is what an approver ticked on the item. Zero for every kind but run_query's pre-run items.
 type ApprovalChoice struct {
@@ -211,8 +244,10 @@ type ApprovalExemption struct {
 type ApprovalOrigin struct {
 	Client string
 	Cwd    string
-	// SessionID and TaskID are set only for a call on the session server.
-	SessionID, TaskID string
+	// SessionID, TaskID, StepID and RunID are set only for a call on the session server.
+	SessionID, TaskID, StepID, RunID string
+	// CallID is the audit row of the tool call this request was raised in; empty when not audited.
+	CallID string
 }
 
 func (r ApprovalRequest) subject() string {
@@ -248,7 +283,14 @@ type ApprovalBroker struct {
 	// heldBytes totals the Response.Bytes of queued entries, under mu.
 	heldBytes           int
 	maxResult, maxTotal int
+	observer            atomic.Pointer[observerBox]
 }
+
+// SetObserver wires the audit observer; call once at startup.
+func (b *ApprovalBroker) SetObserver(o ApprovalObserver) { b.observer.Store(&observerBox{o}) }
+
+// SubjectKey is the approvals kind key of the request.
+func (r ApprovalRequest) SubjectKey() string { return r.subject() }
 
 // NewApprovalBroker builds a broker over q and registers it as owner of its kinds; a nil q gets a
 // private queue (tests).
@@ -333,19 +375,29 @@ func (b *ApprovalBroker) Request(ctx context.Context, req ApprovalRequest) Appro
 // returns ApprovalTooLarge, over the total ApprovalHeldFull, and no item is raised. Its bytes count
 // until the entry resolves, whatever the path (answer, timeout, abandon).
 func (b *ApprovalBroker) RequestChoice(ctx context.Context, req ApprovalRequest) (ApprovalOutcome, ApprovalChoice) {
+	outcome, choice, queued := b.requestChoice(ctx, req)
+	if box := b.observer.Load(); box != nil {
+		box.o.ApprovalResolved(queued, outcome)
+	}
+	return outcome, choice
+}
+
+// requestChoice is RequestChoice's body; queued is the request as the queue saw it (RequestID minted),
+// or req unchanged when it was refused before queueing.
+func (b *ApprovalBroker) requestChoice(ctx context.Context, req ApprovalRequest) (ApprovalOutcome, ApprovalChoice, ApprovalRequest) {
 	b.mu.Lock()
 	if b.queue.Len() >= maxPendingApprovals {
 		b.mu.Unlock()
-		return ApprovalQueueFull, ApprovalChoice{}
+		return ApprovalQueueFull, ApprovalChoice{}, req
 	}
 	if req.Response != nil {
 		switch {
 		case req.Response.Bytes > b.maxResult:
 			b.mu.Unlock()
-			return ApprovalTooLarge, ApprovalChoice{}
+			return ApprovalTooLarge, ApprovalChoice{}, req
 		case b.heldBytes+req.Response.Bytes > b.maxTotal:
 			b.mu.Unlock()
-			return ApprovalHeldFull, ApprovalChoice{}
+			return ApprovalHeldFull, ApprovalChoice{}, req
 		}
 		b.heldBytes += req.Response.Bytes
 	}
@@ -361,26 +413,29 @@ func (b *ApprovalBroker) RequestChoice(ctx context.Context, req ApprovalRequest)
 	// Under mu so a fast answer cannot Remove before this Put.
 	b.Queue.Put(itemOf(entry.req))
 	b.mu.Unlock()
+	if box := b.observer.Load(); box != nil {
+		box.o.ApprovalRaised(entry.req)
+	}
 
 	timer := time.NewTimer(time.Until(entry.req.ExpiresAt))
 	defer timer.Stop()
 	select {
 	case r := <-entry.result:
-		return r.outcome, r.choice
+		return r.outcome, r.choice, entry.req
 	case <-timer.C:
 		if b.resolve(entry.req.RequestID, ApprovalTimedOut, ApprovalChoice{}) == ApprovalActionResolved {
-			return ApprovalTimedOut, ApprovalChoice{}
+			return ApprovalTimedOut, ApprovalChoice{}, entry.req
 		}
 		// Approve/Deny won the race in the instant between the timer firing and this goroutine
 		// taking b.mu — take their answer instead of overriding it.
 		r := <-entry.result
-		return r.outcome, r.choice
+		return r.outcome, r.choice, entry.req
 	case <-ctx.Done():
 		if b.resolve(entry.req.RequestID, ApprovalAbandoned, ApprovalChoice{}) == ApprovalActionResolved {
-			return ApprovalAbandoned, ApprovalChoice{}
+			return ApprovalAbandoned, ApprovalChoice{}, entry.req
 		}
 		r := <-entry.result
-		return r.outcome, r.choice
+		return r.outcome, r.choice, entry.req
 	}
 }
 

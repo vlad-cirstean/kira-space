@@ -49,6 +49,15 @@ func (r *DbAuditRepo) FinishCall(id, status string, endedMs int64, errText strin
 	return nil
 }
 
+// SetStatement stores a call's redacted statement once it can be produced.
+func (r *DbAuditRepo) SetStatement(id, statement string, length int, withheld, truncated bool) error {
+	if _, err := r.DB.Exec(`UPDATE ade_db_audit SET statement = ?, statement_len = ?, statement_withheld = ?, statement_truncated = ?
+		WHERE id = ? AND kind = 'call'`, statement, length, withheld, truncated, id); err != nil {
+		return fmt.Errorf("repos: set db audit statement %s: %w", id, err)
+	}
+	return nil
+}
+
 // RaiseApproval inserts an approval row; ResolvedMs nil leaves it pending.
 func (r *DbAuditRepo) RaiseApproval(a model.DbAuditApproval) error {
 	outcome := a.Outcome
@@ -146,4 +155,3 @@ func (r *DbAuditRepo) ReconcileRunning(msg string) error {
 	}
 	return nil
 }
-

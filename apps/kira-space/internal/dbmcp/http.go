@@ -48,7 +48,7 @@ func withRequestContext(next http.Handler) http.Handler {
 		origin := ApprovalOrigin{Client: clientFromUserAgent(r.UserAgent())}
 		info := auth.TokenInfoFromContext(reqCtx)
 		if id, ok := sessionOf(info); ok {
-			origin.SessionID, origin.TaskID, origin.Cwd = id.SessionID, id.TaskID, id.Cwd
+			origin.SessionID, origin.TaskID, origin.StepID, origin.RunID, origin.Cwd = id.SessionID, id.TaskID, id.StepID, id.RunID, id.Cwd
 			if sctx, ok := info.Extra[sessionCtxKey].(context.Context); ok {
 				// A revoked session token ends its calls in flight.
 				var cancel context.CancelFunc

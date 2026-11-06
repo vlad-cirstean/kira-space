@@ -987,6 +987,16 @@ func (s *AdeTaskService) TaskProofs(ctx context.Context, args adewire.TaskArgs) 
 	return adewire.TaskProofsResult{Proofs: rows}, adeTaskError(err)
 }
 
+// DbAudit lists the Kira DB calls and approvals of a task's agent sessions, newest first. Archived tasks work too.
+func (s *AdeTaskService) DbAudit(ctx context.Context, args adewire.TaskArgs) (adewire.DbAuditResult, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return adewire.DbAuditResult{}, err
+	}
+	rows, err := s.Engine.DbAudit(ctx, args.TaskID)
+	return adewire.DbAuditResult{Entries: rows}, adeTaskError(err)
+}
+
 // ProofChoices lists the closed proof sessions no task holds yet.
 func (s *AdeTaskService) ProofChoices(ctx context.Context) (adewire.ProofChoicesResult, error) {
 	ctx = adeUserCtx(ctx)

@@ -70,6 +70,8 @@ type TaskBoardDeps struct {
 	Proofs ProofLinks
 	// DbMcp mints the per-session Kira DB server entry; nil makes a db_mcp step fail to launch.
 	DbMcp DbMcpSessions
+	// DbAudit reads the Kira DB audit trail of a task.
+	DbAudit DbAuditReader
 	// Runner spawns git for repo identification (folder import).
 	Runner gitclient.Runner
 	// Ops is the operation log: agent sessions, worktree setups and MCP tool calls land in it.

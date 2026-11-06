@@ -219,7 +219,7 @@ func wireAdeTask(
 	gitPath := adeGitPathSetting(repositories)
 	board := ade.NewTaskBoard(ade.TaskBoardDeps{
 		Agent:  agents,
-		Proofs: proofs, DbMcp: dbMcp,
+		Proofs: proofs, DbMcp: dbMcp, DbAudit: repositories.DbAudit,
 		ContextFile: runs.ContextFile,
 		AgentConfig: runs.AgentConfig, Servers: runs.Servers,
 		Ops:     git.opLog,

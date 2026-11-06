@@ -609,6 +609,58 @@ type TaskProofsResult struct {
 	Proofs []TaskProof `json:"proofs"`
 }
 
+// DbAuditLimit is one limit an exemption request asks to lift, with its configured threshold.
+type DbAuditLimit struct {
+	Name      string `json:"name"`
+	Threshold string `json:"threshold"`
+}
+
+// DbAuditApproval is one approval raised inside a Kira DB call. Outcome is pending, approved,
+// denied, timedOut, abandoned, queueFull, tooLarge or heldFull.
+type DbAuditApproval struct {
+	ID              string         `json:"id"`
+	Subject         string         `json:"subject"`
+	Reason          string         `json:"reason"`
+	Stage           string         `json:"stage"`
+	Outcome         string         `json:"outcome"`
+	RaisedAt        int64          `json:"raisedAt"`
+	ResolvedAt      *int64         `json:"resolvedAt"`
+	ExemptionLimits []DbAuditLimit `json:"exemptionLimits"`
+	ExemptionReason string         `json:"exemptionReason"`
+}
+
+// DbAuditEntry is one tool call of an agent session on the Kira DB session server. Statement is
+// masked (no literals); Status is running, ok, error, refused or cancelled.
+type DbAuditEntry struct {
+	ID                 string            `json:"id"`
+	SessionID          string            `json:"sessionId"`
+	StepID             string            `json:"stepId"`
+	StepName           string            `json:"stepName"`
+	Tool               string            `json:"tool"`
+	ConnectionName     string            `json:"connectionName"`
+	Mode               string            `json:"mode"`
+	Target             string            `json:"target"`
+	Statement          string            `json:"statement"`
+	StatementLen       int               `json:"statementLen"`
+	StatementWithheld  bool              `json:"statementWithheld"`
+	StatementTruncated bool              `json:"statementTruncated"`
+	Summary            string            `json:"summary"`
+	Status             string            `json:"status"`
+	Error              string            `json:"error"`
+	StartedAt          int64             `json:"startedAt"`
+	DurationMs         *int64            `json:"durationMs"`
+	Approvals          []DbAuditApproval `json:"approvals"`
+}
+
+type DbAuditResult struct {
+	Entries []DbAuditEntry `json:"entries"`
+}
+
+// DbAuditEvent is the payload of ChannelDbAudit: the task whose trail changed.
+type DbAuditEvent struct {
+	TaskID string `json:"taskId"`
+}
+
 // ProofChoice is a closed proof session no task holds yet.
 type ProofChoice struct {
 	ProofID  string `json:"proofId"`

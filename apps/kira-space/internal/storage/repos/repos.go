@@ -33,6 +33,7 @@ type Repos struct {
 	AdeSessionSandbox     *AdeSessionSandboxRepo
 	AdeTrackedItems       *AdeTrackedItemsRepo
 	OpLog                 *OpLogRepo
+	DbAudit               *DbAuditRepo
 	Connections           *ConnectionsRepo
 	SavedQueries          *SavedQueriesRepo
 	FilterHistory         *FilterHistoryRepo
@@ -90,6 +91,7 @@ func New(db *sql.DB) (*Repos, error) {
 		AdeSessionSandbox:     &AdeSessionSandboxRepo{DB: db},
 		AdeTrackedItems:       &AdeTrackedItemsRepo{DB: db},
 		OpLog:                 &OpLogRepo{DB: db},
+		DbAudit:               &DbAuditRepo{DB: db},
 		Connections:           &ConnectionsRepo{DB: db},
 		SavedQueries:          &SavedQueriesRepo{DB: db},
 		FilterHistory:         &FilterHistoryRepo{DB: db},

@@ -32,6 +32,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/tree"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
+	"github.com/kirathecat/kira-studio/internal/mcpcall"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -175,6 +176,8 @@ type Config struct {
 	Limits []Limit
 	// Prompts resolves the editable instruction and tool texts; nil means the registry defaults.
 	Prompts llmprompts.Source
+	// Audit records the tool calls of agent sessions; set on the session server only.
+	Audit Auditor
 	// Logger receives every operational log line. A nil Logger falls back to slog.Default().
 	Logger *slog.Logger
 }
@@ -412,6 +415,9 @@ func (s *Server) buildMCPServer() *mcp.Server {
 		s.addAPITools(srv, src)
 	}
 
+	if s.cfg.Audit != nil {
+		mcpcall.Record(srv, s.auditHook)
+	}
 	return srv
 }
 

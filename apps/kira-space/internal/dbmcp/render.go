@@ -116,6 +116,18 @@ func toolError(err error) (*mcp.CallToolResult, any, error) {
 	return nil, nil, err
 }
 
+// errorCode extracts the code of an adapter or ipcerr failure; false for an internal fault.
+func errorCode(err error) (string, bool) {
+	if code, ok := adapters.CodeOf(err); ok {
+		return string(code), true
+	}
+	var ipcErr *ipcerr.Error
+	if errors.As(err, &ipcErr) {
+		return string(ipcErr.Code), true
+	}
+	return "", false
+}
+
 // maskedToolError is toolError's own sibling for a query executed against a connection with
 // active mask rules: a Postgres/MySQL driver error routinely embeds the value
 // that failed — a type-cast error names the literal it couldn't parse, for instance — so passing
@@ -125,12 +137,8 @@ func toolError(err error) (*mcp.CallToolResult, any, error) {
 // value-free description. An internal fault (neither an *adapters.Error nor an *ipcerr.Error)
 // still returns as a bare Go error, same as toolError — there is no adapter message to withhold.
 func maskedToolError(err error) (*mcp.CallToolResult, any, error) {
-	if code, ok := adapters.CodeOf(err); ok {
+	if code, ok := errorCode(err); ok {
 		return errResult(fmt.Sprintf("%s: query failed (message withheld — this connection has active PII masking rules)", code))
-	}
-	var ipcErr *ipcerr.Error
-	if errors.As(err, &ipcErr) {
-		return errResult(fmt.Sprintf("%s: query failed (message withheld — this connection has active PII masking rules)", ipcErr.Code))
 	}
 	return nil, nil, err
 }
