@@ -22,7 +22,7 @@ import { hydrateThenSubscribe } from './hydrateThenSubscribe';
 // `--kira-graph-font-size` CSS variable is the same idiom, the other way round: real only for
 // Space, so it lives in Space's own `onApplyAppearance` instead of this shared function.
 
-type SettingsShape = { appearance: AppearanceSettings } & Record<string, Record<string, unknown>>;
+type SettingsShape = Record<string, Record<string, unknown>>;
 
 export interface SettingsControl<Se, SeP> {
   settingsGetAll(): Promise<Se>;
@@ -82,14 +82,14 @@ export function createSettingsStore<S extends string, Se extends SettingsShape, 
 
       const { extra, onApplyAppearance } = extend({ settingsState });
 
+      // A store without an `appearance` section (the Studio-module settings) owns no theme.
       function applyAppearance(): void {
+        const appearance = (settingsState as { appearance?: AppearanceSettings }).appearance;
+        if (!appearance) return;
         const root = document.documentElement.style;
-        root.setProperty('--kira-font-family', settingsState.appearance.fontFamily);
-        root.setProperty('--kira-font-size', `${settingsState.appearance.fontSize}px`);
-        root.setProperty(
-          '--kira-row-height',
-          `${ROW_HEIGHT_PX[settingsState.appearance.rowDensity]}px`,
-        );
+        root.setProperty('--kira-font-family', appearance.fontFamily);
+        root.setProperty('--kira-font-size', `${appearance.fontSize}px`);
+        root.setProperty('--kira-row-height', `${ROW_HEIGHT_PX[appearance.rowDensity]}px`);
         onApplyAppearance?.();
       }
 

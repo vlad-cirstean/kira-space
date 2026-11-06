@@ -14,6 +14,7 @@ import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { formatDateTime } from '@workbench/behaviour/format';
 import { computed, ref, useId } from 'vue';
+import type { SettingsPaneProps } from '../../../workbench/settings/types';
 import { useApiAgentAccess } from '../../api/state/apiConfig';
 import ClusterMcpDialog from '../../kubernetes/components/ClusterMcpDialog.vue';
 import { useClusters } from '../../kubernetes/queries';
@@ -23,7 +24,6 @@ import { useDbMcpStore } from '../../state/dbmcp';
 import { loadMaskRuleCounts, maskRuleCountsQueryKey } from '../../state/maskRules';
 import { useStudioSettingsStore } from '../../state/settings';
 import ScriptsMcpSection from './ScriptsMcpSection.vue';
-import type { SettingsPaneProps } from './types';
 
 // P103 Part 2 (§5.5): extracted verbatim from workbench/SettingsDialog.vue's own
 // `v-else-if="activeSection === 'Database MCP'"` branch. Bypasses draft/Save entirely —

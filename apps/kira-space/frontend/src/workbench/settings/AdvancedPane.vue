@@ -8,6 +8,7 @@ import LogLevelField from '@workbench/settings/fields/LogLevelField.vue';
 import NotifyPromptsField from '@workbench/settings/fields/NotifyPromptsField.vue';
 import { computed, useId } from 'vue';
 import { control } from '../../bridge/control';
+import StudioAdvancedFields from '../../studio/workbench/settings/StudioAdvancedFields.vue';
 import type { SettingsPaneProps } from './types';
 
 // P103 Part 2 (§5.5): extracted verbatim from workbench/SettingsDialog.vue's own
@@ -60,6 +61,13 @@ function setSources(ignore: boolean): void {
         t('space.settings.advanced.ignoreRepoSettings.description')
       }}</FieldDescription>
     </Field>
+    <StudioAdvancedFields
+      :active="active"
+      :draft="draft"
+      :is-at-default="isAtDefault"
+      :reset-leaf="resetLeaf"
+      :register-field-error="registerFieldError"
+    />
     <NotifyPromptsField
       :advanced="draft.advanced"
       :is-at-default="isAtDefault"

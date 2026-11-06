@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { defaultSettings as spaceDefaults } from '../../../frontend/src/state/settingsDomain';
 import { defaultSettings } from '../../../frontend/src/studio/state/settingsDomain';
 import type { ControlSnapshot } from '../../ipc/support/types';
 import { expect, test } from './fixtures';
@@ -102,7 +103,7 @@ test('colouring off at boot — both columns plain, no inline colour at all', as
         channel: IPC.settingsGetAll,
         response: {
           ...defaultSettings,
-          appearance: { ...defaultSettings.appearance, rowColoring: false },
+          appearance: { ...spaceDefaults.appearance, rowColoring: false },
         },
       },
     ],
@@ -120,7 +121,7 @@ test('saving the toggle repaints the open grid', async ({ relaunch }) => {
   // untouched defaults back, and patchSettings would revert the flag right after Save).
   const flippedSettings = {
     ...defaultSettings,
-    appearance: { ...defaultSettings.appearance, rowColoring: false },
+    appearance: { ...spaceDefaults.appearance, rowColoring: false },
   };
   const { window: page } = await relaunch({
     control: [

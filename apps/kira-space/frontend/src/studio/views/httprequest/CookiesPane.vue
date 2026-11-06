@@ -12,7 +12,7 @@ import { ICON } from '@theme/icons';
 import { matchesQuery } from '@workbench/behaviour/match';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed } from 'vue';
-import { useStudioSettingsStore } from '../../state/settings';
+import { useSettingsStore } from '../../../state/settings';
 import { clearJarCookies, deleteJarCookie } from './cookies';
 import { useHttpRequestViewStore } from './state';
 
@@ -32,7 +32,6 @@ const props = defineProps<{
   response?: HttpResponseWire | null;
 }>();
 
-const settingsStore = useStudioSettingsStore();
 const confirmDialogStore = useConfirmDialogStore();
 
 const httpRequestViewStore = useHttpRequestViewStore();
@@ -107,7 +106,7 @@ async function onClearAll(): Promise<void> {
 }
 
 function onEditGlobalDefaults(): void {
-  settingsStore.openSettingsAt('Api');
+  useSettingsStore().openSettingsAt('Api');
 }
 
 // --- response mode ---

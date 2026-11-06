@@ -1,4 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
+import { defaultSettings as spaceDefaults } from '../../../frontend/src/state/settingsDomain';
 import { defaultSettings } from '../../../frontend/src/studio/state/settingsDomain';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
 import { expect, test } from './fixtures';
@@ -596,7 +597,7 @@ test('the SQL grid still tracks Data font size after the chrome scale lands (P12
   // test changes.
   const savedSettings = {
     ...defaultSettings,
-    appearance: { ...defaultSettings.appearance, fontSize: 16 },
+    appearance: { ...spaceDefaults.appearance, fontSize: 16 },
   };
   const { window: page } = await relaunch({
     control: [...CONTROL, { channel: IPC.settingsSet, response: savedSettings }],

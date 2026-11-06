@@ -5,7 +5,7 @@ import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { useId } from 'vue';
-import type { SettingsPaneProps } from './types';
+import type { SettingsPaneProps } from '../../../workbench/settings/types';
 
 // P103 Part 2 (§5.5): extracted verbatim from workbench/SettingsDialog.vue's own
 // `v-else-if="activeSection === 'Data'"` branch.

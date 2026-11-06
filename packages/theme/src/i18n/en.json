@@ -16312,10 +16312,6 @@
           "description": "The estimated rows a query’s plan reads, not the rows it returns. At or above it, the console’s explain and auto-explain warn you, and the database MCP server refuses an agent’s query before it runs where the connection’s MCP tab has the check on. Not comparable to the engines’ own cost figures.",
           "label": "Expensive query threshold (rows)"
         },
-        "logLevel": {
-          "description": "Verbosity of Kira Studio’s own diagnostic log.",
-          "label": "Log level"
-        },
         "opLogRetention": {
           "label": "Operation log retention (days)"
         }
@@ -16340,12 +16336,6 @@
         "rowColoring": {
           "description": "Colour grid values by their column’s data type. Off renders every row in the plain text colour.",
           "label": "Row colouring"
-        },
-        "rowDensity": {
-          "description": "Applies to the tree, the grid and every list."
-        },
-        "wordWrap": {
-          "description": "Long lines wrap instead of scrolling. Applies to the query console, the MongoDB console and the cell editor."
         }
       },
       "cache": {
@@ -16405,7 +16395,7 @@
         },
         "focus": {
           "description": "When a query or result waits for approval, show the window and switch to its desktop.",
-          "label": "Bring Kira Studio forward for approvals"
+          "label": "Bring Kira Space forward for approvals"
         },
         "kube": {
           "empty": {
@@ -16471,11 +16461,6 @@
         },
         "tokenValid": {
           "body": "Token valid until {date}."
-        }
-      },
-      "footer": {
-        "stored": {
-          "status": "Stored in {path}"
         }
       },
       "nav": {

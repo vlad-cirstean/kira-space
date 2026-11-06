@@ -16,8 +16,8 @@ import type {
 } from 'slickgrid';
 import { SlickEventHandler, type SlickHybridSelectionModel, type SlickRange } from 'slickgrid';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { useSettingsStore } from '../../../state/settings';
 import { useCellSelectionStore } from '../../state/cellSelection';
-import { useStudioSettingsStore } from '../../state/settings';
 import { classesFrom } from '../../theme/cellClass';
 import { categoryForTypeClass } from '../../theme/icons';
 import { disambiguateNames, type RowSnapshot } from '../shared/clipboardFormats';
@@ -71,7 +71,7 @@ import { useConsoleViewStore } from './state';
 
 const cellSelectionStore = useCellSelectionStore();
 const contextMenuStore = useContextMenuStore();
-const settingsStore = useStudioSettingsStore();
+const settingsStore = useSettingsStore();
 const consoleViewStore = useConsoleViewStore();
 
 // P30 §3 — the console result grid's tabular branch, migrated off @tanstack/vue-virtual onto the

@@ -10,6 +10,15 @@ import { useLlmPromptsShellExtra } from '@workbench/state/llmPromptDrafts';
 import { computed } from 'vue';
 import { type Section, sections, useSettingsStore } from '../state/settings';
 import { defaultSettings, type SettingsPatch } from '../state/settingsDomain';
+import { useStudioSettingsStore } from '../studio/state/settings';
+import {
+  type SettingsPatch as StudioPatch,
+  defaultSettings as studioDefaults,
+} from '../studio/state/settingsDomain';
+import ApiPane from '../studio/workbench/settings/ApiPane.vue';
+import CachePane from '../studio/workbench/settings/CachePane.vue';
+import DatabaseMcpPane from '../studio/workbench/settings/DatabaseMcpPane.vue';
+import DataPane from '../studio/workbench/settings/DataPane.vue';
 import AdvancedPane from './settings/AdvancedPane.vue';
 import AgentPane from './settings/AgentPane.vue';
 import AppearancePane from './settings/AppearancePane.vue';
@@ -21,17 +30,12 @@ import MemoryPane from './settings/MemoryPane.vue';
 import MobileAccessPane from './settings/MobileAccessPane.vue';
 import UpdatesPane from './settings/UpdatesPane.vue';
 
-// Kira Studio's own workbench/SettingsDialog.vue — only the sections still relevant to a repo-only
-// workbench (state/settings.ts's own `sections`).
-// Now a thin composition over SettingsShell.vue plus this app's own panes
-// (workbench/settings/*.vue — see SettingsShell.vue's own file-level comment for what stays
-// app-side and why). Everything genuinely app-specific stays here: which three of Settings'
-// sections this dialog edits, the dialog's own width/height, the deep-link reset, and the footer
-// markup (its one small, real difference from Kira Studio's own — see SettingsShell.vue's
-// comment #2).
+// One dialog: Space's panes, then the Studio modules' (Data, Cache, Api, Database MCP). The draft
+// spans both settings stores; `save` splits the changed leaves back to the store that owns them.
 const emit = defineEmits<{ close: [] }>();
 
 const settingsStore = useSettingsStore();
+const studioSettings = useStudioSettingsStore();
 const promptsExtra = useLlmPromptsShellExtra();
 const { info: agentInfo } = useAgentInfo();
 
@@ -45,6 +49,10 @@ const sectionLabels = computed<Record<Section, string>>(() => ({
   'Mobile access': t('space.settings.nav.mobileAccess.label'),
   Agent: agentInfo.value.productLabel,
   Memory: t('common.module.memory.label'),
+  Data: t('studio.settings.nav.data.label'),
+  Cache: t('studio.settings.nav.cache.label'),
+  Api: t('studio.mode.api.label'),
+  'Database MCP': t('studio.settings.nav.databaseMcp.label'),
   Prompts: t('llmPrompts.nav.label'),
   Advanced: t('common.advanced.label'),
 }));
@@ -53,8 +61,22 @@ const sectionLabels = computed<Record<Section, string>>(() => ({
 // was opened with.
 useSettingsDeepLinkReset(settingsStore);
 
-async function save(patch: SettingsPatch): Promise<void> {
-  await settingsStore.patchSettings(patch);
+type DraftPatch = SettingsPatch & {
+  data?: StudioPatch['data'];
+  cache?: StudioPatch['cache'];
+  api?: StudioPatch['api'];
+  studioAdvanced?: StudioPatch['advanced'];
+};
+
+async function save(patch: DraftPatch): Promise<void> {
+  const { data, cache, api, studioAdvanced, ...space } = patch;
+  const studio: StudioPatch = {};
+  if (data) studio.data = data;
+  if (cache) studio.cache = cache;
+  if (api) studio.api = api;
+  if (studioAdvanced) studio.advanced = studioAdvanced;
+  if (Object.keys(space).length > 0) await settingsStore.patchSettings(space);
+  if (Object.keys(studio).length > 0) await studioSettings.patchSettings(studio);
 }
 </script>
 
@@ -71,6 +93,10 @@ async function save(patch: SettingsPatch): Promise<void> {
       memory: defaultSettings.memory,
       capture: defaultSettings.capture,
       tracking: defaultSettings.tracking,
+      data: studioDefaults.data,
+      cache: studioDefaults.cache,
+      api: studioDefaults.api,
+      studioAdvanced: studioDefaults.advanced,
       ade: {
         headlessSettingSources: defaultSettings.ade.headlessSettingSources,
       },
@@ -83,6 +109,10 @@ async function save(patch: SettingsPatch): Promise<void> {
       memory: settingsStore.memory,
       capture: settingsStore.capture,
       tracking: settingsStore.tracking,
+      data: studioSettings.data,
+      cache: studioSettings.cache,
+      api: studioSettings.api,
+      studioAdvanced: studioSettings.advanced,
       ade: {
         headlessSettingSources: settingsStore.ade.headlessSettingSources,
       },
@@ -150,6 +180,34 @@ async function save(patch: SettingsPatch): Promise<void> {
       />
       <MemoryPane
         :active="s.activeSection === 'Memory'"
+        :draft="s.draft"
+        :is-at-default="s.isAtDefault"
+        :reset-leaf="s.resetLeaf"
+        :register-field-error="s.registerFieldError"
+      />
+      <DataPane
+        :active="s.activeSection === 'Data'"
+        :draft="s.draft"
+        :is-at-default="s.isAtDefault"
+        :reset-leaf="s.resetLeaf"
+        :register-field-error="s.registerFieldError"
+      />
+      <CachePane
+        :active="s.activeSection === 'Cache'"
+        :draft="s.draft"
+        :is-at-default="s.isAtDefault"
+        :reset-leaf="s.resetLeaf"
+        :register-field-error="s.registerFieldError"
+      />
+      <ApiPane
+        :active="s.activeSection === 'Api'"
+        :draft="s.draft"
+        :is-at-default="s.isAtDefault"
+        :reset-leaf="s.resetLeaf"
+        :register-field-error="s.registerFieldError"
+      />
+      <DatabaseMcpPane
+        :active="s.activeSection === 'Database MCP'"
         :draft="s.draft"
         :is-at-default="s.isAtDefault"
         :reset-leaf="s.resetLeaf"

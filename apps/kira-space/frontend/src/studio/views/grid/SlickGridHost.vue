@@ -30,6 +30,7 @@ import type {
 } from 'slickgrid';
 import { SlickEventHandler, type SlickHybridSelectionModel, SlickRange } from 'slickgrid';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useSettingsStore } from '../../../state/settings';
 import { useTabsStore } from '../../../state/tabs';
 import { type SelectedCell, useCellSelectionStore } from '../../state/cellSelection';
 import { useConnectionsStore } from '../../state/connections';
@@ -39,7 +40,6 @@ import {
   maskRulesFor,
   maskRulesQueryKey,
 } from '../../state/maskRules';
-import { useStudioSettingsStore } from '../../state/settings';
 import { classesFrom } from '../../theme/cellClass';
 import { categoryForTypeClass } from '../../theme/icons';
 import { parseDelimited, type RowSnapshot } from '../shared/clipboardFormats';
@@ -127,7 +127,7 @@ const cellSelectionStore = useCellSelectionStore();
 const pendingChangesStore = usePendingChangesStore();
 const connectionsStore = useConnectionsStore();
 const tabsStore = useTabsStore();
-const settingsStore = useStudioSettingsStore();
+const settingsStore = useSettingsStore();
 const gridViewStore = useGridViewStore();
 
 // A from-scratch Vue host for SlickGrid, on editor/CodeMirrorHost.vue's own

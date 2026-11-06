@@ -9,6 +9,7 @@ import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { formatBytes, formatDuration } from '@workbench/behaviour/format';
 import { computed, useId } from 'vue';
+import { useSettingsStore } from '../../../state/settings';
 import type { HttpRequestTabRecord } from '../../../state/tabDomain';
 import { patchHttpRequestTabState } from '../../api/tabs';
 import { useStudioSettingsStore } from '../../state/settings';
@@ -105,7 +106,7 @@ const effectiveFollowRedirects = computed(
 );
 
 function onEditGlobalDefaults(): void {
-  settingsStore.openSettingsAt('Api');
+  useSettingsStore().openSettingsAt('Api');
 }
 
 // P110 B40: `.inherit`'s own shared class string, repeated 7 times in this file's template --

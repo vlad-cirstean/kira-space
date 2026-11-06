@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { defaultSettings as spaceDefaults } from '../../../frontend/src/state/settingsDomain';
 import { defaultSettings } from '../../../frontend/src/studio/state/settingsDomain';
 import { expect, test } from './fixtures';
 import { IPC } from './support/ipcChannels';
@@ -41,7 +42,7 @@ test('staged changes reach nothing until Save', async ({ relaunch }) => {
 test('Save commits once, carrying only the leaves that changed', async ({ relaunch }) => {
   const flipped = {
     ...defaultSettings,
-    appearance: { ...defaultSettings.appearance, rowDensity: 'compact' as const, wordWrap: false },
+    appearance: { ...spaceDefaults.appearance, rowDensity: 'compact' as const, wordWrap: false },
   };
   const { window: page, control } = await relaunch({
     control: [{ channel: IPC.settingsSet, response: flipped }],
@@ -89,7 +90,7 @@ test('Cancel and Escape both discard the draft', async ({ relaunch }) => {
 test('a per-setting reset stages only that leaf', async ({ relaunch }) => {
   const nonDefault = {
     ...defaultSettings,
-    appearance: { ...defaultSettings.appearance, rowDensity: 'compact' as const, wordWrap: false },
+    appearance: { ...spaceDefaults.appearance, rowDensity: 'compact' as const, wordWrap: false },
     cache: { l2BudgetMb: 512 },
     advanced: { opLogRetentionDays: 7 },
   };

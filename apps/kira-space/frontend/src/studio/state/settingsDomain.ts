@@ -1,25 +1,9 @@
-import {
-  agentSettingsSchema,
-  appearanceSettingsSchema,
-  DEFAULT_AGENT_PROVIDER,
-  HTTP_VERSIONS,
-  httpVersionSchema,
-  logLevelSchema,
-} from '@shared/domain/settings';
+import { HTTP_VERSIONS, httpVersionSchema } from '@shared/domain/settings';
 import { z } from 'zod';
 
-// This app's own six-section settingsSchema/settingsPatchSchema/
-// defaultSettings, split out of the former one shared `@shared/domain/settings` (which Kira Space's
-// own three-section store carried five dead sections of — data/cache/api/dbMcp — the
-// same "tab-kind vocabulary" defect). appearance/logLevel
-// stay genuinely shared; this file imports `appearanceSettingsSchema`/`logLevelSchema`/
-// `HTTP_VERSIONS`/`httpVersionSchema` unexported, purely to build the composed schema below —
-// nothing outside this file references those specific names directly (`HTTP_VERSIONS` is the one
-// exception, re-exported for ApiPane/RequestSettingsPane; `httpVersionSchema` itself stays
-// import-only, domain/http.ts's own dependency on it goes straight to `@shared/domain/settings`,
-// never through here). `FONT_SIZE_RANGE`/`AppearanceSettings`/`LogLevel`/`RowDensity` used to
-// re-export here for AppearancePane/AdvancedPane; both now read them straight from
-// `@shared/domain/settings` via the shared field components (`FontSizeField.vue` etc.).
+// The Studio modules' own settings: data, cache, advanced, api and the database MCP server.
+// App-wide leaves (appearance, agent, log level, prompt notifications) live in Space's settings;
+// `HTTP_VERSIONS` re-exports for ApiPane/RequestSettingsPane.
 export { HTTP_VERSIONS };
 
 // P17 D6: the two numeric bounds a control can actually violate, as exported constants so the
@@ -71,13 +55,6 @@ const advancedSettingsSchema = /*#__PURE__*/ z.object({
     .min(EXPENSIVE_QUERY_ROWS_RANGE.min)
     .max(EXPENSIVE_QUERY_ROWS_RANGE.max)
     .default(100_000),
-  // Studio's own diagnostic log verbosity (internal/logging, applied immediately by
-  // bridge/settings.go's Set on every patch). `.default('info')` matches that leaf's own
-  // pre-existing default. logLevelSchema is the shared enum — Kira Space validates the same leaf
-  // against it under its own settings key.
-  logLevel: logLevelSchema.default('info'),
-  // P246: system notification when a popup waits in a window that is not in front.
-  notifyPrompts: z.boolean().default(true),
 });
 
 // The seven request-settings leaves that used to be internal/httpclient package
@@ -139,14 +116,11 @@ const dbMcpSettingsSchema = /*#__PURE__*/ z.object({
 // row with no `data`/`cache`/`advanced`/`dbMcp` keys, and that row must still parse on
 // next launch.
 const settingsSchema = /*#__PURE__*/ z.object({
-  appearance: appearanceSettingsSchema,
   data: dataSettingsSchema.default({ defaultPageSize: 100 }),
   cache: cacheSettingsSchema.default({ l2BudgetMb: 64 }),
   advanced: advancedSettingsSchema.default({
     opLogRetentionDays: 30,
     expensiveQueryRows: 100_000,
-    logLevel: 'info',
-    notifyPrompts: true,
   }),
   api: apiSettingsSchema.default({
     httpVersion: '2',
@@ -164,29 +138,19 @@ const settingsSchema = /*#__PURE__*/ z.object({
     apiRequests: false,
     apiApproval: 'always',
   }),
-  agent: agentSettingsSchema.default({ provider: DEFAULT_AGENT_PROVIDER, hermetic: true }),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
 const settingsPatchSchema = /*#__PURE__*/ z.object({
-  appearance: appearanceSettingsSchema.partial().optional(),
   data: dataSettingsSchema.partial().optional(),
   cache: cacheSettingsSchema.partial().optional(),
   advanced: advancedSettingsSchema.partial().optional(),
   api: apiSettingsSchema.partial().optional(),
   dbMcp: dbMcpSettingsSchema.partial().optional(),
-  agent: agentSettingsSchema.partial().optional(),
 });
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
 
 export const defaultSettings: Settings = {
-  appearance: {
-    fontFamily: 'Menlo, monospace',
-    fontSize: 12,
-    rowDensity: 'comfortable',
-    wordWrap: true,
-    rowColoring: true,
-  },
   data: {
     defaultPageSize: 100,
   },
@@ -196,8 +160,6 @@ export const defaultSettings: Settings = {
   advanced: {
     opLogRetentionDays: 30,
     expensiveQueryRows: 100_000,
-    logLevel: 'info',
-    notifyPrompts: true,
   },
   api: {
     httpVersion: '2',
@@ -214,9 +176,5 @@ export const defaultSettings: Settings = {
     focusOnApproval: true,
     apiRequests: false,
     apiApproval: 'always',
-  },
-  agent: {
-    provider: DEFAULT_AGENT_PROVIDER,
-    hermetic: true,
   },
 };

@@ -16,7 +16,7 @@ import {
 import { monacoLanguageIdFor } from '@workbench/editor/monacoLanguages';
 import type { RangeHighlight } from '@workbench/editor/ranges';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useStudioSettingsStore } from '../state/settings';
+import { useSettingsStore } from '../../state/settings';
 import type { SqlDialect } from '../views/shared/sqlIdent';
 import { pumpChunks, textChunks } from './chunkedText';
 import type {
@@ -93,7 +93,7 @@ const emit = defineEmits<{
   save: [];
 }>();
 
-const settingsStore = useStudioSettingsStore();
+const settingsStore = useSettingsStore();
 
 const rootRef = ref<HTMLElement | null>(null);
 // §3.3: renders the raw doc as text while loadMonaco()'s import is in flight — never an empty box.
