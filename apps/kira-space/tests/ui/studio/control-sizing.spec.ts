@@ -1,6 +1,8 @@
 import type { Locator, Page } from '@playwright/test';
-import { defaultSettings as spaceDefaults } from '../../../frontend/src/state/settingsDomain';
-import { defaultSettings } from '../../../frontend/src/studio/state/settingsDomain';
+import {
+  defaultSettings,
+  defaultSettings as spaceDefaults,
+} from '../../../frontend/src/state/settingsDomain';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
 import { expect, studioTest as test } from '../fixtures';
 import { IPC } from '../support/ipcChannels';
@@ -592,7 +594,7 @@ test('the chrome type scale renders --kira-t-sm/md/lg on their assigned roles (P
 test('the SQL grid still tracks Data font size after the chrome scale lands (P123)', async ({
   relaunch,
 }) => {
-  // mockRuntime.ts echoes IPC.studioSettingsSet back as the untouched default unless a spec scripts its
+  // mockRuntime.ts echoes IPC.settingsSet back as the untouched default unless a spec scripts its
   // own response (settings-apply-on-save.spec.ts's own precedent) -- this scripts the one leaf this
   // test changes.
   const savedSettings = {
@@ -600,7 +602,7 @@ test('the SQL grid still tracks Data font size after the chrome scale lands (P12
     appearance: { ...spaceDefaults.appearance, fontSize: 16 },
   };
   const { window: page } = await relaunch({
-    control: [...CONTROL, { channel: IPC.studioSettingsSet, response: savedSettings }],
+    control: [...CONTROL, { channel: IPC.settingsSet, response: savedSettings }],
     stream: FIXTURE.port,
   });
   await connectAndOpenGrid(page);

@@ -1,22 +1,25 @@
 import type { SettingsPaneProps as GenericSettingsPaneProps } from '@workbench/lib/settingsPaneProps';
 import type { Settings } from '../../state/settingsDomain';
-import type { Settings as StudioSettings } from '../../studio/state/settingsDomain';
 
 // The one prop contract every settings pane takes: the shape SettingsShell.vue's `#pane` slot hands
-// each pane, plus `active`. The draft holds Space's sections and the Studio modules' (`data`,
-// `cache`, `api`; `studioAdvanced` is Studio's `advanced`, named apart from Space's).
+// each pane, plus `active`.
 //
 // `ade` carries the one leaf the dialog edits (the other `ade` leaves are written live by the Plan
 // and its panel), so it saves with the rest instead of writing on toggle.
 type SettingsSections = Pick<
   Settings,
-  'appearance' | 'advanced' | 'git' | 'agent' | 'memory' | 'capture' | 'tracking'
+  | 'appearance'
+  | 'advanced'
+  | 'git'
+  | 'agent'
+  | 'memory'
+  | 'capture'
+  | 'tracking'
+  | 'data'
+  | 'cache'
+  | 'api'
 > & {
   ade: Pick<Settings['ade'], 'headlessSettingSources'>;
-  data: StudioSettings['data'];
-  cache: StudioSettings['cache'];
-  api: StudioSettings['api'];
-  studioAdvanced: StudioSettings['advanced'];
 };
 
 export type SettingsPaneProps = GenericSettingsPaneProps<SettingsSections>;

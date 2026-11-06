@@ -218,7 +218,6 @@ type Wired struct {
 	Link            *bridge.LinkService
 	Files           *bridge.FilesService
 	Settings        *bridge.SettingsService
-	StudioSettings  *bridge.StudioSettingsService
 	Layout          *bridge.LayoutService
 	Tabs            *bridge.TabsService
 	CustomScripts   *bridge.CustomScriptsService
@@ -368,7 +367,7 @@ func Build(opts Options) (*Wired, error) {
 			if k != prompts.KindApproval {
 				return false
 			}
-			s, err := repositories.DbSettings.GetAll()
+			s, err := repositories.Settings.GetAll()
 			return err != nil || s.DbMcp.FocusOnApproval
 		},
 	}
@@ -681,7 +680,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),
 		application.NewService(w.PromptsSvc), application.NewService(w.ApprovalsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc),
 		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.ConfigFiles), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc), application.NewService(w.RepoConfigSvc), application.NewService(w.GitSvc),
-		application.NewService(w.App), application.NewService(w.StudioSettings), application.NewService(w.Connections),
+		application.NewService(w.App), application.NewService(w.Connections),
 		application.NewService(w.MaskRules), application.NewService(w.Tree), application.NewService(w.StudioOps),
 		application.NewService(w.Filters), application.NewService(w.Queries), application.NewService(w.Schema),
 		application.NewService(w.Kibana), application.NewService(w.Http), application.NewService(w.Grpc),

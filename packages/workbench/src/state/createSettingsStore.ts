@@ -49,15 +49,16 @@ export interface SettingsStoreExtension<E extends Record<string, unknown>> {
 // for the *whole* store (every instantiation, not just that one), a real TS+Pinia interaction found
 // the hard way. The inner call takes no explicit type arguments at all, so
 // `E` is always inferred fresh from `extend`'s actual return value.
-export function createSettingsStore<S extends string, Se extends SettingsShape, SeP>(
-  defaults: Se,
-  storeId = 'settings',
-) {
+export function createSettingsStore<
+  S extends string,
+  Se extends SettingsShape & { appearance: AppearanceSettings },
+  SeP,
+>(defaults: Se) {
   return <E extends Record<string, unknown>>(
     control: SettingsControl<Se, SeP>,
     extend: (actions: SettingsStoreActions<Se>) => SettingsStoreExtension<E>,
   ) =>
-    defineStore(storeId, () => {
+    defineStore('settings', () => {
       // `reactive<Se>(...)` itself types as `Reactive<Se>` (Vue's own `UnwrapNestedRefs<Se>`),
       // which TS can't prove equals `Se` for a generic type parameter — the same gap every other
       // generic Pinia store call site in this codebase casts through. `Se`'s own bound
@@ -82,10 +83,8 @@ export function createSettingsStore<S extends string, Se extends SettingsShape, 
 
       const { extra, onApplyAppearance } = extend({ settingsState });
 
-      // A store without an `appearance` section (the Studio-module settings) owns no theme.
       function applyAppearance(): void {
-        const appearance = (settingsState as { appearance?: AppearanceSettings }).appearance;
-        if (!appearance) return;
+        const { appearance } = settingsState;
         const root = document.documentElement.style;
         root.setProperty('--kira-font-family', appearance.fontFamily);
         root.setProperty('--kira-font-size', `${appearance.fontSize}px`);

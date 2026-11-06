@@ -10,15 +10,14 @@ import { t } from '@theme/i18n';
 import { formatBytes, formatDuration } from '@workbench/behaviour/format';
 import { computed, useId } from 'vue';
 import { useSettingsStore } from '../../../state/settings';
-import type { HttpRequestTabRecord } from '../../../state/tabDomain';
-import { patchHttpRequestTabState } from '../../api/tabs';
-import { useStudioSettingsStore } from '../../state/settings';
 import {
   HTTP_VERSIONS,
   MAX_REDIRECTS_RANGE,
   MAX_RESPONSE_MB_RANGE,
   REQUEST_TIMEOUT_MS_RANGE,
-} from '../../state/settingsDomain';
+} from '../../../state/settingsDomain';
+import type { HttpRequestTabRecord } from '../../../state/tabDomain';
+import { patchHttpRequestTabState } from '../../api/tabs';
 
 // One row per api settings leaf, in SPEC's own order — a control bound to
 // tab.state.settings.<leaf>, an "Inherit" checkbox (checked === the leaf is null), and helper text
@@ -26,7 +25,7 @@ import {
 // the rule is one `??` per leaf, and writing it twice as a function would be the drift risk, not
 // the fix.
 const props = defineProps<{ tab: HttpRequestTabRecord }>();
-const settingsStore = useStudioSettingsStore();
+const settingsStore = useSettingsStore();
 
 function patch(fields: Partial<HttpRequestTabRecord['state']['settings']>): void {
   patchHttpRequestTabState(props.tab.id, { settings: { ...props.tab.state.settings, ...fields } });

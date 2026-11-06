@@ -783,8 +783,7 @@ interface AgentNotifyFocus {
   activeScriptRunId: string;
 }
 
-// The bound services both module families share. Studio's control re-binds only `settings`
-// (StudioSettingsService) on top of these, so the hub holds the one list.
+// The bound services both module families share.
 export const coreBindings = {
   settings: SettingsService,
   layout: LayoutService,

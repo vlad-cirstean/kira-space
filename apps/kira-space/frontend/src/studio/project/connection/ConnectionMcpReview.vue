@@ -5,7 +5,7 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
-import { useStudioSettingsStore } from '../../state/settings';
+import { useSettingsStore } from '../../../state/settings';
 
 // Result review per mode: which run_query results Kira holds for the user before the agent gets them.
 const props = defineProps<{
@@ -15,7 +15,7 @@ const props = defineProps<{
   writeConsole: boolean;
 }>();
 const emit = defineEmits<{ change: [change: Partial<ConnectionFileMcp>] }>();
-const settingsStore = useStudioSettingsStore();
+const settingsStore = useSettingsStore();
 
 const MODES = [
   { cls: 'read', label: 'studio.project.connectionDialog.mcp.read.label' },

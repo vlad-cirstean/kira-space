@@ -235,7 +235,7 @@ func (s *GrpcService) Call(ctx context.Context, args GrpcCallArgs) (grpcclient.C
 
 	timeoutMs := args.TimeoutMs
 	if timeoutMs == 0 {
-		settings, err := s.Deps.Repos.DbSettings.GetAll()
+		settings, err := s.Deps.Repos.Settings.GetAll()
 		if err != nil {
 			return grpcclient.CallResult{}, ipcerr.InternalErr(err)
 		}

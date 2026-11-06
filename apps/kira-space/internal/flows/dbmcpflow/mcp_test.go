@@ -356,10 +356,10 @@ func callAsync(sess *mcp.ClientSession, connID, sqlText string) chan callOutcome
 	return ch
 }
 
-func (f *fixture) setPreview(t *testing.T, on bool) bridge.StudioSettingsSetArgs {
+func (f *fixture) setPreview(t *testing.T, on bool) bridge.SettingsSetArgs {
 	t.Helper()
-	args := bridge.StudioSettingsSetArgs{Patch: model.DbSettingsPatch{DbMcp: &model.DbMcpPatch{PreviewResponses: &on}}}
-	if _, err := f.app.W.StudioSettings.Set(args); err != nil {
+	args := bridge.SettingsSetArgs{Patch: model.SettingsPatch{DbMcp: &model.DbMcpPatch{PreviewResponses: &on}}}
+	if _, err := f.app.W.Settings.Set(args); err != nil {
 		t.Fatal(err)
 	}
 	return args

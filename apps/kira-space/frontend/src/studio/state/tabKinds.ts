@@ -17,6 +17,7 @@ import { t } from '@theme/i18n';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { parseStateWith, type TabKindRegistry } from '@workbench/tabs/types';
 import { useLayoutStore } from '../../state/layout';
+import { useSettingsStore } from '../../state/settings';
 import {
   type BrowseTabRecord,
   type BrowseTabState,
@@ -68,7 +69,6 @@ import { isEditDirty } from '../views/shared/editDirty';
 import { drop as dropKeyValuePagesForTab } from '../views/shared/keyvalue/page';
 import { drop as dropStreamPagesForTab } from '../views/stream/page';
 import { useConnectionsStore } from './connections';
-import { useStudioSettingsStore } from './settings';
 import { useTabIncognitoStore } from './tabIncognito';
 
 // The tab-kind registry, split from workbench/tabViews.ts by the lint rules —
@@ -151,7 +151,7 @@ export const STUDIO_TAB_KINDS: TabKindRegistry<
       return (tail && KIND_ICON[tail.kind]) || 'table';
     },
     railColor,
-    defaultState: () => defaultDataTabState(useStudioSettingsStore().data.defaultPageSize),
+    defaultState: () => defaultDataTabState(useSettingsStore().data.defaultPageSize),
     duplicateState: (tab: DataTabRecord): DataTabState => defaultDataTabState(tab.state.pageSize),
     isDirty: (tabId) => usePendingChangesStore().hasPending(tabId),
     dropResources: dropGridPagesForTab,
@@ -208,7 +208,7 @@ export const STUDIO_TAB_KINDS: TabKindRegistry<
     title: tabTitle,
     icon: () => 'json',
     railColor,
-    defaultState: () => defaultDocumentTabState(useStudioSettingsStore().data.defaultPageSize),
+    defaultState: () => defaultDocumentTabState(useSettingsStore().data.defaultPageSize),
     duplicateState: (tab: DocumentTabRecord): DocumentTabState =>
       defaultDocumentTabState(tab.state.pageSize),
     isDirty: isEditDirty,
@@ -223,7 +223,7 @@ export const STUDIO_TAB_KINDS: TabKindRegistry<
     // them apart with no extra state.
     icon: (tab) => (pathTail(tab.path)?.kind === 'object' ? 'file' : 'symbol-key'),
     railColor,
-    defaultState: () => defaultKeyValueTabState(useStudioSettingsStore().data.defaultPageSize),
+    defaultState: () => defaultKeyValueTabState(useSettingsStore().data.defaultPageSize),
     duplicateState: (tab: KeyValueTabRecord): KeyValueTabState =>
       defaultKeyValueTabState(tab.state.pageSize),
     isDirty: isEditDirty,
@@ -236,7 +236,7 @@ export const STUDIO_TAB_KINDS: TabKindRegistry<
     title: tabTitle,
     icon: () => 'broadcast',
     railColor,
-    defaultState: () => defaultStreamTabState(useStudioSettingsStore().data.defaultPageSize),
+    defaultState: () => defaultStreamTabState(useSettingsStore().data.defaultPageSize),
     duplicateState: (tab: StreamTabRecord): StreamTabState =>
       defaultStreamTabState(tab.state.pageSize),
     dropResources: dropStreamPagesForTab,

@@ -29,8 +29,8 @@ var rowsMeasuredRe = regexp.MustCompile(`measured (\d+) rows, limit (\d+) rows`)
 
 func (f *fixture) setExpensiveThreshold(t *testing.T, rows int) {
 	t.Helper()
-	patch := model.DbSettingsPatch{Advanced: &model.DbAdvancedPatch{ExpensiveQueryRows: &rows}}
-	if _, err := f.app.W.StudioSettings.Set(bridge.StudioSettingsSetArgs{Patch: patch}); err != nil {
+	patch := model.SettingsPatch{Advanced: &model.AdvancedPatch{ExpensiveQueryRows: &rows}}
+	if _, err := f.app.W.Settings.Set(bridge.SettingsSetArgs{Patch: patch}); err != nil {
 		t.Fatalf("Settings.Set: %v", err)
 	}
 }

@@ -10,7 +10,6 @@ import { useStudioOpsStore } from './state/ops';
 import { initSavedQueriesSync } from './state/savedQueriesSync';
 import { useSchemaColumnsStore } from './state/schemaColumns';
 import { initSchemaSync } from './state/schemas';
-import { useStudioSettingsStore } from './state/settings';
 
 /** Subscriptions the database and API modules need live before their panels ever mount, whether or
  *  not one mounts this session. Each is idempotent; needs no data, so it runs ahead of hydration. */
@@ -28,7 +27,6 @@ export function startStudioSync(): void {
 /** The database and API modules' own boot state. Joins the shell's critical hydrate group. */
 export function hydrateStudio(): Promise<unknown[]> {
   return Promise.all([
-    useStudioSettingsStore(pinia).hydrateSettings(),
     useConnectionsStore(pinia).hydrateConnections(),
     loadMaskRuleCounts(),
     useDbMcpStore(pinia).hydrateDbMcp(),

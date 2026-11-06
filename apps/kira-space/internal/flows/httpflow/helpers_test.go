@@ -56,7 +56,7 @@ func sendErr(t *testing.T, app *flowharness.App, args bridge.HttpSendArgs) *ipce
 
 func setApi(t *testing.T, app *flowharness.App, patch model.ApiPatch) {
 	t.Helper()
-	if _, err := app.W.StudioSettings.Set(bridge.StudioSettingsSetArgs{Patch: model.DbSettingsPatch{Api: &patch}}); err != nil {
+	if _, err := app.W.Settings.Set(bridge.SettingsSetArgs{Patch: model.SettingsPatch{Api: &patch}}); err != nil {
 		t.Fatalf("Settings.Set: %v", err)
 	}
 }

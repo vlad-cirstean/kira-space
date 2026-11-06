@@ -377,8 +377,6 @@ export const IPC = {
   // Space keys of the same name; studioOpsRecent/studioOpsCancel keep the legacy `kira:ops:*` strings
   // baked into tests/ipc captures.
   appInfo: 'kira:app:info',
-  studioSettingsGetAll: 'kira:studio:settings:getAll',
-  studioSettingsSet: 'kira:studio:settings:set',
   newConnection: 'kira:menu:newConnection',
   viewRefresh: 'kira:menu:viewRefresh',
   viewRun: 'kira:menu:viewRun',
@@ -546,7 +544,6 @@ export const IPC = {
   connectionsChanged: 'kira:connections:changed',
   connectionConfigChanged: 'kira:connectionConfig:changed',
   connectionFiltersChanged: 'kira:connection:filtersChanged',
-  studioSettingsChanged: 'studio:kira:settings:changed',
   schemaChanged: 'kira:schema:changed',
   studioOpUpdate: 'studio:kira:op:update',
   proofSessions: 'kira:proof:sessions',

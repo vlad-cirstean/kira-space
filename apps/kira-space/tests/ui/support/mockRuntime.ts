@@ -11,7 +11,6 @@ import {
 } from '@workbench/testing/ui/mockRuntime';
 import { defaultSettings } from '../../../frontend/src/state/settingsDomain';
 import { STUDIO_TAB_KIND_MODE, type StudioTabKind } from '../../../frontend/src/state/tabDomain';
-import { defaultSettings as defaultStudioSettings } from '../../../frontend/src/studio/state/settingsDomain';
 import { contract } from './contract';
 import { IPC } from './ipcChannels';
 import type { ControlSnapshot } from './types';
@@ -332,8 +331,6 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
 
   // Databases module (formerly Kira Studio's own table).
   appInfo: 'AppService.Info',
-  studioSettingsGetAll: 'StudioSettingsService.GetAll',
-  studioSettingsSet: 'StudioSettingsService.Set',
   filesChooseSave: 'FilesService.ChooseSave',
   filesChooseOpen: 'FilesService.ChooseOpen',
   filesChooseOpenMany: 'FilesService.ChooseOpenMany',
@@ -720,7 +717,6 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   [IPC.proofChooseShotFolder]: '{"canceled":true,"id":"","path":""}',
   [IPC.proofSavePngTo]: '{"path":""}',
   [IPC.proofForgetShotFolder]: 'null',
-  [IPC.studioSettingsSet]: JSON.stringify(defaultStudioSettings),
   [IPC.studioOpsCancel]: 'null',
   [IPC.queriesHistoryRecord]: 'null',
   [IPC.treeInvalidate]: 'null',

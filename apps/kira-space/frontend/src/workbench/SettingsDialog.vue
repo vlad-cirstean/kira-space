@@ -10,11 +10,6 @@ import { useLlmPromptsShellExtra } from '@workbench/state/llmPromptDrafts';
 import { computed } from 'vue';
 import { type Section, sections, useSettingsStore } from '../state/settings';
 import { defaultSettings, type SettingsPatch } from '../state/settingsDomain';
-import { useStudioSettingsStore } from '../studio/state/settings';
-import {
-  type SettingsPatch as StudioPatch,
-  defaultSettings as studioDefaults,
-} from '../studio/state/settingsDomain';
 import ApiPane from '../studio/workbench/settings/ApiPane.vue';
 import CachePane from '../studio/workbench/settings/CachePane.vue';
 import DatabaseMcpPane from '../studio/workbench/settings/DatabaseMcpPane.vue';
@@ -30,12 +25,9 @@ import MemoryPane from './settings/MemoryPane.vue';
 import MobileAccessPane from './settings/MobileAccessPane.vue';
 import UpdatesPane from './settings/UpdatesPane.vue';
 
-// One dialog: Space's panes, then the Studio modules' (Data, Cache, Api, Database MCP). The draft
-// spans both settings stores; `save` splits the changed leaves back to the store that owns them.
 const emit = defineEmits<{ close: [] }>();
 
 const settingsStore = useSettingsStore();
-const studioSettings = useStudioSettingsStore();
 const promptsExtra = useLlmPromptsShellExtra();
 const { info: agentInfo } = useAgentInfo();
 
@@ -61,23 +53,7 @@ const sectionLabels = computed<Record<Section, string>>(() => ({
 // was opened with.
 useSettingsDeepLinkReset(settingsStore);
 
-type DraftPatch = SettingsPatch & {
-  data?: StudioPatch['data'];
-  cache?: StudioPatch['cache'];
-  api?: StudioPatch['api'];
-  studioAdvanced?: StudioPatch['advanced'];
-};
-
-async function save(patch: DraftPatch): Promise<void> {
-  const { data, cache, api, studioAdvanced, ...space } = patch;
-  const studio: StudioPatch = {};
-  if (data) studio.data = data;
-  if (cache) studio.cache = cache;
-  if (api) studio.api = api;
-  if (studioAdvanced) studio.advanced = studioAdvanced;
-  if (Object.keys(space).length > 0) await settingsStore.patchSettings(space);
-  if (Object.keys(studio).length > 0) await studioSettings.patchSettings(studio);
-}
+const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSettings(patch);
 </script>
 
 <template>
@@ -93,10 +69,9 @@ async function save(patch: DraftPatch): Promise<void> {
       memory: defaultSettings.memory,
       capture: defaultSettings.capture,
       tracking: defaultSettings.tracking,
-      data: studioDefaults.data,
-      cache: studioDefaults.cache,
-      api: studioDefaults.api,
-      studioAdvanced: studioDefaults.advanced,
+      data: defaultSettings.data,
+      cache: defaultSettings.cache,
+      api: defaultSettings.api,
       ade: {
         headlessSettingSources: defaultSettings.ade.headlessSettingSources,
       },
@@ -109,10 +84,9 @@ async function save(patch: DraftPatch): Promise<void> {
       memory: settingsStore.memory,
       capture: settingsStore.capture,
       tracking: settingsStore.tracking,
-      data: studioSettings.data,
-      cache: studioSettings.cache,
-      api: studioSettings.api,
-      studioAdvanced: studioSettings.advanced,
+      data: settingsStore.data,
+      cache: settingsStore.cache,
+      api: settingsStore.api,
       ade: {
         headlessSettingSources: settingsStore.ade.headlessSettingSources,
       },

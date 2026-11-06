@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
-import { defaultSettings as spaceDefaults } from '../../../frontend/src/state/settingsDomain';
-import { defaultSettings } from '../../../frontend/src/studio/state/settingsDomain';
+import {
+  defaultSettings,
+  defaultSettings as spaceDefaults,
+} from '../../../frontend/src/state/settingsDomain';
 import { expect, studioTest as test } from '../fixtures';
 import { IPC } from '../support/ipcChannels';
 import { openSettings } from './support/settings';
@@ -24,7 +26,7 @@ function rowHeightVar(page: Page): Promise<string> {
 }
 
 function settingsSetCalls(control: { log(): { channel: string; args: unknown }[] }) {
-  return control.log().filter((e) => e.channel === IPC.studioSettingsSet);
+  return control.log().filter((e) => e.channel === IPC.settingsSet);
 }
 
 test('staged changes reach nothing until Save', async ({ relaunch }) => {
@@ -45,7 +47,7 @@ test('Save commits once, carrying only the leaves that changed', async ({ relaun
     appearance: { ...spaceDefaults.appearance, rowDensity: 'compact' as const, wordWrap: false },
   };
   const { window: page, control } = await relaunch({
-    control: [{ channel: IPC.studioSettingsSet, response: flipped }],
+    control: [{ channel: IPC.settingsSet, response: flipped }],
   });
   await openSettings(page);
 
@@ -95,7 +97,7 @@ test('a per-setting reset stages only that leaf', async ({ relaunch }) => {
     advanced: { opLogRetentionDays: 7 },
   };
   const { window: page, control } = await relaunch({
-    control: [{ channel: IPC.studioSettingsGetAll, response: nonDefault }],
+    control: [{ channel: IPC.settingsGetAll, response: nonDefault }],
   });
 
   await openSettings(page);
@@ -139,7 +141,7 @@ test('a rejected Save leaves the live value alone and shows the error', async ({
   const { window: page, control } = await relaunch({
     control: [
       {
-        channel: IPC.studioSettingsSet,
+        channel: IPC.settingsSet,
         error: { code: 'E_QUERY', message: 'settings write failed' },
       },
     ],
@@ -229,5 +231,5 @@ test('the log-level select shows its real value on open (P117 S2)', async ({ rel
   await openSettings(page);
 
   await page.click('[data-testid="settings-section-Advanced"]');
-  await expect(page.locator('[data-testid="settings-log-level"]')).toHaveValue('info');
+  await expect(page.locator('[data-testid="settings-git-log-level"]')).toHaveValue('info');
 });

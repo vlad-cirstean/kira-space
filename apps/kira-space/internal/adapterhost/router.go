@@ -180,7 +180,7 @@ func (r *Router) SetThrottle(connectionID string, perSec float64) {
 
 // PushCacheConfig pushes engine-relevant settings (today: the L2 cache byte budget) into the
 // Go-native cache this router's Dispatcher reads (§4.9).
-func (r *Router) PushCacheConfig(settings model.DbSettings) {
+func (r *Router) PushCacheConfig(settings model.Settings) {
 	r.cache.Configure(settings.Cache.L2BudgetMb * 1024 * 1024)
 }
 

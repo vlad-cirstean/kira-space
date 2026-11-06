@@ -1,6 +1,6 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
-import { defaultSettings } from '../../../frontend/src/studio/state/settingsDomain';
+import { defaultSettings } from '../../../frontend/src/state/settingsDomain';
 import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
@@ -95,7 +95,7 @@ test('contract: the preview switch sends the settings patch', async ({ relaunch 
   const { window: page, control } = await relaunch({
     control: [
       {
-        channel: IPC.studioSettingsSet,
+        channel: IPC.settingsSet,
         response: {
           ...defaultSettings,
           dbMcp: { ...defaultSettings.dbMcp, previewResponses: true },
@@ -107,7 +107,7 @@ test('contract: the preview switch sends the settings patch', async ({ relaunch 
   await page.click('[data-testid="settings-section-Database MCP"]');
   await page.click('[data-testid="settings-db-mcp-preview"]');
   await expect
-    .poll(() => control.log().find((e) => e.channel === IPC.studioSettingsSet)?.args)
+    .poll(() => control.log().find((e) => e.channel === IPC.settingsSet)?.args)
     .toEqual(args);
   await expect(page.locator('[data-testid="settings-db-mcp-preview"]')).toBeChecked();
 });

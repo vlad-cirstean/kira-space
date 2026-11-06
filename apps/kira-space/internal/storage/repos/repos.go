@@ -47,7 +47,6 @@ type Repos struct {
 	DockerRestore         *DockerRestoreRepo
 	KubeClusters          *KubeClustersRepo
 	Proof                 *ProofRepo
-	DbSettings            *DbSettingsRepo
 	CustomScripts         *scripts.Repo
 	ScriptRuns            *scriptruns.Repo
 
@@ -69,10 +68,6 @@ func New(db *sql.DB) (*Repos, error) {
 	tabsSelectAll, err := db.Prepare(tabsSelectAllSQL)
 	if err != nil {
 		return nil, fmt.Errorf("repos: prepare tabs select: %w", err)
-	}
-	dbSettingsSelectAll, err := db.Prepare(dbSettingsSelectAllSQL)
-	if err != nil {
-		return nil, fmt.Errorf("repos: prepare db settings select: %w", err)
 	}
 	opsInsert, err := db.Prepare(opsInsertSQL)
 	if err != nil {
@@ -117,10 +112,9 @@ func New(db *sql.DB) (*Repos, error) {
 		DockerRestore:         &DockerRestoreRepo{DB: db},
 		KubeClusters:          &KubeClustersRepo{DB: db},
 		Proof:                 &ProofRepo{DB: db},
-		DbSettings:            &DbSettingsRepo{DB: db, selectAll: dbSettingsSelectAll},
 		CustomScripts:         &scripts.Repo{DB: db},
 		ScriptRuns:            &scriptruns.Repo{DB: db},
-		stmts:                 []*sql.Stmt{settingsSelectAll, layoutSelectAll, tabsSelectAll, dbSettingsSelectAll, opsInsert, opsUpdate},
+		stmts:                 []*sql.Stmt{settingsSelectAll, layoutSelectAll, tabsSelectAll, opsInsert, opsUpdate},
 	}, nil
 }
 

@@ -8,10 +8,10 @@ import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
 import { displayValue, formatBytes } from '@workbench/behaviour/format';
 import { computed, useId } from 'vue';
+import { CACHE_L2_BUDGET_MB_RANGE } from '../../../state/settingsDomain';
 import { parseIntField, type SettingsPaneProps } from '../../../workbench/settings/types';
 import { data } from '../../bridge/data';
 import { useCacheStatsStore } from '../../state/cacheStats';
-import { CACHE_L2_BUDGET_MB_RANGE } from '../../state/settingsDomain';
 
 // P103 Part 2 (§5.5): extracted verbatim from workbench/SettingsDialog.vue's own
 // `v-else-if="activeSection === 'Cache'"` branch.

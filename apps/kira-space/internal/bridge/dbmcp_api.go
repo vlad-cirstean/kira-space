@@ -11,7 +11,7 @@ import (
 // apiSettings is dbmcp.Config.APISettings' backend, read fresh on every call. A read failure fails
 // closed: the tools are not listed, and approval stays on.
 func (s *DbMcpService) apiSettings() dbmcp.APISettings {
-	settings, err := s.Deps.Repos.DbSettings.GetAll()
+	settings, err := s.Deps.Repos.Settings.GetAll()
 	if err != nil {
 		slog.Warn("db mcp: read API settings, turning the API tools off", "scope", "dbmcp", "err", err)
 		return dbmcp.APISettings{Approval: "always"}
@@ -20,7 +20,7 @@ func (s *DbMcpService) apiSettings() dbmcp.APISettings {
 }
 
 // AgentAPIGlobals reads the user's API settings an agent request inherits, per send.
-func AgentAPIGlobals(settings *repos.DbSettingsRepo) func() (agentapi.Globals, error) {
+func AgentAPIGlobals(settings *repos.SettingsRepo) func() (agentapi.Globals, error) {
 	return func() (agentapi.Globals, error) {
 		all, err := settings.GetAll()
 		if err != nil {

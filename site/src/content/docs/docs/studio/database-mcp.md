@@ -5,7 +5,7 @@ sources:
   - README.md
   - apps/kira-space/internal/dbmcp/server.go
   - apps/kira-space/internal/dbmcp/tools.go
-  - apps/kira-space/frontend/src/studio/state/settingsDomain.ts
+  - apps/kira-space/frontend/src/state/settingsDomain.ts
   - internal/llmprompts/registry.go
   - docs/ARCHITECTURE.md
   - packages/theme/src/i18n/en.json

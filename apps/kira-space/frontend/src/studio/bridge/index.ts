@@ -12,7 +12,6 @@ import * as ProofService from '@bindings/proofservice.js';
 import * as QueriesService from '@bindings/queriesservice.js';
 import * as SchemaService from '@bindings/schemaservice.js';
 import * as OpsService from '@bindings/studioopsservice.js';
-import * as SettingsService from '@bindings/studiosettingsservice.js';
 import * as TreeService from '@bindings/treeservice.js';
 import type * as DataGripModels from '@bindings-internal/datagrip/models.js';
 import type {
@@ -45,10 +44,8 @@ import {
   kibanaHistogramSchema,
   kibanaSuggestionsSchema,
 } from '@shared/domain/kibana';
-import type { Layout } from '@shared/domain/layout';
 import type { MaskRule, MaskRuleFields } from '@shared/domain/mask';
 import type { MaskReviewListing, MaskReviewPending } from '@shared/domain/maskReview';
-import type { AppMode } from '@shared/domain/mode';
 import type { OpRecord } from '@shared/domain/ops';
 import type {
   ProofChanged,
@@ -85,13 +82,10 @@ import {
   type MaskRulesChangedEvent,
   type SavedQueriesChangedEvent,
 } from '@shared/protocol/events';
-import { createCoreControl } from '@workbench/bridge/createCoreControl';
 import { logWarn } from '@workbench/bridge/log';
 import { on, trust, unwrap, windowKey } from '@workbench/bridge/rpc';
 import type { FormEdit } from '@workbench/config/configForm';
-import { coreBindings, control as hubControl } from '../../bridge';
-import type { TabRecord } from '../../state/tabDomain';
-import type { Settings, SettingsPatch } from '../state/settingsDomain';
+import { control as hubControl } from '../../bridge';
 import { apiControl } from './apiControl';
 
 // bridge/index.ts is the composition root: the only file that imports
@@ -540,18 +534,8 @@ const studioControl = {
 };
 
 // Studio's control: the hub's shared and Space methods, with the Studio-bound ones layered on top.
-// The overrides below share a name with a hub method but bind a Studio service (settings
-// and ops), so Studio files must import this object and Space files the hub's.
-const studioCore = createCoreControl<Settings, Layout, TabRecord, SettingsPatch, AppMode>(
-  { ...coreBindings, settings: SettingsService },
-  { settingsChanged: CHANNEL.studioSettingsChanged },
-);
-
 export const control = {
   ...hubControl,
-  settingsGetAll: studioCore.settingsGetAll,
-  settingsSet: studioCore.settingsSet,
-  onSettingsChanged: studioCore.onSettingsChanged,
   ...apiControl,
   ...studioControl,
 };

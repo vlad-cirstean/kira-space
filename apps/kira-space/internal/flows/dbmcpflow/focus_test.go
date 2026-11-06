@@ -78,8 +78,8 @@ func TestDbMcpApprovalFocus(t *testing.T) {
 
 	// Off: the window stays put and the notification still shows.
 	off := false
-	args := bridge.StudioSettingsSetArgs{Patch: model.DbSettingsPatch{DbMcp: &model.DbMcpPatch{FocusOnApproval: &off}}}
-	if _, err := f.app.W.StudioSettings.Set(args); err != nil {
+	args := bridge.SettingsSetArgs{Patch: model.SettingsPatch{DbMcp: &model.DbMcpPatch{FocusOnApproval: &off}}}
+	if _, err := f.app.W.Settings.Set(args); err != nil {
 		t.Fatal(err)
 	}
 	f.app.Contract(t, "dbmcp-focus", "args:SettingsService.Set", args)

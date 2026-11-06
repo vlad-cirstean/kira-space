@@ -1,8 +1,8 @@
 import type { DbMcpInstallResult, DbMcpStatus } from '@shared/domain/dbmcp';
 import { defineStore } from 'pinia';
 import { reactive, toRefs } from 'vue';
+import { useSettingsStore } from '../../state/settings';
 import { control } from '../bridge/control';
-import { useStudioSettingsStore } from './settings';
 
 // M1 §6.2: the Database MCP section's own store — a status-plus-last-action shape, hydrated at
 // boot (main.ts).
@@ -34,7 +34,7 @@ export const useDbMcpStore = defineStore('dbMcp', () => {
   // the identical value, a harmless no-op.
   async function setDbMcpEnabled(enabled: boolean): Promise<void> {
     state.status = await control.dbMcpSetEnabled(enabled);
-    useStudioSettingsStore().dbMcp.serverEnabled = enabled;
+    useSettingsStore().dbMcp.serverEnabled = enabled;
     // A fresh enable/disable makes any previous install outcome stale.
     state.installResult = null;
   }

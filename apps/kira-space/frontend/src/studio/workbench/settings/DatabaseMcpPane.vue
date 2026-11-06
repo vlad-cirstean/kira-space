@@ -14,6 +14,7 @@ import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { formatDateTime } from '@workbench/behaviour/format';
 import { computed, ref, useId } from 'vue';
+import { useSettingsStore } from '../../../state/settings';
 import type { SettingsPaneProps } from '../../../workbench/settings/types';
 import { useApiAgentAccess } from '../../api/state/apiConfig';
 import ClusterMcpDialog from '../../kubernetes/components/ClusterMcpDialog.vue';
@@ -22,7 +23,6 @@ import { useConnectionDialogStore } from '../../state/connectionDialogs';
 import { useConnectionsStore } from '../../state/connections';
 import { useDbMcpStore } from '../../state/dbmcp';
 import { loadMaskRuleCounts, maskRuleCountsQueryKey } from '../../state/maskRules';
-import { useStudioSettingsStore } from '../../state/settings';
 import ScriptsMcpSection from './ScriptsMcpSection.vue';
 
 // P103 Part 2 (§5.5): extracted verbatim from workbench/SettingsDialog.vue's own
@@ -33,7 +33,7 @@ defineProps<SettingsPaneProps>();
 const connectionsStore = useConnectionsStore();
 const connectionDialogStore = useConnectionDialogStore();
 const dbMcpStore = useDbMcpStore();
-const settingsStore = useStudioSettingsStore();
+const settingsStore = useSettingsStore();
 const maskRuleCountsQuery = useQuery({
   queryKey: maskRuleCountsQueryKey,
   queryFn: loadMaskRuleCounts,

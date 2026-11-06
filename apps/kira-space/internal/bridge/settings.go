@@ -7,10 +7,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/logging"
 )
 
-// SettingsService is Kira Studio's own SettingsService (internal/bridge/settings.go), trimmed:
-// this app has no adapterhost.Router to push a cache budget through, so the
-// `args.Patch.Cache != nil` branch there has no equivalent here (this app's model.Settings never
-// grew a Cache leaf).
+// SettingsService owns every setting, the database module's sections included.
 type SettingsService struct {
 	Deps appcore.Deps
 	// OnChanged runs after every successful Set with the merged settings.
@@ -25,8 +22,8 @@ type SettingsSetArgs struct {
 	Patch model.SettingsPatch `json:"patch"`
 }
 
-// Set merges the patch, applies advanced.gitLogLevel immediately (Kira Studio's own P72 §9.2
-// mechanism), then broadcasts the merged settings unconditionally.
+// Set merges the patch, applies advanced.gitLogLevel immediately, re-pushes the engine's cache
+// budget when cache.l2BudgetMb was patched, then broadcasts the merged settings unconditionally.
 func (s *SettingsService) Set(args SettingsSetArgs) (model.Settings, error) {
 	merged, err := s.Deps.Repos.Settings.Set(args.Patch)
 	if err != nil {
@@ -34,6 +31,9 @@ func (s *SettingsService) Set(args SettingsSetArgs) (model.Settings, error) {
 	}
 	if args.Patch.Advanced != nil && args.Patch.Advanced.GitLogLevel != nil {
 		logging.SetLevel(*args.Patch.Advanced.GitLogLevel)
+	}
+	if args.Patch.Cache != nil && args.Patch.Cache.L2BudgetMb != nil && s.Deps.Router != nil {
+		s.Deps.Router.PushCacheConfig(merged)
 	}
 	s.Deps.Events.Emit(ChannelSettingsChanged, merged)
 	if s.OnChanged != nil {

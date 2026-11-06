@@ -26,10 +26,9 @@ const (
 	// left panel visibility.
 	ChannelConnectionFiltersChanged = "kira:connection:filtersChanged"
 	ChannelSchemaChanged            = "kira:schema:changed"
-	// ChannelStudioSettingsChanged and ChannelStudioOpUpdate carry Studio's own payloads
-	// (StudioSettingsService, StudioOpsService); Space's channels of the plain name stay Space's.
-	ChannelStudioSettingsChanged = "studio:kira:settings:changed"
-	ChannelStudioOpUpdate        = "studio:kira:op:update"
+	// ChannelStudioOpUpdate carries Studio's own payload
+	// (StudioOpsService).
+	ChannelStudioOpUpdate = "studio:kira:op:update"
 	// ChannelGrpcCall is a server-streaming call's coalesced message batches, delivered with EmitTo
 	// (one window only) by the RunOp closure calling grpcclient.ServerStream.
 	ChannelGrpcCall = "kira:grpc:call"
@@ -81,9 +80,4 @@ func (ev *Events) AttachDb(s DbSources) (detach func()) {
 		unsubList()
 		unsubOplog()
 	}
-}
-
-// StudioSettingsChanged broadcasts the merged Studio settings unconditionally.
-func (ev *Events) StudioSettingsChanged(s model.DbSettings) {
-	ev.emit.Emit(ChannelStudioSettingsChanged, s)
 }

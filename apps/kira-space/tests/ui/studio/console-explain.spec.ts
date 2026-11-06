@@ -1,6 +1,6 @@
 import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ColumnDescriptor } from '@shared/protocol/page';
-import { defaultSettings } from '../../../frontend/src/studio/state/settingsDomain';
+import { defaultSettings } from '../../../frontend/src/state/settingsDomain';
 import type { ControlSnapshot, LogicalPage, PortSnapshot } from '../../ipc/support/types';
 import { expect, studioTest as test } from '../fixtures';
 import { IPC } from '../support/ipcChannels';
@@ -222,7 +222,7 @@ test('Query console — a higher threshold does not flag the same plan', async (
     advanced: { ...defaultSettings.advanced, expensiveQueryRows: 1_000_000 },
   };
   const CONTROL: ControlSnapshot[] = [
-    { channel: IPC.studioSettingsGetAll, response: HIGH_THRESHOLD_SETTINGS },
+    { channel: IPC.settingsGetAll, response: HIGH_THRESHOLD_SETTINGS },
     { channel: IPC.connectionsList, response: [] },
     {
       channel: IPC.connectionsCreate,

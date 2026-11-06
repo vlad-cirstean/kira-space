@@ -4,6 +4,7 @@ import type { OpenTabResult, TabsStoreActions } from '@workbench/state/createTab
 import { defineStore } from 'pinia';
 import { reactive, toRefs } from 'vue';
 import { pinia } from '../../state/pinia';
+import { useSettingsStore } from '../../state/settings';
 import type { TabKind, TabRecord } from '../../state/tabDomain';
 import {
   asBrowseTab,
@@ -38,7 +39,6 @@ import { usePendingChangesStore } from '../views/grid/pendingChanges';
 import { useCellSelectionStore } from './cellSelection';
 import { useConnectionsStore } from './connections';
 import { useConsoleDefaultsStore } from './consoleDefaults';
-import { useStudioSettingsStore } from './settings';
 import { useTabIncognitoStore } from './tabIncognito';
 
 // The shared skeleton (persistableTabs/saveIfChanged/openTab/closeTab/…, see
@@ -233,7 +233,7 @@ export function studioTabsExtension(actions: TabsStoreActions<string, TabRecord>
       'data',
       connectionId,
       path,
-      () => defaultDataTabState(useStudioSettingsStore().data.defaultPageSize),
+      () => defaultDataTabState(useSettingsStore().data.defaultPageSize),
       opts,
     );
   }
@@ -294,7 +294,7 @@ export function studioTabsExtension(actions: TabsStoreActions<string, TabRecord>
       'document',
       connectionId,
       path,
-      () => defaultDocumentTabState(useStudioSettingsStore().data.defaultPageSize),
+      () => defaultDocumentTabState(useSettingsStore().data.defaultPageSize),
       opts,
     );
   }
@@ -310,7 +310,7 @@ export function studioTabsExtension(actions: TabsStoreActions<string, TabRecord>
       'keyvalue',
       connectionId,
       path,
-      () => defaultKeyValueTabState(useStudioSettingsStore().data.defaultPageSize),
+      () => defaultKeyValueTabState(useSettingsStore().data.defaultPageSize),
       opts,
     );
   }
@@ -326,7 +326,7 @@ export function studioTabsExtension(actions: TabsStoreActions<string, TabRecord>
       'stream',
       connectionId,
       path,
-      () => defaultStreamTabState(useStudioSettingsStore().data.defaultPageSize),
+      () => defaultStreamTabState(useSettingsStore().data.defaultPageSize),
       opts,
     );
   }

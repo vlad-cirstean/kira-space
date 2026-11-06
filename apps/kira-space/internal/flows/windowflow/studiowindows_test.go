@@ -127,11 +127,11 @@ func TestStudioWindows(t *testing.T) {
 	if ev := app.Events.WaitAfter(t, mark, appevent.ChannelLayoutChanged, nil, wait); ev.Window != "" {
 		t.Fatalf("layout change went to window %q, want every window", ev.Window)
 	}
-	settingsBefore, err := app.W.StudioSettings.GetAll()
+	settingsBefore, err := app.W.Settings.GetAll()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, err := app.W.StudioSettings.GetAll(); err != nil || !reflect.DeepEqual(got, settingsBefore) {
+	if got, err := app.W.Settings.GetAll(); err != nil || !reflect.DeepEqual(got, settingsBefore) {
 		t.Fatalf("Settings.GetAll unstable: %v", err)
 	}
 

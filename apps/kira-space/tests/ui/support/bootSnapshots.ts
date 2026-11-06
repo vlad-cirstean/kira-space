@@ -1,7 +1,6 @@
 import { defaultLayout } from '@shared/domain/layout';
 import type { SecretStorageStatus } from '@shared/domain/secrets';
 import { defaultSettings } from '../../../frontend/src/state/settingsDomain';
-import { defaultSettings as defaultStudioSettings } from '../../../frontend/src/studio/state/settingsDomain';
 import { IPC } from './ipcChannels';
 import type { ControlSnapshot } from './types';
 
@@ -49,8 +48,7 @@ export const EMPTY_BOOT_SNAPSHOTS: readonly ControlSnapshot[] = [
   },
   { channel: IPC.scriptRunsList, response: [] },
   { channel: IPC.promptsList, response: [] },
-  // The databases module's bootstrap(): its own settings, connections, mask-rule counts and ops.
-  { channel: IPC.studioSettingsGetAll, response: defaultStudioSettings },
+  // The databases module's bootstrap(): its own connections, mask-rule counts and ops.
   { channel: IPC.connectionsList, response: [] },
   { channel: IPC.connectionsStates, response: [] },
   { channel: IPC.connectionsSecretsStatus, response: KEYCHAIN_AVAILABLE },

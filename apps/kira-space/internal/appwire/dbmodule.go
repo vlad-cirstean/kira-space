@@ -114,7 +114,7 @@ func (w *Wired) wireAdapters(deps *appcore.Deps, opts Options) (*dbModule, error
 	deps.ConnectionFiles = connFiles
 
 	// Read from the just-migrated (possibly still-default) settings row: the cache budget needs it.
-	settings, err := repositories.DbSettings.GetAll()
+	settings, err := repositories.Settings.GetAll()
 	if err != nil {
 		return nil, err
 	}
@@ -246,14 +246,13 @@ func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *db
 	if installer == nil {
 		installer = harness.ActiveInstaller(w.Agents)
 	}
-	agentAPI := &agentapi.Service{Envs: dbm.apiFiles, Secrets: dbm.apiSecrets, Ops: dbm.router.Host(), Globals: bridge.AgentAPIGlobals(repositories.DbSettings)}
+	agentAPI := &agentapi.Service{Envs: dbm.apiFiles, Secrets: dbm.apiSecrets, Ops: dbm.router.Host(), Globals: bridge.AgentAPIGlobals(repositories.Settings)}
 	embedded := w.wireEmbedded(deps, installer, dbm.connectionsSvc, dbm.oplogWiring, proofSvc, agentAPI, opts)
 	dbm.apiFiles.Start()
 	dbm.connFiles.Start()
 
 	w.Router = dbm.router
 	w.App = &bridge.AppService{Deps: deps}
-	w.StudioSettings = &bridge.StudioSettingsService{Deps: deps}
 	w.StudioOps = &bridge.StudioOpsService{Deps: deps, Canceller: dbm.router}
 	w.Connections = &bridge.ConnectionsService{Deps: deps}
 	w.MaskRules = &bridge.MaskRulesService{Deps: deps}

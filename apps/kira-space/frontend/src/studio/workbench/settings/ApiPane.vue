@@ -15,14 +15,14 @@ import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
 import { formatCount } from '@workbench/behaviour/format';
 import { computed, useId } from 'vue';
-import { parseIntField, type SettingsPaneProps } from '../../../workbench/settings/types';
 import {
   type ApiSettings,
   HTTP_VERSIONS,
   MAX_REDIRECTS_RANGE,
   MAX_RESPONSE_MB_RANGE,
   REQUEST_TIMEOUT_MS_RANGE,
-} from '../../state/settingsDomain';
+} from '../../../state/settingsDomain';
+import { parseIntField, type SettingsPaneProps } from '../../../workbench/settings/types';
 
 // P103 Part 2 (§5.5): extracted verbatim from workbench/SettingsDialog.vue's own
 // `v-else-if="activeSection === 'Api'"` branch — P90 §2.7's own global Api section.

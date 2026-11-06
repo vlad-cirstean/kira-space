@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
-import { defaultSettings as spaceDefaults } from '../../../frontend/src/state/settingsDomain';
-import { defaultSettings } from '../../../frontend/src/studio/state/settingsDomain';
+import {
+  defaultSettings,
+  defaultSettings as spaceDefaults,
+} from '../../../frontend/src/state/settingsDomain';
 import type { ControlSnapshot } from '../../ipc/support/types';
 import { expect, studioTest as test } from '../fixtures';
 import { IPC } from '../support/ipcChannels';
@@ -100,7 +102,7 @@ test('colouring off at boot — both columns plain, no inline colour at all', as
       CONNECTION_CREATE_SNAPSHOT,
       ...FIXTURE.control,
       {
-        channel: IPC.studioSettingsGetAll,
+        channel: IPC.settingsGetAll,
         response: {
           ...defaultSettings,
           appearance: { ...spaceDefaults.appearance, rowColoring: false },
@@ -127,7 +129,7 @@ test('saving the toggle repaints the open grid', async ({ relaunch }) => {
     control: [
       CONNECTION_CREATE_SNAPSHOT,
       ...FIXTURE.control,
-      { channel: IPC.studioSettingsSet, response: flippedSettings },
+      { channel: IPC.settingsSet, response: flippedSettings },
     ],
     stream: FIXTURE.port,
   });

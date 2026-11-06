@@ -61,8 +61,8 @@ func (f *fixture) writeDev(t *testing.T, hosts string, autoReads bool) {
 // dbmcp-api-settings contract tests/ui/dbmcp-api-settings.spec.ts replays.
 func (f *fixture) patchAPI(t *testing.T, key string, patch *model.DbMcpPatch) {
 	t.Helper()
-	args := bridge.StudioSettingsSetArgs{Patch: model.DbSettingsPatch{DbMcp: patch}}
-	if _, err := f.app.W.StudioSettings.Set(args); err != nil {
+	args := bridge.SettingsSetArgs{Patch: model.SettingsPatch{DbMcp: patch}}
+	if _, err := f.app.W.Settings.Set(args); err != nil {
 		t.Fatal(err)
 	}
 	f.app.Contract(t, "dbmcp-api-settings", "args:SettingsService.Set#"+key, args)
@@ -71,7 +71,7 @@ func (f *fixture) patchAPI(t *testing.T, key string, patch *model.DbMcpPatch) {
 func (f *fixture) setAPI(t *testing.T, enabled bool, approval string) {
 	t.Helper()
 	patch := &model.DbMcpPatch{APIRequests: &enabled, APIApproval: &approval}
-	if _, err := f.app.W.StudioSettings.Set(bridge.StudioSettingsSetArgs{Patch: model.DbSettingsPatch{DbMcp: patch}}); err != nil {
+	if _, err := f.app.W.Settings.Set(bridge.SettingsSetArgs{Patch: model.SettingsPatch{DbMcp: patch}}); err != nil {
 		t.Fatal(err)
 	}
 }

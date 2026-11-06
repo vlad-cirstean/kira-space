@@ -19,7 +19,7 @@ import NumberStepperInput from '@theme/NumberStepperInput.vue';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
 import { formatCount } from '@workbench/behaviour/format';
 import { computed } from 'vue';
-import { useStudioSettingsStore } from '../../state/settings';
+import { useSettingsStore } from '../../../state/settings';
 import CheckboxRow from './CheckboxRow.vue';
 import ConnectionMcpMasked from './ConnectionMcpMasked.vue';
 import ConnectionMcpReview from './ConnectionMcpReview.vue';
@@ -31,7 +31,7 @@ const props = defineProps<{
   connectionId?: string;
 }>();
 const file = defineModel<ConnectionFileModel>({ required: true });
-const settingsStore = useStudioSettingsStore();
+const settingsStore = useSettingsStore();
 
 const mcp = computed(() => file.value.mcp ?? {});
 const enabled = computed(() => mcp.value.enabled ?? false);

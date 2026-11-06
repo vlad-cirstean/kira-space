@@ -73,7 +73,7 @@ func (s *HttpService) Send(ctx context.Context, args HttpSendArgs) (httpclient.R
 	// P90 §2.5: the globals are read once per send, from the same repo the Settings dialog writes
 	// — resolveSendOptions is the whole override rule, a per-request value wins, an absent one
 	// inherits the global.
-	settings, err := s.Deps.Repos.DbSettings.GetAll()
+	settings, err := s.Deps.Repos.Settings.GetAll()
 	if err != nil {
 		return httpclient.Response{}, ipcerr.InternalErr(err)
 	}
