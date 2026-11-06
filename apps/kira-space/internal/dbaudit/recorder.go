@@ -13,7 +13,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
@@ -317,9 +316,7 @@ func (r *Recorder) refusalText(connectionID, text string) string {
 		masked, ok = r.d.Redactor.RedactStatement(connectionID, text)
 	}
 	if !ok {
-		masked, ok = adapters.MaskSQLLiterals(text, adapters.PostgresDialect)
-	}
-	if !ok {
+		// Dialect unknown without a live adapter: a guess leaks "..." literals on MySQL and MariaDB.
 		return "refused (message not recorded)"
 	}
 	return truncateRunes(oplog.RedactText(masked), maxErrorRunes)
