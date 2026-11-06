@@ -9,7 +9,7 @@ Sequencing: user asked 3 phases in parallel. Batch: P551 + P552 (schema) + P554,
 | Phase | Title | Status |
 |---|---|---|
 | P551 | Site expansion: content, pages and explanations with images | Pending |
-| P552 | Tighten SQLite types and constraints, reorganise schema | Pending |
+| P552 | Tighten SQLite types and constraints, reorganise schema | Done |
 | P553 | Go SQL query builder for the app's SQLite | Pending |
 | P554 | GitOps for config files: shared config repos | Pending |
 
@@ -38,6 +38,7 @@ Sequencing: user asked 3 phases in parallel. Batch: P551 + P552 (schema) + P554,
 - Depends on v0.3.0 P544.
 - Decide in plan: audit of every table and column; constraint catalogue per table; migration strategy (per table or grouped; order by foreign key dependencies); verification (schema snapshot test is acceptable: it guards complex migration logic; migration flow test on a seeded old-shape DB); interplay with P553 (builder types) and a possible later Postgres schema; order relative to P553; schema audit output (per-table verdict keep/split/merge/rename, with reason); target ER layout; how split/merge migrations preserve data and repos stay behaviour-compatible; impact on P553: builder models generate against the final schema, so P552 runs before P553 (settled, see Sequencing; the plan may flag a conflict but must not reorder on its own); perf check on hot queries before/after.
 - Plan: `plans/P552.md`.
+- Result: migrations 0083-0090 rebuild every kira.db table `STRICT` (60 app tables plus `schema_version` and `schema_quarantine`). Instants are INTEGER unix ms; bools, enums, JSON and FKs carry CHECKs and explicit `ON DELETE`. Renames: `scripts`, `script_collections`, `connection_saved_queries`, `connection_filter_history`, `connection_metadata_cache`, `api_grpc_history`, `sort_order` on `windows`/`tabs`. `ade_workflow_last_valid` merged into `config_last_valid` (folder `workflows`, via `configfs.TableProjection`). Runner gains `ForeignKeysOff` steps (pinned conn, `foreign_key_check`, rollback) and `Migration.Func`. Repair and removal land in `schema_quarantine`; `OpenAt` backs up to `backups/p552-<ts>/kira.db` first. Legacy connection and repo columns and tables carry only while their export marker is unset. `dbfold` and `homefold` map renames and ISO to ms. Lint N7 requires `STRICT` from 0083. Golden schema `storage/testdata/schema.sql`; upgrade of a v82 DB with 50,000 `op_log` and 5,000 `api_response_history` rows takes 0.6 s. Detail in `plans/P552.md` Result.
 
 ### P553 Go SQL query builder for the app's SQLite
 
