@@ -113,7 +113,7 @@ func warnQuarantine(db *sql.DB, backupDir string, sinceMs int64) {
 		var table, action string
 		var n int
 		if rows.Scan(&table, &action, &n) == nil {
-			slog.Warn("storage: schema migration touched rows", "table", table, "action", action, "rows", n, "backup", backupDir)
+			slog.Warn("storage: schema migration touched rows", "scope", "storage", "table", table, "action", action, "rows", n, "backup", backupDir)
 		}
 	}
 }
