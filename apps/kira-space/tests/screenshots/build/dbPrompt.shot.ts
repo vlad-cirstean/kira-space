@@ -1,3 +1,4 @@
+import { CAPTURE_NOW } from '@workbench/testing/screenshots/capture';
 import { pushApprovals } from '@workbench/testing/ui/approvals';
 import { expect, test } from '../../ui/fixtures';
 import { seedApprovals } from '../../ui/support/approvals';
@@ -25,6 +26,9 @@ test('build db prompt: approvals', async ({ relaunch, consoleErrors }) => {
   await expect(dialog.locator(`[data-testid="approval-item-${write.id}"]`)).toContainText(
     STORY.connection,
   );
+  // The expiry countdown reads Date.now; fix it so the frame never differs by a second.
+  await win.clock.setFixedTime(CAPTURE_NOW + 1000);
+  await expect(dialog).toContainText('29:59');
   await shoot(win, 'build-db-approval', consoleErrors);
   await shoot(win, 'build-db-statement', consoleErrors);
   await pushApprovals(win, [exemption]);
