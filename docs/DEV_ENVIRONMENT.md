@@ -78,8 +78,6 @@ needs.
   placeholders. For real images run `bun run screenshots` first.
 - Add a shot: an entry in `site/src/data/shotCapture.ts`, copy in `site/src/data/shots.ts`, a
   `shoot(page, '<id>', consoleErrors)` call in the spec, a `<DocShot id="<id>" />` or hero use.
-- The pages.yml change is a pending patch (`docs/pending-changes/.github__workflows__pages.yml.patch`):
-  apply `.github__actions__setup__action.yml.patch` first, then this one.
 - Determinism check: run `bun run screenshots` twice and `cmp` every file in `screenshots/`. A diff
   means a nondeterministic input; fix the cause, never add tolerance.
 - Shot flows: `apps/*/tests/screenshots/*.shot.ts`. A shot fails on a console error, so a mocked
