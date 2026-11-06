@@ -4,7 +4,14 @@
 export type ShotCapture =
   | { readonly kind: 'window'; readonly detail: { readonly x: number; readonly y: number } }
   | { readonly kind: 'floating'; readonly selector: string; readonly padding?: number }
-  | { readonly kind: 'region'; readonly selector: string; readonly padding?: number };
+  | {
+      readonly kind: 'region';
+      readonly selector: string;
+      readonly padding?: number;
+      /** Vertical trim: from the top of the first `top` match to the bottom of the last `bottom` match. */
+      readonly top?: string;
+      readonly bottom?: string;
+    };
 
 export const SHOT_CAPTURE = {
   'studio-data-grid': { kind: 'window', detail: { x: 265, y: 130 } },
@@ -14,7 +21,13 @@ export const SHOT_CAPTURE = {
   'space-agents-board': { kind: 'window', detail: { x: 290, y: 180 } },
   'space-memory': { kind: 'window', detail: { x: 0, y: 130 } },
   'studio-grid-row-menu': { kind: 'floating', selector: '[data-testid="context-menu"]' },
-  'space-commit-detail': { kind: 'region', selector: '[data-testid="detail-region"]' },
+  'space-commit-detail': {
+    kind: 'region',
+    selector: '[data-testid="detail-region"]',
+    top: '[data-testid="commit-meta"]',
+    bottom: '[data-testid="file-tree-row"]',
+    padding: 0,
+  },
 } as const satisfies Record<string, ShotCapture>;
 
 export type ShotId = keyof typeof SHOT_CAPTURE;

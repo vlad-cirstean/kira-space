@@ -23,6 +23,8 @@ export async function shoot(
     kind: capture.kind,
     selector: capture.selector,
     padding: capture.padding,
+    top: capture.kind === 'region' ? capture.top : undefined,
+    bottom: capture.kind === 'region' ? capture.bottom : undefined,
     consoleErrors,
   });
 }

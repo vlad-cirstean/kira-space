@@ -11,6 +11,9 @@ export interface CropOptions {
   readonly selector: string;
   /** CSS px around the element. Default 24 (`floating`) or 12 (`region`). */
   readonly padding?: number;
+  /** `region` only: trim the vertical range to the first `top` match's top and the last `bottom` match's bottom. */
+  readonly top?: string;
+  readonly bottom?: string;
   /** The `consoleErrors` fixture of the run. */
   readonly consoleErrors: readonly string[];
 }
@@ -46,9 +49,26 @@ async function floating(page: Page, selector: string, padding: number): Promise<
   }
 }
 
-async function region(page: Page, selector: string, padding: number): Promise<Buffer> {
+async function region(
+  page: Page,
+  selector: string,
+  padding: number,
+  topSelector?: string,
+  bottomSelector?: string,
+): Promise<Buffer> {
   const box = await page.locator(selector).first().boundingBox();
   if (!box) throw new Error(`No box for ${selector}`);
+  if (topSelector) {
+    const topBox = await page.locator(topSelector).first().boundingBox();
+    if (!topBox) throw new Error(`No box for ${topSelector}`);
+    box.height += box.y - topBox.y;
+    box.y = topBox.y;
+  }
+  if (bottomSelector) {
+    const bottomBox = await page.locator(bottomSelector).last().boundingBox();
+    if (!bottomBox) throw new Error(`No box for ${bottomSelector}`);
+    box.height = bottomBox.y + bottomBox.height - box.y;
+  }
   const viewport = page.viewportSize();
   if (!viewport) throw new Error('captureCrop needs a viewport');
   const x = Math.max(0, box.x - padding);
@@ -67,6 +87,6 @@ export async function captureCrop(page: Page, options: CropOptions): Promise<voi
   const png =
     kind === 'floating'
       ? await floating(page, selector, options.padding ?? 24)
-      : await region(page, selector, options.padding ?? 12);
+      : await region(page, selector, options.padding ?? 12, options.top, options.bottom);
   await saveShot(`crop/${id}`, png);
 }
