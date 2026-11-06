@@ -14,12 +14,23 @@ function modeTab(page: Page, mode: 'git' | 'automations' | 'ade') {
   return page.locator(`[data-testid="mode-tab"][data-mode="${mode}"]`);
 }
 
-test('the title bar lists Agents, Runs, Memory, then Git', async ({ relaunch }) => {
+test('the title bar lists Agents, Runs, Memory, Git, then the Studio modules', async ({
+  relaunch,
+}) => {
   const { window: page } = await relaunch();
   const modes = await page
     .locator('[data-testid="mode-tab"]')
     .evaluateAll((els) => els.map((e) => e.getAttribute('data-mode')));
-  expect(modes).toEqual(['ade', 'automations', 'memory', 'git']);
+  expect(modes).toEqual([
+    'ade',
+    'automations',
+    'memory',
+    'git',
+    'studio',
+    'api',
+    'docker',
+    'kubernetes',
+  ]);
   await expect(modeTab(page, 'git')).toHaveClass(/is-active/);
   const tabs = page.locator('[data-testid="mode-tab"]');
   const names = ['Agents', 'Runs', 'Memory', 'Git'];

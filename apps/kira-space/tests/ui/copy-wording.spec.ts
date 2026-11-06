@@ -366,7 +366,7 @@ studioTest.describe('databases module', () => {
 
     await expect(page.locator('[data-testid="command-palette-input"]')).toHaveAttribute(
       'placeholder',
-      'Type a command',
+      'Search commands',
     );
     await expect(page.locator('[data-slot="dialog-title"]').first()).toHaveText('Command palette');
   });
