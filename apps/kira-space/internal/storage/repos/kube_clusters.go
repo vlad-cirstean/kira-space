@@ -8,31 +8,40 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/internal/ids"
-	"github.com/kirathecat/kira-studio/internal/sqlitex"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // KubeClustersRepo reads and writes kube_clusters (P439).
 type KubeClustersRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
 var _ kubernetes.ClusterStore = (*KubeClustersRepo)(nil)
 
-const kubeClusterCols = `id, context, server, created_at, last_seen_at,
-	mcp_description, mcp_discover_mode, mcp_list_mode, mcp_describe_mode, mcp_logs_mode, sort_order`
+var kubeClusterCols = []string{
+	kiraschema.KubeClusters.ID, kiraschema.KubeClusters.Context, kiraschema.KubeClusters.Server,
+	kiraschema.KubeClusters.CreatedAt, kiraschema.KubeClusters.LastSeenAt,
+	kiraschema.KubeClusters.MCPDescription, kiraschema.KubeClusters.MCPDiscoverMode, kiraschema.KubeClusters.MCPListMode,
+	kiraschema.KubeClusters.MCPDescribeMode, kiraschema.KubeClusters.MCPLogsMode, kiraschema.KubeClusters.SortOrder,
+}
 
 func (r *KubeClustersRepo) Ensure(context, server string, now time.Time) (kubernetes.ClusterRecord, error) {
 	ts := now.UnixMilli()
-	row := r.DB.QueryRow(
-		`INSERT INTO kube_clusters (id, context, server, created_at, last_seen_at) VALUES (?, ?, ?, ?, ?)
-		 ON CONFLICT(context, server) DO UPDATE SET last_seen_at = excluded.last_seen_at
-		 RETURNING `+kubeClusterCols,
-		ids.NewID(), context, server, ts, ts)
-	return scanKubeCluster(row)
+	c := kiraschema.KubeClusters
+	ib := r.Dialect.InsertInto(c.Table).Cols(c.ID, c.Context, c.Server, c.CreatedAt, c.LastSeenAt).
+		Values(ids.NewID(), context, server, ts, ts)
+	sqlb.Upsert(ib, []string{c.Context, c.Server}, []string{c.LastSeenAt}, "")
+	ib.Returning(kubeClusterCols...)
+	return scanKubeCluster(sqlb.QueryRow(r.DB, ib))
 }
 
 func (r *KubeClustersRepo) Get(id string) (kubernetes.ClusterRecord, bool, error) {
-	rec, err := scanKubeCluster(r.DB.QueryRow(`SELECT `+kubeClusterCols+` FROM kube_clusters WHERE id = ?`, id))
+	c := kiraschema.KubeClusters
+	sb := r.Dialect.Select(kubeClusterCols...).From(c.Table)
+	sb.Where(sb.Equal(c.ID, id))
+	rec, err := scanKubeCluster(sqlb.QueryRow(r.DB, sb))
 	if errors.Is(err, sql.ErrNoRows) {
 		return kubernetes.ClusterRecord{}, false, nil
 	}
@@ -40,10 +49,12 @@ func (r *KubeClustersRepo) Get(id string) (kubernetes.ClusterRecord, bool, error
 }
 
 func (r *KubeClustersRepo) SetMcp(id string, m kubernetes.McpSettings) (bool, error) {
-	res, err := r.DB.Exec(
-		`UPDATE kube_clusters SET mcp_description = ?, mcp_discover_mode = ?, mcp_list_mode = ?,
-		 mcp_describe_mode = ?, mcp_logs_mode = ? WHERE id = ?`,
-		m.Description, m.Discover, m.List, m.Describe, m.Logs, id)
+	c := kiraschema.KubeClusters
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.MCPDescription, m.Description), ub.Assign(c.MCPDiscoverMode, m.Discover),
+		ub.Assign(c.MCPListMode, m.List), ub.Assign(c.MCPDescribeMode, m.Describe), ub.Assign(c.MCPLogsMode, m.Logs)).
+		Where(ub.Equal(c.ID, id))
+	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
 		return false, err
 	}
@@ -58,11 +69,10 @@ func (r *KubeClustersRepo) Reorder(ids []string) error {
 		return fmt.Errorf("repos/kube_clusters: reorder: begin: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if err := sqlitex.ReorderSortOrder(tx,
-		`SELECT id FROM kube_clusters ORDER BY sort_order IS NULL, sort_order, context`,
-		`UPDATE kube_clusters SET sort_order = ? WHERE id = ?`,
-		ids,
-	); err != nil {
+	c := kiraschema.KubeClusters
+	sel := r.Dialect.Select(c.ID).From(c.Table).OrderBy(c.SortOrder+" IS NULL", c.SortOrder, c.Context)
+	set := sqlb.SortSet{Table: c.Table, Key: c.ID, Order: c.SortOrder, Select: sel}
+	if err := sqlb.ReorderSortOrder(tx, r.Dialect, set, ids); err != nil {
 		return fmt.Errorf("repos/kube_clusters: reorder: %w", err)
 	}
 	if err := tx.Commit(); err != nil {

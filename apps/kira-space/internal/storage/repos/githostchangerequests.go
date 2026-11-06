@@ -4,9 +4,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/huandu/go-sqlbuilder"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -14,11 +18,35 @@ import (
 // the persisted change request index of each code host repository, keyed by repo_key so two clones
 // of one repository share rows.
 type GitHostChangeRequestsRepo struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 }
 
-const gitHostCRColumns = `number, node_id, head_ref, head_owner, head_sha, base_ref, state, draft, title, url,
-	review_decision, checks_state, comment_count, assignees, updated_at, synced_at`
+var gitHostCRColumns = []string{
+	kiraschema.GitHostChangeRequests.Number, kiraschema.GitHostChangeRequests.NodeID, kiraschema.GitHostChangeRequests.HeadRef,
+	kiraschema.GitHostChangeRequests.HeadOwner, kiraschema.GitHostChangeRequests.HeadSha, kiraschema.GitHostChangeRequests.BaseRef,
+	kiraschema.GitHostChangeRequests.State, kiraschema.GitHostChangeRequests.Draft, kiraschema.GitHostChangeRequests.Title,
+	kiraschema.GitHostChangeRequests.URL, kiraschema.GitHostChangeRequests.ReviewDecision, kiraschema.GitHostChangeRequests.ChecksState,
+	kiraschema.GitHostChangeRequests.CommentCount, kiraschema.GitHostChangeRequests.Assignees, kiraschema.GitHostChangeRequests.UpdatedAt,
+	kiraschema.GitHostChangeRequests.SyncedAt,
+}
+
+// upsertChangeRequestSQL builds the row upsert once per call; the statement is prepared and run per row.
+func (r *GitHostChangeRequestsRepo) upsertChangeRequestSQL() string {
+	c := kiraschema.GitHostChangeRequests
+	cols := append([]string{c.RepoKey}, gitHostCRColumns...)
+	ib := r.Dialect.InsertInto(c.Table).Cols(cols...).Values(make([]any, len(cols))...)
+	update := gitHostCRColumns[1:]
+	changed := make([]string, 0, len(update))
+	for _, col := range update {
+		if col != c.SyncedAt {
+			changed = append(changed, c.Table+"."+col+" IS NOT excluded."+col)
+		}
+	}
+	sqlb.Upsert(ib, []string{c.RepoKey, c.Number}, update, strings.Join(changed, " OR "))
+	q, _ := ib.Build()
+	return q
+}
 
 func scanGitHostCR(rows *sql.Rows) (model.GitHostChangeRequest, bool, error) {
 	var c model.GitHostChangeRequest
@@ -51,21 +79,7 @@ func (r *GitHostChangeRequestsRepo) UpsertChangeRequests(repoKey string, rows []
 		return 0, fmt.Errorf("repos: begin upsert change requests: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
-	stmt, err := tx.Prepare(`INSERT INTO git_host_change_requests (repo_key, ` + gitHostCRColumns + `)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT (repo_key, number) DO UPDATE SET
-			node_id = excluded.node_id, head_ref = excluded.head_ref, head_owner = excluded.head_owner,
-			head_sha = excluded.head_sha, base_ref = excluded.base_ref, state = excluded.state, draft = excluded.draft,
-			title = excluded.title, url = excluded.url, review_decision = excluded.review_decision,
-			checks_state = excluded.checks_state, comment_count = excluded.comment_count, assignees = excluded.assignees,
-			updated_at = excluded.updated_at, synced_at = excluded.synced_at
-		WHERE git_host_change_requests.node_id IS NOT excluded.node_id OR git_host_change_requests.head_ref IS NOT excluded.head_ref
-			OR git_host_change_requests.head_owner IS NOT excluded.head_owner OR git_host_change_requests.head_sha IS NOT excluded.head_sha
-			OR git_host_change_requests.base_ref IS NOT excluded.base_ref OR git_host_change_requests.state IS NOT excluded.state
-			OR git_host_change_requests.draft IS NOT excluded.draft OR git_host_change_requests.title IS NOT excluded.title
-			OR git_host_change_requests.url IS NOT excluded.url OR git_host_change_requests.review_decision IS NOT excluded.review_decision
-			OR git_host_change_requests.checks_state IS NOT excluded.checks_state OR git_host_change_requests.updated_at IS NOT excluded.updated_at
-			OR git_host_change_requests.comment_count IS NOT excluded.comment_count OR git_host_change_requests.assignees IS NOT excluded.assignees`)
+	stmt, err := tx.Prepare(r.upsertChangeRequestSQL())
 	if err != nil {
 		return 0, fmt.Errorf("repos: prepare upsert change requests: %w", err)
 	}
@@ -83,7 +97,7 @@ func (r *GitHostChangeRequestsRepo) UpsertChangeRequests(repoKey string, rows []
 			}
 			assignees = string(b)
 		}
-		res, err := stmt.Exec(repoKey, c.Number, c.NodeID, c.HeadRef, c.HeadOwner, c.HeadSha, c.BaseRef, c.State, boolInt(c.Draft),
+		res, err := stmt.Exec(repoKey, c.Number, c.NodeID, c.HeadRef, c.HeadOwner, c.HeadSha, c.BaseRef, c.State, c.Draft,
 			c.Title, c.URL, c.ReviewDecision, c.ChecksState, comments, assignees, c.UpdatedAt, c.SyncedAt)
 		if err != nil {
 			return 0, fmt.Errorf("repos: upsert change request %s#%d: %w", repoKey, c.Number, err)
@@ -102,7 +116,10 @@ func (r *GitHostChangeRequestsRepo) UpsertChangeRequests(repoKey string, rows []
 
 // DeleteChangeRequest drops one row and reports whether it existed.
 func (r *GitHostChangeRequestsRepo) DeleteChangeRequest(repoKey string, number int) (bool, error) {
-	res, err := r.DB.Exec(`DELETE FROM git_host_change_requests WHERE repo_key = ? AND number = ?`, repoKey, number)
+	c := kiraschema.GitHostChangeRequests
+	db := r.Dialect.DeleteFrom(c.Table)
+	db.Where(db.Equal(c.RepoKey, repoKey), db.Equal(c.Number, number))
+	res, err := sqlb.Exec(r.DB, db)
 	if err != nil {
 		return false, fmt.Errorf("repos: delete change request %s#%d: %w", repoKey, number, err)
 	}
@@ -116,10 +133,13 @@ func (r *GitHostChangeRequestsRepo) DeleteChangeRequest(repoKey string, number i
 // NewestPerBranch returns each head branch's newest row among those whose head lives in
 // headOwner's repository, newest first.
 func (r *GitHostChangeRequestsRepo) NewestPerBranch(repoKey, headOwner string) ([]model.GitHostChangeRequest, error) {
-	rows, err := r.DB.Query(`SELECT `+gitHostCRColumns+` FROM (
-			SELECT `+gitHostCRColumns+`, row_number() OVER (PARTITION BY head_ref ORDER BY updated_at DESC, number DESC) AS rn
-			FROM git_host_change_requests WHERE repo_key = ? AND head_owner = ?)
-		WHERE rn = 1 ORDER BY updated_at DESC, number DESC`, repoKey, headOwner)
+	c := kiraschema.GitHostChangeRequests
+	inner := r.Dialect.Select(append(append([]string{}, gitHostCRColumns...),
+		"row_number() OVER (PARTITION BY "+c.HeadRef+" ORDER BY "+c.UpdatedAt+" DESC, "+c.Number+" DESC) AS rn")...).From(c.Table)
+	inner.Where(inner.Equal(c.RepoKey, repoKey), inner.Equal(c.HeadOwner, headOwner))
+	outer := r.Dialect.Select(gitHostCRColumns...)
+	outer.From(outer.BuilderAs(inner, "ranked")).Where(outer.Equal("rn", 1)).OrderBy(c.UpdatedAt+" DESC", c.Number+" DESC")
+	rows, err := sqlb.Query(r.DB, outer)
 	out, err := sqlitex.QueryAll(rows, err, scanGitHostCR)
 	if err != nil {
 		return nil, fmt.Errorf("repos: list change requests of %s: %w", repoKey, err)
@@ -129,8 +149,11 @@ func (r *GitHostChangeRequestsRepo) NewestPerBranch(repoKey, headOwner string) (
 
 // ChangeRequestsForBranch returns one head branch's rows, newest first.
 func (r *GitHostChangeRequestsRepo) ChangeRequestsForBranch(repoKey, headOwner, headRef string) ([]model.GitHostChangeRequest, error) {
-	rows, err := r.DB.Query(`SELECT `+gitHostCRColumns+` FROM git_host_change_requests
-		WHERE repo_key = ? AND head_owner = ? AND head_ref = ? ORDER BY updated_at DESC, number DESC`, repoKey, headOwner, headRef)
+	c := kiraschema.GitHostChangeRequests
+	sb := r.Dialect.Select(gitHostCRColumns...).From(c.Table)
+	sb.Where(sb.Equal(c.RepoKey, repoKey), sb.Equal(c.HeadOwner, headOwner), sb.Equal(c.HeadRef, headRef)).
+		OrderBy(c.UpdatedAt+" DESC", c.Number+" DESC")
+	rows, err := sqlb.Query(r.DB, sb)
 	out, err := sqlitex.QueryAll(rows, err, scanGitHostCR)
 	if err != nil {
 		return nil, fmt.Errorf("repos: list change requests of %s %s: %w", repoKey, headRef, err)
@@ -140,8 +163,10 @@ func (r *GitHostChangeRequestsRepo) ChangeRequestsForBranch(repoKey, headOwner, 
 
 // OpenChangeRequests returns every open row of the repository, any head owner.
 func (r *GitHostChangeRequestsRepo) OpenChangeRequests(repoKey string) ([]model.GitHostChangeRequest, error) {
-	rows, err := r.DB.Query(`SELECT `+gitHostCRColumns+` FROM git_host_change_requests
-		WHERE repo_key = ? AND state = 'open' ORDER BY updated_at DESC, number DESC`, repoKey)
+	c := kiraschema.GitHostChangeRequests
+	sb := r.Dialect.Select(gitHostCRColumns...).From(c.Table)
+	sb.Where(sb.Equal(c.RepoKey, repoKey), sb.Equal(c.State, "open")).OrderBy(c.UpdatedAt+" DESC", c.Number+" DESC")
+	rows, err := sqlb.Query(r.DB, sb)
 	out, err := sqlitex.QueryAll(rows, err, scanGitHostCR)
 	if err != nil {
 		return nil, fmt.Errorf("repos: list open change requests of %s: %w", repoKey, err)
@@ -153,8 +178,11 @@ func (r *GitHostChangeRequestsRepo) OpenChangeRequests(repoKey string) ([]model.
 func (r *GitHostChangeRequestsRepo) SyncState(repoKey string) (model.GitHostSyncState, bool, error) {
 	var s model.GitHostSyncState
 	var complete int
-	err := r.DB.QueryRow(`SELECT account, watermark_updated_at, etag, last_full_sync_at, last_delta_at, last_checks_at,
-		backfill_cursor, backfill_complete, schema_version, delta_floor FROM git_host_sync_state WHERE repo_key = ?`, repoKey).
+	c := kiraschema.GitHostSyncState
+	sb := r.Dialect.Select(c.Account, c.WatermarkUpdatedAt, c.Etag, c.LastFullSyncAt, c.LastDeltaAt, c.LastChecksAt,
+		c.BackfillCursor, c.BackfillComplete, c.SchemaVersion, c.DeltaFloor).From(c.Table)
+	sb.Where(sb.Equal(c.RepoKey, repoKey))
+	err := sqlb.QueryRow(r.DB, sb).
 		Scan(&s.Account, &s.WatermarkUpdatedAt, &s.ETag, &s.LastFullSyncAt, &s.LastDeltaAt, &s.LastChecksAt,
 			&s.BackfillCursor, &complete, &s.SchemaVersion, &s.DeltaFloor)
 	if err == sql.ErrNoRows {
@@ -169,15 +197,14 @@ func (r *GitHostChangeRequestsRepo) SyncState(repoKey string) (model.GitHostSync
 
 // PutSyncState writes the repository's sync state.
 func (r *GitHostChangeRequestsRepo) PutSyncState(repoKey string, s model.GitHostSyncState) error {
-	if _, err := r.DB.Exec(`INSERT INTO git_host_sync_state (repo_key, account, watermark_updated_at, etag, last_full_sync_at,
-		last_delta_at, last_checks_at, backfill_cursor, backfill_complete, schema_version, updated_at, delta_floor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT (repo_key) DO UPDATE SET account = excluded.account, watermark_updated_at = excluded.watermark_updated_at,
-			etag = excluded.etag, last_full_sync_at = excluded.last_full_sync_at, last_delta_at = excluded.last_delta_at,
-			last_checks_at = excluded.last_checks_at, backfill_cursor = excluded.backfill_cursor,
-			backfill_complete = excluded.backfill_complete, schema_version = excluded.schema_version,
-			updated_at = excluded.updated_at, delta_floor = excluded.delta_floor`,
-		repoKey, s.Account, s.WatermarkUpdatedAt, s.ETag, s.LastFullSyncAt, s.LastDeltaAt, s.LastChecksAt,
-		s.BackfillCursor, boolInt(s.BackfillComplete), s.SchemaVersion, time.Now().UnixMilli(), s.DeltaFloor); err != nil {
+	c := kiraschema.GitHostSyncState
+	ib := r.Dialect.InsertInto(c.Table).Cols(c.RepoKey, c.Account, c.WatermarkUpdatedAt, c.Etag, c.LastFullSyncAt, c.LastDeltaAt,
+		c.LastChecksAt, c.BackfillCursor, c.BackfillComplete, c.SchemaVersion, c.UpdatedAt, c.DeltaFloor).
+		Values(repoKey, s.Account, s.WatermarkUpdatedAt, s.ETag, s.LastFullSyncAt, s.LastDeltaAt, s.LastChecksAt,
+			s.BackfillCursor, s.BackfillComplete, s.SchemaVersion, time.Now().UnixMilli(), s.DeltaFloor)
+	sqlb.Upsert(ib, []string{c.RepoKey}, []string{c.Account, c.WatermarkUpdatedAt, c.Etag, c.LastFullSyncAt, c.LastDeltaAt,
+		c.LastChecksAt, c.BackfillCursor, c.BackfillComplete, c.SchemaVersion, c.UpdatedAt, c.DeltaFloor}, "")
+	if _, err := sqlb.Exec(r.DB, ib); err != nil {
 		return fmt.Errorf("repos: write sync state of %s: %w", repoKey, err)
 	}
 	return nil
@@ -185,26 +212,38 @@ func (r *GitHostChangeRequestsRepo) PutSyncState(repoKey string, s model.GitHost
 
 // DropRepo removes the repository's rows and sync state in one transaction.
 func (r *GitHostChangeRequestsRepo) DropRepo(repoKey string) error {
-	return r.dropWhere(`repo_key = ?`, repoKey)
+	return r.dropWhere(func(cond *sqlbuilder.Cond) string {
+		return cond.Equal(kiraschema.GitHostChangeRequests.RepoKey, repoKey)
+	})
 }
 
 // PruneIdle drops every repository with no sync state write since before.
 func (r *GitHostChangeRequestsRepo) PruneIdle(before int64) error {
-	return r.dropWhere(`repo_key IN (SELECT repo_key FROM git_host_sync_state
-		WHERE max(last_full_sync_at, last_delta_at, last_checks_at, updated_at) < ?)`, before)
+	return r.dropWhere(func(cond *sqlbuilder.Cond) string {
+		s := kiraschema.GitHostSyncState
+		idle := r.Dialect.Select(s.RepoKey).From(s.Table)
+		idle.Where(idle.LessThan("max("+s.LastFullSyncAt+", "+s.LastDeltaAt+", "+s.LastChecksAt+", "+s.UpdatedAt+")", before))
+		return cond.In(s.RepoKey, idle)
+	})
 }
 
-func (r *GitHostChangeRequestsRepo) dropWhere(cond string, args ...any) error {
+// dropWhere runs both deletes with the same repo_key condition; cond builds it against each
+// builder's own placeholders.
+func (r *GitHostChangeRequestsRepo) dropWhere(cond func(*sqlbuilder.Cond) string) error {
 	tx, err := r.DB.Begin()
 	if err != nil {
 		return fmt.Errorf("repos: begin drop change requests: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
 	// Rows first: the state table is what selects the repositories in the PruneIdle condition.
-	if _, err := tx.Exec(`DELETE FROM git_host_change_requests WHERE `+cond, args...); err != nil {
+	cr := r.Dialect.DeleteFrom(kiraschema.GitHostChangeRequests.Table)
+	cr.Where(cond(&cr.Cond))
+	if _, err := sqlb.Exec(tx, cr); err != nil {
 		return fmt.Errorf("repos: drop change requests: %w", err)
 	}
-	if _, err := tx.Exec(`DELETE FROM git_host_sync_state WHERE `+cond, args...); err != nil {
+	st := r.Dialect.DeleteFrom(kiraschema.GitHostSyncState.Table)
+	st.Where(cond(&st.Cond))
+	if _, err := sqlb.Exec(tx, st); err != nil {
 		return fmt.Errorf("repos: drop sync state: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
