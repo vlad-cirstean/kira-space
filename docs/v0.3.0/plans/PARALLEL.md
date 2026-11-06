@@ -1,4 +1,4 @@
-# v0.3.0 parallel batches (P538 to P548)
+# v0.3.0 parallel batches (P538 to P550)
 
 User asked for phase batches (CLAUDE.md loop rule exception). Base `b0941c84` (renumber commit). Up
 to 3 whole phases per batch; each phase is its own stream: own worktree off the batch base, own Opus
@@ -9,7 +9,7 @@ plan, own Sonnet implementer. Discovery: `codegraph_explore` over the details pa
 (`adeflow/parse.go`, `adeflow/options.go`, `adewire.WorkflowStep`, `AdeStepInspector`), agent
 sessions; shell greps for migrations, `StudioContract` callers and test dirs.
 
-Result: 6 batches instead of 11 serial phases. P542 sits in B2 as a third stream (plan `P542.md`).
+Result: 7 batches instead of 13 serial phases. P542 sits in B2 as a third stream (plan `P542.md`).
 
 | Batch | Phases | Lands before |
 |---|---|---|
@@ -18,7 +18,8 @@ Result: 6 batches instead of 11 serial phases. P542 sits in B2 as a third stream
 | B3 | P540, P543 | B4 starts |
 | B4 | P548 | B5 starts |
 | B5 | P544, P545 | B6 starts |
-| B6 | P546, P547 | chapter-end suite run |
+| B6 | P546, P547 | B7 starts |
+| B7 | P549, P550 | chapter-end suite run |
 
 ## Rules every batch follows
 
@@ -37,7 +38,7 @@ Result: 6 batches instead of 11 serial phases. P542 sits in B2 as a third stream
 ## Order deviation
 
 Table order is dependency order, with two batch exceptions the user asked for. B2 runs P541 and P542 before
-P540 (B3); B4 runs P548 before P544 to P547. P542 depends on neither: it reshapes notes and handovers in the Space
+P540 (B3); B4 runs P548 before P544 to P547; B4b runs P549 and P550 beside P548 planning (below). P542 depends on neither: it reshapes notes and handovers in the Space
 DB and the details panel, and P540 moves YAML folders. P548 depends on none of P544 to P547.
 SPEC sequencing says P541 to P543 share the details panel and run one at a time: P541 touches only the proof
 window (`frontend/src/studio/proof/`), not the panel, so P541 beside P542 holds; P542, P543, P545, P546 stay serial.
@@ -158,3 +159,29 @@ window (`frontend/src/studio/proof/`), not the panel, so P541 beside P542 holds;
 | i18n catalogs | forward keys | audit keys |
 
 - Landing: P546, then P547.
+
+## B4b: P549 and P550 run now beside P548 planning
+
+- User request: P549 and P550 run now, beside the P548 plan in progress. Both touch only screenshot tooling, site data and CI patches: no overlap with P548 beyond `docs/ARCHITECTURE.md` and the `SPEC.md` rows. P549 could start with B4 to B6 as well; scheduling now is the user's call. Gate for B7 stands for landing: B4b streams rebase onto `chapter/v0.3.0` after P548's batch lands or before, in table order, shared files only.
+- The batch itself is B7 below.
+
+## B7: P549 (WebP and macOS 26 frame), P550 (site image pipeline)
+
+- Why independent, as streams: P549 owns capture, format, frame and output paths
+  (`packages/workbench/src/testing/screenshots/`, `screenshots/`). P550 owns the CI build step (patch
+  in `docs/pending-changes/`, since `.github/workflows` cannot be pushed), the site image manifest and
+  consumption in `site/src/data/shots.ts`, and the crop spec mechanism. P550 reads P549's format and
+  paths; its plan states the assumed contract (WebP, `screenshots/` output layout) and P550 lands after
+  P549, which settles any difference. Small overlap, listed below; no ordering dependency for
+  planning or implementing.
+- Migration owner: none; neither adds SQL.
+
+| Shared file | P549 edit | P550 edit |
+|---|---|---|
+| `site/src/data/shots.ts` | `.png` to `.webp` names, framed variants | manifest shape, crop entries, generated-shot flag |
+| `packages/workbench/src/testing/screenshots/*` | frame, WebP post-processing, output paths | crop spec capture path, own new file where possible |
+| `docs/pending-changes/` | none expected | workflow patch; any PNG-glob check patch from P549 as a separate file |
+| `docs/ARCHITECTURE.md`, `docs/DEV_ENVIRONMENT.md` | screenshots format, frame | site image pipeline, CI step |
+
+- Not shared: `captureFrame` internals and `screenshots/assets/traffic-lights.svg` (P549), crop spec files and the CI cache key (P550).
+- Landing: P549, then P550.

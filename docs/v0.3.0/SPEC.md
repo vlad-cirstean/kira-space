@@ -1,8 +1,8 @@
 # v0.3.0
 
-Branch `chapter/v0.3.0`, based on `chapter/v0.2.36` (v0.2.36 not yet merged to main). First `P` is 537 (highest in v0.2.36 is P536), last is P548.
+Branch `chapter/v0.3.0`, based on `chapter/v0.2.36` (v0.2.36 not yet merged to main). First `P` is 537 (highest in v0.2.36 is P536), last is P550.
 
-Source: user request. Twelve phases (P537 split into two Parts): merge both apps into one Kira Space, then merge the Studio twins with no data dependency (`plans/TWINS.md`), then fold the two homes into one, move config YAML into one subfolder, then proof and notes rework in the task details panel, merge the main SQLite DBs, then timeline rework, forward edits, Kira DB audit trail and the Studio MCP workflow option. Close duty after the last phase lands: one full suite run, 2 code review rounds (user ask), hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
+Source: user request. Fourteen phases (P537 split into two Parts): merge both apps into one Kira Space, then merge the Studio twins with no data dependency (`plans/TWINS.md`), then fold the two homes into one, move config YAML into one subfolder, then proof and notes rework in the task details panel, merge the main SQLite DBs, then timeline rework, forward edits, Kira DB audit trail and the Studio MCP workflow option, then lossless WebP screenshots with the macOS 26 frame and the CI site image pipeline. Close duty after the last phase lands: one full suite run, 2 code review rounds (user ask), hand-written close. After the close and push, open the PR to main (CLAUDE.md close rules), subscribe to it, and fix failing checks until it merges. Each phase: Opus plan, Sonnet implementation.
 
 Sequencing: P537 first. Every later phase builds on the merged app, so none starts before P537 (all its Parts) is committed. P538 merges the twins `plans/TWINS.md` marks MERGE-NOW. P539 and P540 run in order: home first, then config subfolder; each migration runs after the previous one landed. P544 (DB merge) runs after P543 so it folds the schema P541 to P543 add. Table order is execution order, except where the user-asked batches in `plans/PARALLEL.md` run up to 3 phases at once. P541 to P543, P545 and P546 share the task details panel and the notes editor; run one at a time. P547 also depends on v0.2.36 P528 (exemption approvals) having landed.
 
@@ -23,6 +23,8 @@ Twins: every Studio twin in `plans/TWINS.md` is merged by P538, P539, P540 or P5
 | P546 | Forward panel edits (diff only) to agents running in the step | Pending |
 | P547 | Kira DB audit trail in the details panel | Pending |
 | P548 | Studio MCP option in workflow steps | Pending |
+| P549 | WebP screenshots and macOS 26 window frame | Pending |
+| P550 | Site image pipeline: CI generates and publishes site images | Pending |
 
 ## Rows
 
@@ -209,18 +211,43 @@ Result:
 - Decide in plan: step schema field and validation; per-session scoped access when the global external switch is off, and that it never opens the server to external clients; session-scoped credential lifecycle handled by the app, never shown to the user; interaction with the P537 naming outcome.
 - Plan: `plans/P548.md`.
 
+### P549 WebP screenshots and macOS 26 window frame
+
+- Ask: product screenshots stored as lossless WebP only. Measured: a 150 KB PNG becomes 47 KB, identical pixels; quality 90 is no smaller. Playwright's WebKit `screenshots` project still captures PNG as an intermediate. The framed-variant post-processing step converts to lossless WebP and deletes the PNG, so only `.webp` is committed. Update `site/src/data/shots.ts` and every site reference, site visual baselines, docs (`docs/DEV_ENVIRONMENT.md`, screenshots README) and every check that globs PNG names.
+- Ask: macOS window controls (traffic-light "semaphore" buttons) were redesigned in macOS 26. Framed screenshots must show the new look. Frame code: `frame()` in `packages/workbench/src/testing/screenshots/capture.ts` (HTML frame, 10px radius, 1px inset border) plus `screenshots/assets/traffic-lights.svg` (52x12 at 14,11). All framed shots under `screenshots/` and site assets regenerate with the new frame.
+- Decide in plan (frame): size, spacing, colours, window corner radius, shadow or glass treatment to match macOS 26. State the reference used. No macOS in the sandbox: if no reference can be verified, the plan says so and the user supplies a reference screenshot.
+- Not in scope: Astro image optimisation, responsive sizes, AVIF, fallbacks. User is not optimising Astro yet.
+- Decide in plan: converter (library already in the toolchain, for example sharp; license check, fully open source); lossless settings; which existing PNGs migrate (`screenshots/`, site assets); how git history growth stays small (PNGs deleted, no new binary except WebP); guard against PNG left behind.
+- Ownership vs P550: P549 owns capture, format, frame and output paths. P550 builds on them and edits none of that.
+- Batch: stream B7 beside P550 (`plans/PARALLEL.md`).
+- Plan: `plans/P549.md`.
+
+### P550 Site image pipeline: CI generates and publishes site images
+
+- Ask: the site publishing GitHub Action gains a build step: run the `screenshots` Playwright project against the app build before the site build, so site images follow the real UI and need not all be committed. Workflow changes cannot be pushed from this environment: the patch goes to `docs/pending-changes/` per `docs/DEV_ENVIRONMENT.md`.
+- Ask: site images are cropped to what matters. Full-window shots only where the whole window makes sense: overview, hero, layout, module switching. A dialog, popover, menu, panel or toolbar region is captured cropped to that element (element screenshot with small padding, not the whole window), with at most a light shadow instead of the full window frame.
+- Ownership vs P549: P549 owns capture, format, frame and output paths. P550 owns the CI build step (patch in `docs/pending-changes/`), the site's image manifest and consumption in `site/src/data/shots.ts`, and the crop spec mechanism. P550 reads P549's output format and paths; where P549 has not landed, the plan states the assumed contract.
+- Not in scope: site content, new pages and explanations (v0.3.1 P551).
+- Decide in plan (crops): capture mechanism (Playwright locator screenshots, per-shot crop regions, padding, scale 2); crop spec format; naming; which scenarios are full vs cropped; frames apply to full-window shots only; how cropped shots keep consistent width and alignment in the page layout.
+- Decide in plan: which shots generate in CI and which stay committed as WebP; CI cost and caching (hash of app source and shot specs); flake handling so one bad shot does not break the deploy; manifest shape in `shots.ts`; site visual tests for the pipeline.
+- Batch: stream B7 beside P549 (`plans/PARALLEL.md`).
+- Plan: `plans/P550.md`.
+
 ## Close
 
-2 code review rounds (user ask). After P548: one full suite run with all failures fixed, review rounds, hand-written close per CLAUDE.md, PR.
+2 code review rounds (user ask). After P550: one full suite run with all failures fixed, review rounds, hand-written close per CLAUDE.md, PR.
 
 ### Site and images check (mandatory)
 
-Runs after P548 and the full suite run, before the code review. Close does not start until every item passes.
+Runs after P550 and the full suite run, before the code review. Close does not start until every item passes.
 
 - [ ] Product screenshots. Apply the shot-fixture fix to every Studio shot: stub the Space channels `kira:repoconfig:list`, `kira:adetask:repos:call`, `kira:adetask:sessions:call` in CONTROL of `apps/kira-space/tests/screenshots/studio/studio.shot.ts`. Fix is commit `bd2bcb7a4` on local branch `shot/sql-console`; regenerated SQL console image is `7de43e32f`. Cherry-pick both if still unmerged. Regenerate every image from the final merged app with `bun run screenshots`: agents board, git graph, memory, SQL console, data grid, API module, framed versions included. The orchestrator views each image.
+- [ ] Screenshots are WebP (P549). `git ls-files '*.png'` lists no product screenshot under `screenshots/` or `site/`. No PNG intermediate committed. `bun run screenshots` regenerates every shot as `.webp`; `git status --porcelain screenshots/` is empty on rerun. The orchestrator views each image.
+- [ ] Frame matches macOS 26 on every framed shot: traffic lights, corner radius, shadow (P549). Orchestrator views each framed image against the plan's stated reference.
+- [ ] Pipeline-generated cropped images (P550). Every site image is an intended full-window shot or cropped to its subject. No full-window shot of a dialog, popover, menu or panel. The pending patch in `docs/pending-changes/` runs the `screenshots` project before `site:build`. Run the same steps locally from a clean checkout: generated shots appear, `site:build` and `site:check` pass. A failing shot does not break the build, per the P550 flake rule. Cache key covers app source and shot specs. Orchestrator views each image.
 - [ ] Site. `site:build` and `site:check` pass. Visual baselines re-recorded for the final UI. One app presented everywhere; no page shows two products. Install command, repo URLs, download links and Studio-to-Space migration notes correct. Redirects work.
 - [ ] Docs and prompts match final behaviour: README, ARCHITECTURE, PACKAGING, DEV_ENVIRONMENT, site docs, llmprompts docs. Cover home fold, diagram proof, unified notes, Settings panes, module order. No stale kira-studio or twin wording.
 - [ ] `docs/pending-changes/*.patch` match the final state. Applied from a session with workflow scope.
 - [ ] Known failing UI specs all fixed: grpc-request (20), row-coloring (2), settings-apply-on-save (4), control-sizing (1), data-view (1), copy-coverage "settings dialog, every pane", ui-leftovers http-send pair, api-ui-consistency. Studio visual baselines re-recorded.
 
-Image delivery for many scenarios (WebP, build-time generation) is planned as v0.3.1 P549 and P550.
+Site content and explanations using this pipeline are planned as v0.3.1 P551.
