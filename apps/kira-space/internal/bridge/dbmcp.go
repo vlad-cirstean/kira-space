@@ -373,6 +373,28 @@ func (s *DbMcpService) InstallAgent(ctx context.Context) DbMcpInstallResult {
 	return toWireDbMcpInstallResult(s.Installer.Install(ctx, dbMcpServerName, url, helperPath))
 }
 
+// ReregisterAfterFold rewrites an existing kira-db registration, whose headersHelper still names the
+// helper script the home fold moved. It reports done when no rewrite is left: installed, not
+// registered, or an installer that cannot tell. A server not running yet, or a failed install, is
+// not done; the caller retries on the next start.
+func ReregisterAfterFold(ctx context.Context, s *DbMcpService) bool {
+	r, ok := s.Installer.(interface {
+		Registered(context.Context, string) (bool, error)
+	})
+	if !ok {
+		return true
+	}
+	registered, err := r.Registered(ctx, dbMcpServerName)
+	if err != nil {
+		slog.Warn("db mcp: read registration", "scope", "dbmcp", "err", err)
+		return false
+	}
+	if !registered {
+		return true
+	}
+	return s.InstallAgent(ctx).Outcome == harness.OutcomeInstalled
+}
+
 // DbMcpApprovalArgs names one held run_query result.
 type DbMcpApprovalArgs struct {
 	RequestID string `json:"requestId"`

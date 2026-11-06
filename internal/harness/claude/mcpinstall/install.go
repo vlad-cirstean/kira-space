@@ -139,6 +139,26 @@ func isNotRegisteredError(err error) bool {
 	return strings.Contains(runErr.Stderr, "No MCP server named")
 }
 
+// Registered reports whether Claude Code has a server called name, through `claude mcp get`. A
+// missing CLI or the CLI's "No MCP server named" failure is false; any other failure is returned. It reads
+// the CLI's exit status only, never its config file.
+func (i *Installer) Registered(ctx context.Context, name string) (bool, error) {
+	claudePath, _, found := i.locateClaude()
+	if !found {
+		return false, nil
+	}
+	spawnCtx, cancel := context.WithTimeout(ctx, spawnTimeout)
+	defer cancel()
+	err := i.run(spawnCtx, claudePath, []string{"mcp", "get", name})
+	if err == nil {
+		return true, nil
+	}
+	if isNotRegisteredError(err) {
+		return false, nil
+	}
+	return false, errors.New(detailFor(spawnCtx, err))
+}
+
 // Install re-resolves `claude` fresh and never returns a Go error — every outcome is a named
 // Result value. helperPath is EnsureHeaderHelperScript's own
 // return value — the local script's path, never a token.

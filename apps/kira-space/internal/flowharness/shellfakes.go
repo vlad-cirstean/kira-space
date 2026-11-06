@@ -276,10 +276,12 @@ func (k *KeepAwakeDriver) Held() bool {
 	return k.held
 }
 
-// McpInstaller records installs; it never touches the real claude config.
+// McpInstaller records installs; it never touches the real claude config. Known names the
+// servers Registered reports as already registered.
 type McpInstaller struct {
 	mu       sync.Mutex
 	Installs []McpInstall
+	Known    map[string]bool
 }
 
 // McpInstall is one Install call.
@@ -291,7 +293,21 @@ func (m *McpInstaller) Install(_ context.Context, name, url, token string) harne
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.Installs = append(m.Installs, McpInstall{name, url, token})
-	return harness.InstallResult{}
+	return harness.InstallResult{Outcome: harness.OutcomeInstalled}
+}
+
+// InstallCalls returns a copy of the recorded Install calls.
+func (m *McpInstaller) InstallCalls() []McpInstall {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]McpInstall(nil), m.Installs...)
+}
+
+// Registered answers the optional registration probe from Known.
+func (m *McpInstaller) Registered(_ context.Context, name string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.Known[name], nil
 }
 
 func (m *McpInstaller) InstallStdio(context.Context, string, string, []string) harness.InstallResult {

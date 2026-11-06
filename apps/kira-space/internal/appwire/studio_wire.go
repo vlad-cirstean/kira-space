@@ -1,6 +1,8 @@
 package appwire
 
 import (
+	"context"
+	"database/sql"
 	"log/slog"
 	"time"
 
@@ -24,6 +26,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/enginecache"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/homefold"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/preconnect"
@@ -115,6 +118,8 @@ type studioEmbedded struct {
 	dockerSvc    *bridge.DockerService
 	kubeSvc      *bridge.KubernetesService
 	eventsDetach func()
+	// stopReregister cancels and waits out the post-fold DB MCP re-registration.
+	stopReregister func()
 }
 
 // wireStudioEmbedded wires the Studio-only embedded services: DB MCP (with its own approval
@@ -135,13 +140,41 @@ func (w *Wired) wireStudioEmbedded(deps appcore.StudioDeps, installer harness.MC
 	dbMcpSvc.Scripts = bridge.NewScriptControl(w.runs)
 	dbMcpSvc.API = agentAPI
 	bridge.StartDbMcpIfEnabled(dbMcpSvc)
+	stopReregister := reregisterAfterFold(dbMcpSvc, w.Repos.CustomScripts.DB)
 	dockerSvc := &bridge.DockerService{BoundService: docker.NewBoundService(deps.Events, dockerOptions(opts, deps.Repos.DockerRestore)...)}
 	docker.StartRestoreBound(dockerSvc.BoundService)
 	eventsDetach := w.Events.AttachStudio(bridge.StudioSources{Connections: connectionsSvc, Oplog: oplogWiring})
 
 	return studioEmbedded{
 		dbMcpSvc:  dbMcpSvc,
-		dockerSvc: dockerSvc, kubeSvc: kubeSvc, eventsDetach: eventsDetach,
+		dockerSvc: dockerSvc, kubeSvc: kubeSvc, eventsDetach: eventsDetach, stopReregister: stopReregister,
+	}
+}
+
+// reregisterAfterFold rewrites the Claude Code kira-db registration once after a home fold, in the
+// background. An unfinished attempt (server off, install failed) stays flagged and retries next start.
+func reregisterAfterFold(svc *bridge.DbMcpService, db *sql.DB) func() {
+	need, err := homefold.NeedsReregister(db)
+	if err != nil {
+		slog.Warn("db mcp: read fold marker", "scope", "dbmcp", "err", err)
+		return func() {}
+	}
+	if !need {
+		return func() {}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		if bridge.ReregisterAfterFold(ctx, svc) && ctx.Err() == nil {
+			if err := homefold.ClearReregister(db); err != nil {
+				slog.Warn("db mcp: clear fold marker", "scope", "dbmcp", "err", err)
+			}
+		}
+	}()
+	return func() {
+		cancel()
+		<-done
 	}
 }
 

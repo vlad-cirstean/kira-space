@@ -63,7 +63,7 @@ func studioSmartScriptMCP(t *testing.T) {
 		if !strings.Contains(o.Summary, "zeta-7421") {
 			t.Errorf("summary %q lacks the echoed text", o.Summary)
 		}
-		_ = filepath.WalkDir(app.KiraHome, func(path string, d fs.DirEntry, err error) error {
+		_ = filepath.WalkDir(app.SpaceHome, func(path string, d fs.DirEntry, err error) error {
 			if err == nil && !d.IsDir() {
 				if data, _ := os.ReadFile(path); strings.Contains(string(data), "SENTINEL-ENV") {
 					t.Errorf("%s holds a user server credential", path)

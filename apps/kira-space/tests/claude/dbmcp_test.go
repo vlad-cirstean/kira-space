@@ -224,9 +224,16 @@ func TestDbMcpScriptThroughClaude(t *testing.T) {
 func TestDbMcpInstallRegisters(t *testing.T) {
 	app := newRealApp(t)
 	_, url, helper := enableDbMcp(t, app)
-	res := mcpinstall.New(mcpinstall.Deps{LookPath: func(string) (string, error) { return app.Claude, nil }}).Install(ctx, dbServer, url, helper)
+	inst := mcpinstall.New(mcpinstall.Deps{LookPath: func(string) (string, error) { return app.Claude, nil }})
+	if got, err := inst.Registered(ctx, dbServer); err != nil || got {
+		t.Fatalf("Registered before install = %v, %v, want false", got, err)
+	}
+	res := inst.Install(ctx, dbServer, url, helper)
 	if res.Outcome != harness.OutcomeInstalled {
 		t.Fatalf("Install = %+v, want installed", res)
+	}
+	if got, err := inst.Registered(ctx, dbServer); err != nil || !got {
+		t.Fatalf("Registered after install = %v, %v, want true", got, err)
 	}
 	raw, err := os.ReadFile(filepath.Join(app.Home, ".claude.json"))
 	if err != nil || !strings.Contains(string(raw), dbServer) {

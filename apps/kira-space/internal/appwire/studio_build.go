@@ -170,6 +170,7 @@ func (w *Wired) buildStudio(opts Options) error {
 
 	w.Tabs.Studio = deps
 	w.studioTeardownEarly = func() {
+		embedded.stopReregister()
 		embedded.eventsDetach()
 		adapters.oplogWiring.Stop()
 		// DB MCP stops before connectionsSvc.Shutdown(), not after — its stopFn abandons parked
