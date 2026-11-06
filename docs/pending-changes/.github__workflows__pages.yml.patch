@@ -1,0 +1,24 @@
+Why: Pages build runs on ubuntu-latest (now Ubuntu 26.04); Playwright 1.64.1 has no WebKit there, all shots fail and placeholders hide it. Pin to ubuntu-24.04 like pr.yml.
+
+diff --git a/.github/workflows/pages.yml b/.github/workflows/pages.yml
+index 7a60727..5803725 100644
+--- a/.github/workflows/pages.yml
++++ b/.github/workflows/pages.yml
+@@ -14,7 +14,7 @@ concurrency:
+ 
+ jobs:
+   build:
+-    runs-on: ubuntu-latest
++    runs-on: ubuntu-24.04
+     # Cache miss: setup with bindings 4 to 6 min, WebKit 1 to 2, frontend build and 8 shots 2 to 3, site 1.
+     timeout-minutes: 30
+     steps:
+@@ -73,7 +73,7 @@ jobs:
+ 
+   deploy:
+     needs: build
+-    runs-on: ubuntu-latest
++    runs-on: ubuntu-24.04
+     timeout-minutes: 10
+     environment:
+       name: github-pages

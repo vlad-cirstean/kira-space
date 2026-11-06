@@ -63,7 +63,7 @@ Sequencing: user asked 3 phases in parallel. Batch: P551 + P552 (schema) + P554,
 
 Runs after P554 and the full suite run, before the code review. Close does not start until every item passes.
 
-- [ ] Images use the v0.3.0 pipeline (P549, P550): WebP only, macOS 26 frame on full-window shots, every other site image cropped to its subject. New P551 scenarios generate in CI. Orchestrator views each new image.
+- [ ] Images use the v0.3.0 pipeline (P549, P550): WebP only, macOS 26 frame on full-window shots, every other site image cropped to its subject. New P551 scenarios generate in CI. Orchestrator views each new image. Placeholder shots count as failure: the Pages capture step must succeed with zero placeholders (verify in CI log: no 'using a placeholder' lines).
 - [ ] Site build with CI generation, from a clean checkout: generated shots appear, `site:build` and `site:check` pass.
 - [ ] Site content. New pages, navigation and search work. Visual baselines re-recorded for the final UI. Install command, repo URLs, download links and migration notes correct. Redirects work.
 - [ ] Build with Kira (P551): overview carousel shows 5 named steps, each slide links to its section; arrows work (mouse, keyboard, touch); autoplays, pauses on hover/focus/touch and when tab or carousel is off-screen, resumes after, off under reduced-motion; no visible play/pause control. Five sections in order, each with name, problem-pitch copy, anchor and captioned images; 20 to 30 images in total (cap 30), generated within the plan's time budget (target under 5 minutes per CI shard); mixed full-window and cropped shots, no layout jump; images load and read as one story (same task, branch, workflow, DB). Orchestrator views every image (all 20 to 30).
