@@ -14,7 +14,7 @@ const (
 	KindUpdate        Kind = "update"
 	KindQuit          Kind = "quit"
 	KindProof         Kind = "proof"
-	// KindMasking is a connection with columns that need a masking review (apps/kira-studio/internal/maskreview); Ref is the connection id.
+	// KindMasking is a connection with columns that need a masking review (apps/kira-space/internal/maskreview); Ref is the connection id.
 	KindMasking Kind = "masking"
 	// KindApproval is one pending agent approval (internal/approvals); Ref is the item id.
 	KindApproval Kind = "approval"

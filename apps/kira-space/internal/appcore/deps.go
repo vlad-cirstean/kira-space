@@ -1,5 +1,5 @@
 // Package appcore is Kira Space's own Deps struct — the trimmed sibling of Kira
-// Studio's own apps/kira-studio/internal/appcore, embedded by value into each bound service the
+// Studio's own apps/kira-space/internal/appcore, embedded by value into each bound service the
 // same way. Kira Studio's Deps carries eight fields across connections/adapters/variables/mask
 // rules/git; this app has no adapters, no connections, no HTTP variables — Repos, Events and
 // GitRegistry are the whole surface the bridge services embedding Deps read.

@@ -1,5 +1,5 @@
 // layering_test.go guards the same Go-side module-boundary rule Kira Studio's own copy does
-// (apps/kira-studio/internal/layering_test.go): internal/bridge is the IPC transport layer, and
+// (apps/kira-space/internal/layering_test.go): internal/bridge is the IPC transport layer, and
 // no domain package below it may import anything under internal/bridge.
 package internal_test
 

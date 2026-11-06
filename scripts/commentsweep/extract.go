@@ -50,7 +50,7 @@ var (
 // scopeStatus reports why a tracked file is out of scope, or "".
 func scopeStatus(p string) string {
 	switch {
-	case strings.HasPrefix(p, "apps/kira-studio/internal/httpclient/cookiejar/"),
+	case strings.HasPrefix(p, "apps/kira-space/internal/httpclient/cookiejar/"),
 		strings.HasPrefix(p, "testdata/"), strings.Contains(p, "/testdata/"),
 		strings.HasPrefix(p, "docs/"), strings.HasPrefix(p, ".claude/"), strings.Contains(p, "node_modules/"),
 		p == "packages/shared/protocol/wire.ts", strings.HasPrefix(p, "packages/shared/protocol/wire/"),

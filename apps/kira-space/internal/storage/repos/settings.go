@@ -1,4 +1,4 @@
-// Package repos is Kira Space's own analogue of apps/kira-studio/internal/storage/repos — its
+// Package repos is Kira Space's own analogue of apps/kira-space/internal/studiostorage/repos — its
 // trimmed subset, since this app has no connections/queries/collections/history tables of its own.
 package repos
 

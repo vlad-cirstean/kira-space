@@ -1,5 +1,5 @@
 // Package kirapaths is the repo-root generalization of the on-disk layout logic
-// apps/kira-studio/internal/config/paths.go used to own outright (KiraHome/DbPath/LogsDir/
+// apps/kira-space/internal/studiotmp/config/paths.go used to own outright (KiraHome/DbPath/LogsDir/
 // EnsureLayout): the same shape was needed for apps/kira-space's own, separate home
 // directory (KIRA_SPACE_HOME/~/.kira-space, never sharing a home, or a database with
 // Kira Studio). Rather than duplicate this

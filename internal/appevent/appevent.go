@@ -1,6 +1,6 @@
 // Package appevent is the Go->renderer push seam and the small set of IPC channel
 // strings both apps' menu/quit/close-flush handshakes emit on, shared verbatim:
-// apps/kira-studio/internal/appcore.Emitter and apps/kira-space/internal/appcore.Emitter were
+// apps/kira-space/internal/appcore.Emitter and apps/kira-space/internal/appcore.Emitter were
 // identical three-method interfaces, and bridge.Events' Signal/SignalTo/Broadcast/NewEvents core
 // was byte-identical in both apps too. Each app's own internal/bridge/events.go still owns its
 // own channel constants and its own Attach — this package is only the shared core they embed.

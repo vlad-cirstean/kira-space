@@ -14,7 +14,7 @@ import (
 )
 
 // BuildTemplate is Kira Space's own menu — Kira Studio's own BuildTemplate
-// (apps/kira-studio/internal/appshell/menu.go) trimmed to this app's own commands: no connections/
+// (apps/kira-space/internal/studiotmp/appshell/menu.go) trimmed to this app's own commands: no connections/
 // requests/import items, no run/format (this app has none of those).
 func BuildTemplate(appName string, isDev bool) []shell.Section {
 	appItems := shell.AppMenuHead()

@@ -1,4 +1,4 @@
-// Package sqlitex is the repo-root generalization of apps/kira-studio/internal/storage's own
+// Package sqlitex is the repo-root generalization of apps/kira-space/internal/storage's own
 // modernc.org/sqlite open/pragma/migrate mechanics (db.go/migrate.go): the same shape was needed
 // for apps/kira-space's own, separate database (its own kira.db, opened against its own
 // home — see internal/kirapaths' own doc comment for why the two apps never share a home, a

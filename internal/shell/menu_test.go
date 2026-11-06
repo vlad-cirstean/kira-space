@@ -27,7 +27,7 @@ func allMenuItems(m *application.Menu) []*application.MenuItem {
 
 // acceleratorTemplate exercises every ItemKind BuildMenu understands, including the
 // "Control+Tab"-shaped trap a verbatim accelerator string would hit — Kira Studio's own
-// BuildTemplate is app-specific (apps/kira-studio/internal/appshell) and out of reach for the
+// BuildTemplate is app-specific (apps/kira-space/internal/appshell) and out of reach for the
 // shared package, so this is a synthetic template covering the same accelerator
 // vocabulary rather than a real app's menu.
 func acceleratorTemplate() []shell.Section {
