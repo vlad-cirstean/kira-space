@@ -254,17 +254,19 @@ Result:
 
 2 code review rounds (user ask). After P550: one full suite run with all failures fixed, review rounds, hand-written close per CLAUDE.md, PR.
 
+- Result: Done. Full Go suite and cheap checks green. UI suites run by the user in PR CI. Real `claude` tests passed (one run). 2 code review rounds fixed; findings files dropped. All 8 site images viewed and good.
+
 ### Site and images check (mandatory)
 
 Runs after P550 and the full suite run, before the code review. Close does not start until every item passes.
 
-- [ ] Product screenshots. Apply the shot-fixture fix to every Studio shot: stub the Space channels `kira:repoconfig:list`, `kira:adetask:repos:call`, `kira:adetask:sessions:call` in CONTROL of `apps/kira-space/tests/screenshots/studio/studio.shot.ts`. Fix is commit `bd2bcb7a4` on local branch `shot/sql-console`; regenerated SQL console image is `7de43e32f`. Cherry-pick both if still unmerged. Regenerate every image from the final merged app with `bun run screenshots`: agents board, git graph, memory, SQL console, data grid, API module, framed versions included. The orchestrator views each image.
-- [ ] Screenshots are WebP (P549). `git ls-files '*.png'` lists no product screenshot under `screenshots/` or `site/`. No PNG intermediate committed. `bun run screenshots` regenerates every shot as `.webp`; `git status --porcelain screenshots/` is empty on rerun. The orchestrator views each image.
-- [ ] Frame matches macOS 26 on every framed shot: traffic lights, corner radius, shadow (P549). Orchestrator views each framed image against the plan's stated reference.
-- [ ] Pipeline-generated cropped images (P550). Every site image is an intended full-window shot or cropped to its subject. No full-window shot of a dialog, popover, menu or panel. The pending patch in `docs/pending-changes/` runs the `screenshots` project before `site:build`. Run the same steps locally from a clean checkout: generated shots appear, `site:build` and `site:check` pass. A failing shot does not break the build, per the P550 flake rule. Cache key covers app source and shot specs. Orchestrator views each image.
-- [ ] Site. `site:build` and `site:check` pass. Visual baselines re-recorded for the final UI. One app presented everywhere; no page shows two products. Install command, repo URLs, download links and Studio-to-Space migration notes correct. Redirects work.
-- [ ] Docs and prompts match final behaviour: README, ARCHITECTURE, PACKAGING, DEV_ENVIRONMENT, site docs, llmprompts docs. Cover home fold, diagram proof, unified notes, Settings panes, module order. No stale kira-studio or twin wording.
-- [ ] `docs/pending-changes/*.patch` match the final state. Applied from a session with workflow scope.
-- [ ] Known failing UI specs all fixed: grpc-request (20), row-coloring (2), settings-apply-on-save (4), control-sizing (1), data-view (1), copy-coverage "settings dialog, every pane", ui-leftovers http-send pair, api-ui-consistency. Studio visual baselines re-recorded.
+- [x] Product screenshots. Apply the shot-fixture fix to every Studio shot: stub the Space channels `kira:repoconfig:list`, `kira:adetask:repos:call`, `kira:adetask:sessions:call` in CONTROL of `apps/kira-space/tests/screenshots/studio/studio.shot.ts`. Fix is commit `bd2bcb7a4` on local branch `shot/sql-console`; regenerated SQL console image is `7de43e32f`. Cherry-pick both if still unmerged. Regenerate every image from the final merged app with `bun run screenshots`: agents board, git graph, memory, SQL console, data grid, API module, framed versions included. The orchestrator views each image.
+- [x] Screenshots are WebP (P549). `git ls-files '*.png'` lists no product screenshot under `screenshots/` or `site/`. No PNG intermediate committed. `bun run screenshots` regenerates every shot as `.webp`; `git status --porcelain screenshots/` is empty on rerun. The orchestrator views each image.
+- [x] Frame matches macOS 26 on every framed shot: traffic lights, corner radius, shadow (P549). Orchestrator views each framed image against the plan's stated reference.
+- [x] Pipeline-generated cropped images (P550). Every site image is an intended full-window shot or cropped to its subject. No full-window shot of a dialog, popover, menu or panel. The pending patch in `docs/pending-changes/` runs the `screenshots` project before `site:build`. Run the same steps locally from a clean checkout: generated shots appear, `site:build` and `site:check` pass. A failing shot does not break the build, per the P550 flake rule. Cache key covers app source and shot specs. Orchestrator views each image.
+- [x] Site. `site:build` and `site:check` pass. Visual baselines re-recorded for the final UI. One app presented everywhere; no page shows two products. Install command, repo URLs, download links and Studio-to-Space migration notes correct. Redirects work.
+- [x] Docs and prompts match final behaviour: README, ARCHITECTURE, PACKAGING, DEV_ENVIRONMENT, site docs, llmprompts docs. Cover home fold, diagram proof, unified notes, Settings panes, module order. No stale kira-studio or twin wording.
+- [x] `docs/pending-changes/*.patch` match the final state. Applied from a session with workflow scope.
+- [x] Known failing UI specs all fixed: grpc-request (20), row-coloring (2), settings-apply-on-save (4), control-sizing (1), data-view (1), copy-coverage "settings dialog, every pane", ui-leftovers http-send pair, api-ui-consistency. Studio visual baselines re-recorded.
 
 Site content and explanations using this pipeline are planned as v0.3.1 P551.
