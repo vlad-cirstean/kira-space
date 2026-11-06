@@ -22,6 +22,8 @@ DROP TABLE ade_task_handovers;
 ALTER TABLE ade_task_handovers_new RENAME TO ade_task_handovers;
 CREATE UNIQUE INDEX ade_task_handovers_draft ON ade_task_handovers (task_id, from_step_id) WHERE state = 'draft';
 CREATE INDEX ade_task_handovers_task ON ade_task_handovers (task_id, created_at);
+-- Note ids are random 32-hex (v4-shaped), not UUIDv7: SQL has no v7 generator and the id rule accepts
+-- legacy shapes. These rows sort by created_at, never by id.
 INSERT INTO ade_task_handovers (id, task_id, from_step_id, from_step_name, to_step_id, to_step_name, body, source, state, finished, dismissed, edited, created_at, updated_at, session_id)
 SELECT lower(hex(randomblob(16))), id, '', '', '', '', notes, 'user', 'note', 0, 0, 0, created_at, created_at, '' FROM ade_tasks WHERE trim(notes, ' ' || char(9) || char(10) || char(13)) <> '';
 ALTER TABLE ade_tasks DROP COLUMN notes;

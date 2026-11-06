@@ -2,9 +2,10 @@
 -- Excluded: tables Space already owns (config_last_valid, custom_script_collections, custom_scripts,
 -- script_runs, script_run_logs, secret_values, settings, ui_layout, windows, tabs).
 -- Studio op_log becomes db_op_log until P544 Part 2 folds it into op_log.
--- Risk: proof_task_links.task_id cascades from ade_tasks. A later migration that rebuilds or drops
--- ade_tasks with foreign keys on deletes these rows; it must run PRAGMA foreign_keys=OFF first
--- (sqlitex runs it outside the tx), as the P543 rebuilds do.
+-- Risk: proof_task_links.task_id cascades from ade_tasks. sqlitex.Migrate runs each step in a tx with
+-- foreign keys on, and PRAGMA foreign_keys is a no-op in a tx. A migration that drops or rebuilds
+-- ade_tasks would cascade-delete these rows (and the audit, handover, artifact and run rows). Rebuild
+-- through TEMP copies of the children (see 0005 in the memory module), or do not rebuild it.
 
 CREATE TABLE connections (
   id TEXT PRIMARY KEY,
