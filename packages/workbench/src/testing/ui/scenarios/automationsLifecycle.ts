@@ -56,8 +56,7 @@ const calls = (control: { log(): { channel: string; args?: unknown }[] }, channe
     .filter((e) => e.channel === channel)
     .map((e) => e.args);
 
-// Run collections are names in run files. Backend half: termflow TestRunsLifecycleStudio and
-// TestRunsLifecycle (Space) store the runs-lifecycle contract.
+// Run collections are names in run files. Backend half: termflow TestRunsLifecycle stores the runs-lifecycle contract.
 export function registerLifecycleScenarios(env: Env, options: Options): void {
   const { test, contract, ipc: IPC } = env;
   const args = (name: string) =>

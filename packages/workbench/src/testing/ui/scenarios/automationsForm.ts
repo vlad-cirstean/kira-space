@@ -23,7 +23,7 @@ export interface Options {
 }
 
 // A run file as a form and as YAML over the same draft. Backend half: termflow TestRunsForm
-// (Studio and Space) writes the runs-form contract.
+// writes the runs-form contract.
 export function registerFormScenarios(env: Env, options: Options): void {
   const { test, contract, ipc: IPC } = env;
 

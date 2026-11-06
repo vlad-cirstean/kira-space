@@ -23,23 +23,16 @@ import (
 	"github.com/kirathecat/kira-studio/internal/configfs/configsvc"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/harness"
-	"github.com/kirathecat/kira-studio/internal/scriptruns"
-	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/shell"
-	"github.com/kirathecat/kira-studio/internal/terminal"
 )
 
 // buildStudio wires the Studio services over Studio's own DB and repos, on top of the process-wide
 // singletons the Space side already built (approvals, prompt router, window registry, terminal
-// registry, agent stores, events). It fills the Studio fields of w and the Studio halves of the
-// merged services. A settings read failure is the only error.
+// registry, agent stores, events). It fills the Studio fields of w. A settings read failure is the only error.
 func (w *Wired) buildStudio(opts Options) error {
 	repositories, db := opts.StudioRepos, opts.StudioDB
 	emitter := w.Emitter
-	registry := w.Agents.Registry
-	repositories.CustomScripts.Agents = registry
-	repositories.CustomScripts.Secrets = secrets.NewStore(repositories.CustomScripts.DB, opts.Cipher)
 	authorizer := opts.Authorizer
 	if authorizer == nil {
 		authorizer = localauth.New(time.Now, localauth.Evaluate, localauth.Available)
@@ -138,14 +131,8 @@ func (w *Wired) buildStudio(opts Options) error {
 	}
 	agentAPI := &agentapi.Service{Envs: apiFiles, Secrets: apiSecrets, Ops: router.Host(), Globals: bridge.AgentAPIGlobals(repositories.Settings)}
 	embedded := w.wireStudioEmbedded(deps, installer, connectionsSvc, adapters.oplogWiring, proofSvc, agentAPI, opts)
-	embedded.sched.Start()
 	apiFiles.Start()
 	connFiles.Start()
-	if w.AgentSettings != nil {
-		if err := w.AgentSettings.Sweep(filepath.Join(home, "automations-mcp")); err != nil {
-			slog.Warn("agent settings: sweep studio", "scope", "startup", "err", err)
-		}
-	}
 
 	w.StudioRepos, w.StudioDeps, w.Router = repositories, deps, router
 	w.App = &bridge.AppService{Deps: deps}
@@ -179,16 +166,12 @@ func (w *Wired) buildStudio(opts Options) error {
 		Shell: shellForProof,
 	}
 	w.proofShell = shellForProof
-	w.studioRuns, w.studioSched, w.studioRunLoader = embedded.runs, embedded.sched, embedded.runLoader
 	w.OnWindowClosing = []func(string){func(key string) {
 		docker.CloseWindowBound(embedded.dockerSvc.BoundService, key)
 		kubernetes.CloseWindowBound(embedded.kubeSvc.BoundService, key)
 	}, proofTargets.Forget}
 
 	w.Tabs.Studio = deps
-	w.CustomScripts.Studio = &scripts.Service{Loader: embedded.runLoader}
-	w.ScriptRuns.Studio = &scriptruns.Bound{Svc: embedded.runs}
-	w.launchers.studio = embedded.runs
 	w.studioTeardownEarly = func() {
 		embedded.eventsDetach()
 		adapters.oplogWiring.Stop()
@@ -202,11 +185,8 @@ func (w *Wired) buildStudio(opts Options) error {
 		kubernetes.ServiceOf(embedded.kubeSvc.BoundService).Shutdown()
 	}
 	w.studioTeardownLate = func() {
-		embedded.sched.Close()
-		embedded.runLoader.Close()
 		apiFiles.Close()
 		connFiles.Close()
-		embedded.runs.Close()
 		if err := repositories.Close(); err != nil {
 			slog.Warn("close studio repos", "scope", "shutdown", "err", err)
 		}
@@ -235,72 +215,3 @@ func (r *registryShell) Open(rec shell.WindowRecord) {
 
 // BindProofShell sets how the proof window is opened, once the shell exists.
 func (w *Wired) BindProofShell(open func(shell.WindowRecord)) { w.proofShell.open = open }
-
-// scriptLaunchers routes the embedded terminal's script-launch reports to the stack that owns the
-// script or run, until the home fold leaves one stack.
-type scriptLaunchers struct {
-	space     *scriptruns.Service
-	studio    *scriptruns.Service
-	spaceOwns interface {
-		Get(id string) (*scripts.CustomScript, error)
-	}
-	studioOwns interface {
-		Get(id string) (*scripts.CustomScript, error)
-	}
-}
-
-func (l *scriptLaunchers) byScript(id string) *scriptruns.Service {
-	if l.studio == nil {
-		return l.space
-	}
-	if rec, err := l.spaceOwns.Get(id); err == nil && rec != nil {
-		return l.space
-	}
-	if rec, err := l.studioOwns.Get(id); err == nil && rec != nil {
-		return l.studio
-	}
-	return l.space
-}
-
-func (l *scriptLaunchers) byRun(id string) *scriptruns.Service {
-	if l.studio == nil {
-		return l.space
-	}
-	if _, err := l.space.Get(id); err == nil {
-		return l.space
-	}
-	if _, err := l.studio.Get(id); err == nil {
-		return l.studio
-	}
-	return l.space
-}
-
-func (l *scriptLaunchers) Begin(scriptID, terminalID, launchToken string) (terminal.ScriptLaunch, error) {
-	return l.byScript(scriptID).Begin(scriptID, terminalID, launchToken)
-}
-
-func (l *scriptLaunchers) BeginAgent(token, command, terminalID string) ([]string, error) {
-	env, err := l.space.BeginAgent(token, command, terminalID)
-	if err != nil && l.studio != nil {
-		if env, serr := l.studio.BeginAgent(token, command, terminalID); serr == nil {
-			return env, nil
-		}
-	}
-	return env, err
-}
-
-func (l *scriptLaunchers) Failed(runID string, err error) { l.byRun(runID).Failed(runID, err) }
-
-func (l *scriptLaunchers) Exited(terminalID string, code int, cause terminal.CloseCause) {
-	l.space.Exited(terminalID, code, cause)
-	if l.studio != nil {
-		l.studio.Exited(terminalID, code, cause)
-	}
-}
-
-func (l *scriptLaunchers) Output(terminalID string, b []byte) {
-	l.space.Output(terminalID, b)
-	if l.studio != nil {
-		l.studio.Output(terminalID, b)
-	}
-}

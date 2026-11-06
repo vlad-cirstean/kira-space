@@ -35,52 +35,29 @@ func isExposed(repo *scripts.Repo, scriptID string) (bool, error) {
 	return rec.Kind != scripts.KindSmart && rec.MCP != nil && rec.MCP.Enabled, nil
 }
 
-// scriptControl serves the script tools over both homes' stacks, in order: a list is the union, a
-// call naming a script or run goes to the stack holding it.
-type scriptControl struct{ stacks []*scriptruns.Service }
+// scriptControl serves the script tools over the one script-run service.
+type scriptControl struct{ svc *scriptruns.Service }
 
-// NewScriptControl adapts the script-run services of every stack to dbmcp's script tools.
-func NewScriptControl(stacks ...*scriptruns.Service) dbmcp.ScriptControl {
-	return scriptControl{stacks: stacks}
-}
-
-// ofScript is the stack holding the script, the first stack when none does (its error surfaces).
-func (c scriptControl) ofScript(id string) *scriptruns.Service {
-	for _, svc := range c.stacks {
-		if rec, err := svc.Scripts.Get(id); err == nil && rec != nil {
-			return svc
-		}
-	}
-	return c.stacks[0]
-}
-
-// ofRun is the stack holding the run, the first stack when none does.
-func (c scriptControl) ofRun(id string) *scriptruns.Service {
-	for _, svc := range c.stacks {
-		if _, err := svc.Runs.Get(id); err == nil {
-			return svc
-		}
-	}
-	return c.stacks[0]
+// NewScriptControl adapts the script-run service to dbmcp's script tools.
+func NewScriptControl(svc *scriptruns.Service) dbmcp.ScriptControl {
+	return scriptControl{svc: svc}
 }
 
 func (c scriptControl) Exposed() ([]dbmcp.ExposedScript, error) {
-	var out []dbmcp.ExposedScript
-	for _, svc := range c.stacks {
-		recs, err := exposedScripts(svc.Scripts)
-		if err != nil {
-			return nil, err
+	recs, err := exposedScripts(c.svc.Scripts)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]dbmcp.ExposedScript, 0, len(recs))
+	for _, rec := range recs {
+		e := dbmcp.ExposedScript{ID: rec.ID, Name: rec.Name, Description: rec.MCP.Description, Run: rec.MCP.Run, Params: make([]dbmcp.ScriptParamInfo, 0, len(rec.Params))}
+		for _, p := range rec.Params {
+			e.Params = append(e.Params, dbmcp.ScriptParamInfo{
+				Name: p.Name, Type: p.Type, Options: p.Options, Default: p.Default, Required: p.Required,
+				Secret: p.Secret, Saved: p.Secret && slices.Contains(rec.SavedSecrets, p.Name),
+			})
 		}
-		for _, rec := range recs {
-			e := dbmcp.ExposedScript{ID: rec.ID, Name: rec.Name, Description: rec.MCP.Description, Run: rec.MCP.Run, Params: make([]dbmcp.ScriptParamInfo, 0, len(rec.Params))}
-			for _, p := range rec.Params {
-				e.Params = append(e.Params, dbmcp.ScriptParamInfo{
-					Name: p.Name, Type: p.Type, Options: p.Options, Default: p.Default, Required: p.Required,
-					Secret: p.Secret, Saved: p.Secret && slices.Contains(rec.SavedSecrets, p.Name),
-				})
-			}
-			out = append(out, e)
-		}
+		out = append(out, e)
 	}
 	return out, nil
 }
@@ -103,7 +80,7 @@ func approvalValues(env []scriptruns.EnvVar, params bool) []dbmcp.ApprovalValue 
 }
 
 func (c scriptControl) Plan(scriptID string, params map[string][]string) (dbmcp.ScriptPlan, error) {
-	pv, err := c.ofScript(scriptID).PlanMCP(scriptruns.RunArgs{ScriptID: scriptID, Params: params})
+	pv, err := c.svc.PlanMCP(scriptruns.RunArgs{ScriptID: scriptID, Params: params})
 	if err != nil {
 		return dbmcp.ScriptPlan{}, err
 	}
@@ -114,7 +91,7 @@ func (c scriptControl) Plan(scriptID string, params map[string][]string) (dbmcp.
 }
 
 func (c scriptControl) Start(scriptID string, params map[string][]string, hash string) (string, error) {
-	started, err := c.ofScript(scriptID).StartMCP(scriptruns.StartArgs{RunArgs: scriptruns.RunArgs{ScriptID: scriptID, Params: params}, Hash: hash})
+	started, err := c.svc.StartMCP(scriptruns.StartArgs{RunArgs: scriptruns.RunArgs{ScriptID: scriptID, Params: params}, Hash: hash})
 	if err != nil {
 		return "", err
 	}
@@ -133,7 +110,7 @@ func scriptRunOf(r scriptruns.Run) dbmcp.ScriptRun {
 }
 
 func (c scriptControl) Run(runID string) (dbmcp.ScriptRun, bool, error) {
-	run, err := c.ofRun(runID).Runs.Get(runID)
+	run, err := c.svc.Runs.Get(runID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return dbmcp.ScriptRun{}, false, nil
 	}
@@ -144,7 +121,7 @@ func (c scriptControl) Run(runID string) (dbmcp.ScriptRun, bool, error) {
 }
 
 func (c scriptControl) Wait(ctx context.Context, runID string) (dbmcp.ScriptRun, error) {
-	run, err := c.ofRun(runID).Wait(ctx, runID)
+	run, err := c.svc.Wait(ctx, runID)
 	if err != nil {
 		return dbmcp.ScriptRun{}, err
 	}
@@ -152,7 +129,7 @@ func (c scriptControl) Wait(ctx context.Context, runID string) (dbmcp.ScriptRun,
 }
 
 func (c scriptControl) Log(runID string, q dbmcp.ScriptLogQuery) (dbmcp.ScriptLog, error) {
-	slice, err := c.ofRun(runID).Runs.QueryLog(runID, scriptruns.LogQuery{FromEnd: q.FromEnd, Limit: q.Limit, Contains: q.Contains})
+	slice, err := c.svc.Runs.QueryLog(runID, scriptruns.LogQuery{FromEnd: q.FromEnd, Limit: q.Limit, Contains: q.Contains})
 	if err != nil {
 		return dbmcp.ScriptLog{}, err
 	}
@@ -163,44 +140,34 @@ func (c scriptControl) Log(runID string, q dbmcp.ScriptLogQuery) (dbmcp.ScriptLo
 	return dbmcp.ScriptLog{Lines: lines, Matched: slice.Matched, Truncated: slice.Truncated}, nil
 }
 
-type scriptRunControl struct{ stacks []*scriptruns.Service }
+type scriptRunControl struct{ svc *scriptruns.Service }
 
-// NewScriptRunControl adapts the script-run services of every stack to dbmcp's operation tools:
-// only runs of MCP-exposed scripts are listed or stopped, the way a hidden connection's operations
-// are.
-func NewScriptRunControl(stacks ...*scriptruns.Service) dbmcp.ScriptRunControl {
-	return scriptRunControl{stacks: stacks}
+// NewScriptRunControl adapts the script-run service to dbmcp's operation tools: only runs of
+// MCP-exposed scripts are listed or stopped, the way a hidden connection's operations are.
+func NewScriptRunControl(svc *scriptruns.Service) dbmcp.ScriptRunControl {
+	return scriptRunControl{svc: svc}
 }
 
 func (c scriptRunControl) Live() ([]dbmcp.LiveRun, error) {
+	runs, err := c.svc.Runs.Live()
+	if err != nil {
+		return nil, err
+	}
 	var out []dbmcp.LiveRun
-	for _, svc := range c.stacks {
-		runs, err := svc.Runs.Live()
-		if err != nil {
-			return nil, err
+	exposed := map[string]bool{}
+	for _, r := range runs {
+		ok, seen := exposed[r.ScriptID]
+		if !seen {
+			if ok, err = isExposed(c.svc.Scripts, r.ScriptID); err != nil {
+				return nil, err
+			}
+			exposed[r.ScriptID] = ok
 		}
-		exposed := map[string]bool{}
-		for _, r := range runs {
-			ok, seen := exposed[r.ScriptID]
-			if !seen {
-				if ok, err = isExposed(svc.Scripts, r.ScriptID); err != nil {
-					return nil, err
-				}
-				exposed[r.ScriptID] = ok
-			}
-			if ok {
-				out = append(out, dbmcp.LiveRun{ID: r.ID, ScriptName: r.ScriptName, State: r.State, Trigger: string(r.Trigger), StartedAt: r.StartedAt})
-			}
+		if ok {
+			out = append(out, dbmcp.LiveRun{ID: r.ID, ScriptName: r.ScriptName, State: r.State, Trigger: string(r.Trigger), StartedAt: r.StartedAt})
 		}
 	}
 	return out, nil
 }
 
-func (c scriptRunControl) Stop(id string) error {
-	for _, svc := range c.stacks {
-		if _, err := svc.Runs.Get(id); err == nil {
-			return svc.Stop(id)
-		}
-	}
-	return c.stacks[0].Stop(id)
-}
+func (c scriptRunControl) Stop(id string) error { return c.svc.Stop(id) }

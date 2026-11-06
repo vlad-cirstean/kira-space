@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"github.com/kirathecat/kira-studio/internal/appstorage"
-	"github.com/kirathecat/kira-studio/internal/scriptruns"
-	"github.com/kirathecat/kira-studio/internal/scripts"
 )
 
 // Repos is every storage repo that needs no cipher, constructed once at startup. Variables and
@@ -30,9 +28,6 @@ type Repos struct {
 	MaskRules *MaskRulesRepo
 	// MaskReview is P534's reviewed-column store (connection_mask_reviewed).
 	MaskReview *MaskReviewRepo
-	// CustomScripts is P85's own launch-target store (custom_scripts).
-	CustomScripts *scripts.Repo
-	ScriptRuns    *scriptruns.Repo
 	// DockerRestore is P334's last-known-running store for Docker engine restarts.
 	DockerRestore *DockerRestoreRepo
 	// KubeClusters is P439's cluster identity store.
@@ -77,8 +72,6 @@ func New(db *sql.DB) (*Repos, error) {
 		GrpcHistory:     &GrpcHistoryRepo{DB: db},
 		MaskRules:       &MaskRulesRepo{DB: db},
 		MaskReview:      &MaskReviewRepo{DB: db},
-		CustomScripts:   &scripts.Repo{DB: db},
-		ScriptRuns:      &scriptruns.Repo{DB: db},
 		DockerRestore:   &DockerRestoreRepo{DB: db},
 		KubeClusters:    &KubeClustersRepo{DB: db},
 		Proof:           &ProofRepo{DB: db},

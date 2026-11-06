@@ -6,13 +6,13 @@ import {
   scriptsSnapshotSchema,
 } from '@shared/domain/scripts';
 import { codeEditorText } from '@workbench/testing/ui/codeEditor';
-import { expect, studioTest as test } from '../fixtures';
-import { contract } from '../support/contract';
-import { IPC } from '../support/ipcChannels';
-import { modeTab } from './support/apiMode';
-import { openSettings } from './support/settings';
+import { expect, test } from './fixtures';
+import { modeTab } from './studio/support/apiMode';
+import { openSettings } from './studio/support/settings';
+import { contract } from './support/contract';
+import { IPC } from './support/ipcChannels';
 
-// Contracts runs-form and automations. Backend half: termflow TestRunsFormStudio (the mcp edits)
+// Contracts runs-form and automations. Backend half: termflow TestRunsForm (the mcp edits)
 // and dbmcpflow TestDbMcpScriptRunAndLogs (a run started by an agent has trigger mcp).
 
 const file = (key: string) =>

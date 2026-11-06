@@ -16,7 +16,7 @@ export interface Options {
   modeTab: (page: Page) => ReturnType<Page['locator']>;
 }
 
-// A run is a YAML file. Backend half: termflow TestRunsConfigFile (Studio and Space) writes the
+// A run is a YAML file. Backend half: termflow TestRunsConfigFile writes the
 // runs-file contract: a valid file, one edited to an error on line 3, and the fixed text.
 export function registerFileScenarios(env: Env, options: Options): void {
   const { test, contract, ipc: IPC } = env;

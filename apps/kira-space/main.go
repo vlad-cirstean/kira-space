@@ -50,7 +50,7 @@ var mobileAssets embed.FS
 // Startup order: the argv shims (askpass, memory-mcp, memory-embed) -> refuseOldStudio ->
 // config.EnsureLayout -> logging.Init/Sweep -> instance lock -> storage.Open -> homefold.Files (legacy
 // Studio home folded in) -> studiostorage.Open (migrate) -> repos.New x2 -> appmerge.Run (first-launch
-// Studio carry-over) -> appwire.Build (every Space and Studio service) -> application.New (bound services,
+// Studio carry-over) -> homefold.Runs (Studio scripts and runs folded in) -> appwire.Build (every Space and Studio service) -> application.New (bound services,
 // git and engine streams) -> the menu -> the startup window list, opened -> app.Run().
 func main() {
 	if code, ok := appwire.RunArgvShim(os.Args); ok {
@@ -106,6 +106,7 @@ func main() {
 	}
 
 	carryOverStudio(reporter, db, studioDB)
+	foldLegacyRuns(reporter, db, studioDB)
 
 	settings, err := repositories.Settings.GetAll()
 	if err != nil {
@@ -317,6 +318,14 @@ func carryOverStudio(reporter *startupfail.Reporter, db *storage.DB, studioDB *s
 			return bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) || proof.IsWindowKey(key)
 		},
 	})
+	if err != nil {
+		reporter.Fatal(startupfail.StepStorage, err)
+	}
+}
+
+// foldLegacyRuns moves the Studio DB's script rows and run files into the Space DB (P539).
+func foldLegacyRuns(reporter *startupfail.Reporter, db *storage.DB, studioDB *studiostorage.DB) {
+	err := homefold.Runs(homefold.Options{Space: db.DB, SpaceHome: config.KiraSpaceHome(), Studio: studioDB.DB})
 	if err != nil {
 		reporter.Fatal(startupfail.StepStorage, err)
 	}

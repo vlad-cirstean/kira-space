@@ -308,10 +308,6 @@ type Wired struct {
 	OnWindowClosing []func(string)
 
 	proofShell          *registryShell
-	launchers           *scriptLaunchers
-	studioRuns          *scriptruns.Service
-	studioSched         *scriptruns.Scheduler
-	studioRunLoader     *scripts.Loader
 	studioTeardownEarly func()
 	studioTeardownLate  func()
 
@@ -500,11 +496,10 @@ func Build(opts Options) (*Wired, error) {
 		slog.Warn("recover script runs", "scope", "startup", "err", err)
 	}
 	w.CustomScripts = &bridge.CustomScriptsService{}
-	w.ScriptRuns = &bridge.ScriptRunsService{Space: &scriptruns.Bound{Svc: runs}, Scripts: w.CustomScripts}
-	w.launchers = &scriptLaunchers{space: runs, studioOwns: opts.StudioRepos.CustomScripts, spaceOwns: repositories.CustomScripts}
+	w.ScriptRuns = &bridge.ScriptRunsService{Runs: &scriptruns.Bound{Svc: runs}}
 	w.Terminal = &bridge.TerminalService{BoundService: &terminal.BoundService{
 		Emit: emitter, Registry: terminalRegistry, ComposeAgent: adeTracker.Compose, AbortAgent: adeTracker.Abort, AgentStarted: adeTracker.OnAgentStarted,
-		Arbiter: termBroker, Scripts: w.launchers, Agent: w.Agents,
+		Arbiter: termBroker, Scripts: runs, Agent: w.Agents,
 	}}
 	// P116 G5 keep-awake toggle plus P188's agent reason: the live Claude Code session count —
 	// terminal agent tabs and running headless ade sessions — against agent.keepAwakeWithAgents.
@@ -541,7 +536,7 @@ func Build(opts Options) (*Wired, error) {
 	w.sched = &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
 	loader, err := scripts.NewLoader(scripts.LoaderOptions{
 		Repo: repositories.CustomScripts, Dir: filepath.Join(deps.Home, "runs"), Home: deps.Home, App: "Space", SpaceKeys: true,
-		Emit:     func(snapshot scripts.Snapshot) { w.CustomScripts.Publish(emitter, false, snapshot) },
+		Emit:     func(snapshot scripts.Snapshot) { w.CustomScripts.Publish(emitter, snapshot) },
 		OnChange: w.sched.Reload,
 	})
 	if err != nil {
@@ -601,15 +596,9 @@ func Build(opts Options) (*Wired, error) {
 	w.Quitter = shell.NewQuitter(events, w.beforeFlushOnce, w.teardownOnce, 2*time.Second, w.Windows.Keys)
 
 	w.Files = &bridge.FilesService{Dialogs: opts.Dialogs}
-	w.CustomScripts.Space = &scripts.Service{Loader: loader}
+	w.CustomScripts.Scripts = &scripts.Service{Loader: loader}
 	w.Ops = &bridge.OpsService{Log: git.opLog}
-	live := liveWork(repositories, terminalRegistry, func() int {
-		n := runs.Live()
-		if w.studioRuns != nil {
-			n += w.studioRuns.Live()
-		}
-		return n
-	})
+	live := liveWork(repositories, terminalRegistry, runs.Live)
 	w.Quitter.SetGate(prompts.QuitGate{R: w.Prompts, LiveFn: func() int { return live().Total() }})
 	w.Lifecycle = &bridge.LifecycleService{Flusher: w.Quitter, WindowFlusher: w.CloseFlush, Quit: w.Quitter, Live: live}
 	w.MemoryImport = bridge.NewMemoryImportService(w.Memory, opts.Dialogs)
