@@ -1,4 +1,4 @@
-// The cross-language parity pin — tests/fixtures/mask/*.{input,expected}.json, generated
+// The cross-language parity pin — tests/fixtures/studio/mask/*.{input,expected}.json, generated
 // from internal/mask (the queryplan/parse_test.go + explain-plan.spec.ts precedent). Two
 // independent ports of one algorithm drifting silently is the failure this guards, and it is the
 // only thing that can catch it.

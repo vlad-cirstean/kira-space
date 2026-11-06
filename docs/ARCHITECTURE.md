@@ -3339,7 +3339,7 @@ Built-in `PreLimit` `expensive_query`: an agent `run_query` whose plan estimates
 ### EXPLAIN (M3)
 
 - internal/queryplan is a Go port of the frontend EXPLAIN parser (plan.ts, planModel.ts, planIssues.ts, planParsers/*.ts), not a language bridge; every function is pure data transformation over the page each dialect's EXPLAIN returns, importing only internal/page and stdlib.
-- The Go and frontend EXPLAIN parsers are pinned against the same fixture set, tests/fixtures/explain-plans/*.{input,expected}.json, read by both internal/queryplan/parse_test.go and tests/unit/explain-plan.spec.ts, so drift in either port fails on the same bytes.
+- The Go and frontend EXPLAIN parsers are pinned against the same fixture set, tests/fixtures/studio/explain-plans/*.{input,expected}.json, read by both internal/queryplan/parse_test.go and tests/unit/explain-plan.spec.ts, so drift in either port fails on the same bytes.
 - explain_query refuses anything but a leading SELECT/WITH (queryplan.Explainable) and refuses unsupported adapter kinds before connecting.
 - queryplan.Supported accepts only postgres, mysql, mariadb, sqlite and clickhouse adapter kinds.
 - The SELECT/WITH-only restriction on explain_query exists because on ClickHouse EXPLAIN can execute its own target on some forms, so letting DDL/DML through would make the path a write oracle.
@@ -3356,7 +3356,7 @@ Built-in `PreLimit` `expensive_query`: an agent `run_query` whose plan estimates
 - The correlation tag is a keyed HMAC-SHA256 over the real value's raw UTF-8 bytes alone, with no column or table identity mixed in, so different columns holding the same real value (e.g. customers.id and orders.customer_id) tag identically and joins survive. It suffices for cross-row and cross-join correlation but never to recover the value.
 - The number mask kind never correlates, because a bucket is many-to-one.
 - The MCP render path (internal/dbmcp/render.go) is the masking security boundary; the grid preview (views/grid/maskPreview.ts) is only a preview, not a control, since the user there already holds the real values.
-- The Go mask implementation and the TS grid preview are kept in parity by 66 shared Go-generated fixture pairs under tests/fixtures/mask/, read by internal/mask/parity_test.go and tests/unit/mask-parity.spec.ts.
+- The Go mask implementation and the TS grid preview are kept in parity by 66 shared Go-generated fixture pairs under tests/fixtures/studio/mask/, read by internal/mask/parity_test.go and tests/unit/mask-parity.spec.ts.
 - A document/stream page is refused rather than silently skipped when masking rules exist.
 - A masked column that is aliased or transformed is refused rather than returned unmasked (0176243e, re-opened and properly closed by 5ff00d57 for the duplicate-name case).
 - A Redis key-value result is masked by real field name and refused otherwise, since some reply shapes carry no per-entry field name a rule could match (640e5580).
@@ -3821,8 +3821,8 @@ repo's CI runs.
 - gitclient/porcelain is guarded by a committed golden-byte corpus of recorded real git output, because a porcelain parser has several interacting rules.
 - gitsearch is guarded by packages/git-core/testdata/searchConformance.json, read by both its Go suite and the TypeScript twin's suite.
 - The git perf probes TestGraphStreamPerf and TestG8PerfBaseline (internal/flows/gitflow/) run only with KIRA_GIT_PERF=1 and assert nothing, printing one key=value line each, because a hard threshold would be flaky on real macOS hardware; numbers are in docs/PERF.md §2.13.
-- internal/queryplan/parse_test.go and tests/unit/explain-plan.spec.ts read the same fixtures in tests/fixtures/explain-plans/, pinning the Go EXPLAIN-parser port against the frontend parser so drift in either fails on the same bytes.
-- internal/mask/parity_test.go and tests/unit/mask-parity.spec.ts both read 66 shared masking fixture pairs under tests/fixtures/mask/.
+- internal/queryplan/parse_test.go and tests/unit/explain-plan.spec.ts read the same fixtures in tests/fixtures/studio/explain-plans/, pinning the Go EXPLAIN-parser port against the frontend parser so drift in either fails on the same bytes.
+- internal/mask/parity_test.go and tests/unit/mask-parity.spec.ts both read 66 shared masking fixture pairs under tests/fixtures/studio/mask/.
 - apps/kira-space/playwright.config.ts runs six projects: ui, ui-timing, ipc-frontend, e2e-real, visual and perf; perf is opt-in, serial, in no suite script, and lives in tests/perf/. All but ui-timing are fullyParallel.
 - Kira Space's apps/kira-space/playwright.config.ts has projects ui, mobile-ios, mobile-insecure (Chromium, insecure-origin spec only), e2e-real (workers: 2) and visual.
 - The ui project can be fullyParallel (unlike the old e2e project's workers: 1) because the serialisation existed for Electron apps contending over wall-clock/RSS budgets and Docker containers, which this tier lacks.

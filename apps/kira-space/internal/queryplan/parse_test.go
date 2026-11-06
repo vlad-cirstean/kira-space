@@ -13,11 +13,11 @@ import (
 )
 
 // The five-dialect plan port, against the shared parity fixtures
-// tests/fixtures/explain-plans/*.{input,expected}.json — generated from the TypeScript side first,
+// tests/fixtures/studio/explain-plans/*.{input,expected}.json — generated from the TypeScript side first,
 // so this test is what gets pinned to them, never the reverse. A drift in either language's own
 // parser fails a test in that language, on the same bytes.
 
-const fixturesDir = "../../tests/fixtures/explain-plans"
+const fixturesDir = "../../tests/fixtures/studio/explain-plans"
 
 type pageSpec struct {
 	Columns []string   `json:"columns"`
@@ -100,7 +100,7 @@ func buildPages(t *testing.T, spec []pageSpec) []page.Page {
 }
 
 // buildTruncatedPage builds the one-page, one-oversized-cell shape every single-cell dialect's
-// truncated-cell case needs, matching tests/fixtures/explain-plans/loader.ts's own
+// truncated-cell case needs, matching tests/fixtures/studio/explain-plans/loader.ts's own
 // buildTruncatedPage exactly (the same MAX_CELL_BYTES-exceeding synthetic cell), so a real
 // over-the-wire clip is what both languages' truncated-cell fixtures exercise.
 func buildTruncatedPage(t *testing.T) []page.Page {

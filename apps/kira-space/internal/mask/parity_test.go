@@ -10,12 +10,12 @@ import (
 	"testing"
 )
 
-// The cross-language parity fixtures — tests/fixtures/mask/*.{input,expected}.json, generated
+// The cross-language parity fixtures — tests/fixtures/studio/mask/*.{input,expected}.json, generated
 // from this Go package, read by both this file and tests/unit/mask-parity.spec.ts. A drift in
 // either port fails on the same bytes — the same pattern the queryplan/parse_test.go +
 // explain-plan.spec.ts already established.
 
-const fixturesDir = "../../tests/fixtures/mask"
+const fixturesDir = "../../tests/fixtures/studio/mask"
 
 type fixtureRule struct {
 	Kind      string `json:"kind"`

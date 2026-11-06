@@ -26,7 +26,7 @@ import {
   normalize,
 } from '../../fixtures/studio/explain-plans/loader';
 
-// The JSON literals moved out into tests/fixtures/explain-plans/*.input.json — the
+// The JSON literals moved out into tests/fixtures/studio/explain-plans/*.input.json — the
 // parity fixtures the new describe('parity fixtures') block below and internal/queryplan's own
 // parse_test.go both read — and read back in here rather than duplicated, wherever a case below
 // corresponds to one fixture exactly. Existing per-rule assertions are unchanged.

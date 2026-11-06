@@ -5,7 +5,7 @@
 // package imports internal/page and stdlib only — never internal/dbmcp, never internal/adapters.
 //
 // The two implementations are pinned to the same behaviour by a shared fixture set,
-// tests/fixtures/explain-plans/*.{input,expected}.json, read by both this package's own
+// tests/fixtures/studio/explain-plans/*.{input,expected}.json, read by both this package's own
 // parse_test.go and tests/unit/explain-plan.spec.ts's own parity block — a drift in either
 // language fails a test in that language, on the same bytes.
 package queryplan
