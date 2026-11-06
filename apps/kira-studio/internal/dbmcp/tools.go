@@ -415,28 +415,37 @@ func heldRefusal(outcome ApprovalOutcome, rv queryResolution, size int) string {
 	name := rv.summary.Name
 	switch outcome {
 	case ApprovalDenied:
-		msg := fmt.Sprintf("the user withheld the result of this query on %q; it ran, but you get no rows. Do not rerun it to get the result another way.", name)
-		if rv.class != adapters.ClassRead {
-			msg += " Its changes stay."
-		}
-		return msg
+		return ranSuffix(fmt.Sprintf("the user withheld the result of this query on %q; it ran, but you get no rows. Do not rerun it to get the result another way.", name), rv)
 	case ApprovalTooLarge:
 		return fmt.Sprintf("the result of this query on %q is %.1f MB, over the %d MB review limit, so it was withheld unseen. Ask for fewer rows or columns.", name, float64(size)/(1<<20), maxHeldResultBytes>>20)
 	case ApprovalHeldFull:
-		return "too many results are waiting for the user's review; retry after the user answers them"
+		return ranSuffix(fmt.Sprintf("query against %q ran, but too many results are waiting for the user's review, so its result was withheld. Do not rerun it.", name), rv)
 	case ApprovalTimedOut:
 		return fmt.Sprintf("query against %q ran, but its result got no review within %s and was withheld", name, approvalWindow())
 	case ApprovalAbandoned:
 		return fmt.Sprintf("the database MCP server stopped before the result of the query against %q was reviewed", name)
 	case ApprovalQueueFull:
-		return "query ran; " + queueFullMessage
+		return ranSuffix(fmt.Sprintf("query against %q ran, but too many queries are waiting for approval, so its result was withheld. Do not rerun it.", name), rv)
 	default:
 		return fmt.Sprintf("query against %q ran, but its result was not approved", name)
 	}
 }
 
+// ranSuffix tells the agent a non-read statement's changes stay, so it does not retry a committed write.
+func ranSuffix(msg string, rv queryResolution) string {
+	if rv.class != adapters.ClassRead {
+		msg += " Its changes stay."
+	}
+	return msg
+}
+
 // resultText is the concatenated TextContent of res — the bytes the client receives.
 func resultText(res *mcp.CallToolResult) string {
+	if len(res.Content) == 1 {
+		if tc, ok := res.Content[0].(*mcp.TextContent); ok {
+			return tc.Text
+		}
+	}
 	var b strings.Builder
 	for _, c := range res.Content {
 		if tc, ok := c.(*mcp.TextContent); ok {
@@ -620,17 +629,17 @@ func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv *query
 		// rv.summary was resolved before this (up to ApprovalTimeout) wait. If the user reacted to
 		// the prompt by revoking the connection's MCP exposure or denying this mode, an Approve
 		// landing after that must not run the statement under permissions that no longer hold.
-		return s.recheckAfterApproval(args, rv)
+		return s.recheckAfterApproval(ctx, args, rv)
 	default:
 		res, out, err = approvalOutcomeError(outcome, fmt.Sprintf("query against %q", rv.summary.Name))
 		return res, out, err, true
 	}
 }
 
-// recheckAfterApproval refuses when the connection lost exposure or the mode became denied while the
-// approval was pending. Otherwise it stores the re-resolved summary in rv, so settings read at
+// recheckAfterApproval refuses when the connection lost exposure, the mode became denied or the table allow
+// list stopped covering the statement while the approval was pending. Otherwise it stores the re-resolved summary in rv, so settings read at
 // execute (the statement timeout) are current after a long wait.
-func (s *Server) recheckAfterApproval(args runQueryArgs, rv *queryResolution) (res *mcp.CallToolResult, out any, err error, done bool) {
+func (s *Server) recheckAfterApproval(ctx context.Context, args runQueryArgs, rv *queryResolution) (res *mcp.CallToolResult, out any, err error, done bool) {
 	resummary, rerr := s.resolveEnabled(args.ConnectionID)
 	if rerr != nil {
 		res, out, err = errResult(rerr.Error())
@@ -638,6 +647,9 @@ func (s *Server) recheckAfterApproval(args runQueryArgs, rv *queryResolution) (r
 	}
 	if v := modeVerdict(resummary, rv.mode); v == "deny" {
 		res, out, err = errResult(fmt.Sprintf("connection %q now denies %s over MCP. Allowed: %s", resummary.Name, rv.mode, accessOf(resummary).Summary))
+		return res, out, err, true
+	}
+	if res, out, err := s.checkStatementTables(ctx, resummary, args.Path, args.SQL); res != nil || err != nil {
 		return res, out, err, true
 	}
 	rv.summary = resummary

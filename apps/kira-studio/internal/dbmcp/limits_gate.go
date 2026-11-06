@@ -150,7 +150,7 @@ func (s *Server) awaitExemption(ctx context.Context, args runQueryArgs, rv *quer
 	switch outcome {
 	case ApprovalApproved:
 		rv.reviewRequested = choice.ReviewResult
-		return s.recheckAfterApproval(args, rv)
+		return s.recheckAfterApproval(ctx, args, rv)
 	case ApprovalDenied:
 		names := make([]string, len(ex.hits))
 		for i, h := range ex.hits {
