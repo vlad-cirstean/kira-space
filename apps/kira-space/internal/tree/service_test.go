@@ -352,7 +352,7 @@ func TestChildrenAndSchemaColumnsShareOneRow(t *testing.T) {
 
 	var rowCount int
 	if err := h.repos.Metadata.DB.QueryRow(
-		`SELECT COUNT(*) FROM metadata_cache WHERE connection_id = ? AND path = ?`, "c1", path,
+		`SELECT COUNT(*) FROM connection_metadata_cache WHERE connection_id = ? AND path = ?`, "c1", path,
 	).Scan(&rowCount); err != nil {
 		t.Fatalf("count rows: %v", err)
 	}
@@ -587,7 +587,7 @@ func TestPreP24RowIsStaleWhenConnectedAndServedWhenNot(t *testing.T) {
 
 	legacyChildren := `[{"kind":"table","name":"x","path":"table:x","hasChildren":false}]`
 	if _, err := h.repos.Metadata.DB.Exec(
-		`INSERT INTO metadata_cache (connection_id, path, kind, payload_json, fetched_at, etag)
+		`INSERT INTO connection_metadata_cache (connection_id, path, kind, payload_json, fetched_at, etag)
 		 VALUES (?, ?, 'children', ?, ?, NULL)`,
 		"c1", path, `{"children":`+legacyChildren+`}`, kiratime.NowMs(),
 	); err != nil {
