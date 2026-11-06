@@ -153,12 +153,7 @@ func checkFilterShape(i int, f browseFilter) string {
 
 // browseDepth is the path depth of one relation: database, schema, table on postgres; database, table on
 // mysql, mariadb, sqlite (database main) and clickhouse.
-func browseDepth(kind string) int {
-	if kind == "postgres" {
-		return 3
-	}
-	return 2
-}
+func browseDepth(kind string) int { return containerDepth(kind) + 1 }
 
 func relationOf(kind string, r tableref.Ref) string {
 	switch kind {
@@ -342,11 +337,6 @@ func (p browsePlan) preview(kind string) string {
 	return b.String()
 }
 
-var previewOps = map[string]string{
-	model.CondEq: "=", model.CondNe: "<>", model.CondLt: "<", model.CondLte: "<=",
-	model.CondGt: ">", model.CondGte: ">=", model.CondLike: "LIKE",
-}
-
 func conditionPreview(kind string, c model.Condition) string {
 	col := quoteIdent(kind, c.Column)
 	switch c.Op {
@@ -361,7 +351,7 @@ func conditionPreview(kind string, c model.Condition) string {
 		}
 		return col + " IN (" + strings.Join(lits, ", ") + ")"
 	}
-	return col + " " + previewOps[c.Op] + " " + literalPreview(kind, c.Values[0])
+	return col + " " + adapters.ConditionOperators[c.Op] + " " + literalPreview(kind, c.Values[0])
 }
 
 func literalPreview(kind string, v any) string {

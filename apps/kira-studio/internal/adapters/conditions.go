@@ -8,7 +8,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-studio/internal/storage/model"
 )
 
-var conditionOperators = map[string]string{
+// ConditionOperators maps each structured-condition operator to its SQL spelling.
+var ConditionOperators = map[string]string{
 	model.CondEq: "=", model.CondNe: "<>", model.CondLt: "<", model.CondLte: "<=",
 	model.CondGt: ">", model.CondGte: ">=", model.CondLike: "LIKE",
 }
@@ -45,7 +46,7 @@ func BuildConditionsSQL(conds []model.Condition, columns map[string]model.Column
 			}
 			parts = append(parts, "("+name+" IN ("+strings.Join(phs, ", ")+"))")
 		default:
-			op, ok := conditionOperators[c.Op]
+			op, ok := ConditionOperators[c.Op]
 			if !ok {
 				return "", Contract("unknown condition operator: "+c.Op, nil)
 			}
