@@ -10,7 +10,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -185,12 +185,12 @@ func TestDbMcpColumnReview(t *testing.T) {
 	if err != nil || !listing.Applicable || len(listing.Columns) != 3 {
 		t.Fatalf("ReviewColumns = %+v (%v), want 3 columns", listing, err)
 	}
-	f.app.Contract(t, "dbmcp-mask-review", "MaskRulesService.ReviewColumns", listing, studioflowharness.Mask("checkedAt"))
+	f.app.StudioContract(t, "dbmcp-mask-review", "MaskRulesService.ReviewColumns", listing, flowharness.Mask("checkedAt"))
 	pending, err := f.app.W.MaskRules.ReviewPending(bridge.MaskReviewPendingArgs{ID: f.connID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.app.Contract(t, "dbmcp-mask-review", "MaskRulesService.ReviewPending", pending)
+	f.app.StudioContract(t, "dbmcp-mask-review", "MaskRulesService.ReviewPending", pending)
 }
 
 // A column added outside MCP is withheld on the first result that carries it, without waiting for a tree

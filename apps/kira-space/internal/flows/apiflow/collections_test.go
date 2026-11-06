@@ -9,16 +9,16 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/postman"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
 func TestSavedRequestHistory(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.HTTP(t)
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
 
 	mark := app.Events.Mark()
 	col := newCollection(t, app, "orders")
@@ -86,11 +86,11 @@ func TestSavedRequestHistory(t *testing.T) {
 }
 
 func TestVariablePrecedence(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.HTTP(t)
-	col := app.SeedCollection(t, "scoped", studioflowharness.APIVar{Name: "who", Value: "from-collection", Secret: true})
-	dev := app.SeedEnvironment(t, "dev", studioflowharness.APIVar{Name: "who", Value: "from-dev", Secret: true})
-	prod := app.SeedEnvironment(t, "prod", studioflowharness.APIVar{Name: "who", Value: "from-prod", Secret: true})
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
+	col := app.SeedCollection(t, "scoped", flowharness.APIVar{Name: "who", Value: "from-collection", Secret: true})
+	dev := app.SeedEnvironment(t, "dev", flowharness.APIVar{Name: "who", Value: "from-dev", Secret: true})
+	prod := app.SeedEnvironment(t, "prod", flowharness.APIVar{Name: "who", Value: "from-prod", Secret: true})
 
 	sendWho := func(envID string) string {
 		t.Helper()
@@ -153,7 +153,7 @@ func TestVariablePrecedence(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := app.DB().Exec(`INSERT INTO api_variable_history (id, variable_id, value, is_secret, secret_value, recorded_at)
+		if _, err := app.StudioDB().Exec(`INSERT INTO api_variable_history (id, variable_id, value, is_secret, secret_value, recorded_at)
 			VALUES ('legacy-h1', ?, '', 1, ?, '2026-01-01T00:00:00Z')`, vars[0].ID, sealed); err != nil {
 			t.Fatal(err)
 		}
@@ -164,8 +164,8 @@ func TestVariablePrecedence(t *testing.T) {
 	})
 
 	t.Run("a plain value edited in the file keeps its history", func(t *testing.T) {
-		plain := app.SeedEnvironment(t, "plain", studioflowharness.APIVar{Name: "mode", Value: "one"})
-		app.SeedEnvironment(t, "plain", studioflowharness.APIVar{Name: "mode", Value: "two"})
+		plain := app.SeedEnvironment(t, "plain", flowharness.APIVar{Name: "mode", Value: "one"})
+		app.SeedEnvironment(t, "plain", flowharness.APIVar{Name: "mode", Value: "two"})
 		vars, err := app.W.Variables.List(bridge.VariablesScopeArgs{Scope: model.VariableScopeEnvironment, OwnerID: plain.ID})
 		if err != nil || len(vars) != 1 || vars[0].Value != "two" {
 			t.Fatalf("variables = %+v (%v), want mode=two", vars, err)
@@ -178,7 +178,7 @@ func TestVariablePrecedence(t *testing.T) {
 }
 
 // tree flattens a collection into comparable lines: folder path, kind, method, url and body.
-func tree(t *testing.T, app *studioflowharness.App, collectionID string) []string {
+func tree(t *testing.T, app *flowharness.App, collectionID string) []string {
 	t.Helper()
 	all, err := app.W.Collections.List()
 	if err != nil {
@@ -223,8 +223,8 @@ func mustHeaders(r model.SavedRequest) string {
 }
 
 func TestPostmanImportSendExport(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.HTTP(t)
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
 
 	fixture, err := os.ReadFile(filepath.Join("testdata", "collection.json"))
 	if err != nil {
@@ -239,20 +239,20 @@ func TestPostmanImportSendExport(t *testing.T) {
 	// Contract api-postman, read by tests/ui/collections.spec.ts "Postman import builds the tree
 	// and export asks for a save path".
 	const sc = "api-postman"
-	pathOpts := []studioflowharness.ContractOption{studioflowharness.Replace(dir, "<tmp>"), studioflowharness.Replace(srv.URL, "<http>")}
-	app.Dialogs.QueueOpenFiles(imported)
+	pathOpts := []flowharness.ContractOption{flowharness.Replace(dir, "<tmp>"), flowharness.Replace(srv.URL, "<http>")}
+	app.Dialogs.AnswerFiles(imported)
 	chosen, err := app.W.Files.ChooseOpenMany(bridge.FilesChooseOpenArgs{})
 	if err != nil || len(chosen.Files) != 1 {
 		t.Fatalf("ChooseOpenMany = %+v (%v)", chosen, err)
 	}
-	app.Contract(t, sc, "FilesService.ChooseOpenMany", chosen, append(pathOpts, studioflowharness.Mask("size"))...)
+	app.StudioContract(t, sc, "FilesService.ChooseOpenMany", chosen, append(pathOpts, flowharness.Mask("size"))...)
 	importArgs := bridge.CollectionsImportArgs{Paths: []string{chosen.Files[0].Path}}
-	app.Contract(t, sc, "args:CollectionsService.Import", importArgs, pathOpts...)
+	app.StudioContract(t, sc, "args:CollectionsService.Import", importArgs, pathOpts...)
 	res, err := app.W.Collections.Import(importArgs)
 	if err != nil || len(res.Files) != 1 || res.Files[0].Collection == nil {
 		t.Fatalf("Import = %+v (%v)", res, err)
 	}
-	app.Contract(t, sc, "CollectionsService.Import", res, pathOpts...)
+	app.StudioContract(t, sc, "CollectionsService.Import", res, pathOpts...)
 	rep := *res.Files[0].Collection
 	if rep.Name != "Flow Orders" || rep.Folders != 1 || rep.Requests != 4 {
 		t.Errorf("report = %+v, want Flow Orders with 1 folder and 4 requests", rep)
@@ -285,7 +285,7 @@ func TestPostmanImportSendExport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.Contract(t, sc, "CollectionsService.List", items, pathOpts...)
+	app.StudioContract(t, sc, "CollectionsService.List", items, pathOpts...)
 	var create model.CollectionItem
 	for _, it := range items.Items {
 		if it.Name == "Create order" && it.CollectionID == rep.CollectionID {
@@ -319,19 +319,19 @@ func TestPostmanImportSendExport(t *testing.T) {
 	}
 
 	exported := filepath.Join(dir, "export.json")
-	app.Dialogs.QueueSaveFile(exported)
+	app.Dialogs.AnswerSave(exported)
 	dest, err := app.W.Files.ChooseSave(bridge.FilesChooseSaveArgs{DefaultName: "Flow Orders.postman_collection.json"})
 	if err != nil || dest.FilePath == nil {
 		t.Fatalf("ChooseSave = %+v (%v)", dest, err)
 	}
-	app.Contract(t, sc, "FilesService.ChooseSave", dest, pathOpts...)
+	app.StudioContract(t, sc, "FilesService.ChooseSave", dest, pathOpts...)
 	exportArgs := bridge.CollectionsExportArgs{CollectionID: rep.CollectionID, Path: *dest.FilePath}
-	app.Contract(t, sc, "args:CollectionsService.Export", exportArgs, pathOpts...)
+	app.StudioContract(t, sc, "args:CollectionsService.Export", exportArgs, pathOpts...)
 	exp, err := app.W.Collections.Export(exportArgs)
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.Contract(t, sc, "CollectionsService.Export", exp, pathOpts...)
+	app.StudioContract(t, sc, "CollectionsService.Export", exp, pathOpts...)
 	if exp.SecretCount != 1 || exp.SkippedGrpc != 1 {
 		t.Errorf("export = %+v, want 1 secret and 1 skipped gRPC item", exp)
 	}
@@ -343,7 +343,7 @@ func TestPostmanImportSendExport(t *testing.T) {
 		t.Error("the export carries the secret variable's value")
 	}
 
-	app.Dialogs.QueueOpenFile(exported)
+	app.Dialogs.AnswerFile(exported)
 	again, err := app.W.Files.ChooseOpen(bridge.FilesChooseOpenArgs{})
 	if err != nil || again.File == nil {
 		t.Fatal(err)
@@ -373,7 +373,7 @@ func headerOf(h model.SavedHeader) httpclient.Header {
 }
 
 func TestGrpcItemSaveAndRestart(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	cs := app.W.Collections
 	from := newCollection(t, app, "from")
 	folder, err := cs.CreateItem(bridge.CollectionsCreateItemArgs{CollectionID: from.ID, Kind: model.CollectionItemFolder, Name: "dir"})
@@ -428,7 +428,7 @@ func TestGrpcItemSaveAndRestart(t *testing.T) {
 		}
 	}
 	check("after save")
-	app.Restart(t)
+	app.Restart()
 	cs = app.W.Collections
 	check("after relaunch")
 
@@ -441,7 +441,7 @@ func TestGrpcItemSaveAndRestart(t *testing.T) {
 }
 
 func TestPostmanImportCollectionAndEnvironment(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	dir := t.TempDir()
 	write := func(name, body string) string {
 		p := filepath.Join(dir, name)
@@ -462,25 +462,25 @@ func TestPostmanImportCollectionAndEnvironment(t *testing.T) {
 	// Contract api-postman-multi, read by tests/ui/collections.spec.ts "Postman import of a
 	// collection, an environment and a bad file".
 	const sc = "api-postman-multi"
-	pathOpts := []studioflowharness.ContractOption{studioflowharness.Replace(dir, "<tmp>")}
-	app.Dialogs.QueueOpenFiles(collection, environment, bad, wrapped)
+	pathOpts := []flowharness.ContractOption{flowharness.Replace(dir, "<tmp>")}
+	app.Dialogs.AnswerFiles(collection, environment, bad, wrapped)
 	chosen, err := app.W.Files.ChooseOpenMany(bridge.FilesChooseOpenArgs{})
 	if err != nil || len(chosen.Files) != 4 {
 		t.Fatalf("ChooseOpenMany = %+v (%v)", chosen, err)
 	}
-	app.Contract(t, sc, "FilesService.ChooseOpenMany", chosen, append(pathOpts, studioflowharness.Mask("size"))...)
+	app.StudioContract(t, sc, "FilesService.ChooseOpenMany", chosen, append(pathOpts, flowharness.Mask("size"))...)
 	paths := make([]string, len(chosen.Files))
 	for i, f := range chosen.Files {
 		paths[i] = f.Path
 	}
 	args := bridge.CollectionsImportArgs{Paths: paths}
-	app.Contract(t, sc, "args:CollectionsService.Import", args, pathOpts...)
+	app.StudioContract(t, sc, "args:CollectionsService.Import", args, pathOpts...)
 	mark := app.Events.Mark()
 	res, err := app.W.Collections.Import(args)
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.Contract(t, sc, "CollectionsService.Import", res, pathOpts...)
+	app.StudioContract(t, sc, "CollectionsService.Import", res, pathOpts...)
 
 	if len(res.Files) != 4 {
 		t.Fatalf("files = %+v, want one entry per path", res.Files)
@@ -546,7 +546,7 @@ func TestPostmanImportCollectionAndEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.Contract(t, sc, "VariablesService.List", vars, studioflowharness.Mask("ownerId", "sortOrder"))
+	app.StudioContract(t, sc, "VariablesService.List", vars, flowharness.Mask("ownerId", "sortOrder"))
 	got := map[string]model.Variable{}
 	for _, v := range vars {
 		got[v.Name] = v

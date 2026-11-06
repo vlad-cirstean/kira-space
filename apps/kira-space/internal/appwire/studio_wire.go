@@ -159,8 +159,8 @@ func (w *Wired) wireStudioEmbedded(deps appcore.StudioDeps, installer harness.MC
 		slog.Warn("recover script runs", "scope", "startup", "err", err)
 	}
 	// The ops tools read live runs, so the server starts only once runs exists.
-	dbMcpSvc.Runs = bridge.NewScriptRunControl(runs)
-	dbMcpSvc.Scripts = bridge.NewScriptControl(runs)
+	dbMcpSvc.Runs = bridge.NewScriptRunControl(w.runs, runs)
+	dbMcpSvc.Scripts = bridge.NewScriptControl(w.runs, runs)
 	dbMcpSvc.API = agentAPI
 	bridge.StartDbMcpIfEnabled(dbMcpSvc)
 	sched := &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}

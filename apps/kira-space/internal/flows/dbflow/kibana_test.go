@@ -9,8 +9,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/testsupport"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 )
 
@@ -32,10 +32,10 @@ func executeWire(opID, connID, statement string) adapterhost.ExecuteRequestWire 
 // views, read fields, run a query with a filter and a sort, histogram it and ask for value hints.
 // Contract kibana-discover: tests/ui/kibana-discover.spec.ts answers its calls with these results.
 func TestKibanaDiscoverJourney(t *testing.T) {
-	studioflowharness.Complete(t)
-	studioflowharness.RequireDocker(t)
+	flowharness.Complete(t)
+	flowharness.RequireDocker(t)
 	fx := testsupport.StartKibana(t)
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 
 	in := connections.Input{ConnectionFields: model.ConnectionFields{
 		Name: "flow kibana", Kind: "kibana", Color: "indigo", Mode: "fields",
@@ -51,8 +51,8 @@ func TestKibanaDiscoverJourney(t *testing.T) {
 	if st.Status != "connected" {
 		t.Fatalf("Connect = %+v, want connected", st)
 	}
-	app.Contract(t, "kibana-discover", "ConnectionsService.Connect#connected", st,
-		studioflowharness.Mask("since", "serverVersion"))
+	app.StudioContract(t, "kibana-discover", "ConnectionsService.Connect#connected", st,
+		flowharness.Mask("since", "serverVersion"))
 
 	kids, err := app.W.Tree.Children(bridge.TreeChildrenArgs{ConnectionID: conn.ID, Path: ""})
 	if err != nil {
@@ -70,13 +70,13 @@ func TestKibanaDiscoverJourney(t *testing.T) {
 	if logsPath == "" {
 		t.Fatalf("data view %q not in the tree: %+v", testsupport.KibanaLogsView, kids.Nodes)
 	}
-	app.Contract(t, "kibana-discover", "TreeService.Children#dataViews", kids)
+	app.StudioContract(t, "kibana-discover", "TreeService.Children#dataViews", kids)
 
 	views, err := app.W.Kibana.DataViews(ctx, model.KibanaDataViewsRequest{ConnectionID: conn.ID, OpID: "56f267ab-fc96-7c8d-878f-3998a2fe8a06"})
 	if err != nil || len(views) < 3 {
 		t.Fatalf("DataViews = %d (%v), want the seeded views", len(views), err)
 	}
-	app.Contract(t, "kibana-discover", "KibanaService.DataViews#list", views)
+	app.StudioContract(t, "kibana-discover", "KibanaService.DataViews#list", views)
 
 	view, err := app.W.Kibana.DataView(ctx, model.KibanaDataViewRequest{ConnectionID: conn.ID, OpID: "3cdb70c3-388f-7d1b-8418-661d3b8dec8a", ID: testsupport.KibanaLogsView})
 	if err != nil {
@@ -91,7 +91,7 @@ func TestKibanaDiscoverJourney(t *testing.T) {
 			t.Fatalf("fields %v lack %q", names, want)
 		}
 	}
-	app.Contract(t, "kibana-discover", "KibanaService.DataView#logs", view)
+	app.StudioContract(t, "kibana-discover", "KibanaService.DataView#logs", view)
 
 	window := &model.KibanaTimeRange{From: testsupport.KibanaWindowFrom, To: testsupport.KibanaWindowTo}
 	base := model.KibanaDiscoverRequest{
@@ -129,7 +129,7 @@ func TestKibanaDiscoverJourney(t *testing.T) {
 	if !slices.Equal(colNames, []string{"@timestamp", "level", "status"}) {
 		t.Fatalf("columns = %v, want @timestamp, level, status", colNames)
 	}
-	app.Contract(t, "kibana-discover", "Execute#columns", colNames)
+	app.StudioContract(t, "kibana-discover", "Execute#columns", colNames)
 
 	hist, err := app.W.Kibana.Histogram(ctx, model.KibanaHistogramRequest{
 		ConnectionID: conn.ID, OpID: "30268575-f547-762e-87e9-66fee18246e5", TabID: "tab", Request: base, Interval: "auto",
@@ -144,7 +144,7 @@ func TestKibanaDiscoverJourney(t *testing.T) {
 	if hist.Total != int64(doc.RowCount) || sum != hist.Total || hist.Relation != "eq" {
 		t.Fatalf("Histogram = total %d (%s), buckets sum %d, want %d", hist.Total, hist.Relation, sum, doc.RowCount)
 	}
-	app.Contract(t, "kibana-discover", "KibanaService.Histogram#auto", hist)
+	app.StudioContract(t, "kibana-discover", "KibanaService.Histogram#auto", hist)
 
 	suggestReq := base
 	suggestReq.Query, suggestReq.Size = "", 0
@@ -154,14 +154,14 @@ func TestKibanaDiscoverJourney(t *testing.T) {
 	if err != nil || !sugg.Complete || !slices.Equal(sugg.Values, []string{"debug", "error", "info", "warn"}) {
 		t.Fatalf("Suggest = %+v (%v), want the four levels, complete", sugg, err)
 	}
-	app.Contract(t, "kibana-discover", "KibanaService.Suggest#level", sugg)
+	app.StudioContract(t, "kibana-discover", "KibanaService.Suggest#level", sugg)
 
 	bad := base
 	bad.Query = "level:"
 	if _, err := app.W.Router.Execute(ctx, executeWire("kb-bad", conn.ID, discoverRequest(t, bad))); err == nil {
 		t.Fatal("a syntax error in the query must fail the run")
 	} else {
-		app.Contract(t, "kibana-discover", "Execute#syntaxError", err.Error())
+		app.StudioContract(t, "kibana-discover", "Execute#syntaxError", err.Error())
 	}
 
 	if st, err := app.W.Connections.Disconnect(bridge.ConnectionsIDArgs{ID: conn.ID}); err != nil || st.Status == "connected" {

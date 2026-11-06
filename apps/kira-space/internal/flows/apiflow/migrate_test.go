@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
 	"github.com/kirathecat/kira-studio/internal/secrets"
@@ -17,8 +17,8 @@ import (
 // Rows written before the api files existed become files at the next start: ids, secrets and history
 // carry over, and a later start never exports again.
 func TestApiConfigMigration(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.HTTP(t)
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
 	const (
 		legacyKey = "legacy-secret-9"
 		legacyEnv = "legacy-env-secret-3"
@@ -35,7 +35,7 @@ func TestApiConfigMigration(t *testing.T) {
 	}
 	exec := func(q string, args ...any) {
 		t.Helper()
-		if _, err := app.DB().Exec(q, args...); err != nil {
+		if _, err := app.StudioDB().Exec(q, args...); err != nil {
 			t.Fatalf("seed %q: %v", q, err)
 		}
 	}
@@ -54,14 +54,14 @@ func TestApiConfigMigration(t *testing.T) {
 	exec(`INSERT INTO api_variables (id, collection_id, name, value, is_secret, secret_value, sort_order, created_at, updated_at) VALUES ('v3', 'c1', 'key', '', 1, ?, 2, ?, ?)`, seal(legacyKey), now, now)
 	exec(`INSERT INTO api_environments (id, name, sort_order, is_active, created_at, updated_at) VALUES ('e1', 'Prod', 0, 1, ?, ?)`, now, now)
 	exec(`INSERT INTO api_variables (id, environment_id, name, value, is_secret, secret_value, sort_order, created_at, updated_at) VALUES ('v4', 'e1', 'pass', '', 1, ?, 0, ?, ?)`, seal(legacyEnv), now, now)
-	if err := (&repos.ResponseHistoryRepo{DB: app.DB()}).Record(model.ResponseHistoryRecord{
+	if err := (&repos.ResponseHistoryRepo{DB: app.StudioDB()}).Record(model.ResponseHistoryRecord{
 		ItemID: "r1", TabID: "tab-1", Method: "GET", URL: "{{base}}/status", Body: httpclient.Body{Mode: "none"},
 		Response: httpclient.Response{Status: 200, StatusText: "OK", Proto: "HTTP/1.1", BodyEncoding: "utf8"},
 	}); err != nil {
 		t.Fatal(err)
 	}
 
-	app.Restart(t)
+	app.Restart()
 
 	dir := app.W.ApiFiles.Dir()
 	collectionFile, envFile := filepath.Join(dir, "legacy-shop.collection.yaml"), filepath.Join(dir, "prod.environment.yaml")
@@ -123,11 +123,11 @@ func TestApiConfigMigration(t *testing.T) {
 		t.Errorf("server X-Key = %q, want the migrated secret", got)
 	}
 	var left int
-	if err := app.DB().QueryRow(`SELECT COUNT(*) FROM api_variables WHERE secret_value IS NOT NULL`).Scan(&left); err != nil || left != 0 {
+	if err := app.StudioDB().QueryRow(`SELECT COUNT(*) FROM api_variables WHERE secret_value IS NOT NULL`).Scan(&left); err != nil || left != 0 {
 		t.Errorf("rows still holding a sealed value = %d (%v), want 0", left, err)
 	}
 	var marker string
-	if err := app.DB().QueryRow(`SELECT value FROM settings WHERE key = 'config.migrated.api'`).Scan(&marker); err != nil || marker != "true" {
+	if err := app.StudioDB().QueryRow(`SELECT value FROM settings WHERE key = 'config.migrated.api'`).Scan(&marker); err != nil || marker != "true" {
 		t.Errorf("marker = %q (%v), want true", marker, err)
 	}
 
@@ -135,7 +135,7 @@ func TestApiConfigMigration(t *testing.T) {
 	if err := os.WriteFile(collectionFile, append([]byte("# edited by hand\n"), text...), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	app.Restart(t)
+	app.Restart()
 	after, err := os.ReadFile(collectionFile)
 	if err != nil || !strings.HasPrefix(string(after), "# edited by hand\n") {
 		t.Errorf("file after restart = %q (%v), want the hand edit kept", after, err)

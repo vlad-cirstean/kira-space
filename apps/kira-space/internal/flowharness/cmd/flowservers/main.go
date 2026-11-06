@@ -10,7 +10,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness/servers"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness/servers"
 )
 
 type info struct {

@@ -9,8 +9,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	_ "modernc.org/sqlite"
@@ -50,7 +50,7 @@ func sqliteInput(name, path string) connections.Input {
 	}}
 }
 
-func createConn(t *testing.T, app *studioflowharness.App, in connections.Input) model.ConnectionSummary {
+func createConn(t *testing.T, app *flowharness.App, in connections.Input) model.ConnectionSummary {
 	t.Helper()
 	c, err := app.W.Connections.Create(in)
 	if err != nil {
@@ -59,7 +59,7 @@ func createConn(t *testing.T, app *studioflowharness.App, in connections.Input) 
 	return c
 }
 
-func connect(t *testing.T, app *studioflowharness.App, id string) model.ConnectionState {
+func connect(t *testing.T, app *flowharness.App, id string) model.ConnectionState {
 	t.Helper()
 	st, err := app.W.Connections.Connect(bridge.ConnectionsIDArgs{ID: id})
 	if err != nil {
@@ -68,7 +68,7 @@ func connect(t *testing.T, app *studioflowharness.App, id string) model.Connecti
 	return st
 }
 
-func execute(t *testing.T, app *studioflowharness.App, connID string, stmts ...string) []page.Page {
+func execute(t *testing.T, app *flowharness.App, connID string, stmts ...string) []page.Page {
 	t.Helper()
 	resp, err := app.W.Router.Execute(ctx, adapterhost.ExecuteRequestWire{
 		OpID: ids.NewID(), ConnectionID: connID, Statements: stmts,

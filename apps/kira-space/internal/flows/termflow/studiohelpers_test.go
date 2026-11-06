@@ -1,21 +1,18 @@
-package termflow
+package termflow_test
 
 import (
 	"encoding/base64"
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
-const wait = 20 * time.Second
-
-func open(t *testing.T, app *studioflowharness.App, window, id, cwd string) {
+func open(t *testing.T, app *flowharness.App, window, id, cwd string) {
 	t.Helper()
 	if _, err := app.W.Terminal.Open(terminal.OpenArgs{TerminalID: id, WindowKey: window, Cwd: cwd, Cols: 80, Rows: 24}); err != nil {
 		t.Fatal(err)
@@ -23,7 +20,7 @@ func open(t *testing.T, app *studioflowharness.App, window, id, cwd string) {
 }
 
 // out returns the decoded output and exit of one terminal recorded since mark, for window.
-func out(app *studioflowharness.App, mark int, window, id string) (text string, exited bool, code int) {
+func out(app *flowharness.App, mark int, window, id string) (text string, exited bool, code int) {
 	var sb strings.Builder
 	for _, ev := range app.Events.Since(mark, appevent.ChannelTerminal) {
 		te, ok := ev.Data.(terminal.Event)
@@ -45,7 +42,7 @@ func out(app *studioflowharness.App, mark int, window, id string) (text string, 
 }
 
 // waitMatch waits until the terminal's output matches re and returns the first submatch set.
-func waitMatch(t *testing.T, app *studioflowharness.App, mark int, window, id string, re *regexp.Regexp) []string {
+func waitMatch(t *testing.T, app *flowharness.App, mark int, window, id string, re *regexp.Regexp) []string {
 	t.Helper()
 	var m []string
 	testx.WaitUntil(t, wait, func() bool {
@@ -56,7 +53,7 @@ func waitMatch(t *testing.T, app *studioflowharness.App, mark int, window, id st
 	return m
 }
 
-func waitExit(t *testing.T, app *studioflowharness.App, mark int, window, id string) int {
+func waitExit(t *testing.T, app *flowharness.App, mark int, window, id string) int {
 	t.Helper()
 	var code int
 	testx.WaitUntil(t, wait, func() bool {
@@ -67,7 +64,7 @@ func waitExit(t *testing.T, app *studioflowharness.App, mark int, window, id str
 	return code
 }
 
-func write(t *testing.T, app *studioflowharness.App, id, text string) {
+func write(t *testing.T, app *flowharness.App, id, text string) {
 	t.Helper()
 	if err := app.W.Terminal.Write(terminal.WriteArgs{TerminalID: id, Data: base64.StdEncoding.EncodeToString([]byte(text))}); err != nil {
 		t.Fatal(err)

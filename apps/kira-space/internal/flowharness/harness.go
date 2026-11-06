@@ -1,9 +1,11 @@
 // Package flowharness boots Kira Space's real composition root (internal/appwire) over a temporary
-// home for flow tests at the IPC boundary. Real: git, SQLite, the git stream, PTYs, file
-// watchers, the phone HTTP server, the hooks and askpass sockets. Faked, each an OS or third-party
-// seam with no git in it: the claude and gh CLIs, native dialogs, the browser, the power assertion,
-// LAN detection and the window manager. Settings stay at their defaults; a test changes one only
-// through SettingsService.Set, the way the UI does.
+// home (the Space and the Studio home) for flow tests at the IPC boundary. Real: git, SQLite, the
+// git stream, PTYs and login shells, file watchers, the phone HTTP server, the hooks and askpass
+// sockets, the cipher, the adapter host and op log, httpclient, grpcclient, the Docker engine, and
+// local HTTP/HTTPS/gRPC servers (servers.go). Faked, each an OS or third-party seam: the claude and
+// gh CLIs, native dialogs, the browser, the power assertion, the OS authentication prompt, the
+// claude MCP installer, LAN detection and the window manager. Settings stay at their defaults; a
+// test changes one only through SettingsService.Set, the way the UI does.
 //
 // Only _test.go files import this package. A flow test is:
 //
@@ -25,6 +27,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -33,6 +37,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appwire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
@@ -41,13 +46,16 @@ import (
 	githostproviders "github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/providers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker/jira"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/lannet"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage"
 	studiorepos "github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox/sandboxtest"
+	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/claude"
@@ -55,8 +63,12 @@ import (
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
 	"github.com/kirathecat/kira-studio/internal/memory/embed"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
+	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/testx"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
+
+var dbMcpPortRe = regexp.MustCompile(`:(\d+)/mcp`)
 
 type options struct {
 	noSecretStore   bool
@@ -81,6 +93,12 @@ type options struct {
 	crSync          gitsession.CRSyncConfig
 	updates         *ade.UpdatesConfig
 	wayland         bool
+	windowFocus     bool
+	dockerHubAPI    string
+	dockerExtra     []docker.Option
+	kubeExtra       []kubernetes.Option
+	dbMcpLimits     []dbmcp.Limit
+	heldCaps        *[2]int
 }
 
 // WithoutSecretStore boots without KIRA_INSECURE_SECRETS, so the cipher is unavailable on Linux.
@@ -133,10 +151,10 @@ func WithoutClaude() Opt { return func(o *options) { o.noClaude = true } }
 // before a missing process reads as stopped (30s by default).
 func WithTrackerGrace(d time.Duration) Opt { return func(o *options) { o.trackerGrace = d } }
 
-// WithSmartTimeout replaces every smart script's own timeout.
 // WithSandbox swaps the OS sandbox enforcer for a test one.
 func WithSandbox(e agentsandbox.Enforcer) Opt { return func(o *options) { o.sandbox = e } }
 
+// WithSmartTimeout replaces every smart script's own timeout.
 func WithSmartTimeout(d time.Duration) Opt { return func(o *options) { o.smartTimeout = d } }
 
 // WithScheduleTimeout replaces every headless scheduled run's own timeout.
@@ -164,6 +182,40 @@ func WithProvider(ps ...harness.Provider) Opt { return func(o *options) { o.prov
 // background (sweeps) would race a seed written after New.
 func WithSeed(seed func(*App)) Opt { return func(o *options) { o.seed = seed } }
 
+// WithWindowFocus replaces the window registry's focus state and raise with App.Focus, for prompt
+// raise tests.
+func WithWindowFocus() Opt { return func(o *options) { o.windowFocus = true } }
+
+// WithDockerHubAPI points the Docker image registry check at base instead of Docker Hub.
+func WithDockerHubAPI(base string) Opt { return func(o *options) { o.dockerHubAPI = base } }
+
+// WithDockerOptions appends options to the Docker service (restore tracker timing and boot probe).
+func WithDockerOptions(opts ...docker.Option) Opt {
+	return func(o *options) { o.dockerExtra = append(o.dockerExtra, opts...) }
+}
+
+// WithKubernetesOptions appends options to the Kubernetes service (list limits, environment).
+func WithKubernetesOptions(opts ...kubernetes.Option) Opt {
+	return func(o *options) { o.kubeExtra = append(o.kubeExtra, opts...) }
+}
+
+// WithDbMcpLimits adds limits to the DB MCP server's run_query, for tests that need a limit no real
+// engine trips deterministically.
+func WithDbMcpLimits(ls ...dbmcp.Limit) Opt {
+	return func(o *options) { o.dbMcpLimits = append(o.dbMcpLimits, ls...) }
+}
+
+// WithApprovalHeldCaps replaces the DB MCP held result caps (per result, all results), in bytes.
+func WithApprovalHeldCaps(perResult, total int) Opt {
+	return func(o *options) { o.heldCaps = &[2]int{perResult, total} }
+}
+
+// kubeEnv hands the Kubernetes service the test process environment instead of probing the user's
+// login shell.
+func kubeEnv() kubernetes.Env {
+	return kubernetes.Env{Path: os.Getenv("PATH"), Kubeconfig: os.Getenv("KUBECONFIG")}
+}
+
 // noGhLocator finds no gh anywhere, system installs included.
 type noGhLocator struct{}
 
@@ -183,10 +235,12 @@ func (noGhLocator) Locate() (string, []string, bool) { return "", []string{"gh (
 type App struct {
 	t *testing.T
 	// Root is the short temp root (not t.TempDir: macOS paths there exceed the 104-byte unix socket
-	// limit for the hooks and askpass sockets). Home is the isolated HOME, Work the
-	// directory test repositories are built in, BinDir the PATH-first fake tool directory, FakeDir
-	// where the fake agent records its calls.
-	Root, Home, SpaceHome, MemoryHome, Work, BinDir, FakeDir string
+	// limit for the hooks and askpass sockets). Home is the isolated HOME, KiraHome the Studio home
+	// (KIRA_HOME), Work the directory test repositories are built in, BinDir the PATH-first fake tool
+	// directory, FakeDir where the fake agent records its calls.
+	Root, Home, SpaceHome, KiraHome, MemoryHome, Work, BinDir, FakeDir string
+	// dbMcpPort is the port the previous run bound, reused across Restart.
+	dbMcpPort int
 
 	W          *appwire.Wired
 	Events     *Events
@@ -195,12 +249,19 @@ type App struct {
 	Dialogs    *Dialogs
 	WindowMgr  *WindowManager
 	KeepAwake  *KeepAwakeDriver
+	// McpInstaller, OSAuth, Focus and ProofWindows fake the DB MCP install, the OS authentication
+	// prompt, the window raise (with WithWindowFocus) and the proof window shell.
+	McpInstaller *McpInstaller
+	OSAuth       *OSAuth
+	Focus        *WindowFocus
+	ProofWindows *ProofShell
 	// Clipboard and Shortcuts fake the capture hotkey's two OS seams.
 	Clipboard *Clipboard
 	Shortcuts *Shortcuts
 
 	db       *storage.DB
 	repos    *repos.Repos
+	studioDB *studiostorage.DB
 	stopped  bool
 	built    int
 	scenario fakeagent.Scenario
@@ -239,10 +300,11 @@ func New(t *testing.T, opts ...Opt) *App {
 	a := &App{
 		t: t, Root: root,
 		Home: filepath.Join(root, "home"), SpaceHome: filepath.Join(root, "space"),
-		MemoryHome: filepath.Join(root, "memory"), Work: filepath.Join(root, "work"),
+		KiraHome: filepath.Join(root, "kira"), MemoryHome: filepath.Join(root, "memory"), Work: filepath.Join(root, "work"),
 		BinDir: filepath.Join(root, "bin"), FakeDir: filepath.Join(root, "fake"),
 		Events: newEvents(), Browser: &Browser{}, FileOpener: &FileOpener{}, Dialogs: &Dialogs{}, WindowMgr: newWindowManager(),
-		KeepAwake: &KeepAwakeDriver{}, Clipboard: &Clipboard{}, Shortcuts: newShortcuts(),
+		KeepAwake: &KeepAwakeDriver{}, McpInstaller: &McpInstaller{}, OSAuth: &OSAuth{}, Focus: &WindowFocus{},
+		ProofWindows: &ProofShell{}, Clipboard: &Clipboard{}, Shortcuts: newShortcuts(),
 	}
 	for _, d := range []string{a.Home, a.Work, a.BinDir, a.FakeDir} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
@@ -252,7 +314,7 @@ func New(t *testing.T, opts ...Opt) *App {
 	a.opts = o
 	a.writeHome()
 	a.writeBin(o)
-	t.Setenv("KIRA_HOME", filepath.Join(root, "studio"))
+	t.Setenv("KIRA_HOME", a.KiraHome)
 	t.Setenv("KIRA_SPACE_HOME", a.SpaceHome)
 	t.Setenv("KIRA_MEMORY_HOME", a.MemoryHome)
 	t.Setenv("HOME", a.Home)
@@ -268,6 +330,7 @@ func New(t *testing.T, opts ...Opt) *App {
 	}
 	t.Setenv(fakeagent.EnvDir, a.FakeDir)
 	t.Setenv(fakeagent.EnvScenario, a.scenario.Encode())
+	useDockerHost(t)
 	if o.seed != nil {
 		o.seed(a)
 	}
@@ -367,6 +430,9 @@ func loopbackNetwork() lannet.Network {
 
 func (a *App) build() {
 	a.t.Helper()
+	if err := config.EnsureLayout(); err != nil {
+		a.t.Fatalf("ensure layout: %v", err)
+	}
 	db, err := storage.Open()
 	if err != nil {
 		a.t.Fatalf("storage.Open: %v", err)
@@ -374,9 +440,6 @@ func (a *App) build() {
 	r, err := repos.New(db.DB)
 	if err != nil {
 		a.t.Fatalf("repos.New: %v", err)
-	}
-	if err := config.EnsureLayout(); err != nil {
-		a.t.Fatalf("ensure layout: %v", err)
 	}
 	studioDB, err := studiostorage.Open()
 	if err != nil {
@@ -386,7 +449,21 @@ func (a *App) build() {
 	if err != nil {
 		a.t.Fatalf("studio repos.New: %v", err)
 	}
-	a.db, a.repos, a.stopped = db, r, false
+	cipher := secrets.New()
+	if !a.opts.noSecretStore && !cipher.Status().Available {
+		a.t.Fatalf("cipher unavailable: %+v", cipher.Status())
+	}
+	// Packages run in parallel, so they cannot share DefaultPort; a restart keeps its port so
+	// open client sessions reconnect.
+	dbMcpPort := dbmcp.EphemeralPort
+	if a.dbMcpPort != 0 {
+		dbMcpPort = a.dbMcpPort
+	}
+	var focus appwire.WindowFocus
+	if a.opts.windowFocus {
+		focus = a.Focus
+	}
+	a.db, a.repos, a.studioDB, a.stopped = db, r, studioDB, false
 	if a.opts.sandbox == nil {
 		// Same on every OS: flows never depend on the host's real Seatbelt.
 		a.opts.sandbox = &sandboxtest.Fake{Dir: a.t.TempDir(), NotEnforced: true}
@@ -408,8 +485,11 @@ func (a *App) build() {
 		tracker = *a.opts.issueTracker
 	}
 	a.W, err = appwire.Build(appwire.Options{
-		StudioDB: studioDB, StudioRepos: studioRepos,
-		Providers: registry, IssueTracker: tracker,
+		StudioDB: studioDB, StudioRepos: studioRepos, Cipher: cipher, DbMcpPort: dbMcpPort,
+		Authorizer:   localauth.New(time.Now, a.OSAuth.evaluate, a.OSAuth.isAvailable),
+		McpInstaller: a.McpInstaller, WindowFocus: focus, DockerHubAPI: a.opts.dockerHubAPI, DockerExtra: a.opts.dockerExtra,
+		KubernetesExtra: append([]kubernetes.Option{kubernetes.WithEnv(kubeEnv)}, a.opts.kubeExtra...),
+		Providers:       registry, IssueTracker: tracker,
 		GitHosts: githostproviders.New(ghOptions, append([]githost.Provider{azure.New(az)}, a.opts.gitHosts...)...), TrackerGrace: a.opts.trackerGrace, RebaseTimeout: a.opts.rebaseTimeout, BranchRequestWait: a.opts.branchWait, SmartTimeout: a.opts.smartTimeout, Sandbox: a.opts.sandbox, ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, EmbedSpec: a.opts.embedSpec, MobilePoll: a.opts.mobilePoll, ChangeRequestSync: a.opts.crSync, TrackedUpdates: *a.opts.updates,
 		Repos: r, DB: db, Emitter: a.Events, Browser: a.Browser, FileOpener: a.FileOpener, Dialogs: a.Dialogs,
 		Locator: gitclient.NewHostLocator(), KeepAwakeDriver: a.KeepAwake, FileHandlers: a.opts.fileHandlers,
@@ -426,6 +506,15 @@ func (a *App) build() {
 	})
 	if err != nil {
 		a.t.Fatalf("build app: %v", err)
+	}
+	a.W.DbMcp.Limits = append(a.W.DbMcp.Limits, a.opts.dbMcpLimits...)
+	if c := a.opts.heldCaps; c != nil {
+		a.W.DbMcp.Approvals.SetHeldCaps(c[0], c[1])
+	}
+	a.W.Proof.Shell = a.ProofWindows
+	// The cookie jar is process-global in httpclient.
+	if err := a.W.Http.ClearCookies(); err != nil {
+		a.t.Fatalf("clear cookies: %v", err)
 	}
 	a.Shortcuts.reset()
 	a.W.BindShell(appwire.ShellHooks{
@@ -447,19 +536,49 @@ func (a *App) stop() {
 	a.W.Teardown()
 }
 
+// Quit runs the app-quit sequence: BeforeFlush, Teardown, then ServiceShutdown on every bound
+// service that has one, as Wails does. Services and streams from before are dead afterwards.
+func (a *App) Quit(t testing.TB) {
+	t.Helper()
+	a.stop()
+	svcs := a.W.Bound()
+	for i := len(svcs) - 1; i >= 0; i-- {
+		if s, ok := svcs[i].Instance().(application.ServiceShutdown); ok {
+			if err := s.ServiceShutdown(); err != nil {
+				t.Errorf("ServiceShutdown: %v", err)
+			}
+		}
+	}
+}
+
 // Restart tears the app down and rebuilds it on the same home, as a relaunch does. Open streams
 // and service references from before are dead.
 func (a *App) Restart() {
 	a.t.Helper()
-	a.stop()
+	if m := dbMcpPortRe.FindStringSubmatch(a.W.DbMcp.Status().Command); m != nil {
+		a.dbMcpPort, _ = strconv.Atoi(m[1])
+	}
+	a.Quit(a.t)
 	a.build()
+}
+
+// CloseWindow runs what closing a window runs in the shell: the terminal registry's CloseWindow,
+// then each OnWindowClosing hook (internal/shell/openwindow.go).
+func (a *App) CloseWindow(key string) {
+	a.W.TermRegistry.CloseWindow(key)
+	for _, hook := range a.W.OnWindowClosing {
+		hook(key)
+	}
 }
 
 // Unregister drops the test provider from the next boot (Restart), as an uninstalled provider is.
 func (a *App) Unregister() { a.opts.providers = nil }
 
-// DB is the live database, for tests that plant or inspect rows no bound call reaches.
+// DB is the live Space database, for tests that plant or inspect rows no bound call reaches.
 func (a *App) DB() *sql.DB { return a.db.DB }
+
+// StudioDB is the live Studio database.
+func (a *App) StudioDB() *sql.DB { return a.studioDB.DB }
 
 // Scenario installs the fake agent's scenario; processes started afterwards read it.
 func (a *App) Scenario(s fakeagent.Scenario) {

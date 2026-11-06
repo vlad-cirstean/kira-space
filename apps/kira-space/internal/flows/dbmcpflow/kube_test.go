@@ -10,8 +10,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
@@ -22,7 +22,7 @@ const kubeScenario = "dbmcp-kube"
 
 type kubeFixture struct {
 	*fixture
-	fake *studioflowharness.KubeFake
+	fake *flowharness.KubeFake
 	cfg  string
 	ids  map[string]string
 	sess *mcp.ClientSession
@@ -30,10 +30,10 @@ type kubeFixture struct {
 
 func newKubeFixture(t *testing.T) *kubeFixture {
 	t.Helper()
-	fake := studioflowharness.NewKubeFake(t)
+	fake := flowharness.NewKubeFake(t)
 	f := newFixture(t)
 	k := &kubeFixture{fixture: f, fake: fake, cfg: filepath.Join(f.app.Home, "kubeconfig"), ids: map[string]string{}}
-	fake.WriteKubeconfig(t, k.cfg, studioflowharness.KubeconfigOpts{BinDir: f.app.BinDir})
+	fake.WriteKubeconfig(t, k.cfg, flowharness.KubeconfigOpts{BinDir: f.app.BinDir})
 	t.Setenv("KUBECONFIG", k.cfg)
 	res, err := f.app.W.Kubernetes.Clusters()
 	if err != nil {
@@ -57,14 +57,14 @@ func newKubeFixture(t *testing.T) *kubeFixture {
 	return k
 }
 
-func (k *kubeFixture) contract(t *testing.T, key string, got any, extra ...studioflowharness.ContractOption) {
+func (k *kubeFixture) contract(t *testing.T, key string, got any, extra ...flowharness.ContractOption) {
 	t.Helper()
-	opts := append([]studioflowharness.ContractOption{
-		studioflowharness.Replace(k.fake.URL, "<kube>"), studioflowharness.Replace(k.fake.DownURL(), "<down>"),
-		studioflowharness.Replace(k.cfg, "<kubeconfig>"),
-		studioflowharness.Mask("id", "clusterId", "requestId", "connectionId", "expiresAtMs", "startedAt", "durationMs"),
+	opts := append([]flowharness.ContractOption{
+		flowharness.Replace(k.fake.URL, "<kube>"), flowharness.Replace(k.fake.DownURL(), "<down>"),
+		flowharness.Replace(k.cfg, "<kubeconfig>"),
+		flowharness.Mask("id", "clusterId", "requestId", "connectionId", "expiresAtMs", "startedAt", "durationMs"),
 	}, extra...)
-	k.app.Contract(t, kubeScenario, key, got, opts...)
+	k.app.StudioContract(t, kubeScenario, key, got, opts...)
 }
 
 func (k *kubeFixture) setMcp(t *testing.T, ctxName string, m kubernetes.McpSettings) {
@@ -159,7 +159,7 @@ func TestKubeMcp(t *testing.T) {
 		k.contract(t, "args:KubernetesService.SetMcp", args)
 		k.contract(t, "KubernetesService.SetMcp", got)
 
-		k.app.Restart(t)
+		k.app.Restart()
 		again, err := k.app.W.Kubernetes.Clusters()
 		if err != nil {
 			t.Fatal(err)
@@ -229,8 +229,8 @@ func TestKubeMcp(t *testing.T) {
 		}
 		// Contract dbmcp-kube: tests/ui/kubernetes-mcp.spec.ts renders this request in the approval dialog.
 		// The item id stays a stable placeholder so the UI spec answers the id it rendered.
-		k.app.Contract(t, kubeScenario, "ApprovalsService.List", []approvals.Item{req.Item}, studioflowharness.Mask("createdAt", "expiresAt"), studioflowharness.Replace(k.fake.URL, "<kube>"))
-		k.app.Contract(t, kubeScenario, "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
+		k.app.StudioContract(t, kubeScenario, "ApprovalsService.List", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(k.fake.URL, "<kube>"))
+		k.app.StudioContract(t, kubeScenario, "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
 		k.answerItems(t, true, req.Item.ID)
 		out := <-pending
 		if out.err != nil || out.res.IsError || !strings.Contains(text(out.res), "web-1") {
@@ -301,7 +301,7 @@ func TestKubeMcp(t *testing.T) {
 		}
 		sec := k.call(t, "kube_describe", map[string]any{"clusterId": dev, "kind": "v1/secrets", "name": "db-creds", "namespace": "default"})
 		if sec.IsError || !strings.Contains(text(sec), `14 bytes`) || strings.Contains(text(sec), "hunter2-secret") ||
-			strings.Contains(text(sec), studioflowharness.B64("hunter2-secret")) {
+			strings.Contains(text(sec), flowharness.B64("hunter2-secret")) {
 			t.Fatalf("secret describe leaks or lacks the byte count: %q", text(sec))
 		}
 		logs := k.call(t, "kube_pod_logs", map[string]any{"clusterId": dev, "namespace": "default", "pod": "web-1", "container": "app", "tail": 2})

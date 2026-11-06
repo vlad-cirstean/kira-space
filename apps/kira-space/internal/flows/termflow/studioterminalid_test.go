@@ -1,11 +1,11 @@
-package termflow
+package termflow_test
 
 import (
 	"errors"
 	"strings"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/terminal"
@@ -13,7 +13,7 @@ import (
 )
 
 func TestTerminalIDBounds(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	if _, err := app.W.WindowsSvc.Ensure(windowsvc.EnsureArgs{WindowKey: "w1"}); err != nil {
 		t.Fatal(err)
 	}

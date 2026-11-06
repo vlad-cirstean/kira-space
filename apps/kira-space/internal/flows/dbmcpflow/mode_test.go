@@ -15,7 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/testsupport"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -121,7 +121,7 @@ func TestDbMcpModeTightenOnly(t *testing.T) {
 		t.Fatalf("approval = %+v class %q, want declared write, detected read", pl, req.Item.Operation.Class)
 	}
 	// Contract dbmcp-approval-mode: tests/ui/dbmcp-approval-mode.spec.ts renders this item.
-	f.app.Contract(t, "dbmcp-approval-mode", "ApprovalsService.List", []any{req.Item}, studioflowharness.Mask("createdAt", "expiresAt"), studioflowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.StudioContract(t, "dbmcp-approval-mode", "ApprovalsService.List", []any{req.Item}, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
 	f.answerItems(t, false, req.Item.ID)
 	if res := <-done; res == nil || !res.IsError {
 		t.Fatalf("denied over-declared select = %+v, want a tool error", res)
@@ -213,7 +213,7 @@ func TestDbMcpListConnectionsAccess(t *testing.T) {
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].Name < rows[j].Name })
 	// Contract dbmcp-list-access: tests/ui/connection-mcp-access.spec.ts mirrors these summaries.
-	f.app.Contract(t, "dbmcp-list-access", "list_connections", rows)
+	f.app.StudioContract(t, "dbmcp-list-access", "list_connections", rows)
 }
 
 // A lane opens on the first read, is rebuilt after a reconnect and closes on disconnect.
@@ -296,8 +296,8 @@ func startPostgres(t *testing.T, pass, dbName string) (string, int) {
 
 // The database itself refuses a write hidden in a function under mode=read (SQLSTATE 25006).
 func TestDbMcpReadLanePostgres(t *testing.T) {
-	studioflowharness.Complete(t)
-	studioflowharness.RequireDocker(t)
+	flowharness.Complete(t)
+	flowharness.RequireDocker(t)
 	const pass, dbName = "flowpass", "flowdb"
 	host, port := startPostgres(t, pass, dbName)
 	f := newFixture(t)

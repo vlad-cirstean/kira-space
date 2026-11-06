@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -103,7 +103,7 @@ func TestOpsRecordEveryAction(t *testing.T) {
 	if running.Kind != "kubernetes" || running.Source != "user" || running.ConnectionID != nil || running.Command != nil {
 		t.Fatalf("running op = %+v", running)
 	}
-	e.contract(t, "StudioOpsService.Recent:running", []model.OpRecord{running}, studioflowharness.Mask("id", "startedAt", "durationMs"))
+	e.contract(t, "StudioOpsService.Recent:running", []model.OpRecord{running}, flowharness.Mask("id", "startedAt", "durationMs"))
 	if err := e.app.W.StudioOps.Cancel(bridge.StudioOpsCancelArgs{OpID: running.ID}); err != nil {
 		t.Fatal(err)
 	}
@@ -147,5 +147,5 @@ func TestOpsRecordEveryAction(t *testing.T) {
 	if len(recs) != 9 {
 		t.Fatalf("%d rows, want 9: pre-op failures and SetMcp record nothing", len(recs))
 	}
-	e.contract(t, "StudioOpsService.Recent", recs, studioflowharness.Mask("id", "startedAt", "durationMs", "error"))
+	e.contract(t, "StudioOpsService.Recent", recs, flowharness.Mask("id", "startedAt", "durationMs", "error"))
 }

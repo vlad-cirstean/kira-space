@@ -10,8 +10,8 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 )
@@ -53,8 +53,8 @@ items:
 }
 
 func TestApiConfigFiles(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.HTTP(t)
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
 	const sc = "api-files"
 	cs, vs, cfg := app.W.Collections, app.W.Variables, app.W.ApiConfig
 	file := filepath.Join(app.W.ApiFiles.Dir(), "orders-api.collection.yaml")
@@ -74,7 +74,7 @@ func TestApiConfigFiles(t *testing.T) {
 		}
 		return tree.Items
 	}
-	paths := studioflowharness.Replace(app.KiraHome, "<home>")
+	paths := flowharness.Replace(app.KiraHome, "<home>")
 
 	// 1. Creating a collection writes its file.
 	col, err := cs.CreateCollection(bridge.CollectionsCreateCollectionArgs{Name: "Orders API"})
@@ -109,7 +109,7 @@ func TestApiConfigFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.Contract(t, sc, "CollectionsService.List", tree, paths, studioflowharness.Replace(srv.URL, "<http>"))
+	app.StudioContract(t, sc, "CollectionsService.List", tree, paths, flowharness.Replace(srv.URL, "<http>"))
 
 	// 3. A bad edit keeps the last good rows and refuses app writes until fixed.
 	bad := strings.Replace(string(ordersFile(srv.URL, "list")), "items:\n", "items:\n  - id: list\n    name: Twin\n    http:\n      method: GET\n", 1)
@@ -128,7 +128,7 @@ func TestApiConfigFiles(t *testing.T) {
 	if p := problemOf(view, "orders-api.collection.yaml"); p.Line == 0 || p.Message == "" {
 		t.Errorf("problem = %+v, want a line and a message", p)
 	}
-	app.Contract(t, sc, "ApiConfigService.View", view, paths)
+	app.StudioContract(t, sc, "ApiConfigService.View", view, paths)
 	if got := items(); len(got) != 1 || got[0].Name != "List orders" {
 		t.Errorf("rows after the bad edit = %+v, want the last good item", got)
 	}
@@ -217,7 +217,7 @@ func problemOf(v apifiles.View, file string) *apifiles.ProblemView {
 
 // AGENTS.md documents every top-level option of both file kinds.
 func TestApiAgentsDocCoversSchemas(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	doc, err := os.ReadFile(filepath.Join(app.W.ApiFiles.Dir(), "AGENTS.md"))
 	if err != nil {
 		t.Fatal(err)

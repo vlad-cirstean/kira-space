@@ -13,7 +13,7 @@ import (
 	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -31,23 +31,23 @@ type editBox struct {
 	net, net2 string
 }
 
-func runIDOf(d *studioflowharness.Docker) string {
+func runIDOf(d *flowharness.Docker) string {
 	return strings.TrimSuffix(strings.TrimPrefix(d.Prefix(), "kira-flow-"), "-")
 }
 
-func editOpts(d *studioflowharness.Docker, box editBox, extra ...studioflowharness.ContractOption) []studioflowharness.ContractOption {
-	opts := []studioflowharness.ContractOption{
-		studioflowharness.Mask("id", "baseHash", "oldId"),
-		studioflowharness.Replace(d.Prefix(), "kira-flow-"),
-		studioflowharness.Replace(runIDOf(d), "run"),
+func editOpts(d *flowharness.Docker, box editBox, extra ...flowharness.ContractOption) []flowharness.ContractOption {
+	opts := []flowharness.ContractOption{
+		flowharness.Mask("id", "baseHash", "oldId"),
+		flowharness.Replace(d.Prefix(), "kira-flow-"),
+		flowharness.Replace(runIDOf(d), "run"),
 	}
 	if box.anon != "" {
-		opts = append(opts, studioflowharness.Replace(box.anon, "anon-volume"))
+		opts = append(opts, flowharness.Replace(box.anon, "anon-volume"))
 	}
 	return append(opts, extra...)
 }
 
-func newEditBox(t *testing.T, d *studioflowharness.Docker, running bool) editBox {
+func newEditBox(t *testing.T, d *flowharness.Docker, running bool) editBox {
 	t.Helper()
 	box := editBox{vol: d.Volume("edit", nil)}
 	_, box.net = d.Network("edit")
@@ -97,7 +97,7 @@ func newEditBox(t *testing.T, d *studioflowharness.Docker, running bool) editBox
 	return box
 }
 
-func stopForEdit(d *studioflowharness.Docker, id string) error {
+func stopForEdit(d *flowharness.Docker, id string) error {
 	_, err := d.Cli.ContainerStop(context.Background(), id, client.ContainerStopOptions{})
 	return err
 }
@@ -160,7 +160,7 @@ func TestContainerEditSpec(t *testing.T) {
 	if err != nil || again.BaseHash != spec.BaseHash {
 		t.Fatalf("second spec hash %q (err %v), want stable %q", again.BaseHash, err, spec.BaseHash)
 	}
-	app.Contract(t, "docker-edit", "DockerService.ContainerEditSpec", spec, editOpts(d, box)...)
+	app.StudioContract(t, "docker-edit", "DockerService.ContainerEditSpec", spec, editOpts(d, box)...)
 
 	_, err = app.W.Docker.ContainerEditSpec(docker.IDArgs{ID: "kira-flow-no-such"})
 	if ie := ipcCode(t, err); ie.Code != "E_NOT_FOUND" {
@@ -223,8 +223,8 @@ func TestUpdateContainerInPlace(t *testing.T) {
 	if c.NetworkSettings.Networks[box.net2] == nil {
 		t.Fatalf("networks = %v, want %s attached", c.NetworkSettings.Networks, box.net2)
 	}
-	app.Contract(t, "docker-edit", "args:DockerService.UpdateContainer", args, editOpts(d, box)...)
-	app.Contract(t, "docker-edit", "DockerService.UpdateContainer", got, editOpts(d, box, studioflowharness.Mask("warnings"))...)
+	app.StudioContract(t, "docker-edit", "args:DockerService.UpdateContainer", args, editOpts(d, box)...)
+	app.StudioContract(t, "docker-edit", "DockerService.UpdateContainer", got, editOpts(d, box, flowharness.Mask("warnings"))...)
 }
 
 func TestUpdateContainerRejects(t *testing.T) {
@@ -250,7 +250,7 @@ func TestUpdateContainerRejects(t *testing.T) {
 	if stale.Code != "E_CONFLICT" {
 		t.Fatalf("stale hash code = %s, want E_CONFLICT", stale.Code)
 	}
-	app.Contract(t, "docker-edit", "DockerService.UpdateContainer#stale", stale, editOpts(d, box)...)
+	app.StudioContract(t, "docker-edit", "DockerService.UpdateContainer#stale", stale, editOpts(d, box)...)
 	ie := try(func(in *docker.InPlaceSpec) { in.Resources.Memory = 0 }, spec.BaseHash)
 	if ie.Code != "E_BAD_REQUEST" || !strings.Contains(string(ie.Details), "resources.memory") {
 		t.Fatalf("clear memory = %s %s, want E_BAD_REQUEST on resources.memory", ie.Code, ie.Details)
@@ -268,14 +268,14 @@ func TestUpdateContainerRejects(t *testing.T) {
 	if err != nil || mspec.Managed != "kubernetes" {
 		t.Fatalf("managed spec = %q, err %v, want kubernetes", mspec.Managed, err)
 	}
-	app.Contract(t, "docker-edit", "DockerService.ContainerEditSpec#managed", mspec, editOpts(d, box)...)
+	app.StudioContract(t, "docker-edit", "DockerService.ContainerEditSpec#managed", mspec, editOpts(d, box)...)
 	_, err = svc.UpdateContainer(docker.UpdateArgs{ID: managed, BaseHash: mspec.BaseHash, Spec: mspec.InPlace})
 	if ie := ipcCode(t, err); ie.Code != "E_BAD_REQUEST" {
 		t.Fatalf("managed code = %s, want E_BAD_REQUEST", ie.Code)
 	}
 }
 
-func inspectName(t *testing.T, d *studioflowharness.Docker, id string) string {
+func inspectName(t *testing.T, d *flowharness.Docker, id string) string {
 	t.Helper()
 	in, err := d.Cli.ContainerInspect(context.Background(), id, client.ContainerInspectOptions{})
 	if err != nil {
@@ -307,9 +307,9 @@ func TestUpdateStoppedContainer(t *testing.T) {
 		t.Fatalf("applied = %v, want resources, restart", got.Applied)
 	}
 	args := docker.UpdateArgs{ID: box.id, BaseHash: spec.BaseHash, Spec: want}
-	app.Contract(t, "docker-edit", "DockerService.ContainerEditSpec#stopped", spec, editOpts(d, box)...)
-	app.Contract(t, "docker-edit", "args:DockerService.UpdateContainer#stopped", args, editOpts(d, box)...)
-	app.Contract(t, "docker-edit", "DockerService.UpdateContainer#stopped", got, editOpts(d, box, studioflowharness.Mask("warnings"))...)
+	app.StudioContract(t, "docker-edit", "DockerService.ContainerEditSpec#stopped", spec, editOpts(d, box)...)
+	app.StudioContract(t, "docker-edit", "args:DockerService.UpdateContainer#stopped", args, editOpts(d, box)...)
+	app.StudioContract(t, "docker-edit", "DockerService.UpdateContainer#stopped", got, editOpts(d, box, flowharness.Mask("warnings"))...)
 	in, err := d.Cli.ContainerInspect(context.Background(), box.id, client.ContainerInspectOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -335,14 +335,14 @@ func recreateArgs(spec docker.EditSpec, image string) docker.RecreateArgs {
 	return docker.RecreateArgs{ID: spec.ID, BaseHash: spec.BaseHash, InPlace: spec.InPlace, Recreate: rc}
 }
 
-func registerRecreated(t *testing.T, d *studioflowharness.Docker, id string) {
+func registerRecreated(t *testing.T, d *flowharness.Docker, id string) {
 	t.Helper()
 	t.Cleanup(func() {
 		_, _ = d.Cli.ContainerRemove(context.Background(), id, client.ContainerRemoveOptions{Force: true, RemoveVolumes: true})
 	})
 }
 
-func noTempContainers(t *testing.T, d *studioflowharness.Docker) {
+func noTempContainers(t *testing.T, d *flowharness.Docker) {
 	t.Helper()
 	list, err := d.Cli.ContainerList(context.Background(), client.ContainerListOptions{All: true})
 	if err != nil {
@@ -358,7 +358,7 @@ func noTempContainers(t *testing.T, d *studioflowharness.Docker) {
 }
 
 func TestRecreateContainer(t *testing.T) {
-	studioflowharness.Complete(t)
+	flowharness.Complete(t)
 	app, d := boot(t)
 	box := newEditBox(t, d, true)
 	svc := app.W.Docker
@@ -424,12 +424,12 @@ func TestRecreateContainer(t *testing.T) {
 	})
 	noTempContainers(t, d)
 
-	app.Contract(t, "docker-edit", "args:DockerService.RecreateContainer", args, editOpts(d, box)...)
-	app.Contract(t, "docker-edit", "DockerService.RecreateContainer", got, editOpts(d, box, studioflowharness.Mask("warnings"))...)
+	app.StudioContract(t, "docker-edit", "args:DockerService.RecreateContainer", args, editOpts(d, box)...)
+	app.StudioContract(t, "docker-edit", "DockerService.RecreateContainer", got, editOpts(d, box, flowharness.Mask("warnings"))...)
 }
 
 func TestRecreateStoppedContainer(t *testing.T) {
-	studioflowharness.Complete(t)
+	flowharness.Complete(t)
 	app, d := boot(t)
 	box := newEditBox(t, d, false)
 	svc := app.W.Docker
@@ -454,7 +454,7 @@ func TestRecreateStoppedContainer(t *testing.T) {
 }
 
 func TestRecreateRollback(t *testing.T) {
-	studioflowharness.Complete(t)
+	flowharness.Complete(t)
 	app, d := boot(t)
 	box := newEditBox(t, d, true)
 	svc := app.W.Docker
@@ -478,11 +478,11 @@ func TestRecreateRollback(t *testing.T) {
 		t.Fatalf("original running=%v name=%s, want restored and running as %s", in.Container.State.Running, in.Container.Name, box.name)
 	}
 	noTempContainers(t, d)
-	app.Contract(t, "docker-edit", "DockerService.RecreateContainer#rollback", ie, editOpts(d, box, studioflowharness.Mask("message"))...)
+	app.StudioContract(t, "docker-edit", "DockerService.RecreateContainer#rollback", ie, editOpts(d, box, flowharness.Mask("message"))...)
 }
 
 func TestRecreateRefusals(t *testing.T) {
-	studioflowharness.Complete(t)
+	flowharness.Complete(t)
 	app, d := boot(t)
 	svc := app.W.Docker
 
@@ -497,8 +497,8 @@ func TestRecreateRefusals(t *testing.T) {
 		t.Fatalf("auto-remove code = %s, want E_BAD_REQUEST", ie.Code)
 	}
 	autoBox := editBox{}
-	app.Contract(t, "docker-edit", "DockerService.ContainerEditSpec#auto-remove", aspec, editOpts(d, autoBox)...)
-	app.Contract(t, "docker-edit", "DockerService.RecreateContainer#auto-remove", ie, editOpts(d, autoBox, studioflowharness.Mask("message"))...)
+	app.StudioContract(t, "docker-edit", "DockerService.ContainerEditSpec#auto-remove", aspec, editOpts(d, autoBox)...)
+	app.StudioContract(t, "docker-edit", "DockerService.RecreateContainer#auto-remove", ie, editOpts(d, autoBox, flowharness.Mask("message"))...)
 
 	box := newEditBox(t, d, true)
 	spec, err := svc.ContainerEditSpec(docker.IDArgs{ID: box.id})

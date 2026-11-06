@@ -15,20 +15,20 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 )
 
-func secretVar(t *testing.T, app *studioflowharness.App, name, value string) (collectionID, envID string) {
+func secretVar(t *testing.T, app *flowharness.App, name, value string) (collectionID, envID string) {
 	t.Helper()
 	col := app.SeedCollection(t, "c-"+name)
-	env := app.SeedEnvironment(t, "e-"+name, studioflowharness.APIVar{Name: name, Value: value, Secret: true})
+	env := app.SeedEnvironment(t, "e-"+name, flowharness.APIVar{Name: name, Value: value, Secret: true})
 	return col.ID, env.ID
 }
 
 func TestAuthHeaders(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.HTTP(t)
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
 
 	if e := get(srv.URL + "/basic"); send(t, app, e).Status != 401 {
 		t.Error("/basic without credentials did not answer 401")
@@ -62,8 +62,8 @@ func TestAuthHeaders(t *testing.T) {
 }
 
 func TestBodies(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.HTTP(t)
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
 	last := func() flowharnessRequest {
 		reqs := srv.Requests()
 		return reqs[len(reqs)-1]
@@ -172,7 +172,7 @@ func TestBodies(t *testing.T) {
 	})
 
 	t.Run("200 MB body under a raised cap", func(t *testing.T) {
-		studioflowharness.Complete(t)
+		flowharness.Complete(t)
 		args := get(srv.URL + "/bytes?n=209715200")
 		args.Options.MaxResponseMb = ptr(300)
 		res := send(t, app, args)
@@ -183,8 +183,8 @@ func TestBodies(t *testing.T) {
 }
 
 func TestTimeoutAndCancel(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.HTTP(t)
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
 
 	to := get(srv.URL + "/slow?ms=10000")
 	to.Options.RequestTimeoutMs = ptr(200)
@@ -225,7 +225,7 @@ func TestTimeoutAndCancel(t *testing.T) {
 }
 
 func TestTransportErrors(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

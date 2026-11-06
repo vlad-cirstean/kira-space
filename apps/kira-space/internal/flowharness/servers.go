@@ -1,10 +1,10 @@
-package studioflowharness
+package flowharness
 
 import (
 	"sync"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness/servers"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness/servers"
 )
 
 type (

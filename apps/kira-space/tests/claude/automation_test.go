@@ -14,11 +14,11 @@ import (
 )
 
 // smartRun creates a smart script with the given tools, runs it and waits for it to leave running.
-func smartRun(t *testing.T, app *realApp, prompt string, tools []string) scriptruns.Run {
+func smartRun(t *testing.T, app *realApp, prompt string, tools []string, mcp ...scripts.MCPChoice) scriptruns.Run {
 	t.Helper()
 	rec, err := app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
 		Name: "real", Kind: scripts.KindSmart, Command: prompt, Color: "blue",
-		Smart: &scripts.Smart{Model: "haiku", MaxBudgetUSD: 0.05, Timeout: "3m", Tools: tools},
+		Smart: &scripts.Smart{Model: "haiku", MaxBudgetUSD: 0.05, Timeout: "3m", Tools: tools, MCP: mcp},
 	}})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -115,4 +115,5 @@ func TestSmartScriptRun(t *testing.T) {
 		}
 		t.Logf("PASS in task worktree: cost %.4f USD in %s", *o.CostUSD, run.Cwd)
 	})
+	studioSmartScriptMCP(t)
 }

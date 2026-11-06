@@ -16,8 +16,8 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mcpauth"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/configfs"
@@ -45,7 +45,7 @@ func (b bearer) RoundTrip(r *http.Request) (*http.Response, error) {
 // fixture is an app with the MCP server on and one exposed SQLite connection: reads allowed,
 // writes need approval, DDL denied.
 type fixture struct {
-	app    *studioflowharness.App
+	app    *flowharness.App
 	url    string
 	connID string
 	dbPath string
@@ -53,9 +53,9 @@ type fixture struct {
 	base string
 }
 
-func newFixture(t *testing.T, opts ...studioflowharness.Opt) *fixture {
+func newFixture(t *testing.T, opts ...flowharness.Opt) *fixture {
 	t.Helper()
-	app := studioflowharness.New(t, opts...)
+	app := flowharness.New(t, opts...)
 	dbPath := filepath.Join(t.TempDir(), "mcp.db")
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
@@ -185,8 +185,8 @@ func TestDbMcpApprovalFlow(t *testing.T) {
 	denied := call()
 	req := f.pending(t)
 	// Contract dbmcp: tests/ui/dbmcp-approval.spec.ts renders this request in the approval dialog.
-	f.app.Contract(t, "dbmcp", "ApprovalsService.List", []approvals.Item{req.Item}, studioflowharness.Mask("createdAt", "expiresAt"), studioflowharness.Replace(f.dbPath, "/data/mcp.db"))
-	f.app.Contract(t, "dbmcp", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
+	f.app.StudioContract(t, "dbmcp", "ApprovalsService.List", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.StudioContract(t, "dbmcp", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
 	if req.Statement != write || req.ConnectionID != f.connID || req.Class == "" {
 		t.Fatalf("pending approval = %+v, want the write statement on the connection", req)
 	}
@@ -298,11 +298,11 @@ func TestDbMcpOpsCarrySource(t *testing.T) {
 		t.Fatalf("op sources = %v, want execute=mcp children=user", bySource)
 	}
 	// Contract ops-source: tests/ui/operations.spec.ts renders these rows' source column.
-	f.app.Contract(t, "ops-source", "StudioOpsService.Recent", rows, studioflowharness.Mask("id", "startedAt", "durationMs", "connectionId"))
+	f.app.StudioContract(t, "ops-source", "StudioOpsService.Recent", rows, flowharness.Mask("id", "startedAt", "durationMs", "connectionId"))
 }
 
 func TestInstallAgentWithoutCli(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	app.W.DbMcp.Installer = noClaude(t)
 
 	if res := app.W.DbMcp.InstallAgent(ctx); res.Outcome != harness.OutcomeNotFound {
@@ -333,7 +333,7 @@ func TestInstallAgentWithoutCli(t *testing.T) {
 	}
 }
 
-func helperToken(t *testing.T, app *studioflowharness.App) string {
+func helperToken(t *testing.T, app *flowharness.App) string {
 	t.Helper()
 	plain, ok, err := mcpauth.LoadHelperToken(mcpauth.HelperTokenPathNamed(app.KiraHome, "mcp-db"))
 	if err != nil || !ok {
@@ -399,7 +399,7 @@ func TestDbMcpResponsePreview(t *testing.T) {
 
 	const read = "select id, body from notes order by id"
 	setArgs := f.setPreview(t, true)
-	f.app.Contract(t, "dbmcp-preview", "args:SettingsService.Set", setArgs)
+	f.app.StudioContract(t, "dbmcp-preview", "args:SettingsService.Set", setArgs)
 	f.maskColumn(t, "body")
 
 	done := callAsync(sess, f.connID, read)
@@ -414,10 +414,10 @@ func TestDbMcpResponsePreview(t *testing.T) {
 	if strings.Contains(held.Text, "one") || strings.Contains(held.Text, "two") || !strings.Contains(held.Text, "[redacted]") {
 		t.Fatalf("held text = %q, want the masked rows", held.Text)
 	}
-	replace := studioflowharness.Replace(f.dbPath, "/data/mcp.db")
-	f.app.Contract(t, "dbmcp-preview", "ApprovalsService.List", []approvals.Item{req.Item}, studioflowharness.Mask("createdAt", "expiresAt"), replace)
-	f.app.Contract(t, "dbmcp-preview", "DbMcpService.PendingResponse", held)
-	f.app.Contract(t, "dbmcp-preview", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
+	replace := flowharness.Replace(f.dbPath, "/data/mcp.db")
+	f.app.StudioContract(t, "dbmcp-preview", "ApprovalsService.List", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), replace)
+	f.app.StudioContract(t, "dbmcp-preview", "DbMcpService.PendingResponse", held)
+	f.app.StudioContract(t, "dbmcp-preview", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
 	f.answer(t, true, req.RequestID)
 	if sent := wait(t, done); sent.IsError || text(sent) != held.Text {
 		t.Fatalf("sent = %q, want the held bytes %q", text(sent), held.Text)
@@ -495,13 +495,13 @@ func TestDbMcpReviewPerConnection(t *testing.T) {
 		err := f.app.W.ConnectionFiles.Patch(f.connID, configfs.NodeSet{Path: []string{"mcp", "review_results"}, Value: value})
 		return current(), err
 	}
-	replace := studioflowharness.Replace(f.dbPath, "/data/mcp.db")
+	replace := flowharness.Replace(f.dbPath, "/data/mcp.db")
 
 	got, err := setReview("review")
 	if err != nil || got.McpReview != (model.McpReview{Read: "review", Write: "review", Ddl: "review", Masked: "review"}) {
 		t.Fatalf("file edit = %+v (%v), want review", got, err)
 	}
-	f.app.Contract(t, "dbmcp-review-connection", "ConnectionsService.List#review", got, studioflowharness.Mask("createdAt", "updatedAt"), replace)
+	f.app.StudioContract(t, "dbmcp-review-connection", "ConnectionsService.List#review", got, flowharness.Mask("createdAt", "updatedAt"), replace)
 
 	done := callAsync(sess, f.connID, read)
 	req := f.pending(t)
@@ -512,8 +512,8 @@ func TestDbMcpReviewPerConnection(t *testing.T) {
 	if err != nil || held.IsError {
 		t.Fatalf("PendingResponse = %+v (%v)", held, err)
 	}
-	f.app.Contract(t, "dbmcp-review-connection", "ApprovalsService.List", []approvals.Item{req.Item}, studioflowharness.Mask("createdAt", "expiresAt"), replace)
-	f.app.Contract(t, "dbmcp-review-connection", "DbMcpService.PendingResponse", held)
+	f.app.StudioContract(t, "dbmcp-review-connection", "ApprovalsService.List", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), replace)
+	f.app.StudioContract(t, "dbmcp-review-connection", "DbMcpService.PendingResponse", held)
 	f.answer(t, true, req.RequestID)
 	if sent := wait(t, done); sent.IsError || text(sent) != held.Text {
 		t.Fatalf("sent = %q, want the held bytes %q", text(sent), held.Text)

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeclock"
 	"github.com/kirathecat/kira-studio/internal/flowtest/notifysink"
@@ -17,7 +17,7 @@ import (
 // Contract dbmcp-focus: tests/ui/dbmcp-focus.spec.ts drives the setting switch.
 func TestDbMcpApprovalFocus(t *testing.T) {
 	clock := fakeclock.New(time.Date(2030, 1, 7, 9, 0, 0, 0, time.UTC))
-	f := newFixture(t, studioflowharness.WithClock(clock))
+	f := newFixture(t, flowharness.WithClock(clock), flowharness.WithWindowFocus())
 	sink := notifysink.New()
 	f.app.W.Prompts.SetSink(sink)
 	f.app.W.Windows.Add("w1", 0, nil, func() {})
@@ -46,7 +46,7 @@ func TestDbMcpApprovalFocus(t *testing.T) {
 		t.Fatalf("raised %v, want [w1]", keys)
 	}
 	entry := f.dbmcpEntries(t, 1)[0]
-	f.app.Events.Wait(t, bridge.ChannelPromptsReveal, func(e studioflowharness.Event) bool {
+	f.app.Events.Wait(t, bridge.ChannelPromptsReveal, func(e flowharness.Event) bool {
 		var p struct{ ID string }
 		e.Decode(t, &p)
 		return e.Window == "w1" && p.ID == entry.ID
@@ -82,7 +82,7 @@ func TestDbMcpApprovalFocus(t *testing.T) {
 	if _, err := f.app.W.StudioSettings.Set(args); err != nil {
 		t.Fatal(err)
 	}
-	f.app.Contract(t, "dbmcp-focus", "args:SettingsService.Set", args)
+	f.app.StudioContract(t, "dbmcp-focus", "args:SettingsService.Set", args)
 	away()
 	fourth := callAsync(sess, f.connID, write)
 	f.dbmcpEntries(t, 1)

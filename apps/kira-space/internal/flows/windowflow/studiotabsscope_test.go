@@ -1,4 +1,4 @@
-package windowflow
+package windowflow_test
 
 import (
 	"errors"
@@ -7,16 +7,16 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/windowsvc"
 )
 
 // Backend half of tests/ui/tabs-scope.spec.ts.
-func TestTabsScope(t *testing.T) {
-	app := studioflowharness.New(t)
+func TestTabsScopeStudio(t *testing.T) {
+	app := flowharness.New(t)
 	for _, key := range []string{"A", "B"} {
 		if _, err := app.W.WindowsSvc.Ensure(windowsvc.EnsureArgs{WindowKey: key}); err != nil {
 			t.Fatal(err)
@@ -54,7 +54,7 @@ func TestTabsScope(t *testing.T) {
 	wantContract("B saving A's tab", err)
 	var ie *ipcerr.Error
 	errors.As(err, &ie)
-	app.Contract(t, "tabs-scope", "TabsService.Save#ownedElsewhere", map[string]any{"code": ie.Code, "message": ie.Message})
+	app.StudioContract(t, "tabs-scope", "TabsService.Save#ownedElsewhere", map[string]any{"code": ie.Code, "message": ie.Message})
 	if got := listIDs("B"); len(got) != 0 {
 		t.Fatalf("window B kept %v after a refused batch", got)
 	}

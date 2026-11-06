@@ -1,4 +1,4 @@
-package studioflowharness
+package flowharness
 
 import (
 	"context"
@@ -38,8 +38,9 @@ var (
 	// dockerHost is the engine endpoint resolved once in Main, before any test swaps HOME.
 	dockerHost string
 
-	pullOnce sync.Once
-	pullErr  error
+	sweepOnce sync.Once
+	pullOnce  sync.Once
+	pullErr   error
 )
 
 // resolveDockerHost finds the engine endpoint the way a user's shell would: DOCKER_HOST, else the
@@ -108,6 +109,7 @@ func RequireDocker(t testing.TB) *Docker {
 	if _, err := cli.Ping(ctx, client.PingOptions{}); err != nil {
 		fail("%v", err)
 	}
+	sweepOnce.Do(func() { sweep(dockerHost) })
 	pullOnce.Do(func() { pullErr = pullImage(cli) })
 	if pullErr != nil {
 		t.Fatalf("docker: pull %s: %v", Image, pullErr)

@@ -15,7 +15,7 @@ import (
 // Bound is the bound-service surface shared by both apps; each embeds it.
 type Bound struct {
 	Store *Store
-	// App limits List, Save and Preview to this app's entries.
+	// App limits List, Save and Preview to this app's entries; empty serves every entry.
 	App App
 	// Changed runs with the new revision after a save changed the overrides file.
 	Changed func(revision uint64)

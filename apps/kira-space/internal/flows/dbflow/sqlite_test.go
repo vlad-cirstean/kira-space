@@ -12,8 +12,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
@@ -23,7 +23,7 @@ import (
 // browse, saved queries, history, filters, masking, duplicate/reorder/update, restart.
 type journey struct {
 	t         *testing.T
-	app       *studioflowharness.App
+	app       *flowharness.App
 	input     connections.Input
 	table     string // table name as the tree shows it
 	readSQL   string // returns rows from the table
@@ -306,7 +306,7 @@ func (j *journey) manage(conn model.ConnectionSummary) {
 	}
 
 	before := j.snapshot(conn.ID)
-	app.Restart(t)
+	app.Restart()
 	if after := j.snapshot(conn.ID); !reflect.DeepEqual(before, after) {
 		t.Fatalf("rows changed across a relaunch:\nbefore %+v\nafter  %+v", before, after)
 	}
@@ -346,7 +346,7 @@ func (j *journey) snapshot(connID string) persisted {
 }
 
 func TestSQLiteJourney(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	path := newSQLiteFile(t)
 	bad := sqliteInput("missing", path+".missing")
 	j := &journey{t: t, app: app, input: sqliteInput("fixture", path), table: "users", readSQL: "select id, name, email from users order by id", rows: 3, bad: &bad}
@@ -354,7 +354,7 @@ func TestSQLiteJourney(t *testing.T) {
 }
 
 func TestSecretsStatusAndReveal(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	status, err := app.W.Connections.SecretsStatus()
 	if err != nil || !status.Available || !status.InsecureFallback || status.Backend != "basic_text" {
 		t.Fatalf("SecretsStatus = %+v (%v), want the insecure basic_text fallback", status, err)
@@ -407,7 +407,7 @@ func TestSecretsStatusAndReveal(t *testing.T) {
 	wantPassword("nil leaves it unchanged", "s3cret")
 	update(ptr("rotated"))
 	wantPassword("a value replaces it", "rotated")
-	app.Restart(t)
+	app.Restart()
 	wantPassword("after a relaunch", "rotated")
 	if err := app.W.ConnectionFiles.DeleteSecret(connfiles.KindPassword, "pg.password"); err != nil {
 		t.Fatal(err)
@@ -416,7 +416,7 @@ func TestSecretsStatusAndReveal(t *testing.T) {
 }
 
 func TestSchemaDDLSetGet(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	conn, err := app.W.Connections.Create(connections.Input{ConnectionFields: model.ConnectionFields{
 		Name: "ddl", Kind: "sqlite", Color: "teal", Mode: "fields", Database: ptr(filepath.Join(t.TempDir(), "d.db")), Options: map[string]any{},
 		McpReadMode: "allow", McpWriteMode: "prompt", McpDdlMode: "deny",

@@ -1,4 +1,4 @@
-package termflow
+package termflow_test
 
 import (
 	"regexp"
@@ -6,13 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 func TestShellTab(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	svc := app.W.Terminal
 
 	cwd := svc.DefaultCwd().Path
@@ -20,15 +20,15 @@ func TestShellTab(t *testing.T) {
 		t.Fatalf("DefaultCwd = %q, want the temp HOME %q", cwd, app.Home)
 	}
 	// Contract terminal: tests/ui/automations-module.spec.ts "contract: an unscoped terminal opens".
-	app.Contract(t, "terminal", "TerminalService.DefaultCwd", svc.DefaultCwd())
-	app.Contract(t, "terminal", "args:TerminalService.Open", terminal.OpenArgs{
+	app.StudioContract(t, "terminal", "TerminalService.DefaultCwd", svc.DefaultCwd())
+	app.StudioContract(t, "terminal", "args:TerminalService.Open", terminal.OpenArgs{
 		TerminalID: "t1", WindowKey: "main", Cwd: cwd, Cols: 80, Rows: 24,
 	})
 	mark := app.Events.Mark()
 	open(t, app, "w1", "t1", cwd)
 	write(t, app, "t1", "pwd; echo $TERM_PROGRAM\n")
 	waitMatch(t, app, mark, "w1", "t1", line(cwd))
-	waitMatch(t, app, mark, "w1", "t1", line("Kira Studio"))
+	waitMatch(t, app, mark, "w1", "t1", line(terminal.TermProgram))
 
 	if err := svc.Resize(terminal.ResizeArgs{TerminalID: "t1", Cols: 100, Rows: 30}); err != nil {
 		t.Fatal(err)
@@ -47,7 +47,7 @@ func TestShellTab(t *testing.T) {
 }
 
 func TestOpenRefusals(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	svc := app.W.Terminal
 	open(t, app, "w1", "live", app.Home)
 
@@ -80,7 +80,7 @@ func TestOpenRefusals(t *testing.T) {
 }
 
 func TestWindowCloseKillsOnlyItsShells(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	pidRe := regexp.MustCompile(`(?m)(?:^|\r)(\d+)\r?$`)
 	mark := app.Events.Mark()
 	pids := map[string]int{}
@@ -105,7 +105,7 @@ func TestWindowCloseKillsOnlyItsShells(t *testing.T) {
 }
 
 func TestQuitTearsDownTerminals(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	pidRe := regexp.MustCompile(`(?m)(?:^|\r)(\d+)\r?$`)
 	mark := app.Events.Mark()
 	pids := map[string]int{}
@@ -128,8 +128,8 @@ func TestQuitTearsDownTerminals(t *testing.T) {
 }
 
 func TestLargeOutput(t *testing.T) {
-	studioflowharness.Complete(t)
-	app := studioflowharness.New(t)
+	flowharness.Complete(t)
+	app := flowharness.New(t)
 	mark := app.Events.Mark()
 	if _, err := app.W.Terminal.Open(terminal.OpenArgs{
 		TerminalID: "big", WindowKey: "w1", Cwd: app.Home, Cols: 80, Rows: 24, Command: "seq 1 200000", LaunchKind: terminal.LaunchKindScript,

@@ -8,22 +8,22 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 )
 
 const secretToken = "tok-7f3a9c1e2b"
 
 func TestSendResolvesSecretsOnlyOnTheWire(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.HTTP(t)
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
 
 	col, err := app.W.Collections.CreateCollection(bridge.CollectionsCreateCollectionArgs{Name: "api"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	env := app.SeedEnvironment(t, "dev", studioflowharness.APIVar{Name: "token", Value: secretToken, Secret: true})
+	env := app.SeedEnvironment(t, "dev", flowharness.APIVar{Name: "token", Value: secretToken, Secret: true})
 	if err := app.W.Variables.SetActiveEnvironment(bridge.VariablesEnvironmentIDArgs{ID: env.ID}); err != nil {
 		t.Fatal(err)
 	}
@@ -34,20 +34,20 @@ func TestSendResolvesSecretsOnlyOnTheWire(t *testing.T) {
 	// Contract api-http, read by tests/ui/http-variables.spec.ts "a secret reference stays literal
 	// in the send args and the history list".
 	const sc = "api-http"
-	opts := studioflowharness.Replace(srv.URL, "<http>")
+	opts := flowharness.Replace(srv.URL, "<http>")
 	envs, err := app.W.Variables.ListEnvironments()
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.Contract(t, sc, "VariablesService.ListEnvironments", envs)
+	app.StudioContract(t, sc, "VariablesService.ListEnvironments", envs)
 	vars, err := app.W.Variables.List(bridge.VariablesScopeArgs{Scope: model.VariableScopeEnvironment, OwnerID: env.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.Contract(t, sc, "VariablesService.List", vars)
-	app.Contract(t, sc, "args:HttpService.Send", args, studioflowharness.Mask("opId", "tabId"), opts)
+	app.StudioContract(t, sc, "VariablesService.List", vars)
+	app.StudioContract(t, sc, "args:HttpService.Send", args, flowharness.Mask("opId", "tabId"), opts)
 	res := send(t, app, args)
-	app.Contract(t, sc, "HttpService.Send", res, opts, studioflowharness.Mask("elapsedMs", "bodyBytes"), studioflowharness.Omit("body", "headers", "timeline", "wire"))
+	app.StudioContract(t, sc, "HttpService.Send", res, opts, flowharness.Mask("elapsedMs", "bodyBytes"), flowharness.Omit("body", "headers", "timeline", "wire"))
 
 	reqs := srv.Requests()
 	if len(reqs) != 1 {
@@ -76,7 +76,7 @@ func TestSendResolvesSecretsOnlyOnTheWire(t *testing.T) {
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("history entries = %d, err %v; want 1", len(entries), err)
 	}
-	app.Contract(t, sc, "ResponseHistoryService.List", entries, opts, studioflowharness.Mask("elapsedMs", "bodyBytes", "storedBytes"))
+	app.StudioContract(t, sc, "ResponseHistoryService.List", entries, opts, flowharness.Mask("elapsedMs", "bodyBytes", "storedBytes"))
 	snap, err := app.W.ResponseHistory.Get(bridge.ResponseHistoryIDArgs{ID: entries[0].ID})
 	if err != nil {
 		t.Fatal(err)
@@ -107,8 +107,8 @@ func TestSendResolvesSecretsOnlyOnTheWire(t *testing.T) {
 }
 
 func TestRedirects(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.HTTP(t)
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
 	payload := "payload-body"
 
 	for _, tc := range []struct {
@@ -216,8 +216,8 @@ func mustAtoi(t *testing.T, s string) int {
 }
 
 func TestCookieJar(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.HTTP(t)
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
 
 	cookieEcho := func(base string) map[string]string {
 		t.Helper()
@@ -316,8 +316,8 @@ func TestCookieJar(t *testing.T) {
 }
 
 func TestTLSAndHTTPVersion(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.HTTPS(t)
+	app := flowharness.New(t)
+	srv := flowharness.HTTPS(t)
 
 	e := sendErr(t, app, get(srv.URL+"/echo"))
 	if e.Code != string(httpclient.CodeTransport) || !strings.Contains(strings.ToLower(e.Message), "certificate") {
@@ -358,8 +358,8 @@ func TestTLSAndHTTPVersion(t *testing.T) {
 }
 
 func TestConcurrentSendsSharedJar(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.HTTP(t)
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
 	setApi(t, app, model.ApiPatch{DisableCookieJar: ptr(false)})
 
 	const n = 20

@@ -14,7 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/approvals"
@@ -331,8 +331,8 @@ func TestDbMcpBrowsePrompt(t *testing.T) {
 	sess := f.session(t)
 	f.mcpSet(t, map[string]string{"masked": "prompt"})
 	f.maskPeople(t, "email")
-	replace := studioflowharness.Replace(f.dbPath, "/data/mcp.db")
-	f.app.Contract(t, "dbmcp-browse", "ConnectionsService.List#masked", f.summary(t), studioflowharness.Mask("createdAt", "updatedAt"), replace)
+	replace := flowharness.Replace(f.dbPath, "/data/mcp.db")
+	f.app.StudioContract(t, "dbmcp-browse", "ConnectionsService.List#masked", f.summary(t), flowharness.Mask("createdAt", "updatedAt"), replace)
 
 	args := map[string]any{"columns": []string{"id", "name"}, "filters": []map[string]any{{"column": "name", "op": "eq", "value": "O'Brien"}}, "order": []map[string]any{{"column": "id", "direction": "desc"}}, "limit": 10}
 	done := browseAsync(sess, f.connID, args)
@@ -345,7 +345,7 @@ func TestDbMcpBrowsePrompt(t *testing.T) {
 	if req.Statement != wantSQL {
 		t.Fatalf("statement = %q, want %q", req.Statement, wantSQL)
 	}
-	f.app.Contract(t, "dbmcp-browse", "ApprovalsService.List#browse", []approvals.Item{req.Item}, studioflowharness.Mask("createdAt", "expiresAt"), replace)
+	f.app.StudioContract(t, "dbmcp-browse", "ApprovalsService.List#browse", []approvals.Item{req.Item}, flowharness.Mask("createdAt", "expiresAt"), replace)
 	f.answerItems(t, true, req.Item.ID)
 	out := decodeBrowse(t, wait(t, done))
 	if got := out.names("name"); len(got) != 1 || got[0] != "O'Brien" {
@@ -481,7 +481,7 @@ func (fakeBrowseLimit) Check(_ context.Context, c dbmcp.LimitCall) (*dbmcp.Limit
 // A browse over a limit takes the exemption path: the refusal tells how to narrow the call, the dialog is a
 // db.exemption item with the preview, approve runs the page, deny keeps the limit.
 func TestDbMcpBrowseExemption(t *testing.T) {
-	f := newFixture(t, studioflowharness.WithDbMcpLimits(fakeBrowseLimit{}))
+	f := newFixture(t, flowharness.WithDbMcpLimits(fakeBrowseLimit{}))
 	f.seedPeople(t)
 	f.execSQL(t, "insert into people (name, email) values ('big', 'big@x.io')")
 	sess := f.session(t)
@@ -523,8 +523,8 @@ func TestDbMcpBrowseExemption(t *testing.T) {
 // Real EXPLAIN on the app-built statement: an unfiltered read of a big table is refused with the browse hint,
 // a selective one passes and reports its plan.
 func TestDbMcpBrowseExpensiveQueryPostgres(t *testing.T) {
-	studioflowharness.Complete(t)
-	studioflowharness.RequireDocker(t)
+	flowharness.Complete(t)
+	flowharness.RequireDocker(t)
 	const pass, dbName = "flowpass", "flowdb"
 	host, port := startPostgres(t, pass, dbName)
 	f := newFixture(t)

@@ -1,4 +1,4 @@
-package termflow
+package termflow_test
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 )
@@ -15,7 +15,7 @@ import (
 // a smart script gets it, and Continue in terminal carries the flag.
 func TestAgentContextStudio(t *testing.T) {
 	const marker = "STUDIO-CONTEXT-MARKER\n"
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	app.Scenario(scenario(fakeagent.Action{Name: "done"}))
 	dir := filepath.Join(app.SpaceHome, "agent")
 	if err := os.MkdirAll(dir, 0o755); err != nil {

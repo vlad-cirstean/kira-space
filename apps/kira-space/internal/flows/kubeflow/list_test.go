@@ -5,8 +5,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 )
 
 func (e *env) list(t *testing.T, kind, ns, selector string) (kubernetes.ListResult, error) {
@@ -116,7 +116,7 @@ func TestList(t *testing.T) {
 }
 
 func TestListTruncates(t *testing.T) {
-	e := boot(t, nil, studioflowharness.WithKubernetesOptions(kubernetes.WithListLimits(2, 3)))
+	e := boot(t, nil, flowharness.WithKubernetesOptions(kubernetes.WithListLimits(2, 3)))
 	got, err := e.list(t, "v1/pods", "", "")
 	if err != nil {
 		t.Fatal(err)

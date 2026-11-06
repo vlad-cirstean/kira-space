@@ -12,9 +12,9 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mcpauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 )
@@ -33,13 +33,13 @@ func (b bearer) RoundTrip(r *http.Request) (*http.Response, error) {
 
 // fixture is an app with the MCP server on and a connected client.
 type fixture struct {
-	app  *studioflowharness.App
+	app  *flowharness.App
 	sess *mcp.ClientSession
 }
 
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	st, err := app.W.DbMcp.SetEnabled(bridge.DbMcpSetEnabledArgs{Enabled: true})
 	if err != nil || !st.Running {
 		t.Fatalf("SetEnabled = %+v (%v), want running", st, err)
@@ -156,7 +156,7 @@ func keyValueStep(desc string) map[string]any {
 	}
 }
 
-func proofPrompts(t *testing.T, app *studioflowharness.App) []prompts.Routed {
+func proofPrompts(t *testing.T, app *flowharness.App) []prompts.Routed {
 	t.Helper()
 	all, err := app.W.PromptsSvc.List()
 	if err != nil {
@@ -171,7 +171,7 @@ func proofPrompts(t *testing.T, app *studioflowharness.App) []prompts.Routed {
 	return out
 }
 
-func reviewItems(t *testing.T, app *studioflowharness.App) []approvals.Item {
+func reviewItems(t *testing.T, app *flowharness.App) []approvals.Item {
 	t.Helper()
 	all, err := app.W.ApprovalsSvc.List()
 	if err != nil {
@@ -186,7 +186,7 @@ func reviewItems(t *testing.T, app *studioflowharness.App) []approvals.Item {
 	return out
 }
 
-func session(t *testing.T, app *studioflowharness.App, id string) proof.Detail {
+func session(t *testing.T, app *flowharness.App, id string) proof.Detail {
 	t.Helper()
 	d, err := app.W.Proof.Session(bridge.ProofSessionArgs{SessionID: id})
 	if err != nil {
@@ -195,7 +195,7 @@ func session(t *testing.T, app *studioflowharness.App, id string) proof.Detail {
 	return d
 }
 
-func sessionID(t *testing.T, app *studioflowharness.App, name string) string {
+func sessionID(t *testing.T, app *flowharness.App, name string) string {
 	t.Helper()
 	list, err := app.W.Proof.Sessions()
 	if err != nil {

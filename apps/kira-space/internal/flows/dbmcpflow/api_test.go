@@ -10,8 +10,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness/servers"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness/servers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -65,7 +65,7 @@ func (f *fixture) patchAPI(t *testing.T, key string, patch *model.DbMcpPatch) {
 	if _, err := f.app.W.StudioSettings.Set(args); err != nil {
 		t.Fatal(err)
 	}
-	f.app.Contract(t, "dbmcp-api-settings", "args:SettingsService.Set#"+key, args)
+	f.app.StudioContract(t, "dbmcp-api-settings", "args:SettingsService.Set#"+key, args)
 }
 
 func (f *fixture) setAPI(t *testing.T, enabled bool, approval string) {
@@ -90,7 +90,7 @@ func apiArgs(envID, method, url string, headers ...string) map[string]any {
 
 func (f *fixture) apiSetup(t *testing.T, hosts string, autoReads bool) (*servers.HTTPServer, *mcp.ClientSession, string) {
 	t.Helper()
-	srv := studioflowharness.HTTP(t)
+	srv := flowharness.HTTP(t)
 	f.base = srv.URL
 	envID := f.apiEnv(t, hosts, autoReads)
 	sess, err := f.connect(t, f.token(t))
@@ -134,8 +134,8 @@ func TestApiRequestApproved(t *testing.T) {
 		t.Fatalf("payload = %s, want the placeholder header and the token credential", it.Payload)
 	}
 	listJSON, _ := json.Marshal(f.list(t))
-	f.app.Contract(t, "approvals-api", "ApprovalsService.List", []approvals.Item{it}, studioflowharness.Mask("createdAt", "expiresAt", "cwd", "environment.id"), studioflowharness.Replace(srv.URL, "http://127.0.0.1:<port>"))
-	f.app.Contract(t, "approvals-api", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{it.ID}, Approve: true})
+	f.app.StudioContract(t, "approvals-api", "ApprovalsService.List", []approvals.Item{it}, flowharness.Mask("createdAt", "expiresAt", "cwd", "environment.id"), flowharness.Replace(srv.URL, "http://127.0.0.1:<port>"))
+	f.app.StudioContract(t, "approvals-api", "args:ApprovalsService.Answer", approvals.AnswerArgs{IDs: []string{it.ID}, Approve: true})
 
 	f.answer(t, true, req.RequestID)
 	res := wait(t, pending)
@@ -168,7 +168,7 @@ func TestApiRequestApproved(t *testing.T) {
 		t.Fatalf("op rows = %s, want one mcp http row", rowsJSON)
 	}
 	var history int
-	if err := f.app.DB().QueryRow("SELECT COUNT(*) FROM api_response_history").Scan(&history); err != nil || history != 0 {
+	if err := f.app.StudioDB().QueryRow("SELECT COUNT(*) FROM api_response_history").Scan(&history); err != nil || history != 0 {
 		t.Fatalf("response history rows = %d, %v, want 0", history, err)
 	}
 	noSecret(t, "the tool result, item list or op log", text(res), string(listJSON), string(rowsJSON))
@@ -392,7 +392,7 @@ func TestApiRequestBodies(t *testing.T) {
 		t.Helper()
 		pending := callToolAsync(sess, "api_request", args)
 		req := f.pending(t)
-		f.app.Contract(t, "approvals-api", "item#"+key, req.Item, studioflowharness.Mask("createdAt", "expiresAt", "cwd", "environment.id"), studioflowharness.Replace(srv.URL, "http://127.0.0.1:<port>"))
+		f.app.StudioContract(t, "approvals-api", "item#"+key, req.Item, flowharness.Mask("createdAt", "expiresAt", "cwd", "environment.id"), flowharness.Replace(srv.URL, "http://127.0.0.1:<port>"))
 		f.answer(t, false, req.RequestID)
 		if out := wait(t, pending); !out.IsError {
 			t.Fatalf("denied %s = %q, want an error", key, text(out))

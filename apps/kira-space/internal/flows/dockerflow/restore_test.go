@@ -12,7 +12,7 @@ import (
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
@@ -20,16 +20,16 @@ import (
 // The engine is shared with every other test, so each assertion looks only at this run's prefixed containers.
 
 type restoreEnv struct {
-	app *studioflowharness.App
-	d   *studioflowharness.Docker
-	gen *studioflowharness.BootGen
+	app *flowharness.App
+	d   *flowharness.Docker
+	gen *flowharness.BootGen
 }
 
 func bootRestore(t *testing.T) restoreEnv {
 	t.Helper()
-	d := studioflowharness.RequireDocker(t)
-	gen := &studioflowharness.BootGen{}
-	app := studioflowharness.New(t, studioflowharness.WithDockerOptions(
+	d := flowharness.RequireDocker(t)
+	gen := &flowharness.BootGen{}
+	app := flowharness.New(t, flowharness.WithDockerOptions(
 		docker.WithRestoreTiming(200*time.Millisecond, time.Second, 2*time.Second),
 		docker.WithBootProbe(gen.Probe()),
 	))
@@ -98,7 +98,7 @@ func (e restoreEnv) waitState(t *testing.T, what string, pred func(docker.Restor
 
 func (e restoreEnv) inSnapshot(id string) bool {
 	var n int
-	_ = e.app.DB().QueryRow(`SELECT COUNT(*) FROM docker_restore_containers WHERE container_id = ?`, id).Scan(&n)
+	_ = e.app.StudioDB().QueryRow(`SELECT COUNT(*) FROM docker_restore_containers WHERE container_id = ?`, id).Scan(&n)
 	return n > 0
 }
 
@@ -128,14 +128,14 @@ func (e restoreEnv) kill(t *testing.T, ids ...string) {
 	}
 }
 
-func (e restoreEnv) opts(ids map[string]string, extra ...studioflowharness.ContractOption) []studioflowharness.ContractOption {
-	opts := []studioflowharness.ContractOption{
-		studioflowharness.Mask("engineId", "context", "detectedAt", "bootAt"),
-		studioflowharness.Replace(e.d.Prefix(), "kira-flow-"),
-		studioflowharness.Replace(runIDOf(e.d), "run"),
+func (e restoreEnv) opts(ids map[string]string, extra ...flowharness.ContractOption) []flowharness.ContractOption {
+	opts := []flowharness.ContractOption{
+		flowharness.Mask("engineId", "context", "detectedAt", "bootAt"),
+		flowharness.Replace(e.d.Prefix(), "kira-flow-"),
+		flowharness.Replace(runIDOf(e.d), "run"),
 	}
 	for name, id := range ids {
-		opts = append(opts, studioflowharness.Replace(id, "id-"+name))
+		opts = append(opts, flowharness.Replace(id, "id-"+name))
 	}
 	return append(opts, extra...)
 }
@@ -144,7 +144,7 @@ func restartPolicy(name container.RestartPolicyMode) *container.HostConfig {
 	return &container.HostConfig{RestartPolicy: container.RestartPolicy{Name: name}}
 }
 
-func keepAlive(d *studioflowharness.Docker, name string, policy container.RestartPolicyMode) string {
+func keepAlive(d *flowharness.Docker, name string, policy container.RestartPolicyMode) string {
 	stop := 1
 	return d.RunWith(name, container.Config{Cmd: []string{"sh", "-c", "exec sleep 300"}, StopTimeout: &stop}, restartPolicy(policy), nil)
 }
@@ -208,10 +208,10 @@ func TestRestoreAfterEngineRestart(t *testing.T) {
 		}
 	}
 	ids := map[string]string{"solo": solo, "keeper": keeper, "doomed": doomed, "web": web, "db": db}
-	e.app.Contract(t, "docker-restore", "DockerService.RestoreState#pending", e.onlyOurs(st), e.opts(ids)...)
+	e.app.StudioContract(t, "docker-restore", "DockerService.RestoreState#pending", e.onlyOurs(st), e.opts(ids)...)
 
 	args := docker.RestoreArgs{EngineID: st.EngineID, IDs: []string{solo, web, db}}
-	e.app.Contract(t, "docker-restore", "args:DockerService.RestoreContainers", args, e.opts(ids)...)
+	e.app.StudioContract(t, "docker-restore", "args:DockerService.RestoreContainers", args, e.opts(ids)...)
 	res, err := svc.RestoreContainers(args)
 	if err != nil {
 		t.Fatal(err)
@@ -221,14 +221,14 @@ func TestRestoreAfterEngineRestart(t *testing.T) {
 			t.Fatalf("restore %s: %s", it.Name, it.Error)
 		}
 	}
-	e.app.Contract(t, "docker-restore", "DockerService.RestoreContainers", res, e.opts(ids)...)
+	e.app.StudioContract(t, "docker-restore", "DockerService.RestoreContainers", res, e.opts(ids)...)
 	if !startedAt(t, e, db).Before(startedAt(t, e, web)) {
 		t.Fatal("db started after web; want depends_on order")
 	}
 
 	e.waitState(t, "restore to settle", func(s docker.RestoreState) bool { return !hasOpenOurs(e, s) })
 	var sawPending, sawSettled bool
-	var pendingEv studioflowharness.Event
+	var pendingEv flowharness.Event
 	for _, ev := range e.app.Events.Since(mark, docker.ChannelRestore) {
 		s, ok := ev.Data.(docker.RestoreState)
 		if !ok {
@@ -245,7 +245,7 @@ func TestRestoreAfterEngineRestart(t *testing.T) {
 		t.Fatalf("restore events pending=%v settled=%v", sawPending, sawSettled)
 	}
 	pendingEv.Data = e.onlyOurs(pendingEv.Data.(docker.RestoreState))
-	e.app.ContractEvent(t, "docker-restore", pendingEv, e.opts(ids)...)
+	e.app.StudioContractEvent(t, "docker-restore", pendingEv, e.opts(ids)...)
 }
 
 func TestRestoreSnapshotSurvivesIdleEngine(t *testing.T) {
@@ -265,7 +265,7 @@ func TestRestoreSnapshotSurvivesIdleEngine(t *testing.T) {
 		t.Fatalf("items after idle ticks = %+v, want the frozen snapshot", got)
 	}
 
-	e.app.Restart(t)
+	e.app.Restart()
 	if got := e.ours(e.state(t)); len(got) != 2 {
 		t.Fatalf("items after relaunch = %+v, want the pending snapshot from the DB", got)
 	}
@@ -278,7 +278,7 @@ func TestRestoreAtLaunch(t *testing.T) {
 	e.app.Quit(t)
 	e.kill(t, solo)
 	e.gen.Bump()
-	e.app.Restart(t)
+	e.app.Restart()
 	st := e.waitState(t, "pending at launch", func(s docker.RestoreState) bool { return s.State == "pending" })
 	if got := e.ours(st)["solo"]; got.Status != "restorable" {
 		t.Fatalf("solo = %+v, want restorable", got)
@@ -369,8 +369,8 @@ func TestRestoreRealDaemonRestart(t *testing.T) {
 	if os.Getenv("KIRA_FLOW_DOCKER_RESTART") != "1" {
 		t.Skip("set KIRA_FLOW_DOCKER_RESTART=1 to restart the local dockerd")
 	}
-	d := studioflowharness.RequireDocker(t)
-	app := studioflowharness.New(t, studioflowharness.WithDockerOptions(docker.WithRestoreTiming(500*time.Millisecond, 2*time.Second, 5*time.Second)))
+	d := flowharness.RequireDocker(t)
+	app := flowharness.New(t, flowharness.WithDockerOptions(docker.WithRestoreTiming(500*time.Millisecond, 2*time.Second, 5*time.Second)))
 	e := restoreEnv{app: app, d: d}
 	solo := sleeper(d, "solo", nil)
 	keeper := keepAlive(d, "keeper", "always")

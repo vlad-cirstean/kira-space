@@ -73,7 +73,7 @@ func TestDbMcpThroughClaude(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out := app.claudeP(t, t.TempDir(),
+	out, _ := app.claudeP(t, t.TempDir(), nil,
 		"Call the list_connections tool once, then reply with the word done.",
 		"--strict-mcp-config", "--mcp-config", cfg, "--allowedTools", "mcp__"+dbServer+"__list_connections",
 		"--output-format", "stream-json", "--verbose")
@@ -110,7 +110,7 @@ func TestDbMcpRunQueryModeThroughClaude(t *testing.T) {
 		t.Fatal(err)
 	}
 	tool := "mcp__" + dbServer + "__run_query"
-	out := app.claudeP(t, t.TempDir(),
+	out, _ := app.claudeP(t, t.TempDir(), nil,
 		"Call list_connections, then call run_query once on the connection named "+connName+" with sql \"SELECT 1 AS n\" and an empty path. Declare the least powerful mode that fits. Then reply with the word done.",
 		"--strict-mcp-config", "--mcp-config", cfg,
 		"--allowedTools", "mcp__"+dbServer+"__list_connections,"+tool,
@@ -159,7 +159,7 @@ func TestDbMcpBrowseThroughClaude(t *testing.T) {
 		t.Fatal(err)
 	}
 	tool := "mcp__" + dbServer + "__browse_table"
-	out := app.claudeP(t, t.TempDir(),
+	out, _ := app.claudeP(t, t.TempDir(), nil,
 		"Show me 3 rows of the notes table in the connection named "+connName+". Then reply with the word done.",
 		"--strict-mcp-config", "--mcp-config", cfg,
 		"--allowedTools", "mcp__"+dbServer+"__list_connections,"+tool+",mcp__"+dbServer+"__list_children,mcp__"+dbServer+"__describe_table",
@@ -198,7 +198,7 @@ func TestDbMcpScriptThroughClaude(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out := app.claudeP(t, t.TempDir(),
+	out, _ := app.claudeP(t, t.TempDir(), nil,
 		"You must use the kira-db MCP tools, loading them with ToolSearch if they are deferred. Call list_scripts, then run_script for the script probe with waitSeconds 20, then call get_script_logs for that run with contains set to marker. Reply with the matching line.",
 		"--strict-mcp-config", "--mcp-config", cfg,
 		"--allowedTools", "ToolSearch,mcp__"+dbServer+"__list_scripts,mcp__"+dbServer+"__run_script,mcp__"+dbServer+"__get_script_logs",
@@ -232,7 +232,7 @@ func TestDbMcpInstallRegisters(t *testing.T) {
 	if err != nil || !strings.Contains(string(raw), dbServer) {
 		t.Fatalf("temp .claude.json lacks %s (err %v):\n%s", dbServer, err, tail(string(raw), 600))
 	}
-	out, errOut, err := app.run(t, t.TempDir(), "mcp", "list")
+	out, errOut, err := app.run(t, t.TempDir(), nil, "mcp", "list")
 	if err != nil {
 		t.Fatalf("claude mcp list: %v\n%s", err, tail(out+errOut, 800))
 	}

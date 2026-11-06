@@ -1,4 +1,4 @@
-package termflow
+package termflow_test
 
 import (
 	"io/fs"
@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
@@ -33,7 +33,7 @@ func appSettingsFiles(root string) []string {
 func TestAgentSettingsStudio(t *testing.T) {
 	const secret = "STUDIO-SETTINGS-SECRET"
 	t.Setenv(fakeagent.EnvRecordEnv, "P453_MARK")
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	app.Scenario(scenario(fakeagent.Action{Name: "done"}))
 	dir := filepath.Join(app.SpaceHome, "agent")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -70,8 +70,8 @@ func TestAgentSettingsStudio(t *testing.T) {
 	if strings.Contains(resume.Command, secret) {
 		t.Fatalf("resume command holds the secret: %q", resume.Command)
 	}
-	if len(appSettingsFiles(app.KiraHome)) == 0 {
-		t.Fatalf("no app file after ResumeCommand under %s", app.KiraHome)
+	if len(appSettingsFiles(app.SpaceHome)) == 0 {
+		t.Fatalf("no app file after ResumeCommand under %s", app.SpaceHome)
 	}
 	cwd := filepath.Join(app.Home, "term", "work") // the fake names its files after the cwd's parent
 	if err := os.MkdirAll(cwd, 0o755); err != nil {
@@ -94,5 +94,5 @@ func TestAgentSettingsStudio(t *testing.T) {
 	if got := termFile(".appenv"); strings.TrimSpace(got) != "P453_MARK="+secret {
 		t.Fatalf(".appenv = %q, want the resolved value", got)
 	}
-	testx.WaitUntil(t, wait, func() bool { return len(appSettingsFiles(app.KiraHome)) == 0 })
+	testx.WaitUntil(t, wait, func() bool { return len(appSettingsFiles(app.SpaceHome)) == 0 })
 }

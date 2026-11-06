@@ -11,11 +11,11 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 )
 
-func opUpdates(app *studioflowharness.App, mark int) []model.OpRecord {
+func opUpdates(app *flowharness.App, mark int) []model.OpRecord {
 	var out []model.OpRecord
 	for _, ev := range app.Events.Since(mark, bridge.ChannelStudioOpUpdate) {
 		if rec, ok := ev.Data.(model.OpRecord); ok {
@@ -27,9 +27,9 @@ func opUpdates(app *studioflowharness.App, mark int) []model.OpRecord {
 
 // waitOp blocks until an op update of kind and status arrives after mark; the op log consumes
 // op events asynchronously, so they can land after Connect returns.
-func waitOp(t *testing.T, app *studioflowharness.App, mark int, kind, status string) {
+func waitOp(t *testing.T, app *flowharness.App, mark int, kind, status string) {
 	t.Helper()
-	app.Events.WaitAfter(t, mark, bridge.ChannelStudioOpUpdate, func(ev studioflowharness.Event) bool {
+	app.Events.WaitAfter(t, mark, bridge.ChannelStudioOpUpdate, func(ev flowharness.Event) bool {
 		rec, ok := ev.Data.(model.OpRecord)
 		return ok && rec.Kind == kind && rec.Status == status
 	}, 5*time.Second)
@@ -46,7 +46,7 @@ func indexOf(recs []model.OpRecord, kind, status string) int {
 
 func TestSQLitePreconnectOp(t *testing.T) {
 	t.Run("script shows as an op that ends before connect starts", func(t *testing.T) {
-		app := studioflowharness.New(t)
+		app := flowharness.New(t)
 		in := sqliteInput("tunnel", newSQLiteFile(t))
 		in.Preconnect = ptr("sleep 0.3")
 		conn := createConn(t, app, in)
@@ -77,13 +77,13 @@ func TestSQLitePreconnectOp(t *testing.T) {
 			t.Errorf("preconnect durationMs = %v, want >= 300", pre.DurationMs)
 		}
 
-		mask := studioflowharness.Mask("id", "durationMs")
-		app.Contract(t, "preconnect-op", "event:preconnect-running", recs[running], mask)
-		app.Contract(t, "preconnect-op", "event:preconnect-ok", pre, mask)
+		mask := flowharness.Mask("id", "durationMs")
+		app.StudioContract(t, "preconnect-op", "event:preconnect-running", recs[running], mask)
+		app.StudioContract(t, "preconnect-op", "event:preconnect-ok", pre, mask)
 	})
 
 	t.Run("failing script errors the connection with no connect op", func(t *testing.T) {
-		app := studioflowharness.New(t)
+		app := flowharness.New(t)
 		in := sqliteInput("broken", newSQLiteFile(t))
 		in.Preconnect = ptr("echo boom >&2; exit 3")
 		conn := createConn(t, app, in)
@@ -110,7 +110,7 @@ func TestSQLitePreconnectOp(t *testing.T) {
 
 func TestSQLitePreconnectDelay(t *testing.T) {
 	t.Run("delay holds connect and is counted in the op", func(t *testing.T) {
-		app := studioflowharness.New(t)
+		app := flowharness.New(t)
 		in := sqliteInput("slow-tunnel", newSQLiteFile(t))
 		in.Preconnect = ptr("true")
 		in.PreconnectDelaySec = 1
@@ -143,11 +143,11 @@ func TestSQLitePreconnectDelay(t *testing.T) {
 		if d := recs[done].DurationMs; d == nil || *d < 1000 {
 			t.Errorf("preconnect durationMs = %v, want >= 1000", d)
 		}
-		app.Contract(t, "preconnect-delay", "event:preconnect-delay-running", recs[running], studioflowharness.Mask("id", "durationMs"))
+		app.StudioContract(t, "preconnect-delay", "event:preconnect-delay-running", recs[running], flowharness.Mask("id", "durationMs"))
 	})
 
 	t.Run("cancel during the delay", func(t *testing.T) {
-		app := studioflowharness.New(t)
+		app := flowharness.New(t)
 		in := sqliteInput("cancelled-tunnel", newSQLiteFile(t))
 		in.Preconnect = ptr("exec sleep 30")
 		in.PreconnectDelaySec = 30
@@ -199,7 +199,7 @@ func TestSQLitePreconnectDelay(t *testing.T) {
 
 // Quit mid-delay of a dialog Test must kill its script: the process is not tracked by StopAll yet.
 func TestSQLiteTestPreconnectKilledOnQuit(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	pidFile := filepath.Join(t.TempDir(), "pid")
 	in := sqliteInput("dialog-test", newSQLiteFile(t))
 	in.Preconnect = ptr("echo $$ > " + pidFile + "; exec sleep 30")

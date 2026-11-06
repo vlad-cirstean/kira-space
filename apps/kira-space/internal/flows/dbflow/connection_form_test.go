@@ -7,7 +7,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -16,12 +16,12 @@ import (
 // file as node edits (comments and key order stay), a YAML-side change re-decodes, a bad draft is a
 // problem with a line, and a typed password goes through the write-only secret call.
 func TestConnectionForm(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	const sc = "connection-form"
 	const typed = "typed-pw-9c1f"
 	cfg := app.W.ConnectionConfig
-	mask := studioflowharness.Mask("hash", "baseHash", "createdAt", "updatedAt")
-	paths := studioflowharness.Replace(app.KiraHome, "<home>")
+	mask := flowharness.Mask("hash", "baseHash", "createdAt", "updatedAt")
+	paths := flowharness.Replace(app.KiraHome, "<home>")
 
 	in := sqliteInput("Pg", "")
 	in.Kind, in.Database = "postgres", ptr("app")
@@ -51,18 +51,18 @@ func TestConnectionForm(t *testing.T) {
 	if err != nil || view.Text != seed || view.Problem != nil {
 		t.Fatalf("File = %+v, %v, want the seed", view, err)
 	}
-	app.Contract(t, sc, "file#read", view, mask, paths)
+	app.StudioContract(t, sc, "file#read", view, mask, paths)
 
 	var recorded []any
 	call := func(name string, edits []configfs.Edit, text string) configfs.FormResult {
 		t.Helper()
 		args := bridge.ConnectionFormArgs{File: conn.File, Text: text, Edits: edits}
-		app.Contract(t, sc, "args:ConnectionConfigService.Form#"+name, args, mask, paths)
+		app.StudioContract(t, sc, "args:ConnectionConfigService.Form#"+name, args, mask, paths)
 		res, err := cfg.Form(args)
 		if err != nil {
 			t.Fatalf("Form %s: %v", name, err)
 		}
-		app.Contract(t, sc, "form#"+name, res, mask, paths)
+		app.StudioContract(t, sc, "form#"+name, res, mask, paths)
 		recorded = append(recorded, args, res)
 		return res
 	}
@@ -124,7 +124,7 @@ func TestConnectionForm(t *testing.T) {
 	}
 
 	saveArgs := bridge.ConnectionSaveFileArgs{File: conn.File, Text: pw.Text, BaseHash: view.Hash}
-	app.Contract(t, sc, "args:ConnectionConfigService.SaveFile", saveArgs, mask, paths)
+	app.StudioContract(t, sc, "args:ConnectionConfigService.SaveFile", saveArgs, mask, paths)
 	if _, err := cfg.SaveFile(bridge.ConnectionSaveFileArgs{File: conn.File, Text: pw.Text, BaseHash: "stale"}); testx.AsIpcErr(t, err).Code != "E_CONFLICT" {
 		t.Errorf("SaveFile with a stale hash = %v, want E_CONFLICT", err)
 	}
@@ -132,7 +132,7 @@ func TestConnectionForm(t *testing.T) {
 	if err != nil || out.Problem != nil || out.Text != pw.Text {
 		t.Fatalf("SaveFile = %+v, %v", out, err)
 	}
-	app.Contract(t, sc, "file#saved", out, mask, paths)
+	app.StudioContract(t, sc, "file#saved", out, mask, paths)
 	back, err := cfg.File(bridge.ConnectionFileArgs{File: conn.File})
 	if err != nil || back.Text != pw.Text {
 		t.Fatalf("File after SaveFile = %+v, %v", back, err)

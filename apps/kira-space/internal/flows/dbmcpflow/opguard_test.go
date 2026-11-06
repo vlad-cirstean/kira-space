@@ -8,7 +8,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/ids"
 )
@@ -76,7 +76,7 @@ func TestOpIDGuard(t *testing.T) {
 	if n != 1 {
 		t.Fatalf("op_log has %d rows for the reused id, want 1", n)
 	}
-	f.app.Contract(t, "op-id-guard", "StudioOpsService.Recent", []model.OpRecord{row}, studioflowharness.Mask("startedAt", "durationMs", "connectionId"))
+	f.app.StudioContract(t, "op-id-guard", "StudioOpsService.Recent", []model.OpRecord{row}, flowharness.Mask("startedAt", "durationMs", "connectionId"))
 
 	// Early cancel still works for a UUID.
 	early := ids.NewID()

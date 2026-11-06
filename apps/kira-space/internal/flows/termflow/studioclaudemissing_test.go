@@ -1,4 +1,4 @@
-package termflow
+package termflow_test
 
 import (
 	"errors"
@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/harness/claude"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/terminal"
@@ -15,7 +15,7 @@ import (
 
 // A Claude Code launch without the CLI fails with the Kira error and opens no session.
 func TestClaudeCodeLaunchWithoutClaude(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	if err := os.Remove(filepath.Join(app.BinDir, "claude")); err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func TestClaudeCodeLaunchWithoutClaude(t *testing.T) {
 	if !errors.As(err, &ie) || ie.Code != string(ipcerr.CodeNotFound) || !strings.HasPrefix(ie.Message, "Claude Code CLI not found") {
 		t.Fatalf("Open = %v, want the claude-missing Kira error", err)
 	}
-	app.Contract(t, "terminal", "TerminalService.Open#claudeMissing", map[string]any{"code": ie.Code, "message": ie.Message})
+	app.StudioContract(t, "terminal", "TerminalService.Open#claudeMissing", map[string]any{"code": ie.Code, "message": ie.Message})
 	if _, ok := app.W.TermRegistry.WindowOf("cc1"); ok {
 		t.Fatal("a failed launch left a session registered")
 	}

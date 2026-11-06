@@ -1,4 +1,4 @@
-package studioflowharness
+package flowharness
 
 import (
 	"os"

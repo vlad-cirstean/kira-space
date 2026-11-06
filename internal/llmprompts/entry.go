@@ -131,7 +131,11 @@ func mustEntry(id ID) *entry {
 	return e
 }
 
+// hasApp reports whether the entry shows for app a; the empty app is every entry.
 func (e *entry) hasApp(a App) bool {
+	if a == "" {
+		return true
+	}
 	for _, x := range e.Apps {
 		if x == a {
 			return true

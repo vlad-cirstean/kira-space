@@ -10,12 +10,12 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 )
 
-var maskIDs = studioflowharness.Mask("id", "closedAt", "createdAt")
+var maskIDs = flowharness.Mask("id", "closedAt", "createdAt")
 
 func TestProofCloseAndRead(t *testing.T) {
 	f := newFixture(t)
@@ -32,7 +32,7 @@ func TestProofCloseAndRead(t *testing.T) {
 	if err != nil || len(list) != 1 {
 		t.Fatalf("Sessions = %+v, %v", list, err)
 	}
-	f.app.Contract(t, "proof", "ProofService.Sessions", list, maskIDs)
+	f.app.StudioContract(t, "proof", "ProofService.Sessions", list, maskIDs)
 
 	det := session(t, f.app, list[0].ID)
 	if len(det.Current.Steps) != 3 || det.Pending != nil {
@@ -43,14 +43,14 @@ func TestProofCloseAndRead(t *testing.T) {
 			t.Fatalf("step %d = %+v", i, s)
 		}
 	}
-	f.app.Contract(t, "proof", "ProofService.Session", det, maskIDs)
+	f.app.StudioContract(t, "proof", "ProofService.Session", det, maskIDs)
 
 	for i, key := range []string{"table", "document", "keyvalue"} {
 		st, err := f.app.W.Proof.Step(bridge.ProofStepArgs{SessionID: list[0].ID, Rev: det.Current.Rev, Ordinal: i + 1})
 		if err != nil {
 			t.Fatal(err)
 		}
-		f.app.Contract(t, "proof", "ProofService.Step#"+key, st, maskIDs)
+		f.app.StudioContract(t, "proof", "ProofService.Step#"+key, st, maskIDs)
 	}
 
 	// Large integers survive as written.
@@ -116,7 +116,7 @@ func TestProofEditFlow(t *testing.T) {
 	if strings.Join(diffs, ",") != "unchanged,changed,added" || len(det.Removed) != 1 || det.Removed[0].Description != "drop" {
 		t.Fatalf("diffs = %v removed = %+v", diffs, det.Removed)
 	}
-	f.app.Contract(t, "proof-pending", "ProofService.Session", det, maskIDs)
+	f.app.StudioContract(t, "proof-pending", "ProofService.Session", det, maskIDs)
 
 	// The closed edit waits in the approvals queue; approving it accepts the revision.
 	review := reviewItems(t, f.app)
@@ -268,7 +268,7 @@ func TestProofWindowAndSavePng(t *testing.T) {
 
 	png := append([]byte("\x89PNG\r\n\x1a\n"), 1, 2, 3)
 	out := filepath.Join(t.TempDir(), "shot.png")
-	f.app.Dialogs.QueueSaveFile(out)
+	f.app.Dialogs.AnswerSave(out)
 	sv, err := f.app.W.Proof.SavePng(bridge.ProofSavePngArgs{Filename: "../a b.png", PngBase64: base64.StdEncoding.EncodeToString(png)})
 	if err != nil || !sv.Saved {
 		t.Fatalf("SavePng = %+v, %v", sv, err)

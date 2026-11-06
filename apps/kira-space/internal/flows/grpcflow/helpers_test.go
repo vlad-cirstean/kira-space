@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/grpcclient"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
@@ -40,7 +40,7 @@ func callArgs(addr, method, msg string) bridge.GrpcCallArgs {
 	}
 }
 
-func call(t *testing.T, app *studioflowharness.App, args bridge.GrpcCallArgs) grpcclient.CallResult {
+func call(t *testing.T, app *flowharness.App, args bridge.GrpcCallArgs) grpcclient.CallResult {
 	t.Helper()
 	res, err := app.W.Grpc.Call(ctx, args)
 	if err != nil {
@@ -61,7 +61,7 @@ func ipcErr(t *testing.T, err error) *ipcerr.Error {
 	return ie
 }
 
-func describe(t *testing.T, app *studioflowharness.App, args bridge.GrpcDescribeArgs) grpcclient.Schema {
+func describe(t *testing.T, app *flowharness.App, args bridge.GrpcDescribeArgs) grpcclient.Schema {
 	t.Helper()
 	s, err := app.W.Grpc.Describe(ctx, args)
 	if err != nil {
@@ -88,7 +88,7 @@ func findMethod(t *testing.T, s grpcclient.Schema, name string) (grpcclient.Meth
 	return grpcclient.Method{}, false
 }
 
-func waitOp(t *testing.T, app *studioflowharness.App, opID string) model.OpRecord {
+func waitOp(t *testing.T, app *flowharness.App, opID string) model.OpRecord {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
 	for {
@@ -120,7 +120,7 @@ func waitUntil(t *testing.T, what string, cond func() bool) {
 }
 
 // callEvents decodes every kira:grpc:call event recorded after mark.
-func callEvents(t *testing.T, app *studioflowharness.App, mark int) []bridge.GrpcCallEvent {
+func callEvents(t *testing.T, app *flowharness.App, mark int) []bridge.GrpcCallEvent {
 	t.Helper()
 	var out []bridge.GrpcCallEvent
 	for _, ev := range app.Events.Since(mark, bridge.ChannelGrpcCall) {
@@ -134,7 +134,7 @@ func callEvents(t *testing.T, app *studioflowharness.App, mark int) []bridge.Grp
 	return out
 }
 
-func history(t *testing.T, app *studioflowharness.App, tab string) []model.GrpcCallHistoryEntry {
+func history(t *testing.T, app *flowharness.App, tab string) []model.GrpcCallHistoryEntry {
 	t.Helper()
 	rows, err := app.W.GrpcHistory.List(bridge.GrpcHistoryScopeArgs{TabID: tab})
 	if err != nil {
@@ -152,7 +152,7 @@ func pairValue(pairs []grpcclient.MetaPair, name string) string {
 	return ""
 }
 
-func dbBytes(t *testing.T, app *studioflowharness.App) []byte {
+func dbBytes(t *testing.T, app *flowharness.App) []byte {
 	t.Helper()
 	var all []byte
 	err := filepath.WalkDir(app.KiraHome, func(p string, d os.DirEntry, err error) error {
@@ -177,12 +177,12 @@ func dbBytes(t *testing.T, app *studioflowharness.App) []byte {
 	return all
 }
 
-func secretVars(t *testing.T, app *studioflowharness.App, vars map[string]string) (collectionID, envID string) {
+func secretVars(t *testing.T, app *flowharness.App, vars map[string]string) (collectionID, envID string) {
 	t.Helper()
 	col := app.SeedCollection(t, "grpc")
-	seeded := make([]studioflowharness.APIVar, 0, len(vars))
+	seeded := make([]flowharness.APIVar, 0, len(vars))
 	for name, value := range vars {
-		seeded = append(seeded, studioflowharness.APIVar{Name: name, Value: value, Secret: true})
+		seeded = append(seeded, flowharness.APIVar{Name: name, Value: value, Secret: true})
 	}
 	env := app.SeedEnvironment(t, "dev", seeded...)
 	return col.ID, env.ID

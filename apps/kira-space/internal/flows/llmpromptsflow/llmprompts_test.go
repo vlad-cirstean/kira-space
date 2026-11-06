@@ -57,19 +57,16 @@ func failure(t *testing.T, err error) map[string]any {
 	return out
 }
 
-// List returns only this app's entries, all at their defaults on a fresh home.
+// List returns every entry, all at their defaults on a fresh home.
 func TestList(t *testing.T) {
 	app := flowharness.New(t)
 	l := list(t, app)
-	if len(l.Prompts) != 144 {
-		t.Fatalf("listed %d prompts, want 144", len(l.Prompts))
+	if len(l.Prompts) != 267 {
+		t.Fatalf("listed %d prompts, want 267", len(l.Prompts))
 	}
 	for _, p := range l.Prompts {
 		if p.Overridden || p.Text != p.DefaultText || p.Hash != llmprompts.Hash(p.Text) {
 			t.Fatalf("%s not at default: %+v", p.ID, p)
-		}
-		if p.ID == "dbmcp.instructions" {
-			t.Fatalf("%s belongs to the other app", p.ID)
 		}
 	}
 	app.Contract(t, scenario, "LlmPromptsService.List#entry", find(t, l, editID), flowharness.Omit("defaultText", "text"))

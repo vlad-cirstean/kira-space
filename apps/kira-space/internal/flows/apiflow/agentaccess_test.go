@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 )
 
@@ -14,12 +14,12 @@ import (
 // misplaced or missing host list is a file problem with a line. The edits recorded are the ones the
 // Agent access tab sends.
 func TestApiAgentAccess(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	const sc = "api-agent-access"
 	const envFile = "staging.environment.yaml"
 	cfg := app.W.ApiConfig
-	mask := studioflowharness.Mask("hash", "baseHash")
-	paths := studioflowharness.Replace(app.KiraHome, "<home>")
+	mask := flowharness.Mask("hash", "baseHash")
+	paths := flowharness.Replace(app.KiraHome, "<home>")
 
 	seed := "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
 	app.WriteAPIFile(t, envFile, []byte(seed))
@@ -30,17 +30,17 @@ func TestApiAgentAccess(t *testing.T) {
 	if err != nil || view.Problem != nil {
 		t.Fatalf("File = %+v, %v", view, err)
 	}
-	app.Contract(t, sc, "file#read", view, mask, paths)
+	app.StudioContract(t, sc, "file#read", view, mask, paths)
 
 	call := func(name, text string, edits []configfs.Edit) configfs.FormResult {
 		t.Helper()
 		args := bridge.ApiFormArgs{File: envFile, Text: text, Edits: edits}
-		app.Contract(t, sc, "args:ApiConfigService.Form#"+name, args, mask, paths)
+		app.StudioContract(t, sc, "args:ApiConfigService.Form#"+name, args, mask, paths)
 		res, err := cfg.Form(args)
 		if err != nil {
 			t.Fatalf("Form %s: %v", name, err)
 		}
-		app.Contract(t, sc, "form#"+name, res, mask, paths)
+		app.StudioContract(t, sc, "form#"+name, res, mask, paths)
 		return res
 	}
 	variables := func(token map[string]any) []configfs.Edit {
@@ -76,12 +76,12 @@ func TestApiAgentAccess(t *testing.T) {
 	}
 
 	saveArgs := bridge.ApiSaveFileArgs{File: envFile, Text: shared.Text, BaseHash: view.Hash}
-	app.Contract(t, sc, "args:ApiConfigService.SaveFile", saveArgs, mask, paths)
+	app.StudioContract(t, sc, "args:ApiConfigService.SaveFile", saveArgs, mask, paths)
 	saved, err := cfg.SaveFile(saveArgs)
 	if err != nil || saved.Problem != nil {
 		t.Fatalf("SaveFile = %+v, %v", saved, err)
 	}
-	app.Contract(t, sc, "file#saved", saved, mask, paths)
+	app.StudioContract(t, sc, "file#saved", saved, mask, paths)
 
 	access, err := cfg.AgentAccess()
 	if err != nil || len(access) != 1 {
@@ -91,7 +91,7 @@ func TestApiAgentAccess(t *testing.T) {
 	if e.Name != "Staging" || e.AutoApproveReads || len(e.Variables) != 1 || e.Variables[0].Name != "token" || !e.Variables[0].Secret || len(e.Variables[0].Hosts) != 1 {
 		t.Fatalf("AgentAccess[0] = %+v, want token with one host", e)
 	}
-	app.Contract(t, sc, "AgentAccess", access, mask, paths)
+	app.StudioContract(t, sc, "AgentAccess", access, mask, paths)
 
 	col := newCollection(t, app, "Orders API")
 	colView, err := cfg.File(bridge.ApiFileArgs{File: col.File})

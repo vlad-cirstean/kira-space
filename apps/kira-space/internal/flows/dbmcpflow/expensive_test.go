@@ -14,7 +14,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 )
@@ -124,8 +124,8 @@ func resultPlan(t *testing.T, res *mcp.CallToolResult) (rows float64, ok bool) {
 }
 
 func TestDbMcpExpensiveQueryPostgres(t *testing.T) {
-	studioflowharness.Complete(t)
-	studioflowharness.RequireDocker(t)
+	flowharness.Complete(t)
+	flowharness.RequireDocker(t)
 	const pass, dbName = "flowpass", "flowdb"
 	host, port := startPostgres(t, pass, dbName)
 	f := newFixture(t)
@@ -230,7 +230,7 @@ func TestDbMcpExpensiveQueryPostgres(t *testing.T) {
 	if err := json.Unmarshal(items[0].Payload, &evidence); err != nil || evidence.Plan == nil || evidence.Plan.EstimatedRowsRead == nil {
 		t.Fatalf("exemption payload has no plan evidence: %s (%v)", items[0].Payload, err)
 	}
-	f.app.Contract(t, "dbmcp-expensive-query", "item", items[0], studioflowharness.Mask("createdAt", "expiresAt"), studioflowharness.Replace(host+":"+strconv.Itoa(port), "localhost:5432"))
+	f.app.StudioContract(t, "dbmcp-expensive-query", "item", items[0], flowharness.Mask("createdAt", "expiresAt"), flowharness.Replace(host+":"+strconv.Itoa(port), "localhost:5432"))
 	f.answerItems(t, true, items[0].ID)
 	if res := wait(t, exCall); res.IsError || !strings.Contains(text(res), `"truncated"`) {
 		t.Fatalf("approved exempt call = %q, want rows capped at maxRows", text(res))
@@ -380,5 +380,5 @@ func TestDbMcpListConnectionsExpensiveQuery(t *testing.T) {
 	}
 	var all any
 	_ = json.Unmarshal([]byte(text(res)), &all)
-	f.app.Contract(t, "dbmcp-expensive-query", "list_connections", all, studioflowharness.Mask("id"), studioflowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.StudioContract(t, "dbmcp-expensive-query", "list_connections", all, flowharness.Mask("id"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
 }

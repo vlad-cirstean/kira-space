@@ -396,7 +396,7 @@ func Build(opts Options) (*Wired, error) {
 	w.ApprovalsSvc = &bridge.ApprovalsService{Service: &approvals.Service{Q: w.Approvals}}
 	w.detachApprovals = events.AttachApprovals(w.Approvals)
 	w.LlmPromptsSvc = &bridge.LlmPromptsService{Bound: &llmprompts.Bound{
-		Store: promptStore, App: llmprompts.Space,
+		Store:   promptStore,
 		Changed: func(rev uint64) { emitter.Emit(bridge.ChannelLlmPromptsChanged, map[string]uint64{"revision": rev}) },
 	}}
 	w.detachOpLog = events.AttachOpLog(git.opLog)

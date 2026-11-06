@@ -5,16 +5,16 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	spacemodel "github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/windowsvc"
 )
 
 func TestHistoryClear(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.HTTP(t)
-	gsrv := studioflowharness.GRPC(t)
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
+	gsrv := flowharness.GRPC(t)
 
 	for _, tab := range []string{"tab-a", "tab-b"} {
 		args := get(srv.URL + "/status?tab=" + tab)
@@ -74,7 +74,7 @@ func TestHistoryClear(t *testing.T) {
 	if err := app.W.Tabs.Save(bridge.TabsSaveArgs{WindowKey: "w1", Tabs: []spacemodel.TabRecord{tabB}}); err != nil {
 		t.Fatal(err)
 	}
-	app.Restart(t)
+	app.Restart()
 	if httpLen("tab-a") != 0 || grpcLen("tab-a") != 0 || httpLen("tab-b") != 1 || grpcLen("tab-b") != 1 {
 		t.Fatal("cleared and kept history differ after a relaunch")
 	}

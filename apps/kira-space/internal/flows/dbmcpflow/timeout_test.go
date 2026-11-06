@@ -12,7 +12,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiooplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/ids"
@@ -170,7 +170,7 @@ func TestDbMcpStatementTimeoutExemption(t *testing.T) {
 	if len(pl.Limits) != 1 || pl.Limits[0].Limit != "statement_timeout" || pl.Limits[0].Max != 1000 || pl.Limits[0].Unit != "ms" {
 		t.Fatalf("payload = %+v", pl)
 	}
-	f.app.Contract(t, "dbmcp-statement-timeout", "item", items[0], studioflowharness.Mask("createdAt", "expiresAt", "measured"), studioflowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.StudioContract(t, "dbmcp-statement-timeout", "item", items[0], flowharness.Mask("createdAt", "expiresAt", "measured"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
 	f.answerItems(t, true, items[0].ID)
 	start := time.Now()
 	res := wait(t, call)
@@ -294,5 +294,5 @@ func TestDbMcpListConnectionsStatementTimeout(t *testing.T) {
 	}
 	var all any
 	_ = json.Unmarshal([]byte(text(res)), &all)
-	f.app.Contract(t, "dbmcp-statement-timeout", "list_connections", all, studioflowharness.Mask("id"), studioflowharness.Replace(f.dbPath, "/data/mcp.db"))
+	f.app.StudioContract(t, "dbmcp-statement-timeout", "list_connections", all, flowharness.Mask("id"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
 }

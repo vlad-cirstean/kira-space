@@ -1,4 +1,4 @@
-package windowflow
+package windowflow_test
 
 import (
 	"encoding/base64"
@@ -10,9 +10,8 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	spacemodel "github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/docker"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
@@ -27,7 +26,7 @@ func tab(id, kind string, order int, active bool) spacemodel.TabRecord {
 	return spacemodel.TabRecord{ID: id, Path: "p/" + id, Kind: kind, State: json.RawMessage(`{}`), Order: order, Active: active}
 }
 
-func openTerm(t *testing.T, app *studioflowharness.App, window, id string) {
+func openTerm(t *testing.T, app *flowharness.App, window, id string) {
 	t.Helper()
 	if _, err := app.W.Terminal.Open(terminal.OpenArgs{TerminalID: id, WindowKey: window, Cwd: app.Home, Cols: 80, Rows: 24}); err != nil {
 		t.Fatal(err)
@@ -35,7 +34,7 @@ func openTerm(t *testing.T, app *studioflowharness.App, window, id string) {
 }
 
 // termOut is the decoded output, and whether the terminal exited, seen by one window since mark.
-func termOut(app *studioflowharness.App, mark int, window, id string) (string, bool) {
+func termOut(app *flowharness.App, mark int, window, id string) (string, bool) {
 	var sb strings.Builder
 	exited := false
 	for _, ev := range app.Events.Since(mark, appevent.ChannelTerminal) {
@@ -51,7 +50,7 @@ func termOut(app *studioflowharness.App, mark int, window, id string) (string, b
 }
 
 func TestStudioWindows(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	w := app.W.WindowsSvc
 
 	var ie *ipcerr.Error
@@ -60,7 +59,7 @@ func TestStudioWindows(t *testing.T) {
 	}
 	for _, key := range []string{"A", "B"} {
 		res, err := w.Ensure(windowsvc.EnsureArgs{WindowKey: key})
-		if err != nil || res.Mode != model.DefaultWindowMode {
+		if err != nil || res.Mode != spacemodel.WindowModes.Default {
 			t.Fatalf("Ensure %s = %+v (%v), want the default mode", key, res, err)
 		}
 	}
@@ -79,8 +78,8 @@ func TestStudioWindows(t *testing.T) {
 	if b, _ := w.Ensure(windowsvc.EnsureArgs{WindowKey: "B"}); b.Mode != "api" {
 		t.Fatalf("window B mode = %q, want api", b.Mode)
 	}
-	if err := w.OpenNew(); err != nil || app.NewWindows() != 1 {
-		t.Fatalf("OpenNew = %v, shell asked for %d windows, want 1", err, app.NewWindows())
+	if err := w.OpenNew(); err != nil || app.WindowMgr.NewWindows != 1 {
+		t.Fatalf("OpenNew = %v, shell asked for %d windows, want 1", err, app.WindowMgr.NewWindows)
 	}
 
 	tabsA := []spacemodel.TabRecord{tab("a1", "console", 0, false), tab("a2", "console", 1, true)}
@@ -151,7 +150,7 @@ func TestStudioWindows(t *testing.T) {
 	}
 
 	// Every row survives a relaunch.
-	app.Restart(t)
+	app.Restart()
 	if got := tabIDs("A"); !reflect.DeepEqual(got, []string{"a1", "a2"}) {
 		t.Fatalf("window A tabs after a relaunch %v", got)
 	}
@@ -171,7 +170,7 @@ func TestStudioWindows(t *testing.T) {
 // The acks are fire-and-forget: with nothing owed they change nothing, and a quit with no window
 // owing one goes straight through its flush.
 func TestQuitHandshake(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	app.W.Lifecycle.Flushed(bridge.LifecycleFlushedArgs{WindowKey: "ghost"})
 	app.W.Lifecycle.WindowFlushed(bridge.LifecycleWindowFlushedArgs{WindowKey: "ghost"})
 	if app.W.Quitter.ShouldQuit() {
@@ -185,8 +184,8 @@ func TestQuitHandshake(t *testing.T) {
 }
 
 func TestDockerStatsEndWithTheirWindow(t *testing.T) {
-	d := studioflowharness.RequireDocker(t)
-	app := studioflowharness.New(t)
+	d := flowharness.RequireDocker(t)
+	app := flowharness.New(t)
 	id := d.Run("winstats", []string{"sleep", "600"}, nil)
 	for _, key := range []string{"A", "B"} {
 		if err := app.W.Docker.StatsSubscribe(docker.StatsArgs{WindowKey: key, IDs: []string{id}}); err != nil {
@@ -214,14 +213,14 @@ func TestDockerStatsEndWithTheirWindow(t *testing.T) {
 
 // widthUserSet must survive the bridge and a relaunch (the Git review widen reads it).
 func TestLayoutWidthUserSetSurvivesRestart(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	width, userSet := 300.0, true
 	if _, err := app.W.Layout.Set(bridge.LayoutSetArgs{Patch: spacemodel.LayoutPatch{Modes: map[string]spacemodel.PanelSizesPatch{
 		"studio": {Project: &spacemodel.ProjectSizePatch{Width: &width, WidthUserSet: &userSet}},
 	}}}); err != nil {
 		t.Fatalf("Layout.Set: %v", err)
 	}
-	app.Restart(t)
+	app.Restart()
 	got, err := app.W.Layout.GetAll()
 	if err != nil || !got.Modes["studio"].Project.WidthUserSet || got.Modes["api"].Project.WidthUserSet {
 		t.Fatalf("Layout.GetAll after restart = %+v, %v, want studio widthUserSet only", got.Modes, err)

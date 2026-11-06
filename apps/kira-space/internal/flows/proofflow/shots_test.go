@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 )
 
 func pngB64(extra string) string {
@@ -28,19 +28,19 @@ func TestProofShotFolder(t *testing.T) {
 		t.Fatalf("cancel created %v", ents)
 	}
 
-	f.app.Dialogs.QueueDirectory(tmp)
+	f.app.Dialogs.AnswerDirectory(tmp)
 	first, err := p.ChooseShotFolder(bridge.ProofChooseShotFolderArgs{SessionName: "Checkout fix"})
 	if err != nil || first.Canceled || first.Path != filepath.Join(tmp, "Checkout fix") {
 		t.Fatalf("first = %+v, %v", first, err)
 	}
-	f.app.Contract(t, "proof", "ProofService.ChooseShotFolder", first,
-		studioflowharness.Mask("id", "path"))
-	f.app.Dialogs.QueueDirectory(tmp)
+	f.app.StudioContract(t, "proof", "ProofService.ChooseShotFolder", first,
+		flowharness.Mask("id", "path"))
+	f.app.Dialogs.AnswerDirectory(tmp)
 	second, err := p.ChooseShotFolder(bridge.ProofChooseShotFolderArgs{SessionName: "Checkout fix"})
 	if err != nil || second.Path != filepath.Join(tmp, "Checkout fix-2") {
 		t.Fatalf("second = %+v, %v", second, err)
 	}
-	if got := f.app.Dialogs.Folder; len(got) != 3 || got[0].Title == "" {
+	if got := f.app.Dialogs.Directory; len(got) != 3 || got[0].Title == "" {
 		t.Fatalf("picker requests = %+v", got)
 	}
 

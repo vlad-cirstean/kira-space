@@ -1,42 +1,41 @@
-package termflow
+package termflow_test
 
 import (
 	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/scripts/scriptstest"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 )
 
 func TestScriptInPickedFolder(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 
 	canceled, err := app.W.Files.ChooseFolder(bridge.FilesChooseFolderArgs{})
 	if err != nil || !canceled.Canceled || canceled.Path != nil {
 		t.Fatalf("cancelled picker = %+v, %v, want canceled with no path", canceled, err)
 	}
 	// Contract terminal: tests/ui/automations-module.spec.ts "contract: Choose… fills the folder".
-	app.Contract(t, "terminal", "FilesService.ChooseFolder#cancelled", canceled)
+	app.StudioContract(t, "terminal", "FilesService.ChooseFolder#cancelled", canceled)
 
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "marker.txt"), nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	app.Dialogs.QueueDirectory(dir)
+	app.Dialogs.AnswerDirectory(dir)
 	picked, err := app.W.Files.ChooseFolder(bridge.FilesChooseFolderArgs{Title: "Pick"})
 	if err != nil || picked.Canceled || picked.Path == nil || *picked.Path != dir {
 		t.Fatalf("picker = %+v, %v, want %s", picked, err, dir)
 	}
 
-	picks := studioflowharness.Replace(dir, "<tmp>/picked")
-	app.Contract(t, "terminal", "FilesService.ChooseFolder#picked", picked, picks)
+	picks := flowharness.Replace(dir, "<tmp>/picked")
+	app.StudioContract(t, "terminal", "FilesService.ChooseFolder#picked", picked, picks)
 	mark := app.Events.Mark()
 	cmd := "ls marker.txt; exit 4"
 	rec, err := app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
@@ -45,7 +44,7 @@ func TestScriptInPickedFolder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.Contract(t, "terminal", "CustomScriptsService.Create#fixed", rec, picks)
+	app.StudioContract(t, "terminal", "CustomScriptsService.Create#fixed", rec, picks)
 	ev := app.Events.WaitAfter(t, mark, bridge.ChannelCustomScriptsChanged, nil, wait)
 	var snap scripts.Snapshot
 	ev.Decode(t, &snap)
@@ -65,7 +64,7 @@ func TestScriptInPickedFolder(t *testing.T) {
 }
 
 func TestScriptCollections(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	cs := app.W.CustomScripts
 	mk := func(name, coll string) scripts.CustomScript {
 		t.Helper()
@@ -109,7 +108,7 @@ func TestScriptCollections(t *testing.T) {
 		t.Fatalf("event snapshot %+v differs from List %+v", got, listed)
 	}
 
-	app.Restart(t)
+	app.Restart()
 	again, err := app.W.CustomScripts.List()
 	if err != nil {
 		t.Fatal(err)
@@ -119,82 +118,7 @@ func TestScriptCollections(t *testing.T) {
 	}
 }
 
-func TestScriptOrder(t *testing.T) {
-	app := studioflowharness.New(t)
-	cs := app.W.CustomScripts
-	mk := func(name, coll string) scripts.CustomScript {
-		t.Helper()
-		rec, err := cs.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{Name: name, Command: "echo " + name, Color: "blue", Collection: coll}})
-		if err != nil {
-			t.Fatal(err)
-		}
-		return rec
-	}
-	s1, s2, s3 := mk("s1", ""), mk("s2", ""), mk("s3", "")
-	t1, t2 := mk("t1", "X"), mk("t2", "X")
-	mk("u1", "Y")
-
-	ungrouped := bridge.CustomScriptsReorderArgs{IDs: []string{s3.ID, s1.ID, s2.ID}}
-	inX := bridge.CustomScriptsReorderArgs{Collection: "X", IDs: []string{t2.ID, t1.ID}}
-	colls := bridge.CustomScriptsReorderCollectionsArgs{Names: []string{"Y", "X"}}
-	for _, call := range []func() error{
-		func() error { return cs.Reorder(ungrouped) },
-		func() error { return cs.Reorder(inX) },
-		func() error { return cs.ReorderCollections(colls) },
-	} {
-		if err := call(); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	order := func(snap scripts.Snapshot) (ung, inx, cols []string) {
-		for _, s := range snap.Scripts {
-			switch s.Collection {
-			case "":
-				ung = append(ung, s.Name)
-			case "X":
-				inx = append(inx, s.Name)
-			}
-		}
-		for _, c := range snap.Collections {
-			cols = append(cols, c.Name)
-		}
-		return
-	}
-	listed, err := cs.List()
-	if err != nil {
-		t.Fatal(err)
-	}
-	ung, inx, cols := order(listed)
-	if strings.Join(ung, ",") != "s3,s1,s2" || strings.Join(inx, ",") != "t2,t1" || strings.Join(cols, ",") != "Y,X" {
-		t.Fatalf("order = %v / %v / %v, want [s3 s1 s2] / [t2 t1] / [Y X]", ung, inx, cols)
-	}
-	if got := lastSnapshot(t, app); !sameJSON(got, listed) {
-		t.Fatalf("event snapshot %+v differs from List %+v", got, listed)
-	}
-
-	app.Contract(t, "script-order", "args:CustomScriptsService.Reorder#ungrouped", ungrouped)
-	app.Contract(t, "script-order", "args:CustomScriptsService.Reorder#collection", inX)
-	app.Contract(t, "script-order", "args:CustomScriptsService.ReorderCollections", colls)
-
-	if err := cs.Reorder(bridge.CustomScriptsReorderArgs{IDs: []string{t1.ID}}); err == nil {
-		t.Fatal("Reorder with a script of another set succeeded")
-	}
-	if again, err := cs.List(); err != nil || !sameJSON(again, listed) {
-		t.Fatalf("a refused Reorder changed the order: %+v (%v)", again, err)
-	}
-
-	app.Restart(t)
-	again, err := app.W.CustomScripts.List()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !sameJSON(again, listed) {
-		t.Fatalf("after Restart = %+v, want %+v", again, listed)
-	}
-}
-
-func lastSnapshot(t *testing.T, app *studioflowharness.App) scripts.Snapshot {
+func lastSnapshot(t *testing.T, app *flowharness.App) scripts.Snapshot {
 	t.Helper()
 	evs := app.Events.Since(0, bridge.ChannelCustomScriptsChanged)
 	if len(evs) == 0 {
@@ -212,7 +136,7 @@ func sameJSON(a, b any) bool {
 }
 
 func TestCustomScriptUpdateRemove(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	cs := app.W.CustomScripts
 	rec, err := cs.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{Name: "old", Command: "echo old", Color: "blue"}})
 	if err != nil {
@@ -257,7 +181,7 @@ func TestCustomScriptUpdateRemove(t *testing.T) {
 		t.Fatal("removing an already removed command succeeded")
 	}
 
-	app.Restart(t)
+	app.Restart()
 	again, err := app.W.CustomScripts.List()
 	if err != nil || len(again.Scripts) != 1 || again.Scripts[0].ID != keep.ID {
 		t.Fatalf("after Restart = %+v (%v)", again, err)

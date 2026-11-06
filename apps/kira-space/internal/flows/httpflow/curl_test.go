@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"testing"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 )
 
 // Same scenario as tests/ui/http-curl.spec.ts "an imported curl sends as written, and copy-as-curl
@@ -18,25 +18,25 @@ func TestCurlReplayMatchesSend(t *testing.T) {
 	if _, err := exec.LookPath("curl"); err != nil {
 		t.Skip("curl binary not installed")
 	}
-	app := studioflowharness.New(t)
-	srv := studioflowharness.HTTP(t)
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
 	const sc = "api-curl"
 	const body = `{"sku":"A-1","qty":3}`
-	opts := studioflowharness.Replace(srv.URL, "<http>")
+	opts := flowharness.Replace(srv.URL, "<http>")
 
 	imported := fmt.Sprintf(`curl -X POST '%s/echo?src=curl' -H 'Content-Type: application/json' -H 'X-Flow-Probe: p249' -d '%s'`, srv.URL, body)
-	app.Contract(t, sc, "curl:import", imported, opts)
+	app.StudioContract(t, sc, "curl:import", imported, opts)
 
 	args := get(srv.URL + "/echo?src=curl")
 	args.Method = "POST"
 	args.Headers = []httpclient.Header{{Name: "Content-Type", Value: "application/json"}, {Name: "X-Flow-Probe", Value: "p249"}}
 	args.Body = httpclient.Body{Mode: "code", Code: body, CodeLanguage: "json", URLEncoded: []httpclient.Field{}, FormData: []httpclient.FormField{}}
-	app.Contract(t, sc, "args:HttpService.Send", args, studioflowharness.Mask("opId", "tabId"), opts)
+	app.StudioContract(t, sc, "args:HttpService.Send", args, flowharness.Mask("opId", "tabId"), opts)
 	res := send(t, app, args)
-	app.Contract(t, sc, "HttpService.Send", res, opts, studioflowharness.Mask("elapsedMs", "bodyBytes"), studioflowharness.Omit("body", "headers", "timeline", "wire"))
+	app.StudioContract(t, sc, "HttpService.Send", res, opts, flowharness.Mask("elapsedMs", "bodyBytes"), flowharness.Omit("body", "headers", "timeline", "wire"))
 
 	generated := fmt.Sprintf("curl -L '%s/echo?src=curl' \\\n  -H 'Content-Type: application/json' \\\n  -H 'X-Flow-Probe: p249' \\\n  --data-raw '%s'", srv.URL, body)
-	app.Contract(t, sc, "curl:generated", generated, opts)
+	app.StudioContract(t, sc, "curl:generated", generated, opts)
 	var out bytes.Buffer
 	cmd := exec.Command("sh", "-c", generated)
 	cmd.Stdout, cmd.Stderr = &out, &out

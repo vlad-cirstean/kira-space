@@ -1,13 +1,16 @@
 package flowharness_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitrpc"
+	"github.com/kirathecat/kira-studio/internal/terminal"
 )
 
 func TestMain(m *testing.M) { os.Exit(flowharness.Main(m)) }
@@ -19,8 +22,8 @@ func TestHarnessBootsWithDefaultSettings(t *testing.T) {
 	app := flowharness.New(t)
 	t.Logf("harness boot: %s", time.Since(start))
 
-	if got := len(app.W.Bound()); got != 38 {
-		t.Fatalf("bound services = %d, want 38", got)
+	if got := len(app.W.Bound()); got != 62 {
+		t.Fatalf("bound services = %d, want 62", got)
 	}
 	settings, err := app.W.Settings.GetAll()
 	if err != nil {
@@ -56,4 +59,44 @@ func TestHarnessBootsWithDefaultSettings(t *testing.T) {
 
 	gs.Close()
 	app.W.Teardown()
+}
+
+// Sends a Studio request over the real HTTP stack and drives a real PTY through quit.
+func TestHarnessBootsStudioSide(t *testing.T) {
+	app := flowharness.New(t)
+	srv := flowharness.HTTP(t)
+	res, err := app.W.Http.Send(context.Background(), bridge.HttpSendArgs{
+		Method: "GET", URL: srv.URL + "/echo", OpID: "35aa4fd1-8a08-76b1-8044-5e6cf39f36fa", TabID: "tab-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Status != 200 {
+		t.Fatalf("status = %d, want 200", res.Status)
+	}
+	if reqs := srv.Requests(); len(reqs) != 1 || reqs[0].Path != "/echo" {
+		t.Fatalf("server saw %+v, want one /echo", reqs)
+	}
+
+	if _, err := app.W.Terminal.Open(terminal.OpenArgs{
+		TerminalID: "t1", WindowKey: "w1", Cwd: app.Home, Cols: 80, Rows: 24,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := app.W.TermRegistry.WindowOf("t1"); !ok {
+		t.Fatal("shell not registered after Open")
+	}
+	app.Quit(t)
+	if _, ok := app.W.TermRegistry.WindowOf("t1"); ok {
+		t.Fatal("shell still registered after Quit")
+	}
+}
+
+// A Docker ping through the helper: skips without an engine.
+func TestDockerPing(t *testing.T) {
+	d := flowharness.RequireDocker(t)
+	id := d.Run("ping", []string{"sh", "-c", "sleep 30"}, nil)
+	if id == "" {
+		t.Fatal("no container id")
+	}
 }

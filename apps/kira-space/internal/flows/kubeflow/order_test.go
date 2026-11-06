@@ -7,8 +7,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 )
 
 func (e *env) order(t *testing.T) []string {
@@ -90,14 +90,14 @@ contexts:
 users:
 - name: aa-user
   user: {token: %s}
-`, e.fake.URL, studioflowharness.KubeGoodToken))
+`, e.fake.URL, flowharness.KubeGoodToken))
 	t.Setenv("KUBECONFIG", e.cfg+string(os.PathListSeparator)+extra)
 	withNew := append(slices.Clone(moved), "aa-new")
 	if o := e.order(t); !slices.Equal(o, withNew) {
 		t.Fatalf("with a new context = %v, want %v", o, withNew)
 	}
 
-	e.app.Restart(t)
+	e.app.Restart()
 	if o := e.order(t); !slices.Equal(o, withNew) {
 		t.Fatalf("after restart = %v, want %v", o, withNew)
 	}

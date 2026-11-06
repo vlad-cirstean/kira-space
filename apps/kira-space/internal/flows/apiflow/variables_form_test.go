@@ -7,7 +7,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -17,13 +17,13 @@ import (
 // re-decodes, a bad draft is a problem with a line, a collection file edits `variables` only, and a
 // typed secret saves a reference into the file and the value through the write-only call.
 func TestApiVariablesForm(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	const sc = "api-variables-form"
 	const typed = "typed-token-5d2e"
 	const envFile = "staging.environment.yaml"
 	cfg := app.W.ApiConfig
-	mask := studioflowharness.Mask("hash", "baseHash")
-	paths := studioflowharness.Replace(app.KiraHome, "<home>")
+	mask := flowharness.Mask("hash", "baseHash")
+	paths := flowharness.Replace(app.KiraHome, "<home>")
 
 	// A head comment, a line comment and color before name.
 	seed := "# Staging servers for the web team.\n" +
@@ -39,18 +39,18 @@ func TestApiVariablesForm(t *testing.T) {
 	if err != nil || view.Text != seed || view.Problem != nil || view.Kind != "environment" {
 		t.Fatalf("File = %+v, %v, want the seed", view, err)
 	}
-	app.Contract(t, sc, "file#read", view, mask, paths)
+	app.StudioContract(t, sc, "file#read", view, mask, paths)
 
 	var recorded []any
 	call := func(name, file string, edits []configfs.Edit, text string) configfs.FormResult {
 		t.Helper()
 		args := bridge.ApiFormArgs{File: file, Text: text, Edits: edits}
-		app.Contract(t, sc, "args:ApiConfigService.Form#"+name, args, mask, paths)
+		app.StudioContract(t, sc, "args:ApiConfigService.Form#"+name, args, mask, paths)
 		res, err := cfg.Form(args)
 		if err != nil {
 			t.Fatalf("Form %s: %v", name, err)
 		}
-		app.Contract(t, sc, "form#"+name, res, mask, paths)
+		app.StudioContract(t, sc, "form#"+name, res, mask, paths)
 		recorded = append(recorded, args, res)
 		return res
 	}
@@ -114,7 +114,7 @@ func TestApiVariablesForm(t *testing.T) {
 	if err != nil || colView.Kind != "collection" {
 		t.Fatalf("File of a collection = %+v, %v", colView, err)
 	}
-	app.Contract(t, sc, "file#collection", colView, mask, paths)
+	app.StudioContract(t, sc, "file#collection", colView, mask, paths)
 	vars := call("collection", col.File, []configfs.Edit{{Path: []string{"variables"}, Value: []any{
 		map[string]any{"name": "base_url", "value": "https://orders.example.com"},
 	}}}, colView.Text)
@@ -124,7 +124,7 @@ func TestApiVariablesForm(t *testing.T) {
 
 	// Save: a stale hash conflicts; the right one writes, rows follow and the change event fires.
 	saveArgs := bridge.ApiSaveFileArgs{File: envFile, Text: edited.Text, BaseHash: view.Hash}
-	app.Contract(t, sc, "args:ApiConfigService.SaveFile", saveArgs, mask, paths)
+	app.StudioContract(t, sc, "args:ApiConfigService.SaveFile", saveArgs, mask, paths)
 	if _, err := cfg.SaveFile(bridge.ApiSaveFileArgs{File: envFile, Text: edited.Text, BaseHash: "stale"}); testx.AsIpcErr(t, err).Code != "E_CONFLICT" {
 		t.Errorf("SaveFile with a stale hash = %v, want E_CONFLICT", err)
 	}
@@ -133,7 +133,7 @@ func TestApiVariablesForm(t *testing.T) {
 	if err != nil || out.Problem != nil || out.Text != edited.Text {
 		t.Fatalf("SaveFile = %+v, %v", out, err)
 	}
-	app.Contract(t, sc, "file#saved", out, mask, paths)
+	app.StudioContract(t, sc, "file#saved", out, mask, paths)
 	if len(apiChanges(t, app, mark)) == 0 {
 		t.Error("SaveFile emitted no kira:api:dataChanged")
 	}

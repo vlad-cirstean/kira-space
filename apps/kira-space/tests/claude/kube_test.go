@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
 )
 
@@ -16,9 +16,9 @@ import (
 // namespace, through the embedded DB MCP server.
 func TestKubeMcpThroughClaude(t *testing.T) {
 	app := newRealApp(t)
-	fake := studioflowharness.NewKubeFake(t)
+	fake := flowharness.NewKubeFake(t)
 	cfgPath := filepath.Join(app.Home, "kubeconfig")
-	fake.WriteKubeconfig(t, cfgPath, studioflowharness.KubeconfigOpts{BinDir: app.BinDir})
+	fake.WriteKubeconfig(t, cfgPath, flowharness.KubeconfigOpts{BinDir: app.BinDir})
 	t.Setenv("KUBECONFIG", cfgPath)
 	res, err := app.W.Kubernetes.Clusters()
 	if err != nil {
@@ -52,7 +52,7 @@ func TestKubeMcpThroughClaude(t *testing.T) {
 	}
 
 	listClusters, listResources := "mcp__"+dbServer+"__kube_list_clusters", "mcp__"+dbServer+"__kube_list_resources"
-	out := app.claudeP(t, t.TempDir(),
+	out, _ := app.claudeP(t, t.TempDir(), nil,
 		"Call kube_list_clusters once. Then call kube_list_resources with the kind v1/pods and the namespace default for the cluster whose context is kind-dev. Reply with the word done.",
 		"--strict-mcp-config", "--mcp-config", cfg, "--allowedTools", listClusters+","+listResources,
 		"--output-format", "stream-json", "--verbose")

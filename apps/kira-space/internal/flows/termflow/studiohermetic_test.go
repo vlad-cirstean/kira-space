@@ -1,4 +1,4 @@
-package termflow
+package termflow_test
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
@@ -16,7 +16,7 @@ import (
 // project,local sources, and a smart run ticks an MCP server from the shared agent settings, not the
 // CLI's. Frontend half: automations-smart.spec.ts.
 func TestHermeticStudio(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	app.Scenario(scenario(fakeagent.Action{Name: "done"}))
 	dir := filepath.Join(app.SpaceHome, "agent")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -31,7 +31,7 @@ func TestHermeticStudio(t *testing.T) {
 	if err != nil || list.Source != "app" || len(list.Servers) != 1 || list.Servers[0].Name != "app-srv" {
 		t.Fatalf("McpServers = %+v, %v, want the shared settings' app-srv", list, err)
 	}
-	app.Contract(t, "automations-mcp-app", "ScriptRunsService.McpServers", list)
+	app.StudioContract(t, "automations-mcp-app", "ScriptRunsService.McpServers", list)
 
 	rec := newSmart(t, app, "use the tool", func(f *scripts.CustomScriptFields) {
 		f.Smart = &scripts.Smart{MCP: []scripts.MCPChoice{{Server: "app-srv", Tools: []string{"echo"}}}}

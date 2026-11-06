@@ -1,11 +1,11 @@
-package windowflow
+package windowflow_test
 
 import (
 	"path/filepath"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/prompts"
@@ -15,7 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
-func quitPrompts(app *studioflowharness.App) []prompts.Routed {
+func quitPrompts(app *flowharness.App) []prompts.Routed {
 	var out []prompts.Routed
 	for _, p := range app.W.Prompts.List() {
 		if p.Kind == prompts.KindQuit {
@@ -26,7 +26,7 @@ func quitPrompts(app *studioflowharness.App) []prompts.Routed {
 }
 
 func TestQuitConfirm(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	app.W.Windows.Add("main", 0, nil, func() {})
 	hold := filepath.Join(t.TempDir(), "hold")
 	app.Scenario(fakeagent.Scenario{Claude: map[string][]fakeagent.Action{"*": {{WaitFile: hold}, {Name: "done"}}}})
@@ -68,7 +68,7 @@ func TestQuitConfirm(t *testing.T) {
 	if want := (shell.QuitStatus{Asking: true, Scripts: 1}); asking != want {
 		t.Fatalf("QuitStatus = %+v, want %+v", asking, want)
 	}
-	app.Contract(t, "quit-confirm", "LifecycleService.QuitStatus#asking", asking)
+	app.StudioContract(t, "quit-confirm", "LifecycleService.QuitStatus#asking", asking)
 	if len(app.Events.Since(0, appevent.ChannelFlushBeforeClose)) != 0 {
 		t.Fatal("the flush started before the user confirmed")
 	}
@@ -95,7 +95,7 @@ func TestQuitConfirm(t *testing.T) {
 	app.W.Lifecycle.Flushed(bridge.LifecycleFlushedArgs{WindowKey: "main"})
 	testx.WaitUntil(t, wait, app.W.Quitter.ShouldQuit)
 
-	app.Restart(t)
+	app.Restart()
 	run, err := app.W.ScriptRuns.Get(scriptruns.IDArgs{ID: started.RunID})
 	if err != nil || !run.Resumable {
 		t.Fatalf("run after the quit = %+v, %v, want resumable", run, err)

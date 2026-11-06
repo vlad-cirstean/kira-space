@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 )
 
 func TestNamespaces(t *testing.T) {
@@ -21,7 +21,7 @@ func TestNamespaces(t *testing.T) {
 }
 
 func TestNamespacesRestricted(t *testing.T) {
-	e := boot(t, []studioflowharness.KubeFakeOption{studioflowharness.ForbidNamespaces()})
+	e := boot(t, []flowharness.KubeFakeOption{flowharness.ForbidNamespaces()})
 	got, err := e.app.W.Kubernetes.Namespaces(kubernetes.ClusterArgs{ClusterID: e.ids["kind-dev"]})
 	if err != nil {
 		t.Fatal(err)

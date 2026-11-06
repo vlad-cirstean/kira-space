@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 )
 
@@ -23,7 +23,7 @@ func connOrder(t *testing.T, list []model.ConnectionSummary, want ...string) {
 }
 
 func TestConnectionOrder(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	path := newSQLiteFile(t)
 	a := createConn(t, app, sqliteInput("a", path))
 	b := createConn(t, app, sqliteInput("b", path))
@@ -48,8 +48,8 @@ func TestConnectionOrder(t *testing.T) {
 	connOrder(t, changed, c.ID, a.ID, b.ID)
 
 	// Contract connection-order: tests/ui/connection-order.spec.ts drags and sends these args.
-	app.Contract(t, "connection-order", "args:ConnectionsService.Reorder", args)
-	app.Contract(t, "connection-order", "ConnectionsService.Reorder", got, studioflowharness.Mask("createdAt", "updatedAt"), studioflowharness.Replace(filepath.Dir(path), "<fixture>"))
+	app.StudioContract(t, "connection-order", "args:ConnectionsService.Reorder", args)
+	app.StudioContract(t, "connection-order", "ConnectionsService.Reorder", got, flowharness.Mask("createdAt", "updatedAt"), flowharness.Replace(filepath.Dir(path), "<fixture>"))
 
 	if _, err := app.W.Connections.Reorder(bridge.ConnectionsReorderArgs{IDs: []string{a.ID, a.ID}}); err == nil {
 		t.Fatal("Reorder with a duplicate id succeeded")
@@ -59,7 +59,7 @@ func TestConnectionOrder(t *testing.T) {
 	}
 
 	d := createConn(t, app, sqliteInput("d", path))
-	app.Restart(t)
+	app.Restart()
 	again, err := app.W.Connections.List()
 	if err != nil {
 		t.Fatal(err)

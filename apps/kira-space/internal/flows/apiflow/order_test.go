@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 )
 
@@ -15,10 +15,10 @@ import (
 // order in the rows (new ones append, a rename keeps the place, a restart keeps the order), and items
 // still reorder as file edits beside it.
 func TestApiOrder(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	const sc = "api-order"
 	cs, vs := app.W.Collections, app.W.Variables
-	paths := studioflowharness.Replace(app.KiraHome, "<home>")
+	paths := flowharness.Replace(app.KiraHome, "<home>")
 
 	app.WriteAPIFile(t, "alpha.collection.yaml", []byte(`name: Zeta
 items:
@@ -108,7 +108,7 @@ items:
 		slices.SortFunc(tree.Items, func(a, b model.CollectionItem) int {
 			return strings.Compare(a.CollectionID+"/"+fmt.Sprintf("%03d", a.SortOrder)+a.Name, b.CollectionID+"/"+fmt.Sprintf("%03d", b.SortOrder)+b.Name)
 		})
-		app.Contract(t, sc, key, tree, paths)
+		app.StudioContract(t, sc, key, tree, paths)
 	}
 	recordEnvs := func(key string) {
 		t.Helper()
@@ -116,7 +116,7 @@ items:
 		if err != nil {
 			t.Fatal(err)
 		}
-		app.Contract(t, sc, key, envs, paths)
+		app.StudioContract(t, sc, key, envs, paths)
 	}
 	// reorder runs fn and expects exactly one change event of kind.
 	oneChange := func(kind string, fn func()) {
@@ -141,7 +141,7 @@ items:
 	// Drag Mid above Zeta; the id left out keeps its place after the listed ones.
 	zeta, mid := collectionID("Zeta"), collectionID("Mid")
 	drag := bridge.CollectionsReorderCollectionsArgs{IDs: []string{mid, zeta}}
-	app.Contract(t, sc, "args:CollectionsService.ReorderCollections#drag", drag, paths)
+	app.StudioContract(t, sc, "args:CollectionsService.ReorderCollections#drag", drag, paths)
 	oneChange(bridge.ApiDataTree, func() {
 		if err := cs.ReorderCollections(drag); err != nil {
 			t.Fatal(err)
@@ -172,7 +172,7 @@ items:
 		t.Errorf("order after delete = %s, want Aaa,Alpha,Last", got)
 	}
 
-	app.Restart(t)
+	app.Restart()
 	cs, vs = app.W.Collections, app.W.Variables
 	if got := names(); got != "Aaa,Alpha,Last" {
 		t.Errorf("order after restart = %s, want Aaa,Alpha,Last", got)
@@ -193,7 +193,7 @@ items:
 		}
 	}
 	move := bridge.CollectionsMoveItemsArgs{ItemIDs: []string{r2}, CollectionID: collectionID("Aaa"), BeforeID: &r1}
-	app.Contract(t, sc, "args:CollectionsService.MoveItems#items", move, paths)
+	app.StudioContract(t, sc, "args:CollectionsService.MoveItems#items", move, paths)
 	if _, err := cs.MoveItems(move); err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +205,7 @@ items:
 	// Environments.
 	stage, dev := envID("stage"), envID("dev")
 	envDrag := bridge.VariablesReorderEnvironmentsArgs{IDs: []string{stage, dev}}
-	app.Contract(t, sc, "args:VariablesService.ReorderEnvironments#drag", envDrag, paths)
+	app.StudioContract(t, sc, "args:VariablesService.ReorderEnvironments#drag", envDrag, paths)
 	oneChange(bridge.ApiDataEnvironments, func() {
 		if err := vs.ReorderEnvironments(envDrag); err != nil {
 			t.Fatal(err)

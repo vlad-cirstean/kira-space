@@ -8,16 +8,16 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/grpcclient"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
 )
 
 func TestDescribeReflection(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.GRPC(t)
+	app := flowharness.New(t)
+	srv := flowharness.GRPC(t)
 
 	s := describe(t, app, describeArgs(srv.Addr))
-	app.Contract(t, "api-grpc", "GrpcService.Describe", s, studioflowharness.Replace(srv.Addr, "<grpc>"))
+	app.StudioContract(t, "api-grpc", "GrpcService.Describe", s, flowharness.Replace(srv.Addr, "<grpc>"))
 	if s.Mode != "reflection-v1" {
 		t.Errorf("mode = %q, want reflection-v1", s.Mode)
 	}
@@ -56,8 +56,8 @@ func TestDescribeReflection(t *testing.T) {
 	t.Run("server needs metadata", func(t *testing.T) { describeNeedsMetadata(t, app) })
 }
 
-func describeNeedsMetadata(t *testing.T, app *studioflowharness.App) {
-	srv := studioflowharness.GRPC(t, studioflowharness.WithRequiredMetadata("authorization", "Bearer sek-reflect"))
+func describeNeedsMetadata(t *testing.T, app *flowharness.App) {
+	srv := flowharness.GRPC(t, flowharness.WithRequiredMetadata("authorization", "Bearer sek-reflect"))
 
 	_, err := app.W.Grpc.Describe(ctx, describeArgs(srv.Addr))
 	e := ipcErr(t, err)
@@ -82,8 +82,8 @@ func describeNeedsMetadata(t *testing.T, app *studioflowharness.App) {
 }
 
 func TestDescribeProtoAndCall(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.GRPC(t)
+	app := flowharness.New(t)
+	srv := flowharness.GRPC(t)
 
 	// flow.proto in one dir, its import under a second dir reachable only through importPaths.
 	mainDir, libDir := t.TempDir(), t.TempDir()
@@ -142,15 +142,15 @@ func describeArgsProto(path string, importPaths []string) bridge.GrpcDescribeArg
 }
 
 func TestReloadAfterSchemaChange(t *testing.T) {
-	app := studioflowharness.New(t)
-	first := studioflowharness.GRPC(t)
+	app := flowharness.New(t)
+	first := flowharness.GRPC(t)
 	addr := first.Addr
 
 	if _, ok := findMethod(t, describe(t, app, describeArgs(addr)), "Extra"); ok {
 		t.Fatal("Extra present before the schema change")
 	}
 	first.Close()
-	studioflowharness.GRPC(t, studioflowharness.WithExtraMethod(), studioflowharness.WithGRPCAddr(addr))
+	flowharness.GRPC(t, flowharness.WithExtraMethod(), flowharness.WithGRPCAddr(addr))
 
 	if _, ok := findMethod(t, describe(t, app, describeArgs(addr)), "Extra"); ok {
 		t.Error("plain describe saw the new method; want the cached schema")
@@ -167,8 +167,8 @@ func TestReloadAfterSchemaChange(t *testing.T) {
 
 // A server that accepts TCP and never answers fails within the dial bound, naming target and wait.
 func TestDescribeSilentServer(t *testing.T) {
-	app := studioflowharness.New(t)
-	addr := studioflowharness.Silent(t)
+	app := flowharness.New(t)
+	addr := flowharness.Silent(t)
 
 	start := time.Now()
 	_, err := app.W.Grpc.Describe(ctx, describeArgs(addr))
@@ -183,8 +183,8 @@ func TestDescribeSilentServer(t *testing.T) {
 }
 
 func TestDescribeCancel(t *testing.T) {
-	app := studioflowharness.New(t)
-	addr, accepted := studioflowharness.SilentAccepting(t)
+	app := flowharness.New(t)
+	addr, accepted := flowharness.SilentAccepting(t)
 	args := describeArgs(addr)
 	args.OpID = newOp()
 
@@ -212,8 +212,8 @@ func TestDescribeCancel(t *testing.T) {
 }
 
 func TestCallSilentServer(t *testing.T) {
-	app := studioflowharness.New(t)
-	addr := studioflowharness.Silent(t)
+	app := flowharness.New(t)
+	addr := flowharness.Silent(t)
 
 	for _, m := range []string{"Unary", "ServerStream"} {
 		args := callArgs(addr, m, `{"text":"x"}`)
@@ -232,8 +232,8 @@ func TestCallSilentServer(t *testing.T) {
 
 // A connected server that never replies ends a unary call at its own deadline, not at Stop.
 func TestUnaryDeadline(t *testing.T) {
-	app := studioflowharness.New(t)
-	srv := studioflowharness.GRPC(t)
+	app := flowharness.New(t)
+	srv := flowharness.GRPC(t)
 	args := callArgs(srv.Addr, "Slow", `{}`)
 	args.TimeoutMs = 400
 

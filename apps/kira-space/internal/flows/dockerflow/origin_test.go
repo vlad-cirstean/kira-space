@@ -7,7 +7,7 @@ import (
 
 	"github.com/moby/moby/api/types/container"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/docker"
 )
 
@@ -78,5 +78,5 @@ func TestContainerOrigin(t *testing.T) {
 	if det.Container.Origin != "devcontainer" || det.Container.OriginName != "kira" {
 		t.Fatalf("inspect origin = %q %q, want devcontainer kira", det.Container.Origin, det.Container.OriginName)
 	}
-	app.Contract(t, "docker-disk", "DockerService.Containers#origins", got, studioflowharness.Replace(d.Prefix(), "kira-flow-"), studioflowharness.Replace(runID, "run"))
+	app.StudioContract(t, "docker-disk", "DockerService.Containers#origins", got, flowharness.Replace(d.Prefix(), "kira-flow-"), flowharness.Replace(runID, "run"))
 }

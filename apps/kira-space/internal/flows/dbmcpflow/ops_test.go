@@ -11,7 +11,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/model"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
@@ -118,7 +118,7 @@ func TestDbMcpCancelOperation(t *testing.T) {
 	}
 	row := f.waitStatus(t, op.OpID, "running")
 	// Contract ops-running: tests/ui/running-ops-status.spec.ts renders this running row.
-	f.app.Contract(t, "ops-running", "StudioOpsService.Recent", []model.OpRecord{row}, studioflowharness.Mask("id", "startedAt", "durationMs", "connectionId"))
+	f.app.StudioContract(t, "ops-running", "StudioOpsService.Recent", []model.OpRecord{row}, flowharness.Mask("id", "startedAt", "durationMs", "connectionId"))
 
 	if res := cancelOp(t, b, op.OpID); res.IsError || !strings.Contains(text(res), `"cancelled":true`) {
 		t.Fatalf("cancel_operation = %q", text(res))

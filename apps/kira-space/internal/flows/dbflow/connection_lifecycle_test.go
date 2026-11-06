@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -16,11 +16,11 @@ import (
 // file with its comments and gives the copy its own password reference, Delete removes file and row,
 // and DeleteFile removes a file that never held a connection and refuses one that has a row.
 func TestConnectionLifecycle(t *testing.T) {
-	app := studioflowharness.New(t)
+	app := flowharness.New(t)
 	const sc = "connection-lifecycle"
 	cfg := app.W.ConnectionConfig
-	mask := studioflowharness.Mask("hash", "baseHash", "createdAt", "updatedAt")
-	paths := studioflowharness.Replace(app.KiraHome, "<home>")
+	mask := flowharness.Mask("hash", "baseHash", "createdAt", "updatedAt")
+	paths := flowharness.Replace(app.KiraHome, "<home>")
 
 	in := sqliteInput("Pg", "")
 	in.Kind, in.Database = "postgres", ptr("app")
@@ -37,12 +37,12 @@ func TestConnectionLifecycle(t *testing.T) {
 	}
 
 	argsID := bridge.ConnectionsIDArgs{ID: conn.ID}
-	app.Contract(t, sc, "args:ConnectionsService.Duplicate", argsID, mask, paths)
+	app.StudioContract(t, sc, "args:ConnectionsService.Duplicate", argsID, mask, paths)
 	dup, err := app.W.Connections.Duplicate(argsID)
 	if err != nil || dup.File != "pg-copy.yaml" {
 		t.Fatalf("Duplicate = %+v, %v, want pg-copy.yaml", dup, err)
 	}
-	app.Contract(t, sc, "duplicate", dup, mask, paths)
+	app.StudioContract(t, sc, "duplicate", dup, mask, paths)
 	copyFile, err := cfg.File(bridge.ConnectionFileArgs{File: dup.File})
 	if err != nil {
 		t.Fatal(err)
@@ -55,7 +55,7 @@ func TestConnectionLifecycle(t *testing.T) {
 	if strings.Contains(copyFile.Text, "${secret:pg.password}") || strings.Contains(copyFile.Text, fileSecret) {
 		t.Errorf("copy shares the source's password reference or holds a value:\n%s", copyFile.Text)
 	}
-	app.Contract(t, sc, "file#copy", copyFile, mask, paths)
+	app.StudioContract(t, sc, "file#copy", copyFile, mask, paths)
 
 	if err := app.W.Connections.Delete(bridge.ConnectionsIDArgs{ID: dup.ID}); err != nil {
 		t.Fatal(err)
@@ -78,8 +78,8 @@ func TestConnectionLifecycle(t *testing.T) {
 		return err == nil && v.Problem != nil && v.ID == ""
 	})
 	view, _ := cfg.File(bf)
-	app.Contract(t, sc, "file#broken", view, mask, paths)
-	app.Contract(t, sc, "args:ConnectionConfigService.DeleteFile", bf, mask, paths)
+	app.StudioContract(t, sc, "file#broken", view, mask, paths)
+	app.StudioContract(t, sc, "args:ConnectionConfigService.DeleteFile", bf, mask, paths)
 	if err := cfg.DeleteFile(bridge.ConnectionFileArgs{File: conn.File}); err == nil {
 		t.Fatal("DeleteFile of a file with a connection succeeded")
 	}

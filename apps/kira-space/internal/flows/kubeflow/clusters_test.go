@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studioflowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 )
 
 func TestClusters(t *testing.T) {
@@ -37,7 +37,7 @@ func TestClusters(t *testing.T) {
 		for k, v := range e.ids {
 			before[k] = v
 		}
-		e.app.Restart(t)
+		e.app.Restart()
 		again, err := e.app.W.Kubernetes.Clusters()
 		if err != nil {
 			t.Fatal(err)
@@ -73,6 +73,6 @@ func TestClusters(t *testing.T) {
 		if got.Config.State != "invalid" || got.Config.Message == "" || len(got.Clusters) != 0 {
 			t.Fatalf("result = %+v", got)
 		}
-		e.contract(t, "KubernetesService.Clusters:invalid", got, studioflowharness.Mask("message"))
+		e.contract(t, "KubernetesService.Clusters:invalid", got, flowharness.Mask("message"))
 	})
 }
