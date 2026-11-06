@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -426,11 +428,11 @@ func (s *Store) moveAcross(g *moveGroup, dest, destCollection, parentKey, before
 	}
 	rows := make([]keyPair, 0, len(pairs))
 	for _, p := range pairs {
-		from, err := s.rowID(`SELECT id FROM api_items WHERE collection_id = ? AND item_key = ?`, g.collection, p.from)
+		from, err := s.itemIDByKey(g.collection, p.from)
 		if err != nil {
 			return s.undoCopies(dest, tops, err)
 		}
-		to, err := s.rowID(`SELECT id FROM api_items WHERE collection_id = ? AND item_key = ?`, destCollection, p.to)
+		to, err := s.itemIDByKey(destCollection, p.to)
 		if err != nil {
 			return s.undoCopies(dest, tops, err)
 		}
@@ -515,8 +517,13 @@ func (s *Store) repointHistory(rows []keyPair, reverse bool) error {
 		if reverse {
 			from, to = to, from
 		}
-		for _, table := range []string{"api_response_history", "api_grpc_history"} {
-			if _, err := tx.Exec(`UPDATE `+table+` SET item_id = ? WHERE item_id = ?`, to, from); err != nil {
+		for _, h := range []struct{ table, itemID string }{
+			{kiraschema.APIResponseHistory.Table, kiraschema.APIResponseHistory.ItemID},
+			{kiraschema.APIGrpcHistory.Table, kiraschema.APIGrpcHistory.ItemID},
+		} {
+			ub := s.o.Dialect.Update(h.table)
+			ub.Set(ub.Assign(h.itemID, to)).Where(ub.Equal(h.itemID, from))
+			if _, err := sqlb.Exec(tx, ub); err != nil {
 				return fmt.Errorf("apifiles: move history of %s: %w", from, err)
 			}
 		}
@@ -528,7 +535,10 @@ func (s *Store) repointHistory(rows []keyPair, reverse bool) error {
 
 func (s *Store) environmentFile(id string) (string, error) {
 	var stem sql.NullString
-	err := s.o.DB.QueryRow(`SELECT stem FROM api_environments WHERE id = ?`, id).Scan(&stem)
+	c := kiraschema.APIEnvironments
+	sel := s.o.Dialect.Select(c.Stem).From(c.Table)
+	sel.Where(sel.Equal(c.ID, id))
+	err := sqlb.QueryRow(s.o.DB, sel).Scan(&stem)
 	if errors.Is(err, sql.ErrNoRows) || err == nil && !stem.Valid {
 		return "", fmt.Errorf("%w: environment %s", ErrNotFound, id)
 	}
@@ -581,5 +591,5 @@ func (s *Store) DuplicateEnvironment(id string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return s.rowID(`SELECT id FROM api_environments WHERE stem = ?`, stem)
+	return s.environmentIDByStem(stem)
 }

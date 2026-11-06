@@ -12,13 +12,17 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/huandu/go-sqlbuilder"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/secrets"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // Options builds a Store.
 type Options struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Dialect sqlb.Dialect
 	// Dir is the api folder, <home>/config/api.
 	Dir     string
 	Secrets *Secrets
@@ -131,10 +135,10 @@ func (s *Store) syncLocked() ([]configfs.Entry[CollectionFile], []configfs.Entry
 func (s *Store) pruneOrphans(ce []configfs.Entry[CollectionFile], ee []configfs.Entry[EnvironmentFile]) error {
 	return s.tx(func(tx *sql.Tx, ch *Changes) error {
 		for _, t := range []pruneTarget{
-			{"api_collections", CollectionExt, collectionFiles(ce), OwnerCollection, &ch.Tree},
-			{"api_environments", EnvironmentExt, environmentFiles(ee), OwnerEnvironment, &ch.Environments},
+			s.collectionPrune(ce, ch),
+			s.environmentPrune(ee, ch),
 		} {
-			if err := pruneTable(tx, ch, t); err != nil {
+			if err := pruneTable(tx, s.o.Dialect, ch, t); err != nil {
 				return err
 			}
 		}
@@ -142,41 +146,59 @@ func (s *Store) pruneOrphans(ce []configfs.Entry[CollectionFile], ee []configfs.
 	})
 }
 
+// pruneTarget names one stem-keyed table; its rows are ordered by orderBy when reindexed.
 type pruneTarget struct {
-	table, ext string
-	files      []string
-	scope      string
-	changed    *bool
+	table, id, stem, order, ext string
+	orderBy                     []string
+	files                       []string
+	scope                       string
+	changed                     *bool
+}
+
+func (s *Store) collectionPrune(ce []configfs.Entry[CollectionFile], ch *Changes) pruneTarget {
+	c := kiraschema.APICollections
+	return pruneTarget{table: c.Table, id: c.ID, stem: c.Stem, order: c.SortOrder, orderBy: []string{c.SortOrder, c.Name, c.Stem},
+		ext: CollectionExt, files: collectionFiles(ce), scope: OwnerCollection, changed: &ch.Tree}
+}
+
+func (s *Store) environmentPrune(ee []configfs.Entry[EnvironmentFile], ch *Changes) pruneTarget {
+	c := kiraschema.APIEnvironments
+	return pruneTarget{table: c.Table, id: c.ID, stem: c.Stem, order: c.SortOrder, orderBy: []string{c.SortOrder, c.Name, c.Stem},
+		ext: EnvironmentExt, files: environmentFiles(ee), scope: OwnerEnvironment, changed: &ch.Environments}
 }
 
 // pruneTable deletes rows of one table whose stem has no file, then reindexes.
-func pruneTable(tx *sql.Tx, ch *Changes, t pruneTarget) error {
+func pruneTable(tx *sql.Tx, d sqlb.Dialect, ch *Changes, t pruneTarget) error {
 	present := map[string]bool{}
 	for _, f := range t.files {
 		if stem, ok := StemOf(f, t.ext); ok {
 			present[stem] = true
 		}
 	}
-	gone, err := orphanIDs(tx, t.table, present)
+	gone, err := orphanIDs(tx, d, t, present)
 	if err != nil {
 		return err
 	}
 	for _, id := range gone {
-		if _, err := tx.Exec(`DELETE FROM `+t.table+` WHERE id = ?`, id); err != nil {
+		del := d.DeleteFrom(t.table)
+		del.Where(del.Equal(t.id, id))
+		if _, err := sqlb.Exec(tx, del); err != nil {
 			return err
 		}
 		*t.changed = true
 		ch.variables(t.scope, id)
 	}
 	if len(gone) > 0 {
-		return reindex(tx, t.table)
+		return reindex(tx, d, t.table, t.id, t.order, t.orderBy...)
 	}
 	return nil
 }
 
 // orphanIDs returns ids of rows whose stem is not in present.
-func orphanIDs(tx *sql.Tx, table string, present map[string]bool) ([]string, error) {
-	rows, err := tx.Query(`SELECT id, stem FROM ` + table + ` WHERE stem IS NOT NULL`)
+func orphanIDs(tx *sql.Tx, d sqlb.Dialect, t pruneTarget, present map[string]bool) ([]string, error) {
+	sel := d.Select(t.id, t.stem).From(t.table)
+	sel.Where(sel.IsNotNull(t.stem))
+	rows, err := sqlb.Query(tx, sel)
 	if err != nil {
 		return nil, err
 	}
@@ -332,7 +354,10 @@ func (s *Store) secretNames() (saved []string, referenced map[string]bool, err e
 	if err != nil {
 		return nil, nil, fmt.Errorf("apifiles: list saved secrets: %w", err)
 	}
-	rows, err := s.o.DB.Query(`SELECT DISTINCT secret_ref FROM api_variables WHERE is_secret = 1 AND secret_ref IS NOT NULL`)
+	c := kiraschema.APIVariables
+	sel := s.o.Dialect.Select(c.SecretRef).Distinct().From(c.Table)
+	sel.Where(sel.Equal(c.IsSecret, 1), sel.IsNotNull(c.SecretRef))
+	rows, err := sqlb.Query(s.o.DB, sel)
 	if err != nil {
 		return nil, nil, fmt.Errorf("apifiles: list referenced secrets: %w", err)
 	}
@@ -398,8 +423,11 @@ func fileExists(dir, name string) bool {
 // locate finds the collection file and item id of an item row.
 func (s *Store) locate(itemID string) (file, key, collectionID string, err error) {
 	var stem string
-	err = s.o.DB.QueryRow(`SELECT c.stem, i.item_key, c.id FROM api_items i JOIN api_collections c ON c.id = i.collection_id
-		WHERE i.id = ? AND c.stem IS NOT NULL AND i.item_key IS NOT NULL`, itemID).Scan(&stem, &key, &collectionID)
+	c, i := kiraschema.APICollections, kiraschema.APIItems
+	sel := s.o.Dialect.Select("c."+c.Stem, "i."+i.ItemKey, "c."+c.ID).From(i.Table + " i")
+	sel.Join(c.Table+" c", "c."+c.ID+" = i."+i.CollectionID)
+	sel.Where(sel.Equal("i."+i.ID, itemID), sel.IsNotNull("c."+c.Stem), sel.IsNotNull("i."+i.ItemKey))
+	err = sqlb.QueryRow(s.o.DB, sel).Scan(&stem, &key, &collectionID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", "", "", fmt.Errorf("%w: item %s", ErrNotFound, itemID)
 	}
@@ -411,7 +439,10 @@ func (s *Store) locate(itemID string) (file, key, collectionID string, err error
 
 func (s *Store) collectionFile(collectionID string) (string, error) {
 	var stem sql.NullString
-	err := s.o.DB.QueryRow(`SELECT stem FROM api_collections WHERE id = ?`, collectionID).Scan(&stem)
+	c := kiraschema.APICollections
+	sel := s.o.Dialect.Select(c.Stem).From(c.Table)
+	sel.Where(sel.Equal(c.ID, collectionID))
+	err := sqlb.QueryRow(s.o.DB, sel).Scan(&stem)
 	if errors.Is(err, sql.ErrNoRows) || err == nil && !stem.Valid {
 		return "", fmt.Errorf("%w: collection %s", ErrNotFound, collectionID)
 	}
@@ -515,7 +546,7 @@ func (s *Store) CreateCollection(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return s.rowID(`SELECT id FROM api_collections WHERE stem = ?`, stem)
+	return s.collectionIDByStem(stem)
 }
 
 // CreateEnvironment writes a new environment file and returns the row id.
@@ -526,12 +557,33 @@ func (s *Store) CreateEnvironment(f EnvironmentFile) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return s.rowID(`SELECT id FROM api_environments WHERE stem = ?`, stem)
+	return s.environmentIDByStem(stem)
 }
 
-func (s *Store) rowID(query string, args ...any) (string, error) {
+func (s *Store) collectionIDByStem(stem string) (string, error) {
+	c := kiraschema.APICollections
+	sel := s.o.Dialect.Select(c.ID).From(c.Table)
+	sel.Where(sel.Equal(c.Stem, stem))
+	return s.rowID(sel)
+}
+
+func (s *Store) environmentIDByStem(stem string) (string, error) {
+	c := kiraschema.APIEnvironments
+	sel := s.o.Dialect.Select(c.ID).From(c.Table)
+	sel.Where(sel.Equal(c.Stem, stem))
+	return s.rowID(sel)
+}
+
+func (s *Store) itemIDByKey(collectionID, key string) (string, error) {
+	c := kiraschema.APIItems
+	sel := s.o.Dialect.Select(c.ID).From(c.Table)
+	sel.Where(sel.Equal(c.CollectionID, collectionID), sel.Equal(c.ItemKey, key))
+	return s.rowID(sel)
+}
+
+func (s *Store) rowID(sel *sqlbuilder.SelectBuilder) (string, error) {
 	var id string
-	if err := s.o.DB.QueryRow(query, args...).Scan(&id); err != nil {
+	if err := sqlb.QueryRow(s.o.DB, sel).Scan(&id); err != nil {
 		return "", fmt.Errorf("apifiles: the written row is missing: %w", err)
 	}
 	return id, nil
@@ -605,7 +657,7 @@ func (s *Store) CreateItem(collectionID, parentItemID string, n NewItem) (string
 	if err != nil {
 		return "", err
 	}
-	return s.rowID(`SELECT id FROM api_items WHERE collection_id = ? AND item_key = ?`, collectionID, newKey)
+	return s.itemIDByKey(collectionID, newKey)
 }
 
 // StemOfCollection returns the file stem of a collection row.

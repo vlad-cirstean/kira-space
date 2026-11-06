@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // EnvironmentRef is an environment as its file last read: the last good value, so an edit that
@@ -37,7 +39,10 @@ func (s *Store) EnvironmentList() ([]EnvironmentRef, error) {
 			continue
 		}
 		var id string
-		err := s.o.DB.QueryRow(`SELECT id FROM api_environments WHERE stem = ?`, stem).Scan(&id)
+		c := kiraschema.APIEnvironments
+		sb := s.o.Dialect.Select(c.ID).From(c.Table)
+		sb.Where(sb.Equal(c.Stem, stem))
+		err := sqlb.QueryRow(s.o.DB, sb).Scan(&id)
 		if errors.Is(err, sql.ErrNoRows) {
 			continue
 		}

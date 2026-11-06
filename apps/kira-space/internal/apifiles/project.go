@@ -12,8 +12,9 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/ids"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/kiratime"
-	"github.com/kirathecat/kira-studio/internal/sqlitex"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 const (
@@ -43,9 +44,10 @@ func (p *projection) Record(file, valueJSON string, now int64) error {
 		return nil
 	}
 	return p.s.tx(func(tx *sql.Tx, ch *Changes) error {
-		if _, err := tx.Exec(`INSERT INTO config_last_valid (folder, file, value_json, recorded_at) VALUES (?, ?, ?, ?)
-			ON CONFLICT(folder, file) DO UPDATE SET value_json = excluded.value_json, recorded_at = excluded.recorded_at`,
-			p.folder, file, valueJSON, now); err != nil {
+		c := kiraschema.ConfigLastValid
+		ib := p.s.o.Dialect.InsertInto(c.Table).Cols(c.Folder, c.File, c.ValueJSON, c.RecordedAt).Values(p.folder, file, valueJSON, now)
+		sqlb.Upsert(ib, []string{c.Folder, c.File}, []string{c.ValueJSON, c.RecordedAt}, "")
+		if _, err := sqlb.Exec(tx, ib); err != nil {
 			return fmt.Errorf("apifiles: record last valid %s: %w", file, err)
 		}
 		return p.record(tx, stem, valueJSON, ch)
@@ -54,7 +56,10 @@ func (p *projection) Record(file, valueJSON string, now int64) error {
 
 func (p *projection) Forget(file string) error {
 	return p.s.tx(func(tx *sql.Tx, ch *Changes) error {
-		if _, err := tx.Exec(`DELETE FROM config_last_valid WHERE folder = ? AND file = ?`, p.folder, file); err != nil {
+		c := kiraschema.ConfigLastValid
+		del := p.s.o.Dialect.DeleteFrom(c.Table)
+		del.Where(del.Equal(c.Folder, p.folder), del.Equal(c.File, file))
+		if _, err := sqlb.Exec(tx, del); err != nil {
 			return fmt.Errorf("apifiles: forget last valid %s: %w", file, err)
 		}
 		if stem, ok := StemOf(file, p.ext); ok {
@@ -100,20 +105,31 @@ func (s *Store) recordCollection(tx *sql.Tx, stem, valueJSON string, ch *Changes
 		return fmt.Errorf("apifiles: decode %s: %w", stem, err)
 	}
 	now := kiratime.NowMs()
+	d := s.o.Dialect
+	c := kiraschema.APICollections
 	var id, name string
-	err := tx.QueryRow(`SELECT id, name FROM api_collections WHERE stem = ?`, stem).Scan(&id, &name)
+	sel := d.Select(c.ID, c.Name).From(c.Table)
+	sel.Where(sel.Equal(c.Stem, stem))
+	err := sqlb.QueryRow(tx, sel).Scan(&id, &name)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		id = ids.NewID()
-		if _, err := tx.Exec(`INSERT INTO api_collections (id, name, sort_order, origin_json, created_at, updated_at, variables_promoted, stem)
-			VALUES (?, ?, (SELECT COALESCE(MAX(sort_order) + 1, 0) FROM api_collections), ?, ?, ?, 1, ?)`, id, f.Name, s.takeOrigin(stem, ""), now, now, stem); err != nil {
+		order, err := sqlb.NextSortOrder(tx, d, c.Table, c.SortOrder, nil)
+		if err != nil {
+			return err
+		}
+		ib := d.InsertInto(c.Table).Cols(c.ID, c.Name, c.SortOrder, c.OriginJSON, c.CreatedAt, c.UpdatedAt, c.VariablesPromoted, c.Stem).
+			Values(id, f.Name, order, s.takeOrigin(stem, ""), now, now, 1, stem)
+		if _, err := sqlb.Exec(tx, ib); err != nil {
 			return fmt.Errorf("apifiles: insert collection %s: %w", stem, err)
 		}
 		ch.Tree = true
 	case err != nil:
 		return fmt.Errorf("apifiles: read collection %s: %w", stem, err)
 	case name != f.Name:
-		if _, err := tx.Exec(`UPDATE api_collections SET name = ?, updated_at = ? WHERE id = ?`, f.Name, now, id); err != nil {
+		ub := d.Update(c.Table)
+		ub.Set(ub.Assign(c.Name, f.Name), ub.Assign(c.UpdatedAt, now)).Where(ub.Equal(c.ID, id))
+		if _, err := sqlb.Exec(tx, ub); err != nil {
 			return fmt.Errorf("apifiles: rename collection %s: %w", stem, err)
 		}
 		ch.Tree = true
@@ -121,27 +137,33 @@ func (s *Store) recordCollection(tx *sql.Tx, stem, valueJSON string, ch *Changes
 	if err := s.syncItems(tx, id, stem, f.Items, ch); err != nil {
 		return err
 	}
-	if err := syncVariables(tx, OwnerCollection, id, f.Variables, ch); err != nil {
+	if err := syncVariables(tx, d, OwnerCollection, id, f.Variables, ch); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (s *Store) forgetCollection(tx *sql.Tx, stem string, ch *Changes) error {
+	d := s.o.Dialect
+	c := kiraschema.APICollections
 	var id string
-	err := tx.QueryRow(`SELECT id FROM api_collections WHERE stem = ?`, stem).Scan(&id)
+	sel := d.Select(c.ID).From(c.Table)
+	sel.Where(sel.Equal(c.Stem, stem))
+	err := sqlb.QueryRow(tx, sel).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
 	if err != nil {
 		return fmt.Errorf("apifiles: read collection %s: %w", stem, err)
 	}
-	if _, err := tx.Exec(`DELETE FROM api_collections WHERE id = ?`, id); err != nil {
+	del := d.DeleteFrom(c.Table)
+	del.Where(del.Equal(c.ID, id))
+	if _, err := sqlb.Exec(tx, del); err != nil {
 		return fmt.Errorf("apifiles: delete collection %s: %w", stem, err)
 	}
 	ch.Tree = true
 	ch.variables(OwnerCollection, id)
-	return reindex(tx, "api_collections")
+	return reindex(tx, d, c.Table, c.ID, c.SortOrder, c.Name, c.Stem)
 }
 
 type flatItem struct {
@@ -201,7 +223,9 @@ func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, c
 	if err := flatten(items, "", &flat); err != nil {
 		return err
 	}
-	existing, unkeyed, err := loadItemRows(tx, collectionID, stem)
+	d := s.o.Dialect
+	c := kiraschema.APIItems
+	existing, unkeyed, err := loadItemRows(tx, d, collectionID, stem)
 	if err != nil {
 		return err
 	}
@@ -222,20 +246,24 @@ func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, c
 		}
 		ids[f.key] = old.id
 		kept[old.id] = true
-		if err := updateItem(tx, old, parent, f, now, ch); err != nil {
+		if err := updateItem(tx, d, old, parent, f, now, ch); err != nil {
 			return err
 		}
 	}
 	for _, r := range existing {
 		if !kept[r.id] {
-			if _, err := tx.Exec(`DELETE FROM api_items WHERE id = ?`, r.id); err != nil {
+			del := d.DeleteFrom(c.Table)
+			del.Where(del.Equal(c.ID, r.id))
+			if _, err := sqlb.Exec(tx, del); err != nil {
 				return fmt.Errorf("apifiles: delete item: %w", err)
 			}
 			ch.Tree = true
 		}
 	}
 	for _, id := range unkeyed {
-		if _, err := tx.Exec(`DELETE FROM api_items WHERE id = ?`, id); err != nil {
+		del := d.DeleteFrom(c.Table)
+		del.Where(del.Equal(c.ID, id))
+		if _, err := sqlb.Exec(tx, del); err != nil {
 			return fmt.Errorf("apifiles: delete unkeyed item: %w", err)
 		}
 		ch.Tree = true
@@ -244,9 +272,12 @@ func (s *Store) syncItems(tx *sql.Tx, collectionID, stem string, items []Item, c
 }
 
 // loadItemRows returns the collection's rows by item key and the ids of rows with no key.
-func loadItemRows(tx *sql.Tx, collectionID, stem string) (map[string]itemRow, []string, error) {
-	rows, err := tx.Query(`SELECT id, COALESCE(item_key, ''), COALESCE(parent_id, ''), kind, name, sort_order, method, url, protocol, request_json, origin_json
-		FROM api_items WHERE collection_id = ?`, collectionID)
+func loadItemRows(tx *sql.Tx, d sqlb.Dialect, collectionID, stem string) (map[string]itemRow, []string, error) {
+	c := kiraschema.APIItems
+	sel := d.Select(c.ID, "COALESCE("+c.ItemKey+", '')", "COALESCE("+c.ParentID+", '')", c.Kind, c.Name, c.SortOrder, c.Method, c.URL,
+		c.Protocol, c.RequestJSON, c.OriginJSON).From(c.Table)
+	sel.Where(sel.Equal(c.CollectionID, collectionID))
+	rows, err := sqlb.Query(tx, sel)
 	if err != nil {
 		return nil, nil, fmt.Errorf("apifiles: read items of %s: %w", stem, err)
 	}
@@ -288,9 +319,12 @@ func nullable(s string) any {
 func (s *Store) insertItem(tx *sql.Tx, collectionID, stem, parent string, f flatItem, now int64, ch *Changes) (string, error) {
 	id := ids.NewID()
 	kind := itemKind(f)
-	if _, err := tx.Exec(`INSERT INTO api_items (id, collection_id, parent_id, kind, name, sort_order, method, url, protocol, request_json, origin_json, created_at, updated_at, item_key)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, collectionID, nullable(parent), kind, f.name, f.order, f.method, f.url, f.protocol, f.requestJSON, s.takeOrigin(stem, f.key), now, now, f.key); err != nil {
+	c := kiraschema.APIItems
+	ib := s.o.Dialect.InsertInto(c.Table).Cols(c.ID, c.CollectionID, c.ParentID, c.Kind, c.Name, c.SortOrder, c.Method, c.URL, c.Protocol,
+		c.RequestJSON, c.OriginJSON, c.CreatedAt, c.UpdatedAt, c.ItemKey).
+		Values(id, collectionID, nullable(parent), kind, f.name, f.order, f.method, f.url, f.protocol, f.requestJSON,
+			s.takeOrigin(stem, f.key), now, now, f.key)
+	if _, err := sqlb.Exec(tx, ib); err != nil {
 		return "", fmt.Errorf("apifiles: insert item %s: %w", f.key, err)
 	}
 	ch.Tree = true
@@ -300,7 +334,7 @@ func (s *Store) insertItem(tx *sql.Tx, collectionID, stem, parent string, f flat
 	return id, nil
 }
 
-func updateItem(tx *sql.Tx, old itemRow, parent string, f flatItem, now int64, ch *Changes) error {
+func updateItem(tx *sql.Tx, d sqlb.Dialect, old itemRow, parent string, f flatItem, now int64, ch *Changes) error {
 	kind := itemKind(f)
 	structural := old.parent != parent || old.kind != kind || old.name != f.name || old.order != f.order ||
 		old.method != f.method || old.url != f.url || old.protocol != f.protocol
@@ -315,8 +349,13 @@ func updateItem(tx *sql.Tx, old itemRow, parent string, f flatItem, now int64, c
 			origin = shedOrigin(old.origin, req)
 		}
 	}
-	if _, err := tx.Exec(`UPDATE api_items SET parent_id = ?, kind = ?, name = ?, sort_order = ?, method = ?, url = ?, protocol = ?, request_json = ?, origin_json = ?, updated_at = ?
-		WHERE id = ?`, nullable(parent), kind, f.name, f.order, f.method, f.url, f.protocol, f.requestJSON, origin, now, old.id); err != nil {
+	c := kiraschema.APIItems
+	ub := d.Update(c.Table)
+	ub.Set(ub.Assign(c.ParentID, nullable(parent)), ub.Assign(c.Kind, kind), ub.Assign(c.Name, f.name), ub.Assign(c.SortOrder, f.order),
+		ub.Assign(c.Method, f.method), ub.Assign(c.URL, f.url), ub.Assign(c.Protocol, f.protocol),
+		ub.Assign(c.RequestJSON, f.requestJSON), ub.Assign(c.OriginJSON, origin), ub.Assign(c.UpdatedAt, now)).
+		Where(ub.Equal(c.ID, old.id))
+	if _, err := sqlb.Exec(tx, ub); err != nil {
 		return fmt.Errorf("apifiles: update item %s: %w", f.key, err)
 	}
 	if structural {
@@ -353,52 +392,71 @@ func (s *Store) recordEnvironment(tx *sql.Tx, stem, valueJSON string, ch *Change
 	}
 	color := orDefault(f.Color, "none")
 	now := kiratime.NowMs()
+	d := s.o.Dialect
+	c := kiraschema.APIEnvironments
 	var id, name, description, oldColor string
-	err := tx.QueryRow(`SELECT id, name, description, color FROM api_environments WHERE stem = ?`, stem).Scan(&id, &name, &description, &oldColor)
+	sel := d.Select(c.ID, c.Name, c.Description, c.Color).From(c.Table)
+	sel.Where(sel.Equal(c.Stem, stem))
+	err := sqlb.QueryRow(tx, sel).Scan(&id, &name, &description, &oldColor)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		id = ids.NewID()
-		if _, err := tx.Exec(`INSERT INTO api_environments (id, name, sort_order, is_active, description, color, created_at, updated_at, stem)
-			VALUES (?, ?, (SELECT COALESCE(MAX(sort_order) + 1, 0) FROM api_environments), 0, ?, ?, ?, ?, ?)`, id, f.Name, f.Description, color, now, now, stem); err != nil {
+		order, err := sqlb.NextSortOrder(tx, d, c.Table, c.SortOrder, nil)
+		if err != nil {
+			return err
+		}
+		ib := d.InsertInto(c.Table).Cols(c.ID, c.Name, c.SortOrder, c.IsActive, c.Description, c.Color, c.CreatedAt, c.UpdatedAt, c.Stem).
+			Values(id, f.Name, order, 0, f.Description, color, now, now, stem)
+		if _, err := sqlb.Exec(tx, ib); err != nil {
 			return fmt.Errorf("apifiles: insert environment %s: %w", stem, err)
 		}
 		ch.Environments = true
 	case err != nil:
 		return fmt.Errorf("apifiles: read environment %s: %w", stem, err)
 	case name != f.Name || description != f.Description || oldColor != color:
-		if _, err := tx.Exec(`UPDATE api_environments SET name = ?, description = ?, color = ?, updated_at = ? WHERE id = ?`,
-			f.Name, f.Description, color, now, id); err != nil {
+		ub := d.Update(c.Table)
+		ub.Set(ub.Assign(c.Name, f.Name), ub.Assign(c.Description, f.Description), ub.Assign(c.Color, color), ub.Assign(c.UpdatedAt, now)).
+			Where(ub.Equal(c.ID, id))
+		if _, err := sqlb.Exec(tx, ub); err != nil {
 			return fmt.Errorf("apifiles: update environment %s: %w", stem, err)
 		}
 		ch.Environments = true
 	}
-	if err := syncVariables(tx, OwnerEnvironment, id, f.Variables, ch); err != nil {
+	if err := syncVariables(tx, d, OwnerEnvironment, id, f.Variables, ch); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (s *Store) forgetEnvironment(tx *sql.Tx, stem string, ch *Changes) error {
+	d := s.o.Dialect
+	c := kiraschema.APIEnvironments
 	var id string
-	err := tx.QueryRow(`SELECT id FROM api_environments WHERE stem = ?`, stem).Scan(&id)
+	sel := d.Select(c.ID).From(c.Table)
+	sel.Where(sel.Equal(c.Stem, stem))
+	err := sqlb.QueryRow(tx, sel).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
 	if err != nil {
 		return fmt.Errorf("apifiles: read environment %s: %w", stem, err)
 	}
-	if _, err := tx.Exec(`DELETE FROM api_environments WHERE id = ?`, id); err != nil {
+	del := d.DeleteFrom(c.Table)
+	del.Where(del.Equal(c.ID, id))
+	if _, err := sqlb.Exec(tx, del); err != nil {
 		return fmt.Errorf("apifiles: delete environment %s: %w", stem, err)
 	}
 	ch.Environments = true
 	ch.variables(OwnerEnvironment, id)
-	return reindex(tx, "api_environments")
+	return reindex(tx, d, c.Table, c.ID, c.SortOrder, c.Name, c.Stem)
 }
 
 // reindex keeps table's sort_order dense after a delete, in the order the rows already have.
-func reindex(tx *sql.Tx, table string) error {
-	return sqlitex.ReindexSortOrder(tx, `SELECT id FROM `+table+` ORDER BY sort_order, name, stem`,
-		`UPDATE `+table+` SET sort_order = ? WHERE id = ?`)
+func reindex(tx *sql.Tx, d sqlb.Dialect, table, key, order string, orderBy ...string) error {
+	return sqlb.ReindexSortOrder(tx, d, sqlb.SortSet{
+		Table: table, Key: key, Order: order,
+		Select: d.Select(key).From(table).OrderBy(orderBy...),
+	})
 }
 
 // ---- variables ----
@@ -421,12 +479,13 @@ func secretRef(ref string) string {
 // SecretNameOf is the secret name of a variable's `${secret:name}` reference, "" for none.
 func SecretNameOf(ref string) string { return secretRef(ref) }
 
-func syncVariables(tx *sql.Tx, scope, ownerID string, vars []Variable, ch *Changes) error {
-	column := "collection_id"
+func syncVariables(tx *sql.Tx, d sqlb.Dialect, scope, ownerID string, vars []Variable, ch *Changes) error {
+	c := kiraschema.APIVariables
+	column := c.CollectionID
 	if scope == OwnerEnvironment {
-		column = "environment_id"
+		column = c.EnvironmentID
 	}
-	existing, all, err := loadVariableRows(tx, column, ownerID)
+	existing, all, err := loadVariableRows(tx, d, column, ownerID)
 	if err != nil {
 		return err
 	}
@@ -446,9 +505,10 @@ func syncVariables(tx *sql.Tx, scope, ownerID string, vars []Variable, ch *Chang
 		}
 		old, found := existing[v.Name]
 		if !found {
-			if _, err := tx.Exec(`INSERT INTO api_variables (id, `+column+`, name, value, is_secret, secret_value, sort_order, description, secret_ref, created_at, updated_at)
-				VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)`,
-				ids.NewID(), ownerID, v.Name, value, boolInt(secret), i, v.Description, refArg, now, now); err != nil {
+			ib := d.InsertInto(c.Table).Cols(c.ID, column, c.Name, c.Value, c.IsSecret, c.SecretValue, c.SortOrder, c.Description, c.SecretRef,
+				c.CreatedAt, c.UpdatedAt).
+				Values(ids.NewID(), ownerID, v.Name, value, boolInt(secret), nil, i, v.Description, refArg, now, now)
+			if _, err := sqlb.Exec(tx, ib); err != nil {
 				return fmt.Errorf("apifiles: insert variable: %w", err)
 			}
 			changed = true
@@ -458,7 +518,7 @@ func syncVariables(tx *sql.Tx, scope, ownerID string, vars []Variable, ch *Chang
 		if old.secret == secret && old.value == value && old.ref == ref && old.description == v.Description && old.order == i {
 			continue
 		}
-		if err := updateVariable(tx, old, v, value, secret, refArg, i, now); err != nil {
+		if err := updateVariable(tx, d, old, v, value, secret, refArg, i, now); err != nil {
 			return err
 		}
 		changed = true
@@ -467,7 +527,9 @@ func syncVariables(tx *sql.Tx, scope, ownerID string, vars []Variable, ch *Chang
 		if kept[id] {
 			continue
 		}
-		if _, err := tx.Exec(`DELETE FROM api_variables WHERE id = ?`, id); err != nil {
+		del := d.DeleteFrom(c.Table)
+		del.Where(del.Equal(c.ID, id))
+		if _, err := sqlb.Exec(tx, del); err != nil {
 			return fmt.Errorf("apifiles: delete variable: %w", err)
 		}
 		changed = true
@@ -479,9 +541,11 @@ func syncVariables(tx *sql.Tx, scope, ownerID string, vars []Variable, ch *Chang
 }
 
 // loadVariableRows returns the owner's rows by name (first wins) and every row id.
-func loadVariableRows(tx *sql.Tx, column, ownerID string) (map[string]varRow, []string, error) {
-	rows, err := tx.Query(`SELECT id, name, value, is_secret, COALESCE(secret_ref, ''), description, sort_order FROM api_variables
-		WHERE `+column+` = ? ORDER BY sort_order, rowid`, ownerID)
+func loadVariableRows(tx *sql.Tx, d sqlb.Dialect, column, ownerID string) (map[string]varRow, []string, error) {
+	c := kiraschema.APIVariables
+	sel := d.Select(c.ID, c.Name, c.Value, c.IsSecret, "COALESCE("+c.SecretRef+", '')", c.Description, c.SortOrder).From(c.Table)
+	sel.Where(sel.Equal(column, ownerID)).OrderBy(c.SortOrder, sqlb.RowID)
+	rows, err := sqlb.Query(tx, sel)
 	if err != nil {
 		return nil, nil, fmt.Errorf("apifiles: read variables: %w", err)
 	}
@@ -507,19 +571,26 @@ func loadVariableRows(tx *sql.Tx, column, ownerID string) (map[string]varRow, []
 	return existing, all, nil
 }
 
-func updateVariable(tx *sql.Tx, old varRow, v Variable, value string, secret bool, refArg any, order int, now int64) error {
+func updateVariable(tx *sql.Tx, d sqlb.Dialect, old varRow, v Variable, value string, secret bool, refArg any, order int, now int64) error {
 	if !old.secret && !secret && old.value != value {
-		if err := recordHistory(tx, old.id, old.value, now); err != nil {
+		if err := recordHistory(tx, d, old.id, old.value, now); err != nil {
 			return err
 		}
 	}
 	if secret && !old.secret {
-		if _, err := tx.Exec(`DELETE FROM api_variable_history WHERE variable_id = ? AND is_secret = 0`, old.id); err != nil {
+		h := kiraschema.APIVariableHistory
+		del := d.DeleteFrom(h.Table)
+		del.Where(del.Equal(h.VariableID, old.id), del.Equal(h.IsSecret, 0))
+		if _, err := sqlb.Exec(tx, del); err != nil {
 			return fmt.Errorf("apifiles: purge plain history: %w", err)
 		}
 	}
-	if _, err := tx.Exec(`UPDATE api_variables SET value = ?, is_secret = ?, secret_value = NULL, secret_ref = ?, description = ?, sort_order = ?, updated_at = ? WHERE id = ?`,
-		value, boolInt(secret), refArg, v.Description, order, now, old.id); err != nil {
+	c := kiraschema.APIVariables
+	ub := d.Update(c.Table)
+	ub.Set(ub.Assign(c.Value, value), ub.Assign(c.IsSecret, boolInt(secret)), ub.Assign(c.SecretValue, nil), ub.Assign(c.SecretRef, refArg),
+		ub.Assign(c.Description, v.Description), ub.Assign(c.SortOrder, order), ub.Assign(c.UpdatedAt, now)).
+		Where(ub.Equal(c.ID, old.id))
+	if _, err := sqlb.Exec(tx, ub); err != nil {
 		return fmt.Errorf("apifiles: update variable: %w", err)
 	}
 	return nil
@@ -533,14 +604,18 @@ func boolInt(b bool) int {
 }
 
 // recordHistory keeps the value a plain variable had before an edit, then trims to the limit.
-func recordHistory(tx *sql.Tx, variableID, old string, now int64) error {
-	if _, err := tx.Exec(`INSERT INTO api_variable_history (id, variable_id, value, is_secret, secret_value, recorded_at) VALUES (?, ?, ?, 0, NULL, ?)`,
-		ids.NewID(), variableID, old, now); err != nil {
+func recordHistory(tx *sql.Tx, d sqlb.Dialect, variableID, old string, now int64) error {
+	h := kiraschema.APIVariableHistory
+	ib := d.InsertInto(h.Table).Cols(h.ID, h.VariableID, h.Value, h.IsSecret, h.SecretValue, h.RecordedAt).
+		Values(ids.NewID(), variableID, old, 0, nil, now)
+	if _, err := sqlb.Exec(tx, ib); err != nil {
 		return fmt.Errorf("apifiles: insert history: %w", err)
 	}
-	if _, err := tx.Exec(`DELETE FROM api_variable_history WHERE variable_id = ? AND id NOT IN (
-		SELECT id FROM api_variable_history WHERE variable_id = ? ORDER BY recorded_at DESC, rowid DESC LIMIT ?)`,
-		variableID, variableID, variableHistoryLimit); err != nil {
+	keep := d.Select(h.ID).From(h.Table)
+	keep.Where(keep.Equal(h.VariableID, variableID)).OrderBy(h.RecordedAt+" DESC", sqlb.RowID+" DESC").Limit(variableHistoryLimit)
+	del := d.DeleteFrom(h.Table)
+	del.Where(del.Equal(h.VariableID, variableID), del.NotIn(h.ID, keep))
+	if _, err := sqlb.Exec(tx, del); err != nil {
 		return fmt.Errorf("apifiles: trim history: %w", err)
 	}
 	return nil
