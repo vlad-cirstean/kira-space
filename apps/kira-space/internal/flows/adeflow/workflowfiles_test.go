@@ -18,7 +18,7 @@ import (
 func lastValidRow(t *testing.T, app *flowharness.App, file string) (string, bool) {
 	t.Helper()
 	var js string
-	err := app.DB().QueryRow(`SELECT workflow_json FROM ade_workflow_last_valid WHERE file_name = ?`, file).Scan(&js)
+	err := app.DB().QueryRow(`SELECT value_json FROM config_last_valid WHERE folder = 'workflows' AND file = ?`, file).Scan(&js)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", false
 	}

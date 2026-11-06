@@ -16,7 +16,7 @@ func TestMaskRulesCascadeOnConnectionDelete(t *testing.T) {
 	connID := uuid.NewString()
 	seedConnection(t, db, connID)
 
-	now := kiratime.NowISO()
+	now := kiratime.NowMs()
 	if _, err := db.Exec(`INSERT INTO connection_mask_rules (id, connection_id, table_name, column_name, mask_kind, keep_hint, correlate, created_at, updated_at)
 		VALUES (?, ?, '*', 'ssn', 'redact', 0, 0, ?, ?)`, uuid.NewString(), connID, now, now); err != nil {
 		t.Fatalf("insert rule: %v", err)

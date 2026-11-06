@@ -32,3 +32,27 @@ func ParseISO(s string) (time.Time, error) {
 	}
 	return time.Parse(time.RFC3339Nano, s)
 }
+
+// NowMs returns the current time as unix milliseconds, the form INTEGER instant columns store.
+func NowMs() int64 { return time.Now().UnixMilli() }
+
+// ISOToMs converts an ISO timestamp to unix milliseconds at the repo boundary.
+func ISOToMs(s string) (int64, error) {
+	t, err := ParseISO(s)
+	if err != nil {
+		return 0, err
+	}
+	return t.UnixMilli(), nil
+}
+
+// MsToISO is the inverse of ISOToMs: it returns the wire form of a stored instant.
+func MsToISO(ms int64) string { return FormatISO(time.UnixMilli(ms)) }
+
+// ISOOrZero is ISOToMs for a value that is always written by this code; a malformed one reads as 0.
+func ISOOrZero(s string) int64 {
+	ms, err := ISOToMs(s)
+	if err != nil {
+		return 0
+	}
+	return ms
+}

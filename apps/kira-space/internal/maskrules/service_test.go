@@ -24,7 +24,7 @@ func TestMaskSetForDoesNotCacheSetStaleAfterConcurrentWrite(t *testing.T) {
 		t.Fatalf("repos.New: %v", err)
 	}
 	t.Cleanup(func() { _ = r.Close() })
-	now := kiratime.NowISO()
+	now := kiratime.NowMs()
 	if _, err := db.DB.Exec(
 		`INSERT INTO connections (id, name, kind, color, mode, read_only, created_at, updated_at, sort_order)
 		 VALUES ('c1', 'c1', 'postgres', 'blue', 'fields', 0, ?, ?, 0)`, now, now,

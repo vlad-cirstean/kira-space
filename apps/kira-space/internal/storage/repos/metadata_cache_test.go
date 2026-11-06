@@ -102,7 +102,7 @@ func TestMetadataCachePerKindFetchedAtIsIndependent(t *testing.T) {
 	if _, err := r.DB.Exec(
 		`INSERT INTO metadata_cache (connection_id, path, kind, payload_json, fetched_at, etag)
 		 VALUES ('c1', 'db:t', 'children', ?, ?, NULL)`,
-		oldPayload, oldFetchedAt,
+		oldPayload, kiratime.ISOOrZero(oldFetchedAt),
 	); err != nil {
 		t.Fatalf("seed old children row: %v", err)
 	}
@@ -165,7 +165,7 @@ func TestMetadataCacheLegacyRowFetchedAtIsEmpty(t *testing.T) {
 	if _, err := r.DB.Exec(
 		`INSERT INTO metadata_cache (connection_id, path, kind, payload_json, fetched_at, etag)
 		 VALUES ('c1', 'db:legacy', 'children', '{"children":["a"]}', ?, NULL)`,
-		kiratime.NowISO(),
+		kiratime.NowMs(),
 	); err != nil {
 		t.Fatalf("seed legacy row: %v", err)
 	}

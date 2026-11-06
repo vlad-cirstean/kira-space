@@ -183,7 +183,7 @@ func (l *Loader) upsert(tx *sql.Tx, stem string, f File, valueJSON string) (stri
 	if err != nil {
 		return "", nil, err
 	}
-	now := kiratime.NowISO()
+	now := kiratime.NowMs()
 	var id, prev string
 	err = tx.QueryRow(`SELECT id, config_json FROM connections WHERE stem = ?`, stem).Scan(&id, &prev)
 	var old *File
@@ -263,11 +263,14 @@ func syncReviewed(tx *sql.Tx, id string, want []string) error {
 	return nil
 }
 
-type maskRow struct{ id, createdAt string }
+type maskRow struct {
+	id        string
+	createdAt int64
+}
 
 // syncMasks makes the rule rows of connection id equal the file's masks, keeping the id and creation
 // time of a rule that stays.
-func syncMasks(tx *sql.Tx, id string, masks []Mask, now string) error {
+func syncMasks(tx *sql.Tx, id string, masks []Mask, now int64) error {
 	rows, err := tx.Query(`SELECT id, lower(table_name), lower(column_name), created_at FROM connection_mask_rules WHERE connection_id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("connfiles: read masks: %w", err)

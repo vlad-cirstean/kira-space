@@ -5,6 +5,7 @@
 package migrations
 
 import (
+	"database/sql"
 	"embed"
 
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
@@ -95,9 +96,23 @@ var names = []sqlitex.MigrationSource{
 	{Version: 81, Name: "p547_db_audit", File: "0081_p547_db_audit.sql"},
 	{Version: 82, Name: "p549_db_audit_call_index", File: "0082_p549_db_audit_call_index.sql"},
 	{Version: 83, Name: "p552_quarantine", File: "0083_p552_quarantine.sql"},
+	{Version: 84, Name: "p552_core", File: "0084_p552_core.sql"},
+	{Version: 85, Name: "p552_connections", File: "0085_p552_connections.sql"},
+}
+
+// funcs attach Go work to a step by version, run after the step's SQL in the same transaction.
+var funcs = map[int]func(*sql.Tx) error{
+	85: p552Connections,
 }
 
 // All returns every migration in ascending version order.
 func All() ([]sqlitex.Migration, error) {
-	return sqlitex.LoadMigrations(files, names)
+	steps, err := sqlitex.LoadMigrations(files, names)
+	if err != nil {
+		return nil, err
+	}
+	for i := range steps {
+		steps[i].Func = funcs[steps[i].Version]
+	}
+	return steps, nil
 }

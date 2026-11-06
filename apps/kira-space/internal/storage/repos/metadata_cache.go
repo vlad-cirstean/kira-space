@@ -26,7 +26,7 @@ func readPayload(q interface {
 }, connectionID, path string) map[string]json.RawMessage {
 	var payloadJSON string
 	err := q.QueryRow(
-		`SELECT payload_json FROM metadata_cache WHERE connection_id = ? AND path = ?`,
+		`SELECT payload_json FROM connection_metadata_cache WHERE connection_id = ? AND path = ?`,
 		connectionID, path,
 	).Scan(&payloadJSON)
 	if err != nil {
@@ -110,19 +110,19 @@ func (r *MetadataCacheRepo) Put(connectionID, path, kind string, payload json.Ra
 	}
 
 	if _, err := tx.Exec(
-		`INSERT INTO metadata_cache (connection_id, path, kind, payload_json, fetched_at, etag)
+		`INSERT INTO connection_metadata_cache (connection_id, path, kind, payload_json, fetched_at, etag)
 		 VALUES (?, ?, ?, ?, ?, NULL)
 		 ON CONFLICT(connection_id, path) DO UPDATE SET kind = excluded.kind, payload_json = excluded.payload_json, fetched_at = excluded.fetched_at`,
-		connectionID, path, kind, string(encoded), now,
+		connectionID, path, kind, string(encoded), kiratime.ISOOrZero(now),
 	); err != nil {
 		return fmt.Errorf("repos/metadata_cache: upsert: %w", err)
 	}
 
 	if _, err := tx.Exec(`
-		DELETE FROM metadata_cache
+		DELETE FROM connection_metadata_cache
 		 WHERE connection_id = ?
 		   AND path NOT IN (
-		     SELECT path FROM metadata_cache
+		     SELECT path FROM connection_metadata_cache
 		      WHERE connection_id = ?
 		      ORDER BY fetched_at DESC, rowid DESC
 		      LIMIT ?
@@ -141,7 +141,7 @@ func (r *MetadataCacheRepo) Put(connectionID, path, kind string, payload json.Ra
 // the explicit form callers should prefer for that case).
 func (r *MetadataCacheRepo) Drop(connectionID, path string) error {
 	if _, err := r.DB.Exec(
-		`DELETE FROM metadata_cache WHERE connection_id = ? AND path = ?`, connectionID, path,
+		`DELETE FROM connection_metadata_cache WHERE connection_id = ? AND path = ?`, connectionID, path,
 	); err != nil {
 		return fmt.Errorf("repos/metadata_cache: drop %s:%s: %w", connectionID, path, err)
 	}
@@ -151,7 +151,7 @@ func (r *MetadataCacheRepo) Drop(connectionID, path string) error {
 // DropConnection drops every cached row for the whole connection (metadata-cache.ts's
 // dropCached with path omitted).
 func (r *MetadataCacheRepo) DropConnection(connectionID string) error {
-	if _, err := r.DB.Exec(`DELETE FROM metadata_cache WHERE connection_id = ?`, connectionID); err != nil {
+	if _, err := r.DB.Exec(`DELETE FROM connection_metadata_cache WHERE connection_id = ?`, connectionID); err != nil {
 		return fmt.Errorf("repos/metadata_cache: drop connection %s: %w", connectionID, err)
 	}
 	return nil

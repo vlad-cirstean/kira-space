@@ -35,7 +35,7 @@ func newMetadataCacheRepo(t *testing.T) *repos.MetadataCacheRepo {
 // with a foreign key into connections(id) — foreign_keys=ON (P52 §4.3) enforces this for real.
 func seedConnection(t *testing.T, db *sql.DB, connID string) {
 	t.Helper()
-	now := kiratime.NowISO()
+	now := kiratime.NowMs()
 	if _, err := db.Exec(
 		`INSERT INTO connections (id, name, kind, color, mode, read_only, created_at, updated_at, sort_order)
 		 VALUES (?, ?, 'postgres', 'blue', 'fields', 0, ?, ?, 0)`,

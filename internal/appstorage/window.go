@@ -136,7 +136,7 @@ func (r *WindowRepo) Create(rec WindowRecord) error {
 		boundsJSON = string(encoded)
 	}
 	if _, err := r.DB.Exec(
-		`INSERT INTO windows (key, "order", bounds_json) VALUES (?, ?, ?)`,
+		`INSERT INTO windows (key, sort_order, bounds_json) VALUES (?, ?, ?)`,
 		rec.Key, rec.Order, boundsJSON,
 	); err != nil {
 		return fmt.Errorf("appstorage/windows: insert %s: %w", rec.Key, err)
@@ -148,7 +148,7 @@ func (r *WindowRepo) Create(rec WindowRecord) error {
 // Kira Space's own WindowsRepo.List delegates here outright; Kira Studio's own List stays a
 // dedicated query so it can read its own extra `mode` column in the same round trip.
 func (r *WindowRepo) List() ([]WindowRecord, error) {
-	rows, err := r.DB.Query(`SELECT key, "order", bounds_json FROM windows ORDER BY "order" ASC`)
+	rows, err := r.DB.Query(`SELECT key, sort_order, bounds_json FROM windows ORDER BY sort_order ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("appstorage/windows: query: %w", err)
 	}
@@ -206,7 +206,7 @@ func (r *WindowRepo) EnsureExists(key string) error {
 	}
 	if !exists {
 		var maxOrder sql.NullInt64
-		if err := tx.QueryRow(`SELECT MAX("order") FROM windows`).Scan(&maxOrder); err != nil {
+		if err := tx.QueryRow(`SELECT MAX(sort_order) FROM windows`).Scan(&maxOrder); err != nil {
 			return fmt.Errorf("appstorage/windows: ensure max order: %w", err)
 		}
 		order := 0
@@ -214,7 +214,7 @@ func (r *WindowRepo) EnsureExists(key string) error {
 			order = int(maxOrder.Int64) + 1
 		}
 		if _, err := tx.Exec(
-			`INSERT INTO windows (key, "order", bounds_json) VALUES (?, ?, NULL)`, key, order,
+			`INSERT INTO windows (key, sort_order, bounds_json) VALUES (?, ?, NULL)`, key, order,
 		); err != nil {
 			return fmt.Errorf("appstorage/windows: ensure insert %s: %w", key, err)
 		}

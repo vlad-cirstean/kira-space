@@ -30,17 +30,20 @@ type SavedQueriesRepo struct {
 // drops the row (nil, nil) rather than propagating it.
 func scanSavedQueryRow(row rowScanner) (*model.SavedQuery, error) {
 	var (
-		q      model.SavedQuery
-		pinned int
-		usedAt sql.NullString
-		body   string
+		q         model.SavedQuery
+		pinned    int
+		usedAt    sql.NullInt64
+		createdMs int64
+		body      string
 	)
-	if err := row.Scan(&q.ID, &q.ConnectionID, &q.Path, &q.Name, &q.Kind, &body, &pinned, &q.CreatedAt, &usedAt); err != nil {
+	if err := row.Scan(&q.ID, &q.ConnectionID, &q.Path, &q.Name, &q.Kind, &body, &pinned, &createdMs, &usedAt); err != nil {
 		return nil, err
 	}
+	q.CreatedAt = kiratime.MsToISO(createdMs)
 	q.Pinned = pinned != 0
 	if usedAt.Valid {
-		q.UsedAt = &usedAt.String
+		used := kiratime.MsToISO(usedAt.Int64)
+		q.UsedAt = &used
 	}
 
 	if !json.Valid([]byte(body)) {
@@ -92,7 +95,7 @@ func decodeStrict[T any](body string) (T, error) {
 func (r *SavedQueriesRepo) listByKind(connectionID, path, kind string) ([]model.SavedQuery, error) {
 	return r.queryRows(
 		`SELECT `+savedQuerySelectColumns+`
-		   FROM saved_queries
+		   FROM connection_saved_queries
 		  WHERE connection_id = ? AND path = ? AND kind = ?
 		  ORDER BY pinned DESC, used_at DESC, name`,
 		connectionID, path, kind,
@@ -103,7 +106,7 @@ func (r *SavedQueriesRepo) listByKind(connectionID, path, kind string) ([]model.
 func (r *SavedQueriesRepo) ListDiscover(connectionID string) ([]model.SavedQuery, error) {
 	return r.queryRows(
 		`SELECT `+savedQuerySelectColumns+`
-		   FROM saved_queries
+		   FROM connection_saved_queries
 		  WHERE connection_id = ? AND kind = 'discover'
 		  ORDER BY pinned DESC, used_at DESC, name`,
 		connectionID,
@@ -147,9 +150,9 @@ func (r *SavedQueriesRepo) insert(connectionID, path, name, kind string, body []
 	}
 	name = strings.TrimSpace(name)
 	newID := ids.NewID()
-	now := kiratime.NowISO()
+	now := kiratime.NowMs()
 	if _, err := r.DB.Exec(
-		`INSERT INTO saved_queries (id, connection_id, path, name, kind, body, pinned, created_at, used_at)
+		`INSERT INTO connection_saved_queries (id, connection_id, path, name, kind, body, pinned, created_at, used_at)
 		 VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`,
 		newID, connectionID, path, name, kind, string(body), now, now,
 	); err != nil {
@@ -165,7 +168,7 @@ func (r *SavedQueriesRepo) insert(connectionID, path, name, kind string, body []
 func (r *SavedQueriesRepo) Get(queryID string) (model.SavedQuery, error) { return r.mustGet(queryID) }
 
 func (r *SavedQueriesRepo) mustGet(queryID string) (model.SavedQuery, error) {
-	row := r.DB.QueryRow(`SELECT `+savedQuerySelectColumns+` FROM saved_queries WHERE id = ?`, queryID)
+	row := r.DB.QueryRow(`SELECT `+savedQuerySelectColumns+` FROM connection_saved_queries WHERE id = ?`, queryID)
 	q, err := scanSavedQueryRow(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.SavedQuery{}, fmt.Errorf("%w: %s", ErrSavedQueryNotFound, queryID)
@@ -224,8 +227,8 @@ func (r *SavedQueriesRepo) UpdateDiscover(queryID string, body model.DiscoverBod
 	if err != nil {
 		return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: encode discover body: %w", err)
 	}
-	res, err := r.DB.Exec(`UPDATE saved_queries SET body = ?, used_at = ? WHERE id = ? AND kind = 'discover'`,
-		string(encoded), kiratime.NowISO(), queryID)
+	res, err := r.DB.Exec(`UPDATE connection_saved_queries SET body = ?, used_at = ? WHERE id = ? AND kind = 'discover'`,
+		string(encoded), kiratime.NowMs(), queryID)
 	if err != nil {
 		return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: update body %s: %w", queryID, err)
 	}
@@ -236,7 +239,7 @@ func (r *SavedQueriesRepo) UpdateDiscover(queryID string, body model.DiscoverBod
 }
 
 func (r *SavedQueriesRepo) setPinned(queryID string, pinned bool) error {
-	if _, err := r.DB.Exec(`UPDATE saved_queries SET pinned = ? WHERE id = ?`, boolToInt(pinned), queryID); err != nil {
+	if _, err := r.DB.Exec(`UPDATE connection_saved_queries SET pinned = ? WHERE id = ?`, boolToInt(pinned), queryID); err != nil {
 		return fmt.Errorf("repos/saved_queries: set pinned %s: %w", queryID, err)
 	}
 	return nil
@@ -249,7 +252,7 @@ func (r *SavedQueriesRepo) Update(queryID string, patch model.SavedQueryPatch) (
 		if err := model.ValidSavedQueryName(*patch.Name); err != nil {
 			return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: %w", err)
 		}
-		if _, err := r.DB.Exec(`UPDATE saved_queries SET name = ? WHERE id = ?`, strings.TrimSpace(*patch.Name), queryID); err != nil {
+		if _, err := r.DB.Exec(`UPDATE connection_saved_queries SET name = ? WHERE id = ?`, strings.TrimSpace(*patch.Name), queryID); err != nil {
 			if isUniqueViolation(err) {
 				return model.SavedQuery{}, fmt.Errorf("%w: %s", ErrSavedQueryNameTaken, strings.TrimSpace(*patch.Name))
 			}
@@ -265,14 +268,14 @@ func (r *SavedQueriesRepo) Update(queryID string, patch model.SavedQueryPatch) (
 }
 
 func (r *SavedQueriesRepo) Delete(queryID string) error {
-	if _, err := r.DB.Exec(`DELETE FROM saved_queries WHERE id = ?`, queryID); err != nil {
+	if _, err := r.DB.Exec(`DELETE FROM connection_saved_queries WHERE id = ?`, queryID); err != nil {
 		return fmt.Errorf("repos/saved_queries: delete %s: %w", queryID, err)
 	}
 	return nil
 }
 
 func (r *SavedQueriesRepo) Touch(queryID string) error {
-	if _, err := r.DB.Exec(`UPDATE saved_queries SET used_at = ? WHERE id = ?`, kiratime.NowISO(), queryID); err != nil {
+	if _, err := r.DB.Exec(`UPDATE connection_saved_queries SET used_at = ? WHERE id = ?`, kiratime.NowMs(), queryID); err != nil {
 		return fmt.Errorf("repos/saved_queries: touch %s: %w", queryID, err)
 	}
 	return nil

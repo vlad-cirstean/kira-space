@@ -79,14 +79,18 @@ type legacyConn struct {
 	uri      sql.NullString
 }
 
-func (l *Loader) legacyRows(tx *sql.Tx, withSecrets bool) ([]legacyConn, error) {
+func (l *Loader) legacyRows(tx *sql.Tx, withSecrets, withReview bool) ([]legacyConn, error) {
+	reviewCol := `'inherit'`
+	if withReview {
+		reviewCol = `mcp_review_results`
+	}
 	secretCols := `NULL, NULL`
 	if withSecrets {
 		secretCols = `password, uri`
 	}
 	rows, err := tx.Query(`SELECT id, COALESCE(stem, ''), name, kind, color, mode, read_only, host, port, database, username,
 		options_json, preconnect, preconnect_sidecar, preconnect_delay_sec, auto_explain, throttle_per_sec, mcp_enabled,
-		mcp_description, mcp_read_mode, mcp_write_mode, mcp_ddl_mode, mcp_auto_explain, mcp_review_results, ` + secretCols + `
+		mcp_description, mcp_read_mode, mcp_write_mode, mcp_ddl_mode, mcp_auto_explain, ` + reviewCol + `, ` + secretCols + `
 		FROM connections ORDER BY sort_order, created_at, id`)
 	if err != nil {
 		return nil, fmt.Errorf("connfiles: read connections: %w", err)
@@ -123,6 +127,10 @@ func (l *Loader) bindLegacyRows() ([]legacyOut, error) {
 	if err != nil {
 		return nil, err
 	}
+	hasReview, err := hasColumn(l.o.DB, "connections", "mcp_review_results")
+	if err != nil {
+		return nil, err
+	}
 	hasFilters, err := l.hasTable("connection_tree_filters")
 	if err != nil {
 		return nil, err
@@ -137,7 +145,7 @@ func (l *Loader) bindLegacyRows() ([]legacyOut, error) {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	conns, err := l.legacyRows(tx, hasPassword)
+	conns, err := l.legacyRows(tx, hasPassword, hasReview)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +280,7 @@ func (l *Loader) dropLegacy() error { return DropLegacy(l.o.DB) }
 // DropLegacy removes what the files replaced. Each step skips what is already gone, so a rerun is safe.
 // The DB fold calls it for rows imported from a database that already exported its connections.
 func DropLegacy(db *sql.DB) error {
-	for _, col := range []string{"password", "uri"} {
+	for _, col := range []string{"password", "uri", "mcp_review_results"} {
 		has, err := hasColumn(db, "connections", col)
 		if err != nil {
 			return err

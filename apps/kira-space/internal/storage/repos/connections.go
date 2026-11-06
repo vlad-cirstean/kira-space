@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -39,15 +40,17 @@ func scanConnectionRow(row rowScanner) (*model.ConnectionSummary, error) {
 		mcpTables                                                  sql.NullString
 		readOnly, sidecar, autoExplain, mcpEnabled, mcpAutoExplain int
 		maskReview                                                 int
+		createdMs, updatedMs                                       int64
 	)
 	if err := row.Scan(
 		&c.ID, &c.File, &c.Name, &c.Kind, &c.Color, &c.Mode, &readOnly, &host, &port, &database,
 		&username, &options, &preconnect, &sidecar, &c.PreconnectDelaySec, &autoExplain, &c.ThrottlePerSec,
 		&mcpEnabled, &c.McpDescription, &c.McpReadMode, &c.McpWriteMode, &c.McpDdlMode, &c.McpMaskedMode, &mcpAutoExplain, &c.McpReview.Read, &c.McpReview.Write, &c.McpReview.Ddl, &c.McpReview.Masked, &c.McpStatementTimeoutSec, &mcpTables, &maskReview,
-		&c.SortOrder, &c.CreatedAt, &c.UpdatedAt,
+		&c.SortOrder, &createdMs, &updatedMs,
 	); err != nil {
 		return nil, err
 	}
+	c.CreatedAt, c.UpdatedAt = kiratime.MsToISO(createdMs), kiratime.MsToISO(updatedMs)
 
 	if !model.ValidConnectionKind(c.Kind) {
 		slog.Warn("dropping connection row: unrecognised kind", "scope", "storage/connections", "id", c.ID, "kind", c.Kind)

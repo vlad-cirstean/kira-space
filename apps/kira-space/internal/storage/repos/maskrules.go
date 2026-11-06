@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/kiratime"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -20,16 +21,18 @@ type MaskRulesRepo struct {
 
 func scanMaskRuleRow(row rowScanner) (model.MaskRule, error) {
 	var (
-		r                   model.MaskRule
-		kind                string
-		keepHint, correlate int
+		r                    model.MaskRule
+		kind                 string
+		keepHint, correlate  int
+		createdMs, updatedMs int64
 	)
 	if err := row.Scan(
 		&r.ID, &r.ConnectionID, &r.TableName, &r.ColumnName, &kind, &keepHint, &correlate,
-		&r.CreatedAt, &r.UpdatedAt,
+		&createdMs, &updatedMs,
 	); err != nil {
 		return model.MaskRule{}, err
 	}
+	r.CreatedAt, r.UpdatedAt = kiratime.MsToISO(createdMs), kiratime.MsToISO(updatedMs)
 	r.Kind = model.MaskKind(kind)
 	r.KeepHint = keepHint != 0
 	r.Correlate = correlate != 0

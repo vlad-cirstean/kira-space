@@ -11,7 +11,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
-const tabsSelectAllSQL = `SELECT id, connection_id, path, kind, state_json, "order", active, workspace_id FROM tabs WHERE window_key = ? ORDER BY "order" ASC`
+const tabsSelectAllSQL = `SELECT id, connection_id, path, kind, state_json, sort_order, active, workspace_id FROM tabs WHERE window_key = ? ORDER BY sort_order ASC`
 
 // TabsRepo reads and writes the `tabs` table: repository tabs carry a workspace, database-module
 // tabs a connection, so both columns are nullable.
@@ -77,14 +77,14 @@ func (r *TabsRepo) Save(windowKey string, records []model.TabRecord) error {
 	return appstorage.ReplaceKeyed(r.DB, "tabs", "window_key", windowKey, keep, func(tx *sql.Tx) error {
 		for i, rec := range records {
 			res, err := tx.Exec(
-				`INSERT INTO tabs (id, connection_id, path, kind, state_json, "order", active, window_key, workspace_id)
+				`INSERT INTO tabs (id, connection_id, path, kind, state_json, sort_order, active, window_key, workspace_id)
 				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 				 ON CONFLICT(id) DO UPDATE SET
 				   connection_id = excluded.connection_id,
 				   path          = excluded.path,
 				   kind          = excluded.kind,
 				   state_json    = excluded.state_json,
-				   "order"       = excluded."order",
+				   sort_order       = excluded.sort_order,
 				   active        = excluded.active,
 				   workspace_id  = excluded.workspace_id
 				 WHERE tabs.window_key = excluded.window_key`,

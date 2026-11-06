@@ -15,7 +15,7 @@ import (
 // historyLimit mirrors filter-history.ts's HISTORY_LIMIT.
 const historyLimit = 20
 
-// filter_history was capped per (connection_id, path) but had no bound on the number of
+// connection_filter_history was capped per (connection_id, path) but had no bound on the number of
 // paths a connection accumulates — every table/collection a person has ever filtered, on a
 // connection they have never deleted, with no liveness oracle to sweep a dropped one. Not a
 // new number: metadata_cache's own 200-paths-per-connection cap (the adjacent "how many
@@ -125,7 +125,7 @@ func (r *FilterHistoryRepo) Record(connectionID, path string, where *string, ord
 	defer tx.Rollback() //nolint:errcheck
 
 	if _, err := tx.Exec(
-		`DELETE FROM filter_history
+		`DELETE FROM connection_filter_history
 		  WHERE connection_id = ? AND path = ? AND where_text IS ? AND order_by_json IS ?`,
 		connectionID, path, where, orderByJSON,
 	); err != nil {
@@ -133,18 +133,18 @@ func (r *FilterHistoryRepo) Record(connectionID, path string, where *string, ord
 	}
 
 	if _, err := tx.Exec(
-		`INSERT INTO filter_history (id, connection_id, path, where_text, order_by_json, used_at)
+		`INSERT INTO connection_filter_history (id, connection_id, path, where_text, order_by_json, used_at)
 		 VALUES (?, ?, ?, ?, ?, ?)`,
-		ids.NewID(), connectionID, path, where, orderByJSON, kiratime.NowISO(),
+		ids.NewID(), connectionID, path, where, orderByJSON, kiratime.NowMs(),
 	); err != nil {
 		return fmt.Errorf("repos/filter_history: insert: %w", err)
 	}
 
 	if _, err := tx.Exec(`
-		DELETE FROM filter_history
+		DELETE FROM connection_filter_history
 		 WHERE connection_id = ? AND path = ?
 		   AND id NOT IN (
-		     SELECT id FROM filter_history
+		     SELECT id FROM connection_filter_history
 		      WHERE connection_id = ? AND path = ?
 		      ORDER BY used_at DESC, rowid DESC
 		      LIMIT ?
@@ -158,10 +158,10 @@ func (r *FilterHistoryRepo) Record(connectionID, path string, where *string, ord
 	// of which path they belong to, so a path filtered once long ago falls off before one still in
 	// regular use.
 	if _, err := tx.Exec(`
-		DELETE FROM filter_history
+		DELETE FROM connection_filter_history
 		 WHERE connection_id = ?
 		   AND id NOT IN (
-		     SELECT id FROM filter_history
+		     SELECT id FROM connection_filter_history
 		      WHERE connection_id = ?
 		      ORDER BY used_at DESC, rowid DESC
 		      LIMIT ?
@@ -179,7 +179,7 @@ func (r *FilterHistoryRepo) Record(connectionID, path string, where *string, ord
 func (r *FilterHistoryRepo) List(connectionID, path string, limit int) ([]model.FilterHistoryEntry, error) {
 	rows, err := r.DB.Query(
 		`SELECT id, connection_id, path, where_text, order_by_json, used_at
-		   FROM filter_history
+		   FROM connection_filter_history
 		  WHERE connection_id = ? AND path = ?
 		  ORDER BY used_at DESC, rowid DESC
 		  LIMIT ?`,
@@ -196,10 +196,12 @@ func (r *FilterHistoryRepo) List(connectionID, path string, limit int) ([]model.
 			e           model.FilterHistoryEntry
 			whereText   sql.NullString
 			orderByJSON sql.NullString
+			usedMs      int64
 		)
-		if err := rows.Scan(&e.ID, &e.ConnectionID, &e.Path, &whereText, &orderByJSON, &e.UsedAt); err != nil {
+		if err := rows.Scan(&e.ID, &e.ConnectionID, &e.Path, &whereText, &orderByJSON, &usedMs); err != nil {
 			return nil, fmt.Errorf("repos/filter_history: scan: %w", err)
 		}
+		e.UsedAt = kiratime.MsToISO(usedMs)
 		if whereText.Valid {
 			e.Where = &whereText.String
 		}

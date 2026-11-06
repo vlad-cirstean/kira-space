@@ -276,7 +276,7 @@ func TestConnectionSecrets(t *testing.T) {
 func TestConnectionFilesMigration(t *testing.T) {
 	app := flowharness.New(t)
 	const sc = "connection-files-migration"
-	const now = "2026-01-01T00:00:00Z"
+	const now = int64(1767225600000)
 	exec := func(q string, args ...any) {
 		t.Helper()
 		if _, err := app.DB().Exec(q, args...); err != nil {
@@ -374,7 +374,7 @@ func TestConnectionFilesMigration(t *testing.T) {
 // A failed file write during the export leaves every legacy row in place, and the next start finishes it.
 func TestConnectionFilesMigrationFailedWrite(t *testing.T) {
 	app := flowharness.New(t)
-	const now = "2026-01-01T00:00:00Z"
+	const now = int64(1767225600000)
 	ids := []string{"11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222"}
 	for _, q := range []string{
 		`ALTER TABLE connections ADD COLUMN password TEXT`,
