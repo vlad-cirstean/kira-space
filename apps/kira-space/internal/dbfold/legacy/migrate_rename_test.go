@@ -2,13 +2,13 @@
 // the first migration that touches data rather than adding to it (0010 is a
 // real, irreversible rename of user data, not a fresh CREATE TABLE). CLAUDE.md's test bar admits
 // this by name — "an irreversible data migration" — as a one-time proof, not ongoing CRUD coverage.
-package migrations_test
+package legacy_test
 
 import (
 	"database/sql"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/migrations"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold/legacy"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 	_ "modernc.org/sqlite"
 )
@@ -26,7 +26,7 @@ func openAt(t *testing.T, maxVersion int) *sql.DB {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	steps, err := migrations.All()
+	steps, err := legacy.All()
 	if err != nil {
 		t.Fatalf("migrations.All: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestMigration10RenamesTablesAndPreservesData(t *testing.T) {
 		VALUES ('call1', 'grpcitem1', 'tab2', ?, 'localhost:50051', 'pkg.Service/Method', 'unary', 'Production', 0, 'OK', '', 15, 1, 20, 20, '{}')`, now)
 
 	// Apply migration 10.
-	steps, err := migrations.All()
+	steps, err := legacy.All()
 	if err != nil {
 		t.Fatalf("migrations.All: %v", err)
 	}

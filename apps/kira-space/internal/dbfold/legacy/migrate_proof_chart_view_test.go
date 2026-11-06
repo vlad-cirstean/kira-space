@@ -1,11 +1,11 @@
 // P426: migration 0048 rebuilds proof_steps and proof_view_state for the 'chart' view. A wrong
 // rename or drop order would cascade-delete the view state or leave its foreign key dangling.
-package migrations_test
+package legacy_test
 
 import (
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/migrations"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold/legacy"
 )
 
 func TestMigration48RebuildsProofTables(t *testing.T) {
@@ -17,7 +17,7 @@ func TestMigration48RebuildsProofTables(t *testing.T) {
 	}
 	mustExec(t, db, `INSERT INTO proof_view_state (session_id, rev, ordinal, state, updated_at) VALUES ('s1', 1, 1, '{"grid":1}', 5)`)
 
-	steps, err := migrations.All()
+	steps, err := legacy.All()
 	if err != nil {
 		t.Fatal(err)
 	}

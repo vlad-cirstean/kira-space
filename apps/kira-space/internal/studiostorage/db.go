@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/migrations"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold/legacy"
 	"github.com/kirathecat/kira-studio/internal/appstorage"
 )
 
@@ -41,7 +41,7 @@ func OpenAt(home string) (*DB, error) {
 	}
 
 	path := config.ModuleDbPathAt(home)
-	steps, err := migrations.All()
+	steps, err := legacy.All()
 	if err != nil {
 		return nil, fmt.Errorf("storage: load migrations: %w", err)
 	}

@@ -2,12 +2,12 @@
 // environment landing at 'none' — the deliberate default ("no colour is the default"), not an
 // empty string or NULL, so every pre-existing row is already a valid palette value with no
 // backfill needed beyond the column's own DEFAULT.
-package migrations_test
+package legacy_test
 
 import (
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/migrations"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold/legacy"
 )
 
 func TestMigration12AddsEnvironmentColorDefaultingToNone(t *testing.T) {
@@ -19,7 +19,7 @@ func TestMigration12AddsEnvironmentColorDefaultingToNone(t *testing.T) {
 	)
 
 	// Apply migration 12 on top of the already-open (v11) database.
-	steps, err := migrations.All()
+	steps, err := legacy.All()
 	if err != nil {
 		t.Fatalf("migrations.All: %v", err)
 	}

@@ -2,12 +2,12 @@
 // window landing on 'studio' — the app's own default mode (state/mode.ts's defaultMode), applied
 // via the column's own DEFAULT rather than a hand-rolled backfill (0012's own precedent for
 // exactly this shape).
-package migrations_test
+package legacy_test
 
 import (
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/migrations"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold/legacy"
 )
 
 func TestMigration14AddsWindowModeDefaultingToStudio(t *testing.T) {
@@ -18,7 +18,7 @@ func TestMigration14AddsWindowModeDefaultingToStudio(t *testing.T) {
 	mustExec(t, db, `INSERT INTO windows (key, "order", bounds_json) VALUES ('w2', 1, NULL)`)
 
 	// Apply migration 14 on top of the already-open (v13) database.
-	steps, err := migrations.All()
+	steps, err := legacy.All()
 	if err != nil {
 		t.Fatalf("migrations.All: %v", err)
 	}

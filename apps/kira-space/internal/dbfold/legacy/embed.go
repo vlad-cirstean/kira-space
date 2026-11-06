@@ -2,7 +2,7 @@
 // installed base with a partially-applied schema to preserve — what were five incremental steps
 // are collapsed into the single 0001_init.sql that produces the exact same final schema in one
 // shot.
-package migrations
+package legacy
 
 import (
 	"embed"

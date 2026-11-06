@@ -1,9 +1,9 @@
-package migrations_test
+package legacy_test
 
 import (
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/migrations"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold/legacy"
 )
 
 // P312: migration 0039 seeds every module's panel sizes from the old shared leaves and drops them.
@@ -11,7 +11,7 @@ func TestMigration39SeedsPerModePanelSizes(t *testing.T) {
 	db := openAt(t, 38)
 	mustExec(t, db, `INSERT INTO ui_layout (key, value) VALUES ('panel.project.width', '333'), ('panel.operations.height', '277'), ('panel.project.visible', 'false')`)
 
-	steps, err := migrations.All()
+	steps, err := legacy.All()
 	if err != nil {
 		t.Fatalf("migrations.All: %v", err)
 	}

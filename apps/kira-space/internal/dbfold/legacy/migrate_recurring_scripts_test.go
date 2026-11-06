@@ -1,17 +1,17 @@
 // P242 Part 4: migration 0037 rebuilds script_runs; rows and indexes survive and the new states insert.
-package migrations_test
+package legacy_test
 
 import (
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/migrations"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold/legacy"
 )
 
 func TestMigration37RebuildsScriptRuns(t *testing.T) {
 	db := openAt(t, 36)
 	mustExec(t, db, `INSERT INTO script_runs (id, script_id, script_name, kind, trigger_kind, state, created_at, task_id)
 		VALUES ('r1', 's1', 's1', 'script', 'manual', 'done', 1, 't1')`)
-	steps, err := migrations.All()
+	steps, err := legacy.All()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,17 +1,17 @@
 // P521: migration 0058 rebuilds script_runs; rows and indexes survive and the mcp trigger inserts.
-package migrations_test
+package legacy_test
 
 import (
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/migrations"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold/legacy"
 )
 
 func TestMigration58AddsMCPTrigger(t *testing.T) {
 	db := openAt(t, 57)
 	mustExec(t, db, `INSERT INTO script_runs (id, script_id, script_name, kind, trigger_kind, state, created_at, provider, restore_pending)
 		VALUES ('r1', 's1', 's1', 'script', 'manual', 'done', 1, 'codex', 1)`)
-	steps, err := migrations.All()
+	steps, err := legacy.All()
 	if err != nil {
 		t.Fatal(err)
 	}

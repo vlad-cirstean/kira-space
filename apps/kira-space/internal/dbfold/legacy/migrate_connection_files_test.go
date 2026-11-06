@@ -1,16 +1,16 @@
 // P475: migration 0056 adds the file-binding columns and keeps every existing row.
-package migrations_test
+package legacy_test
 
 import (
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/migrations"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold/legacy"
 )
 
 func TestMigration56ConnectionFiles(t *testing.T) {
 	db := openAt(t, 55)
 	mustExec(t, db, `INSERT INTO connections (id, name, kind, color, mode, created_at, updated_at) VALUES ('c1', 'Orders', 'sqlite', 'none', 'fields', 'x', 'x')`)
-	all, err := migrations.All()
+	all, err := legacy.All()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,11 +1,11 @@
 // P219: 0033 turns the free-text custom_scripts.collection into custom_script_collections rows,
 // an irreversible data migration (same bar as migrate_rename_test.go). Kira Space runs the same SQL.
-package migrations_test
+package legacy_test
 
 import (
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/migrations"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold/legacy"
 )
 
 func TestMigration33ConvertsCollectionNamesToRows(t *testing.T) {
@@ -18,7 +18,7 @@ func TestMigration33ConvertsCollectionNamesToRows(t *testing.T) {
 			 VALUES (?, ?, 'x', ?, 't', 't', ?)`, c.name, c.name, i, c.collection)
 	}
 
-	steps, err := migrations.All()
+	steps, err := legacy.All()
 	if err != nil {
 		t.Fatalf("migrations.All: %v", err)
 	}

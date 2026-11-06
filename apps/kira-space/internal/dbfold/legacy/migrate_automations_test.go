@@ -1,11 +1,11 @@
 // P242: migration 0034 renames the 'terminal' mode and tab workspace to 'automations', classifies
 // each script's folder, and creates the run store.
-package migrations_test
+package legacy_test
 
 import (
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/migrations"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold/legacy"
 )
 
 func TestMigration34RenamesTerminalModeAndClassifiesScriptFolders(t *testing.T) {
@@ -18,7 +18,7 @@ func TestMigration34RenamesTerminalModeAndClassifiesScriptFolders(t *testing.T) 
 			VALUES (?, ?, 'true', ?, 'none', 0, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`, row[0], row[0], row[1])
 	}
 
-	steps, err := migrations.All()
+	steps, err := legacy.All()
 	if err != nil {
 		t.Fatal(err)
 	}

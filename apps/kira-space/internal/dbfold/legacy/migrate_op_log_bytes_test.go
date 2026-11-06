@@ -3,13 +3,13 @@
 // migration that backfills a byte count from existing rows, which SQLite's plain length() would
 // get wrong for non-ASCII text (it counts characters, not bytes), and that purges rows a
 // per-row cap did not exist to prevent when they were written.
-package migrations_test
+package legacy_test
 
 import (
 	"strings"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/migrations"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold/legacy"
 	"github.com/kirathecat/kira-studio/internal/sqlitex"
 )
 
@@ -35,7 +35,7 @@ func TestMigration15BackfillsByteCountAndPurgesOversizedRows(t *testing.T) {
 		VALUES ('oversized', NULL, NULL, ?, 5, 'read', 'ok', NULL, ?, NULL)`, now, oversized)
 
 	// Apply migration 15 on top of the already-open (v14) database.
-	steps, err := migrations.All()
+	steps, err := legacy.All()
 	if err != nil {
 		t.Fatalf("migrations.All: %v", err)
 	}

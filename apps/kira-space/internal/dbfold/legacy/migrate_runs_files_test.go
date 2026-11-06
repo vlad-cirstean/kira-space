@@ -1,10 +1,10 @@
 // P472: migration 0054 turns collections into names and extracts the schedule target.
-package migrations_test
+package legacy_test
 
 import (
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/migrations"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold/legacy"
 )
 
 func TestMigration54RunsFiles(t *testing.T) {
@@ -14,7 +14,7 @@ func TestMigration54RunsFiles(t *testing.T) {
 	mustExec(t, db, `INSERT INTO custom_scripts (id, name, command, sort_order, created_at, updated_at, collection_id, schedule_json)
 		VALUES ('s1', 'one', 'true', 0, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z', 'c1', '{"cron":"* * * * *","taskId":"t1","branchId":"b1"}'),
 		       ('s2', 'two', 'true', 1, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z', NULL, '')`)
-	all, err := migrations.All()
+	all, err := legacy.All()
 	if err != nil {
 		t.Fatal(err)
 	}

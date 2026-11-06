@@ -1,17 +1,17 @@
 // P473: migration 0055 adds the file-binding columns and keeps every existing row.
-package migrations_test
+package legacy_test
 
 import (
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/studiostorage/migrations"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbfold/legacy"
 )
 
 func TestMigration55ApiFiles(t *testing.T) {
 	db := openAt(t, 54)
 	mustExec(t, db, `INSERT INTO api_collections (id, name, sort_order, created_at, updated_at) VALUES ('c1', 'Orders', 0, 'x', 'x')`)
 	mustExec(t, db, `INSERT INTO api_items (id, collection_id, kind, name, sort_order, created_at, updated_at) VALUES ('i1', 'c1', 'folder', 'f', 0, 'x', 'x')`)
-	all, err := migrations.All()
+	all, err := legacy.All()
 	if err != nil {
 		t.Fatal(err)
 	}

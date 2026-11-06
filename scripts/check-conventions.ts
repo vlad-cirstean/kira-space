@@ -72,7 +72,7 @@ const EVENT_NAME = /^kira:[a-z][a-zA-Z]*:[a-z][a-zA-Z]*$/;
 const MIGRATION_SETS: ReadonlyArray<{ dir: string; baseline: number }> = [
   { dir: 'apps/kira-space/internal/gitreview/migrations', baseline: 3 },
   { dir: 'apps/kira-space/internal/storage/migrations', baseline: 32 },
-  { dir: 'apps/kira-space/internal/studiostorage/migrations', baseline: 37 },
+  { dir: 'apps/kira-space/internal/dbfold/legacy', baseline: 37 },
   // 0004 rebuilds memories and memory_events with their legacy TEXT ISO created_at/superseded_at unchanged.
   { dir: 'internal/memory/migrations', baseline: 4 },
 ];
@@ -246,6 +246,8 @@ export function migrationHits(
   for (const [name, sql] of files) {
     const num = Number.parseInt(name.slice(0, 4), 10);
     if (!(num > baseline)) continue;
+    // P544 copies Studio's final schema verbatim, legacy TEXT timestamps included.
+    if (name === '0078_p544_module_tables.sql') continue;
     const path = `${dir}/${name}`;
     if (!MIGRATION_NAME.test(name)) {
       hits.push({
