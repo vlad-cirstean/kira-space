@@ -6,12 +6,19 @@ import Header from '../components/Header.astro';
 import Highlight from '../components/Highlight.astro';
 import Install from '../components/Install.astro';
 import { APP as content, SITE } from '../data/content';
-import { resolveAllShots } from '../lib/shots';
+import { type ResolvedWindowShot, resolveAllShots } from '../lib/shots';
 import Base from './Base.astro';
 
 const shots = await resolveAllShots();
-const hero = shots.find((s) => s.id === content.hero);
-if (!hero) throw new Error(`Missing hero shot ${content.hero}`);
+// Hero and highlights show a whole window, and og:image needs the window's social PNG.
+function windowShot(id: string): ResolvedWindowShot {
+  const shot = shots.find((s) => s.id === id);
+  if (!shot) throw new Error(`Missing shot ${id}`);
+  if (shot.kind !== 'window')
+    throw new Error(`Shot ${id} is a ${shot.kind} crop, not a window shot`);
+  return shot;
+}
+const hero = windowShot(content.hero);
 ---
 
 <Base title={content.pageTitle} description={content.description} image={hero.social}>
@@ -25,9 +32,7 @@ if (!hero) throw new Error(`Missing hero shot ${content.hero}`);
     <AppHero app={content} shot={hero} />
     <FeatureGrid features={content.features} />
     {content.highlights.map((h, i) => {
-      const shot = shots.find((s) => s.id === h.shot);
-      if (!shot) throw new Error(`Missing highlight shot ${h.shot}`);
-      return <Highlight highlight={h} shot={shot} flip={i % 2 === 1} />;
+      return <Highlight highlight={h} shot={windowShot(h.shot)} flip={i % 2 === 1} />;
     })}
     <Install app={content} />
   </main>

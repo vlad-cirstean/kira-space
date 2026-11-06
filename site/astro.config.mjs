@@ -1,8 +1,26 @@
+import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import starlight from '@astrojs/starlight';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'astro/config';
+import { SHOT_CAPTURE, shotFiles } from './src/data/shotCapture.ts';
 
 const REPO_URL = 'https://github.com/vlad-cirstean/kira-studio';
+
+/** Copies each shot's main image to dist/shots/<id>.webp: an unhashed URL the README links to. */
+const publishShots = {
+  name: 'publish-shots',
+  hooks: {
+    'astro:build:done': ({ dir }) => {
+      const out = fileURLToPath(new URL('shots/', dir));
+      mkdirSync(out, { recursive: true });
+      for (const id of Object.keys(SHOT_CAPTURE)) {
+        const src = fileURLToPath(new URL(`../screenshots/${shotFiles(id).main}`, import.meta.url));
+        if (existsSync(src)) copyFileSync(src, `${out}${id}.webp`);
+      }
+    },
+  },
+};
 
 export default defineConfig({
   site: 'https://vlad-cirstean.github.io',
@@ -15,6 +33,7 @@ export default defineConfig({
   output: 'static',
   vite: { plugins: [tailwindcss()] },
   integrations: [
+    publishShots,
     starlight({
       title: 'Kira Space',
       logo: { src: '../apps/kira-space/build/appicon.icon/Assets/kira_icon_vector.svg', alt: '' },

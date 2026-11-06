@@ -90,6 +90,8 @@
         "**/test/**",
         "**/*.spec.ts",
         "scripts/**",
+        "site/scripts/**",
+        "site/src/lib/shots.ts",
         "tools/mutation/**",
         "apps/kira-space/frontend/proto/**"
       ],
