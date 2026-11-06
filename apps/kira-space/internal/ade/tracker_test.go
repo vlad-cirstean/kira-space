@@ -82,6 +82,9 @@ func newTestTracker(t *testing.T) (*Tracker, *repos.AdeSessionsRepo, *fakeLive, 
 		t.Fatalf("storage.OpenAt: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
+	if _, err := db.DB.Exec(`INSERT INTO ade_tasks (id, kind, color, created_at) VALUES ('t1', 'task', 0, 1), ('other', 'task', 0, 1)`); err != nil {
+		t.Fatalf("seed tasks: %v", err)
+	}
 	repositories, err := repos.New(db.DB)
 	if err != nil {
 		t.Fatalf("repos.New: %v", err)

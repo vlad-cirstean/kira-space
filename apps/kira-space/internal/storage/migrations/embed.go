@@ -100,6 +100,7 @@ var names = []sqlitex.MigrationSource{
 	{Version: 85, Name: "p552_connections", File: "0085_p552_connections.sql"},
 	{Version: 86, Name: "p552_api", File: "0086_p552_api.sql"},
 	{Version: 87, Name: "p552_ade_tasks", File: "0087_p552_ade_tasks.sql"},
+	{Version: 88, Name: "p552_ade_runs", File: "0088_p552_ade_runs.sql"},
 }
 
 // funcs attach Go work to a step by version, run after the step's SQL in the same transaction.
