@@ -10,7 +10,7 @@ Sequencing: P551 needs v0.3.0 P549 (WebP, frame) and P550 (image pipeline), both
 |---|---|---|
 | P551 | Site expansion: content, pages and explanations with images | Pending |
 | P552 | Go SQL query builder for the app's SQLite | Pending |
-| P553 | Tighten SQLite column types and constraints | Pending |
+| P553 | Tighten SQLite types and constraints, reorganise schema | Pending |
 | P554 | GitOps for config files: shared config repos | Pending |
 
 ## Rows
@@ -41,11 +41,11 @@ Sequencing: P551 needs v0.3.0 P549 (WebP, frame) and P550 (image pipeline), both
 - Decide in plan: library and reasoning (license at package level; name any requirement that rules a candidate out); repo interface boundary; migration order, repo by repo, behaviour unchanged each step; where raw SQL that cannot be expressed stays isolated; test strategy (existing flow tests and adapter-free repo tests; no new unit tests unless complex); perf check on hot queries.
 - Plan: `plans/P552.md`.
 
-### P553 Tighten SQLite column types and constraints
+### P553 Tighten SQLite types and constraints, reorganise schema
 
-- Ask: columns are loose today. Tighten the app DB schema: `STRICT` tables (SQLite 3.37+; check the version bundled by the driver), proper types, `NOT NULL`, `CHECK` (enums, ranges, booleans 0/1, `json_valid`), `UNIQUE`, foreign keys with explicit `ON DELETE`, defaults, indexes on foreign keys. Table-rebuild migrations copy data safely, back up first, handle rows that violate new constraints (repair, quarantine, or fail with a clear message). `PRAGMA foreign_keys` on.
+- Ask: columns are loose today. Tighten the app DB schema: `STRICT` tables (SQLite 3.37+; check the version bundled by the driver), proper types, `NOT NULL`, `CHECK` (enums, ranges, booleans 0/1, `json_valid`), `UNIQUE`, foreign keys with explicit `ON DELETE`, defaults, indexes on foreign keys. Table-rebuild migrations copy data safely, back up first, handle rows that violate new constraints (repair, quarantine, or fail with a clear message). `PRAGMA foreign_keys` on. Also audit whole app DB schema (kira.db, after v0.3.0 Studio fold) for efficiency and organisation. Split tables that mix concerns or carry wide/rarely-read columns (e.g. large blobs/JSON moved to side tables). Merge tables that are near-duplicates or 1:1 with no reason to be separate (e.g. leftovers of Space/Studio fold). Normalise repeated data. Review indexes: drop unused/redundant, add missing, covering/partial where hot queries benefit. Review naming consistency (prefixes per module, singular/plural, column names) and id/timestamp conventions. Check hot-query plans with `EXPLAIN QUERY PLAN`.
 - Depends on v0.3.0 P544.
-- Decide in plan: audit of every table and column; constraint catalogue per table; migration strategy (per table or grouped; order by foreign key dependencies); verification (schema snapshot test is acceptable: it guards complex migration logic; migration flow test on a seeded old-shape DB); interplay with P552 (builder types) and a possible later Postgres schema; order relative to P552.
+- Decide in plan: audit of every table and column; constraint catalogue per table; migration strategy (per table or grouped; order by foreign key dependencies); verification (schema snapshot test is acceptable: it guards complex migration logic; migration flow test on a seeded old-shape DB); interplay with P552 (builder types) and a possible later Postgres schema; order relative to P552; schema audit output (per-table verdict keep/split/merge/rename, with reason); target ER layout; how split/merge migrations preserve data and repos stay behaviour-compatible; impact on P552: builder models should be generated against final schema, so P553 likely runs before P552. Say so; if plan agrees, renumber per CLAUDE.md lockstep rule (swap P552/P553, update all cross-references); perf check on hot queries before/after.
 - Plan: `plans/P553.md`.
 
 ### P554 GitOps for config files: shared config repos
