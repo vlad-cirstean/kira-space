@@ -11,6 +11,8 @@ import (
 	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/prompts"
+	"github.com/kirathecat/kira-studio/internal/scriptruns"
+	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -63,6 +65,21 @@ func TestQuitConfirm(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	script, err := app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
+		Name: "ask", Kind: scripts.KindSmart, Command: "Say hi", Color: "blue",
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	scriptArgs := scriptruns.RunArgs{ScriptID: script.ID}
+	preview, err := app.W.ScriptRuns.Preview(scriptArgs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scriptRun, err := app.W.ScriptRuns.Start(scriptruns.StartArgs{RunArgs: scriptArgs, Hash: preview.Hash})
+	if err != nil {
+		t.Fatal(err)
+	}
 	status := func() shell.QuitStatus {
 		st, err := app.W.Lifecycle.QuitStatus()
 		if err != nil {
@@ -70,7 +87,7 @@ func TestQuitConfirm(t *testing.T) {
 		}
 		return st
 	}
-	testx.WaitUntil(t, waitFor, func() bool { return status().Agents == 1 && status().Runs == 1 })
+	testx.WaitUntil(t, waitFor, func() bool { return status().Agents == 1 && status().Runs == 1 && status().Scripts == 1 })
 	if quitPrompts(app) != nil {
 		t.Fatal("a quit prompt exists before any quit")
 	}
@@ -83,7 +100,7 @@ func TestQuitConfirm(t *testing.T) {
 		t.Fatalf("quit prompt = %+v, want it on the main window", p)
 	}
 	asking := status()
-	if want := (shell.QuitStatus{Asking: true, Agents: 1, Runs: 1}); asking != want {
+	if want := (shell.QuitStatus{Asking: true, Agents: 1, Runs: 1, Scripts: 1}); asking != want {
 		t.Fatalf("QuitStatus = %+v, want %+v", asking, want)
 	}
 	app.Contract(t, "quit-confirm", "LifecycleService.QuitStatus#asking", asking)
@@ -127,6 +144,9 @@ func TestQuitConfirm(t *testing.T) {
 		}
 		return run.Resumable
 	})
+	if got, err := app.W.ScriptRuns.Get(scriptruns.IDArgs{ID: scriptRun.RunID}); err != nil || !got.Resumable {
+		t.Fatalf("script run after the quit = %+v, %v, want resumable", got, err)
+	}
 }
 
 // A quit with nothing live raises no prompt.

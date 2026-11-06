@@ -5,8 +5,8 @@ import type { ScenarioEnv } from './env';
 
 type Env = ScenarioEnv<'lifecycleCancelQuit' | 'lifecycleConfirmQuit' | 'lifecycleQuitStatus'>;
 
-// P279: quitting while agents run asks first. Backend half: TestQuitConfirm (Space appflow) and
-// the Studio windowflow quit test store the status against real runs.
+// P279: quitting while agents run asks first. Backend half: TestQuitConfirm (appflow) stores the
+// status against real runs.
 export function registerQuitScenarios(env: Env): void {
   const { test, contract, ipc: IPC } = env;
 
