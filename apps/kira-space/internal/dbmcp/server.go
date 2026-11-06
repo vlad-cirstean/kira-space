@@ -129,8 +129,11 @@ type Config struct {
 	Port int
 	// Home overrides the Space home (a debugging seam) — empty means config.KiraSpaceHome().
 	Home string
-	// Token resolves this instance's own auth record — required.
+	// Token resolves this instance's own auth record. Exactly one of Token and Sessions is set.
 	Token TokenProvider
+	// Sessions makes this the session server: it accepts only these per-launch tokens, never the
+	// external one, and binds an ephemeral port only (SessionPool sets both).
+	Sessions *SessionTokens
 	// Conns/Tree/Query are the three backend seams (§3.3) — *connections.Service, *tree.Service and
 	// *adapterhost.Router satisfy these structurally once Router.Execute exists.
 	Conns ConnectionsReader
@@ -227,8 +230,11 @@ func New(cfg Config) (*Server, error) {
 	if log == nil {
 		log = slog.Default()
 	}
-	if cfg.Token == nil {
-		return nil, fmt.Errorf("dbmcp: Config.Token is required")
+	if (cfg.Token == nil) == (cfg.Sessions == nil) {
+		return nil, fmt.Errorf("dbmcp: exactly one of Config.Token and Config.Sessions is required")
+	}
+	if cfg.Sessions != nil && cfg.Port != EphemeralPort {
+		return nil, fmt.Errorf("dbmcp: a session server binds an ephemeral port only")
 	}
 	if cfg.Conns == nil || cfg.Tree == nil || cfg.Query == nil {
 		return nil, fmt.Errorf("dbmcp: Config.Conns, Config.Tree and Config.Query are required")
@@ -252,9 +258,12 @@ func New(cfg Config) (*Server, error) {
 	// plain/minted served the old in-memory-plaintext gate (F8) — cfg.Token() (bridge's
 	// dbMcpTokenProviderFor) already persists a fresh plaintext to the helper token mirror file
 	// itself before returning here, so neither is needed beyond this call.
-	tokenRec, _, _, err := cfg.Token()
-	if err != nil {
-		return nil, fmt.Errorf("dbmcp: resolve token: %w", err)
+	var tokenRec mcpauth.Record
+	if cfg.Token != nil {
+		var err error
+		if tokenRec, _, _, err = cfg.Token(); err != nil {
+			return nil, fmt.Errorf("dbmcp: resolve token: %w", err)
+		}
 	}
 
 	limits, err := validateLimits(cfg.Limits)
@@ -518,7 +527,8 @@ func (s *Server) Close() error {
 		if s.unwatchList != nil {
 			s.unwatchList()
 		}
-		if lanes, ok := s.cfg.Query.(laneCloser); ok {
+		// Read lanes are shared with the external instance; a session server leaves them to the idle timeout.
+		if lanes, ok := s.cfg.Query.(laneCloser); ok && s.cfg.Sessions == nil {
 			lanes.CloseReadLanes(context.Background())
 		}
 	})

@@ -67,29 +67,9 @@ func NewDbMcpService(deps appcore.StudioDeps, installer harness.MCPInstaller, ap
 			if _, err := mcpauth.EnsureHeaderHelperScript(home, mcpauth.HelperTokenPathNamed(home, dbMcpTokenName)); err != nil {
 				return nil, err
 			}
-			srv, err := dbmcp.New(dbmcp.Config{
-				Home:             home,
-				Token:            dbMcpTokenProviderFor(home, mint),
-				Conns:            s.Deps.Connections,
-				Tree:             s.Deps.Tree,
-				Query:            s.Deps.Router,
-				Approvals:        s.Approvals,
-				Proof:            s.Proof,
-				Kube:             s.Kube,
-				Ops:              s.Deps.Router,
-				Runs:             s.Runs,
-				Scripts:          s.Scripts,
-				API:              s.API,
-				APISettings:      s.apiSettings,
-				MaskRules:        s.Deps.MaskRules,
-				ColumnReview:     s.Deps.MaskReview,
-				ExplainThreshold: s.explainThreshold,
-				PreviewResponses: s.previewResponses,
-				Logger:           slog.Default(),
-				Prompts:          s.Deps.Prompts,
-				Limits:           s.Limits,
-				Port:             s.Port,
-			})
+			cfg := s.serverConfig(s.Port)
+			cfg.Token = dbMcpTokenProviderFor(home, mint)
+			srv, err := dbmcp.New(cfg)
 			if err != nil {
 				return nil, err
 			}
@@ -110,7 +90,7 @@ func NewDbMcpService(deps appcore.StudioDeps, installer harness.MCPInstaller, ap
 		// lets the parked handler return immediately (ApprovalAbandoned), so Shutdown's ordinary
 		// graceful drain finds nothing left in flight.
 		StopFn: func(srv *dbmcp.Server) {
-			s.Approvals.AbandonAll()
+			s.Approvals.AbandonExternal()
 			_ = srv.Close()
 		},
 		StatusFn: func(srv *dbmcp.Server, startErr error) DbMcpStatus {
@@ -139,6 +119,41 @@ func NewDbMcpService(deps appcore.StudioDeps, installer harness.MCPInstaller, ap
 		},
 	}
 	return s
+}
+
+// serverConfig is the config both instances share: the external server adds its Token, the session
+// pool its Sessions.
+func (s *DbMcpService) serverConfig(port int) dbmcp.Config {
+	return dbmcp.Config{
+		Home:             config.KiraSpaceHome(),
+		Conns:            s.Deps.Connections,
+		Tree:             s.Deps.Tree,
+		Query:            s.Deps.Router,
+		Approvals:        s.Approvals,
+		Proof:            s.Proof,
+		Kube:             s.Kube,
+		Ops:              s.Deps.Router,
+		Runs:             s.Runs,
+		Scripts:          s.Scripts,
+		API:              s.API,
+		APISettings:      s.apiSettings,
+		MaskRules:        s.Deps.MaskRules,
+		ColumnReview:     s.Deps.MaskReview,
+		ExplainThreshold: s.explainThreshold,
+		PreviewResponses: s.previewResponses,
+		Logger:           slog.Default(),
+		Prompts:          s.Deps.Prompts,
+		Limits:           s.Limits,
+		Port:             port,
+	}
+}
+
+// NewDbMcpSessions returns the pool serving agent sessions of workflow steps with db_mcp. A package
+// func, not a method: Wails binds every exported method, and a bound pool would hand tokens to the renderer.
+func NewDbMcpSessions(s *DbMcpService) *dbmcp.SessionPool {
+	return dbmcp.NewSessionPool(s.Approvals, func(*dbmcp.SessionTokens) dbmcp.Config {
+		return s.serverConfig(dbmcp.EphemeralPort)
+	})
 }
 
 // DbMcpStatus is the wire projection every method below returns.

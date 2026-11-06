@@ -44,8 +44,21 @@ var requestContextKey requestContextKeyType
 // the detach.
 func withRequestContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), requestContextKey, r.Context())
-		ctx = context.WithValue(ctx, originContextKey, ApprovalOrigin{Client: clientFromUserAgent(r.UserAgent())})
+		reqCtx := r.Context()
+		origin := ApprovalOrigin{Client: clientFromUserAgent(r.UserAgent())}
+		info := auth.TokenInfoFromContext(reqCtx)
+		if id, ok := sessionOf(info); ok {
+			origin.SessionID, origin.TaskID, origin.Cwd = id.SessionID, id.TaskID, id.Cwd
+			if sctx, ok := info.Extra[sessionCtxKey].(context.Context); ok {
+				// A revoked session token ends its calls in flight.
+				var cancel context.CancelFunc
+				reqCtx, cancel = context.WithCancel(reqCtx)
+				defer cancel()
+				defer context.AfterFunc(sctx, cancel)()
+			}
+		}
+		ctx := context.WithValue(reqCtx, requestContextKey, reqCtx)
+		ctx = context.WithValue(ctx, originContextKey, origin)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -174,6 +187,9 @@ func (s *Server) bindHTTP() error {
 // record under s.tokenMu on every request, so a Regenerate mid-flight is picked up by the very
 // next one.
 func (s *Server) tokenVerifier() auth.TokenVerifier {
+	if s.cfg.Sessions != nil {
+		return s.cfg.Sessions.verifier()
+	}
 	return mcpauth.TokenVerifier("kira-db", func() mcpauth.Record {
 		s.tokenMu.RLock()
 		defer s.tokenMu.RUnlock()

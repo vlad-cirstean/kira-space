@@ -211,6 +211,8 @@ type ApprovalExemption struct {
 type ApprovalOrigin struct {
 	Client string
 	Cwd    string
+	// SessionID and TaskID are set only for a call on the session server.
+	SessionID, TaskID string
 }
 
 func (r ApprovalRequest) subject() string {
@@ -443,6 +445,44 @@ func (b *ApprovalBroker) AbandonAll() {
 	b.heldBytes = 0
 	for _, entry := range entries {
 		b.Queue.Remove(entry.req.itemID())
+	}
+	b.mu.Unlock()
+
+	for _, entry := range entries {
+		entry.result <- approvalResolution{outcome: ApprovalAbandoned}
+	}
+}
+
+// AbandonExternal abandons the pending entries of external clients, leaving agent-session ones queued.
+func (b *ApprovalBroker) AbandonExternal() {
+	b.abandonWhere(func(o ApprovalOrigin) bool { return o.SessionID == "" })
+}
+
+// AbandonSession abandons the pending entries of one agent session.
+func (b *ApprovalBroker) AbandonSession(sessionID string) {
+	b.abandonWhere(func(o ApprovalOrigin) bool { return o.SessionID == sessionID })
+}
+
+// AbandonSessions abandons the pending entries of every agent session.
+func (b *ApprovalBroker) AbandonSessions() {
+	b.abandonWhere(func(o ApprovalOrigin) bool { return o.SessionID != "" })
+}
+
+func (b *ApprovalBroker) abandonWhere(match func(ApprovalOrigin) bool) {
+	b.mu.Lock()
+	var entries []*approvalEntry
+	for _, e := range b.queue.Snapshot() {
+		if !match(e.req.Origin) {
+			continue
+		}
+		if _, ok := b.queue.Remove(e.req.RequestID); !ok {
+			continue
+		}
+		if e.req.Response != nil {
+			b.heldBytes -= e.req.Response.Bytes
+		}
+		b.Queue.Remove(e.req.itemID())
+		entries = append(entries, e)
 	}
 	b.mu.Unlock()
 
