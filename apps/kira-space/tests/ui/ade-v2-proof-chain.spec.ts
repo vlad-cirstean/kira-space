@@ -97,22 +97,18 @@ const kinds = (page: Page) =>
     .locator(`${t('ade-task-chain')} [data-kind]`)
     .evaluateAll((els) => els.map((e) => e.getAttribute('data-kind')));
 
-test('Details order: links, the task chain, then the timeline', async ({ relaunch }) => {
+test('Details order: links, then the task chain with the Timeline toggle in its header', async ({
+  relaunch,
+}) => {
   const { window: page } = await openPlan(relaunch, [proofsSnapshot(proofs()), diagramStep]);
   await openChain(page);
   const order = await page
-    .locator(
-      `${t('ade-details-tab')} > :is(${t('ade-details-links')}, ${t('ade-task-chain')}, ${t('ade-details-timeline-toggle')})`,
-    )
+    .locator(`${t('ade-details-tab')} > :is(${t('ade-details-links')}, ${t('ade-task-chain')})`)
     .evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
-  expect(order.slice(0, 2)).toEqual(['ade-details-links', 'ade-task-chain']);
-  const chain = page.locator(t('ade-task-chain'));
-  const toggle = page.locator(t('ade-details-timeline-toggle'));
-  const [cy, ty] = await Promise.all([
-    chain.boundingBox().then((b) => b?.y ?? 0),
-    toggle.boundingBox().then((b) => b?.y ?? 0),
-  ]);
-  expect(cy).toBeLessThan(ty);
+  expect(order).toEqual(['ade-details-links', 'ade-task-chain']);
+  await expect(
+    page.locator(`${t('ade-task-chain')} ${t('ade-details-timeline-toggle')}`),
+  ).toBeVisible();
 });
 
 test('contract: the chain mixes a note and an agent proof newest first', async ({ relaunch }) => {
@@ -122,7 +118,7 @@ test('contract: the chain mixes a note and an agent proof newest first', async (
     diagramStep,
   ]);
   await openChain(page);
-  expect(await kinds(page)).toEqual(['handover', 'proof']);
+  await expect.poll(() => kinds(page)).toEqual(['handover', 'proof']);
   const entry = page.locator(t('ade-proof-entry'));
   await expect(entry.locator(t('ade-proof-open'))).toHaveText('Login checks');
   await expect(entry.locator(t('ade-note-author'))).toHaveAttribute(
@@ -146,7 +142,7 @@ test('the same time orders a diagram proof, then the note, then other proof', as
     diagramStep,
   ]);
   await openChain(page);
-  expect(await kinds(page)).toEqual(['proof', 'handover', 'proof']);
+  await expect.poll(() => kinds(page)).toEqual(['proof', 'handover', 'proof']);
   await expect(page.locator(t('ade-proof-open')).first()).toHaveText('Login checks');
   await expect(page.locator(t('ade-proof-open')).last()).toHaveText('Perf checks');
 });

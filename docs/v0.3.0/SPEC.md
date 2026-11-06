@@ -20,7 +20,7 @@ Twins: every Studio twin in `plans/TWINS.md` is merged by P538, P539, P540 or P5
 | P543 | Proof as an artifact chain in the task details panel | Done |
 | P544 Part 1 | One database | Done |
 | P544 Part 2 | Settings and op log twins | Done |
-| P545 | Timeline becomes a toggle merged into the same list | Pending |
+| P545 | Timeline becomes a toggle merged into the same list | Done |
 | P546 | Forward panel edits (diff only) to agents running in the step | Pending |
 | P547 | Kira DB audit trail in the details panel | Pending |
 | P548 | Studio MCP option in workflow steps | Done |
@@ -198,6 +198,7 @@ Result:
 - Touches `details/AdeTaskTimeline.vue` and `taskTimeline.ts`.
 - Decide in plan: merged-list item model with P542 and P543 entries; default toggle state and persistence; sort direction consistent with the notes (newest first).
 - Plan: `plans/P545.md`.
+- Result: Done. Timeline is a `Toggle` in the chain header (`AdeTaskChain.vue`), default off, kept per device in `kira.ade.details.timeline` through `usePersistedState` in the new `adeDetailsList` store; `adePanelTabs` lost its per-task timeline state. `taskChain(ChainSources)` merges handovers, proof and events (`layer`, `kind: 'event'`), newest first; ties rank proof with diagram, handover, other proof, event, `created` last. `taskTimeline.ts` shrank to `timelineEvents`; handover rows dropped (already chain cards). `AdeTimelineEntry.vue` draws an event row; `AdeTaskTimeline.vue` deleted. Backend half `TestDetailsList` (contract `ade-details-list`) checks every sort time is set and ordered; UI spec `ade-v2-details-list.spec.ts` covers default off, merged order, persistence, archived, session link. Toggle label is `common.timeline.label`, shared with the Studio HTTP pane (catalog rule C3). `ade-v2-proof-chain` order checks now poll (load flake).
 
 ### P546 Forward panel edits (diff only) to agents running in the step
 
