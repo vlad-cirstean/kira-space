@@ -52,7 +52,7 @@ grep() {
   return "$grep_rc"
 }
 
-FRONTEND_SRC=apps/kira-studio/frontend/src
+FRONTEND_SRC=apps/kira-space/frontend/src/studio
 SPACE_SRC=apps/kira-space/frontend/src
 THEME_SRC=packages/theme/src
 WORKBENCH_SRC=packages/workbench/src
@@ -61,7 +61,7 @@ SPACE_REPO_SRC=apps/kira-space/frontend/src/repo
 SPACE_REPO_VIEWS_SRC=apps/kira-space/frontend/src/views/repo
 DOCKER_UI_SRC=packages/docker-ui/src
 
-SCAN_DIRS="$FRONTEND_SRC $SPACE_SRC $THEME_SRC $WORKBENCH_SRC $DOCKER_UI_SRC"
+SCAN_DIRS="$SPACE_SRC $THEME_SRC $WORKBENCH_SRC $DOCKER_UI_SRC"
 
 STATUS=0
 

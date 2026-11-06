@@ -130,7 +130,7 @@ func (q *Quitter) Attach(app *application.App) {
 // itself a bound call, which arrives through the main thread (application_darwin.go:431's
 // processURLRequest), so a handler that waited here would deadlock the very ack it waits for and
 // guarantee the timeout — losing exactly the debounced tab save the handshake exists to protect
-// (apps/kira-studio/frontend/src/state/tabs.ts:131-137 awaits a tabsSave round trip before acking).
+// (apps/kira-space/frontend/src/studio/state/tabs.ts:131-137 awaits a tabsSave round trip before acking).
 func (q *Quitter) ShouldQuit() bool {
 	if q.done.Load() {
 		return true

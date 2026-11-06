@@ -284,7 +284,8 @@ export function createCoreControl<S, L, T, P, M>(
     settingsGetAll: (): Promise<S> => unwrap(b.settings.GetAll()).then((r) => trust<S>(r)),
     settingsSet: (patch: P): Promise<S> =>
       unwrap(b.settings.Set({ patch })).then((r) => trust<S>(r)),
-    onSettingsChanged: (cb: (settings: S) => void): (() => void) => on(channels.settingsChanged, cb),
+    onSettingsChanged: (cb: (settings: S) => void): (() => void) =>
+      on(channels.settingsChanged, cb),
 
     layoutGetAll: (): Promise<L> => unwrap(b.layout.GetAll()).then((r) => trust<L>(r)),
     layoutSet: (patch: LayoutPatch): Promise<L> =>

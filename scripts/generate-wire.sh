@@ -101,7 +101,7 @@ echo "generate-wire: using $FLATC (version $ACTUAL_VERSION)"
 # pinned flatc's actual CLI: --gen-onefile is a boolean presence flag (no `=false` form; omitting
 # it already gives one-file-per-type, which is what's wanted here) and --ts-no-import-ext doesn't
 # exist in 25.9.23 at all. Both are simply dropped below; see the C1 commit message.
-"$FLATC" --go -o "$ROOT_DIR/apps/kira-studio/internal/page" "$SCHEMA"
+"$FLATC" --go -o "$ROOT_DIR/apps/kira-space/internal/page" "$SCHEMA"
 "$FLATC" --ts -o "$ROOT_DIR/packages/shared/protocol" "$SCHEMA"
 
 "$FLATC" --go -o "$ROOT_DIR/apps/kira-space/internal" "$GIT_SCHEMA"

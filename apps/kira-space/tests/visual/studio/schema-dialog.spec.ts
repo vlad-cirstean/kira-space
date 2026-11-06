@@ -4,7 +4,10 @@ import { expect, test } from '../../ui/studio/fixtures';
 import { createConnection } from '../../ui/studio/support/connect';
 import { postgresCreateArgs } from '../../ui/studio/support/connectionArgs';
 import { IPC } from '../../ui/studio/support/ipcChannels';
-import { orderItemsFixture, postgresConnectionSummary } from '../../ui/studio/support/postgresFixture';
+import {
+  orderItemsFixture,
+  postgresConnectionSummary,
+} from '../../ui/studio/support/postgresFixture';
 import { connectionRow, openRowMenu } from '../../ui/studio/support/tree';
 import { settleFonts } from './support/settle';
 

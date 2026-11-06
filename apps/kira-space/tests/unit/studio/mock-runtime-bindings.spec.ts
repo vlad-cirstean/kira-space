@@ -2,8 +2,9 @@ import { describe, expect, test } from 'bun:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-// Every bound Go method needs a mock entry (an unmapped one answers E_FIXTURE_MISS) and every entry
-// must name a real method (a renamed binding silently strands its fixtures).
+// Every bound method of a service only Studio calls needs a mock entry (an unmapped one answers
+// E_FIXTURE_MISS) and every Studio entry must name a real method (a renamed binding silently strands
+// its fixtures). Services Space also maps are merged: each app's table covers just its own methods.
 const BINDINGS_DIR = join(
   import.meta.dir,
   '../../../frontend/bindings/github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge',
@@ -11,8 +12,8 @@ const BINDINGS_DIR = join(
 
 // Read as text: the module itself pulls in the Playwright-only `@workbench/testing` alias, which
 // bun's test resolver does not carry.
-function mappedMethods(): Set<string> {
-  const source = readFileSync(join(import.meta.dir, '../../ui/studio/support/mockRuntime.ts'), 'utf8');
+function mappedMethods(file: string): Set<string> {
+  const source = readFileSync(join(import.meta.dir, file), 'utf8');
   const start = source.indexOf('const FQN_SUFFIX_BY_IPC_KEY');
   const end = source.indexOf('\n};', start);
   return new Set(
@@ -31,10 +32,19 @@ function boundMethods(): Set<string> {
 
 describe('mockRuntime FQN table matches the generated bindings', () => {
   const bound = new Set([...boundMethods()].map((fqn) => fqn.split('/bridge.')[1]));
-  const mapped = mappedMethods();
+  const mapped = mappedMethods('../../ui/studio/support/mockRuntime.ts');
+  const spaceServices = new Set(
+    [...mappedMethods('../../ui/support/mockRuntime.ts')].map((fqn) => fqn.split('.')[0]),
+  );
+
+  const services = new Set(
+    [...mapped].map((fqn) => fqn.split('.')[0]).filter((svc) => !spaceServices.has(svc)),
+  );
 
   test('every bound method is mapped', () => {
-    expect([...bound].filter((fqn) => !mapped.has(fqn)).sort()).toEqual([]);
+    expect(
+      [...bound].filter((fqn) => services.has(fqn.split('.')[0]) && !mapped.has(fqn)).sort(),
+    ).toEqual([]);
   });
 
   test('every mapped method is bound', () => {

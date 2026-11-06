@@ -10,9 +10,14 @@ import '@workbench/testing/unit/window';
 
 import { describe, expect, test } from 'bun:test';
 import type { ColumnDescriptor } from '@shared/protocol/page';
-import type { ColumnPlan, GeneratorId } from '../../../frontend/src/studio/views/grid/fakeData/types';
+import type {
+  ColumnPlan,
+  GeneratorId,
+} from '../../../frontend/src/studio/views/grid/fakeData/types';
 
-const { previewFirstRows } = await import('../../../frontend/src/studio/views/grid/fakeData/generate');
+const { previewFirstRows } = await import(
+  '../../../frontend/src/studio/views/grid/fakeData/generate'
+);
 
 function column(name: string, dataType: string): ColumnDescriptor {
   return {

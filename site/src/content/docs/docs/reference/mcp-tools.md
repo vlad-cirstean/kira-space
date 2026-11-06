@@ -4,7 +4,7 @@ description: Every tool each Kira MCP server offers, with its arguments.
 sources:
   - internal/llmprompts/registry.go
   - internal/memory/mcpserver
-  - apps/kira-studio/internal/dbmcp/server.go
+  - apps/kira-space/internal/dbmcp/server.go
   - internal/agentmcp
   - internal/harness/claude/mcpinstall
 sidebar:

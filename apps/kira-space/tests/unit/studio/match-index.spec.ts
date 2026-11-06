@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import { effect, isShallow, shallowReactive } from 'vue';
-import { createMatchIndex, createPageSearch } from '../../../frontend/src/studio/views/shared/page/search';
+import {
+  createMatchIndex,
+  createPageSearch,
+} from '../../../frontend/src/studio/views/shared/page/search';
 
 // countingMatches wraps a real array in a Proxy that counts how many times it is actually
 // iterated (createMatchIndex's own `for (const m of entry.matches)`) — the only way to observe

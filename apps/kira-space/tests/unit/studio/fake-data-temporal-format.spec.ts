@@ -10,7 +10,9 @@ import '@workbench/testing/unit/window';
 
 import { describe, expect, test } from 'bun:test';
 
-const { formatTemporal } = await import('../../../frontend/src/studio/views/grid/fakeData/generate');
+const { formatTemporal } = await import(
+  '../../../frontend/src/studio/views/grid/fakeData/generate'
+);
 
 const SAMPLE = new Date(Date.UTC(2024, 4, 1, 10, 20, 30, 123)); // 2024-05-01T10:20:30.123Z
 

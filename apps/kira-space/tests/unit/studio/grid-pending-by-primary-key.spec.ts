@@ -20,7 +20,9 @@ const { useGridViewStore } = await import('../../../frontend/src/studio/views/gr
 const gridViewStore = useGridViewStore();
 const { data } = await import('../../../frontend/src/studio/bridge/data');
 restoreAfterEach(data);
-const { usePendingChangesStore } = await import('../../../frontend/src/studio/views/grid/pendingChanges');
+const { usePendingChangesStore } = await import(
+  '../../../frontend/src/studio/views/grid/pendingChanges'
+);
 const store = usePendingChangesStore();
 
 function col(name: string, isPrimaryKey: boolean): ColumnDescriptor {

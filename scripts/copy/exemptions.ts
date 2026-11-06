@@ -9,12 +9,12 @@ export const EXEMPTIONS: readonly Exemption[] = [
   },
   {
     rule: 'U67',
-    path: 'apps/kira-studio/frontend/src/views/console/completion.ts',
+    path: 'apps/kira-space/frontend/src/studio/views/console/completion.ts',
     reason: 'Redis command syntax hints (command grammar, not wording)',
   },
   {
     rule: 'U67',
-    path: 'apps/kira-studio/frontend/src/views/shared/document/ejson.ts',
+    path: 'apps/kira-space/frontend/src/studio/views/shared/document/ejson.ts',
     reason: 'EJSON shell-literal syntax (ObjectId(...), ISODate(...)), not wording',
   },
   {

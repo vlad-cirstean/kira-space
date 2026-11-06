@@ -4,7 +4,11 @@ import { expect, test } from '../../ui/studio/fixtures';
 import { createConnection } from '../../ui/studio/support/connect';
 import { mariadbCreateArgs } from '../../ui/studio/support/connectionArgs';
 import { IPC } from '../../ui/studio/support/ipcChannels';
-import { DB_PATH, mariadbConnectionSummary, orderItemsFixture } from '../../ui/studio/support/mariadbFixture';
+import {
+  DB_PATH,
+  mariadbConnectionSummary,
+  orderItemsFixture,
+} from '../../ui/studio/support/mariadbFixture';
 import { connectionRow, expandRow, openRowMenu } from '../../ui/studio/support/tree';
 import { settleFonts } from './support/settle';
 

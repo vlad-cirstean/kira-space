@@ -3,7 +3,10 @@
 // conformance exemption doesn't cover, so this pins its behaviour first, ahead of the
 // extraction of skipLineComment/scanStringLiteral out of it.
 import { describe, expect, test } from 'bun:test';
-import { consoleLintSource, lintMongoBrackets } from '../../../frontend/src/studio/views/console/lint';
+import {
+  consoleLintSource,
+  lintMongoBrackets,
+} from '../../../frontend/src/studio/views/console/lint';
 
 describe('lintMongoBrackets', () => {
   test('Unterminated string literal.', () => {

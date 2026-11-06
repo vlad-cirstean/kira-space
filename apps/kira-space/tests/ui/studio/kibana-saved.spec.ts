@@ -1,6 +1,9 @@
 import type { KibanaDiscoverRequest } from '@shared/domain/kibana';
 import { savedQuerySchema } from '@shared/domain/queries';
-import { browserTimeZone, resolveTime } from '../../../frontend/src/studio/views/console/kibana/time';
+import {
+  browserTimeZone,
+  resolveTime,
+} from '../../../frontend/src/studio/views/console/kibana/time';
 import { expect, test } from './fixtures';
 import { contract } from './support/contract';
 import { acceptConfirm, cancelConfirm } from './support/dialogs';

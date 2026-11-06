@@ -20,7 +20,9 @@ const { useConnectionsStore } = await import('../../../frontend/src/studio/state
 const connectionsStore = useConnectionsStore();
 const { useTreeStore } = await import('../../../frontend/src/studio/project/state/tree');
 const treeStore = useTreeStore();
-const { consoleRelationNames } = await import('../../../frontend/src/studio/views/console/completion');
+const { consoleRelationNames } = await import(
+  '../../../frontend/src/studio/views/console/completion'
+);
 
 function addConnection(id: string, kind: string, database: string | null): void {
   connectionsStore.records.push({

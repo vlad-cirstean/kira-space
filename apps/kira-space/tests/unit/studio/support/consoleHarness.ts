@@ -41,7 +41,9 @@ export async function bootstrapConsole(opts: { control?: boolean } = {}) {
   const connectionsStore = useConnectionsStore();
   const { useTabsStore } = await import('../../../../frontend/src/studio/state/tabs');
   const tabsStore = useTabsStore();
-  const { useConsoleViewStore } = await import('../../../../frontend/src/studio/views/console/state');
+  const { useConsoleViewStore } = await import(
+    '../../../../frontend/src/studio/views/console/state'
+  );
   const consoleViewStore = useConsoleViewStore();
 
   return { data, control, connectionsStore, tabsStore, consoleViewStore };

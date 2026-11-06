@@ -101,7 +101,7 @@ function extractGoStringMap(source: string, varName: string): Record<string, str
 describe('Go/TS HTTP body vocabulary parity (P3 D12)', () => {
   test('httpclient.validBodyModes (Go) matches HTTP_BODY_MODES minus the legacy json alias (TS)', () => {
     const source = readFileSync(
-      resolve(import.meta.dir, '../../../apps/kira-studio/internal/httpclient/body.go'),
+      resolve(import.meta.dir, '../../../apps/kira-space/internal/httpclient/body.go'),
       'utf8',
     );
     const goModes = extractGoStringSet(source, 'validBodyModes');
@@ -112,7 +112,7 @@ describe('Go/TS HTTP body vocabulary parity (P3 D12)', () => {
 
   test('httpclient.contentTypeByCodeLanguage (Go) matches CONTENT_TYPE_BY_CODE_LANGUAGE (TS)', () => {
     const source = readFileSync(
-      resolve(import.meta.dir, '../../../apps/kira-studio/internal/httpclient/body.go'),
+      resolve(import.meta.dir, '../../../apps/kira-space/internal/httpclient/body.go'),
       'utf8',
     );
     const goTable = extractGoStringMap(source, 'contentTypeByCodeLanguage');
@@ -128,7 +128,7 @@ describe('Go/TS HTTP body vocabulary parity (P3 D12)', () => {
 describe('Go/TS Postman code-language parity (P4 D17)', () => {
   test('postman.postmanCodeLanguages (Go) matches CODE_LANGUAGES (TS)', () => {
     const source = readFileSync(
-      resolve(import.meta.dir, '../../../apps/kira-studio/internal/postman/body.go'),
+      resolve(import.meta.dir, '../../../apps/kira-space/internal/postman/body.go'),
       'utf8',
     );
     const goLanguages = extractGoStringSet(source, 'postmanCodeLanguages');
@@ -145,7 +145,7 @@ describe('Go/TS Postman code-language parity (P4 D17)', () => {
 describe('Go/TS transform vocabulary parity (P17 D7)', () => {
   test('apivars.transformNames (Go) matches TRANSFORM_NAMES (TS)', () => {
     const source = readFileSync(
-      resolve(import.meta.dir, '../../../apps/kira-studio/internal/apivars/transforms.go'),
+      resolve(import.meta.dir, '../../../apps/kira-space/internal/apivars/transforms.go'),
       'utf8',
     );
     const goNames = extractGoStringSet(source, 'transformNames');
@@ -161,7 +161,7 @@ describe('Go/TS transform vocabulary parity (P17 D7)', () => {
 describe('Go/TS Postman dynamic-alias parity (P28 D15c)', () => {
   test('postman.aliasToFake (Go) matches ALIAS_TO_FAKE (TS)', () => {
     const source = readFileSync(
-      resolve(import.meta.dir, '../../../apps/kira-studio/internal/postman/aliases.go'),
+      resolve(import.meta.dir, '../../../apps/kira-space/internal/postman/aliases.go'),
       'utf8',
     );
     const goTable = extractGoStringMap(source, 'aliasToFake');

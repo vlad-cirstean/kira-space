@@ -4,7 +4,10 @@
 // "capture, don't hand-write" discipline applied where a capture tool wasn't needed).
 
 import { describe, expect, test } from 'bun:test';
-import { ExplainTruncatedError, parseExplainPages } from '../../../frontend/src/studio/views/console/plan';
+import {
+  ExplainTruncatedError,
+  parseExplainPages,
+} from '../../../frontend/src/studio/views/console/plan';
 import type { QueryPlan } from '../../../frontend/src/studio/views/console/planModel';
 import { parseClickhousePlan } from '../../../frontend/src/studio/views/console/planParsers/clickhouse';
 import { parseMariadbPlan } from '../../../frontend/src/studio/views/console/planParsers/mariadb';

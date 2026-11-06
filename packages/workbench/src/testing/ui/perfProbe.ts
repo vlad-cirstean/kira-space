@@ -4,7 +4,7 @@ import type { Page, TestInfo } from '@playwright/test';
 // Shared by both apps' tests/perf probes. Probes report numbers and assert nothing: a hard bound
 // would be flaky across machines. On macOS `ps` RSS omits CoreAnimation/IOSurface graphics memory,
 // the dominant scroll cost there; read footprint with
-// apps/kira-studio/frontend/proto/grid/mac/wkhost.swift instead. Process RSS here is the
+// apps/kira-space/frontend/proto/grid/mac/wkhost.swift instead. Process RSS here is the
 // DOM/JS/malloc side only.
 
 const WEBKIT_PROCESS =

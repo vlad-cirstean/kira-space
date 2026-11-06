@@ -43,7 +43,9 @@ const { useTabsStore } = await import('../../../frontend/src/studio/state/tabs')
 const tabsStore = useTabsStore();
 const { useBrowseViewStore } = await import('../../../frontend/src/studio/views/browse/state');
 const browseViewStore = useBrowseViewStore();
-const { useKeyValueViewStore } = await import('../../../frontend/src/studio/views/shared/keyvalue/state');
+const { useKeyValueViewStore } = await import(
+  '../../../frontend/src/studio/views/shared/keyvalue/state'
+);
 const keyValueViewStore = useKeyValueViewStore();
 const { setPage } = await import('../../../frontend/src/studio/views/shared/keyvalue/page');
 const { useGridViewStore } = await import('../../../frontend/src/studio/views/grid/state');

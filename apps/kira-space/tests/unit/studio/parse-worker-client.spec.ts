@@ -1,7 +1,13 @@
 import { describe, expect, spyOn, test } from 'bun:test';
-import { createParseClient, type WorkerLike } from '../../../frontend/src/studio/workers/parse/client';
+import {
+  createParseClient,
+  type WorkerLike,
+} from '../../../frontend/src/studio/workers/parse/client';
 import { handlers } from '../../../frontend/src/studio/workers/parse/handlers';
-import type { WorkerRequest, WorkerResponse } from '../../../frontend/src/studio/workers/parse/protocol';
+import type {
+  WorkerRequest,
+  WorkerResponse,
+} from '../../../frontend/src/studio/workers/parse/protocol';
 
 class FakeWorker implements WorkerLike {
   static all: FakeWorker[] = [];

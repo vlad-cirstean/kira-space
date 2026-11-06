@@ -13,7 +13,6 @@ import { type Hit, type MessageShape, scanSource } from './sourceRules';
 
 const REPO_ROOT = join(import.meta.dir, '..', '..');
 const SCAN_DIRS = [
-  'apps/kira-studio/frontend/src',
   'apps/kira-space/frontend/src',
   'apps/kira-space/frontend/mobile',
   'packages/workbench/src',

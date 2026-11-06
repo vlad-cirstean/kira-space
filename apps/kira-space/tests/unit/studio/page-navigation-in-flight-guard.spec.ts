@@ -11,7 +11,9 @@ import '@workbench/testing/unit/window';
 import { describe, expect, test } from 'bun:test';
 import type { PageCursor } from '@shared/protocol/dataOps';
 
-const { createPageNavigation } = await import('../../../frontend/src/studio/views/shared/page/navigation');
+const { createPageNavigation } = await import(
+  '../../../frontend/src/studio/views/shared/page/navigation'
+);
 
 interface FakeRuntime {
   opId: string | null;

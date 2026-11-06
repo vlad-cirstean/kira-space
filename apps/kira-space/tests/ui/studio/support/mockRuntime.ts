@@ -9,7 +9,10 @@ import {
   installControlMocks as sharedInstallControlMocks,
 } from '@workbench/testing/ui/mockRuntime';
 import { defaultSettings } from '../../../../frontend/src/studio/state/settingsDomain';
-import { STUDIO_TAB_KIND_MODE, type StudioTabKind } from '../../../../frontend/src/studio/state/tabDomain';
+import {
+  STUDIO_TAB_KIND_MODE,
+  type StudioTabKind,
+} from '../../../../frontend/src/studio/state/tabDomain';
 import { contract } from './contract';
 import { IPC } from './ipcChannels';
 

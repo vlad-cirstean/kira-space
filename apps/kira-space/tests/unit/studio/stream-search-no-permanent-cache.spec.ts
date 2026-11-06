@@ -14,7 +14,9 @@ import { pinia } from '../../../frontend/src/studio/state/pinia';
 
 setActivePinia(pinia);
 
-const { getPage, pageStoreEntries, setPage } = await import('../../../frontend/src/studio/views/stream/page');
+const { getPage, pageStoreEntries, setPage } = await import(
+  '../../../frontend/src/studio/views/stream/page'
+);
 const { useStreamSearchStore } = await import('../../../frontend/src/studio/views/stream/search');
 const { runSearch, searchState } = useStreamSearchStore();
 

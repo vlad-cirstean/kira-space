@@ -19,13 +19,6 @@ for a in "$@"; do
 done
 [ -n "$base" ] || [ -n "${UI_CHANGED_FILES:-}" ] || base="$(git merge-base HEAD origin/main)"
 
-# An app spec importing the other app's code breaks the per-app split.
-if grep -rEn "from '[^']*kira-studio/" apps/kira-space/tests --include=*.ts \
-  || grep -rEn "from '[^']*kira-space/" apps/kira-studio/tests --include=*.ts; then
-  echo "test-ui-changed: an app test imports the other app (move it to packages/workbench/src/testing/ui)" >&2
-  exit 1
-fi
-
 # UI_CHANGED_FILES (newline list) replaces the git file list, for checking the table.
 files="${UI_CHANGED_FILES:-$( { git diff --name-only "$base"; git ls-files --others --exclude-standard; } | sort -u)}"
 targets="$(ui_targets "$files")"

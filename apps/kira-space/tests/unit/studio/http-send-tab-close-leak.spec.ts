@@ -41,8 +41,12 @@ beforeEach(() => {
 });
 const { openApiRequestTab } = await import('../../../frontend/src/studio/api/tabs');
 const { useTabsStore } = await import('../../../frontend/src/studio/state/tabs');
-const { useHttpRequestViewStore } = await import('../../../frontend/src/studio/views/httprequest/state');
-const { useHttpHistoryStore } = await import('../../../frontend/src/studio/views/httprequest/history');
+const { useHttpRequestViewStore } = await import(
+  '../../../frontend/src/studio/views/httprequest/state'
+);
+const { useHttpHistoryStore } = await import(
+  '../../../frontend/src/studio/views/httprequest/history'
+);
 
 function response(): HttpResponseWire {
   return {

@@ -28,8 +28,8 @@ typecheck_targets() {
   [ -n "$_ts" ] || return 0
   printf '%s\n' "$_ts" | while IFS= read -r _f; do
     case "$_f" in
-      apps/kira-studio/frontend/*|apps/kira-studio/tests/*) echo "web:studio proto:studio tests:studio unit:studio" ;;
-      apps/kira-space/frontend/*|apps/kira-space/tests/*) echo "space-web space-mobile space-tests space-unit" ;;
+      apps/kira-space/frontend/proto/*|apps/kira-space/frontend/*proto*|apps/kira-space/tests/proto/*) echo "proto:studio space-web space-mobile space-tests space-unit" ;;
+      apps/kira-space/frontend/*|apps/kira-space/tests/*|apps/kira-space/tsconfig*|apps/kira-space/playwright*) echo "space-web space-mobile space-tests space-unit" ;;
       packages/api-core/*) echo "api-core:studio" ;;
       packages/git-*/*) echo "git" ;;
       packages/docker-ui/*) echo "docker" ;;
@@ -76,7 +76,7 @@ ui_target_of() {
   case "$1" in
     packages/*) echo both ;;
     *.go|internal/*|apps/*/internal/*|apps/*/tests/claude/*|docs/*|site/*|*.md) echo none ;;
-    apps/kira-studio/*) echo studio ;;
+    apps/kira-space/frontend/src/studio/*|apps/kira-space/tests/*/studio/*|apps/kira-space/tests/ipc/*|apps/kira-space/tests/proto/*|apps/kira-space/playwright.studio*) echo studio ;;
     apps/kira-space/*) echo space ;;
     *) echo both ;;
   esac

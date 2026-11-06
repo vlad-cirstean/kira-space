@@ -32,7 +32,7 @@ if [ -z "$GNU_GREP" ]; then
   exit 1
 fi
 
-DIRS="apps/kira-studio/frontend/src apps/kira-space/frontend/src apps/kira-space/frontend/mobile packages/workbench/src packages/git-ui/src packages/docker-ui/src packages/theme/src"
+DIRS="apps/kira-space/frontend/src apps/kira-space/frontend/mobile packages/workbench/src packages/git-ui/src packages/docker-ui/src packages/theme/src"
 CORE_DIRS="packages/git-core/src packages/git-ipc/src packages/api-core/src"
 
 TMP=$(mktemp -d)
@@ -40,16 +40,16 @@ trap 'rm -rf "$TMP"' EXIT
 
 # Guard kind `s` scans only these side-panel files (the P262 section 1.6 inventory).
 cat >"$TMP/side_panels" <<'PANELS'
-apps/kira-studio/frontend/src/workbench/panels/ProjectPanel.vue
-apps/kira-studio/frontend/src/api/CollectionsPanel.vue
+apps/kira-space/frontend/src/studio/workbench/panels/ProjectPanel.vue
+apps/kira-space/frontend/src/studio/api/CollectionsPanel.vue
 packages/docker-ui/src/components/DockerPanel.vue
 packages/workbench/src/automations/AutomationsPanel.vue
 packages/workbench/src/memory/MemoryPanel.vue
 apps/kira-space/frontend/src/repo/GitPanel.vue
-apps/kira-studio/frontend/src/project/ProjectTree.vue
-apps/kira-studio/frontend/src/project/TreeRow.vue
-apps/kira-studio/frontend/src/api/CollectionsTree.vue
-apps/kira-studio/frontend/src/api/CollectionRow.vue
+apps/kira-space/frontend/src/studio/project/ProjectTree.vue
+apps/kira-space/frontend/src/studio/project/TreeRow.vue
+apps/kira-space/frontend/src/studio/api/CollectionsTree.vue
+apps/kira-space/frontend/src/studio/api/CollectionRow.vue
 packages/docker-ui/src/components/ContainerList.vue
 packages/docker-ui/src/components/ImageList.vue
 packages/docker-ui/src/components/VolumeList.vue
@@ -93,18 +93,18 @@ U62 packages/workbench/src/components/AutocompleteField.vue # accepting a sugges
 U26 packages/workbench/src/components/OpLogPanel.vue # error log row wash at the shared /15 tint, with the inset rail
 U36 packages/theme/src/components/VarText.vue # inline variable mark, not a content box
 # A (apps/kira-studio)
-U100 apps/kira-studio/frontend/src/api/CopyAsCurlDialog.vue # read-only output fields, nothing to discard
-U34 apps/kira-studio/frontend/src/theme/EngineIcon.vue # engine brand marks are third-party logo colours
-U36 apps/kira-studio/frontend/src/project/connection/ConnectionEnginePicker.vue # engine tile is a selectable radio card, not a content box
-U46 apps/kira-studio/frontend/src/bridge/port.ts # bridge transport timeout
-U41 apps/kira-studio/frontend/src/editor/MonacoHost.vue # Monaco engine host reads modifier keys
-U62 apps/kira-studio/frontend/src/editor/MonacoHost.vue # Monaco engine host owns editor focus
-U41 apps/kira-studio/frontend/src/views/grid/SlickGridHost.vue # column-header click reads the Ctrl/Cmd mouse modifier, not a key chord
-U62 apps/kira-studio/frontend/src/views/grid/slick/editor.ts # SlickGrid cell editor owns its input focus
-U52 apps/kira-studio/frontend/src/views/shared/celleditor/timestamp.ts # spelling-preserving timestamp re-encoding
-U62 apps/kira-studio/frontend/src/views/console/ConsoleView.vue # Monaco host exposes focus(); not a DOM element focus
-U47 apps/kira-studio/frontend/src/views/shared/fields/FieldRowsTable.vue # 2D arrow navigation between text inputs; useListNavigation ignores text fields
-U62 apps/kira-studio/frontend/src/views/shared/fields/FieldRowsTable.vue # moves focus between sibling inputs and sets the caret
+U100 apps/kira-space/frontend/src/studio/api/CopyAsCurlDialog.vue # read-only output fields, nothing to discard
+U34 apps/kira-space/frontend/src/studio/theme/EngineIcon.vue # engine brand marks are third-party logo colours
+U36 apps/kira-space/frontend/src/studio/project/connection/ConnectionEnginePicker.vue # engine tile is a selectable radio card, not a content box
+U46 apps/kira-space/frontend/src/studio/bridge/port.ts # bridge transport timeout
+U41 apps/kira-space/frontend/src/studio/editor/MonacoHost.vue # Monaco engine host reads modifier keys
+U62 apps/kira-space/frontend/src/studio/editor/MonacoHost.vue # Monaco engine host owns editor focus
+U41 apps/kira-space/frontend/src/studio/views/grid/SlickGridHost.vue # column-header click reads the Ctrl/Cmd mouse modifier, not a key chord
+U62 apps/kira-space/frontend/src/studio/views/grid/slick/editor.ts # SlickGrid cell editor owns its input focus
+U52 apps/kira-space/frontend/src/studio/views/shared/celleditor/timestamp.ts # spelling-preserving timestamp re-encoding
+U62 apps/kira-space/frontend/src/studio/views/console/ConsoleView.vue # Monaco host exposes focus(); not a DOM element focus
+U47 apps/kira-space/frontend/src/studio/views/shared/fields/FieldRowsTable.vue # 2D arrow navigation between text inputs; useListNavigation ignores text fields
+U62 apps/kira-space/frontend/src/studio/views/shared/fields/FieldRowsTable.vue # moves focus between sibling inputs and sets the caret
 # B (apps/kira-space, W/memory)
 U101 packages/workbench/src/approvals/ApprovalsDialog.vue # count marks approvals awaiting the person
 U101 apps/kira-space/frontend/src/ade/v2/shell/AdeShell.vue # count badge marks sessions needing attention, not a tab count
@@ -117,7 +117,7 @@ U34 apps/kira-space/frontend/src/workbench/settings/MobileQr.vue # QR needs a wh
 U37 apps/kira-space/frontend/src/ade/v2/plan/AdeTaskCard.vue # plan board task card selected fill, P129 board visual exempt per P263 §2.10
 U37 apps/kira-space/frontend/src/ade/v2/plan/AdeBranchRow.vue # plan board branch row selected fill, board visual exempt per P263 §2.10
 U37 apps/kira-space/frontend/src/ade/v2/plan/AdeDayBand.vue # plan board history and span row selected fill, board visual exempt per P263 §2.10
-U37 apps/kira-studio/frontend/src/views/shared/DateTimePicker.vue # picker cell selection fill, not a list row (P525 rule 7)
+U37 apps/kira-space/frontend/src/studio/views/shared/DateTimePicker.vue # picker cell selection fill, not a list row (P525 rule 7)
 U62 apps/kira-space/frontend/src/views/repo/useReadonlyFileViewer.ts # Monaco editor.focus(), not DOM focus
 U62 apps/kira-space/frontend/src/views/repo/RepoDiffView.vue # Monaco editor.focus(), not DOM focus
 U62 apps/kira-space/frontend/src/views/repo/useFileEdit.ts # Monaco editor.focus(), not DOM focus
@@ -215,7 +215,7 @@ U75@@vt@@@@duration-, ease-, animate-in, animate-out outside theme (motion token
 U76@@vt@@sortableReorder.ts@@ghostClass/chosenClass outside sortableReorder.ts (use SORTABLE_GHOST_CLASS; no chosen class)@@\b(?:ghost|chosen)Class:
 U77@@vt@@@@bare void on a bridge call (use fireAndForget)@@\bvoid\s+(?:(?:ctx|props)\.)?(?:control|bridge)\.\w+\(
 U78@@s@@@@Button inside EmptyState in a side panel (the front door has no action button)@@(?s)<EmptyState\b(?&t)(?<!/)>(?:(?!</EmptyState>).)*?<Button\b
-U79@@vt@@apps/kira-space/frontend/src/bridge/index.ts|apps/kira-studio/frontend/src/bridge/index.ts@@direct linkOpenExternal or LinkService.OpenExternal (use createOpenExternal)@@linkOpenExternal\(|LinkService\.OpenExternal\(
+U79@@vt@@apps/kira-space/frontend/src/bridge/index.ts|apps/kira-space/frontend/src/studio/bridge/index.ts@@direct linkOpenExternal or LinkService.OpenExternal (use createOpenExternal)@@linkOpenExternal\(|LinkService\.OpenExternal\(
 U80@@v@@@@ShowMoreButton without useCappedList@@(?s)\A(?!.*useCappedList\().*ShowMoreButton
 U80@@vt@@/behaviour/!|/testing/!@@hand-rolled render cap (use useCappedList)@@capRows\(|_ROW_CAP\b
 U81@@vt@@@@empty .catch(() => {}) (use fireAndForget or give the error a surface)@@\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*\{\s*\}\s*\)

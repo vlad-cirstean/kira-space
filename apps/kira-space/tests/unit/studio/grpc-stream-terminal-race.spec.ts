@@ -29,8 +29,12 @@ const { control } = await import('../../../frontend/src/studio/bridge/control');
 const { openGrpcRequestTab, patchGrpcRequestTabState } = await import(
   '../../../frontend/src/studio/api/tabs'
 );
-const { useGrpcRequestViewStore } = await import('../../../frontend/src/studio/views/grpcrequest/state');
-const { useGrpcHistoryList } = await import('../../../frontend/src/studio/views/grpcrequest/history');
+const { useGrpcRequestViewStore } = await import(
+  '../../../frontend/src/studio/views/grpcrequest/state'
+);
+const { useGrpcHistoryList } = await import(
+  '../../../frontend/src/studio/views/grpcrequest/history'
+);
 const { findGrpcRequestTab } = await import('../../../frontend/src/studio/api/tabs');
 const { grpcSchemaKey, grpcSchemaSourceFor } = await import(
   '../../../frontend/src/studio/views/grpcrequest/schemaQuery'

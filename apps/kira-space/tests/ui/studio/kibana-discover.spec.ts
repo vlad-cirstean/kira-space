@@ -1,6 +1,9 @@
 import type { KibanaDiscoverRequest } from '@shared/domain/kibana';
 import { DATA_OP } from '@shared/protocol/dataOps';
-import { browserTimeZone, resolveTime } from '../../../frontend/src/studio/views/console/kibana/time';
+import {
+  browserTimeZone,
+  resolveTime,
+} from '../../../frontend/src/studio/views/console/kibana/time';
 import { expect, test } from './fixtures';
 import { typeInto } from './support/editor';
 import {

@@ -6,7 +6,10 @@
 // committed a sort by a field no document has.
 import { describe, expect, test } from 'bun:test';
 import type { SortSpec } from '@shared/domain/queries';
-import { parseSortText, sortSpecToText } from '../../../frontend/src/studio/views/documents/sortDocument';
+import {
+  parseSortText,
+  sortSpecToText,
+} from '../../../frontend/src/studio/views/documents/sortDocument';
 
 function structured(column: string, direction: 'asc' | 'desc' = 'desc'): SortSpec {
   return { kind: 'structured', terms: [{ column, direction }] };

@@ -18,7 +18,9 @@ setActivePinia(pinia);
 const { setPage } = await import('../../../frontend/src/studio/views/grid/page');
 const { data } = await import('../../../frontend/src/studio/bridge/data');
 restoreAfterEach(data);
-const { usePendingChangesStore } = await import('../../../frontend/src/studio/views/grid/pendingChanges');
+const { usePendingChangesStore } = await import(
+  '../../../frontend/src/studio/views/grid/pendingChanges'
+);
 const store = usePendingChangesStore();
 
 describe('commitPending in-flight guard', () => {

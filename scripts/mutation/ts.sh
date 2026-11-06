@@ -11,7 +11,7 @@ mutation_ts() {
   fi
 
   # Wails bindings are generated and gitignored; the snapshot (tracked files only) lacks them.
-  for _app in kira-studio kira-space; do
+  for _app in kira-space; do
     if [ ! -d "$ROOT_DIR/apps/$_app/frontend/bindings" ]; then
       echo "mutation: apps/$_app/frontend/bindings missing — run \`bun run setup\` first" >&2
       exit 1

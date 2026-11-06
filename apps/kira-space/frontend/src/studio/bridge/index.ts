@@ -1,7 +1,6 @@
 import * as AgentService from '@bindings/agentservice.js';
 import * as ApprovalsService from '@bindings/approvalsservice.js';
 import * as AppService from '@bindings/appservice.js';
-import * as ConfigFilesService from '@bindings/studioconfigfilesservice.js';
 import * as ConnectionConfigService from '@bindings/connectionconfigservice.js';
 import * as ConnectionsService from '@bindings/connectionsservice.js';
 import * as CustomScriptsService from '@bindings/customscriptsservice.js';
@@ -17,12 +16,13 @@ import * as LinkService from '@bindings/linkservice.js';
 import * as LlmPromptsService from '@bindings/llmpromptsservice.js';
 import * as MaskRulesService from '@bindings/maskrulesservice.js';
 import type * as WailsModels from '@bindings/models.js';
-import * as OpsService from '@bindings/studioopsservice.js';
 import * as PromptsService from '@bindings/promptsservice.js';
 import * as ProofService from '@bindings/proofservice.js';
 import * as QueriesService from '@bindings/queriesservice.js';
 import * as SchemaService from '@bindings/schemaservice.js';
 import * as ScriptRunsService from '@bindings/scriptrunsservice.js';
+import * as ConfigFilesService from '@bindings/studioconfigfilesservice.js';
+import * as OpsService from '@bindings/studioopsservice.js';
 import * as SettingsService from '@bindings/studiosettingsservice.js';
 import * as TabsService from '@bindings/tabsservice.js';
 import * as TerminalService from '@bindings/terminalservice.js';
@@ -698,21 +698,24 @@ const studioControl = {
 // their bound-call FQNs moved. Spread order matters not at all here (the three objects' key sets
 // are disjoint by construction).
 export const control = {
-  ...createCoreControl<Settings, Layout, TabRecord, SettingsPatch, AppMode>({
-    settings: SettingsService,
-    layout: LayoutService,
-    tabs: TabsService,
-    lifecycle: LifecycleService,
-    terminal: TerminalService,
-    files: FilesService,
-    windows: WindowsService,
-    keepAwake: KeepAwakeService,
-    update: UpdateService,
-    prompts: PromptsService,
-    approvals: ApprovalsService,
-    llmPrompts: LlmPromptsService,
-    agent: AgentService,
-  }, { settingsChanged: CHANNEL.studioSettingsChanged }),
+  ...createCoreControl<Settings, Layout, TabRecord, SettingsPatch, AppMode>(
+    {
+      settings: SettingsService,
+      layout: LayoutService,
+      tabs: TabsService,
+      lifecycle: LifecycleService,
+      terminal: TerminalService,
+      files: FilesService,
+      windows: WindowsService,
+      keepAwake: KeepAwakeService,
+      update: UpdateService,
+      prompts: PromptsService,
+      approvals: ApprovalsService,
+      llmPrompts: LlmPromptsService,
+      agent: AgentService,
+    },
+    { settingsChanged: CHANNEL.studioSettingsChanged },
+  ),
   openExternal: createOpenExternal((url) => unwrap(LinkService.OpenExternal({ url }))),
   ...apiControl,
   ...studioControl,

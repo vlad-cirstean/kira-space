@@ -14,7 +14,9 @@ import { pinia } from '../../../frontend/src/studio/state/pinia';
 setActivePinia(pinia);
 
 const documentsPage = await import('../../../frontend/src/studio/views/documents/page');
-const { useDocumentRowsStore } = await import('../../../frontend/src/studio/views/shared/document/rows');
+const { useDocumentRowsStore } = await import(
+  '../../../frontend/src/studio/views/shared/document/rows'
+);
 const documentRowsStore = useDocumentRowsStore();
 
 describe('document byteLabel (P2 R2 #99)', () => {

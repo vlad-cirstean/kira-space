@@ -1,7 +1,7 @@
 // packages/shared/protocol/wire.fbs
 //
-// The data-plane response wire format (P11). Go encoder: apps/kira-studio/internal/page/encode.go
-// plus apps/kira-studio/internal/adapterhost/frame.go. TypeScript decoder:
+// The data-plane response wire format (P11). Go encoder: apps/kira-space/internal/page/encode.go
+// plus apps/kira-space/internal/adapterhost/frame.go. TypeScript decoder:
 // packages/shared/protocol/frame.ts. Regenerate both with scripts/generate-wire.sh.
 //
 // Renderer -> Go frames are NOT covered here: they stay JSON text (P11 D3).

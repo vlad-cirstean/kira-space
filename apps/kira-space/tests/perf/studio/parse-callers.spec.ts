@@ -8,7 +8,11 @@ import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
 import { expect, test } from '../../ui/studio/fixtures';
 import { grpcTab } from '../../ui/studio/support/apiMode';
 import { installClipboardSpy } from '../../ui/studio/support/clipboard';
-import { connectAndExpand, connectionCreateArgs, openConsoleFromMenu } from '../../ui/studio/support/connect';
+import {
+  connectAndExpand,
+  connectionCreateArgs,
+  openConsoleFromMenu,
+} from '../../ui/studio/support/connect';
 import { IPC } from '../../ui/studio/support/ipcChannels';
 import { WIDGETS_PATH } from '../../ui/studio/support/mongoFixture';
 import {

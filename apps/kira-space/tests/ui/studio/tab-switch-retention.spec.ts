@@ -3,7 +3,10 @@
 // user sees: kept key-value page, kept console cursor, kept Discover sidebar search and data view.
 import type { Page } from '@playwright/test';
 import type { KibanaDiscoverRequest } from '@shared/domain/kibana';
-import { browserTimeZone, resolveTime } from '../../../frontend/src/studio/views/console/kibana/time';
+import {
+  browserTimeZone,
+  resolveTime,
+} from '../../../frontend/src/studio/views/console/kibana/time';
 import {
   controlSnapshots as redisControl,
   portSnapshots as redisPorts,

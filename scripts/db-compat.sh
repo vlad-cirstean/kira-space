@@ -66,22 +66,22 @@ LOCALSTACK_MAX="localstack/localstack:4.14.0"
 # KIRA_COMPAT_IMAGE_MYSQL per run (min-with-min, max-with-max) since both containers live in one
 # test binary (D3) — sqlite is absent by design, it has no server to vary (F11).
 MATRIX="
-postgres|min|./apps/kira-studio/internal/adapters/postgres/...|KIRA_COMPAT_IMAGE_POSTGRES=$POSTGRES_MIN
-postgres|max|./apps/kira-studio/internal/adapters/postgres/...|KIRA_COMPAT_IMAGE_POSTGRES=$POSTGRES_MAX
-mysqlfamily|min|./apps/kira-studio/internal/adapters/mysqlfamily/...|KIRA_COMPAT_IMAGE_MARIADB=$MARIADB_MIN KIRA_COMPAT_IMAGE_MYSQL=$MYSQL_MIN
-mysqlfamily|max|./apps/kira-studio/internal/adapters/mysqlfamily/...|KIRA_COMPAT_IMAGE_MARIADB=$MARIADB_MAX KIRA_COMPAT_IMAGE_MYSQL=$MYSQL_MAX
-clickhouse|min|./apps/kira-studio/internal/adapters/clickhouse/...|KIRA_COMPAT_IMAGE_CLICKHOUSE=$CLICKHOUSE_MIN
-clickhouse|max|./apps/kira-studio/internal/adapters/clickhouse/...|KIRA_COMPAT_IMAGE_CLICKHOUSE=$CLICKHOUSE_MAX
-mongo|min|./apps/kira-studio/internal/adapters/mongo/...|KIRA_COMPAT_IMAGE_MONGO=$MONGO_MIN
-mongo|max|./apps/kira-studio/internal/adapters/mongo/...|KIRA_COMPAT_IMAGE_MONGO=$MONGO_MAX
-redis|min|./apps/kira-studio/internal/adapters/redis/...|KIRA_COMPAT_IMAGE_REDIS=$REDIS_MIN
-redis|max|./apps/kira-studio/internal/adapters/redis/...|KIRA_COMPAT_IMAGE_REDIS=$REDIS_MAX
-kafka|min|./apps/kira-studio/internal/adapters/kafka/...|KIRA_COMPAT_IMAGE_KAFKA=$KAFKA_MIN
-kafka|max|./apps/kira-studio/internal/adapters/kafka/...|KIRA_COMPAT_IMAGE_KAFKA=$KAFKA_MAX
-sqs|min|./apps/kira-studio/internal/adapters/sqs/...|KIRA_COMPAT_IMAGE_LOCALSTACK=$LOCALSTACK_MIN
-sqs|max|./apps/kira-studio/internal/adapters/sqs/...|KIRA_COMPAT_IMAGE_LOCALSTACK=$LOCALSTACK_MAX
-s3|min|./apps/kira-studio/internal/adapters/s3/...|KIRA_COMPAT_IMAGE_LOCALSTACK=$LOCALSTACK_MIN
-s3|max|./apps/kira-studio/internal/adapters/s3/...|KIRA_COMPAT_IMAGE_LOCALSTACK=$LOCALSTACK_MAX
+postgres|min|./apps/kira-space/internal/adapters/postgres/...|KIRA_COMPAT_IMAGE_POSTGRES=$POSTGRES_MIN
+postgres|max|./apps/kira-space/internal/adapters/postgres/...|KIRA_COMPAT_IMAGE_POSTGRES=$POSTGRES_MAX
+mysqlfamily|min|./apps/kira-space/internal/adapters/mysqlfamily/...|KIRA_COMPAT_IMAGE_MARIADB=$MARIADB_MIN KIRA_COMPAT_IMAGE_MYSQL=$MYSQL_MIN
+mysqlfamily|max|./apps/kira-space/internal/adapters/mysqlfamily/...|KIRA_COMPAT_IMAGE_MARIADB=$MARIADB_MAX KIRA_COMPAT_IMAGE_MYSQL=$MYSQL_MAX
+clickhouse|min|./apps/kira-space/internal/adapters/clickhouse/...|KIRA_COMPAT_IMAGE_CLICKHOUSE=$CLICKHOUSE_MIN
+clickhouse|max|./apps/kira-space/internal/adapters/clickhouse/...|KIRA_COMPAT_IMAGE_CLICKHOUSE=$CLICKHOUSE_MAX
+mongo|min|./apps/kira-space/internal/adapters/mongo/...|KIRA_COMPAT_IMAGE_MONGO=$MONGO_MIN
+mongo|max|./apps/kira-space/internal/adapters/mongo/...|KIRA_COMPAT_IMAGE_MONGO=$MONGO_MAX
+redis|min|./apps/kira-space/internal/adapters/redis/...|KIRA_COMPAT_IMAGE_REDIS=$REDIS_MIN
+redis|max|./apps/kira-space/internal/adapters/redis/...|KIRA_COMPAT_IMAGE_REDIS=$REDIS_MAX
+kafka|min|./apps/kira-space/internal/adapters/kafka/...|KIRA_COMPAT_IMAGE_KAFKA=$KAFKA_MIN
+kafka|max|./apps/kira-space/internal/adapters/kafka/...|KIRA_COMPAT_IMAGE_KAFKA=$KAFKA_MAX
+sqs|min|./apps/kira-space/internal/adapters/sqs/...|KIRA_COMPAT_IMAGE_LOCALSTACK=$LOCALSTACK_MIN
+sqs|max|./apps/kira-space/internal/adapters/sqs/...|KIRA_COMPAT_IMAGE_LOCALSTACK=$LOCALSTACK_MAX
+s3|min|./apps/kira-space/internal/adapters/s3/...|KIRA_COMPAT_IMAGE_LOCALSTACK=$LOCALSTACK_MIN
+s3|max|./apps/kira-space/internal/adapters/s3/...|KIRA_COMPAT_IMAGE_LOCALSTACK=$LOCALSTACK_MAX
 "
 
 # --- filter the matrix down to what was asked for ----------------------------------------------

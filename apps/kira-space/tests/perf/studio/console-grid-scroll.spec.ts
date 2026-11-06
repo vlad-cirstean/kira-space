@@ -9,7 +9,11 @@ import {
 } from '@workbench/testing/ui/perfProbe';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
 import { expect, test } from '../../ui/studio/fixtures';
-import { connectAndExpand, connectionCreateArgs, openConsoleFromMenu } from '../../ui/studio/support/connect';
+import {
+  connectAndExpand,
+  connectionCreateArgs,
+  openConsoleFromMenu,
+} from '../../ui/studio/support/connect';
 import { typeInto } from '../../ui/studio/support/editor';
 import { IPC } from '../../ui/studio/support/ipcChannels';
 import {

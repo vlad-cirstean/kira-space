@@ -41,7 +41,6 @@ check_layer() {
   echo "check-tokens: every --${prefix}* reference in $src resolves to a real definition."
 }
 
-FRONTEND_SRC=apps/kira-studio/frontend/src
 SPACE_SRC=apps/kira-space/frontend/src
 THEME_SRC=packages/theme/src
 WORKBENCH_SRC=packages/workbench/src
@@ -49,14 +48,14 @@ GIT_UI_SRC=packages/git-ui/src
 DOCKER_UI_SRC=packages/docker-ui/src
 
 # P103 (byte-identical tier, folded into P100 Part 2): tokens.css/base.css/primitives.css moved
-# out of apps/kira-studio/frontend/src/theme into packages/theme/src, shared verbatim by both
+# out of apps/kira-space/frontend/src/studio/theme into packages/theme/src, shared verbatim by both
 # apps — definitions read from their real new location. Usage now scans both apps' own src (kira-
 # space is a real --kira-* consumer, not just Studio) plus packages/theme/src itself, whose own
 # components/primitives reference the same tokens.
 #
 # P103 Part 1: packages/workbench/src added to the usage scan too — its own moved ContextMenu.vue/
 # AppTooltip.vue/ConfirmDialog.vue reference --kira-* tokens the same way they did inside each app.
-check_layer 'kira-' "$FRONTEND_SRC $SPACE_SRC $THEME_SRC $WORKBENCH_SRC $DOCKER_UI_SRC $GIT_UI_SRC" \
+check_layer 'kira-' "$SPACE_SRC $THEME_SRC $WORKBENCH_SRC $DOCKER_UI_SRC $GIT_UI_SRC" \
   "$THEME_SRC/tokens.css $THEME_SRC/base.css $THEME_SRC/primitives.css $GIT_UI_SRC/theme/git.css" kira
 
 kui_hits=$(grep -rnE --include='*.vue' --include='*.css' --include='*.ts' \

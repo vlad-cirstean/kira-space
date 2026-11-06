@@ -18,7 +18,7 @@ import (
 
 // ErrorCode is the Go analogue of errors.ts's AdapterErrorCode — a closed set, verbatim from
 // errors.ts:4-12. Nothing is ever added here without a matching renderer change:
-// apps/kira-studio/frontend/src/views/shared/viewOp.ts and state/tabs.ts both branch on these exact
+// apps/kira-space/frontend/src/studio/views/shared/viewOp.ts and state/tabs.ts both branch on these exact
 // strings, and a renamed or added code silently stops matching there.
 type ErrorCode string
 

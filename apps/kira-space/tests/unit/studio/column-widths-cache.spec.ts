@@ -3,7 +3,10 @@ import {
   createTabularPageBuilder,
   unpagedPosition,
 } from '../../../../../packages/shared/protocol/page';
-import { initialWidths, resetMeasureCtx } from '../../../frontend/src/studio/views/shared/page/columns';
+import {
+  initialWidths,
+  resetMeasureCtx,
+} from '../../../frontend/src/studio/views/shared/page/columns';
 
 // DataGrid.vue's `widths` computed depends on the tab's stored columnWidths, so
 // every pointermove of a column-resize drag used to re-run initialWidths' canvas-measurement pass

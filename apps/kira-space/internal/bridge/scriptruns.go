@@ -50,7 +50,7 @@ func (s *ScriptRunsService) List(args scriptruns.ListArgs) ([]scriptruns.Run, er
 	if err != nil {
 		return nil, err
 	}
-	out := append(space, studio...)
+	out := slices.Concat(space, studio)
 	slices.SortStableFunc(out, func(a, b scriptruns.Run) int { return int(b.CreatedAt - a.CreatedAt) })
 	if args.Limit > 0 && len(out) > args.Limit {
 		out = out[:args.Limit]

@@ -5,7 +5,7 @@ import (
 )
 
 // StreamName is the one named stream. The renderer's replacement for
-// apps/kira-studio/frontend/src/bridge/port.ts opens it once per page load; Wails supersedes an
+// apps/kira-space/frontend/src/studio/bridge/port.ts opens it once per page load; Wails supersedes an
 // older generation's session automatically (stream.go:747-800), which is what retires
 // index.ts's own `generation` counter.
 const StreamName = "engine"

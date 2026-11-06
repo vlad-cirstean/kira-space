@@ -6,19 +6,35 @@ import { closeAllTabs } from '@workbench/testing/ui/heapProbe';
 import { diffSnapshotFiles } from '@workbench/testing/ui/heapSnapshot';
 import { MemSampler, type MemStep, runMemSteps, SNAPSHOTS } from '@workbench/testing/ui/memProbe';
 import { emitWailsEvent } from '@workbench/testing/ui/mockRuntime';
-import { browserTimeZone, resolveTime } from '../../../frontend/src/studio/views/console/kibana/time';
+import {
+  browserTimeZone,
+  resolveTime,
+} from '../../../frontend/src/studio/views/console/kibana/time';
 import {
   controlSnapshots as redisControl,
   portSnapshots as redisPorts,
 } from '../../ipc/redis/redis.fixture';
-import { controlSnapshots as sqsControl, portSnapshots as sqsPorts } from '../../ipc/sqs/sqs.fixture';
+import {
+  controlSnapshots as sqsControl,
+  portSnapshots as sqsPorts,
+} from '../../ipc/sqs/sqs.fixture';
 import { expect, test } from '../../ui/studio/fixtures';
 import { grpcTab } from '../../ui/studio/support/apiMode';
 import { connectPostgres, ITEMS_CONTROL, ITEMS_PORT } from '../../ui/studio/support/copyScenarios';
 import { container, openDocker, setupDocker } from '../../ui/studio/support/dockerFixture';
 import { IPC } from '../../ui/studio/support/ipcChannels';
-import { executeHits, kibanaControl, logsNode, logsView } from '../../ui/studio/support/kibanaFixture';
-import { loc, openKind, openKubernetes, setupKubernetes } from '../../ui/studio/support/kubernetesFixture';
+import {
+  executeHits,
+  kibanaControl,
+  logsNode,
+  logsView,
+} from '../../ui/studio/support/kibanaFixture';
+import {
+  loc,
+  openKind,
+  openKubernetes,
+  setupKubernetes,
+} from '../../ui/studio/support/kubernetesFixture';
 import {
   DB_PATH as MONGO_DB,
   mongoConnectionSummary,

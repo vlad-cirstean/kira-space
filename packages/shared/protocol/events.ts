@@ -1,7 +1,7 @@
 import type { MaskRule } from '../domain/mask';
 import type { VariableScope } from '../domain/variables';
 
-/** The Go→renderer push channels (`apps/kira-studio/internal/bridge/events.go`'s constants, verbatim).
+/** The Go→renderer push channels (`apps/kira-space/internal/bridge/events.go`'s constants, verbatim).
  *  Formerly the push half of ipc.ts's IPC const; the request/response half retired with
  *  window.kira, and the wire types for bound calls now come from the generated bindings (P57 D7).
  *  `kira:engine:state` and `kira:port` are absent — both are dead channels retired by D6/D3. */
@@ -134,7 +134,7 @@ export const CHANNEL = {
  *  for the status bar, not a per-process breakdown. No generated binding carries this shape: it
  *  is emitted (`kira:app:metrics`), never returned from a bound call, so it has no home in any
  *  service's models.ts and stays hand-written here instead. Mirrors
- *  `apps/kira-studio/internal/metrics.Sample`'s JSON tags.
+ *  `apps/kira-space/internal/metrics.Sample`'s JSON tags.
  *
  *  cpuPercent is normalized to the machine's whole capacity (0-100), not the per-core-sum macOS's
  *  own Activity Monitor shows in its per-process "% CPU" column (which reads up to `logicalCPUs`

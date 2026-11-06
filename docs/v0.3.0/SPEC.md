@@ -8,7 +8,7 @@ Sequencing: P537 first. Every later phase builds on the merged app, so none star
 
 | Phase | Title | Status |
 |---|---|---|
-| P537 Part 1 | Merge Kira Space and Kira Studio: relocate Studio into `apps/kira-space` and freeze the merged bridge | Pending |
+| P537 Part 1 | Merge Kira Space and Kira Studio: relocate Studio into `apps/kira-space` and freeze the merged bridge | Done |
 | P537 Part 2 | Merge Kira Space and Kira Studio: finish in three parallel streams (Go, frontend, build/tests/docs) | Pending |
 | P538 | Fold the Studio home folder into the Kira Space home folder | Pending |
 | P539 | Move every config YAML into one subfolder of the home | Pending |
@@ -33,6 +33,33 @@ Sequencing: P537 first. Every later phase builds on the merged app, so none star
 
 - Enabling step, one sequential implementer. Every Studio file moves to its final path; every path reference is rewired; the Go bridge merges to its final bound surface (one binary, one bindings tree); Studio source typechecks in Space's frontend project. Writes the rename table Part 2 builds on.
 - Plan: `plans/P537-part1.md`.
+
+Result:
+
+- Bound surface: 62 services, 178 files in `apps/kira-space/frontend/bindings` (519 methods). Count equals Space's plus Studio's minus 15 merged.
+- Bindings file-list hash: sha256 of `find . -type f | LC_ALL=C sort` run in `apps/kira-space/frontend/bindings` = `625c313f28c4ab100dd545eac18ef7c76b60c676973f0a3aa252f94fc54b4472`.
+- Service rename table (Studio name, merged name):
+  - One service, Space's name: Agent, Approvals, Prompts, Files, KeepAwake, Layout, Lifecycle, Link, Windows, Update, Terminal, LlmPrompts, Tabs, CustomScripts, ScriptRuns, App, Docker, Kubernetes, Proof. Tabs, CustomScripts and ScriptRuns route over both stacks. Layout is Space's.
+  - Twins: `OpsService` to `StudioOpsService`, `SettingsService` to `StudioSettingsService`, `ConfigFilesService` to `StudioConfigFilesService`.
+  - Studio-only services keep their names.
+- Renamed bridge types: `StudioOpsRecentArgs`, `StudioOpsCancelArgs`, `StudioCanceller`, `StudioSettingsSetArgs`, `StudioSources`.
+- Renamed channels: `kira:settings:changed` to `studio:kira:settings:changed`, `kira:op:update` to `studio:kira:op:update`. TS keys `CHANNEL.studioSettingsChanged`, `CHANNEL.studioOpUpdate` in `packages/shared/protocol/events.ts`. `createCoreControl` takes a `channels` arg.
+- Studio tab-kind set (`studiostorage/model.IsStudioTabKind`): data, definition, console, document, keyvalue, stream, browse, http-request, grpc-request, variable-set, environments. `terminal` and `script-run` go to Space DB.
+- Contract-key renames for Stream A: `OpsService.Recent` to `StudioOpsService.Recent` (and likewise `Cancel`, `SettingsService.*`, `ConfigFilesService.*`) in `tests/contract/studio` JSON and Go keys. Contract dir is `apps/kira-space/tests/contract/studio`.
+- Go layout: Studio packages without Space twin sit as `apps/kira-space/internal/X`; Studio storage is `studiostorage`; `studioflowharness`, `studioflows` stay until Stream A. `tests/claude-studio` is a separate nested module.
+- Frontend layout: `apps/kira-space/frontend/src/studio`, tests in `tests/<suite>/studio`, `ipc`/`proto`/`support` in `tests/<suite>/`. Configs: `playwright.studio.config.ts`, `playwright.studio-perf.config.ts`, `playwright.proto.config.ts`; Space's own configs ignore `studio/**`. Scripts: `*:studio` kept, `dev:studio`, `build:studio`, `package:studio` and Studio-only typecheck scripts removed.
+- Deviations from `P537.md`:
+  - `wails/runtime.js` and `proto/` moved into Space's frontend (Space had no `wails/` dir).
+  - `connectionId` is `omitempty` in Space's `TabRecord`.
+  - Space `WindowModes.Valid` extended with `studio`, `api`, `docker`, `kubernetes`. Space Layout lacks Studio's operations and cellEditor panel fields.
+  - Merged Terminal composes Studio launches; id-collision routing in Tabs, CustomScripts and ScriptRuns picks the Studio stack by id lookup.
+  - `CustomScriptsService.Publish` got `//wails:ignore` (non-empty interface param).
+  - `unit/studio/mock-runtime-bindings.spec.ts`: "every bound method mapped" check limited to services Space's table does not map.
+  - Mutation area `kira-studio` merged into `kira-space` in `tools/mutation/areas.json`; `scripts/test-ui-changed.sh` cross-app import check removed.
+  - Minimal path-only edits in `site/` (source refs in `docs/studio/*`, `reference/*`, icon imports now `apps/kira-space/build`) so `check-docs` and the site build pass. Prose untouched; Stream C owns the rest.
+  - biome `noRestrictedImports` group `**/apps/kira-studio/**` now `**/frontend/src/studio/**`. `knip.json` workspaces merged.
+  - Proto preview port 9246 unchanged.
+  - Fixed pre-existing `tests/claude/review_test.go` vet error and two lint findings in merged code.
 
 ### P537 Part 2: Merge Kira Space and Kira Studio: finish in three parallel streams (Go, frontend, build/tests/docs)
 

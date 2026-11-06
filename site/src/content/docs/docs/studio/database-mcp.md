@@ -3,9 +3,9 @@ title: Database MCP server
 description: Let an AI client read your databases under rules you set.
 sources:
   - README.md
-  - apps/kira-studio/internal/dbmcp/server.go
-  - apps/kira-studio/internal/dbmcp/tools.go
-  - apps/kira-studio/frontend/src/state/settingsDomain.ts
+  - apps/kira-space/internal/dbmcp/server.go
+  - apps/kira-space/internal/dbmcp/tools.go
+  - apps/kira-space/frontend/src/studio/state/settingsDomain.ts
   - internal/llmprompts/registry.go
   - docs/ARCHITECTURE.md
   - packages/theme/src/i18n/en.json

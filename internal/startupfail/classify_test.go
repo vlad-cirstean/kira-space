@@ -23,7 +23,7 @@ func (e *localSchemaTooNew) Error() string            { return e.msg }
 func (e *localSchemaTooNew) SchemaTooNew() (int, int) { return e.found, e.known }
 
 // testInfo is the fixed Info every test in this file threads through Classify — "Kira Studio" and
-// a fake home/logs/db path set, standing in for what apps/kira-studio/main.go's real Reporter
+// a fake home/logs/db path set, standing in for what apps/kira-space/main.go's real Reporter
 // construction supplies. startupfail was moved to repo-root internal/, so it can no longer
 // read internal/config or internal/buildinfo directly; every call site (real or test) now supplies
 // its own Info.

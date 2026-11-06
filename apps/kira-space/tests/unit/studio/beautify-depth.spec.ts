@@ -1,5 +1,10 @@
 import { expect, test } from 'bun:test';
-import { beautifyJson, beautifyXml, scanJson, scanXml } from '../../../frontend/src/studio/beautify';
+import {
+  beautifyJson,
+  beautifyXml,
+  scanJson,
+  scanXml,
+} from '../../../frontend/src/studio/beautify';
 
 const DEPTH = 200_000;
 

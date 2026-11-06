@@ -2,14 +2,14 @@
 title: Settings
 description: Every Settings section in both apps, with defaults and where data lives.
 sources:
-  - apps/kira-studio/frontend/src/state/settings.ts
-  - apps/kira-studio/frontend/src/state/settingsDomain.ts
+  - apps/kira-space/frontend/src/studio/state/settings.ts
+  - apps/kira-space/frontend/src/studio/state/settingsDomain.ts
   - apps/kira-space/frontend/src/state/settings.ts
   - apps/kira-space/frontend/src/state/settingsDomain.ts
   - packages/shared/domain/settings.ts
-  - apps/kira-studio/frontend/src/workbench/settings
+  - apps/kira-space/frontend/src/studio/workbench/settings
   - apps/kira-space/frontend/src/workbench/settings
-  - apps/kira-studio/internal/config/paths.go
+  - apps/kira-space/internal/config/paths.go
   - apps/kira-space/internal/config/paths.go
   - internal/kirapaths/paths.go
   - internal/appsettings/agent.go

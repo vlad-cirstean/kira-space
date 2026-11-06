@@ -14,7 +14,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Kira Studio',
-      logo: { src: '../apps/kira-studio/build/appicon.icon/Assets/kira_icon_vector.svg', alt: '' },
+      logo: { src: '../apps/kira-space/build/appicon.icon/Assets/kira_icon_vector.svg', alt: '' },
       favicon: '/favicon.svg',
       social: [{ icon: 'github', label: 'GitHub', href: REPO_URL }],
       customCss: ['./src/styles/docs.css'],

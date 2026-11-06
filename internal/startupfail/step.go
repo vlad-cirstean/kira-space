@@ -1,5 +1,5 @@
 // Package startupfail is the whole of the logic: showing the user a native alert, and getting a
-// log record written, for any of the boot-sequence failures apps/kira-studio/main.go hits before
+// log record written, for any of the boot-sequence failures apps/kira-space/main.go hits before
 // any window (and, for five of the nine sites, before any *application.App at all) exists.
 //
 // Why this package exists rather than reaching for what is already in the tree: Wails v3's own

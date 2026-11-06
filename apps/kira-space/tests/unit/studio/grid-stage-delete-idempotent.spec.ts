@@ -23,7 +23,9 @@ import { pinia } from '../../../frontend/src/studio/state/pinia';
 
 setActivePinia(pinia);
 
-const { usePendingChangesStore } = await import('../../../frontend/src/studio/views/grid/pendingChanges');
+const { usePendingChangesStore } = await import(
+  '../../../frontend/src/studio/views/grid/pendingChanges'
+);
 const { isPendingDelete, stageDelete, stageEdit } = usePendingChangesStore();
 const { setPage } = await import('../../../frontend/src/studio/views/grid/page');
 

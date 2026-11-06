@@ -6,17 +6,28 @@ import {
   isReadChannel,
   runHeapScenario,
 } from '@workbench/testing/ui/heapProbe';
-import { browserTimeZone, resolveTime } from '../../../frontend/src/studio/views/console/kibana/time';
+import {
+  browserTimeZone,
+  resolveTime,
+} from '../../../frontend/src/studio/views/console/kibana/time';
 import {
   controlSnapshots as redisControl,
   portSnapshots as redisPorts,
 } from '../../ipc/redis/redis.fixture';
-import { controlSnapshots as sqsControl, portSnapshots as sqsPorts } from '../../ipc/sqs/sqs.fixture';
+import {
+  controlSnapshots as sqsControl,
+  portSnapshots as sqsPorts,
+} from '../../ipc/sqs/sqs.fixture';
 import { expect, type KiraApp, test } from '../../ui/studio/fixtures';
 import { grpcTab, modeTab } from '../../ui/studio/support/apiMode';
 import { connectPostgres, ITEMS_CONTROL, ITEMS_PORT } from '../../ui/studio/support/copyScenarios';
 import { IPC } from '../../ui/studio/support/ipcChannels';
-import { executeHits, kibanaControl, logsNode, logsView } from '../../ui/studio/support/kibanaFixture';
+import {
+  executeHits,
+  kibanaControl,
+  logsNode,
+  logsView,
+} from '../../ui/studio/support/kibanaFixture';
 import {
   DB_PATH as MONGO_DB,
   mongoConnectionSummary,
@@ -24,7 +35,13 @@ import {
   widgetsFixture,
 } from '../../ui/studio/support/mongoFixture';
 import { ORDER_ITEMS_PATH } from '../../ui/studio/support/postgresFixture';
-import { connectionRow, expandRow, findRow, openBrowseLeaf, openRowMenu } from '../../ui/studio/support/tree';
+import {
+  connectionRow,
+  expandRow,
+  findRow,
+  openBrowseLeaf,
+  openRowMenu,
+} from '../../ui/studio/support/tree';
 
 // P433 heap probe: per tab kind, JS heap per open tab, switch rounds, six minutes away, close all.
 // Chromium only (CDP); report-only. `bunx playwright test -c playwright.perf.config.ts heap-tabs

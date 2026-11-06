@@ -424,6 +424,9 @@ func (a *App) build() {
 			return n, nil
 		},
 	})
+	if err != nil {
+		a.t.Fatalf("build app: %v", err)
+	}
 	a.Shortcuts.reset()
 	a.W.BindShell(appwire.ShellHooks{
 		OpenPopup: a.WindowMgr.openPopup, Clipboard: a.Clipboard.Text, Shortcuts: a.Shortcuts,

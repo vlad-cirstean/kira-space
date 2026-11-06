@@ -15,7 +15,10 @@ import {
   headerAwareMinWidth,
   initialWidthsByIndex,
 } from '../../src/studio/views/shared/page/columns';
-import { createGridDataSource, type RowHandle } from '../../src/studio/views/shared/slick/dataSource';
+import {
+  createGridDataSource,
+  type RowHandle,
+} from '../../src/studio/views/shared/slick/dataSource';
 import { gutterColumn } from '../../src/studio/views/shared/slick/gridHostShared';
 import { KiraSlickGrid } from '../../src/studio/views/shared/slick/kiraSlickGrid';
 import '../../src/studio/views/shared/slick/slickTheme.css';

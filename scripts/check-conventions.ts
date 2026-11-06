@@ -42,7 +42,7 @@ export interface Hit {
 }
 
 const REPO_ROOT = join(import.meta.dir, '..');
-const SOURCE_ROOTS = ['apps/kira-studio/frontend', 'apps/kira-space/frontend', 'packages'];
+const SOURCE_ROOTS = ['apps/kira-space/frontend', 'packages'];
 const SKIP_DIR = new Set([
   'node_modules',
   'dist',
@@ -67,24 +67,18 @@ const EVENT_NAME = /^kira:[a-z][a-zA-Z]*:[a-z][a-zA-Z]*$/;
 const MIGRATION_SETS: ReadonlyArray<{ dir: string; baseline: number }> = [
   { dir: 'apps/kira-space/internal/gitreview/migrations', baseline: 3 },
   { dir: 'apps/kira-space/internal/storage/migrations', baseline: 32 },
-  { dir: 'apps/kira-studio/internal/storage/migrations', baseline: 37 },
+  { dir: 'apps/kira-space/internal/studiostorage/migrations', baseline: 37 },
   // 0004 rebuilds memories and memory_events with their legacy TEXT ISO created_at/superseded_at unchanged.
   { dir: 'internal/memory/migrations', baseline: 4 },
 ];
 const MIGRATION_NAME = /^(\d{4})_[a-z]\d+[a-z]?_[a-z0-9]+(?:_[a-z0-9]+)*\.sql$/;
 const BAD_FOLDERS = new Set(['util', 'utils', 'helpers']);
 const SPEC_ROOTS = [
-  'apps/kira-studio/tests/ui',
-  'apps/kira-studio/tests/visual',
   'apps/kira-space/tests/ui',
   'apps/kira-space/tests/visual',
   'apps/kira-space/tests/mobile',
 ];
-const SUPPORT_ROOTS = [
-  'apps/kira-studio/tests/ui/support',
-  'apps/kira-space/tests/ui/support',
-  'packages/workbench/src/testing/ui',
-];
+const SUPPORT_ROOTS = ['apps/kira-space/tests/ui/support', 'packages/workbench/src/testing/ui'];
 const MAX_VUE_LINES = 600;
 // Engine hosts and shells: one file owns a whole third-party engine or app frame.
 const OVERSIZE_VUE_OK = new Set([
@@ -98,7 +92,7 @@ const OVERSIZE_VUE_OK = new Set([
 // Printed in a menu, bound by the grid engine itself rather than a shortcut call.
 const ENGINE_BOUND_SHORTCUTS = new Set(['grid.edit']);
 const SHORTCUTS_PATH = 'packages/shared/domain/shortcuts.ts';
-const MENU_ROOTS = ['apps/kira-studio/frontend/src', 'apps/kira-space/frontend/src'];
+const MENU_ROOTS = ['apps/kira-space/frontend/src'];
 
 export function fileNameHit(path: string): Hit | undefined {
   const name = path.slice(path.lastIndexOf('/') + 1);

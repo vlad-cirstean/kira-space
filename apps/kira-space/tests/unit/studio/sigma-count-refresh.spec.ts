@@ -35,7 +35,9 @@ const { useTabsStore } = await import('../../../frontend/src/studio/state/tabs')
 const tabsStore = useTabsStore();
 const { useDocumentViewStore } = await import('../../../frontend/src/studio/views/documents/state');
 const documentViewStore = useDocumentViewStore();
-const { useKeyValueViewStore } = await import('../../../frontend/src/studio/views/shared/keyvalue/state');
+const { useKeyValueViewStore } = await import(
+  '../../../frontend/src/studio/views/shared/keyvalue/state'
+);
 const keyValueViewStore = useKeyValueViewStore();
 const { useStreamViewStore } = await import('../../../frontend/src/studio/views/stream/state');
 const streamViewStore = useStreamViewStore();

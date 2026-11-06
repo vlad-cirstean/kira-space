@@ -3,11 +3,11 @@ title: Databases and connections
 description: Supported engines, how to save a connection, and the guards around it.
 sources:
   - README.md
-  - apps/kira-studio/internal/adapters/caps.go
-  - apps/kira-studio/internal/adapters/clickhouse/caps.go
-  - apps/kira-studio/internal/adapters/redis/caps.go
-  - apps/kira-studio/internal/adapters/s3/caps.go
-  - apps/kira-studio/internal/mask/mask.go
+  - apps/kira-space/internal/adapters/caps.go
+  - apps/kira-space/internal/adapters/clickhouse/caps.go
+  - apps/kira-space/internal/adapters/redis/caps.go
+  - apps/kira-space/internal/adapters/s3/caps.go
+  - apps/kira-space/internal/mask/mask.go
   - packages/theme/src/i18n/en.json
 sidebar:
   order: 1

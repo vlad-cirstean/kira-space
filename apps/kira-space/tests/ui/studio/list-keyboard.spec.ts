@@ -3,7 +3,10 @@ import {
   controlSnapshots as redisControl,
   portSnapshots as redisPorts,
 } from '../../ipc/redis/redis.fixture';
-import { controlSnapshots as sqsControl, portSnapshots as sqsPorts } from '../../ipc/sqs/sqs.fixture';
+import {
+  controlSnapshots as sqsControl,
+  portSnapshots as sqsPorts,
+} from '../../ipc/sqs/sqs.fixture';
 import type { ControlSnapshot } from '../../ipc/support/types';
 import { expect, test } from './fixtures';
 import { grpcTab, modeTab, openHttpModeAndNewRequest } from './support/apiMode';

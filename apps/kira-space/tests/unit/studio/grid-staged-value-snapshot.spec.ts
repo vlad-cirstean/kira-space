@@ -32,7 +32,9 @@ import { pinia } from '../../../frontend/src/studio/state/pinia';
 
 setActivePinia(pinia);
 
-const { usePendingChangesStore } = await import('../../../frontend/src/studio/views/grid/pendingChanges');
+const { usePendingChangesStore } = await import(
+  '../../../frontend/src/studio/views/grid/pendingChanges'
+);
 const { addInsertRow, clearPending, rawPendingFor, stageEdit, stageInsertValue, stageNull } =
   usePendingChangesStore();
 const { createDisplayValueExtractor, pendingRowClasses } = await import(

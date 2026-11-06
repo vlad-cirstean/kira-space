@@ -11,7 +11,10 @@ import { createTabularPageBuilder, MAX_CELL_BYTES } from '@shared/protocol/page'
 import { restoreAfterEach } from '@workbench/testing/unit/restoreAfterEach';
 import { setActivePinia } from 'pinia';
 import { pinia } from '../../../frontend/src/studio/state/pinia';
-import { ExplainTruncatedError, parseExplainPages } from '../../../frontend/src/studio/views/console/plan';
+import {
+  ExplainTruncatedError,
+  parseExplainPages,
+} from '../../../frontend/src/studio/views/console/plan';
 
 setActivePinia(pinia);
 
