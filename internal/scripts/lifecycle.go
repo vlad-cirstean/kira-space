@@ -9,6 +9,8 @@ import (
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
+	"github.com/kirathecat/kira-studio/internal/kiraschema"
+	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
 
 // Collections are the `collection` name in run files; an order row holds the drag order and is
@@ -176,7 +178,10 @@ func (s *Service) RenameCollection(args RenameCollectionArgs) error {
 
 func (s *Service) renameLocked(name, newName string, ids []string) error {
 	l := s.Loader
-	if _, err := l.o.Repo.DB.Exec(`UPDATE script_collections SET name = ? WHERE name = ?`, newName, name); err != nil {
+	c := kiraschema.ScriptCollections
+	ub := l.o.Repo.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.Name, newName)).Where(ub.Equal(c.Name, name))
+	if _, err := sqlb.Exec(l.o.Repo.DB, ub); err != nil {
 		return fmt.Errorf("scripts: rename collection row: %w", err)
 	}
 	var done []string
